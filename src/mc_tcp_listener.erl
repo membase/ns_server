@@ -6,13 +6,13 @@
 start(Handler) ->
     start(11211, Handler).
 
-start(PortNum, Handler) when integer(PortNum) ->
+start(PortNum, Handler) when is_integer(PortNum) ->
     {ok, spawn(?MODULE, init, [PortNum, Handler])}.
 
 start_link(Handler) ->
     start_link(11211, Handler).
 
-start_link(PortNum, Handler) when integer(PortNum) ->
+start_link(PortNum, Handler) when is_integer(PortNum) ->
     {ok, spawn_link(?MODULE, init, [PortNum, Handler])}.
 
 
