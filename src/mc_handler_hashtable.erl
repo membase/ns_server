@@ -44,22 +44,24 @@ handle_cast(X, Locks) ->
 % Immediate flush
 handle_call({?FLUSH, <<0:32>>, <<>>, <<>>, _CAS}, _From, _State) ->
     error_logger:info_msg("Got immediate flush command.~n", []),
-    {reply, {0, <<>>, <<>>, <<>>, 0}, #mc_state{}};
+    {reply, #mc_response{}, #mc_state{}};
 % Delayed flush
 handle_call({?FLUSH, <<Delay:32>>, <<>>, <<>>, _CAS}, _From, State) ->
     error_logger:info_msg("Got flush command delayed for ~p.~n", [Delay]),
     erlang:send_after(Delay * 1000, self(), flush),
-    {reply, {0, <<>>, <<>>, <<>>, 0}, State};
+    {reply, #mc_response{}, State};
 % GET operation
 handle_call({?GET, <<>>, Key, <<>>, _CAS}, _From, State) ->
     error_logger:info_msg("Got GET command for ~p.~n", [Key]),
     case dict:find(Key, State#mc_state.store) of
         {ok, Item} ->
             Flags = Item#cached_item.flags,
-            {reply, {0, <<Flags:32>>, <<>>, Item#cached_item.data, 0},
+            FlagsBin = <<Flags:32>>,
+            {reply,
+             #mc_response{extra=FlagsBin, body=Item#cached_item.data},
              State};
         _ ->
-            {reply, {1, <<>>, <<>>, <<"Does not exist">>, 0}, State}
+            {reply, #mc_response{status=1, body="Does not exist"}, State}
     end;
 % SET operation
 handle_call({?SET, <<Flags:32, _Expiration:32>>, Key, Value, _CAS},
@@ -67,11 +69,13 @@ handle_call({?SET, <<Flags:32, _Expiration:32>>, Key, Value, _CAS},
     error_logger:info_msg("Got SET command for ~p.~n", [Key]),
     % TODO:  Generate a CAS, call a future delete with that CAS, etc...
     {reply,
-     {0, <<>>, <<>>, <<>>, 0},
+     #mc_response{},
      State#mc_state{store=dict:store(Key,
                                      #cached_item{flags=Flags, data=Value},
                                      State#mc_state.store)}};
 % Unknown commands.
 handle_call({_OpCode, _Header, _Key, _Body, _CAS}, _From, State) ->
-    {reply, {?UNKNOWN_COMMAND, <<>>, <<>>, <<"Unknown command">>, 0}, State}.
+    {reply,
+     #mc_response{status=?UNKNOWN_COMMAND, body="Unknown command"},
+     State}.
 

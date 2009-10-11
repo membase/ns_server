@@ -8,3 +8,10 @@
 
 -define(UNKNOWN_COMMAND, 16#81).
 
+-record(mc_response, {
+          status=0,
+          extra,
+          key,
+          body,
+          cas=0
+         }).

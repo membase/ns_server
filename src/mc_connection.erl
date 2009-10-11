@@ -4,16 +4,26 @@
 
 -include("mc_constants.hrl").
 
-respond(Socket, OpCode, Extra, Key, Status, Body, Opaque, CAS) ->
-    KeyLen = size(Key),
-    ExtraLen = size(Extra),
-    BodyLen = size(Body) + (KeyLen + ExtraLen),
+bin_size(undefined) -> 0;
+bin_size(List) when is_list(List) -> bin_size(list_to_binary(List));
+bin_size(Binary) -> size(Binary).
+
+xmit(_Socket, undefined) -> ok;
+xmit(Socket, List) when is_list(List) -> xmit(Socket, list_to_binary(List));
+xmit(Socket, Data) -> gen_tcp:send(Socket, Data).
+
+respond(Socket, OpCode, Opaque, Res) ->
+    KeyLen = bin_size(Res#mc_response.key),
+    ExtraLen = bin_size(Res#mc_response.extra),
+    BodyLen = bin_size(Res#mc_response.body) + (KeyLen + ExtraLen),
+    Status = Res#mc_response.status,
+    CAS = Res#mc_response.cas,
     gen_tcp:send(Socket, <<?RES_MAGIC, OpCode:8, KeyLen:16,
                           ExtraLen:8, 0:8, Status:16,
                           BodyLen:32, Opaque:32, CAS:64>>),
-    gen_tcp:send(Socket, Extra),
-    gen_tcp:send(Socket, Key),
-    gen_tcp:send(Socket, Body).
+    ok = xmit(Socket, Res#mc_response.extra),
+    ok = xmit(Socket, Res#mc_response.key),
+    ok = xmit(Socket, Res#mc_response.body).
 
 % Read-data special cases a 0 size to just return an empty binary.
 read_data(_Socket, 0, _ForWhat) -> <<>>;
@@ -35,10 +45,9 @@ process_message(Socket, StorageServer, {ok, <<?REQ_MAGIC:8, OpCode:8, KeyLen:16,
     Body = read_data(Socket, BodyLen - (KeyLen + ExtraLen), body),
 
     % Hand the request off to the server.
-    {Status, NewExtra, NewKey, NewBody,
-     NewCAS} = gen_server:call(StorageServer, {OpCode, Extra, Key, Body, CAS}),
+    Res = gen_server:call(StorageServer, {OpCode, Extra, Key, Body, CAS}),
 
-    respond(Socket, OpCode, NewExtra, NewKey, Status, NewBody, Opaque, NewCAS);
+    respond(Socket, OpCode, Opaque, Res);
 process_message(Socket, _Handler, Data) ->
     error_logger:info_msg("Got Unhandleable message:  ~p~n", [Data]),
     gen_tcp:close(Socket),
