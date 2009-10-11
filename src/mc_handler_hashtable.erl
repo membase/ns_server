@@ -13,6 +13,8 @@
           data
          }).
 
+-record(mc_state, {cas=0, store=dict:new()}).
+
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
@@ -21,14 +23,14 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 init(_Args) ->
-    {ok, dict:new()}.
+    {ok, #mc_state{}}.
 
 terminate(shutdown, State) ->
     {ok, State}.
 
 handle_info(flush, _State) ->
     error_logger:info_msg("Doing delayed flush.~n", []),
-    {noreply, dict:new()};
+    {noreply, #mc_state{}};
 handle_info(X, State) ->
     error_logger:info_msg("Someone asked for info ~p~n", [X]),
     {noreply, State}.
@@ -42,7 +44,7 @@ handle_cast(X, Locks) ->
 % Immediate flush
 handle_call({?FLUSH, <<0:32>>, <<>>, <<>>, _CAS}, _From, _State) ->
     error_logger:info_msg("Got immediate flush command.~n", []),
-    {reply, {0, <<>>, <<>>, <<>>, 0}, dict:new()};
+    {reply, {0, <<>>, <<>>, <<>>, 0}, #mc_state{}};
 % Delayed flush
 handle_call({?FLUSH, <<Delay:32>>, <<>>, <<>>, _CAS}, _From, State) ->
     error_logger:info_msg("Got flush command delayed for ~p.~n", [Delay]),
@@ -51,7 +53,7 @@ handle_call({?FLUSH, <<Delay:32>>, <<>>, <<>>, _CAS}, _From, State) ->
 % GET operation
 handle_call({?GET, <<>>, Key, <<>>, _CAS}, _From, State) ->
     error_logger:info_msg("Got GET command for ~p.~n", [Key]),
-    case dict:find(Key, State) of
+    case dict:find(Key, State#mc_state.store) of
         {ok, Item} ->
             Flags = Item#cached_item.flags,
             {reply, {0, <<Flags:32>>, <<>>, Item#cached_item.data, 0},
@@ -66,9 +68,10 @@ handle_call({?SET, <<Flags:32, _Expiration:32>>, Key, Value, _CAS},
     % TODO:  Generate a CAS, call a future delete with that CAS, etc...
     {reply,
      {0, <<>>, <<>>, <<>>, 0},
-     dict:store(Key, #cached_item{flags=Flags, data=Value}, State)};
+     State#mc_state{store=dict:store(Key,
+                                     #cached_item{flags=Flags, data=Value},
+                                     State#mc_state.store)}};
 % Unknown commands.
 handle_call({_OpCode, _Header, _Key, _Body, _CAS}, _From, State) ->
     {reply, {?UNKNOWN_COMMAND, <<>>, <<>>, <<"Unknown command">>, 0}, State}.
-
 
