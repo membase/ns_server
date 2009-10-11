@@ -51,6 +51,12 @@ handle_cast(X, Locks) ->
     error_logger:info_msg("Someone casted ~p~n", [X]),
     {noreply, Locks}.
 
+% Utility stuff
+
+schedule_expiry(0, _Key, _Cas) -> ok;
+schedule_expiry(Expiration, Key, Cas) ->
+    erlang:send_after(Expiration * 1000, self(), {delete_if, Key, Cas}).
+
 % Actual protocol handling goes below.
 
 % Immediate flush
@@ -82,7 +88,7 @@ handle_call({?SET, <<Flags:32, Expiration:32>>, Key, Value, _CAS},
             _From, State) ->
     error_logger:info_msg("Got SET command for ~p.~n", [Key]),
     NewCas = State#mc_state.cas + 1,
-    erlang:send_after(Expiration * 1000, self(), {delete_if, Key, NewCas}),
+    schedule_expiry(Expiration, Key, NewCas),
     {reply,
      #mc_response{cas=NewCas},
      State#mc_state{cas=NewCas,
