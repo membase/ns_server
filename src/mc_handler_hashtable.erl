@@ -9,7 +9,6 @@
 -export([init/1, handle_call/3, handle_cast/2]).
 
 -record(cached_item, {
-          exp=0,
           flags=0,
           data
          }).
@@ -55,11 +54,20 @@ handle_call({?GET, <<>>, Key, <<>>, _CAS}, _From, State) ->
     case dict:find(Key, State) of
         {ok, Item} ->
             Flags = Item#cached_item.flags,
-            {reply, {0, <<Flags:32>>, <<>>, Item#cached_item.data},
+            {reply, {0, <<Flags:32>>, <<>>, Item#cached_item.data, 0},
              State};
         _ ->
             {reply, {1, <<>>, <<>>, <<"Does not exist">>, 0}, State}
     end;
+% SET operation
+handle_call({?SET, <<Flags:32, _Expiration:32>>, Key, Value, _CAS},
+            _From, State) ->
+    error_logger:info_msg("Got SET command for ~p.~n", [Key]),
+    % TODO:  Generate a CAS, call a future delete with that CAS, etc...
+    {reply,
+     {0, <<>>, <<>>, <<>>, 0},
+     dict:store(Key, #cached_item{flags=Flags, data=Value}, State)};
+% Unknown commands.
 handle_call({_OpCode, _Header, _Key, _Body, _CAS}, _From, State) ->
     {reply, {?UNKNOWN_COMMAND, <<>>, <<>>, <<"Unknown command">>, 0}, State}.
 

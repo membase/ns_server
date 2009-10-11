@@ -34,5 +34,3 @@ accept_loop(LS, StorageServer) ->
     Pid = spawn(mc_connection, loop, [NS, StorageServer]),
     gen_tcp:controlling_process(NS, Pid),
     accept_loop(LS, StorageServer).
-
-
