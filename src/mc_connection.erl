@@ -47,11 +47,7 @@ process_message(Socket, StorageServer, {ok, <<?REQ_MAGIC:8, OpCode:8, KeyLen:16,
     % Hand the request off to the server.
     Res = gen_server:call(StorageServer, {OpCode, Extra, Key, Body, CAS}),
 
-    respond(Socket, OpCode, Opaque, Res);
-process_message(Socket, _Handler, Data) ->
-    error_logger:info_msg("Got Unhandleable message:  ~p~n", [Data]),
-    gen_tcp:close(Socket),
-    exit(done).
+    respond(Socket, OpCode, Opaque, Res).
 
 loop(Socket, Handler) ->
     process_message(Socket, Handler, gen_tcp:recv(Socket, ?HEADER_LEN)),
