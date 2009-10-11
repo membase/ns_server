@@ -10,6 +10,7 @@
 
 -record(cached_item, {
           flags=0,
+          cas=0,
           data
          }).
 
@@ -31,6 +32,17 @@ terminate(shutdown, State) ->
 handle_info(flush, _State) ->
     error_logger:info_msg("Doing delayed flush.~n", []),
     {noreply, #mc_state{}};
+handle_info({delete_if, Key, Cas}, State) ->
+    case dict:find(Key, State#mc_state.store) of
+        {ok, #cached_item{cas=Cas}} ->
+            error_logger:info_msg("Doing expiry of ~p.~n", [Key]),
+            {noreply, State#mc_state{store=dict:erase(Key,
+                                                     State#mc_state.store)}};
+        _ ->
+            error_logger:info_msg("Not doing expiry of ~p.~n", [Key]),
+            {noreply, State}
+    end;
+
 handle_info(X, State) ->
     error_logger:info_msg("Someone asked for info ~p~n", [X]),
     {noreply, State}.
@@ -58,20 +70,26 @@ handle_call({?GET, <<>>, Key, <<>>, _CAS}, _From, State) ->
             Flags = Item#cached_item.flags,
             FlagsBin = <<Flags:32>>,
             {reply,
-             #mc_response{extra=FlagsBin, body=Item#cached_item.data},
+             #mc_response{extra=FlagsBin,
+                          cas=Item#cached_item.cas,
+                          body=Item#cached_item.data},
              State};
         _ ->
             {reply, #mc_response{status=1, body="Does not exist"}, State}
     end;
 % SET operation
-handle_call({?SET, <<Flags:32, _Expiration:32>>, Key, Value, _CAS},
+handle_call({?SET, <<Flags:32, Expiration:32>>, Key, Value, _CAS},
             _From, State) ->
     error_logger:info_msg("Got SET command for ~p.~n", [Key]),
-    % TODO:  Generate a CAS, call a future delete with that CAS, etc...
+    NewCas = State#mc_state.cas + 1,
+    erlang:send_after(Expiration * 1000, self(), {delete_if, Key, NewCas}),
     {reply,
-     #mc_response{},
-     State#mc_state{store=dict:store(Key,
-                                     #cached_item{flags=Flags, data=Value},
+     #mc_response{cas=NewCas},
+     State#mc_state{cas=NewCas,
+                    store=dict:store(Key,
+                                     #cached_item{flags=Flags,
+                                                  cas=NewCas,
+                                                  data=Value},
                                      State#mc_state.store)}};
 % Unknown commands.
 handle_call({_OpCode, _Header, _Key, _Body, _CAS}, _From, State) ->
