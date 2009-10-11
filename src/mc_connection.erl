@@ -7,7 +7,7 @@
 respond(Socket, OpCode, Extra, Key, Status, Body, Opaque, CAS) ->
     KeyLen = size(Key),
     ExtraLen = size(Extra),
-    BodyLen = size(Body),
+    BodyLen = size(Body) + (KeyLen + ExtraLen),
     gen_tcp:send(Socket, <<?RES_MAGIC, OpCode:8, KeyLen:16,
                           ExtraLen:8, 0:8, Status:16,
                           BodyLen:32, Opaque:32, CAS:64>>),
