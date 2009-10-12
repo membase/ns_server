@@ -44,8 +44,16 @@
 -define(RDECR,       16#3b).
 -define(RDECRQ,      16#3c).
 
-
--define(UNKNOWN_COMMAND, 16#81).
+% Response status codes.
+-define(SUCCESS,          16#00).
+-define(KEY_ENOENT,       16#01).
+-define(KEY_EEXISTS,      16#02).
+-define(E2BIG,            16#03).
+-define(EINVAL,           16#04).
+-define(NOT_STORED,       16#05).
+-define(DELTA_BADVAL,     16#06).
+-define(UNKNOWN_COMMAND,  16#81).
+-define(ENOMEM,           16#82).
 
 -record(mc_response, {
           status=0,
