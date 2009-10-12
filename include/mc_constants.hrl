@@ -30,6 +30,20 @@
 -define(FLUSHQ,      16#18).
 -define(APPENDQ,     16#19).
 -define(PREPENDQ,    16#1a).
+-define(RGET,        16#30).
+-define(RSET,        16#31).
+-define(RSETQ,       16#32).
+-define(RAPPEND,     16#33).
+-define(RAPPENDQ,    16#34).
+-define(RPREPEND,    16#35).
+-define(RPREPENDQ,   16#36).
+-define(RDELETE,     16#37).
+-define(RDELETEQ,    16#38).
+-define(RINCR,       16#39).
+-define(RINCRQ,      16#3a).
+-define(RDECR,       16#3b).
+-define(RDECRQ,      16#3c).
+
 
 -define(UNKNOWN_COMMAND, 16#81).
 
