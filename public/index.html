@@ -2,7 +2,32 @@
 <html>
 <head>
 <title>Hi</title>
+<script type="text/javascript" src="/js/jquery.js"></script>
+<script type="text/javascript" src="/js/jquery.sparklines.js"></script>
+<script type="text/javascript" src="/js/jquery.ba-bbq.js"></script>
+<script type="text/javascript" src="/js/app.js"></script>
 </head>
 <body>
-Hi
-</body> </html>
+<table width="100%">
+<tr><td width="20%" id="left_pane">
+  <div style="outline: red 1px solid;">
+    <ul>
+      <li><a href="javascript:nav.go('overview');">System overview</a>
+      <li><a href="javascript:nav.go('alerts');">Alerts</a>
+      <li><a href="javascript:nav.go('settings');">Settings</a>
+    </ul>
+  </div>
+</td><td width="60%" id="middle_pane">
+  <div id="overview">
+    Here is overview
+  </div><div id="alerts" style="display:none">
+    This is alerts
+  </div><div id="settings" style="display:none">
+    This is settings
+  </div>
+</td><td width="20%" id="right_pane">
+    Right Pane
+</td>
+</tr>
+</table>
+</body></html>
