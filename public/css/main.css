@@ -1,0 +1,4 @@
+#overview_main_graph { width: 100%; }
+#overview_graph_ops, #overview_graph_gets, #overview_graph_sets, #overview_graph_misses { width: 20%; display: inline-block; }
+#left_pane, #right_pane, #middle_panel { vertical-align: top; }
+#overview .section { border: 1px black solid; }
