@@ -1,3 +1,25 @@
+function formatUptime(seconds, precision) {
+  precision = precision || 8;
+
+  var arr = [[86400, "days", "day"],
+             [3600, "hours", "hour"],
+             [60, "minutes", "minute"],
+             [1, "seconds", "second"]];
+
+  var rv = [];
+
+  $.each(arr, function () {
+    var period = this[0];
+    var value = (seconds / period) >> 0;
+    seconds -= value * period;
+    if (value)
+      rv.push(String(value) + ' ' + (value > 1 ? this[1] : this[2]));
+    return !!--precision;
+  });
+
+  return rv.join(', ');
+}
+
 // Based on: http://ejohn.org/blog/javascript-micro-templating/
 // Simple JavaScript Templating
 // John Resig - http://ejohn.org/ - MIT Licensed
@@ -76,25 +98,40 @@ $(function () {
   function getStatsAsync(callback) {
     setTimeout(function () {
       callback({
-        ops: [10, 5, 46, 100, 74, 25],
-        gets: [25, 10, 5, 46, 100, 74],
-        sets: [74, 25, 10, 5, 46, 100],
-        misses: [100, 74, 25, 10, 5, 46],
-        hot_keys: [{name:'user:image:value', type:'Persistent', gets: 10000, misses:100},
-                   {name:'user:image:value2', type:'Cache', gets: 10000, misses:100},
-                   {name:'user:image:value3', type:'Persistent', gets: 10000, misses:100},
-                   {name:'user:image:value4', type:'Cache', gets: 10000, misses:100}]
-      });
+        stats: {
+          ops: [10, 5, 46, 100, 74, 25],
+          gets: [25, 10, 5, 46, 100, 74],
+          sets: [74, 25, 10, 5, 46, 100],
+          misses: [100, 74, 25, 10, 5, 46],
+          hot_keys: [{name:'user:image:value', type:'Persistent', gets: 10000, misses:100},
+                     {name:'user:image:value2', type:'Cache', gets: 10000, misses:100},
+                     {name:'user:image:value3', type:'Persistent', gets: 10000, misses:100},
+                     {name:'user:image:value4', type:'Cache', gets: 10000, misses:100}]},
+        servers: [{name: 'asd', port: 12312, running: true, uptime: 1231233+60, cache: '3gb', threads: 8, version: '123', os: 'none'},
+                  {name: 'serv2', port: 12323, running: false, uptime: 123123, cache: '', threads: 0, version: '123', os: 'win'},
+                  {name: 'serv3', port: 12323, running: true, uptime: 12312, cache: '13gb', threads: 5, version: '123', os: 'bare metal'}]});
     }, 100);
   }
 
   $(window).bind('sec:overview', function () {
     getStatsAsync(function (stats) {
-      StatGraphs.update(stats);
-      var rows = $.map(stats.hot_keys, function (e) {
+      StatGraphs.update(stats.stats);
+      var rows = $.map(stats.stats.hot_keys, function (e) {
         return $.extend({}, e, {total: 0 + e.gets + e.misses});
       });
       $('#top_key_table_container').get(0).innerHTML = tmpl('top_keys_template', {rows:rows});
+
+      $('#server_list_container').get(0).innerHTML = tmpl('server_list_template', {rows: stats.servers});
     });
+  });
+
+  $('#server_list_container .expander').live('click', function (e) {
+    var container = $('#server_list_container');
+
+    var mydetails = $(e.target).parents("#server_list_container .primary").next();
+    var opened = mydetails.hasClass('opened');
+
+    container.find(".details").removeClass('opened');
+    mydetails.toggleClass('opened', !opened);
   });
 });
