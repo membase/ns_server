@@ -4,6 +4,7 @@
 <title>Hi</title>
 <link rel="stylesheet" type="text/css" href="/css/main.css">
 <script type="text/javascript" src="/js/jquery.js"></script>
+<script type="text/javascript" src="/js/jqModal.js"></script>
 <script type="text/javascript" src="/js/jquery.sparklines.js"></script>
 <script type="text/javascript" src="/js/jquery.ba-bbq.js"></script>
 <script type="text/javascript" src="/js/app.js"></script>
@@ -111,4 +112,20 @@
 </td>
 </tr>
 </table>
+<div class="jqmWindow" id="login_dialog">
+
+<!-- <a href="#" class="jqmClose">Close</a> -->
+<!-- <hr> -->
+<form id="login_form">
+  <label>Login:<input name="login"></label>
+  <label>Password:<input name="password"></label>
+  <input type="submit">
+</form>
+<script>
+  $('#login_form').bind('submit', function (e) {
+    e.preventDefault();
+    loginFormSubmit();
+  });
+</script>
+</div>
 </body></html>
