@@ -1,0 +1,26 @@
+url:
+/pools/:id
+/pools - POST here creates a pool
+         GET returns a list of user accessible pools
+/pools/:id - pool info: server's list (and status) and bucket's list
+              {servers: [{id: 112, ip: '12.12.12.12', status: 'up', uptime: ...},
+                         {id: 113, ip: '12.12.12.13', ...}],
+               buckets: [{name: 'excerciser', id: 123 /* anything else ? */}]}
+/servers/:id/pool - get or assign (via PUT) of server's pool
+/buckets/:id/stats
+:id == 'default' saves us roundtrip and references default bucket of
+   current user
+
+
+* bucket name in top key values UI
+* switching between buckets
+o [DONE] initial server list
+* switching graphs on overview
+* marks and labels on graphs (jquery sparklines seem inappropriate)
+* API for rest of sections
+* tests via watir
+* spinner for ajax transitions
+* welcome screen
+* respect interval select for all sub-sections
+
+* Q - server list per bucket or per pool
