@@ -273,21 +273,8 @@ var Page = {
       $(window).one('dao:ready', function () {thunk();});
   },
   getStatsAsync: deferringUntilReady(function (callback) {
-    setTimeout(function () {
-      callback({
-        stats: {
-          ops: [10, 5, 46, 100, 74, 25],
-          gets: [25, 10, 5, 46, 100, 74],
-          sets: [74, 25, 10, 5, 46, 100],
-          misses: [100, 74, 25, 10, 5, 46],
-          hot_keys: [{name:'user:image:value', type:'Persistent', gets: 10000, misses:100},
-                     {name:'user:image:value2', type:'Cache', gets: 10000, misses:100},
-                     {name:'user:image:value3', type:'Persistent', gets: 10000, misses:100},
-                     {name:'user:image:value4', type:'Cache', gets: 10000, misses:100}]},
-        servers: [{name: 'asd', port: 12312, running: true, uptime: 1231233+60, cache: '3gb', threads: 8, version: '123', os: 'none'},
-                  {name: 'serv2', port: 12323, running: false, uptime: 123123, cache: '', threads: 0, version: '123', os: 'win'},
-                  {name: 'serv3', port: 12323, running: true, uptime: 12312, cache: '13gb', threads: 5, version: '123', os: 'bare metal'}]});
-    }, 100);
+    // TODO: use current bucket
+    $.get('/buckets/default/stats', null, callback, 'json');
   }),
   performLogin: function (login, password) {
     this.login = login;
