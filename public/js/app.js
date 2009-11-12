@@ -1,3 +1,6 @@
+if (!('console' in window))
+  window.console.log = function () {};
+
 /**
 *
 *  Base64 encode / decode
@@ -264,6 +267,24 @@ function deferringUntilReady(body) {
   }
 }
 
+$.isString = function (s) {
+  var t = typeof(s);
+  return t == "string" || (t == "object" && s.constructor == String);
+}
+
+function renderTemplate(from, to, data) {
+  if (data === undefined && !$.isString(to)) {
+    data = to;
+    to = from+"_container";
+    from = from + "_template";
+  }
+  if ($.isArray(data)) {
+    data = {rows:data};
+  }
+  to = $('#' + to);
+  to.get(0).innerHTML = tmpl(from, data);
+}
+
 var Page = {
   ready: false,
   onReady: function (thunk) {
@@ -276,6 +297,9 @@ var Page = {
     // TODO: use current bucket
     $.get('/buckets/default/stats', null, callback, 'json');
   }),
+  getPoolList: deferringUntilReady(function (withBuckets, callback) {
+    $.get('/pools', {buckets: (withBuckets ? 1 : 0)}, callback, 'json');
+  }),
   performLogin: function (login, password) {
     this.login = login;
     this.password = password;
@@ -284,15 +308,18 @@ var Page = {
       $(window).trigger('dao:ready');
     });
   },
+  updatePoolList: function (data) {
+    renderTemplate('pool_list', data);
+  },
   enterOverview: function () {
+    Page.getPoolList(true, Page.updatePoolList.bind(Page));
     Page.getStatsAsync(function (stats) {
       StatGraphs.update(stats.stats);
-      var rows = $.map(stats.stats.hot_keys, function (e) {
-        return $.extend({}, e, {total: 0 + e.gets + e.misses});
-      });
-      $('#top_key_table_container').get(0).innerHTML = tmpl('top_keys_template', {rows:rows});
 
-      $('#server_list_container').get(0).innerHTML = tmpl('server_list_template', {rows: stats.servers});
+      renderTemplate('top_keys', $.map(stats.stats.hot_keys, function (e) {
+        return $.extend({}, e, {total: 0 + e.gets + e.misses});
+      }));
+      renderTemplate('server_list', stats.servers);
     });
   },
   hookEvents: function () {

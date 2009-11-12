@@ -9,9 +9,10 @@ set :static, true
 set :public, File.expand_path(File.join(File.dirname(__FILE__), 'public'))
 
 class DAO
+  class BadUser < Exception; end
   def self.for_user(username, password)
     unless username == 'admin' && password == 'admin'
-      throw(:halt, [401, "Not authorized\n"])
+      raise BadUser
     end
 
     self.new
@@ -41,6 +42,14 @@ class DAO
                      :id => 123}]
     }
   end
+
+  def pool_list(options={})
+    rv = [{:name => 'Default Pool', :id => 12}]
+    if options[:with_buckets]
+      rv[0][:buckets] = [{:name => 'Excerciser Application', :id => 23}]
+    end
+    rv
+  end
 end
 
 helpers do
@@ -53,7 +62,12 @@ helpers do
 
   def with_valid_user
     login, password = *auth_credentials
-    dao = DAO.for_user(login, password)
+    dao = begin
+            DAO.for_user(login, password)
+          rescue DAO::BadUser
+            response['WWW-Authenticate'] = 'Basic realm="api"'
+            throw(:halt, 401)
+          end
     old, DAO.current = DAO.current, dao
     begin
       yield
@@ -101,7 +115,7 @@ user_post "/ping" do
 end
 
 user_get "/pools" do
-  JSON.unparse([{:id => 1, :name => "default"}, {:id => 2, :name => "non_default"}])
+  JSON.unparse(DAO.current.pool_list({:with_buckets => params[:buckets]}))
 end
 
 user_get "/buckets/:id/stats" do

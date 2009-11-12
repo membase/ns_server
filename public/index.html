@@ -19,6 +19,29 @@
       <li><a href="javascript:nav.go('settings');">Settings</a>
     </ul>
   </div>
+  <div style="outline: green 1px solid;">
+    <h2>Your pools</h2><hr></hr>
+    <div id="pool_list_container">
+      <ul>
+        <li><em>Default pool</em>
+        <ul>
+          <li><a>Excerciser application</a>
+        </ul>
+      </ul>
+    </div>
+    <div id="pool_list_template" style="display: none;">
+      <ul>
+      <!-- {% $.each(rows, function () { %} -->
+        <li><em>{%= h(this.name) %}</em>
+        <ul>
+          <!-- {% $.each(this.buckets, function () { %} -->
+          <li><a>{%= h(this.name) %}</a>
+          <!-- {% }); %} -->
+        </ul>
+      <!-- {% }); %} -->
+      </ul>
+    </div>
+  </div>
 </td><td width="60%" id="middle_pane">
   <div id="overview">
     <div class="section">
@@ -42,7 +65,7 @@
         <option value="3600">last 1 hour</option>
         <option value="86400">last 24 hours</option>
       </select></span></h2>
-      <p id="top_key_table_container">
+      <p id="top_keys_container">
       </p>
       <div id="top_keys_template" style="display:none;">
         <table>
