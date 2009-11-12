@@ -268,16 +268,33 @@ function deferringUntilReady(body) {
 }
 
 $.isString = function (s) {
-  var t = typeof(s);
-  return t == "string" || (t == "object" && s.constructor == String);
+  return typeof(s) == "string" || (s instanceof String);
 }
 
-function renderTemplate(from, to, data) {
-  if (data === undefined && !$.isString(to)) {
-    data = to;
-    to = from+"_container";
-    from = from + "_template";
-  }
+function prepareAreaUpdate(jq) {
+  if ($.isString(jq))
+    jq = $(jq);
+  var height = jq.height();
+  var width = jq.width();
+  if (height < 50)
+    height = 50;
+  if (width < 100)
+    width = 100;
+  var replacement = $("<div class='spinner'><span>Loading...</span></div>", document);
+  replacement.css('width', width + 'px').css('height', height + 'px').css('lineHeight', height + 'px');
+  jq.html("");
+  jq.append(replacement);
+}
+
+function prepareRenderTemplate() {
+  $.each($.makeArray(arguments), function () {
+    prepareAreaUpdate('#'+ this + '_container');
+  });
+}
+
+function renderTemplate(key, data) {
+  var to = key + '_container';
+  var from = key + '_template';
   if ($.isArray(data)) {
     data = {rows:data};
   }
@@ -311,9 +328,14 @@ var Page = {
   updatePoolList: function (data) {
     renderTemplate('pool_list', data);
   },
+  clearUI: function () {
+    prepareRenderTemplate('top_keys', 'server_list', 'pool_list');
+  },
   enterOverview: function () {
-    Page.getPoolList(true, Page.updatePoolList.bind(Page));
-    Page.getStatsAsync(function (stats) {
+    this.clearUI();
+
+    this.getPoolList(true, this.updatePoolList.bind(this));
+    this.getStatsAsync(function (stats) {
       StatGraphs.update(stats.stats);
 
       renderTemplate('top_keys', $.map(stats.stats.hot_keys, function (e) {
@@ -350,6 +372,7 @@ $(function () {
   }, 100);
 
   Page.hookEvents();
+  Page.clearUI();
 
   Page.onReady(function () {
     $(window).bind('hashchange', function () {

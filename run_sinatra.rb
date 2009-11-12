@@ -80,6 +80,7 @@ end
 def user_method(method, *args, &block)
   raise "need block" unless block_given?
   self.send(method, *args) do |*unsupported_inner_args|
+#    sleep 1
     with_valid_user do
       instance_eval(&block)
     end
