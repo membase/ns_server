@@ -8,6 +8,41 @@ require 'pp'
 set :static, true
 set :public, File.expand_path(File.join(File.dirname(__FILE__), 'public'))
 
+class DAO
+  def self.for_user(username, password)
+    unless username == 'admin' && password == 'admin'
+      throw(:halt, [401, "Not authorized\n"])
+    end
+
+    self.new
+  end
+
+  def self.current
+    Thread.current['DAO']
+  end
+  def self.current=(v)
+    Thread.current['DAO'] = v
+  end
+
+  def pool_info(id)
+    {
+      :servers => [{
+                     :id => 112,
+                     :ip => '12.12.12.12',
+                     :status => 'up',
+                     :uptime => 1231233},
+                   {
+                     :id => 113,
+                     :ip => '12.12.12.13',
+                     :status => 'down',
+                     :uptime => 1231232}],
+      :buckets => [{
+                     :name => 'excerciser',
+                     :id => 123}]
+    }
+  end
+end
+
 helpers do
   def auth_credentials
     @auth ||=  Rack::Auth::Basic::Request.new(request.env)
@@ -17,41 +52,105 @@ helpers do
   end
 
   def with_valid_user
-    user, password = *auth_credentials
-    # fake auth here
-    if user == 'admin' && password == 'admin'
-      yield user
-    else
-      throw(:halt, [401, "Not authorized\n"])
+    login, password = *auth_credentials
+    dao = DAO.for_user(login, password)
+    old, DAO.current = DAO.current, dao
+    begin
+      yield
+    ensure
+      DAO.current = old
     end
   end
+end
+
+def user_method(method, *args, &block)
+  raise "need block" unless block_given?
+  self.send(method, *args) do |*unsupported_inner_args|
+    with_valid_user do
+      instance_eval(&block)
+    end
+  end
+end
+
+# same as <tt>get</tt> but requiring valid user
+def user_get(*args, &block)
+  user_method(:get, *args, &block)
+end
+
+# same as <tt>post</tt> but requiring valid user
+def user_post(*args, &block)
+  user_method(:post, *args, &block)
+end
+
+# same as <tt>put</tt> but requiring valid user
+def user_put(*args, &block)
+  user_method(:put, *args, &block)
+end
+
+# same as <tt>delete</tt> but requiring valid user
+def user_delete(*args, &block)
+  user_method(:delete, *args, &block)
 end
 
 get "/" do
   redirect "/index.html"
 end
 
-post "/ping" do
-  with_valid_user do |user|
-    "pong"
-  end
+user_post "/ping" do
+  "pong"
 end
 
-get "/buckets/:id/stats" do
+user_get "/pools" do
+  JSON.unparse([{:id => 1, :name => "default"}, {:id => 2, :name => "non_default"}])
+end
+
+user_get "/buckets/:id/stats" do
   response['Content-Type'] = 'application/json'
-  <<HERE
-{
-  stats: {
-    ops: [10, 5, 46, 100, 74, 25],
-    gets: [25, 10, 5, 46, 100, 74],
-    sets: [74, 25, 10, 5, 46, 100],
-    misses: [100, 74, 25, 10, 5, 46],
-    hot_keys: [{name:'user:image:value', type:'Persistent', gets: 10000, misses:100},
-               {name:'user:image:value2', type:'Cache', gets: 10000, misses:100},
-               {name:'user:image:value3', type:'Persistent', gets: 10000, misses:100},
-               {name:'user:image:value4', type:'Cache', gets: 10000, misses:100}]},
-  servers: [{name: 'asd', port: 12312, running: true, uptime: 1231233+60, cache: '3gb', threads: 8, version: '123', os: 'none'},
-               {name: 'serv2', port: 12323, running: false, uptime: 123123, cache: '', threads: 0, version: '123', os: 'win'},
-               {name: 'serv3', port: 12323, running: true, uptime: 12312, cache: '13gb', threads: 5, version: '123', os: 'bare metal'}]}
-HERE
+  JSON.unparse("stats"=>
+               {"gets"=>[25, 10, 5, 46, 100, 74],
+                 "misses"=>[100, 74, 25, 10, 5, 46],
+                 "hot_keys"=>
+                 [{"gets"=>10000,
+                    "name"=>"user:image:value",
+                    "misses"=>100,
+                    "type"=>"Persistent"},
+                  {"gets"=>10000,
+                    "name"=>"user:image:value2",
+                    "misses"=>100,
+                    "type"=>"Cache"},
+                  {"gets"=>10000,
+                    "name"=>"user:image:value3",
+                    "misses"=>100,
+                    "type"=>"Persistent"},
+                  {"gets"=>10000,
+                    "name"=>"user:image:value4",
+                    "misses"=>100,
+                    "type"=>"Cache"}],
+                 "sets"=>[74, 25, 10, 5, 46, 100],
+                 "ops"=>[10, 5, 46, 100, 74, 25]},
+               "servers"=>
+               [{"name"=>"asd",
+                  "threads"=>8,
+                  "cache"=>"3gb",
+                  "running"=>true,
+                  "port"=>12312,
+                  "os"=>"none",
+                  "version"=>"123",
+                  "uptime"=>1231293},
+                {"name"=>"serv2",
+                  "threads"=>0,
+                  "cache"=>"",
+                  "running"=>false,
+                  "port"=>12323,
+                  "os"=>"win",
+                  "version"=>"123",
+                  "uptime"=>123123},
+                {"name"=>"serv3",
+                  "threads"=>5,
+                  "cache"=>"13gb",
+                  "running"=>true,
+                  "port"=>12323,
+                  "os"=>"bare metal",
+                  "version"=>"123",
+                  "uptime"=>12312}])
 end

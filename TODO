@@ -14,7 +14,7 @@ url:
 
 * bucket name in top key values UI
 * switching between buckets
-o [DONE] initial server list
+* initial server list
 * switching graphs on overview
 * marks and labels on graphs (jquery sparklines seem inappropriate)
 * API for rest of sections
