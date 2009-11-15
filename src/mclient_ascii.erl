@@ -4,15 +4,9 @@
 
 -include("mc_constants.hrl").
 
--compile(export_all).
+-include("mclient.hrl").
 
--record(msg, {cmd = "",
-              key = "",
-              keys = [],
-              flag = 0,
-              expire = 0,
-              cas = 0,
-              data = <<>>}).
+-compile(export_all).
 
 cmd(version, Sock, RecvCallback, _Msg) ->
     send_recv(Sock, <<"version\r\n">>,
