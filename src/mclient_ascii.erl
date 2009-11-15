@@ -4,10 +4,49 @@
 
 -compile(export_all).
 
-% cmd(get, Sock, RecvCB, Args) ->
-%   ok;
-% cmd(version, Sock, RecvCB, Args) ->
-%   ok.
+-record(msg, {cmd = "",
+              key = "",
+              flag = 0,
+              expire = 0,
+              cas = 0,
+              data = <<>>}).
+
+cmd(version, _Sock, _RecvCallback, _Msg) ->
+    exit({unimplemented});
+cmd(get, _Sock, _RecvCallback, _Msg) ->
+    exit({unimplemented});
+cmd(set, Sock, RecvCallback, Msg) ->
+    cmd_update("set", Sock, RecvCallback, Msg);
+cmd(Cmd, _, _, _) ->
+    exit({unimplemented, Cmd}).
+
+cmd_update(Cmd, Sock, RecvCallback,
+           #msg{key=Key, flag=Flag, expire=Expire, data=Data}) ->
+    SFlag = integer_to_list(Flag),
+    SExpire = integer_to_list(Expire),
+    SDataSize = integer_to_list(size(Data)),
+    send_recv(Sock, [Cmd, <<" ">>,
+                     Key, <<" ">>,
+                     SFlag, <<" ">>,
+                     SExpire, <<" ">>,
+                     SDataSize, <<"\r\n">>,
+                     Data, <<"\r\n">>],
+              RecvCallback).
+
+%% @doc send an iolist and receive a single line back.
+send_recv(Sock, IoList) ->
+    send_recv(Sock, IoList, undefined).
+
+send_recv(Sock, IoList, RecvCallback) ->
+    ok = send(Sock, IoList),
+    RV = recv_line(Sock),
+    if is_function(RecvCallback) -> RecvCallback(RV);
+       true -> ok
+    end,
+    RV.
+
+send(Sock, IoList) ->
+    gen_tcp:send(Sock, iolist_to_binary(IoList)).
 
 %% @doc receive binary data of specified number of bytes length.
 recv_data(_, 0) -> <<>>;
@@ -17,7 +56,7 @@ recv_data(Sock, NumBytes) ->
         Err -> Err
     end.
 
-%% @doc receive a binary \r\n terminated line, including the \r\n.
+%% @doc receive a binary CRNL terminated line, including the CRNL.
 recv_line(Sock) ->
     recv_line(Sock, <<>>).
 
@@ -54,16 +93,19 @@ suffix_test() ->
 recv_line_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
+    (fun () ->
+        ok = gen_tcp:send(Sock, "version\r\n"),
+        {ok, RB} = recv_line(Sock),
+        R = binary_to_list(RB),
+        ?assert(starts_with(R, "VERSION ")),
+        ?assert(ends_with(R, "\r\n"))
+    end)(),
 
-    ok = gen_tcp:send(Sock, "version\r\n"),
-    {ok, R1B} = recv_line(Sock),
-    R1 = binary_to_list(R1B),
-    ?assert(starts_with(R1, "VERSION ")),
-    ?assert(ends_with(R1, "\r\n")),
-
-    ok = gen_tcp:send(Sock, "not-a-command\r\n"),
-    {ok, R2B} = recv_line(Sock),
-    ?assertMatch(R2B, <<"ERROR\r\n">>),
+    (fun () ->
+        ok = gen_tcp:send(Sock, "not-a-command\r\n"),
+        {ok, RB} = recv_line(Sock),
+        ?assertMatch(RB, <<"ERROR\r\n">>)
+    end)(),
 
     ok = gen_tcp:close(Sock).
 
@@ -71,10 +113,37 @@ recv_data_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
 
-    ok = gen_tcp:send(Sock, "not-a-command\r\n"),
-    ExpectB = <<"ERROR\r\n">>,
-    {ok, RB} = recv_data(Sock, size(ExpectB)),
-    ?assertMatch(RB, ExpectB),
+    (fun () ->
+        ok = gen_tcp:send(Sock, "not-a-command\r\n"),
+        ExpectB = <<"ERROR\r\n">>,
+        {ok, RB} = recv_data(Sock, size(ExpectB)),
+        ?assertMatch(RB, ExpectB)
+    end)(),
+
+    (fun () ->
+        ok = gen_tcp:send(Sock, "get not-a-key\r\n"),
+        ExpectB = <<"END\r\n">>,
+        {ok, RB} = recv_data(Sock, size(ExpectB)),
+        ?assertMatch(RB, ExpectB)
+    end)(),
+
+    ok = gen_tcp:close(Sock).
+
+send_recv_test() ->
+    {ok, Sock} = gen_tcp:connect("localhost", 11211,
+                                 [binary, {packet, 0}, {active, false}]),
+
+    (fun () ->
+        {ok, RB} = send_recv(Sock, "not-a-command-srt\r\n", nil),
+        ExpectB = <<"ERROR\r\n">>,
+        ?assertMatch(RB, ExpectB)
+    end)(),
+
+    (fun () ->
+        {ok, RB} = send_recv(Sock, "get not-a-key-srt\r\n", nil),
+        ExpectB = <<"END\r\n">>,
+        ?assertMatch(RB, ExpectB)
+    end)(),
 
     ok = gen_tcp:close(Sock).
 
