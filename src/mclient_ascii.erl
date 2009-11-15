@@ -302,25 +302,25 @@ version_test() ->
 set_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
-    set_test_sock(Sock),
+    set_test_sock(Sock, <<"aaa">>),
     ok = gen_tcp:close(Sock).
 
-set_test_sock(Sock) ->
+set_test_sock(Sock, Key) ->
     (fun () ->
         {ok, RB} = send_recv(Sock, "flush_all\r\n", nil),
         ?assertMatch(RB, <<"OK">>),
-        {ok, RB1} = send_recv(Sock, "get aaa-st\r\n", nil),
+        {ok, RB1} = send_recv(Sock, <<"get ", Key/binary, "\r\n">>, nil),
         ?assertMatch(RB1, <<"END">>)
     end)(),
 
     (fun () ->
         {ok, RB} = cmd(set, Sock, nil,
-                       #msg{key= <<"aaa-st">>,
+                       #msg{key= Key,
                             data= <<"AAA">>}),
         ?assertMatch(RB, <<"STORED">>),
 
-        {ok, RB1} = send_recv(Sock, "get aaa-st\r\n", nil),
-        ?assertMatch(RB1, <<"VALUE aaa-st 0 3">>),
+        {ok, RB1} = send_recv(Sock, <<"get ", Key/binary, "\r\n">>, nil),
+        ?assertMatch(RB1, <<"VALUE ", Key/binary, " 0 3">>),
         {ok, RB2} = recv_line(Sock),
         ?assertMatch(RB2, <<"AAA">>),
         {ok, RB3} = recv_line(Sock),
@@ -330,14 +330,14 @@ set_test_sock(Sock) ->
 delete_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
-    set_test_sock(Sock),
+    set_test_sock(Sock, <<"aaa">>),
 
     (fun () ->
         {ok, RB} = cmd(delete, Sock, nil,
-                       #msg{key= <<"aaa-st">>}),
+                       #msg{key= <<"aaa">>}),
         ?assertMatch(RB, <<"DELETED">>),
 
-        {ok, RB1} = send_recv(Sock, "get aaa-st\r\n", nil),
+        {ok, RB1} = send_recv(Sock, "get aaa\r\n", nil),
         ?assertMatch(RB1, <<"END">>)
     end)(),
 
@@ -346,16 +346,61 @@ delete_test() ->
 get_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
-    set_test_sock(Sock),
+    set_test_sock(Sock, <<"aaa">>),
 
     (fun () ->
         {ok, RB} = cmd(get, Sock, nil,
-                       #msg{keys= [<<"aaa-st">>, <<"notkey1">>, <<"notkey2">>]}),
+                       #msg{keys= [<<"aaa">>, <<"notkey1">>, <<"notkey2">>]}),
         ?assertMatch(RB, <<"END">>),
 
         {ok, RB1} = cmd(get, Sock, nil,
                         #msg{keys= [<<"notkey0">>, <<"notkey1">>, <<"notkey2">>]}),
         ?assertMatch(RB1, <<"END">>)
+    end)(),
+
+    ok = gen_tcp:close(Sock).
+
+update_test() ->
+    {ok, Sock} = gen_tcp:connect("localhost", 11211,
+                                 [binary, {packet, 0}, {active, false}]),
+    set_test_sock(Sock, <<"aaa">>),
+
+    (fun () ->
+        {ok, RB} = cmd(append, Sock, nil,
+                       #msg{key= <<"aaa">>, data= <<"-post">>}),
+        ?assertMatch(RB, <<"STORED">>),
+
+        {ok, RB1} = cmd(prepend, Sock, nil,
+                       #msg{key= <<"aaa">>, data= <<"pre-">>}),
+        ?assertMatch(RB1, <<"STORED">>),
+
+        {ok, RB2} = cmd(get, Sock, nil,
+                       #msg{keys= [<<"aaa">>, <<"notkey1">>, <<"notkey2">>]}),
+        ?assertMatch(RB2, <<"END">>),
+
+        {ok, RB3} = cmd(add, Sock, nil,
+                        #msg{key= <<"aaa">>, data= <<"already exists">>}),
+        ?assertMatch(RB3, <<"NOT_STORED">>),
+
+        {ok, RB4} = cmd(get, Sock, nil,
+                       #msg{keys= [<<"aaa">>, <<"notkey1">>, <<"notkey2">>]}),
+        ?assertMatch(RB4, <<"END">>),
+
+        {ok, RB5} = cmd(replace, Sock, nil,
+                        #msg{key= <<"aaa">>, data= <<"replaced">>}),
+        ?assertMatch(RB5, <<"STORED">>),
+
+        {ok, RB6} = cmd(get, Sock, nil,
+                       #msg{keys= [<<"aaa">>, <<"notkey1">>, <<"notkey2">>]}),
+        ?assertMatch(RB6, <<"END">>),
+
+        {ok, RB7} = cmd(flush_all, Sock, nil, #msg{}),
+        ?assertMatch(RB7, <<"OK">>),
+
+        {ok, RB8} = cmd(get, Sock, nil,
+                       #msg{keys= [<<"aaa">>, <<"notkey1">>, <<"notkey2">>]}),
+        ?assertMatch(RB8, <<"END">>)
+
     end)(),
 
     ok = gen_tcp:close(Sock).
