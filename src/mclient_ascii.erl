@@ -164,11 +164,13 @@ get_recv(Sock, RecvCallback) ->
         {ok, <<"VALUE ", Rest/binary>>} ->
             Parse = io_lib:fread("~s ~u ~u", binary_to_list(Rest)),
             {ok, [Key, Flag, DataSize], _} = Parse,
-            {ok, Data} = recv_data(Sock, DataSize + 2),
-            if is_function(RecvCallback) -> RecvCallback(Line,
-                                                         #msg{key=Key,
-                                                              flag=Flag,
-                                                              data=Data});
+            {ok, DataCRNL} = recv_data(Sock, DataSize + 2),
+            if is_function(RecvCallback) ->
+                    {Data, _} = split_binary_suffix(DataCRNL, 2),
+                    RecvCallback(Line,
+                                 #msg{key=iolist_to_binary(Key),
+                                      flag=Flag,
+                                      data=Data});
                true -> ok
             end,
             get_recv(Sock, RecvCallback)
@@ -356,11 +358,19 @@ get_test() ->
     (fun () ->
         get_test_match(Sock, <<"aaa">>, <<"AAA">>),
 
-        {ok, RB} = cmd(get, Sock, nil,
+        {ok, RB} = cmd(get, Sock,
+                       fun (Line, Msg) ->
+                          ?assertMatch(Line, {ok, <<"VALUE aaa 0 3">>}),
+                          ?assertMatch(Msg, #msg{key= <<"aaa">>, data= <<"AAA">>})
+                       end,
                        #msg{keys= [<<"aaa">>, <<"notkey1">>, <<"notkey2">>]}),
         ?assertMatch(RB, <<"END">>),
 
-        {ok, RB1} = cmd(get, Sock, nil,
+        {ok, RB1} = cmd(get, Sock,
+                       fun (Line, Msg) ->
+                          ?assertMatch(Line, {ok, <<"VALUE aaa 0 3">>}),
+                          ?assertMatch(Msg, #msg{key= <<"aaa">>, data= <<"AAA">>})
+                       end,
                         #msg{keys= [<<"notkey0">>, <<"notkey1">>, <<"notkey2">>]}),
         ?assertMatch(RB1, <<"END">>)
     end)(),
