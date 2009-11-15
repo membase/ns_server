@@ -78,7 +78,7 @@ cmd(?GETQ, _Sock, _RecvCallback, _Msg) ->
 
 cmd(?NOOP, _Sock, RecvCallback, _Msg) ->
     % Assuming NOOP used to uncork GETKQ's.
-    if is_function(RecvCallback) -> RecvCallback({ok, <<"END\r\n">>},
+    if is_function(RecvCallback) -> RecvCallback({ok, <<"END">>},
                                                  #msg{});
        true -> ok
     end;
@@ -166,9 +166,9 @@ get_recv(Sock, RecvCallback) ->
     Line = recv_line(Sock),
     case Line of
         {error, _}=Err -> Err;
-        {ok, <<"END\r\n">>} -> Line;
+        {ok, <<"END">>} -> Line;
         {ok, <<"VALUE ", Rest/binary>>} ->
-            Parse = io_lib:fread("~s ~u ~u\r\n", binary_to_list(Rest)),
+            Parse = io_lib:fread("~s ~u ~u", binary_to_list(Rest)),
             {ok, [Key, Flag, DataSize], _} = Parse,
             {ok, Data} = recv_data(Sock, DataSize + 2),
             if is_function(RecvCallback) -> RecvCallback(Line,
@@ -180,7 +180,7 @@ get_recv(Sock, RecvCallback) ->
             get_recv(Sock, RecvCallback)
     end.
 
-%% @doc send an iolist and receive a single line back.
+%% @doc Send an iolist and receive a single line back.
 send_recv(Sock, IoList) ->
     send_recv(Sock, IoList, undefined).
 
@@ -195,7 +195,7 @@ send_recv(Sock, IoList, RecvCallback) ->
 send(Sock, IoList) ->
     gen_tcp:send(Sock, iolist_to_binary(IoList)).
 
-%% @doc receive binary data of specified number of bytes length.
+%% @doc Receive binary data of specified number of bytes length.
 recv_data(_, 0) -> {ok, <<>>};
 recv_data(Sock, NumBytes) ->
     case gen_tcp:recv(Sock, NumBytes) of
@@ -203,7 +203,7 @@ recv_data(Sock, NumBytes) ->
         Err -> Err
     end.
 
-%% @doc receive a binary CRNL terminated line, including the CRNL.
+%% @doc Receive a binary CRNL terminated line, not including the CRNL.
 recv_line(Sock) ->
     recv_line(Sock, <<>>).
 
@@ -211,30 +211,33 @@ recv_line(Sock, Acc) ->
     case gen_tcp:recv(Sock, 1) of
         {ok, B} ->
             Acc2 = <<Acc/binary, B/binary>>,
-            case suffix(Acc2, 2) of
-                <<"\r\n">> -> {ok, Acc2};
+            {Line, Suffix} = split_binary_suffix(Acc2, 2),
+            case Suffix of
+                <<"\r\n">> -> {ok, Line};
                 _          -> recv_line(Sock, Acc2)
             end;
         Err -> Err
     end.
 
-%% @doc returns the suffix for a binary, or <<>> if the binary is too short.
-suffix(_, 0) -> <<>>;
-suffix(Bin, SuffixLen) ->
+%% @doc Returns the {body, suffix} binary parts for a binary;
+%%      Returns {body, <<>>} if the binary is too short.
+%%
+split_binary_suffix(Bin, 0) -> {Bin, <<>>};
+split_binary_suffix(Bin, SuffixLen) ->
     case size(Bin) >= SuffixLen of
-        true  -> {_, Suffix} = split_binary(Bin, size(Bin) - 2),
-                 Suffix;
-        false -> <<>>
+        true  -> split_binary(Bin, size(Bin) - SuffixLen);
+        false -> {Bin, <<>>}
     end.
 
 % -------------------------------------------------
 
 suffix_test() ->
-    ?assertMatch(<<"lo">>, suffix(<<"hello">>, 2)),
-    ?assertMatch(<<"lo">>, suffix(<<"lo">>, 2)),
-    ?assertMatch(<<>>, suffix(<<"o">>, 2)),
-    ?assertMatch(<<>>, suffix(<<>>, 2)),
-    ?assertMatch(<<>>, suffix(<<>>, 0)),
+    ?assertMatch({<<"hel">>, <<"lo">>}, split_binary_suffix(<<"hello">>, 2)),
+    ?assertMatch({<<"hello">>, <<>>}, split_binary_suffix(<<"hello">>, 0)),
+    ?assertMatch({<<>>, <<"lo">>}, split_binary_suffix(<<"lo">>, 2)),
+    ?assertMatch({<<"o">>, <<>>}, split_binary_suffix(<<"o">>, 2)),
+    ?assertMatch({<<>>, <<>>}, split_binary_suffix(<<>>, 2)),
+    ?assertMatch({<<>>, <<>>}, split_binary_suffix(<<>>, 0)),
     ok.
 
 recv_line_test() ->
@@ -244,14 +247,13 @@ recv_line_test() ->
         ok = gen_tcp:send(Sock, "version\r\n"),
         {ok, RB} = recv_line(Sock),
         R = binary_to_list(RB),
-        ?assert(starts_with(R, "VERSION ")),
-        ?assert(ends_with(R, "\r\n"))
+        ?assert(starts_with(R, "VERSION "))
     end)(),
 
     (fun () ->
         ok = gen_tcp:send(Sock, "not-a-command\r\n"),
         {ok, RB} = recv_line(Sock),
-        ?assertMatch(RB, <<"ERROR\r\n">>)
+        ?assertMatch(RB, <<"ERROR">>)
     end)(),
 
     ok = gen_tcp:close(Sock).
@@ -282,12 +284,12 @@ send_recv_test() ->
 
     (fun () ->
         {ok, RB} = send_recv(Sock, "not-a-command-srt\r\n", nil),
-        ?assertMatch(RB, <<"ERROR\r\n">>)
+        ?assertMatch(RB, <<"ERROR">>)
     end)(),
 
     (fun () ->
         {ok, RB} = send_recv(Sock, "get not-a-key-srt\r\n", nil),
-        ?assertMatch(RB, <<"END\r\n">>)
+        ?assertMatch(RB, <<"END">>)
     end)(),
 
     ok = gen_tcp:close(Sock).
@@ -298,8 +300,7 @@ version_test() ->
     (fun () ->
         {ok, RB} = cmd(version, Sock, nil, nil),
         R = binary_to_list(RB),
-        ?assert(starts_with(R, "VERSION ")),
-        ?assert(ends_with(R, "\r\n"))
+        ?assert(starts_with(R, "VERSION "))
     end)(),
 
     ok = gen_tcp:close(Sock).
@@ -313,23 +314,23 @@ set_test() ->
 set_test_sock(Sock) ->
     (fun () ->
         {ok, RB} = send_recv(Sock, "flush_all\r\n", nil),
-        ?assertMatch(RB, <<"OK\r\n">>),
+        ?assertMatch(RB, <<"OK">>),
         {ok, RB1} = send_recv(Sock, "get aaa-st\r\n", nil),
-        ?assertMatch(RB1, <<"END\r\n">>)
+        ?assertMatch(RB1, <<"END">>)
     end)(),
 
     (fun () ->
         {ok, RB} = cmd(set, Sock, nil,
                        #msg{key= <<"aaa-st">>,
                             data= <<"AAA">>}),
-        ?assertMatch(RB, <<"STORED\r\n">>),
+        ?assertMatch(RB, <<"STORED">>),
 
         {ok, RB1} = send_recv(Sock, "get aaa-st\r\n", nil),
-        ?assertMatch(RB1, <<"VALUE aaa-st 0 3\r\n">>),
+        ?assertMatch(RB1, <<"VALUE aaa-st 0 3">>),
         {ok, RB2} = recv_line(Sock),
-        ?assertMatch(RB2, <<"AAA\r\n">>),
+        ?assertMatch(RB2, <<"AAA">>),
         {ok, RB3} = recv_line(Sock),
-        ?assertMatch(RB3, <<"END\r\n">>)
+        ?assertMatch(RB3, <<"END">>)
     end)().
 
 delete_test() ->
@@ -340,10 +341,10 @@ delete_test() ->
     (fun () ->
         {ok, RB} = cmd(delete, Sock, nil,
                        #msg{key= <<"aaa-st">>}),
-        ?assertMatch(RB, <<"DELETED\r\n">>),
+        ?assertMatch(RB, <<"DELETED">>),
 
         {ok, RB1} = send_recv(Sock, "get aaa-st\r\n", nil),
-        ?assertMatch(RB1, <<"END\r\n">>)
+        ?assertMatch(RB1, <<"END">>)
     end)(),
 
     ok = gen_tcp:close(Sock).
@@ -356,11 +357,11 @@ get_test() ->
     (fun () ->
         {ok, RB} = cmd(get, Sock, nil,
                        #msg{keys= [<<"aaa-st">>, <<"notkey1">>, <<"notkey2">>]}),
-        ?assertMatch(RB, <<"END\r\n">>),
+        ?assertMatch(RB, <<"END">>),
 
         {ok, RB1} = cmd(get, Sock, nil,
-                       #msg{keys= [<<"notkey0">>, <<"notkey1">>, <<"notkey2">>]}),
-        ?assertMatch(RB1, <<"END\r\n">>)
+                        #msg{keys= [<<"notkey0">>, <<"notkey1">>, <<"notkey2">>]}),
+        ?assertMatch(RB1, <<"END">>)
     end)(),
 
     ok = gen_tcp:close(Sock).
