@@ -151,34 +151,22 @@ set_test() ->
 
     (fun () ->
         {ok, RB} = send_recv(Sock, "flush_all\r\n", nil),
-        ?assertMatch(RB, <<"OK\r\n">>)
-    end)(),
-
-    (fun () ->
-        {ok, RB} = send_recv(Sock, "get aaa-st\r\n", nil),
-        ?assertMatch(RB, <<"END\r\n">>)
+        ?assertMatch(RB, <<"OK\r\n">>),
+        {ok, RB1} = send_recv(Sock, "get aaa-st\r\n", nil),
+        ?assertMatch(RB1, <<"END\r\n">>)
     end)(),
 
     (fun () ->
         {ok, RB} = cmd(set, Sock, nil,
                        #msg{key= <<"aaa-st">>,
                             data= <<"AAA">>}),
-        ?assertMatch(RB, <<"STORED\r\n">>)
-    end)(),
-
-    (fun () ->
-        {ok, RB} = send_recv(Sock, "get aaa-st\r\n", nil),
-        ?assertMatch(RB, <<"VALUE aaa-st 0 3\r\n">>)
-    end)(),
-
-    (fun () ->
-        {ok, RB} = recv_line(Sock),
-        ?assertMatch(RB, <<"AAA\r\n">>)
-    end)(),
-
-    (fun () ->
-        {ok, RB} = recv_line(Sock),
-        ?assertMatch(RB, <<"END\r\n">>)
+        ?assertMatch(RB, <<"STORED\r\n">>),
+        {ok, RB1} = send_recv(Sock, "get aaa-st\r\n", nil),
+        ?assertMatch(RB1, <<"VALUE aaa-st 0 3\r\n">>),
+        {ok, RB2} = recv_line(Sock),
+        ?assertMatch(RB2, <<"AAA\r\n">>),
+        {ok, RB3} = recv_line(Sock),
+        ?assertMatch(RB3, <<"END\r\n">>)
     end)(),
 
     ok = gen_tcp:close(Sock).
