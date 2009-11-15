@@ -1,10 +1,10 @@
--module(mclient_ascii).
+-module(mc_client_ascii).
 
 -include_lib("eunit/include/eunit.hrl").
 
 -include("mc_constants.hrl").
 
--include("mclient.hrl").
+-include("mc_client.hrl").
 
 -compile(export_all).
 
