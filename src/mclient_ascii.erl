@@ -235,8 +235,8 @@ cmd_binary(?RDECR, _Sock, _RecvCallback, _Msg) ->
 cmd_binary(?RDECRQ, _Sock, _RecvCallback, _Msg) ->
     exit(todo);
 
-cmd_binary(_Cmd, _Sock, _RecvCallback, _Msg) ->
-    exit(unimplemented).
+cmd_binary(Cmd, _Sock, _RecvCallback, _Msg) ->
+    exit({unimplemented, Cmd}).
 
 % -------------------------------------------------
 
