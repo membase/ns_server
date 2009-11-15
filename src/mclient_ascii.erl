@@ -40,110 +40,12 @@ cmd(delete, Sock, RecvCallback, #msg{key=Key}) ->
 cmd(flush_all, Sock, RecvCallback, _Msg) ->
     send_recv(Sock, [<<"flush_all\r\n">>], RecvCallback);
 
-% -------------------------------------------------
-
-%% For binary upstream talking to downstream ascii server.
-%% The RecvCallback functions will receive ascii-oriented parameters.
-
-cmd(?GET, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-
-cmd(?SET, Sock, RecvCallback, Msg) ->
-    cmd(set, Sock, RecvCallback, Msg);
-
-cmd(?ADD, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd(?REPLACE, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-
-cmd(?DELETE, Sock, RecvCallback, Msg) ->
-    cmd(delete, Sock, RecvCallback, Msg);
-
-cmd(?INCREMENT, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd(?DECREMENT, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd(?QUIT, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-
-cmd(?FLUSH, Sock, RecvCallback, Msg) ->
-    cmd(flush_all, Sock, RecvCallback, Msg);
-
-cmd(?GETQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-
-cmd(?NOOP, _Sock, RecvCallback, _Msg) ->
-    % Assuming NOOP used to uncork GETKQ's.
-    if is_function(RecvCallback) -> RecvCallback({ok, <<"END">>},
-                                                 #msg{});
-       true -> ok
-    end;
-
-cmd(?VERSION, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd(?GETK, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-
-cmd(?GETKQ, Sock, RecvCallback, #msg{keys=Keys}) ->
-    cmd(get, Sock, RecvCallback, #msg{keys=Keys});
-
-cmd(?APPEND, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd(?PREPEND, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd(?STAT, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd(?SETQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd(?ADDQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd(?REPLACEQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd(?DELETEQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd(?INCREMENTQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd(?DECREMENTQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd(?QUITQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd(?FLUSHQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd(?APPENDQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd(?PREPENDQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd(?RGET, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd(?RSET, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd(?RSETQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd(?RAPPEND, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd(?RAPPENDQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd(?RPREPEND, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd(?RPREPENDQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd(?RDELETE, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd(?RDELETEQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd(?RINCR, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd(?RINCRQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd(?RDECR, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd(?RDECRQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
+cmd(Cmd, Sock, RecvCallback, Msg) ->
+    % Dispatch to cmd_binary() in case the caller was
+    % using a binary protocol opcode.
+    cmd_binary(Cmd, Sock, RecvCallback, Msg).
 
 % -------------------------------------------------
-
-cmd(Cmd, _, _, _) ->
-    exit({unimplemented, Cmd}).
 
 cmd_update(Cmd, Sock, RecvCallback,
            #msg{key=Key, flag=Flag, expire=Expire, data=Data}) ->
@@ -232,6 +134,109 @@ split_binary_suffix(Bin, SuffixLen) ->
         true  -> split_binary(Bin, size(Bin) - SuffixLen);
         false -> {Bin, <<>>}
     end.
+
+% -------------------------------------------------
+
+%% For binary upstream talking to downstream ascii server.
+%% The RecvCallback function will receive ascii-oriented parameters.
+
+cmd_binary(?GET, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+
+cmd_binary(?SET, Sock, RecvCallback, Msg) ->
+    cmd(set, Sock, RecvCallback, Msg);
+
+cmd_binary(?ADD, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+cmd_binary(?REPLACE, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+
+cmd_binary(?DELETE, Sock, RecvCallback, Msg) ->
+    cmd(delete, Sock, RecvCallback, Msg);
+
+cmd_binary(?INCREMENT, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+cmd_binary(?DECREMENT, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+cmd_binary(?QUIT, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+
+cmd_binary(?FLUSH, Sock, RecvCallback, Msg) ->
+    cmd(flush_all, Sock, RecvCallback, Msg);
+
+cmd_binary(?GETQ, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+
+cmd_binary(?NOOP, _Sock, RecvCallback, _Msg) ->
+    % Assuming NOOP used to uncork GETKQ's.
+    if is_function(RecvCallback) -> RecvCallback({ok, <<"END">>},
+                                                 #msg{});
+       true -> ok
+    end;
+
+cmd_binary(?VERSION, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+cmd_binary(?GETK, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+
+cmd_binary(?GETKQ, Sock, RecvCallback, #msg{keys=Keys}) ->
+    cmd(get, Sock, RecvCallback, #msg{keys=Keys});
+
+cmd_binary(?APPEND, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+cmd_binary(?PREPEND, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+cmd_binary(?STAT, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+cmd_binary(?SETQ, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+cmd_binary(?ADDQ, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+cmd_binary(?REPLACEQ, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+cmd_binary(?DELETEQ, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+cmd_binary(?INCREMENTQ, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+cmd_binary(?DECREMENTQ, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+cmd_binary(?QUITQ, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+cmd_binary(?FLUSHQ, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+cmd_binary(?APPENDQ, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+cmd_binary(?PREPENDQ, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+cmd_binary(?RGET, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+cmd_binary(?RSET, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+cmd_binary(?RSETQ, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+cmd_binary(?RAPPEND, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+cmd_binary(?RAPPENDQ, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+cmd_binary(?RPREPEND, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+cmd_binary(?RPREPENDQ, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+cmd_binary(?RDELETE, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+cmd_binary(?RDELETEQ, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+cmd_binary(?RINCR, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+cmd_binary(?RINCRQ, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+cmd_binary(?RDECR, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+cmd_binary(?RDECRQ, _Sock, _RecvCallback, _Msg) ->
+    exit(todo);
+
+cmd_binary(_Cmd, _Sock, _RecvCallback, _Msg) ->
+    exit(unimplemented).
 
 % -------------------------------------------------
 
