@@ -11,8 +11,10 @@
               cas = 0,
               data = <<>>}).
 
-cmd(version, _Sock, _RecvCallback, _Msg) ->
-    exit({unimplemented});
+cmd(version, Sock, RecvCallback, _Msg) ->
+    send_recv(Sock, <<"version\r\n">>,
+              RecvCallback);
+
 cmd(get, _Sock, _RecvCallback, _Msg) ->
     exit({unimplemented});
 
@@ -155,6 +157,18 @@ send_recv_test() ->
     (fun () ->
         {ok, RB} = send_recv(Sock, "get not-a-key-srt\r\n", nil),
         ?assertMatch(RB, <<"END\r\n">>)
+    end)(),
+
+    ok = gen_tcp:close(Sock).
+
+version_test() ->
+    {ok, Sock} = gen_tcp:connect("localhost", 11211,
+                                 [binary, {packet, 0}, {active, false}]),
+    (fun () ->
+        {ok, RB} = cmd(version, Sock, nil, nil),
+        R = binary_to_list(RB),
+        ?assert(starts_with(R, "VERSION ")),
+        ?assert(ends_with(R, "\r\n"))
     end)(),
 
     ok = gen_tcp:close(Sock).
