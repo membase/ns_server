@@ -15,8 +15,22 @@ cmd(version, _Sock, _RecvCallback, _Msg) ->
     exit({unimplemented});
 cmd(get, _Sock, _RecvCallback, _Msg) ->
     exit({unimplemented});
+
 cmd(set, Sock, RecvCallback, Msg) ->
-    cmd_update("set", Sock, RecvCallback, Msg);
+    cmd_update(<<"set">>, Sock, RecvCallback, Msg);
+cmd(add, Sock, RecvCallback, Msg) ->
+    cmd_update(<<"add">>, Sock, RecvCallback, Msg);
+cmd(replace, Sock, RecvCallback, Msg) ->
+    cmd_update(<<"replace">>, Sock, RecvCallback, Msg);
+cmd(append, Sock, RecvCallback, Msg) ->
+    cmd_update(<<"append">>, Sock, RecvCallback, Msg);
+cmd(prepend, Sock, RecvCallback, Msg) ->
+    cmd_update(<<"prepend">>, Sock, RecvCallback, Msg);
+
+cmd(delete, Sock, RecvCallback, #msg{key=Key}) ->
+    send_recv(Sock, [<<"delete ">>, Key, <<"\r\n">>],
+              RecvCallback);
+
 cmd(Cmd, _, _, _) ->
     exit({unimplemented, Cmd}).
 
@@ -148,7 +162,10 @@ send_recv_test() ->
 set_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
+    set_test_sock(Sock),
+    ok = gen_tcp:close(Sock).
 
+set_test_sock(Sock) ->
     (fun () ->
         {ok, RB} = send_recv(Sock, "flush_all\r\n", nil),
         ?assertMatch(RB, <<"OK\r\n">>),
@@ -161,12 +178,27 @@ set_test() ->
                        #msg{key= <<"aaa-st">>,
                             data= <<"AAA">>}),
         ?assertMatch(RB, <<"STORED\r\n">>),
+
         {ok, RB1} = send_recv(Sock, "get aaa-st\r\n", nil),
         ?assertMatch(RB1, <<"VALUE aaa-st 0 3\r\n">>),
         {ok, RB2} = recv_line(Sock),
         ?assertMatch(RB2, <<"AAA\r\n">>),
         {ok, RB3} = recv_line(Sock),
         ?assertMatch(RB3, <<"END\r\n">>)
+    end)().
+
+delete_test() ->
+    {ok, Sock} = gen_tcp:connect("localhost", 11211,
+                                 [binary, {packet, 0}, {active, false}]),
+    set_test_sock(Sock),
+
+    (fun () ->
+        {ok, RB} = cmd(delete, Sock, nil,
+                       #msg{key= <<"aaa-st">>}),
+        ?assertMatch(RB, <<"DELETED\r\n">>),
+
+        {ok, RB1} = send_recv(Sock, "get aaa-st\r\n", nil),
+        ?assertMatch(RB1, <<"END\r\n">>)
     end)(),
 
     ok = gen_tcp:close(Sock).
