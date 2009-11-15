@@ -319,13 +319,18 @@ set_test_sock(Sock, Key) ->
                             data= <<"AAA">>}),
         ?assertMatch(RB, <<"STORED">>),
 
-        {ok, RB1} = send_recv(Sock, <<"get ", Key/binary, "\r\n">>, nil),
-        ?assertMatch(RB1, <<"VALUE ", Key/binary, " 0 3">>),
-        {ok, RB2} = recv_line(Sock),
-        ?assertMatch(RB2, <<"AAA">>),
-        {ok, RB3} = recv_line(Sock),
-        ?assertMatch(RB3, <<"END">>)
+        get_test_match(Sock, Key, <<"AAA">>)
     end)().
+
+get_test_match(Sock, Key, Data) ->
+    {ok, RB1} = send_recv(Sock, <<"get ", Key/binary, "\r\n">>, nil),
+    DataSize = integer_to_list(size(Data)),
+    Expect = iolist_to_binary(["VALUE ", Key, " 0 ", DataSize]),
+    ?assertMatch(RB1, Expect),
+    {ok, RB2} = recv_line(Sock),
+    ?assertMatch(RB2, Data),
+    {ok, RB3} = recv_line(Sock),
+    ?assertMatch(RB3, <<"END">>).
 
 delete_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
@@ -349,6 +354,8 @@ get_test() ->
     set_test_sock(Sock, <<"aaa">>),
 
     (fun () ->
+        get_test_match(Sock, <<"aaa">>, <<"AAA">>),
+
         {ok, RB} = cmd(get, Sock, nil,
                        #msg{keys= [<<"aaa">>, <<"notkey1">>, <<"notkey2">>]}),
         ?assertMatch(RB, <<"END">>),
@@ -369,37 +376,28 @@ update_test() ->
         {ok, RB} = cmd(append, Sock, nil,
                        #msg{key= <<"aaa">>, data= <<"-post">>}),
         ?assertMatch(RB, <<"STORED">>),
+        get_test_match(Sock, <<"aaa">>, <<"AAA-post">>),
 
         {ok, RB1} = cmd(prepend, Sock, nil,
                        #msg{key= <<"aaa">>, data= <<"pre-">>}),
         ?assertMatch(RB1, <<"STORED">>),
-
-        {ok, RB2} = cmd(get, Sock, nil,
-                       #msg{keys= [<<"aaa">>, <<"notkey1">>, <<"notkey2">>]}),
-        ?assertMatch(RB2, <<"END">>),
+        get_test_match(Sock, <<"aaa">>, <<"pre-AAA-post">>),
 
         {ok, RB3} = cmd(add, Sock, nil,
                         #msg{key= <<"aaa">>, data= <<"already exists">>}),
         ?assertMatch(RB3, <<"NOT_STORED">>),
-
-        {ok, RB4} = cmd(get, Sock, nil,
-                       #msg{keys= [<<"aaa">>, <<"notkey1">>, <<"notkey2">>]}),
-        ?assertMatch(RB4, <<"END">>),
+        get_test_match(Sock, <<"aaa">>, <<"pre-AAA-post">>),
 
         {ok, RB5} = cmd(replace, Sock, nil,
                         #msg{key= <<"aaa">>, data= <<"replaced">>}),
         ?assertMatch(RB5, <<"STORED">>),
-
-        {ok, RB6} = cmd(get, Sock, nil,
-                       #msg{keys= [<<"aaa">>, <<"notkey1">>, <<"notkey2">>]}),
-        ?assertMatch(RB6, <<"END">>),
+        get_test_match(Sock, <<"aaa">>, <<"replaced">>),
 
         {ok, RB7} = cmd(flush_all, Sock, nil, #msg{}),
         ?assertMatch(RB7, <<"OK">>),
 
-        {ok, RB8} = cmd(get, Sock, nil,
-                       #msg{keys= [<<"aaa">>, <<"notkey1">>, <<"notkey2">>]}),
-        ?assertMatch(RB8, <<"END">>)
+        {ok, RBF} = send_recv(Sock, "get aaa\r\n", nil),
+        ?assertMatch(RBF, <<"END">>)
 
     end)(),
 
