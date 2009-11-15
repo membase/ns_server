@@ -135,14 +135,50 @@ send_recv_test() ->
 
     (fun () ->
         {ok, RB} = send_recv(Sock, "not-a-command-srt\r\n", nil),
-        ExpectB = <<"ERROR\r\n">>,
-        ?assertMatch(RB, ExpectB)
+        ?assertMatch(RB, <<"ERROR\r\n">>)
     end)(),
 
     (fun () ->
         {ok, RB} = send_recv(Sock, "get not-a-key-srt\r\n", nil),
-        ExpectB = <<"END\r\n">>,
-        ?assertMatch(RB, ExpectB)
+        ?assertMatch(RB, <<"END\r\n">>)
+    end)(),
+
+    ok = gen_tcp:close(Sock).
+
+set_test() ->
+    {ok, Sock} = gen_tcp:connect("localhost", 11211,
+                                 [binary, {packet, 0}, {active, false}]),
+
+    (fun () ->
+        {ok, RB} = send_recv(Sock, "flush_all\r\n", nil),
+        ?assertMatch(RB, <<"OK\r\n">>)
+    end)(),
+
+    (fun () ->
+        {ok, RB} = send_recv(Sock, "get aaa-st\r\n", nil),
+        ?assertMatch(RB, <<"END\r\n">>)
+    end)(),
+
+    (fun () ->
+        {ok, RB} = cmd(set, Sock, nil,
+                       #msg{key= <<"aaa-st">>,
+                            data= <<"AAA">>}),
+        ?assertMatch(RB, <<"STORED\r\n">>)
+    end)(),
+
+    (fun () ->
+        {ok, RB} = send_recv(Sock, "get aaa-st\r\n", nil),
+        ?assertMatch(RB, <<"VALUE aaa-st 0 3\r\n">>)
+    end)(),
+
+    (fun () ->
+        {ok, RB} = recv_line(Sock),
+        ?assertMatch(RB, <<"AAA\r\n">>)
+    end)(),
+
+    (fun () ->
+        {ok, RB} = recv_line(Sock),
+        ?assertMatch(RB, <<"END\r\n">>)
     end)(),
 
     ok = gen_tcp:close(Sock).
