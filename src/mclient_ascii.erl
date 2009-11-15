@@ -9,8 +9,7 @@
 -compile(export_all).
 
 cmd(version, Sock, RecvCallback, _Msg) ->
-    send_recv(Sock, <<"version\r\n">>,
-              RecvCallback);
+    send_recv(Sock, <<"version\r\n">>, RecvCallback);
 
 cmd(get, Sock, RecvCallback, #msg{keys=Keys}) ->
     ok = send(Sock, [<<"get ">>,
@@ -30,13 +29,16 @@ cmd(append, Sock, RecvCallback, Msg) ->
 cmd(prepend, Sock, RecvCallback, Msg) ->
     cmd_update(<<"prepend">>, Sock, RecvCallback, Msg);
 
+cmd(incr, Sock, RecvCallback, Msg) ->
+    cmd_arith(<<"incr">>, Sock, RecvCallback, Msg);
+cmd(decr, Sock, RecvCallback, Msg) ->
+    cmd_arith(<<"decr">>, Sock, RecvCallback, Msg);
+
 cmd(delete, Sock, RecvCallback, #msg{key=Key}) ->
-    send_recv(Sock, [<<"delete ">>, Key, <<"\r\n">>],
-              RecvCallback);
+    send_recv(Sock, [<<"delete ">>, Key, <<"\r\n">>], RecvCallback);
 
 cmd(flush_all, Sock, RecvCallback, _Msg) ->
-    send_recv(Sock, [<<"flush_all\r\n">>],
-              RecvCallback);
+    send_recv(Sock, [<<"flush_all\r\n">>], RecvCallback);
 
 % -------------------------------------------------
 
@@ -153,6 +155,12 @@ cmd_update(Cmd, Sock, RecvCallback,
                      SFlag, <<" ">>,
                      SExpire, <<" ">>,
                      SDataSize, <<"\r\n">>,
+                     Data, <<"\r\n">>],
+              RecvCallback).
+
+cmd_arith(Cmd, Sock, RecvCallback, #msg{key=Key, data=Data}) ->
+    send_recv(Sock, [Cmd, <<" ">>,
+                     Key, <<" ">>,
                      Data, <<"\r\n">>],
               RecvCallback).
 
