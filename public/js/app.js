@@ -236,8 +236,8 @@ $.ajaxSetup({
     alert("FIXME: network or server-side error happened! We'll handle it better in the future.");
   },
   beforeSend: function (xhr) {
-    if (Page.login) {
-      addBasicAuth(xhr, Page.login, Page.password);
+    if (DAO.login) {
+      addBasicAuth(xhr, DAO.login, DAO.password);
     }
   }
 });
@@ -255,13 +255,13 @@ Function.prototype.bind = function () {
 
 function deferringUntilReady(body) {
   return function () {
-    if (Page.ready) {
+    if (DAO.ready) {
       body.apply(this, arguments);
       return;
     }
     var self = this;
     var args = arguments;
-    Page.onReady(function () {
+    DAO.onReady(function () {
       body.apply(self, args);
     });
   }
@@ -302,13 +302,184 @@ function renderTemplate(key, data) {
   to.get(0).innerHTML = tmpl(from, data);
 }
 
-var Page = {
+function __topEval() {
+  return eval("(" + arguments[0] + ")");
+}
+
+function mkClass(methods) {
+  var constructor = __topEval(String(function () {
+    if (this.initialize)
+      return this.initialize.apply(this, arguments);
+  }));
+  constructor.prototype = methods;
+  return constructor;
+}
+
+var Slave = mkClass({
+  initialize: function (thunk) {
+    this.thunk = thunk
+  },
+  die: function () {this.dead = true;},
+  nMoreTimes: function (times) {
+    this.times = this.times || 0;
+    this.times += times;
+    var oldThunk = this.thunk;
+    this.thunk = function (data) {
+      oldThunk.call(this, data);
+      if (--this.times == 0)
+        this.die();
+    }
+    return this;
+  }
+});
+
+var CallbackSlot = mkClass({
+  initialize: function () {
+    this.slaves = [];
+  },
+  subscribeWithSlave: function (thunk) {
+    var slave = new Slave(thunk);
+    this.slaves.push(slave);
+    return slave;
+  },
+  subscribeOnce: function (thunk) {
+    return this.subscribeWithSlave(thunk).nMoreTimes(1);
+  },
+  broadcast: function (data) {
+    var oldSlaves = this.slaves;
+    var newSlaves = this.slaves = [];
+    $.each(oldSlaves, function (index, slave) {
+      slave.thunk(data);
+      if (!slave.dead)
+        newSlaves.push(slave);
+    });
+  },
+  unsubscribe: function (slave) {
+    slave.die();
+    var index = $.inArray(slave, this.slaves);
+    if (index >= 0)
+      this.slaves.splice(index, 1);
+  }
+});
+
+function mkSimpleUpdateInitiator(path, args) {
+  return function (okCallback, errorCallback) {
+    $.ajax({type: 'GET',
+            url: path,
+            data: args,
+            dataType: 'json',
+            success: okCallback,
+            error: errorCallback});
+  }
+}
+
+var UpdatesChannel = mkClass({
+  initialize: function (updateInitiator, period, plugged) {
+    this.updateInitiator = updateInitiator;
+    this.slot = new CallbackSlot();
+    this.plugged = plugged ? 1 : 0;
+    this.setPeriod(period);
+  },
+  setPeriod: function (period) {
+    if (this.intervalHandle)
+      cancelInterval(this.intervalHandle);
+    this.period = period;
+    setInterval(this.tickHandler.bind(this), this.period*1000);
+    if (!this.updateIsInProgress)
+      this.initiateUpdate();
+  },
+  tickHandler: function () {
+    if (this.plugged)
+      return;
+    if (this.updateIsInProgress) {
+      this.hadTickOverflow = true;
+      return;
+    }
+    this.initiateUpdate();
+  },
+  updateSuccess: function (data) {
+    this.recentData = data;
+    try {
+      if (!this.plugged)
+        this.slot.broadcast(this);
+    } finally {
+      this.updateComplete();
+    }
+  },
+  updateComplete: function () {
+    this.updateIsInProgress = false;
+    if (this.hadTickOverflow) {
+      this.hadTickOverflow = false;
+      this.initiateUpdate();
+    }
+  },
+  initiateUpdate: function () {
+    if (this.plugged)
+      return;
+    this.updateIsInProgress = true;
+    this.updateInitiator(this.updateSuccess.bind(this),
+                         this.updateComplete.bind(this));
+  },
+  plug: function () {
+    if (this.plugged++ != 0)
+      return;
+    if (this.intervalHandle)
+      cancelInterval(this.intervalHandle);
+  },
+  unplug: function () {
+    if (--this.plugged != 0)
+      return;
+    this.setPeriod(this.period);
+  }
+});
+
+var ChannelSupervisor = mkClass({
+  initialize: function () {
+    this.slaves = [];
+  },
+  register: function (slave) {
+    this.slaves.push(slave);
+    return slave;
+  },
+  plug: function () {
+    $.each(this.slaves, function () {
+      this.plug();
+    });
+  },
+  unplug: function () {
+    $.each(this.slaves, function () {
+      this.unplug();
+    });
+  }
+});
+
+var DAO = {
   ready: false,
   onReady: function (thunk) {
-    if (Page.ready)
+    if (DAO.ready)
       thunk.call(null);
     else
       $(window).one('dao:ready', function () {thunk();});
+  },
+  sectionSupervisors: {
+    overview: new ChannelSupervisor(),
+    alerts: new ChannelSupervisor(),
+    settings: new ChannelSupervisor()
+  },
+  switchSection: function (section) {
+    var newSupervisor = this.sectionSupervisors[section];
+    if (!newSupervisor)
+      throw new Error('unknown section: ' + section);
+    if (this.currentSectionSupervisor)
+      this.currentSectionSupervisor.plug();
+    this.currentSectionSupervisor = newSupervisor;
+    newSupervisor.unplug();
+  },
+  createSimpleUpdater: function (section, path, args, period) {
+    var initiator = mkSimpleUpdateInitiator(path, args)
+    return this.sectionSupervisors[section].register(new UpdatesChannel(initiator,
+                                                                   period,
+                                                                   true));
   },
   getStatsAsync: deferringUntilReady(function (callback) {
     // TODO: use current bucket
@@ -321,21 +492,45 @@ var Page = {
     this.login = login;
     this.password = password;
     $.post('/ping', {}, function () {
-      Page.ready = true;
+      DAO.ready = true;
       $(window).trigger('dao:ready');
     });
-  },
+  }
+};
+
+(function () {
+  var channels = {};
+  var overview = [['stats', '/buckets/default/stats', null, 1]];
+  $.each(overview, function () {
+    var duplicate = Array.apply(null, this);
+    duplicate[0] = 'overview';
+    channels[this[0]] = DAO.createSimpleUpdater.apply(DAO, duplicate);
+  });
+  DAO.channels = channels;
+})();
+
+var OverviewSection = {
   updatePoolList: function (data) {
     renderTemplate('pool_list', data);
   },
   clearUI: function () {
     prepareRenderTemplate('top_keys', 'server_list', 'pool_list');
   },
-  enterOverview: function () {
+  onFreshStats: function (channel) {
+    var stats = channel.recentData;
+
+    StatGraphs.update(stats.stats);
+
+    renderTemplate('top_keys', $.map(stats.stats.hot_keys, function (e) {
+      return $.extend({}, e, {total: 0 + e.gets + e.misses});
+    }));
+    renderTemplate('server_list', stats.servers);
+  },
+  onEnter: function () {
     this.clearUI();
 
-    this.getPoolList(true, this.updatePoolList.bind(this));
-    this.getStatsAsync(function (stats) {
+    DAO.getPoolList(true, this.updatePoolList.bind(this));
+    DAO.getStatsAsync(function (stats) {
       StatGraphs.update(stats.stats);
 
       renderTemplate('top_keys', $.map(stats.stats.hot_keys, function (e) {
@@ -343,16 +538,62 @@ var Page = {
       }));
       renderTemplate('server_list', stats.servers);
     });
+  }
+};
+
+DAO.channels.stats.slot.subscribeWithSlave(OverviewSection.onFreshStats.bind(OverviewSection));
+
+var DummySection = {
+  onEnter: function () {}
+};
+
+var ThePage = {
+  sections: {overview: OverviewSection,
+             alerts: DummySection,
+             settings: DummySection},
+  currentSection: null,
+  currentSectionName: null,
+  gotoSection: function (section) {
+    if (!(this.sections[section])) {
+      throw new Error('unknown section:' + section);
+    }
+    $.bbq.pushState({sec: section});
   },
-  hookEvents: function () {
-    $(window).bind('sec:overview', Page.enterOverview.bind(Page));
+  initialize: function () {
+    var self = this;
+    DAO.onReady(function () {
+      $(window).bind('hashchange', function () {
+        var sec = $.bbq.getState('sec') || 'overview';
+        if (sec == self.currentSectionName)
+          return;
+        var oldSection = self.currentSection;
+        var currentSection = self.sections[sec];
+        if (!currentSection) {
+          self.gotoSection('overview');
+          return;
+        }
+        self.currentSectionName = sec;
+        self.currentSection = currentSection;
+
+        DAO.switchSection(sec);
+
+        $('#middle_pane > div').css('display', 'none');
+        $('#'+sec).css('display','block');
+        setTimeout(function () {
+          if (oldSection && oldSection.onLeave)
+            oldSection.onLeave();
+          self.currentSection.onEnter();
+          $(window).trigger('sec:' + sec);
+        }, 10);
+      });
+    });
   }
 };
 
 function loginFormSubmit() {
   var login = $('#login_form [name=login]').val();
   var password = $('#login_form [name=password]').val();
-  Page.performLogin(login, password);
+  DAO.performLogin(login, password);
   $(window).one('dao:ready', function () {
     $('#login_dialog').jqmHide();
   });
@@ -360,9 +601,7 @@ function loginFormSubmit() {
 }
 
 window.nav = {
-  go: function (sec) {
-    $.bbq.pushState({sec: sec});
-  }
+  go: ThePage.gotoSection.bind(ThePage)
 };
 
 $(function () {
@@ -371,19 +610,9 @@ $(function () {
     $('#login_dialog [name=login]').get(0).focus();
   }, 100);
 
-  Page.hookEvents();
-  Page.clearUI();
+  ThePage.initialize();
 
-  Page.onReady(function () {
-    $(window).bind('hashchange', function () {
-      var sec = $.bbq.getState('sec') || 'overview';
-      $('#middle_pane > div').css('display', 'none');
-      $('#'+sec).css('display','block');
-      setTimeout(function () {
-        $(window).trigger('sec:' + sec);
-      }, 10);
-    });
-
+  DAO.onReady(function () {
     $(window).trigger('hashchange');
   });
 

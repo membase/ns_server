@@ -11,6 +11,10 @@ url:
 :id == 'default' saves us roundtrip and references default bucket of
    current user
 
+* clean whole-page logic
+
+- DAO as a source of data updates. I.e. it does push instead of
+   components doing pull.
 
 * bucket name in top key values UI
 * switching between buckets
@@ -19,8 +23,10 @@ url:
 * marks and labels on graphs (jquery sparklines seem inappropriate)
 * API for rest of sections
 * tests via watir
-* spinner for ajax transitions
+o [DONE] spinner for ajax transitions
 * welcome screen
 * respect interval select for all sub-sections
+* Store password/login in cookies ? So that you don't have to re-enter
+   them on page refresh.
 
 * Q - server list per bucket or per pool
