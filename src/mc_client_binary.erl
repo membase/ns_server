@@ -9,7 +9,7 @@
 -compile(export_all).
 
 % cmd(version, Sock, RecvCallback, Entry) ->
-%     send_recv(Sock, RecvCallback, #mc_header{opcode = ?VERSION}, Entry);
+%     send_recv(Sock, RecvCallback, #mc_header{opcode = ?VERSION}, Entry, <<"OK">>);
 
 cmd(get, Sock, RecvCallback, #mc_entry{keys = Keys}) ->
     ok = send(Sock,
@@ -33,15 +33,16 @@ cmd(replace, Sock, RecvCallback, Entry) ->
 %     cmd_update(Sock, RecvCallback, Entry, ?PREPEND);
 
 % cmd(incr, Sock, RecvCallback, Entry) ->
-%     send_recv(Sock, RecvCallback, Entry, ?INCREMENT);
+%     send_recv(Sock, RecvCallback, Entry, ?INCREMENT, <<"OK">>);
 % cmd(decr, Sock, RecvCallback, Entry) ->
-%     send_recv(Sock, RecvCallback, Entry, ?DECREMENT);
+%     send_recv(Sock, RecvCallback, Entry, ?DECREMENT, <<"OK">>);
 
 cmd(delete, Sock, RecvCallback, Entry) ->
-    send_recv(Sock, RecvCallback, #mc_header{opcode = ?DELETE}, Entry);
+    send_recv(Sock, RecvCallback, #mc_header{opcode = ?DELETE}, Entry,
+              <<"DELETED">>);
 
 cmd(flush_all, Sock, RecvCallback, Entry) ->
-    send_recv(Sock, RecvCallback, #mc_header{opcode = ?FLUSH}, Entry);
+    send_recv(Sock, RecvCallback, #mc_header{opcode = ?FLUSH}, Entry, <<"OK">>);
 
 cmd(Opcode, Sock, RecvCallback, Entry) ->
     % Dispatch to cmd_binary() in case the caller was
@@ -54,25 +55,36 @@ cmd_update(Sock, RecvCallback,
            #mc_entry{flag = Flag, expire = Expire} = Entry, Opcode) ->
     Ext = <<Flag:32, Expire:32>>,
     send_recv(Sock, RecvCallback,
-              #mc_header{opcode = Opcode}, Entry#mc_entry{ext = Ext}).
+              #mc_header{opcode = Opcode}, Entry#mc_entry{ext = Ext},
+              <<"STORED">>).
 
 get_recv(Sock, RecvCallback) ->
     case recv(Sock, res) of
         {error, _} = Err -> Err;
-        {ok, _Entry, #mc_header{opcode = ?NOOP}} ->
+        {ok, #mc_header{opcode = ?NOOP}, _Entry} ->
             {ok, <<"END">>};
-        {ok, Entry, #mc_header{opcode = ?GETKQ} = Header} ->
-            if is_function(RecvCallback) -> RecvCallback(Header, Entry);
-               true -> ok
+        {ok, #mc_header{opcode = ?GETKQ} = Header, Entry} ->
+            case is_function(RecvCallback) of
+               true  -> RecvCallback(Header, Entry);
+               false -> ok
             end,
             get_recv(Sock, RecvCallback)
     end.
 
+send_recv(Sock, RecvCallback, Header, Entry, Success) ->
+    {ok, RecvHeader, _RecvEntry} = send_recv(Sock, RecvCallback, Header, Entry),
+    V1 = RecvHeader#mc_header.opcode,
+    V1 = Header#mc_header.opcode,
+    V2 = RecvHeader#mc_header.statusOrReserved,
+    V2 = ?SUCCESS,
+    {ok, Success}.
+
 send_recv(Sock, RecvCallback, Header, Entry) ->
     ok = send(Sock, req, Header, Entry),
     {ok, RecvHeader, RecvEntry} = recv(Sock, res),
-    if is_function(RecvCallback) -> RecvCallback(RecvHeader, RecvEntry);
-       true -> ok
+    case is_function(RecvCallback) of
+       true  -> RecvCallback(RecvHeader, RecvEntry);
+       false -> ok
     end,
     {ok, RecvHeader, RecvEntry}.
 
@@ -247,9 +259,38 @@ send_recv_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
     (fun () ->
-        {ok, H, _E} = send_recv(Sock, nil,
-                                #mc_header{opcode = ?NOOP}, #mc_entry{}),
-        ?assertMatch(#mc_header{opcode = ?NOOP}, H)
+        {ok, works} = send_recv(Sock, nil,
+                                #mc_header{opcode = ?NOOP}, #mc_entry{},
+                                works)
     end)(),
 
+    test_flush(Sock),
+
     ok = gen_tcp:close(Sock).
+
+test_flush(Sock) ->
+    {ok, works} = send_recv(Sock, nil,
+                            #mc_header{opcode = ?FLUSH}, #mc_entry{}, works).
+
+    % (fun () ->
+    %     {ok, RB1} = send_recv(Sock, <<"get ", Key/binary, "\r\n">>, nil),
+    %     ?assertMatch(RB1, <<"END">>)
+    % end)(),
+
+set_test() ->
+    {ok, Sock} = gen_tcp:connect("localhost", 11211,
+                                 [binary, {packet, 0}, {active, false}]),
+    set_test_sock(Sock, <<"aaa">>),
+    ok = gen_tcp:close(Sock).
+
+set_test_sock(Sock, Key) ->
+    test_flush(Sock),
+
+    (fun () ->
+        {ok, RB} = cmd(set, Sock, nil,
+                       #mc_entry{key = Key,
+                                 data = <<"AAA">>}),
+        ?assertMatch(RB, <<"STORED">>)
+
+        % get_test_match(Sock, Key, <<"AAA">>)
+    end)().
