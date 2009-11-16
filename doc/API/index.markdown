@@ -126,6 +126,37 @@ in the following table, under the conditions listed in the description.
 </table>
 </div></div>
 
+# Resources and Operations
+
+A typical cluster of NorthScale Enterprise Storage systems has certain resources
+and those resources can optionally have one or more controllers, which have
+RESTful endpoints in the representation of the item one would control.
+
+## Resources
+
+* Cluster - A logically addressable group of pools (this may not be in _Reveal_).
+* Pool - A collection of physical resources grouped together and providing
+services and a management interface.  A member of a pool is a Node.
+** Statistics - Pools provide an overall pool level data view of counters and
+periodic metrics of the overall system.  Historic storage of statistics can be
+configured and queried.
+* Node - A system within a pool.  Nodes may provide Node-local representations
+of a service, but are also required to provide or proxy Pool level resources.
+* Bucket - A logical grouping of resources within a pool.  A bucket provides a
+number of things which ease pool management and enable manageement of resources:
+** Namespace - Buckets provide unconstrained, free text namespaces.
+** Storage Handling Rules - Rules on how data is persisted, replicated and
+otherwise handled is defined at the bucket level.
+** Statistics - Buckets provide bucket level data view of counters and
+periodic metrics of the overall system.  Historic storage of statistics can be
+configured and queried.  These counters and metrics are specific to the bucket.
+
+Operations for resources:
+
+
+
+@todo finish description
+
 # Service Groupings
 
 ## Independent of management channel and data channel
@@ -158,10 +189,20 @@ For instance...
 *Response*
 
 <code class="json">
+ HTTP/1.1 200 OK
+ Content-Type: application/com.northscale.store+json
+ Content-Length: nnn
  [
   {
     "name": "Default Pool",
     "id":12
+    "nodes" : [
+      {
+        "name": "10.0.1.20",
+        "uri": "/addresses/10.0.1.20",
+        "ip_address": "10.0.1.20"
+      }
+    ]
   }
  ]
 </code>
@@ -180,3 +221,7 @@ flexibility and client quality standpoint.  Should this be considered?
 The OCCI working group specifications http://www.occi-wg.org/ and the
 Sun Cloud APIs at http://kenai.com/projects/suncloudapis/pages/Home have
 influenced this document.
+
+## Changelog
+# 20091113 First publishing (matt.ingenthron@northscale.com)
+# 20091115 Updated with many operations (matt.ingenthron@northscale.com)
