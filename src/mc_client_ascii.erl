@@ -140,32 +140,25 @@ split_binary_suffix(Bin, SuffixLen) ->
 %% For binary upstream talking to downstream ascii server.
 %% The RecvCallback function will receive ascii-oriented parameters.
 
-cmd_binary(?GET, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
+cmd_binary(?GET, _S, _RC, _E) -> exit(todo);
 
 cmd_binary(?SET, Sock, RecvCallback, Entry) ->
     cmd(set, Sock, RecvCallback, Entry);
 
-cmd_binary(?ADD, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?REPLACE, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
+cmd_binary(?ADD, _S, _RC, _E) -> exit(todo);
+cmd_binary(?REPLACE, _S, _RC, _E) -> exit(todo);
 
 cmd_binary(?DELETE, Sock, RecvCallback, Entry) ->
     cmd(delete, Sock, RecvCallback, Entry);
 
-cmd_binary(?INCREMENT, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?DECREMENT, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?QUIT, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
+cmd_binary(?INCREMENT, _S, _RC, _E) -> exit(todo);
+cmd_binary(?DECREMENT, _S, _RC, _E) -> exit(todo);
+cmd_binary(?QUIT, _S, _RC, _E) -> exit(todo);
 
 cmd_binary(?FLUSH, Sock, RecvCallback, Entry) ->
     cmd(flush_all, Sock, RecvCallback, Entry);
 
-cmd_binary(?GETQ, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
+cmd_binary(?GETQ, _S, _RC, _E) -> exit(todo);
 
 cmd_binary(?NOOP, _Sock, RecvCallback, _Entry) ->
     % Assuming NOOP used to uncork GETKQ's.
@@ -174,66 +167,38 @@ cmd_binary(?NOOP, _Sock, RecvCallback, _Entry) ->
        true -> ok
     end;
 
-cmd_binary(?VERSION, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?GETK, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
+cmd_binary(?VERSION, _S, _RC, _E) -> exit(todo);
+cmd_binary(?GETK, _S, _RC, _E) -> exit(todo);
 
 cmd_binary(?GETKQ, Sock, RecvCallback, #mc_entry{keys = Keys}) ->
     cmd(get, Sock, RecvCallback, #mc_entry{keys = Keys});
 
-cmd_binary(?APPEND, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?PREPEND, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?STAT, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?SETQ, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?ADDQ, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?REPLACEQ, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?DELETEQ, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?INCREMENTQ, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?DECREMENTQ, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?QUITQ, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?FLUSHQ, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?APPENDQ, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?PREPENDQ, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?RGET, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?RSET, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?RSETQ, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?RAPPEND, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?RAPPENDQ, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?RPREPEND, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?RPREPENDQ, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?RDELETE, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?RDELETEQ, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?RINCR, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?RINCRQ, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?RDECR, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?RDECRQ, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
+cmd_binary(?APPEND, _S, _RC, _E) -> exit(todo);
+cmd_binary(?PREPEND, _S, _RC, _E) -> exit(todo);
+cmd_binary(?STAT, _S, _RC, _E) -> exit(todo);
+cmd_binary(?SETQ, _S, _RC, _E) -> exit(todo);
+cmd_binary(?ADDQ, _S, _RC, _E) -> exit(todo);
+cmd_binary(?REPLACEQ, _S, _RC, _E) -> exit(todo);
+cmd_binary(?DELETEQ, _S, _RC, _E) -> exit(todo);
+cmd_binary(?INCREMENTQ, _S, _RC, _E) -> exit(todo);
+cmd_binary(?DECREMENTQ, _S, _RC, _E) -> exit(todo);
+cmd_binary(?QUITQ, _S, _RC, _E) -> exit(todo);
+cmd_binary(?FLUSHQ, _S, _RC, _E) -> exit(todo);
+cmd_binary(?APPENDQ, _S, _RC, _E) -> exit(todo);
+cmd_binary(?PREPENDQ, _S, _RC, _E) -> exit(todo);
+cmd_binary(?RGET, _S, _RC, _E) -> exit(todo);
+cmd_binary(?RSET, _S, _RC, _E) -> exit(todo);
+cmd_binary(?RSETQ, _S, _RC, _E) -> exit(todo);
+cmd_binary(?RAPPEND, _S, _RC, _E) -> exit(todo);
+cmd_binary(?RAPPENDQ, _S, _RC, _E) -> exit(todo);
+cmd_binary(?RPREPEND, _S, _RC, _E) -> exit(todo);
+cmd_binary(?RPREPENDQ, _S, _RC, _E) -> exit(todo);
+cmd_binary(?RDELETE, _S, _RC, _E) -> exit(todo);
+cmd_binary(?RDELETEQ, _S, _RC, _E) -> exit(todo);
+cmd_binary(?RINCR, _S, _RC, _E) -> exit(todo);
+cmd_binary(?RINCRQ, _S, _RC, _E) -> exit(todo);
+cmd_binary(?RDECR, _S, _RC, _E) -> exit(todo);
+cmd_binary(?RDECRQ, _S, _RC, _E) -> exit(todo);
 
 cmd_binary(Cmd, _Sock, _RecvCallback, _Entry) ->
     exit({unimplemented, Cmd}).
