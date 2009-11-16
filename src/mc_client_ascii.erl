@@ -200,8 +200,7 @@ cmd_binary(?RINCRQ, _S, _RC, _E) -> exit(todo);
 cmd_binary(?RDECR, _S, _RC, _E) -> exit(todo);
 cmd_binary(?RDECRQ, _S, _RC, _E) -> exit(todo);
 
-cmd_binary(Cmd, _Sock, _RecvCallback, _Entry) ->
-    exit({unimplemented, Cmd}).
+cmd_binary(Cmd, _S, _RC, _E) -> exit({unimplemented, Cmd}).
 
 % -------------------------------------------------
 
