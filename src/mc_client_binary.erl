@@ -307,3 +307,51 @@ get_test_match(Sock, Key, Data) ->
                    #mc_entry{keys = [Key]}),
     ?assertMatch(RB, <<"END">>),
     ?assertMatch([{nvals, 1}], ets:lookup(D, nvals)).
+
+get_test() ->
+    {ok, Sock} = gen_tcp:connect("localhost", 11211,
+                                 [binary, {packet, 0}, {active, false}]),
+    set_test_sock(Sock, <<"aaa">>),
+
+    (fun () ->
+        D = ets:new(test, [set]),
+        ets:insert(D, {nvals, 0}),
+        {ok, RB} = cmd(get, Sock,
+                       fun (_H, _E) ->
+                           ?assert(false) % Should not get here.
+                       end,
+                       #mc_entry{keys = [<<"ccc">>, <<"bbb">>]}),
+        ?assertMatch(RB, <<"END">>),
+        ?assertMatch([{nvals, 0}], ets:lookup(D, nvals))
+    end)(),
+
+    (fun () ->
+        D = ets:new(test, [set]),
+        ets:insert(D, {nvals, 0}),
+        {ok, RB} = cmd(get, Sock,
+                       fun (_H, E) ->
+                           ets:update_counter(D, nvals, 1),
+                           ?assertMatch(<<"aaa">>, E#mc_entry.key),
+                           ?assertMatch(<<"AAA">>, E#mc_entry.data)
+                       end,
+                       #mc_entry{keys = [<<"aaa">>, <<"bbb">>]}),
+        ?assertMatch(RB, <<"END">>),
+        ?assertMatch([{nvals, 1}], ets:lookup(D, nvals))
+    end)(),
+
+    (fun () ->
+        D = ets:new(test, [set]),
+        ets:insert(D, {nvals, 0}),
+        {ok, RB} = cmd(get, Sock,
+                       fun (_H, E) ->
+                           ets:update_counter(D, nvals, 1),
+                           ?assertMatch(<<"aaa">>, E#mc_entry.key),
+                           ?assertMatch(<<"AAA">>, E#mc_entry.data)
+                       end,
+                       #mc_entry{keys = [<<"aaa">>, <<"aaa">>, <<"bbb">>]}),
+        ?assertMatch(RB, <<"END">>),
+        ?assertMatch([{nvals, 2}], ets:lookup(D, nvals))
+    end)(),
+
+    ok = gen_tcp:close(Sock).
+
