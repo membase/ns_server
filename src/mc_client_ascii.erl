@@ -11,7 +11,7 @@
 cmd(version, Sock, RecvCallback, _Msg) ->
     send_recv(Sock, <<"version\r\n">>, RecvCallback);
 
-cmd(get, Sock, RecvCallback, #mc_msg{keys=Keys}) ->
+cmd(get, Sock, RecvCallback, #mc_msg{keys = Keys}) ->
     ok = send(Sock, [<<"get ">>,
                      lists:map(fun (K) -> [K, <<" ">>] end,
                                Keys),
@@ -34,7 +34,7 @@ cmd(incr, Sock, RecvCallback, Msg) ->
 cmd(decr, Sock, RecvCallback, Msg) ->
     cmd_arith(<<"decr">>, Sock, RecvCallback, Msg);
 
-cmd(delete, Sock, RecvCallback, #mc_msg{key=Key}) ->
+cmd(delete, Sock, RecvCallback, #mc_msg{key = Key}) ->
     send_recv(Sock, [<<"delete ">>, Key, <<"\r\n">>], RecvCallback);
 
 cmd(flush_all, Sock, RecvCallback, _Msg) ->
@@ -48,7 +48,7 @@ cmd(Cmd, Sock, RecvCallback, Msg) ->
 % -------------------------------------------------
 
 cmd_update(Cmd, Sock, RecvCallback,
-           #mc_msg{key=Key, flag=Flag, expire=Expire, data=Data}) ->
+           #mc_msg{key = Key, flag = Flag, expire = Expire, data = Data}) ->
     SFlag = integer_to_list(Flag),
     SExpire = integer_to_list(Expire),
     SDataSize = integer_to_list(size(Data)),
@@ -60,7 +60,7 @@ cmd_update(Cmd, Sock, RecvCallback,
                      Data, <<"\r\n">>],
               RecvCallback).
 
-cmd_arith(Cmd, Sock, RecvCallback, #mc_msg{key=Key, data=Data}) ->
+cmd_arith(Cmd, Sock, RecvCallback, #mc_msg{key = Key, data = Data}) ->
     send_recv(Sock, [Cmd, <<" ">>,
                      Key, <<" ">>,
                      Data, <<"\r\n">>],
@@ -69,7 +69,7 @@ cmd_arith(Cmd, Sock, RecvCallback, #mc_msg{key=Key, data=Data}) ->
 get_recv(Sock, RecvCallback) ->
     Line = recv_line(Sock),
     case Line of
-        {error, _}=Err -> Err;
+        {error, _} = Err -> Err;
         {ok, <<"END">>} -> Line;
         {ok, <<"VALUE ", Rest/binary>>} ->
             Parse = io_lib:fread("~s ~u ~u", binary_to_list(Rest)),
@@ -78,9 +78,9 @@ get_recv(Sock, RecvCallback) ->
             if is_function(RecvCallback) ->
                     {Data, _} = split_binary_suffix(DataCRNL, 2),
                     RecvCallback(Line,
-                                 #mc_msg{key=iolist_to_binary(Key),
-                                         flag=Flag,
-                                         data=Data});
+                                 #mc_msg{key = iolist_to_binary(Key),
+                                         flag = Flag,
+                                         data = Data});
                true -> ok
             end,
             get_recv(Sock, RecvCallback)
@@ -179,8 +179,8 @@ cmd_binary(?VERSION, _Sock, _RecvCallback, _Msg) ->
 cmd_binary(?GETK, _Sock, _RecvCallback, _Msg) ->
     exit(todo);
 
-cmd_binary(?GETKQ, Sock, RecvCallback, #mc_msg{keys=Keys}) ->
-    cmd(get, Sock, RecvCallback, #mc_msg{keys=Keys});
+cmd_binary(?GETKQ, Sock, RecvCallback, #mc_msg{keys = Keys}) ->
+    cmd(get, Sock, RecvCallback, #mc_msg{keys = Keys});
 
 cmd_binary(?APPEND, _Sock, _RecvCallback, _Msg) ->
     exit(todo);
@@ -330,8 +330,8 @@ set_test_sock(Sock, Key) ->
 
     (fun () ->
         {ok, RB} = cmd(set, Sock, nil,
-                       #mc_msg{key= Key,
-                               data= <<"AAA">>}),
+                       #mc_msg{key =  Key,
+                               data = <<"AAA">>}),
         ?assertMatch(RB, <<"STORED">>),
 
         get_test_match(Sock, Key, <<"AAA">>)
@@ -354,7 +354,7 @@ delete_test() ->
 
     (fun () ->
         {ok, RB} = cmd(delete, Sock, nil,
-                       #mc_msg{key= <<"aaa">>}),
+                       #mc_msg{key = <<"aaa">>}),
         ?assertMatch(RB, <<"DELETED">>),
 
         {ok, RB1} = send_recv(Sock, "get aaa\r\n", nil),
@@ -375,16 +375,16 @@ get_test() ->
                        fun (Line, Msg) ->
                           ?assertMatch(Line, {ok, <<"VALUE aaa 0 3">>}),
                           ?assertMatch(Msg,
-                                       #mc_msg{key= <<"aaa">>, data= <<"AAA">>})
+                                       #mc_msg{key = <<"aaa">>, data = <<"AAA">>})
                        end,
-                       #mc_msg{keys= [<<"aaa">>, <<"notkey1">>, <<"notkey2">>]}),
+                       #mc_msg{keys = [<<"aaa">>, <<"notkey1">>, <<"notkey2">>]}),
         ?assertMatch(RB, <<"END">>),
 
         {ok, RB1} = cmd(get, Sock,
                         fun (Line, Msg) ->
                            ?assert(false) % Not supposed to get here.
                         end,
-                        #mc_msg{keys= [<<"notkey0">>, <<"notkey1">>]}),
+                        #mc_msg{keys = [<<"notkey0">>, <<"notkey1">>]}),
         ?assertMatch(RB1, <<"END">>)
     end)(),
 
@@ -397,22 +397,22 @@ update_test() ->
 
     (fun () ->
         {ok, RB} = cmd(append, Sock, nil,
-                       #mc_msg{key= <<"aaa">>, data= <<"-post">>}),
+                       #mc_msg{key = <<"aaa">>, data = <<"-post">>}),
         ?assertMatch(RB, <<"STORED">>),
         get_test_match(Sock, <<"aaa">>, <<"AAA-post">>),
 
         {ok, RB1} = cmd(prepend, Sock, nil,
-                       #mc_msg{key= <<"aaa">>, data= <<"pre-">>}),
+                       #mc_msg{key = <<"aaa">>, data = <<"pre-">>}),
         ?assertMatch(RB1, <<"STORED">>),
         get_test_match(Sock, <<"aaa">>, <<"pre-AAA-post">>),
 
         {ok, RB3} = cmd(add, Sock, nil,
-                        #mc_msg{key= <<"aaa">>, data= <<"already exists">>}),
+                        #mc_msg{key = <<"aaa">>, data = <<"already exists">>}),
         ?assertMatch(RB3, <<"NOT_STORED">>),
         get_test_match(Sock, <<"aaa">>, <<"pre-AAA-post">>),
 
         {ok, RB5} = cmd(replace, Sock, nil,
-                        #mc_msg{key= <<"aaa">>, data= <<"replaced">>}),
+                        #mc_msg{key = <<"aaa">>, data = <<"replaced">>}),
         ?assertMatch(RB5, <<"STORED">>),
         get_test_match(Sock, <<"aaa">>, <<"replaced">>),
 
