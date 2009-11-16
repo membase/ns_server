@@ -11,10 +11,11 @@
 cmd(version, Sock, RecvCallback, Entry) ->
     send_recv(Sock, RecvCallback, #mc_header{opcode = ?VERSION}, Entry);
 
-cmd(get, Sock, RecvCallback, #mc_entry{keys = Keys} = Entry) ->
+cmd(get, Sock, RecvCallback, #mc_entry{keys = Keys}) ->
     ok = send(Sock,
               lists:map(fun (K) ->
-                            pack(req, ?GETKQ, Entry#mc_entry{key = K, keys = []})
+                            encode(req, #mc_header{opcode = ?GETKQ},
+                                        #mc_entry{key = K})
                         end,
                         Keys)),
     get_recv(Sock, RecvCallback);
@@ -67,12 +68,6 @@ get_recv(Sock, RecvCallback) ->
             get_recv(Sock, RecvCallback)
     end.
 
-pack(req, Code) ->
-    pack(?REQ_MAGIC, Code, #mc_entry{}).
-
-pack(req, _Code, _Entry) ->
-    <<>>.
-
 send_recv(Sock, RecvCallback, Header, Entry) ->
     ok = send(Sock, req, Header, Entry),
     {ok, RecvHeader, RecvEntry} = recv(Sock, res),
@@ -86,8 +81,24 @@ send(Sock, Kind, Header, Entry) ->
 
 recv(Sock, HeaderKind) ->
     {ok, HeaderBin} = recv_data(Sock, ?HEADER_LEN),
-    {ok, Header, Entry} = decode_header(HeaderKind, HeaderBin),
+    {Header, Entry} = decode_header(HeaderKind, HeaderBin),
     recv_body(Sock, Header, Entry).
+
+encode(req, Header, Entry) ->
+    encode(?REQ_MAGIC, Header, Entry);
+encode(res, Header, Entry) ->
+    encode(?RES_MAGIC, Header, Entry);
+encode(Magic,
+       #mc_header{opcode = Opcode, opaque = Opaque,
+                  statusOrReserved = StatusOrReserved},
+       #mc_entry{ext = Ext, key = Key, cas = CAS,
+                 data = Data, datatype = DataType}) ->
+    ExtLen = bin_size(Ext),
+    KeyLen = bin_size(Key),
+    BodyLen = ExtLen + KeyLen + bin_size(Data),
+    [<<Magic:8, Opcode:8, KeyLen:16, ExtLen:8, DataType:8,
+       StatusOrReserved:16, BodyLen:32, Opaque:32, CAS:64>>,
+     bin(Ext), bin(Key), bin(Data)].
 
 decode_header(req, <<?REQ_MAGIC:8, Opcode:8, KeyLen:16, ExtLen:8,
                      DataType:8, Reserved:16, BodyLen:32,
@@ -112,21 +123,8 @@ recv_body(Sock, #mc_header{extlen = ExtLen,
     {ok, Data} = recv_data(Sock, BodyLen - (ExtLen + KeyLen)),
     {ok, Header, Entry#mc_entry{ext = Ext, key = Key, data = Data}}.
 
-encode(req, Header, Entry) ->
-    encode(?REQ_MAGIC, Header, Entry);
-encode(res, Header, Entry) ->
-    encode(?RES_MAGIC, Header, Entry);
-encode(Magic,
-       #mc_header{opcode = Opcode, opaque = Opaque,
-                  statusOrReserved = StatusOrReserved},
-       #mc_entry{ext = Ext, key = Key, cas = CAS,
-                 data = Data, datatype = DataType}) ->
-    ExtLen = bin_size(Ext),
-    KeyLen = bin_size(Key),
-    BodyLen = ExtLen + KeyLen + bin_size(Data),
-    [<<Magic:8, Opcode:8, KeyLen:16, ExtLen:8, DataType:8,
-       StatusOrReserved:16, BodyLen:32, Opaque:32, CAS:64>>,
-     Ext, Key, Data].
+bin(undefined) -> <<>>;
+bin(X)         -> <<X/binary>>.
 
 bin_size(undefined) -> 0;
 bin_size(List) when is_list(List) -> bin_size(iolist_to_binary(List));
@@ -138,17 +136,12 @@ send(Sock, List) when is_list(List) -> send(Sock, iolist_to_binary(List));
 send(Sock, Data) -> gen_tcp:send(Sock, Data).
 
 %% @doc Receive binary data of specified number of bytes length.
-recv_data(_, 0) -> {ok, <<>>};
-recv_data(Sock, NumBytes) ->
-    case gen_tcp:recv(Sock, NumBytes) of
-        {ok, Bin} -> {ok, Bin};
-        Err -> Err
-    end.
+recv_data(_, 0)           -> {ok, <<>>};
+recv_data(Sock, NumBytes) -> gen_tcp:recv(Sock, NumBytes).
 
 % -------------------------------------------------
 
-%% For binary upstream talking to downstream ascii server.
-%% The RecvCallback functions will receive ascii-oriented parameters.
+%% For binary upstream talking to binary downstream server.
 
 cmd_binary(?GET, _Sock, _RecvCallback, _Entry) ->
     exit(todo);
@@ -250,3 +243,13 @@ cmd_binary(Cmd, _Sock, _RecvCallback, _Entry) ->
 
 % -------------------------------------------------
 
+send_recv_test() ->
+    {ok, Sock} = gen_tcp:connect("localhost", 11211,
+                                 [binary, {packet, 0}, {active, false}]),
+    (fun () ->
+        {ok, H, _E} = send_recv(Sock, nil,
+                                #mc_header{opcode = ?NOOP}, #mc_entry{}),
+        ?assertMatch(#mc_header{opcode = ?NOOP}, H)
+    end)(),
+
+    ok = gen_tcp:close(Sock).
