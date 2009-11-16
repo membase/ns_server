@@ -104,12 +104,8 @@ send(Sock, List) when is_list(List) -> send(Sock, iolist_to_binary(List));
 send(Sock, Data) -> gen_tcp:send(Sock, Data).
 
 %% @doc Receive binary data of specified number of bytes length.
-recv_data(_, 0) -> {ok, <<>>};
-recv_data(Sock, NumBytes) ->
-    case gen_tcp:recv(Sock, NumBytes) of
-        {ok, Bin} -> {ok, Bin};
-        Err -> Err
-    end.
+recv_data(_, 0)           -> {ok, <<>>};
+recv_data(Sock, NumBytes) -> gen_tcp:recv(Sock, NumBytes).
 
 %% @doc Receive a binary CRNL terminated line, not including the CRNL.
 recv_line(Sock) ->
