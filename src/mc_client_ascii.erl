@@ -8,47 +8,47 @@
 
 -compile(export_all).
 
-cmd(version, Sock, RecvCallback, _Msg) ->
+cmd(version, Sock, RecvCallback, _Entry) ->
     send_recv(Sock, <<"version\r\n">>, RecvCallback);
 
-cmd(get, Sock, RecvCallback, #mc_msg{keys = Keys}) ->
+cmd(get, Sock, RecvCallback, #mc_entry{keys = Keys}) ->
     ok = send(Sock, [<<"get ">>,
                      lists:map(fun (K) -> [K, <<" ">>] end,
                                Keys),
                      <<"\r\n">>]),
     get_recv(Sock, RecvCallback);
 
-cmd(set, Sock, RecvCallback, Msg) ->
-    cmd_update(<<"set">>, Sock, RecvCallback, Msg);
-cmd(add, Sock, RecvCallback, Msg) ->
-    cmd_update(<<"add">>, Sock, RecvCallback, Msg);
-cmd(replace, Sock, RecvCallback, Msg) ->
-    cmd_update(<<"replace">>, Sock, RecvCallback, Msg);
-cmd(append, Sock, RecvCallback, Msg) ->
-    cmd_update(<<"append">>, Sock, RecvCallback, Msg);
-cmd(prepend, Sock, RecvCallback, Msg) ->
-    cmd_update(<<"prepend">>, Sock, RecvCallback, Msg);
+cmd(set, Sock, RecvCallback, Entry) ->
+    cmd_update(<<"set">>, Sock, RecvCallback, Entry);
+cmd(add, Sock, RecvCallback, Entry) ->
+    cmd_update(<<"add">>, Sock, RecvCallback, Entry);
+cmd(replace, Sock, RecvCallback, Entry) ->
+    cmd_update(<<"replace">>, Sock, RecvCallback, Entry);
+cmd(append, Sock, RecvCallback, Entry) ->
+    cmd_update(<<"append">>, Sock, RecvCallback, Entry);
+cmd(prepend, Sock, RecvCallback, Entry) ->
+    cmd_update(<<"prepend">>, Sock, RecvCallback, Entry);
 
-cmd(incr, Sock, RecvCallback, Msg) ->
-    cmd_arith(<<"incr">>, Sock, RecvCallback, Msg);
-cmd(decr, Sock, RecvCallback, Msg) ->
-    cmd_arith(<<"decr">>, Sock, RecvCallback, Msg);
+cmd(incr, Sock, RecvCallback, Entry) ->
+    cmd_arith(<<"incr">>, Sock, RecvCallback, Entry);
+cmd(decr, Sock, RecvCallback, Entry) ->
+    cmd_arith(<<"decr">>, Sock, RecvCallback, Entry);
 
-cmd(delete, Sock, RecvCallback, #mc_msg{key = Key}) ->
+cmd(delete, Sock, RecvCallback, #mc_entry{key = Key}) ->
     send_recv(Sock, [<<"delete ">>, Key, <<"\r\n">>], RecvCallback);
 
-cmd(flush_all, Sock, RecvCallback, _Msg) ->
+cmd(flush_all, Sock, RecvCallback, _Entry) ->
     send_recv(Sock, [<<"flush_all\r\n">>], RecvCallback);
 
-cmd(Cmd, Sock, RecvCallback, Msg) ->
+cmd(Cmd, Sock, RecvCallback, Entry) ->
     % Dispatch to cmd_binary() in case the caller was
     % using a binary protocol opcode.
-    cmd_binary(Cmd, Sock, RecvCallback, Msg).
+    cmd_binary(Cmd, Sock, RecvCallback, Entry).
 
 % -------------------------------------------------
 
 cmd_update(Cmd, Sock, RecvCallback,
-           #mc_msg{key = Key, flag = Flag, expire = Expire, data = Data}) ->
+           #mc_entry{key = Key, flag = Flag, expire = Expire, data = Data}) ->
     SFlag = integer_to_list(Flag),
     SExpire = integer_to_list(Expire),
     SDataSize = integer_to_list(size(Data)),
@@ -60,7 +60,7 @@ cmd_update(Cmd, Sock, RecvCallback,
                      Data, <<"\r\n">>],
               RecvCallback).
 
-cmd_arith(Cmd, Sock, RecvCallback, #mc_msg{key = Key, data = Data}) ->
+cmd_arith(Cmd, Sock, RecvCallback, #mc_entry{key = Key, data = Data}) ->
     send_recv(Sock, [Cmd, <<" ">>,
                      Key, <<" ">>,
                      Data, <<"\r\n">>],
@@ -78,9 +78,9 @@ get_recv(Sock, RecvCallback) ->
             if is_function(RecvCallback) ->
                     {Data, _} = split_binary_suffix(DataCRNL, 2),
                     RecvCallback(Line,
-                                 #mc_msg{key = iolist_to_binary(Key),
-                                         flag = Flag,
-                                         data = Data});
+                                 #mc_entry{key = iolist_to_binary(Key),
+                                           flag = Flag,
+                                           data = Data});
                true -> ok
             end,
             get_recv(Sock, RecvCallback)
@@ -93,7 +93,7 @@ send_recv(Sock, IoList) ->
 send_recv(Sock, IoList, RecvCallback) ->
     ok = send(Sock, IoList),
     RV = recv_line(Sock),
-    if is_function(RecvCallback) -> RecvCallback(RV, #mc_msg{});
+    if is_function(RecvCallback) -> RecvCallback(RV, #mc_entry{});
        true -> ok
     end,
     RV.
@@ -142,102 +142,102 @@ split_binary_suffix(Bin, SuffixLen) ->
 %% For binary upstream talking to downstream ascii server.
 %% The RecvCallback function will receive ascii-oriented parameters.
 
-cmd_binary(?GET, _Sock, _RecvCallback, _Msg) ->
+cmd_binary(?GET, _Sock, _RecvCallback, _Entry) ->
     exit(todo);
 
-cmd_binary(?SET, Sock, RecvCallback, Msg) ->
-    cmd(set, Sock, RecvCallback, Msg);
+cmd_binary(?SET, Sock, RecvCallback, Entry) ->
+    cmd(set, Sock, RecvCallback, Entry);
 
-cmd_binary(?ADD, _Sock, _RecvCallback, _Msg) ->
+cmd_binary(?ADD, _Sock, _RecvCallback, _Entry) ->
     exit(todo);
-cmd_binary(?REPLACE, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-
-cmd_binary(?DELETE, Sock, RecvCallback, Msg) ->
-    cmd(delete, Sock, RecvCallback, Msg);
-
-cmd_binary(?INCREMENT, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd_binary(?DECREMENT, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd_binary(?QUIT, _Sock, _RecvCallback, _Msg) ->
+cmd_binary(?REPLACE, _Sock, _RecvCallback, _Entry) ->
     exit(todo);
 
-cmd_binary(?FLUSH, Sock, RecvCallback, Msg) ->
-    cmd(flush_all, Sock, RecvCallback, Msg);
+cmd_binary(?DELETE, Sock, RecvCallback, Entry) ->
+    cmd(delete, Sock, RecvCallback, Entry);
 
-cmd_binary(?GETQ, _Sock, _RecvCallback, _Msg) ->
+cmd_binary(?INCREMENT, _Sock, _RecvCallback, _Entry) ->
+    exit(todo);
+cmd_binary(?DECREMENT, _Sock, _RecvCallback, _Entry) ->
+    exit(todo);
+cmd_binary(?QUIT, _Sock, _RecvCallback, _Entry) ->
     exit(todo);
 
-cmd_binary(?NOOP, _Sock, RecvCallback, _Msg) ->
+cmd_binary(?FLUSH, Sock, RecvCallback, Entry) ->
+    cmd(flush_all, Sock, RecvCallback, Entry);
+
+cmd_binary(?GETQ, _Sock, _RecvCallback, _Entry) ->
+    exit(todo);
+
+cmd_binary(?NOOP, _Sock, RecvCallback, _Entry) ->
     % Assuming NOOP used to uncork GETKQ's.
     if is_function(RecvCallback) -> RecvCallback({ok, <<"END">>},
-                                                 #mc_msg{});
+                                                 #mc_entry{});
        true -> ok
     end;
 
-cmd_binary(?VERSION, _Sock, _RecvCallback, _Msg) ->
+cmd_binary(?VERSION, _Sock, _RecvCallback, _Entry) ->
     exit(todo);
-cmd_binary(?GETK, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-
-cmd_binary(?GETKQ, Sock, RecvCallback, #mc_msg{keys = Keys}) ->
-    cmd(get, Sock, RecvCallback, #mc_msg{keys = Keys});
-
-cmd_binary(?APPEND, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd_binary(?PREPEND, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd_binary(?STAT, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd_binary(?SETQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd_binary(?ADDQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd_binary(?REPLACEQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd_binary(?DELETEQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd_binary(?INCREMENTQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd_binary(?DECREMENTQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd_binary(?QUITQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd_binary(?FLUSHQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd_binary(?APPENDQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd_binary(?PREPENDQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd_binary(?RGET, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd_binary(?RSET, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd_binary(?RSETQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd_binary(?RAPPEND, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd_binary(?RAPPENDQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd_binary(?RPREPEND, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd_binary(?RPREPENDQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd_binary(?RDELETE, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd_binary(?RDELETEQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd_binary(?RINCR, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd_binary(?RINCRQ, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd_binary(?RDECR, _Sock, _RecvCallback, _Msg) ->
-    exit(todo);
-cmd_binary(?RDECRQ, _Sock, _RecvCallback, _Msg) ->
+cmd_binary(?GETK, _Sock, _RecvCallback, _Entry) ->
     exit(todo);
 
-cmd_binary(Cmd, _Sock, _RecvCallback, _Msg) ->
+cmd_binary(?GETKQ, Sock, RecvCallback, #mc_entry{keys = Keys}) ->
+    cmd(get, Sock, RecvCallback, #mc_entry{keys = Keys});
+
+cmd_binary(?APPEND, _Sock, _RecvCallback, _Entry) ->
+    exit(todo);
+cmd_binary(?PREPEND, _Sock, _RecvCallback, _Entry) ->
+    exit(todo);
+cmd_binary(?STAT, _Sock, _RecvCallback, _Entry) ->
+    exit(todo);
+cmd_binary(?SETQ, _Sock, _RecvCallback, _Entry) ->
+    exit(todo);
+cmd_binary(?ADDQ, _Sock, _RecvCallback, _Entry) ->
+    exit(todo);
+cmd_binary(?REPLACEQ, _Sock, _RecvCallback, _Entry) ->
+    exit(todo);
+cmd_binary(?DELETEQ, _Sock, _RecvCallback, _Entry) ->
+    exit(todo);
+cmd_binary(?INCREMENTQ, _Sock, _RecvCallback, _Entry) ->
+    exit(todo);
+cmd_binary(?DECREMENTQ, _Sock, _RecvCallback, _Entry) ->
+    exit(todo);
+cmd_binary(?QUITQ, _Sock, _RecvCallback, _Entry) ->
+    exit(todo);
+cmd_binary(?FLUSHQ, _Sock, _RecvCallback, _Entry) ->
+    exit(todo);
+cmd_binary(?APPENDQ, _Sock, _RecvCallback, _Entry) ->
+    exit(todo);
+cmd_binary(?PREPENDQ, _Sock, _RecvCallback, _Entry) ->
+    exit(todo);
+cmd_binary(?RGET, _Sock, _RecvCallback, _Entry) ->
+    exit(todo);
+cmd_binary(?RSET, _Sock, _RecvCallback, _Entry) ->
+    exit(todo);
+cmd_binary(?RSETQ, _Sock, _RecvCallback, _Entry) ->
+    exit(todo);
+cmd_binary(?RAPPEND, _Sock, _RecvCallback, _Entry) ->
+    exit(todo);
+cmd_binary(?RAPPENDQ, _Sock, _RecvCallback, _Entry) ->
+    exit(todo);
+cmd_binary(?RPREPEND, _Sock, _RecvCallback, _Entry) ->
+    exit(todo);
+cmd_binary(?RPREPENDQ, _Sock, _RecvCallback, _Entry) ->
+    exit(todo);
+cmd_binary(?RDELETE, _Sock, _RecvCallback, _Entry) ->
+    exit(todo);
+cmd_binary(?RDELETEQ, _Sock, _RecvCallback, _Entry) ->
+    exit(todo);
+cmd_binary(?RINCR, _Sock, _RecvCallback, _Entry) ->
+    exit(todo);
+cmd_binary(?RINCRQ, _Sock, _RecvCallback, _Entry) ->
+    exit(todo);
+cmd_binary(?RDECR, _Sock, _RecvCallback, _Entry) ->
+    exit(todo);
+cmd_binary(?RDECRQ, _Sock, _RecvCallback, _Entry) ->
+    exit(todo);
+
+cmd_binary(Cmd, _Sock, _RecvCallback, _Entry) ->
     exit({unimplemented, Cmd}).
 
 % -------------------------------------------------
@@ -332,8 +332,8 @@ set_test_sock(Sock, Key) ->
 
     (fun () ->
         {ok, RB} = cmd(set, Sock, nil,
-                       #mc_msg{key =  Key,
-                               data = <<"AAA">>}),
+                       #mc_entry{key =  Key,
+                                 data = <<"AAA">>}),
         ?assertMatch(RB, <<"STORED">>),
 
         get_test_match(Sock, Key, <<"AAA">>)
@@ -356,7 +356,7 @@ delete_test() ->
 
     (fun () ->
         {ok, RB} = cmd(delete, Sock, nil,
-                       #mc_msg{key = <<"aaa">>}),
+                       #mc_entry{key = <<"aaa">>}),
         ?assertMatch(RB, <<"DELETED">>),
 
         {ok, RB1} = send_recv(Sock, "get aaa\r\n", nil),
@@ -374,19 +374,19 @@ get_test() ->
         get_test_match(Sock, <<"aaa">>, <<"AAA">>),
 
         {ok, RB} = cmd(get, Sock,
-                       fun (Line, Msg) ->
+                       fun (Line, Entry) ->
                           ?assertMatch(Line, {ok, <<"VALUE aaa 0 3">>}),
-                          ?assertMatch(Msg,
-                                       #mc_msg{key = <<"aaa">>, data = <<"AAA">>})
+                          ?assertMatch(Entry,
+                                       #mc_entry{key = <<"aaa">>, data = <<"AAA">>})
                        end,
-                       #mc_msg{keys = [<<"aaa">>, <<"notkey1">>, <<"notkey2">>]}),
+                       #mc_entry{keys = [<<"aaa">>, <<"notkey1">>, <<"notkey2">>]}),
         ?assertMatch(RB, <<"END">>),
 
         {ok, RB1} = cmd(get, Sock,
-                        fun (_Line, _Msg) ->
+                        fun (_Line, _Entry) ->
                            ?assert(false) % Not supposed to get here.
                         end,
-                        #mc_msg{keys = [<<"notkey0">>, <<"notkey1">>]}),
+                        #mc_entry{keys = [<<"notkey0">>, <<"notkey1">>]}),
         ?assertMatch(RB1, <<"END">>)
     end)(),
 
@@ -399,26 +399,26 @@ update_test() ->
 
     (fun () ->
         {ok, RB} = cmd(append, Sock, nil,
-                       #mc_msg{key = <<"aaa">>, data = <<"-post">>}),
+                       #mc_entry{key = <<"aaa">>, data = <<"-post">>}),
         ?assertMatch(RB, <<"STORED">>),
         get_test_match(Sock, <<"aaa">>, <<"AAA-post">>),
 
         {ok, RB1} = cmd(prepend, Sock, nil,
-                       #mc_msg{key = <<"aaa">>, data = <<"pre-">>}),
+                       #mc_entry{key = <<"aaa">>, data = <<"pre-">>}),
         ?assertMatch(RB1, <<"STORED">>),
         get_test_match(Sock, <<"aaa">>, <<"pre-AAA-post">>),
 
         {ok, RB3} = cmd(add, Sock, nil,
-                        #mc_msg{key = <<"aaa">>, data = <<"already exists">>}),
+                        #mc_entry{key = <<"aaa">>, data = <<"already exists">>}),
         ?assertMatch(RB3, <<"NOT_STORED">>),
         get_test_match(Sock, <<"aaa">>, <<"pre-AAA-post">>),
 
         {ok, RB5} = cmd(replace, Sock, nil,
-                        #mc_msg{key = <<"aaa">>, data = <<"replaced">>}),
+                        #mc_entry{key = <<"aaa">>, data = <<"replaced">>}),
         ?assertMatch(RB5, <<"STORED">>),
         get_test_match(Sock, <<"aaa">>, <<"replaced">>),
 
-        {ok, RB7} = cmd(flush_all, Sock, nil, #mc_msg{}),
+        {ok, RB7} = cmd(flush_all, Sock, nil, #mc_entry{}),
         ?assertMatch(RB7, <<"OK">>),
 
         {ok, RBF} = send_recv(Sock, "get aaa\r\n", nil),
