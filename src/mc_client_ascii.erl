@@ -100,8 +100,8 @@ send_recv(Sock, IoList, RecvCallback) ->
 
 send(_Sock, undefined) -> ok;
 send(_Sock, <<>>) -> ok;
-send(Sock, List) when is_list(List) -> send(Sock, iolist_to_binary(List)).
-send(Sock, Data) -> gen_tcp:send(Socket, Data).
+send(Sock, List) when is_list(List) -> send(Sock, iolist_to_binary(List));
+send(Sock, Data) -> gen_tcp:send(Sock, Data).
 
 %% @doc Receive binary data of specified number of bytes length.
 recv_data(_, 0) -> {ok, <<>>};
@@ -383,7 +383,7 @@ get_test() ->
         ?assertMatch(RB, <<"END">>),
 
         {ok, RB1} = cmd(get, Sock,
-                        fun (Line, Msg) ->
+                        fun (_Line, _Msg) ->
                            ?assert(false) % Not supposed to get here.
                         end,
                         #mc_msg{keys = [<<"notkey0">>, <<"notkey1">>]}),
