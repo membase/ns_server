@@ -98,8 +98,10 @@ send_recv(Sock, IoList, RecvCallback) ->
     end,
     RV.
 
-send(Sock, IoList) ->
-    gen_tcp:send(Sock, iolist_to_binary(IoList)).
+send(_Sock, undefined) -> ok;
+send(_Sock, <<>>) -> ok;
+send(Sock, List) when is_list(List) -> send(Sock, iolist_to_binary(List)).
+send(Sock, Data) -> gen_tcp:send(Socket, Data).
 
 %% @doc Receive binary data of specified number of bytes length.
 recv_data(_, 0) -> {ok, <<>>};
