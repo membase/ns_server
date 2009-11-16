@@ -71,14 +71,13 @@ get_recv(Sock, RecvCallback) ->
     case Line of
         {error, _} = Err -> Err;
         {ok, <<"END">>} -> Line;
-        {ok, <<"VALUE ", Rest/binary>>} ->
+        {ok, <<"VALUE ", Rest/binary>> = LineBin} ->
             Parse = io_lib:fread("~s ~u ~u", binary_to_list(Rest)),
             {ok, [Key, Flag, DataSize], _} = Parse,
             {ok, DataCRNL} = recv_data(Sock, DataSize + 2),
             case is_function(RecvCallback) of
                 true -> {Data, _} = split_binary_suffix(DataCRNL, 2),
-                        {ok, LineB} = Line,
-                        RecvCallback(LineB,
+                        RecvCallback(LineBin,
                                      #mc_entry{key = iolist_to_binary(Key),
                                                flag = Flag,
                                                data = Data});
@@ -95,8 +94,8 @@ send_recv(Sock, IoList, RecvCallback) ->
     ok = send(Sock, IoList),
     RV = recv_line(Sock),
     case is_function(RecvCallback) of
-       true  -> {ok, LineB} = RV,
-                RecvCallback(LineB, #mc_entry{});
+       true  -> {ok, LineBin} = RV,
+                RecvCallback(LineBin, #mc_entry{});
        false -> ok
     end,
     RV.

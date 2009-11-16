@@ -173,7 +173,7 @@ cmd_binary_vocal_recv(Opcode, Sock, RecvCallback, Entry) ->
         false -> cmd_binary_vocal_recv(Opcode, Sock, RecvCallback, Entry)
     end.
 
-cmd_binary_quiet(Opcode, Sock, RecvCallback, Entry) ->
+cmd_binary_quiet(Opcode, Sock, _RecvCallback, Entry) ->
     send(Sock, req, #mc_header{opcode = Opcode}, Entry).
 
 % -------------------------------------------------
