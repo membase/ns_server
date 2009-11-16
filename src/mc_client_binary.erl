@@ -84,6 +84,15 @@ recv(Sock, HeaderKind) ->
     {Header, Entry} = decode_header(HeaderKind, HeaderBin),
     recv_body(Sock, Header, Entry).
 
+recv_body(Sock, #mc_header{extlen = ExtLen,
+                           keylen = KeyLen,
+                           bodylen = BodyLen} = Header, Entry)
+    when BodyLen >= (ExtLen + KeyLen) ->
+    {ok, Ext} = recv_data(Sock, ExtLen),
+    {ok, Key} = recv_data(Sock, KeyLen),
+    {ok, Data} = recv_data(Sock, BodyLen - (ExtLen + KeyLen)),
+    {ok, Header, Entry#mc_entry{ext = Ext, key = Key, data = Data}}.
+
 encode(req, Header, Entry) ->
     encode(?REQ_MAGIC, Header, Entry);
 encode(res, Header, Entry) ->
@@ -113,15 +122,6 @@ decode_header(res, <<?RES_MAGIC:8, Opcode:8, KeyLen:16, ExtLen:8,
     {#mc_header{opcode = Opcode, statusOrReserved = Status, opaque = Opaque,
                 keylen = KeyLen, extlen = ExtLen, bodylen = BodyLen},
      #mc_entry{datatype = DataType, cas = CAS}}.
-
-recv_body(Sock, #mc_header{extlen = ExtLen,
-                           keylen = KeyLen,
-                           bodylen = BodyLen} = Header, Entry)
-    when BodyLen >= (ExtLen + KeyLen) ->
-    {ok, Ext} = recv_data(Sock, ExtLen),
-    {ok, Key} = recv_data(Sock, KeyLen),
-    {ok, Data} = recv_data(Sock, BodyLen - (ExtLen + KeyLen)),
-    {ok, Header, Entry#mc_entry{ext = Ext, key = Key, data = Data}}.
 
 bin(undefined) -> <<>>;
 bin(X)         -> <<X/binary>>.
