@@ -1,4 +1,4 @@
--module (mc_tcp_listener).
+-module(mc_tcp_listener).
 
 -export([start/1, start/2, start_link/1, start_link/2, init/2]).
 
@@ -14,7 +14,6 @@ start_link(Handler) ->
 
 start_link(PortNum, Handler) when is_integer(PortNum) ->
     {ok, spawn_link(?MODULE, init, [PortNum, Handler])}.
-
 
 %
 % The server itself

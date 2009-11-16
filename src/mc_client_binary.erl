@@ -214,19 +214,12 @@ send_recv_test() ->
                                 #mc_header{opcode = ?NOOP}, #mc_entry{},
                                 works)
     end)(),
-
     test_flush(Sock),
-
     ok = gen_tcp:close(Sock).
 
 test_flush(Sock) ->
     {ok, works} = send_recv(Sock, nil,
                             #mc_header{opcode = ?FLUSH}, #mc_entry{}, works).
-
-    % (fun () ->
-    %     {ok, RB1} = send_recv(Sock, <<"get ", Key/binary, "\r\n">>, nil),
-    %     ?assertMatch(RB1, <<"END">>)
-    % end)(),
 
 set_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
@@ -236,11 +229,9 @@ set_test() ->
 
 set_test_sock(Sock, Key) ->
     test_flush(Sock),
-
     (fun () ->
         {ok, RB} = cmd(set, Sock, nil,
-                       #mc_entry{key = Key,
-                                 data = <<"AAA">>}),
+                       #mc_entry{key = Key, data = <<"AAA">>}),
         ?assertMatch(RB, <<"STORED">>),
         get_test_match(Sock, Key, <<"AAA">>)
     end)().
@@ -262,19 +253,16 @@ get_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
     set_test_sock(Sock, <<"aaa">>),
-
     (fun () ->
         D = ets:new(test, [set]),
         ets:insert(D, {nvals, 0}),
         {ok, RB} = cmd(get, Sock,
-                       fun (_H, _E) ->
-                           ?assert(false) % Should not get here.
+                       fun (_H, _E) -> ?assert(false) % Should not get here.
                        end,
                        #mc_entry{keys = [<<"ccc">>, <<"bbb">>]}),
         ?assertMatch(RB, <<"END">>),
         ?assertMatch([{nvals, 0}], ets:lookup(D, nvals))
     end)(),
-
     (fun () ->
         D = ets:new(test, [set]),
         ets:insert(D, {nvals, 0}),
@@ -288,7 +276,6 @@ get_test() ->
         ?assertMatch(RB, <<"END">>),
         ?assertMatch([{nvals, 1}], ets:lookup(D, nvals))
     end)(),
-
     (fun () ->
         D = ets:new(test, [set]),
         ets:insert(D, {nvals, 0}),
@@ -302,6 +289,32 @@ get_test() ->
         ?assertMatch(RB, <<"END">>),
         ?assertMatch([{nvals, 2}], ets:lookup(D, nvals))
     end)(),
-
     ok = gen_tcp:close(Sock).
+
+delete_test() ->
+    {ok, Sock} = gen_tcp:connect("localhost", 11211,
+                                 [binary, {packet, 0}, {active, false}]),
+    set_test_sock(Sock, <<"aaa">>),
+    get_test_match(Sock, <<"aaa">>, <<"AAA">>),
+    (fun () ->
+        D = ets:new(test, [set]),
+        ets:insert(D, {nvals, 0}),
+        {ok, RB} = cmd(delete, Sock,
+                       fun (H, _E) ->
+                           ets:update_counter(D, nvals, 1),
+                           ?assertMatch(?DELETE, H#mc_header.opcode)
+                       end,
+                       #mc_entry{key = <<"aaa">>}),
+        ?assertMatch(RB, <<"DELETED">>),
+        ?assertMatch([{nvals, 1}], ets:lookup(D, nvals))
+    end)(),
+    (fun () ->
+        {ok, RB} = cmd(get, Sock,
+                       fun (_H, _E) -> ?assert(false) % Should not get here.
+                       end,
+                       #mc_entry{keys = [<<"aaa">>, <<"bbb">>]}),
+        ?assertMatch(RB, <<"END">>)
+    end)(),
+    ok = gen_tcp:close(Sock).
+
 
