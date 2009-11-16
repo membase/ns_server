@@ -13,9 +13,9 @@
 
 cmd(get, Sock, RecvCallback, #mc_entry{keys = Keys}) ->
     ok = send(Sock,
-              lists:map(fun (K) ->
-                            encode(req, #mc_header{opcode = ?GETKQ},
-                                        #mc_entry{key = K})
+              lists:map(fun (K) -> encode(req,
+                                          #mc_header{opcode = ?GETKQ},
+                                          #mc_entry{key = K})
                         end,
                         Keys)),
     ok = send(Sock, req, #mc_header{opcode = ?NOOP}, #mc_entry{}),
