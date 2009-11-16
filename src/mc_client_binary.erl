@@ -8,8 +8,8 @@
 
 -compile(export_all).
 
-cmd(version, Sock, RecvCallback, Entry) ->
-    send_recv(Sock, RecvCallback, #mc_header{opcode = ?VERSION}, Entry);
+% cmd(version, Sock, RecvCallback, Entry) ->
+%     send_recv(Sock, RecvCallback, #mc_header{opcode = ?VERSION}, Entry);
 
 cmd(get, Sock, RecvCallback, #mc_entry{keys = Keys}) ->
     ok = send(Sock,
@@ -43,10 +43,10 @@ cmd(delete, Sock, RecvCallback, Entry) ->
 cmd(flush_all, Sock, RecvCallback, Entry) ->
     send_recv(Sock, RecvCallback, #mc_header{opcode = ?FLUSH}, Entry);
 
-cmd(Cmd, Sock, RecvCallback, Entry) ->
+cmd(Opcode, Sock, RecvCallback, Entry) ->
     % Dispatch to cmd_binary() in case the caller was
     % using a binary protocol opcode.
-    cmd_binary(Cmd, Sock, RecvCallback, Entry).
+    cmd_binary(Opcode, Sock, RecvCallback, Entry).
 
 % -------------------------------------------------
 
