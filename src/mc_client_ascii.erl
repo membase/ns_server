@@ -77,7 +77,8 @@ get_recv(Sock, RecvCallback) ->
             {ok, DataCRNL} = recv_data(Sock, DataSize + 2),
             case is_function(RecvCallback) of
                 true -> {Data, _} = split_binary_suffix(DataCRNL, 2),
-                        RecvCallback(Line,
+                        {ok, LineB} = Line,
+                        RecvCallback(LineB,
                                      #mc_entry{key = iolist_to_binary(Key),
                                                flag = Flag,
                                                data = Data});
@@ -94,7 +95,8 @@ send_recv(Sock, IoList, RecvCallback) ->
     ok = send(Sock, IoList),
     RV = recv_line(Sock),
     case is_function(RecvCallback) of
-       true  -> RecvCallback(RV, #mc_entry{});
+       true  -> {ok, LineB} = RV,
+                RecvCallback(LineB, #mc_entry{});
        false -> ok
     end,
     RV.
@@ -168,7 +170,7 @@ cmd_binary(?GETQ, _Sock, _RecvCallback, _Entry) ->
 
 cmd_binary(?NOOP, _Sock, RecvCallback, _Entry) ->
     % Assuming NOOP used to uncork GETKQ's.
-    if is_function(RecvCallback) -> RecvCallback({ok, <<"END">>},
+    if is_function(RecvCallback) -> RecvCallback(<<"END">>,
                                                  #mc_entry{});
        true -> ok
     end;
@@ -372,7 +374,7 @@ get_test() ->
 
         {ok, RB} = cmd(get, Sock,
                        fun (Line, Entry) ->
-                          ?assertMatch(Line, {ok, <<"VALUE aaa 0 3">>}),
+                          ?assertMatch(Line, <<"VALUE aaa 0 3">>),
                           ?assertMatch(Entry,
                                        #mc_entry{key = <<"aaa">>, data = <<"AAA">>})
                        end,

@@ -156,24 +156,47 @@ recv_data(Sock, NumBytes) -> gen_tcp:recv(Sock, NumBytes).
 
 %% For binary upstream talking to binary downstream server.
 
-cmd_binary(?GET, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
+cmd_binary_vocal(Opcode, Sock, RecvCallback, Entry) ->
+    send(Sock, req, #mc_header{opcode = Opcode}, Entry),
+    cmd_binary_vocal_recv(Opcode, Sock, RecvCallback, Entry).
+
+cmd_binary_vocal_recv(Opcode, Sock, RecvCallback, Entry) ->
+    {ok, RecvHeader, RecvEntry} = recv(Sock, res),
+    case is_function(RecvCallback) of
+       true  -> RecvCallback(RecvHeader, RecvEntry);
+       false -> ok
+    end,
+    case Opcode =:= RecvHeader#mc_header.opcode of
+        true  -> S = RecvHeader#mc_header.statusOrReserved,
+                 S = ?SUCCESS,
+                 {ok, RecvHeader, RecvEntry};
+        false -> cmd_binary_vocal_recv(Opcode, Sock, RecvCallback, Entry)
+    end.
+
+cmd_binary_quiet(Opcode, Sock, RecvCallback, Entry) ->
+    send(Sock, req, #mc_header{opcode = Opcode}, Entry).
+
+% -------------------------------------------------
+
+cmd_binary(?GET, Sock, RecvCallback, Entry) ->
+    cmd_binary_vocal(?GET, Sock, RecvCallback, Entry);
 
 cmd_binary(?SET, Sock, RecvCallback, Entry) ->
     cmd(set, Sock, RecvCallback, Entry);
 
-cmd_binary(?ADD, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?REPLACE, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
+cmd_binary(?ADD, Sock, RecvCallback, Entry) ->
+    cmd_binary_vocal(?ADD, Sock, RecvCallback, Entry);
+cmd_binary(?REPLACE, Sock, RecvCallback, Entry) ->
+    cmd_binary_vocal(?REPLACE, Sock, RecvCallback, Entry);
 
 cmd_binary(?DELETE, Sock, RecvCallback, Entry) ->
     cmd(delete, Sock, RecvCallback, Entry);
 
-cmd_binary(?INCREMENT, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
-cmd_binary(?DECREMENT, _Sock, _RecvCallback, _Entry) ->
-    exit(todo);
+cmd_binary(?INCREMENT, Sock, RecvCallback, Entry) ->
+    cmd_binary_vocal(?INCREMENT, Sock, RecvCallback, Entry);
+cmd_binary(?DECREMENT, Sock, RecvCallback, Entry) ->
+    cmd_binary_vocal(?DECREMENT, Sock, RecvCallback, Entry);
+
 cmd_binary(?QUIT, _Sock, _RecvCallback, _Entry) ->
     exit(todo);
 
