@@ -18,6 +18,7 @@ cmd(get, Sock, RecvCallback, #mc_entry{keys = Keys}) ->
                                         #mc_entry{key = K})
                         end,
                         Keys)),
+    ok = send(Sock, req, #mc_header{opcode = ?NOOP}, #mc_entry{}),
     get_recv(Sock, RecvCallback);
 
 cmd(set, Sock, RecvCallback, Entry) ->
@@ -290,7 +291,19 @@ set_test_sock(Sock, Key) ->
         {ok, RB} = cmd(set, Sock, nil,
                        #mc_entry{key = Key,
                                  data = <<"AAA">>}),
-        ?assertMatch(RB, <<"STORED">>)
-
-        % get_test_match(Sock, Key, <<"AAA">>)
+        ?assertMatch(RB, <<"STORED">>),
+        get_test_match(Sock, Key, <<"AAA">>)
     end)().
+
+get_test_match(Sock, Key, Data) ->
+    D = ets:new(test, [set]),
+    ets:insert(D, {nvals, 0}),
+    {ok, RB} = cmd(get, Sock,
+                   fun (_H, E) ->
+                       ets:update_counter(D, nvals, 1),
+                       ?assertMatch(Key, E#mc_entry.key),
+                       ?assertMatch(Data, E#mc_entry.data)
+                   end,
+                   #mc_entry{keys = [Key]}),
+    ?assertMatch(RB, <<"END">>),
+    ?assertMatch([{nvals, 1}], ets:lookup(D, nvals)).
