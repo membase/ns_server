@@ -11,7 +11,7 @@
 -compile(export_all).
 
 %% A memcached client that speaks binary protocol,
-%% with a "protocol conversion" interface.
+%% with an "API conversion" interface.
 
 % cmd(version, Sock, RecvCallback, Entry) ->
 %     send_recv(Sock, RecvCallback, #mc_header{opcode = ?VERSION}, Entry, <<"OK">>);

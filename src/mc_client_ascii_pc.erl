@@ -1,4 +1,4 @@
--module(mc_client_ascii_pc).
+-module(mc_client_ascii_ac).
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -9,7 +9,7 @@
 -compile(export_all).
 
 %% A memcached client that speaks ascii protocol,
-%% with a "protocol conversion" interface.
+%% with an "API conversion" interface.
 
 cmd(Cmd, Sock, RecvCallback, Entry) when is_atom(Cmd) ->
     mc_client_ascii:cmd(Cmd, Sock, RecvCallback, Entry);
