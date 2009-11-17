@@ -6,7 +6,7 @@
 
 -include("mc_client.hrl").
 
--import(mc_client_binary, [send/2, send/4, send_recv/5, recv/2, encode/3]).
+-import(mc_binary, [send/2, send/4, send_recv/5, recv/2, encode/3]).
 
 -compile(export_all).
 
