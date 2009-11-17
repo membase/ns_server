@@ -1,3 +1,9 @@
+# emoxi
+
+This is the 'smart service' part of the NorthScale Server.
+
+Originally forked from ememcached.
+
 # ememcached
 
 This is a toolkit for building memcached servers in erlang using the
