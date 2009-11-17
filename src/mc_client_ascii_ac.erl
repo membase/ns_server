@@ -46,9 +46,9 @@ cmd_binary(?GETQ, _S, _RC, _E) -> exit(todo);
 
 cmd_binary(?NOOP, _Sock, RecvCallback, _Entry) ->
     % Assuming NOOP used to uncork GETKQ's.
-    if is_function(RecvCallback) -> RecvCallback(<<"END">>,
-                                                 #mc_entry{});
-       true -> ok
+    case is_function(RecvCallback) of
+       true  -> RecvCallback(<<"END">>, #mc_entry{});
+       false -> ok
     end;
 
 cmd_binary(?VERSION, _S, _RC, _E) -> exit(todo);
