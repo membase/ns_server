@@ -1,4 +1,4 @@
--module(mc_client_binary_pc).
+-module(mc_client_binary_ac).
 
 -include_lib("eunit/include/eunit.hrl").
 
