@@ -11,12 +11,14 @@
 %% Functions to work with memcached binary protocol packets.
 
 send_recv(Sock, RecvCallback, Header, Entry, Success) ->
-    {ok, RecvHeader, _RecvEntry} = send_recv(Sock, RecvCallback, Header, Entry),
+    {ok, RecvHeader, RecvEntry} = send_recv(Sock, RecvCallback, Header, Entry),
     V1 = RecvHeader#mc_header.opcode,
     V1 = Header#mc_header.opcode,
-    V2 = RecvHeader#mc_header.statusOrReserved,
-    V2 = ?SUCCESS, % TODO: Handle other status codes.
-    {ok, Success}.
+    SR = RecvHeader#mc_header.statusOrReserved,
+    case SR =:= ?SUCCESS of
+        true  -> {ok, Success};
+        false -> {error, RecvHeader, RecvEntry}
+    end.
 
 send_recv(Sock, RecvCallback, Header, Entry) ->
     ok = send(Sock, req, Header, Entry),
