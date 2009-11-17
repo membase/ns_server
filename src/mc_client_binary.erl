@@ -33,8 +33,10 @@ cmd_binary_vocal_recv(Opcode, Sock, RecvCallback, Entry) ->
     end,
     case Opcode =:= RecvHeader#mc_header.opcode of
         true  -> S = RecvHeader#mc_header.statusOrReserved,
-                 S = ?SUCCESS,
-                 {ok, RecvHeader, RecvEntry};
+                 case S = ?SUCCESS of
+                     true  -> {ok, RecvHeader, RecvEntry};
+                     false -> {error, RecvHeader, RecvEntry}
+                 end;
         false -> cmd_binary_vocal_recv(Opcode, Sock, RecvCallback, Entry)
     end.
 
