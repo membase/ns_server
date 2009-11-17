@@ -86,3 +86,23 @@ cmd_binary(?RDECRQ, _S, _RC, _E) -> exit(todo);
 
 cmd_binary(Cmd, _S, _RC, _E) -> exit({unimplemented, Cmd}).
 
+% -------------------------------------------------
+
+set_test() ->
+    {ok, Sock} = gen_tcp:connect("localhost", 11211,
+                                 [binary, {packet, 0}, {active, false}]),
+    set_test_sock(Sock, <<"aaa">>),
+    ok = gen_tcp:close(Sock).
+
+set_test_sock(Sock, Key) ->
+    (fun () ->
+        {ok, RB} = cmd(?FLUSH, Sock, nil, #mc_entry{}),
+        ?assertMatch(RB, <<"OK">>)
+    end)(),
+    (fun () ->
+        {ok, RB} = cmd(?SET, Sock, nil,
+                       #mc_entry{key =  Key,
+                                 data = <<"AAA">>}),
+        ?assertMatch(RB, <<"STORED">>)
+    end)().
+
