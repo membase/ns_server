@@ -4,7 +4,7 @@
 
 -include("mc_constants.hrl").
 
--include("mc_client.hrl").
+-include("mc_entry.hrl").
 
 -import(mc_binary, [send/2, send/4, send_recv/5, recv/2, encode/3]).
 

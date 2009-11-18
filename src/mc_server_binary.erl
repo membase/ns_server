@@ -4,7 +4,7 @@
 
 -include("mc_constants.hrl").
 
--include("mc_client.hrl").
+-include("mc_entry.hrl").
 
 -compile(export_all).
 
