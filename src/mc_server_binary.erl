@@ -12,6 +12,7 @@ process(Sock, {ModName, ApplyArgs}, Header, Entry) ->
     Cmd = Header#mc_header.opcode,
     {ok, ApplyArgs2} = apply(ModName, cmd,
                              [Cmd, ApplyArgs, Sock, {Header, Entry}]),
+    % TODO: Need error handling here, to send UNKNOWN_COMMAND status.
     {ok, {ModName, ApplyArgs2}}.
 
 session(UpstreamSock, Args) ->

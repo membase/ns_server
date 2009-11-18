@@ -12,6 +12,7 @@ process(Sock, {ModName, ApplyArgs}, Line) ->
     [Cmd | CmdArgs] = string:tokens(Line, " "),
     {ok, ApplyArgs2} = apply(ModName, cmd,
                              [Cmd, ApplyArgs, Sock, CmdArgs]),
+    % TODO: Need error handling here, to send ERROR on unknown cmd.
     {ok, {ModName, ApplyArgs2}}.
 
 session(UpstreamSock, Args) ->
