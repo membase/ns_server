@@ -4,10 +4,15 @@
 
 -include("mc_constants.hrl").
 
+-include("mc_client.hrl").
+
 -compile(export_all).
 
-process(Sock, Args, Header, Entry) ->
-    {ok, Args}.
+process(Sock, {ModName, ApplyArgs}, Header, Entry) ->
+    Cmd = Header#mc_header.opcode,
+    {ok, ApplyArgs2} = apply(ModName, cmd,
+                             [Cmd, ApplyArgs, Sock, {Header, Entry}]),
+    {ok, {ModName, ApplyArgs2}}.
 
 session(UpstreamSock, Args) ->
     {ok, Header, Entry} = mc_binary:recv(UpstreamSock, req),
