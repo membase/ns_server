@@ -27,6 +27,7 @@ init(PortNum, Handler) ->
 % Accept incoming connections
 accept_loop(LS, {ModuleName, FunName, Args} = Handler) ->
     {ok, NS} = gen_tcp:accept(LS),
+    ?debugFmt("accept ~p~n", [NS]),
     Pid = spawn(ModuleName, FunName, [NS, Args]),
     gen_tcp:controlling_process(NS, Pid),
     accept_loop(LS, Handler).
