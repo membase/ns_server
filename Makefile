@@ -13,3 +13,6 @@ ebins:
 clean:
 	rm -f cov.html erl_crash.dump
 	rm -rf ebin
+
+test:
+	erl -pa ebin -noshell -s mc_test test -s init stop
