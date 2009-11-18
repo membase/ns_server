@@ -1,5 +1,5 @@
 -record(mc_entry, {key = undefined,
-                   keys = [],
+                   keys = [], % TODO: Move this somewhere else.
                    ext = undefined,
                    flag = 0,
                    expire = 0,

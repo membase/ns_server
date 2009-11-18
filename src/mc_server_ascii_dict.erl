@@ -8,27 +8,55 @@
 
 -compile(export_all).
 
+% Note: this simple memcached ascii protocol server
+% has an independent dict per session.
+
+-record(mc_session_dict, {cas = 0, tbl = dict:new()}).
+
 cmd(get, Dict, Sock, []) ->
     mc_ascii:send(Sock, <<"END\r\n">>),
     {ok, Dict};
 cmd(get, Dict, Sock, [Key | Rest]) ->
-    ?debugFmt("mcsad - cmd.get ~p ~p ~p~n", [Dict, Sock, Key]),
-    KeyB = iolist_to_binary(Key),
-    mc_ascii:send(Sock, <<"VALUE ", KeyB/binary, " 0 3\r\nAAA\r\n">>),
+    case dict:find(Key, Dict#mc_session_dict.tbl) of
+        {ok, #mc_entry{flag = Flag, data = Data}} ->
+            FlagStr = integer_to_list(Flag),
+            DataLen = integer_to_list(bin_size(Data)),
+            mc_ascii:send(Sock, [<<"VALUE ">>, Key,
+                                 " ", FlagStr,
+                                 " ", DataLen, <<"\r\n">>,
+                                 <<Data/binary>>, <<"\r\n">>]);
+        _ -> ok
+    end,
     cmd(get, Dict, Sock, Rest);
+
+cmd(set, Dict, Sock, [Key, FlagIn, ExpireIn, DataLenIn]) ->
+    Flag = list_to_integer(FlagIn),
+    Expire = list_to_integer(ExpireIn),
+    DataLen = list_to_integer(DataLenIn),
+    {ok, DataCRNL} = mc_ascii:recv_data(Sock, DataLen + 2),
+    {Data, _} = mc_ascii:split_binary_suffix(DataCRNL, 2),
+    Cas2 = Dict#mc_session_dict.cas + 1,
+    Entry = #mc_entry{key = Key, cas = Cas2, data = Data,
+                      flag = Flag, expire = Expire},
+    Dict2 = Dict#mc_session_dict{cas = Cas2,
+                                 tbl = dict:store(Key, Entry,
+                                                  Dict#mc_session_dict.tbl)},
+    mc_ascii:send(Sock, <<"STORED\r\n">>),
+    {ok, Dict2};
 
 cmd(quit, _Dict, _Sock, _Rest) ->
     exit({ok, quit_received}).
 
-process(Sock, {ModName, ApplyArgs}, Line) ->
-    [Cmd | CmdArgs] = string:tokens(Line, " "),
-    {ok, ApplyArgs2} = apply(ModName, cmd,
-                             [list_to_atom(Cmd), ApplyArgs, Sock, CmdArgs]),
-    % TODO: Need error handling here, to send ERROR on unknown cmd.
-    {ok, {ModName, ApplyArgs2}}.
+bin_size(undefined) -> 0;
+bin_size(List) when is_list(List) -> bin_size(iolist_to_binary(List));
+bin_size(Binary) -> size(Binary).
 
-session(UpstreamSock, Args) ->
-    {ok, Line} =  mc_ascii:recv_line(UpstreamSock),
-    {ok, Args2} = process(UpstreamSock, Args, Line),
-    session(UpstreamSock, Args2).
+% ------------------------------------------
+
+% For testing...
+%
+main() ->
+    mc_main:start(11222,
+                  {mc_server_ascii, session,
+                   {mc_server_ascii_dict, #mc_session_dict{}}}).
 
