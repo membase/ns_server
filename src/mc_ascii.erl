@@ -18,8 +18,8 @@ send_recv(Sock, IoList, RecvCallback) ->
     ok = send(Sock, IoList),
     RV = recv_line(Sock),
     case is_function(RecvCallback) of
-       true  -> {ok, LineBin} = RV,
-                RecvCallback(LineBin, #mc_entry{});
+       true  -> {ok, Line} = RV,
+                RecvCallback(Line, #mc_entry{});
        false -> ok
     end,
     RV.
