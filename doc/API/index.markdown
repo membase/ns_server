@@ -4,7 +4,7 @@ title: kvstore REST APIs
 ---
 # caching kvstore APIs
 
-Version 20091112
+Version 20091117
 
 This document specifies request and response for both the Management Console
 (management channel) and the KVStore itself (data channel) when talking to
@@ -14,7 +14,8 @@ a caching kvstore (a.k.a. NorthScale Enterprise Storage).
 
 ## General
 
-JSON is the only response type, as specified under RFC4267.
+JSON is the only response type the system is capable of at the moment, as
+specified under RFC4267.
 
 Authentication will be HTTP Basic, generally over SSL/TLS.  There may be some
 non-authenticated content to bootstrap browser based user interfaces that then use
@@ -78,7 +79,6 @@ in the following table, under the conditions listed in the description.
 </th></tr>
 <tr><td> 200 OK
 </td><td> The request was successfully completed.  If this request created a new resource that is addressable with a URI, and a response body is returned containing a representation of the new resource, a 200 status will be returned with a <i>Location</i> header containing the canonical URI for the newly created resource.
-
 </td></tr>
 <tr><td> 201 Created
 </td><td> A request that created a new resource was completed, and no response body containing a representation of the new resource is being returned.  A <i>Location</i> header containing the canonical URI for the newly created resource should also be returned.
@@ -86,7 +86,6 @@ in the following table, under the conditions listed in the description.
 <tr><td> 202 Accepted
 </td><td> The request has been accepted for processing, but the processing has not been completed.  Per the HTTP/1.1 specification, the returned entity (if any) <b>SHOULD</b> include an indication of the request's current status, and either a pointer to a status monitor or some estimate of when the user can expect the request to be fulfilled.
 </td></tr>
-
 <tr><td> 204 No Content
 </td><td> The server fulfilled the request, but does not need to return a response message body.
 </td></tr>
@@ -94,8 +93,7 @@ in the following table, under the conditions listed in the description.
 </td><td> The request could not be processed because it contains missing or invalid information (such as validation error on an input field, a missing required value, and so on).
 </td></tr>
 <tr><td> 401 Unauthorized
-</td><td> The authentication credentials included with this request are missing or invalid.  FIXME - talk about <i>WWW-Authenticate</i> header in the response.
-
+</td><td> The authentication credentials included with this request are missing or invalid.
 </td></tr>
 <tr><td> 403 Forbidden
 </td><td> The server recognized your credentials, but you do not possess authorization to perform this request.
@@ -107,7 +105,6 @@ in the following table, under the conditions listed in the description.
 </td><td> The HTTP verb specified in the request (DELETE, GET, HEAD, POST, PUT) is not supported for this request URI.
 </td></tr>
 <tr><td> 406 Not Acceptable
-
 </td><td> The resource identified by this request is not capable of generating a representation corresponding to one of the media types in the <i>Accept</i> header of the request.
 </td></tr>
 <tr><td> 409 Conflict
@@ -117,7 +114,6 @@ in the following table, under the conditions listed in the description.
 </td><td> The server encountered an unexpected condition which prevented it from fulfilling the request.
 </td></tr>
 <tr><td> 501 Not Implemented
-
 </td><td> The server does not (currently) support the functionality required to fulfill the request.
 </td></tr>
 <tr><td> 503 Service Unavailable
@@ -143,7 +139,7 @@ configured and queried.
 * Node - A system within a pool.  Nodes may provide Node-local representations
 of a service, but are also required to provide or proxy Pool level resources.
 * Bucket - A logical grouping of resources within a pool.  A bucket provides a
-number of things which ease pool management and enable manageement of resources:
+number of things which ease pool management and enable management of resources:
 ** Namespace - Buckets provide unconstrained, free text namespaces.
 ** Storage Handling Rules - Rules on how data is persisted, replicated and
 otherwise handled is defined at the bucket level.
@@ -153,11 +149,134 @@ configured and queried.  These counters and metrics are specific to the bucket.
 
 Operations for resources:
 
+Some thoughts on operations...
+
+GET https://node.in.pool.com/ui
+(in this case, presuming the user agent is a browser)
+serve up a repre
+
+GET https://node.in.pool.com/pool
+
+response 200: list of pools
+
+GET /pool/Default Pool (human readable pool name)
+ - or -
+GET /pool/1 (synthetic pool ID, perhaps should be a GUID)
+
+response 200: list of buckets (common name and GUID) and links to buckets
+
+POST /pool/My New Pool
+{
+   "name" : "My New Pool"
+}
+
+
+response 201: pool was created and valid URIs for referencing it returned
+ - or -
+response 403: user is not authorized (or no users are authorized because it
+is administratively disabled to all users)
+
+POST /pool/My New Pool/New bucket
+{
+   "name" : "New bucket"
+}
+
+response 201: bucket was created and valid URIs returned
+
+
+POST /pool/My New Pool/Another bucket
+{
+   "name" : "Another bucket"
+   "bucketrules" : [ @todo what are the rules? ]
+}
+
+
+
+GET /pool/My New Pool/New bucket
+
+response 200: representation providing URIs for
+a pagenated list of items
+& a link to where individual items may be addressed.
+& a link to the bucket storage handling rules
+& a link to the bucket statistics
+
+PUT /pool/My New Pool/New bucket/New item
+
+
+response 201: created with URIs in header
+ - or -
+response 200: representation of created object (useful for CAS on items)
 
 
 @todo finish description
 
 # Service Groupings
+
+## Bootstrapping
+
+To behave correctly a few things must be bootstrapped.  This
+is done via the initial request/response outlined below.
+
+The URI space, in NorthScale's implementation may appear to have very specific
+URI and in some ways may even appear as RPC or some other architectural style
+using HTTP operations and semantics.  That is only an artifact of the
+URIs NorthScale chose.
+
+Clients are advised to be (and NorthScale clients will
+be) properly REST and will not expect to receive any handling instructions
+resource descriptions or presume any conventions on URI structure for resources
+represented.
+
+Also note that the heirarchies shown here can allow reuse of agent handling
+of representations, since they are similar for different parts of the heirarchy.
+
+*Request*
+
+<code class="restcalls">
+ GET /pool
+ Host: node.in.your.pool.com
+ Authorization: Basic xxxxxxxxxxxxxxxxxxx
+ Accept: application/com.northscale.store+json
+ X-memcachekv-Store-Client-Specification-Version: 0.1
+</code>
+
+*Response*
+
+<code class="json">
+ HTTP/1.1 200 OK
+ Content-Type: application/com.northscale.store+json
+ Content-Length: nnn
+{
+  "implementation_version": "253",
+  "pools" : [
+    {
+      "name": "Default Pool",
+      "uri": "/pool/default",
+    },
+    {
+      "name": "NorthScale kvcaching pool name",
+      "uri": "/pool/anotherpool",
+    },
+    {
+      "name": "A pool elsewhere",
+      "uri": "https://a.node.in.another.pool.com:4321/pool/default"
+    }
+  ]
+  "uri": "https://node.in.your.pool.com/pool",
+  "specification_version": [
+    "0.1"
+   ]
+}
+</code>
+
+As can be seen, the "build" number of the implementation is apparent in the
+implementation_version, the specifications supported are apparent in the
+specficiation_version.  While this node can only be a member of one pool, there
+is flexibility which allows for any given node to be aware of other pools.
+
+The Client-Specificaion-Version is optional in the request, but advised.  It
+allows for implementations to adjust to adjust representation and state 
+transitions to the client, if backward compatibility is desirable.
 
 ## Independent of management channel and data channel
 Authentication
@@ -195,7 +314,7 @@ For instance...
  [
   {
     "name": "Default Pool",
-    "id":12
+    "id":1
     "nodes" : [
       {
         "name": "10.0.1.20",
@@ -215,13 +334,19 @@ For instance...
 Both the OCCI and the Sun APIs talks about clients being required to not make
 any assumptions about the URI
 space at all.  This seems to make a lot of sense from an implementation
-flexibility and client quality standpoint.  Should this be considered?
+flexibility and client quality standpoint.  Should this be considered?  Matt
+Ingenthron thinks so, as it gives you flexibility in implementation and location
+of service providers.
 
 ## References
 The OCCI working group specifications http://www.occi-wg.org/ and the
 Sun Cloud APIs at http://kenai.com/projects/suncloudapis/pages/Home have
-influenced this document.
+influenced this document.  To ensure it is properly RESTful, Roy Fielding's
+publications and particularly this blog
+http://roy.gbiv.com/untangled/2008/rest-apis-must-be-hypertext-driven have been
+referenced.
 
 ## Changelog
-# 20091113 First publishing (matt.ingenthron@northscale.com)
-# 20091115 Updated with many operations (matt.ingenthron@northscale.com)
+* 20091113 First publishing (matt.ingenthron@northscale.com)
+* 20091115 Updated with some operations (matt.ingenthron@northscale.com)
+* 20091117 Updated after defending REST and HTTP in discussion with Steve (matt.ingenthron@northscale.com)
