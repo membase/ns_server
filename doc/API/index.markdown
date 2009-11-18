@@ -339,12 +339,12 @@ Ingenthron thinks so, as it gives you flexibility in implementation and location
 of service providers.
 
 ## References
-The OCCI working group specifications http://www.occi-wg.org/ and the
-Sun Cloud APIs at http://kenai.com/projects/suncloudapis/pages/Home have
+The [OCCI working group specifications](http://www.occi-wg.org/) and the
+[Sun Cloud APIs](http://kenai.com/projects/suncloudapis/pages/Home) have
 influenced this document.  To ensure it is properly RESTful, Roy Fielding's
-publications and particularly this blog
-http://roy.gbiv.com/untangled/2008/rest-apis-must-be-hypertext-driven have been
-referenced.
+publications and particularly
+[this blog](http://roy.gbiv.com/untangled/2008/rest-apis-must-be-hypertext-driven)
+have been referenced.
 
 ## Changelog
 * 20091113 First publishing (matt.ingenthron@northscale.com)
