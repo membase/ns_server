@@ -449,6 +449,7 @@ The [OCCI working group specifications](http://www.occi-wg.org/) and the
 influenced this document.  To ensure it is properly RESTful, Roy Fielding's
 publications and particularly
 [this blog](http://roy.gbiv.com/untangled/2008/rest-apis-must-be-hypertext-driven)
+and [this blog](http://roy.gbiv.com/untangled/2009/it-is-okay-to-use-post)
 have been referenced.
 
 ## Changelog
