@@ -4,7 +4,22 @@
 
 -export([start/1, start/2, start_link/1, start_link/2, init/2]).
 
-% Starting the server
+% Starting the server...
+%
+% Example:
+%
+%   mc_main:start(PortNum,
+%                 {ProtocolModuleName, {ProcessorModuleName, ProcessorArgs}}).
+%
+%   mc_main:start(11222,
+%                 {mc_server_ascii,
+%                  {mc_server_ascii_dict,
+%                   mc_server_ascii_dict:create_dict()}}).
+%
+% A server ProtocolModule must implement a callback of...
+%
+%   session(SessionSock, {ProcessorModuleName, ProcessorArgs})
+%
 start(Handler) ->
     start(11211, Handler).
 
@@ -25,10 +40,10 @@ init(PortNum, Handler) ->
     accept_loop(LS, Handler).
 
 % Accept incoming connections
-accept_loop(LS, {ModuleName, FunName, Args} = Handler) ->
+accept_loop(LS, {ModuleName, Args} = Handler) ->
     {ok, NS} = gen_tcp:accept(LS),
     ?debugFmt("accept ~p~n", [NS]),
-    Pid = spawn(ModuleName, FunName, [NS, Args]),
+    Pid = spawn(ModuleName, [NS, Args]),
     gen_tcp:controlling_process(NS, Pid),
     accept_loop(LS, Handler).
 

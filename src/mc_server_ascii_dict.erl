@@ -60,6 +60,6 @@ bin_size(Binary) -> size(Binary).
 %
 main() ->
     mc_main:start(11222,
-                  {mc_server_ascii, session,
+                  {mc_server_ascii,
                    {mc_server_ascii_dict, create_dict()}}).
 
