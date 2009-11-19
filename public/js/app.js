@@ -292,14 +292,43 @@ function renderTemplate(key, data) {
 }
 
 function __topEval() {
-  return eval("(" + arguments[0] + ")");
+  return eval("(" + String(arguments[0]) + ")");
+}
+
+function $m(self, method, klass) {
+  if (klass) {
+    var f = klass.prototype[method];
+    if (!f)
+      throw new Error("Bogus method: " + method + " on prototype of: " + klass);
+    return function () {
+      return f.apply(self, arguments);
+    }
+  } else {
+    var f = self[method];
+    if (!f)
+      throw new Error("Bogus method: " + method + " on object: " + self);
+    return function () {
+      return f.apply(self, arguments);
+    }
+  }
 }
 
 function mkClass(methods) {
-  var constructor = __topEval(String(function () {
+  if (_.isFunction(methods)) {
+    var superclass = methods;
+    var origMethods = arguments[1];
+
+    var meta = new Function();
+    meta.prototype = superclass.prototype;
+
+    methods = _.extend(new meta, origMethods);
+  }
+
+  var constructor = __topEval(function () {
     if (this.initialize)
       return this.initialize.apply(this, arguments);
-  }));
+  });
+
   constructor.prototype = methods;
   return constructor;
 }
@@ -351,16 +380,62 @@ var CallbackSlot = mkClass({
   }
 });
 
-function mkSimpleUpdateInitiator(path, args) {
-  return function (okCallback, errorCallback) {
-    $.ajax({type: 'GET',
-            url: path,
-            data: args,
-            dataType: 'json',
-            success: okCallback,
-            error: errorCallback});
+// inspired in part by http://common-lisp.net/project/cells/
+var Cell = mkClass({
+  initialize: function (formula, sources) {
+    this.changedSlot = new CallbackSlot();
+    this.undefinedSlot = new CallbackSlot();
+    this.formula = formula;
+    this.value = undefined;
+    this.sources = [];
+    if (sources)
+      this.setSources(sources);
+  },
+  sourceChanged: function (source) {
+    _.defer($m(this, 'tryUpdatingValue'));
+  },
+  sourceUndefined: function (source) {
+    var self = this;
+    _.defer(function () {
+      self.setValue(undefined);
+    });
+  },
+  setSources: function (context) {
+    var self = this;
+    if (this.sources.length != 0)
+      throw new Error('cannot adjust sources yet');
+    if (!this.formula)
+      throw new Error("formula-less cells cannot have sources");
+    var slots = this.sources = _.values(context);
+    this.context = _.extend({self: this}, context);
+    
+
+    _.each(slots, function (slot) {
+      slot.changedSlot.subscribeWithSlave($m(self, 'sourceChanged'))
+      slot.undefinedSlot.subscribeWithSlave($m(self, 'sourceUndefined'));
+    });
+
+    this.tryUpdatingValue();
+
+    return this;
+  },
+  setValue: function (newValue) {
+    var oldValue = this.value;
+    this.value = newValue;
+
+    if (newValue === undefined) {
+      if (oldValue !== undefined)
+        this.undefinedSlot.broadcast(this);
+      return;
+    }
+
+    if (oldValue != newValue)
+      this.changedSlot.broadcast(this);
+  },
+  tryUpdatingValue: function () {
+    this.setValue(this.formula.call(this.context))
   }
-}
+});
 
 var UpdatesChannel = mkClass({
   initialize: function (updateInitiator, period, plugged) {
@@ -373,7 +448,7 @@ var UpdatesChannel = mkClass({
     if (this.intervalHandle)
       cancelInterval(this.intervalHandle);
     this.period = period;
-    setInterval(_.bind(this.tickHandler, this), this.period*1000);
+    setInterval($m(this, 'tickHandler'), this.period*1000);
     if (!this.updateIsInProgress)
       this.initiateUpdate();
   },
@@ -386,7 +461,9 @@ var UpdatesChannel = mkClass({
     }
     this.initiateUpdate();
   },
-  updateSuccess: function (data) {
+  updateSuccess: function (flag, data) {
+    if (flag.cancelled)
+      return;
     this.recentData = data;
     try {
       if (!this.plugged)
@@ -402,14 +479,24 @@ var UpdatesChannel = mkClass({
       this.initiateUpdate();
     }
   },
+  updateError: function (flag) {
+    if (flag.cancelled)
+      return;
+    this.updateComplete();
+  },
   initiateUpdate: function () {
     if (this.plugged)
       return;
-    this.updateIsInProgress = true;
-    this.updateInitiator(_.bind(this.updateSuccess, this),
-                         _.bind(this.updateComplete, this));
+    this.updateIsInProgress = {};
+    this.updateInitiator(_.bind(this.updateSuccess, this, this.updateIsInProgress),
+                         _.bind(this.updateError, this, this.updateIsInProgress));
   },
-  plug: function () {
+  plug: function (cancelCurrentUpdate) {
+    if (cancelCurrentUpdate && this.updateIsInProgress) {
+      this.updateIsInProgress.cancelled = true;
+      this.hadTickOverflow = false;
+      this.updateIsInProgress = false;
+    }
     if (this.plugged++ != 0)
       return;
     if (this.intervalHandle)
@@ -422,23 +509,31 @@ var UpdatesChannel = mkClass({
   }
 });
 
-var ChannelSupervisor = mkClass({
-  initialize: function () {
-    this.slaves = [];
+var CellControlledUpdateChannel = mkClass(UpdatesChannel, {
+  initialize: function (cell, period) {
+    var _super = $m(this, 'initialize', UpdatesChannel);
+    _super($m(this, 'updateInitiator'), period, true);
+    this.cell = cell;
+    this.cell.changedSlot.subscribeWithSlave($m(this, 'onCellChanged'));
+    this.cell.undefinedSlot.subscribeWithSlave($m(this, 'onCellUndefined'));
+    this.pluggedViaCell = true;
   },
-  register: function (slave) {
-    this.slaves.push(slave);
-    return slave;
+  onCellChanged: function () {
+    if (!this.pluggedViaCell)
+        this.plug(true);
+    this.pluggedViaCell = false;
+    this.unplug();
   },
-  plug: function () {
-    $.each(this.slaves, function () {
-      this.plug();
-    });
+  onCellUndefined: function () {
+    this.pluggedViaCell = true;
+    this.plug(true);
   },
-  unplug: function () {
-    $.each(this.slaves, function () {
-      this.unplug();
-    });
+  updateInitiator: function (okCallback, errorCallback) {
+    $.ajax(_.extend({type: 'GET',
+                     dataType: 'json',
+                     success: okCallback,
+                     error: errorCallback},
+                    this.cell.value));
   }
 });
 
@@ -450,53 +545,93 @@ var DAO = {
     else
       $(window).one('dao:ready', function () {thunk();});
   },
-  sectionSupervisors: {
-    overview: new ChannelSupervisor(),
-    alerts: new ChannelSupervisor(),
-    settings: new ChannelSupervisor()
-  },
   switchSection: function (section) {
-    var newSupervisor = this.sectionSupervisors[section];
-    if (!newSupervisor)
-      throw new Error('unknown section: ' + section);
-    if (this.currentSectionSupervisor)
-      this.currentSectionSupervisor.plug();
-    this.currentSectionSupervisor = newSupervisor;
-    newSupervisor.unplug();
+    DAO.cells.mode.setValue(section);
   },
-  createSimpleUpdater: function (section, path, args, period) {
-    var initiator = mkSimpleUpdateInitiator(path, args)
-    return this.sectionSupervisors[section].register(new UpdatesChannel(initiator,
-                                                                   period,
-                                                                   true));
-  },
-  getStatsAsync: deferringUntilReady(function (callback) {
-    // TODO: use current bucket
-    $.get('/buckets/default/stats', null, callback, 'json');
-  }),
-  getPoolList: deferringUntilReady(function (withBuckets, callback) {
-    $.get('/pools', {buckets: (withBuckets ? 1 : 0)}, callback, 'json');
-  }),
+  // getStatsAsync: deferringUntilReady(function (callback) {
+  //   // TODO: use current bucket
+  //   $.get('/buckets/default/stats', null, callback, 'json');
+  // }),
+  // getPoolList: deferringUntilReady(function (callback) {
+  //   $.get('/pools', {buckets: (withBuckets ? 1 : 0)}, callback, 'json');
+  // }),
   performLogin: function (login, password) {
     this.login = login;
     this.password = password;
-    $.post('/ping', {}, function () {
+    $.get('/pools', null, function (data) {
       DAO.ready = true;
       $(window).trigger('dao:ready');
-    });
+      DAO.cells.poolList.setValue(data);
+    }, 'json');
   }
 };
 
+function asyncAjaxCellValue(cell, options) {
+  $.ajax(_.extend({type: 'GET',
+                   dataType: 'json',
+                   success: function (data) {
+                     cell.setValue(data);
+                   }},
+                 options));
+}
+
 (function () {
-  var channels = {};
-  var overview = [['stats', '/buckets/default/stats', null, 1]];
-  $.each(overview, function () {
-    var duplicate = Array.apply(null, this);
-    duplicate[0] = 'overview';
-    channels[this[0]] = DAO.createSimpleUpdater.apply(DAO, duplicate);
-  });
-  DAO.channels = channels;
+  var modeCell = new Cell();
+  var poolListCell = new Cell();
+  // holds current pool description from pool list
+  var currentPoolCell = new Cell(function () {
+    return this.poolList.value && this.poolList.value[0];
+  }).setSources({poolList: poolListCell});
+
+  // pool details as obtained by retrieving pool uri
+  var currentPoolDetails = new Cell(function () {
+    if (!this.currentPool.value || this.mode.value != 'overview')
+      return;
+    asyncAjaxCellValue(this.self, {url: this.currentPool.value.uri});
+  }).setSources({currentPool: currentPoolCell, mode: modeCell});
+
+  // holds uri of current bucket
+  var currentBucketCell = new Cell(function () {
+    return this.pool.value && this.pool.value.defaultBucketURI;
+  }).setSources({pool: currentPoolCell});
+
+  var currentBucketDetailsCell = new Cell(function () {
+    if (!this.bucketURI.value || this.mode.value != 'overview')
+      return;
+    asyncAjaxCellValue(this.self, {url: this.bucketURI.value});
+  }).setSources({bucketURI: currentBucketCell, mode: modeCell});
+
+  var opStatsArgsCell = new Cell(function () {
+    if (!this.bucket.value)
+      return;
+    return {url: this.bucket.value.op_stats_uri};
+  }).setSources({bucket: currentBucketDetailsCell});
+  var opStatsChannel = new CellControlledUpdateChannel(opStatsArgsCell, 10);
+
+  var keyStatsArgsCell = new Cell(function () {
+    if (!this.bucket.value)
+      return;
+    return {url: this.bucket.value.key_stats_uri};
+  }).setSources({bucket: currentBucketDetailsCell});
+  var keyStatsChannel = new CellControlledUpdateChannel(keyStatsArgsCell, 10);
+
+  DAO.cells = {
+    mode: modeCell,
+    poolList: poolListCell,
+    currentPool: currentPoolCell,
+    currentPoolDetails: currentPoolDetails,
+    currentBucket: currentBucketCell,
+    currentBucketDetails: currentBucketDetailsCell
+  }
+  DAO.channels = {
+    opStats: opStatsChannel,
+    keyStats: keyStatsChannel
+  }
 })();
+
+function prepareTemplateForCell(templateName, cell) {
+  cell.undefinedSlot.subscribeWithSlave(_.bind(prepareRenderTemplate, null, templateName));
+}
 
 var OverviewSection = {
   updatePoolList: function (data) {
@@ -506,31 +641,42 @@ var OverviewSection = {
     prepareRenderTemplate('top_keys', 'server_list', 'pool_list');
   },
   onFreshStats: function (channel) {
-    var stats = channel.recentData;
-
-    StatGraphs.update(stats.stats);
-
-    renderTemplate('top_keys', $.map(stats.stats.hot_keys, function (e) {
-      return $.extend({}, e, {total: 0 + e.gets + e.misses});
-    }));
-    renderTemplate('server_list', stats.servers);
+    StatGraphs.update(channel.recentData);
+  },
+  init: function () {
+    DAO.channels.opStats.slot.subscribeWithSlave($m(this, 'onFreshStats'));
+    prepareTemplateForCell('top_keys', DAO.cells.currentBucketDetails);
+    prepareTemplateForCell('pool_list', DAO.cells.poolList);
+    prepareTemplateForCell('server_list', DAO.cells.currentPoolDetails);
   },
   onEnter: function () {
-    this.clearUI();
+    // var self = this;
 
-    DAO.getPoolList(true, _.bind(this.updatePoolList, this));
-    DAO.getStatsAsync(function (stats) {
-      StatGraphs.update(stats.stats);
+    // self.clearUI();
+    // DAO.channels.stats.plug();
 
-      renderTemplate('top_keys', $.map(stats.stats.hot_keys, function (e) {
-        return $.extend({}, e, {total: 0 + e.gets + e.misses});
-      }));
-      renderTemplate('server_list', stats.servers);
-    });
+    // DAO.getPoolList(function (data) {
+    //   self.updatePoolList();
+    //   self.poolList = data;
+    //   self.poolListUpdates.broadcast();
+    //   self.currentPool = data[0];
+    //   self.currentBucket = self.currentPool.buckets[0];
+    // });
+
+    // self.poolListUpdates.subscribeWithSlave(function () {
+      
+    // });
+
+    // DAO.getStatsAsync(function (stats) {
+    //   StatGraphs.update(stats.stats);
+
+    //   renderTemplate('top_keys', $.map(stats.stats.hot_keys, function (e) {
+    //     return $.extend({}, e, {total: 0 + e.gets + e.misses});
+    //   }));
+    //   renderTemplate('server_list', stats.servers);
+    // });
   }
 };
-
-DAO.channels.stats.slot.subscribeWithSlave(_.bind(OverviewSection.onFreshStats, OverviewSection));
 
 var DummySection = {
   onEnter: function () {}
@@ -549,6 +695,7 @@ var ThePage = {
     $.bbq.pushState({sec: section});
   },
   initialize: function () {
+    OverviewSection.init();
     var self = this;
     DAO.onReady(function () {
       $(window).bind('hashchange', function () {
@@ -590,7 +737,7 @@ function loginFormSubmit() {
 }
 
 window.nav = {
-  go: _.bind(ThePage.gotoSection, ThePage)
+  go: $m(ThePage, 'gotoSection')
 };
 
 $(function () {
