@@ -16,7 +16,7 @@
 % cmd(version, Sock, RecvCallback, Entry) ->
 %     send_recv(Sock, RecvCallback, #mc_header{opcode = ?VERSION}, Entry, <<"OK">>);
 
-cmd(get, Sock, RecvCallback, #mc_entry{keys = Keys}) ->
+cmd(get, Sock, RecvCallback, Keys) when is_list(Keys) ->
     ok = send(Sock,
               lists:map(fun (K) -> encode(req,
                                           #mc_header{opcode = ?GETKQ},
@@ -107,7 +107,7 @@ get_test_match(Sock, Key, Data) ->
                        ?assertMatch(Key, E#mc_entry.key),
                        ?assertMatch(Data, E#mc_entry.data)
                    end,
-                   #mc_entry{keys = [Key]}),
+                   [Key]),
     ?assertMatch(RB, <<"END">>),
     ?assertMatch([{nvals, 1}], ets:lookup(D, nvals)).
 
@@ -121,7 +121,7 @@ get_test() ->
         {ok, RB} = cmd(get, Sock,
                        fun (_H, _E) -> ?assert(false) % Should not get here.
                        end,
-                       #mc_entry{keys = [<<"ccc">>, <<"bbb">>]}),
+                       [<<"ccc">>, <<"bbb">>]),
         ?assertMatch(RB, <<"END">>),
         ?assertMatch([{nvals, 0}], ets:lookup(D, nvals))
     end)(),
@@ -134,7 +134,7 @@ get_test() ->
                            ?assertMatch(<<"aaa">>, E#mc_entry.key),
                            ?assertMatch(<<"AAA">>, E#mc_entry.data)
                        end,
-                       #mc_entry{keys = [<<"aaa">>, <<"bbb">>]}),
+                       [<<"aaa">>, <<"bbb">>]),
         ?assertMatch(RB, <<"END">>),
         ?assertMatch([{nvals, 1}], ets:lookup(D, nvals))
     end)(),
@@ -147,7 +147,7 @@ get_test() ->
                            ?assertMatch(<<"aaa">>, E#mc_entry.key),
                            ?assertMatch(<<"AAA">>, E#mc_entry.data)
                        end,
-                       #mc_entry{keys = [<<"aaa">>, <<"aaa">>, <<"bbb">>]}),
+                       [<<"aaa">>, <<"aaa">>, <<"bbb">>]),
         ?assertMatch(RB, <<"END">>),
         ?assertMatch([{nvals, 2}], ets:lookup(D, nvals))
     end)(),
@@ -174,7 +174,7 @@ delete_test() ->
         {ok, RB} = cmd(get, Sock,
                        fun (_H, _E) -> ?assert(false) % Should not get here.
                        end,
-                       #mc_entry{keys = [<<"aaa">>, <<"bbb">>]}),
+                       [<<"aaa">>, <<"bbb">>]),
         ?assertMatch(RB, <<"END">>)
     end)(),
     ok = gen_tcp:close(Sock).

@@ -16,7 +16,11 @@
 cmd(version, Sock, RecvCallback, _Entry) ->
     send_recv(Sock, <<"version\r\n">>, RecvCallback);
 
-cmd(get, Sock, RecvCallback, #mc_entry{keys = Keys}) ->
+cmd(get, Sock, RecvCallback, #mc_entry{key = Key}) ->
+    ok = send(Sock, [<<"get ">>, Key, <<"\r\n">>]),
+    get_recv(Sock, RecvCallback);
+
+cmd(get, Sock, RecvCallback, Keys) when is_list(Keys) ->
     ok = send(Sock, [<<"get ">>,
                      lists:map(fun (K) -> [K, <<" ">>] end,
                                Keys),
@@ -160,16 +164,17 @@ get_test() ->
                        fun (Line, Entry) ->
                           ?assertMatch(Line, <<"VALUE aaa 0 3">>),
                           ?assertMatch(Entry,
-                                       #mc_entry{key = <<"aaa">>, data = <<"AAA">>})
+                                       #mc_entry{key = <<"aaa">>,
+                                                 data = <<"AAA">>})
                        end,
-                       #mc_entry{keys = [<<"aaa">>, <<"notkey1">>, <<"notkey2">>]}),
+                       [<<"aaa">>, <<"notkey1">>, <<"notkey2">>]),
         ?assertMatch(RB, <<"END">>),
 
         {ok, RB1} = cmd(get, Sock,
                         fun (_Line, _Entry) ->
                            ?assert(false) % Not supposed to get here.
                         end,
-                        #mc_entry{keys = [<<"notkey0">>, <<"notkey1">>]}),
+                        [<<"notkey0">>, <<"notkey1">>]),
         ?assertMatch(RB1, <<"END">>)
     end)(),
 

@@ -54,8 +54,8 @@ cmd_binary(?NOOP, _Sock, RecvCallback, _Entry) ->
 cmd_binary(?VERSION, _S, _RC, _E) -> exit(todo);
 cmd_binary(?GETK, _S, _RC, _E) -> exit(todo);
 
-cmd_binary(?GETKQ, Sock, RecvCallback, #mc_entry{keys = Keys}) ->
-    cmd(get, Sock, RecvCallback, #mc_entry{keys = Keys});
+cmd_binary(?GETKQ, Sock, RecvCallback, Entry) ->
+    cmd(get, Sock, RecvCallback, Entry);
 
 cmd_binary(?APPEND, _S, _RC, _E) -> exit(todo);
 cmd_binary(?PREPEND, _S, _RC, _E) -> exit(todo);
