@@ -47,17 +47,19 @@ foreach_addr(#mc_bucket{addrs = Addrs}, VisitorFun) ->
 
 % ------------------------------------------------
 
-bucket_test() ->
-    (fun () ->
-        B1 = create(pool1, [a1], buck1),
-        ?assertMatch({key1, a1}, choose_addr(B1, key1)),
-        ?assertMatch({key2, a1}, choose_addr(B1, key2)),
-        ?assertMatch([{key3, a1}, {key4, a1}],
-                     choose_addr(B1, [key3, key4])),
-        ?assertMatch({key5, [a1]}, choose_addrs(B1, key5, 1)),
-        ?assertMatch({key6, [a1]}, choose_addrs(B1, key6, 1)),
-        ?assertMatch([{key7, [a1]}, {key8, [a1]}],
-                     choose_addrs(B1, [key7, key8], 1)),
-        ok
-     end)().
+choose_addr_test() ->
+    B1 = create(pool1, [a1], buck1),
+    ?assertMatch({key1, a1}, choose_addr(B1, key1)),
+    ?assertMatch({key2, a1}, choose_addr(B1, key2)),
+    ?assertMatch([{key3, a1}, {key4, a1}],
+                 choose_addr(B1, [key3, key4])),
+    ok.
+
+choose_addrs_test() ->
+    B1 = create(pool1, [a1], buck1),
+    ?assertMatch({key5, [a1]}, choose_addrs(B1, key5, 1)),
+    ?assertMatch({key6, [a1]}, choose_addrs(B1, key6, 1)),
+    ?assertMatch([{key7, [a1]}, {key8, [a1]}],
+                 choose_addrs(B1, [key7, key8], 1)),
+    ok.
 
