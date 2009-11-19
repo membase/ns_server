@@ -42,8 +42,8 @@ choose_addrs(#mc_bucket{addrs = Addrs}, Key, N) ->
     % TODO: A proper consistent hashing.
     {Key, lists:sublist(Addrs, N)}.
 
-foreach_addr(#mc_bucket{addrs = Addrs}, VisitorFun) ->
-    lists:foreach(VisitorFun, Addrs).
+addrs(#mc_bucket{addrs = Addrs}) ->
+    Addrs.
 
 % ------------------------------------------------
 
