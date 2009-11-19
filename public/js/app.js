@@ -1,5 +1,5 @@
 if (!('console' in window))
-  window.console.log = function () {};
+  window.console = {log: function () {}};
 
 /**
 *
