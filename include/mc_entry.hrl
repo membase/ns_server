@@ -14,3 +14,7 @@
                     bodylen = undefined,
                     opaque = 0}).
 
+-record(mc_pool, {addrs = [], buckets = []}).
+
+-record(mc_bucket, {pool, addrs, key}).
+

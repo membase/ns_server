@@ -2,6 +2,10 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-include("mc_constants.hrl").
+
+-include("mc_entry.hrl").
+
 -compile(export_all).
 
 %% API for buckets.
@@ -9,10 +13,8 @@
 %% TODO: A proper implementation.
 %% TODO: Consider replacing implementation with gen_server.
 
--record(mc_bucket, {pool, addrs = []}).
-
-create(Pool, Addrs) ->
-    #mc_bucket{pool = Pool, addrs = Addrs}.
+create(Pool, BucketAddrs, BucketKey) ->
+    #mc_bucket{pool = Pool, addrs = BucketAddrs, key = BucketKey}.
 
 % Choose the Addr that should contain the Key.
 choose_addr(#mc_bucket{addrs = Addrs}, _Key) ->

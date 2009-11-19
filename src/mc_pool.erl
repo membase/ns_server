@@ -2,16 +2,16 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-include("mc_constants.hrl").
+
+-include("mc_entry.hrl").
+
 -compile(export_all).
 
 %% API for pool.
 
 %% TODO: A proper implementation.
 %% TODO: Consider replacing implementation with gen_server.
-
--record(mc_pool, {addrs = [], buckets = []}).
-
--record(mc_bucket, {key}).
 
 create() ->
     create(["127.0.0.1:11211"]).
