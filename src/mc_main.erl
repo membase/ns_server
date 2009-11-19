@@ -43,7 +43,7 @@ init(PortNum, Handler) ->
 accept_loop(LS, {ModuleName, Args} = Handler) ->
     {ok, NS} = gen_tcp:accept(LS),
     ?debugFmt("accept ~p~n", [NS]),
-    Pid = spawn(ModuleName, [NS, Args]),
+    Pid = spawn(ModuleName, session, [NS, Args]),
     gen_tcp:controlling_process(NS, Pid),
     accept_loop(LS, Handler).
 
