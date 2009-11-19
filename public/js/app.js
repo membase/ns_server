@@ -242,17 +242,6 @@ $.ajaxSetup({
   }
 });
 
-// port of bind() from prototype.js
-Function.prototype.bind = function () {
-  var self = this;
-  var args = $.makeArray(arguments);
-  var forThis = args.shift();
-  return function () {
-    return self.apply(forThis, args.concat($.makeArray(arguments)));
-  }
-};
-
-
 function deferringUntilReady(body) {
   return function () {
     if (DAO.ready) {
@@ -384,7 +373,7 @@ var UpdatesChannel = mkClass({
     if (this.intervalHandle)
       cancelInterval(this.intervalHandle);
     this.period = period;
-    setInterval(this.tickHandler.bind(this), this.period*1000);
+    setInterval(_.bind(this.tickHandler, this), this.period*1000);
     if (!this.updateIsInProgress)
       this.initiateUpdate();
   },
@@ -417,8 +406,8 @@ var UpdatesChannel = mkClass({
     if (this.plugged)
       return;
     this.updateIsInProgress = true;
-    this.updateInitiator(this.updateSuccess.bind(this),
-                         this.updateComplete.bind(this));
+    this.updateInitiator(_.bind(this.updateSuccess, this),
+                         _.bind(this.updateComplete, this));
   },
   plug: function () {
     if (this.plugged++ != 0)
@@ -529,7 +518,7 @@ var OverviewSection = {
   onEnter: function () {
     this.clearUI();
 
-    DAO.getPoolList(true, this.updatePoolList.bind(this));
+    DAO.getPoolList(true, _.bind(this.updatePoolList, this));
     DAO.getStatsAsync(function (stats) {
       StatGraphs.update(stats.stats);
 
@@ -541,7 +530,7 @@ var OverviewSection = {
   }
 };
 
-DAO.channels.stats.slot.subscribeWithSlave(OverviewSection.onFreshStats.bind(OverviewSection));
+DAO.channels.stats.slot.subscribeWithSlave(_.bind(OverviewSection.onFreshStats, OverviewSection));
 
 var DummySection = {
   onEnter: function () {}
@@ -601,7 +590,7 @@ function loginFormSubmit() {
 }
 
 window.nav = {
-  go: ThePage.gotoSection.bind(ThePage)
+  go: _.bind(ThePage.gotoSection, ThePage)
 };
 
 $(function () {
