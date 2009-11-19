@@ -15,4 +15,5 @@ test() ->
     mc_binary:test(),
     mc_client_binary:test(),
     mc_client_binary_ac:test(),
+    mc_bucket:test(),
     ok.
