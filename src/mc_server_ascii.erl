@@ -17,7 +17,7 @@ process(Sock, {ModName, ApplyArgs}, Line) ->
     {ok, {ModName, ApplyArgs2}}.
 
 session(UpstreamSock, Args) ->
-    {ok, Line} =  mc_ascii:recv_line(UpstreamSock),
+    {ok, Line} = mc_ascii:recv_line(UpstreamSock),
     {ok, Args2} = process(UpstreamSock, Args, Line),
     session(UpstreamSock, Args2).
 
