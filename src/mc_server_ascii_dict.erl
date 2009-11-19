@@ -13,6 +13,9 @@
 
 -record(mc_session_dict, {cas = 0, tbl = dict:new()}).
 
+create_dict() ->
+    #mc_session_dict{}.
+
 cmd(get, Dict, Sock, []) ->
     mc_ascii:send(Sock, <<"END\r\n">>),
     {ok, Dict};
@@ -58,5 +61,5 @@ bin_size(Binary) -> size(Binary).
 main() ->
     mc_main:start(11222,
                   {mc_server_ascii, session,
-                   {mc_server_ascii_dict, #mc_session_dict{}}}).
+                   {mc_server_ascii_dict, create_dict()}}).
 

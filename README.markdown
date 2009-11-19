@@ -4,34 +4,28 @@ This is the 'smart service' part of the NorthScale Server.
 
 Originally forked from ememcached.
 
-# ememcached
-
-This is a toolkit for building memcached servers in erlang using the
-memcached binary protocol.
-
 ## Quick Start
 
 The basic idea is that there will be one server that understands
 commands and can issue responses.  A sample implementation is provided
-that uses an in-memory hash table.  You can try it out like this:
+that uses an in-memory hash table per session.  You can try it out
+like this:
 
-    1> {ok, S} = mc_handler_hashtable:start_link().
-    {ok,<0.34.0>}
-    2> mc_tcp_listener:start_link(11213, S).
-    {ok,<0.36.0>}
+    erl -pa ebin -s mc_server_ascii_dict main
 
-Then connect to port 11213 with your favorite memcached binary
+Then connect to port 11222 with your favorite memcached binary
 protocol client.
 
 ## Slow Start
 
 So you want to write your own backend?  No problem.  Take a look at
-`mc_handler_hashtable` for an example backend implementing
-`gen_server` that handles a few commands.
-
-Not all of the commands are defined yet, so there aren't hugely
-comprehensive examples, but hopefully there's enough there to get the idea.
+`mc_server_ascii_dict` for an example backend that implements a few
+ascii protocol commands.
 
 ## License
 
-MIT or something...  I made this for you!
+MPL - We made this for you!
+
+## TODO
+
+- Add MPL headers to each file.
