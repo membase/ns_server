@@ -8,15 +8,26 @@
 
 -compile(export_all).
 
-process(Sock, {ModName, ApplyArgs}, Header, Entry) ->
+process(InSock, OutPid, {ModName, ApplyArgs}, {Header, _Entry} = HeaderEntry) ->
     Cmd = Header#mc_header.opcode,
     {ok, ApplyArgs2} = apply(ModName, cmd,
-                             [Cmd, ApplyArgs, Sock, {Header, Entry}]),
+                             [Cmd, ApplyArgs,
+                              InSock, OutPid, HeaderEntry]),
     % TODO: Need error handling here, to send UNKNOWN_COMMAND status.
     {ok, {ModName, ApplyArgs2}}.
 
 session(UpstreamSock, Args) ->
-    {ok, Header, Entry} = mc_binary:recv(UpstreamSock, req),
-    {ok, Args2} = process(UpstreamSock, Args, Header, Entry),
-    session(UpstreamSock, Args2).
+    OutPid = spawn_link(?MODULE, loop_out, [UpstreamSock]),
+    loop_in(UpstreamSock, OutPid, Args).
 
+loop_in(InSock, OutPid, Args) ->
+    {ok, Header, Entry} = mc_binary:recv(InSock, req),
+    {ok, Args2} = process(InSock, OutPid, Args, {Header, Entry}),
+    loop_in(InSock, OutPid, Args2).
+
+loop_out(OutSock) ->
+    receive
+        {send, Data} ->
+            ok = mc_binary:send(OutSock, Data),
+            loop_out(OutSock)
+    end.
