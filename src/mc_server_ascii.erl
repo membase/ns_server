@@ -8,14 +8,14 @@
 
 -compile(export_all).
 
-process(InSock, OutPid, {ModName, ApplyArgs}, Line) ->
+process(InSock, OutPid, {ModName, SessData}, Line) ->
     [Cmd | CmdArgs] = string:tokens(binary_to_list(Line), " "),
-    {ok, ApplyArgs2} = apply(ModName, cmd,
-                             [list_to_atom(Cmd), ApplyArgs,
-                              InSock, OutPid, CmdArgs]),
+    {ok, SessData2} = apply(ModName, cmd,
+                            [list_to_atom(Cmd), SessData,
+                             InSock, OutPid, CmdArgs]),
     % TODO: Need error handling here, to send ERROR on unknown cmd.
     % TODO: Does the connection close during other process exit/error?
-    {ok, {ModName, ApplyArgs2}}.
+    {ok, {ModName, SessData2}}.
 
 session(UpstreamSock, Args) ->
     OutPid = spawn_link(?MODULE, loop_out, [UpstreamSock]),

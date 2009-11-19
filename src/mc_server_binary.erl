@@ -8,13 +8,13 @@
 
 -compile(export_all).
 
-process(InSock, OutPid, {ModName, ApplyArgs}, {Header, _Entry} = HeaderEntry) ->
+process(InSock, OutPid, {ModName, SessData}, {Header, _Entry} = HeaderEntry) ->
     Cmd = Header#mc_header.opcode,
-    {ok, ApplyArgs2} = apply(ModName, cmd,
-                             [Cmd, ApplyArgs,
-                              InSock, OutPid, HeaderEntry]),
+    {ok, SessData2} = apply(ModName, cmd,
+                            [Cmd, SessData,
+                             InSock, OutPid, HeaderEntry]),
     % TODO: Need error handling here, to send UNKNOWN_COMMAND status.
-    {ok, {ModName, ApplyArgs2}}.
+    {ok, {ModName, SessData2}}.
 
 session(UpstreamSock, Args) ->
     OutPid = spawn_link(?MODULE, loop_out, [UpstreamSock]),
