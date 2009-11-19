@@ -4,18 +4,20 @@ title: kvstore REST APIs
 ---
 # caching kvstore APIs
 
-Version 20091117
+Version 20091118
 
 This document specifies request and response for both the Management Console
 (management channel) and the KVStore itself (data channel) when talking to
 a caching kvstore (a.k.a. NorthScale Enterprise Storage).
+
+Note, *Reveal* referred to in this document is code for 1.0.
 
 # Assumptions
 
 ## General
 
 JSON is the only response type the system is capable of at the moment, as
-specified under RFC4267.
+specified under [RFC 4627](http://www.ietf.org/rfc/rfc4627.txt).
 
 Authentication will be HTTP Basic, generally over SSL/TLS.  There may be some
 non-authenticated content to bootstrap browser based user interfaces that then use
@@ -130,7 +132,8 @@ RESTful endpoints in the representation of the item one would control.
 
 ## Resources
 
-* Cluster - A logically addressable group of pools (this may not be in _Reveal_).
+* Cluster - A logically addressable group of pools (this is not in Reveal, and
+is not discussed any further in this document).
 * Pool - A collection of physical resources grouped together and providing
 services and a management interface.  A member of a pool is a Node.
 ** Statistics - Pools provide an overall pool level data view of counters and
@@ -147,75 +150,12 @@ otherwise handled is defined at the bucket level.
 periodic metrics of the overall system.  Historic storage of statistics can be
 configured and queried.  These counters and metrics are specific to the bucket.
 
-Operations for resources:
-
-Some thoughts on operations...
-
-GET https://node.in.pool.com/ui
-(in this case, presuming the user agent is a browser)
-serve up a repre
-
-GET https://node.in.pool.com/pool
-
-response 200: list of pools
-
-GET /pool/Default Pool (human readable pool name)
- - or -
-GET /pool/1 (synthetic pool ID, perhaps should be a GUID)
-
-response 200: list of buckets (common name and GUID) and links to buckets
-
-POST /pool/My New Pool
-{
-   "name" : "My New Pool"
-}
-
-
-response 201: pool was created and valid URIs for referencing it returned
- - or -
-response 403: user is not authorized (or no users are authorized because it
-is administratively disabled to all users)
-
-POST /pool/My New Pool/New bucket
-{
-   "name" : "New bucket"
-}
-
-response 201: bucket was created and valid URIs returned
-
-
-POST /pool/My New Pool/Another bucket
-{
-   "name" : "Another bucket"
-   "bucketrules" : [ @todo what are the rules? ]
-}
-
-
-
-GET /pool/My New Pool/New bucket
-
-response 200: representation providing URIs for
-a pagenated list of items
-& a link to where individual items may be addressed.
-& a link to the bucket storage handling rules
-& a link to the bucket statistics
-
-PUT /pool/My New Pool/New bucket/New item
-
-
-response 201: created with URIs in header
- - or -
-response 200: representation of created object (useful for CAS on items)
-
-
-@todo finish description
-
-# Service Groupings
-
 ## Bootstrapping
 
-To behave correctly a few things must be bootstrapped.  This
-is done via the initial request/response outlined below.
+
+To behave correctly a few things must be bootstrapped.  Clients can bootstrap
+themselves by looking for pools in a given system.  This is done via the initial
+request/response outlined below.
 
 The URI space, in NorthScale's implementation may appear to have very specific
 URI and in some ways may even appear as RPC or some other architectural style
@@ -223,7 +163,7 @@ using HTTP operations and semantics.  That is only an artifact of the
 URIs NorthScale chose.
 
 Clients are advised to be (and NorthScale clients will
-be) properly REST and will not expect to receive any handling instructions
+be) properly RESTful and will not expect to receive any handling instructions
 resource descriptions or presume any conventions on URI structure for resources
 represented.
 
@@ -269,14 +209,166 @@ of representations, since they are similar for different parts of the heirarchy.
 }
 </code>
 
+At *Reveal*, only one pool per group of systems will be known and it will likely
+be defaulted to a name.  POSTing back a changed pool will return a 403.
+
 As can be seen, the "build" number of the implementation is apparent in the
 implementation_version, the specifications supported are apparent in the
 specficiation_version.  While this node can only be a member of one pool, there
 is flexibility which allows for any given node to be aware of other pools.
 
 The Client-Specificaion-Version is optional in the request, but advised.  It
-allows for implementations to adjust to adjust representation and state 
+allows for implementations to adjust to adjust representation and state
 transitions to the client, if backward compatibility is desirable.
+
+###Pool Details
+
+<code class="restcalls">
+ GET /pool/Default Pool
+ Host: node.in.your.pool.com
+ Authorization: Basic xxxxxxxxxxxxxxxxxxx
+ Accept: application/com.northscale.store+json
+ X-memcachekv-Store-Client-Specification-Version: 0.1
+</code>
+
+Note, this could also have been a GET operation to the pool's GUID instead of
+the human readable pool name.
+
+<code class="json">
+ HTTP/1.1 200 OK
+ Content-Type: application/com.northscale.store+json
+ Content-Length: nnn
+
+{
+  "name" : "Default Pool",
+  "id" : 1
+  "node" : [
+    {
+      "name" : "first_node",
+      "uri" : "https://first_node.in.pool.com:80/pool/Default Pool/node/first_node/",
+      "fqdn" : "first_node.in.pool.com",
+      "ip_address" : "10.0.1.20",
+      "running" : true,
+      "ports" : [ 11211 ]
+    },
+    {
+      "name" : "second_node",
+      "uri" : "https://second_node.in.pool.com:80/pool/Default Pool/node/second_node/",
+      "fqdn" : "second_node.in.pool.com",
+      "ip_address" : "10.0.1.21",
+      "running" : true,
+      "ports" : [ 11211 ]
+    }
+  ]
+  "bucket" : [
+     "name" : "yourbucket",
+     "guid" : "xxxxxxxxxxxx",
+     [
+     "uri" : "https://node.in.pool.com/pool/Default Pool/bucket/yourbucket",
+     "uri" : "https://node.in.pool.com/pool/Default Pool/bucket/GUID-xxxxxxxxxxxx"
+     ]
+  ]
+  "default-bucket" [
+  "controller" : {
+    "backup" : {
+      "uri" : "ops/start-backup"
+    }
+  }
+}
+</code>
+
+####Node Details
+
+<code class="restcalls">
+ GET https://first_node.in.pool.com:80/pool/Default Pool/node/first_node/
+ Host: node.in.your.pool.com
+ Authorization: Basic xxxxxxxxxxxxxxxxxxx
+ Accept: application/com.northscale.store+json
+ X-memcachekv-Store-Client-Specification-Version: 0.1
+</code>
+
+
+<code>
+{
+  "name" : "first_node",
+  "threads" : 8,
+  "cache" : "3gb",
+  "running" : true,
+  "port" : 12312,
+  "os" : "none",
+  "version" : "123",
+  "uptime" : 1231293
+}
+</code>
+
+In Javascript, this would lead to being able to, for instance, be able to address
+a URI of the
+
+###Previous thoughts
+
+Operations for resources:
+
+Some thoughts on operations...
+
+GET https://node.in.pool.com/ui
+(in this case, presuming the user agent is a browser)
+serve up a repre
+
+GET https://node.in.pool.com/pool
+
+response 200: list of pools
+
+GET /pool/Default Pool (human readable pool name)
+ - or -
+GET /pool/1 (synthetic pool ID, perhaps should be a GUID)
+
+response 200: list of buckets (common name and GUID) and links to buckets
+
+POST /pool/My New Pool
+{
+   "name" : "My New Pool"
+}
+
+
+response 201: pool was created and valid URIs for referencing it returned
+ - or -
+response 403: user is not authorized (or no users are authorized because it
+is administratively disabled to all users)
+
+POST /pool/My New Pool/New bucket
+{
+   "name" : "New bucket"
+}
+
+response 201: bucket was created and valid URIs returned
+
+
+POST /pool/My New Pool/bucket/Another bucket
+{
+   "name" : "Another bucket"
+   "bucketrules" : [ @todo what are the rules? ]
+}
+
+
+
+GET /pool/My New Pool/New bucket
+
+response 200: representation providing URIs for
+a pagenated list of items
+& a link to where individual items may be addressed.
+& a link to the bucket storage handling rules
+& a link to the bucket statistics
+
+PUT /pool/My New Pool/New bucket/New item
+
+
+response 201: created with URIs in header
+ - or -
+response 200: representation of created object (useful for CAS on items)
+
+
+@todo finish description
+
 
 ## Independent of management channel and data channel
 Authentication
@@ -298,7 +390,7 @@ For instance...
 *Request*
 
 <code class="restcalls">
- GET /pool
+ GET /pool/Default Pool
  Host: node.in.your.pool.com
  Authorization: Basic xxxxxxxxxxxxxxxxxxx
  Accept: application/com.northscale.store+json
@@ -319,11 +411,24 @@ For instance...
       {
         "name": "10.0.1.20",
         "uri": "/addresses/10.0.1.20",
-        "ip_address": "10.0.1.20"
+        "ip_address": "10.0.1.20",
+        "status" : [
+         ]
+        "
       }
     ]
+    "buckets" : [
+       name: "yourbucket"
+       guid: lksjdflskjdlfj
+       uri: "https://node.in.pool.com/pool/Default Pool/bucket/yourbucket"
+uri: "https://node.in.pool.com/pool/Default Pool/bucket/GUID-lksjfdfdsfd"
+     ]
   }
- ]
+    "controllers" : {
+      backup: {
+        uri: "https://slkdfjlsfkdjf/startbackup
+      }
+]
 </code>
 
 ###List buckets and bucket operations
@@ -350,3 +455,4 @@ have been referenced.
 * 20091113 First publishing (matt.ingenthron@northscale.com)
 * 20091115 Updated with some operations (matt.ingenthron@northscale.com)
 * 20091117 Updated after defending REST and HTTP in discussion with Steve (matt.ingenthron@northscale.com)
+* 20091118 Fleshed out details on the requests and responses (matt.ingenthron@northscale.com)
