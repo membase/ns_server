@@ -24,6 +24,9 @@ send_recv(Sock, IoList, RecvCallback) ->
     end,
     RV.
 
+send(Out, CmdNum, Data) ->
+    Out ! {send, CmdNum, Data}.
+
 send(_Sock, undefined) -> ok;
 send(_Sock, <<>>) -> ok;
 send(Sock, List) when is_list(List) -> send(Sock, iolist_to_binary(List));
