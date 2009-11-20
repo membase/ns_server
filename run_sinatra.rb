@@ -106,6 +106,7 @@ class DAO
                     :ports => [ 11211 ]
                   }
                  ],
+        :stats => {:uri => '/buckets/4/stats'}, # yes we're using bucket stats for now. It's fake anyway
         :default_bucket_uri => '/buckets/4'
       }
     else
@@ -151,35 +152,39 @@ class DAO
     {
       :name => 'Excerciser Application',
       :pool_uri => "asdasdasdasd",
-      :op_stats_uri => "/buckets/4/op_stats",
-      :key_stats_uri => "/buckets/4/key_stats"
+      :stats_uri => "/buckets/4/stats",
     }
   end
 
-  def op_stats(bucket_id)
-    {"gets"=>[25, 10, 5, 46, 100, 74],
-      "misses"=>[100, 74, 25, 10, 5, 46],
-      "sets"=>[74, 25, 10, 5, 46, 100],
-      "ops"=>[10, 5, 46, 100, 74, 25]}    
-  end
-
-  def key_stats(bucket_id)
-    [{"gets"=>10000,
-       "name"=>"user:image:value",
-       "misses"=>100,
-       "type"=>"Persistent"},
-     {"gets"=>10000,
-       "name"=>"user:image:value2",
-       "misses"=>100,
-       "type"=>"Cache"},
-     {"gets"=>10000,
-       "name"=>"user:image:value3",
-       "misses"=>100,
-       "type"=>"Persistent"},
-     {"gets"=>10000,
-       "name"=>"user:image:value4",
-         "misses"=>100,
-       "type"=>"Cache"}]
+  def stats(bucket_id)
+    {
+      "op" => {
+        "tstamp" => Time.now.to_i*1000,
+        "gets"=>[25, 10, 5, 46, 100, 74],
+        "misses"=>[100, 74, 25, 10, 5, 46],
+        "sets"=>[74, 25, 10, 5, 46, 100],
+        "ops"=>[10, 5, 46, 100, 74, 25]},
+      "hot_keys" => [{"gets"=>10000,
+                       "name"=>"user:image:value",
+                       "misses"=>100,
+                       "bucket" => "Excerciser application",
+                       "type"=>"Persistent"},
+                     {"gets"=>10000,
+                       "name"=>"user:image:value2",
+                       "misses"=>100,
+                       "bucket" => "Excerciser application",
+                       "type"=>"Cache"},
+                     {"gets"=>10000,
+                       "name"=>"user:image:value3",
+                       "misses"=>100,
+                       "bucket" => "Excerciser application",
+                       "type"=>"Persistent"},
+                     {"gets"=>10000,
+                       "name"=>"user:image:value4",
+                       "misses"=>100,
+                       "bucket" => "Excerciser application",
+                       "type"=>"Cache"}]
+    }
   end
 end
 
@@ -204,12 +209,7 @@ user_get "/buckets/:id" do
   JSON.unparse(DAO.current.bucket_info(params[:id].to_i))
 end
 
-user_get "/buckets/:id/op_stats" do
+user_get "/buckets/:id/stats" do
   response['Content-Type'] = 'application/json'
-  JSON.unparse(DAO.current.op_stats(params[:id].to_i))
-end
-
-user_get "/buckets/:id/key_stats" do
-  response['Content-Type'] = 'application/json'
-  JSON.unparse(DAO.current.key_stats(params[:id].to_i))
+  JSON.unparse(DAO.current.stats(params[:id].to_i))
 end
