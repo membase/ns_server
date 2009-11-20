@@ -8,9 +8,9 @@
 %
 % Example:
 %
-%   mc_accept:start(PortNum, {ProtocolModule, ProcessorEnv}).
+%   mc_accept:start(PortNum, {ProtocolModule, ProcessorModule, ProcessorEnv}).
 %
-%   mc_accept:start(11222, {mc_server_ascii, {mc_server_ascii_dict, {}}}).
+%   mc_accept:start(11222, {mc_server_ascii, mc_server_ascii_dict, {}}).
 %
 % A server ProtocolModule must implement callbacks of...
 %
@@ -19,7 +19,7 @@
 %
 % A server ProcessorModule must implement callbacks of...
 %
-%   session(SessionSock, ProcessorEnv)
+%   session(SessionSock, ProcessorEnv, ProtocolModule)
 %   cmd(...)
 %
 start(PortNum, Env) ->
@@ -36,16 +36,16 @@ init(PortNum, Env) ->
     accept_loop(LS, Env).
 
 % Accept incoming connections.
-accept_loop(LS, {ProtocolModule, {ProcessorModule, ProcessorEnv}}) ->
+accept_loop(LS, {ProtocolModule, ProcessorModule, ProcessorEnv}) ->
     {ok, NS} = gen_tcp:accept(LS),
     ?debugFmt("accept ~p~n", [NS]),
     % Ask the processor for a new session object.
     {ok, ProcessorEnv2, ProcessorSession} =
-        apply(ProcessorModule, session, [NS, ProcessorEnv]),
+        apply(ProcessorModule, session, [NS, ProcessorEnv, ProtocolModule]),
     Pid = spawn(?MODULE, session,
                 [NS, ProtocolModule, ProcessorModule, ProcessorSession]),
     gen_tcp:controlling_process(NS, Pid),
-    accept_loop(LS, {ProtocolModule, {ProcessorModule, ProcessorEnv2}}).
+    accept_loop(LS, {ProtocolModule, ProcessorModule, ProcessorEnv2}).
 
 % The main entry-point/driver for a session process.
 session(Sock, ProtocolModule, ProcessorModule, ProcessorSession) ->
