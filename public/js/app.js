@@ -559,6 +559,8 @@ var DAO = {
   }
 };
 
+// TODO: need special ajax valued cell type so that we can avoid DoS-ing
+// server with duplicate requests
 function asyncAjaxCellValue(cell, options) {
   $.ajax(_.extend({type: 'GET',
                    dataType: 'json',
