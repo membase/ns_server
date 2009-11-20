@@ -4,7 +4,7 @@ title: kvstore REST APIs
 ---
 # caching kvstore APIs
 
-Version 20091118
+Version 20091119
 
 This document specifies request and response for both the Management Console
 (management channel) and the KVStore itself (data channel) when talking to
@@ -150,8 +150,19 @@ otherwise handled is defined at the bucket level.
 periodic metrics of the overall system.  Historic storage of statistics can be
 configured and queried.  These counters and metrics are specific to the bucket.
 
-## Bootstrapping
+## User Interface
 
+The User Interface shipped by NorthScale is designed to load and run in a common
+Web Browser user agent.  The UI will be composed mainly of HTML, Images, CSS and
+Javascript.  It will support, as a minimum, Internet Explorer 6 / 7 / 8
+and Firefox 3+.
+
+For this, a separate UI heirarcy will be served from each node of the system (though
+asking for the root "/" would likely return a redirect to the user agent.
+
+GET https://node.in.pool.com/ui
+
+## Bootstrapping
 
 To behave correctly a few things must be bootstrapped.  Clients can bootstrap
 themselves by looking for pools in a given system.  This is done via the initial
@@ -172,17 +183,17 @@ of representations, since they are similar for different parts of the heirarchy.
 
 *Request*
 
-<code class="restcalls">
+<pre class="restcalls">
  GET /pool
  Host: node.in.your.pool.com
  Authorization: Basic xxxxxxxxxxxxxxxxxxx
  Accept: application/com.northscale.store+json
  X-memcachekv-Store-Client-Specification-Version: 0.1
-</code>
+</pre>
 
 *Response*
 
-<code class="json">
+<pre class="json">
  HTTP/1.1 200 OK
  Content-Type: application/com.northscale.store+json
  Content-Length: nnn
@@ -207,7 +218,7 @@ of representations, since they are similar for different parts of the heirarchy.
     "0.1"
    ]
 }
-</code>
+</pre>
 
 At *Reveal*, only one pool per group of systems will be known and it will likely
 be defaulted to a name.  POSTing back a changed pool will return a 403.
@@ -223,18 +234,22 @@ transitions to the client, if backward compatibility is desirable.
 
 ###Pool Details
 
-<code class="restcalls">
+*Request*
+
+<pre class="restcalls">
  GET /pool/Default Pool
  Host: node.in.your.pool.com
  Authorization: Basic xxxxxxxxxxxxxxxxxxx
  Accept: application/com.northscale.store+json
  X-memcachekv-Store-Client-Specification-Version: 0.1
-</code>
+</pre>
 
 Note, this could also have been a GET operation to the pool's GUID instead of
 the human readable pool name.
 
-<code class="json">
+*Response*
+
+<pre class="json">
  HTTP/1.1 200 OK
  Content-Type: application/com.northscale.store+json
  Content-Length: nnn
@@ -268,6 +283,7 @@ the human readable pool name.
      "uri" : "https://node.in.pool.com/pool/Default Pool/bucket/GUID-xxxxxxxxxxxx"
      ]
   ]
+  "stats" : { "uri" : "https://first_node.in.pool.com:80/pool/stats" },
   "default-bucket" [
   "controller" : {
     "backup" : {
@@ -275,20 +291,27 @@ the human readable pool name.
     }
   }
 }
-</code>
+</pre>
 
 ####Node Details
 
-<code class="restcalls">
+*Request*
+
+<pre class="restcalls">
  GET https://first_node.in.pool.com:80/pool/Default Pool/node/first_node/
  Host: node.in.your.pool.com
  Authorization: Basic xxxxxxxxxxxxxxxxxxx
  Accept: application/com.northscale.store+json
  X-memcachekv-Store-Client-Specification-Version: 0.1
-</code>
+</pre>
 
 
-<code>
+In Javascript, this would lead to being able to, for instance, be able to address
+a URI of the
+
+*Response*
+
+<pre>
 {
   "name" : "first_node",
   "threads" : 8,
@@ -299,28 +322,31 @@ the human readable pool name.
   "version" : "123",
   "uptime" : 1231293
 }
-</code>
+</pre>
 
-In Javascript, this would lead to being able to, for instance, be able to address
-a URI of the
+
+####Bucket resources
+
+*Request*
+
+PUT /pool/My New Pool/bucket/New bucket
+{
+   "name" : "New bucket"
+}
+
+*Response*
+
+response 201: bucket was created and valid URIs returned
+
+
+POST /pool/My New Pool/bucket/Another bucket
+{
+   "name" : "Another bucket"
+   "bucketrules" : [ TODO: what are the rules? ]
+}
 
 ###Previous thoughts
 
-Operations for resources:
-
-Some thoughts on operations...
-
-GET https://node.in.pool.com/ui
-(in this case, presuming the user agent is a browser)
-serve up a repre
-
-GET https://node.in.pool.com/pool
-
-response 200: list of pools
-
-GET /pool/Default Pool (human readable pool name)
- - or -
-GET /pool/1 (synthetic pool ID, perhaps should be a GUID)
 
 response 200: list of buckets (common name and GUID) and links to buckets
 
@@ -334,20 +360,6 @@ response 201: pool was created and valid URIs for referencing it returned
  - or -
 response 403: user is not authorized (or no users are authorized because it
 is administratively disabled to all users)
-
-POST /pool/My New Pool/New bucket
-{
-   "name" : "New bucket"
-}
-
-response 201: bucket was created and valid URIs returned
-
-
-POST /pool/My New Pool/bucket/Another bucket
-{
-   "name" : "Another bucket"
-   "bucketrules" : [ @todo what are the rules? ]
-}
 
 
 
@@ -367,7 +379,7 @@ response 201: created with URIs in header
 response 200: representation of created object (useful for CAS on items)
 
 
-@todo finish description
+TODO: finish description
 
 
 ## Independent of management channel and data channel
@@ -389,17 +401,17 @@ For instance...
 
 *Request*
 
-<code class="restcalls">
+<pre class="restcalls">
  GET /pool/Default Pool
  Host: node.in.your.pool.com
  Authorization: Basic xxxxxxxxxxxxxxxxxxx
  Accept: application/com.northscale.store+json
  X-memcachekv-Store-Client-Specification-Version: 0.1
-</code>
+</pre>
 
 *Response*
 
-<code class="json">
+<pre class="json">
  HTTP/1.1 200 OK
  Content-Type: application/com.northscale.store+json
  Content-Length: nnn
@@ -428,20 +440,94 @@ uri: "https://node.in.pool.com/pool/Default Pool/bucket/GUID-lksjfdfdsfd"
       backup: {
         uri: "https://slkdfjlsfkdjf/startbackup
       }
+    "stats" : {
+      "uri" : "http://pool/Default Pool/stats
+    }
 ]
-</code>
+</pre>
 
 ###List buckets and bucket operations
+
+###Statistics
+
+Statistics can be gathered via the REST interface at either the pool or the
+bucket level.  The JSON response will be similar at both levels, allowing for
+some polymorphic-like reuse by components using those objects.
+
+Statistics fall into a few different categories.
+* Real-time statistics for the the bucket/pool in question.  This is a Comet/Bayeaux
+long-poll value.
+* Historic statistics with varying periodic resolutions.  The system will store
+calculated data at 5 minute intervals, but will support 5 minute ("5m"), 30
+minute ("30m", 1 hour ("1h") and 24 hour ("24h") resolutions.
+* Top key values.  This is a complete list of the _hot keys_ for either the
+bucket or pool.
+
+*Request*
+
+<pre class="restcalls">
+ GET /pool/Default Pool/stats?stat=opsbysecond&period=5m
+ Host: node.in.your.pool.com
+ Authorization: Basic xxxxxxxxxxxxxxxxxxx
+ Accept: application/com.northscale.store+json
+ X-memcachekv-Store-Client-Specification-Version: 0.1
+</pre>
+
+*Response*
+
+<pre class="json">
+ HTTP/1.1 200 OK
+ Content-Type: application/com.northscale.store+json
+ Content-Length: nnn
+
+{
+  "getsbysecond" : [ 2, 4, 5, 6, 9, 20, 30, ... ],
+  "setsbysecond" : [ 2, 4, 5, 6, 9, 20, 30, ... ],
+  "missesbysecond" : [ 2, 4, 5, 6, 9, 20, 30, .. ]
+}
+</pre>
+
+Note that there are situations where one may need the total number of
+calculations.  In that case, simply add the values needed on the client.
+
+--------------
+
+There are both bucket and pool level statistics on hot keys.  The response
+resource is the same to aid code reuse.
+
+*Request*
+
+<pre class="restcalls">
+ GET /pool/Default Pool/stats?stat=hot_keys&number=10
+ Host: node.in.your.pool.com
+ Authorization: Basic xxxxxxxxxxxxxxxxxxx
+ Accept: application/com.northscale.store+json
+ X-memcachekv-Store-Client-Specification-Version: 0.1
+</pre>
+
+_Note:_ the GET above could have been "/pool/Default Pool/bucket/Exerciser Application"
+to generate the same kind of response.
+
+*Response*
+
+<pre class="json">
+ HTTP/1.1 200 OK
+ Content-Type: application/com.northscale.store+json
+ Content-Length: nnn
+
+{
+  "hot_keys : [
+    { "gets" : 10000 , "name" : "user:image:value", "misses" : 100, "type" : "Persistent", "bucket" : "Exerciser Application" },
+    { "gets" : 10000, "name" : "user:image:value2", "misses" : 100, "type" : "Cache", "bucket" : "Exerciser Application"},
+    { "gets" : 10000, "name" : "user:image:value3", "misses" : 100, "type" : "Persistent", "bucket" : "Exerciser Application"},
+    { "gets" : 10000, "name" : "user:image:value4", "misses" : 100, "type" : "Cache", "bucket" : "Exerciser Application"}
+  ]
+</pre>
+
 
 # Notes, Questions and References
 
 ## Open Questions
-Both the OCCI and the Sun APIs talks about clients being required to not make
-any assumptions about the URI
-space at all.  This seems to make a lot of sense from an implementation
-flexibility and client quality standpoint.  Should this be considered?  Matt
-Ingenthron thinks so, as it gives you flexibility in implementation and location
-of service providers.
 
 ## References
 The [OCCI working group specifications](http://www.occi-wg.org/) and the
@@ -457,3 +543,4 @@ have been referenced.
 * 20091115 Updated with some operations (matt.ingenthron@northscale.com)
 * 20091117 Updated after defending REST and HTTP in discussion with Steve (matt.ingenthron@northscale.com)
 * 20091118 Fleshed out details on the requests and responses (matt.ingenthron@northscale.com)
+* 20091119 More info on stats (matt.ingenthron@northscale.com)
