@@ -19,7 +19,8 @@
 %% ------------------------------------------------------
 
 -record(s, {
-    send,
+    mgr,               % Pid of manager.
+    send,              % calbackk fun (vocal|quiet, Request, S).
     request,
     replica_nodes,
     replica_min,
@@ -31,8 +32,9 @@
     responses    = []  % List of {Node, []}.
 }).
 
-create_replicator(Send, Request, ReplicaNodes, ReplicaMin) ->
-    #s{send = Send,
+create_replicator(Mgr, Send, Request, ReplicaNodes, ReplicaMin) ->
+    #s{mgr = Mgr,
+       send = Send,
        request = Request,
        replica_nodes = ReplicaNodes,
        replica_min = ReplicaMin}.
@@ -99,6 +101,6 @@ replicate_request(S) ->
     end.
 
 replicate_request(Send, Request, ReplicaNodes, ReplicaMin) ->
-    S = create_replicator(Send, Request, ReplicaNodes, ReplicaMin),
+    S = create_replicator(ok, Send, Request, ReplicaNodes, ReplicaMin),
     replicate_request(S).
 
