@@ -71,3 +71,34 @@ send_loop(S) ->
         false ->
             S
     end.
+
+% Creates and runs a replicator for a single request.
+%
+replicate_request(S) ->
+    % Send out the request to replica_min number of replica nodes or
+    % until we just don't have enough working replica_nodes.
+    S2 = send(S),
+
+    % Wait for responses to what we successfully sent.  If we received
+    % an error, do another round of send() of the request to a
+    % remaining replica, if any are left.
+
+    case (S2#s.received_ok + S2#s.received_err) < length(S2#s.sent_ok) of
+        true ->
+            receive
+                {ok} ->
+                    replicate_request(#s{received_ok = S2#s.received_ok + 1});
+                {error} ->
+                    replicate_request(#s{received_err = S2#s.received_err + 1})
+            end;
+        false ->
+            case S2#s.received_ok < S2#s.replica_min of
+                true  -> {error, not_enough_replicas};
+                false -> {ok}
+            end
+    end.
+
+replicate_request(Send, Request, ReplicaNodes, ReplicaMin) ->
+    S = create_replicator(Send, Request, ReplicaNodes, ReplicaMin),
+    replicate_request(S).
+
