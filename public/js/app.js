@@ -433,7 +433,12 @@ var Cell = mkClass({
       this.changedSlot.broadcast(this);
   },
   tryUpdatingValue: function () {
-    this.setValue(this.formula.call(this.context))
+    var context = {};
+    _.each(this.context, function (cell, key) {
+      context[key] = (key == 'self') ? cell : cell.value;
+    });
+    var value = this.formula.call(context);
+    this.setValue(value);
   }
 });
 
@@ -575,38 +580,38 @@ function asyncAjaxCellValue(cell, options) {
   var poolListCell = new Cell();
   // holds current pool description from pool list
   var currentPoolCell = new Cell(function () {
-    return this.poolList.value && this.poolList.value[0];
+    return this.poolList && this.poolList[0];
   }).setSources({poolList: poolListCell});
 
   // pool details as obtained by retrieving pool uri
   var currentPoolDetails = new Cell(function () {
-    if (!this.currentPool.value || this.mode.value != 'overview')
+    if (!this.currentPool || this.mode != 'overview')
       return;
-    asyncAjaxCellValue(this.self, {url: this.currentPool.value.uri});
+    asyncAjaxCellValue(this.self, {url: this.currentPool.uri});
   }).setSources({currentPool: currentPoolCell, mode: modeCell});
 
   // holds uri of current bucket
   var currentBucketCell = new Cell(function () {
-    return this.pool.value && this.pool.value.defaultBucketURI;
+    return this.pool && this.pool.defaultBucketURI;
   }).setSources({pool: currentPoolCell});
 
   var currentBucketDetailsCell = new Cell(function () {
-    if (!this.bucketURI.value || this.mode.value != 'overview')
+    if (!this.bucketURI || this.mode != 'overview')
       return;
-    asyncAjaxCellValue(this.self, {url: this.bucketURI.value});
+    asyncAjaxCellValue(this.self, {url: this.bucketURI});
   }).setSources({bucketURI: currentBucketCell, mode: modeCell});
 
   var opStatsArgsCell = new Cell(function () {
-    if (!this.bucket.value)
+    if (!this.bucket)
       return;
-    return {url: this.bucket.value.op_stats_uri};
+    return {url: this.bucket.op_stats_uri};
   }).setSources({bucket: currentBucketDetailsCell});
   var opStatsChannel = new CellControlledUpdateChannel(opStatsArgsCell, 10);
 
   var keyStatsArgsCell = new Cell(function () {
-    if (!this.bucket.value)
+    if (!this.bucket)
       return;
-    return {url: this.bucket.value.key_stats_uri};
+    return {url: this.bucket.key_stats_uri};
   }).setSources({bucket: currentBucketDetailsCell});
   var keyStatsChannel = new CellControlledUpdateChannel(keyStatsArgsCell, 10);
 
