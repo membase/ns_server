@@ -99,7 +99,7 @@
           <!-- {% $.each(rows, function (index) { %} -->
           <tr class="primary"><td class="expander">+
             <td class="name">{%= h(this.name) %}
-            <td class="port">Port {%= h(this.port) %}
+            <td class="port">Port {%= h(this.ports.join(', ')) %}
             <td class="status">{% if (this.running) { %}
                 Running
               {% } else { %}

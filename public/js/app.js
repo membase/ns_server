@@ -548,13 +548,6 @@ var DAO = {
   switchSection: function (section) {
     DAO.cells.mode.setValue(section);
   },
-  // getStatsAsync: deferringUntilReady(function (callback) {
-  //   // TODO: use current bucket
-  //   $.get('/buckets/default/stats', null, callback, 'json');
-  // }),
-  // getPoolList: deferringUntilReady(function (callback) {
-  //   $.get('/pools', {buckets: (withBuckets ? 1 : 0)}, callback, 'json');
-  // }),
   performLogin: function (login, password) {
     this.login = login;
     this.password = password;
@@ -643,38 +636,24 @@ var OverviewSection = {
   onFreshStats: function (channel) {
     StatGraphs.update(channel.recentData);
   },
+  onKeyStats: function (channel) {
+    renderTemplate('top_keys', $.map(channel.recentData, function (e) {
+      return $.extend({}, e, {total: 0 + e.gets + e.misses});
+    }));
+  },
+  onFreshNodeList: function () {
+    var nodes = DAO.cells.currentPoolDetails.value.node;
+    renderTemplate('server_list', nodes);
+  },
   init: function () {
     DAO.channels.opStats.slot.subscribeWithSlave($m(this, 'onFreshStats'));
+    DAO.channels.keyStats.slot.subscribeWithSlave($m(this, 'onKeyStats'));
+    DAO.cells.currentPoolDetails.changedSlot.subscribeWithSlave($m(this, 'onFreshNodeList'));
     prepareTemplateForCell('top_keys', DAO.cells.currentBucketDetails);
     prepareTemplateForCell('pool_list', DAO.cells.poolList);
     prepareTemplateForCell('server_list', DAO.cells.currentPoolDetails);
   },
   onEnter: function () {
-    // var self = this;
-
-    // self.clearUI();
-    // DAO.channels.stats.plug();
-
-    // DAO.getPoolList(function (data) {
-    //   self.updatePoolList();
-    //   self.poolList = data;
-    //   self.poolListUpdates.broadcast();
-    //   self.currentPool = data[0];
-    //   self.currentBucket = self.currentPool.buckets[0];
-    // });
-
-    // self.poolListUpdates.subscribeWithSlave(function () {
-      
-    // });
-
-    // DAO.getStatsAsync(function (stats) {
-    //   StatGraphs.update(stats.stats);
-
-    //   renderTemplate('top_keys', $.map(stats.stats.hot_keys, function (e) {
-    //     return $.extend({}, e, {total: 0 + e.gets + e.misses});
-    //   }));
-    //   renderTemplate('server_list', stats.servers);
-    // });
   }
 };
 

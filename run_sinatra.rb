@@ -124,6 +124,7 @@ class DAO
                     :fqdn => "first_node.in.pool.com",
                     :ip_address => "10.0.1.22",
                     :running => true,
+                    :uptime => 123443,
                     :ports => [ 11211 ]
                   },
                   {
@@ -132,6 +133,7 @@ class DAO
                     :fqdn => "second_node.in.pool.com",
                     :ip_address => "10.0.1.22",
                     :running => true,
+                    :uptime => 123123,
                     :ports => [ 11211 ]
                   }
                  ],
