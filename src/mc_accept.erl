@@ -1,49 +1,51 @@
--module(mc_main).
+-module(mc_accept).
 
 -include_lib("eunit/include/eunit.hrl").
 
--export([start/1, start/2, start_link/1, start_link/2, init/2]).
+-export([start/2, start_link/2, init/2, session/2]).
 
 % Starting the server...
 %
 % Example:
 %
-%   mc_main:start(PortNum,
-%                 {ProtocolModuleName, {ProcessorModuleName, ProcessorArgs}}).
+%   mc_accept:start(PortNum, {ProtocolModule, ProcessorEnv}).
 %
-%   mc_main:start(11222,
-%                 {mc_server_ascii,
-%                  {mc_server_ascii_dict,
-%                   mc_server_ascii_dict:create_dict()}}).
+%   mc_accept:start(11222, {mc_server_ascii, {mc_server_ascii_dict, {}}}).
 %
-% A server ProtocolModule must implement a callback of...
+% A server ProtocolModule must implement callbacks of...
 %
-%   session(SessionSock, {ProcessorModuleName, ProcessorArgs})
+%   loop_in(...)
+%   loop_out(...)
 %
-start(Handler) ->
-    start(11211, Handler).
+% A server ProcessorModule must implement callbacks of...
+%
+%   session(SessionSock, ProcessorEnv)
+%   cmd(...)
+%
+start(PortNum, Env) ->
+    {ok, spawn(?MODULE, init, [PortNum, Env])}.
 
-start(PortNum, Handler) when is_integer(PortNum) ->
-    {ok, spawn(?MODULE, init, [PortNum, Handler])}.
+start_link(PortNum, Env) ->
+    {ok, spawn_link(?MODULE, init, [PortNum, Env])}.
 
-start_link(Handler) ->
-    start_link(11211, Handler).
-
-start_link(PortNum, Handler) when is_integer(PortNum) ->
-    {ok, spawn_link(?MODULE, init, [PortNum, Handler])}.
-
-init(PortNum, Handler) ->
+init(PortNum, Env) ->
     {ok, LS} = gen_tcp:listen(PortNum, [binary,
                                         {reuseaddr, true},
                                         {packet, raw},
                                         {active, false}]),
-    accept_loop(LS, Handler).
+    accept_loop(LS, Env).
 
 % Accept incoming connections
-accept_loop(LS, {ModuleName, Args} = Handler) ->
+accept_loop(LS, Env) ->
     {ok, NS} = gen_tcp:accept(LS),
     ?debugFmt("accept ~p~n", [NS]),
-    Pid = spawn(ModuleName, session, [NS, Args]),
+    Pid = spawn(?MODULE, session, [NS, Env]),
     gen_tcp:controlling_process(NS, Pid),
-    accept_loop(LS, Handler).
+    accept_loop(LS, Env).
+
+session(Sock, {ProtocolModule, {ProcessorModule, ProcessorEnv}}) ->
+    Session = apply(ProcessorModule, session, [Sock, ProcessorEnv]),
+    OutPid = spawn_link(ProtocolModule, loop_out, [Sock]),
+    apply(ProtocolModule, loop_in,
+          [Sock, OutPid, 1, ProcessorModule, Session]).
 

@@ -13,7 +13,7 @@
 
 -record(session_dict, {cas = 0, tbl = dict:new()}).
 
-create_session_data() ->
+session(_Sock, _Env) ->
     #session_dict{}.
 
 cmd(get, Dict, _InSock, Out, CmdNum, []) ->
@@ -59,7 +59,5 @@ bin_size(Binary) -> size(Binary).
 % For testing...
 %
 main() ->
-    mc_main:start(11222,
-                  {mc_server_ascii,
-                   {mc_server_ascii_dict, create_session_data()}}).
+    mc_accept:start(11222, {mc_server_ascii, {mc_server_ascii_dict, {}}}).
 
