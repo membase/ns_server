@@ -35,7 +35,7 @@ init(PortNum, Env) ->
                                         {active, false}]),
     accept_loop(LS, Env).
 
-% Accept incoming connections
+% Accept incoming connections.
 accept_loop(LS, Env) ->
     {ok, NS} = gen_tcp:accept(LS),
     ?debugFmt("accept ~p~n", [NS]),
@@ -43,9 +43,13 @@ accept_loop(LS, Env) ->
     gen_tcp:controlling_process(NS, Pid),
     accept_loop(LS, Env).
 
+% The main entry point/driver for a session process.
 session(Sock, {ProtocolModule, {ProcessorModule, ProcessorEnv}}) ->
+    % Ask the processor for a new Session object.
     Session = apply(ProcessorModule, session, [Sock, ProcessorEnv]),
+    % Spawn a protocol-specific paired output/writer process.
     OutPid = spawn_link(ProtocolModule, loop_out, [Sock]),
+    % Continue with a protocol-specific input-loop to receive messages.
     apply(ProtocolModule, loop_in,
           [Sock, OutPid, 1, ProcessorModule, Session]).
 
