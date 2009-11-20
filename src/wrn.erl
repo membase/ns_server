@@ -1,0 +1,73 @@
+-module(wrn).
+
+-include_lib("eunit/include/eunit.hrl").
+
+-include("mc_constants.hrl").
+
+-include("mc_entry.hrl").
+
+-compile(export_all).
+
+%% A generic W+R>N replication implementation.
+%%
+%% It's generic in that the actual implementation of a request,
+%% response and replica node is abstracted out.  Just duck typing.
+%%
+%% ReplicaNodes -- list of nodes, higher priority first.
+%% ReplicaMin   -- minimum # of nodes to replicate to.
+%%
+%% ------------------------------------------------------
+
+-record(s, {
+    send,
+    request,
+    replica_nodes,
+    replica_min,
+    replica_next = 1,
+    received_err = 0,
+    received_ok  = 0,
+    sent_err     = [], % List of {Node, Err} tuples.
+    sent_ok      = [], % List of Nodes that had send successes.
+    responses    = []  % List of {Node, []}.
+}).
+
+create_replicator(Send, Request, ReplicaNodes, ReplicaMin) ->
+    #s{send = Send,
+       request = Request,
+       replica_nodes = ReplicaNodes,
+       replica_min = ReplicaMin}.
+
+% Function to keep the invariant where we've sent the request
+% successfully to replica_min number of working replica nodes,
+% unless we just run out of replica nodes.
+send(S) ->
+    StartSentOk = length(S#s.sent_ok),
+    S2 = send_loop(S),
+    {length(S2#s.sent_ok) > StartSentOk, S2}.
+
+send_loop(S) ->
+    #s{send = Send,
+       replica_next  = ReplicaNext,
+       replica_nodes = ReplicaNodes,
+       replica_min   = ReplicaMin,
+       sent_ok       = SentOk,
+       received_err  = ReceivedErr
+      } = S,
+    case (ReplicaNext =< length(ReplicaNodes)) andalso
+         ((length(SentOk) - ReceivedErr) < ReplicaMin) of
+        true ->
+            ReplicaNode = lists:nth(ReplicaNext, ReplicaNodes),
+            {RV, S2} = Send(vocal, S#s.request, S),
+            case RV of
+                ok ->
+                    S2#s{sent_ok = ReplicaNode ++ S2#s.sent_ok,
+                         replica_next = ReplicaNext + 1
+                        };
+                _X ->
+                    S2#s{sent_err = {ReplicaNode, RV} ++ S2#s.sent_err,
+                         replica_next = ReplicaNext + 1
+                        }
+            end;
+        false ->
+            S
+    end.
