@@ -8,12 +8,14 @@
 
 -compile(export_all).
 
-loop_in(InSock, OutPid, CmdNum, ProcessorModule, Session) ->
+loop_in(InSock, OutPid, CmdNum, Module, Session) ->
     {ok, Cmd, CmdArgs} = recv(InSock),
-    {ok, Session2} = apply(ProcessorModule, cmd,
+    {ok, Session2} = apply(Module, cmd,
                            [Cmd, Session, InSock, OutPid, CmdNum, CmdArgs]),
-    % TODO: Need error handling here, to send ERROR on unknown cmd.
-    loop_in(InSock, OutPid, CmdNum + 1, ProcessorModule, Session2).
+    % TODO: Need protocol-specific error handling here,
+    %       such as to send ERROR on unknown cmd.  Currently,
+    %       the connection just closes.
+    loop_in(InSock, OutPid, CmdNum + 1, Module, Session2).
 
 loop_out(OutSock) ->
     receive

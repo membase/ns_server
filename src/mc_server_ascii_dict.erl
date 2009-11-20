@@ -13,8 +13,8 @@
 
 -record(session_dict, {cas = 0, tbl = dict:new()}).
 
-session(_Sock, _Env) ->
-    #session_dict{}.
+session(_Sock, Env) ->
+    {ok, Env, #session_dict{}}.
 
 cmd(get, Dict, _InSock, Out, CmdNum, []) ->
     mc_ascii:send(Out, CmdNum, <<"END\r\n">>),
