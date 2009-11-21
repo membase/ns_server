@@ -8,26 +8,23 @@
 
 -compile(export_all).
 
-process(InSock, OutPid, {ModName, SessData}, {Header, _Entry} = HeaderEntry) ->
-    Cmd = Header#mc_header.opcode,
-    {ok, SessData2} = apply(ModName, cmd,
-                            [Cmd, SessData,
-                             InSock, OutPid, HeaderEntry]),
-    % TODO: Need error handling here, to send UNKNOWN_COMMAND status.
-    {ok, {ModName, SessData2}}.
-
-session(UpstreamSock, Args) ->
-    OutPid = spawn_link(?MODULE, loop_out, [UpstreamSock]),
-    loop_in(UpstreamSock, OutPid, Args).
-
-loop_in(InSock, OutPid, Args) ->
-    {ok, Header, Entry} = mc_binary:recv(InSock, req),
-    {ok, Args2} = process(InSock, OutPid, Args, {Header, Entry}),
-    loop_in(InSock, OutPid, Args2).
+loop_in(InSock, OutPid, CmdNum, Module, Session) ->
+    {ok, Cmd, CmdArgs} = recv(InSock),
+    {ok, Session2} = apply(Module, cmd,
+                           [Cmd, Session, InSock, OutPid, CmdNum, CmdArgs]),
+    % TODO: Need protocol-specific error handling here,
+    %       such as to send ERROR on unknown cmd.  Currently,
+    %       the connection just closes.
+    loop_in(InSock, OutPid, CmdNum + 1, Module, Session2).
 
 loop_out(OutSock) ->
     receive
-        {send, Data} ->
+        {send, _CmdNum, Data} ->
             ok = mc_binary:send(OutSock, Data),
             loop_out(OutSock)
     end.
+
+recv(InSock) ->
+    {ok, Header, Entry} = mc_binary:recv(InSock, req),
+    {ok, Header#mc_header.opcode, {Header, Entry}}.
+
