@@ -485,7 +485,8 @@ var LinkSwitchCell = mkClass(Cell, {
     $(window).bind('hashchange', $m(this, 'interpretState'));
   },
   interpretState: function () {
-    if ($.bbq.getState(this.paramName) == this.selectedId)
+    var id = $.bbq.getState(this.paramName);
+    if (id == this.selectedId)
       return;
 
     var item = this.idToLinks[id];
@@ -493,6 +494,7 @@ var LinkSwitchCell = mkClass(Cell, {
       return;
 
     this.setValue(item.value);
+    this.selectedId = id;
   },
   updateSelected: function () {
     $(_(this.idToLinks).chain().keys().map($m(document, 'getElementById')).value()).removeClass(this.options.selectedClass);
@@ -726,7 +728,8 @@ function asyncAjaxCellValue(cell, options) {
   DAO.cells = {
     mode: modeCell,
     overviewActive: overviewActive,
-    graphZoomLevel: new LinkSwitchCell({firstLinkIsDefault: true,
+    graphZoomLevel: new LinkSwitchCell('graphZoom',
+                                       {firstLinkIsDefault: true,
                                         clearOnChangesTo: [overviewActive]}),
     poolList: poolListCell,
     currentPool: currentPoolCell,
@@ -752,10 +755,10 @@ var OverviewSection = {
     prepareRenderTemplate('top_keys', 'server_list', 'pool_list');
   },
   onFreshStats: function (channel) {
-    StatGraphs.update(channel.recentData);
+    StatGraphs.update(channel.recentData.op);
   },
   onKeyStats: function (channel) {
-    renderTemplate('top_keys', $.map(channel.recentData, function (e) {
+    renderTemplate('top_keys', $.map(channel.recentData.hot_keys, function (e) {
       return $.extend({}, e, {total: 0 + e.gets + e.misses});
     }));
   },
