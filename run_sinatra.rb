@@ -152,7 +152,7 @@ class DAO
     {
       :name => 'Excerciser Application',
       :pool_uri => "asdasdasdasd",
-      :stats_uri => "/buckets/4/stats",
+      :stats => {:uri => "/buckets/4/stats"},
     }
   end
 

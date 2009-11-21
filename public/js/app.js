@@ -442,6 +442,110 @@ var Cell = mkClass({
   }
 });
 
+function ensureElementId(jq) {
+  jq.each(function () {
+    if (this.id)
+      return;
+    this.id = _.uniqueId('gen');
+  });
+  return jq;
+}
+
+var LinkSwitchCell = mkClass(Cell, {
+  initialize: function (paramName, options) {
+    var _super = $m(this, 'initialize', Cell);
+    _super();
+
+    this.paramName = paramName;
+    this.options = _.extend({
+      selectedClass: 'selected',
+      linkSelector: 'a',
+      eventSpec: 'click',
+      clearOnChangesTo: [],
+      firstLinkIsDefault: false
+    }, options);
+
+    this.resetLinks();
+
+    var makeUndefinedOrDefault = $m(this, 'makeUndefinedOrDefault');
+    _.each(this.options.clearOnChangesTo, function (cell) {
+      cell.changedSlot.subscribeWithSlave(makeUndefinedOrDefault);
+      cell.undefinedSlot.subscribeWithSlave(makeUndefinedOrDefault);
+    });
+
+    var updateSelected = $m(this, 'updateSelected');
+    this.changedSlot.subscribeWithSlave(updateSelected);
+    this.undefinedSlot.subscribeWithSlave(updateSelected);
+
+    var self = this;
+    $(self.options.linkSelector).live(self.options.eventSpec, function (event) {
+      self.eventHandler(this, event);
+    })
+
+    $(window).bind('hashchange', $m(this, 'interpretState'));
+  },
+  interpretState: function () {
+    if ($.bbq.getState(this.paramName) == this.selectedId)
+      return;
+
+    var item = this.idToLinks[id];
+    if (!item)
+      return;
+
+    this.setValue(item.value);
+  },
+  updateSelected: function () {
+    $(_(this.idToLinks).chain().keys().map($m(document, 'getElementById')).value()).removeClass(this.options.selectedClass);
+
+    var value = this.value;
+    if (value == undefined)
+      return;
+
+    var index = _(this.links).pluck('value').indexOf(value);
+    if (index < 0)
+      throw new Error('invalid value!');
+
+    var id = this.links[index].id;
+    $(document.getElementById(id)).addClass(this.options.selectedClass);
+  },
+  eventHandler: function (element, event) {
+    var id = element.id;
+    var item = this.idToLinks[id];
+    if (!item)
+      return;
+    
+    var obj = {};
+    obj[this.paramName] = id;
+    $.bbq.pushState(obj);
+
+    event.preventDefault();
+  },
+  makeUndefinedOrDefault: function () {
+    if (this.defaultId)
+      this.setValue(this.idToLinks[this.defaultId].value);
+    else
+      this.setValue(undefined);
+  },
+  resetLinks: function () {
+    this.idToLinks = {};
+    this.links = [];
+    this.defaultId = undefined;
+    this.selectedId = undefined;
+  },
+  addLink: function (link, value, isDefault) {
+    if (link.size() == 0)
+      throw new Error('missing link for selector: ' + link.selector);
+    var id = ensureElementId(link).attr('id');
+    var item = {id: id, value: value, index: this.links.length};
+    this.links.push(item);
+    if (isDefault || (item.index == 0 && this.options.firstLinkIsDefault))
+      this.defaultId = id;
+    this.idToLinks[id] = item;
+
+    return this;
+  }
+});
+
 var UpdatesChannel = mkClass({
   initialize: function (updateInitiator, period, plugged) {
     this.updateInitiator = updateInitiator;
@@ -451,9 +555,9 @@ var UpdatesChannel = mkClass({
   },
   setPeriod: function (period) {
     if (this.intervalHandle)
-      cancelInterval(this.intervalHandle);
+      clearInterval(this.intervalHandle);
     this.period = period;
-    setInterval($m(this, 'tickHandler'), this.period*1000);
+    this.intervalHandle = setInterval($m(this, 'tickHandler'), this.period*1000);
     if (!this.updateIsInProgress)
       this.initiateUpdate();
   },
@@ -522,6 +626,7 @@ var CellControlledUpdateChannel = mkClass(UpdatesChannel, {
     this.cell.changedSlot.subscribeWithSlave($m(this, 'onCellChanged'));
     this.cell.undefinedSlot.subscribeWithSlave($m(this, 'onCellUndefined'));
     this.pluggedViaCell = true;
+    this.extraXHRData = {};
   },
   onCellChanged: function () {
     if (!this.pluggedViaCell)
@@ -537,6 +642,7 @@ var CellControlledUpdateChannel = mkClass(UpdatesChannel, {
     $.ajax(_.extend({type: 'GET',
                      dataType: 'json',
                      success: okCallback,
+                     data: _.extend(this.extraXHRData, this.cell.value.data || {}),
                      error: errorCallback},
                     this.cell.value));
   }
@@ -604,19 +710,24 @@ function asyncAjaxCellValue(cell, options) {
   var opStatsArgsCell = new Cell(function () {
     if (!this.bucket)
       return;
-    return {url: this.bucket.op_stats_uri};
+    return {url: this.bucket.stats.uri};
   }).setSources({bucket: currentBucketDetailsCell});
   var opStatsChannel = new CellControlledUpdateChannel(opStatsArgsCell, 10);
 
   var keyStatsArgsCell = new Cell(function () {
     if (!this.bucket)
       return;
-    return {url: this.bucket.key_stats_uri};
+    return {url: this.bucket.stats.uri};
   }).setSources({bucket: currentBucketDetailsCell});
   var keyStatsChannel = new CellControlledUpdateChannel(keyStatsArgsCell, 10);
 
+  var overviewActive = new Cell(function () {return this.mode == 'overview'},
+                                {mode: modeCell});
   DAO.cells = {
     mode: modeCell,
+    overviewActive: overviewActive,
+    graphZoomLevel: new LinkSwitchCell({firstLinkIsDefault: true,
+                                        clearOnChangesTo: [overviewActive]}),
     poolList: poolListCell,
     currentPool: currentPoolCell,
     currentPoolDetails: currentPoolDetails,
@@ -652,6 +763,10 @@ var OverviewSection = {
     var nodes = DAO.cells.currentPoolDetails.value.node;
     renderTemplate('server_list', nodes);
   },
+  opsStatRefreshOptions: {
+    real_time: {channelPeriod: 1, requestParam: 'now'},
+    five_mins: {channelPeriod: 15, requestParam: '5mins'}
+  },
   init: function () {
     DAO.channels.opStats.slot.subscribeWithSlave($m(this, 'onFreshStats'));
     DAO.channels.keyStats.slot.subscribeWithSlave($m(this, 'onKeyStats'));
@@ -659,6 +774,19 @@ var OverviewSection = {
     prepareTemplateForCell('top_keys', DAO.cells.currentBucketDetails);
     prepareTemplateForCell('pool_list', DAO.cells.poolList);
     prepareTemplateForCell('server_list', DAO.cells.currentPoolDetails);
+
+    _.each(this.opsStatRefreshOptions, function (value, key) {
+      DAO.cells.graphZoomLevel.addLink($('#overview_zoom_' + key),
+                                 value);
+    });
+
+    DAO.cells.graphZoomLevel.changedSlot.subscribeWithSlave(function (cell) {
+      var value = cell.value;
+      var channel = DAO.channels.opStats;
+
+      channel.setPeriod(value.channelPeriod);
+      channel.extraXHRData.opspersecond_zoom = value.requestParam;
+    });
   },
   onEnter: function () {
   }
