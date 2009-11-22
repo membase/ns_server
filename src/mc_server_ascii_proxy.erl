@@ -51,21 +51,44 @@ a2x_send_response_from(ascii, Cmd, Out, CmdNum, CmdArgs, Head, Body) ->
     (Body =:= undefined orelse
      mc_ascii:send(Out, CmdNum, [Body#mc_entry.data, <<"\r\n">>]));
 
-a2x_send_response_from(binary, Cmd, Out, CmdNum, CmdArgs, Head, Body) ->
-    case Out of
-        undefined -> true;
-        _ ->
-            case Head#mc_header.statusOrReserved =:= ?SUCCESS of
-                true ->
-                    todo;
-                false ->
-                    todo
-            end
+a2x_send_response_from(binary, Cmd, Out, CmdNum, CmdArgs,
+                       #mc_header{statusOrReserved = Status,
+                                  opcode = Opcode} = Head, Body) ->
+    case Status =:= ?SUCCESS of
+        true ->
+            case Opcode of
+                ?GETKQ -> a2x_send_entry_from_binary(Out, CmdNum, Body);
+                ?GETK  -> a2x_send_entry_from_binary(Out, CmdNum, Body);
+                ?NOOP  -> mc_ascii:send(Out, CmdNum, <<"END\r\n">>);
+                _ -> mc_ascii:send(Out, CmdNum, binary_success(Opcode))
+            end;
+        false ->
+            mc_ascii:send(Out, CmdNum, [<<"ERROR ">>,
+                                        Body#mc_entry.data,
+                                        <<"\r\n">>])
     end;
 
 a2x_send_response_from(Addr, Cmd, Out, CmdNum, CmdArgs, Head, Body) ->
     a2x_send_response_from(mc_downstream:kind(Addr),
                            Cmd, Out, CmdNum, CmdArgs, Head, Body).
+
+a2x_send_entry_from_binary(Out, CmdNum,
+                           #mc_entry{key = Key, data = Data} = Body) ->
+    DataLen = integer_to_list(bin_size(Data)),
+    ok =:= mc_ascii:send(Out, CmdNum,
+                         [<<"VALUE ">>, Key,
+                          <<" 0 ">>, % TODO: Flag and Cas.
+                          DataLen, <<"\r\n">>,
+                          Data, <<"\r\n">>]).
+
+bin_size(undefined) -> 0;
+bin_size(List) when is_list(List) -> bin_size(iolist_to_binary(List));
+bin_size(Binary) -> size(Binary).
+
+binary_success(?SET)    -> <<"STORED\r\n">>;
+binary_success(?NOOP)   -> <<"END\r\n">>;
+binary_success(?DELETE) -> <<"DELETED\r\n">>;
+binary_success(_)       -> <<"OK\r\n">>.
 
 % ------------------------------------------
 
