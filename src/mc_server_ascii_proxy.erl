@@ -81,15 +81,6 @@ a2x_send_entry_from_binary(Out, CmdNum,
                           DataLen, <<"\r\n">>,
                           Data, <<"\r\n">>]).
 
-bin_size(undefined) -> 0;
-bin_size(List) when is_list(List) -> bin_size(iolist_to_binary(List));
-bin_size(Binary) -> size(Binary).
-
-binary_success(?SET)    -> <<"STORED\r\n">>;
-binary_success(?NOOP)   -> <<"END\r\n">>;
-binary_success(?DELETE) -> <<"DELETED\r\n">>;
-binary_success(_)       -> <<"OK\r\n">>.
-
 % ------------------------------------------
 
 cmd(get, #session_proxy{bucket = Bucket} = Session,
@@ -149,6 +140,17 @@ forward_arith(Cmd, #session_proxy{bucket = Bucket} = Session,
     Entry = #mc_entry{key = Key, data = Amount},
     ok = a2x_forward(Addr, Cmd, Out, CmdNum, Entry),
     {ok, Session}.
+
+% ------------------------------------------
+
+bin_size(undefined) -> 0;
+bin_size(List) when is_list(List) -> bin_size(iolist_to_binary(List));
+bin_size(Binary) -> size(Binary).
+
+binary_success(?SET)    -> <<"STORED\r\n">>;
+binary_success(?NOOP)   -> <<"END\r\n">>;
+binary_success(?DELETE) -> <<"DELETED\r\n">>;
+binary_success(_)       -> <<"OK\r\n">>.
 
 % ------------------------------------------
 
