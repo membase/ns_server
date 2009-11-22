@@ -868,6 +868,13 @@ window.nav = {
 
 $(function () {
   $('#login_dialog').jqm({modal: true}).jqmShow();
+
+  // TMP TMP
+  _.defer(function () {
+    $('#login_form input').val('admin');
+    loginFormSubmit();
+  });
+
   setTimeout(function () {
     $('#login_dialog [name=login]').get(0).focus();
   }, 100);
