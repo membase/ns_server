@@ -20,10 +20,56 @@ session(_Sock, Pool, _ProtocolModule) ->
 group_by(_Keys, _KeyFunc) ->
     [].
 
-a2x_forward(_, _, _, _) ->
+a2x_forward(Addr, Cmd, Out, CmdNum, CmdArgs) ->
+    a2x_forward(Addr, Cmd, Out, CmdNum, CmdArgs,
+                undefined, undefined).
+
+a2x_forward(Addr, Cmd, Out, CmdNum, CmdArgs,
+            ResponseFilter, NotifyData) ->
+    ResponseFun =
+        fun (Head, Body) ->
+            case ((ResponseFilter =:= undefined) orelse
+                  (ResponseFilter(Head, Body))) of
+                true ->
+                    a2x_send_response_from(Addr, Cmd, Out, CmdNum, CmdArgs,
+                                           Head, Body);
+                false -> true
+            end
+        end,
+    ok = mc_downstream:monitor(Addr, self(), false),
+    ok = mc_downstream:send(Addr, self(),
+                            { false, "missing downstream", NotifyData },
+                            fwd, self(), ResponseFilter,
+                            mc_client_binary, Cmd, CmdArgs, NotifyData),
     true.
 
-cmd(get, #session_proxy{bucket = Bucket} = SessData,
+a2x_send_response_from(ascii, Cmd, Out, CmdNum, CmdArgs, Head, Body) ->
+    % Downstream is ascii.
+    Out =/= undefined andalso
+    (Head =/= undefined andalso
+     mc_ascii:send(Out, CmdNum, [Head, <<"\r\n">>])) andalso
+    (Body =:= undefined orelse
+     mc_ascii:send(Out, CmdNum, [Body#mc_entry.data, <<"\r\n">>]));
+
+a2x_send_response_from(binary, Cmd, Out, CmdNum, CmdArgs, Head, Body) ->
+    case Out of
+        undefined -> true;
+        _ ->
+            case Head#mc_header.statusOrReserved =:= ?SUCCESS of
+                true ->
+                    todo;
+                false ->
+                    todo
+            end
+    end;
+
+a2x_send_response_from(Addr, Cmd, Out, CmdNum, CmdArgs, Head, Body) ->
+    a2x_send_response_from(mc_downstream:kind(Addr),
+                           Cmd, Out, CmdNum, CmdArgs, Head, Body).
+
+% ------------------------------------------
+
+cmd(get, #session_proxy{bucket = Bucket} = Session,
     _InSock, Out, CmdNum, Keys) ->
     Groups =
         group_by(Keys,
@@ -32,7 +78,7 @@ cmd(get, #session_proxy{bucket = Bucket} = SessData,
                  end),
     % Out ! {expect, CmdNum, length(Groups)},
     NumFwd = lists:foldl(fun ({Addr, AddrKeys}, Acc) ->
-                             case a2x_forward(Addr, Out, CmdNum,
+                             case a2x_forward(Addr, get, Out, CmdNum,
                                               AddrKeys) of
                                  true  -> Acc + 1;
                                  false -> Acc
@@ -41,22 +87,45 @@ cmd(get, #session_proxy{bucket = Bucket} = SessData,
                          0, Groups),
     NumFwd,
     % Out ! {expect, CmdNum, NumFwd, <<"END\r\n">>},
-    {ok, SessData};
+    {ok, Session};
 
-cmd(set, SessData,
-    InSock, Out, CmdNum, [Key, FlagIn, ExpireIn, DataLenIn]) ->
+cmd(set, Session, InSock, Out, CmdNum, CmdArgs) ->
+    forward_update(set, Session, InSock, Out, CmdNum, CmdArgs);
+cmd(add, Session, InSock, Out, CmdNum, CmdArgs) ->
+    forward_update(add, Session, InSock, Out, CmdNum, CmdArgs);
+cmd(replace, Session, InSock, Out, CmdNum, CmdArgs) ->
+    forward_update(replace, Session, InSock, Out, CmdNum, CmdArgs);
+cmd(append, Session, InSock, Out, CmdNum, CmdArgs) ->
+    forward_update(append, Session, InSock, Out, CmdNum, CmdArgs);
+cmd(prepend, Session, InSock, Out, CmdNum, CmdArgs) ->
+    forward_update(prepend, Session, InSock, Out, CmdNum, CmdArgs);
+
+cmd(quit, _Session, _InSock, _Out, _CmdNum, _Rest) ->
+    exit({ok, quit_received}).
+
+% ------------------------------------------
+
+forward_update(Cmd, #session_proxy{bucket = Bucket} = Session,
+               InSock, Out, CmdNum,
+               [Key, FlagIn, ExpireIn, DataLenIn]) ->
     Flag = list_to_integer(FlagIn),
     Expire = list_to_integer(ExpireIn),
     DataLen = list_to_integer(DataLenIn),
     {ok, DataCRNL} = mc_ascii:recv_data(InSock, DataLen + 2),
     {Data, _} = mc_ascii:split_binary_suffix(DataCRNL, 2),
-    save, Key, Flag, Expire, Data,
-    todo,
-    mc_ascii:send(Out, CmdNum, <<"STORED\r\n">>),
-    {ok, SessData};
+    {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
+    Entry = #mc_entry{key = Key, flag = Flag, expire = Expire, data = Data},
+    ok = a2x_forward(Addr, Cmd, Out, CmdNum, Entry),
+    {ok, Session}.
 
-cmd(quit, _SessData, _InSock, _Out, _CmdNum, _Rest) ->
-    exit({ok, quit_received}).
+forward_arith(Cmd, #session_proxy{bucket = Bucket} = Session,
+               InSock, Out, CmdNum,
+               [Key, AmountIn]) ->
+    Amount = list_to_integer(AmountIn),
+    {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
+    Entry = #mc_entry{key = Key, data = Amount},
+    ok = a2x_forward(Addr, Cmd, Out, CmdNum, Entry),
+    {ok, Session}.
 
 % ------------------------------------------
 
