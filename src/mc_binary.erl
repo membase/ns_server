@@ -83,6 +83,9 @@ bin_size(undefined) -> 0;
 bin_size(List) when is_list(List) -> bin_size(iolist_to_binary(List));
 bin_size(Binary) -> size(Binary).
 
+send({OutPid, CmdNum}, Data) when is_pid(OutPid) ->
+    OutPid ! {send, CmdNum, Data};
+
 send(_Sock, undefined) -> ok;
 send(_Sock, <<>>) -> ok;
 send(Sock, List) when is_list(List) -> send(Sock, iolist_to_binary(List));

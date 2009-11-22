@@ -16,23 +16,23 @@
 session(_Sock, Env, _ProtocolModule) ->
     {ok, Env, #session_dict{}}.
 
-cmd(get, Dict, _InSock, Out, CmdNum, []) ->
-    mc_ascii:send(Out, CmdNum, <<"END\r\n">>),
+cmd(get, Dict, _InSock, Out, []) ->
+    mc_ascii:send(Out, <<"END\r\n">>),
     {ok, Dict};
-cmd(get, Dict, InSock, Out, CmdNum, [Key | Rest]) ->
+cmd(get, Dict, InSock, Out, [Key | Rest]) ->
     case dict:find(Key, Dict#session_dict.tbl) of
         {ok, #mc_entry{flag = Flag, data = Data}} ->
             FlagStr = integer_to_list(Flag),
             DataLen = integer_to_list(bin_size(Data)),
-            mc_ascii:send(Out, CmdNum, [<<"VALUE ">>, Key,
-                                        " ", FlagStr,
-                                        " ", DataLen, <<"\r\n">>,
-                                        <<Data/binary>>, <<"\r\n">>]);
+            mc_ascii:send(Out, [<<"VALUE ">>, Key,
+                                " ", FlagStr,
+                                " ", DataLen, <<"\r\n">>,
+                                <<Data/binary>>, <<"\r\n">>]);
         _ -> ok
     end,
-    cmd(get, Dict, InSock, Out, CmdNum, Rest);
+    cmd(get, Dict, InSock, Out, Rest);
 
-cmd(set, Dict, InSock, Out, CmdNum, [Key, FlagIn, ExpireIn, DataLenIn]) ->
+cmd(set, Dict, InSock, Out, [Key, FlagIn, ExpireIn, DataLenIn]) ->
     Flag = list_to_integer(FlagIn),
     Expire = list_to_integer(ExpireIn),
     DataLen = list_to_integer(DataLenIn),
@@ -44,10 +44,10 @@ cmd(set, Dict, InSock, Out, CmdNum, [Key, FlagIn, ExpireIn, DataLenIn]) ->
     Dict2 = Dict#session_dict{cas = Cas2,
                               tbl = dict:store(Key, Entry,
                                                Dict#session_dict.tbl)},
-    mc_ascii:send(Out, CmdNum, <<"STORED\r\n">>),
+    mc_ascii:send(Out, <<"STORED\r\n">>),
     {ok, Dict2};
 
-cmd(quit, _Dict, _InSock, _Out, _CmdNum, _Rest) ->
+cmd(quit, _Dict, _InSock, _Out, _Rest) ->
     exit({ok, quit_received}).
 
 bin_size(undefined) -> 0;

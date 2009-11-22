@@ -11,7 +11,7 @@
 loop_in(InSock, OutPid, CmdNum, Module, Session) ->
     {ok, Cmd, CmdArgs} = recv(InSock),
     {ok, Session2} = apply(Module, cmd,
-                           [Cmd, Session, InSock, OutPid, CmdNum, CmdArgs]),
+                           [Cmd, Session, InSock, {OutPid, CmdNum}, CmdArgs]),
     % TODO: Need protocol-specific error handling here,
     %       such as to send ERROR on unknown cmd.  Currently,
     %       the connection just closes.
