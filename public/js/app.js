@@ -313,6 +313,8 @@ function $m(self, method, klass) {
   }
 }
 
+var $i = $m(document, 'getElementById');
+
 function mkClass(methods) {
   if (_.isFunction(methods)) {
     var superclass = methods;
@@ -509,7 +511,7 @@ var LinkSwitchCell = mkClass(Cell, {
     this.selectedId = id;
   },
   updateSelected: function () {
-    $(_(this.idToLinks).chain().keys().map($m(document, 'getElementById')).value()).removeClass(this.options.selectedClass);
+    $(_(this.idToLinks).chain().keys().map($i).value()).removeClass(this.options.selectedClass);
 
     var value = this.value;
     if (value == undefined)
@@ -520,7 +522,7 @@ var LinkSwitchCell = mkClass(Cell, {
       throw new Error('invalid value!');
 
     var id = this.links[index].id;
-    $(document.getElementById(id)).addClass(this.options.selectedClass);
+    $($i(id)).addClass(this.options.selectedClass);
   },
   eventHandler: function (element, event) {
     var id = element.id;
