@@ -451,6 +451,22 @@ function ensureElementId(jq) {
   return jq;
 }
 
+function watchHashParamChange(param, defaultValue, callback) {
+  if (!callback) {
+    callback = defaultValue;
+    defaultValue = undefined;
+  }
+
+  var oldValue;
+  $(window).bind('hashchange', function () {
+    var newValue = $.bbq.getState(param) || defaultValue;
+    if (oldValue !== undefined && oldValue == newValue)
+      return;
+    oldValue = newValue;
+    return callback.apply(this, [newValue].concat($.makeArray(arguments)));
+  });
+}
+
 var LinkSwitchCell = mkClass(Cell, {
   initialize: function (paramName, options) {
     var _super = $m(this, 'initialize', Cell);
@@ -482,13 +498,9 @@ var LinkSwitchCell = mkClass(Cell, {
       self.eventHandler(this, event);
     })
 
-    $(window).bind('hashchange', $m(this, 'interpretState'));
+    watchHashParamChange(this.paramName, $m(this, 'interpretState'));
   },
-  interpretState: function () {
-    var id = $.bbq.getState(this.paramName);
-    if (id == this.selectedId)
-      return;
-
+  interpretState: function (id) {
     var item = this.idToLinks[id];
     if (!item)
       return;
@@ -814,31 +826,26 @@ var ThePage = {
   initialize: function () {
     OverviewSection.init();
     var self = this;
-    DAO.onReady(function () {
-      $(window).bind('hashchange', function () {
-        var sec = $.bbq.getState('sec') || 'overview';
-        if (sec == self.currentSectionName)
-          return;
-        var oldSection = self.currentSection;
-        var currentSection = self.sections[sec];
-        if (!currentSection) {
-          self.gotoSection('overview');
-          return;
-        }
-        self.currentSectionName = sec;
-        self.currentSection = currentSection;
+    watchHashParamChange('sec', 'overview', function (sec) {
+      var oldSection = self.currentSection;
+      var currentSection = self.sections[sec];
+      if (!currentSection) {
+        self.gotoSection('overview');
+        return;
+      }
+      self.currentSectionName = sec;
+      self.currentSection = currentSection;
 
-        DAO.switchSection(sec);
+      DAO.switchSection(sec);
 
-        $('#middle_pane > div').css('display', 'none');
-        $('#'+sec).css('display','block');
-        setTimeout(function () {
-          if (oldSection && oldSection.onLeave)
-            oldSection.onLeave();
-          self.currentSection.onEnter();
-          $(window).trigger('sec:' + sec);
-        }, 10);
-      });
+      $('#middle_pane > div').css('display', 'none');
+      $('#'+sec).css('display','block');
+      setTimeout(function () {
+        if (oldSection && oldSection.onLeave)
+          oldSection.onLeave();
+        self.currentSection.onEnter();
+        $(window).trigger('sec:' + sec);
+      }, 10);
     });
   }
 };
