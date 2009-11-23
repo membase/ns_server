@@ -177,6 +177,10 @@ function formatUptime(seconds, precision) {
   return rv.join(', ');
 }
 
+function escapeHTML() {
+  return String(arguments[0]).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+}
+
 // Based on: http://ejohn.org/blog/javascript-micro-templating/
 // Simple JavaScript Templating
 // John Resig - http://ejohn.org/ - MIT Licensed
@@ -192,7 +196,7 @@ function formatUptime(seconds, precision) {
 
     if (!fn) {
       var body = "var p=[],print=function(){p.push.apply(p,arguments);}," +
-        "h=function(){return String(arguments[0]).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')};" +
+        "h=window.escapeHTML;" +
 
       // Introduce the data as local variables using with(){}
       "with(obj){p.push('" +
