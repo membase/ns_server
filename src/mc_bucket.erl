@@ -16,8 +16,8 @@
 % Callers should consider the returned value to be opaque.
 % One day, the return value, for example, might be changed
 % into a gen_server Pid.
-create(Pool, BucketAddrs, BucketKey) ->
-    #mc_bucket{pool = Pool, addrs = BucketAddrs, key = BucketKey}.
+create(Pool, BucketAddrs, BucketId) ->
+    #mc_bucket{pool = Pool, addrs = BucketAddrs, id = BucketId}.
 
 % Choose the Addr that should contain the Keys.
 % This version is useful for multiget.

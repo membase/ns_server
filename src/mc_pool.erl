@@ -22,9 +22,9 @@ create(Addrs) ->
 create(Addrs, Buckets) ->
     #mc_pool{addrs = Addrs, buckets = Buckets}.
 
-get_bucket(#mc_pool{buckets = Buckets}, BucketKey) ->
+get_bucket(#mc_pool{buckets = Buckets}, BucketId) ->
     % TODO: Need a more efficient list find impl.
-    {ok, hd([B || B <- Buckets, B#mc_bucket.key =:= BucketKey])}.
+    {ok, hd([B || B <- Buckets, B#mc_bucket.id =:= BucketId])}.
 
 foreach_bucket(#mc_pool{buckets = Buckets}, VisitorFun) ->
     lists:foreach(VisitorFun, Buckets).
