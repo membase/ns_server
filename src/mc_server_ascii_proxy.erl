@@ -23,13 +23,13 @@ cmd(get, #session_proxy{bucket = Bucket} = Session,
     _InSock, Out, Keys) ->
     Groups =
         group_by(Keys,
-                 fun (Key) -> {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
-                              Addr
+                 fun (Key) ->
+                         {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
+                         Addr
                  end),
     % Out ! {expect, CmdNum, length(Groups)},
     NumFwd = lists:foldl(fun ({Addr, AddrKeys}, Acc) ->
-                             case a2x_forward(Addr, get, Out,
-                                              AddrKeys) of
+                             case a2x_forward(Addr, Out, get, AddrKeys) of
                                  true  -> Acc + 1;
                                  false -> Acc
                              end
@@ -50,6 +50,11 @@ cmd(append, Session, InSock, Out, CmdArgs) ->
 cmd(prepend, Session, InSock, Out, CmdArgs) ->
     forward_update(prepend, Session, InSock, Out, CmdArgs);
 
+cmd(incr, Session, InSock, Out, CmdArgs) ->
+    forward_update(incr, Session, InSock, Out, CmdArgs);
+cmd(decr, Session, InSock, Out, CmdArgs) ->
+    forward_update(decr, Session, InSock, Out, CmdArgs);
+
 cmd(quit, _Session, _InSock, _Out, _Rest) ->
     exit({ok, quit_received}).
 
@@ -65,7 +70,7 @@ forward_update(Cmd, #session_proxy{bucket = Bucket} = Session,
     {Data, _} = mc_ascii:split_binary_suffix(DataCRNL, 2),
     {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
     Entry = #mc_entry{key = Key, flag = Flag, expire = Expire, data = Data},
-    ok = a2x_forward(Addr, Cmd, Out, Entry),
+    ok = a2x_forward(Addr, Out, Cmd, Entry),
     {ok, Session}.
 
 forward_arith(Cmd, #session_proxy{bucket = Bucket} = Session,
@@ -74,24 +79,22 @@ forward_arith(Cmd, #session_proxy{bucket = Bucket} = Session,
     Amount = list_to_integer(AmountIn),
     {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
     Entry = #mc_entry{key = Key, data = Amount},
-    ok = a2x_forward(Addr, Cmd, Out, Entry),
+    ok = a2x_forward(Addr, Out, Cmd, Entry),
     {ok, Session}.
 
 % ------------------------------------------
 
-a2x_forward(Addr, Cmd, Out, CmdArgs) ->
-    a2x_forward(Addr, Cmd, Out, CmdArgs,
+a2x_forward(Addr, Out, Cmd, CmdArgs) ->
+    a2x_forward(Addr, Out, Cmd, CmdArgs,
                 undefined, undefined).
 
-a2x_forward(Addr, Cmd, Out, CmdArgs,
+a2x_forward(Addr, Out, Cmd, CmdArgs,
             ResponseFilter, NotifyData) ->
     ResponseFun =
         fun (Head, Body) ->
             case ((ResponseFilter =:= undefined) orelse
                   (ResponseFilter(Head, Body))) of
-                true ->
-                    a2x_send_response_from(Addr, Cmd, Out, CmdArgs,
-                                           Head, Body);
+                true  -> a2x_send_response_from(Addr, Out, Head, Body);
                 false -> true
             end
         end,
@@ -102,7 +105,7 @@ a2x_forward(Addr, Cmd, Out, CmdArgs,
                             mc_client_binary, Cmd, CmdArgs, NotifyData),
     true.
 
-a2x_send_response_from(ascii, _Cmd, Out, _CmdArgs, Head, Body) ->
+a2x_send_response_from(ascii, Out, Head, Body) ->
     % Downstream is ascii.
     Out =/= undefined andalso
     (Head =/= undefined andalso
@@ -110,7 +113,7 @@ a2x_send_response_from(ascii, _Cmd, Out, _CmdArgs, Head, Body) ->
     (Body =:= undefined orelse
      mc_ascii:send(Out, [Body#mc_entry.data, <<"\r\n">>]));
 
-a2x_send_response_from(binary, _Cmd, Out, _CmdArgs,
+a2x_send_response_from(binary, Out,
                        #mc_header{statusOrReserved = Status,
                                   opcode = Opcode} = _Head, Body) ->
     case Status =:= ?SUCCESS of
@@ -123,13 +126,12 @@ a2x_send_response_from(binary, _Cmd, Out, _CmdArgs,
             end;
         false ->
             mc_ascii:send(Out, [<<"ERROR ">>,
-                                        Body#mc_entry.data,
-                                        <<"\r\n">>])
+                                Body#mc_entry.data,
+                                <<"\r\n">>])
     end;
 
-a2x_send_response_from(Addr, Cmd, Out, CmdArgs, Head, Body) ->
-    a2x_send_response_from(mc_downstream:kind(Addr),
-                           Cmd, Out, CmdArgs, Head, Body).
+a2x_send_response_from(Addr, Out, Head, Body) ->
+    a2x_send_response_from(mc_downstream:kind(Addr), Out, Head, Body).
 
 a2x_send_entry_from_binary(Out, #mc_entry{key = Key, data = Data}) ->
     DataLen = integer_to_list(bin_size(Data)),

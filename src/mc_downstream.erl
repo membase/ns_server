@@ -10,9 +10,6 @@
 
 %% API for downstream.
 
-%% TODO: A proper implementation.
-%% TODO: Consider replacing implementation with gen_server.
-
 monitor(Addr, CallerPid, SomeFlag) ->
     ?debugFmt("mcd.monitor ~p ~p ~p~n", [Addr, CallerPid, SomeFlag]),
     todo.
@@ -24,3 +21,23 @@ send(Addr, CallerPid, ErrMsg, SendCmd, CallerPid2, ResponseFilter,
                ErrMsg, SendCmd, CallerPid2, ResponseFilter,
                ClientProtocolModule, Cmd, CmdArgs, NotifyData]),
     todo.
+
+% Note, this can be a child/worker in a supervision tree.
+
+start_link(#mc_addr{location = Location} = Addr) ->
+    [Host, Port] = string:tokens(Location, ":"),
+    PortNum = list_to_integer(Port),
+    {ok, Sock} = gen_tcp:connect(Host, PortNum,
+                                 [binary, {packet, 0}, {active, false}]),
+    % TODO: Auth.
+    % TODO: Bucket selection.
+    % TODO: Protocol capability test (binary or ascii).
+    {ok, spawn_link(?MODULE, loop, [Addr, Sock])}.
+
+loop(Addr, Sock) ->
+    receive
+        {fwd} ->
+            loop(Addr, Sock);
+        {close} ->
+            ok
+    end.
