@@ -523,17 +523,21 @@ var LinkSwitchCell = mkClass(Cell, {
 
     var id = this.links[index].id;
     $($i(id)).addClass(this.options.selectedClass);
+
+    this.pushState(id);
+  },
+  pushState: function (id) {
+    var obj = {};
+    obj[this.paramName] = id;
+    $.bbq.pushState(obj);
   },
   eventHandler: function (element, event) {
     var id = element.id;
     var item = this.idToLinks[id];
     if (!item)
       return;
-    
-    var obj = {};
-    obj[this.paramName] = id;
-    $.bbq.pushState(obj);
 
+    this.pushState(id);
     event.preventDefault();
   },
   makeUndefinedOrDefault: function () {
