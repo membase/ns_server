@@ -10,16 +10,19 @@
 
 %% API for downstream.
 
-monitor(Addr, CallerPid, SomeFlag) ->
-    ?debugFmt("mcd.monitor ~p ~p ~p~n", [Addr, CallerPid, SomeFlag]),
+monitor(Addr) ->
+    ?debugFmt("mcd.monitor ~p~n", [Addr]),
     todo.
 
-send(Addr, CallerPid, ErrMsg, SendCmd, CallerPid2, ResponseFilter,
-     ClientProtocolModule, Cmd, CmdArgs, NotifyData) ->
-    ?debugFmt("mcd.send ~p ~p ~p ~p ~p ~p ~p ~p ~p ~p~n",
-              [Addr, CallerPid,
-               ErrMsg, SendCmd, CallerPid2, ResponseFilter,
-               ClientProtocolModule, Cmd, CmdArgs, NotifyData]),
+demonitor(Addr) ->
+    ?debugFmt("mcd.demonitor ~p~n", [Addr]),
+    todo.
+
+send(Addr, Op, NotifyPid, NotifyData, ResponseFun,
+     CmdModule, Cmd, CmdArgs) ->
+    ?debugFmt("mcd.send ~p ~p ~p ~p ~p ~p ~p ~p~n",
+              [Addr, Op, NotifyPid, NotifyData, ResponseFun,
+               CmdModule, Cmd, CmdArgs]),
     todo.
 
 kind(#mc_addr{kind = Kind}) ->
@@ -39,8 +42,18 @@ start_link(#mc_addr{location = Location} = Addr) ->
 
 loop(Addr, Sock) ->
     receive
-        {fwd} ->
-            loop(Addr, Sock);
-        {close} ->
-            ok
+        {fwd, NotifyPid, NotifyData, ResponseFun,
+              CmdModule, Cmd, CmdArgs} ->
+            RV = apply(CmdModule, Cmd, [Sock, ResponseFun, CmdArgs]),
+            notify(NotifyPid, {RV, nil, NotifyData}),
+            case RV of
+                true  -> loop(Addr, Sock);
+                false -> gen_tcp:close(Sock)
+            end;
+        {close, NotifyPid, NotifyData} ->
+            gen_tcp:close(Sock),
+            notify(NotifyPid, {false, "downstream closed", NotifyData})
     end.
+
+notify(P, V) when is_pid(P) -> P ! V;
+notify(_, _) -> ok.

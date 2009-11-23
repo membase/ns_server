@@ -35,8 +35,10 @@ cmd(get, #session_proxy{bucket = Bucket} = Session,
                              end
                          end,
                          0, Groups),
-    NumFwd,
-    % Out ! {expect, CmdNum, NumFwd, <<"END\r\n">>},
+    await_ok(NumFwd),
+    mc_ascii:send(Out, <<"END\r\n">>),
+    lists:map(fun ({Addr, _}) -> mc_downstream:demonitor(Addr) end,
+              Groups),
     {ok, Session};
 
 cmd(set, Session, InSock, Out, CmdArgs) ->
@@ -55,14 +57,41 @@ cmd(incr, Session, InSock, Out, CmdArgs) ->
 cmd(decr, Session, InSock, Out, CmdArgs) ->
     forward_update(decr, Session, InSock, Out, CmdArgs);
 
+cmd(delete, #session_proxy{bucket = Bucket} = Session,
+    _InSock, Out, [Key]) ->
+    {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
+    ok = a2x_forward(Addr, Out, delete, #mc_entry{key = Key}),
+    case await_ok(1) of
+        1 -> true;
+        _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
+    end,
+    mc_downstream:demonitor(Addr),
+    {ok, Session};
+
+cmd(flush_all, #session_proxy{bucket = Bucket} = Session,
+    _InSock, Out, CmdArgs) ->
+    Addrs = mc_bucket:addrs(Bucket),
+    NumFwd =
+        lists:foldl(fun (Addr, Acc) ->
+                        case a2x_forward(Addr, Out, flush_all, CmdArgs) of
+                            true  -> Acc + 1;
+                            false -> Acc
+                        end
+                    end,
+                    0, Addrs),
+    await_ok(NumFwd),
+    mc_ascii:send(Out, <<"OK\r\n">>),
+    lists:map(fun (Addr) -> mc_downstream:demonitor(Addr) end,
+              Addrs),
+    {ok, Session};
+
 cmd(quit, _Session, _InSock, _Out, _Rest) ->
     exit({ok, quit_received}).
 
 % ------------------------------------------
 
 forward_update(Cmd, #session_proxy{bucket = Bucket} = Session,
-               InSock, Out,
-               [Key, FlagIn, ExpireIn, DataLenIn]) ->
+               InSock, Out, [Key, FlagIn, ExpireIn, DataLenIn]) ->
     Flag = list_to_integer(FlagIn),
     Expire = list_to_integer(ExpireIn),
     DataLen = list_to_integer(DataLenIn),
@@ -71,25 +100,31 @@ forward_update(Cmd, #session_proxy{bucket = Bucket} = Session,
     {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
     Entry = #mc_entry{key = Key, flag = Flag, expire = Expire, data = Data},
     ok = a2x_forward(Addr, Out, Cmd, Entry),
+    case await_ok(1) of
+        1 -> true;
+        _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
+    end,
+    mc_downstream:demonitor(Addr),
     {ok, Session}.
 
 forward_arith(Cmd, #session_proxy{bucket = Bucket} = Session,
-              _InSock, Out,
-              [Key, AmountIn]) ->
+              _InSock, Out, [Key, AmountIn]) ->
     Amount = list_to_integer(AmountIn),
     {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
-    Entry = #mc_entry{key = Key, data = Amount},
-    ok = a2x_forward(Addr, Out, Cmd, Entry),
+    ok = a2x_forward(Addr, Out, Cmd, #mc_entry{key = Key, data = Amount}),
+    case await_ok(1) of
+        1 -> true;
+        _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
+    end,
+    mc_downstream:demonitor(Addr),
     {ok, Session}.
 
 % ------------------------------------------
 
 a2x_forward(Addr, Out, Cmd, CmdArgs) ->
-    a2x_forward(Addr, Out, Cmd, CmdArgs,
-                undefined, undefined).
+    a2x_forward(Addr, Out, Cmd, CmdArgs, undefined, undefined).
 
-a2x_forward(Addr, Out, Cmd, CmdArgs,
-            ResponseFilter, NotifyData) ->
+a2x_forward(Addr, Out, Cmd, CmdArgs, ResponseFilter, NotifyData) ->
     Kind = mc_downstream:kind(Addr),
     ResponseFun =
         fun (Head, Body) ->
@@ -99,12 +134,10 @@ a2x_forward(Addr, Out, Cmd, CmdArgs,
                 false -> true
             end
         end,
-    ok = mc_downstream:monitor(Addr, self(), false),
-    ok = mc_downstream:send(Addr, self(),
-                            { false, "missing downstream", NotifyData },
-                            fwd, self(), ResponseFun,
-                            mc_client_binary, Cmd, CmdArgs, NotifyData),
-    true.
+    ok = mc_downstream:monitor(Addr),
+    ok = mc_downstream:send(Addr, fwd, self(), NotifyData, ResponseFun,
+                            kind_to_module(Kind), Cmd, CmdArgs),
+    ok.
 
 a2x_send_response_from(ascii, Out, Head, Body) ->
     % Downstream is ascii.
@@ -117,6 +150,7 @@ a2x_send_response_from(ascii, Out, Head, Body) ->
 a2x_send_response_from(binary, Out,
                        #mc_header{statusOrReserved = Status,
                                   opcode = Opcode} = _Head, Body) ->
+    % Downstream is binary.
     case Status =:= ?SUCCESS of
         true ->
             case Opcode of
@@ -138,6 +172,9 @@ a2x_send_entry_from_binary(Out, #mc_entry{key = Key, data = Data}) ->
                                DataLen, <<"\r\n">>,
                                Data, <<"\r\n">>]).
 
+kind_to_module(ascii)  -> mc_client_ascii;
+kind_to_module(binary) -> mc_client_binary.
+
 bin_size(undefined) -> 0;
 bin_size(List) when is_list(List) -> bin_size(iolist_to_binary(List));
 bin_size(Binary) -> size(Binary).
@@ -146,6 +183,16 @@ binary_success(?SET)    -> <<"STORED\r\n">>;
 binary_success(?NOOP)   -> <<"END\r\n">>;
 binary_success(?DELETE) -> <<"DELETED\r\n">>;
 binary_success(_)       -> <<"OK\r\n">>.
+
+await_ok(N) -> await_ok(N, 0).
+await_ok(N, Acc) when N > 0 ->
+    receive
+        {ok, _, _} ->
+            await_ok(N - 1, Acc + 1);
+        {'DOWN', _MonitorRef, _, _, _} ->
+            await_ok(N - 1, Acc)
+    end;
+await_ok(_, Acc) -> Acc.
 
 group_by(Keys, KeyFunc) ->
     group_by(Keys, KeyFunc, dict:new()).
