@@ -16,4 +16,5 @@ test() ->
     mc_client_binary:test(),
     mc_client_binary_ac:test(),
     mc_bucket:test(),
+    mc_server_ascii_proxy:test(),
     ok.
