@@ -90,11 +90,12 @@ a2x_forward(Addr, Out, Cmd, CmdArgs) ->
 
 a2x_forward(Addr, Out, Cmd, CmdArgs,
             ResponseFilter, NotifyData) ->
+    Kind = mc_downstream:kind(Addr),
     ResponseFun =
         fun (Head, Body) ->
             case ((ResponseFilter =:= undefined) orelse
                   (ResponseFilter(Head, Body))) of
-                true  -> a2x_send_response_from(Addr, Out, Head, Body);
+                true  -> a2x_send_response_from(Kind, Out, Head, Body);
                 false -> true
             end
         end,
@@ -128,10 +129,7 @@ a2x_send_response_from(binary, Out,
             mc_ascii:send(Out, [<<"ERROR ">>,
                                 Body#mc_entry.data,
                                 <<"\r\n">>])
-    end;
-
-a2x_send_response_from(Addr, Out, Head, Body) ->
-    a2x_send_response_from(mc_downstream:kind(Addr), Out, Head, Body).
+    end.
 
 a2x_send_entry_from_binary(Out, #mc_entry{key = Key, data = Data}) ->
     DataLen = integer_to_list(bin_size(Data)),

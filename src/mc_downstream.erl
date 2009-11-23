@@ -22,6 +22,9 @@ send(Addr, CallerPid, ErrMsg, SendCmd, CallerPid2, ResponseFilter,
                ClientProtocolModule, Cmd, CmdArgs, NotifyData]),
     todo.
 
+kind(#mc_addr{kind = Kind}) ->
+    Kind.
+
 % Note, this can be a child/worker in a supervision tree.
 
 start_link(#mc_addr{location = Location} = Addr) ->
