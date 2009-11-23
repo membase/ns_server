@@ -1,6 +1,14 @@
 if (!('console' in window))
   window.console = {log: function () {}};
 
+function getBacktrace() {
+  try {
+    throw new Error();
+  } catch (e) {
+    return e.stack;
+  }
+};
+
 /**
 *
 *  Base64 encode / decode
@@ -486,10 +494,11 @@ var LinkSwitchCell = mkClass(Cell, {
     this.resetLinks();
 
     var makeUndefinedOrDefault = $m(this, 'makeUndefinedOrDefault');
-    _.each(this.options.clearOnChangesTo, function (cell) {
-      cell.changedSlot.subscribeWithSlave(makeUndefinedOrDefault);
-      cell.undefinedSlot.subscribeWithSlave(makeUndefinedOrDefault);
-    });
+    // TODO: this is a bit broken for now
+    // _.each(this.options.clearOnChangesTo, function (cell) {
+    //   cell.changedSlot.subscribeWithSlave(makeUndefinedOrDefault);
+    //   cell.undefinedSlot.subscribeWithSlave(makeUndefinedOrDefault);
+    // });
 
     var updateSelected = $m(this, 'updateSelected');
     this.changedSlot.subscribeWithSlave(updateSelected);
@@ -499,8 +508,6 @@ var LinkSwitchCell = mkClass(Cell, {
     $(self.options.linkSelector).live(self.options.eventSpec, function (event) {
       self.eventHandler(this, event);
     })
-
-    watchHashParamChange(this.paramName, $m(this, 'interpretState'));
   },
   interpretState: function (id) {
     var item = this.idToLinks[id];
@@ -509,6 +516,11 @@ var LinkSwitchCell = mkClass(Cell, {
 
     this.setValue(item.value);
     this.selectedId = id;
+  },
+  setValue: function (id) {
+    var _super = $m(this, 'setValue', Cell);
+    console.log('calling setValue: ', id, getBacktrace());
+    return _super(id);
   },
   updateSelected: function () {
     $(_(this.idToLinks).chain().keys().map($i).value()).removeClass(this.options.selectedClass);
@@ -562,6 +574,11 @@ var LinkSwitchCell = mkClass(Cell, {
       this.defaultId = id;
     this.idToLinks[id] = item;
 
+    return this;
+  },
+  finalizeBuilding: function () {
+    watchHashParamChange(this.paramName, this.defaultId, $m(this, 'interpretState'));
+    this.interpretState($.bbq.getState(this.paramName));
     return this;
   }
 });
@@ -800,6 +817,7 @@ var OverviewSection = {
       DAO.cells.graphZoomLevel.addLink($('#overview_zoom_' + key),
                                  value);
     });
+    DAO.cells.graphZoomLevel.finalizeBuilding();
 
     DAO.cells.graphZoomLevel.changedSlot.subscribeWithSlave(function (cell) {
       var value = cell.value;
