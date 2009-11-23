@@ -17,3 +17,7 @@
 
 -record(mc_bucket, {pool, addrs, key}).
 
+-record(mc_addr, {location, % eg, "localhost:11211"
+                  kind      % eg, binary or ascii
+                  % TODO: bucket name? pool name? auth creds?
+                  }).
