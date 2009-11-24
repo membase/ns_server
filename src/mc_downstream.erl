@@ -8,28 +8,65 @@
 
 -compile(export_all).
 
-%% API for downstreams.
+-record(mbox, {addr, pid, history}).
+
+%% API for downstream manager service.
+
+start() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+stop() -> gen_server:stop(?MODULE).
 
 monitor(Addr) ->
-    ?debugFmt("mcd.monitor ~p~n", [Addr]),
-    todo,
-    {ok, monitor_ref}.
+    gen_server:call(?MODULE, {monitor, Addr}).
 
-demonitor([]) ->
-    todo;
-demonitor([MonitorRef | MonitorRefs]) ->
-    ?debugFmt("mcd.demonitor ~p~n", [MonitorRef]),
-    demonitor(MonitorRefs),
-    todo.
+demonitor(MonitorRefs) ->
+    lists:foreach(fun erlang:demonitor/1, MonitorRefs).
 
 send(Addr, Op, NotifyPid, NotifyData, ResponseFun,
      CmdModule, Cmd, CmdArgs) ->
     ?debugFmt("mcd.send ~p ~p ~p ~p ~p ~p ~p ~p~n",
               [Addr, Op, NotifyPid, NotifyData, ResponseFun,
                CmdModule, Cmd, CmdArgs]),
-    todo.
+    gen_server:call(?MODULE,
+                    {send, Addr, Op, NotifyPid, NotifyData,
+                     ResponseFun, CmdModule, Cmd, CmdArgs}).
 
-% Note, this can be a child/worker in a supervision tree.
+%% gen_server implementation.
+
+init([]) -> {ok, dict:new()}.
+terminate(_Reason, _Dict) -> ok.
+code_change(_OldVsn, Dict, _Extra) -> {ok, Dict}.
+handle_info(_Info, Dict) -> {noreply, Dict}.
+handle_cast(_Msg, Dict) -> {noreply, Dict}.
+
+handle_call({monitor, Addr}, _From, Dict) ->
+    {Dict2, #mbox{pid = Pid}} = make_mbox(Dict, Addr),
+    Reply = {ok, erlang:monitor(process, Pid)},
+    {reply, Reply, Dict2};
+handle_call({send, Addr, Op, NotifyPid, NotifyData,
+             ResponseFun, CmdModule, Cmd, CmdArgs}, _From, Dict) ->
+    {Dict2, #mbox{pid = Pid}} = make_mbox(Dict, Addr),
+    Pid ! {Op, NotifyPid, NotifyData, ResponseFun,
+           CmdModule, Cmd, CmdArgs},
+    {reply, ok, Dict2}.
+
+% ---------------------------------------------------
+
+% Retrieves or creates an mbox for an Addr.
+make_mbox(Dict, Addr) ->
+    case dict:find(Addr, Dict) of
+        {ok, MBox} -> {Dict, MBox};
+        _ -> MBox = create_mbox(Addr),
+             Dict2 = dict:store(Addr, MBox, Dict),
+             {Dict2, MBox}
+    end.
+
+create_mbox(Addr) ->
+    {ok, Pid} = start_link(Addr),
+    #mbox{addr = Addr, pid = Pid, history = []}.
+
+%% Child/worker process implementation, where we have one child/worker
+%% process per downstream Addr or MBox.  Note, this can be a
+%% child/worker in a supervision tree.
 
 start_link(Addr) ->
     Location = mc_addr:location(Addr),
