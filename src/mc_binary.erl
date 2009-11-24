@@ -98,18 +98,19 @@ recv_data(Sock, NumBytes) -> gen_tcp:recv(Sock, NumBytes).
 
 % -------------------------------------------------
 
-send_recv_test() ->
+noop_test()->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
-    (fun () ->
-        {ok, works} = send_recv(Sock, nil,
-                                #mc_header{opcode = ?NOOP}, #mc_entry{},
-                                works)
-    end)(),
+    {ok, works} = send_recv(Sock, nil,
+                            #mc_header{opcode = ?NOOP}, #mc_entry{}, works),
+    ok = gen_tcp:close(Sock).
+
+flush_test() ->
+    {ok, Sock} = gen_tcp:connect("localhost", 11211,
+                                 [binary, {packet, 0}, {active, false}]),
     test_flush(Sock),
     ok = gen_tcp:close(Sock).
 
 test_flush(Sock) ->
     {ok, works} = send_recv(Sock, nil,
                             #mc_header{opcode = ?FLUSH}, #mc_entry{}, works).
-

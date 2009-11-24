@@ -20,7 +20,7 @@ test() ->
              mc_server_ascii_proxy
             ],
     lists:foreach(fun (Test) ->
-                          io:format("~p~n", [Test]),
+                          io:format("  ~p...~n", [Test]),
                           apply(Test, test, [])
                   end,
                   Tests).
