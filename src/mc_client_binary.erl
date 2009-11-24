@@ -19,10 +19,10 @@ cmd(Opcode, Sock, RecvCallback, Entry) ->
     end.
 
 cmd_binary_quiet(Opcode, Sock, _RecvCallback, Entry) ->
-    send(Sock, req, #mc_header{opcode = Opcode}, Entry).
+    ok = send(Sock, req, #mc_header{opcode = Opcode}, Entry).
 
 cmd_binary_vocal(Opcode, Sock, RecvCallback, Entry) ->
-    send(Sock, req, #mc_header{opcode = Opcode}, Entry),
+    ok = send(Sock, req, #mc_header{opcode = Opcode}, Entry),
     cmd_binary_vocal_recv(Opcode, Sock, RecvCallback, Entry).
 
 cmd_binary_vocal_recv(Opcode, Sock, RecvCallback, Entry) ->
@@ -33,7 +33,7 @@ cmd_binary_vocal_recv(Opcode, Sock, RecvCallback, Entry) ->
     end,
     case Opcode =:= RecvHeader#mc_header.opcode of
         true  -> S = RecvHeader#mc_header.statusOrReserved,
-                 case S = ?SUCCESS of
+                 case S =:= ?SUCCESS of
                      true  -> {ok, RecvHeader, RecvEntry};
                      false -> {error, RecvHeader, RecvEntry}
                  end;
@@ -61,4 +61,12 @@ is_quiet(?RDELETEQ) -> true;
 is_quiet(?RINCRQ) -> true;
 is_quiet(?RDECRQ) -> true;
 is_quiet(_) -> false.
+
+% -------------------------------------------------
+
+noop_test() ->
+    {ok, Sock} = gen_tcp:connect("localhost", 11211,
+                                 [binary, {packet, 0}, {active, false}]),
+    {ok, _H, _E} = cmd(?NOOP, Sock, nil, #mc_entry{}),
+    ok = gen_tcp:close(Sock).
 
