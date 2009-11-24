@@ -16,8 +16,11 @@
 % Callers should consider the returned value to be opaque.
 % One day, the return value, for example, might be changed
 % into a gen_server Pid.
-create(Pool, BucketAddrs, BucketId) ->
-    #mc_bucket{pool = Pool, addrs = BucketAddrs, id = BucketId}.
+create(BucketId, BucketAddrs) ->
+    #mc_bucket{id = BucketId, addrs = BucketAddrs}.
+
+id(#mc_bucket{id = Id})          -> Id.
+addrs(#mc_bucket{addrs = Addrs}) -> Addrs.
 
 % Choose the Addr that should contain the Keys.
 % This version is useful for multiget.
@@ -42,13 +45,10 @@ choose_addrs(#mc_bucket{addrs = Addrs}, Key, N) ->
     % TODO: A proper consistent hashing.
     {Key, lists:sublist(Addrs, N)}.
 
-addrs(#mc_bucket{addrs = Addrs}) ->
-    Addrs.
-
 % ------------------------------------------------
 
 choose_addr_test() ->
-    B1 = create(pool1, [a1], buck1),
+    B1 = create(buck1, [a1]),
     ?assertMatch({key1, a1}, choose_addr(B1, key1)),
     ?assertMatch({key2, a1}, choose_addr(B1, key2)),
     ?assertMatch([{key3, a1}, {key4, a1}],
@@ -56,7 +56,7 @@ choose_addr_test() ->
     ok.
 
 choose_addrs_test() ->
-    B1 = create(pool1, [a1], buck1),
+    B1 = create(buck1, [a1]),
     ?assertMatch({key5, [a1]}, choose_addrs(B1, key5, 1)),
     ?assertMatch({key6, [a1]}, choose_addrs(B1, key6, 1)),
     ?assertMatch([{key7, [a1]}, {key8, [a1]}],

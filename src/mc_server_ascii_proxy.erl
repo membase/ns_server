@@ -21,13 +21,13 @@ session(_Sock, Pool, _ProtocolModule) ->
 
 cmd(get, #session_proxy{bucket = Bucket} = Session,
     _InSock, Out, Keys) ->
+    ?debugVal(Session),
     Groups =
         group_by(Keys,
                  fun (Key) ->
                          {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
                          Addr
                  end),
-    % Out ! {expect, CmdNum, length(Groups)},
     NumFwd = lists:foldl(fun ({Addr, AddrKeys}, Acc) ->
                              case a2x_forward(Addr, Out, get, AddrKeys) of
                                  true  -> Acc + 1;
@@ -209,10 +209,11 @@ group_by([], _KeyFunc, Dict) ->
 
 % For testing...
 %
-main() ->
-    mc_main:start(11222,
-                  {mc_server_ascii,
-                   {mc_server_ascii_proxy, mc_pool:create()}}).
+main()        -> main(11333).
+main(PortNum) -> mc_accept:start(PortNum,
+                                 {mc_server_ascii,
+                                  mc_server_ascii_proxy,
+                                  mc_pool:create()}).
 
 element2({_X, Y}) -> Y.
 

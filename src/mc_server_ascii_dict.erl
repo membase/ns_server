@@ -58,6 +58,8 @@ bin_size(Binary) -> size(Binary).
 
 % For testing...
 %
-main() ->
-    mc_accept:start(11222, {mc_server_ascii, mc_server_ascii_dict, {}}).
+main()        -> main(11222).
+main(PortNum) -> mc_accept:start(PortNum,
+                                 {mc_server_ascii,
+                                  mc_server_ascii_dict, {}}).
 
