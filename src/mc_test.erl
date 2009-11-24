@@ -9,13 +9,18 @@
 %   erl -pa ebin -noshell -s mc_test test -s init stop
 %
 test() ->
-    mc_ascii:test(),
-    mc_client_ascii:test(),
-    mc_client_ascii_ac:test(),
-    mc_binary:test(),
-    mc_client_binary:test(),
-    mc_client_binary_ac:test(),
-    mc_bucket:test(),
-    mc_pool:test(),
-    mc_server_ascii_proxy:test(),
-    ok.
+    Tests = [mc_ascii,
+             mc_client_ascii,
+             mc_client_ascii_ac,
+             mc_binary,
+             mc_client_binary,
+             mc_client_binary_ac,
+             mc_bucket,
+             mc_pool,
+             mc_server_ascii_proxy
+            ],
+    lists:foreach(fun (Test) ->
+                          io:format("~p~n", [Test]),
+                          apply(Test, test, [])
+                  end,
+                  Tests).
