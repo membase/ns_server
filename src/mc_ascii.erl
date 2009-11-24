@@ -19,7 +19,7 @@ send_recv(Sock, IoList, RecvCallback) ->
     RV = recv_line(Sock),
     case is_function(RecvCallback) of
        true  -> {ok, Line} = RV,
-                RecvCallback(Line, #mc_entry{});
+                RecvCallback(Line, undefined);
        false -> ok
     end,
     RV.
@@ -114,17 +114,23 @@ recv_data_test() ->
 send_recv_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
-
     (fun () ->
         {ok, RB} = send_recv(Sock, "not-a-command-srt\r\n", nil),
         ?assertMatch(RB, <<"ERROR">>)
     end)(),
-
     (fun () ->
         {ok, RB} = send_recv(Sock, "get not-a-key-srt\r\n", nil),
         ?assertMatch(RB, <<"END">>)
     end)(),
+    ok = gen_tcp:close(Sock).
 
+delete_send_recv_test() ->
+    {ok, Sock} = gen_tcp:connect("localhost", 11211,
+                                 [binary, {packet, 0}, {active, false}]),
+    (fun () ->
+        {ok, RB} = send_recv(Sock, "delete not-a-key-dsrt\r\n", nil),
+        ?assertMatch(RB, <<"NOT_FOUND">>)
+    end)(),
     ok = gen_tcp:close(Sock).
 
 starts_with(S, Prefix) ->

@@ -83,11 +83,13 @@ loop(Addr, Sock) ->
     receive
         {fwd, NotifyPid, NotifyData, ResponseFun,
               CmdModule, Cmd, CmdArgs} ->
-            RV = apply(CmdModule, Cmd, [Sock, ResponseFun, CmdArgs]),
-            notify(NotifyPid, {RV, nil, NotifyData}),
+            RV = apply(CmdModule, cmd, [Cmd, Sock, ResponseFun, CmdArgs]),
+            notify(NotifyPid, {RV, undefined, NotifyData}),
+            ?debugVal(RV),
             case RV of
-                true  -> loop(Addr, Sock);
-                false -> gen_tcp:close(Sock)
+                {ok, _} -> loop(Addr, Sock);
+                Error   -> gen_tcp:close(Sock),
+                           exit({error, Error})
             end;
         {close, NotifyPid, NotifyData} ->
             gen_tcp:close(Sock),
@@ -96,3 +98,10 @@ loop(Addr, Sock) ->
 
 notify(P, V) when is_pid(P) -> P ! V;
 notify(_, _) -> ok.
+
+% ---------------------------------------------------
+
+% For testing...
+%
+main() ->
+    {mc_server_ascii_proxy:main(), start()}.

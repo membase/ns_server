@@ -14,6 +14,7 @@
 -record(session_proxy, {bucket}).
 
 session(_Sock, Pool, _ProtocolModule) ->
+    ?debugFmt("msap.session ~p~n", [Pool]),
     {ok, Bucket} = mc_pool:get_bucket(Pool, "default"),
     {ok, Pool, #session_proxy{bucket = Bucket}}.
 
@@ -56,11 +57,15 @@ cmd(decr, Session, InSock, Out, CmdArgs) ->
 cmd(delete, #session_proxy{bucket = Bucket} = Session,
     _InSock, Out, [Key]) ->
     {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
+    ?debugFmt("msap.cmd.delete.1 ~p ~p~n", [Key, Addr]),
     {ok, Monitor} = a2x_forward(Addr, Out, delete, #mc_entry{key = Key}),
+    ?debugFmt("msap.cmd.delete.m ~p ~p ~p~n", [Key, Addr, Monitor]),
     case await_ok(1) of
-        1 -> true;
+        1 -> ?debugFmt("msap.cmd.delete.o1 ~p ~p ~p~n", [Key, Addr, Monitor]),
+             true;
         _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
     end,
+    ?debugFmt("msap.cmd.delete.ex~n", []),
     mc_downstream:demonitor([Monitor]),
     {ok, Session};
 
@@ -145,9 +150,9 @@ a2x_send_response_from(ascii, Out, Head, Body) ->
     % Downstream is ascii.
     Out =/= undefined andalso
     (Head =/= undefined andalso
-     mc_ascii:send(Out, [Head, <<"\r\n">>])) andalso
+     ok =:= mc_ascii:send(Out, [Head, <<"\r\n">>])) andalso
     (Body =:= undefined orelse
-     mc_ascii:send(Out, [Body#mc_entry.data, <<"\r\n">>]));
+     ok =:= mc_ascii:send(Out, [Body#mc_entry.data, <<"\r\n">>]));
 
 a2x_send_response_from(binary, Out,
                        #mc_header{statusOrReserved = Status,
@@ -174,8 +179,8 @@ a2x_send_entry_from_binary(Out, #mc_entry{key = Key, data = Data}) ->
                                DataLen, <<"\r\n">>,
                                Data, <<"\r\n">>]).
 
-kind_to_module(ascii)  -> mc_client_ascii;
-kind_to_module(binary) -> mc_client_binary.
+kind_to_module(ascii)  -> mc_client_ascii_ac;
+kind_to_module(binary) -> mc_client_binary_ac.
 
 bin_size(undefined) -> 0;
 bin_size(List) when is_list(List) -> bin_size(iolist_to_binary(List));
@@ -189,10 +194,11 @@ binary_success(_)       -> <<"OK\r\n">>.
 await_ok(N) -> await_ok(N, 0).
 await_ok(N, Acc) when N > 0 ->
     receive
-        {ok, _, _} ->
-            await_ok(N - 1, Acc + 1);
-        {'DOWN', _MonitorRef, _, _, _} ->
-            await_ok(N - 1, Acc)
+        {{ok, _},    _Msg, _NotifyData} -> await_ok(N - 1, Acc + 1);
+        {{ok, _, _}, _Msg, _NotifyData} -> await_ok(N - 1, Acc + 1);
+        {'DOWN', _MonitorRef, _, _, _}  -> await_ok(N - 1, Acc);
+        Unexpected -> ?debugVal(Unexpected),
+                      exit({error, Unexpected})
     end;
 await_ok(_, Acc) -> Acc.
 
