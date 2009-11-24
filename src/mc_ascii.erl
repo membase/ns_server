@@ -115,11 +115,11 @@ send_recv_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
     (fun () ->
-        {ok, RB} = send_recv(Sock, "not-a-command-srt\r\n", nil),
+        {ok, RB} = send_recv(Sock, "not-a-command-srt\r\n", undefined),
         ?assertMatch(RB, <<"ERROR">>)
     end)(),
     (fun () ->
-        {ok, RB} = send_recv(Sock, "get not-a-key-srt\r\n", nil),
+        {ok, RB} = send_recv(Sock, "get not-a-key-srt\r\n", undefined),
         ?assertMatch(RB, <<"END">>)
     end)(),
     ok = gen_tcp:close(Sock).
@@ -128,7 +128,7 @@ delete_send_recv_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
     (fun () ->
-        {ok, RB} = send_recv(Sock, "delete not-a-key-dsrt\r\n", nil),
+        {ok, RB} = send_recv(Sock, "delete not-a-key-dsrt\r\n", undefined),
         ?assertMatch(RB, <<"NOT_FOUND">>)
     end)(),
     ok = gen_tcp:close(Sock).

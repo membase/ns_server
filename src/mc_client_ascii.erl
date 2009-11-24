@@ -96,7 +96,7 @@ version_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
     (fun () ->
-        {ok, RB} = cmd(version, Sock, nil, nil),
+        {ok, RB} = cmd(version, Sock, undefined, undefined),
         R = binary_to_list(RB),
         ?assert(starts_with(R, "VERSION "))
     end)(),
@@ -111,14 +111,14 @@ set_test() ->
 
 set_test_sock(Sock, Key) ->
     (fun () ->
-        {ok, RB} = send_recv(Sock, "flush_all\r\n", nil),
+        {ok, RB} = send_recv(Sock, "flush_all\r\n", undefined),
         ?assertMatch(RB, <<"OK">>),
-        {ok, RB1} = send_recv(Sock, <<"get ", Key/binary, "\r\n">>, nil),
+        {ok, RB1} = send_recv(Sock, <<"get ", Key/binary, "\r\n">>, undefined),
         ?assertMatch(RB1, <<"END">>)
     end)(),
 
     (fun () ->
-        {ok, RB} = cmd(set, Sock, nil,
+        {ok, RB} = cmd(set, Sock, undefined,
                        #mc_entry{key =  Key,
                                  data = <<"AAA">>}),
         ?assertMatch(RB, <<"STORED">>),
@@ -127,7 +127,7 @@ set_test_sock(Sock, Key) ->
     end)().
 
 get_test_match(Sock, Key, Data) ->
-    {ok, RB1} = send_recv(Sock, <<"get ", Key/binary, "\r\n">>, nil),
+    {ok, RB1} = send_recv(Sock, <<"get ", Key/binary, "\r\n">>, undefined),
     DataSize = integer_to_list(size(Data)),
     Expect = iolist_to_binary(["VALUE ", Key, " 0 ", DataSize]),
     ?assertMatch(RB1, Expect),
@@ -142,11 +142,11 @@ delete_test() ->
     set_test_sock(Sock, <<"aaa">>),
 
     (fun () ->
-        {ok, RB} = cmd(delete, Sock, nil,
+        {ok, RB} = cmd(delete, Sock, undefined,
                        #mc_entry{key = <<"aaa">>}),
         ?assertMatch(RB, <<"DELETED">>),
 
-        {ok, RB1} = send_recv(Sock, "get aaa\r\n", nil),
+        {ok, RB1} = send_recv(Sock, "get aaa\r\n", undefined),
         ?assertMatch(RB1, <<"END">>)
     end)(),
 
@@ -186,30 +186,30 @@ update_test() ->
     set_test_sock(Sock, <<"aaa">>),
 
     (fun () ->
-        {ok, RB} = cmd(append, Sock, nil,
+        {ok, RB} = cmd(append, Sock, undefined,
                        #mc_entry{key = <<"aaa">>, data = <<"-post">>}),
         ?assertMatch(RB, <<"STORED">>),
         get_test_match(Sock, <<"aaa">>, <<"AAA-post">>),
 
-        {ok, RB1} = cmd(prepend, Sock, nil,
+        {ok, RB1} = cmd(prepend, Sock, undefined,
                        #mc_entry{key = <<"aaa">>, data = <<"pre-">>}),
         ?assertMatch(RB1, <<"STORED">>),
         get_test_match(Sock, <<"aaa">>, <<"pre-AAA-post">>),
 
-        {ok, RB3} = cmd(add, Sock, nil,
+        {ok, RB3} = cmd(add, Sock, undefined,
                         #mc_entry{key = <<"aaa">>, data = <<"already exists">>}),
         ?assertMatch(RB3, <<"NOT_STORED">>),
         get_test_match(Sock, <<"aaa">>, <<"pre-AAA-post">>),
 
-        {ok, RB5} = cmd(replace, Sock, nil,
+        {ok, RB5} = cmd(replace, Sock, undefined,
                         #mc_entry{key = <<"aaa">>, data = <<"replaced">>}),
         ?assertMatch(RB5, <<"STORED">>),
         get_test_match(Sock, <<"aaa">>, <<"replaced">>),
 
-        {ok, RB7} = cmd(flush_all, Sock, nil, #mc_entry{}),
+        {ok, RB7} = cmd(flush_all, Sock, undefined, #mc_entry{}),
         ?assertMatch(RB7, <<"OK">>),
 
-        {ok, RBF} = send_recv(Sock, "get aaa\r\n", nil),
+        {ok, RBF} = send_recv(Sock, "get aaa\r\n", undefined),
         ?assertMatch(RBF, <<"END">>)
 
     end)(),

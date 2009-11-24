@@ -97,7 +97,7 @@ set_test() ->
 set_test_sock(Sock, Key) ->
     flush_test_sock(Sock),
     (fun () ->
-        {ok, RB} = cmd(?SET, Sock, nil,
+        {ok, RB} = cmd(?SET, Sock, undefined,
                        #mc_entry{key =  Key,
                                  data = <<"AAA">>}),
         ?assertMatch(RB, <<"STORED">>)
@@ -110,6 +110,6 @@ flush_test() ->
     ok = gen_tcp:close(Sock).
 
 flush_test_sock(Sock) ->
-    {ok, RB} = cmd(?FLUSH, Sock, nil, #mc_entry{}),
+    {ok, RB} = cmd(?FLUSH, Sock, undefined, #mc_entry{}),
     ?assertMatch(RB, <<"OK">>).
 

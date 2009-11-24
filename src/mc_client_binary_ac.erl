@@ -88,14 +88,14 @@ set_test() ->
 set_test_sock(Sock, Key) ->
     test_flush(Sock),
     (fun () ->
-        {ok, RB} = cmd(set, Sock, nil,
+        {ok, RB} = cmd(set, Sock, undefined,
                        #mc_entry{key = Key, data = <<"AAA">>}),
         ?assertMatch(RB, <<"STORED">>),
         get_test_match(Sock, Key, <<"AAA">>)
     end)().
 
 test_flush(Sock) ->
-    {ok, works} = send_recv(Sock, nil,
+    {ok, works} = send_recv(Sock, undefined,
                             #mc_header{opcode = ?FLUSH}, #mc_entry{}, works).
 
 get_test_match(Sock, Key, Data) ->

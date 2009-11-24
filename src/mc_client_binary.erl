@@ -87,7 +87,7 @@ ext_arith(#mc_entry{data = Data, expire = Expire}) ->
 noop_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
-    {ok, _H, _E} = cmd(?NOOP, Sock, nil, #mc_entry{}),
+    {ok, _H, _E} = cmd(?NOOP, Sock, undefined, #mc_entry{}),
     ok = gen_tcp:close(Sock).
 
 flush_test() ->
@@ -97,7 +97,7 @@ flush_test() ->
     ok = gen_tcp:close(Sock).
 
 flush_test_sock(Sock) ->
-    {ok, _H, _E} = cmd(?FLUSH, Sock, nil, #mc_entry{}).
+    {ok, _H, _E} = cmd(?FLUSH, Sock, undefined, #mc_entry{}).
 
 set_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
@@ -108,7 +108,7 @@ set_test() ->
 set_test_sock(Sock, Key) ->
     flush_test_sock(Sock),
     (fun () ->
-        {ok, _H, _E} = cmd(?SET, Sock, nil,
+        {ok, _H, _E} = cmd(?SET, Sock, undefined,
                            #mc_entry{key = Key, data = <<"AAA">>}),
         get_test_match(Sock, Key, <<"AAA">>)
     end)().
