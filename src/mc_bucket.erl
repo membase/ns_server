@@ -22,11 +22,6 @@ create(BucketId, BucketAddrs) ->
 id(#mc_bucket{id = Id})          -> Id.
 addrs(#mc_bucket{addrs = Addrs}) -> Addrs.
 
-% Choose the Addr that should contain the Keys.
-% This version is useful for multiget.
-choose_addr(Bucket, Keys) when is_list(Keys) ->
-    lists:map(fun (Key) -> choose_addr(Bucket, Key) end, Keys);
-
 % Choose the Addr that should contain the Key.
 choose_addr(#mc_bucket{addrs = Addrs}, Key) ->
     % TODO: A proper consistent hashing.
@@ -51,8 +46,6 @@ choose_addr_test() ->
     B1 = create(buck1, [a1]),
     ?assertMatch({key1, a1}, choose_addr(B1, key1)),
     ?assertMatch({key2, a1}, choose_addr(B1, key2)),
-    ?assertMatch([{key3, a1}, {key4, a1}],
-                 choose_addr(B1, [key3, key4])),
     ok.
 
 choose_addrs_test() ->

@@ -24,16 +24,17 @@ cmd(get, #session_proxy{bucket = Bucket} = Session,
     Groups =
         group_by(Keys,
                  fun (Key) ->
-                         {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
-                         Addr
+                     {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
+                     Addr
                  end),
-    NumFwd = lists:foldl(fun ({Addr, AddrKeys}, Acc) ->
-                             case a2x_forward(Addr, Out, get, AddrKeys) of
-                                 true  -> Acc + 1;
-                                 false -> Acc
-                             end
-                         end,
-                         0, Groups),
+    NumFwd =
+        lists:foldl(fun ({Addr, AddrKeys}, Acc) ->
+                        case a2x_forward(Addr, Out, get, AddrKeys) of
+                            ok -> Acc + 1;
+                            _  -> Acc
+                        end
+                    end,
+                    0, Groups),
     await_ok(NumFwd),
     mc_ascii:send(Out, <<"END\r\n">>),
     lists:map(fun ({Addr, _}) -> mc_downstream:demonitor(Addr) end,
@@ -73,8 +74,8 @@ cmd(flush_all, #session_proxy{bucket = Bucket} = Session,
     NumFwd =
         lists:foldl(fun (Addr, Acc) ->
                         case a2x_forward(Addr, Out, flush_all, CmdArgs) of
-                            true  -> Acc + 1;
-                            false -> Acc
+                            ok -> Acc + 1;
+                            _  -> Acc
                         end
                     end,
                     0, Addrs),
