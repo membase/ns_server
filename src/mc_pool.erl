@@ -20,14 +20,14 @@ create() ->
 create(Addrs, Buckets) ->
     #mc_pool{addrs = Addrs, buckets = Buckets}.
 
-% Returns {value, Bucket} or false.
+% Returns {ok, Bucket} or false.
 get_bucket(#mc_pool{buckets = Buckets}, BucketId) ->
     search_bucket(BucketId, Buckets).
 
 search_bucket(_BucketId, []) -> false;
 search_bucket(BucketId, [Bucket | Rest]) ->
     case mc_bucket:id(Bucket) =:= BucketId of
-        true  -> {value, Bucket};
+        true  -> {ok, Bucket};
         false -> search_bucket(BucketId, Rest)
     end.
 
@@ -39,7 +39,7 @@ foreach_bucket(#mc_pool{buckets = Buckets}, VisitorFun) ->
 get_bucket_test() ->
     B1 = mc_bucket:create("default", [mc_addr:local()]),
     P1 = create(),
-    ?assertMatch({value, B1}, get_bucket(P1, "default")),
+    ?assertMatch({ok, B1}, get_bucket(P1, "default")),
     ok.
 
 foreach_bucket_test() ->

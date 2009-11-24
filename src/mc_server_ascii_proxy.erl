@@ -21,7 +21,6 @@ session(_Sock, Pool, _ProtocolModule) ->
 
 cmd(get, #session_proxy{bucket = Bucket} = Session,
     _InSock, Out, Keys) ->
-    ?debugVal(Session),
     Groups =
         group_by(Keys,
                  fun (Key) ->
