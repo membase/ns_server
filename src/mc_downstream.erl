@@ -8,15 +8,17 @@
 
 -compile(export_all).
 
-%% API for downstream.
+%% API for downstreams.
 
 monitor(Addr) ->
     ?debugFmt("mcd.monitor ~p~n", [Addr]),
-    todo.
+    todo,
+    ok.
 
 demonitor(Addr) ->
     ?debugFmt("mcd.demonitor ~p~n", [Addr]),
-    todo.
+    todo,
+    ok.
 
 send(Addr, Op, NotifyPid, NotifyData, ResponseFun,
      CmdModule, Cmd, CmdArgs) ->
