@@ -95,14 +95,21 @@ set_test() ->
     ok = gen_tcp:close(Sock).
 
 set_test_sock(Sock, Key) ->
-    (fun () ->
-        {ok, RB} = cmd(?FLUSH, Sock, nil, #mc_entry{}),
-        ?assertMatch(RB, <<"OK">>)
-    end)(),
+    flush_test_sock(Sock),
     (fun () ->
         {ok, RB} = cmd(?SET, Sock, nil,
                        #mc_entry{key =  Key,
                                  data = <<"AAA">>}),
         ?assertMatch(RB, <<"STORED">>)
     end)().
+
+flush_test() ->
+    {ok, Sock} = gen_tcp:connect("localhost", 11211,
+                                 [binary, {packet, 0}, {active, false}]),
+    flush_test_sock(Sock),
+    ok = gen_tcp:close(Sock).
+
+flush_test_sock(Sock) ->
+    {ok, RB} = cmd(?FLUSH, Sock, nil, #mc_entry{}),
+    ?assertMatch(RB, <<"OK">>).
 
