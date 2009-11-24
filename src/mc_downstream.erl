@@ -13,12 +13,14 @@
 monitor(Addr) ->
     ?debugFmt("mcd.monitor ~p~n", [Addr]),
     todo,
-    ok.
+    {ok, monitor_ref}.
 
-demonitor(Addr) ->
-    ?debugFmt("mcd.demonitor ~p~n", [Addr]),
-    todo,
-    ok.
+demonitor([]) ->
+    todo;
+demonitor([MonitorRef | MonitorRefs]) ->
+    ?debugFmt("mcd.demonitor ~p~n", [MonitorRef]),
+    demonitor(MonitorRefs),
+    todo.
 
 send(Addr, Op, NotifyPid, NotifyData, ResponseFun,
      CmdModule, Cmd, CmdArgs) ->

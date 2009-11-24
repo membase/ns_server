@@ -27,18 +27,14 @@ cmd(get, #session_proxy{bucket = Bucket} = Session,
                      {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
                      Addr
                  end),
-    NumFwd =
+    {NumFwd, Monitors} =
         lists:foldl(fun ({Addr, AddrKeys}, Acc) ->
-                        case a2x_forward(Addr, Out, get, AddrKeys) of
-                            ok -> Acc + 1;
-                            _  -> Acc
-                        end
+                        accum(a2x_forward(Addr, Out, get, AddrKeys), Acc)
                     end,
-                    0, Groups),
+                    {0, []}, Groups),
     await_ok(NumFwd),
     mc_ascii:send(Out, <<"END\r\n">>),
-    lists:map(fun ({Addr, _}) -> mc_downstream:demonitor(Addr) end,
-              Groups),
+    mc_downstream:demonitor(Monitors),
     {ok, Session};
 
 cmd(set, Session, InSock, Out, CmdArgs) ->
@@ -60,29 +56,25 @@ cmd(decr, Session, InSock, Out, CmdArgs) ->
 cmd(delete, #session_proxy{bucket = Bucket} = Session,
     _InSock, Out, [Key]) ->
     {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
-    ok = a2x_forward(Addr, Out, delete, #mc_entry{key = Key}),
+    {ok, Monitor} = a2x_forward(Addr, Out, delete, #mc_entry{key = Key}),
     case await_ok(1) of
         1 -> true;
         _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
     end,
-    mc_downstream:demonitor(Addr),
+    mc_downstream:demonitor([Monitor]),
     {ok, Session};
 
 cmd(flush_all, #session_proxy{bucket = Bucket} = Session,
     _InSock, Out, CmdArgs) ->
     Addrs = mc_bucket:addrs(Bucket),
-    NumFwd =
+    {NumFwd, Monitors} =
         lists:foldl(fun (Addr, Acc) ->
-                        case a2x_forward(Addr, Out, flush_all, CmdArgs) of
-                            ok -> Acc + 1;
-                            _  -> Acc
-                        end
+                        accum(a2x_forward(Addr, Out, flush_all, CmdArgs), Acc)
                     end,
-                    0, Addrs),
+                    {0, []}, Addrs),
     await_ok(NumFwd),
     mc_ascii:send(Out, <<"OK\r\n">>),
-    lists:map(fun (Addr) -> mc_downstream:demonitor(Addr) end,
-              Addrs),
+    mc_downstream:demonitor([Monitors]),
     {ok, Session};
 
 cmd(quit, _Session, _InSock, _Out, _Rest) ->
@@ -99,24 +91,25 @@ forward_update(Cmd, #session_proxy{bucket = Bucket} = Session,
     {Data, _} = mc_ascii:split_binary_suffix(DataCRNL, 2),
     {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
     Entry = #mc_entry{key = Key, flag = Flag, expire = Expire, data = Data},
-    ok = a2x_forward(Addr, Out, Cmd, Entry),
+    {ok, Monitor} = a2x_forward(Addr, Out, Cmd, Entry),
     case await_ok(1) of
         1 -> true;
         _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
     end,
-    mc_downstream:demonitor(Addr),
+    mc_downstream:demonitor([Monitor]),
     {ok, Session}.
 
 forward_arith(Cmd, #session_proxy{bucket = Bucket} = Session,
               _InSock, Out, [Key, AmountIn]) ->
     Amount = list_to_integer(AmountIn),
     {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
-    ok = a2x_forward(Addr, Out, Cmd, #mc_entry{key = Key, data = Amount}),
+    {ok, Monitor} = a2x_forward(Addr, Out, Cmd,
+                                #mc_entry{key = Key, data = Amount}),
     case await_ok(1) of
         1 -> true;
         _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
     end,
-    mc_downstream:demonitor(Addr),
+    mc_downstream:demonitor([Monitor]),
     {ok, Session}.
 
 % ------------------------------------------
@@ -134,10 +127,19 @@ a2x_forward(Addr, Out, Cmd, CmdArgs, ResponseFilter, NotifyData) ->
                 false -> true
             end
         end,
-    ok = mc_downstream:monitor(Addr),
-    ok = mc_downstream:send(Addr, fwd, self(), NotifyData, ResponseFun,
-                            kind_to_module(Kind), Cmd, CmdArgs),
-    ok.
+    {ok, Monitor} = mc_downstream:monitor(Addr),
+    case mc_downstream:send(Addr, fwd, self(), NotifyData, ResponseFun,
+                            kind_to_module(Kind), Cmd, CmdArgs) of
+        ok -> {ok, Monitor};
+        _  -> {error, Monitor}
+    end.
+
+% Accumulate results of a2x_forward during a foldl.
+accum(A2xForwardResult, {NumOks, Monitors}) ->
+    case A2xForwardResult of
+        {ok, Monitor} -> {NumOks + 1, [Monitor | Monitors]};
+        {_,  Monitor} -> {NumOks, [Monitor | Monitors]}
+    end.
 
 a2x_send_response_from(ascii, Out, Head, Body) ->
     % Downstream is ascii.
