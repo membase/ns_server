@@ -25,12 +25,10 @@ send(Addr, Op, NotifyPid, NotifyData, ResponseFun,
                CmdModule, Cmd, CmdArgs]),
     todo.
 
-kind(#mc_addr{kind = Kind}) ->
-    Kind.
-
 % Note, this can be a child/worker in a supervision tree.
 
-start_link(#mc_addr{location = Location} = Addr) ->
+start_link(Addr) ->
+    Location = mc_addr:location(Addr),
     [Host, Port] = string:tokens(Location, ":"),
     PortNum = list_to_integer(Port),
     {ok, Sock} = gen_tcp:connect(Host, PortNum,

@@ -13,10 +13,12 @@
                     bodylen = undefined,
                     opaque = 0}).
 
--record(mc_pool, {addrs = [], buckets = []}).
+-record(mc_pool, {addrs,  % [OpaqueAddr], not necessarily [mc_addr].
+                  buckets % [OpaqueBucket], not necessarily [mc_bucket].
+                  }).
 
 -record(mc_bucket, {id,   % Bucket id.
-                    addrs % [opaque-Addr], not necessarily [mc_addr].
+                    addrs % [OpaqueAddr], not necessarily [mc_addr].
                     }).
 
 -record(mc_addr, {location, % eg, "localhost:11211"

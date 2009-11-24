@@ -125,7 +125,7 @@ a2x_forward(Addr, Out, Cmd, CmdArgs) ->
     a2x_forward(Addr, Out, Cmd, CmdArgs, undefined, undefined).
 
 a2x_forward(Addr, Out, Cmd, CmdArgs, ResponseFilter, NotifyData) ->
-    Kind = mc_downstream:kind(Addr),
+    Kind = mc_addr:kind(Addr),
     ResponseFun =
         fun (Head, Body) ->
             case ((ResponseFilter =:= undefined) orelse

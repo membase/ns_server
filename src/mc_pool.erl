@@ -14,9 +14,7 @@
 %% TODO: Consider replacing implementation with gen_server.
 
 create() ->
-    create(["127.0.0.1:11211"]).
-
-create(Addrs) ->
+    Addrs = [mc_addr:local()],
     create(Addrs, [mc_bucket:create("default", Addrs)]).
 
 create(Addrs, Buckets) ->
@@ -24,7 +22,14 @@ create(Addrs, Buckets) ->
 
 % Returns {value, Bucket} or false.
 get_bucket(#mc_pool{buckets = Buckets}, BucketId) ->
-    lists:keysearch(BucketId, #mc_bucket.id, Buckets).
+    search_bucket(BucketId, Buckets).
+
+search_bucket(_BucketId, []) -> false;
+search_bucket(BucketId, [Bucket | Rest]) ->
+    case mc_bucket:id(Bucket) =:= BucketId of
+        true  -> {value, Bucket};
+        false -> search_bucket(BucketId, Rest)
+    end.
 
 foreach_bucket(#mc_pool{buckets = Buckets}, VisitorFun) ->
     lists:foreach(VisitorFun, Buckets).
@@ -32,13 +37,13 @@ foreach_bucket(#mc_pool{buckets = Buckets}, VisitorFun) ->
 % ------------------------------------------------
 
 get_bucket_test() ->
-    B1 = mc_bucket:create("default", ["127.0.0.1:11211"]),
+    B1 = mc_bucket:create("default", [mc_addr:local()]),
     P1 = create(),
     ?assertMatch({value, B1}, get_bucket(P1, "default")),
     ok.
 
 foreach_bucket_test() ->
-    B1 = mc_bucket:create("default", ["127.0.0.1:11211"]),
+    B1 = mc_bucket:create("default", [mc_addr:local()]),
     P1 = create(),
     foreach_bucket(P1, fun (B) ->
                            ?assertMatch(B1, B)
