@@ -706,7 +706,11 @@ var DAO = {
     $.get('/pools', null, function (data) {
       DAO.ready = true;
       $(window).trigger('dao:ready');
-      DAO.cells.poolList.setValue(data);
+      var rows = data.pools;
+      rows = _.sortBy(rows, function (a) {
+        return a.name;
+      });
+      DAO.cells.poolList.setValue(rows);
     }, 'json');
   }
 };
@@ -788,7 +792,7 @@ function prepareTemplateForCell(templateName, cell) {
 
 var OverviewSection = {
   updatePoolList: function (data) {
-    renderTemplate('pool_list', data);
+    renderTemplate('pool_list', {rows: data.value});
   },
   clearUI: function () {
     prepareRenderTemplate('top_keys', 'server_list', 'pool_list');
@@ -813,6 +817,7 @@ var OverviewSection = {
     DAO.channels.opStats.slot.subscribeWithSlave($m(this, 'onFreshStats'));
     DAO.channels.keyStats.slot.subscribeWithSlave($m(this, 'onKeyStats'));
     DAO.cells.currentPoolDetails.changedSlot.subscribeWithSlave($m(this, 'onFreshNodeList'));
+    DAO.cells.poolList.changedSlot.subscribeWithSlave($m(this, 'updatePoolList'));
     prepareTemplateForCell('top_keys', DAO.cells.currentBucketDetails);
     prepareTemplateForCell('pool_list', DAO.cells.poolList);
     prepareTemplateForCell('server_list', DAO.cells.currentPoolDetails);

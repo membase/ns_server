@@ -144,8 +144,11 @@ class DAO
   end
 
   def pool_list(options={})
-    [{:name => 'Default Pool', :uri => '/pools/12', :defaultBucketURI => '/buckets/4'},
-     {:name => 'Another Pool', :uri => '/pools/13', :defaultBucketURI => '/buckets/5'}]
+    {
+      :implementation_version => "",
+      :pools => [{:name => 'Default Pool', :uri => '/pools/12', :defaultBucketURI => '/buckets/4'},
+                 {:name => 'Another Pool', :uri => '/pools/13', :defaultBucketURI => '/buckets/5'}]
+    }
   end
 
   def bucket_info(id)

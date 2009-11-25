@@ -33,12 +33,9 @@
     <div id="pool_list_template" style="display: none;">
       <ul>
       <!-- {% $.each(rows, function () { %} -->
-        <li><em>{%= h(this.name) %}</em>
+        <li><a>{%= h(this.name) %}</a>
         <ul>
-          <!-- {% $.each(this.buckets, function () { %} -->
-          <li><a>{%= h(this.name) %}</a>
-          <!-- {% }); %} -->
-        </ul>
+        </ul></li>
       <!-- {% }); %} -->
       </ul>
     </div>

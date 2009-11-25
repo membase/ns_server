@@ -16,17 +16,14 @@ url:
 - DAO as a source of data updates. I.e. it does push instead of
    components doing pull.
 
+* switching between buckets & pools
 * bucket name in top key values UI
-* switching between buckets
 * initial server list
 * switching graphs on overview
 * marks and labels on graphs (jquery sparklines seem inappropriate)
 * API for rest of sections
 * tests via watir
-o [DONE] spinner for ajax transitions
 * welcome screen
 * respect interval select for all sub-sections
 * Store password/login in cookies ? So that you don't have to re-enter
    them on page refresh.
-
-* Q - server list per bucket or per pool
