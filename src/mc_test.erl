@@ -4,12 +4,18 @@
 
 main() ->
     AsciiAddrs = [mc_addr:local(ascii)],
-    P1 = mc_pool:create(AsciiAddrs,
-                        [mc_bucket:create("default", AsciiAddrs)]),
+    AsciiPool = mc_pool:create(AsciiAddrs,
+                               [mc_bucket:create("default", AsciiAddrs)]),
+    BinaryAddrs = [mc_addr:local(binary)],
+    BinaryPool = mc_pool:create(BinaryAddrs,
+                                [mc_bucket:create("default", BinaryAddrs)]),
     {mc_downstream:start(),
      mc_accept:start(11300,
                      {mc_server_ascii,
-                      mc_server_ascii_proxy, P1})}.
+                      mc_server_ascii_proxy, AsciiPool}),
+     mc_accept:start(11400,
+                     {mc_server_ascii,
+                      mc_server_ascii_proxy, BinaryPool})}.
 
 % To build:
 %   make clean && make
