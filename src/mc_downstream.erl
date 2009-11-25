@@ -97,5 +97,9 @@ notify(_, _) -> ok.
 
 % For testing...
 %
-main() ->
-    {mc_server_ascii_proxy:main(), start()}.
+mbox_test() ->
+    D1 = dict:new(),
+    A1 = mc_addr:local(),
+    {D2, M1} = make_mbox(D1, A1),
+    ?assertMatch({D2, M1}, make_mbox(D2, A1)).
+

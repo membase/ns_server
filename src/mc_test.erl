@@ -2,6 +2,10 @@
 
 -compile(export_all).
 
+main() ->
+    {mc_server_ascii_proxy:main(),
+     mc_downstream:start()}.
+
 % To build:
 %   make clean && make
 %
@@ -17,6 +21,7 @@ test() ->
              mc_client_binary_ac,
              mc_bucket,
              mc_pool,
+             mc_downstream,
              mc_server_ascii_proxy
             ],
     lists:foreach(fun (Test) ->
@@ -24,3 +29,4 @@ test() ->
                           apply(Test, test, [])
                   end,
                   Tests).
+
