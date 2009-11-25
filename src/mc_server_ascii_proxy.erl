@@ -14,7 +14,6 @@
 -record(session_proxy, {bucket}).
 
 session(_Sock, Pool, _ProtocolModule) ->
-    ?debugFmt("msap.session ~p~n", [Pool]),
     {ok, Bucket} = mc_pool:get_bucket(Pool, "default"),
     {ok, Pool, #session_proxy{bucket = Bucket}}.
 
@@ -57,15 +56,11 @@ cmd(decr, Session, InSock, Out, CmdArgs) ->
 cmd(delete, #session_proxy{bucket = Bucket} = Session,
     _InSock, Out, [Key]) ->
     {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
-    ?debugFmt("msap.cmd.delete.1 ~p ~p~n", [Key, Addr]),
     {ok, Monitor} = a2x_forward(Addr, Out, delete, #mc_entry{key = Key}),
-    ?debugFmt("msap.cmd.delete.m ~p ~p ~p~n", [Key, Addr, Monitor]),
     case await_ok(1) of
-        1 -> ?debugFmt("msap.cmd.delete.o1 ~p ~p ~p~n", [Key, Addr, Monitor]),
-             true;
+        1 -> true;
         _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
     end,
-    ?debugFmt("msap.cmd.delete.ex~n", []),
     mc_downstream:demonitor([Monitor]),
     {ok, Session};
 
@@ -120,9 +115,9 @@ forward_arith(Cmd, #session_proxy{bucket = Bucket} = Session,
 % ------------------------------------------
 
 a2x_forward(Addr, Out, Cmd, CmdArgs) ->
-    a2x_forward(Addr, Out, Cmd, CmdArgs, undefined, undefined).
+    a2x_forward(Addr, Out, Cmd, CmdArgs, undefined).
 
-a2x_forward(Addr, Out, Cmd, CmdArgs, ResponseFilter, NotifyData) ->
+a2x_forward(Addr, Out, Cmd, CmdArgs, ResponseFilter) ->
     Kind = mc_addr:kind(Addr),
     ResponseFun =
         fun (Head, Body) ->
@@ -133,7 +128,7 @@ a2x_forward(Addr, Out, Cmd, CmdArgs, ResponseFilter, NotifyData) ->
             end
         end,
     {ok, Monitor} = mc_downstream:monitor(Addr),
-    case mc_downstream:send(Addr, fwd, self(), NotifyData, ResponseFun,
+    case mc_downstream:send(Addr, fwd, self(), ResponseFun,
                             kind_to_module(Kind), Cmd, CmdArgs) of
         ok -> {ok, Monitor};
         _  -> {error, Monitor}
@@ -194,8 +189,8 @@ binary_success(_)       -> <<"OK\r\n">>.
 await_ok(N) -> await_ok(N, 0).
 await_ok(N, Acc) when N > 0 ->
     receive
-        {{ok, _},    _Msg, _NotifyData} -> await_ok(N - 1, Acc + 1);
-        {{ok, _, _}, _Msg, _NotifyData} -> await_ok(N - 1, Acc + 1);
+        {ok, _}    -> await_ok(N - 1, Acc + 1);
+        {ok, _, _} -> await_ok(N - 1, Acc + 1);
         {'DOWN', _MonitorRef, _, _, _}  -> await_ok(N - 1, Acc);
         Unexpected -> ?debugVal(Unexpected),
                       exit({error, Unexpected})

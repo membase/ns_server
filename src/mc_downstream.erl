@@ -21,13 +21,13 @@ monitor(Addr) ->
 demonitor(MonitorRefs) ->
     lists:foreach(fun erlang:demonitor/1, MonitorRefs).
 
-send(Addr, Op, NotifyPid, NotifyData, ResponseFun,
+send(Addr, Op, NotifyPid, ResponseFun,
      CmdModule, Cmd, CmdArgs) ->
-    ?debugFmt("mcd.send ~p ~p ~p ~p ~p ~p ~p ~p~n",
-              [Addr, Op, NotifyPid, NotifyData, ResponseFun,
+    ?debugFmt("mcd.send ~p ~p ~p ~p ~p ~p ~p~n",
+              [Addr, Op, NotifyPid, ResponseFun,
                CmdModule, Cmd, CmdArgs]),
     gen_server:call(?MODULE,
-                    {send, Addr, Op, NotifyPid, NotifyData,
+                    {send, Addr, Op, NotifyPid,
                      ResponseFun, CmdModule, Cmd, CmdArgs}).
 
 %% gen_server implementation.
@@ -42,11 +42,10 @@ handle_call({monitor, Addr}, _From, Dict) ->
     {Dict2, #mbox{pid = Pid}} = make_mbox(Dict, Addr),
     Reply = {ok, erlang:monitor(process, Pid)},
     {reply, Reply, Dict2};
-handle_call({send, Addr, Op, NotifyPid, NotifyData,
+handle_call({send, Addr, Op, NotifyPid,
              ResponseFun, CmdModule, Cmd, CmdArgs}, _From, Dict) ->
     {Dict2, #mbox{pid = Pid}} = make_mbox(Dict, Addr),
-    Pid ! {Op, NotifyPid, NotifyData, ResponseFun,
-           CmdModule, Cmd, CmdArgs},
+    Pid ! {Op, NotifyPid, ResponseFun, CmdModule, Cmd, CmdArgs},
     {reply, ok, Dict2}.
 
 % ---------------------------------------------------
@@ -81,19 +80,18 @@ start_link(Addr) ->
 
 loop(Addr, Sock) ->
     receive
-        {fwd, NotifyPid, NotifyData, ResponseFun,
+        {fwd, NotifyPid, ResponseFun,
               CmdModule, Cmd, CmdArgs} ->
             RV = apply(CmdModule, cmd, [Cmd, Sock, ResponseFun, CmdArgs]),
-            notify(NotifyPid, {RV, undefined, NotifyData}),
-            ?debugVal(RV),
+            notify(NotifyPid, RV),
             case RV of
-                {ok, _} -> loop(Addr, Sock);
-                Error   -> gen_tcp:close(Sock),
-                           exit({error, Error})
+                {ok, _}    -> loop(Addr, Sock);
+                {ok, _, _} -> loop(Addr, Sock);
+                Error      -> gen_tcp:close(Sock),
+                              exit({error, Error})
             end;
-        {close, NotifyPid, NotifyData} ->
-            gen_tcp:close(Sock),
-            notify(NotifyPid, {false, "downstream closed", NotifyData})
+        close ->
+            gen_tcp:close(Sock)
     end.
 
 notify(P, V) when is_pid(P) -> P ! V;
