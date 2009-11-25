@@ -9,6 +9,8 @@
 -compile(export_all).
 
 -record(mbox, {addr, pid, history}).
+-record(dmgr, {curr % A dict of all the currently active, alive mboxes.
+               }).
 
 %% API for downstream manager service.
 
@@ -28,31 +30,31 @@ send(Addr, Op, NotifyPid, ResponseFun, CmdModule, Cmd, CmdArgs) ->
 
 %% gen_server implementation.
 
-init([]) -> {ok, dict:new()}.
-terminate(_Reason, _Dict) -> ok.
-code_change(_OldVsn, Dict, _Extra) -> {ok, Dict}.
-handle_info(_Info, Dict) -> {noreply, Dict}.
-handle_cast(_Msg, Dict) -> {noreply, Dict}.
+init([]) -> {ok, #dmgr{curr = dict:new()}}.
+terminate(_Reason, _DMgr) -> ok.
+code_change(_OldVn, DMgr, _Extra) -> {ok, DMgr}.
+handle_info(_Info, DMgr) -> {noreply, DMgr}.
+handle_cast(_Msg, DMgr) -> {noreply, DMgr}.
 
-handle_call({monitor, Addr}, _From, Dict) ->
-    {Dict2, #mbox{pid = Pid}} = make_mbox(Dict, Addr),
+handle_call({monitor, Addr}, _From, DMgr) ->
+    {DMgr2, #mbox{pid = Pid}} = make_mbox(DMgr, Addr),
     Reply = {ok, erlang:monitor(process, Pid)},
-    {reply, Reply, Dict2};
+    {reply, Reply, DMgr2};
 handle_call({send, Addr, Op, NotifyPid,
-             ResponseFun, CmdModule, Cmd, CmdArgs}, _From, Dict) ->
-    {Dict2, #mbox{pid = Pid}} = make_mbox(Dict, Addr),
+             ResponseFun, CmdModule, Cmd, CmdArgs}, _From, DMgr) ->
+    {DMgr2, #mbox{pid = Pid}} = make_mbox(DMgr, Addr),
     Pid ! {Op, NotifyPid, ResponseFun, CmdModule, Cmd, CmdArgs},
-    {reply, ok, Dict2}.
+    {reply, ok, DMgr2}.
 
 % ---------------------------------------------------
 
 % Retrieves or creates an mbox for an Addr.
-make_mbox(Dict, Addr) ->
+make_mbox(#dmgr{curr = Dict} = DMgr, Addr) ->
     case dict:find(Addr, Dict) of
-        {ok, MBox} -> {Dict, MBox};
+        {ok, MBox} -> {DMgr, MBox};
         _ -> MBox = create_mbox(Addr),
              Dict2 = dict:store(Addr, MBox, Dict),
-             {Dict2, MBox}
+             {#dmgr{curr = Dict2}, MBox}
     end.
 
 create_mbox(Addr) ->
@@ -99,7 +101,8 @@ notify(_, _) -> ok.
 %
 mbox_test() ->
     D1 = dict:new(),
+    M1 = #dmgr{curr = D1},
     A1 = mc_addr:local(),
-    {D2, M1} = make_mbox(D1, A1),
-    ?assertMatch({D2, M1}, make_mbox(D2, A1)).
+    {M2, B1} = make_mbox(M1, A1),
+    ?assertMatch({M2, B1}, make_mbox(M2, A1)).
 
