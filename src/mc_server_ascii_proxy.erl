@@ -169,10 +169,12 @@ send_response(binary, Out,
                                 <<"\r\n">>])
     end.
 
-send_entry_binary(Out, #mc_entry{key = Key, data = Data}) ->
+send_entry_binary(Out, #mc_entry{key = Key, data = Data, flag = Flag}) ->
+    % TODO: CAS during a gets.
     DataLen = integer_to_list(bin_size(Data)),
+    FlagStr = integer_to_list(Flag),
     ok =:= mc_ascii:send(Out, [<<"VALUE ">>, Key,
-                               <<" 0 ">>, % TODO: Flag and Cas.
+                               <<" ">>, FlagStr, <<" ">>,
                                DataLen, <<"\r\n">>,
                                Data, <<"\r\n">>]).
 
