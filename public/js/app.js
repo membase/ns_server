@@ -765,38 +765,34 @@ function asyncAjaxCellValue(cell, options) {
   var modeCell = new Cell();
   var poolListCell = new Cell();
   // holds current pool description from pool list
-  var currentPoolCell = new Cell(function () {
-    return this.poolList && this.poolList[0];
+  var currentPoolCell = new Cell(function (poolList) {
+    return poolList[0];
   }).setSources({poolList: poolListCell});
 
   // pool details as obtained by retrieving pool uri
-  var currentPoolDetails = new Cell(function () {
-    if (!this.currentPool || this.mode != 'overview')
+  var currentPoolDetails = new Cell(function (currentPool, mode) {
+    if (this.mode != 'overview')
       return;
-    asyncAjaxCellValue(this.self, {url: this.currentPool.uri});
+    asyncAjaxCellValue(this.self, {url: currentPool.uri});
   }).setSources({currentPool: currentPoolCell, mode: modeCell});
 
   // holds uri of current bucket
-  var currentBucketCell = new Cell(function () {
-    return this.pool && this.pool.defaultBucketURI;
+  var currentBucketCell = new Cell(function (pool) {
+    return pool.defaultBucketURI;
   }).setSources({pool: currentPoolCell});
 
-  var currentBucketDetailsCell = new Cell(function () {
-    if (!this.bucketURI || this.mode != 'overview')
+  var currentBucketDetailsCell = new Cell(function (bucketURI) {
+    if (this.mode != 'overview')
       return;
-    asyncAjaxCellValue(this.self, {url: this.bucketURI});
+    asyncAjaxCellValue(this.self, {url: bucketURI});
   }).setSources({bucketURI: currentBucketCell, mode: modeCell});
 
-  var opStatsArgsCell = new Cell(function () {
-    if (!this.bucket)
-      return;
+  var opStatsArgsCell = new Cell(function (bucket) {
     return {url: this.bucket.stats.uri};
   }).setSources({bucket: currentBucketDetailsCell});
   var opStatsChannel = new CellControlledUpdateChannel(opStatsArgsCell, 10);
 
-  var keyStatsArgsCell = new Cell(function () {
-    if (!this.bucket)
-      return;
+  var keyStatsArgsCell = new Cell(function (bucket) {
     return {url: this.bucket.stats.uri};
   }).setSources({bucket: currentBucketDetailsCell});
   var keyStatsChannel = new CellControlledUpdateChannel(keyStatsArgsCell, 10);
