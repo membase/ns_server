@@ -11,7 +11,7 @@ ebins:
 	erl $(EFLAGS) -make
 
 clean:
-	rm -f cov.html erl_crash.dump
+	rm -f tmp/*.cov.html erl_crash.dumpg
 	rm -rf ebin
 
 test:

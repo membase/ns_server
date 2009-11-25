@@ -34,12 +34,13 @@ test() ->
               apply(Test, test, [])
       end,
       Tests),
+    file:make_dir("tmp"),
     lists:foreach(
       fun (Test) ->
               {ok, _Cov} =
                   cover:analyse_to_file(
                     Test,
-                    "src/" ++ atom_to_list(Test) ++ ".cov.html",
+                    "tmp/" ++ atom_to_list(Test) ++ ".cov.html",
                     [html])
       end,
       Tests),
