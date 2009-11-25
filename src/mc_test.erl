@@ -31,11 +31,16 @@ test() ->
     lists:foreach(
       fun (Test) ->
               io:format("  ~p...~n", [Test]),
-              apply(Test, test, []),
-              {ok, Cov} =
-                  cover:analyse_to_file(Test,
-                                        atom_to_list(Test) ++ ".cov.html",
-                                        [html])
+              apply(Test, test, [])
+      end,
+      Tests),
+    lists:foreach(
+      fun (Test) ->
+              {ok, _Cov} =
+                  cover:analyse_to_file(
+                    Test,
+                    "src/" ++ atom_to_list(Test) ++ ".cov.html",
+                    [html])
       end,
       Tests),
     ok.
