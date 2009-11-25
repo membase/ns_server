@@ -164,9 +164,7 @@ send_response(binary, Out,
                 _ -> mc_ascii:send(Out, mc_binary:b2a_code(Opcode, Status))
             end;
         false ->
-            mc_ascii:send(Out, [<<"ERROR ">>,
-                                Body#mc_entry.data,
-                                <<"\r\n">>])
+            mc_ascii:send(Out, mc_binary:b2a_code(Opcode, Status))
     end.
 
 send_entry_binary(Out, #mc_entry{key = Key, data = Data, flag = Flag}) ->
