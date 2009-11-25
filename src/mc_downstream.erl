@@ -21,11 +21,7 @@ monitor(Addr) ->
 demonitor(MonitorRefs) ->
     lists:foreach(fun erlang:demonitor/1, MonitorRefs).
 
-send(Addr, Op, NotifyPid, ResponseFun,
-     CmdModule, Cmd, CmdArgs) ->
-    ?debugFmt("mcd.send ~p ~p ~p ~p ~p ~p ~p~n",
-              [Addr, Op, NotifyPid, ResponseFun,
-               CmdModule, Cmd, CmdArgs]),
+send(Addr, Op, NotifyPid, ResponseFun, CmdModule, Cmd, CmdArgs) ->
     gen_server:call(?MODULE,
                     {send, Addr, Op, NotifyPid,
                      ResponseFun, CmdModule, Cmd, CmdArgs}).
