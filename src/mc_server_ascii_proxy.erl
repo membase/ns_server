@@ -69,12 +69,15 @@ cmd(flush_all, #session_proxy{bucket = Bucket} = Session,
     Addrs = mc_bucket:addrs(Bucket),
     {NumFwd, Monitors} =
         lists:foldl(fun (Addr, Acc) ->
-                        accum(a2x_forward(Addr, Out, flush_all, CmdArgs), Acc)
+                        % Using undefined Out to swallow the OK
+                        % responses from the downstreams.
+                        accum(a2x_forward(Addr, undefined,
+                                          flush_all, CmdArgs), Acc)
                     end,
                     {0, []}, Addrs),
     await_ok(NumFwd),
     mc_ascii:send(Out, <<"OK\r\n">>),
-    mc_downstream:demonitor([Monitors]),
+    mc_downstream:demonitor(Monitors),
     {ok, Session};
 
 cmd(quit, _Session, _InSock, _Out, _Rest) ->
