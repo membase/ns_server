@@ -394,14 +394,23 @@ var CallbackSlot = mkClass({
   }
 });
 
+// stolen from MIT-licensed prototype.js http://www.prototypejs.org/
+var functionArgumentNames = function(f) {
+  var names = f.toString().match(/^[\s\(]*function[^(]*\(([^\)]*)\)/)[1]
+                                 .replace(/\s+/g, '').split(',');
+  return names.length == 1 && !names[0] ? [] : names;
+};
+
 // inspired in part by http://common-lisp.net/project/cells/
 var Cell = mkClass({
   initialize: function (formula, sources) {
     this.changedSlot = new CallbackSlot();
     this.undefinedSlot = new CallbackSlot();
     this.formula = formula;
+    this.effectiveFormula = formula;
     this.value = undefined;
     this.sources = [];
+    this.argumentSourceNames = [];
     if (sources)
       this.setSources(sources);
   },
@@ -422,16 +431,42 @@ var Cell = mkClass({
       throw new Error("formula-less cells cannot have sources");
     var slots = this.sources = _.values(context);
     this.context = _.extend({self: this}, context);
-    
 
     _.each(slots, function (slot) {
       slot.changedSlot.subscribeWithSlave($m(self, 'sourceChanged'))
       slot.undefinedSlot.subscribeWithSlave($m(self, 'sourceUndefined'));
     });
 
+    var argumentSourceNames = this.argumentSourceNames = functionArgumentNames(this.formula);
+    _.each(this.argumentSourceNames, function (a) {
+      if (!(a in context))
+        throw new Error('missing source named ' + a + ' which is required for formula');
+    });
+    if (argumentSourceNames.length)
+      this.effectiveFormula = this.mkEffectiveFormula();
+
     this.tryUpdatingValue();
 
     return this;
+  },
+  mkEffectiveFormula: function () {
+    var argumentSourceNames = this.argumentSourceNames;
+    var formula = this.formula;
+    return function () {
+      var notOk = false;
+      var self = this;
+      var requiredValues = _.map(argumentSourceNames, function (a) {
+        var rv = self[a];
+        if (rv === undefined) {
+          notOk = true;
+//          return _.breakLoop();
+        }
+        return rv;
+      });
+      if (notOk)
+        return;
+      return formula.apply(this, requiredValues);
+    }
   },
   setValue: function (newValue) {
     var oldValue = this.value;
@@ -451,7 +486,7 @@ var Cell = mkClass({
     _.each(this.context, function (cell, key) {
       context[key] = (key == 'self') ? cell : cell.value;
     });
-    var value = this.formula.call(context);
+    var value = this.effectiveFormula.call(context);
     this.setValue(value);
   }
 });
