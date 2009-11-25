@@ -299,8 +299,7 @@ function renderTemplate(key, data) {
   if ($.isArray(data)) {
     data = {rows:data};
   }
-  to = $('#' + to);
-  to.get(0).innerHTML = tmpl(from, data);
+  $i(to).innerHTML = tmpl(from, data);
 }
 
 function __topEval() {
@@ -414,8 +413,11 @@ var Cell = mkClass({
     if (sources)
       this.setSources(sources);
   },
-  sourceChanged: function (source) {
+  queueValueUpdating: function () {
+    if (this.queuedValueUpdate)
+      return;
     _.defer($m(this, 'tryUpdatingValue'));
+    this.queuedValueUpdate = true;
   },
   sourceUndefined: function (source) {
     var self = this;
@@ -433,8 +435,8 @@ var Cell = mkClass({
     this.context = _.extend({self: this}, context);
 
     _.each(slots, function (slot) {
-      slot.changedSlot.subscribeWithSlave($m(self, 'sourceChanged'))
-      slot.undefinedSlot.subscribeWithSlave($m(self, 'sourceUndefined'));
+      slot.changedSlot.subscribeWithSlave($m(self, 'queueValueUpdating'))
+      slot.undefinedSlot.subscribeWithSlave($m(self, 'queueValueUpdating'));
     });
 
     var argumentSourceNames = this.argumentSourceNames = functionArgumentNames(this.formula);
@@ -482,6 +484,7 @@ var Cell = mkClass({
       this.changedSlot.broadcast(this);
   },
   tryUpdatingValue: function () {
+    this.queuedValueUpdate = false;
     var context = {};
     _.each(this.context, function (cell, key) {
       context[key] = (key == 'self') ? cell : cell.value;
@@ -753,6 +756,8 @@ var DAO = {
 // TODO: need special ajax valued cell type so that we can avoid DoS-ing
 // server with duplicate requests
 function asyncAjaxCellValue(cell, options) {
+  if (!options.url)
+    debugger;
   $.ajax(_.extend({type: 'GET',
                    dataType: 'json',
                    success: function (data) {
@@ -773,7 +778,7 @@ function asyncAjaxCellValue(cell, options) {
   var currentPoolDetails = new Cell(function (currentPool, mode) {
     if (this.mode != 'overview')
       return;
-    asyncAjaxCellValue(this.self, {url: currentPool.uri});
+//    asyncAjaxCellValue(this.self, {url: currentPool.uri});
   }).setSources({currentPool: currentPoolCell, mode: modeCell});
 
   // holds uri of current bucket
@@ -784,7 +789,7 @@ function asyncAjaxCellValue(cell, options) {
   var currentBucketDetailsCell = new Cell(function (bucketURI) {
     if (this.mode != 'overview')
       return;
-    asyncAjaxCellValue(this.self, {url: bucketURI});
+    //asyncAjaxCellValue(this.self, {url: bucketURI});
   }).setSources({bucketURI: currentBucketCell, mode: modeCell});
 
   var opStatsArgsCell = new Cell(function (bucket) {
@@ -802,7 +807,7 @@ function asyncAjaxCellValue(cell, options) {
   DAO.cells = {
     mode: modeCell,
     overviewActive: overviewActive,
-    graphZoomLevel: new LinkSwitchCell('graphZoom',
+    graphZoomLevel: new LinkSwitchCell('graph_zoom',
                                        {firstLinkIsDefault: true,
                                         clearOnChangesTo: [overviewActive]}),
     poolList: poolListCell,
@@ -817,14 +822,136 @@ function asyncAjaxCellValue(cell, options) {
   }
 })();
 
+var CurrentStatTargetHandler = {
+  initialize: function () {
+    watchHashParamChange("stat_target", $m(this, 'targetURIChanged'));
+
+    var poolListCell = DAO.cells.poolList;
+
+    this.pathCell = new Cell();
+    this.currentPoolIndexCell = new Cell(function (path, poolList) {
+      var index = path.poolNumber;
+      if (index < 0)
+        index = 0;
+      if (index >= poolList.length)
+        index = poolList.length - 1;
+      return index;
+    }).setSources({path: this.pathCell, poolList: poolListCell});
+
+    this.currentPoolDetailsCell = new Cell(function (currentPoolIndex, poolList) {
+      console.log("currentPoolDetailsCell: (",currentPoolIndex,poolList,")")
+      var uri = poolList[currentPoolIndex].uri;
+      asyncAjaxCellValue(this.self, {url: uri});
+    }).setSources({currentPoolIndex: this.currentPoolIndexCell, poolList: DAO.cells.poolList});
+
+    this.currentBucketIndexCell = new Cell(function (path, currentPoolDetails) {
+      var index = path.bucketNumber;
+      if (index == undefined)
+        return;
+
+      if (index < 0)
+        index = 0;
+      if (index >= currentPoolDetails.bucket.length)
+        index = currentPoolDetails.bucket.length - 1;
+      return index;
+    }).setSources({path: this.pathCell, currentPoolDetails: this.currentPoolDetailsCell});
+
+    this.currentBucketDetailsCell = new Cell(function (currentBucketIndex, currentPoolDetails) {
+      asyncAjaxCellValue(this.self, {url: currentPoolDetails.bucket[currentBucketIndex].uri});
+    }).setSources({currentBucketIndex: this.currentBucketIndexCell,
+                   currentPoolDetails: this.currentPoolDetailsCell});
+
+    this.currentStatTargetCell = new Cell(function (path) {
+      if (path.bucketNumber)
+        return this.currentBucketDetails;
+      else
+        return this.currentPoolDetails;
+    }).setSources({path: this.pathCell,
+                   currentPoolDetails: DAO.cells.currentPoolDetails,
+                   currentBucketDetails: this.currentBucketDetailsCell});
+
+    this.currentPoolIndexCell.changedSlot.subscribeWithSlave($m(this, 'renderPoolList'));
+    this.currentPoolDetailsCell.changedSlot.subscribeWithSlave($m(this, 'renderBucketList'));
+
+    $('a').live('click', $m(this, 'clickHandler'));
+
+    this.pathCell.changedSlot.subscribeWithSlave($m(this, 'markSelected'));
+  },
+  targetURIChanged: function (value) {
+    var arr = value ? value.split("/") : ['0'];
+    this.pathCell.setValue({poolNumber: parseInt(arr[0], 10),
+                            bucketNumber: arr[1] ? parseInt(arr[1], 10) : undefined});
+  },
+  renderPoolList: function () {
+    var list = DAO.cells.poolList.value;
+    
+    var counter = 0;
+    var register = function (row) {
+      var id = 'pl_' + (counter++);
+      return id;
+    }
+
+    renderTemplate('pool_list', {rows: list, register: register});
+    _.defer($m(this, 'markSelected'));
+  },
+  renderBucketList: function () {
+    console.log("renderBucketList");
+    $('bucket_list').remove();
+
+    var poolNumber = this.pathCell.value.poolNumber
+    var poolID = "pl_" + poolNumber;
+
+    var counter = 0;
+    var register = function () {
+      return 'bt_' + poolNumber + '_' + (counter++);
+    }
+
+    var list = this.currentPoolDetailsCell.value.bucket;
+    var html = $(tmpl('bucket_list_template', {rows: list, register: register}));
+    $($i(poolID)).parent().append(html);
+    _.defer($m(this, 'markSelected'));
+  },
+  markSelected: function () {
+    $('[id^=bt_]').removeClass('selected');
+    $('[id^=pl_]').removeClass('selected');
+
+    var path = this.pathCell.value;
+    if (!path)
+      return;
+
+    if (path.bucketNumber !== undefined)
+      var selectedID = 'bt_' + path.poolNumber + '_' + path.bucketNumber;
+    else
+      var selectedID = 'pl_' + path.poolNumber;
+
+    var element = $i(selectedID);
+
+    $(element).addClass('selected');
+  },
+  clickHandler: function (event) {
+    var id = event.target.id;
+    if (!id)
+      return;
+
+    var prefix = id.substring(0, 3);
+    if (prefix != 'pl_' && prefix != 'bt_')
+      return;
+
+    event.preventDefault();
+
+    var arr = id.split('_');
+    if (prefix == 'pl_')
+      $.bbq.pushState({stat_target: arr[1]});
+    else
+      $.bbq.pushState({stat_target: arr[1] + '/' + arr[2]});
+  }
+};
+
 function prepareTemplateForCell(templateName, cell) {
   cell.undefinedSlot.subscribeWithSlave(_.bind(prepareRenderTemplate, null, templateName));
 }
 
 var OverviewSection = {
-  updatePoolList: function (data) {
-    renderTemplate('pool_list', {rows: data.value});
-  },
   clearUI: function () {
     prepareRenderTemplate('top_keys', 'server_list', 'pool_list');
   },
@@ -848,10 +975,11 @@ var OverviewSection = {
     DAO.channels.opStats.slot.subscribeWithSlave($m(this, 'onFreshStats'));
     DAO.channels.keyStats.slot.subscribeWithSlave($m(this, 'onKeyStats'));
     DAO.cells.currentPoolDetails.changedSlot.subscribeWithSlave($m(this, 'onFreshNodeList'));
-    DAO.cells.poolList.changedSlot.subscribeWithSlave($m(this, 'updatePoolList'));
     prepareTemplateForCell('top_keys', DAO.cells.currentBucketDetails);
     prepareTemplateForCell('pool_list', DAO.cells.poolList);
     prepareTemplateForCell('server_list', DAO.cells.currentPoolDetails);
+
+    CurrentStatTargetHandler.initialize();
 
     _.each(this.opsStatRefreshOptions, function (value, key) {
       DAO.cells.graphZoomLevel.addLink($('#overview_zoom_' + key),
