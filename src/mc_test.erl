@@ -3,7 +3,7 @@
 -compile(export_all).
 
 main() ->
-    {mc_server_ascii_proxy:main(),
+    {mc_server_ascii_proxy:main(11300), % to 11211.
      mc_downstream:start()}.
 
 % To build:

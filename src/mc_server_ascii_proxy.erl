@@ -216,7 +216,6 @@ group_by([], _KeyFunc, Dict) ->
 
 % For testing...
 %
-main()        -> main(11333).
 main(PortNum) -> mc_accept:start(PortNum,
                                  {mc_server_ascii,
                                   mc_server_ascii_proxy,
