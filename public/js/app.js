@@ -734,7 +734,7 @@ var CellControlledUpdateChannel = mkClass(UpdatesChannel, {
   },
   onCellChanged: function () {
     if (!this.pluggedViaCell)
-        this.plug(true);
+      this.plug(true);
     this.pluggedViaCell = false;
     this.unplug();
   },
@@ -996,8 +996,10 @@ var OverviewSection = {
       var value = cell.value;
       var channel = DAO.channels.opStats;
 
-      channel.setPeriod(value.channelPeriod);
+      channel.plug(true);
       channel.extraXHRData.opspersecond_zoom = value.requestParam;
+      channel.setPeriod(value.channelPeriod);
+      channel.unplug();
     });
   },
   onEnter: function () {
