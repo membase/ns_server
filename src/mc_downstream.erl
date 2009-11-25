@@ -102,7 +102,7 @@ notify(_, _) -> ok.
 mbox_test() ->
     D1 = dict:new(),
     M1 = #dmgr{curr = D1},
-    A1 = mc_addr:local(),
+    A1 = mc_addr:local(ascii),
     {M2, B1} = make_mbox(M1, A1),
     ?assertMatch({M2, B1}, make_mbox(M2, A1)).
 
