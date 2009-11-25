@@ -161,7 +161,7 @@ send_response(binary, Out,
                 ?GETKQ -> send_entry_binary(Out, Body);
                 ?GETK  -> send_entry_binary(Out, Body);
                 ?NOOP  -> mc_ascii:send(Out, <<"END\r\n">>);
-                _ -> mc_ascii:send(Out, binary_success(Opcode))
+                _ -> mc_ascii:send(Out, mc_binary:b2a_code(Opcode, Status))
             end;
         false ->
             mc_ascii:send(Out, [<<"ERROR ">>,
@@ -184,11 +184,6 @@ kind_to_module(binary) -> mc_client_binary_ac.
 bin_size(undefined) -> 0;
 bin_size(List) when is_list(List) -> bin_size(iolist_to_binary(List));
 bin_size(Binary) -> size(Binary).
-
-binary_success(?SET)    -> <<"STORED\r\n">>;
-binary_success(?NOOP)   -> <<"END\r\n">>;
-binary_success(?DELETE) -> <<"DELETED\r\n">>;
-binary_success(_)       -> <<"OK\r\n">>.
 
 await_ok(N) -> await_ok(N, 0).
 await_ok(N, Acc) when N > 0 ->

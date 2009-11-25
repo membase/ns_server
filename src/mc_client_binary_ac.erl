@@ -14,7 +14,7 @@
 %% with an "API conversion" interface.
 
 % cmd(version, Sock, RecvCallback, Entry) ->
-%     send_recv(Sock, RecvCallback, #mc_header{opcode = ?VERSION}, Entry, <<"OK">>);
+%     send_recv(Sock, RecvCallback, #mc_header{opcode = ?VERSION}, Entry);
 
 cmd(get, Sock, RecvCallback, Keys) when is_list(Keys) ->
     ok = send(Sock,
@@ -39,16 +39,15 @@ cmd(replace, Sock, RecvCallback, Entry) ->
 %     cmd_update(Sock, RecvCallback, Entry, ?PREPEND);
 
 % cmd(incr, Sock, RecvCallback, Entry) ->
-%     send_recv(Sock, RecvCallback, Entry, ?INCREMENT, <<"OK">>);
+%     send_recv(Sock, RecvCallback, Entry, ?INCREMENT);
 % cmd(decr, Sock, RecvCallback, Entry) ->
-%     send_recv(Sock, RecvCallback, Entry, ?DECREMENT, <<"OK">>);
+%     send_recv(Sock, RecvCallback, Entry, ?DECREMENT);
 
 cmd(delete, Sock, RecvCallback, Entry) ->
-    send_recv(Sock, RecvCallback, #mc_header{opcode = ?DELETE}, Entry,
-              <<"DELETED">>);
+    send_recv(Sock, RecvCallback, #mc_header{opcode = ?DELETE}, Entry);
 
 cmd(flush_all, Sock, RecvCallback, Entry) ->
-    send_recv(Sock, RecvCallback, #mc_header{opcode = ?FLUSH}, Entry, <<"OK">>);
+    send_recv(Sock, RecvCallback, #mc_header{opcode = ?FLUSH}, Entry);
 
 cmd(Opcode, Sock, RecvCallback, Entry) ->
     % Dispatch to cmd_binary() in case the caller was
@@ -57,18 +56,26 @@ cmd(Opcode, Sock, RecvCallback, Entry) ->
 
 % -------------------------------------------------
 
+% Calls binary target and converts binary opcode/success
+% to ascii result string.
+send_recv(Sock, RecvCallback, Header, Entry) ->
+    {ok, #mc_header{opcode = O, statusOrReserved = S}, _E} =
+        mc_binary:send_recv(Sock, RecvCallback, Header, Entry),
+    {ok, mc_binary:b2a_code(O, S)}.
+
+% -------------------------------------------------
+
 cmd_update(Sock, RecvCallback,
            #mc_entry{flag = Flag, expire = Expire} = Entry, Opcode) ->
     Ext = <<Flag:32, Expire:32>>,
     send_recv(Sock, RecvCallback,
-              #mc_header{opcode = Opcode}, Entry#mc_entry{ext = Ext},
-              <<"STORED">>).
+              #mc_header{opcode = Opcode}, Entry#mc_entry{ext = Ext}).
 
 get_recv(Sock, RecvCallback) ->
     case recv(Sock, res) of
         {error, _} = Err -> Err;
         {ok, #mc_header{opcode = ?NOOP}, _Entry} ->
-            {ok, <<"END">>};
+            {ok, <<"END\r\n">>};
         {ok, #mc_header{opcode = ?GETKQ} = Header, Entry} ->
             case is_function(RecvCallback) of
                true  -> RecvCallback(Header, Entry);
@@ -90,7 +97,7 @@ set_test_sock(Sock, Key) ->
     (fun () ->
         {ok, RB} = cmd(set, Sock, undefined,
                        #mc_entry{key = Key, data = <<"AAA">>}),
-        ?assertMatch(RB, <<"STORED">>),
+        ?assertMatch(RB, <<"STORED\r\n">>),
         get_test_match(Sock, Key, <<"AAA">>)
     end)().
 
@@ -108,7 +115,7 @@ get_test_match(Sock, Key, Data) ->
                        ?assertMatch(Data, E#mc_entry.data)
                    end,
                    [Key]),
-    ?assertMatch(RB, <<"END">>),
+    ?assertMatch(RB, <<"END\r\n">>),
     ?assertMatch([{nvals, 1}], ets:lookup(D, nvals)).
 
 get_test() ->
@@ -122,7 +129,7 @@ get_test() ->
                        fun (_H, _E) -> ?assert(false) % Should not get here.
                        end,
                        [<<"ccc">>, <<"bbb">>]),
-        ?assertMatch(RB, <<"END">>),
+        ?assertMatch(RB, <<"END\r\n">>),
         ?assertMatch([{nvals, 0}], ets:lookup(D, nvals))
     end)(),
     (fun () ->
@@ -135,7 +142,7 @@ get_test() ->
                            ?assertMatch(<<"AAA">>, E#mc_entry.data)
                        end,
                        [<<"aaa">>, <<"bbb">>]),
-        ?assertMatch(RB, <<"END">>),
+        ?assertMatch(RB, <<"END\r\n">>),
         ?assertMatch([{nvals, 1}], ets:lookup(D, nvals))
     end)(),
     (fun () ->
@@ -148,7 +155,7 @@ get_test() ->
                            ?assertMatch(<<"AAA">>, E#mc_entry.data)
                        end,
                        [<<"aaa">>, <<"aaa">>, <<"bbb">>]),
-        ?assertMatch(RB, <<"END">>),
+        ?assertMatch(RB, <<"END\r\n">>),
         ?assertMatch([{nvals, 2}], ets:lookup(D, nvals))
     end)(),
     ok = gen_tcp:close(Sock).
@@ -167,7 +174,7 @@ delete_test() ->
                            ?assertMatch(?DELETE, H#mc_header.opcode)
                        end,
                        #mc_entry{key = <<"aaa">>}),
-        ?assertMatch(RB, <<"DELETED">>),
+        ?assertMatch(RB, <<"DELETED\r\n">>),
         ?assertMatch([{nvals, 1}], ets:lookup(D, nvals))
     end)(),
     (fun () ->
@@ -175,7 +182,7 @@ delete_test() ->
                        fun (_H, _E) -> ?assert(false) % Should not get here.
                        end,
                        [<<"aaa">>, <<"bbb">>]),
-        ?assertMatch(RB, <<"END">>)
+        ?assertMatch(RB, <<"END\r\n">>)
     end)(),
     ok = gen_tcp:close(Sock).
 

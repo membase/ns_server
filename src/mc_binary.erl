@@ -81,8 +81,18 @@ decode_header(res, <<?RES_MAGIC:8, Opcode:8, KeyLen:16, ExtLen:8,
                 keylen = KeyLen, extlen = ExtLen, bodylen = BodyLen},
      #mc_entry{datatype = DataType, cas = CAS}}.
 
-bin(undefined) -> <<>>;
-bin(X)         -> <<X/binary>>.
+% Convert binary Opcode/Status to ascii result string.
+b2a_code(?SET,    ?SUCCESS) -> <<"STORED\r\n">>;
+b2a_code(?NOOP,   ?SUCCESS) -> <<"END\r\n">>;
+b2a_code(?DELETE, ?SUCCESS)    -> <<"DELETED\r\n">>;
+b2a_code(?DELETE, ?KEY_ENOENT) -> <<"NOT_FOUND\r\n">>;
+
+b2a_code(_, ?SUCCESS) -> <<"OK\r\n">>;
+b2a_code(_, _)        -> <<"ERROR\r\n">>.
+
+bin(undefined)         -> <<>>;
+bin(L) when is_list(L) -> iolist_to_binary(L);
+bin(X)                 -> <<X/binary>>.
 
 bin_size(undefined) -> 0;
 bin_size(List) when is_list(List) -> bin_size(iolist_to_binary(List));
