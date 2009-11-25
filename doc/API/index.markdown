@@ -289,6 +289,8 @@ the human readable pool name.
     "backup" : {
       "uri" : "ops/start-backup"
     }
+    "scrub" : {
+      "uri" : "ops/start-scrub"
   }
 }
 </pre>
