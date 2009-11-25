@@ -9,6 +9,23 @@ function getBacktrace() {
   }
 };
 
+function traceMethodCalls(object, methodName) {
+  var original = object[methodName];
+  var tracer = function() {
+    var args = $.makeArray(arguments);
+    console.log("traceIn:",object,".",methodName,"(",args,")");
+    try {
+      var rv = original.apply(this, arguments);
+      console.log("traceOut: rv = ",rv);
+      return rv;
+    } catch (e) {
+      console.log("traceExc: e = ", e);
+      throw e;
+    }
+  }
+  object[methodName] = tracer;
+}
+
 /**
 *
 *  Base64 encode / decode
@@ -433,6 +450,14 @@ var Cell = mkClass({
       throw new Error("formula-less cells cannot have sources");
     var slots = this.sources = _.values(context);
     this.context = _.extend({self: this}, context);
+    if (_.any(slots, function (v) {return v == null;})) {
+      var badSources = [];
+      _.each(this.context, function (v, k) {
+        if (!v)
+          badSources.push(k);
+      });
+      throw new Error("null for following source cells: " + badSources.join(', '));
+    }
 
     _.each(slots, function (slot) {
       slot.changedSlot.subscribeWithSlave($m(self, 'queueValueUpdating'))
@@ -442,7 +467,7 @@ var Cell = mkClass({
     var argumentSourceNames = this.argumentSourceNames = functionArgumentNames(this.formula);
     _.each(this.argumentSourceNames, function (a) {
       if (!(a in context))
-        throw new Error('missing source named ' + a + ' which is required for formula');
+        throw new Error('missing source named ' + a + ' which is required for formula:' + self.formula);
     });
     if (argumentSourceNames.length)
       this.effectiveFormula = this.mkEffectiveFormula();
@@ -688,7 +713,7 @@ var UpdatesChannel = mkClass({
     if (this.plugged++ != 0)
       return;
     if (this.intervalHandle)
-      cancelInterval(this.intervalHandle);
+      clearInterval(this.intervalHandle);
   },
   unplug: function () {
     if (--this.plugged != 0)
@@ -745,9 +770,6 @@ var DAO = {
       DAO.ready = true;
       $(window).trigger('dao:ready');
       var rows = data.pools;
-      rows = _.sortBy(rows, function (a) {
-        return a.name;
-      });
       DAO.cells.poolList.setValue(rows);
     }, 'json');
   }
@@ -756,8 +778,6 @@ var DAO = {
 // TODO: need special ajax valued cell type so that we can avoid DoS-ing
 // server with duplicate requests
 function asyncAjaxCellValue(cell, options) {
-  if (!options.url)
-    debugger;
   $.ajax(_.extend({type: 'GET',
                    dataType: 'json',
                    success: function (data) {
@@ -769,56 +789,13 @@ function asyncAjaxCellValue(cell, options) {
 (function () {
   var modeCell = new Cell();
   var poolListCell = new Cell();
-  // holds current pool description from pool list
-  var currentPoolCell = new Cell(function (poolList) {
-    return poolList[0];
-  }).setSources({poolList: poolListCell});
-
-  // pool details as obtained by retrieving pool uri
-  var currentPoolDetails = new Cell(function (currentPool, mode) {
-    if (this.mode != 'overview')
-      return;
-//    asyncAjaxCellValue(this.self, {url: currentPool.uri});
-  }).setSources({currentPool: currentPoolCell, mode: modeCell});
-
-  // holds uri of current bucket
-  var currentBucketCell = new Cell(function (pool) {
-    return pool.defaultBucketURI;
-  }).setSources({pool: currentPoolCell});
-
-  var currentBucketDetailsCell = new Cell(function (bucketURI) {
-    if (this.mode != 'overview')
-      return;
-    //asyncAjaxCellValue(this.self, {url: bucketURI});
-  }).setSources({bucketURI: currentBucketCell, mode: modeCell});
-
-  var opStatsArgsCell = new Cell(function (bucket) {
-    return {url: this.bucket.stats.uri};
-  }).setSources({bucket: currentBucketDetailsCell});
-  var opStatsChannel = new CellControlledUpdateChannel(opStatsArgsCell, 10);
-
-  var keyStatsArgsCell = new Cell(function (bucket) {
-    return {url: this.bucket.stats.uri};
-  }).setSources({bucket: currentBucketDetailsCell});
-  var keyStatsChannel = new CellControlledUpdateChannel(keyStatsArgsCell, 10);
-
   var overviewActive = new Cell(function () {return this.mode == 'overview'},
                                 {mode: modeCell});
+
   DAO.cells = {
     mode: modeCell,
     overviewActive: overviewActive,
-    graphZoomLevel: new LinkSwitchCell('graph_zoom',
-                                       {firstLinkIsDefault: true,
-                                        clearOnChangesTo: [overviewActive]}),
-    poolList: poolListCell,
-    currentPool: currentPoolCell,
-    currentPoolDetails: currentPoolDetails,
-    currentBucket: currentBucketCell,
-    currentBucketDetails: currentBucketDetailsCell
-  }
-  DAO.channels = {
-    opStats: opStatsChannel,
-    keyStats: keyStatsChannel
+    poolList: poolListCell
   }
 })();
 
@@ -862,12 +839,13 @@ var CurrentStatTargetHandler = {
                    currentPoolDetails: this.currentPoolDetailsCell});
 
     this.currentStatTargetCell = new Cell(function (path) {
-      if (path.bucketNumber)
+      console.log('currentStatTargetCell');
+      if (path.bucketNumber != null)
         return this.currentBucketDetails;
       else
         return this.currentPoolDetails;
     }).setSources({path: this.pathCell,
-                   currentPoolDetails: DAO.cells.currentPoolDetails,
+                   currentPoolDetails: this.currentPoolDetailsCell,
                    currentBucketDetails: this.currentBucketDetailsCell});
 
     this.currentPoolIndexCell.changedSlot.subscribeWithSlave($m(this, 'renderPoolList'));
@@ -947,8 +925,36 @@ var CurrentStatTargetHandler = {
   }
 };
 
+CurrentStatTargetHandler.initialize();
+
+(function () {
+  var targetCell = CurrentStatTargetHandler.currentStatTargetCell;
+  var opStatsArgsCell = new Cell(function (target) {
+    return {url: target.stats.uri};
+  }).setSources({target: targetCell});
+  var opStatsChannel = new CellControlledUpdateChannel(opStatsArgsCell, 10);
+
+  var keyStatsArgsCell = new Cell(function (target) {
+    return {url: target.stats.uri};
+  }).setSources({target: targetCell});
+  var keyStatsChannel = new CellControlledUpdateChannel(keyStatsArgsCell, 10);
+
+  _.extend(DAO.cells, {
+    graphZoomLevel: new LinkSwitchCell('graph_zoom',
+                                       {firstLinkIsDefault: true,
+                                        clearOnChangesTo: [DAO.cells.overviewActive]}),
+    currentPoolDetails: CurrentStatTargetHandler.currentPoolDetailsCell
+  });
+  DAO.channels = {
+    opStats: opStatsChannel,
+    keyStats: keyStatsChannel
+  }
+})();
+
 function prepareTemplateForCell(templateName, cell) {
-  cell.undefinedSlot.subscribeWithSlave(_.bind(prepareRenderTemplate, null, templateName));
+  cell.undefinedSlot.subscribeWithSlave(function () {
+    prepareRenderTemplate(templateName);
+  });
 }
 
 var OverviewSection = {
@@ -969,17 +975,16 @@ var OverviewSection = {
   },
   opsStatRefreshOptions: {
     real_time: {channelPeriod: 1, requestParam: 'now'},
-    five_mins: {channelPeriod: 15, requestParam: '5mins'}
+    one_hr: {channelPeriod: 300, requestParam: '1hr'},
+    day: {channelPeriod: 1800, requestParam: '24hr'}
   },
   init: function () {
     DAO.channels.opStats.slot.subscribeWithSlave($m(this, 'onFreshStats'));
     DAO.channels.keyStats.slot.subscribeWithSlave($m(this, 'onKeyStats'));
     DAO.cells.currentPoolDetails.changedSlot.subscribeWithSlave($m(this, 'onFreshNodeList'));
-    prepareTemplateForCell('top_keys', DAO.cells.currentBucketDetails);
+    prepareTemplateForCell('top_keys', CurrentStatTargetHandler.currentStatTargetCell);
+    prepareTemplateForCell('server_list', DAO.cells.currentPoolDetails);    
     prepareTemplateForCell('pool_list', DAO.cells.poolList);
-    prepareTemplateForCell('server_list', DAO.cells.currentPoolDetails);
-
-    CurrentStatTargetHandler.initialize();
 
     _.each(this.opsStatRefreshOptions, function (value, key) {
       DAO.cells.graphZoomLevel.addLink($('#overview_zoom_' + key),

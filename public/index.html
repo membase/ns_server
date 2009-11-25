@@ -33,9 +33,15 @@
     <div id="pool_list_template" style="display: none;">
       <ul>
       <!-- {% $.each(rows, function () { %} -->
-        <li><a>{%= h(this.name) %}</a>
-        <ul>
-        </ul></li>
+        <li><a id="{%= register(this) %}">{%= h(this.name) %}</a>
+        </li>
+      <!-- {% }); %} -->
+      </ul>
+    </div>
+    <div id="bucket_list_template" style="display: none;">
+      <ul class="bucket_list">
+      <!-- {% $.each(rows, function () { %} -->
+        <li><a id="{%= register(this) %}">{%= h(this.name) %}</a></li>
       <!-- {% }); %} -->
       </ul>
     </div>
@@ -45,7 +51,8 @@
     <div class="section">
       <h2><em>System overview</em> <span>Interval
       <a id='overview_zoom_real_time'>Real time</a>
-      <a id='overview_zoom_five_mins'>last 5 min</a>
+      <a id='overview_zoom_one_hr'>1 hour</a>
+      <a id='overview_zoom_day'>24 hours</a>
       </span></h2>
       <p id="overview_main_graph"><span></span></p>
       <p><span id="overview_graph_ops"></span>

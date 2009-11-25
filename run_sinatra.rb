@@ -81,7 +81,7 @@ class DAO
   end
 
   def pool_info(id)
-    if id == '12'
+    if id == 12
       {
         :name => 'Default Pool',
         :bucket => [
@@ -106,7 +106,7 @@ class DAO
                     :ports => [ 11211 ]
                   }
                  ],
-        :stats => {:uri => '/buckets/4/stats'}, # yes we're using bucket stats for now. It's fake anyway
+        :stats => {:uri => '/buckets/4/stats?really_for_pool=1'}, # yes we're using bucket stats for now. It's fake anyway
         :default_bucket_uri => '/buckets/4'
       }
     else
@@ -138,6 +138,7 @@ class DAO
                     :ports => [ 11211 ]
                   }
                  ],
+        :stats => {:uri => '/buckets/4/stats?really_for_pool=2'}, # yes we're using bucket stats for now. It's fake anyway
         :default_bucket_uri => '/buckets/5'
       }
     end
@@ -152,11 +153,19 @@ class DAO
   end
 
   def bucket_info(id)
-    {
-      :name => 'Excerciser Application',
-      :pool_uri => "asdasdasdasd",
-      :stats => {:uri => "/buckets/4/stats"},
-    }
+    if id == 4
+      {
+        :name => 'Excerciser Application',
+        :pool_uri => "asdasdasdasd",
+        :stats => {:uri => "/buckets/4/stats"},
+      }
+    else
+      {
+        :name => 'Excerciser Another',
+        :pool_uri => "asdasdasdasd",
+        :stats => {:uri => "/buckets/5/stats"},
+      }
+    end
   end
 
   def stats(bucket_id)
