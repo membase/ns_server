@@ -29,7 +29,7 @@ cmd(get, #session_proxy{bucket = Bucket} = Session,
                  end),
     {NumFwd, Monitors} =
         lists:foldl(fun ({Addr, AddrKeys}, Acc) ->
-                        accum(a2x_forward(Addr, Out, get, AddrKeys), Acc)
+                        accum(forward(Addr, Out, get, AddrKeys), Acc)
                     end,
                     {0, []}, Groups),
     await_ok(NumFwd),
@@ -56,7 +56,7 @@ cmd(decr, Session, InSock, Out, CmdArgs) ->
 cmd(delete, #session_proxy{bucket = Bucket} = Session,
     _InSock, Out, [Key]) ->
     {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
-    {ok, Monitor} = a2x_forward(Addr, Out, delete, #mc_entry{key = Key}),
+    {ok, Monitor} = forward(Addr, Out, delete, #mc_entry{key = Key}),
     case await_ok(1) of
         1 -> true;
         _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
@@ -71,8 +71,8 @@ cmd(flush_all, #session_proxy{bucket = Bucket} = Session,
         lists:foldl(fun (Addr, Acc) ->
                         % Using undefined Out to swallow the OK
                         % responses from the downstreams.
-                        accum(a2x_forward(Addr, undefined,
-                                          flush_all, CmdArgs), Acc)
+                        accum(forward(Addr, undefined,
+                                      flush_all, CmdArgs), Acc)
                     end,
                     {0, []}, Addrs),
     await_ok(NumFwd),
@@ -94,7 +94,7 @@ forward_update(Cmd, #session_proxy{bucket = Bucket} = Session,
     {Data, _} = mc_ascii:split_binary_suffix(DataCRNL, 2),
     {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
     Entry = #mc_entry{key = Key, flag = Flag, expire = Expire, data = Data},
-    {ok, Monitor} = a2x_forward(Addr, Out, Cmd, Entry),
+    {ok, Monitor} = forward(Addr, Out, Cmd, Entry),
     case await_ok(1) of
         1 -> true;
         _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
@@ -105,8 +105,8 @@ forward_update(Cmd, #session_proxy{bucket = Bucket} = Session,
 forward_arith(Cmd, #session_proxy{bucket = Bucket} = Session,
               _InSock, Out, [Key, Amount]) ->
     {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
-    {ok, Monitor} = a2x_forward(Addr, Out, Cmd,
-                                #mc_entry{key = Key, data = Amount}),
+    {ok, Monitor} = forward(Addr, Out, Cmd,
+                            #mc_entry{key = Key, data = Amount}),
     case await_ok(1) of
         1 -> true;
         _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
@@ -116,16 +116,16 @@ forward_arith(Cmd, #session_proxy{bucket = Bucket} = Session,
 
 % ------------------------------------------
 
-a2x_forward(Addr, Out, Cmd, CmdArgs) ->
-    a2x_forward(Addr, Out, Cmd, CmdArgs, undefined).
+forward(Addr, Out, Cmd, CmdArgs) ->
+    forward(Addr, Out, Cmd, CmdArgs, undefined).
 
-a2x_forward(Addr, Out, Cmd, CmdArgs, ResponseFilter) ->
+forward(Addr, Out, Cmd, CmdArgs, ResponseFilter) ->
     Kind = mc_addr:kind(Addr),
     ResponseFun =
         fun (Head, Body) ->
             case ((not is_function(ResponseFilter)) orelse
                   (ResponseFilter(Head, Body))) of
-                true  -> a2x_send_response_from(Kind, Out, Head, Body);
+                true  -> send_response(Kind, Out, Head, Body);
                 false -> false
             end
         end,
@@ -136,14 +136,14 @@ a2x_forward(Addr, Out, Cmd, CmdArgs, ResponseFilter) ->
         _  -> {error, Monitor}
     end.
 
-% Accumulate results of a2x_forward during a foldl.
+% Accumulate results of forward during a foldl.
 accum(A2xForwardResult, {NumOks, Monitors}) ->
     case A2xForwardResult of
         {ok, Monitor} -> {NumOks + 1, [Monitor | Monitors]};
         {_,  Monitor} -> {NumOks, [Monitor | Monitors]}
     end.
 
-a2x_send_response_from(ascii, Out, Head, Body) ->
+send_response(ascii, Out, Head, Body) ->
     % Downstream is ascii.
     (Out =/= undefined) andalso
     ((Head =/= undefined) andalso
@@ -151,15 +151,15 @@ a2x_send_response_from(ascii, Out, Head, Body) ->
     ((Body =:= undefined) orelse
      (ok =:= mc_ascii:send(Out, [Body#mc_entry.data, <<"\r\n">>])));
 
-a2x_send_response_from(binary, Out,
+send_response(binary, Out,
                        #mc_header{statusOrReserved = Status,
                                   opcode = Opcode} = _Head, Body) ->
     % Downstream is binary.
     case Status =:= ?SUCCESS of
         true ->
             case Opcode of
-                ?GETKQ -> a2x_send_entry_from_binary(Out, Body);
-                ?GETK  -> a2x_send_entry_from_binary(Out, Body);
+                ?GETKQ -> send_entry_binary(Out, Body);
+                ?GETK  -> send_entry_binary(Out, Body);
                 ?NOOP  -> mc_ascii:send(Out, <<"END\r\n">>);
                 _ -> mc_ascii:send(Out, binary_success(Opcode))
             end;
@@ -169,7 +169,7 @@ a2x_send_response_from(binary, Out,
                                 <<"\r\n">>])
     end.
 
-a2x_send_entry_from_binary(Out, #mc_entry{key = Key, data = Data}) ->
+send_entry_binary(Out, #mc_entry{key = Key, data = Data}) ->
     DataLen = integer_to_list(bin_size(Data)),
     ok =:= mc_ascii:send(Out, [<<"VALUE ">>, Key,
                                <<" 0 ">>, % TODO: Flag and Cas.
