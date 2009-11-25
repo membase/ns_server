@@ -216,11 +216,6 @@ group_by([], _KeyFunc, Dict) ->
 
 % For testing...
 %
-main(PortNum) -> mc_accept:start(PortNum,
-                                 {mc_server_ascii,
-                                  mc_server_ascii_proxy,
-                                  mc_pool:create()}).
-
 element2({_X, Y}) -> Y.
 
 group_by_edge_test() ->

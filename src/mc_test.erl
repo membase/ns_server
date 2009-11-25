@@ -3,8 +3,12 @@
 -compile(export_all).
 
 main() ->
-    {mc_server_ascii_proxy:main(11300), % to 11211.
-     mc_downstream:start()}.
+    Addrs = [mc_addr:local()],
+    P1 = mc_pool:create(Addrs, [mc_bucket:create("default", Addrs)]),
+    {mc_downstream:start(),
+     mc_accept:start(11300,
+                     {mc_server_ascii,
+                      mc_server_ascii_proxy, P1})}.
 
 % To build:
 %   make clean && make
