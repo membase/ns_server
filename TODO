@@ -27,3 +27,5 @@ url:
 * respect interval select for all sub-sections
 * Store password/login in cookies ? So that you don't have to re-enter
    them on page refresh.
+
+* intelligent circuit breaker for ajax requests
