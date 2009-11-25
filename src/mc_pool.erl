@@ -34,14 +34,14 @@ foreach_bucket(#mc_pool{buckets = Buckets}, VisitorFun) ->
 
 get_bucket_test() ->
     B1 = mc_bucket:create("default", [mc_addr:local()]),
-    Addrs = [mc_addr:local()],
+    Addrs = [mc_addr:local(ascii)],
     P1 = create(Addrs, [mc_bucket:create("default", Addrs)]),
     ?assertMatch({ok, B1}, get_bucket(P1, "default")),
     ok.
 
 foreach_bucket_test() ->
     B1 = mc_bucket:create("default", [mc_addr:local()]),
-    Addrs = [mc_addr:local()],
+    Addrs = [mc_addr:local(ascii)],
     P1 = create(Addrs, [mc_bucket:create("default", Addrs)]),
     foreach_bucket(P1, fun (B) ->
                            ?assertMatch(B1, B)

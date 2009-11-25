@@ -3,8 +3,9 @@
 -compile(export_all).
 
 main() ->
-    Addrs = [mc_addr:local()],
-    P1 = mc_pool:create(Addrs, [mc_bucket:create("default", Addrs)]),
+    AsciiAddrs = [mc_addr:local(ascii)],
+    P1 = mc_pool:create(AsciiAddrs,
+                        [mc_bucket:create("default", AsciiAddrs)]),
     {mc_downstream:start(),
      mc_accept:start(11300,
                      {mc_server_ascii,
