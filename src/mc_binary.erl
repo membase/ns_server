@@ -30,6 +30,10 @@ send_recv(Sock, RecvCallback, Header, Entry) ->
     end,
     {ok, RecvHeader, RecvEntry}.
 
+send({OutPid, CmdNum}, Kind, Header, Entry) ->
+    OutPid ! {send, CmdNum, encode(Kind, Header, Entry)},
+    ok;
+
 send(Sock, Kind, Header, Entry) ->
     send(Sock, encode(Kind, Header, Entry)).
 

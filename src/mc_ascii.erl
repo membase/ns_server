@@ -24,8 +24,9 @@ send_recv(Sock, IoList, RecvCallback) ->
     end,
     RV.
 
-send({OutPid, CmdNum}, Data) when is_pid(OutPid) ->
-    OutPid ! {send, CmdNum, Data};
+send({OutPid, CmdNum}, Data) ->
+    OutPid ! {send, CmdNum, Data},
+    ok;
 
 send(_Sock, undefined) -> ok;
 send(_Sock, <<>>) -> ok;

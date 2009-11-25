@@ -121,10 +121,10 @@ a2x_forward(Addr, Out, Cmd, CmdArgs, ResponseFilter) ->
     Kind = mc_addr:kind(Addr),
     ResponseFun =
         fun (Head, Body) ->
-            case ((ResponseFilter =:= undefined) orelse
+            case ((not is_function(ResponseFilter)) orelse
                   (ResponseFilter(Head, Body))) of
                 true  -> a2x_send_response_from(Kind, Out, Head, Body);
-                false -> true
+                false -> false
             end
         end,
     {ok, Monitor} = mc_downstream:monitor(Addr),
@@ -143,11 +143,11 @@ accum(A2xForwardResult, {NumOks, Monitors}) ->
 
 a2x_send_response_from(ascii, Out, Head, Body) ->
     % Downstream is ascii.
-    Out =/= undefined andalso
-    (Head =/= undefined andalso
-     ok =:= mc_ascii:send(Out, [Head, <<"\r\n">>])) andalso
-    (Body =:= undefined orelse
-     ok =:= mc_ascii:send(Out, [Body#mc_entry.data, <<"\r\n">>]));
+    (Out =/= undefined) andalso
+    ((Head =/= undefined) andalso
+     (ok =:= mc_ascii:send(Out, [Head, <<"\r\n">>]))) andalso
+    ((Body =:= undefined) orelse
+     (ok =:= mc_ascii:send(Out, [Body#mc_entry.data, <<"\r\n">>])));
 
 a2x_send_response_from(binary, Out,
                        #mc_header{statusOrReserved = Status,
