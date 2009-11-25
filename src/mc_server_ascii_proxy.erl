@@ -49,9 +49,9 @@ cmd(prepend, Session, InSock, Out, CmdArgs) ->
     forward_update(prepend, Session, InSock, Out, CmdArgs);
 
 cmd(incr, Session, InSock, Out, CmdArgs) ->
-    forward_update(incr, Session, InSock, Out, CmdArgs);
+    forward_arith(incr, Session, InSock, Out, CmdArgs);
 cmd(decr, Session, InSock, Out, CmdArgs) ->
-    forward_update(decr, Session, InSock, Out, CmdArgs);
+    forward_arith(decr, Session, InSock, Out, CmdArgs);
 
 cmd(delete, #session_proxy{bucket = Bucket} = Session,
     _InSock, Out, [Key]) ->
@@ -100,8 +100,7 @@ forward_update(Cmd, #session_proxy{bucket = Bucket} = Session,
     {ok, Session}.
 
 forward_arith(Cmd, #session_proxy{bucket = Bucket} = Session,
-              _InSock, Out, [Key, AmountIn]) ->
-    Amount = list_to_integer(AmountIn),
+              _InSock, Out, [Key, Amount]) ->
     {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
     {ok, Monitor} = a2x_forward(Addr, Out, Cmd,
                                 #mc_entry{key = Key, data = Amount}),
