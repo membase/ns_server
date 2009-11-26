@@ -6,6 +6,8 @@
 
 -include("mc_entry.hrl").
 
+-import(mc_downstream, [forward/6, accum/2, await_ok/1]).
+
 -compile(export_all).
 
 -record(session_proxy, {bucket}).
@@ -86,71 +88,43 @@ cmd(?QUITQ, _Sess, _Sock, _Out, _HE) ->
 
 % ------------------------------------------
 
-forward_simple(Opcode, Sess, Out, {Header, Entry}) ->
-    {Opcode, Sess, Out, Header, Entry}.
-
-forward_bcast_filter(Opcode, Sess, Out, {Header, Entry}) ->
-    {Opcode, Sess, Out, Header, Entry}.
-
-% ------------------------------------------
-
-forward_update(Cmd, #session_proxy{bucket = Bucket} = Session,
-               InSock, Out, [Key, FlagIn, ExpireIn, DataLenIn]) ->
-    Flag = list_to_integer(FlagIn),
-    Expire = list_to_integer(ExpireIn),
-    DataLen = list_to_integer(DataLenIn),
-    {ok, DataCRNL} = mc_ascii:recv_data(InSock, DataLen + 2),
-    {Data, _} = mc_ascii:split_binary_suffix(DataCRNL, 2),
+% For binary commands that need a simple command forward.
+forward_simple(Opcode, #session_proxy{bucket = Bucket} = Sess, Out,
+               {_Header, #mc_entry{key = Key}} = HE) ->
     {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
-    Entry = #mc_entry{key = Key, flag = Flag, expire = Expire, data = Data},
-    {ok, Monitor} = forward(Addr, Out, Cmd, Entry),
-    case await_ok(1) of
-        1 -> true;
-        _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
-    end,
+    {ok, Monitor} = forward(Addr, Out, Opcode, HE, undefined, ?MODULE),
+    true = await_ok(1), % TODO: Send err response instead of conn close?
     mc_downstream:demonitor([Monitor]),
-    {ok, Session}.
+    {ok, Sess}.
 
-forward_arith(Cmd, #session_proxy{bucket = Bucket} = Session,
-              _InSock, Out, [Key, Amount]) ->
-    {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
-    {ok, Monitor} = forward(Addr, Out, Cmd,
-                            #mc_entry{key = Key, data = Amount}),
-    case await_ok(1) of
-        1 -> true;
-        _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
-    end,
-    mc_downstream:demonitor([Monitor]),
-    {ok, Session}.
+% For binary commands to do a broadcast scatter/gather.
+% A ResponseFilter can be used to filter out responses.
+forward_bcast(Opcode, #session_proxy{bucket = Bucket} = Sess, Out, HE,
+              ResponseFilter) ->
+    Addrs = mc_bucket:addrs(Bucket),
+    {NumFwd, Monitors} =
+        lists:foldl(fun (Addr, Acc) ->
+                        % Using undefined Out to swallow the OK
+                        % responses from the downstreams.
+                        accum(forward(Addr, Out, Opcode, HE,
+                                      ResponseFilter, ?MODULE), Acc)
+                    end,
+                    {0, []}, Addrs),
+    await_ok(NumFwd),
+    mc_ascii:send(Out, <<"OK\r\n">>),
+    mc_downstream:demonitor(Monitors),
+    {ok, Sess}.
 
-% ------------------------------------------
-
-forward(Addr, Out, Cmd, CmdArgs) ->
-    forward(Addr, Out, Cmd, CmdArgs, undefined).
-
-forward(Addr, Out, Cmd, CmdArgs, ResponseFilter) ->
-    Kind = mc_addr:kind(Addr),
-    ResponseFun =
-        fun (Head, Body) ->
-            case ((not is_function(ResponseFilter)) orelse
-                  (ResponseFilter(Head, Body))) of
-                true  -> send_response(Kind, Out, Head, Body);
-                false -> false
-            end
+% Same as forward_bcast, but filters out any responses
+% that have the same Opcode as the request.
+forward_bcast_filter(Opcode, Sess, Out, HE) ->
+    ResponseFilter =
+        fun (#mc_header{opcode = ROpcode}, _REntry) ->
+            ROpcode =:= Opcode
         end,
-    {ok, Monitor} = mc_downstream:monitor(Addr),
-    case mc_downstream:send(Addr, fwd, self(), ResponseFun,
-                            kind_to_module(Kind), Cmd, CmdArgs) of
-        ok -> {ok, Monitor};
-        _  -> {error, Monitor}
-    end.
+    forward_bcast(Opcode, Sess, Out, HE, ResponseFilter).
 
-% Accumulate results of forward during a foldl.
-accum(A2xForwardResult, {NumOks, Monitors}) ->
-    case A2xForwardResult of
-        {ok, Monitor} -> {NumOks + 1, [Monitor | Monitors]};
-        {_,  Monitor} -> {NumOks, [Monitor | Monitors]}
-    end.
+% ------------------------------------------
 
 send_response(ascii, Out, Head, Body) ->
     % Downstream is ascii.
@@ -192,22 +166,8 @@ send_arith_response(Out, #mc_entry{data = Data}) ->
     AmountStr = integer_to_list(Amount), % TODO: 64-bit parse issue here?
     ok =:= mc_ascii:send(Out, [AmountStr, <<"\r\n">>]).
 
-kind_to_module(ascii)  -> mc_client_ascii_ac;
-kind_to_module(binary) -> mc_client_binary_ac.
-
 bin_size(undefined) -> 0;
 bin_size(List) when is_list(List) -> bin_size(iolist_to_binary(List));
 bin_size(Binary) -> size(Binary).
-
-await_ok(N) -> await_ok(N, 0).
-await_ok(N, Acc) when N > 0 ->
-    receive
-        {ok, _}    -> await_ok(N - 1, Acc + 1);
-        {ok, _, _} -> await_ok(N - 1, Acc + 1);
-        {'DOWN', _MonitorRef, _, _, _}  -> await_ok(N - 1, Acc);
-        Unexpected -> ?debugVal(Unexpected),
-                      exit({error, Unexpected})
-    end;
-await_ok(_, Acc) -> Acc.
 
 

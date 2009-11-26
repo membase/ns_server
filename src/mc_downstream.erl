@@ -28,6 +28,45 @@ send(Addr, Op, NotifyPid, ResponseFun, CmdModule, Cmd, CmdArgs) ->
                     {send, Addr, Op, NotifyPid,
                      ResponseFun, CmdModule, Cmd, CmdArgs}).
 
+forward(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule) ->
+    Kind = mc_addr:kind(Addr),
+    ResponseFun =
+        fun (Head, Body) ->
+            case ((not is_function(ResponseFilter)) orelse
+                  (ResponseFilter(Head, Body))) of
+                true  -> apply(ResponseModule, send_response,
+                               [Kind, Out, Head, Body]);
+                false -> false
+            end
+        end,
+    {ok, Monitor} = monitor(Addr),
+    case send(Addr, fwd, self(), ResponseFun,
+              kind_to_module(Kind), Cmd, CmdArgs) of
+        ok -> {ok, Monitor};
+        _  -> {error, Monitor}
+    end.
+
+kind_to_module(ascii)  -> mc_client_ascii_ac;
+kind_to_module(binary) -> mc_client_binary_ac.
+
+% Accumulate results of forward during a foldl.
+accum(A2xForwardResult, {NumOks, Monitors}) ->
+    case A2xForwardResult of
+        {ok, Monitor} -> {NumOks + 1, [Monitor | Monitors]};
+        {_,  Monitor} -> {NumOks, [Monitor | Monitors]}
+    end.
+
+await_ok(N) -> await_ok(N, 0).
+await_ok(N, Acc) when N > 0 ->
+    receive
+        {ok, _}    -> await_ok(N - 1, Acc + 1);
+        {ok, _, _} -> await_ok(N - 1, Acc + 1);
+        {'DOWN', _MonitorRef, _, _, _}  -> await_ok(N - 1, Acc);
+        Unexpected -> ?debugVal(Unexpected),
+                      exit({error, Unexpected})
+    end;
+await_ok(_, Acc) -> Acc.
+
 %% gen_server implementation.
 
 init([]) -> {ok, #dmgr{curr = dict:new()}}.

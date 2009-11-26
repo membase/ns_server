@@ -6,6 +6,8 @@
 
 -include("mc_entry.hrl").
 
+-import(mc_downstream, [forward/6, accum/2, await_ok/1]).
+
 -compile(export_all).
 
 -record(session_proxy, {bucket}).
@@ -26,7 +28,8 @@ cmd(get, #session_proxy{bucket = Bucket} = Session,
                  end),
     {NumFwd, Monitors} =
         lists:foldl(fun ({Addr, AddrKeys}, Acc) ->
-                        accum(forward(Addr, Out, get, AddrKeys), Acc)
+                        accum(forward(Addr, Out, get, AddrKeys,
+                                      undefined, ?MODULE), Acc)
                     end,
                     {0, []}, Groups),
     await_ok(NumFwd),
@@ -53,7 +56,8 @@ cmd(decr, Session, InSock, Out, CmdArgs) ->
 cmd(delete, #session_proxy{bucket = Bucket} = Session,
     _InSock, Out, [Key]) ->
     {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
-    {ok, Monitor} = forward(Addr, Out, delete, #mc_entry{key = Key}),
+    {ok, Monitor} = forward(Addr, Out, delete, #mc_entry{key = Key},
+                            undefined, ?MODULE),
     case await_ok(1) of
         1 -> true;
         _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
@@ -70,7 +74,8 @@ cmd(flush_all, #session_proxy{bucket = Bucket} = Session,
                         % responses from the downstreams.
                         % TODO: flush_all arguments.
                         accum(forward(Addr, undefined,
-                                      flush_all, #mc_entry{}), Acc)
+                                      flush_all, #mc_entry{},
+                                      undefined, ?MODULE), Acc)
                     end,
                     {0, []}, Addrs),
     await_ok(NumFwd),
@@ -92,7 +97,7 @@ forward_update(Cmd, #session_proxy{bucket = Bucket} = Session,
     {Data, _} = mc_ascii:split_binary_suffix(DataCRNL, 2),
     {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
     Entry = #mc_entry{key = Key, flag = Flag, expire = Expire, data = Data},
-    {ok, Monitor} = forward(Addr, Out, Cmd, Entry),
+    {ok, Monitor} = forward(Addr, Out, Cmd, Entry, undefined, ?MODULE),
     case await_ok(1) of
         1 -> true;
         _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
@@ -104,7 +109,8 @@ forward_arith(Cmd, #session_proxy{bucket = Bucket} = Session,
               _InSock, Out, [Key, Amount]) ->
     {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
     {ok, Monitor} = forward(Addr, Out, Cmd,
-                            #mc_entry{key = Key, data = Amount}),
+                            #mc_entry{key = Key, data = Amount},
+                            undefined, ?MODULE),
     case await_ok(1) of
         1 -> true;
         _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
@@ -113,33 +119,6 @@ forward_arith(Cmd, #session_proxy{bucket = Bucket} = Session,
     {ok, Session}.
 
 % ------------------------------------------
-
-forward(Addr, Out, Cmd, CmdArgs) ->
-    forward(Addr, Out, Cmd, CmdArgs, undefined).
-
-forward(Addr, Out, Cmd, CmdArgs, ResponseFilter) ->
-    Kind = mc_addr:kind(Addr),
-    ResponseFun =
-        fun (Head, Body) ->
-            case ((not is_function(ResponseFilter)) orelse
-                  (ResponseFilter(Head, Body))) of
-                true  -> send_response(Kind, Out, Head, Body);
-                false -> false
-            end
-        end,
-    {ok, Monitor} = mc_downstream:monitor(Addr),
-    case mc_downstream:send(Addr, fwd, self(), ResponseFun,
-                            kind_to_module(Kind), Cmd, CmdArgs) of
-        ok -> {ok, Monitor};
-        _  -> {error, Monitor}
-    end.
-
-% Accumulate results of forward during a foldl.
-accum(A2xForwardResult, {NumOks, Monitors}) ->
-    case A2xForwardResult of
-        {ok, Monitor} -> {NumOks + 1, [Monitor | Monitors]};
-        {_,  Monitor} -> {NumOks, [Monitor | Monitors]}
-    end.
 
 send_response(ascii, Out, Head, Body) ->
     % Downstream is ascii.
@@ -187,17 +166,6 @@ kind_to_module(binary) -> mc_client_binary_ac.
 bin_size(undefined) -> 0;
 bin_size(List) when is_list(List) -> bin_size(iolist_to_binary(List));
 bin_size(Binary) -> size(Binary).
-
-await_ok(N) -> await_ok(N, 0).
-await_ok(N, Acc) when N > 0 ->
-    receive
-        {ok, _}    -> await_ok(N - 1, Acc + 1);
-        {ok, _, _} -> await_ok(N - 1, Acc + 1);
-        {'DOWN', _MonitorRef, _, _, _}  -> await_ok(N - 1, Acc);
-        Unexpected -> ?debugVal(Unexpected),
-                      exit({error, Unexpected})
-    end;
-await_ok(_, Acc) -> Acc.
 
 group_by(Keys, KeyFunc) ->
     group_by(Keys, KeyFunc, dict:new()).
