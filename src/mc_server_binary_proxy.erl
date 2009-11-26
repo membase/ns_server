@@ -134,40 +134,7 @@ send_response(ascii, Out, _Cmd, Head, Body) ->
     ((Body =:= undefined) orelse
      (ok =:= mc_ascii:send(Out, [Body#mc_entry.data, <<"\r\n">>])));
 
-send_response(binary, Out, _Cmd,
-              #mc_header{statusOrReserved = Status,
-                         opcode = Opcode} = _Head, Body) ->
+send_response(binary, Out, _Cmd, Header, Entry) ->
     % Downstream is binary.
-    case Status =:= ?SUCCESS of
-        true ->
-            case Opcode of
-                ?GETKQ -> send_entry_binary(Out, Body);
-                ?GETK  -> send_entry_binary(Out, Body);
-                ?NOOP  -> mc_ascii:send(Out, <<"END\r\n">>);
-                ?INCREMENT -> send_arith_response(Out, Body);
-                ?DECREMENT -> send_arith_response(Out, Body);
-                _ -> mc_ascii:send(Out, mc_binary:b2a_code(Opcode, Status))
-            end;
-        false ->
-            mc_ascii:send(Out, mc_binary:b2a_code(Opcode, Status))
-    end.
-
-send_entry_binary(Out, #mc_entry{key = Key, data = Data, flag = Flag}) ->
-    % TODO: CAS during a gets.
-    DataLen = integer_to_list(bin_size(Data)),
-    FlagStr = integer_to_list(Flag),
-    ok =:= mc_ascii:send(Out, [<<"VALUE ">>, Key,
-                               <<" ">>, FlagStr, <<" ">>,
-                               DataLen, <<"\r\n">>,
-                               Data, <<"\r\n">>]).
-
-send_arith_response(Out, #mc_entry{data = Data}) ->
-    <<Amount:64>> = Data,
-    AmountStr = integer_to_list(Amount), % TODO: 64-bit parse issue here?
-    ok =:= mc_ascii:send(Out, [AmountStr, <<"\r\n">>]).
-
-bin_size(undefined) -> 0;
-bin_size(List) when is_list(List) -> bin_size(iolist_to_binary(List));
-bin_size(Binary) -> size(Binary).
-
+    mc_binary:send(Out, res, Header, Entry).
 
