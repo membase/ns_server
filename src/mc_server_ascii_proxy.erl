@@ -162,6 +162,8 @@ send_response(binary, Out,
                 ?GETKQ -> send_entry_binary(Out, Body);
                 ?GETK  -> send_entry_binary(Out, Body);
                 ?NOOP  -> mc_ascii:send(Out, <<"END\r\n">>);
+                ?INCREMENT -> send_arith_response(Out, Body);
+                ?DECREMENT -> send_arith_response(Out, Body);
                 _ -> mc_ascii:send(Out, mc_binary:b2a_code(Opcode, Status))
             end;
         false ->
@@ -176,6 +178,11 @@ send_entry_binary(Out, #mc_entry{key = Key, data = Data, flag = Flag}) ->
                                <<" ">>, FlagStr, <<" ">>,
                                DataLen, <<"\r\n">>,
                                Data, <<"\r\n">>]).
+
+send_arith_response(Out, #mc_entry{data = Data}) ->
+    <<Amount:64>> = Data,
+    AmountStr = integer_to_list(Amount), % TODO: 64-bit parse issue here?
+    ok =:= mc_ascii:send(Out, [AmountStr, <<"\r\n">>]).
 
 kind_to_module(ascii)  -> mc_client_ascii_ac;
 kind_to_module(binary) -> mc_client_binary_ac.

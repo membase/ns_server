@@ -38,10 +38,10 @@ cmd(replace, Sock, RecvCallback, Entry) ->
 % cmd(prepend, Sock, RecvCallback, Entry) ->
 %     cmd_update(Sock, RecvCallback, Entry, ?PREPEND);
 
-% cmd(incr, Sock, RecvCallback, Entry) ->
-%     send_recv(Sock, RecvCallback, Entry, ?INCREMENT);
-% cmd(decr, Sock, RecvCallback, Entry) ->
-%     send_recv(Sock, RecvCallback, Entry, ?DECREMENT);
+cmd(incr, Sock, RecvCallback, Entry) ->
+    cmd_arith(Sock, RecvCallback, Entry, ?INCREMENT);
+cmd(decr, Sock, RecvCallback, Entry) ->
+    cmd_arith(Sock, RecvCallback, Entry, ?DECREMENT);
 
 cmd(delete, Sock, RecvCallback, Entry) ->
     send_recv(Sock, RecvCallback, #mc_header{opcode = ?DELETE}, Entry);
@@ -70,6 +70,20 @@ cmd_update(Sock, RecvCallback,
     Ext = <<Flag:32, Expire:32>>,
     send_recv(Sock, RecvCallback,
               #mc_header{opcode = Opcode}, Entry#mc_entry{ext = Ext}).
+
+cmd_arith(Sock, RecvCallback,
+          #mc_entry{data = Amount, expire = Expire} = Entry, Opcode) ->
+    case is_list(Amount) of
+        true ->
+            AmountN = list_to_integer(Amount),
+            cmd_arith(Sock, RecvCallback,
+                      Entry#mc_entry{data = <<AmountN:64>>}, Opcode);
+        false ->
+            Ext = <<Amount/binary, 0:64, Expire:32>>,
+            send_recv(Sock, RecvCallback,
+                      #mc_header{opcode = Opcode},
+                      Entry#mc_entry{ext = Ext, data = undefined})
+    end.
 
 get_recv(Sock, RecvCallback) ->
     case recv(Sock, res) of
