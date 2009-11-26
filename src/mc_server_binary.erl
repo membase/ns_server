@@ -10,6 +10,7 @@
 
 loop_in(InSock, OutPid, CmdNum, Module, Session) ->
     {ok, Cmd, CmdArgs} = recv(InSock),
+    ?debugVal({loop_in, Cmd, CmdArgs}),
     {ok, Session2} = apply(Module, cmd,
                            [Cmd, Session, InSock, {OutPid, CmdNum}, CmdArgs]),
     % TODO: Need protocol-specific error handling here,

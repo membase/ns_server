@@ -32,17 +32,16 @@ cmd(?INCREMENT = O, Sess, _Sock, Out, HE) ->
     forward_simple(O, Sess, Out, HE);
 cmd(?DECREMENT = O, Sess, _Sock, Out, HE) ->
     forward_simple(O, Sess, Out, HE);
-cmd(?GETQ = O, Sess, _Sock, Out, HE) ->
-    forward_simple(O, Sess, Out, HE);
 cmd(?GETK = O, Sess, _Sock, Out, HE) ->
-    forward_simple(O, Sess, Out, HE);
-cmd(?GETKQ = O, Sess, _Sock, Out, HE) ->
     forward_simple(O, Sess, Out, HE);
 cmd(?APPEND = O, Sess, _Sock, Out, HE) ->
     forward_simple(O, Sess, Out, HE);
 cmd(?PREPEND = O, Sess, _Sock, Out, HE) ->
     forward_simple(O, Sess, Out, HE);
-cmd(?STAT = O, Sess, _Sock, Out, HE) ->
+
+cmd(?GETQ = O, Sess, _Sock, Out, HE) ->
+    forward_simple(O, Sess, Out, HE);
+cmd(?GETKQ = O, Sess, _Sock, Out, HE) ->
     forward_simple(O, Sess, Out, HE);
 cmd(?SETQ = O, Sess, _Sock, Out, HE) ->
     forward_simple(O, Sess, Out, HE);
@@ -55,8 +54,6 @@ cmd(?DELETEQ = O, Sess, _Sock, Out, HE) ->
 cmd(?INCREMENTQ = O, Sess, _Sock, Out, HE) ->
     forward_simple(O, Sess, Out, HE);
 cmd(?DECREMENTQ = O, Sess, _Sock, Out, HE) ->
-    forward_simple(O, Sess, Out, HE);
-cmd(?FLUSHQ = O, Sess, _Sock, Out, HE) ->
     forward_simple(O, Sess, Out, HE);
 cmd(?APPENDQ = O, Sess, _Sock, Out, HE) ->
     forward_simple(O, Sess, Out, HE);
@@ -79,6 +76,7 @@ cmd(?QUITQ, _Sess, _Sock, _Out, _HE) ->
 
 % ------------------------------------------
 
+% ?FLUSHQ
 % ?VERSION
 % ?STAT
 % ?SASL_LIST_MECHS

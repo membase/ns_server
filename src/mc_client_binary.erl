@@ -12,18 +12,20 @@
 
 %% A memcached client that speaks binary protocol.
 
-cmd(Opcode, Sock, RecvCallback, Entry) ->
+cmd(Opcode, Sock, RecvCallback, HE) ->
     case is_quiet(Opcode) of
-        true  -> cmd_binary_quiet(Opcode, Sock, RecvCallback, Entry);
-        false -> cmd_binary_vocal(Opcode, Sock, RecvCallback, Entry)
+        true  -> cmd_binary_quiet(Opcode, Sock, RecvCallback, HE);
+        false -> cmd_binary_vocal(Opcode, Sock, RecvCallback, HE)
     end.
 
-cmd_binary_quiet(Opcode, Sock, _RecvCallback, Entry) ->
-    ok = send(Sock, req, #mc_header{opcode = Opcode},
+cmd_binary_quiet(Opcode, Sock, _RecvCallback, {Header, Entry}) ->
+    ok = send(Sock, req,
+              Header#mc_header{opcode = Opcode},
               Entry#mc_entry{ext = ext(Opcode, Entry)}).
 
-cmd_binary_vocal(Opcode, Sock, RecvCallback, Entry) ->
-    ok = send(Sock, req, #mc_header{opcode = Opcode},
+cmd_binary_vocal(Opcode, Sock, RecvCallback, {Header, Entry}) ->
+    ok = send(Sock, req,
+              Header#mc_header{opcode = Opcode},
               Entry#mc_entry{ext = ext(Opcode, Entry)}),
     cmd_binary_vocal_recv(Opcode, Sock, RecvCallback).
 
@@ -84,10 +86,13 @@ ext_arith(#mc_entry{data = Data, expire = Expire}) ->
 
 % -------------------------------------------------
 
+blank_he() ->
+    {#mc_header{}, #mc_entry{}}.
+
 noop_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
-    {ok, _H, _E} = cmd(?NOOP, Sock, undefined, #mc_entry{}),
+    {ok, _H, _E} = cmd(?NOOP, Sock, undefined, blank_he()),
     ok = gen_tcp:close(Sock).
 
 flush_test() ->
@@ -97,7 +102,7 @@ flush_test() ->
     ok = gen_tcp:close(Sock).
 
 flush_test_sock(Sock) ->
-    {ok, _H, _E} = cmd(?FLUSH, Sock, undefined, #mc_entry{}).
+    {ok, _H, _E} = cmd(?FLUSH, Sock, undefined, blank_he()).
 
 set_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
@@ -109,7 +114,8 @@ set_test_sock(Sock, Key) ->
     flush_test_sock(Sock),
     (fun () ->
         {ok, _H, _E} = cmd(?SET, Sock, undefined,
-                           #mc_entry{key = Key, data = <<"AAA">>}),
+                           {#mc_header{},
+                            #mc_entry{key = Key, data = <<"AAA">>}}),
         get_test_match(Sock, Key, <<"AAA">>)
     end)().
 
@@ -122,7 +128,7 @@ get_test_match(Sock, Key, Data) ->
                               ?assertMatch(Key, E#mc_entry.key),
                               ?assertMatch(Data, E#mc_entry.data)
                       end,
-                      #mc_entry{key = Key}),
+                      {#mc_header{}, #mc_entry{key = Key}}),
     ?assertMatch(Key, E#mc_entry.key),
     ?assertMatch(Data, E#mc_entry.data),
     ?assertMatch([{nvals, 1}], ets:lookup(D, nvals)).
