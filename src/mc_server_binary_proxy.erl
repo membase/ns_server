@@ -99,7 +99,7 @@ forward_simple(Opcode, #session_proxy{bucket = Bucket} = Sess, Out,
                {_Header, #mc_entry{key = Key}} = HE) ->
     {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
     {ok, Monitor} = forward(Addr, Out, Opcode, HE, undefined, ?MODULE),
-    true = await_ok(1), % TODO: Send err response instead of conn close?
+    1 = await_ok(1), % TODO: Send err response instead of conn close?
     mc_downstream:demonitor([Monitor]),
     {ok, Sess}.
 
