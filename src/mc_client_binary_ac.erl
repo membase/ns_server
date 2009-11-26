@@ -17,8 +17,6 @@
 %     send_recv(Sock, RecvCallback, #mc_header{opcode = ?VERSION}, Entry);
 
 cmd(get, Sock, RecvCallback, Keys) when is_list(Keys) ->
-    % TODO: Consider building up a big binary buffer and doing
-    % one send rather than many individual sends.
     ok = send(Sock,
               lists:map(fun (K) -> encode(req,
                                           #mc_header{opcode = ?GETKQ},
