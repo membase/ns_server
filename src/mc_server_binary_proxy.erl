@@ -127,7 +127,7 @@ forward_bcast(uncork, _Opcode, #session_proxy{bucket = Bucket,
               Out, {H, E} = HE, ResponseFilter) ->
     % Group our corked requests by Addr.
     Groups =
-        group_by(C, fun ({_QH, #mc_entry{key = Key}}) ->
+        group_by(C, fun ({_CorkedHeader, #mc_entry{key = Key}}) ->
                         {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
                         Addr
                     end),
@@ -149,7 +149,7 @@ forward_bcast(uncork, _Opcode, #session_proxy{bucket = Bucket,
 forward_bcast_filter(BCastKind, Opcode, Sess, Out, HE) ->
     ResponseFilter =
         fun (#mc_header{opcode = ROpcode}, _REntry) ->
-            ROpcode =:= Opcode
+            ROpcode =/= Opcode
         end,
     forward_bcast(BCastKind, Opcode, Sess, Out, HE, ResponseFilter).
 

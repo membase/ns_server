@@ -44,12 +44,16 @@ recv(Sock, HeaderKind) ->
 
 recv_body(Sock, #mc_header{extlen = ExtLen,
                            keylen = KeyLen,
-                           bodylen = BodyLen} = Header, Entry)
-    when BodyLen >= (ExtLen + KeyLen) ->
-    {ok, Ext} = recv_data(Sock, ExtLen),
-    {ok, Key} = recv_data(Sock, KeyLen),
-    {ok, Data} = recv_data(Sock, BodyLen - (ExtLen + KeyLen)),
-    {ok, Header, Entry#mc_entry{ext = Ext, key = Key, data = Data}}.
+                           bodylen = BodyLen} = Header, Entry) ->
+    case BodyLen > 0 of
+        true ->
+            {ok, Ext} = recv_data(Sock, ExtLen),
+            {ok, Key} = recv_data(Sock, KeyLen),
+            {ok, Data} = recv_data(Sock, BodyLen - (ExtLen + KeyLen)),
+            {ok, Header, Entry#mc_entry{ext = Ext, key = Key, data = Data}};
+        false ->
+            {ok, Header, Entry}
+    end.
 
 encode(req, Header, Entry) ->
     encode(?REQ_MAGIC, Header, Entry);

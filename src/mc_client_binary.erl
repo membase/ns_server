@@ -12,6 +12,9 @@
 
 %% A memcached client that speaks binary protocol.
 
+cmd(send_list, Sock, RecvCallback, HEList) ->
+    send_list(Sock, RecvCallback, HEList, undefined);
+
 cmd(Opcode, Sock, RecvCallback, HE) ->
     case is_quiet(Opcode) of
         true  -> cmd_binary_quiet(Opcode, Sock, RecvCallback, HE);
@@ -44,6 +47,15 @@ cmd_binary_vocal_recv(Opcode, Sock, RecvCallback) ->
                  end;
         false -> cmd_binary_vocal_recv(Opcode, Sock, RecvCallback)
     end.
+
+% -------------------------------------------------
+
+send_list(_Sock, _RecvCallback, [], LastResult) -> LastResult;
+send_list(Sock, RecvCallback,
+          [{#mc_header{opcode = Opcode}, _E} = HE | HERest],
+          _LastResult) ->
+    LastResult = cmd(Opcode, Sock, RecvCallback, HE),
+    send_list(Sock, RecvCallback, HERest, LastResult).
 
 % -------------------------------------------------
 
