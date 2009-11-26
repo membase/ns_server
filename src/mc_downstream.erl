@@ -35,7 +35,7 @@ forward(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule) ->
             case ((not is_function(ResponseFilter)) orelse
                   (ResponseFilter(Head, Body))) of
                 true  -> apply(ResponseModule, send_response,
-                               [Kind, Out, Head, Body]);
+                               [Kind, Out, Cmd, Head, Body]);
                 false -> false
             end
         end,

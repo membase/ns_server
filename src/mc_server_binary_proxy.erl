@@ -126,7 +126,7 @@ forward_bcast_filter(Opcode, Sess, Out, HE) ->
 
 % ------------------------------------------
 
-send_response(ascii, Out, Head, Body) ->
+send_response(ascii, Out, _Cmd, Head, Body) ->
     % Downstream is ascii.
     (Out =/= undefined) andalso
     ((Head =/= undefined) andalso
@@ -134,9 +134,9 @@ send_response(ascii, Out, Head, Body) ->
     ((Body =:= undefined) orelse
      (ok =:= mc_ascii:send(Out, [Body#mc_entry.data, <<"\r\n">>])));
 
-send_response(binary, Out,
-                       #mc_header{statusOrReserved = Status,
-                                  opcode = Opcode} = _Head, Body) ->
+send_response(binary, Out, _Cmd,
+              #mc_header{statusOrReserved = Status,
+                         opcode = Opcode} = _Head, Body) ->
     % Downstream is binary.
     case Status =:= ?SUCCESS of
         true ->
