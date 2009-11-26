@@ -21,7 +21,8 @@ cmd(Opcode, Sock, RecvCallback, HE) ->
 cmd_binary_quiet(Opcode, Sock, _RecvCallback, {Header, Entry}) ->
     ok = send(Sock, req,
               Header#mc_header{opcode = Opcode},
-              Entry#mc_entry{ext = ext(Opcode, Entry)}).
+              Entry#mc_entry{ext = ext(Opcode, Entry)}),
+    {ok, quiet}.
 
 cmd_binary_vocal(Opcode, Sock, RecvCallback, {Header, Entry}) ->
     ok = send(Sock, req,
