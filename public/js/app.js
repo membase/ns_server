@@ -722,6 +722,28 @@ var UpdatesChannel = mkClass({
   }
 });
 
+var baseDelegator = mkClass({
+  initialize: function (target) {
+    this.target = target;
+  }
+});
+
+function mkDelegator(klass, base) {
+  base = base || baseDelegator;
+
+  var proto = klass.prototype;
+  var methods = {};
+  _.each(_.keys(proto), function (name) {
+    if (name in base.prototype)
+      return;
+    methods[name] = function () {
+      return proto[name].apply(this.target, arguments);
+    };
+  });
+
+  return mkClass(base, methods);
+}
+
 var CellControlledUpdateChannel = mkClass(UpdatesChannel, {
   initialize: function (cell, period) {
     var _super = $m(this, 'initialize', UpdatesChannel);
@@ -751,6 +773,30 @@ var CellControlledUpdateChannel = mkClass(UpdatesChannel, {
                     this.cell.value));
   }
 });
+
+(function () {
+  var Base = mkDelegator(UpdatesChannel);
+  window.StatUpdateSubchannel = mkClass(Base, {
+    initialize: function (mainChannel) {
+      $m(this, 'initialize', Base)(mainChannel);
+
+      mainChannel.subchannels = (mainChannel.subchannels || []);
+      mainChannel.subchannels.push(this);
+
+      this.slot = this.target.slot;
+      this.period = 1/0;
+    },
+    setPeriod: function (period) {
+      this.period = period;
+      period = _.min(_.pluck(this.target.subchannels, 'period'));
+      if (period != this.target.period)
+        $m(this, 'setPeriod', Base)(period);
+    },
+    setXHRExtra: function (options) {
+      this.target.extraXHRData = _.extend(this.target.extraXHRData, options);
+    }
+  });
+})()
 
 var DAO = {
   ready: false,
@@ -929,15 +975,14 @@ CurrentStatTargetHandler.initialize();
 
 (function () {
   var targetCell = CurrentStatTargetHandler.currentStatTargetCell;
-  var opStatsArgsCell = new Cell(function (target) {
-    return {url: target.stats.uri};
-  }).setSources({target: targetCell});
-  var opStatsChannel = new CellControlledUpdateChannel(opStatsArgsCell, 10);
 
-  var keyStatsArgsCell = new Cell(function (target) {
+  var StatsArgsCell = new Cell(function (target) {
     return {url: target.stats.uri};
   }).setSources({target: targetCell});
-  var keyStatsChannel = new CellControlledUpdateChannel(keyStatsArgsCell, 10);
+  var StatsChannel = new CellControlledUpdateChannel(StatsArgsCell, 86400);
+
+  var opStatsSubchannel = new StatUpdateSubchannel(StatsChannel);
+  var keyStatsSubchannel = new StatUpdateSubchannel(StatsChannel);
 
   _.extend(DAO.cells, {
     graphZoomLevel: new LinkSwitchCell('graph_zoom',
@@ -946,8 +991,9 @@ CurrentStatTargetHandler.initialize();
     currentPoolDetails: CurrentStatTargetHandler.currentPoolDetailsCell
   });
   DAO.channels = {
-    opStats: opStatsChannel,
-    keyStats: keyStatsChannel
+    statsMain: StatsChannel,
+    opStats: opStatsSubchannel,
+    keyStats: keyStatsSubchannel
   }
 })();
 
@@ -990,17 +1036,18 @@ var OverviewSection = {
       DAO.cells.graphZoomLevel.addLink($('#overview_zoom_' + key),
                                  value);
     });
-    DAO.cells.graphZoomLevel.finalizeBuilding();
 
     DAO.cells.graphZoomLevel.changedSlot.subscribeWithSlave(function (cell) {
       var value = cell.value;
       var channel = DAO.channels.opStats;
 
       channel.plug(true);
-      channel.extraXHRData.opspersecond_zoom = value.requestParam;
+      channel.setXHRExtra({opspersecond_zoom: value.requestParam});
       channel.setPeriod(value.channelPeriod);
       channel.unplug();
     });
+
+    DAO.cells.graphZoomLevel.finalizeBuilding();
   },
   onEnter: function () {
   }
