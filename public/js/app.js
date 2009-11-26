@@ -988,6 +988,9 @@ CurrentStatTargetHandler.initialize();
     graphZoomLevel: new LinkSwitchCell('graph_zoom',
                                        {firstLinkIsDefault: true,
                                         clearOnChangesTo: [DAO.cells.overviewActive]}),
+    keysZoomLevel: new LinkSwitchCell('keys_zoom',
+                                      {firstLinkIsDefault: true,
+                                       clearOnChangesTo: [DAO.cells.overviewActive]}),
     currentPoolDetails: CurrentStatTargetHandler.currentPoolDetailsCell
   });
   DAO.channels = {
@@ -1019,7 +1022,7 @@ var OverviewSection = {
     var nodes = DAO.cells.currentPoolDetails.value.node;
     renderTemplate('server_list', nodes);
   },
-  opsStatRefreshOptions: {
+  statRefreshOptions: {
     real_time: {channelPeriod: 1, requestParam: 'now'},
     one_hr: {channelPeriod: 300, requestParam: '1hr'},
     day: {channelPeriod: 1800, requestParam: '24hr'}
@@ -1032,8 +1035,10 @@ var OverviewSection = {
     prepareTemplateForCell('server_list', DAO.cells.currentPoolDetails);    
     prepareTemplateForCell('pool_list', DAO.cells.poolList);
 
-    _.each(this.opsStatRefreshOptions, function (value, key) {
-      DAO.cells.graphZoomLevel.addLink($('#overview_zoom_' + key),
+    _.each(this.statRefreshOptions, function (value, key) {
+      DAO.cells.graphZoomLevel.addLink($('#overview_graph_zoom_' + key),
+                                 value);
+      DAO.cells.keysZoomLevel.addLink($('#overview_keys_zoom_' + key),
                                  value);
     });
 
@@ -1046,8 +1051,18 @@ var OverviewSection = {
       channel.setPeriod(value.channelPeriod);
       channel.unplug();
     });
-
     DAO.cells.graphZoomLevel.finalizeBuilding();
+
+    DAO.cells.keysZoomLevel.changedSlot.subscribeWithSlave(function (cell) {
+      var value = cell.value;
+      var channel = DAO.channels.keyStats;
+
+      channel.plug(true);
+      channel.setXHRExtra({keys_opspersecond_zoom: value.requestParam});
+      channel.setPeriod(value.channelPeriod);
+      channel.unplug();
+    });
+    DAO.cells.keysZoomLevel.finalizeBuilding();
   },
   onEnter: function () {
   }
