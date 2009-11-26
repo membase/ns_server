@@ -82,8 +82,8 @@ decode_header(res, <<?RES_MAGIC:8, Opcode:8, KeyLen:16, ExtLen:8,
      #mc_entry{datatype = DataType, cas = CAS}}.
 
 % Convert binary Opcode/Status to ascii result string.
-b2a_code(?SET,    ?SUCCESS) -> <<"STORED\r\n">>;
-b2a_code(?NOOP,   ?SUCCESS) -> <<"END\r\n">>;
+b2a_code(?SET,    ?SUCCESS)    -> <<"STORED\r\n">>;
+b2a_code(?NOOP,   ?SUCCESS)    -> <<"END\r\n">>;
 b2a_code(?DELETE, ?SUCCESS)    -> <<"DELETED\r\n">>;
 b2a_code(?DELETE, ?KEY_ENOENT) -> <<"NOT_FOUND\r\n">>;
 
