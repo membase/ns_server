@@ -71,9 +71,9 @@ cmd(?NOOP = O, Sess, _Sock, Out, HE) ->
 % ------------------------------------------
 
 cmd(?QUIT, _Sess, _Sock, _Out, _HE) ->
-    exit(quit);
+    exit({ok, quit_received});
 cmd(?QUITQ, _Sess, _Sock, _Out, _HE) ->
-    exit(quit);
+    exit({ok, quit_received}).
 
 % ------------------------------------------
 
@@ -83,73 +83,6 @@ cmd(?QUITQ, _Sess, _Sock, _Out, _HE) ->
 % ?SASL_AUTH
 % ?SASL_STEP
 % ?BUCKET
-
-% ------------------------------------------
-
-cmd(get, #session_proxy{bucket = Bucket} = Session,
-    _InSock, Out, Keys) ->
-    Groups =
-        group_by(Keys,
-                 fun (Key) ->
-                     {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
-                     Addr
-                 end),
-    {NumFwd, Monitors} =
-        lists:foldl(fun ({Addr, AddrKeys}, Acc) ->
-                        accum(forward(Addr, Out, get, AddrKeys), Acc)
-                    end,
-                    {0, []}, Groups),
-    await_ok(NumFwd),
-    mc_ascii:send(Out, <<"END\r\n">>),
-    mc_downstream:demonitor(Monitors),
-    {ok, Session};
-
-cmd(set, Session, InSock, Out, CmdArgs) ->
-    forward_update(set, Session, InSock, Out, CmdArgs);
-cmd(add, Session, InSock, Out, CmdArgs) ->
-    forward_update(add, Session, InSock, Out, CmdArgs);
-cmd(replace, Session, InSock, Out, CmdArgs) ->
-    forward_update(replace, Session, InSock, Out, CmdArgs);
-cmd(append, Session, InSock, Out, CmdArgs) ->
-    forward_update(append, Session, InSock, Out, CmdArgs);
-cmd(prepend, Session, InSock, Out, CmdArgs) ->
-    forward_update(prepend, Session, InSock, Out, CmdArgs);
-
-cmd(incr, Session, InSock, Out, CmdArgs) ->
-    forward_arith(incr, Session, InSock, Out, CmdArgs);
-cmd(decr, Session, InSock, Out, CmdArgs) ->
-    forward_arith(decr, Session, InSock, Out, CmdArgs);
-
-cmd(delete, #session_proxy{bucket = Bucket} = Session,
-    _InSock, Out, [Key]) ->
-    {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
-    {ok, Monitor} = forward(Addr, Out, delete, #mc_entry{key = Key}),
-    case await_ok(1) of
-        1 -> true;
-        _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
-    end,
-    mc_downstream:demonitor([Monitor]),
-    {ok, Session};
-
-cmd(flush_all, #session_proxy{bucket = Bucket} = Session,
-    _InSock, Out, _CmdArgs) ->
-    Addrs = mc_bucket:addrs(Bucket),
-    {NumFwd, Monitors} =
-        lists:foldl(fun (Addr, Acc) ->
-                        % Using undefined Out to swallow the OK
-                        % responses from the downstreams.
-                        % TODO: flush_all arguments.
-                        accum(forward(Addr, undefined,
-                                      flush_all, #mc_entry{}), Acc)
-                    end,
-                    {0, []}, Addrs),
-    await_ok(NumFwd),
-    mc_ascii:send(Out, <<"OK\r\n">>),
-    mc_downstream:demonitor(Monitors),
-    {ok, Session};
-
-cmd(quit, _Session, _InSock, _Out, _Rest) ->
-    exit({ok, quit_received}).
 
 % ------------------------------------------
 
@@ -277,46 +210,4 @@ await_ok(N, Acc) when N > 0 ->
     end;
 await_ok(_, Acc) -> Acc.
 
-group_by(Keys, KeyFunc) ->
-    group_by(Keys, KeyFunc, dict:new()).
 
-group_by([Key | Rest], KeyFunc, Dict) ->
-    G = KeyFunc(Key),
-    group_by(Rest, KeyFunc,
-             dict:update(G, fun (V) -> [Key | V] end, [Key], Dict));
-group_by([], _KeyFunc, Dict) ->
-    lists:map(fun ({G, Val}) -> {G, lists:reverse(Val)} end,
-              dict:to_list(Dict)).
-
-% ------------------------------------------
-
-% For testing...
-%
-element2({_X, Y}) -> Y.
-
-group_by_edge_test() ->
-    ?assertMatch([],
-                 group_by([],
-                          fun element2/1)),
-    ?assertMatch([{1, [{a, 1}]}],
-                 group_by([{a, 1}],
-                          fun element2/1)),
-    ok.
-
-group_by_simple_test() ->
-    ?assertMatch([{1, [{a, 1}, {b, 1}]}],
-                 group_by([{a, 1}, {b, 1}],
-                          fun element2/1)),
-    ?assertMatch([{2, [{c, 2}]},
-                  {1, [{a, 1}, {b, 1}]}],
-                 group_by([{a, 1}, {b, 1}, {c, 2}],
-                          fun element2/1)),
-    ?assertMatch([{2, [{c, 2}]},
-                  {1, [{a, 1}, {b, 1}]}],
-                 group_by([{a, 1}, {c, 2}, {b, 1}],
-                          fun element2/1)),
-    ?assertMatch([{2, [{c, 2}]},
-                  {1, [{a, 1}, {b, 1}]}],
-                 group_by([{c, 2}, {a, 1}, {b, 1}],
-                          fun element2/1)),
-    ok.
