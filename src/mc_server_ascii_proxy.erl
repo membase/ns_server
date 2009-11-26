@@ -8,9 +8,6 @@
 
 -compile(export_all).
 
-% Note: this simple memcached ascii protocol server
-% has an independent dict per session.
-
 -record(session_proxy, {bucket}).
 
 session(_Sock, Pool, _ProtocolModule) ->
