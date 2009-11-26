@@ -65,14 +65,15 @@ cmd(delete, #session_proxy{bucket = Bucket} = Session,
     {ok, Session};
 
 cmd(flush_all, #session_proxy{bucket = Bucket} = Session,
-    _InSock, Out, CmdArgs) ->
+    _InSock, Out, _CmdArgs) ->
     Addrs = mc_bucket:addrs(Bucket),
     {NumFwd, Monitors} =
         lists:foldl(fun (Addr, Acc) ->
                         % Using undefined Out to swallow the OK
                         % responses from the downstreams.
+                        % TODO: flush_all arguments.
                         accum(forward(Addr, undefined,
-                                      flush_all, CmdArgs), Acc)
+                                      flush_all, #mc_entry{}), Acc)
                     end,
                     {0, []}, Addrs),
     await_ok(NumFwd),

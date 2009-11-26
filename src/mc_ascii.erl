@@ -28,6 +28,7 @@ send({OutPid, CmdNum}, Data) ->
     OutPid ! {send, CmdNum, Data},
     ok;
 
+send(undefined, _Data) -> ok;
 send(_Sock, undefined) -> ok;
 send(_Sock, <<>>) -> ok;
 send(Sock, List) when is_list(List) -> send(Sock, iolist_to_binary(List));
