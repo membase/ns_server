@@ -134,6 +134,17 @@ loop(Addr, Sock) ->
 notify(P, V) when is_pid(P) -> P ! V;
 notify(_, _) -> ok.
 
+group_by(Keys, KeyFunc) ->
+    group_by(Keys, KeyFunc, dict:new()).
+
+group_by([Key | Rest], KeyFunc, Dict) ->
+    G = KeyFunc(Key),
+    group_by(Rest, KeyFunc,
+             dict:update(G, fun (V) -> [Key | V] end, [Key], Dict));
+group_by([], _KeyFunc, Dict) ->
+    lists:map(fun ({G, Val}) -> {G, lists:reverse(Val)} end,
+              dict:to_list(Dict)).
+
 % ---------------------------------------------------
 
 % For testing...
@@ -145,3 +156,31 @@ mbox_test() ->
     {M2, B1} = make_mbox(M1, A1),
     ?assertMatch({M2, B1}, make_mbox(M2, A1)).
 
+element2({_X, Y}) -> Y.
+
+group_by_edge_test() ->
+    ?assertMatch([],
+                 group_by([],
+                          fun element2/1)),
+    ?assertMatch([{1, [{a, 1}]}],
+                 group_by([{a, 1}],
+                          fun element2/1)),
+    ok.
+
+group_by_simple_test() ->
+    ?assertMatch([{1, [{a, 1}, {b, 1}]}],
+                 group_by([{a, 1}, {b, 1}],
+                          fun element2/1)),
+    ?assertMatch([{2, [{c, 2}]},
+                  {1, [{a, 1}, {b, 1}]}],
+                 group_by([{a, 1}, {b, 1}, {c, 2}],
+                          fun element2/1)),
+    ?assertMatch([{2, [{c, 2}]},
+                  {1, [{a, 1}, {b, 1}]}],
+                 group_by([{a, 1}, {c, 2}, {b, 1}],
+                          fun element2/1)),
+    ?assertMatch([{2, [{c, 2}]},
+                  {1, [{a, 1}, {b, 1}]}],
+                 group_by([{c, 2}, {a, 1}, {b, 1}],
+                          fun element2/1)),
+    ok.

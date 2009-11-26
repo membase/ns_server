@@ -37,8 +37,7 @@ tests() -> [mc_ascii,
             mc_client_binary_ac,
             mc_bucket,
             mc_pool,
-            mc_downstream,
-            mc_server_ascii_proxy
+            mc_downstream
            ].
 
 test() ->

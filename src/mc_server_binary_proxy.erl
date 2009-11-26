@@ -6,15 +6,18 @@
 
 -include("mc_entry.hrl").
 
--import(mc_downstream, [forward/6, accum/2, await_ok/1]).
+-import(mc_downstream, [forward/6, accum/2, await_ok/1, group_by/2]).
 
 -compile(export_all).
 
--record(session_proxy, {bucket}).
+-record(session_proxy, {bucket, % The target that we're forwarding to.
+                        corked  % Requests awaiting a NOOP to uncork.
+                       }).
 
 session(_Sock, Pool, _ProtocolModule) ->
     {ok, Bucket} = mc_pool:get_bucket(Pool, "default"),
-    {ok, Pool, #session_proxy{bucket = Bucket}}.
+    {ok, Pool, #session_proxy{bucket = Bucket,
+                              corked = []}}.
 
 % ------------------------------------------
 
@@ -39,33 +42,33 @@ cmd(?APPEND = O, Sess, _Sock, Out, HE) ->
 cmd(?PREPEND = O, Sess, _Sock, Out, HE) ->
     forward_simple(O, Sess, Out, HE);
 
-cmd(?GETQ = O, Sess, _Sock, Out, HE) ->
-    forward_simple(O, Sess, Out, HE);
-cmd(?GETKQ = O, Sess, _Sock, Out, HE) ->
-    forward_simple(O, Sess, Out, HE);
-cmd(?SETQ = O, Sess, _Sock, Out, HE) ->
-    forward_simple(O, Sess, Out, HE);
-cmd(?ADDQ = O, Sess, _Sock, Out, HE) ->
-    forward_simple(O, Sess, Out, HE);
-cmd(?REPLACEQ = O, Sess, _Sock, Out, HE) ->
-    forward_simple(O, Sess, Out, HE);
-cmd(?DELETEQ = O, Sess, _Sock, Out, HE) ->
-    forward_simple(O, Sess, Out, HE);
-cmd(?INCREMENTQ = O, Sess, _Sock, Out, HE) ->
-    forward_simple(O, Sess, Out, HE);
-cmd(?DECREMENTQ = O, Sess, _Sock, Out, HE) ->
-    forward_simple(O, Sess, Out, HE);
-cmd(?APPENDQ = O, Sess, _Sock, Out, HE) ->
-    forward_simple(O, Sess, Out, HE);
-cmd(?PREPENDQ = O, Sess, _Sock, Out, HE) ->
-    forward_simple(O, Sess, Out, HE);
+cmd(?GETQ, Sess, _Sock, _Out, HE) ->
+    queue(Sess, HE);
+cmd(?GETKQ, Sess, _Sock, _Out, HE) ->
+    queue(Sess, HE);
+cmd(?SETQ, Sess, _Sock, _Out, HE) ->
+    queue(Sess, HE);
+cmd(?ADDQ, Sess, _Sock, _Out, HE) ->
+    queue(Sess, HE);
+cmd(?REPLACEQ, Sess, _Sock, _Out, HE) ->
+    queue(Sess, HE);
+cmd(?DELETEQ, Sess, _Sock, _Out, HE) ->
+    queue(Sess, HE);
+cmd(?INCREMENTQ, Sess, _Sock, _Out, HE) ->
+    queue(Sess, HE);
+cmd(?DECREMENTQ, Sess, _Sock, _Out, HE) ->
+    queue(Sess, HE);
+cmd(?APPENDQ, Sess, _Sock, _Out, HE) ->
+    queue(Sess, HE);
+cmd(?PREPENDQ, Sess, _Sock, _Out, HE) ->
+    queue(Sess, HE);
 
 % ------------------------------------------
 
 cmd(?FLUSH = O, Sess, _Sock, Out, HE) ->
-    forward_bcast_filter(O, Sess, Out, HE);
+    forward_bcast_filter(all, O, Sess, Out, HE);
 cmd(?NOOP = O, Sess, _Sock, Out, HE) ->
-    forward_bcast_filter(O, Sess, Out, HE);
+    forward_bcast_filter(uncork, O, Sess, Out, HE);
 
 % ------------------------------------------
 
@@ -86,6 +89,11 @@ cmd(?QUITQ, _Sess, _Sock, _Out, _HE) ->
 
 % ------------------------------------------
 
+% Enqueue the request as part of the session, which a
+% future NOOP request should uncork.
+queue(#session_proxy{corked = C} = Sess, HE) ->
+    {ok, Sess#session_proxy{corked = [HE | C]}}.
+
 % For binary commands that need a simple command forward.
 forward_simple(Opcode, #session_proxy{bucket = Bucket} = Sess, Out,
                {_Header, #mc_entry{key = Key}} = HE) ->
@@ -97,30 +105,53 @@ forward_simple(Opcode, #session_proxy{bucket = Bucket} = Sess, Out,
 
 % For binary commands to do a broadcast scatter/gather.
 % A ResponseFilter can be used to filter out responses.
-forward_bcast(Opcode, #session_proxy{bucket = Bucket} = Sess, Out, HE,
-              ResponseFilter) ->
+forward_bcast(all, Opcode, #session_proxy{bucket = Bucket} = Sess,
+              Out, {H, E} = HE, ResponseFilter) ->
     Addrs = mc_bucket:addrs(Bucket),
     {NumFwd, Monitors} =
         lists:foldl(fun (Addr, Acc) ->
-                        % Using undefined Out to swallow the OK
-                        % responses from the downstreams.
                         accum(forward(Addr, Out, Opcode, HE,
                                       ResponseFilter, ?MODULE), Acc)
                     end,
                     {0, []}, Addrs),
     await_ok(NumFwd),
-    mc_ascii:send(Out, <<"OK\r\n">>),
+    mc_binary:send(Out, res, H#mc_header{statusOrReserved = ?SUCCESS}, E),
     mc_downstream:demonitor(Monitors),
-    {ok, Sess}.
+    {ok, Sess};
 
-% Same as forward_bcast, but filters out any responses
+% For binary commands to do a broadcast scatter/gather,
+% grouping and uncorking queued requests.
+% A ResponseFilter can be used to filter out responses.
+forward_bcast(uncork, _Opcode, #session_proxy{bucket = Bucket,
+                                              corked = C} = Sess,
+              Out, {H, E} = HE, ResponseFilter) ->
+    % Group our corked requests by Addr.
+    Groups =
+        group_by(C, fun ({_QH, #mc_entry{key = Key}}) ->
+                        {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
+                        Addr
+                    end),
+    % Forward the request list to each Addr.
+    {NumFwd, Monitors} =
+        lists:foldl(fun ({Addr, HEList}, Acc) ->
+                        accum(forward(Addr, Out, send_list,
+                                      lists:reverse([HE | HEList]),
+                                      ResponseFilter, ?MODULE), Acc)
+                    end,
+                    {0, []}, Groups),
+    await_ok(NumFwd),
+    mc_binary:send(Out, res, H#mc_header{statusOrReserved = ?SUCCESS}, E),
+    mc_downstream:demonitor(Monitors),
+    {ok, Sess#session_proxy{corked = []}}.
+
+% Calls forward_bcast, but filters out any responses
 % that have the same Opcode as the request.
-forward_bcast_filter(Opcode, Sess, Out, HE) ->
+forward_bcast_filter(BCastKind, Opcode, Sess, Out, HE) ->
     ResponseFilter =
         fun (#mc_header{opcode = ROpcode}, _REntry) ->
             ROpcode =:= Opcode
         end,
-    forward_bcast(Opcode, Sess, Out, HE, ResponseFilter).
+    forward_bcast(BCastKind, Opcode, Sess, Out, HE, ResponseFilter).
 
 % ------------------------------------------
 

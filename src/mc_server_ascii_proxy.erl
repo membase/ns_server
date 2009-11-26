@@ -6,7 +6,7 @@
 
 -include("mc_entry.hrl").
 
--import(mc_downstream, [forward/6, accum/2, await_ok/1]).
+-import(mc_downstream, [forward/6, accum/2, await_ok/1, group_by/2]).
 
 -compile(export_all).
 
@@ -167,46 +167,3 @@ bin_size(undefined) -> 0;
 bin_size(List) when is_list(List) -> bin_size(iolist_to_binary(List));
 bin_size(Binary) -> size(Binary).
 
-group_by(Keys, KeyFunc) ->
-    group_by(Keys, KeyFunc, dict:new()).
-
-group_by([Key | Rest], KeyFunc, Dict) ->
-    G = KeyFunc(Key),
-    group_by(Rest, KeyFunc,
-             dict:update(G, fun (V) -> [Key | V] end, [Key], Dict));
-group_by([], _KeyFunc, Dict) ->
-    lists:map(fun ({G, Val}) -> {G, lists:reverse(Val)} end,
-              dict:to_list(Dict)).
-
-% ------------------------------------------
-
-% For testing...
-%
-element2({_X, Y}) -> Y.
-
-group_by_edge_test() ->
-    ?assertMatch([],
-                 group_by([],
-                          fun element2/1)),
-    ?assertMatch([{1, [{a, 1}]}],
-                 group_by([{a, 1}],
-                          fun element2/1)),
-    ok.
-
-group_by_simple_test() ->
-    ?assertMatch([{1, [{a, 1}, {b, 1}]}],
-                 group_by([{a, 1}, {b, 1}],
-                          fun element2/1)),
-    ?assertMatch([{2, [{c, 2}]},
-                  {1, [{a, 1}, {b, 1}]}],
-                 group_by([{a, 1}, {b, 1}, {c, 2}],
-                          fun element2/1)),
-    ?assertMatch([{2, [{c, 2}]},
-                  {1, [{a, 1}, {b, 1}]}],
-                 group_by([{a, 1}, {c, 2}, {b, 1}],
-                          fun element2/1)),
-    ?assertMatch([{2, [{c, 2}]},
-                  {1, [{a, 1}, {b, 1}]}],
-                 group_by([{c, 2}, {a, 1}, {b, 1}],
-                          fun element2/1)),
-    ok.
