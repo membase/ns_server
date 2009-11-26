@@ -168,8 +168,8 @@ class DAO
     end
   end
 
-  def stats(bucket_id)
-    {
+  def stats(bucket_id, params)
+    rv = {
       "op" => {
         "tstamp" => Time.now.to_i*1000,
         "gets"=>[25, 10, 5, 46, 100, 74],
@@ -197,6 +197,38 @@ class DAO
                        "bucket" => "Excerciser application",
                        "type"=>"Cache"}]
     }
+
+    samples_interval = case params['opspersecond_zoom']
+                       when 'now'
+                         1
+                       when '1hr'
+                         3600.0/samples
+                       when '24hr'
+                         86400.0/samples
+                       end
+
+    rv['op']['samples_interval'] = samples_interval
+
+    samples = rv['op']['ops'].size
+    tstamp = rv['op']['tstamp']/1000.0
+
+    cut_number = samples
+    if params['opsbysecond_start_tstamp']
+      start_tstamp = params['opsbysecond_start_tstamp'].to_i/1000.0
+
+      cut_seconds = tstamp - start_tstamp
+      if cut_seconds > 0 && cut_seconds < samples_interval*samples
+        cut_number = (cut_seconds/samples_interval).floor
+      end
+    end
+
+    rotates = tstamp % samples
+    %w(gets misses sets ops).each do |name|
+      rv['op'][name] = (rv['op'][name] * 2)[rotates, samples]
+      rv['op'][name] = rv['op'][name][-cut_number..-1]
+    end
+
+    rv
   end
 end
 
@@ -223,5 +255,5 @@ end
 
 user_get "/buckets/:id/stats" do
   response['Content-Type'] = 'application/json'
-  JSON.unparse(DAO.current.stats(params[:id].to_i))
+  JSON.unparse(DAO.current.stats(params[:id].to_i, params))
 end

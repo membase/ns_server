@@ -241,13 +241,19 @@ function escapeHTML() {
 
 var StatGraphs = {
   update: function (stats) {
-    var main = $('#overview_main_graph span')
+    var main = $('#overview_main_graph')
+
+    var mainParent = main.parent();
+    main.remove()
+    mainParent.append('<span id="overview_main_graph"></span>');
+    main = $('#overview_main_graph')
+
     var ops = $('#overview_graph_ops')
     var gets = $('#overview_graph_gets')
     var sets = $('#overview_graph_sets')
     var misses = $('#overview_graph_misses')
 
-    main.sparkline(stats.ops, {width: $(main.get(0).parentNode).innerWidth(), height: 200})
+    main.sparkline(stats.ops, {width: $(main.parent()).innerWidth(), height: 200})
     ops.sparkline(stats.ops, {width: ops.innerWidth(), height: 100})
     gets.sparkline(stats.gets, {width: gets.innerWidth(), height: 100})
     sets.sparkline(stats.sets, {width: sets.innerWidth(), height: 100})
@@ -552,7 +558,7 @@ var LinkSwitchCell = mkClass(Cell, {
     this.paramName = paramName;
     this.options = _.extend({
       selectedClass: 'selected',
-      linkSelector: 'a',
+      linkSelector: '*',
       eventSpec: 'click',
       clearOnChangesTo: [],
       firstLinkIsDefault: false
@@ -798,6 +804,38 @@ var CellControlledUpdateChannel = mkClass(UpdatesChannel, {
   });
 })()
 
+var OpsStatUpdateSubchannel = mkClass(StatUpdateSubchannel, {
+  initialize: function (mainChannel) {
+    $m(this, 'initialize', StatUpdateSubchannel)(mainChannel);
+
+    this.slot.subscribeWithSlave($m(this, 'onDataArrived'));
+  },
+  onDataArrived: function () {
+    var oldOps = this.lastOps;
+    var ops = this.lastOps = this.target.recentData.op;
+    var tstamp = this.lastTstamp = this.target.recentData.op.tstamp;
+    if (!tstamp)
+      return;
+
+    this.setXHRExtra({opsbysecond_start_tstamp: tstamp});
+
+    var oldTstamp = this.lastTstamp;
+    if (!this.lastTstamp || !oldOps)
+      return;
+
+    var dataOffset = Math.round((tstamp - oldTstamp) / this.target.recentData.op.samples_interval)
+    _.each(['misses', 'gets', 'sets', 'ops'], function (cat) {
+      var oldArray = oldOps[cat];
+      var newArray = ops[cat];
+
+      var oldLength = oldArray.length;
+      var nowLength = newArray.length;
+      if (nowLength < oldLength)
+        ops[cat] = oldArray.slice(-(oldLength-nowLength)-dataOffset, (dataOffset == 0) ? oldLength : -dataOffset).concat(newArray);
+    });
+  }
+});
+
 var DAO = {
   ready: false,
   onReady: function (thunk) {
@@ -981,7 +1019,7 @@ CurrentStatTargetHandler.initialize();
   }).setSources({target: targetCell});
   var StatsChannel = new CellControlledUpdateChannel(StatsArgsCell, 86400);
 
-  var opStatsSubchannel = new StatUpdateSubchannel(StatsChannel);
+  var opStatsSubchannel = new OpsStatUpdateSubchannel(StatsChannel);
   var keyStatsSubchannel = new StatUpdateSubchannel(StatsChannel);
 
   _.extend(DAO.cells, {
