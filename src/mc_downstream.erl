@@ -79,6 +79,7 @@ handle_call({monitor, Addr}, _From, DMgr) ->
     {DMgr2, #mbox{pid = Pid}} = make_mbox(DMgr, Addr),
     Reply = {ok, erlang:monitor(process, Pid)},
     {reply, Reply, DMgr2};
+
 handle_call({send, Addr, Op, NotifyPid,
              ResponseFun, CmdModule, Cmd, CmdArgs}, _From, DMgr) ->
     {DMgr2, #mbox{pid = Pid}} = make_mbox(DMgr, Addr),
