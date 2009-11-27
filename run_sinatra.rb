@@ -198,6 +198,7 @@ class DAO
                        "type"=>"Cache"}]
     }
 
+    samples = rv['op']['ops'].size
     samples_interval = case params['opspersecond_zoom']
                        when 'now'
                          1
@@ -209,7 +210,6 @@ class DAO
 
     rv['op']['samples_interval'] = samples_interval
 
-    samples = rv['op']['ops'].size
     tstamp = rv['op']['tstamp']/1000.0
 
     cut_number = samples
