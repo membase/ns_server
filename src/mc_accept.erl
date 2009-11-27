@@ -41,7 +41,7 @@ accept_loop(LS, {ProtocolModule, ProcessorModule, ProcessorEnv}) ->
     ?debugFmt("accept ~p~n", [NS]),
     % Ask the processor for a new session object.
     {ok, ProcessorEnv2, ProcessorSession} =
-        apply(ProcessorModule, session, [NS, ProcessorEnv, ProtocolModule]),
+        apply(ProcessorModule, session, [NS, ProcessorEnv]),
     Pid = spawn(?MODULE, session,
                 [NS, ProtocolModule, ProcessorModule, ProcessorSession]),
     gen_tcp:controlling_process(NS, Pid),

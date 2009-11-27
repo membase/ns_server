@@ -13,7 +13,7 @@
 
 -record(session_dict, {cas = 0, tbl = dict:new()}).
 
-session(_Sock, Env, _ProtocolModule) ->
+session(_Sock, Env) ->
     {ok, Env, #session_dict{}}.
 
 cmd(get, Dict, _InSock, Out, []) ->

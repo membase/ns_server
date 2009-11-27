@@ -58,6 +58,8 @@ accum(A2xForwardResult, {NumOks, Monitors}) ->
 
 await_ok(N) -> await_ok(N, 0).
 await_ok(N, Acc) when N > 0 ->
+    % TODO: Decrementing N due to a DOWN might be incorrect
+    % during edge/race conditions.
     receive
         {ok, _}    -> await_ok(N - 1, Acc + 1);
         {ok, _, _} -> await_ok(N - 1, Acc + 1);

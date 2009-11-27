@@ -14,7 +14,7 @@
                         corked  % Requests awaiting a NOOP to uncork.
                        }).
 
-session(_Sock, Pool, _ProtocolModule) ->
+session(_Sock, Pool) ->
     {ok, Bucket} = mc_pool:get_bucket(Pool, "default"),
     {ok, Pool, #session_proxy{bucket = Bucket,
                               corked = []}}.
