@@ -21,7 +21,13 @@ main() ->
                       mc_server_binary_proxy, AsciiPool}),
      mc_accept:start(11600,
                      {mc_server_binary,
-                      mc_server_binary_proxy, BinaryPool})}.
+                      mc_server_binary_proxy, BinaryPool}),
+     mc_accept:start(11233,
+                     {mc_server_detect,
+                      mc_server_detect, AsciiPool}),
+     mc_accept:start(11244,
+                     {mc_server_detect,
+                      mc_server_detect, BinaryPool})}.
 
 % To build:
 %   make clean && make

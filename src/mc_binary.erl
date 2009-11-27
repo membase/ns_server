@@ -42,6 +42,14 @@ recv(Sock, HeaderKind) ->
     {Header, Entry} = decode_header(HeaderKind, HeaderBin),
     recv_body(Sock, Header, Entry).
 
+recv_prefix(Prefix, Sock, HeaderKind) ->
+    PrefixLen = bin_size(Prefix),
+    HeaderRestLen = ?HEADER_LEN - PrefixLen,
+    {ok, HeaderRest} = recv_data(Sock, HeaderRestLen),
+    HeaderBin = <<Prefix/binary, HeaderRest/binary>>,
+    {Header, Entry} = decode_header(HeaderKind, HeaderBin),
+    recv_body(Sock, Header, Entry).
+
 recv_body(Sock, #mc_header{extlen = ExtLen,
                            keylen = KeyLen,
                            bodylen = BodyLen} = Header, Entry) ->
