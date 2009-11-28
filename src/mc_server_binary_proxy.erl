@@ -6,7 +6,9 @@
 
 -include("mc_entry.hrl").
 
--import(mc_downstream, [send/7, accum/2, await_ok/1, group_by/2]).
+-import(mc_downstream, [accum/2, await_ok/1, group_by/2]).
+
+-import(mc_replication, [send/7]).
 
 -compile(export_all).
 
