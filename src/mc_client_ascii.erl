@@ -78,7 +78,7 @@ get_recv(Sock, RecvCallback) ->
     Line = recv_line(Sock),
     case Line of
         {error, _} = Err -> Err;
-        {ok, <<"END">>} -> Line;
+        {ok, <<"END">>}  -> Line;
         {ok, <<"VALUE ", Rest/binary>> = LineBin} ->
             Parse = io_lib:fread("~s ~u ~u", binary_to_list(Rest)),
             {ok, [Key, Flag, DataSize], _} = Parse,
@@ -98,12 +98,12 @@ multiline_recv(Sock, RecvCallback) -> % For stats response.
     Line = recv_line(Sock),
     case Line of
         {error, _} = Err -> Err;
-        {ok, <<"END">>} -> Line;
-        {ok, LineBin} -> case is_function(RecvCallback) of
-                 true  -> RecvCallback(LineBin, undefined);
-                 false -> ok
-             end,
-             multiline_recv(Sock, RecvCallback)
+        {ok, <<"END">>}  -> Line;
+        {ok, LineBin}    -> case is_function(RecvCallback) of
+                                true  -> RecvCallback(LineBin, undefined);
+                                false -> ok
+                            end,
+                            multiline_recv(Sock, RecvCallback)
     end.
 
 % -------------------------------------------------

@@ -106,18 +106,18 @@ bin(undefined)         -> <<>>;
 bin(L) when is_list(L) -> iolist_to_binary(L);
 bin(X)                 -> <<X/binary>>.
 
-bin_size(undefined) -> 0;
+bin_size(undefined)               -> 0;
 bin_size(List) when is_list(List) -> bin_size(iolist_to_binary(List));
-bin_size(Binary) -> size(Binary).
+bin_size(Binary)                  -> size(Binary).
 
 send({OutPid, CmdNum}, Data) when is_pid(OutPid) ->
     OutPid ! {send, CmdNum, Data};
 
-send(undefined, _Data) -> ok;
-send(_Sock, undefined) -> ok;
-send(_Sock, <<>>) -> ok;
+send(undefined, _Data)              -> ok;
+send(_Sock, undefined)              -> ok;
+send(_Sock, <<>>)                   -> ok;
 send(Sock, List) when is_list(List) -> send(Sock, iolist_to_binary(List));
-send(Sock, Data) -> gen_tcp:send(Sock, Data).
+send(Sock, Data)                    -> gen_tcp:send(Sock, Data).
 
 %% @doc Receive binary data of specified number of bytes length.
 recv_data(_, 0)           -> {ok, <<>>};

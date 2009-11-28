@@ -135,9 +135,9 @@ send_response(binary, Out, _Cmd,
     case Status =:= ?SUCCESS of
         true ->
             case Opcode of
-                ?GETKQ -> send_entry_binary(Out, Body);
-                ?GETK  -> send_entry_binary(Out, Body);
-                ?NOOP  -> mc_ascii:send(Out, <<"END\r\n">>);
+                ?GETKQ     -> send_entry_binary(Out, Body);
+                ?GETK      -> send_entry_binary(Out, Body);
+                ?NOOP      -> mc_ascii:send(Out, <<"END\r\n">>);
                 ?INCREMENT -> send_arith_response(Out, Body);
                 ?DECREMENT -> send_arith_response(Out, Body);
                 _ -> mc_ascii:send(Out, mc_binary:b2a_code(Opcode, Status))
@@ -163,7 +163,7 @@ send_arith_response(Out, #mc_entry{data = Data}) ->
 kind_to_module(ascii)  -> mc_client_ascii_ac;
 kind_to_module(binary) -> mc_client_binary_ac.
 
-bin_size(undefined) -> 0;
+bin_size(undefined)               -> 0;
 bin_size(List) when is_list(List) -> bin_size(iolist_to_binary(List));
-bin_size(Binary) -> size(Binary).
+bin_size(Binary)                  -> size(Binary).
 

@@ -28,11 +28,11 @@ send({OutPid, CmdNum}, Data) ->
     OutPid ! {send, CmdNum, Data},
     ok;
 
-send(undefined, _Data) -> ok;
-send(_Sock, undefined) -> ok;
-send(_Sock, <<>>) -> ok;
+send(undefined, _Data)              -> ok;
+send(_Sock, undefined)              -> ok;
+send(_Sock, <<>>)                   -> ok;
 send(Sock, List) when is_list(List) -> send(Sock, iolist_to_binary(List));
-send(Sock, Data) -> gen_tcp:send(Sock, Data).
+send(Sock, Data)                    -> gen_tcp:send(Sock, Data).
 
 %% @doc Receive binary data of specified number of bytes length.
 recv_data(_, 0)           -> {ok, <<>>};

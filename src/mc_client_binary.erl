@@ -59,14 +59,12 @@ stats_recv(Sock, RecvCallback) ->
                     keylen = RKeyLen} = RecvHeader,
          RecvEntry} = recv(Sock, res),
     case ?STAT =:= ROpcode andalso 0 =:= RKeyLen of
-        true ->
-            {ok, RecvHeader, RecvEntry};
-        false ->
-            case is_function(RecvCallback) of
-                true  -> RecvCallback(RecvHeader, RecvEntry);
-                false -> ok
-            end,
-            stats_recv(Sock, RecvCallback)
+        true  -> {ok, RecvHeader, RecvEntry};
+        false -> case is_function(RecvCallback) of
+                     true  -> RecvCallback(RecvHeader, RecvEntry);
+                     false -> ok
+                 end,
+                 stats_recv(Sock, RecvCallback)
     end.
 
 % -------------------------------------------------
@@ -80,25 +78,25 @@ send_list(Sock, RecvCallback,
 
 % -------------------------------------------------
 
-is_quiet(?GETQ) -> true;
-is_quiet(?GETKQ) -> true;
-is_quiet(?SETQ) -> true;
-is_quiet(?ADDQ) -> true;
-is_quiet(?REPLACEQ) -> true;
-is_quiet(?DELETEQ) -> true;
+is_quiet(?GETQ)       -> true;
+is_quiet(?GETKQ)      -> true;
+is_quiet(?SETQ)       -> true;
+is_quiet(?ADDQ)       -> true;
+is_quiet(?REPLACEQ)   -> true;
+is_quiet(?DELETEQ)    -> true;
 is_quiet(?INCREMENTQ) -> true;
 is_quiet(?DECREMENTQ) -> true;
-is_quiet(?QUITQ) -> true;
-is_quiet(?FLUSHQ) -> true;
-is_quiet(?APPENDQ) -> true;
-is_quiet(?PREPENDQ) -> true;
-is_quiet(?RSETQ) -> true;
-is_quiet(?RAPPENDQ) -> true;
-is_quiet(?RPREPENDQ) -> true;
-is_quiet(?RDELETEQ) -> true;
-is_quiet(?RINCRQ) -> true;
-is_quiet(?RDECRQ) -> true;
-is_quiet(_) -> false.
+is_quiet(?QUITQ)      -> true;
+is_quiet(?FLUSHQ)     -> true;
+is_quiet(?APPENDQ)    -> true;
+is_quiet(?PREPENDQ)   -> true;
+is_quiet(?RSETQ)      -> true;
+is_quiet(?RAPPENDQ)   -> true;
+is_quiet(?RPREPENDQ)  -> true;
+is_quiet(?RDELETEQ)   -> true;
+is_quiet(?RINCRQ)     -> true;
+is_quiet(?RDECRQ)     -> true;
+is_quiet(_)           -> false.
 
 ext(?SET,        Entry) -> ext_flag_expire(Entry);
 ext(?SETQ,       Entry) -> ext_flag_expire(Entry);
