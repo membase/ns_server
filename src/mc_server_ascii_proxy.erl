@@ -129,7 +129,7 @@ send_response(ascii, Out, _Cmd, Head, Body) ->
      (ok =:= mc_ascii:send(Out, [Body#mc_entry.data, <<"\r\n">>])));
 
 send_response(binary, Out, _Cmd,
-              #mc_header{statusOrReserved = Status,
+              #mc_header{status = Status,
                          opcode = Opcode} = _Head, Body) ->
     % Downstream is binary.
     case Status =:= ?SUCCESS of

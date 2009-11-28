@@ -7,7 +7,7 @@
                    datatype = 0}).
 
 -record(mc_header, {opcode = 0,
-                    statusOrReserved = 0,
+                    status = 0, % Used for both status & reserved field.
                     keylen = undefined,
                     extlen = undefined,
                     bodylen = undefined,

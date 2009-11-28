@@ -59,7 +59,7 @@ cmd(Opcode, Sock, RecvCallback, Entry) ->
 % Calls binary target and converts binary opcode/success
 % to ascii result string.
 send_recv(Sock, RecvCallback, Header, Entry) ->
-    {ok, #mc_header{opcode = O, statusOrReserved = S} = _RH, _RE} =
+    {ok, #mc_header{opcode = O, status = S} = _RH, _RE} =
         mc_binary:send_recv(Sock, RecvCallback, Header, Entry),
     {ok, mc_binary:b2a_code(O, S)}.
 

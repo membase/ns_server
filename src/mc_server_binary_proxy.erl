@@ -115,7 +115,7 @@ forward_bcast(all, Opcode, #session_proxy{bucket = Bucket} = Sess,
                     end,
                     {0, []}, Addrs),
     await_ok(NumFwd),
-    mc_binary:send(Out, res, H#mc_header{statusOrReserved = ?SUCCESS}, E),
+    mc_binary:send(Out, res, H#mc_header{status = ?SUCCESS}, E),
     mc_downstream:demonitor(Monitors),
     {ok, Sess};
 
@@ -140,7 +140,7 @@ forward_bcast(uncork, _Opcode, #session_proxy{bucket = Bucket,
                     end,
                     {0, []}, Groups),
     await_ok(NumFwd),
-    mc_binary:send(Out, res, H#mc_header{statusOrReserved = ?SUCCESS}, E),
+    mc_binary:send(Out, res, H#mc_header{status = ?SUCCESS}, E),
     mc_downstream:demonitor(Monitors),
     {ok, Sess#session_proxy{corked = []}}.
 

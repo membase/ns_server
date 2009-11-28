@@ -15,7 +15,7 @@ send_recv(Sock, RecvCallback, Header, Entry, Success) ->
         send_recv(Sock, RecvCallback, Header, Entry),
     V1 = RecvHeader#mc_header.opcode,
     V1 = Header#mc_header.opcode,
-    SR = RecvHeader#mc_header.statusOrReserved,
+    SR = RecvHeader#mc_header.status,
     case SR =:= ?SUCCESS of
         true  -> {ok, Success};
         false -> {error, RecvHeader, RecvEntry}
@@ -69,7 +69,7 @@ encode(res, Header, Entry) ->
     encode(?RES_MAGIC, Header, Entry);
 encode(Magic,
        #mc_header{opcode = Opcode, opaque = Opaque,
-                  statusOrReserved = StatusOrReserved},
+                  status = StatusOrReserved},
        #mc_entry{ext = Ext, key = Key, cas = CAS,
                  data = Data, datatype = DataType}) ->
     ExtLen = bin_size(Ext),
@@ -82,14 +82,14 @@ encode(Magic,
 decode_header(req, <<?REQ_MAGIC:8, Opcode:8, KeyLen:16, ExtLen:8,
                      DataType:8, Reserved:16, BodyLen:32,
                      Opaque:32, CAS:64>>) ->
-    {#mc_header{opcode = Opcode, statusOrReserved = Reserved, opaque = Opaque,
+    {#mc_header{opcode = Opcode, status = Reserved, opaque = Opaque,
                 keylen = KeyLen, extlen = ExtLen, bodylen = BodyLen},
      #mc_entry{datatype = DataType, cas = CAS}};
 
 decode_header(res, <<?RES_MAGIC:8, Opcode:8, KeyLen:16, ExtLen:8,
                      DataType:8, Status:16, BodyLen:32,
                      Opaque:32, CAS:64>>) ->
-    {#mc_header{opcode = Opcode, statusOrReserved = Status, opaque = Opaque,
+    {#mc_header{opcode = Opcode, status = Status, opaque = Opaque,
                 keylen = KeyLen, extlen = ExtLen, bodylen = BodyLen},
      #mc_entry{datatype = DataType, cas = CAS}}.
 
