@@ -29,18 +29,12 @@ monitor(Addr) ->
 demonitor(MonitorRefs) ->
     lists:foreach(fun erlang:demonitor/1, MonitorRefs).
 
-send(Addr, Op, NotifyPid, NotifyData, ResponseFun,
-     CmdModule, Cmd, CmdArgs) ->
-    gen_server:call(?MODULE,
-                    {send, Addr, Op, NotifyPid, NotifyData,
-                     ResponseFun, CmdModule, Cmd, CmdArgs}).
+send(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule) ->
+    send(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule,
+         self(), undefined).
 
-forward(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule) ->
-    forward(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule,
-            self(), undefined).
-
-forward(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule,
-        NotifyPid, NotifyData) ->
+send(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule,
+     NotifyPid, NotifyData) ->
     Kind = mc_addr:kind(Addr),
     ResponseFun =
         fun (Head, Body) ->
@@ -52,18 +46,24 @@ forward(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule,
             end
         end,
     {ok, Monitor} = monitor(Addr),
-    case send(Addr, fwd, NotifyPid, NotifyData, ResponseFun,
-              kind_to_module(Kind), Cmd, CmdArgs) of
+    case send_call(Addr, send, NotifyPid, NotifyData, ResponseFun,
+                   kind_to_module(Kind), Cmd, CmdArgs) of
         ok -> {ok, Monitor};
         _  -> {error, Monitor}
     end.
+
+send_call(Addr, Op, NotifyPid, NotifyData,
+          ResponseFun, CmdModule, Cmd, CmdArgs) ->
+    gen_server:call(?MODULE,
+                    {send, Addr, Op, NotifyPid, NotifyData,
+                     ResponseFun, CmdModule, Cmd, CmdArgs}).
 
 kind_to_module(ascii)  -> mc_client_ascii_ac;
 kind_to_module(binary) -> mc_client_binary_ac.
 
 % Accumulate results of forward during a foldl.
-accum(A2xForwardResult, {NumOks, Monitors}) ->
-    case A2xForwardResult of
+accum(CallResult, {NumOks, Monitors}) ->
+    case CallResult of
         {ok, Monitor} -> {NumOks + 1, [Monitor | Monitors]};
         {_,  Monitor} -> {NumOks, [Monitor | Monitors]}
     end.
@@ -133,8 +133,8 @@ start_link(Addr) ->
 
 loop(Addr, Sock) ->
     receive
-        {fwd, NotifyPid, NotifyData, ResponseFun,
-              CmdModule, Cmd, CmdArgs} ->
+        {send, NotifyPid, NotifyData, ResponseFun,
+               CmdModule, Cmd, CmdArgs} ->
             RV = apply(CmdModule, cmd, [Cmd, Sock, ResponseFun, CmdArgs]),
             notify(NotifyPid, NotifyData, RV),
             case RV of

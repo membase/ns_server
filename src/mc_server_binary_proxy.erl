@@ -6,7 +6,7 @@
 
 -include("mc_entry.hrl").
 
--import(mc_downstream, [forward/6, accum/2, await_ok/1, group_by/2]).
+-import(mc_downstream, [send/6, accum/2, await_ok/1, group_by/2]).
 
 -compile(export_all).
 
@@ -98,7 +98,7 @@ queue(#session_proxy{corked = C} = Sess, HE) ->
 forward_simple(Opcode, #session_proxy{bucket = Bucket} = Sess, Out,
                {_Header, #mc_entry{key = Key}} = HE) ->
     {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
-    {ok, Monitor} = forward(Addr, Out, Opcode, HE, undefined, ?MODULE),
+    {ok, Monitor} = send(Addr, Out, Opcode, HE, undefined, ?MODULE),
     1 = await_ok(1), % TODO: Send err response instead of conn close?
     mc_downstream:demonitor([Monitor]),
     {ok, Sess}.
@@ -110,8 +110,8 @@ forward_bcast(all, Opcode, #session_proxy{bucket = Bucket} = Sess,
     Addrs = mc_bucket:addrs(Bucket),
     {NumFwd, Monitors} =
         lists:foldl(fun (Addr, Acc) ->
-                        accum(forward(Addr, Out, Opcode, HE,
-                                      ResponseFilter, ?MODULE), Acc)
+                        accum(send(Addr, Out, Opcode, HE,
+                                   ResponseFilter, ?MODULE), Acc)
                     end,
                     {0, []}, Addrs),
     await_ok(NumFwd),
@@ -134,9 +134,9 @@ forward_bcast(uncork, _Opcode, #session_proxy{bucket = Bucket,
     % Forward the request list to each Addr.
     {NumFwd, Monitors} =
         lists:foldl(fun ({Addr, HEList}, Acc) ->
-                        accum(forward(Addr, Out, send_list,
-                                      lists:reverse([HE | HEList]),
-                                      ResponseFilter, ?MODULE), Acc)
+                        accum(send(Addr, Out, send_list,
+                                   lists:reverse([HE | HEList]),
+                                   ResponseFilter, ?MODULE), Acc)
                     end,
                     {0, []}, Groups),
     await_ok(NumFwd),
