@@ -9,6 +9,11 @@
 -compile(export_all).
 
 send(Addrs, Out, Cmd, CmdArgs,
+     ResponseFilter, ResponseModule, undefined) ->
+    mc_downstream:send(Addrs, Out, Cmd, CmdArgs,
+                       ResponseFilter, ResponseModule);
+
+send(Addrs, Out, Cmd, CmdArgs,
      ResponseFilter, ResponseModule, _Policy) ->
     mc_downstream:send(Addrs, Out, Cmd, CmdArgs,
                        ResponseFilter, ResponseModule).

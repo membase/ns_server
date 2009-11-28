@@ -114,8 +114,8 @@ forward_bcast(all, Opcode, #session_proxy{bucket = Bucket} = Sess,
     {NumFwd, Monitors} =
         lists:foldl(fun (Addr, Acc) ->
                         accum(send([Addr], Out, Opcode, HE,
-                                   ResponseFilter, ?MODULE,
-                                   undefined), Acc)
+                                   ResponseFilter, ?MODULE, undefined),
+                              Acc)
                     end,
                     {0, []}, Addrs),
     await_ok(NumFwd),
