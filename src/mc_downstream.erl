@@ -14,11 +14,12 @@
 
 %% API for downstream manager service.
 %%
-%% This module is unaware of pools, buckets, only connections to
-%% individual downstream targets (or Addr/MBox pairs).  For example,
-%% multiple buckets or pools in this erlang VM might be sharing the
-%% downstream targets.  When a downstream dies, all the higher level
-%% layers can learn of it via the monitor/demonitor abstraction.
+%% This module is unaware of pools or buckets.  It only knows of and
+%% manages connections to individual downstream targets (or Addr/MBox
+%% pairs).  For example, multiple buckets or pools in this erlang VM
+%% might be sharing the downstream targets.  When a downstream dies,
+%% all the higher level layers can learn of it via this module's
+%% monitor/demonitor abstraction.
 
 start() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 stop()  -> gen_server:stop(?MODULE).
@@ -61,7 +62,7 @@ send_call(Addr, Op, NotifyPid, NotifyData,
 kind_to_module(ascii)  -> mc_client_ascii_ac;
 kind_to_module(binary) -> mc_client_binary_ac.
 
-% Accumulate results of forward during a foldl.
+% Accumulate results of send calls, useful with foldl.
 accum(CallResult, {NumOks, Monitors}) ->
     case CallResult of
         {ok, Monitor} -> {NumOks + 1, [Monitor | Monitors]};
