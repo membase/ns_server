@@ -21,7 +21,7 @@
 %% layers can learn of it via the monitor/demonitor abstraction.
 
 start() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
-stop() -> gen_server:stop(?MODULE).
+stop()  -> gen_server:stop(?MODULE).
 
 monitor(Addr) ->
     gen_server:call(?MODULE, {monitor, Addr}).
@@ -69,15 +69,15 @@ accum(A2xForwardResult, {NumOks, Monitors}) ->
     end.
 
 await_ok(N) -> await_ok(undefined, N, 0).
-await_ok(NotifyData, N, Acc) when N > 0 ->
+await_ok(Prefix, N, Acc) when N > 0 ->
     % TODO: Decrementing N due to a DOWN might be incorrect
     % during edge/race conditions.
     receive
-        {NotifyData, {ok, _}}    -> await_ok(NotifyData, N - 1, Acc + 1);
-        {NotifyData, {ok, _, _}} -> await_ok(NotifyData, N - 1, Acc + 1);
-        {'DOWN', _MonitorRef, _, _, _}  -> await_ok(NotifyData, N - 1, Acc);
-        Unexpected -> ?debugVal(Unexpected),
-                      exit({error, Unexpected})
+        {Prefix, {ok, _}}              -> await_ok(Prefix, N - 1, Acc + 1);
+        {Prefix, {ok, _, _}}           -> await_ok(Prefix, N - 1, Acc + 1);
+        {'DOWN', _MonitorRef, _, _, _} -> await_ok(Prefix, N - 1, Acc);
+        Unexpected                     -> ?debugVal(Unexpected),
+                                          exit({error, Unexpected})
     end;
 await_ok(_, _, Acc) -> Acc.
 
@@ -107,9 +107,9 @@ handle_call({send, Addr, Op, NotifyPid, NotifyData,
 make_mbox(#dmgr{curr = Dict} = DMgr, Addr) ->
     case dict:find(Addr, Dict) of
         {ok, MBox} -> {DMgr, MBox};
-        _ -> MBox = create_mbox(Addr),
-             Dict2 = dict:store(Addr, MBox, Dict),
-             {#dmgr{curr = Dict2}, MBox}
+        _          -> MBox = create_mbox(Addr),
+                      Dict2 = dict:store(Addr, MBox, Dict),
+                      {#dmgr{curr = Dict2}, MBox}
     end.
 
 create_mbox(Addr) ->
@@ -148,7 +148,7 @@ loop(Addr, Sock) ->
     end.
 
 notify(P, D, V) when is_pid(P) -> P ! {D, V};
-notify(_, _, _) -> ok.
+notify(_, _, _)                -> ok.
 
 group_by(Keys, KeyFunc) ->
     group_by(Keys, KeyFunc, dict:new()).
