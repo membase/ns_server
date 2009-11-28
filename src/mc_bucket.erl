@@ -28,6 +28,13 @@ choose_addr(#mc_bucket{addrs = Addrs}, Key) ->
     {Key, hd(Addrs)}.
 
 % Choose several Addr's that should contain the Key given replication,
+% with the primary Addr coming first.  The number of Addr's returned
+% is based on Bucket default replication level.
+choose_addrs(#mc_bucket{addrs = Addrs}, Key) ->
+    % TODO: A proper consistent hashing.
+    {Key, Addrs}.
+
+% Choose several Addr's that should contain the Key given replication,
 % with the primary Addr coming first.  The result Addr's list might
 % have length <= N.
 choose_addrs(#mc_bucket{addrs = Addrs}, Key, N) ->
