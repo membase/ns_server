@@ -17,7 +17,9 @@
 % One day, the return value, for example, might be changed
 % into a gen_server Pid.
 create(BucketId, BucketAddrs) ->
-    #mc_bucket{id = BucketId, addrs = BucketAddrs}.
+    #mc_bucket{id = BucketId,
+               addrs = BucketAddrs,
+               policy = [{n, 1}, {w, 1}, {r, 1}]}.
 
 id(#mc_bucket{id = Id})          -> Id.
 addrs(#mc_bucket{addrs = Addrs}) -> Addrs.
@@ -30,9 +32,9 @@ choose_addr(#mc_bucket{addrs = Addrs}, Key) ->
 % Choose several Addr's that should contain the Key given replication,
 % with the primary Addr coming first.  The number of Addr's returned
 % is based on Bucket default replication level.
-choose_addrs(#mc_bucket{addrs = Addrs}, Key) ->
+choose_addrs(#mc_bucket{addrs = Addrs, policy = Policy}, Key) ->
     % TODO: A proper consistent hashing.
-    {Key, Addrs}.
+    {Key, Addrs, Policy}.
 
 % Choose several Addr's that should contain the Key given replication,
 % with the primary Addr coming first.  The result Addr's list might

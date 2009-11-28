@@ -29,7 +29,7 @@ monitor(Addr) ->
 
 demonitor(MonitorRefs) ->
     % TODO: Need to remove any DOWN messages that are already
-    %       waiting in our mailbox.
+    %       waiting in our/self()'s mailbox?
     lists:foreach(fun erlang:demonitor/1, MonitorRefs).
 
 send(Addrs, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule) ->
