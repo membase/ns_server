@@ -27,6 +27,10 @@ cmd_binary_quiet(Opcode, Sock, _RecvCallback, {Header, Entry}) ->
               Entry#mc_entry{ext = ext(Opcode, Entry)}),
     {ok, quiet}.
 
+cmd_binary_vocal(?STAT = Opcode, Sock, RecvCallback, {Header, Entry}) ->
+    ok = send(Sock, req, Header#mc_header{opcode = Opcode}, Entry),
+    stats_recv(Sock, RecvCallback);
+
 cmd_binary_vocal(Opcode, Sock, RecvCallback, {Header, Entry}) ->
     ok = send(Sock, req,
               Header#mc_header{opcode = Opcode},
@@ -46,6 +50,23 @@ cmd_binary_vocal_recv(Opcode, Sock, RecvCallback) ->
                      false -> {error, RecvHeader, RecvEntry}
                  end;
         false -> cmd_binary_vocal_recv(Opcode, Sock, RecvCallback)
+    end.
+
+% -------------------------------------------------
+
+stats_recv(Sock, RecvCallback) ->
+    {ok, #mc_header{opcode = ROpcode,
+                    keylen = RKeyLen} = RecvHeader,
+         RecvEntry} = recv(Sock, res),
+    case ?STAT =:= ROpcode andalso 0 =:= RKeyLen of
+        true ->
+            {ok, RecvHeader, RecvEntry};
+        false ->
+            case is_function(RecvCallback) of
+                true  -> RecvCallback(RecvHeader, RecvEntry);
+                false -> ok
+            end,
+            stats_recv(Sock, RecvCallback)
     end.
 
 % -------------------------------------------------
@@ -145,4 +166,18 @@ get_test_match(Sock, Key, Data) ->
     ?assertMatch(Key, E#mc_entry.key),
     ?assertMatch(Data, E#mc_entry.data),
     ?assertMatch([{nvals, 1}], ets:lookup(D, nvals)).
+
+stats_test() ->
+    {ok, Sock} = gen_tcp:connect("localhost", 11211,
+                                 [binary, {packet, 0}, {active, false}]),
+    D = ets:new(test, [set]),
+    ets:insert(D, {nvals, 0}),
+    {ok, _H, _E} = cmd(?STAT, Sock,
+                      fun (_MH, _ME) ->
+                              ets:update_counter(D, nvals, 1)
+                      end,
+                      {#mc_header{}, #mc_entry{}}),
+    [{nvals, X}] = ets:lookup(D, nvals),
+    ?assert(X > 0),
+    ok = gen_tcp:close(Sock).
 
