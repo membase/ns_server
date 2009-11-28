@@ -28,13 +28,15 @@ monitor(Addr) ->
     gen_server:call(?MODULE, {monitor, Addr}).
 
 demonitor(MonitorRefs) ->
+    % TODO: Need to remove any DOWN messages that are already
+    %       waiting in our mailbox.
     lists:foreach(fun erlang:demonitor/1, MonitorRefs).
 
-send(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule) ->
-    send(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule,
+send(Addrs, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule) ->
+    send(Addrs, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule,
          self(), undefined).
 
-send(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule,
+send([Addr | _Addrs], Out, Cmd, CmdArgs, ResponseFilter, ResponseModule,
      NotifyPid, NotifyData) ->
     Kind = mc_addr:kind(Addr),
     ResponseFun =
@@ -49,8 +51,8 @@ send(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule,
     {ok, Monitor} = monitor(Addr),
     case send_call(Addr, send, NotifyPid, NotifyData, ResponseFun,
                    kind_to_module(Kind), Cmd, CmdArgs) of
-        ok -> {ok, Monitor};
-        _  -> {error, Monitor}
+        ok -> {ok, [Monitor]};
+        _  -> {error, [Monitor]}
     end.
 
 send_call(Addr, Op, NotifyPid, NotifyData,
@@ -63,10 +65,10 @@ kind_to_module(ascii)  -> mc_client_ascii_ac;
 kind_to_module(binary) -> mc_client_binary_ac.
 
 % Accumulate results of send calls, useful with foldl.
-accum(CallResult, {NumOks, Monitors}) ->
+accum(CallResult, {NumOks, AccMonitors}) ->
     case CallResult of
-        {ok, Monitor} -> {NumOks + 1, [Monitor | Monitors]};
-        {_,  Monitor} -> {NumOks, [Monitor | Monitors]}
+        {ok, Monitors} -> {NumOks + 1, Monitors ++ AccMonitors};
+        {_,  Monitors} -> {NumOks, Monitors ++ AccMonitors}
     end.
 
 await_ok(N) -> await_ok(undefined, N, 0).

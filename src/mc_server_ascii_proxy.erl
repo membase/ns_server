@@ -28,7 +28,7 @@ cmd(get, #session_proxy{bucket = Bucket} = Session,
                  end),
     {NumFwd, Monitors} =
         lists:foldl(fun ({Addr, AddrKeys}, Acc) ->
-                        accum(send(Addr, Out, get, AddrKeys,
+                        accum(send([Addr], Out, get, AddrKeys,
                                    undefined, ?MODULE), Acc)
                     end,
                     {0, []}, Groups),
@@ -55,14 +55,14 @@ cmd(decr, Session, InSock, Out, CmdArgs) ->
 
 cmd(delete, #session_proxy{bucket = Bucket} = Session,
     _InSock, Out, [Key]) ->
-    {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
-    {ok, Monitor} = send(Addr, Out, delete, #mc_entry{key = Key},
-                         undefined, ?MODULE),
+    {Key, Addrs} = mc_bucket:choose_addrs(Bucket, Key),
+    {ok, Monitors} = send(Addrs, Out, delete, #mc_entry{key = Key},
+                          undefined, ?MODULE),
     case await_ok(1) of
         1 -> true;
         _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
     end,
-    mc_downstream:demonitor([Monitor]),
+    mc_downstream:demonitor(Monitors),
     {ok, Session};
 
 cmd(flush_all, #session_proxy{bucket = Bucket} = Session,
@@ -73,7 +73,7 @@ cmd(flush_all, #session_proxy{bucket = Bucket} = Session,
                         % Using undefined Out to swallow the OK
                         % responses from the downstreams.
                         % TODO: flush_all arguments.
-                        accum(send(Addr, undefined,
+                        accum(send([Addr], undefined,
                                    flush_all, #mc_entry{},
                                    undefined, ?MODULE), Acc)
                     end,
@@ -95,27 +95,27 @@ forward_update(Cmd, #session_proxy{bucket = Bucket} = Session,
     DataLen = list_to_integer(DataLenIn),
     {ok, DataCRNL} = mc_ascii:recv_data(InSock, DataLen + 2),
     {Data, _} = mc_ascii:split_binary_suffix(DataCRNL, 2),
-    {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
+    {Key, Addrs} = mc_bucket:choose_addrs(Bucket, Key),
     Entry = #mc_entry{key = Key, flag = Flag, expire = Expire, data = Data},
-    {ok, Monitor} = send(Addr, Out, Cmd, Entry, undefined, ?MODULE),
+    {ok, Monitors} = send(Addrs, Out, Cmd, Entry, undefined, ?MODULE),
     case await_ok(1) of
         1 -> true;
         _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
     end,
-    mc_downstream:demonitor([Monitor]),
+    mc_downstream:demonitor(Monitors),
     {ok, Session}.
 
 forward_arith(Cmd, #session_proxy{bucket = Bucket} = Session,
               _InSock, Out, [Key, Amount]) ->
-    {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
-    {ok, Monitor} = send(Addr, Out, Cmd,
-                         #mc_entry{key = Key, data = Amount},
-                         undefined, ?MODULE),
+    {Key, Addrs} = mc_bucket:choose_addrs(Bucket, Key),
+    {ok, Monitors} = send(Addrs, Out, Cmd,
+                          #mc_entry{key = Key, data = Amount},
+                          undefined, ?MODULE),
     case await_ok(1) of
         1 -> true;
         _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
     end,
-    mc_downstream:demonitor([Monitor]),
+    mc_downstream:demonitor(Monitors),
     {ok, Session}.
 
 % ------------------------------------------

@@ -97,10 +97,10 @@ queue(#session_proxy{corked = C} = Sess, HE) ->
 % For binary commands that need a simple command forward.
 forward_simple(Opcode, #session_proxy{bucket = Bucket} = Sess, Out,
                {_Header, #mc_entry{key = Key}} = HE) ->
-    {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
-    {ok, Monitor} = send(Addr, Out, Opcode, HE, undefined, ?MODULE),
+    {Key, Addrs} = mc_bucket:choose_addrs(Bucket, Key),
+    {ok, Monitors} = send(Addrs, Out, Opcode, HE, undefined, ?MODULE),
     1 = await_ok(1), % TODO: Send err response instead of conn close?
-    mc_downstream:demonitor([Monitor]),
+    mc_downstream:demonitor(Monitors),
     {ok, Sess}.
 
 % For binary commands to do a broadcast scatter/gather.
@@ -110,7 +110,7 @@ forward_bcast(all, Opcode, #session_proxy{bucket = Bucket} = Sess,
     Addrs = mc_bucket:addrs(Bucket),
     {NumFwd, Monitors} =
         lists:foldl(fun (Addr, Acc) ->
-                        accum(send(Addr, Out, Opcode, HE,
+                        accum(send([Addr], Out, Opcode, HE,
                                    ResponseFilter, ?MODULE), Acc)
                     end,
                     {0, []}, Addrs),
@@ -128,13 +128,13 @@ forward_bcast(uncork, _Opcode, #session_proxy{bucket = Bucket,
     % Group our corked requests by Addr.
     Groups =
         group_by(C, fun ({_CorkedHeader, #mc_entry{key = Key}}) ->
-                        {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
-                        Addr
+                            {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
+                            Addr
                     end),
     % Forward the request list to each Addr.
     {NumFwd, Monitors} =
         lists:foldl(fun ({Addr, HEList}, Acc) ->
-                        accum(send(Addr, Out, send_list,
+                        accum(send([Addr], Out, send_list,
                                    lists:reverse([HE | HEList]),
                                    ResponseFilter, ?MODULE), Acc)
                     end,
