@@ -47,7 +47,11 @@ cmd(delete, Sock, RecvCallback, #mc_entry{key = Key}) ->
     send_recv(Sock, [<<"delete ">>, Key, <<"\r\n">>], RecvCallback);
 
 cmd(flush_all, Sock, RecvCallback, _Entry) ->
-    send_recv(Sock, [<<"flush_all\r\n">>], RecvCallback).
+    send_recv(Sock, [<<"flush_all\r\n">>], RecvCallback);
+
+cmd(stats, Sock, RecvCallback, _Entry) ->
+    ok = send(Sock, [<<"stats\r\n">>]), % TODO: Parameters for stats.
+    multiline_recv(Sock, RecvCallback).
 
 % -------------------------------------------------
 
@@ -90,6 +94,18 @@ get_recv(Sock, RecvCallback) ->
             get_recv(Sock, RecvCallback)
     end.
 
+multiline_recv(Sock, RecvCallback) -> % For stats response.
+    Line = recv_line(Sock),
+    case Line of
+        {error, _} = Err -> Err;
+        {ok, <<"END">>} -> Line;
+        {ok, LineBin} -> case is_function(RecvCallback) of
+                 true  -> RecvCallback(LineBin, undefined);
+                 false -> ok
+             end,
+             multiline_recv(Sock, RecvCallback)
+    end.
+
 % -------------------------------------------------
 
 version_test() ->
@@ -100,7 +116,6 @@ version_test() ->
         R = binary_to_list(RB),
         ?assert(starts_with(R, "VERSION "))
     end)(),
-
     ok = gen_tcp:close(Sock).
 
 set_test() ->
@@ -116,7 +131,6 @@ set_test_sock(Sock, Key) ->
         {ok, RB1} = send_recv(Sock, <<"get ", Key/binary, "\r\n">>, undefined),
         ?assertMatch(RB1, <<"END">>)
     end)(),
-
     (fun () ->
         {ok, RB} = cmd(set, Sock, undefined,
                        #mc_entry{key =  Key,
@@ -140,26 +154,21 @@ delete_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
     set_test_sock(Sock, <<"aaa">>),
-
     (fun () ->
         {ok, RB} = cmd(delete, Sock, undefined,
                        #mc_entry{key = <<"aaa">>}),
         ?assertMatch(RB, <<"DELETED">>),
-
         {ok, RB1} = send_recv(Sock, "get aaa\r\n", undefined),
         ?assertMatch(RB1, <<"END">>)
     end)(),
-
     ok = gen_tcp:close(Sock).
 
 get_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
     set_test_sock(Sock, <<"aaa">>),
-
     (fun () ->
         get_test_match(Sock, <<"aaa">>, <<"AAA">>),
-
         {ok, RB} = cmd(get, Sock,
                        fun (Line, Entry) ->
                           ?assertMatch(Line, <<"VALUE aaa 0 3">>),
@@ -169,7 +178,6 @@ get_test() ->
                        end,
                        [<<"aaa">>, <<"notkey1">>, <<"notkey2">>]),
         ?assertMatch(RB, <<"END">>),
-
         {ok, RB1} = cmd(get, Sock,
                         fun (_Line, _Entry) ->
                            ?assert(false) % Not supposed to get here.
@@ -177,43 +185,34 @@ get_test() ->
                         [<<"notkey0">>, <<"notkey1">>]),
         ?assertMatch(RB1, <<"END">>)
     end)(),
-
     ok = gen_tcp:close(Sock).
 
 update_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
     set_test_sock(Sock, <<"aaa">>),
-
     (fun () ->
         {ok, RB} = cmd(append, Sock, undefined,
                        #mc_entry{key = <<"aaa">>, data = <<"-post">>}),
         ?assertMatch(RB, <<"STORED">>),
         get_test_match(Sock, <<"aaa">>, <<"AAA-post">>),
-
         {ok, RB1} = cmd(prepend, Sock, undefined,
                        #mc_entry{key = <<"aaa">>, data = <<"pre-">>}),
         ?assertMatch(RB1, <<"STORED">>),
         get_test_match(Sock, <<"aaa">>, <<"pre-AAA-post">>),
-
         {ok, RB3} = cmd(add, Sock, undefined,
                         #mc_entry{key = <<"aaa">>, data = <<"already exists">>}),
         ?assertMatch(RB3, <<"NOT_STORED">>),
         get_test_match(Sock, <<"aaa">>, <<"pre-AAA-post">>),
-
         {ok, RB5} = cmd(replace, Sock, undefined,
                         #mc_entry{key = <<"aaa">>, data = <<"replaced">>}),
         ?assertMatch(RB5, <<"STORED">>),
         get_test_match(Sock, <<"aaa">>, <<"replaced">>),
-
         {ok, RB7} = cmd(flush_all, Sock, undefined, #mc_entry{}),
         ?assertMatch(RB7, <<"OK">>),
-
         {ok, RBF} = send_recv(Sock, "get aaa\r\n", undefined),
         ?assertMatch(RBF, <<"END">>)
-
     end)(),
-
     ok = gen_tcp:close(Sock).
 
 starts_with(S, Prefix) ->
@@ -222,4 +221,19 @@ starts_with(S, Prefix) ->
 ends_with(S, Suffix) ->
     Suffix =:= string:substr(S, string:len(S) - string:len(Suffix) + 1,
                                 string:len(Suffix)).
+
+stats_test() ->
+    {ok, Sock} = gen_tcp:connect("localhost", 11211,
+                                 [binary, {packet, 0}, {active, false}]),
+    (fun () ->
+        {ok, RB} = cmd(stats, Sock,
+                       fun (Line, Entry) ->
+                               undefined = Entry,
+                               LineStr = binary_to_list(Line),
+                               starts_with(LineStr, "STAT ")
+                       end,
+                       #mc_entry{}),
+        ?assertMatch(RB, <<"END">>)
+    end)(),
+    ok = gen_tcp:close(Sock).
 

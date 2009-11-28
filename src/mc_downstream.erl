@@ -13,6 +13,12 @@
                }).
 
 %% API for downstream manager service.
+%%
+%% This module is unaware of pools, buckets, only connections to
+%% individual downstream targets (or Addr/MBox pairs).  For example,
+%% multiple buckets or pools in this erlang VM might be sharing the
+%% downstream targets.  When a downstream dies, all the higher level
+%% layers can learn of it via the monitor/demonitor abstraction.
 
 start() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 stop() -> gen_server:stop(?MODULE).
