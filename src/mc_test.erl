@@ -3,12 +3,15 @@
 -compile(export_all).
 
 main() ->
+    Policy = [{n, 1}, {w, 1}, {r, 1}],
     AsciiAddrs = [mc_addr:local(ascii)],
     AsciiPool = mc_pool:create(AsciiAddrs,
-                               [mc_bucket:create("default", AsciiAddrs)]),
+                               [mc_bucket:create("default", AsciiAddrs,
+                                                  Policy)]),
     BinaryAddrs = [mc_addr:local(binary)],
     BinaryPool = mc_pool:create(BinaryAddrs,
-                                [mc_bucket:create("default", BinaryAddrs)]),
+                                [mc_bucket:create("default", BinaryAddrs,
+                                                  Policy)]),
     {mc_downstream:start(),
      mc_accept:start(11300,
                      {mc_server_ascii,

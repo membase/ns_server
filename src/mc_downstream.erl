@@ -32,11 +32,14 @@ demonitor(MonitorRefs) ->
     %       waiting in our/self()'s mailbox?
     lists:foreach(fun erlang:demonitor/1, MonitorRefs).
 
-send(Addrs, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule) ->
-    send(Addrs, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule,
+send(Addrs, Out, Cmd, CmdArgs,
+     ResponseFilter, ResponseModule, Policy) ->
+    send(Addrs, Out, Cmd, CmdArgs,
+         ResponseFilter, ResponseModule, Policy,
          self(), undefined).
 
-send([Addr | _Addrs], Out, Cmd, CmdArgs, ResponseFilter, ResponseModule,
+send([Addr | _Addrs], Out, Cmd, CmdArgs,
+     ResponseFilter, ResponseModule, _Policy,
      NotifyPid, NotifyData) ->
     Kind = mc_addr:kind(Addr),
     ResponseFun =
