@@ -29,12 +29,18 @@ monitor(Addr) ->
 demonitor(MonitorRefs) ->
     lists:foreach(fun erlang:demonitor/1, MonitorRefs).
 
-send(Addr, Op, NotifyPid, ResponseFun, CmdModule, Cmd, CmdArgs) ->
+send(Addr, Op, NotifyPid, NotifyData, ResponseFun,
+     CmdModule, Cmd, CmdArgs) ->
     gen_server:call(?MODULE,
-                    {send, Addr, Op, NotifyPid,
+                    {send, Addr, Op, NotifyPid, NotifyData,
                      ResponseFun, CmdModule, Cmd, CmdArgs}).
 
 forward(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule) ->
+    forward(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule,
+            self(), undefined).
+
+forward(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule,
+        NotifyPid, NotifyData) ->
     Kind = mc_addr:kind(Addr),
     ResponseFun =
         fun (Head, Body) ->
@@ -46,7 +52,7 @@ forward(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule) ->
             end
         end,
     {ok, Monitor} = monitor(Addr),
-    case send(Addr, fwd, self(), ResponseFun,
+    case send(Addr, fwd, NotifyPid, NotifyData, ResponseFun,
               kind_to_module(Kind), Cmd, CmdArgs) of
         ok -> {ok, Monitor};
         _  -> {error, Monitor}
@@ -62,18 +68,18 @@ accum(A2xForwardResult, {NumOks, Monitors}) ->
         {_,  Monitor} -> {NumOks, [Monitor | Monitors]}
     end.
 
-await_ok(N) -> await_ok(N, 0).
-await_ok(N, Acc) when N > 0 ->
+await_ok(N) -> await_ok(undefined, N, 0).
+await_ok(NotifyData, N, Acc) when N > 0 ->
     % TODO: Decrementing N due to a DOWN might be incorrect
     % during edge/race conditions.
     receive
-        {ok, _}    -> await_ok(N - 1, Acc + 1);
-        {ok, _, _} -> await_ok(N - 1, Acc + 1);
-        {'DOWN', _MonitorRef, _, _, _}  -> await_ok(N - 1, Acc);
+        {NotifyData, {ok, _}}    -> await_ok(NotifyData, N - 1, Acc + 1);
+        {NotifyData, {ok, _, _}} -> await_ok(NotifyData, N - 1, Acc + 1);
+        {'DOWN', _MonitorRef, _, _, _}  -> await_ok(NotifyData, N - 1, Acc);
         Unexpected -> ?debugVal(Unexpected),
                       exit({error, Unexpected})
     end;
-await_ok(_, Acc) -> Acc.
+await_ok(_, _, Acc) -> Acc.
 
 %% gen_server implementation.
 
@@ -88,10 +94,11 @@ handle_call({monitor, Addr}, _From, DMgr) ->
     Reply = {ok, erlang:monitor(process, Pid)},
     {reply, Reply, DMgr2};
 
-handle_call({send, Addr, Op, NotifyPid,
+handle_call({send, Addr, Op, NotifyPid, NotifyData,
              ResponseFun, CmdModule, Cmd, CmdArgs}, _From, DMgr) ->
     {DMgr2, #mbox{pid = Pid}} = make_mbox(DMgr, Addr),
-    Pid ! {Op, NotifyPid, ResponseFun, CmdModule, Cmd, CmdArgs},
+    Pid ! {Op, NotifyPid, NotifyData, ResponseFun,
+           CmdModule, Cmd, CmdArgs},
     {reply, ok, DMgr2}.
 
 % ---------------------------------------------------
@@ -126,10 +133,10 @@ start_link(Addr) ->
 
 loop(Addr, Sock) ->
     receive
-        {fwd, NotifyPid, ResponseFun,
+        {fwd, NotifyPid, NotifyData, ResponseFun,
               CmdModule, Cmd, CmdArgs} ->
             RV = apply(CmdModule, cmd, [Cmd, Sock, ResponseFun, CmdArgs]),
-            notify(NotifyPid, RV),
+            notify(NotifyPid, NotifyData, RV),
             case RV of
                 {ok, _}    -> loop(Addr, Sock);
                 {ok, _, _} -> loop(Addr, Sock);
@@ -140,8 +147,8 @@ loop(Addr, Sock) ->
             gen_tcp:close(Sock)
     end.
 
-notify(P, V) when is_pid(P) -> P ! V;
-notify(_, _) -> ok.
+notify(P, D, V) when is_pid(P) -> P ! {D, V};
+notify(_, _, _) -> ok.
 
 group_by(Keys, KeyFunc) ->
     group_by(Keys, KeyFunc, dict:new()).
