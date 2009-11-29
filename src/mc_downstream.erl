@@ -25,7 +25,8 @@ start() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 stop()  -> gen_server:stop(?MODULE).
 
 monitor(Addr) ->
-    gen_server:call(?MODULE, {monitor, Addr}).
+    {ok, MBoxPid} = gen_server:call(?MODULE, {pid, Addr}),
+    {ok, erlang:monitor(process, MBoxPid)}.
 
 demonitor(MonitorRefs) ->
     % TODO: Need to remove any DOWN messages that are already
@@ -92,9 +93,9 @@ code_change(_OldVn, DMgr, _Extra) -> {ok, DMgr}.
 handle_info(_Info, DMgr) -> {noreply, DMgr}.
 handle_cast(_Msg, DMgr) -> {noreply, DMgr}.
 
-handle_call({monitor, Addr}, _From, DMgr) ->
-    {DMgr2, #mbox{pid = Pid}} = make_mbox(DMgr, Addr),
-    Reply = {ok, erlang:monitor(process, Pid)},
+handle_call({pid, Addr}, _From, DMgr) ->
+    {DMgr2, #mbox{pid = MBoxPid}} = make_mbox(DMgr, Addr),
+    Reply = {ok, MBoxPid},
     {reply, Reply, DMgr2};
 
 handle_call({send, Addr, Op, NotifyPid, NotifyData,
