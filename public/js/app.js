@@ -1087,8 +1087,9 @@ function renderLargeGraph(main, data) {
                     });
 }
 
-function renderSmallGraph(jq, data, text, isSelected, isHover) {
+function renderSmallGraph(jq, data, text, isSelected) {
   jq.html("");
+  jq.removeData('hover-rect');
 //  jq.css("outline", "red solid 1px");
 
   var width = jq.innerWidth();
@@ -1119,12 +1120,12 @@ function renderSmallGraph(jq, data, text, isSelected, isHover) {
     paper.text(width/2, height-10, text).attr({
       font: "12px Arial, sans-serif"
     });
-    if (isHover) {
-      paper.rect(0, 30, width-1, plotHeight+15-1).attr({
-        'stroke-width': 1,
-        'stroke': '#0099ff'
-      });
-    }
+    var hoverRect = paper.rect(0, 30, width-1, plotHeight+15-1).attr({
+      'stroke-width': 1,
+      'stroke': '#0099ff'
+    });
+    hoverRect.hide();
+    jq.data('hover-rect', hoverRect);
   }
 }
 
@@ -1152,32 +1153,42 @@ var StatGraphs = {
     renderLargeGraph(main, stats[selected]);
     
     renderSmallGraph(ops, stats.ops, "Ops per second",
-                     selected == 'ops',
-                     (this.selectedCounter % 5) == 0
-                    );
+                     selected == 'ops');
     renderSmallGraph(gets, stats.gets, "Gets per second",
-                     selected == 'gets',
-                     (this.selectedCounter % 5) == 0
-                    );
+                     selected == 'gets');
     renderSmallGraph(sets, stats.sets, "Sets per second",
-                     selected == 'sets',
-                     (this.selectedCounter % 5) == 0
-                    );
+                     selected == 'sets');
     renderSmallGraph(misses, stats.misses, "Misses per second",
-                     selected == 'misses',
-                     (this.selectedCounter % 5) == 0
-                    );
+                     selected == 'misses');
   },
   init: function () {
     var selected = this.selected;
 
-    selected.addLink($('#overview_graph_ops'), 'ops');
-    selected.addLink($('#overview_graph_gets'), 'gets');
-    selected.addLink($('#overview_graph_sets'), 'sets');
-    selected.addLink($('#overview_graph_misses'), 'misses');
+    var ops = $('#overview_graph_ops');
+    var gets = $('#overview_graph_gets');
+    var sets = $('#overview_graph_sets');
+    var misses = $('#overview_graph_misses');
+
+    selected.addLink(ops, 'ops');
+    selected.addLink(gets, 'gets');
+    selected.addLink(sets, 'sets');
+    selected.addLink(misses, 'misses');
 
     selected.changedSlot.subscribeWithSlave($m(this, 'update'));
     selected.finalizeBuilding();
+
+    var t = ops.add(gets).add(sets).add(misses);
+    t.bind('mouseenter', mkHoverHandler('show'));
+    t.bind('mouseleave', mkHoverHandler('hide'));
+
+    function mkHoverHandler(method) {
+      return function (event) {
+        var hoverRect = $(event.currentTarget).data('hover-rect');
+        if (!hoverRect)
+          return;
+        hoverRect[method]();
+      }
+    }
   }
 }
 
