@@ -11,6 +11,7 @@
 -record(replicator, {
     id,
     request,
+    monitors,
     notify_pid,
     notify_data,
     replica_addrs,
@@ -61,17 +62,19 @@ handle_call({replicate, [Addr] = Addrs, Out, Cmd, CmdArgs,
              ResponseFilter, ResponseModule, _Policy} = Request,
             {NotifyPid, _}, #rmgr{curr = Replicators} = RMgr) ->
     Id = make_ref(),
+    {ok, Monitors} = mc_downstream:send(Addr, Out, Cmd, CmdArgs,
+                                        ResponseFilter, ResponseModule,
+                                        self(), Id),
     Replicator =
         #replicator{id = Id,
                     request = Request,
+                    monitors = Monitors,
                     notify_pid = NotifyPid,
+                    notify_data = undefined,
                     replica_addrs = Addrs,
                     replica_min = 1},
     Replicators2 = dict:store(Id, Replicator, Replicators),
-    Reply = mc_downstream:send(Addr, Out, Cmd, CmdArgs,
-                               ResponseFilter, ResponseModule,
-                               self(), Id),
-    {reply, Reply, RMgr#rmgr{curr = Replicators2}}.
+    {reply, {ok, []}, RMgr#rmgr{curr = Replicators2}}.
 
 handle_info({Id, RV}, #rmgr{curr = Replicators} = RMgr) ->
     % Invoked when a downstream is signalling that it's done with a
@@ -84,10 +87,24 @@ handle_info({Id, RV}, #rmgr{curr = Replicators} = RMgr) ->
             {noreply, RMgr#rmgr{curr = Replicators2}};
         error ->
             {noreply, RMgr}
-    end.
+    end;
 
-% handle_info({'DOWN', _MonitorRef, _, _, _}) ->
-%     todo.
+handle_info({'DOWN', Monitor, _, _, _} = Msg,
+            #rmgr{curr = Replicators} = RMgr) ->
+    % Invoked when a downstream is signalling from to monitor'ing
+    % that it died.
+    Replicators2 =
+        dict:filter(fun (_Id, #replicator{notify_pid = NotifyPid,
+                                          notify_data = NotifyData,
+                                          monitors = Monitors}) ->
+                        case lists:member(Monitor, Monitors) of
+                            true  -> notify(NotifyPid, NotifyData, Msg),
+                                     true;
+                            false -> false
+                        end
+                    end,
+                    Replicators),
+    {noreply, RMgr#rmgr{curr = Replicators2}}.
 
 notify(P, D, V) when is_pid(P) -> P ! {D, V};
 notify(_, _, _)                -> ok.
