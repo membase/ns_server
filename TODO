@@ -1,30 +1,11 @@
-url:
-/pools/:id
-/pools - POST here creates a pool
-         GET returns a list of user accessible pools
-/pools/:id - pool info: server's list (and status) and bucket's list
-              {servers: [{id: 112, ip: '12.12.12.12', status: 'up', uptime: ...},
-                         {id: 113, ip: '12.12.12.13', ...}],
-               buckets: [{name: 'excerciser', id: 123 /* anything else ? */}]}
-/servers/:id/pool - get or assign (via PUT) of server's pool
-/buckets/:id/stats
-:id == 'default' saves us roundtrip and references default bucket of
-   current user
-
-* clean whole-page logic
-
-- DAO as a source of data updates. I.e. it does push instead of
-   components doing pull.
-
-* switching between buckets & pools
+o [DONE] switching between buckets & pools
 * bucket name in top key values UI
-* initial server list
-* switching graphs on overview
-* marks and labels on graphs (jquery sparklines seem inappropriate)
+o [DONE] switching graphs on overview
+o [DONE] marks and labels on graphs (jquery sparklines seem inappropriate)
 * API for rest of sections
 * tests via watir
 * welcome screen
-* respect interval select for all sub-sections
+o [DONE] respect interval select for all sub-sections
 * Store password/login in cookies ? So that you don't have to re-enter
    them on page refresh.
 
