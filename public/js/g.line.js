@@ -31,6 +31,13 @@ Raphael.fn.g.linechart = function (x, y, width, height, valuesx, valuesy, opts) 
     if (!this.raphael.is(valuesy[0], "array")) {
         valuesy = [valuesy];
     }
+    function uOr() {
+      for (var i = 0; i < arguments.length; i++) {
+        var v = arguments[i];
+        if (v !== undefined)
+          return v;
+      }
+    }
     var allx = Array.prototype.concat.apply([], valuesx),
         ally = Array.prototype.concat.apply([], valuesy),
         xdim = this.g.snapEnds(Math.min.apply(Math, allx), Math.max.apply(Math, allx), valuesx[0].length - 1),
@@ -38,7 +45,9 @@ Raphael.fn.g.linechart = function (x, y, width, height, valuesx, valuesy, opts) 
         maxx = xdim.to,
         gutter = opts.gutter || 10,
         kx = (width - gutter * 2) / (maxx - minx),
-        ydim = this.g.snapEnds(Math.min.apply(Math, ally), Math.max.apply(Math, ally), valuesy[0].length - 1),
+        ydim = this.g.snapEnds(uOr(opts.minY, Math.min.apply(Math, ally)),
+                               uOr(opts.maxY, Math.max.apply(Math, ally)),
+                               valuesy[0].length - 1),
         miny = ydim.from,
         maxy = ydim.to,
         ky = (height - gutter * 2) / (maxy - miny),
