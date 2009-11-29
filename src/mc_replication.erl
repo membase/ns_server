@@ -31,9 +31,9 @@ stop()  -> gen_server:stop(?MODULE).
 
 % When the replication Policy is undefined, we can skip
 % straight to the mc_downstream:send().
-send(Addrs, Out, Cmd, CmdArgs,
+send([Addr], Out, Cmd, CmdArgs,
      ResponseFilter, ResponseModule, undefined) ->
-    mc_downstream:send(Addrs, Out, Cmd, CmdArgs,
+    mc_downstream:send(Addr, Out, Cmd, CmdArgs,
                        ResponseFilter, ResponseModule);
 
 send(Addrs, Out, Cmd, CmdArgs,
@@ -49,15 +49,15 @@ terminate(_Reason, _RMgr) -> ok.
 code_change(_OldVn, RMgr, _Extra) -> {ok, RMgr}.
 handle_cast(_Msg, RMgr) -> {noreply, RMgr}.
 
-handle_call({replicate, Addrs, Out, Cmd, CmdArgs,
+handle_call({replicate, [Addr], Out, Cmd, CmdArgs,
              ResponseFilter, ResponseModule, undefined},
             {NotifyPid, _}, RMgr) ->
-    Reply = mc_downstream:send(Addrs, Out, Cmd, CmdArgs,
+    Reply = mc_downstream:send(Addr, Out, Cmd, CmdArgs,
                                ResponseFilter, ResponseModule,
                                NotifyPid, undefined),
     {reply, Reply, RMgr};
 
-handle_call({replicate, Addrs, Out, Cmd, CmdArgs,
+handle_call({replicate, [Addr] = Addrs, Out, Cmd, CmdArgs,
              ResponseFilter, ResponseModule, _Policy} = Request,
             {NotifyPid, _}, #rmgr{curr = Replicators} = RMgr) ->
     Id = make_ref(),
@@ -68,12 +68,14 @@ handle_call({replicate, Addrs, Out, Cmd, CmdArgs,
                     replica_addrs = Addrs,
                     replica_min = 1},
     Replicators2 = dict:store(Id, Replicator, Replicators),
-    Reply = mc_downstream:send(Addrs, Out, Cmd, CmdArgs,
+    Reply = mc_downstream:send(Addr, Out, Cmd, CmdArgs,
                                ResponseFilter, ResponseModule,
                                self(), Id),
     {reply, Reply, RMgr#rmgr{curr = Replicators2}}.
 
 handle_info({Id, RV}, #rmgr{curr = Replicators} = RMgr) ->
+    % Invoked when a downstream is signalling that it's done with a
+    % request/response.
     case dict:find(Id, Replicators) of
         {ok, #replicator{notify_pid = NotifyPid,
                          notify_data = NotifyData}} ->
