@@ -1031,7 +1031,7 @@ function renderLargeGraph(main, data) {
   var tick = renderTick;
 
   main.html("");
-  main.css("outline", "red solid 1px");
+//  main.css("outline", "red solid 1px");
   var width = Math.min(main.parent().innerWidth(), 740);
   var height = 80;
   var paper = Raphael(main.get(0), width, height+20);
