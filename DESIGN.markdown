@@ -150,6 +150,8 @@ for message forwarding.
 
 ## Replication
 
+    mc_replication.erl
+
 The mc_replication.erl module is a gen_server e-process that manages
 replication state and the W+R>N algorithm.  If no replication is
 needed (number of replicas (or N) == 1, for example), then, the
@@ -173,6 +175,8 @@ process more client messages.
 
 ## Downstream Manager
 
+    mc_downstream.erl
+
 The downstream manager (mc_downstream.erl) is another
 e-process/gen_server that manages a set of downstream connections.
 Each downstream connection has its own spawned and linked e-process.
@@ -186,11 +190,21 @@ notified when a downstream connection goes down.
 
 ## Pool & Bucket
 
+    mc_pool.erl
+    mc_bucket.erl
+
 A pool is a container of memcached server addreses and of buckets.
+
+Although there are records defined for these concepts (and the below
+Address concept), the rest of the system should treat these objects as
+opaque or as ADT's.  For example, we want to be able to swap
+implementations easily.
 
 ## Address
 
+    mc_addr.erl
+
 A memcached server address includes (at least) hostname, port, and
 protocol.  Other parts of an address might include weight and
-auth/cred information.
+auth/cred information (circa 2009/Nov).
 
