@@ -13,6 +13,7 @@ main() ->
                                 [mc_bucket:create("default", BinaryAddrs,
                                                   Policy)]),
     {mc_downstream:start(),
+     mc_replication:start(),
      mc_accept:start(11300,
                      {mc_server_ascii,
                       mc_server_ascii_proxy, AsciiPool}),
