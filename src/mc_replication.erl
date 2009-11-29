@@ -9,23 +9,24 @@
 -compile(export_all).
 
 -record(replicator, {
-    id,
-    request,
-    monitors,
-    notify_pid,
-    notify_data,
-    replica_addrs,
-    replica_min,
-    replica_next = 1,
-    received_err = 0,
-    received_ok  = 0,
-    sent_err     = [], % List of {Addr, Err} tuples.
-    sent_ok      = [], % List of Addrs that had send successes.
-    responses    = []  % List of {Addr, []}.
-}).
+          id,
+          request,
+          monitors,
+          notify_pid,
+          notify_data,
+          replica_addrs,
+          replica_min,
+          replica_next = 1,
+          received_err = 0,
+          received_ok  = 0,
+          sent_err     = [], % List of {Addr, Err} tuples.
+          sent_ok      = [], % List of Addrs that had send successes.
+          responses    = []  % List of {Addr, []}.
+         }).
 
--record(rmgr, {curr % A dict of the currently active replicators.
-              }).
+-record(rmgr, {
+          curr % A dict of the currently active replicators.
+         }).
 
 start() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 stop()  -> gen_server:stop(?MODULE).
@@ -49,14 +50,6 @@ init([]) -> {ok, #rmgr{curr = dict:new()}}.
 terminate(_Reason, _RMgr) -> ok.
 code_change(_OldVn, RMgr, _Extra) -> {ok, RMgr}.
 handle_cast(_Msg, RMgr) -> {noreply, RMgr}.
-
-handle_call({replicate, [Addr], Out, Cmd, CmdArgs,
-             ResponseFilter, ResponseModule, undefined},
-            {NotifyPid, _}, RMgr) ->
-    Reply = mc_downstream:send(Addr, Out, Cmd, CmdArgs,
-                               ResponseFilter, ResponseModule,
-                               NotifyPid, undefined),
-    {reply, Reply, RMgr};
 
 handle_call({replicate, [Addr] = Addrs, Out, Cmd, CmdArgs,
              ResponseFilter, ResponseModule, _Policy} = Request,
@@ -91,8 +84,7 @@ handle_info({Id, RV}, #rmgr{curr = Replicators} = RMgr) ->
 
 handle_info({'DOWN', Monitor, _, _, _} = Msg,
             #rmgr{curr = Replicators} = RMgr) ->
-    % Invoked when a downstream is signalling from to monitor'ing
-    % that it died.
+    % Invoked when a monitored downstream is signaling that it died.
     Replicators2 =
         dict:filter(fun (_Id, #replicator{notify_pid = NotifyPid,
                                           notify_data = NotifyData,
