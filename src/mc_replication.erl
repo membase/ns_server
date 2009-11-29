@@ -11,7 +11,7 @@
 -record(replicator, {
           id,
           request,
-          monitors,
+          monitors = [],
           notify_pid,
           notify_data,
           replica_addrs,
@@ -51,27 +51,19 @@ terminate(_Reason, _RMgr) -> ok.
 code_change(_OldVn, RMgr, _Extra) -> {ok, RMgr}.
 handle_cast(_Msg, RMgr) -> {noreply, RMgr}.
 
-handle_call({replicate, [Addr] = Addrs, Out, Cmd, CmdArgs,
-             ResponseFilter, ResponseModule, _Policy} = Request,
+handle_call({replicate, Addrs, _Out, _Cmd, _CmdArgs,
+             _ResponseFilter, _ResponseModule, _Policy} = Request,
             {NotifyPid, _}, #rmgr{curr = Replicators} = RMgr) ->
-    Id = make_ref(),
-    {ok, Monitors} = mc_downstream:send(Addr, Out, Cmd, CmdArgs,
-                                        ResponseFilter, ResponseModule,
-                                        self(), Id),
-    Replicator =
-        #replicator{id = Id,
-                    request = Request,
-                    monitors = Monitors,
-                    notify_pid = NotifyPid,
-                    notify_data = undefined,
-                    replica_addrs = Addrs,
-                    replica_min = 1},
-    Replicators2 = dict:store(Id, Replicator, Replicators),
+    % TODO: Use Policy.
+    Replicator = create_replicator(Request, NotifyPid, undefined, Addrs),
+    Replicator2 = send_cycle(Replicator),
+    Replicators2 = dict:store(Replicator2#replicator.id,
+                              Replicator2,
+                              Replicators),
     {reply, {ok, []}, RMgr#rmgr{curr = Replicators2}}.
 
 handle_info({Id, RV}, #rmgr{curr = Replicators} = RMgr) ->
-    % Invoked when a downstream is signalling that it's done with a
-    % request/response.
+    % Invoked when a downstream is done with a request/response.
     case dict:find(Id, Replicators) of
         {ok, #replicator{notify_pid = NotifyPid,
                          notify_data = NotifyData}} ->
@@ -84,7 +76,7 @@ handle_info({Id, RV}, #rmgr{curr = Replicators} = RMgr) ->
 
 handle_info({'DOWN', Monitor, _, _, _} = Msg,
             #rmgr{curr = Replicators} = RMgr) ->
-    % Invoked when a monitored downstream is signaling that it died.
+    % Invoked when a monitored downstream has died.
     Replicators2 =
         dict:filter(fun (_Id, #replicator{notify_pid = NotifyPid,
                                           notify_data = NotifyData,
@@ -100,3 +92,30 @@ handle_info({'DOWN', Monitor, _, _, _} = Msg,
 
 notify(P, D, V) when is_pid(P) -> P ! {D, V};
 notify(_, _, _)                -> ok.
+
+create_replicator(Request, NotifyPid, NotifyData, Addrs) ->
+    Id = make_ref(),
+    #replicator{id = Id,
+                request = Request,
+                notify_pid = NotifyPid,
+                notify_data = NotifyData,
+                replica_addrs = Addrs,
+                replica_min = 1}.
+
+send_cycle(#replicator{id = Id,
+                       request = Request,
+                       monitors = Monitors} = Replicator) ->
+    {replicate, Addrs, Out, Cmd, CmdArgs,
+     ResponseFilter, ResponseModule, _Policy} = Request,
+    Monitors2 =
+        lists:flatmap(
+          fun (Addr) ->
+              {ok, AddrMonitors} =
+                  mc_downstream:send(Addr, Out, Cmd, CmdArgs,
+                                     ResponseFilter, ResponseModule,
+                                     self(), Id),
+              AddrMonitors
+          end,
+          Addrs),
+    Replicator#replicator{monitors = Monitors2 ++ Monitors}.
+
