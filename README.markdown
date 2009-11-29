@@ -6,21 +6,34 @@ Originally forked from ememcached.
 
 ## Quick Start
 
-The basic idea is that there will be one server that understands
-commands and can issue responses.  A sample implementation is provided
-that uses an in-memory hash table per session.  You can try it out
-like this:
+You'll need erlang, of course.
+
+To do a build, do...
+
+    make
+
+To run unit tests, do...
+
+    make test
+
+A sample implementation is provided that uses an in-memory hash table
+per session.  You can try it out like this:
 
     erl -pa ebin -s mc_server_ascii_dict main
 
-Then connect to port 11222 with your favorite memcached binary
-protocol client.
+Then connect to port 11222 with your favorite memcached ascii
+protocol client, like telnet.
 
 ## Slow Start
 
 So you want to write your own backend?  No problem.  Take a look at
 `mc_server_ascii_dict` for an example backend that implements a few
 ascii protocol commands.
+
+To run all the proxy variations on different ports (see
+src/mc_test.erl), do...
+
+    erl -pa ebin -s mc_test main
 
 ## License
 

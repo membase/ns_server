@@ -4,6 +4,7 @@
 
 main() ->
     Policy = [{n, 1}, {w, 1}, {r, 1}],
+
     AsciiAddrs = [mc_addr:local(ascii)],
     AsciiPool = mc_pool:create(AsciiAddrs,
                                [mc_bucket:create("default", AsciiAddrs,
