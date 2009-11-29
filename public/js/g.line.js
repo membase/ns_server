@@ -84,6 +84,13 @@ Raphael.fn.g.linechart = function (x, y, width, height, valuesx, valuesy, opts) 
         +ax[2] && axis.push(this.g.axis(x + gutter, y + height - gutter, width - 2 * gutter, minx, maxx, opts.axisxstep || Math.floor((width - 2 * gutter) / 20), 0));
         +ax[3] && axis.push(this.g.axis(x + gutter, y + height - gutter, height - 2 * gutter, miny, maxy, opts.axisystep || Math.floor((height - 2 * gutter) / 20), 1));
     }
+
+    function transformX(arg) {
+        return x + gutter + (arg - minx) * kx;
+    }
+    function transformY(arg) {
+        return y + height - gutter - (arg - miny) * ky;
+    }
     var lines = this.set(),
         symbols = this.set(),
         line;
@@ -101,8 +108,10 @@ Raphael.fn.g.linechart = function (x, y, width, height, valuesx, valuesy, opts) 
             symset = this.set();
         path = [];
         for (var j = 0, jj = valuesy[i].length; j < jj; j++) {
-            var X = x + gutter + ((valuesx[i] || valuesx[0])[j] - minx) * kx;
-            var Y = y + height - gutter - (valuesy[i][j] - miny) * ky;
+            var X = transformX((valuesx[i] || valuesx[0])[j]);
+            var Y = transformY(valuesy[i][j]);
+            // var X = x + gutter + ((valuesx[i] || valuesx[0])[j] - minx) * kx;
+            // var Y = y + height - gutter - (valuesy[i][j] - miny) * ky;
             (Raphael.is(sym, "array") ? sym[j] : sym) && symset.push(this.g[Raphael.fn.g.markers[this.raphael.is(sym, "array") ? sym[j] : sym]](X, Y, (opts.width || 2) * 3).attr({fill: colors[i], stroke: "none"}));
             path = path.concat([j ? "L" : "M", X, Y]);
         }
@@ -222,5 +231,18 @@ Raphael.fn.g.linechart = function (x, y, width, height, valuesx, valuesy, opts) 
         createColumns(f);
         return this;
     };
+    if (opts.hook)
+        opts.hook({
+            paper: this,
+            transformX: transformX,
+            transformY: transformY,
+            minx: minx,
+            maxx: maxx,
+            miny: miny,
+            maxy: maxy,
+            add: function (item) {
+                chart.push(item);
+            }
+        });
     return chart;
 };
