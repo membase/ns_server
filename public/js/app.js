@@ -239,27 +239,31 @@ function escapeHTML() {
   };
 })();
 
-function renderTick(g, p1x, p1y, dx, dy) {
+function renderTick(g, p1x, p1y, dx, dy, opts) {
   var p0x = p1x - dx;
   var p0y = p1y - dy;
   var p2x = p1x + dx;
   var p2y = p1y + dy;
+  opts = _.extend({'stroke-width': 2},
+                  opts || {});
   return g.path(["M", p0x, p0y,
-                 "L", p2x, p2y].join(","));
+                 "L", p2x, p2y].join(",")).attr(opts);
 }
 
 function renderLargeGraph(main, data) {
   var tick = renderTick;
 
   main.html("");
-  var width = main.parent().innerWidth();
-  var paper = Raphael(main.get(0), width, 200);
+  main.css("outline", "red solid 1px");
+  var width = Math.min(main.parent().innerWidth(), 740);
+  var height = 80;
+  var paper = Raphael(main.get(0), width, height+20);
 
   var xs = _.map(data, function (_, i) {return i;});
-  var yMax = _.max(data)
-  paper.g.linechart(10, 10, width-20, 180, xs, data,
+  var yMax = _.max(data);
+  paper.g.linechart(0, 0, width-25, height, xs, data,
                     {
-                      gutter: 5,
+                      gutter: 10,
                       minY: 0,
                       maxY: yMax*1.2,
                       colors: ['#a2a2a2'],
@@ -274,17 +278,17 @@ function renderLargeGraph(main, data) {
                                       "L", x0, y0,
                                       "L", maxx, y0].join(","));
                         // axis marks
-                        tick(h.paper, x0, maxy, 5, 0).attr({'stroke-width': 2});
+                        tick(h.paper, x0, maxy, 5, 0);
                         for (var i = 1; i <= 4; i++) {
-                          tick(h.paper, h.transformX(h.maxx/4*i), y0, 0, 5).attr({'stroke-width': 2});
+                          tick(h.paper, h.transformX(h.maxx/4*i), y0, 0, 5);
                         }
 
                         var xMax = _.indexOf(data, yMax);
                         var yMin = _.min(data);
                         var xMin = _.indexOf(data, yMin);
 
-                        tick(h.paper, h.transformX(xMax), h.transformY(yMax), 0, 10).attr({'stroke-width': 2});
-                        tick(h.paper, h.transformX(xMin), h.transformY(yMin), 0, 10).attr({'stroke-width': 2});
+                        tick(h.paper, h.transformX(xMax), h.transformY(yMax), 0, 10);
+                        tick(h.paper, h.transformX(xMin), h.transformY(yMin), 0, 10);
 
                         // text 
                         var maxText = h.paper.text(0, 0, yMax.toFixed(0)).attr({
@@ -306,7 +310,49 @@ function renderLargeGraph(main, data) {
                     });
 }
 
+function renderSmallGraph(jq, data, text, isSelected, isHover) {
+  jq.html("");
+//  jq.css("outline", "red solid 1px");
+
+  var width = jq.innerWidth();
+  var plotHeight = 80;
+  var height = plotHeight+30+15;
+  var paper = Raphael(jq.get(0), width, height);
+
+  var xs = _.map(data, function (_, i) {return i;});
+
+  var plotY = isSelected ? 20 : 30;
+  paper.g.linechart(0, plotY, width, plotHeight, xs, data, {
+    width: 1,
+    colors: ["#e2e2e2"]
+  });
+  paper.text(width/2, plotY + plotHeight/2, _.max(data)).attr({
+    font: "18px Arial, sans-serif",
+    fill: "blue"
+  });
+  if (isSelected) {
+    paper.text(width/2, 10, text).attr({
+      font: "18px Arial, sans-serif"
+    });
+    paper.rect(0, 20, width-2, plotHeight+15-1).attr({
+      'stroke-width': 2,
+      'stroke': '#0099ff'
+    });
+  } else {
+    paper.text(width/2, height-10, text).attr({
+      font: "12px Arial, sans-serif"
+    });
+    if (isHover) {
+      paper.rect(0, 30, width-1, plotHeight+15-1).attr({
+        'stroke-width': 1,
+        'stroke': '#0099ff'
+      });
+    }
+  }
+}
+
 var StatGraphs = {
+  selectedCounter: 0,
   update: function (stats) {
     var main = $('#overview_main_graph')
     var ops = $('#overview_graph_ops')
@@ -316,10 +362,22 @@ var StatGraphs = {
 
     renderLargeGraph(main, stats.ops);
 
-    ops.sparkline(stats.ops, {width: ops.innerWidth(), height: 100})
-    gets.sparkline(stats.gets, {width: gets.innerWidth(), height: 100})
-    sets.sparkline(stats.sets, {width: sets.innerWidth(), height: 100})
-    misses.sparkline(stats.misses, {width: misses.innerWidth(), height: 100})
+    renderSmallGraph(ops, stats.ops, "Ops per second",
+                     ((this.selectedCounter++) % 5) == 0,
+                     (this.selectedCounter % 5) == 0
+                    );
+    renderSmallGraph(gets, stats.gets, "Gets per second",
+                     ((this.selectedCounter++) % 5) == 0,
+                     (this.selectedCounter % 5) == 0
+                    );
+    renderSmallGraph(sets, stats.sets, "Sets per second",
+                     ((this.selectedCounter++) % 5) == 0,
+                     (this.selectedCounter % 5) == 0
+                    );
+    renderSmallGraph(misses, stats.misses, "Misses per second",
+                     ((this.selectedCounter++) % 5) == 0,
+                     (this.selectedCounter % 5) == 0
+                    );
   }
 }
 
