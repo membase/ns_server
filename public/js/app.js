@@ -239,148 +239,6 @@ function escapeHTML() {
   };
 })();
 
-function renderTick(g, p1x, p1y, dx, dy, opts) {
-  var p0x = p1x - dx;
-  var p0y = p1y - dy;
-  var p2x = p1x + dx;
-  var p2y = p1y + dy;
-  opts = _.extend({'stroke-width': 2},
-                  opts || {});
-  return g.path(["M", p0x, p0y,
-                 "L", p2x, p2y].join(",")).attr(opts);
-}
-
-function renderLargeGraph(main, data) {
-  var tick = renderTick;
-
-  main.html("");
-  main.css("outline", "red solid 1px");
-  var width = Math.min(main.parent().innerWidth(), 740);
-  var height = 80;
-  var paper = Raphael(main.get(0), width, height+20);
-
-  var xs = _.map(data, function (_, i) {return i;});
-  var yMax = _.max(data);
-  paper.g.linechart(0, 0, width-25, height, xs, data,
-                    {
-                      gutter: 10,
-                      minY: 0,
-                      maxY: yMax*1.2,
-                      colors: ['#a2a2a2'],
-                      width: 1,
-                      hook: function (h) {
-                        // axis
-                        var maxx = h.transformX(h.maxx);
-                        var maxy = h.transformY(h.maxy);
-                        var x0 = h.transformX(0);
-                        var y0 = h.transformY(0);
-                        h.paper.path(["M", x0, maxy,
-                                      "L", x0, y0,
-                                      "L", maxx, y0].join(","));
-                        // axis marks
-                        tick(h.paper, x0, maxy, 5, 0);
-                        for (var i = 1; i <= 4; i++) {
-                          tick(h.paper, h.transformX(h.maxx/4*i), y0, 0, 5);
-                        }
-
-                        var xMax = _.indexOf(data, yMax);
-                        var yMin = _.min(data);
-                        var xMin = _.indexOf(data, yMin);
-
-                        tick(h.paper, h.transformX(xMax), h.transformY(yMax), 0, 10);
-                        tick(h.paper, h.transformX(xMin), h.transformY(yMin), 0, 10);
-
-                        // text 
-                        var maxText = h.paper.text(0, 0, yMax.toFixed(0)).attr({
-                          font: "16px Arial, sans-serif",
-                          'font-weight': 'bold',
-                          fill: "blue"});
-                        var bbox = maxText.getBBox();
-                        maxText.translate(h.transformX(xMax) + 6 - bbox.x,
-                                          h.transformY(yMax) - 9 - bbox.y);
-
-                        var minText = h.paper.text(0, 0, yMin.toFixed(0)).attr({
-                          font: "16px Arial, sans-serif",
-                          'font-weight': 'bold',
-                          fill: "red"});
-                        var bbox = minText.getBBox();
-                        minText.translate(h.transformX(xMin) + 6 - bbox.x,
-                                          h.transformY(yMin) - 9 - bbox.y);
-                      }
-                    });
-}
-
-function renderSmallGraph(jq, data, text, isSelected, isHover) {
-  jq.html("");
-//  jq.css("outline", "red solid 1px");
-
-  var width = jq.innerWidth();
-  var plotHeight = 80;
-  var height = plotHeight+30+15;
-  var paper = Raphael(jq.get(0), width, height);
-
-  var xs = _.map(data, function (_, i) {return i;});
-
-  var plotY = isSelected ? 20 : 30;
-  paper.g.linechart(0, plotY, width, plotHeight, xs, data, {
-    width: 1,
-    colors: ["#e2e2e2"]
-  });
-  paper.text(width/2, plotY + plotHeight/2, _.max(data)).attr({
-    font: "18px Arial, sans-serif",
-    fill: "blue"
-  });
-  if (isSelected) {
-    paper.text(width/2, 10, text).attr({
-      font: "18px Arial, sans-serif"
-    });
-    paper.rect(0, 20, width-2, plotHeight+15-1).attr({
-      'stroke-width': 2,
-      'stroke': '#0099ff'
-    });
-  } else {
-    paper.text(width/2, height-10, text).attr({
-      font: "12px Arial, sans-serif"
-    });
-    if (isHover) {
-      paper.rect(0, 30, width-1, plotHeight+15-1).attr({
-        'stroke-width': 1,
-        'stroke': '#0099ff'
-      });
-    }
-  }
-}
-
-var StatGraphs = {
-  selectedCounter: 0,
-  update: function (stats) {
-    var main = $('#overview_main_graph')
-    var ops = $('#overview_graph_ops')
-    var gets = $('#overview_graph_gets')
-    var sets = $('#overview_graph_sets')
-    var misses = $('#overview_graph_misses')
-
-    renderLargeGraph(main, stats.ops);
-
-    renderSmallGraph(ops, stats.ops, "Ops per second",
-                     ((this.selectedCounter++) % 5) == 0,
-                     (this.selectedCounter % 5) == 0
-                    );
-    renderSmallGraph(gets, stats.gets, "Gets per second",
-                     ((this.selectedCounter++) % 5) == 0,
-                     (this.selectedCounter % 5) == 0
-                    );
-    renderSmallGraph(sets, stats.sets, "Sets per second",
-                     ((this.selectedCounter++) % 5) == 0,
-                     (this.selectedCounter % 5) == 0
-                    );
-    renderSmallGraph(misses, stats.misses, "Misses per second",
-                     ((this.selectedCounter++) % 5) == 0,
-                     (this.selectedCounter % 5) == 0
-                    );
-  }
-}
-
 function addBasicAuth(xhr, login, password) {
   var auth = 'Basic ' + Base64.encode(login + ':' + password);
   xhr.setRequestHeader('Authorization', auth);
@@ -1158,6 +1016,171 @@ CurrentStatTargetHandler.initialize();
   }
 })();
 
+function renderTick(g, p1x, p1y, dx, dy, opts) {
+  var p0x = p1x - dx;
+  var p0y = p1y - dy;
+  var p2x = p1x + dx;
+  var p2y = p1y + dy;
+  opts = _.extend({'stroke-width': 2},
+                  opts || {});
+  return g.path(["M", p0x, p0y,
+                 "L", p2x, p2y].join(",")).attr(opts);
+}
+
+function renderLargeGraph(main, data) {
+  var tick = renderTick;
+
+  main.html("");
+  main.css("outline", "red solid 1px");
+  var width = Math.min(main.parent().innerWidth(), 740);
+  var height = 80;
+  var paper = Raphael(main.get(0), width, height+20);
+
+  var xs = _.map(data, function (_, i) {return i;});
+  var yMax = _.max(data);
+  paper.g.linechart(0, 0, width-25, height, xs, data,
+                    {
+                      gutter: 10,
+                      minY: 0,
+                      maxY: yMax*1.2,
+                      colors: ['#a2a2a2'],
+                      width: 1,
+                      hook: function (h) {
+                        // axis
+                        var maxx = h.transformX(h.maxx);
+                        var maxy = h.transformY(h.maxy);
+                        var x0 = h.transformX(0);
+                        var y0 = h.transformY(0);
+                        h.paper.path(["M", x0, maxy,
+                                      "L", x0, y0,
+                                      "L", maxx, y0].join(","));
+                        // axis marks
+                        tick(h.paper, x0, maxy, 5, 0);
+                        for (var i = 1; i <= 4; i++) {
+                          tick(h.paper, h.transformX(h.maxx/4*i), y0, 0, 5);
+                        }
+
+                        var xMax = _.indexOf(data, yMax);
+                        var yMin = _.min(data);
+                        var xMin = _.indexOf(data, yMin);
+
+                        tick(h.paper, h.transformX(xMax), h.transformY(yMax), 0, 10);
+                        tick(h.paper, h.transformX(xMin), h.transformY(yMin), 0, 10);
+
+                        // text 
+                        var maxText = h.paper.text(0, 0, yMax.toFixed(0)).attr({
+                          font: "16px Arial, sans-serif",
+                          'font-weight': 'bold',
+                          fill: "blue"});
+                        var bbox = maxText.getBBox();
+                        maxText.translate(h.transformX(xMax) + 6 - bbox.x,
+                                          h.transformY(yMax) - 9 - bbox.y);
+
+                        var minText = h.paper.text(0, 0, yMin.toFixed(0)).attr({
+                          font: "16px Arial, sans-serif",
+                          'font-weight': 'bold',
+                          fill: "red"});
+                        var bbox = minText.getBBox();
+                        minText.translate(h.transformX(xMin) + 6 - bbox.x,
+                                          h.transformY(yMin) - 9 - bbox.y);
+                      }
+                    });
+}
+
+function renderSmallGraph(jq, data, text, isSelected, isHover) {
+  jq.html("");
+//  jq.css("outline", "red solid 1px");
+
+  var width = jq.innerWidth();
+  var plotHeight = 80;
+  var height = plotHeight+30+15;
+  var paper = Raphael(jq.get(0), width, height);
+
+  var xs = _.map(data, function (_, i) {return i;});
+
+  var plotY = isSelected ? 20 : 30;
+  paper.g.linechart(0, plotY, width, plotHeight, xs, data, {
+    width: 1,
+    colors: ["#e2e2e2"]
+  });
+  paper.text(width/2, plotY + plotHeight/2, _.max(data)).attr({
+    font: "18px Arial, sans-serif",
+    fill: "blue"
+  });
+  if (isSelected) {
+    paper.text(width/2, 10, text).attr({
+      font: "18px Arial, sans-serif"
+    });
+    paper.rect(0, 20, width-2, plotHeight+15-1).attr({
+      'stroke-width': 2,
+      'stroke': '#0099ff'
+    });
+  } else {
+    paper.text(width/2, height-10, text).attr({
+      font: "12px Arial, sans-serif"
+    });
+    if (isHover) {
+      paper.rect(0, 30, width-1, plotHeight+15-1).attr({
+        'stroke-width': 1,
+        'stroke': '#0099ff'
+      });
+    }
+  }
+}
+
+var StatGraphs = {
+  selected: new LinkSwitchCell('graph', {
+    linkSelector: 'span',
+    firstLinkIsDefault: true}),
+  selectedCounter: 0,
+  update: function () {
+    var stats = DAO.channels.statsMain.recentData;
+    if (!stats)
+      return;
+    stats = stats.op;
+    if (!stats)
+      return;
+
+    var main = $('#overview_main_graph')
+    var ops = $('#overview_graph_ops')
+    var gets = $('#overview_graph_gets')
+    var sets = $('#overview_graph_sets')
+    var misses = $('#overview_graph_misses')
+
+    var selected = this.selected.value;
+
+    renderLargeGraph(main, stats[selected]);
+    
+    renderSmallGraph(ops, stats.ops, "Ops per second",
+                     selected == 'ops',
+                     (this.selectedCounter % 5) == 0
+                    );
+    renderSmallGraph(gets, stats.gets, "Gets per second",
+                     selected == 'gets',
+                     (this.selectedCounter % 5) == 0
+                    );
+    renderSmallGraph(sets, stats.sets, "Sets per second",
+                     selected == 'sets',
+                     (this.selectedCounter % 5) == 0
+                    );
+    renderSmallGraph(misses, stats.misses, "Misses per second",
+                     selected == 'misses',
+                     (this.selectedCounter % 5) == 0
+                    );
+  },
+  init: function () {
+    var selected = this.selected;
+
+    selected.addLink($('#overview_graph_ops'), 'ops');
+    selected.addLink($('#overview_graph_gets'), 'gets');
+    selected.addLink($('#overview_graph_sets'), 'sets');
+    selected.addLink($('#overview_graph_misses'), 'misses');
+
+    selected.changedSlot.subscribeWithSlave($m(this, 'update'));
+    selected.finalizeBuilding();
+  }
+}
+
 function prepareTemplateForCell(templateName, cell) {
   cell.undefinedSlot.subscribeWithSlave(function () {
     prepareRenderTemplate(templateName);
@@ -1168,8 +1191,8 @@ var OverviewSection = {
   clearUI: function () {
     prepareRenderTemplate('top_keys', 'server_list', 'pool_list');
   },
-  onFreshStats: function (channel) {
-    StatGraphs.update(channel.recentData.op);
+  onFreshStats: function () {
+    StatGraphs.update()
   },
   onKeyStats: function (channel) {
     renderTemplate('top_keys', $.map(channel.recentData.hot_keys, function (e) {
@@ -1221,6 +1244,8 @@ var OverviewSection = {
       channel.unplug();
     });
     DAO.cells.keysZoomLevel.finalizeBuilding();
+
+    StatGraphs.init();
   },
   onEnter: function () {
   }
