@@ -86,5 +86,8 @@ handle_info({Id, RV}, #rmgr{curr = Replicators} = RMgr) ->
             {noreply, RMgr}
     end.
 
+% handle_info({'DOWN', _MonitorRef, _, _, _}) ->
+%     todo.
+
 notify(P, D, V) when is_pid(P) -> P ! {D, V};
 notify(_, _, _)                -> ok.
