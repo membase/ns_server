@@ -42,14 +42,15 @@ accept_loop(LS, {ProtocolModule, ProcessorModule, ProcessorEnv}) ->
     % Ask the processor for a new session object.
     {ok, ProcessorEnv2, ProcessorSession} =
         apply(ProcessorModule, session, [NS, ProcessorEnv]),
+    % Spawn a session-handling process.
     Pid = spawn(?MODULE, session,
                 [NS, ProtocolModule, ProcessorModule, ProcessorSession]),
     gen_tcp:controlling_process(NS, Pid),
     accept_loop(LS, {ProtocolModule, ProcessorModule, ProcessorEnv2}).
 
-% The main entry-point/driver for a session process.
+% The main entry-point/driver for a session-handling process.
 session(Sock, ProtocolModule, ProcessorModule, ProcessorSession) ->
-    % Spawn a protocol-specific paired output/writer process.
+    % Spawn a linked, protocol-specific output-loop/writer process.
     OutPid = spawn_link(ProtocolModule, loop_out, [Sock]),
     % Continue with a protocol-specific input-loop to receive messages.
     apply(ProtocolModule, loop_in,
