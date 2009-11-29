@@ -239,21 +239,83 @@ function escapeHTML() {
   };
 })();
 
+function renderTick(g, p1x, p1y, dx, dy) {
+  var p0x = p1x - dx;
+  var p0y = p1y - dy;
+  var p2x = p1x + dx;
+  var p2y = p1y + dy;
+  return g.path(["M", p0x, p0y,
+                 "L", p2x, p2y].join(","));
+}
+
+function renderLargeGraph(main, data) {
+  var tick = renderTick;
+
+  main.html("");
+  var width = main.parent().innerWidth();
+  var paper = Raphael(main.get(0), width, 200);
+
+  var xs = _.map(data, function (_, i) {return i;});
+  var yMax = _.max(data)
+  paper.g.linechart(10, 10, width-20, 180, xs, data,
+                    {
+                      gutter: 5,
+                      minY: 0,
+                      maxY: yMax*1.2,
+                      colors: ['#a2a2a2'],
+                      width: 1,
+                      hook: function (h) {
+                        // axis
+                        var maxx = h.transformX(h.maxx);
+                        var maxy = h.transformY(h.maxy);
+                        var x0 = h.transformX(0);
+                        var y0 = h.transformY(0);
+                        h.paper.path(["M", x0, maxy,
+                                      "L", x0, y0,
+                                      "L", maxx, y0].join(","));
+                        // axis marks
+                        tick(h.paper, x0, maxy, 5, 0).attr({'stroke-width': 2});
+                        for (var i = 1; i <= 4; i++) {
+                          tick(h.paper, h.transformX(h.maxx/4*i), y0, 0, 5).attr({'stroke-width': 2});
+                        }
+
+                        var xMax = _.indexOf(data, yMax);
+                        var yMin = _.min(data);
+                        var xMin = _.indexOf(data, yMin);
+
+                        tick(h.paper, h.transformX(xMax), h.transformY(yMax), 0, 10).attr({'stroke-width': 2});
+                        tick(h.paper, h.transformX(xMin), h.transformY(yMin), 0, 10).attr({'stroke-width': 2});
+
+                        // text 
+                        var maxText = h.paper.text(0, 0, yMax.toFixed(0)).attr({
+                          font: "16px Arial, sans-serif",
+                          'font-weight': 'bold',
+                          fill: "blue"});
+                        var bbox = maxText.getBBox();
+                        maxText.translate(h.transformX(xMax) + 6 - bbox.x,
+                                          h.transformY(yMax) - 9 - bbox.y);
+
+                        var minText = h.paper.text(0, 0, yMin.toFixed(0)).attr({
+                          font: "16px Arial, sans-serif",
+                          'font-weight': 'bold',
+                          fill: "red"});
+                        var bbox = minText.getBBox();
+                        minText.translate(h.transformX(xMin) + 6 - bbox.x,
+                                          h.transformY(yMin) - 9 - bbox.y);
+                      }
+                    });
+}
+
 var StatGraphs = {
   update: function (stats) {
     var main = $('#overview_main_graph')
-
-    var mainParent = main.parent();
-    main.remove()
-    mainParent.append('<span id="overview_main_graph"></span>');
-    main = $('#overview_main_graph')
-
     var ops = $('#overview_graph_ops')
     var gets = $('#overview_graph_gets')
     var sets = $('#overview_graph_sets')
     var misses = $('#overview_graph_misses')
 
-    main.sparkline(stats.ops, {width: $(main.parent()).innerWidth(), height: 200})
+    renderLargeGraph(main, stats.ops);
+
     ops.sparkline(stats.ops, {width: ops.innerWidth(), height: 100})
     gets.sparkline(stats.gets, {width: gets.innerWidth(), height: 100})
     sets.sparkline(stats.sets, {width: sets.innerWidth(), height: 100})
