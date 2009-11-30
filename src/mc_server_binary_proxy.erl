@@ -118,7 +118,7 @@ forward_bcast(all, Opcode, #session_proxy{bucket = Bucket} = Sess,
                               Acc)
                     end,
                     {0, []}, Addrs),
-    await_ok(NumFwd),
+    NumFwd = await_ok(NumFwd), % TODO: Send error instead of closing conn?
     mc_binary:send(Out, res, H#mc_header{status = ?SUCCESS}, E),
     mc_downstream:demonitor(Monitors),
     {ok, Sess};
@@ -144,7 +144,7 @@ forward_bcast(uncork, _Opcode, #session_proxy{bucket = Bucket,
                                    undefined), Acc)
                     end,
                     {0, []}, Groups),
-    await_ok(NumFwd),
+    NumFwd = await_ok(NumFwd), % TODO: Send error instead of closing conn?
     mc_binary:send(Out, res, H#mc_header{status = ?SUCCESS}, E),
     mc_downstream:demonitor(Monitors),
     {ok, Sess#session_proxy{corked = []}}.
