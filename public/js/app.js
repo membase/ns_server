@@ -310,18 +310,16 @@ function __topEval() {
 function $m(self, method, klass) {
   if (klass) {
     var f = klass.prototype[method];
-    if (!f)
+    if (!f || !f.apply)
       throw new Error("Bogus method: " + method + " on prototype of: " + klass);
-    return function () {
-      return f.apply(self, arguments);
-    }
   } else {
     var f = self[method];
-    if (!f)
+    if (!f || !f.apply)
       throw new Error("Bogus method: " + method + " on object: " + self);
-    return function () {
-      return f.apply(self, arguments);
-    }
+  }
+
+  return function () {
+    return f.apply(self, arguments);
   }
 }
 
