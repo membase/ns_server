@@ -304,7 +304,7 @@ function renderTemplate(key, data) {
 }
 
 function __topEval() {
-  return eval("(" + String(arguments[0]) + ")");
+  return eval("(function () {return (" + String(arguments[0]) + ");})();");
 }
 
 function $m(self, method, klass) {
