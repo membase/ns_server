@@ -208,3 +208,9 @@ A memcached server address includes (at least) hostname, port, and
 protocol.  Other parts of an address might include weight and
 auth/cred information (circa 2009/Nov).
 
+## Configuration
+
+    mc_config.erl
+
+Functions that help with looking up and processing configuration
+information live in mc_config.erl.
