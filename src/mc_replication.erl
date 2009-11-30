@@ -99,7 +99,6 @@ handle_call({replicate,
     Replicator =
         create_replicator(Id, Request, NotifyPid, undefined,
                           SentOk, Monitors, ReceivedOkMin),
-    ?debugVal({mr.replicate, Replicator}),
     Replicators2 =
         case update_replicator(Replicator) of
             {ok, R}    -> dict:store(Id, R, Replicators);
