@@ -57,9 +57,9 @@ cmd(decr, Session, InSock, Out, CmdArgs) ->
 
 cmd(delete, #session_proxy{bucket = Bucket} = Session,
     _InSock, Out, [Key]) ->
-    {Key, Addrs, Policy} = mc_bucket:choose_addrs(Bucket, Key),
+    {Key, Addrs, Config} = mc_bucket:choose_addrs(Bucket, Key),
     {ok, Monitors} = send(Addrs, Out, delete, #mc_entry{key = Key},
-                          undefined, ?MODULE, Policy),
+                          undefined, ?MODULE, Config),
     case await_ok(1) of
         1 -> true;
         _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
@@ -97,10 +97,10 @@ forward_update(Cmd, #session_proxy{bucket = Bucket} = Session,
     DataLen = list_to_integer(DataLenIn),
     {ok, DataCRNL} = mc_ascii:recv_data(InSock, DataLen + 2),
     {Data, _} = mc_ascii:split_binary_suffix(DataCRNL, 2),
-    {Key, Addrs, Policy} = mc_bucket:choose_addrs(Bucket, Key),
+    {Key, Addrs, Config} = mc_bucket:choose_addrs(Bucket, Key),
     Entry = #mc_entry{key = Key, flag = Flag, expire = Expire, data = Data},
     {ok, Monitors} = send(Addrs, Out, Cmd, Entry,
-                          undefined, ?MODULE, Policy),
+                          undefined, ?MODULE, Config),
     case await_ok(1) of
         1 -> true;
         _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
@@ -110,10 +110,10 @@ forward_update(Cmd, #session_proxy{bucket = Bucket} = Session,
 
 forward_arith(Cmd, #session_proxy{bucket = Bucket} = Session,
               _InSock, Out, [Key, Amount]) ->
-    {Key, Addrs, Policy} = mc_bucket:choose_addrs(Bucket, Key),
+    {Key, Addrs, Config} = mc_bucket:choose_addrs(Bucket, Key),
     {ok, Monitors} = send(Addrs, Out, Cmd,
                           #mc_entry{key = Key, data = Amount},
-                          undefined, ?MODULE, Policy),
+                          undefined, ?MODULE, Config),
     case await_ok(1) of
         1 -> true;
         _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)

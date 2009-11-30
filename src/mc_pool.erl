@@ -13,8 +13,8 @@
 %% TODO: A proper implementation.
 %% TODO: Consider replacing implementation with gen_server.
 
-create(Addrs, Buckets) ->
-    #mc_pool{addrs = Addrs, buckets = Buckets}.
+create(Id, Addrs, Config, Buckets) ->
+    #mc_pool{id = Id, addrs = Addrs, config = Config, buckets = Buckets}.
 
 % Returns {ok, Bucket} or false.
 get_bucket(#mc_pool{buckets = Buckets}, BucketId) ->
@@ -35,14 +35,16 @@ foreach_bucket(#mc_pool{buckets = Buckets}, VisitorFun) ->
 get_bucket_test() ->
     B1 = mc_bucket:create("default", [mc_addr:local(ascii)], []),
     Addrs = [mc_addr:local(ascii)],
-    P1 = create(Addrs, [mc_bucket:create("default", Addrs, [])]),
+    P1 = create(p1, Addrs, config,
+                [mc_bucket:create("default", Addrs, [])]),
     ?assertMatch({ok, B1}, get_bucket(P1, "default")),
     ok.
 
 foreach_bucket_test() ->
     B1 = mc_bucket:create("default", [mc_addr:local(ascii)], []),
     Addrs = [mc_addr:local(ascii)],
-    P1 = create(Addrs, [mc_bucket:create("default", Addrs, [])]),
+    P1 = create(p1, Addrs, config,
+                [mc_bucket:create("default", Addrs, [])]),
     foreach_bucket(P1, fun (B) ->
                            ?assertMatch(B1, B)
                        end),

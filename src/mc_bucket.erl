@@ -16,10 +16,10 @@
 % Callers should consider the returned value to be opaque.
 % One day, the return value, for example, might be changed
 % into a gen_server Pid.
-create(Id, Addrs, Policy) ->
+create(Id, Addrs, Config) ->
     #mc_bucket{id = Id,
                addrs = Addrs,
-               policy = Policy}.
+               config = Config}.
 
 id(#mc_bucket{id = Id})          -> Id.
 addrs(#mc_bucket{addrs = Addrs}) -> Addrs.
@@ -32,40 +32,40 @@ choose_addr(#mc_bucket{addrs = Addrs}, Key) ->
 % Choose several Addr's that should contain the Key given replication,
 % with the primary Addr coming first.  The number of Addr's returned
 % is based on Bucket default replication level.
-choose_addrs(#mc_bucket{addrs = Addrs, policy = Policy}, Key) ->
+choose_addrs(#mc_bucket{addrs = Addrs, config = Config}, Key) ->
     % TODO: A proper consistent hashing.
-    {Key, Addrs, Policy}.
+    {Key, Addrs, Config}.
 
 % Choose several Addr's that should contain the Key given replication,
 % with the primary Addr coming first.  The result Addr's list might
 % have length <= N.
-choose_addrs(#mc_bucket{addrs = Addrs, policy = Policy}, Key, N) ->
+choose_addrs(#mc_bucket{addrs = Addrs, config = Config}, Key, N) ->
     % TODO: A proper consistent hashing.
-    {Key, lists:sublist(Addrs, N), Policy}.
+    {Key, lists:sublist(Addrs, N), Config}.
 
 % ------------------------------------------------
 
 choose_addr_test() ->
-    B1 = create(buck1, [a1], policy),
+    B1 = create(buck1, [a1], config),
     ?assertMatch({key1, a1}, choose_addr(B1, key1)),
     ?assertMatch({key2, a1}, choose_addr(B1, key2)),
     ok.
 
 choose_addrs_test() ->
-    B1 = create(buck1, [a1], policy),
-    ?assertMatch({key5, [a1], policy}, choose_addrs(B1, key5, 1)),
-    ?assertMatch({key6, [a1], policy}, choose_addrs(B1, key6, 1)),
+    B1 = create(buck1, [a1], config),
+    ?assertMatch({key5, [a1], config}, choose_addrs(B1, key5, 1)),
+    ?assertMatch({key6, [a1], config}, choose_addrs(B1, key6, 1)),
     ok.
 
 choose_addr_str_test() ->
-    B1 = create(buck1, [a1], policy),
+    B1 = create(buck1, [a1], config),
     ?assertMatch({"key1", a1}, choose_addr(B1, "key1")),
     ?assertMatch({"key2", a1}, choose_addr(B1, "key2")),
     ok.
 
 choose_addrs_str_test() ->
-    B1 = create(buck1, [a1], policy),
-    ?assertMatch({"key5", [a1], policy}, choose_addrs(B1, "key5", 1)),
-    ?assertMatch({"key6", [a1], policy}, choose_addrs(B1, "key6", 1)),
+    B1 = create(buck1, [a1], config),
+    ?assertMatch({"key5", [a1], config}, choose_addrs(B1, "key5", 1)),
+    ?assertMatch({"key6", [a1], config}, choose_addrs(B1, "key6", 1)),
     ok.
 

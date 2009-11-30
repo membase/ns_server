@@ -33,13 +33,13 @@
           cmd_args,
           response_filter,
           response_module,
-          policy
+          config
          }).
 
 start() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 stop()  -> gen_server:stop(?MODULE).
 
-% When the replication Policy is undefined and we have just one Addr,
+% When the replication Config is undefined and we have just one Addr,
 % we can skip straight to the mc_downstream:send().
 send([Addr], Out, Cmd, CmdArgs,
      ResponseFilter, ResponseModule, undefined) ->
@@ -47,7 +47,7 @@ send([Addr], Out, Cmd, CmdArgs,
                        ResponseFilter, ResponseModule);
 
 send(Addrs, Out, Cmd, CmdArgs,
-     ResponseFilter, ResponseModule, Policy) ->
+     ResponseFilter, ResponseModule, Config) ->
     gen_server:call(?MODULE,
                     {replicate,
                      #request{addrs     = Addrs,
@@ -57,7 +57,7 @@ send(Addrs, Out, Cmd, CmdArgs,
                               cmd_args = CmdArgs,
                               response_filter = ResponseFilter,
                               response_module = ResponseModule,
-                              policy = Policy}}).
+                              config = Config}}).
 
 %% Callbacks from mc_downstream.
 
@@ -79,7 +79,7 @@ handle_call({replicate,
                       response_filter = ResponseFilter} = Request},
             {NotifyPid, _} = _From,
             #rmgr{curr = Replicators} = RMgr) ->
-    % TODO: Use Policy for N instead of just pinning N to # of Addrs.
+    % TODO: Use Config for N instead of just pinning N to # of Addrs.
     ReceivedOkMin = length(Addrs),
     Id = make_ref(),
     {SentOk, Monitors} =

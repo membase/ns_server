@@ -99,9 +99,9 @@ queue(#session_proxy{corked = C} = Sess, HE) ->
 % For binary commands that need a simple command forward.
 forward_simple(Opcode, #session_proxy{bucket = Bucket} = Sess, Out,
                {_Header, #mc_entry{key = Key}} = HE) ->
-    {Key, Addrs, Policy} = mc_bucket:choose_addrs(Bucket, Key),
+    {Key, Addrs, Config} = mc_bucket:choose_addrs(Bucket, Key),
     {ok, Monitors} = send(Addrs, Out, Opcode, HE,
-                          undefined, ?MODULE, Policy),
+                          undefined, ?MODULE, Config),
     1 = await_ok(1), % TODO: Send err response instead of conn close?
     mc_downstream:demonitor(Monitors),
     {ok, Sess}.

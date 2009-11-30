@@ -13,18 +13,19 @@
                     bodylen = undefined,
                     opaque = 0}).
 
--record(mc_policy, {replica_n = 1,
+-record(mc_config, {replica_n = 1,
                     replica_w = 1,
                     replica_r = 1}).
 
--record(mc_pool, {addrs,  % [OpaqueAddr], not necessarily [mc_addr].
-                  policy,
+-record(mc_pool, {id,     % Pool id.
+                  addrs,  % [OpaqueAddr], not necessarily [mc_addr].
+                  config, % [{key, value}].
                   buckets % [OpaqueBucket], not necessarily [mc_bucket].
                   }).
 
 -record(mc_bucket, {id,    % Bucket id.
                     addrs, % [OpaqueAddr], not necessarily [mc_addr].
-                    policy % List of {Key, Val} terms.
+                    config % [{key, value}].
                     }).
 
 % Note: we may use mc_addr as keys in dict/ets tables,

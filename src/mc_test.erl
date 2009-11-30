@@ -5,24 +5,24 @@
 -compile(export_all).
 
 main() ->
-    Policy = #mc_policy{replica_n = 1,
-                        replica_w = 1,
-                        replica_r = 1},
+    Config = [{replica_n, 1},
+              {replica_w, 1},
+              {replica_r, 1}],
 
     AsciiAddrs = [mc_addr:local(ascii)],
-    AsciiPool = mc_pool:create(AsciiAddrs,
+    AsciiPool = mc_pool:create(ascii_pool, AsciiAddrs, Config,
                                [mc_bucket:create("default", AsciiAddrs,
-                                                  Policy)]),
+                                                  Config)]),
     BinaryAddrs = [mc_addr:local(binary)],
-    BinaryPool = mc_pool:create(BinaryAddrs,
+    BinaryPool = mc_pool:create(binary_pool, BinaryAddrs, Config,
                                 [mc_bucket:create("default", BinaryAddrs,
-                                                  Policy)]),
+                                                  Config)]),
 
     Addrs2 = [mc_addr:local(ascii),
               mc_addr:local(binary)],
-    Pool2 = mc_pool:create(Addrs2,
+    Pool2 = mc_pool:create(pool2, Addrs2, Config,
                            [mc_bucket:create("default", Addrs2,
-                                             Policy)]),
+                                             Config)]),
 
     {mc_downstream:start(),
      mc_replication:start(),
