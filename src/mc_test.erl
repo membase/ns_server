@@ -1,9 +1,13 @@
 -module(mc_test).
 
+-include("mc_entry.hrl").
+
 -compile(export_all).
 
 main() ->
-    Policy = [{n, 1}, {w, 1}, {r, 1}],
+    Policy = #mc_policy{replica_n = 1,
+                        replica_w = 1,
+                        replica_r = 1},
 
     AsciiAddrs = [mc_addr:local(ascii)],
     AsciiPool = mc_pool:create(AsciiAddrs,
@@ -13,6 +17,13 @@ main() ->
     BinaryPool = mc_pool:create(BinaryAddrs,
                                 [mc_bucket:create("default", BinaryAddrs,
                                                   Policy)]),
+
+    Addrs2 = [mc_addr:local(ascii),
+              mc_addr:local(binary)],
+    Pool2 = mc_pool:create(Addrs2,
+                           [mc_bucket:create("default", Addrs2,
+                                             Policy)]),
+
     {mc_downstream:start(),
      mc_replication:start(),
      mc_accept:start(11300,
@@ -32,7 +43,10 @@ main() ->
                       mc_server_detect, AsciiPool}),
      mc_accept:start(11244,
                      {mc_server_detect,
-                      mc_server_detect, BinaryPool})}.
+                      mc_server_detect, BinaryPool}),
+     mc_accept:start(11255,
+                     {mc_server_detect,
+                      mc_server_detect, Pool2})}.
 
 % To build:
 %   make clean && make

@@ -13,7 +13,12 @@
                     bodylen = undefined,
                     opaque = 0}).
 
+-record(mc_policy, {replica_n = 1,
+                    replica_w = 1,
+                    replica_r = 1}).
+
 -record(mc_pool, {addrs,  % [OpaqueAddr], not necessarily [mc_addr].
+                  policy,
                   buckets % [OpaqueBucket], not necessarily [mc_bucket].
                   }).
 
