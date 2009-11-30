@@ -325,7 +325,9 @@ function $m(self, method, klass) {
   }
 }
 
-var $i = $m(document, 'getElementById');
+var $i = function (id) {
+  return document.getElementById(id);
+}
 
 function mkClass(methods) {
   if (_.isFunction(methods)) {
