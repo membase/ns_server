@@ -15,9 +15,9 @@
           notify_data,
           sent_ok,          % # of successful sends.
           monitors,         % List of Monitor from mc_downstream:monitor().
-          success_min,      % # of received_ok before notifying requestor.
-          received_err = 0,
+          received_ok_min,  % # of received_ok before notifying requestor.
           received_ok  = 0,
+          received_err = 0,
           responses    = [] % List of {Addr, Response}.
          }).
 
@@ -46,12 +46,7 @@ send([Addr], Out, Cmd, CmdArgs,
     mc_downstream:send(Addr, Out, Cmd, CmdArgs,
                        ResponseFilter, ResponseModule);
 
-send([Addr], Out, Cmd, CmdArgs,
-     ResponseFilter, ResponseModule, _) ->
-    mc_downstream:send(Addr, Out, Cmd, CmdArgs,
-                       ResponseFilter, ResponseModule).
-
-xsend(Addrs, Out, Cmd, CmdArgs,
+send(Addrs, Out, Cmd, CmdArgs,
      ResponseFilter, ResponseModule, Policy) ->
     gen_server:call(?MODULE,
                     {replicate,
@@ -68,7 +63,8 @@ xsend(Addrs, Out, Cmd, CmdArgs,
 
 send_response(Kind, {Id, Addr}, Cmd, Head, Body) ->
     gen_server:cast(?MODULE,
-                    {response, Id, Addr, {response, Kind, Cmd, Head, Body}}).
+                    {response, Id, Addr, {response,
+                                          Kind, Cmd, Head, Body}}).
 
 %% gen_server implementation.
 
@@ -84,7 +80,7 @@ handle_call({replicate,
             {NotifyPid, _} = _From,
             #rmgr{curr = Replicators} = RMgr) ->
     % TODO: Use Policy for N instead of just pinning N to # of Addrs.
-    SuccessMin = length(Addrs),
+    ReceivedOkMin = length(Addrs),
     Id = make_ref(),
     {SentOk, Monitors} =
         lists:foldl(
@@ -102,22 +98,26 @@ handle_call({replicate,
           {0, []}, Addrs),
     Replicator =
         create_replicator(Id, Request, NotifyPid, undefined,
-                          SentOk, Monitors, SuccessMin),
+                          SentOk, Monitors, ReceivedOkMin),
+    ?debugVal({mr.replicate, Replicator}),
     Replicators2 =
         case update_replicator(Replicator) of
-            {ok, R} -> dict:store(Id, R, Replicators);
-            _       -> dict:erase(Id, Replicators)
+            {ok, R}    -> dict:store(Id, R, Replicators);
+            {done, _}  -> dict:erase(Id, Replicators);
+            {error, _} -> dict:erase(Id, Replicators)
         end,
     {reply, {ok, []}, RMgr#rmgr{curr = Replicators2}}.
 
 handle_cast({response, Id, Addr, RV},
-             #rmgr{curr = Replicators} = RMgr) ->
+            #rmgr{curr = Replicators} = RMgr) ->
     % Invoked when a downstream sends some more partial response.
     case dict:find(Id, Replicators) of
-        {ok, Rep} ->
-            Responses2 = [{Addr, RV} | Rep#replicator.responses],
+        {ok, #replicator{responses = Responses} = Replicator} ->
             Replicators2 =
-                dict:store(Id, Rep#replicator{responses = Responses2},
+                dict:store(Id,
+                           Replicator#replicator{
+                             responses = [{Addr, RV} | Responses]
+                           },
                            Replicators),
             {noreply, RMgr#rmgr{curr = Replicators2}};
         error ->
@@ -128,13 +128,24 @@ handle_info({{Id, Addr}, RV},
             #rmgr{curr = Replicators} = RMgr) ->
     % Invoked when a downstream provides a final notification result.
     case dict:find(Id, Replicators) of
-        {ok, Rep} ->
-            Responses2 = [{Addr, RV} | Rep#replicator.responses],
+        {ok, #replicator{responses = Responses,
+                         received_ok = ROk,
+                         received_err = RErr} = Replicator} ->
+            {ROk2, RErr2} = case RV of
+                                {ok, _}    -> {ROk + 1, RErr};
+                                {ok, _, _} -> {ROk + 1, RErr};
+                                _          -> {ROk, RErr + 1}
+                            end,
+            Replicator2 = Replicator#replicator{
+                            responses = [{Addr, RV} | Responses],
+                            received_ok = ROk2,
+                            received_err = RErr2
+                          },
             Replicators2 =
-                case update_replicator(
-                       Rep#replicator{responses = Responses2}) of
-                    {ok, R} -> dict:store(Id, R, Replicators);
-                    _       -> dict:erase(Id, Replicators)
+                case update_replicator(Replicator2) of
+                    {ok, R}    -> dict:store(Id, R, Replicators);
+                    {done, _}  -> dict:erase(Id, Replicators);
+                    {error, _} -> dict:erase(Id, Replicators)
                 end,
             {noreply, RMgr#rmgr{curr = Replicators2}};
         error ->
@@ -158,36 +169,43 @@ handle_info({'DOWN', Monitor, _, _, _} = Msg,
     {noreply, RMgr#rmgr{curr = Replicators2}}.
 
 create_replicator(Id, Request, NotifyPid, NotifyData,
-                  SentOk, Monitors, SuccessMin) ->
-    #replicator{id = Id,
-                request = Request,
-                notify_pid = NotifyPid,
-                notify_data = NotifyData,
-                sent_ok = SentOk,
-                monitors = Monitors,
-                success_min = SuccessMin}.
+                  SentOk, Monitors, ReceivedOkMin) ->
+    #replicator{id              = Id,
+                request         = Request,
+                notify_pid      = NotifyPid,
+                notify_data     = NotifyData,
+                sent_ok         = SentOk,
+                monitors        = Monitors,
+                received_ok_min = ReceivedOkMin,
+                received_ok     = 0,
+                received_err    = 0}.
 
-update_replicator(#replicator{sent_ok = SentOk,
-                              success_min = SuccessMin,
-                              received_err = ReceivedErr,
-                              received_ok = ReceivedOk
+update_replicator(#replicator{sent_ok         = SentOk,
+                              monitors        = Monitors,
+                              received_ok_min = ReceivedOkMin,
+                              received_ok     = ReceivedOk,
+                              received_err    = ReceivedErr
                              } = Replicator) ->
-    case ReceivedOk + ReceivedErr >= SentOk of
-        true  -> notify_replicator(Replicator);
-        false -> case SentOk >= SuccessMin of
-                     true ->
-                         case ReceivedOk =:= SuccessMin of
-                             true  ->
-                                 true;
-                             false ->
-                                 {ok, Replicator}
-                         end;
-                     false ->
-                         {error, not_enough_active_replicas}
-                 end
+    case SentOk >= ReceivedOkMin of
+        true ->
+            case ReceivedOk + ReceivedErr >= SentOk of
+                true ->
+                    mc_downstream:demonitor(Monitors),
+                    notify_replicator(Replicator),
+                    {done, all_responses_received};
+                false ->
+                    case ReceivedOk == ReceivedOkMin of
+                        true  -> notify_replicator(Replicator);
+                        false -> {ok, Replicator}
+                    end
+            end;
+        false ->
+            mc_downstream:demonitor(Monitors),
+            notify_replicator(Replicator),
+            {error, not_enough_active_replicas}
     end.
 
-notify_replicator(#replicator{notify_pid = NotifyPid,
+notify_replicator(#replicator{notify_pid  = NotifyPid,
                               notify_data = NotifyData} = Replicator) ->
     notify_replicator(NotifyPid, NotifyData, Replicator).
 
@@ -195,7 +213,7 @@ notify_replicator(undefined, _, Replicator) ->
     {ok, Replicator};
 
 notify_replicator(NotifyPid, NotifyData,
-                  #replicator{request = Request,
+                  #replicator{request   = Request,
                               responses = Responses} = Replicator) ->
     RList = lists:reverse(Responses),
     % TODO: Allow caller to provide a best-response callback strategy.
@@ -221,7 +239,7 @@ notify_replicator(NotifyPid, NotifyData,
             end,
             notify(NotifyPid, NotifyData, RV);
         undefined ->
-            notify(NotifyPid, NotifyData, error)
+            notify(NotifyPid, NotifyData, {error, no_response})
     end,
     % TODO: Consider erasing the responses, too.
     {ok, Replicator#replicator{notify_pid = undefined,
