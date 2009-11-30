@@ -582,7 +582,7 @@ var LinkSwitchCell = mkClass(Cell, {
     if (value == undefined)
       return;
 
-    var index = _(this.links).pluck('value').indexOf(value);
+    var index = _.indexOf(_(this.links).pluck('value'), value);
     if (index < 0)
       throw new Error('invalid value!');
 
