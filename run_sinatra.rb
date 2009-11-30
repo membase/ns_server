@@ -168,14 +168,40 @@ class DAO
     end
   end
 
+  # copied from http://en.wikipedia.org/wiki/Low-pass_filter
+  # I was thinking about FIR, but this should work too
+  def rc_lowpass(data, alpha)
+    rv = Array.new(data.size)
+    data.each_with_index do |v, i|
+      if i == 0
+        rv[0] = v
+      else
+        rv[i] = alpha * v + (1-alpha) * rv[i-1]
+      end
+    end
+    rv
+  end
+
+  def generate_samples(seed, size)
+    srand(seed)
+    values = (0...size).map {|i| rand(100)}
+    rc_lowpass(values, 0.5)
+  end
+
+  def samples(mode)
+    @samples ||= {}
+    @samples[mode] ||= begin
+                         {"gets" => generate_samples(0xa21 * mode.hash, 20),
+                          "misses" => generate_samples(0xa22 * mode.hash, 20),
+                          "sets" => generate_samples(0xa23 * mode.hash, 20),
+                          "ops" => generate_samples(0xa24 * mode.hash, 20),
+                         }
+                       end
+  end
+
   def stats(bucket_id, params)
     rv = {
-      "op" => {
-        "tstamp" => Time.now.to_i*1000,
-        "gets"=>[25, 10, 5, 46, 100, 74],
-        "misses"=>[100, 74, 25, 10, 5, 46],
-        "sets"=>[74, 25, 10, 5, 46, 100],
-        "ops"=>[10, 5, 46, 100, 74, 25]},
+      "op" => {"tstamp" => Time.now.to_i*1000}.merge(self.samples(params['opspersecond_zoom'] || '1hr')),
       "hot_keys" => [{"gets"=>10000,
                        "name"=>"user:image:value",
                        "misses"=>100,
@@ -224,7 +250,9 @@ class DAO
 
     rotates = tstamp % samples
     %w(gets misses sets ops).each do |name|
-      rv['op'][name] = (rv['op'][name] * 2)[rotates, samples]
+      if samples_interval == 1
+        rv['op'][name] = (rv['op'][name] * 2)[rotates, samples]
+      end
       rv['op'][name] = rv['op'][name][-cut_number..-1]
     end
 
