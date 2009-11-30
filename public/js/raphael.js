@@ -1775,7 +1775,16 @@ window.Raphael = (function () {
                 a["font-size"] && (s.fontSize = a["font-size"]);
                 a["font-weight"] && (s.fontWeight = a["font-weight"]);
                 a["font-style"] && (s.fontStyle = a["font-style"]);
-                res.node.string && (res.paper.span.innerHTML = (res.node.string + E)[rp](/</g, "&#60;")[rp](/&/g, "&#38;")[rp](/\n/g, "<br>"));
+                if (res.node.stroke) {
+                    var value = (res.node.string + E)[rp](/</g, "&#60;")[rp](/&/g, "&#38;")[rp](/\n/g, "<br>");
+                    try {
+                        res.paper.span.innerHTML = value;
+                    } catch (e) {
+                        setTimeout(function () {
+                            res.paper.span.innerHTML = value;
+                        }, 100);
+                    }
+                }
                 res.W = a.w = res.paper.span.offsetWidth;
                 res.H = a.h = res.paper.span.offsetHeight;
                 res.X = a.x;
