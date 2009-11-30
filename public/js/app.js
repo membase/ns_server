@@ -1108,7 +1108,7 @@ function renderSmallGraph(jq, data, text, isSelected) {
     width: $.browser.msie ? 2 : 1,
     colors: ["#e2e2e2"]
   });
-  var ymax = _.max(data);
+  var ymax = _.max(data).toFixed(0);
   paper.text(width/2, plotY + plotHeight/2, ymax).attr({
     font: "18px Arial, sans-serif",
     fill: "blue"
