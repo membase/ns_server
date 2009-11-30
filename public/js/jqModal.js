@@ -117,7 +117,7 @@ open:function(s,t){var h=H[s],c=h.c,cc='.'+c.closeClass,z=/^\d+$/.test(h.w.css('
  
  // IF IE6;
  //  Set the Overlay to 100% height/width, and fix-position it via JS workaround
- if(ie6&&$('html,body').css({height:'100%',width:'100%'})&&o){o=o.css({position:'absolute'})[0];for(var y in {Top:1,Left:1})o.style.setExpression(y.toLowerCase(),"(_=(document.documentElement.scroll"+y+" || document.body.scroll"+y+"))+'px'");}
+ if(ie6&&$('html,body').css({height:'100%',width:'100%'})&&o){o=o.css({position:'absolute'})[0];for(var y in {Top:1,Left:1})o.style.setExpression(y.toLowerCase(),"(document.documentElement.scroll"+y+" || document.body.scroll"+y+")+'px'");}
 
  // IF the modal's content is to be loaded via ajax;
  //  determine the target element {JQ} to recieve content (r),
