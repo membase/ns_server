@@ -28,10 +28,12 @@ monitor(Addr) ->
     {ok, MBoxPid} = gen_server:call(?MODULE, {pid, Addr}),
     {ok, erlang:monitor(process, MBoxPid)}.
 
+demonitor(undefined)   -> ok;
 demonitor(MonitorRefs) ->
     % TODO: Need to remove any DOWN messages that are already
     %       waiting in our/self()'s mailbox?
-    lists:foreach(fun erlang:demonitor/1, MonitorRefs).
+    lists:foreach(fun erlang:demonitor/1, MonitorRefs),
+    ok.
 
 send(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule) ->
     send(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule,
@@ -79,6 +81,7 @@ await_ok(Prefix, N, Acc) when N > 0 ->
     receive
         {Prefix, {ok, _}}              -> await_ok(Prefix, N - 1, Acc + 1);
         {Prefix, {ok, _, _}}           -> await_ok(Prefix, N - 1, Acc + 1);
+        {Prefix, _}                    -> await_ok(Prefix, N - 1, Acc);
         {'DOWN', _MonitorRef, _, _, _} -> await_ok(Prefix, N - 1, Acc);
         Unexpected                     -> ?debugVal(Unexpected),
                                           exit({error, Unexpected})
