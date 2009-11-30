@@ -16,10 +16,10 @@
 % Callers should consider the returned value to be opaque.
 % One day, the return value, for example, might be changed
 % into a gen_server Pid.
-create(BucketId, BucketAddrs, BucketPolicy) ->
-    #mc_bucket{id = BucketId,
-               addrs = BucketAddrs,
-               policy = BucketPolicy}.
+create(Id, Addrs, Policy) ->
+    #mc_bucket{id = Id,
+               addrs = Addrs,
+               policy = Policy}.
 
 id(#mc_bucket{id = Id})          -> Id.
 addrs(#mc_bucket{addrs = Addrs}) -> Addrs.
