@@ -1262,6 +1262,11 @@ var OverviewSection = {
     DAO.cells.keysZoomLevel.finalizeBuilding();
 
     StatGraphs.init();
+
+    CurrentStatTargetHandler.currentStatTargetCell.changedSlot.subscribeWithSlave(function (cell) {
+      var names = $('.stat_target_name');
+      names.text(cell.value.name);
+    });
   },
   onEnter: function () {
   }
