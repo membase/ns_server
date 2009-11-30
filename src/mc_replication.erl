@@ -15,7 +15,6 @@
           notify_data,
           sent_ok,          % # of successful sends.
           monitors,         % List of Monitor from mc_downstream:monitor().
-          received_ok_min,  % # of received_ok before notifying requestor.
           received_ok  = 0,
           received_err = 0,
           responses    = [] % List of {Addr, Response}.
@@ -33,7 +32,7 @@
           cmd_args,
           response_filter,
           response_module,
-          config
+          received_ok_min   % # of received_ok before notifying requestor.
          }).
 
 start() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -47,7 +46,7 @@ send([Addr], Out, Cmd, CmdArgs,
                        ResponseFilter, ResponseModule);
 
 send(Addrs, Out, Cmd, CmdArgs,
-     ResponseFilter, ResponseModule, Config) ->
+     ResponseFilter, ResponseModule, ReceivedOkMin) ->
     gen_server:call(?MODULE,
                     {replicate,
                      #request{addrs     = Addrs,
@@ -57,7 +56,7 @@ send(Addrs, Out, Cmd, CmdArgs,
                               cmd_args = CmdArgs,
                               response_filter = ResponseFilter,
                               response_module = ResponseModule,
-                              config = Config}}).
+                              received_ok_min = ReceivedOkMin}}).
 
 %% Callbacks from mc_downstream.
 
@@ -79,8 +78,6 @@ handle_call({replicate,
                       response_filter = ResponseFilter} = Request},
             {NotifyPid, _} = _From,
             #rmgr{curr = Replicators} = RMgr) ->
-    % TODO: Use Config for N instead of just pinning N to # of Addrs.
-    ReceivedOkMin = length(Addrs),
     Id = make_ref(),
     {SentOk, Monitors} =
         lists:foldl(
@@ -98,7 +95,7 @@ handle_call({replicate,
           {0, []}, Addrs),
     Replicator =
         create_replicator(Id, Request, NotifyPid, undefined,
-                          SentOk, Monitors, ReceivedOkMin),
+                          SentOk, Monitors),
     Replicators2 =
         case update_replicator(Replicator) of
             {ok, R}    -> dict:store(Id, R, Replicators);
@@ -168,23 +165,23 @@ handle_info({'DOWN', Monitor, _, _, _} = Msg,
     {noreply, RMgr#rmgr{curr = Replicators2}}.
 
 create_replicator(Id, Request, NotifyPid, NotifyData,
-                  SentOk, Monitors, ReceivedOkMin) ->
-    #replicator{id              = Id,
-                request         = Request,
-                notify_pid      = NotifyPid,
-                notify_data     = NotifyData,
-                sent_ok         = SentOk,
-                monitors        = Monitors,
-                received_ok_min = ReceivedOkMin,
-                received_ok     = 0,
-                received_err    = 0}.
+                  SentOk, Monitors) ->
+    #replicator{id           = Id,
+                request      = Request,
+                notify_pid   = NotifyPid,
+                notify_data  = NotifyData,
+                sent_ok      = SentOk,
+                monitors     = Monitors,
+                received_ok  = 0,
+                received_err = 0}.
 
-update_replicator(#replicator{sent_ok         = SentOk,
+update_replicator(#replicator{request         = Request,
+                              sent_ok         = SentOk,
                               monitors        = Monitors,
-                              received_ok_min = ReceivedOkMin,
                               received_ok     = ReceivedOk,
                               received_err    = ReceivedErr
                              } = Replicator) ->
+    ReceivedOkMin = Request#request.received_ok_min,
     case SentOk >= ReceivedOkMin of
         true ->
             case ReceivedOk + ReceivedErr >= SentOk of

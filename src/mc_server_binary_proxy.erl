@@ -100,8 +100,9 @@ queue(#session_proxy{corked = C} = Sess, HE) ->
 forward_simple(Opcode, #session_proxy{bucket = Bucket} = Sess, Out,
                {_Header, #mc_entry{key = Key}} = HE) ->
     {Key, Addrs, Config} = mc_bucket:choose_addrs(Bucket, Key),
+    MinOk = mc_config:lookup(replica_kind(Opcode), Config),
     {ok, Monitors} = send(Addrs, Out, Opcode, HE,
-                          undefined, ?MODULE, Config),
+                          undefined, ?MODULE, MinOk),
     1 = await_ok(1), % TODO: Send err response instead of conn close?
     mc_downstream:demonitor(Monitors),
     {ok, Sess}.
@@ -171,4 +172,12 @@ send_response(ascii, Out, _Cmd, Head, Body) ->
 send_response(binary, Out, _Cmd, Header, Entry) ->
     % Downstream is binary.
     mc_binary:send(Out, res, Header, Entry).
+
+% ------------------------------------------
+
+replica_kind(?GET)   -> replica_r;
+replica_kind(?GETK)  -> replica_r;
+replica_kind(?GETQ)  -> replica_r;
+replica_kind(?GETKQ) -> replica_r;
+replica_kind(_)      -> replica_w.
 
