@@ -519,12 +519,14 @@ function watchHashParamChange(param, defaultValue, callback) {
   }
 
   var oldValue;
-  $(window).bind('hashchange', function () {
-    var newValue = $.bbq.getState(param) || defaultValue;
-    if (oldValue !== undefined && oldValue == newValue)
-      return;
-    oldValue = newValue;
-    return callback.apply(this, [newValue].concat($.makeArray(arguments)));
+  $(function () {
+    $(window).bind('hashchange', function () {
+      var newValue = $.bbq.getState(param) || defaultValue;
+      if (oldValue !== undefined && oldValue == newValue)
+        return;
+      oldValue = newValue;
+      return callback.apply(this, [newValue].concat($.makeArray(arguments)));
+    });
   });
 }
 
