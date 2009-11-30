@@ -252,6 +252,8 @@ $.ajaxSetup({
     if (DAO.login) {
       addBasicAuth(xhr, DAO.login, DAO.password);
     }
+    xhr.setRequestHeader('Cache-Control', 'no-cache');
+    xhr.setRequestHeader('Pragma', 'no-cache');
   }
 });
 
@@ -1103,10 +1105,11 @@ function renderSmallGraph(jq, data, text, isSelected) {
 
   var plotY = isSelected ? 20 : 30;
   paper.g.linechart(0, plotY, width, plotHeight, xs, data, {
-    width: 1,
+    width: $.browser.msie ? 2 : 1,
     colors: ["#e2e2e2"]
   });
-  paper.text(width/2, plotY + plotHeight/2, _.max(data)).attr({
+  var ymax = _.max(data);
+  paper.text(width/2, plotY + plotHeight/2, ymax).attr({
     font: "18px Arial, sans-serif",
     fill: "blue"
   });
