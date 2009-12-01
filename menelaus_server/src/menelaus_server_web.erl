@@ -24,7 +24,15 @@ loop(Req, DocRoot) ->
     "/" ++ Path = Req:get(path),
     case Req:get(method) of
         Method when Method =:= 'GET'; Method =:= 'HEAD' ->
-            case Path of
+            case string:tokens(Path, "/") of
+                ["pools"] ->
+                    handle_pools(Req);
+                ["pools", Id] ->
+                    handle_pool_info(Id, Req);
+                ["buckets", Id] ->
+                    handle_bucket_info(Id, Req);
+                ["buckets", Id, "stats"] ->
+                    handle_bucket_stats(Id, Req);
                 _ ->
                     Req:serve_file(Path, DocRoot)
             end;
@@ -38,6 +46,141 @@ loop(Req, DocRoot) ->
     end.
 
 %% Internal API
+
+reply_json(Req, Body) ->
+    Req:ok({"application/json", mochijson2:encode(Body)}).
+
+handle_pools(Req) ->
+    reply_json(Req, {struct, [
+                              {implementation_version, <<"">>},
+                              {pools, [{struct, [{name, <<"Default Pool">>},
+                                                 {uri, <<"/pools/12">>},
+                                                 {defaultBucketURI, <<"/buckets/4">>}]},
+                                       {struct, [{name, <<"Another Pool">>},
+                                                 {uri, <<"/pools/13">>},
+                                                 {defaultBucketURI, <<"/buckets/5">>}]}]}]}).
+
+handle_pool_info(Id, Req) ->
+    Res = case Id of
+              "12" -> {struct, [{node, [{struct, [{ip_address, <<"10.0.1.20">>},
+                                                  {running, true},
+                                                  {ports, [11211]},
+                                                  {uri, <<"https://first_node.in.pool.com:80/pool/Default Pool/node/first_node/">>},
+                                                  {name, <<"first_node">>},
+                                                  {fqdn, <<"first_node.in.pool.com">>}]}, {struct, [{ip_address, <<"10.0.1.21">>},
+                                                                                                {running, true},
+                                                                                                {ports, [11211]},
+                                                                                                {uri, <<"https://second_node.in.pool.com:80/pool/Default Pool/node/second_node/">>},
+                                                                                                {name, <<"second_node">>},
+                                                                                                {fqdn, <<"second_node.in.pool.com">>}]}]},
+                                {bucket, [{struct, [{uri, <<"/buckets/4">>},
+                                                    {name, <<"Excerciser Application">>}]}]},
+                                {stats, {struct, [{uri, <<"/buckets/4/stats?really_for_pool=1">>}]}},
+                                {default_bucket_uri, <<"/buckets/4">>},
+                                {name, <<"Default Pool">>}]};
+              _ -> {struct, [{node, [{struct, [{ip_address, <<"10.0.1.22">>},
+                                               {uptime, 123443},
+                                               {running, true},
+                                               {ports, [11211]},
+                                               {uri, <<"https://first_node.in.pool.com:80/pool/Another Pool/node/first_node/">>},
+                                               {name, <<"first_node">>},
+                                               {fqdn, <<"first_node.in.pool.com">>}]}, {struct, [{ip_address, <<"10.0.1.22">>},
+                                                                                             {uptime, 123123},
+                                                                                             {running, true},
+                                                                                             {ports, [11211]},
+                                                                                             {uri, <<"https://second_node.in.pool.com:80/pool/Another Pool/node/second_node/">>},
+                                                                                             {name, <<"second_node">>},
+                                                                                             {fqdn, <<"second_node.in.pool.com">>}]}]},
+                             {bucket, [{struct, [{uri, <<"/buckets/5">>},
+                                                 {name, <<"Excerciser Another">>}]}]},
+                             {stats, {struct, [{uri, <<"/buckets/4/stats?really_for_pool=2">>}]}},
+                             {default_bucket_uri, <<"/buckets/5">>},
+                             {name, <<"Another Pool">>}]}
+          end,
+    reply_json(Req, Res).
+
+handle_bucket_info(Id, Req) ->
+    Res = case Id of
+              "4" -> {struct, [{pool_uri, <<"asdasdasdasd">>},
+                               {stats, {struct, [{uri, <<"/buckets/4/stats">>}]}},
+                               {name, <<"Excerciser Application">>}]};
+              _ -> {struct, [{pool_uri, <<"asdasdasdasd">>},
+                             {stats, {struct, [{uri, <<"/buckets/5/stats">>}]}},
+                             {name, <<"Excerciser Another">>}]}
+          end,
+    reply_json(Req, Res).
+
+%% milliseconds since 1970 Jan 1 at UTC
+java_date() ->
+    {MegaSec, Sec, Millis} = erlang:now(),
+    (MegaSec * 1000000 + Sec) * 1000 + Millis.
+
+handle_bucket_stats(_Id, Req) ->
+    Now = java_date(),
+    Params = Req:parse_qs(),
+    Samples = [{gets, [25, 10, 5, 46, 100, 74]},
+               {misses, [100, 74, 25, 10, 5, 46]},
+               {sets, [74, 25, 10, 5, 46, 100]},
+               {ops, [10, 5, 46, 100, 74, 25]}],
+    SamplesSize = 6,
+    SamplesInterval = case proplist:get_value(opspersecond_zoom, Params) of
+                          "now" -> 1;
+                          "1hr" -> 3600/SamplesSize;
+                          "24hr" -> 86400/SamplesSize
+                      end,
+    StartTstampParam = proplist:get_value(opsbysecond_start_tstamp, Params),
+    %% cut_number = samples
+    %% if params['opsbysecond_start_tstamp']
+    %%   start_tstamp = params['opsbysecond_start_tstamp'].to_i/1000.0
+    %%   cut_seconds = tstamp - start_tstamp
+    %%   if cut_seconds > 0 && cut_seconds < samples_interval*samples
+    %%     cut_number = (cut_seconds/samples_interval).floor
+    %%   end
+    %% end
+    CutNumber = case StartTstampParam of
+                    undefined -> SamplesSize;
+                    _ ->
+                        StartTstamp = list_to_float(StartTstampParam),
+                        CutMsec = Now - StartTstamp,
+                        if
+                            ((CutMsec > 0) andalso (CutMsec < SamplesInterval*1000*Samples)) ->
+                                trunc(CutMsec/SamplesInterval/1000);
+                            true -> SamplesSize
+                        end
+                end,
+    Rotates = (Now div 1000) rem SamplesSize,
+    CutSamples = lists:map(fun ({K, S}) ->
+                                   %% rv['op'][name] = (rv['op'][name] * 2)[rotates, samples]
+                                   %% rv['op'][name] = rv['op'][name][-cut_number..-1]
+                                   V = lists:sublist(lists:append(S, S), Rotates + 1, SamplesSize),
+                                   NewSamples = lists:sublist(V, SamplesSize-CutNumber+1, CutNumber),
+                                   {K, NewSamples}
+                           end),
+    Res = {struct, [{hot_keys, [{struct, [{name, <<"user:image:value">>},
+                                          {gets, 10000},
+                                          {bucket, <<"Excerciser application">>},
+                                          {misses, 100},
+                                          {type, <<"Persistent">>}]},
+                                {struct, [{name, <<"user:image:value2">>},
+                                          {gets, 10000},
+                                          {bucket, <<"Excerciser application">>},
+                                          {misses, 100},
+                                          {type, <<"Cache">>}]},
+                                {struct, [{name, <<"user:image:value3">>},
+                                          {gets, 10000},
+                                          {bucket, <<"Excerciser application">>},
+                                          {misses, 100},
+                                          {type, <<"Persistent">>}]},
+                                {struct, [{name, <<"user:image:value4">>},
+                                          {gets, 10000},
+                                          {bucket, <<"Excerciser application">>},
+                                          {misses, 100},
+                                          {type, <<"Cache">>}]}]},
+                    {ops, [{struct, [{tstamp, Now},
+                                     {samples_interval, SamplesInterval}
+                                     | CutSamples]}]}]},
+    reply_json(Req, Res).
+
 
 get_option(Option, Options) ->
     {proplists:get_value(Option, Options), proplists:delete(Option, Options)}.
