@@ -1,29 +1,30 @@
--module(ecukes).
+-module(cucumberl).
 
 -include_lib("eunit/include/eunit.hrl").
 
 -compile(export_all).
 
-% Subset of cucumber/gherkin parser & driver in erlang.
+% Cucumber parser & driver in erlang, in a single file,
+% implementing a subset of the cucumber/gherkin DSL.
 %
-% Example step implementation pattern...
+% Example step implementation pattern in erlang...
 %
-% step([given, i, have, already, installed, the, _Product], _Line) ->
-%     % Your step implementation here.
-%     anything_but_undefined.
+%   step([given, i, have, entered, N, into, the, calculator], _Line) ->
+%       % Your step implementation here.
+%       anything_but_undefined.
 %
-% Example call...
+% Example run...
 %
-% cucumberl:cucumber("./features/sample.feature").
+%   cucumberl:run("./features/sample.feature").
 %
-cucumber(FilePath)              -> cucumber(FilePath, []).
-cucumber(FilePath, StepModules) -> cucumber(FilePath, StepModules, 1).
-cucumber(FilePath, StepModules, LineNumStart) ->
+run(FilePath)              -> run(FilePath, []).
+run(FilePath, StepModules) -> run(FilePath, StepModules, 1).
+run(FilePath, StepModules, LineNumStart) ->
     StepModulesX = StepModules ++ [?MODULE],
     Lines = lines(FilePath),
-    cucumber_lines(Lines, StepModulesX, LineNumStart).
+    run_lines(Lines, StepModulesX, LineNumStart).
 
-cucumber_lines(Lines, StepModules, LineNumStart) ->
+run_lines(Lines, StepModules, LineNumStart) ->
     {_, _, _} =
         lists:foldl(
           fun (Line, {Section, GWT, LineNum} = Acc) ->
@@ -59,12 +60,13 @@ process_line(Line, {Section, GWT, LineNum}, StepModules) ->
     %   ['when', i, have, installed, erlang]
     % or
     %   ['then', i, should, see, someone, calling, me]
-    % Some atoms are reserved words in erlang ('when', 'if', 'then', etc)
+    %
+    % Some atoms are reserved words in erlang ('when', 'if', 'then')
     % and need single quoting.
+    %
     Tokens = zip_odd_even(TokenAtoms, QuotedStrs, 1, []),
     {Section2, GWT2, Result} =
         case {Section, Tokens} of
-            {_, ['feature:' | _]}  -> {feature,   undefined, undefined};
             {_, ['scenario:' | _]} -> {scenario,  undefined, undefined};
             {_, []}                -> {undefined, undefined, undefined};
             {undefined, _}         -> {undefined, undefined, undefined};
