@@ -1,0 +1,3 @@
+im(). % starts UI
+ii([?YOUR_MODULE]). % instruments (?) given module(s)
+iaa([init]). % don't know yet
