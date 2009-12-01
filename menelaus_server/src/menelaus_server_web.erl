@@ -123,12 +123,13 @@ handle_bucket_stats(_Id, Req) ->
                {sets, [74, 25, 10, 5, 46, 100]},
                {ops, [10, 5, 46, 100, 74, 25]}],
     SamplesSize = 6,
-    SamplesInterval = case proplist:get_value(opspersecond_zoom, Params) of
+    OpsPerSecondZoom = proplists:get_value("opspersecond_zoom", Params),
+    SamplesInterval = case OpsPerSecondZoom of
                           "now" -> 1;
-                          "1hr" -> 3600/SamplesSize;
-                          "24hr" -> 86400/SamplesSize
+                          "24hr" -> 86400/SamplesSize;
+                          _ -> 3600/SamplesSize
                       end,
-    StartTstampParam = proplist:get_value(opsbysecond_start_tstamp, Params),
+    StartTstampParam = proplists:get_value("opsbysecond_start_tstamp", Params),
     %% cut_number = samples
     %% if params['opsbysecond_start_tstamp']
     %%   start_tstamp = params['opsbysecond_start_tstamp'].to_i/1000.0
@@ -150,12 +151,16 @@ handle_bucket_stats(_Id, Req) ->
                 end,
     Rotates = (Now div 1000) rem SamplesSize,
     CutSamples = lists:map(fun ({K, S}) ->
-                                   %% rv['op'][name] = (rv['op'][name] * 2)[rotates, samples]
+                                   V = case SamplesInterval of
+                                           %% rv['op'][name] = (rv['op'][name] * 2)[rotates, samples]
+                                           1 -> lists:sublist(lists:append(S, S), Rotates + 1, SamplesSize);
+                                           _ -> S
+                                       end,
                                    %% rv['op'][name] = rv['op'][name][-cut_number..-1]
-                                   V = lists:sublist(lists:append(S, S), Rotates + 1, SamplesSize),
                                    NewSamples = lists:sublist(V, SamplesSize-CutNumber+1, CutNumber),
                                    {K, NewSamples}
-                           end),
+                           end,
+                           Samples),
     Res = {struct, [{hot_keys, [{struct, [{name, <<"user:image:value">>},
                                           {gets, 10000},
                                           {bucket, <<"Excerciser application">>},
@@ -176,9 +181,9 @@ handle_bucket_stats(_Id, Req) ->
                                           {bucket, <<"Excerciser application">>},
                                           {misses, 100},
                                           {type, <<"Cache">>}]}]},
-                    {ops, [{struct, [{tstamp, Now},
-                                     {samples_interval, SamplesInterval}
-                                     | CutSamples]}]}]},
+                    {op, {struct, [{tstamp, Now},
+                                   {samples_interval, SamplesInterval}
+                                   | CutSamples]}}]},
     reply_json(Req, Res).
 
 
