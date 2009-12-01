@@ -9,22 +9,28 @@
 -compile(export_all).
 
 loop_in(InSock, OutPid, CmdNum, Module, Session) ->
-    {ok, Cmd, CmdArgs} = recv(InSock),
-    {ok, Session2} =
-        Module:cmd(Cmd, Session, InSock, {OutPid, CmdNum}, CmdArgs),
-    % TODO: Need protocol-specific error handling here,
-    %       such as to send ERROR on unknown cmd.  Currently,
-    %       the connection just closes.
-    loop_in(InSock, OutPid, CmdNum + 1, Module, Session2).
+    case recv(InSock) of
+        {ok, Cmd, CmdArgs} ->
+            {ok, Session2} =
+                Module:cmd(Cmd, Session, InSock, {OutPid, CmdNum}, CmdArgs),
+            % TODO: Need protocol-specific error handling here,
+            %       such as to send ERROR on unknown cmd.  Currently,
+            %       the connection just closes.
+            loop_in(InSock, OutPid, CmdNum + 1, Module, Session2);
+        {error, closed} -> ok
+    end.
 
 loop_in_prefix(Prefix, InSock, OutPid, CmdNum, Module, Session) ->
-    {ok, Cmd, CmdArgs} = recv_prefix(Prefix, InSock),
-    {ok, Session2} =
-        Module:cmd(Cmd, Session, InSock, {OutPid, CmdNum}, CmdArgs),
-    % TODO: Need protocol-specific error handling here,
-    %       such as to send ERROR on unknown cmd.  Currently,
-    %       the connection just closes.
-    loop_in(InSock, OutPid, CmdNum + 1, Module, Session2).
+    case recv_prefix(Prefix, InSock) of
+        {ok, Cmd, CmdArgs} ->
+            {ok, Session2} =
+                Module:cmd(Cmd, Session, InSock, {OutPid, CmdNum}, CmdArgs),
+            % TODO: Need protocol-specific error handling here,
+            %       such as to send ERROR on unknown cmd.  Currently,
+            %       the connection just closes.
+            loop_in(InSock, OutPid, CmdNum + 1, Module, Session2);
+        {error, closed} -> ok
+    end.
 
 loop_out(OutSock) ->
     receive
@@ -34,10 +40,16 @@ loop_out(OutSock) ->
     end.
 
 recv(InSock) ->
-    {ok, Header, Entry} = mc_binary:recv(InSock, req),
-    {ok, Header#mc_header.opcode, {Header, Entry}}.
+    case mc_binary:recv(InSock, req) of
+        {ok, Header, Entry} ->
+            {ok, Header#mc_header.opcode, {Header, Entry}};
+        Err -> Err
+    end.
 
 recv_prefix(Prefix, InSock) ->
-    {ok, Header, Entry} = mc_binary:recv_prefix(Prefix, InSock, req),
-    {ok, Header#mc_header.opcode, {Header, Entry}}.
+    case mc_binary:recv_prefix(Prefix, InSock, req) of
+        {ok, Header, Entry} ->
+            {ok, Header#mc_header.opcode, {Header, Entry}};
+        Err -> Err
+    end.
 

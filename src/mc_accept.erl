@@ -38,7 +38,6 @@ init(PortNum, Env) ->
 % Accept incoming connections.
 accept_loop(LS, {ProtocolModule, ProcessorModule, ProcessorEnv}) ->
     {ok, NS} = gen_tcp:accept(LS),
-    ?debugFmt("accept ~p~n", [NS]),
     % Ask the processor for a new session object.
     {ok, ProcessorEnv2, ProcessorSession} =
         ProcessorModule:session(NS, ProcessorEnv),

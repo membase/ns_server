@@ -38,17 +38,23 @@ send(Sock, Kind, Header, Entry) ->
     send(Sock, encode(Kind, Header, Entry)).
 
 recv(Sock, HeaderKind) ->
-    {ok, HeaderBin} = recv_data(Sock, ?HEADER_LEN),
-    {Header, Entry} = decode_header(HeaderKind, HeaderBin),
-    recv_body(Sock, Header, Entry).
+    case recv_data(Sock, ?HEADER_LEN) of
+        {ok, HeaderBin} ->
+            {Header, Entry} = decode_header(HeaderKind, HeaderBin),
+            recv_body(Sock, Header, Entry);
+        Err -> Err
+    end.
 
 recv_prefix(Prefix, Sock, HeaderKind) ->
     PrefixLen = bin_size(Prefix),
     HeaderRestLen = ?HEADER_LEN - PrefixLen,
-    {ok, HeaderRest} = recv_data(Sock, HeaderRestLen),
-    HeaderBin = <<Prefix/binary, HeaderRest/binary>>,
-    {Header, Entry} = decode_header(HeaderKind, HeaderBin),
-    recv_body(Sock, Header, Entry).
+    case recv_data(Sock, HeaderRestLen) of
+        {ok, HeaderRest} ->
+            HeaderBin = <<Prefix/binary, HeaderRest/binary>>,
+            {Header, Entry} = decode_header(HeaderKind, HeaderBin),
+            recv_body(Sock, Header, Entry);
+        Err -> Err
+    end.
 
 recv_body(Sock, #mc_header{extlen = ExtLen,
                            keylen = KeyLen,
