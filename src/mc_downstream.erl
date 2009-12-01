@@ -46,8 +46,8 @@ send(Addr, Out, Cmd, CmdArgs,
         fun (Head, Body) ->
             case ((not is_function(ResponseFilter)) orelse
                   (ResponseFilter(Head, Body))) of
-                true  -> apply(ResponseModule, send_response,
-                               [Kind, Out, Cmd, Head, Body]);
+                true  -> ResponseModule:send_response(Kind, Out,
+                                                      Cmd, Head, Body);
                 false -> false
             end
         end,
@@ -142,7 +142,7 @@ loop(Addr, Sock) ->
     receive
         {send, NotifyPid, NotifyData, ResponseFun,
                CmdModule, Cmd, CmdArgs} ->
-            RV = apply(CmdModule, cmd, [Cmd, Sock, ResponseFun, CmdArgs]),
+            RV = CmdModule:cmd(Cmd, Sock, ResponseFun, CmdArgs),
             notify(NotifyPid, NotifyData, RV),
             case RV of
                 {ok, _}    -> loop(Addr, Sock);

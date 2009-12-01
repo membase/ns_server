@@ -10,8 +10,8 @@
 
 loop_in(InSock, OutPid, CmdNum, Module, Session) ->
     {ok, Cmd, CmdArgs} = recv(InSock),
-    {ok, Session2} = apply(Module, cmd,
-                           [Cmd, Session, InSock, {OutPid, CmdNum}, CmdArgs]),
+    {ok, Session2} =
+        Module:cmd(Cmd, Session, InSock, {OutPid, CmdNum}, CmdArgs),
     % TODO: Need protocol-specific error handling here,
     %       such as to send ERROR on unknown cmd.  Currently,
     %       the connection just closes.
@@ -19,8 +19,8 @@ loop_in(InSock, OutPid, CmdNum, Module, Session) ->
 
 loop_in_prefix(Prefix, InSock, OutPid, CmdNum, Module, Session) ->
     {ok, Cmd, CmdArgs} = recv_prefix(Prefix, InSock),
-    {ok, Session2} = apply(Module, cmd,
-                           [Cmd, Session, InSock, {OutPid, CmdNum}, CmdArgs]),
+    {ok, Session2} =
+        Module:cmd(Cmd, Session, InSock, {OutPid, CmdNum}, CmdArgs),
     % TODO: Need protocol-specific error handling here,
     %       such as to send ERROR on unknown cmd.  Currently,
     %       the connection just closes.

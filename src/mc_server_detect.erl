@@ -27,16 +27,14 @@ detect(B, InSock, OutPid, CmdNum,
 switch(ProtocolModule, ProcessorModule, ProcessorEnv,
        B, InSock, OutPid, CmdNum) ->
     {ok, ProcessorEnv, ProcessorSession} =
-        apply(ProcessorModule, session, [InSock, ProcessorEnv]),
+        ProcessorModule:session(InSock, ProcessorEnv),
     OutPid ! {switch, ProtocolModule},
-    apply(ProtocolModule, loop_in_prefix,
-          [B, InSock, OutPid, CmdNum,
-           ProcessorModule, ProcessorSession]).
+    ProtocolModule:loop_in_prefix(B, InSock, OutPid, CmdNum,
+                                  ProcessorModule, ProcessorSession).
 
 loop_out(OutSock) ->
     receive
-        {switch, ProtocolModule} ->
-            apply(ProtocolModule, loop_out, [OutSock])
+        {switch, ProtocolModule} -> ProtocolModule:loop_out(OutSock)
     end.
 
 session(_Sock, ProcessorEnv) ->

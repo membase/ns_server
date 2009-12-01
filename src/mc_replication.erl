@@ -224,10 +224,8 @@ notify_replicator(NotifyPid, NotifyData,
                           case X of
                               {Addr, {response, Kind,
                                       Cmd, Head, Body}} ->
-                                  apply(ResMod,
-                                        send_response,
-                                        [Kind, Out,
-                                         Cmd, Head, Body]);
+                                  ResMod:send_response(Kind, Out,
+                                                       Cmd, Head, Body);
                               _ -> ok
                           end
                       end,

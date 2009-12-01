@@ -41,7 +41,7 @@ accept_loop(LS, {ProtocolModule, ProcessorModule, ProcessorEnv}) ->
     ?debugFmt("accept ~p~n", [NS]),
     % Ask the processor for a new session object.
     {ok, ProcessorEnv2, ProcessorSession} =
-        apply(ProcessorModule, session, [NS, ProcessorEnv]),
+        ProcessorModule:session(NS, ProcessorEnv),
     % Spawn a session-handling process.
     Pid = spawn(?MODULE, session,
                 [NS, ProtocolModule, ProcessorModule, ProcessorSession]),
@@ -53,6 +53,6 @@ session(Sock, ProtocolModule, ProcessorModule, ProcessorSession) ->
     % Spawn a linked, protocol-specific output-loop/writer process.
     OutPid = spawn_link(ProtocolModule, loop_out, [Sock]),
     % Continue with a protocol-specific input-loop to receive messages.
-    apply(ProtocolModule, loop_in,
-          [Sock, OutPid, 1, ProcessorModule, ProcessorSession]).
+    ProtocolModule:loop_in(Sock, OutPid, 1,
+                           ProcessorModule, ProcessorSession).
 
