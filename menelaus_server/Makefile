@@ -6,3 +6,5 @@ deps:
 
 clean:
 	(cd src;$(MAKE) clean)
+
+.PHONY: deps
