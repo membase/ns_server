@@ -18,24 +18,24 @@
 %
 cucumber(FilePath)              -> cucumber(FilePath, []).
 cucumber(FilePath, StepModules) -> cucumber(FilePath, StepModules, 1).
-cucumber(FilePath, StepModules, StartNum) ->
+cucumber(FilePath, StepModules, LineNumStart) ->
     StepModulesX = StepModules ++ [?MODULE],
     Lines = lines(FilePath),
-    cucumber_lines(Lines, StepModulesX, StartNum).
+    cucumber_lines(Lines, StepModulesX, LineNumStart).
 
-cucumber_lines(Lines, StepModules, StartNum) ->
+cucumber_lines(Lines, StepModules, LineNumStart) ->
     {_, _, _} =
         lists:foldl(
-          fun (Line, {Mode, GWT, LineNum} = Acc) ->
-              case LineNum >= StartNum of
+          fun (Line, {Section, GWT, LineNum} = Acc) ->
+              case LineNum >= LineNumStart of
                   true  -> process_line(Line, Acc, StepModules);
-                  false -> {Mode, GWT, LineNum + 1}
+                  false -> {Section, GWT, LineNum + 1}
               end
           end,
           {undefined, undefined, 1}, Lines),
     ok.
 
-process_line(Line, {Mode, GWT, LineNum}, StepModules) ->
+process_line(Line, {Section, GWT, LineNum}, StepModules) ->
     % GWT stands for given-when-then.
     % GWT is the previous line's given-when-then atom.
     io:format("~s:~s ",
@@ -53,17 +53,21 @@ process_line(Line, {Mode, GWT, LineNum}, StepModules) ->
                               string:tokens(X, " "))
                 end,
                 TokenStrs),
+    % Zip it back together into a Tokens list that might look like...
+    %   [given, i, have, entered, "Joe Armstrong", as, my, name]
+    % or
+    %   ['when', i, have, installed, erlang]
+    % or
+    %   ['then', i, should, see, someone, calling, me]
+    % Some atoms are reserved words in erlang ('when', 'if', 'then', etc)
+    % and need single quoting.
     Tokens = zip_odd_even(TokenAtoms, QuotedStrs, 1, []),
-    {Mode2, GWT2, Result} =
-        case {Mode, Tokens} of
-            {_, ['feature:' | _]}  ->
-                {feature, undefined, undefined};
-            {_, ['scenario:' | _]} ->
-                {scenario, undefined, undefined};
-            {_, []}                ->
-                {undefined, undefined, undefined};
-            {undefined, _}         ->
-                {undefined, undefined, undefined};
+    {Section2, GWT2, Result} =
+        case {Section, Tokens} of
+            {_, ['feature:' | _]}  -> {feature,   undefined, undefined};
+            {_, ['scenario:' | _]} -> {scenario,  undefined, undefined};
+            {_, []}                -> {undefined, undefined, undefined};
+            {undefined, _}         -> {undefined, undefined, undefined};
             {scenario, [TokensHead | TokensTail]} ->
                 G = case {GWT, TokensHead} of
                         {undefined, _}    -> TokensHead;
@@ -71,23 +75,23 @@ process_line(Line, {Mode, GWT, LineNum}, StepModules) ->
                         {GWT, TokensHead} -> TokensHead
                     end,
                 R = lists:foldl(
-                      fun (SM, Acc) ->
+                      fun (StepModule, Acc) ->
                           case Acc of
                               true  -> Acc;
                               false ->
-                                  S = SM:step([G | TokensTail], Line),
+                                  S = StepModule:step([G | TokensTail], Line),
                                   S =/= undefined
                           end
                       end,
                       false, StepModules),
-                {Mode, G, R}
+                {Section, G, R}
         end,
-    case {Mode2, Result} of
+    case {Section2, Result} of
         {scenario, true}  -> io:format("ok~n");
         {scenario, false} -> io:format("NO-STEP~n");
         _                 -> io:format("~n")
     end,
-    {Mode2, GWT2, LineNum + 1}.
+    {Section2, GWT2, LineNum + 1}.
 
 step(['feature:' | _], _Line)  -> true;
 step(['scenario:' | _], _Line) -> true;
