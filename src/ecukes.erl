@@ -10,11 +10,11 @@
 %
 % step([given, i, have, already, installed, the, _Product], _Line) ->
 %     % Your step implementation here.
-%     true;
+%     anything_but_undefined.
 %
 % Example call...
 %
-% ecukes:cucumber("./features/sample.feature").
+% cucumberl:cucumber("./features/sample.feature").
 %
 cucumber(FilePath)              -> cucumber(FilePath, []).
 cucumber(FilePath, StepModules) -> cucumber(FilePath, StepModules, 1).
@@ -39,7 +39,7 @@ process_line(Line, {Section, GWT, LineNum}, StepModules) ->
     % GWT stands for given-when-then.
     % GWT is the previous line's given-when-then atom.
     io:format("~s:~s ",
-              [string:left(Line, 59),
+              [string:left(Line, 65),
                string:left(integer_to_list(LineNum), 4)]),
     % Handle quoted sections by spliting by "\"" first.
     {TokenStrs, QuotedStrs} =
@@ -87,11 +87,13 @@ process_line(Line, {Section, GWT, LineNum}, StepModules) ->
                 {Section, G, R}
         end,
     case {Section2, Result} of
-        {scenario, true}  -> io:format("ok~n");
-        {scenario, false} -> io:format("NO-STEP~n");
-        _                 -> io:format("~n")
-    end,
-    {Section2, GWT2, LineNum + 1}.
+        {scenario, true}  -> io:format("ok~n"),
+                             {Section2, GWT2, LineNum + 1};
+        {scenario, false} -> io:format("NO-STEP~n"),
+                             {undefined, undefined, LineNum + 1};
+        _                 -> io:format("~n"),
+                             {Section2, GWT2, LineNum + 1}
+    end.
 
 step(['feature:' | _], _Line)  -> true;
 step(['scenario:' | _], _Line) -> true;
