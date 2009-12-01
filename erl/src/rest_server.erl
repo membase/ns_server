@@ -19,12 +19,18 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
+         terminate/2, code_change/3, debugger_on/0]).
 
 -export ([print_banner/0]).
 -record(state, {}).
 -define(SERVER, ?MODULE).
 -define(JSON_ENCODE(V), mochijson2:encode(V)).
+
+
+debugger_on() ->
+    debugger:im(),
+    debugger:ii([rest_server]),
+    debugger:iaa([init]).
 
 %%====================================================================
 %% API
@@ -54,8 +60,8 @@ init(Args) ->
     io:format("before banner~n"),
     print_banner(),
     io:format("before start_mochiweb~n"),
-    Res = (catch start_mochiweb(Args)),
-    io:format("Started mochiweb with: ~p~nRes:~p~n", [Args], Res),
+    Res = (catch start_mochiweb(hd(Args))),
+    io:format("Started mochiweb with: ~p~nRes:~p~n", [Args, Res]),
     {ok, #state{}}.
 
 
@@ -125,7 +131,7 @@ dispatch_requests(Req) ->
     handle_raw(Action, Req).
 
 handle_raw(Path, Req) ->
-    case file:read_file(Path) of
+    case file:read_file(lists:concat(["../public/", Path])) of
         {ok, Contents} -> Req:ok({"text/html", Contents});
         _ -> route(string:tokens(Path, "/"), Req)
     end.
