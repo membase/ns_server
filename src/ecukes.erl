@@ -1,5 +1,7 @@
 -module(ecukes).
 
+-include_lib("eunit/include/eunit.hrl").
+
 -compile(export_all).
 
 % Subset of cucumber/gherkin parser & driver in erlang.
@@ -37,10 +39,21 @@ process_line(Line, {Mode, GWT, LineNum}, StepModules) ->
     io:format("~s:~s ",
               [string:left(Line, 59),
                string:left(integer_to_list(LineNum), 4)]),
-    Tokens = string:tokens(string:to_lower(Line), " "),
-    Atoms = lists:map(fun list_to_atom/1, Tokens),
+    % Handle quoted sections by spliting by "\"" first.
+    {TokenStrs, QuotedStrs} =
+        unzip_odd_even(string:tokens(Line, "\"")),
+    % Atomize the unquoted sections.
+    TokenAtoms =
+      lists:map(fun (X) ->
+                    lists:map(fun (Y) ->
+                                  list_to_atom(string:to_lower(Y))
+                              end,
+                              string:tokens(X, " "))
+                end,
+                TokenStrs),
+    Tokens = zip_odd_even(TokenAtoms, QuotedStrs, 1, []),
     {Mode2, GWT2, Result} =
-        case {Mode, Atoms} of
+        case {Mode, Tokens} of
             {_, ['feature:' | _]}  ->
                 {feature, undefined, undefined};
             {_, ['scenario:' | _]} ->
@@ -49,18 +62,18 @@ process_line(Line, {Mode, GWT, LineNum}, StepModules) ->
                 {undefined, undefined, undefined};
             {undefined, _}         ->
                 {undefined, undefined, undefined};
-            {scenario, [AtomsHead | AtomsTail]} ->
-                G = case {GWT, AtomsHead} of
-                        {undefined, _}   -> AtomsHead;
-                        {_, 'and'}       -> GWT;
-                        {GWT, AtomsHead} -> AtomsHead
+            {scenario, [TokensHead | TokensTail]} ->
+                G = case {GWT, TokensHead} of
+                        {undefined, _}    -> TokensHead;
+                        {_, 'and'}        -> GWT;
+                        {GWT, TokensHead} -> TokensHead
                     end,
                 R = lists:foldl(
                       fun (SM, Acc) ->
                               case Acc of
                                   true  -> Acc;
                                   false ->
-                                      S = SM:step([G, AtomsTail], Line),
+                                      S = SM:step([G | TokensTail], Line),
                                       S =/= undefined
                               end
                       end,
@@ -90,3 +103,27 @@ lines([$\n | Rest], CurrLine, Lines) ->
 lines([X | Rest], CurrLine, Lines) ->
     lines(Rest, [X | CurrLine], Lines).
 
+% Also does flattening of Odds.
+
+zip_odd_even([], [], _F, Acc) ->
+    lists:reverse(Acc);
+zip_odd_even([], [Even | Evens], F, Acc) ->
+    zip_odd_even([], Evens, F, [Even | Acc]);
+zip_odd_even([Odd | Odds], [], F, Acc) ->
+    zip_odd_even(Odds, [], F, lists:reverse(Odd) ++ Acc);
+zip_odd_even([Odd | Odds], Evens, 1, Acc) ->
+    zip_odd_even(Odds, Evens, 0, lists:reverse(Odd) ++ Acc);
+zip_odd_even(Odds, [Even | Evens], 0, Acc) ->
+    zip_odd_even(Odds, Evens, 1, [Even | Acc]).
+
+unzip_odd_even(Tokens) ->
+    {Odds, Evens, _F} =
+        lists:foldl(fun (X, {Odds, Evens, F}) ->
+                        case F of
+                            1 -> {[X | Odds], Evens, 0};
+                            0 -> {Odds, [X | Evens], 1}
+                        end
+                    end,
+                    {[], [], 1},
+                    Tokens),
+    {lists:reverse(Odds), lists:reverse(Evens)}.
