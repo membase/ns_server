@@ -24,14 +24,16 @@ cucumber(FilePath, StepModules, StartNum) ->
     cucumber_lines(Lines, StepModulesX, StartNum).
 
 cucumber_lines(Lines, StepModules, StartNum) ->
-    lists:foldl(
-      fun (Line, {Mode, GWT, LineNum} = Acc) ->
-          case LineNum >= StartNum of
-              true  -> process_line(Line, Acc, StepModules);
-              false -> {Mode, GWT, LineNum + 1}
-          end
-      end,
-      {undefined, undefined, 1}, Lines).
+    {_, _, _} =
+        lists:foldl(
+          fun (Line, {Mode, GWT, LineNum} = Acc) ->
+              case LineNum >= StartNum of
+                  true  -> process_line(Line, Acc, StepModules);
+                  false -> {Mode, GWT, LineNum + 1}
+              end
+          end,
+          {undefined, undefined, 1}, Lines),
+    ok.
 
 process_line(Line, {Mode, GWT, LineNum}, StepModules) ->
     % GWT stands for given-when-then.
@@ -70,12 +72,12 @@ process_line(Line, {Mode, GWT, LineNum}, StepModules) ->
                     end,
                 R = lists:foldl(
                       fun (SM, Acc) ->
-                              case Acc of
-                                  true  -> Acc;
-                                  false ->
-                                      S = SM:step([G | TokensTail], Line),
-                                      S =/= undefined
-                              end
+                          case Acc of
+                              true  -> Acc;
+                              false ->
+                                  S = SM:step([G | TokensTail], Line),
+                                  S =/= undefined
+                          end
                       end,
                       false, StepModules),
                 {Mode, G, R}
@@ -103,7 +105,8 @@ lines([$\n | Rest], CurrLine, Lines) ->
 lines([X | Rest], CurrLine, Lines) ->
     lines(Rest, [X | CurrLine], Lines).
 
-% Also does flattening of Odds.
+% This zip_odd_even() also does flattening of Odds,
+% since each Odd might be a list of atoms.
 
 zip_odd_even([], [], _F, Acc) ->
     lists:reverse(Acc);
