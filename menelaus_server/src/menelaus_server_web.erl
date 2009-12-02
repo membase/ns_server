@@ -30,6 +30,7 @@ loop(Req, DocRoot) ->
     case Req:get(method) of
         Method when Method =:= 'GET'; Method =:= 'HEAD' ->
             case string:tokens(Path, "/") of
+                [] -> redirect_permanently("/index.html", Req);
                 ["pools"] ->
                     handle_pools(Req);
                 ["pools", Id] ->
@@ -51,6 +52,26 @@ loop(Req, DocRoot) ->
     end.
 
 %% Internal API
+
+redirect_permanently(Path, Req) -> redirect_permanently(Path, Req, []).
+
+%% mostly extracted from mochiweb_request:maybe_redirect/3
+redirect_permanently(Path, Req, ExtraHeaders) ->
+    %% TODO: support https transparently
+    Location = "http://" ++ Req:get_header_value("host") ++ Path,
+    LocationBin = list_to_binary(Location),
+    Top = <<"<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">"
+           "<html><head>"
+           "<title>301 Moved Permanently</title>"
+           "</head><body>"
+           "<h1>Moved Permanently</h1>"
+           "<p>The document has moved <a href=\"">>,
+    Bottom = <<">here</a>.</p></body></html>\n">>,
+    Body = <<Top/binary, LocationBin/binary, Bottom/binary>>,
+    Req:respond({301,
+                 [{"Location", Location},
+                  {"Content-Type", "text/html"} | ExtraHeaders],
+                 Body}).
 
 reply_json(Req, Body) ->
     Req:ok({"application/json", mochijson2:encode(Body)}).
