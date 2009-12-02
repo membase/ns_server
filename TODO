@@ -8,6 +8,8 @@ o [DONE] marks and labels on graphs (jquery sparklines seem inappropriate)
 o [DONE] respect interval select for all sub-sections
 * Store password/login in cookies ? So that you don't have to re-enter
    them on page refresh.
+* samples_interval for stats response should be in milliseconds, just
+   like tstamp.
 
 * failure to retreive stats after switch to another zoom leaves us
    stale data (showing data for previous zoom)
