@@ -87,4 +87,12 @@ test() ->
       Tests),
     ok.
 
-
+cucumber() ->
+    CucumberStepModules = [],
+    CucumberFeatures = ["rebalancing"],
+    lists:foreach(
+      fun (Feature) ->
+          cucumberl:run("./features/" ++ Feature ++ ".feature",
+                        CucumberStepModules)
+      end,
+      CucumberFeatures).
