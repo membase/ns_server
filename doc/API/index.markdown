@@ -4,7 +4,7 @@ title: kvstore REST APIs
 ---
 # caching kvstore APIs
 
-Version 20091119
+Version 20091202
 
 This document specifies request and response for both the Management Console
 (management channel) and the KVStore itself (data channel) when talking to
@@ -143,12 +143,17 @@ configured and queried.
 of a service, but are also required to provide or proxy Pool level resources.
 * Bucket - A logical grouping of resources within a pool.  A bucket provides a
 number of things which ease pool management and enable management of resources:
-** Namespace - Buckets provide unconstrained, free text namespaces.
-** Storage Handling Rules - Rules on how data is persisted, replicated and
-otherwise handled is defined at the bucket level.
-** Statistics - Buckets provide bucket level data view of counters and
-periodic metrics of the overall system.  Historic storage of statistics can be
-configured and queried.  These counters and metrics are specific to the bucket.
+  >_Namespace_ - Buckets provide unconstrained namespaces to users to define
+  > whatever bucket name makes sense to the user.  It also allows the same key
+  > in the same application to be available in multiple places.
+
+  >_Storage Handling Rules_ - Rules on how data is persisted, replicated and
+  > otherwise handled is defined at the bucket level.
+
+  >_Statistics_ - Buckets provide bucket level data view of counters and
+  > periodic metrics of the overall system.  Historic storage of statistics
+  > can be configured and queried.  These counters and metrics are specific to
+  > the bucket.
 
 ## User Interface
 
@@ -247,53 +252,75 @@ transitions to the client, if backward compatibility is desirable.
 Note, this could also have been a GET operation to the pool's GUID instead of
 the human readable pool name.
 
+
 *Response*
 
 <pre class="json">
  HTTP/1.1 200 OK
  Content-Type: application/com.northscale.store+json
  Content-Length: nnn
-
-{
-  "name" : "Default Pool",
-  "id" : 1
-  "node" : [
-    {
-      "name" : "first_node",
-      "uri" : "https://first_node.in.pool.com:80/pool/Default Pool/node/first_node/",
-      "fqdn" : "first_node.in.pool.com",
-      "ip_address" : "10.0.1.20",
-      "running" : true,
-      "ports" : [ 11211 ]
-    },
-    {
-      "name" : "second_node",
-      "uri" : "https://second_node.in.pool.com:80/pool/Default Pool/node/second_node/",
-      "fqdn" : "second_node.in.pool.com",
-      "ip_address" : "10.0.1.21",
-      "running" : true,
-      "ports" : [ 11211 ]
+ {
+   "name" : "Default Pool",
+   "id" : 1,
+   "state": {
+     "current" : "transitioning",
+     "uri" : "/pool/Default Pool/state"
+   }
+   "node" : [
+     {
+       "name" : "10.0.1.20",
+       "uri" : "/addresses/10.0.1.20",
+       "ip_address" : "10.0.1.20",
+       "status" : "healthy",
+       "ports" : {
+         "routing" : 11211,
+         "caching" : 11311,
+         "kvstore" : 11411
+       }
+     },
+     {
+       "name" : "10.0.1.21",
+       "uri" : "/addresses/10.0.1.21",
+       "ip_address" : "10.0.1.20",
+       "status" : "healthy",
+       "ports" : {
+         "routing" : 11211,
+         "caching" : 11311,
+         "kvstore" : 11411
+       }
+     }
+   ]
+   "bucket" : [
+     {
+       "name" : "yourbucket",
+       "guid" : "lksjdflskjdlfj",
+       "uri" : "https://node.in.pool.com/pool/Default Pool/bucket/yourbucket"
+     },
+     {
+       "name" : "yourotherbucket",
+       "guid" : "lksjdflskjdlfj",
+       "uri" : "https://node.in.pool.com/pool/Default Pool/bucket/yourotherbucket"
+     }
+   ],
+   "default-bucket" : "yourbucket",
+   "controller" : {
+      "backup" : {
+        "uri" : "https://node.in.pool.com/startbackup"
+      },
+      "scrub" : {
+        "uri" : "ops/start-scrub"
+      }
+   },
+   "stats" : {
+     "uri" : "http://node.in.pool.com/Default Pool/stats"
     }
-  ]
-  "bucket" : [
-     "name" : "yourbucket",
-     "guid" : "xxxxxxxxxxxx",
-     [
-     "uri" : "https://node.in.pool.com/pool/Default Pool/bucket/yourbucket",
-     "uri" : "https://node.in.pool.com/pool/Default Pool/bucket/GUID-xxxxxxxxxxxx"
-     ]
-  ]
-  "stats" : { "uri" : "https://first_node.in.pool.com:80/pool/stats" },
-  "default-bucket" [
-  "controller" : {
-    "backup" : {
-      "uri" : "ops/start-backup"
-    }
-    "scrub" : {
-      "uri" : "ops/start-scrub"
-  }
-}
+ }
 </pre>
+
+The pool state could be "stable" "unstable" "transitioning" or other values
+which allows the admin UI or clients to see current state and get further
+details if there are some about the updated state.  The URI may be optional
+and will likely be omitted in the "stable" case.
 
 ####Node Details
 
@@ -309,7 +336,9 @@ the human readable pool name.
 
 
 In Javascript, this would lead to being able to, for instance, be able to address
-a URI of the
+a URI on a node directly.  An example of why one may want to do this is either
+for system internal management routines or per-node operations which may make
+sense, like a backup or asking a node to join a pool.
 
 *Response*
 
@@ -318,8 +347,12 @@ a URI of the
   "name" : "first_node",
   "threads" : 8,
   "cache" : "3gb",
-  "running" : true,
-  "port" : 12312,
+  "status: "healthy",
+  "ports" : {
+    "routing" : 11211,
+    "caching" : 11311,
+    "kvstore" : 11411
+  }
   "os" : "none",
   "version" : "123",
   "uptime" : 1231293
@@ -327,84 +360,12 @@ a URI of the
 </pre>
 
 
-####Bucket resources
-
-*Request*
-
-PUT /pool/My New Pool/bucket/New bucket
-{
-   "name" : "New bucket"
-}
-
-*Response*
-
-response 201: bucket was created and valid URIs returned
-
-
-POST /pool/My New Pool/bucket/Another bucket
-{
-   "name" : "Another bucket"
-   "bucketrules" : [ TODO: what are the rules? ]
-}
-
-###Previous thoughts
-
-
-response 200: list of buckets (common name and GUID) and links to buckets
-
-POST /pool/My New Pool
-{
-   "name" : "My New Pool"
-}
-
-
-response 201: pool was created and valid URIs for referencing it returned
- - or -
-response 403: user is not authorized (or no users are authorized because it
-is administratively disabled to all users)
-
-
-
-GET /pool/My New Pool/New bucket
-
-response 200: representation providing URIs for
-a pagenated list of items
-& a link to where individual items may be addressed.
-& a link to the bucket storage handling rules
-& a link to the bucket statistics
-
-PUT /pool/My New Pool/New bucket/New item
-
-
-response 201: created with URIs in header
- - or -
-response 200: representation of created object (useful for CAS on items)
-
-
-TODO: finish description
-
-
-## Independent of management channel and data channel
-Authentication
-
-## Management Channel
-User Management
-Persistent Statistics Rules
-Statistics (instant)
-Statistics (archived samples)
-
-
-## Data Channel
-###All of the "memcapable" operations
-
-###List pool, information on the pool
-
-For instance...
+###List buckets and bucket operations
 
 *Request*
 
 <pre class="restcalls">
- GET /pool/Default Pool
+ GET /pool/Default Pool/bucket
  Host: node.in.your.pool.com
  Authorization: Basic xxxxxxxxxxxxxxxxxxx
  Accept: application/com.northscale.store+json
@@ -417,38 +378,14 @@ For instance...
  HTTP/1.1 200 OK
  Content-Type: application/com.northscale.store+json
  Content-Length: nnn
- [
-  {
-    "name": "Default Pool",
-    "id":1
-    "nodes" : [
-      {
-        "name": "10.0.1.20",
-        "uri": "/addresses/10.0.1.20",
-        "ip_address": "10.0.1.20",
-        "status" : [
-         ]
-        "
-      }
-    ]
-    "buckets" : [
-       name: "yourbucket"
-       guid: lksjdflskjdlfj
-       uri: "https://node.in.pool.com/pool/Default Pool/bucket/yourbucket"
-uri: "https://node.in.pool.com/pool/Default Pool/bucket/GUID-lksjfdfdsfd"
-     ]
-  }
-    "controllers" : {
-      backup: {
-        uri: "https://slkdfjlsfkdjf/startbackup
-      }
-    "stats" : {
-      "uri" : "http://pool/Default Pool/stats
-    }
-]
+ "buckets" : [
+   {
+     "name" : "yourbucket",
+     "guid" : "lksjdflskjdlfj",
+     "uri" : "https://node.in.pool.com/pool/Default Pool/bucket/yourbucket"
+   }
+ ]
 </pre>
-
-###List buckets and bucket operations
 
 ###Statistics
 
@@ -527,9 +464,78 @@ to generate the same kind of response.
 </pre>
 
 
+####Bucket resources
+
+*Request*
+
+PUT /pool/My New Pool/bucket/New bucket
+{
+   "name" : "New bucket"
+}
+
+*Response*
+
+response 201: bucket was created and valid URIs returned
+
+
+POST /pool/My New Pool/bucket/Another bucket
+{
+   "name" : "Another bucket"
+   "bucketrules" : {
+     "persist-range" : [
+       {
+         "min" : 0,
+         "max" : 0
+       },
+       {
+         "min" : 600
+       }
+     ]
+     "replication-factor" : 2
+   }
+}
+
+The bucket rules above show that for the bucket "Another bucket" the bucketrules
+are to persist for two expiration value ranges.  One is from 0 to 0, meaning
+all items which should not expire will persist.  The application developer is
+therefore responsible for cleaning up any of these items.  The second range is
+from 600 seconds (10 minutes) with no maxiumum.  This means any item with an
+expiration equal to or greater than 10 minutes will be persisted.
+
+Note that replication factor (a.k.a. in memory replication across cache nodes)
+may not be supported at 1.0.
+
+#### Pool Operations
+
+*Request*
+
+POST /pool/My New Pool
+{
+   "name" : "My New Pool"
+}
+
+*Response*
+
+
+response 201: pool was created and valid URIs for referencing it returned
+ - or -
+response 403: user is not authorized (or no users are authorized because it
+is administratively disabled to all users)
+
+At release of 1.0, this will always return a 403.
+
+
 # Notes, Questions and References
 
 ## Open Questions
+* Currently, users cannot have multiple pools with the same name managed by the
+  same infrastructure.  They also cannot have multiple buckets with the same
+  names.  This could be an issue in the future.  A globally unique id for either
+  the pool or the bucket could be introduced.  At the moment, it's probably
+  better to just "punt" and recognize that we may some day we may need to allow
+  for merging of pools and buckets, resolving name conflicts.
+* Are ports configurable?  Is this at the node level or the pool level?
+* Where are users managed?
 
 ## References
 The [OCCI working group specifications](http://www.occi-wg.org/) and the
@@ -546,3 +552,5 @@ have been referenced.
 * 20091117 Updated after defending REST and HTTP in discussion with Steve (matt.ingenthron@northscale.com)
 * 20091118 Fleshed out details on the requests and responses (matt.ingenthron@northscale.com)
 * 20091119 More info on stats (matt.ingenthron@northscale.com)
+* 20091202 Made pools and nodes plural (as they should have been), added port
+  information for nodes
