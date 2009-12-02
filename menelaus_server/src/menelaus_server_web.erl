@@ -8,7 +8,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(EUNIT).
--export([test_under_debugger/0]).
+-export([test_under_debugger/0, debugger_apply/2]).
 -endif.
 
 -export([start/1, stop/0, loop/2]).
@@ -120,13 +120,76 @@ java_date() ->
     {MegaSec, Sec, Millis} = erlang:now(),
     (MegaSec * 1000000 + Sec) * 1000 + Millis.
 
+string_hash(String) ->
+    lists:foldl(fun (Val, Acc) -> (Acc * 31 + Val) band 16#0fffffff end,
+                0,
+                String).
+
+my_seed(Number) ->
+    {Number*31, Number*13, Number*113}.
+
+%% applies F to every InList element and current state.
+%% F must return pair of {new list element value, new current state}.
+%% returns pair of {new list, current state}
+full_stateful_map(F, InState, InList) ->
+    %% what a lame language! There's no support for self-recurion, it seems.
+    Rec = fun (_Rec, State, [], Acc) -> {Acc, State};
+              (Rec, State, [H|Tail], Acc) ->
+                  {Value, NewState} = F(H, State),
+                  Rec(Rec, NewState, Tail, [Value|Acc])
+          end,
+    {RV, State} = Rec(Rec, InState, InList, []),
+    {lists:reverse(RV), State}.
+
+%% same as full_stateful_map/3, but discards state and returns only transformed list
+stateful_map(F, InState, InList) -> element(1, full_stateful_map(F, InState, InList)).
+
+low_pass_filter(Alpha, List) ->
+    Beta = 1 - Alpha,
+    F = fun (V, Prev) ->
+                RV = Alpha*V + Beta*Prev,
+                {RV, RV}
+        end,
+    case List of
+        [] -> [];
+        [H|Tail] -> [H | stateful_map(F, H, Tail)]
+    end.
+
+generate_samples(Seed, Size) ->
+    RawSamples = stateful_map(fun (_, S) ->
+                                      {F, S2} = random:uniform_s(S),
+                                      {F*100, S2}
+                              end,
+                              Seed,
+                              lists:seq(0, Size)),
+    lists:map(fun trunc/1, low_pass_filter(0.5, RawSamples)).
+
+caching_in_process_dictionary(Key, Computation) ->
+    case get(Key) of
+        undefined -> begin
+                         V = Computation(),
+                         put(Key, V),
+                         V
+                     end;
+        V -> V
+    end.
+
+mk_samples(Mode) ->
+    Key = lists:concat(["samples_for_", Mode]),
+    Computation = fun () ->
+                          stateful_map(fun (Label, N) ->
+                                               {{Label, generate_samples(my_seed(N*string_hash(Mode)), 20)},
+                                                N+1}
+                                       end,
+                                       16#a21,
+                                       [gets, misses, sets, ops])
+                  end,
+    caching_in_process_dictionary(Key, Computation).
+
 build_bucket_stats_response(_Id, Params, Now) ->
-    Samples = [{gets, [25, 10, 5, 46, 100, 74]},
-               {misses, [100, 74, 25, 10, 5, 46]},
-               {sets, [74, 25, 10, 5, 46, 100]},
-               {ops, [10, 5, 46, 100, 74, 25]}],
     SamplesSize = 6,
     OpsPerSecondZoom = proplists:get_value("opspersecond_zoom", Params),
+    Samples = mk_samples(OpsPerSecondZoom),
     SamplesInterval = case OpsPerSecondZoom of
                           "now" -> 1;
                           "24hr" -> 86400/SamplesSize;
@@ -188,7 +251,26 @@ build_bucket_stats_response(_Id, Params, Now) ->
                              {samples_interval, SamplesInterval}
                              | CutSamples]}}]}.
 
--ifdef(EUNIT). 
+-ifdef(EUNIT).
+
+generate_samples_test() ->
+    V = generate_samples({1,2,3}, 10),
+    io:format("V=~p~n", [V]),
+    ?assertEqual([0,1,39,22,48,48,73,77,74,77,88], V).
+
+mk_samples_basic_test() ->
+    V = mk_samples("now"),
+    ?assertMatch([{gets, _},
+                  {misses, _},
+                  {sets, _},
+                  {ops, _}],
+                 V).
+
+string_hash_test_() ->
+    [
+     ?_assert(string_hash("hello1") /= string_hash("hi")),
+     ?_assert(string_hash("hi") == ($h*31+$i))
+    ].
 
 build_bucket_stats_response_cutting_1_test() ->
     Now = 1259747673659,
@@ -209,11 +291,18 @@ build_bucket_stats_response_cutting_1_test() ->
                            {ops, [_]}]},
                  Ops).
 
+debugger_apply(Fun, Args) ->
+    i:im(),
+    {module, _} = i:ii(?MODULE),
+    i:iaa([break]),
+    ok = i:ib(?MODULE, Fun, length(Args)),
+    apply(?MODULE, Fun, Args).
+
 test_under_debugger() ->
     i:im(),
-    {module, _} = i:ii(menelaus_server_web),
+    {module, _} = i:ii(?MODULE),
     i:iaa([init]),
-    eunit:test({spawn, {timeout, 123123123, {module, menelaus_server_web}}}, [verbose]).
+    eunit:test({spawn, {timeout, infinity, {module, ?MODULE}}}, [verbose]).
 
 -endif.
 
