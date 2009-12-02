@@ -6,6 +6,11 @@
 -module(menelaus_server_web).
 -author('Northscale <info@northscale.com>').
 
+-include_lib("eunit/include/eunit.hrl").
+-ifdef(EUNIT).
+-export([test_under_debugger/0]).
+-endif.
+
 -export([start/1, stop/0, loop/2]).
 
 %% External API
@@ -115,7 +120,7 @@ java_date() ->
     {MegaSec, Sec, Millis} = erlang:now(),
     (MegaSec * 1000000 + Sec) * 1000 + Millis.
 
-build_bucket_stats_reponse(_Id, Params, Now) ->
+build_bucket_stats_response(_Id, Params, Now) ->
     Samples = [{gets, [25, 10, 5, 46, 100, 74]},
                {misses, [100, 74, 25, 10, 5, 46]},
                {sets, [74, 25, 10, 5, 46, 100]},
@@ -139,11 +144,11 @@ build_bucket_stats_reponse(_Id, Params, Now) ->
     CutNumber = case StartTstampParam of
                     undefined -> SamplesSize;
                     _ ->
-                        StartTstamp = list_to_float(StartTstampParam),
+                        StartTstamp = list_to_integer(StartTstampParam),
                         CutMsec = Now - StartTstamp,
                         if
-                            ((CutMsec > 0) andalso (CutMsec < SamplesInterval*1000*Samples)) ->
-                                trunc(CutMsec/SamplesInterval/1000);
+                            ((CutMsec > 0) andalso (CutMsec < SamplesInterval*1000*SamplesSize)) ->
+                                trunc(float(CutMsec)/SamplesInterval/1000);
                             true -> SamplesSize
                         end
                 end,
@@ -182,12 +187,40 @@ build_bucket_stats_reponse(_Id, Params, Now) ->
               {op, {struct, [{tstamp, Now},
                              {samples_interval, SamplesInterval}
                              | CutSamples]}}]}.
-    
+
+-ifdef(EUNIT). 
+
+build_bucket_stats_response_cutting_1_test() ->
+    Now = 1259747673659,
+    Res = build_bucket_stats_response("4",
+                                      [{"opspersecond_zoom", "now"},
+                                       {"keys_opspersecond_zoom", "now"},
+                                       {"opsbysecond_start_tstamp", "1259747672559"}],
+                                      Now),
+    ?assertMatch({struct, [{hot_keys, _},
+                           {op, _}]},
+                 Res),
+    {struct, [_, {op, Ops}]} = Res,
+    ?assertMatch({struct, [{tstamp, Now},
+                           {samples_interval, 1},
+                           {gets, [_]},
+                           {misses, [_]},
+                           {sets, [_]},
+                           {ops, [_]}]},
+                 Ops).
+
+test_under_debugger() ->
+    i:im(),
+    {module, _} = i:ii(menelaus_server_web),
+    i:iaa([init]),
+    eunit:test({spawn, {timeout, 123123123, {module, menelaus_server_web}}}, [verbose]).
+
+-endif.
 
 handle_bucket_stats(_Id, Req) ->
     Now = java_date(),
     Params = Req:parse_qs(),
-    Res = build_bucket_stats_reponse(_Id, Params, Now),
+    Res = build_bucket_stats_response(_Id, Params, Now),
     reply_json(Req, Res).
 
 
