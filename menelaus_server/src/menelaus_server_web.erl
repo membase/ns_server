@@ -27,31 +27,53 @@ stop() ->
 
 loop(Req, DocRoot) ->
     "/" ++ Path = Req:get(path),
-    case Req:get(method) of
-        Method when Method =:= 'GET'; Method =:= 'HEAD' ->
-            case string:tokens(Path, "/") of
-                [] -> redirect_permanently("/index.html", Req);
-                ["pools"] ->
-                    handle_pools(Req);
-                ["pools", Id] ->
-                    handle_pool_info(Id, Req);
-                ["buckets", Id] ->
-                    handle_bucket_info(Id, Req);
-                ["buckets", Id, "stats"] ->
-                    handle_bucket_stats(Id, Req);
-                _ ->
-                    Req:serve_file(Path, DocRoot)
-            end;
-        'POST' ->
-            case Path of
-                _ ->
-                    Req:not_found()
-            end;
-        _ ->
-            Req:respond({501, [], []})
+    Action = case Req:get(method) of
+                 Method when Method =:= 'GET'; Method =:= 'HEAD' ->
+                     case string:tokens(Path, "/") of
+                         [] -> {done, redirect_permanently("/index.html", Req)};
+                         ["pools"] ->
+                             {need_auth, fun () -> handle_pools(Req) end};
+                         ["pools", Id] ->
+                             {need_auth, fun () -> handle_pool_info(Id, Req) end};
+                         ["buckets", Id] ->
+                             {need_auth, fun () -> handle_bucket_info(Id, Req) end};
+                         ["buckets", Id, "stats"] ->
+                             {need_auth, fun () -> handle_bucket_stats(Id, Req) end};
+                         _ ->
+                             {call, fun () -> Req:serve_file(Path, DocRoot) end}
+                     end;
+                 'POST' ->
+                     case Path of
+                         _ ->
+                             {done, Req:not_found()}
+                     end;
+                 _ ->
+                     {done, Req:respond({501, [], []})}
+             end,
+    case Action of
+        {done, RV} -> RV;
+        {call, F} -> F();
+        {need_auth, F} ->
+            case check_auth(extract_basic_auth(Req)) of
+                true -> F();
+                _ -> Req:respond({401, [{"WWW-Authenticate", "Basic realm=\"api\""}], []})
+            end
     end.
 
 %% Internal API
+
+check_auth(undefined) -> false;
+check_auth({User, Password}) ->
+    (User =:= "admin") andalso (Password =:= "admin").
+
+extract_basic_auth(Req) ->
+    case Req:get_header_value("authorization") of
+        undefined -> undefined;
+        "Basic " ++ Value ->
+            case string:tokens(base64:decode_to_string(Value), ":") of
+                [User, Password] -> {User, Password}
+            end
+    end.
 
 redirect_permanently(Path, Req) -> redirect_permanently(Path, Req, []).
 
