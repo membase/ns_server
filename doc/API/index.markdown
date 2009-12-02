@@ -468,16 +468,18 @@ to generate the same kind of response.
 
 *Request*
 
+<pre class="restcalls">
 PUT /pool/My New Pool/bucket/New bucket
 {
    "name" : "New bucket"
 }
+</pre>
 
 *Response*
 
 response 201: bucket was created and valid URIs returned
 
-
+<pre class="restcalls">
 POST /pool/My New Pool/bucket/Another bucket
 {
    "name" : "Another bucket"
@@ -494,6 +496,7 @@ POST /pool/My New Pool/bucket/Another bucket
      "replication-factor" : 2
    }
 }
+</pre>
 
 The bucket rules above show that for the bucket "Another bucket" the bucketrules
 are to persist for two expiration value ranges.  One is from 0 to 0, meaning
@@ -509,10 +512,12 @@ may not be supported at 1.0.
 
 *Request*
 
+<pre class="restcalls">
 POST /pool/My New Pool
 {
    "name" : "My New Pool"
 }
+</pre>
 
 *Response*
 
