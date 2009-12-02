@@ -115,9 +115,7 @@ java_date() ->
     {MegaSec, Sec, Millis} = erlang:now(),
     (MegaSec * 1000000 + Sec) * 1000 + Millis.
 
-handle_bucket_stats(_Id, Req) ->
-    Now = java_date(),
-    Params = Req:parse_qs(),
+build_bucket_stats_reponse(_Id, Params, Now) ->
     Samples = [{gets, [25, 10, 5, 46, 100, 74]},
                {misses, [100, 74, 25, 10, 5, 46]},
                {sets, [74, 25, 10, 5, 46, 100]},
@@ -161,29 +159,35 @@ handle_bucket_stats(_Id, Req) ->
                                    {K, NewSamples}
                            end,
                            Samples),
-    Res = {struct, [{hot_keys, [{struct, [{name, <<"user:image:value">>},
-                                          {gets, 10000},
-                                          {bucket, <<"Excerciser application">>},
-                                          {misses, 100},
-                                          {type, <<"Persistent">>}]},
-                                {struct, [{name, <<"user:image:value2">>},
-                                          {gets, 10000},
-                                          {bucket, <<"Excerciser application">>},
-                                          {misses, 100},
-                                          {type, <<"Cache">>}]},
-                                {struct, [{name, <<"user:image:value3">>},
-                                          {gets, 10000},
-                                          {bucket, <<"Excerciser application">>},
-                                          {misses, 100},
-                                          {type, <<"Persistent">>}]},
-                                {struct, [{name, <<"user:image:value4">>},
-                                          {gets, 10000},
-                                          {bucket, <<"Excerciser application">>},
-                                          {misses, 100},
-                                          {type, <<"Cache">>}]}]},
-                    {op, {struct, [{tstamp, Now},
-                                   {samples_interval, SamplesInterval}
-                                   | CutSamples]}}]},
+    {struct, [{hot_keys, [{struct, [{name, <<"user:image:value">>},
+                                    {gets, 10000},
+                                    {bucket, <<"Excerciser application">>},
+                                    {misses, 100},
+                                    {type, <<"Persistent">>}]},
+                          {struct, [{name, <<"user:image:value2">>},
+                                    {gets, 10000},
+                                    {bucket, <<"Excerciser application">>},
+                                    {misses, 100},
+                                    {type, <<"Cache">>}]},
+                          {struct, [{name, <<"user:image:value3">>},
+                                    {gets, 10000},
+                                    {bucket, <<"Excerciser application">>},
+                                    {misses, 100},
+                                    {type, <<"Persistent">>}]},
+                          {struct, [{name, <<"user:image:value4">>},
+                                    {gets, 10000},
+                                    {bucket, <<"Excerciser application">>},
+                                    {misses, 100},
+                                    {type, <<"Cache">>}]}]},
+              {op, {struct, [{tstamp, Now},
+                             {samples_interval, SamplesInterval}
+                             | CutSamples]}}]}.
+    
+
+handle_bucket_stats(_Id, Req) ->
+    Now = java_date(),
+    Params = Req:parse_qs(),
+    Res = build_bucket_stats_reponse(_Id, Params, Now),
     reply_json(Req, Res).
 
 
