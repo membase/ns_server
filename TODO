@@ -1,8 +1,9 @@
 o [DONE] switching between buckets & pools
-* bucket name in top key values UI
+o [DONE] bucket name in top key values UI
 o [DONE] switching graphs on overview
 o [DONE] marks and labels on graphs (jquery sparklines seem inappropriate)
-* API for rest of sections
+* alerts section implementation
+* server settings implementation
 * tests via watir
 * welcome screen
 o [DONE] respect interval select for all sub-sections
@@ -13,5 +14,7 @@ o [DONE] respect interval select for all sub-sections
 
 * failure to retreive stats after switch to another zoom leaves us
    stale data (showing data for previous zoom)
+* leaving 'overview' section should disable polling of stats. Or maybe
+   don't bother ?
 
 * intelligent circuit breaker for ajax requests
