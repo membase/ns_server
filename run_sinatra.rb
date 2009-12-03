@@ -274,25 +274,44 @@ user_post "/ping" do
 end
 
 user_get "/alerts" do
+  $counter = ($counter || 0) + 1
   rv = {
     :email => 'alkondratenko@gmail.com',
     :list => [{
                 :number => '1',
                 :type => 'warning',
-                :tstamp => 1259836260,
+                :tstamp => 1259836260*1000,
                 :text => "Above average numbers operations, gets, sets, etc."
               }, {
                 :number => '2',
                 :type => 'attention',
-                :tstamp => 1259836260,
+                :tstamp => 1259836260*1000,
                 :text => "Server node down, with issues, etc."
               }, {
                 :number => '3',
                 :type => 'info',
-                :tstamp => 1259836260,
+                :tstamp => 1259836260*1000,
                 :text => "Licensing, capacity, NorthScale issues, etc."
               }
              ]}
+  $counter.times do |i|
+    rv[:list] << {
+      :number => i+4,
+      :type => 'warning',
+      :tstamp => (Time.now.to_f * 1000).floor - ($counter-1-i)*30000,
+      :text => 'lorem ipsum'
+    }
+  end
+  if params['lastNumber']
+    number = params['lastNumber'].to_i
+    newNumber = rv[:list][-1][:number]
+    cutNumber = newNumber-number
+    rv[:list] = if cutNumber == 0
+                  []
+                else
+                  rv[:list][-cutNumber..-1]
+                end
+  end
   unjson(rv)
 end
 

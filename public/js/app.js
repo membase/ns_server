@@ -194,8 +194,8 @@ function formatUptime(seconds, precision) {
   return rv.join(', ');
 }
 
-function formatAlertTStamp(seconds) {
-  return String((new Date(seconds * 1000)));
+function formatAlertTStamp(mseconds) {
+  return String((new Date(mseconds)));
 }
 
 function formatAlertType(type) {
@@ -431,7 +431,7 @@ var Cell = mkClass({
     if (sources)
       this.setSources(sources);
   },
-  queueValueUpdating: function () {
+  recalculate: function () {
     if (this.queuedValueUpdate)
       return;
     _.defer($m(this, 'tryUpdatingValue'));
@@ -461,8 +461,8 @@ var Cell = mkClass({
     }
 
     _.each(slots, function (slot) {
-      slot.changedSlot.subscribeWithSlave($m(self, 'queueValueUpdating'))
-      slot.undefinedSlot.subscribeWithSlave($m(self, 'queueValueUpdating'));
+      slot.changedSlot.subscribeWithSlave($m(self, 'recalculate'));
+      slot.undefinedSlot.subscribeWithSlave($m(self, 'recalculate'));
     });
 
     var argumentSourceNames = this.argumentSourceNames = functionArgumentNames(this.formula);
@@ -858,10 +858,12 @@ var DAO = {
 
 // TODO: need special ajax valued cell type so that we can avoid DoS-ing
 // server with duplicate requests
-function asyncAjaxCellValue(cell, options) {
+function asyncAjaxCellValue(cell, options, tranformer) {
   $.ajax(_.extend({type: 'GET',
                    dataType: 'json',
                    success: function (data) {
+                     if (tranformer)
+                       data = tranformer(data);
                      cell.setValue(data);
                    }},
                  options));
@@ -1301,10 +1303,30 @@ var AlertsSection = {
     }).setSources({mode: DAO.cells.mode});
 
     this.alerts = new Cell(function (active) {
-      asyncAjaxCellValue(this.self, {url: "/alerts"});
+      var value = this.self.value;
+      var params = {url: "/alerts", data: {}};
+      if (value && value.list) {
+        var number = value.list[value.list.length-1].number;
+        if (number !== undefined)
+          params.data.lastNumber = number;
+      }
+      asyncAjaxCellValue(this.self, params, function (data) {
+        if (value) {
+          var newDataNumbers = _.pluck(data.list, 'number');
+          _.each(value.list.reverse(), function (oldItem) {
+            if (!_.include(newDataNumbers, oldItem.number))
+              data.list.splice(0, 0, oldItem);
+          });
+        }
+        return data;
+      });
+      return this.self.value;
     }).setSources({active: this.active});
     prepareTemplateForCell("alert_list", this.alerts);
     this.alerts.changedSlot.subscribeWithSlave($m(this, 'renderAlertsList'));
+    this.alerts.changedSlot.subscribeWithSlave(function (cell) {
+      _.delay($m(cell, 'recalculate'), 30000);
+    });
   },
   onEnter: function () {
   }
