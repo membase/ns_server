@@ -46,6 +46,16 @@ run_lines(Lines, StepModules, LineNumStart) ->
               [NScenarios, NSteps]),
     {ok, Stats}.
 
+stats_add(#cucumberl_stats{scenarios = XScenarios,
+                           steps = XSteps},
+          #cucumberl_stats{scenarios = YScenarios,
+                           steps = YSteps}) ->
+    #cucumberl_stats{scenarios = XScenarios + YScenarios,
+                     steps = XSteps + YSteps}.
+
+stats_blank() ->
+    #cucumberl_stats{}.
+
 expanded_lines(NumberedLines) ->
     % Expand "Scenario Outlines" or tables.
     {_, _, ExpandedLines} =

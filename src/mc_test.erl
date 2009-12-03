@@ -87,12 +87,23 @@ test() ->
       Tests),
     ok.
 
+cucumber_features() -> ["rebalance"].
+
+cucumber_step_modules() -> [].
+
 cucumber() ->
-    CucumberStepModules = [],
-    CucumberFeatures = ["rebalance"],
-    lists:foreach(
-      fun (Feature) ->
-          cucumberl:run("./features/" ++ Feature ++ ".feature",
-                        CucumberStepModules)
-      end,
-      CucumberFeatures).
+    CucumberStepModules = cucumber_step_modules(),
+    CucumberFeatures = cucumber_features(),
+    TotalStats =
+        lists:foldl(
+          fun (Feature, Acc) ->
+                  {ok, Stats} =
+                      cucumberl:run("./features/" ++ Feature ++ ".feature",
+                                    CucumberStepModules),
+                  cucumberl:stats_add(Stats, Acc)
+          end,
+          cucumberl:stats_blank(),
+          CucumberFeatures),
+    io:format("total stats: ~p~n", [TotalStats]),
+    {ok, TotalStats}.
+
