@@ -194,6 +194,21 @@ function formatUptime(seconds, precision) {
   return rv.join(', ');
 }
 
+function formatAlertTStamp(seconds) {
+  return String((new Date(seconds * 1000)));
+}
+
+function formatAlertType(type) {
+  switch (type) {
+  case 'warning':
+    return "Warning";
+  case 'attention':
+    return "Needs Your Attention";
+  case 'info':
+    return "Informative";
+  }
+}
+
 function escapeHTML() {
   return String(arguments[0]).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
 }
@@ -1272,13 +1287,36 @@ var OverviewSection = {
   }
 };
 
+var AlertsSection = {
+  renderAlertsList: function () {
+    renderTemplate('alert_list', this.alerts.value.list);
+    if (!this.gotEmail) {
+      $('#alerts_email_setting').text(this.alerts.value.email);
+      this.gotEmail = true;
+    }
+  },
+  init: function () {
+    this.active = new Cell(function (mode) {
+      return (mode == "alerts") ? true : undefined;
+    }).setSources({mode: DAO.cells.mode});
+
+    this.alerts = new Cell(function (active) {
+      asyncAjaxCellValue(this.self, {url: "/alerts"});
+    }).setSources({active: this.active});
+    prepareTemplateForCell("alert_list", this.alerts);
+    this.alerts.changedSlot.subscribeWithSlave($m(this, 'renderAlertsList'));
+  },
+  onEnter: function () {
+  }
+}
+
 var DummySection = {
   onEnter: function () {}
 };
 
 var ThePage = {
   sections: {overview: OverviewSection,
-             alerts: DummySection,
+             alerts: AlertsSection,
              settings: DummySection},
   currentSection: null,
   currentSectionName: null,
@@ -1290,6 +1328,7 @@ var ThePage = {
   },
   initialize: function () {
     OverviewSection.init();
+    AlertsSection.init();
     var self = this;
     watchHashParamChange('sec', 'overview', function (sec) {
       var oldSection = self.currentSection;

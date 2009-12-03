@@ -3,7 +3,7 @@
 <head>
 <title>Hi</title>
 <link rel="stylesheet" type="text/css" href="/css/main.css">
-<!-- <script type="text/javascript" src="/js/firebug-lite.js"></script> -->
+<script type="text/javascript" src="/js/firebug-lite.js"></script>
 <script type="text/javascript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="/js/jqModal.js"></script>
 <script type="text/javascript" src="/js/raphael.js"></script>
@@ -33,14 +33,14 @@
         </ul>
       </ul>
     </div>
-    <div id="pool_list_template" style="display: none;">
+    <div id="pool_list_template" class="template">
       <ul>
       <!-- {% $.each(rows, function () { %} -->
         <li><a id="{%= register(this) %}">{%= h(this.name) %}</a></li>
       <!-- {% }); %} -->
       </ul>
     </div>
-    <div id="bucket_list_template" style="display: none;">
+    <div id="bucket_list_template" class="template">
       <ul class="bucket_list">
       <!-- {% $.each(rows, function () { %} -->
         <li><a id="{%= register(this) %}">{%= h(this.name) %}</a></li>
@@ -71,7 +71,7 @@
       </span></h2>
       <p id="top_keys_container">
       </p>
-      <div id="top_keys_template" style="display:none;">
+      <div id="top_keys_template" class="template">
         <table>
           <tr><th>Top Key Values
             <th>Type
@@ -97,7 +97,7 @@
       </select></span></h2>
       <p id="server_list_container" class="selected-2">
       </p>
-      <div id="server_list_template" style="display:none;">
+      <div id="server_list_template" class="template">
         <table><tbody>
           <!-- {% $.each(rows, function (index) { %} -->
           <tr class="primary"><td class="expander">+
@@ -130,7 +130,18 @@
       </div>
     </div>
   </div><div id="alerts" style="display:none">
-    This is alerts
+    <h2>Alerts</h2>
+    <p>Alerts are being sent to: <span id="alerts_email_setting"></span></p>
+    <ol id="alert_list_container">
+    </ol>
+    <ol id="alert_list_template" class="template">
+      <!-- {% _.each(rows, function (alert) { %} -->
+      <li class="alert_{%= h(alert.type) %}"><h3>Alert {%= h(alert.number) %} - {%= formatAlertType(alert.type) %}</h3>
+      <span class="time">{%= h(formatAlertTStamp(alert.tstamp)) %}</span><p>
+      {%= h(alert.text) %}
+      </p></li>
+      <!-- {% }); %} -->
+    </ol>
   </div><div id="settings" style="display:none">
     This is settings
   </div>

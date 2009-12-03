@@ -1,3 +1,4 @@
+body { font-family: Arial, sans-serif; }
 #overview_main_graph { width: 100%; }
 #overview_graph_ops, #overview_graph_gets, #overview_graph_sets, #overview_graph_misses { width: 20%; display: inline-block; }
 #left_pane, #right_pane, #middle_panel { vertical-align: top; }
@@ -51,3 +52,24 @@
 .spinner { vertical-align: middle; text-align: center; }
 
 a.selected { text-decoration: underline; }
+
+#alerts h2 { border-bottom: 1px dashed black; }
+#alerts ol { padding: 0px; }
+
+.alert_warning, .alert_attention, .alert_info
+{-moz-border-radius: 6px; -webkit-border-radius: 6px;
+  border: 1px dashed #cbcbcb; margin-bottom: 9px; list-style-type: none;
+  min-height: 81px;}
+
+#alerts h3 { display: block; float: left; color: #999999;
+             padding: 0px; margin: 0px; margin-bottom: 6px; margin-left: 0.5em;}
+
+.alert_warning p, .alert_attention p, .alert_info p { clear: both; text-indent: 2em;}
+.alert_warning .time, .alert_attention .time, .alert_info .time
+{ display:block; float:right; }
+
+.alert_warning { background-color: #efd4d4; }
+.alert_attention { background-color: #d5f3a8; }
+.alert_info { background-color: #f3e4a8; }
+
+.template { display: none; }

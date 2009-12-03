@@ -31,6 +31,11 @@ helpers do
       DAO.current = old
     end
   end
+
+  def unjson(data)
+    response['Content-Type'] = 'application/json'
+    JSON.unparse(data)
+  end
 end
 
 def user_method(method, *args, &block)
@@ -268,20 +273,41 @@ user_post "/ping" do
   "pong"
 end
 
+user_get "/alerts" do
+  rv = {
+    :email => 'alkondratenko@gmail.com',
+    :list => [{
+                :number => '1',
+                :type => 'warning',
+                :tstamp => 1259836260,
+                :text => "Above average numbers operations, gets, sets, etc."
+              }, {
+                :number => '2',
+                :type => 'attention',
+                :tstamp => 1259836260,
+                :text => "Server node down, with issues, etc."
+              }, {
+                :number => '3',
+                :type => 'info',
+                :tstamp => 1259836260,
+                :text => "Licensing, capacity, NorthScale issues, etc."
+              }
+             ]}
+  unjson(rv)
+end
+
 user_get "/pools" do
-  list = DAO.current.pool_list()
-  JSON.unparse(list)
+  unjson(DAO.current.pool_list())
 end
 
 user_get "/pools/:id" do
-  JSON.unparse(DAO.current.pool_info(params[:id].to_i))
+  unjson(DAO.current.pool_info(params[:id].to_i))
 end
 
 user_get "/buckets/:id" do
-  JSON.unparse(DAO.current.bucket_info(params[:id].to_i))
+  unjson(DAO.current.bucket_info(params[:id].to_i))
 end
 
 user_get "/buckets/:id/stats" do
-  response['Content-Type'] = 'application/json'
-  JSON.unparse(DAO.current.stats(params[:id].to_i, params))
+  unjson(DAO.current.stats(params[:id].to_i, params))
 end

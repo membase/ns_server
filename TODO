@@ -3,6 +3,9 @@ o [DONE] bucket name in top key values UI
 o [DONE] switching graphs on overview
 o [DONE] marks and labels on graphs (jquery sparklines seem inappropriate)
 * alerts section implementation
+** refresh
+** editable email setting
+** proper tstamp formatting
 * server settings implementation
 * tests via watir
 * welcome screen
