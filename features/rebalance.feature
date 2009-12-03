@@ -34,10 +34,11 @@ Feature: Rebalance Data
     And P has node A at hashpoint 20
     And new node X starts joining P at hashpoint 30
     And X requests a snapshot for arc (20,30] from A
-    When X has received and processed the snapshot for (20,30] from A
-    Then X should send an (20,30] takeover message to A
-    And A should proxy any requests for (20,30] to X
-    And A should respond to the (20,30] takeover request
+    And X starts receiving the snapshot for (20,30] from A
+    And X starts has finished processing the snapshot for (20,30] from A
+    When X sends a (20,30] takeover message to A
+    Then A should proxy any requests for (20,30] to X
+    And A should reply with success to the (20,30] takeover request from X
 
   Scenario: After receiving an arc snapshot, with concurrent traffic
     Given a pool P with 1 hashpoint per node, and replication num 1
@@ -46,11 +47,11 @@ Feature: Rebalance Data
     And X requests a snapshot for arc (20,30] from A
     And update commands still happen on (20,30] on A
     And X starts receiving the snapshot for (20,30] from A
-    When X starts has finished processing the snapshot for (20,30] from A
-    Then X should send an (20,30] takeover message to A
-    And A should send any interim update deltas for (20,30] to X
+    And X starts has finished processing the snapshot for (20,30] from A
+    When X sends a (20,30] takeover message to A
+    Then A should send any interim update deltas for (20,30] to X
     And A should proxy any requests for (20,30] to X
-    And A should reply with success to the (20,30] takeover request
+    And A should reply with success to the (20,30] takeover request from X
 
 # adding new nodes while arcs are being requested
 # adding new nodes while arcs are being taken over
