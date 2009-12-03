@@ -1,18 +1,20 @@
-Feature: Rebalancing
+Feature: Rebalance Data
   In order to have efficient use of resources
   As a user of northscale data persistence product
   I want to my data to be rebalanced correctly during pool changes
 
   Scenario Outline: Add 2nd node
     Given a pool P with 1 hashpoint per node, and replication num 1
-    And P has node A at hashpoint <a_hashpoint>
-    When new node X starts joining P at hashpoint <x_hashpoint>
+    And P has node A at hashpoint <a>
+    When new node X starts joining P at hashpoint <x>
     Then X should request a snapshot for arc <arc> from A
     And no other request for arc snapshots should happen
     Examples:
-      | a_hashpoint | x_hashpoint | arc     | comment  |
-      |    20       |    30       | (20,30] | after-A  |
-      |    20       |    10       | (20,10] | before-A |
+      | a  | x  | arc     | comment  |
+      | 20 | 30 | (20,30] | after-A  |
+      | 20 | 10 | (20,10] | before-A |
+      |  0 | 10 |  (0,10] | A-at-0   |
+      | 20 |  0 | (20,0]  | X-at-0   |
 
   Scenario Outline: Add a node between 2 others
     Given a pool P with 1 hashpoint per node, and replication num 1
