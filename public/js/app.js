@@ -1117,7 +1117,7 @@ function renderSmallGraph(jq, data, text, isSelected) {
     paper.text(width/2, 10, text).attr({
       font: "18px Arial, sans-serif"
     });
-    paper.rect(1, 20, width-2, plotHeight+15-1).attr({
+    paper.rect(1, 20, width-3, plotHeight+15-1).attr({
       'stroke-width': 2,
       'stroke': '#0099ff'
     });
