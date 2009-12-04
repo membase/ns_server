@@ -1327,6 +1327,11 @@ var AlertsSection = {
     this.alerts.changedSlot.subscribeWithSlave(function (cell) {
       _.delay($m(cell, 'recalculate'), 30000);
     });
+
+    $('#alerts_email_setting').editable('/alerts', {
+      submit: 'Save',
+      name: 'email'
+    });
   },
   onEnter: function () {
   }

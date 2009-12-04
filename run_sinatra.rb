@@ -273,10 +273,19 @@ user_post "/ping" do
   "pong"
 end
 
+$alerts_email ||= 'alkondratenko@gmail.com'
+
+user_post "/alerts" do
+  if (email = params['email'])
+    puts "updating email to #{email}"
+    $alerts_email = email
+  end
+end
+
 user_get "/alerts" do
   $counter = ($counter || 0) + 1
   rv = {
-    :email => 'alkondratenko@gmail.com',
+    :email => $alerts_email,
     :list => [{
                 :number => '1',
                 :type => 'warning',
