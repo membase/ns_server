@@ -1,17 +1,151 @@
 -module(mc_config).
 
+-behaviour(gen_server).
+
 -include_lib("eunit/include/eunit.hrl").
 
 -include("mc_constants.hrl").
 
 -include("mc_entry.hrl").
 
--compile(export_all).
+% Copyright (c) 2008, Cliff Moon
+% Copyright (c) 2008, Powerset, Inc
+% Copyright (c) 2009, NorthScale, Inc
+%
+% All rights reserved.
+%
+% Redistribution and use in source and binary forms, with or without
+% modification, are permitted provided that the following conditions
+% are met:
+%
+% * Redistributions of source code must retain the above copyright
+% notice, this list of conditions and the following disclaimer.
+% * Redistributions in binary form must reproduce the above copyright
+% notice, this list of conditions and the following disclaimer in the
+% documentation and/or other materials provided with the distribution.
+% * Neither the name of Powerset, Inc nor the names of its
+% contributors may be used to endorse or promote products derived from
+% this software without specific prior written permission.
+%
+% THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+% "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+% LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+% FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+% COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+% INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+% BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+% LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+% CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+% LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+% ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+% POSSIBILITY OF SUCH DAMAGE.
+%
+% Original Author: Cliff Moon
 
-lookup(Key, KVList) -> lookup(Key, KVList, undefined).
-lookup(_Key, [], Default) -> Default;
-lookup(Key, [{K, V} | Rest], Default) ->
-    case Key =:= K of
-        true  -> V;
-        false ->lookup(Key, Rest, Default)
+-export([start_link/1, get/2, get/1, get/0, set/1, stop/0,
+         lookup/1, lookup/2, lookup/3]).
+
+%% gen_server callbacks
+
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2,
+         terminate/2, code_change/3]).
+
+start_link(ConfigPath) ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE, ConfigPath, []).
+
+lookup(Field) ->
+    {ok, Config} = ?MODULE:get(),
+    lookup(Field, Config, undefined).
+
+lookup(Field, Config) ->
+    lookup(Field, Config, undefined).
+
+lookup(Field, #mc_config{} = Config, Default) ->
+    case record_get(Field, Config) of
+        undefined -> Default;
+        X         -> X
     end.
+
+get(Node)          -> ?MODULE:get(Node, 500).
+get(Node, Timeout) -> gen_server:call({?MODULE, Node}, get, Timeout).
+
+get() ->
+    case erlang:get(?MODULE) of
+        undefined -> C = gen_server:call(?MODULE, get),
+                     erlang:put(?MODULE, C),
+                     C;
+        C -> C
+    end.
+
+set(Config) ->
+    gen_server:call(?MODULE, {set, Config}).
+
+stop() ->
+    erlang:erase(?MODULE),
+    gen_server:cast(?MODULE, stop).
+
+%% gen_server callbacks
+
+init(Config = #mc_config{}) ->
+    Merged = pick_node_and_merge(Config, nodes([visible])),
+    {ok, Merged};
+
+init(ConfigPath) when is_list(ConfigPath) ->
+    case read_file(ConfigPath) of
+        {ok, Config} ->
+            filelib:ensure_dir(Config#mc_config.directory ++ "/"),
+            Merged = pick_node_and_merge(Config, nodes([visible])),
+            {ok, Merged};
+        {error, Reason} ->
+            {error, Reason}
+    end.
+
+code_change(_OldVsn, State, _Extra) -> {ok, State}.
+terminate(_Reason, _State)          -> ok.
+
+handle_info(_Info, State)                 -> {noreply, State}.
+handle_call(get, _From, State)            -> {reply, {ok, State}, State};
+handle_call({set, Config}, _From, _State) -> {reply, ok, Config}.
+handle_cast(stop, State)                  -> {stop, shutdown, State}.
+
+%%--------------------------------------------------------------------
+
+read_file(ConfigPath) -> file:consult(ConfigPath).
+
+pick_node_and_merge(Config, []) -> Config;
+pick_node_and_merge(Config, Nodes) ->
+    [Node | _] = util:shuffle(Nodes),
+    case (catch ?MODULE:get(Node)) of
+        {'EXIT', _, _} -> Config;
+        {'EXIT', _}    -> Config;
+        {ok, Remote}   -> merge_configs(merge_fields(), Remote, Config)
+    end.
+
+merge_fields() ->
+    [default_replica_n,
+     default_replica_w,
+     default_replica_r].
+
+merge_configs([], _Remote, Merged) -> Merged;
+
+merge_configs([Field | Fields], Remote, Merged) ->
+    merge_configs(Fields, Remote,
+                  record_set(Field, Merged, record_get(Field, Remote))).
+
+record_get(Field, Tuple) ->
+    record_get(record_info(fields, mc_config), Field, Tuple, 2).
+
+record_get([], _, _, _)                       -> undefined;
+record_get([Field | _], Field, Tuple, Index)  -> element(Index, Tuple);
+record_get([_ | Fields], Field, Tuple, Index) ->
+    record_get(Fields, Field, Tuple, Index+1).
+
+record_set(Field, Tuple, Value) ->
+    record_set(record_info(fields, mc_config), Field, Tuple, Value, 2).
+
+record_set([], _Field, Tuple, _, _) ->
+    Tuple;
+record_set([Field | _], Field, Tuple, Value, Index) ->
+    setelement(Index, Tuple, Value);
+record_set([_ | Fields], Field, Tuple, Value, Index) ->
+    record_set(Fields, Field, Tuple, Value, Index + 1).
