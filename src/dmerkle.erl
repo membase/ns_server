@@ -62,6 +62,12 @@
 %% Public API
 %%====================================================================
 
+index_name(Path) ->
+  lists:concat([Path, ".idx"]).
+
+key_name(Path) ->
+  lists:concat([Path, ".keys"]).
+
 open(FileName) ->
   open(FileName, undefined).
 
@@ -120,12 +126,12 @@ swap_tree(OldTree, NewTree) ->
   OldFilename = gen_server:call(OldTree, filename),
   close(OldTree),
   close(NewTree),
-  file:copy(block_server:index_name(NewFilename),
-            block_server:index_name(OldFilename)),
-  file:copy(block_server:key_name(NewFilename),
-            block_server:key_name(OldFilename)),
-  file:delete(block_server:index_name(NewFilename)),
-  file:delete(block_server:key_name(NewFilename)),
+  file:copy(index_name(NewFilename),
+            index_name(OldFilename)),
+  file:copy(key_name(NewFilename),
+            key_name(OldFilename)),
+  file:delete(index_name(NewFilename)),
+  file:delete(key_name(NewFilename)),
   open(OldFilename, BlockSize).
 
 %%====================================================================
