@@ -4,7 +4,7 @@ Feature: Rebalance Data
   I want to my data to be rebalanced correctly during pool changes
 
   Scenario Outline: Add 2nd node
-    Given a pool P with 1 hashpoint per node, and replication num 1
+    Given a persistent pool with 1 hashpoint per node, and replica N of 1
     And P has node A at hashpoint <a>
     When new node X starts joining P at hashpoint <x>
     Then X should request a snapshot for arc <arc> from A
@@ -17,7 +17,7 @@ Feature: Rebalance Data
       | 20 |  0 | (20,0]  | X-at-0   |
 
   Scenario Outline: Add a node between 2 others
-    Given a pool P with 1 hashpoint per node, and replication num 1
+    Given a persistent pool with 1 hashpoint per node, and replica N of 1
     And P has node A at hashpoint <a>
     And P has node B at hashpoint <b>
     When new node X starts joining P at hashpoint <x>
@@ -30,7 +30,7 @@ Feature: Rebalance Data
       | 20 | 40 | 50 | (40,50] | A       |
 
   Scenario: After receiving an arc snapshot, with no other traffic
-    Given a pool P with 1 hashpoint per node, and replication num 1
+    Given a persistent pool with 1 hashpoint per node, and replica N of 1
     And P has node A at hashpoint 20
     And new node X starts joining P at hashpoint 30
     And X requests a snapshot for arc (20,30] from A
@@ -41,7 +41,7 @@ Feature: Rebalance Data
     And A should reply with success to the (20,30] takeover request from X
 
   Scenario: After receiving an arc snapshot, with concurrent traffic
-    Given a pool P with 1 hashpoint per node, and replication num 1
+    Given a persistent pool with 1 hashpoint per node, and replica N of 1
     And P has node A at hashpoint 20
     And new node X starts joining P at hashpoint 30
     And X requests a snapshot for arc (20,30] from A
