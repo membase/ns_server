@@ -28,54 +28,52 @@
 % CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
 % LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
 % ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-% POSSIBILITY OF SUCH DAMAGE.
+% POSSIBILITY OF SUCH DAMAGE.-module(config).
 %
 % Original Author: Cliff Moon
 
--module(storage_dets).
+-module(emoxi).
 
-%% API
+-export([start/0, running/1, running_nodes/0,
+         pause_all_sync/0, start_all_sync/0]).
 
--export([open/2, close/1, get/2, put/4, has_key/2, delete/2, fold/3]).
+% erl -boot start_sasl -pa ebin
 
--record(row, {key, context, values}).
+start() ->
+  crypto:start(),
+  misc:load_start_apps(apps()).
 
-open(Directory, Name) ->
-  ok = filelib:ensure_dir(Directory ++ "/"),
-  TableName = list_to_atom(lists:concat([Name, '/', node()])),
-  dets:open_file(TableName,
-                 [{file, lists:concat([Directory, "/storage.dets"])},
-                  {keypos, 2}]).
+apps() ->
+  % [os_mon, emoxi].
+    [emoxi].
 
-close(Table) -> dets:close(Table).
+running(Node) ->
+  Ref = erlang:monitor(process, {membership, Node}),
+  R = receive
+          {'DOWN', Ref, _, _, _} -> false
+      after 1 ->
+          true
+      end,
+  erlang:demonitor(Ref),
+  R.
 
-fold(Fun, Table, AccIn) when is_function(Fun) ->
-  dets:foldl(fun(#row{key=Key,context=Context,values=Values}, Acc) ->
-      Fun({Key, Context, Values}, Acc)
-    end, AccIn, Table).
+running_nodes() ->
+  [Node || Node <- erlang:nodes([this, visible]), running(Node)].
 
-put(Key, Context, Values, Table) ->
-  case dets:insert(Table, [#row{key=Key,context=Context,values=Values}]) of
-    ok -> {ok, Table};
-    Failure -> Failure
-  end.
+pause_all_sync() ->
+  SyncServers = lists:flatten(lists:map(fun(Node) ->
+      rpc:call(Node, sync_manager, loaded, [])
+    end, running_nodes())),
+  lists:foreach(fun(Server) ->
+      sync_server:pause(Server)
+    end, SyncServers).
 
-get(Key, Table) ->
-  case dets:lookup(Table, Key) of
-    [] -> {ok, not_found};
-    [#row{context=Context,values=Values}] -> {ok, {Context, Values}}
-  end.
+start_all_sync() ->
+  SyncServers = lists:flatten(lists:map(fun(Node) ->
+      rpc:call(Node, sync_manager, loaded, [])
+    end, running_nodes())),
+  lists:foreach(fun(Server) ->
+      sync_server:play(Server)
+    end, SyncServers).
 
-has_key(Key, Table) ->
-  case dets:member(Table, Key) of
-    true -> {ok, true};
-    false -> {ok, false};
-    Failure -> Failure
-  end.
-
-delete(Key, Table) ->
-  case dets:delete(Table, Key) of
-    ok -> {ok, Table};
-    Failure -> Failure
-  end.
 

@@ -1,5 +1,6 @@
-% Copyright (c) 2009, Cliff Moon
 % Copyright (c) 2009, NorthScale, Inc
+% Copyright (c) 2008, Cliff Moon
+% Copyright (c) 2008, Powerset, Inc
 %
 % All rights reserved.
 %

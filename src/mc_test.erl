@@ -54,27 +54,39 @@ main() ->
 % To run tests:
 %   erl -pa ebin -noshell -s mc_test test -s init stop
 %
-tests() -> [mc_ascii,
-            mc_client_ascii,
-            mc_client_ascii_ac,
-            mc_binary,
-            mc_client_binary,
-            mc_client_binary_ac,
-            mc_bucket,
-            mc_pool,
-            mc_downstream
-           ].
+tests_mc() ->
+    [mc_ascii,
+     mc_client_ascii,
+     mc_client_ascii_ac,
+     mc_binary,
+     mc_client_binary,
+     mc_client_binary_ac,
+     mc_bucket,
+     mc_pool,
+     mc_downstream
+    ].
+
+tests_emoxi() ->
+    [misc,
+     bootstrap,
+     vclock,
+     stream,
+     dmerkle,
+     dmerkle_tree,
+     partitions,
+     membership,
+     storage_server,
+     storage_manager,
+     sync_manager].
 
 test() ->
+    {test_cover(tests_mc()),
+     test_list(tests_emoxi())}.
+
+test_cover(Tests) ->
     cover:start(),
     cover:compile_directory("src", [{i, "include"}]),
-    Tests = tests(),
-    lists:foreach(
-      fun (Test) ->
-              io:format("  ~p...~n", [Test]),
-              apply(Test, test, [])
-      end,
-      Tests),
+    test_list(Tests),
     file:make_dir("tmp"),
     lists:foreach(
       fun (Test) ->
@@ -83,6 +95,16 @@ test() ->
                     Test,
                     "tmp/" ++ atom_to_list(Test) ++ ".cov.html",
                     [html])
+      end,
+      Tests),
+    ok.
+
+test_list(Tests) ->
+    lists:foreach(
+      fun (Test) ->
+              io:format("  ~p...~n", [Test]),
+              misc:rm_rf("./test/log"),
+              Test:test()
       end,
       Tests),
     ok.

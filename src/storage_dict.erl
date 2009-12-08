@@ -1,6 +1,6 @@
+% Copyright (c) 2009, NorthScale, Inc
 % Copyright (c) 2008, Cliff Moon
 % Copyright (c) 2008, Powerset, Inc
-% Copyright (c) 2009, NorthScale, Inc
 %
 % All rights reserved.
 %
@@ -37,12 +37,9 @@
 -export ([open/2, close/1, get/2, put/4, has_key/2,
           fold/3, delete/2, info/1]).
 
-open(_, _) -> {ok, dict:new()}.
-
-% noop
+open(_, _)    -> {ok, dict:new()}.
 close(_Table) -> ok.
-
-info(Table) -> dict:fetch_keys(Table).
+info(Table)   -> dict:fetch_keys(Table).
 
 fold(Fun, Table, AccIn) when is_function(Fun) ->
   dict:fold(fun(Key, {Context, [Value]}, Acc) ->
@@ -62,8 +59,5 @@ get(Key, Table) ->
     _ -> {ok, not_found}
   end.
 
-has_key(Key, Table) ->
-	{ok, dict:is_key(Key, Table)}.
-
-delete(Key, Table) ->
-	{ok, dict:erase(Key, Table)}.
+has_key(Key, Table) -> {ok, dict:is_key(Key, Table)}.
+delete(Key, Table)  -> {ok, dict:erase(Key, Table)}.

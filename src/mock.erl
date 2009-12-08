@@ -1,6 +1,6 @@
+% Copyright (c) 2009, NorthScale, Inc
 % Copyright (c) 2008, Cliff Moon
 % Copyright (c) 2008, Powerset, Inc
-% Copyright (c) 2009, NorthScale, Inc
 %
 % All rights reserved.
 %
@@ -48,14 +48,8 @@
 
 -record(state, {old_code, module, expectations=[]}).
 
-%%====================================================================
 %% API
-%%====================================================================
-%%--------------------------------------------------------------------
-%% @spec mock() -> {ok,#mock} | ignore | {error,Error}
-%% @doc Starts the server
-%% @end
-%%--------------------------------------------------------------------
+
 mock(Module) ->
   case gen_server:start_link({local, mod_to_name(Module)}, mock, Module, []) of
     {ok, Pid} -> {ok, Pid};
@@ -143,9 +137,7 @@ stub_function(Module, Name, Arity, Ret) when is_function(Ret) ->
     Other -> Other
   end.
 
-%%====================================================================
 %% gen_server callbacks
-%%====================================================================
 
 init(Module) ->
   case code:get_object_code(Module) of
@@ -157,17 +149,6 @@ init(Module) ->
     error -> {stop, ?fmt("Could not get object code for module ~p", [Module])}
   end.
 
-%%--------------------------------------------------------------------
-%% @spec
-%% handle_call(Request, From, State) -> {reply, Reply, State} |
-%%                                      {reply, Reply, State, Timeout} |
-%%                                      {noreply, State} |
-%%                                      {noreply, State, Timeout} |
-%%                                      {stop, Reason, Reply, State} |
-%%                                      {stop, Reason, State}
-%% @doc Handling call messages
-%% @end
-%%--------------------------------------------------------------------
 handle_call({proxy_call, Function, Args}, _From,
             State = #state{module=Mod,expectations=Expects}) ->
   case match_expectation(Function, Args, Expects) of
@@ -188,7 +169,8 @@ handle_call(verify, _From, State = #state{expectations=Expects,
   ?infoFmt("verifying ~p~n", [Mod]),
   if
     length(Expects) > 0 ->
-          {reply, {mismatch, format_missing_expectations(Expects, Mod)}, State};
+          {reply, {mismatch, format_missing_expectations(Expects, Mod)},
+           State};
     true -> {reply, ok, State}
   end.
 
@@ -197,16 +179,13 @@ terminate(_Reason, #state{old_code={Module, Binary, Filename}}) ->
   code:delete(Module),
   code:load_binary(Module, Filename, Binary).
 
-handle_cast(stop, State)  -> {stop, shutdown, State}.
+code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
+handle_cast(stop, State)  -> {stop, shutdown, State}.
 handle_info(_Info, State) -> {noreply, State}.
 
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+%% Internal functions
 
-%%--------------------------------------------------------------------
-%%% Internal functions
-%%--------------------------------------------------------------------
 format_missing_expectations(Expects, Mod) ->
   format_missing_expectations(Expects, Mod, []).
 

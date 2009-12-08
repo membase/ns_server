@@ -1,6 +1,6 @@
+% Copyright (c) 2009, NorthScale, Inc
 % Copyright (c) 2008, Cliff Moon
 % Copyright (c) 2008, Powerset, Inc
-% Copyright (c) 2009, NorthScale, Inc
 %
 % All rights reserved.
 %
@@ -35,6 +35,7 @@
 -module(partitions).
 
 %% API
+
 -export([partition_range/1, create_partitions/3,
          map_partitions/2, map_partitions/4,
          diff/2, within/4, within/5, node_hash/3,

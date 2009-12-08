@@ -28,54 +28,33 @@
 % CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
 % LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
 % ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-% POSSIBILITY OF SUCH DAMAGE.
+% POSSIBILITY OF SUCH DAMAGE.-module(config).
 %
 % Original Author: Cliff Moon
 
--module(storage_dets).
+-module(emoxi_sup).
 
-%% API
+-behaviour(supervisor).
 
--export([open/2, close/1, get/2, put/4, has_key/2, delete/2, fold/3]).
+-export([start_link/1]).
 
--record(row, {key, context, values}).
+-export([init/1]).
 
-open(Directory, Name) ->
-  ok = filelib:ensure_dir(Directory ++ "/"),
-  TableName = list_to_atom(lists:concat([Name, '/', node()])),
-  dets:open_file(TableName,
-                 [{file, lists:concat([Directory, "/storage.dets"])},
-                  {keypos, 2}]).
+-define(SERVER, ?MODULE).
 
-close(Table) -> dets:close(Table).
+start_link(ConfigFile) ->
+    supervisor:start_link(?MODULE, [ConfigFile]).
 
-fold(Fun, Table, AccIn) when is_function(Fun) ->
-  dets:foldl(fun(#row{key=Key,context=Context,values=Values}, Acc) ->
-      Fun({Key, Context, Values}, Acc)
-    end, AccIn, Table).
+init(ConfigFile) ->
+    Node = erlang:node(),
+    Nodes = emoxi:running_nodes() ++ [Node],
+    Children = children(ConfigFile, Nodes),
+    {ok, {{one_for_one, 10, 1}, Children}}.
 
-put(Key, Context, Values, Table) ->
-  case dets:insert(Table, [#row{key=Key,context=Context,values=Values}]) of
-    ok -> {ok, Table};
-    Failure -> Failure
-  end.
-
-get(Key, Table) ->
-  case dets:lookup(Table, Key) of
-    [] -> {ok, not_found};
-    [#row{context=Context,values=Values}] -> {ok, {Context, Values}}
-  end.
-
-has_key(Key, Table) ->
-  case dets:member(Table, Key) of
-    true -> {ok, true};
-    false -> {ok, false};
-    Failure -> Failure
-  end.
-
-delete(Key, Table) ->
-  case dets:delete(Table, Key) of
-    ok -> {ok, Table};
-    Failure -> Failure
-  end.
+children(ConfigFile, _Nodes) ->
+    [{config,
+      {config, start_link, [ConfigFile]},
+      permanent, 1000, worker,
+      [config]}
+    ].
 

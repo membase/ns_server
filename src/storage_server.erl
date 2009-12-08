@@ -1,6 +1,6 @@
+% Copyright (c) 2009, NorthScale, Inc
 % Copyright (c) 2008, Cliff Moon
 % Copyright (c) 2008, Powerset, Inc
-% Copyright (c) 2009, NorthScale, Inc
 %
 % All rights reserved.
 %
@@ -251,8 +251,8 @@ handle_call({fold, Fun, AccIn}, _From,
 handle_call(info, _From, State = #storage{module=_Module, table=_Table}) ->
   {reply, State, State};
 
-% spawn so that we don't block the storage server
 handle_call({streaming_put, Ref}, {RemotePid, _Tag}, State) ->
+  % We spawn so that we don't block the storage server.
   SS = self(),
   LocalPid = spawn_link(fun() ->
       case stream:recv(RemotePid, Ref, 200) of

@@ -1,0 +1,41 @@
+{application, emoxi,
+  [{description, "EMoxi Storage Node"},
+   {mod, {emoxi_app, []}},
+   {vsn, "?VERSION"},
+   {modules,
+   [
+      bootstrap,
+      config,
+      store_dets,
+      store_dict,
+      dmerkle,
+      dmerkle_tree,
+      % emoxi_rpc,
+      emoxi,
+      emoxi_app,
+      % emoxi_prof,
+      emoxi_sup,
+      misc,
+      % mediator,
+      membership,
+      partitions,
+      % rate,
+      % stats_server,
+      storage_manager,
+      storage_server,
+      storage_server_sup,
+      stream,
+      sync_manager,
+      sync_server,
+      sync_server_sup,
+      vclock
+   ]},
+   {registered, []},
+   {applications, [kernel,
+                   stdlib,
+                   sasl,
+                   crypto
+                   % mochiweb
+                   % thrift
+                  ]}
+  ]}.
