@@ -15,6 +15,7 @@ ebins:
 
 clean:
 	rm -f tmp/*.cov.html erl_crash.dumpg
+	rm -rf test/log
 	rm -rf ebin
 
 test:
