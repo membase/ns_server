@@ -18,7 +18,9 @@ clean:
 	rm -rf test/log
 	rm -rf ebin
 
-test:
+test: test_unit
+
+test_unit:
 	erl -pa ebin -noshell -s mc_test test -s init stop
 
 test_client_ascii:
