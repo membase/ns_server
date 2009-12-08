@@ -386,8 +386,12 @@ var CallbackSlot = mkClass({
   initialize: function () {
     this.slaves = [];
   },
-  subscribeWithSlave: function (thunk) {
-    var slave = new Slave(thunk);
+  subscribeWithSlave: function (thunkOrSlave) {
+    var slave;
+    if (thunkOrSlave instanceof Slave)
+      slave = thunkOrSlave;
+    else
+      slave = new Slave(thunkOrSlave);
     this.slaves.push(slave);
     return slave;
   },
@@ -418,6 +422,78 @@ var functionArgumentNames = function(f) {
   return names.length == 1 && !names[0] ? [] : names;
 };
 
+function jsComparator(a,b) {
+  return (a == b) ? 0 : ((a < b) ? -1 : 1);
+}
+
+function deeperEquality(a, b) {
+  var typeA = typeof(a);
+  var typeB = typeof(b);
+  if (typeA != typeB)
+    return false;
+  var keysA = _.keys(a);
+  var keysUnion = _.uniq(_.keys(b).sort(jsComparator), true);
+  if (keysA.length != keysUnion.length)
+    return false;
+
+  for (var key in a)
+    if (a[key] != b[key])
+      return false;
+
+  return true;
+}
+
+// returns special value that when passed to Cell#setValue initiates async set
+// 'body' is a function that's passed cell-generated dataCallback
+// 'body' is assumed to arrange async process of computing/getting new value
+// 'body' should arrange call to given dataCallback when new value is available, passing it this new value
+// Value returned from body is ignored
+//
+// see future.get for usage example
+function future(body, options) {
+  return new Future(body, options);
+}
+var Future = function (body, options) {
+  this.thunk = body;
+  _.extend(this, options || {});
+}
+Future.prototype = {
+  removeNowValue: function () {
+    var rv = this.nowValue;
+    delete this.nowValue;
+    return rv;
+  },
+  mkCallback: function (cell) {
+    var async = this;
+    return function (data) {
+      cell.deliverFutureValue(async, data);
+    }
+  },
+  start: function (cell) {
+    this.started = true;
+    var thunk = this.thunk;
+    this.thunk = undefined;
+    thunk.call(cell.mkFormulaContext(), this.mkCallback(cell));
+  }
+};
+
+future.get = function (ajaxOptions, valueTransformer, nowValue) {
+  var options = {
+    valueTransformer: valueTransformer,
+    cancel: function () {
+      xhr.abort();
+    },
+    nowValue: nowValue
+  }
+  var xhr;
+  return future(function (dataCallback) {
+    xhr = $.ajax(_.extend({type: 'GET',
+                           dataType: 'json',
+                           success: dataCallback},
+                          ajaxOptions));
+  }, options);
+}
+
 // inspired in part by http://common-lisp.net/project/cells/
 var Cell = mkClass({
   initialize: function (formula, sources) {
@@ -431,17 +507,21 @@ var Cell = mkClass({
     if (sources)
       this.setSources(sources);
   },
-  recalculate: function () {
-    if (this.queuedValueUpdate)
-      return;
-    _.defer($m(this, 'tryUpdatingValue'));
-    this.queuedValueUpdate = true;
+  equality: function (a, b) {
+    return a == b;
   },
-  sourceUndefined: function (source) {
-    var self = this;
-    _.defer(function () {
-      self.setValue(undefined);
-    });
+  subscribe: function (cb, options) {
+    options = _.extend({'undefined': false,
+                        changed: true}, options || {});
+    var slave = new Slave(cb);
+    if (options["undefined"])
+      this.undefinedSlot.subscribeWithSlave(slave);
+    if (options.changed)
+      this.changedSlot.subscribeWithSlave(slave);
+    return slave;
+  },
+  subscribeAny: function (cb) {
+    return this.subscribe(cb, {'undefined': true});
   },
   setSources: function (context) {
     var self = this;
@@ -461,8 +541,7 @@ var Cell = mkClass({
     }
 
     _.each(slots, function (slot) {
-      slot.changedSlot.subscribeWithSlave($m(self, 'recalculate'));
-      slot.undefinedSlot.subscribeWithSlave($m(self, 'recalculate'));
+      slot.subscribeAny($m(self, 'recalculate'));
     });
 
     var argumentSourceNames = this.argumentSourceNames = functionArgumentNames(this.formula);
@@ -473,8 +552,7 @@ var Cell = mkClass({
     if (argumentSourceNames.length)
       this.effectiveFormula = this.mkEffectiveFormula();
 
-    this.tryUpdatingValue();
-
+    this.recalculate();
     return this;
   },
   mkEffectiveFormula: function () {
@@ -496,7 +574,27 @@ var Cell = mkClass({
       return formula.apply(this, requiredValues);
     }
   },
+  // applies f to current cell value and extra arguments
+  // and sets value to it's return value
+  modifyValue: function (f) {
+    var extra = _.toArray(arguments);
+    extra.shift();
+    this.setValue(f.apply(null, [this.value].concat(extra)));
+  },
   setValue: function (newValue) {
+    this.cancelAsyncSet();
+    this.resetRecalculateAt();
+
+    if (newValue instanceof Future) {
+      var async = newValue;
+      newValue = async.removeNowValue();
+      this.pendingFuture = async;
+      if (this.recalcGeneration != Cell.recalcGeneration) {
+        this.recalcGeneration = Cell.recalcGeneration;
+        Cell.asyncCells.push(this);
+      }
+    }
+
     var oldValue = this.value;
     this.value = newValue;
 
@@ -506,19 +604,110 @@ var Cell = mkClass({
       return;
     }
 
-    if (oldValue != newValue)
+    if (!this.equality(oldValue, newValue))
       this.changedSlot.broadcast(this);
   },
-  tryUpdatingValue: function () {
-    this.queuedValueUpdate = false;
+  // schedules cell value recalculation
+  recalculate: function () {
+    if (this.queuedValueUpdate)
+      return;
+    this.resetRecalculateAt();
+    Cell.recalcCount++;
+    _.defer($m(this, 'tryUpdatingValue'));
+    this.queuedValueUpdate = true;
+  },
+  mkFormulaContext: function () {
     var context = {};
     _.each(this.context, function (cell, key) {
       context[key] = (key == 'self') ? cell : cell.value;
     });
-    var value = this.effectiveFormula.call(context);
+    return context;
+  },
+  tryUpdatingValue: function () {
+    var context = this.mkFormulaContext();
+    try {
+      var value = this.effectiveFormula.call(context);
+      this.setValue(value);
+    } finally {
+      this.queuedValueUpdate = false;
+      if (--Cell.recalcCount == 0)
+        Cell.completeGeneration();
+    }
+  },
+  deliverFutureValue: function (future, value) {
+    // detect cancellation
+    if (this.pendingFuture != future)
+      return;
+
+    this.pendingFuture = null;
+
+    if (future.valueTransformer)
+      value = (future.valueTransformer)(value);
+
     this.setValue(value);
+  },
+  cancelAsyncSet: function () {
+    var async = this.pendingFuture;
+    if (!async)
+      return;
+    this.pendingFuture = null;
+    if (async.started && async.cancel) {
+      try {
+        async.cancel();
+      } catch (e) {};
+    }
+  },
+  resetRecalculateAt: function () {
+    this.recalculateAtTime = undefined;
+    if (this.recalculateAtTimeout)
+      clearTimeout(this.recalculateAtTimeout);
+    this.recalculateAtTimeout = undefined;
+  },
+  recalculateAt: function (time) {
+    var self = this;
+
+    if (time instanceof Date)
+      time = time.valueOf();
+
+    if (self.recalculateAtTime) {
+      if (self.recalculateAtTime < time)
+        return;
+      clearTimeout(self.recalculateAtTimeout);
+    }
+    self.recalculateAtTime = time;
+
+    var delay = time - (new Date()).valueOf();
+    var f = $m(self, 'recalculate');
+
+    if (delay <= 0)
+      f();
+    else
+      self.recalculateAtTimeout = setTimeout(f, delay);
   }
 });
+
+_.extend(Cell, {
+  asyncCells: [],
+  recalcGeneration: {},
+  recalcCount: 0,
+  completeGeneration: function () {
+    var asyncCells = this.asyncCells;
+    this.asyncCells = [];
+    this.recalcGeneration = {};
+    var i, len = asyncCells.length;
+    for (i = 0; i < len; i++) {
+      var cell = asyncCells[i];
+      var future = cell.pendingFuture;
+      if (!future)
+        continue;
+      try {
+        future.start(cell);
+      } catch (e) {
+        console.log("Got error trying to start future: ", e);
+      }
+    }
+  }
+})
 
 function ensureElementId(jq) {
   jq.each(function () {
@@ -566,13 +755,10 @@ var LinkSwitchCell = mkClass(Cell, {
     var makeUndefinedOrDefault = $m(this, 'makeUndefinedOrDefault');
     // TODO: this is a bit broken for now
     // _.each(this.options.clearOnChangesTo, function (cell) {
-    //   cell.changedSlot.subscribeWithSlave(makeUndefinedOrDefault);
-    //   cell.undefinedSlot.subscribeWithSlave(makeUndefinedOrDefault);
+    //   cell.subscribeAny(makeUndefinedOrDefault);
     // });
 
-    var updateSelected = $m(this, 'updateSelected');
-    this.changedSlot.subscribeWithSlave(updateSelected);
-    this.undefinedSlot.subscribeWithSlave(updateSelected);
+    this.subscribeAny($m(this, 'updateSelected'));
 
     var self = this;
     $(self.options.linkSelector).live(self.options.eventSpec, function (event) {
@@ -653,186 +839,6 @@ var LinkSwitchCell = mkClass(Cell, {
   }
 });
 
-var UpdatesChannel = mkClass({
-  initialize: function (updateInitiator, period, plugged) {
-    this.updateInitiator = updateInitiator;
-    this.slot = new CallbackSlot();
-    this.plugged = plugged ? 1 : 0;
-    this.setPeriod(period);
-  },
-  setPeriod: function (period) {
-    if (this.intervalHandle)
-      clearInterval(this.intervalHandle);
-    this.period = period;
-    this.intervalHandle = setInterval($m(this, 'tickHandler'), this.period*1000);
-    if (!this.updateIsInProgress)
-      this.initiateUpdate();
-  },
-  tickHandler: function () {
-    if (this.plugged)
-      return;
-    if (this.updateIsInProgress) {
-      this.hadTickOverflow = true;
-      return;
-    }
-    this.initiateUpdate();
-  },
-  updateSuccess: function (flag, data) {
-    if (flag.cancelled)
-      return;
-    this.recentData = data;
-    try {
-      if (!this.plugged)
-        this.slot.broadcast(this);
-    } finally {
-      this.updateComplete();
-    }
-  },
-  updateComplete: function () {
-    this.updateIsInProgress = false;
-    if (this.hadTickOverflow) {
-      this.hadTickOverflow = false;
-      this.initiateUpdate();
-    }
-  },
-  updateError: function (flag) {
-    if (flag.cancelled)
-      return;
-    this.updateComplete();
-  },
-  initiateUpdate: function () {
-    if (this.plugged)
-      return;
-    this.updateIsInProgress = {};
-    this.updateInitiator(_.bind(this.updateSuccess, this, this.updateIsInProgress),
-                         _.bind(this.updateError, this, this.updateIsInProgress));
-  },
-  plug: function (cancelCurrentUpdate) {
-    if (cancelCurrentUpdate && this.updateIsInProgress) {
-      this.updateIsInProgress.cancelled = true;
-      this.hadTickOverflow = false;
-      this.updateIsInProgress = false;
-    }
-    if (this.plugged++ != 0)
-      return;
-    if (this.intervalHandle)
-      clearInterval(this.intervalHandle);
-  },
-  unplug: function () {
-    if (--this.plugged != 0)
-      return;
-    this.setPeriod(this.period);
-  }
-});
-
-var baseDelegator = mkClass({
-  initialize: function (target) {
-    this.target = target;
-  }
-});
-
-function mkDelegator(klass, base) {
-  base = base || baseDelegator;
-
-  var proto = klass.prototype;
-  var methods = {};
-  _.each(_.keys(proto), function (name) {
-    if (name in base.prototype)
-      return;
-    methods[name] = function () {
-      return proto[name].apply(this.target, arguments);
-    };
-  });
-
-  return mkClass(base, methods);
-}
-
-var CellControlledUpdateChannel = mkClass(UpdatesChannel, {
-  initialize: function (cell, period) {
-    var _super = $m(this, 'initialize', UpdatesChannel);
-    _super($m(this, 'updateInitiator'), period, true);
-    this.cell = cell;
-    this.cell.changedSlot.subscribeWithSlave($m(this, 'onCellChanged'));
-    this.cell.undefinedSlot.subscribeWithSlave($m(this, 'onCellUndefined'));
-    this.pluggedViaCell = true;
-    this.extraXHRData = {};
-  },
-  onCellChanged: function () {
-    if (!this.pluggedViaCell)
-      this.plug(true);
-    this.pluggedViaCell = false;
-    this.unplug();
-  },
-  onCellUndefined: function () {
-    this.pluggedViaCell = true;
-    this.plug(true);
-  },
-  updateInitiator: function (okCallback, errorCallback) {
-    $.ajax(_.extend({type: 'GET',
-                     dataType: 'json',
-                     success: okCallback,
-                     data: _.extend(this.extraXHRData, this.cell.value.data || {}),
-                     error: errorCallback},
-                    this.cell.value));
-  }
-});
-
-(function () {
-  var Base = mkDelegator(UpdatesChannel);
-  window.StatUpdateSubchannel = mkClass(Base, {
-    initialize: function (mainChannel) {
-      $m(this, 'initialize', Base)(mainChannel);
-
-      mainChannel.subchannels = (mainChannel.subchannels || []);
-      mainChannel.subchannels.push(this);
-
-      this.slot = this.target.slot;
-      this.period = 1/0;
-    },
-    setPeriod: function (period) {
-      this.period = period;
-      period = _.min(_.pluck(this.target.subchannels, 'period'));
-      if (period != this.target.period)
-        $m(this, 'setPeriod', Base)(period);
-    },
-    setXHRExtra: function (options) {
-      this.target.extraXHRData = _.extend(this.target.extraXHRData, options);
-    }
-  });
-})()
-
-var OpsStatUpdateSubchannel = mkClass(StatUpdateSubchannel, {
-  initialize: function (mainChannel) {
-    $m(this, 'initialize', StatUpdateSubchannel)(mainChannel);
-
-    this.slot.subscribeWithSlave($m(this, 'onDataArrived'));
-  },
-  onDataArrived: function () {
-    var oldOps = this.lastOps;
-    var ops = this.lastOps = this.target.recentData.op;
-    var tstamp = this.lastTstamp = this.target.recentData.op.tstamp;
-    if (!tstamp)
-      return;
-
-    this.setXHRExtra({opsbysecond_start_tstamp: tstamp});
-
-    var oldTstamp = this.lastTstamp;
-    if (!this.lastTstamp || !oldOps)
-      return;
-
-    var dataOffset = Math.round((tstamp - oldTstamp) / this.target.recentData.op.samples_interval)
-    _.each(['misses', 'gets', 'sets', 'ops'], function (cat) {
-      var oldArray = oldOps[cat];
-      var newArray = ops[cat];
-
-      var oldLength = oldArray.length;
-      var nowLength = newArray.length;
-      if (nowLength < oldLength)
-        ops[cat] = oldArray.slice(-(oldLength-nowLength)-dataOffset, (dataOffset == 0) ? oldLength : -dataOffset).concat(newArray);
-    });
-  }
-});
-
 var DAO = {
   ready: false,
   onReady: function (thunk) {
@@ -855,19 +861,6 @@ var DAO = {
     }, 'json');
   }
 };
-
-// TODO: need special ajax valued cell type so that we can avoid DoS-ing
-// server with duplicate requests
-function asyncAjaxCellValue(cell, options, tranformer) {
-  $.ajax(_.extend({type: 'GET',
-                   dataType: 'json',
-                   success: function (data) {
-                     if (tranformer)
-                       data = tranformer(data);
-                     cell.setValue(data);
-                   }},
-                 options));
-}
 
 (function () {
   var modeCell = new Cell();
@@ -901,7 +894,7 @@ var CurrentStatTargetHandler = {
     this.currentPoolDetailsCell = new Cell(function (currentPoolIndex, poolList) {
       console.log("currentPoolDetailsCell: (",currentPoolIndex,poolList,")")
       var uri = poolList[currentPoolIndex].uri;
-      asyncAjaxCellValue(this.self, {url: uri});
+      return future.get({url: uri});
     }).setSources({currentPoolIndex: this.currentPoolIndexCell, poolList: DAO.cells.poolList});
 
     this.currentBucketIndexCell = new Cell(function (path, currentPoolDetails) {
@@ -917,7 +910,7 @@ var CurrentStatTargetHandler = {
     }).setSources({path: this.pathCell, currentPoolDetails: this.currentPoolDetailsCell});
 
     this.currentBucketDetailsCell = new Cell(function (currentBucketIndex, currentPoolDetails) {
-      asyncAjaxCellValue(this.self, {url: currentPoolDetails.bucket[currentBucketIndex].uri});
+      return future.get({url: currentPoolDetails.bucket[currentBucketIndex].uri});
     }).setSources({currentBucketIndex: this.currentBucketIndexCell,
                    currentPoolDetails: this.currentPoolDetailsCell});
 
@@ -931,12 +924,12 @@ var CurrentStatTargetHandler = {
                    currentPoolDetails: this.currentPoolDetailsCell,
                    currentBucketDetails: this.currentBucketDetailsCell});
 
-    this.currentPoolIndexCell.changedSlot.subscribeWithSlave($m(this, 'renderPoolList'));
-    this.currentPoolDetailsCell.changedSlot.subscribeWithSlave($m(this, 'renderBucketList'));
+    this.currentPoolIndexCell.subscribe($m(this, 'renderPoolList'));
+    this.currentPoolDetailsCell.subscribe($m(this, 'renderBucketList'));
 
     $('a').live('click', $m(this, 'clickHandler'));
 
-    this.pathCell.changedSlot.subscribeWithSlave($m(this, 'markSelected'));
+    this.pathCell.subscribe($m(this, 'markSelected'));
   },
   targetURIChanged: function (value) {
     var arr = value ? value.split("/") : ['0'];
@@ -1010,18 +1003,86 @@ var CurrentStatTargetHandler = {
 
 CurrentStatTargetHandler.initialize();
 
+var SamplesRestorer = mkClass({
+  transformOp: function (op) {
+    var oldOps = this.lastOps;
+    var ops = this.lastOps = op;
+    var tstamp = this.lastTstamp = op.tstamp;
+    if (!tstamp)
+      return;
+
+    var oldTstamp = this.lastTstamp;
+    if (!this.lastTstamp || !oldOps)
+      return;
+
+    var dataOffset = Math.round((tstamp - oldTstamp) / op.samples_interval)
+    _.each(['misses', 'gets', 'sets', 'ops'], function (cat) {
+      var oldArray = oldOps[cat];
+      var newArray = ops[cat];
+
+      var oldLength = oldArray.length;
+      var nowLength = newArray.length;
+      if (nowLength < oldLength)
+        ops[cat] = oldArray.slice(-(oldLength-nowLength)-dataOffset,
+                                  (dataOffset == 0) ? oldLength : -dataOffset).concat(newArray);
+    });
+  }
+});
+
 (function () {
   var targetCell = CurrentStatTargetHandler.currentStatTargetCell;
 
   var StatsArgsCell = new Cell(function (target) {
     return {url: target.stats.uri};
   }).setSources({target: targetCell});
-  var StatsChannel = new CellControlledUpdateChannel(StatsArgsCell, 86400);
 
-  var opStatsSubchannel = new OpsStatUpdateSubchannel(StatsChannel);
-  var keyStatsSubchannel = new StatUpdateSubchannel(StatsChannel);
+  var statsOptionsCell = new Cell();
+  statsOptionsCell.setValue({nonQ: ['keysInterval', 'nonQ']});
+  _.extend(statsOptionsCell, {
+    update: function (options) {
+      this.modifyValue(_.extend, options);
+    },
+    equality: deeperEquality
+  });
+
+  var samplesRestorerCell = new Cell(function (target, options) {
+    return new SamplesRestorer();
+  }).setSources({target: targetCell, options: statsOptionsCell});
+
+  var statsCell = new Cell(function (samplesRestorer, options, target) {
+    var data = _.extend({}, options);
+    _.each(data.nonQ, function (n) {
+      delete data[n];
+    });
+
+    if (samplesRestorer.lastTstamp)
+      data.opsbysecond_start_tstamp = samplesRestorer.lastTstamp;
+
+    var valueTransformer = function (data) {
+      samplesRestorer.transformOp(data.op);
+      return data;
+    }
+
+    return future.get({
+      url: target.stats.uri,
+      data: data
+    }, valueTransformer);
+  }).setSources({samplesRestorer: samplesRestorerCell,
+                 options: statsOptionsCell,
+                 target: targetCell});
+
+  statsCell.subscribe(function (cell) {
+    var op = cell.value.op;
+    cell.recalculateAt(op.tstamp + op.samples_interval*1000);
+
+    var keysInterval = statsOptionsCell.value.keysInterval;
+    if (keysInterval)
+      cell.recalculateAt((new Date()).valueOf() + keysInterval);
+  });
 
   _.extend(DAO.cells, {
+    stats: statsCell,
+    statsOptions: statsOptionsCell,
     graphZoomLevel: new LinkSwitchCell('graph_zoom',
                                        {firstLinkIsDefault: true,
                                         clearOnChangesTo: [DAO.cells.overviewActive]}),
@@ -1030,11 +1091,6 @@ CurrentStatTargetHandler.initialize();
                                        clearOnChangesTo: [DAO.cells.overviewActive]}),
     currentPoolDetails: CurrentStatTargetHandler.currentPoolDetailsCell
   });
-  DAO.channels = {
-    statsMain: StatsChannel,
-    opStats: opStatsSubchannel,
-    keyStats: keyStatsSubchannel
-  }
 })();
 
 function renderTick(g, p1x, p1y, dx, dy, opts) {
@@ -1157,7 +1213,7 @@ var StatGraphs = {
     firstLinkIsDefault: true}),
   selectedCounter: 0,
   update: function () {
-    var stats = DAO.channels.statsMain.recentData;
+    var stats = DAO.cells.stats.value;
     if (!stats)
       return;
     stats = stats.op;
@@ -1196,7 +1252,7 @@ var StatGraphs = {
     selected.addLink(sets, 'sets');
     selected.addLink(misses, 'misses');
 
-    selected.changedSlot.subscribeWithSlave($m(this, 'update'));
+    selected.subscribe($m(this, 'update'));
     selected.finalizeBuilding();
 
     var t = ops.add(gets).add(sets).add(misses);
@@ -1227,8 +1283,8 @@ var OverviewSection = {
   onFreshStats: function () {
     StatGraphs.update()
   },
-  onKeyStats: function (channel) {
-    renderTemplate('top_keys', $.map(channel.recentData.hot_keys, function (e) {
+  onKeyStats: function (cell) {
+    renderTemplate('top_keys', $.map(cell.value.hot_keys, function (e) {
       return $.extend({}, e, {total: 0 + e.gets + e.misses});
     }));
   },
@@ -1237,16 +1293,16 @@ var OverviewSection = {
     renderTemplate('server_list', nodes);
   },
   statRefreshOptions: {
-    real_time: {channelPeriod: 1, requestParam: 'now'},
-    one_hr: {channelPeriod: 300, requestParam: '1hr'},
-    day: {channelPeriod: 1800, requestParam: '24hr'}
+    real_time: {channelPeriod: 1000, requestParam: 'now'},
+    one_hr: {channelPeriod: 300000, requestParam: '1hr'},
+    day: {channelPeriod: 1800000, requestParam: '24hr'}
   },
   init: function () {
-    DAO.channels.opStats.slot.subscribeWithSlave($m(this, 'onFreshStats'));
-    DAO.channels.keyStats.slot.subscribeWithSlave($m(this, 'onKeyStats'));
-    DAO.cells.currentPoolDetails.changedSlot.subscribeWithSlave($m(this, 'onFreshNodeList'));
+    DAO.cells.stats.subscribe($m(this, 'onFreshStats'));
+    DAO.cells.stats.subscribe($m(this, 'onKeyStats'));
+    DAO.cells.currentPoolDetails.subscribe($m(this, 'onFreshNodeList'));
     prepareTemplateForCell('top_keys', CurrentStatTargetHandler.currentStatTargetCell);
-    prepareTemplateForCell('server_list', DAO.cells.currentPoolDetails);    
+    prepareTemplateForCell('server_list', DAO.cells.currentPoolDetails);
     prepareTemplateForCell('pool_list', DAO.cells.poolList);
 
     _.each(this.statRefreshOptions, function (value, key) {
@@ -1256,31 +1312,24 @@ var OverviewSection = {
                                  value);
     });
 
-    DAO.cells.graphZoomLevel.changedSlot.subscribeWithSlave(function (cell) {
+    DAO.cells.graphZoomLevel.subscribe(function (cell) {
       var value = cell.value;
-      var channel = DAO.channels.opStats;
-
-      channel.plug(true);
-      channel.setXHRExtra({opspersecond_zoom: value.requestParam});
-      channel.setPeriod(value.channelPeriod);
-      channel.unplug();
+      DAO.cells.statsOptions.update({opspersecond_zoom: value.requestParam});
     });
     DAO.cells.graphZoomLevel.finalizeBuilding();
 
-    DAO.cells.keysZoomLevel.changedSlot.subscribeWithSlave(function (cell) {
+    DAO.cells.keysZoomLevel.subscribe(function (cell) {
       var value = cell.value;
-      var channel = DAO.channels.keyStats;
-
-      channel.plug(true);
-      channel.setXHRExtra({keys_opspersecond_zoom: value.requestParam});
-      channel.setPeriod(value.channelPeriod);
-      channel.unplug();
+      DAO.cells.statsOptions.update({
+        keys_opspersecond_zoom: value.requestParam,
+        keysInterval: value.channelPeriod
+      });
     });
     DAO.cells.keysZoomLevel.finalizeBuilding();
 
     StatGraphs.init();
 
-    CurrentStatTargetHandler.currentStatTargetCell.changedSlot.subscribeWithSlave(function (cell) {
+    CurrentStatTargetHandler.currentStatTargetCell.subscribe(function (cell) {
       var names = $('.stat_target_name');
       names.text(cell.value.name);
     });
@@ -1310,7 +1359,7 @@ var AlertsSection = {
         if (number !== undefined)
           params.data.lastNumber = number;
       }
-      asyncAjaxCellValue(this.self, params, function (data) {
+      return future.get(params, function (data) {
         if (value) {
           var newDataNumbers = _.pluck(data.list, 'number');
           _.each(value.list.reverse(), function (oldItem) {
@@ -1319,12 +1368,11 @@ var AlertsSection = {
           });
         }
         return data;
-      });
-      return this.self.value;
+      }, this.self.value);
     }).setSources({active: this.active});
     prepareTemplateForCell("alert_list", this.alerts);
-    this.alerts.changedSlot.subscribeWithSlave($m(this, 'renderAlertsList'));
-    this.alerts.changedSlot.subscribeWithSlave(function (cell) {
+    this.alerts.subscribe($m(this, 'renderAlertsList'));
+    this.alerts.subscribe(function (cell) {
       _.delay($m(cell, 'recalculate'), 30000);
     });
 
