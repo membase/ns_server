@@ -74,25 +74,25 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 handle_info(_Info, State) -> {noreply, State}.
 handle_cast(_Msg, State) -> {noreply, State}.
 
-handle_call({mock_stub_call, Sym, Fun}, From,
+handle_call({mock_stub_call, Sym, Fun}, _From,
             State = #state{call_stubs=Stubs}) ->
   {reply, ok, State#state{call_stubs=[{Sym, Fun}|Stubs]}};
 
-handle_call({mock_expects_call, Args, Fun}, From,
+handle_call({mock_expects_call, Args, Fun}, _From,
             State = #state{call_expects=Expects}) ->
   {reply, ok, State#state{call_expects=add_expectation(Args, Fun,
                                                        at_least_once,
                                                        Expects)}};
 
-handle_call({mock_expects_call, Args, Fun, Times}, From,
+handle_call({mock_expects_call, Args, Fun, Times}, _From,
             State = #state{call_expects=Expects}) ->
   {reply, ok, State#state{call_expects=add_expectation(Args, Fun, Times,
                                                        Expects)}};
 
-handle_call(mock_stop, From, State) ->
+handle_call(mock_stop, _From, State) ->
   {stop, shutdown, ok, State};
 
-handle_call(Request, From,
+handle_call(Request, _From,
             State = #state{call_stubs=Stubs,call_expects=Expects}) ->
   % expectations have a higher priority
   case find_expectation(Request, Expects) of
@@ -106,9 +106,7 @@ handle_call(Request, From,
       end
   end.
 
-%%--------------------------------------------------------------------
-%%% Internal functions
-%%--------------------------------------------------------------------
+%--------------------------------------------------------------------
 
 add_expectation(Args, Fun, Times, Expects) ->
   Expects ++ [{Args, Fun, Times}].
@@ -116,7 +114,7 @@ add_expectation(Args, Fun, Times, Expects) ->
 find_expectation(Request, Expects) ->
   find_expectation(Request, Expects, []).
 
-find_expectation(Request, [], Rest) ->
+find_expectation(_Request, [], _Rest) ->
   not_found;
 
 find_expectation(Request, [{Args, Fun, Times}|Expects], Rest) ->
@@ -141,13 +139,13 @@ find_stub(Request, Stub) when is_tuple(Request) ->
   Sym = element(1, Request),
   find_stub(Sym, Stub);
 
-find_stub(Sym, []) ->
+find_stub(_Sym, []) ->
   not_found;
 
-find_stub(Sym, Stubs) when not is_atom(Sym) ->
+find_stub(Sym, _Stubs) when not is_atom(Sym) ->
   not_found;
 
-find_stub(Sym, [{Sym, Fun}|Stubs]) ->
+find_stub(Sym, [{Sym, Fun}|_Stubs]) ->
   {found, {Sym, Fun}};
 
 find_stub(Sym, [_Stub|Stubs]) ->

@@ -37,7 +37,7 @@
 %% API
 -export([mock/1, proxy_call/2, proxy_call/3, expects/4, expects/5,
          verify_and_stop/1, verify/1,
-         stub_proxy_call/3, stub_function/4, stop/1]).
+         stub/4, stub_proxy_call/3, stub_function/4, stop/1]).
 
 -include("common.hrl").
 -include_lib("eunit/include/eunit.hrl").
@@ -213,7 +213,7 @@ format_missing_expectations(Expects, Mod) ->
 format_missing_expectations([], _, Msgs) ->
   lists:reverse(Msgs);
 
-format_missing_expectations([{Function, Args, Ret, Times, Called}|Expects],
+format_missing_expectations([{Function, _Args, _Ret, Times, Called}|Expects],
                             Mod, Msgs) ->
   Msgs1 = [?fmt("expected ~p:~p to be called ~p times but was called ~p",
                 [Mod,Function,Times,Called])|Msgs],
@@ -250,7 +250,7 @@ match_expectation(Function, Args, [Expect|Expects], Rest) ->
 prepare_return(Args, Ret, Invoked) when is_function(Ret) ->
   Ret(Args, Invoked);
 
-prepare_return(Args, Ret, Invoked) ->
+prepare_return(_Args, Ret, _Invoked) ->
   Ret.
 
 replace_code(Module) ->
@@ -283,8 +283,10 @@ get_exports(Info) ->
 get_exports(Info, Acc) ->
   case lists:keytake(exports, 1, Info) of
     {value, {exports, Exports}, ModInfo} ->
-      get_exports(ModInfo, Acc ++ lists:filter(                                          fun({module_info, _}) ->
-          false;
+      get_exports(ModInfo,
+                  Acc ++ lists:filter(
+                           fun({module_info, _}) -> false; (_) -> true end,
+                           Exports));
     _ -> Acc
   end.
 
