@@ -34,6 +34,8 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-compile(export_all).
+
 -define(assertWithin(Lower, Upper, Expr),
   	((fun (__X,__Y) ->
   	    case (Expr) of
@@ -74,7 +76,7 @@ monotonicity_test() ->
   Parts1 = map_partitions(Partitions, [a,b]),
   Parts2 = map_partitions(Partitions, [a,b,c]),
   Diff = diff(Parts1, Parts2),
-  ?assertEqual(false, lists:any(fun({A,B,Part}) ->
+  ?assertEqual(false, lists:any(fun({A,B,_Part}) ->
       case {A,B} of
         {a,b} -> true;
         {b,a} -> true;
@@ -87,7 +89,7 @@ monotonicity_4_test() ->
   Parts1 = map_partitions(Partitions, [a,b,c]),
   Parts2 = map_partitions(Partitions, [a,b,c,d]),
   Diff = diff(Parts1, Parts2),
-  ?assertEqual(false, lists:any(fun({A,B,Part}) ->
+  ?assertEqual(false, lists:any(fun({A,B,_Part}) ->
       case {A,B} of
         {a,b} -> true;
         {a,c} -> true;
