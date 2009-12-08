@@ -1,0 +1,55 @@
+{directory, "/tmp/data"}.
+{kinds, [
+  {router, [{prot, [ascii, binary]},
+            {port, 11211},
+            {sasl, true},
+            {bucket, true},
+            {persist, true},
+            {dmerkle, true},
+            {fg_replicate, false},
+            {bg_replicate, true}]},
+]},
+{pools, [
+  {default, [
+    {persist, false},
+    {replica_n, 1},
+    {replica_w, 1},
+    {replica_r, 1},
+    {kinds, [
+      {router, [{port, 11211}]},
+      {kvcache, [{port, 11212}]},
+      {kvstore, [{port, 11213}]},
+      {memcached, [{port, 11211}]}
+    ]},
+    {addrs, [
+      [{kind, router},
+       {conn, [{addr, "host1"},
+               {prot: [ascii]},
+               {auth: credentials_here}]},
+       {weight, 1},
+      [{kind, kvcache},
+       {conn, [{addr, "host1"},
+               {prot: [ascii]},
+               {auth: credentials_here}]},
+       {weight, 1}],
+      [{kind, kvstore},
+       {conn, [{addr, "host1"},
+               {prot: [ascii]},
+               {auth: credentials_here}]},
+       {weight, 1}],
+      [{kind, memcached},
+       {conn, [{addr, "host2"},
+               {prot: [ascii]},
+               {auth: credentials_here}]},
+       {weight, 1}]
+    ]},
+    {buckets, [
+      {default, [
+        {addrs, undefined}
+      ]}
+    ]},
+    {users, [
+    ]}
+  ]}
+]}.
+
