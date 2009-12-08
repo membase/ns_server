@@ -11,6 +11,7 @@ all: ebins
 ebins:
 	test -d ebin || mkdir ebin
 	erl $(EFLAGS) -make
+	cp src/emoxi.app ebin
 
 clean:
 	rm -f tmp/*.cov.html erl_crash.dumpg
