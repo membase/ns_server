@@ -47,10 +47,13 @@
     ]},
     {buckets, [
       {default, [
+        {cache_expiration_range, {0,600}}
         {addrs, undefined}
       ]}
     ]},
     {users, [
+    ]},
+    {alerts, [
     ]}
   ]}
 ]}.
