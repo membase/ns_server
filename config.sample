@@ -7,8 +7,8 @@
             {persist, true},
             {dmerkle, true},
             {fg_replicate, false},
-            {bg_replicate, true}]},
-]},
+            {bg_replicate, true}]}
+]}.
 {pools, [
   {default, [
     {persist, false},
@@ -24,23 +24,23 @@
     {addrs, [
       [{kind, router},
        {conn, [{addr, "host1"},
-               {prot: [ascii]},
-               {auth: credentials_here}]},
-       {weight, 1},
+               {prot, [ascii]},
+               {auth, credentials_here}]},
+       {weight, 1}],
       [{kind, kvcache},
        {conn, [{addr, "host1"},
-               {prot: [ascii]},
-               {auth: credentials_here}]},
+               {prot, [ascii]},
+               {auth, credentials_here}]},
        {weight, 1}],
       [{kind, kvstore},
        {conn, [{addr, "host1"},
-               {prot: [ascii]},
-               {auth: credentials_here}]},
+               {prot, [ascii]},
+               {auth, credentials_here}]},
        {weight, 1}],
       [{kind, memcached},
        {conn, [{addr, "host2"},
-               {prot: [ascii]},
-               {auth: credentials_here}]},
+               {prot, [ascii]},
+               {auth, credentials_here}]},
        {weight, 1}]
     ]},
     {buckets, [
