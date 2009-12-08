@@ -261,7 +261,6 @@ the human readable pool name.
  Content-Length: nnn
  {
    "name" : "Default Pool",
-   "id" : 1,
    "state": {
      "current" : "transitioning",
      "uri" : "/pool/Default Pool/state"
@@ -293,16 +292,13 @@ the human readable pool name.
    "bucket" : [
      {
        "name" : "yourbucket",
-       "guid" : "lksjdflskjdlfj",
        "uri" : "https://node.in.pool.com/pool/Default Pool/bucket/yourbucket"
      },
      {
        "name" : "yourotherbucket",
-       "guid" : "lksjdflskjdlfj",
        "uri" : "https://node.in.pool.com/pool/Default Pool/bucket/yourotherbucket"
      }
    ],
-   "default-bucket" : "yourbucket",
    "controller" : {
       "backup" : {
         "uri" : "https://node.in.pool.com/startbackup"
@@ -321,6 +317,11 @@ The pool state could be "stable" "unstable" "transitioning" or other values
 which allows the admin UI or clients to see current state and get further
 details if there are some about the updated state.  The URI may be optional
 and will likely be omitted in the "stable" case.
+
+Note that since buckets are renameable and there is no way to determine what
+the default bucket for a pool is, the system will attempt to connect dumb
+clients to a bucket named "default".  If it does not exist, the connection
+will be dropped.  An alert should be generated.
 
 ####Node Details
 
@@ -381,7 +382,6 @@ sense, like a backup or asking a node to join a pool.
  "buckets" : [
    {
      "name" : "yourbucket",
-     "guid" : "lksjdflskjdlfj",
      "uri" : "https://node.in.pool.com/pool/Default Pool/bucket/yourbucket"
    }
  ]
@@ -484,29 +484,67 @@ POST /pool/My New Pool/bucket/Another bucket
 {
    "name" : "Another bucket"
    "bucketrules" : {
-     "persist-range" : [
+     "cache-range" :
        {
-         "min" : 0,
-         "max" : 0
+         "min" : 1,
+         "max" : 599
        },
-       {
-         "min" : 600
-       }
-     ]
      "replication-factor" : 2
    }
 }
 </pre>
 
 The bucket rules above show that for the bucket "Another bucket" the bucketrules
-are to persist for two expiration value ranges.  One is from 0 to 0, meaning
-all items which should not expire will persist.  The application developer is
-therefore responsible for cleaning up any of these items.  The second range is
-from 600 seconds (10 minutes) with no maxiumum.  This means any item with an
-expiration equal to or greater than 10 minutes will be persisted.
+are to cache only any item whose expiration is between 1 and 599 seconds, 
+inclusive.  Note that items which have 0 (i.e. no expiration)
+will persist.  The application developer is
+therefore responsible for cleaning up any unwanted data.  Any item with an
+expiration from 600 seconds or higher (including those with UNIX epoch dates
+per the memcached protocol), the system will clean up.
 
 Note that replication factor (a.k.a. in memory replication across cache nodes)
-may not be supported at 1.0.
+will not be supported at 1.0 and may not be tunable.
+
+###Renaming a Bucket
+
+Assuming the response above on getting a bucket, renaming the bucket is a
+just a question of modifying the response and posting it back to the system.
+The system will then issue a redirect indicating success.
+
+*Request*
+
+<pre class="restcalls">
+ POST /pool/My New Pool/bucket/Another bucket
+ Host: node.in.your.pool.com
+ Authorization: Basic xxxxxxxxxxxxxxxxxxx
+ Accept: application/com.northscale.store+json
+ X-memcachekv-Store-Client-Specification-Version: 0.1
+
+{
+   "name" : "New Name for Another Bucket"
+   "bucketrules" : {
+     "cache-range" :
+       {
+         "min" : 1,
+         "max" : 599
+       },
+     "replication-factor" : 2
+   }
+}
+
+</pre>
+
+*Response*
+
+
+response 200: Bucket was renamed.  A location header for the new location
+is given.  Requests to the old location will receive 301 (moved permanently).
+ - or -
+response 403: user is not authorized (or no users are authorized because it
+is administratively disabled to all users)
+
+At release of 1.0, this will always return a 403.
+
 
 #### Pool Operations
 
@@ -559,3 +597,6 @@ have been referenced.
 * 20091119 More info on stats (matt.ingenthron@northscale.com)
 * 20091202 Made pools and nodes plural (as they should have been), added port
   information for nodes
+* 20091207 Removed default bucket, removed ID/GUIDs from buckets/pools, changed
+  bucket rules to be single value cache range rather than persist range.  Added
+  bucket renaming.
