@@ -32,7 +32,7 @@
 %
 % Original Author: Cliff Moon
 
--module(store_dets).
+-module(storage_dets).
 
 %% API
 -export([open/2, close/1, get/2, put/4, has_key/2, delete/2, fold/3]).

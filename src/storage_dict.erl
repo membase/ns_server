@@ -32,7 +32,7 @@
 %
 % Original Author: Cliff Moon
 
--module (store_dict).
+-module (storage_dict).
 
 -export ([open/2, close/1, get/2, put/4, has_key/2,
           fold/3, delete/2, info/1]).
