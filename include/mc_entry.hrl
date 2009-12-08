@@ -44,3 +44,5 @@
                  buffered_writes=undefined,
                  cache=undefined, cache_size=1048576}).
 
+-define(CHUNK_SIZE, 5120).
+
