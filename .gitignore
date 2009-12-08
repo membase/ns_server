@@ -1,4 +1,5 @@
 ebin
 erl_crash.dump
+test/log
 **.cov.html
 *~
