@@ -15,6 +15,8 @@
     {replica_n, 1},
     {replica_w, 1},
     {replica_r, 1},
+    {auth, credentials_here},
+    {prot, [binary]},
     {kinds, [
       {router, [{port, 11211}]},
       {kvcache, [{port, 11212}]},
