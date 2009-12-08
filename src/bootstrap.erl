@@ -27,7 +27,7 @@
 % CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
 % LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
 % ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-% POSSIBILITY OF SUCH DAMAGE.-module(config).
+% POSSIBILITY OF SUCH DAMAGE.
 %
 % Original Author: Cliff Moon
 
@@ -35,12 +35,16 @@
 
 -define(CHUNK, 4096).
 
-%% API
--export([start/3]).
+-include_lib("eunit/include/eunit.hrl").
 
 -include("common.hrl").
 
+%% API
+-export([start/3]).
+
+-ifdef(TEST).
 -include("test/bootstrap_test.erl").
+-endif.
 
 start(Directory, OldNode, Callback) when is_function(Callback) ->
   ?infoFmt("bootstrapping for directory ~p~n", [Directory]),
