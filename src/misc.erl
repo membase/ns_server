@@ -193,6 +193,8 @@ hash(Term) ->
   ?forp(hash),
   R.
 
+hash(Term, _Seed) -> hash(Term).
+
 % 32 bit fnv. magic numbers ahoy
 fnv(Term) when is_binary(Term) ->
   fnv_int(?FNV_OFFSET_BASIS, 0, Term);
