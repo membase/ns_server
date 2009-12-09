@@ -1,3 +1,4 @@
 doc/*.html
 deps/mochiweb-src/ebin/*
 *.beam
+ebin/*.app
