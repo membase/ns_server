@@ -296,7 +296,8 @@ the human readable pool name.
      },
      {
        "name" : "yourotherbucket",
-       "uri" : "https://node.in.pool.com/pool/Default Pool/bucket/yourotherbucket"
+       "uri" : "https://node.in.pool.com/pool/Default Pool/bucket/yourotherbucket",
+       "preferred-port" : "caching"
      }
    ],
    "controller" : {
@@ -322,6 +323,15 @@ Note that since buckets are renameable and there is no way to determine what
 the default bucket for a pool is, the system will attempt to connect dumb
 clients to a bucket named "default".  If it does not exist, the connection
 will be dropped.  An alert should be generated.
+
+Preferred ports may be set for a bucket.  They type and number of the port is
+defined at the pool level, but the bucket may tell clients to use a particular
+kind of port.  This allows system operators to, if the client does not
+override the behavior, configure whether clients will use an intelligent
+connection, a straight caching connection or a kvstore connection.  System
+operators or developers using the routing port will see some overhead compared
+to connecting to the caching or kvstore port directly, but do not have to
+deal with pool reconfiguration events.
 
 ####Node Details
 
@@ -383,9 +393,17 @@ sense, like a backup or asking a node to join a pool.
    {
      "name" : "yourbucket",
      "uri" : "https://node.in.pool.com/pool/Default Pool/bucket/yourbucket"
+   },
+   {
+     "name" : "anotherbucket",
+     "uri" : "https://node.in.pool.com/pool/Default Pool/bucket/anotherbucket",
+     "preferred-port" : "caching"
    }
  ]
 </pre>
+
+Note that if a preferred-port is not specified, the default port will be the
+routing port.
 
 ###Statistics
 
@@ -571,13 +589,6 @@ At release of 1.0, this will always return a 403.
 # Notes, Questions and References
 
 ## Open Questions
-* Currently, users cannot have multiple pools with the same name managed by the
-  same infrastructure.  They also cannot have multiple buckets with the same
-  names.  This could be an issue in the future.  A globally unique id for either
-  the pool or the bucket could be introduced.  At the moment, it's probably
-  better to just "punt" and recognize that we may some day we may need to allow
-  for merging of pools and buckets, resolving name conflicts.
-* Are ports configurable?  Is this at the node level or the pool level?
 * Where are users managed?
 
 ## References
@@ -592,11 +603,15 @@ have been referenced.
 ## Changelog
 * 20091113 First publishing (matt.ingenthron@northscale.com)
 * 20091115 Updated with some operations (matt.ingenthron@northscale.com)
-* 20091117 Updated after defending REST and HTTP in discussion with Steve (matt.ingenthron@northscale.com)
-* 20091118 Fleshed out details on the requests and responses (matt.ingenthron@northscale.com)
-* 20091119 More info on stats (matt.ingenthron@northscale.com)
-* 20091202 Made pools and nodes plural (as they should have been), added port
-  information for nodes
+* 20091117 Updated after defending REST and HTTP in discussion with Steve
+  (matt.ingenthron@northscale.com)
+* 20091118 Fleshed out details on the requests and responses
+  (matt.ingenthron@northscale.com)
+* 20091119 Added more info on stats. (matt.ingenthron@northscale.com)
+* 20091202 Made pools and nodes plural (as they should have been); added port
+  information for nodes. (matt.ingenthron@northscale.com)
 * 20091207 Removed default bucket, removed ID/GUIDs from buckets/pools, changed
   bucket rules to be single value cache range rather than persist range.  Added
-  bucket renaming.
+  bucket renaming. (matt.ingenthron@northscale.com)
+* 20091208 Added bucket level preferred port configuration to RESTful 
+  interface. (matt.ingenthron@northscale.com)
