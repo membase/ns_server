@@ -169,7 +169,7 @@ init({StorageModule,DbKey,Name,_Min,_Max,BlockSize}) ->
                        table=Table,name=Name,tree=Tree},
     case Config#config.cache of
       true ->
-        case (catch cherly:start(Config#config.cache_size)) of
+        case (catch cache_start(Config#config.cache_size)) of
           {ok, C} -> {ok, Storage#storage{cache=C}};
           Error ->
             ?infoFmt("Cache start failed: ~p~n", [Error]),
@@ -377,21 +377,11 @@ internal_put(Key, Context, Values, Tree, Table, Module, State) ->
     Failure -> {Failure, State}
   end.
 
-cache_put(undefined, _, _) -> ok;
-cache_put(C, Key, Values) ->
-  cherly:put(C, Key, Values).
-
-cache_get(undefined, _) -> not_found;
-cache_get(C, Key) ->
-  cherly:get(C, Key).
-
-cache_remove(undefined, _) -> ok;
-cache_remove(C, Key) ->
-  cherly:remove(C, Key).
-
-cache_stop(undefined) -> ok;
-cache_stop(C) ->
-  cherly:stop(C).
+cache_start(_Size)         -> undefined.
+cache_stop(undefined)      -> ok.
+cache_put(undefined, _, _) -> ok.
+cache_get(undefined, _)    -> not_found.
+cache_remove(undefined, _) -> ok.
 
 sanitize_key(Key) when is_atom(Key) -> atom_to_list(Key);
 sanitize_key(Key) when is_binary(Key) -> binary_to_list(Key);

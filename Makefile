@@ -37,3 +37,8 @@ test_client: test_client_ascii test_client_binary
 
 cucumber:
 	erl -pa ebin -noshell -s mc_test cucumber -s init stop
+
+dialyzer: ebins
+	dialyzer -pa ebin -I include -r .
+
+
