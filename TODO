@@ -2,14 +2,15 @@ o [DONE] switching between buckets & pools
 o [DONE] bucket name in top key values UI
 o [DONE] switching graphs on overview
 o [DONE] marks and labels on graphs (jquery sparklines seem inappropriate)
-* alerts section implementation
+o [DONE] alerts section implementation
 ** refresh
 ** editable email setting
-** proper tstamp formatting
+* proper tstamp formatting for alerts
 * server settings implementation
 * tests via watir
 * welcome screen
 o [DONE] respect interval select for all sub-sections
+
 * Store password/login in cookies ? So that you don't have to re-enter
    them on page refresh.
 * samples_interval for stats response should be in milliseconds, just

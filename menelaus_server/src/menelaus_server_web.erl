@@ -13,6 +13,8 @@
 
 -export([start/1, stop/0, loop/2]).
 
+-export([simple_memory_proc/0]).
+
 %% External API
 
 start(Options) ->
@@ -20,6 +22,7 @@ start(Options) ->
     Loop = fun (Req) ->
                    ?MODULE:loop(Req, DocRoot)
            end,
+    register(simple_memory_proc, spawn(?MODULE, simple_memory_proc, [])),
     mochiweb_http:start([{name, ?MODULE}, {loop, Loop} | Options1]).
 
 stop() ->
@@ -61,6 +64,20 @@ loop(Req, DocRoot) ->
     end.
 
 %% Internal API
+
+simple_memory_proc() ->
+    Table = ets:new(x, []),
+    receive
+        {Caller, Op, Args} -> Caller ! {sresult, erlang:apply(ets, Op, [Table | Args])}
+    end,
+    simple_memory_proc().
+
+call_simple_memory_proc(Op, Args) ->
+    simple_memory_proc ! {self(), Op, Args},
+    receive
+        {sresult, RV} ->
+             RV
+    end.
 
 check_auth(undefined) -> false;
 check_auth({User, Password}) ->
@@ -160,11 +177,11 @@ handle_bucket_info(Id, Req) ->
 
 %% milliseconds since 1970 Jan 1 at UTC
 java_date() ->
-    {MegaSec, Sec, Millis} = erlang:now(),
-    (MegaSec * 1000000 + Sec) * 1000 + Millis.
+    {MegaSec, Sec, Micros} = erlang:now(),
+    (MegaSec * 1000000 + Sec) * 1000 + (Micros div 1000).
 
 string_hash(String) ->
-    lists:foldl(fun (Val, Acc) -> (Acc * 31 + Val) band 16#0fffffff end,
+    lists:foldl((fun (Val, Acc) -> (Acc * 31 + Val) band 16#0fffffff end),
                 0,
                 String).
 
@@ -207,14 +224,14 @@ generate_samples(Seed, Size) ->
                               lists:seq(0, Size)),
     lists:map(fun trunc/1, low_pass_filter(0.5, RawSamples)).
 
-caching_in_process_dictionary(Key, Computation) ->
-    case get(Key) of
-        undefined -> begin
-                         V = Computation(),
-                         put(Key, V),
-                         V
-                     end;
-        V -> V
+caching_result(Key, Computation) ->
+    case call_simple_memory_proc(lookup, [Key]) of
+        [] -> begin
+                  V = Computation(),
+                  call_simple_memory_proc(insert, [{Key, V}]),
+                  V
+              end;
+        [{_, V}] -> V
     end.
 
 mk_samples(Mode) ->
@@ -227,50 +244,45 @@ mk_samples(Mode) ->
                                        16#a21,
                                        [gets, misses, sets, ops])
                   end,
-    caching_in_process_dictionary(Key, Computation).
+    caching_result(Key, Computation).
 
 build_bucket_stats_response(_Id, Params, Now) ->
-    SamplesSize = 6,
-    OpsPerSecondZoom = proplists:get_value("opspersecond_zoom", Params),
+    OpsPerSecondZoom = case proplists:get_value("opspersecond_zoom", Params) of
+                           undefined -> "1hr";
+                           Val -> Val
+                       end,
     Samples = mk_samples(OpsPerSecondZoom),
+    SamplesSize = length(element(2, hd(Samples))),
     SamplesInterval = case OpsPerSecondZoom of
                           "now" -> 1;
-                          "24hr" -> 86400/SamplesSize;
-                          _ -> 3600/SamplesSize
+                          "24hr" -> 86400 div SamplesSize;
+                          "1hr" -> 3600 div SamplesSize
                       end,
     StartTstampParam = proplists:get_value("opsbysecond_start_tstamp", Params),
-    %% cut_number = samples
-    %% if params['opsbysecond_start_tstamp']
-    %%   start_tstamp = params['opsbysecond_start_tstamp'].to_i/1000.0
-    %%   cut_seconds = tstamp - start_tstamp
-    %%   if cut_seconds > 0 && cut_seconds < samples_interval*samples
-    %%     cut_number = (cut_seconds/samples_interval).floor
-    %%   end
-    %% end
-    CutNumber = case StartTstampParam of
-                    undefined -> SamplesSize;
+    {LastSampleTstamp, CutNumber} = case StartTstampParam of
+                    undefined -> {Now, SamplesSize};
                     _ ->
                         StartTstamp = list_to_integer(StartTstampParam),
                         CutMsec = Now - StartTstamp,
                         if
                             ((CutMsec > 0) andalso (CutMsec < SamplesInterval*1000*SamplesSize)) ->
-                                trunc(float(CutMsec)/SamplesInterval/1000);
-                            true -> SamplesSize
+                                N = trunc(CutMsec/SamplesInterval/1000),
+                                {StartTstamp + N * SamplesInterval * 1000, N};
+                            true -> {Now, SamplesSize}
                         end
                 end,
     Rotates = (Now div 1000) rem SamplesSize,
     CutSamples = lists:map(fun ({K, S}) ->
                                    V = case SamplesInterval of
-                                           %% rv['op'][name] = (rv['op'][name] * 2)[rotates, samples]
                                            1 -> lists:sublist(lists:append(S, S), Rotates + 1, SamplesSize);
                                            _ -> S
                                        end,
-                                   %% rv['op'][name] = rv['op'][name][-cut_number..-1]
                                    NewSamples = lists:sublist(V, SamplesSize-CutNumber+1, CutNumber),
                                    {K, NewSamples}
                            end,
                            Samples),
-    {struct, [{hot_keys, [{struct, [{name, <<"user:image:value">>},
+    {struct, [{now, Now},
+              {hot_keys, [{struct, [{name, <<"user:image:value">>},
                                     {gets, 10000},
                                     {bucket, <<"Excerciser application">>},
                                     {misses, 100},
@@ -290,7 +302,7 @@ build_bucket_stats_response(_Id, Params, Now) ->
                                     {bucket, <<"Excerciser application">>},
                                     {misses, 100},
                                     {type, <<"Cache">>}]}]},
-              {op, {struct, [{tstamp, Now},
+              {op, {struct, [{tstamp, LastSampleTstamp},
                              {samples_interval, SamplesInterval}
                              | CutSamples]}}]}.
 
