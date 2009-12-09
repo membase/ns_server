@@ -109,31 +109,24 @@ merge_configs(Remote, Local) ->
 
 merge_configs([], _Remote, Merged) -> Merged;
 
-merge_configs([Field|Fields], Remote, Merged) ->
-  merge_configs(Fields, Remote,
-                config_set(Field, Merged,
-                           config_get(Field, Remote))).
+merge_configs([Field | Fields], Remote, Merged) ->
+    merge_configs(Fields, Remote,
+                  record_set(Field, Merged, record_get(Field, Remote))).
 
-config_get(Field, Tuple) ->
-  config_get(record_info(fields, mc_config), Field, Tuple, 2).
+record_get(Field, Tuple) ->
+    record_get(record_info(fields, mc_config), Field, Tuple, 2).
 
-config_get([], _, _, _) ->
-  undefined;
+record_get([], _, _, _)                       -> undefined;
+record_get([Field | _], Field, Tuple, Index)  -> element(Index, Tuple);
+record_get([_ | Fields], Field, Tuple, Index) ->
+    record_get(Fields, Field, Tuple, Index+1).
 
-config_get([Field | _], Field, Tuple, Index) ->
-  element(Index, Tuple);
+record_set(Field, Tuple, Value) ->
+    record_set(record_info(fields, mc_config), Field, Tuple, Value, 2).
 
-config_get([_ | Fields], Field, Tuple, Index) ->
-  config_get(Fields, Field, Tuple, Index+1).
-
-config_set(Field, Tuple, Value) ->
-  config_set(record_info(fields, mc_config), Field, Tuple, Value, 2).
-
-config_set([], _Field, Tuple, _, _) ->
-  Tuple;
-
-config_set([Field | _], Field, Tuple, Value, Index) ->
-  setelement(Index, Tuple, Value);
-
-config_set([_ | Fields], Field, Tuple, Value, Index) ->
-  config_set(Fields, Field, Tuple, Value, Index + 1).
+record_set([], _Field, Tuple, _, _) ->
+    Tuple;
+record_set([Field | _], Field, Tuple, Value, Index) ->
+    setelement(Index, Tuple, Value);
+record_set([_ | Fields], Field, Tuple, Value, Index) ->
+    record_set(Fields, Field, Tuple, Value, Index + 1).
