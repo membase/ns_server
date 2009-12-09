@@ -81,26 +81,17 @@ init(ConfigPath) when is_list(ConfigPath) ->
     {error, Reason} -> {error, Reason}
   end.
 
-terminate(_Reason, _State) -> ok.
-
+terminate(_Reason, _State)          -> ok.
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
-handle_info(_Info, State) -> {noreply, State}.
-
-handle_call(get, _From, State) ->
-	{reply, State, State};
-
-handle_call({set, Config}, _From, _State) ->
-    {reply, ok, Config}.
-
-handle_cast(stop, State) ->
-    {stop, shutdown, State}.
+handle_info(_Info, State)                 -> {noreply, State}.
+handle_call(get, _From, State)            -> {reply, State, State};
+handle_call({set, Config}, _From, _State) -> {reply, ok, Config}.
+handle_cast(stop, State)                  -> {stop, shutdown, State}.
 
 %%--------------------------------------------------------------------
 
-pick_node_and_merge(Config, Nodes) when length(Nodes) == 0 ->
-  Config;
-
+pick_node_and_merge(Config, Nodes) when length(Nodes) == 0 -> Config;
 pick_node_and_merge(Config, Nodes) ->
   [Node|_] = lib_misc:shuffle(Nodes),
   case (catch ?MODULE:get(Node)) of

@@ -63,7 +63,7 @@ start(_Type, []) ->
   case application:get_env(config) of
     {ok, ConfigFile} ->
       case filelib:is_file(ConfigFile) of
-        true -> join_and_start(ConfigFile);
+        true  -> join_and_start(ConfigFile);
         false -> {error, io:format("~p does not exist.", [ConfigFile])}
       end;
     undefined ->
