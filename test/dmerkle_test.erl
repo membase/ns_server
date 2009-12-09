@@ -97,8 +97,8 @@ insert_500_both_ways_test() ->
     end, Pid2, lists:reverse(lists:seq(1,500))),
   _TreeA = get_state(Pid),
   _TreeB = get_state(Pid2),
-  ?infoFmt("leaves A: ~p~n", [leaves(Pid)]),
-  ?infoFmt("leaves B: ~p~n", [leaves(Pid2)]),
+  % ?infoFmt("leaves A: ~p~n", [leaves(Pid)]),
+  % ?infoFmt("leaves B: ~p~n", [leaves(Pid2)]),
   _LeafHashA = lists:foldl(fun({_,Hash}, Sum) ->
       (Hash + Sum) rem (2 bsl 31)
     end, 0, leaves(Pid)),
