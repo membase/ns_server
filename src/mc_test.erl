@@ -80,7 +80,7 @@ tests_emoxi() ->
      sync_manager].
 
 test() ->
-    {test_cover(tests_mc()),
+    {test_list(tests_mc()),
      test_list(tests_emoxi())}.
 
 test_cover(Tests) ->
@@ -100,6 +100,7 @@ test_cover(Tests) ->
     ok.
 
 test_list(Tests) ->
+    process_flag(trap_exit, true),
     lists:foreach(
       fun (Test) ->
               io:format("  ~p...~n", [Test]),
@@ -114,6 +115,7 @@ cucumber_features() -> ["rebalance"].
 cucumber_step_modules() -> [].
 
 cucumber() ->
+    process_flag(trap_exit, true),
     CucumberStepModules = cucumber_step_modules(),
     CucumberFeatures = cucumber_features(),
     TotalStats =

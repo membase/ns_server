@@ -58,9 +58,7 @@
 -include("test/dmerkle_test.erl").
 -endif.
 
-%%====================================================================
-%% Public API
-%%====================================================================
+%% API
 
 index_name(Path) ->
   lists:concat([Path, ".idx"]).
@@ -134,9 +132,7 @@ swap_tree(OldTree, NewTree) ->
   file:delete(key_name(NewFilename)),
   open(OldFilename, BlockSize).
 
-%%====================================================================
 %% gen_server callbacks
-%%====================================================================
 
 init({FileName, BlockSize}) ->
   case dmerkle_tree:start_link(FileName, BlockSize) of
@@ -149,17 +145,6 @@ init({FileName, BlockSize}) ->
 terminate(_Reason, #dmerkle{tree=Tree}) -> dmerkle_tree:stop(Tree).
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
-%%--------------------------------------------------------------------
-%% @spec
-%% handle_call(Request, From, State) -> {reply, Reply, State} |
-%%                                      {reply, Reply, State, Timeout} |
-%%                                      {noreply, State} |
-%%                                      {noreply, State, Timeout} |
-%%                                      {stop, Reason, Reply, State} |
-%%                                      {stop, Reason, State}
-%% @doc Handling call messages
-%% @end
-%%--------------------------------------------------------------------
 handle_call(root, _From, DM = #dmerkle{root=Root}) ->
   {reply, Root, DM};
 

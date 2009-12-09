@@ -98,6 +98,7 @@ test_unload_servers() ->
   verify().
 
 test_setup() ->
+  process_flag(trap_exit, true),
   config:start_link(#config{n=0,r=1,w=1,q=6,directory=priv_dir()}),
   {ok, _} = mock:mock(supervisor),
   {ok, _} = mock:mock(bootstrap),

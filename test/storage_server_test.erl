@@ -37,6 +37,7 @@
 -compile(export_all).
 
 store_conflicting_versions_test() ->
+  process_flag(trap_exit, true),
   config:start_link(#config{}),
   {ok, Pid} = storage_server:start_link(storage_dets, db_key(confl),
                                         store, 0, (2 bsl 31), 4096),
@@ -54,6 +55,7 @@ storage_server_throughput_test_() ->
   {timeout, 500, ?_test(test_storage_server_throughput())}.
 
 test_storage_server_throughput() ->
+  process_flag(trap_exit, true),
   config:start_link(#config{}),
   {ok, Pid} = storage_server:start_link(storage_dets, db_key(throughput),
                                         through, 0, (2 bsl 31), 4096),
@@ -74,6 +76,7 @@ test_storage_server_throughput() ->
   storage_server:close(Pid).
 
 % couch_storage_test() ->
+%     process_flag(trap_exit, true),
 %     config:start_link(#config{}),
 %     CouchFile = filename:join(priv_dir(), "couch"),
 %     {ok, State} = couch_storage:open(CouchFile, storage_test),
@@ -94,6 +97,7 @@ test_storage_server_throughput() ->
 %     couch_storage:close(St6).
 
 storage_dict_test() ->
+    process_flag(trap_exit, true),
     config:start_link(#config{}),
     {ok, Pid} = storage_server:start_link(
                   storage_dict, db_key(dict), store, 0, (2 bsl 31), 4096),
@@ -117,6 +121,7 @@ storage_dict_test() ->
     receive _ -> true end.
 
 mnesia_storage_test_TODO() ->
+    process_flag(trap_exit, true),
     config:start_link(#config{}),
     mnesia:stop(),
     application:set_env(mnesia, dir, priv_dir()),
@@ -144,6 +149,7 @@ mnesia_storage_test_TODO() ->
     receive _ -> true end.
 
 mnesia_large_value_test_TODO() ->
+    process_flag(trap_exit, true),
     config:start_link(#config{}),
     crypto:start(), %% filename generation uses crypto:sha
     mnesia:stop(),
@@ -175,6 +181,7 @@ mnesia_large_value_test_TODO() ->
 %   receive {'EXIT', P2, _} -> ok end.
 
 rebuild_merkle_trees_test() ->
+  process_flag(trap_exit, true),
   config:start_link(#config{}),
   {ok, _} = mock:mock(dmerkle),
   {ok, _} = mock:mock(storage_dets),
@@ -201,6 +208,7 @@ rebuild_merkle_trees_test() ->
   storage_server:close(Pid).
 
 streaming_put_test() ->
+  process_flag(trap_exit, true),
   config:start_link(#config{}),
   {ok, _} = mock:mock(dmerkle),
   {ok, _} = mock:mock(storage_dets),
@@ -242,6 +250,7 @@ interrogate_test_loop(Pid) ->
   end.
 
 buffered_small_write_test() ->
+  process_flag(trap_exit, true),
   config:start_link(#config{buffered_writes=true}),
   {ok, _} = mock:mock(dmerkle),
   {ok, _} = mock:mock(storage_dets),
@@ -279,6 +288,7 @@ buffered_small_write_test() ->
   storage_server:close(Store).
 
 buffered_stream_write_test() ->
+  process_flag(trap_exit, true),
   config:start_link(#config{buffered_writes=true}),
   {ok, _} = mock:mock(dmerkle),
   {ok, _} = mock:mock(storage_dets),
@@ -319,6 +329,7 @@ buffered_stream_write_test() ->
   storage_server:close(Store).
 
 caching_test_TODO() ->
+  process_flag(trap_exit, true),
   config:start_link(#config{cache=true,cache_size=120}),
   {ok, _} = mock:mock(dmerkle),
   {ok, _} = mock:mock(storage_dets),
@@ -341,7 +352,9 @@ caching_test_TODO() ->
   storage_server:close(Store).
 
 % local_fs_storage_test() ->
-%   {ok, State} = fs_storage:open("/Users/cliff/data/storage_test", storage_test),
+%   process_flag(trap_exit, true),
+%   {ok, State} = fs_storage:open("/Users/cliff/data/storage_test",
+%                                 storage_test),
 %   fs_storage:put("key_one", context, <<"value one">>, State),
 %   fs_storage:put("key_one", context, <<"value one">>, State),
 %   fs_storage:put("key_two", context, <<"value two">>, State),
@@ -355,6 +368,7 @@ caching_test_TODO() ->
 %   fs_storage:close(State).
 %
 % fs_storage_test() ->
+%   process_flag(trap_exit, true),
 %   {ok, Pid} = storage_server:start_link(fs_storage, "/Users/cliff/data/storage_test", store2, 0, (2 bsl 31)),
 %   storage_server:put(store2, "key_one", context, <<"value one">>),
 %   storage_server:put(store2, "key_one", context, <<"value one">>),
@@ -370,6 +384,7 @@ caching_test_TODO() ->
 %   receive _ -> true end.
 %
 % sync_storage_test() ->
+%   process_flag(trap_exit, true),
 %   {ok, Pid} = storage_server:start_link(storage_dict, ok, store1, 0, (2 bsl 31)),
 %   {ok, Pid2} = storage_server:start_link(storage_dict, ok, store2, 0, (2 bsl 31)),
 %   storage_server:put(store2, "key_one", vclock:create(a), <<"value one">>),

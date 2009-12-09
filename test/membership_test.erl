@@ -71,6 +71,7 @@ all_test_() ->
   ]}.
 
 test_write_membership_to_disk() ->
+  process_flag(trap_exit, true),
   {ok, _} = membership:start_link(node(), [node()]),
   ?debugFmt("~p", [data_file()]),
   {ok, Bin} = file:read_file(data_file()),
@@ -81,12 +82,14 @@ test_write_membership_to_disk() ->
   verify().
 
 test_find_partition() ->
+  process_flag(trap_exit, true),
   ?assertEqual(1, find_partition(0, 6)),
   ?assertEqual(1, find_partition(1, 6)),
   ?assertEqual((2 bsl 31) - 67108863, find_partition(2 bsl 31, 6)),
   ?assertEqual((2 bsl 30) - 67108863, find_partition((2 bsl 30)-1, 6)).
 
 test_load_membership_from_disk() ->
+  process_flag(trap_exit, true),
   State = create_initial_state(node(), [node()], config:get(),
                                ets:new(partitions, [set, public])),
   NS = State#membership{version=[a,b,c]},
@@ -101,6 +104,7 @@ test_load_membership_from_disk() ->
 
 %-record(membership, {config, partitions, version, nodes, old_partitions}).
 test_recover_from_old_membership_read() ->
+  process_flag(trap_exit, true),
   P = partitions:create_partitions(6, a, [a, b, c, d, e, f]),
   OldMem = {membership, {config, 1, 2, 3, 4}, P,
             [{a, 1}, {b, 1}], [a, b, c, d, e, f], undefined},
@@ -110,6 +114,7 @@ test_recover_from_old_membership_read() ->
   ?assertEqual([a, b, c, d, e, f], membership:nodes()).
 
 test_join_one_node() ->
+  process_flag(trap_exit, true),
   mock:expects(sync_manager, load, fun({_, _, P}) -> is_list(P) end, ok),
   mock:expects(storage_manager, load, fun({_, _, P}) -> is_list(P) end, ok),
   {ok, _} = membership:start_link(node(), [node()]),
@@ -121,6 +126,7 @@ test_join_one_node() ->
   verify().
 
 test_membership_gossip_cluster_collision() ->
+  process_flag(trap_exit, true),
   mock:expects(sync_manager, load,
                fun({_, _, P}) -> is_list(P) end, ok, 3),
   mock:expects(storage_manager, load,
@@ -140,18 +146,21 @@ test_membership_gossip_cluster_collision() ->
   verify().
 
 test_replica_nodes() ->
+  process_flag(trap_exit, true),
   C = config:get(),
   config:set(C#config{n=3}),
   {ok, _} = membership:start_link(a, [a, b, c, d, e, f]),
   ?assertEqual([f,a,b], replica_nodes(f)).
 
 test_nodes_for_partition() ->
+  process_flag(trap_exit, true),
   C = config:get(),
   config:set(C#config{n=3}),
   {ok, _} = membership:start_link(a, [a, b, c, d, e, f]),
   ?assertEqual([d,e,f], nodes_for_partition(1)).
 
 test_servers_for_key() ->
+  process_flag(trap_exit, true),
   C = config:get(),
   config:set(C#config{n=3}),
   {ok, _} = membership:start_link(a, [a, b, c, d, e, f]),
@@ -160,6 +169,7 @@ test_servers_for_key() ->
                servers_for_key("key")).
 
 test_initial_partition_setup() ->
+  process_flag(trap_exit, true),
   {ok, _} = membership:start_link(a, [a, b, c, d, e, f]),
   Sizes = partitions:sizes([a,b,c,d,e,f], partitions()),
   {value, {c,S}} = lists:keysearch(c, 1, Sizes),
@@ -178,35 +188,41 @@ test_partitions_for_node_all() ->
   ?assertEqual(lists:sort(Parts), lists:sort(PA ++ PF)).
 
 test_partitions_for_node_master() ->
+  process_flag(trap_exit, true),
   {ok, _} = membership:start_link(a, [a,b,c,d,e,f]),
   Parts = partitions_for_node(a, master),
   ?assertEqual(10, length(Parts)).
 
 test_membership_server_throughput_() ->
+  process_flag(trap_exit, true),
   {timeout, 500, ?_test(test_membership_server_throughput())}.
 
 test_membership_server_throughput() ->
+  process_flag(trap_exit, true),
   {ok, _} = membership:start_link(a, [a,b,c,d,e,f]),
-  {Keys, _} = lib_misc:fast_acc(fun({List, Str}) ->
-      Mod = lib_misc:succ(Str),
+  {Keys, _} = misc:fast_acc(fun({List, Str}) ->
+      Mod = misc:succ(Str),
       {[Mod|List], Mod}
     end, {[], "aaaaaaaa"}, 10000),
-  Start = lib_misc:now_float(),
+  Start = misc:now_float(),
   lists:foreach(fun(Str) ->
       membership:servers_for_key(Str)
     end, Keys),
-  End = lib_misc:now_float(),
+  End = misc:now_float(),
   ?debugFmt("membership can do ~p reqs/s", [10000/(End-Start)]).
 
 test_gossip_server() ->
   ok.
 
 test_setup() ->
+  process_flag(trap_exit, true),
   config:start_link(#config{n=1,r=1,w=1,q=6,directory=priv_dir()}),
   ?assertMatch({ok, _}, mock:mock(sync_manager)),
   ?assertMatch({ok, _}, mock:mock(storage_manager)),
-  mock:expects(sync_manager, load, fun({_, _, P}) -> is_list(P) end, ok),
-  mock:expects(storage_manager, load, fun({_, _, P}) -> is_list(P) end, ok).
+  mock:expects(sync_manager, load,
+               fun({_, _, P}) -> is_list(P) end, ok),
+  mock:expects(storage_manager, load,
+               fun({_, _, P}) -> is_list(P) end, ok).
 
 verify() ->
   ok = mock:verify(sync_manager),

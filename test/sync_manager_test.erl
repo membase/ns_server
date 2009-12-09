@@ -82,6 +82,7 @@ test_unload_servers_TODO() ->
   verify().
 
 test_setup() ->
+  process_flag(trap_exit, true),
   {ok, _} = sync_manager:start_link(),
   {ok, _} = mock:mock(supervisor).
 

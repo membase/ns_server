@@ -35,9 +35,9 @@
 -include_lib("eunit/include/eunit.hrl").
 
 test_cleanup() ->
+  process_flag(trap_exit, true),
   file:delete(data_file()),
   file:delete(data_file(1)).
-
 
 open_and_close_test() ->
   test_cleanup(),
@@ -50,6 +50,7 @@ open_and_close_test() ->
   close(Pid).
 
 open_and_insert_one_test() ->
+  process_flag(trap_exit, true),
   test_cleanup(),
   {ok, Pid} = open(data_file(), 256),
   update("mykey", <<"myvalue">>, Pid),
@@ -62,6 +63,7 @@ open_and_insert_one_test() ->
   close(Pid).
 
 open_and_reopen_test() ->
+  process_flag(trap_exit, true),
   test_cleanup(),
   {ok, Pid} = open(data_file(), 256),
   update("mykey", <<"myvalue">>, Pid),
@@ -226,6 +228,7 @@ empty_diff_test() ->
   500 = length(key_diff(TreeA, TreeB)).
 
 live_test_() ->
+  process_flag(trap_exit, true),
   {timeout, 120, ?_test(test_live())}.
 
 test_live() ->
@@ -332,6 +335,7 @@ test_full_deletion_with_multiple_split() ->
   close(Pid).
 
 partial_deletion_with_multiple_split_test_() ->
+  process_flag(trap_exit, true),
   {timeout, 120, ?_test(test_partial_deletion_with_multiple_split())}.
 
 test_partial_deletion_with_multiple_split() ->
