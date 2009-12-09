@@ -124,7 +124,7 @@ sync(Local, Remote) ->
           storage_server:put(Remote, Key, Context, Value);
         {not_found, not_found} -> error_logger:info_msg("not found~n");
         {{ok, ValueA}, {ok, ValueB}} ->
-          {Context, Values} = vector_clock:resolve(ValueA, ValueB),
+          {Context, Values} = vclock:resolve(ValueA, ValueB),
           storage_server:put(Remote, Key, Context, Values),
           storage_server:put(Local, Key, Context, Values)
       end
