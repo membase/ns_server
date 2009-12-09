@@ -91,9 +91,11 @@ handle_cast(stop, State)                  -> {stop, shutdown, State}.
 
 %%--------------------------------------------------------------------
 
+read_file(ConfigPath) -> file:consult(ConfigPath).
+
 pick_node_and_merge(Config, Nodes) when length(Nodes) == 0 -> Config;
 pick_node_and_merge(Config, Nodes) ->
-  [Node|_] = lib_misc:shuffle(Nodes),
+  [Node|_] = misc:shuffle(Nodes),
   case (catch ?MODULE:get(Node)) of
     {'EXIT', _, _} -> Config;
     {'EXIT',_} -> Config;
@@ -102,7 +104,8 @@ pick_node_and_merge(Config, Nodes) ->
 
 merge_configs(Remote, Local) ->
   %we need to merge in any cluster invariants
-  merge_configs([n, r, w, q, storage_mod, blocksize, buffered_writes], Remote, Local).
+  merge_configs([n, r, w, q, storage_mod, blocksize, buffered_writes],
+                Remote, Local).
 
 merge_configs([], _Remote, Merged) -> Merged;
 
@@ -110,9 +113,6 @@ merge_configs([Field|Fields], Remote, Merged) ->
   merge_configs(Fields, Remote,
                 config_set(Field, Merged,
                            config_get(Field, Remote))).
-
-read_file(ConfigPath) ->
-    file:consult(ConfigPath).
 
 config_get(Field, Tuple) ->
   config_get(record_info(fields, mc_config), Field, Tuple, 2).
