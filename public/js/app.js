@@ -682,7 +682,9 @@ var Cell = mkClass({
     if (delay <= 0)
       f();
     else
-      self.recalculateAtTimeout = setTimeout(f, delay);
+      // yes we re-check current time after delay
+      // as I've seen few cases where browsers run callback earlier by few milliseconds
+      self.recalculateAtTimeout = setTimeout(_.bind(this.recalculateAt, this, time), delay);
   }
 });
 
@@ -1015,6 +1017,9 @@ var SamplesRestorer = mkClass({
     if (!this.lastTstamp || !oldOps)
       return;
 
+    // if (op.misses.length == 0)
+    //   alert("Got it!");
+
     var dataOffset = Math.round((tstamp - oldTstamp) / op.samples_interval)
     _.each(['misses', 'gets', 'sets', 'ops'], function (cat) {
       var oldArray = oldOps[cat];
@@ -1073,7 +1078,9 @@ var SamplesRestorer = mkClass({
 
   statsCell.subscribe(function (cell) {
     var op = cell.value.op;
-    cell.recalculateAt(op.tstamp + op.samples_interval*1000);
+    var at = op.tstamp + op.samples_interval*1000;
+    console.log("at:", at);
+    cell.recalculateAt(at);
 
     var keysInterval = statsOptionsCell.value.keysInterval;
     if (keysInterval)
