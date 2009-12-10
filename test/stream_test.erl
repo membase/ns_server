@@ -36,10 +36,21 @@
 
 -define(MEG, 1048576).
 
+small_streaming_test() ->
+  Bin = <<"hello">>,
+  test_stream(Bin).
+
+zero_streaming_test() ->
+  Bin = <<>>,
+  test_stream(Bin).
+
 simple_streaming_test() ->
   Bits = ?MEG*8,
   Bin = <<0:Bits>>,
   ?MEG = byte_size(Bin),
+  test_stream(Bin).
+
+test_stream(Bin) ->
   Ref = make_ref(),
   Parent = self(),
   process_flag(trap_exit, true),

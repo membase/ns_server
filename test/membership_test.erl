@@ -73,7 +73,6 @@ all_test_() ->
 test_write_membership_to_disk() ->
   process_flag(trap_exit, true),
   {ok, _} = membership:start_link(node(), [node()]),
-  ?debugFmt("~p", [data_file()]),
   {ok, Bin} = file:read_file(data_file()),
   State = binary_to_term(Bin),
   ?assertEqual([node()], State#membership.nodes),
@@ -137,7 +136,6 @@ test_membership_gossip_cluster_collision() ->
   timer:sleep(10),
   Partitions = gen_server:call(mem_a, partitions),
   {A, B} = lists:partition(fun({Node,_}) -> Node == a end, Partitions),
-  ?debugVal({A, B}),
   ?assertEqual(64, length(A) + length(B)),
   ?assert(length(A) > 0),
   ?assert(length(B) > 0),
@@ -170,7 +168,6 @@ test_initial_partition_setup() ->
   {ok, _} = membership:start_link(a, [a, b, c, d, e, f]),
   Sizes = partition:sizes([a,b,c,d,e,f], partitions()),
   {value, {c,S}} = lists:keysearch(c, 1, Sizes),
-  ?debugVal({Sizes, S}),
   ?assert(S > 0).
 
 test_partitions_for_node_all() ->
@@ -180,7 +177,6 @@ test_partitions_for_node_all() ->
   Parts = partitions_for_node(a, all),
   PA = partitions_for_node(a, master),
   PF = partitions_for_node(f, master),
-  ?debugFmt("Parts ~p", [Parts]),
   ?assertEqual(lists:sort(Parts), lists:sort(PA ++ PF)).
 
 test_partitions_for_node_master() ->

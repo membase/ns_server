@@ -72,7 +72,7 @@ test_storage_server_throughput() ->
       storage_server:get(Pid, Key)
     end, Keys),
   End = misc:now_float(),
-  ?debugFmt("storage server can do ~p reqs/s", [20000/(End-Start)]),
+  ?infoFmt("storage server can do ~p reqs/s", [20000/(End-Start)]),
   storage_server:close(Pid).
 
 % couch_storage_test() ->
@@ -101,9 +101,9 @@ storage_dict_test() ->
     config:start_link(undefined),
     {ok, Pid} = storage_server:start_link(
                   storage_dict, db_key(dict), store, 0, (2 bsl 31), 4096),
-    ?debugFmt("storage server at ~p", [Pid]),
+    ?infoFmt("storage server at ~p", [Pid]),
     R = storage_server:put(store, "key", context, <<"value">>),
-    ?debugFmt("put result ~p", [R]),
+    ?infoFmt("put result ~p", [R]),
     storage_server:put(store, "two", context, <<"value2">>),
     ["two", "key"] =
         storage_server:fold(store,
@@ -225,7 +225,7 @@ streaming_put_test() ->
   {ok, Pid} = storage_server:start_link(storage_dets, db_key(merkle_test),
                                         store6, 0, (2 bsl 31), 4096),
   Result = stream(Pid, "key", ctx, Bin),
-  ?debugFmt("~p", [Result]),
+  ?infoFmt("~p", [Result]),
   ?assertEqual(ok, Result),
   mock:verify(dmerkle),
   mock:verify(storage_dets),
@@ -265,7 +265,7 @@ buffered_small_write_test() ->
                fun({_, _, [Val], table}) -> Val == Bin end,
                fun(_, _) ->
       timer:sleep(200), %we sleep to simulate a long write so we can test that shit returns b4 write is complete
-      ?debugMsg("processing put"),
+      % ?debugMsg("processing put"),
       Pid ! put,        %hence a buffered write.  hopefully this won't cause the cluster to explode
       {ok, table}
     end),
@@ -306,7 +306,7 @@ buffered_stream_write_test() ->
       % we sleep to simulate a long write so we can test
       % that shit returns b4 write is complete
       timer:sleep(200),
-      ?debugMsg("processing put"),
+      % ?debugMsg("processing put"),
       % hence a buffered write.
       % hopefully this won't cause the cluster to explode
       Pid ! put,
@@ -319,7 +319,7 @@ buffered_stream_write_test() ->
   {ok, Store} = storage_server:start_link(storage_dets, db_key(buff_test),
                                           store7, 0, (2 bsl 31), 4096),
   stream(Store, "key", ctx, Bin),
-  ?debugHere,
+  % ?debugHere,
   ?assertEqual(false, interrogate_test_loop(Pid)),
   timer:sleep(100), %this should work, yes?  icky.
   mock:verify_and_stop(dmerkle),
@@ -350,7 +350,7 @@ caching_test_TODO() ->
   Clock = vclock:create(something),
   storage_server:put(Store, "key", Clock, <<"value">>),
   Ret = storage_server:get(Store, "key"),
-  ?debugFmt("ret ~p", [Ret]),
+  % ?debugFmt("ret ~p", [Ret]),
   ?assertEqual({ok, {Clock, [<<"value">>]}}, Ret),
   storage_server:close(Store).
 

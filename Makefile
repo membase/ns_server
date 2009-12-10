@@ -21,6 +21,9 @@ clean:
 test: test_unit
 
 test_unit:
+	erl -pa ebin -noshell -s mc_test test -s init stop -kernel error_logger silent
+
+test_unit_verbose:
 	erl -pa ebin -noshell -s mc_test test -s init stop
 
 test_boot:
