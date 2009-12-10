@@ -44,4 +44,7 @@ cucumber:
 dialyzer: ebins
 	dialyzer -pa ebin -I include -r .
 
+test_emoxi:
+	erl -boot start_sasl -pa ebin -s emoxi start -emoxi config config.sample
+
 

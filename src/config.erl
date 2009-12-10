@@ -135,9 +135,8 @@ load_config(ConfigPath, DirPath) ->
             DirPath2 =
                 case DirPath of
                     undefined ->
-                        {value, DirPath} = search([S, DefaultConfig],
-                                                  directory),
-                        DirPath;
+                        {value, DP} = search([S, DefaultConfig], directory),
+                        DP;
                     _ -> DirPath
                 end,
             ok = filelib:ensure_dir(DirPath2),
