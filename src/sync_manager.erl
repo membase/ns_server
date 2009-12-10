@@ -44,7 +44,10 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {running,diffs,partitions=[],parts_for_node=[]}).
+-record(state, {running,
+                diffs,
+                partitions=[],
+                parts_for_node=[]}).
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -55,42 +58,42 @@
 %% API
 
 start_link() ->
-  gen_server:start_link({local, sync_manager}, ?MODULE, [], []).
+  gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 stop() ->
-  gen_server:cast(sync_manager, stop).
+  gen_server:cast(?MODULE, stop).
 
 load(Nodes, Partitions, PartsForNode) ->
-  gen_server:call(sync_manager, {load, Nodes, Partitions, PartsForNode},
+  gen_server:call(?MODULE, {load, Nodes, Partitions, PartsForNode},
                   infinity).
 
 sync(Part, Master, NodeA, NodeB, DiffSize) ->
-  gen_server:cast(sync_manager, {sync, Part, Master, NodeA, NodeB, DiffSize}).
+  gen_server:cast(?MODULE, {sync, Part, Master, NodeA, NodeB, DiffSize}).
 
 done(Part) ->
-  gen_server:cast(sync_manager, {done, Part}).
+  gen_server:cast(?MODULE, {done, Part}).
 
 running() ->
-  gen_server:call(sync_manager, running).
+  gen_server:call(?MODULE, running).
 
 running(Node) ->
-  gen_server:call({sync_manager, Node}, running).
+  gen_server:call({?MODULE, Node}, running).
 
 diffs() ->
-  gen_server:call(sync_manager, diffs).
+  gen_server:call(?MODULE, diffs).
 
 diffs(Node) ->
-  gen_server:call({sync_manager, Node}, diffs).
+  gen_server:call({?MODULE, Node}, diffs).
 
 loaded() ->
-  gen_server:call(sync_manager, loaded).
+  gen_server:call(?MODULE, loaded).
 
 %% gen_server callbacks
 
 init([]) -> {ok, #state{running=[],diffs=[]}}.
-terminate(_Reason, _State) -> ok.
+terminate(_Reason, _State)          -> ok.
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
-handle_info(_Info, State) -> {noreply, State}.
+handle_info(_Info, State)           -> {noreply, State}.
 
 handle_call(loaded, _From, State) ->
   {reply, sync_server_sup:sync_servers(), State};
@@ -101,20 +104,22 @@ handle_call(running, _From, State = #state{running=Running}) ->
 handle_call(diffs, _From, State = #state{diffs=Diffs}) ->
   {reply, Diffs, State};
 
-handle_call({load, _Nodes, Partitions, PartsForNode}, _From,
+handle_call({load, _Nodes, NewPartitions, NewPartsForNode}, _From,
             State = #state{partitions=_OldPartitions,
                            parts_for_node=OldPartsForNode}) ->
-  Partitions1 = lists:filter(fun (E) ->
-                                 not lists:member(E, OldPartsForNode)
-                             end, PartsForNode),
+  NewPartitions1 = lists:filter(fun (E) ->
+                                    not lists:member(E, OldPartsForNode)
+                                end, NewPartsForNode),
   OldPartitions1 = lists:filter(fun (E) ->
-                                    not lists:member(E, PartsForNode)
+                                    not lists:member(E, NewPartsForNode)
                                 end, OldPartsForNode),
-  reload_sync_servers(OldPartitions1, Partitions1),
-  {reply, ok, State#state{partitions=Partitions,parts_for_node=PartsForNode}}.
+  reload_sync_servers(OldPartitions1, NewPartitions1),
+  {reply, ok, State#state{partitions=NewPartitions,
+                          parts_for_node=NewPartsForNode}}.
 
 handle_cast({sync, Part, Master, NodeA, NodeB, DiffSize},
-            State = #state{running=Running,diffs=Diffs}) ->
+            State = #state{running=Running,
+                           diffs=Diffs}) ->
   NewDiffs = store_diff(Part, Master, NodeA, NodeB, DiffSize, Diffs),
   NewRunning = lists:keysort(1, lists:keystore(Part, 1, Running,
                                                {Part, NodeA, NodeB})),
@@ -143,7 +148,7 @@ reload_sync_servers(OldParts, NewParts) ->
               permanent, 1000, worker, [sync_server]},
       case supervisor:start_child(sync_server_sup, Spec) of
         already_present -> supervisor:restart_child(sync_server_sup, Name);
-        _ -> ok
+        _               -> ok
       end
     end, NewParts).
 
