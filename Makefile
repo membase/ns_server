@@ -23,6 +23,9 @@ test: test_unit
 test_unit:
 	erl -pa ebin -noshell -s mc_test test -s init stop
 
+test_boot:
+	erl -boot start_sasl -pa ebin -s emoxi start -emoxi config test.cfg
+
 test_main:
 	erl -pa ebin -noshell -s mc_test main
 
@@ -43,8 +46,5 @@ cucumber:
 
 dialyzer: ebins
 	dialyzer -pa ebin -I include -r .
-
-test_emoxi:
-	erl -boot start_sasl -pa ebin -s emoxi start -emoxi config config.sample
 
 

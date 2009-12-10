@@ -38,6 +38,8 @@
 
 -export([start/2, stop/1]).
 
+-include_lib("eunit/include/eunit.hrl").
+
 %%====================================================================
 %% Application callbacks
 %%====================================================================
@@ -64,10 +66,10 @@ start(_Type, []) ->
     {ok, ConfigFile} ->
       case filelib:is_file(ConfigFile) of
         true  -> join_and_start(ConfigFile);
-        false -> {error, io:format("~p does not exist.", [ConfigFile])}
+        false -> {error, io:format("~p does not exist.~n", [ConfigFile])}
       end;
     undefined ->
-      {error, io:format("No config file given.", [])}
+      {error, io:format("No config file given.~n", [])}
   end.
 
 stop({_, Sup}) ->
