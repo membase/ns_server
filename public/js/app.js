@@ -727,11 +727,13 @@ function watchHashParamChange(param, defaultValue, callback) {
   }
 
   var oldValue;
+  var firstTime = true;
   $(function () {
     $(window).bind('hashchange', function () {
       var newValue = $.bbq.getState(param) || defaultValue;
-      if (oldValue !== undefined && oldValue == newValue)
+      if (!firstTime && oldValue == newValue)
         return;
+      firstTime = false;
       oldValue = newValue;
       return callback.apply(this, [newValue].concat($.makeArray(arguments)));
     });
@@ -1045,7 +1047,7 @@ var SamplesRestorer = mkClass({
   statsOptionsCell.setValue({nonQ: ['keysInterval', 'nonQ']});
   _.extend(statsOptionsCell, {
     update: function (options) {
-      this.modifyValue(_.extend, options);
+      this.modifyValue(_.bind($.extend, $, {}), options);
     },
     equality: deeperEquality
   });
@@ -1235,7 +1237,8 @@ var StatGraphs = {
     prepareAreaUpdate(sets);
     prepareAreaUpdate(misses);
   },
-  update: function (cell) {
+  update: function () {
+    var cell = DAO.cells.stats;
     var stats = cell.value;
     if (!stats)
       return this.renderNothing();
