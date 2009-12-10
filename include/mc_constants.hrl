@@ -55,10 +55,3 @@
 -define(UNKNOWN_COMMAND,  16#81).
 -define(ENOMEM,           16#82).
 
--record(mc_response, {
-          status=0,
-          extra,
-          key,
-          body,
-          cas=0
-         }).
