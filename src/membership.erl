@@ -165,7 +165,7 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 handle_info(_Info, State) -> {noreply, State}.
 
 handle_call({join_node, Node}, {_, _From},
-            State = #membership{ptable=Table}) ->
+            State = #membership{ptable = Table}) ->
   ets:delete_all_objects(Table),
   error_logger:info_msg("~p is joining the cluster.~n", [node(_From)]),
   NewState = int_join_node(Node, State),
@@ -246,23 +246,13 @@ handle_call(status, _From,
             State = #membership{node = Node, nodes=Nodes,
                                 partitions=Partitions,
                                 version=Version}) ->
-  Reply = [{node,Node},
-           {nodes,Nodes},
+  Reply = [{node, Node},
+           {nodes, Nodes},
            {distribution, partition:sizes(Nodes, Partitions)},
-           {version,Version},
-           {storage_servers,storage_manager:loaded()}],
-  {reply, Reply, State};
+           {version, Version},
+           {storage_servers, storage_manager:loaded()}],
+  {reply, Reply, State}.
 
-handle_call(stop, _From, State) ->
-  {stop, shutdown, ok, State}.
-
-%%--------------------------------------------------------------------
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                      {noreply, State, Timeout} |
-%%                                      {stop, Reason, State}
-%% @doc Handling cast messages
-%% @end
-%%--------------------------------------------------------------------
 handle_cast({state, NewState = #membership{node=_Node,nodes=Nodes}},
             State = #membership{ptable=Table}) ->
   %straight up replace our state
@@ -475,15 +465,15 @@ merge_and_save_state(RemoteState, State) ->
 int_join_node(NewNode, #membership{node=Node,partitions=Partitions,
                                    version=Version,nodes=OldNodes,
                                    gossip=Gossip}) ->
-  Nodes = lists:usort([NewNode|OldNodes]),
+  Nodes = lists:usort([NewNode | OldNodes]),
   P = partition:map_partitions(Partitions, Nodes),
   ?infoFmt("int join setting node to ~p", [Node]),
   #membership{
-    partitions=P,
+    partitions = P,
     version = vclock:increment(pid_to_list(self()), Version),
-    node=Node,
-    nodes=Nodes,
-    gossip=Gossip}.
+    node = Node,
+    nodes = Nodes,
+    gossip = Gossip}.
 
 int_remove_node(OldNode, #membership{node=Node,partitions=Partitions,
                                      version=Version,nodes=OldNodes,
@@ -492,17 +482,17 @@ int_remove_node(OldNode, #membership{node=Node,partitions=Partitions,
   P = partition:map_partitions(Partitions, Nodes),
   ?infoFmt("removing node ~p~n", [OldNode]),
   #membership{
-    partitions=P,
+    partitions = P,
     version = vclock:increment(pid_to_list(self()), Version),
-    node=Node,
-    nodes=Nodes,
-    gossip=Gossip
+    node = Node,
+    nodes = Nodes,
+    gossip = Gossip
   }.
 
 int_partitions_for_node(Node, State, master) ->
   Partitions = State#membership.partitions,
-  {Matching,_} = lists:partition(fun({N,_}) -> N == Node end, Partitions),
-  lists:map(fun({_,P}) -> P end, Matching);
+  Matching = lists:filter(fun ({N, _}) -> N == Node end, Partitions),
+  lists:map(fun({_, P}) -> P end, Matching);
 
 int_partitions_for_node(Node, State, all) ->
   %%_Partitions = State#membership.partitions,
