@@ -48,21 +48,21 @@ all_test_() ->
     ]}.
 
 test_initial_load() ->
-  P = partitions:create_partitions(1, a, [a]),
+  P = partition:create_partitions(1, a, [a]),
   expect_start_servers([sync_1, sync_2147483649]),
   sync_manager:load(a, P, p_for_n(a, P)),
   verify().
 
 test_reload_same_layout() ->
-  P = partitions:create_partitions(1, a, [a]),
+  P = partition:create_partitions(1, a, [a]),
   expect_start_servers([sync_1, sync_2147483649]),
   sync_manager:load(a, P, p_for_n(a, P)),
   sync_manager:load(a, P, p_for_n(a, P)),
   verify().
 
 test_loadout_change() ->
-  P1 = partitions:create_partitions(0, a, [a]),
-  P2 = partitions:create_partitions(1, a, [a]),
+  P1 = partition:create_partitions(0, a, [a]),
+  P2 = partition:create_partitions(1, a, [a]),
   expect_start_servers([sync_1]),
   sync_manager:load(a, P1, p_for_n(a, P1)),
   verify(),
@@ -71,8 +71,8 @@ test_loadout_change() ->
   verify().
 
 test_unload_servers_TODO() ->
-  P1 = partitions:create_partitions(1, a, [a]),
-  P2 = partitions:create_partitions(1, a, [a, b]),
+  P1 = partition:create_partitions(1, a, [a]),
+  P2 = partition:create_partitions(1, a, [a, b]),
   ?debugFmt("p1 ~p", [P1]),
   ?debugFmt("p2 ~p", [P2]),
   expect_start_servers([sync_1,sync_2147483649]),

@@ -51,14 +51,14 @@ all_test_() ->
     ]}.
 
 test_initial_load() ->
-  Partitions = partitions:create_partitions(1, node(), [node()]),
+  Partitions = partition:create_partitions(1, node(), [node()]),
   expect_start_servers([storage_1, storage_2147483649]),
   storage_manager:load(node(), Partitions,
                        lists:map(fun({_,P}) -> P end, Partitions)),
   verify().
 
 test_reload_same_layout() ->
-  Partitions = partitions:create_partitions(1, node(), [node()]),
+  Partitions = partition:create_partitions(1, node(), [node()]),
   expect_start_servers([storage_1, storage_2147483649]),
   storage_manager:load(node(), Partitions,
                        lists:map(fun({_,P}) -> P end, Partitions)),
@@ -68,8 +68,8 @@ test_reload_same_layout() ->
   verify().
 
 test_loadout_change() ->
-  Partitions = partitions:create_partitions(0, a, [a]),
-  P2 = partitions:create_partitions(1, a, [a]),
+  Partitions = partition:create_partitions(0, a, [a]),
+  P2 = partition:create_partitions(1, a, [a]),
   expect_start_servers([storage_1]),
   storage_manager:load(a, Partitions, [1]),
   verify(),
@@ -78,8 +78,8 @@ test_loadout_change() ->
   verify().
 
 test_loadout_change_with_bootstrap() ->
-  P1 = partitions:create_partitions(1, a, [a, b]),
-  P2 = partitions:create_partitions(1, a, [a]),
+  P1 = partition:create_partitions(1, a, [a, b]),
+  P2 = partition:create_partitions(1, a, [a]),
   expect_start_servers([storage_1,storage_2147483649]),
   mock:expects(bootstrap, start,
                fun({_, Node, _}) -> Node == b end,
@@ -89,8 +89,8 @@ test_loadout_change_with_bootstrap() ->
   verify().
 
 test_unload_servers() ->
-  P1 = partitions:create_partitions(1, a, [a]),
-  P2 = partitions:create_partitions(1, a, [a, b]),
+  P1 = partition:create_partitions(1, a, [a]),
+  P2 = partition:create_partitions(1, a, [a, b]),
   expect_start_servers([storage_1,storage_2147483649]),
   expect_stop_servers([storage_2147483649]),
   storage_manager:load(b, P1, [1, 2147483649]),

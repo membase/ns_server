@@ -105,7 +105,7 @@ test_load_membership_from_disk() ->
 %-record(membership, {config, partitions, version, nodes, old_partitions}).
 test_recover_from_old_membership_read() ->
   process_flag(trap_exit, true),
-  P = partitions:create_partitions(6, a, [a, b, c, d, e, f]),
+  P = partition:create_partitions(6, a, [a, b, c, d, e, f]),
   OldMem = {membership, {config, 1, 2, 3, 4}, P,
             [{a, 1}, {b, 1}], [a, b, c, d, e, f], undefined},
   ok = file:write_file(data_file("a"), term_to_binary(OldMem)),
@@ -168,7 +168,7 @@ test_servers_for_key() ->
 test_initial_partition_setup() ->
   process_flag(trap_exit, true),
   {ok, _} = membership:start_link(a, [a, b, c, d, e, f]),
-  Sizes = partitions:sizes([a,b,c,d,e,f], partitions()),
+  Sizes = partition:sizes([a,b,c,d,e,f], partitions()),
   {value, {c,S}} = lists:keysearch(c, 1, Sizes),
   ?debugVal({Sizes, S}),
   ?assert(S > 0).

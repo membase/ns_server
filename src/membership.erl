@@ -248,7 +248,7 @@ handle_call(status, _From,
                                 version=Version}) ->
   Reply = [{node,Node},
            {nodes,Nodes},
-           {distribution, partitions:sizes(Nodes, Partitions)},
+           {distribution, partition:sizes(Nodes, Partitions)},
            {version,Version},
            {storage_servers,storage_manager:loaded()}],
   {reply, Reply, State};
@@ -328,7 +328,7 @@ gossip_paused(_Server) ->
 
 int_range(Partition, Config) ->
     {value, Q} = config:search(Config, q),
-    Size = partitions:partition_range(Q),
+    Size = partition:partition_range(Q),
     {Partition, Partition+Size}.
 
 random_node(Nodes) ->
@@ -412,7 +412,7 @@ create_initial_state(Node, Nodes, Config, Table) ->
   {value, Q} = config:search(Config, q),
   #membership{
     version=vclock:create(pid_to_list(self())),
-	  partitions=partitions:create_partitions(Q, Node, Nodes),
+	  partitions=partition:create_partitions(Q, Node, Nodes),
 	  node=Node,
 	  nodes=Nodes,
 	  ptable=Table}.
@@ -433,7 +433,7 @@ merge_states(StateA, StateB) ->
         _Config = config:get(),
         Nodes = lists:usort(StateA#membership.nodes ++
                             StateB#membership.nodes),
-        Partitions = partitions:map_partitions(PartA, Nodes),
+        Partitions = partition:map_partitions(PartA, Nodes),
         #membership{
           version=vclock:merge(StateA#membership.version,
                                StateB#membership.version),
@@ -475,7 +475,7 @@ int_join_node(NewNode, #membership{node=Node,partitions=Partitions,
                                    version=Version,nodes=OldNodes,
                                    gossip=Gossip}) ->
   Nodes = lists:usort([NewNode|OldNodes]),
-  P = partitions:map_partitions(Partitions, Nodes),
+  P = partition:map_partitions(Partitions, Nodes),
   ?infoFmt("int join setting node to ~p", [Node]),
   #membership{
     partitions=P,
@@ -488,7 +488,7 @@ int_remove_node(OldNode, #membership{node=Node,partitions=Partitions,
                                      version=Version,nodes=OldNodes,
                                      gossip=Gossip}) ->
   Nodes = lists:delete(OldNode, OldNodes),
-  P = partitions:map_partitions(Partitions, Nodes),
+  P = partition:map_partitions(Partitions, Nodes),
   ?infoFmt("removing node ~p~n", [OldNode]),
   #membership{
     partitions=P,
@@ -550,7 +550,7 @@ int_partition_for_key(Key, _State, Config) ->
 find_partition(0, _) ->
   1;
 find_partition(Hash, Q) ->
-  Size = partitions:partition_range(Q),
+  Size = partition:partition_range(Q),
   Factor = (Hash div Size),
   Rem = (Hash rem Size),
   if
@@ -560,7 +560,7 @@ find_partition(Hash, Q) ->
 
 %1 based index, thx erlang
 index_for_partition(Partition, Q) ->
-  Size = partitions:partition_range(Q),
+  Size = partition:partition_range(Q),
   _Index = (Partition div Size) + 1.
 
 n_nodes(StartNode, N, Nodes) ->

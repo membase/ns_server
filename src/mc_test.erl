@@ -74,7 +74,7 @@ tests_emoxi() ->
      stream,
      dmerkle,
      dmerkle_tree,
-     partitions,
+     partition,
      membership,
      storage_server,
      storage_manager,

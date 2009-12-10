@@ -123,7 +123,7 @@ reload_storage_servers(OldParts, NewParts, Old, Config, Bootstrap) ->
     DbKey = lists:concat([Directory, "/", Part]),
     {value, BlockSize} = config:search(Config, blocksize),
     {value, Q} = config:search(Config, q),
-    Size = partitions:partition_range(Q),
+    Size = partition:partition_range(Q),
     Min = Part,
     Max = Part+Size,
     {value, StorageMod} = config:search(Config, storage_mod),

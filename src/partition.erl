@@ -32,7 +32,7 @@
 %
 % Original Author: Cliff Moon
 
--module(partitions).
+-module(partition).
 
 %% API
 
@@ -46,7 +46,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -ifdef(TEST).
--include("test/partitions_test.erl").
+-include("test/partition_test.erl").
 -endif.
 
 %% API
