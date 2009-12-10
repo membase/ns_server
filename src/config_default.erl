@@ -1,6 +1,6 @@
 -module(config_default).
 
--export([default/0]).
+-export([default/0, mergable/0]).
 
 default() ->
     [{directory, default_data_directory()},
@@ -27,3 +27,7 @@ default() ->
 default_data_directory() ->
     % TODO: Do something O/S specific here.
     "/tmp/data".
+
+mergable() ->
+    [n, r, w, q, storage_mod, blocksize, buffered_writes].
+

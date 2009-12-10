@@ -90,9 +90,6 @@ search(#config{dynamic = DL, static = SL}, Key) ->
         false          -> search(SL, Key)
     end.
 
-mergable() ->
-    [n, r, w, q, storage_mod, blocksize, buffered_writes].
-
 %% gen_server callbacks
 
 init(undefined) -> % Useful for unit-testing.
@@ -182,7 +179,8 @@ pick_node_and_merge(Local, Nodes) ->
     end.
 
 merge_configs(Remote, Local) ->
-    merge_configs(mergable(), Remote, Local, []).
+    merge_configs(config_default:mergable(),
+                  Remote, Local, []).
 
 merge_configs(Mergable, Remote, Local) ->
     merge_configs(Mergable, Remote, Local, []).
