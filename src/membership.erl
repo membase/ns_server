@@ -42,7 +42,7 @@
          nodes_for_key/1, partitions/0, nodes/0, state/0,
          partitions_for_node/2,
          fire_gossip/1, partition_for_key/1,
-         stop/0, stop/1, range/1, status/0,
+         stop/0, stop/1, status/0,
          stop_gossip/0, remap/1]).
 
 %% gen_server callbacks
@@ -107,9 +107,6 @@ partitions_for_node(Node, Option) ->
 
 partition_for_key(Key) ->
   gen_server:call(?MODULE, {partition_for_key, Key}).
-
-range(Partition) ->
-  gen_server:call(?MODULE, {range, Partition}).
 
 stop() ->
   gen_server:cast(?MODULE, stop).
@@ -215,9 +212,6 @@ handle_call({remove_node, Node}, _From,
 handle_call({replica_nodes, Node}, _From, State) ->
   {reply, int_replica_nodes(Node, State), State};
 
-handle_call({range, Partition}, _From, State) ->
-  {reply, int_range(Partition, config:get()), State};
-
 handle_call({nodes_for_partition, Partition}, _From, State) ->
   {reply, int_nodes_for_partition(Partition, State), State};
 
@@ -315,11 +309,6 @@ gossip_paused(_Server) ->
   receive
     start -> ok
   end.
-
-int_range(Partition, Config) ->
-    {value, Q} = config:search(Config, q),
-    Size = partition:partition_range(Q),
-    {Partition, Partition+Size}.
 
 random_node(Nodes) ->
   lists:nth(random:uniform(length(Nodes)), Nodes).

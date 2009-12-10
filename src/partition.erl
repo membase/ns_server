@@ -59,9 +59,10 @@ create_partitions(Q, Node, Nodes) ->
 
 map_partitions(Partitions, Nodes) ->
   {_, Parts} = lists:unzip(Partitions),
-  ConsHashMap = hash_map(Nodes),
-  % ?debugFmt("conshashmap ~p", [ConsHashMap]),
-  do_map(ConsHashMap, Parts).
+  % CHashMap is [{hash(node), node}*].
+  CHashMap = hash_map(Nodes),
+  % ?debugFmt("chashmap ~p", [CHashMap]),
+  do_map(CHashMap, Parts).
 
 diff(From, To) when length(From) =/= length(To) ->
   throw("Cannot diff partition maps with different length");
@@ -91,8 +92,8 @@ hash_map(N, Item, [{Seed, Item} | Acc]) ->
   hash_map(N - 1, Item,
            [{misc:hash(Item, Seed), Item}, {Seed, Item} | Acc]).
 
-do_map([{Hash, Node} | ConsHashMap], Parts) ->
-  do_map({Hash, Node}, [{Hash, Node} | ConsHashMap], Parts, []).
+do_map([{Hash, Node} | CHashMap], Parts) ->
+  do_map({Hash, Node}, [{Hash, Node} | CHashMap], Parts, []).
 
 do_map({_Hash, Node}, [], Parts, Mapped) ->
   lists:keysort(2, lists:map(fun(Part) -> {Node, Part} end,
@@ -101,22 +102,22 @@ do_map({_Hash, Node}, [], Parts, Mapped) ->
 do_map(_, _, [], Mapped) ->
   lists:keysort(2, Mapped);
 
-do_map(First, ConsHashMap, [Part|Parts], Mapped) ->
-  % ?debugFmt("do_map ~p, ConsHashMap, [~p|~p], ~p",
+do_map(First, CHashMap, [Part | Parts], Mapped) ->
+  % ?debugFmt("do_map ~p, CHashMap, [~p|~p], ~p",
   %           [First, Part, Parts, Mapped]),
-  case ConsHashMap of
-    [{Hash,Node}|_Rest] when Part =< Hash ->
-      do_map(First, ConsHashMap, Parts, [{Node,Part}|Mapped]);
-    [_|Rest] ->
-      do_map(First, Rest, [Part|Parts], Mapped)
+  case CHashMap of
+    [{Hash, Node} | _Rest] when Part =< Hash ->
+      do_map(First, CHashMap, Parts, [{Node, Part} | Mapped]);
+    [_ | Rest] ->
+      do_map(First, Rest, [Part | Parts], Mapped)
   end.
 
 sizes(Nodes, Partitions) ->
   lists:reverse(lists:keysort(2,
     lists:map(fun(Node) ->
-      Count = lists:foldl(fun
-          ({Matched,_}, Acc) when Matched == Node -> Acc+1;
-          (_, Acc) -> Acc
+      Count = lists:foldl(
+        fun ({Matched,_}, Acc) when Matched == Node -> Acc+1;
+            (_, Acc) -> Acc
         end, 0, Partitions),
       {Node, Count}
     end, Nodes))).
