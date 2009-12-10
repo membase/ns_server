@@ -57,6 +57,14 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
+-include_lib("eunit/include/eunit.hrl").
+
+-ifdef(TEST).
+-include("test/config_test.erl").
+-endif.
+
+%% API
+
 start_link(InitInfo) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, InitInfo, []).
 
@@ -158,9 +166,13 @@ pick_node_and_merge(Local, Nodes) ->
 merge_configs(Remote, Local) ->
     merge_configs(mergable(), Remote, Local, []).
 
-merge_configs([], _Remote, Local, Acc) ->
-    Local#config{dynamic = [Acc]};
+merge_configs(Mergable, Remote, Local) ->
+    merge_configs(Mergable, Remote, Local, []).
 
+merge_configs([], _Remote, Local, []) ->
+    Local#config{dynamic = []};
+merge_configs([], _Remote, Local, Acc) ->
+    Local#config{dynamic = [lists:reverse(Acc)]};
 merge_configs([Field | Fields], Remote, Local, Acc) ->
     RS = search(Remote, Field),
     LS = search(Local, Field),
