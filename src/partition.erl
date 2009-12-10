@@ -36,8 +36,7 @@
 
 %% API
 
--export([partition_range/1, create_partitions/3,
-         map_partitions/2, map_partitions/4,
+-export([partition_range/1, create_partitions/3, map_partitions/2,
          diff/2, within/4, within/5, node_hash/3,
          sizes/2]).
 
@@ -92,11 +91,11 @@ hash_map(N, Item, [{Seed, Item} | Acc]) ->
   hash_map(N - 1, Item,
            [{misc:hash(Item, Seed), Item}, {Seed, Item} | Acc]).
 
-do_map([{Hash,Node}|ConsHashMap], Parts) ->
-  do_map({Hash,Node}, [{Hash,Node}|ConsHashMap], Parts, []).
+do_map([{Hash, Node} | ConsHashMap], Parts) ->
+  do_map({Hash, Node}, [{Hash, Node} | ConsHashMap], Parts, []).
 
-do_map({_Hash,Node}, [], Parts, Mapped) ->
-  lists:keysort(2, lists:map(fun(Part) -> {Node,Part} end,
+do_map({_Hash, Node}, [], Parts, Mapped) ->
+  lists:keysort(2, lists:map(fun(Part) -> {Node, Part} end,
                              Parts) ++ Mapped);
 
 do_map(_, _, [], Mapped) ->
@@ -110,21 +109,6 @@ do_map(First, ConsHashMap, [Part|Parts], Mapped) ->
       do_map(First, ConsHashMap, Parts, [{Node,Part}|Mapped]);
     [_|Rest] ->
       do_map(First, Rest, [Part|Parts], Mapped)
-  end.
-
-map_partitions([], _, _, Results) ->
-  lists:reverse(Results);
-
-map_partitions([{_Old,Part}|Parts], [Hash|Hashes], [Node|Nodes], Results) ->
-  if
-    Part < Hash ->
-          map_partitions(Parts, [Hash|Hashes], [Node|Nodes],
-                         [{Node,Part}|Results]);
-    Part == Hash ->
-          map_partitions(Parts, Hashes, Nodes,
-                         [{Node,Part}|Results]);
-    % can this happen?  hope not.
-    true -> map_partitions([{_Old,Part}|Parts], Hashes, Nodes, Results)
   end.
 
 sizes(Nodes, Partitions) ->
