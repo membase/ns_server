@@ -37,7 +37,7 @@
 -behaviour(gen_server).
 
 -export([start_link/1, stop/0,
-         val/1, get/2, get/1, get/0, set/1, set/2,
+         get/2, get/1, get/0, set/2, set/1,
          search/2]).
 
 % A static config file is often hand edited.
@@ -48,8 +48,8 @@
 % nodes getting added/removed, and gossiping about config
 % information.
 %
--record(config, {dynamic = [], % List of TupleList's.  TupleList is {K, V}.
-                 static = []   % List of TupleList's.  TupleList is {K, V}.
+-record(config, {static = [], % List of TupleList's.  TupleList is {K, V}.
+                 dynamic = [] % List of TupleList's.  TupleList is {K, V}.
                 }).
 
 %% gen_server callbacks
@@ -57,23 +57,16 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
-start_link(X) ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, X, []).
+start_link(InitInfo) ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE, InitInfo, []).
 
 stop() -> gen_server:cast(?MODULE, stop).
 
-val(Key) -> search(?MODULE:get(), Key).
-
-set(Key, Val) -> % For testing, not concurrent safe.
-    Config = ?MODULE:get(),
-    set(Config#config{dynamic = [[{Key, Val}] | Config#config.dynamic]}).
-
+set(Key, Val)      -> ?MODULE:set([{Key, Val}]).
+set(KVList)        -> gen_server:call(?MODULE, {set, KVList}).
 get()              -> gen_server:call(?MODULE, get).
 get(Node)          -> ?MODULE:get(Node, 500).
 get(Node, Timeout) -> gen_server:call({?MODULE, Node}, get, Timeout).
-
-set(Config) ->
-    gen_server:call(?MODULE, {set, Config}).
 
 search(undefined, _Key) -> false;
 search([], _Key)        -> false;
@@ -88,46 +81,51 @@ search(#config{dynamic = DL, static = SL}, Key) ->
         false          -> search(SL, Key)
     end.
 
+mergable() ->
+    [n, r, w, q, storage_mod, blocksize, buffered_writes].
+
 %% gen_server callbacks
 
 init(undefined) ->
     {ok, #config{static = [config_default:default()]}};
 
 init({config, D}) ->
-    {ok, #config{dynamic = [D], static = [config_default:default()]}};
+    {ok, #config{static = [config_default:default()], dynamic = [D]}};
 
 init(ConfigPath) ->
-    Config = read_file_config(ConfigPath),
+    Config = load_file_config(ConfigPath),
     Merged = pick_node_and_merge(Config, nodes([visible])),
     % TODO: Should save the merged dynamic file config.
     {ok, Merged}.
 
 terminate(_Reason, _State)          -> ok.
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
+handle_cast(stop, State)            -> {stop, shutdown, State}.
+handle_info(_Info, State)           -> {noreply, State}.
 
-handle_info(_Info, State)                 -> {noreply, State}.
-handle_call(get, _From, State)            -> {reply, State, State};
-handle_call({set, Config}, _From, _State) -> {reply, ok, Config}.
-handle_cast(stop, State)                  -> {stop, shutdown, State}.
+handle_call(get, _From, State) -> {reply, State, State};
+
+handle_call({set, KVList}, _From, State) ->
+    State2 = merge_configs(#config{dynamic = [KVList]}, State),
+    {reply, ok, State2}.
 
 %%--------------------------------------------------------------------
 
-read_file(ConfigPath) -> file:consult(ConfigPath).
-
-read_file_config(ConfigPath) ->
+load_file_config(ConfigPath) ->
     DefaultConfig = config_default:default(),
     % Static config file.
-    {ok, S} = read_file(ConfigPath),
+    {ok, S} = read_file_config(ConfigPath),
     % Dynamic data directory.
     {value, DirPath} = search([S, DefaultConfig], directory),
     ok = filelib:ensure_dir(DirPath),
     % Dynamic config file.
-    D = case read_file(filename:join(DirPath, "dynamic.cfg")) of
+    D = case read_file_config(filename:join(DirPath, "dynamic.cfg")) of
             {ok, DRead} -> DRead;
             _           -> []
         end,
-    #config{dynamic = [D],
-            static  = [S, DefaultConfig]}.
+    #config{static = [S, DefaultConfig], dynamic = [D]}.
+
+read_file_config(ConfigPath) -> file:consult(ConfigPath).
 
 pick_node_and_merge(Local, Nodes) when length(Nodes) == 0 -> Local;
 pick_node_and_merge(Local, Nodes) ->
@@ -140,8 +138,7 @@ pick_node_and_merge(Local, Nodes) ->
 
 merge_configs(Remote, Local) ->
     % we need to merge in any cluster invariants
-    merge_configs([n, r, w, q, storage_mod, blocksize, buffered_writes],
-                  Remote, Local, []).
+    merge_configs(mergable(), Remote, Local, []).
 
 merge_configs([], _Remote, Local, Acc) ->
     Local#config{dynamic = [Acc]};
