@@ -48,7 +48,9 @@ all_test_() ->
     {"test_merge_config_static",
      ?_test(test_merge_config_static())},
     {"test_merge_config_dynamic",
-     ?_test(test_merge_config_dynamic())}
+     ?_test(test_merge_config_dynamic())},
+    {"test_persist",
+     ?_test(test_persist())}
   ]}.
 
 test_search_list() ->
@@ -169,11 +171,19 @@ test_merge_config_dynamic() ->
                  static = [[{x,1},{foo,9}]]})),
     ok.
 
+test_persist() ->
+    CP = data_file(),
+    D = [[{x,1},{y,2},{z,3}]],
+    ?assertEqual(ok, save_config(bin, CP, D)),
+    R = load_config(bin, CP),
+    ?assertEqual({ok, D}, R),
+    ok.
+
 test_setup() ->
     ok.
 
 test_teardown(_) ->
-    % file:delete(data_file()),
+    file:delete(data_file()),
     ok.
 
 priv_dir() ->
