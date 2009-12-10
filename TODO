@@ -16,7 +16,7 @@ o [DONE] respect interval select for all sub-sections
 * samples_interval for stats response should be in milliseconds, just
    like tstamp.
 
-* failure to retreive stats after switch to another zoom leaves us
+o [DONE] failure to retreive stats after switch to another zoom leaves us
    stale data (showing data for previous zoom)
 * leaving 'overview' section should disable polling of stats. Or maybe
    don't bother ?
