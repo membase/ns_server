@@ -23,6 +23,9 @@ test: test_unit
 test_unit:
 	erl -pa ebin -noshell -s mc_test test -s init stop
 
+test_main:
+	erl -pa ebin -noshell -s mc_test main
+
 test_client_ascii:
 	$(LUA) protocol_memcached/test_client_ascii.lua localhost:11300
 	$(LUA) protocol_memcached/test_client_ascii.lua localhost:11400
