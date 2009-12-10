@@ -183,7 +183,8 @@ handle_call(nodes, _From, State = #membership{nodes=Nodes}) ->
 
 handle_call(state, _From, State) -> {reply, State, State};
 
-handle_call(partitions, _From, State) -> {reply, State#membership.partitions, State};
+handle_call(partitions, _From, State) ->
+  {reply, State#membership.partitions, State};
 
 handle_call({remap, Partitions}, _From,
             State = #membership{node=Node, ptable=Table}) ->
@@ -400,9 +401,11 @@ save_state(State) ->
   Config = config:get(),
   Binary = term_to_binary(State),
   {value, Directory} = config:search(Config, directory),
+  ok = filelib:ensure_dir(Directory),
   {ok, File} = file:open(filename:join(Directory,
                                        atom_to_list(Node) ++ ".bin"),
-                         [write, raw]),
+                         [write]),
+    ?debugVal(File),
   ok = file:write(File, Binary),
   ok = file:close(File).
 

@@ -38,7 +38,7 @@
 
 -export([start_link/1, stop/0,
          get/2, get/1, get/0, set/2, set/1,
-         search/2]).
+         search/2, search/1]).
 
 % A static config file is often hand edited.
 % potentially with in-line manual comments.
@@ -77,6 +77,8 @@ get()              -> gen_server:call(?MODULE, get).
 get(Node)          -> ?MODULE:get(Node, 500).
 get(Node, Timeout) -> gen_server:call({?MODULE, Node}, get, Timeout).
 
+search(Key) -> search(?MODULE:get(), Key).
+
 search(undefined, _Key) -> false;
 search([], _Key)        -> false;
 search([KVList | Rest], Key) ->
@@ -95,17 +97,21 @@ search(#config{dynamic = DL, static = SL}, Key) ->
 init(undefined) -> % Useful for unit-testing.
     {ok, #config{static = [config_default:default()]}};
 
-init({config, D}) -> % Useful for unit-testing.
-    {ok, #config{static = [config_default:default()], dynamic = [D]}};
+init({config, DynamicKVList}) -> % Useful for unit-testing.
+    {ok, #config{static = [config_default:default()],
+                 dynamic = [DynamicKVList]}};
 
-init(ConfigPath) ->
-    case load_config(ConfigPath) of
+init({path, ConfigPath, DirPath}) ->
+    case load_config(ConfigPath, DirPath) of
         {ok, Config} ->
             % TODO: Should save the merged dynamic file config.
             {ok, pick_node_and_merge(Config, nodes([visible]))};
         Error ->
             {stop, Error}
-    end.
+    end;
+
+init(ConfigPath) ->
+    init({path, ConfigPath, undefined}).
 
 terminate(_Reason, _State)          -> ok.
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
@@ -138,7 +144,7 @@ load_config(ConfigPath, DirPath) ->
                     _ -> DirPath
                 end,
             ok = filelib:ensure_dir(DirPath2),
-                                                % Dynamic config file.
+            % Dynamic config file.
             D = case load_file(bin, filename:join(DirPath2, "dynamic.cfg")) of
                     {ok, DRead} -> DRead;
                     _           -> []

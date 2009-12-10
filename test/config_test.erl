@@ -56,7 +56,9 @@ all_test_() ->
     {"test_load_config",
      ?_test(test_load_config())},
     {"test_save_config",
-     ?_test(test_save_config())}
+     ?_test(test_save_config())},
+    {"test_svc",
+     ?_test(test_svc())}
   ]}.
 
 test_search_list() ->
@@ -218,11 +220,42 @@ test_save_config() ->
     ?assertMatch({ok, X}, R2),
     ok.
 
+test_svc() ->
+    process_flag(trap_exit, true),
+    CP = data_file(),
+    D = test_dir(),
+    B = <<"{x,1}.">>,
+    {ok, F} = file:open(CP, [write, raw]),
+    ok = file:write(F, B),
+    ok = file:close(F),
+    {ok, _ConfigPid} = config:start_link({path, CP, D}),
+    (fun() ->
+      C = config:get(),
+      R = config:search(C, x),
+      ?assertMatch({value, 1}, R),
+      ok
+     end)(),
+    (fun() ->
+      R = config:search(x),
+      ?assertMatch({value, 1}, R),
+      ok
+     end)(),
+    (fun() ->
+      R = config:search(y),
+      ?assertMatch(false, R),
+      ok
+     end)(),
+    config:stop(),
+    ok.
+
 test_setup() ->
+    process_flag(trap_exit, true),
+    misc:rm_rf(test_dir()),
     ok.
 
 test_teardown(_) ->
     file:delete(data_file()),
+    misc:rm_rf(test_dir()),
     ok.
 
 test_dir() ->

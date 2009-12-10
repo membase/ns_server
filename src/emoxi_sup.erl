@@ -50,13 +50,31 @@ start_link(ConfigFile) ->
 init(ConfigFile) ->
     Node = erlang:node(),
     Nodes = emoxi:running_nodes() ++ [Node],
-    Children = children(ConfigFile, Nodes),
+    Children = children(ConfigFile, Node, Nodes),
     {ok, {{one_for_one, 10, 1}, Children}}.
 
-children(ConfigFile, _Nodes) ->
+children(ConfigFile, Node, Nodes) ->
     [{config,
       {config, start_link, [ConfigFile]},
       permanent, 1000, worker,
-      [config]}
+      [config]},
+     {storage_manager,
+      {storage_manager,start_link, []},
+      permanent, 1000, worker, [storage_manager]},
+     {storage_server_sup,
+      {storage_server_sup, start_link, []},
+      permanent, 10000, supervisor,
+      [storage_server_sup]},
+     {sync_manager,
+      {sync_manager, start_link, []},
+      permanent, 1000, worker, [sync_manager]},
+     {sync_server_sup,
+      {sync_server_sup, start_link, []},
+      permanent, 10000, supervisor,
+      [sync_server_sup]},
+     {membership,
+      {membership, start_link, [Node, Nodes]},
+      permanent, 1000, worker,
+      [membership]}
     ].
 
