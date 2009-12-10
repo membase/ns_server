@@ -18,7 +18,7 @@ clean:
 	rm -rf test/log
 	rm -rf ebin
 
-test: test_unit
+test: test_unit cucumber
 
 test_unit:
 	erl -pa ebin -noshell -s mc_test test -s init stop -kernel error_logger silent
@@ -44,8 +44,8 @@ test_client_binary:
 
 test_client: test_client_ascii test_client_binary
 
-cucumber:
-	erl -pa ebin -noshell -s mc_test cucumber -s init stop
+cucumber: ebins
+	erl $(EFLAGS) -noshell -s mc_test cucumber -s init stop
 
 dialyzer: ebins
 	dialyzer -pa ebin -I include -r .
