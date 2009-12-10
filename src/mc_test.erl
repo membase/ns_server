@@ -5,9 +5,9 @@
 -compile(export_all).
 
 main() ->
-    Config = [{replica_n, 1},
-              {replica_w, 1},
-              {replica_r, 1}],
+    Config = [[{replica_n, 1},
+               {replica_w, 1},
+               {replica_r, 1}]],
 
     AsciiAddrs = [mc_addr:local(ascii)],
     AsciiPool = mc_pool:create(ascii_pool, AsciiAddrs, Config,

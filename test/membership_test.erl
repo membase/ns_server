@@ -147,22 +147,19 @@ test_membership_gossip_cluster_collision() ->
 
 test_replica_nodes() ->
   process_flag(trap_exit, true),
-  C = config:get(),
-  config:set(C#config{n=3}),
+  config:set(n, 3),
   {ok, _} = membership:start_link(a, [a, b, c, d, e, f]),
   ?assertEqual([f,a,b], replica_nodes(f)).
 
 test_nodes_for_partition() ->
   process_flag(trap_exit, true),
-  C = config:get(),
-  config:set(C#config{n=3}),
+  config:set(n, 3),
   {ok, _} = membership:start_link(a, [a, b, c, d, e, f]),
   ?assertEqual([d,e,f], nodes_for_partition(1)).
 
 test_servers_for_key() ->
   process_flag(trap_exit, true),
-  C = config:get(),
-  config:set(C#config{n=3}),
+  config:set(n, 3),
   {ok, _} = membership:start_link(a, [a, b, c, d, e, f]),
   % 25110333
   ?assertEqual([{storage_1, d}, {storage_1, e}, {storage_1, f}],
@@ -177,8 +174,7 @@ test_initial_partition_setup() ->
   ?assert(S > 0).
 
 test_partitions_for_node_all() ->
-  C = config:get(),
-  config:set(C#config{n=2}),
+  config:set(n, 2),
   {ok, _} = membership:start_link(a, [a, b, c, d, e, f]),
   % 715827883
   Parts = partitions_for_node(a, all),
@@ -216,7 +212,8 @@ test_gossip_server() ->
 
 test_setup() ->
   process_flag(trap_exit, true),
-  config:start_link(#config{n=1,r=1,w=1,q=6,directory=priv_dir()}),
+  config:start_link({config,
+                     [{n,1},{r,1},{w,1},{q,6},{directory,priv_dir()}]}),
   ?assertMatch({ok, _}, mock:mock(sync_manager)),
   ?assertMatch({ok, _}, mock:mock(storage_manager)),
   mock:expects(sync_manager, load,

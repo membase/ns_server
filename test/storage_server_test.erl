@@ -38,7 +38,7 @@
 
 store_conflicting_versions_test() ->
   process_flag(trap_exit, true),
-  config:start_link(#config{}),
+  config:start_link(undefined),
   {ok, Pid} = storage_server:start_link(storage_dets, db_key(confl),
                                         store, 0, (2 bsl 31), 4096),
   A = vclock:create(a),
@@ -56,7 +56,7 @@ storage_server_throughput_test_() ->
 
 test_storage_server_throughput() ->
   process_flag(trap_exit, true),
-  config:start_link(#config{}),
+  config:start_link(undefined),
   {ok, Pid} = storage_server:start_link(storage_dets, db_key(throughput),
                                         through, 0, (2 bsl 31), 4096),
   {Keys, _} = misc:fast_acc(fun({List, Str}) ->
@@ -77,7 +77,7 @@ test_storage_server_throughput() ->
 
 % couch_storage_test() ->
 %     process_flag(trap_exit, true),
-%     config:start_link(#config{}),
+%     config:start_link(undefined),
 %     CouchFile = filename:join(priv_dir(), "couch"),
 %     {ok, State} = couch_storage:open(CouchFile, storage_test),
 %     {ok, St2} = couch_storage:put("key_one", context, <<"value one">>, State),
@@ -98,7 +98,7 @@ test_storage_server_throughput() ->
 
 storage_dict_test() ->
     process_flag(trap_exit, true),
-    config:start_link(#config{}),
+    config:start_link(undefined),
     {ok, Pid} = storage_server:start_link(
                   storage_dict, db_key(dict), store, 0, (2 bsl 31), 4096),
     ?debugFmt("storage server at ~p", [Pid]),
@@ -122,7 +122,7 @@ storage_dict_test() ->
 
 mnesia_storage_test_TODO() ->
     process_flag(trap_exit, true),
-    config:start_link(#config{}),
+    config:start_link(undefined),
     mnesia:stop(),
     application:set_env(mnesia, dir, priv_dir()),
     {ok, Pid} = storage_server:start_link(mnesia_storage, db_key(mnesia),
@@ -150,7 +150,7 @@ mnesia_storage_test_TODO() ->
 
 mnesia_large_value_test_TODO() ->
     process_flag(trap_exit, true),
-    config:start_link(#config{}),
+    config:start_link(undefined),
     crypto:start(), %% filename generation uses crypto:sha
     mnesia:stop(),
     application:set_env(mnesia, dir, priv_dir()),
@@ -182,7 +182,7 @@ mnesia_large_value_test_TODO() ->
 
 rebuild_merkle_trees_test() ->
   process_flag(trap_exit, true),
-  config:start_link(#config{}),
+  config:start_link(undefined),
   {ok, _} = mock:mock(dmerkle),
   {ok, _} = mock:mock(storage_dets),
   mock:expects(dmerkle, open, fun(_) -> true end, {error, "expected"}),
@@ -209,7 +209,7 @@ rebuild_merkle_trees_test() ->
 
 streaming_put_test() ->
   process_flag(trap_exit, true),
-  config:start_link(#config{}),
+  config:start_link(undefined),
   {ok, _} = mock:mock(dmerkle),
   {ok, _} = mock:mock(storage_dets),
   mock:expects(dmerkle, open, fun(_) -> true end, {ok, pid}),
@@ -251,7 +251,8 @@ interrogate_test_loop(Pid) ->
 
 buffered_small_write_test() ->
   process_flag(trap_exit, true),
-  config:start_link(#config{buffered_writes=true}),
+  config:start_link({config,
+                     [{buffered_writes,true}]}),
   {ok, _} = mock:mock(dmerkle),
   {ok, _} = mock:mock(storage_dets),
   mock:expects(dmerkle, open, fun(_) -> true end, {ok, pid}),
@@ -289,7 +290,8 @@ buffered_small_write_test() ->
 
 buffered_stream_write_test() ->
   process_flag(trap_exit, true),
-  config:start_link(#config{buffered_writes=true}),
+  config:start_link({config,
+                     [{buffered_writes,true}]}),
   {ok, _} = mock:mock(dmerkle),
   {ok, _} = mock:mock(storage_dets),
   mock:expects(dmerkle, open, fun(_) -> true end, {ok, pid}),
@@ -330,7 +332,8 @@ buffered_stream_write_test() ->
 
 caching_test_TODO() ->
   process_flag(trap_exit, true),
-  config:start_link(#config{cache=true,cache_size=120}),
+  config:start_link({config,
+                     [{cache, true}, {cache_size, 120}]}),
   {ok, _} = mock:mock(dmerkle),
   {ok, _} = mock:mock(storage_dets),
   mock:expects(dmerkle, open, fun(_) -> true end, {ok, pid}),
