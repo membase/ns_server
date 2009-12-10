@@ -13,12 +13,6 @@
                     bodylen = undefined,
                     opaque = 0}).
 
--record(mc_config, {version = 1,   % config file version
-                    directory,
-                    replica_n = 1,
-                    replica_w = 1,
-                    replica_r = 1}).
-
 -record(mc_pool, {id,     % Pool id.
                   addrs,  % [OpaqueAddr], not necessarily [mc_addr].
                   config, % [{key, value}].

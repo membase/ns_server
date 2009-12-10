@@ -37,7 +37,7 @@
 -export([start/0, running/1, running_nodes/0,
          pause_all_sync/0, start_all_sync/0]).
 
-% erl -boot start_sasl -pa ebin -s emoxi start
+% erl -boot start_sasl -pa ebin -s emoxi start -emoxi config config.sample
 
 start() ->
   crypto:start(),

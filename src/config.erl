@@ -36,50 +36,71 @@
 
 -behaviour(gen_server).
 
--include("mc_entry.hrl").
+-export([start_link/1, stop/0,
+         val/1, get/2, get/1, get/0, set/1, set/2,
+         search/2]).
 
--export([start_link/1, get/2, get/1, get/0, set/1, stop/0]).
+% A static config file is often hand edited.
+% potentially with in-line manual comments.
+%
+% A dynamic config file is updated due to the system,
+% such as due to UI/admin-screen operations, or
+% nodes getting added/removed, and gossiping about config
+% information.
+%
+-record(config, {dynamic = [], % List of TupleList's.  TupleList is {K, V}.
+                 static = []   % List of TupleList's.  TupleList is {K, V}.
+                }).
 
 %% gen_server callbacks
 
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
-start_link(ConfigPath) ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, ConfigPath, []).
+start_link(X) ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE, X, []).
 
+stop() -> gen_server:cast(?MODULE, stop).
+
+val(Key) -> search(?MODULE:get(), Key).
+
+set(Key, Val) -> % For testing, not concurrent safe.
+    Config = ?MODULE:get(),
+    set(Config#config{dynamic = [[{Key, Val}] | Config#config.dynamic]}).
+
+get()              -> gen_server:call(?MODULE, get).
 get(Node)          -> ?MODULE:get(Node, 500).
 get(Node, Timeout) -> gen_server:call({?MODULE, Node}, get, Timeout).
-
-get() ->
-    case erlang:get(?MODULE) of
-        undefined -> C = gen_server:call(?MODULE, get),
-                     erlang:put(?MODULE, C),
-                     C;
-        C -> C
-    end.
 
 set(Config) ->
     gen_server:call(?MODULE, {set, Config}).
 
-stop() ->
-    erlang:erase(?MODULE),
-    gen_server:cast(?MODULE, stop).
+search(undefined, _Key) -> false;
+search([], _Key)        -> false;
+search([KVList | Rest], Key) ->
+    case lists:keysearch(Key, 1, KVList) of
+        {value, {Key, V}} -> {value, V};
+        _                 -> search(Rest, Key)
+    end;
+search(#config{dynamic = DL, static = SL}, Key) ->
+    case search(DL, Key) of
+        {value, _} = R -> R;
+        false          -> search(SL, Key)
+    end.
 
 %% gen_server callbacks
 
-init(Config = #config{}) ->
-  Merged = pick_node_and_merge(Config, nodes([visible])),
-  {ok, Merged};
+init(undefined) ->
+    {ok, #config{static = [config_default:default()]}};
 
-init(ConfigPath) when is_list(ConfigPath) ->
-  case read_file(ConfigPath) of
-    {ok, Config} ->
-      filelib:ensure_dir(Config#config.directory ++ "/"),
-        _Merged = pick_node_and_merge(Config, nodes([visible])),
-      {ok, Config};
-    {error, Reason} -> {error, Reason}
-  end.
+init({config, D}) ->
+    {ok, #config{dynamic = [D], static = [config_default:default()]}};
+
+init(ConfigPath) ->
+    Config = read_file_config(ConfigPath),
+    Merged = pick_node_and_merge(Config, nodes([visible])),
+    % TODO: Should save the merged dynamic file config.
+    {ok, Merged}.
 
 terminate(_Reason, _State)          -> ok.
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
@@ -93,40 +114,44 @@ handle_cast(stop, State)                  -> {stop, shutdown, State}.
 
 read_file(ConfigPath) -> file:consult(ConfigPath).
 
-pick_node_and_merge(Config, Nodes) when length(Nodes) == 0 -> Config;
-pick_node_and_merge(Config, Nodes) ->
-  [Node|_] = misc:shuffle(Nodes),
-  case (catch ?MODULE:get(Node)) of
-    {'EXIT', _, _} -> Config;
-    {'EXIT',_} -> Config;
-    Remote -> merge_configs(Remote, Config)
-  end.
+read_file_config(ConfigPath) ->
+    DefaultConfig = config_default:default(),
+    % Static config file.
+    {ok, S} = read_file(ConfigPath),
+    % Dynamic data directory.
+    {value, DirPath} = search([S, DefaultConfig], directory),
+    ok = filelib:ensure_dir(DirPath),
+    % Dynamic config file.
+    D = case read_file(filename:join(DirPath, "dynamic.cfg")) of
+            {ok, DRead} -> DRead;
+            _           -> []
+        end,
+    #config{dynamic = [D],
+            static  = [S, DefaultConfig]}.
+
+pick_node_and_merge(Local, Nodes) when length(Nodes) == 0 -> Local;
+pick_node_and_merge(Local, Nodes) ->
+    [Node | _] = misc:shuffle(Nodes),
+    case (catch ?MODULE:get(Node)) of
+        {'EXIT', _, _} -> Local;
+        {'EXIT', _}    -> Local;
+        Remote         -> merge_configs(Remote, Local)
+    end.
 
 merge_configs(Remote, Local) ->
-  %we need to merge in any cluster invariants
-  merge_configs([n, r, w, q, storage_mod, blocksize, buffered_writes],
-                Remote, Local).
+    % we need to merge in any cluster invariants
+    merge_configs([n, r, w, q, storage_mod, blocksize, buffered_writes],
+                  Remote, Local, []).
 
-merge_configs([], _Remote, Merged) -> Merged;
+merge_configs([], _Remote, Local, Acc) ->
+    Local#config{dynamic = [Acc]};
 
-merge_configs([Field | Fields], Remote, Merged) ->
-    merge_configs(Fields, Remote,
-                  record_set(Field, Merged, record_get(Field, Remote))).
-
-record_get(Field, Tuple) ->
-    record_get(record_info(fields, mc_config), Field, Tuple, 2).
-
-record_get([], _, _, _)                       -> undefined;
-record_get([Field | _], Field, Tuple, Index)  -> element(Index, Tuple);
-record_get([_ | Fields], Field, Tuple, Index) ->
-    record_get(Fields, Field, Tuple, Index+1).
-
-record_set(Field, Tuple, Value) ->
-    record_set(record_info(fields, mc_config), Field, Tuple, Value, 2).
-
-record_set([], _Field, Tuple, _, _) ->
-    Tuple;
-record_set([Field | _], Field, Tuple, Value, Index) ->
-    setelement(Index, Tuple, Value);
-record_set([_ | Fields], Field, Tuple, Value, Index) ->
-    record_set(Fields, Field, Tuple, Value, Index + 1).
+merge_configs([Field | Fields], Remote, Local, Acc) ->
+    RS = search(Remote, Field),
+    LS = search(Local, Field),
+    A2 = case {RS, LS} of
+             {{value, RV}, _} -> [{Field, RV} | Acc];
+             {_, {value, LV}} -> [{Field, LV} | Acc];
+             _                -> Acc
+         end,
+    merge_configs(Fields, Remote, Local, A2).

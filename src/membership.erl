@@ -325,9 +325,10 @@ gossip_paused(_Server) ->
     start -> ok
   end.
 
-int_range(Partition, #config{q=Q}) ->
-  Size = partitions:partition_range(Q),
-  {Partition, Partition+Size}.
+int_range(Partition, Config) ->
+    {value, Q} = config:search(Config, q),
+    Size = partitions:partition_range(Q),
+    {Partition, Partition+Size}.
 
 random_node(Nodes) ->
   lists:nth(random:uniform(length(Nodes)), Nodes).
@@ -385,7 +386,8 @@ create_or_load_state(Node, Nodes, Config, Table) ->
       {new, create_initial_state(Node, Nodes, Config, Table)}
   end.
 
-load_state(Node, #config{directory=Directory}) ->
+load_state(Node, Config) ->
+  {value, Directory} = config:search(Config, directory),
   case file:read_file(filename:join(Directory,
                                     atom_to_list(Node) ++ ".bin")) of
     {ok, Binary} ->
@@ -397,7 +399,8 @@ save_state(State) ->
   Node = State#membership.node,
   Config = config:get(),
   Binary = term_to_binary(State),
-  {ok, File} = file:open(filename:join(Config#config.directory,
+  {value, Directory} = config:search(Config, directory),
+  {ok, File} = file:open(filename:join(Directory,
                                        atom_to_list(Node) ++ ".bin"),
                          [write, raw]),
   ok = file:write(File, Binary),
@@ -405,7 +408,7 @@ save_state(State) ->
 
 %% partitions is a list starting with 1 which defines a partition space.
 create_initial_state(Node, Nodes, Config, Table) ->
-  Q = Config#config.q,
+  {value, Q} = config:search(Config, q),
   #membership{
     version=vclock:create(pid_to_list(self())),
 	  partitions=partitions:create_partitions(Q, Node, Nodes),
@@ -508,16 +511,18 @@ int_partitions_for_node(Node, State, all) ->
 
 reverse_replica_nodes(Node, State) ->
   Config = config:get(),
-  n_nodes(Node, Config#config.n, lists:reverse(State#membership.nodes)).
+  {value, N} = config:search(Config, n),
+  n_nodes(Node, N, lists:reverse(State#membership.nodes)).
 
 int_replica_nodes(Node, State) ->
   Config = config:get(),
-  n_nodes(Node, Config#config.n, State#membership.nodes).
+  {value, N} = config:search(Config, n),
+  n_nodes(Node, N, State#membership.nodes).
 
 int_nodes_for_key(Key, State, Config) ->
   % error_logger:info_msg("inside int_nodes_for_key~n", []),
   KeyHash = misc:hash(Key),
-  Q = Config#config.q,
+  {value, Q} = config:search(Config, q),
   Partition = find_partition(KeyHash, Q),
   % error_logger:info_msg("found partition ~w for key ~p~n",
   %                       [Partition, Key]),
@@ -525,8 +530,8 @@ int_nodes_for_key(Key, State, Config) ->
 
 int_nodes_for_partition(Partition, State = #membership{ptable=Table}) ->
   %%_Config = config:get(),
-  %%_Q = Config#config.q,
-  %%_N = Config#config.n,
+  % {value, Q} = config:search(Config, q),
+  % {value, N} = config:search(Config, n),
   % ?debugFmt("int_nodes_for_partition(~p, _)", [Partition]),
   [{Partition,Node}] = ets:lookup(Table, Partition),
   % {Node,Partition} =
@@ -538,7 +543,7 @@ int_nodes_for_partition(Partition, State = #membership{ptable=Table}) ->
 
 int_partition_for_key(Key, _State, Config) ->
   KeyHash = misc:hash(Key),
-  Q = Config#config.q,
+  {value, Q} = config:search(Config, q),
   find_partition(KeyHash, Q).
 
 find_partition(0, _) ->

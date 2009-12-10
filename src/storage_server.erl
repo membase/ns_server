@@ -167,9 +167,11 @@ init({StorageModule,DbKey,Name,_Min,_Max,BlockSize}) ->
     end,
     Storage = #storage{module=StorageModule,dbkey=DbKey,blocksize=BlockSize,
                        table=Table,name=Name,tree=Tree},
-    case Config#config.cache of
+    {value, Cache} = config:search(Config, cache),
+    {value, CacheSize} = config:search(Config, cache_size),
+    case Cache of
       true ->
-        case (catch cache_start(Config#config.cache_size)) of
+        case (catch cache_start(CacheSize)) of
           {ok, C} -> {ok, Storage#storage{cache=C}};
           Error ->
             ?infoFmt("Cache start failed: ~p~n", [Error]),
@@ -308,12 +310,14 @@ code_change(_OldVsn, State, _Extra) ->
 
 %%--------------------------------------------------------------------
 
-load_config_into_dict(#config{buffered_writes=BufferedWrites}) ->
-  put(buffered_writes, BufferedWrites).
+load_config_into_dict(Config) ->
+    {value, BufferedWrites} = config:search(Config, buffered_writes),
+    put(buffered_writes, BufferedWrites).
 
 int_put(Name, Key, Context, Value, Timeout) ->
   Config = config:get(),
-  case Config#config.buffered_writes of
+  {value, BufferedWrites} = config:search(Config, buffered_writes),
+  case BufferedWrites of
     true ->
       gen_server:cast(Name, {put, Key, Context, Value});
     _ -> gen_server:call(Name, {put, Key, Context, Value}, Timeout)
