@@ -12,7 +12,7 @@ default() ->
      {persist, false},
      {persist_cache_expire_range, {0, 600}},
      {kinds, []},
-     % Dynomite configs.
+     % TODO: Revisit these settings/configs.
      {q, 6},
      {n, 3},
      {r, 1},
