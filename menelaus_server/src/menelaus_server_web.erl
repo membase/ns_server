@@ -281,8 +281,7 @@ build_bucket_stats_response(_Id, Params, Now) ->
                                    {K, NewSamples}
                            end,
                            Samples),
-    {struct, [{now, Now},
-              {hot_keys, [{struct, [{name, <<"user:image:value">>},
+    {struct, [{hot_keys, [{struct, [{name, <<"user:image:value">>},
                                     {gets, 10000},
                                     {bucket, <<"Excerciser application">>},
                                     {misses, 100},
