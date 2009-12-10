@@ -223,7 +223,6 @@ test_setup() ->
 
 test_teardown(_) ->
     file:delete(data_file()),
-    file:delete(data_file()),
     ok.
 
 test_dir() ->
