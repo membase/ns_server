@@ -81,19 +81,16 @@ diff([{Node,Part}|PartsA], [{Node,Part}|PartsB], Results) ->
 diff([{NodeA,Part}|PartsA], [{NodeB,Part}|PartsB], Results) ->
   diff(PartsA, PartsB, [{NodeA,NodeB,Part}|Results]).
 
-hash_map(List) ->
-  hash_map(List, []).
+hash_map(List) -> hash_map(List, []).
 
 hash_map([], Acc) -> lists:keysort(1, Acc);
+hash_map([Item | List], Acc) ->
+  hash_map(List, hash_map(500, Item, [{misc:hash(Item), Item} | Acc])).
 
-hash_map([Item|List], Acc) ->
-  hash_map(List, hash_map(500, Item, [{misc:hash(Item),Item}|Acc])).
-
-hash_map(0, _Item, Acc) ->
-  Acc;
-
-hash_map(N, Item, [{Seed,Item}|Acc]) ->
-  hash_map(N-1, Item, [{misc:hash(Item,Seed),Item},{Seed,Item}|Acc]).
+hash_map(0, _Item, Acc) -> Acc;
+hash_map(N, Item, [{Seed, Item} | Acc]) ->
+  hash_map(N - 1, Item,
+           [{misc:hash(Item, Seed), Item}, {Seed, Item} | Acc]).
 
 do_map([{Hash,Node}|ConsHashMap], Parts) ->
   do_map({Hash,Node}, [{Hash,Node}|ConsHashMap], Parts, []).

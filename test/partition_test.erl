@@ -152,3 +152,8 @@ create_partitions(Sizes) ->
               {PartLists ++ NewPart, Count+(Size*partition_range(6))}
       end, {[], 1}, Sizes),
   lists:keysort(2, PartLists).
+
+hash_map_test() ->
+    X = hash_map([a]),
+    ?assertMatch(X, lists:keysort(1, X)),
+    ok.

@@ -193,7 +193,7 @@ hash(Term) ->
   ?forp(hash),
   R.
 
-hash(Term, _Seed) -> hash(Term).
+hash(Term, Seed) -> hash({Term, Seed}).
 
 % 32 bit fnv. magic numbers ahoy
 fnv(Term) when is_binary(Term) ->
