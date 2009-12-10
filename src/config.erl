@@ -150,8 +150,11 @@ load_config(ConfigPath, DirPath) ->
         E -> E
     end.
 
-save_config(#config{dynamic = D} = Config) ->
+save_config(Config) ->
     {value, DirPath} = search(Config, directory),
+    save_config(Config, DirPath).
+
+save_config(#config{dynamic = D}, DirPath) ->
     ok = filelib:ensure_dir(DirPath),
     % Only saving the dynamic config parts.
     ok = save_file(bin, filename:join(DirPath, "dynamic.cfg"), D).
