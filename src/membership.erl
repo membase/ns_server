@@ -51,9 +51,9 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--define(VERSION, 1).
+-define(MEMBERSHIP_VERSION, 1).
 
--record(membership, {header=?VERSION, partitions, version,
+-record(membership, {header=?MEMBERSHIP_VERSION, partitions, version,
                      nodes, node, gossip,
                      ptable}).
 
@@ -370,7 +370,8 @@ try_join_into_cluster(Node, State = #membership{nodes=Nodes,
 
 create_or_load_state(Node, Nodes, Config, Table) ->
   case load_state(Node, Config) of
-    {ok, Value = #membership{header=?VERSION,nodes=LoadedNodes}} ->
+    {ok, Value = #membership{header=?MEMBERSHIP_VERSION,
+                             nodes=LoadedNodes}} ->
       error_logger:info_msg("loaded membership from disk~n", []),
       {loaded, Value#membership{node=Node,
                                 nodes=lists:usort(Nodes ++ LoadedNodes),

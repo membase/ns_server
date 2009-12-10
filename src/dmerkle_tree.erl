@@ -60,6 +60,10 @@
          filename, ops=[], opdict=dict:new(), freepointer=0,
          rootpointer=0, kfpointers=[], bigkfpointer=0}).
 
+-ifdef(TEST).
+-include("test/dmerkle_tree_test.erl").
+-endif.
+
 start_link(FileName, BlockSize) ->
   gen_server:start_link(dmerkle_tree, [FileName, BlockSize], []).
 
@@ -486,9 +490,9 @@ serialize_header(#dmerkle_tree{blocksize=BlockSize, freepointer=FreePtr,
                                bigkfpointer=BKFPointer,
                                rootpointer=RootPtr,
                                kfpointers=Pointers}) ->
-  Preamble = <<?VERSION:8, BlockSize:32, FreePtr:64,
+  Preamble = <<?DMERKLE_VERSION:8, BlockSize:32, FreePtr:64,
               RootPtr:64, BKFPointer:64>>,
-  FreeSpace = (?STATIC_HEADER - byte_size(Preamble))*8,
+  FreeSpace = (?DMERKLE_STATIC_HEADER - byte_size(Preamble))*8,
   PtrBin = << <<Ptr:64>> || Ptr <- Pointers >>,
   % ?infoFmt("pointers: ~p~nptrbin~p~nfreespace~p~n",
   %          [Pointers, PtrBin, FreeSpace]),
@@ -496,7 +500,7 @@ serialize_header(#dmerkle_tree{blocksize=BlockSize, freepointer=FreePtr,
 
 % this will try and match the current version,
 % if it doesn't then we gotta punch out
-deserialize_header(<<?VERSION:8, BlockSize:32, FreePtr:64,
+deserialize_header(<<?DMERKLE_VERSION:8, BlockSize:32, FreePtr:64,
                     RootPtr:64, BKFPointer:64, Rest/binary>>) ->
   PointerSize = ?pointers_from_blocksize(BlockSize) * 8,
   <<PBin:PointerSize/binary, _/binary>> = Rest,
