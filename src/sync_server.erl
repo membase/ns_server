@@ -40,6 +40,8 @@
 
 -record(state, {name, partition, paused}).
 
+% There will be a sync_server per partition.
+
 start_link(Name, Partition) ->
   Pid = proc_lib:spawn_link(fun() ->
       sync_server:loop(#state{name=Name,partition=Partition,paused=false})
