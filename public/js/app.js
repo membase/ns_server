@@ -1060,8 +1060,11 @@ var SamplesRestorer = mkClass({
       delete data[n];
     });
 
-    if (samplesRestorer.lastTstamp)
+    var isUpdate = false;
+    if (samplesRestorer.lastTstamp) {
+      isUpdate = true;
       data.opsbysecond_start_tstamp = samplesRestorer.lastTstamp;
+    }
 
     var valueTransformer = function (data) {
       samplesRestorer.transformOp(data.op);
@@ -1071,7 +1074,7 @@ var SamplesRestorer = mkClass({
     return future.get({
       url: target.stats.uri,
       data: data
-    }, valueTransformer);
+    }, valueTransformer, isUpdate ? this.self.value : undefined);
   }).setSources({samplesRestorer: samplesRestorerCell,
                  options: statsOptionsCell,
                  target: targetCell});
@@ -1219,13 +1222,26 @@ var StatGraphs = {
     linkSelector: 'span',
     firstLinkIsDefault: true}),
   selectedCounter: 0,
-  update: function () {
-    var stats = DAO.cells.stats.value;
+  renderNothing: function () {
+    var main = $('#overview_main_graph')
+    var ops = $('#overview_graph_ops')
+    var gets = $('#overview_graph_gets')
+    var sets = $('#overview_graph_sets')
+    var misses = $('#overview_graph_misses')
+
+    prepareAreaUpdate(main);
+    prepareAreaUpdate(ops);
+    prepareAreaUpdate(gets);
+    prepareAreaUpdate(sets);
+    prepareAreaUpdate(misses);
+  },
+  update: function (cell) {
+    var stats = cell.value;
     if (!stats)
-      return;
+      return this.renderNothing();
     stats = stats.op;
     if (!stats)
-      return;
+      return this.renderNothing();
 
     var main = $('#overview_main_graph')
     var ops = $('#overview_graph_ops')
@@ -1247,6 +1263,8 @@ var StatGraphs = {
                      selected == 'misses');
   },
   init: function () {
+    DAO.cells.stats.subscribeAny($m(this, 'update'));
+
     var selected = this.selected;
 
     var ops = $('#overview_graph_ops');
@@ -1287,9 +1305,6 @@ var OverviewSection = {
   clearUI: function () {
     prepareRenderTemplate('top_keys', 'server_list', 'pool_list');
   },
-  onFreshStats: function () {
-    StatGraphs.update()
-  },
   onKeyStats: function (cell) {
     renderTemplate('top_keys', $.map(cell.value.hot_keys, function (e) {
       return $.extend({}, e, {total: 0 + e.gets + e.misses});
@@ -1305,7 +1320,6 @@ var OverviewSection = {
     day: {channelPeriod: 1800000, requestParam: '24hr'}
   },
   init: function () {
-    DAO.cells.stats.subscribe($m(this, 'onFreshStats'));
     DAO.cells.stats.subscribe($m(this, 'onKeyStats'));
     DAO.cells.currentPoolDetails.subscribe($m(this, 'onFreshNodeList'));
     prepareTemplateForCell('top_keys', CurrentStatTargetHandler.currentStatTargetCell);
