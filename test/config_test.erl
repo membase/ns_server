@@ -49,8 +49,8 @@ all_test_() ->
      ?_test(test_merge_config_static())},
     {"test_merge_config_dynamic",
      ?_test(test_merge_config_dynamic())},
-    {"test_persist",
-     ?_test(test_persist())}
+    {"test_bin_persist",
+     ?_test(test_bin_persist())}
   ]}.
 
 test_search_list() ->
@@ -171,12 +171,31 @@ test_merge_config_dynamic() ->
                  static = [[{x,1},{foo,9}]]})),
     ok.
 
-test_persist() ->
+test_bin_persist() ->
     CP = data_file(),
     D = [[{x,1},{y,2},{z,3}]],
-    ?assertEqual(ok, save_config(bin, CP, D)),
-    R = load_config(bin, CP),
+    ?assertEqual(ok, save_file(bin, CP, D)),
+    R = load_file(bin, CP),
     ?assertEqual({ok, D}, R),
+    ok.
+
+load_config_improper_test() ->
+    CP = data_file(),
+    {ok, F} = file:open(CP, [write, raw]),
+    ok = file:write(F, <<"improper config file">>),
+    ok = file:close(F),
+    R = load_config(CP, test_dir()),
+    ?assertMatch({error, _}, R),
+    ok.
+
+load_config_test() ->
+    CP = data_file(),
+    {ok, F} = file:open(CP, [write, raw]),
+    ok = file:write(F, <<"{x,1}.">>),
+    ok = file:close(F),
+    R = load_config(CP, test_dir()),
+    E = #config{static = [[{x,1}], config_default:default()]},
+    ?assertEqual({ok, E}, R),
     ok.
 
 test_setup() ->
@@ -186,10 +205,10 @@ test_teardown(_) ->
     file:delete(data_file()),
     ok.
 
-priv_dir() ->
+test_dir() ->
   Dir = filename:join([t:config(priv_dir), "data", "config"]),
   filelib:ensure_dir(filename:join(Dir, "config")),
   Dir.
 
 data_file()     -> data_file(atom_to_list(node())).
-data_file(Name) -> filename:join([priv_dir(), Name]).
+data_file(Name) -> filename:join([test_dir(), Name]).

@@ -102,10 +102,12 @@ init({config, D}) -> % Useful for unit-testing.
     {ok, #config{static = [config_default:default()], dynamic = [D]}};
 
 init(ConfigPath) ->
-    Config = load_config(ConfigPath),
-    Merged = pick_node_and_merge(Config, nodes([visible])),
-    % TODO: Should save the merged dynamic file config.
-    {ok, Merged}.
+    case load_config(ConfigPath) of
+        {ok, Config} ->
+            % TODO: Should save the merged dynamic file config.
+            pick_node_and_merge(Config, nodes([visible]));
+        E -> E
+    end.
 
 terminate(_Reason, _State)          -> ok.
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
@@ -122,34 +124,47 @@ handle_call({set, KVList}, _From, State) ->
 %%--------------------------------------------------------------------
 
 load_config(ConfigPath) ->
+    load_config(ConfigPath, undefined).
+
+load_config(ConfigPath, DirPath) ->
     DefaultConfig = config_default:default(),
     % Static config file.
-    {ok, S} = load_config(file, ConfigPath),
-    % Dynamic data directory.
-    {value, DirPath} = search([S, DefaultConfig], directory),
-    ok = filelib:ensure_dir(DirPath),
-    % Dynamic config file.
-    D = case load_config(bin, filename:join(DirPath, "dynamic.cfg")) of
-            {ok, DRead} -> DRead;
-            _           -> []
-        end,
-    #config{static = [S, DefaultConfig], dynamic = D}.
+    case load_file(txt, ConfigPath) of
+        {ok, S} ->
+            % Dynamic data directory.
+            DirPath2 =
+                case DirPath of
+                    undefined ->
+                        {value, DirPath} = search([S, DefaultConfig],
+                                                  directory),
+                        DirPath;
+                    _ -> DirPath
+                end,
+            ok = filelib:ensure_dir(DirPath2),
+                                                % Dynamic config file.
+            D = case load_file(bin, filename:join(DirPath2, "dynamic.cfg")) of
+                    {ok, DRead} -> DRead;
+                    _           -> []
+                end,
+            {ok, #config{static = [S, DefaultConfig], dynamic = D}};
+        E -> E
+    end.
 
 save_config(#config{dynamic = D} = Config) ->
     {value, DirPath} = search(Config, directory),
     ok = filelib:ensure_dir(DirPath),
     % Only saving the dynamic config parts.
-    ok = save_config(bin, filename:join(DirPath, "dynamic.cfg"), D).
+    ok = save_file(bin, filename:join(DirPath, "dynamic.cfg"), D).
 
-load_config(file, ConfigPath) -> file:consult(ConfigPath);
+load_file(txt, ConfigPath) -> file:consult(ConfigPath);
 
-load_config(bin, ConfigPath) ->
+load_file(bin, ConfigPath) ->
     case file:read_file(ConfigPath) of
         {ok, B} -> {ok, binary_to_term(B)};
         _       -> not_found
     end.
 
-save_config(bin, ConfigPath, X) ->
+save_file(bin, ConfigPath, X) ->
     {ok, F} = file:open(ConfigPath, [write, raw]),
     ok = file:write(F, term_to_binary(X)),
     ok = file:close(F).
