@@ -799,6 +799,9 @@ var LinkSwitchCell = mkClass(Cell, {
     this.pushState(id);
   },
   pushState: function (id) {
+    var currentState = $.bbq.getState(this.paramName);
+    if (currentState == id || (currentState === undefined && id == this.defaultId))
+      return;
     var obj = {};
     obj[this.paramName] = id;
     $.bbq.pushState(obj);
