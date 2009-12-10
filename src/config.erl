@@ -105,8 +105,9 @@ init(ConfigPath) ->
     case load_config(ConfigPath) of
         {ok, Config} ->
             % TODO: Should save the merged dynamic file config.
-            pick_node_and_merge(Config, nodes([visible]));
-        E -> E
+            {ok, pick_node_and_merge(Config, nodes([visible]))};
+        Error ->
+            {stop, Error}
     end.
 
 terminate(_Reason, _State)          -> ok.

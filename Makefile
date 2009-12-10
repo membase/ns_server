@@ -24,7 +24,7 @@ test_unit:
 	erl -pa ebin -noshell -s mc_test test -s init stop
 
 test_boot:
-	erl -boot start_sasl -pa ebin -s emoxi start -emoxi config test.cfg
+	erl -boot start_sasl -pa ebin -s emoxi start -emoxi config config_test.cfg
 
 test_main:
 	erl -pa ebin -noshell -s mc_test main
