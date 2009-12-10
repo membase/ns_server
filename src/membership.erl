@@ -401,11 +401,9 @@ save_state(State) ->
   Config = config:get(),
   Binary = term_to_binary(State),
   {value, Directory} = config:search(Config, directory),
-  ok = filelib:ensure_dir(Directory),
-  {ok, File} = file:open(filename:join(Directory,
-                                       atom_to_list(Node) ++ ".bin"),
-                         [write]),
-    ?debugVal(File),
+  FName = filename:join(Directory, atom_to_list(Node) ++ ".bin"),
+  ok = filelib:ensure_dir(FName),
+  {ok, File} = file:open(FName, [write]),
   ok = file:write(File, Binary),
   ok = file:close(File).
 

@@ -143,9 +143,10 @@ load_config(ConfigPath, DirPath) ->
                         DP;
                     _ -> DirPath
                 end,
-            ok = filelib:ensure_dir(DirPath2),
             % Dynamic config file.
-            D = case load_file(bin, filename:join(DirPath2, "dynamic.cfg")) of
+            C = filename:join(DirPath2, "dynamic.cfg"),
+            ok = filelib:ensure_dir(C),
+            D = case load_file(bin, C) of
                     {ok, DRead} -> DRead;
                     _           -> []
                 end,
@@ -158,9 +159,10 @@ save_config(Config) ->
     save_config(Config, DirPath).
 
 save_config(#config{dynamic = D}, DirPath) ->
-    ok = filelib:ensure_dir(DirPath),
+    C = filename:join(DirPath, "dynamic.cfg"),
+    ok = filelib:ensure_dir(C),
     % Only saving the dynamic config parts.
-    ok = save_file(bin, filename:join(DirPath, "dynamic.cfg"), D).
+    ok = save_file(bin, C, D).
 
 load_file(txt, ConfigPath) -> file:consult(ConfigPath);
 
