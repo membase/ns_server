@@ -1011,6 +1011,16 @@ var CurrentStatTargetHandler = {
 CurrentStatTargetHandler.initialize();
 
 var SamplesRestorer = mkClass({
+  initialize: function () {
+    this.birthTime = (new Date()).valueOf();
+  },
+  nextSampleTime: function () {
+    var now = (new Date()).valueOf();
+    if (!this.lastOps)
+      return now;
+    var samplesInterval = this.lastOps['samples_interval']*1000;
+    return this.birthTime + (now + samplesInterval - 1 - this.birthTime)/samplesInterval*samplesInterval;
+  },
   transformOp: function (op) {
     var oldOps = this.lastOps;
     var ops = this.lastOps = op;
@@ -1085,9 +1095,7 @@ var SamplesRestorer = mkClass({
                  target: targetCell});
 
   statsCell.subscribe(function (cell) {
-    var op = cell.value.op;
-    var at = op.tstamp + op.samples_interval*1000;
-    console.log("at:", at);
+    var at = cell.context.samplesRestorer.value.nextSampleTime();
     cell.recalculateAt(at);
 
     var keysInterval = statsOptionsCell.value.keysInterval;
