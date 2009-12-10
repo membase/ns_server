@@ -203,7 +203,7 @@ of representations, since they are similar for different parts of the heirarchy.
  Content-Type: application/com.northscale.store+json
  Content-Length: nnn
 {
-  "implementation_version": "253",
+  "implementationVersion": "253",
   "pools" : [
     {
       "name": "Default Pool",
@@ -219,7 +219,7 @@ of representations, since they are similar for different parts of the heirarchy.
     }
   ]
   "uri": "https://node.in.your.pool.com/pool",
-  "specification_version": [
+  "specificationVersion": [
     "0.1"
    ]
 }
@@ -269,7 +269,7 @@ the human readable pool name.
      {
        "name" : "10.0.1.20",
        "uri" : "/addresses/10.0.1.20",
-       "ip_address" : "10.0.1.20",
+       "ipAddress" : "10.0.1.20",
        "status" : "healthy",
        "ports" : {
          "routing" : 11211,
@@ -280,7 +280,7 @@ the human readable pool name.
      {
        "name" : "10.0.1.21",
        "uri" : "/addresses/10.0.1.21",
-       "ip_address" : "10.0.1.20",
+       "ipAddress" : "10.0.1.20",
        "status" : "healthy",
        "ports" : {
          "routing" : 11211,
@@ -297,7 +297,7 @@ the human readable pool name.
      {
        "name" : "yourotherbucket",
        "uri" : "https://node.in.pool.com/pool/Default Pool/bucket/yourotherbucket",
-       "preferred-port" : "caching"
+       "preferredPort" : "caching"
      }
    ],
    "controller" : {
@@ -397,7 +397,7 @@ sense, like a backup or asking a node to join a pool.
    {
      "name" : "anotherbucket",
      "uri" : "https://node.in.pool.com/pool/Default Pool/bucket/anotherbucket",
-     "preferred-port" : "caching"
+     "preferredPort" : "caching"
    }
  ]
 </pre>
@@ -438,9 +438,9 @@ bucket or pool.
  Content-Length: nnn
 
 {
-  "getsbysecond" : [ 2, 4, 5, 6, 9, 20, 30, ... ],
-  "setsbysecond" : [ 2, 4, 5, 6, 9, 20, 30, ... ],
-  "missesbysecond" : [ 2, 4, 5, 6, 9, 20, 30, .. ]
+  "getsBySecond" : [ 2, 4, 5, 6, 9, 20, 30, ... ],
+  "setsBySecond" : [ 2, 4, 5, 6, 9, 20, 30, ... ],
+  "missesBySecond" : [ 2, 4, 5, 6, 9, 20, 30, .. ]
 }
 </pre>
 
@@ -501,13 +501,13 @@ response 201: bucket was created and valid URIs returned
 POST /pool/My New Pool/bucket/Another bucket
 {
    "name" : "Another bucket"
-   "bucketrules" : {
-     "cache-range" :
+   "bucketRules" : {
+     "cacheRange" :
        {
          "min" : 1,
          "max" : 599
        },
-     "replication-factor" : 2
+     "replicationFactor" : 2
    }
 }
 </pre>
@@ -540,13 +540,13 @@ The system will then issue a redirect indicating success.
 
 {
    "name" : "New Name for Another Bucket"
-   "bucketrules" : {
-     "cache-range" :
+   "bucketRules" : {
+     "cacheRange" :
        {
          "min" : 1,
          "max" : 599
        },
-     "replication-factor" : 2
+     "replicationFactor" : 2
    }
 }
 
@@ -615,3 +615,5 @@ have been referenced.
   bucket renaming. (matt.ingenthron@northscale.com)
 * 20091208 Added bucket level preferred port configuration to RESTful 
   interface. (matt.ingenthron@northscale.com)
+* 20091210 Moved to camelCase for JSON object names.  Added restrictions on
+  pool and bucket names.  (matt.ingenthron@northscale.com)
