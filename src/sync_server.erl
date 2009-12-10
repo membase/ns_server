@@ -75,10 +75,8 @@ run_sync(Nodes, _) when length(Nodes) == 1 ->
   noop;
 
 run_sync(Nodes, Partition) ->
-  [Master|_] = Nodes,
   [NodeA,NodeB|_] = misc:shuffle(Nodes),
   StorageName = list_to_atom(lists:concat([storage_, Partition])),
-  KeyDiff = storage_server:diff({StorageName, NodeA}, {StorageName, NodeB}),
-  sync_manager:sync(Partition, Master, NodeA, NodeB, length(KeyDiff)),
+  sync_manager:sync(Partition, NodeA, NodeB),
   storage_server:sync({StorageName, NodeA}, {StorageName, NodeB}),
   sync_manager:done(Partition).

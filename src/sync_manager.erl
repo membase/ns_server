@@ -37,15 +37,14 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, stop/0, load/3, loaded/0, sync/5, done/1,
-         running/0, running/1, diffs/0, diffs/1]).
+-export([start_link/0, stop/0, load/3, loaded/0, sync/3, done/1,
+         running/0, running/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
 -record(state, {running,
-                diffs,
                 partitions=[],
                 parts_for_node=[]}).
 
@@ -67,8 +66,8 @@ load(Nodes, Partitions, PartsForNode) ->
   gen_server:call(?MODULE, {load, Nodes, Partitions, PartsForNode},
                   infinity).
 
-sync(Part, Master, NodeA, NodeB, DiffSize) ->
-  gen_server:cast(?MODULE, {sync, Part, Master, NodeA, NodeB, DiffSize}).
+sync(Part, NodeA, NodeB) ->
+  gen_server:cast(?MODULE, {sync, Part, NodeA, NodeB}).
 
 done(Part) ->
   gen_server:cast(?MODULE, {done, Part}).
@@ -79,18 +78,12 @@ running() ->
 running(Node) ->
   gen_server:call({?MODULE, Node}, running).
 
-diffs() ->
-  gen_server:call(?MODULE, diffs).
-
-diffs(Node) ->
-  gen_server:call({?MODULE, Node}, diffs).
-
 loaded() ->
   gen_server:call(?MODULE, loaded).
 
 %% gen_server callbacks
 
-init([]) -> {ok, #state{running=[],diffs=[]}}.
+init([]) -> {ok, #state{running=[]}}.
 terminate(_Reason, _State)          -> ok.
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 handle_info(_Info, State)           -> {noreply, State}.
@@ -100,9 +93,6 @@ handle_call(loaded, _From, State) ->
 
 handle_call(running, _From, State = #state{running=Running}) ->
   {reply, Running, State};
-
-handle_call(diffs, _From, State = #state{diffs=Diffs}) ->
-  {reply, Diffs, State};
 
 handle_call({load, _Nodes, NewPartitions, NewPartsForNode}, _From,
             State = #state{partitions=_OldPartitions,
@@ -117,13 +107,11 @@ handle_call({load, _Nodes, NewPartitions, NewPartsForNode}, _From,
   {reply, ok, State#state{partitions=NewPartitions,
                           parts_for_node=NewPartsForNode}}.
 
-handle_cast({sync, Part, Master, NodeA, NodeB, DiffSize},
-            State = #state{running=Running,
-                           diffs=Diffs}) ->
-  NewDiffs = store_diff(Part, Master, NodeA, NodeB, DiffSize, Diffs),
+handle_cast({sync, Part, NodeA, NodeB},
+            State = #state{running=Running}) ->
   NewRunning = lists:keysort(1, lists:keystore(Part, 1, Running,
                                                {Part, NodeA, NodeB})),
-  {noreply, State#state{running=NewRunning,diffs=NewDiffs}};
+  {noreply, State#state{running=NewRunning}};
 
 handle_cast({done, Part}, State = #state{running=Running}) ->
   NewRunning = lists:keydelete(Part, 1, Running),
@@ -152,23 +140,3 @@ reload_sync_servers(OldParts, NewParts) ->
       end
     end, NewParts).
 
-store_diff(Part, Master, Master, NodeB, DiffSize, Diffs) ->
-  store_diff(Part, Master, NodeB, DiffSize, Diffs);
-
-store_diff(Part, Master, NodeA, Master, DiffSize, Diffs) ->
-  store_diff(Part, Master, NodeA, DiffSize, Diffs);
-
-store_diff(_Part, _Master, _NodeA, _NodeB, _DiffSize, Diffs) ->
-  Diffs.
-
-store_diff(Part, _Master, Node, DiffSize, Diffs) ->
-  case lists:keysearch(Part, 1, Diffs) of
-    {value, {Part, DiffSizes}} ->
-          lists:keystore(Part, 1, Diffs,
-                         {Part,
-                          lists:keystore(Node, 1, DiffSizes,
-                                         {Node, DiffSize})
-                         });
-    false ->
-          lists:keystore(Part, 1, Diffs, {Part, [{Node, DiffSize}]})
-  end.
