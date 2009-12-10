@@ -8,7 +8,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(EUNIT).
--export([test_under_debugger/0, debugger_apply/2]).
+-export([test_under_debugger/0, debugger_apply/2, test/0]).
 -endif.
 
 -export([start/1, stop/0, loop/2]).
@@ -337,13 +337,23 @@ build_bucket_stats_response_cutting_1_test() ->
                            {op, _}]},
                  Res),
     {struct, [_, {op, Ops}]} = Res,
-    ?assertMatch({struct, [{tstamp, Now},
+    ?assertMatch({struct, [{tstamp, 1259747673559},
                            {samples_interval, 1},
                            {gets, [_]},
                            {misses, [_]},
                            {sets, [_]},
                            {ops, [_]}]},
                  Ops).
+
+test() ->
+    eunit:test({spawn, {setup,
+                        fun () ->
+                                register(simple_memory_proc, spawn(?MODULE, simple_memory_proc, []))
+                        end,
+                        fun (Pid) ->
+                                exit(Pid, die)
+                        end,
+                        {module, ?MODULE}}}, [verbose]).
 
 debugger_apply(Fun, Args) ->
     i:im(),
