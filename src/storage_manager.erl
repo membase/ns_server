@@ -115,11 +115,13 @@ handle_call({load, _Nodes, Partitions, PartsForNode, Bootstrap},
   reload_storage_servers(OldPartitions1, Partitions1, OldPartitions,
                          Config, Bootstrap),
   % end,
-  {reply, ok, #state{partitions=Partitions,parts_for_node=PartsForNode}}.
+  {reply, ok, #state{partitions = Partitions,
+                     parts_for_node = PartsForNode}}.
 
 %%--------------------------------------------------------------------
 
 reload_storage_servers(OldParts, NewParts, Old, Config, Bootstrap) ->
+  {value, Directory} = config:search(Config, directory),
   lists:foreach(fun(E) ->
       Name = list_to_atom(lists:concat([storage_, E])),
       supervisor:terminate_child(storage_server_sup, Name),
@@ -127,7 +129,6 @@ reload_storage_servers(OldParts, NewParts, Old, Config, Bootstrap) ->
     end, OldParts),
   lists:foreach(fun(Part) ->
     Name = list_to_atom(lists:concat([storage_, Part])),
-    {value, Directory} = config:search(Config, directory),
     DbKey = lists:concat([Directory, "/", Part]),
     {value, BlockSize} = config:search(Config, blocksize),
     {value, Q} = config:search(Config, q),
