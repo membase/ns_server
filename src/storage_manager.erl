@@ -121,7 +121,10 @@ handle_call({load, _Nodes, Partitions, PartsForNode, Bootstrap},
 %%--------------------------------------------------------------------
 
 reload_storage_servers(OldParts, NewParts, Old, Config, Bootstrap) ->
+  {value, StorageMod} = config:search(Config, storage_mod),
   {value, Directory} = config:search(Config, directory),
+  {value, BlockSize} = config:search(Config, blocksize),
+  {value, Q} = config:search(Config, q),
   lists:foreach(fun(E) ->
       Name = list_to_atom(lists:concat([storage_, E])),
       supervisor:terminate_child(storage_server_sup, Name),
@@ -130,27 +133,23 @@ reload_storage_servers(OldParts, NewParts, Old, Config, Bootstrap) ->
   lists:foreach(fun(Part) ->
     Name = list_to_atom(lists:concat([storage_, Part])),
     DbKey = lists:concat([Directory, "/", Part]),
-    {value, BlockSize} = config:search(Config, blocksize),
-    {value, Q} = config:search(Config, q),
     Size = partition:partition_range(Q),
     Min = Part,
     Max = Part+Size,
-    {value, StorageMod} = config:search(Config, storage_mod),
     Spec = {Name, {storage_server,start_link,
-                   [StorageMod, DbKey, Name,
-                    Min, Max, BlockSize]},
+                   [StorageMod, DbKey, Name, Min, Max, BlockSize]},
             permanent, 1000, worker, [storage_server]},
     Callback = fun() ->
         % ?infoFmt("Starting the server for ~p~n", [Spec]),
         case supervisor:start_child(storage_server_sup, Spec) of
           already_present -> supervisor:restart_child(storage_server_sup,
                                                       Name);
-          _ -> ok
+          _               -> ok
         end
       end,
     case {lists:keysearch(Part, 2, Old), Bootstrap} of
-      {{value, {OldNode, _}}, true} ->
-        bootstrap:start(DbKey, OldNode, Callback);
-      _ -> Callback()
+      {{value, {OldNode, _}}, true} -> bootstrap:start(DbKey, OldNode,
+                                                       Callback);
+      _                             -> Callback()
     end
   end, NewParts).
