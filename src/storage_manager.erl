@@ -45,7 +45,8 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {partitions=[],parts_for_node=[]}).
+-record(state, {partitions = [],
+                parts_for_node = []}).
 
 -include("common.hrl").
 -include("mc_entry.hrl").
@@ -80,28 +81,31 @@ stop() ->
 %% gen_server callbacks
 
 init([]) -> {ok, #state{}}.
-terminate(_Reason, _State) -> ok.
+terminate(_Reason, _State)          -> ok.
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 handle_info(_Info, State) -> {noreply, State}.
-handle_cast(stop, State) -> {stop, shutdown, State}.
+handle_cast(stop, State)  -> {stop, shutdown, State}.
 
 handle_call(loaded, _From, State) ->
   {reply,
    [Name || {registered_name, Name} <-
                 [erlang:process_info(Pid, registered_name) || Pid <-
-                   storage_server_sup:storage_servers()]], State};
+                   storage_server_sup:storage_servers()]],
+   State};
 
 handle_call({load, _Nodes, Partitions, PartsForNode, Bootstrap},
-            _From, #state{partitions=OldPartitions,
-                          parts_for_node=OldPartsForNode}) ->
+            _From, #state{partitions = OldPartitions,
+                          parts_for_node = OldPartsForNode}) ->
   Partitions1 = lists:filter(
-                  fun(E) ->
-                          not lists:member(E, OldPartsForNode)
-                  end, PartsForNode),
+                  fun (E) ->
+                      not lists:member(E, OldPartsForNode)
+                  end,
+                  PartsForNode),
   OldPartitions1 = lists:filter(
-                     fun(E) ->
-                             not lists:member(E, PartsForNode)
-                     end, OldPartsForNode),
+                     fun (E) ->
+                         not lists:member(E, PartsForNode)
+                     end,
+                     OldPartsForNode),
   Config = config:get(),
   % if
   %   length(OldPartitions) == 0 ->
