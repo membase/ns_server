@@ -75,6 +75,7 @@ search_ring_by_point([], _SearchPoint, Ring, TakeN) ->
 search_ring_by_point([#cpoint{point = Point} | Rest] = CPoints,
                      SearchPoint, Ring, TakeN) ->
     % TODO: Do better than linear search.
+    % For example, use erlang array instead of list.
     case SearchPoint =< Point of
         true  -> cpoints_addr_data(
                    take_n(fun cpoint_not_member_by_addr/2,
