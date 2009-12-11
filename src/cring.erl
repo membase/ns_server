@@ -69,8 +69,8 @@ make({HashMod, HashCfg} = Hash, [{Addr, Data} | Rest], Acc) ->
 
 search_ring_by_point([], _SearchPoint, Ring, TakeN) ->
     cpoints_addr_data(
-      util:take_n(fun cpoint_not_member_by_addr/2,
-                  Ring, TakeN, undefined));
+      util:take_circle_n(fun cpoint_not_member_by_addr/2,
+                         Ring, TakeN, undefined));
 
 search_ring_by_point([#cpoint{point = Point} | Rest] = CPoints,
                      SearchPoint, Ring, TakeN) ->
@@ -78,8 +78,8 @@ search_ring_by_point([#cpoint{point = Point} | Rest] = CPoints,
     % For example, use erlang array instead of list.
     case SearchPoint =< Point of
         true  -> cpoints_addr_data(
-                   util:take_n(fun cpoint_not_member_by_addr/2,
-                               CPoints, TakeN, Ring));
+                   util:take_circle_n(fun cpoint_not_member_by_addr/2,
+                                      CPoints, TakeN, Ring));
         false -> search_ring_by_point(Rest, SearchPoint, Ring, TakeN)
     end.
 
