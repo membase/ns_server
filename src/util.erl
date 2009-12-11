@@ -27,9 +27,9 @@ take_circle_n(_AcceptFun, [], _, undefined, Taken) -> lists:reverse(Taken);
 take_circle_n(AcceptFun, [], N, Restart, Taken) ->
     take_circle_n(AcceptFun, Restart, N, undefined, Taken);
 
-take_circle_n(AcceptFun, [CPoint | Rest], N, Restart, Taken) ->
-    case AcceptFun(CPoint, Taken) of
-        true  -> take_circle_n(AcceptFun, Rest, N - 1, Restart, [CPoint | Taken]);
+take_circle_n(AcceptFun, [Item | Rest], N, Restart, Taken) ->
+    case AcceptFun(Item, Taken) of
+        true  -> take_circle_n(AcceptFun, Rest, N - 1, Restart, [Item | Taken]);
         false -> take_circle_n(AcceptFun, Rest, N, Restart, Taken)
     end.
 
