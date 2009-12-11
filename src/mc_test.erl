@@ -67,7 +67,8 @@ tests_mc() ->
     ].
 
 tests_emoxi() ->
-    [misc,
+    [util,
+     misc,
      config,
      cring,
      bootstrap,

@@ -69,8 +69,8 @@ make({HashMod, HashCfg} = Hash, [{Addr, Data} | Rest], Acc) ->
 
 search_ring_by_point([], _SearchPoint, Ring, TakeN) ->
     cpoints_addr_data(
-      take_n(fun cpoint_not_member_by_addr/2,
-             Ring, TakeN, undefined));
+      util:take_n(fun cpoint_not_member_by_addr/2,
+                  Ring, TakeN, undefined));
 
 search_ring_by_point([#cpoint{point = Point} | Rest] = CPoints,
                      SearchPoint, Ring, TakeN) ->
@@ -78,8 +78,8 @@ search_ring_by_point([#cpoint{point = Point} | Rest] = CPoints,
     % For example, use erlang array instead of list.
     case SearchPoint =< Point of
         true  -> cpoints_addr_data(
-                   take_n(fun cpoint_not_member_by_addr/2,
-                          CPoints, TakeN, Ring));
+                   util:take_n(fun cpoint_not_member_by_addr/2,
+                               CPoints, TakeN, Ring));
         false -> search_ring_by_point(Rest, SearchPoint, Ring, TakeN)
     end.
 
@@ -92,19 +92,6 @@ cpoint_not_member_by_addr(#cpoint{addr = Addr}, CPoints) ->
 cpoints_addr_data(CPoints) ->
     lists:map(fun (#cpoint{addr = Addr, data = Data}) -> {Addr, Data} end,
               CPoints).
-
-take_n(AcceptFun, CPoints, N, Restart) ->
-    take_n(AcceptFun, CPoints, N, Restart, []).
-
-take_n(_AcceptFun, _, 0, _Restart, Taken)   -> lists:reverse(Taken);
-take_n(_AcceptFun, [], _, undefined, Taken) -> lists:reverse(Taken);
-take_n(AcceptFun, [], N, Restart, Taken)    -> take_n(AcceptFun, Restart, N,
-                                                      undefined, Taken);
-take_n(AcceptFun, [CPoint | Rest], N, Restart, Taken) ->
-    case AcceptFun(CPoint, Taken) of
-        true  -> take_n(AcceptFun, Rest, N - 1, Restart, [CPoint | Taken]);
-        false -> take_n(AcceptFun, Rest, N, Restart, Taken)
-    end.
 
 % Example hash_key/hash_addr functions.
 
@@ -120,9 +107,6 @@ hash_addr(Addr, Seed, N, Acc) ->
 
 % ------------------------------------------------
 
-ident(X)            -> X.
-not_member(X, List) -> not lists:member(X, List).
-
 hash_addr_test() ->
     P = hash_addr(a, 1),
     ?assertEqual(1, length(P)),
@@ -132,42 +116,6 @@ hash_addr_test() ->
     ?assertEqual(8, length(P8)),
     P160 = hash_addr(a, 160),
     ?assertEqual(160, length(P160)),
-    ok.
-
-take_n_test() ->
-    E = take_n(fun not_member/2, [], 0, []),
-    ?assertEqual([], E),
-    E1 = take_n(fun not_member/2, [], 5, []),
-    ?assertEqual([], E1),
-    E2 = take_n(fun not_member/2, [1, 2, 3], 0, []),
-    ?assertEqual([], E2),
-    E3 = take_n(fun not_member/2, [1, 2, 3], 0, [10, 11, 12]),
-    ?assertEqual([], E3),
-    XE = take_n(fun not_member/2, [1], 1, [10]),
-    ?assertEqual([1], XE),
-    XE1 = take_n(fun not_member/2, [1], 5, [10]),
-    ?assertEqual([1, 10], XE1),
-    XE2 = take_n(fun not_member/2, [1, 2, 3], 5, [10, 11, 12]),
-    ?assertEqual([1, 2, 3, 10, 11], XE2),
-    XE3 = take_n(fun not_member/2, [1, 2, 3], 6, [10, 11, 12]),
-    ?assertEqual([1, 2, 3, 10, 11, 12], XE3),
-    XE4 = take_n(fun not_member/2, [1, 2, 3], 10, [10, 11, 12]),
-    ?assertEqual([1, 2, 3, 10, 11, 12], XE4),
-    ok.
-
-take_n_duplicates_test() ->
-    XE = take_n(fun not_member/2, [1], 1, [1]),
-    ?assertEqual([1], XE),
-    XE1 = take_n(fun not_member/2, [1], 5, [1]),
-    ?assertEqual([1], XE1),
-    XE2 = take_n(fun not_member/2, [1, 2, 3], 5, [3, 2, 1]),
-    ?assertEqual([1, 2, 3], XE2),
-    XE3 = take_n(fun not_member/2, [1, 2, 3], 6, [1, 1, 2]),
-    ?assertEqual([1, 2, 3], XE3),
-    XE4 = take_n(fun not_member/2, [1, 2, 3], 10, [1, 2, 3]),
-    ?assertEqual([1, 2, 3], XE4),
-    XE5 = take_n(fun not_member/2, [1, 1, 1], 10, [1, 1, 1]),
-    ?assertEqual([1], XE5),
     ok.
 
 create_test() ->
