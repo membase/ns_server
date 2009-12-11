@@ -10,8 +10,8 @@
                 ring,    % [#cpoint{}, ...], ordered by ascending point field.
                 addr_num % length(AddrDataList).
                }).
--record(cpoint, {point,     % Integer, an item from list from HashMod:hash_addr().
-                 point_ord, % Position ordinal from list from HashMod:hash_addr().
+-record(cpoint, {point,     % Integer point from list from HashMod:hash_addr().
+                 point_ord, % Point ordinal from list from HashMod:hash_addr().
                  addr,      % Addr part of an {Addr, Data} tuple.
                  data}).    % Data part of an {Addr, Data} tuple.
 
