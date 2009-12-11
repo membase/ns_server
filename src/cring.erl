@@ -7,7 +7,7 @@
 % Functional, immutable consistent-hash-ring.
 
 -record(cring, {hash,    % A tuple of {HashMod, HashCfg}.
-                ring,    % A list of cpoint records, ordered by point field.
+                ring,    % [#cpoint{}, ...], ordered by ascending point field.
                 addr_num % length(AddrDataList).
                }).
 -record(cpoint, {point,     % Integer, an item from list from HashMod:hash_addr().
@@ -21,10 +21,7 @@
 % opaque data, that for example might be an address, as long as it's
 % something that HashMod understands.  The Data is opaque user data
 % that the caller just wants to associate with the Addr.
-
-create(AddrDataList) ->
-    create(AddrDataList, ?MODULE, undefined).
-
+%
 % The HashMod module must export a hash_addr(Addr, HashCfg) function
 % which returns a sorted list of Points, where Point is an int.  And,
 % the HashMod module also must export a hash_key(Key, HashCfg)
@@ -57,7 +54,7 @@ make(_Hash, [], CPoints) ->
     lists:keysort(#cpoint.point, CPoints);
 
 make({HashMod, HashCfg} = Hash, [{Addr, Data} | Rest], Acc) ->
-    {ok, Points} = HashMod:hash_addr(Addr, HashCfg),
+    Points = HashMod:hash_addr(Addr, HashCfg),
     {_, Acc2} =
         lists:foldl(
           fun (Point, {N, AccMore}) ->
@@ -110,13 +107,12 @@ take_n(AcceptFun, [CPoint | Rest], N, Restart, Taken) ->
 
 % Example hash_key/hash_addr functions.
 
-hash_key(Key, _) -> misc:hash(Key).
+hash_key(Key, _) -> misc:hash({Key, 1}).
 
 hash_addr(Addr, NumPoints) ->
     hash_addr(Addr, 1, NumPoints, []).
 
-hash_addr(_, _, 0, Acc)         -> lists:sort(Acc);
-hash_addr(_, _, undefined, Acc) -> lists:sort(Acc);
+hash_addr(_, _, 0, Acc) -> lists:sort(Acc);
 hash_addr(Addr, Seed, N, Acc) ->
     Point = misc:hash(Addr, Seed),
     hash_addr(Addr, Point, N - 1, [Point | Acc]).
@@ -171,4 +167,91 @@ take_n_duplicates_test() ->
     ?assertEqual([1, 2, 3], XE4),
     XE5 = take_n(fun not_member/2, [1, 1, 1], 10, [1, 1, 1]),
     ?assertEqual([1], XE5),
+    ok.
+
+create_test() ->
+    (fun () ->
+      C = create([], ?MODULE, 1),
+      ?assertEqual([], C#cring.ring),
+      ?assertEqual(0, C#cring.addr_num),
+      ok
+     end)(),
+    (fun () ->
+      C = create([], ?MODULE, 10),
+      ?assertEqual([], C#cring.ring),
+      ?assertEqual(0, C#cring.addr_num),
+      ok
+     end)(),
+    (fun () ->
+      C = create([{a, 1}], ?MODULE, 1),
+      ?assertEqual(1, length(C#cring.ring)),
+      ?assertEqual(1, C#cring.addr_num),
+      ok
+     end)(),
+    (fun () ->
+      C = create([{a, 1}], ?MODULE, 10),
+      ?assertEqual(10, length(C#cring.ring)),
+      ?assertEqual(1, C#cring.addr_num),
+      ok
+     end)(),
+    (fun () ->
+      C = create([{a, 1}, {b, 2}], ?MODULE, 1),
+      ?assertEqual(2, length(C#cring.ring)),
+      ?assertEqual(2, C#cring.addr_num),
+      ok
+     end)(),
+    (fun () ->
+      C = create([{a, 1}, {b, 2}], ?MODULE, 10),
+      ?assertEqual(20, length(C#cring.ring)),
+      ?assertEqual(2, C#cring.addr_num),
+      ok
+     end)(),
+    ok.
+
+ring_entry_test() ->
+    (fun () ->
+      C = create([{a, 1}, {b, 2}], ?MODULE, 1),
+      ?assertEqual(2, length(C#cring.ring)),
+      ?assertEqual(2, C#cring.addr_num),
+      H = hd(C#cring.ring),
+      [Ha] = hash_addr(a, 1),
+      [Hb] = hash_addr(b, 1),
+      case Ha < Hb of
+        true  -> ?assertEqual(a, H#cpoint.addr);
+        false -> ?assertEqual(b, H#cpoint.addr)
+      end,
+      ok
+     end)(),
+    ok.
+
+search_test() ->
+    (fun () ->
+      Top = math:pow(2, 32),
+      C = create([{a, 1}, {b, 2}], ?MODULE, 1),
+      ?assertEqual(2, length(C#cring.ring)),
+      ?assertEqual(2, C#cring.addr_num),
+      X = search_by_point(C, 0),
+      Y = search_by_point(C, Top),
+      [Ha] = hash_addr(a, 1),
+      [Hb] = hash_addr(b, 1),
+      case Ha < Hb of
+        true  -> ?assertEqual({a, 1}, X),
+                 ?assertEqual({a, 1}, Y);
+        false -> ?assertEqual({b, 2}, X),
+                 ?assertEqual({b, 2}, Y)
+      end,
+      Z = search_by_point(C, hash_key(a, undefined) + 1),
+      ?assertEqual({b, 2}, Z),
+      W = search_by_point(C, hash_key(b, undefined) + 1),
+      ?assertEqual({a, 1}, W),
+      Z1 = search_by_point(C, hash_key(a, undefined) - 1),
+      ?assertEqual({a, 1}, Z1),
+      W1 = search_by_point(C, hash_key(b, undefined) - 1),
+      ?assertEqual({b, 2}, W1),
+      Z2 = search_by_point(C, hash_key(a, undefined)),
+      ?assertEqual({a, 1}, Z2),
+      W2 = search_by_point(C, hash_key(b, undefined)),
+      ?assertEqual({b, 2}, W2),
+      ok
+     end)(),
     ok.
