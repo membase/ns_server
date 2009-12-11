@@ -69,6 +69,7 @@ tests_mc() ->
 tests_emoxi() ->
     [misc,
      config,
+     cring,
      bootstrap,
      vclock,
      stream,

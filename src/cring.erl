@@ -26,9 +26,9 @@ create(AddrDataList) ->
     create(AddrDataList, ?MODULE, undefined).
 
 % The HashMod module must export a hash_addr(Addr, HashCfg) function
-% which returns [Points*], where Point is an int.  And, the HashMod
-% module also must export a hash_key(Key, HashCfg) function which
-% returns a single int or Point.
+% which returns a sorted list of Points, where Point is an int.  And,
+% the HashMod module also must export a hash_key(Key, HashCfg)
+% function which returns a single int or Point.
 
 create(AddrDataList, HashMod, HashCfg) ->
     Ring = make({HashMod, HashCfg}, AddrDataList, []),
@@ -71,31 +71,41 @@ make({HashMod, HashCfg} = Hash, [{Addr, Data} | Rest], Acc) ->
     make(Hash, Rest, Acc2).
 
 search_ring_by_point([], _SearchPoint, Ring, TakeN) ->
-    take_n(Ring, TakeN, undefined);
+    cpoints_addr_data(
+      take_n(fun cpoint_not_member_by_addr/2,
+             Ring, TakeN, undefined));
 
 search_ring_by_point([#cpoint{point = Point} | Rest] = CPoints,
                      SearchPoint, Ring, TakeN) ->
     % TODO: Do better than linear search.
     case SearchPoint =< Point of
-        true  -> take_n(CPoints, TakeN, Ring);
+        true  -> cpoints_addr_data(
+                   take_n(fun cpoint_not_member_by_addr/2,
+                          CPoints, TakeN, Ring));
         false -> search_ring_by_point(Rest, SearchPoint, Ring, TakeN)
     end.
 
-take_n(CPoints, N, Restart) ->
-    Taken = take_n(CPoints, N, Restart, []),
-    lists:map(fun (#cpoint{addr = Addr, data = Data}) ->
-                      {Addr, Data}
-              end,
-              Taken).
+cpoint_not_member_by_addr(#cpoint{addr = Addr}, CPoints) ->
+    case lists:keysearch(Addr, #cpoint.addr, CPoints) of
+        {value, _} -> false;
+        false      -> true
+    end.
 
-take_n([], _, undefined, Taken) -> lists:reverse(Taken);
-take_n([], N, Restart, Taken)   -> take_n(Restart, N, undefined, Taken);
-take_n([#cpoint{addr = Addr} = CPoint, Rest], N, Restart, Taken) ->
-    case lists:keysearch(Addr, #cpoint.addr, Taken) of
-        {value, _} ->
-            take_n(Rest, N, Restart, Taken);
-        false ->
-            take_n(Rest, N - 1, Restart, [CPoint | Taken])
+cpoints_addr_data(CPoints) ->
+    lists:map(fun (#cpoint{addr = Addr, data = Data}) -> {Addr, Data} end,
+              CPoints).
+
+take_n(AcceptFun, CPoints, N, Restart) ->
+    take_n(AcceptFun, CPoints, N, Restart, []).
+
+take_n(_AcceptFun, _, 0, _Restart, Taken)   -> lists:reverse(Taken);
+take_n(_AcceptFun, [], _, undefined, Taken) -> lists:reverse(Taken);
+take_n(AcceptFun, [], N, Restart, Taken)    -> take_n(AcceptFun, Restart, N,
+                                                      undefined, Taken);
+take_n(AcceptFun, [CPoint | Rest], N, Restart, Taken) ->
+    case AcceptFun(CPoint, Taken) of
+        true  -> take_n(AcceptFun, Rest, N - 1, Restart, [CPoint | Taken]);
+        false -> take_n(AcceptFun, Rest, N, Restart, Taken)
     end.
 
 % Example hash_key/hash_addr functions.
@@ -105,8 +115,45 @@ hash_key(Key, _) -> misc:hash(Key).
 hash_addr(Addr, NumPoints) ->
     hash_addr(Addr, 1, NumPoints, []).
 
-hash_addr(_, _, 0, Acc)         -> lists:reverse(Acc);
-hash_addr(_, _, undefined, Acc) -> lists:reverse(Acc);
+hash_addr(_, _, 0, Acc)         -> lists:sort(Acc);
+hash_addr(_, _, undefined, Acc) -> lists:sort(Acc);
 hash_addr(Addr, Seed, N, Acc) ->
     Point = misc:hash(Addr, Seed),
     hash_addr(Addr, Point, N - 1, [Point | Acc]).
+
+% ------------------------------------------------
+
+ident(X)            -> X.
+not_member(X, List) -> not lists:member(X, List).
+
+hash_addr_test() ->
+    P = hash_addr(a, 1),
+    ?assertEqual(1, length(P)),
+    P2 = hash_addr(a, 2),
+    ?assertEqual(2, length(P2)),
+    P8 = hash_addr(a, 8),
+    ?assertEqual(8, length(P8)),
+    P160 = hash_addr(a, 160),
+    ?assertEqual(160, length(P160)),
+    ok.
+
+take_n_test() ->
+    E = take_n(fun not_member/2, [], 0, []),
+    ?assertEqual([], E),
+    E1 = take_n(fun not_member/2, [], 5, []),
+    ?assertEqual([], E1),
+    E2 = take_n(fun not_member/2, [1, 2, 3], 0, []),
+    ?assertEqual([], E2),
+    E3 = take_n(fun not_member/2, [1, 2, 3], 0, [10, 11, 12]),
+    ?assertEqual([], E3),
+    XE = take_n(fun not_member/2, [1], 1, [10]),
+    ?assertEqual([1], XE),
+    XE1 = take_n(fun not_member/2, [1], 5, [10]),
+    ?assertEqual([1, 10], XE1),
+    XE2 = take_n(fun not_member/2, [1, 2, 3], 5, [10, 11, 12]),
+    ?assertEqual([1, 2, 3, 10, 11], XE2),
+    XE3 = take_n(fun not_member/2, [1, 2, 3], 6, [10, 11, 12]),
+    ?assertEqual([1, 2, 3, 10, 11, 12], XE3),
+    XE4 = take_n(fun not_member/2, [1, 2, 3], 10, [10, 11, 12]),
+    ?assertEqual([1, 2, 3, 10, 11, 12], XE4),
+    ok.
