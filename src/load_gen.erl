@@ -95,12 +95,18 @@ loop(State) ->
 					loop(State#state{has_more=false});
 				{request, Req} ->
 					loop(queue_another(State, Req));
-				{response, Node, QLen, ProcessTime, Req, Result} ->
+				{response, Node, Req, Response} ->
 					State#state.result_processor !
 						{result,
                          State#state.outstanding,
-                         Node, QLen, ProcessTime, Req, Result},
+                         Node, Req, Response},
 					loop(State#state{outstanding = State#state.outstanding - 1});
+                {response_progress, Node, Req, Progress} ->
+					State#state.result_processor !
+                        {result_progress,
+                         State#state.outstanding,
+                         Node, Req, Progress},
+                    loop(State);
 				{'EXIT', Feeder, Reason } ->
 					error_logger:info_msg("Feeder exited: ~p~n", [Reason]),
 					loop(State#state{has_more=false});
