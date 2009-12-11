@@ -204,3 +204,116 @@ search_test() ->
       ok
      end)(),
     ok.
+
+delta_grow_test() ->
+    delta_check(
+      [],
+      [15],
+      [{n15, {min, 15}, undefined},
+       {n15, {15, max}, undefined}],
+      []),
+    delta_check(
+      [],
+      [15, 25],
+      [{n15, {min, 15}, undefined},
+       {n15, {25, max}, undefined},
+       {n25, {15, 25}, undefined}],
+      []),
+    delta_check(
+      [10, 20],
+      [10, 15, 20],
+      [{n15, {10, 15}, n20}],
+      [{n20, {15, 20}}]),
+    delta_check(
+      [10, 20],
+      [10, 15, 17, 20],
+      [{n17, {15, 17}, n20},
+       {n15, {10, 15}, n20}],
+      [{n20, {17, 20}}]),
+    delta_check(
+      [10],
+      [5, 10],
+      [{n5, {min, 5}, n10},
+       {n5, {10, max}, n10}],
+      [{n10, {5, 10}}]),
+    delta_check(
+      [10, 20],
+      [5, 10, 20],
+      [{n5, {min, 5}, n10},
+       {n5, {20, max}, n10}],
+      [{n10, {5, 10}}]),
+    delta_check(
+      [10],
+      [10, 15],
+      [{n15, {10, 15}, n10}],
+      [{n10, {min, 10}},
+       {n10, {15, max}}]),
+    delta_check(
+      [10, 20, 30],
+      [10, 15, 20, 25, 30],
+      [{n15, {10, 15}, n20},
+       {n25, {20, 25}, n30}],
+      [{n20, {15, 20}},
+       {n30, {25, 30}}]),
+    ok.
+
+delta_shrink_test() ->
+    delta_check(
+      [15],
+      [],
+      [],
+      [{n15, undefined}]),
+    delta_check(
+      [15, 25],
+      [],
+      [],
+      [{n15, undefined},
+       {n25, undefined}]),
+    delta_check(
+      [10, 15, 20],
+      [10, 20],
+      [{n20, {10, 15}, n15}],
+      [{n15, undefined}]),
+    delta_check(
+      [10, 15, 17, 20],
+      [10, 20],
+      [{n20, {15, 17}, n17},
+       {n20, {10, 15}, n15}],
+      [{n15, undefined},
+       {n17, undefined}]),
+    delta_check(
+      [5, 10],
+      [10],
+      [{n10, {min, 5}, n5},
+       {n10, {10, max}, n5}],
+      [{n5, undefined}]),
+    delta_check(
+      [5, 10, 20],
+      [10, 20],
+      [{n10, {min, 5}, n5},
+       {n10, {20, max}, n5}],
+      [{n5, undefined}]),
+    delta_check(
+      [5, 10, 25],
+      [10],
+      [{n10, {min, 5}, n5},
+       {n10, {25, max}, n5},
+       {n10, {10, 25}, n25}],
+      [{n5, undefined},
+       {n25, undefined}]),
+    delta_check(
+      [10, 15],
+      [10],
+      [{n10, {10, 15}, n15}],
+      [{n15, undefined}]),
+    delta_check(
+      [10, 15, 20, 25, 30],
+      [10, 20, 30],
+      [{n20, {10, 15}, n15},
+       {n30, {20, 25}, n25}],
+      [{n15, undefined},
+       {n25, undefined}]),
+    ok.
+
+delta_check(_Before, _After, _ExpectGrows, _ExpectShrinks) ->
+    ok.
