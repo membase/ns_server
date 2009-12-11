@@ -33,6 +33,15 @@ create(AddrDataList, HashMod, HashCfg) ->
            ring = Ring,
            addr_num = length(AddrDataList)}.
 
+% search(CRing, Key) ->
+%     {addr, data, arc_here}.
+
+% search(CRing, Key, N) ->
+%     [{addr, data, arc_here}].
+
+% arcs(CRing) ->
+%     [{addr, data, arc_here}].
+
 % Returns {Addr, Data} or false.
 
 search_by_point(CRing, SearchPoint) ->
@@ -69,7 +78,7 @@ make({HashMod, HashCfg} = Hash, [{Addr, Data} | Rest], Acc) ->
 
 search_ring_by_point([], _SearchPoint, Ring, TakeN) ->
     cpoints_addr_data(
-      util:take_circle_n(fun cpoint_not_member_by_addr/2,
+      util:take_ring_n(fun cpoint_not_member_by_addr/2,
                          Ring, TakeN, undefined));
 
 search_ring_by_point([#cpoint{point = Point} | Rest] = CPoints,
@@ -78,7 +87,7 @@ search_ring_by_point([#cpoint{point = Point} | Rest] = CPoints,
     % For example, use erlang array instead of list.
     case SearchPoint =< Point of
         true  -> cpoints_addr_data(
-                   util:take_circle_n(fun cpoint_not_member_by_addr/2,
+                   util:take_ring_n(fun cpoint_not_member_by_addr/2,
                                       CPoints, TakeN, Ring));
         false -> search_ring_by_point(Rest, SearchPoint, Ring, TakeN)
     end.
@@ -315,5 +324,106 @@ delta_shrink_test() ->
        {n25, undefined}]),
     ok.
 
-delta_check(_Before, _After, _ExpectGrows, _ExpectShrinks) ->
+delta_grow_replicas_test() ->
+    delta_check(
+      [],
+      [15],
+      [{n15, {min, 15}, undefined},
+       {n15, {15, max}, undefined}],
+      []),
+    delta_check(
+      [],
+      [15, 25],
+      [{n15, {min, 15}, undefined},
+       {n15, {25, max}, undefined},
+       {n25, {15, 25}, undefined}],
+      []),
+    delta_check(
+      [10, 20],
+      [10, 15, 20],
+      [{n15, {10, 15}, n20}],
+      [{n20, {15, 20}}]),
+    delta_check(
+      [10, 20],
+      [10, 15, 17, 20],
+      [{n17, {15, 17}, n20},
+       {n15, {10, 15}, n20}],
+      [{n20, {17, 20}}]),
+    delta_check(
+      [10],
+      [5, 10],
+      [{n5, {min, 5}, n10},
+       {n5, {10, max}, n10}],
+      [{n10, {5, 10}}]),
+    delta_check(
+      [10, 20],
+      [5, 10, 20],
+      [{n5, {min, 5}, n10},
+       {n5, {20, max}, n10}],
+      [{n10, {5, 10}}]),
+    delta_check(
+      [10],
+      [10, 15],
+      [{n15, {10, 15}, n10}],
+      [{n10, {min, 10}},
+       {n10, {15, max}}]),
+    delta_check(
+      [10, 20, 30],
+      [10, 15, 20, 25, 30],
+      [{n15, {10, 15}, n20},
+       {n25, {20, 25}, n30}],
+      [{n20, {15, 20}},
+       {n30, {25, 30}}]),
     ok.
+
+delta_check(Before, After, _ExpectGrows, _ExpectShrinks) ->
+    {Grows, _Shrinks} = delta(Before, After),
+%    ?debugVal(Before),
+%    ?debugVal(After),
+    % ?debugVal(ExpectGrows),
+%    ?debugVal(Grows),
+    % ?assertEqual(ExpectGrows, Grows),
+    % ?assertEqual(ExpectShrinks, Shrinks),
+    ok.
+
+delta(Before, After) ->
+    B1 = Before ++ [max],
+    A1 = After ++ [max],
+    delta(Before, min, B1,
+          After, min, A1,
+          [], []).
+
+delta_done(Grows, Shrinks) ->
+    {lists:reverse(Grows), lists:reverse(Shrinks)}.
+
+delta(_, _, [], _, _, _, Grows, Shrinks) -> delta_done(Grows, Shrinks);
+delta(_, _, _, _, _, [], Grows, Shrinks) -> delta_done(Grows, Shrinks);
+
+delta(BFull, _BPrev, [X | BRest],
+      AFull, _APrev, [X | ARest],
+      Grows, Shrinks) ->
+    delta(BFull, X, BRest,
+          AFull, X, ARest,
+          Grows, Shrinks);
+
+delta(BFull, BPrev, [B | BRest] = BList,
+      AFull, APrev, [A | ARest] = AList,
+      Grows, Shrinks) ->
+    if B =:= max ->
+            delta(BFull, BPrev, BList,
+                  AFull, A, ARest,
+                  [{A, APrev} | Grows], Shrinks);
+       A =:= max ->
+            delta(BFull, B, BRest,
+                  AFull, APrev, AList,
+                  [{B, BPrev} | Grows], Shrinks);
+       B < A     ->
+            delta(BFull, B, BRest,
+                  AFull, APrev, AList,
+                  [{B, BPrev} | Grows], Shrinks);
+       true      ->
+            delta(BFull, BPrev, BList,
+                  AFull, A, ARest,
+                  [{A, APrev} | Grows], Shrinks)
+    end.
+
