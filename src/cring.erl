@@ -157,3 +157,18 @@ take_n_test() ->
     XE4 = take_n(fun not_member/2, [1, 2, 3], 10, [10, 11, 12]),
     ?assertEqual([1, 2, 3, 10, 11, 12], XE4),
     ok.
+
+take_n_duplicates_test() ->
+    XE = take_n(fun not_member/2, [1], 1, [1]),
+    ?assertEqual([1], XE),
+    XE1 = take_n(fun not_member/2, [1], 5, [1]),
+    ?assertEqual([1], XE1),
+    XE2 = take_n(fun not_member/2, [1, 2, 3], 5, [3, 2, 1]),
+    ?assertEqual([1, 2, 3], XE2),
+    XE3 = take_n(fun not_member/2, [1, 2, 3], 6, [1, 1, 2]),
+    ?assertEqual([1, 2, 3], XE3),
+    XE4 = take_n(fun not_member/2, [1, 2, 3], 10, [1, 2, 3]),
+    ?assertEqual([1, 2, 3], XE4),
+    XE5 = take_n(fun not_member/2, [1, 1, 1], 10, [1, 1, 1]),
+    ?assertEqual([1], XE5),
+    ok.
