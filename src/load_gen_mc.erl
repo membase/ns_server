@@ -10,20 +10,24 @@
 
 -compile(export_all).
 
-main() ->
-    {ok, FeederPid} = start_feeder("127.0.0.1", 11211, 1),
+main() -> main(get_miss).
+
+main([Story]) -> main(Story);
+
+main(Story) ->
+    {ok, FeederPid} = start_feeder("127.0.0.1", 11211, 1, Story),
     {ok, ResultPid} = start_results(),
     load_gen:start(load_gen_mc, FeederPid, ResultPid).
 
 % --------------------------------------------------------
 
-start_feeder(McHost, McPort, NConns) ->
-    start_feeder(McHost, McPort, NConns, self()).
+start_feeder(McHost, McPort, NConns, Story) ->
+    start_feeder(McHost, McPort, NConns, Story, self()).
 
-start_feeder(McHost, McPort, NConns, LoadGenPid) ->
+start_feeder(McHost, McPort, NConns, Story, LoadGenPid) ->
     FeederPid = spawn(fun () ->
                           LoadGenPid ! {request, {connect, McHost, McPort, NConns}},
-                          LoadGenPid ! {request, {work, all, unused}},
+                          LoadGenPid ! {request, {work, all, Story}},
                           LoadGenPid ! input_complete
                       end),
     {ok, FeederPid}.
@@ -108,6 +112,14 @@ loop(From, Req, Sock, N, Args) ->
 blank_he() ->
     {#mc_header{}, #mc_entry{}}.
 
-story(Sock, _Args) ->
-    {ok, _H, _E} = mc_client_binary:cmd(?NOOP, Sock, undefined, blank_he()),
+story(Sock, noop) ->
+    {ok, _H, _E} =
+        mc_client_binary:cmd(?NOOP, Sock, undefined, blank_he()),
+    ok;
+
+story(Sock, get_miss) ->
+    {error, _H, _E} =
+        mc_client_binary:cmd(?GET, Sock, undefined,
+                             {#mc_header{},
+                              #mc_entry{key = <<"not_a_real_key">>}}),
     ok.
