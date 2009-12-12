@@ -117,17 +117,18 @@ reply_json(Req, Body) ->
 
 handle_pools(Req) ->
     reply_json(Req, {struct, [
-                              {implementation_version, <<"">>},
-                              {pools, [{struct, [{name, <<"Default Pool">>},
-                                                 {uri, <<"/pools/12">>},
-                                                 {defaultBucketURI, <<"/buckets/4">>}]},
+                              %% TODO: pull this from git describe
+                              {implementationVersion, <<"comes_from_git_describe">>},
+                              {pools, [{struct, [{name, <<"default">>},
+                                                 {uri, <<"/pools/default">>}]},
+                                       %% only one pool at first release, this 
+                                       %% is just for prototyping
                                        {struct, [{name, <<"Another Pool">>},
-                                                 {uri, <<"/pools/13">>},
-                                                 {defaultBucketURI, <<"/buckets/5">>}]}]}]}).
+                                                 {uri, <<"/pools/Another Pool">>}]}]}]}).
 
 handle_pool_info(Id, Req) ->
     Res = case Id of
-              "12" -> {struct, [{node, [{struct, [{ip_address, <<"10.0.1.20">>},
+              "12" -> {struct, [{node, [{struct, [{ipAddress, <<"10.0.1.20">>},
                                                   {running, true},
                                                   {ports, [11211]},
                                                   {uri, <<"https://first_node.in.pool.com:80/pool/Default Pool/node/first_node/">>},
@@ -141,7 +142,6 @@ handle_pool_info(Id, Req) ->
                                 {bucket, [{struct, [{uri, <<"/buckets/4">>},
                                                     {name, <<"Excerciser Application">>}]}]},
                                 {stats, {struct, [{uri, <<"/buckets/4/stats?really_for_pool=1">>}]}},
-                                {default_bucket_uri, <<"/buckets/4">>},
                                 {name, <<"Default Pool">>}]};
               _ -> {struct, [{node, [{struct, [{ip_address, <<"10.0.1.22">>},
                                                {uptime, 123443},
@@ -159,7 +159,6 @@ handle_pool_info(Id, Req) ->
                              {bucket, [{struct, [{uri, <<"/buckets/5">>},
                                                  {name, <<"Excerciser Another">>}]}]},
                              {stats, {struct, [{uri, <<"/buckets/4/stats?really_for_pool=2">>}]}},
-                             {default_bucket_uri, <<"/buckets/5">>},
                              {name, <<"Another Pool">>}]}
           end,
     reply_json(Req, Res).
