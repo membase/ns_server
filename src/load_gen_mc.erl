@@ -6,8 +6,6 @@
 
 -include("mc_entry.hrl").
 
--import(mc_binary, [send/2, send/4, send_recv/5, recv/2]).
-
 -compile(export_all).
 
 main()        -> main("127.0.0.1", 11211, get_miss, 1).
