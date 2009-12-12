@@ -10,12 +10,21 @@
 
 -compile(export_all).
 
-main() -> main(get_miss).
+main()        -> main("127.0.0.1", 11211, get_miss, 1).
+main([Story]) -> main("127.0.0.1", 11211, Story, 1);
 
-main([Story]) -> main(Story);
+% Example command-line usage:
+%
+%  erl -pa ebin load_gen_mc main 127.0.0.1 11211 get_miss 1
+%
+main([Host, Port, Story, NConns]) ->
+    main(atom_to_list(Host),
+         list_to_integer(atom_to_list(Port)),
+         Story,
+         list_to_integer(atom_to_list(NConns))).
 
-main(Story) ->
-    {ok, FeederPid} = start_feeder("127.0.0.1", 11211, 1, Story),
+main(Host, Port, Story, NConns) ->
+    {ok, FeederPid} = start_feeder(Host, Port, NConns, Story),
     {ok, ResultPid} = start_results(),
     load_gen:start(load_gen_mc, FeederPid, ResultPid).
 
