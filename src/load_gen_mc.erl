@@ -101,10 +101,13 @@ loop(From, Req, Sock, N, Args) ->
     receive
         stop -> ok
     after 0 ->
-        {ok, _H, _E} = mc_client_binary:cmd(?NOOP, Sock, undefined, blank_he()),
+        ok = story(Sock, Args),
         loop(From, Req, Sock, N + 1, Args)
     end.
 
 blank_he() ->
     {#mc_header{}, #mc_entry{}}.
 
+story(Sock, _Args) ->
+    {ok, _H, _E} = mc_client_binary:cmd(?NOOP, Sock, undefined, blank_he()),
+    ok.

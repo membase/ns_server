@@ -377,7 +377,7 @@ delta_grow_replicas_test() ->
     ok.
 
 delta_check(Before, After, _ExpectGrows, _ExpectShrinks) ->
-    {Grows, _Shrinks} = delta(Before, After),
+    {_Grows, _Shrinks} = delta(Before, After),
 %    ?debugVal(Before),
 %    ?debugVal(After),
     % ?debugVal(ExpectGrows),

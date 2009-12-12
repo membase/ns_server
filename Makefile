@@ -44,6 +44,9 @@ test_boot: ebins
 test_main: ebins
 	erl $(EFLAGS) -noshell -s mc_test main
 
+test_load_gen: ebins
+	erl $(EFLAGS) -s load_gen_mc main
+
 test_client_ascii:
 	$(LUA) protocol_memcached/test_client_ascii.lua localhost:11300
 	$(LUA) protocol_memcached/test_client_ascii.lua localhost:11400
