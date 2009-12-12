@@ -63,4 +63,4 @@ dialyzer: ebins
 	dialyzer -pa ebin -I include -r .
 
 memcapable: ebins $(MEMCAPABLE) $(MEMCACHED) $(MEMCAPABLE_SCRIPT) $(TMP_DIR)
-	$(SHELL) $(MEMCAPABLE_SCRIPT) -c $(MEMCAPABLE) -m $(MEMCACHED) -d $(TMP_DIR) -h 127.0.0.1 -p 11255
+	$(SHELL) $(MEMCAPABLE_SCRIPT) -c $(MEMCAPABLE) -m $(MEMCACHED) -d $(TMP_DIR) -h 127.0.0.1 -p 11244
