@@ -377,11 +377,11 @@ delta_grow_replicas_test() ->
     ok.
 
 delta_check(Before, After, _ExpectGrows, _ExpectShrinks) ->
-    {_Grows, _Shrinks} = delta(Before, After),
-%    ?debugVal(Before),
-%    ?debugVal(After),
+    {Grows, _Shrinks} = delta(Before, After),
+    ?debugVal(Before),
+    ?debugVal(After),
     % ?debugVal(ExpectGrows),
-%    ?debugVal(Grows),
+    ?debugVal(Grows),
     % ?assertEqual(ExpectGrows, Grows),
     % ?assertEqual(ExpectShrinks, Shrinks),
     ok.
@@ -389,41 +389,44 @@ delta_check(Before, After, _ExpectGrows, _ExpectShrinks) ->
 delta(Before, After) ->
     B1 = Before ++ [max],
     A1 = After ++ [max],
-    delta(Before, min, B1,
-          After, min, A1,
-          [], []).
+    delta(min, B1, min, A1, {Before, After}, [], []).
 
 delta_done(Grows, Shrinks) ->
     {lists:reverse(Grows), lists:reverse(Shrinks)}.
 
-delta(_, _, [], _, _, _, Grows, Shrinks) -> delta_done(Grows, Shrinks);
-delta(_, _, _, _, _, [], Grows, Shrinks) -> delta_done(Grows, Shrinks);
+delta(_, [], _, _, _, Grows, Shrinks) -> delta_done(Grows, Shrinks);
+delta(_, _, _, [], _, Grows, Shrinks) -> delta_done(Grows, Shrinks);
 
-delta(BFull, _BPrev, [X | BRest],
-      AFull, _APrev, [X | ARest],
-      Grows, Shrinks) ->
-    delta(BFull, X, BRest,
-          AFull, X, ARest,
-          Grows, Shrinks);
+delta(_BPrev, [X | BRest],
+      _APrev, [X | ARest],
+      BAFull, Grows, Shrinks) ->
+    delta(X, BRest, X, ARest, BAFull, Grows, Shrinks);
 
-delta(BFull, BPrev, [B | BRest] = BList,
-      AFull, APrev, [A | ARest] = AList,
-      Grows, Shrinks) ->
-    if B =:= max ->
-            delta(BFull, BPrev, BList,
-                  AFull, A, ARest,
-                  [{A, APrev} | Grows], Shrinks);
-       A =:= max ->
-            delta(BFull, B, BRest,
-                  AFull, APrev, AList,
-                  [{B, BPrev} | Grows], Shrinks);
-       B < A     ->
-            delta(BFull, B, BRest,
-                  AFull, APrev, AList,
-                  [{B, BPrev} | Grows], Shrinks);
-       true      ->
-            delta(BFull, BPrev, BList,
-                  AFull, A, ARest,
-                  [{A, APrev} | Grows], Shrinks)
+delta(BPrev, [B | BRest] = BList,
+      APrev, [A | ARest] = AList,
+      {Before, After} = BAFull, Grows, Shrinks) ->
+    if B =:= max -> delta(BPrev, BList,
+                          A, ARest,
+                          BAFull,
+                          [{A, APrev, delta_next(BList, Before)} | Grows],
+                          Shrinks);
+       A =:= max -> delta(B, BRest,
+                          APrev, AList,
+                          BAFull,
+                          [{B, BPrev, delta_next(AList, After)} | Grows],
+                          Shrinks);
+       B < A     -> delta(B, BRest,
+                          APrev, AList,
+                          BAFull,
+                          [{B, BPrev, delta_next(AList, After)} | Grows],
+                          Shrinks);
+       true      -> delta(BPrev, BList,
+                          A, ARest,
+                          BAFull,
+                          [{A, APrev, delta_next(BList, Before)} | Grows],
+                          Shrinks)
     end.
 
+delta_next([], [])      -> undefined;
+delta_next([A | _], _)  -> A;
+delta_next([], Restart) -> delta_next(Restart, []).
