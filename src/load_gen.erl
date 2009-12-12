@@ -34,8 +34,8 @@ start(RequestorMod, Feeder, ResultProcessor) ->
 	process_flag(trap_exit, true),
 
     % Requires a .hosts.erlang file.
-%     World = [net_adm:world()],
-%     error_logger:info_msg("world:  ~p~n", World),
+    World = [net_adm:world()],
+    error_logger:info_msg("world:  ~p~n", World),
 
 	Requestors = start_requestors(RequestorMod, nodes(known)),
 	error_logger:info_msg(
