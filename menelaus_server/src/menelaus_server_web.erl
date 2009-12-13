@@ -13,7 +13,7 @@
 
 -export([start/1, stop/0, loop/2]).
 
--export([simple_memory_proc/0]).
+-import(simple_cache, [call_simple_cache/2]).
 
 %% External API
 
@@ -22,7 +22,6 @@ start(Options) ->
     Loop = fun (Req) ->
                    ?MODULE:loop(Req, DocRoot)
            end,
-    register(simple_memory_proc, spawn(?MODULE, simple_memory_proc, [])),
     mochiweb_http:start([{name, ?MODULE}, {loop, Loop} | Options1]).
 
 stop() ->
@@ -64,20 +63,6 @@ loop(Req, DocRoot) ->
     end.
 
 %% Internal API
-
-simple_memory_proc() ->
-    Table = ets:new(x, []),
-    receive
-        {Caller, Op, Args} -> Caller ! {sresult, erlang:apply(ets, Op, [Table | Args])}
-    end,
-    simple_memory_proc().
-
-call_simple_memory_proc(Op, Args) ->
-    simple_memory_proc ! {self(), Op, Args},
-    receive
-        {sresult, RV} ->
-             RV
-    end.
 
 check_auth(undefined) -> false;
 check_auth({User, Password}) ->
@@ -231,10 +216,10 @@ generate_samples(Seed, Size) ->
     lists:map(fun trunc/1, low_pass_filter(0.5, RawSamples)).
 
 caching_result(Key, Computation) ->
-    case call_simple_memory_proc(lookup, [Key]) of
+    case call_simple_cache(lookup, [Key]) of
         [] -> begin
                   V = Computation(),
-                  call_simple_memory_proc(insert, [{Key, V}]),
+                  call_simple_cache(insert, [{Key, V}]),
                   V
               end;
         [{_, V}] -> V

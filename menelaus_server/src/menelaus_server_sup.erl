@@ -50,5 +50,9 @@ init([]) ->
            {menelaus_server_web, start, [WebConfig]},
            permanent, 5000, worker, dynamic},
 
-    Processes = [Web],
+    SimpleCache = {simple_cache,
+                   {simple_cache, start_link, []},
+                   permanent, 5000, worker, dynamic},
+
+    Processes = [Web, SimpleCache],
     {ok, {{one_for_one, 10, 10}, Processes}}.
