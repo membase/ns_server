@@ -6,9 +6,14 @@
 
 % Functional, immutable consistent-hash-ring.
 
--record(cring, {hash,    % A tuple of {HashMod, HashCfg}.
-                ring,    % [#carc{}, ...], ordered by ascending point field.
-                addr_num % length(AddrDataList).
+-record(cring, { % [#carc{}, ...], ordered ascending, or "clockwise".
+                 ring_asc,
+                 % [#carc{}, ...], ordered descending, or "counter-clouckwise".
+                 ring_dsc,
+                 % A tuple of {HashMod, HashCfg} passed to cring:create().
+                 hash,
+                 % length(AddrDataList) that was passed to cring:create().
+                 addr_num
                }).
 
 % A CArc is defines an arc in the consistent-hash-ring, in clockwise
@@ -36,9 +41,11 @@
 % function which returns a single int or Point.
 
 create(AddrDataList, HashMod, HashCfg) ->
-    Ring = make({HashMod, HashCfg}, AddrDataList, []),
-    #cring{hash = {HashMod, HashCfg},
-           ring = Ring,
+    RingDsc = make({HashMod, HashCfg}, AddrDataList, []),
+    RingAsc = lists:keysort(#carc.pt_end, RingDsc),
+    #cring{ring_asc = RingAsc,
+           ring_dsc = RingDsc,
+           hash = {HashMod, HashCfg},
            addr_num = length(AddrDataList)}.
 
 % search(CRing, Key) ->
@@ -48,6 +55,9 @@ create(AddrDataList, HashMod, HashCfg) ->
 %     [{addr, data, arc_here}].
 
 % arcs(CRing) ->
+%     [{addr, data, arc_here}].
+
+% search_by_arc(CRing, BegExclusive, EndInclusive) ->
 %     [{addr, data, arc_here}].
 
 % Returns {Addr, Data} or false.
@@ -60,9 +70,12 @@ search_by_point(CRing, SearchPoint) ->
 
 % Returns [{Addr, Data}*], where length of result might be <= N.
 
-search_by_point(#cring{ring = Ring, addr_num = AddrNum}, SearchPoint, N) ->
+search_by_point(#cring{ring_asc = RingAsc,
+                       addr_num = AddrNum},
+                SearchPoint, N) ->
     carcs_addr_data(
-      search_ring_by_point(Ring, SearchPoint, Ring, erlang:min(AddrNum, N))).
+      search_ring_by_point(RingAsc, SearchPoint, RingAsc,
+                           erlang:min(AddrNum, N))).
 
 %% Implementation
 
@@ -70,10 +83,13 @@ carcs_addr_data(CArcs) ->
     lists:map(fun (#carc{addr = Addr, data = Data}) -> {Addr, Data} end,
               CArcs).
 
+% Returns a list, like [CPoint*], ordered by counter-clockwise
+% or descending point.
+
 make(_Hash, [], CArcs) ->
     % TODO: Consider secondary sort on hash_ord to reduce (but not
     % eliminate) unlucky case when there's a hash collision.
-    lists:keysort(#carc.pt_end, CArcs);
+    CArcs;
 
 make({HashMod, HashCfg} = Hash, [{Addr, Data} | Rest], Acc) ->
     Points = HashMod:hash_addr(Addr, HashCfg),
@@ -92,18 +108,17 @@ make({HashMod, HashCfg} = Hash, [{Addr, Data} | Rest], Acc) ->
 
 % Returns [CArc*], where length might be <= TakeN.
 
-search_ring_by_point([], _SearchPoint, Ring, TakeN) ->
-    util:take_ring_n(fun carc_not_member_by_addr/2,
-                     Ring, TakeN, undefined);
+search_ring_by_point([], _SearchPoint, RingAsc, TakeN) ->
+    util:take_ring_n(fun carc_not_member_by_addr/2, RingAsc, TakeN);
 
-search_ring_by_point([#carc{pt_end = Point} | Rest] = CArcs,
-                     SearchPoint, Ring, TakeN) ->
+search_ring_by_point([#carc{pt_end = Point} | Rest] = CArcsAsc,
+                     SearchPoint, RingAsc, TakeN) ->
     % TODO: Do better than linear search.
-    % For example, use erlang array instead of list.
+    % For example, use erlang array instead of list for binary search.
     case SearchPoint =< Point of
         true  -> util:take_ring_n(fun carc_not_member_by_addr/2,
-                                  CArcs, TakeN, Ring);
-        false -> search_ring_by_point(Rest, SearchPoint, Ring, TakeN)
+                                  CArcsAsc, TakeN, RingAsc);
+        false -> search_ring_by_point(Rest, SearchPoint, RingAsc, TakeN)
     end.
 
 carc_not_member_by_addr(#carc{addr = Addr}, CArcs) ->
@@ -140,37 +155,37 @@ hash_addr_test() ->
 create_test() ->
     (fun () ->
       C = create([], ?MODULE, 1),
-      ?assertEqual([], C#cring.ring),
+      ?assertEqual([], C#cring.ring_asc),
       ?assertEqual(0, C#cring.addr_num),
       ok
      end)(),
     (fun () ->
       C = create([], ?MODULE, 10),
-      ?assertEqual([], C#cring.ring),
+      ?assertEqual([], C#cring.ring_asc),
       ?assertEqual(0, C#cring.addr_num),
       ok
      end)(),
     (fun () ->
       C = create([{a, 1}], ?MODULE, 1),
-      ?assertEqual(1, length(C#cring.ring)),
+      ?assertEqual(1, length(C#cring.ring_asc)),
       ?assertEqual(1, C#cring.addr_num),
       ok
      end)(),
     (fun () ->
       C = create([{a, 1}], ?MODULE, 10),
-      ?assertEqual(10, length(C#cring.ring)),
+      ?assertEqual(10, length(C#cring.ring_asc)),
       ?assertEqual(1, C#cring.addr_num),
       ok
      end)(),
     (fun () ->
       C = create([{a, 1}, {b, 2}], ?MODULE, 1),
-      ?assertEqual(2, length(C#cring.ring)),
+      ?assertEqual(2, length(C#cring.ring_asc)),
       ?assertEqual(2, C#cring.addr_num),
       ok
      end)(),
     (fun () ->
       C = create([{a, 1}, {b, 2}], ?MODULE, 10),
-      ?assertEqual(20, length(C#cring.ring)),
+      ?assertEqual(20, length(C#cring.ring_asc)),
       ?assertEqual(2, C#cring.addr_num),
       ok
      end)(),
@@ -179,9 +194,9 @@ create_test() ->
 ring_entry_test() ->
     (fun () ->
       C = create([{a, 1}, {b, 2}], ?MODULE, 1),
-      ?assertEqual(2, length(C#cring.ring)),
+      ?assertEqual(2, length(C#cring.ring_asc)),
       ?assertEqual(2, C#cring.addr_num),
-      H = hd(C#cring.ring),
+      H = hd(C#cring.ring_asc),
       [Ha] = hash_addr(a, 1),
       [Hb] = hash_addr(b, 1),
       case Ha < Hb of
@@ -196,7 +211,7 @@ search_test() ->
     (fun () ->
       Top = math:pow(2, 32),
       C = create([{a, 1}, {b, 2}], ?MODULE, 1),
-      ?assertEqual(2, length(C#cring.ring)),
+      ?assertEqual(2, length(C#cring.ring_asc)),
       ?assertEqual(2, C#cring.addr_num),
       X = search_by_point(C, 0),
       Y = search_by_point(C, Top),
@@ -228,14 +243,14 @@ delta_grow_test() ->
     delta_check(
       [],
       [15],
-      [{n15, {min, 15}, undefined},
-       {n15, {15, max}, undefined}],
+      [{n15, {15, max}, undefined},
+       {n15, {min, 15}, undefined}],
       []),
     delta_check(
       [],
       [15, 25],
-      [{n15, {min, 15}, undefined},
-       {n15, {25, max}, undefined},
+      [{n15, {25, max}, undefined},
+       {n15, {min, 15}, undefined},
        {n25, {15, 25}, undefined}],
       []),
     delta_check(
@@ -246,20 +261,20 @@ delta_grow_test() ->
     delta_check(
       [10, 20],
       [10, 15, 17, 20],
-      [{n17, {15, 17}, n20},
-       {n15, {10, 15}, n20}],
+      [{n15, {10, 15}, n20},
+       {n17, {15, 17}, n20}],
       [{n20, {17, 20}}]),
     delta_check(
       [10],
       [5, 10],
-      [{n5, {min, 5}, n10},
-       {n5, {10, max}, n10}],
+      [{n5, {10, max}, n10},
+       {n5, {min, 5}, n10}],
       [{n10, {5, 10}}]),
     delta_check(
       [10, 20],
       [5, 10, 20],
-      [{n5, {min, 5}, n10},
-       {n5, {20, max}, n10}],
+      [{n5, {20, max}, n10},
+       {n5, {min, 5}, n10}],
       [{n10, {5, 10}}]),
     delta_check(
       [10],
@@ -272,6 +287,14 @@ delta_grow_test() ->
       [10, 15, 20, 25, 30],
       [{n15, {10, 15}, n20},
        {n25, {20, 25}, n30}],
+      [{n20, {15, 20}},
+       {n30, {25, 30}}]),
+    delta_check(
+      [10, 20, 30],
+      [10, 15, 20, 25, 30, 35],
+      [{n15, {10, 15}, n20},
+       {n25, {20, 25}, n30},
+       {n35, {30, 35}, n10}],
       [{n20, {15, 20}},
        {n30, {25, 30}}]),
     ok.
@@ -332,6 +355,15 @@ delta_shrink_test() ->
        {n30, {20, 25}, n25}],
       [{n15, undefined},
        {n25, undefined}]),
+    delta_check(
+      [10, 15, 20, 25, 30, 35],
+      [10, 20, 30],
+      [{n20, {10, 15}, n15},
+       {n30, {20, 25}, n25},
+       {n10, {30, 35}, n35}],
+      [{n15, undefined},
+       {n25, undefined},
+       {n35, undefined}]),
     ok.
 
 delta_grow_replicas_test() ->
@@ -387,15 +419,20 @@ delta_grow_replicas_test() ->
     ok.
 
 delta_check(Before, After, _ExpectGrows, _ExpectShrinks) ->
-    {_Grows, _Shrinks} = delta(Before, After),
-%    ?debugVal("------"),
-%    ?debugVal(Before),
-%    ?debugVal(After),
+    {Grows, Shrinks} = delta(Before, After),
+case false of
+true ->
+    ?debugVal("------"),
+    ?debugVal(Before),
+    ?debugVal(After),
     % ?debugVal(ExpectGrows),
-%    ?debugVal(Grows),
-%    ?debugVal(Shrinks),
+    ?debugVal(Grows),
+    ?debugVal(Shrinks),
     % ?assertEqual(ExpectGrows, Grows),
     % ?assertEqual(ExpectShrinks, Shrinks),
+ok;
+false -> ok
+end,
     ok.
 
 delta(Before, After) ->
@@ -420,7 +457,7 @@ delta(BPrev, [B | BRest] = BList,
     if B =:= max -> delta(BPrev, BList,
                           A, ARest,
                           BAFull,
-                          [{gm, A, APrev, delta_next(BList, Before)} | Grows],
+                          [{gm, A, {APrev, A}, delta_next(BList, Before)} | Grows],
                           Shrinks);
        A =:= max -> delta(B, BRest,
                           APrev, AList,
@@ -443,6 +480,6 @@ delta(BPrev, [B | BRest] = BList,
     end.
 
 delta_next(_, [])          -> undefined;
-delta_next([max], Restart) -> delta_next(Restart, []);
+delta_next([max], Restart) -> delta_next(Restart, undefined);
 delta_next([A | _], _)     -> A;
-delta_next([], Restart)    -> delta_next(Restart, []).
+delta_next([], Restart)    -> delta_next(Restart, undefined).
