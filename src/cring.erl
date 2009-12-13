@@ -7,13 +7,21 @@
 % Functional, immutable consistent-hash-ring.
 
 -record(cring, {hash,    % A tuple of {HashMod, HashCfg}.
-                ring,    % [#cpoint{}, ...], ordered by ascending point field.
+                ring,    % [#carc{}, ...], ordered by ascending point field.
                 addr_num % length(AddrDataList).
                }).
--record(cpoint, {point,     % Integer point from list from HashMod:hash_addr().
-                 point_ord, % Point ordinal from list from HashMod:hash_addr().
-                 addr,      % Addr part of an {Addr, Data} tuple.
-                 data}).    % Data part of an {Addr, Data} tuple.
+
+% A CArc is defines an arc in the consistent-hash-ring, in clockwise
+% fashion, from pt_beg (exclusive) to pt_end (inclusive).
+% A pt_beg may be an Integer or the atom min.
+% A pt_end may be an Integer.
+
+-record(carc, {pt_beg,   % Integer point, so (pt_beg, pt_end] is an arc.
+               pt_end,   % Integer point from list from HashMod:hash_addr().
+               hash_ord, % Point ordinal from list from HashMod:hash_addr().
+               addr,     % Addr part of an {Addr, Data} tuple.
+               data      % Data part of an {Addr, Data} tuple.
+              }).
 
 %% API
 
@@ -53,54 +61,56 @@ search_by_point(CRing, SearchPoint) ->
 % Returns [{Addr, Data}*], where length of result might be <= N.
 
 search_by_point(#cring{ring = Ring, addr_num = AddrNum}, SearchPoint, N) ->
-    search_ring_by_point(Ring, SearchPoint, Ring, erlang:min(AddrNum, N)).
+    carcs_addr_data(
+      search_ring_by_point(Ring, SearchPoint, Ring, erlang:min(AddrNum, N))).
 
 %% Implementation
 
-make(_Hash, [], CPoints) ->
-    % TODO: Consider secondary sort on point_ord to reduce (but not
+carcs_addr_data(CArcs) ->
+    lists:map(fun (#carc{addr = Addr, data = Data}) -> {Addr, Data} end,
+              CArcs).
+
+make(_Hash, [], CArcs) ->
+    % TODO: Consider secondary sort on hash_ord to reduce (but not
     % eliminate) unlucky case when there's a hash collision.
-    lists:keysort(#cpoint.point, CPoints);
+    lists:keysort(#carc.pt_end, CArcs);
 
 make({HashMod, HashCfg} = Hash, [{Addr, Data} | Rest], Acc) ->
     Points = HashMod:hash_addr(Addr, HashCfg),
-    {_, Acc2} =
+    {_, _, Acc2} =
         lists:foldl(
-          fun (Point, {N, AccMore}) ->
-              {N + 1, [#cpoint{point = Point,
-                               point_ord = N,
-                               addr = Addr,
-                               data = Data} | AccMore]}
+          fun (Point, {N, PointPrev, AccMore}) ->
+              {N + 1, Point, [#carc{pt_beg = PointPrev,
+                                    pt_end = Point,
+                                    hash_ord = N,
+                                    addr = Addr,
+                                    data = Data} | AccMore]}
           end,
-          {1, Acc},
+          {1, min, Acc},
           Points),
     make(Hash, Rest, Acc2).
 
-search_ring_by_point([], _SearchPoint, Ring, TakeN) ->
-    cpoints_addr_data(
-      util:take_ring_n(fun cpoint_not_member_by_addr/2,
-                         Ring, TakeN, undefined));
+% Returns [CArc*], where length might be <= TakeN.
 
-search_ring_by_point([#cpoint{point = Point} | Rest] = CPoints,
+search_ring_by_point([], _SearchPoint, Ring, TakeN) ->
+    util:take_ring_n(fun carc_not_member_by_addr/2,
+                     Ring, TakeN, undefined);
+
+search_ring_by_point([#carc{pt_end = Point} | Rest] = CArcs,
                      SearchPoint, Ring, TakeN) ->
     % TODO: Do better than linear search.
     % For example, use erlang array instead of list.
     case SearchPoint =< Point of
-        true  -> cpoints_addr_data(
-                   util:take_ring_n(fun cpoint_not_member_by_addr/2,
-                                      CPoints, TakeN, Ring));
+        true  -> util:take_ring_n(fun carc_not_member_by_addr/2,
+                                  CArcs, TakeN, Ring);
         false -> search_ring_by_point(Rest, SearchPoint, Ring, TakeN)
     end.
 
-cpoint_not_member_by_addr(#cpoint{addr = Addr}, CPoints) ->
-    case lists:keysearch(Addr, #cpoint.addr, CPoints) of
+carc_not_member_by_addr(#carc{addr = Addr}, CArcs) ->
+    case lists:keysearch(Addr, #carc.addr, CArcs) of
         {value, _} -> false;
         false      -> true
     end.
-
-cpoints_addr_data(CPoints) ->
-    lists:map(fun (#cpoint{addr = Addr, data = Data}) -> {Addr, Data} end,
-              CPoints).
 
 % Example hash_key/hash_addr functions.
 
@@ -175,8 +185,8 @@ ring_entry_test() ->
       [Ha] = hash_addr(a, 1),
       [Hb] = hash_addr(b, 1),
       case Ha < Hb of
-        true  -> ?assertEqual(a, H#cpoint.addr);
-        false -> ?assertEqual(b, H#cpoint.addr)
+        true  -> ?assertEqual(a, H#carc.addr);
+        false -> ?assertEqual(b, H#carc.addr)
       end,
       ok
      end)(),
@@ -377,11 +387,13 @@ delta_grow_replicas_test() ->
     ok.
 
 delta_check(Before, After, _ExpectGrows, _ExpectShrinks) ->
-    {Grows, _Shrinks} = delta(Before, After),
-    ?debugVal(Before),
-    ?debugVal(After),
+    {_Grows, _Shrinks} = delta(Before, After),
+%    ?debugVal("------"),
+%    ?debugVal(Before),
+%    ?debugVal(After),
     % ?debugVal(ExpectGrows),
-    ?debugVal(Grows),
+%    ?debugVal(Grows),
+%    ?debugVal(Shrinks),
     % ?assertEqual(ExpectGrows, Grows),
     % ?assertEqual(ExpectShrinks, Shrinks),
     ok.
@@ -408,25 +420,29 @@ delta(BPrev, [B | BRest] = BList,
     if B =:= max -> delta(BPrev, BList,
                           A, ARest,
                           BAFull,
-                          [{A, APrev, delta_next(BList, Before)} | Grows],
+                          [{gm, A, APrev, delta_next(BList, Before)} | Grows],
                           Shrinks);
        A =:= max -> delta(B, BRest,
                           APrev, AList,
                           BAFull,
-                          [{B, BPrev, delta_next(AList, After)} | Grows],
-                          Shrinks);
+                          [{sg,
+                            delta_next(AList, After),
+                            BPrev, B,
+                            delta_next(BList, Before)} | Grows],
+                          [{sm, A, APrev, B} | Shrinks]);
        B < A     -> delta(B, BRest,
                           APrev, AList,
                           BAFull,
-                          [{B, BPrev, delta_next(AList, After)} | Grows],
-                          Shrinks);
+                          [{r, A, B, BPrev, B} | Grows],
+                          [{x, B, undefined} | Shrinks]);
        true      -> delta(BPrev, BList,
                           A, ARest,
                           BAFull,
-                          [{A, APrev, delta_next(BList, Before)} | Grows],
-                          Shrinks)
+                          [{g, A, {APrev, A}, delta_next(BList, Before)} | Grows],
+                          [{s, B, A} | Shrinks])
     end.
 
-delta_next([], [])      -> undefined;
-delta_next([A | _], _)  -> A;
-delta_next([], Restart) -> delta_next(Restart, []).
+delta_next(_, [])          -> undefined;
+delta_next([max], Restart) -> delta_next(Restart, []);
+delta_next([A | _], _)     -> A;
+delta_next([], Restart)    -> delta_next(Restart, []).
