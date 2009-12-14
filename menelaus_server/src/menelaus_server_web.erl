@@ -339,7 +339,7 @@ build_bucket_stats_response_cutting_1_test() ->
 test() ->
     eunit:test({spawn, {setup,
                         fun () ->
-                                register(simple_memory_proc, spawn(?MODULE, simple_memory_proc, []))
+                                simple_cache:start_link()
                         end,
                         fun (Pid) ->
                                 exit(Pid, die)
