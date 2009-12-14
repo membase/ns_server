@@ -136,24 +136,22 @@ RESTful endpoints in the representation of the item one would control.
 is not discussed any further in this document).
 * Pool - A collection of physical resources grouped together and providing
 services and a management interface.  A member of a pool is a Node.
-** Statistics - Pools provide an overall pool level data view of counters and
-periodic metrics of the overall system.  Historic storage of statistics can be
-configured and queried.
+    * _Statistics_ - Pools provide an overall pool level data view of counters 
+      and periodic metrics of the overall system.  Historic storage of 
+      statistics can be configured and queried.
 * Node - A system within a pool.  Nodes may provide Node-local representations
 of a service, but are also required to provide or proxy Pool level resources.
 * Bucket - A logical grouping of resources within a pool.  A bucket provides a
 number of things which ease pool management and enable management of resources:
-  >_Namespace_ - Buckets provide unconstrained namespaces to users to define
-  > whatever bucket name makes sense to the user.  It also allows the same key
-  > in the same application to be available in multiple places.
-
-  >_Storage Handling Rules_ - Rules on how data is persisted, replicated and
-  > otherwise handled is defined at the bucket level.
-
-  >_Statistics_ - Buckets provide bucket level data view of counters and
-  > periodic metrics of the overall system.  Historic storage of statistics
-  > can be configured and queried.  These counters and metrics are specific to
-  > the bucket.
+    * _Namespace_ - Buckets provide unconstrained namespaces to users to define
+      whatever bucket name makes sense to the user.  It also allows the same key
+      in the same application to be available in multiple places.
+    * _Storage Handling Rules_ - Rules on how data is persisted, replicated and
+      otherwise handled is defined at the bucket level.
+    * _Statistics_ - Buckets provide bucket level data view of counters and
+      periodic metrics of the overall system.  Historic storage of statistics
+      can be configured and queried.  These counters and metrics are specific to
+      the bucket.
 
 ## User Interface
 
@@ -242,15 +240,12 @@ transitions to the client, if backward compatibility is desirable.
 *Request*
 
 <pre class="restcalls">
- GET /pool/Default Pool
+ GET /pools/default
  Host: node.in.your.pool.com
  Authorization: Basic xxxxxxxxxxxxxxxxxxx
  Accept: application/com.northscale.store+json
  X-memcachekv-Store-Client-Specification-Version: 0.1
 </pre>
-
-Note, this could also have been a GET operation to the pool's GUID instead of
-the human readable pool name.
 
 
 *Response*
@@ -263,9 +258,9 @@ the human readable pool name.
    "name" : "Default Pool",
    "state": {
      "current" : "transitioning",
-     "uri" : "/pool/Default Pool/state"
+     "uri" : "/pool/default/state"
    }
-   "node" : [
+   "nodes" : [
      {
        "name" : "10.0.1.20",
        "uri" : "/addresses/10.0.1.20",
@@ -289,7 +284,7 @@ the human readable pool name.
        }
      }
    ]
-   "bucket" : [
+   "buckets" : [
      {
        "name" : "yourbucket",
        "uri" : "https://node.in.pool.com/pool/Default Pool/bucket/yourbucket"
@@ -300,7 +295,7 @@ the human readable pool name.
        "preferredPort" : "caching"
      }
    ],
-   "controller" : {
+   "controllers" : {
       "backup" : {
         "uri" : "https://node.in.pool.com/startbackup"
       },
