@@ -129,11 +129,13 @@ story(Sock, get_miss) ->
         mc_client_binary:cmd(?GET, Sock, undefined,
                              {#mc_header{},
                               #mc_entry{key = <<"not_a_real_key">>}}),
-    ok.
+    ok;
+
+story(Sock, set) ->
+    story(Sock,set,"Akey").
 
 story(Sock, set, Key) ->
-   {ok, _H, _E} = 
-       mc_client_binary:cmc(?SET,Sock,undefined,
-                            {#mc_header{},
-                             #mc_entry{key = Key, data = <<"aaa">>}}),
+        {ok, _H, _E} = mc_client_binary:cmd(?SET, Sock, undefined,
+                           {#mc_header{},
+                            #mc_entry{key = Key, data = string:concat(Key,<<"AAA">>)}}),
    ok.
