@@ -183,14 +183,14 @@ my_seed(Number) ->
 %% F must return pair of {new list element value, new current state}.
 %% returns pair of {new list, current state}
 full_stateful_map(F, InState, InList) ->
-    %% what a lame language! There's no support for self-recurion, it seems.
-    Rec = fun (_Rec, State, [], Acc) -> {Acc, State};
-              (Rec, State, [H|Tail], Acc) ->
-                  {Value, NewState} = F(H, State),
-                  Rec(Rec, NewState, Tail, [Value|Acc])
-          end,
-    {RV, State} = Rec(Rec, InState, InList, []),
+    {RV, State} = full_stateful_map_rec(F, InState, InList, []),
     {lists:reverse(RV), State}.
+
+full_stateful_map_rec(_F, State, [], Acc) ->
+    {Acc, State};
+full_stateful_map_rec(F, State, [H|Tail], Acc) ->
+    {Value, NewState} = F(H, State),
+    full_stateful_map_rec(F, NewState, Tail, [Value|Acc]).
 
 %% same as full_stateful_map/3, but discards state and returns only transformed list
 stateful_map(F, InState, InList) -> element(1, full_stateful_map(F, InState, InList)).
