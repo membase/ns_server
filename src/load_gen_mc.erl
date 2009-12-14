@@ -137,12 +137,12 @@ story(Sock, get_op) ->
 story(Sock, set) ->
     story(Sock,set,"Akey");
 
-%TODO I am sure there is a way to do these w/o the hard-coded arrays
 story(Sock, get_set) ->
-  Keys=["key1","key2","key3","key4","key5","key6","key7","key8","key9","key10"],
-  Ops=[set,get_op,get_op,get_op,get_op,get_op,get_op,get_op,get_op,get_op],
-  Selected_key=lists:nth(random:uniform(10),Keys),
-  Selected_op=lists:nth(random:uniform(10),Ops),
+  Selected_key=io_lib:format("Key~p",[random:uniform(10)]),
+  case random:uniform(90) rem 9 of
+    0 -> Selected_op=set;
+    _ -> Selected_op=get_op
+  end,
   story(Sock,Selected_op,Selected_key),
   ok.
 
