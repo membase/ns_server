@@ -139,6 +139,73 @@ hash_addr(Addr, Seed, N, Acc) ->
     Point = misc:hash(Addr, Seed),
     hash_addr(Addr, Point, N - 1, [Point | Acc]).
 
+% Finds a diff in CArc lists Before and After.
+
+delta(CArcsBefore, CArcsAfter) ->
+    delta(CArcsBefore, CArcsAfter, fun carc_less_than/2).
+
+carc_less_than(X, Y) -> X#carc.pt_end < Y#carc.pt_end.
+
+% Finds a diff in lists Before and After.
+
+delta(Before, After, LessThenFunc) ->
+    B1 = Before ++ [max],
+    A1 = After ++ [max],
+    G = delta(min, B1, min, A1, {Before, After, LessThenFunc}, []),
+    case G of
+        [{Node, {min, _NodePoint}, FromNode} | _] ->
+            Last = case Before of
+                       [] -> undefined;
+                       _  -> lists:last(Before)
+                   end,
+            [{Node, {Last, max}, FromNode} | G];
+        _ -> G
+    end.
+
+delta_done(Grows) -> lists:reverse(Grows).
+
+delta(_, [], _, _, _, Grows) -> delta_done(Grows);
+delta(_, _, _, [], _, Grows) -> delta_done(Grows);
+
+delta(_BPrev, [X | BRest],
+      _APrev, [X | ARest],
+      BAFull, Grows) ->
+    delta(X, BRest, X, ARest, BAFull, Grows);
+
+delta(BPrev, [B | BRest] = BList,
+      APrev, [A | ARest] = AList,
+      {Before, After, LessThenFunc} = BAFull, Grows) ->
+    if B =:= max -> delta(BPrev, BList,
+                          A, ARest,
+                          BAFull,
+                          [{A, {APrev, A}, delta_next(BList,
+                                                      Before)} | Grows]);
+       A =:= max -> delta(B, BRest,
+                          APrev, AList,
+                          BAFull,
+                          [{delta_next(AList, After),
+                            {BPrev, B},
+                            delta_next(BList, Before)} | Grows]);
+       true ->
+            BLessThenA = LessThenFunc(B, A),
+            case BLessThenA of
+                true  -> delta(B, BRest,
+                               APrev, AList,
+                               BAFull,
+                               [{A, {BPrev, B}, B} | Grows]);
+                false -> delta(BPrev, BList,
+                               A, ARest,
+                               BAFull,
+                               [{A, {APrev, A}, delta_next(BList,
+                                                           Before)} | Grows])
+            end
+    end.
+
+delta_next(_, [])          -> undefined;
+delta_next([max], Restart) -> delta_next(Restart, undefined);
+delta_next([A | _], _)     -> A;
+delta_next([], Restart)    -> delta_next(Restart, undefined).
+
 % ------------------------------------------------
 
 hash_addr_test() ->
@@ -385,60 +452,3 @@ delta_check(Before, After, ExpectGrows) ->
     ?assertEqual(ExpectGrows, Grows),
     ok.
 
-delta(Before, After, LessThenFunc) ->
-    B1 = Before ++ [max],
-    A1 = After ++ [max],
-    G = delta(min, B1, min, A1, {Before, After, LessThenFunc}, []),
-    case G of
-        [{Node, {min, _NodePoint}, FromNode} | _] ->
-            Last = case Before of
-                       [] -> undefined;
-                       _  -> lists:last(Before)
-                   end,
-            [{Node, {Last, max}, FromNode} | G];
-        _ -> G
-    end.
-
-delta_done(Grows) -> lists:reverse(Grows).
-
-delta(_, [], _, _, _, Grows) -> delta_done(Grows);
-delta(_, _, _, [], _, Grows) -> delta_done(Grows);
-
-delta(_BPrev, [X | BRest],
-      _APrev, [X | ARest],
-      BAFull, Grows) ->
-    delta(X, BRest, X, ARest, BAFull, Grows);
-
-delta(BPrev, [B | BRest] = BList,
-      APrev, [A | ARest] = AList,
-      {Before, After, LessThenFunc} = BAFull, Grows) ->
-    if B =:= max -> delta(BPrev, BList,
-                          A, ARest,
-                          BAFull,
-                          [{A, {APrev, A}, delta_next(BList,
-                                                      Before)} | Grows]);
-       A =:= max -> delta(B, BRest,
-                          APrev, AList,
-                          BAFull,
-                          [{delta_next(AList, After),
-                            {BPrev, B},
-                            delta_next(BList, Before)} | Grows]);
-       true ->
-            BLessThenA = LessThenFunc(B, A),
-            case BLessThenA of
-                true  -> delta(B, BRest,
-                               APrev, AList,
-                               BAFull,
-                               [{A, {BPrev, B}, B} | Grows]);
-                false -> delta(BPrev, BList,
-                               A, ARest,
-                               BAFull,
-                               [{A, {APrev, A}, delta_next(BList,
-                                                           Before)} | Grows])
-            end
-    end.
-
-delta_next(_, [])          -> undefined;
-delta_next([max], Restart) -> delta_next(Restart, undefined);
-delta_next([A | _], _)     -> A;
-delta_next([], Restart)    -> delta_next(Restart, undefined).
