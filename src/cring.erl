@@ -376,7 +376,8 @@ delta_grow_replicas_test() ->
     ok.
 
 delta_check(Before, After, ExpectGrows) ->
-    Grows = delta(Before, After),
+    LessThenFunc = fun (X, Y) -> X < Y end,
+    Grows = delta(Before, After, LessThenFunc),
 %   ?debugVal(Before),
 %   ?debugVal(After),
 %   ?debugVal(ExpectGrows),
@@ -384,10 +385,10 @@ delta_check(Before, After, ExpectGrows) ->
     ?assertEqual(ExpectGrows, Grows),
     ok.
 
-delta(Before, After) ->
+delta(Before, After, LessThenFunc) ->
     B1 = Before ++ [max],
     A1 = After ++ [max],
-    G = delta(min, B1, min, A1, {Before, After}, []),
+    G = delta(min, B1, min, A1, {Before, After, LessThenFunc}, []),
     case G of
         [{Node, {min, _NodePoint}, FromNode} | _] ->
             Last = case Before of
@@ -410,25 +411,31 @@ delta(_BPrev, [X | BRest],
 
 delta(BPrev, [B | BRest] = BList,
       APrev, [A | ARest] = AList,
-      {Before, After} = BAFull, Grows) ->
+      {Before, After, LessThenFunc} = BAFull, Grows) ->
     if B =:= max -> delta(BPrev, BList,
                           A, ARest,
                           BAFull,
-                          [{A, {APrev, A}, delta_next(BList, Before)} | Grows]);
+                          [{A, {APrev, A}, delta_next(BList,
+                                                      Before)} | Grows]);
        A =:= max -> delta(B, BRest,
                           APrev, AList,
                           BAFull,
                           [{delta_next(AList, After),
                             {BPrev, B},
                             delta_next(BList, Before)} | Grows]);
-       B < A     -> delta(B, BRest,
-                          APrev, AList,
-                          BAFull,
-                          [{A, {BPrev, B}, B} | Grows]);
-       true      -> delta(BPrev, BList,
-                          A, ARest,
-                          BAFull,
-                          [{A, {APrev, A}, delta_next(BList, Before)} | Grows])
+       true ->
+            BLessThenA = LessThenFunc(B, A),
+            case BLessThenA of
+                true  -> delta(B, BRest,
+                               APrev, AList,
+                               BAFull,
+                               [{A, {BPrev, B}, B} | Grows]);
+                false -> delta(BPrev, BList,
+                               A, ARest,
+                               BAFull,
+                               [{A, {APrev, A}, delta_next(BList,
+                                                           Before)} | Grows])
+            end
     end.
 
 delta_next(_, [])          -> undefined;
