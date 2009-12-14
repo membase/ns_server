@@ -3,6 +3,7 @@
 <head>
 <title>Hi</title>
 <link rel="stylesheet" type="text/css" href="/css/main.css">
+<link rel="stylesheet" type="text/css" href="/css/tabs.css">
 <script type="text/javascript" src="/js/firebug-lite.js"></script>
 <script type="text/javascript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="/js/jqModal.js"></script>
@@ -12,6 +13,7 @@
 <script type="text/javascript" src="/js/jquery.ba-bbq.js"></script>
 <script type="text/javascript" src="/js/jquery.jeditable.js"></script>
 <script type="text/javascript" src="/js/underscore.js"></script>
+<script type="text/javascript" src="/js/tools.tabs.js"></script>
 <script type="text/javascript" src="/js/app.js"></script>
 </head>
 <body>
@@ -131,18 +133,32 @@
       </div>
     </div>
   </div><div id="alerts" style="display:none">
-    <h2>Alerts</h2>
-    <p>Alerts are being sent to: <span id="alerts_email_setting"></span></p>
-    <ol id="alert_list_container">
-    </ol>
-    <ol id="alert_list_template" class="template">
-      <!-- {% _.each(rows, function (alert) { %} -->
-      <li class="alert_{%= h(alert.type) %}"><h3>Alert {%= h(alert.number) %} - {%= formatAlertType(alert.type) %}</h3>
-      <span class="time">{%= h(formatAlertTStamp(alert.tstamp)) %}</span><p>
-      {%= h(alert.text) %}
-      </p></li>
-      <!-- {% }); %} -->
-    </ol>
+    <ul class="tabs">
+      <li><a href="#">Current Alerts</a>
+      <li><a href="#">Alert Settings</a>
+      <li><a href="#">Log</a>
+    </ul>
+    <div class="panes">
+      <div>
+        <p>Alerts are being sent to: <span id="alerts_email_setting"></span></p>
+        <ol id="alert_list_container">
+        </ol>
+        <ol id="alert_list_template" class="template">
+          <!-- {% _.each(rows, function (alert) { %} -->
+          <li class="alert_{%= h(alert.type) %}"><h3>Alert {%= h(alert.number) %} - {%= formatAlertType(alert.type) %}</h3>
+          <span class="time">{%= h(formatAlertTStamp(alert.tstamp)) %}</span><p>
+          {%= h(alert.text) %}
+          </p></li>
+          <!-- {% }); %} -->
+        </ol>
+      </div>
+      <div>
+        <p>Settings are here</p>
+      </div>
+      <div>
+        <p>Log is here</p>
+      </div>
+    </div>
   </div><div id="settings" style="display:none">
     This is settings
   </div>

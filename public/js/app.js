@@ -762,7 +762,7 @@ var HashFragmentCell = mkClass(Cell, {
     this.paramName = paramName;
     this.options = _.extend({
       firstValueIsDefault: false
-    }, options);
+    }, options || {});
 
     this.idToItems = {};
     this.items = [];
@@ -856,6 +856,38 @@ var LinkSwitchCell = mkClass(HashFragmentCell, {
     var id = ensureElementId(link).attr('id');
     this.addItem(id, value, isDefault);
     return this;
+  }
+});
+
+var TabsCell = mkClass(HashFragmentCell, {
+  initialize: function ($super, paramName, tabsSelector, panesSelector, values, options) {
+    var self = this;
+    $super(paramName, options);
+
+    self.tabsSelector = tabsSelector;
+    self.panesSelector = panesSelector;
+    var tabsOptions = $.extend({firstItemIsDefault: true},
+                               options || {},
+                               {api: true});
+    self.api = $(tabsSelector).tabs(panesSelector, tabsOptions);
+
+    self.api.onBeforeClick($m(this, 'onTabClick'));
+    self.subscribeAny($m(this, 'updateSelected'));
+
+    _.each(values, function (val, index) {
+      self.addItem(index, val);
+    });
+    self.finalizeBuilding();
+  },
+  onTabClick: function (event, index) {
+    var item = this.idToItems[index];
+    if (!item)
+      return;
+    this.pushState(index);
+    event.originalEvent.preventDefault();
+  },
+  updateSelected: function () {
+    this.api.click(this.selectedId);
   }
 });
 
@@ -1427,6 +1459,11 @@ var AlertsSection = {
       submit: 'Save',
       name: 'email'
     });
+
+    this.alertTab = new TabsCell("alertsTab",
+                                 "#alerts > .tabs",
+                                 "#alerts > .panes > div",
+                                 ["list", "settings", "log"]);
   },
   onEnter: function () {
   }
