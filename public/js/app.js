@@ -911,13 +911,13 @@ var CurrentStatTargetHandler = {
 
       if (index < 0)
         index = 0;
-      if (index >= currentPoolDetails.bucket.length)
-        index = currentPoolDetails.bucket.length - 1;
+      if (index >= currentPoolDetails.buckets.length)
+        index = currentPoolDetails.buckets.length - 1;
       return index;
     }).setSources({path: this.pathCell, currentPoolDetails: this.currentPoolDetailsCell});
 
     this.currentBucketDetailsCell = new Cell(function (currentBucketIndex, currentPoolDetails) {
-      return future.get({url: currentPoolDetails.bucket[currentBucketIndex].uri});
+      return future.get({url: currentPoolDetails.buckets[currentBucketIndex].uri});
     }).setSources({currentBucketIndex: this.currentBucketIndexCell,
                    currentPoolDetails: this.currentPoolDetailsCell});
 
@@ -967,7 +967,7 @@ var CurrentStatTargetHandler = {
       return 'bt_' + poolNumber + '_' + (counter++);
     }
 
-    var list = this.currentPoolDetailsCell.value.bucket;
+    var list = this.currentPoolDetailsCell.value.buckets;
     var html = $(tmpl('bucket_list_template', {rows: list, register: register}));
     $($i(poolID)).parent().append(html);
     _.defer($m(this, 'markSelected'));
@@ -1325,7 +1325,8 @@ var OverviewSection = {
     }));
   },
   onFreshNodeList: function () {
-    var nodes = DAO.cells.currentPoolDetails.value.node;
+    var nodes = DAO.cells.currentPoolDetails.value.nodes;
+//    debugger
     renderTemplate('server_list', nodes);
   },
   statRefreshOptions: {
