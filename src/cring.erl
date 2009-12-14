@@ -243,240 +243,161 @@ delta_grow_test() ->
     delta_check(
       [],
       [15],
-      [{n15, {15, max}, undefined},
-       {n15, {min, 15}, undefined}],
-      []),
+      [{15, {undefined, max}, undefined},
+       {15, {min, 15}, undefined}]),
     delta_check(
       [],
       [15, 25],
-      [{n15, {25, max}, undefined},
-       {n15, {min, 15}, undefined},
-       {n25, {15, 25}, undefined}],
-      []),
+      [{15, {undefined, max}, undefined},
+       {15, {min, 15}, undefined},
+       {25, {15, 25}, undefined}]),
     delta_check(
       [10, 20],
       [10, 15, 20],
-      [{n15, {10, 15}, n20}],
-      [{n20, {15, 20}}]),
+      [{15, {10, 15}, 20}]),
     delta_check(
       [10, 20],
       [10, 15, 17, 20],
-      [{n15, {10, 15}, n20},
-       {n17, {15, 17}, n20}],
-      [{n20, {17, 20}}]),
+      [{15, {10, 15}, 20},
+       {17, {15, 17}, 20}]),
     delta_check(
       [10],
       [5, 10],
-      [{n5, {10, max}, n10},
-       {n5, {min, 5}, n10}],
-      [{n10, {5, 10}}]),
+      [{5, {10, max}, 10},
+       {5, {min, 5}, 10}]),
     delta_check(
       [10, 20],
       [5, 10, 20],
-      [{n5, {20, max}, n10},
-       {n5, {min, 5}, n10}],
-      [{n10, {5, 10}}]),
+      [{5, {20, max}, 10},
+       {5, {min, 5}, 10}]),
     delta_check(
       [10],
       [10, 15],
-      [{n15, {10, 15}, n10}],
-      [{n10, {min, 10}},
-       {n10, {15, max}}]),
+      [{15, {10, 15}, 10}]),
     delta_check(
       [10, 20, 30],
       [10, 15, 20, 25, 30],
-      [{n15, {10, 15}, n20},
-       {n25, {20, 25}, n30}],
-      [{n20, {15, 20}},
-       {n30, {25, 30}}]),
+      [{15, {10, 15}, 20},
+       {25, {20, 25}, 30}]),
     delta_check(
       [10, 20, 30],
       [10, 15, 20, 25, 30, 35],
-      [{n15, {10, 15}, n20},
-       {n25, {20, 25}, n30},
-       {n35, {30, 35}, n10}],
-      [{n20, {15, 20}},
-       {n30, {25, 30}}]),
+      [{15, {10, 15}, 20},
+       {25, {20, 25}, 30},
+       {35, {30, 35}, 10}]),
     ok.
 
 delta_shrink_test() ->
     delta_check(
       [15],
       [],
-      [],
-      [{n15, undefined}]),
+      [{undefined, {15, max}, 15},
+       {undefined, {min, 15}, 15}]),
     delta_check(
       [15, 25],
       [],
-      [],
-      [{n15, undefined},
-       {n25, undefined}]),
+      [{undefined, {25, max}, 15},
+       {undefined, {min, 15}, 15},
+       {undefined, {15, 25}, 25}]),
     delta_check(
       [10, 15, 20],
       [10, 20],
-      [{n20, {10, 15}, n15}],
-      [{n15, undefined}]),
+      [{20, {10, 15}, 15}]),
     delta_check(
       [10, 15, 17, 20],
       [10, 20],
-      [{n20, {15, 17}, n17},
-       {n20, {10, 15}, n15}],
-      [{n15, undefined},
-       {n17, undefined}]),
+      [{20, {10, 15}, 15},
+       {20, {15, 17}, 17}]),
     delta_check(
       [5, 10],
       [10],
-      [{n10, {min, 5}, n5},
-       {n10, {10, max}, n5}],
-      [{n5, undefined}]),
+      [{10, {10, max}, 5},
+       {10, {min, 5}, 5}]),
     delta_check(
       [5, 10, 20],
       [10, 20],
-      [{n10, {min, 5}, n5},
-       {n10, {20, max}, n5}],
-      [{n5, undefined}]),
+      [{10, {20, max}, 5},
+       {10, {min, 5}, 5}]),
     delta_check(
       [5, 10, 25],
       [10],
-      [{n10, {min, 5}, n5},
-       {n10, {25, max}, n5},
-       {n10, {10, 25}, n25}],
-      [{n5, undefined},
-       {n25, undefined}]),
+      [{10, {25, max}, 5},
+       {10, {min, 5}, 5},
+       {10, {10, 25}, 25}]),
     delta_check(
       [10, 15],
       [10],
-      [{n10, {10, 15}, n15}],
-      [{n15, undefined}]),
+      [{10, {10, 15}, 15}]),
     delta_check(
       [10, 15, 20, 25, 30],
       [10, 20, 30],
-      [{n20, {10, 15}, n15},
-       {n30, {20, 25}, n25}],
-      [{n15, undefined},
-       {n25, undefined}]),
+      [{20, {10, 15}, 15},
+       {30, {20, 25}, 25}]),
     delta_check(
       [10, 15, 20, 25, 30, 35],
       [10, 20, 30],
-      [{n20, {10, 15}, n15},
-       {n30, {20, 25}, n25},
-       {n10, {30, 35}, n35}],
-      [{n15, undefined},
-       {n25, undefined},
-       {n35, undefined}]),
+      [{20, {10, 15}, 15},
+       {30, {20, 25}, 25},
+       {10, {30, 35}, 35}]),
     ok.
 
 delta_grow_replicas_test() ->
-    delta_check(
-      [],
-      [15],
-      [{n15, {min, 15}, undefined},
-       {n15, {15, max}, undefined}],
-      []),
-    delta_check(
-      [],
-      [15, 25],
-      [{n15, {min, 15}, undefined},
-       {n15, {25, max}, undefined},
-       {n25, {15, 25}, undefined}],
-      []),
-    delta_check(
-      [10, 20],
-      [10, 15, 20],
-      [{n15, {10, 15}, n20}],
-      [{n20, {15, 20}}]),
-    delta_check(
-      [10, 20],
-      [10, 15, 17, 20],
-      [{n17, {15, 17}, n20},
-       {n15, {10, 15}, n20}],
-      [{n20, {17, 20}}]),
-    delta_check(
-      [10],
-      [5, 10],
-      [{n5, {min, 5}, n10},
-       {n5, {10, max}, n10}],
-      [{n10, {5, 10}}]),
-    delta_check(
-      [10, 20],
-      [5, 10, 20],
-      [{n5, {min, 5}, n10},
-       {n5, {20, max}, n10}],
-      [{n10, {5, 10}}]),
-    delta_check(
-      [10],
-      [10, 15],
-      [{n15, {10, 15}, n10}],
-      [{n10, {min, 10}},
-       {n10, {15, max}}]),
-    delta_check(
-      [10, 20, 30],
-      [10, 15, 20, 25, 30],
-      [{n15, {10, 15}, n20},
-       {n25, {20, 25}, n30}],
-      [{n20, {15, 20}},
-       {n30, {25, 30}}]),
     ok.
 
-delta_check(Before, After, _ExpectGrows, _ExpectShrinks) ->
-    {Grows, Shrinks} = delta(Before, After),
-case false of
-true ->
-    ?debugVal("------"),
-    ?debugVal(Before),
-    ?debugVal(After),
-    % ?debugVal(ExpectGrows),
-    ?debugVal(Grows),
-    ?debugVal(Shrinks),
-    % ?assertEqual(ExpectGrows, Grows),
-    % ?assertEqual(ExpectShrinks, Shrinks),
-ok;
-false -> ok
-end,
+delta_check(Before, After, ExpectGrows) ->
+    Grows = delta(Before, After),
+%   ?debugVal(Before),
+%   ?debugVal(After),
+%   ?debugVal(ExpectGrows),
+%   ?debugVal(Grows),
+    ?assertEqual(ExpectGrows, Grows),
     ok.
 
 delta(Before, After) ->
     B1 = Before ++ [max],
     A1 = After ++ [max],
-    delta(min, B1, min, A1, {Before, After}, [], []).
+    G = delta(min, B1, min, A1, {Before, After}, []),
+    case G of
+        [{Node, {min, _NodePoint}, FromNode} | _] ->
+            Last = case Before of
+                       [] -> undefined;
+                       _  -> lists:last(Before)
+                   end,
+            [{Node, {Last, max}, FromNode} | G];
+        _ -> G
+    end.
 
-delta_done(Grows, Shrinks) ->
-    {lists:reverse(Grows), lists:reverse(Shrinks)}.
+delta_done(Grows) -> lists:reverse(Grows).
 
-delta(_, [], _, _, _, Grows, Shrinks) -> delta_done(Grows, Shrinks);
-delta(_, _, _, [], _, Grows, Shrinks) -> delta_done(Grows, Shrinks);
+delta(_, [], _, _, _, Grows) -> delta_done(Grows);
+delta(_, _, _, [], _, Grows) -> delta_done(Grows);
 
 delta(_BPrev, [X | BRest],
       _APrev, [X | ARest],
-      BAFull, Grows, Shrinks) ->
-    delta(X, BRest, X, ARest, BAFull, Grows, Shrinks);
+      BAFull, Grows) ->
+    delta(X, BRest, X, ARest, BAFull, Grows);
 
 delta(BPrev, [B | BRest] = BList,
       APrev, [A | ARest] = AList,
-      {Before, After} = BAFull, Grows, Shrinks) ->
+      {Before, After} = BAFull, Grows) ->
     if B =:= max -> delta(BPrev, BList,
                           A, ARest,
                           BAFull,
-                          [{gm, A, {APrev, A}, delta_next(BList, Before)} | Grows],
-                          Shrinks);
+                          [{A, {APrev, A}, delta_next(BList, Before)} | Grows]);
        A =:= max -> delta(B, BRest,
                           APrev, AList,
                           BAFull,
-                          [{sg,
-                            delta_next(AList, After),
-                            BPrev, B,
-                            delta_next(BList, Before)} | Grows],
-                          [{sm, A, APrev, B} | Shrinks]);
+                          [{delta_next(AList, After),
+                            {BPrev, B},
+                            delta_next(BList, Before)} | Grows]);
        B < A     -> delta(B, BRest,
                           APrev, AList,
                           BAFull,
-                          [{r, A, B, BPrev, B} | Grows],
-                          [{x, B, undefined} | Shrinks]);
+                          [{A, {BPrev, B}, B} | Grows]);
        true      -> delta(BPrev, BList,
                           A, ARest,
                           BAFull,
-                          [{g, A, {APrev, A}, delta_next(BList, Before)} | Grows],
-                          [{s, B, A} | Shrinks])
+                          [{A, {APrev, A}, delta_next(BList, Before)} | Grows])
     end.
 
 delta_next(_, [])          -> undefined;
