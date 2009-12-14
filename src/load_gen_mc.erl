@@ -131,11 +131,32 @@ story(Sock, get_miss) ->
                               #mc_entry{key = <<"not_a_real_key">>}}),
     ok;
 
+story(Sock, get_op) ->
+    story(Sock,get_op,"Akey");
+
 story(Sock, set) ->
-    story(Sock,set,"Akey").
+    story(Sock,set,"Akey");
+
+%TODO I am sure there is a way to do these w/o the hard-coded arrays
+story(Sock, get_set) ->
+  Keys=["key1","key2","key3","key4","key5","key6","key7","key8","key9","key10"],
+  Ops=[set,get_op,get_op,get_op,get_op,get_op,get_op,get_op,get_op,get_op],
+  Selected_key=lists:nth(random:uniform(10),Keys),
+  Selected_op=lists:nth(random:uniform(10),Ops),
+  story(Sock,Selected_op,Selected_key),
+  ok.
 
 story(Sock, set, Key) ->
         {ok, _H, _E} = mc_client_binary:cmd(?SET, Sock, undefined,
                            {#mc_header{},
                             #mc_entry{key = Key, data = string:concat(Key,<<"AAA">>)}}),
-   ok.
+   ok;
+
+story(Sock, get_op,Key) ->
+    _RES =
+        mc_client_binary:cmd(?GETK, Sock, undefined,
+                             {#mc_header{},
+                              #mc_entry{key = Key}}),
+    ok.
+
+
