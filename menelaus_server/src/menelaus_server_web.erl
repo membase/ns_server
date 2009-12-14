@@ -41,6 +41,8 @@ loop(Req, DocRoot) ->
                              {need_auth, fun () -> handle_bucket_info(Id, Req) end};
                          ["buckets", Id, "stats"] ->
                              {need_auth, fun () -> handle_bucket_stats(Id, Req) end};
+                         ["alerts"] ->
+                             {need_auth, fun () -> handle_alerts(Req) end};
                          _ ->
                              {call, fun () -> Req:serve_file(Path, DocRoot) end}
                      end;
@@ -336,15 +338,19 @@ build_bucket_stats_response_cutting_1_test() ->
                            {ops, [_]}]},
                  Ops).
 
+wrap_tests_with_cache_setup(Tests) ->
+    {spawn, {setup,
+             fun () ->
+                     simple_cache:start_link()
+             end,
+             fun (_) ->
+                     exit(whereis(simple_cache), die)
+             end,
+             Tests}}.
+
 test() ->
-    eunit:test({spawn, {setup,
-                        fun () ->
-                                simple_cache:start_link()
-                        end,
-                        fun (Pid) ->
-                                exit(Pid, die)
-                        end,
-                        {module, ?MODULE}}}, [verbose]).
+    eunit:test(wrap_tests_with_cache_setup({module, ?MODULE}),
+               [verbose]).
 
 debugger_apply(Fun, Args) ->
     i:im(),
@@ -370,3 +376,96 @@ handle_bucket_stats(_Id, Req) ->
 
 get_option(Option, Options) ->
     {proplists:get_value(Option, Options), proplists:delete(Option, Options)}.
+
+-define(INITIAL_ALERTS, [{struct, [{number, 3},
+                                   {type, <<"info">>},
+                                   {tstamp, 1259836260000},
+                                   {text, <<"Licensing, capacity, NorthScale issues, etc.">>}]},
+                         {struct, [{number, 2},
+                                   {type, <<"attention">>},
+                                   {tstamp, 1259836260000},
+                                   {text, <<"Server node down, with issues, etc.">>}]},
+                         {struct, [{number, 1},
+                                   {type, <<"warning">>},
+                                   {tstamp, 1259836260000},
+                                   {text, <<"Above average numbers operations, gets, sets, etc.">>}]}]).
+-ifdef(EUNIT).
+
+-define(REVALERTS, lists:reverse(?INITIAL_ALERTS)).
+
+reset_alerts() ->
+    call_simple_cache(delete, [alerts]).
+
+fetch_default_alerts_test() ->
+    reset_alerts(),
+    ?assertEqual(?REVALERTS,
+                 fetch_alerts()),
+
+    ?assertEqual(?REVALERTS,
+                 fetch_alerts()).
+
+create_new_alert_test() ->
+    reset_alerts(),
+    create_new_alert(),
+    List1 = fetch_alerts(),
+    ?assertEqual(?REVALERTS,
+                 lists:sublist(List1, length(?REVALERTS))),
+    ?assertMatch({struct, [{number, 4}|_]},
+                 lists:nth(4, List1)),
+    ?assertEqual([], lists:nthtail(4, List1)),
+
+    create_new_alert(),
+    List2 = fetch_alerts(),
+    ?assertEqual(?REVALERTS,
+                 lists:sublist(List2, length(?REVALERTS))),
+    ?assertMatch({struct, [{number, 4}|_]},
+                 lists:nth(4, List2)),
+    ?assertMatch({struct, [{number, 5}|_]},
+                 lists:nth(5, List2)),
+    ?assertEqual([], lists:nthtail(5, List2)).
+
+build_alerts_test() ->
+    reset_alerts(),
+    ?assertEqual(?REVALERTS,
+                 lists:sublist(build_alerts([]),
+                               length(?REVALERTS))),
+
+    reset_alerts(),
+    ?assertMatch([{struct, [{number, 4} | _]}],
+                 build_alerts([{"lastNumber", "3"}])).
+
+-endif.
+
+
+fetch_alerts() ->
+    lists:reverse(caching_result(alerts,
+                                 fun () -> ?INITIAL_ALERTS end)).
+
+create_new_alert() ->
+    fetch_alerts(), %% side effect
+    [{alerts, OldAlerts}] = call_simple_cache(lookup, [alerts]),
+    [{struct, [{number, LastNumber} | _]} | _] = OldAlerts,
+    NewAlerts = [{struct, [{number, LastNumber+1},
+                           {type, <<"warning">>},
+                           {tstamp, java_date()},
+                           {text, <<"lorem ipsum">>}]}
+                 | OldAlerts],
+    call_simple_cache(insert, [{alerts, NewAlerts}]),
+    nil.
+
+build_alerts(Params) ->
+    create_new_alert(),
+    [{alerts, ReversedAlerts}] = call_simple_cache(lookup, [alerts]),
+    LastNumber = case proplists:get_value("lastNumber", Params) of
+                     undefined -> 0;
+                     V -> list_to_integer(V)
+                 end,
+    CutAlerts = lists:takewhile(fun ({struct, [{number, N} | _]}) ->
+                                       N > LastNumber
+                                end,
+                                ReversedAlerts),
+    lists:reverse(CutAlerts).
+
+handle_alerts(Req) ->
+    reply_json(Req, {struct, [{email, <<"alk@tut.by">>},
+                              {list, build_alerts(Req:parse_qs())}]}).
