@@ -344,6 +344,15 @@ var $i = function (id) {
   return document.getElementById(id);
 }
 
+function mkMethodWrapper (method, superClass, methodName) {
+  return function () {
+    var args = $.makeArray(arguments);
+    var _super = $m(this, methodName, superClass);
+    args.unshift(_super);
+    return method.apply(this, args);
+  }
+}
+
 function mkClass(methods) {
   if (_.isFunction(methods)) {
     var superclass = methods;
@@ -353,6 +362,12 @@ function mkClass(methods) {
     meta.prototype = superclass.prototype;
 
     methods = _.extend(new meta, origMethods);
+
+    _.each(origMethods, function (method, methodName) {
+      if (_.isFunction(method) && functionArgumentNames(method)[0] == '$super') {
+        methods[methodName] = mkMethodWrapper(method, superclass, methodName);
+      }
+    });
   }
 
   var constructor = __topEval(function () {
@@ -741,9 +756,8 @@ function watchHashParamChange(param, defaultValue, callback) {
 }
 
 var HashFragmentCell = mkClass(Cell, {
-  initialize: function (paramName, options) {
-    var _super = $m(this, 'initialize', Cell);
-    _super();
+  initialize: function ($super, paramName, options) {
+    $super();
 
     this.paramName = paramName;
     this.options = _.extend({
@@ -797,15 +811,14 @@ var HashFragmentCell = mkClass(Cell, {
 });
 
 var LinkSwitchCell = mkClass(HashFragmentCell, {
-  initialize: function (paramName, options) {
+  initialize: function ($super, paramName, options) {
     options = _.extend({
       selectedClass: 'selected',
       linkSelector: '*',
       eventSpec: 'click'
     }, options);
 
-    var _super = $m(this, 'initialize', HashFragmentCell);
-    _super(paramName, options);
+    $super(paramName, options);
 
     this.subscribeAny($m(this, 'updateSelected'));
 
