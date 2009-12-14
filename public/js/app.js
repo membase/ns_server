@@ -740,63 +740,38 @@ function watchHashParamChange(param, defaultValue, callback) {
   });
 }
 
-var LinkSwitchCell = mkClass(Cell, {
+var HashFragmentCell = mkClass(Cell, {
   initialize: function (paramName, options) {
     var _super = $m(this, 'initialize', Cell);
     _super();
 
     this.paramName = paramName;
     this.options = _.extend({
-      selectedClass: 'selected',
-      linkSelector: '*',
-      eventSpec: 'click',
-      clearOnChangesTo: [],
-      firstLinkIsDefault: false
+      firstValueIsDefault: false
     }, options);
 
-    this.resetLinks();
+    this.idToItems = {};
+    this.items = [];
+    this.defaultId = undefined;
+    this.selectedId = undefined;
 
-    var makeUndefinedOrDefault = $m(this, 'makeUndefinedOrDefault');
-    // TODO: this is a bit broken for now
-    // _.each(this.options.clearOnChangesTo, function (cell) {
-    //   cell.subscribeAny(makeUndefinedOrDefault);
-    // });
-
-    this.subscribeAny($m(this, 'updateSelected'));
-
-    var self = this;
-    $(self.options.linkSelector).live(self.options.eventSpec, function (event) {
-      self.eventHandler(this, event);
-    })
+    this.subscribeAny($m(this, 'pushStateOnChange'));
   },
   interpretState: function (id) {
-    var item = this.idToLinks[id];
+    var item = this.idToItems[id];
     if (!item)
       return;
 
-    this.setValue(item.value);
     this.selectedId = id;
+    this.setValue(item.value);
   },
-  setValue: function (id) {
-    var _super = $m(this, 'setValue', Cell);
-    console.log('calling setValue: ', id, getBacktrace());
-    return _super(id);
-  },
-  updateSelected: function () {
-    $(_(this.idToLinks).chain().keys().map($i).value()).removeClass(this.options.selectedClass);
-
-    var value = this.value;
-    if (value == undefined)
-      return;
-
-    var index = _.indexOf(_(this.links).pluck('value'), value);
-    if (index < 0)
-      throw new Error('invalid value!');
-
-    var id = this.links[index].id;
-    $($i(id)).addClass(this.options.selectedClass);
-
-    this.pushState(id);
+  // setValue: function (id) {
+  //   var _super = $m(this, 'setValue', Cell);
+  //   console.log('calling setValue: ', id, getBacktrace());
+  //   return _super(id);
+  // },
+  pushStateOnChange: function () {
+    this.pushState(this.selectedId);
   },
   pushState: function (id) {
     var currentState = $.bbq.getState(this.paramName);
@@ -806,42 +781,67 @@ var LinkSwitchCell = mkClass(Cell, {
     obj[this.paramName] = id;
     $.bbq.pushState(obj);
   },
+  addItem: function (id, value, isDefault) {
+    var item = {id: id, value: value, index: this.items.length};
+    this.items.push(item);
+    if (isDefault || (item.index == 0 && this.options.firstItemIsDefault))
+      this.defaultId = id;
+    this.idToItems[id] = item;
+    return this;
+  },
+  finalizeBuilding: function () {
+    watchHashParamChange(this.paramName, this.defaultId, $m(this, 'interpretState'));
+    this.interpretState($.bbq.getState(this.paramName));
+    return this;
+  }
+});
+
+var LinkSwitchCell = mkClass(HashFragmentCell, {
+  initialize: function (paramName, options) {
+    options = _.extend({
+      selectedClass: 'selected',
+      linkSelector: '*',
+      eventSpec: 'click'
+    }, options);
+
+    var _super = $m(this, 'initialize', HashFragmentCell);
+    _super(paramName, options);
+
+    this.subscribeAny($m(this, 'updateSelected'));
+
+    var self = this;
+    $(self.options.linkSelector).live(self.options.eventSpec, function (event) {
+      self.eventHandler(this, event);
+    })
+  },
+  updateSelected: function () {
+    $(_(this.idToItems).chain().keys().map($i).value()).removeClass(this.options.selectedClass);
+
+    var value = this.value;
+    if (value == undefined)
+      return;
+
+    var index = _.indexOf(_(this.items).pluck('value'), value);
+    if (index < 0)
+      throw new Error('invalid value!');
+
+    var id = this.items[index].id;
+    $($i(id)).addClass(this.options.selectedClass);
+  },
   eventHandler: function (element, event) {
     var id = element.id;
-    var item = this.idToLinks[id];
+    var item = this.idToItems[id];
     if (!item)
       return;
 
     this.pushState(id);
     event.preventDefault();
   },
-  makeUndefinedOrDefault: function () {
-    if (this.defaultId)
-      this.setValue(this.idToLinks[this.defaultId].value);
-    else
-      this.setValue(undefined);
-  },
-  resetLinks: function () {
-    this.idToLinks = {};
-    this.links = [];
-    this.defaultId = undefined;
-    this.selectedId = undefined;
-  },
   addLink: function (link, value, isDefault) {
     if (link.size() == 0)
       throw new Error('missing link for selector: ' + link.selector);
     var id = ensureElementId(link).attr('id');
-    var item = {id: id, value: value, index: this.links.length};
-    this.links.push(item);
-    if (isDefault || (item.index == 0 && this.options.firstLinkIsDefault))
-      this.defaultId = id;
-    this.idToLinks[id] = item;
-
-    return this;
-  },
-  finalizeBuilding: function () {
-    watchHashParamChange(this.paramName, this.defaultId, $m(this, 'interpretState'));
-    this.interpretState($.bbq.getState(this.paramName));
+    this.addItem(id, value, isDefault);
     return this;
   }
 });
@@ -1107,11 +1107,9 @@ var SamplesRestorer = mkClass({
     stats: statsCell,
     statsOptions: statsOptionsCell,
     graphZoomLevel: new LinkSwitchCell('graph_zoom',
-                                       {firstLinkIsDefault: true,
-                                        clearOnChangesTo: [DAO.cells.overviewActive]}),
+                                       {firstItemIsDefault: true}),
     keysZoomLevel: new LinkSwitchCell('keys_zoom',
-                                      {firstLinkIsDefault: true,
-                                       clearOnChangesTo: [DAO.cells.overviewActive]}),
+                                      {firstItemIsDefault: true}),
     currentPoolDetails: CurrentStatTargetHandler.currentPoolDetailsCell
   });
 })();
@@ -1233,7 +1231,7 @@ function renderSmallGraph(jq, data, text, isSelected) {
 var StatGraphs = {
   selected: new LinkSwitchCell('graph', {
     linkSelector: 'span',
-    firstLinkIsDefault: true}),
+    firstItemIsDefault: true}),
   selectedCounter: 0,
   renderNothing: function () {
     var main = $('#overview_main_graph')
