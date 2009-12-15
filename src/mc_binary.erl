@@ -61,9 +61,10 @@ recv_body(Sock, #mc_header{extlen = ExtLen,
                            bodylen = BodyLen} = Header, Entry) ->
     case BodyLen > 0 of
         true ->
+            true = BodyLen >= (ExtLen + KeyLen),
             {ok, Ext} = recv_data(Sock, ExtLen),
             {ok, Key} = recv_data(Sock, KeyLen),
-            {ok, Data} = recv_data(Sock, BodyLen - (ExtLen + KeyLen)),
+            {ok, Data} = recv_data(Sock, erlang:max(0, BodyLen - (ExtLen + KeyLen))),
             {ok, Header, Entry#mc_entry{ext = Ext, key = Key, data = Data}};
         false ->
             {ok, Header, Entry}

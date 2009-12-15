@@ -30,6 +30,9 @@
 -define(FLUSHQ,      16#18).
 -define(APPENDQ,     16#19).
 -define(PREPENDQ,    16#1a).
+-define(CMD_SASL_LIST_MECHS, 16#20).
+-define(CMD_SASL_AUTH,       16#21).
+-define(CMD_SASL_STEP,       16#22).
 -define(RGET,        16#30).
 -define(RSET,        16#31).
 -define(RSETQ,       16#32).
