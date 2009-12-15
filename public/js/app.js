@@ -788,6 +788,7 @@ var HashFragmentCell = mkClass(Cell, {
     this.pushState(this.selectedId);
   },
   pushState: function (id) {
+    id = String(id);
     var currentState = $.bbq.getState(this.paramName);
     if (currentState == id || (currentState === undefined && id == this.defaultId))
       return;
@@ -884,10 +885,12 @@ var TabsCell = mkClass(HashFragmentCell, {
     if (!item)
       return;
     this.pushState(index);
-    event.originalEvent.preventDefault();
+
+    if (event.originalEvent)
+      event.originalEvent.preventDefault();
   },
   updateSelected: function () {
-    this.api.click(this.selectedId);
+    this.api.click(Number(this.selectedId));
   }
 });
 
