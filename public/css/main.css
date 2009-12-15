@@ -53,15 +53,15 @@ body { font-family: Arial, sans-serif; }
 
 a.selected { text-decoration: underline; }
 
-#alerts h2 { border-bottom: 1px dashed black; }
-#alerts ol { padding: 0px; }
+#alerts_list h2 { border-bottom: 1px dashed black; }
+#alerts_list ol { padding: 0px; }
 
 .alert_warning, .alert_attention, .alert_info
 {-moz-border-radius: 6px; -webkit-border-radius: 6px;
   border: 1px dashed #cbcbcb; margin-bottom: 9px; list-style-type: none;
   min-height: 81px;}
 
-#alerts h3 { display: block; float: left; color: #999999;
+#alerts_list h3 { display: block; float: left; color: #999999;
              padding: 0px; margin: 0px; margin-bottom: 6px; margin-left: 0.5em;}
 
 .alert_warning p, .alert_attention p, .alert_info p { clear: both; text-indent: 2em;}
@@ -73,3 +73,5 @@ a.selected { text-decoration: underline; }
 .alert_info { background-color: #f3e4a8; }
 
 .template { display: none; }
+
+#middle_pane { vertical-align: top; }
