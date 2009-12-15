@@ -1417,6 +1417,7 @@ var OverviewSection = {
     });
   },
   onEnter: function () {
+    StatGraphs.update();
   }
 };
 
