@@ -129,4 +129,34 @@ story(Sock, get_miss) ->
         mc_client_binary:cmd(?GET, Sock, undefined,
                              {#mc_header{},
                               #mc_entry{key = <<"not_a_real_key">>}}),
+    ok;
+
+story(Sock, get_op) ->
+    story(Sock,get_op,"Akey");
+
+story(Sock, set) ->
+    story(Sock,set,"Akey");
+
+story(Sock, get_set) ->
+  Selected_key=io_lib:format("Key~p",[random:uniform(10)]),
+  case random:uniform(90) rem 9 of
+    0 -> Selected_op=set;
+    _ -> Selected_op=get_op
+  end,
+  story(Sock,Selected_op,Selected_key),
+  ok.
+
+story(Sock, set, Key) ->
+        {ok, _H, _E} = mc_client_binary:cmd(?SET, Sock, undefined,
+                           {#mc_header{},
+                            #mc_entry{key = Key, data = string:concat(Key,<<"AAA">>)}}),
+   ok;
+
+story(Sock, get_op,Key) ->
+    _RES =
+        mc_client_binary:cmd(?GETK, Sock, undefined,
+                             {#mc_header{},
+                              #mc_entry{key = Key}}),
     ok.
+
+
