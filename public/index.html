@@ -145,7 +145,7 @@
         </ol>
         <ol id="alert_list_template" class="template">
           <!-- {% _.each(rows, function (alert) { %} -->
-          <li class="alert_{%= h(alert.type) %}"><h3>Alert {%= h(alert.number) %} - {%= formatAlertType(alert.type) %}</h3>
+          <li class="alert_{%= h(alert.type) %}"><h3>{%= formatAlertType(alert.type) %} - {%= h(alert.shortText) %}</h3>
           <span class="time">{%= h(formatAlertTStamp(alert.tstamp)) %}</span><p>
           {%= h(alert.text) %}
           </p></li>
@@ -153,7 +153,33 @@
         </ol>
       </div>
       <div>
-        <p>Settings are here</p>
+        <h3>Alert Setting</h3>
+        <input type="hidden" id="alerts_settings_form_is_clean" value="1">
+        <form id="alerts_settings_form" onsubmit="javascript:return false;">
+        <p><label><input type="checkbox" name="sendAlerts"><input type="hidden" value="0" name="sendAlerts">
+        Notify me by email with alerts</label></p>
+        <div id="alerts_settings_guts" style="display:none;">
+          <p><label>Email Address <input type="text" name="email"></label></p>
+          <h4>Alert Types</h4>
+          <p>Alert me when:
+          <ul>
+            <li><label><input type="checkbox" value="1" name="sendForLowSpace"><input type="hidden" value="0" name="sendForLowSpace">
+            ... a server is low on disk space.</label>
+            <li><label><input type="checkbox" value="1" name="sendForLowMemory"><input type="hidden" value="0" name="sendForLowMemory">
+            ... a server is low on available memory.</label>
+            <li><label><input type="checkbox" value="1" name="sendForNotResponding"><input type="hidden" value="0" name="sendForNotResponding">
+            ... a server is not responding.</label>
+            <li><label><input type="checkbox" value="1" name="sendForJoinsCluster"><input type="hidden" value="0" name="sendForJoinsCluster">
+            ... a new server joins cluster.</label>
+            <li><label><input type="checkbox" value="1" name="sendForOpsAboveNormal"><input type="hidden" value="0" name="sendForOpsAboveNormal">
+            ... average daily ops/second is above normal.</label>
+            <li><label><input type="checkbox" value="1" name="sendForSetsAboveNormal"><input type="hidden" value="0" name="sendForSetsAboveNormal">
+            ... average daily sets/second is above normal.</label>
+          </ul>
+        </div>
+        <p><a href="javascript:AlertsSection.settingsCancel(),void(0);">Cancel</a>
+          <button type="submit">Save</button></p>
+        </form>
       </div>
       <div>
         <p>Log is here</p>

@@ -72,6 +72,8 @@ a.selected { text-decoration: underline; }
 .alert_attention { background-color: #d5f3a8; }
 .alert_info { background-color: #f3e4a8; }
 
+#alerts_settings_guts li { list-style-type: none; }
+
 .template { display: none; }
 
 #middle_pane { vertical-align: top; }

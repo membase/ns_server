@@ -1423,11 +1423,10 @@ var OverviewSection = {
 
 var AlertsSection = {
   renderAlertsList: function () {
-    renderTemplate('alert_list', [].concat(this.alerts.value.list).reverse());
-    if (!this.gotEmail) {
-      $('#alerts_email_setting').text(this.alerts.value.email);
-      this.gotEmail = true;
-    }
+    var value = this.alerts.value;
+    var list = [].concat(value.list).reverse();
+    renderTemplate('alert_list', list);
+    $('#alerts_email_setting').text(value.settings.email);
   },
   init: function () {
     this.active = new Cell(function (mode) {
@@ -1456,18 +1455,93 @@ var AlertsSection = {
     prepareTemplateForCell("alert_list", this.alerts);
     this.alerts.subscribe($m(this, 'renderAlertsList'));
     this.alerts.subscribe(function (cell) {
-      _.delay($m(cell, 'recalculate'), 30000);
-    });
-
-    $('#alerts_email_setting').editable('/alerts', {
-      submit: 'Save',
-      name: 'email'
+      // refresh every 30 seconds
+      cell.recalculateAt((new Date()).valueOf() + 30000);
     });
 
     this.alertTab = new TabsCell("alertsTab",
                                  "#alerts > .tabs",
                                  "#alerts > .panes > div",
                                  ["list", "settings", "log"]);
+
+    $('#alerts_settings_form').bind('submit', $m(this, 'onSettingsSubmit'));
+    this.alertTab.subscribe($m(this, 'onTabChanged'));
+    this.onTabChanged();
+
+    var sendAlerts = $('#alerts_settings_form [name=sendAlerts]');
+    sendAlerts.bind('click', $m(this, 'onSendAlertsClick'));
+  },
+  onSendAlertsClick: function () {
+    var sendAlerts = $('#alerts_settings_form [name=sendAlerts]');
+    _.defer(function () {
+      var show = sendAlerts.attr('checked');
+      $('#alerts_settings_guts')[show ? 'show' : 'hide']();
+    });
+  },
+  fillSettingsForm: function () {
+    if ($('#alerts_settings_form_is_clean').val() != '1')
+      return;
+
+    // TODO: loading indicator here
+    if (this.alerts.value === undefined) {
+      this.alerts.changedSlot.subscribeOnce($m(this, 'fillSettingsForm'));
+      return;
+    }
+
+    $('#alerts_settings_form_is_clean').val('0');
+
+    var settings = _.extend({}, this.alerts.value.settings);
+    delete settings.updateURI;
+
+    _.each(settings, function (value, name) {
+      var selector = '#alerts_settings_form [name=' + name + ']';
+      var jq = $(selector);
+      if (jq.attr('type') == 'checkbox') {
+        jq = $(jq.get(0));
+        if (value != '0')
+          jq.attr('checked', 'checked');
+        else
+          jq.removeAttr('checked')
+      } else
+        $(selector).val(value);
+    });
+
+    this.onSendAlertsClick();
+  },
+  onTabChanged: function () {
+    console.log("onTabChanged:", this.alertTab.value);
+    if (this.alertTab.value == 'settings') {
+      this.fillSettingsForm();
+    }
+  },
+  onSettingsSubmit: function (event) {
+    event.preventDefault();
+
+    var form = $(event.target);
+
+    var arrayForm = [];
+    var hashForm = {};
+
+    _.each(form.serializeArray(), function (pair) {
+      if (hashForm[pair.name] === undefined) {
+        hashForm[pair.name] = pair.value;
+        arrayForm.push(pair);
+      }
+    });
+
+    var stringForm = $.param(arrayForm);
+
+    $.post(this.alerts.value.settings.updateURI, stringForm);
+
+    $('#alerts_settings_form_is_clean').val('1');
+
+    this.alerts.recalculate();
+  },
+  settingsCancel: function () {
+    $('#alerts_settings_form_is_clean').val('1');
+    this.fillSettingsForm();
+
+    return false;
   },
   onEnter: function () {
   }
