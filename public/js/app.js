@@ -1423,7 +1423,7 @@ var OverviewSection = {
 
 var AlertsSection = {
   renderAlertsList: function () {
-    renderTemplate('alert_list', this.alerts.value.list);
+    renderTemplate('alert_list', [].concat(this.alerts.value.list).reverse());
     if (!this.gotEmail) {
       $('#alerts_email_setting').text(this.alerts.value.email);
       this.gotEmail = true;
