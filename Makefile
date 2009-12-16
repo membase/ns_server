@@ -12,13 +12,16 @@ MEMCACHED=/usr/local/bin/memcached
 
 TMP_DIR=./tmp
 
+TMP_VER=$(TMP_DIR)/version_num.tmp
+
 .PHONY: ebins
 
 all: ebins test
 
 dist: clean ebins
-	git describe | sed s/-/_/g > $(TMP_DIR)/version.num.tmp
-	tar --directory=.. -czf emoxi_`cat $(TMP_DIR)/version.num.tmp`.tar.gz emoxi/ebin
+	git describe | sed s/-/_/g > $(TMP_VER)
+	tar --directory=.. -czf emoxi_`cat $(TMP_VER)`.tar.gz emoxi/ebin
+	echo created emoxi_`cat $(TMP_VER)`.tar.gz
 
 ebins:
 	test -d ebin || mkdir ebin
