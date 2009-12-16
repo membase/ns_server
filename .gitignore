@@ -1,5 +1,7 @@
+tmp
 ebin
 erl_crash.dump
 test/log
+emoxi_*.tar.gz
 **.cov.html
 *~

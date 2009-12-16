@@ -16,6 +16,10 @@ TMP_DIR=./tmp
 
 all: ebins test
 
+dist: clean ebins
+	git describe | sed s/-/_/g > $(TMP_DIR)/version.num.tmp
+	tar --directory=.. -czf emoxi_`cat $(TMP_DIR)/version.num.tmp`.tar.gz emoxi/ebin
+
 ebins:
 	test -d ebin || mkdir ebin
 	erl $(EFLAGS) -make
@@ -25,10 +29,13 @@ $(TMP_DIR):
 	mkdir -p $(TMP_DIR);
 
 clean:
-	rm -f $(TMP_DIR)/*.cov.html erl_crash.dumpg
+	rm -f $(TMP_DIR)/version.num.tmp
+	rm -f $(TMP_DIR)/memcapable*
+	rm -f $(TMP_DIR)/*.cov.html
+	rm -f erl_crash.dump
 	rm -rf test/log
 	rm -rf ebin
-	rm -f $(TMP_DIR)/memcapable*
+	rm -f emoxi_*.tar.gz
 
 test: test_unit cucumber memcapable test_boot
 
