@@ -8,33 +8,36 @@
 
 -compile(export_all).
 
-main()        -> main("127.0.0.1", 11211, get_miss, 1).
-main([Story]) -> main("127.0.0.1", 11211, Story, 1);
+
+main()        -> main("127.0.0.1", 11211, get_set, small, 1).
+main([Story]) -> main("127.0.0.1", 11211, Story, small, 1);
 
 % Example command-line usage:
 %
 %  erl -pa ebin load_gen_mc main 127.0.0.1 11211 get_miss 1
 %
-main([Host, Port, Story, NConns]) ->
+main([Host, Port, OpType, Size, NConns]) ->
     main(atom_to_list(Host),
          list_to_integer(atom_to_list(Port)),
-         Story,
+         OpType,
+         Size,
          list_to_integer(atom_to_list(NConns))).
 
-main(Host, Port, Story, NConns) ->
-    {ok, FeederPid} = start_feeder(Host, Port, NConns, Story),
+main(Host, Port, OpType, Size, NConns) ->
+    {ok, FeederPid} = start_feeder(Host, Port, NConns, OpType, Size),
     {ok, ResultPid} = start_results(),
     load_gen:start(load_gen_mc, FeederPid, ResultPid).
 
 % --------------------------------------------------------
 
-start_feeder(McHost, McPort, NConns, Story) ->
-    start_feeder(McHost, McPort, NConns, Story, self()).
+start_feeder(McHost, McPort, NConns, OpType, Size) ->
+    start_feeder(McHost, McPort, NConns, OpType, Size, self()).
 
-start_feeder(McHost, McPort, NConns, Story, LoadGenPid) ->
+start_feeder(McHost, McPort, NConns, Story, Size, LoadGenPid) ->
+    Env = {Story,Size},
     FeederPid = spawn(fun () ->
                           LoadGenPid ! {request, {connect, McHost, McPort, NConns}},
-                          LoadGenPid ! {request, {work, all, Story}},
+                          LoadGenPid ! {request, {work, all, Env}},
                           LoadGenPid ! input_complete
                       end),
     {ok, FeederPid}.
@@ -131,32 +134,66 @@ story(Sock, get_miss) ->
                               #mc_entry{key = <<"not_a_real_key">>}}),
     ok;
 
-story(Sock, get_op) ->
-    story(Sock,get_op,"Akey");
+story(Sock,Args) ->
+  {Ops, EntrySize} = Args,
+  case Ops of
+    set -> story(Sock,set,generateDataSize(EntrySize));
+    get_op -> story(Sock,get_op,generateDataSize(EntrySize));
+    get_miss -> story(Sock,get_miss);
+    get_set ->
+      SelectedOp = case random:uniform(90) rem 9 of
+        0 -> set;
+        _ -> get_op
+      end,
+      story(Sock,{SelectedOp,EntrySize});
+    noop -> story(Sock,noop);
+    _ -> io:format("Unknown opertation type ~p~n",[Ops])
+  end.
 
-story(Sock, set) ->
-    story(Sock,set,"Akey");
-
-story(Sock, get_set) ->
-  Selected_key=io_lib:format("Key~p",[random:uniform(10)]),
-  case random:uniform(90) rem 9 of
-    0 -> Selected_op=set;
-    _ -> Selected_op=get_op
-  end,
-  story(Sock,Selected_op,Selected_key),
-  ok.
-
-story(Sock, set, Key) ->
-        {ok, _H, _E} = mc_client_binary:cmd(?SET, Sock, undefined,
-                           {#mc_header{},
-                            #mc_entry{key = Key, data = string:concat(Key,<<"AAA">>)}}),
+story(Sock, set, Size) ->
+  Bits = Size * 8,
+  Key = term_to_binary(io_lib:format("Key~p",[Size])),
+  {ok, _H, _E} = mc_client_binary:cmd(?SET, Sock, undefined,
+                 {#mc_header{},
+                  #mc_entry{key = Key, data = generateBits(<<16#deadbeef:32>>,Bits)}}),
    ok;
 
-story(Sock, get_op,Key) ->
-    _RES =
-        mc_client_binary:cmd(?GETK, Sock, undefined,
+story(Sock, get_op,KeySuffix) ->
+  Key = term_to_binary(io_lib:format("Key~p",[KeySuffix])),
+  ExpectedEntry = generateBits(<<16#deadbeef:32>>,KeySuffix * 8),
+  {Rc, _H, E} =
+        mc_client_binary:cmd(?GETK, Sock,undefined,
                              {#mc_header{},
                               #mc_entry{key = Key}}),
-    ok.
+  case Rc of
+    ok -> ?assertMatch(Key,E#mc_entry.key),
+          ?assertMatch(ExpectedEntry,E#mc_entry.data);
+    _ -> ok
+  end,
+  ok.
 
+generateDataSize(EntrySize) ->
+  case EntrySize of
+    small -> Range={768,1280};
+    medium -> Range={7680,12800};
+    large -> Range={768,1280};
+    xlarge -> Range={786432,1048576}
+  end,
+  generateSize(Range).
 
+generateSize({Min,Max}) ->
+  Min + random:uniform(Max - Min).
+
+generateBits(Pattern,Size) ->
+  PatternSize = size(Pattern),
+  Iters = Size div PatternSize,
+  Rem = Size rem PatternSize,
+  << (list_to_binary(lists:duplicate(Iters, Pattern)))/binary, (element(1,split_binary(Pattern,Rem)))/binary >>.
+
+sasl_test(Sock,Mech,User,Password) ->
+  {ok, _H, _E} = mc_client_binary:cmd(?CMD_SASL_AUTH, Sock, undefined,
+                                      {#mc_header{},
+                                       #mc_entry{key = Mech,
+                                       data =  <<0:8,User,0:8,Password>>
+                                      }}),
+  ok.
