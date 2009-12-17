@@ -1421,11 +1421,15 @@ var OverviewSection = {
   }
 };
 
+function checkboxValue(value) {
+  return value == "1";
+}
+
 var AlertsSection = {
   renderAlertsList: function () {
     var value = this.alerts.value;
     renderTemplate('alert_list', value.list);
-    $('#alerts_email_setting').text(value.settings.email);
+    $('#alerts_email_setting').text(checkboxValue(value.settings.sendAlerts) ? value.settings.email : 'nobody');
   },
   init: function () {
     this.active = new Cell(function (mode) {
