@@ -1448,6 +1448,9 @@ var AlertsSection = {
     renderTemplate('alert_list', value.list);
     $('#alerts_email_setting').text(checkboxValue(value.settings.sendAlerts) ? value.settings.email : 'nobody');
   },
+  changeEmail: function () {
+    this.alertTab.setValue('settings');
+  },
   init: function () {
     this.active = new Cell(function (mode) {
       return (mode == "alerts") ? true : undefined;
