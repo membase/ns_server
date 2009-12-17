@@ -611,6 +611,8 @@ var Cell = mkClass({
     }
 
     var oldValue = this.value;
+    if (this.beforeChangeHook)
+      newValue = this.beforeChangeHook(newValue);
     this.value = newValue;
 
     if (newValue === undefined) {
