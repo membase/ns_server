@@ -107,7 +107,9 @@ redirect_permanently(Path, Req, ExtraHeaders) ->
                  Body}).
 
 reply_json(Req, Body) ->
-    Req:ok({"application/json", mochijson2:encode(Body)}).
+    Req:ok({"application/json", 
+            [{"Server", "NorthScale menelaus_server %TODO gitversion%"}],
+            mochijson2:encode(Body)}).
 
 handle_pools(Req) ->
     reply_json(Req, {struct, [
@@ -165,8 +167,9 @@ handle_pool_info(Id, Req) ->
     reply_json(Req, Res).
 
 handle_pool_info_streaming(Id, Req) ->
-    HRes = Req:ok({"text/html; charset=utf-8",
-                  [{"Server", "Mochiweb-Test"}],
+    %% TODO: this shouldn't be timer driven, but rather should register a callback based on some state change in the Erlang OS
+    HTTPRes = Req:ok({"application/json; charset=utf-8",
+                  [{"Server", "NorthScale menelaus_server %TODO gitversion%"}],
                   chunked}),
     Res = case Id of
               "default" -> {struct, [{nodes, [{struct, [{ipAddress, <<"10.0.1.20">>},
@@ -209,17 +212,56 @@ handle_pool_info_streaming(Id, Req) ->
                              {stats, {struct, [{uri, <<"/buckets/4/stats?really_for_pool=2">>}]}},
                              {name, <<"Another Pool">>}]}
           end,
-    HRes:write_chunk(mochijson2:encode(Res)),
-    handle_pool_info_streaming(Id, HRes, 1000).
+    HTTPRes:write_chunk(mochijson2:encode(Res)),
+    handle_pool_info_streaming(Id, HTTPRes, 3000).
 
-handle_pool_info_streaming(Id, HRes, Wait) ->
+handle_pool_info_streaming(Id, HTTPRes, Wait) ->
     receive
     after Wait ->
-        %%Msg = io_lib:format("Chunk for id ~s\n", [Path]),
-        Msg = io_lib:format("Called with wait ~w.~n", [Wait]),
-        HRes:write_chunk(Msg)
+            Res = case Id of
+                "default" -> {struct, [{nodes, [{struct, [{ipAddress, <<"10.0.1.20">>},
+                                                    {status, <<"healthy">>},
+                                                    {ports, {struct, [{routing, 11211},
+                                                                    {caching, 11311},
+                                                                    {kvstore, 11411}]}},
+                                                    {name, <<"first_node">>},
+                                                    {fqdn, <<"first_node.in.pool.com">>}]}, {struct, [{ipAddress, <<"10.0.1.21">>},
+                                                                                                {status, <<"healthy">>},
+                                                                                                {ports, {struct, [{routing, 11211},
+                                                                                                                  {caching, 11311},
+                                                                                                                  {kvstore, 11411}]}},
+                                                                                                {uri, <<"/addresses/10.0.1.20">>},
+                                                                                                {name, <<"first_node">>},
+                                                                                                {fqdn, <<"first_node.in.pool.com">>}]}]},
+                                  {buckets, [{struct, [{uri, <<"/buckets/4">>},
+                                                      {name, <<"Excerciser Application">>}]}]},
+                                  {stats, {struct, [{uri, <<"/buckets/4/stats?really_for_pool=1">>}]}},
+                                  {name, <<"Default Pool">>}]};
+                _ -> {struct, [{nodes, [{struct, [{ipAddress, <<"10.0.1.22">>},
+                                                 {uptime, 123321},
+                                                 {status, <<"healthy">>},
+                                                 {ports, {struct, [{routing, 11211},
+                                                                    {caching, 11311},
+                                                                    {kvstore, 11411}]}},
+                                                 {uri, <<"https://first_node.in.pool.com:80/pool/Another Pool/node/first_node/">>},
+                                                 {name, <<"first_node">>},
+                                                 {fqdn, <<"first_node.in.pool.com">>}]}, {struct, [{ipAddress, <<"10.0.1.23">>},
+                                                                                               {uptime, 123123},
+                                                                                               {status, <<"healthy">>},
+                                                                                               {ports, {struct, [{routing, 11211},
+                                                                                                                  {caching, 11311},
+                                                                                                                  {kvstore, 11411}]}},
+                                                                                               {uri, <<"https://second_node.in.pool.com:80/pool/Another Pool/node/second_node/">>},
+                                                                                               {name, <<"second_node">>},
+                                                                                               {fqdn, <<"second_node.in.pool.com">>}]}]},
+                               {buckets, [{struct, [{uri, <<"/buckets/5">>},
+                                                   {name, <<"Excerciser Another">>}]}]},
+                               {stats, {struct, [{uri, <<"/buckets/4/stats?really_for_pool=2">>}]}},
+                               {name, <<"Another Pool">>}]}
+                end,
+        HTTPRes:write_chunk(mochijson2:encode(Res))
     end,
-    handle_pool_info_streaming(Id, HRes, 1000).
+    handle_pool_info_streaming(Id, HTTPRes, 10000).
 
 
 handle_bucket_info(Id, Req) ->
