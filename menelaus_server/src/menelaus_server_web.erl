@@ -399,44 +399,41 @@ get_option(Option, Options) ->
                                    {text, <<"Server node is no longer available">>}]}]).
 -ifdef(EUNIT).
 
--define(REVALERTS, lists:reverse(?INITIAL_ALERTS)).
-
 reset_alerts() ->
     call_simple_cache(delete, [alerts]).
 
 fetch_default_alerts_test() ->
     reset_alerts(),
-    ?assertEqual(?REVALERTS,
+    ?assertEqual(?INITIAL_ALERTS,
                  fetch_alerts()),
 
-    ?assertEqual(?REVALERTS,
+    ?assertEqual(?INITIAL_ALERTS,
                  fetch_alerts()).
 
 create_new_alert_test() ->
     reset_alerts(),
     create_new_alert(),
     List1 = fetch_alerts(),
-    ?assertEqual(?REVALERTS,
-                 lists:sublist(List1, length(?REVALERTS))),
+    ?assertEqual(?INITIAL_ALERTS,
+                 tl(List1)),
     ?assertMatch({struct, [{number, 4}|_]},
-                 lists:nth(4, List1)),
+                 lists:nth(1, List1)),
     ?assertEqual([], lists:nthtail(4, List1)),
 
     create_new_alert(),
     List2 = fetch_alerts(),
-    ?assertEqual(?REVALERTS,
-                 lists:sublist(List2, length(?REVALERTS))),
-    ?assertMatch({struct, [{number, 4}|_]},
-                 lists:nth(4, List2)),
+    ?assertEqual(?INITIAL_ALERTS,
+                 tl(tl(List2))),
     ?assertMatch({struct, [{number, 5}|_]},
-                 lists:nth(5, List2)),
+                 lists:nth(1, List2)),
+    ?assertMatch({struct, [{number, 4}|_]},
+                 lists:nth(2, List2)),
     ?assertEqual([], lists:nthtail(5, List2)).
 
 build_alerts_test() ->
     reset_alerts(),
-    ?assertEqual(?REVALERTS,
-                 lists:sublist(build_alerts([]),
-                               length(?REVALERTS))),
+    ?assertEqual(?INITIAL_ALERTS,
+                 tl(build_alerts([]))),
 
     reset_alerts(),
     ?assertMatch([{struct, [{number, 4} | _]}],
@@ -446,8 +443,8 @@ build_alerts_test() ->
 
 
 fetch_alerts() ->
-    lists:reverse(caching_result(alerts,
-                                 fun () -> ?INITIAL_ALERTS end)).
+    caching_result(alerts,
+                   fun () -> ?INITIAL_ALERTS end).
 
 create_new_alert() ->
     fetch_alerts(), %% side effect
@@ -462,18 +459,34 @@ create_new_alert() ->
     call_simple_cache(insert, [{alerts, NewAlerts}]),
     nil.
 
+stateful_takewhile_rec(_F, [], _State, App) ->
+    App;
+stateful_takewhile_rec(F, [H|Tail], State, App) ->
+    case F(H, State) of
+        {true, NewState} ->
+            stateful_takewhile_rec(F, Tail, NewState, [H|App]);
+        _ -> App
+    end.
+
+stateful_takewhile(F, List, State) ->
+    lists:reverse(stateful_takewhile_rec(F, List, State, [])).
+
+-define(ALERTS_LIMIT, 15).
+
 build_alerts(Params) ->
     create_new_alert(),
-    [{alerts, ReversedAlerts}] = call_simple_cache(lookup, [alerts]),
+    [{alerts, Alerts}] = call_simple_cache(lookup, [alerts]),
     LastNumber = case proplists:get_value("lastNumber", Params) of
                      undefined -> 0;
                      V -> list_to_integer(V)
                  end,
-    CutAlerts = lists:takewhile(fun ({struct, [{number, N} | _]}) ->
-                                       N > LastNumber
-                                end,
-                                ReversedAlerts),
-    lists:reverse(CutAlerts).
+    Limit = ?ALERTS_LIMIT,
+    CutAlerts = stateful_takewhile(fun ({struct, [{number, N} | _]}, Index) ->
+                                           {(N > LastNumber) andalso (Index < Limit), Index+1}
+                                   end,
+                                   Alerts,
+                                   0),
+    CutAlerts.
 
 fetch_alert_settings() ->
     caching_result(alert_settings,
@@ -489,7 +502,8 @@ fetch_alert_settings() ->
                    end).
 
 handle_alerts(Req) ->
-    reply_json(Req, {struct, [{settings, {struct, [{updateURI, <<"/alerts/settings">>}
+    reply_json(Req, {struct, [{limit, ?ALERTS_LIMIT},
+                              {settings, {struct, [{updateURI, <<"/alerts/settings">>}
                                                    | fetch_alert_settings()]}},
                               {list, build_alerts(Req:parse_qs())}]}).
 

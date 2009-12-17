@@ -1424,8 +1424,7 @@ var OverviewSection = {
 var AlertsSection = {
   renderAlertsList: function () {
     var value = this.alerts.value;
-    var list = [].concat(value.list).reverse();
-    renderTemplate('alert_list', list);
+    renderTemplate('alert_list', value.list);
     $('#alerts_email_setting').text(value.settings.email);
   },
   init: function () {
@@ -1444,10 +1443,11 @@ var AlertsSection = {
       return future.get(params, function (data) {
         if (value) {
           var newDataNumbers = _.pluck(data.list, 'number');
-          _.each(value.list.reverse(), function (oldItem) {
+          _.each(value.list, function (oldItem) {
             if (!_.include(newDataNumbers, oldItem.number))
-              data.list.splice(0, 0, oldItem);
+              data.list.push(oldItem);
           });
+          data.list = data.list.slice(0, data.limit);
         }
         return data;
       }, this.self.value);
