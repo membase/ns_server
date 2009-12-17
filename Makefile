@@ -18,7 +18,7 @@ TMP_VER=$(TMP_DIR)/version_num.tmp
 
 all: ebins test
 
-dist: clean ebins
+bdist: clean ebins
 	git describe | sed s/-/_/g > $(TMP_VER)
 	tar --directory=.. -czf emoxi_`cat $(TMP_VER)`.tar.gz emoxi/ebin
 	echo created emoxi_`cat $(TMP_VER)`.tar.gz
