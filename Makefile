@@ -13,11 +13,10 @@ clean:
 	rm -f $(TMP_VER)
 	rm -rf $(DIST_DIR)
 
-dist: clean all
+bdist: clean all
 	test -d $(TMP_DIR) || mkdir $(TMP_DIR)
 	test -d $(DIST_DIR) || mkdir $(DIST_DIR)
 	test -d $(DIST_DIR)/deps || mkdir $(DIST_DIR)/deps
-	test -d $(DIST_DIR)/deps/menelaus || mkdir $(DIST_DIR)/deps/menelaus
 	git describe | sed s/-/_/g > $(TMP_VER)
 	cp -R public $(DIST_DIR)
 	cp -R menelaus_server/ebin $(DIST_DIR)/deps/menelaus
