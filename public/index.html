@@ -140,7 +140,7 @@
     </ul>
     <div class="panes">
       <div id="alerts_list">
-        <p>Alerts are being sent to: <span id="alerts_email_setting"></span></p>
+        <p>Alerts are being sent to: <span id="alerts_email_setting"></span><a href='javascript:AlertsSection.changeEmail(),void(0);'>Change this</a></p>
         <ol id="alert_list_container">
         </ol>
         <ol id="alert_list_template" class="template">
@@ -156,7 +156,7 @@
         <h3>Alert Setting</h3>
         <input type="hidden" id="alerts_settings_form_is_clean" value="1">
         <form id="alerts_settings_form" onsubmit="javascript:return false;">
-        <p><label><input type="checkbox" name="sendAlerts"><input type="hidden" value="0" name="sendAlerts">
+        <p><label><input type="checkbox" name="sendAlerts" value="1"><input type="hidden" value="0" name="sendAlerts">
         Notify me by email with alerts</label></p>
         <div id="alerts_settings_guts" style="display:none;">
           <p><label>Email Address <input type="text" name="email"></label></p>

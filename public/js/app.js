@@ -194,9 +194,29 @@ function formatUptime(seconds, precision) {
   return rv.join(', ');
 }
 
-function formatAlertTStamp(mseconds) {
-  return String((new Date(mseconds)));
-}
+;(function () {
+  var weekDays = "Sun Mon Tue Wen Thu Fri Sat".split(' ');
+  var monthNames = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(' ');
+  function _2digits(d) {
+    d += 100;
+    return String(d).substring(1);
+  }
+
+  window.formatAlertTStamp = function formatAlertTStamp(mseconds) {
+    var date = new Date(mseconds);
+    var rv = [weekDays[date.getDay()],
+      ' ',
+      monthNames[date.getMonth()],
+      ' ',
+      date.getDate(),
+      ' ',
+      _2digits(date.getHours()), ':', _2digits(date.getMinutes()), ':', _2digits(date.getSeconds()),
+      ' ',
+      date.getFullYear()];
+
+    return rv.join('');
+  }
+})();
 
 function formatAlertType(type) {
   switch (type) {
@@ -611,6 +631,8 @@ var Cell = mkClass({
     }
 
     var oldValue = this.value;
+    if (this.beforeChangeHook)
+      newValue = this.beforeChangeHook(newValue);
     this.value = newValue;
 
     if (newValue === undefined) {
@@ -768,25 +790,40 @@ var HashFragmentCell = mkClass(Cell, {
     this.items = [];
     this.defaultId = undefined;
     this.selectedId = undefined;
-
-    this.subscribeAny($m(this, 'pushStateOnChange'));
   },
   interpretState: function (id) {
     var item = this.idToItems[id];
     if (!item)
       return;
 
-    this.selectedId = id;
     this.setValue(item.value);
   },
-  // setValue: function (id) {
-  //   var _super = $m(this, 'setValue', Cell);
-  //   console.log('calling setValue: ', id, getBacktrace());
-  //   return _super(id);
-  // },
-  pushStateOnChange: function () {
+  beforeChangeHook: function (value) {
+    if (value === undefined) {
+      var state = _.extend({}, $.bbq.getState());
+      delete state[this.paramName];
+      $.bbq.pushState(state, 2);
+
+      this.selectedId = undefined;
+      return value;
+    }
+
+    var pickedItem = _.detect(this.items, function (item) {
+      return item.value == value;
+    });
+    if (!pickedItem)
+      throw new Error("Aiiyee. Unknown value: " + value);
+
+    this.selectedId = pickedItem.id;
     this.pushState(this.selectedId);
+
+    return pickedItem.value;
   },
+  // setValue: function (value) {
+  //   var _super = $m(this, 'setValue', Cell);
+  //   console.log('calling setValue: ', value, getBacktrace());
+  //   return _super(value);
+  // },
   pushState: function (id) {
     id = String(id);
     var currentState = $.bbq.getState(this.paramName);
@@ -1421,12 +1458,18 @@ var OverviewSection = {
   }
 };
 
+function checkboxValue(value) {
+  return value == "1";
+}
+
 var AlertsSection = {
   renderAlertsList: function () {
     var value = this.alerts.value;
-    var list = [].concat(value.list).reverse();
-    renderTemplate('alert_list', list);
-    $('#alerts_email_setting').text(value.settings.email);
+    renderTemplate('alert_list', value.list);
+    $('#alerts_email_setting').text(checkboxValue(value.settings.sendAlerts) ? value.settings.email : 'nobody');
+  },
+  changeEmail: function () {
+    this.alertTab.setValue('settings');
   },
   init: function () {
     this.active = new Cell(function (mode) {
@@ -1444,10 +1487,11 @@ var AlertsSection = {
       return future.get(params, function (data) {
         if (value) {
           var newDataNumbers = _.pluck(data.list, 'number');
-          _.each(value.list.reverse(), function (oldItem) {
+          _.each(value.list, function (oldItem) {
             if (!_.include(newDataNumbers, oldItem.number))
-              data.list.splice(0, 0, oldItem);
+              data.list.push(oldItem);
           });
+          data.list = data.list.slice(0, data.limit);
         }
         return data;
       }, this.self.value);
