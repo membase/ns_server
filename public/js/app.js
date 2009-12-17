@@ -194,9 +194,29 @@ function formatUptime(seconds, precision) {
   return rv.join(', ');
 }
 
-function formatAlertTStamp(mseconds) {
-  return String((new Date(mseconds)));
-}
+;(function () {
+  var weekDays = "Sun Mon Tue Wen Thu Fri Sat".split(' ');
+  var monthNames = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(' ');
+  function _2digits(d) {
+    d += 100;
+    return String(d).substring(1);
+  }
+
+  window.formatAlertTStamp = function formatAlertTStamp(mseconds) {
+    var date = new Date(mseconds);
+    var rv = [weekDays[date.getDay()],
+      ' ',
+      monthNames[date.getMonth()],
+      ' ',
+      date.getDate(),
+      ' ',
+      _2digits(date.getHours()), ':', _2digits(date.getMinutes()), ':', _2digits(date.getSeconds()),
+      ' ',
+      date.getFullYear()];
+
+    return rv.join('');
+  }
+})();
 
 function formatAlertType(type) {
   switch (type) {
