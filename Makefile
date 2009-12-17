@@ -32,7 +32,7 @@ $(TMP_DIR):
 	mkdir -p $(TMP_DIR);
 
 clean:
-	rm -f $(TMP_DIR)/version.num.tmp
+	rm -f $(TMP_VER)
 	rm -f $(TMP_DIR)/memcapable*
 	rm -f $(TMP_DIR)/*.cov.html
 	rm -f erl_crash.dump
