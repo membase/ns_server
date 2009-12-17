@@ -29,39 +29,44 @@ stop() ->
 
 loop(Req, DocRoot) ->
     "/" ++ Path = Req:get(path),
+    PathTokens = string:tokens(Path, "/"),
     Action = case Req:get(method) of
                  Method when Method =:= 'GET'; Method =:= 'HEAD' ->
-                     case string:tokens(Path, "/") of
+                     case PathTokens of
                          [] -> {done, redirect_permanently("/index.html", Req)};
                          ["pools"] ->
-                             {need_auth, fun () -> handle_pools(Req) end};
+                             {need_auth, fun handle_pools/1};
                          ["pools", Id] ->
-                             {need_auth, fun () -> handle_pool_info(Id, Req) end};
+                             {need_auth, fun handle_pool_info/2, [Id]};
                          ["buckets", Id] ->
-                             {need_auth, fun () -> handle_bucket_info(Id, Req) end};
+                             {need_auth, fun handle_bucket_info/2, [Id]};
                          ["buckets", Id, "stats"] ->
-                             {need_auth, fun () -> handle_bucket_stats(Id, Req) end};
+                             {need_auth, fun handle_bucket_stats/2, [Id]};
                          ["alerts"] ->
-                             {need_auth, fun () -> handle_alerts(Req) end};
+                             {need_auth, fun handle_alerts/1};
                          _ ->
-                             {call, fun () -> Req:serve_file(Path, DocRoot) end}
+                             {done, Req:serve_file(Path, DocRoot)}
                      end;
                  'POST' ->
-                     case Path of
+                     case PathTokens of
+                         ["alerts", "settings"] ->
+                             {need_auth, fun handle_alerts_settings_post/1};
                          _ ->
                              {done, Req:not_found()}
                      end;
                  _ ->
                      {done, Req:respond({501, [], []})}
              end,
+    CheckAuth = fun (F, Args) ->
+                        case check_auth(extract_basic_auth(Req)) of
+                            true -> apply(F, Args ++ [Req]);
+                            _ -> Req:respond({401, [{"WWW-Authenticate", "Basic realm=\"api\""}], []})
+                        end
+                end,
     case Action of
         {done, RV} -> RV;
-        {call, F} -> F();
-        {need_auth, F} ->
-            case check_auth(extract_basic_auth(Req)) of
-                true -> F();
-                _ -> Req:respond({401, [{"WWW-Authenticate", "Basic realm=\"api\""}], []})
-            end
+        {need_auth, F} -> CheckAuth(F, []);
+        {need_auth, F, Args} -> CheckAuth(F, Args)
     end.
 
 %% Internal API
@@ -380,15 +385,18 @@ get_option(Option, Options) ->
 -define(INITIAL_ALERTS, [{struct, [{number, 3},
                                    {type, <<"info">>},
                                    {tstamp, 1259836260000},
+                                   {shortText, <<"Above Average Operations per Second">>},
                                    {text, <<"Licensing, capacity, NorthScale issues, etc.">>}]},
                          {struct, [{number, 2},
                                    {type, <<"attention">>},
                                    {tstamp, 1259836260000},
-                                   {text, <<"Server node down, with issues, etc.">>}]},
+                                   {shortText, <<"New Node Joined Pool">>},
+                                   {text, <<"A new node is now online">>}]},
                          {struct, [{number, 1},
                                    {type, <<"warning">>},
                                    {tstamp, 1259836260000},
-                                   {text, <<"Above average numbers operations, gets, sets, etc.">>}]}]).
+                                   {shortText, <<"Server Node Down">>},
+                                   {text, <<"Server node is no longer available">>}]}]).
 -ifdef(EUNIT).
 
 -define(REVALERTS, lists:reverse(?INITIAL_ALERTS)).
@@ -446,9 +454,10 @@ create_new_alert() ->
     [{alerts, OldAlerts}] = call_simple_cache(lookup, [alerts]),
     [{struct, [{number, LastNumber} | _]} | _] = OldAlerts,
     NewAlerts = [{struct, [{number, LastNumber+1},
-                           {type, <<"warning">>},
+                           {type, <<"attention">>},
                            {tstamp, java_date()},
-                           {text, <<"lorem ipsum">>}]}
+                           {shortText, <<"Lorem ipsum">>},
+                           {text, <<"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas egestas dictum iaculis.">>}]}
                  | OldAlerts],
     call_simple_cache(insert, [{alerts, NewAlerts}]),
     nil.
@@ -466,6 +475,30 @@ build_alerts(Params) ->
                                 ReversedAlerts),
     lists:reverse(CutAlerts).
 
+fetch_alert_settings() ->
+    caching_result(alert_settings,
+                   fun () ->
+                           [{email, <<"alk@tut.by">>},
+                            {sendAlerts, <<"1">>},
+                            {sendForLowSpace, <<"1">>},
+                            {sendForLowMemory, <<"1">>},
+                            {sendForNotResponding, <<"1">>},
+                            {sendForJoinsCluster, <<"1">>},
+                            {sendForOpsAboveNormal, <<"1">>},
+                            {sendForSetsAboveNormal, <<"1">>}]
+                   end).
+
 handle_alerts(Req) ->
-    reply_json(Req, {struct, [{email, <<"alk@tut.by">>},
+    reply_json(Req, {struct, [{settings, {struct, [{updateURI, <<"/alerts/settings">>}
+                                                   | fetch_alert_settings()]}},
                               {list, build_alerts(Req:parse_qs())}]}).
+
+handle_alerts_settings_post(Req) ->
+    PostArgs = Req:parse_post(),
+    call_simple_cache(insert, [{alert_settings,
+                               lists:map(fun ({K,V}) ->
+                                                 {list_to_atom(K), list_to_binary(V)}
+                                         end,
+                                         PostArgs)}]),
+    %% TODO: make it more RESTful
+    Req:respond({200, [], []}).
