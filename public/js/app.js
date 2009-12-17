@@ -770,25 +770,40 @@ var HashFragmentCell = mkClass(Cell, {
     this.items = [];
     this.defaultId = undefined;
     this.selectedId = undefined;
-
-    this.subscribeAny($m(this, 'pushStateOnChange'));
   },
   interpretState: function (id) {
     var item = this.idToItems[id];
     if (!item)
       return;
 
-    this.selectedId = id;
     this.setValue(item.value);
   },
-  // setValue: function (id) {
-  //   var _super = $m(this, 'setValue', Cell);
-  //   console.log('calling setValue: ', id, getBacktrace());
-  //   return _super(id);
-  // },
-  pushStateOnChange: function () {
+  beforeChangeHook: function (value) {
+    if (value === undefined) {
+      var state = _.extend({}, $.bbq.getState());
+      delete state[this.paramName];
+      $.bbq.pushState(state, 2);
+
+      this.selectedId = undefined;
+      return value;
+    }
+
+    var pickedItem = _.detect(this.items, function (item) {
+      return item.value == value;
+    });
+    if (!pickedItem)
+      throw new Error("Aiiyee. Unknown value: " + value);
+
+    this.selectedId = pickedItem.id;
     this.pushState(this.selectedId);
+
+    return pickedItem.value;
   },
+  // setValue: function (value) {
+  //   var _super = $m(this, 'setValue', Cell);
+  //   console.log('calling setValue: ', value, getBacktrace());
+  //   return _super(value);
+  // },
   pushState: function (id) {
     id = String(id);
     var currentState = $.bbq.getState(this.paramName);
