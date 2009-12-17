@@ -5,7 +5,8 @@ o [DONE] marks and labels on graphs (jquery sparklines seem inappropriate)
 o [DONE] alerts section implementation
 ** refresh
 ** editable email setting
-* proper tstamp formatting for alerts
+* alerts section log tab
+o [DONE] proper tstamp formatting for alerts
 * server settings implementation
 * tests via watir
 * welcome screen
@@ -22,3 +23,5 @@ o [DONE] failure to retreive stats after switch to another zoom leaves us
    don't bother ?
 
 * intelligent circuit breaker for ajax requests
+* complete API switch to camelCase by converting all parameter names
+* loading indicator for alert settings form
