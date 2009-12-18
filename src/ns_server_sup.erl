@@ -23,6 +23,6 @@ get_env_default(Var, Def) ->
 get_child_specs() ->
     [
      % TODO:  Figure out what to pass into ns_config
-     {ns_config, {ns_config, start_link, [undefined]},
-      permanent, 10, worker, [ns_config, ns_config_default]}
+     {ns_config_sup, {ns_config_sup, start_link, []},
+      permanent, 10, worker, [ns_config_sup, ns_config, ns_config_default]}
     ].
