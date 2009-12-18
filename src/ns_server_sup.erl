@@ -24,5 +24,6 @@ get_child_specs() ->
     [
      % TODO:  Figure out what to pass into ns_config
      {ns_config_sup, {ns_config_sup, start_link, []},
-      permanent, 10, worker, [ns_config_sup, ns_config, ns_config_default]}
+      permanent, infinity, supervisor,
+      [ns_config_sup, ns_config, ns_config_default]}
     ].
