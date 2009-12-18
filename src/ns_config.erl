@@ -32,7 +32,7 @@
 %
 % Original Author: Cliff Moon
 
--module(config).
+-module(ns_config).
 
 -behaviour(gen_server).
 
@@ -60,7 +60,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -ifdef(TEST).
--include("test/config_test.erl").
+-include("test/ns_config_test.erl").
 -endif.
 
 %% API
@@ -95,10 +95,10 @@ search(#config{dynamic = DL, static = SL}, Key) ->
 %% gen_server callbacks
 
 init(undefined) -> % Useful for unit-testing.
-    {ok, #config{static = [config_default:default()]}};
+    {ok, #config{static = [ns_config_default:default()]}};
 
 init({config, DynamicKVList}) -> % Useful for unit-testing.
-    {ok, #config{static = [config_default:default()],
+    {ok, #config{static = [ns_config_default:default()],
                  dynamic = [DynamicKVList]}};
 
 init({path, ConfigPath, DirPath}) ->
@@ -131,7 +131,7 @@ load_config(ConfigPath) ->
     load_config(ConfigPath, undefined).
 
 load_config(ConfigPath, DirPath) ->
-    DefaultConfig = config_default:default(),
+    DefaultConfig = ns_config_default:default(),
     % Static config file.
     case load_file(txt, ConfigPath) of
         {ok, S} ->
@@ -187,7 +187,7 @@ pick_node_and_merge(Local, Nodes) ->
     end.
 
 merge_configs(Remote, Local) ->
-    merge_configs(config_default:mergable(),
+    merge_configs(ns_config_default:mergable(),
                   Remote, Local, []).
 
 merge_configs(Mergable, Remote, Local) ->

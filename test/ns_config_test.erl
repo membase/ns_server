@@ -202,7 +202,7 @@ test_load_config() ->
     ok = file:write(F, <<"{x,1}.">>),
     ok = file:close(F),
     R = load_config(CP, test_dir()),
-    E = #config{static = [[{x,1}], config_default:default()]},
+    E = #config{static = [[{x,1}], ns_config_default:default()]},
     ?assertEqual({ok, E}, R),
     ok.
 
@@ -212,7 +212,7 @@ test_save_config() ->
     ok = file:write(F, <<"{x,1}.">>),
     ok = file:close(F),
     R = load_config(CP, test_dir()),
-    E = #config{static = [[{x,1}], config_default:default()]},
+    E = #config{static = [[{x,1}], ns_config_default:default()]},
     ?assertMatch({ok, E}, R),
     X = E#config{dynamic = [[{x,2},{y,3}]]},
     ?assertMatch(ok, save_config(X, test_dir())),

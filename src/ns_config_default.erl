@@ -1,4 +1,4 @@
--module(config_default).
+-module(ns_config_default).
 
 -export([default/0, mergable/0]).
 
