@@ -2,16 +2,21 @@ TMP_DIR=./tmp
 TMP_VER=$(TMP_DIR)/version_num.tmp
 DIST_DIR=$(TMP_DIR)/menelaus
 
-all: menelaus_server
+all: deps
+	(cd src;$(MAKE))
 
-menelaus_server:
-	(cd menelaus_server; $(MAKE))
+deps:
+	$(MAKE) -C deps/mochiweb-src
 
 clean:
-	(cd menelaus_server; $(MAKE) clean)
+	$(MAKE) -C src clean
+	$(MAKE) -C deps/mochiweb-src clean
 	rm -f menelaus_*.tar.gz
 	rm -f $(TMP_VER)
 	rm -rf $(DIST_DIR)
+
+test: all
+	erl -noshell -pa ./ebin ./deps/*/ebin -boot start_sasl -s menelaus_server_web test -s init stop
 
 bdist: clean all
 	test -d $(TMP_DIR) || mkdir $(TMP_DIR)
@@ -24,4 +29,4 @@ bdist: clean all
 	tar --directory=$(TMP_DIR) -czf menelaus_`cat $(TMP_VER)`.tar.gz menelaus/deps menelaus/public
 	echo created menelaus_`cat $(TMP_VER)`.tar.gz
 
-.PHONY: menelaus_server
+.PHONY: deps bdist clean

@@ -2,3 +2,7 @@ tmp
 **.tmp
 menelaus_*.tar.gz
 /TAGS
+doc/*.html
+deps/mochiweb-src/ebin/*
+*.beam
+ebin/*.app
