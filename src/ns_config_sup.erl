@@ -17,5 +17,8 @@ init([]) ->
            % gen_event for the config events
            {ns_config_events,
             {gen_event, start_link, [{local, ns_config_events}]},
-            permanent, 10, worker, []}
+            permanent, 10, worker, []},
+           {ns_config_log,
+            {ns_config_log, start, []},
+            transient, 10, worker, []}
           ]}}.
