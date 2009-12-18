@@ -3,7 +3,7 @@
 
 %% @doc TEMPLATE.
 
--module(menelaus_server).
+-module(menelaus).
 -author('Northscale <info@northscale.com>').
 -export([start/0, stop/0]).
 
@@ -16,15 +16,15 @@ ensure_started(App) ->
     end.
         
 %% @spec start() -> ok
-%% @doc Start the menelaus_server server.
+%% @doc Start the menelaus server.
 start() ->
-    menelaus_server_deps:ensure(),
+    menelaus_deps:ensure(),
     ensure_started(crypto),
-    application:start(menelaus_server).
+    application:start(menelaus).
 
 %% @spec stop() -> ok
-%% @doc Stop the menelaus_server server.
+%% @doc Stop the menelaus server.
 stop() ->
-    Res = application:stop(menelaus_server),
+    Res = application:stop(menelaus),
     application:stop(crypto),
     Res.

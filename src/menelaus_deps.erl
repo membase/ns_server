@@ -5,7 +5,7 @@
 %%      loading path, and locate resources relative
 %%      to this application's path.
 
--module(menelaus_server_deps).
+-module(menelaus_deps).
 -author('Northscale <info@northscale.com>').
 
 -export([ensure/0, ensure/1]).

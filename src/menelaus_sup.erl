@@ -1,9 +1,9 @@
 %% @author Northscale <info@northscale.com>
 %% @copyright 2009 Northscale.
 
-%% @doc Supervisor for the menelaus_server application.
+%% @doc Supervisor for the menelaus application.
 
--module(menelaus_server_sup).
+-module(menelaus_sup).
 -author('Northscale <info@northscale.com>').
 
 -behaviour(supervisor).
@@ -46,8 +46,8 @@ init([]) ->
                  {ip, Ip},
                  {port, 8080},
                  {docroot, "priv/public"}],
-    Web = {menelaus_server_web,
-           {menelaus_server_web, start, [WebConfig]},
+    Web = {menelaus_web,
+           {menelaus_web, start, [WebConfig]},
            permanent, 5000, worker, dynamic},
 
     SimpleCache = {simple_cache,

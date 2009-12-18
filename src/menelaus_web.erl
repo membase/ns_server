@@ -1,9 +1,9 @@
 %% @author Northscale <info@northscale.com>
 %% @copyright 2009 Northscale.
 
-%% @doc Web server for menelaus_server.
+%% @doc Web server for menelaus.
 
--module(menelaus_server_web).
+-module(menelaus_web).
 -author('Northscale <info@northscale.com>').
 
 -include_lib("eunit/include/eunit.hrl").
@@ -108,7 +108,7 @@ redirect_permanently(Path, Req, ExtraHeaders) ->
 
 reply_json(Req, Body) ->
     Req:ok({"application/json", 
-            [{"Server", "NorthScale menelaus_server %TODO gitversion%"}],
+            [{"Server", "NorthScale menelaus %TODO gitversion%"}],
             mochijson2:encode(Body)}).
 
 handle_pools(Req) ->
@@ -170,7 +170,7 @@ handle_pool_info(Id, Req) ->
 handle_pool_info_streaming(Id, Req) ->
     %% TODO: this shouldn't be timer driven, but rather should register a callback based on some state change in the Erlang OS
     HTTPRes = Req:ok({"application/json; charset=utf-8",
-                  [{"Server", "NorthScale menelaus_server %TODO gitversion%"}],
+                  [{"Server", "NorthScale menelaus %TODO gitversion%"}],
                   chunked}),
     Res = case Id of
               "default" -> {struct, [{nodes, [{struct, [{ipAddress, <<"10.0.1.20">>},

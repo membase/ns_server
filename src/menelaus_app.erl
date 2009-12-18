@@ -1,9 +1,9 @@
 %% @author Northscale <info@northscale.com>
 %% @copyright 2009 Northscale.
 
-%% @doc Callbacks for the menelaus_server application.
+%% @doc Callbacks for the menelaus application.
 
--module(menelaus_server_app).
+-module(menelaus_app).
 -author('Northscale <info@northscale.com>').
 
 -behaviour(application).
@@ -11,12 +11,12 @@
 
 
 %% @spec start(_Type, _StartArgs) -> ServerRet
-%% @doc application start callback for menelaus_server.
+%% @doc application start callback for menelaus.
 start(_Type, _StartArgs) ->
-    menelaus_server_deps:ensure(),
-    menelaus_server_sup:start_link().
+    menelaus_deps:ensure(),
+    menelaus_sup:start_link().
 
 %% @spec stop(_State) -> ServerRet
-%% @doc application stop callback for menelaus_server.
+%% @doc application stop callback for menelaus.
 stop(_State) ->
     ok.

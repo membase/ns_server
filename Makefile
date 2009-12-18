@@ -16,7 +16,7 @@ clean:
 	rm -rf $(DIST_DIR)
 
 test: all
-	erl -noshell -pa ./ebin ./deps/*/ebin -boot start_sasl -s menelaus_server_web test -s init stop
+	erl -noshell -pa ./ebin ./deps/*/ebin -boot start_sasl -s menelaus_web test -s init stop
 
 bdist: clean all
 	test -d $(TMP_DIR) || mkdir $(TMP_DIR)
