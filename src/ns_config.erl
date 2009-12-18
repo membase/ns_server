@@ -123,6 +123,7 @@ handle_call(get, _From, State) -> {reply, State, State};
 handle_call({set, KVList}, _From, State) ->
     State2 = merge_configs(#config{dynamic = [KVList]}, State),
     save_config(State2),
+    announce_config_changes(KVList),
     {reply, ok, State2}.
 
 %%--------------------------------------------------------------------
@@ -163,6 +164,10 @@ save_config(#config{dynamic = D}, DirPath) ->
     ok = filelib:ensure_dir(C),
     % Only saving the dynamic config parts.
     ok = save_file(bin, C, D).
+
+announce_config_changes(KVList) ->
+    lists:foreach(fun (KV) -> gen_event:notify(ns_config_events, KV) end,
+                  KVList).
 
 load_file(txt, ConfigPath) -> file:consult(ConfigPath);
 

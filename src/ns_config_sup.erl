@@ -13,6 +13,9 @@ init([]) ->
           [
            % current state
            {ns_config, {ns_config, start_link, [undefined]},
-            permanent, 10, worker, [ns_config, ns_config_default]}
-           % todo: event thing
+            permanent, 10, worker, [ns_config, ns_config_default]},
+           % gen_event for the config events
+           {ns_config_events,
+            {gen_event, start_link, [{local, ns_config_events}]},
+            permanent, 10, worker, []}
           ]}}.
