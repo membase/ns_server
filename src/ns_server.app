@@ -1,10 +1,10 @@
-{application, ns_server_app,
+{application, ns_server,
  [{description, "The NorthScale smart server."},
   {vsn, "1.0"},
-  {modules, [ns_server_app]},
-  {registered, [ns_server_app]},
+  {modules, [ns_server]},
+  {registered, [ns_server]},
   {applications, [kernel, stdlib]},
-  {mod, {ns_server_app, []}},
+  {mod, {ns_server, []}},
 
   % To  prevent  a  supervisor  from getting into an infinite loop of child
   % process terminations and  restarts,  a  maximum  restart  frequency  is

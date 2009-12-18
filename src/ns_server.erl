@@ -1,4 +1,4 @@
--module(ns_server_app).
+-module(ns_server).
 
 -behavior(application).
 

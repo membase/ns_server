@@ -11,7 +11,7 @@ all: ebins
 ebins:
 	test -d ebin || mkdir ebin
 	erl $(EFLAGS) -make
-	cp src/ns_server_app.app ebin
+	cp src/*.app ebin
 
 clean:
 	rm -f cov.html erl_crash.dump
