@@ -45,7 +45,7 @@ init([]) ->
     WebConfig = [
                  {ip, Ip},
                  {port, 8080},
-                 {docroot, "../public"}],
+                 {docroot, "priv/public"}],
     Web = {menelaus_server_web,
            {menelaus_server_web, start, [WebConfig]},
            permanent, 5000, worker, dynamic},
