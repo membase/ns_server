@@ -16,20 +16,20 @@ setup_handler() ->
     gen_event:add_handler(ns_config_events, ns_config_log, ignored).
 
 init(ignored) ->
-    {ok, #state{}}.
+    {ok, #state{}, hibernate}.
 
 handle_event({K,V}, State) ->
     error_logger:info_msg("Received a config change: ~p -> ~p~n", [K, V]),
-    {ok, State}.
+    {ok, State, hibernate}.
 
 handle_call(Request, State) ->
     error_logger:info_msg("handle_call(~p, ~p)~n", [Request, State]),
     Reply = ok,
-    {ok, Reply, State}.
+    {ok, Reply, State, hibernate}.
 
 handle_info(Info, State) ->
     error_logger:info_msg("handle_info(~p, ~p)~n", [Info, State]),
-    {ok, State}.
+    {ok, State, hibernate}.
 
 terminate(_Reason, _State) ->
     ok.
