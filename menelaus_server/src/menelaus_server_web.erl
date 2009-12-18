@@ -38,7 +38,7 @@ loop(Req, DocRoot) ->
                              {need_auth, fun handle_pools/1};
                          ["pools", Id] ->
                              {need_auth, fun handle_pool_info/2, [Id]};
-                         ["pools-streaming", Id] ->
+                         ["poolsStreaming", Id] ->
                              {need_auth, fun handle_pool_info_streaming/2, [Id]};
                          ["buckets", Id] ->
                              {need_auth, fun handle_bucket_info/2, [Id]};
@@ -116,7 +116,8 @@ handle_pools(Req) ->
                               %% TODO: pull this from git describe
                               {implementationVersion, <<"comes_from_git_describe">>},
                               {pools, [{struct, [{name, <<"default">>},
-                                                 {uri, <<"/pools/default">>}]},
+                                                 {uri, <<"/pools/default">>},
+                                                 {streamingUri, <<"/poolsStreaming/default">>}]},
                                        %% only one pool at first release, this 
                                        %% is just for prototyping
                                        {struct, [{name, <<"Another Pool">>},
