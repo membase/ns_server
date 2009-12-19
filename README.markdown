@@ -3,7 +3,7 @@
 This application represents the top of the hierarchy of all memcached
 smart services.
 
-![ns_server](http://img.skitch.com/20091218-cdcadutaymq3mwkrbq9dd9aqmu.png)
+![ns_server](http://img.skitch.com/20091219-87hsq67tmxkh7tr1uggb6bpdys.png)
 
 ## Starting
 
