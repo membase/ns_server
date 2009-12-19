@@ -21,5 +21,7 @@
   % restarts occur within MaxT seconds, the supervisor terminates all child
   % processes and then itself.
 
-  {env, [{max_r, 3}, {max_t, 10}]}
+  {env, [{max_r, 3},
+         {max_t, 10},
+         {ns_server_config, "priv/config"}]}
  ]}.

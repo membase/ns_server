@@ -1,0 +1,7 @@
+{directory, "/tmp/"}.
+{port_servers,
+ [
+  {memcached, "./memcached",
+   ["-E", "engines/default_engine.so", "-p", "11212"]
+  }
+ ]}.
