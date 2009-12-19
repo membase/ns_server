@@ -41,7 +41,8 @@ handle_cast(Something, State) ->
     error_logger:info_msg("Unexpected cast: ~p~n", [Something]),
     {noreply, State}.
 
-terminate({port_terminated, _Reason}, _State) ->
+terminate({port_terminated, Reason}, State) ->
+    error_logger:info_msg("Port has terminated ~p:  ~p~n", [State#state.name, Reason]),
     ok;
 terminate(Reason, State) ->
     error_logger:info_msg("Terminating ~p:  ~p~n", [State#state.name, Reason]),
