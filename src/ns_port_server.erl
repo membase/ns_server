@@ -46,7 +46,7 @@ terminate({port_terminated, Reason}, State) ->
     ok;
 terminate(Reason, State) ->
     error_logger:info_msg("Terminating ~p:  ~p~n", [State#state.name, Reason]),
-    port_close(State#state.port).
+    true = port_close(State#state.port).
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
