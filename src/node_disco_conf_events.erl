@@ -14,18 +14,18 @@ start_link() ->
     error.
 
 init(DiscoPid) ->
-    {ok, #state{disco=DiscoPid}}.
+    {ok, #state{disco=DiscoPid}, hibernate}.
 
 handle_event(Event, State) ->
     error_logger:info_msg("Config change:  ~p~n", [Event]),
-    {ok, State}.
+    {ok, State, hibernate}.
 
 handle_call(_Request, State) ->
     Reply = ok,
-    {ok, Reply, State}.
+    {ok, Reply, State, hibernate}.
 
 handle_info(_Info, State) ->
-    {ok, State}.
+    {ok, State, hibernate}.
 
 terminate(_Reason, _State) ->
     ok.
