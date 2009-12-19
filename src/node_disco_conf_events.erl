@@ -16,8 +16,10 @@ start_link() ->
 init(DiscoPid) ->
     {ok, #state{disco=DiscoPid}, hibernate}.
 
-handle_event(Event, State) ->
-    error_logger:info_msg("Config change:  ~p~n", [Event]),
+handle_event({stored_nodes, V}, State) ->
+    error_logger:info_msg("stored_nodes is now ~p~n", [V]),
+    {ok, State, hibernate};
+handle_event(_E, State) ->
     {ok, State, hibernate}.
 
 handle_call(_Request, State) ->
