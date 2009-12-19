@@ -16,6 +16,7 @@ init([]) ->
            {ns_port_init,
             {ns_port_init, start, []},
             transient, 10, worker, []}
+           | dynamic_children()
           ]}}.
 
 get_env_default(Var, Def) ->
@@ -24,14 +25,27 @@ get_env_default(Var, Def) ->
         undefined -> Def
     end.
 
+dynamic_children() ->
+    {value, PortServers} = ns_config:search(ns_config:get(), port_servers),
+    error_logger:info_msg("Initializing ports: ~p~n", [PortServers]),
+    lists:map(fun create_child_spec/1, PortServers).
+
 launch_port(Name, Cmd) ->
     launch_port(Name, Cmd, []).
 
 launch_port(Name, Cmd, Args) when is_atom(Name); is_list(Cmd); is_list(Args) ->
     error_logger:info_msg("Supervising ~p~n", [Cmd]),
-    supervisor:start_child(?MODULE, {Name,
-                                     {ns_port_server, start_link, [Name, Cmd, Args]},
-                                     permanent, 10, worker, [ns_port_server]}).
+    {ok, C} = supervisor:start_child(?MODULE,
+                                     create_child_spec({Name, Cmd, Args})),
+    error_logger:info_msg("New child is ~p~n", [C]),
+    {ok, C}.
+
+create_child_spec({Name, Cmd, Args}) ->
+    {Name,
+     {ns_port_server, start_link,
+      [Name, Cmd, Args]},
+     permanent, 10, worker,
+     [ns_port_server]}.
 
 terminate_port(Name) ->
     error_logger:info_msg("Unsupervising ~p~n", [Name]),

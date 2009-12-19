@@ -17,9 +17,6 @@ start() ->
                     end)}.
 
 init(ignored) ->
-    {value, PortServers} = ns_config:search(ns_config:get(), port_servers),
-    error_logger:info_msg("Initializing ports: ~p~n", [PortServers]),
-    lists:foreach(fun launch_port/1, PortServers),
     {ok, #state{}, hibernate}.
 
 handle_event({port_servers, List}, State) ->
@@ -33,17 +30,13 @@ handle_call(_Request, State) ->
     Reply = ok,
     {ok, Reply, State, hibernate}.
 
-handle_info(_Info, State) ->
+handle_info(Info, State) ->
+    error_logger:info_msg("Unhandled port init message: ~p...~n", [Info]),
     {ok, State, hibernate}.
 
-terminate(_Reason, _State) ->
+terminate(Reason, _State) ->
+    error_logger:info_msg("ns_port_init terminating: ~p...~n", [Reason]),
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
-
-
-launch_port({Name, Path, Args}) ->
-    error_logger:info_msg("   Starting one port:  ~p ~p ~p~n",
-                          [Name, Path, Args]),
-    ns_port_sup:launch_port(Name, Path, Args).
