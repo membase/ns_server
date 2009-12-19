@@ -22,5 +22,8 @@ init([]) ->
             permanent, 10, worker, []},
            {ns_config_log,
             {ns_config_log, start, []},
-            transient, 10, worker, []}
+            transient, 10, worker, []},
+           {ns_node_disco,
+            {ns_node_disco, start_link, []},
+            permanent, 10, worker, []}
           ]}}.
