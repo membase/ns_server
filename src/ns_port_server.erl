@@ -18,9 +18,14 @@ start_link(Name, Cmd, Args) ->
     gen_server:start_link({local, Name}, ?MODULE, {Name, Cmd, Args}, []).
 
 init({Name, Cmd, Args}) ->
-    error_logger:info_msg("Starting ~p with ~p~n", [Cmd, Args]),
+    {ok, Pwd} = file:get_cwd(),
+    PrivDir = filename:join(Pwd, "priv"),
+    FullPath = filename:join(PrivDir, Cmd),
+    error_logger:info_msg("Starting ~p in ~p with ~p~n", [FullPath, PrivDir, Args]),
     process_flag(trap_exit, true),
-    Port = open_port({spawn_executable, Cmd}, [{args, Args}]),
+    Port = open_port({spawn_executable, FullPath},
+                     [{args, Args},
+                     {cd, PrivDir}]),
     {ok, #state{port = Port, name = Name}}.
 
 handle_info({'EXIT', _Port, Reason}, State) ->
