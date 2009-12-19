@@ -140,3 +140,20 @@ cucumber() ->
     io:format("total stats: ~p~n", [TotalStats]),
     {ok, TotalStats}.
 
+% Example:
+%
+%   repeat(mc_client_binary, test).
+%
+%   erl -pa ebin -s mc_test repeat mc_client_binary test
+%
+repeat([Mod, Fun])     -> repeat(Mod, Fun).
+repeat(Mod, Fun)       -> repeat(Mod, Fun, []).
+repeat(Mod, Fun, Args) -> repeat(Mod, Fun, Args, 1).
+repeat(Mod, Fun, Args, N) ->
+    case N rem 1000 of
+        0 -> io:format("repeat ~p~n", [N]);
+        _ -> ok
+    end,
+    erlang:apply(Mod, Fun, Args),
+    repeat(Mod, Fun, Args, N + 1).
+
