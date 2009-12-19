@@ -54,7 +54,7 @@ main() ->
 % To run tests:
 %   erl -pa ebin -noshell -s mc_test test -s init stop
 %
-tests_mc() ->
+tests(mc) ->
     [mc_ascii,
      mc_client_ascii,
      mc_client_ascii_ac,
@@ -64,14 +64,17 @@ tests_mc() ->
      mc_bucket,
      mc_pool,
      mc_downstream
-    ].
+    ];
 
-tests_emoxi() ->
+tests(emoxi) ->
     [util,
      misc,
      config,
-     cring,
-     bootstrap,
+     cring
+    ];
+
+tests(emoxi_dyn) ->
+    [bootstrap,
      vclock,
      stream,
      dmerkle,
@@ -82,9 +85,12 @@ tests_emoxi() ->
      storage_manager,
      sync_manager].
 
-test() ->
-    {test_list(tests_mc()),
-     test_list(tests_emoxi())}.
+% For cmd-line...
+
+test() -> test([mc, emoxi, emoxi_dyn]).
+
+test([])         -> [];
+test([X | Rest]) -> [ test_list(tests(X)) | test(Rest) ].
 
 test_cover(Tests) ->
     cover:start(),
