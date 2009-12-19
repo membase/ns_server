@@ -39,17 +39,18 @@ code_change(_OldVsn, State, _Extra) ->
 %
 
 begin_disco() ->
-    init_known_servers(ns_config:search(ns_config:get(), stored_nodes)),
+    _NL = init_known_servers(ns_config:search(ns_config:get(), stored_nodes)),
+    update_node_list(),
     ok = net_kernel:monitor_nodes(true),
     gen_event:add_handler(ns_config_events, ?MODULE, self()),
     loop().
 
 init_known_servers({value, NodeList}) ->
     error_logger:info_msg("Initializing with ~p~n", [NodeList]),
-    ok;
+    lists:filter(fun(N) -> net_adm:ping(N) == pong end, NodeList);
 init_known_servers(false) ->
     error_logger:info_msg("Found no initial node list~n", []),
-    ok.
+    [].
 
 update_node_list() ->
     ns_config:set(stored_nodes, lists:sort([node() | nodes()])).
