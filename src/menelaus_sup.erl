@@ -42,10 +42,9 @@ upgrade() ->
 %% @doc supervisor callback.
 init([]) ->
     Ip = case os:getenv("MOCHIWEB_IP") of false -> "0.0.0.0"; Any -> Any end,   
-    WebConfig = [
-                 {ip, Ip},
+    WebConfig = [{ip, Ip},
                  {port, 8080},
-                 {docroot, "priv/public"}],
+                 {docroot, menelaus_deps:local_path(["priv","public"], ?MODULE)}],
     Web = {menelaus_web,
            {menelaus_web, start, [WebConfig]},
            permanent, 5000, worker, dynamic},
