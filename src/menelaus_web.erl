@@ -214,6 +214,9 @@ handle_pool_info_streaming(Id, Req) ->
                              {name, <<"Another Pool">>}]}
           end,
     HTTPRes:write_chunk(mochijson2:encode(Res)),
+    %% TODO: resolve why mochiweb doesn't support zero chunk... this
+    %%       indicates the end of a response for now
+    HTTPRes:write_chunk("\n\n\n\n"),
     handle_pool_info_streaming(Id, HTTPRes, 3000).
 
 handle_pool_info_streaming(Id, HTTPRes, Wait) ->
@@ -260,7 +263,10 @@ handle_pool_info_streaming(Id, HTTPRes, Wait) ->
                                {stats, {struct, [{uri, <<"/buckets/4/stats?really_for_pool=2">>}]}},
                                {name, <<"Another Pool">>}]}
                 end,
-        HTTPRes:write_chunk(mochijson2:encode(Res))
+        HTTPRes:write_chunk(mochijson2:encode(Res)),
+        %% TODO: resolve why mochiweb doesn't support zero chunk... this
+        %%       indicates the end of a response for now
+        HTTPRes:write_chunk("\n\n\n\n")
     end,
     handle_pool_info_streaming(Id, HTTPRes, 10000).
 
