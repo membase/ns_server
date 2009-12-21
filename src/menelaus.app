@@ -9,7 +9,11 @@
     menelaus_deps,
     simple_cache
   ]},
-  {registered, []},
+  {registered, [
+    menelaus_sup,
+    menelaus_web,
+    simple_cache
+  ]},
   {mod, {menelaus_app, []}},
   {env, []},
   {applications, [kernel, stdlib, crypto]}]}.
