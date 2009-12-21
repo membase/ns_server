@@ -29,5 +29,6 @@ default_data_directory() ->
     "/tmp/data".
 
 mergable() ->
-    [n, r, w, q, storage_mod, blocksize, buffered_writes].
+    [n, r, w, q, storage_mod, blocksize, buffered_writes,
+     stored_nodes].
 
