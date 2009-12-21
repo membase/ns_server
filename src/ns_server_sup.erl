@@ -30,5 +30,7 @@ get_child_specs() ->
       [ns_config_sup, ns_config, ns_config_default]},
      {ns_port_sup, {ns_port_sup, start_link, []},
       permanent, infinity, supervisor,
-      [ns_port_sup, ns_port_server]}
+      [ns_port_sup, ns_port_server]},
+      {menelaus, {menelaus_app, start_subapp, []},
+       permanent, infinity, supervisor, []}
     ].

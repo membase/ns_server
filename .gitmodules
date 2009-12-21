@@ -1,0 +1,3 @@
+[submodule "deps/Menelaus"]
+	path = deps/Menelaus
+	url = git@github.com:northscale/Menelaus.git

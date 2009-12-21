@@ -19,6 +19,7 @@
                 ns_config,
                 ns_config_sup,
                 ns_config_events]},
+  {included_applications, [menelaus]},
   {applications, [kernel, stdlib]},
   {mod, {ns_server, []}},
 
