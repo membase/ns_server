@@ -1,8 +1,9 @@
-tmp
 **.tmp
-menelaus_*.tar.gz
-/TAGS
-doc/*.html
-deps/mochiweb-src/ebin/*
 *.beam
+/TAGS
+/erlang-out
+deps/mochiweb-src/ebin/*
+doc/*.html
 ebin/*.app
+menelaus_*.tar.gz
+tmp
