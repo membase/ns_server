@@ -1,7 +1,7 @@
 -module(ns_port_server).
 -behavior(gen_server).
 
--export([start_link/3]).
+-export([start_link/4]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -14,18 +14,19 @@
 %% Server state
 -record(state, {port, name}).
 
-start_link(Name, Cmd, Args) ->
-    gen_server:start_link({local, Name}, ?MODULE, {Name, Cmd, Args}, []).
+start_link(Name, Cmd, Args, Opts) ->
+    gen_server:start_link({local, Name}, ?MODULE, {Name, Cmd, Args, Opts}, []).
 
-init({Name, Cmd, Args}) ->
+init({Name, Cmd, Args, Opts}) ->
     {ok, Pwd} = file:get_cwd(),
     PrivDir = filename:join(Pwd, "priv"),
     FullPath = filename:join(PrivDir, Cmd),
-    error_logger:info_msg("Starting ~p in ~p with ~p~n", [FullPath, PrivDir, Args]),
+    error_logger:info_msg("Starting ~p in ~p with ~p / ~p~n",
+                          [FullPath, PrivDir, Args, Opts]),
     process_flag(trap_exit, true),
     Port = open_port({spawn_executable, FullPath},
                      [{args, Args},
-                     {cd, PrivDir}]),
+                      {cd, PrivDir}] ++ Opts),
     {ok, #state{port = Port, name = Name}}.
 
 handle_info({'EXIT', _Port, Reason}, State) ->

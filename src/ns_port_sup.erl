@@ -40,10 +40,10 @@ launch_port(Name, Cmd, Args) when is_atom(Name); is_list(Cmd); is_list(Args) ->
     error_logger:info_msg("New child is ~p~n", [C]),
     {ok, C}.
 
-create_child_spec({Name, Cmd, Args}) ->
+create_child_spec({Name, Cmd, Args, Opts}) ->
     {Name,
      {ns_port_server, start_link,
-      [Name, Cmd, Args]},
+      [Name, Cmd, Args, Opts]},
      permanent, 10, worker,
      [ns_port_server]}.
 
