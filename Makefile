@@ -19,9 +19,7 @@ test: all
 	erl -noshell -pa ./ebin ./deps/*/ebin -boot start_sasl -s menelaus_web test -s init stop
 
 bdist: clean all
-	test -d $(TMP_DIR) || mkdir $(TMP_DIR)
-	test -d $(DIST_DIR) || mkdir $(DIST_DIR)
-	test -d $(DIST_DIR)/deps || mkdir $(DIST_DIR)/deps
+	test -d $(DIST_DIR)/deps/menelaus/ebin || mkdir -p $(DIST_DIR)/deps/menelaus/ebin
 	git describe | sed s/-/_/g > $(TMP_VER)
 	cp -R priv/public $(DIST_DIR)
 	cp -R ebin $(DIST_DIR)/deps/menelaus
