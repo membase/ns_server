@@ -1678,3 +1678,54 @@ $(function () {
     mydetails.toggleClass('opened', !opened);
   });
 });
+
+var PageModel = {
+  chooseSingle: function (arg, predicate) {
+    if (!_.isArray(arg)) {
+      var key = this.chooseSingle(_.keys(arg), predicate);
+      return arg[key];
+    }
+    var passing = _.select(arg, function (id) {
+      return predicate(id);
+    });
+    if (passing.length != 1)
+      throw new Error("Invalid number of predicate-passing of items: " + passing.length);
+    return passing[0];
+  },
+  chooseVisible: function (arg) {
+    return this.chooseSingle(arg, function (id) {
+      return $($i(id)).css('display') != 'none';
+    });
+  },
+  chooseSelected: function (arg) {
+    return this.chooseSingle(arg, function (id) {
+      return $($i(id)).hasClass('selected');
+    });
+  },
+  activeSection: function () {
+    return this.chooseVisible(['overview', 'alerts', 'settings']);
+  },
+  activeGraphZoom: function () {
+    return this.chooseSelected({
+      'overview_graph_zoom_real_time': 'real_time',
+      'overview_graph_zoom_one_hr' : 'one_hr',
+      'overview_graph_zoom_day': 'day'
+    });
+  },
+  activeKeysZoom: function () {
+    return this.chooseSelected({
+      'overview_keys_zoom_real_time': 'real_time',
+      'overview_keys_zoom_one_hr' : 'one_hr',
+      'overview_keys_zoom_day': 'day'
+    });
+  },
+  activeStatsTarget: function () {
+    var cell = CurrentStatTargetHandler.currentStatTargetCell;
+    if (!cell)
+      return null;
+    var value = cell.value;
+    if (!cell)
+      return null;
+    return [value.name, value.stats.uri];
+  }
+};
