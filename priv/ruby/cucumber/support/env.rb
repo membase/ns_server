@@ -22,7 +22,7 @@ class Page
     remote_method ||= ("a"+local_method.to_s).camelize[1..-1]
     class_eval <<HERE
 def #{local_method}
-  @b.execute_script("return PageModel.#{remote_method}()")
+  @b.execute_script("return TestingSupervisor.#{remote_method}()")
 end
 HERE
   end
