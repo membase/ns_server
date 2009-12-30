@@ -106,6 +106,7 @@ init({path, ConfigPath, DirPath}) ->
     case load_config(ConfigPath, DirPath, DefaultConfig) of
         {ok, Config} ->
             % TODO: Should save the merged dynamic file config.
+            % TODO: Should let node_disco do picking and merging?
             {ok, pick_node_and_merge(Config, nodes([visible]))};
         Error ->
             {stop, Error}
