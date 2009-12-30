@@ -133,6 +133,9 @@ load_config(ConfigPath) ->
 
 load_config(ConfigPath, DirPath) ->
     DefaultConfig = ns_config_default:default(),
+    load_config(ConfigPath, DirPath, DefaultConfig).
+
+load_config(ConfigPath, DirPath, DefaultConfig) ->
     % Static config file.
     case load_file(txt, ConfigPath) of
         {ok, S} ->
@@ -221,5 +224,5 @@ read_includes([{include, Path} | Terms], Acc) ->
     Error           -> Error
   end;
 read_includes([X | Rest], Acc) -> read_includes(Rest, [X | Acc]);
-read_includes([], Result)      -> {ok, Result}.
+read_includes([], Result)      -> {ok, lists:reverse(Result)}.
 

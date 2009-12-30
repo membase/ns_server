@@ -57,6 +57,10 @@ all_test_() ->
      ?_test(test_load_config())},
     {"test_save_config",
      ?_test(test_save_config())},
+    {"test_include_config",
+     ?_test(test_include_config())},
+    {"test_include_missing_config",
+     ?_test(test_include_missing_config())},
     {"test_svc",
      ?_test(test_svc())}
   ]}.
@@ -187,12 +191,15 @@ test_bin_persist() ->
     ?assertEqual({ok, D}, R),
     ok.
 
+default_for_testing() ->
+    [].
+
 test_load_config_improper() ->
     CP = data_file(),
     {ok, F} = file:open(CP, [write, raw]),
     ok = file:write(F, <<"improper config file">>),
     ok = file:close(F),
-    R = load_config(CP, test_dir()),
+    R = load_config(CP, test_dir(), default_for_testing()),
     ?assertMatch({error, _}, R),
     ok.
 
@@ -201,8 +208,8 @@ test_load_config() ->
     {ok, F} = file:open(CP, [write, raw]),
     ok = file:write(F, <<"{x,1}.">>),
     ok = file:close(F),
-    R = load_config(CP, test_dir()),
-    E = #config{static = [[{x,1}], ns_config_default:default()]},
+    R = load_config(CP, test_dir(), default_for_testing()),
+    E = #config{static = [[{x,1}], default_for_testing()]},
     ?assertEqual({ok, E}, R),
     ok.
 
@@ -211,12 +218,12 @@ test_save_config() ->
     {ok, F} = file:open(CP, [write, raw]),
     ok = file:write(F, <<"{x,1}.">>),
     ok = file:close(F),
-    R = load_config(CP, test_dir()),
-    E = #config{static = [[{x,1}], ns_config_default:default()]},
+    R = load_config(CP, test_dir(), default_for_testing()),
+    E = #config{static = [[{x,1}], default_for_testing()]},
     ?assertMatch({ok, E}, R),
     X = E#config{dynamic = [[{x,2},{y,3}]]},
     ?assertEqual(ok, save_config(X, test_dir())),
-    R2 = load_config(CP, test_dir()),
+    R2 = load_config(CP, test_dir(), default_for_testing()),
     ?assertMatch({ok, X}, R2),
     ok.
 
@@ -246,6 +253,35 @@ test_svc() ->
       ok
      end)(),
     ?MODULE:stop(),
+    ok.
+
+test_include_config() ->
+    CP1 = data_file(atom_to_list(node()) ++ "_one.cfg"),
+    CP2 = data_file(atom_to_list(node()) ++ "_two.cfg"),
+    {ok, F1} = file:open(CP1, [write, raw]),
+    ok = file:write(F1, <<"{x,1}.\n">>),
+    X = "{include,\"" ++ CP2 ++ "\"}.\n",
+    ok = file:write(F1, list_to_binary(X)),
+    ok = file:write(F1, <<"{y,1}.\n">>),
+    ok = file:close(F1),
+    {ok, F2} = file:open(CP2, [write, raw]),
+    ok = file:write(F2, <<"{z,9}.">>),
+    ok = file:close(F2),
+    R = load_config(CP1, test_dir(), default_for_testing()),
+    E = #config{static = [[{x,1}, {z,9}, {y,1}], default_for_testing()]},
+    ?assertEqual({ok, E}, R),
+    ok.
+
+test_include_missing_config() ->
+    CP1 = data_file(atom_to_list(node()) ++ "_top.cfg"),
+    {ok, F1} = file:open(CP1, [write, raw]),
+    ok = file:write(F1, <<"{x,1}.\n">>),
+    X = "{include,\"not_a_config_path\"}.\n",
+    ok = file:write(F1, list_to_binary(X)),
+    ok = file:write(F1, <<"{y,1}.\n">>),
+    ok = file:close(F1),
+    R = load_config(CP1, test_dir(), default_for_testing()),
+    ?assertEqual({error, {bad_config_path, "not_a_config_path"}}, R),
     ok.
 
 test_setup() ->
