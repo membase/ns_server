@@ -215,7 +215,7 @@ test_save_config() ->
     E = #config{static = [[{x,1}], ns_config_default:default()]},
     ?assertMatch({ok, E}, R),
     X = E#config{dynamic = [[{x,2},{y,3}]]},
-    ?assertMatch(ok, save_config(X, test_dir())),
+    ?assertEqual(ok, save_config(X, test_dir())),
     R2 = load_config(CP, test_dir()),
     ?assertMatch({ok, X}, R2),
     ok.

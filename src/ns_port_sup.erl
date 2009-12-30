@@ -1,9 +1,10 @@
 -module(ns_port_sup).
+
 -behavior(supervisor).
 
 -export([start_link/0]).
 
--export([init/1, launch_port/2, launch_port/3, terminate_port/1]).
+-export([init/1, launch_port/2, launch_port/4, terminate_port/1]).
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
@@ -31,12 +32,13 @@ dynamic_children() ->
     lists:map(fun create_child_spec/1, PortServers).
 
 launch_port(Name, Cmd) ->
-    launch_port(Name, Cmd, []).
+    launch_port(Name, Cmd, [], []).
 
-launch_port(Name, Cmd, Args) when is_atom(Name); is_list(Cmd); is_list(Args) ->
+launch_port(Name, Cmd, Args, Opts)
+  when is_atom(Name); is_list(Cmd); is_list(Args) ->
     error_logger:info_msg("Supervising ~p~n", [Cmd]),
     {ok, C} = supervisor:start_child(?MODULE,
-                                     create_child_spec({Name, Cmd, Args})),
+                                     create_child_spec({Name, Cmd, Args, Opts})),
     error_logger:info_msg("New child is ~p~n", [C]),
     {ok, C}.
 
