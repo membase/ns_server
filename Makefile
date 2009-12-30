@@ -26,7 +26,7 @@ bdist: clean ebins
 ebins:
 	test -d ebin || mkdir ebin
 	erl $(EFLAGS) -make
-	cp src/emoxi.app ebin
+	cp src/*.app ebin
 
 $(TMP_DIR):
 	mkdir -p $(TMP_DIR);
