@@ -169,7 +169,7 @@ announce_config_changes(KVList) ->
     lists:foreach(fun (KV) -> gen_event:notify(ns_config_events, KV) end,
                   KVList).
 
-load_file(txt, ConfigPath) -> file:consult(ConfigPath);
+load_file(txt, ConfigPath) -> read_includes(ConfigPath);
 
 load_file(bin, ConfigPath) ->
     case file:read_file(ConfigPath) of
@@ -211,3 +211,15 @@ merge_configs([Field | Fields], Remote, Local, Acc) ->
              _                -> Acc
          end,
     merge_configs(Fields, Remote, Local, A2).
+
+read_includes(Path) -> read_includes([{include, Path}], []).
+
+read_includes([{include, Path} | Terms], Acc) ->
+  case file:consult(Path) of
+    {ok, IncTerms}  -> read_includes(IncTerms ++ Terms, Acc);
+    {error, enoent} -> {error, {bad_config_path, Path}};
+    Error           -> Error
+  end;
+read_includes([X | Rest], Acc) -> read_includes(Rest, [X | Acc]);
+read_includes([], Result)      -> {ok, Result}.
+

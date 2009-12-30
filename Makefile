@@ -6,7 +6,7 @@ TMP_VER=version_num.tmp
 
 .PHONY: ebins
 
-all: ebins
+all: ebins test
 
 ebins:
 	test -d ebin || mkdir ebin
@@ -22,3 +22,7 @@ bdist: clean ebins
 	tar --directory=.. -czf ns_server_sup_`cat $(TMP_VER)`.tar.gz ns_server_sup/ebin
 	echo created ns_server_sup_`cat $(TMP_VER)`.tar.gz
 
+test: test_unit
+
+test_unit: ebins
+	erl $(EFLAGS) -noshell -s ns_config test -s init stop -kernel error_logger silent

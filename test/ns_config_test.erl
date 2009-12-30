@@ -228,24 +228,24 @@ test_svc() ->
     {ok, F} = file:open(CP, [write, raw]),
     ok = file:write(F, B),
     ok = file:close(F),
-    {ok, _ConfigPid} = config:start_link({path, CP, D}),
+    {ok, _ConfigPid} = ?MODULE:start_link({path, CP, D}),
     (fun() ->
-      C = config:get(),
-      R = config:search(C, x),
+      C = ?MODULE:get(),
+      R = ?MODULE:search(C, x),
       ?assertMatch({value, 1}, R),
       ok
      end)(),
     (fun() ->
-      R = config:search(x),
+      R = ?MODULE:search(x),
       ?assertMatch({value, 1}, R),
       ok
      end)(),
     (fun() ->
-      R = config:search(y),
+      R = ?MODULE:search(y),
       ?assertMatch(false, R),
       ok
      end)(),
-    config:stop(),
+    ?MODULE:stop(),
     ok.
 
 test_setup() ->
