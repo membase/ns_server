@@ -1,6 +1,7 @@
 -module(ns_config_log).
 
 -behaviour(gen_event).
+
 -export([start_link/0, setup_handler/0]).
 
 %% gen_event callbacks

@@ -48,8 +48,8 @@
 % nodes getting added/removed, and gossiping about config
 % information.
 %
--record(config, {static = [], % List of TupleList's.  TupleList is {K, V}.
-                 dynamic = [] % List of TupleList's.  TupleList is {K, V}.
+-record(config, {static = [], % List of TupleList's; TupleList is {K, V}.
+                 dynamic = [] % List of TupleList's; TupleList is {K, V}.
                 }).
 
 %% gen_server callbacks
@@ -102,7 +102,8 @@ init({config, DynamicKVList}) -> % Useful for unit-testing.
                  dynamic = [DynamicKVList]}};
 
 init({path, ConfigPath, DirPath}) ->
-    case load_config(ConfigPath, DirPath) of
+    DefaultConfig = ns_config_default:default(),
+    case load_config(ConfigPath, DirPath, DefaultConfig) of
         {ok, Config} ->
             % TODO: Should save the merged dynamic file config.
             {ok, pick_node_and_merge(Config, nodes([visible]))};
@@ -122,18 +123,14 @@ handle_call(get, _From, State) -> {reply, State, State};
 
 handle_call({set, KVList}, _From, State) ->
     State2 = merge_configs(#config{dynamic = [KVList]}, State),
-    save_config(State2),
-    announce_config_changes(KVList),
+    case State2 =/= State of
+        true  -> save_config(State2),
+                 announce_config_changes(KVList);
+        false -> ok
+    end,
     {reply, ok, State2}.
 
 %%--------------------------------------------------------------------
-
-load_config(ConfigPath) ->
-    load_config(ConfigPath, undefined).
-
-load_config(ConfigPath, DirPath) ->
-    DefaultConfig = ns_config_default:default(),
-    load_config(ConfigPath, DirPath, DefaultConfig).
 
 load_config(ConfigPath, DirPath, DefaultConfig) ->
     % Static config file.

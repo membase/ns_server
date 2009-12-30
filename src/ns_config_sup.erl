@@ -1,4 +1,5 @@
 -module(ns_config_sup).
+
 -behavior(supervisor).
 
 -export([start_link/0]).
