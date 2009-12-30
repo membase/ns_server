@@ -60,7 +60,7 @@
 %% API
 
 start_link() ->
-  gen_server:start_link({local, storage_manager}, ?MODULE, [], []).
+  gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 load(Nodes, Partitions, PartsForNode) ->
   gen_server:call(storage_manager,

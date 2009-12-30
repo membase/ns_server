@@ -9,7 +9,6 @@
       dmerkle,
       dmerkle_tree,
       emoxi,
-      emoxi_app,
       emoxi_sup,
       membership,
       partitions,
@@ -26,7 +25,6 @@
    {applications, [kernel,
                    stdlib,
                    sasl,
-                   crypto,
                    ns_server
                   ]}
   ]}.

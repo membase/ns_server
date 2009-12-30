@@ -49,7 +49,7 @@ test_unit_verbose: ebins
 	erl $(EFLAGS) -noshell -s mc_test test -s init stop
 
 test_boot: ebins
-	erl -boot start_sasl $(EFLAGS) -s emoxi start -emoxi config config_test.cfg
+	erl -boot start_sasl $(EFLAGS) -s emoxi start
 
 test_main: ebins
 	erl $(EFLAGS) -noshell -s mc_test main

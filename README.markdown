@@ -1,8 +1,14 @@
 # emoxi
 
-This is the 'smart service' part of the NorthScale Server.
+This is the memcached-protocol router part of the NorthScale Server.
 
 Originally forked from ememcached.
+
+## Dependencies
+
+For development, this emoxi directory should be a sibling directory to
+the ns_server directory from the github.com/northscale/ns_server
+project.  This Makefile assumes this directory configuration.
 
 ## Quick Start
 
@@ -37,7 +43,7 @@ src/mc_test.erl), do...
 
 ## License
 
-MPL - We made this for you!
+TBD, but ememcached was MPL - We made this for you!
 
 ## TODO
 

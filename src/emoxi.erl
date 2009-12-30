@@ -37,23 +37,27 @@
 -behaviour(application).
 
 -export([start/2, stop/1,
-         start/0,
+         start/0, start_link/0,
          pause_all_sync/0, start_all_sync/0]).
+
+% From cmd-line...
+%
+% erl -boot start_sasl -pa ebin -s emoxi start \
+%     -ns_server ns_server_config config.sample
+
+start() -> misc:load_start_apps([ns_server, emoxi]).
 
 % Callbacks for application behaviour.
 
 start(_Type, _Args) ->
-   crypto:start(),
-   emoxi_sup:start_link().
+   start_link().
 
 stop(_State) ->
     ok.
 
-% erl -boot start_sasl -pa ebin -s emoxi start -emoxi config config.sample
-
-start() ->
-  crypto:start(),
-  misc:load_start_apps([emoxi]).
+start_link() ->
+    crypto:start(),
+    emoxi_sup:start_link().
 
 % ------------------------------------------------
 

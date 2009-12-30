@@ -48,29 +48,12 @@ start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 init([]) ->
-    Node = erlang:node(),
-    Nodes = misc:running_nodes() ++ [Node],
-    Children = child_specs(Node, Nodes),
+    Children = child_specs(),
     {ok, {{one_for_one, 3, 10}, Children}}.
 
-child_specs(Node, Nodes) ->
-    [{storage_manager,
-      {storage_manager,start_link, []},
-      permanent, 1000, worker, [storage_manager]},
-     {storage_server_sup,
-      {storage_server_sup, start_link, []},
-      permanent, 10000, supervisor,
-      [storage_server_sup]},
-     {sync_manager,
-      {sync_manager, start_link, []},
-      permanent, 1000, worker, [sync_manager]},
-     {sync_server_sup,
-      {sync_server_sup, start_link, []},
-      permanent, 10000, supervisor,
-      [sync_server_sup]},
-     {membership,
-      {membership, start_link, [Node, Nodes]},
-      permanent, 1000, worker,
-      [membership]}
+child_specs() ->
+    [{cring_manager,
+      {cring_manager,start_link, []},
+      permanent, 1000, worker, [cring_manager]}
     ].
 
