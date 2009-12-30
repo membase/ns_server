@@ -1,4 +1,5 @@
 -module(ns_server_sup).
+
 -behavior(supervisor).
 
 -export([start_link/0]).

@@ -2,15 +2,18 @@
 
 -behavior(application).
 
--export([start/2, stop/1]).
+-export([start_link/0, start/2, stop/1]).
 
 start(_Type, _Args) ->
-    make_pidfile(),
-    ping_jointo(),
-    ns_server_sup:start_link().
+    start_link().
 
 stop(_State) ->
     ok.
+
+start_link() ->
+    make_pidfile(),
+    ping_jointo(),
+    ns_server_sup:start_link().
 
 % ----------------------------------
 
