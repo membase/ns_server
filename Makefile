@@ -2,7 +2,9 @@ SHELL=/bin/sh
 
 EFLAGS=-pa ebin
 
-TMP_VER=version_num.tmp
+TMP_DIR=./tmp
+
+TMP_VER=$(TMP_DIR)/version_num.tmp
 
 .PHONY: ebins
 
@@ -14,8 +16,12 @@ ebins:
 	cp src/*.app ebin
 
 clean:
-	rm -f cov.html erl_crash.dump
+	rm -f $(TMP_VER)
+	rm -f $(TMP_DIR)/*.cov.html
+	rm -f cov.html
+	rm -f erl_crash.dump
 	rm -f ns_server_*.tar.gz
+	rm -rf test/log
 	rm -rf ebin
 
 bdist: clean ebins
@@ -27,3 +33,7 @@ test: test_unit
 
 test_unit: ebins
 	erl $(EFLAGS) -noshell -s ns_server_test test -s init stop -kernel error_logger silent
+
+dialyzer: ebins
+	dialyzer -pa ebin -r .
+
