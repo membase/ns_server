@@ -1,3 +1,13 @@
+//= require <jquery.js>
+//= require <jqModal.js>
+//= require <raphael.js>
+//= require <g.raphael.js>
+//= require <g.line.js>
+//= require <jquery.ba-bbq.js>
+// !not used!= require <jquery.jeditable.js>
+//= require <underscore.js>
+//= require <tools.tabs.js>
+
 if (!('console' in window))
   window.console = {log: function () {}};
 

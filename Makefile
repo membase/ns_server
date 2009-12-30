@@ -2,8 +2,12 @@ TMP_DIR=./tmp
 TMP_VER=$(TMP_DIR)/version_num.tmp
 DIST_DIR=$(TMP_DIR)/menelaus
 
-all: deps
+all: deps priv/public/js/all.js
 	(cd src;$(MAKE))
+
+priv/public/js/all.js: priv/js/*.js
+	mkdir -p `dirname $@`
+	sprocketize -I priv/js priv/js/app.js >$@
 
 deps:
 	$(MAKE) -C deps/mochiweb-src
