@@ -36,7 +36,7 @@
 
 -behaviour(gen_server).
 
--export([start_link/1, stop/0,
+-export([start_link/2, start_link/1, stop/0,
          get/2, get/1, get/0, set/2, set/1,
          search/2, search/1]).
 
@@ -66,8 +66,10 @@
 
 %% API
 
-start_link(InitInfo) ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, InitInfo, []).
+start_link(Full) ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE, Full, []).
+
+start_link(ConfigPath, PolicyMod) -> start_link([ConfigPath, PolicyMod]).
 
 stop() -> gen_server:cast(?MODULE, stop).
 
@@ -106,8 +108,8 @@ init({full, ConfigPath, DirPath, PolicyMod}) ->
             {stop, Error}
     end;
 
-init(ConfigPath) ->
-    init({full, ConfigPath, undefined, ns_config_default}).
+init([ConfigPath, PolicyMod]) ->
+    init({full, ConfigPath, undefined, PolicyMod}).
 
 terminate(_Reason, _State)          -> ok.
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
