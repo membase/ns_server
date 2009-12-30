@@ -1,7 +1,7 @@
 -module(ns_config_log).
 
 -behaviour(gen_event).
--export([start/0, setup_handler/0]).
+-export([start_link/0, setup_handler/0]).
 
 %% gen_event callbacks
 -export([init/1, handle_event/2, handle_call/2,
@@ -9,7 +9,7 @@
 
 -record(state, {}).
 
-start() ->
+start_link() ->
     {ok, spawn_link(?MODULE, setup_handler, [])}.
 
 setup_handler() ->
@@ -18,7 +18,7 @@ setup_handler() ->
 init(ignored) ->
     {ok, #state{}, hibernate}.
 
-handle_event({K,V}, State) ->
+handle_event({K, V}, State) ->
     error_logger:info_msg("Received a config change: ~p -> ~p~n", [K, V]),
     {ok, State, hibernate}.
 

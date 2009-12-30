@@ -22,7 +22,6 @@ get_env_default(Var, Def) ->
 
 get_child_specs() ->
     [
-     % TODO:  Figure out what to pass into ns_config
      {ns_config_sup, {ns_config_sup, start_link, []},
       permanent, infinity, supervisor,
       [ns_config_sup, ns_config, ns_config_default]},

@@ -1,4 +1,3 @@
-
 -module(ns_node_disco).
 
 %% API
