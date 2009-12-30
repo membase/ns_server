@@ -1,5 +1,5 @@
 Given 'I am on the main page' do
-  @browser.navigate.to('http://localhost:8080/')
+  @browser.navigate.to('http://localhost:8080/t/index.html')
 end
 
 When(/I switch section to (.*)/) do |section|

@@ -46,6 +46,8 @@ loop(Req, DocRoot) ->
                              {need_auth, fun handle_bucket_stats/2, [Id]};
                          ["alerts"] ->
                              {need_auth, fun handle_alerts/1};
+                         ["t", "index.html"] ->
+                             {done, serve_index_html_for_tests(Req, DocRoot)};
                          _ ->
                              {done, Req:serve_file(Path, DocRoot)}
                      end;
@@ -72,6 +74,14 @@ loop(Req, DocRoot) ->
     end.
 
 %% Internal API
+
+serve_index_html_for_tests(Req, DocRoot) ->
+    case file:read_file(DocRoot ++ "/index.html") of
+        {ok, Data} ->
+            StringData = re:replace(binary_to_list(Data), "js/all.js\"", "js/t-all.js\""),
+            Req:ok({"text/html", list_to_binary(StringData)});
+        _ -> {Req:not_found()}
+    end.
 
 check_auth(undefined) -> false;
 check_auth({User, Password}) ->
