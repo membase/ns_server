@@ -191,15 +191,14 @@ test_bin_persist() ->
     ?assertEqual({ok, D}, R),
     ok.
 
-default_for_testing() ->
-    [].
+default() -> []. % For testing.
 
 test_load_config_improper() ->
     CP = data_file(),
     {ok, F} = file:open(CP, [write, raw]),
     ok = file:write(F, <<"improper config file">>),
     ok = file:close(F),
-    R = load_config(CP, test_dir(), default_for_testing()),
+    R = load_config(CP, test_dir(), ?MODULE),
     ?assertMatch({error, _}, R),
     ok.
 
@@ -208,8 +207,8 @@ test_load_config() ->
     {ok, F} = file:open(CP, [write, raw]),
     ok = file:write(F, <<"{x,1}.">>),
     ok = file:close(F),
-    R = load_config(CP, test_dir(), default_for_testing()),
-    E = #config{static = [[{x,1}], default_for_testing()]},
+    R = load_config(CP, test_dir(), ?MODULE),
+    E = #config{static = [[{x,1}], []], policy_mod = ?MODULE},
     ?assertEqual({ok, E}, R),
     ok.
 
@@ -218,12 +217,12 @@ test_save_config() ->
     {ok, F} = file:open(CP, [write, raw]),
     ok = file:write(F, <<"{x,1}.">>),
     ok = file:close(F),
-    R = load_config(CP, test_dir(), default_for_testing()),
-    E = #config{static = [[{x,1}], default_for_testing()]},
+    R = load_config(CP, test_dir(), ?MODULE),
+    E = #config{static = [[{x,1}], []], policy_mod = ?MODULE},
     ?assertMatch({ok, E}, R),
-    X = E#config{dynamic = [[{x,2},{y,3}]]},
+    X = E#config{dynamic = [[{x,2},{y,3}]], policy_mod = ?MODULE},
     ?assertEqual(ok, save_config(X, test_dir())),
-    R2 = load_config(CP, test_dir(), default_for_testing()),
+    R2 = load_config(CP, test_dir(), ?MODULE),
     ?assertMatch({ok, X}, R2),
     ok.
 
@@ -235,7 +234,7 @@ test_svc() ->
     {ok, F} = file:open(CP, [write, raw]),
     ok = file:write(F, B),
     ok = file:close(F),
-    {ok, _ConfigPid} = ?MODULE:start_link({path, CP, D}),
+    {ok, _ConfigPid} = ?MODULE:start_link({full, CP, D, ns_config_default}),
     (fun() ->
       C = ?MODULE:get(),
       R = ?MODULE:search(C, x),
@@ -267,8 +266,8 @@ test_include_config() ->
     {ok, F2} = file:open(CP2, [write, raw]),
     ok = file:write(F2, <<"{z,9}.">>),
     ok = file:close(F2),
-    R = load_config(CP1, test_dir(), default_for_testing()),
-    E = #config{static = [[{x,1}, {z,9}, {y,1}], default_for_testing()]},
+    R = load_config(CP1, test_dir(), ?MODULE),
+    E = #config{static = [[{x,1}, {z,9}, {y,1}], []], policy_mod = ?MODULE},
     ?assertEqual({ok, E}, R),
     ok.
 
@@ -280,7 +279,7 @@ test_include_missing_config() ->
     ok = file:write(F1, list_to_binary(X)),
     ok = file:write(F1, <<"{y,1}.\n">>),
     ok = file:close(F1),
-    R = load_config(CP1, test_dir(), default_for_testing()),
+    R = load_config(CP1, test_dir(), ?MODULE),
     ?assertEqual({error, {bad_config_path, "not_a_config_path"}}, R),
     ok.
 

@@ -15,7 +15,7 @@ init([]) ->
            get_env_default(max_t, 10)},
           [
            {ns_port_init,
-            {ns_port_init, start, []},
+            {ns_port_init, start_link, []},
             transient, 10, worker, []}
            | dynamic_children()
           ]}}.

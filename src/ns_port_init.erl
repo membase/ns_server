@@ -2,7 +2,7 @@
 
 -behaviour(gen_event).
 
--export([start/0]).
+-export([start_link/0]).
 
 %% gen_event callbacks
 -export([init/1, handle_event/2, handle_call/2,
@@ -11,9 +11,9 @@
 -record(state, {}).
 
 % Noop process to get initialized in the supervision tree.
-start() ->
+start_link() ->
     {ok, spawn_link(fun() ->
-                            gen_event:add_handler(ns_config_events, ?MODULE, ignored)
+                       gen_event:add_handler(ns_config_events, ?MODULE, ignored)
                     end)}.
 
 init(ignored) ->

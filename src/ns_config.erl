@@ -48,8 +48,9 @@
 % nodes getting added/removed, and gossiping about config
 % information.
 %
--record(config, {static = [], % List of TupleList's; TupleList is {K, V}.
-                 dynamic = [] % List of TupleList's; TupleList is {K, V}.
+-record(config, {static = [],  % List of TupleList's; TupleList is {K, V}.
+                 dynamic = [], % List of TupleList's; TupleList is {K, V}.
+                 policy_mod
                 }).
 
 %% gen_server callbacks
@@ -94,26 +95,19 @@ search(#config{dynamic = DL, static = SL}, Key) ->
 
 %% gen_server callbacks
 
-init(undefined) -> % Useful for unit-testing.
-    {ok, #config{static = [ns_config_default:default()]}};
-
-init({config, DynamicKVList}) -> % Useful for unit-testing.
-    {ok, #config{static = [ns_config_default:default()],
-                 dynamic = [DynamicKVList]}};
-
-init({path, ConfigPath, DirPath}) ->
-    DefaultConfig = ns_config_default:default(),
-    case load_config(ConfigPath, DirPath, DefaultConfig) of
+init({full, ConfigPath, DirPath, PolicyMod}) ->
+    case load_config(ConfigPath, DirPath, PolicyMod) of
         {ok, Config} ->
             % TODO: Should save the merged dynamic file config.
             % TODO: Should let node_disco do picking and merging?
-            {ok, pick_node_and_merge(Config, nodes([visible]))};
+            Mergable = PolicyMod:mergable(),
+            {ok, pick_node_and_merge(Mergable, Config, nodes([visible]))};
         Error ->
             {stop, Error}
     end;
 
 init(ConfigPath) ->
-    init({path, ConfigPath, undefined}).
+    init({full, ConfigPath, undefined, ns_config_default}).
 
 terminate(_Reason, _State)          -> ok.
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
@@ -123,7 +117,10 @@ handle_info(_Info, State)           -> {noreply, State}.
 handle_call(get, _From, State) -> {reply, State, State};
 
 handle_call({set, KVList}, _From, State) ->
-    State2 = merge_configs(#config{dynamic = [KVList]}, State),
+    PolicyMod = State#config.policy_mod,
+    State2 = merge_configs(PolicyMod:mergable(),
+                           #config{dynamic = [KVList]},
+                           State),
     case State2 =/= State of
         true  -> save_config(State2),
                  announce_config_changes(KVList);
@@ -133,7 +130,8 @@ handle_call({set, KVList}, _From, State) ->
 
 %%--------------------------------------------------------------------
 
-load_config(ConfigPath, DirPath, DefaultConfig) ->
+load_config(ConfigPath, DirPath, PolicyMod) ->
+    DefaultConfig = PolicyMod:default(),
     % Static config file.
     case load_file(txt, ConfigPath) of
         {ok, S} ->
@@ -152,7 +150,9 @@ load_config(ConfigPath, DirPath, DefaultConfig) ->
                     {ok, DRead} -> DRead;
                     _           -> []
                 end,
-            {ok, #config{static = [S, DefaultConfig], dynamic = D}};
+            {ok, #config{static = [S, DefaultConfig],
+                         dynamic = D,
+                         policy_mod = PolicyMod}};
         E -> E
     end.
 
@@ -183,18 +183,14 @@ save_file(bin, ConfigPath, X) ->
     ok = file:write(F, term_to_binary(X)),
     ok = file:close(F).
 
-pick_node_and_merge(Local, Nodes) when length(Nodes) == 0 -> Local;
-pick_node_and_merge(Local, Nodes) ->
+pick_node_and_merge(_Mergable, Local, Nodes) when length(Nodes) == 0 -> Local;
+pick_node_and_merge(Mergable, Local, Nodes) ->
     [Node | _] = misc:shuffle(Nodes),
     case (catch ?MODULE:get(Node)) of
         {'EXIT', _, _} -> Local;
         {'EXIT', _}    -> Local;
-        Remote         -> merge_configs(Remote, Local)
+        Remote         -> merge_configs(Mergable, Remote, Local)
     end.
-
-merge_configs(Remote, Local) ->
-    merge_configs(ns_config_default:mergable(),
-                  Remote, Local, []).
 
 merge_configs(Mergable, Remote, Local) ->
     merge_configs(Mergable, Remote, Local, []).
