@@ -288,3 +288,16 @@ load_start_apps([App | Apps]) ->
            halt(1)
   end.
 
+running(Node) ->
+  Ref = erlang:monitor(process, {membership, Node}),
+  R = receive
+          {'DOWN', Ref, _, _, _} -> false
+      after 1 ->
+          true
+      end,
+  erlang:demonitor(Ref),
+  R.
+
+running_nodes() ->
+  [Node || Node <- erlang:nodes([this, visible]), running(Node)].
+
