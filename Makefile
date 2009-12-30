@@ -25,4 +25,4 @@ bdist: clean ebins
 test: test_unit
 
 test_unit: ebins
-	erl $(EFLAGS) -noshell -s ns_config test -s init stop -kernel error_logger silent
+	erl $(EFLAGS) -noshell -s ns_server_test test -s init stop -kernel error_logger silent
