@@ -129,7 +129,7 @@ stop_gossip() ->
 init([Node, Nodes]) ->
   % this is for the gossip server which tags along
   process_flag(trap_exit, true),
-  Config = config:get(),
+  Config = ns_config:get(),
   State = case create_or_load_state(Node, Nodes, Config,
                                     ets:new(partitions, [set, public])) of
               {loaded, S} -> S;
@@ -216,7 +216,7 @@ handle_call({nodes_for_partition, Partition}, _From, State) ->
   {reply, int_nodes_for_partition(Partition, State), State};
 
 handle_call({servers_for_key, Key}, _From, State) ->
-  Config = config:get(),
+  Config = ns_config:get(),
   Part = int_partition_for_key(Key, State, Config),
   Nodes = int_nodes_for_partition(Part, State),
   MapFun =
@@ -227,14 +227,14 @@ handle_call({servers_for_key, Key}, _From, State) ->
 
 handle_call({nodes_for_key, Key}, _From, State) ->
 	{reply, int_nodes_for_key(Key, State,
-                              config:get()), State};
+                              ns_config:get()), State};
 
 handle_call({partitions_for_node, Node, Option}, _From, State) ->
   {reply, int_partitions_for_node(Node, State, Option), State};
 
 handle_call({partition_for_key, Key}, _From, State) ->
   {reply, int_partition_for_key(Key, State,
-                                config:get()), State};
+                                ns_config:get()), State};
 
 handle_call(status, _From,
             State = #membership{node = Node, nodes=Nodes,
@@ -368,7 +368,7 @@ create_or_load_state(Node, Nodes, Config, Table) ->
   end.
 
 load_state(Node, Config) ->
-  {value, Directory} = config:search(Config, directory),
+  {value, Directory} = ns_config:search(Config, directory),
   case file:read_file(filename:join(Directory,
                                     atom_to_list(Node) ++ ".bin")) of
     {ok, Binary} ->
@@ -378,9 +378,9 @@ load_state(Node, Config) ->
 
 save_state(State) ->
   Node = State#membership.node,
-  Config = config:get(),
+  Config = ns_config:get(),
   Binary = term_to_binary(State),
-  {value, Directory} = config:search(Config, directory),
+  {value, Directory} = ns_config:search(Config, directory),
   FName = filename:join(Directory, atom_to_list(Node) ++ ".bin"),
   ok = filelib:ensure_dir(FName),
   {ok, File} = file:open(FName, [write]),
@@ -389,7 +389,7 @@ save_state(State) ->
 
 %% partitions is a list starting with 1 which defines a partition space.
 create_initial_state(Node, Nodes, Config, Table) ->
-  {value, Q} = config:search(Config, q),
+  {value, Q} = ns_config:search(Config, q),
   #membership{
     version=vclock:create(pid_to_list(self())),
 	  partitions=partition:create_partitions(Q, Node, Nodes),
@@ -410,7 +410,7 @@ merge_states(StateA, StateB) ->
       concurrent -> % must merge
         PartA = StateA#membership.partitions,
         _PartB = StateB#membership.partitions,
-        _Config = config:get(),
+        _Config = ns_config:get(),
         Nodes = lists:usort(StateA#membership.nodes ++
                             StateB#membership.nodes),
         Partitions = partition:map_partitions(PartA, Nodes),
@@ -491,28 +491,28 @@ int_partitions_for_node(Node, State, all) ->
     end, [], Nodes).
 
 reverse_replica_nodes(Node, State) ->
-  Config = config:get(),
-  {value, N} = config:search(Config, n),
+  Config = ns_config:get(),
+  {value, N} = ns_config:search(Config, n),
   n_nodes(Node, N, lists:reverse(State#membership.nodes)).
 
 int_replica_nodes(Node, State) ->
-  Config = config:get(),
-  {value, N} = config:search(Config, n),
+  Config = ns_config:get(),
+  {value, N} = ns_config:search(Config, n),
   n_nodes(Node, N, State#membership.nodes).
 
 int_nodes_for_key(Key, State, Config) ->
   % error_logger:info_msg("inside int_nodes_for_key~n", []),
   KeyHash = misc:hash(Key),
-  {value, Q} = config:search(Config, q),
+  {value, Q} = ns_config:search(Config, q),
   Partition = find_partition(KeyHash, Q),
   % error_logger:info_msg("found partition ~w for key ~p~n",
   %                       [Partition, Key]),
   int_nodes_for_partition(Partition, State).
 
 int_nodes_for_partition(Partition, State = #membership{ptable=Table}) ->
-  %%_Config = config:get(),
-  % {value, Q} = config:search(Config, q),
-  % {value, N} = config:search(Config, n),
+  %%_Config = ns_config:get(),
+  % {value, Q} = ns_config:search(Config, q),
+  % {value, N} = ns_config:search(Config, n),
   % ?debugFmt("int_nodes_for_partition(~p, _)", [Partition]),
   [{Partition,Node}] = ets:lookup(Table, Partition),
   % {Node,Partition} =
@@ -524,7 +524,7 @@ int_nodes_for_partition(Partition, State = #membership{ptable=Table}) ->
 
 int_partition_for_key(Key, _State, Config) ->
   KeyHash = misc:hash(Key),
-  {value, Q} = config:search(Config, q),
+  {value, Q} = ns_config:search(Config, q),
   find_partition(KeyHash, Q).
 
 find_partition(0, _) ->

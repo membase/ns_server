@@ -1,12 +1,9 @@
 {application, emoxi,
-  [{description, "EMoxi Storage Node"},
-   {mod, {emoxi_app, []}},
-   {vsn, "?VERSION"},
-   {modules,
-   [
+  [{description, "NorthScale EMoxi"},
+   {mod, {emoxi, []}},
+   {vsn, "0.0.0"},
+   {modules, [
       bootstrap,
-      config,
-      config_default,
       store_dets,
       store_dict,
       dmerkle,
@@ -14,14 +11,8 @@
       emoxi,
       emoxi_app,
       emoxi_sup,
-      % emoxi_prof,
-      % emoxi_rpc,
-      misc,
-      % mediator,
       membership,
       partitions,
-      % rate,
-      % stats_server,
       storage_manager,
       storage_server,
       storage_server_sup,
@@ -35,8 +26,7 @@
    {applications, [kernel,
                    stdlib,
                    sasl,
-                   crypto
-                   % mochiweb
-                   % thrift
+                   crypto,
+                   ns_server
                   ]}
   ]}.

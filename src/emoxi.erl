@@ -28,42 +28,39 @@
 % CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
 % LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
 % ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-% POSSIBILITY OF SUCH DAMAGE.-module(config).
+% POSSIBILITY OF SUCH DAMAGE.
 %
 % Original Author: Cliff Moon
 
 -module(emoxi).
 
--export([start/0, running/1, running_nodes/0,
+-behaviour(application).
+
+-export([start/2, stop/1,
+         start/0,
          pause_all_sync/0, start_all_sync/0]).
+
+% Callbacks for application behaviour.
+
+start(_Type, _Args) ->
+   crypto:start(),
+   emoxi_sup:start_link().
+
+stop(_State) ->
+    ok.
 
 % erl -boot start_sasl -pa ebin -s emoxi start -emoxi config config.sample
 
 start() ->
   crypto:start(),
-  misc:load_start_apps(apps()).
+  misc:load_start_apps([emoxi]).
 
-apps() ->
-  % [os_mon, emoxi].
-    [emoxi].
-
-running(Node) ->
-  Ref = erlang:monitor(process, {membership, Node}),
-  R = receive
-          {'DOWN', Ref, _, _, _} -> false
-      after 1 ->
-          true
-      end,
-  erlang:demonitor(Ref),
-  R.
-
-running_nodes() ->
-  [Node || Node <- erlang:nodes([this, visible]), running(Node)].
+% ------------------------------------------------
 
 pause_all_sync() ->
   SyncServers = lists:flatten(lists:map(fun(Node) ->
       rpc:call(Node, sync_manager, loaded, [])
-    end, running_nodes())),
+    end, misc:running_nodes())),
   lists:foreach(fun(Server) ->
       sync_server:pause(Server)
     end, SyncServers).
@@ -71,7 +68,7 @@ pause_all_sync() ->
 start_all_sync() ->
   SyncServers = lists:flatten(lists:map(fun(Node) ->
       rpc:call(Node, sync_manager, loaded, [])
-    end, running_nodes())),
+    end, misc:running_nodes())),
   lists:foreach(fun(Server) ->
       sync_server:play(Server)
     end, SyncServers).

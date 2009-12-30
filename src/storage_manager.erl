@@ -106,7 +106,7 @@ handle_call({load, _Nodes, Partitions, PartsForNode, Bootstrap},
                          not lists:member(E, PartsForNode)
                      end,
                      OldPartsForNode),
-  Config = config:get(),
+  Config = ns_config:get(),
   % if
   %   length(OldPartitions) == 0 ->
   %     reload_storage_servers(OldPartitions1, Partitions1, Partitions,
@@ -121,10 +121,10 @@ handle_call({load, _Nodes, Partitions, PartsForNode, Bootstrap},
 %%--------------------------------------------------------------------
 
 reload_storage_servers(OldParts, NewParts, Old, Config, Bootstrap) ->
-  {value, StorageMod} = config:search(Config, storage_mod),
-  {value, Directory} = config:search(Config, directory),
-  {value, BlockSize} = config:search(Config, blocksize),
-  {value, Q} = config:search(Config, q),
+  {value, StorageMod} = ns_config:search(Config, storage_mod),
+  {value, Directory} = ns_config:search(Config, directory),
+  {value, BlockSize} = ns_config:search(Config, blocksize),
+  {value, Q} = ns_config:search(Config, q),
   lists:foreach(fun(E) ->
       Name = list_to_atom(lists:concat([storage_, E])),
       supervisor:terminate_child(storage_server_sup, Name),

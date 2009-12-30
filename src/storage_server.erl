@@ -149,7 +149,7 @@ close(Name, Timeout) ->
 %%--------------------------------------------------------------------
 
 init({StorageModule,DbKey,Name,_Min,_Max,BlockSize}) ->
-    Config = config:get(),
+    Config = ns_config:get(),
     load_config_into_dict(Config),
     % need to trap exits to deal with merkle issues, the hard way.
     process_flag(trap_exit, true),
@@ -168,8 +168,8 @@ init({StorageModule,DbKey,Name,_Min,_Max,BlockSize}) ->
     end,
     Storage = #storage{module=StorageModule,dbkey=DbKey,blocksize=BlockSize,
                        table=Table,name=Name,tree=Tree},
-    {value, Cache} = config:search(Config, cache),
-    {value, CacheSize} = config:search(Config, cache_size),
+    {value, Cache} = ns_config:search(Config, cache),
+    {value, CacheSize} = ns_config:search(Config, cache_size),
     case Cache of
       true ->
         case (catch cache_start(CacheSize)) of
@@ -312,12 +312,12 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 
 load_config_into_dict(Config) ->
-    {value, BufferedWrites} = config:search(Config, buffered_writes),
+    {value, BufferedWrites} = ns_config:search(Config, buffered_writes),
     put(buffered_writes, BufferedWrites).
 
 int_put(Name, Key, Context, Value, Timeout) ->
-  Config = config:get(),
-  {value, BufferedWrites} = config:search(Config, buffered_writes),
+  Config = ns_config:get(),
+  {value, BufferedWrites} = ns_config:search(Config, buffered_writes),
   case BufferedWrites of
     true ->
       gen_server:cast(Name, {put, Key, Context, Value});
@@ -350,7 +350,7 @@ inside_process_put(Key, Context, ValIn,
 % we want to pre-arrange a rendevous so as to not block the storage server
 % blocking whomever is local is perfectly ok
 stream(Name, Key, Context, Value) ->
-  _Config = config:get(),
+  _Config = ns_config:get(),
   Ref = make_ref(),
   Pid = gen_server:call(Name, {streaming_put, Ref}),
   stream:send(Pid, Ref, {{Key, Context}, misc:listify(Value)}),

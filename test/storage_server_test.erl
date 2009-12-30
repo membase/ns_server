@@ -38,7 +38,7 @@
 
 store_conflicting_versions_test() ->
   process_flag(trap_exit, true),
-  config:start_link(undefined),
+  ns_config:start_link(undefined),
   {ok, Pid} = storage_server:start_link(storage_dets, db_key(confl),
                                         store, 0, (2 bsl 31), 4096),
   A = vclock:create(a),
@@ -47,7 +47,7 @@ store_conflicting_versions_test() ->
   storage_server:put(Pid, "key", B, ["blah2"]),
   R = storage_server:get(Pid, "key"),
   ?assertMatch({ok, {_, ["blah", "blah2"]}}, R),
-  config:stop(),
+  ns_config:stop(),
   timer:sleep(1),
   storage_server:close(Pid).
 
@@ -56,7 +56,7 @@ storage_server_throughput_test_() ->
 
 test_storage_server_throughput() ->
   process_flag(trap_exit, true),
-  config:start_link(undefined),
+  ns_config:start_link(undefined),
   {ok, Pid} = storage_server:start_link(storage_dets, db_key(throughput),
                                         through, 0, (2 bsl 31), 4096),
   {Keys, _} = misc:fast_acc(fun({List, Str}) ->
@@ -77,7 +77,7 @@ test_storage_server_throughput() ->
 
 % couch_storage_test() ->
 %     process_flag(trap_exit, true),
-%     config:start_link(undefined),
+%     ns_config:start_link(undefined),
 %     CouchFile = filename:join(priv_dir(), "couch"),
 %     {ok, State} = couch_storage:open(CouchFile, storage_test),
 %     {ok, St2} = couch_storage:put("key_one", context, <<"value one">>, State),
@@ -92,13 +92,13 @@ test_storage_server_throughput() ->
 %     {ok, false} = couch_storage:has_key("key_one", St5),
 %     {ok, true} = couch_storage:has_key("key_two", St5),
 %     {ok, St6} = couch_storage:delete("key_two", St5),
-%     config:stop(),
+%     ns_config:stop(),
 %     timer:sleep(1),
 %     couch_storage:close(St6).
 
 storage_dict_test() ->
     process_flag(trap_exit, true),
-    config:start_link(undefined),
+    ns_config:start_link(undefined),
     {ok, Pid} = storage_server:start_link(
                   storage_dict, db_key(dict), store, 0, (2 bsl 31), 4096),
     ?infoFmt("storage server at ~p", [Pid]),
@@ -116,13 +116,13 @@ storage_dict_test() ->
     storage_server:delete(store, "key"),
     {ok, false} = storage_server:has_key(store, "key"),
     storage_server:close(store),
-    config:stop(),
+    ns_config:stop(),
     timer:sleep(1),
     receive _ -> true end.
 
 mnesia_storage_test_TODO() ->
     process_flag(trap_exit, true),
-    config:start_link(undefined),
+    ns_config:start_link(undefined),
     mnesia:stop(),
     application:set_env(mnesia, dir, priv_dir()),
     {ok, Pid} = storage_server:start_link(mnesia_storage, db_key(mnesia),
@@ -144,13 +144,13 @@ mnesia_storage_test_TODO() ->
     {ok,true} = storage_server:has_key(store2, "key_two"),
     storage_server:delete(store2, "key_two"),
     exit(Pid, shutdown),
-    config:stop(),
+    ns_config:stop(),
     timer:sleep(1),
     receive _ -> true end.
 
 mnesia_large_value_test_TODO() ->
     process_flag(trap_exit, true),
-    config:start_link(undefined),
+    ns_config:start_link(undefined),
     crypto:start(), %% filename generation uses crypto:sha
     mnesia:stop(),
     application:set_env(mnesia, dir, priv_dir()),
@@ -159,7 +159,7 @@ mnesia_large_value_test_TODO() ->
     Val = big_val(2048),
     ok = storage_server:put(store3, "key_one", [], Val),
     {ok, {_Context, [Val]}} = storage_server:get(store3, "key_one"),
-    config:stop(),
+    ns_config:stop(),
     timer:sleep(1).
 
 % concurrent_update_test() ->
@@ -182,7 +182,7 @@ mnesia_large_value_test_TODO() ->
 
 rebuild_merkle_trees_test() ->
   process_flag(trap_exit, true),
-  config:start_link(undefined),
+  ns_config:start_link(undefined),
   {ok, _} = mock:mock(dmerkle),
   {ok, _} = mock:mock(storage_dets),
   mock:expects(dmerkle, open, fun(_) -> true end, {error, "expected"}),
@@ -203,13 +203,13 @@ rebuild_merkle_trees_test() ->
   mock:verify(storage_dets),
   mock:stop(dmerkle),
   mock:stop(storage_dets),
-  config:stop(),
+  ns_config:stop(),
   timer:sleep(1),
   storage_server:close(Pid).
 
 streaming_put_test() ->
   process_flag(trap_exit, true),
-  config:start_link(undefined),
+  ns_config:start_link(undefined),
   {ok, _} = mock:mock(dmerkle),
   {ok, _} = mock:mock(storage_dets),
   mock:expects(dmerkle, open, fun(_) -> true end, {ok, pid}),
@@ -231,7 +231,7 @@ streaming_put_test() ->
   mock:verify(storage_dets),
   mock:stop(dmerkle),
   mock:stop(storage_dets),
-  config:stop(),
+  ns_config:stop(),
   timer:sleep(1),
   storage_server:close(Pid).
 
@@ -251,7 +251,7 @@ interrogate_test_loop(Pid) ->
 
 buffered_small_write_test() ->
   process_flag(trap_exit, true),
-  config:start_link({config,
+  ns_config:start_link({config,
                      [{buffered_writes,true}]}),
   {ok, _} = mock:mock(dmerkle),
   {ok, _} = mock:mock(storage_dets),
@@ -284,13 +284,13 @@ buffered_small_write_test() ->
   mock:verify_and_stop(storage_dets),
   ?assertEqual(true, interrogate_test_loop(Pid)),
   exit(Pid, shutdown),
-  config:stop(),
+  ns_config:stop(),
   timer:sleep(1),
   storage_server:close(Store).
 
 buffered_stream_write_test() ->
   process_flag(trap_exit, true),
-  config:start_link({config,
+  ns_config:start_link({config,
                      [{buffered_writes,true}]}),
   {ok, _} = mock:mock(dmerkle),
   {ok, _} = mock:mock(storage_dets),
@@ -326,14 +326,14 @@ buffered_stream_write_test() ->
   mock:verify_and_stop(storage_dets),
   ?assertEqual(true, interrogate_test_loop(Pid)),
   exit(Pid, shutdown),
-  config:stop(),
+  ns_config:stop(),
   timer:sleep(1),
   storage_server:close(Store).
 
 caching_test_TODO() ->
   process_flag(trap_exit, true),
-  config:start_link({config,
-                     [{cache, true}, {cache_size, 120}]}),
+  ns_config:start_link({config,
+                        [{cache, true}, {cache_size, 120}]}),
   {ok, _} = mock:mock(dmerkle),
   {ok, _} = mock:mock(storage_dets),
   mock:expects(dmerkle, open, fun(_) -> true end, {ok, pid}),

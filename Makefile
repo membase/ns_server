@@ -1,6 +1,6 @@
 SHELL=/bin/sh
 
-EFLAGS=-pa ebin
+EFLAGS=-pa ebin -pa ../ns_server/ebin
 
 LUA=cd ../moxilua && lua -l luarocks.require
 

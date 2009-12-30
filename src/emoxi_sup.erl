@@ -36,7 +36,7 @@
 
 -behaviour(supervisor).
 
--export([start_link/1]).
+-export([start_link/0]).
 
 -export([init/1]).
 
@@ -44,21 +44,17 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
-start_link(ConfigFile) ->
-    supervisor:start_link(?MODULE, [ConfigFile]).
+start_link() ->
+    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-init(ConfigFile) ->
+init([]) ->
     Node = erlang:node(),
-    Nodes = emoxi:running_nodes() ++ [Node],
-    Children = children(ConfigFile, Node, Nodes),
-    {ok, {{one_for_one, 10, 1}, Children}}.
+    Nodes = misc:running_nodes() ++ [Node],
+    Children = child_specs(Node, Nodes),
+    {ok, {{one_for_one, 3, 10}, Children}}.
 
-children(ConfigFile, Node, Nodes) ->
-    [{config,
-      {config, start_link, [ConfigFile]},
-      permanent, 1000, worker,
-      [config]},
-     {storage_manager,
+child_specs(Node, Nodes) ->
+    [{storage_manager,
       {storage_manager,start_link, []},
       permanent, 1000, worker, [storage_manager]},
      {storage_server_sup,

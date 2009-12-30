@@ -100,7 +100,7 @@ queue(#session_proxy{corked = C} = Sess, HE) ->
 forward_simple(Opcode, #session_proxy{bucket = Bucket} = Sess, Out,
                {_Header, #mc_entry{key = Key}} = HE) ->
     {Key, Addrs, Config} = mc_bucket:choose_addrs(Bucket, Key),
-    {value, MinOk} = config:search(Config, replica_kind(Opcode)),
+    {value, MinOk} = ns_config:search(Config, replica_kind(Opcode)),
     {ok, Monitors} = send(Addrs, Out, Opcode, HE,
                           undefined, ?MODULE, MinOk),
     1 = await_ok(1), % TODO: Send err response instead of conn close?
