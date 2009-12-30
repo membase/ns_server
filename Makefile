@@ -15,12 +15,13 @@ ebins:
 
 clean:
 	rm -f cov.html erl_crash.dump
+	rm -f ns_server_*.tar.gz
 	rm -rf ebin
 
 bdist: clean ebins
 	git describe | sed s/-/_/g > $(TMP_VER)
-	tar --directory=.. -czf ns_server_sup_`cat $(TMP_VER)`.tar.gz ns_server_sup/ebin
-	echo created ns_server_sup_`cat $(TMP_VER)`.tar.gz
+	tar --directory=.. -czf ns_server_`cat $(TMP_VER)`.tar.gz ns_server/ebin
+	echo created ns_server_`cat $(TMP_VER)`.tar.gz
 
 test: test_unit
 
