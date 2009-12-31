@@ -21,8 +21,8 @@
 %% all the higher level layers can learn of it via this module's
 %% monitor/demonitor abstraction.
 
-start() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
-stop()  -> gen_server:stop(?MODULE).
+start_link() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+stop()       -> gen_server:stop(?MODULE).
 
 monitor(Addr) ->
     {ok, MBoxPid} = gen_server:call(?MODULE, {pid, Addr}),

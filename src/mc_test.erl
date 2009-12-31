@@ -24,8 +24,8 @@ main() ->
                            [mc_bucket:create("default", Addrs2,
                                              Config)]),
 
-    {mc_downstream:start(),
-     mc_replication:start(),
+    {mc_downstream:start_link(),
+     mc_replication:start_link(),
      mc_accept:start(11300,
                      {mc_server_ascii,
                       mc_server_ascii_proxy, AsciiPool}),
