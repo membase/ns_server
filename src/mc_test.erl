@@ -54,7 +54,7 @@ main() ->
 % To run tests:
 %   erl -pa ebin -noshell -s mc_test test -s init stop
 %
-tests_mc() ->
+tests(mc) ->
     [mc_ascii,
      mc_client_ascii,
      mc_client_ascii_ac,
@@ -64,12 +64,15 @@ tests_mc() ->
      mc_bucket,
      mc_pool,
      mc_downstream
-    ].
+    ];
 
-tests_emoxi() ->
+tests(emoxi) ->
     [util,
-     cring,
-     bootstrap,
+     cring
+    ];
+
+tests(emoxi_dyn) ->
+    [bootstrap,
      vclock,
      stream,
      dmerkle,
@@ -80,9 +83,12 @@ tests_emoxi() ->
      storage_manager,
      sync_manager].
 
-test() ->
-    {test_list(tests_mc()),
-     test_list(tests_emoxi())}.
+% For cmd-line...
+
+test() -> test([mc, emoxi, emoxi_dyn]).
+
+test([])         -> [];
+test([X | Rest]) -> [ test_list(tests(X)) | test(Rest) ].
 
 test_cover(Tests) ->
     cover:start(),
@@ -133,4 +139,21 @@ cucumber() ->
           CucumberFeatures),
     io:format("total stats: ~p~n", [TotalStats]),
     {ok, TotalStats}.
+
+% Example:
+%
+%   repeat(mc_client_binary, test).
+%
+%   erl -pa ebin -s mc_test repeat mc_client_binary test
+%
+repeat([Mod, Fun])     -> repeat(Mod, Fun).
+repeat(Mod, Fun)       -> repeat(Mod, Fun, []).
+repeat(Mod, Fun, Args) -> repeat(Mod, Fun, Args, 1).
+repeat(Mod, Fun, Args, N) ->
+    case N rem 1000 of
+        0 -> io:format("repeat ~p~n", [N]);
+        _ -> ok
+    end,
+    erlang:apply(Mod, Fun, Args),
+    repeat(Mod, Fun, Args, N + 1).
 
