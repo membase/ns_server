@@ -8,14 +8,13 @@
 
 -compile(export_all).
 
+% Note: the connection just closes on any error.
+
 loop_in(InSock, OutPid, CmdNum, Module, Session) ->
     case recv(InSock) of
         {ok, Cmd, CmdArgs} ->
             {ok, Session2} =
                 Module:cmd(Cmd, Session, InSock, {OutPid, CmdNum}, CmdArgs),
-            % TODO: Need protocol-specific error handling here,
-            %       such as to send ERROR on unknown cmd.  Currently,
-            %       the connection just closes.
             loop_in(InSock, OutPid, CmdNum + 1, Module, Session2);
         {error, closed} -> ok
     end.
@@ -25,9 +24,6 @@ loop_in_prefix(Prefix, InSock, OutPid, CmdNum, Module, Session) ->
         {ok, Cmd, CmdArgs} ->
             {ok, Session2} =
                 Module:cmd(Cmd, Session, InSock, {OutPid, CmdNum}, CmdArgs),
-            % TODO: Need protocol-specific error handling here,
-            %       such as to send ERROR on unknown cmd.  Currently,
-            %       the connection just closes.
             loop_in(InSock, OutPid, CmdNum + 1, Module, Session2);
         {error, closed} -> ok
     end.
