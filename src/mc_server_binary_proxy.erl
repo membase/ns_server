@@ -76,6 +76,36 @@ cmd(?NOOP = O, Sess, _Sock, Out, HE) ->
 
 % ------------------------------------------
 
+cmd(?STAT = O, Sess, _Sock, Out, {H, _E} = HE) ->
+    ResponseFilter =
+        fun (<<"STAT ", LineBin/binary>>, undefined) ->
+                LineStr = binary_to_list(LineBin),
+                [Key, Data | _Rest] = string:tokens(LineStr, " "),
+                mc_binary:send(Out, res,
+                               H#mc_header{status = ?SUCCESS},
+                               #mc_entry{key = Key, data = Data}),
+                false;
+            (#mc_header{status = ?SUCCESS} = RH,
+             #mc_entry{key = KeyBin} = RE) ->
+                case mc_binary:bin_size(KeyBin) > 0 of
+                    true  -> mc_binary:send(Out, res, RH, RE),
+                             false;
+                    false -> false
+                end;
+            (_, _) ->
+                false
+        end,
+    % Using undefined Out to swallow the downstream responses,
+    % which we'll handle with our ResponseFilter.
+    {NumFwd, Monitors} =
+        forward_bcast(all_send, O, Sess, undefined, HE, ResponseFilter),
+    NumFwd = await_ok(NumFwd),
+    mc_binary:send(Out, res, H#mc_header{status = ?SUCCESS}, #mc_entry{}),
+    mc_downstream:demonitor(Monitors),
+    {ok, Sess};
+
+% ------------------------------------------
+
 cmd(?VERSION, Sess, _Sock, Out, {Header, _Entry}) ->
     V = case ns_config:search(version) of
             {value, X} -> X;
@@ -126,18 +156,24 @@ forward_simple(Opcode, #session_proxy{bucket = Bucket} = Sess, Out,
     mc_downstream:demonitor(Monitors),
     {ok, Sess}.
 
+% For binary commands to do a broadcast scatter (with no
+% gather/response processing) in this helper function.
+forward_bcast(all_send, Opcode, #session_proxy{bucket = Bucket},
+              Out, HE, ResponseFilter) ->
+    Addrs = mc_bucket:addrs(Bucket),
+    lists:foldl(fun (Addr, Acc) ->
+                    accum(send([Addr], Out, Opcode, HE,
+                               ResponseFilter, ?MODULE, undefined),
+                          Acc)
+                end,
+                {0, []}, Addrs);
+
 % For binary commands to do a broadcast scatter/gather.
 % A ResponseFilter can be used to filter out responses.
-forward_bcast(all, Opcode, #session_proxy{bucket = Bucket} = Sess,
+forward_bcast(all, Opcode, Sess,
               Out, {H, E} = HE, ResponseFilter) ->
-    Addrs = mc_bucket:addrs(Bucket),
     {NumFwd, Monitors} =
-        lists:foldl(fun (Addr, Acc) ->
-                        accum(send([Addr], Out, Opcode, HE,
-                                   ResponseFilter, ?MODULE, undefined),
-                              Acc)
-                    end,
-                    {0, []}, Addrs),
+        forward_bcast(all_send, Opcode, Sess, Out, HE, ResponseFilter),
     NumFwd = await_ok(NumFwd),
     mc_binary:send(Out, res, H#mc_header{status = ?SUCCESS}, E),
     mc_downstream:demonitor(Monitors),
