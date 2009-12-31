@@ -48,6 +48,9 @@ cmd(replace, Sock, RecvCallback, Entry) ->
 % cmd(prepend, Sock, RecvCallback, Entry) ->
 %     cmd_update(Sock, RecvCallback, Entry, ?PREPEND);
 
+cmd(cas, Sock, RecvCallback, Entry) ->
+    cmd_update(Sock, RecvCallback, Entry, ?SET);
+
 cmd(incr, Sock, RecvCallback, Entry) ->
     cmd_arith(Sock, RecvCallback, Entry, ?INCREMENT);
 cmd(decr, Sock, RecvCallback, Entry) ->
