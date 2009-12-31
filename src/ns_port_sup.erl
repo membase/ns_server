@@ -4,7 +4,8 @@
 
 -export([start_link/0]).
 
--export([init/1, launch_port/2, launch_port/4, terminate_port/1]).
+-export([init/1, launch_port/2, launch_port/4, terminate_port/1,
+         current_ports/0]).
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
@@ -46,10 +47,39 @@ create_child_spec({Name, Cmd, Args, Opts}) ->
     {Name,
      {ns_port_server, start_link,
       [Name, Cmd, Args, Opts]},
-     permanent, 10, worker,
+     % Using transient, not permanent, because child process might
+     % correctly stop due to wrong parameters, tcp-port is already
+     % taken, etc.  And, that does not mean we should take down
+     % the entire ns_server supervisor tree.  We want our web
+     % console UI to keep on working, for example, so that
+     % the user can assign a new port.
+     transient, 10, worker,
      [ns_port_server]}.
 
 terminate_port(Name) ->
     error_logger:info_msg("Unsupervising ~p~n", [Name]),
     ok = supervisor:terminate_child(?MODULE, Name),
     ok = supervisor:delete_child(?MODULE, Name).
+
+current_ports() ->
+    % CurrChildSpecs will look like...
+    %   [{memcached,<0.77.0>,worker,[ns_port_server]},
+    %    {ns_port_init,undefined,worker,[]}]
+    %
+    % Or possibly, if a child died, like...
+    %   [{memcached,undefined,worker,[ns_port_server]},
+    %    {ns_port_init,undefined,worker,[]}]
+    %
+    CurrChildSpecs = supervisor:which_children(?MODULE),
+    lists:keydelete(ns_port_init, 1, CurrChildSpecs),
+    lists:foldl(fun({Name, Pid, _, _} = X, Acc) ->
+                    case is_pid(Pid) of
+                        true  -> [X | Acc];
+                        false -> supervisor:delete_child(?MODULE, Name),
+                                 Acc
+                    end
+                end,
+                [],
+                CurrChildSpecs).
+
+
