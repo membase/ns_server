@@ -117,6 +117,7 @@ cmd(stats, #session_proxy{bucket = Bucket} = Session,
                     {0, []}, Addrs),
     await_ok(NumFwd),
     % TODO: Different stats args don't all use "END".
+    % TODO: ERROR from stats doesn't use "END".
     mc_ascii:send(Out, <<"END\r\n">>),
     mc_downstream:demonitor(Monitors),
     {ok, Session};

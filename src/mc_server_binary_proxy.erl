@@ -122,7 +122,7 @@ forward_simple(Opcode, #session_proxy{bucket = Bucket} = Sess, Out,
     {value, MinOk} = ns_config:search(Config, replica_kind(Opcode)),
     {ok, Monitors} = send(Addrs, Out, Opcode, HE,
                           undefined, ?MODULE, MinOk),
-    1 = await_ok(1), % TODO: Send err response instead of conn close?
+    1 = await_ok(1),
     mc_downstream:demonitor(Monitors),
     {ok, Sess}.
 
@@ -138,7 +138,7 @@ forward_bcast(all, Opcode, #session_proxy{bucket = Bucket} = Sess,
                               Acc)
                     end,
                     {0, []}, Addrs),
-    NumFwd = await_ok(NumFwd), % TODO: Send error instead of closing conn?
+    NumFwd = await_ok(NumFwd),
     mc_binary:send(Out, res, H#mc_header{status = ?SUCCESS}, E),
     mc_downstream:demonitor(Monitors),
     {ok, Sess};
@@ -164,7 +164,7 @@ forward_bcast(uncork, _Opcode, #session_proxy{bucket = Bucket,
                                    undefined), Acc)
                     end,
                     {0, []}, Groups),
-    NumFwd = await_ok(NumFwd), % TODO: Send error instead of closing conn?
+    NumFwd = await_ok(NumFwd),
     mc_binary:send(Out, res, H#mc_header{status = ?SUCCESS}, E),
     mc_downstream:demonitor(Monitors),
     {ok, Sess#session_proxy{corked = []}}.
