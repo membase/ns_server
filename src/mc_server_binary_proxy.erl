@@ -77,7 +77,15 @@ cmd(?NOOP = O, Sess, _Sock, Out, HE) ->
 cmd(?QUIT, _Sess, _Sock, _Out, _HE) ->
     exit({ok, quit_received});
 cmd(?QUITQ, _Sess, _Sock, _Out, _HE) ->
-    exit({ok, quit_received}).
+    exit({ok, quit_received});
+
+% ------------------------------------------
+
+cmd(_, Sess, _, Out, {Header, _Entry}) ->
+    % TODO: Reference c-memcached includes an error string.
+    mc_binary:send(Out, res,
+                   Header#mc_header{status = ?UNKNOWN_COMMAND}, #mc_entry{}),
+    {ok, Sess}.
 
 % ------------------------------------------
 
