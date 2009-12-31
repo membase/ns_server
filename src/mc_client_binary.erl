@@ -44,11 +44,7 @@ cmd_binary_vocal_recv(Opcode, Sock, RecvCallback) ->
        false -> ok
     end,
     case Opcode =:= RecvHeader#mc_header.opcode of
-        true  -> S = RecvHeader#mc_header.status,
-                 case S =:= ?SUCCESS of
-                     true  -> {ok, RecvHeader, RecvEntry};
-                     false -> {ok, RecvHeader, RecvEntry}
-                 end;
+        true  -> {ok, RecvHeader, RecvEntry};
         false -> cmd_binary_vocal_recv(Opcode, Sock, RecvCallback)
     end.
 
@@ -113,8 +109,16 @@ ext(_, _) -> undefined.
 ext_flag_expire(#mc_entry{flag = Flag, expire = Expire}) ->
     <<Flag:32, Expire:32>>.
 
-ext_arith(#mc_entry{data = Data, expire = Expire}) ->
-    <<Data:64, 0:64, Expire:32>>.
+ext_arith(#mc_entry{ext = Ext, data = Data, expire = Expire}) ->
+    case Ext of
+        undefined ->
+            case Data of
+                <<>>      -> <<0:64, 0:64, Expire:32>>;
+                undefined -> <<0:64, 0:64, Expire:32>>;
+                _         -> <<Data:64, 0:64, Expire:32>>
+            end;
+        _ -> Ext
+    end.
 
 % -------------------------------------------------
 
