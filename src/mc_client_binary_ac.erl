@@ -43,10 +43,10 @@ cmd(add, Sock, RecvCallback, Entry) ->
 cmd(replace, Sock, RecvCallback, Entry) ->
     cmd_update(Sock, RecvCallback, Entry, ?REPLACE);
 
-% cmd(append, Sock, RecvCallback, Entry) ->
-%     cmd_update(Sock, RecvCallback, Entry, ?APPEND);
-% cmd(prepend, Sock, RecvCallback, Entry) ->
-%     cmd_update(Sock, RecvCallback, Entry, ?PREPEND);
+cmd(append, Sock, RecvCallback, Entry) ->
+    cmd_xpend(Sock, RecvCallback, Entry, ?APPEND);
+cmd(prepend, Sock, RecvCallback, Entry) ->
+    cmd_xpend(Sock, RecvCallback, Entry, ?PREPEND);
 
 cmd(cas, Sock, RecvCallback, Entry) ->
     cmd_update(Sock, RecvCallback, Entry, ?SET);
@@ -83,6 +83,10 @@ cmd_update(Sock, RecvCallback,
     Ext = <<Flag:32, Expire:32>>,
     send_recv(Sock, RecvCallback,
               #mc_header{opcode = Opcode}, Entry#mc_entry{ext = Ext}).
+
+cmd_xpend(Sock, RecvCallback, Entry, Opcode) ->
+    send_recv(Sock, RecvCallback,
+              #mc_header{opcode = Opcode}, Entry#mc_entry{ext = undefined}).
 
 cmd_arith(Sock, RecvCallback,
           #mc_entry{data = Amount, expire = Expire} = Entry, Opcode) ->
