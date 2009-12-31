@@ -17,13 +17,16 @@ main() ->
     BinaryPool = mc_pool:create(binary_pool, BinaryAddrs, Config,
                                 [mc_bucket:create("default", BinaryAddrs,
                                                   Config)]),
-
     Addrs2 = [mc_addr:local(ascii),
               mc_addr:local(binary)],
     Pool2 = mc_pool:create(pool2, Addrs2, Config,
                            [mc_bucket:create("default", Addrs2,
                                              Config)]),
-
+    Addrs3 = [mc_addr:local(binary),
+              mc_addr:local(binary)],
+    Pool3 = mc_pool:create(pool2, Addrs3, Config,
+                           [mc_bucket:create("default", Addrs3,
+                                             Config)]),
     {mc_downstream:start_link(),
      mc_replication:start_link(),
      mc_accept:start(11300,
@@ -46,7 +49,10 @@ main() ->
                       mc_server_detect, BinaryPool}),
      mc_accept:start(11255,
                      {mc_server_detect,
-                      mc_server_detect, Pool2})}.
+                      mc_server_detect, Pool2}),
+     mc_accept:start(11266,
+                     {mc_server_detect,
+                      mc_server_detect, Pool3})}.
 
 % To build:
 %   make clean && make
