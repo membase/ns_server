@@ -147,14 +147,18 @@ queue(#session_proxy{corked = C} = Sess, HE) ->
 
 % For binary commands that need a simple command forward.
 forward_simple(Opcode, #session_proxy{bucket = Bucket} = Sess, Out,
-               {_Header, #mc_entry{key = Key}} = HE) ->
+               {Header, #mc_entry{key = Key}} = HE) ->
     {Key, Addrs, _Config} = mc_bucket:choose_addrs(Bucket, Key),
     {value, MinOk} =
         {value, undefined}, % ns_config:search(Config, replica_kind(Opcode)),
-    {ok, Monitors} = send(Addrs, Out, Opcode, HE,
-                          undefined, ?MODULE, MinOk),
-    1 = await_ok(1),
-    mc_downstream:demonitor(Monitors),
+    case send(Addrs, Out, Opcode, HE, undefined, ?MODULE, MinOk) of
+        {ok, Monitors} ->
+            1 = await_ok(1),
+            mc_downstream:demonitor(Monitors);
+        _Error ->
+            mc_binary:send(Out, res,
+                           Header#mc_header{status = ?ENOMEM}, #mc_entry{})
+    end,
     {ok, Sess}.
 
 % For binary commands to do a broadcast scatter (with no

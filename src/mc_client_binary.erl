@@ -47,7 +47,7 @@ cmd_binary_vocal_recv(Opcode, Sock, RecvCallback) ->
         true  -> S = RecvHeader#mc_header.status,
                  case S =:= ?SUCCESS of
                      true  -> {ok, RecvHeader, RecvEntry};
-                     false -> {error, RecvHeader, RecvEntry}
+                     false -> {ok, RecvHeader, RecvEntry}
                  end;
         false -> cmd_binary_vocal_recv(Opcode, Sock, RecvCallback)
     end.
@@ -164,6 +164,28 @@ get_test_match(Sock, Key, Data) ->
     ?assertMatch(Key, E#mc_entry.key),
     ?assertMatch(Data, E#mc_entry.data),
     ?assertMatch([{nvals, 1}], ets:lookup(D, nvals)).
+
+get_miss_test() ->
+    {ok, Sock} = gen_tcp:connect("localhost", 11211,
+                                 [binary, {packet, 0}, {active, false}]),
+    flush_test_sock(Sock),
+    {ok, H, _E} = cmd(?GET, Sock,
+                       fun (_H, _E) -> ok
+                       end,
+                       {#mc_header{}, #mc_entry{key = <<"not_a_key">>}}),
+    ?assert(H#mc_header.status =/= ?SUCCESS),
+    ok = gen_tcp:close(Sock).
+
+getk_miss_test() ->
+    {ok, Sock} = gen_tcp:connect("localhost", 11211,
+                                 [binary, {packet, 0}, {active, false}]),
+    flush_test_sock(Sock),
+    {ok, H, _E} = cmd(?GETK, Sock,
+                       fun (_H, _E) -> ok
+                       end,
+                       {#mc_header{}, #mc_entry{key = <<"not_a_key">>}}),
+    ?assert(H#mc_header.status =/= ?SUCCESS),
+    ok = gen_tcp:close(Sock).
 
 stats_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,

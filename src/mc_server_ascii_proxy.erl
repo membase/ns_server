@@ -52,13 +52,17 @@ cmd(delete, #session_proxy{bucket = Bucket} = Session,
     {Key, Addrs, _Config} = mc_bucket:choose_addrs(Bucket, Key),
     {value, MinOk} =
         {value, undefined}, % ns_config:search(Config, replica_w),
-    {ok, Monitors} = send(Addrs, Out, delete, #mc_entry{key = Key},
-                          undefined, ?MODULE, MinOk),
-    case await_ok(1) of
-        1 -> true;
-        _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
+    case send(Addrs, Out, delete, #mc_entry{key = Key},
+              undefined, ?MODULE, MinOk) of
+        {ok, Monitors} ->
+            case await_ok(1) of
+                1 -> true;
+                _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
+            end,
+            mc_downstream:demonitor(Monitors);
+        _Error ->
+            mc_ascii:send(Out, <<"ERROR\r\n">>)
     end,
-    mc_downstream:demonitor(Monitors),
     {ok, Session};
 
 cmd(flush_all, Session, InSock, _Out, ["noreply"]) ->
@@ -190,13 +194,16 @@ forward_update(Cmd, #session_proxy{bucket = Bucket} = Session,
         {value, undefined}, % ns_config:search(Config, replica_w),
     Entry = #mc_entry{key = Key, flag = Flag, expire = Expire, data = Data,
                       cas = Cas},
-    {ok, Monitors} = send(Addrs, Out, Cmd, Entry,
-                          undefined, ?MODULE, MinOk),
-    case await_ok(1) of
-        1 -> true;
-        _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
+    case send(Addrs, Out, Cmd, Entry, undefined, ?MODULE, MinOk) of
+        {ok, Monitors} ->
+            case await_ok(1) of
+                1 -> true;
+                _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
+            end,
+            mc_downstream:demonitor(Monitors);
+        _Error ->
+            mc_ascii:send(Out, <<"ERROR\r\n">>)
     end,
-    mc_downstream:demonitor(Monitors),
     {ok, Session};
 
 forward_update(_, Session, _, Out, _CmdArgs) ->
@@ -213,14 +220,18 @@ forward_arith(Cmd, #session_proxy{bucket = Bucket} = Session,
     {Key, Addrs, _Config} = mc_bucket:choose_addrs(Bucket, Key),
     {value, MinOk} =
         {value, undefined}, % ns_config:search(Config, replica_w),
-    {ok, Monitors} = send(Addrs, Out, Cmd,
-                          #mc_entry{key = Key, data = Amount},
-                          undefined, ?MODULE, MinOk),
-    case await_ok(1) of
-        1 -> true;
-        _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
+    case send(Addrs, Out, Cmd,
+              #mc_entry{key = Key, data = Amount},
+              undefined, ?MODULE, MinOk) of
+        {ok, Monitors} ->
+            case await_ok(1) of
+                1 -> true;
+                _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
+            end,
+            mc_downstream:demonitor(Monitors);
+        _Error ->
+            mc_ascii:send(Out, <<"ERROR\r\n">>)
     end,
-    mc_downstream:demonitor(Monitors),
     {ok, Session};
 
 forward_arith(_, Session, _, Out, _CmdArgs) ->
