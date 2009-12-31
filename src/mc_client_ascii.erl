@@ -58,10 +58,11 @@ cmd(decr, Sock, RecvCallback, Entry) ->
 cmd(delete, Sock, RecvCallback, #mc_entry{key = Key}) ->
     send_recv(Sock, [<<"delete ">>, Key, <<"\r\n">>], RecvCallback);
 
-cmd(flush_all, Sock, RecvCallback, #mc_entry{key = Delay}) ->
+cmd(flush_all, Sock, RecvCallback, #mc_entry{ext = Delay}) ->
     M = case Delay of
-            undefined -> [<<"flush_all\r\n">>];
-            _         -> [<<"flush_all ">>, Delay, <<"\r\n">>]
+            undefined       -> [<<"flush_all\r\n">>];
+            <<DelayInt:32>> -> DelayStr = integer_to_list(DelayInt),
+                               [<<"flush_all ">>, DelayStr, <<"\r\n">>]
         end,
     send_recv(Sock, M, RecvCallback);
 

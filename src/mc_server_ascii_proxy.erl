@@ -70,14 +70,15 @@ cmd(flush_all, #session_proxy{bucket = Bucket} = Session,
     Addrs = mc_bucket:addrs(Bucket),
     Delay = case CmdArgs of
                 []  -> undefined;
-                [X] -> X
+                [X] -> XInt = list_to_integer(X),
+                       <<XInt:32>>
             end,
     {NumFwd, Monitors} =
         lists:foldl(fun (Addr, Acc) ->
                         % Using undefined Out to swallow the OK
                         % responses from the downstreams.
                         accum(send([Addr], undefined,
-                                   flush_all, #mc_entry{key = Delay},
+                                   flush_all, #mc_entry{ext = Delay},
                                    undefined, ?MODULE, undefined), Acc)
                     end,
                     {0, []}, Addrs),
