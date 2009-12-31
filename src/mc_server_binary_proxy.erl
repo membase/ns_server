@@ -69,10 +69,20 @@ cmd(?PREPENDQ, Sess, _Sock, _Out, HE) ->
 
 cmd(?FLUSH = O, Sess, _Sock, Out, HE) ->
     forward_bcast_filter(all, O, Sess, Out, HE);
+cmd(?FLUSHQ = O, Sess, _Sock, _Out, HE) ->
+    forward_bcast_filter(all, O, Sess, undefined, HE);
 cmd(?NOOP = O, Sess, _Sock, Out, HE) ->
     forward_bcast_filter(uncork, O, Sess, Out, HE);
 
 % ------------------------------------------
+
+cmd(?VERSION, Sess, _Sock, Out, {Header, _Entry}) ->
+    V = case ns_config:search(version) of
+            {value, X} -> X;
+            false      -> "X.X.X"
+        end,
+    mc_binary:send(Out, res, Header, #mc_entry{data = V}),
+    {ok, Sess};
 
 cmd(?QUIT, _Sess, _Sock, _Out, _HE) ->
     exit({ok, quit_received});
@@ -89,8 +99,6 @@ cmd(_, Sess, _, Out, {Header, _Entry}) ->
 
 % ------------------------------------------
 
-% ?FLUSHQ
-% ?VERSION
 % ?STAT
 % ?SASL_LIST_MECHS
 % ?SASL_AUTH
@@ -101,6 +109,9 @@ cmd(_, Sess, _, Out, {Header, _Entry}) ->
 
 % Enqueue the request as part of the session, which a
 % future NOOP request should uncork.
+%
+% TODO: Any future non-quiet command needs to uncork, too.
+%
 queue(#session_proxy{corked = C} = Sess, HE) ->
     {ok, Sess#session_proxy{corked = [HE | C]}}.
 

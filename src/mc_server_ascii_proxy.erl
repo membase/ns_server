@@ -87,8 +87,15 @@ cmd(flush_all, #session_proxy{bucket = Bucket} = Session,
     mc_downstream:demonitor(Monitors),
     {ok, Session};
 
+cmd(version, Session, _InSock, Out, _CmdArgs) ->
+    V = case ns_config:search(version) of
+            {value, X} -> X;
+            false      -> "X.X.X"
+        end,
+    mc_ascii:send(Out, [<<"VERSION ">>, V, <<"\r\n">>]),
+    {ok, Session};
+
 % TODO:
-% version
 % verbosity
 % stats
 % stats args
