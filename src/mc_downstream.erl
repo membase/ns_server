@@ -87,9 +87,7 @@ await_ok(Prefix, N, Acc) when N > 0 ->
         {Prefix, {ok, _}}              -> await_ok(Prefix, N - 1, Acc + 1);
         {Prefix, {ok, _, _}}           -> await_ok(Prefix, N - 1, Acc + 1);
         {Prefix, _}                    -> await_ok(Prefix, N - 1, Acc);
-        {'DOWN', _MonitorRef, _, _, _} -> await_ok(Prefix, N - 1, Acc);
-        Unexpected                     -> ?debugVal(Unexpected),
-                                          exit({error, Unexpected})
+        {'DOWN', _MonitorRef, _, _, _} -> await_ok(Prefix, N - 1, Acc)
     end;
 await_ok(_, _, Acc) -> Acc.
 
@@ -142,10 +140,9 @@ make_mbox(#dmgr{curr = Dict} = DMgr, Addr) ->
             {ok, DMgr, MBox};
         error ->
             case start_mbox(Addr) of
-                {ok, MBox} ->
-                    Dict2 = dict:store(Addr, MBox, Dict),
-                    {ok, #dmgr{curr = Dict2}, MBox};
-                Error -> Error
+                {ok, MBox} -> Dict2 = dict:store(Addr, MBox, Dict),
+                              {ok, #dmgr{curr = Dict2}, MBox};
+                Error      -> Error
             end
     end.
 

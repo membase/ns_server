@@ -148,8 +148,9 @@ queue(#session_proxy{corked = C} = Sess, HE) ->
 % For binary commands that need a simple command forward.
 forward_simple(Opcode, #session_proxy{bucket = Bucket} = Sess, Out,
                {_Header, #mc_entry{key = Key}} = HE) ->
-    {Key, Addrs, Config} = mc_bucket:choose_addrs(Bucket, Key),
-    {value, MinOk} = ns_config:search(Config, replica_kind(Opcode)),
+    {Key, Addrs, _Config} = mc_bucket:choose_addrs(Bucket, Key),
+    {value, MinOk} =
+        {value, undefined}, % ns_config:search(Config, replica_kind(Opcode)),
     {ok, Monitors} = send(Addrs, Out, Opcode, HE,
                           undefined, ?MODULE, MinOk),
     1 = await_ok(1),

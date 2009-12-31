@@ -78,6 +78,7 @@ handle_call({replicate,
                       response_filter = ResponseFilter} = Request},
             {NotifyPid, _} = _From,
             #rmgr{curr = Replicators} = RMgr) ->
+    ?debugVal({replicate, Request}),
     Id = make_ref(),
     {SentOk, Monitors} =
         lists:foldl(
