@@ -66,8 +66,12 @@ cmd(flush_all, Sock, RecvCallback, #mc_entry{ext = Delay}) ->
         end,
     send_recv(Sock, M, RecvCallback);
 
-cmd(stats, Sock, RecvCallback, _Entry) ->
-    ok = send(Sock, [<<"stats\r\n">>]), % TODO: Parameters for stats.
+cmd(stats, Sock, RecvCallback, #mc_entry{key = Key}) ->
+    M = case Key of
+            undefined -> <<"stats\r\n">>;
+            _         -> [<<"stats ">>, Key, <<"\r\n">>]
+        end,
+    ok = send(Sock, M),
     multiline_recv(Sock, RecvCallback).
 
 % -------------------------------------------------
@@ -136,13 +140,18 @@ get_recv(Sock, RecvCallback) ->
 multiline_recv(Sock, RecvCallback) -> % For stats response.
     Line = recv_line(Sock),
     case Line of
-        {error, _} = Err -> Err;
-        {ok, <<"END">>}  -> Line;
-        {ok, LineBin}    -> case is_function(RecvCallback) of
-                                true  -> RecvCallback(LineBin, undefined);
-                                false -> ok
-                            end,
-                            multiline_recv(Sock, RecvCallback)
+        {error, _} = Err  -> Err;
+        {ok, <<"END">>}   -> Line;
+        {ok, <<"OK">>}    -> Line; % From stats detail on|off.
+        {ok, <<"ERROR">>} -> Line; % From stats <bad_cmd]>
+        {ok, <<"RESET">>} -> Line; % From stats reset.
+        {ok, <<"CLIENT_ERROR", _>>} -> Line;
+        {ok, <<"SERVER_ERROR", _>>} -> Line;
+        {ok, LineBin}     -> case is_function(RecvCallback) of
+                                 true  -> RecvCallback(LineBin, undefined);
+                                 false -> ok
+                             end,
+                             multiline_recv(Sock, RecvCallback)
     end.
 
 % -------------------------------------------------
