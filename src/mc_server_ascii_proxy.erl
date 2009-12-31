@@ -55,6 +55,9 @@ cmd(incr, Session, InSock, Out, CmdArgs) ->
 cmd(decr, Session, InSock, Out, CmdArgs) ->
     forward_arith(decr, Session, InSock, Out, CmdArgs);
 
+cmd(delete, Session, InSock, _Out, [Key, "noreply"]) ->
+    cmd(delete, Session, InSock, undefined, [Key]);
+
 cmd(delete, #session_proxy{bucket = Bucket} = Session,
     _InSock, Out, [Key]) ->
     {Key, Addrs, Config} = mc_bucket:choose_addrs(Bucket, Key),
@@ -68,8 +71,14 @@ cmd(delete, #session_proxy{bucket = Bucket} = Session,
     mc_downstream:demonitor(Monitors),
     {ok, Session};
 
+cmd(flush_all, Session, InSock, _Out, ["noreply"]) ->
+    cmd(flush_all, Session, InSock, undefined, []);
+cmd(flush_all, Session, InSock, _Out, [X, "noreply"]) ->
+    cmd(flush_all, Session, InSock, undefined, [X]);
+
 cmd(flush_all, #session_proxy{bucket = Bucket} = Session,
     _InSock, Out, _CmdArgs) ->
+    % TODO: flush_all with optional parameter
     Addrs = mc_bucket:addrs(Bucket),
     {NumFwd, Monitors} =
         lists:foldl(fun (Addr, Acc) ->
@@ -86,6 +95,12 @@ cmd(flush_all, #session_proxy{bucket = Bucket} = Session,
     mc_downstream:demonitor(Monitors),
     {ok, Session};
 
+% TODO:
+% version
+% verbosity
+% stats
+% stats args
+
 cmd(quit, _Session, _InSock, _Out, _Rest) ->
     exit({ok, quit_received});
 
@@ -94,6 +109,13 @@ cmd(_, Session, _, Out, _) ->
     {ok, Session}.
 
 % ------------------------------------------
+
+forward_update(Cmd, Session,
+               InSock, _Out,
+               [Key, FlagIn, ExpireIn, DataLenIn, "noreply"]) ->
+    forward_update(Cmd, Session,
+                   InSock, undefined,
+                   [Key, FlagIn, ExpireIn, DataLenIn]);
 
 forward_update(Cmd, #session_proxy{bucket = Bucket} = Session,
                InSock, Out, [Key, FlagIn, ExpireIn, DataLenIn]) ->
@@ -112,7 +134,16 @@ forward_update(Cmd, #session_proxy{bucket = Bucket} = Session,
         _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
     end,
     mc_downstream:demonitor(Monitors),
+    {ok, Session};
+
+forward_update(_, Session, _, Out, _CmdArgs) ->
+    % Possibly due to wrong # of CmdArgs.
+    mc_ascii:send(Out, <<"ERROR\r\n">>),
     {ok, Session}.
+
+forward_arith(Cmd, Session,
+              InSock, _Out, [Key, Amount, "noreply"]) ->
+    forward_arith(Cmd, Session, InSock, undefined, [Key, Amount]);
 
 forward_arith(Cmd, #session_proxy{bucket = Bucket} = Session,
               _InSock, Out, [Key, Amount]) ->
