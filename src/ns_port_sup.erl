@@ -62,7 +62,7 @@ terminate_port(Name) ->
     ok = supervisor:delete_child(?MODULE, Name).
 
 current_ports() ->
-    % CurrChildSpecs will look like...
+    % Children will look like...
     %   [{memcached,<0.77.0>,worker,[ns_port_server]},
     %    {ns_port_init,undefined,worker,[]}]
     %
@@ -70,8 +70,8 @@ current_ports() ->
     %   [{memcached,undefined,worker,[ns_port_server]},
     %    {ns_port_init,undefined,worker,[]}]
     %
-    CurrChildSpecs = supervisor:which_children(?MODULE),
-    lists:keydelete(ns_port_init, 1, CurrChildSpecs),
+    Children = supervisor:which_children(?MODULE),
+    lists:keydelete(ns_port_init, 1, Children),
     lists:foldl(fun({Name, Pid, _, _} = X, Acc) ->
                     case is_pid(Pid) of
                         true  -> [X | Acc];
@@ -80,6 +80,6 @@ current_ports() ->
                     end
                 end,
                 [],
-                CurrChildSpecs).
+                Children).
 
 
