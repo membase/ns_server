@@ -26,6 +26,16 @@ cmd(get, Sock, RecvCallback, Keys) when is_list(Keys) ->
     ok = send(Sock, req, #mc_header{opcode = ?NOOP}, #mc_entry{}),
     get_recv(Sock, RecvCallback);
 
+cmd(gets, Sock, RecvCallback, Keys) when is_list(Keys) ->
+    ok = send(Sock,
+              lists:map(fun (K) -> encode(req,
+                                          #mc_header{opcode = ?GETKQ},
+                                          #mc_entry{key = K})
+                        end,
+                        Keys)),
+    ok = send(Sock, req, #mc_header{opcode = ?NOOP}, #mc_entry{}),
+    get_recv(Sock, RecvCallback);
+
 cmd(set, Sock, RecvCallback, Entry) ->
     cmd_update(Sock, RecvCallback, Entry, ?SET);
 cmd(add, Sock, RecvCallback, Entry) ->

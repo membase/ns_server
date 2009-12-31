@@ -192,15 +192,15 @@ send_response(ascii, Out, _Cmd, Head, Body) ->
     ((Body =:= undefined) orelse
      (ok =:= mc_ascii:send(Out, [Body#mc_entry.data, <<"\r\n">>])));
 
-send_response(binary, Out, _Cmd,
+send_response(binary, Out, Cmd,
               #mc_header{status = Status,
                          opcode = Opcode} = _Head, Body) ->
     % Downstream is binary.
     case Status =:= ?SUCCESS of
         true ->
             case Opcode of
-                ?GETKQ     -> send_entry_binary(Out, Body);
-                ?GETK      -> send_entry_binary(Out, Body);
+                ?GETKQ     -> send_entry_binary(Cmd, Out, Body);
+                ?GETK      -> send_entry_binary(Cmd, Out, Body);
                 ?NOOP      -> mc_ascii:send(Out, <<"END\r\n">>);
                 ?INCREMENT -> send_arith_response(Out, Body);
                 ?DECREMENT -> send_arith_response(Out, Body);
@@ -210,14 +210,24 @@ send_response(binary, Out, _Cmd,
             mc_ascii:send(Out, mc_binary:b2a_code(Opcode, Status))
     end.
 
-send_entry_binary(Out, #mc_entry{key = Key, data = Data, flag = Flag}) ->
-    % TODO: CAS during a gets.
+send_entry_binary(Cmd, Out, #mc_entry{key = Key, data = Data,
+                                      cas = Cas, flag = Flag}) ->
     DataLen = integer_to_list(bin_size(Data)),
     FlagStr = integer_to_list(Flag),
-    ok =:= mc_ascii:send(Out, [<<"VALUE ">>, Key,
-                               <<" ">>, FlagStr, <<" ">>,
-                               DataLen, <<"\r\n">>,
-                               Data, <<"\r\n">>]).
+    case Cmd of
+        get ->
+            ok =:= mc_ascii:send(Out, [<<"VALUE ">>, Key,
+                                       <<" ">>, FlagStr, <<" ">>,
+                                       DataLen, <<"\r\n">>,
+                                       Data, <<"\r\n">>]);
+        gets ->
+            CasStr = integer_to_list(Cas),
+            ok =:= mc_ascii:send(Out, [<<"VALUE ">>, Key,
+                                       <<" ">>, FlagStr, <<" ">>,
+                                       DataLen, <<" ">>,
+                                       CasStr, <<"\r\n">>,
+                                       Data, <<"\r\n">>])
+    end.
 
 send_arith_response(Out, #mc_entry{data = Data}) ->
     <<Amount:64>> = Data,
