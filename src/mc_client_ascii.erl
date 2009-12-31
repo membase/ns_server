@@ -19,9 +19,18 @@ cmd(version, Sock, RecvCallback, _Entry) ->
 cmd(get, Sock, RecvCallback, #mc_entry{key = Key}) ->
     ok = send(Sock, [<<"get ">>, Key, <<"\r\n">>]),
     get_recv(Sock, RecvCallback);
+cmd(gets, Sock, RecvCallback, #mc_entry{key = Key}) ->
+    ok = send(Sock, [<<"gets ">>, Key, <<"\r\n">>]),
+    get_recv(Sock, RecvCallback);
 
 cmd(get, Sock, RecvCallback, Keys) when is_list(Keys) ->
     ok = send(Sock, [<<"get ">>,
+                     lists:map(fun (K) -> [K, <<" ">>] end,
+                               Keys),
+                     <<"\r\n">>]),
+    get_recv(Sock, RecvCallback);
+cmd(gets, Sock, RecvCallback, Keys) when is_list(Keys) ->
+    ok = send(Sock, [<<"gets ">>,
                      lists:map(fun (K) -> [K, <<" ">>] end,
                                Keys),
                      <<"\r\n">>]),
@@ -81,14 +90,20 @@ get_recv(Sock, RecvCallback) ->
         {ok, <<"END">>}  -> Line;
         {ok, <<"VALUE ", Rest/binary>> = LineBin} ->
             Parse = io_lib:fread("~s ~u ~u", binary_to_list(Rest)),
-            {ok, [Key, Flag, DataSize], _} = Parse,
+            {ok, [Key, Flag, DataSize], Remaining} = Parse,
+            CasIn = string:strip(Remaining),
+            Cas = case CasIn of
+                      "" -> 0;
+                      _  -> list_to_integer(CasIn)
+                  end,
             {ok, DataCRNL} = recv_data(Sock, DataSize + 2),
             case is_function(RecvCallback) of
                 true -> {Data, _} = split_binary_suffix(DataCRNL, 2),
                         RecvCallback(LineBin,
                                      #mc_entry{key = iolist_to_binary(Key),
                                                flag = Flag,
-                                               data = Data});
+                                               data = Data,
+                                               cas = Cas});
                 false -> ok
             end,
             get_recv(Sock, RecvCallback)

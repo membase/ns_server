@@ -20,24 +20,10 @@ session(_Sock, Pool) ->
 
 % ------------------------------------------
 
-cmd(get, #session_proxy{bucket = Bucket} = Session,
-    _InSock, Out, Keys) ->
-    Groups =
-        group_by(Keys,
-                 fun (Key) ->
-                     {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
-                     Addr
-                 end),
-    {NumFwd, Monitors} =
-        lists:foldl(fun ({Addr, AddrKeys}, Acc) ->
-                        accum(send([Addr], Out, get, AddrKeys,
-                                   undefined, ?MODULE, undefined), Acc)
-                    end,
-                    {0, []}, Groups),
-    await_ok(NumFwd),
-    mc_ascii:send(Out, <<"END\r\n">>),
-    mc_downstream:demonitor(Monitors),
-    {ok, Session};
+cmd(get, Session, InSock, Out, Keys) ->
+    forward_get(get, Session, InSock, Out, Keys);
+cmd(gets, Session, InSock, Out, Keys) ->
+    forward_get(gets, Session, InSock, Out, Keys);
 
 cmd(set, Session, InSock, Out, CmdArgs) ->
     forward_update(set, Session, InSock, Out, CmdArgs);
@@ -48,6 +34,8 @@ cmd(replace, Session, InSock, Out, CmdArgs) ->
 cmd(append, Session, InSock, Out, CmdArgs) ->
     forward_update(append, Session, InSock, Out, CmdArgs);
 cmd(prepend, Session, InSock, Out, CmdArgs) ->
+    forward_update(prepend, Session, InSock, Out, CmdArgs);
+cmd(cas, Session, InSock, Out, CmdArgs) ->
     forward_update(prepend, Session, InSock, Out, CmdArgs);
 
 cmd(incr, Session, InSock, Out, CmdArgs) ->
@@ -110,23 +98,52 @@ cmd(_, Session, _, Out, _) ->
 
 % ------------------------------------------
 
-forward_update(Cmd, Session,
-               InSock, _Out,
+forward_get(Cmd, #session_proxy{bucket = Bucket} = Session,
+    _InSock, Out, Keys) ->
+    Groups =
+        group_by(Keys,
+                 fun (Key) ->
+                     {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
+                     Addr
+                 end),
+    {NumFwd, Monitors} =
+        lists:foldl(fun ({Addr, AddrKeys}, Acc) ->
+                        accum(send([Addr], Out, Cmd, AddrKeys,
+                                   undefined, ?MODULE, undefined), Acc)
+                    end,
+                    {0, []}, Groups),
+    await_ok(NumFwd),
+    mc_ascii:send(Out, <<"END\r\n">>),
+    mc_downstream:demonitor(Monitors),
+    {ok, Session}.
+
+% ------------------------------------------
+
+forward_update(Cmd, Session, InSock, _Out,
                [Key, FlagIn, ExpireIn, DataLenIn, "noreply"]) ->
-    forward_update(Cmd, Session,
-                   InSock, undefined,
-                   [Key, FlagIn, ExpireIn, DataLenIn]);
+    forward_update(Cmd, Session, InSock, undefined,
+                   [Key, FlagIn, ExpireIn, DataLenIn, "0"]);
+forward_update(Cmd, Session,InSock, _Out,
+               [Key, FlagIn, ExpireIn, DataLenIn, CasIn, "noreply"]) ->
+    forward_update(Cmd, Session, InSock, undefined,
+                   [Key, FlagIn, ExpireIn, DataLenIn, CasIn]);
+forward_update(Cmd, Session, InSock, Out,
+               [Key, FlagIn, ExpireIn, DataLenIn]) ->
+    forward_update(Cmd, Session, InSock, Out,
+                   [Key, FlagIn, ExpireIn, DataLenIn, "0"]);
 
 forward_update(Cmd, #session_proxy{bucket = Bucket} = Session,
-               InSock, Out, [Key, FlagIn, ExpireIn, DataLenIn]) ->
+               InSock, Out, [Key, FlagIn, ExpireIn, DataLenIn, CasIn]) ->
     Flag = list_to_integer(FlagIn),
     Expire = list_to_integer(ExpireIn),
     DataLen = list_to_integer(DataLenIn),
+    Cas = list_to_integer(CasIn),
     {ok, DataCRNL} = mc_ascii:recv_data(InSock, DataLen + 2),
     {Data, _} = mc_ascii:split_binary_suffix(DataCRNL, 2),
     {Key, Addrs, Config} = mc_bucket:choose_addrs(Bucket, Key),
     {value, MinOk} = ns_config:search(Config, replica_w),
-    Entry = #mc_entry{key = Key, flag = Flag, expire = Expire, data = Data},
+    Entry = #mc_entry{key = Key, flag = Flag, expire = Expire, data = Data,
+                      cas = Cas},
     {ok, Monitors} = send(Addrs, Out, Cmd, Entry,
                           undefined, ?MODULE, MinOk),
     case await_ok(1) of
