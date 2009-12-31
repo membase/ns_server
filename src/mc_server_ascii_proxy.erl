@@ -87,7 +87,11 @@ cmd(flush_all, #session_proxy{bucket = Bucket} = Session,
     {ok, Session};
 
 cmd(quit, _Session, _InSock, _Out, _Rest) ->
-    exit({ok, quit_received}).
+    exit({ok, quit_received});
+
+cmd(_, Session, _, Out, _) ->
+    mc_ascii:send(Out, <<"ERROR\r\n">>),
+    {ok, Session}.
 
 % ------------------------------------------
 
