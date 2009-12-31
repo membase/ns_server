@@ -24,7 +24,7 @@ main() ->
                                              Config)]),
     Addrs3 = [mc_addr:local(binary),
               mc_addr:local(binary)],
-    Pool3 = mc_pool:create(pool2, Addrs3, Config,
+    Pool3 = mc_pool:create(pool3, Addrs3, Config,
                            [mc_bucket:create("default", Addrs3,
                                              Config)]),
     {mc_downstream:start_link(),

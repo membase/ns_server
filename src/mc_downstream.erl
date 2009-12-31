@@ -25,8 +25,10 @@ start_link() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 stop()       -> gen_server:stop(?MODULE).
 
 monitor(Addr) ->
-    {ok, MBoxPid} = gen_server:call(?MODULE, {pid, Addr}),
-    {ok, erlang:monitor(process, MBoxPid)}.
+    case gen_server:call(?MODULE, {pid, Addr}) of
+        {ok, MBoxPid} -> {ok, erlang:monitor(process, MBoxPid)};
+        Error         -> Error
+    end.
 
 demonitor(undefined)   -> ok;
 demonitor(MonitorRefs) ->
@@ -39,8 +41,8 @@ send(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule) ->
     send(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule,
          self(), undefined).
 
-send(Addr, Out, Cmd, CmdArgs,
-     ResponseFilter, ResponseModule, NotifyPid, NotifyData) ->
+send(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule,
+     NotifyPid, NotifyData) ->
     Kind = mc_addr:kind(Addr),
     ResponseFun =
         fun (Head, Body) ->
@@ -51,11 +53,14 @@ send(Addr, Out, Cmd, CmdArgs,
                 false -> false
             end
         end,
-    {ok, Monitor} = monitor(Addr),
-    case send_call(Addr, send, NotifyPid, NotifyData, ResponseFun,
-                   kind_to_module(Kind), Cmd, CmdArgs) of
-        ok -> {ok, [Monitor]};
-        _  -> {error, [Monitor]}
+    case monitor(Addr) of
+        {ok, Monitor} ->
+            case send_call(Addr, send, NotifyPid, NotifyData, ResponseFun,
+                           kind_to_module(Kind), Cmd, CmdArgs) of
+                ok -> {ok, [Monitor]};
+                _  -> {error, [Monitor]}
+            end;
+        _Error -> {error, []}
     end.
 
 send_call(Addr, Op, NotifyPid, NotifyData,
@@ -109,31 +114,46 @@ handle_info(_Info, DMgr) -> {noreply, DMgr}.
 handle_cast(_Msg, DMgr) -> {noreply, DMgr}.
 
 handle_call({pid, Addr}, _From, DMgr) ->
-    {DMgr2, #mbox{pid = MBoxPid}} = make_mbox(DMgr, Addr),
-    Reply = {ok, MBoxPid},
-    {reply, Reply, DMgr2};
+    case make_mbox(DMgr, Addr) of
+        {ok, DMgr2, #mbox{pid = MBoxPid}} ->
+            Reply = {ok, MBoxPid},
+            {reply, Reply, DMgr2};
+        Error ->
+            {reply, Error, DMgr}
+    end;
 
 handle_call({send, Addr, Op, NotifyPid, NotifyData,
              ResponseFun, CmdModule, Cmd, CmdArgs}, _From, DMgr) ->
-    {DMgr2, #mbox{pid = Pid}} = make_mbox(DMgr, Addr),
-    Pid ! {Op, NotifyPid, NotifyData, ResponseFun,
-           CmdModule, Cmd, CmdArgs},
-    {reply, ok, DMgr2}.
+    case make_mbox(DMgr, Addr) of
+        {ok, DMgr2, #mbox{pid = MBoxPid}} ->
+            MBoxPid ! {Op, NotifyPid, NotifyData, ResponseFun,
+                       CmdModule, Cmd, CmdArgs},
+            {reply, ok, DMgr2};
+        Error ->
+            {reply, Error, DMgr}
+    end.
 
 % ---------------------------------------------------
 
-% Retrieves or creates an mbox for an Addr.
+% Retrieves or starts an mbox for an Addr.
 make_mbox(#dmgr{curr = Dict} = DMgr, Addr) ->
     case dict:find(Addr, Dict) of
-        {ok, MBox} -> {DMgr, MBox};
-        _          -> MBox = create_mbox(Addr),
-                      Dict2 = dict:store(Addr, MBox, Dict),
-                      {#dmgr{curr = Dict2}, MBox}
+        {ok, MBox} ->
+            {ok, DMgr, MBox};
+        error ->
+            case start_mbox(Addr) of
+                {ok, MBox} ->
+                    Dict2 = dict:store(Addr, MBox, Dict),
+                    {ok, #dmgr{curr = Dict2}, MBox};
+                Error -> Error
+            end
     end.
 
-create_mbox(Addr) ->
-    {ok, Pid} = start_link(Addr),
-    #mbox{addr = Addr, pid = Pid}.
+start_mbox(Addr) ->
+    case start_link(Addr) of
+        {ok, Pid} -> {ok, #mbox{addr = Addr, pid = Pid}};
+        Error     -> Error
+    end.
 
 %% Child/worker process implementation, where we have one child/worker
 %% process per downstream Addr or MBox.  Note, this can be a
@@ -143,13 +163,16 @@ start_link(Addr) ->
     Location = mc_addr:location(Addr),
     [Host, Port] = string:tokens(Location, ":"),
     PortNum = list_to_integer(Port),
-    {ok, Sock} = gen_tcp:connect(Host, PortNum,
-                                 [binary, {packet, 0}, {active, false}]),
-    % TODO: Auth.
-    % TODO: Bucket selection.
-    % TODO: Protocol capability test (binary or ascii).
-    process_flag(trap_exit, true),
-    {ok, spawn_link(?MODULE, loop, [Addr, Sock])}.
+    case gen_tcp:connect(Host, PortNum,
+                         [binary, {packet, 0}, {active, false}]) of
+        {ok, Sock} ->
+            % TODO: Auth.
+            % TODO: Bucket selection.
+            % TODO: Protocol capability test (binary or ascii).
+            process_flag(trap_exit, true),
+            {ok, spawn_link(?MODULE, loop, [Addr, Sock])};
+        Err -> Err
+    end.
 
 loop(Addr, Sock) ->
     receive
@@ -189,7 +212,7 @@ mbox_test() ->
     D1 = dict:new(),
     M1 = #dmgr{curr = D1},
     A1 = mc_addr:local(ascii),
-    {M2, B1} = make_mbox(M1, A1),
+    {ok, M2, B1} = make_mbox(M1, A1),
     ?assertMatch({M2, B1}, make_mbox(M2, A1)).
 
 element2({_X, Y}) -> Y.
