@@ -58,8 +58,12 @@ cmd(decr, Sock, RecvCallback, Entry) ->
 cmd(delete, Sock, RecvCallback, #mc_entry{key = Key}) ->
     send_recv(Sock, [<<"delete ">>, Key, <<"\r\n">>], RecvCallback);
 
-cmd(flush_all, Sock, RecvCallback, _Entry) ->
-    send_recv(Sock, [<<"flush_all\r\n">>], RecvCallback);
+cmd(flush_all, Sock, RecvCallback, #mc_entry{key = Delay}) ->
+    M = case Delay of
+            undefined -> [<<"flush_all\r\n">>];
+            _         -> [<<"flush_all ">>, Delay, <<"\r\n">>]
+        end,
+    send_recv(Sock, M, RecvCallback);
 
 cmd(stats, Sock, RecvCallback, _Entry) ->
     ok = send(Sock, [<<"stats\r\n">>]), % TODO: Parameters for stats.

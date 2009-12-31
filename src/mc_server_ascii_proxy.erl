@@ -66,16 +66,18 @@ cmd(flush_all, Session, InSock, _Out, [X, "noreply"]) ->
     cmd(flush_all, Session, InSock, undefined, [X]);
 
 cmd(flush_all, #session_proxy{bucket = Bucket} = Session,
-    _InSock, Out, _CmdArgs) ->
-    % TODO: flush_all with optional parameter
+    _InSock, Out, CmdArgs) ->
     Addrs = mc_bucket:addrs(Bucket),
+    Delay = case CmdArgs of
+                []  -> undefined;
+                [X] -> X
+            end,
     {NumFwd, Monitors} =
         lists:foldl(fun (Addr, Acc) ->
                         % Using undefined Out to swallow the OK
                         % responses from the downstreams.
-                        % TODO: flush_all arguments.
                         accum(send([Addr], undefined,
-                                   flush_all, #mc_entry{},
+                                   flush_all, #mc_entry{key = Delay},
                                    undefined, ?MODULE, undefined), Acc)
                     end,
                     {0, []}, Addrs),
