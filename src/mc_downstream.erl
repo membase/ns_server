@@ -213,7 +213,7 @@ mbox_test() ->
     M1 = #dmgr{curr = D1},
     A1 = mc_addr:local(ascii),
     {ok, M2, B1} = make_mbox(M1, A1),
-    ?assertMatch({M2, B1}, make_mbox(M2, A1)).
+    ?assertMatch({ok, M2, B1}, make_mbox(M2, A1)).
 
 element2({_X, Y}) -> Y.
 
