@@ -54,6 +54,9 @@ test_boot: ebins
 test_main: ebins
 	erl $(EFLAGS) -noshell -s mc_test main
 
+test_main_shell: ebins
+	erl $(EFLAGS) -s mc_test main
+
 test_load_gen: ebins
 	erl $(EFLAGS) -s load_gen_mc main
 

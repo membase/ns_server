@@ -35,8 +35,9 @@ cmd(append, Session, InSock, Out, CmdArgs) ->
     forward_update(append, Session, InSock, Out, CmdArgs);
 cmd(prepend, Session, InSock, Out, CmdArgs) ->
     forward_update(prepend, Session, InSock, Out, CmdArgs);
+
 cmd(cas, Session, InSock, Out, CmdArgs) ->
-    forward_update(prepend, Session, InSock, Out, CmdArgs);
+    forward_update(cas, Session, InSock, Out, CmdArgs);
 
 cmd(incr, Session, InSock, Out, CmdArgs) ->
     forward_arith(incr, Session, InSock, Out, CmdArgs);

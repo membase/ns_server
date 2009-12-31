@@ -47,6 +47,9 @@ cmd(append, Sock, RecvCallback, Entry) ->
 cmd(prepend, Sock, RecvCallback, Entry) ->
     cmd_update(<<"prepend">>, Sock, RecvCallback, Entry);
 
+cmd(cas, Sock, RecvCallback, Entry) ->
+    cmd_update(cas, Sock, RecvCallback, Entry);
+
 cmd(incr, Sock, RecvCallback, Entry) ->
     cmd_arith(<<"incr">>, Sock, RecvCallback, Entry);
 cmd(decr, Sock, RecvCallback, Entry) ->
@@ -63,6 +66,22 @@ cmd(stats, Sock, RecvCallback, _Entry) ->
     multiline_recv(Sock, RecvCallback).
 
 % -------------------------------------------------
+
+cmd_update(cas, Sock, RecvCallback,
+           #mc_entry{key = Key, flag = Flag, expire = Expire, data = Data,
+                     cas = Cas}) ->
+    SFlag = integer_to_list(Flag),
+    SExpire = integer_to_list(Expire),
+    SDataSize = integer_to_list(size(Data)),
+    SCas = integer_to_list(Cas),
+    send_recv(Sock, [<<"cas  ">>,
+                     Key, <<" ">>,
+                     SFlag, <<" ">>,
+                     SExpire, <<" ">>,
+                     SDataSize, <<" ">>,
+                     SCas, <<"\r\n">>,
+                     Data, <<"\r\n">>],
+              RecvCallback);
 
 cmd_update(Cmd, Sock, RecvCallback,
            #mc_entry{key = Key, flag = Flag, expire = Expire, data = Data}) ->
