@@ -157,6 +157,11 @@ forward_arith(Cmd, #session_proxy{bucket = Bucket} = Session,
         _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
     end,
     mc_downstream:demonitor(Monitors),
+    {ok, Session};
+
+forward_arith(_, Session, _, Out, _CmdArgs) ->
+    % Possibly due to wrong # of CmdArgs.
+    mc_ascii:send(Out, <<"ERROR\r\n">>),
     {ok, Session}.
 
 % ------------------------------------------
