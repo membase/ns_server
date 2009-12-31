@@ -10,7 +10,8 @@
 %
 tests(ns_server) ->
     [misc,
-     ns_config].
+     ns_config,
+     ns_port_init].
 
 test() ->
     {test_list(tests(ns_server))}.
