@@ -23,8 +23,7 @@ cmd(Opcode, Sock, RecvCallback, HE) ->
 
 cmd_binary_quiet(Opcode, Sock, _RecvCallback, {Header, Entry}) ->
     ok = send(Sock, req,
-              Header#mc_header{opcode = Opcode},
-              Entry#mc_entry{ext = ext(Opcode, Entry)}),
+              Header#mc_header{opcode = Opcode}, ext(Opcode, Entry)),
     {ok, quiet}.
 
 cmd_binary_vocal(?STAT = Opcode, Sock, RecvCallback, {Header, Entry}) ->
@@ -33,8 +32,7 @@ cmd_binary_vocal(?STAT = Opcode, Sock, RecvCallback, {Header, Entry}) ->
 
 cmd_binary_vocal(Opcode, Sock, RecvCallback, {Header, Entry}) ->
     ok = send(Sock, req,
-              Header#mc_header{opcode = Opcode},
-              Entry#mc_entry{ext = ext(Opcode, Entry)}),
+              Header#mc_header{opcode = Opcode}, ext(Opcode, Entry)),
     cmd_binary_vocal_recv(Opcode, Sock, RecvCallback).
 
 cmd_binary_vocal_recv(Opcode, Sock, RecvCallback) ->
@@ -104,20 +102,24 @@ ext(?INCREMENT,  Entry) -> ext_arith(Entry);
 ext(?INCREMENTQ, Entry) -> ext_arith(Entry);
 ext(?DECREMENT,  Entry) -> ext_arith(Entry);
 ext(?DECREMENTQ, Entry) -> ext_arith(Entry);
-ext(_, _) -> undefined.
+ext(_, Entry) -> Entry.
 
-ext_flag_expire(#mc_entry{flag = Flag, expire = Expire}) ->
-    <<Flag:32, Expire:32>>.
+ext_flag_expire(#mc_entry{ext = Ext, flag = Flag, expire = Expire} = Entry) ->
+    case Ext of
+        undefined -> Entry#mc_entry{ext = <<Flag:32, Expire:32>>};
+        _         -> Entry
+    end.
 
-ext_arith(#mc_entry{ext = Ext, data = Data, expire = Expire}) ->
+ext_arith(#mc_entry{ext = Ext, data = Data, expire = Expire} = Entry) ->
     case Ext of
         undefined ->
-            case Data of
-                <<>>      -> <<0:64, 0:64, Expire:32>>;
-                undefined -> <<0:64, 0:64, Expire:32>>;
-                _         -> <<Data:64, 0:64, Expire:32>>
-            end;
-        _ -> Ext
+            Ext2 = case Data of
+                       <<>>      -> <<1:64, 0:64, Expire:32>>;
+                       undefined -> <<1:64, 0:64, Expire:32>>;
+                       _         -> <<Data:64, 0:64, Expire:32>>
+                   end,
+            Entry#mc_entry{ext = Ext2, data = undefined};
+        _ -> Entry
     end.
 
 % -------------------------------------------------
@@ -189,6 +191,48 @@ getk_miss_test() ->
                        end,
                        {#mc_header{}, #mc_entry{key = <<"not_a_key">>}}),
     ?assert(H#mc_header.status =/= ?SUCCESS),
+    ok = gen_tcp:close(Sock).
+
+arith_test() ->
+    {ok, Sock} = gen_tcp:connect("localhost", 11211,
+                                 [binary, {packet, 0}, {active, false}]),
+    flush_test_sock(Sock),
+    Key = <<"a">>,
+    (fun () ->
+        {ok, _H, _E} = cmd(?SET, Sock, undefined,
+                           {#mc_header{},
+                            #mc_entry{key = Key, data = <<"1">>}}),
+        get_test_match(Sock, Key, <<"1">>),
+        ok
+    end)(),
+    (fun () ->
+        {ok, _H, _E} = cmd(?INCREMENT, Sock, undefined,
+                           {#mc_header{},
+                            #mc_entry{key = Key, data = 1}}),
+        get_test_match(Sock, Key, <<"2">>),
+        ok
+    end)(),
+    (fun () ->
+        {ok, _H, _E} = cmd(?INCREMENT, Sock, undefined,
+                           {#mc_header{},
+                            #mc_entry{key = Key, data = 1}}),
+        get_test_match(Sock, Key, <<"3">>),
+        ok
+    end)(),
+    (fun () ->
+        {ok, _H, _E} = cmd(?INCREMENT, Sock, undefined,
+                           {#mc_header{},
+                            #mc_entry{key = Key, data = 10}}),
+        get_test_match(Sock, Key, <<"13">>),
+        ok
+    end)(),
+    (fun () ->
+        {ok, _H, _E} = cmd(?DECREMENT, Sock, undefined,
+                           {#mc_header{},
+                            #mc_entry{key = Key, data = 1}}),
+        get_test_match(Sock, Key, <<"12">>),
+        ok
+    end)(),
     ok = gen_tcp:close(Sock).
 
 stats_test() ->
