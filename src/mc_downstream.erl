@@ -8,7 +8,7 @@
 
 -compile(export_all).
 
--record(mbox, {addr, pid, history}).
+-record(mbox, {addr, pid}).
 -record(dmgr, {curr % A dict of all the currently active, alive mboxes.
                }).
 
@@ -90,10 +90,22 @@ await_ok(_, _, Acc) -> Acc.
 
 %% gen_server implementation.
 
-init([]) -> {ok, #dmgr{curr = dict:new()}}.
+init([]) ->
+    {ok, #dmgr{curr = dict:new()}}.
+
 terminate(_Reason, _DMgr) -> ok.
 code_change(_OldVn, DMgr, _Extra) -> {ok, DMgr}.
+
+handle_info({'EXIT', ChildPid, Reason}, #dmgr{curr = Dict} = DMgr) ->
+    ?debugVal({exit_downstream, ChildPid, Reason}),
+    Dict2 = dict:filter(fun(_Addr, #mbox{pid = Pid}) ->
+                            Pid =/= ChildPid
+                        end,
+                        Dict),
+    {noreply, DMgr#dmgr{curr = Dict2}};
+
 handle_info(_Info, DMgr) -> {noreply, DMgr}.
+
 handle_cast(_Msg, DMgr) -> {noreply, DMgr}.
 
 handle_call({pid, Addr}, _From, DMgr) ->
@@ -121,7 +133,7 @@ make_mbox(#dmgr{curr = Dict} = DMgr, Addr) ->
 
 create_mbox(Addr) ->
     {ok, Pid} = start_link(Addr),
-    #mbox{addr = Addr, pid = Pid, history = []}.
+    #mbox{addr = Addr, pid = Pid}.
 
 %% Child/worker process implementation, where we have one child/worker
 %% process per downstream Addr or MBox.  Note, this can be a
@@ -136,6 +148,7 @@ start_link(Addr) ->
     % TODO: Auth.
     % TODO: Bucket selection.
     % TODO: Protocol capability test (binary or ascii).
+    process_flag(trap_exit, true),
     {ok, spawn_link(?MODULE, loop, [Addr, Sock])}.
 
 loop(Addr, Sock) ->
