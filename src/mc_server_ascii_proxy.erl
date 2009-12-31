@@ -87,6 +87,40 @@ cmd(flush_all, #session_proxy{bucket = Bucket} = Session,
     mc_downstream:demonitor(Monitors),
     {ok, Session};
 
+cmd(stats, #session_proxy{bucket = Bucket} = Session,
+    _InSock, Out, CmdArgs) ->
+    Addrs = mc_bucket:addrs(Bucket),
+    Args = case CmdArgs of [] -> undefined;
+                           _  -> string:join(CmdArgs, " ")
+           end,
+    ResponseFilter =
+        fun (LineBin, undefined) ->
+                mc_ascii:send(Out, [LineBin, <<"\r\n">>]),
+                false;
+            (#mc_header{status = ?SUCCESS},
+             #mc_entry{key = KeyBin, data = DataBin}) ->
+                mc_ascii:send(Out, [<<"STAT ">>,
+                                    KeyBin, <<" ">>,
+                                    DataBin, <<"\r\n">>]),
+                false;
+            (_, _) ->
+                false
+        end,
+    {NumFwd, Monitors} =
+        lists:foldl(fun (Addr, Acc) ->
+                        % Using undefined Out to swallow the OK
+                        % responses from the downstreams.
+                        accum(send([Addr], undefined,
+                                   stats, #mc_entry{key = Args},
+                                   ResponseFilter, ?MODULE, undefined), Acc)
+                    end,
+                    {0, []}, Addrs),
+    await_ok(NumFwd),
+    % TODO: Different stats args don't all use "END".
+    mc_ascii:send(Out, <<"END\r\n">>),
+    mc_downstream:demonitor(Monitors),
+    {ok, Session};
+
 cmd(version, Session, _InSock, Out, _CmdArgs) ->
     V = case ns_config:search(version) of
             {value, X} -> X;
@@ -97,8 +131,6 @@ cmd(version, Session, _InSock, Out, _CmdArgs) ->
 
 % TODO:
 % verbosity
-% stats
-% stats args
 
 cmd(quit, _Session, _InSock, _Out, _Rest) ->
     exit({ok, quit_received});

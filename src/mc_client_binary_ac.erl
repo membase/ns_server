@@ -62,6 +62,11 @@ cmd(delete, Sock, RecvCallback, Entry) ->
 cmd(flush_all, Sock, RecvCallback, Entry) ->
     send_recv(Sock, RecvCallback, #mc_header{opcode = ?FLUSH}, Entry);
 
+cmd(stats, Sock, RecvCallback, Entry) ->
+    ok = mc_binary:send(Sock, req,
+                        #mc_header{opcode = ?STAT}, Entry),
+    stat_recv(Sock, RecvCallback, #mc_header{opcode = ?STAT}, Entry);
+
 cmd(Opcode, Sock, RecvCallback, Entry) ->
     % Dispatch to cmd_binary() in case the caller was
     % using a binary protocol opcode.
@@ -113,6 +118,24 @@ get_recv(Sock, RecvCallback) ->
                false -> ok
             end,
             get_recv(Sock, RecvCallback)
+    end.
+
+stat_recv(Sock, RecvCallback, ReqHeader, ReqEntry) ->
+    case recv(Sock, res) of
+        {error, _} = Err -> Err;
+        {ok, #mc_header{opcode = ?STAT,
+                        status = ?SUCCESS},
+             #mc_entry{key = undefined}} ->
+            {ok, <<"END\r\n">>};
+        {ok, #mc_header{opcode = ?STAT,
+                        status = ?SUCCESS} = Header, Entry} ->
+            case is_function(RecvCallback) of
+               true  -> RecvCallback(Header, Entry);
+               false -> ok
+            end,
+            stat_recv(Sock, RecvCallback, ReqHeader, ReqEntry);
+        {ok, _, _} ->
+            {ok, <<"ERROR\r\n">>}
     end.
 
 % -------------------------------------------------
