@@ -135,9 +135,6 @@ cmd(version, Session, _InSock, Out, _CmdArgs) ->
     mc_ascii:send(Out, [<<"VERSION ">>, V, <<"\r\n">>]),
     {ok, Session};
 
-% TODO:
-% verbosity
-
 cmd(quit, _Session, _InSock, _Out, _Rest) ->
     exit({ok, quit_received});
 
