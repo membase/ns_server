@@ -54,6 +54,24 @@ main() ->
                      {mc_server_detect,
                       mc_server_detect, Pool3})}.
 
+% Paired with ./test/emoxi_test.py
+
+main_mock() ->
+    Config = [[{replica_n, 1},
+               {replica_w, 1},
+               {replica_r, 1}]],
+
+    AsciiAddrs = [mc_addr:create("127.0.0.1:11311", ascii)],
+    AsciiPool = mc_pool:create(default, AsciiAddrs, Config,
+                               [mc_bucket:create("default", AsciiAddrs,
+                                                  Config)]),
+    {application:start(ns_server),
+     mc_downstream:start_link(),
+     mc_replication:start_link(),
+     mc_accept:start(11333,
+                     {mc_server_detect,
+                      mc_server_detect, AsciiPool})}.
+
 % To build:
 %   make clean && make
 %

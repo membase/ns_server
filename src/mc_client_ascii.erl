@@ -25,14 +25,16 @@ cmd(gets, Sock, RecvCallback, #mc_entry{key = Key}) ->
 
 cmd(get, Sock, RecvCallback, Keys) when is_list(Keys) ->
     ok = send(Sock, [<<"get ">>,
-                     lists:map(fun (K) -> [K, <<" ">>] end,
-                               Keys),
+                     tl(lists:reverse(
+                          lists:foldl(fun (K, Acc) -> [K, <<" ">> | Acc] end,
+                                      [], Keys))),
                      <<"\r\n">>]),
     get_recv(Sock, RecvCallback);
 cmd(gets, Sock, RecvCallback, Keys) when is_list(Keys) ->
     ok = send(Sock, [<<"gets ">>,
-                     lists:map(fun (K) -> [K, <<" ">>] end,
-                               Keys),
+                     tl(lists:reverse(
+                          lists:foldl(fun (K, Acc) -> [K, <<" ">> | Acc] end,
+                                      [], Keys))),
                      <<"\r\n">>]),
     get_recv(Sock, RecvCallback);
 
