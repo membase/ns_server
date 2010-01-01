@@ -104,10 +104,13 @@ cmd(stats, #session_proxy{bucket = Bucket} = Session,
                 false;
             (#mc_header{status = ?SUCCESS},
              #mc_entry{key = KeyBin, data = DataBin}) ->
-                mc_ascii:send(Out, [<<"STAT ">>,
-                                    KeyBin, <<" ">>,
-                                    DataBin, <<"\r\n">>]),
-                false;
+                case mc_binary:bin_size(KeyBin) > 0 of
+                    true  -> mc_ascii:send(Out, [<<"STAT ">>,
+                                                 KeyBin, <<" ">>,
+                                                 DataBin, <<"\r\n">>]),
+                             false;
+                    false -> false
+                end;
             (_, _) ->
                 false
         end,
