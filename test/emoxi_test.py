@@ -65,10 +65,11 @@ class MockServer(threading.Thread):
 
         except KeyboardInterrupt:
             self.close()
-            raise
+            sys.exit(1)
+
         except socket.error, (value, message):
-            self.close()
             debug(1, "MockServer socket error: " + message)
+            self.close()
             sys.exit(1)
 
         self.close()
@@ -112,17 +113,18 @@ class MockSession(threading.Thread):
                         self.close()
                 else:
                     debug(1, "MockSession else case: " +
-                             iready + " " + oready + " " + eready)
+                             str(len(iready)) + " " +
+                             str(len(oready)) + " " +
+                             str(len(eready)))
 
         except KeyboardInterrupt:
-            raise
-        except:
-            1
+            g_mock_server.close()
+            sys.exit(1)
 
         if self.running >= self.running_max:
             debug(1, "MockSession running too long, shutting down")
 
-        debug(1, "MockSession closing")
+        debug(1, "MockSession closing. ran " + str(self.running))
         self.close()
 
     def close(self):
