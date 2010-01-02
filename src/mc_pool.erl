@@ -8,6 +8,12 @@
 
 -compile(export_all).
 
+-record(mc_pool, {id,     % Pool id.
+                  addrs,  % [mc_addr:create()*].
+                  config, % From ns_config:get().
+                  buckets % [mc_bucket:create()*].
+                  }).
+
 %% API for pool.
 
 %% TODO: A proper implementation.
