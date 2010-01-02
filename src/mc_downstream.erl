@@ -135,7 +135,7 @@ handle_call({send, Addr, Op, NotifyPid, NotifyData,
 
 % ---------------------------------------------------
 
-monitor_mbox(MBoxPid) when is_pid(MBoxPid) ->
+monitor_mbox(MBoxPid) ->
     {ok, erlang:monitor(process, MBoxPid)}.
 
 % Retrieves or starts an mbox for an Addr.
