@@ -163,9 +163,15 @@ start_link(Addr) ->
     Location = mc_addr:location(Addr),
     [Host, Port] = string:tokens(Location, ":"),
     PortNum = list_to_integer(Port),
+    % We connect here, instead of in the worker, to
+    % allow faster error detection and avoid the races we'd have
+    % otherwise between ?MODULE:monitor() and ?MODULE:send().
     case gen_tcp:connect(Host, PortNum,
                          [binary, {packet, 0}, {active, false}]) of
         {ok, Sock} ->
+            % TODO: Auth.
+            % TODO: Bucket selection.
+            % TODO: Protocol capability test (binary or ascii).
             process_flag(trap_exit, true),
             WorkerPid = spawn_link(?MODULE, worker, [Addr, Sock]),
             gen_tcp:controlling_process(Sock, WorkerPid),
@@ -179,10 +185,9 @@ start_link(Addr) ->
 %% child/worker in a supervision tree.
 
 worker(Addr, Sock) ->
-    receive go -> % TODO: Auth.
-                  % TODO: Bucket selection.
-                  % TODO: Protocol capability test (binary or ascii).
-                  loop(Addr, Sock)
+    % The go delay allows the spawner to setup gen_tcp:controller_process.
+    receive
+        go -> loop(Addr, Sock)
     end.
 
 loop(Addr, Sock) ->
