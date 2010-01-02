@@ -16,7 +16,9 @@ loop_in(InSock, OutPid, CmdNum, Module, Session) ->
             {ok, Session2} =
                 Module:cmd(Cmd, Session, InSock, {OutPid, CmdNum}, CmdArgs),
             loop_in(InSock, OutPid, CmdNum + 1, Module, Session2);
-        {error, closed} -> ok
+        {error, closed} ->
+            OutPid ! stop,
+            ok
     end.
 
 loop_in_prefix(Prefix, InSock, OutPid, CmdNum, Module, Session) ->
@@ -25,14 +27,17 @@ loop_in_prefix(Prefix, InSock, OutPid, CmdNum, Module, Session) ->
             {ok, Session2} =
                 Module:cmd(Cmd, Session, InSock, {OutPid, CmdNum}, CmdArgs),
             loop_in(InSock, OutPid, CmdNum + 1, Module, Session2);
-        {error, closed} -> ok
+        {error, closed} ->
+            OutPid ! stop,
+            ok
     end.
 
 loop_out(OutSock) ->
     receive
         {send, _CmdNum, Data} ->
             ok = mc_ascii:send(OutSock, Data),
-            loop_out(OutSock)
+            loop_out(OutSock);
+        stop -> ok
     end.
 
 recv(InSock) ->
