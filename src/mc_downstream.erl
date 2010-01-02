@@ -8,6 +8,12 @@
 
 -compile(export_all).
 
+% TODO: Should these be parameterized, or configurable?
+
+-define(TIMEOUT_AWAIT_OK,         100000). % 100 seconds.
+-define(TIMEOUT_WORKER_GO,          1000). % 1 seconds.
+-define(TIMEOUT_WORKER_INACTIVE, 1000000). % 1000 seconds.
+
 % We have one MBox per Addr.
 %
 -record(mbox, {addr, pid, started}).
@@ -85,11 +91,16 @@ await_ok(N) -> await_ok(undefined, N, 0).
 await_ok(Prefix, N, Acc) when N > 0 ->
     % TODO: Decrementing N due to a DOWN might be incorrect
     % during edge/race conditions.
+    % TODO: Need to match the MonitorRef's we get from 'DOWN' messages?
     receive
         {Prefix, {ok, _}}              -> await_ok(Prefix, N - 1, Acc + 1);
         {Prefix, {ok, _, _}}           -> await_ok(Prefix, N - 1, Acc + 1);
         {Prefix, _}                    -> await_ok(Prefix, N - 1, Acc);
         {'DOWN', _MonitorRef, _, _, _} -> await_ok(Prefix, N - 1, Acc)
+    after ?TIMEOUT_AWAIT_OK ->
+        % When we've waited too long, free up the caller.
+        % TODO: Need to demonitor?
+        Acc
     end;
 await_ok(_, _, Acc) -> Acc.
 
@@ -186,7 +197,16 @@ start_link(Addr) ->
 worker(Addr, Sock) ->
     % The go delay allows the spawner to setup gen_tcp:controller_process.
     receive
-        go -> loop(Addr, Sock)
+        go ->
+            case mc_addr:kind(Addr) of
+                ascii  -> loop(Addr, Sock);
+                binary ->
+                    case mc_client_binary:auth(Sock, mc_addr:auth(Addr)) of
+                        ok  -> loop(Addr, Sock);
+                        Err -> ns_log:log(mcd_0001, "auth failed")
+                    end
+            end
+    after ?TIMEOUT_WORKER_GO -> stop
     end.
 
 loop(Addr, Sock) ->
@@ -203,6 +223,9 @@ loop(Addr, Sock) ->
                 _Error     -> gen_tcp:close(Sock)
             end;
         {tcp_closed, Sock} -> ok
+    after ?TIMEOUT_WORKER_INACTIVE ->
+        gen_tcp:close(Sock),
+        stop
     end.
 
 notify(P, D, V) when is_pid(P) -> P ! {D, V};

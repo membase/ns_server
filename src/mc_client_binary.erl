@@ -72,6 +72,22 @@ send_list(Sock, RecvCallback,
 
 % -------------------------------------------------
 
+auth(Sock, undefined) -> ok;
+auth(Sock, {"PLAIN", {Login, Password}}) ->
+    case mc_client_binary:cmd(?CMD_SASL_AUTH, Sock, undefined,
+                              {#mc_header{},
+                               #mc_entry{key = "PLAIN",
+                                         data = <<0:8, Login, 0:8, Password>>
+                                        }}) of
+
+        {ok, _H, _E} -> ok;
+        _Error       -> error
+    end;
+auth(_, _) ->
+    {error, emech_unsupported}.
+
+% -------------------------------------------------
+
 is_quiet(?GETQ)       -> true;
 is_quiet(?GETKQ)      -> true;
 is_quiet(?SETQ)       -> true;
