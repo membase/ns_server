@@ -57,6 +57,12 @@ test_main: ebins
 test_main_shell: ebins
 	erl $(EFLAGS) -s mc_test main
 
+test_main_mock: ebins
+	erl $(EFLAGS) -s mc_test main_mock
+
+test_main_mock_driver: ebins
+	python ./test/emoxi_test.py
+
 test_load_gen: ebins
 	erl $(EFLAGS) -s load_gen_mc main
 

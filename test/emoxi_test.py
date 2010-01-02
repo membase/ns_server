@@ -120,6 +120,8 @@ class MockSession(threading.Thread):
         except KeyboardInterrupt:
             g_mock_server.close()
             sys.exit(1)
+        except:
+            "ignore"
 
         if self.running >= self.running_max:
             debug(1, "MockSession running too long, shutting down")
@@ -362,7 +364,7 @@ class TestProxy(unittest.TestCase):
         self.client_send('1\r\n')
         self.mock_recv("set chopped 0 0 1\r\n1\r\n")
         self.mock_close()
-        self.client_recv('.*ERROR .*\r\n')
+        self.client_recv('.*ERROR.*\r\n')
 
     def testGetValue(self):
         """Test the proxy handles VALUE response"""

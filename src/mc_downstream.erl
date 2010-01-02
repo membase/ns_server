@@ -166,22 +166,31 @@ start_link(Addr) ->
     case gen_tcp:connect(Host, PortNum,
                          [binary, {packet, 0}, {active, false}]) of
         {ok, Sock} ->
-            % TODO: Auth.
-            % TODO: Bucket selection.
-            % TODO: Protocol capability test (binary or ascii).
             process_flag(trap_exit, true),
-            {ok, spawn_link(?MODULE, loop, [Addr, Sock])};
-        Err -> Err
+            WorkerPid = spawn_link(?MODULE, worker, [Addr, Sock]),
+            gen_tcp:controlling_process(Sock, WorkerPid),
+            WorkerPid ! go,
+            {ok, WorkerPid};
+        Error -> Error
     end.
 
 %% Child/worker process implementation, where we have one child/worker
 %% process per downstream Addr or MBox.  Note, this can one day be a
 %% child/worker in a supervision tree.
 
+worker(Addr, Sock) ->
+    receive go -> % TODO: Auth.
+                  % TODO: Bucket selection.
+                  % TODO: Protocol capability test (binary or ascii).
+                  loop(Addr, Sock)
+    end.
+
 loop(Addr, Sock) ->
+    inet:setopts(Sock, [{active, once}]),
     receive
         {send, NotifyPid, NotifyData, ResponseFun,
                CmdModule, Cmd, CmdArgs} ->
+            inet:setopts(Sock, [{active, false}]),
             RV = CmdModule:cmd(Cmd, Sock, ResponseFun, CmdArgs),
             notify(NotifyPid, NotifyData, RV),
             case RV of
@@ -189,8 +198,7 @@ loop(Addr, Sock) ->
                 {ok, _, _} -> loop(Addr, Sock);
                 _Error     -> gen_tcp:close(Sock)
             end;
-        close ->
-            gen_tcp:close(Sock)
+        {tcp_closed, Sock} -> ok
     end.
 
 notify(P, D, V) when is_pid(P) -> P ! {D, V};
