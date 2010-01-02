@@ -74,11 +74,8 @@ hash_addr_test() ->
     ok.
 
 some_test_addrs(N) ->
-    lists:map(fun(X) -> {{"127.0.0.1", 10000 + X}, some_data} end,
-              lists:seq(0, N - 1)).
-
-ketama_cring_test() ->
-    Addrs = some_test_addrs(4),
+    Addrs = lists:map(fun(X) -> {{"127.0.0.1", 10000 + X}, some_data} end,
+                      lists:seq(0, N - 1)),
     R = cring:create(Addrs, ?MODULE, 160),
     AssertSame =
         fun(ExpectAddrIndex, Key) ->
@@ -87,6 +84,10 @@ ketama_cring_test() ->
             ?assertEqual(ExpectAddr, ActualAddr),
             ok
         end,
+    {Addrs, R, AssertSame}.
+
+ketama_cring_test() ->
+    {_Addrs, _R, AssertSame} = some_test_addrs(4),
     % Data from spymemcached KetamaNodeLocatorTest.java.
     AssertSame(1, "dustin"),
     AssertSame(3, "noelani"),
@@ -94,15 +95,7 @@ ketama_cring_test() ->
     ok.
 
 continuum_wrapping_test() ->
-    Addrs = some_test_addrs(4),
-    R = cring:create(Addrs, ?MODULE, 160),
-    AssertSame =
-        fun(ExpectAddrIndex, Key) ->
-            ExpectAddr = lists:nth(ExpectAddrIndex, Addrs),
-            ActualAddr = cring:search_by_point(R, hash_key(Key, undefined)),
-            ?assertEqual(ExpectAddr, ActualAddr),
-            ok
-        end,
+    {_Addrs, _R, AssertSame} = some_test_addrs(4),
     % Data from spymemcached KetamaNodeLocatorTest.java.
     AssertSame(4, "V5XS8C8N"),
     AssertSame(4, "8KR2DKR2"),
@@ -112,30 +105,14 @@ continuum_wrapping_test() ->
 cluster_resizing_test() ->
     % Data from spymemcached KetamaNodeLocatorTest.java.
     (fun() ->
-      Addrs = some_test_addrs(4),
-      R = cring:create(Addrs, ?MODULE, 160),
-      AssertSame =
-          fun(ExpectAddrIndex, Key) ->
-              ExpectAddr = lists:nth(ExpectAddrIndex, Addrs),
-              ActualAddr = cring:search_by_point(R, hash_key(Key, undefined)),
-              ?assertEqual(ExpectAddr, ActualAddr),
-              ok
-          end,
+      {_Addrs, _R, AssertSame} = some_test_addrs(4),
       AssertSame(1, "dustin"),
       AssertSame(3, "noelani"),
       AssertSame(1, "some other key"),
       ok
      end)(),
     (fun() ->
-      Addrs = some_test_addrs(5),
-      R = cring:create(Addrs, ?MODULE, 160),
-      AssertSame =
-          fun(ExpectAddrIndex, Key) ->
-              ExpectAddr = lists:nth(ExpectAddrIndex, Addrs),
-              ActualAddr = cring:search_by_point(R, hash_key(Key, undefined)),
-              ?assertEqual(ExpectAddr, ActualAddr),
-              ok
-          end,
+      {_Addrs, _R, AssertSame} = some_test_addrs(5),
       AssertSame(1, "dustin"),
       AssertSame(3, "noelani"),
       AssertSame(5, "some other key"),
