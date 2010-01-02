@@ -186,7 +186,6 @@ set_test_sock(Sock, Key) ->
                        #mc_entry{key =  Key,
                                  data = <<"AAA">>}),
         ?assertMatch(RB, <<"STORED">>),
-
         get_test_match(Sock, Key, <<"AAA">>)
     end)().
 
