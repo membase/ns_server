@@ -94,7 +94,8 @@ class MockSession(threading.Thread):
             self.running = 1
             while (self.running > 0 and
                    self.running < self.running_max):
-                debug(1, "MockSession running (" + str(self.running) + ")")
+                debug(1, "MockSession running (" + str(self)
+                         + ") (" + str(self.running) + ")")
                 self.running = self.running + 1
 
                 iready, oready, eready = select.select(input, [], [], 1)
@@ -341,6 +342,19 @@ class TestProxy(unittest.TestCase):
         self.mock_send('\n')
         self.client_recv('STORED\r\n')
 
+    def testSplitResponseOverSeveralWritesCRNL(self):
+        """Test split a response over several writes"""
+        self.client_connect()
+        self.client_send('set splitResponse 0 0 1\r\n')
+        self.client_send('1\r\n')
+        self.mock_recv("set splitResponse 0 0 1\r\n1\r\n")
+        self.mock_send('STO')
+        self.wait(1)
+        self.mock_send('RED')
+        self.wait(1)
+        self.mock_send('\r\n')
+        self.client_recv('STORED\r\n')
+
     def testSplitRequestOverSeveralWrites(self):
         """Test split a request over several writes"""
         self.client_connect()
@@ -379,6 +393,7 @@ class TestProxy(unittest.TestCase):
         self.mock_send('VALUE someVal0 0 10\r\n')
         self.mock_send('0123456789\r\n')
         self.mock_send('END\r\n')
+        self.wait(1)
         self.client_recv('VALUE someVal0 0 10\r\n0123456789\r\nEND\r\n')
 
         self.client_send('get someVal0 someVal1\r\n')
@@ -388,6 +403,7 @@ class TestProxy(unittest.TestCase):
         self.mock_send('VALUE someVal1 0 10\r\n')
         self.mock_send('0123456789\r\n')
         self.mock_send('END\r\n')
+        self.wait(1)
         self.client_recv('VALUE someVal0 0 10\r\n0123456789\r\nVALUE someVal1 0 10\r\n0123456789\r\nEND\r\n')
 
     def testGetEmptyValue(self):
@@ -398,6 +414,7 @@ class TestProxy(unittest.TestCase):
         self.mock_send('VALUE someVal 0 0\r\n')
         self.mock_send('\r\n')
         self.mock_send('END\r\n')
+        self.wait(1)
         self.client_recv('VALUE someVal 0 0\r\n\r\nEND\r\n')
 
     def testTerminateResponseWithServerCloseInValue(self):
@@ -408,6 +425,7 @@ class TestProxy(unittest.TestCase):
         self.mock_send('VALUE someChoppedVal 0 10\r\n')
         self.mock_send('012345')
         self.mock_close()
+        self.wait(1)
         self.client_recv('END\r\n')
 
     def testTerminateResponseWithServerCloseIn2ndValue(self):
@@ -419,6 +437,7 @@ class TestProxy(unittest.TestCase):
         self.mock_send('0123456789\r\n')
         self.mock_send('VALUE someChoppedVal 0')
         self.mock_close()
+        self.wait(1)
         self.client_recv('VALUE someWholeVal 0 10\r\n0123456789\r\nEND\r\n')
 
     def testTerminateResponseWithServerCloseIn2ndValueData(self):
@@ -431,6 +450,7 @@ class TestProxy(unittest.TestCase):
         self.mock_send('VALUE someChoppedVal 0 10\r\n')
         self.mock_send('012345')
         self.mock_close()
+        self.wait(1)
         self.client_recv('VALUE someWholeVal 0 10\r\n0123456789\r\nEND\r\n')
 
     def testTerminateResponseWithServerCloseAfterValueHeader(self):
@@ -442,9 +462,10 @@ class TestProxy(unittest.TestCase):
         self.mock_send('0123456789\r\n')
         self.mock_send('VALUE someChoppedVal 0 10\r\n')
         self.mock_close()
+        self.wait(1)
         self.client_recv('VALUE someWholeVal 0 10\r\n0123456789\r\nEND\r\n')
 
-    def testServerGoingDownAndUp(self):
+    def testServerGoingDownAndUpNice(self):
         """Test server going up and down with no client impact"""
         self.client_connect()
         self.client_send('get someUp\r\n')
@@ -452,16 +473,43 @@ class TestProxy(unittest.TestCase):
         self.mock_send('VALUE someUp 0 10\r\n')
         self.mock_send('0123456789\r\n')
         self.mock_send('END\r\n')
+        self.wait(1)
         self.client_recv('VALUE someUp 0 10\r\n0123456789\r\nEND\r\n')
 
         self.mock_close()
 
+        self.wait(1) # A nice pause for emoxi to notice.
+
+        self.client_send('get someUp2\r\n')
+        self.mock_recv("get someUp2\r\n")
+        self.mock_send('VALUE someUp2 0 10\r\n')
+        self.mock_send('x123456789\r\n')
+        self.mock_send('END\r\n')
+        self.wait(1)
+        self.client_recv('VALUE someUp2 0 10\r\nx123456789\r\nEND\r\n')
+
+    def testServerGoingDownAndUpFast(self):
+        """Test server going up and down with no client impact"""
+        self.client_connect()
         self.client_send('get someUp\r\n')
         self.mock_recv("get someUp\r\n")
         self.mock_send('VALUE someUp 0 10\r\n')
         self.mock_send('0123456789\r\n')
         self.mock_send('END\r\n')
+        self.wait(1)
         self.client_recv('VALUE someUp 0 10\r\n0123456789\r\nEND\r\n')
+
+        self.mock_close()
+
+        # No nice pause for emoxi to notice a closed connection.
+
+        self.client_send('get someUp2\r\n')
+        self.mock_recv("get someUp2\r\n")
+        self.mock_send('VALUE someUp2 0 10\r\n')
+        self.mock_send('x123456789\r\n')
+        self.mock_send('END\r\n')
+        self.wait(1)
+        self.client_recv('VALUE someUp2 0 10\r\nx123456789\r\nEND\r\n')
 
     def testServerGoingDownAndUpAfterEND(self):
         """Test server going up and down after END with no client impact"""
@@ -474,6 +522,7 @@ class TestProxy(unittest.TestCase):
 
         self.mock_close() # Try close before client_recv().
 
+        self.wait(1)
         self.client_recv('VALUE someUp 0 10\r\n0123456789\r\nEND\r\n')
 
         self.client_send('get someUp\r\n')
@@ -481,6 +530,7 @@ class TestProxy(unittest.TestCase):
         self.mock_send('VALUE someUp 0 10\r\n')
         self.mock_send('0123456789\r\n')
         self.mock_send('END\r\n')
+        self.wait(1)
         self.client_recv('VALUE someUp 0 10\r\n0123456789\r\nEND\r\n')
 
     def testTwoSerialClients(self):
@@ -495,6 +545,7 @@ class TestProxy(unittest.TestCase):
         self.mock_send('VALUE client0 0 10\r\n', 0)
         self.mock_send('0123456789\r\n', 0)
         self.mock_send('END\r\n', 0)
+        self.wait(1)
         self.client_recv('VALUE client0 0 10\r\n0123456789\r\nEND\r\n', 0)
 
         # Note that mock server sees 1 session that's reused
@@ -506,6 +557,7 @@ class TestProxy(unittest.TestCase):
         self.mock_send('VALUE client1 0 10\r\n', 0)
         self.mock_send('0123456789\r\n', 0)
         self.mock_send('END\r\n', 0)
+        self.wait(1)
         self.client_recv('VALUE client1 0 10\r\n0123456789\r\nEND\r\n', 1)
 
     def testTwoSerialClientsConnectingUpfront(self):
@@ -522,6 +574,7 @@ class TestProxy(unittest.TestCase):
         self.mock_send('VALUE client0 0 10\r\n', 0)
         self.mock_send('0123456789\r\n', 0)
         self.mock_send('END\r\n', 0)
+        self.wait(1)
         self.client_recv('VALUE client0 0 10\r\n0123456789\r\nEND\r\n', 0)
 
         # Note that mock server sees 1 session that's reused
@@ -532,9 +585,10 @@ class TestProxy(unittest.TestCase):
         self.mock_send('VALUE client1 0 10\r\n', 0)
         self.mock_send('0123456789\r\n', 0)
         self.mock_send('END\r\n', 0)
+        self.wait(1)
         self.client_recv('VALUE client1 0 10\r\n0123456789\r\nEND\r\n', 1)
 
-    def testGetSquash(self):
+    def skip_testGetSquash(self):
         """Test multiget by multiple clients are deduped"""
 
         # Assuming proxy's downstream_max is 1,
@@ -575,7 +629,7 @@ class TestProxy(unittest.TestCase):
                          'VALUE d 0 1\r\nd\r\n' +
                          'END\r\n', 2)
 
-    def testGetSquashOneKey(self):
+    def skip_testGetSquashOneKey(self):
         """Test multiget of one key by multiple clients are deduped"""
 
         # Assuming proxy's downstream_max is 1,
@@ -617,7 +671,7 @@ class TestProxy(unittest.TestCase):
         self.client_recv('VALUE a 0 1\r\na\r\n' +
                          'END\r\n', 4)
 
-    def testGetSquashNoKeyOverlap(self):
+    def skip_testGetSquashNoKeyOverlap(self):
         """Test multiget dedupe, but no key overlap"""
 
         # Assuming proxy's downstream_max is 1,
