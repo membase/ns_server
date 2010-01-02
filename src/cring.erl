@@ -48,17 +48,21 @@ create(AddrDataList, HashMod, HashCfg) ->
            hash = {HashMod, HashCfg},
            addr_num = length(AddrDataList)}.
 
-% search(CRing, Key) ->
-%     {addr, data, arc_here}.
-
-% search(CRing, Key, N) ->
-%     [{addr, data, arc_here}].
-
 % arcs(CRing) ->
 %     [{addr, data, arc_here}].
 
 % search_by_arc(CRing, BegExclusive, EndInclusive) ->
 %     [{addr, data, arc_here}].
+
+search(CRing, Key) ->
+    case search(CRing, Key, 1) of
+        [AddrData] -> AddrData;
+        _          -> false
+    end.
+
+search(#cring{hash = {HashMod, HashCfg}} = CRing, Key, N) ->
+    Point = HashMod:hash_key(Key, HashCfg),
+    search_by_point(CRing, Point, N).
 
 % Returns {Addr, Data} or false.
 

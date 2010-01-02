@@ -19,11 +19,6 @@
                   buckets % [OpaqueBucket], not necessarily [mc_bucket].
                   }).
 
--record(mc_bucket, {id,    % Bucket id.
-                    addrs, % [OpaqueAddr], not necessarily [mc_addr].
-                    config % [{key, value}].
-                    }).
-
 % Note: we may use mc_addr as keys in dict/ets tables,
 %       so they need to be scalar-ish or matchable.
 

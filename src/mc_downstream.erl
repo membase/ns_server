@@ -160,7 +160,7 @@ start_mbox(Addr) ->
 
 start_link(Addr) ->
     Location = mc_addr:location(Addr),
-    [Host, Port] = string:tokens(Location, ":"),
+    [Host, Port | _] = string:tokens(Location, ":"),
     PortNum = list_to_integer(Port),
     % We connect here, instead of in the worker, to
     % allow faster error detection and avoid the races we'd have

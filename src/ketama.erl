@@ -8,8 +8,11 @@
 % PointsPerServer = POINTS_PER_SERVER = 100 % the default
 % PointsPerServer = POINTS_PER_SERVER_KETAMA = 160 % when weighted
 
+default_config() ->
+    160. % POINTS_PER_SERVER_KETAMA
+
 hash_addr(Addr, undefined) ->
-    hash_addr(Addr, 160);
+    hash_addr(Addr, default_config());
 
 hash_addr({Host, Port} = _Addr, NumPoints) ->
     BinHost = bin(Host),
@@ -67,7 +70,7 @@ hash_key_test() ->
     ok.
 
 hash_addr_test() ->
-    Points = hash_addr({"host", 11211}, 160),
+    Points = hash_addr({"host", 11211}, default_config()),
     ?assertEqual(lists:usort(Points), Points),
     P = hash_key("host:11211-0", undefined),
     ?assert(lists:member(P, Points)),
@@ -76,7 +79,7 @@ hash_addr_test() ->
 some_test_addrs(N) ->
     Addrs = lists:map(fun(X) -> {{"127.0.0.1", 10000 + X}, X} end,
                       lists:seq(0, N - 1)),
-    R = cring:create(Addrs, ?MODULE, 160),
+    R = cring:create(Addrs, ?MODULE, default_config()),
     AssertSame =
         fun(ExpectAddrIndex, Key) ->
             ExpectAddr = lists:nth(ExpectAddrIndex, Addrs),
