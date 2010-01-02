@@ -73,3 +73,22 @@ hash_addr_test() ->
     ?assert(lists:member(P, Points)),
     ok.
 
+some_test_addrs(N) ->
+    lists:map(fun(X) -> {{"127.0.0.1", 10000 + X}, some_data} end,
+              lists:seq(0, N - 1)).
+
+ketama_cring_test() ->
+    Addrs = some_test_addrs(4),
+    R = cring:create(Addrs, ?MODULE, 160),
+    AssertSame =
+        fun(ExpectAddrIndex, Key) ->
+            ExpectAddr = lists:nth(ExpectAddrIndex, Addrs),
+            ActualAddr = cring:search_by_point(R, hash_key(Key, undefined)),
+            ?assertEqual(ExpectAddr, ActualAddr),
+            ok
+        end,
+    AssertSame(1, "dustin"),
+    AssertSame(3, "noelani"),
+    AssertSame(1, "some other key"),
+    ok.
+
