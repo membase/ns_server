@@ -202,8 +202,8 @@ worker(Addr, Sock) ->
                 ascii  -> loop(Addr, Sock);
                 binary ->
                     case mc_client_binary:auth(Sock, mc_addr:auth(Addr)) of
-                        ok  -> loop(Addr, Sock);
-                        Err -> ns_log:log(mcd_0001, "auth failed")
+                        ok   -> loop(Addr, Sock);
+                        _Err -> ns_log:log(mcd_0001, "auth failed")
                     end
             end
     after ?TIMEOUT_WORKER_GO -> stop

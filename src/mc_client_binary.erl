@@ -72,7 +72,7 @@ send_list(Sock, RecvCallback,
 
 % -------------------------------------------------
 
-auth(Sock, undefined) -> ok;
+auth(_Sock, undefined) -> ok;
 auth(Sock, {"PLAIN", {Login, Password}}) ->
     case mc_client_binary:cmd(?CMD_SASL_AUTH, Sock, undefined,
                               {#mc_header{},
@@ -83,8 +83,7 @@ auth(Sock, {"PLAIN", {Login, Password}}) ->
         {ok, _H, _E} -> ok;
         _Error       -> error
     end;
-auth(_, _) ->
-    {error, emech_unsupported}.
+auth(_Sock, _UnknownMech) -> {error, emech_unsupported}.
 
 % -------------------------------------------------
 
