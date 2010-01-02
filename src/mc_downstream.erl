@@ -33,9 +33,6 @@ monitor(Addr) ->
         Error         -> Error
     end.
 
-monitor_mbox(MBoxPid) when is_pid(MBoxPid) ->
-    {ok, erlang:monitor(process, MBoxPid)}.
-
 demonitor(undefined)   -> ok;
 demonitor(MonitorRefs) ->
     % TODO: Need to remove any DOWN messages that are already
@@ -59,13 +56,12 @@ send(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule,
                 false -> false
             end
         end,
-    case monitor(Addr) of
-        {ok, Monitor} ->
-            case send_call(Addr, send, NotifyPid, NotifyData, ResponseFun,
-                           kind_to_module(Kind), Cmd, CmdArgs) of
-                ok -> {ok, [Monitor]};
-                _  -> {error, [Monitor]}
-            end;
+    case gen_server:call(?MODULE, {pid, Addr}) of
+        {ok, MBoxPid} ->
+            {ok, Monitor} = monitor_mbox(MBoxPid),
+            MBoxPid ! {send, NotifyPid, NotifyData, ResponseFun,
+                       kind_to_module(Kind), Cmd, CmdArgs},
+            {ok, [Monitor]};
         _Error -> {error, []}
     end.
 
@@ -138,6 +134,9 @@ handle_call({send, Addr, Op, NotifyPid, NotifyData,
     end.
 
 % ---------------------------------------------------
+
+monitor_mbox(MBoxPid) when is_pid(MBoxPid) ->
+    {ok, erlang:monitor(process, MBoxPid)}.
 
 % Retrieves or starts an mbox for an Addr.
 make_mbox(#dmgr{curr = Dict} = DMgr, Addr) ->
