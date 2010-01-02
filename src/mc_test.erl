@@ -92,7 +92,8 @@ tests(mc) ->
 
 tests(emoxi) ->
     [util,
-     cring
+     cring,
+     ketama
     ];
 
 tests(emoxi_dyn) ->
