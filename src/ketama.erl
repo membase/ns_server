@@ -74,7 +74,7 @@ hash_addr_test() ->
     ok.
 
 some_test_addrs(N) ->
-    Addrs = lists:map(fun(X) -> {{"127.0.0.1", 10000 + X}, some_data} end,
+    Addrs = lists:map(fun(X) -> {{"127.0.0.1", 10000 + X}, X} end,
                       lists:seq(0, N - 1)),
     R = cring:create(Addrs, ?MODULE, 160),
     AssertSame =
@@ -118,5 +118,14 @@ cluster_resizing_test() ->
       AssertSame(5, "some other key"),
       ok
      end)(),
+    ok.
+
+more_ketama_test() ->
+    {_Addrs, _R, AssertSame} = some_test_addrs(5),
+    % Data from spymemcached KetamaNodeLocatorTest.java.
+    AssertSame(3, "36"),
+    AssertSame(4, "10037"),
+    AssertSame(2, "22051"),
+    AssertSame(5, "49044"),
     ok.
 
