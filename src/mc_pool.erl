@@ -26,6 +26,8 @@ create(Id, Addrs, Config, Buckets) ->
 get_bucket(#mc_pool{buckets = Buckets}, BucketId) ->
     search_bucket(BucketId, Buckets).
 
+% ------------------------------------------------
+
 search_bucket(_BucketId, []) -> false;
 search_bucket(BucketId, [Bucket | Rest]) ->
     case mc_bucket:id(Bucket) =:= BucketId of

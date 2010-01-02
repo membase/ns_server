@@ -12,15 +12,20 @@
 %       so they need to be scalar-ish or matchable.
 
 -record(mc_addr, {location, % eg, "localhost:11211"
-                  kind      % eg, binary or ascii
-                  % TODO: bucket name? pool name? auth creds?
+                  kind,     % eg, binary or ascii
+                  auth      % undefined, or {Mech, AuthData},
+                            % eg, Mech = {"PLAIN", {LoginStr, PasswordStr}}.
+                  % TODO: bucket id, one day when we have bucket selection.
                   }).
 
-create(Location, Kind) ->
-     #mc_addr{location = Location, kind = Kind}.
+create(Location, Kind) -> create(Location, Kind, undefined).
+
+create(Location, Kind, Auth) ->
+     #mc_addr{location = Location, kind = Kind, auth = Auth}.
 
 location(Addr) -> Addr#mc_addr.location.
 kind(Addr)     -> Addr#mc_addr.kind.
+auth(Addr)     -> Addr#mc_addr.auth.
 
 local(Kind) -> mc_addr:create("127.0.0.1:11211", Kind).
 
