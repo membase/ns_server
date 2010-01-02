@@ -55,7 +55,7 @@ handle_info({'EXIT', _Port, Reason}, State) ->
             {stop, normal, State};
         false ->
             % Failed after awhile, so a non-normal Reason means restart.
-            ns_log:log(port_0002, "process exited: ~p",
+            ns_log:log(port_0003, "process exited: ~p",
                        [State#state.params]),
             {stop, {port_exited, Reason}, State}
     end.

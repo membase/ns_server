@@ -71,7 +71,7 @@ pmap(Fun, List, ReturnNum, Timeout) ->
                        SuperParent ! {SuperRef, pmap_sort(List, L)}
                    end),
     Pids = [spawn(fun () ->
-                          Ret = (catch Fun(Elem)),
+                      Ret = (catch Fun(Elem)),
                       Parent ! {Ref, {Elem, Ret}}
                   end) || Elem <- List],
     Ret2 = receive
