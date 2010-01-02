@@ -179,9 +179,6 @@ start_link(Addr) ->
     case gen_tcp:connect(Host, PortNum,
                          [binary, {packet, 0}, {active, false}]) of
         {ok, Sock} ->
-            % TODO: Auth.
-            % TODO: Bucket selection.
-            % TODO: Protocol capability test (binary or ascii).
             process_flag(trap_exit, true),
             WorkerPid = spawn_link(?MODULE, worker, [Addr, Sock]),
             gen_tcp:controlling_process(Sock, WorkerPid),
@@ -201,9 +198,13 @@ worker(Addr, Sock) ->
             case mc_addr:kind(Addr) of
                 ascii  -> loop(Addr, Sock);
                 binary ->
+                    % TODO: Need a way to prevent auth & re-auth storms.
+                    % TODO: Bucket selection, one day.
+                    %
                     case mc_client_binary:auth(Sock, mc_addr:auth(Addr)) of
                         ok   -> loop(Addr, Sock);
-                        _Err -> ns_log:log(mcd_0001, "auth failed")
+                        _Err -> gen_tcp:close(Sock),
+                                ns_log:log(mcd_0001, "auth failed")
                     end
             end
     after ?TIMEOUT_WORKER_GO -> stop

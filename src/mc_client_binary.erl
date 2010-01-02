@@ -80,8 +80,11 @@ auth(Sock, {"PLAIN", {Login, Password}}) ->
                                          data = <<0:8, Login, 0:8, Password>>
                                         }}) of
 
-        {ok, _H, _E} -> ok;
-        _Error       -> error
+        {ok, H, _E} -> case H#mc_header.status == ?SUCCESS of
+                           true -> ok;
+                           false -> {error, eauth_status, H#mc_header.status}
+                       end;
+        _Error      -> {error, eauth_cmd}
     end;
 auth(_Sock, _UnknownMech) -> {error, emech_unsupported}.
 
