@@ -8,9 +8,12 @@
 
 -compile(export_all).
 
--record(mbox, {addr, pid}).
--record(dmgr, {curr % A dict of all the currently active, alive mboxes.
-               }).
+% We have one MBox per Addr.
+%
+-record(mbox, {addr, pid, started}).
+
+% A dict of all the currently active, alive mboxes.
+-record(dmgr, {curr}).
 
 %% API for downstream manager service.
 %%
@@ -26,9 +29,12 @@ stop()       -> gen_server:stop(?MODULE).
 
 monitor(Addr) ->
     case gen_server:call(?MODULE, {pid, Addr}) of
-        {ok, MBoxPid} -> {ok, erlang:monitor(process, MBoxPid)};
+        {ok, MBoxPid} -> monitor_mbox(MBoxPid);
         Error         -> Error
     end.
+
+monitor_mbox(MBoxPid) when is_pid(MBoxPid) ->
+    {ok, erlang:monitor(process, MBoxPid)}.
 
 demonitor(undefined)   -> ok;
 demonitor(MonitorRefs) ->
@@ -148,13 +154,10 @@ make_mbox(#dmgr{curr = Dict} = DMgr, Addr) ->
 
 start_mbox(Addr) ->
     case start_link(Addr) of
-        {ok, Pid} -> {ok, #mbox{addr = Addr, pid = Pid}};
+        {ok, Pid} -> {ok, #mbox{addr = Addr, pid = Pid,
+                                started = erlang:now()}};
         Error     -> Error
     end.
-
-%% Child/worker process implementation, where we have one child/worker
-%% process per downstream Addr or MBox.  Note, this can be a
-%% child/worker in a supervision tree.
 
 start_link(Addr) ->
     Location = mc_addr:location(Addr),
@@ -171,6 +174,10 @@ start_link(Addr) ->
         Err -> Err
     end.
 
+%% Child/worker process implementation, where we have one child/worker
+%% process per downstream Addr or MBox.  Note, this can one day be a
+%% child/worker in a supervision tree.
+
 loop(Addr, Sock) ->
     receive
         {send, NotifyPid, NotifyData, ResponseFun,
@@ -180,8 +187,7 @@ loop(Addr, Sock) ->
             case RV of
                 {ok, _}    -> loop(Addr, Sock);
                 {ok, _, _} -> loop(Addr, Sock);
-                Error      -> gen_tcp:close(Sock),
-                              exit({error, Error})
+                _Error     -> gen_tcp:close(Sock)
             end;
         close ->
             gen_tcp:close(Sock)
