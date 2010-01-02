@@ -43,20 +43,20 @@ stop()       -> gen_server:stop(?MODULE).
 send([Addr], Out, Cmd, CmdArgs,
      ResponseFilter, ResponseModule, undefined) ->
     mc_downstream:send(Addr, Out, Cmd, CmdArgs,
-                       ResponseFilter, ResponseModule);
+                       ResponseFilter, ResponseModule).
 
-send(Addrs, Out, Cmd, CmdArgs,
-     ResponseFilter, ResponseModule, ReceivedOkMin) ->
-    gen_server:call(?MODULE,
-                    {replicate,
-                     #request{addrs     = Addrs,
-                              addrs_len = length(Addrs),
-                              out = Out,
-                              cmd = Cmd,
-                              cmd_args = CmdArgs,
-                              response_filter = ResponseFilter,
-                              response_module = ResponseModule,
-                              received_ok_min = ReceivedOkMin}}).
+% send(Addrs, Out, Cmd, CmdArgs,
+%      ResponseFilter, ResponseModule, ReceivedOkMin) ->
+%     gen_server:call(?MODULE,
+%                     {replicate,
+%                      #request{addrs     = Addrs,
+%                               addrs_len = length(Addrs),
+%                               out = Out,
+%                               cmd = Cmd,
+%                               cmd_args = CmdArgs,
+%                               response_filter = ResponseFilter,
+%                               response_module = ResponseModule,
+%                               received_ok_min = ReceivedOkMin}}).
 
 %% Callbacks from mc_downstream.
 

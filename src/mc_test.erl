@@ -28,7 +28,6 @@ main() ->
                            [mc_bucket:create("default", Addrs3,
                                              Config)]),
     {mc_downstream:start_link(),
-     mc_replication:start_link(),
      mc_accept:start(11300,
                      {mc_server_ascii,
                       mc_server_ascii_proxy, AsciiPool}),
@@ -67,7 +66,6 @@ main_mock() ->
                                                   Config)]),
     {application:start(ns_server),
      mc_downstream:start_link(),
-     mc_replication:start_link(),
      mc_accept:start(11333,
                      {mc_server_detect,
                       mc_server_detect, AsciiPool})}.

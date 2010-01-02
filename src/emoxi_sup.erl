@@ -52,8 +52,8 @@ init([]) ->
     {ok, {{one_for_one, 3, 10}, Children}}.
 
 child_specs() ->
-    [{cring_manager,
-      {cring_manager,start_link, []},
-      permanent, 1000, worker, [cring_manager]}
+    [{mc_downstream,
+      {mc_downstream, start_link, []},
+      permanent, 1000, worker, [mc_downstream]}
     ].
 
