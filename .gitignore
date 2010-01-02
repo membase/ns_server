@@ -5,3 +5,4 @@ test/log
 emoxi_*.tar.gz
 **.cov.html
 *~
+*.pyc
