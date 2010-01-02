@@ -34,7 +34,9 @@ switch(ProtocolModule, ProcessorModule, ProcessorEnv,
 
 loop_out(OutSock) ->
     receive
-        {switch, ProtocolModule} -> ProtocolModule:loop_out(OutSock)
+        {switch, ProtocolModule} ->
+            ProtocolModule:loop_out(OutSock);
+        stop -> ok
     end.
 
 session(_Sock, ProcessorEnv) ->
