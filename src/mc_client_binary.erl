@@ -73,11 +73,12 @@ send_list(Sock, RecvCallback,
 % -------------------------------------------------
 
 auth(_Sock, undefined) -> ok;
-auth(Sock, {"PLAIN", {Login, Password}}) ->
+auth(Sock, {"PLAIN", {AuthName, AuthPswd}}) ->
     case mc_client_binary:cmd(?CMD_SASL_AUTH, Sock, undefined,
                               {#mc_header{},
                                #mc_entry{key = "PLAIN",
-                                         data = <<0:8, Login, 0:8, Password>>
+                                         data = <<0:8, AuthName,
+                                                  0:8, AuthPswd>>
                                         }}) of
 
         {ok, H, _E} -> case H#mc_header.status == ?SUCCESS of
