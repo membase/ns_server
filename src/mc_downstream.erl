@@ -8,8 +8,6 @@
 
 -compile(export_all).
 
-% TODO: Should these be parameterized, or configurable?
-
 -define(TIMEOUT_AWAIT_OK,         100000). % 100 seconds.
 -define(TIMEOUT_WORKER_GO,          1000). % 1 seconds.
 -define(TIMEOUT_WORKER_INACTIVE, 1000000). % 1000 seconds.
