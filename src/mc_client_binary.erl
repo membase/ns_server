@@ -73,12 +73,20 @@ send_list(Sock, RecvCallback,
 % -------------------------------------------------
 
 auth(_Sock, undefined) -> ok;
+
 auth(Sock, {"PLAIN", {AuthName, AuthPswd}}) ->
+    auth(Sock, {"PLAIN", {<<>>, AuthName, AuthPswd}});
+
+auth(Sock, {"PLAIN", {ForName, AuthName, AuthPswd}}) ->
+    BinForName  = mc_binary:bin(ForName),
+    BinAuthName = mc_binary:bin(AuthName),
+    BinAuthPswd = mc_binary:bin(AuthPswd),
     case mc_client_binary:cmd(?CMD_SASL_AUTH, Sock, undefined,
                               {#mc_header{},
                                #mc_entry{key = "PLAIN",
-                                         data = <<0:8, AuthName,
-                                                  0:8, AuthPswd>>
+                                         data = <<BinForName/binary, 0:8,
+                                                  BinAuthName/binary, 0:8,
+                                                  BinAuthPswd/binary>>
                                         }}) of
 
         {ok, H, _E} -> case H#mc_header.status == ?SUCCESS of
@@ -87,6 +95,7 @@ auth(Sock, {"PLAIN", {AuthName, AuthPswd}}) ->
                        end;
         _Error      -> {error, eauth_cmd}
     end;
+
 auth(_Sock, _UnknownMech) -> {error, emech_unsupported}.
 
 % -------------------------------------------------

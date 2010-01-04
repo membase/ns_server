@@ -12,13 +12,18 @@
 
 -compile(export_all).
 
--record(session_proxy, {bucket, % The target that we're forwarding to.
+-record(session_proxy, {pool,
+                        bucket, % The target that we're forwarding to.
+                        authed, % Either false, or when auth_ok() timestamp.
                         corked  % Requests awaiting a NOOP to uncork.
                        }).
 
 session(_Sock, Pool) ->
     {ok, Bucket} = mc_pool:get_bucket(Pool, "default"),
-    {ok, Pool, #session_proxy{bucket = Bucket,
+    Authed = mc_bucket:auth_needed(Bucket) =:= false,
+    {ok, Pool, #session_proxy{pool = Pool,
+                              bucket = Bucket,
+                              authed = Authed,
                               corked = []}}.
 
 % ------------------------------------------
@@ -106,6 +111,18 @@ cmd(?STAT = O, Sess, _Sock, Out, {H, _E} = HE) ->
 
 % ------------------------------------------
 
+cmd(?CMD_SASL_LIST_MECHS, Sess, _Sock, Out, {H, _E}) ->
+    mc_binary:send(Out, res,
+                   H#mc_header{status = ?SUCCESS},
+                   #mc_entry{data = "PLAIN"}),
+    {ok, Sess};
+
+cmd(?CMD_SASL_AUTH, Sess, _Sock, Out, {H, #mc_entry{key = Mech,
+                                                    data = Data}}) ->
+    auth(Mech, Data, Sess, Out, H);
+
+% ------------------------------------------
+
 cmd(?VERSION, Sess, _Sock, Out, {Header, _Entry}) ->
     V = case ns_config:search(version) of
             {value, X} -> X;
@@ -129,10 +146,38 @@ cmd(_, Sess, _, Out, {Header, _Entry}) ->
 
 % ------------------------------------------
 
+auth("PLAIN", Data, #session_proxy{bucket = Bucket} = Sess, Out, H) ->
+    DataStr = binary_to_list(Data),
+    AuthOk =
+        case string:tokens(DataStr, "\0") of
+            [AuthName, AuthPswd] ->
+                mc_bucket:auth_ok(Bucket, AuthName, AuthPswd);
+            [ForName, AuthName, AuthPswd] ->
+                mc_bucket:auth_ok(Bucket, ForName, AuthName, AuthPswd);
+            _ -> false
+        end,
+    case AuthOk of
+        true ->
+            mc_binary:send(Out, res,
+                           H#mc_header{status = ?SUCCESS},
+                           #mc_entry{}),
+            {ok, Sess#session_proxy{authed = erlang:now()}};
+        false ->
+            mc_binary:send(Out, res,
+                           H#mc_header{status = ?EINVAL},
+                           #mc_entry{}),
+            {ok, Sess#session_proxy{authed = false}}
+    end;
+
+auth(_UnknownMech, _Data, Sess, Out, H) ->
+    mc_binary:send(Out, res,
+                   H#mc_header{status = ?KEY_ENOENT},
+                   #mc_entry{}),
+    {ok, Sess#session_proxy{authed = false}}.
+
+% ------------------------------------------
+
 % ?STAT
-% ?SASL_LIST_MECHS
-% ?SASL_AUTH
-% ?SASL_STEP
 % ?BUCKET
 
 % ------------------------------------------

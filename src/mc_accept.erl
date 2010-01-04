@@ -40,21 +40,27 @@ init(PortNum, Env) ->
 
 % Accept incoming connections.
 accept_loop(LS, {ProtocolModule, ProcessorModule, ProcessorEnv}) ->
+    eat_exit_sessions(),
     {ok, NS} = gen_tcp:accept(LS),
     % Ask the processor for a new session object.
-    {ok, ProcessorEnv2, ProcessorSession} =
-        ProcessorModule:session(NS, ProcessorEnv),
-    % We use spawn_link with trap_exit, so that if our supervisor
-    % kills us (such as due to a reconfiguration), we propagate the kill
-    % to our session children.  But, a dying session child will
-    % not take down us or propagate back.
-    process_flag(trap_exit, true),
-    % Do spawn_link of a session-handling process.
-    Pid = spawn_link(?MODULE, session,
-                     [NS, ProtocolModule, ProcessorModule, ProcessorSession]),
-    gen_tcp:controlling_process(NS, Pid),
-    eat_exit_sessions(),
-    accept_loop(LS, {ProtocolModule, ProcessorModule, ProcessorEnv2}).
+    case ProcessorModule:session(NS, ProcessorEnv) of
+        {ok, ProcessorEnv2, ProcessorSession} ->
+            % We use spawn_link with trap_exit, so that if our supervisor
+            % kills us (such as due to a reconfiguration), we propagate
+            % the kill to our session children.  But, a dying session
+            % child will not take down us or propagate back.
+            process_flag(trap_exit, true),
+            % Do spawn_link of a session-handling process.
+            Pid = spawn_link(?MODULE, session,
+                             [NS, ProtocolModule,
+                              ProcessorModule, ProcessorSession]),
+            gen_tcp:controlling_process(NS, Pid),
+            accept_loop(LS, {ProtocolModule, ProcessorModule, ProcessorEnv2});
+        _Error ->
+            ns_log:log(acc_0001, "could not start session"),
+            gen_tcp:close(NS),
+            accept_loop(LS, {ProtocolModule, ProcessorModule, ProcessorEnv})
+    end.
 
 eat_exit_sessions() ->
     % We do a quick non-blocking receive to eat any EXIT notifications.
