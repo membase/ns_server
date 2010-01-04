@@ -1,3 +1,5 @@
+% Copyright (c) 2009, NorthScale, Inc
+
 -record(mc_entry, {key = undefined,
                    ext = undefined,
                    flag = 0,
