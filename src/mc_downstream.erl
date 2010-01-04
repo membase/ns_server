@@ -14,12 +14,13 @@
 -define(TIMEOUT_WORKER_GO,          1000). % 1 seconds.
 -define(TIMEOUT_WORKER_INACTIVE, 1000000). % 1000 seconds.
 
-% We have one MBox per Addr.
+-record(dmgr, {curr,   % A dict of all the currently active, alive mboxes.
+               timeout % Timeout for worker inactivity.
+              }).
+
+% We have one MBox (or worker) per Addr.
 %
 -record(mbox, {addr, pid, started}).
-
-% A dict of all the currently active, alive mboxes.
--record(dmgr, {curr}).
 
 %% API for downstream manager service.
 %%
@@ -30,8 +31,10 @@
 %% all the higher level layers can learn of it via this module's
 %% monitor/demonitor abstraction.
 
-start_link() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
-stop()       -> gen_server:stop(?MODULE).
+start_link()     -> start_link([{timeout, ?TIMEOUT_WORKER_INACTIVE}]).
+start_link(Args) -> gen_server:start_link({local, ?MODULE}, ?MODULE, Args, []).
+
+stop() -> gen_server:stop(?MODULE).
 
 monitor(Addr) ->
     case gen_server:call(?MODULE, {pid, Addr}) of
@@ -87,27 +90,29 @@ accum(CallResult, {NumOks, AccMonitors}) ->
         {_,  Monitors} -> {NumOks, Monitors ++ AccMonitors}
     end.
 
-await_ok(N) -> await_ok(undefined, N, 0).
-await_ok(Prefix, N, Acc) when N > 0 ->
+await_ok(N) -> await_ok(undefined, N, ?TIMEOUT_AWAIT_OK, 0).
+await_ok(Prefix, N, T, Acc) when N > 0 ->
     % TODO: Decrementing N due to a DOWN might be incorrect
-    % during edge/race conditions.
+    %       during edge/race conditions.
     % TODO: Need to match the MonitorRef's we get from 'DOWN' messages?
+    %
+    % Receive messages from worker processes doing a notify().
     receive
-        {Prefix, {ok, _}}              -> await_ok(Prefix, N - 1, Acc + 1);
-        {Prefix, {ok, _, _}}           -> await_ok(Prefix, N - 1, Acc + 1);
-        {Prefix, _}                    -> await_ok(Prefix, N - 1, Acc);
-        {'DOWN', _MonitorRef, _, _, _} -> await_ok(Prefix, N - 1, Acc)
-    after ?TIMEOUT_AWAIT_OK ->
+        {Prefix, {ok, _}}              -> await_ok(Prefix, N - 1, T, Acc + 1);
+        {Prefix, {ok, _, _}}           -> await_ok(Prefix, N - 1, T, Acc + 1);
+        {Prefix, _}                    -> await_ok(Prefix, N - 1, T, Acc);
+        {'DOWN', _MonitorRef, _, _, _} -> await_ok(Prefix, N - 1, T, Acc)
+    after T ->
         % When we've waited too long, free up the caller.
         % TODO: Need to demonitor?
         Acc
     end;
-await_ok(_, _, Acc) -> Acc.
+await_ok(_, _, _, Acc) -> Acc.
 
 %% gen_server implementation.
 
-init([]) ->
-    {ok, #dmgr{curr = dict:new()}}.
+init([{timeout, Timeout}]) ->
+    {ok, #dmgr{curr = dict:new(), timeout = Timeout}}.
 
 terminate(_Reason, _DMgr) -> ok.
 code_change(_OldVn, DMgr, _Extra) -> {ok, DMgr}.
@@ -150,26 +155,26 @@ monitor_mbox(MBoxPid) ->
     {ok, erlang:monitor(process, MBoxPid)}.
 
 % Retrieves or starts an mbox for an Addr.
-make_mbox(#dmgr{curr = Dict} = DMgr, Addr) ->
+make_mbox(#dmgr{curr = Dict, timeout = Timeout} = DMgr, Addr) ->
     case dict:find(Addr, Dict) of
         {ok, MBox} ->
             {ok, DMgr, MBox};
         error ->
-            case start_mbox(Addr) of
+            case start_mbox(Addr, Timeout) of
                 {ok, MBox} -> Dict2 = dict:store(Addr, MBox, Dict),
-                              {ok, #dmgr{curr = Dict2}, MBox};
+                              {ok, DMgr#dmgr{curr = Dict2}, MBox};
                 Error      -> Error
             end
     end.
 
-start_mbox(Addr) ->
-    case start_link(Addr) of
+start_mbox(Addr, Timeout) ->
+    case start_link(Addr, Timeout) of
         {ok, Pid} -> {ok, #mbox{addr = Addr, pid = Pid,
                                 started = erlang:now()}};
         Error     -> Error
     end.
 
-start_link(Addr) ->
+start_link(Addr, Timeout) ->
     Location = mc_addr:location(Addr),
     [Host, Port | _] = string:tokens(Location, ":"),
     PortNum = list_to_integer(Port),
@@ -180,7 +185,7 @@ start_link(Addr) ->
                          [binary, {packet, 0}, {active, false}]) of
         {ok, Sock} ->
             process_flag(trap_exit, true),
-            WorkerPid = spawn_link(?MODULE, worker, [Addr, Sock]),
+            WorkerPid = spawn_link(?MODULE, worker, [Addr, Sock, Timeout]),
             gen_tcp:controlling_process(Sock, WorkerPid),
             WorkerPid ! go,
             {ok, WorkerPid};
@@ -191,18 +196,18 @@ start_link(Addr) ->
 %% process per downstream Addr or MBox.  Note, this can one day be a
 %% child/worker in a supervision tree.
 
-worker(Addr, Sock) ->
+worker(Addr, Sock, Timeout) ->
     % The go delay allows the spawner to setup gen_tcp:controller_process.
     receive
         go ->
             case mc_addr:kind(Addr) of
-                ascii  -> loop(Addr, Sock);
+                ascii  -> loop(Addr, Sock, Timeout);
                 binary ->
                     % TODO: Need a way to prevent auth & re-auth storms.
                     % TODO: Bucket selection, one day.
                     %
                     case mc_client_binary:auth(Sock, mc_addr:auth(Addr)) of
-                        ok   -> loop(Addr, Sock);
+                        ok   -> loop(Addr, Sock, Timeout);
                         _Err -> gen_tcp:close(Sock),
                                 ns_log:log(mcd_0001, "auth failed")
                     end
@@ -210,7 +215,7 @@ worker(Addr, Sock) ->
     after ?TIMEOUT_WORKER_GO -> stop
     end.
 
-loop(Addr, Sock) ->
+loop(Addr, Sock, Timeout) ->
     inet:setopts(Sock, [{active, once}]),
     receive
         {send, NotifyPid, NotifyData, ResponseFun,
@@ -219,12 +224,12 @@ loop(Addr, Sock) ->
             RV = CmdModule:cmd(Cmd, Sock, ResponseFun, CmdArgs),
             notify(NotifyPid, NotifyData, RV),
             case RV of
-                {ok, _}    -> loop(Addr, Sock);
-                {ok, _, _} -> loop(Addr, Sock);
+                {ok, _}    -> loop(Addr, Sock, Timeout);
+                {ok, _, _} -> loop(Addr, Sock, Timeout);
                 _Error     -> gen_tcp:close(Sock)
             end;
         {tcp_closed, Sock} -> ok
-    after ?TIMEOUT_WORKER_INACTIVE ->
+    after Timeout ->
         gen_tcp:close(Sock),
         stop
     end.
