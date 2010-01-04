@@ -38,12 +38,14 @@ loop(Req, DocRoot) ->
                              {need_auth, fun handle_pools/1};
                          ["pools", Id] ->
                              {need_auth, fun handle_pool_info/2, [Id]};
+                         ["pools", Id, "stats"] ->
+                             {need_auth, fun handle_bucket_stats/3, ["asd", Id]};
                          ["poolsStreaming", Id] ->
                              {need_auth, fun handle_pool_info_streaming/2, [Id]};
-                         ["buckets", Id] ->
-                             {need_auth, fun handle_bucket_info/2, [Id]};
-                         ["buckets", Id, "stats"] ->
-                             {need_auth, fun handle_bucket_stats/2, [Id]};
+                         ["pools", PoolId, "buckets", Id] ->
+                             {need_auth, fun handle_bucket_info/3, [PoolId, Id]};
+                         ["pools", PoolId, "buckets", Id, "stats"] ->
+                             {need_auth, fun handle_bucket_stats/3, [PoolId, Id]};
                          ["alerts"] ->
                              {need_auth, fun handle_alerts/1};
                          ["t", "index.html"] ->
@@ -121,109 +123,123 @@ reply_json(Req, Body) ->
             [{"Server", "NorthScale menelaus %TODO gitversion%"}],
             mochijson2:encode(Body)}).
 
+expect_config(Key) ->
+    {value, RV} = ns_config:search(Key),
+    RV.
+
+build_pools() ->
+    Pools = lists:map(fun ({Name, _}) ->
+                              {struct, [{name, list_to_binary(Name)},
+                                        {uri, list_to_binary("/pools/" ++ Name)},
+                                        {streamingUri, list_to_binary("/poolsStreaming/" ++ Name)}]}
+                      end,
+                      expect_config(pools)),
+    {struct, [
+              %% TODO: pull this from git describe
+              {implementationVersion, <<"comes_from_git_describe">>},
+              {pools, Pools}]}.
+
 handle_pools(Req) ->
-    reply_json(Req, {struct, [
-                              %% TODO: pull this from git describe
-                              {implementationVersion, <<"comes_from_git_describe">>},
-                              {pools, [{struct, [{name, <<"default">>},
-                                                 {uri, <<"/pools/default">>},
-                                                 {streamingUri, <<"/poolsStreaming/default">>}]},
-                                       %% only one pool at first release, this 
-                                       %% is just for prototyping
-                                       {struct, [{name, <<"Another Pool">>},
-                                                 {uri, <<"/pools/Another Pool">>}]}]}]}).
+    reply_json(Req, build_pools()).
+
+expect_prop_value_list(KeysList, List) ->
+    [expect_prop_value(K, List) || K <- KeysList].
+
+expect_prop_value(K, List) ->
+    Ref = make_ref(),
+    try 
+        case proplists:get_value(K, List, Ref) of
+            RV when RV =/= Ref -> RV
+        end
+    catch
+        error:X -> erlang:error(X, [K, List])
+    end.
+
+find_pool_by_id(Id) -> expect_prop_value(Id, expect_config(pools)).
+    
+
+build_pool_info(Id) ->
+    MyPool = find_pool_by_id(Id),
+    %% TODO: node status
+    [Addrs, Buckets] = expect_prop_value_list([addrs, buckets], MyPool),
+    NodeKindPairs = lists:map(fun (AddrDesc) ->
+                                      [Kind, ConnDesc] = expect_prop_value_list([kind, conn], AddrDesc),
+                                      {expect_prop_value(addr, ConnDesc), Kind}
+                              end, Addrs),
+    NodesDict = lists:foldl(fun ({Addr, Kind}, Dict) ->
+                                    dict:append(Addr, Kind, Dict)
+                            end,
+                            dict:new(), NodeKindPairs),
+    PortTupleFor = fun (router) -> {router, 11211};
+                       (kvcache) -> {kvcache, 11311};
+                       (kvstore) -> {kvstore, 11411};
+                       (memcached) -> {memcached, 11211}
+                   end,
+    Nodes = [{struct, [{ipAddress, list_to_binary(IpAddr)},
+                       {struct, <<"healthy">>},
+                       {ports, {struct, [PortTupleFor(Kind) || Kind <- element(2, dict:find(IpAddr, NodesDict))]}},
+                       {name, list_to_binary(IpAddr)}]}
+             || IpAddr <- dict:fetch_keys(NodesDict)],
+    BucketsInfo = [{struct, [{uri, list_to_binary("/pools/" ++ Id ++ "/buckets/" ++ Name)},
+                             {name, list_to_binary(Name)}]}
+                   || Name <- proplists:get_keys(Buckets)],
+    {struct, [{nodes, Nodes},
+              {buckets, BucketsInfo},
+              {stats, {struct,
+                       [{uri, list_to_binary("/pools/" ++ Id ++ "/stats")}]}},
+              {name, list_to_binary(Id)}]}.
+    %% case Id of
+    %%     "default" -> {struct, [{nodes, [{struct, [{ipAddress, <<"10.0.1.20">>},
+    %%                                               {status, <<"healthy">>},
+    %%                                               {ports, {struct, [{routing, 11211},
+    %%                                                                 {caching, 11311},
+    %%                                                                 {kvstore, 11411}]}},
+    %%                                               {name, <<"first_node">>},
+    %%                                               {fqdn, <<"first_node.in.pool.com">>}]},
+    %%                                     {struct, [{ipAddress, <<"10.0.1.21">>},
+    %%                                               {status, <<"healthy">>},
+    %%                                               {ports, {struct, [{routing, 11211},
+    %%                                                                 {caching, 11311},
+    %%                                                                 {kvstore, 11411}]}},
+    %%                                               {uri, <<"/addresses/10.0.1.20">>},
+    %%                                               {name, <<"second_node">>},
+    %%                                               {fqdn, <<"second_node.in.pool.com">>}]}]},
+    %%                            {buckets, [{struct, [{uri, <<"/buckets/4">>},
+    %%                                                 {name, <<"Excerciser Application">>}]}]},
+    %%                            {stats, {struct, [{uri, <<"/buckets/4/stats?really_for_pool=1">>}]}},
+    %%                            {name, <<"Default Pool">>}]};
+    %%     _ -> {struct, [{nodes, [{struct, [{ipAddress, <<"10.0.1.22">>},
+    %%                                       {uptime, 123321},
+    %%                                       {status, <<"healthy">>},
+    %%                                       {ports, {struct, [{routing, 11211},
+    %%                                                         {caching, 11311},
+    %%                                                         {kvstore, 11411}]}},
+    %%                                       {uri, <<"https://first_node.in.pool.com:80/pool/Another Pool/node/first_node/">>},
+    %%                                       {name, <<"first_node">>},
+    %%                                       {fqdn, <<"first_node.in.pool.com">>}]}, {struct, [{ipAddress, <<"10.0.1.23">>},
+    %%                                                                                         {uptime, 123123},
+    %%                                                                                         {status, <<"healthy">>},
+    %%                                                                                         {ports, {struct, [{routing, 11211},
+    %%                                                                                                           {caching, 11311},
+    %%                                                                                                           {kvstore, 11411}]}},
+    %%                                                                                         {uri, <<"https://second_node.in.pool.com:80/pool/Another Pool/node/second_node/">>},
+    %%                                                                                         {name, <<"second_node">>},
+    %%                                                                                         {fqdn, <<"second_node.in.pool.com">>}]}]},
+    %%                    {buckets, [{struct, [{uri, <<"/buckets/5">>},
+    %%                                         {name, <<"Excerciser Another">>}]}]},
+    %%                    {stats, {struct, [{uri, <<"/buckets/4/stats?really_for_pool=2">>}]}},
+    %%                    {name, <<"Another Pool">>}]}
+    %% end.
 
 handle_pool_info(Id, Req) ->
-    Res = case Id of
-              "default" -> {struct, [{nodes, [{struct, [{ipAddress, <<"10.0.1.20">>},
-                                                  {status, <<"healthy">>},
-                                                  {ports, {struct, [{routing, 11211},
-                                                                  {caching, 11311},
-                                                                  {kvstore, 11411}]}},
-                                                  {name, <<"first_node">>},
-                                                  {fqdn, <<"first_node.in.pool.com">>}]},
-                                              {struct, [{ipAddress, <<"10.0.1.21">>},
-                                                        {status, <<"healthy">>},
-                                                        {ports, {struct, [{routing, 11211},
-                                                                          {caching, 11311},
-                                                                          {kvstore, 11411}]}},
-                                                        {uri, <<"/addresses/10.0.1.20">>},
-                                                        {name, <<"second_node">>},
-                                                        {fqdn, <<"second_node.in.pool.com">>}]}]},
-                                {buckets, [{struct, [{uri, <<"/buckets/4">>},
-                                                    {name, <<"Excerciser Application">>}]}]},
-                                {stats, {struct, [{uri, <<"/buckets/4/stats?really_for_pool=1">>}]}},
-                                {name, <<"Default Pool">>}]};
-              _ -> {struct, [{nodes, [{struct, [{ipAddress, <<"10.0.1.22">>},
-                                               {uptime, 123321},
-                                               {status, <<"healthy">>},
-                                               {ports, {struct, [{routing, 11211},
-                                                                  {caching, 11311},
-                                                                  {kvstore, 11411}]}},
-                                               {uri, <<"https://first_node.in.pool.com:80/pool/Another Pool/node/first_node/">>},
-                                               {name, <<"first_node">>},
-                                               {fqdn, <<"first_node.in.pool.com">>}]}, {struct, [{ipAddress, <<"10.0.1.23">>},
-                                                                                             {uptime, 123123},
-                                                                                             {status, <<"healthy">>},
-                                                                                             {ports, {struct, [{routing, 11211},
-                                                                                                                {caching, 11311},
-                                                                                                                {kvstore, 11411}]}},
-                                                                                             {uri, <<"https://second_node.in.pool.com:80/pool/Another Pool/node/second_node/">>},
-                                                                                             {name, <<"second_node">>},
-                                                                                             {fqdn, <<"second_node.in.pool.com">>}]}]},
-                             {buckets, [{struct, [{uri, <<"/buckets/5">>},
-                                                 {name, <<"Excerciser Another">>}]}]},
-                             {stats, {struct, [{uri, <<"/buckets/4/stats?really_for_pool=2">>}]}},
-                             {name, <<"Another Pool">>}]}
-          end,
-    reply_json(Req, Res).
+    reply_json(Req, build_pool_info(Id)).
 
 handle_pool_info_streaming(Id, Req) ->
     %% TODO: this shouldn't be timer driven, but rather should register a callback based on some state change in the Erlang OS
     HTTPRes = Req:ok({"application/json; charset=utf-8",
                   [{"Server", "NorthScale menelaus %TODO gitversion%"}],
                   chunked}),
-    Res = case Id of
-              "default" -> {struct, [{nodes, [{struct, [{ipAddress, <<"10.0.1.20">>},
-                                                  {status, <<"healthy">>},
-                                                  {ports, {struct, [{routing, 11211},
-                                                                  {caching, 11311},
-                                                                  {kvstore, 11411}]}},
-                                                  {name, <<"first_node">>},
-                                                  {fqdn, <<"first_node.in.pool.com">>}]}, {struct, [{ipAddress, <<"10.0.1.21">>},
-                                                                                              {status, <<"healthy">>},
-                                                                                              {ports, {struct, [{routing, 11211},
-                                                                                                                {caching, 11311},
-                                                                                                                {kvstore, 11411}]}},
-                                                                                              {uri, <<"/addresses/10.0.1.20">>},
-                                                                                              {name, <<"first_node">>},
-                                                                                              {fqdn, <<"first_node.in.pool.com">>}]}]},
-                                {buckets, [{struct, [{uri, <<"/buckets/4">>},
-                                                    {name, <<"Excerciser Application">>}]}]},
-                                {stats, {struct, [{uri, <<"/buckets/4/stats?really_for_pool=1">>}]}},
-                                {name, <<"Default Pool">>}]};
-              _ -> {struct, [{nodes, [{struct, [{ipAddress, <<"10.0.1.22">>},
-                                               {uptime, 123321},
-                                               {status, <<"healthy">>},
-                                               {ports, {struct, [{routing, 11211},
-                                                                  {caching, 11311},
-                                                                  {kvstore, 11411}]}},
-                                               {uri, <<"https://first_node.in.pool.com:80/pool/Another Pool/node/first_node/">>},
-                                               {name, <<"first_node">>},
-                                               {fqdn, <<"first_node.in.pool.com">>}]}, {struct, [{ipAddress, <<"10.0.1.23">>},
-                                                                                             {uptime, 123123},
-                                                                                             {status, <<"healthy">>},
-                                                                                             {ports, {struct, [{routing, 11211},
-                                                                                                                {caching, 11311},
-                                                                                                                {kvstore, 11411}]}},
-                                                                                             {uri, <<"https://second_node.in.pool.com:80/pool/Another Pool/node/second_node/">>},
-                                                                                             {name, <<"second_node">>},
-                                                                                             {fqdn, <<"second_node.in.pool.com">>}]}]},
-                             {buckets, [{struct, [{uri, <<"/buckets/5">>},
-                                                 {name, <<"Excerciser Another">>}]}]},
-                             {stats, {struct, [{uri, <<"/buckets/4/stats?really_for_pool=2">>}]}},
-                             {name, <<"Another Pool">>}]}
-          end,
+    Res = build_pool_info(Id),
     HTTPRes:write_chunk(mochijson2:encode(Res)),
     %% TODO: resolve why mochiweb doesn't support zero chunk... this
     %%       indicates the end of a response for now
@@ -233,47 +249,7 @@ handle_pool_info_streaming(Id, Req) ->
 handle_pool_info_streaming(Id, HTTPRes, Wait) ->
     receive
     after Wait ->
-            Res = case Id of
-                "default" -> {struct, [{nodes, [{struct, [{ipAddress, <<"10.0.1.20">>},
-                                                    {status, <<"healthy">>},
-                                                    {ports, {struct, [{routing, 11211},
-                                                                    {caching, 11311},
-                                                                    {kvstore, 11411}]}},
-                                                    {name, <<"first_node">>},
-                                                    {fqdn, <<"first_node.in.pool.com">>}]}, {struct, [{ipAddress, <<"10.0.1.21">>},
-                                                                                                {status, <<"healthy">>},
-                                                                                                {ports, {struct, [{routing, 11211},
-                                                                                                                  {caching, 11311},
-                                                                                                                  {kvstore, 11411}]}},
-                                                                                                {uri, <<"/addresses/10.0.1.20">>},
-                                                                                                {name, <<"first_node">>},
-                                                                                                {fqdn, <<"first_node.in.pool.com">>}]}]},
-                                  {buckets, [{struct, [{uri, <<"/buckets/4">>},
-                                                      {name, <<"Excerciser Application">>}]}]},
-                                  {stats, {struct, [{uri, <<"/buckets/4/stats?really_for_pool=1">>}]}},
-                                  {name, <<"Default Pool">>}]};
-                _ -> {struct, [{nodes, [{struct, [{ipAddress, <<"10.0.1.22">>},
-                                                 {uptime, 123321},
-                                                 {status, <<"healthy">>},
-                                                 {ports, {struct, [{routing, 11211},
-                                                                    {caching, 11311},
-                                                                    {kvstore, 11411}]}},
-                                                 {uri, <<"https://first_node.in.pool.com:80/pool/Another Pool/node/first_node/">>},
-                                                 {name, <<"first_node">>},
-                                                 {fqdn, <<"first_node.in.pool.com">>}]}, {struct, [{ipAddress, <<"10.0.1.23">>},
-                                                                                               {uptime, 123123},
-                                                                                               {status, <<"healthy">>},
-                                                                                               {ports, {struct, [{routing, 11211},
-                                                                                                                  {caching, 11311},
-                                                                                                                  {kvstore, 11411}]}},
-                                                                                               {uri, <<"https://second_node.in.pool.com:80/pool/Another Pool/node/second_node/">>},
-                                                                                               {name, <<"second_node">>},
-                                                                                               {fqdn, <<"second_node.in.pool.com">>}]}]},
-                               {buckets, [{struct, [{uri, <<"/buckets/5">>},
-                                                   {name, <<"Excerciser Another">>}]}]},
-                               {stats, {struct, [{uri, <<"/buckets/4/stats?really_for_pool=2">>}]}},
-                               {name, <<"Another Pool">>}]}
-                end,
+            Res = build_pool_info(Id),
         HTTPRes:write_chunk(mochijson2:encode(Res)),
         %% TODO: resolve why mochiweb doesn't support zero chunk... this
         %%       indicates the end of a response for now
@@ -281,16 +257,24 @@ handle_pool_info_streaming(Id, HTTPRes, Wait) ->
     end,
     handle_pool_info_streaming(Id, HTTPRes, 10000).
 
+find_bucket_by_id(PoolId, Id) ->
+    Pool = find_pool_by_id(PoolId),
+    Buckets = expect_prop_value(buckets, Pool),
+    expect_prop_value(Id, Buckets).
 
-handle_bucket_info(Id, Req) ->
-    Res = case Id of
-              "4" -> {struct, [{pool_uri, <<"asdasdasdasd">>},
-                               {stats, {struct, [{uri, <<"/buckets/4/stats">>}]}},
-                               {name, <<"Excerciser Application">>}]};
-              _ -> {struct, [{pool_uri, <<"asdasdasdasd">>},
-                             {stats, {struct, [{uri, <<"/buckets/5/stats">>}]}},
-                             {name, <<"Excerciser Another">>}]}
-          end,
+handle_bucket_info(PoolId, Id, Req) ->
+    _Bucket = find_bucket_by_id(PoolId, Id),
+    StatsURI = list_to_binary("/pools/"++PoolId++"/buckets/"++Id++"/stats"),
+    Res = {struct, [{name, list_to_binary(Id)},
+                    {stats, {struct, [{uri, StatsURI}]}}]},
+    %% Res = case Id of
+    %%           "4" -> {struct, [{pool_uri, <<"asdasdasdasd">>},
+    %%                            {stats, {struct, [{uri, <<"/pools/asd/buckets/4/stats">>}]}},
+    %%                            {name, <<"Excerciser Application">>}]};
+    %%           _ -> {struct, [{pool_uri, <<"asdasdasdasd">>},
+    %%                          {stats, {struct, [{uri, <<"/pools/asd/buckets/5/stats">>}]}},
+    %%                          {name, <<"Excerciser Another">>}]}
+    %%       end,
     reply_json(Req, Res).
 
 %% milliseconds since 1970 Jan 1 at UTC
@@ -492,10 +476,10 @@ test_under_debugger() ->
 
 -endif.
 
-handle_bucket_stats(_Id, Req) ->
+handle_bucket_stats(_PoolId, Id, Req) ->
     Now = java_date(),
     Params = Req:parse_qs(),
-    Res = build_bucket_stats_response(_Id, Params, Now),
+    Res = build_bucket_stats_response(Id, Params, Now),
     reply_json(Req, Res).
 
 
