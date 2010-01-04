@@ -1,5 +1,5 @@
 {application, ns_server,
- [{description, "NorthScale smart server"},
+ [{description, "NorthScale server"},
   {vsn, "0.0.0"},
   {modules, [misc,
              ns_config,

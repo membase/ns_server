@@ -1,4 +1,4 @@
--module(node_disco_conf_events).
+-module(ns_node_disco_conf_events).
 
 -behaviour(gen_event).
 
@@ -16,8 +16,8 @@ start_link() ->
 init(DiscoPid) ->
     {ok, #state{disco=DiscoPid}, hibernate}.
 
-handle_event({stored_nodes, V}, State) ->
-    error_logger:info_msg("stored_nodes is now ~p~n", [V]),
+handle_event({nodes_wanted, V}, State) ->
+    error_logger:info_msg("nodes_wanted is now ~p~n", [V]),
     {ok, State, hibernate};
 handle_event(_E, State) ->
     {ok, State, hibernate}.

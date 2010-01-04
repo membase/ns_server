@@ -31,5 +31,6 @@ default_data_directory() ->
 mergable() ->
     [n, r, w, q, storage_mod, blocksize, buffered_writes,
      port_servers,
-     stored_nodes].
+     nodes_wanted,
+     nodes_actual].
 

@@ -11,12 +11,12 @@ start_link() ->
 %
 
 init() ->
-    _NL = init_known_servers(ns_config:search(ns_config:get(), stored_nodes)),
+    _NL = init_known_servers(ns_config:search(ns_config:get(), nodes_wanted)),
     update_node_list(),
     ok = net_kernel:monitor_nodes(true),
     % the node_disco_conf_events gen_event handler will inform me when
     % relevant configuration changes.
-    gen_event:add_handler(ns_config_events, node_disco_conf_events, self()),
+    gen_event:add_handler(ns_config_events, ns_node_disco_conf_events, self()),
     loop().
 
 init_known_servers({value, NodeList}) ->
@@ -27,7 +27,7 @@ init_known_servers(false) ->
     [].
 
 update_node_list() ->
-    ns_config:set(stored_nodes, lists:sort([node() | nodes()])).
+    ns_config:set(nodes_actual, lists:sort([node() | nodes()])).
 
 loop() ->
     receive
