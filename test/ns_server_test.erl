@@ -11,6 +11,7 @@
 tests(ns_server) ->
     [misc,
      ns_config,
+     ns_log,
      ns_port_init].
 
 test() ->

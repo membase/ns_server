@@ -27,7 +27,7 @@ init({Name, _Cmd, _Args, _Opts} = Params) ->
     case is_port(Port) of
         true  -> {ok, #state{port = Port, name = Name, params = Params,
                              started = now()}};
-        false -> ns_log:log(port_0001, "could not start process: ~p",
+        false -> ns_log:log(?MODULE, 0001, "could not start process: ~p",
                             [Params]),
                  {stop, Port}
     end.
@@ -50,12 +50,12 @@ handle_info({'EXIT', _Port, Reason}, State) ->
           misc:time_to_epoch_float(State#state.started)) =< 1 of
         true ->
             % Failed right away, so a normal Reason means don't restart.
-            ns_log:log(port_0002, "process could not start: ~p",
+            ns_log:log(?MODULE, 0002, "process could not start: ~p",
                        [State#state.params]),
             {stop, normal, State};
         false ->
             % Failed after awhile, so a non-normal Reason means restart.
-            ns_log:log(port_0003, "process exited: ~p",
+            ns_log:log(?MODULE, 0003, "process exited: ~p",
                        [State#state.params]),
             {stop, {port_exited, Reason}, State}
     end.

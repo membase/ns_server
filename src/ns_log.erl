@@ -1,24 +1,28 @@
 -module(ns_log).
 
--export([log/2, log/3]).
+-export([log/3, log/4]).
 
 -include_lib("eunit/include/eunit.hrl").
 
 %% API
 
-% A Code is an atom which should have a short module-specific prefix,
-% like xy_0001, xy_0002, cfg_0099.
+% A Code is an number which is module-specific.
 %
-log(Code, Msg) ->
-    error_logger:info_msg("~p: ~p", [Code, Msg]),
+log(Module, Code, Msg) ->
+    error_logger:info_msg("~p-~p: ~p", [Module, Code, Msg]),
     ok.
 
-log(Code, Fmt, Args) ->
-    error_logger:info_msg("~p: " ++ Fmt, [Code | Args]),
+log(Module, Code, Fmt, Args) ->
+    error_logger:info_msg("~p-~p: " ++ Fmt, [Module, Code | Args]),
     ok.
 
 % TODO: Implement this placeholder api, possibly as a gen_server
 %       to track the last few log msgs in memory.  A client then might
 %       want to do a rpc:multicall to gather all the recent log entries.
 
+% ------------------------------------------
 
+log_test() ->
+    ok = log(?MODULE, 1, "test log"),
+    ok = log(?MODULE, 2, "test log ~p ~p", [x, y]),
+    ok.
