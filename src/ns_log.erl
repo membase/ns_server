@@ -1,3 +1,5 @@
+% Copyright (c) 2010, NorthScale, Inc
+
 -module(ns_log).
 
 -export([log/3, log/4]).

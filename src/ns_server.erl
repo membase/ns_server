@@ -1,3 +1,5 @@
+% Copyright (c) 2010, NorthScale, Inc
+
 -module(ns_server).
 
 -behavior(application).
