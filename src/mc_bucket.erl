@@ -9,7 +9,6 @@
 -compile(export_all).
 
 -record(mc_bucket, {id,    % Bucket id.
-                    auth,
                     addrs, % [mc_addr:create()*].
                     cring, % From cring:create().
                     config % From ns_config:get().
@@ -45,10 +44,6 @@ create(Id, Addrs, Config, HashMod, HashCfg) ->
 
 id(#mc_bucket{id = Id})          -> Id.
 addrs(#mc_bucket{addrs = Addrs}) -> Addrs.
-
-auth_needed(_Bucket) -> false.
-
-auth_ok(#mc_bucket{auth = Auth}) -> Auth.
 
 % Choose the Addr that should contain the Key.
 choose_addr(#mc_bucket{cring = CRing}, Key) ->

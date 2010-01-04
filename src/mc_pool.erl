@@ -36,6 +36,12 @@ nodes_to_addrs(Nodes, Port, Kind, Auth) ->
               end,
               Nodes).
 
+% TODO: Proper auth_to_bucket() implementation.
+auth_to_bucket(Pool, "PLAIN", {BucketName, _AuthName, _AuthPswd}) ->
+    {ok, get_bucket(Pool, BucketName)};
+auth_to_bucket(_Pool, _Mech, _AuthData) ->
+    error.
+
 % ------------------------------------------------
 
 search_bucket(_BucketId, []) -> false;

@@ -19,12 +19,15 @@
                        }).
 
 session(_Sock, Pool) ->
+    {ok, Sess} = session_init(#session_proxy{}, Pool),
+    {ok, Pool, Sess}.
+
+session_init(Sess, Pool) ->
     {ok, Bucket} = mc_pool:get_bucket(Pool, "default"),
-    Authed = mc_bucket:auth_needed(Bucket) =:= false,
-    {ok, Pool, #session_proxy{pool = Pool,
-                              bucket = Bucket,
-                              authed = Authed,
-                              corked = []}}.
+    {ok, Sess#session_proxy{pool = Pool,
+                            bucket = Bucket,
+                            authed = false,
+                            corked = []}}.
 
 % ------------------------------------------
 
@@ -146,34 +149,34 @@ cmd(_, Sess, _, Out, {Header, _Entry}) ->
 
 % ------------------------------------------
 
-auth("PLAIN", Data, #session_proxy{bucket = Bucket} = Sess, Out, H) ->
+auth("PLAIN" = Mech, Data, #session_proxy{pool = Pool} = Sess, Out, H) ->
     DataStr = binary_to_list(Data),
-    AuthOk =
+    DataAuth =
         case string:tokens(DataStr, "\0") of
-            [AuthName, AuthPswd] ->
-                mc_bucket:auth_ok(Bucket, AuthName, AuthPswd);
-            [ForName, AuthName, AuthPswd] ->
-                mc_bucket:auth_ok(Bucket, ForName, AuthName, AuthPswd);
-            _ -> false
+            [AuthName, AuthPswd]          -> {AuthName, AuthName, AuthPswd};
+            [ForName, AuthName, AuthPswd] -> {ForName, AuthName, AuthPswd};
+            _                             -> error
         end,
-    case AuthOk of
-        true ->
+    case mc_pool:auth_to_bucket(Pool, Mech, DataAuth) of
+        {ok, Bucket} ->
             mc_binary:send(Out, res,
                            H#mc_header{status = ?SUCCESS},
                            #mc_entry{}),
-            {ok, Sess#session_proxy{authed = erlang:now()}};
-        false ->
+            % TODO: Revisit corked data on a auth/re-auth.
+            {ok, Sess#session_proxy{bucket = Bucket,
+                                    authed = erlang:now()}};
+        _Error ->
             mc_binary:send(Out, res,
                            H#mc_header{status = ?EINVAL},
                            #mc_entry{}),
-            {ok, Sess#session_proxy{authed = false}}
+            session_init(Sess, Pool)
     end;
 
-auth(_UnknownMech, _Data, Sess, Out, H) ->
+auth(_UnknownMech, _Data, #session_proxy{pool = Pool} = Sess, Out, H) ->
     mc_binary:send(Out, res,
                    H#mc_header{status = ?KEY_ENOENT},
                    #mc_entry{}),
-    {ok, Sess#session_proxy{authed = false}}.
+    session_init(Sess, Pool).
 
 % ------------------------------------------
 
