@@ -36,7 +36,6 @@
          }).
 
 start_link() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
-stop()       -> gen_server:stop(?MODULE).
 
 % When the replication Config is undefined and we have just one Addr,
 % we can skip straight to the mc_downstream:send().

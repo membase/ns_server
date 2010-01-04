@@ -32,8 +32,6 @@
 start_link()     -> start_link([{timeout, ?TIMEOUT_WORKER_INACTIVE}]).
 start_link(Args) -> gen_server:start_link({local, ?MODULE}, ?MODULE, Args, []).
 
-stop() -> gen_server:stop(?MODULE).
-
 monitor(Addr) ->
     case gen_server:call(?MODULE, {pid, Addr}) of
         {ok, MBoxPid} -> monitor_mbox(MBoxPid);
