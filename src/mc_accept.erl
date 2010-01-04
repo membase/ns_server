@@ -29,7 +29,7 @@ start_link(PortNum, Env) ->
     {ok, spawn_link(?MODULE, init, [PortNum, Env])}.
 
 % Note: this cannot be a gen_server, since our accept_loop
-% has it's own receive blocking implementation.
+% has its own receive blocking implementation.
 
 init(PortNum, Env) ->
     {ok, LS} = gen_tcp:listen(PortNum, [binary,
