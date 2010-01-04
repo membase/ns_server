@@ -1,3 +1,5 @@
+% Copyright (c) 2010, NorthScale, Inc
+
 -module(load_gen_mc).
 
 -include_lib("eunit/include/eunit.hrl").

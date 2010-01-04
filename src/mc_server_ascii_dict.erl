@@ -1,3 +1,5 @@
+% Copyright (c) 2009, NorthScale, Inc
+
 -module(mc_server_ascii_dict).
 
 -include_lib("eunit/include/eunit.hrl").

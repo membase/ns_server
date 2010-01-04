@@ -1,3 +1,5 @@
+% Copyright (c) 2009, NorthScale, Inc
+
 -module(mc_bucket).
 
 -include_lib("eunit/include/eunit.hrl").

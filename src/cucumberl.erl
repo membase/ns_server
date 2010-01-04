@@ -1,3 +1,5 @@
+% Copyright (c) 2010, NorthScale, Inc
+
 -module(cucumberl).
 
 -include_lib("eunit/include/eunit.hrl").

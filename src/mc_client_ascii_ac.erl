@@ -1,3 +1,5 @@
+% Copyright (c) 2009, NorthScale, Inc
+
 -module(mc_client_ascii_ac).
 
 -include_lib("eunit/include/eunit.hrl").

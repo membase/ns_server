@@ -1,3 +1,5 @@
+% Copyright (c) 2010, NorthScale, Inc
+
 {application, emoxi,
   [{description, "NorthScale EMoxi"},
    {mod, {emoxi, []}},
