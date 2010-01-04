@@ -44,11 +44,27 @@ accept_loop(LS, {ProtocolModule, ProcessorModule, ProcessorEnv}) ->
     % Ask the processor for a new session object.
     {ok, ProcessorEnv2, ProcessorSession} =
         ProcessorModule:session(NS, ProcessorEnv),
-    % Spawn a session-handling process.
-    Pid = spawn(?MODULE, session,
-                [NS, ProtocolModule, ProcessorModule, ProcessorSession]),
+    % We use spawn_link with trap_exit, so that if our supervisor
+    % kills us (such as due to a reconfiguration), we propagate the kill
+    % to our session children.  But, a dying session child will
+    % not take down us or propagate back.
+    process_flag(trap_exit, true),
+    % Do spawn_link of a session-handling process.
+    Pid = spawn_link(?MODULE, session,
+                     [NS, ProtocolModule, ProcessorModule, ProcessorSession]),
     gen_tcp:controlling_process(NS, Pid),
+    eat_exit_sessions(),
     accept_loop(LS, {ProtocolModule, ProcessorModule, ProcessorEnv2}).
+
+eat_exit_sessions() ->
+    % We do a quick non-blocking receive to eat any EXIT notifications.
+    receive
+        {'EXIT', _ChildPid, _Reason} ->
+            % ?debugVal({exit_session, ChildPid, Reason}),
+            eat_exit_sessions()
+    after 0 ->
+        ok
+    end.
 
 % The main entry-point/driver for a session-handling process.
 session(Sock, ProtocolModule, ProcessorModule, ProcessorSession) ->
