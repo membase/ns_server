@@ -26,6 +26,16 @@ create(Id, Addrs, Config, Buckets) ->
 get_bucket(#mc_pool{buckets = Buckets}, BucketId) ->
     search_bucket(BucketId, Buckets).
 
+nodes_to_addrs(Nodes, Port, Kind, Auth) ->
+    PortStr = integer_to_list(Port),
+    lists:map(fun(Node) ->
+                  % Node is an atom like some_name@host.foo.bar.com
+                  [_Name, Host | _] = string:tokens(atom_to_list(Node), '@'),
+                  Location = Host ++ PortStr,
+                  mc_addr:create(Location, Kind, Auth)
+              end,
+              Nodes).
+
 % ------------------------------------------------
 
 search_bucket(_BucketId, []) -> false;

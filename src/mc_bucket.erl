@@ -8,8 +8,6 @@
 
 -compile(export_all).
 
-%% TODO: Consider replacing implementation with gen_server.
-
 -record(mc_bucket, {id,    % Bucket id.
                     addrs, % [mc_addr:create()*].
                     cring, % From cring:create().
@@ -23,6 +21,8 @@
 % into a gen_server Pid.
 %
 % Addrs is a list of mc_addr:create() records.
+%
+% For 1.0, these Addrs are to kvcache servers, not to the routers.
 %
 create(Id, Addrs, Config) ->
     create(Id, Addrs, Config, ketama, ketama:default_config()).
