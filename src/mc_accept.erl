@@ -57,7 +57,7 @@ accept_loop(LS, {ProtocolModule, ProcessorModule, ProcessorEnv}) ->
             gen_tcp:controlling_process(NS, Pid),
             accept_loop(LS, {ProtocolModule, ProcessorModule, ProcessorEnv2});
         _Error ->
-            ns_log:log(acc_0001, "could not start session"),
+            ns_log:log(?MODULE, 1, "could not start session"),
             gen_tcp:close(NS),
             accept_loop(LS, {ProtocolModule, ProcessorModule, ProcessorEnv})
     end.

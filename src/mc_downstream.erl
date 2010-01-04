@@ -205,7 +205,7 @@ worker(Addr, Sock, Timeout) ->
                     case mc_client_binary:auth(Sock, mc_addr:auth(Addr)) of
                         ok   -> loop(Addr, Sock, Timeout);
                         _Err -> gen_tcp:close(Sock),
-                                ns_log:log(mcd_0001, "auth failed")
+                                ns_log:log(?MODULE, 1, "auth failed")
                     end
             end
     after ?TIMEOUT_WORKER_GO -> stop
