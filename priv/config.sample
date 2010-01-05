@@ -99,11 +99,11 @@
     {buckets, [
       {"default", [
         {auth, []},
-        {cache_expiration_range, {0,600}},
+        {cache_expiration_range, {0,600}}
       ]},
       {"test_application", [
         {auth, [{"PLAIN", "plain_text_password"}]},
-        {cache_expiration_range, {0,600}},
+        {cache_expiration_range, {0,600}}
       ]}
     ]},
     {alerts, [
