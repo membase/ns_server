@@ -1,2 +1,5 @@
 /memcached
-/engines/
+/engines
+/engines-*/
+/memcached-i386
+/memcached-amd64

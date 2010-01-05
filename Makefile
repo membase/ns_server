@@ -8,7 +8,10 @@ TMP_VER=$(TMP_DIR)/version_num.tmp
 
 .PHONY: ebins
 
-all: ebins test
+all: ebins test deps_all
+
+deps_all:
+	$(MAKE) -C deps/Menelaus all
 
 ebins:
 	test -d ebin || mkdir ebin

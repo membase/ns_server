@@ -1,8 +1,129 @@
-{directory, "/tmp/"}.
+{directory, "/tmp/data"}.
+
+% In general, the value in these key-value pairs are property lists,
+% like [{prop_atom1, value1}, {prop_atom2, value2}].
+%
+% See the proplists erlang module.
+%
+% The special version property, by convention, is a versioning timestamp,
+% which holds the output of erlang:now().  It helps us replicate
+% configuration information out to all the nodes and helps to
+% eventually quiesce any configuration changes.
+
+% -----------------------------------
+
+% A change to any of these rest properties probably means a restart of
+% mochiweb is needed.
+%
+% Modifiers: menelaus REST API
+% Listeners: some menelaus module that configures/reconfigures mochiweb
+
+{rest, [{version, {0, 0, 0}},
+        {address, "0.0.0.0"}, % An IP binding
+        {port, 8080}          % Port number of the REST admin API and UI.
+       ]}.
+
+% -----------------------------------
+
+% In 1.0, only the first entry in the creds list is displayed in the UI
+% and accessible through the UI.
+%
+% Modifiers: menelaus REST API
+% Listeners: some menelaus module that configures/reconfigures mochiweb??
+%
+{rest_creds, [{version, {0, 0, 0}},
+              {creds, []}
+             ]}. % An empty list means no login/password auth check.
+
+% Example rest_cred when a login/password is setup.
+%
+% {rest_creds, [{version, {0, 0, 0}},
+%               {creds, [
+%                  [{login, "admin"},      % Must not be empty "", no spaces.
+%                   {password, "changeM3"} % May be empty, and is cleartext.
+%                  ]
+%                ]}
+%              ].
+%
+% TODO: Is login an email address?  If yes, should 'login' be 'email'?
+
+% -----------------------------------
+
+% Modifiers: menelaus during join-cluster and leave-cluster; the installer?
+% Listeners: some ns_server module (node_disco?) that calls erlang:setcookie(),
+%            and possibly contacts peers in this cluster.
+%
+{otp, [{version, {0, 0, 0}},
+       {cookie, "83h8dsfkjshdfu"}
+      ]}.
+
+% -----------------------------------
+
+% Modifiers: node_disco
+% Listeners: node_disco
+%
+% TODO: node_disco needs to have input from another key
+%       of the "should" have nodes.
+%
+{stored_nodes, []}.
+
+% -----------------------------------
+
+% Modifiers: menelaus (may change the 11212 port number)
+% Listeners: ns_port_sup (needs to restart its memcached processes)
+%
+% Note that we currently assume the port (11212) is available
+% across all servers in the cluster.
+%
+% This is a classic "should" key, where ns_port_sup needs
+% to try to start child processes.  If it fails, it should ns_log errors.
+%
 {port_servers,
- [
-  {memcached, "./memcached",
-   ["-E", "engines/default_engine.so", "-p", "11212"],
-   [{env, [{"MEMCACHED_CHECK_STDIN", "1"}]}]
-  }
- ]}.
+  [
+   {memcached, "./memcached",
+    ["-p", "11212"],
+    [{env, [{"MEMCACHED_CHECK_STDIN", "thread"}]}]
+   }
+  ]
+}.
+
+% -----------------------------------
+
+{pools, [
+  {"default", [
+    {creds, []},
+    {addrs, [
+      [{kind, router},
+       {conn, [{addr, "host1"},
+               {prot, [ascii]},
+               {auth, credentials_here}]},
+       {weight, 1}],
+      [{kind, kvcache},
+       {conn, [{addr, "host1"},
+               {prot, [ascii]},
+               {auth, credentials_here}]},
+       {weight, 1}],
+      [{kind, kvstore},
+       {conn, [{addr, "host1"},
+               {prot, [ascii]},
+               {auth, credentials_here}]},
+       {weight, 1}],
+      [{kind, memcached},
+       {conn, [{addr, "host2"},
+               {prot, [ascii]},
+               {auth, credentials_here}]},
+       {weight, 1}]
+    ]},
+    {buckets, [
+      {"default", [
+        {cache_expiration_range, {0,600}},
+        {addrs, undefined}
+      ]}
+    ]},
+    {users, [
+    ]},
+    {alerts, [
+    ]}
+  ]}
+]}.
+
