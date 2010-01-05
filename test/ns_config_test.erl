@@ -96,6 +96,15 @@ test_search_config() ->
                  search(#config{dynamic = [[{y, 1}], [{z, 2}]],
                                 static = [[{w, 4}], [{z, 3}]]},
                         z)),
+    ?assertMatch({value, [{hi, there}]},
+                 search(#config{dynamic = [[{y, 1}], [{z, [{hi, there}]}]],
+                                static = [[{w, 4}], [{z, 3}]]},
+                        z)),
+    ?assertMatch({value, [{hi, there}]},
+                 search(#config{dynamic = [[{y, 1}], [{z, [{'_ver', stripped},
+                                                           {hi, there}]}]],
+                                static = [[{w, 4}], [{z, 3}]]},
+                        z)),
     ok.
 
 test_merge_config_static() ->

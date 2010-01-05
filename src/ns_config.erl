@@ -38,7 +38,8 @@
 
 -export([start_link/2, start_link/1, stop/0,
          get/2, get/1, get/0, set/2, set/1,
-         search/2, search/1]).
+         search/2, search/1,
+         search_raw/2]).
 
 % A static config file is often hand edited.
 % potentially with in-line manual comments.
@@ -82,18 +83,35 @@ get(Node, Timeout) -> gen_server:call({?MODULE, Node}, get, Timeout).
 
 search(Key) -> search(?MODULE:get(), Key).
 
-search(undefined, _Key) -> false;
-search([], _Key)        -> false;
-search([KVList | Rest], Key) ->
+search(Config, Key) ->
+    case search_raw(Config, Key) of
+        false      -> false;
+        {value, X} -> {value, strip_metadata(X, [])}
+    end.
+
+% The search_raw API does not strip out metadata from results.
+
+search_raw(undefined, _Key) -> false;
+search_raw([], _Key)        -> false;
+search_raw([KVList | Rest], Key) ->
     case lists:keysearch(Key, 1, KVList) of
         {value, {Key, V}} -> {value, V};
-        _                 -> search(Rest, Key)
+        _                 -> search_raw(Rest, Key)
     end;
-search(#config{dynamic = DL, static = SL}, Key) ->
+search_raw(#config{dynamic = DL, static = SL}, Key) ->
     case search(DL, Key) of
         {value, _} = R -> R;
-        false          -> search(SL, Key)
+        false          -> search_raw(SL, Key)
     end.
+
+%% Implementation
+
+% Removes metadata like '_ver' from results.
+
+strip_metadata([], Acc)                   -> lists:reverse(Acc);
+strip_metadata([{'_ver', _} | Rest], Acc) -> strip_metadata(Rest, Acc);
+strip_metadata([X | Rest], Acc)           -> strip_metadata(Rest, [X | Acc]);
+strip_metadata(X, _)                      -> X.
 
 %% gen_server callbacks
 
