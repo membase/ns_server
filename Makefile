@@ -11,6 +11,7 @@ TMP_VER=$(TMP_DIR)/version_num.tmp
 all: ebins test deps_all
 
 deps_all:
+	$(MAKE) -C deps/emoxi all
 	$(MAKE) -C deps/Menelaus all
 
 ebins:
@@ -28,6 +29,7 @@ clean:
 	rm -rf ebin
 
 bdist: clean ebins
+	test -d $(TMP_DIR) || mkdir $(TMP_DIR)
 	git describe | sed s/-/_/g > $(TMP_VER)
 	tar --directory=.. -czf ns_server_`cat $(TMP_VER)`.tar.gz ns_server/ebin
 	echo created ns_server_`cat $(TMP_VER)`.tar.gz
