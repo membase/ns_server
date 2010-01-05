@@ -81,7 +81,7 @@
 {port_servers,
   [
    {memcached, "./memcached",
-    ["-u", os:cmd("whoami"), "-E", "engines/default_engine.so", "-p", "11212"],
+    ["-p", "11212"],
     [{env, [{"MEMCACHED_CHECK_STDIN", "thread"}]}]
    }
   ]
