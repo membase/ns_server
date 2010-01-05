@@ -8,3 +8,5 @@ cov.html
 ns_server_*.tar.gz
 version_num.tmp
 test/log
+.project
+.settings
