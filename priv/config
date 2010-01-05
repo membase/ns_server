@@ -5,7 +5,7 @@
 %
 % See the proplists erlang module.
 %
-% The special version property, by convention, is a versioning timestamp,
+% The special '_ver' property, by convention, is a versioning timestamp,
 % which holds the output of erlang:now().  It helps us replicate
 % configuration information out to all the nodes and helps to
 % eventually quiesce any configuration changes.
@@ -18,7 +18,7 @@
 % Modifiers: menelaus REST API
 % Listeners: some menelaus module that configures/reconfigures mochiweb
 
-{rest, [{version, {0, 0, 0}},
+{rest, [{'_ver', {0, 0, 0}},
         {address, "0.0.0.0"}, % An IP binding
         {port, 8080}          % Port number of the REST admin API and UI.
        ]}.
@@ -31,13 +31,13 @@
 % Modifiers: menelaus REST API
 % Listeners: some menelaus module that configures/reconfigures mochiweb??
 %
-{rest_creds, [{version, {0, 0, 0}},
+{rest_creds, [{'_ver', {0, 0, 0}},
               {creds, []}
              ]}. % An empty list means no login/password auth check.
 
 % Example rest_cred when a login/password is setup.
 %
-% {rest_creds, [{version, {0, 0, 0}},
+% {rest_creds, [{'_ver', {0, 0, 0}},
 %               {creds, [
 %                  [{login, "admin"},      % Must not be empty "", no spaces.
 %                   {password, "changeM3"} % May be empty, and is cleartext.
@@ -53,19 +53,22 @@
 % Listeners: some ns_server module (node_disco?) that calls erlang:setcookie(),
 %            and possibly contacts peers in this cluster.
 %
-{otp, [{version, {0, 0, 0}},
+{otp, [{'_ver', {0, 0, 0}},
        {cookie, "83h8dsfkjshdfu"}
       ]}.
 
 % -----------------------------------
 
-% Modifiers: node_disco
+% Modifiers: Menelaus
 % Listeners: node_disco
 %
-% TODO: node_disco needs to have input from another key
-%       of the "should" have nodes.
+{nodes_wanted, ['ns_1@somehost.port']}.
+
+% Modifiers: node_disco
+% Readers: Menelaus
+% Listeners: emoxi
 %
-{stored_nodes, []}.
+{nodes_actual, []}.
 
 % -----------------------------------
 
@@ -79,9 +82,12 @@
 % to try to start child processes.  If it fails, it should ns_log errors.
 %
 {port_servers,
-  [
+  [{'_ver', {0, 0, 0}},
    {memcached, "./memcached",
-    ["-p", "11212"],
+    [
+     % "-E", "engines/default_engine.so",
+     "-p", "11212"
+     ],
     [{env, [{"MEMCACHED_CHECK_STDIN", "thread"}]}]
    }
   ]
@@ -90,37 +96,18 @@
 % -----------------------------------
 
 {pools, [
+  {'_ver', {0, 0, 0}},
   {"default", [
-    {creds, []},
-    {addrs, [
-      [{kind, router},
-       {conn, [{addr, "host1"},
-               {prot, [ascii]},
-               {auth, credentials_here}]},
-       {weight, 1}],
-      [{kind, kvcache},
-       {conn, [{addr, "host1"},
-               {prot, [ascii]},
-               {auth, credentials_here}]},
-       {weight, 1}],
-      [{kind, kvstore},
-       {conn, [{addr, "host1"},
-               {prot, [ascii]},
-               {auth, credentials_here}]},
-       {weight, 1}],
-      [{kind, memcached},
-       {conn, [{addr, "host2"},
-               {prot, [ascii]},
-               {auth, credentials_here}]},
-       {weight, 1}]
-    ]},
+    {port, 11211},
     {buckets, [
       {"default", [
-        {cache_expiration_range, {0,600}},
-        {addrs, undefined}
+        {auth, []},
+        {cache_expiration_range, {0,600}}
+      ]},
+      {"test_application", [
+        {auth, [{"PLAIN", "plain_text_password"}]},
+        {cache_expiration_range, {0,600}}
       ]}
-    ]},
-    {users, [
     ]},
     {alerts, [
     ]}
