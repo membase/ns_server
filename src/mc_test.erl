@@ -105,8 +105,9 @@ tests(emoxi_dyn) ->
      partition,
      % membership,     -- failing due to config to ns_config change.
      % storage_server, -- failing due to config to ns_config change.
-     storage_manager,
-     sync_manager].
+     % storage_manager,
+     sync_manager
+    ].
 
 % For cmd-line...
 

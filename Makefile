@@ -1,6 +1,6 @@
 SHELL=/bin/sh
 
-EFLAGS=-pa ebin -pa ../ns_server/ebin
+EFLAGS=-pa ebin ../ebin ../../ebin ./deps/*/ebin
 
 LUA=cd ../moxilua && lua -l luarocks.require
 
@@ -40,7 +40,9 @@ clean:
 	rm -rf ebin
 	rm -f emoxi_*.tar.gz
 
-test: test_unit cucumber memcapable test_boot
+test: test_unit cucumber
+
+test_full: test memcapable test_boot
 
 test_unit: ebins
 	erl $(EFLAGS) -noshell -s mc_test test -s init stop -kernel error_logger silent
