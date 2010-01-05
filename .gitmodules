@@ -1,3 +1,6 @@
 [submodule "deps/Menelaus"]
 	path = deps/Menelaus
 	url = git@github.com:northscale/Menelaus.git
+[submodule "deps/emoxi"]
+	path = deps/emoxi
+	url = git@github.com:northscale/emoxi.git
