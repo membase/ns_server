@@ -84,11 +84,24 @@
 {port_servers,
   [{'_ver', {0, 0, 0}},
    {memcached, "./memcached",
-    ["-E", "engines/default_engine.so", "-p", "11212"],
+    [
+     % "-E", "engines/default_engine.so",
+     "-p", "11212"
+     ],
     [{env, [{"MEMCACHED_CHECK_STDIN", "thread"}]}]
    }
   ]
 }.
+
+% -----------------------------------
+
+% Modifiers: menelaus
+% Listeners: ? possibly ns_log
+%
+{alerts, [
+  {'_ver', {0, 0, 0}},
+  {some_alert_info, and_value_here}
+]}.
 
 % -----------------------------------
 
@@ -98,15 +111,15 @@
     {port, 11211},
     {buckets, [
       {"default", [
-        {auth, []},
+        {auth_plain, undefined},
+        {size_per_node, 64}, % In MB.
         {cache_expiration_range, {0,600}}
       ]},
       {"test_application", [
-        {auth, [{"PLAIN", "plain_text_password"}]},
+        {auth_plain, "plain_text_password"},
+        {size_per_node, 64}, % In MB.
         {cache_expiration_range, {0,600}}
       ]}
-    ]},
-    {alerts, [
     ]}
   ]}
 ]}.
