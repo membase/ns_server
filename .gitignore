@@ -6,3 +6,5 @@ emoxi_*.tar.gz
 **.cov.html
 *~
 *.pyc
+.project
+.settings

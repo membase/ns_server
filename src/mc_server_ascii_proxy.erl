@@ -1,4 +1,5 @@
-% Copyright (c) 2009, NorthScale, Inc
+% Copyright (c) 2009, NorthScale, Inc.
+% All rights reserved.
 
 -module(mc_server_ascii_proxy).
 

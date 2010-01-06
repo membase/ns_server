@@ -5,13 +5,13 @@ A walkthrough of the design and key files in the emoxi system...
 ## Erlang Notes
 
 We depend on gen_tcp and using tcp sockets in 'passive' mode.  That
-means tcp messages are not integerated into the erlang
+means tcp messages are not integrated into the erlang
 process/messagebox system, and we are doing explicit, e-process
 "blocking" calls to send and receive messages.  We use multiple erlang
 processes for asynchronicity and concurrency.
 
 The term "e-process" and "e-port" are used to clarify when we're
-talking abouterlang processes (as opposed to OS processes).
+talking about erlang processes (as opposed to OS processes).
 
 ## Protocol Utilities
 
@@ -19,7 +19,7 @@ talking abouterlang processes (as opposed to OS processes).
     mc_binary.erl
 
 These lowest level utility modules help parse, encode/decode packets.
-Thare are also functions to make synchronous, (e-process) blocking
+There are also functions to make synchronous, (e-process) blocking
 send/recv calls against a tcp socket.
 
 # The Client Side
@@ -193,7 +193,7 @@ notified when a downstream connection goes down.
     mc_pool.erl
     mc_bucket.erl
 
-A pool is a container of memcached server addreses and of buckets.
+A pool is a container of memcached server addresses and of buckets.
 
 Although there are records defined for these concepts (and the below
 Address concept), the rest of the system should treat these objects as
