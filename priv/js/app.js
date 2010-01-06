@@ -291,7 +291,7 @@ function addBasicAuth(xhr, login, password) {
 
 $.ajaxSetup({
   error: function () {
-    alert("FIXME: network or server-side error happened! We'll handle it better in the future.");
+    alert("Either a network or server side error has occured.  The server has logged the error.  We will reload the console now to attempt to recover.");
   },
   beforeSend: function (xhr) {
     if (DAO.login) {
