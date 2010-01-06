@@ -62,18 +62,27 @@ cookie_sync() ->
                 nocookie ->
                     % TODO: We should have length(nodes_wanted) == 0 or 1,
                     %       so, we should check that assumption.
+                    {A1,A2,A3} = now(),
+                    random:seed(A1, A2, A3),
                     NewCookie = list_to_atom(misc:rand_str(16)),
+                    ns_log:log(?MODULE, 0001, "generated otp cookie: ~p",
+                               [NewCookie]),
                     ns_config:set(otp, [{cookie, NewCookie}]),
                     {ok, init, generated};
                 CurrCookie ->
+                    ns_log:log(?MODULE, 0002, "inheriting otp cookie: ~p",
+                               [CurrCookie]),
                     ns_config:set(otp, [{cookie, CurrCookie}]),
                     {ok, init}
             end;
         WantedCookie ->
             case erlang:get_cookie() of
                 WantedCookie -> {ok, same};
-                _            -> erlang:set_cookie(node(), WantedCookie),
-                                {ok, sync}
+                _ ->
+                    ns_log:log(?MODULE, 0003, "setting otp cookie: ~p",
+                               [WantedCookie]),
+                    erlang:set_cookie(node(), WantedCookie),
+                    {ok, sync}
             end
     end.
 

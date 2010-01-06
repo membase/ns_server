@@ -53,9 +53,9 @@
 % Listeners: some ns_server module (node_disco?) that calls erlang:setcookie(),
 %            and possibly contacts peers in this cluster.
 %
-{otp, [{'_ver', {0, 0, 0}},
-       {cookie, "83h8dsfkjshdfu"}
-      ]}.
+% {otp, [{'_ver', {0, 0, 0}},
+%        {cookie, '83h8dsfkjshdfu'}
+%       ]}.
 
 % -----------------------------------
 
@@ -66,7 +66,7 @@
 % ns_node_disco:nodes_actual() and
 % ns_node_disco:nodes_actual_proper().
 %
-{nodes_wanted, ['ns_1@somehost.port']}.
+% {nodes_wanted, ['ns_1@somehost.port']}.
 
 % -----------------------------------
 
