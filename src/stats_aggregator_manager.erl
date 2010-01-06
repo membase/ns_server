@@ -15,11 +15,11 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -ifdef(EUNIT).
--export([test/0, test_aggregator_process/1]).
+-export([test/0, spawn_test_aggregator_process/2]).
 -endif.
 
 %% API
--export([start_link/1]).
+-export([start_link/1, start_link/0, just_start/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -68,6 +68,15 @@ call_aggregator_for(BucketName, Caller, Args) ->
 start_link(AggregatorSpawnArgs) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [AggregatorSpawnArgs], []).
 
+start_link() ->
+    start_link([[stats_aggregator, start, []]]).
+
+just_start() ->
+    io:format("starting~n"),
+    RV = gen_server:start({local, ?MODULE}, ?MODULE, [[stats_aggregator, start, []]], []),
+    io:format("done~n"),
+    RV.
+
 %%====================================================================
 %% gen_server callbacks
 %%====================================================================
@@ -79,7 +88,7 @@ start_link(AggregatorSpawnArgs) ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
-init([AggregatorSpawnArgs]) when is_list(AggregatorSpawnArgs)->
+init([[_Module, _Fun, _ExtraArgs] = AggregatorSpawnArgs])->
     {ok, #state{ets_map = ets:new(ets_map, []),
                 aggregator_spawn_args = AggregatorSpawnArgs,
                 by_mref = ets:new(by_mref, [{keypos, 3}])}}.
@@ -115,7 +124,9 @@ handle_call(kill_childs, _From, State) ->
     {reply, ok, State}.
 
 spawn_child_aggregator(BucketName, State) ->
-    {P, MRef} = apply(erlang, spawn_opt, State#state.aggregator_spawn_args ++ [[monitor]]),
+    [Module, Fun, ExtraArgs] = State#state.aggregator_spawn_args,
+    {ok, P} = apply(Module, Fun, [BucketName | ExtraArgs]),
+    MRef = erlang:monitor(process, P),
     Tuple = {BucketName, P, MRef},
     ets:insert(State#state.ets_map, Tuple),
     ets:insert(State#state.by_mref, Tuple),
@@ -141,13 +152,13 @@ handle_cast(_Msg, State) ->
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
 handle_info({'DOWN', MRef, process, _Item, _Info}=All, State) ->
-    ns_log:log(stats_aggregator_manager_0001, "Got DOWN for %p", [All]),
+    ns_log:log(?MODULE, 1, "Got DOWN for %p", [All]),
     case ets:lookup(State#state.by_mref, MRef) of
         [{BucketName, _, _}=Tuple] ->
-            ns_log:log(stats_aggregator_manager_0002, "Aggregator for bucket ~p is down", [BucketName]),
+            ns_log:log(?MODULE, 2, "Aggregator for bucket ~p is down", [BucketName]),
             cleanup_dead_aggregator(Tuple, State);
         [] ->
-            ns_log:log(stats_aggregator_manager_0003, "DOWN is for unknown aggregator. Ignoring")
+            ns_log:log(?MODULE, 3, "DOWN is for unknown aggregator. Ignoring")
     end,
     {noreply, State}.
 
@@ -174,15 +185,20 @@ code_change(_OldVsn, State, _Extra) ->
 
 -ifdef(EUNIT).
 
-test_aggregator_process(Parent) ->
+test_aggregator_process(BucketName, Parent) ->
     receive
         {die} -> ok;
         {T, F} -> F ! {T, self()},
-                  test_aggregator_process(Parent)
+                  test_aggregator_process(BucketName, Parent)
     end.
 
+spawn_test_aggregator_process(BucketName, Parent) ->
+    {ok, spawn(fun () ->
+                  test_aggregator_process(BucketName, Parent)
+          end)}.
+
 test_setup() ->
-    start_link([?MODULE, test_aggregator_process, [self()]]).
+    start_link([?MODULE, spawn_test_aggregator_process, [self()]]).
 
 test_teardown(_V) ->
     t.
