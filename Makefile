@@ -47,7 +47,7 @@ test_unit: ebins
 
 test_main: ebins
 	epmd -kill
-	erl -name ns_test1 -boot start_sasl $(EFLAGS) -noshell -setcookie nocookie -eval 'application:start(ns_server).'
+	erl -name ns_test1 -boot start_sasl $(EFLAGS) -setcookie nocookie -eval 'application:start(ns_server).'
 
 dialyzer: ebins
 	dialyzer -pa ebin -r .

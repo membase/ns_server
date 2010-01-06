@@ -8,6 +8,7 @@
          init/0,
          nodes_wanted/0, nodes_wanted_updated/0, nodes_wanted_updated/1,
          nodes_actual/0, nodes_actual_proper/0,
+         cookie_init/0, cookie_sync/0,
          loop/0]).
 
 start_link() ->
@@ -55,6 +56,14 @@ nodes_actual_proper() ->
     Diff = lists:subtract(Curr, Want),
     lists:subtract(Curr, Diff).
 
+cookie_init() ->
+    {A1,A2,A3} = now(),
+    random:seed(A1, A2, A3),
+    NewCookie = list_to_atom(misc:rand_str(16)),
+    ns_log:log(?MODULE, 0001, "otp cookie generated: ~p",
+               [NewCookie]),
+    ns_config:set(otp, [{cookie, NewCookie}]).
+
 cookie_sync() ->
     case ns_config:search_prop(ns_config:get(), otp, cookie) of
         undefined ->
@@ -62,12 +71,7 @@ cookie_sync() ->
                 nocookie ->
                     % TODO: We should have length(nodes_wanted) == 0 or 1,
                     %       so, we should check that assumption.
-                    {A1,A2,A3} = now(),
-                    random:seed(A1, A2, A3),
-                    NewCookie = list_to_atom(misc:rand_str(16)),
-                    ns_log:log(?MODULE, 0001, "otp cookie generated: ~p",
-                               [NewCookie]),
-                    ns_config:set(otp, [{cookie, NewCookie}]),
+                    ok = cookie_init(),
                     {ok, init, generated};
                 CurrCookie ->
                     ns_log:log(?MODULE, 0002, "otp cookie inherited: ~p",
