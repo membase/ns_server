@@ -1,4 +1,5 @@
-% Copyright (c) 2010, NorthScale, Inc
+% Copyright (c) 2010, NorthScale, Inc.
+% All rights reserved.
 
 -module(ns_config_log).
 

@@ -1,3 +1,5 @@
+% Copyright (c) 2010, NorthScale, Inc.
+% All rights reserved.
 -module(ns_server_test).
 
 -compile(export_all).

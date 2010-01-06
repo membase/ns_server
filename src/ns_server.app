@@ -1,4 +1,6 @@
-% Copyright (c) 2010, NorthScale, Inc
+% Copyright (c) 2010, NorthScale, Inc.
+% All rights reserved.
+
 
 {application, ns_server,
  [{description, "NorthScale server"},
