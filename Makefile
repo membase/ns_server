@@ -13,7 +13,7 @@ TMP_VER=$(TMP_DIR)/version_num.tmp
 all: ebins test deps_all
 
 deps_all:
-	$(MAKE) -C deps/Menelaus all
+	$(MAKE) -C deps/menelaus all
 
 ebins:
 	test -d ebin || mkdir ebin
