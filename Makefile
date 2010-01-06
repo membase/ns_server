@@ -1,3 +1,5 @@
+# Copyright (c) 2010, NorthScale, Inc.
+# All rights reserved.
 SHELL=/bin/sh
 
 EFLAGS=-pa ebin
@@ -12,7 +14,7 @@ all: ebins test deps_all
 
 deps_all:
 	$(MAKE) -C deps/emoxi all
-	$(MAKE) -C deps/Menelaus all
+	$(MAKE) -C deps/menelaus all
 
 ebins:
 	test -d ebin || mkdir ebin

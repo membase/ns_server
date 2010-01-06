@@ -1,3 +1,5 @@
+% Copyright (c) 2010, NorthScale, Inc.
+% All rights reserved.
 -module(ns_server_test).
 
 -compile(export_all).
@@ -10,6 +12,7 @@
 %
 tests(ns_server) ->
     [misc,
+     stats_aggregator_manager,
      ns_config,
      ns_log,
      ns_port_init].

@@ -59,13 +59,13 @@
 
 % -----------------------------------
 
-% Modifiers: Menelaus
+% Modifiers: menelaus
 % Listeners: node_disco
 %
 {nodes_wanted, ['ns_1@somehost.port']}.
 
 % Modifiers: node_disco
-% Readers: Menelaus
+% Readers: menelaus
 % Listeners: emoxi
 %
 {nodes_actual, []}.
