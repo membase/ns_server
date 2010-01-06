@@ -43,8 +43,11 @@ src/mc_test.erl), do...
 
 ## License
 
-TBD, but ememcached was MPL - We made this for you!
+Still under consideration, though MPL is the likely candidate.  For now,
+all rights are reserved.
 
 ## TODO
 
-- Add MPL headers to each file.
+- Add license as needed.
+
+Copyright (c) 2010, NorthScale, Inc.

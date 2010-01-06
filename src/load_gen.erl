@@ -1,4 +1,6 @@
 %%
+%% Copyright (c) 2010, NorthScale, Inc.
+%% All rights reserved
 %% Copyright (c) 2007  Dustin Sallings <dustin@spy.net>
 %%
 

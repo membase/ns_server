@@ -1,3 +1,5 @@
+# Copyright (c) 2009, NorthScale, Inc.
+# All rights reserved.
 MEMCAPABLE_PATH=/usr/local/bin/memcapable
 MEMCACHED_PATH=/usr/local/bin/memcached
 EBINS=./ebin
