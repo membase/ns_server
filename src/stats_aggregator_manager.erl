@@ -27,7 +27,7 @@
 
 -export([get_aggregator_for/1, kill_childs/0, call_aggregator_for/3, call_aggregator_for/2]).
 
--record(state, {ets_map, aggregator_spawn_args, by_mref}).
+-record(state, {ets_map, aggregator_spawn_args, by_pid}).
 
 get_aggregator_for(BucketName) ->
     gen_server:call(?MODULE, {get_aggregator_for, BucketName}).
@@ -68,14 +68,14 @@ call_aggregator_for(BucketName, Caller, Args) ->
 start_link(AggregatorSpawnArgs) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [AggregatorSpawnArgs], []).
 
+just_start(AggregatorSpawnArgs) ->
+    gen_server:start({local, ?MODULE}, ?MODULE, [AggregatorSpawnArgs], []).
+
 start_link() ->
     start_link([[stats_aggregator, start, []]]).
 
 just_start() ->
-    io:format("starting~n"),
-    RV = gen_server:start({local, ?MODULE}, ?MODULE, [[stats_aggregator, start, []]], []),
-    io:format("done~n"),
-    RV.
+    gen_server:start({local, ?MODULE}, ?MODULE, [[stats_aggregator, start, []]], []).
 
 %%====================================================================
 %% gen_server callbacks
@@ -89,9 +89,10 @@ just_start() ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([[_Module, _Fun, _ExtraArgs] = AggregatorSpawnArgs])->
+    process_flag(trap_exit, true),
     {ok, #state{ets_map = ets:new(ets_map, []),
                 aggregator_spawn_args = AggregatorSpawnArgs,
-                by_mref = ets:new(by_mref, [{keypos, 3}])}}.
+                by_pid = ets:new(by_pid, [{keypos, 2}])}}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -104,7 +105,7 @@ init([[_Module, _Fun, _ExtraArgs] = AggregatorSpawnArgs])->
 %%--------------------------------------------------------------------
 handle_call({get_aggregator_for, BucketName}, _From, State) ->
     Pid = case ets:lookup(State#state.ets_map, BucketName) of
-              [{_, P, _}=Tuple] ->
+              [{_, P}=Tuple] ->
                   case is_process_alive(P) of
                       true -> P;
                       false -> cleanup_dead_aggregator(Tuple, State),
@@ -114,27 +115,29 @@ handle_call({get_aggregator_for, BucketName}, _From, State) ->
           end,
     {reply, Pid, State};
 handle_call(kill_childs, _From, State) ->
-    ets:foldl(fun ({_, Pid, MRef}, _) ->
-                      erlang:demonitor(MRef, [flush]),
+    ets:foldl(fun ({_, Pid}, _) ->
                       exit(Pid, aggregator_respawn),
+                      receive
+                          {'EXIT', Pid, aggregator_respawn} -> ok
+                      end,
                       true
               end, true, State#state.ets_map),
     ets:delete_all_objects(State#state.ets_map),
-    ets:delete_all_objects(State#state.by_mref),
+    ets:delete_all_objects(State#state.by_pid),
     {reply, ok, State}.
 
 spawn_child_aggregator(BucketName, State) ->
     [Module, Fun, ExtraArgs] = State#state.aggregator_spawn_args,
     {ok, P} = apply(Module, Fun, [BucketName | ExtraArgs]),
-    MRef = erlang:monitor(process, P),
-    Tuple = {BucketName, P, MRef},
+    link(P),
+    Tuple = {BucketName, P},
     ets:insert(State#state.ets_map, Tuple),
-    ets:insert(State#state.by_mref, Tuple),
+    ets:insert(State#state.by_pid, Tuple),
     P.
 
 cleanup_dead_aggregator(Tuple, State) ->
     true = ets:delete_object(State#state.ets_map, Tuple),
-    true = ets:delete_object(State#state.by_mref, Tuple).
+    true = ets:delete_object(State#state.by_pid, Tuple).
 
 %%--------------------------------------------------------------------
 %% Function: handle_cast(Msg, State) -> {noreply, State} |
@@ -151,15 +154,24 @@ handle_cast(_Msg, State) ->
 %%                                       {stop, Reason, State}
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
-handle_info({'DOWN', MRef, process, _Item, _Info}=All, State) ->
-    ns_log:log(?MODULE, 1, "Got DOWN for %p", [All]),
-    case ets:lookup(State#state.by_mref, MRef) of
-        [{BucketName, _, _}=Tuple] ->
-            ns_log:log(?MODULE, 2, "Aggregator for bucket ~p is down", [BucketName]),
-            cleanup_dead_aggregator(Tuple, State);
-        [] ->
-            ns_log:log(?MODULE, 3, "DOWN is for unknown aggregator. Ignoring")
-    end,
+handle_info({'EXIT', From, Reason}=Info, State) ->
+    ns_log:log(?MODULE, 0, "Got EXIT ~p", [Info]),
+    if
+        From =:= self() ->
+            {stop, Reason, State};
+        true ->
+            ns_log:log(?MODULE, 1, "Got DOWN for %p: REASON: ", [From, Reason]),
+            case ets:lookup(State#state.by_pid, From) of
+                [{BucketName, _}=Tuple] ->
+                    ns_log:log(?MODULE, 2, "Aggregator for bucket ~p is down", [BucketName]),
+                    cleanup_dead_aggregator(Tuple, State),
+                    {noreply, State};
+                [] ->
+                    ns_log:log(?MODULE, 3, "EXIT is for unknown aggregator. Dying"),
+                    {stop, Reason, State}
+            end
+    end;
+handle_info(_Info, State) ->
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -198,7 +210,7 @@ spawn_test_aggregator_process(BucketName, Parent) ->
           end)}.
 
 test_setup() ->
-    start_link([?MODULE, spawn_test_aggregator_process, [self()]]).
+    just_start([?MODULE, spawn_test_aggregator_process, [self()]]).
 
 test_teardown(_V) ->
     t.
