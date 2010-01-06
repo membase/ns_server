@@ -45,7 +45,7 @@ test: test_unit
 test_unit: ebins
 	erl $(EFLAGS) -noshell -s ns_server_test test -s init stop -kernel error_logger silent
 
-test_main:
+test_main: ebins
 	epmd -kill
 	erl -name ns_test1 -boot start_sasl $(EFLAGS) -noshell -setcookie nocookie -eval 'application:start(ns_server).'
 

@@ -65,12 +65,12 @@ cookie_sync() ->
                     {A1,A2,A3} = now(),
                     random:seed(A1, A2, A3),
                     NewCookie = list_to_atom(misc:rand_str(16)),
-                    ns_log:log(?MODULE, 0001, "generated otp cookie: ~p",
+                    ns_log:log(?MODULE, 0001, "otp cookie generated: ~p",
                                [NewCookie]),
                     ns_config:set(otp, [{cookie, NewCookie}]),
                     {ok, init, generated};
                 CurrCookie ->
-                    ns_log:log(?MODULE, 0002, "inheriting otp cookie: ~p",
+                    ns_log:log(?MODULE, 0002, "otp cookie inherited: ~p",
                                [CurrCookie]),
                     ns_config:set(otp, [{cookie, CurrCookie}]),
                     {ok, init}
@@ -79,7 +79,7 @@ cookie_sync() ->
             case erlang:get_cookie() of
                 WantedCookie -> {ok, same};
                 _ ->
-                    ns_log:log(?MODULE, 0003, "setting otp cookie: ~p",
+                    ns_log:log(?MODULE, 0003, "otp cookie sync: ~p",
                                [WantedCookie]),
                     erlang:set_cookie(node(), WantedCookie),
                     {ok, sync}
