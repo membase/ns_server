@@ -1,37 +1,81 @@
 % Copyright (c) 2010, NorthScale, Inc.
 % All rights reserved.
 
-
 -module(ns_node_disco).
 
 %% API
--export([start_link/0, init/0, loop/0]).
+-export([start_link/0,
+         init/0,
+         nodes_wanted/0, nodes_wanted_updated/0, nodes_wanted_updated/1,
+         nodes_actual/0, nodes_actual_proper/0,
+         loop/0]).
 
 start_link() ->
     {ok, spawn_link(?MODULE, init, [])}.
 
 %
-% Disco monitoring
+% Node Discovery and monitoring
 %
 
 init() ->
-    _NL = init_known_servers(ns_config:search(ns_config:get(), nodes_wanted)),
-    update_node_list(),
+    nodes_wanted_updated(),
     ok = net_kernel:monitor_nodes(true),
-    % the node_disco_conf_events gen_event handler will inform me when
-    % relevant configuration changes.
+    % the ns_node_disco_conf_events gen_event handler will inform
+    % me when relevant configuration changes.
     gen_event:add_handler(ns_config_events, ns_node_disco_conf_events, self()),
     loop().
 
-init_known_servers({value, NodeList}) ->
-    error_logger:info_msg("Initializing with ~p~n", [NodeList]),
-    lists:filter(fun(N) -> net_adm:ping(N) == pong end, NodeList);
-init_known_servers(false) ->
-    error_logger:info_msg("Found no initial node list~n", []),
-    [].
+nodes_wanted_updated() ->
+    nodes_wanted_updated(nodes_wanted()).
 
-update_node_list() ->
-    ns_config:set(nodes_actual, lists:sort([node() | nodes()])).
+nodes_wanted_updated(NodeListIn) ->
+    cookie_sync(),
+    NodeList = lists:sort(NodeListIn),
+    error_logger:info_msg("nodes_wanted updated ~p~n", [NodeList]),
+    lists:filter(fun(N) -> net_adm:ping(N) == pong end, NodeList).
+
+nodes_wanted() ->
+    case ns_config:search(ns_config:get(), nodes_wanted) of
+        {value, NodeList} -> lists:sort(NodeList);
+        false             -> []
+    end.
+
+% Returns all nodes that we see.
+
+nodes_actual() ->
+    lists:sort([node() | nodes()]).
+
+% Returns a subset of the nodes_wanted() that we see.
+
+nodes_actual_proper() ->
+    % TODO: Track flapping nodes and attenuate.
+    %
+    Curr = nodes_actual(),
+    Want = nodes_wanted(),
+    Diff = lists:subtract(Curr, Want),
+    lists:subtract(Curr, Diff).
+
+cookie_sync() ->
+    case ns_config:search_prop(ns_config:get(), otp, cookie) of
+        undefined ->
+            case erlang:get_cookie() of
+                nocookie ->
+                    % TODO: We should have length(nodes_wanted) == 0 or 1,
+                    %       so, we should check that assumption.
+                    NewCookie = list_to_atom(misc:rand_str(16)),
+                    ns_config:set(otp, [{cookie, NewCookie}]),
+                    {ok, init, generated};
+                CurrCookie ->
+                    ns_config:set(otp, [{cookie, CurrCookie}]),
+                    {ok, init}
+            end;
+        WantedCookie ->
+            case erlang:get_cookie() of
+                WantedCookie -> {ok, same};
+                _            -> erlang:set_cookie(node(), WantedCookie),
+                                {ok, sync}
+            end
+    end.
 
 loop() ->
     receive
@@ -40,5 +84,5 @@ loop() ->
         {nodedown, Node} ->
             error_logger:info_msg("Lost node:  ~p~n", [Node])
     end,
-    update_node_list(),
+    % update_node_list(),
     ?MODULE:loop().
