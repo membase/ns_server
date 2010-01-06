@@ -22,8 +22,6 @@
                 stats,
                 collector_pids}).
 
--define(SERVER, ?MODULE).
-
 %% sampling period in milliseconds
 -define(SAMPLING_PERIOD, 5000).
 -define(COLLECTION_TIMEOUT, 5000).
@@ -40,7 +38,7 @@ get_stats(BucketName) ->
 %% Description: Starts the server
 %%--------------------------------------------------------------------
 start(BucketName) ->
-    gen_server:start({local, ?SERVER}, ?MODULE, [BucketName], []).
+    gen_server:start(?MODULE, [BucketName], []).
 
 %%====================================================================
 %% gen_server callbacks
@@ -57,10 +55,11 @@ init([BucketName]) ->
     %% NodeList = [node() | nodes()],
     NodeList = [node(), node(), node()], %% for easy testing for now
     ChildPids = lists:map(fun (Node) ->
-                                  spawn_link(Node, stats_collector, loop, [fake_state])
+                                  proc_lib:spawn_link(Node, stats_collector, loop, [fake_state])
                           end, NodeList),
-    timer:send_after(?SAMPLING_PERIOD, sampling_timer),
+    timer:send_interval(?SAMPLING_PERIOD, sampling_timer),
     {ok, #state{bucket_name = BucketName,
+                stats = multicollect(ChildPids),
                 collector_pids = ChildPids}}.
 
 %%--------------------------------------------------------------------
@@ -74,8 +73,6 @@ init([BucketName]) ->
 %%--------------------------------------------------------------------
 handle_call({get_stats}, _From, State) ->
     Reply = State#state.stats,
-    %% %% TODO: implement data processing
-    %% Reply = multicollect(State#state.collector_pids),
     ns_log:log(?MODULE, 1, "returning stats ~p", [Reply]),
     {reply, Reply, State#state{had_activity = true}}.
 
@@ -127,19 +124,19 @@ handle_cast(_Msg, State) ->
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
 handle_info(sampling_timer, #state{inactive_periods = InactivePeriods} = State) ->
+    %% TODO: implement data processing
     Stats = multicollect(State#state.collector_pids),
-    ns_log:log(?MODULE, 1, "collected stats ~p", [Stats]),
+    ns_log:log(?MODULE, 1, "collected bucket ~p stats ~p", [State#state.bucket_name,
+                                                            Stats]),
 
     NewInactivePeriods = InactivePeriods+1,
-    ns_log:log(stats_aggregator, 2, "inactivity"),
-
     NewState = State#state{inactive_periods = NewInactivePeriods,
                            stats = Stats},
     if
         NewInactivePeriods >= ?INACTIVE_PERIODS_TO_DEATH ->
-            {stop, inactivity, NewState};
+            ns_log:log(stats_aggregator, 2, "going to die piecefully due to inactivity"),
+            {stop, normal, NewState};
         true ->
-            timer:send_after(?SAMPLING_PERIOD, sampling_timer),
             {noreply, NewState}
     end;
 handle_info(_Info, State) ->

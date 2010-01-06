@@ -12,7 +12,9 @@
 -export([loop/1]).
 
 do_grab_stat(_State) ->
-    [{stat1, 1},
+    {MegaSec, Sec, Micros} = erlang:now(),
+    Now = (MegaSec * 1000000 + Sec) * 1000 + (Micros div 1000),
+    [{stat1, Now},
      {stat2, 2}].
 
 loop(State) ->
