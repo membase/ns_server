@@ -36,9 +36,12 @@
 
 -behaviour(gen_server).
 
+-define(METADATA_VER, '_ver').
+
 -export([start_link/2, start_link/1, stop/0,
          get/2, get/1, get/0, set/2, set/1,
          search/2, search/1,
+         search_prop/3, search_prop/4,
          search_raw/2]).
 
 % A static config file is often hand edited.
@@ -89,6 +92,17 @@ search(Config, Key) ->
         {value, X} -> {value, strip_metadata(X, [])}
     end.
 
+search_prop(Config, Key, SubKey) ->
+    search_prop(Config, Key, SubKey, undefined).
+
+search_prop(Config, Key, SubKey, DefaultSubVal) ->
+    case search(Config, Key) of
+        {value, PropList} ->
+            proplists:get_value(SubKey, PropList, DefaultSubVal);
+        false ->
+            DefaultSubVal
+    end.
+
 % The search_raw API does not strip out metadata from results.
 
 search_raw(undefined, _Key) -> false;
@@ -106,12 +120,12 @@ search_raw(#config{dynamic = DL, static = SL}, Key) ->
 
 %% Implementation
 
-% Removes metadata like '_ver' from results.
+% Removes metadata like METADATA_VER from results.
 
-strip_metadata([], Acc)                   -> lists:reverse(Acc);
-strip_metadata([{'_ver', _} | Rest], Acc) -> strip_metadata(Rest, Acc);
-strip_metadata([X | Rest], Acc)           -> strip_metadata(Rest, [X | Acc]);
-strip_metadata(X, _)                      -> X.
+strip_metadata([], Acc)                       -> lists:reverse(Acc);
+strip_metadata([{?METADATA_VER, _} | T], Acc) -> strip_metadata(T, Acc);
+strip_metadata([X | T], Acc)                  -> strip_metadata(T, [X | Acc]);
+strip_metadata(X, _)                          -> X.
 
 %% gen_server callbacks
 
@@ -187,7 +201,10 @@ save_config(#config{dynamic = D}, DirPath) ->
     ok = save_file(bin, C, D).
 
 announce_config_changes(KVList) ->
-    lists:foreach(fun (KV) -> gen_event:notify(ns_config_events, KV) end,
+    lists:foreach(fun ({Key, Value}) ->
+                      gen_event:notify(ns_config_events,
+                                       {Key, strip_metadata(Value, [])})
+                  end,
                   KVList).
 
 load_file(txt, ConfigPath) -> read_includes(ConfigPath);

@@ -43,8 +43,12 @@ all_test_() ->
   [
     {"test_search_list",
      ?_test(test_search_list())},
+    {"test_strip_metadata",
+     ?_test(test_strip_metadata())},
     {"test_search_config",
      ?_test(test_search_config())},
+    {"test_search_prop_config",
+     ?_test(test_search_prop_config())},
     {"test_merge_config_static",
      ?_test(test_merge_config_static())},
     {"test_merge_config_dynamic",
@@ -70,6 +74,14 @@ test_search_list() ->
     ?assertMatch(false, search([[], []], foo)),
     ?assertMatch(false, search([[{x, 1}]], foo)),
     ?assertMatch({value, 1}, search([[{x, 1}], [{x, 2}]], x)),
+    ok.
+
+test_strip_metadata() ->
+    ?assertMatch(x, strip_metadata(x, [])),
+    ?assertMatch([], strip_metadata([], [])),
+    ?assertMatch([1, 2], strip_metadata([1, 2], [])),
+    ?assertMatch([1, 2], strip_metadata([{?METADATA_VER, x}, 1, 2], [])),
+    ?assertMatch([], strip_metadata([{?METADATA_VER, x}], [])),
     ok.
 
 test_search_config() ->
@@ -105,6 +117,34 @@ test_search_config() ->
                                                            {hi, there}]}]],
                                 static = [[{w, 4}], [{z, 3}]]},
                         z)),
+    ok.
+
+test_search_prop_config() ->
+    ?assertMatch(foo,
+                 search_prop(#config{},
+                             x, a, foo)),
+    ?assertMatch(foo,
+                 search_prop(#config{dynamic = [[], []],
+                                     static = [[], []]},
+                             x, a, foo)),
+    ?assertMatch(foo,
+                 search_prop(#config{dynamic = [[{x, []}], [{x, []}]],
+                                     static = []},
+                             x, a, foo)),
+    ?assertMatch(foo,
+                 search_prop(#config{dynamic = [[{x, [{b, bar}]}], [{x, []}]],
+                                     static = []},
+                             x, a, foo)),
+    ?assertMatch(baz,
+                 search_prop(#config{dynamic = [[{x, [{b, bar},
+                                                      {a, baz}]}], [{x, []}]],
+                                     static = []},
+                             x, a, foo)),
+    ?assertMatch(foo,
+                 search_prop(#config{dynamic = [[{x, [{b, bar}]}],
+                                                [{x, [{a, baz}]}]],
+                                     static = []},
+                             x, a, foo)),
     ok.
 
 test_merge_config_static() ->
