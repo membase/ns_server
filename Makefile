@@ -2,7 +2,7 @@
 # All rights reserved.
 SHELL=/bin/sh
 
-EFLAGS=-pa ebin
+EFLAGS=-pa ./ebin ./deps/*/ebin ./deps/*/deps/*/ebin
 
 TMP_DIR=./tmp
 
@@ -15,6 +15,10 @@ all: ebins test deps_all
 deps_all:
 	$(MAKE) -C deps/emoxi all
 	$(MAKE) -C deps/menelaus all
+
+clean_all:
+	$(MAKE) -C deps/emoxi clean
+	$(MAKE) -C deps/menelaus clean
 
 ebins:
 	test -d ebin || mkdir ebin
@@ -40,6 +44,9 @@ test: test_unit
 
 test_unit: ebins
 	erl $(EFLAGS) -noshell -s ns_server_test test -s init stop -kernel error_logger silent
+
+test_main:
+	erl -boot start_sasl $(EFLAGS) -noshell -eval 'application:start(ns_server).'
 
 dialyzer: ebins
 	dialyzer -pa ebin -r .
