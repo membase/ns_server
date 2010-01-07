@@ -1,7 +1,7 @@
 # The NorthScale Server
 
 This application represents the top of the hierarchy of all memcached
-smart services.  It is an applicaiton in the Erlang OTP sense.
+smart services.  It is an application in the Erlang OTP sense.
 
 ![ns_server](https://github.com/northscale/ns_server/raw/master/doc/images/ns_server.png)
 

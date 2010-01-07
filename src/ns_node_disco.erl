@@ -6,7 +6,8 @@
 %% API
 -export([start_link/0,
          init/0,
-         nodes_wanted/0, nodes_wanted_updated/0, nodes_wanted_updated/1,
+         nodes_wanted/0, nodes_wanted_raw/0,
+         nodes_wanted_updated/0, nodes_wanted_updated/1,
          nodes_actual/0, nodes_actual_proper/0,
          cookie_init/0, cookie_set/1, cookie_sync/0,
          loop/0]).
@@ -31,20 +32,30 @@ nodes_wanted_updated() ->
 
 nodes_wanted_updated(NodeListIn) ->
     cookie_sync(),
-    NodeList = lists:sort(NodeListIn),
+    NodeList = lists:usort(NodeListIn),
     error_logger:info_msg("nodes_wanted updated ~p~n", [NodeList]),
     lists:filter(fun(N) -> net_adm:ping(N) == pong end, NodeList).
 
-nodes_wanted() ->
+nodes_wanted_raw() ->
     case ns_config:search(ns_config:get(), nodes_wanted) of
-        {value, NodeList} -> lists:sort(NodeList);
-        false             -> []
+        {value, L} -> lists:usort(L);
+        false      -> []
     end.
+
+nodes_wanted() ->
+    % Add ourselves to nodes_wanted, if not already.
+    W1 = nodes_wanted_raw(),
+    W2 = lists:usort([node() | W1]),
+    case W2 =/= W1 of
+        true  -> ns_config:set(nodes_wanted, W2);
+        false -> ok
+    end,
+    W2.
 
 % Returns all nodes that we see.
 
 nodes_actual() ->
-    lists:sort([node() | nodes()]).
+    lists:usort([node() | nodes()]).
 
 % Returns a subset of the nodes_wanted() that we see.
 
