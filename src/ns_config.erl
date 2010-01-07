@@ -120,7 +120,7 @@ search_raw([KVList | Rest], Key) ->
         _                 -> search_raw(Rest, Key)
     end;
 search_raw(#config{dynamic = DL, static = SL}, Key) ->
-    case search(DL, Key) of
+    case search_raw(DL, Key) of
         {value, _} = R -> R;
         false          -> search_raw(SL, Key)
     end.
@@ -260,9 +260,25 @@ merge_configs([], _Remote, Local, []) ->
 merge_configs([], _Remote, Local, Acc) ->
     Local#config{dynamic = [lists:reverse(Acc)]};
 merge_configs([Field | Fields], Remote, Local, Acc) ->
-    RS = search(Remote, Field),
-    LS = search(Local, Field),
+    RS = search_raw(Remote, Field),
+    LS = search_raw(Local, Field),
     A2 = case {RS, LS} of
+             {{value, RV}, {value, LV}} when is_list(RV), is_list(LV) ->
+                 RVer = misc:time_to_epoch_float(
+                          proplists:get_value(?METADATA_VER, RV)),
+                 LVer = misc:time_to_epoch_float(
+                          proplists:get_value(?METADATA_VER, LV)),
+                 case {RVer, LVer} of
+                     {undefined, undefined} -> [{Field, RV} | Acc];
+                     {_,         undefined} -> [{Field, RV} | Acc];
+                     {undefined, _}         -> [{Field, LV} | Acc];
+                     {RTime, LTime} when is_float(RTime),
+                                         is_float(LTime) ->
+                         case RTime > LTime of
+                             true  -> [{Field, RV} | Acc];
+                             false -> [{Field, LV} | Acc]
+                         end
+                 end;
              {{value, RV}, _} -> [{Field, RV} | Acc];
              {_, {value, LV}} -> [{Field, LV} | Acc];
              _                -> Acc

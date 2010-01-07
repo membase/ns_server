@@ -243,7 +243,10 @@ time_to_epoch_float(Time) when is_integer(Time) or is_float(Time) ->
   Time;
 
 time_to_epoch_float({Mega,Sec,Micro}) ->
-  Mega * 1000000 + Sec + Micro / 1000000.
+  Mega * 1000000 + Sec + Micro / 1000000;
+
+time_to_epoch_float(_) ->
+  undefined.
 
 byte_size(List) when is_list(List) ->
   lists:foldl(fun(El, Acc) -> Acc + ?MODULE:byte_size(El) end, 0, List);
