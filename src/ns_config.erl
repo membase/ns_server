@@ -152,7 +152,6 @@ strip_metadata(X, _)                          -> X.
 init({full, ConfigPath, DirPath, PolicyMod} = Init) ->
     case load_config(ConfigPath, DirPath, PolicyMod) of
         {ok, Config} ->
-            announce_changes(config_dynamic(Config)),
             {ok, Config#config{init = Init}};
         Error ->
             {stop, Error}

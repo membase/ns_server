@@ -40,7 +40,7 @@ open_port({_Name, Cmd, Args, Opts}) ->
     {ok, Pwd} = file:get_cwd(),
     PrivDir = filename:join(Pwd, "priv"),
     FullPath = filename:join(PrivDir, Cmd),
-    error_logger:info_msg("Starting ~p in ~p with ~p / ~p~n",
+    error_logger:info_msg("e-port server starting: ~p in ~p with ~p / ~p~n",
                           [FullPath, PrivDir, Args, Opts]),
     process_flag(trap_exit, true),
     open_port({spawn_executable, FullPath},
@@ -48,7 +48,7 @@ open_port({_Name, Cmd, Args, Opts}) ->
                {cd, PrivDir}] ++ Opts).
 
 handle_info({'EXIT', _Port, Reason}, State) ->
-    error_logger:info_msg("Port subprocess (~p) exited: ~p~n",
+    error_logger:info_msg("e-port server (~p) exited: ~p~n",
                           [State#state.name, Reason]),
     case (misc:time_to_epoch_float(now()) -
           misc:time_to_epoch_float(State#state.started)) =< 1 of
@@ -76,11 +76,12 @@ handle_cast(Something, State) ->
     {noreply, State}.
 
 terminate(normal, State) ->
-    error_logger:info_msg("Port has terminated ~p:  ~p~n",
+    error_logger:info_msg("e-port server terminating ~p: ~p~n",
                           [State#state.name, normal]),
     ok;
 terminate(Reason, State) ->
-    error_logger:info_msg("Terminating ~p:  ~p~n", [State#state.name, Reason]),
+    error_logger:info_msg("e-port server terminating ~p: ~p~n",
+                          [State#state.name, Reason]),
     true = port_close(State#state.port).
 
 code_change(_OldVsn, State, _Extra) ->
