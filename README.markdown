@@ -18,10 +18,10 @@ application, start just-shell.sh and then run
 
 To start with a different node name, and pass parameters (such as a different config file), use:
 
-  ./start_name.sh $NODE_NAME -ns_server ns_server_config \"$CONFIG_FILE\"
+  ./start_shell.sh -name $NODE_NAME -ns_server ns_server_config \"$CONFIG_FILE\"
 
 For example:
 
-  ./start_name.sh ns_2 -ns_server ns_server_config \"priv/config2\"
+  ./start_shell.sh -name ns_2 -ns_server ns_server_config \"priv/config2\"
 
 Copyright (c) 2010, NorthScale, Inc.
