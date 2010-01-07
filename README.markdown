@@ -13,10 +13,12 @@ detailed logging on both progress and failures of the application and
 the heirarcy.
 
 If you'd like to just start a shell, then interact with the running
-application, start just-shell.sh and then run
-`application:start(ns_server)`.
+application, use:
 
-To start with a different node name, and pass parameters (such as a different config file), use:
+  ./start-shell.sh.
+
+To start with a different node name, and pass parameters (such as a
+different config file), use:
 
   ./start_shell.sh -name $NODE_NAME -ns_server ns_server_config \"$CONFIG_FILE\"
 
