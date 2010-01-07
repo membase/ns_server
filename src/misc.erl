@@ -291,8 +291,8 @@ load_start_apps([App | Apps]) ->
            halt(1)
   end.
 
-running(Node) ->
-  Ref = erlang:monitor(process, {membership, Node}),
+running(Node, Module) ->
+  Ref = erlang:monitor(process, {Module, Node}),
   R = receive
           {'DOWN', Ref, _, _, _} -> false
       after 1 ->
@@ -301,6 +301,13 @@ running(Node) ->
   erlang:demonitor(Ref),
   R.
 
-running_nodes() ->
-  [Node || Node <- erlang:nodes([this, visible]), running(Node)].
+running_nodes(Module) ->
+  [Node || Node <- erlang:nodes([this, visible]), running(Node, Module)].
+
+% Returns just the node name string that's before the '@' char.
+% For example, returns "test" instead of "test@myhost.com".
+%
+node_name_short() ->
+    [NodeName | _] = string:tokens(atom_to_list(node()), "@"),
+    NodeName.
 

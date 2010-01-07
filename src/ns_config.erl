@@ -182,8 +182,7 @@ handle_call({set, KVList}, _From, State) ->
 dynamic_config_path(DirPath) ->
     % The extra node() in the path ensures uniqueness even if
     % developers are running more than 1 named node per box.
-    [NodeName | _] = string:tokens(atom_to_list(node()), "@"),
-    X = filename:join(DirPath, NodeName),
+    X = filename:join(DirPath, misc:node_name_short()),
     C = filename:join(X, "config.dat"),
     ok = filelib:ensure_dir(C),
     C.
