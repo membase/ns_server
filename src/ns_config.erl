@@ -77,15 +77,17 @@ start_link(Full) ->
 start_link(ConfigPath, PolicyMod) -> start_link([ConfigPath, PolicyMod]).
 
 stop()   -> gen_server:cast(?MODULE, stop).
-reinit() -> gen_server:call(?MODULE, reinit).
+reload() -> gen_server:call(?MODULE, reload).
+resave() -> gen_server:call(?MODULE, resave).
 
 set(Key, PropList) when is_list(PropList) ->
     PropList2 = [{?METADATA_VER, erlang:now()} |
                  strip_metadata(PropList, [])],
-    gen_server:call(?MODULE, {set, [{Key, PropList2}]});
+    gen_server:call(?MODULE, {merge, [{Key, PropList2}]});
 
-set(Key, Val) -> gen_server:call(?MODULE, {set, [{Key, Val}]}).
-set(KVList)   -> gen_server:call(?MODULE, {set, KVList}).
+set(Key, Val)   -> gen_server:call(?MODULE, {merge, [{Key, Val}]}).
+set(KVList)     -> gen_server:call(?MODULE, {merge,   KVList}).
+replace(KVList) -> gen_server:call(?MODULE, {replace, KVList}).
 
 get()              -> gen_server:call(?MODULE, get).
 get(Node)          -> ?MODULE:get(Node, 500).
@@ -157,15 +159,22 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 handle_cast(stop, State)            -> {stop, shutdown, State}.
 handle_info(_Info, State)           -> {noreply, State}.
 
-handle_call(reinit, _From, State) ->
+handle_call(reload, _From, State) ->
     case init(State#config.init) of
         {ok, State2}  -> {reply, ok, State2};
         {stop, Error} -> {reply, {error, Error}, State}
     end;
 
+handle_call(resave, _From, State) ->
+    save_config(State),
+    {reply, ok, State};
+
 handle_call(get, _From, State) -> {reply, State, State};
 
-handle_call({set, KVList}, _From, State) ->
+handle_call({replace, KVList}, _From, State) ->
+    {reply, ok, State#config{dynamic = [KVList]}};
+
+handle_call({merge, KVList}, _From, State) ->
     PolicyMod = State#config.policy_mod,
     State2 = merge_configs(PolicyMod:mergable(),
                            #config{dynamic = [KVList]},
