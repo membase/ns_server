@@ -164,6 +164,15 @@ handle_call({set, KVList}, _From, State) ->
 
 %%--------------------------------------------------------------------
 
+dynamic_config_path(DirPath) ->
+    % The extra node() in the path ensures uniqueness even if
+    % developers are running more than 1 named node per box.
+    [NodeName | _] = string:tokens(atom_to_list(node()), "@"),
+    X = filename:join(DirPath, NodeName),
+    C = filename:join(X, "config.dat"),
+    ok = filelib:ensure_dir(C),
+    C.
+
 load_config(ConfigPath, DirPath, PolicyMod) ->
     DefaultConfig = PolicyMod:default(),
     % Static config file.
@@ -178,7 +187,7 @@ load_config(ConfigPath, DirPath, PolicyMod) ->
                     _ -> DirPath
                 end,
             % Dynamic config file.
-            C = filename:join(DirPath2, "config.dat"),
+            C = dynamic_config_path(DirPath2),
             ok = filelib:ensure_dir(C),
             D = case load_file(bin, C) of
                     {ok, DRead} -> DRead;
@@ -195,8 +204,7 @@ save_config(Config) ->
     save_config(Config, DirPath).
 
 save_config(#config{dynamic = D}, DirPath) ->
-    C = filename:join(DirPath, "config.dat"),
-    ok = filelib:ensure_dir(C),
+    C = dynamic_config_path(DirPath),
     % Only saving the dynamic config parts.
     ok = save_file(bin, C, D).
 
