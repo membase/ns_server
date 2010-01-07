@@ -257,11 +257,14 @@ save_config(#config{dynamic = D}, DirPath) ->
     ok = save_file(bin, C, D).
 
 announce_config_changes(KVList) ->
+    % Fire a event per changed key.
     lists:foreach(fun ({Key, Value}) ->
                       gen_event:notify(ns_config_events,
                                        {Key, strip_metadata(Value, [])})
                   end,
-                  KVList).
+                  KVList),
+    % Fire a generic event that 'something changed'.
+    gen_event:notify(ns_config_events, ns_config_events).
 
 load_file(txt, ConfigPath) -> read_includes(ConfigPath);
 

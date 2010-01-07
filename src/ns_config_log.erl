@@ -24,6 +24,9 @@ init(ignored) ->
 
 handle_event({K, V}, State) ->
     error_logger:info_msg("Received a config change: ~p -> ~p~n", [K, V]),
+    {ok, State, hibernate};
+
+handle_event(_, State) ->
     {ok, State, hibernate}.
 
 handle_call(Request, State) ->

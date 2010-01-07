@@ -123,9 +123,9 @@ cookie_sync() ->
 loop() ->
     receive
         {nodeup, Node} ->
-            error_logger:info_msg("New node:  ~p~n", [Node]);
+            error_logger:info_msg("new node: ~p~n", [Node]);
         {nodedown, Node} ->
-            error_logger:info_msg("Lost node:  ~p~n", [Node])
+            error_logger:info_msg("lost node: ~p~n", [Node])
     end,
     % update_node_list(),
     ?MODULE:loop().
@@ -138,9 +138,10 @@ join_pool(RemoteNode, NewCookie) ->
     % has shutdown or is responsible for higher-level applications
     % (eg, emoxi, menelaus) as needed.
     %
-    % Once the caller has restarted higher-level applications,
-    % it should call ns_config:reannounce() to get config-change
-    % event callbacks asynchronously invoked.
+    % After this function finishes, the caller may restart
+    % higher-level applications, and then it should call
+    % ns_config:reannounce() to get config-change
+    % event callbacks asynchronously fired.
     %
     OldCookie = ns_node_disco:cookie_get(),
     true = erlang:set_cookie(node(), NewCookie),
@@ -149,18 +150,12 @@ join_pool(RemoteNode, NewCookie) ->
         pong ->
             case ns_config:get_dynamic(RemoteNode) of
                 RemoteDynamic when is_list(RemoteDynamic) ->
-                    ?debugVal(RemoteDynamic),
                     case ns_config:replace(RemoteDynamic) of
-                        ok -> WantedOld = ns_node_disco:nodes_wanted_raw(),
-                              WantedNew = ns_node_disco:nodes_wanted(),
-                              X = [node()] =:= lists:subtract(WantedNew,
-                                                              WantedOld),
-                              ?debugVal(X),
-                              ns_node_disco:nodes_wanted_updated(),
+                        ok -> % The following adds node() to nodes_wanted.
+                              ns_node_disco:nodes_wanted(),
                               ok = ns_config:resave(),
                               ok;
-                        Err ->
-                            join_pool_err(OldCookie, Err)
+                        Err -> join_pool_err(OldCookie, Err)
                     end;
                 E -> join_pool_err(OldCookie, E)
             end;

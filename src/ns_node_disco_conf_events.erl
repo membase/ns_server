@@ -24,10 +24,12 @@ handle_event({nodes_wanted, V}, State) ->
     error_logger:info_msg("nodes_wanted is now ~p~n", [V]),
     ns_node_disco:nodes_wanted_updated(V),
     {ok, State, hibernate};
+
 handle_event({otp, V}, State) ->
     error_logger:info_msg("otp is now ~p~n", [V]),
     ns_node_disco:nodes_wanted_updated(),
     {ok, State, hibernate};
+
 handle_event(_E, State) ->
     {ok, State, hibernate}.
 
