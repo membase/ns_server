@@ -76,11 +76,15 @@ start_link(Full) ->
 
 start_link(ConfigPath, PolicyMod) -> start_link([ConfigPath, PolicyMod]).
 
-stop() -> gen_server:cast(?MODULE, stop).
-
+stop()   -> gen_server:cast(?MODULE, stop).
 reinit() -> gen_server:call(?MODULE, reinit).
 
-set(Key, Val) -> ?MODULE:set([{Key, Val}]).
+set(Key, PropList) when is_list(PropList) ->
+    PropList2 = [{?METADATA_VER, erlang:now()} |
+                 strip_metadata(PropList, [])],
+    gen_server:call(?MODULE, {set, [{Key, PropList2}]});
+
+set(Key, Val) -> gen_server:call(?MODULE, {set, [{Key, Val}]}).
 set(KVList)   -> gen_server:call(?MODULE, {set, KVList}).
 
 get()              -> gen_server:call(?MODULE, get).
