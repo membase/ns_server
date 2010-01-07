@@ -9,7 +9,7 @@
          nodes_wanted/0, nodes_wanted_raw/0,
          nodes_wanted_updated/0, nodes_wanted_updated/1,
          nodes_actual/0, nodes_actual_proper/0,
-         cookie_init/0, cookie_set/1, cookie_sync/0,
+         cookie_init/0, cookie_get/0, cookie_set/1, cookie_sync/0,
          loop/0]).
 
 start_link() ->
@@ -75,11 +75,21 @@ cookie_init() ->
                [NewCookie]),
     cookie_set(NewCookie).
 
+% Gets our wanted otp cookie.
+%
 cookie_set(Cookie) ->
     ns_config:set(otp, [{cookie, Cookie}]).
 
+% Gets our wanted otp cookie (might be =/= our actual otp cookie).
+%
+cookie_get() ->
+    ns_config:search_prop(ns_config:get(), otp, cookie).
+
+% Makes our wanted otp cookie =:= to our actual cookie.
+% Will generate a cookie if needed for the first time.
+%
 cookie_sync() ->
-    case ns_config:search_prop(ns_config:get(), otp, cookie) of
+    case cookie_get() of
         undefined ->
             case erlang:get_cookie() of
                 nocookie ->
@@ -90,7 +100,7 @@ cookie_sync() ->
                 CurrCookie ->
                     ns_log:log(?MODULE, 0002, "otp cookie inherited: ~p",
                                [CurrCookie]),
-                    ns_config:set(otp, [{cookie, CurrCookie}]),
+                    cookie_set(CurrCookie),
                     {ok, init}
             end;
         WantedCookie ->
@@ -113,3 +123,4 @@ loop() ->
     end,
     % update_node_list(),
     ?MODULE:loop().
+
