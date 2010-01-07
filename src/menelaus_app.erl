@@ -1,5 +1,6 @@
 %% @author Northscale <info@northscale.com>
-%% @copyright 2009 Northscale.
+%% @copyright 2009 NorthScale, Inc.
+%% All rights reserved.
 
 %% @doc Callbacks for the menelaus application.
 

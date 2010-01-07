@@ -1,3 +1,5 @@
+# Copyright (c) 2010, NorthScale, Inc.
+# All rights reserved.
 TMP_DIR=./tmp
 TMP_VER=$(TMP_DIR)/version_num.tmp
 DIST_DIR=$(TMP_DIR)/menelaus

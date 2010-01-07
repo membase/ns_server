@@ -1,3 +1,5 @@
+% Copyright (c) 2009 NorthScale, Inc.
+% All rights reserved.
 %%%-------------------------------------------------------------------
 %%% File    : simple_cache.erl
 %%% Author  : Aliaksey Kandratsenka <alk@tut.by>

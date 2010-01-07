@@ -8,7 +8,7 @@ o [DONE] alerts section implementation
 * alerts section log tab
 o [DONE] proper tstamp formatting for alerts
 * server settings implementation
-* tests via watir
+* tests via watir [DONE though webdriver used]
 * welcome screen
 o [DONE] respect interval select for all sub-sections
 
@@ -23,5 +23,6 @@ o [DONE] failure to retreive stats after switch to another zoom leaves us
    don't bother ?
 
 * intelligent circuit breaker for ajax requests
-* complete API switch to camelCase by converting all parameter names
+* complete API switch to camelCase by converting all parameter names [DONE]
 * loading indicator for alert settings form
+* initiate node_disco (i.e. join a new cluster)
