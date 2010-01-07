@@ -1,7 +1,6 @@
 % Copyright (c) 2010, NorthScale, Inc.
 % All rights reserved.
 
-
 -module(ns_server_sup).
 
 -behavior(supervisor).
@@ -33,6 +32,7 @@ get_child_specs() ->
      {ns_port_sup, {ns_port_sup, start_link, []},
       permanent, infinity, supervisor,
       [ns_port_sup, ns_port_server]},
-      {menelaus, {menelaus_app, start_subapp, []},
-       permanent, infinity, supervisor, []}
+     {menelaus, {menelaus_app, start_subapp, []},
+      permanent, infinity, supervisor,
+      []}
     ].

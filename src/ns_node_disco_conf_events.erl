@@ -1,7 +1,6 @@
 % Copyright (c) 2010, NorthScale, Inc.
 % All rights reserved.
 
-
 -module(ns_node_disco_conf_events).
 
 -behaviour(gen_event).

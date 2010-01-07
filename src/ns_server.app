@@ -1,7 +1,6 @@
 % Copyright (c) 2010, NorthScale, Inc.
 % All rights reserved.
 
-
 {application, ns_server,
  [{description, "NorthScale server"},
   {vsn, "0.0.0"},

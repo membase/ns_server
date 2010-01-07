@@ -1,5 +1,6 @@
 % Copyright (c) 2010, NorthScale, Inc.
 % All rights reserved.
+
 %%%-------------------------------------------------------------------
 %%% File    : stats_aggregator_manager.erl
 %%% Author  : Aliaksey Kandratsenka <alk@tut.by>

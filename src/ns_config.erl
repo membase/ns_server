@@ -285,15 +285,6 @@ save_file(bin, ConfigPath, X) ->
     ok = file:write(F, term_to_binary(X)),
     ok = file:close(F).
 
-pick_node_and_merge(_Mergable, Local, Nodes) when length(Nodes) == 0 -> Local;
-pick_node_and_merge(Mergable, Local, Nodes) ->
-    [Node | _] = misc:shuffle(Nodes),
-    case (catch ?MODULE:get(Node)) of
-        {'EXIT', _, _} -> Local;
-        {'EXIT', _}    -> Local;
-        Remote         -> merge_configs(Mergable, Remote, Local)
-    end.
-
 merge_configs(Mergable, Remote, Local) ->
     merge_configs(Mergable, Remote, Local, []).
 

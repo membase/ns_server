@@ -22,7 +22,6 @@
 %
 % See http://github.com/northscale/cucumberl for more info.
 
-
 -module(cucumberl).
 
 -include_lib("eunit/include/eunit.hrl").

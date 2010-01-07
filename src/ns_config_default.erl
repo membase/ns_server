@@ -1,7 +1,6 @@
 % Copyright (c) 2010, NorthScale, Inc.
 % All rights reserved.
 
-
 -module(ns_config_default).
 
 -export([default/0, mergable/0]).
