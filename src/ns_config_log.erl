@@ -22,8 +22,11 @@ setup_handler() ->
 init(ignored) ->
     {ok, #state{}, hibernate}.
 
+terminate(_Reason, _State)     -> ok.
+code_change(_OldVsn, State, _) -> {ok, State}.
+
 handle_event({K, V}, State) ->
-    error_logger:info_msg("Received a config change: ~p -> ~p~n", [K, V]),
+    error_logger:info_msg("config change: ~p -> ~p~n", [K, V]),
     {ok, State, hibernate};
 
 handle_event(_, State) ->
@@ -31,15 +34,9 @@ handle_event(_, State) ->
 
 handle_call(Request, State) ->
     error_logger:info_msg("handle_call(~p, ~p)~n", [Request, State]),
-    Reply = ok,
-    {ok, Reply, State, hibernate}.
+    {ok, ok, State, hibernate}.
 
 handle_info(Info, State) ->
     error_logger:info_msg("handle_info(~p, ~p)~n", [Info, State]),
     {ok, State, hibernate}.
 
-terminate(_Reason, _State) ->
-    ok.
-
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.

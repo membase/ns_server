@@ -10,7 +10,8 @@
          nodes_wanted_updated/0, nodes_wanted_updated/1,
          nodes_actual/0, nodes_actual_proper/0,
          cookie_init/0, cookie_get/0, cookie_set/1, cookie_sync/0,
-         join_pool/2,
+         pool_join/2,
+         config_push/0, config_push/1,
          loop/0]).
 
 -include_lib("eunit/include/eunit.hrl").
@@ -127,12 +128,12 @@ loop() ->
         {nodedown, Node} ->
             error_logger:info_msg("lost node: ~p~n", [Node])
     end,
-    % update_node_list(),
+    % TODO: Need to update_node_list(),
     ?MODULE:loop().
 
 % --------------------------------------------------
 
-join_pool(RemoteNode, NewCookie) ->
+pool_join(RemoteNode, NewCookie) ->
     % Assuming our caller has made this node into an 'empty' node
     % that's joinable to another cluster/pool, and assumes caller
     % has shutdown or is responsible for higher-level applications
@@ -155,14 +156,23 @@ join_pool(RemoteNode, NewCookie) ->
                               ns_node_disco:nodes_wanted(),
                               ok = ns_config:resave(),
                               ok;
-                        Err -> join_pool_err(OldCookie, Err)
+                        E -> pool_join_err(OldCookie, E)
                     end;
-                E -> join_pool_err(OldCookie, E)
+                E -> pool_join_err(OldCookie, E)
             end;
-        E -> join_pool_err(OldCookie, E)
+        E -> pool_join_err(OldCookie, E)
     end.
 
-join_pool_err(undefined, E) -> {error, E};
-join_pool_err(OldCookie, E) -> erlang:set_cookie(node(), OldCookie),
+pool_join_err(undefined, E) -> {error, E};
+pool_join_err(OldCookie, E) -> erlang:set_cookie(node(), OldCookie),
                                {error, E}.
 
+config_push() ->
+    Dynamic = ns_config:get_dynamic(node()),
+    config_push(Dynamic).
+
+config_push(RawKVList) ->
+    Nodes = lists:subtract(ns_node_disco:nodes_actual_proper(), [node()]),
+    misc:pmap(fun(Node) -> ns_config:set_remote(Node, RawKVList) end,
+              Nodes, 0, 2000),
+    Nodes.

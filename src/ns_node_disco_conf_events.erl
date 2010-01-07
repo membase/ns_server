@@ -20,6 +20,11 @@ start_link() ->
 init(DiscoPid) ->
     {ok, #state{disco=DiscoPid}, hibernate}.
 
+terminate(_Reason, _State)     -> ok.
+code_change(_OldVsn, State, _) -> {ok, State}.
+handle_info(_Info, State)      -> {ok, State, hibernate}.
+handle_call(_Request, State)   -> {ok, ok, State, hibernate}.
+
 handle_event({nodes_wanted, V}, State) ->
     error_logger:info_msg("nodes_wanted is now ~p~n", [V]),
     ns_node_disco:nodes_wanted_updated(V),
@@ -30,19 +35,21 @@ handle_event({otp, V}, State) ->
     ns_node_disco:nodes_wanted_updated(),
     {ok, State, hibernate};
 
+handle_event(Changed, State) when is_list(Changed) ->
+    Config = ns_config:get(),
+    ChangedRaw =
+        lists:foldl(fun({Key, _}, Acc) ->
+                            case ns_config:search_raw(Config, Key) of
+                                false           -> Acc;
+                                {value, RawVal} -> [{Key, RawVal} | Acc]
+                            end;
+                       (_, Acc) -> Acc
+                    end,
+                    [], Changed),
+    ns_node_disco:config_push(ChangedRaw),
+    {ok, State, hibernate};
+
 handle_event(_E, State) ->
     {ok, State, hibernate}.
 
-handle_call(_Request, State) ->
-    Reply = ok,
-    {ok, Reply, State, hibernate}.
-
-handle_info(_Info, State) ->
-    {ok, State, hibernate}.
-
-terminate(_Reason, _State) ->
-    ok.
-
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
 

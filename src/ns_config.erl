@@ -37,7 +37,7 @@
 -behaviour(gen_server).
 
 -define(METADATA_VER, '_ver').
--define(DEFAULT_GET_REMOTE_TIMEOUT, 500).
+-define(DEFAULT_TIMEOUT, 500).
 
 -export([start_link/2, start_link/1, stop/0,
          get/2, get/1, get/0, set/2, set/1,
@@ -92,17 +92,17 @@ set(Key, Val)   -> gen_server:call(?MODULE, {merge, [{Key, Val}]}).
 set(KVList)     -> gen_server:call(?MODULE, {merge,   KVList}).
 replace(KVList) -> gen_server:call(?MODULE, {replace, KVList}).
 
+set_remote(Node, KVList) ->
+    set_remote(Node, KVList, ?DEFAULT_TIMEOUT).
+set_remote(Node, KVList, Timeout) ->
+    gen_server:call({?MODULE, Node}, {merge, KVList}, Timeout).
+
 get()              -> gen_server:call(?MODULE, get).
-get(Node)          -> ?MODULE:get(Node, ?DEFAULT_GET_REMOTE_TIMEOUT).
+get(Node)          -> ?MODULE:get(Node, ?DEFAULT_TIMEOUT).
 get(Node, Timeout) -> gen_server:call({?MODULE, Node}, get, Timeout).
 
 get_dynamic(Node) ->
-    % TODO: We're currently just taking the first dynamic KVList,
-    %       and should instead by smushing all the dynamic KVLists together?
-    case ?MODULE:get(Node) of
-        #config{dynamic = [RemoteDynamic | _]} -> RemoteDynamic;
-        Error                                  -> {error, Error}
-    end.
+    config_dynamic(?MODULE:get(Node)).
 
 search(Key) -> search(?MODULE:get(), Key).
 
@@ -152,12 +152,8 @@ strip_metadata(X, _)                          -> X.
 init({full, ConfigPath, DirPath, PolicyMod} = Init) ->
     case load_config(ConfigPath, DirPath, PolicyMod) of
         {ok, Config} ->
-            Config2 = Config#config{init = Init},
-            % TODO: Should save the merged dynamic file config.
-            % TODO: Should let node_disco do picking and merging?
-            Mergable = PolicyMod:mergable(),
-            {ok, pick_node_and_merge(Mergable, Config2,
-                                     nodes([visible]))};
+            announce_changes(config_dynamic(Config)),
+            {ok, Config#config{init = Init}};
         Error ->
             {stop, Error}
     end;
@@ -186,10 +182,7 @@ handle_call(resave, _From, State) ->
     end;
 
 handle_call(reannounce, _From, State) ->
-    Dynamic = case State#config.dynamic of [H | _] -> H;
-                                           _       -> []
-              end,
-    announce_config_changes(Dynamic),
+    announce_changes(config_dynamic(State)),
     {reply, ok, State};
 
 handle_call(get, _From, State) -> {reply, State, State};
@@ -203,13 +196,26 @@ handle_call({merge, KVList}, From, State) ->
                            #config{dynamic = [KVList]},
                            State),
     case State2 =/= State of
-        true  ->
+        true ->
             case handle_call(resave, From, State2) of
-                {reply, ok, State3} -> handle_call(reannounce, From, State3);
-                Error               -> Error
+                {reply, ok, State3} = Result ->
+                    DynOld = config_dynamic(State),
+                    DynNew = config_dynamic(State3),
+                    DynChg = lists:subtract(DynNew, DynOld),
+                    announce_changes(DynChg),
+                    Result;
+                Error ->
+                    Error
             end;
         false -> {reply, ok, State2}
     end.
+
+%%--------------------------------------------------------------------
+
+% TODO: We're currently just taking the first dynamic KVList,
+%       and should instead be smushing all the dynamic KVLists together?
+config_dynamic(#config{dynamic = [X | _]}) -> X;
+config_dynamic(_)                          -> [].
 
 %%--------------------------------------------------------------------
 
@@ -256,7 +262,8 @@ save_config(#config{dynamic = D}, DirPath) ->
     % Only saving the dynamic config parts.
     ok = save_file(bin, C, D).
 
-announce_config_changes(KVList) ->
+announce_changes([]) -> ok;
+announce_changes(KVList) ->
     % Fire a event per changed key.
     lists:foreach(fun ({Key, Value}) ->
                       gen_event:notify(ns_config_events,
@@ -264,7 +271,7 @@ announce_config_changes(KVList) ->
                   end,
                   KVList),
     % Fire a generic event that 'something changed'.
-    gen_event:notify(ns_config_events, ns_config_events).
+    gen_event:notify(ns_config_events, KVList).
 
 load_file(txt, ConfigPath) -> read_includes(ConfigPath);
 
