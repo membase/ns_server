@@ -8,7 +8,7 @@
          init/0,
          nodes_wanted/0, nodes_wanted_updated/0, nodes_wanted_updated/1,
          nodes_actual/0, nodes_actual_proper/0,
-         cookie_init/0, cookie_sync/0,
+         cookie_init/0, cookie_set/1, cookie_sync/0,
          loop/0]).
 
 start_link() ->
@@ -62,7 +62,10 @@ cookie_init() ->
     NewCookie = list_to_atom(misc:rand_str(16)),
     ns_log:log(?MODULE, 0001, "otp cookie generated: ~p",
                [NewCookie]),
-    ns_config:set(otp, [{cookie, NewCookie}]).
+    cookie_set(NewCookie).
+
+cookie_set(Cookie) ->
+    ns_config:set(otp, [{cookie, Cookie}]).
 
 cookie_sync() ->
     case ns_config:search_prop(ns_config:get(), otp, cookie) of
