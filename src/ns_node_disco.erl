@@ -10,7 +10,10 @@
          nodes_wanted_updated/0, nodes_wanted_updated/1,
          nodes_actual/0, nodes_actual_proper/0,
          cookie_init/0, cookie_get/0, cookie_set/1, cookie_sync/0,
+         join_pool/2,
          loop/0]).
+
+-include_lib("eunit/include/eunit.hrl").
 
 start_link() ->
     {ok, spawn_link(?MODULE, init, [])}.
@@ -78,7 +81,9 @@ cookie_init() ->
 % Gets our wanted otp cookie.
 %
 cookie_set(Cookie) ->
-    ns_config:set(otp, [{cookie, Cookie}]).
+    X = ns_config:set(otp, [{cookie, Cookie}]),
+    erlang:set_cookie(node(), Cookie),
+    X.
 
 % Gets our wanted otp cookie (might be =/= our actual otp cookie).
 %
@@ -89,6 +94,7 @@ cookie_get() ->
 % Will generate a cookie if needed for the first time.
 %
 cookie_sync() ->
+    error_logger:info_msg("cookie_sync~n"),
     case cookie_get() of
         undefined ->
             case erlang:get_cookie() of
@@ -123,4 +129,45 @@ loop() ->
     end,
     % update_node_list(),
     ?MODULE:loop().
+
+% --------------------------------------------------
+
+join_pool(RemoteNode, NewCookie) ->
+    % Assuming our caller has made this node into an 'empty' node
+    % that's joinable to another cluster/pool, and assumes caller
+    % has shutdown or is responsible for higher-level applications
+    % (eg, emoxi, menelaus) as needed.
+    %
+    % Once the caller has restarted higher-level applications,
+    % it should call ns_config:reannounce() to get config-change
+    % event callbacks asynchronously invoked.
+    %
+    OldCookie = ns_node_disco:cookie_get(),
+    true = erlang:set_cookie(node(), NewCookie),
+    true = erlang:set_cookie(RemoteNode, NewCookie),
+    case net_adm:ping(RemoteNode) of
+        pong ->
+            case ns_config:get_dynamic(RemoteNode) of
+                RemoteDynamic when is_list(RemoteDynamic) ->
+                    ?debugVal(RemoteDynamic),
+                    case ns_config:replace(RemoteDynamic) of
+                        ok -> WantedOld = ns_node_disco:nodes_wanted_raw(),
+                              WantedNew = ns_node_disco:nodes_wanted(),
+                              X = [node()] =:= lists:subtract(WantedNew,
+                                                              WantedOld),
+                              ?debugVal(X),
+                              ns_node_disco:nodes_wanted_updated(),
+                              ok = ns_config:resave(),
+                              ok;
+                        Err ->
+                            join_pool_err(OldCookie, Err)
+                    end;
+                E -> join_pool_err(OldCookie, E)
+            end;
+        E -> join_pool_err(OldCookie, E)
+    end.
+
+join_pool_err(undefined, E) -> {error, E};
+join_pool_err(OldCookie, E) -> erlang:set_cookie(node(), OldCookie),
+                               {error, E}.
 

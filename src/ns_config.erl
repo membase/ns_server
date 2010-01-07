@@ -37,9 +37,11 @@
 -behaviour(gen_server).
 
 -define(METADATA_VER, '_ver').
+-define(DEFAULT_GET_REMOTE_TIMEOUT, 500).
 
 -export([start_link/2, start_link/1, stop/0,
          get/2, get/1, get/0, set/2, set/1,
+         get_dynamic/1,
          search/2, search/1,
          search_prop/3, search_prop/4,
          search_raw/2]).
@@ -76,9 +78,10 @@ start_link(Full) ->
 
 start_link(ConfigPath, PolicyMod) -> start_link([ConfigPath, PolicyMod]).
 
-stop()   -> gen_server:cast(?MODULE, stop).
-reload() -> gen_server:call(?MODULE, reload).
-resave() -> gen_server:call(?MODULE, resave).
+stop()       -> gen_server:cast(?MODULE, stop).
+reload()     -> gen_server:call(?MODULE, reload).
+resave()     -> gen_server:call(?MODULE, resave).
+reannounce() -> gen_server:call(?MODULE, reannounce).
 
 set(Key, PropList) when is_list(PropList) ->
     PropList2 = [{?METADATA_VER, erlang:now()} |
@@ -90,8 +93,16 @@ set(KVList)     -> gen_server:call(?MODULE, {merge,   KVList}).
 replace(KVList) -> gen_server:call(?MODULE, {replace, KVList}).
 
 get()              -> gen_server:call(?MODULE, get).
-get(Node)          -> ?MODULE:get(Node, 500).
+get(Node)          -> ?MODULE:get(Node, ?DEFAULT_GET_REMOTE_TIMEOUT).
 get(Node, Timeout) -> gen_server:call({?MODULE, Node}, get, Timeout).
+
+get_dynamic(Node) ->
+    % TODO: We're currently just taking the first dynamic KVList,
+    %       and should instead by smushing all the dynamic KVLists together?
+    case ?MODULE:get(Node) of
+        #config{dynamic = [RemoteDynamic | _]} -> RemoteDynamic;
+        Error                                  -> {error, Error}
+    end.
 
 search(Key) -> search(?MODULE:get(), Key).
 
@@ -162,11 +173,23 @@ handle_info(_Info, State)           -> {noreply, State}.
 handle_call(reload, _From, State) ->
     case init(State#config.init) of
         {ok, State2}  -> {reply, ok, State2};
-        {stop, Error} -> {reply, {error, Error}, State}
+        {stop, Error} -> ns_log:log(?MODULE, 0001, "reload failed: ~p",
+                                    [Error]),
+                         {reply, {error, Error}, State}
     end;
 
 handle_call(resave, _From, State) ->
-    save_config(State),
+    case save_config(State) of
+        ok    -> {reply, ok, State};
+        Error -> ns_log:log(?MODULE, 0002, "resave failed: ~p", [Error]),
+                 {reply, Error, State}
+    end;
+
+handle_call(reannounce, _From, State) ->
+    Dynamic = case State#config.dynamic of [H | _] -> H;
+                                           _       -> []
+              end,
+    announce_config_changes(Dynamic),
     {reply, ok, State};
 
 handle_call(get, _From, State) -> {reply, State, State};
@@ -174,17 +197,19 @@ handle_call(get, _From, State) -> {reply, State, State};
 handle_call({replace, KVList}, _From, State) ->
     {reply, ok, State#config{dynamic = [KVList]}};
 
-handle_call({merge, KVList}, _From, State) ->
+handle_call({merge, KVList}, From, State) ->
     PolicyMod = State#config.policy_mod,
     State2 = merge_configs(PolicyMod:mergable(),
                            #config{dynamic = [KVList]},
                            State),
     case State2 =/= State of
-        true  -> save_config(State2),
-                 announce_config_changes(KVList);
-        false -> ok
-    end,
-    {reply, ok, State2}.
+        true  ->
+            case handle_call(resave, From, State2) of
+                {reply, ok, State3} -> handle_call(reannounce, From, State3);
+                Error               -> Error
+            end;
+        false -> {reply, ok, State2}
+    end.
 
 %%--------------------------------------------------------------------
 
