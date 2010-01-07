@@ -1,7 +1,6 @@
 % Copyright (c) 2010, NorthScale, Inc.
 % All rights reserved.
 
-
 -module(ns_port_init).
 
 -behaviour(gen_event).
@@ -61,11 +60,10 @@ handle_event(_Stuff, State) ->
     {ok, State, hibernate}.
 
 handle_call(_Request, State) ->
-    Reply = ok,
-    {ok, Reply, State, hibernate}.
+    {ok, ok, State, hibernate}.
 
 handle_info(Info, State) ->
-    error_logger:info_msg("Unhandled port init message: ~p...~n", [Info]),
+    error_logger:info_msg("ns_port_init unhandled message: ~p...~n", [Info]),
     {ok, State, hibernate}.
 
 terminate(Reason, _State) ->
