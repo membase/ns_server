@@ -52,7 +52,8 @@
 % nodes getting added/removed, and gossiping about config
 % information.
 %
--record(config, {static = [],  % List of TupleList's; TupleList is {K, V}.
+-record(config, {init,         % Initialization parameters.
+                 static = [],  % List of TupleList's; TupleList is {K, V}.
                  dynamic = [], % List of TupleList's; TupleList is {K, V}.
                  policy_mod
                 }).
@@ -76,6 +77,8 @@ start_link(Full) ->
 start_link(ConfigPath, PolicyMod) -> start_link([ConfigPath, PolicyMod]).
 
 stop() -> gen_server:cast(?MODULE, stop).
+
+reinit() -> gen_server:call(?MODULE, reinit).
 
 set(Key, Val) -> ?MODULE:set([{Key, Val}]).
 set(KVList)   -> gen_server:call(?MODULE, {set, KVList}).
@@ -129,13 +132,15 @@ strip_metadata(X, _)                          -> X.
 
 %% gen_server callbacks
 
-init({full, ConfigPath, DirPath, PolicyMod}) ->
+init({full, ConfigPath, DirPath, PolicyMod} = Init) ->
     case load_config(ConfigPath, DirPath, PolicyMod) of
         {ok, Config} ->
+            Config2 = Config#config{init = Init},
             % TODO: Should save the merged dynamic file config.
             % TODO: Should let node_disco do picking and merging?
             Mergable = PolicyMod:mergable(),
-            {ok, pick_node_and_merge(Mergable, Config, nodes([visible]))};
+            {ok, pick_node_and_merge(Mergable, Config2,
+                                     nodes([visible]))};
         Error ->
             {stop, Error}
     end;
@@ -147,6 +152,12 @@ terminate(_Reason, _State)          -> ok.
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 handle_cast(stop, State)            -> {stop, shutdown, State}.
 handle_info(_Info, State)           -> {noreply, State}.
+
+handle_call(reinit, _From, State) ->
+    case init(State#config.init) of
+        {ok, State2}  -> {reply, ok, State2};
+        {stop, Error} -> {reply, {error, Error}, State}
+    end;
 
 handle_call(get, _From, State) -> {reply, State, State};
 
