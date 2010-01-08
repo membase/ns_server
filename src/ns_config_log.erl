@@ -17,7 +17,7 @@ start_link() ->
     {ok, spawn_link(?MODULE, setup_handler, [])}.
 
 setup_handler() ->
-    gen_event:add_handler(ns_config_events, ns_config_log, ignored).
+    gen_event:add_handler(ns_config_events, ?MODULE, ignored).
 
 init(ignored) ->
     {ok, #state{}, hibernate}.
