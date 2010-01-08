@@ -20,7 +20,8 @@ default() ->
                     ]},
      {alerts, []},
      {pools, [{"default",
-               [{port, 11211},
+               [{address, "0.0.0.0"}, % An IP binding
+                {port, 11211},
                 {buckets, [{"default",
                             [{auth_plain, undefined},
                              {size_per_node, 64}, % In MB.
