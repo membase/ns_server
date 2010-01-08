@@ -5,7 +5,9 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--export([start/2, start_link/2, init/2, session/4]).
+-export([start/2, start/3,
+         start_link/2, start_link/3,
+         init/3, session/4]).
 
 % Starting the server...
 %
@@ -26,19 +28,25 @@
 %   cmd(...)
 %
 start(PortNum, Env) ->
-    {ok, spawn(?MODULE, init, [PortNum, Env])}.
+    start(PortNum, "0.0.0.0", Env).
+start(PortNum, AddrStr, Env) ->
+    {ok, spawn(?MODULE, init, [PortNum, AddrStr, Env])}.
 
 start_link(PortNum, Env) ->
-    {ok, spawn_link(?MODULE, init, [PortNum, Env])}.
+    start_link(PortNum, "0.0.0.0", Env).
+start_link(PortNum, AddrStr, Env) ->
+    {ok, spawn_link(?MODULE, init, [PortNum, AddrStr, Env])}.
 
 % Note: this cannot be a gen_server, since our accept_loop
 % has its own receive blocking implementation.
 
-init(PortNum, Env) ->
+init(PortNum, AddrStr, Env) ->
+    {ok, Addr} = inet_parse:address(AddrStr),
     {ok, LS} = gen_tcp:listen(PortNum, [binary,
                                         {reuseaddr, true},
                                         {packet, raw},
-                                        {active, false}]),
+                                        {active, false},
+                                        {ip, Addr}]),
     accept_loop(LS, Env).
 
 % Accept incoming connections.
