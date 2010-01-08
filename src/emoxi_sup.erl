@@ -36,11 +36,7 @@
 
 -behaviour(supervisor).
 
--export([start_link/0]).
-
--export([init/1]).
-
--define(SERVER, ?MODULE).
+-export([start_link/0, init/1]).
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -54,6 +50,9 @@ init([]) ->
 child_specs() ->
     [{mc_downstream,
       {mc_downstream, start_link, []},
-      permanent, 1000, worker, [mc_downstream]}
+      permanent, 1000, worker, [mc_downstream]},
+     {mc_pool_init,
+      {mc_pool_init, start_link, []},
+      transient, 1000, worker, [mc_pool_init]}
     ].
 
