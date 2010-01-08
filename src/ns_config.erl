@@ -44,7 +44,8 @@
          get_dynamic/1,
          search/2, search/1,
          search_prop/3, search_prop/4,
-         search_raw/2]).
+         search_raw/2,
+         set_remote/2, set_remote/3]).
 
 % A static config file is often hand edited.
 % potentially with in-line manual comments.

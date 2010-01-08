@@ -13,6 +13,7 @@
          nodes_actual_other/0,
          cookie_init/0, cookie_get/0, cookie_set/1, cookie_sync/0,
          pool_join/2,
+         pool_leave/1, pool_leave/0,
          config_push/0, config_push/1, config_pull/0,
          loop/0]).
 
@@ -78,10 +79,13 @@ nodes_actual_proper() ->
 nodes_actual_other() ->
     lists:subtract(ns_node_disco:nodes_actual_proper(), [node()]).
 
-cookie_init() ->
-    {A1,A2,A3} = now(),
+cookie_gen() ->
+    {A1, A2, A3} = erlang:now(),
     random:seed(A1, A2, A3),
-    NewCookie = list_to_atom(misc:rand_str(16)),
+    list_to_atom(misc:rand_str(16)).
+
+cookie_init() ->
+    NewCookie = cookie_gen(),
     ns_log:log(?MODULE, 0001, "otp cookie generated: ~p",
                [NewCookie]),
     cookie_set(NewCookie).
@@ -140,17 +144,17 @@ loop() ->
 
 % --------------------------------------------------
 
+% Assuming our caller has made this node into an 'empty' node
+% that's joinable to another cluster/pool, and assumes caller
+% has shutdown or is responsible for higher-level applications
+% (eg, emoxi, menelaus) as needed.
+%
+% After this function finishes, the caller may restart
+% higher-level applications, and then it should call
+% ns_config:reannounce() to get config-change
+% event callbacks asynchronously fired.
+%
 pool_join(RemoteNode, NewCookie) ->
-    % Assuming our caller has made this node into an 'empty' node
-    % that's joinable to another cluster/pool, and assumes caller
-    % has shutdown or is responsible for higher-level applications
-    % (eg, emoxi, menelaus) as needed.
-    %
-    % After this function finishes, the caller may restart
-    % higher-level applications, and then it should call
-    % ns_config:reannounce() to get config-change
-    % event callbacks asynchronously fired.
-    %
     OldCookie = ns_node_disco:cookie_get(),
     true = erlang:set_cookie(node(), NewCookie),
     true = erlang:set_cookie(RemoteNode, NewCookie),
@@ -173,6 +177,20 @@ pool_join(RemoteNode, NewCookie) ->
 pool_join_err(undefined, E) -> {error, E};
 pool_join_err(OldCookie, E) -> erlang:set_cookie(node(), OldCookie),
                                {error, E}.
+
+% Should be invoked on a node that remains in the cluster/pool,
+% where the leaving RemoteNode is passed in as an argument.
+%
+pool_leave(RemoteNode) ->
+    rpc:call(RemoteNode, ?MODULE, pool_leave, [], 500),
+    NewWanted = lists:subtract(nodes_wanted(), [RemoteNode]),
+    ns_config:set(nodes_wanted, NewWanted),
+    ok.
+
+pool_leave() ->
+    cookie_init(),
+    ns_config:set(nodes_wanted, [node()]),
+    ok.
 
 % --------------------------------------------------
 
