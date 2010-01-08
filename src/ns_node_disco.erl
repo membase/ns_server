@@ -193,6 +193,6 @@ config_pull([Node | Rest], N) ->
     case (catch ns_config:get_dynamic(Node)) of
         {'EXIT', _, _} -> config_pull(Rest, N - 1);
         {'EXIT', _}    -> config_pull(Rest, N - 1);
-        RemoteKVList   -> ns_config:replace(RemoteKVList)
+        RemoteKVList   -> ns_config:set(RemoteKVList)
     end.
 
