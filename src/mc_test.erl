@@ -100,14 +100,14 @@ tests(emoxi) ->
 tests(emoxi_dyn) ->
     [bootstrap,
      vclock,
-     stream,
-     dmerkle,
-     dmerkle_tree,
-     partition,
+     stream
+     % dmerkle,
+     % dmerkle_tree,
+     % partition,
      % membership,     -- failing due to config to ns_config change.
      % storage_server, -- failing due to config to ns_config change.
      % storage_manager,
-     sync_manager
+     % sync_manager
     ].
 
 % For cmd-line...
