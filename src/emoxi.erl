@@ -36,9 +36,8 @@
 
 -behaviour(application).
 
--export([start/2, stop/1,
-         start/0, start_link/0,
-         pause_all_sync/0, start_all_sync/0]).
+-export([start/0, start/2, stop/1,
+         start_link/0]).
 
 % From cmd-line...
 %
@@ -58,23 +57,4 @@ stop(_State) ->
 start_link() ->
     crypto:start(),
     emoxi_sup:start_link().
-
-% ------------------------------------------------
-
-pause_all_sync() ->
-  SyncServers = lists:flatten(lists:map(fun(Node) ->
-      rpc:call(Node, sync_manager, loaded, [])
-    end, misc:running_nodes())),
-  lists:foreach(fun(Server) ->
-      sync_server:pause(Server)
-    end, SyncServers).
-
-start_all_sync() ->
-  SyncServers = lists:flatten(lists:map(fun(Node) ->
-      rpc:call(Node, sync_manager, loaded, [])
-    end, misc:running_nodes())),
-  lists:foreach(fun(Server) ->
-      sync_server:play(Server)
-    end, SyncServers).
-
 
