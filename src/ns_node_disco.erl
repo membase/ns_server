@@ -174,6 +174,8 @@ pool_join_err(undefined, E) -> {error, E};
 pool_join_err(OldCookie, E) -> erlang:set_cookie(node(), OldCookie),
                                {error, E}.
 
+% --------------------------------------------------
+
 config_push() ->
     Dynamic = ns_config:get_dynamic(node()),
     config_push(Dynamic).
@@ -181,7 +183,7 @@ config_push() ->
 config_push(RawKVList) ->
     Nodes = nodes_actual_other(),
     misc:pmap(fun(Node) -> ns_config:set_remote(Node, RawKVList) end,
-              Nodes, 0, 2000),
+              Nodes, length(Nodes), 2000),
     Nodes.
 
 config_pull() ->
