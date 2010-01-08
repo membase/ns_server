@@ -192,7 +192,9 @@ handle_call({replace, KVList}, _From, State) ->
 
 handle_call({merge, KVList}, From, State) ->
     PolicyMod = State#config.policy_mod,
-    State2 = merge_configs(PolicyMod:mergable(),
+    State2 = merge_configs(PolicyMod:mergable([State#config.dynamic,
+                                               State#config.static,
+                                               [KVList]]),
                            #config{dynamic = [KVList]},
                            State),
     case State2 =/= State of
@@ -215,6 +217,7 @@ handle_call({merge, KVList}, From, State) ->
 % TODO: We're currently just taking the first dynamic KVList,
 %       and should instead be smushing all the dynamic KVLists together?
 config_dynamic(#config{dynamic = [X | _]}) -> X;
+config_dynamic(#config{dynamic = []})      -> [];
 config_dynamic(X)                          -> X.
 
 %%--------------------------------------------------------------------

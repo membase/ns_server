@@ -148,8 +148,8 @@ loop() ->
     Timeout = 5000 + trunc(random:uniform() * 55000),
     receive
         {nodeup, Node} ->
-            % Handle network partition healing here.  This is
-            % different than a node restarting, since in a network
+            % This codepath also handles network partition healing here.
+            % This is different than a node restarting, since in a network
             % partition healing, nodes might be long-running and have
             % diverged config.
             error_logger:info_msg("new node: ~p~n", [Node]),
