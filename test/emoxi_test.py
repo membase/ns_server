@@ -1,5 +1,6 @@
-% Copyright (c) 2010, NorthScale, Inc.
-% All rights reserved.
+# Copyright (c) 2010, NorthScale, Inc.
+# All rights reserved.
+
 import sys
 import string
 import socket

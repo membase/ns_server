@@ -50,11 +50,8 @@ test_unit: ebins
 test_unit_verbose: ebins
 	erl $(EFLAGS) -noshell -s mc_test test -s init stop
 
-test_boot: ebins
-	erl -boot start_sasl $(EFLAGS) -s emoxi start
-
 test_main: ebins
-	erl $(EFLAGS) -noshell -s mc_test main
+	erl $(EFLAGS) -s mc_test main -noshell
 
 test_main_shell: ebins
 	erl $(EFLAGS) -s mc_test main
