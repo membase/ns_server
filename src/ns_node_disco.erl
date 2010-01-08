@@ -8,7 +8,9 @@
          init/0,
          nodes_wanted/0, nodes_wanted_raw/0,
          nodes_wanted_updated/0, nodes_wanted_updated/1,
-         nodes_actual/0, nodes_actual_proper/0,
+         nodes_actual/0,
+         nodes_actual_proper/0,
+         nodes_actual_other/0,
          cookie_init/0, cookie_get/0, cookie_set/1, cookie_sync/0,
          pool_join/2,
          config_push/0, config_push/1, config_pull/0,
@@ -69,7 +71,12 @@ nodes_actual_proper() ->
     Curr = nodes_actual(),
     Want = nodes_wanted(),
     Diff = lists:subtract(Curr, Want),
-    lists:subtract(Curr, Diff).
+    lists:usort(lists:subtract(Curr, Diff)).
+
+% Returns nodes_actual_proper(), but with self node() filtered out.
+
+nodes_actual_other() ->
+    lists:subtract(ns_node_disco:nodes_actual_proper(), [node()]).
 
 cookie_init() ->
     {A1,A2,A3} = now(),
@@ -172,12 +179,20 @@ config_push() ->
     config_push(Dynamic).
 
 config_push(RawKVList) ->
-    Nodes = lists:subtract(ns_node_disco:nodes_actual_proper(), [node()]),
+    Nodes = nodes_actual_other(),
     misc:pmap(fun(Node) -> ns_config:set_remote(Node, RawKVList) end,
               Nodes, 0, 2000),
     Nodes.
 
 config_pull() ->
-    ?debugVal(nodes_actual()),
-    ok.
+    config_pull(misc:shuffle(nodes_actual_other()), 5).
+
+config_pull([], _N)    -> ok;
+config_pull(_Nodes, 0) -> ok;
+config_pull([Node | Rest], N) ->
+    case (catch ns_config:get_dynamic(Node)) of
+        {'EXIT', _, _} -> config_pull(Rest, N - 1);
+        {'EXIT', _}    -> config_pull(Rest, N - 1);
+        RemoteKVList   -> ns_config:replace(RemoteKVList)
+    end.
 

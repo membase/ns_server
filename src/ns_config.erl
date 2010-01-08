@@ -214,7 +214,7 @@ handle_call({merge, KVList}, From, State) ->
 % TODO: We're currently just taking the first dynamic KVList,
 %       and should instead be smushing all the dynamic KVLists together?
 config_dynamic(#config{dynamic = [X | _]}) -> X;
-config_dynamic(_)                          -> [].
+config_dynamic(X)                          -> X.
 
 %%--------------------------------------------------------------------
 
