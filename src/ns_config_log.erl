@@ -20,8 +20,6 @@ setup_handler() ->
     gen_event:add_handler(ns_config_events, ns_config_log, ignored).
 
 init(ignored) ->
-    % Make ns_config announce all its keys so callbacks get going.
-    ns_config:reannounce(),
     {ok, #state{}, hibernate}.
 
 terminate(_Reason, _State)     -> ok.

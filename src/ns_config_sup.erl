@@ -29,8 +29,7 @@ init([]) ->
            {ns_node_disco,
             {ns_node_disco, start_link, []},
             permanent, 10, worker, []},
-           % ensure ns_config_log is the last child, because its init()
-           % forces a ns_config:reannounce().
+           % logs config changes for debugging.
            {ns_config_log,
             {ns_config_log, start_link, []},
             transient, 10, worker, []}

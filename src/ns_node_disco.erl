@@ -11,7 +11,7 @@
          nodes_actual/0, nodes_actual_proper/0,
          cookie_init/0, cookie_get/0, cookie_set/1, cookie_sync/0,
          pool_join/2,
-         config_push/0, config_push/1,
+         config_push/0, config_push/1, config_pull/0,
          loop/0]).
 
 -include_lib("eunit/include/eunit.hrl").
@@ -176,3 +176,8 @@ config_push(RawKVList) ->
     misc:pmap(fun(Node) -> ns_config:set_remote(Node, RawKVList) end,
               Nodes, 0, 2000),
     Nodes.
+
+config_pull() ->
+    ?debugVal(nodes_actual()),
+    ok.
+
