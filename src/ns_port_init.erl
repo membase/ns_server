@@ -29,7 +29,7 @@ init(ignored) ->
     {ok, #state{}, hibernate}.
 
 handle_event({port_servers, List}, State) ->
-    error_logger:info_msg("Changing port servers: ~p...~n", [List]),
+    error_logger:info_msg("ns_port_init changing e-ports: ~p...~n", [List]),
 
     % CurrPorts looks like...
     %   [{memcached,<0.77.0>,worker,[ns_port_server]}]
