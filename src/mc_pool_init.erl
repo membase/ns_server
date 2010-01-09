@@ -27,8 +27,39 @@ init(ignored) ->
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
 
-handle_event({pools, V}, State) ->
-    error_logger:info_msg("mc_pool_init config change: ~p~n", [V]),
+% With {pools, PropList}, the PropList looks like:
+%
+%  [{"default", [
+%     {port, 11211},
+%     {buckets, [
+%       {"default", [
+%         {auth_plain, undefined},
+%         {size_per_node, 64}, % In MB.
+%         {cache_expiration_range, {0, 600}}
+%       ]}
+%     ]}
+%   ]}]
+
+handle_event({pools, PropList}, State) ->
+    error_logger:info_msg("mc_pool_init config change: ~p~n", [PropList]),
+
+    WantPoolNames = proplists:get_keys(PropList),
+
+    % CurrPools looks like...
+    %   [{{pool, PoolName},<0.77.0>,worker,[_]}]
+    %
+    CurrPools = emoxi_sup:current_pools(),
+    CurrPoolNames = lists:map(fun({{pool, Name}, _Pid, _, _}) -> Name end,
+                              CurrPools),
+
+    OldPoolNames = lists:subtract(CurrPoolNames, WantPoolNames),
+    NewPoolNames = lists:subtract(WantPoolNames, CurrPoolNames),
+
+    lists:foreach(fun(Name) -> emoxi_sup:stop_pool(Name) end,
+                  OldPoolNames),
+    lists:foreach(fun(Name) -> emoxi_sup:start_pool(Name) end,
+                  NewPoolNames),
+
     {ok, State, hibernate};
 
 handle_event(_, State) ->
