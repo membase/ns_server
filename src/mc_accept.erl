@@ -41,13 +41,22 @@ start_link(PortNum, AddrStr, Env) ->
 % has its own receive blocking implementation.
 
 init(PortNum, AddrStr, Env) ->
-    {ok, Addr} = inet_parse:address(AddrStr),
-    {ok, LS} = gen_tcp:listen(PortNum, [binary,
-                                        {reuseaddr, true},
-                                        {packet, raw},
-                                        {active, false},
-                                        {ip, Addr}]),
-    accept_loop(LS, Env).
+    case inet_parse:address(AddrStr) of
+        {ok, Addr} ->
+            case gen_tcp:listen(PortNum, [binary,
+                                          {reuseaddr, true},
+                                          {packet, raw},
+                                          {active, false},
+                                          {ip, Addr}]) of
+                {ok, L} -> accept_loop(L, Env);
+                Error   -> ns_log:log(?MODULE, 0002, "listen error: ~p",
+                                      [Error]),
+                           Error
+            end;
+        Error -> ns_log:log(?MODULE, 0003, "parse address error: ~p",
+                            [AddrStr]),
+                 Error
+    end.
 
 % Accept incoming connections.
 accept_loop(LS, {ProtocolModule, ProcessorModule, ProcessorEnv}) ->
@@ -67,8 +76,9 @@ accept_loop(LS, {ProtocolModule, ProcessorModule, ProcessorEnv}) ->
                               ProcessorModule, ProcessorSession]),
             gen_tcp:controlling_process(NS, Pid),
             accept_loop(LS, {ProtocolModule, ProcessorModule, ProcessorEnv2});
-        _Error ->
-            ns_log:log(?MODULE, 1, "could not start session"),
+        Error ->
+            ns_log:log(?MODULE, 0001, "could not start session: ~p",
+                       [Error]),
             gen_tcp:close(NS),
             accept_loop(LS, {ProtocolModule, ProcessorModule, ProcessorEnv})
     end.
