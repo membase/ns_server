@@ -139,7 +139,7 @@ auth_to_bucket(#mc_pool{}, _Mech, _AuthData) ->
 % ------------------------------------------------
 
 name_to_server_name(Name) ->
-    list_to_atom("mc_pool-" ++ Name).
+    list_to_atom(atom_to_list(?MODULE) ++ "-" ++ Name).
 
 get_bucket_auth(BucketConfig) ->
     case proplists:get_value(auth_plain, BucketConfig) of

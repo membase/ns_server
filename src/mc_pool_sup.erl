@@ -36,12 +36,13 @@
 
 -behaviour(supervisor).
 
--export([start_link/1, init/1, current_children/0]).
+-export([start_link/1, init/1, current_children/1]).
 
 -include_lib("eunit/include/eunit.hrl").
 
 start_link(Name) ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, Name).
+    ServerName = name_to_server_name(Name),
+    supervisor:start_link({local, ServerName}, ?MODULE, Name).
 
 % mc_pull_sup children are dynamic...
 %
@@ -54,8 +55,7 @@ start_link(Name) ->
 %       session-loop_in {spawn_link} mc_pool-default
 %         session-loop_out {spawn_link}}
 %
-% Need to kill pool & accept if pool removed.
-% Need to restart accept if port changes.
+% TODO: Need to restart accept if port changes.
 
 init(Name) ->
     case ns_config:search_prop(ns_config:get(), pools, Name) of
@@ -76,19 +76,23 @@ init(Name) ->
             {ok, {{rest_for_one, 3, 10}, Children}}
     end.
 
-current_children() ->
+current_children(Name) ->
     % Children will look like...
     %   [{mc_pool,<0.77.0>,worker,[_]},
     %    {mc_accept,<0.78.0>,worker,[_]}]
     %
-    Children1 = supervisor:which_children(?MODULE),
+    ServerName = name_to_server_name(Name),
+    Children1 = supervisor:which_children(ServerName),
     lists:foldl(fun({Id, Pid, _, _} = X, Acc) ->
                     case is_pid(Pid) of
                         true  -> [X | Acc];
-                        false -> supervisor:delete_child(?MODULE, Id),
+                        false -> supervisor:delete_child(ServerName, Id),
                                  Acc
                     end
                 end,
                 [],
                 Children1).
+
+name_to_server_name(Name) ->
+    list_to_atom(atom_to_list(?MODULE) ++ "-" ++ Name).
 
