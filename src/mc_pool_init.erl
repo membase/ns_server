@@ -54,11 +54,14 @@ handle_event({pools, PropList}, State) ->
 
     OldPoolNames = lists:subtract(CurrPoolNames, WantPoolNames),
     NewPoolNames = lists:subtract(WantPoolNames, CurrPoolNames),
+    SamePoolNames = lists:subtract(CurrPoolNames, OldPoolNames),
 
     lists:foreach(fun(Name) -> emoxi_sup:stop_pool(Name) end,
                   OldPoolNames),
     lists:foreach(fun(Name) -> emoxi_sup:start_pool(Name) end,
                   NewPoolNames),
+    lists:foreach(fun(Name) -> mc_pool_sup:reconfig(Name) end,
+                  SamePoolNames),
 
     {ok, State, hibernate};
 

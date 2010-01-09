@@ -97,6 +97,7 @@ reconfig(Name, PoolConfig) ->
     CurrentChildren = current_children(Name),
     lists:foreach(
       fun({mc_accept, undefined, _, _}) ->
+              ns_log:log(?MODULE, 0003, "reconfig accept start ~p", [Name]),
               supervisor:terminate_child(ServerName, mc_accept),
               supervisor:delete_child(ServerName, mc_accept),
               supervisor:start_child(ServerName,
@@ -108,6 +109,8 @@ reconfig(Name, PoolConfig) ->
               case CurrArgs =:= WantArgs of
                   true  -> ok;
                   false ->
+                      ns_log:log(?MODULE, 0004, "reconfig accept change ~p",
+                                 [Name]),
                       supervisor:terminate_child(ServerName, mc_accept),
                       supervisor:delete_child(ServerName, mc_accept),
                       supervisor:start_child(ServerName, WantSpec),
