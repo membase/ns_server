@@ -44,6 +44,7 @@
          get_dynamic/1,
          search/2, search/1,
          search_prop/3, search_prop/4,
+         search_prop_tuple/3, search_prop_tuple/4,
          search_raw/2,
          set_remote/2, set_remote/3]).
 
@@ -113,8 +114,12 @@ search(Config, Key) ->
         {value, X} -> {value, strip_metadata(X, [])}
     end.
 
+% Returns the Value or undefined.
+
 search_prop(Config, Key, SubKey) ->
     search_prop(Config, Key, SubKey, undefined).
+
+% Returns the Value or the DefaultSubVal.
 
 search_prop(Config, Key, SubKey, DefaultSubVal) ->
     case search(Config, Key) of
@@ -122,6 +127,28 @@ search_prop(Config, Key, SubKey, DefaultSubVal) ->
             proplists:get_value(SubKey, PropList, DefaultSubVal);
         false ->
             DefaultSubVal
+    end.
+
+% Returns the full KeyValTuple (eg, {Key, Val}) or undefined.
+
+search_prop_tuple(Config, Key, SubKey) ->
+    search_prop_tuple(Config, Key, SubKey, undefined).
+
+% Returns the full KeyValTuple (eg, {Key, Val}) or the DefaultTuple.
+
+search_prop_tuple(Config, Key, SubKey, DefaultTuple) ->
+    case search(Config, Key) of
+        {value, PropList} ->
+            % We have our own proplist_get_value implementation because
+            % the tuples in our config might not be clean {Key, Val}
+            % 2-tuples, but might look like {Key, Val, More, Stuff},
+            % and we want to return the full tuple.
+            %
+            % proplists:get_value(SubKey, PropList, DefaultSubVal);
+            %
+            proplist_get_value(SubKey, PropList, DefaultTuple);
+        false ->
+            DefaultTuple
     end.
 
 % The search_raw API does not strip out metadata from results.
@@ -140,6 +167,13 @@ search_raw(#config{dynamic = DL, static = SL}, Key) ->
     end.
 
 %% Implementation
+
+proplist_get_value(_Key, [], DefaultTuple) -> DefaultTuple;
+proplist_get_value(Key, [KeyValTuple | Rest], DefaultTuple) ->
+    case element(1, KeyValTuple) =:= Key of
+        true  -> KeyValTuple;
+        false -> proplist_get_value(Key, Rest, DefaultTuple)
+    end.
 
 % Removes metadata like METADATA_VER from results.
 

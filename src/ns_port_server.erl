@@ -47,7 +47,7 @@ get_port_server_config(PortName) ->
     get_port_server_config(ns_config:get(), PortName).
 
 get_port_server_config(Config, PortName) ->
-    ns_config:search_prop(Config, port_servers, PortName).
+    ns_config:search_prop_tuple(Config, port_servers, PortName).
 
 find_param(_, [])              -> false;
 find_param(_, [_])             -> false;
