@@ -42,7 +42,7 @@ clean:
 
 test: test_unit cucumber
 
-test_full: test memcapable test_boot
+test_full: test memcapable
 
 test_unit: ebins
 	erl $(EFLAGS) -noshell -s mc_test test -s init stop -kernel error_logger silent
