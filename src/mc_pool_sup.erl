@@ -72,7 +72,7 @@ init(Name) ->
                          permanent, 10, worker, []},
                         {mc_accept, {mc_accept, start_link,
                                      [PortNum, AddrStr, Env]},
-                         permanent, 10, worker, []}],
+                         transient, 10, worker, []}],
             {ok, {{rest_for_one, 3, 10}, Children}}
     end.
 

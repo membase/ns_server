@@ -50,12 +50,12 @@ init(PortNum, AddrStr, Env) ->
                                           {ip, Addr}]) of
                 {ok, L} -> accept_loop(L, Env);
                 Error   -> ns_log:log(?MODULE, 0002, "listen error: ~p",
-                                      [Error]),
-                           Error
+                                      [{PortNum, AddrStr, Error}]),
+                           ok % A normal exit, prevents supervisor exit.
             end;
         Error -> ns_log:log(?MODULE, 0003, "parse address error: ~p",
                             [AddrStr]),
-                 Error
+                 {error, Error}
     end.
 
 % Accept incoming connections.
