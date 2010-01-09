@@ -187,7 +187,7 @@ of representations, since they are similar for different parts of the heirarchy.
 *Request*
 
 <pre class="restcalls">
- GET /pool
+ GET /pools
  Host: node.in.your.pool.com
  Authorization: Basic xxxxxxxxxxxxxxxxxxx
  Accept: application/com.northscale.store+json
@@ -205,18 +205,18 @@ of representations, since they are similar for different parts of the heirarchy.
   "pools" : [
     {
       "name": "Default Pool",
-      "uri": "/pool/default",
+      "uri": "/pools/default",
     },
     {
       "name": "NorthScale kvcaching pool name",
-      "uri": "/pool/anotherpool",
+      "uri": "/pools/anotherpool",
     },
     {
       "name": "A pool elsewhere",
-      "uri": "https://a.node.in.another.pool.com:4321/pool/default"
+      "uri": "https://a.node.in.another.pool.com:4321/pools/default"
     }
   ]
-  "uri": "https://node.in.your.pool.com/pool",
+  "uri": "https://node.in.your.pool.com/pools",
   "specificationVersion": [
     "0.1"
    ]
@@ -258,7 +258,7 @@ transitions to the client, if backward compatibility is desirable.
    "name" : "Default Pool",
    "state": {
      "current" : "transitioning",
-     "uri" : "/pool/default/state"
+     "uri" : "/pools/default/state"
    }
    "nodes" : [
      {
@@ -268,7 +268,7 @@ transitions to the client, if backward compatibility is desirable.
        "status" : "healthy",
        "ports" : {
          "routing" : 11211,
-         "caching" : 11311,
+         "kvcache" : 11311,
          "kvstore" : 11411
        }
      },
@@ -279,20 +279,20 @@ transitions to the client, if backward compatibility is desirable.
        "status" : "healthy",
        "ports" : {
          "routing" : 11211,
-         "caching" : 11311,
+         "kvcache" : 11311,
          "kvstore" : 11411
        }
      }
-   ]
+   ],
    "buckets" : [
      {
        "name" : "yourbucket",
-       "uri" : "https://node.in.pool.com/pool/Default Pool/bucket/yourbucket"
+       "uri" : "https://node.in.pool.com/pools/default/buckets/yourbucket"
      },
      {
        "name" : "yourotherbucket",
-       "uri" : "https://node.in.pool.com/pool/Default Pool/bucket/yourotherbucket",
-       "preferredPort" : "caching"
+       "uri" : "https://node.in.pool.com/pools/default/buckets/yourotherbucket",
+       "preferredPort" : "kvcache"
      }
    ],
    "controllers" : {
@@ -328,12 +328,16 @@ operators or developers using the routing port will see some overhead compared
 to connecting to the caching or kvstore port directly, but do not have to
 deal with pool reconfiguration events.
 
+Clients MUST NOT rely on the node list here to create their "server list" for 
+when connecting.  They MUST instead issue an HTTP get call to the bucket to 
+get the node list for that specific bucket.  
+
 ####Node Details
 
 *Request*
 
 <pre class="restcalls">
- GET https://first_node.in.pool.com:80/pool/Default Pool/node/first_node/
+ GET https://first_node.in.pool.com:80/pools/default/node/first_node/
  Host: node.in.your.pool.com
  Authorization: Basic xxxxxxxxxxxxxxxxxxx
  Accept: application/com.northscale.store+json
@@ -356,7 +360,7 @@ sense, like a backup or asking a node to join a pool.
   "status: "healthy",
   "ports" : {
     "routing" : 11211,
-    "caching" : 11311,
+    "kvcache" : 11311,
     "kvstore" : 11411
   }
   "os" : "none",
@@ -371,7 +375,7 @@ sense, like a backup or asking a node to join a pool.
 *Request*
 
 <pre class="restcalls">
- GET /pool/Default Pool/bucket
+ GET /pools/default/buckets
  Host: node.in.your.pool.com
  Authorization: Basic xxxxxxxxxxxxxxxxxxx
  Accept: application/com.northscale.store+json
@@ -387,11 +391,11 @@ sense, like a backup or asking a node to join a pool.
  "buckets" : [
    {
      "name" : "yourbucket",
-     "uri" : "https://node.in.pool.com/pool/Default Pool/bucket/yourbucket"
+     "uri" : "https://node.in.pool.com/pools/default/buckets/yourbucket"
    },
    {
      "name" : "anotherbucket",
-     "uri" : "https://node.in.pool.com/pool/Default Pool/bucket/anotherbucket",
+     "uri" : "https://node.in.pool.com/pools/default/buckets/anotherbucket",
      "preferredPort" : "caching"
    }
  ]
@@ -418,7 +422,7 @@ bucket or pool.
 *Request*
 
 <pre class="restcalls">
- GET /pool/Default Pool/stats?stat=opsbysecond&period=5m
+ GET /pools/default/stats?stat=opsbysecond&period=5m
  Host: node.in.your.pool.com
  Authorization: Basic xxxxxxxxxxxxxxxxxxx
  Accept: application/com.northscale.store+json
@@ -450,14 +454,14 @@ resource is the same to aid code reuse.
 *Request*
 
 <pre class="restcalls">
- GET /pool/Default Pool/stats?stat=hot_keys&number=10
+ GET /pools/default/stats?stat=hot_keys&number=10
  Host: node.in.your.pool.com
  Authorization: Basic xxxxxxxxxxxxxxxxxxx
  Accept: application/com.northscale.store+json
  X-memcachekv-Store-Client-Specification-Version: 0.1
 </pre>
 
-_Note:_ the GET above could have been "/pool/Default Pool/bucket/Exerciser Application"
+_Note:_ the GET above could have been "/pools/default/buckets/Exerciser Application"
 to generate the same kind of response.
 
 *Response*
@@ -482,7 +486,7 @@ to generate the same kind of response.
 *Request*
 
 <pre class="restcalls">
-PUT /pool/My New Pool/bucket/New bucket
+PUT /pools/My New Pool/buckets/New bucket
 {
    "name" : "New bucket"
 }
@@ -493,7 +497,7 @@ PUT /pool/My New Pool/bucket/New bucket
 response 201: bucket was created and valid URIs returned
 
 <pre class="restcalls">
-POST /pool/My New Pool/bucket/Another bucket
+POST /pools/My New Pool/buckets/Another bucket
 {
    "name" : "Another bucket"
    "bucketRules" : {
@@ -504,6 +508,30 @@ POST /pool/My New Pool/bucket/Another bucket
        },
      "replicationFactor" : 2
    }
+   "nodes" : [
+              {
+                "name" : "10.0.1.20",
+                "uri" : "/addresses/10.0.1.20",
+                "ipAddress" : "10.0.1.20",
+                "status" : "healthy",
+                "ports" : {
+                  "routing" : 11211,
+                  "kvcache" : 11311,
+                  "kvstore" : 11411
+                }
+              },
+              {
+                "name" : "10.0.1.21",
+                "uri" : "/addresses/10.0.1.21",
+                "ipAddress" : "10.0.1.20",
+                "status" : "healthy",
+                "ports" : {
+                  "routing" : 11211,
+                  "kvcache" : 11311,
+                  "kvstore" : 11411
+                }
+              }
+   ]
 }
 </pre>
 
@@ -518,6 +546,60 @@ per the memcached protocol), the system will clean up.
 Note that replication factor (a.k.a. in memory replication across cache nodes)
 will not be supported at 1.0 and may not be tunable.
 
+Clients MUST use the nodes list from the bucket, not the pool to indicate which
+are the appropriate nodes to connect to.
+
+#####Getting a Bucket
+
+*Request*
+
+<pre class="restcalls">
+GET /pools/default/buckets/New bucket
+</pre>
+
+*Response*
+
+response 201: bucket was created and valid URIs returned
+
+<pre class="restcalls">
+POST /pools/My New Pool/buckets/Another bucket
+{
+   "name" : "Another bucket"
+   "bucketRules" : {
+     "cacheRange" :
+       {
+         "min" : 1,
+         "max" : 599
+       },
+     "replicationFactor" : 2
+   }
+   "nodes" : [
+              {
+                "name" : "10.0.1.20",
+                "uri" : "/addresses/10.0.1.20",
+                "ipAddress" : "10.0.1.20",
+                "status" : "healthy",
+                "ports" : {
+                  "routing" : 11211,
+                  "kvcache" : 11311,
+                  "kvstore" : 11411
+                }
+              },
+              {
+                "name" : "10.0.1.21",
+                "uri" : "/addresses/10.0.1.21",
+                "ipAddress" : "10.0.1.20",
+                "status" : "healthy",
+                "ports" : {
+                  "routing" : 11211,
+                  "kvcache" : 11311,
+                  "kvstore" : 11411
+                }
+              }
+   ]
+}
+</pre>
+
 ###Renaming a Bucket
 
 Assuming the response above on getting a bucket, renaming the bucket is a
@@ -527,7 +609,7 @@ The system will then issue a redirect indicating success.
 *Request*
 
 <pre class="restcalls">
- POST /pool/My New Pool/bucket/Another bucket
+ POST /pools/My New Pool/buckets/Another bucket
  Host: node.in.your.pool.com
  Authorization: Basic xxxxxxxxxxxxxxxxxxx
  Accept: application/com.northscale.store+json
@@ -564,7 +646,7 @@ At release of 1.0, this will always return a 403.
 *Request*
 
 <pre class="restcalls">
-POST /pool/My New Pool
+POST /pools/My New Pool
 {
    "name" : "My New Pool"
 }
@@ -595,6 +677,9 @@ publications and particularly
 and [this blog](http://roy.gbiv.com/untangled/2009/it-is-okay-to-use-post)
 have been referenced.
 
+## Todo
+* Strip out some of the non 1.0 things.  Priroities, etc.
+
 ## Changelog
 * 20091113 First publishing (matt.ingenthron@northscale.com)
 * 20091115 Updated with some operations (matt.ingenthron@northscale.com)
@@ -612,3 +697,5 @@ have been referenced.
   interface. (matt.ingenthron@northscale.com)
 * 20091210 Moved to camelCase for JSON object names.  Added restrictions on
   pool and bucket names.  (matt.ingenthron@northscale.com)
+* 20101207 Changed some paths to plural from singlular.  Reflected node tracking
+  changes moving to buckets.
