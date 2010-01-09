@@ -5,7 +5,11 @@
 
 -behavior(gen_server).
 
--export([start_link/4, params/1]).
+%% API
+-export([start_link/4, params/1,
+         get_port_server_config/1,
+         get_port_server_config/2,
+         find_param/2]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -15,8 +19,12 @@
          code_change/3,
          terminate/2]).
 
+-include_lib("eunit/include/eunit.hrl").
+
 %% Server state
 -record(state, {port, name, params, started}).
+
+% ----------------------------------------------
 
 start_link(Name, Cmd, Args, Opts) ->
     gen_server:start_link({local, Name}, ?MODULE,
@@ -24,6 +32,29 @@ start_link(Name, Cmd, Args, Opts) ->
 
 params(Pid) ->
     gen_server:call(Pid, params).
+
+% {port_servers,
+%   [{memcached, "./memcached",
+%     ["-E", "engines/default_engine.so",
+%      "-p", "11212"
+%      ],
+%     [{env, [{"MEMCACHED_CHECK_STDIN", "thread"}]}]
+%    }
+%   ]
+% }.
+
+get_port_server_config(PortName) ->
+    get_port_server_config(ns_config:get(), PortName).
+
+get_port_server_config(Config, PortName) ->
+    ns_config:search_prop(Config, port_servers, PortName).
+
+find_param(_, [])              -> false;
+find_param(_, [_])             -> false;
+find_param(X, [X, Val | _])    -> {value, Val};
+find_param(X, [_, Val | Rest]) -> find_param(X, [Val | Rest]).
+
+% ----------------------------------------------
 
 init({Name, _Cmd, _Args, _Opts} = Params) ->
     Port = open_port(Params),
@@ -85,3 +116,18 @@ terminate(Reason, State) ->
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+
+% ----------------------------------------------
+
+find_param_test() ->
+    ?assertEqual({value, "11212"},
+                 find_param("-p", ["-E", "engines/default_engine.so",
+                                   "-p", "11212"])),
+    ?assertEqual({value, "11212"},
+                 find_param("-p", ["-p", "11212",
+                                   "-E", "engines/default_engine.so"])),
+    ?assertEqual({value, "11212"},
+                 find_param("-p", ["-p", "11212"])),
+    ?assertEqual(false,
+                 find_param("-p", ["-p"])),
+    ok.

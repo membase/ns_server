@@ -15,7 +15,8 @@ tests(ns_server) ->
      stats_aggregator_manager,
      ns_config,
      ns_log,
-     ns_port_init].
+     ns_port_init,
+     ns_port_server].
 
 test() ->
     {test_list(tests(ns_server))}.
