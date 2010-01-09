@@ -59,22 +59,29 @@ start_link(Name) ->
 
 init(Name) ->
     case ns_config:search_prop(ns_config:get(), pools, Name) of
-        undefined -> ns_log:log(?MODULE, 0001, "missing pool config: ~p",
-                                [Name]),
-                     {error, einval};
-        Config ->
-            AddrStr = proplists:get_value(address, Config, "0.0.0.0"),
-            PortNum = proplists:get_value(port, Config, 11211),
-            Env = {mc_server_detect,
-                   mc_server_detect,
-                   {mc_pool, Name}},
-            Children = [{mc_pool, {mc_pool, start_link, [Name]},
-                         permanent, 10, worker, []},
-                        {mc_accept, {mc_accept, start_link,
-                                     [PortNum, AddrStr, Env]},
-                         transient, 10, worker, []}],
-            {ok, {{rest_for_one, 3, 10}, Children}}
+        undefined  -> ns_log:log(?MODULE, 0001, "missing pool config: ~p",
+                                 [Name]),
+                      {error, einval};
+        PoolConfig -> child_specs(Name, PoolConfig)
     end.
+
+child_specs(Name, PoolConfig) ->
+    Children = [child_spec_pool(Name, PoolConfig),
+                child_spec_accept(Name, PoolConfig)],
+    {ok, {{rest_for_one, 3, 10}, Children}}.
+
+child_spec_pool(Name, _PoolConfig) ->
+    {mc_pool, {mc_pool, start_link, [Name]},
+     permanent, 10, worker, []}.
+
+child_spec_accept(Name, PoolConfig) ->
+    AddrStr = proplists:get_value(address, PoolConfig, "0.0.0.0"),
+    PortNum = proplists:get_value(port, PoolConfig, 11211),
+    Env = {mc_server_detect,
+           mc_server_detect,
+           {mc_pool, Name}},
+    {mc_accept, {mc_accept, start_link, [PortNum, AddrStr, Env]},
+     temporary, 10, worker, []}.
 
 current_children(Name) ->
     % Children will look like...
@@ -82,16 +89,7 @@ current_children(Name) ->
     %    {mc_accept,<0.78.0>,worker,[_]}]
     %
     ServerName = name_to_server_name(Name),
-    Children1 = supervisor:which_children(ServerName),
-    lists:foldl(fun({Id, Pid, _, _} = X, Acc) ->
-                    case is_pid(Pid) of
-                        true  -> [X | Acc];
-                        false -> supervisor:delete_child(ServerName, Id),
-                                 Acc
-                    end
-                end,
-                [],
-                Children1).
+    supervisor:which_children(ServerName).
 
 name_to_server_name(Name) ->
     list_to_atom(atom_to_list(?MODULE) ++ "-" ++ Name).
