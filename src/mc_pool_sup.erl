@@ -116,6 +116,9 @@ reconfig(Name, PoolConfig) ->
                       supervisor:start_child(ServerName, WantSpec),
                       ok
               end;
+         ({mc_pool, Pid, _, _}) ->
+              mc_pool:reconfig(Pid, Name, PoolConfig),
+              ok;
          (_) -> ok
       end,
       CurrentChildren).

@@ -20,7 +20,7 @@
                   }).
 
 %% API
--export([start_link/1]).
+-export([start_link/1, reconfig/2, reconfig/3]).
 
 %% gen_server callbacks
 -export([init/1, terminate/2, code_change/3,
@@ -29,6 +29,14 @@
 start_link(Name) ->
     gen_server:start_link({local, name_to_server_name(Name)},
                           ?MODULE, Name, []).
+
+reconfig(PoolName, PoolConfig) ->
+    gen_server:call(name_to_server_name(PoolName),
+                    {reconfig, PoolName, PoolConfig}).
+
+reconfig(PoolPid, PoolName, PoolConfig) ->
+    gen_server:call(PoolPid,
+                    {reconfig, PoolName, PoolConfig}).
 
 % -------------------------------------------------------
 
@@ -44,6 +52,20 @@ handle_call({get_bucket, BucketId}, _From, State) ->
 
 handle_call({auth_to_bucket, Mech, AuthData}, _From, State) ->
     {reply, auth_to_bucket(State, Mech, AuthData), State};
+
+handle_call({reconfig, Name, WantPoolConfig}, _From,
+            #mc_pool{config = CurrPoolConfig} = State) ->
+    case WantPoolConfig =:= CurrPoolConfig of
+        true -> {reply, ok, State};
+        false ->
+            case build_pool(Name, ns_config:get(), WantPoolConfig) of
+                {ok, Pool} -> {reply, ok, Pool};
+                error ->
+                    ns_log:log(?MODULE, 0002, "reconfig error: ~p", [Name]),
+                    NoopPool = create(Name, [], [], []),
+                    {reply, error, NoopPool}
+            end
+    end;
 
 handle_call(_, _From, State) ->
     {reply, ok, State}.
