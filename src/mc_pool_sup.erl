@@ -36,7 +36,8 @@
 
 -behaviour(supervisor).
 
--export([start_link/1, init/1, current_children/1]).
+-export([start_link/1, init/1, current_children/1,
+         reconfig/1, reconfig/2]).
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -82,6 +83,39 @@ child_spec_accept(Name, PoolConfig) ->
            {mc_pool, Name}},
     {mc_accept, {mc_accept, start_link, [PortNum, AddrStr, Env]},
      temporary, 10, worker, []}.
+
+reconfig(Name) ->
+    case ns_config:search_prop(ns_config:get(), pools, Name) of
+        undefined  -> ns_log:log(?MODULE, 0002, "stopping missing pool: ~p",
+                                 [Name]),
+                      emoxi_sup:stop_pool(Name);
+        PoolConfig -> reconfig(Name, PoolConfig)
+    end.
+
+reconfig(Name, PoolConfig) ->
+    ServerName = name_to_server_name(Name),
+    CurrentChildren = current_children(Name),
+    lists:foreach(
+      fun({mc_accept, undefined, _, _}) ->
+              supervisor:terminate_child(ServerName, mc_accept),
+              supervisor:delete_child(ServerName, mc_accept),
+              supervisor:start_child(ServerName,
+                                     child_spec_accept(Name, PoolConfig)),
+              ok;
+         ({mc_accept, _Pid, _, CurrArgs}) ->
+              WantSpec = child_spec_accept(Name, PoolConfig),
+              {_, {_, _, WantArgs}} = WantSpec,
+              case CurrArgs =:= WantArgs of
+                  true  -> ok;
+                  false ->
+                      supervisor:terminate_child(ServerName, mc_accept),
+                      supervisor:delete_child(ServerName, mc_accept),
+                      supervisor:start_child(ServerName, WantSpec),
+                      ok
+              end;
+         (_) -> ok
+      end,
+      CurrentChildren).
 
 current_children(Name) ->
     % Children will look like...
