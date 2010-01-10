@@ -20,7 +20,9 @@
                   }).
 
 %% API
--export([start_link/1, reconfig/2, reconfig/3]).
+-export([start_link/1, reconfig/2, reconfig/3,
+         get_bucket/2,
+         auth_to_bucket/3]).
 
 %% gen_server callbacks
 -export([init/1, terminate/2, code_change/3,
@@ -38,6 +40,14 @@ reconfig(PoolPid, PoolName, PoolConfig) ->
     gen_server:call(PoolPid,
                     {reconfig, PoolName, PoolConfig}).
 
+bucket_choose_addr({mc_pool_bucket, PoolName, BucketName}, Key) ->
+    gen_server:call(name_to_server_name(PoolName),
+                    {bucket_choose_addr, BucketName, Key}).
+
+bucket_choose_addrs({mc_pool_bucket, PoolName, BucketName}, Key, N) ->
+    gen_server:call(name_to_server_name(PoolName),
+                    {bucket_choose_addrs, BucketName, Key, N}).
+
 % -------------------------------------------------------
 
 init(Name) -> build_pool(Name, ns_config:get()).
@@ -48,10 +58,34 @@ handle_cast(stop, State)       -> {stop, shutdown, State}.
 handle_info(_Info, State)      -> {noreply, State}.
 
 handle_call({get_bucket, BucketId}, _From, State) ->
-    {reply, get_bucket(State, BucketId), State};
+    case get_bucket(State, BucketId) of
+        {ok, _Bucket} -> {reply, create_bucket_handle(State#mc_pool.id,
+                                                      BucketId),
+                          State};
+        _             -> {reply, error, State}
+    end;
 
 handle_call({auth_to_bucket, Mech, AuthData}, _From, State) ->
-    {reply, auth_to_bucket(State, Mech, AuthData), State};
+    case auth_to_bucket(State, Mech, AuthData) of
+        {ok, Bucket} -> {reply, create_bucket_handle(State#mc_pool.id,
+                                                     mc_bucket:id(Bucket)),
+                         State};
+        _            -> {reply, error, State}
+    end;
+
+handle_call({bucket_choose_addr, BucketId, Key}, _From, State) ->
+    case get_bucket(State, BucketId) of
+        {ok, Bucket} -> {reply, mc_bucket:choose_addr(Bucket, Key),
+                         State};
+        _            -> {reply, error, State}
+    end;
+
+handle_call({bucket_choose_addrs, BucketId, Key, N}, _From, State) ->
+    case get_bucket(State, BucketId) of
+        {ok, Bucket} -> {reply, mc_bucket:choose_addrs(Bucket, Key, N),
+                         State};
+        _            -> {reply, error, State}
+    end;
 
 handle_call({reconfig, Name, WantPoolConfig}, _From,
             #mc_pool{config = CurrPoolConfig} = State) ->
@@ -59,7 +93,8 @@ handle_call({reconfig, Name, WantPoolConfig}, _From,
         true -> {reply, ok, State};
         false ->
             case build_pool(Name, ns_config:get(), WantPoolConfig) of
-                {ok, Pool} -> {reply, ok, Pool};
+                {ok, Pool} ->
+                    {reply, ok, Pool};
                 error ->
                     ns_log:log(?MODULE, 0002, "reconfig error: ~p", [Name]),
                     NoopPool = create(Name, [], [], []),
@@ -113,14 +148,16 @@ create_pool(Name, PoolConfig, MemcachedPort, Nodes) ->
     Buckets =
         lists:foldl(
           fun({BucketName, BucketConfig}, Acc) ->
-                  case get_bucket_auth(BucketConfig) of
+                  case mc_bucket:get_bucket_auth(BucketConfig) of
                       error -> Acc;
-                      Auth ->
+                      BucketAuth ->
                           BucketAddrs = nodes_to_addrs(Nodes, MemcachedPort,
-                                                       binary, Auth),
+                                                       binary,
+                                                       BucketAuth),
                           Bucket = mc_bucket:create(BucketName,
                                                     BucketAddrs,
-                                                    BucketConfig),
+                                                    BucketConfig,
+                                                    BucketAuth),
                           [Bucket | Acc]
                   end;
              (X, Acc) ->
@@ -151,9 +188,18 @@ auth_to_bucket(PoolPid, Mech, AuthData) when is_pid(PoolPid) ->
     gen_server:call(PoolPid,
                     {auth_to_bucket, Mech, AuthData});
 
-auth_to_bucket(#mc_pool{} = Pool, "PLAIN", {BucketName, _AName, _APswd}) ->
-    % TODO: Proper auth_to_bucket() implementation.
-    {ok, get_bucket(Pool, BucketName)};
+auth_to_bucket(#mc_pool{} = Pool,
+               "PLAIN", {BucketName, AuthName, AuthPswd}) ->
+    case get_bucket(Pool, BucketName) of
+        {ok, Bucket} ->
+            case mc_bucket:auth(Bucket) of
+                {"PLAIN", {AuthName, AuthPswd}} -> {ok, Bucket};
+                {"PLAIN", {_ForName,
+                           AuthName, AuthPswd}} -> {ok, Bucket};
+                _NotPlain                       -> error
+            end;
+        _ -> error
+    end;
 
 auth_to_bucket(#mc_pool{}, _Mech, _AuthData) ->
     error.
@@ -163,15 +209,12 @@ auth_to_bucket(#mc_pool{}, _Mech, _AuthData) ->
 name_to_server_name(Name) ->
     list_to_atom(atom_to_list(?MODULE) ++ "-" ++ Name).
 
-get_bucket_auth(BucketConfig) ->
-    case proplists:get_value(auth_plain, BucketConfig) of
-        undefined                            -> undefined;
-        {_AuthName, _AuthPswd} = A           -> {"PLAIN", A};
-        {_ForName, _AuthName, _AuthPswd} = A -> {"PLAIN", A};
-        X -> ns_log:log(?MODULE, 0005, "bucket auth_plain config error: ~p",
-                        [X]),
-             error
-    end.
+% A bucket handle allows an extra level of indirection, so we can
+% change our bucket state independently of the caller's immutable
+% handle.
+
+create_bucket_handle(PoolId, BucketId) ->
+    {mc_pool_bucket, PoolId, BucketId}.
 
 nodes_to_addrs(Nodes, Port, Kind, Auth) ->
     PortStr = integer_to_list(Port),
