@@ -94,6 +94,7 @@ handle_call({reconfig, Name, WantPoolConfig}, _From,
         false ->
             case build_pool(Name, ns_config:get(), WantPoolConfig) of
                 {ok, Pool} ->
+                    ns_log:log(?MODULE, 0005, "reconfig pool: ~p", [Name]),
                     {reply, ok, Pool};
                 error ->
                     ns_log:log(?MODULE, 0002, "reconfig error: ~p", [Name]),
