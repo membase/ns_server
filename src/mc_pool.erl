@@ -94,24 +94,28 @@ handle_call({bucket_choose_addrs, BucketId, Key, N}, _From, State) ->
 handle_call({reconfig, Name, WantPoolConfig}, _From,
             #mc_pool{config = CurrPoolConfig} = State) ->
     case WantPoolConfig =:= CurrPoolConfig of
-        true -> {reply, ok, State};
+        true  -> {reply, ok, State};
         false ->
             case build_pool(Name, ns_config:get(), WantPoolConfig) of
                 {ok, Pool} ->
-                    ns_log:log(?MODULE, 0005, "reconfig pool: ~p", [Name]),
+                    ns_log:log(?MODULE, 0005, "reconfig: ~p",
+                               [Name]),
                     {reply, ok, Pool};
                 error ->
-                    ns_log:log(?MODULE, 0002, "reconfig error: ~p", [Name]),
+                    ns_log:log(?MODULE, 0002, "reconfig error: ~p",
+                               [Name]),
                     NoopPool = create(Name, [], [], []),
                     {reply, error, NoopPool}
             end
     end;
 
-handle_call({reconfig_nodes, _Name, WantNodes}, _From,
-            #mc_pool{nodes = CurrNodes} = State) ->
+handle_call({reconfig_nodes, Name, WantNodes}, From,
+            #mc_pool{nodes = CurrNodes,
+                     config = PoolConfig} = State) ->
     case WantNodes =:= CurrNodes of
-        true -> {reply, ok, State};
-        false -> {reply, ok, State}
+        true  -> {reply, ok, State};
+        false -> handle_call({reconfig, Name, PoolConfig}, From,
+                             State#mc_pool{config = undefined})
     end;
 
 handle_call(_, _From, State) ->
@@ -132,14 +136,10 @@ build_pool(Name, NSConfig) ->
     end.
 
 build_pool(Name, NSConfig, PoolConfig) ->
-    case ns_port_server:get_port_server_param(NSConfig, memcached, "-p") of
-        false ->
-            ns_log:log(?MODULE, 0003, "missing memcached port"),
-            error;
-        {value, MemcachedPortStr} ->
-            MP = list_to_integer(MemcachedPortStr),
-            Nodes = ns_node_disco:nodes_actual_proper(),
-            create_pool(Name, PoolConfig, MP, Nodes)
+    case get_memcached_port(NSConfig) of
+        error -> error;
+        Port  -> Nodes = ns_node_disco:nodes_actual_proper(),
+                 create_pool(Name, PoolConfig, Port, Nodes)
     end.
 
 create_pool(Name, PoolConfig, MemcachedPort, Nodes) ->
@@ -230,6 +230,15 @@ nodes_to_addrs(Nodes, Port, Kind, Auth) ->
                   mc_addr:create(Location, Kind, Auth)
               end,
               Nodes).
+
+get_memcached_port(NSConfig) ->
+    case ns_port_server:get_port_server_param(NSConfig, memcached, "-p") of
+        false ->
+            ns_log:log(?MODULE, 0003, "missing memcached port"),
+            error;
+        {value, MemcachedPortStr} ->
+            list_to_integer(MemcachedPortStr)
+    end.
 
 % ------------------------------------------------
 
