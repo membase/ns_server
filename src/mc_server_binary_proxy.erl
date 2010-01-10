@@ -110,7 +110,7 @@ cmd(?STAT = O, Sess, _Sock, Out, {H, _E} = HE) ->
     % which we'll handle with our ResponseFilter.
     {NumFwd, Monitors} =
         forward_bcast(all_send, O, Sess, undefined, HE, ResponseFilter),
-    NumFwd = await_ok(NumFwd),
+    await_ok(NumFwd),
     mc_binary:send(Out, res, H#mc_header{status = ?SUCCESS}, #mc_entry{}),
     mc_downstream:demonitor(Monitors),
     {ok, Sess};
@@ -183,7 +183,6 @@ auth(_UnknownMech, _Data, #session_proxy{pool = Pool} = Sess, Out, H) ->
 
 % ------------------------------------------
 
-% ?STAT
 % ?BUCKET
 
 % ------------------------------------------
@@ -230,7 +229,7 @@ forward_bcast(all, Opcode, Sess,
               Out, {H, E} = HE, ResponseFilter) ->
     {NumFwd, Monitors} =
         forward_bcast(all_send, Opcode, Sess, Out, HE, ResponseFilter),
-    NumFwd = await_ok(NumFwd),
+    await_ok(NumFwd),
     mc_binary:send(Out, res, H#mc_header{status = ?SUCCESS}, E),
     mc_downstream:demonitor(Monitors),
     {ok, Sess};
@@ -256,7 +255,7 @@ forward_bcast(uncork, _Opcode, #session_proxy{bucket = Bucket,
                                    undefined), Acc)
                     end,
                     {0, []}, Groups),
-    NumFwd = await_ok(NumFwd),
+    await_ok(NumFwd),
     mc_binary:send(Out, res, H#mc_header{status = ?SUCCESS}, E),
     mc_downstream:demonitor(Monitors),
     {ok, Sess#session_proxy{corked = []}}.

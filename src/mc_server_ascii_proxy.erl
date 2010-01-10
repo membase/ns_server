@@ -117,10 +117,10 @@ cmd(stats, #session_proxy{bucket = Bucket} = Session,
             (_, _) ->
                 false
         end,
+    % Using undefined Out to swallow the downstream responses,
+    % which we'll handle with our ResponseFilter.
     {NumFwd, Monitors} =
         lists:foldl(fun (Addr, Acc) ->
-                        % Using undefined Out to swallow the OK
-                        % responses from the downstreams.
                         accum(send([Addr], undefined,
                                    stats, #mc_entry{key = Args},
                                    ResponseFilter, ?MODULE, undefined), Acc)
