@@ -120,13 +120,7 @@ build_pool(Name, NSConfig) ->
     end.
 
 build_pool(Name, NSConfig, PoolConfig) ->
-    StartArgs =
-        case ns_port_server:get_port_server_config(NSConfig, memcached) of
-            undefined -> [];
-            {memcached, _Path, S}       -> S;
-            {memcached, _Path, S, _Env} -> S
-        end,
-    case ns_port_server:find_param("-p", StartArgs) of
+    case ns_port_server:get_port_server_param(NSConfig, memcached, "-p") of
         false ->
             ns_log:log(?MODULE, 0003, "missing memcached port"),
             error;
