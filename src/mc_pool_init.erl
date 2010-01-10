@@ -18,7 +18,10 @@
 % Noop process to get initialized in the supervision tree.
 start_link() ->
     {ok, spawn_link(fun() ->
-                       gen_event:add_handler(ns_config_events, ?MODULE, ignored)
+                       gen_event:add_handler(ns_config_events,
+                                             ?MODULE, ignored),
+                       gen_event:add_handler(ns_node_disco_events,
+                                             ?MODULE, ignored)
                     end)}.
 
 init(ignored) ->
@@ -63,6 +66,10 @@ handle_event({pools, PropList}, State) ->
     lists:foreach(fun(Name) -> mc_pool_sup:reconfig(Name) end,
                   SamePoolNames),
 
+    {ok, State, hibernate};
+
+handle_event({ns_node_disco_events, _NodesBefore, _NodesAfter}, State) ->
+    error_logger:info_report("mc_pool_init: nodes changed"),
     {ok, State, hibernate};
 
 handle_event(_, State) ->
