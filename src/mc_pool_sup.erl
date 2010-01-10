@@ -55,8 +55,6 @@ start_link(Name) ->
 %       ...
 %       session-loop_in {spawn_link} mc_pool-default
 %         session-loop_out {spawn_link}}
-%
-% TODO: Need to restart accept if port changes.
 
 init(Name) ->
     case ns_config:search_prop(ns_config:get(), pools, Name) of
