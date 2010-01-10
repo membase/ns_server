@@ -51,9 +51,7 @@ handle_event({pools, PropList}, State) ->
     % CurrPools looks like...
     %   [{{pool, PoolName},<0.77.0>,worker,[_]}]
     %
-    CurrPools = emoxi_sup:current_pools(),
-    CurrPoolNames = lists:map(fun({{pool, Name}, _Pid, _, _}) -> Name end,
-                              CurrPools),
+    CurrPoolNames = emoxi_sup:current_pools(),
 
     OldPoolNames = lists:subtract(CurrPoolNames, WantPoolNames),
     NewPoolNames = lists:subtract(WantPoolNames, CurrPoolNames),
@@ -68,8 +66,14 @@ handle_event({pools, PropList}, State) ->
 
     {ok, State, hibernate};
 
-handle_event({ns_node_disco_events, _NodesBefore, _NodesAfter}, State) ->
+handle_event({ns_node_disco_events, _NodesBefore, NodesAfter}, State) ->
     error_logger:info_report("mc_pool_init: nodes changed"),
+
+    lists:foreach(fun(Name) ->
+                          mc_pool_sup:reconfig_nodes(Name, NodesAfter)
+                  end,
+                  emoxi_sup:current_pools()),
+
     {ok, State, hibernate};
 
 handle_event(_, State) ->

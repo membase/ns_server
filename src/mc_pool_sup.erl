@@ -6,7 +6,7 @@
 -behaviour(supervisor).
 
 -export([start_link/1, init/1, current_children/1,
-         reconfig/1, reconfig/2]).
+         reconfig/1, reconfig/2, reconfig_nodes/2]).
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -16,9 +16,9 @@ start_link(Name) ->
 
 % mc_pull_sup children are dynamic...
 %
-%     {pool, "default"} {gen_server} keeps buckets map & state
+%     mc_pool {gen_server} keeps buckets map & state
 %       permanent so that REST kvcache pathway works
-%     {accept, "default"} {spawn_link} 11211| might not start if port conflict)
+%     mc_accept {spawn_link} 11211| might not start if port conflict)
 %       session-loop_in {spawn_link} mc_pool-default
 %         session-loop_out {spawn_link}}
 %       ...
@@ -85,6 +85,16 @@ reconfig(Name, PoolConfig) ->
               end;
          ({mc_pool, Pid, _, _}) ->
               mc_pool:reconfig(Pid, Name, PoolConfig),
+              ok;
+         (_) -> ok
+      end,
+      CurrentChildren).
+
+reconfig_nodes(Name, Nodes) ->
+    CurrentChildren = current_children(Name),
+    lists:foreach(
+      fun({mc_pool, Pid, _, _}) ->
+              mc_pool:reconfig_nodes(Pid, Name, Nodes),
               ok;
          (_) -> ok
       end,

@@ -14,13 +14,13 @@
 -compile(export_all).
 
 -record(mc_pool, {id,     % Pool id.
-                  addrs,  % [mc_addr:create()*].
+                  nodes,  % [node()*].
                   config, % A PoolConfig from ns_config:get().
                   buckets % [mc_bucket:create()*].
                   }).
 
 %% API
--export([start_link/1, reconfig/2, reconfig/3,
+-export([start_link/1, reconfig/2, reconfig/3, reconfig_nodes/3,
          get_bucket/2,
          auth_to_bucket/3]).
 
@@ -39,6 +39,10 @@ reconfig(PoolName, PoolConfig) ->
 reconfig(PoolPid, PoolName, PoolConfig) ->
     gen_server:call(PoolPid,
                     {reconfig, PoolName, PoolConfig}).
+
+reconfig_nodes(PoolPid, PoolName, Nodes) ->
+    gen_server:call(PoolPid,
+                    {reconfig_nodes, PoolName, Nodes}).
 
 bucket_choose_addr({mc_pool_bucket, PoolName, BucketName}, Key) ->
     gen_server:call(name_to_server_name(PoolName),
@@ -103,13 +107,20 @@ handle_call({reconfig, Name, WantPoolConfig}, _From,
             end
     end;
 
+handle_call({reconfig_nodes, _Name, WantNodes}, _From,
+            #mc_pool{nodes = CurrNodes} = State) ->
+    case WantNodes =:= CurrNodes of
+        true -> {reply, ok, State};
+        false -> {reply, ok, State}
+    end;
+
 handle_call(_, _From, State) ->
     {reply, ok, State}.
 
 %% API for pool.
 
-create(Id, Addrs, Config, Buckets) ->
-    #mc_pool{id = Id, addrs = Addrs, config = Config, buckets = Buckets}.
+create(Id, Nodes, Config, Buckets) ->
+    #mc_pool{id = Id, nodes = Nodes, config = Config, buckets = Buckets}.
 
 build_pool(Name, NSConfig) ->
     case ns_config:search_prop(NSConfig, pools, Name) of
@@ -160,8 +171,7 @@ create_pool(Name, PoolConfig, MemcachedPort, Nodes) ->
                   Acc
           end,
           [], BucketConfigs),
-    PoolAddrs = nodes_to_addrs(Nodes, MemcachedPort, binary, undefined),
-    Pool = create(Name, PoolAddrs, PoolConfig, Buckets),
+    Pool = create(Name, Nodes, PoolConfig, Buckets),
     {ok, Pool}.
 
 % Returns {ok, Bucket} or false.
