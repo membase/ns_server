@@ -9,6 +9,7 @@
 -export([start_link/4, params/1,
          get_port_server_config/1,
          get_port_server_config/2,
+         get_port_server_param/3,
          find_param/2]).
 
 %% gen_server callbacks
@@ -48,6 +49,15 @@ get_port_server_config(PortName) ->
 
 get_port_server_config(Config, PortName) ->
     ns_config:search_prop_tuple(Config, port_servers, PortName).
+
+get_port_server_param(Config, PortServerName, ParameterName) ->
+    StartArgs =
+        case ns_port_server:get_port_server_config(Config, PortServerName) of
+            undefined -> [];
+            {PortServerName, _Path, S}       -> S;
+            {PortServerName, _Path, S, _Env} -> S
+        end,
+    ns_port_server:find_param(ParameterName, StartArgs).
 
 find_param(_, [])              -> false;
 find_param(_, [_])             -> false;
