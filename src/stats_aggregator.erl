@@ -80,7 +80,7 @@ handle_call({get_stats}, _From, State) ->
     {reply, Reply, State#state{had_activity = true}}.
 
 %% grabs stats responses from pids in a list
-%% does not waits, just grabs what's already in a queue
+%% does not wait, just grabs what's already in a queue
 recv_nowait(Ref, Values, [Pid | RestCollectorPidsWait]) ->
     receive
         {grab_stats_res, Ref, Pid, Value} ->
@@ -137,7 +137,7 @@ handle_info(sampling_timer, #state{inactive_periods = InactivePeriods} = State) 
                            stats = Stats},
     if
         NewInactivePeriods >= ?INACTIVE_PERIODS_TO_DEATH ->
-            ns_log:log(stats_aggregator, 2, "going to die piecefully due to inactivity"),
+            ns_log:log(?MODULE, 2, "going to die piecefully due to inactivity"),
             {stop, normal, NewState};
         true ->
             {noreply, NewState}
