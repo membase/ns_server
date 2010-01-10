@@ -166,7 +166,8 @@ loop(Nodes) ->
     NodesNow = nodes_actual_proper(),
     case NodesNow =:= Nodes of
         true  -> ok;
-        false -> gen_event:notify(ns_node_disco_events, {Nodes, NodesNow})
+        false -> gen_event:notify(ns_node_disco_events,
+                                  {ns_node_disco_events, Nodes, NodesNow})
     end,
     ?MODULE:loop(NodesNow).
 

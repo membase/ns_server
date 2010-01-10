@@ -25,8 +25,8 @@ init(ignored) ->
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
 
-handle_event({_NodesBefore, _NodesAfter}, State) ->
-    error_logger:info_report("nodes changed~n"),
+handle_event({ns_node_disco_events, _NodesBefore, _NodesAfter}, State) ->
+    error_logger:info_report("ns_node_disco_log: nodes changed"),
     {ok, State, hibernate};
 
 handle_event(_, State) ->
