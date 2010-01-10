@@ -25,12 +25,22 @@ init([]) ->
            {ns_config,
             {ns_config, start_link, [CfgPath, ns_config_default]},
             permanent, 10, worker, [ns_config, ns_config_default]},
+
+           % gen_event for the node disco events.
+           {ns_node_disco_events,
+            {gen_event, start_link, [{local, ns_node_disco_events}]},
+            permanent, 10, worker, []},
            % listens for node discovery config and health changes.
            {ns_node_disco,
             {ns_node_disco, start_link, []},
             permanent, 10, worker, []},
+
            % logs config changes for debugging.
            {ns_config_log,
             {ns_config_log, start_link, []},
+            transient, 10, worker, []},
+           % logs node disco changes for debugging.
+           {ns_node_disco_log,
+            {ns_node_disco_log, start_link, []},
             transient, 10, worker, []}
           ]}}.

@@ -16,7 +16,7 @@
          pool_leave/1, pool_leave/0,
          config_push/0, config_push/1, config_push/2,
          config_pull/0, config_pull/1,
-         loop/0]).
+         loop/1]).
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -33,7 +33,7 @@ init() ->
     % the ns_node_disco_conf_events gen_event handler will inform
     % me when relevant configuration changes.
     gen_event:add_handler(ns_config_events, ns_node_disco_conf_events, self()),
-    loop().
+    loop([]).
 
 % Callback invoked when ns_config keys have changed.
 
@@ -144,7 +144,7 @@ cookie_sync() ->
 
 % --------------------------------------------------
 
-loop() ->
+loop(Nodes) ->
     Timeout = 5000 + trunc(random:uniform() * 55000),
     receive
         {nodeup, Node} ->
@@ -163,7 +163,12 @@ loop() ->
     after Timeout ->
         config_pull(1)
     end,
-    ?MODULE:loop().
+    NodesNow = nodes_actual_proper(),
+    case NodesNow =:= Nodes of
+        true  -> ok;
+        false -> gen_event:notify(ns_node_disco_events, {Nodes, NodesNow})
+    end,
+    ?MODULE:loop(NodesNow).
 
 % --------------------------------------------------
 
