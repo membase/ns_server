@@ -52,11 +52,15 @@ nodes_wanted_updated(NodeListIn) ->
     NodeList = lists:usort(NodeListIn),
     error_logger:info_msg("nodes_wanted updated: ~p, with cookie: ~p~n",
                           [NodeList, erlang:get_cookie()]),
-    lists:filter(fun(N) ->
-                         erlang:set_cookie(N, Cookie),
-                         net_adm:ping(N) == pong
-                 end,
-                 NodeList).
+    erlang:set_cookie(node(), Cookie),
+    PongList = lists:filter(fun(N) ->
+                                    erlang:set_cookie(N, Cookie),
+                                    net_adm:ping(N) == pong
+                            end,
+                            NodeList),
+    error_logger:info_msg("nodes_wanted pong: ~p, with cookie: ~p~n",
+                          [PongList, erlang:get_cookie()]),
+    PongList.
 
 % Read from ns_config nodes_wanted.
 
