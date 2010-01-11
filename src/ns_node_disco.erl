@@ -48,10 +48,15 @@ nodes_wanted_updated() ->
 % Callback invoked when ns_config keys have changed.
 
 nodes_wanted_updated(NodeListIn) ->
-    cookie_sync(),
+    {ok, Cookie} = cookie_sync(),
     NodeList = lists:usort(NodeListIn),
-    error_logger:info_msg("nodes_wanted updated ~p~n", [NodeList]),
-    lists:filter(fun(N) -> net_adm:ping(N) == pong end, NodeList).
+    error_logger:info_msg("nodes_wanted updated: ~p, with cookie: ~p~n",
+                          [NodeList, erlang:get_cookie()]),
+    lists:filter(fun(N) ->
+                         erlang:set_cookie(N, Cookie),
+                         net_adm:ping(N) == pong
+                 end,
+                 NodeList).
 
 % Read from ns_config nodes_wanted.
 
@@ -103,7 +108,8 @@ cookie_init() ->
     NewCookie = cookie_gen(),
     ns_log:log(?MODULE, 0001, "otp cookie generated: ~p",
                [NewCookie]),
-    cookie_set(NewCookie).
+    ok = cookie_set(NewCookie),
+    {ok, NewCookie}.
 
 % Sets our wanted otp cookie.
 %
@@ -128,22 +134,21 @@ cookie_sync() ->
                 nocookie ->
                     % TODO: We should have length(nodes_wanted) == 0 or 1,
                     %       so, we should check that assumption.
-                    ok = cookie_init(),
-                    {ok, init, generated};
+                    cookie_init();
                 CurrCookie ->
                     ns_log:log(?MODULE, 0002, "otp cookie inherited: ~p",
                                [CurrCookie]),
                     cookie_set(CurrCookie),
-                    {ok, init}
+                    {ok, CurrCookie}
             end;
         WantedCookie ->
             case erlang:get_cookie() of
-                WantedCookie -> {ok, same};
+                WantedCookie -> {ok, WantedCookie};
                 _ ->
                     ns_log:log(?MODULE, 0003, "otp cookie sync: ~p",
                                [WantedCookie]),
                     erlang:set_cookie(node(), WantedCookie),
-                    {ok, sync}
+                    {ok, WantedCookie}
             end
     end.
 
