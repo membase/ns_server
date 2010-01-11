@@ -1,3 +1,4 @@
+% -*- mode: erlang -*-
 % {directory, "/tmp/data"}.
 
 % In general, the value in these key-value pairs are property lists,
@@ -67,6 +68,9 @@
 
 % -----------------------------------
 
+% This is also a parameter to memcached ports below.
+{isasl_path, "/tmp/isasl.pw"}.
+
 % Modifiers: menelaus (may change the 11212 port number)
 % Listeners: ns_port_sup (needs to restart its memcached processes)
 %
@@ -83,7 +87,9 @@
      % "-E", "engines/default_engine.so",
      "-p", "11212"
      ],
-    [{env, [{"MEMCACHED_CHECK_STDIN", "thread"}]}]
+    [{env, [{"MEMCACHED_CHECK_STDIN", "thread"},
+            {"ISASL_PWFILE", "/tmp/isasl.pw"} % Also isasl_path above.
+           ]}]
    }
   ]
 }.

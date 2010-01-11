@@ -13,6 +13,7 @@
 tests(ns_server) ->
     [misc,
      ns_config,
+     ns_config_isasl_sync_test,
      ns_log,
      ns_port_init,
      ns_port_server].
