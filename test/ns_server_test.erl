@@ -12,7 +12,6 @@
 %
 tests(ns_server) ->
     [misc,
-     stats_aggregator_manager,
      ns_config,
      ns_log,
      ns_port_init,
