@@ -200,6 +200,7 @@ of representations, since they are similar for different parts of the heirarchy.
  HTTP/1.1 200 OK
  Content-Type: application/com.northscale.store+json
  Content-Length: nnn
+
 {
   "implementationVersion": "253",
   "pools" : [
@@ -254,6 +255,7 @@ transitions to the client, if backward compatibility is desirable.
  HTTP/1.1 200 OK
  Content-Type: application/com.northscale.store+json
  Content-Length: nnn
+
  {
    "name" : "Default Pool",
    "state": {
@@ -388,6 +390,7 @@ sense, like a backup or asking a node to join a pool.
  HTTP/1.1 200 OK
  Content-Type: application/com.northscale.store+json
  Content-Length: nnn
+
  "buckets" : [
    {
      "name" : "yourbucket",
@@ -497,7 +500,10 @@ PUT /pools/My New Pool/buckets/New bucket
 response 201: bucket was created and valid URIs returned
 
 <pre class="restcalls">
-POST /pools/My New Pool/buckets/Another bucket
+HTTP/1.1 201 Created
+Content-Type: application/com.northscale.store+json
+Content-Length: nnn
+
 {
    "name" : "Another bucket"
    "bucketRules" : {
@@ -562,7 +568,10 @@ GET /pools/default/buckets/New bucket
 response 201: bucket was created and valid URIs returned
 
 <pre class="restcalls">
-POST /pools/My New Pool/buckets/Another bucket
+HTTP/1.1 200 OK
+Content-Type: application/com.northscale.store+json
+Content-Length: nnn
+
 {
    "name" : "Another bucket"
    "bucketRules" : {
@@ -667,6 +676,7 @@ At release of 1.0, this will always return a 403.
 
 ## Open Questions
 * Where are users managed?
+* How is "preallocate" for the bucket expressed?
 
 ## References
 The [OCCI working group specifications](http://www.occi-wg.org/) and the
