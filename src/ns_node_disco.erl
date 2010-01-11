@@ -28,8 +28,13 @@ start_link() ->
 %
 
 init() ->
+    % Turning on inet_db / dns seems necessary to allow net_adm:ping
+    % to work for some DHCP cases, but also seems to break emoxi.
+    %
     % See: http://osdir.com/ml/lang.erlang.general/2004-04/msg00155.html
-    inet_db:set_lookup([dns]),
+    %
+    % inet_db:set_lookup([dns]),
+    %
     nodes_wanted_updated(),
     ok = net_kernel:monitor_nodes(true),
     % the ns_node_disco_conf_events gen_event handler will inform
@@ -147,6 +152,12 @@ cookie_sync() ->
 % --------------------------------------------------
 
 loop(Nodes) ->
+    NodesNow = nodes_actual_proper(),
+    case NodesNow =:= Nodes of
+        true  -> ok;
+        false -> gen_event:notify(ns_node_disco_events,
+                                  {ns_node_disco_events, Nodes, NodesNow})
+    end,
     Timeout = 5000 + trunc(random:uniform() * 55000),
     receive
         {nodeup, Node} ->
@@ -164,12 +175,6 @@ loop(Nodes) ->
             error_logger:info_msg("lost node: ~p~n", [Node])
     after Timeout ->
         config_pull(1)
-    end,
-    NodesNow = nodes_actual_proper(),
-    case NodesNow =:= Nodes of
-        true  -> ok;
-        false -> gen_event:notify(ns_node_disco_events,
-                                  {ns_node_disco_events, Nodes, NodesNow})
     end,
     ?MODULE:loop(NodesNow).
 
