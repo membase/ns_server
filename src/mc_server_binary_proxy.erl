@@ -88,21 +88,18 @@ cmd(?NOOP = O, Sess, _Sock, Out, HE) ->
 % ------------------------------------------
 
 cmd(?STAT = O, Sess, _Sock, Out, {H, _E} = HE) ->
+    {ok, Stats} = mc_stats:start_link(),
     ResponseFilter =
-        fun (<<"STAT ", LineBin/binary>>, undefined) ->
-                LineStr = binary_to_list(LineBin),
-                [Key, Data | _Rest] = string:tokens(LineStr, " "),
-                mc_binary:send(Out, res,
-                               H#mc_header{status = ?SUCCESS},
-                               #mc_entry{key = Key, data = Data}),
-                false;
-            (#mc_header{status = ?SUCCESS} = RH,
-             #mc_entry{key = KeyBin} = RE) ->
+        fun (#mc_header{status = ?SUCCESS},
+             #mc_entry{key = KeyBin, data = DataBin}) ->
                 case mc_binary:bin_size(KeyBin) > 0 of
-                    true  -> mc_binary:send(Out, res, RH, RE),
+                    true  -> mc_stats:stats_more(Stats, KeyBin, DataBin),
                              false;
                     false -> false
                 end;
+            (LineBin, undefined) ->
+                mc_stats:stats_more(Stats, LineBin),
+                false;
             (_, _) ->
                 false
         end,
@@ -111,6 +108,14 @@ cmd(?STAT = O, Sess, _Sock, Out, {H, _E} = HE) ->
     {NumFwd, Monitors} =
         forward_bcast(all_send, O, Sess, undefined, HE, ResponseFilter),
     await_ok(NumFwd),
+    {ok, StatsResults} = mc_stats:stats_done(Stats),
+    lists:foreach(fun({KeyBin, DataBin}) ->
+                          mc_binary:send(Out, res,
+                                         H#mc_header{status = ?SUCCESS},
+                                         #mc_entry{key = KeyBin,
+                                                   data = DataBin})
+                  end,
+                  StatsResults),
     mc_binary:send(Out, res, H#mc_header{status = ?SUCCESS}, #mc_entry{}),
     mc_downstream:demonitor(Monitors),
     {ok, Sess};
