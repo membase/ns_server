@@ -24,10 +24,15 @@ Building...
 
 ## Starting
 
-The ns_server can be started through the start.sh script found in the
-main directory.  It starts under sasl, which will give you more
-detailed logging on both progress and failures of the application and
-the heirarcy.
+The ns_server can be started through the `start.sh` script found in the
+main directory.
+
+    ./start.sh
+
+It starts under sasl, which will give you more detailed logging on
+both progress and failures of the application and the heirarcy.
+
+### Interactive Execution
 
 If you'd like to just start a shell, then interact with the running
 application, use:
@@ -37,11 +42,11 @@ application, use:
 To start with a different node name, and pass parameters (such as a
 different config file), use:
 
-    ./start_shell.sh -name $NODE_NAME -ns_server ns_server_config \"$CONFIG_FILE\"
+    ./start_shell.sh -name $NODE_NAME -ns_server ns_server_config "$CONFIG_FILE"
 
 For example:
 
-    ./start_shell.sh -name ns_2 -ns_server ns_server_config \"priv/config2\"
+    ./start_shell.sh -name ns_2 -ns_server ns_server_config "priv/config2"
 
 * * * * *
 Copyright (c) 2010, NorthScale, Inc.
