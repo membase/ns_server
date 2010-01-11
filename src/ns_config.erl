@@ -40,13 +40,13 @@
 -define(DEFAULT_TIMEOUT, 500).
 
 -export([start_link/2, start_link/1, stop/0,
+         get_remote/1, set_remote/2, set_remote/3,
          get/2, get/1, get/0, set/2, set/1,
-         get_dynamic/1,
          search/2, search/1,
          search_prop/3, search_prop/4,
          search_prop_tuple/3, search_prop_tuple/4,
          search_raw/2,
-         set_remote/2, set_remote/3]).
+         proplist_get_value/3]).
 
 % A static config file is often hand edited.
 % potentially with in-line manual comments.
@@ -85,6 +85,21 @@ reload()     -> gen_server:call(?MODULE, reload).
 resave()     -> gen_server:call(?MODULE, resave).
 reannounce() -> gen_server:call(?MODULE, reannounce).
 
+% ----------------------------------------
+
+% Set & get configuration KVList, or [{Key, Val}*].
+%
+% The get_remote() only returns dyanmic tuples as its KVList result.
+
+set_remote(Node, KVList) ->
+    set_remote(Node, KVList, ?DEFAULT_TIMEOUT).
+set_remote(Node, KVList, Timeout) ->
+    gen_server:call({?MODULE, Node}, {merge, KVList}, Timeout).
+
+get_remote(Node) -> config_dynamic(?MODULE:get(Node)).
+
+% ----------------------------------------
+
 set(Key, PropList) when is_list(PropList) ->
     PropList2 = [{?METADATA_VER, erlang:now()} |
                  strip_metadata(PropList, [])],
@@ -94,17 +109,17 @@ set(Key, Val)   -> gen_server:call(?MODULE, {merge, [{Key, Val}]}).
 set(KVList)     -> gen_server:call(?MODULE, {merge,   KVList}).
 replace(KVList) -> gen_server:call(?MODULE, {replace, KVList}).
 
-set_remote(Node, KVList) ->
-    set_remote(Node, KVList, ?DEFAULT_TIMEOUT).
-set_remote(Node, KVList, Timeout) ->
-    gen_server:call({?MODULE, Node}, {merge, KVList}, Timeout).
+% ----------------------------------------
+
+% Returns an opaque Config object that's a snapshot of the configuration.
+% The Config object can be passed to the search*() related set
+% of functions.
 
 get()              -> gen_server:call(?MODULE, get).
 get(Node)          -> ?MODULE:get(Node, ?DEFAULT_TIMEOUT).
 get(Node, Timeout) -> gen_server:call({?MODULE, Node}, get, Timeout).
 
-get_dynamic(Node) ->
-    config_dynamic(?MODULE:get(Node)).
+% ----------------------------------------
 
 search(Key) -> search(?MODULE:get(), Key).
 

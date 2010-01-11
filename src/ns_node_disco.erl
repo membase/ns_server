@@ -189,7 +189,7 @@ pool_join(RemoteNode, NewCookie) ->
     true = erlang:set_cookie(RemoteNode, NewCookie),
     case net_adm:ping(RemoteNode) of
         pong ->
-            case ns_config:get_dynamic(RemoteNode) of
+            case ns_config:get_remote(RemoteNode) of
                 RemoteDynamic when is_list(RemoteDynamic) ->
                     case ns_config:replace(RemoteDynamic) of
                         ok -> % The following adds node() to nodes_wanted.
@@ -224,7 +224,7 @@ pool_leave() ->
 % --------------------------------------------------
 
 config_push() ->
-    config_push(ns_config:get_dynamic(node())).
+    config_push(ns_config:get_remote(node())).
 
 config_push(RawKVList) ->
     config_push(RawKVList, nodes_actual_other()).
@@ -239,7 +239,7 @@ config_pull(N) -> config_pull(misc:shuffle(nodes_actual_other()), N).
 config_pull([], _N)    -> ok;
 config_pull(_Nodes, 0) -> error;
 config_pull([Node | Rest], N) ->
-    case (catch ns_config:get_dynamic(Node)) of
+    case (catch ns_config:get_remote(Node)) of
         {'EXIT', _, _} -> config_pull(Rest, N - 1);
         {'EXIT', _}    -> config_pull(Rest, N - 1);
         RemoteKVList   -> ns_config:set(RemoteKVList),
