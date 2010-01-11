@@ -43,9 +43,17 @@ upgrade() ->
 %% @doc supervisor callback.
 init([]) ->
     Config = ns_config:get(),
-    Addr = ns_config:search_prop(Config, rest, address, "0.0.0.0"),
-    Port = ns_config:search_prop(Config, rest, port, 8080),
-    WebConfig = [{ip, Addr},
+    Ip = case os:getenv("MOCHIWEB_IP") of
+             false ->
+                 ns_config:search_prop(Config, rest, address, "0.0.0.0");
+             Any -> Any
+         end,
+    Port = case os:getenv("MOCHIWEB_PORT") of
+               false ->
+                   ns_config:search_prop(Config, rest, port, 8080);
+               P -> list_to_integer(P)
+           end,
+    WebConfig = [{ip, Ip},
                  {port, Port},
                  {docroot, menelaus_deps:local_path(["priv","public"], ?MODULE)}],
     Web = {menelaus_web,
