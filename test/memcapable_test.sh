@@ -7,7 +7,11 @@ EMOXI_PORT=11255
 EMOXI_HOST=127.0.0.1
 EFLAGS="-noshell"
 PIDS="";
-ERL="/opt/local/bin/erl"
+ERL="erl"
+
+if [ ! -x "`which $ERL`" ]; then
+    ERL="/usr/local/bin/erl"
+fi
 
 #############
 addPid () { #
@@ -58,8 +62,11 @@ if [ ! -x "${MEMCACHED_PATH}" ]; then
 	die 1 "Memcached path, ${MEMCACHED_PATH}, does not point to an executable memcached binary"
 fi
 
+ERL_ORIGINAL="$ERL"
+ERL=`which "$ERL"`
+
 if [ ! -x "${ERL}" ]; then
-	die 1 "Erlang path, ${ERL}, does not point to an executable binary"
+	die 1 "Erlang path, ${ERL_ORIGINAL}, does not point to an executable binary"
 fi
 
 if [ -z "${OUT_DIR}" ]; then
