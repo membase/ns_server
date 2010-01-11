@@ -28,18 +28,16 @@ start_link() ->
 %
 
 init() ->
-    % Turning on inet_db / dns seems necessary to allow net_adm:ping
-    % to work for some DHCP cases, but also seems to break emoxi.
-    %
     % See: http://osdir.com/ml/lang.erlang.general/2004-04/msg00155.html
-    %
-    % inet_db:set_lookup([dns]),
-    %
+    inet_db:set_lookup([file, dns]),
+    % Proactively run one round of reconfiguration update.
     nodes_wanted_updated(),
+    % Register for nodeup/down messages in our receive loop().
     ok = net_kernel:monitor_nodes(true),
-    % the ns_node_disco_conf_events gen_event handler will inform
+    % The ns_node_disco_conf_events gen_event handler will inform
     % me when relevant configuration changes.
     gen_event:add_handler(ns_config_events, ns_node_disco_conf_events, self()),
+    % Main receive loop.
     loop([]).
 
 % Callback invoked when ns_config keys have changed.
