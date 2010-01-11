@@ -11,3 +11,6 @@ version_num.tmp
 test/log
 .project
 .settings
+priv/memcached
+priv/memcached.exe
+priv/memcached_pthreadGC2.dll
