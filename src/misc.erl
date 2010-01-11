@@ -134,16 +134,22 @@ rm_rf(Name) when is_list(Name) ->
       end
   end.
 
+space_split(Bin) ->
+    byte_split(Bin, 32). % ASCII space is 32.
+
 zero_split(Bin) ->
-  zero_split(0, Bin).
+    byte_split(Bin, 0).
 
-zero_split(N, Bin) when N > erlang:byte_size(Bin) -> Bin;
+byte_split(Bin, C) ->
+    byte_split(0, Bin, C).
 
-zero_split(N, Bin) ->
-  case Bin of
-    <<_:N/binary, 0:8, _/binary>> -> split_binary(Bin, N);
-    _ -> zero_split(N+1, Bin)
-  end.
+byte_split(N, Bin, _C) when N > erlang:byte_size(Bin) -> Bin;
+
+byte_split(N, Bin, C) ->
+    case Bin of
+        <<_:N/binary, C:8, _/binary>> -> split_binary(Bin, N);
+        _ -> byte_split(N + 1, Bin, C)
+    end.
 
 rand_str(N) ->
   lists:map(fun(_I) ->
