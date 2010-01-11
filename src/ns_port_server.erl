@@ -76,7 +76,15 @@ init({Name, _Cmd, _Args, _Opts} = Params) ->
                  {stop, Port}
     end.
 
-open_port({_Name, Cmd, Args, Opts}) ->
+open_port({Name, Cmd, ArgsIn, Opts}) ->
+    Args = case os:getenv("NS_PORT_SERVER_ARGS_" ++ atom_to_list(Name)) of
+               false -> ArgsIn;
+               Any -> Y = string:tokens(Any, " "),
+                      error_logger:info_msg(
+                        "NS_PORT_SERVER_ARGS_~p override: ~p~n",
+                        [Name, Y]),
+                      Y
+           end,
     {ok, Pwd} = file:get_cwd(),
     PrivDir = filename:join(Pwd, "priv"),
     FullPath = filename:join(PrivDir, Cmd),
