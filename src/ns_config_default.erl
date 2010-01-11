@@ -64,7 +64,12 @@ find_root("/") -> false;
 find_root(DirPath) ->
     case is_root(DirPath) of
         true  -> DirPath;
-        false -> find_root(filename:dirname(DirPath))
+        false -> DirNext = filename:dirname(DirPath),
+                 % Case when "c:/" =:= "c:/" on windows.
+                 case DirNext =/= DirPath of
+                     true  -> find_root(DirNext);
+                     false -> false
+                 end
     end.
 
 is_root(DirPath) ->
