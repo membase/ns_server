@@ -9,10 +9,10 @@ smart services.  It is an application in the Erlang OTP sense.
 
 Build dependencies include...
 
-    erlang (5.7.4, also needed at runtime)
-    ruby (1.8.6)
-    gem
-    gem install sprockets
+* erlang (5.7.4, also needed at runtime)
+* ruby (1.8.6)
+* ruby gems
+    * sprockets (install with `gem install sprockets`)
 
 Building...
 
