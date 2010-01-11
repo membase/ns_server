@@ -28,6 +28,8 @@ start_link() ->
 %
 
 init() ->
+    % See: http://osdir.com/ml/lang.erlang.general/2004-04/msg00155.html
+    inet_db:set_lookup([dns]),
     nodes_wanted_updated(),
     ok = net_kernel:monitor_nodes(true),
     % the ns_node_disco_conf_events gen_event handler will inform
