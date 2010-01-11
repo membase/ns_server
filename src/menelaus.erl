@@ -15,7 +15,7 @@ ensure_started(App) ->
         {error, {already_started, App}} ->
             ok
     end.
-        
+
 %% @spec start() -> ok
 %% @doc Start the menelaus server.
 start() ->

@@ -3,7 +3,7 @@
 %%%-------------------------------------------------------------------
 %%% File    : simple_cache.erl
 %%% Author  : Aliaksey Kandratsenka <alk@tut.by>
-%%% Description : 
+%%% Description :
 %%%
 %%% Created : 13 Dec 2009 by Aliaksey Kandratsenka <alk@tut.by>
 %%%-------------------------------------------------------------------
