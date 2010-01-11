@@ -47,6 +47,9 @@ stats_done(Pid) ->
 
 % -------------------------------------------------------
 
+% TODO: Want to kill the mc_stats collecting process if no messages
+% after awhile.
+
 init(ignored) -> {ok, #state{dict = dict:new()}}.
 
 terminate(_Reason, _State)     -> ok.
