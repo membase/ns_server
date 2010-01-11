@@ -55,19 +55,54 @@ handle_cast(stop, State)       -> {stop, shutdown, State}.
 handle_info(_Info, State)      -> {noreply, State}.
 
 handle_call({more, Key, Val}, _From, #state{dict = Dict} = State) ->
-    Dict2 =
-        dict:update(Key,
-                    fun(ValOld) ->
-                            X = sum_binary(ValOld, Val),
-?debugVal({sb, Key, ValOld, Val, X}),
-X
-                        end,
-                        Val,
-                        Dict),
-    {reply, ok, State#state{dict = Dict2}};
+    case action(Key) of
+        one ->
+            Dict2 = dict:store(Key, Val, Dict),
+            {reply, ok, State#state{dict = Dict2}};
+        sum ->
+            Dict2 = dict:update(Key,
+                                fun(ValOld) ->
+                                        sum_binary(ValOld, Val)
+                                end,
+                                Val,
+                                Dict),
+            {reply, ok, State#state{dict = Dict2}}
+    end;
 
 handle_call(done, _From, #state{dict = Dict} = State) ->
     {stop, normal, {ok, dict:to_list(Dict)}, State}.
+
+% -------------------------------------------------------
+
+action(<<"pid">>) -> one;
+action(<<"uptime">>) -> one;
+action(<<"time">>) -> one;
+action(<<"version">>) -> one;
+action(<<"pointer_size">>) -> one;
+action(<<"rusage_user">>) -> one;
+action(<<"rusage_system">>) -> one;
+
+action(<<"tcpport">>) -> one;
+action(<<"udpport">>) -> one;
+action(<<"inter">>) -> one;
+action(<<"verbosity">>) -> one;
+action(<<"oldest">>) -> one;
+action(<<"evictions">>) -> one;
+action(<<"domain_socket">>) -> one;
+action(<<"umask">>) -> one;
+action(<<"growth_factor">>) -> one;
+action(<<"chunk_size">>) -> one;
+action(<<"num_threads">>) -> one;
+action(<<"stat_key_prefix">>) -> one;
+action(<<"detail_enabled">>) -> one;
+action(<<"reqs_per_event">>) -> one;
+action(<<"cas_enabled">>) -> one;
+action(<<"tcp_backlog">>) -> one;
+action(<<"binding_protocol">>) -> one;
+
+action(_) -> sum.
+
+% -------------------------------------------------------
 
 binary_to_integer(Bin) ->
     L = binary_to_list(Bin),

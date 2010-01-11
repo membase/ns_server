@@ -101,16 +101,15 @@ cmd(stats, #session_proxy{bucket = Bucket} = Session,
     Args = case CmdArgs of [] -> undefined;
                            _  -> string:join(CmdArgs, " ")
            end,
+    {ok, Stats} = mc_stats:start_link(),
     ResponseFilter =
         fun (LineBin, undefined) ->
-                mc_ascii:send(Out, [LineBin, <<"\r\n">>]),
+                mc_stats:stats_more(Stats, LineBin),
                 false;
             (#mc_header{status = ?SUCCESS},
              #mc_entry{key = KeyBin, data = DataBin}) ->
                 case mc_binary:bin_size(KeyBin) > 0 of
-                    true  -> mc_ascii:send(Out, [<<"STAT ">>,
-                                                 KeyBin, <<" ">>,
-                                                 DataBin, <<"\r\n">>]),
+                    true  -> mc_stats:stats_more(Stats, KeyBin, DataBin),
                              false;
                     false -> false
                 end;
@@ -127,6 +126,13 @@ cmd(stats, #session_proxy{bucket = Bucket} = Session,
                     end,
                     {0, []}, Addrs),
     await_ok(NumFwd),
+    {ok, StatsResults} = mc_stats:stats_done(Stats),
+    lists:foreach(fun({KeyBin, DataBin}) ->
+                          mc_ascii:send(Out, [<<"STAT ">>,
+                                              KeyBin, <<" ">>,
+                                              DataBin, <<"\r\n">>])
+                  end,
+                  StatsResults),
     % TODO: Different stats args don't all use "END".
     % TODO: ERROR from stats doesn't use "END".
     mc_ascii:send(Out, <<"END\r\n">>),
