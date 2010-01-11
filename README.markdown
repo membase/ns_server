@@ -11,40 +11,42 @@ Build dependencies include...
 
 * erlang (5.7.4, also needed at runtime)
 * ruby (1.8.6)
-* gem
-* gem install sprockets
+* ruby gems
+    * sprockets (install with `gem install sprockets`)
 
 Building...
 
-* git clone git@github.com:northscale/ns_server.git
-* cd ns_server
-* git submodule init
-* git submodule update
-* make
+    git clone git@github.com:northscale/ns_server.git
+    cd ns_server
+    git submodule init
+    git submodule update
+    make
 
 ## Starting
 
-The ns_server can be started using...
+The ns_server can be started through the `start.sh` script found in the
+main directory.
 
-* start.sh
+    ./start.sh
 
-This script is found in the main directory.  It starts under erlang's
-sasl facility, which will give you more detailed logging on both
-progress and failures of the application and the heirarchy.
+It starts under sasl, which will give you more detailed logging on
+both progress and failures of the application and the heirarcy.
+
+### Interactive Execution
 
 If you'd like to just start a shell, then interact with the running
 application, use:
 
-* ./start-shell.sh.
+    ./start-shell.sh.
 
 To start with a different node name, and pass parameters (such as a
 different config file), use:
 
-* ./start_shell.sh -name $NODE_NAME -ns_server ns_server_config \"$CONFIG_FILE\"
+    ./start_shell.sh -name $NODE_NAME -ns_server ns_server_config "$CONFIG_FILE"
 
 For example:
 
-* ./start_shell.sh -name ns_2 -ns_server ns_server_config \"priv/config2\"
+    ./start_shell.sh -name ns_2 -ns_server ns_server_config "priv/config2"
 
 * * * * *
 Copyright (c) 2010, NorthScale, Inc.
