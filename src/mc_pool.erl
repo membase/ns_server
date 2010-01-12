@@ -26,6 +26,14 @@
          get_memcached_port/1,
          nodes_to_addrs/4]).
 
+-export([pools_config_get/0,
+         pools_config_set/1,
+         pool_config_default/0,
+         pool_config_make/1,
+         pool_config_make/2,
+         pool_config_set/3,
+         pool_config_get/2]).
+
 %% gen_server callbacks
 -export([init/1, terminate/2, code_change/3,
          handle_call/3, handle_cast/2, handle_info/2]).
@@ -53,6 +61,42 @@ bucket_choose_addr({mc_pool_bucket, PoolName, BucketName}, Key) ->
 bucket_choose_addrs({mc_pool_bucket, PoolName, BucketName}, Key, N) ->
     gen_server:call(name_to_server_name(PoolName),
                     {bucket_choose_addrs, BucketName, Key, N}).
+
+% -------------------------------------------------------
+
+% Create & read configuration for pools.
+
+pools_config_get() ->
+    case ns_config:search(ns_config:get(), pools) of
+        false          -> [];
+        {value, Pools} -> Pools
+    end.
+
+pools_config_set(Pools) ->
+    ns_config:set(pools, Pools).
+
+pool_config_default() ->
+    [{address, "0.0.0.0"}, % An IP binding
+     {port, 11211},
+     {buckets, []}].
+
+pool_config_make(PoolName) ->
+    pool_config_make(PoolName, pool_config_default()).
+
+pool_config_make(PoolName, PoolConfig) ->
+    Pools = pools_config_get(),
+    case pool_config_get(Pools, PoolName) of
+        false   -> Pools2 = pool_config_set(Pools, PoolName, PoolConfig),
+                   pools_config_set(Pools2),
+                   ok;
+        _Exists -> true
+    end.
+
+pool_config_set(Pools, PoolName, PoolConfig) ->
+    lists:keystore(PoolName, 1, Pools, {PoolName, PoolConfig}).
+
+pool_config_get(Pools, PoolName) ->
+    proplists:get_value(PoolName, Pools, false).
 
 % -------------------------------------------------------
 
@@ -128,6 +172,8 @@ handle_call(_, _From, State) ->
 create(Id, Nodes, Config, Buckets) ->
     #mc_pool{id = Id, nodes = Nodes, config = Config, buckets = Buckets}.
 
+% Reads ns_config and creates a mc_pool object.
+
 build_pool(Name, NSConfig) ->
     case ns_config:search_prop(NSConfig, pools, Name) of
         undefined ->
@@ -148,8 +194,7 @@ create_pool(Name, PoolConfig, MemcachedPort, Nodes) ->
     % {buckets, [
     %   {"default", [
     %     {auth_plain, undefined},
-    %     {size_per_node, 64}, % In MB.
-    %     {cache_expiration_range, {0,600}}
+    %     {size_per_node, 64} % In MB.
     %   ]}
     % ]}
     BucketConfigs = proplists:get_value(buckets, PoolConfig, []),
@@ -273,3 +318,10 @@ foreach_bucket_test() ->
                        end),
     ok.
 
+pool_config_test() ->
+    D = pool_config_default(),
+    X = [{"hi", D}],
+    ?assertEqual(X, pool_config_set([], "hi", D)),
+    ?assertEqual(X, pool_config_set([{"hi", old}], "hi", D)),
+    ?assertEqual(D, pool_config_get(X, "hi")),
+    ok.

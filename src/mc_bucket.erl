@@ -18,6 +18,12 @@
                     auth    % From mc_bucket:get_bucket_auth().
                     }).
 
+-export([bucket_config_default/0,
+         bucket_config_make/2,
+         bucket_config_make/3,
+         bucket_config_set/3,
+         bucket_config_get/2]).
+
 %% API for buckets.
 
 % Callers should consider the returned value to be opaque.
@@ -98,6 +104,49 @@ get_bucket_auth(BucketConfig) ->
 
 % ------------------------------------------------
 
+bucket_config_default() ->
+    [{auth_plain, undefined},
+     {size_per_node, 64}
+    ].
+
+bucket_config_make(PoolName, BucketName) ->
+    bucket_config_make(PoolName, BucketName, bucket_config_default()).
+
+bucket_config_make(PoolName, BucketName, BucketConfig) ->
+    Pools = mc_pool:pools_config_get(),
+    PoolConfig =
+        case mc_pool:pool_config_get(Pools, PoolName) of
+            false -> mc_pool:pool_config_default();
+            X     -> X
+        end,
+    Pools2 =
+        mc_pool:pool_config_set(Pools, PoolName,
+                                bucket_config_set(PoolConfig,
+                                                  BucketName,
+                                                  BucketConfig)),
+    mc_pools:pools_config_set(Pools2).
+
+bucket_config_set(PoolConfig, BucketName, BucketConfig) ->
+    Buckets = case proplists:get_value(buckets, PoolConfig, false) of
+                  false -> [];
+                  X     -> X
+              end,
+    lists:keystore(buckets, 1, PoolConfig,
+                   {buckets, lists:keystore(BucketName, 1, Buckets,
+                                            {BucketName, BucketConfig})}).
+
+bucket_config_get(PoolConfig, BucketName) ->
+    case proplists:get_value(buckets, PoolConfig, false) of
+        false   -> false;
+        Buckets ->
+            case proplists:get_value(BucketName, Buckets, false) of
+                false        -> false;
+                BucketConfig -> BucketConfig
+            end
+    end.
+
+% ------------------------------------------------
+
 % Fake hash_key/hash_addr functions for unit testing.
 
 hash_key(_Key, _)   -> 1.
@@ -131,3 +180,21 @@ choose_addrs_str_test() ->
     ?assertMatch({"key6", [A1], config}, choose_addrs(B1, "key6", 1)),
     ok.
 
+bucket_config_get_test() ->
+    ?assertEqual(false, bucket_config_get([], b)),
+    ?assertEqual(false, bucket_config_get([{buckets, []}], b)),
+    ?assertEqual(false, bucket_config_get([{buckets, [{x, foo}]}], b)),
+    ?assertEqual(foo, bucket_config_get([{buckets, [{b, foo}]}], b)),
+    ?assertEqual(foo, bucket_config_get([{buckets, [{b, foo}, {x, bar}]}], b)),
+    ?assertEqual(foo, bucket_config_get([{buckets, [{x, bar}, {b, foo}]}], b)),
+    ?assertEqual(foo, bucket_config_get([{buckets, [{b, foo}, {x, bar}]}], b)),
+    ok.
+
+bucket_config_set_test() ->
+    ?assertEqual([{buckets, [{x, xx}]}],
+                 bucket_config_set([], x, xx)),
+    ?assertEqual([{buckets, [{x, xx}]}],
+                 bucket_config_set([{buckets, []}], x, xx)),
+    ?assertEqual([{buckets, [{x, xxx}]}],
+                 bucket_config_set([{buckets, [{x, xx}]}], x, xxx)),
+    ok.

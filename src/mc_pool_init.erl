@@ -37,8 +37,7 @@ code_change(_OldVsn, State, _) -> {ok, State}.
 %     {buckets, [
 %       {"default", [
 %         {auth_plain, undefined},
-%         {size_per_node, 64}, % In MB.
-%         {cache_expiration_range, {0, 600}}
+%         {size_per_node, 64} % In MB.
 %       ]}
 %     ]}
 %   ]}]
