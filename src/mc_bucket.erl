@@ -124,7 +124,10 @@ bucket_config_make(PoolName, BucketName, BucketConfig) ->
                                 bucket_config_set(PoolConfig,
                                                   BucketName,
                                                   BucketConfig)),
-    mc_pools:pools_config_set(Pools2).
+    case Pools =:= Pools2 of
+        true  -> true; % No change.
+        false -> mc_pools:pools_config_set(Pools2) % Created.
+    end.
 
 bucket_config_set(PoolConfig, BucketName, BucketConfig) ->
     Buckets = case proplists:get_value(buckets, PoolConfig, false) of

@@ -85,11 +85,10 @@ pool_config_make(PoolName) ->
 
 pool_config_make(PoolName, PoolConfig) ->
     Pools = pools_config_get(),
-    case pool_config_get(Pools, PoolName) of
-        false   -> Pools2 = pool_config_set(Pools, PoolName, PoolConfig),
-                   pools_config_set(Pools2),
-                   ok;
-        _Exists -> true
+    Pools2 = pool_config_set(Pools, PoolName, PoolConfig),
+    case Pools =:= Pools2 of
+        true  -> true; % No change.
+        false -> pools_config_set(Pools2) % Created.
     end.
 
 pool_config_set(Pools, PoolName, PoolConfig) ->
