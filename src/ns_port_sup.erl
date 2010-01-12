@@ -15,20 +15,14 @@ start_link() ->
 
 init([]) ->
     {ok, {{one_for_one,
-           get_env_default(max_r, 3),
-           get_env_default(max_t, 10)},
+           misc:get_env_default(max_r, 3),
+           misc:get_env_default(max_t, 10)},
           [
            {ns_port_init,
             {ns_port_init, start_link, []},
             transient, 10, worker, []}
            | dynamic_children()
           ]}}.
-
-get_env_default(Var, Def) ->
-    case application:get_env(Var) of
-        {ok, Value} -> Value;
-        undefined -> Def
-    end.
 
 dynamic_children() ->
     {value, PortServers} = ns_config:search(ns_config:get(), port_servers),

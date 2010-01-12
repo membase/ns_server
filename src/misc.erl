@@ -323,3 +323,9 @@ node_name_host(Node) ->
     [Name, Host | _] = string:tokens(atom_to_list(Node), "@"),
     {Name, Host}.
 
+% Get an application environment variable, or a defualt value.
+get_env_default(Var, Def) ->
+    case application:get_env(Var) of
+        {ok, Value} -> Value;
+        undefined -> Def
+    end.

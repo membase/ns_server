@@ -14,15 +14,9 @@ start_link() ->
 
 init([]) ->
     {ok, {{rest_for_one,
-           get_env_default(max_r, 3),
-           get_env_default(max_t, 10)},
+           misc:get_env_default(max_r, 3),
+           misc:get_env_default(max_t, 10)},
           get_child_specs()}}.
-
-get_env_default(Var, Def) ->
-    case application:get_env(Var) of
-        {ok, Value} -> Value;
-        undefined -> Def
-    end.
 
 get_child_specs() ->
     [
