@@ -79,7 +79,7 @@ reconfig(Name, PoolConfig) ->
               ok;
          ({mc_accept, _Pid, _, CurrArgs}) ->
               WantSpec = child_spec_accept(Name, PoolConfig),
-              {_, {_, _, WantArgs}} = WantSpec,
+              {_, {_, _, WantArgs}, _, _, _, _} = WantSpec,
               case CurrArgs =:= WantArgs of
                   true  -> ok;
                   false ->

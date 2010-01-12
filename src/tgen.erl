@@ -76,18 +76,21 @@ handle_event(_, State) ->
     {ok, State}.
 
 handle_call(traffic_start, #state{timer = undefined} = State) ->
+    bucket_make(?TGEN_POOL, ?TGEN_BUCKET),
     case timer:apply_interval(?TGEN_INTERVAL, ?MODULE,
                               traffic_more, []) of
         {ok, TRef} -> {ok, ok, State#state{timer = TRef}};
         Error      -> ns_log:log(?MODULE, 0001, "timer failed: ~p", [Error]),
                       {ok, ok, State}
     end;
+
 handle_call(traffic_start, #state{timer = TRef} = State) ->
     timer:cancel(TRef),
     handle_call(traffic_start, State#state{timer = undefined});
 
 handle_call(traffic_stop, #state{timer = undefined} = State) ->
     {ok, ok, State};
+
 handle_call(traffic_stop, #state{timer = TRef} = State) ->
     timer:cancel(TRef),
     {ok, ok, State#state{timer = undefined}};
@@ -95,13 +98,9 @@ handle_call(traffic_stop, #state{timer = TRef} = State) ->
 handle_call(traffic_started, #state{timer = TRef} = State) ->
     {ok, TRef =/= undefined, State};
 
-handle_call(traffic_more, #state{timer = TRef} = State) ->
-    case TRef of
-        undefined -> {ok, ok, State};
-        _ -> (bucket_make(?TGEN_POOL, ?TGEN_BUCKET) andalso
-              send_traffic(?TGEN_POOL, ?TGEN_BUCKET)),
-             {ok, ok, State}
-    end;
+handle_call(traffic_more, #state{timer = _TRef} = State) ->
+    send_traffic(?TGEN_POOL, ?TGEN_BUCKET),
+    {ok, ok, State};
 
 handle_call(_, State) ->
     {ok, unknown, State}.
@@ -137,7 +136,6 @@ bcast(Addrs, #mc_header{opcode = Opcode} = H, E) ->
     HE = {H, E},
     {NumFwd, Monitors} =
         lists:foldl(fun (Addr, Acc) ->
-                            ?debugVal(Addr),
                             mc_downstream:accum(
                               mc_downstream:send(Addr, undefined,
                                                  Opcode, HE,
