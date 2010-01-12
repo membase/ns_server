@@ -317,3 +317,9 @@ node_name_short() ->
     [NodeName | _] = string:tokens(atom_to_list(node()), "@"),
     NodeName.
 
+% Node is an atom like some_name@host.foo.bar.com
+
+node_name_host(Node) ->
+    [Name, Host | _] = string:tokens(atom_to_list(Node), "@"),
+    {Name, Host}.
+
