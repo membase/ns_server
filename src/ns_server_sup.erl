@@ -29,6 +29,11 @@ get_child_specs() ->
      {ns_config_sup, {ns_config_sup, start_link, []},
       permanent, infinity, supervisor,
       [ns_config_sup, ns_config, ns_config_default]},
+
+     {ns_node_disco_sup, {ns_node_disco_sup, start_link, []},
+      permanent, infinity, supervisor,
+      [ns_node_disco_sup, ns_node_disco_events, ns_node_disco]},
+
      {ns_port_sup, {ns_port_sup, start_link, []},
       permanent, infinity, supervisor,
       [ns_port_sup, ns_port_server]},
@@ -37,8 +42,5 @@ get_child_specs() ->
       []},
      {menelaus, {menelaus_app, start_subapp, []},
       permanent, infinity, supervisor,
-      []},
-     {ns_config_rep, {ns_config_rep, start_link, []},
-      permanent, 10, worker,
-      [ns_config_rep]}
+      []}
     ].
