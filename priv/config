@@ -38,12 +38,9 @@
 % Example rest_cred when a login/password is setup.
 %
 % {rest_creds, [{'_ver', {0, 0, 0}},
-%               {creds, [
-%                  [{login, "admin"},      % Must not be empty "", no spaces.
-%                   {password, "changeM3"} % May be empty, and is cleartext.
-%                  ]
-%                ]}
-%              ].
+%               {creds, [{"user", [{password, "password"}]},
+%                        {"admin", [{password, "admin"}]}]}
+%              ]}. % An empty list means no login/password auth check.
 %
 % TODO: Is login an email address?  If yes, should 'login' be 'email'?
 
