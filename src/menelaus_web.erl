@@ -186,7 +186,7 @@ build_nodes_info(MyPool) ->
     Nodes =
         lists:map(
           fun(WantENode) ->
-                  {Name, Host} = misc:node_name_host(WantENode),
+                  {_Name, Host} = misc:node_name_host(WantENode),
                   %% TODO: more granular, more efficient node status
                   %%       that's not O(N^2).
                   Status = case lists:member(WantENode, ActualENodes) of
@@ -194,13 +194,13 @@ build_nodes_info(MyPool) ->
                                false -> <<"unhealthy">>
                            end,
                   {value, DirectPort} = direct_port(WantENode),
-                  {struct, [{name, list_to_binary(Name)},
-                            {hostname, list_to_binary(Host)},
-                            {otp_cookie, OtpCookie},
+                  {struct, [{hostname, list_to_binary(Host)},
                             {status, Status},
                             {ports,
                              {struct, [{proxy, ProxyPort},
-                                       {direct, DirectPort}]}}]}
+                                       {direct, DirectPort}]}},
+                            {otp_node, list_to_binary(atom_to_list(WantENode))},
+                            {otp_cookie, OtpCookie}]}
           end,
           WantENodes),
     Nodes.
