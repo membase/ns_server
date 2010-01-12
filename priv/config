@@ -20,8 +20,7 @@
 % Listeners: some menelaus module that configures/reconfigures mochiweb
 
 {rest, [{'_ver', {0, 0, 0}},
-        {address, "0.0.0.0"}, % An IP binding
-        {port, 8080}          % Port number of the REST admin API and UI.
+        {port, 8080} % Port number of the REST admin API and UI.
        ]}.
 
 % -----------------------------------
@@ -109,7 +108,6 @@
 {pools, [
   {'_ver', {0, 0, 0}},
   {"default", [
-    {address, "0.0.0.0"}, % An IP binding
     {port, 11211},
     {buckets, [
       {"default", [

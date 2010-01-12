@@ -9,8 +9,7 @@
 
 default() ->
     [{directory, default_data_directory()},
-     {rest, [{address, "0.0.0.0"}, % An IP binding
-             {port, 8080}          % Port number of the REST admin API and UI.
+     {rest, [{port, 8080} % Port number of the REST admin API and UI.
             ]},
      {rest_creds, [{creds, []}]},
      {port_servers, [{memcached, "./memcached",
@@ -22,8 +21,7 @@ default() ->
                     ]},
      {alerts, []},
      {pools, [{"default",
-               [{address, "0.0.0.0"}, % An IP binding
-                {port, 11211},
+               [{port, 11211},
                 {buckets, [{"default",
                             [{auth_plain, undefined},
                              {size_per_node, 64} % In MB.
