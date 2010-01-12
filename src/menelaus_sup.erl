@@ -60,9 +60,13 @@ init([]) ->
            {menelaus_web, start, [WebConfig]},
            permanent, 5000, worker, dynamic},
 
+    TGen = {tgen,
+            {tgen, start_link, []},
+            transient, 5000, worker, []},
+
     SimpleCache = {simple_cache,
                    {simple_cache, start_link, []},
                    permanent, 5000, worker, dynamic},
 
-    Processes = [Web, SimpleCache],
+    Processes = [Web, TGen, SimpleCache],
     {ok, {{one_for_one, 10, 10}, Processes}}.
