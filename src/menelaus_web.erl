@@ -86,9 +86,23 @@ serve_index_html_for_tests(Req, DocRoot) ->
         _ -> {Req:not_found()}
     end.
 
+% {rest_creds, [{creds, [{"user", [{password, "password"}]},
+%                        {"admin", [{password, "admin"}]}]}
+%              ]}. % An empty list means no login/password auth check.
+
 check_auth(undefined) -> false;
-check_auth({User, Password}) ->
-    (User =:= "admin") andalso (Password =:= "admin").
+check_auth(UserPassword) ->
+    case ns_config:search_prop(ns_config:get(), rest_creds, creds, empty) of
+        empty -> true; % An empty list means no login/password auth check.
+        Creds -> check_auth(UserPassword, Creds)
+    end.
+
+check_auth(_UserPassword, []) ->
+    false;
+check_auth({User, Password}, [{User, PropList} | _]) ->
+    Password =:= proplists:get_value(password, PropList, "");
+check_auth(UserPassword, [_NotRightUser | Rest]) ->
+    check_auth(UserPassword, Rest).
 
 extract_basic_auth(Req) ->
     case Req:get_header_value("authorization") of
