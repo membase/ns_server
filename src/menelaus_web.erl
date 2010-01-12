@@ -179,13 +179,14 @@ direct_port(_Node) ->
     end.
 
 build_nodes_info(MyPool) ->
+    OtpCookie = list_to_binary(atom_to_list(ns_node_disco:cookie_get())),
     WantENodes = ns_node_disco:nodes_wanted(),
     ActualENodes = ns_node_disco:nodes_actual_proper(),
     ProxyPort = expect_prop_value(port, MyPool),
     Nodes =
         lists:map(
           fun(WantENode) ->
-                  {_Name, Host} = misc:node_name_host(WantENode),
+                  {Name, Host} = misc:node_name_host(WantENode),
                   %% TODO: more granular, more efficient node status
                   %%       that's not O(N^2).
                   Status = case lists:member(WantENode, ActualENodes) of
@@ -193,7 +194,9 @@ build_nodes_info(MyPool) ->
                                false -> <<"unhealthy">>
                            end,
                   {value, DirectPort} = direct_port(WantENode),
-                  {struct, [{hostname, list_to_binary(Host)},
+                  {struct, [{name, list_to_binary(Name)},
+                            {hostname, list_to_binary(Host)},
+                            {otp_cookie, OtpCookie},
                             {status, Status},
                             {ports,
                              {struct, [{proxy, ProxyPort},
