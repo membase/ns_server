@@ -22,7 +22,9 @@
 %% API
 -export([start_link/1, reconfig/2, reconfig/3, reconfig_nodes/3,
          get_bucket/2,
-         auth_to_bucket/3]).
+         auth_to_bucket/3,
+         get_memcached_port/1,
+         nodes_to_addrs/4]).
 
 %% gen_server callbacks
 -export([init/1, terminate/2, code_change/3,
@@ -224,8 +226,7 @@ create_bucket_handle(PoolId, BucketId) ->
 nodes_to_addrs(Nodes, Port, Kind, Auth) ->
     PortStr = integer_to_list(Port),
     lists:map(fun(Node) ->
-                  % Node is an atom like some_name@host.foo.bar.com
-                  [_Name, Host | _] = string:tokens(atom_to_list(Node), "@"),
+                  {_Name, Host} = misc:node_name_host(Node),
                   Location = lists:concat([Host, ":", PortStr]),
                   mc_addr:create(Location, Kind, Auth)
               end,
