@@ -45,7 +45,7 @@ handle_event(Changed, State) when is_list(Changed) ->
                        (_, Acc) -> Acc
                     end,
                     [], Changed),
-    ns_node_disco:config_push(ChangedRaw),
+    ns_config_rep:push(ChangedRaw),
     {ok, State, hibernate};
 
 handle_event(_E, State) ->

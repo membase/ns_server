@@ -38,9 +38,7 @@ get_child_specs() ->
      {menelaus, {menelaus_app, start_subapp, []},
       permanent, infinity, supervisor,
       []},
-     % ensure ns_server_init is the last child, because its init()
-     % has all the remaining init steps after everything's running.
-     {ns_server_init, {ns_server_init, start_link, []},
-      transient, 10, worker,
-      []}
+     {ns_config_rep, {ns_config_rep, start_link, []},
+      permanent, 10, worker,
+      [ns_config_rep]}
     ].

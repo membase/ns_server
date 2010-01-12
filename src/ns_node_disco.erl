@@ -14,8 +14,6 @@
          cookie_init/0, cookie_get/0, cookie_set/1, cookie_sync/0,
          pool_join/2,
          pool_leave/1, pool_leave/0,
-         config_push/0, config_push/1, config_push/2,
-         config_pull/0, config_pull/1,
          loop/1]).
 
 -include_lib("eunit/include/eunit.hrl").
@@ -171,7 +169,6 @@ loop(Nodes) ->
         false -> gen_event:notify(ns_node_disco_events,
                                   {ns_node_disco_events, Nodes, NodesNow})
     end,
-    Timeout = 5000 + trunc(random:uniform() * 55000),
     receive
         {nodeup, Node} ->
             % This codepath also handles network partition healing here.
@@ -179,15 +176,12 @@ loop(Nodes) ->
             % partition healing, nodes might be long-running and have
             % diverged config.
             error_logger:info_msg("new node: ~p~n", [Node]),
-            spawn(fun() ->
-                      % In a spawned process to not hold up nodeup/down.
-                      config_pull([Node], 1)
-                  end),
+            ns_config_rep:pull([Node], 1),
             ok;
         {nodedown, Node} ->
-            error_logger:info_msg("lost node: ~p~n", [Node])
-    after Timeout ->
-        config_pull(1)
+            error_logger:info_msg("lost node: ~p~n", [Node]);
+        Other ->
+            error_logger:info_msg("Unhandled message: ~p~n", [Other])
     end,
     ?MODULE:loop(NodesNow).
 
@@ -240,29 +234,4 @@ pool_leave() ->
     cookie_init(),
     ns_config:set(nodes_wanted, [node()]),
     ok.
-
-% --------------------------------------------------
-
-config_push() ->
-    config_push(ns_config:get_remote(node())).
-
-config_push(RawKVList) ->
-    config_push(RawKVList, nodes_actual_other()).
-
-config_push(RawKVList, OtherNodes) ->
-    misc:pmap(fun(Node) -> ns_config:set_remote(Node, RawKVList) end,
-              OtherNodes, length(OtherNodes), 2000).
-
-config_pull()  -> config_pull(5).
-config_pull(N) -> config_pull(misc:shuffle(nodes_actual_other()), N).
-
-config_pull([], _N)    -> ok;
-config_pull(_Nodes, 0) -> error;
-config_pull([Node | Rest], N) ->
-    case (catch ns_config:get_remote(Node)) of
-        {'EXIT', _, _} -> config_pull(Rest, N - 1);
-        {'EXIT', _}    -> config_pull(Rest, N - 1);
-        RemoteKVList   -> ns_config:set(RemoteKVList),
-                          ok
-    end.
 

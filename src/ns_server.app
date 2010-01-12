@@ -9,6 +9,7 @@
              ns_config_default,
              ns_config_log,
              ns_config_sup,
+             ns_config_rep,
              ns_log,
              ns_node_disco,
              ns_node_disco_conf_events,
