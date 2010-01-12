@@ -120,7 +120,7 @@ redirect_permanently(Path, Req, ExtraHeaders) ->
                  Body}).
 
 reply_json(Req, Body) ->
-    Req:ok({"application/json", 
+    Req:ok({"application/json",
             [{"Server", "NorthScale menelaus %TODO gitversion%"}],
             mochijson2:encode(Body)}).
 
@@ -143,12 +143,9 @@ build_pools() ->
 handle_pools(Req) ->
     reply_json(Req, build_pools()).
 
-expect_prop_value_list(KeysList, List) ->
-    [expect_prop_value(K, List) || K <- KeysList].
-
 expect_prop_value(K, List) ->
     Ref = make_ref(),
-    try 
+    try
         case proplists:get_value(K, List, Ref) of
             RV when RV =/= Ref -> RV
         end
@@ -157,30 +154,52 @@ expect_prop_value(K, List) ->
     end.
 
 find_pool_by_id(Id) -> expect_prop_value(Id, expect_config(pools)).
-    
+
+direct_port(_Node) ->
+    case ns_port_server:get_port_server_param(ns_config:get(), memcached, "-p") of
+        false ->
+            ns_log:log(?MODULE, 0003, "missing memcached port"),
+            false;
+        {value, MemcachedPortStr} ->
+            {value, list_to_integer(MemcachedPortStr)}
+    end.
+
+% {"default", [
+%   {address, "0.0.0.0"}, % An IP binding
+%   {port, 11211},
+%   {buckets, [
+%     {"default", [
+%       {auth_plain, undefined},
+%       {size_per_node, 64}, % In MB.
+%       {cache_expiration_range, {0,600}}
+%     ]}
+%   ]}
+% ]}
 
 build_pool_info(Id) ->
     MyPool = find_pool_by_id(Id),
-    %% TODO: node status
-    [Addrs, Buckets] = expect_prop_value_list([addrs, buckets], MyPool),
-    NodeKindPairs = lists:map(fun (AddrDesc) ->
-                                      [Kind, ConnDesc] = expect_prop_value_list([kind, conn], AddrDesc),
-                                      {expect_prop_value(addr, ConnDesc), Kind}
-                              end, Addrs),
-    NodesDict = lists:foldl(fun ({Addr, Kind}, Dict) ->
-                                    dict:append(Addr, Kind, Dict)
-                            end,
-                            dict:new(), NodeKindPairs),
-    PortTupleFor = fun (router) -> {router, 11211};
-                       (kvcache) -> {kvcache, 11311};
-                       (kvstore) -> {kvstore, 11411};
-                       (memcached) -> {memcached, 11211}
-                   end,
-    Nodes = [{struct, [{ipAddress, list_to_binary(IpAddr)},
-                       {struct, <<"healthy">>},
-                       {ports, {struct, [PortTupleFor(Kind) || Kind <- element(2, dict:find(IpAddr, NodesDict))]}},
-                       {name, list_to_binary(IpAddr)}]}
-             || IpAddr <- dict:fetch_keys(NodesDict)],
+    Buckets = expect_prop_value(buckets, MyPool),
+    WantENodes = ns_node_disco:nodes_wanted(),
+    ActualENodes = ns_node_disco:nodes_actual_proper(),
+    ProxyPort = expect_prop_value(port, MyPool),
+    Nodes =
+        lists:map(
+          fun(WantENode) ->
+                  {_Name, Host} = misc:node_name_host(WantENode),
+                  %% TODO: more granular, more efficient node status
+                  %%       that's not O(N^2).
+                  Status = case lists:member(WantENode, ActualENodes) of
+                               true -> <<"healthy">>;
+                               false -> <<"unhealthy">>
+                           end,
+                  {value, DirectPort} = direct_port(WantENode),
+                  {struct, [{hostname, list_to_binary(Host)},
+                            {status, Status},
+                            {ports,
+                             {struct, [{proxy, ProxyPort},
+                                       {direct, DirectPort}]}}]}
+          end,
+          WantENodes),
     BucketsInfo = [{struct, [{uri, list_to_binary("/pools/" ++ Id ++ "/buckets/" ++ Name)},
                              {name, list_to_binary(Name)}]}
                    || Name <- proplists:get_keys(Buckets)],
@@ -190,42 +209,25 @@ build_pool_info(Id) ->
                        [{uri, list_to_binary("/pools/" ++ Id ++ "/stats")}]}},
               {name, list_to_binary(Id)}]}.
     %% case Id of
-    %%     "default" -> {struct, [{nodes, [{struct, [{ipAddress, <<"10.0.1.20">>},
+    %%     "default" -> {struct, [{nodes, [{struct, [{hostname, <<"foo1.bar.com">>},
     %%                                               {status, <<"healthy">>},
-    %%                                               {ports, {struct, [{routing, 11211},
-    %%                                                                 {caching, 11311},
-    %%                                                                 {kvstore, 11411}]}},
-    %%                                               {name, <<"first_node">>},
-    %%                                               {fqdn, <<"first_node.in.pool.com">>}]},
-    %%                                     {struct, [{ipAddress, <<"10.0.1.21">>},
+    %%                                               {ports, {struct, [{proxy, 11211},
+    %%                                                                 {direct, 11212}]}}]},
+    %%                                     {struct, [{hostname, <<"foo2.bar.com">>},
     %%                                               {status, <<"healthy">>},
-    %%                                               {ports, {struct, [{routing, 11211},
-    %%                                                                 {caching, 11311},
-    %%                                                                 {kvstore, 11411}]}},
-    %%                                               {uri, <<"/addresses/10.0.1.20">>},
-    %%                                               {name, <<"second_node">>},
-    %%                                               {fqdn, <<"second_node.in.pool.com">>}]}]},
+    %%                                               {ports, {struct, [{proxy, 11211},
+    %%                                                                 {direct, 11212}]}}]}]},
     %%                            {buckets, [{struct, [{uri, <<"/buckets/4">>},
     %%                                                 {name, <<"Excerciser Application">>}]}]},
     %%                            {stats, {struct, [{uri, <<"/buckets/4/stats?really_for_pool=1">>}]}},
     %%                            {name, <<"Default Pool">>}]};
-    %%     _ -> {struct, [{nodes, [{struct, [{ipAddress, <<"10.0.1.22">>},
-    %%                                       {uptime, 123321},
+    %%     _ -> {struct, [{nodes, [{struct, [{hostname, <<"foo1.bar.com">>},
     %%                                       {status, <<"healthy">>},
-    %%                                       {ports, {struct, [{routing, 11211},
-    %%                                                         {caching, 11311},
-    %%                                                         {kvstore, 11411}]}},
-    %%                                       {uri, <<"https://first_node.in.pool.com:80/pool/Another Pool/node/first_node/">>},
-    %%                                       {name, <<"first_node">>},
-    %%                                       {fqdn, <<"first_node.in.pool.com">>}]}, {struct, [{ipAddress, <<"10.0.1.23">>},
-    %%                                                                                         {uptime, 123123},
-    %%                                                                                         {status, <<"healthy">>},
-    %%                                                                                         {ports, {struct, [{routing, 11211},
-    %%                                                                                                           {caching, 11311},
-    %%                                                                                                           {kvstore, 11411}]}},
-    %%                                                                                         {uri, <<"https://second_node.in.pool.com:80/pool/Another Pool/node/second_node/">>},
-    %%                                                                                         {name, <<"second_node">>},
-    %%                                                                                         {fqdn, <<"second_node.in.pool.com">>}]}]},
+    %%                                       {ports, {struct, [{proxy, 11211},
+    %%                                                         {direct, 11212}]}},
+    %%                                       % TODO?
+    %%                                       {uptime, 123321},
+    %%                                       {uri, <<"https://first_node.in.pool.com:80/pool/Another Pool/node/first_node/">>}]},
     %%                    {buckets, [{struct, [{uri, <<"/buckets/5">>},
     %%                                         {name, <<"Excerciser Another">>}]}]},
     %%                    {stats, {struct, [{uri, <<"/buckets/4/stats?really_for_pool=2">>}]}},
