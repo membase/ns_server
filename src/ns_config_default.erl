@@ -26,8 +26,8 @@ default() ->
                 {port, 11211},
                 {buckets, [{"default",
                             [{auth_plain, undefined},
-                             {size_per_node, 64}, % In MB.
-                             {cache_expiration_range, {0, 600}}]}
+                             {size_per_node, 64} % In MB.
+                            ]}
                           ]}
                ]}
              ]},

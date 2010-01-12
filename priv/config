@@ -114,14 +114,12 @@
     {buckets, [
       {"default", [
         {auth_plain, undefined},
-        {size_per_node, 64}, % In MB.
-        {cache_expiration_range, {0,600}}
+        {size_per_node, 64} % In MB.
       ]}
 %      ,
 %      {"test_application", [
 %        {auth_plain, "plain_text_password"},
-%        {size_per_node, 64}, % In MB.
-%        {cache_expiration_range, {0,600}}
+%        {size_per_node, 64} % In MB.
 %      ]}
     ]}
   ]}
