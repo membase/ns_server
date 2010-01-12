@@ -1,16 +1,49 @@
-o [DONE] switching between buckets & pools
-o [DONE] bucket name in top key values UI
-o [DONE] switching graphs on overview
-o [DONE] marks and labels on graphs (jquery sparklines seem inappropriate)
-o [DONE] alerts section implementation
-** refresh
-** editable email setting
-* alerts section log tab
-o [DONE] proper tstamp formatting for alerts
-* server settings implementation
-* tests via watir [DONE though webdriver used]
-* welcome screen
-o [DONE] respect interval select for all sub-sections
+OVERVIEW
+* 'Get Started' section
+* no node list
+* correct fields in node list on overview page
+* expandable node list in overview status
+* leave cluster
+
+BUCKETS
+* (re)implement
+* mass bucket stats for buckets section
+* pagination
+
+BUCKET PROPERTIES
+* basic
+* remove bucket
+* flush all
+* change password
+* sample connection string
+
+TEST APPLICATION BUCKET
+* implement
+
+CONFIGURE THIS VIEW (graphs view configuration)
+* implement
+
+JOIN CLUSTER
+* implement
+
+ALERTS
+* implement dismiss (may require REST API change)
+* log
+
+CLUSTER SETTINGS
+* base UI
+* security
+* web address/port
+* proxy/cache port config (advanced)
+* alert mail settings
+* alert types settings
+
+CONSOLE LOGIN
+* (re)implement
+
+ADD BUCKET
+* implement (with button on BUCKET PROPERTIES section)
+
 
 * Store password/login in cookies ? So that you don't have to re-enter
    them on page refresh.
@@ -23,6 +56,6 @@ o [DONE] failure to retreive stats after switch to another zoom leaves us
    don't bother ?
 
 * intelligent circuit breaker for ajax requests
-* complete API switch to camelCase by converting all parameter names [DONE]
+* complete API switch to camelCase by converting all parameter names
+   [DONE] [alk: not quite. Several query params are still underscore-styled]
 * loading indicator for alert settings form
-* initiate node_disco (i.e. join a new cluster)
