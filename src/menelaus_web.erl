@@ -208,7 +208,6 @@ build_nodes_info(MyPool) ->
     Nodes.
 
 % {"default", [
-%   {address, "0.0.0.0"}, % An IP binding
 %   {port, 11211},
 %   {buckets, [
 %     {"default", [
