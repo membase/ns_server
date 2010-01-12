@@ -130,7 +130,7 @@ bucket_config_make(PoolName, BucketName, BucketConfig) ->
                                                   BucketConfig)),
     case Pools =:= Pools2 of
         true  -> true; % No change.
-        false -> mc_pools:pools_config_set(Pools2) % Created.
+        false -> mc_pool:pools_config_set(Pools2) % Created.
     end.
 
 bucket_config_set(PoolConfig, BucketName, BucketConfig) ->
