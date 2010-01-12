@@ -264,25 +264,21 @@ transitions to the client, if backward compatibility is desirable.
    }
    "nodes" : [
      {
-       "name" : "10.0.1.20",
+       "hostname" : "10.0.1.20",
        "uri" : "/addresses/10.0.1.20",
-       "ipAddress" : "10.0.1.20",
        "status" : "healthy",
        "ports" : {
-         "routing" : 11211,
-         "kvcache" : 11311,
-         "kvstore" : 11411
+         "proxy" : 11211,
+         "direct" : 11311
        }
      },
      {
-       "name" : "10.0.1.21",
+       "hostname" : "10.0.1.21",
        "uri" : "/addresses/10.0.1.21",
-       "ipAddress" : "10.0.1.20",
        "status" : "healthy",
        "ports" : {
-         "routing" : 11211,
-         "kvcache" : 11311,
-         "kvstore" : 11411
+         "proxy" : 11211,
+         "direct" : 11311
        }
      }
    ],
@@ -361,9 +357,8 @@ sense, like a backup or asking a node to join a pool.
   "cache" : "3gb",
   "status: "healthy",
   "ports" : {
-    "routing" : 11211,
-    "kvcache" : 11311,
-    "kvstore" : 11411
+    "proxy" : 11211,
+    "direct" : 11311
   }
   "os" : "none",
   "version" : "123",
@@ -516,25 +511,21 @@ Content-Length: nnn
    }
    "nodes" : [
               {
-                "name" : "10.0.1.20",
+                "hostname" : "10.0.1.20",
                 "uri" : "/addresses/10.0.1.20",
-                "ipAddress" : "10.0.1.20",
                 "status" : "healthy",
                 "ports" : {
-                  "routing" : 11211,
-                  "kvcache" : 11311,
-                  "kvstore" : 11411
+                  "proxy" : 11211,
+                  "direct" : 11311
                 }
               },
               {
-                "name" : "10.0.1.21",
+                "hostname" : "10.0.1.21",
                 "uri" : "/addresses/10.0.1.21",
-                "ipAddress" : "10.0.1.20",
                 "status" : "healthy",
                 "ports" : {
-                  "routing" : 11211,
-                  "kvcache" : 11311,
-                  "kvstore" : 11411
+                  "proxy" : 11211,
+                  "direct" : 11311
                 }
               }
    ]
@@ -584,25 +575,21 @@ Content-Length: nnn
    }
    "nodes" : [
               {
-                "name" : "10.0.1.20",
+                "hostname" : "10.0.1.20",
                 "uri" : "/addresses/10.0.1.20",
-                "ipAddress" : "10.0.1.20",
                 "status" : "healthy",
                 "ports" : {
                   "routing" : 11211,
-                  "kvcache" : 11311,
-                  "kvstore" : 11411
+                  "kvcache" : 11311
                 }
               },
               {
-                "name" : "10.0.1.21",
+                "hostname" : "10.0.1.21",
                 "uri" : "/addresses/10.0.1.21",
-                "ipAddress" : "10.0.1.20",
                 "status" : "healthy",
                 "ports" : {
                   "routing" : 11211,
-                  "kvcache" : 11311,
-                  "kvstore" : 11411
+                  "kvcache" : 11311
                 }
               }
    ]
