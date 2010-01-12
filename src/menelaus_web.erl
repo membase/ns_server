@@ -58,6 +58,8 @@ loop(Req, DocRoot) ->
                      case PathTokens of
                          ["alerts", "settings"] ->
                              {need_auth, fun handle_alerts_settings_post/1};
+                         ["pools", _, "buckets", _, "generatorControl"] ->
+                             {need_auth, fun handle_traffic_generator_control_post/1};
                          _ ->
                              {done, Req:not_found()}
                      end;
@@ -285,14 +287,30 @@ find_bucket_by_id(Pool, Id) ->
     Buckets = expect_prop_value(buckets, Pool),
     expect_prop_value(Id, Buckets).
 
+%% TODO: ask tgen module instead
+is_test_app_bucket(_Pool, BucketName) ->
+    BucketName =:= "test_application".
+%% true iff test app is running
+%% TODO: ask tgen module instead
+get_tgen_status() ->
+    false.
+
 handle_bucket_info(PoolId, Id, Req) ->
     Pool = find_pool_by_id(PoolId),
     _Bucket = find_bucket_by_id(Pool, Id),
     StatsURI = list_to_binary("/pools/"++PoolId++"/buckets/"++Id++"/stats"),
     Nodes = build_nodes_info(Pool),
-    Res = {struct, [{name, list_to_binary(Id)},
+    List1 = [{name, list_to_binary(Id)},
                     {nodes, Nodes},
-                    {stats, {struct, [{uri, StatsURI}]}}]},
+                    {stats, {struct, [{uri, StatsURI}]}}],
+    List2 = case is_test_app_bucket(Pool, Id) of
+                true -> [{testAppBucket, true},
+                         {controlURL, list_to_binary("/pools/"++PoolId++"/buckets/"++Id++"/generatorControl")},
+                         {status, get_tgen_status()}
+                         | List1];
+                _ -> List1
+            end,
+    Res = {struct, List2},
     reply_json(Req, Res).
 
 %% milliseconds since 1970 Jan 1 at UTC
@@ -637,4 +655,13 @@ handle_alerts_settings_post(Req) ->
                                          end,
                                          PostArgs)}]),
     %% TODO: make it more RESTful
+    Req:respond({200, [], []}).
+
+
+handle_traffic_generator_control_post(Req) ->
+    PostArgs = Req:parse_post(),
+    case proplists:get_value(PostArgs, "onOrOff") of
+        "off" -> tgen:traffic_stop();
+        "on" -> tgen:traffic_start()
+    end,
     Req:respond({200, [], []}).
