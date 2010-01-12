@@ -24,7 +24,13 @@ start_link() ->
     {ok, spawn_link(?MODULE, init, [])}.
 
 %
-% Node Discovery and monitoring
+% Node Discovery and monitoring and whole lot more.
+%
+% XXX: Functionality not related to node discover and monitoring MUST
+% be removed from this module.
+%
+% XXX: Reimplementing erlang:nodes is not desirable.  Erlang will do
+% this better than we will and the API will be easier to understand.
 %
 
 init() ->
