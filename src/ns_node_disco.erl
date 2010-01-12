@@ -88,10 +88,11 @@ nodes_wanted() ->
 % TODO: Track flapping nodes and attenuate.
 
 nodes_actual() ->
-    lists:usort([node() | nodes()]).
+    lists:sort(nodes([this, visible])).
 
 % Returns a subset of the nodes_wanted() that we see.
 
+% XXX:  This name is not clear.  Why isn't this nodes([this, visible])?
 nodes_actual_proper() ->
     Curr = nodes_actual(),
     Want = nodes_wanted(),
@@ -100,6 +101,7 @@ nodes_actual_proper() ->
 
 % Returns nodes_actual_proper(), but with self node() filtered out.
 
+% XXX:  This name is not clear.  Why isn't this nodes([visible])?
 nodes_actual_other() ->
     lists:subtract(ns_node_disco:nodes_actual_proper(), [node()]).
 
