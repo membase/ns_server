@@ -58,8 +58,11 @@ create(Id, Addrs, Config, Auth, HashMod, HashCfg) ->
                auth = Auth}.
 
 id(#mc_bucket{id = Id})          -> Id.
-addrs(#mc_bucket{addrs = Addrs}) -> Addrs.
 auth(#mc_bucket{auth = Auth})    -> Auth.
+
+addrs({mc_pool_bucket, _PoolId, _BucketId} = BucketRef) ->
+    mc_pool:bucket_addrs(BucketRef);
+addrs(#mc_bucket{addrs = Addrs}) -> Addrs.
 
 % Choose the Addr that should contain the Key.
 

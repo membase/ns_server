@@ -54,6 +54,10 @@ reconfig_nodes(PoolPid, PoolName, Nodes) ->
     gen_server:call(PoolPid,
                     {reconfig_nodes, PoolName, Nodes}).
 
+bucket_addrs({mc_pool_bucket, PoolName, BucketName}) ->
+    gen_server:call(name_to_server_name(PoolName),
+                    {bucket_addrs, BucketName}).
+
 bucket_choose_addr({mc_pool_bucket, PoolName, BucketName}, Key) ->
     gen_server:call(name_to_server_name(PoolName),
                     {bucket_choose_addr, BucketName, Key}).
@@ -121,17 +125,21 @@ handle_call({auth_to_bucket, Mech, AuthData}, _From, State) ->
         _            -> {reply, error, State}
     end;
 
+handle_call({bucket_addrs, BucketId}, _From, State) ->
+    case get_bucket(State, BucketId) of
+        {ok, Bucket} -> {reply, mc_bucket:addrs(Bucket), State};
+        _            -> {reply, error, State}
+    end;
+
 handle_call({bucket_choose_addr, BucketId, Key}, _From, State) ->
     case get_bucket(State, BucketId) of
-        {ok, Bucket} -> {reply, mc_bucket:choose_addr(Bucket, Key),
-                         State};
+        {ok, Bucket} -> {reply, mc_bucket:choose_addr(Bucket, Key), State};
         _            -> {reply, error, State}
     end;
 
 handle_call({bucket_choose_addrs, BucketId, Key, N}, _From, State) ->
     case get_bucket(State, BucketId) of
-        {ok, Bucket} -> {reply, mc_bucket:choose_addrs(Bucket, Key, N),
-                         State};
+        {ok, Bucket} -> {reply, mc_bucket:choose_addrs(Bucket, Key, N), State};
         _            -> {reply, error, State}
     end;
 
@@ -228,7 +236,10 @@ get_bucket(PoolPid, BucketId) when is_pid(PoolPid) ->
     gen_server:call(PoolPid, {get_bucket, BucketId});
 
 get_bucket(#mc_pool{buckets = Buckets}, BucketId) ->
-    search_bucket(BucketId, Buckets).
+    search_bucket(BucketId, Buckets);
+
+get_bucket(PoolId, BucketId) ->
+    get_bucket({mc_pool, PoolId}, BucketId).
 
 auth_to_bucket({mc_pool, Name}, Mech, AuthData) ->
     gen_server:call(name_to_server_name(Name),
