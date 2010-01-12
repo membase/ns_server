@@ -178,21 +178,7 @@ direct_port(_Node) ->
             {value, list_to_integer(MemcachedPortStr)}
     end.
 
-% {"default", [
-%   {address, "0.0.0.0"}, % An IP binding
-%   {port, 11211},
-%   {buckets, [
-%     {"default", [
-%       {auth_plain, undefined},
-%       {size_per_node, 64}, % In MB.
-%       {cache_expiration_range, {0,600}}
-%     ]}
-%   ]}
-% ]}
-
-build_pool_info(Id) ->
-    MyPool = find_pool_by_id(Id),
-    Buckets = expect_prop_value(buckets, MyPool),
+build_nodes_info(MyPool) ->
     WantENodes = ns_node_disco:nodes_wanted(),
     ActualENodes = ns_node_disco:nodes_actual_proper(),
     ProxyPort = expect_prop_value(port, MyPool),
@@ -214,14 +200,32 @@ build_pool_info(Id) ->
                                        {direct, DirectPort}]}}]}
           end,
           WantENodes),
+    Nodes.
+
+% {"default", [
+%   {address, "0.0.0.0"}, % An IP binding
+%   {port, 11211},
+%   {buckets, [
+%     {"default", [
+%       {auth_plain, undefined},
+%       {size_per_node, 64}, % In MB.
+%       {cache_expiration_range, {0,600}}
+%     ]}
+%   ]}
+% ]}
+
+build_pool_info(Id) ->
+    MyPool = find_pool_by_id(Id),
+    Buckets = expect_prop_value(buckets, MyPool),
+    Nodes = build_nodes_info(MyPool),
     BucketsInfo = [{struct, [{uri, list_to_binary("/pools/" ++ Id ++ "/buckets/" ++ Name)},
                              {name, list_to_binary(Name)}]}
                    || Name <- proplists:get_keys(Buckets)],
-    {struct, [{nodes, Nodes},
+    {struct, [{name, list_to_binary(Id)},
+              {nodes, Nodes},
               {buckets, BucketsInfo},
               {stats, {struct,
-                       [{uri, list_to_binary("/pools/" ++ Id ++ "/stats")}]}},
-              {name, list_to_binary(Id)}]}.
+                       [{uri, list_to_binary("/pools/" ++ Id ++ "/stats")}]}}]}.
     %% case Id of
     %%     "default" -> {struct, [{nodes, [{struct, [{hostname, <<"foo1.bar.com">>},
     %%                                               {status, <<"healthy">>},
@@ -274,24 +278,18 @@ handle_pool_info_streaming(Id, HTTPRes, Wait) ->
     end,
     handle_pool_info_streaming(Id, HTTPRes, 10000).
 
-find_bucket_by_id(PoolId, Id) ->
-    Pool = find_pool_by_id(PoolId),
+find_bucket_by_id(Pool, Id) ->
     Buckets = expect_prop_value(buckets, Pool),
     expect_prop_value(Id, Buckets).
 
 handle_bucket_info(PoolId, Id, Req) ->
-    _Bucket = find_bucket_by_id(PoolId, Id),
+    Pool = find_pool_by_id(PoolId),
+    _Bucket = find_bucket_by_id(Pool, Id),
     StatsURI = list_to_binary("/pools/"++PoolId++"/buckets/"++Id++"/stats"),
+    Nodes = build_nodes_info(Pool),
     Res = {struct, [{name, list_to_binary(Id)},
+                    {nodes, Nodes},
                     {stats, {struct, [{uri, StatsURI}]}}]},
-    %% Res = case Id of
-    %%           "4" -> {struct, [{pool_uri, <<"asdasdasdasd">>},
-    %%                            {stats, {struct, [{uri, <<"/pools/asd/buckets/4/stats">>}]}},
-    %%                            {name, <<"Excerciser Application">>}]};
-    %%           _ -> {struct, [{pool_uri, <<"asdasdasdasd">>},
-    %%                          {stats, {struct, [{uri, <<"/pools/asd/buckets/5/stats">>}]}},
-    %%                          {name, <<"Excerciser Another">>}]}
-    %%       end,
     reply_json(Req, Res).
 
 %% milliseconds since 1970 Jan 1 at UTC
