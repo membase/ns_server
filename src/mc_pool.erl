@@ -76,8 +76,7 @@ pools_config_set(Pools) ->
     ns_config:set(pools, Pools).
 
 pool_config_default() ->
-    [{address, "0.0.0.0"}, % An IP binding
-     {port, 11211},
+    [{port, 11211},
      {buckets, []}].
 
 pool_config_make(PoolName) ->

@@ -22,7 +22,8 @@
          bucket_config_make/2,
          bucket_config_make/3,
          bucket_config_set/3,
-         bucket_config_get/2]).
+         bucket_config_get/2,
+         bucket_config_get/3]).
 
 %% API for buckets.
 
@@ -146,6 +147,12 @@ bucket_config_get(PoolConfig, BucketName) ->
                 false        -> false;
                 BucketConfig -> BucketConfig
             end
+    end.
+
+bucket_config_get(Pools, PoolName, BucketName) ->
+    case mc_pool:pool_config_get(Pools, PoolName) of
+        false      -> false;
+        PoolConfig -> bucket_config_get(PoolConfig, BucketName)
     end.
 
 % ------------------------------------------------
