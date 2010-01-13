@@ -44,14 +44,20 @@ child_spec_pool(Name, _PoolConfig) ->
 
 child_spec_accept(Name, PoolConfig) ->
     AddrStr = proplists:get_value(address, PoolConfig, "0.0.0.0"),
-    PortNum = case os:getenv("MC_ACCEPT_PORT_" ++ Name) of
-                  false -> proplists:get_value(port, PoolConfig, 11211);
-                  X     -> Y = list_to_integer(X),
-                           error_logger:info_msg(
-                             "MC_ACCEPT_PORT_~p override: ~p~n",
-                             [Name, Y]),
-                           Y
-              end,
+    PortNum =
+        case os:getenv("MC_ACCEPT_PORT_" ++ Name) of
+            false ->
+                case proplists:get_value({node, node(), port},
+                                         PoolConfig, false) of
+                    false -> proplists:get_value(port, PoolConfig, 11211);
+                    P     -> P
+                end;
+            X -> Y = list_to_integer(X),
+                 error_logger:info_msg(
+                   "MC_ACCEPT_PORT_~p override: ~p~n",
+                   [Name, Y]),
+                 Y
+        end,
     Env = {mc_server_detect,
            mc_server_detect,
            {mc_pool, Name}},
