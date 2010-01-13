@@ -15,6 +15,8 @@
          traffic_started/0,
          traffic_more/0]).
 
+-export([system_joinable/0]).
+
 % TODO: more random interval might be needed, per matt.
 
 -define(TGEN_INTERVAL, 200). % In millisecs.
@@ -57,6 +59,32 @@ traffic_started() ->
 
 traffic_more() ->
     gen_event:call(ns_config_events, ?MODULE, traffic_more).
+
+% -------------------------------------------------------
+
+% Returns true if the system is considered joinable.  Eg, not
+% part of another cluster and no buckets except for the default
+% and traffic generator buckets.
+
+system_joinable() ->
+    Pools = mc_pool:pools_config_get(),
+    PoolNames = proplists:get_keys(Pools),
+    case lists:subtract(PoolNames, ["default", ?TGEN_POOL]) of
+        [] ->
+            Buckets =
+                proplists:get_value(
+                  buckets,
+                  mc_pool:pool_config_get(Pools, ?TGEN_POOL)),
+            BucketNames = proplists:get_keys(Buckets),
+            case lists:subtract(BucketNames, ["default", ?TGEN_BUCKET]) of
+                [] -> case ns_node_disco:nodes_wanted() of
+                          [_OneNode] -> true;
+                          _          -> false
+                      end;
+                _  -> false
+            end;
+        _ -> false
+    end.
 
 % ---------------------------------------------------------
 
