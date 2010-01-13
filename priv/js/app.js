@@ -89,20 +89,6 @@ $.ajaxSetup({
   }
 });
 
-function deferringUntilReady(body) {
-  return function () {
-    if (DAO.ready) {
-      body.apply(this, arguments);
-      return;
-    }
-    var self = this;
-    var args = arguments;
-    DAO.onReady(function () {
-      body.apply(self, args);
-    });
-  }
-}
-
 function deeperEquality(a, b) {
   var typeA = typeof(a);
   var typeB = typeof(b);
