@@ -156,7 +156,7 @@ send_traffic(PoolName, BucketName) ->
         {'EXIT', _} ->
             ?debugVal({send_traffic, missing_bucket, PoolName, BucketName}),
             ok;
-        Bucket ->
+        {ok, Bucket} ->
             Addrs = mc_bucket:addrs(Bucket),
             traffic(Addrs)
     end,

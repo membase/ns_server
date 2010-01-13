@@ -111,16 +111,18 @@ handle_info(_Info, State)      -> {noreply, State}.
 
 handle_call({get_bucket, BucketId}, _From, State) ->
     case get_bucket(State, BucketId) of
-        {ok, _Bucket} -> {reply, create_bucket_handle(State#mc_pool.id,
-                                                      BucketId),
+        {ok, _Bucket} -> {reply,
+                          {ok, create_bucket_handle(State#mc_pool.id,
+                                                    BucketId)},
                           State};
         _             -> {reply, error, State}
     end;
 
 handle_call({auth_to_bucket, Mech, AuthData}, _From, State) ->
     case auth_to_bucket(State, Mech, AuthData) of
-        {ok, Bucket} -> {reply, create_bucket_handle(State#mc_pool.id,
-                                                     mc_bucket:id(Bucket)),
+        {ok, Bucket} -> {reply,
+                         {ok, create_bucket_handle(State#mc_pool.id,
+                                                   mc_bucket:id(Bucket))},
                          State};
         _            -> {reply, error, State}
     end;
@@ -236,7 +238,10 @@ get_bucket(PoolPid, BucketId) when is_pid(PoolPid) ->
     gen_server:call(PoolPid, {get_bucket, BucketId});
 
 get_bucket(#mc_pool{buckets = Buckets}, BucketId) ->
-    search_bucket(BucketId, Buckets);
+    case search_bucket(BucketId, Buckets) of
+        false  -> error;
+        Bucket -> Bucket
+    end;
 
 get_bucket(PoolId, BucketId) ->
     get_bucket({mc_pool, PoolId}, BucketId).
