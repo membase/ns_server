@@ -24,10 +24,6 @@ start_link() ->
 %
 % XXX: Functionality not related to node discover and monitoring MUST
 % be removed from this module (cookie_* remains).
-%
-% XXX: Reimplementing erlang:nodes is not desirable.  Erlang will do
-% this better than we will and the API will be easier to understand.
-%
 
 init() ->
     % See: http://osdir.com/ml/lang.erlang.general/2004-04/msg00155.html
@@ -85,14 +81,18 @@ nodes_wanted() ->
     W2.
 
 % Returns all nodes that we see.
+%
 % TODO: Track flapping nodes and attenuate.
 
 nodes_actual() ->
     lists:sort(nodes([this, visible])).
 
-% Returns a subset of the nodes_wanted() that we see.
+% Returns a subset of the nodes_wanted() that we see.  This is not the
+% same as nodes([this, visible]) because this function may return a
+% subset of nodes([this, visible]).  eg, many nodes might be visible
+% at the OTP level.  But the caller only cares about the subset
+% of nodes that are on the nodes_wanted() list.
 
-% XXX:  This name is not clear.  Why isn't this nodes([this, visible])?
 nodes_actual_proper() ->
     Curr = nodes_actual(),
     Want = nodes_wanted(),
@@ -100,8 +100,9 @@ nodes_actual_proper() ->
     lists:usort(lists:subtract(Curr, Diff)).
 
 % Returns nodes_actual_proper(), but with self node() filtered out.
+% This is not the same as nodes([visible]), because this function may
+% return a subset of nodes([visible]), similar to nodes_actual_proper().
 
-% XXX:  This name is not clear.  Why isn't this nodes([visible])?
 nodes_actual_other() ->
     lists:subtract(ns_node_disco:nodes_actual_proper(), [node()]).
 
