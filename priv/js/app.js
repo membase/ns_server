@@ -967,12 +967,9 @@ var DAO = {
 (function () {
   var modeCell = new Cell();
   var poolListCell = new Cell();
-  var overviewActive = new Cell(function () {return this.mode == 'overview'},
-                                {mode: modeCell});
 
   DAO.cells = {
     mode: modeCell,
-    overviewActive: overviewActive,
     poolList: poolListCell
   }
 })();
@@ -1409,18 +1406,25 @@ function prepareTemplateForCell(templateName, cell) {
 }
 
 var OverviewSection = {
-  clearUI: function () {
-    prepareRenderTemplate('top_keys', 'server_list', 'pool_list');
+  onFreshNodeList: function () {
+    var nodes = DAO.cells.currentPoolDetails.value.nodes;
+    renderTemplate('server_list', nodes);
   },
+  init: function () {
+    DAO.cells.currentPoolDetails.subscribe($m(this, 'onFreshNodeList'));
+    prepareTemplateForCell('server_list', DAO.cells.currentPoolDetails);
+    prepareTemplateForCell('pool_list', DAO.cells.poolList);
+
+  },
+  onEnter: function () {
+  }
+};
+
+var AnalyticsSection = {
   onKeyStats: function (cell) {
     renderTemplate('top_keys', $.map(cell.value.hot_keys, function (e) {
       return $.extend({}, e, {total: 0 + e.gets + e.misses});
     }));
-  },
-  onFreshNodeList: function () {
-    var nodes = DAO.cells.currentPoolDetails.value.nodes;
-//    debugger
-    renderTemplate('server_list', nodes);
   },
   statRefreshOptions: {
     real_time: {channelPeriod: 1000, requestParam: 'now'},
@@ -1429,10 +1433,7 @@ var OverviewSection = {
   },
   init: function () {
     DAO.cells.stats.subscribe($m(this, 'onKeyStats'));
-    DAO.cells.currentPoolDetails.subscribe($m(this, 'onFreshNodeList'));
     prepareTemplateForCell('top_keys', CurrentStatTargetHandler.currentStatTargetCell);
-    prepareTemplateForCell('server_list', DAO.cells.currentPoolDetails);
-    prepareTemplateForCell('pool_list', DAO.cells.poolList);
 
     _.each(this.statRefreshOptions, function (value, key) {
       DAO.cells.graphZoomLevel.addLink($('#overview_graph_zoom_' + key),
@@ -1607,7 +1608,7 @@ var DummySection = {
 
 var ThePage = {
   sections: {overview: OverviewSection,
-             analytics: DummySection,
+             analytics: AnalyticsSection,
              buckets: DummySection,
              alerts: AlertsSection,
              settings: DummySection},
@@ -1621,6 +1622,7 @@ var ThePage = {
   },
   initialize: function () {
     OverviewSection.init();
+    AnalyticsSection.init();
     AlertsSection.init();
     var self = this;
     watchHashParamChange('sec', 'overview', function (sec) {
