@@ -71,8 +71,10 @@ code_change(_OldVsn, State, _Extra) ->
 -spec categorize(atom(), integer()) -> log_classification().
 categorize(Module, Code) ->
     case catch(Module:ns_log_cat(Code)) of
-        {'EXIT', _Reason} -> info;
-        V -> V
+        info -> info;
+        warn -> warn;
+        crit -> crit;
+        _ -> info % Anything unknown is info (this includes {'EXIT', Reason})
         end.
 
 %% API
