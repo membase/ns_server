@@ -43,7 +43,7 @@ var TestingSupervisor = {
     });
   },
   activeStatsTarget: function () {
-    var cell = CurrentStatTargetHandler.currentStatTargetCell;
+    var cell = DAO.cells.currentStatTargetCell;
     if (!cell)
       return null;
     var value = cell.value;

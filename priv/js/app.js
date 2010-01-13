@@ -106,10 +106,9 @@ function deeperEquality(a, b) {
   return true;
 }
 
-// ---
-
 var DAO = {
   ready: false,
+  cells: {},
   onReady: function (thunk) {
     if (DAO.ready)
       thunk.call(null);
@@ -132,142 +131,16 @@ var DAO = {
 };
 
 (function () {
-  var modeCell = new Cell();
-  var poolListCell = new Cell();
+  this.mode = new Cell();
+  this.poolList = new Cell();
 
-  DAO.cells = {
-    mode: modeCell,
-    poolList: poolListCell
-  }
-})();
+  this.currentPoolDetailsCell = new Cell(function (poolList) {
+    var uri = poolList[0].uri;
+    return future.get({url: uri});
+  }).setSources({poolList: this.poolList});
 
-var CurrentStatTargetHandler = {
-  initialize: function () {
-    watchHashParamChange("stat_target", $m(this, 'targetURIChanged'));
-
-    var poolListCell = DAO.cells.poolList;
-
-    this.pathCell = new Cell();
-    this.currentPoolIndexCell = new Cell(function (path, poolList) {
-      var index = path.poolNumber;
-      if (index < 0)
-        index = 0;
-      if (index >= poolList.length)
-        index = poolList.length - 1;
-      return index;
-    }).setSources({path: this.pathCell, poolList: poolListCell});
-
-    this.currentPoolDetailsCell = new Cell(function (currentPoolIndex, poolList) {
-      console.log("currentPoolDetailsCell: (",currentPoolIndex,poolList,")")
-      var uri = poolList[currentPoolIndex].uri;
-      return future.get({url: uri});
-    }).setSources({currentPoolIndex: this.currentPoolIndexCell, poolList: DAO.cells.poolList});
-
-    this.currentBucketIndexCell = new Cell(function (path, currentPoolDetails) {
-      var index = path.bucketNumber;
-      if (index == undefined)
-        return;
-
-      if (index < 0)
-        index = 0;
-      if (index >= currentPoolDetails.buckets.length)
-        index = currentPoolDetails.buckets.length - 1;
-      return index;
-    }).setSources({path: this.pathCell, currentPoolDetails: this.currentPoolDetailsCell});
-
-    this.currentBucketDetailsCell = new Cell(function (currentBucketIndex, currentPoolDetails) {
-      return future.get({url: currentPoolDetails.buckets[currentBucketIndex].uri});
-    }).setSources({currentBucketIndex: this.currentBucketIndexCell,
-                   currentPoolDetails: this.currentPoolDetailsCell});
-
-    this.currentStatTargetCell = new Cell(function (path) {
-      console.log('currentStatTargetCell');
-      if (path.bucketNumber != null)
-        return this.currentBucketDetails;
-      else
-        return this.currentPoolDetails;
-    }).setSources({path: this.pathCell,
-                   currentPoolDetails: this.currentPoolDetailsCell,
-                   currentBucketDetails: this.currentBucketDetailsCell});
-
-    this.currentPoolIndexCell.subscribe($m(this, 'renderPoolList'));
-    this.currentPoolDetailsCell.subscribe($m(this, 'renderBucketList'));
-
-    $('a').live('click', $m(this, 'clickHandler'));
-
-    this.pathCell.subscribe($m(this, 'markSelected'));
-  },
-  targetURIChanged: function (value) {
-    var arr = value ? value.split("/") : ['0'];
-    this.pathCell.setValue({poolNumber: parseInt(arr[0], 10),
-                            bucketNumber: arr[1] ? parseInt(arr[1], 10) : undefined});
-  },
-  renderPoolList: function () {
-    var list = DAO.cells.poolList.value;
-    
-    var counter = 0;
-    var register = function (row) {
-      var id = 'pl_' + (counter++);
-      return id;
-    }
-
-    renderTemplate('pool_list', {rows: list, register: register});
-    _.defer($m(this, 'markSelected'));
-  },
-  renderBucketList: function () {
-    console.log("renderBucketList");
-    $('bucket_list').remove();
-
-    var poolNumber = this.pathCell.value.poolNumber
-    var poolID = "pl_" + poolNumber;
-
-    var counter = 0;
-    var register = function () {
-      return 'bt_' + poolNumber + '_' + (counter++);
-    }
-
-    var list = this.currentPoolDetailsCell.value.buckets;
-    var html = $(tmpl('bucket_list_template', {rows: list, register: register}));
-    $($i(poolID)).parent().append(html);
-    _.defer($m(this, 'markSelected'));
-  },
-  markSelected: function () {
-    $('[id^=bt_]').removeClass('selected');
-    $('[id^=pl_]').removeClass('selected');
-
-    var path = this.pathCell.value;
-    if (!path)
-      return;
-
-    if (path.bucketNumber !== undefined)
-      var selectedID = 'bt_' + path.poolNumber + '_' + path.bucketNumber;
-    else
-      var selectedID = 'pl_' + path.poolNumber;
-
-    var element = $i(selectedID);
-
-    $(element).addClass('selected');
-  },
-  clickHandler: function (event) {
-    var id = event.target.id;
-    if (!id)
-      return;
-
-    var prefix = id.substring(0, 3);
-    if (prefix != 'pl_' && prefix != 'bt_')
-      return;
-
-    event.preventDefault();
-
-    var arr = id.split('_');
-    if (prefix == 'pl_')
-      $.bbq.pushState({stat_target: arr[1]});
-    else
-      $.bbq.pushState({stat_target: arr[1] + '/' + arr[2]});
-  }
-};
-
-CurrentStatTargetHandler.initialize();
+  this.currentStatTargetCell = this.currentPoolDetailsCell;
+}).call(DAO.cells);
 
 var SamplesRestorer = mkClass({
   initialize: function () {
@@ -309,7 +182,7 @@ var SamplesRestorer = mkClass({
 });
 
 (function () {
-  var targetCell = CurrentStatTargetHandler.currentStatTargetCell;
+  var targetCell = DAO.cells.currentStatTargetCell;
 
   var StatsArgsCell = new Cell(function (target) {
     return {url: target.stats.uri};
@@ -365,7 +238,7 @@ var SamplesRestorer = mkClass({
   _.extend(DAO.cells, {
     stats: statsCell,
     statsOptions: statsOptionsCell,
-    currentPoolDetails: CurrentStatTargetHandler.currentPoolDetailsCell
+    currentPoolDetails: DAO.cells.currentPoolDetailsCell
   });
 })();
 
@@ -591,7 +464,7 @@ var AnalyticsSection = {
   },
   init: function () {
     DAO.cells.stats.subscribe($m(this, 'onKeyStats'));
-    prepareTemplateForCell('top_keys', CurrentStatTargetHandler.currentStatTargetCell);
+    prepareTemplateForCell('top_keys', DAO.cells.currentStatTargetCell);
 
     DAO.cells.statsOptions.update({
       "keysOpsPerSecondZoom": 'now',
@@ -600,7 +473,7 @@ var AnalyticsSection = {
 
     StatGraphs.init();
 
-    CurrentStatTargetHandler.currentStatTargetCell.subscribe(function (cell) {
+    DAO.cells.currentStatTargetCell.subscribe(function (cell) {
       var names = $('.stat_target_name');
       names.text(cell.value.name);
     });

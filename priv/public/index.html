@@ -19,31 +19,6 @@
       <li><a id="switch_settings" href="javascript:nav.go('settings');">Cluster Settings</a>
     </ul>
   </div>
-  <div style="outline: green 1px solid;">
-    <h2>Your pools TODO:KILL</h2><hr></hr>
-    <div id="pool_list_container">
-      <ul>
-        <li><em>Default pool</em>
-        <ul>
-          <li><a>Excerciser application</a>
-        </ul>
-      </ul>
-    </div>
-    <div id="pool_list_template" class="template">
-      <ul>
-      <!-- {% $.each(rows, function () { %} -->
-        <li><a id="{%= register(this) %}">{%= h(this.name) %}</a></li>
-      <!-- {% }); %} -->
-      </ul>
-    </div>
-    <div id="bucket_list_template" class="template">
-      <ul class="bucket_list">
-      <!-- {% $.each(rows, function () { %} -->
-        <li><a id="{%= register(this) %}">{%= h(this.name) %}</a></li>
-      <!-- {% }); %} -->
-      </ul>
-    </div>
-  </div>
 </td><td width="75%" id="middle_pane">
   <div id="overview" style="display:none;">
     <div class="section">
