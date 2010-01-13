@@ -69,7 +69,8 @@ loop(Req, DocRoot) ->
     CheckAuth = fun (F, Args) ->
                         case check_auth(extract_basic_auth(Req)) of
                             true -> apply(F, Args ++ [Req]);
-                            _ -> Req:respond({401, [{"WWW-Authenticate", "Basic realm=\"api\""}], []})
+                            _ -> Req:respond({401, [{"WWW-Authenticate",
+                                                     "Basic realm=\"api\""}], []})
                         end
                 end,
     case Action of
@@ -182,7 +183,7 @@ direct_port(_Node) ->
             {value, list_to_integer(MemcachedPortStr)}
     end.
 
-build_nodes_info(MyPool) ->
+build_nodes_info(MyPool, IncludeOtp) ->
     OtpCookie = list_to_binary(atom_to_list(ns_node_disco:cookie_get())),
     WantENodes = ns_node_disco:nodes_wanted(),
     ActualENodes = ns_node_disco:nodes_actual_proper(),
@@ -198,13 +199,20 @@ build_nodes_info(MyPool) ->
                                false -> <<"unhealthy">>
                            end,
                   {value, DirectPort} = direct_port(WantENode),
-                  {struct, [{hostname, list_to_binary(Host)},
-                            {status, Status},
-                            {ports,
-                             {struct, [{proxy, ProxyPort},
-                                       {direct, DirectPort}]}},
-                            {otp_node, list_to_binary(atom_to_list(WantENode))},
-                            {otp_cookie, OtpCookie}]}
+                  KV1 = [{hostname, list_to_binary(Host)},
+                         {status, Status},
+                         {ports,
+                          {struct, [{proxy, ProxyPort},
+                                    {direct, DirectPort}]}}],
+                  KV2 = case IncludeOtp of
+                               true ->
+                                   KV1 ++ [{otp_node,
+                                            list_to_binary(
+                                              atom_to_list(WantENode))},
+                                           {otp_cookie, OtpCookie}];
+                               false -> KV1
+                        end,
+                  {struct, KV2}
           end,
           WantENodes),
     Nodes.
@@ -223,7 +231,7 @@ build_nodes_info(MyPool) ->
 build_pool_info(Id) ->
     MyPool = find_pool_by_id(Id),
     Buckets = expect_prop_value(buckets, MyPool),
-    Nodes = build_nodes_info(MyPool),
+    Nodes = build_nodes_info(MyPool, true),
     BucketsInfo = [{struct, [{uri, list_to_binary("/pools/" ++ Id ++ "/buckets/" ++ Name)},
                              {name, list_to_binary(Name)}]}
                    || Name <- proplists:get_keys(Buckets)],
@@ -300,7 +308,7 @@ handle_bucket_info(PoolId, Id, Req) ->
     Pool = find_pool_by_id(PoolId),
     _Bucket = find_bucket_by_id(Pool, Id),
     StatsURI = list_to_binary("/pools/"++PoolId++"/buckets/"++Id++"/stats"),
-    Nodes = build_nodes_info(Pool),
+    Nodes = build_nodes_info(Pool, false),
     List1 = [{name, list_to_binary(Id)},
                     {nodes, Nodes},
                     {stats, {struct, [{uri, StatsURI}]}}],
