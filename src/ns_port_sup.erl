@@ -8,7 +8,8 @@
 -export([start_link/0]).
 
 -export([init/1, launch_port/2, launch_port/4, terminate_port/1,
-         current_ports/0]).
+         current_ports/0,
+         port_servers_config/0]).
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
@@ -24,8 +25,17 @@ init([]) ->
            | dynamic_children()
           ]}}.
 
+% Returns {value, PortServers}.
+
+port_servers_config() ->
+    Config = ns_config:get(),
+    case ns_config:search(Config, {node, node(), port_servers}) of
+        false -> ns_config:search(Config, port_servers);
+        X     -> X
+    end.
+
 dynamic_children() ->
-    {value, PortServers} = ns_config:search(ns_config:get(), port_servers),
+    {value, PortServers} = port_servers_config(),
     error_logger:info_msg("initializing e-ports: ~p~n", [PortServers]),
     lists:map(fun create_child_spec/1, PortServers).
 

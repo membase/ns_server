@@ -34,6 +34,8 @@ start_link(Name, Cmd, Args, Opts) ->
 params(Pid) ->
     gen_server:call(Pid, params).
 
+% The key/value in ns_config will look somewhat like...
+%
 % {port_servers,
 %   [{memcached, "./memcached",
 %     ["-E", "engines/default_engine.so",
@@ -43,12 +45,21 @@ params(Pid) ->
 %    }
 %   ]
 % }.
+%
+% Or, the key might actually be a {node, node(), port_servers} tuple, like...
+%
+% {{node, 'ns_1@foo.bar.com', port_servers}, ...}
 
 get_port_server_config(PortName) ->
     get_port_server_config(ns_config:get(), PortName).
 
 get_port_server_config(Config, PortName) ->
-    ns_config:search_prop_tuple(Config, port_servers, PortName).
+    case ns_config:search_prop_tuple(Config, {node, node(), port_servers},
+                                     PortName) of
+        false -> ns_config:search_prop_tuple(Config, port_servers,
+                                             PortName);
+        Tuple -> Tuple
+    end.
 
 get_port_server_param(Config, PortServerName, ParameterName) ->
     StartArgs =

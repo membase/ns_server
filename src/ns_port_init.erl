@@ -5,7 +5,7 @@
 
 -behaviour(gen_event).
 
--export([start_link/0]).
+-export([start_link/0, reconfig/1]).
 
 %% gen_event callbacks
 -export([init/1, handle_event/2, handle_call/2,
@@ -28,32 +28,15 @@ start_link() ->
 init(ignored) ->
     {ok, #state{}, hibernate}.
 
-handle_event({port_servers, List}, State) ->
-    error_logger:info_msg("ns_port_init changing e-ports: ~p...~n", [List]),
+handle_event({port_servers, _PortServers}, State) ->
+    ok = reconfig(ns_port_sup:port_servers_config()),
+    {ok, State, hibernate};
 
-    % CurrPorts looks like...
-    %   [{memcached,<0.77.0>,worker,[ns_port_server]}]
-    % Or, if the child process went down, then...
-    %   [{memcached,undefined,worker,[ns_port_server]}]
-    %
-    CurrPorts = ns_port_sup:current_ports(),
-    CurrPortParams = lists:map(fun({_Name, Pid, _, _}) ->
-                                   {ok, Params} = ns_port_server:params(Pid),
-                                   Params
-                               end,
-                               CurrPorts),
-    OldPortParams = lists:subtract(CurrPortParams, List),
-    NewPortParams = lists:subtract(List, CurrPortParams),
-
-    lists:foreach(fun({Name, _Cmd, _Args, _Opts}) ->
-                      ns_port_sup:terminate_port(Name)
-                  end,
-                  OldPortParams),
-    lists:foreach(fun({Name, Cmd, Args, Opts}) ->
-                      ns_port_sup:launch_port(Name, Cmd, Args, Opts)
-                  end,
-                  NewPortParams),
-
+handle_event({{node, Node, port_servers}, PortServers}, State) ->
+    case Node =:= node() of
+        true  -> ok = reconfig(PortServers);
+        false -> ok
+    end,
     {ok, State, hibernate};
 
 handle_event(_Stuff, State) ->
@@ -73,3 +56,30 @@ terminate(Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
+reconfig(PortServers) ->
+    error_logger:info_msg("ns_port_init reconfig e-ports: ~p...~n",
+                          [PortServers]),
+
+    % CurrPorts looks like...
+    %   [{memcached,<0.77.0>,worker,[ns_port_server]}]
+    % Or, if the child process went down, then...
+    %   [{memcached,undefined,worker,[ns_port_server]}]
+    %
+    CurrPorts = ns_port_sup:current_ports(),
+    CurrPortParams = lists:map(fun({_Name, Pid, _, _}) ->
+                                   {ok, Params} = ns_port_server:params(Pid),
+                                   Params
+                               end,
+                               CurrPorts),
+    OldPortParams = lists:subtract(CurrPortParams, PortServers),
+    NewPortParams = lists:subtract(PortServers, CurrPortParams),
+
+    lists:foreach(fun({Name, _Cmd, _Args, _Opts}) ->
+                      ns_port_sup:terminate_port(Name)
+                  end,
+                  OldPortParams),
+    lists:foreach(fun({Name, Cmd, Args, Opts}) ->
+                      ns_port_sup:launch_port(Name, Cmd, Args, Opts)
+                  end,
+                  NewPortParams),
+    ok.
