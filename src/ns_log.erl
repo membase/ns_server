@@ -130,12 +130,13 @@ ns_log_cat(3) ->
 % ------------------------------------------
 
 log_test() ->
+    ok = log(?MODULE, 1, "not ready log"),
+
     {ok, Pid} = gen_server:start({local, ?MODULE}, ?MODULE, [], []),
     ok = log(?MODULE, 1, "test log 1"),
     ok = log(?MODULE, 2, "test log 2 ~p ~p", [x, y]),
     ok = log(?MODULE, 3, "test log 3 ~p ~p", [x, y]),
     ok = log(?MODULE, 4, "test log 4 ~p ~p", [x, y]),
-
 
     {C, W, I} = recent_by_category(),
     ["test log 1"] = [E#log_entry.msg || E <- C],
