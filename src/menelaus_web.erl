@@ -92,9 +92,9 @@ serve_index_html_for_tests(Req, DocRoot) ->
 %                        {"admin", [{password, "admin"}]}]}
 %              ]}. % An empty list means no login/password auth check.
 
-check_auth(undefined) -> false;
 check_auth(UserPassword) ->
     case ns_config:search_prop(ns_config:get(), rest_creds, creds, empty) of
+        []    -> true; % An empty list means no login/password auth check.
         empty -> true; % An empty list means no login/password auth check.
         Creds -> check_auth(UserPassword, Creds)
     end.
@@ -108,9 +108,11 @@ check_auth(UserPassword, [_NotRightUser | Rest]) ->
 
 extract_basic_auth(Req) ->
     case Req:get_header_value("authorization") of
+        []        -> undefined;
         undefined -> undefined;
         "Basic " ++ Value ->
             case string:tokens(base64:decode_to_string(Value), ":") of
+                [] -> undefined;
                 [User, Password] -> {User, Password}
             end
     end.
