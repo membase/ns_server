@@ -25,6 +25,10 @@ clean:
 	rm -f $(TMP_VER)
 	rm -rf $(DIST_DIR)
 
+# assuming exuberant-ctags
+TAGS:
+	ctags -eR .
+
 # TODO: somehow fix dependency on ns_server's ns_log at least in tests
 test: all
 	erl -noshell -pa ./ebin ./deps/*/ebin -boot start_sasl -s menelaus_web test -s init stop
@@ -39,4 +43,4 @@ bdist: clean all
 	tar --directory=$(TMP_DIR) -czf menelaus_`cat $(TMP_VER)`.tar.gz menelaus
 	echo created menelaus_`cat $(TMP_VER)`.tar.gz
 
-.PHONY: deps bdist clean
+.PHONY: deps bdist clean TAGS
