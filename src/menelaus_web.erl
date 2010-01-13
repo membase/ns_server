@@ -229,6 +229,7 @@ build_nodes_info(MyPool, IncludeOtp) ->
                                     {direct, DirectPort}]}}],
                   KV2 = case IncludeOtp of
                                true ->
+                                %% TODO: convert to camelcase
                                    KV1 ++ [{otp_node,
                                             list_to_binary(
                                               atom_to_list(WantENode))},
