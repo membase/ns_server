@@ -55,7 +55,7 @@ get_port_server_config(PortName) ->
 
 get_port_server_config(Config, PortName) ->
     case ns_config:search_prop_tuple(Config, {node, node(), port_servers},
-                                     PortName) of
+                                     PortName, false) of
         false -> ns_config:search_prop_tuple(Config, port_servers,
                                              PortName);
         Tuple -> Tuple
