@@ -93,7 +93,17 @@
       </div>
     </div>
   </div><div id="buckets" status="display:none">
-    Buckets is here
+    <p><a href="javascript:nav.go('overview')">Overview</a> > Buckets
+    <div id="bucket_list_container">
+    </div>
+    <div id="bucket_list_template" class="template">
+        <table>
+          <tr><th>Name
+          {% $.each(rows, function () { %}
+            <tr><td>{%= h(this.name) %}
+          {% }); %}
+        </table>
+    </div>
   </div><div id="alerts" style="display:none">
     <ul class="tabs">
       <li><a href="#">Current Alerts</a>

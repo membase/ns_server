@@ -11,7 +11,8 @@ o [DONE] no node list
 * leave cluster
 
 BUCKETS
-* (re)implement
+o [DONE] (re)implement
+* prepare new API to mass-fetch bucket details with support for pagination
 * mass bucket stats for buckets section
 * pagination
 

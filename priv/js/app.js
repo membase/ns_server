@@ -456,6 +456,18 @@ var OverviewSection = {
   }
 };
 
+var BucketsSection = {
+  init: function () {
+    DAO.cells.currentPoolDetails.subscribe($m(this, 'onBucketList'));
+  },
+  onBucketList: function () {
+    var buckets = DAO.cells.currentPoolDetails.value.buckets;
+    renderTemplate('bucket_list', buckets);
+  },
+  onEnter: function () {
+  }
+};
+
 var AnalyticsSection = {
   onKeyStats: function (cell) {
     renderTemplate('top_keys', $.map(cell.value.hot_keys, function (e) {
@@ -623,7 +635,7 @@ var DummySection = {
 var ThePage = {
   sections: {overview: OverviewSection,
              analytics: AnalyticsSection,
-             buckets: DummySection,
+             buckets: BucketsSection,
              alerts: AlertsSection,
              settings: DummySection},
   currentSection: null,
@@ -635,9 +647,10 @@ var ThePage = {
     $.bbq.pushState({sec: section});
   },
   initialize: function () {
-    OverviewSection.init();
-    AnalyticsSection.init();
-    AlertsSection.init();
+    _.each(_.values(this.sections), function (sec) {
+      if (sec.init)
+        sec.init();
+    });
     var self = this;
     watchHashParamChange('sec', 'overview', function (sec) {
       var oldSection = self.currentSection;
