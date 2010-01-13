@@ -1111,7 +1111,7 @@ var SamplesRestorer = mkClass({
     if (!this.lastOps)
       return now;
     var samplesInterval = this.lastOps['samples_interval']*1000;
-    return this.birthTime + (now + samplesInterval - 1 - this.birthTime)/samplesInterval*samplesInterval;
+    return this.birthTime + Math.floor((now + samplesInterval - 1 - this.birthTime)/samplesInterval)*samplesInterval;
   },
   transformOp: function (op) {
     var oldOps = this.lastOps;
