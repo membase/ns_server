@@ -25,6 +25,9 @@ start_link() ->
                     end)}.
 
 init(ignored) ->
+    % Have one explict reconfig_pools on init.  We don't have to
+    % reconfig_nodes, since reconfig_pools picks up the latest nodes.
+    reconfig_pools(mc_pool:pools_config_get()),
     {ok, #state{}, hibernate}.
 
 terminate(_Reason, _State)     -> ok.
@@ -43,9 +46,34 @@ code_change(_OldVsn, State, _) -> {ok, State}.
 %   ]}]
 
 handle_event({pools, PropList}, State) ->
-    error_logger:info_msg("mc_pool_init config change: ~p~n", [PropList]),
+    ok = reconfig_pools(PropList),
+    {ok, State, hibernate};
 
-    WantPoolNames = proplists:get_keys(PropList),
+handle_event({ns_node_disco_events, NodesBefore, NodesAfter}, State) ->
+    ok = reconfig_nodes(NodesBefore, NodesAfter),
+    {ok, State, hibernate};
+
+handle_event(_, State) ->
+    {ok, State, hibernate}.
+
+handle_call(Request, State) ->
+    error_logger:info_msg("mc_pool_init handle_call(~p, ~p)~n",
+                          [Request, State]),
+    {ok, ok, State, hibernate}.
+
+handle_info(Info, State) ->
+    error_logger:info_msg("mc_pool_init handle_info(~p, ~p)~n",
+                          [Info, State]),
+    {ok, State, hibernate}.
+
+% ------------------------------------------------------------
+
+reconfig_pools(false) -> false;
+
+reconfig_pools(Pools) ->
+    error_logger:info_msg("mc_pool_init reconfig: ~p~n", [Pools]),
+
+    WantPoolNames = proplists:get_keys(Pools),
 
     % CurrPools looks like...
     %   [{{pool, PoolName},<0.77.0>,worker,[_]}]
@@ -62,29 +90,12 @@ handle_event({pools, PropList}, State) ->
                   NewPoolNames),
     lists:foreach(fun(Name) -> mc_pool_sup:reconfig(Name) end,
                   SamePoolNames),
+    ok.
 
-    {ok, State, hibernate};
-
-handle_event({ns_node_disco_events, _NodesBefore, NodesAfter}, State) ->
+reconfig_nodes(_NodesBefore, NodesAfter) ->
     error_logger:info_report("mc_pool_init: nodes changed"),
-
     lists:foreach(fun(Name) ->
                           mc_pool_sup:reconfig_nodes(Name, NodesAfter)
                   end,
                   emoxi_sup:current_pools()),
-
-    {ok, State, hibernate};
-
-handle_event(_, State) ->
-    {ok, State, hibernate}.
-
-handle_call(Request, State) ->
-    error_logger:info_msg("mc_pool_init handle_call(~p, ~p)~n",
-                          [Request, State]),
-    {ok, ok, State, hibernate}.
-
-handle_info(Info, State) ->
-    error_logger:info_msg("mc_pool_init handle_info(~p, ~p)~n",
-                          [Info, State]),
-    {ok, State, hibernate}.
-
+    ok.

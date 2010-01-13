@@ -15,10 +15,12 @@
          traffic_started/0,
          traffic_more/0]).
 
+% TODO: more random interval might be needed, per matt.
+
 -define(TGEN_INTERVAL, 200). % In millisecs.
 -define(TGEN_POOL,     "default").
 -define(TGEN_BUCKET,   "test_application").
--define(TGEN_SIZE,     5). % In MB.
+-define(TGEN_SIZE,     1). % In MB.
 
 %% gen_event callbacks
 
@@ -128,7 +130,7 @@ send_traffic(PoolName, BucketName) ->
             ok;
         Bucket ->
             Addrs = mc_bucket:addrs(Bucket),
-            traffic(simple, Addrs)
+            traffic(Addrs)
     end,
     true.
 
@@ -153,8 +155,17 @@ send_response(_Kind, _Out, _Cmd, _Head, _Body) ->
 
 % ---------------------------------------------------------
 
-traffic(simple, Addrs) ->
+traffic(Addrs) ->
+    [Story | _] = misc:shuffle([miss1, delete1]),
+    traffic(Story, Addrs).
+
+traffic(miss1, Addrs) ->
     H = #mc_header{opcode = ?GETK},
+    E = #mc_entry{key = <<"miss">>},
+    bcast(Addrs, H, E);
+
+traffic(delete1, Addrs) ->
+    H = #mc_header{opcode = ?DELETE},
     E = #mc_entry{key = <<"miss">>},
     bcast(Addrs, H, E).
 
