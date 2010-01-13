@@ -112,64 +112,52 @@ var TestingSupervisor = {
         // /pools
         resp = {pools: [
           {name: 'default',
-           uri: "/pools/default"},
-          {name: 'Another Pool',
-           uri: '/pools/Another Pool'}]};
+           uri: "/pools/default"}]};
       } else {
         // /pools/:id
-        if (path[1] == 'default') {
-          resp = {nodes: [{ipAddress: "10.0.1.20",
-                           status: "healthy",
-                           ports: {routing: 11211,
-                                   caching: 11311,
-                                   kvstore: 11411},
-                           name: "first_node",
-                           fqdn: "first_node.in.pool.com"},
-                          {ipAddress: "10.0.1.21",
-                           status: "healthy",
-                           ports: {routing: 11211,
-                                   caching: 11311,
-                                   kvstore: 11411},
-                           uri: "/addresses/10.0.1.20",
-                           name: "second_node",
-                           fqdn: "second_node.in.pool.com"}],
-                  buckets: [{uri: "/buckets/4",
-                             name: "Excerciser Application"}],
-                  stats: {uri: "/buckets/4/stats?really_for_pool=1"},
-                  name: "Default Pool"};
-        } else {
-          resp = {nodes: [{ipAddress: "10.0.1.20",
-                           status: "healthy",
-                           ports: {routing: 11211,
-                                   caching: 11311,
-                                   kvstore: 11411},
-                           name: "first_node",
-                           fqdn: "first_node.in.pool.com"},
-                          {ipAddress: "10.0.1.21",
-                           status: "healthy",
-                           ports: {routing: 11211,
-                                   caching: 11311,
-                                   kvstore: 11411},
-                           uri: "/addresses/10.0.1.20",
-                           name: "second_node",
-                           fqdn: "second_node.in.pool.com"}],
-                  buckets: [{uri: "/buckets/5",
-                             name: "Excerciser Another"}],
-                  stats: {uri: "/buckets/4/stats?really_for_pool=1"},
-                  name: "Another Pool"};
-        }
+        resp = {nodes: [{hostname: "mickey-mouse.disney.com",
+                         status: "healthy",
+                         ports: {proxy: 11211,
+                                 direct: 11311},
+                         otp_node: "ns1@mickey-mouse.disney.com",
+                         otp_cookie: "SADFDFGDFG"},
+                        {hostname: "donald-duck.disney.com",
+                         status: "healthy",
+                         ports: {proxy: 11211,
+                                 direct: 11311},
+                         otp_node: "ns1@donald-duck.disney.com",
+                         otp_cookie: "SADFDFGDFG"},
+                        {hostname: "goofy.disney.com",
+                         status: "healthy",
+                         ports: {proxy: 11211,
+                                 direct: 11311},
+                         otp_node: "ns1@goofy.disney.com",
+                         otp_cookie: "SADFDFGDFG"}],
+                buckets: [{uri: "/buckets/4",
+                           name: "default"},
+                          {uri: "/buckets/5",
+                           name: "Excerciser Application"},
+                          {uri: "/buckets/6",
+                           name: "new-year-site"},
+                          {uri: "/buckets/7",
+                           name: "new-year-site-staging"}],
+                stats: {uri: "/buckets/4/stats?really_for_pool=1"},
+                name: "Default Pool"};
       }
     } else if (path[0] == 'buckets') {
       if (path.length == 2) {
         // /buckets/:id
-        if (path[1] == "4")
-          resp = {pool_uri: "asdasd",
-                  stats: {uri: "/buckets/4/stats"},
+        if (path[1] == "5")
+          resp = {nodes:[], // not used for now
+                  testAppBucket: true,
+                  controlURL: "asdasdasdasdasdasd",
+                  status: false,
+                  stats: {uri: "/buckets/5/stats"},
                   name: "Excerciser Application"};
         else
-          resp = {pool_uri: "asdasd",
-                  stats: {uri: "/buckets/5/stats"},
-                  name: "Excerciser Another"};
+          resp = {nodes: [], // not used for now
+                  stats: {uri: "/buckets/4/stats"},
+                  name: "default"};
       } else {
         // /buckets/:id/stats
         var params = options["data"];
