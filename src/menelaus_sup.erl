@@ -48,7 +48,14 @@ init([]) ->
              Any -> Any
          end,
     Port = case os:getenv("MOCHIWEB_PORT") of
-               false -> ns_config:search_prop(Config, rest, port, 8080);
+               false ->
+                   case ns_config:search_prop(Config,
+                                              {node, node(), rest},
+                                              port, false) of
+                       false ->
+                           ns_config:search_prop(Config, rest, port, 8080);
+                       P -> P
+                   end;
                P -> list_to_integer(P)
            end,
     WebConfig = [{ip, Ip},
