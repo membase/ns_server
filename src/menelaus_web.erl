@@ -456,7 +456,7 @@ build_bucket_stats_response(_Id, Params, Now) ->
                           "24hr" -> 86400 div SamplesSize;
                           "1hr" -> 3600 div SamplesSize
                       end,
-    StartTstampParam = proplists:get_value("opsbysecond_start_tstamp", Params),
+    StartTstampParam = proplists:get_value("opsbysecondStartTStamp", Params),
     {LastSampleTstamp, CutNumber} = case StartTstampParam of
                     undefined -> {Now, SamplesSize};
                     _ ->
@@ -529,7 +529,7 @@ build_bucket_stats_response_cutting_1_test() ->
     Res = build_bucket_stats_response("4",
                                       [{"opspersecond_zoom", "now"},
                                        {"keys_opspersecond_zoom", "now"},
-                                       {"opsbysecond_start_tstamp", "1259747672559"}],
+                                       {"opsbysecondStartTStamp", "1259747672559"}],
                                       Now),
     ?assertMatch({struct, [{hot_keys, _},
                            {op, _}]},

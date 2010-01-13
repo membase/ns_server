@@ -209,7 +209,7 @@ var TestingSupervisor = {
           samples = newSamples;
         }
 
-        var startTstampParam = params["opsbysecond_start_tstamp"];
+        var startTstampParam = params["opsbysecondStartTStamp"];
         if (startTstampParam !== undefined) {
           var startTstamp = parseInt(startTstampParam, 10);
           

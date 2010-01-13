@@ -1170,7 +1170,7 @@ var SamplesRestorer = mkClass({
     var isUpdate = false;
     if (samplesRestorer.lastTstamp) {
       isUpdate = true;
-      data['opsbysecond_start_tstamp'] = samplesRestorer.lastTstamp;
+      data["opsbysecondStartTStamp"] = samplesRestorer.lastTstamp;
     }
 
     var valueTransformer = function (data) {
