@@ -101,17 +101,15 @@ recent(Module) ->
                                list(#log_entry{}),
                                list(#log_entry{})}.
 recent_by_category() ->
-    rbc(recent(), {[], [], []}).
-
-rbc([], Rv) ->
-    Rv;
-rbc([E | Tail], {C, W, I}) ->
-    rbc(Tail,
-        case E#log_entry.cat of
-            crit -> {[E | C], W, I};
-            warn -> {C, [E | W], I};
-            info -> {C, W, [E | I]}
-        end).
+    lists:foldl(fun(E, {C, W, I}) ->
+                        case E#log_entry.cat of
+                            crit -> {[E | C], W, I};
+                            warn -> {C, [E | W], I};
+                            info -> {C, W, [E | I]}
+                        end
+                end,
+                {[], [], []},
+                recent()).
 
 -spec clear() -> ok.
 clear() ->
