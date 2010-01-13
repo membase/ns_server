@@ -6,6 +6,7 @@
 -define(RB_SIZE, 50).
 
 -behaviour(gen_server).
+-behavior(ns_log_categorizing).
 
 %% API
 -export([start_link/0]).
@@ -15,6 +16,8 @@
          terminate/2, code_change/3]).
 
 -export([log/3, log/4, recent/0, recent/1, recent_by_category/0, clear/0]).
+
+-export([ns_log_cat/1]).
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -66,8 +69,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 
 -spec categorize(atom(), integer()) -> log_classification().
-categorize(_Module, _Code) ->
-    info.
+categorize(Module, Code) ->
+    case catch(Module:ns_log_cat(Code)) of
+        {'EXIT', _Reason} -> info;
+        V -> V
+        end.
 
 %% API
 
@@ -91,23 +97,50 @@ recent(Module) ->
                      M =:= Module ]).
 
 % {crit, warn, info}
--spec recent_by_category() -> {list(log_classification()),
-                               list(log_classification()),
-                               list(log_classification())}.
+-spec recent_by_category() -> {list(#log_entry{}),
+                               list(#log_entry{}),
+                               list(#log_entry{})}.
 recent_by_category() ->
-    {[], [], []}.
+    rbc(recent(), {[], [], []}).
+
+rbc([], Rv) ->
+    Rv;
+rbc([E | Tail], {C, W, I}) ->
+    rbc(Tail,
+        case E#log_entry.cat of
+            crit -> {[E | C], W, I};
+            warn -> {C, [E | W], I};
+            info -> {C, W, [E | I]}
+        end).
 
 -spec clear() -> ok.
 clear() ->
     gen_server:cast(?MODULE, clear).
 
-% TODO: Implement this placeholder api, possibly as a gen_server
-%       to track the last few log msgs in memory.  A client then might
-%       want to do a rpc:multicall to gather all the recent log entries.
+
+% Example categorization -- pretty much exists for the test below, but
+% this is what any module that logs should look like.
+ns_log_cat(1) ->
+    crit;
+ns_log_cat(2) ->
+    warn;
+ns_log_cat(3) ->
+    info.
 
 % ------------------------------------------
 
 log_test() ->
-    ok = log(?MODULE, 1, "test log"),
-    ok = log(?MODULE, 2, "test log ~p ~p", [x, y]),
+    {ok, Pid} = gen_server:start({local, ?MODULE}, ?MODULE, [], []),
+    ok = log(?MODULE, 1, "test log 1"),
+    ok = log(?MODULE, 2, "test log 2 ~p ~p", [x, y]),
+    ok = log(?MODULE, 3, "test log 3 ~p ~p", [x, y]),
+    ok = log(?MODULE, 4, "test log 4 ~p ~p", [x, y]),
+
+
+    {C, W, I} = recent_by_category(),
+    ["test log 1"] = [E#log_entry.msg || E <- C],
+    ["test log 2 ~p ~p"] = [E#log_entry.msg || E <- W],
+    ["test log 4 ~p ~p", "test log 3 ~p ~p"] = [E#log_entry.msg || E <- I],
+
+    exit(Pid, exiting),
     ok.
