@@ -173,7 +173,7 @@ var TestingSupervisor = {
       } else {
         // /buckets/:id/stats
         var params = options["data"];
-        var opsPerSecondZoom = params['opspersecond_zoom'] || "1hr";
+        var opsPerSecondZoom = params['opspersecond_zoom'] || "now";
         var allSamples = {
           '1hr': {"gets":[3,14,23,52,45,25,23,22,50,67,59,55,54,41,36,35,26,61,72,49,60],
                   "misses":[23,14,45,64,41,45,43,25,14,11,18,36,64,76,86,86,79,78,55,59,49],
@@ -190,7 +190,7 @@ var TestingSupervisor = {
         var samples = allSamples[opsPerSecondZoom];
         var samplesSize = samples["gets"].length;
 
-        var samplesInterval = 1;
+        var samplesInterval = 5;
         if (opsPerSecondZoom == "24hr")
           samplesInterval = 86400 / samplesSize;
         else if (opsPerSecondZoom == "1hr")
@@ -199,7 +199,7 @@ var TestingSupervisor = {
         var now = (new Date()).valueOf();
         var lastSampleTstamp = now;
 
-        if (samplesInterval == 1) {
+        if (samplesInterval == 5) {
           var rotates = ((now / 1000) >> 0) % samplesSize;
           var newSamples = {};
           for (var k in samples) {

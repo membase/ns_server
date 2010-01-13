@@ -1198,10 +1198,12 @@ var SamplesRestorer = mkClass({
   _.extend(DAO.cells, {
     stats: statsCell,
     statsOptions: statsOptionsCell,
-    graphZoomLevel: new LinkSwitchCell('graph_zoom',
-                                       {firstItemIsDefault: true}),
-    keysZoomLevel: new LinkSwitchCell('keys_zoom',
-                                      {firstItemIsDefault: true}),
+    // graphZoomLevel: new LinkSwitchCell('graph_zoom',
+    //                                    {firstItemIsDefault: true}),
+    // keysZoomLevel: new LinkSwitchCell('keys_zoom',
+    //                                   {firstItemIsDefault: true}),
+    graphZoomLevel: new Cell(),
+    keysZoomLevel: new Cell(),
     currentPoolDetails: CurrentStatTargetHandler.currentPoolDetailsCell
   });
 })();
@@ -1427,35 +1429,38 @@ var AnalyticsSection = {
     }));
   },
   statRefreshOptions: {
-    real_time: {channelPeriod: 1000, requestParam: 'now'},
-    one_hr: {channelPeriod: 300000, requestParam: '1hr'},
-    day: {channelPeriod: 1800000, requestParam: '24hr'}
+    real_time: {channelPeriod: 5000, requestParam: 'now'}
   },
   init: function () {
     DAO.cells.stats.subscribe($m(this, 'onKeyStats'));
     prepareTemplateForCell('top_keys', CurrentStatTargetHandler.currentStatTargetCell);
 
-    _.each(this.statRefreshOptions, function (value, key) {
-      DAO.cells.graphZoomLevel.addLink($('#analytics_graph_zoom_' + key),
-                                 value);
-      DAO.cells.keysZoomLevel.addLink($('#analytics_keys_zoom_' + key),
-                                 value);
-    });
+    // _.each(this.statRefreshOptions, function (value, key) {
+    //   DAO.cells.graphZoomLevel.addLink($('#analytics_graph_zoom_' + key),
+    //                              value);
+    //   DAO.cells.keysZoomLevel.addLink($('#analytics_keys_zoom_' + key),
+    //                              value);
+    // });
 
-    DAO.cells.graphZoomLevel.subscribe(function (cell) {
-      var value = cell.value;
-      DAO.cells.statsOptions.update({"opspersecond_zoom": value.requestParam});
-    });
-    DAO.cells.graphZoomLevel.finalizeBuilding();
+    // DAO.cells.graphZoomLevel.subscribe(function (cell) {
+    //   var value = cell.value;
+    //   DAO.cells.statsOptions.update({"opspersecond_zoom": value.requestParam});
+    // });
+    // DAO.cells.graphZoomLevel.finalizeBuilding();
+    DAO.cells.graphZoomLevel.setValue(this.statRefreshOptions.real_time);
 
-    DAO.cells.keysZoomLevel.subscribe(function (cell) {
-      var value = cell.value;
-      DAO.cells.statsOptions.update({
-        "keys_opspersecond_zoom": value.requestParam,
-        "keysInterval": value.channelPeriod
-      });
+    // DAO.cells.keysZoomLevel.subscribe(function (cell) {
+    //   var value = cell.value;
+    //   DAO.cells.statsOptions.update({
+    //     "keys_opspersecond_zoom": value.requestParam,
+    //     "keysInterval": value.channelPeriod
+    //   });
+    // });
+    // DAO.cells.keysZoomLevel.finalizeBuilding();
+    DAO.cells.statsOptions.update({
+      "keys_opspersecond_zoom": 'now',
+      "keysInterval": 5000
     });
-    DAO.cells.keysZoomLevel.finalizeBuilding();
 
     StatGraphs.init();
 
