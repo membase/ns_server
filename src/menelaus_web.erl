@@ -106,13 +106,13 @@ serve_index_html_for_tests(Req, DocRoot) ->
 %                        {"admin", [{password, "admin"}]}]}
 %              ]}. % An empty list means no login/password auth check.
 
-check_bucket_auth({User, Password}) ->
+check_bucket_auth(UserPassword) ->
     % Default pool only for 1.0.
     case ns_config:search_prop(ns_config:get(), pools, "default", empty) of
         empty -> false;
         Pool ->
             Buckets = proplists:get_value(buckets, Pool),
-            lists:any(bucket_auth_fun(User, Password),
+            lists:any(bucket_auth_fun(UserPassword),
                       Buckets)
     end.
 
@@ -252,13 +252,17 @@ build_nodes_info(MyPool, IncludeOtp) ->
 %   ]}
 % ]}
 
-bucket_auth_fun(User, Password) ->
+bucket_auth_fun(UserPassword) ->
     fun({BucketName, BucketProps}) ->
             case proplists:get_value(auth_plain, BucketProps) of
                 undefined -> true;
                 BucketPassword ->
-                    (BucketName =:= User andalso
-                     BucketPassword =:= Password)
+                    case UserPassword of
+                        undefined -> false;
+                        {User, Password} ->
+                            (BucketName =:= User andalso
+                             BucketPassword =:= Password)
+                    end
             end
     end.
 
@@ -275,9 +279,9 @@ build_pool_info(Id, UserPassword) ->
         case {IsSuper, UserPassword} of
             {true, _}      -> BucketsAll;
             {_, undefined} -> BucketsAll;
-            {_, {User, Password}} ->
+            {_, {_User, _Password} = UserPassword} ->
                 lists:filter(
-                  bucket_auth_fun(User, Password),
+                  bucket_auth_fun(UserPassword),
                   BucketsAll)
         end,
     BucketsInfo = [{struct, [{uri, list_to_binary("/pools/" ++ Id ++
