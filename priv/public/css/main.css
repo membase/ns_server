@@ -1,8 +1,8 @@
 body { font-family: Arial, sans-serif; }
-#overview_main_graph { width: 100%; }
-#overview_graph_ops, #overview_graph_gets, #overview_graph_sets, #overview_graph_misses { width: 20%; display: inline-block; }
+#analytics_main_graph { width: 100%; }
+#analytics_graph_ops, #analytics_graph_gets, #analytics_graph_sets, #analytics_graph_misses { width: 20%; display: inline-block; }
 #left_pane, #right_pane, #middle_panel { vertical-align: top; }
-#overview .section, #analytics .section { border: 1px black solid; }
+.section { border: 1px black solid; }
 #server_list_container .details { background-color: #F1F1F1; }
 #server_list_container .details > td > div { display: inline-block; vertical-align: top; }
 #server_list_container .details .first { width: 400px; }

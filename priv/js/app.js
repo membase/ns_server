@@ -1326,11 +1326,11 @@ var StatGraphs = {
     firstItemIsDefault: true}),
   selectedCounter: 0,
   renderNothing: function () {
-    var main = $('#overview_main_graph')
-    var ops = $('#overview_graph_ops')
-    var gets = $('#overview_graph_gets')
-    var sets = $('#overview_graph_sets')
-    var misses = $('#overview_graph_misses')
+    var main = $('#analytics_main_graph')
+    var ops = $('#analytics_graph_ops')
+    var gets = $('#analytics_graph_gets')
+    var sets = $('#analytics_graph_sets')
+    var misses = $('#analytics_graph_misses')
 
     prepareAreaUpdate(main);
     prepareAreaUpdate(ops);
@@ -1347,11 +1347,11 @@ var StatGraphs = {
     if (!stats)
       return this.renderNothing();
 
-    var main = $('#overview_main_graph')
-    var ops = $('#overview_graph_ops')
-    var gets = $('#overview_graph_gets')
-    var sets = $('#overview_graph_sets')
-    var misses = $('#overview_graph_misses')
+    var main = $('#analytics_main_graph')
+    var ops = $('#analytics_graph_ops')
+    var gets = $('#analytics_graph_gets')
+    var sets = $('#analytics_graph_sets')
+    var misses = $('#analytics_graph_misses')
 
     var selected = this.selected.value;
 
@@ -1371,10 +1371,10 @@ var StatGraphs = {
 
     var selected = this.selected;
 
-    var ops = $('#overview_graph_ops');
-    var gets = $('#overview_graph_gets');
-    var sets = $('#overview_graph_sets');
-    var misses = $('#overview_graph_misses');
+    var ops = $('#analytics_graph_ops');
+    var gets = $('#analytics_graph_gets');
+    var sets = $('#analytics_graph_sets');
+    var misses = $('#analytics_graph_misses');
 
     selected.addLink(ops, 'ops');
     selected.addLink(gets, 'gets');
@@ -1436,9 +1436,9 @@ var AnalyticsSection = {
     prepareTemplateForCell('top_keys', CurrentStatTargetHandler.currentStatTargetCell);
 
     _.each(this.statRefreshOptions, function (value, key) {
-      DAO.cells.graphZoomLevel.addLink($('#overview_graph_zoom_' + key),
+      DAO.cells.graphZoomLevel.addLink($('#analytics_graph_zoom_' + key),
                                  value);
-      DAO.cells.keysZoomLevel.addLink($('#overview_keys_zoom_' + key),
+      DAO.cells.keysZoomLevel.addLink($('#analytics_keys_zoom_' + key),
                                  value);
     });
 
