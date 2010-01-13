@@ -22,9 +22,7 @@
 %% API
 -export([start_link/1, reconfig/2, reconfig/3, reconfig_nodes/3,
          get_bucket/2,
-         auth_to_bucket/3,
-         get_memcached_port/1,
-         nodes_to_addrs/4]).
+         auth_to_bucket/3]).
 
 -export([pools_config_get/0,
          pools_config_set/1,
@@ -192,13 +190,10 @@ build_pool(Name, NSConfig) ->
     end.
 
 build_pool(Name, NSConfig, PoolConfig) ->
-    case get_memcached_port(NSConfig) of
-        error -> error;
-        Port  -> Nodes = ns_node_disco:nodes_actual_proper(),
-                 create_pool(Name, PoolConfig, Port, Nodes)
-    end.
+    build_pool(Name, NSConfig, PoolConfig,
+                ns_node_disco:nodes_actual_proper()).
 
-create_pool(Name, PoolConfig, MemcachedPort, Nodes) ->
+build_pool(Name, NSConfig, PoolConfig, Nodes) ->
     % {buckets, [
     %   {"default", [
     %     {auth_plain, undefined},
@@ -212,7 +207,8 @@ create_pool(Name, PoolConfig, MemcachedPort, Nodes) ->
                   case mc_bucket:get_bucket_auth(BucketConfig) of
                       error -> Acc;
                       BucketAuth ->
-                          BucketAddrs = nodes_to_addrs(Nodes, MemcachedPort,
+                          BucketAddrs = nodes_to_addrs(Nodes,
+                                                       NSConfig,
                                                        binary,
                                                        BucketAuth),
                           Bucket = mc_bucket:create(BucketName,
@@ -282,22 +278,29 @@ name_to_server_name(Name) ->
 create_bucket_handle(PoolId, BucketId) ->
     {mc_pool_bucket, PoolId, BucketId}.
 
-nodes_to_addrs(Nodes, Port, Kind, Auth) ->
-    PortStr = integer_to_list(Port),
-    lists:map(fun(Node) ->
-                  {_Name, Host} = misc:node_name_host(Node),
-                  Location = lists:concat([Host, ":", PortStr]),
-                  mc_addr:create(Location, Kind, Auth)
-              end,
-              Nodes).
+nodes_to_addrs(Nodes, NSConfig, Kind, Auth) ->
+    lists:foldl(
+      fun(Node, Acc) ->
+              case memcached_port(NSConfig, Node) of
+                  error -> Acc;
+                  PortStr ->
+                      {_Name, Host} = misc:node_name_host(Node),
+                      Location = lists:concat([Host, ":", PortStr]),
+                      [mc_addr:create(Location, Kind, Auth) | Acc]
+              end
+      end,
+      [],
+      Nodes).
 
-get_memcached_port(NSConfig) ->
-    case ns_port_server:get_port_server_param(NSConfig, memcached, "-p") of
+memcached_port(NSConfig, Node) ->
+    case ns_port_server:get_port_server_param(NSConfig,
+                                              memcached, "-p",
+                                              Node) of
         false ->
-            ns_log:log(?MODULE, 0003, "missing memcached port"),
+            ns_log:log(?MODULE, 0003, "missing memcached port: ~p",
+                       [Node]),
             error;
-        {value, MemcachedPortStr} ->
-            list_to_integer(MemcachedPortStr)
+        {value, PortStr} -> PortStr
     end.
 
 % ------------------------------------------------
