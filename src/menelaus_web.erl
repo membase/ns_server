@@ -445,7 +445,7 @@ mk_samples(Mode) ->
     caching_result(Key, Computation).
 
 build_bucket_stats_response(_Id, Params, Now) ->
-    OpsPerSecondZoom = case proplists:get_value("opspersecond_zoom", Params) of
+    OpsPerSecondZoom = case proplists:get_value("opsPerSecondZoom", Params) of
                            undefined -> "1hr";
                            Val -> Val
                        end,
@@ -527,8 +527,8 @@ string_hash_test_() ->
 build_bucket_stats_response_cutting_1_test() ->
     Now = 1259747673659,
     Res = build_bucket_stats_response("4",
-                                      [{"opspersecond_zoom", "now"},
-                                       {"keys_opspersecond_zoom", "now"},
+                                      [{"opsPerSecondZoom", "now"},
+                                       {"keysOpsPerSecondZoom", "now"},
                                        {"opsbysecondStartTStamp", "1259747672559"}],
                                       Now),
     ?assertMatch({struct, [{hot_keys, _},

@@ -1427,7 +1427,7 @@ var AnalyticsSection = {
     prepareTemplateForCell('top_keys', CurrentStatTargetHandler.currentStatTargetCell);
 
     DAO.cells.statsOptions.update({
-      "keys_opspersecond_zoom": 'now',
+      "keysOpsPerSecondZoom": 'now',
       "keysInterval": 5000
     });
 

@@ -173,7 +173,7 @@ var TestingSupervisor = {
       } else {
         // /buckets/:id/stats
         var params = options["data"];
-        var opsPerSecondZoom = params['opspersecond_zoom'] || "now";
+        var opsPerSecondZoom = params['opsPerSecondZoom'] || "now";
         var allSamples = {
           '1hr': {"gets":[3,14,23,52,45,25,23,22,50,67,59,55,54,41,36,35,26,61,72,49,60],
                   "misses":[23,14,45,64,41,45,43,25,14,11,18,36,64,76,86,86,79,78,55,59,49],
