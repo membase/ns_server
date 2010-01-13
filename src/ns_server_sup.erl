@@ -20,6 +20,9 @@ init([]) ->
 
 get_child_specs() ->
     [
+     {ns_log, {ns_log, start_link, []},
+      permanent, 10, worker, [ns_log]},
+
      {ns_config_sup, {ns_config_sup, start_link, []},
       permanent, infinity, supervisor,
       [ns_config_sup, ns_config, ns_config_default]},
