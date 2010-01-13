@@ -1,9 +1,11 @@
 * there is also some hook.js rotation bug or (worse) SamplesRestorer
    bug, as rotation is not perfect sometimes
+* clicking on small graphs doesn't always work. Probably due to
+   concurrent graph refresh.
 
 OVERVIEW
 * 'Get Started' section
-* no node list
+o [DONE] no node list
 * correct fields in node list on overview page
 * expandable node list in overview status
 * leave cluster
