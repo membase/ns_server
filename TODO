@@ -1,4 +1,6 @@
 * refresh moments of keys and op stats are not in sync. somehow
+* there is also some hook.js rotation bug or (worse) SamplesRestorer
+   bug, as rotation is not perfect sometimes
 
 OVERVIEW
 * 'Get Started' section
