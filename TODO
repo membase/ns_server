@@ -1,4 +1,3 @@
-* refresh moments of keys and op stats are not in sync. somehow
 * there is also some hook.js rotation bug or (worse) SamplesRestorer
    bug, as rotation is not perfect sometimes
 
@@ -51,8 +50,6 @@ ADD BUCKET
 
 * Store password/login in cookies ? So that you don't have to re-enter
    them on page refresh.
-* samples_interval for stats response should be in milliseconds, just
-   like tstamp.
 
 o [DONE] failure to retreive stats after switch to another zoom leaves us
    stale data (showing data for previous zoom)

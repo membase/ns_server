@@ -1110,7 +1110,7 @@ var SamplesRestorer = mkClass({
     var now = (new Date()).valueOf();
     if (!this.lastOps)
       return now;
-    var samplesInterval = this.lastOps['samples_interval']*1000;
+    var samplesInterval = this.lastOps['samplesInterval'];
     return this.birthTime + Math.floor((now + samplesInterval - 1 - this.birthTime)/samplesInterval)*samplesInterval;
   },
   transformOp: function (op) {
@@ -1127,7 +1127,7 @@ var SamplesRestorer = mkClass({
     // if (op.misses.length == 0)
     //   alert("Got it!");
 
-    var dataOffset = Math.round((tstamp - oldTstamp) / op.samples_interval)
+    var dataOffset = Math.round((tstamp - oldTstamp) / op['samplesInterval'])
     _.each(['misses', 'gets', 'sets', 'ops'], function (cat) {
       var oldArray = oldOps[cat];
       var newArray = ops[cat];

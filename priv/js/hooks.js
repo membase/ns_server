@@ -190,16 +190,16 @@ var TestingSupervisor = {
         var samples = allSamples[opsPerSecondZoom];
         var samplesSize = samples["gets"].length;
 
-        var samplesInterval = 5;
+        var samplesInterval = 5000;
         if (opsPerSecondZoom == "24hr")
-          samplesInterval = 86400 / samplesSize;
+          samplesInterval = 86400000 / samplesSize;
         else if (opsPerSecondZoom == "1hr")
-          samplesInterval = 3600 / samplesSize;
+          samplesInterval = 3600000 / samplesSize;
 
         var now = (new Date()).valueOf();
         var lastSampleTstamp = now;
 
-        if (samplesInterval == 5) {
+        if (samplesInterval == 5000) {
           var rotates = ((now / 1000) >> 0) % samplesSize;
           var newSamples = {};
           for (var k in samples) {
@@ -213,11 +213,11 @@ var TestingSupervisor = {
         if (startTstampParam !== undefined) {
           var startTstamp = parseInt(startTstampParam, 10);
           
-          var intervals = Math.floor((now - startTstampParam) / samplesInterval / 1000);
+          var intervals = Math.floor((now - startTstampParam) / samplesInterval);
           if (intervals > samplesSize) {
             throw new Error("should not happen");
           }
-          lastSampleTstamp = startTstamp + intervals * samplesInterval * 1000;
+          lastSampleTstamp = startTstamp + intervals * samplesInterval;
 
           var newSamples = {};
           for (var k in samples) {
@@ -250,7 +250,7 @@ var TestingSupervisor = {
                       misses: 100,
                       type: "Cache"}],
           op: _.extend({tstamp: lastSampleTstamp,
-                        'samples_interval': samplesInterval},
+                        'samplesInterval': samplesInterval},
                        samples)};
       }
     } else if (path[0] == 'alerts' && path.length == 1) {

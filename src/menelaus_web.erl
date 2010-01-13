@@ -452,9 +452,9 @@ build_bucket_stats_response(_Id, Params, Now) ->
     Samples = mk_samples(OpsPerSecondZoom),
     SamplesSize = length(element(2, hd(Samples))),
     SamplesInterval = case OpsPerSecondZoom of
-                          "now" -> 1;
-                          "24hr" -> 86400 div SamplesSize;
-                          "1hr" -> 3600 div SamplesSize
+                          "now" -> 5000;
+                          "24hr" -> 86400000 div SamplesSize;
+                          "1hr" -> 3600000 div SamplesSize
                       end,
     StartTstampParam = proplists:get_value("opsbysecondStartTStamp", Params),
     {LastSampleTstamp, CutNumber} = case StartTstampParam of
@@ -463,9 +463,9 @@ build_bucket_stats_response(_Id, Params, Now) ->
                         StartTstamp = list_to_integer(StartTstampParam),
                         CutMsec = Now - StartTstamp,
                         if
-                            ((CutMsec > 0) andalso (CutMsec < SamplesInterval*1000*SamplesSize)) ->
-                                N = trunc(CutMsec/SamplesInterval/1000),
-                                {StartTstamp + N * SamplesInterval * 1000, N};
+                            ((CutMsec > 0) andalso (CutMsec < SamplesInterval*SamplesSize)) ->
+                                N = trunc(CutMsec/SamplesInterval),
+                                {StartTstamp + N * SamplesInterval, N};
                             true -> {Now, SamplesSize}
                         end
                 end,
@@ -500,7 +500,7 @@ build_bucket_stats_response(_Id, Params, Now) ->
                                     {misses, 100},
                                     {type, <<"Cache">>}]}]},
               {op, {struct, [{tstamp, LastSampleTstamp},
-                             {samples_interval, SamplesInterval}
+                             {samplesInterval, SamplesInterval}
                              | CutSamples]}}]}.
 
 -ifdef(EUNIT).
