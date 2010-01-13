@@ -1607,6 +1607,8 @@ var DummySection = {
 
 var ThePage = {
   sections: {overview: OverviewSection,
+             analytics: DummySection,
+             buckets: DummySection,
              alerts: AlertsSection,
              settings: DummySection},
   currentSection: null,

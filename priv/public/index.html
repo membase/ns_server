@@ -11,13 +11,15 @@
 <tr><td width="25%" id="left_pane">
   <div style="outline: red 1px solid;">
     <ul>
-      <li><a id="switch_overview" href="javascript:nav.go('overview');">System overview</a>
-      <li><a id="switch_alerts" href="javascript:nav.go('alerts');">Alerts</a>
-      <li><a id="switch_settings" href="javascript:nav.go('settings');">Settings</a>
+      <li><a id="switch_overview" href="javascript:nav.go('overview');">Cluster overview</a>
+      <li><a id="switch_analytics" href="javascript:nav.go('analytics');">Analytics</a>
+      <li><a id="switch_buckets" href="javascript:nav.go('buckets');">Buckets</a>
+      <li><a id="switch_alerts" href="javascript:nav.go('alerts');">Alerts/Log</a>
+      <li><a id="switch_settings" href="javascript:nav.go('settings');">Cluster Settings</a>
     </ul>
   </div>
   <div style="outline: green 1px solid;">
-    <h2>Your pools</h2><hr></hr>
+    <h2>Your pools TODO:KILL</h2><hr></hr>
     <div id="pool_list_container">
       <ul>
         <li><em>Default pool</em>
@@ -122,6 +124,10 @@
         </tbody></table>
       </div>
     </div>
+  </div><div id="analytics" status="display:none">
+    Analytics is here
+  </div><div id="buckets" status="display:none">
+    Buckets is here
   </div><div id="alerts" style="display:none">
     <ul class="tabs">
       <li><a href="#">Current Alerts</a>
