@@ -74,10 +74,6 @@ reconfig_pools(Pools) ->
     error_logger:info_msg("mc_pool_init reconfig: ~p~n", [Pools]),
 
     WantPoolNames = proplists:get_keys(Pools),
-
-    % CurrPools looks like...
-    %   [{{pool, PoolName},<0.77.0>,worker,[_]}]
-    %
     CurrPoolNames = emoxi_sup:current_pools(),
 
     OldPoolNames = lists:subtract(CurrPoolNames, WantPoolNames),
