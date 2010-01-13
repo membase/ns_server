@@ -36,15 +36,15 @@ loop(Req, DocRoot) ->
                      case PathTokens of
                          [] -> {done, redirect_permanently("/index.html", Req)};
                          ["pools"] ->
-                             {need_auth, fun handle_pools/1};
+                             {need_auth_bucket, fun handle_pools/1};
                          ["pools", Id] ->
-                             {need_auth, fun handle_pool_info/2, [Id]};
+                             {need_auth_bucket, fun handle_pool_info/2, [Id]};
                          ["pools", Id, "stats"] ->
                              {need_auth, fun handle_bucket_stats/3, ["asd", Id]};
                          ["poolsStreaming", Id] ->
                              {need_auth, fun handle_pool_info_streaming/2, [Id]};
                          ["pools", PoolId, "buckets", Id] ->
-                             {need_auth, fun handle_bucket_info/3, [PoolId, Id]};
+                             {need_auth_bucket, fun handle_bucket_info/3, [PoolId, Id]};
                          ["pools", PoolId, "buckets", Id, "stats"] ->
                              {need_auth, fun handle_bucket_stats/3, [PoolId, Id]};
                          ["alerts"] ->
@@ -66,17 +66,30 @@ loop(Req, DocRoot) ->
                  _ ->
                      {done, Req:respond({501, [], []})}
              end,
-    CheckAuth = fun (F, Args) ->
-                        case check_auth(extract_basic_auth(Req)) of
-                            true -> apply(F, Args ++ [Req]);
-                            _ -> Req:respond({401, [{"WWW-Authenticate",
-                                                     "Basic realm=\"api\""}], []})
-                        end
-                end,
+    CheckAuth =
+        fun (F, Args) ->
+                UserPassword = extract_basic_auth(Req),
+                case check_auth(UserPassword) of
+                    true -> apply(F, Args ++ [Req]);
+                    _ -> Req:respond({401, [{"WWW-Authenticate",
+                                             "Basic realm=\"api\""}],
+                                      []})
+                end
+        end,
+    CheckAuthBucket =
+        fun (F, Args) ->
+                UserPassword = extract_basic_auth(Req),
+                case check_bucket_auth(UserPassword) of
+                    true -> apply(F, Args ++ [Req]);
+                    _    -> CheckAuth(F, Args)
+                end
+        end,
     case Action of
         {done, RV} -> RV;
         {need_auth, F} -> CheckAuth(F, []);
-        {need_auth, F, Args} -> CheckAuth(F, Args)
+        {need_auth, F, Args} -> CheckAuth(F, Args);
+        {need_auth_bucket, F} -> CheckAuthBucket(F, []);
+        {need_auth_bucket, F, Args} -> CheckAuthBucket(F, Args)
     end.
 
 %% Internal API
@@ -92,6 +105,16 @@ serve_index_html_for_tests(Req, DocRoot) ->
 % {rest_creds, [{creds, [{"user", [{password, "password"}]},
 %                        {"admin", [{password, "admin"}]}]}
 %              ]}. % An empty list means no login/password auth check.
+
+check_bucket_auth({User, Password}) ->
+    % Default pool only for 1.0.
+    case ns_config:search_prop(ns_config:get(), pools, "default", empty) of
+        empty -> false;
+        Pool ->
+            Buckets = proplists:get_value(buckets, Pool),
+            lists:any(bucket_auth_fun(User, Password),
+                      Buckets)
+    end.
 
 check_auth(UserPassword) ->
     case ns_config:search_prop(ns_config:get(), rest_creds, creds, empty) of
@@ -228,11 +251,36 @@ build_nodes_info(MyPool, IncludeOtp) ->
 %   ]}
 % ]}
 
-build_pool_info(Id) ->
+bucket_auth_fun(User, Password) ->
+    fun({BucketName, BucketProps}) ->
+            case proplists:get_value(auth_plain, BucketProps) of
+                undefined -> true;
+                BucketPassword ->
+                    (BucketName =:= User andalso
+                     BucketPassword =:= Password)
+            end
+    end.
+
+build_pool_info(Id, UserPassword) ->
     MyPool = find_pool_by_id(Id),
-    Buckets = expect_prop_value(buckets, MyPool),
     Nodes = build_nodes_info(MyPool, true),
-    BucketsInfo = [{struct, [{uri, list_to_binary("/pools/" ++ Id ++ "/buckets/" ++ Name)},
+    IsSuper = check_auth(UserPassword),
+    BucketsAll = expect_prop_value(buckets, MyPool),
+    Buckets =
+        % We got this far, so we assume we're authorized.
+        % Only emit the buckets that match our UserPassword;
+        % or, emit all buckets if our UserPassword matches the rest_creds
+        % or, emit all buckets if we're not secure.
+        case {IsSuper, UserPassword} of
+            {true, _}      -> BucketsAll;
+            {_, undefined} -> BucketsAll;
+            {_, {User, Password}} ->
+                lists:filter(
+                  bucket_auth_fun(User, Password),
+                  BucketsAll)
+        end,
+    BucketsInfo = [{struct, [{uri, list_to_binary("/pools/" ++ Id ++
+                                                  "/buckets/" ++ Name)},
                              {name, list_to_binary(Name)}]}
                    || Name <- proplists:get_keys(Buckets)],
     {struct, [{name, list_to_binary(Id)},
@@ -267,30 +315,33 @@ build_pool_info(Id) ->
     %% end.
 
 handle_pool_info(Id, Req) ->
-    reply_json(Req, build_pool_info(Id)).
+    UserPassword = extract_basic_auth(Req),
+    reply_json(Req, build_pool_info(Id, UserPassword)).
 
 handle_pool_info_streaming(Id, Req) ->
     %% TODO: this shouldn't be timer driven, but rather should register a callback based on some state change in the Erlang OS
     HTTPRes = Req:ok({"application/json; charset=utf-8",
-                  [{"Server", "NorthScale menelaus %TODO gitversion%"}],
-                  chunked}),
-    Res = build_pool_info(Id),
+                      [{"Server", "NorthScale menelaus %TODO gitversion%"}],
+                      chunked}),
+    UserPassword = extract_basic_auth(Req),
+    Res = build_pool_info(Id, UserPassword),
     HTTPRes:write_chunk(mochijson2:encode(Res)),
     %% TODO: resolve why mochiweb doesn't support zero chunk... this
     %%       indicates the end of a response for now
     HTTPRes:write_chunk("\n\n\n\n"),
-    handle_pool_info_streaming(Id, HTTPRes, 3000).
+    handle_pool_info_streaming(Id, Req, HTTPRes, 3000).
 
-handle_pool_info_streaming(Id, HTTPRes, Wait) ->
+handle_pool_info_streaming(Id, Req, HTTPRes, Wait) ->
     receive
     after Wait ->
-            Res = build_pool_info(Id),
-        HTTPRes:write_chunk(mochijson2:encode(Res)),
-        %% TODO: resolve why mochiweb doesn't support zero chunk... this
-        %%       indicates the end of a response for now
-        HTTPRes:write_chunk("\n\n\n\n")
+            UserPassword = extract_basic_auth(Req),
+            Res = build_pool_info(Id, UserPassword),
+            HTTPRes:write_chunk(mochijson2:encode(Res)),
+            %% TODO: resolve why mochiweb doesn't support zero chunk... this
+            %%       indicates the end of a response for now
+            HTTPRes:write_chunk("\n\n\n\n")
     end,
-    handle_pool_info_streaming(Id, HTTPRes, 10000).
+    handle_pool_info_streaming(Id, Req, HTTPRes, 10000).
 
 find_bucket_by_id(Pool, Id) ->
     Buckets = expect_prop_value(buckets, Pool),
