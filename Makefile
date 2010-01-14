@@ -21,7 +21,7 @@ deps:
 clean:
 	$(MAKE) -C src clean
 	$(MAKE) -C deps/mochiweb-src clean
-	rm -f menelaus_*.tar.gz
+	rm -f menelaus_*.tar.gz priv/public/js/t-all.js priv/public/js/all.js
 	rm -f $(TMP_VER)
 	rm -rf $(DIST_DIR)
 
