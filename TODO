@@ -17,7 +17,7 @@ o [DONE] (re)implement
 * pagination
 
 BUCKET PROPERTIES
-* basic
+o [DONE] basic
 * remove bucket
 * flush all
 * change password
@@ -54,8 +54,6 @@ ADD BUCKET
 * Store password/login in cookies ? So that you don't have to re-enter
    them on page refresh.
 
-o [DONE] failure to retreive stats after switch to another zoom leaves us
-   stale data (showing data for previous zoom)
 * leaving 'overview' section should disable polling of stats. Or maybe
    don't bother ?
 
