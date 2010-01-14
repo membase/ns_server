@@ -98,9 +98,13 @@
     </div>
     <div id="bucket_list_template" class="template">
         <table>
-          <tr><th>Name
+          <tr><th>Name<th>Ops/Sec<th>Evictions/Sec<th>Cache Used<th>Cache Size
           {% $.each(rows, function () { %}
             <tr><td>{%= h(this.name) %}
+              <td>{%= h(this.basicStats.opsPerSec) %}
+              <td>{%= h(this.basicStats.evictionsPerSec) %}
+              <td>{%= h(this.basicStats.cachePercentUsed) %}
+              <td>{%= h(this.basicStats.cacheSize) %}
               <td><a href="javascript:BucketsSection.showBucket('{%= h(this.uri) %}')">Bucket Properties</a>
           {% }); %}
         </table>
@@ -185,5 +189,9 @@
 <a href="#" class="jqmClose">Close</a>
 <hr>
 <p>Bucket properties for {%= h(b.name) %}</p>
+<p>Bucket name: {%= h(b.name) %}</p>
+<p>Cache size: {%= h(b.basicStats.cacheSize) %} MB</p>
+<p>Password: *****</p>
+<p>Sample connection string: <textarea rows="3" readonly>{%= h(b.sampleConnectionString) %}</textarea></p>
 </div>
 </body></html>

@@ -473,16 +473,34 @@ var OverviewSection = {
 };
 
 var BucketsSection = {
+  cells: {},
   doDisplayBucketProperties: function (bucketDetails) {
     renderTemplate('bucket_details_dialog', {b: bucketDetails});
     $('#bucket_details_dialog_container').jqm({modal:true}).jqmShow();
   },
   init: function () {
-    DAO.cells.currentPoolDetails.subscribe($m(this, 'onBucketList'));
+    var cells = this.cells;
+
+    cells.firstPageDetailsURI = new Cell(function (poolDetails) {
+      return poolDetails.bucketList.uri;
+    }).setSources({poolDetails: DAO.cells.currentPoolDetails});
+
+    // by default copy first page uri, but we'll set it explicitly for pagination
+    cells.detailsPageURI = new Cell(function (firstPageURI) {
+      return firstPageURI;
+    }).setSources({firstPageURI: cells.firstPageDetailsURI});
+
+    cells.detailedBuckets = new Cell(function (pageURI) {
+      return future.get({url: pageURI});
+    }).setSources({pageURI: cells.detailsPageURI});
+
+    prepareTemplateForCell("bucket_list", cells.detailedBuckets);
+
+    cells.detailedBuckets.subscribe($m(this, 'onBucketList'));
   },
   buckets: [],
   onBucketList: function () {
-    var buckets = this.buckets = DAO.cells.currentPoolDetails.value.buckets;
+    var buckets = this.buckets = this.cells.detailedBuckets.value.buckets;
     renderTemplate('bucket_list', buckets);
   },
   showBucket: function (uri) {
@@ -499,6 +517,7 @@ var BucketsSection = {
     this.doDisplayBucketProperties(bucketInfo);
   },
   onEnter: function () {
+    this.cells.detailsPageURI.recalculate();
   }
 };
 

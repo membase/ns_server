@@ -12,18 +12,18 @@ o [DONE] no node list
 * expandable node list in overview status
 * leave cluster
 
-BUCKETS
+BUCKETS UI
 o [DONE] (re)implement
-* prepare new API to mass-fetch bucket details with support for pagination
-* mass bucket stats for buckets section
+o [DONE] prepare new API to mass-fetch bucket details with support for pagination
+o [DONE] mass bucket stats for buckets section
 * pagination
 
-BUCKET PROPERTIES
+BUCKET PROPERTIES UI
 o [DONE] basic
 * remove bucket
 * flush all
 * change password
-* sample connection string
+o [DONE] sample connection string
 
 TEST APPLICATION BUCKET
 * implement
