@@ -39,7 +39,7 @@ child_specs(Name, PoolConfig) ->
     {ok, {{rest_for_one, 3, 10}, Children}}.
 
 child_spec_pool(Name, _PoolConfig) ->
-    {mc_pool, {mc_pool, start_link, [Name]},
+    {{mc_pool, Name}, {mc_pool, start_link, [Name]},
      permanent, 10, worker, []}.
 
 child_spec_accept(Name, PoolConfig) ->
@@ -61,7 +61,8 @@ child_spec_accept(Name, PoolConfig) ->
     Env = {mc_server_detect,
            mc_server_detect,
            {mc_pool, Name}},
-    {mc_accept, {mc_accept, start_link, [PortNum, AddrStr, Env]},
+    Args = [PortNum, AddrStr, Env],
+    {{mc_accept, Args}, {mc_accept, start_link, Args},
      temporary, 10, worker, []}.
 
 reconfig(Name) ->
@@ -76,14 +77,14 @@ reconfig(Name, PoolConfig) ->
     ServerName = name_to_server_name(Name),
     CurrentChildren = current_children(Name),
     lists:foreach(
-      fun({mc_accept, undefined, _, _}) ->
+      fun({{mc_accept, _}, undefined, _, _}) ->
               ns_log:log(?MODULE, 0003, "reconfig accept start ~p", [Name]),
               supervisor:terminate_child(ServerName, mc_accept),
               supervisor:delete_child(ServerName, mc_accept),
               supervisor:start_child(ServerName,
                                      child_spec_accept(Name, PoolConfig)),
               ok;
-         ({mc_accept, _Pid, _, CurrArgs}) ->
+         ({{mc_accept, CurrArgs}, _Pid, _, _}) ->
               WantSpec = child_spec_accept(Name, PoolConfig),
               {_, {_, _, WantArgs}, _, _, _, _} = WantSpec,
               case CurrArgs =:= WantArgs of
@@ -96,7 +97,7 @@ reconfig(Name, PoolConfig) ->
                       supervisor:start_child(ServerName, WantSpec),
                       ok
               end;
-         ({mc_pool, Pid, _, _}) ->
+         ({{mc_pool, _}, Pid, _, _}) ->
               mc_pool:reconfig(Pid, Name, PoolConfig),
               ok;
          (_) -> ok
