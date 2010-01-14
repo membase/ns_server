@@ -24,13 +24,15 @@ code_change(_OldVsn, State, _) -> {ok, State}.
 handle_info(_Info, State)      -> {ok, State, hibernate}.
 handle_call(_Request, State)   -> {ok, ok, State, hibernate}.
 
-handle_event({nodes_wanted, V}, State) ->
-    error_logger:info_msg("nodes_wanted is now ~p~n", [V]),
-    ns_node_disco:nodes_wanted_updated(V),
+handle_event({nodes_wanted, _V}, State) ->
+    error_logger:info_msg("ns_node_disco_conf_events config on nodes_wanted~n"),
+    % The event may get to us really late, so don't pass along the param.
+    ns_node_disco:nodes_wanted_updated(),
     {ok, State, hibernate};
 
-handle_event({otp, V}, State) ->
-    error_logger:info_msg("otp is now ~p~n", [V]),
+handle_event({otp, _V}, State) ->
+    error_logger:info_msg("ns_node_disco_conf_events config on otp~n"),
+    % The event may get to us really late, so don't pass along the param.
     ns_node_disco:nodes_wanted_updated(),
     {ok, State, hibernate};
 

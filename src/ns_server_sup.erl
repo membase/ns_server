@@ -34,9 +34,11 @@ get_child_specs() ->
      {ns_port_sup, {ns_port_sup, start_link, []},
       permanent, infinity, supervisor,
       [ns_port_sup, ns_port_server]},
+
      {emoxi_sup, {emoxi_sup, start_link, []},
       permanent, infinity, supervisor,
       []},
+
      {menelaus, {menelaus_app, start_subapp, []},
       permanent, infinity, supervisor,
       []}
