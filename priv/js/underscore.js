@@ -559,24 +559,6 @@
     return prefix ? prefix + id : id;
   };
 
-  // JavaScript templating a-la ERB, pilfered from John Resig's
-  // "Secrets of the JavaScript Ninja", page 83.
-  // Single-quote fix from Rick Strahl's version.
-  _.template = function(str, data) {
-    var fn = new Function('obj',
-      'var p=[],print=function(){p.push.apply(p,arguments);};' +
-      'with(obj){p.push(\'' +
-      str.replace(/[\r\t\n]/g, " ")
-         .replace(/'(?=[^%]*%>)/g,"\t")
-         .split("'").join("\\'")
-         .split("\t").join("'")
-         .replace(/<%=(.+?)%>/g, "',$1,'")
-         .split("<%").join("');")
-         .split("%>").join("p.push('")
-         + "');}return p.join('');");
-    return data ? fn(data) : fn;
-  };
-
   // ------------------------------- Aliases ----------------------------------
 
   _.forEach  = _.each;
