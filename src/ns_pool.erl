@@ -24,6 +24,7 @@ pool_join(RemoteNode, NewCookie) ->
                         ok -> % The following adds node() to nodes_wanted.
                               ns_node_disco:nodes_wanted(),
                               ok = ns_config:resave(),
+                              ok = ns_config:reannounce(),
                               ok;
                         E -> pool_join_err(OldCookie, E)
                     end;

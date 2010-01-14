@@ -28,8 +28,9 @@ start_link() ->
 init(ignored) ->
     {ok, #state{}, hibernate}.
 
-handle_event({port_servers, _PortServers}, State) ->
-    ok = reconfig(ns_port_sup:port_servers_config()),
+handle_event({port_servers, _PortServersIn}, State) ->
+    {value, PortServers} = ns_port_sup:port_servers_config(),
+    ok = reconfig(PortServers),
     {ok, State, hibernate};
 
 handle_event({{node, Node, port_servers}, PortServers}, State) ->

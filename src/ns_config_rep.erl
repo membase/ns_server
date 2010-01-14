@@ -45,10 +45,14 @@ handle_cast(push, State) ->
     do_push(),
     {noreply, State};
 handle_cast({push, List}, State) ->
+    error_logger:info_report("Pushing config"),
     do_push(List),
+    error_logger:info_report("Pushing config done"),
     {noreply, State};
 handle_cast({pull, Nodes}, State) ->
+    error_logger:info_report("Pulling config"),
     do_pull(Nodes, 5),
+    error_logger:info_report("Pulling config done"),
     {noreply, State};
 handle_cast(Msg, State) ->
     error_logger:info_msg("Unhandled ~p cast: ~p~n", [?MODULE, Msg]),
@@ -100,6 +104,7 @@ do_pull(N) -> do_pull(misc:shuffle(ns_node_disco:nodes_actual_other()), N).
 do_pull([], _N)    -> ok;
 do_pull(_Nodes, 0) -> error;
 do_pull([Node | Rest], N) ->
+    error_logger:info_msg("Pulling config from: ~p~n", [Node]),
     case (catch ns_config:get_remote(Node)) of
         {'EXIT', _, _} -> do_pull(Rest, N - 1);
         {'EXIT', _}    -> do_pull(Rest, N - 1);
