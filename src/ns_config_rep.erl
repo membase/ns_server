@@ -48,7 +48,7 @@ handle_cast({push, List}, State) ->
     do_push(List),
     {noreply, State};
 handle_cast({pull, Nodes}, State) ->
-    do_pull(Nodes),
+    do_pull(Nodes, 5),
     {noreply, State};
 handle_cast(Msg, State) ->
     error_logger:info_msg("Unhandled ~p cast: ~p~n", [?MODULE, Msg]),

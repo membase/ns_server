@@ -177,7 +177,7 @@ loop(Nodes) ->
             % partition healing, nodes might be long-running and have
             % diverged config.
             error_logger:info_msg("new node: ~p~n", [Node]),
-            ns_config_rep:pull([Node], 1),
+            ns_config_rep:pull([Node]),
             ok;
         {nodedown, Node} ->
             error_logger:info_msg("lost node: ~p~n", [Node]);
