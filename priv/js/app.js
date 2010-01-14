@@ -14,6 +14,22 @@
 //= require <cells.js>
 //= require <hash-fragment-cells.js>
 
+
+// TODO: doesn't work due to apparent bug in jqModal. Consider switching to another modal windows implementation
+// $(function () {
+//   $(window).keydown(function (ev) {
+//     if (ev.keyCode != 0x1b) // escape
+//       return;
+//     console.log("got escape!");
+//     // escape is pressed, now check if any jqModal window is active and hide it
+//     _.each(_.values($.jqm.hash), function (modal) {
+//       if (!modal.a)
+//         return;
+//       $(modal.w).jqmHide();
+//     });
+//   });
+// });
+
 function formatUptime(seconds, precision) {
   precision = precision || 8;
 
@@ -457,12 +473,30 @@ var OverviewSection = {
 };
 
 var BucketsSection = {
+  doDisplayBucketProperties: function (bucketDetails) {
+    renderTemplate('bucket_details_dialog', {b: bucketDetails});
+    $('#bucket_details_dialog_container').jqm({modal:true}).jqmShow();
+  },
   init: function () {
     DAO.cells.currentPoolDetails.subscribe($m(this, 'onBucketList'));
   },
+  buckets: [],
   onBucketList: function () {
-    var buckets = DAO.cells.currentPoolDetails.value.buckets;
+    var buckets = this.buckets = DAO.cells.currentPoolDetails.value.buckets;
     renderTemplate('bucket_list', buckets);
+  },
+  showBucket: function (uri) {
+    var buckets = this.buckets;
+    var bucketInfo = _.detect(buckets, function (info) {
+      return info.uri == uri;
+    });
+
+    if (!bucketInfo) {
+      console.log("Not found bucket for uri:", uri);
+      return;
+    }
+
+    this.doDisplayBucketProperties(bucketInfo);
   },
   onEnter: function () {
   }

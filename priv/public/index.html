@@ -101,6 +101,7 @@
           <tr><th>Name
           {% $.each(rows, function () { %}
             <tr><td>{%= h(this.name) %}
+              <td><a href="javascript:BucketsSection.showBucket('{%= h(this.uri) %}')">Bucket Properties</a>
           {% }); %}
         </table>
     </div>
@@ -177,5 +178,12 @@
     loginFormSubmit();
   });
 </script>
+</div>
+<div class="jqmWindow" id="bucket_details_dialog_container">
+</div>
+<div id="bucket_details_dialog_template" class="template">
+<a href="#" class="jqmClose">Close</a>
+<hr>
+<p>Bucket properties for {%= h(b.name) %}</p>
 </div>
 </body></html>
