@@ -81,5 +81,6 @@ mergable(_CurrList) ->
      port_servers,
      alerts,
      pools,
-     nodes_wanted].
+     nodes_wanted,
+     test0, test1, test2].
 
