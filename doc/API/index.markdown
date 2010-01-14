@@ -330,42 +330,6 @@ Clients MUST NOT rely on the node list here to create their "server list" for
 when connecting.  They MUST instead issue an HTTP get call to the bucket to 
 get the node list for that specific bucket.  
 
-####Node Details
-
-*Request*
-
-<pre class="restcalls">
- GET https://first_node.in.pool.com:80/pools/default/node/first_node/
- Host: node.in.your.pool.com
- Authorization: Basic xxxxxxxxxxxxxxxxxxx
- Accept: application/com.northscale.store+json
- X-memcachekv-Store-Client-Specification-Version: 0.1
-</pre>
-
-
-In Javascript, this would lead to being able to, for instance, be able to address
-a URI on a node directly.  An example of why one may want to do this is either
-for system internal management routines or per-node operations which may make
-sense, like a backup or asking a node to join a pool.
-
-*Response*
-
-<pre>
-{
-  "name" : "first_node",
-  "threads" : 8,
-  "cache" : "3gb",
-  "status: "healthy",
-  "ports" : {
-    "proxy" : 11211,
-    "direct" : 11311
-  }
-  "os" : "none",
-  "version" : "123",
-  "uptime" : 1231293
-}
-</pre>
-
 
 ###List buckets and bucket operations
 
@@ -696,3 +660,4 @@ have been referenced.
   pool and bucket names.  (matt.ingenthron@northscale.com)
 * 20101207 Changed some paths to plural from singlular.  Reflected node tracking
   changes moving to buckets.
+* 20100112 Removed per-node requests
