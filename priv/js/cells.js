@@ -41,6 +41,8 @@ future.get = function (ajaxOptions, valueTransformer, nowValue) {
     nowValue: nowValue
   }
   var xhr;
+  if (ajaxOptions.url === undefined)
+    throw new Error("url is undefined");
   return future(function (dataCallback) {
     xhr = $.ajax(_.extend({type: 'GET',
                            dataType: 'json',
