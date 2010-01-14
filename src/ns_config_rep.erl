@@ -54,7 +54,7 @@ handle_cast(Msg, State) ->
     error_logger:info_msg("Unhandled ~p cast: ~p~n", [?MODULE, Msg]),
     {noreply, State}.
 
-handle_info(pull_random, State) ->
+handle_info({timeout, _TimerRef, pull_random}, State) ->
     do_pull(1),
     {noreply, State};
 handle_info(Msg, State) ->
