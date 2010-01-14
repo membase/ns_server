@@ -83,7 +83,7 @@
   [{'_ver', {0, 0, 0}},
    {memcached, "./memcached",
     [
-     % "-E", "engines/default_engine.so",
+     "-E", "engines/default_engine.so",
      "-p", "11212"
      ],
     [{env, [{"MEMCACHED_CHECK_STDIN", "thread"},
