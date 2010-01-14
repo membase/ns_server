@@ -9,15 +9,20 @@
 -export([start_link/0, init/1, handle_event/2, handle_call/2,
          handle_info/2, terminate/2, code_change/3]).
 
--record(state, {disco}).
+-record(state, {}).
 
 % start_link is required by gen_event, but *never* makes sense because
 % the event handlers are not processes.
 start_link() ->
-    error.
+    % The ns_node_disco_conf_events gen_event handler will inform
+    % me when relevant ns_config configuration changes.
+    {ok, spawn_link(
+           fun() ->
+                   gen_event:add_handler(ns_config_events, ?MODULE, ignored)
+           end)}.
 
-init(DiscoPid) ->
-    {ok, #state{disco=DiscoPid}, hibernate}.
+init(ignored) ->
+    {ok, #state{}, hibernate}.
 
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
@@ -37,6 +42,7 @@ handle_event({otp, _V}, State) ->
     {ok, State, hibernate};
 
 handle_event(Changed, State) when is_list(Changed) ->
+    error_logger:info_msg("ns_node_disco_conf_events config all~n"),
     Config = ns_config:get(),
     ChangedRaw =
         lists:foldl(fun({Key, _}, Acc) ->

@@ -1,6 +1,7 @@
 -module(ns_pool).
 
--export([pool_join/2, pool_leave/1, pool_leave/0]).
+-export([pool_join/2, pool_leave/1, pool_leave/0,
+         pool_join_params/0]).
 
 % Assuming our caller has made this node into an 'empty' node
 % that's joinable to another cluster/pool, and assumes caller
@@ -50,3 +51,9 @@ pool_leave() ->
     ns_node_disco:cookie_init(),
     ns_config:set(nodes_wanted, [node()]),
     ok.
+
+% Parameters to pass to pool_join() to allow a remote node to join to
+% me, mostly for more convenient debugging/development.
+
+pool_join_params() ->
+    [node(), ns_node_disco:cookie_get()].

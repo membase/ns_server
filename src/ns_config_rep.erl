@@ -27,27 +27,30 @@ start_link() ->
 
 init([]) ->
     % Start with startup config sync.
+    error_logger:info_msg("~p init pulling~n", [?MODULE]),
     do_pull(),
+    error_logger:info_msg("~p init pushing~n", [?MODULE]),
     do_push(),
     % Have ns_config reannouce its config for any synchronization that
     % may have occurred.
+    error_logger:info_msg("~p init reannouncing~n", [?MODULE]),
     ns_config:reannounce(),
     % Schedule some random config syncs.
     Frequency = 5000 + trunc(random:uniform() * 55000),
     erlang:start_timer(Frequency, self(), pull_random),
     {ok, #state{}}.
 
+handle_call({push, List}, _From, State) ->
+    error_logger:info_report("Pushing config"),
+    do_push(List),
+    error_logger:info_report("Pushing config done"),
+    {reply, ok, State};
 handle_call(Msg, _From, State) ->
     error_logger:info_msg("Unhandled ~p call: ~p~n", [?MODULE, Msg]),
     {reply, error, State}.
 
 handle_cast(push, State) ->
     do_push(),
-    {noreply, State};
-handle_cast({push, List}, State) ->
-    error_logger:info_report("Pushing config"),
-    do_push(List),
-    error_logger:info_report("Pushing config done"),
     {noreply, State};
 handle_cast({pull, Nodes}, State) ->
     error_logger:info_report("Pulling config"),
@@ -79,7 +82,7 @@ push() ->
     gen_server:cast(?MODULE, push).
 
 push(List) ->
-    gen_server:cast(?MODULE, {push, List}).
+    gen_server:call(?MODULE, {push, List}).
 
 pull(Nodes) ->
     gen_server:cast(?MODULE, {pull, Nodes}).

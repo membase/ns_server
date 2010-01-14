@@ -32,9 +32,6 @@ init() ->
     nodes_wanted_updated(),
     % Register for nodeup/down messages in our receive loop().
     ok = net_kernel:monitor_nodes(true),
-    % The ns_node_disco_conf_events gen_event handler will inform
-    % me when relevant configuration changes.
-    gen_event:add_handler(ns_config_events, ns_node_disco_conf_events, self()),
     % Main receive loop.
     loop([]).
 
