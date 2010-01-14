@@ -172,12 +172,12 @@ loop(Nodes) ->
     end,
     receive
         {nodeup, Node} ->
-            % This codepath also handles network partition healing here.
-            % This is different than a node restarting, since in a network
-            % partition healing, nodes might be long-running and have
-            % diverged config.
             error_logger:info_msg("new node: ~p~n", [Node]),
-            ns_config_rep:pull([Node]),
+            % We might be tempted to proactively push/pull/sync
+            % our configs with the "new" Node.  Instead, it's
+            % cleaner to asynchronous do a gen_event:notify()
+            %
+            % ns_config_rep:pull([Node]),
             ok;
         {nodedown, Node} ->
             error_logger:info_msg("lost node: ~p~n", [Node]);
