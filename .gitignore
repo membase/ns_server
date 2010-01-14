@@ -8,3 +8,4 @@ doc/*.html
 ebin/*.app
 menelaus_*.tar.gz
 tmp
+*~
