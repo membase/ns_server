@@ -45,6 +45,8 @@ loop(Req, DocRoot) ->
                              {need_auth, fun handle_pool_info_streaming/2, [Id]};
                          ["pools", PoolId, "buckets", Id] ->
                              {need_auth_bucket, fun handle_bucket_info/3, [PoolId, Id]};
+						 ["pools", PoolId, "bucketsStreaming", Id] ->
+							 {need_auth_bucket, fun handle_bucket_info_streaming/3, [PoolId, Id]};
                          ["pools", PoolId, "buckets", Id, "stats"] ->
                              {need_auth, fun handle_bucket_stats/3, [PoolId, Id]};
                          ["alerts"] ->
@@ -288,9 +290,14 @@ build_pool_info(Id, UserPassword) ->
                                                   "/buckets/" ++ Name)},
                              {name, list_to_binary(Name)}]}
                    || Name <- proplists:get_keys(Buckets)],
+	BucketsStreamingInfo = [{struct, [{streamingUri, list_to_binary("/pools/" ++ Id ++
+                                                  "/bucketsStreaming/" ++ Name)},
+                             {name, list_to_binary(Name)}]}
+                   || Name <- proplists:get_keys(Buckets)],
     {struct, [{name, list_to_binary(Id)},
               {nodes, Nodes},
               {buckets, BucketsInfo},
+			  {bucketsStreaming, BucketsStreamingInfo},
               {stats, {struct,
                        [{uri, list_to_binary("/pools/" ++ Id ++ "/stats")}]}}]}.
     %% case Id of
@@ -326,7 +333,7 @@ handle_pool_info(Id, Req) ->
 handle_pool_info_streaming(Id, Req) ->
     %% TODO: this shouldn't be timer driven, but rather should register a callback based on some state change in the Erlang OS
     HTTPRes = Req:ok({"application/json; charset=utf-8",
-                      [{"Server", "NorthScale menelaus %TODO gitversion%"}],
+                      server_header(),
                       chunked}),
     UserPassword = extract_basic_auth(Req),
     Res = build_pool_info(Id, UserPassword),
@@ -377,6 +384,31 @@ handle_bucket_info(PoolId, Id, Req) ->
             end,
     Res = {struct, List2},
     reply_json(Req, Res).
+
+handle_bucket_info_streaming(_PoolId, Id, Req) ->
+    %% TODO: this shouldn't be timer driven, but rather should register a callback based on some state change in the Erlang OS
+    HTTPRes = Req:ok({"application/json; charset=utf-8",
+                      server_header(),
+                      chunked}),
+    UserPassword = extract_basic_auth(Req),
+    Res = build_pool_info(Id, UserPassword),
+    HTTPRes:write_chunk(mochijson2:encode(Res)),
+    %% TODO: resolve why mochiweb doesn't support zero chunk... this
+    %%       indicates the end of a response for now
+    HTTPRes:write_chunk("\n\n\n\n"),
+    handle_bucket_info_streaming(_PoolId, Id, Req, HTTPRes, 3000).
+
+handle_bucket_info_streaming(_PoolId, Id, Req, HTTPRes, Wait) ->
+    receive
+    after Wait ->
+            UserPassword = extract_basic_auth(Req),
+            Res = build_pool_info(Id, UserPassword),
+            HTTPRes:write_chunk(mochijson2:encode(Res)),
+            %% TODO: resolve why mochiweb doesn't support zero chunk... this
+            %%       indicates the end of a response for now
+            HTTPRes:write_chunk("\n\n\n\n")
+    end,
+    handle_pool_info_streaming(Id, Req, HTTPRes, 10000).
 
 %% milliseconds since 1970 Jan 1 at UTC
 java_date() ->
@@ -730,3 +762,8 @@ handle_traffic_generator_control_post(Req) ->
         "on" -> tgen:traffic_start()
     end,
     Req:respond({200, [], []}).
+
+server_header() ->
+    [{"Server", "NorthScale menelaus %TODO gitversion%"}].
+
+
