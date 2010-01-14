@@ -27,6 +27,22 @@ Building...
 
 ## Starting
 
+Before you start the server, you may need to do the following
+  * Make sure the needed ports are not being used (these include
+    8080, 11211, 11212, etc).
+  * Build a version of the 1.6 memcached branch that has isasl
+    enabled (./configure --enable-isasl).
+  * Create a sym link from the 1.6 memcached to <REPO_ROOT>/priv/memcached
+  * Make sure that the default_engine.so created when building the
+    1.6 memcached is on your LD_LIBRARY_PATH (in OS X this is the 
+    DYLD_LIBRARY_PATH).
+  * Make sure the memcached port_server config in the priv/config file
+    has the engine option (-E ..) and the option is not commented out
+    (at the moment this arg is commented out in the config file).
+  * Just a general note, if you are making changes to the config file
+    and these changes don't appear to be reflected in the start up
+    procedures, try deleting the <REPO_ROOT>/data dir.
+
 The ns_server can be started through the `start.sh` script found in the
 main directory.
 
