@@ -45,6 +45,8 @@ loop_out(OutSock) ->
 
 recv(InSock) ->
     case mc_ascii:recv_line(InSock) of
+        {ok, <<>>} ->
+            {ok, unknown, []};
         {ok, Line} ->
             [CmdName | CmdArgs] = string:tokens(binary_to_list(Line), " "),
             {ok, list_to_atom(CmdName), CmdArgs};
