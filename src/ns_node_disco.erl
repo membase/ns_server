@@ -3,46 +3,126 @@
 
 -module(ns_node_disco).
 
+-behaviour(gen_server).
+
 %% API
 -export([start_link/0,
-         init/0,
-         nodes_wanted/0, nodes_wanted_raw/0,
-         nodes_wanted_updated/0, nodes_wanted_updated/1,
+         nodes_wanted/0,
+         nodes_wanted_updated/0,
          nodes_actual/0,
          nodes_actual_proper/0,
          nodes_actual_other/0,
-         cookie_init/0, cookie_get/0, cookie_set/1, cookie_sync/0,
-         loop/1]).
+         cookie_init/0, cookie_get/0, cookie_set/1, cookie_sync/0]).
+
+%% gen_server
+
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2,
+         terminate/2, code_change/3]).
+
+-record(state, {nodes}).
 
 -include_lib("eunit/include/eunit.hrl").
 
+% Node Discovery and monitoring.
+%
 start_link() ->
-    {ok, spawn_link(?MODULE, init, [])}.
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
+% Returns all nodes that we see.
 %
-% Node Discovery and monitoring and whole lot more.
-%
-% XXX: Functionality not related to node discover and monitoring MUST
-% be removed from this module (cookie_* remains).
+% TODO: Track flapping nodes and attenuate, or figure out
+%       how to configure OTP to do it, if not already.
 
-init() ->
+nodes_actual() ->
+    lists:sort(nodes([this, visible])).
+
+nodes_actual_proper() ->
+    gen_server:call(?MODULE, nodes_actual_proper).
+
+% Returns nodes_actual_proper(), but with self node() filtered out.
+% This is not the same as nodes([visible]), because this function may
+% return a subset of nodes([visible]), similar to nodes_actual_proper().
+
+nodes_actual_other() ->
+    lists:subtract(nodes_actual_proper(), [node()]).
+
+nodes_wanted() ->
+    gen_server:call(?MODULE, nodes_wanted).
+
+% API's used as callbacks that are invoked when ns_config
+% keys have changed.
+
+nodes_wanted_updated() ->
+    gen_server:call(?MODULE, nodes_wanted_updated).
+
+%% gen_server implementation
+
+init([]) ->
     % See: http://osdir.com/ml/lang.erlang.general/2004-04/msg00155.html
     inet_db:set_lookup([file, dns]),
     % Proactively run one round of reconfiguration update.
-    nodes_wanted_updated(),
-    % Register for nodeup/down messages in our receive loop().
+    do_nodes_wanted_updated(do_nodes_wanted()),
+    % Register for nodeup/down messages as handle_info callbacks.
     ok = net_kernel:monitor_nodes(true),
-    % Main receive loop.
-    loop([]).
+    % Track the last list of actual ndoes.
+    {ok, #state{nodes = []}}.
 
-% Callback invoked when ns_config keys have changed.
+terminate(_Reason, _State)     -> ok.
+code_change(_OldVsn, State, _) -> {ok, State}.
+handle_cast(_Msg, State)       -> {noreply, State}.
 
-nodes_wanted_updated() ->
-    nodes_wanted_updated(nodes_wanted()).
+% Read from ns_config nodes_wanted, and add ourselves to the
+% nodes_wanted list, if not already there.
 
-% Callback invoked when ns_config keys have changed.
+handle_call(nodes_actual_proper, _From, State) ->
+    {reply, do_nodes_actual_proper(), State};
 
-nodes_wanted_updated(NodeListIn) ->
+handle_call(nodes_wanted, _From, State) ->
+    {reply, do_nodes_wanted(), State};
+
+handle_call(nodes_wanted_updated, _From, State) ->
+    {reply, do_nodes_wanted_updated(do_nodes_wanted()), State};
+
+handle_call(Msg, _From, State) ->
+    error_logger:info_msg("Unhandled ~p call: ~p~n", [?MODULE, Msg]),
+    {reply, error, State}.
+
+handle_info({nodeup, Node}, State) ->
+    error_logger:info_msg("new node: ~p~n", [Node]),
+    % We might be tempted to proactively push/pull/sync
+    % our configs with the "new" Node.  Instead, it's
+    % cleaner to asynchronous do a gen_event:notify()
+    %
+    % ns_config_rep:pull([Node]),
+    State2 = do_notify(State),
+    {noreply, State2};
+
+handle_info({nodedown, Node}, State) ->
+    error_logger:info_msg("lost node: ~p~n", [Node]),
+    {noreply, State};
+
+handle_info(_Msg, State) -> {noreply, State}.
+
+% -----------------------------------------------------------
+
+% Read from ns_config nodes_wanted.
+
+do_nodes_wanted_raw() ->
+    case ns_config:search(ns_config:get(), nodes_wanted) of
+        {value, L} -> lists:usort(L);
+        false      -> []
+    end.
+
+do_nodes_wanted() ->
+    W1 = do_nodes_wanted_raw(),
+    W2 = lists:usort([node() | W1]),
+    case W2 =/= W1 of
+        true  -> ns_config:set(nodes_wanted, W2);
+        false -> ok
+    end,
+    W2.
+
+do_nodes_wanted_updated(NodeListIn) ->
     {ok, Cookie} = cookie_sync(),
     NodeList = lists:usort(NodeListIn),
     error_logger:info_msg("nodes_wanted updated: ~p, with cookie: ~p~n",
@@ -55,34 +135,7 @@ nodes_wanted_updated(NodeListIn) ->
                             NodeList),
     error_logger:info_msg("nodes_wanted pong: ~p, with cookie: ~p~n",
                           [PongList, erlang:get_cookie()]),
-    PongList.
-
-% Read from ns_config nodes_wanted.
-
-nodes_wanted_raw() ->
-    case ns_config:search(ns_config:get(), nodes_wanted) of
-        {value, L} -> lists:usort(L);
-        false      -> []
-    end.
-
-% Read from ns_config nodes_wanted, and add ourselves to nodes_wanted,
-% if not already there.
-
-nodes_wanted() ->
-    W1 = nodes_wanted_raw(),
-    W2 = lists:usort([node() | W1]),
-    case W2 =/= W1 of
-        true  -> ns_config:set(nodes_wanted, W2);
-        false -> ok
-    end,
-    W2.
-
-% Returns all nodes that we see.
-%
-% TODO: Track flapping nodes and attenuate.
-
-nodes_actual() ->
-    lists:sort(nodes([this, visible])).
+    ok.
 
 % Returns a subset of the nodes_wanted() that we see.  This is not the
 % same as nodes([this, visible]) because this function may return a
@@ -90,18 +143,20 @@ nodes_actual() ->
 % at the OTP level.  But the caller only cares about the subset
 % of nodes that are on the nodes_wanted() list.
 
-nodes_actual_proper() ->
+do_nodes_actual_proper() ->
     Curr = nodes_actual(),
-    Want = nodes_wanted(),
+    Want = do_nodes_wanted(),
     Diff = lists:subtract(Curr, Want),
     lists:usort(lists:subtract(Curr, Diff)).
 
-% Returns nodes_actual_proper(), but with self node() filtered out.
-% This is not the same as nodes([visible]), because this function may
-% return a subset of nodes([visible]), similar to nodes_actual_proper().
-
-nodes_actual_other() ->
-    lists:subtract(ns_node_disco:nodes_actual_proper(), [node()]).
+do_notify(#state{nodes = NodesOld} = State) ->
+    NodesNew = do_nodes_actual_proper(),
+    case NodesNew =:= NodesOld of
+        true  -> State;
+        false -> gen_event:notify(ns_node_disco_events,
+                                  {ns_node_disco_events, NodesOld, NodesNew}),
+                 State#state{nodes = NodesNew}
+    end.
 
 % -----------------------------------------------------------
 
@@ -158,27 +213,3 @@ cookie_sync() ->
             end
     end.
 
-% --------------------------------------------------
-
-loop(Nodes) ->
-    NodesNow = nodes_actual_proper(),
-    case NodesNow =:= Nodes of
-        true  -> ok;
-        false -> gen_event:notify(ns_node_disco_events,
-                                  {ns_node_disco_events, Nodes, NodesNow})
-    end,
-    receive
-        {nodeup, Node} ->
-            error_logger:info_msg("new node: ~p~n", [Node]),
-            % We might be tempted to proactively push/pull/sync
-            % our configs with the "new" Node.  Instead, it's
-            % cleaner to asynchronous do a gen_event:notify()
-            %
-            % ns_config_rep:pull([Node]),
-            ok;
-        {nodedown, Node} ->
-            error_logger:info_msg("lost node: ~p~n", [Node]);
-        Other ->
-            error_logger:info_msg("Unhandled message: ~p~n", [Other])
-    end,
-    ?MODULE:loop(NodesNow).

@@ -35,7 +35,7 @@ get_child_specs() ->
      % listens for ns_config events relevant to node_disco.
      {ns_node_disco_conf_events,
       {ns_node_disco_conf_events, start_link, []},
-      temporary, 10, worker, [ns_node_disco_conf_events]},
+      transient, 10, worker, []},
      % replicate config across nodes.
      {ns_config_rep, {ns_config_rep, start_link, []},
       permanent, 10, worker,
