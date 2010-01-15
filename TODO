@@ -1,5 +1,3 @@
-* buckets list is sortable ?
-
 * there is also some hook.js rotation bug or (worse) SamplesRestorer
    bug, as rotation is not perfect sometimes
 * clicking on small graphs doesn't always work. Probably due to
@@ -16,7 +14,8 @@ BUCKETS UI
 o [DONE] (re)implement
 o [DONE] prepare new API to mass-fetch bucket details with support for pagination
 o [DONE] mass bucket stats for buckets section
-* pagination
+o [DROPPED for now] pagination
+* implement sorting
 
 BUCKET PROPERTIES UI
 o [DONE] basic
