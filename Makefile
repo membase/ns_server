@@ -5,7 +5,8 @@ TMP_VER=$(TMP_DIR)/version_num.tmp
 DIST_DIR=$(TMP_DIR)/menelaus
 
 all: deps priv/public/js/all.js priv/public/js/t-all.js
-	(cd src;$(MAKE))
+	erl -make
+	cp src/*.app ebin
 
 priv/public/js/all.js: priv/js/*.js
 	mkdir -p `dirname $@`
@@ -19,7 +20,7 @@ deps:
 	$(MAKE) -C deps/mochiweb-src
 
 clean:
-	$(MAKE) -C src clean
+	-rm -f ebin/*
 	$(MAKE) -C deps/mochiweb-src clean
 	rm -f menelaus_*.tar.gz priv/public/js/t-all.js priv/public/js/all.js
 	rm -f $(TMP_VER)
