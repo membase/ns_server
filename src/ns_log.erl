@@ -1,3 +1,7 @@
+%% @author Northscale <info@northscale.com>
+%% @copyright 2010 NorthScale, Inc.
+%% All rights reserved.
+
 -module(ns_log).
 
 -include("ns_log.hrl").
@@ -51,7 +55,6 @@ handle_cast(clear, _State) ->
     error_logger:info_msg("Clearing log.~n", []),
     {noreply,  #state{recent=emptyRecent()}}.
 % Not handling any other state.
-
 
 % Nothing special.
 handle_info(_Info, State) ->

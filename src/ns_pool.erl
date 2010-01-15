@@ -1,3 +1,7 @@
+%% @author Northscale <info@northscale.com>
+%% @copyright 2009 NorthScale, Inc.
+%% All rights reserved.
+
 -module(ns_pool).
 
 -export([pool_join/2, pool_leave/1, pool_leave/0,
