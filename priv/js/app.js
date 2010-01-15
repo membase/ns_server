@@ -309,7 +309,7 @@ function renderLargeGraph(main, data) {
                         tick(h.paper, h.transformX(xMax), h.transformY(yMax), 0, 10);
                         tick(h.paper, h.transformX(xMin), h.transformY(yMin), 0, 10);
 
-                        // text 
+                        // text
                         var maxText = h.paper.text(0, 0, yMax.toFixed(0)).attr({
                           font: "16px Arial, sans-serif",
                           'font-weight': 'bold',
@@ -408,7 +408,7 @@ var StatGraphs = {
     var selected = this.selected.value;
 
     renderLargeGraph(main, stats[selected]);
-    
+
     renderSmallGraph(ops, stats.ops, "Ops per second",
                      selected == 'ops');
     renderSmallGraph(gets, stats.gets, "Gets per second",

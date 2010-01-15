@@ -152,7 +152,7 @@ var TestingSupervisor = {
                            opsPerSec: 100,
                            evictionsPerSec: 5,
                            cachePercentUsed: 50
-                         },                           
+                         },
                          sampleConnectionString: "default sample connection string"},
                         {name: "Excerciser Application",
                          uri: "/buckets/5",
@@ -177,7 +177,7 @@ var TestingSupervisor = {
                            opsPerSec: 102,
                            evictionsPerSec: 7,
                            cachePercentUsed: 52
-                         },                           
+                         },
                          sampleConnectionString: "new-year-site sample connection string"},
                         {name: "new-year-site-staging",
                          uri: "/buckets/7",
@@ -188,7 +188,7 @@ var TestingSupervisor = {
                            opsPerSec: 103,
                            evictionsPerSec: 8,
                            cachePercentUsed: 53
-                         },                           
+                         },
                          sampleConnectionString: "new-year-site-staging sample connection string"}],
               hasMore: false,
               nextPageURI: "asdasdasd" // if hasMore is true
@@ -249,7 +249,7 @@ var TestingSupervisor = {
         var startTstampParam = params["opsbysecondStartTStamp"];
         if (startTstampParam !== undefined) {
           var startTstamp = parseInt(startTstampParam, 10);
-          
+
           var intervals = Math.floor((now - startTstampParam) / samplesInterval);
           if (intervals > samplesSize) {
             throw new Error("should not happen");
