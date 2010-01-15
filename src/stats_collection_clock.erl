@@ -13,6 +13,9 @@ start_link() ->
 
 start_link(Frequency) ->
     {ok, Pid} = gen_event:start_link({local, ?MODULE}),
+    % This doesn't go away when the event receiver dies.  The right
+    % thing to do is to make a small supervised process that holds the
+    % timer reference and will properly shut it down when it needs to.
     {ok, _Tref} = timer:apply_interval(Frequency, ?MODULE, collect, []),
     {ok, Pid}.
 
