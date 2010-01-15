@@ -137,7 +137,7 @@ var TestingSupervisor = {
                                  direct: 11311},
                          otp_node: "ns1@goofy.disney.com",
                          otp_cookie: "SADFDFGDFG"}],
-                bucketList: {
+                buckets: {
                   // GET returns first page of bucket details with link to next page
                   uri: "/buckets",
                   // returns just names and uris, but complete (i.e. without pagination)
@@ -147,56 +147,53 @@ var TestingSupervisor = {
                 name: "Default Pool"};
       }
     } else if (path[0] == "buckets" && path.length == 1) {
-      resp = {buckets: [{name: "default",
-                         uri: "/buckets/4",
-                         flushCacheURI: "/buckets/4/flush",
-                         passwordURI: "/buckets/4/password",
-                         basicStats: {
-                           cacheSize: 64, // in megs
-                           opsPerSec: 100,
-                           evictionsPerSec: 5,
-                           cachePercentUsed: 50
-                         },
-                         sampleConnectionString: "default sample connection string"},
-                        {name: "Excerciser Application",
-                         uri: "/buckets/5",
-                         testAppBucket: true,
-                         testAppRunning: false,
-                         testAppStatusURI: "/testappuri",
-                         flushCacheURI: "/buckets/5/flush",
-                         passwordURI: "/buckets/5/password",
-                         basicStats: {
-                           cacheSize: 65, // in megs
-                           opsPerSec: 101,
-                           evictionsPerSec: 6,
-                           cachePercentUsed: 51
-                         },
-                         sampleConnectionString: "Excerciser Application sample connection string"},
-                        {name: "new-year-site",
-                         uri: "/buckets/6",
-                         flushCacheURI: "/buckets/6/flush",
-                         passwordURI: "/buckets/6/password",
-                         basicStats: {
-                           cacheSize: 66, // in megs
-                           opsPerSec: 102,
-                           evictionsPerSec: 7,
-                           cachePercentUsed: 52
-                         },
-                         sampleConnectionString: "new-year-site sample connection string"},
-                        {name: "new-year-site-staging",
-                         uri: "/buckets/7",
-                         flushCacheURI: "/buckets/7/flush",
-                         passwordURI: "/buckets/7/password",
-                         basicStats: {
-                           cacheSize: 67, // in megs
-                           opsPerSec: 103,
-                           evictionsPerSec: 8,
-                           cachePercentUsed: 53
-                         },
-                         sampleConnectionString: "new-year-site-staging sample connection string"}],
-              hasMore: false,
-              nextPageURI: "asdasdasd" // if hasMore is true
-             }
+      resp = [{name: "default",
+               uri: "/buckets/4",
+               flushCacheURI: "/buckets/4/flush",
+               passwordURI: "/buckets/4/password",
+               basicStats: {
+                 cacheSize: 64, // in megs
+                 opsPerSec: 100,
+                 evictionsPerSec: 5,
+                 cachePercentUsed: 50
+               },
+               sampleConnectionString: "default sample connection string"},
+              {name: "Excerciser Application",
+               uri: "/buckets/5",
+               testAppBucket: true,
+               testAppRunning: false,
+               testAppStatusURI: "/testappuri",
+               flushCacheURI: "/buckets/5/flush",
+               passwordURI: "/buckets/5/password",
+               basicStats: {
+                 cacheSize: 65, // in megs
+                 opsPerSec: 101,
+                 evictionsPerSec: 6,
+                 cachePercentUsed: 51
+               },
+               sampleConnectionString: "Excerciser Application sample connection string"},
+              {name: "new-year-site",
+               uri: "/buckets/6",
+               flushCacheURI: "/buckets/6/flush",
+               passwordURI: "/buckets/6/password",
+               basicStats: {
+                 cacheSize: 66, // in megs
+                 opsPerSec: 102,
+                 evictionsPerSec: 7,
+                 cachePercentUsed: 52
+               },
+               sampleConnectionString: "new-year-site sample connection string"},
+              {name: "new-year-site-staging",
+               uri: "/buckets/7",
+               flushCacheURI: "/buckets/7/flush",
+               passwordURI: "/buckets/7/password",
+               basicStats: {
+                 cacheSize: 67, // in megs
+                 opsPerSec: 103,
+                 evictionsPerSec: 8,
+                 cachePercentUsed: 53
+               },
+               sampleConnectionString: "new-year-site-staging sample connection string"}]
     } else if (path[0] == 'buckets') {
       if (path.length == 2) {
         // /buckets/:id

@@ -484,7 +484,7 @@ var BucketsSection = {
     var cells = this.cells;
 
     cells.firstPageDetailsURI = new Cell(function (poolDetails) {
-      return poolDetails.bucketList.uri;
+      return poolDetails.buckets.uri;
     }).setSources({poolDetails: DAO.cells.currentPoolDetails});
 
     // by default copy first page uri, but we'll set it explicitly for pagination
@@ -502,7 +502,7 @@ var BucketsSection = {
   },
   buckets: [],
   onBucketList: function () {
-    var buckets = this.buckets = this.cells.detailedBuckets.value.buckets;
+    var buckets = this.buckets = this.cells.detailedBuckets.value;
     renderTemplate('bucket_list', buckets);
   },
   showBucket: function (uri) {
