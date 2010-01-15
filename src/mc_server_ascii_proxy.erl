@@ -139,7 +139,7 @@ cmd(stats, #session_proxy{bucket = Bucket} = Session,
     mc_downstream:demonitor(Monitors),
     {ok, Session};
 
-cmd(version, Session, _InSock, Out, _CmdArgs) ->
+cmd(version, Session, _InSock, Out, []) ->
     V = case ns_config:search(version) of
             {value, X} -> X;
             false      -> "X.X.X"
@@ -149,10 +149,6 @@ cmd(version, Session, _InSock, Out, _CmdArgs) ->
 
 cmd(quit, _Session, _InSock, _Out, []) ->
     exit({ok, quit_received});
-
-cmd(quit, Session, _InSock, Out, _NotEmptyCmdArgs) ->
-    mc_ascii:send(Out, <<"ERROR\r\n">>),
-    {ok, Session};
 
 cmd(_, Session, _, Out, _) ->
     mc_ascii:send(Out, <<"ERROR\r\n">>),
