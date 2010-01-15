@@ -1,11 +1,17 @@
+DOC_OPTS={dir,\"doc\"}
+
 all:
-	(cd src;$(MAKE) all)
+	erl -make
+	cp src/*.app ebin
 
 edoc:
-	(cd src;$(MAKE) edoc)
+	$(ERL) -noshell -pa ../ebin \
+		-eval "edoc:application(mochiweb), \".\", [$(DOC_OPTS)])" \
+		-s init stop
 
-test:
-	(cd src;$(MAKE) test)
+
+test: all
+	$(ERL) -noshell -pa ebin -s mochiweb test -s init stop
 
 clean:
-	(cd src;$(MAKE) clean)
+	rm -f ebin/*
