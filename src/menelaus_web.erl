@@ -43,8 +43,8 @@ loop(Req, DocRoot) ->
                              {need_auth, fun handle_bucket_stats/3, ["asd", Id]};
                          ["poolsStreaming", Id] ->
                              {need_auth, fun handle_pool_info_streaming/2, [Id]};
-						 ["pools", PoolId, "buckets"] ->
-							 {need_auth, fun handle_bucket_list/2, [PoolId]};
+                         ["pools", PoolId, "buckets"] ->
+                             {need_auth, fun handle_bucket_list/2, [PoolId]};
                          ["pools", PoolId, "buckets", Id] ->
                              {need_auth_bucket, fun handle_bucket_info/3, [PoolId, Id]};
 						 ["pools", PoolId, "bucketsStreaming", Id] ->
@@ -273,7 +273,7 @@ bucket_auth_fun(UserPassword) ->
 build_pool_info(Id, _UserPassword) ->
     MyPool = find_pool_by_id(Id),
     Nodes = build_nodes_info(MyPool, true),
-	BucketsInfo = {struct, [{uri, list_to_binary("/pools/" ++ Id ++ "/buckets")}]},
+    BucketsInfo = {struct, [{uri, list_to_binary("/pools/" ++ Id ++ "/buckets")}]},
     {struct, [{name, list_to_binary(Id)},
               {nodes, Nodes},
               {buckets, BucketsInfo},
@@ -303,8 +303,13 @@ handle_bucket_list(Id, Req) ->
                   BucketsAll)
         end,
 	BucketsInfo = [{struct, [{uri, list_to_binary("/pools/" ++ Id ++
-                                                  "/buckets/" ++ Name)},
-                             {name, list_to_binary(Name)}]}
+                                                      "/buckets/" ++ Name)},
+                                 {name, list_to_binary(Name)},
+                                 {basicStats, {struct, [{cacheSize, 64},
+                                                        {opsPerSec, 100},
+                                                        {evictionsPerSec, 5},
+                                                        {cachePercentUsed, 50}]}},
+                                 {sampleConnectionString, <<"fake connection string">>}]}
                    || Name <- proplists:get_keys(Buckets)],
 	reply_json(Req, BucketsInfo).
 
