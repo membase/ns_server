@@ -17,11 +17,7 @@ start_link() ->
     {error, "Don't start_link this."}.
 
 init([Hostname, Port, Buckets]) ->
-    lists:foreach(fun (Bucket) ->
-                          stats_aggregator:monitoring(Hostname,
-                                                      Port,
-                                                      Bucket)
-                  end, Buckets),
+    notify_monitoring(Hostname, Port, Buckets),
     {ok, #state{hostname=Hostname, port=Port, buckets=Buckets}}.
 
 handle_event(collect, State) ->
@@ -31,31 +27,51 @@ handle_event(collect, State) ->
                            State#state.port]),
     {ok, State}.
 
-handle_call(_Request, State) ->
-    Reply = ok,
-    {ok, Reply, State}.
+handle_call({set_buckets, Buckets}, State) ->
+    Removed = State#state.buckets -- Buckets,
+    Added = Buckets -- State#state.buckets,
+    error_logger:info_msg("Added:  ~p, Removed:  ~p~n", [Added, Removed]),
+    notify_monitoring(State#state.hostname, State#state.port, Added),
+    notify_unmonitoring(State#state.hostname, State#state.port, Removed),
+    {ok, ok, State#state{buckets=Buckets}}.
 
 handle_info(_Info, State) ->
     {ok, State}.
 
 terminate(_Reason, State) ->
-    lists:foreach(fun (Bucket) ->
-                          stats_aggregator:unmonitoring(State#state.hostname,
-                                                        State#state.port,
-                                                        Bucket)
-                  end, State#state.buckets),
+    notify_unmonitoring(State#state.hostname, State#state.port,
+                        State#state.buckets),
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+
+notify_monitoring(Hostname, Port, Buckets) ->
+    lists:foreach(fun (Bucket) ->
+                          stats_aggregator:monitoring(Hostname,
+                                                      Port,
+                                                      Bucket)
+                  end, Buckets).
+
+notify_unmonitoring(Hostname, Port, Buckets) ->
+        lists:foreach(fun (Bucket) ->
+                          stats_aggregator:unmonitoring(Hostname,
+                                                        Port,
+                                                        Bucket)
+                  end, Buckets).
 
 %
 %% Entry Points.
 %
 
 monitor(Hostname, Port, Buckets) ->
-    ok = gen_event:add_handler(?SERVER, {?MODULE, {Hostname, Port}},
-                               [Hostname, Port, Buckets]).
+    case gen_event:call(?SERVER, {?MODULE, {Hostname, Port}},
+                        {set_buckets, Buckets}) of
+        {error, bad_module} ->
+            ok = gen_event:add_handler(?SERVER, {?MODULE, {Hostname, Port}},
+                                       [Hostname, Port, Buckets]);
+        ok -> ok
+    end.
 
 unmonitor(Hostname, Port) ->
     ok = gen_event:delete_handler(?SERVER, {?MODULE, {Hostname, Port}}, []).
