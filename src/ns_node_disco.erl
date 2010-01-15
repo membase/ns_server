@@ -99,7 +99,8 @@ handle_info({nodeup, Node}, State) ->
 
 handle_info({nodedown, Node}, State) ->
     error_logger:info_msg("lost node: ~p~n", [Node]),
-    {noreply, State};
+    State2 = do_notify(State),
+    {noreply, State2};
 
 handle_info(_Msg, State) -> {noreply, State}.
 
