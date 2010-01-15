@@ -7,7 +7,7 @@
 %% API
 -export([start_link/0,
          monitoring/3,
-         received_data/4,
+         received_data/5,
          unmonitoring/3,
          get_stats/4]).
 
@@ -29,12 +29,13 @@ handle_call({get, Hostname, Port, Bucket, Count}, _From, State) ->
                                         State#state.vals)),
     {reply, Reply, State}.
 
-handle_cast({received, Hostname, Port, Bucket, Stats}, State) ->
+handle_cast({received, T, Hostname, Port, Bucket, Stats}, State) ->
     error_logger:info_msg("Received some data:  ~s@~s:~p (~p)~n",
                           [Bucket, Hostname, Port, dict:to_list(Stats)]),
+    TS = dict:store(t, T, Stats),
     {noreply, State#state{vals=dict:update({Hostname, Port, Bucket},
                                            fun(R) ->
-                                                   ringdict:add(Stats, R)
+                                                   ringdict:add(TS, R)
                                            end,
                                            State#state.vals)}};
 handle_cast({monitoring, Hostname, Port, Bucket}, State) ->
@@ -58,9 +59,8 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-
-received_data(Hostname, Port, Bucket, Stats) ->
-    gen_server:cast(?MODULE, {received, Hostname, Port, Bucket, Stats}).
+received_data(T, Hostname, Port, Bucket, Stats) ->
+    gen_server:cast(?MODULE, {received, T, Hostname, Port, Bucket, Stats}).
 
 monitoring(Hostname, Port, Bucket) ->
     gen_server:cast(?MODULE, {monitoring, Hostname, Port, Bucket}).

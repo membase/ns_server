@@ -21,4 +21,4 @@ start_link(Frequency) ->
 
 % Collect is called whenever it's time to do a collection.
 collect() ->
-    ok = gen_event:notify(?MODULE, collect).
+    ok = gen_event:notify(?MODULE, {collect, erlang:now()}).

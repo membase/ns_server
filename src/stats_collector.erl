@@ -20,7 +20,7 @@ init([Hostname, Port, Buckets]) ->
     notify_monitoring(Hostname, Port, Buckets),
     {ok, #state{hostname=Hostname, port=Port, buckets=Buckets}}.
 
-handle_event(collect, State) ->
+handle_event({collect, _T}, State) ->
     error_logger:info_msg("Collecting from ~p@~s:~p.~n",
                           [State#state.buckets,
                            State#state.hostname,
