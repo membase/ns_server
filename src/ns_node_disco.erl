@@ -65,7 +65,7 @@ init([]) ->
     % Register for nodeup/down messages as handle_info callbacks.
     ok = net_kernel:monitor_nodes(true),
     % Track the last list of actual ndoes.
-    {ok, #state{nodes = []}}.
+    {ok, #state{nodes = false}}.
 
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
