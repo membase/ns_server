@@ -43,6 +43,8 @@ loop(Req, DocRoot) ->
                              {need_auth, fun handle_bucket_stats/3, ["asd", Id]};
                          ["poolsStreaming", Id] ->
                              {need_auth, fun handle_pool_info_streaming/2, [Id]};
+						 ["pools", PoolId, "buckets"] ->
+							 {need_auth, fun handle_bucket_list/2, [PoolId]};
                          ["pools", PoolId, "buckets", Id] ->
                              {need_auth_bucket, fun handle_bucket_info/3, [PoolId, Id]};
 						 ["pools", PoolId, "bucketsStreaming", Id] ->
@@ -232,10 +234,10 @@ build_nodes_info(MyPool, IncludeOtp) ->
                   KV2 = case IncludeOtp of
                                true ->
                                 %% TODO: convert to camelcase
-                                   KV1 ++ [{otp_node,
+                                   KV1 ++ [{otpNode,
                                             list_to_binary(
                                               atom_to_list(WantENode))},
-                                           {otp_cookie, OtpCookie}];
+                                           {otpCookie, OtpCookie}];
                                false -> KV1
                         end,
                   {struct, KV2}
@@ -273,7 +275,6 @@ build_pool_info(Id, UserPassword) ->
     Nodes = build_nodes_info(MyPool, true),
     IsSuper = check_auth(UserPassword),
     BucketsAll = expect_prop_value(buckets, MyPool),
-    Buckets =
         % We got this far, so we assume we're authorized.
         % Only emit the buckets that match our UserPassword;
         % or, emit all buckets if our UserPassword matches the rest_creds
@@ -286,14 +287,19 @@ build_pool_info(Id, UserPassword) ->
                   bucket_auth_fun(UserPassword),
                   BucketsAll)
         end,
-    BucketsInfo = [{struct, [{uri, list_to_binary("/pools/" ++ Id ++
-                                                  "/buckets/" ++ Name)},
-                             {name, list_to_binary(Name)}]}
-                   || Name <- proplists:get_keys(Buckets)],
-	BucketsStreamingInfo = [{struct, [{streamingUri, list_to_binary("/pools/" ++ Id ++
-                                                  "/bucketsStreaming/" ++ Name)},
-                             {name, list_to_binary(Name)}]}
-                   || Name <- proplists:get_keys(Buckets)],
+	BucketsInfo = [{struct, [{uri, list_to_binary("/pools" ++ Id ++ "/buckets")}]}],
+	BucketsStreamingInfo = [{struct, [{uri, list_to_binary("/pools" ++ Id ++ "/bucketsStreaming")}]}],
+	%
+	% moving these to their own URI since there may be a huge number of buckets
+	%
+    %BucketsInfo = [{struct, [{uri, list_to_binary("/pools/" ++ Id ++
+    %                                              "/buckets/" ++ Name)},
+    %                         {name, list_to_binary(Name)}]}
+    %               || Name <- proplists:get_keys(Buckets)],
+	%BucketsStreamingInfo = [{struct, [{streamingUri, list_to_binary("/pools/" ++ Id ++
+    %                                              "/bucketsStreaming/" ++ Name)},
+    %                         {name, list_to_binary(Name)}]}
+    %               || Name <- proplists:get_keys(Buckets)],
     {struct, [{name, list_to_binary(Id)},
               {nodes, Nodes},
               {buckets, BucketsInfo},
@@ -329,6 +335,14 @@ build_pool_info(Id, UserPassword) ->
 handle_pool_info(Id, Req) ->
     UserPassword = extract_basic_auth(Req),
     reply_json(Req, build_pool_info(Id, UserPassword)).
+
+handle_bucket_list(Id, Req) ->
+	UserPassword = extract_basic_auth(Req),
+	BucketsInfo = [{struct, [{uri, list_to_binary("/pools/" ++ Id ++
+                                                  "/buckets/" ++ Name)},
+                             {name, list_to_binary(Name)}]}
+                   || Name <- proplists:get_keys(Buckets)],
+	reply_json(Req, build_pool_info(Id, UserPassword)).
 
 handle_pool_info_streaming(Id, Req) ->
     %% TODO: this shouldn't be timer driven, but rather should register a callback based on some state change in the Erlang OS
