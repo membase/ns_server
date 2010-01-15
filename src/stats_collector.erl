@@ -5,23 +5,25 @@
 -behaviour(gen_event).
 %% API
 -export([start_link/0,
-         monitor/2, unmonitor/2]).
+         monitor/3, unmonitor/3]).
 
 %% gen_event callbacks
 -export([init/1, handle_event/2, handle_call/2,
          handle_info/2, terminate/2, code_change/3]).
 
--record(state, {hostname, port}).
+-record(state, {hostname, port, bucket}).
 
 start_link() ->
     {error, "Don't start_link this."}.
 
-init([Hostname, Port]) ->
-    {ok, #state{hostname=Hostname, port=Port}}.
+init([Hostname, Port, Bucket]) ->
+    {ok, #state{hostname=Hostname, port=Port, bucket=Bucket}}.
 
 handle_event(collect, State) ->
-    error_logger:info_msg("Collecting from ~p:~p.~n",
-                          [State#state.hostname, State#state.port]),
+    error_logger:info_msg("Collecting from ~p@~p:~p.~n",
+                          [State#state.bucket,
+                           State#state.hostname,
+                           State#state.port]),
     {ok, State}.
 
 handle_call(_Request, State) ->
@@ -41,11 +43,11 @@ code_change(_OldVsn, State, _Extra) ->
 %% Entry Points.
 %
 
-monitor(Hostname, Port) ->
-    stats_aggregator:monitoring(Hostname, Port),
-    ok = gen_event:add_handler(?SERVER, {?MODULE, {Hostname, Port}},
-                               [Hostname, Port]).
+monitor(Hostname, Port, Bucket) ->
+    stats_aggregator:monitoring(Hostname, Port, Bucket),
+    ok = gen_event:add_handler(?SERVER, {?MODULE, {Hostname, Port, Bucket}},
+                               [Hostname, Port, Bucket]).
 
-unmonitor(Hostname, Port) ->
-    ok = gen_event:delete_handler(?SERVER, {?MODULE, {Hostname, Port}}, []),
-    stats_aggregator:unmonitoring(Hostname, Port).
+unmonitor(Hostname, Port, Bucket) ->
+    ok = gen_event:delete_handler(?SERVER, {?MODULE, {Hostname, Port, Bucket}}, []),
+    stats_aggregator:unmonitoring(Hostname, Port, Bucket).
