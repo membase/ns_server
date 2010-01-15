@@ -102,17 +102,24 @@ reconfig(Name, PoolConfig) ->
          ({{mc_pool, N}, Pid, _, _}) when N =:= Name ->
               mc_pool:reconfig(Pid, Name, PoolConfig),
               ok;
-         (_) -> ok
+         (X) ->
+              error_logger:info_msg("~p reconfig unknown msg: ~p~n",
+                                    [?MODULE, X]),
+              ok
       end,
       CurrentChildren).
 
-reconfig_nodes(Name, Nodes) ->
+reconfig_nodes(Name, _) ->
+    Nodes = ns_node_disco:nodes_actual_proper(),
     CurrentChildren = current_children(Name),
     lists:foreach(
       fun({{mc_pool, N}, Pid, _, _}) when N =:= Name ->
               mc_pool:reconfig_nodes(Pid, Name, Nodes),
               ok;
-         (_) -> ok
+         (X) ->
+              error_logger:info_msg("~p reconfig unknown msg: ~p~n",
+                                    [?MODULE, X]),
+              ok
       end,
       CurrentChildren).
 
