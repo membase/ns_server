@@ -92,12 +92,14 @@ reconfig(Name, PoolConfig) ->
                   false ->
                       ns_log:log(?MODULE, 0004, "reconfig accept change ~p",
                                  [Name]),
+                      error_logger:info_msg("~p reconfig ~p -> ~p~n",
+                                            [?MODULE, CurrArgs, WantArgs]),
                       supervisor:terminate_child(ServerName, mc_accept),
                       supervisor:delete_child(ServerName, mc_accept),
                       supervisor:start_child(ServerName, WantSpec),
                       ok
               end;
-         ({{mc_pool, _}, Pid, _, _}) ->
+         ({{mc_pool, N}, Pid, _, _}) when N =:= Name ->
               mc_pool:reconfig(Pid, Name, PoolConfig),
               ok;
          (_) -> ok
@@ -107,7 +109,7 @@ reconfig(Name, PoolConfig) ->
 reconfig_nodes(Name, Nodes) ->
     CurrentChildren = current_children(Name),
     lists:foreach(
-      fun({mc_pool, Pid, _, _}) ->
+      fun({{mc_pool, N}, Pid, _, _}) when N =:= Name ->
               mc_pool:reconfig_nodes(Pid, Name, Nodes),
               ok;
          (_) -> ok

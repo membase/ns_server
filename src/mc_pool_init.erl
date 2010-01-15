@@ -89,7 +89,8 @@ reconfig_pools(Pools) ->
     ok.
 
 reconfig_nodes(_NodesBefore, NodesAfter) ->
-    error_logger:info_report("mc_pool_init: nodes changed"),
+    error_logger:info_msg("mc_pool_init: nodes changed: ~p~n",
+                          [NodesAfter]),
     lists:foreach(fun(Name) ->
                           mc_pool_sup:reconfig_nodes(Name, NodesAfter)
                   end,
