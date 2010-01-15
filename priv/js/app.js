@@ -92,10 +92,12 @@ function addBasicAuth(xhr, login, password) {
   xhr.setRequestHeader('Authorization', auth);
 }
 
+function onUnexpectedXHRError(xhr) {
+  alert("Either a network or server side error has occured.  The server has logged the error.  We will reload the console now to attempt to recover.");
+}
+
 $.ajaxSetup({
-  error: function () {
-    alert("Either a network or server side error has occured.  The server has logged the error.  We will reload the console now to attempt to recover.");
-  },
+  error: onUnexpectedXHRError,
   beforeSend: function (xhr) {
     if (DAO.login) {
       addBasicAuth(xhr, DAO.login, DAO.password);
@@ -518,6 +520,42 @@ var BucketsSection = {
   },
   onEnter: function () {
     this.cells.detailsPageURI.recalculate();
+  },
+  startCreate: function () {
+    $('#add_new_bucket_dialog').jqm({modal:true}).jqmShow();
+  },
+  createSubmit: function () {
+    var res = $('#add_new_bucket_form').serialize();
+    $.ajax({
+      type: 'POST',
+      url: this.cells.detailsPageURI.value,
+      data: res,
+      success: continuation,
+      error: continuation,
+      dataType: 'json'
+    });
+    var modalAction = new ModalAction();
+    var loading = overlayWithSpinner($('#add_new_bucket_form'));
+
+    return;
+    function continuation(data, textStatus) {
+      modalAction.finish();
+      loading.remove();
+
+      if (textStatus == "error") {
+        // jquery passes raw xhr object for errors
+        if (data.status != 400) {
+          return onUnexpectedXHRError(data);
+        }
+
+        data = $.httpData(data, this.dataType, this);
+
+        alert('TODO: display validation errors here');
+      } else {
+        $('#add_new_bucket_dialog').jqm({modal:true}).jqmHide();
+        cells.detailedBuckets.recalculate();
+      }
+    }
   }
 };
 

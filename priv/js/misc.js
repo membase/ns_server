@@ -75,6 +75,8 @@ $.isString = function (s) {
   return typeof(s) == "string" || (s instanceof String);
 }
 
+var SpinnerHTML = "<div class='spinner'><span>Loading...</span></div>";
+
 function prepareAreaUpdate(jq) {
   if ($.isString(jq))
     jq = $(jq);
@@ -84,10 +86,51 @@ function prepareAreaUpdate(jq) {
     height = 50;
   if (width < 100)
     width = 100;
-  var replacement = $("<div class='spinner'><span>Loading...</span></div>", document);
+  var replacement = $(SpinnerHTML, document);
   replacement.css('width', width + 'px').css('height', height + 'px').css('lineHeight', height + 'px');
   jq.html("");
   jq.append(replacement);
+}
+
+function getRealBackgroundColor(jq) {
+  while (true) {
+    if (!jq.length)
+      return 'transparent';
+    var rv = jq.css('background-color');
+    if (rv != 'transparent' && rv != 'inherit')
+      return rv;
+    jq = jq.parent();
+  }
+}
+
+function overlayWithSpinner(jq) {
+  if ($.isString(jq))
+    jq = $(jq);
+  var height = jq.height();
+  var width = jq.width();
+  var html = $(SpinnerHTML, document);
+  var pos = jq.position();
+  var realBackgroundColor = getRealBackgroundColor(jq);
+  var newStyle = {
+    width: width+'px',
+    height: height+'px',
+    lineHeight: height+'px',
+    position: 'absolute',
+    'background-color': realBackgroundColor,
+    'z-level': 9999,
+    top: pos.top + 'px',
+    left: pos.lext + 'px'
+  }
+  _.each(newStyle, function (value, key) {
+    html.css(key, value);
+  })
+  jq.after(html);
+
+  return {
+    remove: function () {
+      html.remove();
+    }
+  };
 }
 
 function prepareRenderTemplate() {
@@ -134,4 +177,13 @@ var functionArgumentNames = function(f) {
 
 function jsComparator(a,b) {
   return (a == b) ? 0 : ((a < b) ? -1 : 1);
+}
+
+// this thing will ensure that a back button pressed during some modal
+// action will reload the page, so that we don't have to face issues
+// caused by unexpected change of state
+// TODO: implement
+function ModalAction() {
+  this.finish = function () {
+  }
 }

@@ -21,10 +21,15 @@ Future.prototype = {
   mkCallback: function (cell) {
     var async = this;
     return function (data) {
+      if (async.action)
+        async.action.finish();
       cell.deliverFutureValue(async, data);
     }
   },
   start: function (cell) {
+    if (this.modal) {
+      this.action = new ModalAction();
+    }
     this.started = true;
     var thunk = this.thunk;
     this.thunk = undefined;

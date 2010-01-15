@@ -82,8 +82,12 @@ var TestingSupervisor = {
                            shortText: "Server Node Down",
                            text: "Server node is no longer available"}]},
   interceptedAjax: function (original, options) {
-    if (options.type != 'GET')
-      return; // original(options);
+    if (options.type != 'GET') {
+      _.defer(function () {
+        options.success('', 'success');
+      });
+      return;
+    }
     console.log("intercepted ajax:", options);
     var url = options.url;
     var hostPrefix = document.location.protocol + ":/" + document.location.host;

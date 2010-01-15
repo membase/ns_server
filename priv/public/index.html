@@ -94,6 +94,7 @@
     </div>
   </div><div id="buckets" status="display:none">
     <p><a href="javascript:nav.go('overview')">Overview</a> > Buckets
+    <button onclick="BucketsSection.startCreate();">Add a New Bucket</button>
     <div id="bucket_list_container">
     </div>
     <div id="bucket_list_template" class="template">
@@ -193,5 +194,16 @@
 <p>Cache size: {%= h(b.basicStats.cacheSize) %} MB</p>
 <p>Password: *****</p>
 <p>Sample connection string: <textarea rows="3" readonly>{%= h(b.sampleConnectionString) %}</textarea></p>
+</div>
+<div class="jqmWindow" id="add_new_bucket_dialog">
+  <h>Add New Bucket</h>
+  <form id="add_new_bucket_form">
+  <p><label>Bucket Name<input type="text" name="name"></label>
+  <p><label>Cache Size<input type="text" name="cacheSize"></label>
+  <p><label><input type="checkbox" value="1" name="reserveInAdvance">Reserve memory in advance</label>
+  <p>Password<input type="password" name="password">
+  <p>Verify Password<input type="password" name="verifyPassword">
+  <p><a href="#" class="jqmClose">cancel</a> <button type="button" onclick="BucketsSection.createSubmit();">Add Bucket</button>
+  </form>
 </div>
 </body></html>
