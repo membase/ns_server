@@ -69,5 +69,11 @@ init([]) ->
                    {simple_cache, start_link, []},
                    permanent, 5000, worker, dynamic},
 
-    Processes = [Web, SimpleCache],
+    Stats = {stats_sup,
+             {stats_sup, start_link, []},
+             permanent, infinity, supervisor,
+             [stats_sup, stats_aggregator, stat_collection_clock,
+              stats_collector]},
+
+    Processes = [Web, SimpleCache, Stats],
     {ok, {{one_for_one, 10, 10}, Processes}}.
