@@ -179,6 +179,11 @@ function jsComparator(a,b) {
   return (a == b) ? 0 : ((a < b) ? -1 : 1);
 }
 
+function reloadApp() {
+  prepareAreaUpdate($(document.body));
+  window.location.reload();
+}
+
 // this thing will ensure that a back button pressed during some modal
 // action will reload the page, so that we don't have to face issues
 // caused by unexpected change of state
