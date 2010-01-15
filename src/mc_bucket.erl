@@ -23,7 +23,8 @@
          bucket_config_make/3,
          bucket_config_set/3,
          bucket_config_get/2,
-         bucket_config_get/3]).
+         bucket_config_get/3,
+         addrs/2]).
 
 %% API for buckets.
 
@@ -63,6 +64,10 @@ auth(#mc_bucket{auth = Auth})    -> Auth.
 addrs({mc_pool_bucket, _PoolId, _BucketId} = BucketRef) ->
     mc_pool:bucket_addrs(BucketRef);
 addrs(#mc_bucket{addrs = Addrs}) -> Addrs.
+
+addrs(PoolName, BucketName) ->
+    {ok, B} = mc_pool:get_bucket(PoolName, BucketName),
+    mc_bucket:addrs(B).
 
 % Choose the Addr that should contain the Key.
 
