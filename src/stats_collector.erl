@@ -42,8 +42,10 @@ code_change(_OldVsn, State, _Extra) ->
 %
 
 monitor(Hostname, Port) ->
-    gen_event:add_handler(?SERVER, {?MODULE, {Hostname, Port}},
-                                    [Hostname, Port]).
+    stats_aggregator:monitoring(Hostname, Port),
+    ok = gen_event:add_handler(?SERVER, {?MODULE, {Hostname, Port}},
+                               [Hostname, Port]).
 
 unmonitor(Hostname, Port) ->
-    gen_event:delete_handler(?SERVER, {?MODULE, {Hostname, Port}}, []).
+    ok = gen_event:delete_handler(?SERVER, {?MODULE, {Hostname, Port}}, []),
+    stats_aggregator:unmonitoring(Hostname, Port).
