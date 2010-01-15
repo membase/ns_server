@@ -147,8 +147,12 @@ cmd(version, Session, _InSock, Out, _CmdArgs) ->
     mc_ascii:send(Out, [<<"VERSION ">>, V, <<"\r\n">>]),
     {ok, Session};
 
-cmd(quit, _Session, _InSock, _Out, _Rest) ->
+cmd(quit, _Session, _InSock, _Out, []) ->
     exit({ok, quit_received});
+
+cmd(quit, Session, _InSock, Out, _NotEmptyCmdArgs) ->
+    mc_ascii:send(Out, <<"ERROR\r\n">>),
+    {ok, Session};
 
 cmd(_, Session, _, Out, _) ->
     mc_ascii:send(Out, <<"ERROR\r\n">>),
