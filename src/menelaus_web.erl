@@ -270,11 +270,26 @@ bucket_auth_fun(UserPassword) ->
             end
     end.
 
-build_pool_info(Id, UserPassword) ->
+build_pool_info(Id, _UserPassword) ->
     MyPool = find_pool_by_id(Id),
     Nodes = build_nodes_info(MyPool, true),
-    IsSuper = check_auth(UserPassword),
-    BucketsAll = expect_prop_value(buckets, MyPool),
+	BucketsInfo = {struct, [{uri, list_to_binary("/pools/" ++ Id ++ "/buckets")}]},
+    {struct, [{name, list_to_binary(Id)},
+              {nodes, Nodes},
+              {buckets, BucketsInfo},
+              {stats, {struct,
+                       [{uri, list_to_binary("/pools/" ++ Id ++ "/stats")}]}}]}.
+
+handle_pool_info(Id, Req) ->
+    UserPassword = extract_basic_auth(Req),
+    reply_json(Req, build_pool_info(Id, UserPassword)).
+
+handle_bucket_list(Id, Req) ->
+	MyPool = find_pool_by_id(Id),
+	UserPassword = extract_basic_auth(Req),
+	IsSuper = check_auth(UserPassword),
+	BucketsAll = expect_prop_value(buckets, MyPool),
+	Buckets =
         % We got this far, so we assume we're authorized.
         % Only emit the buckets that match our UserPassword;
         % or, emit all buckets if our UserPassword matches the rest_creds
@@ -287,62 +302,11 @@ build_pool_info(Id, UserPassword) ->
                   bucket_auth_fun(UserPassword),
                   BucketsAll)
         end,
-	BucketsInfo = [{struct, [{uri, list_to_binary("/pools" ++ Id ++ "/buckets")}]}],
-	BucketsStreamingInfo = [{struct, [{uri, list_to_binary("/pools" ++ Id ++ "/bucketsStreaming")}]}],
-	%
-	% moving these to their own URI since there may be a huge number of buckets
-	%
-    %BucketsInfo = [{struct, [{uri, list_to_binary("/pools/" ++ Id ++
-    %                                              "/buckets/" ++ Name)},
-    %                         {name, list_to_binary(Name)}]}
-    %               || Name <- proplists:get_keys(Buckets)],
-	%BucketsStreamingInfo = [{struct, [{streamingUri, list_to_binary("/pools/" ++ Id ++
-    %                                              "/bucketsStreaming/" ++ Name)},
-    %                         {name, list_to_binary(Name)}]}
-    %               || Name <- proplists:get_keys(Buckets)],
-    {struct, [{name, list_to_binary(Id)},
-              {nodes, Nodes},
-              {buckets, BucketsInfo},
-			  {bucketsStreaming, BucketsStreamingInfo},
-              {stats, {struct,
-                       [{uri, list_to_binary("/pools/" ++ Id ++ "/stats")}]}}]}.
-    %% case Id of
-    %%     "default" -> {struct, [{nodes, [{struct, [{hostname, <<"foo1.bar.com">>},
-    %%                                               {status, <<"healthy">>},
-    %%                                               {ports, {struct, [{proxy, 11211},
-    %%                                                                 {direct, 11212}]}}]},
-    %%                                     {struct, [{hostname, <<"foo2.bar.com">>},
-    %%                                               {status, <<"healthy">>},
-    %%                                               {ports, {struct, [{proxy, 11211},
-    %%                                                                 {direct, 11212}]}}]}]},
-    %%                            {buckets, [{struct, [{uri, <<"/buckets/4">>},
-    %%                                                 {name, <<"Excerciser Application">>}]}]},
-    %%                            {stats, {struct, [{uri, <<"/buckets/4/stats?really_for_pool=1">>}]}},
-    %%                            {name, <<"Default Pool">>}]};
-    %%     _ -> {struct, [{nodes, [{struct, [{hostname, <<"foo1.bar.com">>},
-    %%                                       {status, <<"healthy">>},
-    %%                                       {ports, {struct, [{proxy, 11211},
-    %%                                                         {direct, 11212}]}},
-    %%                                       % TODO?
-    %%                                       {uptime, 123321},
-    %%                                       {uri, <<"https://first_node.in.pool.com:80/pool/Another Pool/node/first_node/">>}]},
-    %%                    {buckets, [{struct, [{uri, <<"/buckets/5">>},
-    %%                                         {name, <<"Excerciser Another">>}]}]},
-    %%                    {stats, {struct, [{uri, <<"/buckets/4/stats?really_for_pool=2">>}]}},
-    %%                    {name, <<"Another Pool">>}]}
-    %% end.
-
-handle_pool_info(Id, Req) ->
-    UserPassword = extract_basic_auth(Req),
-    reply_json(Req, build_pool_info(Id, UserPassword)).
-
-handle_bucket_list(Id, Req) ->
-	UserPassword = extract_basic_auth(Req),
 	BucketsInfo = [{struct, [{uri, list_to_binary("/pools/" ++ Id ++
                                                   "/buckets/" ++ Name)},
                              {name, list_to_binary(Name)}]}
                    || Name <- proplists:get_keys(Buckets)],
-	reply_json(Req, build_pool_info(Id, UserPassword)).
+	reply_json(Req, BucketsInfo).
 
 handle_pool_info_streaming(Id, Req) ->
     %% TODO: this shouldn't be timer driven, but rather should register a callback based on some state change in the Erlang OS
