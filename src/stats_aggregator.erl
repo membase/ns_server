@@ -9,7 +9,8 @@
          monitoring/3,
          received_data/5,
          unmonitoring/3,
-         get_stats/4]).
+         get_stats/4,
+         get_stats/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -27,6 +28,17 @@ handle_call({get, Hostname, Port, Bucket, Count}, _From, State) ->
     Reply = ringdict:to_dict(Count,
                              dict:fetch({Hostname, Port, Bucket},
                                         State#state.vals)),
+    {reply, Reply, State};
+handle_call({get, Bucket, Count}, _From, State) ->
+    Reply = (catch dict:fold(fun ({_H, _P, B}, V, A) ->
+                                     Rv = case B of
+                                              Bucket -> combine_stats(Count, V, A);
+                                              _ -> A
+                                          end,
+                                     Rv
+                             end,
+                             dict:new(),
+                             State#state.vals)),
     {reply, Reply, State}.
 
 handle_cast({received, T, Hostname, Port, Bucket, Stats}, State) ->
@@ -59,6 +71,48 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
+combine_stats(N, New, Existing) ->
+    dict:merge(fun val_sum/3,
+               dict:filter(fun classify/2, ringdict:to_dict(N, New)),
+               Existing).
+
+val_sum(_K, L1, L2) ->
+    lists:zipwith(fun(V1, V2) -> V1+V2 end, L1, L2).
+
+classify(K, _V) ->
+     classify(K).
+
+classify("pid") -> false;
+classify("uptime") -> false;
+classify("time") -> false;
+classify("version") -> false;
+classify("pointer_size") -> false;
+classify("rusage_user") -> false;
+classify("rusage_system") -> false;
+classify("tcpport") -> false;
+classify("udpport") -> false;
+classify("inter") -> false;
+classify("verbosity") -> false;
+classify("oldest") -> false;
+classify("evictions") -> false;
+classify("domain_socket") -> false;
+classify("umask") -> false;
+classify("growth_factor") -> false;
+classify("chunk_size") -> false;
+classify("num_threads") -> false;
+classify("stat_key_prefix") -> false;
+classify("detail_enabled") -> false;
+classify("reqs_per_event") -> false;
+classify("cas_enabled") -> false;
+classify("tcp_backlog") -> false;
+classify("binding_protocol") -> false;
+classify(t) -> false;
+classify(_) -> true.
+
+%
+% API
+%
+
 received_data(T, Hostname, Port, Bucket, Stats) ->
     gen_server:cast(?MODULE, {received, T, Hostname, Port, Bucket, Stats}).
 
@@ -70,3 +124,6 @@ unmonitoring(Hostname, Port, Bucket) ->
 
 get_stats(Hostname, Port, Bucket, Count) ->
     gen_server:call(?MODULE, {get, Hostname, Port, Bucket, Count}).
+
+get_stats(Bucket, Count) ->
+    gen_server:call(?MODULE, {get, Bucket, Count}).
