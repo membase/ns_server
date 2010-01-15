@@ -19,12 +19,15 @@
 start_link() ->
     {ok, spawn_link(fun() ->
                        gen_event:add_handler(ns_config_events,
-                                             ?MODULE, ignored),
+                                             ?MODULE,
+                                             ns_config_events),
                        gen_event:add_handler(ns_node_disco_events,
-                                             ?MODULE, ignored)
+                                             ?MODULE,
+                                             ns_node_disco_events)
                     end)}.
 
-init(ignored) ->
+init(Why) ->
+    error_logger:info_msg("mc_pool_init: init: ~p~n", [Why]),
     % Have one explict reconfig_pools on init.  We don't have to
     % reconfig_nodes, since reconfig_pools picks up the latest nodes.
     reconfig_pools(mc_pool:pools_config_get()),
@@ -46,11 +49,19 @@ code_change(_OldVsn, State, _) -> {ok, State}.
 %   ]}]
 
 handle_event({pools, PropList}, State) ->
+    error_logger:info_msg("mc_pool_init: pools changed~n"),
     ok = reconfig_pools(PropList),
     {ok, State, hibernate};
 
-handle_event({ns_node_disco_events, NodesBefore, NodesAfter}, State) ->
-    ok = reconfig_nodes(NodesBefore, NodesAfter),
+handle_event({nodes_wanted, _}, State) ->
+    error_logger:info_msg("mc_pool_init: nodes_wanted changed~n"),
+    ok = reconfig_nodes(ns_node_disco:nodes_actual_proper()),
+    {ok, State, hibernate};
+
+handle_event({ns_node_disco_events, _NodesBefore, NodesAfter}, State) ->
+    error_logger:info_msg("mc_pool_init: ns_node_disco_events: ~p~n",
+                          [NodesAfter]),
+    ok = reconfig_nodes(NodesAfter),
     {ok, State, hibernate};
 
 handle_event(_, State) ->
@@ -88,7 +99,7 @@ reconfig_pools(Pools) ->
                   SamePoolNames),
     ok.
 
-reconfig_nodes(_NodesBefore, NodesAfter) ->
+reconfig_nodes(NodesAfter) ->
     error_logger:info_msg("mc_pool_init: nodes changed: ~p~n",
                           [NodesAfter]),
     lists:foreach(fun(Name) ->
