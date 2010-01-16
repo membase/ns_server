@@ -240,7 +240,7 @@ forward_bcast(all, Opcode, Sess,
     {NumFwd, Monitors} =
         forward_bcast(all_send, Opcode, Sess, Out, HE, ResponseFilter),
     await_ok(NumFwd),
-    mc_binary:send(Out, res, H#mc_header{status = ?SUCCESS}, E),
+    mc_binary:send(Out, res, H#mc_header{status = ?SUCCESS}, #mc_entry{}),
     mc_downstream:demonitor(Monitors),
     {ok, Sess};
 
