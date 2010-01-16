@@ -104,10 +104,21 @@ decode_header(res, <<?RES_MAGIC:8, Opcode:8, KeyLen:16, ExtLen:8,
      #mc_entry{datatype = DataType, cas = CAS}}.
 
 % Convert binary Opcode/Status to ascii result string.
-b2a_code(?SET,    ?SUCCESS)    -> <<"STORED\r\n">>;
-b2a_code(?NOOP,   ?SUCCESS)    -> <<"END\r\n">>;
-b2a_code(?DELETE, ?SUCCESS)    -> <<"DELETED\r\n">>;
-b2a_code(?DELETE, ?KEY_ENOENT) -> <<"NOT_FOUND\r\n">>;
+b2a_code(?SET,     ?SUCCESS)      -> <<"STORED\r\n">>;
+b2a_code(?SET,     ?KEY_EEXISTS)  -> <<"EXISTS\r\n">>; % For CAS cmd.
+b2a_code(?ADD,     ?SUCCESS)      -> <<"STORED\r\n">>;
+b2a_code(?ADD,     ?KEY_EEXISTS)  -> <<"NOT_STORED\r\n">>;
+b2a_code(?REPLACE, ?SUCCESS)      -> <<"STORED\r\n">>;
+b2a_code(?REPLACE, ?KEY_ENOENT)   -> <<"NOT_STORED\r\n">>;
+
+b2a_code(?APPEND,  ?SUCCESS)    -> <<"STORED\r\n">>;
+b2a_code(?APPEND,  _)           -> <<"NOT_STORED\r\n">>;
+b2a_code(?PREPEND, ?SUCCESS)    -> <<"STORED\r\n">>;
+b2a_code(?PREPEND, _)           -> <<"NOT_STORED\r\n">>;
+
+b2a_code(?NOOP,    ?SUCCESS)    -> <<"END\r\n">>;
+b2a_code(?DELETE,  ?SUCCESS)    -> <<"DELETED\r\n">>;
+b2a_code(?DELETE,  ?KEY_ENOENT) -> <<"NOT_FOUND\r\n">>;
 
 b2a_code(_, ?SUCCESS) -> <<"OK\r\n">>;
 b2a_code(_, _)        -> <<"ERROR\r\n">>.
