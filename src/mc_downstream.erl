@@ -73,12 +73,6 @@ send(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule,
         _Error -> {error, []}
     end.
 
-send_call(Addr, Op, NotifyPid, NotifyData,
-          ResponseFun, CmdModule, Cmd, CmdArgs) ->
-    gen_server:call(?MODULE,
-                    {send, Addr, Op, NotifyPid, NotifyData,
-                     ResponseFun, CmdModule, Cmd, CmdArgs}).
-
 kind_to_module(ascii)  -> mc_client_ascii_ac;
 kind_to_module(binary) -> mc_client_binary_ac.
 
