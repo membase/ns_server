@@ -59,22 +59,39 @@ cmd(?GETQ, Sess, _Sock, _Out, HE) ->
     queue(Sess, HE);
 cmd(?GETKQ, Sess, _Sock, _Out, HE) ->
     queue(Sess, HE);
-cmd(?SETQ, Sess, _Sock, _Out, HE) ->
-    queue(Sess, HE);
-cmd(?ADDQ, Sess, _Sock, _Out, HE) ->
-    queue(Sess, HE);
-cmd(?REPLACEQ, Sess, _Sock, _Out, HE) ->
-    queue(Sess, HE);
-cmd(?DELETEQ, Sess, _Sock, _Out, HE) ->
-    queue(Sess, HE);
-cmd(?INCREMENTQ, Sess, _Sock, _Out, HE) ->
-    queue(Sess, HE);
-cmd(?DECREMENTQ, Sess, _Sock, _Out, HE) ->
-    queue(Sess, HE);
-cmd(?APPENDQ, Sess, _Sock, _Out, HE) ->
-    queue(Sess, HE);
-cmd(?PREPENDQ, Sess, _Sock, _Out, HE) ->
-    queue(Sess, HE);
+
+cmd(?SETQ, Sess, _Sock, Out, HE) ->
+    {ok, Sess2} = queue(Sess, HE),
+    forward_bcast_uncork(?NOOP, Sess2, Out, undefined,
+                         {#mc_header{opcode = ?NOOP}, #mc_entry{}});
+cmd(?ADDQ, Sess, _Sock, Out, HE) ->
+    {ok, Sess2} = queue(Sess, HE),
+    forward_bcast_uncork(?NOOP, Sess2, Out, undefined,
+                         {#mc_header{opcode = ?NOOP}, #mc_entry{}});
+cmd(?REPLACEQ, Sess, _Sock, Out, HE) ->
+    {ok, Sess2} = queue(Sess, HE),
+    forward_bcast_uncork(?NOOP, Sess2, Out, undefined,
+                         {#mc_header{opcode = ?NOOP}, #mc_entry{}});
+cmd(?DELETEQ, Sess, _Sock, Out, HE) ->
+    {ok, Sess2} = queue(Sess, HE),
+    forward_bcast_uncork(?NOOP, Sess2, Out, undefined,
+                         {#mc_header{opcode = ?NOOP}, #mc_entry{}});
+cmd(?INCREMENTQ, Sess, _Sock, Out, HE) ->
+    {ok, Sess2} = queue(Sess, HE),
+    forward_bcast_uncork(?NOOP, Sess2, Out, undefined,
+                         {#mc_header{opcode = ?NOOP}, #mc_entry{}});
+cmd(?DECREMENTQ, Sess, _Sock, Out, HE) ->
+    {ok, Sess2} = queue(Sess, HE),
+    forward_bcast_uncork(?NOOP, Sess2, Out, undefined,
+                         {#mc_header{opcode = ?NOOP}, #mc_entry{}});
+cmd(?APPENDQ, Sess, _Sock, Out, HE) ->
+    {ok, Sess2} = queue(Sess, HE),
+    forward_bcast_uncork(?NOOP, Sess2, Out, undefined,
+                         {#mc_header{opcode = ?NOOP}, #mc_entry{}});
+cmd(?PREPENDQ, Sess, _Sock, Out, HE) ->
+    {ok, Sess2} = queue(Sess, HE),
+    forward_bcast_uncork(?NOOP, Sess2, Out, undefined,
+                         {#mc_header{opcode = ?NOOP}, #mc_entry{}});
 
 % ------------------------------------------
 
@@ -247,28 +264,10 @@ forward_bcast(all, Opcode, Sess,
 % For binary commands to do a broadcast scatter/gather,
 % grouping and uncorking queued requests.
 % A ResponseFilter can be used to filter out responses.
-forward_bcast(uncork, _Opcode, #session_proxy{bucket = Bucket,
-                                              corked = C} = Sess,
-              Out, {H, E} = HE, ResponseFilter) ->
-    % Group our corked requests by Addr.
-    Groups =
-        group_by(C, fun ({_CorkedHeader, #mc_entry{key = Key}}) ->
-                        {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
-                        Addr
-                    end),
-    % Forward the request list to each Addr.
-    {NumFwd, Monitors} =
-        lists:foldl(fun ({Addr, HEList}, Acc) ->
-                        accum(send([Addr], Out, send_list,
-                                   lists:reverse([HE | HEList]),
-                                   ResponseFilter, ?MODULE,
-                                   undefined), Acc)
-                    end,
-                    {0, []}, Groups),
-    await_ok(NumFwd),
-    mc_binary:send(Out, res, H#mc_header{status = ?SUCCESS}, E),
-    mc_downstream:demonitor(Monitors),
-    {ok, Sess#session_proxy{corked = []}}.
+forward_bcast(uncork, Opcode, Sess,
+              Out, HE, ResponseFilter) ->
+    forward_bcast_uncork(Opcode, Sess,
+                         Out, Out, HE, ResponseFilter).
 
 % Calls forward_bcast, but filters out any responses
 % that have the same Opcode as the request.
@@ -278,6 +277,37 @@ forward_bcast_filter(BCastKind, Opcode, Sess, Out, HE) ->
             ROpcode =/= Opcode
         end,
     forward_bcast(BCastKind, Opcode, Sess, Out, HE, ResponseFilter).
+
+forward_bcast_uncork(_Opcode, #session_proxy{bucket = Bucket,
+                                             corked = C} = Sess,
+                     OutCork, OutFinal, {H, E} = HE, ResponseFilter) ->
+    % Group our corked requests by Addr.
+    Groups =
+        group_by(C, fun ({_CorkedHeader, #mc_entry{key = Key}}) ->
+                        {Key, Addr} = mc_bucket:choose_addr(Bucket, Key),
+                        Addr
+                    end),
+    % Forward the request list to each Addr.
+    {NumFwd, Monitors} =
+        lists:foldl(fun ({Addr, HEList}, Acc) ->
+                        accum(send([Addr], OutCork, send_list,
+                                   lists:reverse([HE | HEList]),
+                                   ResponseFilter, ?MODULE,
+                                   undefined), Acc)
+                    end,
+                    {0, []}, Groups),
+    await_ok(NumFwd),
+    mc_binary:send(OutFinal, res, H#mc_header{status = ?SUCCESS}, E),
+    mc_downstream:demonitor(Monitors),
+    {ok, Sess#session_proxy{corked = []}}.
+
+forward_bcast_uncork(Opcode, Sess, OutCork, OutFinal, HE) ->
+    ResponseFilter =
+        fun (#mc_header{opcode = ROpcode}, _REntry) ->
+            ROpcode =/= Opcode
+        end,
+    forward_bcast_uncork(Opcode, Sess, OutCork, OutFinal, HE,
+                         ResponseFilter).
 
 % ------------------------------------------
 
