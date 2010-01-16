@@ -135,15 +135,22 @@ cmd(?CMD_SASL_AUTH, Sess, _Sock, Out, {H, #mc_entry{key = Mech,
 % ------------------------------------------
 
 cmd(?VERSION, Sess, _Sock, Out, {Header, _Entry}) ->
-    V = case ns_config:search(version) of
+    V = case catch(ns_config:search(version)) of
             {value, X} -> X;
-            false      -> "X.X.X"
+            false      -> "X.X.X";
+            _          -> "unknown"
         end,
     mc_binary:send(Out, res, Header, #mc_entry{data = V}),
     {ok, Sess};
 
-cmd(?QUIT, _Sess, _Sock, _Out, _HE) ->
+cmd(?QUIT, _Sess, _Sock, Out, {H, _E}) ->
+    % TODO: Sending directly to Sock instead of Out to pass memcapable.
+    %       But, this might bypass any messages queued on the Out pid.
+    %
+    mc_binary:send(Out, res, H#mc_header{status = ?SUCCESS}, #mc_entry{}),
+    mc_binary:flush(Out),
     exit({ok, quit_received});
+
 cmd(?QUITQ, _Sess, _Sock, _Out, _HE) ->
     exit({ok, quit_received});
 

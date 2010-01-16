@@ -40,6 +40,7 @@ loop_out(OutSock) ->
         {send, _CmdNum, Data} ->
             ok = mc_ascii:send(OutSock, Data),
             loop_out(OutSock);
+        {flush, From} -> From ! flushed;
         stop -> ok
     end.
 

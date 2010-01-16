@@ -11,6 +11,8 @@
 
 -compile(export_all).
 
+-define(FLUSH_TIMEOUT, 5000).
+
 %% Functions to work with memcached binary protocol packets.
 
 send_recv(Sock, RecvCallback, Header, Entry, Success) ->
@@ -130,6 +132,13 @@ bin(X)                 -> <<X/binary>>.
 bin_size(undefined)               -> 0;
 bin_size(List) when is_list(List) -> bin_size(iolist_to_binary(List));
 bin_size(Binary)                  -> size(Binary).
+
+flush({OutPid, _CmdNum}) ->
+    OutPid ! {flush, self()},
+    receive flushed -> ok after ?FLUSH_TIMEOUT -> ok
+    end;
+
+flush(_) -> ok.
 
 send({OutPid, CmdNum}, Data) when is_pid(OutPid) ->
     OutPid ! {send, CmdNum, Data};

@@ -40,6 +40,7 @@ loop_out(OutSock) ->
         {send, _CmdNum, Data} ->
             ok = mc_binary:send(OutSock, Data),
             loop_out(OutSock);
+        {flush, From} -> From ! flushed;
         stop -> ok
     end.
 
