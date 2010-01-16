@@ -42,8 +42,6 @@ handle_call({get, Bucket, Count}, _From, State) ->
     {reply, Reply, State}.
 
 handle_cast({received, T, Hostname, Port, Bucket, Stats}, State) ->
-    error_logger:info_msg("Received some data:  ~s@~s:~p (~p)~n",
-                          [Bucket, Hostname, Port, dict:to_list(Stats)]),
     TS = dict:store(t, T, Stats),
     {noreply, State#state{vals=dict:update({Hostname, Port, Bucket},
                                            fun(R) ->
