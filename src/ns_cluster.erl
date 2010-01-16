@@ -42,16 +42,21 @@ join_err(undefined, E) -> {error, E};
 join_err(OldCookie, E) -> erlang:set_cookie(node(), OldCookie),
                           {error, E}.
 
-% Should be invoked on a node that remains in the cluster/pool,
+% Should be invoked on a node that remains in the cluster,
 % where the leaving RemoteNode is passed in as an argument.
 %
 leave(RemoteNode) ->
-    rpc:call(RemoteNode, ?MODULE, leave, [], 500),
+    catch(rpc:call(RemoteNode, ?MODULE, leave, [], 500)),
     NewWanted = lists:subtract(ns_node_disco:nodes_wanted(), [RemoteNode]),
     ns_config:set(nodes_wanted, NewWanted),
     ok.
 
 leave() ->
+    ns_log:log(?MODULE, 0001, "leaving cluster"),
+    % First, change our cookie to stop talking with the rest
+    % of the cluster.
+    erlang:set_cookie(node(), ns_node_disco:cookie_gen()),
+    % Next, go through proper ns_config cookie & config changing.
     ns_node_disco:cookie_init(),
     ns_config:set(nodes_wanted, [node()]),
     ok.

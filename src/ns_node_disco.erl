@@ -12,7 +12,8 @@
          nodes_actual/0,
          nodes_actual_proper/0,
          nodes_actual_other/0,
-         cookie_init/0, cookie_get/0, cookie_set/1, cookie_sync/0]).
+         cookie_init/0, cookie_gen/0,
+         cookie_get/0, cookie_set/1, cookie_sync/0]).
 
 %% gen_server
 
