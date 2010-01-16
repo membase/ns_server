@@ -100,6 +100,10 @@ cmd(flush_all, #session_proxy{bucket = Bucket} = Session,
     mc_downstream:demonitor(Monitors),
     {ok, Session};
 
+cmd(stats, Session, _InSock, Out, ["noreply"]) ->
+    mc_ascii:send(Out, <<"ERROR\r\n">>),
+    {ok, Session};
+
 cmd(stats, #session_proxy{bucket = Bucket} = Session,
     _InSock, Out, CmdArgs) ->
     Addrs = mc_bucket:addrs(Bucket),
