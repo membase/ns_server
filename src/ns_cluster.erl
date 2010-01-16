@@ -2,13 +2,13 @@
 %% @copyright 2009 NorthScale, Inc.
 %% All rights reserved.
 
--module(ns_pool).
+-module(ns_cluster).
 
--export([pool_join/2, pool_leave/1, pool_leave/0,
-         pool_join_params/0]).
+-export([join/2, leave/1, leave/0,
+         join_params/0]).
 
 % Assuming our caller has made this node into an 'empty' node
-% that's joinable to another cluster/pool, and assumes caller
+% that's joinable to another cluster, and assumes caller
 % has shutdown or is responsible for higher-level applications
 % (eg, emoxi, menelaus) as needed.
 %
@@ -17,7 +17,7 @@
 % ns_config:reannounce() to get config-change
 % event callbacks asynchronously fired.
 %
-pool_join(RemoteNode, NewCookie) ->
+join(RemoteNode, NewCookie) ->
     OldCookie = ns_node_disco:cookie_get(),
     true = erlang:set_cookie(node(), NewCookie),
     true = erlang:set_cookie(RemoteNode, NewCookie),
@@ -31,33 +31,33 @@ pool_join(RemoteNode, NewCookie) ->
                               ok = ns_config:resave(),
                               ok = ns_config:reannounce(),
                               ok;
-                        E -> pool_join_err(OldCookie, E)
+                        E -> join_err(OldCookie, E)
                     end;
-                E -> pool_join_err(OldCookie, E)
+                E -> join_err(OldCookie, E)
             end;
-        E -> pool_join_err(OldCookie, E)
+        E -> join_err(OldCookie, E)
     end.
 
-pool_join_err(undefined, E) -> {error, E};
-pool_join_err(OldCookie, E) -> erlang:set_cookie(node(), OldCookie),
-                               {error, E}.
+join_err(undefined, E) -> {error, E};
+join_err(OldCookie, E) -> erlang:set_cookie(node(), OldCookie),
+                          {error, E}.
 
 % Should be invoked on a node that remains in the cluster/pool,
 % where the leaving RemoteNode is passed in as an argument.
 %
-pool_leave(RemoteNode) ->
-    rpc:call(RemoteNode, ?MODULE, pool_leave, [], 500),
+leave(RemoteNode) ->
+    rpc:call(RemoteNode, ?MODULE, leave, [], 500),
     NewWanted = lists:subtract(ns_node_disco:nodes_wanted(), [RemoteNode]),
     ns_config:set(nodes_wanted, NewWanted),
     ok.
 
-pool_leave() ->
+leave() ->
     ns_node_disco:cookie_init(),
     ns_config:set(nodes_wanted, [node()]),
     ok.
 
-% Parameters to pass to pool_join() to allow a remote node to join to
+% Parameters to pass to join() to allow a remote node to join to
 % me, mostly for more convenient debugging/development.
 
-pool_join_params() ->
+join_params() ->
     [node(), ns_node_disco:cookie_get()].
