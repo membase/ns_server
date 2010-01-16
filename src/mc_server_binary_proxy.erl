@@ -61,37 +61,21 @@ cmd(?GETKQ, Sess, _Sock, _Out, HE) ->
     queue(Sess, HE);
 
 cmd(?SETQ, Sess, _Sock, Out, HE) ->
-    {ok, Sess2} = queue(Sess, HE),
-    forward_bcast_uncork(?NOOP, Sess2, Out, undefined,
-                         {#mc_header{opcode = ?NOOP}, #mc_entry{}});
+    queue_update(Sess, Out, HE);
 cmd(?ADDQ, Sess, _Sock, Out, HE) ->
-    {ok, Sess2} = queue(Sess, HE),
-    forward_bcast_uncork(?NOOP, Sess2, Out, undefined,
-                         {#mc_header{opcode = ?NOOP}, #mc_entry{}});
+    queue_update(Sess, Out, HE);
 cmd(?REPLACEQ, Sess, _Sock, Out, HE) ->
-    {ok, Sess2} = queue(Sess, HE),
-    forward_bcast_uncork(?NOOP, Sess2, Out, undefined,
-                         {#mc_header{opcode = ?NOOP}, #mc_entry{}});
+    queue_update(Sess, Out, HE);
 cmd(?DELETEQ, Sess, _Sock, Out, HE) ->
-    {ok, Sess2} = queue(Sess, HE),
-    forward_bcast_uncork(?NOOP, Sess2, Out, undefined,
-                         {#mc_header{opcode = ?NOOP}, #mc_entry{}});
+    queue_update(Sess, Out, HE);
 cmd(?INCREMENTQ, Sess, _Sock, Out, HE) ->
-    {ok, Sess2} = queue(Sess, HE),
-    forward_bcast_uncork(?NOOP, Sess2, Out, undefined,
-                         {#mc_header{opcode = ?NOOP}, #mc_entry{}});
+    queue_update(Sess, Out, HE);
 cmd(?DECREMENTQ, Sess, _Sock, Out, HE) ->
-    {ok, Sess2} = queue(Sess, HE),
-    forward_bcast_uncork(?NOOP, Sess2, Out, undefined,
-                         {#mc_header{opcode = ?NOOP}, #mc_entry{}});
+    queue_update(Sess, Out, HE);
 cmd(?APPENDQ, Sess, _Sock, Out, HE) ->
-    {ok, Sess2} = queue(Sess, HE),
-    forward_bcast_uncork(?NOOP, Sess2, Out, undefined,
-                         {#mc_header{opcode = ?NOOP}, #mc_entry{}});
+    queue_update(Sess, Out, HE);
 cmd(?PREPENDQ, Sess, _Sock, Out, HE) ->
-    {ok, Sess2} = queue(Sess, HE),
-    forward_bcast_uncork(?NOOP, Sess2, Out, undefined,
-                         {#mc_header{opcode = ?NOOP}, #mc_entry{}});
+    queue_update(Sess, Out, HE);
 
 % ------------------------------------------
 
@@ -223,6 +207,17 @@ auth(_UnknownMech, _Data, #session_proxy{pool = Pool} = Sess, Out, H) ->
 %
 queue(#session_proxy{corked = C} = Sess, HE) ->
     {ok, Sess#session_proxy{corked = [HE | C]}}.
+
+queue_update(#session_proxy{corked = []} = Sess, Out, HE) ->
+    % If we're the only corked entry, send a NOOP, to pass memcapable.
+    {ok, Sess2} = queue(Sess, HE),
+    forward_bcast_uncork(?NOOP, Sess2, Out, undefined,
+                         {#mc_header{opcode = ?NOOP}, #mc_entry{}});
+
+queue_update(Sess, _Out, HE) ->
+    % Otherwise, we expect the caller will send an explicit NOOP
+    % request to uncork.
+    queue(Sess, HE).
 
 % For binary commands that need a simple command forward.
 forward_simple(Opcode, #session_proxy{bucket = Bucket} = Sess, Out,
