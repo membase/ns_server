@@ -110,8 +110,8 @@ init([{timeout, Timeout}]) ->
 terminate(_Reason, _DMgr) -> ok.
 code_change(_OldVn, DMgr, _Extra) -> {ok, DMgr}.
 
-handle_info({'EXIT', ChildPid, Reason}, #dmgr{curr = Dict} = DMgr) ->
-    ?debugVal({exit_downstream, ChildPid, Reason}),
+handle_info({'EXIT', ChildPid, _Reason}, #dmgr{curr = Dict} = DMgr) ->
+    % ?debugVal({exit_downstream, ChildPid, Reason}),
     Dict2 = dict:filter(fun(_Addr, #mbox{pid = Pid}) ->
                             Pid =/= ChildPid
                         end,
