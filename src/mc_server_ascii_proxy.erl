@@ -140,11 +140,25 @@ cmd(stats, #session_proxy{bucket = Bucket} = Session,
     {ok, Session};
 
 cmd(version, Session, _InSock, Out, []) ->
-    V = case ns_config:search(version) of
+    V = case catch(ns_config:search(version)) of
             {value, X} -> X;
-            false      -> "X.X.X"
+            false      -> "X.X.X";
+            _          -> "unknown"
         end,
     mc_ascii:send(Out, [<<"VERSION ">>, V, <<"\r\n">>]),
+    {ok, Session};
+
+cmd(verbosity, Session, _InSock, _Out, ["noreply"]) ->
+    % TODO: The verbosity cmd is a no-op.
+    {ok, Session};
+
+cmd(verbosity, Session, _InSock, _Out, [_Level, "noreply"]) ->
+    % TODO: The verbosity cmd is a no-op.
+    {ok, Session};
+
+cmd(verbosity, Session, _InSock, Out, [_Level]) ->
+    % TODO: The verbosity cmd is a no-op.
+    mc_ascii:send(Out, <<"OK\r\n">>),
     {ok, Session};
 
 cmd(quit, _Session, _InSock, _Out, []) ->
