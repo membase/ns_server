@@ -318,11 +318,3 @@ send_response(binary, Out, _Cmd, Header, Entry) ->
     % Downstream is binary.
     mc_binary:send(Out, res, Header, Entry).
 
-% ------------------------------------------
-
-replica_kind(?GET)   -> replica_r;
-replica_kind(?GETK)  -> replica_r;
-replica_kind(?GETQ)  -> replica_r;
-replica_kind(?GETKQ) -> replica_r;
-replica_kind(_)      -> replica_w.
-
