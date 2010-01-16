@@ -236,7 +236,7 @@ forward_bcast(all_send, Opcode, #session_proxy{bucket = Bucket},
 % For binary commands to do a broadcast scatter/gather.
 % A ResponseFilter can be used to filter out responses.
 forward_bcast(all, Opcode, Sess,
-              Out, {H, E} = HE, ResponseFilter) ->
+              Out, {H, _E} = HE, ResponseFilter) ->
     {NumFwd, Monitors} =
         forward_bcast(all_send, Opcode, Sess, Out, HE, ResponseFilter),
     await_ok(NumFwd),
