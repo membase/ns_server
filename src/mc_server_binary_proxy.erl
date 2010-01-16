@@ -211,9 +211,7 @@ queue(#session_proxy{corked = C} = Sess, HE) ->
 forward_simple(Opcode, #session_proxy{bucket = Bucket} = Sess, Out,
                {Header, #mc_entry{key = Key}} = HE) ->
     {Key, Addrs, _Config} = mc_bucket:choose_addrs(Bucket, Key),
-    {value, MinOk} =
-        {value, undefined}, % ns_config:search(Config, replica_kind(Opcode)),
-    case send(Addrs, Out, Opcode, HE, undefined, ?MODULE, MinOk) of
+    case send(Addrs, Out, Opcode, HE, undefined, ?MODULE, undefined) of
         {ok, Monitors} ->
             1 = await_ok(1),
             mc_downstream:demonitor(Monitors);

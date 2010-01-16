@@ -60,10 +60,8 @@ cmd(delete, Session, InSock, _Out, [Key, "noreply"]) ->
 cmd(delete, #session_proxy{bucket = Bucket} = Session,
     _InSock, Out, [Key]) ->
     {Key, Addrs, _Config} = mc_bucket:choose_addrs(Bucket, Key),
-    {value, MinOk} =
-        {value, undefined}, % ns_config:search(Config, replica_w),
     case send(Addrs, Out, delete, #mc_entry{key = Key},
-              undefined, ?MODULE, MinOk) of
+              undefined, ?MODULE, undefined) of
         {ok, Monitors} ->
             case await_ok(1) of
                 1 -> true;
@@ -220,11 +218,9 @@ forward_update(Cmd, #session_proxy{bucket = Bucket} = Session,
     {ok, DataCRNL} = mc_ascii:recv_data(InSock, DataLen + 2),
     {Data, _} = mc_ascii:split_binary_suffix(DataCRNL, 2),
     {Key, Addrs, _Config} = mc_bucket:choose_addrs(Bucket, Key),
-    {value, MinOk} =
-        {value, undefined}, % ns_config:search(Config, replica_w),
     Entry = #mc_entry{key = Key, flag = Flag, expire = Expire, data = Data,
                       cas = Cas},
-    case send(Addrs, Out, Cmd, Entry, undefined, ?MODULE, MinOk) of
+    case send(Addrs, Out, Cmd, Entry, undefined, ?MODULE, undefined) of
         {ok, Monitors} ->
             case await_ok(1) of
                 1 -> true;
@@ -248,11 +244,9 @@ forward_arith(Cmd, Session,
 forward_arith(Cmd, #session_proxy{bucket = Bucket} = Session,
               _InSock, Out, [Key, Amount]) ->
     {Key, Addrs, _Config} = mc_bucket:choose_addrs(Bucket, Key),
-    {value, MinOk} =
-        {value, undefined}, % ns_config:search(Config, replica_w),
     case send(Addrs, Out, Cmd,
               #mc_entry{key = Key, data = Amount},
-              undefined, ?MODULE, MinOk) of
+              undefined, ?MODULE, undefined) of
         {ok, Monitors} ->
             case await_ok(1) of
                 1 -> true;
