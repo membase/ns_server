@@ -23,8 +23,15 @@ session(_Sock, Pool) ->
 
 % ------------------------------------------
 
+cmd(get, Session, _, Out, []) ->
+    mc_ascii:send(Out, <<"ERROR\r\n">>),
+    {ok, Session};
 cmd(get, Session, InSock, Out, Keys) ->
     forward_get(get, Session, InSock, Out, Keys);
+
+cmd(gets, Session, _, Out, []) ->
+    mc_ascii:send(Out, <<"ERROR\r\n">>),
+    {ok, Session};
 cmd(gets, Session, InSock, Out, Keys) ->
     forward_get(gets, Session, InSock, Out, Keys);
 
