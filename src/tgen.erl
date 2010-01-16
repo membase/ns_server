@@ -184,12 +184,40 @@ send_response(_Kind, _Out, _Cmd, _Head, _Body) ->
 % ---------------------------------------------------------
 
 traffic(Addrs) ->
-    [Story | _] = misc:shuffle([miss1, delete1]),
+    [Story | _] = misc:shuffle([miss1,
+                                get1, set1,
+                                incr1, decr1,
+                                flush1, delete1]),
     traffic(Story, Addrs).
 
 traffic(miss1, Addrs) ->
     H = #mc_header{opcode = ?GETK},
     E = #mc_entry{key = <<"miss">>},
+    bcast(Addrs, H, E);
+
+traffic(get1, Addrs) ->
+    H = #mc_header{opcode = ?GET},
+    E = #mc_entry{key = <<"key1">>},
+    bcast(Addrs, H, E);
+
+traffic(set1, Addrs) ->
+    H = #mc_header{opcode = ?SET},
+    E = #mc_entry{key = <<"key1">>, data = <<"val1">>},
+    bcast(Addrs, H, E);
+
+traffic(incr1, Addrs) ->
+    H = #mc_header{opcode = ?INCREMENT},
+    E = #mc_entry{key = <<"counter1">>, data = 1},
+    bcast(Addrs, H, E);
+
+traffic(decr1, Addrs) ->
+    H = #mc_header{opcode = ?DECREMENT},
+    E = #mc_entry{key = <<"counter1">>, data = 1},
+    bcast(Addrs, H, E);
+
+traffic(flush1, Addrs) ->
+    H = #mc_header{opcode = ?FLUSH},
+    E = #mc_entry{},
     bcast(Addrs, H, E);
 
 traffic(delete1, Addrs) ->

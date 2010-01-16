@@ -39,7 +39,10 @@ child_specs() ->
       permanent, 1000, worker, [mc_downstream]},
      {mc_pool_init,
       {mc_pool_init, start_link, []},
-      transient, 1000, worker, [mc_pool_init]}
+      transient, 1000, worker, [mc_pool_init]},
+     {tgen,
+      {tgen, start_link, []},
+      transient, 1000, worker, [tgen]}
     ].
 
 current_pools() ->
@@ -59,6 +62,7 @@ current_pools() ->
     Children1 = supervisor:which_children(?MODULE),
     Children2 = proplists:delete(mc_downstream, Children1),
     Children3 = proplists:delete(mc_pool_init, Children2),
+    Children4 = proplists:delete(tgen, Children3),
     lists:foldl(fun({{mc_pool_sup, Name} = Id, Pid, _, _}, Acc) ->
                         case is_pid(Pid) of
                             true  -> [Name | Acc];
@@ -68,7 +72,7 @@ current_pools() ->
                    (_, Acc) -> Acc
                 end,
                 [],
-                Children3).
+                Children4).
 
 start_pool(Name) ->
     case lists:member(Name, current_pools()) of
