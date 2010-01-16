@@ -34,7 +34,7 @@ Before you start the server, you may need to do the following
     enabled (./configure --enable-isasl).
   * Create a sym link from the 1.6 memcached to <REPO_ROOT>/priv/memcached
   * Make sure that the default_engine.so created when building the
-    1.6 memcached is on your LD_LIBRARY_PATH (in OS X this is the 
+    1.6 memcached is on your LD_LIBRARY_PATH (in OS X this is the
     DYLD_LIBRARY_PATH).
   * Make sure the memcached port_server config in the priv/config file
     has the engine option (-E ..) and the option is not commented out
@@ -66,6 +66,9 @@ different config file), use:
 For example:
 
     ./start_shell.sh -name ns_2 -ns_server ns_server_config "priv/config2"
+
+Tip: for some shells, you might have to add backslashes around the
+path double-quotes -- like \"priv/config\"
 
 * * * * *
 Copyright (c) 2010, NorthScale, Inc.

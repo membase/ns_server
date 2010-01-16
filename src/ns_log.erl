@@ -60,7 +60,6 @@ handle_cast(clear, _State) ->
 handle_info(_Info, State) ->
     {noreply, State}.
 
-
 terminate(_Reason, _State) ->
     ok.
 
