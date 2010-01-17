@@ -146,8 +146,10 @@ expect_prop_value(K, List) ->
 
 find_pool_by_id(Id) -> expect_prop_value(Id, expect_config(pools)).
 
-direct_port(_Node) ->
-    case ns_port_server:get_port_server_param(ns_config:get(), memcached, "-p") of
+direct_port(Node) ->
+    case ns_port_server:get_port_server_param(ns_config:get(),
+                                              memcached, "-p",
+                                              Node) of
         false ->
             ns_log:log(?MODULE, 0003, "missing memcached port"),
             false;
