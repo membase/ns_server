@@ -343,12 +343,12 @@ find_bucket_by_id(Pool, Id) ->
     expect_prop_value(Id, Buckets).
 
 %% TODO: ask tgen module instead
-is_test_app_bucket(_Pool, BucketName) ->
-    BucketName =:= "test_application".
+is_test_app_bucket(PoolName, BucketName) ->
+    tgen:is_traffic_bucket(PoolName, BucketName).
+
 %% true iff test app is running
-%% TODO: ask tgen module instead
 get_tgen_status() ->
-    false.
+    tgen:traffic_started().
 
 handle_bucket_info(PoolId, Id, Req) ->
     Pool = find_pool_by_id(PoolId),
