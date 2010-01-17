@@ -104,15 +104,6 @@ implementation_version() ->
     %% TODO: pull this from git describe.
     <<"comes_from_git_describe">>.
 
-serve_index_html_for_tests(Req, DocRoot) ->
-    case file:read_file(DocRoot ++ "/index.html") of
-        {ok, Data} ->
-            StringData = re:replace(binary_to_list(Data),
-                                    "js/all.js\"", "js/t-all.js\""),
-            Req:ok({"text/html", list_to_binary(StringData)});
-        _ -> {Req:not_found()}
-    end.
-
 handle_pools(Req) ->
     reply_json(Req, build_pools()).
 
@@ -127,6 +118,33 @@ build_pools() ->
                       expect_config(pools)),
     {struct, [{implementationVersion, implementation_version()},
               {pools, Pools}]}.
+
+% {"default", [
+%   {port, 11211},
+%   {buckets, [
+%     {"default", [
+%       {auth_plain, undefined},
+%       {size_per_node, 64}, % In MB.
+%       {cache_expiration_range, {0,600}}
+%     ]}
+%   ]}
+% ]}
+
+handle_pool_info(Id, Req) ->
+    UserPassword = menelaus_auth:extract_auth(Req),
+    reply_json(Req, build_pool_info(Id, UserPassword)).
+
+build_pool_info(Id, _UserPassword) ->
+    MyPool = find_pool_by_id(Id),
+    Nodes = build_nodes_info(MyPool, true),
+    BucketsInfo = {struct, [{uri,
+                             list_to_binary("/pools/" ++ Id ++ "/buckets")}]},
+    {struct, [{name, list_to_binary(Id)},
+              {nodes, Nodes},
+              {buckets, BucketsInfo},
+              {stats, {struct,
+                       [{uri,
+                         list_to_binary("/pools/" ++ Id ++ "/stats")}]}}]}.
 
 find_pool_by_id(Id) -> expect_prop_value(Id, expect_config(pools)).
 
@@ -164,32 +182,31 @@ build_nodes_info(MyPool, IncludeOtp) ->
           WantENodes),
     Nodes.
 
-% {"default", [
-%   {port, 11211},
-%   {buckets, [
-%     {"default", [
-%       {auth_plain, undefined},
-%       {size_per_node, 64}, % In MB.
-%       {cache_expiration_range, {0,600}}
-%     ]}
-%   ]}
-% ]}
-
-build_pool_info(Id, _UserPassword) ->
-    MyPool = find_pool_by_id(Id),
-    Nodes = build_nodes_info(MyPool, true),
-    BucketsInfo = {struct, [{uri,
-                             list_to_binary("/pools/" ++ Id ++ "/buckets")}]},
-    {struct, [{name, list_to_binary(Id)},
-              {nodes, Nodes},
-              {buckets, BucketsInfo},
-              {stats, {struct,
-                       [{uri,
-                         list_to_binary("/pools/" ++ Id ++ "/stats")}]}}]}.
-
-handle_pool_info(Id, Req) ->
+handle_pool_info_streaming(Id, Req) ->
+    %% TODO: this shouldn't be timer driven, but rather should
+    %% register a callback based on some state change in the Erlang OS
+    HTTPRes = Req:ok({"application/json; charset=utf-8",
+                      server_header(),
+                      chunked}),
     UserPassword = menelaus_auth:extract_auth(Req),
-    reply_json(Req, build_pool_info(Id, UserPassword)).
+    Res = build_pool_info(Id, UserPassword),
+    HTTPRes:write_chunk(mochijson2:encode(Res)),
+    %% TODO: resolve why mochiweb doesn't support zero chunk... this
+    %%       indicates the end of a response for now
+    HTTPRes:write_chunk("\n\n\n\n"),
+    handle_pool_info_streaming(Id, Req, HTTPRes, 3000).
+
+handle_pool_info_streaming(Id, Req, HTTPRes, Wait) ->
+    receive
+    after Wait ->
+            UserPassword = menelaus_auth:extract_auth(Req),
+            Res = build_pool_info(Id, UserPassword),
+            HTTPRes:write_chunk(mochijson2:encode(Res)),
+            %% TODO: resolve why mochiweb doesn't support zero chunk... this
+            %%       indicates the end of a response for now
+            HTTPRes:write_chunk("\n\n\n\n")
+    end,
+    handle_pool_info_streaming(Id, Req, HTTPRes, 10000).
 
 handle_bucket_list(Id, Req) ->
 	MyPool = find_pool_by_id(Id),
@@ -218,32 +235,6 @@ handle_bucket_list(Id, Req) ->
                                   <<"fake connection string">>}]}
                    || Name <- proplists:get_keys(Buckets)],
 	reply_json(Req, BucketsInfo).
-
-handle_pool_info_streaming(Id, Req) ->
-    %% TODO: this shouldn't be timer driven, but rather should
-    %% register a callback based on some state change in the Erlang OS
-    HTTPRes = Req:ok({"application/json; charset=utf-8",
-                      server_header(),
-                      chunked}),
-    UserPassword = menelaus_auth:extract_auth(Req),
-    Res = build_pool_info(Id, UserPassword),
-    HTTPRes:write_chunk(mochijson2:encode(Res)),
-    %% TODO: resolve why mochiweb doesn't support zero chunk... this
-    %%       indicates the end of a response for now
-    HTTPRes:write_chunk("\n\n\n\n"),
-    handle_pool_info_streaming(Id, Req, HTTPRes, 3000).
-
-handle_pool_info_streaming(Id, Req, HTTPRes, Wait) ->
-    receive
-    after Wait ->
-            UserPassword = menelaus_auth:extract_auth(Req),
-            Res = build_pool_info(Id, UserPassword),
-            HTTPRes:write_chunk(mochijson2:encode(Res)),
-            %% TODO: resolve why mochiweb doesn't support zero chunk... this
-            %%       indicates the end of a response for now
-            HTTPRes:write_chunk("\n\n\n\n")
-    end,
-    handle_pool_info_streaming(Id, Req, HTTPRes, 10000).
 
 find_bucket_by_id(Pool, Id) ->
     Buckets = expect_prop_value(buckets, Pool),
@@ -310,4 +301,13 @@ handle_traffic_generator_control_post(Req) ->
         "on" -> tgen:traffic_start()
     end,
     Req:respond({200, [], []}).
+
+serve_index_html_for_tests(Req, DocRoot) ->
+    case file:read_file(DocRoot ++ "/index.html") of
+        {ok, Data} ->
+            StringData = re:replace(binary_to_list(Data),
+                                    "js/all.js\"", "js/t-all.js\""),
+            Req:ok({"text/html", list_to_binary(StringData)});
+        _ -> {Req:not_found()}
+    end.
 
