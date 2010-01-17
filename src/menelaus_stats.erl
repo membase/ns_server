@@ -30,6 +30,14 @@
 
 %% External API
 
+handle_bucket_stats(_PoolId, Id, Req) ->
+    Now = java_date(),
+    Params = Req:parse_qs(),
+    Res = build_bucket_stats_response(Id, Params, Now),
+    reply_json(Req, Res).
+
+%% Implementation
+
 generate_samples(Seed, Size) ->
     RawSamples = stateful_map(fun (_, S) ->
                                       {F, S2} = random:uniform_s(S),
@@ -137,12 +145,12 @@ build_bucket_stats_response_cutting_1_test() ->
                            {op, _}]},
                  Res),
     {struct, [_, {op, Ops}]} = Res,
-    ?assertMatch({struct, [{tstamp, 1259747673559},
-                           {samples_interval, 1},
-                           {gets, [_]},
-                           {misses, [_]},
-                           {sets, [_]},
-                           {ops, [_]}]},
+    ?assertEqual({struct, [{tstamp, 1259747672559},
+                           {samplesInterval, 5000},
+                           {gets, []},
+                           {misses, []},
+                           {sets, []},
+                           {ops, []}]},
                  Ops).
 
 test() ->
@@ -150,10 +158,4 @@ test() ->
                [verbose]).
 
 -endif.
-
-handle_bucket_stats(_PoolId, Id, Req) ->
-    Now = java_date(),
-    Params = Req:parse_qs(),
-    Res = build_bucket_stats_response(Id, Params, Now),
-    reply_json(Req, Res).
 

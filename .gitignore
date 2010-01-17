@@ -9,3 +9,4 @@ ebin/*.app
 menelaus_*.tar.gz
 tmp
 *~
+erl_crash.dump

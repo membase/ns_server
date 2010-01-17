@@ -100,6 +100,10 @@ loop(Req, DocRoot) ->
 
 %% Internal API
 
+implementation_version() ->
+    %% TODO: pull this from git describe.
+    <<"comes_from_git_describe">>.
+
 serve_index_html_for_tests(Req, DocRoot) ->
     case file:read_file(DocRoot ++ "/index.html") of
         {ok, Data} ->
@@ -114,14 +118,14 @@ handle_pools(Req) ->
 
 build_pools() ->
     Pools = lists:map(fun ({Name, _}) ->
-                              {struct, [{name, list_to_binary(Name)},
-                                        {uri, list_to_binary("/pools/" ++ Name)},
-                                        {streamingUri, list_to_binary("/poolsStreaming/" ++ Name)}]}
+                              {struct,
+                               [{name, list_to_binary(Name)},
+                                {uri, list_to_binary("/pools/" ++ Name)},
+                                {streamingUri,
+                                 list_to_binary("/poolsStreaming/" ++ Name)}]}
                       end,
                       expect_config(pools)),
-    {struct, [
-              %% TODO: pull this from git describe
-              {implementationVersion, <<"comes_from_git_describe">>},
+    {struct, [{implementationVersion, implementation_version()},
               {pools, Pools}]}.
 
 find_pool_by_id(Id) -> expect_prop_value(Id, expect_config(pools)).
@@ -175,12 +179,14 @@ build_nodes_info(MyPool, IncludeOtp) ->
 build_pool_info(Id, _UserPassword) ->
     MyPool = find_pool_by_id(Id),
     Nodes = build_nodes_info(MyPool, true),
-    BucketsInfo = {struct, [{uri, list_to_binary("/pools/" ++ Id ++ "/buckets")}]},
+    BucketsInfo = {struct, [{uri,
+                             list_to_binary("/pools/" ++ Id ++ "/buckets")}]},
     {struct, [{name, list_to_binary(Id)},
               {nodes, Nodes},
               {buckets, BucketsInfo},
               {stats, {struct,
-                       [{uri, list_to_binary("/pools/" ++ Id ++ "/stats")}]}}]}.
+                       [{uri,
+                         list_to_binary("/pools/" ++ Id ++ "/stats")}]}}]}.
 
 handle_pool_info(Id, Req) ->
     UserPassword = menelaus_auth:extract_auth(Req),
@@ -207,11 +213,13 @@ handle_bucket_list(Id, Req) ->
 	BucketsInfo = [{struct, [{uri, list_to_binary("/pools/" ++ Id ++
                                                   "/buckets/" ++ Name)},
                                  {name, list_to_binary(Name)},
-                                 {basicStats, {struct, [{cacheSize, 64},
-                                                        {opsPerSec, 100},
-                                                        {evictionsPerSec, 5},
-                                                        {cachePercentUsed, 50}]}},
-                                 {sampleConnectionString, <<"fake connection string">>}]}
+                                 {basicStats,
+                                  {struct, [{cacheSize, 64},
+                                            {opsPerSec, 100},
+                                            {evictionsPerSec, 5},
+                                            {cachePercentUsed, 50}]}},
+                                 {sampleConnectionString,
+                                  <<"fake connection string">>}]}
                    || Name <- proplists:get_keys(Buckets)],
 	reply_json(Req, BucketsInfo).
 
@@ -266,7 +274,8 @@ handle_bucket_info(PoolId, Id, Req) ->
     reply_json(Req, Res).
 
 handle_bucket_info_streaming(_PoolId, Id, Req) ->
-    %% TODO: this shouldn't be timer driven, but rather should register a callback based on some state change in the Erlang OS
+    %% TODO: this shouldn't be timer driven, but rather should
+    %%       register a callback based on some state change in the Erlang OS
     HTTPRes = Req:ok({"application/json; charset=utf-8",
                       server_header(),
                       chunked}),

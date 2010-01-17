@@ -33,7 +33,7 @@ TAGS:
 
 # TODO: somehow fix dependency on ns_server's ns_log at least in tests
 test: all
-	erl -noshell -pa ./ebin ./deps/*/ebin -boot start_sasl -s menelaus_web test -s init stop
+	erl -noshell -pa ./ebin ./deps/*/ebin -boot start_sasl -s menelaus_web test -s menelaus_util test -s menelaus_stats test -s init stop
 	erl -noshell -pa ./ebin ./deps/*/ebin ../../ebin -boot start_sasl -s stats_aggregator_manager test -s init stop
 
 bdist: clean all
