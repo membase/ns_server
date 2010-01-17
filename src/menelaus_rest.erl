@@ -7,10 +7,9 @@
 -module(menelaus_rest).
 -author('Northscale <info@northscale.com>').
 
--compile(export_all).
+%% API
 
-%% External exports
--export([rest_url/3, rest_get/2]).
+-export([rest_url/3, rest_get/2, rest_get_json/2, rest_get_otp/3]).
 
 rest_url(Host, Port, Path) ->
     "http://" ++ Host ++ ":" ++ Port ++ Path.
@@ -23,8 +22,6 @@ rest_get(Url, {User, Password}) ->
     http:request(get, {Url, [{"Authorization",
                               "Basic " ++ UserPassword}]}, [], []).
 
-% ------------------------------------------------
-
 rest_get_json(Url, Auth) ->
     inets:start(),
     {ok, Result} = menelaus_rest:rest_get(Url, Auth),
@@ -34,6 +31,9 @@ rest_get_json(Url, Auth) ->
         200 -> {ok, mochijson2:decode(Body)};
         _   -> {error, Result}
     end.
+
+% Returns the otpNode & otpCookie for a remote node.
+% This is part of joining a node to a otp cluster.
 
 rest_get_otp(Host, Port, Auth) ->
     {ok, {struct, KVList}} =
