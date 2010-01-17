@@ -36,23 +36,25 @@ loop(Req, DocRoot) ->
                      case PathTokens of
                          [] -> {done, redirect_permanently("/index.html", Req)};
                          ["pools"] ->
-                             {need_auth_bucket, fun handle_pools/1};
+                             {auth_bucket, fun handle_pools/1};
                          ["pools", Id] ->
-                             {need_auth_bucket, fun handle_pool_info/2, [Id]};
+                             {auth_bucket, fun handle_pool_info/2, [Id]};
                          ["pools", Id, "stats"] ->
-                             {need_auth, fun handle_bucket_stats/3, ["asd", Id]};
+                             {auth, fun handle_bucket_stats/3, ["asd", Id]};
                          ["poolsStreaming", Id] ->
-                             {need_auth, fun handle_pool_info_streaming/2, [Id]};
+                             {auth, fun handle_pool_info_streaming/2, [Id]};
                          ["pools", PoolId, "buckets"] ->
-                             {need_auth, fun handle_bucket_list/2, [PoolId]};
+                             {auth, fun handle_bucket_list/2, [PoolId]};
                          ["pools", PoolId, "buckets", Id] ->
-                             {need_auth_bucket, fun handle_bucket_info/3, [PoolId, Id]};
+                             {auth_bucket, fun handle_bucket_info/3,
+                              [PoolId, Id]};
 						 ["pools", PoolId, "bucketsStreaming", Id] ->
-							 {need_auth_bucket, fun handle_bucket_info_streaming/3, [PoolId, Id]};
+							 {auth_bucket, fun handle_bucket_info_streaming/3,
+                              [PoolId, Id]};
                          ["pools", PoolId, "buckets", Id, "stats"] ->
-                             {need_auth, fun handle_bucket_stats/3, [PoolId, Id]};
+                             {auth, fun handle_bucket_stats/3, [PoolId, Id]};
                          ["alerts"] ->
-                             {need_auth, fun handle_alerts/1};
+                             {auth, fun handle_alerts/1};
                          ["t", "index.html"] ->
                              {done, serve_index_html_for_tests(Req, DocRoot)};
                          _ ->
@@ -61,39 +63,21 @@ loop(Req, DocRoot) ->
                  'POST' ->
                      case PathTokens of
                          ["alerts", "settings"] ->
-                             {need_auth, fun handle_alerts_settings_post/1};
+                             {auth, fun handle_alerts_settings_post/1};
                          ["pools", _, "buckets", _, "generatorControl"] ->
-                             {need_auth, fun handle_traffic_generator_control_post/1};
+                             {auth, fun handle_traffic_generator_control_post/1};
                          _ ->
                              {done, Req:not_found()}
                      end;
                  _ ->
                      {done, Req:respond({501, [], []})}
              end,
-    CheckAuth =
-        fun (F, Args) ->
-                UserPassword = extract_basic_auth(Req),
-                case check_auth(UserPassword) of
-                    true -> apply(F, Args ++ [Req]);
-                    _ -> Req:respond({401, [{"WWW-Authenticate",
-                                             "Basic realm=\"api\""}],
-                                      []})
-                end
-        end,
-    CheckAuthBucket =
-        fun (F, Args) ->
-                UserPassword = extract_basic_auth(Req),
-                case check_bucket_auth(UserPassword) of
-                    true -> apply(F, Args ++ [Req]);
-                    _    -> CheckAuth(F, Args)
-                end
-        end,
     case Action of
         {done, RV} -> RV;
-        {need_auth, F} -> CheckAuth(F, []);
-        {need_auth, F, Args} -> CheckAuth(F, Args);
-        {need_auth_bucket, F} -> CheckAuthBucket(F, []);
-        {need_auth_bucket, F, Args} -> CheckAuthBucket(F, Args)
+        {auth, F} -> menelaus_auth:apply_auth(Req, F, []);
+        {auth, F, Args} -> menelaus_auth:apply_auth(Req, F, Args);
+        {auth_bucket, F} -> menelaus_auth:apply_auth_bucket(Req, F, []);
+        {auth_bucket, F, Args} -> menelaus_auth:apply_auth_bucket(Req, F, Args)
     end.
 
 %% Internal API
@@ -104,45 +88,6 @@ serve_index_html_for_tests(Req, DocRoot) ->
             StringData = re:replace(binary_to_list(Data), "js/all.js\"", "js/t-all.js\""),
             Req:ok({"text/html", list_to_binary(StringData)});
         _ -> {Req:not_found()}
-    end.
-
-% {rest_creds, [{creds, [{"user", [{password, "password"}]},
-%                        {"admin", [{password, "admin"}]}]}
-%              ]}. % An empty list means no login/password auth check.
-
-check_bucket_auth(UserPassword) ->
-    % Default pool only for 1.0.
-    case ns_config:search_prop(ns_config:get(), pools, "default", empty) of
-        empty -> false;
-        Pool ->
-            Buckets = proplists:get_value(buckets, Pool),
-            lists:any(bucket_auth_fun(UserPassword),
-                      Buckets)
-    end.
-
-check_auth(UserPassword) ->
-    case ns_config:search_prop(ns_config:get(), rest_creds, creds, empty) of
-        []    -> true; % An empty list means no login/password auth check.
-        empty -> true; % An empty list means no login/password auth check.
-        Creds -> check_auth(UserPassword, Creds)
-    end.
-
-check_auth(_UserPassword, []) ->
-    false;
-check_auth({User, Password}, [{User, PropList} | _]) ->
-    Password =:= proplists:get_value(password, PropList, "");
-check_auth(UserPassword, [_NotRightUser | Rest]) ->
-    check_auth(UserPassword, Rest).
-
-extract_basic_auth(Req) ->
-    case Req:get_header_value("authorization") of
-        []        -> undefined;
-        undefined -> undefined;
-        "Basic " ++ Value ->
-            case string:tokens(base64:decode_to_string(Value), ":") of
-                [] -> undefined;
-                [User, Password] -> {User, Password}
-            end
     end.
 
 redirect_permanently(Path, Req) -> redirect_permanently(Path, Req, []).
@@ -256,20 +201,6 @@ build_nodes_info(MyPool, IncludeOtp) ->
 %   ]}
 % ]}
 
-bucket_auth_fun(UserPassword) ->
-    fun({BucketName, BucketProps}) ->
-            case proplists:get_value(auth_plain, BucketProps) of
-                undefined -> true;
-                BucketPassword ->
-                    case UserPassword of
-                        undefined -> false;
-                        {User, Password} ->
-                            (BucketName =:= User andalso
-                             BucketPassword =:= Password)
-                    end
-            end
-    end.
-
 build_pool_info(Id, _UserPassword) ->
     MyPool = find_pool_by_id(Id),
     Nodes = build_nodes_info(MyPool, true),
@@ -281,13 +212,13 @@ build_pool_info(Id, _UserPassword) ->
                        [{uri, list_to_binary("/pools/" ++ Id ++ "/stats")}]}}]}.
 
 handle_pool_info(Id, Req) ->
-    UserPassword = extract_basic_auth(Req),
+    UserPassword = menelaus_auth:extract_auth(Req),
     reply_json(Req, build_pool_info(Id, UserPassword)).
 
 handle_bucket_list(Id, Req) ->
 	MyPool = find_pool_by_id(Id),
-	UserPassword = extract_basic_auth(Req),
-	IsSuper = check_auth(UserPassword),
+	UserPassword = menelaus_auth:extract_auth(Req),
+	IsSuper = menelaus_auth:check_auth(UserPassword),
 	BucketsAll = expect_prop_value(buckets, MyPool),
 	Buckets =
         % We got this far, so we assume we're authorized.
@@ -299,11 +230,11 @@ handle_bucket_list(Id, Req) ->
             {_, undefined} -> BucketsAll;
             {_, {_User, _Password} = UserPassword} ->
                 lists:filter(
-                  bucket_auth_fun(UserPassword),
+                  menelaus_auth:bucket_auth_fun(UserPassword),
                   BucketsAll)
         end,
 	BucketsInfo = [{struct, [{uri, list_to_binary("/pools/" ++ Id ++
-                                                      "/buckets/" ++ Name)},
+                                                  "/buckets/" ++ Name)},
                                  {name, list_to_binary(Name)},
                                  {basicStats, {struct, [{cacheSize, 64},
                                                         {opsPerSec, 100},
@@ -318,7 +249,7 @@ handle_pool_info_streaming(Id, Req) ->
     HTTPRes = Req:ok({"application/json; charset=utf-8",
                       server_header(),
                       chunked}),
-    UserPassword = extract_basic_auth(Req),
+    UserPassword = menelaus_auth:extract_auth(Req),
     Res = build_pool_info(Id, UserPassword),
     HTTPRes:write_chunk(mochijson2:encode(Res)),
     %% TODO: resolve why mochiweb doesn't support zero chunk... this
@@ -329,7 +260,7 @@ handle_pool_info_streaming(Id, Req) ->
 handle_pool_info_streaming(Id, Req, HTTPRes, Wait) ->
     receive
     after Wait ->
-            UserPassword = extract_basic_auth(Req),
+            UserPassword = menelaus_auth:extract_auth(Req),
             Res = build_pool_info(Id, UserPassword),
             HTTPRes:write_chunk(mochijson2:encode(Res)),
             %% TODO: resolve why mochiweb doesn't support zero chunk... this
@@ -372,7 +303,7 @@ handle_bucket_info_streaming(_PoolId, Id, Req) ->
     HTTPRes = Req:ok({"application/json; charset=utf-8",
                       server_header(),
                       chunked}),
-    UserPassword = extract_basic_auth(Req),
+    UserPassword = menelaus_auth:extract_auth(Req),
     Res = build_pool_info(Id, UserPassword),
     HTTPRes:write_chunk(mochijson2:encode(Res)),
     %% TODO: resolve why mochiweb doesn't support zero chunk... this
@@ -383,7 +314,7 @@ handle_bucket_info_streaming(_PoolId, Id, Req) ->
 handle_bucket_info_streaming(_PoolId, Id, Req, HTTPRes, Wait) ->
     receive
     after Wait ->
-            UserPassword = extract_basic_auth(Req),
+            UserPassword = menelaus_auth:extract_auth(Req),
             Res = build_pool_info(Id, UserPassword),
             HTTPRes:write_chunk(mochijson2:encode(Res)),
             %% TODO: resolve why mochiweb doesn't support zero chunk... this
