@@ -8,13 +8,34 @@
 -author('Northscale <info@northscale.com>').
 
 -include_lib("eunit/include/eunit.hrl").
+
 -ifdef(EUNIT).
--export([test_under_debugger/0, debugger_apply/2, test/0]).
+-export([test/0]).
+-import(menelaus_util,
+        [test_under_debugger/0, debugger_apply/2,
+         wrap_tests_with_cache_setup/1]).
 -endif.
 
 -export([start/1, stop/0, loop/2]).
 
 -import(simple_cache, [call_simple_cache/2]).
+
+-import(menelaus_util,
+        [server_header/0,
+         redirect_permanently/2,
+         redirect_permanently/3,
+         reply_json/2,
+         expect_config/1,
+         expect_prop_value/2,
+         get_option/2,
+         direct_port/1,
+         java_date/0,
+         string_hash/1,
+         my_seed/1,
+         stateful_map/3,
+         stateful_takewhile/3,
+         low_pass_filter/2,
+         caching_result/2]).
 
 %% External API
 
@@ -85,39 +106,14 @@ loop(Req, DocRoot) ->
 serve_index_html_for_tests(Req, DocRoot) ->
     case file:read_file(DocRoot ++ "/index.html") of
         {ok, Data} ->
-            StringData = re:replace(binary_to_list(Data), "js/all.js\"", "js/t-all.js\""),
+            StringData = re:replace(binary_to_list(Data),
+                                    "js/all.js\"", "js/t-all.js\""),
             Req:ok({"text/html", list_to_binary(StringData)});
         _ -> {Req:not_found()}
     end.
 
-redirect_permanently(Path, Req) -> redirect_permanently(Path, Req, []).
-
-%% mostly extracted from mochiweb_request:maybe_redirect/3
-redirect_permanently(Path, Req, ExtraHeaders) ->
-    %% TODO: support https transparently
-    Location = "http://" ++ Req:get_header_value("host") ++ Path,
-    LocationBin = list_to_binary(Location),
-    Top = <<"<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">"
-           "<html><head>"
-           "<title>301 Moved Permanently</title>"
-           "</head><body>"
-           "<h1>Moved Permanently</h1>"
-           "<p>The document has moved <a href=\"">>,
-    Bottom = <<">here</a>.</p></body></html>\n">>,
-    Body = <<Top/binary, LocationBin/binary, Bottom/binary>>,
-    Req:respond({301,
-                 [{"Location", Location},
-                  {"Content-Type", "text/html"} | ExtraHeaders],
-                 Body}).
-
-reply_json(Req, Body) ->
-    Req:ok({"application/json",
-            [{"Server", "NorthScale menelaus %TODO gitversion%"}],
-            mochijson2:encode(Body)}).
-
-expect_config(Key) ->
-    {value, RV} = ns_config:search(Key),
-    RV.
+handle_pools(Req) ->
+    reply_json(Req, build_pools()).
 
 build_pools() ->
     Pools = lists:map(fun ({Name, _}) ->
@@ -131,31 +127,7 @@ build_pools() ->
               {implementationVersion, <<"comes_from_git_describe">>},
               {pools, Pools}]}.
 
-handle_pools(Req) ->
-    reply_json(Req, build_pools()).
-
-expect_prop_value(K, List) ->
-    Ref = make_ref(),
-    try
-        case proplists:get_value(K, List, Ref) of
-            RV when RV =/= Ref -> RV
-        end
-    catch
-        error:X -> erlang:error(X, [K, List])
-    end.
-
 find_pool_by_id(Id) -> expect_prop_value(Id, expect_config(pools)).
-
-direct_port(Node) ->
-    case ns_port_server:get_port_server_param(ns_config:get(),
-                                              memcached, "-p",
-                                              Node) of
-        false ->
-            ns_log:log(?MODULE, 0003, "missing memcached port"),
-            false;
-        {value, MemcachedPortStr} ->
-            {value, list_to_integer(MemcachedPortStr)}
-    end.
 
 build_nodes_info(MyPool, IncludeOtp) ->
     OtpCookie = list_to_binary(atom_to_list(ns_node_disco:cookie_get())),
@@ -247,7 +219,8 @@ handle_bucket_list(Id, Req) ->
 	reply_json(Req, BucketsInfo).
 
 handle_pool_info_streaming(Id, Req) ->
-    %% TODO: this shouldn't be timer driven, but rather should register a callback based on some state change in the Erlang OS
+    %% TODO: this shouldn't be timer driven, but rather should
+    %% register a callback based on some state change in the Erlang OS
     HTTPRes = Req:ok({"application/json; charset=utf-8",
                       server_header(),
                       chunked}),
@@ -320,46 +293,6 @@ handle_bucket_info_streaming(_PoolId, Id, Req, HTTPRes, Wait) ->
     end,
     handle_pool_info_streaming(Id, Req, HTTPRes, 10000).
 
-%% milliseconds since 1970 Jan 1 at UTC
-java_date() ->
-    {MegaSec, Sec, Micros} = erlang:now(),
-    (MegaSec * 1000000 + Sec) * 1000 + (Micros div 1000).
-
-string_hash(String) ->
-    lists:foldl((fun (Val, Acc) -> (Acc * 31 + Val) band 16#0fffffff end),
-                0,
-                String).
-
-my_seed(Number) ->
-    {Number*31, Number*13, Number*113}.
-
-%% applies F to every InList element and current state.
-%% F must return pair of {new list element value, new current state}.
-%% returns pair of {new list, current state}
-full_stateful_map(F, InState, InList) ->
-    {RV, State} = full_stateful_map_rec(F, InState, InList, []),
-    {lists:reverse(RV), State}.
-
-full_stateful_map_rec(_F, State, [], Acc) ->
-    {Acc, State};
-full_stateful_map_rec(F, State, [H|Tail], Acc) ->
-    {Value, NewState} = F(H, State),
-    full_stateful_map_rec(F, NewState, Tail, [Value|Acc]).
-
-%% same as full_stateful_map/3, but discards state and returns only transformed list
-stateful_map(F, InState, InList) -> element(1, full_stateful_map(F, InState, InList)).
-
-low_pass_filter(Alpha, List) ->
-    Beta = 1 - Alpha,
-    F = fun (V, Prev) ->
-                RV = Alpha*V + Beta*Prev,
-                {RV, RV}
-        end,
-    case List of
-        [] -> [];
-        [H|Tail] -> [H | stateful_map(F, H, Tail)]
-    end.
-
 generate_samples(Seed, Size) ->
     RawSamples = stateful_map(fun (_, S) ->
                                       {F, S2} = random:uniform_s(S),
@@ -368,16 +301,6 @@ generate_samples(Seed, Size) ->
                               Seed,
                               lists:seq(0, Size)),
     lists:map(fun trunc/1, low_pass_filter(0.5, RawSamples)).
-
-caching_result(Key, Computation) ->
-    case call_simple_cache(lookup, [Key]) of
-        [] -> begin
-                  V = Computation(),
-                  call_simple_cache(insert, [{Key, V}]),
-                  V
-              end;
-        [{_, V}] -> V
-    end.
 
 mk_samples(Mode) ->
     Key = lists:concat(["samples_for_", Mode]),
@@ -465,12 +388,6 @@ mk_samples_basic_test() ->
                   {ops, _}],
                  V).
 
-string_hash_test_() ->
-    [
-     ?_assert(string_hash("hello1") /= string_hash("hi")),
-     ?_assert(string_hash("hi") == ($h*31+$i))
-    ].
-
 build_bucket_stats_response_cutting_1_test() ->
     Now = 1259747673659,
     Res = build_bucket_stats_response("4",
@@ -490,32 +407,9 @@ build_bucket_stats_response_cutting_1_test() ->
                            {ops, [_]}]},
                  Ops).
 
-wrap_tests_with_cache_setup(Tests) ->
-    {spawn, {setup,
-             fun () ->
-                     simple_cache:start_link()
-             end,
-             fun (_) ->
-                     exit(whereis(simple_cache), die)
-             end,
-             Tests}}.
-
 test() ->
     eunit:test(wrap_tests_with_cache_setup({module, ?MODULE}),
                [verbose]).
-
-debugger_apply(Fun, Args) ->
-    i:im(),
-    {module, _} = i:ii(?MODULE),
-    i:iaa([break]),
-    ok = i:ib(?MODULE, Fun, length(Args)),
-    apply(?MODULE, Fun, Args).
-
-test_under_debugger() ->
-    i:im(),
-    {module, _} = i:ii(?MODULE),
-    i:iaa([init]),
-    eunit:test({spawn, {timeout, infinity, {module, ?MODULE}}}, [verbose]).
 
 -endif.
 
@@ -525,9 +419,6 @@ handle_bucket_stats(_PoolId, Id, Req) ->
     Res = build_bucket_stats_response(Id, Params, Now),
     reply_json(Req, Res).
 
-
-get_option(Option, Options) ->
-    {proplists:get_value(Option, Options), proplists:delete(Option, Options)}.
 
 -define(INITIAL_ALERTS, [{struct, [{number, 3},
                                    {type, <<"info">>},
@@ -588,7 +479,6 @@ build_alerts_test() ->
 
 -endif.
 
-
 fetch_alerts() ->
     caching_result(alerts,
                    fun () -> ?INITIAL_ALERTS end).
@@ -605,18 +495,6 @@ create_new_alert() ->
                  | OldAlerts],
     call_simple_cache(insert, [{alerts, NewAlerts}]),
     nil.
-
-stateful_takewhile_rec(_F, [], _State, App) ->
-    App;
-stateful_takewhile_rec(F, [H|Tail], State, App) ->
-    case F(H, State) of
-        {true, NewState} ->
-            stateful_takewhile_rec(F, Tail, NewState, [H|App]);
-        _ -> App
-    end.
-
-stateful_takewhile(F, List, State) ->
-    lists:reverse(stateful_takewhile_rec(F, List, State, [])).
 
 -define(ALERTS_LIMIT, 15).
 
@@ -664,7 +542,6 @@ handle_alerts_settings_post(Req) ->
     %% TODO: make it more RESTful
     Req:respond({200, [], []}).
 
-
 handle_traffic_generator_control_post(Req) ->
     PostArgs = Req:parse_post(),
     case proplists:get_value(PostArgs, "onOrOff") of
@@ -672,8 +549,4 @@ handle_traffic_generator_control_post(Req) ->
         "on" -> tgen:traffic_start()
     end,
     Req:respond({200, [], []}).
-
-server_header() ->
-    [{"Server", "NorthScale menelaus %TODO gitversion%"}].
-
 
