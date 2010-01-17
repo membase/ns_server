@@ -342,7 +342,6 @@ find_bucket_by_id(Pool, Id) ->
     Buckets = expect_prop_value(buckets, Pool),
     expect_prop_value(Id, Buckets).
 
-%% TODO: ask tgen module instead
 is_test_app_bucket(PoolName, BucketName) ->
     tgen:is_traffic_bucket(PoolName, BucketName).
 
