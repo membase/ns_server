@@ -214,10 +214,7 @@ handle_bucket_list(Id, Req) ->
                                                   "/buckets/" ++ Name)},
                                  {name, list_to_binary(Name)},
                                  {basicStats,
-                                  {struct, [{cacheSize, 64},
-                                            {opsPerSec, 100},
-                                            {evictionsPerSec, 5},
-                                            {cachePercentUsed, 50}]}},
+                                  menelaus_stats:basic_stats(Id, Name)},
                                  {sampleConnectionString,
                                   <<"fake connection string">>}]}
                    || Name <- proplists:get_keys(Buckets)],

@@ -16,7 +16,7 @@
          wrap_tests_with_cache_setup/1]).
 -endif.
 
--export([handle_bucket_stats/3]).
+-export([handle_bucket_stats/3, basic_stats/2]).
 
 -import(menelaus_util,
         [reply_json/2,
@@ -29,6 +29,12 @@
          caching_result/2]).
 
 %% External API
+
+basic_stats(_PoolId, _BucketId) ->
+    [{cacheSize, 64},
+     {opsPerSec, 100},
+     {evictionsPerSec, 5},
+     {cachePercentUsed, 50}].
 
 handle_bucket_stats(_PoolId, Id, Req) ->
     Now = java_date(),
