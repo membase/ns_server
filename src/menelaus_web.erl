@@ -273,13 +273,6 @@ find_bucket_by_id(Pool, Id) ->
     Buckets = expect_prop_value(buckets, Pool),
     expect_prop_value(Id, Buckets).
 
-is_test_app_bucket(PoolName, BucketName) ->
-    tgen:is_traffic_bucket(PoolName, BucketName).
-
-%% true iff test app is running
-get_tgen_status() ->
-    tgen:traffic_started().
-
 handle_bucket_info(PoolId, Id, Req) ->
     Pool = find_pool_by_id(PoolId),
     _Bucket = find_bucket_by_id(Pool, Id),
@@ -288,10 +281,12 @@ handle_bucket_info(PoolId, Id, Req) ->
     List1 = [{name, list_to_binary(Id)},
                     {nodes, Nodes},
                     {stats, {struct, [{uri, StatsURI}]}}],
-    List2 = case is_test_app_bucket(Pool, Id) of
+    List2 = case tgen:is_traffic_bucket(Pool, Id) of
                 true -> [{testAppBucket, true},
-                         {controlURL, list_to_binary("/pools/"++PoolId++"/buckets/"++Id++"/generatorControl")},
-                         {status, get_tgen_status()}
+                         {controlURL, list_to_binary("/pools/"++PoolId++
+                                                     "/buckets/"++Id++
+                                                     "/generatorControl")},
+                         {status, tgen:traffic_started()}
                          | List1];
                 _ -> List1
             end,
