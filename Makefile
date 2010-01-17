@@ -3,6 +3,7 @@
 TMP_DIR=./tmp
 TMP_VER=$(TMP_DIR)/version_num.tmp
 DIST_DIR=$(TMP_DIR)/menelaus
+SPROCKETIZE=`which sprocketize`
 
 all: deps priv/public/js/all.js priv/public/js/t-all.js
 	erl -make
@@ -10,11 +11,11 @@ all: deps priv/public/js/all.js priv/public/js/t-all.js
 
 priv/public/js/all.js: priv/js/*.js
 	mkdir -p `dirname $@`
-	sprocketize -I priv/js priv/js/app.js >$@
+	$(SPROCKETIZE) -I priv/js priv/js/app.js >$@
 
 priv/public/js/t-all.js: priv/js/*.js
 	mkdir -p `dirname $@`
-	sprocketize -I priv/js priv/js/app.js priv/js/hooks.js >$@
+	$(SPROCKETIZE) -I priv/js priv/js/app.js priv/js/hooks.js >$@
 
 deps:
 	$(MAKE) -C deps/mochiweb-src
