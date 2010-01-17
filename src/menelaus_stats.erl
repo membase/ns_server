@@ -20,6 +20,7 @@
 
 -import(menelaus_util,
         [reply_json/2,
+         expect_prop_value/2,
          java_date/0,
          string_hash/1,
          my_seed/1,
@@ -30,9 +31,13 @@
 
 %% External API
 
-basic_stats(_PoolId, _BucketId) ->
+basic_stats(PoolId, BucketId) ->
+    Pool = menelaus_web:find_pool_by_id(PoolId),
+    Bucket = menelaus_web:find_bucket_by_id(Pool, BucketId),
+    MbPerNode = expect_prop_value(size_per_node, Bucket),
+    NumNodes = length(ns_node_disco:nodes_wanted()),
     % TODO.
-    [{cacheSize, 64},
+    [{cacheSize, NumNodes * MbPerNode},
      {opsPerSec, 100},
      {evictionsPerSec, 5},
      {cachePercentUsed, 50}].
@@ -108,26 +113,22 @@ build_bucket_stats_response(_PoolId, _Id, Params, Now) ->
                            {K, NewSamples}
                    end,
                    Samples),
-    {struct, [{hot_keys, [{struct, [{name, <<"user:image:value">>},
+    {struct, [{hot_keys, [{struct, [{name, <<"product:3240:inventory">>},
                                     {gets, 10000},
-                                    {bucket, <<"Exerciser application">>},
-                                    {misses, 100},
-                                    {type, <<"Persistent">>}]},
+                                    {bucket, <<"shopping application">>},
+                                    {misses, 100}]},
                           {struct, [{name, <<"user:image:value2">>},
                                     {gets, 10000},
-                                    {bucket, <<"Exerciser application">>},
-                                    {misses, 100},
-                                    {type, <<"Cache">>}]},
-                          {struct, [{name, <<"user:image:value3">>},
+                                    {bucket, <<"chat application">>},
+                                    {misses, 100}]},
+                          {struct, [{name, <<"blog:117">>},
                                     {gets, 10000},
-                                    {bucket, <<"Exerciser application">>},
-                                    {misses, 100},
-                                    {type, <<"Persistent">>}]},
+                                    {bucket, <<"blog application">>},
+                                    {misses, 100}]},
                           {struct, [{name, <<"user:image:value4">>},
                                     {gets, 10000},
-                                    {bucket, <<"Exerciser application">>},
-                                    {misses, 100},
-                                    {type, <<"Cache">>}]}]},
+                                    {bucket, <<"chat application">>},
+                                    {misses, 100}]}]},
               {op, {struct, [{tstamp, LastSampleTstamp},
                              {samplesInterval, SamplesInterval}
                              | CutSamples]}}]}.

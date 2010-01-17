@@ -16,7 +16,9 @@
          wrap_tests_with_cache_setup/1]).
 -endif.
 
--export([start/1, stop/0, loop/2]).
+-export([start/1, stop/0, loop/2,
+         find_pool_by_id/1,
+         find_bucket_by_id/2]).
 
 -import(simple_cache, [call_simple_cache/2]).
 
