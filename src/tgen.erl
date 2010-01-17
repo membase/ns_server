@@ -10,6 +10,7 @@
 -behaviour(gen_event).
 
 -export([start_link/0,
+         is_traffic_bucket/2,
          traffic_start/0,
          traffic_stop/0,
          traffic_started/0,
@@ -42,6 +43,10 @@ start_link() ->
                        gen_event:add_handler(ns_config_events,
                                              ?MODULE, ignored)
                     end)}.
+
+is_traffic_bucket(PoolName, BucketName) ->
+    PoolName =:= ?TGEN_POOL andalso
+    BucketName =:= ?TGEN_BUCKET.
 
 traffic_start() ->
     gen_event:call(ns_config_events, ?MODULE, traffic_start).
