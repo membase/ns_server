@@ -5,7 +5,7 @@
 %% @doc Web server for menelaus.
 
 -module(menelaus_stats).
--author('Northscale <info@northscale.com>').
+-author('NorthScale <info@northscale.com>').
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -38,7 +38,7 @@ basic_stats(_PoolId, _BucketId) ->
      {cachePercentUsed, 50}].
 
 handle_bucket_stats(PoolId, all, Req) ->
-    % TODO.
+    % TODO: get aggregate stats for all buckets.
     handle_bucket_stats(PoolId, "default", Req);
 
 handle_bucket_stats(PoolId, Id, Req) ->
@@ -88,42 +88,44 @@ build_bucket_stats_response(_PoolId, _Id, Params, Now) ->
                     _ ->
                         StartTstamp = list_to_integer(StartTstampParam),
                         CutMsec = Now - StartTstamp,
-                        if
-                            ((CutMsec > 0) andalso
-                             (CutMsec < SamplesInterval*SamplesSize)) ->
+                        if ((CutMsec > 0) andalso
+                            (CutMsec < SamplesInterval*SamplesSize)) ->
                                 N = trunc(CutMsec/SamplesInterval),
                                 {StartTstamp + N * SamplesInterval, N};
                             true -> {Now, SamplesSize}
                         end
                 end,
     Rotates = (Now div 1000) rem SamplesSize,
-    CutSamples = lists:map(fun ({K, S}) ->
-                                   V = case SamplesInterval of
-                                           1 -> lists:sublist(lists:append(S, S), Rotates + 1, SamplesSize);
-                                           _ -> S
-                                       end,
-                                   NewSamples = lists:sublist(V, SamplesSize-CutNumber+1, CutNumber),
-                                   {K, NewSamples}
-                           end,
-                           Samples),
+    CutSamples = lists:map(
+                   fun ({K, S}) ->
+                           V = case SamplesInterval of
+                                   1 -> lists:sublist(lists:append(S, S),
+                                                      Rotates + 1,
+                                                      SamplesSize);
+                                   _ -> S
+                               end,
+                           NewSamples = lists:sublist(V, SamplesSize-CutNumber+1, CutNumber),
+                           {K, NewSamples}
+                   end,
+                   Samples),
     {struct, [{hot_keys, [{struct, [{name, <<"user:image:value">>},
                                     {gets, 10000},
-                                    {bucket, <<"Excerciser application">>},
+                                    {bucket, <<"Exerciser application">>},
                                     {misses, 100},
                                     {type, <<"Persistent">>}]},
                           {struct, [{name, <<"user:image:value2">>},
                                     {gets, 10000},
-                                    {bucket, <<"Excerciser application">>},
+                                    {bucket, <<"Exerciser application">>},
                                     {misses, 100},
                                     {type, <<"Cache">>}]},
                           {struct, [{name, <<"user:image:value3">>},
                                     {gets, 10000},
-                                    {bucket, <<"Excerciser application">>},
+                                    {bucket, <<"Exerciser application">>},
                                     {misses, 100},
                                     {type, <<"Persistent">>}]},
                           {struct, [{name, <<"user:image:value4">>},
                                     {gets, 10000},
-                                    {bucket, <<"Excerciser application">>},
+                                    {bucket, <<"Exerciser application">>},
                                     {misses, 100},
                                     {type, <<"Cache">>}]}]},
               {op, {struct, [{tstamp, LastSampleTstamp},

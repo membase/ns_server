@@ -5,7 +5,7 @@
 %% @doc Web server for menelaus.
 
 -module(menelaus_web).
--author('Northscale <info@northscale.com>').
+-author('NorthScale <info@northscale.com>').
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -230,7 +230,8 @@ handle_bucket_list(Id, Req) ->
                                                   "/buckets/" ++ Name)},
                                  {name, list_to_binary(Name)},
                                  {basicStats,
-                                  menelaus_stats:basic_stats(Id, Name)},
+                                  {struct,
+                                   menelaus_stats:basic_stats(Id, Name)}},
                                  {sampleConnectionString,
                                   <<"fake connection string">>}]}
                    || Name <- proplists:get_keys(Buckets)],
