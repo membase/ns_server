@@ -31,15 +31,20 @@
 %% External API
 
 basic_stats(_PoolId, _BucketId) ->
+    % TODO.
     [{cacheSize, 64},
      {opsPerSec, 100},
      {evictionsPerSec, 5},
      {cachePercentUsed, 50}].
 
-handle_bucket_stats(_PoolId, Id, Req) ->
+handle_bucket_stats(PoolId, all, Req) ->
+    % TODO.
+    handle_bucket_stats(PoolId, "default", Req);
+
+handle_bucket_stats(PoolId, Id, Req) ->
     Now = java_date(),
     Params = Req:parse_qs(),
-    Res = build_bucket_stats_response(Id, Params, Now),
+    Res = build_bucket_stats_response(PoolId, Id, Params, Now),
     reply_json(Req, Res).
 
 %% Implementation
@@ -65,7 +70,7 @@ mk_samples(Mode) ->
                   end,
     caching_result(Key, Computation).
 
-build_bucket_stats_response(_Id, Params, Now) ->
+build_bucket_stats_response(_PoolId, _Id, Params, Now) ->
     OpsPerSecondZoom = case proplists:get_value("opsPerSecondZoom", Params) of
                            undefined -> "1hr";
                            Val -> Val
@@ -142,7 +147,7 @@ mk_samples_basic_test() ->
 
 build_bucket_stats_response_cutting_1_test() ->
     Now = 1259747673659,
-    Res = build_bucket_stats_response("4",
+    Res = build_bucket_stats_response("default", "bucket4",
                                       [{"opsPerSecondZoom", "now"},
                                        {"keysOpsPerSecondZoom", "now"},
                                        {"opsbysecondStartTStamp", "1259747672559"}],

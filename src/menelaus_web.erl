@@ -55,7 +55,7 @@ loop(Req, DocRoot) ->
                              {auth_bucket, fun handle_pool_info/2, [Id]};
                          ["pools", Id, "stats"] ->
                              {auth, fun menelaus_stats:handle_bucket_stats/3,
-                              ["asd", Id]};
+                              [Id, all]};
                          ["poolsStreaming", Id] ->
                              {auth, fun handle_pool_info_streaming/2, [Id]};
                          ["pools", PoolId, "buckets"] ->
