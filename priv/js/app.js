@@ -13,6 +13,7 @@
 //= require <callbacks.js>
 //= require <cells.js>
 //= require <hash-fragment-cells.js>
+//= require <right-form-observer.js>
 
 
 // TODO: doesn't work due to apparent bug in jqModal. Consider switching to another modal windows implementation
@@ -506,7 +507,7 @@ var BucketsSection = {
   onEnter: function () {
     this.cells.detailsPageURI.recalculate();
   },
-  checkPasswordsMatch: function () {
+  checkFormChanges: function () {
     var parent = $('#add_new_bucket_dialog');
     var passwd = parent.find("[name=password]").val();
     var passwd2 = parent.find("[name=verifyPassword]").val();
@@ -535,15 +536,14 @@ var BucketsSection = {
   },
   startCreate: function () {
     var parent = $('#add_new_bucket_dialog');
-    var checkPasswordsMatch = _.bind(_.defer, _, $m(this, 'checkPasswordsMatch'));
 
     var inputs = parent.find('input[type=text]');
     inputs = inputs.add(parent.find('input[type=password]'));
     inputs.val('');
     this.lastCacheValue = undefined;
 
-    var events = 'change mousemove click keypress'
-    parent.bind(events, checkPasswordsMatch);
+    var observer = parent.observePotentialChanges($m(this, 'checkFormChanges'));
+
     parent.find('form').bind('submit', function (e) {
       e.preventDefault();
       BucketsSection.createSubmit();
@@ -551,7 +551,7 @@ var BucketsSection = {
 
     parent.jqm({modal:true,
                 onHide: function (h) {
-                  inputs.unbind(events, checkPasswordsMatch);
+                  observer.stopObserving();
                   parent.find('form').unbind();
                   // copied from jqmodal itself
                   h.w.hide() && h.o && h.o.remove();
