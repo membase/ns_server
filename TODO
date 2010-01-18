@@ -22,7 +22,7 @@ o [DONE] basic
 * remove bucket
 * flush all
 * change password
-o [DONE] sample connection string
+* implement REST server side 
 
 TEST APPLICATION BUCKET
 * implement
@@ -49,7 +49,8 @@ CONSOLE LOGIN
 * (re)implement
 
 ADD BUCKET
-* implement (with button on BUCKET PROPERTIES section)
+o [DONE] implement (with button on BUCKET PROPERTIES section)
+* implement server side
 
 
 * Store password/login in cookies ? So that you don't have to re-enter
