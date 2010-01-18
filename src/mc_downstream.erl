@@ -43,9 +43,12 @@ monitor(Addr) ->
 
 demonitor(undefined)   -> ok;
 demonitor(MonitorRefs) ->
-    % TODO: Need to remove any DOWN messages that are already
-    %       waiting in our/self()'s mailbox?
-    lists:foreach(fun erlang:demonitor/1, MonitorRefs),
+    % The flush removes a single DOWN message, if any, that are
+    % already waiting in our/self()'s mailbox.
+    lists:foreach(fun(MonitorRef) ->
+                          erlang:demonitor(MonitorRef, [flush])
+                  end,
+                  MonitorRefs),
     ok.
 
 send(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule) ->
