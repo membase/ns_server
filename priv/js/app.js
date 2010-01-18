@@ -513,6 +513,25 @@ var BucketsSection = {
     //console.log("pwd: ", passwd, passwd2);
     var show = (passwd != passwd2);
     parent.find('.dont-match')[show ? 'show' : 'hide']();
+
+    var cache = parent.find('[name=cacheSize]').val();
+    if (cache != this.lastCacheValue) {
+      this.lastCacheValue = cache;
+
+      var cacheValue;
+      if (/^\s*\d+\s*$/.exec(cache)) {
+        cacheValue = parseInt(cache, 10);
+      }
+    
+      var detailsText;
+      if (cacheValue != undefined) {
+        var nodesCnt = DAO.cells.currentPoolDetails.value.nodes.length;
+        detailsText = " MB x " + nodesCnt + " server nodes = " + nodesCnt * cacheValue + "MB Total Cache Size/?? Cluster Memory Available"
+      } else {
+        detailsText = "";
+      }
+      parent.find('.cache-details').html(escapeHTML(detailsText));
+    }
   },
   startCreate: function () {
     var parent = $('#add_new_bucket_dialog');
@@ -521,6 +540,7 @@ var BucketsSection = {
     var inputs = parent.find('input[type=text]');
     inputs = inputs.add(parent.find('input[type=password]'));
     inputs.val('');
+    this.lastCacheValue = undefined;
 
     var events = 'change mousemove click keypress'
     parent.bind(events, checkPasswordsMatch);
