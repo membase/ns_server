@@ -25,7 +25,7 @@ MEMCAPABLE_HOST=127.0.0.1
 
 MEMCAPABLE_PORT=11211
 
-.PHONY: ebins
+.PHONY: ebins $(NS_SERVER_EBIN)
 
 all: ebins test
 
@@ -56,7 +56,7 @@ test: test_unit cucumber
 test_full: test memcapable
 
 test_unit: ebins $(NS_SERVER_EBIN)
-	erl $(EFLAGS) -noshell -s mc_test test -s init stop -kernel error_logger silent
+	erl $(EFLAGS) ../../ebin -noshell -s mc_test test -s init stop -kernel error_logger silent
 
 test_unit_verbose: ebins $(NS_SERVER_EBIN)
 	erl $(EFLAGS) -noshell -s mc_test test -s init stop
@@ -89,7 +89,7 @@ test_client_binary:
 test_client: test_client_ascii test_client_binary
 
 cucumber: ebin $(NS_SERVER_EBIN)
-	erl $(EFLAGS) -noshell -s mc_test cucumber -s init stop
+	erl $(EFLAGS) ../../ebin -noshell -s mc_test cucumber -s init stop
 
 dialyzer: ebin $(NS_SERVER_EBIN)
 	dialyzer -pa ebin -I include -r .
