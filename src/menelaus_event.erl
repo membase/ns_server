@@ -11,7 +11,8 @@
 
 -export([start_link/0]).
 
--export([register_watcher/1,
+-export([watchers/0,
+         register_watcher/1,
          unregister_watcher/1]).
 
 %% gen_event callbacks
@@ -34,6 +35,12 @@ start_link() ->
                                              {?MODULE, ns_node_disco_events},
                                              ns_node_disco_events)
                     end)}.
+
+watchers() ->
+    {gen_event:call(ns_config_events,
+                    {?MODULE, ns_config_events}, watchers),
+     gen_event:call(ns_node_disco_events,
+                    {?MODULE, ns_node_disco_events}, watchers)}.
 
 register_watcher(Pid) ->
     gen_event:call(ns_config_events,
@@ -74,6 +81,9 @@ handle_event({ns_node_disco_events, _NodesBefore, _NodesAfter}, State) ->
 handle_event(_, State) ->
     {ok, State}.
 
+handle_call(watchers, #state{watchers = Watchers} = State) ->
+    {ok, Watchers, State};
+
 handle_call({register_watcher, Pid},
             #state{watchers = Watchers} = State) ->
     Watchers2 = case lists:keysearch(Pid, 1, Watchers) of
@@ -100,9 +110,11 @@ handle_call(Request, State) ->
 
 handle_info({'DOWN', MonitorRef, _, _, _},
             #state{watchers = Watchers} = State) ->
+    error_logger:info_msg("menelaus_event watcher down."),
     Watchers2 = case lists:keytake(MonitorRef, 2, Watchers) of
                     false -> Watchers;
-                    {value, {_Pid, MonitorRef}, WatchersRest} ->
+                    {value, {Pid, MonitorRef}, WatchersRest} ->
+                        error_logger:info_msg("menelaus_event watcher down: ~p~n", [Pid]),
                         erlang:demonitor(MonitorRef, [flush]),
                         WatchersRest
                 end,
