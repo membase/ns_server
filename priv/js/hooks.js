@@ -169,7 +169,73 @@ var MockedRequest = mkClass({
     this.fakeResponse(resp);
   },
   respondPOST: function () {
+    if (_.isEqual(this.path, ["buckets"])) {
+      return this.handleBucketsPost();
+    }
+
     this.fakeResponse('');
+  },
+
+  // mostly stolen from MIT-licensed prototypejs.org (String#toQueryParams)
+  deserialize: function (dataString) {
+    return _.reduce(dataString.split('&'), { }, function(hash, pair) {
+      if ((pair = pair.split('='))[0]) {
+        var key = decodeURIComponent(pair.shift());
+        var value = pair.length > 1 ? pair.join('=') : pair[0];
+        if (value != undefined) value = decodeURIComponent(value);
+
+        if (key in hash) {
+          if (!_.isArray(hash[key]))
+            hash[key] = [hash[key]];
+          hash[key].push(value);
+        }
+        else hash[key] = value;
+      }
+      return hash;
+    });
+  },
+
+  handleBucketsPost: function () {
+    var self = this;
+
+    var params = this.deserialize(this.options.data)
+    console.log("params: ", params);
+    var errors = [];
+    // check password at UI side
+    // if (params['password'] != params['verifyPassword'])
+    //   errors.push("passwords don't match");
+
+    if (isBlank(params['name'])) {
+      errors.push('name cannot be blank');
+    } else if (params['name'] != 'new-name') {
+      errors.push('name has already been taken');
+    }
+
+    if (!(/^\d*$/.exec(params['cacheSize']))) {
+      errors.push("cache size must be integer");
+    }
+
+    if (isBlank(params['password'])) {
+      errors.push('password cannot be blank');
+    }
+
+    if (errors.length) {
+      var resp = {errors: errors}
+      var fakeXHR = {status: 400};
+      _.defer(function () {
+        var oldHttpData = $.httpData;
+        $.httpData = function () {return resp;}
+
+        try {
+          self.options.error(fakeXHR, 'error');
+        } finally {
+          $.httpData = oldHttpData;
+        }
+      });
+      return;
+    }
+
+    self.fakeResponse('');
   },
 
   handlePoolDetails: function () {

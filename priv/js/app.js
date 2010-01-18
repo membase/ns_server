@@ -506,8 +506,33 @@ var BucketsSection = {
   onEnter: function () {
     this.cells.detailsPageURI.recalculate();
   },
+  checkPasswordsMatch: function () {
+    var parent = $('#add_new_bucket_dialog');
+    var passwd = parent.find("[name=password]").val();
+    var passwd2 = parent.find("[name=verifyPassword]").val();
+    //console.log("pwd: ", passwd, passwd2);
+    var show = (passwd != passwd2);
+    parent.find('.dont-match')[show ? 'show' : 'hide']();
+  },
   startCreate: function () {
-    $('#add_new_bucket_dialog').jqm({modal:true}).jqmShow();
+    var parent = $('#add_new_bucket_dialog');
+    var checkPasswordsMatch = _.bind(_.defer, _, $m(this, 'checkPasswordsMatch'));
+
+    var inputs = parent.find('input[type=text]');
+    inputs = inputs.add(parent.find('input[type=password]'));
+    inputs.val('');
+
+    var events = 'change mousemove click keypress'
+    parent.bind(events, checkPasswordsMatch);
+    parent.jqm({modal:true,
+                onHide: function (h) {
+                  inputs.unbind(events, checkPasswordsMatch);
+                  // copied from jqmodal itself
+                  h.w.hide() && h.o && h.o.remove();
+                }}).jqmShow();
+  },
+  finishCreate: function () {
+    $('#add_new_bucket_dialog').jqm({modal:true}).jqmHide();
   },
   createSubmit: function () {
     var res = $('#add_new_bucket_form').serialize();
@@ -536,10 +561,9 @@ var BucketsSection = {
         }
 
         data = $.httpData(data, this.dataType, this);
-
-        alert('TODO: display validation errors here');
+        renderTemplate("add_new_bucket_errors", data.errors);
       } else {
-        $('#add_new_bucket_dialog').jqm({modal:true}).jqmHide();
+        self.finishCreate();
         self.cells.detailedBuckets.recalculate();
       }
     }

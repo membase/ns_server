@@ -192,3 +192,7 @@ function ModalAction() {
   this.finish = function () {
   }
 }
+
+function isBlank(e) {
+  return e == null || !e.length;
+}
