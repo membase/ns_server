@@ -524,9 +524,15 @@ var BucketsSection = {
 
     var events = 'change mousemove click keypress'
     parent.bind(events, checkPasswordsMatch);
+    parent.find('form').bind('submit', function (e) {
+      e.preventDefault();
+      BucketsSection.createSubmit();
+    });
+
     parent.jqm({modal:true,
                 onHide: function (h) {
                   inputs.unbind(events, checkPasswordsMatch);
+                  parent.find('form').unbind();
                   // copied from jqmodal itself
                   h.w.hide() && h.o && h.o.remove();
                 }}).jqmShow();
