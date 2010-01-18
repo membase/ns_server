@@ -195,6 +195,8 @@ handle_pool_info_streaming(Id, Req) ->
     HTTPRes = Req:ok({"application/json; charset=utf-8",
                       server_header(),
                       chunked}),
+    %% Register to get config state change messages.
+    menelaus_event:register_watcher(self()),
     handle_pool_info_streaming(Id, Req, UserPassword, HTTPRes,
                                undefined, 3000).
 
@@ -209,8 +211,6 @@ handle_pool_info_streaming(Id, Req, UserPassword, HTTPRes,
             %%       indicates the end of a response for now
             HTTPRes:write_chunk("\n\n\n\n")
     end,
-    %% Register to get config state change messages.
-    menelaus_event:register_watcher(self()),
     receive
         {notify_watcher, _} -> ok;
         _ -> ok
@@ -282,6 +282,8 @@ handle_bucket_info_streaming(PoolId, Id, Req) ->
     HTTPRes = Req:ok({"application/json; charset=utf-8",
                       server_header(),
                       chunked}),
+    %% Register to get config state change messages.
+    menelaus_event:register_watcher(self()),
     handle_bucket_info_streaming(PoolId, Id, Req, UserPassword, HTTPRes,
                                  undefined, 3000).
 
@@ -296,8 +298,6 @@ handle_bucket_info_streaming(PoolId, Id, Req, UserPassword, HTTPRes,
             %%       indicates the end of a response for now
             HTTPRes:write_chunk("\n\n\n\n")
     end,
-    %% Register to get config state change messages.
-    menelaus_event:register_watcher(self()),
     receive
         {notify_watcher, _} -> ok;
         _ -> ok
