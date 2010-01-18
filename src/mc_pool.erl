@@ -30,7 +30,8 @@
          pool_config_make/1,
          pool_config_make/2,
          pool_config_set/3,
-         pool_config_get/2]).
+         pool_config_get/2,
+         list/0]).
 
 %% gen_server callbacks
 -export([init/1, terminate/2, code_change/3,
@@ -67,6 +68,9 @@ bucket_choose_addrs({mc_pool_bucket, PoolName, BucketName}, Key, N) ->
 % -------------------------------------------------------
 
 % Create & read configuration for pools.
+
+list() ->
+    lists:map(fun({K, _V}) -> K end, pools_config_get()).
 
 pools_config_get() ->
     case ns_config:search(ns_config:get(), pools) of

@@ -24,7 +24,8 @@
          bucket_config_set/3,
          bucket_config_get/2,
          bucket_config_get/3,
-         addrs/2]).
+         addrs/2,
+         list/1]).
 
 %% API for buckets.
 
@@ -162,6 +163,11 @@ bucket_config_get(Pools, PoolName, BucketName) ->
         false      -> false;
         PoolConfig -> bucket_config_get(PoolConfig, BucketName)
     end.
+
+list(Pool) ->
+    PoolConf = mc_pool:pool_config_get(mc_pool:pools_config_get(), Pool),
+    proplists:get_value(buckets, PoolConf),
+    lists:map(fun({K,_V}) -> K end, proplists:get_value(buckets, PoolConf)).
 
 % ------------------------------------------------
 
