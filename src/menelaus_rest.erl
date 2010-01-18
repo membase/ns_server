@@ -2,7 +2,7 @@
 %% @copyright 2009 NorthScale, Inc.
 %% All rights reserved.
 
-%% @doc Supervisor for the menelaus application.
+%% @doc REST client for the menelaus application.
 
 -module(menelaus_rest).
 -author('Northscale <info@northscale.com>').
@@ -33,7 +33,7 @@ rest_get_json(Url, Auth) ->
     end.
 
 % Returns the otpNode & otpCookie for a remote node.
-% This is part of joining a node to a otp cluster.
+% This is part of joining a node to an otp cluster.
 
 rest_get_otp(Host, Port, Auth) ->
     {ok, {struct, KVList}} =

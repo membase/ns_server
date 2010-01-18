@@ -203,9 +203,11 @@ handle_pool_info_streaming(Id, Req, UserPassword, HTTPRes,
             %%       indicates the end of a response for now
             HTTPRes:write_chunk("\n\n\n\n")
     end,
-    %% TODO: this shouldn't be timer driven, but rather should
-    %% register a callback based on some state change in the Erlang OS
+    %% Register to get config state change messages.
+    menelaus_event:register_watcher(self()),
     receive
+        {notify_watcher, _} -> ok;
+        _ -> ok
     after Wait -> ok
     end,
     handle_pool_info_streaming(Id, Req, UserPassword, HTTPRes,
@@ -288,10 +290,12 @@ handle_bucket_info_streaming(PoolId, Id, Req, UserPassword, HTTPRes,
             %%       indicates the end of a response for now
             HTTPRes:write_chunk("\n\n\n\n")
     end,
-    %% TODO: this shouldn't be timer driven, but rather should
-    %% register a callback based on some state change in the Erlang OS
+    %% Register to get config state change messages.
+    menelaus_event:register_watcher(self()),
     receive
-        after Wait -> ok
+        {notify_watcher, _} -> ok;
+        _ -> ok
+    after Wait -> ok
     end,
     handle_bucket_info_streaming(PoolId, Id, Req, UserPassword, HTTPRes,
                                  Res, Wait).

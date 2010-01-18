@@ -65,6 +65,10 @@ init([]) ->
            {menelaus_web, start, [WebConfig]},
            permanent, 5000, worker, dynamic},
 
+    WebEvent = {menelaus_event,
+                {menelaus_event, start_link, []},
+                transient, 5000, worker, dynamic},
+
     SimpleCache = {simple_cache,
                    {simple_cache, start_link, []},
                    permanent, 5000, worker, dynamic},
@@ -75,5 +79,5 @@ init([]) ->
              [stats_sup, stats_aggregator, stat_collection_clock,
               stats_collector]},
 
-    Processes = [Web, SimpleCache, Stats],
+    Processes = [Web, WebEvent, SimpleCache, Stats],
     {ok, {{one_for_one, 10, 10}, Processes}}.
