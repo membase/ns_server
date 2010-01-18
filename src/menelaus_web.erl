@@ -154,7 +154,6 @@ build_nodes_info(MyPool, IncludeOtp) ->
     OtpCookie = list_to_binary(atom_to_list(ns_node_disco:cookie_get())),
     WantENodes = ns_node_disco:nodes_wanted(),
     ActualENodes = ns_node_disco:nodes_actual_proper(),
-    ProxyPort = expect_prop_value(port, MyPool),
     Nodes =
         lists:map(
           fun(WantENode) ->
@@ -166,6 +165,7 @@ build_nodes_info(MyPool, IncludeOtp) ->
                                false -> <<"unhealthy">>
                            end,
                   {value, DirectPort} = direct_port(WantENode),
+                  ProxyPort = pool_proxy_port(MyPool, WantENode),
                   KV1 = [{hostname, list_to_binary(Host)},
                          {status, Status},
                          {ports,
@@ -183,6 +183,12 @@ build_nodes_info(MyPool, IncludeOtp) ->
           end,
           WantENodes),
     Nodes.
+
+pool_proxy_port(PoolConfig, Node) ->
+    case proplists:get_value({node, Node, port}, PoolConfig, false) of
+        false -> expect_prop_value(port, PoolConfig);
+        Port  -> Port
+    end.
 
 handle_pool_info_streaming(Id, Req) ->
     UserPassword = menelaus_auth:extract_auth(Req),
