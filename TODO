@@ -50,8 +50,8 @@ CONSOLE LOGIN
 
 ADD BUCKET
 o [DONE] implement (with button on BUCKET PROPERTIES section)
+* fix ?? in Total Cluster Memory estimation in creation form
 * implement server side
-
 
 * Store password/login in cookies ? So that you don't have to re-enter
    them on page refresh.
