@@ -67,8 +67,13 @@ For example:
 
     ./start_shell.sh -name ns_2 -ns_server ns_server_config "priv/config2"
 
-Tip: for some shells, you might have to add backslashes around the
-path double-quotes -- like \"priv/config\"
+Tip: if you see error message like...
+
+    =ERROR REPORT==== 18-Jan-2010::10:45:00 ===
+    application_controller: bad term: priv/config2
+
+Then you will have to add backslashes around the path double-quotes --
+like \"priv/config\"
 
 * * * * *
 Copyright (c) 2010, NorthScale, Inc.
