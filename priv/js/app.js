@@ -109,23 +109,6 @@ $.ajaxSetup({
   }
 });
 
-function deeperEquality(a, b) {
-  var typeA = typeof(a);
-  var typeB = typeof(b);
-  if (typeA != typeB)
-    return false;
-  var keysA = _.keys(a);
-  var keysUnion = _.uniq(_.keys(b).sort(jsComparator), true);
-  if (keysA.length != keysUnion.length)
-    return false;
-
-  for (var key in a)
-    if (a[key] != b[key])
-      return false;
-
-  return true;
-}
-
 var DAO = {
   ready: false,
   cells: {},
@@ -214,7 +197,7 @@ var SamplesRestorer = mkClass({
     update: function (options) {
       this.modifyValue(_.bind($.extend, $, {}), options);
     },
-    equality: deeperEquality
+    equality: _.isEqual
   });
 
   var samplesRestorerCell = new Cell(function (target, options) {
