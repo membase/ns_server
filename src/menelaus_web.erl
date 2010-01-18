@@ -197,6 +197,8 @@ handle_pool_info_streaming(Id, Req) ->
                       chunked}),
     %% Register to get config state change messages.
     menelaus_event:register_watcher(self()),
+    Sock = Req:get(socket),
+    inet:setopts(Sock, [{active, true}]),
     handle_pool_info_streaming(Id, Req, UserPassword, HTTPRes,
                                undefined, 3000).
 
@@ -206,6 +208,8 @@ handle_pool_info_streaming(Id, Req, UserPassword, HTTPRes,
     case Res =:= LastRes of
         true -> ok;
         false ->
+            error_logger:info_msg("menelaus_web streaming: ~p~n",
+                                  [Res]),
             HTTPRes:write_chunk(mochijson2:encode(Res)),
             %% TODO: resolve why mochiweb doesn't support zero chunk... this
             %%       indicates the end of a response for now
@@ -213,7 +217,9 @@ handle_pool_info_streaming(Id, Req, UserPassword, HTTPRes,
     end,
     receive
         {notify_watcher, _} -> ok;
-        _ -> ok
+        _ ->
+            error_logger:info_msg("menelaus_web streaming socket closed~n"),
+            exit(normal)
     after Wait -> ok
     end,
     handle_pool_info_streaming(Id, Req, UserPassword, HTTPRes,
@@ -284,6 +290,8 @@ handle_bucket_info_streaming(PoolId, Id, Req) ->
                       chunked}),
     %% Register to get config state change messages.
     menelaus_event:register_watcher(self()),
+    Sock = Req:get(socket),
+    inet:setopts(Sock, [{active, true}]),
     handle_bucket_info_streaming(PoolId, Id, Req, UserPassword, HTTPRes,
                                  undefined, 3000).
 
@@ -293,6 +301,8 @@ handle_bucket_info_streaming(PoolId, Id, Req, UserPassword, HTTPRes,
     case Res =:= LastRes of
         true -> ok;
         false ->
+            error_logger:info_msg("menelaus_web streaming: ~p~n",
+                                  [Res]),
             HTTPRes:write_chunk(mochijson2:encode(Res)),
             %% TODO: resolve why mochiweb doesn't support zero chunk... this
             %%       indicates the end of a response for now
@@ -300,7 +310,9 @@ handle_bucket_info_streaming(PoolId, Id, Req, UserPassword, HTTPRes,
     end,
     receive
         {notify_watcher, _} -> ok;
-        _ -> ok
+        _ ->
+            error_logger:info_msg("menelaus_web streaming socket closed~n"),
+            exit(normal)
     after Wait -> ok
     end,
     handle_bucket_info_streaming(PoolId, Id, Req, UserPassword, HTTPRes,
