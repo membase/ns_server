@@ -64,6 +64,13 @@ var TestingSupervisor = {
   interceptAjax: function () {
     this.installInterceptor('interceptedAjax', $, 'ajax');
   },
+  interceptedAjax: function (original, options) {
+    console.log("intercepted ajax:", options);
+    (new MockedRequest(options)).respond();
+  }
+};
+
+var MockedRequest = mkClass({
   alertsResponse: {limit: 15,
                    settings: {updateURI: "/alerts/settings"},
                    list: [{number: 3,
@@ -81,11 +88,13 @@ var TestingSupervisor = {
                            tstamp: 1259836260000,
                            shortText: "Server Node Down",
                            text: "Server node is no longer available"}]},
-  interceptedAjax: function (original, options) {
+  initialize: function (options) {
     if (options.type != 'GET' && options.type != 'POST') {
       throw new Error("unknown method: " + options.type);
     }
-    console.log("intercepted ajax:", options);
+
+    this.options = options;
+
     var url = options.url;
     var hostPrefix = document.location.protocol + ":/" + document.location.host;
     if (url.indexOf(hostPrefix) == 0)
@@ -95,22 +104,28 @@ var TestingSupervisor = {
     if (url.lastIndexOf("/") == url.length - 1)
       url = url.substring(0, url.length - 1);
 
+    this.url = url;
+
     var path = url.split("/")
-
-    var fakeResponse = function (data) {
-      _.defer(function () {
-        if (data instanceof Function) {
-          data.call(null, fakeResponse);
-          return;
-        }
-        options.success(data, 'success');
-      });
-    }
-
-    if (options.type == 'POST') {
-      fakeResponse('');
-      return;
-    }
+    this.path = path;
+  },
+  fakeResponse: function (data) {
+    var self = this;
+    _.defer(function () {
+      if (data instanceof Function) {
+        data.call(null, fakeResponse);
+        return;
+      }
+      self.options.success(data, 'success');
+    });
+  },
+  respond: function () {
+    if (this.options.type == 'GET')
+      return this.respondGET();
+    return this.respondPOST();
+  },
+  respondGET: function () {
+    var path = this.path;
 
     var resp;
     if (path[0] == "pools") {
@@ -141,20 +156,22 @@ var TestingSupervisor = {
                   name: "default"};
       } else {
         // /buckets/:id/stats
-        resp = this.handleStats(options["data"]);
+        resp = this.handleStats();
       }
     } else if (path[0] == 'alerts' && path.length == 1) {
       // /alerts
       resp = this.alertsResponse;
     } else {
-      throw new Error("Unknown ajax path: " + options.url);
+      throw new Error("Unknown ajax path: " + this.options.url);
     }
 
     console.log("res is", resp);
-    _.defer(function () {
-      fakeResponse(resp);
-    });
+    this.fakeResponse(resp);
   },
+  respondPOST: function () {
+    this.fakeResponse('');
+  },
+
   handlePoolDetails: function () {
     return {nodes: [{hostname: "mickey-mouse.disney.com",
                      status: "healthy",
@@ -232,7 +249,8 @@ var TestingSupervisor = {
              },
              sampleConnectionString: "new-year-site-staging sample connection string"}]
   },
-  handleStats: function (params) {
+  handleStats: function () {
+    var params = this.options['data'];
     var opsPerSecondZoom = params['opsPerSecondZoom'] || "now";
     var allSamples = {
       '1hr': {"gets":[3,14,23,52,45,25,23,22,50,67,59,55,54,41,36,35,26,61,72,49,60],
@@ -310,10 +328,7 @@ var TestingSupervisor = {
             op: _.extend({tstamp: lastSampleTstamp,
                           'samplesInterval': samplesInterval},
                          samples)};
-  },
-  interceptedPost: function (options) {
-    
   }
-};
+});
 
 TestingSupervisor.interceptAjax();
