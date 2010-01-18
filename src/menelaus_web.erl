@@ -185,30 +185,25 @@ build_nodes_info(MyPool, IncludeOtp) ->
     Nodes.
 
 handle_pool_info_streaming(Id, Req) ->
-    %% TODO: this shouldn't be timer driven, but rather should
-    %% register a callback based on some state change in the Erlang OS
+    UserPassword = menelaus_auth:extract_auth(Req),
     HTTPRes = Req:ok({"application/json; charset=utf-8",
                       server_header(),
                       chunked}),
-    UserPassword = menelaus_auth:extract_auth(Req),
+    handle_pool_info_streaming(Id, Req, UserPassword, HTTPRes,
+                               3000).
+
+handle_pool_info_streaming(Id, Req, UserPassword, HTTPRes, Wait) ->
     Res = build_pool_info(Id, UserPassword),
     HTTPRes:write_chunk(mochijson2:encode(Res)),
     %% TODO: resolve why mochiweb doesn't support zero chunk... this
     %%       indicates the end of a response for now
     HTTPRes:write_chunk("\n\n\n\n"),
-    handle_pool_info_streaming(Id, Req, HTTPRes, 3000).
-
-handle_pool_info_streaming(Id, Req, HTTPRes, Wait) ->
+    %% TODO: this shouldn't be timer driven, but rather should
+    %% register a callback based on some state change in the Erlang OS
     receive
-    after Wait ->
-            UserPassword = menelaus_auth:extract_auth(Req),
-            Res = build_pool_info(Id, UserPassword),
-            HTTPRes:write_chunk(mochijson2:encode(Res)),
-            %% TODO: resolve why mochiweb doesn't support zero chunk... this
-            %%       indicates the end of a response for now
-            HTTPRes:write_chunk("\n\n\n\n")
+    after Wait -> ok
     end,
-    handle_pool_info_streaming(Id, Req, HTTPRes, 10000).
+    handle_pool_info_streaming(Id, Req, UserPassword, HTTPRes, Wait).
 
 handle_bucket_list(Id, Req) ->
 	MyPool = find_pool_by_id(Id),
@@ -244,6 +239,10 @@ find_bucket_by_id(Pool, Id) ->
     expect_prop_value(Id, Buckets).
 
 handle_bucket_info(PoolId, Id, Req) ->
+    UserPassword = menelaus_auth:extract_auth(Req),
+    reply_json(Req, build_bucket_info(PoolId, Id, UserPassword)).
+
+build_bucket_info(PoolId, Id, _UserPassword) ->
     Pool = find_pool_by_id(PoolId),
     _Bucket = find_bucket_by_id(Pool, Id),
     StatsURI = list_to_binary("/pools/"++PoolId++"/buckets/"++Id++"/stats"),
@@ -260,34 +259,28 @@ handle_bucket_info(PoolId, Id, Req) ->
                          | List1];
                 _ -> List1
             end,
-    Res = {struct, List2},
-    reply_json(Req, Res).
+    {struct, List2}.
 
-handle_bucket_info_streaming(_PoolId, Id, Req) ->
-    %% TODO: this shouldn't be timer driven, but rather should
-    %%       register a callback based on some state change in the Erlang OS
+handle_bucket_info_streaming(PoolId, Id, Req) ->
+    UserPassword = menelaus_auth:extract_auth(Req),
     HTTPRes = Req:ok({"application/json; charset=utf-8",
                       server_header(),
                       chunked}),
-    UserPassword = menelaus_auth:extract_auth(Req),
-    Res = build_pool_info(Id, UserPassword),
+    handle_bucket_info_streaming(PoolId, Id, Req, UserPassword, HTTPRes,
+                                 3000).
+
+handle_bucket_info_streaming(PoolId, Id, Req, UserPassword, HTTPRes, Wait) ->
+    Res = build_bucket_info(PoolId, Id, UserPassword),
     HTTPRes:write_chunk(mochijson2:encode(Res)),
     %% TODO: resolve why mochiweb doesn't support zero chunk... this
     %%       indicates the end of a response for now
     HTTPRes:write_chunk("\n\n\n\n"),
-    handle_bucket_info_streaming(_PoolId, Id, Req, HTTPRes, 3000).
-
-handle_bucket_info_streaming(_PoolId, Id, Req, HTTPRes, Wait) ->
+    %% TODO: this shouldn't be timer driven, but rather should
+    %%       register a callback based on some state change in the Erlang OS
     receive
-    after Wait ->
-            UserPassword = menelaus_auth:extract_auth(Req),
-            Res = build_pool_info(Id, UserPassword),
-            HTTPRes:write_chunk(mochijson2:encode(Res)),
-            %% TODO: resolve why mochiweb doesn't support zero chunk... this
-            %%       indicates the end of a response for now
-            HTTPRes:write_chunk("\n\n\n\n")
+    after Wait -> ok
     end,
-    handle_pool_info_streaming(Id, Req, HTTPRes, 10000).
+    handle_bucket_info_streaming(PoolId, Id, Req, UserPassword, HTTPRes, Wait).
 
 -ifdef(EUNIT).
 
