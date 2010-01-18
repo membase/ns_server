@@ -528,9 +528,11 @@ var BucketsSection = {
   },
   createSubmit: function () {
     var res = $('#add_new_bucket_form').serialize();
+    var self = this;
+
     $.ajax({
       type: 'POST',
-      url: this.cells.detailsPageURI.value,
+      url: self.cells.detailsPageURI.value,
       data: res,
       success: continuation,
       error: continuation,
@@ -555,7 +557,7 @@ var BucketsSection = {
         alert('TODO: display validation errors here');
       } else {
         $('#add_new_bucket_dialog').jqm({modal:true}).jqmHide();
-        cells.detailedBuckets.recalculate();
+        self.cells.detailedBuckets.recalculate();
       }
     }
   }
