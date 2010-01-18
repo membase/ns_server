@@ -210,8 +210,7 @@ var MockedRequest = mkClass({
                opsPerSec: 100,
                evictionsPerSec: 5,
                cachePercentUsed: 50
-             },
-             sampleConnectionString: "default sample connection string"},
+             }},
             {name: "Excerciser Application",
              uri: "/buckets/5",
              testAppBucket: true,
@@ -224,8 +223,7 @@ var MockedRequest = mkClass({
                opsPerSec: 101,
                evictionsPerSec: 6,
                cachePercentUsed: 51
-             },
-             sampleConnectionString: "Excerciser Application sample connection string"},
+             }},
             {name: "new-year-site",
              uri: "/buckets/6",
              flushCacheURI: "/buckets/6/flush",
@@ -235,8 +233,7 @@ var MockedRequest = mkClass({
                opsPerSec: 102,
                evictionsPerSec: 7,
                cachePercentUsed: 52
-             },
-             sampleConnectionString: "new-year-site sample connection string"},
+             }},
             {name: "new-year-site-staging",
              uri: "/buckets/7",
              flushCacheURI: "/buckets/7/flush",
@@ -246,8 +243,7 @@ var MockedRequest = mkClass({
                opsPerSec: 103,
                evictionsPerSec: 8,
                cachePercentUsed: 53
-             },
-             sampleConnectionString: "new-year-site-staging sample connection string"}]
+             }}]
   },
   handleStats: function () {
     var params = this.options['data'];
