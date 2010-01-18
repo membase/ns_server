@@ -22,6 +22,7 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
+    timer:send_after(100, post_startup_init),
     {ok, #state{vals=dict:new()}}.
 
 handle_call({get, Hostname, Port, Bucket, Count}, _From, State) ->
@@ -60,7 +61,12 @@ handle_cast({unmonitoring, Hostname, Port, Bucket}, State) ->
     {noreply, State#state{vals=dict:erase({Hostname, Port},
                                           State#state.vals)}}.
 
-handle_info(_Info, State) ->
+handle_info(post_startup_init, State) ->
+    error_logger:info_msg("Performing post-startup stats initialization.~n"),
+    initPools(),
+    {noreply, State};
+handle_info(Info, State) ->
+    error_logger:info_msg("Just received ~p~n", [Info]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->
@@ -106,6 +112,27 @@ classify("tcp_backlog") -> false;
 classify("binding_protocol") -> false;
 classify(t) -> false;
 classify(_) -> true.
+
+initPools() ->
+    % This code assumes each connected server runs all pools and all
+    % buckets.
+    [Pool | []] = mc_pool:list(), % assume one pool
+    Buckets = mc_bucket:list(Pool),
+    Servers = lists:usort(lists:flatmap(fun(B) -> bucket_servers(Pool, B)
+                                        end, Buckets)),
+    % Assuming all servers run all buckets.
+    lists:foreach(fun({H, P}) ->
+                          stats_collector:monitor(H, P, Buckets)
+                  end,
+                  Servers).
+
+bucket_servers(Pool, B) ->
+    lists:map(fun({mc_addr, HP, _K, _A}) ->
+                      [H, P] = string:tokens(HP, ":"),
+                      {I, []} = string:to_integer(P),
+                      {H, I}
+              end,
+              mc_bucket:addrs(Pool, B)).
 
 %
 % API
