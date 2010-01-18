@@ -190,20 +190,26 @@ handle_pool_info_streaming(Id, Req) ->
                       server_header(),
                       chunked}),
     handle_pool_info_streaming(Id, Req, UserPassword, HTTPRes,
-                               3000).
+                               undefined, 3000).
 
-handle_pool_info_streaming(Id, Req, UserPassword, HTTPRes, Wait) ->
+handle_pool_info_streaming(Id, Req, UserPassword, HTTPRes,
+                           LastRes, Wait) ->
     Res = build_pool_info(Id, UserPassword),
-    HTTPRes:write_chunk(mochijson2:encode(Res)),
-    %% TODO: resolve why mochiweb doesn't support zero chunk... this
-    %%       indicates the end of a response for now
-    HTTPRes:write_chunk("\n\n\n\n"),
+    case Res =:= LastRes of
+        true -> ok;
+        false ->
+            HTTPRes:write_chunk(mochijson2:encode(Res)),
+            %% TODO: resolve why mochiweb doesn't support zero chunk... this
+            %%       indicates the end of a response for now
+            HTTPRes:write_chunk("\n\n\n\n")
+    end,
     %% TODO: this shouldn't be timer driven, but rather should
     %% register a callback based on some state change in the Erlang OS
     receive
     after Wait -> ok
     end,
-    handle_pool_info_streaming(Id, Req, UserPassword, HTTPRes, Wait).
+    handle_pool_info_streaming(Id, Req, UserPassword, HTTPRes,
+                               Res, Wait).
 
 handle_bucket_list(Id, Req) ->
 	MyPool = find_pool_by_id(Id),
@@ -267,20 +273,26 @@ handle_bucket_info_streaming(PoolId, Id, Req) ->
                       server_header(),
                       chunked}),
     handle_bucket_info_streaming(PoolId, Id, Req, UserPassword, HTTPRes,
-                                 3000).
+                                 undefined, 3000).
 
-handle_bucket_info_streaming(PoolId, Id, Req, UserPassword, HTTPRes, Wait) ->
+handle_bucket_info_streaming(PoolId, Id, Req, UserPassword, HTTPRes,
+                             LastRes, Wait) ->
     Res = build_bucket_info(PoolId, Id, UserPassword),
-    HTTPRes:write_chunk(mochijson2:encode(Res)),
-    %% TODO: resolve why mochiweb doesn't support zero chunk... this
-    %%       indicates the end of a response for now
-    HTTPRes:write_chunk("\n\n\n\n"),
-    %% TODO: this shouldn't be timer driven, but rather should
-    %%       register a callback based on some state change in the Erlang OS
-    receive
-    after Wait -> ok
+    case Res =:= LastRes of
+        true -> ok;
+        false ->
+            HTTPRes:write_chunk(mochijson2:encode(Res)),
+            %% TODO: resolve why mochiweb doesn't support zero chunk... this
+            %%       indicates the end of a response for now
+            HTTPRes:write_chunk("\n\n\n\n")
     end,
-    handle_bucket_info_streaming(PoolId, Id, Req, UserPassword, HTTPRes, Wait).
+    %% TODO: this shouldn't be timer driven, but rather should
+    %% register a callback based on some state change in the Erlang OS
+    receive
+        after Wait -> ok
+    end,
+    handle_bucket_info_streaming(PoolId, Id, Req, UserPassword, HTTPRes,
+                                 Res, Wait).
 
 -ifdef(EUNIT).
 
