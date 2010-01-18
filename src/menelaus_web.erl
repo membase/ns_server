@@ -231,6 +231,8 @@ handle_bucket_list(Id, Req) ->
         end,
 	BucketsInfo = [{struct, [{uri, list_to_binary("/pools/" ++ Id ++
                                                   "/buckets/" ++ Name)},
+							 {streamingUri, list_to_binary("/pools/" ++ Id ++
+                                                  "/bucketsStreaming/" ++ Name)},
                                  {name, list_to_binary(Name)},
                                  {basicStats,
                                   {struct,
