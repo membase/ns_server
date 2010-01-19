@@ -2,6 +2,9 @@
 
 -define(SERVER, stats_collection_clock).
 
+-include("mc_constants.hrl").
+-include("mc_entry.hrl").
+
 -behaviour(gen_event).
 %% API
 -export([start_link/0,
@@ -20,11 +23,12 @@ init([Hostname, Port, Buckets]) ->
     notify_monitoring(Hostname, Port, Buckets),
     {ok, #state{hostname=Hostname, port=Port, buckets=Buckets}}.
 
-handle_event({collect, _T}, State) ->
+handle_event({collect, T}, State) ->
     error_logger:info_msg("Collecting from ~p@~s:~p.~n",
                           [State#state.buckets,
                            State#state.hostname,
                            State#state.port]),
+    collect(T, State),
     {ok, State}.
 
 handle_call({set_buckets, Buckets}, State) ->
@@ -59,6 +63,27 @@ notify_unmonitoring(Hostname, Port, Buckets) ->
                                                         Port,
                                                         Bucket)
                   end, Buckets).
+
+collect(T, State) ->
+    lists:foreach(fun(B) -> collect(T, State, B) end, State#state.buckets).
+
+collect(T, State, Bucket) ->
+    {ok, Sock} = gen_tcp:connect(State#state.hostname, State#state.port,
+                                 [binary, {packet, 0}, {active, false}]),
+    {ok, _H, _E, Stats} = mc_client_binary:cmd(?STAT, Sock,
+                              fun (_MH, ME, CD) ->
+                                      dict:store(binary_to_list(ME#mc_entry.key),
+                                                 binary_to_list(ME#mc_entry.data),
+                                                 CD)
+                              end,
+                              dict:new(),
+                              {#mc_header{}, #mc_entry{}}),
+    ok = gen_tcp:close(Sock),
+    stats_aggregator:received_data(T,
+                                   State#state.hostname,
+                                   State#state.port,
+                                   Bucket,
+                                   Stats).
 
 %
 %% Entry Points.

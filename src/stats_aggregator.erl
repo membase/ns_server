@@ -43,6 +43,7 @@ handle_call({get, Bucket, Count}, _From, State) ->
     {reply, Reply, State}.
 
 handle_cast({received, T, Hostname, Port, Bucket, Stats}, State) ->
+    error_logger:info_msg("Got ~p~n", [dict:to_list(Stats)]),
     TS = dict:store(t, T, Stats),
     {noreply, State#state{vals=dict:update({Hostname, Port, Bucket},
                                            fun(R) ->
