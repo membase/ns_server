@@ -24,10 +24,6 @@ init([Hostname, Port, Buckets]) ->
     {ok, #state{hostname=Hostname, port=Port, buckets=Buckets}}.
 
 handle_event({collect, T}, State) ->
-    error_logger:info_msg("Collecting from ~p@~s:~p.~n",
-                          [State#state.buckets,
-                           State#state.hostname,
-                           State#state.port]),
     collect(T, State),
     {ok, State}.
 
