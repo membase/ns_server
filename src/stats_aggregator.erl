@@ -81,7 +81,7 @@ combine_stats(N, New, Existing) ->
                dict:filter(fun classify/2, ringdict:to_dict(N, New)),
                Existing).
 
-to_int(X) when is_list(X) -> string:to_integer(X);
+to_int(X) when is_list(X) -> list_to_integer(X);
 to_int(X) when is_integer(X) -> X.
 
 val_sum(_K, L1, L2) ->
