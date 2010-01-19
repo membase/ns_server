@@ -21,7 +21,7 @@
 %% A memcached client that speaks binary protocol,
 %% with an "API conversion" interface.
 
-% cmd(version, Sock, RecvCallback, Entry) ->
+% cmd(version, Sock, RecvCallback, CBData, Entry) ->
 %     send_recv(Sock, RecvCallback, #mc_header{opcode = ?VERSION}, Entry);
 
 cmd(get, Sock, RecvCallback, CBData, Keys) when is_list(Keys) ->

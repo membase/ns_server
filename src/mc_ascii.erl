@@ -19,13 +19,12 @@ send_recv(Sock, IoList) ->
 
 send_recv(Sock, IoList, RecvCallback, CBData) ->
     ok = send(Sock, IoList),
-    {ok, RV} = recv_line(Sock),
+    {ok, Line} = recv_line(Sock),
     NCB = case is_function(RecvCallback) of
-              true  -> {ok, Line} = RV,
-                       RecvCallback(Line, undefined, CBData);
+              true  -> RecvCallback(Line, undefined, CBData);
               false -> CBData
     end,
-    {ok, RV, NCB}.
+    {ok, Line, NCB}.
 
 send({OutPid, CmdNum}, Data) ->
     OutPid ! {send, CmdNum, Data},

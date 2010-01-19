@@ -59,12 +59,13 @@ send(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule,
      NotifyPid, NotifyData) ->
     Kind = mc_addr:kind(Addr),
     ResponseFun =
-        fun (Head, Body) ->
+        fun (Head, Body, CBData) ->
             case ((not is_function(ResponseFilter)) orelse
                   (ResponseFilter(Head, Body))) of
                 true  -> ResponseModule:send_response(Kind, Out,
-                                                      Cmd, Head, Body);
-                false -> false
+                                                      Cmd, Head, Body),
+                         CBData;
+                false -> CBData
             end
         end,
     case gen_server:call(?MODULE, {pid, Addr}) of
@@ -96,6 +97,7 @@ await_ok(Prefix, N, T, Acc) when N > 0 ->
     receive
         {Prefix, {ok, _}}              -> await_ok(Prefix, N - 1, T, Acc + 1);
         {Prefix, {ok, _, _}}           -> await_ok(Prefix, N - 1, T, Acc + 1);
+        {Prefix, {ok, _, _, _}}        -> await_ok(Prefix, N - 1, T, Acc + 1);
         {Prefix, _}                    -> await_ok(Prefix, N - 1, T, Acc);
         {'DOWN', _MonitorRef, _, _, _} -> await_ok(Prefix, N - 1, T, Acc)
     after T ->
@@ -217,12 +219,13 @@ loop(Addr, Sock, Timeout) ->
         {send, NotifyPid, NotifyData, ResponseFun,
                CmdModule, Cmd, CmdArgs} ->
             inet:setopts(Sock, [{active, false}]),
-            RV = CmdModule:cmd(Cmd, Sock, ResponseFun, CmdArgs),
+            RV = CmdModule:cmd(Cmd, Sock, ResponseFun, undefined, CmdArgs),
             notify(NotifyPid, NotifyData, RV),
             case RV of
-                {ok, _}    -> loop(Addr, Sock, Timeout);
-                {ok, _, _} -> loop(Addr, Sock, Timeout);
-                _Error     -> gen_tcp:close(Sock)
+                {ok, _}       -> loop(Addr, Sock, Timeout);
+                {ok, _, _}    -> loop(Addr, Sock, Timeout);
+                {ok, _, _, _} -> loop(Addr, Sock, Timeout);
+                _Error        -> gen_tcp:close(Sock)
             end;
         {tcp_closed, Sock} -> ok
     after Timeout ->
