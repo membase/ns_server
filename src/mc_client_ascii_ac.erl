@@ -44,7 +44,7 @@ cmd_binary(?NOOP, _Sock, RecvCallback, CBData, _Entry) ->
     % Assuming NOOP used to uncork GETKQ's.
     case is_function(RecvCallback) of
        true  -> RecvCallback(<<"END">>, #mc_entry{}, CBData);
-       false -> ok
+       false -> CBData
     end;
 
 cmd_binary(?VERSION, Sock, RecvCallback, CBData, Entry) ->
@@ -66,9 +66,9 @@ set_test() ->
 set_test_sock(Sock, Key) ->
     flush_test_sock(Sock),
     (fun () ->
-        {ok, RB} = cmd(?SET, Sock, undefined, undefined,
-                       #mc_entry{key =  Key,
-                                 data = <<"AAA">>}),
+        {ok, RB, undefined} = cmd(?SET, Sock, undefined, undefined,
+                                  #mc_entry{key =  Key,
+                                            data = <<"AAA">>}),
         ?assertMatch(RB, <<"STORED">>)
     end)().
 
@@ -79,6 +79,6 @@ flush_test() ->
     ok = gen_tcp:close(Sock).
 
 flush_test_sock(Sock) ->
-    {ok, RB} = cmd(?FLUSH, Sock, undefined, undefined, #mc_entry{}),
+    {ok, RB, undefined} = cmd(?FLUSH, Sock, undefined, undefined, #mc_entry{}),
     ?assertMatch(RB, <<"OK">>).
 

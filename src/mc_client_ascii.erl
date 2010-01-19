@@ -137,34 +137,34 @@ get_recv(Sock, RecvCallback, CBData) ->
                       _  -> list_to_integer(CasIn)
                   end,
             {ok, DataCRNL} = recv_data(Sock, DataSize + 2),
-            case is_function(RecvCallback) of
-                true -> {Data, _} = split_binary_suffix(DataCRNL, 2),
-                        RecvCallback(LineBin,
-                                     #mc_entry{key = iolist_to_binary(Key),
-                                               flag = Flag,
-                                               data = Data,
-                                               cas = Cas},
-                                     CBData);
-                false -> ok
-            end,
-            get_recv(Sock, RecvCallback, CBData)
+            NCB = case is_function(RecvCallback) of
+                      true -> {Data, _} = split_binary_suffix(DataCRNL, 2),
+                              RecvCallback(LineBin,
+                                           #mc_entry{key = iolist_to_binary(Key),
+                                                     flag = Flag,
+                                                     data = Data,
+                                                     cas = Cas},
+                                           CBData);
+                      false -> CBData
+                  end,
+            get_recv(Sock, RecvCallback, NCB)
     end.
 
 multiline_recv(Sock, RecvCallback, CBData) -> % For stats response.
     Line = recv_line(Sock),
     case Line of
         {error, _} = Err  -> Err;
-        {ok, <<"END">>}   -> Line;
-        {ok, <<"OK">>}    -> Line; % From stats detail on|off.
-        {ok, <<"ERROR">>} -> Line; % From stats <bad_cmd]>
-        {ok, <<"RESET">>} -> Line; % From stats reset.
-        {ok, <<"CLIENT_ERROR", _>>} -> Line;
-        {ok, <<"SERVER_ERROR", _>>} -> Line;
-        {ok, LineBin}     -> case is_function(RecvCallback) of
-                                 true  -> RecvCallback(LineBin, undefined, CBData);
-                                 false -> ok
-                             end,
-                             multiline_recv(Sock, RecvCallback, CBData)
+        {ok, <<"END">>}   -> {Line, CBData};
+        {ok, <<"OK">>}    -> {Line, CBData}; % From stats detail on|off.
+        {ok, <<"ERROR">>} -> {Line, CBData}; % From stats <bad_cmd]>
+        {ok, <<"RESET">>} -> {Line, CBData}; % From stats reset.
+        {ok, <<"CLIENT_ERROR", _>>} -> {Line, CBData};
+        {ok, <<"SERVER_ERROR", _>>} -> {Line, CBData};
+        {ok, LineBin}     -> NCB = case is_function(RecvCallback) of
+                                       true  -> RecvCallback(LineBin, undefined, CBData);
+                                       false -> CBData
+                                   end,
+                             multiline_recv(Sock, RecvCallback, NCB)
     end.
 
 % -------------------------------------------------
@@ -173,7 +173,7 @@ version_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
     (fun () ->
-        {ok, RB} = cmd(version, Sock, undefined, undefined, undefined),
+        {ok, RB, undefined} = cmd(version, Sock, undefined, undefined, undefined),
         R = binary_to_list(RB),
         ?assert(starts_with(R, "VERSION "))
     end)(),
@@ -187,22 +187,22 @@ set_test() ->
 
 set_test_sock(Sock, Key) ->
     (fun () ->
-        {ok, RB} = send_recv(Sock, "flush_all\r\n", undefined, undefined),
+        {ok, RB, undefined} = send_recv(Sock, "flush_all\r\n", undefined, undefined),
         ?assertMatch(RB, <<"OK">>),
-        {ok, RB1} = send_recv(Sock, <<"get ", Key/binary, "\r\n">>,
+        {ok, RB1, undefined} = send_recv(Sock, <<"get ", Key/binary, "\r\n">>,
                               undefined, undefined),
         ?assertMatch(RB1, <<"END">>)
     end)(),
     (fun () ->
-        {ok, RB} = cmd(set, Sock, undefined, undefined,
-                       #mc_entry{key =  Key,
-                                 data = <<"AAA">>}),
+        {ok, RB, undefined} = cmd(set, Sock, undefined, undefined,
+                                  #mc_entry{key =  Key,
+                                            data = <<"AAA">>}),
         ?assertMatch(RB, <<"STORED">>),
         get_test_match(Sock, Key, <<"AAA">>)
     end)().
 
 get_test_match(Sock, Key, Data) ->
-    {ok, RB1} = send_recv(Sock, <<"get ", Key/binary, "\r\n">>,
+    {ok, RB1, undefined} = send_recv(Sock, <<"get ", Key/binary, "\r\n">>,
                           undefined, undefined),
     DataSize = integer_to_list(size(Data)),
     Expect = iolist_to_binary(["VALUE ", Key, " 0 ", DataSize]),
@@ -217,10 +217,10 @@ delete_test() ->
                                  [binary, {packet, 0}, {active, false}]),
     set_test_sock(Sock, <<"aaa">>),
     (fun () ->
-        {ok, RB} = cmd(delete, Sock, undefined, undefined,
+        {ok, RB, undefined} = cmd(delete, Sock, undefined, undefined,
                        #mc_entry{key = <<"aaa">>}),
         ?assertMatch(RB, <<"DELETED">>),
-        {ok, RB1} = send_recv(Sock, "get aaa\r\n", undefined, undefined),
+        {ok, RB1, undefined} = send_recv(Sock, "get aaa\r\n", undefined, undefined),
         ?assertMatch(RB1, <<"END">>)
     end)(),
     ok = gen_tcp:close(Sock).
@@ -254,26 +254,26 @@ update_test() ->
                                  [binary, {packet, 0}, {active, false}]),
     set_test_sock(Sock, <<"aaa">>),
     (fun () ->
-        {ok, RB} = cmd(append, Sock, undefined, undefined,
-                       #mc_entry{key = <<"aaa">>, data = <<"-post">>}),
+        {ok, RB, undefined} = cmd(append, Sock, undefined, undefined,
+                                  #mc_entry{key = <<"aaa">>, data = <<"-post">>}),
         ?assertMatch(RB, <<"STORED">>),
         get_test_match(Sock, <<"aaa">>, <<"AAA-post">>),
-        {ok, RB1} = cmd(prepend, Sock, undefined, undefined,
-                       #mc_entry{key = <<"aaa">>, data = <<"pre-">>}),
+        {ok, RB1, undefined} = cmd(prepend, Sock, undefined, undefined,
+                                   #mc_entry{key = <<"aaa">>, data = <<"pre-">>}),
         ?assertMatch(RB1, <<"STORED">>),
         get_test_match(Sock, <<"aaa">>, <<"pre-AAA-post">>),
-        {ok, RB3} = cmd(add, Sock, undefined, undefined,
-                        #mc_entry{key = <<"aaa">>,
-                                  data = <<"already exists">>}),
+        {ok, RB3, undefined} = cmd(add, Sock, undefined, undefined,
+                                   #mc_entry{key = <<"aaa">>,
+                                             data = <<"already exists">>}),
         ?assertMatch(RB3, <<"NOT_STORED">>),
         get_test_match(Sock, <<"aaa">>, <<"pre-AAA-post">>),
-        {ok, RB5} = cmd(replace, Sock, undefined, undefined,
-                        #mc_entry{key = <<"aaa">>, data = <<"replaced">>}),
+        {ok, RB5, undefined} = cmd(replace, Sock, undefined, undefined,
+                                   #mc_entry{key = <<"aaa">>, data = <<"replaced">>}),
         ?assertMatch(RB5, <<"STORED">>),
         get_test_match(Sock, <<"aaa">>, <<"replaced">>),
-        {ok, RB7} = cmd(flush_all, Sock, undefined, undefined, #mc_entry{}),
+        {ok, RB7, undefined} = cmd(flush_all, Sock, undefined, undefined, #mc_entry{}),
         ?assertMatch(RB7, <<"OK">>),
-        {ok, RBF} = send_recv(Sock, "get aaa\r\n", undefined, undefined),
+        {ok, RBF, undefined} = send_recv(Sock, "get aaa\r\n", undefined, undefined),
         ?assertMatch(RBF, <<"END">>)
     end)(),
     ok = gen_tcp:close(Sock).
@@ -289,14 +289,14 @@ stats_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
     (fun () ->
-        {ok, RB} = cmd(stats, Sock,
-                       fun (Line, Entry, undefined) ->
-                               undefined = Entry,
-                               LineStr = binary_to_list(Line),
-                               starts_with(LineStr, "STAT ")
-                       end, undefined,
-                       #mc_entry{}),
-        ?assertMatch(RB, <<"END">>)
-    end)(),
+             {{ok, RB}, true} = cmd(stats, Sock,
+                                    fun (Line, Entry, _X) ->
+                                            undefined = Entry,
+                                            LineStr = binary_to_list(Line),
+                                            starts_with(LineStr, "STAT ")
+                                    end, undefined,
+                                    #mc_entry{}),
+             ?assertMatch(RB, <<"END">>)
+     end)(),
     ok = gen_tcp:close(Sock).
 

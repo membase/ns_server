@@ -38,35 +38,34 @@ cmd_binary_vocal(?STAT = Opcode, Sock, RecvCallback, CBData,
     ok = send(Sock, req, Header#mc_header{opcode = Opcode}, Entry),
     stats_recv(Sock, RecvCallback, CBData);
 
-cmd_binary_vocal(Opcode, Sock, RecvCallback, _CBData, {Header, Entry}) ->
+cmd_binary_vocal(Opcode, Sock, RecvCallback, CBData, {Header, Entry}) ->
     ok = send(Sock, req,
               Header#mc_header{opcode = Opcode}, ext(Opcode, Entry)),
-    cmd_binary_vocal_recv(Opcode, Sock, RecvCallback).
+    cmd_binary_vocal_recv(Opcode, Sock, RecvCallback, CBData).
 
-cmd_binary_vocal_recv(Opcode, Sock, RecvCallback) ->
+cmd_binary_vocal_recv(Opcode, Sock, RecvCallback, CBData) ->
     {ok, RecvHeader, RecvEntry} = recv(Sock, res),
-    case is_function(RecvCallback) of
-       true  -> RecvCallback(RecvHeader, RecvEntry);
-       false -> ok
-    end,
+    NCB = case is_function(RecvCallback) of
+              true  -> RecvCallback(RecvHeader, RecvEntry, CBData);
+              false -> CBData
+          end,
     case Opcode =:= RecvHeader#mc_header.opcode of
-        true  -> {ok, RecvHeader, RecvEntry};
-        false -> cmd_binary_vocal_recv(Opcode, Sock, RecvCallback)
+        true  -> {ok, RecvHeader, RecvEntry, NCB};
+        false -> cmd_binary_vocal_recv(Opcode, Sock, RecvCallback, NCB)
     end.
 
 % -------------------------------------------------
 
 stats_recv(Sock, RecvCallback, State) ->
     {ok, #mc_header{opcode = ROpcode,
-                    keylen = RKeyLen} = RecvHeader,
-         RecvEntry} = recv(Sock, res),
+                    keylen = RKeyLen} = RecvHeader, RecvEntry} = recv(Sock, res),
     case ?STAT =:= ROpcode andalso 0 =:= RKeyLen of
         true  -> {ok, RecvHeader, RecvEntry, State};
-        false -> case is_function(RecvCallback) of
-                     true  -> RecvCallback(RecvHeader, RecvEntry, State);
-                     false -> ok
-                 end,
-                 stats_recv(Sock, RecvCallback, State)
+        false -> NCB = case is_function(RecvCallback) of
+                           true  -> RecvCallback(RecvHeader, RecvEntry, State);
+                           false -> State
+                       end,
+                 stats_recv(Sock, RecvCallback, NCB)
     end.
 
 % -------------------------------------------------
@@ -166,7 +165,7 @@ blank_he() ->
 noop_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
-    {ok, _H, _E} = cmd(?NOOP, Sock, undefined, undefined, blank_he()),
+    {ok, _H, _E, undefined} = cmd(?NOOP, Sock, undefined, undefined, blank_he()),
     ok = gen_tcp:close(Sock).
 
 flush_test() ->
@@ -176,7 +175,7 @@ flush_test() ->
     ok = gen_tcp:close(Sock).
 
 flush_test_sock(Sock) ->
-    {ok, _H, _E} = cmd(?FLUSH, Sock, undefined, undefined, blank_he()).
+    {ok, _H, _E, undefined} = cmd(?FLUSH, Sock, undefined, undefined, blank_he()).
 
 set_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
@@ -187,17 +186,17 @@ set_test() ->
 set_test_sock(Sock, Key) ->
     flush_test_sock(Sock),
     (fun () ->
-        {ok, _H, _E} = cmd(?SET, Sock, undefined, undefined,
-                           {#mc_header{},
-                            #mc_entry{key = Key, data = <<"AAA">>}}),
+        {ok, _H, _E, undefined} = cmd(?SET, Sock, undefined, undefined,
+                                      {#mc_header{},
+                                       #mc_entry{key = Key, data = <<"AAA">>}}),
         get_test_match(Sock, Key, <<"AAA">>)
     end)().
 
 get_test_match(Sock, Key, Data) ->
     D = ets:new(test, [set]),
     ets:insert(D, {nvals, 0}),
-    {ok, _H, E} = cmd(?GETK, Sock,
-                      fun (_H, E) ->
+    {ok, _H, E, _S} = cmd(?GETK, Sock,
+                      fun (_H, E, _S) ->
                               ets:update_counter(D, nvals, 1),
                               ?assertMatch(Key, E#mc_entry.key),
                               ?assertMatch(Data, E#mc_entry.data)
@@ -211,8 +210,8 @@ get_miss_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
     flush_test_sock(Sock),
-    {ok, H, _E} = cmd(?GET, Sock, fun (_H, _E) -> ok end, undefined,
-                       {#mc_header{}, #mc_entry{key = <<"not_a_key">>}}),
+    {ok, H, _E, ok} = cmd(?GET, Sock, fun (_H, _E, _CD) -> ok end, undefined,
+                          {#mc_header{}, #mc_entry{key = <<"not_a_key">>}}),
     ?assert(H#mc_header.status =/= ?SUCCESS),
     ok = gen_tcp:close(Sock).
 
@@ -220,8 +219,8 @@ getk_miss_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
     flush_test_sock(Sock),
-    {ok, H, _E} = cmd(?GETK, Sock, fun (_H, _E) -> ok end, undefined,
-                       {#mc_header{}, #mc_entry{key = <<"not_a_key">>}}),
+    {ok, H, _E, ok} = cmd(?GETK, Sock, fun (_H, _E, undefined) -> ok end, undefined,
+                          {#mc_header{}, #mc_entry{key = <<"not_a_key">>}}),
     ?assert(H#mc_header.status =/= ?SUCCESS),
     ok = gen_tcp:close(Sock).
 
@@ -231,35 +230,35 @@ arith_test() ->
     flush_test_sock(Sock),
     Key = <<"a">>,
     (fun () ->
-        {ok, _H, _E} = cmd(?SET, Sock, undefined, undefined,
+        {ok, _H, _E, undefined} = cmd(?SET, Sock, undefined, undefined,
                            {#mc_header{},
                             #mc_entry{key = Key, data = <<"1">>}}),
         get_test_match(Sock, Key, <<"1">>),
         ok
     end)(),
     (fun () ->
-        {ok, _H, _E} = cmd(?INCREMENT, Sock, undefined, undefined,
+        {ok, _H, _E, undefined} = cmd(?INCREMENT, Sock, undefined, undefined,
                            {#mc_header{},
                             #mc_entry{key = Key, data = 1}}),
         get_test_match(Sock, Key, <<"2">>),
         ok
     end)(),
     (fun () ->
-        {ok, _H, _E} = cmd(?INCREMENT, Sock, undefined, undefined,
+        {ok, _H, _E, undefined} = cmd(?INCREMENT, Sock, undefined, undefined,
                            {#mc_header{},
                             #mc_entry{key = Key, data = 1}}),
         get_test_match(Sock, Key, <<"3">>),
         ok
     end)(),
     (fun () ->
-        {ok, _H, _E} = cmd(?INCREMENT, Sock, undefined, undefined,
+        {ok, _H, _E, undefined} = cmd(?INCREMENT, Sock, undefined, undefined,
                            {#mc_header{},
                             #mc_entry{key = Key, data = 10}}),
         get_test_match(Sock, Key, <<"13">>),
         ok
     end)(),
     (fun () ->
-        {ok, _H, _E} = cmd(?DECREMENT, Sock, undefined, undefined,
+        {ok, _H, _E, undefined} = cmd(?DECREMENT, Sock, undefined, undefined,
                            {#mc_header{},
                             #mc_entry{key = Key, data = 1}}),
         get_test_match(Sock, Key, <<"12">>),
@@ -272,8 +271,8 @@ stats_test() ->
                                  [binary, {packet, 0}, {active, false}]),
     D = ets:new(test, [set]),
     ets:insert(D, {nvals, 0}),
-    {ok, _H, _E, undefined} = cmd(?STAT, Sock,
-                                  fun (_MH, _ME, undefined) ->
+    {ok, _H, _E, _C} = cmd(?STAT, Sock,
+                                  fun (_MH, _ME, _CD) ->
                                           ets:update_counter(D, nvals, 1)
                                   end, undefined,
                                   {#mc_header{}, #mc_entry{}}),
@@ -281,3 +280,16 @@ stats_test() ->
     ?assert(X > 0),
     ok = gen_tcp:close(Sock).
 
+second_stats_test() ->
+    {ok, Sock} = gen_tcp:connect("localhost", 11211,
+                                 [binary, {packet, 0}, {active, false}]),
+    {ok, _H, _E, Stats} = cmd(?STAT, Sock,
+                              fun (_MH, ME, CD) ->
+                                      dict:store(ME#mc_entry.key,
+                                                 ME#mc_entry.data,
+                                                 CD)
+                              end,
+                              dict:new(),
+                              {#mc_header{}, #mc_entry{}}),
+    ?assert(dict:size(Stats) > 0),
+    ok = gen_tcp:close(Sock).

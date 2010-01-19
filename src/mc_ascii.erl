@@ -19,13 +19,13 @@ send_recv(Sock, IoList) ->
 
 send_recv(Sock, IoList, RecvCallback, CBData) ->
     ok = send(Sock, IoList),
-    RV = recv_line(Sock),
-    case is_function(RecvCallback) of
-       true  -> {ok, Line} = RV,
-                RecvCallback(Line, undefined, CBData);
-       false -> ok
+    {ok, RV} = recv_line(Sock),
+    NCB = case is_function(RecvCallback) of
+              true  -> {ok, Line} = RV,
+                       RecvCallback(Line, undefined, CBData);
+              false -> CBData
     end,
-    RV.
+    {ok, RV, NCB}.
 
 send({OutPid, CmdNum}, Data) ->
     OutPid ! {send, CmdNum, Data},
@@ -120,11 +120,11 @@ send_recv_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
     (fun () ->
-        {ok, RB} = send_recv(Sock, "not-a-command-srt\r\n", undefined, undefined),
-        ?assertMatch(RB, <<"ERROR">>)
+        RB = send_recv(Sock, "not-a-command-srt\r\n", undefined, undefined),
+        ?assertMatch(RB, {ok, <<"ERROR">>, undefined})
     end)(),
     (fun () ->
-        {ok, RB} = send_recv(Sock, "get not-a-key-srt\r\n", undefined, undefined),
+        {ok, RB, undefined} = send_recv(Sock, "get not-a-key-srt\r\n", undefined, undefined),
         ?assertMatch(RB, <<"END">>)
     end)(),
     ok = gen_tcp:close(Sock).
@@ -133,7 +133,7 @@ delete_send_recv_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
     (fun () ->
-        {ok, RB} = send_recv(Sock, "delete not-a-key-dsrt\r\n",
+        {ok, RB, undefined} = send_recv(Sock, "delete not-a-key-dsrt\r\n",
                              undefined, undefined),
         ?assertMatch(RB, <<"NOT_FOUND">>)
     end)(),

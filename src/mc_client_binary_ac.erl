@@ -85,9 +85,9 @@ cmd(Opcode, Sock, RecvCallback, CBData, Entry) ->
 % Calls binary target and converts binary opcode/success
 % to ascii result string.
 send_recv(Sock, RecvCallback, CBData, Header, Entry) ->
-    {ok, #mc_header{opcode = O, status = S} = _RH, _RE} =
+    {ok, #mc_header{opcode = O, status = S} = _RH, _RE, CD} =
         mc_binary:send_recv(Sock, RecvCallback, CBData, Header, Entry),
-    {ok, mc_binary:b2a_code(O, S)}.
+    {ok, mc_binary:b2a_code(O, S), CD}.
 
 % -------------------------------------------------
 
@@ -119,13 +119,13 @@ get_recv(Sock, RecvCallback, CBData) ->
     case recv(Sock, res) of
         {error, _} = Err -> Err;
         {ok, #mc_header{opcode = ?NOOP}, _Entry} ->
-            {ok, <<"END\r\n">>};
+            {ok, <<"END\r\n">>, CBData};
         {ok, #mc_header{opcode = ?GETKQ} = Header, Entry} ->
-            case is_function(RecvCallback) of
-               true  -> RecvCallback(Header, Entry, CBData);
-               false -> ok
-            end,
-            get_recv(Sock, RecvCallback, CBData)
+            NCB = case is_function(RecvCallback) of
+                      true  -> RecvCallback(Header, Entry, CBData);
+                      false -> CBData
+                  end,
+            get_recv(Sock, RecvCallback, NCB)
     end.
 
 stat_recv(Sock, RecvCallback, CBData, ReqHeader, ReqEntry) ->
@@ -137,11 +137,11 @@ stat_recv(Sock, RecvCallback, CBData, ReqHeader, ReqEntry) ->
             {ok, <<"END\r\n">>};
         {ok, #mc_header{opcode = ?STAT,
                         status = ?SUCCESS} = Header, Entry} ->
-            case is_function(RecvCallback) of
-               true  -> RecvCallback(Header, Entry, CBData);
-               false -> ok
-            end,
-            stat_recv(Sock, RecvCallback, CBData, ReqHeader, ReqEntry);
+            NCB = case is_function(RecvCallback) of
+                      true  -> RecvCallback(Header, Entry, CBData);
+                      false -> CBData
+                  end,
+            stat_recv(Sock, RecvCallback, NCB, ReqHeader, ReqEntry);
         {ok, _, _} ->
             {ok, <<"ERROR\r\n">>}
     end.
@@ -157,21 +157,21 @@ set_test() ->
 set_test_sock(Sock, Key) ->
     test_flush(Sock),
     (fun () ->
-        {ok, RB} = cmd(set, Sock, undefined, undefined,
-                       #mc_entry{key = Key, data = <<"AAA">>}),
+        {ok, RB, undefined} = cmd(set, Sock, undefined, undefined,
+                                  #mc_entry{key = Key, data = <<"AAA">>}),
         ?assertMatch(RB, <<"STORED\r\n">>),
         get_test_match(Sock, Key, <<"AAA">>)
     end)().
 
 test_flush(Sock) ->
-    {ok, works} = mc_binary:send_recv(Sock, undefined, undefined,
-                                      #mc_header{opcode = ?FLUSH}, #mc_entry{},
-                                      works).
+    {ok, works, undefined} = mc_binary:send_recv(Sock, undefined, undefined,
+                                                 #mc_header{opcode = ?FLUSH}, #mc_entry{},
+                                                 works).
 
 get_test_match(Sock, Key, Data) ->
     D = ets:new(test, [set]),
     ets:insert(D, {nvals, 0}),
-    {ok, RB} = cmd(get, Sock,
+    {ok, RB, ok} = cmd(get, Sock,
                    fun (_H, E, undefined) ->
                        ets:update_counter(D, nvals, 1),
                        ?assertMatch(Key, E#mc_entry.key),
@@ -188,8 +188,8 @@ get_test() ->
     (fun () ->
         D = ets:new(test, [set]),
         ets:insert(D, {nvals, 0}),
-        {ok, RB} = cmd(get, Sock,
-                       fun (_H, _E, undefined) -> ?assert(false) % Should not get here.
+        {ok, RB, _CD} = cmd(get, Sock,
+                       fun (_H, _E, _X) -> ?assert(false) % Should not get here.
                        end, undefined,
                        [<<"ccc">>, <<"bbb">>]),
         ?assertMatch(RB, <<"END\r\n">>),
@@ -198,8 +198,8 @@ get_test() ->
     (fun () ->
         D = ets:new(test, [set]),
         ets:insert(D, {nvals, 0}),
-        {ok, RB} = cmd(get, Sock,
-                       fun (_H, E, undefined) ->
+        {ok, RB, _X} = cmd(get, Sock,
+                       fun (_H, E, _X) ->
                            ets:update_counter(D, nvals, 1),
                            ?assertMatch(<<"aaa">>, E#mc_entry.key),
                            ?assertMatch(<<"AAA">>, E#mc_entry.data)
@@ -211,8 +211,8 @@ get_test() ->
     (fun () ->
         D = ets:new(test, [set]),
         ets:insert(D, {nvals, 0}),
-        {ok, RB} = cmd(get, Sock,
-                       fun (_H, E, undefined) ->
+        {ok, RB, _X} = cmd(get, Sock,
+                       fun (_H, E, _X) ->
                            ets:update_counter(D, nvals, 1),
                            ?assertMatch(<<"aaa">>, E#mc_entry.key),
                            ?assertMatch(<<"AAA">>, E#mc_entry.data)
@@ -231,7 +231,7 @@ delete_test() ->
     (fun () ->
         D = ets:new(test, [set]),
         ets:insert(D, {nvals, 0}),
-        {ok, RB} = cmd(delete, Sock,
+        {ok, RB, _X} = cmd(delete, Sock,
                        fun (H, _E, undefined) ->
                            ets:update_counter(D, nvals, 1),
                            ?assertMatch(?DELETE, H#mc_header.opcode)
@@ -241,7 +241,7 @@ delete_test() ->
         ?assertMatch([{nvals, 1}], ets:lookup(D, nvals))
     end)(),
     (fun () ->
-        {ok, RB} = cmd(get, Sock,
+        {ok, RB, undefined} = cmd(get, Sock,
                        fun (_H, _E, undefined) -> ?assert(false) % Should not get here.
                        end, undefined,
                        [<<"aaa">>, <<"bbb">>]),
