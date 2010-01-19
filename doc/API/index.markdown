@@ -591,7 +591,6 @@ The system will then issue a redirect indicating success.
 
 *Response*
 
-
 response 200: Bucket was renamed.  A location header for the new location
 is given.  Requests to the old location will receive 301 (moved permanently).
  - or -
@@ -622,6 +621,33 @@ is administratively disabled to all users)
 
 At release of 1.0, this will always return a 403.
 
+#### System Logs
+
+System modules log various messages, which are available via this interface.  These log messages are
+optionally categorized by the module.  Both a generic list of recent log entries and recent log entries
+for a particular category are available.  A GET without specifying a category returns all categories.
+
+<pre class="restcalls">
+GET /pools/default/logs?cat=crit
+Host: node.in.your.pool.com
+Authorization: Basic xxxxxxxxxxxxxxxxxxx
+Accept: application/com.northscale.store+json
+X-memcachekv-Store-Client-Specification-Version: 0.1
+</pre>
+
+response 201: bucket was created and valid URIs returned
+
+<pre class="restcalls">
+HTTP/1.1 200 OK
+Content-Type: application/com.northscale.store+json
+Content-Length: nnn
+
+[{"cat":"info", "date": "", "code": "302", "message": "Some information for you."},
+ {"cat":"warn", "date": "", "code": "502", "message": "Something needs attention."}]
+</pre>
+
+Types may be "info" "crit" or "warn".  Accessing logs requires administrator credentials if
+the system is secured.
 
 # Notes, Questions and References
 
