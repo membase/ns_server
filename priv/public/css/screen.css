@@ -92,7 +92,7 @@ a:link {
 	left: 12%;
 }
 
-#header h1 {
+#header span {
 	position: absolute;
 	background: url('../images/ns_console_logov2.png') no-repeat;
 	width: 331px;

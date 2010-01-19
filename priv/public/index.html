@@ -9,7 +9,7 @@
 <body>
   <div id="container">
     <div id="header">
-      <a href="/index.html"><h1></h1></a>
+      <a href="/index.html"><span></span></a>
     </div> <!-- header -->
 
     <div id="mainContainer">
@@ -17,15 +17,16 @@
 <table width="100%">
 <tr>
 
-  <h1>RUN</h1>
       <td class="leftNav">
+        <h1>RUN</h1>
+
         <ul>
           <li class="line"></li>
           <li class="line"><a id="switch_overview" href="javascript:nav.go('overview');">Cluster Overview</a></li>
           <li class="line"><a id="switch_analytics" href="javascript:nav.go('analytics');">Analytics</a></li>
           <li class="line"><a id="switch_buckets" href="javascript:nav.go('buckets');">Buckets</a></li>
           <li class="line"><a id="switch_alerts" href="javascript:nav.go('alerts');">Alerts/Logs</a></li>
-          <li class="line"><a id="switch_overview" href="javascript:nav.go('settings');">Cluster Settings</a></li>
+          <li class="line"><a id="switch_settings" href="javascript:nav.go('settings');">Cluster Settings</a></li>
         </ul>
       </td>
 <!--
@@ -109,7 +110,7 @@
   </div>
 
   <div id="buckets" style="display:none">
-    <p><a href="javascript:nav.go('overview')">Cluster Overview</a> > Buckets
+    <p><a href="javascript:nav.go('overview')">Cluster Overview</a> &gt; Buckets
     <button onclick="BucketsSection.startCreate();">Add a New Bucket</button>
     <div id="bucket_list_container">
     </div>
@@ -122,7 +123,7 @@
               <td>{%= h(this.basicStats.evictionsPerSec) %}
               <td>{%= h(this.basicStats.cachePercentUsed) %}
               <td>{%= h(this.basicStats.cacheSize) %}
-              <td><a href="javascript:BucketsSection.showBucket('{%= h(this.uri) %}')">Bucket Properties</a>
+              <td><a href="javascript:BucketsSection.showBucket('{%=h(this.uri)%}')">Bucket Properties</a>
           {% }); %}
         </table>
     </div>
@@ -216,7 +217,7 @@
 <p>Sample connection string: <textarea rows="3" readonly>sample connection string here</textarea></p>
 </div>
 <div class="jqmWindow" id="add_new_bucket_dialog">
-  <h>Add New Bucket</h>
+  <h1>Add New Bucket</h1>
   <div id="add_new_bucket_errors_container"></div>
   <div id="add_new_bucket_errors_template" class="template">
     Couldn't create bucket due to:
