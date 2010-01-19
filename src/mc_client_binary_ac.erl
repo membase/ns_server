@@ -1,7 +1,10 @@
+
 % Copyright (c) 2009, NorthScale, Inc.
 % All rights reserved.
 
 -module(mc_client_binary_ac).
+
+-behavior(mc_client_ac).
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -9,7 +12,9 @@
 
 -include("mc_entry.hrl").
 
--import(mc_binary, [send/2, send/4, send_recv/5, recv/2, encode/3]).
+-import(mc_binary, [send/2, send/4, recv/2, encode/3]).
+
+-export([cmd/5]).
 
 -compile(export_all).
 
@@ -19,7 +24,7 @@
 % cmd(version, Sock, RecvCallback, Entry) ->
 %     send_recv(Sock, RecvCallback, #mc_header{opcode = ?VERSION}, Entry);
 
-cmd(get, Sock, RecvCallback, Keys) when is_list(Keys) ->
+cmd(get, Sock, RecvCallback, CBData, Keys) when is_list(Keys) ->
     ok = send(Sock,
               lists:map(fun (K) -> encode(req,
                                           #mc_header{opcode = ?GETKQ},
@@ -27,9 +32,9 @@ cmd(get, Sock, RecvCallback, Keys) when is_list(Keys) ->
                         end,
                         Keys)),
     ok = send(Sock, req, #mc_header{opcode = ?NOOP}, #mc_entry{}),
-    get_recv(Sock, RecvCallback);
+    get_recv(Sock, RecvCallback, CBData);
 
-cmd(gets, Sock, RecvCallback, Keys) when is_list(Keys) ->
+cmd(gets, Sock, RecvCallback, CBData, Keys) when is_list(Keys) ->
     ok = send(Sock,
               lists:map(fun (K) -> encode(req,
                                           #mc_header{opcode = ?GETKQ},
@@ -37,93 +42,93 @@ cmd(gets, Sock, RecvCallback, Keys) when is_list(Keys) ->
                         end,
                         Keys)),
     ok = send(Sock, req, #mc_header{opcode = ?NOOP}, #mc_entry{}),
-    get_recv(Sock, RecvCallback);
+    get_recv(Sock, RecvCallback, CBData);
 
-cmd(set, Sock, RecvCallback, Entry) ->
-    cmd_update(Sock, RecvCallback, Entry, ?SET);
-cmd(add, Sock, RecvCallback, Entry) ->
-    cmd_update(Sock, RecvCallback, Entry, ?ADD);
-cmd(replace, Sock, RecvCallback, Entry) ->
-    cmd_update(Sock, RecvCallback, Entry, ?REPLACE);
+cmd(set, Sock, RecvCallback, CBData, Entry) ->
+    cmd_update(Sock, RecvCallback, CBData, Entry, ?SET);
+cmd(add, Sock, RecvCallback, CBData, Entry) ->
+    cmd_update(Sock, RecvCallback, CBData, Entry, ?ADD);
+cmd(replace, Sock, RecvCallback, CBData, Entry) ->
+    cmd_update(Sock, RecvCallback, CBData, Entry, ?REPLACE);
 
-cmd(append, Sock, RecvCallback, Entry) ->
-    cmd_xpend(Sock, RecvCallback, Entry, ?APPEND);
-cmd(prepend, Sock, RecvCallback, Entry) ->
-    cmd_xpend(Sock, RecvCallback, Entry, ?PREPEND);
+cmd(append, Sock, RecvCallback, CBData, Entry) ->
+    cmd_xpend(Sock, RecvCallback, CBData, Entry, ?APPEND);
+cmd(prepend, Sock, RecvCallback, CBData, Entry) ->
+    cmd_xpend(Sock, RecvCallback, CBData, Entry, ?PREPEND);
 
-cmd(cas, Sock, RecvCallback, Entry) ->
-    cmd_update(Sock, RecvCallback, Entry, ?SET);
+cmd(cas, Sock, RecvCallback, CBData, Entry) ->
+    cmd_update(Sock, RecvCallback, CBData, Entry, ?SET);
 
-cmd(incr, Sock, RecvCallback, Entry) ->
-    cmd_arith(Sock, RecvCallback, Entry, ?INCREMENT);
-cmd(decr, Sock, RecvCallback, Entry) ->
-    cmd_arith(Sock, RecvCallback, Entry, ?DECREMENT);
+cmd(incr, Sock, RecvCallback, CBData, Entry) ->
+    cmd_arith(Sock, RecvCallback, CBData, Entry, ?INCREMENT);
+cmd(decr, Sock, RecvCallback, CBData, Entry) ->
+    cmd_arith(Sock, RecvCallback, CBData, Entry, ?DECREMENT);
 
-cmd(delete, Sock, RecvCallback, Entry) ->
-    send_recv(Sock, RecvCallback, #mc_header{opcode = ?DELETE}, Entry);
+cmd(delete, Sock, RecvCallback, CBData, Entry) ->
+    send_recv(Sock, RecvCallback, CBData, #mc_header{opcode = ?DELETE}, Entry);
 
-cmd(flush_all, Sock, RecvCallback, Entry) ->
-    send_recv(Sock, RecvCallback, #mc_header{opcode = ?FLUSH}, Entry);
+cmd(flush_all, Sock, RecvCallback, CBData ,Entry) ->
+    send_recv(Sock, RecvCallback, CBData, #mc_header{opcode = ?FLUSH}, Entry);
 
-cmd(stats, Sock, RecvCallback, Entry) ->
+cmd(stats, Sock, RecvCallback, CBData, Entry) ->
     ok = mc_binary:send(Sock, req,
                         #mc_header{opcode = ?STAT}, Entry),
-    stat_recv(Sock, RecvCallback, #mc_header{opcode = ?STAT}, Entry);
+    stat_recv(Sock, RecvCallback, CBData, #mc_header{opcode = ?STAT}, Entry);
 
-cmd(Opcode, Sock, RecvCallback, Entry) ->
+cmd(Opcode, Sock, RecvCallback, CBData, Entry) ->
     % Dispatch to cmd_binary() in case the caller was
     % using a binary protocol opcode.
-    mc_client_binary:cmd(Opcode, Sock, RecvCallback, Entry).
+    mc_client_binary:cmd(Opcode, Sock, RecvCallback, CBData, Entry).
 
 % -------------------------------------------------
 
 % Calls binary target and converts binary opcode/success
 % to ascii result string.
-send_recv(Sock, RecvCallback, Header, Entry) ->
+send_recv(Sock, RecvCallback, CBData, Header, Entry) ->
     {ok, #mc_header{opcode = O, status = S} = _RH, _RE} =
-        mc_binary:send_recv(Sock, RecvCallback, Header, Entry),
+        mc_binary:send_recv(Sock, RecvCallback, CBData, Header, Entry),
     {ok, mc_binary:b2a_code(O, S)}.
 
 % -------------------------------------------------
 
-cmd_update(Sock, RecvCallback,
+cmd_update(Sock, RecvCallback, CBData,
            #mc_entry{flag = Flag, expire = Expire} = Entry, Opcode) ->
     Ext = <<Flag:32, Expire:32>>,
-    send_recv(Sock, RecvCallback,
+    send_recv(Sock, RecvCallback, CBData,
               #mc_header{opcode = Opcode}, Entry#mc_entry{ext = Ext}).
 
-cmd_xpend(Sock, RecvCallback, Entry, Opcode) ->
-    send_recv(Sock, RecvCallback,
+cmd_xpend(Sock, RecvCallback, CBData, Entry, Opcode) ->
+    send_recv(Sock, RecvCallback, CBData,
               #mc_header{opcode = Opcode}, Entry#mc_entry{ext = undefined}).
 
-cmd_arith(Sock, RecvCallback,
+cmd_arith(Sock, RecvCallback, CBData,
           #mc_entry{data = Amount, expire = Expire} = Entry, Opcode) ->
     case is_list(Amount) of
         true ->
             AmountN = list_to_integer(Amount),
-            cmd_arith(Sock, RecvCallback,
+            cmd_arith(Sock, RecvCallback, CBData,
                       Entry#mc_entry{data = <<AmountN:64>>}, Opcode);
         false ->
             Ext = <<Amount/binary, 0:64, Expire:32>>,
-            send_recv(Sock, RecvCallback,
+            send_recv(Sock, RecvCallback, CBData,
                       #mc_header{opcode = Opcode},
                       Entry#mc_entry{ext = Ext, data = undefined})
     end.
 
-get_recv(Sock, RecvCallback) ->
+get_recv(Sock, RecvCallback, CBData) ->
     case recv(Sock, res) of
         {error, _} = Err -> Err;
         {ok, #mc_header{opcode = ?NOOP}, _Entry} ->
             {ok, <<"END\r\n">>};
         {ok, #mc_header{opcode = ?GETKQ} = Header, Entry} ->
             case is_function(RecvCallback) of
-               true  -> RecvCallback(Header, Entry);
+               true  -> RecvCallback(Header, Entry, CBData);
                false -> ok
             end,
-            get_recv(Sock, RecvCallback)
+            get_recv(Sock, RecvCallback, CBData)
     end.
 
-stat_recv(Sock, RecvCallback, ReqHeader, ReqEntry) ->
+stat_recv(Sock, RecvCallback, CBData, ReqHeader, ReqEntry) ->
     case recv(Sock, res) of
         {error, _} = Err -> Err;
         {ok, #mc_header{opcode = ?STAT,
@@ -133,10 +138,10 @@ stat_recv(Sock, RecvCallback, ReqHeader, ReqEntry) ->
         {ok, #mc_header{opcode = ?STAT,
                         status = ?SUCCESS} = Header, Entry} ->
             case is_function(RecvCallback) of
-               true  -> RecvCallback(Header, Entry);
+               true  -> RecvCallback(Header, Entry, CBData);
                false -> ok
             end,
-            stat_recv(Sock, RecvCallback, ReqHeader, ReqEntry);
+            stat_recv(Sock, RecvCallback, CBData, ReqHeader, ReqEntry);
         {ok, _, _} ->
             {ok, <<"ERROR\r\n">>}
     end.
@@ -152,25 +157,26 @@ set_test() ->
 set_test_sock(Sock, Key) ->
     test_flush(Sock),
     (fun () ->
-        {ok, RB} = cmd(set, Sock, undefined,
+        {ok, RB} = cmd(set, Sock, undefined, undefined,
                        #mc_entry{key = Key, data = <<"AAA">>}),
         ?assertMatch(RB, <<"STORED\r\n">>),
         get_test_match(Sock, Key, <<"AAA">>)
     end)().
 
 test_flush(Sock) ->
-    {ok, works} = send_recv(Sock, undefined,
-                            #mc_header{opcode = ?FLUSH}, #mc_entry{}, works).
+    {ok, works} = mc_binary:send_recv(Sock, undefined, undefined,
+                                      #mc_header{opcode = ?FLUSH}, #mc_entry{},
+                                      works).
 
 get_test_match(Sock, Key, Data) ->
     D = ets:new(test, [set]),
     ets:insert(D, {nvals, 0}),
     {ok, RB} = cmd(get, Sock,
-                   fun (_H, E) ->
+                   fun (_H, E, undefined) ->
                        ets:update_counter(D, nvals, 1),
                        ?assertMatch(Key, E#mc_entry.key),
                        ?assertMatch(Data, E#mc_entry.data)
-                   end,
+                   end, undefined,
                    [Key]),
     ?assertMatch(RB, <<"END\r\n">>),
     ?assertMatch([{nvals, 1}], ets:lookup(D, nvals)).
@@ -183,8 +189,8 @@ get_test() ->
         D = ets:new(test, [set]),
         ets:insert(D, {nvals, 0}),
         {ok, RB} = cmd(get, Sock,
-                       fun (_H, _E) -> ?assert(false) % Should not get here.
-                       end,
+                       fun (_H, _E, undefined) -> ?assert(false) % Should not get here.
+                       end, undefined,
                        [<<"ccc">>, <<"bbb">>]),
         ?assertMatch(RB, <<"END\r\n">>),
         ?assertMatch([{nvals, 0}], ets:lookup(D, nvals))
@@ -193,11 +199,11 @@ get_test() ->
         D = ets:new(test, [set]),
         ets:insert(D, {nvals, 0}),
         {ok, RB} = cmd(get, Sock,
-                       fun (_H, E) ->
+                       fun (_H, E, undefined) ->
                            ets:update_counter(D, nvals, 1),
                            ?assertMatch(<<"aaa">>, E#mc_entry.key),
                            ?assertMatch(<<"AAA">>, E#mc_entry.data)
-                       end,
+                       end, undefined,
                        [<<"aaa">>, <<"bbb">>]),
         ?assertMatch(RB, <<"END\r\n">>),
         ?assertMatch([{nvals, 1}], ets:lookup(D, nvals))
@@ -206,11 +212,11 @@ get_test() ->
         D = ets:new(test, [set]),
         ets:insert(D, {nvals, 0}),
         {ok, RB} = cmd(get, Sock,
-                       fun (_H, E) ->
+                       fun (_H, E, undefined) ->
                            ets:update_counter(D, nvals, 1),
                            ?assertMatch(<<"aaa">>, E#mc_entry.key),
                            ?assertMatch(<<"AAA">>, E#mc_entry.data)
-                       end,
+                       end, undefined,
                        [<<"aaa">>, <<"aaa">>, <<"bbb">>]),
         ?assertMatch(RB, <<"END\r\n">>),
         ?assertMatch([{nvals, 2}], ets:lookup(D, nvals))
@@ -226,18 +232,18 @@ delete_test() ->
         D = ets:new(test, [set]),
         ets:insert(D, {nvals, 0}),
         {ok, RB} = cmd(delete, Sock,
-                       fun (H, _E) ->
+                       fun (H, _E, undefined) ->
                            ets:update_counter(D, nvals, 1),
                            ?assertMatch(?DELETE, H#mc_header.opcode)
-                       end,
+                       end, undefined,
                        #mc_entry{key = <<"aaa">>}),
         ?assertMatch(RB, <<"DELETED\r\n">>),
         ?assertMatch([{nvals, 1}], ets:lookup(D, nvals))
     end)(),
     (fun () ->
         {ok, RB} = cmd(get, Sock,
-                       fun (_H, _E) -> ?assert(false) % Should not get here.
-                       end,
+                       fun (_H, _E, undefined) -> ?assert(false) % Should not get here.
+                       end, undefined,
                        [<<"aaa">>, <<"bbb">>]),
         ?assertMatch(RB, <<"END\r\n">>)
     end)(),

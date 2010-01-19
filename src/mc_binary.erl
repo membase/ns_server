@@ -15,9 +15,9 @@
 
 %% Functions to work with memcached binary protocol packets.
 
-send_recv(Sock, RecvCallback, Header, Entry, Success) ->
+send_recv(Sock, RecvCallback, CBData, Header, Entry, Success) ->
     {ok, RecvHeader, RecvEntry} =
-        send_recv(Sock, RecvCallback, Header, Entry),
+        send_recv(Sock, RecvCallback, CBData, Header, Entry),
     V1 = RecvHeader#mc_header.opcode,
     V1 = Header#mc_header.opcode,
     SR = RecvHeader#mc_header.status,
@@ -26,11 +26,11 @@ send_recv(Sock, RecvCallback, Header, Entry, Success) ->
         false -> {error, RecvHeader, RecvEntry}
     end.
 
-send_recv(Sock, RecvCallback, Header, Entry) ->
+send_recv(Sock, RecvCallback, CBData, Header, Entry) ->
     ok = send(Sock, req, Header, Entry),
     {ok, RecvHeader, RecvEntry} = recv(Sock, res),
     case is_function(RecvCallback) of
-       true  -> RecvCallback(RecvHeader, RecvEntry);
+       true  -> RecvCallback(RecvHeader, RecvEntry, CBData);
        false -> ok
     end,
     {ok, RecvHeader, RecvEntry}.
@@ -158,7 +158,7 @@ recv_data(Sock, NumBytes) -> gen_tcp:recv(Sock, NumBytes).
 noop_test()->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
-    {ok, works} = send_recv(Sock, undefined,
+    {ok, works} = send_recv(Sock, undefined, undefined,
                             #mc_header{opcode = ?NOOP}, #mc_entry{}, works),
     ok = gen_tcp:close(Sock).
 
@@ -169,5 +169,5 @@ flush_test() ->
     ok = gen_tcp:close(Sock).
 
 test_flush(Sock) ->
-    {ok, works} = send_recv(Sock, undefined,
+    {ok, works} = send_recv(Sock, undefined, undefined,
                             #mc_header{opcode = ?FLUSH}, #mc_entry{}, works).
