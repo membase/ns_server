@@ -59,7 +59,7 @@ test_unit: ebins $(NS_SERVER_EBIN)
 	erl $(EFLAGS) ../../ebin -noshell -s mc_test test -s init stop -kernel error_logger silent
 
 test_unit_verbose: ebins $(NS_SERVER_EBIN)
-	erl $(EFLAGS) -noshell -s mc_test test -s init stop
+	erl $(EFLAGS) ../../ebin -noshell -s mc_test test -s init stop
 
 test_main: ebin $(NS_SERVER_EBIN)
 	erl $(EFLAGS) -s mc_test main -noshell
@@ -72,9 +72,6 @@ test_main_mock: ebin $(NS_SERVER_EBIN)
 
 test_main_mock_driver: ebin $(NS_SERVER_EBIN)
 	python ./test/emoxi_test.py
-
-test_load_gen: ebin $(NS_SERVER_EBIN)
-	erl $(EFLAGS) -s load_gen_mc main
 
 test_client_ascii:
 	$(LUA) protocol_memcached/test_client_ascii.lua localhost:11300
