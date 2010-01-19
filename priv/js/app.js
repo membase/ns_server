@@ -523,7 +523,7 @@ var BucketsSection = {
       if (/^\s*\d+\s*$/.exec(cache)) {
         cacheValue = parseInt(cache, 10);
       }
-    
+
       var detailsText;
       if (cacheValue != undefined) {
         var nodesCnt = DAO.cells.currentPoolDetails.value.nodes.length;
