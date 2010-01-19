@@ -174,7 +174,7 @@ td.leftNav li.indent {
 	margin-left: 20px;
 }
 
-td.mainPanel {
+#mainPanel {
 	font-family: Helvetica;
 	font-weight: normal;
 	font-size: 12pt;

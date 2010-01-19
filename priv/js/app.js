@@ -792,14 +792,14 @@ var ThePage = {
 
       DAO.switchSection(sec);
 
-      $('#middle_pane > div').css('display', 'none');
+      $('#mainPanel > div').css('display', 'none');
       $('#'+sec).css('display','block');
-      setTimeout(function () {
+      _.defer(function () {
         if (oldSection && oldSection.onLeave)
           oldSection.onLeave();
         self.currentSection.onEnter();
         $(window).trigger('sec:' + sec);
-      }, 10);
+      });
     });
   }
 };
