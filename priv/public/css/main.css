@@ -77,6 +77,3 @@ a.selected { text-decoration: underline; }
 .template { display: none; }
 
 #middle_pane { vertical-align: top; }
-
-// this class is used by js code to show 'Passwords don't match' message
-.dont-match { display: none; }

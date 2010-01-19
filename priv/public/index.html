@@ -2,24 +2,40 @@
 <html>
 <head>
 <title>NorthScale Console</title>
-<link rel="stylesheet" type="text/css" href="/css/main.css">
+<link rel="stylesheet" type="text/css" href="/css/screen.css">
 <link rel="stylesheet" type="text/css" href="/css/tabs.css">
 <script src="/js/all.js"></script>
 </head>
 <body>
-<a href="/index.html">Clean reload</a>
+  <div id="container">
+    <div id="header">
+      <a href="/index.html"><h1></h1></a>
+    </div> <!-- header -->
+    
+    <div id="mainContainer">
+
 <table width="100%">
-<tr><td width="25%" id="left_pane">
-  <div style="outline: red 1px solid;">
-    <ul>
-      <li><a id="switch_overview" href="javascript:nav.go('overview');">Cluster overview</a>
-      <li><a id="switch_analytics" href="javascript:nav.go('analytics');">Analytics</a>
-      <li><a id="switch_buckets" href="javascript:nav.go('buckets');">Buckets</a>
-      <li><a id="switch_alerts" href="javascript:nav.go('alerts');">Alerts/Log</a>
-      <li><a id="switch_settings" href="javascript:nav.go('settings');">Cluster Settings</a>
-    </ul>
+<tr>
+  
+  <h1>RUN</h1>
+      <td class="leftNav">
+        <ul>
+          <li class="line"></li>
+          <li class="line"><a id="switch_overview" href="javascript:nav.go('overview');">Cluster Overview</a></li>
+          <li class="line"><a id="switch_analytics" href="javascript:nav.go('analytics');">Analytics</a></li>
+          <li class="line"><a id="switch_buckets" href="javascript:nav.go('buckets');">Buckets</a></li>
+          <li class="line"><a id="switch_alerts" href="javascript:nav.go('alerts');">Alerts/Logs</a></li>
+          <li class="line"><a id="switch_overview" href="javascript:nav.go('settings');">Cluster Settings</a></li>
+        </ul>
+      </td>
+<!--  
+  <div class="notify">
+  notification will go here
   </div>
-</td><td width="75%" id="middle_pane">
+-->  
+  
+  <td class="mainPanel">
+    
   <div id="overview" style="display:none;">
     <div class="section">
       <h2><em>Server Nodes</em></h2>
@@ -47,17 +63,14 @@
                 <tr><td>OS:<td>{%= h(this.os) %}
               </table>
             </div>
-            <div class="second">
-              <table>
-                <tr><td>Front Cache:<td>Disabled
-              </table>
-            </div>
           </td></tr>
          <!-- {% }); %} -->
         </tbody></table>
       </div>
     </div>
-  </div><div id="analytics" status="display:none">
+  </div>
+  
+  <div id="analytics" status="display:none">
     <div class="section">
       <h2><em>System overview</em> <span>Interval
       <a id='analytics_graph_zoom_real_time'>Real time</a>
@@ -69,6 +82,7 @@
       <span id="analytics_graph_misses"></span>
       </p>
     </div>
+
     <div class="section">
       <h2><em><span class="stat_target_name"></span> - Top Key Values</em> <span>Interval
       <a id='analytics_keys_zoom_real_time'>Real time</a>
@@ -92,9 +106,11 @@
         </table>
       </div>
     </div>
-  </div><div id="buckets" status="display:none">
-    <p><a href="javascript:nav.go('overview')">Overview</a> > Buckets
-    <button type="button" onclick="BucketsSection.startCreate();">Add a New Bucket</button>
+  </div>
+  
+  <div id="buckets" status="display:none">
+    <p><a href="javascript:nav.go('overview')">Cluster Overview</a> > Buckets
+    <button onclick="BucketsSection.startCreate();">Add a New Bucket</button>
     <div id="bucket_list_container">
     </div>
     <div id="bucket_list_template" class="template">
@@ -110,7 +126,9 @@
           {% }); %}
         </table>
     </div>
-  </div><div id="alerts" style="display:none">
+  </div>
+  
+  <div id="alerts" style="display:none">
     <ul class="tabs">
       <li><a href="#">Current Alerts</a>
       <li><a href="#">Alert Settings</a>
@@ -166,8 +184,10 @@
   </div><div id="settings" style="display:none">
     This is settings
   </div>
+
 </tr>
 </table>
+
 <div class="jqmWindow" id="login_dialog">
 
 <!-- <a href="#" class="jqmClose">Close</a> -->
@@ -193,26 +213,27 @@
 <p>Bucket name: {%= h(b.name) %}</p>
 <p>Cache size: {%= h(b.basicStats.cacheSize) %} MB</p>
 <p>Password: *****</p>
-<p>Sample connection string: <textarea rows="3" readonly>sample connection string here</textarea></p>
+<p>Sample connection string: <textarea rows="3" readonly>{%= h(b.sampleConnectionString) %}</textarea></p>
 </div>
 <div class="jqmWindow" id="add_new_bucket_dialog">
   <h>Add New Bucket</h>
-  <div id="add_new_bucket_errors_container"></div>
-  <div id="add_new_bucket_errors_template" class="template">
-    Couldn't create bucket due to:
-    <ul>
-      <!-- {% _.each(rows, function (e) { %} -->
-      <li>{%= h(e) %}
-      <!-- {% }); %} -->
-    </ul>
-  </div>
   <form id="add_new_bucket_form">
   <p><label>Bucket Name<input type="text" name="name"></label>
-  <p><label>Cache Size<input type="text" name="cacheSize"><span class="cache-details"></span></label>
+  <p><label>Cache Size<input type="text" name="cacheSize"></label>
   <p><label><input type="checkbox" value="1" name="reserveInAdvance">Reserve memory in advance</label>
-  <p>Password<input type="password" name="password" autocomplete="off">
-  <p>Verify Password<input type="password" name="verifyPassword" autocomplete="off"> <span class="dont-match">Password don't match</span>
-  <p><a href="#" class="jqmClose">cancel</a> <button type="submit">Add Bucket</button>
+  <p>Password<input type="password" name="password">
+  <p>Verify Password<input type="password" name="verifyPassword">
+  <p><a href="#" class="jqmClose">cancel</a> <button type="button" onclick="BucketsSection.createSubmit();">Add Bucket</button>
   </form>
 </div>
-</body></html>
+
+</div> <!-- mainContainer -->
+
+<div id="footer">
+  <h1>Copyright 2010 <a href="http://northscale.com">NorthScale, Inc.</a> All rights reserved.</h1>
+</div>
+
+</div> <!-- container -->
+
+</body>
+</html>

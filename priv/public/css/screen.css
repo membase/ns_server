@@ -1,0 +1,261 @@
+/* NorthScale Menelaus Web Console */
+/* begin ultimate reset */
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, font, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	outline: 0;
+	font-size: 100.01%;
+	vertical-align: baseline;
+	background: transparent;
+}
+body {
+	line-height: 1;
+}
+ol, ul {
+	list-style: none;
+}
+blockquote, q {
+	quotes: none;
+}
+
+/* remember to define focus styles! */
+:focus {
+	outline: 0;
+}
+
+/* remember to highlight inserts somehow! */
+ins {
+	text-decoration: none;
+}
+del {
+	text-decoration: line-through;
+}
+
+/* tables still need 'cellspacing="0"' in the markup */
+table {
+	border-collapse: collapse;
+	border-spacing: 0;
+}
+
+blockquote, q
+{
+	quotes: none;
+}
+
+/*
+Safari doesn't support the quotes attribute, so we do this instead.
+*/
+blockquote:before, blockquote:after, q:before, q:after
+{
+	/*
+	CSS 2; used to remove quotes in case "none" fails below.
+	*/
+	content: "";
+	/*
+	CSS 2.1; will remove quotes if supported, and override the above.
+	User-agents that don't understand "none" should ignore it, and
+	keep the above value. This is here for future compatibility,
+	though I'm not 100% convinced that it's a good idea...
+	*/
+	content: none;
+}
+
+textarea { overflow: auto; }
+input { border: 0px solid white; margin: 0;  padding: 0; }
+
+/* end reset */
+
+/* all links */
+a:link {
+	color: #00A6DE;
+	text-decoration: none;
+}
+
+#container {
+	position: absolute;
+	width: 100%;
+	min-height: 100%;
+}
+
+#header {
+	background: url('../images/ns_console_headerbg.png') repeat-x;
+	height: 100px;
+	left: 12%;
+}
+
+#header h1 {
+	position: absolute;
+	background: url('../images/ns_console_logov2.png') no-repeat;
+	width: 331px;
+	height: 57px;
+	top: 25px;
+	left: 12%;
+}
+
+#mainContainer {
+	position: relative;
+	width: 940px;
+	left: 12%;
+	margin-top: 50px;
+}
+
+#footer {
+	position: absolute;
+	background: url('../images/ns_console_footer.png') repeat-x;
+	width: 100%;
+	height: 208px;
+	bottom: 0;
+}
+
+#footer h1 {
+	padding-top: 30px;
+	margin-left: 12%;
+	font-family: Verdana;
+	font-weight: normal;
+	font-size: 11pt;
+	color: 	#97979A;;
+}
+
+#footer a {
+	color: #00A6DE;
+	text-decoration: none;
+}
+
+td.notify {
+}
+
+/*
+td.leftNav, td.leftNav ul {
+	width: 161px;
+	height: 31px;
+	font-family: Helvetica;
+	font-style: none;
+	font-weight: normal;
+	font-size: 12pt;
+}
+
+/*
+td.leftNav ul {
+	width: 161px;
+	height: 31px;
+	cursor: default;
+}
+*/
+
+td.leftNav li {
+	display: block;
+	height: 30px;
+	width: 160px;
+	vertical-align: middle;
+	text-align: left;
+}
+td.leftNav li.line {
+	background: url('../images/ns_menu_line.png') no-repeat;
+	background-position: bottom left;
+}
+
+td.leftNav li:hover {
+	background: url('../images/ns_console_ahover.png') no-repeat;
+	background-position: center;
+	height: 30px;
+	width: 160px;
+}
+
+td.leftNav li.indent {
+	margin-left: 20px;
+}
+
+td.mainPanel {
+	font-family: Helvetica;
+	font-weight: normal;
+	font-size: 12pt;
+}
+
+body { font-family: Arial, sans-serif; }
+#analytics_main_graph { width: 100%; }
+#analytics_graph_ops, #analytics_graph_gets, #analytics_graph_sets, #analytics_graph_misses { width: 20%; display: inline-block; }
+#left_pane, #right_pane, #middle_panel { vertical-align: top; }
+.section { border: 1px black solid; }
+#server_list_container .details { background-color: #F1F1F1; }
+#server_list_container .details > td > div { display: inline-block; vertical-align: top; }
+#server_list_container .details .first { width: 400px; }
+#server_list_container .details .second { width: 200px; }
+
+#server_list_container .details { display: none; }
+#server_list_container .details.opened { display: table-row; }
+
+#server_list_container > table { width: 100%; }
+
+
+/* jqModal base Styling courtesy of;
+  Brice Burgess <bhb@iceburg.net> */
+
+/* The Window's CSS z-index value is respected (takes priority). If none is supplied,
+  the Window's z-index value will be set to 3000 by default (in jqModal.js). You
+  can change this value by either;
+    a) supplying one via CSS
+    b) passing the "zIndex" parameter. E.g.  (window).jqm({zIndex: 500}); */
+  
+.jqmWindow {
+    display: none;
+    
+    position: fixed;
+    top: 17%;
+    left: 50%;
+    
+    margin-left: -300px;
+    width: 600px;
+    
+    background-color: #EEE;
+    color: #333;
+    border: 1px solid black;
+    padding: 12px;
+}
+
+.jqmOverlay { background-color: #000; }
+
+/* Fixed posistioning emulation for IE6
+     Star selector used to hide definition from browsers other than IE6
+     For valid CSS, use a conditional include instead */
+* html .jqmWindow {
+     position: absolute;
+     top: expression((document.documentElement.scrollTop || document.body.scrollTop) + Math.round(17 * (document.documentElement.offsetHeight || document.body.clientHeight) / 100) + 'px');
+}
+
+.spinner { vertical-align: middle; text-align: center; }
+
+a.selected { text-decoration: underline; }
+
+#alerts_list h2 { border-bottom: 1px dashed black; }
+#alerts_list ol { padding: 0px; }
+
+.alert_warning, .alert_attention, .alert_info
+{-moz-border-radius: 6px; -webkit-border-radius: 6px;
+  border: 1px dashed #cbcbcb; margin-bottom: 9px; list-style-type: none;
+  min-height: 81px;}
+
+#alerts_list h3 { display: block; float: left; color: #999999;
+             padding: 0px; margin: 0px; margin-bottom: 6px; margin-left: 0.5em;}
+
+.alert_warning p, .alert_attention p, .alert_info p { clear: both; text-indent: 2em;}
+.alert_warning .time, .alert_attention .time, .alert_info .time
+{ display:block; float:right; }
+
+.alert_warning { background-color: #efd4d4; }
+.alert_attention { background-color: #d5f3a8; }
+.alert_info { background-color: #f3e4a8; }
+
+#alerts_settings_guts li { list-style-type: none; }
+
+.template { display: none; }
+
+#middle_pane { vertical-align: top; }
