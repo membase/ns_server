@@ -12,7 +12,8 @@
          extract_auth/1,
          check_auth/1,
          check_auth_bucket/1,
-         bucket_auth_fun/1]).
+         bucket_auth_fun/1,
+         parse_user_password/1]).
 
 %% External API
 
@@ -62,13 +63,16 @@ check_auth(UserPassword, [_NotRightUser | Rest]) ->
 
 extract_auth(Req) ->
     case Req:get_header_value("authorization") of
-        []        -> undefined;
-        undefined -> undefined;
         "Basic " ++ Value ->
-            case string:tokens(base64:decode_to_string(Value), ":") of
-                [] -> undefined;
-                [User, Password] -> {User, Password}
-            end
+            parse_user_password(base64:decode_to_string(Value));
+        _ -> undefined
+    end.
+
+parse_user_password(UserPasswordStr) ->
+    case string:tokens(UserPasswordStr, ":") of
+        [] -> undefined;
+        [User] -> {User, ""};
+        [User, Password] -> {User, Password}
     end.
 
 bucket_auth_fun(UserPassword) ->
