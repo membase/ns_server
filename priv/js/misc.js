@@ -30,6 +30,10 @@ function escapeHTML() {
   return String(arguments[0]).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
 }
 
+function escapeJS(string) {
+  return String(string).replace(/\\/g, '\\\\').replace(/["']/g, '\\$&'); //"//' emacs' javascript-mode is silly
+}
+
 // Based on: http://ejohn.org/blog/javascript-micro-templating/
 // Simple JavaScript Templating
 // John Resig - http://ejohn.org/ - MIT Licensed
