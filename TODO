@@ -2,6 +2,8 @@
    bug, as rotation is not perfect sometimes
 * clicking on small graphs doesn't always work. Probably due to
    concurrent graph refresh.
+* I need 'Cluster Memory Available' for 'Add New Bucket' dialog
+* implement ModalAction
 
 OVERVIEW
 * 'Get Started' section
