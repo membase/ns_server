@@ -53,26 +53,28 @@ basic_stats(PoolId, BucketId) ->
 % GET /pools/default/stats?stat=hot_keys
 
 handle_bucket_stats(PoolId, all, Req) ->
-    % TODO: get aggregate stats for all buckets.
     handle_bucket_stats(PoolId, "default", Req);
 
 handle_bucket_stats(PoolId, Id, Req) ->
+    handle_buckets_stats(PoolId, [Id], Req).
+
+handle_buckets_stats(PoolId, BucketIds, Req) ->
     Params = Req:parse_qs(),
     case proplists:get_value("stat", Params) of
         "opsbysecond" ->
-            handle_bucket_stats_ops(Req, PoolId, Id, Params);
+            handle_buckets_stats_ops(Req, PoolId, BucketIds, Params);
         "hot_keys" ->
-            handle_bucket_stats_hks(Req, PoolId, Id, Params);
+            handle_buckets_stats_hks(Req, PoolId, BucketIds, Params);
         _ ->
             Req:respond({400, [], []})
     end.
 
-handle_bucket_stats_ops(Req, PoolId, BucketId, Params) ->
-    Res = build_bucket_stats_ops_response(PoolId, BucketId, Params),
+handle_buckets_stats_ops(Req, PoolId, BucketIds, Params) ->
+    Res = build_buckets_stats_ops_response(PoolId, BucketIds, Params),
     reply_json(Req, Res).
 
-handle_bucket_stats_hks(Req, PoolId, BucketId, Params) ->
-    Res = build_bucket_stats_hks_response(PoolId, BucketId, Params),
+handle_buckets_stats_hks(Req, PoolId, BucketIds, Params) ->
+    Res = build_buckets_stats_hks_response(PoolId, BucketIds, Params),
     reply_json(Req, Res).
 
 %% ops SUM(cmd_get, cmd_set,
@@ -97,22 +99,48 @@ handle_bucket_stats_hks(Req, PoolId, BucketId, Params) ->
 
 %% Implementation
 
-% get_stats() returns something like, where lists are sorted
-% with most-recent last.
-%
-% [{"total_items",[0,0,0,0,0]},
-%  {"curr_items",[0,0,0,0,0]},
-%  {"bytes_read",[2208,2232,2256,2280,2304]},
-%  {"cas_misses",[0,0,0,0,0]},
-%  {t, [{1263,946873,864055},
-%       {1263,946874,864059},
-%       {1263,946875,864050},
-%       {1263,946876,864053},
-%       {1263,946877,864065}]},
-%  ...]
+build_buckets_stats_ops_response(PoolId, BucketIds, Params) ->
+    {ok, SamplesInterval, LastSampleTStamp, Samples2} =
+        get_buckets_stats(PoolId, BucketIds, Params),
+    {struct, [{op, {struct, [{tstamp, LastSampleTStamp},
+                             {samplesInterval, SamplesInterval}
+                             | Samples2]}}]}.
 
-get_stats_raw(_PoolId, BucketId, SamplesNum) ->
-    dict:to_list(stats_aggregator:get_stats(BucketId, SamplesNum)).
+build_buckets_stats_hks_response(_PoolId, _BucketIds, _Params) ->
+    {struct, [{hot_keys, [{struct, [{name, <<"product:324:inventory">>},
+                                    {gets, 10000},
+                                    {bucket, <<"shopping application">>},
+                                    {misses, 100}]},
+                          {struct, [{name, <<"user:image:value2">>},
+                                    {gets, 10000},
+                                    {bucket, <<"chat application">>},
+                                    {misses, 100}]},
+                          {struct, [{name, <<"blog:117">>},
+                                    {gets, 10000},
+                                    {bucket, <<"blog application">>},
+                                    {misses, 100}]},
+                          {struct, [{name, <<"user:image:value4">>},
+                                    {gets, 10000},
+                                    {bucket, <<"chat application">>},
+                                    {misses, 100}]}]}]}.
+
+get_buckets_stats(PoolId, BucketIds, Params) ->
+    [FirstStats | RestStats] =
+        lists:map(fun(BucketId) ->
+                          get_stats(PoolId, BucketId, Params)
+                  end,
+                  BucketIds),
+    lists:foldl(fun({ok, XSamplesInterval, XLastSampleTStamp, XStat},
+                    {ok, YSamplesInterval, YLastSampleTStamp, _YStat}) ->
+                        {ok,
+                         erlang:max(XSamplesInterval,
+                                    YSamplesInterval),
+                         erlang:max(XLastSampleTStamp,
+                                    YLastSampleTStamp),
+                         XStat}
+                end,
+                FirstStats,
+                RestStats).
 
 get_stats(PoolId, BucketId, _Params) ->
     SamplesInterval = 1, % A sample every second.
@@ -156,30 +184,22 @@ get_stats(PoolId, BucketId, _Params) ->
                          Samples6),
     {ok, SamplesInterval, LastSampleTStamp, Samples7}.
 
-build_bucket_stats_ops_response(PoolId, BucketId, Params) ->
-    {ok, SamplesInterval, LastSampleTStamp, Samples2} =
-        get_stats(PoolId, BucketId, Params),
-    {struct, [{op, {struct, [{tstamp, LastSampleTStamp},
-                             {samplesInterval, SamplesInterval}
-                             | Samples2]}}]}.
+% get_stats_raw() returns something like, where lists are sorted
+% with most-recent last.
+%
+% [{"total_items",[0,0,0,0,0]},
+%  {"curr_items",[0,0,0,0,0]},
+%  {"bytes_read",[2208,2232,2256,2280,2304]},
+%  {"cas_misses",[0,0,0,0,0]},
+%  {t, [{1263,946873,864055},
+%       {1263,946874,864059},
+%       {1263,946875,864050},
+%       {1263,946876,864053},
+%       {1263,946877,864065}]},
+%  ...]
 
-build_bucket_stats_hks_response(_PoolId, _BucketId, _Params) ->
-    {struct, [{hot_keys, [{struct, [{name, <<"product:324:inventory">>},
-                                    {gets, 10000},
-                                    {bucket, <<"shopping application">>},
-                                    {misses, 100}]},
-                          {struct, [{name, <<"user:image:value2">>},
-                                    {gets, 10000},
-                                    {bucket, <<"chat application">>},
-                                    {misses, 100}]},
-                          {struct, [{name, <<"blog:117">>},
-                                    {gets, 10000},
-                                    {bucket, <<"blog application">>},
-                                    {misses, 100}]},
-                          {struct, [{name, <<"user:image:value4">>},
-                                    {gets, 10000},
-                                    {bucket, <<"chat application">>},
-                                    {misses, 100}]}]}]}.
+get_stats_raw(_PoolId, BucketId, SamplesNum) ->
+    dict:to_list(stats_aggregator:get_stats(BucketId, SamplesNum)).
 
 sum_stats_ops(Stats) ->
     sum_stats(["cmd_get", "cmd_set",
