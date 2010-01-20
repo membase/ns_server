@@ -64,29 +64,31 @@
 	<h1>&nbsp;</h1>
 	<div class="shadow_box"><div class="top"><div><div></div></div></div><div class="cnt"><div class="pad"><div class="content">
     <div class="section">
-      <h2 class="header_2">Server Nodes</h2>
+      <h2>Server Nodes</h2>
       <p id="server_list_container">
       </p>
       <div id="server_list_template" class="template">
         <table><tbody>
           <!-- {% $.each(rows, function (index) { %} -->
-          <tr class="primary"><td class="expander">+
-            <td class="name">{%= h(this.name) %}
-            <td class="port">Port {%= h(_.values(this.ports).join(', ')) %}
+          <tr class="primary">
+			<td class="expander">+</td>
+            <td class="name">{%= h(this.name) %}</td>
+            <td class="port">Port {%= h(_.values(this.ports).join(', ')) %}</td>
             <td class="status">{% if (this.running) { %}
                 Running
               {% } else { %}
                 Down
-              {% } %}
+              {% } %}</td>
+		  </tr>
           <tr class="details"><td colspan="4">
             <div class="first">
               <table>
-                <tr><td>Uptime:<td>{%= h(formatUptime(this.uptime)) %}
-                <tr><td>Cache:<td>{%= h(this.cache) %}
-                <tr><td>Threads:<td>{%= h(this.threads) %}
-                <tr><td colspan="2"><hr>
-                <tr><td>Version:<td>{%= h(this.version) %}
-                <tr><td>OS:<td>{%= h(this.os) %}
+                <tr><td>Uptime:</td><td>{%= h(formatUptime(this.uptime)) %}</td></tr>
+                <tr><td>Cache:</td><td>{%= h(this.cache) %}</td></tr>
+                <tr><td>Threads:</td><td>{%= h(this.threads) %}</td></tr>
+                <tr><td colspan="2"><hr></td></tr>
+                <tr><td>Version:</td><td>{%= h(this.version) %}</td></tr>
+                <tr><td>OS:</td><td>{%= h(this.os) %}</td></tr>
               </table>
             </div>
           </td></tr>
