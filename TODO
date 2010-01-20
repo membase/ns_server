@@ -4,6 +4,7 @@
    concurrent graph refresh.
 * I need 'Cluster Memory Available' for 'Add New Bucket' dialog
 * implement ModalAction
+* be consistent with respect to URI versus URL
 
 OVERVIEW
 * 'Get Started' section
