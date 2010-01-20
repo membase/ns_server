@@ -399,14 +399,44 @@ bucket or pool.
  Content-Length: nnn
 
 {
-  "getsBySecond" : [ 2, 4, 5, 6, 9, 20, 30, ... ],
-  "setsBySecond" : [ 2, 4, 5, 6, 9, 20, 30, ... ],
-  "missesBySecond" : [ 2, 4, 5, 6, 9, 20, 30, .. ]
+  "ops" : [ 2, 4, 5, 6, 9, 20, 30, ... ],
+  "cmd_get" : [ 2, 4, 5, 6, 9, 20, 30, ... ],
+  "get_misses" : [ 2, 4, 5, 6, 9, 20, 30, .. ],
+  "get_hits" : [ 2, 4, 5, 6, 9, 20, 30, .. ],
+  "cmd_set" : [ 2, 4, 5, 6, 9, 20, 30, .. ],
+  "evictions" : [ 2, 4, 5, 6, 9, 20, 30, .. ],
+  "misses" : [ 2, 4, 5, 6, 9, 20, 30, .. ],
+  "updates" : [ 2, 4, 5, 6, 9, 20, 30, .. ],
+  "bytes_read" : [ 2, 4, 5, 6, 9, 20, 30, .. ],
+  "bytes_written" : [ 2, 4, 5, 6, 9, 20, 30, .. ],
+  "hit_ratio" : [ 2, 4, 5, 6, 9, 20, 30, .. ],
+  "curr_items" : [ 2, 4, 5, 6, 9, 20, 30, .. ]
 }
 </pre>
 
 Note that there are situations where one may need the total number of
 calculations.  In that case, simply add the values needed on the client.
+
+These map to memcached stats as follows:
+	%% ops SUM(cmd_get, cmd_set,
+			incr_misses, incr_hits,
+			decr_misses, decr_hits,
+			cas_misses, cas_hits, cas_badval,
+			delete_misses, delete_hits,
+			cmd_flush)
+			%% cmd_get (cmd_get)
+			%% get_misses (get_misses)
+			%% get_hits (get_hits)
+			%% cmd_set (cmd_set)
+			%% evictions (evictions)
+			%% replacements (if available in time)
+			%% misses SUM(get_misses, delete_misses, incr_misses, decr_misses,
+			cas_misses)
+			%% updates SUM(cmd_set, incr_hits, decr_hits, cas_hits)
+			%% bytes_read (bytes_read)
+			%% bytes_written (bytes_written)
+			%% hit_ratio (get_hits / cmd_get)
+			%% curr_items (curr_items)
 
 --------------
 
