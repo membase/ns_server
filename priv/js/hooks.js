@@ -271,6 +271,7 @@ var MockedRequest = mkClass({
              uri: "/buckets/4",
              flushCacheURI: "/buckets/4/flush",
              passwordURI: "/buckets/4/password",
+             stats: {uri: "/buckets/4/stats"},
              basicStats: {
                cacheSize: 64, // in megs
                opsPerSec: 100,
@@ -284,6 +285,7 @@ var MockedRequest = mkClass({
              testAppStatusURI: "/testappuri",
              flushCacheURI: "/buckets/5/flush",
              passwordURI: "/buckets/5/password",
+             stats: {uri: "/buckets/5/stats"},
              basicStats: {
                cacheSize: 65, // in megs
                opsPerSec: 101,
@@ -294,6 +296,7 @@ var MockedRequest = mkClass({
              uri: "/buckets/6",
              flushCacheURI: "/buckets/6/flush",
              passwordURI: "/buckets/6/password",
+             stats: {uri: "/buckets/6/stats"},
              basicStats: {
                cacheSize: 66, // in megs
                opsPerSec: 102,
@@ -304,6 +307,7 @@ var MockedRequest = mkClass({
              uri: "/buckets/7",
              flushCacheURI: "/buckets/7/flush",
              passwordURI: "/buckets/7/password",
+             stats: {uri: "/buckets/7/stats"},
              basicStats: {
                cacheSize: 67, // in megs
                opsPerSec: 103,

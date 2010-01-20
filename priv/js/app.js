@@ -149,7 +149,29 @@ var DAO = {
     return future.get({url: uri});
   }).setSources({poolList: this.poolList});
 
-  this.currentStatTargetCell = this.currentPoolDetailsCell;
+  var statsBucketURL = this.statsBucketURL = new Cell();
+  watchHashParamChange("statsBucket", function (value) {
+    statsBucketURL.setValue(value);
+  });
+  statsBucketURL.subscribeAny(function (cell) {
+    console.log("cell.value:", cell.value);
+    setHashFragmentParam("statsBucket", cell.value);
+  });
+
+  this.currentStatTargetCell = new Cell(function (poolDetails, mode) {
+    if (mode != 'analytics')
+      return;
+
+    if (!this.bucketURL)
+      return poolDetails;
+
+    var bucket = BucketsSection.findBucket(this.bucketURL);
+    if (bucket)
+      return bucket;
+    return future.get({url: this.bucketURL});
+  }).setSources({bucketURL: statsBucketURL,
+                 poolDetails: this.currentPoolDetailsCell,
+                 mode: this.mode});
 }).call(DAO.cells);
 
 var SamplesRestorer = mkClass({
@@ -515,6 +537,9 @@ var BucketsSection = {
 
     return body.call(this, bucketInfo);
   },
+  findBucket: function (uri) {
+    return this.withBucket(uri, function (r) {return r});
+  },
   showBucket: function (uri) {
     this.withBucket(uri, function (bucketDetails) {
       renderTemplate('bucket_details_dialog', {b: bucketDetails});
@@ -650,6 +675,13 @@ var AnalyticsSection = {
       var names = $('.stat_target_name');
       names.text(cell.value.name);
     });
+  },
+  visitBucket: function (bucketURL) {
+    DAO.cells.statsBucketURL.setValue(bucketURL);
+    ThePage.gotoSection('analytics');
+  },
+  onLeave: function () {
+    DAO.cells.statsBucketURL.setValue(undefined);
   },
   onEnter: function () {
     StatGraphs.update();
@@ -805,7 +837,7 @@ var ThePage = {
     if (!(this.sections[section])) {
       throw new Error('unknown section:' + section);
     }
-    $.bbq.pushState({sec: section});
+    setHashFragmentParam('sec', section);
   },
   initialize: function () {
     _.each(_.values(this.sections), function (sec) {

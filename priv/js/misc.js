@@ -234,3 +234,14 @@ function ModalAction() {
 function isBlank(e) {
   return e == null || !e.length;
 }
+
+function setHashFragmentParam(name, value) {
+  var state = _.extend({}, $.bbq.getState());
+  if (value == null) {
+    delete state[name];
+    $.bbq.pushState(state, 2);
+  } else if (value != state[name]) {
+    state[name] = value;
+    $.bbq.pushState(state, 2);
+  }
+}

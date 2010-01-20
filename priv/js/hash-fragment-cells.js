@@ -50,9 +50,7 @@ var HashFragmentCell = mkClass(Cell, {
   },
   beforeChangeHook: function (value) {
     if (value === undefined) {
-      var state = _.extend({}, $.bbq.getState());
-      delete state[this.paramName];
-      $.bbq.pushState(state, 2);
+      setHashFragmentParam(this.paramName, undefined);
 
       this.selectedId = undefined;
       return value;
@@ -79,9 +77,7 @@ var HashFragmentCell = mkClass(Cell, {
     var currentState = $.bbq.getState(this.paramName);
     if (currentState == id || (currentState === undefined && id == this.defaultId))
       return;
-    var obj = {};
-    obj[this.paramName] = id;
-    $.bbq.pushState(obj);
+    setHashFragmentParam(this.paramName, id);
   },
   addItem: function (id, value, isDefault) {
     var item = {id: id, value: value, index: this.items.length};

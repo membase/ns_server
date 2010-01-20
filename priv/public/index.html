@@ -166,7 +166,7 @@
         <table>
           <tr><th>Name<th>Ops/Sec<th>Evictions/Sec<th>Cache Used<th>Cache Size
           <!-- {% $.each(rows, function () { %} -->
-            <tr><td>{%= h(this.name) %}
+            <tr><td><a href="{%=jsLink('AnalyticsSection.visitBucket', this.uri)%}">{%= h(this.name) %}</a>
               <td>{%= h(this.basicStats.opsPerSec) %}
               <td>{%= h(this.basicStats.evictionsPerSec) %}
               <td>{%= h(this.basicStats.cachePercentUsed) %}
