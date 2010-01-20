@@ -726,6 +726,13 @@ have been referenced.
 ## Todo
 * Strip out some of the non 1.0 things.  Priroities, etc.
 
+Implementation in menelaus web:
+* flush (steve yen starting)
+* logs
+* cluster settings
+* controller: join cluster  with and without security required (matt ingenthron starting)
+* add bucket
+
 ## Changelog
 * 20091113 First publishing (matt.ingenthron@northscale.com)
 * 20091115 Updated with some operations (matt.ingenthron@northscale.com)
@@ -746,3 +753,5 @@ have been referenced.
 * 20101207 Changed some paths to plural from singlular.  Reflected node tracking
   changes moving to buckets.
 * 20100112 Removed per-node requests
+* 20100120 Documented bucket delete
+* 20100120 Added small to-do list for implementation
