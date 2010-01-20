@@ -64,7 +64,7 @@ handle_cast({unmonitoring, Hostname, Port, Bucket}, State) ->
 
 handle_info(post_startup_init, State) ->
     error_logger:info_msg("Performing post-startup stats initialization.~n"),
-    initPools(),
+    stats_pool_event_listener:setup_handler(),
     {noreply, State};
 handle_info(Info, State) ->
     error_logger:info_msg("Just received ~p~n", [Info]),
@@ -118,27 +118,6 @@ classify("cas_enabled") -> false;
 classify("tcp_backlog") -> false;
 classify("binding_protocol") -> false;
 classify(_) -> true.
-
-initPools() ->
-    % This code assumes each connected server runs all pools and all
-    % buckets.
-    [Pool | []] = mc_pool:list(), % assume one pool
-    Buckets = mc_bucket:list(Pool),
-    Servers = lists:usort(lists:flatmap(fun(B) -> bucket_servers(Pool, B)
-                                        end, Buckets)),
-    % Assuming all servers run all buckets.
-    lists:foreach(fun({H, P}) ->
-                          stats_collector:monitor(H, P, Buckets)
-                  end,
-                  Servers).
-
-bucket_servers(Pool, B) ->
-    lists:map(fun({mc_addr, HP, _K, _A}) ->
-                      [H, P] = string:tokens(HP, ":"),
-                      {I, []} = string:to_integer(P),
-                      {H, I}
-              end,
-              mc_bucket:addrs(Pool, B)).
 
 %
 % API
