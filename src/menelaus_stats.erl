@@ -123,7 +123,34 @@ get_stats(PoolId, BucketId, _Params) ->
                            [{t, TStamps2} | _] -> lists:last(TStamps2);
                            _                   -> 0
                        end,
-    {ok, SamplesInterval, LastSampleTStamp, Samples2}.
+    Samples3 = [{ops, sum_stats(["cmd_get", "cmd_set",
+                                 "incr_misses", "incr_hits",
+                                 "decr_misses", "decr_hits",
+                                 "delete_misses", "delete_hits",
+                                 "cas_misses", "cas_hits", "cas_badval",
+                                 "cmd_flush"],
+                                Samples2)} |
+                Samples2],
+    Samples4 = [{misses, sum_stats(["get_misses",
+                                    "incr_misses",
+                                    "decr_misses",
+                                    "delete_misses",
+                                    "cas_misses"],
+                                   Samples3)} |
+                Samples3],
+    Samples5 = [{updates, sum_stats(["cmd_set",
+                                     "incr_hits", "decr_hits", "cas_hits"],
+                                    Samples4)} |
+                Samples4],
+    Samples6 = [{hit_ratio,
+                 lists:zipwith(fun(undefined, _) -> 0;
+                                  (_, undefined) -> 0;
+                                  (Hits, Gets)   -> Hits / Gets
+                               end,
+                               proplists:get_value("get_hits", Samples5),
+                               proplists:get_value("cmd_get", Samples5))} |
+                Samples5],
+    {ok, SamplesInterval, LastSampleTStamp, Samples6}.
 
 build_bucket_stats_ops_response(PoolId, BucketId, Params) ->
     {ok, SamplesInterval, LastSampleTStamp, Samples2} =
@@ -149,6 +176,25 @@ build_bucket_stats_hks_response(_PoolId, _BucketId, _Params) ->
                                     {gets, 10000},
                                     {bucket, <<"chat application">>},
                                     {misses, 100}]}]}]}.
+
+sum_stats([Key | Rest], Stats) ->
+    sum_stats(Rest, Stats, proplists:get_value(Key, Stats)).
+
+sum_stats([Key | Rest], Stats, undefined) ->
+    sum_stats(Rest, Stats, proplists:get_value(Key, Stats));
+sum_stats([], _Stats, undefined)    -> [];
+sum_stats([], _Stats, Acc)          -> Acc;
+sum_stats([Key | Rest], Stats, Acc) ->
+    case proplists:get_value(Key, Stats) of
+        undefined ->
+            sum_stats(Rest, Stats, Acc);
+        KeyStats ->
+            Acc2 = lists:zipwith(fun(undefined, undefined) -> Acc;
+                                    (undefined, _)         -> Acc;
+                                    (_,         undefined) -> Acc;
+                                    (X, Y) -> X + Y end, KeyStats, Acc),
+            sum_stats(Rest, Stats, Acc2)
+    end.
 
 -ifdef(EUNIT).
 
