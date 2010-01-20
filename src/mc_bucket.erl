@@ -24,6 +24,7 @@
          bucket_config_set/3,
          bucket_config_get/2,
          bucket_config_get/3,
+         bucket_config_delete/2,
          addrs/2,
          list/1]).
 
@@ -164,10 +165,37 @@ bucket_config_get(Pools, PoolName, BucketName) ->
         PoolConfig -> bucket_config_get(PoolConfig, BucketName)
     end.
 
+bucket_config_delete(PoolConfig, BucketName) ->
+    Buckets = case proplists:get_value(buckets, PoolConfig, false) of
+                  false -> [];
+                  X     -> X
+              end,
+    lists:keystore(buckets, 1, PoolConfig,
+                   {buckets, proplists:delete(BucketName, Buckets)}).
+
+bucket_delete(PoolId, Id) ->
+    case mc_pool:pools_config_get() of
+        false -> false;
+        Pools ->
+            case mc_pool:pool_config_get(Pools, PoolId) of
+                false -> false;
+                PConfig ->
+                    PConfig2 = mc_bucket:bucket_config_delete(PConfig, Id),
+                    case PConfig =/= PConfig2 of
+                        true ->
+                            Pools2 = mc_pool:pool_config_set(Pools, PoolId,
+                                                             PConfig2),
+                            mc_pool:pools_config_set(Pools2),
+                            true;
+                        false -> false
+                    end
+            end
+    end.
+
 list(Pool) ->
     PoolConf = mc_pool:pool_config_get(mc_pool:pools_config_get(), Pool),
-    proplists:get_value(buckets, PoolConf),
-    lists:map(fun({K,_V}) -> K end, proplists:get_value(buckets, PoolConf)).
+    Buckets = proplists:get_value(buckets, PoolConf),
+    lists:map(fun({K, _V}) -> K end, Buckets).
 
 % ------------------------------------------------
 
