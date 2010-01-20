@@ -36,10 +36,13 @@ basic_stats(PoolId, BucketId) ->
     Bucket = menelaus_web:find_bucket_by_id(Pool, BucketId),
     MbPerNode = expect_prop_value(size_per_node, Bucket),
     NumNodes = length(ns_node_disco:nodes_wanted()),
-    % TODO.
+    SamplesNum = 10,
+    Samples = get_stats_raw(PoolId, BucketId, SamplesNum),
+    OpsPerSec = avg(sum_stats_ops(Samples)),
+    EvictionsPerSec = avg(proplists:get_value("evictions", Samples)),
     [{cacheSize, NumNodes * MbPerNode},
-     {opsPerSec, 100},
-     {evictionsPerSec, 5},
+     {opsPerSec, OpsPerSec},
+     {evictionsPerSec, EvictionsPerSec},
      {cachePercentUsed, 50}].
 
 % GET /pools/default/stats?stat=opsbysecond
@@ -123,14 +126,7 @@ get_stats(PoolId, BucketId, _Params) ->
                            [{t, TStamps2} | _] -> lists:last(TStamps2);
                            _                   -> 0
                        end,
-    Samples3 = [{ops, sum_stats(["cmd_get", "cmd_set",
-                                 "incr_misses", "incr_hits",
-                                 "decr_misses", "decr_hits",
-                                 "delete_misses", "delete_hits",
-                                 "cas_misses", "cas_hits", "cas_badval",
-                                 "cmd_flush"],
-                                Samples2)} |
-                Samples2],
+    Samples3 = [{ops, sum_stats_ops(Samples2)} | Samples2],
     Samples4 = [{misses, sum_stats(["get_misses",
                                     "incr_misses",
                                     "decr_misses",
@@ -145,7 +141,10 @@ get_stats(PoolId, BucketId, _Params) ->
     Samples6 = [{hit_ratio,
                  lists:zipwith(fun(undefined, _) -> 0;
                                   (_, undefined) -> 0;
-                                  (Hits, Gets)   -> Hits / Gets
+                                  (Hits, Gets)   ->
+                                       float(trunc((1000.0 * Hits) /
+                                                   (1000.0 * Gets)) /
+                                             1000.0)
                                end,
                                proplists:get_value("get_hits", Samples5),
                                proplists:get_value("cmd_get", Samples5))} |
@@ -177,6 +176,15 @@ build_bucket_stats_hks_response(_PoolId, _BucketId, _Params) ->
                                     {bucket, <<"chat application">>},
                                     {misses, 100}]}]}]}.
 
+sum_stats_ops(Stats) ->
+    sum_stats(["cmd_get", "cmd_set",
+               "incr_misses", "incr_hits",
+               "decr_misses", "decr_hits",
+               "delete_misses", "delete_hits",
+               "cas_misses", "cas_hits", "cas_badval",
+               "cmd_flush"],
+              Stats).
+
 sum_stats([Key | Rest], Stats) ->
     sum_stats(Rest, Stats, proplists:get_value(Key, Stats)).
 
@@ -196,11 +204,25 @@ sum_stats([Key | Rest], Stats, Acc) ->
             sum_stats(Rest, Stats, Acc2)
     end.
 
+avg(undefined) -> 0.0;
+avg(L)         -> avg(L, 0, 0).
+
+avg([], _, 0)            -> 0.0;
+avg([], Sum, Count)      -> float(Sum) / float(Count);
+avg([H | R], Sum, Count) -> avg(R, Sum + H, Count + 1).
+
 -ifdef(EUNIT).
 
 test() ->
     eunit:test(wrap_tests_with_cache_setup({module, ?MODULE}),
                [verbose]).
+
+avg_test() ->
+    ?assertEqual(0.0, avg([])),
+    ?assertEqual(5.0, avg([5])),
+    ?assertEqual(5.0, avg([5, 5, 5])),
+    ?assertEqual(5.0, avg([1, 5, 10])),
+    ok.
 
 -endif.
 
