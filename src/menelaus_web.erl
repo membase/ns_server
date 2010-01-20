@@ -83,17 +83,16 @@ loop(Req, DocRoot) ->
                          ["alerts", "settings"] ->
                              {auth,
                               fun menelaus_alert:handle_alerts_settings_post/1};
-                         ["pools", _, "testWorkload"] ->
+                         ["pools", _, "controller", "testWorkload"] ->
                              {auth,
                               fun handle_traffic_generator_control_post/1};
                          _ ->
-                             ns_log:log(?MODULE, 100, "Invalid generator post received."),
+                             ns_log:log(?MODULE, 100, "Invalid post received: ~p", Req),
 							 {done, Req:not_found()}
                      end;
                  _ ->
-					 ns_log:log(?MODULE, 100, "Invalid request recived ~p", Req),
+					 ns_log:log(?MODULE, 100, "Invalid request received: ~p", Req),
                      {done, Req:respond({405, [], "Method Not Allowed"})}
-					 % todo: How do I say Method Not Allowed here correctly?
              end,
     case Action of
         {done, RV} -> RV;
@@ -147,6 +146,11 @@ build_pool_info(Id, _UserPassword) ->
     {struct, [{name, list_to_binary(Id)},
               {nodes, Nodes},
               {buckets, BucketsInfo},
+			  {controllers, {struct,
+							 [{testWorkload, {struct,
+											 [{uri,
+											   list_to_binary("/pools/" ++ Id ++ "/testWorkload")}]}}]}},
+			  %%
               {stats, {struct,
                        [{uri,
                          list_to_binary("/pools/" ++ Id ++ "/stats")}]}}]}.
@@ -302,14 +306,19 @@ test() ->
 
 handle_traffic_generator_control_post(Req) ->
     PostArgs = Req:parse_post(),
-    case proplists:get_value(PostArgs, "onOrOff") of
+    case proplists:get_value("onOrOff", PostArgs) of
         "off" -> ns_log:log(?MODULE, 100, "Stopping workload from node ~p", erlang:node()),
-				 tgen:traffic_stop();
-        "on" -> ns_log:log(?MODULE, 100, "Stopping workload from node ~p", erlang:node()),
-				tgen:traffic_start()
-    end,
-    Req:respond({200, [], []}).
-%% todo, should return 400 Bad Request if POST args don't match
+				 tgen:traffic_stop(),
+				 Req:respond({204, [], []});
+        "on" -> ns_log:log(?MODULE, 100, "Starting workload from node ~p", erlang:node()),
+				tgen:traffic_start(),
+				Req:respond({204, [], []});
+		_ ->
+			ns_log:log(?MODULE, 100, "Invalid post to testWorkload controller.  PostArgs ~p evaluated to ~p",
+					   [PostArgs, proplists:get_value(PostArgs, "onOrOff")]),
+			Req:respond({400, [], "Bad Request\n"})
+    end.
+   %% todo: why isn't pattern matching working the way I'd think
 
 serve_index_html_for_tests(Req, DocRoot) ->
     case file:read_file(DocRoot ++ "/index.html") of

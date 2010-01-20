@@ -329,10 +329,23 @@ get the node list for that specific bucket.
 #### Bucket Test Workload Controllers
 
 <pre class="restcalls">
- POST /pools/default/controller/testWorkload
- Host: node.in.your.pool.com
+ POST /pools/default/controller/testWorkload HTTP/1.1
+ User-Agent: curl/7.19.4 (i386-apple-darwin9.6.2) libcurl/7.19.4 zlib/1.2.3
+ Host: localhost:8080
  Authorization: Basic xxxxxxxxxxxx
- application/x-www-form-urlencoded
+ Accept: */*
+ Content-Length: 10
+ Content-Type: application/x-www-form-urlencoded
+
+ onOrOff=on
+</pre>
+
+The response for this controller is a simple "204 No Content" or a 400 if the required
+post parameters are not matched.
+
+One example of how this may be done with a non-secured server from the commandline curl program is:
+`curl --data onOrOff=on http://localhost:8080/pools/default/controller/testWorkload`.  This is the
+source of the example above, as can be seen in the headers.
 
 ###List buckets and bucket operations
 
