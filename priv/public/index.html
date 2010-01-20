@@ -230,7 +230,7 @@
 <hr>
 <p>Bucket properties for {%= h(b.name) %}</p>
 <p>Bucket name: {%= h(b.name) %}</p>
-<p>Cache size: {%= h(b.basicStats.cacheSize) %} MB</p>
+<p>Cache size: {%= h(b.basicStats.cacheSize) %} MB <button type="button" onclick="{%=jsLink('BucketsSection.startFlushCache', b.uri)%}">Flush All</button></p>
 <p>Password: *****</p>
 <p>Sample connection string: <textarea rows="3" readonly>sample connection string here</textarea></p>
 </div>
@@ -254,6 +254,18 @@
   <p>Verify Password<input type="password" name="verifyPassword" autocomplete="off"> <span class="dont-match">Password don't match</span>
   <p><a href="#" class="jqmClose">cancel</a> <button type="submit">Add Bucket</button>
   </form>
+</div>
+<div class="jqmWindow" id="flush_cache_dialog_container">
+</div>
+<div class="template" id="flush_cache_dialog_template">
+  <h1>Are you sure you want to flush all items in {%=h(bucket.name)%}</h1>
+  <table><tr><td>Cache Size<td>{%=h(bucket.basicStats.cacheSize)%}
+     [MB x {%=h(DAO.getBucketNodesCount(bucket))%} = {%=h(DAO.getBucketNodesCount(bucket) * bucket.basicStats.cacheSize)%}MB Total Cache]
+    <tr><td>Total Items Stored<td>{%=h(bucket.basicStats.totalItemsStored)%}
+  </table>
+  <p><a href='#' class="jqmClose">cancel</a>
+     <button type="button"
+     onclick="{%=renderJSLink('BucketsSection.completeFlushCache', bucket.uri, '')%}">Flush</button></p>
 </div>
 
 </div> <!-- mainContainer -->

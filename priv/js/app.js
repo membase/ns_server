@@ -131,6 +131,12 @@ var DAO = {
       var rows = data.pools;
       DAO.cells.poolList.setValue(rows);
     }, 'json');
+  },
+  getTotalClusterMemory: function () {
+    return '??'; // TODO: implement
+  },
+  getBucketNodesCount: function (_dummy) {
+    return DAO.cells.currentPoolDetailsCell.value.nodes.length;
   }
 };
 
@@ -462,10 +468,6 @@ var OverviewSection = {
 
 var BucketsSection = {
   cells: {},
-  doDisplayBucketProperties: function (bucketDetails) {
-    renderTemplate('bucket_details_dialog', {b: bucketDetails});
-    $('#bucket_details_dialog_container').jqm({modal:true}).jqmShow();
-  },
   init: function () {
     var cells = this.cells;
 
@@ -491,7 +493,7 @@ var BucketsSection = {
     var buckets = this.buckets = this.cells.detailedBuckets.value;
     renderTemplate('bucket_list', buckets);
   },
-  showBucket: function (uri) {
+  withBucket: function (uri, body) {
     var buckets = this.buckets;
     var bucketInfo = _.detect(buckets, function (info) {
       return info.uri == uri;
@@ -502,7 +504,29 @@ var BucketsSection = {
       return;
     }
 
-    this.doDisplayBucketProperties(bucketInfo);
+    return body.call(this, bucketInfo);
+  },
+  showBucket: function (uri) {
+    this.withBucket(uri, function (bucketDetails) {
+      renderTemplate('bucket_details_dialog', {b: bucketDetails});
+      $('#bucket_details_dialog_container').jqm({modal:true}).jqmShow();
+    });
+  },
+  startFlushCache: function (uri) {
+    $('#bucket_details_dialog_container').jqm().jqmHide();
+    this.withBucket(uri, function (bucket) {
+      renderTemplate('flush_cache_dialog', {bucket: bucket});
+      $('#flush_cache_dialog_container').jqm({modal:true}).jqmShow();
+    });
+  },
+  completeFlushCache: function (uri) {
+    $('#flush_cache_dialog_container').jqm().jqmHide();
+    this.withBucket(uri, function (bucket) {
+      $.post(bucket.flushCacheURI);
+    });
+  },
+  getPoolNodesCount: function () {
+    return DAO.cells.currentPoolDetails.value.nodes.length;
   },
   onEnter: function () {
     this.cells.detailsPageURI.recalculate();
@@ -511,7 +535,6 @@ var BucketsSection = {
     var parent = $('#add_new_bucket_dialog');
     var passwd = parent.find("[name=password]").val();
     var passwd2 = parent.find("[name=verifyPassword]").val();
-    //console.log("pwd: ", passwd, passwd2);
     var show = (passwd != passwd2);
     parent.find('.dont-match')[show ? 'show' : 'hide']();
 
@@ -526,8 +549,8 @@ var BucketsSection = {
 
       var detailsText;
       if (cacheValue != undefined) {
-        var nodesCnt = DAO.cells.currentPoolDetails.value.nodes.length;
-        detailsText = " MB x " + nodesCnt + " server nodes = " + nodesCnt * cacheValue + "MB Total Cache Size/?? Cluster Memory Available"
+        var nodesCnt = this.getPoolNodesCount();
+        detailsText = " MB x " + nodesCnt + " server nodes = " + cacheValue * nodesCnt + "MB Total Cache Size/" + DAO.getTotalClusterMemory() + " Cluster Memory Available"
       } else {
         detailsText = "";
       }

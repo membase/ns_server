@@ -34,8 +34,9 @@ function escapeJS(string) {
   return String(string).replace(/\\/g, '\\\\').replace(/["']/g, '\\$&'); //"//' emacs' javascript-mode is silly
 }
 
-function renderJSLink(functionName, arg) {
-  return escapeHTML("javascript:" + functionName + "('" + escapeJS(arg) + "')")
+function renderJSLink(functionName, arg, prefix) {
+  prefix = prefix || "javascript:"
+  return escapeHTML(prefix + functionName + "('" + escapeJS(arg) + "')")
 }
 
 // Based on: http://ejohn.org/blog/javascript-micro-templating/
