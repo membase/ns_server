@@ -38,8 +38,8 @@ basic_stats(PoolId, BucketId) ->
     NumNodes = length(ns_node_disco:nodes_wanted()),
     SamplesNum = 10,
     Samples = get_stats_raw(PoolId, BucketId, SamplesNum),
-    OpsPerSec = avg(sum_stats_ops(Samples)),
-    EvictionsPerSec = avg(proplists:get_value("evictions", Samples)),
+    OpsPerSec = avg(deltas(sum_stats_ops(Samples))),
+    EvictionsPerSec = avg(deltas(proplists:get_value("evictions", Samples))),
     CurBytes = erlang:max(avg(proplists:get_value("bytes", Samples)),
                           1),
     MaxBytes = erlang:max(avg(proplists:get_value("limit_maxbytes", Samples)),
@@ -150,7 +150,11 @@ get_stats(PoolId, BucketId, _Params) ->
                                proplists:get_value("get_hits", Samples5),
                                proplists:get_value("cmd_get", Samples5))} |
                 Samples5],
-    {ok, SamplesInterval, LastSampleTStamp, Samples6}.
+    Samples7 = lists:map(fun({t, Vals}) -> {t, Vals};
+                            ({K, Vals}) -> {K, deltas(Vals)}
+                         end,
+                         Samples6),
+    {ok, SamplesInterval, LastSampleTStamp, Samples7}.
 
 build_bucket_stats_ops_response(PoolId, BucketId, Params) ->
     {ok, SamplesInterval, LastSampleTStamp, Samples2} =
@@ -214,6 +218,14 @@ avg([H | R], Sum, Count) -> avg(R, Sum + H, Count + 1).
 
 float_round(X) -> float(trunc(1000.0 * X)) / 1000.0.
 
+deltas(undefined)  -> undefined;
+deltas([])         -> [];
+deltas([X | Rest]) -> deltas(Rest, X, []).
+
+deltas([], _, Acc) -> lists:reverse(Acc);
+deltas([X | Rest], Prev, Acc) ->
+    deltas(Rest, X, [erlang:max(X - Prev, 0) | Acc]).
+
 -ifdef(EUNIT).
 
 test() ->
@@ -231,6 +243,19 @@ float_round_test() ->
     ?assertEqual(0.01, float_round(0.0100001)),
     ?assertEqual(0.08, float_round(0.0800001)),
     ?assertEqual(1.08, float_round(1.0800099)),
+    ok.
+
+deltas_test() ->
+    ?assertEqual([], deltas([])),
+    ?assertEqual([], deltas([10])),
+    ?assertEqual([0], deltas([10, 10])),
+    ?assertEqual([0, 0], deltas([10, 10, 10])),
+    ?assertEqual([0, 0, 0],
+                 deltas([10, 10, 10, 10])),
+    ?assertEqual([0, 1, 1],
+                 deltas([10, 10, 11, 12])),
+    ?assertEqual([0, 1, 1, 0],
+                 deltas([10, 10, 11, 12, 12])),
     ok.
 
 -endif.
