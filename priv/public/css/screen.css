@@ -27,6 +27,7 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 
 .header_2 {height:40px; line-height:40px; padding:5px 0 0 11px; font-size:18px; font-family:Verdana; background:url(../images/devider_line_1.gif) 0 100% repeat-x #dfe0e0; font-weight:normal;}
 .header_2 span {color:#f2692d;}
+.header_2 span a {color:#f2692d;}
 .header_2 .nav {color:#b6b6ba; font-size:11px; padding:0 11px 0 0;}
 .header_2 .nav a {font-weight:bolder; color:#0095d6; margin:0 3px; cursor:pointer;}
 .header_2 .nav .current {color:#444245; cursor:default;}
