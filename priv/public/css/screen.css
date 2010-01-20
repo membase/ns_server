@@ -216,7 +216,7 @@ body { font-family: Arial, sans-serif; }
 .analytics_graph_main {height:300px; background:url(../images/devider_line_2.gif) 0 100% repeat-x #eeeeef; border-left:1px solid #dbdbdb; border-right:1px solid #dbdbdb; padding:0 10px;}
 .graph_info_label {padding:3px; font-size:11px;}
 .graph_nav {padding:10px 0 10px 2px;}
-.graph_nav span {display:block; width:166px !important; height:61px; float:left; overflow:hidden; background:url(../images/mini_graph_bg.gif) 0 0 no-repeat; margin:0 12px;}
+.graph_nav span {display:block; width:166px !important; height:61px; float:left; overflow:hidden; background:url(../images/mini_graph_bg.gif) 0 0 no-repeat; margin:0 12px; cursor:pointer;}
 .graph_nav .selected {background:url(../images/mini_graph_bg.gif) 0 -61px no-repeat;}
 
 
@@ -327,8 +327,8 @@ a.selected { text-decoration: underline; }
 
 .shadow_box .darker_block {background:#dfe0e0;}
 
-#top_keys_container {}
+#top_keys_container {border:1px solid #DBDBDB; border-top:0px;}
 #top_keys_container table {width:100%; border-collapse:collapse;}
-#top_keys_container table th {padding:7px 5px; text-align:left; border-right:1px solid #eaedef; border-bottom:1px solid #eaedef; font-size:12px; font-weight:bolder; color:#f2692d; background:none #fbfbfb;}
-#top_keys_container table td {border-right:1px solid #eaedef; font-size:12px; vertical-align:middle; padding:7px 5px; background:none #fff;}
+#top_keys_container table th {padding:10px 5px; text-align:left; border-right:1px solid #d9dce0; border-bottom:1px solid #eaedef; font-size:12px; font-weight:bolder; color:#f2692d; background:none #fbfbfb;}
+#top_keys_container table td {border-right:1px solid #d9dce0; font-size:12px; vertical-align:middle; padding:10px 5px; background:none #fff;}
 #top_keys_container table .even td {background:none #ececef;}
