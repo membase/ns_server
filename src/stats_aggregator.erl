@@ -84,7 +84,10 @@ combine_stats(N, New, Existing) ->
 to_int(X) when is_list(X) -> list_to_integer(X);
 to_int(X) when is_integer(X) -> X.
 
+val_sum(t, L1, _) -> L1;
 val_sum(_K, L1, L2) ->
+    % TODO: Need a better zipwith if L1 and L2's aren't the same length,
+    % which could happen if a new server appears and its list is short.
     lists:zipwith(fun(V1, V2) -> to_int(V1)+to_int(V2) end, L1, L2).
 
 classify(K, _V) ->
@@ -114,7 +117,6 @@ classify("reqs_per_event") -> false;
 classify("cas_enabled") -> false;
 classify("tcp_backlog") -> false;
 classify("binding_protocol") -> false;
-classify(t) -> false;
 classify(_) -> true.
 
 initPools() ->
