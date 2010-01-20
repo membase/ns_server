@@ -42,15 +42,51 @@ basic_stats(PoolId, BucketId) ->
      {evictionsPerSec, 5},
      {cachePercentUsed, 50}].
 
+% GET /pools/default/stats?stat=opsbysecond
+% GET /pools/default/stats?stat=hot_keys
+
 handle_bucket_stats(PoolId, all, Req) ->
     % TODO: get aggregate stats for all buckets.
     handle_bucket_stats(PoolId, "default", Req);
 
 handle_bucket_stats(PoolId, Id, Req) ->
-    Now = java_date(),
     Params = Req:parse_qs(),
-    Res = build_bucket_stats_response(PoolId, Id, Params, Now),
+    case proplists:get_value("stat", Params) of
+        "opsbysecond" ->
+            handle_bucket_stats_ops(Req, PoolId, Id, Params);
+        "hot_keys" ->
+            handle_bucket_stats_hks(Req, PoolId, Id, Params);
+        _ ->
+            Req:respond({400, [], []})
+    end.
+
+handle_bucket_stats_ops(Req, PoolId, BucketId, Params) ->
+    Res = build_bucket_stats_ops_response(PoolId, BucketId, Params),
     reply_json(Req, Res).
+
+handle_bucket_stats_hks(Req, PoolId, BucketId, Params) ->
+    Res = build_bucket_stats_hks_response(PoolId, BucketId, Params),
+    reply_json(Req, Res).
+
+%% ops SUM(cmd_get, cmd_set,
+%%         incr_misses, incr_hits,
+%%         decr_misses, decr_hits,
+%%         cas_misses, cas_hits, cas_badval,
+%%         delete_misses, delete_hits,
+%%         cmd_flush)
+%% cmd_get (cmd_get)
+%% get_misses (get_misses)
+%% get_hits (get_hits)
+%% cmd_set (cmd_set)
+%% evictions (evictions)
+%% replacements (if available in time)
+%% misses SUM(get_misses, delete_misses, incr_misses, decr_misses,
+%%            cas_misses)
+%% updates SUM(cmd_set, incr_hits, decr_hits, cas_hits)
+%% bytes_read (bytes_read)
+%% bytes_written (bytes_written)
+%% hit_ratio (get_hits / cmd_get)
+%% curr_items (curr_items)
 
 %% Implementation
 
@@ -68,13 +104,13 @@ handle_bucket_stats(PoolId, Id, Req) ->
 %       {1263,946877,864065}]},
 %  ...]
 
-get_stats(_PoolId, BucketId, SamplesNum) ->
+get_stats_raw(_PoolId, BucketId, SamplesNum) ->
     dict:to_list(stats_aggregator:get_stats(BucketId, SamplesNum)).
 
-build_bucket_stats_response(PoolId, BucketId, _Params, _Now) ->
+get_stats(PoolId, BucketId, _Params) ->
     SamplesInterval = 1, % A sample every second.
     SamplesNum = 60, % Sixty seconds worth of data.
-    Samples = get_stats(PoolId, BucketId, SamplesNum),
+    Samples = get_stats_raw(PoolId, BucketId, SamplesNum),
     Samples2 = case lists:keytake(t, 1, Samples) of
                    false -> [{t, []} | Samples];
                    {value, {t, TStamps}, SamplesNoTStamps} ->
@@ -87,6 +123,16 @@ build_bucket_stats_response(PoolId, BucketId, _Params, _Now) ->
                            [{t, TStamps2} | _] -> lists:last(TStamps2);
                            _                   -> 0
                        end,
+    {ok, SamplesInterval, LastSampleTStamp, Samples2}.
+
+build_bucket_stats_ops_response(PoolId, BucketId, Params) ->
+    {ok, SamplesInterval, LastSampleTStamp, Samples2} =
+        get_stats(PoolId, BucketId, Params),
+    {struct, [{op, {struct, [{tstamp, LastSampleTStamp},
+                             {samplesInterval, SamplesInterval}
+                             | Samples2]}}]}.
+
+build_bucket_stats_hks_response(_PoolId, _BucketId, _Params) ->
     {struct, [{hot_keys, [{struct, [{name, <<"product:324:inventory">>},
                                     {gets, 10000},
                                     {bucket, <<"shopping application">>},
@@ -102,10 +148,7 @@ build_bucket_stats_response(PoolId, BucketId, _Params, _Now) ->
                           {struct, [{name, <<"user:image:value4">>},
                                     {gets, 10000},
                                     {bucket, <<"chat application">>},
-                                    {misses, 100}]}]},
-              {op, {struct, [{tstamp, LastSampleTStamp},
-                             {samplesInterval, SamplesInterval}
-                             | Samples2]}}]}.
+                                    {misses, 100}]}]}]}.
 
 -ifdef(EUNIT).
 
