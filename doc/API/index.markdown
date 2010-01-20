@@ -374,9 +374,22 @@ source of the example above, as can be seen in the headers.
    {
      "name" : "anotherbucket",
      "uri" : "https://node.in.pool.com/pools/default/buckets/anotherbucket",
-     "preferredPort" : "caching"
    }
  ]
+</pre>
+
+#### Deleting a bucket
+
+Note that this operation is _data destructive_.  The service makes no attempt
+to double check with the user.  It simply moves forward.  Clients applications
+using this are advised to double check with the end user before sending such
+a request.
+
+<pre class="restcalls">
+ DELETE /pools/default/buckets/default
+ Host: node.in.your.pool.com
+ Authorization: Basic xxxxxxxxxxxxxxxxxxx
+ X-memcachekv-Store-Client-Specification-Version: 0.1
 </pre>
 
 Note that if a preferred-port is not specified, the default port will be the

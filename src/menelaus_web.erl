@@ -90,6 +90,15 @@ loop(Req, DocRoot) ->
                              ns_log:log(?MODULE, 100, "Invalid post received: ~p", Req),
 							 {done, Req:not_found()}
                      end;
+				 'DELETE' ->
+					 case PathTokens of
+						 ["pools", PoolId, "buckets", Id] ->
+							 {auth,
+							  fun handle_bucket_delete/3,
+							  [PoolId, Id]};
+						 _ -> ns_log:log(?MODULE, 100, "Invalid delete received: ~p", Req),
+							  {done, Req:respond({405, [], "Method Not Allowed"})}
+					 end;
                  _ ->
 					 ns_log:log(?MODULE, 100, "Invalid request received: ~p", Req),
                      {done, Req:respond({405, [], "Method Not Allowed"})}
@@ -295,6 +304,16 @@ handle_bucket_info_streaming(PoolId, Id, Req) ->
     UserPassword = menelaus_auth:extract_auth(Req),
     F = fun() -> build_bucket_info(PoolId, Id, UserPassword) end,
     handle_streaming(F, Req, undefined, 3000).
+
+handle_bucket_delete(PoolId, Id, Req) ->
+	%% todo: ns_server go delete the bucket
+	ns_log:log(?MODULE, 100, "Deleting bucket ~p from pool ~p", [Id, PoolId]),
+	Req:respond(204, [], []),
+	%% if bucket isn't found
+	%% Req:respond(404, [], "The bucket to be deleted was not found."),
+	%% if something went wrong
+	%% Req:respond(500, [], [])
+	ok.
 
 -ifdef(EUNIT).
 
