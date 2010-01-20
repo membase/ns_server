@@ -107,6 +107,7 @@ build_buckets_stats_ops_response(PoolId, BucketIds, Params) ->
                              | Samples2]}}]}.
 
 build_buckets_stats_hks_response(_PoolId, _BucketIds, _Params) ->
+    % TODO: hot key stats.
     {struct, [{hot_keys, [{struct, [{name, <<"product:324:inventory">>},
                                     {gets, 10000},
                                     {bucket, <<"shopping application">>},
@@ -130,17 +131,28 @@ get_buckets_stats(PoolId, BucketIds, Params) ->
                           get_stats(PoolId, BucketId, Params)
                   end,
                   BucketIds),
-    lists:foldl(fun({ok, XSamplesInterval, XLastSampleTStamp, XStat},
-                    {ok, YSamplesInterval, YLastSampleTStamp, _YStat}) ->
-                        {ok,
-                         erlang:max(XSamplesInterval,
-                                    YSamplesInterval),
-                         erlang:max(XLastSampleTStamp,
-                                    YLastSampleTStamp),
-                         XStat}
-                end,
-                FirstStats,
-                RestStats).
+    lists:foldl(
+      fun({ok, XSamplesInterval, XLastSampleTStamp, XStat},
+          {ok, YSamplesInterval, YLastSampleTStamp, YStat}) ->
+              {ok,
+               erlang:max(XSamplesInterval,
+                          YSamplesInterval),
+               erlang:max(XLastSampleTStamp,
+                          YLastSampleTStamp),
+               lists:map(fun({t, TStamps}) -> {t, TStamps};
+                            ({Key, XVals}) ->
+                                 case proplists:get_value(Key, YStat) of
+                                     undefined -> {Key, XVals};
+                                     YVals ->
+                                         {Key, lists:zipwith(
+                                                 fun(A, B) -> A + B end,
+                                                 XVals, YVals)}
+                                 end
+                        end,
+                        XStat)}
+      end,
+      FirstStats,
+      RestStats).
 
 get_stats(PoolId, BucketId, _Params) ->
     SamplesInterval = 1, % A sample every second.
