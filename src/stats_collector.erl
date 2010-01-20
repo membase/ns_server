@@ -61,11 +61,27 @@ notify_unmonitoring(Hostname, Port, Buckets) ->
                   end, Buckets).
 
 collect(T, State) ->
-    lists:foreach(fun(B) -> collect(T, State, B) end, State#state.buckets).
-
-collect(T, State, Bucket) ->
     {ok, Sock} = gen_tcp:connect(State#state.hostname, State#state.port,
                                  [binary, {packet, 0}, {active, false}]),
+    auth(Sock),
+    collect(T, State, "default", Sock),
+    % Collect all the other buckets
+    lists:foreach(fun(B) ->
+                          mc_client_binary:select_bucket(Sock, B),
+                          collect(T, State, B, Sock)
+                  end,
+                  State#state.buckets -- ["default"]),
+    ok = gen_tcp:close(Sock).
+
+auth(Sock) ->
+    {value, U} = ns_config:search(ns_config:get(), bucket_admin_user),
+    {value, P} = ns_config:search(ns_config:get(), bucket_admin_pass),
+    % This command may not work unless bucket engine is running (and
+    % creds are right).
+    _X = mc_client_binary:auth(Sock, {"PLAIN", {U, P}}),
+    ok.
+
+collect(T, State, Bucket, Sock) ->
     {ok, _H, _E, Stats} = mc_client_binary:cmd(?STAT, Sock,
                               fun (_MH, ME, CD) ->
                                       dict:store(binary_to_list(ME#mc_entry.key),
@@ -74,7 +90,6 @@ collect(T, State, Bucket) ->
                               end,
                               dict:new(),
                               {#mc_header{}, #mc_entry{}}),
-    ok = gen_tcp:close(Sock),
     stats_aggregator:received_data(T,
                                    State#state.hostname,
                                    State#state.port,

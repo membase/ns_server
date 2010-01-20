@@ -88,9 +88,10 @@
    {memcached, "./memcached",
     [
      "-E", "engines/default_engine.so",
+     "-e", "admin=admin",
      "-p", "11212", "-S"
      ],
-    [{env, [{"MEMCACHED_CHECK_STDIN", "thread"},
+    [{env, [{"MEMCACHED_CHECK_STDIN", "event"},
             {"ISASL_PWFILE", "/tmp/isasl.pw"} % Also isasl_path above.
            ]}]
    }
