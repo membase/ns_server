@@ -34,23 +34,23 @@ init([]) ->
     {ok, #state{recent=emptyRecent()}}.
 
 emptyRecent() ->
-    queue:from_list([ empty || _ <- lists:seq(1, ?RB_SIZE)]).
+    ringbuffer:new(?RB_SIZE).
 
 % Request for recent items.
 handle_call(recent, _From, State) ->
-    Reply = queue:to_list(
-              queue:filter(fun(X) -> X =/= empty end, State#state.recent)),
+    Reply = ringbuffer:to_list(State#state.recent),
     {reply, Reply, State}.
 
 % Inbound logging request.
 handle_cast({log, Module, Code, Fmt, Args}, State) ->
     error_logger:info_msg("Logging ~p:~p(~p, ~p)~n",
                           [Module, Code, Fmt, Args]),
-    {{value, _Ignored}, Qtmp} = queue:out(State#state.recent),
-    NewQ = queue:in(#log_entry{module=Module, code=Code, msg=Fmt, args=Args,
-                               cat=categorize(Module, Code)},
-                    Qtmp),
-    {noreply, State#state{recent=NewQ}};
+
+
+    NR = ringbuffer:add(#log_entry{module=Module, code=Code, msg=Fmt, args=Args,
+                                   cat=categorize(Module, Code)},
+                        State#state.recent),
+    {noreply, State#state{recent=NR}};
 handle_cast(clear, _State) ->
     error_logger:info_msg("Clearing log.~n", []),
     {noreply,  #state{recent=emptyRecent()}}.
