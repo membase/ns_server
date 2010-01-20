@@ -47,7 +47,7 @@ basic_stats(PoolId, BucketId) ->
     [{cacheSize, NumNodes * MbPerNode},
      {opsPerSec, OpsPerSec},
      {evictionsPerSec, EvictionsPerSec},
-     {cachePercentUsed, CurBytes / MaxBytes}].
+     {cachePercentUsed, float_round(CurBytes / MaxBytes)}].
 
 % GET /pools/default/stats?stat=opsbysecond
 % GET /pools/default/stats?stat=hot_keys
@@ -145,10 +145,7 @@ get_stats(PoolId, BucketId, _Params) ->
     Samples6 = [{hit_ratio,
                  lists:zipwith(fun(undefined, _) -> 0;
                                   (_, undefined) -> 0;
-                                  (Hits, Gets)   ->
-                                       float(trunc((1000.0 * Hits) /
-                                                   (1000.0 * Gets)) /
-                                             1000.0)
+                                  (Hits, Gets)   -> float_round(Hits / Gets)
                                end,
                                proplists:get_value("get_hits", Samples5),
                                proplists:get_value("cmd_get", Samples5))} |
@@ -215,6 +212,8 @@ avg([], _, 0)            -> 0.0;
 avg([], Sum, Count)      -> float(Sum) / float(Count);
 avg([H | R], Sum, Count) -> avg(R, Sum + H, Count + 1).
 
+float_round(X) -> float(trunc(1000.0 * X)) / 1000.0.
+
 -ifdef(EUNIT).
 
 test() ->
@@ -225,7 +224,13 @@ avg_test() ->
     ?assertEqual(0.0, avg([])),
     ?assertEqual(5.0, avg([5])),
     ?assertEqual(5.0, avg([5, 5, 5])),
-    ?assertEqual(5.0, avg([1, 5, 10])),
+    ?assertEqual(5.0, avg([0, 5, 10])),
+    ok.
+
+float_round_test() ->
+    ?assertEqual(0.01, float_round(0.0100001)),
+    ?assertEqual(0.08, float_round(0.0800001)),
+    ?assertEqual(1.08, float_round(1.0800099)),
     ok.
 
 -endif.
