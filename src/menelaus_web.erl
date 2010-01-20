@@ -83,14 +83,17 @@ loop(Req, DocRoot) ->
                          ["alerts", "settings"] ->
                              {auth,
                               fun menelaus_alert:handle_alerts_settings_post/1};
-                         ["pools", _, "buckets", _, "generatorControl"] ->
+                         ["pools", _, "testWorkload"] ->
                              {auth,
                               fun handle_traffic_generator_control_post/1};
                          _ ->
-                             {done, Req:not_found()}
+                             ns_log:log(?MODULE, 100, "Invalid generator post received."),
+							 {done, Req:not_found()}
                      end;
                  _ ->
-                     {done, Req:respond({501, [], []})}
+					 ns_log:log(?MODULE, 100, "Invalid request recived ~p", Req),
+                     {done, Req:respond({405, [], "Method Not Allowed"})}
+					 % todo: How do I say Method Not Allowed here correctly?
              end,
     case Action of
         {done, RV} -> RV;
@@ -300,10 +303,13 @@ test() ->
 handle_traffic_generator_control_post(Req) ->
     PostArgs = Req:parse_post(),
     case proplists:get_value(PostArgs, "onOrOff") of
-        "off" -> tgen:traffic_stop();
-        "on" -> tgen:traffic_start()
+        "off" -> ns_log:log(?MODULE, 100, "Stopping workload from node ~p", erlang:node()),
+				 tgen:traffic_stop();
+        "on" -> ns_log:log(?MODULE, 100, "Stopping workload from node ~p", erlang:node()),
+				tgen:traffic_start()
     end,
     Req:respond({200, [], []}).
+%% todo, should return 400 Bad Request if POST args don't match
 
 serve_index_html_for_tests(Req, DocRoot) ->
     case file:read_file(DocRoot ++ "/index.html") of

@@ -259,9 +259,8 @@ transitions to the client, if backward compatibility is desirable.
  {
    "name" : "Default Pool",
    "state": {
-     "current" : "transitioning",
-     "uri" : "/pools/default/state"
-   }
+     "current" : "transitioning"
+	 }
    "nodes" : [
      {
        "hostname" : "10.0.1.20",
@@ -294,11 +293,8 @@ transitions to the client, if backward compatibility is desirable.
      }
    ],
    "controllers" : {
-      "backup" : {
-        "uri" : "https://node.in.pool.com/startbackup"
-      },
-      "scrub" : {
-        "uri" : "ops/start-scrub"
+      "testWorkload" : {
+        "uri" : "https://node.in.pool.com/pools/default/testWorkload"
       }
    },
    "stats" : {
@@ -330,6 +326,13 @@ Clients MUST NOT rely on the node list here to create their "server list" for
 when connecting.  They MUST instead issue an HTTP get call to the bucket to 
 get the node list for that specific bucket.  
 
+#### Bucket Test Workload Controllers
+
+<pre class="restcalls">
+ POST /pools/default/controller/testWorkload
+ Host: node.in.your.pool.com
+ Authorization: Basic xxxxxxxxxxxx
+ application/x-www-form-urlencoded
 
 ###List buckets and bucket operations
 
