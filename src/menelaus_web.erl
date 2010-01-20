@@ -305,14 +305,16 @@ handle_bucket_info_streaming(PoolId, Id, Req) ->
     F = fun() -> build_bucket_info(PoolId, Id, UserPassword) end,
     handle_streaming(F, Req, undefined, 3000).
 
-handle_bucket_delete(PoolId, Id, Req) ->
-	%% todo: ns_server go delete the bucket
-	ns_log:log(?MODULE, 100, "Deleting bucket ~p from pool ~p", [Id, PoolId]),
-	Req:respond(204, [], []),
-	%% if bucket isn't found
-	%% Req:respond(404, [], "The bucket to be deleted was not found."),
-	%% if something went wrong
-	%% Req:respond(500, [], [])
+handle_bucket_delete(PoolId, BucketId, Req) ->
+    case mc_bucket:bucket_delete(PoolId, BucketId) of
+        true ->
+            ns_log:log(?MODULE, 100, "Deleted bucket ~p from pool ~p",
+                       [BucketId, PoolId]),
+            Req:respond(204, [], []);
+        false ->
+            %% if bucket isn't found
+            Req:respond(404, [], "The bucket to be deleted was not found.")
+    end,
 	ok.
 
 -ifdef(EUNIT).
