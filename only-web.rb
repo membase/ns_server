@@ -73,5 +73,5 @@ use Middleware
 set :public, $DOCROOT
 
 if ARGV.size == 0
-  exec $0, "-p", "8080", "-s", "webrick"
+  exec $0, "-p", "8080" #, "-s", "webrick"
 end
