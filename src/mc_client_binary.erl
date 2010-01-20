@@ -88,7 +88,7 @@ auth(Sock, {"PLAIN", {ForName, AuthName, AuthPswd}}) ->
     BinForName  = mc_binary:bin(ForName),
     BinAuthName = mc_binary:bin(AuthName),
     BinAuthPswd = mc_binary:bin(AuthPswd),
-    case mc_client_binary:cmd(?CMD_SASL_AUTH, Sock, undefined,
+    case mc_client_binary:cmd(?CMD_SASL_AUTH, Sock, undefined, undefined,
                               {#mc_header{},
                                #mc_entry{key = "PLAIN",
                                          data = <<BinForName/binary, 0:8,
