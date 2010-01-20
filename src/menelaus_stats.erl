@@ -40,10 +40,14 @@ basic_stats(PoolId, BucketId) ->
     Samples = get_stats_raw(PoolId, BucketId, SamplesNum),
     OpsPerSec = avg(sum_stats_ops(Samples)),
     EvictionsPerSec = avg(proplists:get_value("evictions", Samples)),
+    CurBytes = erlang:max(avg(proplists:get_value("bytes", Samples)),
+                          1),
+    MaxBytes = erlang:max(avg(proplists:get_value("limit_maxbytes", Samples)),
+                          CurBytes),
     [{cacheSize, NumNodes * MbPerNode},
      {opsPerSec, OpsPerSec},
      {evictionsPerSec, EvictionsPerSec},
-     {cachePercentUsed, 50}].
+     {cachePercentUsed, CurBytes / MaxBytes}].
 
 % GET /pools/default/stats?stat=opsbysecond
 % GET /pools/default/stats?stat=hot_keys
