@@ -31,15 +31,25 @@ handle_call({get, Hostname, Port, Bucket, Count}, _From, State) ->
                                         State#state.vals)),
     {reply, Reply, State};
 handle_call({get, Bucket, Count}, _From, State) ->
-    Reply = (catch dict:fold(fun ({_H, _P, B}, V, A) ->
-                                     Rv = case B of
-                                              Bucket -> combine_stats(Count, V, A);
-                                              _ -> A
-                                          end,
-                                     Rv
-                             end,
-                             dict:new(),
-                             State#state.vals)),
+    Reply =
+        (catch dict:fold(
+                 fun ({_H, _P, B}, V, A) ->
+                         case B of
+                             Bucket ->
+                                 D = combine_stats(Count, V, A),
+                                 % Need a final to_int since combine_stats
+                                 % is a no-op when only one host/node is
+                                 % being monitored.
+                                 dict:map(
+                                   fun(t, TStamps) -> TStamps;
+                                      (_K, L) -> lists:map(fun to_int/1, L)
+                                   end,
+                                   D);
+                             _ -> A
+                         end
+                 end,
+                 dict:new(),
+                 State#state.vals)),
     {reply, Reply, State}.
 
 handle_cast({received, T, Hostname, Port, Bucket, Stats}, State) ->
