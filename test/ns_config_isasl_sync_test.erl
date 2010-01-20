@@ -10,7 +10,7 @@
 % I'd prefer to keep things a bit cleaner from an API point of view at
 % what I believe to be a small cost in test maintainability.  If I'm
 % wrong, we'll fix it.
--record(state, {buckets, path, updates}).
+-record(state, {buckets, path, updates, admin_user, admin_pass}).
 
 test() ->
     test_parsing(),
@@ -26,13 +26,15 @@ test_parsing() ->
 test_writing() ->
     Path = "/tmp/isasl_test.db",
     % {ok, State, hibernate} = ns_config_isasl_sync:init(Path),
-    State = #state{updates=0, path=Path, buckets=[]},
+    State = #state{updates=0, path=Path, buckets=[],
+                  admin_user="admin", admin_pass="admin"},
     0 = State#state.updates,
 
     % First update should cause data to be written.
     {ok, State2, hibernate} = ns_config_isasl_sync:handle_event(
                                  {pools, sample_config()}, State),
     Expected = [
+                "admin admin\n",
                 "other_application another_password\n",
                 "test_application plain_text_password\n"],
     {ok, F} = file:open(Path, [read]),

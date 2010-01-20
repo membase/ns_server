@@ -5,7 +5,7 @@
 
 -behaviour(gen_event).
 
--export([start_link/0, start_link/1, setup_handler/1]).
+-export([start_link/0, start_link/3, setup_handler/3]).
 
 %% gen_event callbacks
 -export([init/1, handle_event/2, handle_call/2,
@@ -14,23 +14,27 @@
 % Useful for testing.
 -export([extract_creds/1]).
 
--record(state, {buckets, path, updates}).
+-record(state, {buckets, path, updates, admin_user, admin_pass}).
 
 start_link() ->
     {value, Path} = ns_config:search(ns_config:get(), isasl_path),
-    start_link(Path).
+    {value, AU} = ns_config:search(ns_config:get(), bucket_admin_user),
+    {value, AP} = ns_config:search(ns_config:get(), bucket_admin_pass),
+    start_link(Path, AU, AP).
 
-start_link(Path) ->
-    {ok, spawn_link(?MODULE, setup_handler, [Path])}.
+start_link(Path, AU, AP) ->
+    {ok, spawn_link(?MODULE, setup_handler, [Path, AU, AP])}.
 
-setup_handler(Path) ->
-    gen_event:add_handler(ns_config_events, ?MODULE, Path).
+setup_handler(Path, AU, AP) ->
+    gen_event:add_handler(ns_config_events, ?MODULE, [Path, AU, AP]).
 
-init(Path) ->
+init([Path, AU, AP]) ->
     {value, Pools} = ns_config:search(ns_config:get(), pools),
     Buckets = extract_creds(Pools),
-    writeSASLConf(Path, Buckets),
-    {ok, #state{buckets=Buckets, path=Path, updates=0}, hibernate}.
+    writeSASLConf(Path, Buckets, AU, AP),
+    {ok, #state{buckets=Buckets, path=Path, updates=0,
+                admin_user=AU, admin_pass=AP},
+     hibernate}.
 
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
@@ -41,7 +45,8 @@ handle_event({pools, V}, State) ->
         Prev ->
             {ok, State, hibernate};
         NewBuckets ->
-            writeSASLConf(State#state.path, NewBuckets),
+            writeSASLConf(State#state.path, NewBuckets,
+                         State#state.admin_user, State#state.admin_pass),
             {ok, State#state{buckets=NewBuckets,
                             updates=State#state.updates + 1}, hibernate}
     end;
@@ -82,9 +87,10 @@ examine_bucket({Name, Props}, D) ->
 % Update the isasl stuff.
 %
 
-writeSASLConf(Path, NewBuckets) ->
+writeSASLConf(Path, NewBuckets, AU, AP) ->
     error_logger:info_msg("Writing isasl passwd file~n", []),
     {ok, F} = file:open(Path, [write]),
+    io:format(F, "~s ~s~n", [AU, AP]),
     lists:foreach(fun ({U, P}) -> io:format(F, "~s ~s~n", [U, P]) end,
                   NewBuckets),
     file:close(F).
