@@ -192,6 +192,10 @@ pool_proxy_port(PoolConfig, Node) ->
 
 handle_pool_info_streaming(Id, Req) ->
     UserPassword = menelaus_auth:extract_auth(Req),
+    F = fun() -> build_pool_info(Id, UserPassword) end,
+    handle_streaming(F, Req, undefined, 3000).
+
+handle_streaming(F, Req, LastRes, Wait) ->
     HTTPRes = Req:ok({"application/json; charset=utf-8",
                       server_header(),
                       chunked}),
@@ -199,12 +203,10 @@ handle_pool_info_streaming(Id, Req) ->
     menelaus_event:register_watcher(self()),
     Sock = Req:get(socket),
     inet:setopts(Sock, [{active, true}]),
-    handle_pool_info_streaming(Id, Req, UserPassword, HTTPRes,
-                               undefined, 3000).
+    handle_streaming(F, Req, HTTPRes, LastRes, Wait).
 
-handle_pool_info_streaming(Id, Req, UserPassword, HTTPRes,
-                           LastRes, Wait) ->
-    Res = build_pool_info(Id, UserPassword),
+handle_streaming(F, Req, HTTPRes, LastRes, Wait) ->
+    Res = F(),
     case Res =:= LastRes of
         true -> ok;
         false ->
@@ -222,8 +224,7 @@ handle_pool_info_streaming(Id, Req, UserPassword, HTTPRes,
             exit(normal)
     after Wait -> ok
     end,
-    handle_pool_info_streaming(Id, Req, UserPassword, HTTPRes,
-                               Res, Wait).
+    handle_streaming(F, Req, HTTPRes, Res, Wait).
 
 handle_bucket_list(Id, Req) ->
 	MyPool = find_pool_by_id(Id),
@@ -285,38 +286,8 @@ build_bucket_info(PoolId, Id, _UserPassword) ->
 
 handle_bucket_info_streaming(PoolId, Id, Req) ->
     UserPassword = menelaus_auth:extract_auth(Req),
-    HTTPRes = Req:ok({"application/json; charset=utf-8",
-                      server_header(),
-                      chunked}),
-    %% Register to get config state change messages.
-    menelaus_event:register_watcher(self()),
-    Sock = Req:get(socket),
-    inet:setopts(Sock, [{active, true}]),
-    handle_bucket_info_streaming(PoolId, Id, Req, UserPassword, HTTPRes,
-                                 undefined, 3000).
-
-handle_bucket_info_streaming(PoolId, Id, Req, UserPassword, HTTPRes,
-                             LastRes, Wait) ->
-    Res = build_bucket_info(PoolId, Id, UserPassword),
-    case Res =:= LastRes of
-        true -> ok;
-        false ->
-            error_logger:info_msg("menelaus_web streaming: ~p~n",
-                                  [Res]),
-            HTTPRes:write_chunk(mochijson2:encode(Res)),
-            %% TODO: resolve why mochiweb doesn't support zero chunk... this
-            %%       indicates the end of a response for now
-            HTTPRes:write_chunk("\n\n\n\n")
-    end,
-    receive
-        {notify_watcher, _} -> ok;
-        _ ->
-            error_logger:info_msg("menelaus_web streaming socket closed~n"),
-            exit(normal)
-    after Wait -> ok
-    end,
-    handle_bucket_info_streaming(PoolId, Id, Req, UserPassword, HTTPRes,
-                                 Res, Wait).
+    F = fun() -> build_bucket_info(PoolId, Id, UserPassword) end,
+    handle_streaming(F, Req, undefined, 3000).
 
 -ifdef(EUNIT).
 
