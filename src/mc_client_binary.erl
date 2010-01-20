@@ -293,3 +293,17 @@ second_stats_test() ->
                               {#mc_header{}, #mc_entry{}}),
     ?assert(dict:size(Stats) > 0),
     ok = gen_tcp:close(Sock).
+
+stats_subcommand_test() ->
+    {ok, Sock} = gen_tcp:connect("localhost", 11211,
+                                 [binary, {packet, 0}, {active, false}]),
+    {ok, _H, _E, Stats} = cmd(?STAT, Sock,
+                              fun (_MH, ME, CD) ->
+                                      dict:store(ME#mc_entry.key,
+                                                 ME#mc_entry.data,
+                                                 CD)
+                              end,
+                              dict:new(),
+                              {#mc_header{}, #mc_entry{key = <<"settings">>}}),
+    ?assert(dict:size(Stats) > 0),
+    ok = gen_tcp:close(Sock).
