@@ -97,8 +97,8 @@ recent() ->
 
 -spec recent(atom()) -> list(#log_entry{}).
 recent(Module) ->
-    lists:usort([E || {M, _C, _F, _A} = E <- gen_server:call(?MODULE, recent),
-                     M =:= Module ]).
+    lists:usort([E || E <- gen_server:call(?MODULE, recent),
+                     E#log_entry.module =:= Module ]).
 
 % {crit, warn, info}
 -spec recent_by_category() -> {list(#log_entry{}),
