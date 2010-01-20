@@ -235,13 +235,56 @@ function isBlank(e) {
   return e == null || !e.length;
 }
 
-function setHashFragmentParam(name, value) {
-  var state = _.extend({}, $.bbq.getState());
-  if (value == null) {
-    delete state[name];
-    $.bbq.pushState(state, 2);
-  } else if (value != state[name]) {
-    state[name] = value;
-    $.bbq.pushState(state, 2);
+(function () {
+  var plannedState;
+  var timeoutId;
+
+  function planPushState(state) {
+    plannedState = state;
+    if (!timeoutId) {
+      timeoutId = setTimeout(function () {
+        $.bbq.pushState(plannedState, 2);
+        plannedState = undefined;
+        timeoutId = undefined;
+      }, 100);
+      $(window).trigger('hashchange');
+    }
   }
+  function setHashFragmentParam(name, value) {
+    var state = _.extend({}, plannedState || $.bbq.getState());
+    if (value == null) {
+      delete state[name];
+      planPushState(state);
+    } else if (value != state[name]) {
+      state[name] = value;
+      planPushState(state);
+    }
+  }
+
+  function getHashFragmentParam(name) {
+    return (plannedState && plannedState[name]) || $.bbq.getState(name);
+  }
+
+  window.setHashFragmentParam = setHashFragmentParam;
+  window.getHashFragmentParam = getHashFragmentParam;
+})();
+
+function watchHashParamChange(param, defaultValue, callback) {
+  if (!callback) {
+    callback = defaultValue;
+    defaultValue = undefined;
+  }
+
+  var oldValue;
+  var firstTime = true;
+  $(function () {
+    $(window).bind('hashchange', function () {
+      var newValue = getHashFragmentParam(param) || defaultValue;
+      if (!firstTime && oldValue == newValue)
+        return;
+      firstTime = false;
+      oldValue = newValue;
+      return callback.apply(this, [newValue].concat($.makeArray(arguments)));
+    });
+  });
 }

@@ -7,26 +7,6 @@ function ensureElementId(jq) {
   return jq;
 }
 
-function watchHashParamChange(param, defaultValue, callback) {
-  if (!callback) {
-    callback = defaultValue;
-    defaultValue = undefined;
-  }
-
-  var oldValue;
-  var firstTime = true;
-  $(function () {
-    $(window).bind('hashchange', function () {
-      var newValue = $.bbq.getState(param) || defaultValue;
-      if (!firstTime && oldValue == newValue)
-        return;
-      firstTime = false;
-      oldValue = newValue;
-      return callback.apply(this, [newValue].concat($.makeArray(arguments)));
-    });
-  });
-}
-
 var HashFragmentCell = mkClass(Cell, {
   initialize: function ($super, paramName, options) {
     $super();
@@ -74,7 +54,7 @@ var HashFragmentCell = mkClass(Cell, {
   // },
   pushState: function (id) {
     id = String(id);
-    var currentState = $.bbq.getState(this.paramName);
+    var currentState = getHashFragmentParam(this.paramName);
     if (currentState == id || (currentState === undefined && id == this.defaultId))
       return;
     setHashFragmentParam(this.paramName, id);
@@ -89,7 +69,7 @@ var HashFragmentCell = mkClass(Cell, {
   },
   finalizeBuilding: function () {
     watchHashParamChange(this.paramName, this.defaultId, $m(this, 'interpretState'));
-    this.interpretState($.bbq.getState(this.paramName));
+    this.interpretState(getHashFragmentParam(this.paramName));
     return this;
   }
 });
