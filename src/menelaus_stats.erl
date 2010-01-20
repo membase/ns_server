@@ -54,66 +54,40 @@ handle_bucket_stats(PoolId, Id, Req) ->
 
 %% Implementation
 
-generate_samples(Seed, Size) ->
-    RawSamples = stateful_map(fun (_, S) ->
-                                      {F, S2} = random:uniform_s(S),
-                                      {F*100, S2}
-                              end,
-                              Seed,
-                              lists:seq(0, Size)),
-    lists:map(fun trunc/1, low_pass_filter(0.5, RawSamples)).
+% get_stats() returns something like, where lists are sorted
+% with most-recent last.
+%
+% [{"total_items",[0,0,0,0,0]},
+%  {"curr_items",[0,0,0,0,0]},
+%  {"bytes_read",[2208,2232,2256,2280,2304]},
+%  {"cas_misses",[0,0,0,0,0]},
+%  {t, [{1263,946873,864055},
+%       {1263,946874,864059},
+%       {1263,946875,864050},
+%       {1263,946876,864053},
+%       {1263,946877,864065}]},
+%  ...]
 
-mk_samples(Mode) ->
-    Key = lists:concat(["samples_for_", Mode]),
-    Computation = fun () ->
-                          stateful_map(fun (Label, N) ->
-                                               {{Label, generate_samples(my_seed(N*string_hash(Mode)), 20)},
-                                                N+1}
-                                       end,
-                                       16#a21,
-                                       [gets, misses, sets, ops])
-                  end,
-    caching_result(Key, Computation).
+get_stats(_PoolId, BucketId, SamplesNum) ->
+    dict:to_list(stats_aggregator:get_stats(BucketId, SamplesNum)).
 
-build_bucket_stats_response(_PoolId, _Id, Params, Now) ->
-    OpsPerSecondZoom = case proplists:get_value("opsPerSecondZoom", Params) of
-                           undefined -> "1hr";
-                           Val -> Val
+build_bucket_stats_response(PoolId, BucketId, _Params, _Now) ->
+    SamplesInterval = 1, % A sample every second.
+    SamplesNum = 60, % Sixty seconds worth of data.
+    Samples = get_stats(PoolId, BucketId, SamplesNum),
+    Samples2 = case lists:keytake(t, 1, Samples) of
+                   false -> [{t, []} | Samples];
+                   {value, {t, TStamps}, SamplesNoTStamps} ->
+                       [{t, lists:map(fun misc:time_to_epoch_int/1,
+                                      TStamps)} |
+                        SamplesNoTStamps]
+               end,
+    LastSampleTStamp = case Samples2 of
+                           [{t, []} | _]       -> 0;
+                           [{t, TStamps2} | _] -> lists:last(TStamps2);
+                           _                   -> 0
                        end,
-    Samples = mk_samples(OpsPerSecondZoom),
-    SamplesSize = length(element(2, hd(Samples))),
-    SamplesInterval = case OpsPerSecondZoom of
-                          "now" -> 5000;
-                          "24hr" -> 86400000 div SamplesSize;
-                          "1hr" -> 3600000 div SamplesSize
-                      end,
-    StartTstampParam = proplists:get_value("opsbysecondStartTStamp", Params),
-    {LastSampleTstamp, CutNumber} = case StartTstampParam of
-                    undefined -> {Now, SamplesSize};
-                    _ ->
-                        StartTstamp = list_to_integer(StartTstampParam),
-                        CutMsec = Now - StartTstamp,
-                        if ((CutMsec > 0) andalso
-                            (CutMsec < SamplesInterval*SamplesSize)) ->
-                                N = trunc(CutMsec/SamplesInterval),
-                                {StartTstamp + N * SamplesInterval, N};
-                            true -> {Now, SamplesSize}
-                        end
-                end,
-    Rotates = (Now div 1000) rem SamplesSize,
-    CutSamples = lists:map(
-                   fun ({K, S}) ->
-                           V = case SamplesInterval of
-                                   1 -> lists:sublist(lists:append(S, S),
-                                                      Rotates + 1,
-                                                      SamplesSize);
-                                   _ -> S
-                               end,
-                           NewSamples = lists:sublist(V, SamplesSize-CutNumber+1, CutNumber),
-                           {K, NewSamples}
-                   end,
-                   Samples),
-    {struct, [{hot_keys, [{struct, [{name, <<"product:3240:inventory">>},
+    {struct, [{hot_keys, [{struct, [{name, <<"product:324:inventory">>},
                                     {gets, 10000},
                                     {bucket, <<"shopping application">>},
                                     {misses, 100}]},
@@ -129,43 +103,11 @@ build_bucket_stats_response(_PoolId, _Id, Params, Now) ->
                                     {gets, 10000},
                                     {bucket, <<"chat application">>},
                                     {misses, 100}]}]},
-              {op, {struct, [{tstamp, LastSampleTstamp},
+              {op, {struct, [{tstamp, LastSampleTStamp},
                              {samplesInterval, SamplesInterval}
-                             | CutSamples]}}]}.
+                             | Samples2]}}]}.
 
 -ifdef(EUNIT).
-
-generate_samples_test() ->
-    V = generate_samples({1,2,3}, 10),
-    io:format("V=~p~n", [V]),
-    ?assertEqual([0,1,39,22,48,48,73,77,74,77,88], V).
-
-mk_samples_basic_test() ->
-    V = mk_samples("now"),
-    ?assertMatch([{gets, _},
-                  {misses, _},
-                  {sets, _},
-                  {ops, _}],
-                 V).
-
-build_bucket_stats_response_cutting_1_test() ->
-    Now = 1259747673659,
-    Res = build_bucket_stats_response("default", "bucket4",
-                                      [{"opsPerSecondZoom", "now"},
-                                       {"keysOpsPerSecondZoom", "now"},
-                                       {"opsbysecondStartTStamp", "1259747672559"}],
-                                      Now),
-    ?assertMatch({struct, [{hot_keys, _},
-                           {op, _}]},
-                 Res),
-    {struct, [_, {op, Ops}]} = Res,
-    ?assertEqual({struct, [{tstamp, 1259747672559},
-                           {samplesInterval, 5000},
-                           {gets, []},
-                           {misses, []},
-                           {sets, []},
-                           {ops, []}]},
-                 Ops).
 
 test() ->
     eunit:test(wrap_tests_with_cache_setup({module, ?MODULE}),
