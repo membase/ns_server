@@ -89,20 +89,35 @@
   </div>
 
   <div id="analytics" style="display:none">
+	<!-- shadow box -->
+	<div class="shadow_box"><div class="top"><div><div></div></div></div><div class="cnt"><div class="pad"><div class="content">
     <div class="section">
-      <h2><em>System overview</em> <span>Interval
+      <h2 class="header_2">
+		<div class="nav float_right">
+			<a class="current">1 Hour</a> | <a>24 Hour</a>
+		</div>
+	  System overview <span>Interval
       <a id='analytics_graph_zoom_real_time'>Real time</a>
-      </span></h2>
-      <p style="height: 100px;"><span id="analytics_main_graph"></span></p>
-      <p><span id="analytics_graph_ops"></span>
-      <span id="analytics_graph_gets"></span>
-      <span id="analytics_graph_sets"></span>
-      <span id="analytics_graph_misses"></span>
+      </span>
+	  </h2>
+      <p class="analytics_graph_main">
+		<span class="graph_info_label block right">3 active nodes last collected 5 seconds ago</span>
+		<span id="analytics_main_graph"></span>
+	  </p>
+      <p class="darker_block graph_nav">
+		  <span id="analytics_graph_ops"></span>
+		  <span id="analytics_graph_gets"></span>
+		  <span id="analytics_graph_sets"></span>
+		  <span id="analytics_graph_misses"></span>
+		  <b class="clear"></b>
       </p>
     </div>
-
+	</div></div></div><div class="bottom"><div><div></div></div></div></div>
+	<!-- END shadow box -->
+	<!-- shadow box -->
+	<div class="shadow_box"><div class="top"><div><div></div></div></div><div class="cnt"><div class="pad"><div class="content">
     <div class="section">
-      <h2><em><span class="stat_target_name"></span> - Top Key Values</em> <span>Interval
+      <h2 class="header_2"><span class="stat_target_name"></span> - Top Key Values <span>Interval
       <a id='analytics_keys_zoom_real_time'>Real time</a>
       </span></h2>
       <p id="top_keys_container">
@@ -124,6 +139,8 @@
         </table>
       </div>
     </div>
+	</div></div></div><div class="bottom"><div><div></div></div></div></div>
+	<!-- END shadow box -->
   </div>
 
   <div id="buckets" style="display:none">
