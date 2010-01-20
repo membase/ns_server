@@ -134,14 +134,15 @@
     <div id="bucket_list_template" class="template">
         <table>
           <tr><th>Name<th>Ops/Sec<th>Evictions/Sec<th>Cache Used<th>Cache Size
-          {% $.each(rows, function () { %}
+          <!-- {% $.each(rows, function () { %} -->
             <tr><td>{%= h(this.name) %}
               <td>{%= h(this.basicStats.opsPerSec) %}
               <td>{%= h(this.basicStats.evictionsPerSec) %}
               <td>{%= h(this.basicStats.cachePercentUsed) %}
               <td>{%= h(this.basicStats.cacheSize) %}
-              <td><a href="javascript:BucketsSection.showBucket('{%=escapeJS(h(this.uri))%}')">Bucket Properties</a>
-          {% }); %}
+              <td><a href="{%=jsLink('BucketsSection.showBucket',this.uri)%}">Bucket Properties</a>
+            </tr> <!-- This tr is important. Otherwise browser may close row after end of loop, causing incorrect resultant markup -->
+          <!-- {% }); %} -->
         </table>
     </div>
   </div>

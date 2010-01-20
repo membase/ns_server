@@ -34,11 +34,42 @@ function escapeJS(string) {
   return String(string).replace(/\\/g, '\\\\').replace(/["']/g, '\\$&'); //"//' emacs' javascript-mode is silly
 }
 
+function renderJSLink(functionName, arg) {
+  return escapeHTML("javascript:" + functionName + "('" + escapeJS(arg) + "')")
+}
+
 // Based on: http://ejohn.org/blog/javascript-micro-templating/
 // Simple JavaScript Templating
 // John Resig - http://ejohn.org/ - MIT Licensed
 ;(function(){
   var cache = {};
+
+  var handleURLEncodedScriptlets = function (str) {
+    var re = /%7B(?:%25|%)=.+?(?:%25|%)%7D/ig;
+    var match;
+    var res = [];
+    var lastIndex = 0;
+    var prematch;
+    while ((match = re.exec(str))) {
+      prematch = str.substring(lastIndex, match.index);
+      if (prematch.length)
+        res.push(prematch);
+      // firefox can be a bit wrong here, forgetting to escape single '%'
+      var matchStr = match[0].replace('%=', '%25=').replace('%%7D', '%25%7D');
+      res.push(decodeURIComponent(matchStr));
+      lastIndex = re.lastIndex;
+    }
+
+    // fastpath
+    if (!lastIndex)
+      return str;
+
+    prematch = str.substring(lastIndex);
+    if (prematch.length)
+      res.push(prematch);
+
+    return res.join('');
+  }
 
   this.tmpl = function tmpl(str, data){
     // Figure out if we're getting a template, or if we need to
@@ -48,8 +79,10 @@ function escapeJS(string) {
                                  tmpl(document.getElementById(str).innerHTML));
 
     if (!fn) {
+      str = handleURLEncodedScriptlets(str);
       var body = "var p=[],print=function(){p.push.apply(p,arguments);}," +
-        "h=window.escapeHTML;" +
+        "h=window.escapeHTML," +
+        "jsLink=window.renderJSLink;" +
 
       // Introduce the data as local variables using with(){}
       "with(obj){p.push('" +
