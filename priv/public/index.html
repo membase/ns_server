@@ -19,7 +19,6 @@
 
       <td class="leftNav">
         <h1>RUN</h1>
-
         <ul>
           <!--<li class="line"></li>-->
           <li class="line"><a id="switch_overview" href="javascript:nav.go('overview');">Cluster Overview</a></li>
@@ -28,6 +27,12 @@
           <li class="line"><a id="switch_alerts" href="javascript:nav.go('alerts');">Alerts/Logs</a></li>
           <li class="line"><a id="switch_settings" href="javascript:nav.go('settings');">Cluster Settings</a></li>
         </ul>
+		<h1>Configure</h1>
+		<ul>
+			<li>
+				<a href="#">Cluster Settings</a>
+			</li>
+		</ul>
 		<!-- test claster -->
 		<div class="blue_round_block test_claster">
 			<div class="top">
@@ -55,8 +60,11 @@
   <td id="mainPanel">
 
   <div id="overview" style="display:none;">
+	<!-- shadow box -->
+	<h1>&nbsp;</h1>
+	<div class="shadow_box"><div class="top"><div><div></div></div></div><div class="cnt"><div class="pad"><div class="content">
     <div class="section">
-      <h2><em>Server Nodes</em></h2>
+      <h2 class="header_2">Server Nodes</h2>
       <p id="server_list_container">
       </p>
       <div id="server_list_template" class="template">
@@ -70,7 +78,7 @@
               {% } else { %}
                 Down
               {% } %}
-          <tr class="details"><td colspan="3">
+          <tr class="details"><td colspan="4">
             <div class="first">
               <table>
                 <tr><td>Uptime:<td>{%= h(formatUptime(this.uptime)) %}
@@ -86,10 +94,15 @@
         </tbody></table>
       </div>
     </div>
+	</div></div></div><div class="bottom"><div><div></div></div></div></div>
+	<!-- END shadow box -->
   </div>
 
   <div id="analytics" style="display:none">
-	<h1>Analytics: Exerciser App</h1>
+	<h1>
+		<div class="nav float_right"><a>Configure View</a></div>
+		Analytics: Exerciser App
+	</h1>
 	<!-- shadow box -->
 	<div class="shadow_box"><div class="top"><div><div></div></div></div><div class="cnt"><div class="pad"><div class="content">
     <div class="section">

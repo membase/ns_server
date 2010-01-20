@@ -32,7 +32,11 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 .header_2 .nav .current {color:#444245; cursor:default;}
 
 h1 {font-size:20px; font-weight:normal;}
+h1 .nav {display:block; padding:8px 10px 0 0; text-transform:none;}
+h1 .nav a {font-size:11px; font-weight:bolder; cursor:pointer;}
 #mainPanel h1 {text-transform:uppercase; padding:0 0 10px 9px;}
+
+a {color:#0095d6;}
 
 body {
 	line-height: 1;
@@ -171,10 +175,10 @@ td.leftNav ul {
 }
 */
 
-td.leftNav {padding-right:20px;}
-td.leftNav ul {display:block; width:160px; border-top:1px solid #e4e9eb;}
+td.leftNav {width:180px;}
+td.leftNav ul {display:block; width:160px; border-top:1px solid #e4e9eb; padding:0 0 20px 0;}
 td.leftNav ul ul {margin:0 0 -1px 0;}
-td.leftNav h1 {padding:0 0 20px 5px; color:#444245;}
+td.leftNav h1 {padding:0 0 15px 5px; color:#444245; text-transform:uppercase;}
 td.leftNav li {
 	display: block;
   min-height:29px;
@@ -310,7 +314,7 @@ a.selected { text-decoration: underline; }
 .blue_round_block .content {background:none #eaf4f9;}
 .blue_round_block a {font-size:12px; color:#0095d6;}
 
-.test_claster {width:160px; margin:30px 0 0 0;}
+.test_claster {width:160px; margin:20px 0 0 0;}
 .test_claster .content {padding:3px 19px;}
 .test_claster .label {font-size:12px; color:#444245; margin:0 0 5px 0; display:block;}
 .test_claster .start {display:block; width:121px; height:31px; background:url(../images/button_blue.gif) 0 0 no-repeat; font-size:14px; font-weight:bolder; line-height:31px; color:#fff; text-decoration:none; text-align:center; margin:0 0 5px 0;}
@@ -330,8 +334,19 @@ a.selected { text-decoration: underline; }
 
 .shadow_box .darker_block {background:#dfe0e0;}
 
+
 #top_keys_container {border:1px solid #DBDBDB; border-top:0px;}
 #top_keys_container table {width:100%; border-collapse:collapse;}
 #top_keys_container table th {padding:10px 5px; text-align:left; border-right:1px solid #d9dce0; border-bottom:1px solid #eaedef; font-size:12px; font-weight:bolder; color:#f2692d; background:none #fbfbfb;}
 #top_keys_container table td {border-right:1px solid #d9dce0; font-size:12px; vertical-align:middle; padding:10px 5px; background:none #fff;}
 #top_keys_container table .even td {background:none #ececef;}
+
+/*.shadow_box p {border:1px solid #DBDBDB; border-top:0px;}
+.shadow_box p table {width:100%; border-collapse:collapse;}
+.shadow_box p table th {padding:10px 5px; text-align:left; border-right:1px solid #d9dce0; border-bottom:1px solid #eaedef; font-size:12px; font-weight:bolder; color:#f2692d; background:none #fbfbfb;}
+.shadow_box p table td {border-right:1px solid #d9dce0; font-size:12px; vertical-align:middle; padding:10px 5px; background:none #fff;}
+.shadow_box p table .even td {background:none #ececef;}
+.shadow_box p table .hover td {background:none #f7f7f7;}*/
+
+/* nulled next tables */
+/*.shadow_box p table table * {background:none; border:0px; padding:0px;}*/

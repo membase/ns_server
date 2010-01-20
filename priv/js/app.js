@@ -455,6 +455,15 @@ var OverviewSection = {
   onFreshNodeList: function () {
     var nodes = DAO.cells.currentPoolDetails.value.nodes;
     renderTemplate('server_list', nodes);
+/*	$('#server_list_container table tr.primary:odd').addClass('even');
+	$('#server_list_container table tr.primary').hover(
+		function() {
+			$(this).addClass('hover');
+		},
+		function() {
+			$(this).removeClass('hover');
+		}
+	);*/
   },
   init: function () {
     DAO.cells.currentPoolDetails.subscribe($m(this, 'onFreshNodeList'));
