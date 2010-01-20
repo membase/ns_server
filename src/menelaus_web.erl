@@ -328,10 +328,12 @@ test() ->
 handle_traffic_generator_control_post(Req) ->
     PostArgs = Req:parse_post(),
     case proplists:get_value("onOrOff", PostArgs) of
-        "off" -> ns_log:log(?MODULE, 100, "Stopping workload from node ~p", erlang:node()),
+        "off" -> ns_log:log(?MODULE, 100, "Stopping workload from node ~p",
+                            erlang:node()),
 				 tgen:traffic_stop(),
 				 Req:respond({204, [], []});
-        "on" -> ns_log:log(?MODULE, 100, "Starting workload from node ~p", erlang:node()),
+        "on" -> ns_log:log(?MODULE, 100, "Starting workload from node ~p",
+                           erlang:node()),
 				tgen:traffic_start(),
 				Req:respond({204, [], []});
 		_ ->
@@ -339,7 +341,6 @@ handle_traffic_generator_control_post(Req) ->
 					   [PostArgs, proplists:get_value(PostArgs, "onOrOff")]),
 			Req:respond({400, [], "Bad Request\n"})
     end.
-   %% todo: why isn't pattern matching working the way I'd think
 
 serve_index_html_for_tests(Req, DocRoot) ->
     case file:read_file(DocRoot ++ "/index.html") of
