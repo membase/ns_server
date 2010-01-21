@@ -154,6 +154,9 @@ is_alert_key("bucket_created") -> true;
 is_alert_key("config_changed") -> true;
 is_alert_key(_) -> false.
 
+alert_key(ns_node_disco, 0005) -> server_down;
+alert_key(ns_node_disco, 0004) -> server_up;
+alert_key(ns_confg_log, 0001)  -> config_changed;
 alert_key(_Module, _Code) -> all.
 
 default_alert_config() ->
