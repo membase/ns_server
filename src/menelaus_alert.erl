@@ -22,6 +22,9 @@
          handle_alerts/1,
          handle_alerts_settings_post/1]).
 
+-export([get_alert_config/0,
+         set_alert_config/1]).
+
 -import(simple_cache, [call_simple_cache/2]).
 
 -import(menelaus_util,
@@ -32,42 +35,68 @@
 
 %% External API
 
--define(ALERTS_LIMIT, 15).
+-define(DEFAULT_LIMIT, 50).
 
 handle_logs(Req) ->
     reply_json(Req, {struct, [{list, build_logs(Req:parse_qs())}]}).
 
 handle_alerts(Req) ->
-    reply_json(Req, {struct, [{limit, ?ALERTS_LIMIT},
-                              {settings, {struct, [{updateUri,
-                                                    <<"/alerts/settings">>}
-                                                   | fetch_alert_settings()]}},
+    reply_json(Req, {struct, [{settings,
+                               {struct, [{updateUri,
+                                          <<"/alerts/settings">>}
+                                         | build_alert_settings()]}},
                               {list, build_alerts(Req:parse_qs())}]}).
 
 handle_alerts_settings_post(Req) ->
     PostArgs = Req:parse_post(),
-    call_simple_cache(insert,
-                      [{alert_settings,
-                        lists:map(fun ({K,V}) ->
-                                          {list_to_atom(K), list_to_binary(V)}
-                                  end,
-                                  PostArgs)}]),
-    %% TODO: make it more RESTful
+    AlertConfig = lists:keystore(alerts, 1, get_alert_config(), {alerts, []}),
+    AlertConfig2 =
+        lists:foldl(
+          fun({"email", V}, C) ->
+                  lists:keystore(email, 1, C, {email, V});
+             ({"email_alerts", "1"}, C) ->
+                  lists:keystore(email_alerts, 1, C, {email_alerts, true});
+             ({"email_alerts", "0"}, C) ->
+                  lists:keystore(email_alerts, 1, C, {email_alerts, false});
+             ({[$s, $_ | K], "1"}, C) ->
+                  case is_alert_key(K) of
+                      true ->
+                          lists:keystore(alerts, 1, C,
+                                         {alerts,
+                                          [list_to_atom(K) |
+                                           proplists:get_value(alerts, C)]});
+                      false -> C
+                  end;
+             (_, C) -> C
+          end,
+          AlertConfig,
+          PostArgs),
+    set_alert_config(AlertConfig2),
     Req:respond({200, [], []}).
 
-build_logs(Params) ->
-    MinTStamp = case proplists:get_value("minTimeStamp", Params) of
-                     undefined -> 0;
-                     V -> list_to_integer(V)
-                 end,
-    LogEntries = lists:filter(
-                   fun(#log_entry{tstamp = TStamp}) ->
-                           TStamp > MinTStamp
-                   end,
-                   ns_log:recent()),
-    build_log_structs(LogEntries).
+build_alert_settings() ->
+    C = get_alert_config(),
+    [{email, list_to_binary(proplists:get_value(email, C, ""))},
+     {sendAlerts, case proplists:get_value(email_alerts, C, false) of
+                      true -> <<"1">>;
+                      _    -> <<"0">>
+                  end} |
+     lists:map(fun(X) ->
+                       {"s_" ++ atom_to_list(X), <<"1">>}
+               end,
+               proplists:get_value(alerts, C, []))].
 
-build_log_structs(LogEntries) ->
+build_logs(Params) ->
+    {MinTStamp, Limit} = common_params(Params),
+    build_log_structs(ns_log:recent(), MinTStamp, Limit).
+
+build_log_structs(LogEntriesIn, MinTStamp, Limit) ->
+    LogEntries = lists:filter(fun(#log_entry{tstamp = TStamp}) ->
+                                      TStamp > MinTStamp
+                              end,
+                              LogEntriesIn),
+    LogEntries2 = lists:reverse(lists:keysort(#log_entry.tstamp, LogEntries)),
+    LogEntries3 = lists:sublist(LogEntries2, Limit),
     LogStructs =
         lists:foldl(
           fun(#log_entry{module = Module,
@@ -87,7 +116,7 @@ build_log_structs(LogEntries) ->
                   end
           end,
           [],
-          LogEntries),
+          LogEntries3),
     LogStructs.
 
 category_bin(info) -> <<"info">>;
@@ -96,108 +125,63 @@ category_bin(crit) -> <<"critical">>;
 category_bin(_)    -> <<"info">>.
 
 build_alerts(Params) ->
-    create_new_alert(),
-    [{alerts, Alerts}] = call_simple_cache(lookup, [alerts]),
-    LastNumber = case proplists:get_value("lastNumber", Params) of
+    {MinTStamp, Limit} = common_params(Params),
+    AlertConfig = get_alert_config(),
+    Alerts = proplists:get_value(alerts, AlertConfig, []),
+    LogEntries = ns_log:recent(),
+    LogEntries2 = lists:filter(
+                    fun(#log_entry{module = Module,
+                                   code = Code}) ->
+                            lists:member(alert_key(Module, Code), Alerts)
+                    end,
+                    LogEntries),
+    build_log_structs(LogEntries2, MinTStamp, Limit).
+
+% The defined alert_key() responses are...
+%
+%  server_down
+%  server_up
+%  server_joined
+%  memory_low
+%  bucket_created
+%  config_changed
+
+is_alert_key("server_down")    -> true;
+is_alert_key("server_up")      -> true;
+is_alert_key("server_joined")  -> true;
+is_alert_key("memory_low")     -> true;
+is_alert_key("bucket_created") -> true;
+is_alert_key("config_changed") -> true;
+is_alert_key(_) -> false.
+
+alert_key(_Module, _Code) -> all.
+
+default_alert_config() ->
+    [{email, ""},
+     {email_alerts, false},
+     {alerts, []}].
+
+get_alert_config() ->
+    case ns_config:search(ns_config:get(), alerts) of
+        {value, X} -> X;
+        false      -> default_alert_config()
+    end.
+
+set_alert_config(AlertConfig) ->
+    ns_config:set(alerts, AlertConfig).
+
+common_params(Params) ->
+    MinTStamp = case proplists:get_value("sinceTime", Params) of
                      undefined -> 0;
                      V -> list_to_integer(V)
                  end,
-    Limit = ?ALERTS_LIMIT,
-    CutAlerts = stateful_takewhile(fun ({struct, [{number, N} | _]}, Index) ->
-                                           {(N > LastNumber) andalso
-                                            (Index < Limit), Index+1}
-                                   end,
-                                   Alerts,
-                                   0),
-    CutAlerts.
-
-fetch_alert_settings() ->
-    caching_result(alert_settings,
-                   fun () ->
-                           [{email, <<"alk@tut.by">>},
-                            {sendAlerts, <<"1">>},
-                            {sendForLowSpace, <<"1">>},
-                            {sendForLowMemory, <<"1">>},
-                            {sendForNotResponding, <<"1">>},
-                            {sendForJoinsCluster, <<"1">>},
-                            {sendForOpsAboveNormal, <<"1">>},
-                            {sendForSetsAboveNormal, <<"1">>}]
-                   end).
-
--define(INITIAL_ALERTS, [{struct, [{number, 3},
-                                   {type, <<"info">>},
-                                   {tstamp, 1259836260000},
-                                   {shortText, <<"Above Average Operations per Second">>},
-                                   {text, <<"Licensing, capacity, NorthScale issues, etc.">>}]},
-                         {struct, [{number, 2},
-                                   {type, <<"attention">>},
-                                   {tstamp, 1259836260000},
-                                   {shortText, <<"New Node Joined Pool">>},
-                                   {text, <<"A new node is now online">>}]},
-                         {struct, [{number, 1},
-                                   {type, <<"warning">>},
-                                   {tstamp, 1259836260000},
-                                   {shortText, <<"Server Node Down">>},
-                                   {text, <<"Server node is no longer available">>}]}]).
-
-fetch_alerts() ->
-    caching_result(alerts,
-                   fun () -> ?INITIAL_ALERTS end).
-
-create_new_alert() ->
-    fetch_alerts(), %% side effect
-    [{alerts, OldAlerts}] = call_simple_cache(lookup, [alerts]),
-    [{struct, [{number, LastNumber} | _]} | _] = OldAlerts,
-    NewAlerts = [{struct, [{number, LastNumber+1},
-                           {type, <<"attention">>},
-                           {tstamp, java_date()},
-                           {shortText, <<"Lorem ipsum">>},
-                           {text, <<"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas egestas dictum iaculis.">>}]}
-                 | OldAlerts],
-    call_simple_cache(insert, [{alerts, NewAlerts}]),
-    nil.
+    Limit = case proplists:get_value("limit", Params) of
+                undefined -> ?DEFAULT_LIMIT;
+                L -> list_to_integer(L)
+            end,
+    {MinTStamp, Limit}.
 
 -ifdef(EUNIT).
-
-reset_alerts() ->
-    call_simple_cache(delete, [alerts]).
-
-fetch_default_alerts_test() ->
-    reset_alerts(),
-    ?assertEqual(?INITIAL_ALERTS,
-                 fetch_alerts()),
-
-    ?assertEqual(?INITIAL_ALERTS,
-                 fetch_alerts()).
-
-create_new_alert_test() ->
-    reset_alerts(),
-    create_new_alert(),
-    List1 = fetch_alerts(),
-    ?assertEqual(?INITIAL_ALERTS,
-                 tl(List1)),
-    ?assertMatch({struct, [{number, 4}|_]},
-                 lists:nth(1, List1)),
-    ?assertEqual([], lists:nthtail(4, List1)),
-
-    create_new_alert(),
-    List2 = fetch_alerts(),
-    ?assertEqual(?INITIAL_ALERTS,
-                 tl(tl(List2))),
-    ?assertMatch({struct, [{number, 5}|_]},
-                 lists:nth(1, List2)),
-    ?assertMatch({struct, [{number, 4}|_]},
-                 lists:nth(2, List2)),
-    ?assertEqual([], lists:nthtail(5, List2)).
-
-build_alerts_test() ->
-    reset_alerts(),
-    ?assertEqual(?INITIAL_ALERTS,
-                 tl(build_alerts([]))),
-
-    reset_alerts(),
-    ?assertMatch([{struct, [{number, 4} | _]}],
-                 build_alerts([{"lastNumber", "3"}])).
 
 test() ->
     eunit:test(wrap_tests_with_cache_setup({module, ?MODULE}),
