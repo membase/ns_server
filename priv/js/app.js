@@ -478,6 +478,16 @@ var OverviewSection = {
     var nodes = DAO.cells.currentPoolDetails.value.nodes;
     renderTemplate('server_list', nodes);
     $('#server_list_container table tr.primary:first-child').addClass('nbrdr');
+    $('#get_started_expander').click(function() {
+        if ($(this).hasClass('expanded'))
+        {
+            $(this).removeClass('expanded');
+            $('#get_started').removeClass('block');
+        } else {
+            $(this).addClass('expanded');
+            $('#get_started').addClass('block');
+        }
+    });
   },
   init: function () {
     DAO.cells.currentPoolDetails.subscribe($m(this, 'onFreshNodeList'));
