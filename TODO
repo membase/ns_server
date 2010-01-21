@@ -10,7 +10,7 @@ OVERVIEW
 * 'Get Started' section
 o [DONE] no node list
 * correct fields in node list on overview page
-* expandable node list in overview status
+o [DONE] expandable node list in overview status
 * leave cluster
 
 BUCKETS UI
@@ -23,8 +23,8 @@ o [DROPPED for now] pagination
 BUCKET PROPERTIES UI
 o [DONE] basic
 * remove bucket
-* flush all
-* change password
+o [DONE] flush all
+o [DONE] change password
 * implement REST server side 
 
 TEST APPLICATION BUCKET
@@ -59,10 +59,10 @@ o [DONE] implement (with button on BUCKET PROPERTIES section)
 * Store password/login in cookies ? So that you don't have to re-enter
    them on page refresh.
 
-* leaving 'overview' section should disable polling of stats. Or maybe
+o [DONE] leaving 'overview' section should disable polling of stats. Or maybe
    don't bother ?
 
-* intelligent circuit breaker for ajax requests
+o [not needed, due to reloading of page on error] intelligent circuit breaker for ajax requests
 * complete API switch to camelCase by converting all parameter names
    [DONE] [alk: not quite. Several query params are still underscore-styled]
 * loading indicator for alert settings form
