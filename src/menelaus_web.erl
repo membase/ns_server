@@ -464,23 +464,38 @@ handle_join(Req) ->
     OtherPswd = proplist:get_value("password", Params),
     case lists:member(undefined,
                       [OtherHost, OtherPort, OtherUser, OtherPswd]) of
-        true -> Req:response({400, [], []});
-        false ->
+        true  -> Req:response({400, [], []});
+        false -> handle_join(Req, OtherHost, OtherPort, OtherUser, OtherPswd)
+    end.
+
+handle_join(Req, OtherHost, OtherPort, OtherUser, OtherPswd) ->
+    case tgen:system_joinable() of
+        true ->
             case menelaus_rest:rest_get_otp(OtherHost, OtherPort,
                                             {OtherUser, OtherPswd}) of
                 {ok, undefined, _} -> Req:response({401, [], []});
                 {ok, _, undefined} -> Req:response({401, [], []});
-                {ok, OtpNode, OtpCookie} ->
-                    AOtpNode = list_to_atom(binary_to_list(OtpNode)),
-                    AOtpCookie = list_to_atom(binary_to_list(OtpCookie)),
-                    case ns_cluster:join(AOtpNode, AOtpCookie) of
-                        ok -> ns_log:log(?MODULE, 0009, "Joined cluster at node: ~p with cookie: ~p from node: ~p",
-                                         [AOtpNode, AOtpCookie, erlang:node()]),
-                              Req:respond({200, [], []});
-                        _  -> Req:respond({401, [], []})
-                    end;
+                {ok, N, C} ->
+                    handle_join(Req,
+                                list_to_atom(binary_to_list(N)),
+                                list_to_atom(binary_to_list(C)));
                 _ -> Req:response({401, [], []})
-            end
+            end;
+        false ->
+            % We are not an 'empty' node, so user should first remove
+            % buckets, etc.
+            Req:response({401, [], []})
+    end.
+
+handle_join(Req, OtpNode, OtpCookie) ->
+    case ns_cluster:join(OtpNode, OtpCookie) of
+        ok -> ns_log:log(?MODULE, 0009, "Joined cluster at node: ~p with cookie: ~p from node: ~p",
+                         [OtpNode, OtpCookie, erlang:node()]),
+              % TODO: Need to restart menelaus?  emoxi?
+              % ns_port_server?  Or, let ns_node_config events
+              % handle it.
+              Req:respond({200, [], []});
+        _  -> Req:respond({401, [], []})
     end.
 
 handle_eject_post(Req) ->
@@ -499,12 +514,19 @@ handle_eject_post(Req) ->
         undefined -> Req:respond({400, [], "Bad Request\n"});
         OtpNodeB ->
             OtpNode = list_to_atom(OtpNodeB),
-            case lists:member(OtpNode, ns_node_disco:nodes_wanted()) of
+            case OtpNode =:= node() of
                 true ->
-                    ok = ns_cluster:leave(OtpNode),
-                    Req:respond({200, [], []});
+                    % Cannot eject ourselves.
+                    Req:respond({400, [], "Bad Request\n"});
                 false ->
-                    Req:respond({400, [], []})
+                    case lists:member(OtpNode, ns_node_disco:nodes_wanted()) of
+                        true ->
+                            ok = ns_cluster:leave(OtpNode),
+                            Req:respond({200, [], []});
+                        false ->
+                            % Node doesn't exist.
+                            Req:respond({400, [], []})
+                    end
             end
     end.
 
