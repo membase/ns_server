@@ -681,6 +681,7 @@ var AnalyticsSection = {
     ThePage.gotoSection('analytics');
   },
   onLeave: function () {
+    setHashFragmentParam('graph', undefined);
     DAO.cells.statsBucketURL.setValue(undefined);
   },
   onEnter: function () {
