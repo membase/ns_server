@@ -116,7 +116,8 @@ var MockedRequest = mkClass({
         data.call(null, fakeResponse);
         return;
       }
-      self.options.success(data, 'success');
+      if (self.options.success)
+        self.options.success(data, 'success');
     });
   },
   respond: function () {
