@@ -10,3 +10,4 @@ menelaus_*.tar.gz
 tmp
 *~
 erl_crash.dump
+/doc/API/_site
