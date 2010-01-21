@@ -92,7 +92,7 @@ build_logs(Params) ->
 
 build_log_structs(LogEntriesIn, MinTStamp, Limit) ->
     LogEntries = lists:filter(fun(#log_entry{tstamp = TStamp}) ->
-                                      TStamp > MinTStamp
+                                      misc:time_to_epoch_int(TStamp) > MinTStamp
                               end,
                               LogEntriesIn),
     LogEntries2 = lists:reverse(lists:keysort(#log_entry.tstamp, LogEntries)),
@@ -109,7 +109,7 @@ build_log_structs(LogEntriesIn, MinTStamp, Limit) ->
                       S when is_list(S) ->
                           CodeString = ns_log:code_string(Module, Code),
                           [{struct, [{type, category_bin(Cat)},
-                                     {tstamp, TStamp},
+                                     {tstamp, misc:time_to_epoch_int(TStamp)},
                                      {shortText, list_to_binary(CodeString)},
                                      {text, list_to_binary(S)}]} | Acc];
                       _ -> Acc
