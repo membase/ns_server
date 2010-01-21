@@ -483,6 +483,8 @@ function prepareTemplateForCell(templateName, cell) {
   cell.undefinedSlot.subscribeWithSlave(function () {
     prepareRenderTemplate(templateName);
   });
+  if (cell.value === undefined)
+    prepareRenderTemplate(templateName);
 }
 
 var OverviewSection = {
