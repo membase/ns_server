@@ -345,27 +345,23 @@ handle_bucket_update(PoolId, BucketId, Req) ->
     % ]}
     %
     Params = Req:parse_qs(),
-    Pools = mc_pool:pools_config_get(),
-    case mc_bucket:bucket_config_get(Pools, PoolId, BucketId) of
+    case mc_bucket:bucket_config_get(mc_pool:pools_config_get(),
+                                     PoolId, BucketId) of
         false -> Req:respond({400, [], []});
         BucketConfig ->
-            AName = proplists:get_value(<<"auth_name">>, Params),
-            APswd = proplists:get_value(<<"auth_pswd">>, Params),
-            Auth = case lists:member(undefined, [AName, APswd]) of
-                       true -> undefined;
-                       false -> {AName, APswd}
+            Auth = case proplists:get_value(<<"password">>, Params) of
+                       undefined -> undefined;
+                       Password  -> {BucketId, binary_to_list(Password)}
                    end,
             BucketConfig2 =
                 lists:keystore(auth_plain, 1, BucketConfig,
                                {auth_plain, Auth}),
-            case BucketConfig2 of
-                error        -> Req:respond({400, [], []});
-                BucketConfig -> Req:respond({200, [], []}); % No change.
-                _ ->
-                    mc_bucket:bucket_config_make(PoolId,
-                                                 BucketId,
-                                                 BucketConfig2),
-                    Req:respond({200, [], []})
+            case BucketConfig2 =:= BucketConfig of
+                true  -> Req:respond({200, [], []}); % No change.
+                false -> mc_bucket:bucket_config_make(PoolId,
+                                                      BucketId,
+                                                      BucketConfig2),
+                         Req:respond({200, [], []})
             end
     end.
 
