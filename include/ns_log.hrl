@@ -5,5 +5,6 @@
           code   :: integer(),
           msg    :: string(),
           args   :: list(),
-          cat    :: log_classification()
+          cat    :: log_classification(),
+          tstamp :: integer()
          }).

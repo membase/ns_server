@@ -45,10 +45,9 @@ handle_call(recent, _From, State) ->
 handle_cast({log, Module, Code, Fmt, Args}, State) ->
     error_logger:info_msg("Logging ~p:~p(~p, ~p)~n",
                           [Module, Code, Fmt, Args]),
-
-
     NR = ringbuffer:add(#log_entry{module=Module, code=Code, msg=Fmt, args=Args,
-                                   cat=categorize(Module, Code)},
+                                   cat=categorize(Module, Code),
+                                   tstamp=misc:now_int()},
                         State#state.recent),
     {noreply, State#state{recent=NR}};
 handle_cast(clear, _State) ->
