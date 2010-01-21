@@ -105,7 +105,16 @@
 %
 {alerts, [
   {'_ver', {0, 0, 0}},
-  {some_alert_info, and_value_here}
+  {email, ""},
+  {email_alerts, false},
+  {alerts, [
+%  server_down
+%  server_up
+%  server_joined
+%  memory_low
+%  bucket_created
+%  config_changed
+           ]}
 ]}.
 
 % -----------------------------------
