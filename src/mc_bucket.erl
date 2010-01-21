@@ -118,7 +118,8 @@ get_bucket_auth(BucketConfig) ->
 
 bucket_config_default() ->
     [{auth_plain, undefined},
-     {size_per_node, 64}
+     {size_per_node, 64},
+     {preallocate, false}
     ].
 
 bucket_config_make(PoolName, BucketName) ->
