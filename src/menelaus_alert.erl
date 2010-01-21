@@ -69,10 +69,10 @@ build_logs(_Params) ->
                   case catch(io_lib:format(Msg, Args)) of
                       S when is_list(S) ->
                           CodeString = ns_log:code_string(Module, Code),
-                          [{struct, [{type, category_string(Cat)},
+                          [{struct, [{type, category_bin(Cat)},
                                      {tstamp, TStamp},
-                                     {shortText, CodeString},
-                                     {text, S}]} | Acc];
+                                     {shortText, list_to_binary(CodeString)},
+                                     {text, list_to_binary(S)}]} | Acc];
                       _ -> Acc
                   end
           end,
@@ -80,10 +80,10 @@ build_logs(_Params) ->
           LogEntries),
     LogStructs.
 
-category_string(info) -> "info";
-category_string(warn) -> "warning";
-category_string(crit) -> "critical";
-category_string(_)    -> "info".
+category_bin(info) -> <<"info">>;
+category_bin(warn) -> <<"warning">>;
+category_bin(crit) -> <<"critical">>;
+category_bin(_)    -> <<"info">>.
 
 build_alerts(Params) ->
     create_new_alert(),
