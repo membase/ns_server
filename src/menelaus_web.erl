@@ -341,19 +341,22 @@ handle_bucket_delete(PoolId, BucketId, Req) ->
     ok.
 
 handle_bucket_update(PoolId, BucketId, Req) ->
-    % TODO: A bucket Id to pool PoolId would be added with response
-    % the same as bucket details.
-    %
-    % TODO: there are two ways one would get here, Req will contain a JSON
+    % There are two ways one would get here, Req will contain a JSON
     % payload
     %
-    % A PUT means create/update.  A PUT
-    % but may be sparse as some things (like memory amount) will fall back to
-    % server defaults
-    %
+    % A PUT means create/update.  A PUT may be sparse as some things
+    % (like memory amount) will fall back to server defaults
     %
     % A POST means modify existing bucket settings.  For 1.0, this will *only*
     % allow changing the password or setting the password to ""
+    %
+    % The JSON looks like...
+    %
+    % {"password": "somepassword",
+    %  "size_per_node", "64",
+    %  "preallocate", "0"}
+    %
+    % An empty password string ("") is the same as undefined auth_plain.
     %
     % TODO: after 1.0: allow password changes via urlencoded post
     %
@@ -364,13 +367,57 @@ handle_bucket_update(PoolId, BucketId, Req) ->
     %   ]}
     % ]}
     %
-    Params = Req:parse_qs(),
+    {struct, Params} = parse_json(Req),
     case mc_bucket:bucket_config_get(mc_pool:pools_config_get(),
                                      PoolId, BucketId) of
-        false -> Req:respond({400, [], []});
+        false ->
+            % Create...
+            BucketConfigDefault = mc_bucket:bucket_config_default(),
+            BucketConfig =
+                lists:foldl(
+                  fun({auth_plain, _}, C) ->
+                          V = case proplists:get_value(<<"password">>,
+                                                       Params) of
+                                  undefined -> undefined;
+                                  <<>>      -> undefined;
+                                  PasswordB ->
+                                      {BucketId, binary_to_list(PasswordB)}
+                              end,
+                          lists:keystore(auth_plain, 1, C,
+                                         {auth_plain, V});
+                     ({size_per_node, _}, C) ->
+                          case proplists:get_value(<<"size_per_node">>,
+                                                   Params) of
+                              undefined -> C;
+                              SBin when is_binary(SBin) ->
+                                  S = list_to_integer(binary_to_list(SBin)),
+                                  lists:keystore(size_per_node, 1, C,
+                                                 {size_per_node, S});
+                              S when is_integer(S) ->
+                                  lists:keystore(size_per_node, 1, C,
+                                                 {size_per_node, S})
+                          end;
+                     ({preallocate, _}, C) ->
+                          case proplists:get_value(<<"preallocate">>,
+                                                   Params) of
+                              undefined -> C;
+                              Value ->
+                                  B = parse_boolean(Value),
+                                  lists:keystore(preallocate, 1, C,
+                                                 {preallocate, B})
+                          end
+                  end,
+                  BucketConfigDefault,
+                  BucketConfigDefault),
+            mc_bucket:bucket_config_make(PoolId,
+                                         BucketId,
+                                         BucketConfig),
+            Req:respond({200, [], []});
         BucketConfig ->
+            % Update, only the auth_plain/password field for 1.0.
             Auth = case proplists:get_value(<<"password">>, Params) of
                        undefined -> undefined;
+                       <<>>      -> undefined;
                        Password  -> {BucketId, binary_to_list(Password)}
                    end,
             BucketConfig2 =
@@ -434,6 +481,21 @@ handle_join(Req) ->
                     end;
                 _ -> Req:response({401, [], []})
             end
+    end.
+
+parse_json(Req) ->
+    mochijson2:decode(Req:recv_body()).
+
+parse_boolean(Value) ->
+    case Value of
+        true -> true;
+        false -> false;
+        <<"true">> -> true;
+        <<"false">> -> false;
+        <<"1">> -> true;
+        <<"0">> -> false;
+        1 -> true;
+        0 -> false
     end.
 
 handle_traffic_generator_control_post(Req) ->
