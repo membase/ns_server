@@ -96,7 +96,7 @@ loop(Req, DocRoot) ->
                              {auth_bucket, fun handle_bucket_flush/3,
                               [PoolId, Id]};
                          _ ->
-                             ns_log:log(?MODULE, 100, "Invalid post received: ~p", Req),
+                             ns_log:log(?MODULE, 0001, "Invalid post received: ~p", Req),
                              {done, Req:not_found()}
                      end;
                  'DELETE' ->
@@ -104,7 +104,7 @@ loop(Req, DocRoot) ->
                          ["pools", PoolId, "buckets", Id] ->
                              {auth, fun handle_bucket_delete/3, [PoolId, Id]};
                          _ ->
-                             ns_log:log(?MODULE, 100, "Invalid delete received: ~p", Req),
+                             ns_log:log(?MODULE, 0002, "Invalid delete received: ~p", Req),
                               {done, Req:respond({405, [], "Method Not Allowed"})}
                      end;
                  'PUT' ->
@@ -112,11 +112,11 @@ loop(Req, DocRoot) ->
                          ["pools", PoolId, "buckets", Id] ->
                              {auth, fun handle_bucket_update/3, [PoolId, Id]};
                          _ ->
-                             ns_log:log(?MODULE, 100, "Invalid put received: ~p", Req),
+                             ns_log:log(?MODULE, 0003, "Invalid put received: ~p", Req),
                              {done, Req:respond({405, [], "Method Not Allowed"})}
                      end;
                  _ ->
-                     ns_log:log(?MODULE, 100, "Invalid request received: ~p", Req),
+                     ns_log:log(?MODULE, 0004, "Invalid request received: ~p", Req),
                      {done, Req:respond({405, [], "Method Not Allowed"})}
              end,
     case Action of
@@ -324,7 +324,7 @@ handle_bucket_info_streaming(PoolId, Id, Req) ->
 handle_bucket_delete(PoolId, BucketId, Req) ->
     case mc_bucket:bucket_delete(PoolId, BucketId) of
         true ->
-            ns_log:log(?MODULE, 100, "Deleted bucket ~p from pool ~p",
+            ns_log:log(?MODULE, 0004, "Deleted bucket ~p from pool ~p",
                        [BucketId, PoolId]),
             Req:respond(204, [], []);
         false ->
@@ -366,7 +366,7 @@ handle_bucket_update(PoolId, BucketId, Req) ->
     end.
 
 handle_bucket_flush(PoolId, Id, Req) ->
-    ns_log:log(?MODULE, 100, "Flushing pool ~p bucket ~p from node ~p",
+    ns_log:log(?MODULE, 0005, "Flushing pool ~p bucket ~p from node ~p",
                [PoolId, Id, erlang:node()]),
     case mc_bucket:bucket_flush(PoolId, Id) of
         ok    -> Req:respond({204, [], []});
@@ -404,10 +404,12 @@ handle_join(Req) ->
                 {ok, undefined, _} -> Req:response({401, [], []});
                 {ok, _, undefined} -> Req:response({401, [], []});
                 {ok, OtpNode, OtpCookie} ->
-                    case ns_cluster:join(
-                           list_to_atom(binary_to_list(OtpNode)),
-                           list_to_atom(binary_to_list(OtpCookie))) of
-                        ok -> Req:respond({200, [], []});
+                    AOtpNode = list_to_atom(binary_to_list(OtpNode)),
+                    AOtpCookie = list_to_atom(binary_to_list(OtpCookie)),
+                    case ns_cluster:join(AOtpNode, AOtpCookie) of
+                        ok -> ns_log:log(?MODULE, 0009, "Joined cluster at node: ~p with cookie: ~p from node: ~p",
+                                         [AOtpNode, AOtpCookie, erlang:node()]),
+                              Req:respond({200, [], []});
                         _  -> Req:respond({401, [], []})
                     end;
                 _ -> Req:response({401, [], []})
@@ -417,18 +419,18 @@ handle_join(Req) ->
 handle_traffic_generator_control_post(Req) ->
     PostArgs = Req:parse_post(),
     case proplists:get_value("onOrOff", PostArgs) of
-        "off" -> ns_log:log(?MODULE, 100, "Stopping workload from node ~p",
+        "off" -> ns_log:log(?MODULE, 0006, "Stopping workload from node ~p",
                             erlang:node()),
                  tgen:traffic_stop(),
                  Req:respond({204, [], []});
-        "on" -> ns_log:log(?MODULE, 100, "Starting workload from node ~p",
+        "on" -> ns_log:log(?MODULE, 0007, "Starting workload from node ~p",
                            erlang:node()),
                 % TODO: Use rpc:multicall here to turn off traffic
                 %       generation across all actual nodes in the cluster.
                 tgen:traffic_start(),
                 Req:respond({204, [], []});
         _ ->
-            ns_log:log(?MODULE, 100, "Invalid post to testWorkload controller.  PostArgs ~p evaluated to ~p",
+            ns_log:log(?MODULE, 0008, "Invalid post to testWorkload controller.  PostArgs ~p evaluated to ~p",
                        [PostArgs, proplists:get_value(PostArgs, "onOrOff")]),
             Req:respond({400, [], "Bad Request\n"})
     end.
