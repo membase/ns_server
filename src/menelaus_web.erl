@@ -58,8 +58,6 @@ loop(Req, DocRoot) ->
                          ["pools", Id, "stats"] ->
                              {auth, fun menelaus_stats:handle_bucket_stats/3,
                               [Id, all]};
-						 ["pools", _Id, "logs"] ->
-							 {done, Req:respond({200, [], "If this were implemented, a log response would come from a function."})};
                          ["poolsStreaming", Id] ->
                              {auth, fun handle_pool_info_streaming/2, [Id]};
                          ["pools", PoolId, "buckets"] ->
@@ -67,12 +65,14 @@ loop(Req, DocRoot) ->
                          ["pools", PoolId, "buckets", Id] ->
                              {auth_bucket, fun handle_bucket_info/3,
                               [PoolId, Id]};
-						 ["pools", PoolId, "bucketsStreaming", Id] ->
-							 {auth_bucket, fun handle_bucket_info_streaming/3,
+                         ["pools", PoolId, "bucketsStreaming", Id] ->
+                             {auth_bucket, fun handle_bucket_info_streaming/3,
                               [PoolId, Id]};
                          ["pools", PoolId, "buckets", Id, "stats"] ->
                              {auth, fun menelaus_stats:handle_bucket_stats/3,
                               [PoolId, Id]};
+                         ["logs"] ->
+                             {auth, fun menelaus_alert:handle_logs/1};
                          ["alerts"] ->
                              {auth, fun menelaus_alert:handle_alerts/1};
                          ["t", "index.html"] ->
@@ -93,28 +93,28 @@ loop(Req, DocRoot) ->
                               [PoolId, Id]};
                          _ ->
                              ns_log:log(?MODULE, 100, "Invalid post received: ~p", Req),
-							 {done, Req:not_found()}
+                             {done, Req:not_found()}
                      end;
-				 'DELETE' ->
-					 case PathTokens of
-						 ["pools", PoolId, "buckets", Id] ->
-							 {auth,
-							  fun handle_bucket_delete/3,
-							  [PoolId, Id]};
-						 _ ->
-							 ns_log:log(?MODULE, 100, "Invalid delete received: ~p", Req),
-							  {done, Req:respond({405, [], "Method Not Allowed"})}
-					 end;
-				 'PUT' ->
-					 case PathTokens of
-						 ["pools", _PoolId, "buckets", _Id] ->
-							 {done, Req:respond({200, [], "if this were implemented, a bucket Id to pool PoolId would be added with response the same as bucket details"})};
-						 _ ->
-							 ns_log:log(?MODULE, 100, "Invalid put received: ~p", Req),
-							 {done, Req:respond({405, [], "Method Not Allowed"})}
-					 end;
+                 'DELETE' ->
+                     case PathTokens of
+                         ["pools", PoolId, "buckets", Id] ->
+                             {auth,
+                              fun handle_bucket_delete/3,
+                              [PoolId, Id]};
+                         _ ->
+                             ns_log:log(?MODULE, 100, "Invalid delete received: ~p", Req),
+                              {done, Req:respond({405, [], "Method Not Allowed"})}
+                     end;
+                 'PUT' ->
+                     case PathTokens of
+                         ["pools", _PoolId, "buckets", _Id] ->
+                             {done, Req:respond({200, [], "if this were implemented, a bucket Id to pool PoolId would be added with response the same as bucket details"})};
+                         _ ->
+                             ns_log:log(?MODULE, 100, "Invalid put received: ~p", Req),
+                             {done, Req:respond({405, [], "Method Not Allowed"})}
+                     end;
                  _ ->
-					 ns_log:log(?MODULE, 100, "Invalid request received: ~p", Req),
+                     ns_log:log(?MODULE, 100, "Invalid request received: ~p", Req),
                      {done, Req:respond({405, [], "Method Not Allowed"})}
              end,
     case Action of
@@ -169,11 +169,11 @@ build_pool_info(Id, _UserPassword) ->
     {struct, [{name, list_to_binary(Id)},
               {nodes, Nodes},
               {buckets, BucketsInfo},
-			  {controllers, {struct,
-							 [{testWorkload, {struct,
-											 [{uri,
-											   list_to_binary("/pools/" ++ Id ++ "/testWorkload")}]}}]}},
-			  %%
+              {controllers, {struct,
+                             [{testWorkload, {struct,
+                                             [{uri,
+                                               list_to_binary("/pools/" ++ Id ++ "/testWorkload")}]}}]}},
+              %%
               {stats, {struct,
                        [{uri,
                          list_to_binary("/pools/" ++ Id ++ "/stats")}]}}]}.
@@ -257,11 +257,11 @@ handle_streaming(F, Req, HTTPRes, LastRes, Wait) ->
     handle_streaming(F, Req, HTTPRes, Res, Wait).
 
 handle_bucket_list(Id, Req) ->
-	MyPool = find_pool_by_id(Id),
-	UserPassword = menelaus_auth:extract_auth(Req),
-	IsSuper = menelaus_auth:check_auth(UserPassword),
-	BucketsAll = expect_prop_value(buckets, MyPool),
-	Buckets =
+    MyPool = find_pool_by_id(Id),
+    UserPassword = menelaus_auth:extract_auth(Req),
+    IsSuper = menelaus_auth:check_auth(UserPassword),
+    BucketsAll = expect_prop_value(buckets, MyPool),
+    Buckets =
         % We got this far, so we assume we're authorized.
         % Only emit the buckets that match our UserPassword;
         % or, emit all buckets if our UserPassword matches the rest_creds
@@ -274,9 +274,9 @@ handle_bucket_list(Id, Req) ->
                   menelaus_auth:bucket_auth_fun(UserPassword),
                   BucketsAll)
         end,
-	BucketsInfo = [{struct, [{uri, list_to_binary("/pools/" ++ Id ++
+    BucketsInfo = [{struct, [{uri, list_to_binary("/pools/" ++ Id ++
                                                   "/buckets/" ++ Name)},
-							 {streamingUri, list_to_binary("/pools/" ++ Id ++
+                             {streamingUri, list_to_binary("/pools/" ++ Id ++
                                                   "/bucketsStreaming/" ++ Name)},
                                  {name, list_to_binary(Name)},
                                  {basicStats,
@@ -285,7 +285,7 @@ handle_bucket_list(Id, Req) ->
                                  {sampleConnectionString,
                                   <<"fake connection string">>}]}
                    || Name <- proplists:get_keys(Buckets)],
-	reply_json(Req, BucketsInfo).
+    reply_json(Req, BucketsInfo).
 
 find_bucket_by_id(Pool, Id) ->
     Buckets = expect_prop_value(buckets, Pool),
@@ -329,7 +329,7 @@ handle_bucket_delete(PoolId, BucketId, Req) ->
             %% if bucket isn't found
             Req:respond(404, [], "The bucket to be deleted was not found.")
     end,
-	ok.
+    ok.
 
 -ifdef(EUNIT).
 
@@ -344,16 +344,18 @@ handle_traffic_generator_control_post(Req) ->
     case proplists:get_value("onOrOff", PostArgs) of
         "off" -> ns_log:log(?MODULE, 100, "Stopping workload from node ~p",
                             erlang:node()),
-				 tgen:traffic_stop(),
-				 Req:respond({204, [], []});
+                 tgen:traffic_stop(),
+                 Req:respond({204, [], []});
         "on" -> ns_log:log(?MODULE, 100, "Starting workload from node ~p",
                            erlang:node()),
-				tgen:traffic_start(),
-				Req:respond({204, [], []});
-		_ ->
-			ns_log:log(?MODULE, 100, "Invalid post to testWorkload controller.  PostArgs ~p evaluated to ~p",
-					   [PostArgs, proplists:get_value(PostArgs, "onOrOff")]),
-			Req:respond({400, [], "Bad Request\n"})
+                % TODO: Use rpc:multicall here to turn off traffic
+                %       generation across all actual nodes in the cluster.
+                tgen:traffic_start(),
+                Req:respond({204, [], []});
+        _ ->
+            ns_log:log(?MODULE, 100, "Invalid post to testWorkload controller.  PostArgs ~p evaluated to ~p",
+                       [PostArgs, proplists:get_value(PostArgs, "onOrOff")]),
+            Req:respond({400, [], "Bad Request\n"})
     end.
 
 handle_bucket_flush(Req, PoolId, Id) ->

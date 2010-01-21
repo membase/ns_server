@@ -7,6 +7,8 @@
 -module(menelaus_alert).
 -author('Northscale <info@northscale.com>').
 
+-include("ns_log.hrl").
+
 -include_lib("eunit/include/eunit.hrl").
 
 -ifdef(EUNIT).
@@ -16,7 +18,9 @@
          wrap_tests_with_cache_setup/1]).
 -endif.
 
--export([handle_alerts/1, handle_alerts_settings_post/1]).
+-export([handle_logs/1,
+         handle_alerts/1,
+         handle_alerts_settings_post/1]).
 
 -import(simple_cache, [call_simple_cache/2]).
 
@@ -27,6 +31,88 @@
          caching_result/2]).
 
 %% External API
+
+-define(ALERTS_LIMIT, 15).
+
+handle_logs(Req) ->
+    reply_json(Req, {struct, [{list, build_logs(Req:parse_qs())}]}).
+
+handle_alerts(Req) ->
+    reply_json(Req, {struct, [{limit, ?ALERTS_LIMIT},
+                              {settings, {struct, [{updateUri,
+                                                    <<"/alerts/settings">>}
+                                                   | fetch_alert_settings()]}},
+                              {list, build_alerts(Req:parse_qs())}]}).
+
+handle_alerts_settings_post(Req) ->
+    PostArgs = Req:parse_post(),
+    call_simple_cache(insert,
+                      [{alert_settings,
+                        lists:map(fun ({K,V}) ->
+                                          {list_to_atom(K), list_to_binary(V)}
+                                  end,
+                                  PostArgs)}]),
+    %% TODO: make it more RESTful
+    Req:respond({200, [], []}).
+
+build_logs(_Params) ->
+    % TODO: A min timestamp could be part of Params.
+    LogEntries = ns_log:recent(),
+    LogStructs =
+        lists:foldl(
+          fun(#log_entry{module = Module,
+                         code = Code,
+                         msg = Msg,
+                         args = Args,
+                         cat = Cat,
+                         tstamp = TStamp}, Acc) ->
+                  case catch(io_lib:format(Msg, Args)) of
+                      S when is_list(S) ->
+                          CodeString = ns_log:code_string(Module, Code),
+                          [{struct, [{type, category_string(Cat)},
+                                     {tstamp, TStamp},
+                                     {shortText, CodeString},
+                                     {text, S}]} | Acc];
+                      _ -> Acc
+                  end
+          end,
+          [],
+          LogEntries),
+    LogStructs.
+
+category_string(info) -> "info";
+category_string(warn) -> "warning";
+category_string(crit) -> "critical";
+category_string(_)    -> "info".
+
+build_alerts(Params) ->
+    create_new_alert(),
+    [{alerts, Alerts}] = call_simple_cache(lookup, [alerts]),
+    LastNumber = case proplists:get_value("lastNumber", Params) of
+                     undefined -> 0;
+                     V -> list_to_integer(V)
+                 end,
+    Limit = ?ALERTS_LIMIT,
+    CutAlerts = stateful_takewhile(fun ({struct, [{number, N} | _]}, Index) ->
+                                           {(N > LastNumber) andalso
+                                            (Index < Limit), Index+1}
+                                   end,
+                                   Alerts,
+                                   0),
+    CutAlerts.
+
+fetch_alert_settings() ->
+    caching_result(alert_settings,
+                   fun () ->
+                           [{email, <<"alk@tut.by">>},
+                            {sendAlerts, <<"1">>},
+                            {sendForLowSpace, <<"1">>},
+                            {sendForLowMemory, <<"1">>},
+                            {sendForNotResponding, <<"1">>},
+                            {sendForJoinsCluster, <<"1">>},
+                            {sendForOpsAboveNormal, <<"1">>},
+                            {sendForSetsAboveNormal, <<"1">>}]
+                   end).
 
 -define(INITIAL_ALERTS, [{struct, [{number, 3},
                                    {type, <<"info">>},
@@ -43,6 +129,23 @@
                                    {tstamp, 1259836260000},
                                    {shortText, <<"Server Node Down">>},
                                    {text, <<"Server node is no longer available">>}]}]).
+
+fetch_alerts() ->
+    caching_result(alerts,
+                   fun () -> ?INITIAL_ALERTS end).
+
+create_new_alert() ->
+    fetch_alerts(), %% side effect
+    [{alerts, OldAlerts}] = call_simple_cache(lookup, [alerts]),
+    [{struct, [{number, LastNumber} | _]} | _] = OldAlerts,
+    NewAlerts = [{struct, [{number, LastNumber+1},
+                           {type, <<"attention">>},
+                           {tstamp, java_date()},
+                           {shortText, <<"Lorem ipsum">>},
+                           {text, <<"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas egestas dictum iaculis.">>}]}
+                 | OldAlerts],
+    call_simple_cache(insert, [{alerts, NewAlerts}]),
+    nil.
 
 -ifdef(EUNIT).
 
@@ -91,70 +194,4 @@ test() ->
                [verbose]).
 
 -endif.
-
-fetch_alerts() ->
-    caching_result(alerts,
-                   fun () -> ?INITIAL_ALERTS end).
-
-create_new_alert() ->
-    fetch_alerts(), %% side effect
-    [{alerts, OldAlerts}] = call_simple_cache(lookup, [alerts]),
-    [{struct, [{number, LastNumber} | _]} | _] = OldAlerts,
-    NewAlerts = [{struct, [{number, LastNumber+1},
-                           {type, <<"attention">>},
-                           {tstamp, java_date()},
-                           {shortText, <<"Lorem ipsum">>},
-                           {text, <<"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas egestas dictum iaculis.">>}]}
-                 | OldAlerts],
-    call_simple_cache(insert, [{alerts, NewAlerts}]),
-    nil.
-
--define(ALERTS_LIMIT, 15).
-
-build_alerts(Params) ->
-    create_new_alert(),
-    [{alerts, Alerts}] = call_simple_cache(lookup, [alerts]),
-    LastNumber = case proplists:get_value("lastNumber", Params) of
-                     undefined -> 0;
-                     V -> list_to_integer(V)
-                 end,
-    Limit = ?ALERTS_LIMIT,
-    CutAlerts = stateful_takewhile(fun ({struct, [{number, N} | _]}, Index) ->
-                                           {(N > LastNumber) andalso
-                                            (Index < Limit), Index+1}
-                                   end,
-                                   Alerts,
-                                   0),
-    CutAlerts.
-
-fetch_alert_settings() ->
-    caching_result(alert_settings,
-                   fun () ->
-                           [{email, <<"alk@tut.by">>},
-                            {sendAlerts, <<"1">>},
-                            {sendForLowSpace, <<"1">>},
-                            {sendForLowMemory, <<"1">>},
-                            {sendForNotResponding, <<"1">>},
-                            {sendForJoinsCluster, <<"1">>},
-                            {sendForOpsAboveNormal, <<"1">>},
-                            {sendForSetsAboveNormal, <<"1">>}]
-                   end).
-
-handle_alerts(Req) ->
-    reply_json(Req, {struct, [{limit, ?ALERTS_LIMIT},
-                              {settings, {struct, [{updateURI,
-                                                    <<"/alerts/settings">>}
-                                                   | fetch_alert_settings()]}},
-                              {list, build_alerts(Req:parse_qs())}]}).
-
-handle_alerts_settings_post(Req) ->
-    PostArgs = Req:parse_post(),
-    call_simple_cache(insert,
-                      [{alert_settings,
-                        lists:map(fun ({K,V}) ->
-                                          {list_to_atom(K), list_to_binary(V)}
-                                  end,
-                                  PostArgs)}]),
-    %% TODO: make it more RESTful
-    Req:respond({200, [], []}).
 
