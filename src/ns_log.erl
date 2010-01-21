@@ -21,6 +21,8 @@
 
 -export([log/3, log/4, recent/0, recent/1, recent_by_category/0, clear/0]).
 
+-export([categorize/2, code_string/2]).
+
 -export([ns_log_cat/1]).
 
 -include_lib("eunit/include/eunit.hrl").
@@ -69,6 +71,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%--------------------------------------------------------------------
 
+%% API
+
 -spec categorize(atom(), integer()) -> log_classification().
 categorize(Module, Code) ->
     case catch(Module:ns_log_cat(Code)) of
@@ -78,7 +82,12 @@ categorize(Module, Code) ->
         _ -> info % Anything unknown is info (this includes {'EXIT', Reason})
         end.
 
-%% API
+-spec code_string(atom(), integer()) -> string().
+code_string(Module, Code) ->
+    case catch(Module:ns_log_code_string(Code)) of
+        S when is_list(S) -> S;
+        _                 -> "message"
+    end.
 
 % A Code is an number which is module-specific.
 %
