@@ -276,16 +276,7 @@ handle_bucket_list(Id, Req) ->
                   menelaus_auth:bucket_auth_fun(UserPassword),
                   BucketsAll)
         end,
-    BucketsInfo = [{struct, [{uri, list_to_binary("/pools/" ++ Id ++
-                                                  "/buckets/" ++ Name)},
-                             {streamingUri, list_to_binary("/pools/" ++ Id ++
-                                                  "/bucketsStreaming/" ++ Name)},
-                                 {name, list_to_binary(Name)},
-                                 {basicStats,
-                                  {struct,
-                                   menelaus_stats:basic_stats(Id, Name)}},
-                                 {sampleConnectionString,
-                                  <<"fake connection string">>}]}
+    BucketsInfo = [build_bucket_info(Id, Name, undefined)
                    || Name <- proplists:get_keys(Buckets)],
     reply_json(Req, BucketsInfo).
 
@@ -303,8 +294,18 @@ build_bucket_info(PoolId, Id, _UserPassword) ->
     StatsURI = list_to_binary("/pools/"++PoolId++"/buckets/"++Id++"/stats"),
     Nodes = build_nodes_info(Pool, false),
     List1 = [{name, list_to_binary(Id)},
-                    {nodes, Nodes},
-                    {stats, {struct, [{uri, StatsURI}]}}],
+             {uri, list_to_binary("/pools/" ++ PoolId ++
+                                  "/buckets/" ++ Id)},
+             {streamingUri, list_to_binary("/pools/" ++ PoolId ++
+                                           "/bucketsStreaming/" ++ Id)},
+             %% TODO: undocumented
+             {flushCacheURI, list_to_binary("/pools/" ++ PoolId ++
+                                           "/buckets/" ++ Id ++ "/controller/doFlush")},
+             %% TODO: undocumented
+             {passwordURI, <<"none">>},
+             {basicStats, {struct, menelaus_stats:basic_stats(PoolId, Id)}},
+             {nodes, Nodes},
+             {stats, {struct, [{uri, StatsURI}]}}],
     List2 = case tgen:is_traffic_bucket(Pool, Id) of
                 true -> [{testAppBucket, true},
                          {controlURL, list_to_binary("/pools/"++PoolId++
