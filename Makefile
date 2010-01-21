@@ -26,6 +26,7 @@ clean:
 	rm -f menelaus_*.tar.gz priv/public/js/t-all.js priv/public/js/all.js
 	rm -f $(TMP_VER)
 	rm -rf $(DIST_DIR)
+	rm -f TAGS
 
 # assuming exuberant-ctags
 TAGS:
