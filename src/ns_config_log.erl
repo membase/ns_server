@@ -11,7 +11,7 @@
 -export([init/1, handle_event/2, handle_call/2,
          handle_info/2, terminate/2, code_change/3]).
 
--record(state, {}).
+-record(state, {last}).
 
 start_link() ->
     {ok, spawn_link(?MODULE, setup_handler, [])}.
@@ -20,7 +20,7 @@ setup_handler() ->
     gen_event:add_handler(ns_config_events, ?MODULE, ignored).
 
 init(ignored) ->
-    {ok, #state{}, hibernate}.
+    {ok, #state{last = undefined}, hibernate}.
 
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
@@ -28,6 +28,13 @@ code_change(_OldVsn, State, _) -> {ok, State}.
 handle_event({K, V}, State) ->
     error_logger:info_msg("config change: ~p -> ~p~n", [K, V]),
     {ok, State, hibernate};
+
+handle_event(KVList, State) when is_list(KVList) ->
+    case KVList =/= State of
+        true  -> ns_log:log(?MODULE, 0001, "config changed");
+        false -> ok
+    end,
+    {ok, State#state{last = KVList}, hibernate};
 
 handle_event(_, State) ->
     {ok, State, hibernate}.
