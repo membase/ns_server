@@ -23,7 +23,7 @@
 
 -export([categorize/2, code_string/2]).
 
--export([ns_log_cat/1]).
+-export([ns_log_cat/1, ns_log_code_string/1]).
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -139,6 +139,11 @@ ns_log_cat(2) ->
     warn;
 ns_log_cat(3) ->
     info.
+
+ns_log_code_string(1) ->
+    "logging could not foobar";
+ns_log_code_string(2) ->
+    "logging hit max baz".
 
 % ------------------------------------------
 
