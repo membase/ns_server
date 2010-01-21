@@ -79,6 +79,25 @@ var TestingSupervisor = {
 
 var ajaxRespondDelay = 100;
 
+// mostly stolen from MIT-licensed prototypejs.org (String#toQueryParams)
+function deserializeQueryString(dataString) {
+  return _.reduce(dataString.split('&'), { }, function(hash, pair) {
+    if ((pair = pair.split('='))[0]) {
+      var key = decodeURIComponent(pair.shift());
+      var value = pair.length > 1 ? pair.join('=') : pair[0];
+      if (value != undefined) value = decodeURIComponent(value);
+
+      if (key in hash) {
+        if (!_.isArray(hash[key]))
+          hash[key] = [hash[key]];
+        hash[key].push(value);
+      }
+      else hash[key] = value;
+    }
+    return hash;
+  })
+}
+
 var MockedRequest = mkClass({
   alertsResponse: {limit: 15,
                    settings: {updateURI: "/alerts/settings"},
@@ -181,7 +200,6 @@ var MockedRequest = mkClass({
     var resp;
     if (path[0] == "pools") {
       if (path.length == 1) {
-        
         // /pools
         resp = {pools: [
           {name: 'default',
@@ -228,24 +246,7 @@ var MockedRequest = mkClass({
     this.fakeResponse('');
   },
 
-  // mostly stolen from MIT-licensed prototypejs.org (String#toQueryParams)
-  deserialize: function (dataString) {
-    return _.reduce(dataString.split('&'), { }, function(hash, pair) {
-      if ((pair = pair.split('='))[0]) {
-        var key = decodeURIComponent(pair.shift());
-        var value = pair.length > 1 ? pair.join('=') : pair[0];
-        if (value != undefined) value = decodeURIComponent(value);
-
-        if (key in hash) {
-          if (!_.isArray(hash[key]))
-            hash[key] = [hash[key]];
-          hash[key].push(value);
-        }
-        else hash[key] = value;
-      }
-      return hash;
-    });
-  },
+  deserialize: deserializeQueryString,
 
   handleBucketsPost: function () {
     var self = this;
@@ -450,3 +451,27 @@ var MockedRequest = mkClass({
 });
 
 TestingSupervisor.interceptAjax();
+
+(function () {
+  var href = window.location.href;
+  var match = /\?(.*?)(?:$|#)/.exec(href);
+  if (!match)
+    return;
+  var params = deserializeQueryString(match[1]);
+
+  console.log("params", params);
+
+  if ('noauth' in params) {
+    MockedRequest.prototype.checkAuth = function () {}
+    $(function () {
+      _.defer(function () {
+        $('#login_form input').val('admin');
+        loginFormSubmit();
+      });
+    });
+  }
+
+  if (params['ajaxDelay']) {
+    ajaxRespondDelay = parseInt(params['ajaxDelay'], 10);
+  }
+})();
