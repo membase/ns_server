@@ -83,12 +83,7 @@ loop(Req, DocRoot) ->
                  'POST' ->
                      case PathTokens of
 						 ["node", "controller", "doJoinCluster"]  ->
-						   %% paths: cluster secured, admin logged in: after creds work and nod join happens, 200 returned with Location header pointing to new /pool/default
-						   %%        cluster secured, bucket creds and logged in: 403 Forbidden
-						   %%        cluster not secured, after node join happens, a 200 returned with Location header to new /pool/default, 401 if request had
-						   %%        cluster either secured/not, a 400 if a required parameter is missing
-                           %% parameter example: clusterMemberHostIp=192%2E168%2E0%2E1&clusterMemberPort=8080&user=admin&password=admin123
-						   {done, Req:respond({200, [] , "If this were implemented, you would see a new cluster now."})};
+                             {auth, fun handle_join/1};
                          ["alerts", "settings"] ->
                              {auth,
                               fun menelaus_alert:handle_alerts_settings_post/1};
@@ -373,6 +368,47 @@ handle_bucket_flush(Req, PoolId, Id) ->
     case mc_bucket:bucket_flush(PoolId, Id) of
         ok    -> Req:respond({204, [], []});
         false -> Req:respond({404, [], []})
+    end.
+
+handle_join(Req) ->
+    %% paths:
+    %%  cluster secured, admin logged in:
+    %%           after creds work and node join happens,
+    %%           200 returned with Location header pointing
+    %%           to new /pool/default
+    %%  cluster secured, bucket creds and logged in: 403 Forbidden
+    %%  cluster not secured, after node join happens,
+    %%           a 200 returned with Location header to new /pool/default,
+    %%           401 if request had
+    %%  cluster either secured or not:
+    %%           a 400 if a required parameter is missing
+    %%
+    %% parameter example: clusterMemberHostIp=192%2E168%2E0%2E1&
+    %%                    clusterMemberPort=8080&
+    %%                    user=admin&password=admin123
+    %%
+    Params = Req:parse_qa(),
+    OtherHost = proplist:get_value("clusterMemberHostIp", Params),
+    OtherPort = proplist:get_value("clusterMemberPort", Params),
+    OtherUser = proplist:get_value("user", Params),
+    OtherPswd = proplist:get_value("password", Params),
+    case lists:member(undefined,
+                      [OtherHost, OtherPort, OtherUser, OtherPswd]) of
+        true -> Req:response({400, [], []});
+        false ->
+            case menelaus_rest:rest_get_otp(OtherHost, OtherPort,
+                                            {OtherUser, OtherPswd}) of
+                {ok, undefined, _} -> Req:response({401, [], []});
+                {ok, _, undefined} -> Req:response({401, [], []});
+                {ok, OtpNode, OtpCookie} ->
+                    case ns_cluster:join(
+                           list_to_atom(binary_to_list(OtpNode)),
+                           list_to_atom(binary_to_list(OtpCookie))) of
+                        ok -> Req:respond({200, [], []});
+                        _  -> Req:respond({401, [], []})
+                    end;
+                _ -> Req:response({401, [], []})
+            end
     end.
 
 serve_index_html_for_tests(Req, DocRoot) ->
