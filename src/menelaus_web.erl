@@ -92,6 +92,9 @@ loop(Req, DocRoot) ->
                          ["pools", _PoolId, "controller", "testWorkload"] ->
                              {auth,
                               fun handle_traffic_generator_control_post/1};
+                         ["pools", _PoolId, "controller", "ejectNode"] ->
+                             {auth,
+                              fun handle_eject_post/1};
                          ["pools", PoolId, "buckets", Id] ->
                              {auth_bucket,
                               fun handle_bucket_update/3,
@@ -448,6 +451,37 @@ handle_traffic_generator_control_post(Req) ->
                 Req:respond({204, [], []});
         _ ->
             ns_log:log(?MODULE, 0008, "Invalid post to testWorkload controller.  PostArgs ~p evaluated to ~p",
+                       [PostArgs, proplists:get_value(PostArgs, "onOrOff")]),
+            Req:respond({400, [], "Bad Request\n"})
+    end.
+
+handle_eject_post(Req) ->
+    PostArgs = Req:parse_post(),
+    %
+    % either Eject a running node, or eject a node which is down.
+    %
+    % request is a urlencoded form with just clusterMemberHostIp
+    %
+    % responses are 200 when complete
+    %               401 if creds were not supplied and are required
+    %               403 if creds were supplied and are incorrect
+    %               400 if the node to be ejected doesn't exist
+    %
+    % code here gratuititously copied from above, so may have no bearing on
+    % real stuff.
+    case proplists:get_value("clusterMemberHostIp", PostArgs) of
+        "off" -> ns_log:log(?MODULE, 0009, "Stopping workload from node ~p",
+                            erlang:node()),
+                 tgen:traffic_stop(),
+                 Req:respond({204, [], []});
+        "on" -> ns_log:log(?MODULE, 0010, "Starting workload from node ~p",
+                           erlang:node()),
+                % TODO: Use rpc:multicall here to turn off traffic
+                %       generation across all actual nodes in the cluster.
+                tgen:traffic_start(),
+                Req:respond({204, [], []});
+        _ ->
+            ns_log:log(?MODULE, 0011, "Invalid post to testWorkload controller.  PostArgs ~p evaluated to ~p",
                        [PostArgs, proplists:get_value(PostArgs, "onOrOff")]),
             Req:respond({400, [], "Bad Request\n"})
     end.
