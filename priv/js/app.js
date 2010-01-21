@@ -702,7 +702,7 @@ var AnalyticsSection = {
     renderTemplate('top_keys', $.map(cell.value.hot_keys, function (e) {
       return $.extend({}, e, {total: 0 + e.gets + e.misses});
     }));
-	$('#top_keys_container table tr:has(td):odd').addClass('even');
+    $('#top_keys_container table tr:has(td):odd').addClass('even');
   },
   init: function () {
     DAO.cells.stats.subscribe($m(this, 'onKeyStats'));
