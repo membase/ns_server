@@ -288,3 +288,18 @@ function watchHashParamChange(param, defaultValue, callback) {
     });
   });
 }
+
+function showDialog(idOrJQ, options) {
+  var jq = _.isString(idOrJQ) ? $($i(idOrJQ)) : idOrJQ;
+  options = options || {};
+  $(jq).jqm({modal:true,
+             onHide: function (h) {
+               if (options.onHide)
+                 options.onHide(idOrJQ);
+               // copied from jqmodal itself
+               h.w.hide() && h.o && h.o.remove();
+             }}).jqmShow();
+}
+function hideDialog(id) {
+  $($i(id)).jqm().jqmHide();
+}

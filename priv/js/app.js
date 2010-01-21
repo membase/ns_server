@@ -559,18 +559,18 @@ var BucketsSection = {
       // TODO: clear on hide
       this.currentlyShownBucket = bucketDetails;
       renderTemplate('bucket_details_dialog', {b: bucketDetails});
-      $('#bucket_details_dialog_container').jqm({modal:true}).jqmShow();
+      showDialog('bucket_details_dialog_container');
     });
   },
   startFlushCache: function (uri) {
-    $('#bucket_details_dialog_container').jqm().jqmHide();
+    hideDialog('bucket_details_dialog_container');
     this.withBucket(uri, function (bucket) {
       renderTemplate('flush_cache_dialog', {bucket: bucket});
-      $('#flush_cache_dialog_container').jqm({modal:true}).jqmShow();
+      showDialog('flush_cache_dialog_container');
     });
   },
   completeFlushCache: function (uri) {
-    $('#flush_cache_dialog_container').jqm().jqmHide();
+    hideDialog('flush_cache_dialog_container');
     this.withBucket(uri, function (bucket) {
       $.post(bucket.flushCacheURI);
     });
@@ -632,16 +632,14 @@ var BucketsSection = {
       BucketsSection.createSubmit();
     });
 
-    parent.jqm({modal:true,
-                onHide: function (h) {
-                  observer.stopObserving();
-                  parent.find('form').unbind();
-                  // copied from jqmodal itself
-                  h.w.hide() && h.o && h.o.remove();
-                }}).jqmShow();
+    showDialog(parent, {
+      onHide: function () {
+        observer.stopObserving();
+        parent.find('form').unbind();
+      }});
   },
   finishCreate: function () {
-    $('#add_new_bucket_dialog').jqm({modal:true}).jqmHide();
+    hideDialog('add_new_bucket_dialog');
   },
   createSubmit: function () {
     var res = $('#add_new_bucket_form').serialize();
@@ -689,13 +687,11 @@ var BucketsSection = {
     var observer = form.observePotentialChanges(function () {
       self.handlePasswordMatch(form);
     })
-    $("#bucket_password_dialog").jqm({modal:true,
-                                      onHide: function (h) {
-                                        observer.stopObserving();
-                                        form.unbind();
-                                        // copied from jqmodal itself
-                                        h.w.hide() && h.o && h.o.remove();
-                                      }}).jqmShow();
+    showDialog("bucket_password_dialog", {
+      onHide: function () {
+        observer.stopObserving();
+        form.unbind();
+      }});
   }
 };
 
@@ -926,7 +922,7 @@ function loginFormSubmit() {
   DAO.performLogin(login, password, function (status) {
     spinner.remove();
     if (status == 'success') {
-      $('#login_dialog').jqmHide();
+      hideDialog('login_dialog');
       return;
     }
 
@@ -942,7 +938,7 @@ window.nav = {
 };
 
 $(function () {
-  $('#login_dialog').jqm({modal: true}).jqmShow();
+  showDialog('login_dialog');
 
   _.defer(function () {
     $('#login_dialog [name=login]').get(0).focus();
