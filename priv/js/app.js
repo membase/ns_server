@@ -731,6 +731,11 @@ var AnalyticsSection = {
   },
   onEnter: function () {
     StatGraphs.update();
+  },
+  // called when we're already in this section and user tries to
+  // navigate to this section
+  navClick: function () {
+    this.onLeave(); // reset state
   }
 };
 
@@ -883,7 +888,10 @@ var ThePage = {
     if (!(this.sections[section])) {
       throw new Error('unknown section:' + section);
     }
-    setHashFragmentParam('sec', section);
+    if (this.currentSectionName == section && 'navClick' in this.currentSection)
+      this.currentSection.navClick();
+    else
+      setHashFragmentParam('sec', section);
   },
   initialize: function () {
     _.each(_.values(this.sections), function (sec) {
