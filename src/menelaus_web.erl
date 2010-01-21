@@ -308,8 +308,7 @@ build_bucket_info(PoolId, Id, _UserPassword) ->
     List2 = case tgen:is_traffic_bucket(Pool, Id) of
                 true -> [{testAppBucket, true},
                          {controlURL, list_to_binary("/pools/"++PoolId++
-                                                     "/buckets/"++Id++
-                                                     "/generatorControl")},
+                                                     "/controller/testWorkload")},
                          {status, tgen:traffic_started()}
                          | List1];
                 _ -> List1
