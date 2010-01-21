@@ -141,7 +141,7 @@
           <div id="server_list_template" class="template">
             <table><tbody>
               <!-- {% $.each(rows, function (index) { %} -->
-<!--              {% var runningClass;
+              <!-- {% var runningClass;
                  if (this.running) {
                    runningClass = "up"
                  } else {
@@ -150,8 +150,7 @@
               %} -->
               <tr class="primary">
                 <td class="expander"><div></div></td>
-                <td class="name"><div>{%= h(this.name) %}</div></td>
-                <!--<td class="port">Port {%= h(_.values(this.ports).join(', ')) %}</td>-->
+                <td class="name"><div>{%= h(this.hostname) %}</div></td>
                 <td class="status"><div class="{%=runningClass%}"></div></td>
               </tr>
               <tr class="details"><td colspan="3">
@@ -164,11 +163,6 @@
                       <table>
                         <col width="230" />
                         <col width="" />
-                   <!--     <tr><td>Uptime:</td><td>{%= h(formatUptime(this.uptime)) %}</td></tr>
-                        <tr><td>Cache:</td><td>{%= h(this.cache) %}</td></tr>
-                        <tr><td>Threads:</td><td>{%= h(this.threads) %}</td></tr>
-                        <tr><td>Version:</td><td>{%= h(this.version) %}</td></tr>
-                        <tr><td>OS:</td><td>{%= h(this.os) %}</td></tr> -->
                         <tr>
                             <td>Uptime: <span>{%= h(formatUptime(this.uptime)) %}</span></td>
                             <td>
@@ -184,11 +178,11 @@
                         </tr>
                         <tr>
                             <td>OS: <span>{%= h(this.os) %}</span></td>
-                            <td>Cache Port: <span>11212</span></td>
+                            <td>Cache Port: <span>{%=h(this.ports.direct)%}</span></td>
                         </tr>
                         <tr>
                             <td>Version: <span>{%= h(this.version) %}</span></td>
-                            <td>Proxy Port: <span>11212</span></td>
+                            <td>Proxy Port: <span>{%=h(this.ports.proxy)%}</span></td>
                         </tr>
                       </table>
                   </div>
