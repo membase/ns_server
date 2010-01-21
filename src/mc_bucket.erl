@@ -25,6 +25,7 @@
          bucket_config_get/2,
          bucket_config_get/3,
          bucket_config_delete/2,
+         bucket_flush/2,
          addrs/2,
          list/1]).
 
@@ -197,6 +198,26 @@ list(Pool) ->
     Buckets = proplists:get_value(buckets, PoolConf),
     lists:map(fun({K, _V}) -> K end, Buckets).
 
+bucket_flush(PoolId, BucketId) ->
+    bucket_flush(mc_bucket:addrs(PoolId, BucketId)).
+
+bucket_flush(undefined) -> false;
+bucket_flush([])        -> false;
+bucket_flush(Addrs) ->
+    {NumFwd, Monitors} =
+        lists:foldl(
+          fun (Addr, Acc) ->
+                  mc_downstream:accum(
+                    mc_downstream:send(Addr, undefined, ?FLUSH,
+                                       {#mc_header{}, #mc_entry{}},
+                                               undefined, undefined),
+                    Acc)
+          end,
+          {0, []}, Addrs),
+    mc_downstream:await_ok(NumFwd),
+    mc_downstream:demonitor(Monitors),
+    ok.
+
 % ------------------------------------------------
 
 % Fake hash_key/hash_addr functions for unit testing.
@@ -250,3 +271,31 @@ bucket_config_set_test() ->
     ?assertEqual([{buckets, [{x, xxx}]}],
                  bucket_config_set([{buckets, [{x, xx}]}], x, xxx)),
     ok.
+
+bucket_flush_test() ->
+    {ok, _Pid} = mc_downstream:start_link(),
+    {ok, Sock} = gen_tcp:connect("localhost", 11211,
+                                 [binary, {packet, 0}, {active, false}]),
+    (fun () ->
+        {ok, _H, _E, undefined} =
+                 mc_client_binary:cmd(?SET, Sock, undefined, undefined,
+                                      {#mc_header{},
+                                       #mc_entry{key = <<"a">>,
+                                                 data = <<"AAA">>}})
+     end)(),
+    A1 = mc_addr:create("127.0.0.1:11211", binary),
+    B1 = mc_addr:create("localhost:11211", binary),
+    ok = bucket_flush([A1, B1]),
+    {ok, _H, _E, X} =
+        mc_client_binary:cmd(?GET, Sock,
+                             fun(#mc_header{status = ?SUCCESS}, ME, CD) ->
+                                     dict:store(ME#mc_entry.key,
+                                                ME#mc_entry.data,
+                                                CD);
+                                (_, _, CD) -> CD
+                             end,
+                             dict:new(),
+                             {#mc_header{}, #mc_entry{key = <<"a">>}}),
+    ?assertEqual(0, dict:size(X)),
+    ok = gen_tcp:close(Sock).
+
