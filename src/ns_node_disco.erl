@@ -89,7 +89,7 @@ handle_call(Msg, _From, State) ->
     {reply, error, State}.
 
 handle_info({nodeup, Node}, State) ->
-    ns_log:log(?MODULE, 0004, "node up: ~p", Node),
+    ns_log:log(?MODULE, 0004, "node up: ~p", [Node]),
     % We might be tempted to proactively push/pull/sync
     % our configs with the "new" Node.  Instead, it's
     % cleaner to asynchronous do a gen_event:notify()
@@ -99,7 +99,7 @@ handle_info({nodeup, Node}, State) ->
     {noreply, State2};
 
 handle_info({nodedown, Node}, State) ->
-    ns_log:log(?MODULE, 0005, "node down: ~p", Node),
+    ns_log:log(?MODULE, 0005, "node down: ~p", [Node]),
     State2 = do_notify(State),
     {noreply, State2};
 
