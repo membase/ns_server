@@ -100,7 +100,7 @@ loop(Req, DocRoot) ->
                              {auth_bucket, fun handle_bucket_flush/3,
                               [PoolId, Id]};
                          _ ->
-                             ns_log:log(?MODULE, 0001, "Invalid post received: ~p", Req),
+                             ns_log:log(?MODULE, 0001, "Invalid post received: ~p", [Req]),
                              {done, Req:not_found()}
                      end;
                  'DELETE' ->
@@ -108,7 +108,7 @@ loop(Req, DocRoot) ->
                          ["pools", PoolId, "buckets", Id] ->
                              {auth, fun handle_bucket_delete/3, [PoolId, Id]};
                          _ ->
-                             ns_log:log(?MODULE, 0002, "Invalid delete received: ~p", Req),
+                             ns_log:log(?MODULE, 0002, "Invalid delete received: ~p", [Req]),
                               {done, Req:respond({405, [], "Method Not Allowed"})}
                      end;
                  'PUT' ->
@@ -116,11 +116,11 @@ loop(Req, DocRoot) ->
                          ["pools", PoolId, "buckets", Id] ->
                              {auth, fun handle_bucket_update/3, [PoolId, Id]};
                          _ ->
-                             ns_log:log(?MODULE, 0003, "Invalid put received: ~p", Req),
+                             ns_log:log(?MODULE, 0003, "Invalid put received: ~p", [Req]),
                              {done, Req:respond({405, [], "Method Not Allowed"})}
                      end;
                  _ ->
-                     ns_log:log(?MODULE, 0004, "Invalid request received: ~p", Req),
+                     ns_log:log(?MODULE, 0004, "Invalid request received: ~p", [Req]),
                      {done, Req:respond({405, [], "Method Not Allowed"})}
              end,
     case Action of
@@ -437,11 +437,11 @@ handle_traffic_generator_control_post(Req) ->
     PostArgs = Req:parse_post(),
     case proplists:get_value("onOrOff", PostArgs) of
         "off" -> ns_log:log(?MODULE, 0006, "Stopping workload from node ~p",
-                            erlang:node()),
+                            [erlang:node()]),
                  tgen:traffic_stop(),
                  Req:respond({204, [], []});
         "on" -> ns_log:log(?MODULE, 0007, "Starting workload from node ~p",
-                           erlang:node()),
+                           [erlang:node()]),
                 % TODO: Use rpc:multicall here to turn off traffic
                 %       generation across all actual nodes in the cluster.
                 tgen:traffic_start(),
