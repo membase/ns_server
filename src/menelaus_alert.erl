@@ -55,9 +55,19 @@ handle_alerts_settings_post(Req) ->
     %% TODO: make it more RESTful
     Req:respond({200, [], []}).
 
-build_logs(_Params) ->
-    % TODO: A min timestamp could be part of Params.
-    LogEntries = ns_log:recent(),
+build_logs(Params) ->
+    MinTStamp = case proplists:get_value("minTimeStamp", Params) of
+                     undefined -> 0;
+                     V -> list_to_integer(V)
+                 end,
+    LogEntries = lists:filter(
+                   fun(#log_entry{tstamp = TStamp}) ->
+                           TStamp > MinTStamp
+                   end,
+                   ns_log:recent()),
+    build_log_structs(LogEntries).
+
+build_log_structs(LogEntries) ->
     LogStructs =
         lists:foldl(
           fun(#log_entry{module = Module,
