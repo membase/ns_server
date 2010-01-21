@@ -82,10 +82,19 @@ loop(Req, DocRoot) ->
                      end;
                  'POST' ->
                      case PathTokens of
+						 ["node", "controller", "doJoinCluster"]  ->
+						   %% paths: cluster secured, admin logged in: after creds work and nod join happens, 200 returned with Location header pointing to new /pool/default
+						   %%        cluster secured, bucket creds and logged in: 403 Forbidden
+						   %%        cluster not secured, after node join happens, a 200 returned with Location header to new /pool/default, 401 if request had
+						   %%        cluster either secured/not, a 400 if a required parameter is missing
+                           %% parameter example: clusterMemberHostIp=192%2E168%2E0%2E1&clusterMemberPort=8080&user=admin&password=admin123
+						   {done, Req:respond({200, [] , "If this were implemented, you would see a new cluster now."})};
                          ["alerts", "settings"] ->
                              {auth,
                               fun menelaus_alert:handle_alerts_settings_post/1};
-                         ["pools", "default", "controller", "testWorkload"] ->
+                         ["pools", _PoolId] ->
+                             {done, Req:response(403, [], "")};
+                         ["pools", _PoolId, "controller", "testWorkload"] ->
                              {auth,
                               fun handle_traffic_generator_control_post/1};
                          ["pools", PoolId, "buckets", Id, "controller", "doFlush"] ->

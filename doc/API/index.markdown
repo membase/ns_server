@@ -132,10 +132,10 @@ RESTful endpoints in the representation of the item one would control.
 
 ## Resources
 
-* Cluster - A logically addressable group of pools (this is not in Reveal, and
-is not discussed any further in this document).
 * Pool - A collection of physical resources grouped together and providing
-services and a management interface.  A member of a pool is a Node.
+services and a management interface.  A member of a pool is a Node.  Pools
+were later renamed to "clusters" (and the previous concept of cluster changed)
+so this document may refer to either.
     * _Statistics_ - Pools provide an overall pool level data view of counters 
       and periodic metrics of the overall system.  Historic storage of 
       statistics can be configured and queried.
@@ -678,7 +678,45 @@ response 201: pool was created and valid URIs for referencing it returned
 response 403: user is not authorized (or no users are authorized because it
 is administratively disabled to all users)
 
-At release of 1.0, this will always return a 403.
+At release of 1.0, this will always return 405 Method Not Allowed.
+
+
+#### Joining a Cluster
+
+Clusters (a.k.a. pools) cannot be merged if they are made of multiple nodes.  However, a single node
+can be asked to join a cluster.  It will need several parameters to be able to negotiate a join to the
+cluster.
+
+*Request*
+
+<pre class="restcalls">
+ POST /node/controller/doJoinCluster
+ POST /pools/default/controller/testWorkload HTTP/1.1
+ Host: target.node.to.do.join.from:8080
+ Authorization: Basic xxxxxxxxxxxx
+ Accept: */*
+ Content-Length: xxxxxxxxxx
+ Content-Type: application/x-www-form-urlencoded
+
+ clusterMemberHostIp=192%2E168%2E0%2E1&clusterMemberPort=8080&user=admin&password=admin123
+</pre>
+
+The following are required:
+* clusterMemberNodeHostIp - Hostname or IP address to a member of the cluster the node receiving this POST will be joining
+* clusterMemberHostPort - The port number for the RESTful interface to the system
+
+If the server has been "secured" via the console, the following are also required
+* user - The user which has administrative privileges to access the server
+* password - The password for the administrative user specified in the user portion of the form
+
+*Response*
+200 OK with Location header pointing to pool details of pool just joined - successful join
+400 Bad Request - missing parameters, etc.
+401 Unauthorized - credentials required, but not supplied
+403 Forbidden bad credentials - invalid credentials
+
+For example to make this request from curl:
+`curl --data-urlencode clusterMemberHostIp=192.168.0.1 --data-urlencode clusterMemberHostPort=8080 --data-urlencode user=admin --data-urlencode password=admin123 http://localhost:8080/node/controller/doJoinCluster`
 
 #### System Logs
 
@@ -728,10 +766,10 @@ have been referenced.
 
 Implementation in menelaus web:
 * flush (steve yen starting)
-* logs
 * cluster settings
 * controller: join cluster  with and without security required (matt ingenthron starting)
 * add bucket
+* secure this server, get admin user
 
 ## Changelog
 * 20091113 First publishing (matt.ingenthron@northscale.com)
