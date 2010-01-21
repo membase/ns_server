@@ -556,6 +556,8 @@ var BucketsSection = {
   },
   showBucket: function (uri) {
     this.withBucket(uri, function (bucketDetails) {
+      // TODO: clear on hide
+      this.currentlyShownBucket = bucketDetails;
       renderTemplate('bucket_details_dialog', {b: bucketDetails});
       $('#bucket_details_dialog_container').jqm({modal:true}).jqmShow();
     });
@@ -579,12 +581,22 @@ var BucketsSection = {
   onEnter: function () {
     this.cells.detailsPageURI.recalculate();
   },
-  checkFormChanges: function () {
-    var parent = $('#add_new_bucket_dialog');
+  handlePasswordMatch: function (parent) {
     var passwd = parent.find("[name=password]").val();
     var passwd2 = parent.find("[name=verifyPassword]").val();
     var show = (passwd != passwd2);
     parent.find('.dont-match')[show ? 'show' : 'hide']();
+    parent.find('[type=submit]').each(function () {
+      if (show)
+        this.setAttribute('disabled', 'disabled');
+      else
+        this.removeAttribute('disabled');
+    });
+    return !show;
+  },
+  checkFormChanges: function () {
+    var parent = $('#add_new_bucket_dialog');
+    this.handlePasswordMatch(parent);
 
     var cache = parent.find('[name=cacheSize]').val();
     if (cache != this.lastCacheValue) {
@@ -664,6 +676,26 @@ var BucketsSection = {
         self.cells.detailedBuckets.recalculate();
       }
     }
+  },
+  startPasswordChange: function () {
+    var self = this;
+    var form = $('#bucket_password_form');
+    $("#bucket_password_form input[type=password]").val('');
+    
+    form.bind('submit', function (e) {
+      e.preventDefault();
+      $.post(self.currentlyShownBucket.passwordURI, form.serialize(), reloadApp);
+    });
+    var observer = form.observePotentialChanges(function () {
+      self.handlePasswordMatch(form);
+    })
+    $("#bucket_password_dialog").jqm({modal:true,
+                                      onHide: function (h) {
+                                        observer.stopObserving();
+                                        form.unbind();
+                                        // copied from jqmodal itself
+                                        h.w.hide() && h.o && h.o.remove();
+                                      }}).jqmShow();
   }
 };
 

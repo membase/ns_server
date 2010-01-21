@@ -365,7 +365,7 @@
 <p>Bucket properties for {%= h(b.name) %}</p>
 <p>Bucket name: {%= h(b.name) %}</p>
 <p>Cache size: {%= h(b.basicStats.cacheSize) %} MB <button type="button" onclick="{%=jsLink('BucketsSection.startFlushCache', b.uri)%}">Flush All</button></p>
-<p>Password: *****</p>
+<p>Password: ***** <a href="javascript:BucketsSection.startPasswordChange()">Change Password</a></p>
 <p>Sample connection string: <textarea rows="3" readonly>sample connection string here</textarea></p>
 </div>
 <div class="jqmWindow" id="add_new_bucket_dialog">
@@ -400,6 +400,14 @@
   <p><a href='#' class="jqmClose">cancel</a>
      <button type="button"
      onclick="{%=renderJSLink('BucketsSection.completeFlushCache', bucket.uri, '')%}">Flush</button></p>
+</div>
+<div class="jqmWindow" id="bucket_password_dialog">
+  <h1>Enter new password</h1>
+  <form id="bucket_password_form">
+  <label>Password: <input type="password" name="password"></label>
+  <label>Verify Password: <input type="password" name="verifyPassword"></label>
+  <p><a class="jqmClose">Cancel</a><button type="submit">Submit</button></p>
+  </form>
 </div>
 
 </div> <!-- mainContainer -->
