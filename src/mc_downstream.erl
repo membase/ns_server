@@ -59,14 +59,18 @@ send(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule,
      NotifyPid, NotifyData) ->
     Kind = mc_addr:kind(Addr),
     ResponseFun =
-        fun (Head, Body, CBData) ->
-            case ((not is_function(ResponseFilter)) orelse
-                  (ResponseFilter(Head, Body))) of
-                true  -> ResponseModule:send_response(Kind, Out,
-                                                      Cmd, Head, Body),
-                         CBData;
-                false -> CBData
-            end
+        fun(Head, Body, CBData) ->
+                case ((not is_function(ResponseFilter)) orelse
+                      (ResponseFilter(Head, Body))) of
+                    true ->
+                        case ResponseModule of
+                            undefined -> ok;
+                            _ -> ResponseModule:send_response(Kind, Out,
+                                                              Cmd, Head, Body)
+                        end;
+                    false -> ok
+                end,
+                CBData
         end,
     case gen_server:call(?MODULE, {pid, Addr}) of
         {ok, MBoxPid} ->
@@ -242,9 +246,9 @@ group_by(Keys, KeyFunc) ->
 group_by([Key | Rest], KeyFunc, Dict) ->
     G = KeyFunc(Key),
     group_by(Rest, KeyFunc,
-             dict:update(G, fun (V) -> [Key | V] end, [Key], Dict));
+             dict:update(G, fun(V) -> [Key | V] end, [Key], Dict));
 group_by([], _KeyFunc, Dict) ->
-    lists:map(fun ({G, Val}) -> {G, lists:reverse(Val)} end,
+    lists:map(fun({G, Val}) -> {G, lists:reverse(Val)} end,
               dict:to_list(Dict)).
 
 % ---------------------------------------------------
