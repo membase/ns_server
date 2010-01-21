@@ -107,14 +107,12 @@
   {'_ver', {0, 0, 0}},
   {email, ""},
   {email_alerts, false},
-  {alerts, [
-%  server_down
-%  server_up
-%  server_joined
-%  memory_low
-%  bucket_created
-%  config_changed
-           ]}
+  {alerts, [server_down,
+            server_up,
+            server_joined,
+            memory_low,
+            bucket_created,
+            config_changed]}
 ]}.
 
 % -----------------------------------
