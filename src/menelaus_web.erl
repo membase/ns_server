@@ -92,6 +92,10 @@ loop(Req, DocRoot) ->
                          ["pools", _PoolId, "controller", "testWorkload"] ->
                              {auth,
                               fun handle_traffic_generator_control_post/1};
+                         ["pools", PoolId, "buckets", Id] ->
+                             {auth_bucket, 
+                              fun handle_bucket_update/3, 
+                              [PoolId, Id]};
                          ["pools", PoolId, "buckets", Id, "controller", "doFlush"] ->
                              {auth_bucket, fun handle_bucket_flush/3,
                               [PoolId, Id]};
@@ -336,6 +340,19 @@ handle_bucket_delete(PoolId, BucketId, Req) ->
 handle_bucket_update(PoolId, BucketId, Req) ->
     % TODO: A bucket Id to pool PoolId would be added with response
     % the same as bucket details.
+    %
+    % TODO: there are two ways one would get here, Req will contain a JSON
+    % payload
+    %     
+    % A PUT means create/update.  A PUT 
+    % but may be sparse as some things (like memory amount) will fall back to
+    % server defaults
+    %
+    %  
+    % A POST means modify existing bucket settings.  For 1.0, this will *only* 
+    % allow changing the password or setting the password to ""
+    % 
+    % TODO: after 1.0: allow password changes via urlencoded post
     %
     % {buckets, [
     %   {"default", [
