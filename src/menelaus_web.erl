@@ -58,6 +58,8 @@ loop(Req, DocRoot) ->
                          ["pools", Id, "stats"] ->
                              {auth, fun menelaus_stats:handle_bucket_stats/3,
                               [Id, all]};
+						 ["pools", _Id, "logs"] ->
+							 {done, Req:respond({200, [], "If this were implemented, a log response would come from a function."})};
                          ["poolsStreaming", Id] ->
                              {auth, fun handle_pool_info_streaming/2, [Id]};
                          ["pools", PoolId, "buckets"] ->
@@ -99,8 +101,17 @@ loop(Req, DocRoot) ->
 							 {auth,
 							  fun handle_bucket_delete/3,
 							  [PoolId, Id]};
-						 _ -> ns_log:log(?MODULE, 100, "Invalid delete received: ~p", Req),
+						 _ ->
+							 ns_log:log(?MODULE, 100, "Invalid delete received: ~p", Req),
 							  {done, Req:respond({405, [], "Method Not Allowed"})}
+					 end;
+				 'PUT' ->
+					 case PathTokens of
+						 ["pools", _PoolId, "buckets", _Id] ->
+							 {done, Req:respond({200, [], "if this were implemented, a bucket Id to pool PoolId would be added with response the same as bucket details"})};
+						 _ ->
+							 ns_log:log(?MODULE, 100, "Invalid put received: ~p", Req),
+							 {done, Req:respond({405, [], "Method Not Allowed"})}
 					 end;
                  _ ->
 					 ns_log:log(?MODULE, 100, "Invalid request received: ~p", Req),
