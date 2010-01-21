@@ -102,17 +102,15 @@ loop(Req, DocRoot) ->
                  'DELETE' ->
                      case PathTokens of
                          ["pools", PoolId, "buckets", Id] ->
-                             {auth,
-                              fun handle_bucket_delete/3,
-                              [PoolId, Id]};
+                             {auth, fun handle_bucket_delete/3, [PoolId, Id]};
                          _ ->
                              ns_log:log(?MODULE, 100, "Invalid delete received: ~p", Req),
                               {done, Req:respond({405, [], "Method Not Allowed"})}
                      end;
                  'PUT' ->
                      case PathTokens of
-                         ["pools", _PoolId, "buckets", _Id] ->
-                             {done, Req:respond({200, [], "if this were implemented, a bucket Id to pool PoolId would be added with response the same as bucket details"})};
+                         ["pools", PoolId, "buckets", Id] ->
+                             {auth, fun handle_bucket_update/3, [PoolId, Id]};
                          _ ->
                              ns_log:log(?MODULE, 100, "Invalid put received: ~p", Req),
                              {done, Req:respond({405, [], "Method Not Allowed"})}
@@ -335,34 +333,43 @@ handle_bucket_delete(PoolId, BucketId, Req) ->
     end,
     ok.
 
--ifdef(EUNIT).
-
-test() ->
-    eunit:test(wrap_tests_with_cache_setup({module, ?MODULE}),
-               [verbose]).
-
--endif.
-
-handle_traffic_generator_control_post(Req) ->
-    PostArgs = Req:parse_post(),
-    case proplists:get_value("onOrOff", PostArgs) of
-        "off" -> ns_log:log(?MODULE, 100, "Stopping workload from node ~p",
-                            erlang:node()),
-                 tgen:traffic_stop(),
-                 Req:respond({204, [], []});
-        "on" -> ns_log:log(?MODULE, 100, "Starting workload from node ~p",
-                           erlang:node()),
-                % TODO: Use rpc:multicall here to turn off traffic
-                %       generation across all actual nodes in the cluster.
-                tgen:traffic_start(),
-                Req:respond({204, [], []});
-        _ ->
-            ns_log:log(?MODULE, 100, "Invalid post to testWorkload controller.  PostArgs ~p evaluated to ~p",
-                       [PostArgs, proplists:get_value(PostArgs, "onOrOff")]),
-            Req:respond({400, [], "Bad Request\n"})
+handle_bucket_update(PoolId, BucketId, Req) ->
+    % TODO: A bucket Id to pool PoolId would be added with response
+    % the same as bucket details.
+    %
+    % {buckets, [
+    %   {"default", [
+    %     {auth_plain, undefined},
+    %     {size_per_node, 64} % In MB.
+    %   ]}
+    % ]}
+    %
+    Params = Req:parse_qs(),
+    Pools = mc_pool:pools_config_get(),
+    case mc_bucket:bucket_config_get(Pools, PoolId, BucketId) of
+        false -> Req:respond({400, [], []});
+        BucketConfig ->
+            AName = proplists:get_value(<<"auth_name">>, Params),
+            APswd = proplists:get_value(<<"auth_pswd">>, Params),
+            Auth = case lists:member(undefined, [AName, APswd]) of
+                       true -> undefined;
+                       false -> {AName, APswd}
+                   end,
+            BucketConfig2 =
+                lists:keystore(auth_plain, 1, BucketConfig,
+                               {auth_plain, Auth}),
+            case BucketConfig2 of
+                error        -> Req:respond({400, [], []});
+                BucketConfig -> Req:respond({200, [], []}); % No change.
+                _ ->
+                    mc_bucket:bucket_config_make(PoolId,
+                                                 BucketId,
+                                                 BucketConfig2),
+                    Req:respond({200, [], []})
+            end
     end.
 
-handle_bucket_flush(Req, PoolId, Id) ->
+handle_bucket_flush(PoolId, Id, Req) ->
     ns_log:log(?MODULE, 100, "Flushing pool ~p bucket ~p from node ~p",
                [PoolId, Id, erlang:node()]),
     case mc_bucket:bucket_flush(PoolId, Id) of
@@ -387,7 +394,7 @@ handle_join(Req) ->
     %%                    clusterMemberPort=8080&
     %%                    user=admin&password=admin123
     %%
-    Params = Req:parse_qa(),
+    Params = Req:parse_qs(),
     OtherHost = proplist:get_value("clusterMemberHostIp", Params),
     OtherPort = proplist:get_value("clusterMemberPort", Params),
     OtherUser = proplist:get_value("user", Params),
@@ -410,6 +417,33 @@ handle_join(Req) ->
                 _ -> Req:response({401, [], []})
             end
     end.
+
+handle_traffic_generator_control_post(Req) ->
+    PostArgs = Req:parse_post(),
+    case proplists:get_value("onOrOff", PostArgs) of
+        "off" -> ns_log:log(?MODULE, 100, "Stopping workload from node ~p",
+                            erlang:node()),
+                 tgen:traffic_stop(),
+                 Req:respond({204, [], []});
+        "on" -> ns_log:log(?MODULE, 100, "Starting workload from node ~p",
+                           erlang:node()),
+                % TODO: Use rpc:multicall here to turn off traffic
+                %       generation across all actual nodes in the cluster.
+                tgen:traffic_start(),
+                Req:respond({204, [], []});
+        _ ->
+            ns_log:log(?MODULE, 100, "Invalid post to testWorkload controller.  PostArgs ~p evaluated to ~p",
+                       [PostArgs, proplists:get_value(PostArgs, "onOrOff")]),
+            Req:respond({400, [], "Bad Request\n"})
+    end.
+
+-ifdef(EUNIT).
+
+test() ->
+    eunit:test(wrap_tests_with_cache_setup({module, ?MODULE}),
+               [verbose]).
+
+-endif.
 
 serve_index_html_for_tests(Req, DocRoot) ->
     case file:read_file(DocRoot ++ "/index.html") of
