@@ -63,12 +63,21 @@ var TestingSupervisor = {
   },
   interceptAjax: function () {
     this.installInterceptor('interceptedAjax', $, 'ajax');
+    this.installInterceptor('interceptedAddBasicAuth', window, 'addBasicAuth');
   },
   interceptedAjax: function (original, options) {
     console.log("intercepted ajax:", options);
     (new MockedRequest(options)).respond();
+  },
+  interceptedAddBasicAuth: function (original, xhr, login, password) {
+    if (!xhr.fakeAddBasicAuth) {
+      throw new Error("incomplete hook.js installation");
+    }
+    xhr.fakeAddBasicAuth(login, password);
   }
 };
+
+var ajaxRespondDelay = 100;
 
 var MockedRequest = mkClass({
   alertsResponse: {limit: 15,
@@ -95,6 +104,17 @@ var MockedRequest = mkClass({
 
     this.options = options;
 
+    this.fakeXHR = {
+      requestHeaders: [],
+      setRequestHeader: function () {
+        this.requestHeaders.push(_.toArray(arguments));
+      },
+      fakeAddBasicAuth: function (login, password) {
+        this.login = login;
+        this.password = password;
+      }
+    }
+
     var url = options.url;
     var hostPrefix = document.location.protocol + ":/" + document.location.host;
     if (url.indexOf(hostPrefix) == 0)
@@ -120,10 +140,40 @@ var MockedRequest = mkClass({
         self.options.success(data, 'success');
     });
   },
+  authError: (function () {
+    try {
+      throw new Error("autherror")
+    } catch (e) {
+      return e;
+    }
+  })(),
   respond: function () {
-    if (this.options.type == 'GET')
-      return this.respondGET();
-    return this.respondPOST();
+    setTimeout($m(this, 'respondForReal'), window.ajaxRespondDelay);
+  },
+  respondForReal: function () {
+    if ($.ajaxSettings.beforeSend)
+      $.ajaxSettings.beforeSend(this.fakeXHR);
+    try {
+      this.checkAuth();
+      if (this.options.type == 'GET')
+        return this.respondGET();
+      return this.respondPOST();
+    } catch (e) {
+      if (e !== this.authError) {
+        throw e;
+      }
+
+      this.fakeXHR.status = 401;
+      // auth error
+      if (this.options.error) {
+        this.options.error(this.fakeXHR, 'error');
+      } else
+        $.ajaxSettings.error(this.fakeXHR, 'error');
+    }
+  },
+  checkAuth: function () {
+    if (this.fakeXHR.login != 'admin' || this.fakeXHR.password != 'admin')
+      throw this.authError;
   },
   respondGET: function () {
     var path = this.path;
@@ -131,6 +181,7 @@ var MockedRequest = mkClass({
     var resp;
     if (path[0] == "pools") {
       if (path.length == 1) {
+        
         // /pools
         resp = {pools: [
           {name: 'default',
