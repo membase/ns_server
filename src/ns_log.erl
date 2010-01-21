@@ -88,8 +88,11 @@ log(Module, Code, Msg) ->
     log(Module, Code, Msg, []).
 
 -spec log(atom(), integer(), string(), list()) -> ok.
-log(Module, Code, Fmt, Args) ->
-    gen_server:cast(?MODULE, {log, Module, Code, Fmt, Args}).
+log(Module, Code, Fmt, Args) when is_list(Args) ->
+    gen_server:cast(?MODULE, {log, Module, Code, Fmt, Args});
+
+log(Module, Code, Fmt, Arg) ->
+    log(Module, Code, Fmt, [Arg]).
 
 -spec recent() -> list(#log_entry{}).
 recent() ->
