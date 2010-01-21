@@ -356,8 +356,13 @@ handle_traffic_generator_control_post(Req) ->
 			Req:respond({400, [], "Bad Request\n"})
     end.
 
-handle_bucket_flush(_Req, _PoolId, _Id) ->
-    ok.
+handle_bucket_flush(Req, PoolId, Id) ->
+    ns_log:log(?MODULE, 100, "Flushing pool ~p bucket ~p from node ~p",
+               [PoolId, Id, erlang:node()]),
+    case mc_bucket:bucket_flush(PoolId, Id) of
+        ok    -> Req:respond({204, [], []});
+        false -> Req:respond({404, [], []})
+    end.
 
 serve_index_html_for_tests(Req, DocRoot) ->
     case file:read_file(DocRoot ++ "/index.html") of
