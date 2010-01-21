@@ -74,8 +74,12 @@ collect(T, State) ->
     ok = gen_tcp:close(Sock).
 
 auth(Sock) ->
-    {value, U} = ns_config:search(ns_config:get(), bucket_admin_user),
-    {value, P} = ns_config:search(ns_config:get(), bucket_admin_pass),
+    Config = ns_config:get(),
+    U = ns_config:search_prop(Config, bucket_admin, user),
+    P = ns_config:search_prop(Config, bucket_admin, pass),
+    auth(Sock, U, P).
+
+auth(Sock, U, P) when is_list(U); is_list(P) ->
     % This command may not work unless bucket engine is running (and
     % creds are right).
     _X = mc_client_binary:auth(Sock, {"PLAIN", {U, P}}),

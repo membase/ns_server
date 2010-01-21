@@ -17,12 +17,13 @@
 -record(state, {buckets, path, updates, admin_user, admin_pass}).
 
 start_link() ->
-    {value, Path} = ns_config:search(ns_config:get(), isasl_path),
-    {value, AU} = ns_config:search(ns_config:get(), bucket_admin_user),
-    {value, AP} = ns_config:search(ns_config:get(), bucket_admin_pass),
+    Config = ns_config:get(),
+    Path = ns_config:search_prop(Config, isasl, path),
+    AU = ns_config:search_prop(Config, bucket_admin, user),
+    AP = ns_config:search_prop(Config, bucket_admin, pass),
     start_link(Path, AU, AP).
 
-start_link(Path, AU, AP) ->
+start_link(Path, AU, AP) when is_list(Path); is_list(AU); is_list(AP) ->
     {ok, spawn_link(?MODULE, setup_handler, [Path, AU, AP])}.
 
 setup_handler(Path, AU, AP) ->

@@ -68,11 +68,13 @@
 % -----------------------------------
 
 % This is also a parameter to memcached ports below.
-{isasl_path, "/tmp/isasl.pw"}.
+{isasl, [{'_ver', {0, 0, 0}},
+         {path, "/tmp/isasl.pw"}]}.
 
 % Credentials for authenticating to a bucket.
-{bucket_admin_user, "admin"}.
-{bucket_admin_pass, "admin"}.
+{bucket_admin, [{'_ver', {0, 0, 0}},
+                {user, "admin"},
+                {pass, "admin"}]}.
 
 % Modifiers: menelaus (may change the 11212 port number)
 % Listeners: ns_port_sup (needs to restart its memcached processes)
@@ -92,7 +94,7 @@
      "-p", "11212", "-S"
      ],
     [{env, [{"MEMCACHED_CHECK_STDIN", "event"},
-            {"ISASL_PWFILE", "/tmp/isasl.pw"} % Also isasl_path above.
+            {"ISASL_PWFILE", "/tmp/isasl.pw"} % Also isasl path above.
            ]}]
    }
   ]
