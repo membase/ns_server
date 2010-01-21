@@ -49,7 +49,7 @@ handle_cast({log, Module, Code, Fmt, Args}, State) ->
                           [Module, Code, Fmt, Args]),
     NR = ringbuffer:add(#log_entry{module=Module, code=Code, msg=Fmt, args=Args,
                                    cat=categorize(Module, Code),
-                                   tstamp=misc:now_int()},
+                                   tstamp=erlang:now()},
                         State#state.recent),
     {noreply, State#state{recent=NR}};
 handle_cast(clear, _State) ->
