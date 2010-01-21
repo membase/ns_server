@@ -263,20 +263,58 @@
   </div>
 
   <div id="buckets" style="display:none">
-    <p><a href="javascript:nav.go('overview')">Cluster Overview</a> &gt; Buckets
-    <button onclick="BucketsSection.startCreate();">Add a New Bucket</button>
+    <!-- shadow box -->
+    <h1>Buckets</h1>
+    <div class="shadow_box"><div class="top"><div><div></div></div></div><div class="cnt"><div class="pad"><div class="content">
+    <div class="darker_block">
+        <div class="pad_10">
+            <div class="pat_10 right">
+                <!--<a href="javascript:nav.go('overview')">Cluster Overview</a> &gt; Buckets-->
+                <button class="button_medium" onclick="BucketsSection.startCreate();">Add a New Bucket</button>
+            </div>
+        </div>
+    </div>
     <div id="bucket_list_container">
     </div>
+    </div></div></div><div class="bottom"><div><div></div></div></div></div>
+	<!-- END shadow box -->
+    <div class="right text_11 mt-20 pas_10">
+        <a href="#">Next Page &gt;&gt;</a>
+    </div>
     <div id="bucket_list_template" class="template">
-        <table>
-          <tr><th>Name<th>Ops/Sec<th>Evictions/Sec<th>Cache Used<th>Cache Size
+        <table class="lined_tab">
+          <col width="" />
+          <col width="" />
+          <col width="" />
+          <col width="135" />
+          <col width="" />
+          <tr>
+            <th>Name</th>
+            <th>Ops/Sec</th>
+            <th>Evictions/Sec</th>
+            <th>Cache Used</th>
+            <th>Cache Size</th>
+          </tr>
           <!-- {% $.each(rows, function () { %} -->
-            <tr><td><a href="{%=jsLink('AnalyticsSection.visitBucket', this.uri)%}">{%= h(this.name) %}</a>
-              <td>{%= h(this.basicStats.opsPerSec) %}
-              <td>{%= h(this.basicStats.evictionsPerSec) %}
-              <td>{%= h(this.basicStats.cachePercentUsed) %}
-              <td>{%= h(this.basicStats.cacheSize) %}
-              <td><a href="{%=jsLink('BucketsSection.showBucket',this.uri)%}">Bucket Properties</a>
+            <tr>
+              <td>
+              <a class="float_right text_11" href="{%=jsLink('BucketsSection.showBucket',this.uri)%}">Properties</a>
+              <a class="gray_link" href="{%=jsLink('AnalyticsSection.visitBucket', this.uri)%}">{%= h(this.name) %}</a></td>
+              <td>{%= h(this.basicStats.opsPerSec) %}</td>
+              <td>{%= h(this.basicStats.evictionsPerSec) %}</td>
+              <td>
+                <div class="usage_smallest_info">
+                    <div class="usage_smallest">
+                        <div class="side_shadow">
+                            <div class="unused">
+                                <div class="used" style="width:50%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    {%= h(this.basicStats.cachePercentUsed) %}%
+                </div>
+              </td>
+              <td>{%= h(this.basicStats.cacheSize) %}</td>
             </tr> <!-- This tr is important. Otherwise browser may close row after end of loop, causing incorrect resultant markup -->
           <!-- {% }); %} -->
         </table>

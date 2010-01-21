@@ -30,6 +30,14 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 .comment {font-size:11px; color:#8b8b8e;}
 .nbrdr {border:0px !important;}
 .nbrdr * {border:0px !important;}
+.bimnone {background-image:none !important;}
+.gray_link {color:#444245 !important;}
+.text_11 {font-size:11px;}
+.mt-10 {margin-top:-10px;}
+.mt-20 {margin-top:-20px;}
+
+/* buttons */
+.button_medium {width:154px; height:32px; font-size:14px; border:0px; overflow:visible; background:url(../images/button_gray_medium.gif) 0 0 no-repeat; line-height:32px; cursor:pointer;}
 
 /* alerts */
 .alert_1 {display:block; width:28px; height:29px; background:url(../images/alert_1.gif) 0 0 no-repeat; margin:-7px 0 0 0;}
@@ -90,6 +98,13 @@ h1 .nav a {font-size:11px; font-weight:bolder; cursor:pointer;}
 .red .used {background-position:0 -48px;}
 .usage_big .comment {background:none; line-height:24px; font-size:11px; color:#8b8b8e; margin:0 0 0 430px;}
 
+.usage_smallest {background:url(../images/usage_smallest.gif) 0 0 no-repeat; height:15px; overflow:hidden; width:91px;}
+.usage_smallest * {background:url(../images/usage_smallest.gif) 0 0 no-repeat; height:15px; overflow:hidden;}
+.usage_smallest .side_shadow {background-position:100% 0; padding:0 2px;}
+.usage_smallest .unused {background-position:0 -15px;}
+.usage_smallest .used {background-position:0 -30px;}
+.usage_smallest_info {width:125px; font-size:11px; color:#8a8a8d; line-height:15px;}
+.usage_smallest_info .usage_smallest {float:left; margin:0 5px 0 0;}
 
 a {color:#0095d6;}
 
@@ -399,6 +414,12 @@ a.selected { text-decoration: underline; }
 #top_keys_container table td {border-right:1px solid #d9dce0; font-size:12px; vertical-align:middle; padding:10px 5px; background:none #fff;}
 #top_keys_container table .even td {background:none #ececef;}
 
+
+table.lined_tab {width:100%; border-collapse:collapse;}
+table.lined_tab th {padding:10px 5px; text-align:left; border-right:1px solid #d9dce0; border-bottom:1px solid #eaedef; font-size:12px; font-weight:bolder; color:#f2692d; background:none #fbfbfb;}
+table.lined_tab td {border-right:1px solid #d9dce0; font-size:12px; vertical-align:middle; padding:10px 5px; background:none #fff;}
+table.lined_tab .even td {background:none #ececef;}
+
 /*.shadow_box p {border:1px solid #DBDBDB; border-top:0px;}
 .shadow_box p table {width:100%; border-collapse:collapse;}
 .shadow_box p table th {padding:10px 5px; text-align:left; border-right:1px solid #d9dce0; border-bottom:1px solid #eaedef; font-size:12px; font-weight:bolder; color:#f2692d; background:none #fbfbfb;}
@@ -425,3 +446,5 @@ a.selected { text-decoration: underline; }
 #server_list_container .details table td span {color:#7e7e80;}
 
 #get_started {display:none;}
+
+#bucket_list_container {border-left:1px solid #c8ccce; border-bottom:1px solid #c8ccce;}
