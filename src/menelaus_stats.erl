@@ -65,6 +65,10 @@ handle_buckets_stats(PoolId, BucketIds, Req) ->
             handle_buckets_stats_ops(Req, PoolId, BucketIds, Params);
         "hot_keys" ->
             handle_buckets_stats_hks(Req, PoolId, BucketIds, Params);
+        "combined" ->
+            {struct, PropList1} = build_buckets_stats_ops_response(PoolId, BucketIds, Params),
+            {struct, PropList2} = build_buckets_stats_hks_response(PoolId, BucketIds, Params),
+            reply_json(Req, {struct, PropList1 ++ PropList2});
         _ ->
             Req:respond({400, [], []})
     end.

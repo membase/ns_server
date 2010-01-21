@@ -665,6 +665,7 @@ var AnalyticsSection = {
     prepareTemplateForCell('top_keys', DAO.cells.currentStatTargetCell);
 
     DAO.cells.statsOptions.update({
+      "stat": "combined",
       "keysOpsPerSecondZoom": 'now',
       "keysInterval": 5000
     });
