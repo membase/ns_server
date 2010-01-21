@@ -122,15 +122,27 @@ var DAO = {
   switchSection: function (section) {
     DAO.cells.mode.setValue(section);
   },
-  performLogin: function (login, password) {
+  performLogin: function (login, password, callback) {
     this.login = login;
     this.password = password;
-    $.get('/pools', null, function (data) {
-      DAO.ready = true;
-      $(window).trigger('dao:ready');
-      var rows = data.pools;
-      DAO.cells.poolList.setValue(rows);
-    }, 'json');
+
+    var cb = function (data, status) {
+      if (status == 'success') {
+        DAO.ready = true;
+        $(window).trigger('dao:ready');
+        var rows = data.pools;
+        DAO.cells.poolList.setValue(rows);
+      }
+      if (callback)
+        callback(status);
+    }
+
+    $.ajax({
+      type: 'GET',
+      url: "/pools",
+      dataType: 'json',
+      success: cb,
+      error: cb});
   },
   getTotalClusterMemory: function () {
     return '??'; // TODO: implement
@@ -873,12 +885,22 @@ var ThePage = {
   }
 };
 
+var alreadyHadFailedLogin;
+
 function loginFormSubmit() {
   var login = $('#login_form [name=login]').val();
   var password = $('#login_form [name=password]').val();
-  DAO.performLogin(login, password);
-  $(window).one('dao:ready', function () {
-    $('#login_dialog').jqmHide();
+  var spinner = overlayWithSpinner('#login_form');
+  DAO.performLogin(login, password, function (status) {
+    spinner.remove();
+    if (status == 'success') {
+      $('#login_dialog').jqmHide();
+      return;
+    }
+
+    if (!alreadyHadFailedLogin)
+      $('#login_form').prepend("<h1>Login failed. Try again</h1>")
+    alreadyHadFailedLogin = true;
   });
   return false;
 }
