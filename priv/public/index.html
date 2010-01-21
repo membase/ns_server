@@ -61,39 +61,102 @@
 
   <div id="overview" style="display:none;">
 	<!-- shadow box -->
-	<h1>&nbsp;</h1>
+	<h1>Status</h1>
 	<div class="shadow_box"><div class="top"><div><div></div></div></div><div class="cnt"><div class="pad"><div class="content">
-    <div class="section">
-      <h2>Server Nodes</h2>
-      <p id="server_list_container">
-      </p>
-      <div id="server_list_template" class="template">
-        <table><tbody>
-          <!-- {% $.each(rows, function (index) { %} -->
-          <tr class="primary">
-			<td class="expander">+</td>
-            <td class="name">{%= h(this.name) %}</td>
-            <td class="port">Port {%= h(_.values(this.ports).join(', ')) %}</td>
-            <td class="status">{% if (this.running) { %}
-                Running
-              {% } else { %}
-                Down
-              {% } %}</td>
-		  </tr>
-          <tr class="details"><td colspan="4">
-            <div class="first">
-              <table>
-                <tr><td>Uptime:</td><td>{%= h(formatUptime(this.uptime)) %}</td></tr>
-                <tr><td>Cache:</td><td>{%= h(this.cache) %}</td></tr>
-                <tr><td>Threads:</td><td>{%= h(this.threads) %}</td></tr>
-                <tr><td colspan="2"><hr></td></tr>
-                <tr><td>Version:</td><td>{%= h(this.version) %}</td></tr>
-                <tr><td>OS:</td><td>{%= h(this.os) %}</td></tr>
-              </table>
+    <div class="darker_block with_devider">
+        <div class="labeled_line">
+            <h2 class="label">Cluster Health:</h2>
+            <div class="line_cnt">
+                <div class="alert_1"></div> <a>Critical</a> <span class="comment">(3 server nodes managing <a>4 buckets</a>)</span>
             </div>
-          </td></tr>
-         <!-- {% }); %} -->
-        </tbody></table>
+        </div>
+        <div class="labeled_line">
+            <h2 class="label for_usage_big">Cluster Memory Usage:</h2>
+            <div class="line_cnt">
+                <div class="usage_big">
+                    <div class="unused">
+                        <div class="used" style="width:50%;"></div>
+                    </div>
+                    <div class="comment">50% Utilized (500MB Free)</div>
+                </div>
+            </div>
+        </div>
+        <div class="labeled_line">
+            <h2 class="label for_usage_big">Cluster Disk Usage:</h2>
+            <div class="line_cnt">
+                <div class="usage_big red">
+                    <div class="unused">
+                        <div class="used" style="width:50%;"></div>
+                    </div>
+                    <div class="comment">50% Utilized (500MB Free)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="section">
+      <div class="labeled_line">
+          <h2 class="label for_server_line">Server Nodes:</h2>
+          <p class="line_cnt" id="server_list_container">
+          </p>
+          <div id="server_list_template" class="template">
+            <table><tbody>
+              <!-- {% $.each(rows, function (index) { %} -->
+<!--              {% var runningClass;
+                 if (this.running) {
+                   runningClass = "up"
+                 } else {
+                   runningClass = "down"
+                 }
+              %} -->
+              <tr class="primary">
+                <td class="expander"><div></div></td>
+                <td class="name"><div>{%= h(this.name) %}</div></td>
+                <!--<td class="port">Port {%= h(_.values(this.ports).join(', ')) %}</td>-->
+                <td class="status"><div class="{%=runningClass%}"></div></td>
+              </tr>
+              <tr class="details"><td colspan="3">
+                <div class="first gong_rb">
+                  <div class="side side_1"></div>
+                  <div class="side side_2"></div>
+                  <div class="side side_3"></div>
+                  <div class="side side_4"></div>
+                  <div class="pad">
+                      <table>
+                        <col width="230" />
+                        <col width="" />
+                   <!--     <tr><td>Uptime:</td><td>{%= h(formatUptime(this.uptime)) %}</td></tr>
+                        <tr><td>Cache:</td><td>{%= h(this.cache) %}</td></tr>
+                        <tr><td>Threads:</td><td>{%= h(this.threads) %}</td></tr>
+                        <tr><td>Version:</td><td>{%= h(this.version) %}</td></tr>
+                        <tr><td>OS:</td><td>{%= h(this.os) %}</td></tr> -->
+                        <tr>
+                            <td>Uptime: <span>{%= h(formatUptime(this.uptime)) %}</span></td>
+                            <td>
+                                <div class="float_left">Memory Usage:</div>
+                                <div class="float_left usage_small">
+                                    <div class="side_shadow">
+                                        <div class="unused">
+                                            <div class="used" style="width:50%;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <span class="float_left">50% used</span></td>
+                        </tr>
+                        <tr>
+                            <td>OS: <span>{%= h(this.os) %}</span></td>
+                            <td>Cache Port: <span>11212</span></td>
+                        </tr>
+                        <tr>
+                            <td>Version: <span>{%= h(this.version) %}</span></td>
+                            <td>Proxy Port: <span>11212</span></td>
+                        </tr>
+                      </table>
+                  </div>
+                </div>
+              </td></tr>
+             <!-- {% }); %} -->
+            </tbody></table>
+          </div>
       </div>
     </div>
 	</div></div></div><div class="bottom"><div><div></div></div></div></div>

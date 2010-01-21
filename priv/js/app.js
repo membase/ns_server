@@ -477,15 +477,7 @@ var OverviewSection = {
   onFreshNodeList: function () {
     var nodes = DAO.cells.currentPoolDetails.value.nodes;
     renderTemplate('server_list', nodes);
-/*	$('#server_list_container table tr.primary:odd').addClass('even');
-	$('#server_list_container table tr.primary').hover(
-		function() {
-			$(this).addClass('hover');
-		},
-		function() {
-			$(this).removeClass('hover');
-		}
-	);*/
+    $('#server_list_container table tr.primary:first-child').addClass('nbrdr');
   },
   init: function () {
     DAO.cells.currentPoolDetails.subscribe($m(this, 'onFreshNodeList'));
@@ -905,12 +897,13 @@ $(function () {
   });
 
   $('#server_list_container .expander').live('click', function (e) {
+    $('#server_list_container .expander').removeClass('expanded');
     var container = $('#server_list_container');
-
     var mydetails = $(e.target).parents("#server_list_container .primary").next();
     var opened = mydetails.hasClass('opened');
 
     container.find(".details").removeClass('opened');
     mydetails.toggleClass('opened', !opened);
+    $(this).toggleClass('expanded', !opened);
   });
 });
