@@ -83,9 +83,12 @@ loop(Req, DocRoot) ->
                          ["alerts", "settings"] ->
                              {auth,
                               fun menelaus_alert:handle_alerts_settings_post/1};
-                         ["pools", _, "controller", "testWorkload"] ->
+                         ["pools", "default", "controller", "testWorkload"] ->
                              {auth,
                               fun handle_traffic_generator_control_post/1};
+                         ["pools", PoolId, "buckets", Id, "controller", "doFlush"] ->
+                             {auth_bucket, fun handle_bucket_flush/3,
+                              [PoolId, Id]};
                          _ ->
                              ns_log:log(?MODULE, 100, "Invalid post received: ~p", Req),
 							 {done, Req:not_found()}
@@ -341,6 +344,9 @@ handle_traffic_generator_control_post(Req) ->
 					   [PostArgs, proplists:get_value(PostArgs, "onOrOff")]),
 			Req:respond({400, [], "Bad Request\n"})
     end.
+
+handle_bucket_flush(_Req, _PoolId, _Id) ->
+    ok.
 
 serve_index_html_for_tests(Req, DocRoot) ->
     case file:read_file(DocRoot ++ "/index.html") of
