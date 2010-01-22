@@ -229,7 +229,7 @@
           <span class="block nav float_right">
             <a class="current">1 Hour</a> | <a>24 Hour</a>
           </span>
-          Interval Zoom: <span><a id='analytics_graph_zoom_real_time'>Live View</a></span>
+          Interval Zoom: <span><a>Live View</a></span>
       </h2>
       <p id="top_keys_container">
       </p>
@@ -291,7 +291,7 @@
             <tr>
               <td>
               <a class="float_right text_11" href="{%=jsLink('BucketsSection.showBucket',this.uri)%}">Properties</a>
-              <a class="gray_link" href="{%=jsLink('AnalyticsSection.visitBucket', this.uri)%}">{%= h(this.name) %}</a></td>
+              <a class="gray_link" href="{%=jsLink('AnalyticsSection.visitBucket',this.uri)%}">{%= h(this.name) %}</a></td>
               <td>{%= h(this.basicStats.opsPerSec) %}</td>
               <td>{%= h(this.basicStats.evictionsPerSec) %}</td>
               <td>
