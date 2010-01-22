@@ -27,6 +27,7 @@
          redirect_permanently/2,
          redirect_permanently/3,
          reply_json/2,
+         parse_json/1,
          expect_config/1,
          expect_prop_value/2,
          get_option/2,
@@ -50,7 +51,8 @@ loop(Req, DocRoot) ->
     Action = case Req:get(method) of
                  Method when Method =:= 'GET'; Method =:= 'HEAD' ->
                      case PathTokens of
-                         [] -> {done, redirect_permanently("/index.html", Req)};
+                         [] ->
+                             {done, redirect_permanently("/index.html", Req)};
                          ["pools"] ->
                              {auth_bucket, fun handle_pools/1};
                          ["pools", Id] ->
@@ -75,6 +77,10 @@ loop(Req, DocRoot) ->
                              {auth, fun menelaus_alert:handle_logs/1};
                          ["alerts"] ->
                              {auth, fun menelaus_alert:handle_alerts/1};
+                         ["settings", "web"] ->
+                             {auth, fun handle_settings_web/1};
+                         ["settings", "advanced"] ->
+                             {auth, fun handle_settings_advanced/1};
                          ["t", "index.html"] ->
                              {done, serve_index_html_for_tests(Req, DocRoot)};
                          _ ->
@@ -84,20 +90,18 @@ loop(Req, DocRoot) ->
                      case PathTokens of
 						 ["node", "controller", "doJoinCluster"]  ->
                              {auth, fun handle_join/1};
-                         ["alerts", "settings"] ->
-                             {auth,
-                              fun menelaus_alert:handle_alerts_settings_post/1};
+                         ["settings", "web"] ->
+                             {auth, fun handle_settings_web_post/1};
+                         ["settings", "advanced"] ->
+                             {auth, fun handle_settings_advanced_post/1};
                          ["pools", _PoolId] ->
                              {done, Req:response(403, [], "")};
                          ["pools", _PoolId, "controller", "testWorkload"] ->
-                             {auth,
-                              fun handle_traffic_generator_control_post/1};
-                         ["pools", _PoolId, "controller", "ejectNode"] ->
-                             {auth,
-                              fun handle_eject_post/1};
+                             {auth, fun handle_traffic_generator_control_post/1};
+                         ["controller", "ejectNode"] ->
+                             {auth, fun handle_eject_post/1};
                          ["pools", PoolId, "buckets", Id] ->
-                             {auth_bucket,
-                              fun handle_bucket_update/3,
+                             {auth_bucket, fun handle_bucket_update/3,
                               [PoolId, Id]};
                          ["pools", PoolId, "buckets", Id, "controller", "doFlush"] ->
                              {auth_bucket, fun handle_bucket_flush/3,
@@ -353,8 +357,7 @@ handle_bucket_update(PoolId, BucketId, Req) ->
     % The JSON looks like...
     %
     % {"password": "somepassword",
-    %  "size_per_node", "64",
-    %  "preallocate", "0"}
+    %  "size_per_node", "64"}
     %
     % An empty password string ("") is the same as undefined auth_plain.
     %
@@ -396,15 +399,6 @@ handle_bucket_update(PoolId, BucketId, Req) ->
                               S when is_integer(S) ->
                                   lists:keystore(size_per_node, 1, C,
                                                  {size_per_node, S})
-                          end;
-                     ({preallocate, _}, C) ->
-                          case proplists:get_value(<<"preallocate">>,
-                                                   Params) of
-                              undefined -> C;
-                              Value ->
-                                  B = parse_boolean(Value),
-                                  lists:keystore(preallocate, 1, C,
-                                                 {preallocate, B})
                           end
                   end,
                   BucketConfigDefault,
@@ -530,20 +524,21 @@ handle_eject_post(Req) ->
             end
     end.
 
-parse_json(Req) ->
-    mochijson2:decode(Req:recv_body()).
+handle_settings_web(_Req) ->
+    todo.
 
-parse_boolean(Value) ->
-    case Value of
-        true -> true;
-        false -> false;
-        <<"true">> -> true;
-        <<"false">> -> false;
-        <<"1">> -> true;
-        <<"0">> -> false;
-        1 -> true;
-        0 -> false
-    end.
+handle_settings_web_post(_Req) ->
+    todo.
+
+handle_settings_advanced(Req) ->
+    reply_json(Req, {struct,
+                     [{alerts,
+                       {struct, menelaus_alert:build_alerts_settings()}}]}).
+
+handle_settings_advanced_post(Req) ->
+    PostArgs = Req:parse_post(),
+    ok = menelaus_alert:handle_alerts_settings_post(PostArgs),
+    Req:respond({200, [], []}).
 
 handle_traffic_generator_control_post(Req) ->
     PostArgs = Req:parse_post(),

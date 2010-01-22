@@ -20,7 +20,8 @@
 
 -export([handle_logs/1,
          handle_alerts/1,
-         handle_alerts_settings_post/1]).
+         handle_alerts_settings_post/1,
+         build_alerts_settings/0]).
 
 -export([get_alert_config/0,
          set_alert_config/1]).
@@ -41,14 +42,9 @@ handle_logs(Req) ->
     reply_json(Req, {struct, [{list, build_logs(Req:parse_qs())}]}).
 
 handle_alerts(Req) ->
-    reply_json(Req, {struct, [{settings,
-                               {struct, [{updateUri,
-                                          <<"/alerts/settings">>}
-                                         | build_alert_settings()]}},
-                              {list, build_alerts(Req:parse_qs())}]}).
+    reply_json(Req, {struct, [{list, build_alerts(Req:parse_qs())}]}).
 
-handle_alerts_settings_post(Req) ->
-    PostArgs = Req:parse_post(),
+handle_alerts_settings_post(PostArgs) ->
     AlertConfig = lists:keystore(alerts, 1, get_alert_config(), {alerts, []}),
     AlertConfig2 =
         lists:foldl(
@@ -72,9 +68,9 @@ handle_alerts_settings_post(Req) ->
           AlertConfig,
           PostArgs),
     set_alert_config(AlertConfig2),
-    Req:respond({200, [], []}).
+    ok.
 
-build_alert_settings() ->
+build_alerts_settings() ->
     C = get_alert_config(),
     [{email, list_to_binary(proplists:get_value(email, C, ""))},
      {sendAlerts, case proplists:get_value(email_alerts, C, false) of

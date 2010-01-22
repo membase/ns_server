@@ -18,6 +18,8 @@
          redirect_permanently/2,
          redirect_permanently/3,
          reply_json/2,
+         parse_json/1,
+         parse_boolean/1,
          expect_config/1,
          expect_prop_value/2,
          get_option/2,
@@ -188,4 +190,19 @@ stateful_takewhile_rec(F, [H|Tail], State, App) ->
 
 stateful_takewhile(F, List, State) ->
     lists:reverse(stateful_takewhile_rec(F, List, State, [])).
+
+parse_json(Req) ->
+    mochijson2:decode(Req:recv_body()).
+
+parse_boolean(Value) ->
+    case Value of
+        true -> true;
+        false -> false;
+        <<"true">> -> true;
+        <<"false">> -> false;
+        <<"1">> -> true;
+        <<"0">> -> false;
+        1 -> true;
+        0 -> false
+    end.
 
