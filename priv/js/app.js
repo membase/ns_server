@@ -944,6 +944,12 @@ _.extend(ViewHelpers, {
     return this.thisElement(function (q) {
       q.find('.used').css('width', String(percents)+'%')
     });
+  },
+  renderHealhClass: function (status) {
+    if (status == "healthy")
+      return "up";
+    else
+      return "down";
   }
 });
 

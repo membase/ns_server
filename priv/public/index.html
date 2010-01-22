@@ -141,17 +141,10 @@
           <div id="server_list_template" class="template">
             <table><tbody>
               <!-- {% $.each(rows, function (index) { %} -->
-              <!-- {% var runningClass;
-                 if (this.running) {
-                   runningClass = "up"
-                 } else {
-                   runningClass = "down"
-                 }
-              %} -->
               <tr class="primary">
                 <td class="expander"><div></div></td>
                 <td class="name"><div>{%= h(this.hostname) %}</div></td>
-                <td class="status"><div class="{%=runningClass%}"></div></td>
+                <td class="status"><div class="{%=V.renderHealhClass(this.status)%}"></div></td>
               </tr>
               <tr class="details"><td colspan="3">
                 <div class="first gong_rb">
