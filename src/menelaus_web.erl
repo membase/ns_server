@@ -575,14 +575,34 @@ handle_settings_advanced(Req) ->
 
 handle_settings_advanced_post(Req) ->
     PostArgs = Req:parse_post(),
-    ok = menelaus_alert:handle_alerts_settings_post(PostArgs),
-    Req:respond({200, [], []}).
+    case (ok =:= menelaus_alert:handle_alerts_settings_post(PostArgs)) andalso
+         (ok =:= handle_port_settings_post(PostArgs, "default")) of
+        true  -> Req:respond({200, [], []});
+        false -> Req:respond({400, [], []})
+    end.
 
 build_port_settings(PoolId) ->
     PoolConfig = find_pool_by_id(PoolId),
     [{proxyPort, proplists:get_value(port, PoolConfig)},
      {directPort, list_to_integer(mc_pool:memcached_port(ns_config:get(),
                                                          node()))}].
+
+handle_port_settings_post(PostArgs, PoolId) ->
+    PPort = proplists:get_value("proxyPort", PostArgs),
+    DPort = proplists:get_value("directPort", PostArgs),
+    case lists:member(undefined, [PPort, DPort]) of
+        true -> error;
+        false ->
+            Config = ns_config:get(),
+            Pools = mc_pool:pools_config_get(Config),
+            Pool = mc_pool:pool_config_get(Pools, PoolId),
+            Pool2 = lists:keystore(port, 1, Pool,
+                                   {port, list_to_integer(PPort)}),
+            mc_pool:pools_config_set(
+              mc_pool:pool_config_set(Pools, PoolId, Pool2)),
+            mc_pool:memcached_port_set(Config, undefined, DPort),
+            ok
+    end.
 
 handle_traffic_generator_control_post(Req) ->
     PostArgs = Req:parse_post(),
