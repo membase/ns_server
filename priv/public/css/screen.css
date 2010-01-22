@@ -39,6 +39,24 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 .bolder {font-weight:bolder;}
 .normal {font-weight:normal;}
 .point {cursor:point;}
+.brdr_exl_t {border:1px solid #d4d4d5; border-top:0px;}
+.brdr_exl_r {border:1px solid #d4d4d5; border-right:0px;}
+.border_all {border:1px solid #d4d4d5;}
+.head_2_underline {border-bottom:1px solid #d5d9dc; font-size:14px; font-weight:normal; padding:5px 0;}
+.text {border:1px solid #ccd2d6; background:none #fff; padding:2px 3px; font-size:12px;}
+.inp_short {width:87px; margin:0 15px 0 0;}
+.select {border:1px solid #ccd2d6; background:none #fff; font-size:12px;}
+.select option {padding:2px 3px;}
+.select_short {width:120px;}
+
+.save_cancel {height:31px; padding:5px 0;}
+.save_cancel .save_button {display:block; width:120px; height:31px; font-weight:bolder; color:#fff; text-align:center; line-height:31px; font-size:14px; text-decoration:none; background:url(../images/button_blue_2.gif) 0 0 no-repeat;}
+.save_cancel .cancel_button {display:block; width:80px; height:31px; line-height:31px; color:#8b8b8e; text-align:center; font-weight:bolder; text-decoration:none;}
+
+.form {padding:10px 0 15px 0;}
+.form_section_title {font-size:12px; font-weight:bolder; color:#626b6c; padding:5px 0;}
+
+.form label .check {float:left; margin:0 5px 0 0;}
 
 /* buttons */
 .button_medium {width:154px; height:32px; font-size:14px; border:0px; overflow:visible; background:url(../images/button_gray_medium.gif) 0 0 no-repeat; line-height:32px; cursor:pointer;}
@@ -65,12 +83,15 @@ h1 .nav a {font-size:11px; font-weight:bolder; cursor:pointer;}
 #mainPanel h1 {text-transform:uppercase; padding:0 0 10px 9px;}
 
 .labeled_line {padding:10px;}
+.form .labeled_line {padding:6px 10px;}
 .labeled_line .label {font-size:12px; float:left; text-align:right; width:145px; margin:0px; padding:0px;}
 .labeled_line .for_table {padding:3px 0 0 0;}
 .labeled_line .for_server_line {padding-top:20px;}
 .labeled_line .for_usage_big {padding-top:5px;}
-.labeled_line .line_cnt {margin:0 0 0 150px;}
+.labeled_line .for_input {padding-top:4px;}
+.labeled_line .line_cnt {margin:0 0 0 155px;}
 .labeled_line .line_cnt table {width:100%;}
+.form .labeled_line .line_cnt {line-height:15px;}
 
 .gong_rb {background:none #e2e3e3; position:relative;}
 .gong_rb .pad {padding:10px !important; background:none !important;}
@@ -422,6 +443,8 @@ table.lined_tab th {padding:10px 5px; text-align:left; border-right:1px solid #d
 table.lined_tab td {border-right:1px solid #d9dce0; font-size:12px; vertical-align:middle; padding:10px 5px; background:none #fff;}
 table.lined_tab .highlight td {background:none #ececef;}
 table.lined_tab .hovered td {background:none #f5f5f7;}
+
+.tab_holder {border-left:1px solid #C8CCCE; border-bottom:1px solid #C8CCCE;}
 
 /*.shadow_box p {border:1px solid #DBDBDB; border-top:0px;}
 .shadow_box p table {width:100%; border-collapse:collapse;}

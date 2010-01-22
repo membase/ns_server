@@ -13,7 +13,6 @@
     </div> <!-- header -->
 
     <div id="mainContainer">
-
 <table width="100%">
 <tr>
 
@@ -377,15 +376,203 @@
               <button type="submit">Save</button></p>
             </form>
           </div>
-          <div>
-            <p>Log is here</p>
+          <div class="tab_holder">
+            <table class="lined_tab">
+              <tr>
+                <th>Event</th>
+                <th>Code</th>
+                <th>Time</th>
+              </tr>
+              <tr>
+                <td>A server is not responding</td>
+                <td>NS100</td>
+                <td class="text_11"><strong>02:16:57</strong> - Sat Jul 23, 2010</td>
+              </tr>
+              <tr>
+                <td>A server is not responding</td>
+                <td>NS100</td>
+                <td class="text_11"><strong>02:16:57</strong> - Sat Jul 23, 2010</td>
+              </tr>
+              <tr>
+                <td>A server is not responding</td>
+                <td>NS100</td>
+                <td class="text_11"><strong>02:16:57</strong> - Sat Jul 23, 2010</td>
+              </tr>
+              <tr>
+                <td>A server is not responding</td>
+                <td>NS100</td>
+                <td class="text_11"><strong>02:16:57</strong> - Sat Jul 23, 2010</td>
+              </tr>
+            </table>
           </div>
         </div>
     </div></div></div><div class="bottom"><div><div></div></div></div></div>
     <!-- END shadow box -->
   </div>
   <div id="settings" style="display:none">
-    This is settings
+    <!-- shadow box -->
+    <div class="shadow_box"><div class="top"><div><div></div></div></div><div class="cnt"><div class="pad"><div class="content">
+      <div class="darker_block with_devider">
+          <div class="pat_10">
+              <ul class="tabs">
+                <li><a href="#">Basic</a></li>
+                <li><a href="#">Advanced</a></li>
+              </ul>
+          </div>
+      </div>
+      <div class="brdr_exl_t">
+        <div class="pad_10">
+          <div class="basic">
+            <h2 class="head_2_underline">Port Configuration <a class="text_11">What’s this?</a></h2>
+            <div class="form">
+              <div class="labeled_line">
+                <label class="block label for_input">Proxy Port:</label>
+                <div class="line_cnt">
+                  <input type="text" class="text inp_short">
+                </div>
+              </div>
+              <div class="labeled_line">
+                <label class="block label for_input">Cache Port:</label>
+                <div class="line_cnt">
+                  <input type="text" class="text inp_short">
+                </div>
+              </div>
+            </div>
+            <h2 class="head_2_underline">Alert settings</h2>
+            <div class="form">
+              <div>
+                <label><input type="checkbox" class="check"> Notify me by email with alerts</label>
+              </div>
+              <div class="labeled_line">
+                <label class="block label for_input">Email Address:</label>
+                <div class="line_cnt">
+                  <input type="text" class="text inp_short">
+                </div>
+              </div>
+              <h2 class="form_section_title">Mail Server Settings</h2>
+              <div class="labeled_line">
+                <label class="block label for_input">Username:</label>
+                <div class="line_cnt">
+                  <input type="text" class="text inp_short">
+                </div>
+              </div>
+              <div class="labeled_line">
+                <label class="block label for_input">Password:</label>
+                <div class="line_cnt">
+                  <input type="text" class="text inp_short">
+                </div>
+              </div>
+              <div class="labeled_line">
+                <label class="block label for_input">Mail Server Address:</label>
+                <div class="line_cnt">
+                  <input type="text" class="text inp_short">
+                  Port:
+                  <select class="select select_short">
+                    <option></option>
+                    <option></option>
+                    <option></option>
+                    <option></option>
+                  </select>
+                </div>
+              </div>
+              <div class="labeled_line">
+                <div class="line_cnt">
+                  <div>
+                    <label><input type="checkbox" class="check"> Notify me by email with alerts</label>
+                  </div>
+                </div>
+              </div>
+              <h2 class="form_section_title">Alert me when there are...</h2>
+              <div class="pat_10">
+                <table class="lined_tab brdr_exl_r">
+                  <col width="" />
+                  <col width="115" />
+                  <col width="50" />
+                  <tr>
+                    <th>Critical Issues</th>
+                    <th>Type</th>
+                    <th>Active</th>
+                  </tr>
+                  <tr>
+                    <td>A server is not responding</td>
+                    <td>Email</td>
+                    <td class="cntr"><input type="checkbox" /></td>
+                  </tr>
+                  <tr>
+                    <td>A server is down</td>
+                    <td>Email</td>
+                    <td class="cntr"><input type="checkbox" /></td>
+                  </tr>
+                </table>
+              </div>
+              <div class="pat_10">
+                <table class="lined_tab brdr_exl_r">
+                  <col width="" />
+                  <col width="115" />
+                  <col width="50" />
+                  <tr>
+                    <th>Attention Required</th>
+                    <th>Type</th>
+                    <th>Active</th>
+                  </tr>
+                  <tr>
+                    <td>A bucket has been deleted</td>
+                    <td>Email</td>
+                    <td class="cntr"><input type="checkbox" /></td>
+                  </tr>
+                  <tr>
+                    <td>Bucket authentication failure</td>
+                    <td>Email</td>
+                    <td class="cntr"><input type="checkbox" /></td>
+                  </tr>
+                </table>
+              </div>
+              <div class="pat_10">
+                <table class="lined_tab brdr_exl_r">
+                  <col width="" />
+                  <col width="115" />
+                  <col width="50" />
+                  <tr>
+                    <th>Informational Issues</th>
+                    <th>Type</th>
+                    <th>Active</th>
+                  </tr>
+                  <tr>
+                    <td>A new server joins a cluster</td>
+                    <td>Email</td>
+                    <td class="cntr"><input type="checkbox" /></td>
+                  </tr>
+                  <tr>
+                    <td>A server leaves a cluster</td>
+                    <td>Email</td>
+                    <td class="cntr"><input type="checkbox" /></td>
+                  </tr>
+                  <tr>
+                    <td>A new bucket has been created</td>
+                    <td>Email</td>
+                    <td class="cntr"><input type="checkbox" /></td>
+                  </tr>
+                  <tr>
+                    <td>Bucket authentication failure</td>
+                    <td>Email</td>
+                    <td class="cntr"><input type="checkbox" /></td>
+                  </tr>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="darker_block">
+        <div class="pad_10">
+          <div class="right save_cancel">
+            <a href="#" class="save_button float_right">SAVE</a>
+            <a href="#" class="cancel_button float_right">CANCEL</a>
+          </div>
+        </div>
+      </div>
+    </div></div></div><div class="bottom"><div><div></div></div></div></div>
+    <!-- END shadow box -->
   </div>
 
 </tr>
