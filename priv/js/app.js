@@ -99,6 +99,37 @@ function onUnexpectedXHRError(xhr) {
   //reloadApp();
 }
 
+var postWithValidationErrors = function (url, data, callback) {
+  if (!_.isString(data))
+    data = $(data).serialize();
+  $.ajax({
+    type:'POST',
+    url: url,
+    data: data,
+    success: continuation,
+    error: continuation,
+    dataType: 'json'
+  });
+  var action = new ModalAction();
+  return
+
+  function continuation(data, textStatus) {
+    action.finish();
+    if (textStatus != 'success') {
+      // jquery passes raw xhr object for errors
+      if (data.status != 400 || textStatus != 'error') {
+        return onUnexpectedXHRError(data);
+      }
+
+      var errorsData = $.httpData(data, this.dataType, this);
+      callback.call(this, errorsData, 'error');
+      return;
+    }
+
+    callback.call(this, data, textStatus);
+  }
+}
+
 $.ajaxSetup({
   error: onUnexpectedXHRError,
   beforeSend: function (xhr) {
@@ -644,38 +675,21 @@ var BucketsSection = {
     hideDialog('add_new_bucket_dialog');
   },
   createSubmit: function () {
-    var res = $('#add_new_bucket_form').serialize();
     var self = this;
+    var form = $('#add_new_bucket_form');
 
-    $.ajax({
-      type: 'POST',
-      url: self.cells.detailsPageURI.value,
-      data: res,
-      success: continuation,
-      error: continuation,
-      dataType: 'json'
-    });
-    var modalAction = new ModalAction();
-    var loading = overlayWithSpinner($('#add_new_bucket_form'));
+    $('#add_new_bucket_errors_container').empty();
+    var loading = overlayWithSpinner(form);
 
-    return;
-    function continuation(data, textStatus) {
-      modalAction.finish();
+    postWithValidationErrors(self.cells.detailsPageURI.value, form, function (data, status) {
       loading.remove();
-
-      if (textStatus == "error") {
-        // jquery passes raw xhr object for errors
-        if (data.status != 400) {
-          return onUnexpectedXHRError(data);
-        }
-
-        data = $.httpData(data, this.dataType, this);
+      if (status == 'error') {
         renderTemplate("add_new_bucket_errors", data.errors);
       } else {
         self.finishCreate();
         self.cells.detailedBuckets.recalculate();
       }
-    }
+    });
   },
   startPasswordChange: function () {
     var self = this;
