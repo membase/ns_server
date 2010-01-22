@@ -8,3 +8,4 @@ emoxi_*.tar.gz
 *.pyc
 .project
 .settings
+priv/isasl.pw

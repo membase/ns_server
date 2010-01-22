@@ -25,22 +25,21 @@ MEMCAPABLE_HOST=127.0.0.1
 
 MEMCAPABLE_PORT=11211
 
-.PHONY: ebins ebin_version ebin_app $(NS_SERVER_EBIN)
+.PHONY: ebins ebin_app version $(NS_SERVER_EBIN)
 
 all: ebins test
 
-ebins: ebin_version ebin_app
+ebins: ebin_app
 	test -d ebin || mkdir ebin
 	erl $(EFLAGS) -make
 
-ebin_version:
+ebin_app: version
 	test -d ebin || mkdir ebin
+	sed s/0.0.0/`cat $(TMP_VER)`/g src/emoxi.app.src > ebin/emoxi.app
+
+version:
 	test -d $(TMP_DIR) || mkdir $(TMP_DIR)
 	git describe | sed s/-/_/g > $(TMP_VER)
-	echo "{ns_server, \"`cat $(TMP_VER)`\"}." > ebin/ns_info.version
-
-ebin_app: ebin_version
-	sed s/0.0.0/`cat $(TMP_VER)`/g src/emoxi.app.src > ebin/emoxi.app
 
 bdist: clean ebins
 	tar --directory=.. -czf emoxi_`cat $(TMP_VER)`.tar.gz emoxi/ebin
