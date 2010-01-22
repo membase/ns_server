@@ -84,7 +84,7 @@
                                     </span>
                                 </span>
                             </a>
-                            <a class="button_big">
+                            <a class="button_big" href="javascript:OverviewSection.startJoinCluster();">
                                 <span>
                                     <span>
                                         Join Cluster
@@ -651,6 +651,22 @@
   <label>Password: <input type="password" name="password"></label>
   <label>Verify Password: <input type="password" name="verifyPassword"></label>
   <p><a class="jqmClose">Cancel</a><button type="submit">Submit</button></p>
+  </form>
+</div>
+<div class="jqmWindow" id="join_cluster_dialog">
+  <h1>Join a Cluster</h1>
+  <ul id="join_cluster_dialog_errors_container"></ul>
+  <ul id="join_cluster_dialog_errors_template" class="template">
+    <!-- {% _.each(rows, function (e) { %} -->
+    <li><strong>Attention</strong> - {%= h(e) %}
+    <!-- {% }); %} -->
+  </ul>
+  <form>
+  <p><label>IP Address:<input name="clusterMemberHostIp"></label></p>
+  <p><label>Port:<input name="clusterMemberHostPort"></label></p>
+  <p><label>Username:<input name="user"></label></p>
+  <p><label>Password:<input name="password" type="password"></label></p>
+  <p><a class="jqmClose">CANCEL</a> <button type="submit">JOIN CLUSTER</button></p>
   </form>
 </div>
 </body>

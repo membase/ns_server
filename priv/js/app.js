@@ -180,6 +180,12 @@ var DAO = {
   },
   getBucketNodesCount: function (_dummy) {
     return DAO.cells.currentPoolDetailsCell.value.nodes.length;
+  },
+  isInCluster: function () {
+    var details = DAO.cells.currentPoolDetails.value
+    if (!details)
+      return undefined;
+    return details.nodes.length > 1;
   }
 };
 
@@ -524,21 +530,47 @@ var OverviewSection = {
     renderTemplate('server_list', nodes);
     $('#server_list_container table tr.primary:first-child').addClass('nbrdr');
     $('#get_started_expander').click(function() {
-        if ($(this).hasClass('expanded'))
-        {
-            $(this).removeClass('expanded');
-            $('#get_started').removeClass('block');
+      if ($(this).hasClass('expanded')) {
+        $(this).removeClass('expanded');
+        $('#get_started').removeClass('block');
+      } else {
+        $(this).addClass('expanded');
+        $('#get_started').addClass('block');
+      }
+    });
+  },
+  startJoinCluster: function () {
+    var dialog = $('#join_cluster_dialog');
+    var form = dialog.find('form');
+    $('#join_cluster_dialog_errors_container').empty();
+    dialog.find("input:not([type]), input[type=text], input[type=password]").val('');
+
+    showDialog('join_cluster_dialog', {
+      onHide: function () {
+        form.unbind('submit');
+      }});
+    form.bind('submit', function (e) {
+      e.preventDefault();
+
+      $('#join_cluster_dialog_errors_container').empty();
+      var overlay = overlayWithSpinner(form);
+
+      postWithValidationErrors('/node/controller/doJoinCluster', form, function (data, status) {
+        overlay.remove();
+
+        if (status != 'success') {
+          renderTemplate('join_cluster_dialog_errors', data.errors)
         } else {
-            $(this).addClass('expanded');
-            $('#get_started').addClass('block');
+          alert('OK. //TODO: Complete this part!');
+          reloadApp();
         }
+      })
     });
   },
   init: function () {
     DAO.cells.currentPoolDetails.subscribe($m(this, 'onFreshNodeList'));
     prepareTemplateForCell('server_list', DAO.cells.currentPoolDetails);
     prepareTemplateForCell('pool_list', DAO.cells.poolList);
-
   },
   onEnter: function () {
   }
