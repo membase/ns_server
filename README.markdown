@@ -58,9 +58,9 @@ Before you start the server, you may need to do the following
     created when building the for_release northscale memcached
     and bucket_engine are on your LD_LIBRARY_PATH (in OS X
     this is the DYLD_LIBRARY_PATH).  Or...
-  * Just a general note, if you are making changes to the config file
+  * Just a general note, if you are making changes to the priv/config file
     and these changes don't appear to be reflected in the start up
-    procedures, try deleting the <REPO_ROOT>/data dir.
+    procedures, try deleting the <REPO_ROOT>/config dir.
 
 The ns_server can be started through the `start.sh` script found in the
 main directory.
