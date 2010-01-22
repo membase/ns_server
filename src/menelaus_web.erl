@@ -88,7 +88,7 @@ loop(Req, DocRoot) ->
                      end;
                  'POST' ->
                      case PathTokens of
-                         ["node", "controller", "doJoinCluster"]  ->
+                         ["node", "controller", "doJoinCluster"] ->
                              {auth, fun handle_join/1};
                          ["settings", "web"] ->
                              {auth, fun handle_settings_web_post/1};
@@ -370,45 +370,12 @@ handle_bucket_update(PoolId, BucketId, Req) ->
     %   ]}
     % ]}
     %
-    {struct, Params} = parse_json(Req),
     case mc_bucket:bucket_config_get(mc_pool:pools_config_get(),
                                      PoolId, BucketId) of
-        false ->
-            % Create...
-            BucketConfigDefault = mc_bucket:bucket_config_default(),
-            BucketConfig =
-                lists:foldl(
-                  fun({auth_plain, _}, C) ->
-                          V = case proplists:get_value(<<"password">>,
-                                                       Params) of
-                                  undefined -> undefined;
-                                  <<>>      -> undefined;
-                                  PasswordB ->
-                                      {BucketId, binary_to_list(PasswordB)}
-                              end,
-                          lists:keystore(auth_plain, 1, C,
-                                         {auth_plain, V});
-                     ({size_per_node, _}, C) ->
-                          case proplists:get_value(<<"size_per_node">>,
-                                                   Params) of
-                              undefined -> C;
-                              SBin when is_binary(SBin) ->
-                                  S = list_to_integer(binary_to_list(SBin)),
-                                  lists:keystore(size_per_node, 1, C,
-                                                 {size_per_node, S});
-                              S when is_integer(S) ->
-                                  lists:keystore(size_per_node, 1, C,
-                                                 {size_per_node, S})
-                          end
-                  end,
-                  BucketConfigDefault,
-                  BucketConfigDefault),
-            mc_bucket:bucket_config_make(PoolId,
-                                         BucketId,
-                                         BucketConfig),
-            Req:respond({200, [], []});
+        false -> handle_bucket_create(PoolId, BucketId, Req);
         BucketConfig ->
             % Update, only the auth_plain/password field for 1.0.
+            {struct, Params} = parse_json(Req),
             Auth = case proplists:get_value(<<"password">>, Params) of
                        undefined -> undefined;
                        <<>>      -> undefined;
@@ -425,6 +392,45 @@ handle_bucket_update(PoolId, BucketId, Req) ->
                          Req:respond({200, [], []})
             end
     end.
+
+handle_bucket_create(_PoolId, [$_ | _], Req) ->
+    % Bucket name cannot have a leading underscore character.
+    Req:response({400, [], []});
+
+handle_bucket_create(PoolId, BucketId, Req) ->
+    {struct, Params} = parse_json(Req),
+    BucketConfigDefault = mc_bucket:bucket_config_default(),
+    BucketConfig =
+        lists:foldl(
+          fun({auth_plain, _}, C) ->
+                  V = case proplists:get_value(<<"password">>,
+                                               Params) of
+                          undefined -> undefined;
+                          <<>>      -> undefined;
+                          PasswordB ->
+                              {BucketId, binary_to_list(PasswordB)}
+                      end,
+                  lists:keystore(auth_plain, 1, C,
+                                 {auth_plain, V});
+             ({size_per_node, _}, C) ->
+                  case proplists:get_value(<<"size_per_node">>,
+                                           Params) of
+                      undefined -> C;
+                      SBin when is_binary(SBin) ->
+                          S = list_to_integer(binary_to_list(SBin)),
+                          lists:keystore(size_per_node, 1, C,
+                                         {size_per_node, S});
+                      S when is_integer(S) ->
+                          lists:keystore(size_per_node, 1, C,
+                                         {size_per_node, S})
+                  end
+          end,
+          BucketConfigDefault,
+          BucketConfigDefault),
+    mc_bucket:bucket_config_make(PoolId,
+                                 BucketId,
+                                 BucketConfig),
+    Req:respond({200, [], []}).
 
 handle_bucket_flush(PoolId, Id, Req) ->
     ns_log:log(?MODULE, 0005, "Flushing pool ~p bucket ~p from node ~p",
@@ -506,8 +512,8 @@ handle_eject_post(Req) ->
     %
     case proplists:get_value("otpNode", PostArgs) of
         undefined -> Req:respond({400, [], "Bad Request\n"});
-        OtpNodeB ->
-            OtpNode = list_to_atom(OtpNodeB),
+        OtpNodeStr ->
+            OtpNode = list_to_atom(OtpNodeStr),
             case OtpNode =:= node() of
                 true ->
                     % Cannot eject ourselves.
