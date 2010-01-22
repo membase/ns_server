@@ -531,28 +531,27 @@ build_settings_web() ->
     Config = ns_config:get(),
     {U, P} = case ns_config:search_prop(Config, rest_cred, creds) of
                  [{User, Auth} | _] ->
-                     {list_to_binary(User),
-                      list_to_binary(proplists:get_value(password, Auth, ""))};
+                     {User, proplists:get_value(password, Auth, "")};
                  _NoneFound ->
-                     {<<>>, <<>>}
+                     {"", ""}
              end,
     Port = ns_config:search_prop(Config, rest, port),
     build_settings_web(Port, U, P).
 
 build_settings_web(Port, U, P) ->
     {struct, [{port, Port},
-              {username, U},
-              {password, P}]}.
+              {username, list_to_binary(U)},
+              {password, list_to_binary(P)}]}.
 
 handle_settings_web_post(Req) ->
     PostArgs = Req:parse_post(),
-    Port = proplists:get_value(<<"port">>, PostArgs),
-    U = proplists:get_value(<<"username">>, PostArgs),
-    P = proplists:get_value(<<"password">>, PostArgs),
+    Port = proplists:get_value("port", PostArgs),
+    U = proplists:get_value("username", PostArgs),
+    P = proplists:get_value("password", PostArgs),
     case lists:member(undefined, [Port, U, P]) of
         true -> Req:respond({400, [], []});
         false ->
-            PortInt = list_to_integer(binary_to_list(Port)),
+            PortInt = list_to_integer(Port),
             case build_settings_web() =:= build_settings_web(PortInt, U, P) of
                 true -> ok; % No change.
                 false ->
@@ -560,8 +559,7 @@ handle_settings_web_post(Req) ->
                                   [{port, PortInt}]),
                     ns_config:set(rest_creds,
                                   [{creds,
-                                    [{binary_to_list(U),
-                                      [{password, binary_to_list(P)}]}]}])
+                                    [{U, [{password, P}]}]}])
                     % TODO: Need to restart menelaus?
             end,
             Req:respond({200, [], []})
