@@ -533,12 +533,21 @@ handle_settings_web_post(_Req) ->
 handle_settings_advanced(Req) ->
     reply_json(Req, {struct,
                      [{alerts,
-                       {struct, menelaus_alert:build_alerts_settings()}}]}).
+                       {struct, menelaus_alert:build_alerts_settings()}},
+                      {ports,
+                       {struct, build_port_settings("default")}}
+                      ]}).
 
 handle_settings_advanced_post(Req) ->
     PostArgs = Req:parse_post(),
     ok = menelaus_alert:handle_alerts_settings_post(PostArgs),
     Req:respond({200, [], []}).
+
+build_port_settings(PoolId) ->
+    PoolConfig = find_pool_by_id(PoolId),
+    [{proxyPort, proplists:get_value(port, PoolConfig)},
+     {directPort, list_to_integer(mc_pool:memcached_port(ns_config:get(),
+                                                         node()))}].
 
 handle_traffic_generator_control_post(Req) ->
     PostArgs = Req:parse_post(),
