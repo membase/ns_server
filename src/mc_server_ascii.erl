@@ -50,7 +50,7 @@ recv(InSock) ->
             {ok, unknown, []};
         {ok, Line} ->
             [CmdName | CmdArgs] = string:tokens(binary_to_list(Line), " "),
-            {ok, list_to_atom(CmdName), CmdArgs};
+            {ok, list_to_existing_atom(CmdName), CmdArgs};
         Err -> Err
     end.
 
@@ -59,7 +59,7 @@ recv_prefix(Prefix, InSock) ->
         {ok, LineBody} ->
             Line = <<Prefix/binary, LineBody/binary>>,
             [CmdName | CmdArgs] = string:tokens(binary_to_list(Line), " "),
-            {ok, list_to_atom(CmdName), CmdArgs};
+            {ok, list_to_existing_atom(CmdName), CmdArgs};
         Err -> Err
     end.
 
