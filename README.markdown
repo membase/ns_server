@@ -34,7 +34,7 @@ Before you start the server, you may need to do the following
   * Build the genhash library that northscale memcache requires
     (git clone http://github.com/northscale/genhash.git &&
     cd genhash && make)
-  * Build "for_release" branch of northscale memcached that has isasl
+  * Build the "for_release" branch of northscale memcached that has isasl
     enabled (git clone git@github.com:northscale/memcached.git &&
     cd memcached &&
     git checkout --track origin/for_release &&
@@ -49,11 +49,15 @@ Before you start the server, you may need to do the following
     make && make test)
   * Create a sym link from the for_release northscale memcached
     that you just built to <REPO_ROOT>/priv/memcached
-  * Make sure that the default_engine.so created when building the
-    for_release northscale memcached is on your LD_LIBRARY_PATH (in OS X
-    this is the DYLD_LIBRARY_PATH).  Or...
   * Create a sym link from the for_release northscale memcached
     ./libs/default_engine.so to <REPOT_ROOT>/priv/engines/default_engine.so
+  * If your sym links are correct, you should be able to cd <REPO_ROOT>/priv
+    and run: ./memcached -E ./engines/default_engine.so -vvv
+  * If you're not doing sym links, instead make sure that the
+    ./libs/default_engine.so and ./libs/bucket_engine.so
+    created when building the for_release northscale memcached
+    and bucket_engine are on your LD_LIBRARY_PATH (in OS X
+    this is the DYLD_LIBRARY_PATH).  Or...
   * Just a general note, if you are making changes to the config file
     and these changes don't appear to be reflected in the start up
     procedures, try deleting the <REPO_ROOT>/data dir.

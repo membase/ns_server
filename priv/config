@@ -73,8 +73,8 @@
 
 % Credentials for authenticating to a bucket.
 {bucket_admin, [{'_ver', {0, 0, 0}},
-                {user, "admin"},
-                {pass, "admin"}]}.
+                {user, "_admin"},
+                {pass, "_admin"}]}.
 
 % Modifiers: menelaus (may change the 11212 port number)
 % Listeners: ns_port_sup (needs to restart its memcached processes)
@@ -88,9 +88,8 @@
 {port_servers,
   [{'_ver', {0, 0, 0}},
    {memcached, "./memcached",
-    [
-     "-E", "engines/default_engine.so",
-     "-e", "admin=admin",
+    ["-E", "./engines/bucket_engine.so",
+     "-e", "admin=_admin;engine=./engines/default_engine.so",
      "-p", "11212", "-S"
      ],
     [{env, [{"MEMCACHED_CHECK_STDIN", "event"},
