@@ -12,7 +12,11 @@
          get_port_server_config/3,
          get_port_server_param/3,
          get_port_server_param/4,
-         find_param/2]).
+         set_port_server_config/3,
+         set_port_server_param/4,
+         set_port_server_param/5,
+         find_param/2,
+         set_param/3]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -66,24 +70,51 @@ get_port_server_config(Config, PortName, Node) ->
         Tuple -> Tuple
     end.
 
+set_port_server_config(Config, PortServerName, PortConfig) ->
+    PortServers = case ns_config:search(Config, port_servers) of
+                      {value, X} -> X;
+                      _          -> []
+                  end,
+    ns_config:set(port_servers,
+                  lists:keystore(PortServerName, 1, PortServers, PortConfig)).
+
 get_port_server_param(Config, PortServerName, ParameterName) ->
     get_port_server_param(Config, PortServerName, ParameterName, node()).
 
 get_port_server_param(Config, PortServerName, ParameterName, Node) ->
     StartArgs =
-        case ns_port_server:get_port_server_config(Config,
-                                                   PortServerName,
-                                                   Node) of
+        case get_port_server_config(Config, PortServerName, Node) of
             undefined -> [];
             {PortServerName, _Path, S}       -> S;
             {PortServerName, _Path, S, _Env} -> S
         end,
-    ns_port_server:find_param(ParameterName, StartArgs).
+    find_param(ParameterName, StartArgs).
+
+set_port_server_param(Config, PortServerName, ParameterName, V) ->
+    set_port_server_param(Config, PortServerName, ParameterName, V, node()).
+
+set_port_server_param(Config, PortServerName, ParameterName, V, Node) ->
+    {Path, StartArgs, Env} =
+        case get_port_server_config(Config, PortServerName, Node) of
+            {PortServerName, P, S}    -> {P, S, []};
+            {PortServerName, P, S, E} -> {P, S, E}
+        end,
+    StartArgs2 = set_param(ParameterName, StartArgs, V),
+    set_port_server_config(Config, PortServerName,
+                           {PortServerName, Path, StartArgs2, Env}).
 
 find_param(_, [])              -> false;
 find_param(_, [_])             -> false;
 find_param(X, [X, Val | _])    -> {value, Val};
 find_param(X, [_, Val | Rest]) -> find_param(X, [Val | Rest]).
+
+set_param(X, A, V) -> set_param(X, A, V, []).
+
+set_param(X, [], NewVal, Acc) -> lists:reverse([NewVal, X | Acc]);
+set_param(X, [X, _OldVal | Rest], NewVal, Acc) ->
+    lists:reverse(Acc) ++ [X, NewVal | Rest];
+set_param(X, [Y | Rest], NewVal, Acc) ->
+    set_param(X, Rest, NewVal, [Y | Acc]).
 
 % ----------------------------------------------
 
@@ -160,13 +191,31 @@ code_change(_OldVsn, State, _Extra) ->
 
 find_param_test() ->
     ?assertEqual({value, "11212"},
-                 find_param("-p", ["-E", "engines/default_engine.so",
+                 find_param("-p", ["-E", "foo",
                                    "-p", "11212"])),
     ?assertEqual({value, "11212"},
                  find_param("-p", ["-p", "11212",
-                                   "-E", "engines/default_engine.so"])),
+                                   "-E", "foo"])),
     ?assertEqual({value, "11212"},
                  find_param("-p", ["-p", "11212"])),
     ?assertEqual(false,
                  find_param("-p", ["-p"])),
+    ok.
+
+set_param_test() ->
+    ?assertEqual(["-E", "foo", "-p", "11212"],
+                 set_param("-p", ["-E", "foo"],
+                           "11212")),
+    ?assertEqual(["-p", "11212"],
+                 set_param("-p", [],
+                           "11212")),
+    ?assertEqual(["-p", "11212", "-E", "foo"],
+                 set_param("-p", ["-p", "11211",
+                                  "-E", "foo"],
+                           "11212")),
+    ?assertEqual(["-a", "hello", "-p", "11212", "-E", "foo"],
+                 set_param("-p", ["-a", "hello",
+                                  "-p", "11211",
+                                  "-E", "foo"],
+                           "11212")),
     ok.
