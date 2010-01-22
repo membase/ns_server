@@ -189,6 +189,7 @@ get_stats(PoolId, BucketId, _Params) ->
     Samples6 = [{hit_ratio,
                  lists:zipwith(fun(undefined, _) -> 0;
                                   (_, undefined) -> 0;
+                                  (_, 0)         -> 0;
                                   (Hits, Gets)   -> float_round(Hits / Gets)
                                end,
                                proplists:get_value("get_hits", Samples5),
