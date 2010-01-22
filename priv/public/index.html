@@ -322,59 +322,68 @@
   </div>
 
   <div id="alerts" style="display:none">
-    <ul class="tabs">
-      <li><a href="#">Current Alerts</a>
-      <li><a href="#">Alert Settings</a>
-      <li><a href="#">Log</a>
-    </ul>
-    <div class="panes">
-      <div id="alerts_list">
-        <p>Alerts are being sent to: <span id="alerts_email_setting"></span><a href='javascript:AlertsSection.changeEmail(),void(0);'>Change this</a></p>
-        <ol id="alert_list_container">
-        </ol>
-        <ol id="alert_list_template" class="template">
-          <!-- {% _.each(rows, function (alert) { %} -->
-          <li class="alert_{%= h(alert.type) %}"><h3>{%= formatAlertType(alert.type) %} - {%= h(alert.shortText) %}</h3>
-          <span class="time">{%= h(formatAlertTStamp(alert.tstamp)) %}</span><p>
-          {%= h(alert.text) %}
-          </p></li>
-          <!-- {% }); %} -->
-        </ol>
-      </div>
-      <div>
-        <h3>Alert Setting</h3>
-        <input type="hidden" id="alerts_settings_form_is_clean" value="1">
-        <form id="alerts_settings_form" onsubmit="javascript:return false;">
-        <p><label><input type="checkbox" name="sendAlerts" value="1"><input type="hidden" value="0" name="sendAlerts">
-        Notify me by email with alerts</label></p>
-        <div id="alerts_settings_guts" style="display:none;">
-          <p><label>Email Address <input type="text" name="email"></label></p>
-          <h4>Alert Types</h4>
-          <p>Alert me when:
-          <ul>
-            <li><label><input type="checkbox" value="1" name="sendForLowSpace"><input type="hidden" value="0" name="sendForLowSpace">
-            ... a server is low on disk space.</label>
-            <li><label><input type="checkbox" value="1" name="sendForLowMemory"><input type="hidden" value="0" name="sendForLowMemory">
-            ... a server is low on available memory.</label>
-            <li><label><input type="checkbox" value="1" name="sendForNotResponding"><input type="hidden" value="0" name="sendForNotResponding">
-            ... a server is not responding.</label>
-            <li><label><input type="checkbox" value="1" name="sendForJoinsCluster"><input type="hidden" value="0" name="sendForJoinsCluster">
-            ... a new server joins cluster.</label>
-            <li><label><input type="checkbox" value="1" name="sendForOpsAboveNormal"><input type="hidden" value="0" name="sendForOpsAboveNormal">
-            ... average daily ops/second is above normal.</label>
-            <li><label><input type="checkbox" value="1" name="sendForSetsAboveNormal"><input type="hidden" value="0" name="sendForSetsAboveNormal">
-            ... average daily sets/second is above normal.</label>
-          </ul>
+    <!-- Shadow box -->
+    <div class="shadow_box"><div class="top"><div><div></div></div></div><div class="cnt"><div class="pad"><div class="content">
+        <div class="darker_block with_devider">
+            <div class="pat_10">
+                <ul class="tabs">
+                  <li><a href="#">Current Alerts</a>
+                  <li><a href="#">Alert Settings</a>
+                  <li><a href="#">Log</a>
+                </ul>
+            </div>
         </div>
-        <p><a href="javascript:AlertsSection.settingsCancel(),void(0);">Cancel</a>
-          <button type="submit">Save</button></p>
-        </form>
-      </div>
-      <div>
-        <p>Log is here</p>
-      </div>
-    </div>
-  </div><div id="settings" style="display:none">
+        <div class="panes">
+          <div id="alerts_list">
+            <p>Alerts are being sent to: <span id="alerts_email_setting"></span><a href='javascript:AlertsSection.changeEmail(),void(0);'>Change this</a></p>
+            <ol id="alert_list_container">
+            </ol>
+            <ol id="alert_list_template" class="template">
+              <!-- {% _.each(rows, function (alert) { %} -->
+              <li class="alert_{%= h(alert.type) %}"><h3>{%= formatAlertType(alert.type) %} - {%= h(alert.shortText) %}</h3>
+              <span class="time">{%= h(formatAlertTStamp(alert.tstamp)) %}</span><p>
+              {%= h(alert.text) %}
+              </p></li>
+              <!-- {% }); %} -->
+            </ol>
+          </div>
+          <div>
+            <h3>Alert Setting</h3>
+            <input type="hidden" id="alerts_settings_form_is_clean" value="1">
+            <form id="alerts_settings_form" onsubmit="javascript:return false;">
+            <p><label><input type="checkbox" name="sendAlerts" value="1"><input type="hidden" value="0" name="sendAlerts">
+            Notify me by email with alerts</label></p>
+            <div id="alerts_settings_guts" style="display:none;">
+              <p><label>Email Address <input type="text" name="email"></label></p>
+              <h4>Alert Types</h4>
+              <p>Alert me when:
+              <ul>
+                <li><label><input type="checkbox" value="1" name="sendForLowSpace"><input type="hidden" value="0" name="sendForLowSpace">
+                ... a server is low on disk space.</label>
+                <li><label><input type="checkbox" value="1" name="sendForLowMemory"><input type="hidden" value="0" name="sendForLowMemory">
+                ... a server is low on available memory.</label>
+                <li><label><input type="checkbox" value="1" name="sendForNotResponding"><input type="hidden" value="0" name="sendForNotResponding">
+                ... a server is not responding.</label>
+                <li><label><input type="checkbox" value="1" name="sendForJoinsCluster"><input type="hidden" value="0" name="sendForJoinsCluster">
+                ... a new server joins cluster.</label>
+                <li><label><input type="checkbox" value="1" name="sendForOpsAboveNormal"><input type="hidden" value="0" name="sendForOpsAboveNormal">
+                ... average daily ops/second is above normal.</label>
+                <li><label><input type="checkbox" value="1" name="sendForSetsAboveNormal"><input type="hidden" value="0" name="sendForSetsAboveNormal">
+                ... average daily sets/second is above normal.</label>
+              </ul>
+            </div>
+            <p><a href="javascript:AlertsSection.settingsCancel(),void(0);">Cancel</a>
+              <button type="submit">Save</button></p>
+            </form>
+          </div>
+          <div>
+            <p>Log is here</p>
+          </div>
+        </div>
+    </div></div></div><div class="bottom"><div><div></div></div></div></div>
+    <!-- END shadow box -->
+  </div>
+  <div id="settings" style="display:none">
     This is settings
   </div>
 

@@ -785,7 +785,7 @@ var AlertsSection = {
     });
 
     this.alertTab = new TabsCell("alertsTab",
-                                 "#alerts > .tabs",
+                                 "#alerts .tabs",
                                  "#alerts > .panes > div",
                                  ["list", "settings", "log"]);
 
@@ -973,13 +973,4 @@ $(function () {
 });
 
 $(window).bind('template:rendered', function () {
-    $('table.lined_tab tr:has(td):odd').addClass('highlight');
-    $('table.hover_lines tr:has(td)').hover(
-        function() {
-            $(this).addClass('hovered');
-        },
-        function() {
-            $(this).removeClass('hovered');
-        }
-    );
 });

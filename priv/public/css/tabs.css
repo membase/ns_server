@@ -4,30 +4,31 @@ ul.tabs {
 	list-style:none; 
 	margin:0 !important; 
 	padding:0;	
-	border-bottom:1px solid #666;	
 	height:30px;
+  overflow:hidden;
 }
 
 /* single tab */
-ul.tabs li { 
+ul.tabs li {
 	float:left;	 
 	text-indent:0;
 	padding:0;
 	margin:0 !important;
 	list-style-image:none !important; 
+  display:block; height:30px; padding:0 10px;
+  background:url(../images/vert_devider.gif) 0 0 repeat-y;
+  position:relative; left:-2px;
 }
 
 /* link inside the tab. uses a background image */
 ul.tabs a { 
 	background: url(/img/blue.png) no-repeat -420px 0;
-	font-size:11px;
+	font-size:18px;
 	display:block;
 	height: 30px;  
 	line-height:30px;
-	width: 134px;
 	text-align:center;	
 	text-decoration:none;
-	color:#333;
 	padding:0px;
 	margin:0px;	
 	position:relative;
