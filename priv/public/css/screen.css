@@ -27,6 +27,7 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 .pad_10 {padding:10px;}
 .pat_10 {padding:10px 0;}
 .pas_10 {padding:0 10px;}
+.pab_10 {padding-bottom:10px;}
 .comment {font-size:11px; color:#8b8b8e;}
 .nbrdr {border:0px !important;}
 .nbrdr * {border:0px !important;}
@@ -35,6 +36,8 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 .text_11 {font-size:11px;}
 .mt-10 {margin-top:-10px;}
 .mt-20 {margin-top:-20px;}
+.bolder {font-weight:bolder;}
+.point {cursor:point;}
 
 /* buttons */
 .button_medium {width:154px; height:32px; font-size:14px; border:0px; overflow:visible; background:url(../images/button_gray_medium.gif) 0 0 no-repeat; line-height:32px; cursor:pointer;}
@@ -353,24 +356,22 @@ body { font-family: Arial, sans-serif;}
 
 a.selected { text-decoration: underline; }
 
-#alerts_list h2 { border-bottom: 1px dashed black; }
-#alerts_list ol { padding: 0px; }
+.alerts_list h2 { border-bottom: 1px dashed black; }
+.alerts_list ol { padding: 0px; }
 
-.alert_warning, .alert_attention, .alert_info
-{-moz-border-radius: 6px; -webkit-border-radius: 6px;
-  border: 1px dashed #cbcbcb; margin-bottom: 9px; list-style-type: none;
-  min-height: 81px;}
+.alerts_list ol li {padding-left:10px;}
 
-#alerts_list h3 { display: block; float: left; color: #999999;
-             padding: 0px; margin: 0px; margin-bottom: 6px; margin-left: 0.5em;}
+.alert_warning, .alert_attention, .alert_info {margin-bottom: 9px; list-style-type: none; min-height: 47px;}
 
-.alert_warning p, .alert_attention p, .alert_info p { clear: both; text-indent: 2em;}
-.alert_warning .time, .alert_attention .time, .alert_info .time
-{ display:block; float:right; }
+.alerts_list h3 { display: block; float: left; padding: 0px; margin: 0px; margin-bottom: 6px;}
+.alerts_list .dismiss {float:right; font-size:11px; font-weight:bolder; cursor:pointer;}
 
-.alert_warning { background-color: #efd4d4; }
-.alert_attention { background-color: #d5f3a8; }
-.alert_info { background-color: #f3e4a8; }
+.alert_warning p, .alert_attention p, .alert_info p { clear: both; font-size:11px; color:#626b6c;}
+.alert_warning .time, .alert_attention .time, .alert_info .time { display:block; float:right; color:#626b6c; font-size:11px;}
+
+.alert_warning {background:url(../images/warning_bg.gif) 0 0 repeat-y #fff;}
+.alert_attention {background:url(../images/attention_bg.gif) 0 0 repeat-y #fff;}
+.alert_info {background:url(../images/info_bg.gif) 0 0 repeat-y #fff;}
 
 #alerts_settings_guts li { list-style-type: none; }
 

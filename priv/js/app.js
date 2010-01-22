@@ -786,7 +786,7 @@ var AlertsSection = {
 
     this.alertTab = new TabsCell("alertsTab",
                                  "#alerts .tabs",
-                                 "#alerts > .panes > div",
+                                 "#alerts .panes > div",
                                  ["list", "settings", "log"]);
 
     $('#alerts_settings_form').bind('submit', $m(this, 'onSettingsSubmit'));

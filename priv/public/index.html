@@ -323,6 +323,7 @@
 
   <div id="alerts" style="display:none">
     <!-- Shadow box -->
+    <h1>Alerts/Log</h1>
     <div class="shadow_box"><div class="top"><div><div></div></div></div><div class="cnt"><div class="pad"><div class="content">
         <div class="darker_block with_devider">
             <div class="pat_10">
@@ -334,18 +335,26 @@
             </div>
         </div>
         <div class="panes">
-          <div id="alerts_list">
-            <p>Alerts are being sent to: <span id="alerts_email_setting"></span><a href='javascript:AlertsSection.changeEmail(),void(0);'>Change this</a></p>
-            <ol id="alert_list_container">
-            </ol>
-            <ol id="alert_list_template" class="template">
-              <!-- {% _.each(rows, function (alert) { %} -->
-              <li class="alert_{%= h(alert.type) %}"><h3>{%= formatAlertType(alert.type) %} - {%= h(alert.shortText) %}</h3>
-              <span class="time">{%= h(formatAlertTStamp(alert.tstamp)) %}</span><p>
-              {%= h(alert.text) %}
-              </p></li>
-              <!-- {% }); %} -->
-            </ol>
+          <div class="pad_10">
+            <div id="alerts_list" class="alerts_list">
+              <p class="pab_10">Alerts are being sent to: <span id="alerts_email_setting" class="bolder"></span> <a href='javascript:AlertsSection.changeEmail(),void(0);' class="text_11">Change</a></p>
+              <ol id="alert_list_container">
+              </ol>
+              <ol id="alert_list_template" class="template">
+                <!-- {% _.each(rows, function (alert) { %} -->
+                <li class="alert_{%= h(alert.type) %}">
+                  <span class="block pad_10">
+                    <h3><strong>{%= formatAlertType(alert.type) %}</strong> - {%= h(alert.shortText) %}</h3>
+                    <span class="time">{%= h(formatAlertTStamp(alert.tstamp)) %}</span>
+                    <p>
+                      <a class="dismiss point">Dismiss</a>
+                      {%= h(alert.text) %}
+                    </p>
+                  </span>
+                </li>
+                <!-- {% }); %} -->
+              </ol>
+            </div>
           </div>
           <div>
             <h3>Alert Setting</h3>
