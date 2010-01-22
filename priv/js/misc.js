@@ -184,6 +184,7 @@ function renderTemplate(key, data) {
     data = {rows:data};
   }
   $i(to).innerHTML = tmpl(from, data);
+  $(window).trigger('template:rendered');
 }
 
 function $m(self, method, klass) {
