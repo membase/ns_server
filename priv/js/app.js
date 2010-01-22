@@ -925,6 +925,28 @@ var ThePage = {
 
 var alreadyHadFailedLogin;
 
+_.extend(ViewHelpers, {
+  thisElement: function (body) {
+    var id = _.uniqueId("thisElement");
+
+    AfterTemplateHooks.push(function () {
+      var marker = $($i(id));
+      var element = marker.parent();
+      marker.remove();
+
+      body.call(element.get(0), element);
+    });
+
+    return ["<span id='", id, "'></span>"].join('');
+  },
+
+  setPersentBar: function (percents) {
+    return this.thisElement(function (q) {
+      q.find('.used').css('width', String(percents)+'%')
+    });
+  }
+});
+
 function loginFormSubmit() {
   var login = $('#login_form [name=login]').val();
   var password = $('#login_form [name=password]').val();

@@ -177,14 +177,31 @@ function prepareRenderTemplate() {
   });
 }
 
+var ViewHelpers = {};
+var AfterTemplateHooks;
+
 function renderTemplate(key, data) {
   var to = key + '_container';
   var from = key + '_template';
   if ($.isArray(data)) {
     data = {rows:data};
   }
-  $i(to).innerHTML = tmpl(from, data);
-  $(window).trigger('template:rendered');
+
+  data = _.extend({V: ViewHelpers}, data);
+
+  var oldHooks = AfterTemplateHooks;
+  AfterTemplateHooks = [];
+  try {
+    $i(to).innerHTML = tmpl(from, data);
+
+    _.each(AfterTemplateHooks, function (hook) {
+      hook.call();
+    });
+
+    $(window).trigger('template:rendered');
+  } finally {
+    AfterTemplateHooks = oldHooks;
+  }
 }
 
 function $m(self, method, klass) {
