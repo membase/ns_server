@@ -546,9 +546,9 @@ build_settings_web(Port, U, P) ->
 
 handle_settings_web_post(Req) ->
     PostArgs = Req:parse_post(),
-    Port = proplists:get_value("port", PostArgs),
-    U = proplists:get_value("username", PostArgs),
-    P = proplists:get_value("password", PostArgs),
+    Port = proplists:get_value(<<"port">>, PostArgs),
+    U = proplists:get_value(<<"username">>, PostArgs),
+    P = proplists:get_value(<<"password">>, PostArgs),
     case lists:member(undefined, [Port, U, P]) of
         true -> Req:respond({400, [], []});
         false ->
