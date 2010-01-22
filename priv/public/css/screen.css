@@ -37,6 +37,7 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 .mt-10 {margin-top:-10px;}
 .mt-20 {margin-top:-20px;}
 .bolder {font-weight:bolder;}
+.normal {font-weight:normal;}
 .point {cursor:point;}
 
 /* buttons */
@@ -85,8 +86,8 @@ h1 .nav a {font-size:11px; font-weight:bolder; cursor:pointer;}
 .gray_rb .pad {padding:12px 10px 12px 13px !important; background:none !important;}
 
 .button_big {display:block; height:47px; overflow:hidden; background:url(../images/button_gray_big.gif) 0 -94px repeat-x; font-size:18px; color:#182022; line-height:47px; text-align:center; width:31%; float:left; margin:0 1%; cursor:pointer;}
-.button_big div {background:url(../images/button_gray_big.gif) 0 0 no-repeat;}
-.button_big div div {height:47px; background:url(../images/button_gray_big.gif) 100% -47px no-repeat;}
+.button_big span {display:block; background:url(../images/button_gray_big.gif) 0 0 no-repeat;}
+.button_big span span {height:47px; background:url(../images/button_gray_big.gif) 100% -47px no-repeat;}
 
 .usage_small {width:183px; height:16px; overflow:hidden; background:url(../images/usage_small.gif) 0 0 no-repeat; position:relative; top:-2px; margin:0 5px;}
 .usage_small * {background:url(../images/usage_small.gif) 0 0 no-repeat; height:16px; overflow:hidden;}
