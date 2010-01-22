@@ -995,4 +995,17 @@ $(function () {
 });
 
 $(window).bind('template:rendered', function () {
+  $('table.lined_tab tr:has(td):odd').addClass('highlight');
+
+  var hover_lines = $('table.hover_lines:not(.hover_installed)').filter(function () {
+    return $(this).closest('.template').length == 0;
+  });
+  hover_lines.addClass('hover_installed');
+  hover_lines.find('tr:has(td)').hover(
+    function() {
+      $(this).addClass('hovered');
+    },
+    function() {
+      $(this).removeClass('hovered');
+    });
 });
