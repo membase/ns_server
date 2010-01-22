@@ -5,9 +5,21 @@ TMP_VER=$(TMP_DIR)/version_num.tmp
 DIST_DIR=$(TMP_DIR)/menelaus
 SPROCKETIZE=`which sprocketize`
 
-all: deps priv/public/js/all.js priv/public/js/t-all.js
-	erl -make
-	cp src/*.app ebin
+.PHONY: ebins ebin_app version
+
+all: deps priv/public/js/all.js priv/public/js/t-all.js ebins
+
+ebins: ebin_app
+	test -d ebin || mkdir ebin
+	erl $(EFLAGS) -make
+
+ebin_app: version
+	test -d ebin || mkdir ebin
+	sed s/0.0.0/`cat $(TMP_VER)`/g src/menelaus.app.src > ebin/menelaus.app
+
+version:
+	test -d $(TMP_DIR) || mkdir $(TMP_DIR)
+	git describe | sed s/-/_/g > $(TMP_VER)
 
 priv/public/js/all.js: priv/js/*.js
 	mkdir -p `dirname $@`
@@ -39,7 +51,6 @@ test: all
 
 bdist: clean all
 	test -d $(DIST_DIR)/deps/menelaus/priv || mkdir -p $(DIST_DIR)/deps/menelaus/priv
-	git describe | sed s/-/_/g > $(TMP_VER)
 	cp -R ebin $(DIST_DIR)/deps/menelaus
 	cp -R priv/public $(DIST_DIR)/deps/menelaus/priv/public
 	cp -R deps/mochiweb-src $(DIST_DIR)/deps/mochiweb

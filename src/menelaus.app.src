@@ -1,6 +1,6 @@
 {application, menelaus,
- [{description, "menelaus"},
-  {vsn, "0.01"},
+ [{description, "NorthScale menelaus"},
+  {vsn, "0.0.0"},
   {modules, [
     menelaus,
     menelaus_app,
