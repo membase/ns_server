@@ -22,6 +22,9 @@ clean_all:
 
 ebins:
 	test -d ebin || mkdir ebin
+	test -d $(TMP_DIR) || mkdir $(TMP_DIR)
+	git describe | sed s/-/_/g > $(TMP_VER)
+	echo "{ns_server, \"`cat $(TMP_VER)`\"}." > ebin/ns_info.version
 	erl $(EFLAGS) -make
 	cp src/*.app ebin
 
