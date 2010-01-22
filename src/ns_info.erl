@@ -4,20 +4,11 @@
 
 -module(ns_info).
 
--export([version_path/0, version/0, runtime/0]).
-
-version_path() ->
-    filename:join(filename:dirname(
-                    filename:absname(code:which(?MODULE))),
-                  atom_to_list(?MODULE) ++ ".version").
+-export([version/0, runtime/0]).
 
 version() ->
-    Path = version_path(),
-    Info = case file:consult(Path) of
-        {ok, X}         -> X;
-        {error, enoent} -> []
-    end,
-    Info.
+    lists:map(fun({App, _, Version}) -> {App, Version} end,
+              application:loaded_applications()).
 
 runtime() ->
     [{otp_release, erlang:system_info(otp_release)},
@@ -27,7 +18,7 @@ runtime() ->
      {localtime, erlang:localtime()},
      {memory, erlang:memory()},
      {loaded, erlang:loaded()},
-     {applications, application:which_applications()},
+     {applications, application:loaded_applications()},
      {pre_loaded, erlang:pre_loaded()},
      {process_count, erlang:system_info(process_count)},
      {process_info, erlang:system_info(procs)},
