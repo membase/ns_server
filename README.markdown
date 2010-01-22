@@ -28,17 +28,32 @@ Building...
 ## Starting
 
 Before you start the server, you may need to do the following
+  * Below, <REPO_ROOT> is where you checked out and built ns_server above.
   * Make sure the needed ports are not being used (these include
     8080, 11211, 11212, etc).
-  * Build a version of the 1.6 memcached branch that has isasl
-    enabled (./configure --enable-isasl).
-  * Create a sym link from the 1.6 memcached to <REPO_ROOT>/priv/memcached
+  * Build the genhash library that northscale memcache requires
+    (git clone http://github.com/northscale/genhash.git &&
+    cd genhash && make)
+  * Build "for_release" branch of northscale memcached that has isasl
+    enabled (git clone git@github.com:northscale/memcached.git &&
+    cd memcached &&
+    git checkout --track origin/for_release &&
+    ./config/autorun.sh &&
+    ./configure --enable-isasl --with-genhash=/directory/to/genhash/ &&
+    make && make test).
+  * Build the bucket_engine library from the
+    git@github.com:northscale/bucket_engine.git repository.
+    (git clone git@github.com:northscale/bucket_engine.git &&
+    cd bucket_engine &&
+    ./configure --with-memcached=/path/to/your/above/dir/for/memcached/ &&
+    make && make test)
+  * Create a sym link from the for_release northscale memcached
+    that you just built to <REPO_ROOT>/priv/memcached
   * Make sure that the default_engine.so created when building the
-    1.6 memcached is on your LD_LIBRARY_PATH (in OS X this is the
-    DYLD_LIBRARY_PATH).
-  * Make sure the memcached port_server config in the priv/config file
-    has the engine option (-E ..) and the option is not commented out
-    (at the moment this arg is commented out in the config file).
+    for_release northscale memcached is on your LD_LIBRARY_PATH (in OS X
+    this is the DYLD_LIBRARY_PATH).  Or...
+  * Create a sym link from the for_release northscale memcached
+    ./libs/default_engine.so to <REPOT_ROOT>/priv/engines/default_engine.so
   * Just a general note, if you are making changes to the config file
     and these changes don't appear to be reflected in the start up
     procedures, try deleting the <REPO_ROOT>/data dir.
