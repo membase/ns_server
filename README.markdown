@@ -94,5 +94,25 @@ Tip: if you see error message like...
 Then you will have to add backslashes around the path double-quotes --
 like \"priv/config\"
 
+## Development
+
+### Pulling the latest dependencies
+
+   git submodule update
+
+### Updating the dependencies (deps subdirectory)
+
+   cd deps/emoxi
+   git pull origin master
+   cd ../menelaus
+   git pull origin master
+   cd ../..
+   git add deps/emoxi deps/menelaus
+   make clean
+   make
+   git commit -m "updated emoxi & menelaus"
+   git push
+
+
 * * * * *
 Copyright (c) 2010, NorthScale, Inc.
