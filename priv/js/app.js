@@ -122,6 +122,8 @@ var postWithValidationErrors = function (url, data, callback) {
       }
 
       var errorsData = $.httpData(data, this.dataType, this);
+      if (!('errors' in errorsData))
+        errorsData.errors = ['unknown reason'];
       callback.call(this, errorsData, 'error');
       return;
     }
