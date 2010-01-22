@@ -89,8 +89,11 @@ examine_bucket({Name, Props}, D) ->
 %
 
 writeSASLConf(Path, NewBuckets, AU, AP) ->
-    error_logger:info_msg("Writing isasl passwd file~n", []),
-    {ok, F} = file:open(Path, [write]),
+    {ok, Pwd} = file:get_cwd(),
+    PrivDir = filename:join(Pwd, "priv"),
+    FullPath = filename:join(PrivDir, Path),
+    error_logger:info_msg("Writing isasl passwd file: ~p~n", [FullPath]),
+    {ok, F} = file:open(FullPath, [write]),
     io:format(F, "~s ~s~n", [AU, AP]),
     lists:foreach(fun ({U, P}) -> io:format(F, "~s ~s~n", [U, P]) end,
                   NewBuckets),

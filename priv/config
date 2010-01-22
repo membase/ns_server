@@ -69,7 +69,7 @@
 
 % This is also a parameter to memcached ports below.
 {isasl, [{'_ver', {0, 0, 0}},
-         {path, "/tmp/isasl.pw"}]}.
+         {path, "./isasl.pw"}]}. % Relative to priv directory.
 
 % Credentials for authenticating to a bucket.
 {bucket_admin, [{'_ver', {0, 0, 0}},
@@ -93,7 +93,7 @@
      "-p", "11212", "-S"
      ],
     [{env, [{"MEMCACHED_CHECK_STDIN", "event"},
-            {"ISASL_PWFILE", "/tmp/isasl.pw"} % Also isasl path above.
+            {"ISASL_PWFILE", "./isasl.pw"} % Also isasl path above.
            ]}]
    }
   ]
