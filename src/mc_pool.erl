@@ -25,6 +25,7 @@
          auth_to_bucket/3]).
 
 -export([pools_config_get/0,
+         pools_config_get/1,
          pools_config_set/1,
          pool_config_default/0,
          pool_config_make/1,
@@ -32,6 +33,9 @@
          pool_config_set/3,
          pool_config_get/2,
          list/0]).
+
+-export([memcached_port/2,
+         memcached_port_set/3]).
 
 %% gen_server callbacks
 -export([init/1, terminate/2, code_change/3,
@@ -73,7 +77,10 @@ list() ->
     lists:map(fun({K, _V}) -> K end, pools_config_get()).
 
 pools_config_get() ->
-    case ns_config:search(ns_config:get(), pools) of
+    pools_config_get(ns_config:get()).
+
+pools_config_get(NSConfig) ->
+    case ns_config:search(NSConfig, pools) of
         false          -> [];
         {value, Pools} -> Pools
     end.
@@ -306,6 +313,11 @@ memcached_port(NSConfig, Node) ->
             error;
         {value, PortStr} -> PortStr
     end.
+
+memcached_port_set(NSConfig, Node, PortStr) ->
+    ns_port_server:set_port_server_param(NSConfig,
+                                         memcached, "-p", PortStr,
+                                         Node).
 
 % ------------------------------------------------
 
