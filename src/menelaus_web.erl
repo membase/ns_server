@@ -88,7 +88,7 @@ loop(Req, DocRoot) ->
                      end;
                  'POST' ->
                      case PathTokens of
-						 ["node", "controller", "doJoinCluster"]  ->
+                         ["node", "controller", "doJoinCluster"]  ->
                              {auth, fun handle_join/1};
                          ["settings", "web"] ->
                              {auth, fun handle_settings_web_post/1};
