@@ -16,7 +16,7 @@
          wrap_tests_with_cache_setup/1]).
 -endif.
 
--export([start/1, stop/0, loop/2,
+-export([start_link/0, start_link/1, stop/0, loop/2,
          find_pool_by_id/1,
          find_bucket_by_id/2]).
 
@@ -35,7 +35,10 @@
 
 %% External API
 
-start(Options) ->
+start_link() ->
+    start_link(webconfig()).
+
+start_link(Options) ->
     {DocRoot, Options1} = get_option(docroot, Options),
     Loop = fun (Req) ->
                    ?MODULE:loop(Req, DocRoot)
@@ -43,7 +46,35 @@ start(Options) ->
     mochiweb_http:start([{name, ?MODULE}, {loop, Loop} | Options1]).
 
 stop() ->
+    % Note that a supervisor might restart us right away.
     mochiweb_http:stop(?MODULE).
+
+restart() ->
+    % Depend on our supervision tree to restart us right away.
+    stop().
+
+webconfig() ->
+    Config = ns_config:get(),
+    Ip = case os:getenv("MOCHIWEB_IP") of
+             false -> "0.0.0.0";
+             Any -> Any
+         end,
+    Port = case os:getenv("MOCHIWEB_PORT") of
+               false ->
+                   case ns_config:search_prop(Config,
+                                              {node, node(), rest},
+                                              port, false) of
+                       false ->
+                           ns_config:search_prop(Config, rest, port, 8080);
+                       P -> P
+                   end;
+               P -> list_to_integer(P)
+           end,
+    WebConfig = [{ip, Ip},
+                 {port, Port},
+                 {docroot, menelaus_deps:local_path(["priv","public"],
+                                                    ?MODULE)}],
+    WebConfig.
 
 loop(Req, DocRoot) ->
     "/" ++ Path = Req:get(path),
@@ -491,9 +522,7 @@ handle_join(Req, OtpNode, OtpCookie) ->
     case ns_cluster:join(OtpNode, OtpCookie) of
         ok -> ns_log:log(?MODULE, 0009, "Joined cluster at node: ~p with cookie: ~p from node: ~p",
                          [OtpNode, OtpCookie, erlang:node()]),
-              % TODO: Need to restart menelaus?  emoxi?
-              % ns_port_server?  Or, let ns_node_config events
-              % handle it.
+              restart(),
               Req:respond({200, [], []});
         _  -> Req:respond({401, [], []})
     end.
@@ -565,8 +594,8 @@ handle_settings_web_post(Req) ->
                                   [{port, PortInt}]),
                     ns_config:set(rest_creds,
                                   [{creds,
-                                    [{U, [{password, P}]}]}])
-                    % TODO: Need to restart menelaus?
+                                    [{U, [{password, P}]}]}]),
+                    restart()
             end,
             Req:respond({200, [], []})
     end.

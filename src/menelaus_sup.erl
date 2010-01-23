@@ -42,27 +42,8 @@ upgrade() ->
 %% @spec init([]) -> SupervisorTree
 %% @doc supervisor callback.
 init([]) ->
-    Config = ns_config:get(),
-    Ip = case os:getenv("MOCHIWEB_IP") of
-             false -> "0.0.0.0";
-             Any -> Any
-         end,
-    Port = case os:getenv("MOCHIWEB_PORT") of
-               false ->
-                   case ns_config:search_prop(Config,
-                                              {node, node(), rest},
-                                              port, false) of
-                       false ->
-                           ns_config:search_prop(Config, rest, port, 8080);
-                       P -> P
-                   end;
-               P -> list_to_integer(P)
-           end,
-    WebConfig = [{ip, Ip},
-                 {port, Port},
-                 {docroot, menelaus_deps:local_path(["priv","public"], ?MODULE)}],
     Web = {menelaus_web,
-           {menelaus_web, start, [WebConfig]},
+           {menelaus_web, start_link, []},
            permanent, 5000, worker, dynamic},
 
     WebEvent = {menelaus_event,
@@ -75,3 +56,4 @@ init([]) ->
 
     Processes = [Web, WebEvent, SimpleCache],
     {ok, {{one_for_one, 10, 10}, Processes}}.
+
