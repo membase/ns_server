@@ -13,7 +13,9 @@
 
 -import(mc_binary, [send/2, send/4, send_recv/5, recv/2]).
 
--export([auth/2, cmd/5]).
+-export([cmd/5]).
+
+-export([auth/2, select_bucket/2]).
 
 -compile(export_all).
 
@@ -104,6 +106,13 @@ auth(Sock, {"PLAIN", {ForName, AuthName, AuthPswd}}) ->
     end;
 
 auth(_Sock, _UnknownMech) -> {error, emech_unsupported}.
+
+% -------------------------------------------------
+
+select_bucket(Sock, BucketName) ->
+    mc_client_binary:cmd(?CMD_SELECT_BUCKET, Sock, undefined, undefined,
+                         {#mc_header{},
+                          #mc_entry{key = BucketName}}).
 
 % -------------------------------------------------
 
