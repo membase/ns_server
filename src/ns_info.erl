@@ -22,12 +22,13 @@ runtime() ->
      {pre_loaded, erlang:pre_loaded()},
      {process_count, erlang:system_info(process_count)},
      {process_info, erlang:system_info(procs)},
+     {node, erlang:node()},
      {nodes, erlang:nodes()},
      {registered, erlang:registered()},
      {cookie, erlang:get_cookie()},
      {wordsize, erlang:system_info(wordsize)}].
 
 basic_info() ->
-    [{node, node()},
-     {version, version()},
-     {system_arch, erlang:system_info(system_architecture)}].
+    {erlang:node(),
+     [{version, version()},
+      {system_arch, erlang:system_info(system_architecture)}]}.
