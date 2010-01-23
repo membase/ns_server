@@ -228,6 +228,7 @@ build_nodes_info(MyPool, IncludeOtp) ->
     OtpCookie = list_to_binary(atom_to_list(ns_node_disco:cookie_get())),
     WantENodes = ns_node_disco:nodes_wanted(),
     ActualENodes = ns_node_disco:nodes_actual_proper(),
+    {InfoList, _} = rpc:multicall(ActualENodes, ns_info, basic_info, [], 200),
     Nodes =
         lists:map(
           fun(WantENode) ->
@@ -240,8 +241,14 @@ build_nodes_info(MyPool, IncludeOtp) ->
                            end,
                   {value, DirectPort} = direct_port(WantENode),
                   ProxyPort = pool_proxy_port(MyPool, WantENode),
+                  InfoNode = proplists:get_value(WantENode, InfoList, []),
+                  Versions = proplists:get_value(version, InfoNode, []),
+                  Version = proplists:get_value(ns_server, Versions, "unknown"),
+                  OS = proplists:get_value(system_arch, InfoNode, "unknown"),
                   KV1 = [{hostname, list_to_binary(Host)},
                          {status, Status},
+                         {version, list_to_binary(Version)},
+                         {os, list_to_binary(OS)},
                          {ports,
                           {struct, [{proxy, ProxyPort},
                                     {direct, DirectPort}]}}],
