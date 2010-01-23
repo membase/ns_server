@@ -23,7 +23,7 @@ default() ->
      {port_servers, [{'_ver', {0, 0, 0}},
                      {memcached, "./memcached",
                       ["-E", "./engines/bucket_engine.so",
-                       "-e", "admin=_admin;engine=./engines/default_engine.so",
+                       "-e", "admin=_admin;engine=./engines/default_engine.so;default=true;auto_create=true",
                        "-p", "11211", "-S"
                       ],
                       [{env, [{"MEMCACHED_CHECK_STDIN", "thread"},
