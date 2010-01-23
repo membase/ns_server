@@ -77,12 +77,7 @@ examine_pool({_Name, Props}, D) ->
                 proplists:get_value(buckets, Props, [])).
 
 examine_bucket({Name, Props}, D) ->
-    case proplists:get_value(auth_plain, Props) of
-        undefined ->
-            D;
-        Passwd ->
-            dict:store(Name, Passwd, D)
-    end.
+    dict:store(Name, proplists:get_value(auth_plain, Props), D).
 
 %
 % Update the isasl stuff.
@@ -95,6 +90,8 @@ writeSASLConf(Path, NewBuckets, AU, AP) ->
     error_logger:info_msg("Writing isasl passwd file: ~p~n", [FullPath]),
     {ok, F} = file:open(FullPath, [write]),
     io:format(F, "~s ~s~n", [AU, AP]),
-    lists:foreach(fun ({U, P}) -> io:format(F, "~s ~s~n", [U, P]) end,
+    lists:foreach(fun({U, undefined}) -> io:format(F, "~s~n", [U]);
+                     ({U, P})         -> io:format(F, "~s ~s~n", [U, P])
+                  end,
                   NewBuckets),
     file:close(F).

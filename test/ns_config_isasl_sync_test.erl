@@ -17,7 +17,7 @@ test() ->
     test_writing().
 
 test_parsing() ->
-    Expected = [
+    Expected = [{"default", undefined},
                 {"other_application", "another_password"},
                 {"test_application", "plain_text_password"}],
 
@@ -35,6 +35,7 @@ test_writing() ->
                                  {pools, sample_config()}, State),
     Expected = [
                 "admin admin\n",
+                "default\n",
                 "other_application another_password\n",
                 "test_application plain_text_password\n"],
     {ok, F} = file:open(Path, [read]),
