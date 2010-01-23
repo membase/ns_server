@@ -22,7 +22,7 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
-    timer:send_after(100, post_startup_init),
+    timer:send_after(2000, post_startup_init),
     {ok, #state{vals=dict:new()}}.
 
 handle_call({get, Hostname, Port, Bucket, Count}, _From, State) ->
