@@ -11,6 +11,7 @@ version() ->
               application:loaded_applications()).
 
 runtime() ->
+    {WallClockMSecs, _} = erlang:statistics(wall_clock),
     [{otp_release, erlang:system_info(otp_release)},
      {erl_version, erlang:system_info(version)},
      {erl_version_long, erlang:system_info(system_version)},
@@ -26,9 +27,12 @@ runtime() ->
      {nodes, erlang:nodes()},
      {registered, erlang:registered()},
      {cookie, erlang:get_cookie()},
-     {wordsize, erlang:system_info(wordsize)}].
+     {wordsize, erlang:system_info(wordsize)},
+     {wall_clock, trunc(WallClockMSecs / 1000)}].
 
 basic_info() ->
+    {WallClockMSecs, _} = erlang:statistics(wall_clock),
     {erlang:node(),
      [{version, version()},
-      {system_arch, erlang:system_info(system_architecture)}]}.
+      {system_arch, erlang:system_info(system_architecture)},
+      {wall_clock, trunc(WallClockMSecs / 1000)}]}.
