@@ -18,6 +18,12 @@
 
 -export([handle_bucket_stats/3, basic_stats/2]).
 
+-export([build_buckets_stats_ops_response/3,
+         build_buckets_stats_hks_response/3,
+         get_buckets_stats/3,
+         get_stats/3,
+         get_stats_raw/3]).
+
 -import(menelaus_util,
         [reply_json/2,
          expect_prop_value/2,
