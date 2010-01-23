@@ -16,7 +16,7 @@
          wrap_tests_with_cache_setup/1]).
 -endif.
 
--export([start_link/0, start_link/1, stop/0, loop/2,
+-export([start_link/0, start_link/1, stop/0, loop/2, webconfig/0,
          find_pool_by_id/1,
          find_bucket_by_id/2]).
 

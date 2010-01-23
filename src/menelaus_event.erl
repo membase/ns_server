@@ -20,7 +20,7 @@
 -export([init/1, handle_event/2, handle_call/2,
          handle_info/2, terminate/2, code_change/3]).
 
--record(state, {id, watchers}).
+-record(state, {id, webconfig, watchers = []}).
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -60,11 +60,25 @@ unregister_watcher(Pid) ->
 
 %% Implementation
 
-init(Id) ->
-    {ok, #state{id = Id, watchers = []}}.
+init(ns_config_events = Id) ->
+    {ok, #state{id = Id,
+                watchers = [],
+                webconfig = menelaus_web:webconfig()}};
+
+init(ns_node_disco_events = Id) ->
+    {ok, #state{id = Id,
+                watchers = []}}.
 
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
+
+handle_event({rest, _}, #state{webconfig = WebConfigOld} = State) ->
+    WebConfigNew = menelaus_web:webconfig(),
+    case WebConfigNew =:= WebConfigOld of
+        true -> {ok, State};
+        false -> spawn(fun menelaus_web:restart/0),
+                 {ok, State#state{webconfig = WebConfigNew}}
+    end;
 
 handle_event({pools, _}, State) ->
     ok = notify_watchers(pools, State),
