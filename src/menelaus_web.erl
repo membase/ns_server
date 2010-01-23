@@ -16,7 +16,7 @@
          wrap_tests_with_cache_setup/1]).
 -endif.
 
--export([start_link/0, start_link/1, stop/0, loop/2, webconfig/0,
+-export([start_link/0, start_link/1, stop/0, loop/2, webconfig/0, restart/0,
          find_pool_by_id/1,
          find_bucket_by_id/2]).
 
@@ -522,7 +522,8 @@ handle_join(Req, OtpNode, OtpCookie) ->
     case ns_cluster:join(OtpNode, OtpCookie) of
         ok -> ns_log:log(?MODULE, 0009, "Joined cluster at node: ~p with cookie: ~p from node: ~p",
                          [OtpNode, OtpCookie, erlang:node()]),
-              restart(),
+              % No need to restart here, as our ns_config event watcher
+              % will do it if our rest config changes.
               Req:respond({200, [], []});
         _  -> Req:respond({401, [], []})
     end.
@@ -594,8 +595,9 @@ handle_settings_web_post(Req) ->
                                   [{port, PortInt}]),
                     ns_config:set(rest_creds,
                                   [{creds,
-                                    [{U, [{password, P}]}]}]),
-                    restart()
+                                    [{U, [{password, P}]}]}])
+                    % No need to restart right here, as our ns_config
+                    % event watcher will do it later if necessary.
             end,
             Req:respond({200, [], []})
     end.
