@@ -31,7 +31,7 @@ function escapeHTML() {
 }
 
 function escapeJS(string) {
-  return String(string).replace(/\\/g, '\\\\').replace(/["']/g, '\\$&'); //"//' emacs' javascript-mode is silly
+  return String(string).replace(/\\/g, '\\\\').replace(/["']/g, '\\$&');
 }
 
 function renderJSLink(functionName, arg, prefix) {
@@ -92,7 +92,7 @@ function renderJSLink(functionName, arg, prefix) {
       str
       .replace(/[\r\t\n]/g, " ")
       .split("{%").join("\t")
-      .replace(/((^|%})[^\t]*)'/g, "$1\r") //'
+      .replace(/((^|%})[^\t]*)'/g, "$1\r")
       .replace(/\t=(.*?)%}/g, "',$1,'")
       .split("\t").join("');")
       .split("%}").join("p.push('")
