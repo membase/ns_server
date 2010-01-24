@@ -95,8 +95,8 @@ auth(Sock, {"PLAIN", {ForName, AuthName, undefined}}) ->
 auth(Sock, {"PLAIN", {ForName, AuthName, AuthPswd}}) ->
     case auth(Sock, {"PLAIN", {ForName, AuthName, AuthPswd}},
               undefined, undefined) of
-        {ok, __} -> ok;
-        Error    -> Error
+        {ok, _, _, _} -> ok;
+        Error         -> Error
     end;
 
 auth(_Sock, _UnknownMech) ->
@@ -114,9 +114,9 @@ auth(Sock, {"PLAIN", {ForName, AuthName, AuthPswd}}, CBFun, CBData) ->
                                                   BinAuthPswd/binary>>
                                         }}) of
 
-        {ok, H, _E, NCBData} ->
+        {ok, H, E, NCBData} ->
             case H#mc_header.status == ?SUCCESS of
-                true -> {ok, NCBData};
+                true  -> {ok, H, E, NCBData};
                 false -> {error, eauth_status, H#mc_header.status, NCBData}
             end;
         _Error -> {error, eauth_cmd}
@@ -195,7 +195,12 @@ do(Host, Port, HEList) ->
                                  [binary, {packet, 0}, {active, false}]),
     CB = fun(RH, RE, CD) -> [{RH, RE} | CD] end,
     R = lists:foldl(
-          fun({set, K, V}, RHEList) ->
+          fun({auth, Name, Pass}, RHEList) ->
+                  {ok, _RecvHeader, _RecvEntry, NewRHEList} =
+                          auth(Sock, {"PLAIN", {<<>>, Name, Pass}},
+                               CB, RHEList),
+                  NewRHEList;
+             ({set, K, V}, RHEList) ->
                   {ok, _RecvHeader, _RecvEntry, NewRHEList} =
                           send_recv(Sock, CB, RHEList,
                                     #mc_header{opcode = ?SET},
