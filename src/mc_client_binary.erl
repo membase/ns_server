@@ -83,8 +83,14 @@ send_list(Sock, RecvCallback, CBData,
 
 auth(_Sock, undefined) -> ok;
 
+auth(Sock, {"PLAIN", {AuthName, undefined}}) ->
+    auth(Sock, {"PLAIN", {<<>>, AuthName, <<>>}});
+
 auth(Sock, {"PLAIN", {AuthName, AuthPswd}}) ->
     auth(Sock, {"PLAIN", {<<>>, AuthName, AuthPswd}});
+
+auth(Sock, {"PLAIN", {ForName, AuthName, undefined}}) ->
+    auth(Sock, {"PLAIN", {ForName, AuthName, <<>>}});
 
 auth(Sock, {"PLAIN", {ForName, AuthName, AuthPswd}}) ->
     BinForName  = mc_binary:bin(ForName),

@@ -220,6 +220,29 @@ bucket_flush(Addrs) ->
 
 % ------------------------------------------------
 
+test_set(PoolName, BucketName, Key, Value) ->
+    test_cmd(PoolName, BucketName, Key, ?SET, {#mc_header{},
+                                               #mc_entry{key = Key,
+                                                         data = Value}}).
+
+test_get(PoolName, BucketName, Key) ->
+    test_cmd(PoolName, BucketName, Key, ?GET, {#mc_header{},
+                                               #mc_entry{key = Key}}).
+
+test_cmd(PoolName, BucketName, Key, Cmd, CmdArgs) ->
+    {ok, B} = mc_pool:get_bucket(PoolName, BucketName),
+    {Key, Addr} = mc_bucket:choose_addr(B, Key),
+    ResponseFilter = fun(H, E) ->
+                             ?debugVal({H, E}),
+                             true
+                     end,
+    {ok, Monitors} = mc_downstream:send(Addr, undefined, Cmd, CmdArgs,
+                                        ResponseFilter, undefined),
+    1 = mc_downstream:await_ok(1),
+    mc_downstream:demonitor(Monitors),
+    ok.
+
+% ------------------------------------------------
 % Fake hash_key/hash_addr functions for unit testing.
 
 hash_key(_Key, _)   -> 1.

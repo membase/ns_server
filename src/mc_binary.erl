@@ -171,3 +171,35 @@ flush_test() ->
 test_flush(Sock) ->
     {ok, works, undefined} = send_recv(Sock, undefined, undefined,
                             #mc_header{opcode = ?FLUSH}, #mc_entry{}, works).
+
+% Example:
+%
+%  test_send_recv("localhost", 11211, [{set, "hi", "there"},
+%                                      {get, "hi}]).
+%
+test_send_recv(Host, Port, HEList) ->
+    {ok, Sock} = gen_tcp:connect(Host, Port,
+                                 [binary, {packet, 0}, {active, false}]),
+    CB = fun(RH, RE, CD) -> [{RH, RE} | CD] end,
+    R = lists:foldl(
+          fun({set, K, V}, RHEList) ->
+                  {ok, _RecvHeader, _RecvEntry, NewRHEList} =
+                          send_recv(Sock, CB, RHEList,
+                                    #mc_header{opcode = ?SET},
+                                    #mc_entry{key = K, data = V}),
+                  NewRHEList;
+             ({get, K}, RHEList) ->
+                  {ok, _RecvHeader, _RecvEntry, NewRHEList} =
+                          send_recv(Sock, CB, RHEList,
+                                    #mc_header{opcode = ?GETK},
+                                    #mc_entry{key = K}),
+                  NewRHEList;
+             ({#mc_header{} = H, #mc_entry{} = E}, RHEList) ->
+                  {ok, _RecvHeader, _RecvEntry, NewRHEList} =
+                          send_recv(Sock, CB, RHEList, H, E),
+                  NewRHEList
+          end,
+          [],
+          HEList),
+    ok = gen_tcp:close(Sock),
+    R.
