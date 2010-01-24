@@ -7,6 +7,8 @@
 
 -export([start_link/0, setup_handler/0]).
 
+-export([monitor_all/0, unmonitor_all/0]).
+
 %% gen_event callbacks
 -export([init/1, handle_event/2, handle_call/2,
          handle_info/2, terminate/2, code_change/3]).
@@ -17,8 +19,7 @@ start_link() ->
     exit(unimplemented).
 
 setup_handler() ->
-    {Buckets, Servers} = get_buckets_and_servers(),
-    monitor(Servers, Buckets),
+    {ok, Servers} = monitor_all(),
     gen_event:add_sup_handler(ns_config_events, ?MODULE, [Servers]).
 
 init([Servers]) ->
@@ -53,6 +54,11 @@ monitor(Servers, Buckets) ->
                   end,
                   Servers).
 
+unmonitor(Servers) ->
+    lists:foreach(fun ({H, P}) ->
+                          stats_collector:unmonitor(H, P)
+                  end, Servers).
+
 get_buckets_and_servers() ->
     [Pool | []] = mc_pool:list(), % assume one pool
     Buckets = mc_bucket:list(Pool),
@@ -67,3 +73,13 @@ bucket_servers(Pool, B) ->
                       {H, I}
               end,
               mc_bucket:addrs(Pool, B)).
+
+monitor_all() ->
+    {Buckets, Servers} = get_buckets_and_servers(),
+    monitor(Servers, Buckets),
+    {ok, Servers}.
+
+unmonitor_all() ->
+    {_Buckets, Servers} = get_buckets_and_servers(),
+    unmonitor(Servers),
+    {ok, Servers}.
