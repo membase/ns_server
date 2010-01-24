@@ -73,5 +73,6 @@ use Middleware
 set :public, $DOCROOT
 
 if ARGV.size == 0
-  exec $0, "-p", "8080" #, "-s", "webrick"
+  name = "./" + File.basename($0)
+  exec name, "-p", "8080" #, "-s", "webrick"
 end
