@@ -79,7 +79,12 @@ monitor_all() ->
     monitor(Servers, Buckets),
     {ok, Servers}.
 
+% Use: stats_pool_event_listener:unmonitor_all().
+% to turn off monitoring, which is useful when trying to
+% control what messages are sent to memcached during development.
+
 unmonitor_all() ->
     {_Buckets, Servers} = get_buckets_and_servers(),
     unmonitor(Servers),
     {ok, Servers}.
+
