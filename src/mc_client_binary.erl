@@ -15,7 +15,7 @@
 
 -export([cmd/5]).
 
--export([auth/2, select_bucket/2]).
+-export([auth/2, auth/4, select_bucket/2]).
 
 -compile(export_all).
 
@@ -93,10 +93,20 @@ auth(Sock, {"PLAIN", {ForName, AuthName, undefined}}) ->
     auth(Sock, {"PLAIN", {ForName, AuthName, <<>>}});
 
 auth(Sock, {"PLAIN", {ForName, AuthName, AuthPswd}}) ->
+    case auth(Sock, {"PLAIN", {ForName, AuthName, AuthPswd}},
+              undefined, undefined) of
+        {ok, __} -> ok;
+        Error    -> Error
+    end;
+
+auth(_Sock, _UnknownMech) ->
+    {error, emech_unsupported}.
+
+auth(Sock, {"PLAIN", {ForName, AuthName, AuthPswd}}, CBFun, CBData) ->
     BinForName  = mc_binary:bin(ForName),
     BinAuthName = mc_binary:bin(AuthName),
     BinAuthPswd = mc_binary:bin(AuthPswd),
-    case mc_client_binary:cmd(?CMD_SASL_AUTH, Sock, undefined, undefined,
+    case mc_client_binary:cmd(?CMD_SASL_AUTH, Sock, CBFun, CBData,
                               {#mc_header{},
                                #mc_entry{key = "PLAIN",
                                          data = <<BinForName/binary, 0:8,
@@ -104,14 +114,16 @@ auth(Sock, {"PLAIN", {ForName, AuthName, AuthPswd}}) ->
                                                   BinAuthPswd/binary>>
                                         }}) of
 
-        {ok, H, _E} -> case H#mc_header.status == ?SUCCESS of
-                           true -> ok;
-                           false -> {error, eauth_status, H#mc_header.status}
-                       end;
-        _Error      -> {error, eauth_cmd}
+        {ok, H, _E, NCBData} ->
+            case H#mc_header.status == ?SUCCESS of
+                true -> {ok, NCBData};
+                false -> {error, eauth_status, H#mc_header.status, NCBData}
+            end;
+        _Error -> {error, eauth_cmd}
     end;
 
-auth(_Sock, _UnknownMech) -> {error, emech_unsupported}.
+auth(_Sock, _UnknownMech, _CBFun, _CBData) ->
+    {error, emech_unsupported}.
 
 % -------------------------------------------------
 
@@ -171,6 +183,41 @@ ext_arith(#mc_entry{ext = Ext, data = Data, expire = Expire} = Entry) ->
             Entry#mc_entry{ext = Ext2, data = undefined};
         _ -> Entry
     end.
+
+% -------------------------------------------------
+
+% Example:
+%
+%  mc_client_binary:do("localhost", 11211, [{set, "x", "X"}, {get, "x"}]).
+%
+do(Host, Port, HEList) ->
+    {ok, Sock} = gen_tcp:connect(Host, Port,
+                                 [binary, {packet, 0}, {active, false}]),
+    CB = fun(RH, RE, CD) -> [{RH, RE} | CD] end,
+    R = lists:foldl(
+          fun({set, K, V}, RHEList) ->
+                  {ok, _RecvHeader, _RecvEntry, NewRHEList} =
+                          send_recv(Sock, CB, RHEList,
+                                    #mc_header{opcode = ?SET},
+                                    ext(?SET,
+                                        #mc_entry{key = K,
+                                                  data = V})),
+                  NewRHEList;
+             ({get, K}, RHEList) ->
+                  {ok, _RecvHeader, _RecvEntry, NewRHEList} =
+                          send_recv(Sock, CB, RHEList,
+                                    #mc_header{opcode = ?GETK},
+                                    #mc_entry{key = K}),
+                  NewRHEList;
+             ({#mc_header{} = H, #mc_entry{} = E}, RHEList) ->
+                  {ok, _RecvHeader, _RecvEntry, NewRHEList} =
+                          send_recv(Sock, CB, RHEList, H, E),
+                  NewRHEList
+          end,
+          [],
+          HEList),
+    ok = gen_tcp:close(Sock),
+    lists:reverse(R).
 
 % -------------------------------------------------
 
