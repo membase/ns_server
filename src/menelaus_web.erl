@@ -115,7 +115,8 @@ loop(Req, DocRoot) ->
                          ["t", "index.html"] ->
                              {done, serve_index_html_for_tests(Req, DocRoot)};
                          _ ->
-                             {done, Req:serve_file(Path, DocRoot)}
+                             {done, Req:serve_file(Path, DocRoot, [{"Pragma", "no-cache"},
+                                                                   {"Cache-Control", "no-cache must-revalidate"}])}
                      end;
                  'POST' ->
                      case PathTokens of
