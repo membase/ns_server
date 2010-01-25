@@ -165,7 +165,7 @@ get_buckets_stats(PoolId, BucketIds, Params) ->
       RestStats).
 
 get_stats(PoolId, BucketId, _Params) ->
-    SamplesInterval = 1, % A sample every second.
+    SamplesInterval = 1000, % A sample every second.
     SamplesNum = 60, % Sixty seconds worth of data.
     Samples = get_stats_raw(PoolId, BucketId, SamplesNum),
     Samples2 = case lists:keytake(t, 1, Samples) of
