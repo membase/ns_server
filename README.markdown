@@ -50,11 +50,13 @@ Before you start the server, you may need to do the following
   * Create a sym link from the for_release northscale memcached
     that you just built to <REPO_ROOT>/priv/memcached
   * Create a sym link from the for_release northscale memcached
-    ./libs/default_engine.so to <REPOT_ROOT>/priv/engines/default_engine.so
+    memcached/.libs/default_engine.so to
+    <REPO_ROOT>/priv/engines/default_engine.so
   * If your sym links are correct, you should be able to cd <REPO_ROOT>/priv
     and run: ./memcached -E ./engines/default_engine.so -vvv
   * If you're not doing sym links, instead make sure that the
-    ./libs/default_engine.so and ./libs/bucket_engine.so
+    memcached/.libs/default_engine.so and
+    bucket_engine/.libs/bucket_engine.so
     created when building the for_release northscale memcached
     and bucket_engine are on your LD_LIBRARY_PATH (in OS X
     this is the DYLD_LIBRARY_PATH).  Or...
