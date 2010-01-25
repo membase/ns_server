@@ -2,4 +2,5 @@
            {outdir, "ebin"},
            {i, "include"},
            {i, "../ns_server/include"},
+           {i, "../../pull_make_ns_server/ns_server/"},
            {i, "../../include"}]}.
