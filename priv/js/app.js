@@ -254,8 +254,10 @@ var SamplesRestorer = mkClass({
     _.each(StatGraphs.recognizedStats, function (cat) {
       var oldArray = oldOps[cat];
       var newArray = ops[cat];
-      if (!oldArray || !newArray)
+      if (!oldArray || !newArray) {
+        console.log("no array for stat:", cat);
         return;
+      }
 
       var oldLength = oldArray.length;
       var nowLength = newArray.length;
@@ -263,6 +265,7 @@ var SamplesRestorer = mkClass({
         ops[cat] = oldArray.slice(-(oldLength-nowLength)-dataOffset,
                                   (dataOffset == 0) ? oldLength : -dataOffset).concat(newArray);
     });
+    console.log("op:", op);
   }
 });
 
