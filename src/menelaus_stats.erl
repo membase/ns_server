@@ -171,7 +171,7 @@ get_stats(PoolId, BucketId, _Params) ->
     Samples2 = case lists:keytake(t, 1, Samples) of
                    false -> [{t, []} | Samples];
                    {value, {t, TStamps}, SamplesNoTStamps} ->
-                       [{t, lists:map(fun misc:time_to_epoch_int/1,
+                       [{t, lists:map(fun (A) -> misc:time_to_epoch_int(A) * 1000 end,
                                       TStamps)} |
                         SamplesNoTStamps]
                end,
