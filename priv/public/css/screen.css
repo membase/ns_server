@@ -322,7 +322,7 @@ body { font-family: Arial, sans-serif;}
 
 /* analytics graph */
 #analytics_main_graph { width: 100%; }
-#analytics_graph_ops, #analytics_graph_gets, #analytics_graph_sets, #analytics_graph_misses { width: 20%; display: inline-block; }
+.analytics-small-graph { width: 20%; display: inline-block; }
 .analytics_graph_main {height:300px; background:url(../images/devider_line_2.gif) 0 100% repeat-x #eeeeef; border-left:1px solid #dbdbdb; border-right:1px solid #dbdbdb; padding:0 10px;}
 .graph_info_label {padding:3px; font-size:11px;}
 .graph_nav {padding:10px 0 10px 2px;}

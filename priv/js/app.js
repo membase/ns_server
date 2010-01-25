@@ -251,9 +251,11 @@ var SamplesRestorer = mkClass({
     //   alert("Got it!");
 
     var dataOffset = Math.round((tstamp - oldTstamp) / op['samplesInterval'])
-    _.each(['misses', 'gets', 'sets', 'ops'], function (cat) {
+    _.each(StatGraphs.recognizedStats, function (cat) {
       var oldArray = oldOps[cat];
       var newArray = ops[cat];
+      if (!oldArray || !newArray)
+        return;
 
       var oldLength = oldArray.length;
       var nowLength = newArray.length;
@@ -444,66 +446,70 @@ var StatGraphs = {
     linkSelector: 'span',
     firstItemIsDefault: true}),
   selectedCounter: 0,
+  recognizedStats: ("ops hit_ratio updates misses total_items curr_items bytes_read cas_misses "
+                    + "delete_hits conn_yields get_hits delete_misses total_connections "
+                    + "curr_connections threads bytes_written incr_hits get_misses "
+                    + "listen_disabled_num decr_hits cmd_flush engine_maxbytes bytes incr_misses "
+                    + "cmd_set decr_misses accepting_conns cas_hits limit_maxbytes cmd_get "
+                    + "connection_structures cas_badval auth_cmds").split(' '),
+  statDescriptions: {
+    // TODO: fill in
+  },
+  findGraphArea: function (statName) {
+    return $('#analytics_graph_' + statName)
+  },
   renderNothing: function () {
+    var self = this;
     var main = $('#analytics_main_graph')
-    var ops = $('#analytics_graph_ops')
-    var gets = $('#analytics_graph_gets')
-    var sets = $('#analytics_graph_sets')
-    var misses = $('#analytics_graph_misses')
 
-    prepareAreaUpdate(main);
-    prepareAreaUpdate(ops);
-    prepareAreaUpdate(gets);
-    prepareAreaUpdate(sets);
-    prepareAreaUpdate(misses);
+    _.each(self.recognizedStats, function (statName) {
+      prepareAreaUpdate(self.findGraphArea(statName));
+    });
   },
   update: function () {
+    var self = this;
+
     var cell = DAO.cells.stats;
     var stats = cell.value;
     if (!stats)
-      return this.renderNothing();
+      return self.renderNothing();
     stats = stats.op;
     if (!stats)
-      return this.renderNothing();
+      return self.renderNothing();
 
     var main = $('#analytics_main_graph')
-    var ops = $('#analytics_graph_ops')
-    var gets = $('#analytics_graph_gets')
-    var sets = $('#analytics_graph_sets')
-    var misses = $('#analytics_graph_misses')
 
-    var selected = this.selected.value;
+    var selected = self.selected.value;
 
     renderLargeGraph(main, stats[selected]);
 
-    renderSmallGraph(ops, stats.ops, "Ops per second",
-                     selected == 'ops');
-    renderSmallGraph(gets, stats.gets, "Gets per second",
-                     selected == 'gets');
-    renderSmallGraph(sets, stats.sets, "Sets per second",
-                     selected == 'sets');
-    renderSmallGraph(misses, stats.misses, "Misses per second",
-                     selected == 'misses');
+    _.each(self.recognizedStats, function (statName) {
+      if (!stats[statName])
+        return;
+      var area = self.findGraphArea(statName);
+      var description = self.statDescriptions[statName] || statName;
+      renderSmallGraph(area, stats[statName], description, selected == statName);
+    });
   },
   init: function () {
+    var self = this;
     DAO.cells.stats.subscribeAny($m(this, 'update'));
 
-    var selected = this.selected;
+    var selected = self.selected;
 
-    var ops = $('#analytics_graph_ops');
-    var gets = $('#analytics_graph_gets');
-    var sets = $('#analytics_graph_sets');
-    var misses = $('#analytics_graph_misses');
+    var t;
+    _.each(self.recognizedStats, function (statName) {
+      var area = self.findGraphArea(statName);
+      if (!t)
+        t = area;
+      else
+        t = t.add(area);
+      selected.addLink(area, statName);
+    });
 
-    selected.addLink(ops, 'ops');
-    selected.addLink(gets, 'gets');
-    selected.addLink(sets, 'sets');
-    selected.addLink(misses, 'misses');
-
-    selected.subscribe($m(this, 'update'));
+    selected.subscribe($m(self, 'update'));
     selected.finalizeBuilding();
 
-    var t = ops.add(gets).add(sets).add(misses);
     t.bind('mouseenter', mkHoverHandler('show'));
     t.bind('mouseleave', mkHoverHandler('hide'));
 

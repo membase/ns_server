@@ -1,6 +1,6 @@
 body { font-family: Arial, sans-serif; }
 #analytics_main_graph { width: 100%; }
-#analytics_graph_ops, #analytics_graph_gets, #analytics_graph_sets, #analytics_graph_misses { width: 20%; display: inline-block; }
+.analytics-small-graph { width: 20%; display: inline-block; }
 #left_pane, #right_pane, #middle_panel { vertical-align: top; }
 .section { border: 1px black solid; }
 #server_list_container .details { background-color: #F1F1F1; }
