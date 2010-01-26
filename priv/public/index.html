@@ -675,24 +675,47 @@
   </div>
 </div>
 <div class="jqmWindow" id="add_new_bucket_dialog">
-  <h1>Add New Bucket</h1>
-  <div id="add_new_bucket_errors_container"></div>
-  <div id="add_new_bucket_errors_template" class="template">
-    Couldn't create bucket due to:
-    <ul>
-      <!-- {% _.each(rows, function (e) { %} -->
-      <li>{%= h(e) %}
-      <!-- {% }); %} -->
-    </ul>
-  </div>
+  <div class="lbox">
+    <div class="top">
+      <div class="top_left"></div>
+      <div class="top_right"></div>
+      <div class="top_center"></div>
+    </div>
+    <div class="center">
+      <div class="pad">
+        <p class="lbox_header">Add New Bucket</p>
+        <div id="add_new_bucket_errors_container"></div>
+        <div id="add_new_bucket_errors_template" class="template">
+          Couldn't create bucket due to:
+          <ul>
+            <!-- {% _.each(rows, function (e) { %} -->
+            <li>{%= h(e) %}
+            <!-- {% }); %} -->
+          </ul>
+        </div>
 
-  <form id="add_new_bucket_form">
-  <p><label>Bucket Name<input type="text" name="name"></label>
-  <p><label>Cache Size<input type="text" name="cacheSize"><span class="cache-details"></span></label>
-  <p>Password<input type="password" name="password" autocomplete="off">
-  <p>Verify Password<input type="password" name="verifyPassword" autocomplete="off"> <span class="dont-match">Password don't match</span>
-  <p><a href="#" class="jqmClose">cancel</a> <button type="submit">Add Bucket</button>
-  </form>
+        <form id="add_new_bucket_form">
+          <p><label><b>Bucket Name:</b><input type="text" name="name" class="inp" style="width:290px;" value="No spaces, alphanumeric up to 12 characters"></label></p>
+          <p><label><b>Cache Size:</b><input type="text" name="cacheSize" class="inp" style="width:40px;"><span class="cache-details"></span>MB x 3 server nodes = 192MB Total Cache Size/30GB Cluster memory available.</label></p>
+          <p><b>&nbsp</b> <input type="checkbox" class="chkbx" /> <span class="text_12">Reserve memory in advance</span></p>
+          <p><b>Password:</b><input type="password" name="password" autocomplete="off" class="inp"></p>
+          <p><b>Verify Password:</b><input type="password" name="verifyPassword" autocomplete="off" class="inp"> <span class="dont-match">Password don't match</span></p>
+          <!-- <p><a href="#" class="jqmClose">cancel</a> <button type="submit">Add Bucket</button></p> -->
+          <div class="pas_20">
+            <div class="right save_cancel">
+              <button class="save_button float_right" type="submit">ADD</button>
+              <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div class="bottom">
+      <div class="bottom_left"></div>
+      <div class="bottom_right"></div>
+      <div class="bottom_center"></div>
+    </div>
+  </div>
 </div>
 <div class="jqmWindow" id="flush_cache_dialog_container">
 </div>

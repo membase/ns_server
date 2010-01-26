@@ -370,10 +370,10 @@ background:url(../images/mini_graph_bg.gif) 0 0 no-repeat; margin:0 12px 7px 12p
     top: 17%;
     left: 50%;
     
-    margin-left: -300px;
-    width: 600px;
+    margin-left: -357px;
+    width: 715px;
     
-    background-color: #EEE;
+    background-color: #fff;
     color: #333;
     border: 1px solid black;
     padding: 12px;
@@ -491,7 +491,7 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 #bucket_list_container {border-left:1px solid #c8ccce; border-bottom:1px solid #c8ccce;}
 
 /* lightbox styles */
-.lbox {width:711px; position:relative; margin:100px auto;}
+.lbox {width:711px; position:relative;}
 .lbox .top {height:13px; overflow:hidden;}
 .lbox .top div {height:13px; overflow:hidden;}
 .lbox .top .top_left {width:12px; float:left; background:url(../images/lbox_lt.png) 0 0 no-repeat;}
@@ -516,3 +516,11 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 .lbox .u_line_sm .label {display:block; float:left; width:110px; padding-top:5px; text-align:right; margin:0 5px 0 0;}
 .lbox .u_line_sm .inp {padding:2px 3px; border:1px solid #ccd2d6;}
 .lbox .warning {font-size:12px; color:#ec5223;}
+
+#add_new_bucket_form {}
+#add_new_bucket_form p {min-height:15px; _height:15px; padding:0 0 15px 0; font-size:11px; line-height:15px;}
+#add_new_bucket_form p label {}
+#add_new_bucket_form p b {display:block; font-weight:normal; width:130px; float:left; padding:5px 5px 0 0; font-size:12px; text-align:right;}
+#add_new_bucket_form p .inp {padding:2px 3px; border:1px solid #cdd3d8; background:none #fff; margin:0 5px 0 0;}
+#add_new_bucket_form p .chkbx {float:left; margin:0 5px 0 0;}
+#add_new_bucket_dialog form {padding:10px 0 0 0;}
