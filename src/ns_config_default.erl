@@ -43,9 +43,10 @@ default() ->
                {alerts, [server_down,
                          server_up,
                          server_joined,
-                         memory_low,
+                         server_left,
                          bucket_created,
-                         config_changed]}
+                         bucket_deleted,
+                         bucket_auth_failed]}
               ]},
      {pools, [{'_ver', {0, 0, 0}},
               {"default",
