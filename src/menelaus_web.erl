@@ -376,7 +376,7 @@ handle_bucket_info_streaming(PoolId, Id, Req) ->
 handle_bucket_delete(PoolId, BucketId, Req) ->
     case mc_bucket:bucket_delete(PoolId, BucketId) of
         true ->
-            ns_log:log(?MODULE, 0004, "Deleted bucket ~p from pool ~p",
+            ns_log:log(?MODULE, 0011, "Deleted bucket ~p from pool ~p",
                        [BucketId, PoolId]),
             Req:respond(204, [], []);
         false ->
@@ -427,7 +427,9 @@ handle_bucket_update(PoolId, BucketId, Req) ->
                                {auth_plain, Auth}),
             case BucketConfig2 =:= BucketConfig of
                 true  -> Req:respond({200, [], []}); % No change.
-                false -> mc_bucket:bucket_config_make(PoolId,
+                false -> ns_log:log(?MODULE, 0010, "bucket updated: ~p in: ~p",
+                                    [BucketId, PoolId]),
+                         mc_bucket:bucket_config_make(PoolId,
                                                       BucketId,
                                                       BucketConfig2),
                          Req:respond({200, [], []})
@@ -471,6 +473,8 @@ handle_bucket_create(PoolId, BucketId, Req) ->
     mc_bucket:bucket_config_make(PoolId,
                                  BucketId,
                                  BucketConfig),
+    ns_log:log(?MODULE, 0009, "bucket created: ~p in: ~p",
+               [BucketId, PoolId]),
     Req:respond({200, [], []}).
 
 handle_bucket_flush(PoolId, Id, Req) ->
