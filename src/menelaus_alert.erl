@@ -72,28 +72,17 @@ handle_alerts_settings_post(PostArgs) ->
                       false -> C
                   end;
              ({"email_server_encrypt", "1"}, C) ->
-                  S = proplists:get_value(email_server, C),
-                  lists:keystore(
-                    email_server, 1, C, {email_server,
-                                         lists:keystore(encrypt, 1, S,
-                                                        {encrypt, true})});
+                  set_subkey(email_server, encrypt, true, C);
              ({"email_server_encrypt", "0"}, C) ->
-                  S = proplists:get_value(email_server, C),
-                  lists:keystore(
-                    email_server, 1, C, {email_server,
-                                         lists:keystore(encrypt, 1, S,
-                                                        {encrypt, false})});
+                  set_subkey(email_server, encrypt, false, C);
              ({K, V}, C) ->
                   case string:tokens(K, "_") of
                       ["email", "server", K2] ->
                           case is_email_server_key(K2) of
                               true ->
-                                  S = proplists:get_value(email_server, C),
-                                  KA = list_to_existing_atom(K2),
-                                  lists:keystore(
-                                    email_server, 1, C,
-                                    {email_server,
-                                     lists:keystore(KA, 1, S, {KA, V})});
+                                  set_subkey(email_server,
+                                             list_to_existing_atom(K2),
+                                             V, C);
                               false -> C
                           end
                   end;
@@ -103,6 +92,12 @@ handle_alerts_settings_post(PostArgs) ->
           PostArgs),
     set_alert_config(AlertConfig2),
     ok.
+
+set_subkey(Key, SubKey, V, Config) ->
+    S = proplists:get_value(Key, Config),
+    lists:keystore(Key, 1, Config, {Key,
+                                    lists:keystore(SubKey, 1, S,
+                                                   {SubKey, V})}).
 
 build_alerts_settings() ->
     C = get_alert_config(),
