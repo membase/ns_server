@@ -269,7 +269,10 @@ auth_to_bucket(#mc_pool{} = Pool,
                 {"PLAIN", {AuthName, AuthPswd}} -> {ok, Bucket};
                 {"PLAIN", {_ForName,
                            AuthName, AuthPswd}} -> {ok, Bucket};
-                _NotPlain                       -> error
+                _NotPlain ->
+                    ns_log:log(?MODULE, 0006, "bucket auth failure: ~p in ~p",
+                               [BucketName, Pool]),
+                    error
             end;
         _ -> error
     end;
