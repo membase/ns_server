@@ -13,12 +13,16 @@ o [DONE] no node list
 o [DONE] expandable node list in overview status
 * leave cluster
 
+POOL ANALYTICS UI
+* Remove the 24 Hour zoom level
+
 BUCKETS UI
 o [DONE] (re)implement
 o [DONE] prepare new API to mass-fetch bucket details with support for pagination
 o [DONE] mass bucket stats for buckets section
 o [DROPPED for now] pagination
 * implement sorting
+* implement link to bucket analytics
 
 BUCKET PROPERTIES UI
 o [DONE] basic
@@ -37,7 +41,8 @@ JOIN CLUSTER
 * implement
 
 ALERTS
-* implement dismiss (may require REST API change)
+* implement dismiss via client filtering (though REST would
+  be better)
 * log
 
 CLUSTER SETTINGS
@@ -49,15 +54,14 @@ CLUSTER SETTINGS
 * alert types settings
 
 CONSOLE LOGIN
-* (re)implement
+* implement the new login screen (as seen in the artwork assets and the
+  mockingbird mock ups) with a cookie to recall previous login.  Also
+  implement logout.
 
 ADD BUCKET
 o [DONE] implement (with button on BUCKET PROPERTIES section)
 * fix ?? in Total Cluster Memory estimation in creation form
 * implement server side
-
-* Store password/login in cookies ? So that you don't have to re-enter
-   them on page refresh.
 
 o [DONE] leaving 'overview' section should disable polling of stats. Or maybe
    don't bother ?
