@@ -56,6 +56,7 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 
 .save_cancel {height:31px; padding:5px 0;}
 .save_cancel .save_button {display:block; width:120px; height:31px; font-weight:bolder; color:#fff; text-align:center; line-height:31px; font-size:14px; text-decoration:none; background:url(../images/button_blue_2.gif) 0 0 no-repeat; border:0px;}
+.save_cancel .button_3 {width:146px; height:31px; background:url(../images/button_blue_3.gif) 0 0 no-repeat;}
 .save_cancel .cancel_button {display:block; width:80px; height:31px; line-height:31px; color:#8b8b8e; text-align:center; font-weight:bolder; text-decoration:none;}
 
 .form {padding:10px 0 15px 0;}
@@ -373,7 +374,7 @@ background:url(../images/mini_graph_bg.gif) 0 0 no-repeat; margin:0 12px 7px 12p
     margin-left: -357px;
     width: 715px;
     
-    background-color: #fff;
+    background-color: #EEE;
     color: #333;
     border: 1px solid black;
     padding: 12px;
@@ -524,3 +525,9 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 #add_new_bucket_form p .inp {padding:2px 3px; border:1px solid #cdd3d8; background:none #fff; margin:0 5px 0 0;}
 #add_new_bucket_form p .chkbx {float:left; margin:0 5px 0 0;}
 #add_new_bucket_dialog form {padding:10px 0 0 0;}
+
+.join_claster table {width:100%;}
+.join_claster table tr td {width:50%; padding:7px 0 0 0;}
+.join_claster table tr th {text-align:left; font-size:14px; font-weight:normal; padding:10px 0 7px 0; border-bottom:1px solid #dbe3e8;}
+.join_claster table tr th a {text-decoration:none;}
+.join_claster .label {width:65px !important;}
