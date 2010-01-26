@@ -8,7 +8,7 @@
 function future(body, options) {
   return new Future(body, options);
 }
-var Future = function (body, options) {
+function Future(body, options) {
   this.thunk = body;
   _.extend(this, options || {});
 }

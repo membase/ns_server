@@ -99,7 +99,7 @@ function onUnexpectedXHRError(xhr) {
   //reloadApp();
 }
 
-var postWithValidationErrors = function (url, data, callback) {
+function postWithValidationErrors(url, data, callback) {
   if (!_.isString(data))
     data = $(data).serialize();
   $.ajax({
@@ -159,7 +159,7 @@ var DAO = {
     this.login = login;
     this.password = password;
 
-    var cb = function (data, status) {
+    function cb(data, status) {
       if (status == 'success') {
         DAO.ready = true;
         $(window).trigger('dao:ready');
@@ -301,7 +301,7 @@ var SamplesRestorer = mkClass({
       data["opsbysecondStartTStamp"] = samplesRestorer.lastTstamp;
     }
 
-    var valueTransformer = function (data) {
+    function valueTransformer(data) {
       samplesRestorer.transformOp(data.op);
       return data;
     }

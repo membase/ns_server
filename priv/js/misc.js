@@ -11,7 +11,7 @@ function getBacktrace() {
 
 function traceMethodCalls(object, methodName) {
   var original = object[methodName];
-  var tracer = function() {
+  function tracer() {
     var args = $.makeArray(arguments);
     console.log("traceIn:",object,".",methodName,"(",args,")");
     try {
@@ -45,7 +45,7 @@ function renderJSLink(functionName, arg, prefix) {
 ;(function(){
   var cache = {};
 
-  var handleURLEncodedScriptlets = function (str) {
+  function handleURLEncodedScriptlets(str) {
     var re = /%7B(?:%25|%)=.+?(?:%25|%)%7D/ig;
     var match;
     var res = [];
@@ -215,7 +215,7 @@ function $m(self, method, klass) {
       throw new Error("Bogus method: " + method + " on object: " + self);
   }
 
-  var rv = function () {
+  function rv () {
     return f.apply(self, arguments);
   }
 
@@ -226,12 +226,12 @@ function $m(self, method, klass) {
   return rv;
 }
 
-var $i = function (id) {
+function $i(id) {
   return document.getElementById(id);
 }
 
 // stolen from MIT-licensed prototype.js http://www.prototypejs.org/
-var functionArgumentNames = function(f) {
+function functionArgumentNames(f) {
   var names = f.toString().match(/^[\s\(]*function[^(]*\(([^\)]*)\)/)[1]
                                  .replace(/\s+/g, '').split(',');
   return names.length == 1 && !names[0] ? [] : names;

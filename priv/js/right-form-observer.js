@@ -10,7 +10,7 @@ $.fn.observePotentialChanges = (function () {
   var callbacks = {};
   var callbacksSize = 0;
 
-  var timerCallback = function () {
+  function timerCallback() {
     for (var i in callbacks) {
       (callbacks[i])();
     }
@@ -26,27 +26,27 @@ $.fn.observePotentialChanges = (function () {
       hadActivity = undefined;
     }
   }
-  var activateTimer = function () {
+  function activateTimer() {
     hadActivity = true;
     if (intervalId != null)
       return;
     console.log("right-observer: major activate");
     intervalId = setInterval(timerCallback, period);
   }
-  var suspendTimer = function () {
+  function suspendTimer() {
     if (intervalId == null)
       return;
     clearInterval(intervalId);
     intervalId = null;
   }
-  var requestTimer = function (callback) {
+  function requestTimer(callback) {
     callbacks[++idGen] = callback;
     callbacksSize++;
 
     activateTimer();
     return idGen;
   }
-  var releaseTimer = function (id) {
+  function releaseTimer(id) {
     delete callbacks[id];
     if (--callbacksSize == 0)
       suspendTimer();
@@ -65,7 +65,7 @@ $.fn.observePotentialChanges = (function () {
       }
     }
 
-    var cb = function () {
+    function cb() {
       callback.call(null, instance);
       if (!boundF)
         bindEvents();
@@ -73,14 +73,14 @@ $.fn.observePotentialChanges = (function () {
 
     id = requestTimer(cb);
 
-    var bindEvents = function () {
+    function bindEvents() {
       query.bind(events, boundF = function (e) {
         activateTimer();
         unbindEvents();
       });
     }
 
-    var unbindEvents = function () {
+    function unbindEvents() {
       query.unbind(events, boundF);
       boundF = null;
     }
