@@ -482,3 +482,20 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 #get_started {display:none;}
 
 #bucket_list_container {border-left:1px solid #c8ccce; border-bottom:1px solid #c8ccce;}
+
+/* lightbox styles */
+.lbox {width:711px; position:relative; margin:100px auto;}
+.lbox .top {height:13px; overflow:hidden;}
+.lbox .top div {height:13px; overflow:hidden;}
+.lbox .top .top_left {width:12px; float:left; background:url(../images/lbox_lt.png) 0 0 no-repeat;}
+.lbox .top .top_right {width:12px; float:right; background:url(../images/lbox_rt.png) 0 0 no-repeat;}
+.lbox .top .top_center {margin:0 12px 0 12px; background:url(../images/lbox_t.png) 0 0 repeat-x;}
+
+.lbox .center {background:url(../images/lbox_cent.png) 0 0 repeat-y;}
+.lbox .center .pad {height:200px; padding:0 17px;}
+
+.lbox .bottom {height:17px; overflow:hidden;}
+.lbox .bottom div {height:17px; overflow:hidden;}
+.lbox .bottom .bottom_left {width:12px;float:left; background:url(../images/lbox_lb.png) 0 0 no-repeat;}
+.lbox .bottom .bottom_right {width:12px; float:right; background:url(../images/lbox_rb.png) 0 0 no-repeat;}
+.lbox .bottom .bottom_center {margin:0 12px; background:url(../images/lbox_b.png) 0 0 repeat-x;}
