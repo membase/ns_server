@@ -329,8 +329,9 @@ load_file(txt, ConfigPath) -> read_includes(ConfigPath);
 
 load_file(bin, ConfigPath) ->
     case file:read_file(ConfigPath) of
-        {ok, B} -> {ok, binary_to_term(B)};
-        _       -> not_found
+        {ok, <<>>} -> not_found;
+        {ok, B}    -> {ok, binary_to_term(B)};
+        _          -> not_found
     end.
 
 save_file(bin, ConfigPath, X) ->
