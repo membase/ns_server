@@ -44,6 +44,13 @@ handle_logs(Req) ->
 handle_alerts(Req) ->
     reply_json(Req, {struct, [{list, build_alerts(Req:parse_qs())}]}).
 
+% The PostArgs looks like a single flat key-value map, like the json of...
+%
+%   {"email": "joe@rock.com",
+%    "alert_server_up": "1",
+%    "alert_server_joined": "0",
+%    "email_server_port": "587"}
+%
 handle_alerts_settings_post(PostArgs) ->
     AlertConfig = lists:keystore(alerts, 1, get_alert_config(), {alerts, []}),
     AlertConfig2 =
@@ -57,11 +64,38 @@ handle_alerts_settings_post(PostArgs) ->
              ({[$a, $l, $e, $r, $t, $_ | K], "1"}, C) ->
                   case is_alert_key(K) of
                       true ->
-                          lists:keystore(alerts, 1, C,
-                                         {alerts,
-                                          [list_to_atom(K) |
-                                           proplists:get_value(alerts, C)]});
+                          lists:keystore(
+                            alerts, 1, C,
+                            {alerts,
+                             [list_to_existing_atom(K) |
+                              proplists:get_value(alerts, C)]});
                       false -> C
+                  end;
+             ({"email_server_encrypt", "1"}, C) ->
+                  S = proplists:get_value(email_server, C),
+                  lists:keystore(
+                    email_server, 1, C, {email_server,
+                                         lists:keystore(encrypt, 1, S,
+                                                        {encrypt, true})});
+             ({"email_server_encrypt", "0"}, C) ->
+                  S = proplists:get_value(email_server, C),
+                  lists:keystore(
+                    email_server, 1, C, {email_server,
+                                         lists:keystore(encrypt, 1, S,
+                                                        {encrypt, false})});
+             ({K, V}, C) ->
+                  case string:tokens(K, "_") of
+                      ["email", "server", K2] ->
+                          case is_email_server_key(K2) of
+                              true ->
+                                  S = proplists:get_value(email_server, C),
+                                  KA = list_to_existing_atom(K2),
+                                  lists:keystore(
+                                    email_server, 1, C,
+                                    {email_server,
+                                     lists:keystore(KA, 1, S, {KA, V})});
+                              false -> C
+                          end
                   end;
              (_, C) -> C
           end,
@@ -159,6 +193,13 @@ alert_key(ns_node_disco, 0005) -> server_down;
 alert_key(ns_node_disco, 0004) -> server_up;
 alert_key(ns_confg_log, 0001)  -> config_changed;
 alert_key(_Module, _Code) -> all.
+
+is_email_server_key("user")    -> true;
+is_email_server_key("pass")    -> true;
+is_email_server_key("addr")    -> true;
+is_email_server_key("port")    -> true;
+is_email_server_key("encrypt") -> true;
+is_email_server_key(_)         -> false.
 
 default_alert_config() ->
     [{email, ""},
