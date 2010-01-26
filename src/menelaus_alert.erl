@@ -54,7 +54,7 @@ handle_alerts_settings_post(PostArgs) ->
                   lists:keystore(email_alerts, 1, C, {email_alerts, true});
              ({"email_alerts", "0"}, C) ->
                   lists:keystore(email_alerts, 1, C, {email_alerts, false});
-             ({[$s, $_ | K], "1"}, C) ->
+             ({[$a, $l, $e, $r, $t, $_ | K], "1"}, C) ->
                   case is_alert_key(K) of
                       true ->
                           lists:keystore(alerts, 1, C,
@@ -72,15 +72,20 @@ handle_alerts_settings_post(PostArgs) ->
 
 build_alerts_settings() ->
     C = get_alert_config(),
+    S = proplists:get_value(email_server, C, []),
     [{email, list_to_binary(proplists:get_value(email, C, ""))},
-     {sendAlerts, case proplists:get_value(email_alerts, C, false) of
-                      true -> <<"1">>;
-                      _    -> <<"0">>
-                  end} |
-     lists:map(fun(X) ->
-                       {"s_" ++ atom_to_list(X), <<"1">>}
-               end,
-               proplists:get_value(alerts, C, []))].
+     {email_server,
+      {struct, [{user, bin_string(proplists:get_value(user, S, ""))},
+                {pass, bin_string(proplists:get_value(pass, S, ""))},
+                {addr, bin_string(proplists:get_value(addr, S, ""))},
+                {port, bin_string(proplists:get_value(port, S, ""))},
+                {encrypt, bin_boolean(proplists:get_value(encrypt, S, false))}
+               ]}},
+     {sendAlerts, bin_boolean(proplists:get_value(email_alerts, C, false))},
+     {alerts,
+      {struct, lists:map(fun(X) -> {atom_to_list(X), <<"1">>}
+                         end,
+                         proplists:get_value(alerts, C, []))}}].
 
 build_logs(Params) ->
     {MinTStamp, Limit} = common_params(Params),
@@ -179,6 +184,12 @@ common_params(Params) ->
                 L -> list_to_integer(L)
             end,
     {MinTStamp, Limit}.
+
+bin_boolean(true) -> <<"1">>;
+bin_boolean(_)    -> <<"0">>.
+
+bin_string(undefined) -> <<"">>;
+bin_string(S)         -> list_to_binary(S).
 
 -ifdef(EUNIT).
 
