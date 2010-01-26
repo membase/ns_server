@@ -109,7 +109,7 @@ get_bucket_auth(BucketConfig) ->
         undefined                            -> undefined;
         {_AuthName, _AuthPswd} = A           -> {"PLAIN", A};
         {_ForName, _AuthName, _AuthPswd} = A -> {"PLAIN", A};
-        X -> ns_log:log(?MODULE, 0005, "bucket auth_plain config error: ~p",
+        X -> ns_log:log(?MODULE, 0001, "bucket auth_plain config error: ~p",
                         [X]),
              error
     end.
@@ -138,7 +138,9 @@ bucket_config_make(PoolName, BucketName, BucketConfig) ->
                                                   BucketConfig)),
     case Pools =:= Pools2 of
         true  -> true; % No change.
-        false -> mc_pool:pools_config_set(Pools2) % Created.
+        false -> ns_log:log(?MODULE, 0002, "bucket created: ~p in: ~p",
+                            [BucketName, PoolName]),
+                 mc_pool:pools_config_set(Pools2) % Created.
     end.
 
 bucket_config_set(PoolConfig, BucketName, BucketConfig) ->
@@ -184,6 +186,8 @@ bucket_delete(PoolId, Id) ->
                     PConfig2 = mc_bucket:bucket_config_delete(PConfig, Id),
                     case PConfig =/= PConfig2 of
                         true ->
+                            ns_log:log(?MODULE, 0003, "bucket deleted: ~p in: ~p",
+                                       [Id, PoolId]),
                             Pools2 = mc_pool:pool_config_set(Pools, PoolId,
                                                              PConfig2),
                             mc_pool:pools_config_set(Pools2),
