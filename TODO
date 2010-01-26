@@ -9,7 +9,7 @@
 OVERVIEW
 * 'Get Started' section
 o [DONE] no node list
-* correct fields in node list on overview page (done for OS and
+* correct fields in node list on overview page (done for OS and 
   version, need REST response for memory)
 o [DONE] expandable node list in overview status
 * leave cluster
