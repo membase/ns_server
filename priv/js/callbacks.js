@@ -35,8 +35,13 @@ var CallbackSlot = mkClass({
   broadcast: function (data) {
     var oldSlaves = this.slaves;
     var newSlaves = this.slaves = [];
-    $.each(oldSlaves, function (index, slave) {
-      slave.thunk(data);
+    _.each(oldSlaves, function (slave) {
+      try {
+        slave.thunk(data);
+      } catch (e) {
+        console.log("got exception in CallbackSlot#broadcast", e, "for slave thunk", slave.thunk);
+        _.defer(function () {throw e;});
+      }
       if (!slave.dead)
         newSlaves.push(slave);
     });
