@@ -190,8 +190,9 @@ alert_key(ns_node_disco, 0005) -> server_down;
 alert_key(ns_node_disco, 0004) -> server_up;
 alert_key(menelaus_web, 0009)  -> server_joined;
 alert_key(menelaus_web, 0013)  -> server_left;
-alert_key(menelaus_web, 0011)  -> bucket_deleted;
 alert_key(menelaus_web, 0012)  -> bucket_created;
+alert_key(menelaus_web, 0011)  -> bucket_deleted;
+alert_key(mc_pool, 0006)       -> bucket_auth_failed;
 alert_key(_Module, _Code) -> all.
 
 is_email_server_key("user")    -> true;
