@@ -1075,3 +1075,8 @@ $(window).bind('template:rendered', function () {
       $(this).removeClass('hovered');
     });
 });
+$('.remove_bucket').live('click', function() {
+    showDialog('flush_bucket_remove_dialog');
+  });
+// flush_bucket_remove_dialog
+// showDialog('flush_bucket_remove_dialog');

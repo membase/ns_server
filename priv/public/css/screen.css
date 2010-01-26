@@ -26,7 +26,9 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 .clear {display:block; height:0px; overflow:hidden; clear:both;}
 .pad_10 {padding:10px;}
 .pat_10 {padding:10px 0;}
+.pat_20 {padding:20px 0;}
 .pas_10 {padding:0 10px;}
+.pas_20 {padding:0 20px;}
 .pab_10 {padding-bottom:10px;}
 .comment {font-size:11px; color:#8b8b8e;}
 .nbrdr {border:0px !important;}
@@ -34,10 +36,13 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 .bimnone {background-image:none !important;}
 .gray_link {color:#444245 !important;}
 .text_11 {font-size:11px;}
+.text_12 {font-size:12px;}
+.text_14 {font-size:14px !important;}
 .mt-10 {margin-top:-10px;}
 .mt-20 {margin-top:-20px;}
 .bolder {font-weight:bolder;}
 .normal {font-weight:normal;}
+.norm_14 {font-size:14px !important; font-weight:normal !important;}
 .point {cursor:point;}
 .brdr_exl_t {border:1px solid #d4d4d5; border-top:0px;}
 .brdr_exl_r {border:1px solid #d4d4d5; border-right:0px;}
@@ -50,7 +55,7 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 .select_short {width:120px;}
 
 .save_cancel {height:31px; padding:5px 0;}
-.save_cancel .save_button {display:block; width:120px; height:31px; font-weight:bolder; color:#fff; text-align:center; line-height:31px; font-size:14px; text-decoration:none; background:url(../images/button_blue_2.gif) 0 0 no-repeat;}
+.save_cancel .save_button {display:block; width:120px; height:31px; font-weight:bolder; color:#fff; text-align:center; line-height:31px; font-size:14px; text-decoration:none; background:url(../images/button_blue_2.gif) 0 0 no-repeat; border:0px;}
 .save_cancel .cancel_button {display:block; width:80px; height:31px; line-height:31px; color:#8b8b8e; text-align:center; font-weight:bolder; text-decoration:none;}
 
 .form {padding:10px 0 15px 0;}
@@ -326,7 +331,9 @@ body { font-family: Arial, sans-serif;}
 .analytics_graph_main {height:300px; background:url(../images/devider_line_2.gif) 0 100% repeat-x #eeeeef; border-left:1px solid #dbdbdb; border-right:1px solid #dbdbdb; padding:0 10px;}
 .graph_info_label {padding:3px; font-size:11px;}
 .graph_nav {padding:10px 0 10px 2px;}
-.graph_nav span {display:block; width:166px !important; height:61px; float:left; overflow:hidden; background:url(../images/mini_graph_bg.gif) 0 0 no-repeat; margin:0 12px; cursor:pointer;}
+.graph_nav span {display:block; width:166px !important; height:61px; float:left; overflow:hidden; 
+background:url(../images/mini_graph_bg.gif) 0 0 no-repeat; margin:0 12px 7px 12px; cursor:pointer;}
+.graph_nav span span {background:none; margin:0px;}
 .graph_nav .selected {background:url(../images/mini_graph_bg.gif) 0 -61px no-repeat;}
 
 
@@ -492,10 +499,20 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 .lbox .top .top_center {margin:0 12px 0 12px; background:url(../images/lbox_t.png) 0 0 repeat-x;}
 
 .lbox .center {background:url(../images/lbox_cent.png) 0 0 repeat-y;}
-.lbox .center .pad {height:200px; padding:0 17px;}
+.lbox .center .pad {padding:0 7px;}
 
 .lbox .bottom {height:17px; overflow:hidden;}
 .lbox .bottom div {height:17px; overflow:hidden;}
 .lbox .bottom .bottom_left {width:12px;float:left; background:url(../images/lbox_lb.png) 0 0 no-repeat;}
 .lbox .bottom .bottom_right {width:12px; float:right; background:url(../images/lbox_rb.png) 0 0 no-repeat;}
 .lbox .bottom .bottom_center {margin:0 12px; background:url(../images/lbox_b.png) 0 0 repeat-x;}
+
+.lbox .lbox_header {color:#4e5557; font-size:18px; padding:0 20px 5px 20px; border-bottom:1px solid #afdcef;}
+.lbox .u_line {padding:20px 0 5px 0; font-size:12px; font-weight:bolder; color:#4e5557; border-bottom:1px solid #ccd3d7;}
+.lbox .u_line .label {font-weight:normal; display:block; min-width:85px; _width:85px; text-align:right; float:left; margin:0 5px 0 0; white-space:nowrap;}
+.lbox .u_line a.float_right {font-size:11px; cursor:pointer;}
+.lbox .pat_10 p textarea {width:100%; background:none #fff; border:1px solid #ccd3d7; overflow:auto;}
+.lbox .u_line_sm {padding:0 0 10px 0; font-size:12px;}
+.lbox .u_line_sm .label {display:block; float:left; width:110px; padding-top:5px; text-align:right; margin:0 5px 0 0;}
+.lbox .u_line_sm .inp {padding:2px 3px; border:1px solid #ccd2d6;}
+.lbox .warning {font-size:12px; color:#ec5223;}

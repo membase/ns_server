@@ -634,13 +634,45 @@
 <div class="jqmWindow" id="bucket_details_dialog_container">
 </div>
 <div id="bucket_details_dialog_template" class="template">
-<a href="#" class="jqmClose">Close</a>
-<hr>
-<p>Bucket properties for {%= h(b.name) %}</p>
-<p>Bucket name: {%= h(b.name) %}</p>
-<p>Cache size: {%= h(b.basicStats.cacheSize) %} MB <button type="button" onclick="{%=jsLink('BucketsSection.startFlushCache', b.uri)%}">Flush All</button></p>
-<p>Password: ***** <a href="javascript:BucketsSection.startPasswordChange()">Change Password</a></p>
-<p>Sample connection string: <textarea rows="3" readonly>sample connection string here</textarea></p>
+  <div class="lbox">
+    <div class="top">
+      <div class="top_left"></div>
+      <div class="top_right"></div>
+      <div class="top_center"></div>
+    </div>
+    <div class="center">
+      <div class="pad">
+        <p class="lbox_header">Bucket properties for {%= h(b.name) %}</p>
+        <div class="pas_20">
+          <!-- <a href="#" class="jqmClose">Close</a> -->
+          <p class="u_line"><span class="label">Bucket name:</span><a class="float_right remove_bucket">Remove</a> {%= h(b.name) %}</p>
+          <p class="u_line"><span class="label">Cache size:</span>
+          <a class="float_right"onclick="{%=jsLink('BucketsSection.startFlushCache', b.uri)%}">Flush All</a>
+          {%= h(b.basicStats.cacheSize) %} MB 
+          <!--<button type="button" onclick="{%=jsLink('BucketsSection.startFlushCache', b.uri)%}">Flush All</button>-->
+          </p>
+          <p class="u_line"><span class="label">Password:</span>
+          <a class="float_right" href="javascript:BucketsSection.startPasswordChange()">Change Password</a>
+          ***** </p>
+          <div class="pat_10">
+            <p class="normal text_12">
+            Sample connection string:<br />
+            <textarea rows="3" readonly>sample connection string here</textarea>
+            </p>
+            <div class="right save_cancel">
+              <button class="save_button float_right" type="submit">DONE</button>
+              <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="bottom">
+      <div class="bottom_left"></div>
+      <div class="bottom_right"></div>
+      <div class="bottom_center"></div>
+    </div>
+  </div>
 </div>
 <div class="jqmWindow" id="add_new_bucket_dialog">
   <h1>Add New Bucket</h1>
@@ -665,22 +697,135 @@
 <div class="jqmWindow" id="flush_cache_dialog_container">
 </div>
 <div class="template" id="flush_cache_dialog_template">
-  <h1>Are you sure you want to flush all items in {%=h(bucket.name)%}</h1>
-  <table><tr><td>Cache Size<td>{%=h(bucket.basicStats.cacheSize)%}
-     [MB x {%=h(DAO.getBucketNodesCount(bucket))%} = {%=h(DAO.getBucketNodesCount(bucket) * bucket.basicStats.cacheSize)%}MB Total Cache]
-    <tr><td>Total Items Stored<td>{%=h(bucket.basicStats.totalItemsStored)%}
-  </table>
-  <p><a href='#' class="jqmClose">cancel</a>
-     <button type="button"
-     onclick="{%=renderJSLink('BucketsSection.completeFlushCache', bucket.uri, '')%}">Flush</button></p>
+  <div class="lbox">
+    <div class="top">
+      <div class="top_left"></div>
+      <div class="top_right"></div>
+      <div class="top_center"></div>
+    </div>
+    <div class="center">
+      <div class="pad">
+        <p class="lbox_header">
+          Bucket Properties
+        </p>
+        <div class="pas_20">
+          <!--
+          <table>
+            <tr>
+              <td>
+                Cache Size
+              </td>
+              <td>
+                {%=h(bucket.basicStats.cacheSize)%}
+                [MB x {%=h(DAO.getBucketNodesCount(bucket))%} = {%=h(DAO.getBucketNodesCount(bucket) * bucket.basicStats.cacheSize)%}MB Total Cache]
+              </td>
+            </tr>
+            <tr>
+              <td>Total Items Stored</td>
+              <td>{%=h(bucket.basicStats.totalItemsStored)%}</td>
+            </tr>
+          </table>
+          -->
+          <p class="u_line text_14">
+            <span class="label">Flushing Cache:</span>
+            <strong>
+              {%=h(bucket.basicStats.cacheSize)%}
+                [MB x {%=h(DAO.getBucketNodesCount(bucket))%} = {%=h(DAO.getBucketNodesCount(bucket) * bucket.basicStats.cacheSize)%}MB Total Cache]
+            </strong>
+          </p>
+          <div class="warning pat_20">
+            	<strong>Warning</strong> – Flushing all the cache will result in data loss for this bucket. Are you sure you want to flush the cache?
+          </div>
+        </div>
+        <div class="pas_20">
+          <div class="right save_cancel">
+            <button class="save_button float_right" type="submit" onclick="{%=renderJSLink('BucketsSection.completeFlushCache', bucket.uri, '')%}">FLUSH</button>
+            <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="bottom">
+      <div class="bottom_left"></div>
+      <div class="bottom_right"></div>
+      <div class="bottom_center"></div>
+    </div>
+  </div>
+</div>
+<div class="jqmWindow" id="flush_bucket_remove_dialog">
+  <div class="lbox">
+    <div class="top">
+      <div class="top_left"></div>
+      <div class="top_right"></div>
+      <div class="top_center"></div>
+    </div>
+    <div class="center">
+      <div class="pad">
+        <p class="lbox_header">
+          Bucket Properties
+        </p>
+        <div class="pas_20">
+          <p class="u_line text_14">
+            <span class="norm_14">Removing</span>
+            <strong>
+              Bucket_6
+            </strong>
+          </p>
+          <div class="warning pat_20">
+            	<strong>Warning</strong> – Removing this bucket will result in complete data loss for this bucket. Are you sure you want to remove it?
+          </div>
+        </div>
+        <div class="pas_20">
+          <div class="right save_cancel">
+            <button class="save_button float_right" type="submit" onclick="{%=renderJSLink('BucketsSection.completeFlushCache', bucket.uri, '')%}">FLUSH</button>
+            <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="bottom">
+      <div class="bottom_left"></div>
+      <div class="bottom_right"></div>
+      <div class="bottom_center"></div>
+    </div>
+  </div>
 </div>
 <div class="jqmWindow" id="bucket_password_dialog">
-  <h1>Enter new password</h1>
-  <form id="bucket_password_form">
-  <label>Password: <input type="password" name="password"></label>
-  <label>Verify Password: <input type="password" name="verifyPassword"></label>
-  <p><a class="jqmClose">Cancel</a><button type="submit">Submit</button></p>
-  </form>
+  <div class="lbox">
+    <div class="top">
+      <div class="top_left"></div>
+      <div class="top_right"></div>
+      <div class="top_center"></div>
+    </div>
+    <div class="center">
+      <div class="pad">
+        <p class="lbox_header">Bucket Properties</p>
+        <br />
+        <div class="pas_20">
+          <p class="u_line norm_14">
+            Change Password: ******
+          </p>
+        </div>
+        <form id="bucket_password_form" class="pat_10">
+          <div class="pas_20">
+            <p class="u_line_sm"><span class="label">Password:</span> <input class="inp" type="password" name="password"></p>
+            <p class="u_line_sm"><span class="label">New Password:</span> <input class="inp" type="password" name="verifyPassword"></p>
+            <p class="u_line_sm"><span class="label">Verify Password:</span> <input class="inp" type="password" name="verifyPassword"></p>
+            <div class="right save_cancel">
+              <!--<a class="save_button float_right" href="#">SAVE</a>-->
+              <button type="submit" class="save_button float_right">CHANGE</button>
+              <a class="jqmClose cancel_button float_right" href="#">CANCEL</a>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div class="bottom">
+      <div class="bottom_left"></div>
+      <div class="bottom_right"></div>
+      <div class="bottom_center"></div>
+    </div>
+  </div>
 </div>
 <div class="jqmWindow" id="join_cluster_dialog">
   <h1>Join a Cluster</h1>
