@@ -347,7 +347,7 @@ function renderLargeGraph(main, data) {
   main.html("");
 //  main.css("outline", "red solid 1px");
   var width = Math.min(main.parent().innerWidth(), 740);
-  var height = 80;
+  var height = 250;
   var paper = Raphael(main.get(0), width, height+20);
 
   var xs = _.map(data, function (_, i) {return i;});
@@ -356,7 +356,7 @@ function renderLargeGraph(main, data) {
                     {
                       gutter: 10,
                       minY: 0,
-                      maxY: yMax*1.2,
+                      maxY: yMax ? yMax*1.2 : 10,
                       colors: ['#a2a2a2'],
                       width: 1,
                       hook: function (h) {
@@ -414,8 +414,11 @@ function renderSmallGraph(jq, data, text, isSelected) {
   var xs = _.map(data, function (_, i) {return i;});
 
   var plotY = isSelected ? 20 : 30;
+  var maxY = _.max(data);
   paper.g.linechart(0, plotY, width, plotHeight, xs, data, {
     width: $.browser.msie ? 2 : 1,
+    minY: 0,
+    maxY: maxY ? maxY : 10,
     colors: ["#e2e2e2"]
   });
   var ymax = _.max(data).toFixed(0);
@@ -486,7 +489,7 @@ var StatGraphs = {
 
     renderLargeGraph(main, stats[selected]);
 
-    _.each(self.recognizedStats, function (statName) {
+    _.each(self.recognizedStats.slice(0, 4), function (statName) {
       if (!stats[statName])
         return;
       var area = self.findGraphArea(statName);
