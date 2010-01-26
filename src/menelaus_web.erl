@@ -566,6 +566,8 @@ handle_eject_post(Req) ->
                     case lists:member(OtpNode, ns_node_disco:nodes_wanted()) of
                         true ->
                             ok = ns_cluster:leave(OtpNode),
+                            ns_log:log(?MODULE, 0013, "Node ejected: ~p from node: ~p",
+                                       [OtpNode, erlang:node()]),
                             Req:respond({200, [], []});
                         false ->
                             % Node doesn't exist.
