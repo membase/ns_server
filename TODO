@@ -9,7 +9,8 @@
 OVERVIEW
 * 'Get Started' section
 o [DONE] no node list
-* correct fields in node list on overview page
+* correct fields in node list on overview page (done for OS and
+  version, need REST response for memory)
 o [DONE] expandable node list in overview status
 * leave cluster
 
@@ -62,6 +63,10 @@ ADD BUCKET
 o [DONE] implement (with button on BUCKET PROPERTIES section)
 * fix ?? in Total Cluster Memory estimation in creation form
 * implement server side
+
+ERROR HANDLING
+* actually reload the page when an error occurs; right now a dialog is displayed
+* (low priority) serve up customized 404 and 500 pages
 
 o [DONE] leaving 'overview' section should disable polling of stats. Or maybe
    don't bother ?
