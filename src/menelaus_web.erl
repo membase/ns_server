@@ -473,7 +473,7 @@ handle_bucket_create(PoolId, BucketId, Req) ->
     mc_bucket:bucket_config_make(PoolId,
                                  BucketId,
                                  BucketConfig),
-    ns_log:log(?MODULE, 0009, "bucket created: ~p in: ~p",
+    ns_log:log(?MODULE, 0012, "bucket created: ~p in: ~p",
                [BucketId, PoolId]),
     Req:respond({200, [], []}).
 

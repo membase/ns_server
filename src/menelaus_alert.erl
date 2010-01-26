@@ -186,6 +186,8 @@ is_alert_key(_) -> false.
 
 alert_key(ns_node_disco, 0005) -> server_down;
 alert_key(ns_node_disco, 0004) -> server_up;
+alert_key(menelaus_web, 0009)  -> server_joined;
+alert_key(menelaus_web, 0012)  -> bucket_created;
 alert_key(ns_confg_log, 0001)  -> config_changed;
 alert_key(_Module, _Code) -> all.
 
