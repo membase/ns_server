@@ -55,7 +55,9 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 .select_short {width:120px;}
 
 .save_cancel {height:31px; padding:5px 0;}
-.save_cancel .save_button {display:block; width:120px; height:31px; font-weight:bolder; color:#fff; text-align:center; line-height:31px; font-size:14px; text-decoration:none; background:url(../images/button_blue_2.gif) 0 0 no-repeat; border:0px;}
+.save_cancel .save_button {display:block; width:121px; height:31px; font-weight:bolder; color:#fff; text-align:center; line-height:31px; font-size:14px; text-decoration:none; background:url(../images/button_blue.gif) 0 0 no-repeat; border:0px;}
+.save_cancel .save_button:hover {background-position:0 -31px;}
+.save_cancel .save_button:active {background-position:0 -62px;}
 .save_cancel .button_3 {width:146px; height:31px; background:url(../images/button_blue_3.gif) 0 0 no-repeat;}
 .save_cancel .cancel_button {display:block; width:80px; height:31px; line-height:31px; color:#8b8b8e; text-align:center; font-weight:bolder; text-decoration:none;}
 
@@ -66,6 +68,8 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 
 /* buttons */
 .button_medium {width:154px; height:32px; font-size:14px; border:0px; overflow:visible; background:url(../images/button_gray_medium.gif) 0 0 no-repeat; line-height:32px; cursor:pointer;}
+.button_medium:hover {background-position:0 -32px; color:#f8eeed;}
+.button_medium:active {background-position:0 -64px; color:#e0eff7;}
 
 /* alerts */
 .alert_1 {display:block; width:28px; height:29px; background:url(../images/alert_1.gif) 0 0 no-repeat; margin:-7px 0 0 0;}
@@ -429,6 +433,8 @@ a.selected { text-decoration: underline; }
 .test_claster .content {padding:3px 19px;}
 .test_claster .label {font-size:12px; color:#444245; margin:0 0 5px 0; display:block;}
 .test_claster .start {display:block; width:121px; height:31px; background:url(../images/button_blue.gif) 0 0 no-repeat; font-size:14px; font-weight:bolder; line-height:31px; color:#fff; text-decoration:none; text-align:center; margin:0 0 5px 0;}
+.test_claster .start:hover {background-position:0 -31px;}
+.test_claster .start:active {background-position:0 -62px;}
 
 /* shadow block */
 .shadow_box {padding:0 0 20px 0;}
