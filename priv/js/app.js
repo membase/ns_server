@@ -1016,9 +1016,9 @@ _.extend(ViewHelpers, {
 function loginFormSubmit() {
   var login = $('#login_form [name=login]').val();
   var password = $('#login_form [name=password]').val();
-  var spinner = overlayWithSpinner('#login_form');
+  //var spinner = overlayWithSpinner('#login_form');
   DAO.performLogin(login, password, function (status) {
-    spinner.remove();
+    //spinner.remove();
     if (status == 'success') {
       hideDialog('login_dialog');
       return;
