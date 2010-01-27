@@ -35,4 +35,5 @@ basic_info() ->
     {erlang:node(),
      [{version, version()},
       {system_arch, erlang:system_info(system_architecture)},
-      {wall_clock, trunc(WallClockMSecs / 1000)}]}.
+      {wall_clock, trunc(WallClockMSecs / 1000)},
+      {memory_data, memsup:get_memory_data()}]}.
