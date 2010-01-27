@@ -95,9 +95,23 @@ function addBasicAuth(xhr, login, password) {
 }
 
 function onUnexpectedXHRError(xhr) {
-  alert("Either a network or server side error has occured.  The server has logged the error.  We will reload the console now to attempt to recover.");
   window.onUnexpectedXHRError = function () {}
-  //reloadApp();
+
+  var reloadInfo = $.cookie('ri');
+  var ts;
+
+  var now = (new Date()).valueOf();
+  if (reloadInfo) {
+    ts = parseInt(reloadInfo);
+    if ((now - ts) < 15*1000) {
+      alert('This is second network failure in short term. Something must be broken. Reloading is suppressed');
+      return;
+    }
+  }
+
+  alert("Either a network or server side error has occured.  The server has logged the error.  We will reload the console now to attempt to recover.");
+  $.cookie('ri', String((new Date()).valueOf()), {expires:0});
+  reloadApp();
 }
 
 function postWithValidationErrors(url, data, callback) {
