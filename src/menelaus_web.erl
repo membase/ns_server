@@ -103,7 +103,7 @@ loop(Req, DocRoot) ->
                               [PoolId, Id]};
                          ["pools", PoolId, "buckets", Id, "stats"] ->
                              {auth, fun menelaus_stats:handle_bucket_stats/3,
-                              [PoolId, Id]};
+                              [PoolId, Id]};  %% todo: seems broken
                          ["logs"] ->
                              {auth, fun menelaus_alert:handle_logs/1};
                          ["alerts"] ->
@@ -173,7 +173,7 @@ loop(Req, DocRoot) ->
 %% Internal API
 
 implementation_version() ->
-    %% TODO: pull this from git describe.
+    %% TODO: pull this from ns_info:version
     <<"comes_from_git_describe">>.
 
 handle_pools(Req) ->
@@ -343,21 +343,21 @@ handle_bucket_info(PoolId, Id, Req) ->
 build_bucket_info(PoolId, Id, _UserPassword) ->
     Pool = find_pool_by_id(PoolId),
     _Bucket = find_bucket_by_id(Pool, Id),
-    StatsURI = list_to_binary("/pools/"++PoolId++"/buckets/"++Id++"/stats"),
+    StatsUri = list_to_binary("/pools/"++PoolId++"/buckets/"++Id++"/stats"),
     Nodes = build_nodes_info(Pool, false),
     List1 = [{name, list_to_binary(Id)},
              {uri, list_to_binary("/pools/" ++ PoolId ++
                                   "/buckets/" ++ Id)},
              {streamingUri, list_to_binary("/pools/" ++ PoolId ++
                                            "/bucketsStreaming/" ++ Id)},
-             %% TODO: undocumented
-             {flushCacheURI, list_to_binary("/pools/" ++ PoolId ++
+             %% TODO: this should be under a controllers/ kind of namespacing
+             {flushCacheUri, list_to_binary("/pools/" ++ PoolId ++
                                            "/buckets/" ++ Id ++ "/controller/doFlush")},
-             %% TODO: undocumented
-             {passwordURI, <<"none">>},
+             %% TODO: move this somewhere else
+             %% {passwordUri, <<"none">>},
              {basicStats, {struct, menelaus_stats:basic_stats(PoolId, Id)}},
              {nodes, Nodes},
-             {stats, {struct, [{uri, StatsURI}]}}],
+             {stats, {struct, [{uri, StatsUri}]}}],
     List2 = case tgen:is_traffic_bucket(Pool, Id) of
                 true -> [{testAppBucket, true},
                          {controlURL, list_to_binary("/pools/"++PoolId++

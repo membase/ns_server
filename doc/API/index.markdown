@@ -281,24 +281,16 @@ transitions to the client, if backward compatibility is desirable.
        }
      }
    ],
-   "buckets" : [
-     {
-       "name" : "yourbucket",
+   "buckets" : {
        "uri" : "https://node.in.pool.com/pools/default/buckets/yourbucket"
      },
-     {
-       "name" : "yourotherbucket",
-       "uri" : "https://node.in.pool.com/pools/default/buckets/yourotherbucket",
-       "preferredPort" : "kvcache"
-     }
-   ],
    "controllers" : {
       "testWorkload" : {
         "uri" : "https://node.in.pool.com/pools/default/testWorkload"
       }
    },
    "stats" : {
-     "uri" : "http://node.in.pool.com/Default Pool/stats"
+     "uri" : "/pools/default/stats"
     }
  }
 </pre>
@@ -312,15 +304,6 @@ Note that since buckets are renameable and there is no way to determine what
 the default bucket for a pool is, the system will attempt to connect dumb
 clients to a bucket named "default".  If it does not exist, the connection
 will be dropped.  An alert should be generated.
-
-Preferred ports may be set for a bucket.  They type and number of the port is
-defined at the pool level, but the bucket may tell clients to use a particular
-kind of port.  This allows system operators to, if the client does not
-override the behavior, configure whether clients will use an intelligent
-connection, a straight caching connection or a kvstore connection.  System
-operators or developers using the routing port will see some overhead compared
-to connecting to the caching or kvstore port directly, but do not have to
-deal with pool reconfiguration events.
 
 Clients MUST NOT rely on the node list here to create their "server list" for 
 when connecting.  They MUST instead issue an HTTP get call to the bucket to 
@@ -366,17 +349,143 @@ source of the example above, as can be seen in the headers.
  Content-Type: application/com.northscale.store+json
  Content-Length: nnn
 
- "buckets" : [
+ [
    {
-     "name" : "yourbucket",
-     "uri" : "https://node.in.pool.com/pools/default/buckets/yourbucket"
+     "name" : "test-application",
+     "uri" : "/pools/default/buckets/test-application",
+     "streamingUri":"/pools/default/bucketsStreaming/test-applciation",
+     "flushCacheUri":"/pools/default/buckets/test-application/controller/doFlush",
+     "basicStats" : { "cacheSize":64,
+                      "opsPerSec":0.0,
+                      "evictionsPerSec":0.0,
+                      "cachePercentUsed":0.0
+                     },
+     "nodes" : [
+                 {
+                   "hostname":"matt-ingenthrons-macbook-pro.home.ingenthron.org",
+                   "status":"healthy",
+                   "uptime":"658",
+                   "version":"0.0.9_44_g4c4dfcf",
+                   "os":"i386-apple-darwin9.8.0",
+                   "memoryPercentUsed":0.5
+                   "ports" : {
+                               "proxy":11213,
+                               "direct":11212
+                              }
+                  }
+                ],
+      "stats": { "uri" : "/pools/default/buckets/test-application/stats" } }
    },
    {
-     "name" : "anotherbucket",
-     "uri" : "https://node.in.pool.com/pools/default/buckets/anotherbucket",
+     "name" : "default",
+     "uri" : "https://node.in.pool.com/pools/default/buckets/default",
+     "streamingUri":"/pools/default/bucketsStreaming/default",
+     "flushCacheUri":"/pools/default/buckets/default/controller/doFlush",
+     "basicStats" : { "cacheSize":64,
+                      "opsPerSec":0.0,
+                      "evictionsPerSec":0.0,
+                      "cachePercentUsed":0.0
+                     },
+     "nodes" : [
+                 {
+                   "hostname":"matt-ingenthrons-macbook-pro.home.ingenthron.org",
+                   "status":"healthy",
+                   "uptime":"658",
+                   "version":"0.0.9_44_g4c4dfcf",
+                   "os":"i386-apple-darwin9.8.0",
+                   "memoryPercentUsed":0.5
+                   "ports" : {
+                               "proxy":11213,
+                               "direct":11212
+                              }
+                  }
+                ],
+      "stats": { "uri" : "/pools/default/buckets/default/stats" } }
    }
  ]
+ </pre>
+ 
+Clients to the system can choose to use either the proxy path or the direct 
+path.  If they use the direct path, they will not be insulated from most 
+reconfiguration changes to the bucket.  This means they will need to 
+either poll the bucket's URI or connect to the streamingUri to receive 
+updates when the bucket configuration changes.  This happens, for instance, 
+when nodes are added, removed, or may fall into an unhealthy state.
+
+#### Named Bucket and Bucket Streaming URI
+
+*Request*
+
+<pre class="restcalls">
+ GET /pools/default/buckets/default
+ Host: node.in.your.pool.com
+ Authorization: Basic xxxxxxxxxxxxxxxxxxx
+ Accept: application/com.northscale.store+json
+ X-memcachekv-Store-Client-Specification-Version: 0.1
 </pre>
+
+*Response*
+
+<pre class="json">
+ HTTP/1.1 200 OK
+ Content-Type: application/com.northscale.store+json
+ Content-Length: nnn
+
+ {
+   "name" : "default",
+   "uri" : "https://node.in.pool.com/pools/default/buckets/default",
+   "streamingUri":"/pools/default/bucketsStreaming/default",
+   "flushCacheUri":"/pools/default/buckets/default/controller/doFlush",
+   "basicStats" : { "cacheSize":64,
+                    "opsPerSec":0.0,
+                    "evictionsPerSec":0.0,
+                    "cachePercentUsed":0.0
+                   },
+   "nodes" : [
+               {                  "hostname":"matt-ingenthrons-macbook-pro.home.ingenthron.org",
+                 "status":"healthy",
+                 "uptime":"658",
+                 "version":"0.0.9_44_g4c4dfcf",
+                 "os":"i386-apple-darwin9.8.0",
+                 "memoryPercentUsed":0.5
+                 "ports" : {
+                             "proxy":11213,
+                             "direct":11212
+                            }
+                }
+              ],
+    "stats": { "uri" : "/pools/default/buckets/default/stats" } }
+ }
+ </pre>
+ 
+The individual bucket request is exactly the same as what would be 
+obtained from the item in the array for the entire buckets list above.
+
+The streamingUri is exactly the same except it streams HTTP chunks using
+chunked encoding.  A response of "\n\n\n\n" delimits chunks.  This will 
+likely be converted to a "zero chunk" in a future release of this API, and 
+thus the behavior of the streamingUri should be considered evolving.
+
+#### Flushing a bucket
+
+The bucket details provide a bucket URI at which a simple request can be 
+made to flush the bucket.
+
+<pre class="restcalls">
+ POST /pools/default/buckets/default/controller/doFlush
+ Host: node.in.your.pool.com
+ Authorization: Basic xxxxxxxxxxxxxxxxxxx
+ X-memcachekv-Store-Client-Specification-Version: 0.1
+</pre>
+
+Any parameters are accepted.  Since the URI was defined by the bucket
+details, neither the URI nor the parameters control what is acutally done
+by the service.  The simple requirement is for a POST with an appropriate
+`Authorization` header, if the system is secured.
+
+The response will be a simple `204 No Content` if the flush is successful
+and a `404 Not Found` if the URI is invalid or does not correspond to a 
+bucket the system is familiar with.
 
 #### Deleting a bucket
 
@@ -391,9 +500,6 @@ a request.
  Authorization: Basic xxxxxxxxxxxxxxxxxxx
  X-memcachekv-Store-Client-Specification-Version: 0.1
 </pre>
-
-Note that if a preferred-port is not specified, the default port will be the
-routing port.
 
 ###Statistics
 
