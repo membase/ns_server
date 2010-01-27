@@ -7,6 +7,7 @@
 // !not used!= require <jquery.jeditable.js>
 //= require <underscore.js>
 //= require <tools.tabs.js>
+//= require <jquery.cookie.js>
 //= require <misc.js>
 //= require <base64.js>
 //= require <mkclass.js>
