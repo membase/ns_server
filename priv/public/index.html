@@ -27,10 +27,8 @@
         </ul>
 		<h1>Configure</h1>
 		<ul>
-			<li>
-				<li class="line"><a id="switch_settings" href="javascript:nav.go('settings');">Cluster Settings</a></li>
-        <li><a href="#">Alert Settings</a></li>
-			</li>
+      <li class="line"><a id="switch_settings" href="javascript:nav.go('settings');">Cluster Settings</a></li>
+      <li><a href="#">Alert Settings</a></li>
 		</ul>
 		<!-- test claster -->
 		<div class="blue_round_block test_claster">
@@ -84,7 +82,7 @@
                                     </span>
                                 </span>
                             </a>
-                            <a href="#" class="button_big" href="javascript:OverviewSection.startJoinCluster();">
+                            <a class="button_big" href="javascript:OverviewSection.startJoinCluster();">
                                 <span>
                                     <span>
                                         Join Cluster
@@ -697,7 +695,7 @@
         <form id="add_new_bucket_form">
           <p><label><b>Bucket Name:</b><input type="text" name="name" class="inp" style="width:290px;" value="No spaces, alphanumeric up to 12 characters"></label></p>
           <p><label><b>Cache Size:</b><input type="text" name="cacheSize" class="inp" style="width:40px;"><span class="cache-details"></span>MB x 3 server nodes = 192MB Total Cache Size/30GB Cluster memory available.</label></p>
-          <p><b>&nbsp</b> <input type="checkbox" class="chkbx" /> <span class="text_12">Reserve memory in advance</span></p>
+          <p><b>&nbsp;</b> <input type="checkbox" class="chkbx" /> <span class="text_12">Reserve memory in advance</span></p>
           <p><b>Password:</b><input type="password" name="password" autocomplete="off" class="inp"></p>
           <p><b>Verify Password:</b><input type="password" name="verifyPassword" autocomplete="off" class="inp"> <span class="dont-match">Password don't match</span></p>
           <!-- <p><a href="#" class="jqmClose">cancel</a> <button type="submit">Add Bucket</button></p> -->
