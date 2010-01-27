@@ -3,7 +3,7 @@
 * clicking on small graphs doesn't always work. Probably due to
    concurrent graph refresh.
 * I need 'Cluster Memory Available' for 'Add New Bucket' dialog
-* implement ModalAction
+o [DONE] implement ModalAction
 * be consistent with respect to URI versus URL
 
 Items to be completed.  Listed in only-web when mocked up/working
@@ -114,10 +114,6 @@ ERROR HANDLING
 o [DONE] actually reload the page when an error occurs; right now a dialog is displayed
 * (low priority) serve up customized 404 and 500 pages
 
-o [DONE] leaving 'overview' section should disable polling of stats. Or maybe
-   don't bother ?
-
-o [not needed, due to reloading of page on error] intelligent circuit breaker for ajax requests
 * complete API switch to camelCase by converting all parameter names
    [DONE] [alk: not quite. Several query params are still underscore-styled]
 * loading indicator for alert settings form
