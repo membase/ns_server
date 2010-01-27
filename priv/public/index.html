@@ -645,9 +645,8 @@
           <!-- <a href="#" class="jqmClose">Close</a> -->
           <p class="u_line"><span class="label">Bucket name:</span><a class="float_right remove_bucket">Remove</a> {%= h(b.name) %}</p>
           <p class="u_line"><span class="label">Cache size:</span>
-          <a class="float_right"onclick="{%=jsLink('BucketsSection.startFlushCache', b.uri)%}">Flush All</a>
+          <a class="float_right" href="{%=jsLink('BucketsSection.startFlushCache',b.uri)%}">Flush All</a>
           {%= h(b.basicStats.cacheSize) %} MB 
-          <!--<button type="button" onclick="{%=jsLink('BucketsSection.startFlushCache', b.uri)%}">Flush All</button>-->
           </p>
           <p class="u_line"><span class="label">Password:</span>
           <a class="float_right" href="javascript:BucketsSection.startPasswordChange()">Change Password</a>
@@ -760,7 +759,7 @@
         </div>
         <div class="pas_20">
           <div class="right save_cancel">
-            <button class="save_button float_right" type="submit" onclick="{%=renderJSLink('BucketsSection.completeFlushCache', bucket.uri, '')%}">FLUSH</button>
+            <a class="save_button float_right" href="{%=renderJSLink('BucketsSection.completeFlushCache', bucket.uri)%}">FLUSH</a>
             <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
           </div>
         </div>
@@ -798,7 +797,7 @@
         </div>
         <div class="pas_20">
           <div class="right save_cancel">
-            <button class="save_button float_right" type="submit" onclick="{%=renderJSLink('BucketsSection.completeFlushCache', bucket.uri, '')%}">FLUSH</button>
+            <a class="save_button float_right" href="#">REMOVE</a>
             <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
           </div>
         </div>
