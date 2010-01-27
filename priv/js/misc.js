@@ -246,14 +246,44 @@ function reloadApp() {
   window.location.reload();
 }
 
-// this thing will ensure that a back button pressed during some modal
-// action will reload the page, so that we don't have to face issues
-// caused by unexpected change of state
-// TODO: implement
-function ModalAction() {
-  this.finish = function () {
+// this thing ensures that a back button pressed during some modal
+// action (waiting http POST response, for example) will reload the
+// page, so that we don't have to face issues caused by unexpected
+// change of state
+(function () {
+  var modalLevel = 0;
+
+  function ModalAction() {
+    modalLevel++;
+    this.finish = function () {
+      modalLevel--;
+      delete this.finish;
+    }
   }
-}
+
+  window.ModalAction = ModalAction;
+
+  ModalAction.isActive = function () {
+    return modalLevel;
+  }
+
+  ModalAction.leavingNow = function () {
+    if (modalLevel) {
+      reloadApp();
+    }
+  }
+
+  $(function () {
+    // first event is skipped, 'cause it's manually triggered by us
+    var hadFirstEvent = false;
+    $(window).bind('hashchange', function () {
+      if (hadFirstEvent)
+        ModalAction.leavingNow();
+      else
+        hadFirstEvent = true;
+    })
+  });
+})();
 
 function isBlank(e) {
   return e == null || !e.length;
@@ -316,8 +346,17 @@ function watchHashParamChange(param, defaultValue, callback) {
 function showDialog(idOrJQ, options) {
   var jq = _.isString(idOrJQ) ? $($i(idOrJQ)) : idOrJQ;
   options = options || {};
+  var action = new ModalAction();
   $(jq).jqm({modal:true,
              onHide: function (h) {
+               action.finish();
+               // prevent closing if modal action is in progress
+               if (ModalAction.isActive()) {
+                 // copied from jqmodal itself
+                 h.w.hide() && h.o && h.o.remove();
+                 return showDialog(idOrJQ, options);
+               }
+
                if (options.onHide)
                  options.onHide(idOrJQ);
                // copied from jqmodal itself
@@ -326,4 +365,5 @@ function showDialog(idOrJQ, options) {
 }
 function hideDialog(id) {
   $($i(id)).jqm().jqmHide();
+  ModalAction.leavingNow();
 }
