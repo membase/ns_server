@@ -23,7 +23,7 @@ o [DONE] prepare new API to mass-fetch bucket details with support for paginatio
 o [DONE] mass bucket stats for buckets section
 o [DROPPED for now] pagination
 * implement sorting
-* implement link to bucket analytics
+* implement link to bucket analytics (works)
 
 BUCKET PROPERTIES UI
 o [DONE] basic
@@ -65,7 +65,7 @@ o [DONE] implement (with button on BUCKET PROPERTIES section)
 * implement server side
 
 ERROR HANDLING
-* actually reload the page when an error occurs; right now a dialog is displayed
+o [DONE] actually reload the page when an error occurs; right now a dialog is displayed
 * (low priority) serve up customized 404 and 500 pages
 
 o [DONE] leaving 'overview' section should disable polling of stats. Or maybe
