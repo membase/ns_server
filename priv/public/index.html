@@ -104,6 +104,7 @@
         <div class="labeled_line">
             <h2 class="label">Cluster Health:</h2>
             <div class="line_cnt">
+                <a href="#" class="button_medium float_right" style="margin-top:-5px;">Join Claster</a>
                 <div class="alert_1"></div> <a>Critical</a> <span class="comment">(3 server nodes managing <a>4 buckets</a>)</span>
             </div>
         </div>
@@ -136,7 +137,7 @@
           <p class="line_cnt" id="server_list_container">
           </p>
           <div id="server_list_template" class="template">
-            <table><tbody>
+            <table class="server_list"><tbody>
               <!-- {% $.each(rows, function (index) { %} -->
               <tr class="primary">
                 <td class="expander"><div></div></td>
@@ -176,6 +177,9 @@
                         </tr>
                       </table>
                   </div>
+                </div>
+                <div class="right block tdn bolder">
+                  <a href="#">Remove Server from Claster</a>
                 </div>
               </td></tr>
              <!-- {% }); %} -->
