@@ -10,6 +10,7 @@
 -export([init/1]).
 
 start_link() ->
+    application:start(os_mon),
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 init([]) ->
