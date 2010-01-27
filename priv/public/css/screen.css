@@ -537,6 +537,7 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 .lbox .u_line_sm .label {display:block; float:left; width:110px; padding-top:5px; text-align:right; margin:0 5px 0 0;}
 .lbox .u_line_sm .inp {padding:2px 3px; border:1px solid #ccd2d6;}
 .lbox .warning {font-size:12px; color:#ec5223;}
+.lbox .warning ul {list-style-type:disc; margin:5px 0 0 15px;}
 
 #add_new_bucket_form {}
 #add_new_bucket_form p {min-height:15px; _height:15px; padding:0 0 15px 0; font-size:11px; line-height:15px;}

@@ -100,11 +100,11 @@
 	<!-- shadow box -->
 	<h1>Status</h1>
 	<div class="shadow_box"><div class="top"><div><div></div></div></div><div class="cnt"><div class="pad"><div class="content">
-    <div class="darker_block with_devider">
+    <div class="darker_block with_devider pat_10">
         <div class="labeled_line">
             <h2 class="label">Cluster Health:</h2>
             <div class="line_cnt">
-                <a href="#" class="button_medium float_right" style="margin-top:-5px;">Join Claster</a>
+                <a href="#" class="button_medium float_right" style="margin-top:-9px;">Join Claster</a>
                 <div class="alert_1"></div> <a>Critical</a> <span class="comment">(3 server nodes managing <a>4 buckets</a>)</span>
             </div>
         </div>
@@ -682,9 +682,9 @@
     <div class="center">
       <div class="pad">
         <p class="lbox_header">Add New Bucket</p>
-        <div id="add_new_bucket_errors_container"></div>
+        <div id="add_new_bucket_errors_container" class="warning" style="padding:10px 20px;"></div>
         <div id="add_new_bucket_errors_template" class="template">
-          Couldn't create bucket due to:
+          <strong>Couldn't create bucket due to:</strong>
           <ul>
             <!-- {% _.each(rows, function (e) { %} -->
             <li>{%= h(e) %}
