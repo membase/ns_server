@@ -246,33 +246,14 @@ function reloadApp() {
   window.location.reload();
 }
 
-// this thing ensures that a back button pressed during some modal
-// action (waiting http POST response, for example) will reload the
-// page, so that we don't have to face issues caused by unexpected
-// change of state
-(function () {
-  var modalLevel = 0;
-
-  this.ModalAction = function ModalAction() {
-    modalLevel++;
-    this.finish = function () {
-      modalLevel--;
-      delete this.finish;
-    }
+// this thing will ensure that a back button pressed during some modal
+// action will reload the page, so that we don't have to face issues
+// caused by unexpected change of state
+// TODO: implement
+function ModalAction() {
+  this.finish = function () {
   }
-
-  this.ModalAction.isActive = function () {
-    return modalLevel;
-  }
-
-  this.ModalAction.leavingNow = function () {
-    if (modalLevel) {
-      reloadApp();
-    }
-  }
-
-  $(window).bind('hashchange', $m(this.ModalAction, 'leavingNow'));
-})();
+}
 
 function isBlank(e) {
   return e == null || !e.length;
@@ -337,13 +318,6 @@ function showDialog(idOrJQ, options) {
   options = options || {};
   $(jq).jqm({modal:true,
              onHide: function (h) {
-               // prevent closing if modal action is in progress
-               if (ModalAction.isActive()) {
-                 // copied from jqmodal itself
-                 h.w.hide() && h.o && h.o.remove();
-                 return showDialog(idOrJQ, options);
-               }
-
                if (options.onHide)
                  options.onHide(idOrJQ);
                // copied from jqmodal itself
@@ -351,6 +325,5 @@ function showDialog(idOrJQ, options) {
              }}).jqmShow();
 }
 function hideDialog(id) {
-  ModalAction.leavingNow();
   $($i(id)).jqm().jqmHide();
 }
