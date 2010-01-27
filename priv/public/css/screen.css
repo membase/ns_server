@@ -551,3 +551,21 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 .join_claster table tr th {text-align:left; font-size:14px; font-weight:normal; padding:10px 0 7px 0; border-bottom:1px solid #dbe3e8;}
 .join_claster table tr th a {text-decoration:none;}
 .join_claster .label {width:65px !important;}
+
+/* auth */
+.auth_block {width:762px; height:352px; background:url(../images/login_screen.png) 0 0 no-repeat; position:relative; margin:120px 0 0 -500px; left:50%;}
+.auth_block h1 {color:#2f3536; text-transform:uppercase; font-size:28px; padding:28px 0 30px 0;}
+.auth_block .pad {padding:0 0 0 180px; position:relative;}
+.auth_block .form {}
+.auth_block .form table {margin:0 0 0 25px;}
+.auth_block .form table td {vertical-align:middle; padding:10px 0;}
+.auth_block .form table .forgot {position:relative; top:-10px; font-size:12px; color:#fff;}
+.auth_block .form table .label {text-align:right; font-size:18px; color:#e6f5ff; padding:0 7px 0 0;}
+.auth_block .form table .inp {border:1px solid #60696b; background:none #fff; padding:12px 5px; width:390px; font-size:16px;}
+.auth_block .form table .submit {width:210px; height:45px; overflow:visible; border:0px; background:url(../images/sign_in_button.gif) 0 0 no-repeat; font-size:22px; color:#fff;}
+.auth_block .form table .submit:hover {background-position:0 -45px;}
+.auth_block .form table .submit:active {background-position:0 -90px;}
+.auth_block .alert_red {width:779px; height:71px; position:absolute; left:171px; top:20px; line-height:65px; font-size:14px; color:#fff; background:url(../images/alert_red.png) 0 0 no-repeat;}
+.auth_block .alert_red .al_text {padding:0 0 0 30px;}
+.alert_green {width:760px; height:75px; font-size:14px; color:#fff; background:url(../images/alert_green.png) 0 0 no-repeat; position:absolute; left:180px; top:23px; line-height:16px;}
+.alert_green .al_text {padding:20px 100px 0 20px;}
