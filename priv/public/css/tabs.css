@@ -33,6 +33,7 @@ ul.tabs a {
 	margin:0px;	
 	position:relative;
 	top:1px;
+  _float:left;
 }
 
 ul.tabs a:active {

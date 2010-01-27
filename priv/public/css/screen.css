@@ -250,6 +250,7 @@ a:link {
 	left: 12%;
 	/*margin-top: 50px;*/
   padding:50px 0 220px 0;
+  _padding:50px 0 20px 0;
 }
 
 #footer {
@@ -258,6 +259,7 @@ a:link {
 	width: 100%;
 	height: 208px;
 	bottom: 0;
+  _position:relative;
 }
 
 #footer h1 {
@@ -400,7 +402,7 @@ background:url(../images/mini_graph_bg.gif) 0 0 no-repeat; margin:0 12px 7px 12p
      position: absolute;
      top: expression((document.documentElement.scrollTop || document.body.scrollTop) + Math.round(17 * (document.documentElement.offsetHeight || document.body.clientHeight) / 100) + 'px');
 }
-
+html {height:auto;}
 .spinner { vertical-align: middle; text-align: center; }
 
 a.selected { text-decoration: underline; }
@@ -410,7 +412,7 @@ a.selected { text-decoration: underline; }
 
 .alerts_list ol li {padding-left:10px;}
 
-.alert_warning, .alert_attention, .alert_info {margin-bottom: 9px; list-style-type: none; min-height: 47px;}
+.alert_warning, .alert_attention, .alert_info {margin-bottom: 9px; list-style-type: none; min-height: 47px; _height:47px;}
 
 .alerts_list h3 { display: block; float: left; padding: 0px; margin: 0px; margin-bottom: 6px;}
 .alerts_list .dismiss {float:right; font-size:11px; font-weight:bolder; cursor:pointer;}
