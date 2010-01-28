@@ -113,7 +113,7 @@
             <h2 class="label">Cluster Health:</h2>
             <div class="line_cnt">
                 {% if (canJoinCluster) { %}
-                <a href="#" class="button_medium float_right" style="margin-top:-9px;">Join Cluster</a>
+                <a href="javascript:OverviewSection.startJoinCluster();" class="button_medium float_right" style="margin-top:-9px;">Join Cluster</a>
                 {% }; %}
                 <div class="alert_1">{%=V.setAttribute('class', isCritical ? 'alert_1' : '')%}</div>
                 <a>{%= isCritical ? 'Critical' : 'Healthy' %}</a>
