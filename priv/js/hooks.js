@@ -387,7 +387,7 @@ var MockedRequest = mkClass({
     var samples = allSamples[opsPerSecondZoom];
     var samplesSize = samples["cmd_get"].length;
 
-    var samplesInterval = 5000;
+    var samplesInterval = 1000;
     if (opsPerSecondZoom == "24hr")
       samplesInterval = 86400000 / samplesSize;
     else if (opsPerSecondZoom == "1hr")
@@ -396,7 +396,7 @@ var MockedRequest = mkClass({
     var now = (new Date()).valueOf();
     var lastSampleTstamp = now;
 
-    if (samplesInterval == 5000) {
+    if (samplesInterval == 1000) {
       var rotates = ((now / 1000) >> 0) % samplesSize;
       var newSamples = {};
       for (var k in samples) {
