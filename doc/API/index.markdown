@@ -610,82 +610,40 @@ to generate the same kind of response.
 
 ####Bucket resources
 
+A new bucket may be created in a given pool with a PUT command off of the buckets URI specified in the pool.
+
+
 *Request*
 
 <pre class="restcalls">
-PUT /pools/My New Pool/buckets/New bucket
-{
-   "name" : "New bucket"
-}
+PUT /pools/default/buckets/matt HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json; charset=UTF-8
+Content-Length: 33
+
+{"name":"matt", "sizePerNode":10}
 </pre>
 
 *Response*
 
-response 201: bucket was created and valid URIs returned
+response 200: bucket was created
 
-<pre class="restcalls">
-HTTP/1.1 201 Created
-Content-Type: application/com.northscale.store+json
-Content-Length: nnn
+With the current behavior of creating a bucket, there is a side effect of creating a user and password,
+each of which have the same name as the bucket.  This side effect should be considered an unstable
+interface and will change in updates.
 
-{
-   "name" : "Another bucket"
-   "bucketRules" : {
-     "cacheRange" :
-       {
-         "min" : 1,
-         "max" : 599
-       },
-     "replicationFactor" : 2
-   }
-   "nodes" : [
-              {
-                "hostname" : "10.0.1.20",
-                "uri" : "/addresses/10.0.1.20",
-                "status" : "healthy",
-                "ports" : {
-                  "proxy" : 11211,
-                  "direct" : 11311
-                }
-              },
-              {
-                "hostname" : "10.0.1.21",
-                "uri" : "/addresses/10.0.1.21",
-                "status" : "healthy",
-                "ports" : {
-                  "proxy" : 11211,
-                  "direct" : 11311
-                }
-              }
-   ]
-}
-</pre>
+The sizePerNode attribute allows the user to specify how large (in megabytes) a bucket will be on each
+node in the bucket.
 
-The bucket rules above show that for the bucket "Another bucket" the bucketrules
-are to cache only any item whose expiration is between 1 and 599 seconds, 
-inclusive.  Note that items which have 0 (i.e. no expiration)
-will persist.  The application developer is
-therefore responsible for cleaning up any unwanted data.  Any item with an
-expiration from 600 seconds or higher (including those with UNIX epoch dates
-per the memcached protocol), the system will clean up.
-
-Note that replication factor (a.k.a. in memory replication across cache nodes)
-will not be supported at 1.0 and may not be tunable.
-
-Clients MUST use the nodes list from the bucket, not the pool to indicate which
-are the appropriate nodes to connect to.
 
 #####Getting a Bucket
 
 *Request*
 
 <pre class="restcalls">
-GET /pools/default/buckets/New bucket
+GET /pools/default/buckets/Another bucket
 </pre>
 
-*Response*
-
-response 201: bucket was created and valid URIs returned
 
 <pre class="restcalls">
 HTTP/1.1 200 OK
@@ -724,6 +682,10 @@ Content-Length: nnn
    ]
 }
 </pre>
+
+
+Clients MUST use the nodes list from the bucket, not the pool to indicate which
+are the appropriate nodes to connect to.
 
 ###Renaming a Bucket
 
@@ -867,16 +829,6 @@ publications and particularly
 and [this blog](http://roy.gbiv.com/untangled/2009/it-is-okay-to-use-post)
 have been referenced.
 
-## Todo
-* Strip out some of the non 1.0 things.  Priroities, etc.
-
-Implementation in menelaus web:
-* flush (steve yen starting)
-* cluster settings
-* controller: join cluster  with and without security required (matt ingenthron starting)
-* add bucket
-* secure this server, get admin user
-
 ## Changelog
 * 20091113 First publishing (matt.ingenthron@northscale.com)
 * 20091115 Updated with some operations (matt.ingenthron@northscale.com)
@@ -899,3 +851,7 @@ Implementation in menelaus web:
 * 20100112 Removed per-node requests
 * 20100120 Documented bucket delete
 * 20100120 Added small to-do list for implementation
+* 20100126 Fixed buckets definition from pool level and pool wide array level.
+* 20100128 Removed todo list, it's duplicating Menelaus's TODO.
+* 20100128 Updated add bucket definition
+
