@@ -346,24 +346,33 @@ function watchHashParamChange(param, defaultValue, callback) {
 function showDialog(idOrJQ, options) {
   var jq = _.isString(idOrJQ) ? $($i(idOrJQ)) : idOrJQ;
   options = options || {};
-  var action = new ModalAction();
-  $(jq).jqm({modal:true,
-             onHide: function (h) {
-               action.finish();
-               // prevent closing if modal action is in progress
-               if (ModalAction.isActive()) {
-                 // copied from jqmodal itself
-                 h.w.hide() && h.o && h.o.remove();
-                 return showDialog(idOrJQ, options);
-               }
+  var onHashChange;
 
-               if (options.onHide)
-                 options.onHide(idOrJQ);
-               // copied from jqmodal itself
-               h.w.hide() && h.o && h.o.remove();
-             }}).jqmShow();
+  $(window).bind('hashchange', onHashChange = function () {
+    hideDialog(jq);
+  });
+
+  jq.jqm({modal:true,
+          onHide: function (h) {
+            $(window).unbind('hashchange', onHashChange);
+
+            // prevent closing if modal action is in progress
+            if (ModalAction.isActive()) {
+              // copied from jqmodal itself
+              h.w.hide() && h.o && h.o.remove();
+              return showDialog(idOrJQ, options);
+            }
+
+            if (options.onHide)
+              options.onHide(idOrJQ);
+            // copied from jqmodal itself
+            h.w.hide() && h.o && h.o.remove();
+          }}).jqmShow();
 }
+
 function hideDialog(id) {
-  $($i(id)).jqm().jqmHide();
+  if (_.isString(id))
+    id = $($i(id));
+  id.jqm().jqmHide();
   ModalAction.leavingNow();
 }
