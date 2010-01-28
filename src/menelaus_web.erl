@@ -398,24 +398,13 @@ handle_bucket_update(PoolId, BucketId, Req) ->
     % (like memory amount) will fall back to server defaults
     %
     % A POST means modify existing bucket settings.  For 1.0, this will *only*
-    % allow changing the password or setting the password to ""
+    % allow setting the memory to a higher or lower, but non-zero value.
+    % 
+    % TODO: convert to handling memory changes
+    % TODO: remove password handling
+    % TODO: define new URI for password handling for the pool
     %
-    % The JSON looks like...
-    %
-    % {"password": "somepassword",
-    %  "size_per_node", "64"}
-    %
-    % An empty password string ("") is the same as undefined auth_plain.
-    %
-    % TODO: after 1.0: allow password changes via urlencoded post
-    %
-    % {buckets, [
-    %   {"default", [
-    %     {auth_plain, undefined},
-    %     {size_per_node, 64} % In MB.
-    %   ]}
-    % ]}
-    %
+
     case mc_bucket:bucket_config_get(mc_pool:pools_config_get(),
                                      PoolId, BucketId) of
         false -> handle_bucket_create(PoolId, BucketId, Req);
@@ -451,17 +440,10 @@ handle_bucket_create(PoolId, BucketId, Req) ->
     BucketConfig =
         lists:foldl(
           fun({auth_plain, _}, C) ->
-                  V = case proplists:get_value(<<"password">>,
-                                               Params) of
-                          undefined -> undefined;
-                          <<>>      -> undefined;
-                          PasswordB ->
-                              {BucketId, binary_to_list(PasswordB)}
-                      end,
                   lists:keystore(auth_plain, 1, C,
-                                 {auth_plain, V});
+                                 {auth_plain, BucketId});
              ({size_per_node, _}, C) ->
-                  case proplists:get_value(<<"size_per_node">>,
+                  case proplists:get_value(<<"sizePerNode">>,
                                            Params) of
                       undefined -> C;
                       SBin when is_binary(SBin) ->
