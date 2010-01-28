@@ -76,6 +76,12 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 
 .form label .check {float:left; margin:0 5px 0 0;}
 
+.cnt_holder {width:960px; position:relative; left:12%;}
+
+.topper_nav {float:right; font-size:11px; padding:15px 0 0 0;}
+.topper_nav a {color:#e3e8ea; text-decoration:none;}
+.topper_nav b {margin:0 2px; color:#848f96; font-weight:bolder;}
+
 /* buttons */
 a.button_medium {display:block;}
 .button_medium {width:154px; height:32px; font-size:14px; border:0px; overflow:visible; background:url(../images/button_gray_medium.gif) 0 0 no-repeat; line-height:32px; cursor:pointer; color:#444245; text-align:center; text-decoration:none;}
@@ -245,7 +251,7 @@ a:link {
 	width: 331px;
 	height: 57px;
 	top: 25px;
-	left: 12%;
+	left:0;
 }
 
 #mainContainer {
