@@ -79,7 +79,7 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 .cnt_holder {width:960px; position:relative; left:12%;}
 
 .topper_nav {float:right; font-size:11px; padding:15px 0 0 0;}
-.topper_nav a {color:#e3e8ea; text-decoration:none;}
+.topper_nav a {color:#e3e8ea !important; text-decoration:none;}
 .topper_nav b {margin:0 2px; color:#848f96; font-weight:bolder;}
 
 /* buttons */
