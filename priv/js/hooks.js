@@ -462,12 +462,14 @@ var MockedRequest = mkClass({
 
 TestingSupervisor.interceptAjax();
 
+var __hookParams = {};
+
 (function () {
   var href = window.location.href;
   var match = /\?(.*?)(?:$|#)/.exec(href);
   if (!match)
     return;
-  var params = window.__hookParams = deserializeQueryString(match[1]);
+  var params = __hookParams = deserializeQueryString(match[1]);
 
   console.log("params", params);
 
