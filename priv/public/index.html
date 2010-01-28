@@ -277,17 +277,17 @@
       </p>
       <div id="top_keys_template" class="template">
         <table>
-          <tr><th>Top Key Values
-            <th>Type
-            <th>Gets
-            <th>Misses
-            <th>Total
+          <tr><th>Top Key Values</th>
+            <th>Type</th>
+            <th>Gets</th>
+            <th>Misses</th>
+            <th>Total</th></tr>
           {% $.each(rows, function () { %}
-            <tr><td>{%= h(this.name) %}
-                <td>{%= h(this.type) %}
-                <td>{%= h(this.gets) %}
-                <td>{%= h(this.misses) %}
-                <td>{%= h(this.total) %}
+            <tr><td>{%= h(this.name) %}</td>
+                <td>{%= h(this.type) %}</td>
+                <td>{%= h(this.gets) %}</td>
+                <td>{%= h(this.misses) %}</td>
+                <td>{%= h(this.total) %}</td></tr>
           {% }); %}
         </table>
       </div>
@@ -360,9 +360,9 @@
         <div class="darker_block with_devider">
             <div class="pat_10">
                 <ul class="tabs">
-                  <li><a href="#">Current Alerts</a>
+                  <li><a href="#">Current Alerts</a></li>
                   <!-- <li><a href="#">Alert Settings</a> -->
-                  <li><a href="#">Log</a>
+                  <li><a href="#">Log</a></li>
                 </ul>
             </div>
         </div>
