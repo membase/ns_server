@@ -292,38 +292,42 @@ var MockedRequest = mkClass({
   },
 
   handlePoolDetails: function () {
-    return {nodes: [{hostname: "mickey-mouse.disney.com",
-                     status: "healthy",
-                     ports: {proxy: 11211,
-                             direct: 11311},
-                     memoryTotal: 2032574464,
-                     memoryFree: 1589864960,
-                     otpNode: "ns1@mickey-mouse.disney.com",
-                     otpCookie: "SADFDFGDFG"},
-                    {hostname: "donald-duck.disney.com",
-                     status: "healthy",
-                     ports: {proxy: 11211,
-                             direct: 11311},
-                     memoryTotal: 2032574464,
-                     memoryFree: 89864960,
-                     otpNode: "ns1@donald-duck.disney.com",
-                     otpCookie: "SADFDFGDFG"},
-                    {hostname: "goofy.disney.com",
-                     status: "healthy",
-                     memoryTotal: 2032574464,
-                     memoryFree: 889864960,
-                     ports: {proxy: 11211,
-                             direct: 11311},
-                     otpNode: "ns1@goofy.disney.com",
-                     otpCookie: "SADFDFGDFG"}],
-            buckets: {
-              // GET returns first page of bucket details with link to next page
-              uri: "/buckets",
-              // returns just names and uris, but complete (i.e. without pagination)
-              shallowList: "/buckets?shallow=true"
-            },
-            stats: {uri: "/buckets/4/stats?really_for_pool=1"},
-            name: "Default Pool"}
+    var rv = {nodes: [{hostname: "mickey-mouse.disney.com",
+                       status: "healthy",
+                       ports: {proxy: 11211,
+                               direct: 11311},
+                       memoryTotal: 2032574464,
+                       memoryFree: 1589864960,
+                       otpNode: "ns1@mickey-mouse.disney.com",
+                       otpCookie: "SADFDFGDFG"},
+                      {hostname: "donald-duck.disney.com",
+                       status: "healthy",
+                       ports: {proxy: 11211,
+                               direct: 11311},
+                       memoryTotal: 2032574464,
+                       memoryFree: 89864960,
+                       otpNode: "ns1@donald-duck.disney.com",
+                       otpCookie: "SADFDFGDFG"},
+                      {hostname: "goofy.disney.com",
+                       status: "healthy",
+                       memoryTotal: 2032574464,
+                       memoryFree: 889864960,
+                       ports: {proxy: 11211,
+                               direct: 11311},
+                       otpNode: "ns1@goofy.disney.com",
+                       otpCookie: "SADFDFGDFG"}],
+              buckets: {
+                // GET returns first page of bucket details with link to next page
+                uri: "/buckets",
+                // returns just names and uris, but complete (i.e. without pagination)
+                shallowList: "/buckets?shallow=true"
+              },
+              stats: {uri: "/buckets/4/stats?really_for_pool=1"},
+              name: "Default Pool"}
+    if (!__hookParams['multinode']) {
+      rv.nodes = rv.nodes.slice(-1);
+    }
+    return rv;
   },
   handleBucketList: function () {
     return [{name: "default",
@@ -463,7 +467,7 @@ TestingSupervisor.interceptAjax();
   var match = /\?(.*?)(?:$|#)/.exec(href);
   if (!match)
     return;
-  var params = deserializeQueryString(match[1]);
+  var params = window.__hookParams = deserializeQueryString(match[1]);
 
   console.log("params", params);
 
