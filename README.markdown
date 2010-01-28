@@ -31,15 +31,12 @@ Before you start the server, you may need to do the following
   * Below, <REPO_ROOT> is where you checked out and built ns_server above.
   * Make sure the needed ports are not being used (these include
     8080, 11211, 11212, etc).
-  * Build the genhash library that northscale memcache requires
-    (git clone http://github.com/northscale/genhash.git &&
-    cd genhash && make)
   * Build the "for_release" branch of northscale memcached that has isasl
     enabled (git clone git@github.com:northscale/memcached.git &&
     cd memcached &&
     git checkout --track origin/for_release &&
     ./config/autorun.sh &&
-    ./configure --enable-isasl --with-genhash=/directory/to/genhash/ &&
+    ./configure --enable-isasl &&
     make && make test).
   * Build the bucket_engine library from the
     git@github.com:northscale/bucket_engine.git repository.
