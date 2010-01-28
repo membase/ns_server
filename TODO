@@ -21,8 +21,8 @@ there, listed in Menelaus when wired in.
  |                      |                 | Cache Allocated   |
  |                      |                 |                   |
  | Analytics            | Configure View  | Configure View    |
- |                      | Ops Remove 24hr | Ops Remove 24hr   |
- |                      | HK Remove 24hr  | HK Remove 24hr    |
+ |              done--> | Ops Remove 24hr | Ops Remove 24hr   |
+ |              done--> | HK Remove 24hr  | HK Remove 24hr    |
  | Buckets List         |  almost done    | HK Stats          |
  |                      |   (sort)        | Mem Usage?        |
  |                      |                 | Add Bucket?       |
