@@ -458,6 +458,8 @@ var StatGraphs = {
                     + "listen_disabled_num decr_hits cmd_flush engine_maxbytes bytes incr_misses "
                     + "cmd_set decr_misses accepting_conns cas_hits limit_maxbytes cmd_get "
                     + "connection_structures cas_badval auth_cmds").split(' '),
+  visibleStats: ["ops", "misses", "cmd_get", "cmd_set"],
+  visibleStatsIsDirty: true,
   statDescriptions: {
     // TODO: fill in
   },
@@ -485,11 +487,18 @@ var StatGraphs = {
 
     var main = $('#analytics_main_graph')
 
+    if (self.visibleStatsIsDirty) {
+      _.each(self.recognizedStats, function (name) {
+        var op = _.include(self.visibleStats, name) ? 'show' : 'hide';
+        self.findGraphArea(name)[op]();
+      });
+      self.visibleStatsIsDirty = false;
+    }
+ 
     var selected = self.selected.value;
-
     renderLargeGraph(main, stats[selected]);
 
-    _.each(self.recognizedStats.slice(0, 4), function (statName) {
+    _.each(self.visibleStats, function (statName) {
       if (!stats[statName])
         return;
       var area = self.findGraphArea(statName);
