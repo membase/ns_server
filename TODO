@@ -19,6 +19,7 @@ there, listed in Menelaus when wired in.
  |                      | Leave Cluster   | Leave Cluster     |
  |                      |                 | Cluster Memory    |
  |                      |                 | Cache Allocated   |
+ |                      | Cluster Health  | Cluster Health    |
  |                      |                 |                   |
  | Analytics            | Configure View  | Configure View    |
  |              done--> | Ops Remove 24hr | Ops Remove 24hr   |
