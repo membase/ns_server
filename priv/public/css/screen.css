@@ -71,6 +71,7 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 .save_cancel .cancel_button {display:block; width:80px; height:31px; line-height:31px; color:#8b8b8e; text-align:center; font-weight:bolder; text-decoration:none;}
 
 .form {padding:10px 0 15px 0;}
+.form a {text-decoration:none;}
 .form_section_title {font-size:12px; font-weight:bolder; color:#626b6c; padding:5px 0;}
 
 .form label .check {float:left; margin:0 5px 0 0;}

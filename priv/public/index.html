@@ -28,7 +28,6 @@
 		<h1>Configure</h1>
 		<ul>
       <li class="line"><a id="switch_settings" href="javascript:nav.go('settings');">Cluster Settings</a></li>
-      <li><a href="#">Alert Settings</a></li>
 		</ul>
 		<!-- test cluster -->
 		<div class="blue_round_block test_cluster">
@@ -449,9 +448,9 @@
               </ul>
           </div>
       </div>
-      <div class="brdr_exl_t">
+      <div class="brdr_exl_t" style="display:none;">
         <div class="pad_10">
-          <div class="basic">
+          <div class="advanced">
             <h2 class="head_2_underline">Port Configuration <a class="text_11">What’s this?</a></h2>
             <div class="form">
               <div class="labeled_line">
@@ -587,6 +586,46 @@
                     <td class="cntr"><input type="checkbox" /></td>
                   </tr>
                 </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="brdr_exl_t">
+        <div class="pad_10">
+          <div class="basic">
+            <h2 class="head_2_underline">Web Console</h2>
+            <div class="form">
+              <div class="labeled_line">
+                <label class="block label for_input">Port:</label>
+                <div class="line_cnt">
+                  <input type="text" class="text inp_short"/>
+                </div>
+              </div>
+            </div>
+            <h2 class="head_2_underline">Security <a class="text_11">What’s this?</a></h2>
+            <div class="form">
+              <div>
+                <label><input type="checkbox" class="check"/> Secure this Server</label>
+              </div>
+              <div class="labeled_line">
+                <label class="block label for_input">Username:</label>
+                <div class="line_cnt">
+                  <input type="text" class="text inp_short"/>
+                  <a href="#" class="text_11">Setup Email Alerts</a>
+                </div>
+              </div>
+              <div class="labeled_line">
+                <label class="block label for_input">Password:</label>
+                <div class="line_cnt">
+                  <input type="password" class="text inp_short"/>
+                </div>
+              </div>
+              <div class="labeled_line">
+                <label class="block label for_input">Verify Password:</label>
+                <div class="line_cnt">
+                  <input type="password" class="text inp_short"/>
+                </div>
               </div>
             </div>
           </div>
