@@ -1,10 +1,10 @@
 // Underscore.js
-// (c) 2009 Jeremy Ashkenas, DocumentCloud Inc.
+// (c) 2010 Jeremy Ashkenas, DocumentCloud Inc.
 // Underscore is freely distributable under the terms of the MIT license.
 // Portions of Underscore are inspired by or borrowed from Prototype.js,
 // Oliver Steele's Functional, and John Resig's Micro-Templating.
 // For all details and documentation:
-// http://documentcloud.github.com/underscore/
+// http://documentcloud.github.com/underscore
 
 (function() {
 
@@ -38,7 +38,7 @@
       propertyIsEnumerable  = Object.prototype.propertyIsEnumerable;
 
   // Current version.
-  _.VERSION = '0.5.5';
+  _.VERSION = '0.5.8';
 
   // ------------------------ Collection Functions: ---------------------------
 
@@ -49,7 +49,7 @@
     try {
       if (obj.forEach) {
         obj.forEach(iterator, context);
-      } else if (_.isArray(obj) || _.isArguments(obj)) {
+      } else if (_.isNumber(obj.length)) {
         for (var i=0, l=obj.length; i<l; i++) iterator.call(context, obj[i], i, obj);
       } else {
         var keys = _.keys(obj), l = keys.length;
@@ -152,7 +152,7 @@
   // Determine if a given value is included in the array or object,
   // based on '==='.
   _.include = function(obj, target) {
-    if (_.isArray(obj)) return _.indexOf(obj, target) != -1;
+    if (obj && _.isFunction(obj.indexOf)) return _.indexOf(obj, target) != -1;
     var found = false;
     _.each(obj, function(value) {
       if (found = value === target) _.breakLoop();
@@ -400,7 +400,7 @@
 
   // Retrieve the names of an object's properties.
   _.keys = function(obj) {
-    if(_.isArray(obj)) return _.range(0, obj.length);
+    if (_.isArray(obj)) return _.range(0, obj.length);
     var keys = [];
     for (var key in obj) if (hasOwnProperty.call(obj, key)) keys.push(key);
     return keys;
@@ -488,7 +488,7 @@
 
   // Is a given variable an arguments object?
   _.isArguments = function(obj) {
-    return obj && _.isNumber(obj.length) && !_.isArray(obj) && !propertyIsEnumerable.call(obj, 'length');
+    return obj && _.isNumber(obj.length) && !obj.concat && !obj.substr && !obj.apply && !propertyIsEnumerable.call(obj, 'length');
   };
 
   // Is a given value a function?
@@ -503,7 +503,7 @@
 
   // Is a given value a number?
   _.isNumber = function(obj) {
-    return toString.call(obj) === '[object Number]';
+    return (obj === +obj) || (toString.call(obj) === '[object Number]');
   };
 
   // Is a given value a date?
@@ -557,6 +557,40 @@
   _.uniqueId = function(prefix) {
     var id = idCounter++;
     return prefix ? prefix + id : id;
+  };
+
+  // By default, Underscore uses ERB-style template delimiters, change the
+  // following template settings to use alternative delimiters.
+  _.templateSettings = {
+    start       : '{%',
+    end         : '%}',
+    interpolate : /{%=(.+?)%}/g
+  };
+
+  // JavaScript templating a-la ERB, pilfered from John Resig's
+  // "Secrets of the JavaScript Ninja", page 83.
+  // Single-quote fix from Rick Strahl's version.
+  _.template = function(str, data) {
+    var c  = _.templateSettings;
+    var body = 'var p=[],print=function(){p.push.apply(p,arguments);};' +
+               'with(obj){p.push(\'' +
+               str.replace(/[\r\t\n]/g, " ")
+               .replace(new RegExp("'(?=[^"+c.end[0]+"]*"+c.end+")","g"),"\t")
+               .split("'").join("\\'")
+               .split("\t").join("'")
+               .replace(c.interpolate, "',$1,'")
+               .split(c.start).join("');")
+               .split(c.end).join("p.push('")
+               + "');}return p.join('');"
+    try {
+      var fn = new Function('obj', body);
+    } catch (e) {
+      try {
+        e.templateBody = body;
+      } catch (e2) {} // sometimes exceptions do not allow expando props
+      throw e;
+    }
+    return data ? fn(data) : fn;
   };
 
   // ------------------------------- Aliases ----------------------------------
