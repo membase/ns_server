@@ -6,13 +6,58 @@
 * implement ModalAction
 * be consistent with respect to URI versus URL
 
-OVERVIEW
+Items to be completed.  Listed in only-web when mocked up/working
+there, listed in Menelaus when wired in.
+  ----------------------------------------------------------
+ | Mockingbird Screen   |  only-web       |     Menelaus      |
+ |----------------------|-----------------|-------------------|
+ | Login Screen         | not started     | not started       |
+ | Cluster Overview     | Test Server     | Test Server       |
+ |                      | Get Std Cookie  | Get Std Cookie    |
+ |                      | Secure Server   | Secure Server     |
+ |                      |                 | Health            |
+ |                      | Leave Cluster   | Leave Cluster     |
+ |                      |                 | Cluster Memory    |
+ |                      |                 | Cache Allocated   |
+ |                      |                 |                   |
+ | Analytics            | Configure View  | Configure View    |
+ |                      | Ops Remove 24hr | Ops Remove 24hr   |
+ |                      | HK Remove 24hr  | HK Remove 24hr    |
+ | Buckets List         |  almost done    | HK Stats          |
+ |                      |   (sort)        | Mem Usage?        |
+ |                      |                 | Add Bucket?       |
+ | Bucket Properties    | Edit Cache Sz   | Edit Cache Sz     |
+ |                      | User Password   |                   |
+ |                      | Cnctn String    | Cnctn String      |
+ | Buckets Analytics    | Configure View  | Configure View    |
+ |                      | Ops Remove 24hr | Ops Remove 24hr   |
+ |                      | HK Remove 24hr  | HK Remove 24hr    |
+ | Test app Bucket      | (bkt analytics) |                   |
+ | Configure this view  | not started     |                   |
+ | Join Cluster         |   -DONE-        |                   |
+ |   - Error            | not started     |                   |
+ |   - Success          | overview rdict  |                   |
+ |   - Security reqd.   | not started     |                   |
+ | Alerts - Current     |   -DONE-        |   -DONE-          |
+ | Alerts - Log         |   -DONE-        | not wired in      |
+ | Alerts - Settings    | >remove<        | goes to settings  |
+ | Cluster Settings Bas | not started     |                   |
+ | Cluster Settings Adv |   almost done   | not wired in      |
+ | New Bucket           |   almost done   | sends error       |
+ | Remove Bucket        |   almost done   | not wired in      |
+ | Flush Cache          |   -DONE-        | sends error       |
+ --------------------------------------------------------------
+
+
+CLUSTER OVERVIEW
 * 'Get Started' section
 o [DONE] no node list
 * correct fields in node list on overview page (done for OS and 
   version, need REST response for memory)
 o [DONE] expandable node list in overview status
 * leave cluster
+* "Cluster Disk Usage" should be "Cluster Cache Allocated"
+* Wire up memory usage and cache allocated
 
 POOL ANALYTICS UI
 * Remove the 24 Hour zoom level
