@@ -5,7 +5,10 @@
 
 -behavior(application).
 
--export([start_link/0, start/2, stop/1]).
+-export([start_link/0, start/2, start/0, stop/1]).
+
+start() -> % Main entry point, mostly for windows/NT-service.
+    application:start(ns_server).
 
 start(_Type, _Args) ->
     start_link().
