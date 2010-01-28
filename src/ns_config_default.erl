@@ -29,6 +29,7 @@ default() ->
                        "-S"
                       ],
                       [{env, [{"MEMCACHED_CHECK_STDIN", "thread"},
+                              {"MEMCACHED_TOP_KEYS", "100"},
                               {"ISASL_PWFILE", "./isasl.pw"}]}]
                      }
                     ]},

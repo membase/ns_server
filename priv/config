@@ -95,6 +95,7 @@
      "-S"
      ],
     [{env, [{"MEMCACHED_CHECK_STDIN", "event"},
+            {"MEMCACHED_TOP_KEYS", "100"},
             {"ISASL_PWFILE", "./isasl.pw"} % Also isasl path above.
            ]}]
    }
