@@ -41,7 +41,7 @@ there, listed in Menelaus when wired in.
  | Alerts - Current     |   -DONE-        |   -DONE-          |
  | Alerts - Log         |   -DONE-        | not wired in      |
  | Alerts - Settings    | >remove<        | goes to settings  |
- | Cluster Settings Bas | not started     |                   |
+ | Cluster Settings Bas | -html/css done- |                   |
  | Cluster Settings Adv |   almost done   | not wired in      |
  | New Bucket           |   almost done   | sends error       |
  | Remove Bucket        |   almost done   | not wired in      |
