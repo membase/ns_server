@@ -322,7 +322,7 @@ td.leftNav li {
   font-size:12px;
   border-bottom:1px solid #e4e9eb;
 }
-td.leftNav li a {display:block; height:29px; padding:0 0 0 12px;}
+td.leftNav li a {display:block; height:29px; padding:0 0 0 12px; text-decoration:none;}
 td.leftNav li a:hover {background:none #eaf4f9;}
 td.leftNav ul ul a {padding:0 0 0 24px;}
 td.leftNav li.line {
@@ -370,7 +370,7 @@ background:url(../images/mini_graph_bg.gif) 0 0 no-repeat; margin:0 12px 7px 12p
 #server_list_container .server_list {_float:left;}
 
 #server_list_container .details { display: none; }
-#server_list_container .details.opened { display: table-row; _display:block;}
+#server_list_container .details.opened { display: table-row; *display:block;}
 #server_list_container .opened td {padding:0 0 20px 0;}
 #server_list_container .opened td td {padding:0px;}
 
@@ -502,8 +502,8 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 #server_list_container .expander div {width:10px; height:10px; overflow:hidden; background:url(../images/expander_bg.gif) 0 -10px no-repeat; position:relative; top:2px;}
 #server_list_container .expanded div {background:url(../images/expander_bg.gif) 0 0 no-repeat;}
 #server_list_container .name div {height:47px; line-height:47px; padding:0 0 0 35px; font-weight:bolder; background:url(../images/server_icon.gif) 0 0 no-repeat;}
-#server_list_container .status {_text-align:right;}
-#server_list_container .status div {width:89px; height:23px; float:right; _float:none; position:relative; top:7px;}
+#server_list_container .status {*text-align:right;}
+#server_list_container .status div {width:89px; height:23px; float:right; *float:none; position:relative; top:7px;}
 #server_list_container .status .up {background:url(../images/status_icons.gif) 0 0 no-repeat;}
 #server_list_container .status .warning {background:url(../images/status_icons.gif) 0 -23px no-repeat;}
 #server_list_container .status .down {background:url(../images/status_icons.gif) 0 -46px no-repeat;}
@@ -524,7 +524,7 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 .lbox .top div {height:13px; overflow:hidden;}
 .lbox .top .top_left {width:12px; float:left; background:url(../images/lbox_lt.png) 0 0 no-repeat;}
 .lbox .top .top_right {width:12px; float:right; background:url(../images/lbox_rt.png) 0 0 no-repeat;}
-.lbox .top .top_center {/*margin:0 12px;*/ background:url(../images/lbox_t.png) 0 0 repeat-x; _float:left; _width:687px;}
+.lbox .top .top_center {/*margin:0 12px;*/ background:url(../images/lbox_t.png) 0 0 repeat-x; _float:left; *width:687px;}
 
 .lbox .center {background:url(../images/lbox_cent.png) 0 0 repeat-y;}
 .lbox .center .pad {padding:0 7px;}
@@ -533,7 +533,7 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 .lbox .bottom div {height:17px; overflow:hidden;}
 .lbox .bottom .bottom_left {width:12px;float:left; background:url(../images/lbox_lb.png) 0 0 no-repeat;}
 .lbox .bottom .bottom_right {width:12px; float:right; background:url(../images/lbox_rb.png) 0 0 no-repeat;}
-.lbox .bottom .bottom_center {/*margin:0 12px;*/ background:url(../images/lbox_b.png) 0 0 repeat-x; _float:left; _width:687px;}
+.lbox .bottom .bottom_center {/*margin:0 12px;*/ background:url(../images/lbox_b.png) 0 0 repeat-x; *float:left; *width:687px;}
 
 .lbox .lbox_header {color:#4e5557; font-size:18px; padding:0 20px 5px 20px; border-bottom:1px solid #afdcef;}
 .lbox .u_line {padding:20px 0 5px 0; font-size:12px; font-weight:bolder; color:#4e5557; border-bottom:1px solid #ccd3d7;}
