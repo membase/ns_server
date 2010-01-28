@@ -107,12 +107,17 @@
 	<!-- shadow box -->
 	<h1>Status</h1>
 	<div class="shadow_box"><div class="top"><div><div></div></div></div><div class="cnt"><div class="pad"><div class="content">
-    <div class="darker_block with_devider pat_10">
+    <div class="darker_block with_devider pat_10" id="cluster_status_container">
+    </div><div class="template" id="cluster_status_template">
         <div class="labeled_line">
             <h2 class="label">Cluster Health:</h2>
             <div class="line_cnt">
+                {% if (canJoinCluster) { %}
                 <a href="#" class="button_medium float_right" style="margin-top:-9px;">Join Cluster</a>
-                <div class="alert_1"></div> <a>Critical</a> <span class="comment">(3 server nodes managing <a>4 buckets</a>)</span>
+                {% }; %}
+                <div class="alert_1">{%=V.setAttribute('class', isCritical ? 'alert_1' : '')%}</div>
+                <a>{%= isCritical ? 'Critical' : 'Healthy' %}</a>
+                <span class="comment">({%= h(V.count(nodesCount, 'server node')) %} managing <a href="javascript:nav.go('buckets');">{%=h(V.count(bucketsCount, 'bucket'))%}</a>)</span>
             </div>
         </div>
         <div class="labeled_line">
@@ -120,9 +125,9 @@
             <div class="line_cnt">
                 <div class="usage_big">
                     <div class="unused">
-                        <div class="used" style="width:50%;"></div>
-                    </div>
-                    <div class="comment">50% Utilized (500MB Free)</div>
+                        <div class="used" style="width:1%;"></div>
+                    </div>{%=V.setPersentBar(memoryUtilization)%}
+                    <div class="comment">{%=memoryUtilization%}% Utilized ({%=memoryFreeMB%}MB Free)</div>
                 </div>
             </div>
         </div>
@@ -133,7 +138,7 @@
                     <div class="unused">
                         <div class="used" style="width:50%;"></div>
                     </div>
-                    <div class="comment">50% Utilized (500MB Free)</div>
+                    <div class="comment">TODO: 50% Utilized (500MB Free)</div>
                 </div>
             </div>
         </div>

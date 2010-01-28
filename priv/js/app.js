@@ -548,6 +548,37 @@ function prepareTemplateForCell(templateName, cell) {
 }
 
 var OverviewSection = {
+  renderStatus: function () {
+    var nodes = DAO.cells.currentPoolDetails.value.nodes;
+    var buckets = BucketsSection.cells.detailedBuckets.value;
+
+    var totalMem = 0;
+    var freeMem = 0;
+    _.each(nodes, function (n) {
+      totalMem += n.memoryTotal;
+      freeMem += n.memoryFree;
+    });
+
+    var memoryUtilization = 100-Math.round(freeMem*100/totalMem);
+
+    var isCritical = memoryUtilization > 90;
+    isCritical = isCritical || _.any(nodes, function (n) {
+      return n.status != 'healthy';
+    });
+    // TODO: need server-side help for second condition:
+    // '2. server node in cluster has been or is unresponsive'
+
+    var statusData = {
+      isCritical: isCritical,
+      canJoinCluster: (nodes.length == 1),
+      nodesCount: nodes.length,
+      bucketsCount: buckets && buckets.length,
+      memoryUtilization: memoryUtilization,
+      memoryFreeMB: Math.floor(freeMem/1048576)
+    };
+
+    renderTemplate('cluster_status', statusData);
+  },
   onFreshNodeList: function () {
     var nodes = DAO.cells.currentPoolDetails.value.nodes;
     renderTemplate('server_list', nodes);
@@ -561,6 +592,8 @@ var OverviewSection = {
         $('#get_started').addClass('block');
       }
     });
+
+    this.renderStatus();
   },
   startJoinCluster: function () {
     var dialog = $('#join_cluster_dialog');
@@ -591,8 +624,13 @@ var OverviewSection = {
     });
   },
   init: function () {
-    DAO.cells.currentPoolDetails.subscribe($m(this, 'onFreshNodeList'));
+    var self = this;
+    _.defer(function () {
+      BucketsSection.cells.detailedBuckets.subscribe($m(self, 'renderStatus'));
+    });
+    DAO.cells.currentPoolDetails.subscribe($m(self, 'onFreshNodeList'));
     prepareTemplateForCell('server_list', DAO.cells.currentPoolDetails);
+    prepareTemplateForCell('cluster_status', DAO.cells.currentPoolDetails);
     prepareTemplateForCell('pool_list', DAO.cells.poolList);
   },
   onEnter: function () {
@@ -1013,6 +1051,20 @@ _.extend(ViewHelpers, {
     return this.thisElement(function (q) {
       q.find('.used').css('width', String(percents)+'%')
     });
+  },
+  setAttribute: function (name, value) {
+    return this.thisElement(function (q) {
+      q.attr(name, value);
+    });
+  },
+  count: function (count, text) {
+    if (count == null)
+      return '?' + text + '(s)';
+    count = Number(count);
+    if (count > 1) {
+      text += 's';
+    }
+    return [String(count), ' ', text].join('')
   },
   renderHealhClass: function (status) {
     if (status == "healthy")
