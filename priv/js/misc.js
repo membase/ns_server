@@ -26,6 +26,28 @@ function traceMethodCalls(object, methodName) {
   object[methodName] = tracer;
 }
 
+// creates function with body of F, but environment ENV
+// USE WITH EXTREME CARE
+function reinterpretInEnv(f, env) {
+  var keys = [];
+  var vals = [];
+  for (var k in env) {
+    keys.push(k);
+    vals.push(env[k]);
+  }
+  var body = 'return ' + String(f);
+  var maker = Function.apply(Function, keys.concat([body]));
+  return maker.apply(null, vals);
+}
+
+// ;(function () {
+//   var f = function () {
+//     alert('f:' + f);
+//   }
+//   f();
+//   reinterpretInEnv(f, {f: 'alk'})();
+// })();
+
 function escapeHTML() {
   return String(arguments[0]).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
 }
@@ -81,27 +103,12 @@ function renderJSLink(functionName, arg, prefix) {
 
     if (!fn) {
       str = handleURLEncodedScriptlets(str);
-      var body = "var p=[],print=function(){p.push.apply(p,arguments);}," +
-        "h=window.escapeHTML," +
-        "jsLink=window.renderJSLink;" +
-
-      // Introduce the data as local variables using with(){}
-      "with(obj){p.push('" +
-
-      // Convert the template into pure JavaScript
-      str
-      .replace(/[\r\t\n]/g, " ")
-      .split("{%").join("\t")
-      .replace(/((^|%})[^\t]*)'/g, "$1\r")
-      .replace(/\t=(.*?)%}/g, "',$1,'")
-      .split("\t").join("');")
-      .split("%}").join("p.push('")
-      .split("\r").join("\\'")
-        + "');}return p.join('');"
-
       // Generate a reusable function that will serve as a template
       // generator (and which will be cached).
-      fn = new Function("obj", body);
+      fn = _.template(str);
+      // inject some common helpers
+      fn = reinterpretInEnv(fn, {h: escapeHTML,
+                                 jsLink: renderJSLink});
     }
 
     // Provide some basic currying to the user
@@ -192,13 +199,17 @@ function renderTemplate(key, data) {
   var oldHooks = AfterTemplateHooks;
   AfterTemplateHooks = [];
   try {
-    $i(to).innerHTML = tmpl(from, data);
+    var fn = tmpl(from);
+    $i(to).innerHTML = fn(data);
 
     _.each(AfterTemplateHooks, function (hook) {
       hook.call();
     });
 
     $(window).trigger('template:rendered');
+  } catch (e) {
+    alert('Template error:' + String(fn) + ', ' + e.templateBody);
+    throw e;
   } finally {
     AfterTemplateHooks = oldHooks;
   }
