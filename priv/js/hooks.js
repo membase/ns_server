@@ -265,7 +265,7 @@ var MockedRequest = mkClass({
     }
 
     if (!(/^\d*$/.exec(params['cacheSize']))) {
-      errors.push("cache size must be integer");
+      errors.push("cache size must be an integer");
     }
 
     if (isBlank(params['password'])) {
