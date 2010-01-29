@@ -242,11 +242,29 @@ var MockedRequest = mkClass({
     if (_.isEqual(this.path, ["buckets"])) {
       return this.handleBucketsPost();
     }
+    if (_.isEqual(this.path, ["node", "controller", "doJoinCluster"])) {
+      return this.handleJoinCluster();
+    }
 
     this.fakeResponse('');
   },
 
   deserialize: deserializeQueryString,
+
+  errorResponse: function (resp) {
+    var self = this;
+    var fakeXHR = {status: 400};
+    _.defer(function () {
+      var oldHttpData = $.httpData;
+      $.httpData = function () {return resp;}
+
+      try {
+        self.options.error(fakeXHR, 'error');
+      } finally {
+        $.httpData = oldHttpData;
+      }
+    });
+  },
 
   handleBucketsPost: function () {
     var self = this;
@@ -273,22 +291,27 @@ var MockedRequest = mkClass({
     }
 
     if (errors.length) {
-      var resp = {errors: errors}
-      var fakeXHR = {status: 400};
-      _.defer(function () {
-        var oldHttpData = $.httpData;
-        $.httpData = function () {return resp;}
-
-        try {
-          self.options.error(fakeXHR, 'error');
-        } finally {
-          $.httpData = oldHttpData;
-        }
-      });
-      return;
+      return self.errorResponse({errors: errors});
     }
 
     self.fakeResponse('');
+  },
+
+  handleJoinCluster: function () {
+    var params = this.deserialize(this.options.data)
+    console.log("params: ", params);
+    var ok = true;
+
+    _.each(('clusterMemberHostIp clusterMemberPort user password').split(' '), function (name) {
+      if (!params[name] || !params[name].length) {
+        ok = false;
+      }
+    });
+
+    if (ok)
+      this.fakeResponse('');
+    else
+      this.errorResponse({});
   },
 
   handlePoolDetails: function () {
