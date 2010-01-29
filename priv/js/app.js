@@ -909,7 +909,7 @@ var AlertsSection = {
     this.alertTab = new TabsCell("alertsTab",
                                  "#alerts .tabs",
                                  "#alerts .panes > div",
-                                 ["list", "settings", "log"]);
+                                 ["list", "log"]);
 
     $('#alerts_settings_form').bind('submit', $m(this, 'onSettingsSubmit'));
     this.alertTab.subscribe($m(this, 'onTabChanged'));
@@ -994,6 +994,17 @@ var AlertsSection = {
   }
 }
 
+var SettingsSection = {
+  init: function () {
+  },
+  onEnter: function () {
+    this.tabs = new TabsCell("settingsTab",
+                             '#settings .tabs',
+                             '#settings .panes > div',
+                             ['basic', 'advanced']);
+  }
+};
+
 var DummySection = {
   onEnter: function () {}
 };
@@ -1003,7 +1014,7 @@ var ThePage = {
              analytics: AnalyticsSection,
              buckets: BucketsSection,
              alerts: AlertsSection,
-             settings: DummySection},
+             settings: SettingsSection},
   currentSection: null,
   currentSectionName: null,
   gotoSection: function (section) {
