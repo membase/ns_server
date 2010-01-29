@@ -198,7 +198,26 @@ var MockedRequest = mkClass({
     var path = this.path;
 
     var resp;
-    if (path[0] == "pools") {
+    if (_.isEqual(path, ["settings", "web"])) {
+      resp = {port:8080,username:"",password:""};
+    } else if (_.isEqual(path, ["settings", "advanced"])) {
+      resp = {alerts: {email:"",
+                       email_server: {user:"",
+                                      pass:"",
+                                      addr:"",
+                                      port:"",
+                                      encrypt:"0"},
+                       sendAlerts:"0",
+                       alerts: {
+                         server_down:"1",
+                         server_up:"1",
+                         server_joined:"1",
+                         server_left:"1",
+                         bucket_created:"1",
+                         bucket_deleted:"1",
+                         bucket_auth_failed:"1"}},
+              ports:{proxyPort:11213,directPort:11212}};
+    } else if (path[0] == "pools") {
       if (path.length == 1) {
         // /pools
         resp = {pools: [
