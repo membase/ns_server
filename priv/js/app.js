@@ -509,7 +509,7 @@ var StatGraphs = {
       });
       self.visibleStatsIsDirty = false;
     }
- 
+
     var selected = self.selected.value;
     renderLargeGraph(main, stats[selected]);
 
@@ -803,7 +803,7 @@ var BucketsSection = {
     var self = this;
     var form = $('#bucket_password_form');
     $("#bucket_password_form input[type=password]").val('');
-    
+
     form.bind('submit', function (e) {
       e.preventDefault();
       $.post(self.currentlyShownBucket.passwordURI, form.serialize(), reloadApp);
@@ -1045,8 +1045,6 @@ var ThePage = {
   }
 };
 
-var alreadyHadFailedLogin;
-
 _.extend(ViewHelpers, {
   thisElement: function (body) {
     var id = _.uniqueId("thisElement");
@@ -1092,17 +1090,17 @@ _.extend(ViewHelpers, {
 function loginFormSubmit() {
   var login = $('#login_form [name=login]').val();
   var password = $('#login_form [name=password]').val();
-  //var spinner = overlayWithSpinner('#login_form');
+  var spinner = overlayWithSpinner('#login_form');
   DAO.performLogin(login, password, function (status) {
-    //spinner.remove();
+    spinner.remove();
+
     if (status == 'success') {
-      hideDialog('login_dialog');
+      $('#container').show();
+      $('#auth_dialog').hide();
       return;
     }
 
-    if (!alreadyHadFailedLogin)
-      $('#login_form').prepend("<h1>Login failed. Try again</h1>")
-    alreadyHadFailedLogin = true;
+    $('#auth_dialog .alert_red').show();
   });
   return false;
 }
@@ -1112,10 +1110,8 @@ window.nav = {
 };
 
 $(function () {
-  showDialog('login_dialog');
-
   _.defer(function () {
-    $('#login_dialog [name=login]').get(0).focus();
+    $('#auth_dialog [name=login]').get(0).focus();
   });
 
   ThePage.initialize();

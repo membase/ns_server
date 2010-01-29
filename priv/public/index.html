@@ -7,7 +7,7 @@
 <script src="/js/all.js"></script>
 </head>
 <body>
-  <div id="container">
+  <div id="container" style="display:none;">
     <div id="header">
       <div class="cnt_holder">
         <div class="topper_nav">
@@ -671,20 +671,6 @@
 </div> <!-- container -->
 
 <!-- dialogs -->
-<div class="jqmWindow" id="login_dialog">
-  <div>Dev. hint: use <a href="/index.html?noauth&amp;ajaxDelay=350">noauth</a> version</div>
-<form id="login_form">
-  <label>Login:<input name="login"></label>
-  <label>Password:<input name="password"></label>
-  <input type="submit">
-</form>
-<script>
-  $('#login_form').bind('submit', function (e) {
-    e.preventDefault();
-    loginFormSubmit();
-  });
-</script>
-</div>
 <div class="jqmWindow" id="bucket_details_dialog_container">
 </div>
 <div id="bucket_details_dialog_template" class="template">
@@ -1034,31 +1020,26 @@
   </div>
 </div>
 <!-- END join cluster -->
-<div class="auth_block" id="auth_form" style="display:none;">
+<div class="auth_block" id="auth_dialog">
   <div class="pad">
     <div class="alert_red" style="display:none;">
       <div class="al_text">
-        Your attempt at joining a cluster failed. Please check your settings and try again.
-      </div>
-    </div>
-    <div class="alert_green" style="display:none;">
-      <div class="al_text">
-        You have successfully joined the cluster. Your settings may have been updated and you may need to log in again.
+        Login failed. Try again.
       </div>
     </div>
     <h1>Welcome</h1>
-    <div class="form">
+    <form id="login_form" class="form block">
       <table>
         <col width="" />
         <col width="" />
         <tr>
           <td class="label">Username:</td>
-          <td><input type="text" name="u_name" class="inp" /></td>
+          <td><input type="text" name="login" class="inp" /></td>
         </tr>
         <tr>
           <td class="label">Password:</td>
           <td>
-            <input type="password" name="u_pass" class="inp" />
+            <input type="password" name="password" class="inp" />
           </td>
         </tr>
         <tr>
@@ -1073,7 +1054,13 @@
           </td>
         </tr>
       </table>
-    </div>
+    </form>
+    <script>
+      $('#login_form').bind('submit', function (e) {
+        e.preventDefault();
+        loginFormSubmit();
+      });
+    </script>
   </div>
 </div>
 </body>
