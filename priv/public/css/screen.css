@@ -579,6 +579,8 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 .auth_block .alert_red .al_text {padding:0 0 0 30px;}
 .alert_green {width:760px; height:75px; font-size:14px; color:#fff; background:url(../images/alert_green.png) 0 0 no-repeat; position:absolute; left:180px; top:23px; line-height:16px;}
 .alert_green .al_text {padding:20px 100px 0 20px;}
+.auth_block .pad .spinner {width:582px !important; height:280px !important; position:absolute !important; left:180px !important; top:72px !important; background:url(../images/login_screen.png) 100% -72px no-repeat !important; line-height:14px !important;}
+.auth_block .pad .spinner span {display:block; width: 150px; height:20px; padding:50px 0 0 0; text-align:center; font-size:12px; color:#a6b1b3; background:url(../images/spinner/spinner_1.gif) 55px 5px no-repeat; position:relative; margin:auto; top:122px;}
 
 /* sort tool */
 .sort_desc .sort_up {display:none;}
