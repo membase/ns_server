@@ -64,6 +64,7 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 .select_short {width:120px;}
 
 .save_cancel {height:31px; padding:5px 0;}
+.save_cancel button {position:relative; top:-1px;}
 .save_cancel .save_button {display:block; width:121px; height:31px; font-weight:bolder; color:#fff; text-align:center; line-height:31px; font-size:14px; text-decoration:none; background:url(../images/button_blue.gif) 0 0 no-repeat; border:0px;}
 .save_cancel .save_button:hover {background-position:0 -31px;}
 .save_cancel .save_button:active {background-position:0 -62px;}
