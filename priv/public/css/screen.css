@@ -548,6 +548,9 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 .lbox .warning {font-size:12px; color:#ec5223;}
 .lbox .warning ul {list-style-type:disc; margin:5px 0 0 15px;}
 
+.lbox .spinner {background:none #e9f3f9 !important;}
+.lbox .spinner span {display:block; position:relative; margin:0 auto 0 auto; top:50%; width:150px !important;height:20px !important; line-height:14px !important; padding:50px 0 0 0 !important; margin-top:-30px; background:url(../images/spinner/spinner_lightbox.gif) 55px 5px no-repeat; color:#6da2c2; font-size:12px; text-align:center;}
+
 #add_new_bucket_form {}
 #add_new_bucket_form p {min-height:15px; _height:15px; padding:0 0 15px 0; font-size:11px; line-height:15px;}
 #add_new_bucket_form p label {}
@@ -575,9 +578,9 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 .auth_block .form table .submit {width:210px; height:45px; overflow:visible; border:0px; background:url(../images/sign_in_button.gif) 0 0 no-repeat; font-size:22px; color:#fff;}
 .auth_block .form table .submit:hover {background-position:0 -45px;}
 .auth_block .form table .submit:active {background-position:0 -90px;}
-.auth_block .alert_red {width:779px; height:71px; position:absolute; left:171px; top:20px; line-height:65px; font-size:14px; color:#fff; background:url(../images/alert_red.png) 0 0 no-repeat;}
+.auth_block .alert_red {width:779px; height:71px; position:absolute; left:171px; top:20px; line-height:65px; font-size:14px; color:#fff; background:url(../images/alert_red.png) 0 0 no-repeat; z-index:1000;}
 .auth_block .alert_red .al_text {padding:0 0 0 30px;}
-.alert_green {width:760px; height:75px; font-size:14px; color:#fff; background:url(../images/alert_green.png) 0 0 no-repeat; position:absolute; left:180px; top:23px; line-height:16px;}
+.alert_green {width:760px; height:75px; font-size:14px; color:#fff; background:url(../images/alert_green.png) 0 0 no-repeat; position:absolute; left:180px; top:23px; line-height:16px; z-index:1000;}
 .alert_green .al_text {padding:20px 100px 0 20px;}
 .auth_block .pad .spinner {width:582px !important; height:280px !important; position:absolute !important; left:180px !important; top:72px !important; background:url(../images/login_screen.png) 100% -72px no-repeat !important; line-height:14px !important;}
 .auth_block .pad .spinner span {display:block; width: 150px; height:20px; padding:50px 0 0 0; text-align:center; font-size:12px; color:#a6b1b3; background:url(../images/spinner/spinner_1.gif) 55px 5px no-repeat; position:relative; margin:auto; top:122px;}
