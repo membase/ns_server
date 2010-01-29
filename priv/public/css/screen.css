@@ -586,3 +586,5 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 .sort_desc .sort_up {display:none;}
 .sort_asc .sort_down {display:none;}
 .sort_desc img, .sort_asc img {position:relative; top:-2px;}
+
+button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
