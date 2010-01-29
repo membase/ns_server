@@ -564,7 +564,7 @@ handle_eject_post(Req) ->
     end.
 
 handle_settings_web(Req) ->
-    Req:reply_json(build_settings_web()).
+    reply_json(Req, build_settings_web()).
 
 build_settings_web() ->
     Config = ns_config:get(),
