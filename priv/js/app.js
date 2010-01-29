@@ -632,7 +632,7 @@ var OverviewSection = {
         if (status != 'success') {
           renderTemplate('join_cluster_dialog_errors', data.errors)
         } else {
-          alert('OK. //TODO: Complete this part!');
+          $.cookie('cluster_join_flash', '1');
           reloadApp();
         }
       })
@@ -1113,6 +1113,10 @@ $(function () {
   _.defer(function () {
     $('#auth_dialog [name=login]').get(0).focus();
   });
+  if ($.cookie('cluster_join_flash')) {
+    $.cookie('cluster_join_flash', null);
+    $('#auth_dialog .alert_green').fadeIn('normal');
+  }
 
   ThePage.initialize();
 
