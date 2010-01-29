@@ -360,8 +360,12 @@ body { font-family: Arial, sans-serif; _height:100%;}
 .graph_nav {padding:10px 0 10px 2px;}
 .graph_nav span {display:block; width:166px !important; height:61px; float:left; overflow:hidden; 
 background:url(../images/mini_graph_bg.gif) 0 0 no-repeat; margin:0 12px 7px 12px; cursor:pointer;}
+.graph_nav span:hover {background-position:0 -122px;}
 .graph_nav span span {background:none; margin:0px;}
-.graph_nav .selected {background:url(../images/mini_graph_bg.gif) 0 -61px no-repeat;}
+.graph_nav .selected {background:url(../images/mini_graph_bg.gif) 0 -61px no-repeat !important;}
+.graph_nav .spinner {}
+.graph_nav .spinner span {position:relative; width:150px !important; height:15px !important; padding:20px 0 0 0; font-size:11px; color:#839aa6; margin:0 0 0 8px; top:5px; background:url(../images/spinner/spinner_gr_nav.gif) 66px 0 no-repeat; text-align:center; line-height:12px !important;}
+.graph_nav .selected .spinner span {background:url(../images/spinner/spinner2_gr_nav.gif) 66px 0 no-repeat; color:#d8e0e5;}
 
 
 #left_pane, #right_pane, #middle_panel { vertical-align: top; }

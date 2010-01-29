@@ -485,6 +485,7 @@ var StatGraphs = {
     var self = this;
     var main = $('#analytics_main_graph')
 
+    prepareAreaUpdate(main);
     _.each(self.recognizedStats, function (statName) {
       prepareAreaUpdate(self.findGraphArea(statName));
     });
