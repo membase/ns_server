@@ -126,11 +126,12 @@ var LinkSwitchCell = mkClass(HashFragmentCell, {
 var TabsCell = mkClass(HashFragmentCell, {
   initialize: function ($super, paramName, tabsSelector, panesSelector, values, options) {
     var self = this;
-    $super(paramName, options);
+    $super(paramName, $.extend({firstItemIsDefault: true},
+                               options || {}));
 
     self.tabsSelector = tabsSelector;
     self.panesSelector = panesSelector;
-    var tabsOptions = $.extend({firstItemIsDefault: true},
+    var tabsOptions = $.extend({},
                                options || {},
                                {api: true});
     self.api = $(tabsSelector).tabs(panesSelector, tabsOptions);
