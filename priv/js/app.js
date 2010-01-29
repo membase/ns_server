@@ -1162,11 +1162,14 @@ $(window).bind('template:rendered', function () {
     function() {
       $(this).removeClass('hovered');
     });
-/*    $('#alert_set').click(
+    $('#alert_set').click(
       function() {
-        $(this).checked == true
+        if (this.checked == true)
+        {
+          $('#alerts_settings_guts').addClass('block');
+        } else { $('#alerts_settings_guts').removeClass('block');}
       }
-    );*/
+    );
 });
 $('.remove_bucket').live('click', function() {
     showDialog('flush_bucket_remove_dialog');
