@@ -69,6 +69,8 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 .save_cancel .save_button:active {background-position:0 -62px;}
 .save_cancel .button_3 {width:146px; height:31px; background:url(../images/button_blue_3.gif) 0 0 no-repeat;}
 .save_cancel .cancel_button {display:block; width:80px; height:31px; line-height:31px; color:#8b8b8e; text-align:center; font-weight:bolder; text-decoration:none;}
+.save_cancel .button_3:hover {background-position:0 -31px;}
+.save_cancel .button_3:active {background-position:0 -62px;}
 
 .form {padding:10px 0 15px 0;}
 .form a {text-decoration:none;}
@@ -83,10 +85,10 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 .topper_nav b {margin:0 2px; color:#848f96; font-weight:bolder;}
 
 /* buttons */
-a.button_medium {display:block;}
+a.button_medium {display:block; color:#444245 !important;}
 .button_medium {width:154px; height:32px; font-size:14px; border:0px; overflow:visible; background:url(../images/button_gray_medium.gif) 0 0 no-repeat; line-height:32px; cursor:pointer; color:#444245; text-align:center; text-decoration:none;}
-.button_medium:hover {background-position:0 -32px; color:#f8eeed;}
-.button_medium:active {background-position:0 -64px; color:#e0eff7;}
+.button_medium:hover {background-position:0 -32px; color:#f8eeed !important;}
+.button_medium:active {background-position:0 -64px; color:#e0eff7 !important;}
 
 /* alerts */
 .alert_1 {display:block; width:28px; height:29px; background:url(../images/alert_1.gif) 0 0 no-repeat; margin:-7px 0 0 0;}
