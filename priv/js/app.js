@@ -1090,7 +1090,7 @@ _.extend(ViewHelpers, {
 function loginFormSubmit() {
   var login = $('#login_form [name=login]').val();
   var password = $('#login_form [name=password]').val();
-  var spinner = overlayWithSpinner('#login_form');
+  var spinner = overlayWithSpinner('#login_form', false);
   DAO.performLogin(login, password, function (status) {
     spinner.remove();
 

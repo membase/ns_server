@@ -148,23 +148,25 @@ function getRealBackgroundColor(jq) {
   }
 }
 
-function overlayWithSpinner(jq) {
+function overlayWithSpinner(jq, backgroundColor) {
   if ($.isString(jq))
     jq = $(jq);
   var height = jq.height();
   var width = jq.width();
   var html = $(SpinnerHTML, document);
   var pos = jq.position();
-  var realBackgroundColor = getRealBackgroundColor(jq);
   var newStyle = {
     width: width+'px',
     height: height+'px',
     lineHeight: height+'px',
     position: 'absolute',
-    'background-color': realBackgroundColor,
     'z-level': 9999,
     top: pos.top + 'px',
     left: pos.lext + 'px'
+  }
+  if (backgroundColor !== false) {
+    var realBackgroundColor = backgroundColor || getRealBackgroundColor(jq);
+    newStyle['background-color'] = realBackgroundColor;
   }
   _.each(newStyle, function (value, key) {
     html.css(key, value);
