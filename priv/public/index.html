@@ -523,123 +523,125 @@
               <h2 class="head_2_underline">Alert settings</h2>
               <div class="form">
                 <div>
-                  <label><input type="checkbox" class="check"> Notify me by email with alerts</label>
+                  <label><input type="checkbox" class="check" id="alert_set"> Notify me by email with alerts</label>
                 </div>
-                <div class="labeled_line">
-                  <label class="block label for_input">Email Address:</label>
-                  <div class="line_cnt">
-                    <input type="text" class="text inp_short">
-                  </div>
-                </div>
-                <h2 class="form_section_title">Mail Server Settings</h2>
-                <div class="labeled_line">
-                  <label class="block label for_input">Username:</label>
-                  <div class="line_cnt">
-                    <input type="text" class="text inp_short">
-                  </div>
-                </div>
-                <div class="labeled_line">
-                  <label class="block label for_input">Password:</label>
-                  <div class="line_cnt">
-                    <input type="text" class="text inp_short">
-                  </div>
-                </div>
-                <div class="labeled_line">
-                  <label class="block label for_input">Mail Server Address:</label>
-                  <div class="line_cnt">
-                    <input type="text" class="text inp_short">
-                    Port:
-                    <select class="select select_short">
-                      <option></option>
-                      <option></option>
-                      <option></option>
-                      <option></option>
-                    </select>
-                  </div>
-                </div>
-                <div class="labeled_line">
-                  <div class="line_cnt">
-                    <div>
-                      <label><input type="checkbox" class="check"> Notify me by email with alerts</label>
+                <div id="alerts_settings_guts" style="display:none;">
+                  <div class="labeled_line">
+                    <label class="block label for_input">Email Address:</label>
+                    <div class="line_cnt">
+                      <input type="text" class="text inp_short">
                     </div>
                   </div>
-                </div>
-                <h2 class="form_section_title">Alert me when there are...</h2>
-                <div class="pat_10">
-                  <table class="lined_tab brdr_exl_r">
-                    <col width="" />
-                    <col width="115" />
-                    <col width="50" />
-                    <tr>
-                      <th>Critical Issues</th>
-                      <th>Type</th>
-                      <th>Active</th>
-                    </tr>
-                    <tr>
-                      <td>A server is not responding</td>
-                      <td>Email</td>
-                      <td class="cntr"><input type="checkbox" /></td>
-                    </tr>
-                    <tr>
-                      <td>A server is down</td>
-                      <td>Email</td>
-                      <td class="cntr"><input type="checkbox" /></td>
-                    </tr>
-                  </table>
-                </div>
-                <div class="pat_10">
-                  <table class="lined_tab brdr_exl_r">
-                    <col width="" />
-                    <col width="115" />
-                    <col width="50" />
-                    <tr>
-                      <th>Attention Required</th>
-                      <th>Type</th>
-                      <th>Active</th>
-                    </tr>
-                    <tr>
-                      <td>A bucket has been deleted</td>
-                      <td>Email</td>
-                      <td class="cntr"><input type="checkbox" /></td>
-                    </tr>
-                    <tr>
-                      <td>Bucket authentication failure</td>
-                      <td>Email</td>
-                      <td class="cntr"><input type="checkbox" /></td>
-                    </tr>
-                  </table>
-                </div>
-                <div class="pat_10">
-                  <table class="lined_tab brdr_exl_r">
-                    <col width="" />
-                    <col width="115" />
-                    <col width="50" />
-                    <tr>
-                      <th>Informational Issues</th>
-                      <th>Type</th>
-                      <th>Active</th>
-                    </tr>
-                    <tr>
-                      <td>A new server joins a cluster</td>
-                      <td>Email</td>
-                      <td class="cntr"><input type="checkbox" /></td>
-                    </tr>
-                    <tr>
-                      <td>A server leaves a cluster</td>
-                      <td>Email</td>
-                      <td class="cntr"><input type="checkbox" /></td>
-                    </tr>
-                    <tr>
-                      <td>A new bucket has been created</td>
-                      <td>Email</td>
-                      <td class="cntr"><input type="checkbox" /></td>
-                    </tr>
-                    <tr>
-                      <td>Bucket authentication failure</td>
-                      <td>Email</td>
-                      <td class="cntr"><input type="checkbox" /></td>
-                    </tr>
-                  </table>
+                  <h2 class="form_section_title">Mail Server Settings</h2>
+                  <div class="labeled_line">
+                    <label class="block label for_input">Username:</label>
+                    <div class="line_cnt">
+                      <input type="text" class="text inp_short">
+                    </div>
+                  </div>
+                  <div class="labeled_line">
+                    <label class="block label for_input">Password:</label>
+                    <div class="line_cnt">
+                      <input type="text" class="text inp_short">
+                    </div>
+                  </div>
+                  <div class="labeled_line">
+                    <label class="block label for_input">Mail Server Address:</label>
+                    <div class="line_cnt">
+                      <input type="text" class="text inp_short">
+                      Port:
+                      <select class="select select_short">
+                        <option></option>
+                        <option></option>
+                        <option></option>
+                        <option></option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="labeled_line">
+                    <div class="line_cnt">
+                      <div>
+                        <label><input type="checkbox" class="check"> Notify me by email with alerts</label>
+                      </div>
+                    </div>
+                  </div>
+                  <h2 class="form_section_title">Alert me when there are...</h2>
+                  <div class="pat_10">
+                    <table class="lined_tab brdr_exl_r">
+                      <col width="" />
+                      <col width="115" />
+                      <col width="50" />
+                      <tr>
+                        <th>Critical Issues</th>
+                        <th>Type</th>
+                        <th>Active</th>
+                      </tr>
+                      <tr>
+                        <td>A server is not responding</td>
+                        <td>Email</td>
+                        <td class="cntr"><input type="checkbox" /></td>
+                      </tr>
+                      <tr>
+                        <td>A server is down</td>
+                        <td>Email</td>
+                        <td class="cntr"><input type="checkbox" /></td>
+                      </tr>
+                    </table>
+                  </div>
+                  <div class="pat_10">
+                    <table class="lined_tab brdr_exl_r">
+                      <col width="" />
+                      <col width="115" />
+                      <col width="50" />
+                      <tr>
+                        <th>Attention Required</th>
+                        <th>Type</th>
+                        <th>Active</th>
+                      </tr>
+                      <tr>
+                        <td>A bucket has been deleted</td>
+                        <td>Email</td>
+                        <td class="cntr"><input type="checkbox" /></td>
+                      </tr>
+                      <tr>
+                        <td>Bucket authentication failure</td>
+                        <td>Email</td>
+                        <td class="cntr"><input type="checkbox" /></td>
+                      </tr>
+                    </table>
+                  </div>
+                  <div class="pat_10">
+                    <table class="lined_tab brdr_exl_r">
+                      <col width="" />
+                      <col width="115" />
+                      <col width="50" />
+                      <tr>
+                        <th>Informational Issues</th>
+                        <th>Type</th>
+                        <th>Active</th>
+                      </tr>
+                      <tr>
+                        <td>A new server joins a cluster</td>
+                        <td>Email</td>
+                        <td class="cntr"><input type="checkbox" /></td>
+                      </tr>
+                      <tr>
+                        <td>A server leaves a cluster</td>
+                        <td>Email</td>
+                        <td class="cntr"><input type="checkbox" /></td>
+                      </tr>
+                      <tr>
+                        <td>A new bucket has been created</td>
+                        <td>Email</td>
+                        <td class="cntr"><input type="checkbox" /></td>
+                      </tr>
+                      <tr>
+                        <td>Bucket authentication failure</td>
+                        <td>Email</td>
+                        <td class="cntr"><input type="checkbox" /></td>
+                      </tr>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>

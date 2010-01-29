@@ -1162,6 +1162,11 @@ $(window).bind('template:rendered', function () {
     function() {
       $(this).removeClass('hovered');
     });
+/*    $('#alert_set').click(
+      function() {
+        $(this).checked == true
+      }
+    );*/
 });
 $('.remove_bucket').live('click', function() {
     showDialog('flush_bucket_remove_dialog');
