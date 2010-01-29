@@ -610,23 +610,26 @@ to generate the same kind of response.
 
 ####Bucket resources
 
-A new bucket may be created in a given pool with a PUT command off of the buckets URI specified in the pool.
-
+A new bucket may be created with a POST command to the URI to the buckets defined URI for
+the pool.
 
 *Request*
 
 <pre class="restcalls">
-PUT /pools/default/buckets/matt HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json; charset=UTF-8
-Content-Length: 33
+POST /pools/default/buckets HTTP/1.1
+Host: node.in.your.cluster:8080
+Content-Type: application/x-www-form-urlencoded; charset=UTF-8
+Authorization: Basic YWRtaW46YWRtaW4=
+Content-Length: xx
 
-{"name":"matt", "sizePerNode":10}
+name=newbucket&cacheSize=10
 </pre>
 
 *Response*
 
 response 200: bucket was created
+
+The bucket name cannot have a leading underscore.
 
 With the current behavior of creating a bucket, there is a side effect of creating a user and password,
 each of which have the same name as the bucket.  This side effect should be considered an unstable

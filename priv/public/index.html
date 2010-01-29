@@ -709,8 +709,9 @@
           ***** </p>
           <div class="pat_10">
             <p class="normal text_12">
-            Sample connection string:<br />
-            <textarea rows="3" readonly>sample connection string here</textarea>
+            Sample Java Client Manager connection string:<br />
+            <textarea rows="3" readonly>ClientManager manager = new ClientManager({%= h(b.uri) %}, "{%= h(b.name) %}", "********");
+MemcachedClient client = manager.getClient();</textarea>
             </p>
             <div class="right save_cancel">
               <button class="save_button float_right" type="submit">DONE</button>

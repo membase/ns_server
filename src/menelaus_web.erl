@@ -135,6 +135,9 @@ loop(Req, DocRoot) ->
                          ["pools", PoolId, "buckets", Id] ->
                              {auth_bucket, fun handle_bucket_update/3,
                               [PoolId, Id]};
+                         ["pools", PoolId, "buckets"] ->
+                             {auth_bucket, fun handle_bucket_update/2,
+                              [PoolId]};
                          ["pools", PoolId, "buckets", Id, "controller", "doFlush"] ->
                              {auth_bucket, fun handle_bucket_flush/3,
                               [PoolId, Id]};
@@ -152,8 +155,6 @@ loop(Req, DocRoot) ->
                      end;
                  'PUT' ->
                      case PathTokens of
-                         ["pools", PoolId, "buckets", Id] ->
-                             {auth, fun handle_bucket_update/3, [PoolId, Id]};
                          _ ->
                              ns_log:log(?MODULE, 0003, "Invalid put received: ~p", [Req]),
                              {done, Req:respond({405, [], "Method Not Allowed"})}
@@ -391,13 +392,10 @@ handle_bucket_delete(PoolId, BucketId, Req) ->
     ok.
 
 handle_bucket_update(PoolId, BucketId, Req) ->
-    % There are two ways one would get here, Req will contain a JSON
-    % payload
+    % Req will contain a urlencoded form which may contain
+    % name, cacheSize, password, verifyPassword
     %
-    % A PUT means create/update.  A PUT may be sparse as some things
-    % (like memory amount) will fall back to server defaults
-    %
-    % A POST means modify existing bucket settings.  For 1.0, this will *only*
+    % A POST means create or update existing bucket settings.  For 1.0, this will *only*
     % allow setting the memory to a higher or lower, but non-zero value.
     % 
     % TODO: convert to handling memory changes
@@ -430,12 +428,22 @@ handle_bucket_update(PoolId, BucketId, Req) ->
             end
     end.
 
+handle_bucket_update(PoolId, Req) ->
+        PostArgs = Req:parse_post(),
+        case proplists:get_value("name", PostArgs) of
+            undefined -> undefined;
+            <<>>      -> undefined;
+            BucketId  -> handle_bucket_create(PoolId, BucketId, Req)
+        end.
+        %% TODO: should this handle a password or not?
+
+
 handle_bucket_create(_PoolId, [$_ | _], Req) ->
     % Bucket name cannot have a leading underscore character.
     Req:response({400, [], []});
 
 handle_bucket_create(PoolId, BucketId, Req) ->
-    {struct, Params} = parse_json(Req),
+    PostArgs = Req:parse_post(),
     BucketConfigDefault = mc_bucket:bucket_config_default(),
     BucketConfig =
         lists:foldl(
@@ -443,8 +451,7 @@ handle_bucket_create(PoolId, BucketId, Req) ->
                   lists:keystore(auth_plain, 1, C,
                                  {auth_plain, BucketId});
              ({size_per_node, _}, C) ->
-                  case proplists:get_value(<<"sizePerNode">>,
-                                           Params) of
+                  case proplists:get_value("size", PostArgs) of
                       undefined -> C;
                       SBin when is_binary(SBin) ->
                           S = list_to_integer(binary_to_list(SBin)),
