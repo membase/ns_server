@@ -127,7 +127,7 @@ loop(Req, DocRoot) ->
                          ["settings", "advanced"] ->
                              {auth, fun handle_settings_advanced_post/1};
                          ["pools", _PoolId] ->
-                             {done, Req:response(403, [], "")};
+                             {done, Req:respond(403, [], "")};
                          ["pools", _PoolId, "controller", "testWorkload"] ->
                              {auth, fun handle_traffic_generator_control_post/1};
                          ["controller", "ejectNode"] ->
@@ -440,7 +440,8 @@ handle_bucket_update(PoolId, Req) ->
 
 handle_bucket_create(_PoolId, [$_ | _], Req) ->
     % Bucket name cannot have a leading underscore character.
-    Req:response({400, [], []});
+    Req:respond({400, [], []});
+
 
 handle_bucket_create(PoolId, BucketId, Req) ->
     PostArgs = Req:parse_post(),
@@ -503,7 +504,7 @@ handle_join(Req) ->
     OtherPswd = proplist:get_value("password", Params),
     case lists:member(undefined,
                       [OtherHost, OtherPort, OtherUser, OtherPswd]) of
-        true  -> Req:response({400, [], []});
+        true  -> Req:respond({400, [], []});
         false -> handle_join(Req, OtherHost, OtherPort, OtherUser, OtherPswd)
     end.
 
@@ -512,18 +513,18 @@ handle_join(Req, OtherHost, OtherPort, OtherUser, OtherPswd) ->
         true ->
             case menelaus_rest:rest_get_otp(OtherHost, OtherPort,
                                             {OtherUser, OtherPswd}) of
-                {ok, undefined, _} -> Req:response({401, [], []});
-                {ok, _, undefined} -> Req:response({401, [], []});
+                {ok, undefined, _} -> Req:respond({401, [], []});
+                {ok, _, undefined} -> Req:respond({401, [], []});
                 {ok, N, C} ->
                     handle_join(Req,
                                 list_to_atom(binary_to_list(N)),
                                 list_to_atom(binary_to_list(C)));
-                _ -> Req:response({401, [], []})
+                _ -> Req:respond({401, [], []})
             end;
         false ->
             % We are not an 'empty' node, so user should first remove
             % buckets, etc.
-            Req:response({401, [], []})
+            Req:respond({401, [], []})
     end.
 
 handle_join(Req, OtpNode, OtpCookie) ->
