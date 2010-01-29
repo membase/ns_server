@@ -903,20 +903,71 @@
   </div>
 </div>
 <div class="jqmWindow" id="join_cluster_dialog">
-  <h1>Join a Cluster</h1>
-  <ul id="join_cluster_dialog_errors_container"></ul>
-  <ul id="join_cluster_dialog_errors_template" class="template">
-    <!-- {% _.each(rows, function (e) { %} -->
-    <li><strong>Attention</strong> - {%= h(e) %}
-    <!-- {% }); %} -->
-  </ul>
-  <form>
-  <p><label>IP Address:<input name="clusterMemberHostIp"></label></p>
-  <p><label>Port:<input name="clusterMemberHostPort"></label></p>
-  <p><label>Username:<input name="user"></label></p>
-  <p><label>Password:<input name="password" type="password"></label></p>
-  <p><a class="jqmClose">CANCEL</a> <button type="submit">JOIN CLUSTER</button></p>
-  </form>
+  <!-- Join cluster -->
+  <div class="lbox join_cluster">
+    <div class="top">
+      <div class="top_left"></div>
+      <div class="top_right"></div>
+      <div class="top_center"></div>
+    </div>
+    <div class="center">
+      <div class="pad">
+        <p class="lbox_header">Join a Cluster</p>
+        <div class="pas_20">
+          <p class="warning pat_10" id="join_cluster_dialog_errors_container"></p>
+          <p id="join_cluster_dialog_errors_template" class="template">
+          <!-- {% _.each(rows, function (e) { %} -->
+          <strong>Attention</strong> - {%= h(e) %}
+          <!-- {% }); %} -->
+          </p>
+          <form>
+            <table>
+              <tr>
+                <th>
+                  Cluster <a href="#" class="text_11">What’s this?</a>
+                </th>
+                <th>
+                  Security <a href="#" class="text_11">What’s this?</a>
+                </th>
+              </tr>
+              <tr>
+                <td>
+                  <div class="u_line_sm">
+                    <span class="label">IP Address:</span>
+                    <input type="text" class="inp" name="clusterMemberHostIp" />
+                  </div>
+                  <div class="u_line_sm">
+                    <span class="label">Port:</span>
+                    <input type="text" class="inp" name="clusterMemberHostPort" />
+                  </div>
+                </td>
+                <td>
+                  <div class="u_line_sm">
+                    <span class="label">Username:</span>
+                    <input type="text" class="inp" name="user" />
+                  </div>
+                  <div class="u_line_sm">
+                    <span class="label">Password:</span>
+                    <input type="password" class="inp" name="password" />
+                  </div>
+                </td>
+              </tr>
+            </table>
+            <div class="right save_cancel">
+              <button type="submit" class="save_button button_3 float_right">JOIN CLUSTER</button>
+              <a class="jqmClose cancel_button float_right" href="#">CANCEL</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <div class="bottom">
+      <div class="bottom_left"></div>
+      <div class="bottom_right"></div>
+      <div class="bottom_center"></div>
+    </div>
+  </div>
+  <!-- END join cluster -->
 </div>
 <!-- Join cluster -->
 <div class="lbox join_cluster" style="display:none;">
@@ -929,44 +980,50 @@
     <div class="pad">
       <p class="lbox_header">Join a Cluster</p>
       <div class="pas_20">
-        <p class="warning pat_10" style="display:none;"><strong>Attention</strong> – the cluster you have tried to join requires a username and password.</p>
-        <p class="warning pat_10" style="display:none;"><strong>Attention</strong> – hostname or IP is invalid or unreachable.</p>
-        <table>
-          <tr>
-            <th>
-              Cluster <a href="#" class="text_11">What’s this?</a>
-            </th>
-            <th>
-              Security <a href="#" class="text_11">What’s this?</a>
-            </th>
-          </tr>
-          <tr>
-            <td>
-              <div class="u_line_sm">
-                <span class="label">IP Address:</span>
-                <input type="text" class="inp">
-              </div>
-              <div class="u_line_sm">
-                <span class="label">Port:</span>
-                <input type="text" class="inp">
-              </div>
-            </td>
-            <td>
-              <div class="u_line_sm">
-                <span class="label">Username:</span>
-                <input type="text" class="inp">
-              </div>
-              <div class="u_line_sm">
-                <span class="label">Password:</span>
-                <input type="password" class="inp">
-              </div>
-            </td>
-          </tr>
-        </table>
-        <div class="right save_cancel">
-          <button type="submit" class="save_button button_3 float_right">JOIN CLUSTER</button>
-          <a class="jqmClose cancel_button float_right" href="#">CANCEL</a>
-        </div>
+        <p class="warning pat_10" id="join_cluster_dialog_errors_container"></p>
+        <p id="join_cluster_dialog_errors_template" class="template">
+        <!-- {% _.each(rows, function (e) { %} -->
+        <strong>Attention</strong> - {%= h(e) %}
+        <!-- {% }); %} -->
+        </p>
+        <form>
+          <table>
+            <tr>
+              <th>
+                Cluster <a href="#" class="text_11">What’s this?</a>
+              </th>
+              <th>
+                Security <a href="#" class="text_11">What’s this?</a>
+              </th>
+            </tr>
+            <tr>
+              <td>
+                <div class="u_line_sm">
+                  <span class="label">IP Address:</span>
+                  <input type="text" class="inp" name="clusterMemberHostIp" />
+                </div>
+                <div class="u_line_sm">
+                  <span class="label">Port:</span>
+                  <input type="text" class="inp" name="clusterMemberHostPort" />
+                </div>
+              </td>
+              <td>
+                <div class="u_line_sm">
+                  <span class="label">Username:</span>
+                  <input type="text" class="inp" name="user" />
+                </div>
+                <div class="u_line_sm">
+                  <span class="label">Password:</span>
+                  <input type="password" class="inp" name="password" />
+                </div>
+              </td>
+            </tr>
+          </table>
+          <div class="right save_cancel">
+            <button type="submit" class="save_button button_3 float_right">JOIN CLUSTER</button>
+            <a class="jqmClose cancel_button float_right" href="#">CANCEL</a>
+          </div>
+        </form>
       </div>
     </div>
   </div>
