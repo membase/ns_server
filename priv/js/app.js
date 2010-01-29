@@ -1036,6 +1036,10 @@ var SettingsSection = {
     self.webSettings.subscribe($m(this, 'fillBasicForm'));
     self.advancedSettings.subscribe($m(this, 'fillAdvancedForm'));
   },
+  gotoSecureServer: function () {
+    this.tabs.setValue('basic');
+    nav.go('settings');
+  },
   fillForm: function (form, values) {
     var self = this;
 
