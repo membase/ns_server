@@ -1170,6 +1170,14 @@ $(window).bind('template:rendered', function () {
         } else { $('#alerts_settings_guts').removeClass('block');}
       }
     );
+    $('#secure_serv').click(
+      function() {
+        if (this.checked == true)
+        {
+          $('#server_secure').addClass('block');
+        } else { $('#server_secure').removeClass('block');}
+      }
+    );
 });
 $('.remove_bucket').live('click', function() {
     showDialog('flush_bucket_remove_dialog');
