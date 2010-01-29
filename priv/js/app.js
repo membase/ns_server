@@ -996,12 +996,12 @@ var AlertsSection = {
 
 var SettingsSection = {
   init: function () {
-  },
-  onEnter: function () {
     this.tabs = new TabsCell("settingsTab",
                              '#settings .tabs',
                              '#settings .panes > div',
                              ['basic', 'advanced']);
+  },
+  onEnter: function () {
   }
 };
 
