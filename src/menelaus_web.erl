@@ -470,7 +470,7 @@ handle_bucket_create(PoolId, BucketId, Req) ->
                                  BucketConfig),
     ns_log:log(?MODULE, 0012, "bucket created: ~p in: ~p",
                [BucketId, PoolId]),
-    Req:respond({200, [], []}).
+    handle_bucket_info(PoolId, BucketId, Req).
 
 handle_bucket_flush(PoolId, Id, Req) ->
     ns_log:log(?MODULE, 0005, "Flushing pool ~p bucket ~p from node ~p",
