@@ -211,6 +211,9 @@ var DAO = {
     if (!details)
       return undefined;
     return details.nodes.length > 1;
+  },
+  startTestApp: function () {
+    
   }
 };
 

@@ -39,13 +39,13 @@ there, listed in Menelaus when wired in.
  |   - Error            | not started     |                   |
  |   - Success          | overview rdict  |                   |
  |   - Security reqd.   | not started     |                   |
- | Alerts - Current     |   -DONE-        |   -DONE-          |
- | Alerts - Log         |   -DONE-        | not wired in      |
+ | Alerts - Current     | missing dismiss |   -DONE-          |
+ | Alerts - Log         |  html/css done  | not wired in      |
  | Alerts - Settings    | >remove<        | goes to settings  |
  | Cluster Settings Bas | -html/css done- |                   |
  | Cluster Settings Adv |   almost done   | not wired in      |
  | New Bucket           |   almost done   | sends error       |
- | Remove Bucket        |   almost done   | not wired in      |
+ | Remove Bucket        |  html/css done  | not wired in      |
  | Flush Cache          |   -DONE-        | sends error       |
  --------------------------------------------------------------
 
