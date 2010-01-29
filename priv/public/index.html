@@ -463,7 +463,7 @@
       </div>
       <div class="panes">
         <div class="brdr_exl_t">
-          <form id="basic">
+          <form id="basic_settings_form">
             <div class="pad_10">
               <div class="basic">
                 <h2 class="head_2_underline">Web Console</h2>
@@ -471,33 +471,33 @@
                   <div class="labeled_line">
                     <label class="block label for_input">Port:</label>
                     <div class="line_cnt">
-                      <input type="text" class="text inp_short"/>
+                      <input name="port" type="text" class="text inp_short"/>
                     </div>
                   </div>
                 </div>
                 <h2 class="head_2_underline">Security <a class="text_11">What’s this?</a></h2>
                 <div class="form">
                   <div>
-                    <label><input type="checkbox" class="check" name="secure_server" id="secure_serv" /><input type="hidden" value="1" /> Secure this Server</label>
+                    <label><input type="checkbox" class="check" name="secureServer" id="secure_serv" value="1"/><input type="hidden" value="0" /> Secure this Server</label>
                   </div>
                   <div id="server_secure" style="display:none;">
                     <div class="labeled_line">
                       <label class="block label for_input">Username:</label>
                       <div class="line_cnt">
-                        <input type="text" class="text inp_short"/>
-                        <a href="#" class="text_11">Setup Email Alerts</a>
+                        <input type="text" name="username" class="text inp_short"/>
+                        <a href="#" class="text_11">TODO: Setup Email Alerts</a>
                       </div>
                     </div>
                     <div class="labeled_line">
                       <label class="block label for_input">Password:</label>
                       <div class="line_cnt">
-                        <input type="password" class="text inp_short"/>
+                        <input name="password" type="password" class="text inp_short"/>
                       </div>
                     </div>
                     <div class="labeled_line">
                       <label class="block label for_input">Verify Password:</label>
                       <div class="line_cnt">
-                        <input type="password" class="text inp_short"/>
+                        <input name="verifyPassword" type="password" class="text inp_short"/>
                       </div>
                     </div>
                   </div>
@@ -515,7 +515,7 @@
           </form>
         </div>
         <div class="brdr_exl_t" style="display:none;">
-          <form id="advanced">
+          <form id="advanced_settings_form">
             <div class="pad_10">
               <div class="advanced">
                 <h2 class="head_2_underline">Port Configuration <a class="text_11">What’s this?</a></h2>

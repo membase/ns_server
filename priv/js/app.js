@@ -32,6 +32,14 @@
 //   });
 // });
 
+function setBoolAttribute(jq, attr, value) {
+  if (value) {
+    jq.attr(attr, attr);
+  } else {
+    jq.removeAttr(attr);
+  }
+}
+
 function formatUptime(seconds, precision) {
   precision = precision || 8;
 
@@ -729,10 +737,7 @@ var BucketsSection = {
     var show = (passwd != passwd2);
     parent.find('.dont-match')[show ? 'show' : 'hide']();
     parent.find('[type=submit]').each(function () {
-      if (show)
-        this.setAttribute('disabled', 'disabled');
-      else
-        this.removeAttribute('disabled');
+      setBoolAttribute($(this), 'disabled', show);
     });
     return !show;
   },
@@ -997,12 +1002,79 @@ var AlertsSection = {
 
 var SettingsSection = {
   init: function () {
-    this.tabs = new TabsCell("settingsTab",
+    var self = this;
+    self.tabs = new TabsCell("settingsTab",
                              '#settings .tabs',
                              '#settings .panes > div',
                              ['basic', 'advanced']);
+    self.webSettings = new Cell(function (mode) {
+      if (mode != 'settings')
+        return;
+      return future.get({url: '/settings/web'});
+    }).setSources({mode: DAO.cells.mode});
+    self.webSettings.setValue({});
+
+    self.advancedSettings = new Cell(function (mode) {
+      if (mode != 'settings')
+        return;
+      return future.get({url: '/settings/advanced'});
+    }).setSources({mode: DAO.cells.mode});
+    self.advancedSettings.setValue({});
+
+    self.webSettingsOverlay = null;
+    self.advancedSettinsOverlay = null;
+
+    function bindOverlay(cell, varName, form) {
+      function onUndef() {
+        self[varName] = overlayWithSpinner(form);
+      }
+      function onDef() {
+        var spinner = self[varName];
+        if (spinner) {
+          self[varName] = null;
+          spinner.remove();
+        }
+      }
+      cell.subscribe(onUndef, {'undefined': true, 'changed': false});
+      cell.subscribe(onDef, {'undefined': false, 'changed': true});
+    }
+
+    bindOverlay(self.webSettings, 'webSettingsOverlay', '#basic_settings_form');
+    bindOverlay(self.advancedSettings, 'advancedSettinsOverlay', '#advanced_settings_form');
+
+    self.webSettings.subscribe($m(this, 'fillBasicForm'));
+    self.advancedSettings.subscribe($m(this, 'fillAdvancedForm'));
+  },
+  fillForm: function (form, values) {
+    var self = this;
+
+    form.find('input[type=text], input:not([type])').each(function () {
+      var text = $(this);
+      var name = text.attr('name');
+      var value = String(values[name] || '');
+      text.val(value);
+    });
+
+    form.find('input[type=checkbox]').each(function () {
+      var box = $(this);
+      var name = box.attr('name');
+      if (!(name in values))
+        return;
+      setBoolAttribute(box, 'checked', values[name]);
+    });
+  },
+  fillBasicForm: function () {
+    this.fillForm($('#basic_settings_form'), this.webSettings.value);
+  },
+  fillAdvancedForm: function () {
+    this.fillForm($('#advanced_settings_form'), this.advancedSettings.value);
   },
   onEnter: function () {
+  },
+  onLeave: function () {
+    $('#settings form').each(function () {
+      this.reset();
+    });
   }
 };
 
