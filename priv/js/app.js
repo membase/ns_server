@@ -607,15 +607,6 @@ var OverviewSection = {
     var nodes = DAO.cells.currentPoolDetails.value.nodes;
     renderTemplate('server_list', nodes);
     $('#server_list_container table tr.primary:first-child').addClass('nbrdr');
-    $('#get_started_expander').click(function() {
-      if ($(this).hasClass('expanded')) {
-        $(this).removeClass('expanded');
-        $('#get_started').removeClass('block');
-      } else {
-        $(this).addClass('expanded');
-        $('#get_started').addClass('block');
-      }
-    });
 
     this.renderStatus();
   },
@@ -1256,3 +1247,28 @@ $('.remove_bucket').live('click', function() {
   });
 // flush_bucket_remove_dialog
 // showDialog('flush_bucket_remove_dialog');
+
+$(function () {
+  var cookie = _.bind($.cookie, $, '_gs');
+  (function (expander) {
+    function on() {
+      expander.addClass('expanded');
+      $('#get_started').addClass('block');
+      cookie('1', {expires: 65535});
+    }
+    function off() {
+      expander.removeClass('expanded');
+      $('#get_started').removeClass('block');
+      $.cookie('0', {expires: 65535});
+    }
+    expander.click(function() {
+      var op = expander.hasClass('expanded') ? off : on;
+      op();
+    });
+    if (cookie() == '1') {
+      off()
+    } else {
+      on();
+    }
+  })($('#get_started_expander'));
+});
