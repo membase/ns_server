@@ -4,6 +4,7 @@ SHELL=/bin/sh
 # is assumed that somewhere on the system under tests there is a built
 # ns_server repo, these values can be overridded by using -e on the make
 # command
+#
 NS_SERVER_REPO=../ns_server
 NS_SERVER_EBIN=$(NS_SERVER_REPO)/ebin
 
@@ -62,10 +63,14 @@ test: test_unit cucumber
 test_full: test memcapable
 
 test_unit: ebins $(NS_SERVER_EBIN)
+	$(MEMCACHED) -p 11211 -d -P /tmp/memcached.pid -E $(MEMCACHED)/.libs/default_engine.so
 	erl $(EFLAGS) ../../ebin -noshell -s mc_test test -s init stop -kernel error_logger silent
+	kill `cat /tmp/memcached.pid`
 
 test_unit_verbose: ebins $(NS_SERVER_EBIN)
+	$(MEMCACHED) -p 11211 -d -P /tmp/memcached.pid -E $(MEMCACHED)/.libs/default_engine.so
 	erl $(EFLAGS) ../../ebin -noshell -s mc_test test -s init stop
+	kill `cat /tmp/memcached.pid`
 
 test_main: ebin $(NS_SERVER_EBIN)
 	erl $(EFLAGS) -s mc_test main -noshell
