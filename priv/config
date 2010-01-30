@@ -88,11 +88,9 @@
 {port_servers,
   [{'_ver', {0, 0, 0}},
    {memcached, "./memcached",
-    ["-E", "./engines/bucket_engine.so",
-     "-e", "admin=_admin;engine=./engines/default_engine.so;default=true;auto_create=true",
-     "-p", "11212",
-     "-B", "auto",
-     "-S"
+    ["-p", "11212",
+     "-E", "./engines/bucket_engine.so",
+     "-e", "admin=_admin;engine=./engines/default_engine.so;default_bucket_name=default;auto_create=true"
      ],
     [{env, [{"MEMCACHED_CHECK_STDIN", "event"},
             {"MEMCACHED_TOP_KEYS", "100"},

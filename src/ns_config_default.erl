@@ -22,11 +22,10 @@ default() ->
                      {pass, "_admin"}]},
      {port_servers, [{'_ver', {0, 0, 0}},
                      {memcached, "./memcached",
-                      ["-E", "./engines/bucket_engine.so",
-                       "-e", "admin=_admin;engine=./engines/default_engine.so;default=true;auto_create=true",
-                       "-p", "11211",
-                       "-B", "auto",
-                       "-S"
+                      ["-p", "11211",
+                       "-E", "./engines/bucket_engine.so",
+                       "-e", "admin=_admin;engine=./engines/default_engine.so;default_bucket_name=default;auto_create=true",
+                       "-B", "auto"
                       ],
                       [{env, [{"MEMCACHED_CHECK_STDIN", "thread"},
                               {"MEMCACHED_TOP_KEYS", "100"},
