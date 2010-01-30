@@ -19,6 +19,10 @@
 session(_Sock, Env) ->
     {ok, Env, #session_dict{}}.
 
+cmd(version, Dict, _InSock, Out, []) ->
+    mc_ascii:send(Out, <<"VERSION mc_server_ascii_dict\r\n">>),
+    {ok, Dict};
+
 cmd(get, Dict, _InSock, Out, []) ->
     mc_ascii:send(Out, <<"END\r\n">>),
     {ok, Dict};
@@ -50,8 +54,28 @@ cmd(set, Dict, InSock, Out, [Key, FlagIn, ExpireIn, DataLenIn]) ->
     mc_ascii:send(Out, <<"STORED\r\n">>),
     {ok, Dict2};
 
+cmd(delete, Dict, _InSock, Out, [Key]) ->
+    Dict2 = case dict:find(Key, Dict#session_dict.tbl) of
+                {ok, _} ->
+                    mc_ascii:send(Out, <<"DELETED\r\n">>),
+                    Dict#session_dict{tbl = dict:erase(Key,
+                                                       Dict#session_dict.tbl)};
+                _ ->
+                    mc_ascii:send(Out, <<"NOT_FOUND\r\n">>)
+            end,
+    {ok, Dict2};
+
+cmd(flush_all, Dict, _InSock, Out, []) ->
+    mc_ascii:send(Out, <<"OK">>),
+    {ok, Dict#session_dict{tbl = dict:new()}};
+
 cmd(quit, _Dict, _InSock, _Out, _Rest) ->
-    exit({ok, quit_received}).
+    exit({ok, quit_received});
+
+cmd(UnknownCmd, Dict, _InSock, Out, []) ->
+    ?debugVal(UnknownCmd),
+    mc_ascii:send(Out, <<"ERROR\r\n">>),
+    {ok, Dict}.
 
 bin_size(undefined) -> 0;
 bin_size(List) when is_list(List) -> bin_size(iolist_to_binary(List));
@@ -61,7 +85,7 @@ bin_size(Binary) -> size(Binary).
 
 % For testing...
 %
-main()        -> main(11222).
+main()        -> main(11211).
 main(PortNum) -> mc_accept:start(PortNum,
                                  {mc_server_ascii,
                                   mc_server_ascii_dict, {}}).
