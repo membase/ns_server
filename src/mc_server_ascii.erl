@@ -50,7 +50,10 @@ recv(InSock) ->
             {ok, unknown, []};
         {ok, Line} ->
             [CmdName | CmdArgs] = string:tokens(binary_to_list(Line), " "),
-            {ok, list_to_existing_atom(CmdName), CmdArgs};
+            case catch(list_to_existing_atom(CmdName)) of
+                {'EXIT', {badarg, _}} -> {ok, CmdName, CmdArgs};
+                CmdAtom               -> {ok, CmdAtom, CmdArgs}
+            end;
         Err -> Err
     end.
 
@@ -59,7 +62,10 @@ recv_prefix(Prefix, InSock) ->
         {ok, LineBody} ->
             Line = <<Prefix/binary, LineBody/binary>>,
             [CmdName | CmdArgs] = string:tokens(binary_to_list(Line), " "),
-            {ok, list_to_existing_atom(CmdName), CmdArgs};
+            case catch(list_to_existing_atom(CmdName)) of
+                {'EXIT', {badarg, _}} -> {ok, CmdName, CmdArgs};
+                CmdAtom               -> {ok, CmdAtom, CmdArgs}
+            end;
         Err -> Err
     end.
 
