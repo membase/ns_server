@@ -249,9 +249,18 @@ get_test() ->
     end)(),
     ok = gen_tcp:close(Sock).
 
+is_full_server(Sock) ->
+    {ok, RB, undefined} = cmd(version, Sock, undefined, undefined, undefined),
+    not(starts_with(binary_to_list(RB), "VERSION mc_")).
+
 update_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
+    update_test_do(Sock, is_full_server(Sock)),
+    ok = gen_tcp:close(Sock).
+
+update_test_do(_Sock, false) -> ok;
+update_test_do(Sock, true) ->
     set_test_sock(Sock, <<"aaa">>),
     (fun () ->
         {ok, RB, undefined} = cmd(append, Sock, undefined, undefined,
@@ -275,8 +284,7 @@ update_test() ->
         ?assertMatch(RB7, <<"OK">>),
         {ok, RBF, undefined} = send_recv(Sock, "get aaa\r\n", undefined, undefined),
         ?assertMatch(RBF, <<"END">>)
-    end)(),
-    ok = gen_tcp:close(Sock).
+    end)().
 
 starts_with(S, Prefix) ->
     Prefix =:= string:substr(S, 1, string:len(Prefix)).
@@ -288,6 +296,11 @@ ends_with(S, Suffix) ->
 stats_test() ->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
+    stats_test_do(Sock, is_full_server(Sock)),
+    ok = gen_tcp:close(Sock).
+
+stats_test_do(_Sock, false) -> ok;
+stats_test_do(Sock, true) ->
     (fun () ->
              {{ok, RB}, true} = cmd(stats, Sock,
                                     fun (Line, Entry, _X) ->
@@ -298,5 +311,5 @@ stats_test() ->
                                     #mc_entry{}),
              ?assertMatch(RB, <<"END">>)
      end)(),
-    ok = gen_tcp:close(Sock).
+    ok.
 
