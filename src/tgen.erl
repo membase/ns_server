@@ -153,7 +153,7 @@ bucket_make(PoolName, BucketName) ->
                                   {size_per_node, ?TGEN_SIZE}),
     BucketConfig2 = lists:keystore(auth_plain, 1,
                                    BucketConfig,
-                                   {auth_plain, BucketName}),
+                                   {auth_plain, {BucketName, BucketName}}),
     case mc_bucket:bucket_config_make(PoolName, BucketName, BucketConfig2) of
         true -> true; % Bucket's in config already.
         ok   -> ok    % Was just created, so ok can inform our caller.

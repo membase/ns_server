@@ -208,10 +208,12 @@ worker(Addr, Sock, Timeout) ->
                     % TODO: Need a way to prevent auth & re-auth storms.
                     % TODO: Bucket selection, one day.
                     %
-                    case mc_client_binary:auth(Sock, mc_addr:auth(Addr)) of
-                        ok   -> loop(Addr, Sock, Timeout);
-                        _Err -> gen_tcp:close(Sock),
-                                ns_log:log(?MODULE, 1, "auth failed")
+                    Auth = mc_addr:auth(Addr),
+                    case mc_client_binary:auth(Sock, Auth) of
+                        ok  -> loop(Addr, Sock, Timeout);
+                        Err -> gen_tcp:close(Sock),
+                               ns_log:log(?MODULE, 1, "auth failed: ~p with ~p",
+                                          [Err, Auth])
                     end
             end
     after ?TIMEOUT_WORKER_GO -> stop
