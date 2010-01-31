@@ -21,6 +21,7 @@
 
 %% API
 -export([start_link/1, reconfig/2, reconfig/3, reconfig_nodes/3,
+         get_state/1,
          get_bucket/2,
          auth_to_bucket/3]).
 
@@ -117,6 +118,9 @@ terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
 handle_cast(stop, State)       -> {stop, shutdown, State}.
 handle_info(_Info, State)      -> {noreply, State}.
+
+handle_call(get_state, _From, State) ->
+    {reply, {ok, State}, State};
 
 handle_call({get_bucket, BucketId}, _From, State) ->
     case get_bucket(State, BucketId) of
@@ -235,6 +239,10 @@ build_pool(Name, NSConfig, PoolConfig, Nodes) ->
           [], BucketConfigs),
     Pool = create(Name, Nodes, PoolConfig, Buckets),
     {ok, Pool}.
+
+get_state(PoolId) ->
+    % For debugging.
+    gen_server:call(name_to_server_name(PoolId), get_state).
 
 % Returns {ok, Bucket} or false.
 
