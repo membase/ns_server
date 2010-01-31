@@ -61,19 +61,19 @@ cmd(delete, Dict, _InSock, Out, [Key]) ->
                     Dict#session_dict{tbl = dict:erase(Key,
                                                        Dict#session_dict.tbl)};
                 _ ->
-                    mc_ascii:send(Out, <<"NOT_FOUND\r\n">>)
+                    mc_ascii:send(Out, <<"NOT_FOUND\r\n">>),
+                    Dict
             end,
     {ok, Dict2};
 
 cmd(flush_all, Dict, _InSock, Out, []) ->
-    mc_ascii:send(Out, <<"OK">>),
+    mc_ascii:send(Out, <<"OK\r\n">>),
     {ok, Dict#session_dict{tbl = dict:new()}};
 
 cmd(quit, _Dict, _InSock, _Out, _Rest) ->
     exit({ok, quit_received});
 
-cmd(UnknownCmd, Dict, _InSock, Out, []) ->
-    ?debugVal(UnknownCmd),
+cmd(_UnknownCmd, Dict, _InSock, Out, []) ->
     mc_ascii:send(Out, <<"ERROR\r\n">>),
     {ok, Dict}.
 
