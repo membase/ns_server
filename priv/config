@@ -136,7 +136,7 @@
       ]}
 %      ,
 %      {"test_application", [
-%        {auth_plain, "plain_text_password"},
+%        {auth_plain, {"username", "plain_text_password"}},
 %        {size_per_node, 64} % In MB.
 %      ]}
     ]}
