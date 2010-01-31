@@ -18,6 +18,10 @@ MEMCAPABLE=/usr/local/bin/memcapable
 
 MEMCACHED=/usr/local/bin/memcached
 
+MEMCACHED_LIBS=$(realpath $(dir $(MEMCACHED)).libs)
+
+MEMCACHED_ENGINE=$(MEMCACHED_LIBS)/default_engine.so
+
 TMP_DIR=./tmp
 
 TMP_VER=$(TMP_DIR)/version_num.tmp
@@ -63,12 +67,12 @@ test: test_unit cucumber
 test_full: test memcapable
 
 test_unit: ebins $(NS_SERVER_EBIN)
-	$(MEMCACHED) -p 11211 -d -P /tmp/memcached.pid -E $(MEMCACHED)/.libs/default_engine.so
+	$(MEMCACHED) -p 11211 -d -P /tmp/memcached.pid -E $(MEMCACHED_ENGINE)
 	erl $(EFLAGS) ../../ebin -noshell -s mc_test test -s init stop -kernel error_logger silent
 	kill `cat /tmp/memcached.pid`
 
 test_unit_verbose: ebins $(NS_SERVER_EBIN)
-	$(MEMCACHED) -p 11211 -d -P /tmp/memcached.pid -E $(MEMCACHED)/.libs/default_engine.so
+	$(MEMCACHED) -p 11211 -d -P /tmp/memcached.pid -E $(MEMCACHED_ENGINE)
 	erl $(EFLAGS) ../../ebin -noshell -s mc_test test -s init stop
 	kill `cat /tmp/memcached.pid`
 
