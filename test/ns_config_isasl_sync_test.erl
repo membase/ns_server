@@ -17,10 +17,15 @@ test() ->
     test_writing().
 
 test_parsing() ->
-    Expected = [{"default", undefined},
-                {"other_application", "another_password"},
-                {"test_application", "plain_text_password"}],
-
+    Expected = [{"default", [{auth_plain, undefined},
+                             {size_per_node, 64}
+                            ]},
+                {"other_application", [{auth_plain, {"other_application", "another_password"}},
+                                       {size_per_node, 64}
+                                      ]},
+                {"test_application", [{auth_plain, {"test_application", "plain_text_password"}},
+                                      {size_per_node, 64}
+                                     ]}],
     Expected = ns_config_isasl_sync:extract_creds(sample_config()).
 
 test_writing() ->
@@ -35,9 +40,9 @@ test_writing() ->
                                  {pools, sample_config()}, State),
     Expected = [
                 "admin admin\n",
-                "default\n",
-                "other_application another_password\n",
-                "test_application plain_text_password\n"],
+                "default  cache_size=64\n",
+                "other_application another_password cache_size=64\n",
+                "test_application plain_text_password cache_size=64\n"],
     {ok, F} = file:open(Path, [read]),
     lists:foreach(fun (E) -> E = io:get_line(F, "") end, Expected),
     file:close(F),
@@ -55,20 +60,14 @@ sample_config() ->
                   {address, "0.0.0.0"}, % An IP binding
                   {port, 11211},
                   {buckets, [
-                             {"default", [
-                                          {auth_plain, undefined},
-                                          {size_per_node, 64}, % In MB.
-                                          {cache_expiration_range, {0,600}}
+                             {"default", [{auth_plain, undefined},
+                                          {size_per_node, 64}
                                          ]},
-                             {"test_application", [
-                                                   {auth_plain, "plain_text_password"},
-                                                   {size_per_node, 64}, % In MB.
-                                                   {cache_expiration_range, {0,600}}
+                             {"test_application", [{auth_plain, {"test_application", "plain_text_password"}},
+                                                   {size_per_node, 64}
                                                   ]},
-                             {"other_application", [
-                                                    {auth_plain, "another_password"},
-                                                    {size_per_node, 64}, % In MB.
-                                                    {cache_expiration_range, {0,600}}
+                             {"other_application", [{auth_plain, {"other_application", "another_password"}},
+                                                    {size_per_node, 64}
                                                    ]}
                             ]}
                  ]}
