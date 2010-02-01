@@ -13,7 +13,7 @@ TMP_VER=$(TMP_DIR)/version_num.tmp
 all: ebins test deps_all
 
 deps_all:
-	$(MAKE) -C deps/emoxi all
+	$(MAKE) -C deps/emoxi ebins
 	$(MAKE) -C deps/menelaus all
 
 clean_all:
