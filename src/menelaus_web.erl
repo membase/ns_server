@@ -446,7 +446,7 @@ handle_bucket_create(PoolId, BucketId, Req) ->
     PostArgs = Req:parse_post(),
     Pass = proplists:get_value("password", PostArgs),
     % Input bucket name and password cannot have whitespace.
-    case {is_clean(BucketId, false), is_clean(Pass, true)} of
+    case {is_clean(BucketId, false, 1), is_clean(Pass, true, 1)} of
         {true, true} -> handle_bucket_create_do(PoolId, BucketId, Req);
         _ -> Req:respond({400, [], []})
     end.
@@ -685,10 +685,11 @@ handle_traffic_generator_control_post(Req) ->
 % Make sure an input parameter string is clean and not too long.
 % Second argument means "undefinedIsAllowed"
 
-is_clean(undefined, true)  -> true;
-is_clean(undefined, false) -> false;
-is_clean(S, _) ->
-    (S =:= (S -- " \t\n")) andalso (length(S) < 80).
+is_clean(undefined, true, _MinLen)  -> true;
+is_clean(undefined, false, _MinLen) -> false;
+is_clean(S, _UndefinedIsAllowed, MinLen) ->
+    Len = length(S),
+    (Len >= MinLen) andalso (Len < 80) andalso (S =:= (S -- " \t\n")).
 
 -ifdef(EUNIT).
 
