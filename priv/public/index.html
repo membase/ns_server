@@ -126,19 +126,19 @@
                 <div class="usage_big">
                     <div class="unused">
                         <div class="used" style="width:1%;"></div>
-                    </div>{%=V.setPersentBar(memoryUtilization)%}
+                    </div>{%=V.setPercentBar(memoryUtilization)%}
                     <div class="comment">{%=memoryUtilization%}% Utilized ({%=memoryFreeMB%}MB Free)</div>
                 </div>
             </div>
         </div>
         <div class="labeled_line">
-            <h2 class="label for_usage_big">Cluster Disk Usage:</h2>
+            <h2 class="label for_usage_big">Cluster Cache Allocated:</h2>
             <div class="line_cnt">
                 <div class="usage_big red">
                     <div class="unused">
                         <div class="used" style="width:50%;"></div>
                     </div>
-                    <div class="comment">TODO: 50% Utilized (500MB Free)</div>
+                    <div class="comment">TODO: 50% Utilized (500MB Free) all nodes * memory per bucket for all buckets</div>
                 </div>
             </div>
         </div>
@@ -342,7 +342,7 @@
                                 <div class="used" style="width:1%;"></div>
                             </div>
                         </div>
-                    </div>{%= V.setPersentBar(this.basicStats.cachePercentUsed) %}
+                    </div>{%= V.setPercentBar(this.basicStats.cachePercentUsed) %}
                     {%= h(this.basicStats.cachePercentUsed) %}%
                 </div>
               </td>

@@ -1142,7 +1142,7 @@ _.extend(ViewHelpers, {
     return ["<span id='", id, "'></span>"].join('');
   },
 
-  setPersentBar: function (percents) {
+  setPercentBar: function (percents) {
     return this.thisElement(function (q) {
       q.find('.used').css('width', String(percents)+'%')
     });
