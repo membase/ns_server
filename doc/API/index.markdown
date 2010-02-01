@@ -857,4 +857,5 @@ have been referenced.
 * 20100126 Fixed buckets definition from pool level and pool wide array level.
 * 20100128 Removed todo list, it's duplicating Menelaus's TODO.
 * 20100128 Updated add bucket definition
+* 20100129 Updated create bucket documentation
 

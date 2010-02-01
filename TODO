@@ -11,7 +11,7 @@ there, listed in Menelaus when wired in.
   ----------------------------------------------------------
  | Mockingbird Screen   |  only-web       |     Menelaus      |
  |----------------------|-----------------|-------------------|
- | Login Screen         | not started     | not started       |
+ | Login Screen         | almost done     | almost done       |
  | Cluster Overview     | Test Server     | Test Server       |
  |                      | Get Std Cookie  | Get Std Cookie    |
  |                      | Secure Server   | Secure Server     |
@@ -59,9 +59,11 @@ o [DONE] expandable node list in overview status
 * leave cluster
 * "Cluster Disk Usage" should be "Cluster Cache Allocated"
 * Wire up memory usage and cache allocated
+* Accordion for nodes should allow multiple to be open at the same time
 
 POOL ANALYTICS UI
-* Remove the 24 Hour zoom level
+* [DONE] Remove the 24 Hour zoom level
+* Have the zoom level show the right thing
 
 BUCKETS UI
 o [DONE] (re)implement
@@ -101,9 +103,9 @@ CLUSTER SETTINGS
 * alert types settings
 
 CONSOLE LOGIN
-* implement the new login screen (as seen in the artwork assets and the
+* [ALMOST DONE]implement the new login screen (as seen in the artwork assets and the
   mockingbird mock ups) with a cookie to recall previous login.  Also
-  implement logout.
+  implement logout.  logout needed
 
 ADD BUCKET
 o [DONE] implement (with button on BUCKET PROPERTIES section)
