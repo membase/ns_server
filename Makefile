@@ -62,7 +62,7 @@ clean:
 	rm -rf ebin
 	rm -f emoxi_*.tar.gz
 
-test: test_unit cucumber
+test: test_unit
 
 test_full: test memcapable
 
