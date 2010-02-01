@@ -442,15 +442,26 @@ handle_bucket_create(_PoolId, [$_ | _], Req) ->
     % Bucket name cannot have a leading underscore character.
     Req:respond({400, [], []});
 
-
 handle_bucket_create(PoolId, BucketId, Req) ->
+    PostArgs = Req:parse_post(),
+    Pass = proplists:get_value("password", PostArgs),
+    % Input bucket name and password cannot have whitespace.
+    case {is_clean(BucketId, false), is_clean(Pass, true)} of
+        {true, true} -> handle_bucket_create_do(PoolId, BucketId, Req);
+        _ -> Req:respond({400, [], []})
+    end.
+
+handle_bucket_create_do(PoolId, BucketId, Req) ->
     PostArgs = Req:parse_post(),
     BucketConfigDefault = mc_bucket:bucket_config_default(),
     BucketConfig =
         lists:foldl(
           fun({auth_plain, _}, C) ->
-                  lists:keystore(auth_plain, 1, C,
-                                 {auth_plain, BucketId});
+                  case proplists:get_value("password", PostArgs) of
+                      undefined -> C;
+                      Pass -> lists:keystore(auth_plain, 1, C,
+                                             {auth_plain, {BucketId, Pass}})
+                  end;
              ({size_per_node, _}, C) ->
                   case proplists:get_value("size", PostArgs) of
                       undefined -> C;
@@ -670,6 +681,14 @@ handle_traffic_generator_control_post(Req) ->
                        [PostArgs, proplists:get_value(PostArgs, "onOrOff")]),
             Req:respond({400, [], "Bad Request\n"})
     end.
+
+% Make sure an input parameter string is clean and not too long.
+% Second argument means "undefinedIsAllowed"
+
+is_clean(undefined, true)  -> true;
+is_clean(undefined, false) -> false;
+is_clean(S, _) ->
+    (S =:= (S -- " \t\n")) andalso (length(S) < 80).
 
 -ifdef(EUNIT).
 
