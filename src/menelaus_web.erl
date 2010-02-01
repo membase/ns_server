@@ -218,7 +218,7 @@ build_pool_info(Id, _UserPassword) ->
               {controllers, {struct,
                              [{testWorkload, {struct,
                                              [{uri,
-                                               list_to_binary("/pools/" ++ Id ++ "/testWorkload")}]}}]}},
+                                               list_to_binary("/pools/" ++ Id ++ "/controller/testWorkload")}]}}]}},
               %%
               {stats, {struct,
                        [{uri,
