@@ -264,6 +264,9 @@ var MockedRequest = mkClass({
     if (_.isEqual(this.path, ["node", "controller", "doJoinCluster"])) {
       return this.handleJoinCluster();
     }
+    if (_.isEqual(this.path, ["controllers", "testWorkload"])) {
+      return this.handleWorkloadControlPost();
+    }
 
     this.fakeResponse('');
   },
@@ -364,6 +367,9 @@ var MockedRequest = mkClass({
                 // returns just names and uris, but complete (i.e. without pagination)
                 shallowList: "/buckets?shallow=true"
               },
+              controllers: {
+                testWorkload: {uri: '/controllers/testWorkload'}
+              },
               stats: {uri: "/buckets/4/stats?really_for_pool=1"},
               name: "Default Pool"}
     if (!__hookParams['multinode']) {
@@ -371,54 +377,65 @@ var MockedRequest = mkClass({
     }
     return rv;
   },
+  bucketsList: [{name: "default",
+                 uri: "/buckets/4",
+                 flushCacheURI: "/buckets/4/flush",
+                 passwordURI: "/buckets/4/password",
+                 stats: {uri: "/buckets/4/stats"},
+                 basicStats: {
+                   cacheSize: 64, // in megs
+                   opsPerSec: 100,
+                   evictionsPerSec: 5,
+                   cachePercentUsed: 50
+                 }},
+                {name: "Excerciser Application",
+                 uri: "/buckets/5",
+                 testAppBucket: true,
+                 status: false,
+                 testAppStatusURI: "/testappuri",
+                 flushCacheURI: "/buckets/5/flush",
+                 passwordURI: "/buckets/5/password",
+                 stats: {uri: "/buckets/5/stats"},
+                 basicStats: {
+                   cacheSize: 65, // in megs
+                   opsPerSec: 101,
+                   evictionsPerSec: 6,
+                   cachePercentUsed: 51
+                 }},
+                {name: "new-year-site",
+                 uri: "/buckets/6",
+                 flushCacheURI: "/buckets/6/flush",
+                 passwordURI: "/buckets/6/password",
+                 stats: {uri: "/buckets/6/stats"},
+                 basicStats: {
+                   cacheSize: 66, // in megs
+                   opsPerSec: 102,
+                   evictionsPerSec: 7,
+                   cachePercentUsed: 52
+                 }},
+                {name: "new-year-site-staging",
+                 uri: "/buckets/7",
+                 flushCacheURI: "/buckets/7/flush",
+                 passwordURI: "/buckets/7/password",
+                 stats: {uri: "/buckets/7/stats"},
+                 basicStats: {
+                   cacheSize: 67, // in megs
+                   opsPerSec: 103,
+                   evictionsPerSec: 8,
+                   cachePercentUsed: 53
+                 }}],
+  handleWorkloadControlPost: function () {
+    var params = this.deserialize(this.options.data)
+    if (params['onOrOff'] == 'on') {
+      this.bucketsList[1].status = true;
+    } else {
+      this.bucketsList[1].status = false;
+    }
+
+    return this.fakeResponse('');
+  },
   handleBucketList: function () {
-    return [{name: "default",
-             uri: "/buckets/4",
-             flushCacheURI: "/buckets/4/flush",
-             passwordURI: "/buckets/4/password",
-             stats: {uri: "/buckets/4/stats"},
-             basicStats: {
-               cacheSize: 64, // in megs
-               opsPerSec: 100,
-               evictionsPerSec: 5,
-               cachePercentUsed: 50
-             }},
-            {name: "Excerciser Application",
-             uri: "/buckets/5",
-             testAppBucket: true,
-             testAppRunning: false,
-             testAppStatusURI: "/testappuri",
-             flushCacheURI: "/buckets/5/flush",
-             passwordURI: "/buckets/5/password",
-             stats: {uri: "/buckets/5/stats"},
-             basicStats: {
-               cacheSize: 65, // in megs
-               opsPerSec: 101,
-               evictionsPerSec: 6,
-               cachePercentUsed: 51
-             }},
-            {name: "new-year-site",
-             uri: "/buckets/6",
-             flushCacheURI: "/buckets/6/flush",
-             passwordURI: "/buckets/6/password",
-             stats: {uri: "/buckets/6/stats"},
-             basicStats: {
-               cacheSize: 66, // in megs
-               opsPerSec: 102,
-               evictionsPerSec: 7,
-               cachePercentUsed: 52
-             }},
-            {name: "new-year-site-staging",
-             uri: "/buckets/7",
-             flushCacheURI: "/buckets/7/flush",
-             passwordURI: "/buckets/7/password",
-             stats: {uri: "/buckets/7/stats"},
-             basicStats: {
-               cacheSize: 67, // in megs
-               opsPerSec: 103,
-               evictionsPerSec: 8,
-               cachePercentUsed: 53
-             }}]
+    return _.clone(this.bucketsList);
   },
   handleStats: function () {
     var params = this.options['data'];

@@ -211,9 +211,6 @@ var DAO = {
     if (!details)
       return undefined;
     return details.nodes.length > 1;
-  },
-  startTestApp: function () {
-    
   }
 };
 
@@ -250,6 +247,66 @@ var DAO = {
                  poolDetails: this.currentPoolDetailsCell,
                  mode: this.mode});
 }).call(DAO.cells);
+
+var TrafficGen = {
+  init: function () {
+    BucketsSection.cells.detailedBuckets.subscribeAny($m(this, 'updateUI'));
+    _.defer($m(this, 'updateUI'));
+  },
+  updateUI: function () {
+    var running = this.isRunning();
+    var isDefined = (running != this.isNotRunning());
+
+    if (this.spinner) {
+      this.spinner.remove();
+      this.spinner = null;
+    }
+
+    if (!isDefined) {
+      $('#test_cluster_block').hide();
+    } else {
+      $('#test_cluster_block').show();
+      if (running) {
+        $('#test_cluster_start').hide();
+        $('#test_cluster_stop').show();
+      } else {
+        $('#test_cluster_start').show();
+        $('#test_cluster_stop').hide();
+      }
+    }
+  },
+  getControlURI: function () {
+    var poolDetails = DAO.cells.currentPoolDetailsCell.value;
+    return poolDetails && poolDetails.controllers.testWorkload.uri;
+  },
+  isRunning: function () {
+    var tgenInfo = BucketsSection.findTGenBucket();
+    return !!(tgenInfo && tgenInfo['status']);
+  },
+  isNotRunning: function () {
+    var tgenInfo = BucketsSection.findTGenBucket();
+    return tgenInfo !== undefined && (!tgenInfo || !tgenInfo['status']);
+  },
+  startOrStop: function (isStart) {
+    var uri = this.getControlURI();
+    if (!uri) {
+      throw new Error('start() should not be called in this state!');
+    }
+    this.spinner = overlayWithSpinner('#test_cluster_block', 'none');
+    $.ajax({
+      type:'POST',
+      url:uri,
+      data: 'onOrOff=' + (isStart ? 'on' : 'off'),
+      success: $m(BucketsSection, 'refreshBuckets')
+    });
+  },
+  start: function () {
+    this.startOrStop(true);
+  },
+  stop: function () {
+    this.startOrStop(false);
+  }
+};
 
 var SamplesRestorer = mkClass({
   initialize: function () {
@@ -670,14 +727,17 @@ var BucketsSection = {
     }).setSources({firstPageURI: cells.firstPageDetailsURI});
 
     cells.detailedBuckets = new Cell(function (pageURI) {
-      return future.get({url: pageURI});
+      return future.get({url: pageURI}, null, this.self.value);
     }).setSources({pageURI: cells.detailsPageURI});
 
     prepareTemplateForCell("bucket_list", cells.detailedBuckets);
 
     cells.detailedBuckets.subscribe($m(this, 'onBucketList'));
   },
-  buckets: [],
+  buckets: null,
+  refreshBuckets: function () {
+    this.cells.detailedBuckets.recalculate();
+  },
   onBucketList: function () {
     var buckets = this.buckets = this.cells.detailedBuckets.value;
     renderTemplate('bucket_list', buckets);
@@ -697,6 +757,16 @@ var BucketsSection = {
   },
   findBucket: function (uri) {
     return this.withBucket(uri, function (r) {return r});
+  },
+  findTGenBucket: function () {
+    if (!this.buckets)
+      return;
+    var rv = _.detect(this.buckets, function (info) {
+      return info['testAppBucket'];
+    });
+    if (!rv)
+      return null;
+    return rv;
   },
   showBucket: function (uri) {
     this.withBucket(uri, function (bucketDetails) {
@@ -1102,6 +1172,8 @@ var ThePage = {
       if (sec.init)
         sec.init();
     });
+    TrafficGen.init();
+
     var self = this;
     watchHashParamChange('sec', 'overview', function (sec) {
       var oldSection = self.currentSection;

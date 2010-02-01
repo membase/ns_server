@@ -38,13 +38,14 @@
       <li class="line"><a id="switch_settings" href="javascript:nav.go('settings');">Cluster Settings</a></li>
 		</ul>
 		<!-- test cluster -->
-		<div class="blue_round_block test_cluster">
+		<div id = "test_cluster_block" class="blue_round_block test_cluster">
 			<div class="top">
 				<div></div>
 			</div>
 			<div class="content">
 				<span class="label">Test Cluster</span>
-				<a href="#" class="start">Start</a>
+				<a id="test_cluster_start" href="javascript:TrafficGen.start();" class="start" style="display:none;">Start</a>
+				<a id="test_cluster_stop" href="javascript:TrafficGen.stop();" class="start" style="display:none;">Stop</a>
 				<div class="right">
 					<a href="#">Clear Test Data</a>
 				</div>
@@ -75,7 +76,7 @@
                 <div class="left">
                     <div class="right">
                         <div class="pad">
-                            <a href="#" class="button_big">
+                            <a href="javascript:TrafficGen.start();" class="button_big">
                                 <span>
                                     <span>
                                         Test Server
