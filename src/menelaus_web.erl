@@ -397,7 +397,7 @@ handle_bucket_update(PoolId, BucketId, Req) ->
     %
     % A POST means create or update existing bucket settings.  For 1.0, this will *only*
     % allow setting the memory to a higher or lower, but non-zero value.
-    % 
+    %
     % TODO: convert to handling memory changes
     % TODO: remove password handling
     % TODO: define new URI for password handling for the pool
