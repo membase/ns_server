@@ -45,7 +45,7 @@ there, listed in Menelaus when wired in.
  | Cluster Settings Bas | -html/css done- |                   |
  | Cluster Settings Adv |   almost done   | not wired in      |
  | New Bucket           |   almost done   | sends error       |
- | Remove Bucket        |  html/css done  | not wired in      |
+ | Remove Bucket        |   -DONE-        |   -DONE & works-  |
  | Flush Cache          |   -DONE-        | sends error       |
  --------------------------------------------------------------
 
