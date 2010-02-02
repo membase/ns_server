@@ -221,7 +221,9 @@ build_pool_info(Id, _UserPassword) ->
               {nodes, Nodes},
               {buckets, BucketsInfo},
               {controllers, {struct,
-                             [{testWorkload, {struct,
+                             [{ejectNode, {struct, [{uri,
+                                                     "/controller/ejectNode"}]}},
+                              {testWorkload, {struct,
                                              [{uri,
                                                list_to_binary("/pools/" ++ Id ++ "/controller/testWorkload")}]}}]}},
               %%
@@ -553,6 +555,28 @@ handle_join(Req, OtpNode, OtpCookie) ->
         _  -> Req:respond({401, [], []})
     end.
 
+%% waits till only one node is left in cluster
+do_eject_myself_rec(0, _) ->
+    exit(self_eject_failed);
+do_eject_myself_rec(IterationsLeft, Period) ->
+    MySelf = node(),
+    case ns_node_disco:nodes_actual_proper() of
+        [MySelf] -> ok;
+        _ -> 
+            timer:sleep(Period),
+            do_eject_myself_rec(IterationsLeft-1, Period)
+    end.
+
+do_eject_myself() ->
+    %% using cast because I don't expect our node to be able
+    %% to respond after being ejected and trying all nodes,
+    %% because we don't know who of them are actually alife
+    OtherNodes = lists:subtract(ns_node_disco:nodes_actual_proper(), [node()]),
+    lists:foreach(fun (Node) ->
+                          rpc:cast(Node, ns_cluster, leave, [node()])
+                          end, OtherNodes),
+    do_eject_myself_rec(10, 250).
+
 handle_eject_post(Req) ->
     PostArgs = Req:parse_post(),
     %
@@ -567,6 +591,7 @@ handle_eject_post(Req) ->
     %
     case proplists:get_value("otpNode", PostArgs) of
         undefined -> Req:respond({400, [], "Bad Request\n"});
+        "Self" -> do_eject_myself();
         OtpNodeStr ->
             OtpNode = list_to_atom(OtpNodeStr),
             case OtpNode =:= node() of
