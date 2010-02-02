@@ -1392,16 +1392,16 @@ $(function () {
     function off() {
       expander.removeClass('expanded');
       $('#get_started').removeClass('block');
-      $.cookie('0', {expires: 65535});
+      cookie('0', {expires: 65535});
     }
     expander.click(function() {
       var op = expander.hasClass('expanded') ? off : on;
       op();
     });
     if (cookie() == '1') {
-      off()
+      on()
     } else {
-      on();
+      off();
     }
   })($('#get_started_expander'));
 });
