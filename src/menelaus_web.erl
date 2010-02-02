@@ -114,6 +114,11 @@ loop(Req, DocRoot) ->
                              {auth, fun handle_settings_advanced/1};
                          ["t", "index.html"] ->
                              {done, serve_index_html_for_tests(Req, DocRoot)};
+                         ["index.html"] ->
+                             {done, serve_static_file(Req, {DocRoot, Path},
+                                                      "text/html; charset=utf8",
+                                                      [{"Pragma", "no-cache"},
+                                                       {"Cache-Control", "no-cache must-revalidate"}])};
                          _ ->
                              {done, Req:serve_file(Path, DocRoot, [{"Pragma", "no-cache"},
                                                                    {"Cache-Control", "no-cache must-revalidate"}])}
@@ -698,6 +703,36 @@ test() ->
                [verbose]).
 
 -endif.
+
+-include_lib("kernel/include/file.hrl").
+
+%% stolen from mochiweb_request.erl maybe_serve_file/2
+%% and modified to handle user-defined content-type
+serve_static_file(Req, {DocRoot, Path}, ContentType, ExtraHeaders) ->
+    serve_static_file(Req, filename:join(DocRoot, Path), ContentType, ExtraHeaders);
+serve_static_file(Req, File, ContentType, ExtraHeaders) ->
+    case file:read_file_info(File) of
+        {ok, FileInfo} ->
+            LastModified = httpd_util:rfc1123_date(FileInfo#file_info.mtime),
+            case Req:get_header_value("if-modified-since") of
+                LastModified ->
+                    Req:respond({304, ExtraHeaders, ""});
+                _ ->
+                    case file:open(File, [raw, binary]) of
+                        {ok, IoDevice} ->
+                            Res = Req:ok({ContentType,
+                                          [{"last-modified", LastModified}
+                                           | ExtraHeaders],
+                                          {file, IoDevice}}),
+                            file:close(IoDevice),
+                            Res;
+                        _ ->
+                            Req:not_found(ExtraHeaders)
+                    end
+            end;
+        {error, _} ->
+            Req:not_found(ExtraHeaders)
+    end.
 
 serve_index_html_for_tests(Req, DocRoot) ->
     case file:read_file(DocRoot ++ "/index.html") of
