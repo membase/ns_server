@@ -238,6 +238,15 @@ build_nodes_info(MyPool, IncludeOtp) ->
     WantENodes = ns_node_disco:nodes_wanted(),
     ActualENodes = ns_node_disco:nodes_actual_proper(),
     {InfoList, _} = rpc:multicall(ActualENodes, ns_info, basic_info, [], 200),
+    BucketsAll = expect_prop_value(buckets, MyPool),
+    NodesBucketMemoryTotal =
+        length(WantENodes) *
+            lists:foldl(fun({_BucketName, BucketConfig}, Acc) ->
+                                Acc + proplists:get_value(size_per_node, BucketConfig, 0)
+                        end,
+                        0,
+                        BucketsAll),
+    NodesBucketMemoryAllocated = NodesBucketMemoryTotal * 0.75, % TODO: Get from stats_aggregator.
     Nodes =
         lists:map(
           fun(WantENode) ->
@@ -265,6 +274,8 @@ build_nodes_info(MyPool, IncludeOtp) ->
                          {os, list_to_binary(OS)},
                          {memoryTotal, erlang:trunc(MemoryTotal)},
                          {memoryFree, erlang:trunc(MemoryTotal - MemoryAlloced)},
+                         {mcMemoryTotal, erlang:trunc(NodesBucketMemoryTotal)},
+                         {mcMemoryAllocated, erlang:trunc(NodesBucketMemoryAllocated)},
                          {ports,
                           {struct, [{proxy, ProxyPort},
                                     {direct, DirectPort}]}}],
