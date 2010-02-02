@@ -364,7 +364,7 @@ build_bucket_info(PoolId, Id, _UserPassword) ->
              {basicStats, {struct, menelaus_stats:basic_stats(PoolId, Id)}},
              {nodes, Nodes},
              {stats, {struct, [{uri, StatsUri}]}}],
-    List2 = case tgen:is_traffic_bucket(Pool, Id) of
+    List2 = case tgen:is_traffic_bucket(PoolId, Id) of
                 true -> [{testAppBucket, true},
                          {controlURL, list_to_binary("/pools/"++PoolId++
                                                      "/controller/testWorkload")},
