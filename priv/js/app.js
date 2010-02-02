@@ -266,13 +266,8 @@ var TrafficGen = {
       $('#test_cluster_block').hide();
     } else {
       $('#test_cluster_block').show();
-      if (running) {
-        $('#test_cluster_start').hide();
-        $('#test_cluster_stop').show();
-      } else {
-        $('#test_cluster_start').show();
-        $('#test_cluster_stop').hide();
-      }
+      var className = running ? 'stop-active' : 'start-active';
+      $('#test_cluster_start_stop').attr('class', className);
     }
   },
   getControlURI: function () {
