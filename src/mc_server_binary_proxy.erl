@@ -11,8 +11,6 @@
 
 -import(mc_downstream, [accum/2, await_ok/1, group_by/2]).
 
--import(mc_replication, [send/7]).
-
 -compile(export_all).
 
 -record(session_proxy, {pool,
@@ -222,8 +220,9 @@ queue_update(Sess, _Out, HE) ->
 % For binary commands that need a simple command forward.
 forward_simple(Opcode, #session_proxy{bucket = Bucket} = Sess, Out,
                {Header, #mc_entry{key = Key}} = HE) ->
-    {Key, Addrs, _Config} = mc_bucket:choose_addrs(Bucket, Key),
-    case send(Addrs, Out, Opcode, HE, undefined, ?MODULE, undefined) of
+    {Key, [Addr], _Config} = mc_bucket:choose_addrs(Bucket, Key),
+    case mc_downstream:send(Addr, Out, Opcode, HE,
+                            undefined, ?MODULE) of
         {ok, Monitors} ->
             1 = await_ok(1),
             mc_downstream:demonitor(Monitors);
@@ -238,12 +237,13 @@ forward_simple(Opcode, #session_proxy{bucket = Bucket} = Sess, Out,
 forward_bcast(all_send, Opcode, #session_proxy{bucket = Bucket},
               Out, HE, ResponseFilter) ->
     Addrs = mc_bucket:addrs(Bucket),
-    lists:foldl(fun (Addr, Acc) ->
-                    accum(send([Addr], Out, Opcode, HE,
-                               ResponseFilter, ?MODULE, undefined),
-                          Acc)
-                end,
-                {0, []}, Addrs);
+    lists:foldl(
+      fun (Addr, Acc) ->
+              accum(mc_downstream:send(Addr, Out, Opcode, HE,
+                                       ResponseFilter, ?MODULE),
+                    Acc)
+      end,
+      {0, []}, Addrs);
 
 % For binary commands to do a broadcast scatter/gather.
 % A ResponseFilter can be used to filter out responses.
@@ -284,13 +284,13 @@ forward_bcast_uncork(_Opcode, #session_proxy{bucket = Bucket,
                     end),
     % Forward the request list to each Addr.
     {NumFwd, Monitors} =
-        lists:foldl(fun ({Addr, HEList}, Acc) ->
-                        accum(send([Addr], OutCork, send_list,
-                                   lists:reverse([HE | HEList]),
-                                   ResponseFilter, ?MODULE,
-                                   undefined), Acc)
-                    end,
-                    {0, []}, Groups),
+        lists:foldl(
+          fun ({Addr, HEList}, Acc) ->
+                  accum(mc_downstream:send(Addr, OutCork, send_list,
+                                           lists:reverse([HE | HEList]),
+                                           ResponseFilter, ?MODULE), Acc)
+          end,
+          {0, []}, Groups),
     await_ok(NumFwd),
     mc_binary:send(OutFinal, res, H#mc_header{status = ?SUCCESS}, E),
     mc_downstream:demonitor(Monitors),
