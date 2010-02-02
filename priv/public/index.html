@@ -829,7 +829,7 @@ MemcachedClient client = manager.getClient();</textarea>
     </div>
   </div>
 </div>
-<div class="jqmWindow" id="flush_bucket_remove_dialog">
+<div class="jqmWindow" id="bucket_remove_dialog">
   <div class="lbox">
     <div class="top">
       <div class="top_left"></div>
@@ -844,9 +844,7 @@ MemcachedClient client = manager.getClient();</textarea>
         <div class="pas_20">
           <p class="u_line text_14">
             <span class="norm_14">Removing</span>
-            <strong>
-              Bucket_6
-            </strong>
+            <strong class="bucket_name"></strong>
           </p>
           <div class="warning pat_20">
             	<strong>Warning</strong> – Removing this bucket will result in complete data loss for this bucket. Are you sure you want to remove it?
@@ -854,7 +852,7 @@ MemcachedClient client = manager.getClient();</textarea>
         </div>
         <div class="pas_20">
           <div class="right save_cancel">
-            <a class="save_button float_right" href="#">REMOVE</a>
+            <a class="save_button float_right" href="javascript:BucketsSection.removeCurrentBucket();">REMOVE</a>
             <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
           </div>
         </div>

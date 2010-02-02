@@ -117,7 +117,7 @@ var MockedRequest = mkClass({
                            shortText: "Server Node Down",
                            text: "Server node is no longer available"}]},
   initialize: function (options) {
-    if (options.type != 'GET' && options.type != 'POST') {
+    if (options.type != 'GET' && options.type != 'POST' && options.type != 'DELETE') {
       throw new Error("unknown method: " + options.type);
     }
 
@@ -267,6 +267,9 @@ var MockedRequest = mkClass({
     if (_.isEqual(this.path, ["controllers", "testWorkload"])) {
       return this.handleWorkloadControlPost();
     }
+
+    if (this.path[0] == "buckets" && this.options.type == 'DELETE')
+      return this.handleBucketRemoval();
 
     this.fakeResponse('');
   },
@@ -431,6 +434,18 @@ var MockedRequest = mkClass({
     } else {
       this.bucketsList[1].status = false;
     }
+
+    return this.fakeResponse('');
+  },
+  handleBucketRemoval: function () {
+    var self = this;
+
+    var bucket = _.detect(self.bucketsList, function (b) {
+      return b.uri == self.options.url;
+    });
+    console.log("deleting bucket: ", bucket);
+
+    MockedRequest.prototype.bucketsList = _.without(self.bucketsList, bucket);
 
     return this.fakeResponse('');
   },

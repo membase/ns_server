@@ -886,6 +886,43 @@ var BucketsSection = {
         observer.stopObserving();
         form.unbind();
       }});
+  },
+  startRemovingBucket: function () {
+    if (!this.currentlyShownBucket)
+      return;
+
+    $('#bucket_remove_dialog .bucket_name').text(this.currentlyShownBucket.name);
+    showDialog('bucket_remove_dialog');
+  },
+  removeCurrentBucket: function () {
+    var self = this;
+
+    var bucket = self.currentlyShownBucket;
+    if (!bucket)
+      return;
+
+    hideDialog('bucket_details_dialog_container');
+
+    var spinner = overlayWithSpinner('#bucket_remove_dialog');
+    var modal = new ModalAction();
+    $.ajax({
+      type: 'DELETE',
+      url: self.currentlyShownBucket.uri,
+      success: continuation,
+      errors: continuation
+    });
+    return;
+
+    function continuation() {
+      self.cells.detailedBuckets.changedSlot.subscribeOnce(continuation2);
+      self.refreshBuckets();
+    }
+
+    function continuation2() {
+      spinner.remove();
+      modal.finish();
+      hideDialog('bucket_remove_dialog');
+    }
   }
 };
 
@@ -1322,10 +1359,8 @@ $(window).bind('template:rendered', function () {
     );
 });
 $('.remove_bucket').live('click', function() {
-    showDialog('flush_bucket_remove_dialog');
-  });
-// flush_bucket_remove_dialog
-// showDialog('flush_bucket_remove_dialog');
+  BucketsSection.startRemovingBucket();
+});
 
 $(function () {
   var cookie = _.bind($.cookie, $, '_gs');
