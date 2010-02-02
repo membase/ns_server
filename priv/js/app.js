@@ -652,9 +652,11 @@ var OverviewSection = {
     // TODO: need server-side help for second condition:
     // '2. server node in cluster has been or is unresponsive'
 
+    var canJoinCluster = (nodes.length == 1);
+
     var statusData = {
       isCritical: isCritical,
-      canJoinCluster: (nodes.length == 1),
+      canJoinCluster: canJoinCluster,
       nodesCount: nodes.length,
       bucketsCount: buckets && buckets.length,
       memoryUtilization: memoryUtilization,
@@ -662,6 +664,9 @@ var OverviewSection = {
     };
 
     renderTemplate('cluster_status', statusData);
+
+    var leaveJoinClass = canJoinCluster ? 'join-possible' : 'leave-possible';
+    $('#join_leave_switch').attr('class', leaveJoinClass);
   },
   onFreshNodeList: function () {
     var nodes = DAO.cells.currentPoolDetails.value.nodes;
@@ -697,6 +702,20 @@ var OverviewSection = {
         }
       })
     });
+  },
+  leaveCluster: function () {
+    if (!window.confirm("Really eject this node from cluster?\n\nTODO: needs markup")) {
+      return;
+    }
+
+    $.ajax({
+      type: 'POST',
+      async: false,
+      url: DAO.cells.currentPoolDetails.value.controllers.ejectNode.uri,
+      data: "otpNode=Self"
+    });
+
+    reloadApp();
   },
   init: function () {
     var self = this;

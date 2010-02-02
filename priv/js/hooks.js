@@ -371,7 +371,8 @@ var MockedRequest = mkClass({
                 shallowList: "/buckets?shallow=true"
               },
               controllers: {
-                testWorkload: {uri: '/controllers/testWorkload'}
+                testWorkload: {uri: '/controllers/testWorkload'},
+                ejectNode: {uri: "/controllers/ejectNode"}
               },
               stats: {uri: "/buckets/4/stats?really_for_pool=1"},
               name: "Default Pool"}

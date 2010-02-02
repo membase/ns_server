@@ -596,3 +596,7 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 .sort_desc img, .sort_asc img {position:relative; top:-2px;}
 
 button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
+
+#cluster_leave_button, #cluster_join_button { display:none; }
+#join_leave_switch.join-possible #cluster_join_button { display:block; }
+#join_leave_switch.leave-possible #cluster_leave_button { display:block; }
