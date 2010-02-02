@@ -878,7 +878,9 @@ var BucketsSection = {
       if (status == 'error') {
         renderTemplate("add_new_bucket_errors", data.errors);
       } else {
-        self.finishCreate();
+        self.cells.detailedBuckets.changedSlot.subscribeOnce(function () {
+          self.finishCreate();
+        });
         self.cells.detailedBuckets.recalculate();
       }
     });
