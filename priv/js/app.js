@@ -1025,10 +1025,9 @@ var AlertsSection = {
   renderAlertsList: function () {
     var value = this.alerts.value;
     renderTemplate('alert_list', value.list);
-    $('#alerts_email_setting').text(checkboxValue(value.settings.sendAlerts) ? value.settings.email : 'nobody');
   },
   changeEmail: function () {
-    this.alertTab.setValue('settings');
+    SettingsSection.gotoSetupAlerts();
   },
   init: function () {
     this.active = new Cell(function (mode) {
@@ -1067,84 +1066,17 @@ var AlertsSection = {
                                  "#alerts .panes > div",
                                  ["list", "log"]);
 
-    $('#alerts_settings_form').bind('submit', $m(this, 'onSettingsSubmit'));
-    this.alertTab.subscribe($m(this, 'onTabChanged'));
-    this.onTabChanged();
-
-    var sendAlerts = $('#alerts_settings_form [name=sendAlerts]');
-    sendAlerts.bind('click', $m(this, 'onSendAlertsClick'));
-  },
-  onSendAlertsClick: function () {
-    var sendAlerts = $('#alerts_settings_form [name=sendAlerts]');
     _.defer(function () {
-      var show = sendAlerts.attr('checked');
-      $('#alerts_settings_guts')[show ? 'show' : 'hide']();
+      SettingsSection.advancedSettings.subscribe($m(AlertsSection, 'updateAlertsDestination'));
     });
   },
-  fillSettingsForm: function () {
-    if ($('#alerts_settings_form_is_clean').val() != '1')
-      return;
-
-    // TODO: loading indicator here
-    if (this.alerts.value === undefined) {
-      this.alerts.changedSlot.subscribeOnce($m(this, 'fillSettingsForm'));
-      return;
+  updateAlertsDestination: function () {
+    var cell = SettingsSection.advancedSettings.value;
+    var who = ''
+    if (cell && ('email' in cell)) {
+      who = cell.email || 'nobody'
     }
-
-    $('#alerts_settings_form_is_clean').val('0');
-
-    var settings = _.extend({}, this.alerts.value.settings);
-    delete settings.updateURI;
-
-    _.each(settings, function (value, name) {
-      var selector = '#alerts_settings_form [name=' + name + ']';
-      var jq = $(selector);
-      if (jq.attr('type') == 'checkbox') {
-        jq = $(jq.get(0));
-        if (value != '0')
-          jq.attr('checked', 'checked');
-        else
-          jq.removeAttr('checked')
-      } else
-        $(selector).val(value);
-    });
-
-    this.onSendAlertsClick();
-  },
-  onTabChanged: function () {
-    console.log("onTabChanged:", this.alertTab.value);
-    if (this.alertTab.value == 'settings') {
-      this.fillSettingsForm();
-    }
-  },
-  onSettingsSubmit: function (event) {
-    event.preventDefault();
-
-    var form = $(event.target);
-
-    var arrayForm = [];
-    var hashForm = {};
-
-    _.each(form.serializeArray(), function (pair) {
-      if (hashForm[pair.name] === undefined) {
-        hashForm[pair.name] = pair.value;
-        arrayForm.push(pair);
-      }
-    });
-
-    var stringForm = $.param(arrayForm);
-
-    $.post(this.alerts.value.settings.updateURI, stringForm);
-
-    $('#alerts_settings_form_is_clean').val('1');
-
-    this.alerts.recalculate();
-  },
-  settingsCancel: function () {
-    $('#alerts_settings_form_is_clean').val('1');
-    this.fillSettingsForm();
-
-    return false;
+    $('#alerts_email_setting').text(who);
   },
   onEnter: function () {
   }
@@ -1197,7 +1129,8 @@ var SettingsSection = {
     }).setSources({mode: DAO.cells.mode});
 
     self.advancedSettings = new Cell(function (mode) {
-      if (mode != 'settings')
+      // alerts section depend on this too
+      if (mode != 'settings' && mode != 'alerts')
         return;
       return future.get({url: '/settings/advanced'}, $m(self, 'flattenAdvancedSettings'));
     }).setSources({mode: DAO.cells.mode});
