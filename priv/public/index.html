@@ -58,11 +58,6 @@
 		</div>
 		<!-- End test cluster -->
       </td>
-<!--
-  <div class="notify">
-  notification will go here
-  </div>
--->
 
   <td id="mainPanel">
 
@@ -269,29 +264,30 @@
 	<div class="shadow_box"><div class="top"><div><div></div></div></div><div class="cnt"><div class="pad"><div class="content">
     <div class="section">
       <h2 class="header_2">
-      <!--><span class="stat_target_name"></span> - Top Key Values <span>Interval
-      <a id='analytics_keys_zoom_real_time'>Real time</a>
-      </span>-->
-          <span class="block nav float_right">
-            <a class="current">1 Hour</a>
-          </span>
-          Interval Zoom: <span><a>Live View</a></span>
+        <span class="block nav float_right">
+          <a class="current">1 Hour</a>
+        </span>
+        Interval Zoom: <span><a>Live View</a></span>
       </h2>
       <p id="top_keys_container">
       </p>
       <div id="top_keys_template" class="template">
         <table>
-          <tr><th>Top Key Values</th>
+          <tr>
+            <th>Top Key Values</th>
             <th>Type</th>
             <th>Gets</th>
             <th>Misses</th>
-            <th>Total</th></tr>
+            <th>Total</th>
+          </tr>
           <!-- {% $.each(rows, function () { %} -->
-            <tr><td>{%= h(this.name) %}</td>
-                <td>{%= h(this.type) %}</td>
-                <td>{%= h(this.gets) %}</td>
-                <td>{%= h(this.misses) %}</td>
-                <td>{%= h(this.total) %}</td></tr>
+            <tr>
+              <td>{%= h(this.name) %}</td>
+              <td>{%= h(this.type) %}</td>
+              <td>{%= h(this.gets) %}</td>
+              <td>{%= h(this.misses) %}</td>
+              <td>{%= h(this.total) %}</td>
+            </tr>
           <!-- {% }); %} -->
         </table>
       </div>
@@ -307,7 +303,6 @@
     <div class="darker_block">
         <div class="pad_10">
             <div class="pat_10 right">
-                <!--<a href="javascript:nav.go('overview')">Cluster Overview</a> &gt; Buckets-->
                 <button class="button_medium" onclick="BucketsSection.startCreate();">Add a New Bucket</button>
             </div>
         </div>
@@ -365,7 +360,6 @@
             <div class="pat_10">
                 <ul class="tabs">
                   <li><a href="#">Current Alerts</a></li>
-                  <!-- <li><a href="#">Alert Settings</a> -->
                   <li><a href="#">Log</a></li>
                 </ul>
             </div>
@@ -669,7 +663,6 @@
       <div class="pad">
         <p class="lbox_header">Bucket properties for {%= h(b.name) %}</p>
         <div class="pas_20">
-          <!-- <a href="#" class="jqmClose">Close</a> -->
           <p class="u_line"><span class="label">Bucket name:</span><a class="float_right remove_bucket">Remove</a> {%= h(b.name) %}</p>
           <p class="u_line"><span class="label">Cache size:</span>
           <a class="float_right" href="{%=jsLink('BucketsSection.startFlushCache',b.uri)%}">Flush All</a>
@@ -724,7 +717,6 @@ MemcachedClient client = manager.getClient();</textarea>
           <p><label><b>Cache Size:</b><input type="text" name="cacheSize" class="inp" style="width:40px;"><span class="cache-details"></span><!-- MB x 3 server nodes = 192MB Total Cache Size/30GB Cluster memory available. --></label></p>
           <p><label for="password"><b>Password:</b><input type="password" name="password" autocomplete="off" class="inp"></label></p>
           <p><label for="verifyPassword"><b>Verify Password:</b><input type="password" name="verifyPassword" autocomplete="off" class="inp"></label> <span class="dont-match">Password don't match</span></p>
-          <!-- <p><a href="#" class="jqmClose">cancel</a> <button type="submit">Add Bucket</button></p> -->
           <div class="pas_20">
             <div class="right save_cancel">
               <button class="save_button float_right" type="submit">ADD</button>
@@ -756,23 +748,6 @@ MemcachedClient client = manager.getClient();</textarea>
           Bucket Properties
         </p>
         <div class="pas_20">
-          <!--
-          <table>
-            <tr>
-              <td>
-                Cache Size
-              </td>
-              <td>
-                {%=h(bucket.basicStats.cacheSize)%}
-                [MB x {%=h(DAO.getBucketNodesCount(bucket))%} = {%=h(DAO.getBucketNodesCount(bucket) * bucket.basicStats.cacheSize)%}MB Total Cache]
-              </td>
-            </tr>
-            <tr>
-              <td>Total Items Stored</td>
-              <td>{%=h(bucket.basicStats.totalItemsStored)%}</td>
-            </tr>
-          </table>
-          -->
           <p class="u_line text_14">
             <span class="label">Flushing Cache:</span>
             <strong>
@@ -859,7 +834,6 @@ MemcachedClient client = manager.getClient();</textarea>
               <span class="dont-match">Password doesn't match</span>
             </p>
             <div class="right save_cancel">
-              <!--<a class="save_button float_right" href="#">SAVE</a>-->
               <button type="submit" class="save_button float_right">CHANGE</button>
               <a class="jqmClose cancel_button float_right" href="#">CANCEL</a>
             </div>
