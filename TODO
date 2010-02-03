@@ -69,7 +69,7 @@ there, listed in Menelaus when wired in.
  |   - Error            | not started     |                   |
  |   - Success          | overview rdict  |                   |
  |   - Security reqd.   | not started     |                   |
- | Alerts - Current     | missing dismiss |   -DONE-          |
+ | Alerts - Current     | remove dismiss  | remove dismiss    |
  | Alerts - Log         |  html/css done  | not wired in      |
  | Alerts - Settings    | >remove<        | goes to settings  |
  | Cluster Settings Bas | -html/css done- |                   |
