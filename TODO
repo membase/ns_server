@@ -14,7 +14,7 @@ NOW
 
 * allow no auth for login
 * configure view
-* log for alerts section
+o [DONE] log for alerts section
 * not reloading app after cluster join and displaying success
    indicator on overview
 

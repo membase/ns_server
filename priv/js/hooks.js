@@ -198,7 +198,24 @@ var MockedRequest = mkClass({
     var path = this.path;
 
     var resp;
-    if (_.isEqual(path, ["settings", "web"])) {
+    if (_.isEqual(path, ["logs"])) {
+      resp = {
+        "list": [
+          {
+            "type": "info",
+            "tstamp": 1265205800,
+            "shortText": "message",
+            "text": "otp cookie sync: gyikrciyfcmbrupa"
+          },
+          {
+            "type": "info",
+            "tstamp": 1265205800,
+            "shortText": "message",
+            "text": "config changed"
+          }
+        ]
+      }
+    } else if (_.isEqual(path, ["settings", "web"])) {
       resp = {port:8080,username:"admin",password:""};
     } else if (_.isEqual(path, ["settings", "advanced"])) {
       resp = {alerts: {email:"alk@tut.by",

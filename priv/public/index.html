@@ -387,33 +387,23 @@
             </div>
           </div>
           <div class="tab_holder">
+            <div id="alert_logs_container"></div>
+            <div id="alert_logs_template" class="template">
             <table class="lined_tab">
               <tr>
                 <th>Event</th>
-                <th>Code</th>
+                <!-- <th>Code</th> -->
                 <th>Time</th>
               </tr>
+              <!-- {% _.each(rows, function (logRow) { %} -->
               <tr>
-                <td>A server is not responding</td>
-                <td>NS100</td>
-                <td class="text_11"><strong>02:16:57</strong> - Sat Jul 23, 2010</td>
+                <td>{%= h(logRow.text) %}</td>
+                <!-- <td>NS100</td> -->
+                <td class="text_11">{%=V.formatLogTStamp(logRow.tstamp)%}
               </tr>
-              <tr>
-                <td>A server is not responding</td>
-                <td>NS100</td>
-                <td class="text_11"><strong>02:16:57</strong> - Sat Jul 23, 2010</td>
-              </tr>
-              <tr>
-                <td>A server is not responding</td>
-                <td>NS100</td>
-                <td class="text_11"><strong>02:16:57</strong> - Sat Jul 23, 2010</td>
-              </tr>
-              <tr>
-                <td>A server is not responding</td>
-                <td>NS100</td>
-                <td class="text_11"><strong>02:16:57</strong> - Sat Jul 23, 2010</td>
-              </tr>
+              <!-- {% }); %} -->
             </table>
+            </div>
           </div>
         </div>
     </div></div></div><div class="bottom"><div><div></div></div></div></div>

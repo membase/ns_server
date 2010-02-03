@@ -63,7 +63,7 @@ function formatUptime(seconds, precision) {
 }
 
 ;(function () {
-  var weekDays = "Sun Mon Tue Wen Thu Fri Sat".split(' ');
+  var weekDays = "Sun Mon Tue Wed Thu Fri Sat".split(' ');
   var monthNames = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(' ');
   function _2digits(d) {
     d += 100;
@@ -80,6 +80,23 @@ function formatUptime(seconds, precision) {
       ' ',
       _2digits(date.getHours()), ':', _2digits(date.getMinutes()), ':', _2digits(date.getSeconds()),
       ' ',
+      date.getFullYear()];
+
+    return rv.join('');
+  }
+
+  window.formatLogTStamp = function formatLogTStamp(mseconds) {
+    var date = new Date(mseconds);
+    var rv = [
+      "<strong>",
+      _2digits(date.getHours()), ':', _2digits(date.getMinutes()), ':', _2digits(date.getSeconds()),
+      "</strong> - ",
+      weekDays[date.getDay()],
+      ' ',
+      monthNames[date.getMonth()],
+      ' ',
+      date.getDate(),
+      ', ',
       date.getFullYear()];
 
     return rv.join('');
@@ -1069,6 +1086,18 @@ var AlertsSection = {
     _.defer(function () {
       SettingsSection.advancedSettings.subscribe($m(AlertsSection, 'updateAlertsDestination'));
     });
+
+    this.logs = new Cell(function (active) {
+      return future.get({url: "/logs"}, undefined, this.self.value);
+    }).setSources({active: this.active});
+    this.logs.subscribe(function (cell) {
+      cell.recalculateAt((new Date()).valueOf() + 30000);
+    });
+    this.logs.subscribe($m(this, 'renderLogsList'));
+    prepareTemplateForCell('alert_logs', this.logs);
+  },
+  renderLogsList: function () {
+    renderTemplate('alert_logs', this.logs.value.list);
   },
   updateAlertsDestination: function () {
     var cell = SettingsSection.advancedSettings.value;
@@ -1336,6 +1365,9 @@ _.extend(ViewHelpers, {
       return "up";
     else
       return "down";
+  },
+  formatLogTStamp: function (ts) {
+    return window.formatLogTStamp(ts*1000);
   }
 });
 
