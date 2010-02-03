@@ -712,6 +712,39 @@ var OverviewSection = {
 
     reloadApp();
   },
+  removeNode: function (otpNode) {
+    var details = DAO.cells.currentPoolDetails.value.nodes;
+    var node = _.detect(details, function (n) {
+      return n.otpNode == otpNode;
+    });
+    if (!node) {
+      alert('!node. this is unexpected!')
+      return;
+    }
+
+    // TODO: need current node mark in nodes list, 'cause the following is unreliable
+    var thisHost = document.location.host;
+    var match;
+    if ((match = /(.*):\d+/.exec(thisHost))) {
+      thisHost = match[1]
+    }
+    if (thisHost == node.hostname) {
+      return this.leaveCluster();
+    }
+
+    if (!window.confirm("Really remove " + node.hostname + " from cluster?\n\nTODO: needs markup")) {
+      return;
+    }
+
+    $.ajax({
+      type: 'POST',
+      async: false,
+      url: DAO.cells.currentPoolDetails.value.controllers.ejectNode.uri,
+      data: {otpNode: node.otpNode}
+    });
+
+    reloadApp();
+  },
   init: function () {
     var self = this;
     _.defer(function () {
