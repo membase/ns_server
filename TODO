@@ -11,7 +11,8 @@ there, listed in Menelaus when wired in.
   ----------------------------------------------------------
  | Mockingbird Screen   |  only-web       |     Menelaus      |
  |----------------------|-----------------|-------------------|
- | Login Screen         | almost done     | almost done       |
+ | Login Screen         |   -DONE-        |   -DONE-          |
+ |  Non-secure autolgin | not done        | not done          |
  | Cluster Overview     | Test Server     | Test Server       |
  |                      | Get Std Cookie  | Get Std Cookie    |
  |                      | Secure Server   | Secure Server     |
@@ -44,7 +45,7 @@ there, listed in Menelaus when wired in.
  | Alerts - Settings    | >remove<        | goes to settings  |
  | Cluster Settings Bas | -html/css done- |                   |
  | Cluster Settings Adv |   almost done   | not wired in      |
- | New Bucket           |   almost done   | sends error       |
+ | New Bucket           |   -DONE-        |   -DONE-          |
  | Remove Bucket        |   -DONE-        |   -DONE & works-  |
  | Flush Cache          |   -DONE-        | sends error       |
  --------------------------------------------------------------
