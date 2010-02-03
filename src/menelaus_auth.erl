@@ -21,9 +21,17 @@ apply_auth(Req, F, Args) ->
     UserPassword = extract_auth(Req),
     case check_auth(UserPassword) of
         true -> apply(F, Args ++ [Req]);
-        _ -> Req:respond({401, [{"WWW-Authenticate",
+        _ -> case Req:get_header_value("invalid-auth-response") of
+                 "on" ->
+                     %% We need this for browsers that display auth
+                     %% dialog when faced with 401 with
+                     %% WWW-Authenticate header response, even via XHR
+                     Req:respond({401, [], []});
+                 _ ->
+                     Req:respond({401, [{"WWW-Authenticate",
                                  "Basic realm=\"api\""}],
-                          []})
+                                  []})
+             end
     end.
 
 apply_auth_bucket(Req, F, Args) ->

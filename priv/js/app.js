@@ -178,6 +178,7 @@ $.ajaxSetup({
     if (DAO.login) {
       addBasicAuth(xhr, DAO.login, DAO.password);
     }
+    xhr.setRequestHeader('invalid-auth-response', 'on');
     xhr.setRequestHeader('Cache-Control', 'no-cache');
     xhr.setRequestHeader('Pragma', 'no-cache');
   }

@@ -67,10 +67,28 @@ class Middleware
   end
 end
 
+helpers do
+  def auth_credentials
+    @auth ||=  Rack::Auth::Basic::Request.new(request.env)
+    if @auth.provided?
+      @auth.credentials
+    end
+  end
+end
 
 use Middleware
 
 set :public, $DOCROOT
+
+get "/test_auth" do
+  user, pwd = *auth_credentials
+  if user != 'admin' || pwd != 'admin'
+#    response['WWW-Authenticate'] = 'Basic realm="api"'
+    response['Cache-Control'] = 'no-cache must-revalidate'
+    throw(:halt, 401)
+  end
+  "OK"
+end
 
 if ARGV.size == 0
   name = "./" + File.basename($0)
