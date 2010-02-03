@@ -1252,7 +1252,7 @@ var SettingsSection = {
     self.tabs.setValue('advanced');
 
     function switchAlertsOn() {
-      if ('email_alerts' in self.advancedSettings.value) {
+      if (self.advancedSettings.value && ('email_alerts' in self.advancedSettings.value)) {
         _.defer(function () { // make sure we do it after form is filled
           setBoolAttribute($('#advanced_settings_form [name=email_alerts]'), 'checked', true);
           self.handleHideShowCheckboxes();
@@ -1266,8 +1266,24 @@ var SettingsSection = {
     switchAlertsOn();
   },
   gotoSecureServer: function () {
-    this.tabs.setValue('basic');
+    var self = this;
+
+    self.tabs.setValue('basic');
     nav.go('settings');
+
+    function switchSecureOn() {
+      if (self.webSettings.value && ('port' in self.webSettings.value)) {
+        _.defer(function () {
+          setBoolAttribute($('#secure_serv'), 'checked', true);
+          self.handleHideShowCheckboxes();
+          $('#basic_settings_form input[name=username]').get(0).focus();
+        });
+        return;
+      }
+
+      self.webSettings.changedSlot.subscribeOnce(switchSecureOn);
+    }
+    switchSecureOn();
   },
   fillForm: function (form, values) {
     var self = this;
@@ -1303,11 +1319,11 @@ var SettingsSection = {
     this.handleHideShowCheckboxes();
   },
   onEnter: function () {
-    this.advancedSettings.setValue({});
-    this.advancedSettings.recalculate();
+    // this.advancedSettings.setValue({});
+    // this.advancedSettings.recalculate();
 
-    this.webSettings.setValue({});
-    this.webSettings.recalculate();
+    // this.webSettings.setValue({});
+    // this.webSettings.recalculate();
   },
   onLeave: function () {
     $('#settings form').each(function () {
