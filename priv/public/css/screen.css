@@ -602,3 +602,9 @@ button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
 
 #join_leave_switch.join-possible #cluster_leave_button { display:none; }
 #join_leave_switch.leave-possible #cluster_join_button { display:none; }
+
+.float_50 {}
+.float_50 .item {display:block; float:left; width:50%; min-height:30px; _height:30px; margin:0 0 5px 0;}
+.float_50 .item input {float:left;}
+.float_50 .item .cnt {margin:0 0 0 20px; font-size:11px; color:#777a81; display:block;}
+.float_50 .item .cnt span {font-size:12px; font-weight:bolder; color:#368dba; display:block; cursor:pointer;}
