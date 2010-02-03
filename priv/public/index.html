@@ -392,35 +392,6 @@
               </ol>
             </div>
           </div>
-          <!-- <div>
-            <h3>Alert Setting</h3>
-            <input type="hidden" id="alerts_settings_form_is_clean" value="1">
-            <form id="alerts_settings_form" onsubmit="javascript:return false;">
-            <p><label><input type="checkbox" name="sendAlerts" value="1"><input type="hidden" value="0" name="sendAlerts">
-            Notify me by email with alerts</label></p>
-            <div id="alerts_settings_guts" style="display:none;">
-              <p><label>Email Address <input type="text" name="email"></label></p>
-              <h4>Alert Types</h4>
-              <p>Alert me when:
-              <ul>
-                <li><label><input type="checkbox" value="1" name="sendForLowSpace"><input type="hidden" value="0" name="sendForLowSpace">
-                ... a server is low on disk space.</label>
-                <li><label><input type="checkbox" value="1" name="sendForLowMemory"><input type="hidden" value="0" name="sendForLowMemory">
-                ... a server is low on available memory.</label>
-                <li><label><input type="checkbox" value="1" name="sendForNotResponding"><input type="hidden" value="0" name="sendForNotResponding">
-                ... a server is not responding.</label>
-                <li><label><input type="checkbox" value="1" name="sendForJoinsCluster"><input type="hidden" value="0" name="sendForJoinsCluster">
-                ... a new server joins cluster.</label>
-                <li><label><input type="checkbox" value="1" name="sendForOpsAboveNormal"><input type="hidden" value="0" name="sendForOpsAboveNormal">
-                ... average daily ops/second is above normal.</label>
-                <li><label><input type="checkbox" value="1" name="sendForSetsAboveNormal"><input type="hidden" value="0" name="sendForSetsAboveNormal">
-                ... average daily sets/second is above normal.</label>
-              </ul>
-            </div>
-            <p><a href="javascript:AlertsSection.settingsCancel(),void(0);">Cancel</a>
-              <button type="submit">Save</button></p>
-            </form>
-          </div> -->
           <div class="tab_holder">
             <table class="lined_tab">
               <tr>
@@ -467,7 +438,7 @@
       </div>
       <div class="panes">
         <div class="brdr_exl_t">
-          <form id="basic_settings_form">
+          <form id="basic_settings_form" action="/settings/web">
             <div class="pad_10">
               <div class="basic">
                 <h2 class="head_2_underline">Web Console</h2>
@@ -511,7 +482,7 @@
             <div class="darker_block">
               <div class="pad_10">
                 <div class="right save_cancel">
-                  <a href="#" class="save_button float_right">SAVE</a>
+                  <button type="submit" class="save_button float_right">SAVE</button>
                   <a href="#" class="cancel_button float_right">CANCEL</a>
                 </div>
               </div>
@@ -519,7 +490,7 @@
           </form>
         </div>
         <div class="brdr_exl_t" style="display:none;">
-          <form id="advanced_settings_form">
+          <form id="advanced_settings_form" action="/settings/advanced">
             <div class="pad_10">
               <div class="advanced">
                 <h2 class="head_2_underline">Port Configuration <a class="text_11">What’s this?</a></h2>
@@ -660,7 +631,7 @@
             <div class="darker_block">
               <div class="pad_10">
                 <div class="right save_cancel">
-                  <a href="#" class="save_button float_right">SAVE</a>
+                  <button type="submit" class="save_button float_right">SAVE</button>
                   <a href="#" class="cancel_button float_right">CANCEL</a>
                 </div>
               </div>

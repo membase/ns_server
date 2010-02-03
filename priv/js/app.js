@@ -1195,14 +1195,12 @@ var SettingsSection = {
         return;
       return future.get({url: '/settings/web'});
     }).setSources({mode: DAO.cells.mode});
-    self.webSettings.setValue({});
 
     self.advancedSettings = new Cell(function (mode) {
       if (mode != 'settings')
         return;
       return future.get({url: '/settings/advanced'}, $m(self, 'flattenAdvancedSettings'));
     }).setSources({mode: DAO.cells.mode});
-    self.advancedSettings.setValue({});
 
     self.webSettingsOverlay = null;
     self.advancedSettingsOverlay = null;
@@ -1227,6 +1225,21 @@ var SettingsSection = {
 
     self.webSettings.subscribe($m(this, 'fillBasicForm'));
     self.advancedSettings.subscribe($m(this, 'fillAdvancedForm'));
+
+    $('#settings form').submit(function (e) {
+      var self = this;
+
+      e.preventDefault();
+
+      reloadApp(function () {
+        $.ajax({
+          type: 'POST',
+          url: $(self).attr('action'),
+          data: $(self).serialize(),
+          async: false
+        });
+      });
+    });
   },
   gotoSecureServer: function () {
     this.tabs.setValue('basic');
@@ -1263,10 +1276,14 @@ var SettingsSection = {
   },
   fillAdvancedForm: function () {
     this.fillForm($('#advanced_settings_form'), this.advancedSettings.value);
-//    setBoolAttribute($('#alert_set'), 'checked', !!(this.advancedSettings.value['email']));
     this.handleHideShowCheckboxes();
   },
   onEnter: function () {
+    this.advancedSettings.setValue({});
+    this.advancedSettings.recalculate();
+
+    this.webSettings.setValue({});
+    this.webSettings.recalculate();
   },
   onLeave: function () {
     $('#settings form').each(function () {
