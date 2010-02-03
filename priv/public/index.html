@@ -444,7 +444,7 @@
                 <h2 class="head_2_underline">Web Console</h2>
                 <div class="form">
                   <div class="labeled_line">
-                    <label class="block label for_input">Port:</label>
+                    <label class="block label for_input" for="port">Port:</label>
                     <div class="line_cnt">
                       <input name="port" type="text" class="text inp_short"/>
                     </div>
@@ -457,20 +457,20 @@
                   </div>
                   <div id="server_secure" style="display:none;">
                     <div class="labeled_line">
-                      <label class="block label for_input">Username:</label>
+                      <label class="block label for_input" for="username">Username:</label>
                       <div class="line_cnt">
                         <input type="text" name="username" class="text inp_short"/>
                         <a href="#" class="text_11">TODO: Setup Email Alerts</a>
                       </div>
                     </div>
                     <div class="labeled_line">
-                      <label class="block label for_input">Password:</label>
+                      <label class="block label for_input" for="password">Password:</label>
                       <div class="line_cnt">
                         <input name="password" type="password" class="text inp_short"/>
                       </div>
                     </div>
                     <div class="labeled_line">
-                      <label class="block label for_input">Verify Password:</label>
+                      <label class="block label for_input" for="verifyPassword">Verify Password:</label>
                       <div class="line_cnt">
                         <input name="verifyPassword" type="password" class="text inp_short"/>
                       </div>
@@ -496,13 +496,13 @@
                 <h2 class="head_2_underline">Port Configuration <a class="text_11">What’s this?</a></h2>
                 <div class="form">
                   <div class="labeled_line">
-                    <label class="block label for_input">Proxy Port:</label>
+                    <label class="block label for_input" for="proxyPort">Proxy Port:</label>
                     <div class="line_cnt">
                       <input type="text" name="proxyPort" class="text inp_short">
                     </div>
                   </div>
                   <div class="labeled_line">
-                    <label class="block label for_input">Cache Port:</label>
+                    <label class="block label for_input" for="directPort">Cache Port:</label>
                     <div class="line_cnt">
                       <input type="text" name="directPort" class="text inp_short">
                     </div>
@@ -515,26 +515,26 @@
                   </div>
                   <div id="alerts_settings_guts" style="display:none;">
                     <div class="labeled_line">
-                      <label class="block label for_input">Email Address:</label>
+                      <label class="block label for_input" for="email">Email Address:</label>
                       <div class="line_cnt">
                         <input type="text" name="email" class="text inp_short">
                       </div>
                     </div>
                     <h2 class="form_section_title">Mail Server Settings</h2>
                     <div class="labeled_line">
-                      <label class="block label for_input">Username:</label>
+                      <label class="block label for_input" for="email_server_user">Username:</label>
                       <div class="line_cnt">
                         <input type="text" name="email_server_user" class="text inp_short">
                       </div>
                     </div>
                     <div class="labeled_line">
-                      <label class="block label for_input">Password:</label>
+                      <label class="block label for_input" for="email_server_password">Password:</label>
                       <div class="line_cnt">
                         <input type="text" name="email_server_password" class="text inp_short">
                       </div>
                     </div>
                     <div class="labeled_line">
-                      <label class="block label for_input">Mail Server Address:</label>
+                      <label class="block label for_input" for="email_server_addr">Mail Server Address:</label>
                       <div class="line_cnt">
                         <input type="text" name="email_server_addr" class="text inp_short">
                         Port:
@@ -722,8 +722,8 @@ MemcachedClient client = manager.getClient();</textarea>
         <form id="add_new_bucket_form">
           <p><label><b>Bucket Name:</b><input type="text" name="name" class="inp" style="width:290px;" value="No spaces, alphanumeric up to 12 characters"></label></p>
           <p><label><b>Cache Size:</b><input type="text" name="cacheSize" class="inp" style="width:40px;"><span class="cache-details"></span><!-- MB x 3 server nodes = 192MB Total Cache Size/30GB Cluster memory available. --></label></p>
-          <p><b>Password:</b><input type="password" name="password" autocomplete="off" class="inp"></p>
-          <p><b>Verify Password:</b><input type="password" name="verifyPassword" autocomplete="off" class="inp"> <span class="dont-match">Password don't match</span></p>
+          <p><label for="password"><b>Password:</b><input type="password" name="password" autocomplete="off" class="inp"></label></p>
+          <p><label for="verifyPassword"><b>Verify Password:</b><input type="password" name="verifyPassword" autocomplete="off" class="inp"></label> <span class="dont-match">Password don't match</span></p>
           <!-- <p><a href="#" class="jqmClose">cancel</a> <button type="submit">Add Bucket</button></p> -->
           <div class="pas_20">
             <div class="right save_cancel">
@@ -853,9 +853,9 @@ MemcachedClient client = manager.getClient();</textarea>
         </div>
         <form id="bucket_password_form" class="pat_10">
           <div class="pas_20">
-            <p class="u_line_sm"><span class="label">Password:</span> <input class="inp" type="password" name="password"></p>
-            <p class="u_line_sm"><span class="label">New Password:</span> <input class="inp" type="password" name="verifyPassword"></p>
-            <p class="u_line_sm"><span class="label">Verify Password:</span> <input class="inp" type="password" name="verifyPassword">
+            <p class="u_line_sm"><label class="label" for="password">Password:</label> <input class="inp" type="password" name="password"></p>
+            <p class="u_line_sm"><label class="label" for="verifyPassword">New Password:</label> <input class="inp" type="password" name="verifyPassword"></p>
+            <p class="u_line_sm"><label class="label" for="verifyPassword">Verify Password:</label> <input class="inp" type="password" name="verifyPassword">
               <span class="dont-match">Password doesn't match</span>
             </p>
             <div class="right save_cancel">
@@ -905,21 +905,21 @@ MemcachedClient client = manager.getClient();</textarea>
               <tr>
                 <td>
                   <div class="u_line_sm">
-                    <span class="label">IP Address:</span>
+                    <label class="label" for="clusterMemberHostIp">IP Address:</label>
                     <input type="text" class="inp" name="clusterMemberHostIp" />
                   </div>
                   <div class="u_line_sm">
-                    <span class="label">Port:</span>
+                    <label class="label" for="clusterMemberPort">Port:</label>
                     <input type="text" class="inp" name="clusterMemberPort" />
                   </div>
                 </td>
                 <td>
                   <div class="u_line_sm">
-                    <span class="label">Username:</span>
+                    <label class="label" for="user">Username:</label>
                     <input type="text" class="inp" name="user" />
                   </div>
                   <div class="u_line_sm">
-                    <span class="label">Password:</span>
+                    <label class="label" for="password">Password:</label>
                     <input type="password" class="inp" name="password" />
                   </div>
                 </td>
@@ -959,11 +959,11 @@ MemcachedClient client = manager.getClient();</textarea>
         <col width="" />
         <col width="" />
         <tr>
-          <td class="label">Username:</td>
+          <td class="label"><label for="login">Username:</label></td>
           <td><input type="text" name="login" class="inp" /></td>
         </tr>
         <tr>
-          <td class="label">Password:</td>
+          <td class="label"><label for="password">Password:</label></td>
           <td>
             <input type="password" name="password" class="inp" />
           </td>
