@@ -193,6 +193,16 @@ var DAO = {
     else
       $(window).one('dao:ready', function () {thunk();});
   },
+  loginSuccess: function (data) {
+    DAO.ready = true;
+    $(window).trigger('dao:ready');
+    var rows = data.pools;
+    DAO.cells.poolList.setValue(rows);
+    if (DAO.login) {
+      var auth = Base64.encode([DAO.login, ':', DAO.password].join(''))
+      $.cookie('auth', auth);
+    }
+  },
   switchSection: function (section) {
     DAO.cells.mode.setValue(section);
   },
@@ -206,14 +216,27 @@ var DAO = {
       error: cb});
 
     var rv;
+    var auth;
+
+    if (!rv && (auth = $.cookie('auth'))) {
+      var arr = Base64.decode(auth).split(':');
+      DAO.login = arr[0];
+      DAO.password = arr[1];
+
+      $.ajax({
+        type: 'GET',
+        url: "/pools",
+        dataType: 'json',
+        async: false,
+        success: cb,
+        error: cb});
+    }
+
     return rv;
 
     function cb(data, status) {
       if (status == 'success') {
-        DAO.ready = true;
-        $(window).trigger('dao:ready');
-        var rows = data.pools;
-        DAO.cells.poolList.setValue(rows);
+        DAO.loginSuccess(data);
         rv = true;
       }
     }
@@ -224,10 +247,7 @@ var DAO = {
 
     function cb(data, status) {
       if (status == 'success') {
-        DAO.ready = true;
-        $(window).trigger('dao:ready');
-        var rows = data.pools;
-        DAO.cells.poolList.setValue(rows);
+        DAO.loginSuccess(data);
       }
       if (callback)
         callback(status);
@@ -1308,6 +1328,10 @@ var ThePage = {
              settings: SettingsSection},
   currentSection: null,
   currentSectionName: null,
+  signOut: function () {
+    $.cookie('auth', null);
+    reloadApp();
+  },
   gotoSection: function (section) {
     if (!(this.sections[section])) {
       throw new Error('unknown section:' + section);
