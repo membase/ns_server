@@ -269,7 +269,9 @@ transitions to the client, if backward compatibility is desirable.
        "ports" : {
          "proxy" : 11211,
          "direct" : 11311
-       }
+       }, 
+       "otpNode" : "ns_1@fully.qualified.hostname",
+       "otpCookie" : "dhwwiugygucgebxi"
      },
      {
        "hostname" : "10.0.1.21",
@@ -278,7 +280,9 @@ transitions to the client, if backward compatibility is desirable.
        "ports" : {
          "proxy" : 11211,
          "direct" : 11311
-       }
+       },
+       "otpNode" : "ns_1@fully.qualified.hostname",
+       "otpCookie" : "ehwwiugygucgebxi"
      }
    ],
    "buckets" : {
