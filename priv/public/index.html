@@ -177,10 +177,10 @@
                                     <div class="side_shadow">
                                         <div class="unused">
                                             <div class="used" style="width:50%;"></div>
-                                        </div>
+                                        </div>{%=V.setPercentBar(Math.floor(this.memoryFree/this.memoryTotal*100))%}
                                     </div>
                                 </div>
-                                <span class="float_left">50% used</span></td>
+                                <span class="float_left">{%=Math.floor(this.memoryFree/this.memoryTotal*100)%}% used</span></td>
                         </tr>
                         <tr>
                             <td>OS: <span>{%= h(this.os) %}</span></td>
