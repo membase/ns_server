@@ -1,3 +1,9 @@
+----------- to discuss with Matt/Rod ------
+* don't use hardcoded uris for alerts, settings & logs as we do now
+* info in logs from server and design differ
+* really cannot do client-side dismiss of alerts
+-------------------------------------------
+
 * there is also some hook.js rotation bug or (worse) SamplesRestorer
    bug, as rotation is not perfect sometimes
 * clicking on small graphs doesn't always work. Probably due to
