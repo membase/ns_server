@@ -17,7 +17,7 @@ not_member(X, List) -> not lists:member(X, List).
 % is considered to "wrap around".
 
 take_ring_n(RingList, N) ->
-    take_ring_n(fun true/1, RingList, N).
+    take_ring_n(fun(_Item, _Taken) -> true end, RingList, N).
 
 take_ring_n(AcceptFun, RingList, N) ->
     take_ring_n(AcceptFun, RingList, N, RingList).

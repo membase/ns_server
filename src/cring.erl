@@ -9,10 +9,10 @@
 
 % Functional, immutable consistent-hash-ring.
 
--record(cring, { % [#carc{}, ...], ordered ascending, or "clockwise".
+-record(cring, { % array(#carc{}), ordered ascending, or clockwise.
+                 ring_arr,
+                 % [#carc{}, ...], ordered ascending, or clockwise.
                  ring_asc,
-                 % [#carc{}, ...], ordered descending, or "counter-clouckwise".
-                 ring_dsc,
                  % A tuple of {HashMod, HashCfg} passed to cring:create().
                  hash,
                  % length(AddrDataList) that was passed to cring:create().
@@ -44,10 +44,12 @@
 % function which returns a single int or Point.
 
 create(AddrDataList, HashMod, HashCfg) ->
-    RingDsc = make({HashMod, HashCfg}, AddrDataList, []),
-    RingAsc = lists:keysort(#carc.pt_end, RingDsc),
-    #cring{ring_asc = RingAsc,
-           ring_dsc = RingDsc,
+    % TODO: Consider secondary sort on hash_ord to reduce (but not
+    % eliminate) unlucky case when there's a hash collision.
+    RingAsc = make({HashMod, HashCfg}, AddrDataList, []),
+    RingArr = array:fix(array:from_list(RingAsc)),
+    #cring{ring_arr = RingArr,
+           ring_asc = RingAsc,
            hash = {HashMod, HashCfg},
            addr_num = length(AddrDataList)}.
 
@@ -77,12 +79,22 @@ search_by_point(CRing, SearchPoint) ->
 
 % Returns [{Addr, Data}*], where length of result might be <= N.
 
-search_by_point(#cring{ring_asc = RingAsc,
+search_by_point(#cring{ring_arr = RingArr,
+                       ring_asc = RingAsc,
                        addr_num = AddrNum},
                 SearchPoint, N) ->
-    carcs_addr_data(
-      search_ring_by_point(RingAsc, SearchPoint, RingAsc,
-                           erlang:min(AddrNum, N))).
+    TakeN = erlang:min(AddrNum, N),
+    Found = case binary_arc_search(SearchPoint, RingArr) of
+                false -> [];
+                min -> util:take_ring_n(fun carc_not_member_by_addr/2,
+                                        RingAsc, TakeN);
+                max -> util:take_ring_n(fun carc_not_member_by_addr/2,
+                                        RingAsc, TakeN);
+                {Index, _CArc} ->
+                    take_array_ring_n(fun carc_not_member_by_addr/2,
+                                      RingArr, Index, TakeN)
+            end,
+    carcs_addr_data(Found).
 
 %% Implementation
 
@@ -90,26 +102,30 @@ carcs_addr_data(CArcs) ->
     lists:map(fun (#carc{addr = Addr, data = Data}) -> {Addr, Data} end,
               CArcs).
 
-% Returns a list, like [CPoint*], ordered by counter-clockwise
-% or descending point.
+% Returns a list of [CArc*], sorted by pt_end ascending.
 
 make(_Hash, [], CArcs) ->
-    % TODO: Consider secondary sort on hash_ord to reduce (but not
-    % eliminate) unlucky case when there's a hash collision.
-    CArcs;
+    CArcs2 = lists:keysort(#carc.pt_end, CArcs),
+    {_, CArcs3} = lists:foldl(
+                    fun(#carc{pt_end = Pt} = CArc, {PtPrev, Acc}) ->
+                            {Pt, [CArc#carc{pt_beg = PtPrev} | Acc]}
+                    end,
+                    {min, []},
+                    CArcs2),
+    CArcs4 = lists:reverse(CArcs3),
+    CArcs4;
 
 make({HashMod, HashCfg} = Hash, [{Addr, Data} | Rest], Acc) ->
     Points = HashMod:hash_addr(Addr, HashCfg),
-    {_, _, Acc2} =
+    {_, Acc2} =
         lists:foldl(
-          fun (Point, {N, PointPrev, AccMore}) ->
-              {N + 1, Point, [#carc{pt_beg = PointPrev,
-                                    pt_end = Point,
-                                    hash_ord = N,
-                                    addr = Addr,
-                                    data = Data} | AccMore]}
+          fun(Point, {N, AccMore}) ->
+              {N + 1, [#carc{pt_end = Point,
+                             hash_ord = N,
+                             addr = Addr,
+                             data = Data} | AccMore]}
           end,
-          {1, min, Acc},
+          {1, Acc},
           Points),
     make(Hash, Rest, Acc2).
 
@@ -214,6 +230,90 @@ delta_next([A | _], _)     -> A;
 delta_next([], Restart)    -> delta_next(Restart, undefined).
 
 % ------------------------------------------------
+
+%% Lo and Hi inclusively bound the portion of Arr to be searched for
+%% the arc that owns the point K.  Or, returns undefined if beyond
+%% the array entries.
+
+binary_arc_search(K, Arr) ->
+    S = array:size(Arr),
+    case S > 0 of
+        true  -> binary_arc_search(K, Arr, 0, S - 1);
+        false -> false
+    end.
+
+binary_arc_search(K, Arr, Lo, Hi) ->
+    case Lo =< Hi of
+        true ->
+            Probe = (Lo + Hi) div 2,
+            CArc = array:get(Probe, Arr),
+            #carc{pt_beg = PtBeg, pt_end = PtEnd} = CArc,
+            if
+                PtEnd < K ->
+                    binary_arc_search(K, Arr, Probe + 1, Hi);
+                PtBeg =:= min ->
+                    min;
+                K =< PtBeg ->
+                    binary_arc_search(K, Arr, Lo, Probe - 1);
+                true -> % When K within (PtBeg, PtEnd].
+                    {Probe, CArc}
+            end;
+        _ ->
+            case Hi < 0 of
+                true  -> min;
+                false -> max
+            end
+    end.
+
+% ------------------------------------------------
+
+take_array_ring_n(AcceptFun, RingArr, Index, N) ->
+    take_array_ring_n(AcceptFun, RingArr, Index, N, []).
+
+take_array_ring_n(_AcceptFun, _RingArr, _Index, 0, Taken) ->
+    lists:reverse(Taken);
+
+take_array_ring_n(AcceptFun, RingArr, Index, N, Taken) ->
+    RingSize = array:size(RingArr),
+    case (Index >= RingSize andalso RingSize > 0) of
+        true ->
+            take_array_ring_n(AcceptFun, RingArr, 0, N, Taken);
+        false ->
+            X = array:get(Index, RingArr),
+            case AcceptFun(X, Taken) of
+                true  -> take_array_ring_n(AcceptFun, RingArr,
+                                           Index + 1, N - 1, [X | Taken]);
+                false -> take_array_ring_n(AcceptFun, RingArr,
+                                           Index + 1, N - 1, Taken)
+            end
+    end.
+
+% ------------------------------------------------
+
+binary_arc_test() ->
+    X = #carc{pt_beg = min,
+              pt_end = 10,
+              addr = x},
+    Y = #carc{pt_beg = 10,
+              pt_end = 20,
+              addr = y},
+    A = array:from_list([]),
+    ?assertEqual(false, binary_arc_search(0, A)),
+    ?assertEqual(false, binary_arc_search(1, A)),
+    ?assertEqual(false, binary_arc_search(10, A)),
+    A2 = array:from_list([X]),
+    ?assertEqual(min, binary_arc_search(0, A2)),
+    ?assertEqual(min, binary_arc_search(1, A2)),
+    ?assertEqual(min, binary_arc_search(10, A2)),
+    ?assertEqual(max, binary_arc_search(11, A2)),
+    A3 = array:from_list([X,Y]),
+    ?assertEqual(min, binary_arc_search(0, A3)),
+    ?assertEqual(min, binary_arc_search(1, A3)),
+    ?assertEqual(min, binary_arc_search(10, A3)),
+    ?assertMatch({1, Y}, binary_arc_search(11, A3)),
+    ?assertMatch({1, Y}, binary_arc_search(20, A3)),
+    ?assertEqual(max, binary_arc_search(21, A3)),
+    ok.
 
 hash_addr_test() ->
     P = hash_addr(a, 1),
