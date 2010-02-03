@@ -526,47 +526,47 @@
                   <div class="labeled_line">
                     <label class="block label for_input">Proxy Port:</label>
                     <div class="line_cnt">
-                      <input type="text" class="text inp_short">
+                      <input type="text" name="proxyPort" class="text inp_short">
                     </div>
                   </div>
                   <div class="labeled_line">
                     <label class="block label for_input">Cache Port:</label>
                     <div class="line_cnt">
-                      <input type="text" class="text inp_short">
+                      <input type="text" name="directPort" class="text inp_short">
                     </div>
                   </div>
                 </div>
                 <h2 class="head_2_underline">Alert settings</h2>
                 <div class="form">
                   <div>
-                    <label><input type="checkbox" class="check" id="alert_set"> Notify me by email with alerts <input type="hidden" value="1"></label>
+                    <label><input type="checkbox" class="check" value="1" id="alert_set"> Notify me by email with alerts <input type="hidden" value="0"></label>
                   </div>
                   <div id="alerts_settings_guts" style="display:none;">
                     <div class="labeled_line">
                       <label class="block label for_input">Email Address:</label>
                       <div class="line_cnt">
-                        <input type="text" class="text inp_short">
+                        <input type="text" name="email" class="text inp_short">
                       </div>
                     </div>
                     <h2 class="form_section_title">Mail Server Settings</h2>
                     <div class="labeled_line">
                       <label class="block label for_input">Username:</label>
                       <div class="line_cnt">
-                        <input type="text" class="text inp_short">
+                        <input type="text" name="email_server_user" class="text inp_short">
                       </div>
                     </div>
                     <div class="labeled_line">
                       <label class="block label for_input">Password:</label>
                       <div class="line_cnt">
-                        <input type="text" class="text inp_short">
+                        <input type="text" name="email_server_password" class="text inp_short">
                       </div>
                     </div>
                     <div class="labeled_line">
                       <label class="block label for_input">Mail Server Address:</label>
                       <div class="line_cnt">
-                        <input type="text" class="text inp_short">
+                        <input type="text" name="email_server_addr" class="text inp_short">
                         Port:
-                        <select class="select select_short">
+                        <select name="email_server_port" class="select select_short">
                           <option value="25">25</option>
                           <option value="2525">2525</option>
                         </select>
@@ -575,7 +575,7 @@
                     <div class="labeled_line">
                       <div class="line_cnt">
                         <div>
-                          <label><input type="checkbox" class="check"> Notify me by email with alerts <input type="hidden" value="1" /></label>
+                          <label><input name="email_alerts" type="checkbox" value="1" class="check"> Notify me by email with alerts <input type="hidden" value="0" /></label>
                         </div>
                       </div>
                     </div>
@@ -591,14 +591,14 @@
                           <th>Active</th>
                         </tr>
                         <tr>
-                          <td>A server is not responding</td>
+                          <td>A server is not responding TODO</td>
                           <td>Email</td>
-                          <td class="cntr"><input type="checkbox" /><input type="hidden" value="1" /></td>
+                          <td class="cntr"><input type="checkbox" value="1" name="alert_server_unresponsive" /><input type="hidden" value="0" /></td>
                         </tr>
                         <tr>
                           <td>A server is down</td>
                           <td>Email</td>
-                          <td class="cntr"><input type="checkbox" /><input type="hidden" value="1" /></td>
+                          <td class="cntr"><input type="checkbox" value="1" name="alert_server_down" /><input type="hidden" value="0" /></td>
                         </tr>
                       </table>
                     </div>
@@ -615,12 +615,7 @@
                         <tr>
                           <td>A bucket has been deleted</td>
                           <td>Email</td>
-                          <td class="cntr"><input type="checkbox" /><input type="hidden" value="1" /></td>
-                        </tr>
-                        <tr>
-                          <td>Bucket authentication failure</td>
-                          <td>Email</td>
-                          <td class="cntr"><input type="checkbox" /><input type="hidden" value="1" /></td>
+                          <td class="cntr"><input type="checkbox" value="1" name="alert_bucket_deleted" /><input type="hidden" value="0" /></td>
                         </tr>
                       </table>
                     </div>
@@ -637,22 +632,22 @@
                         <tr>
                           <td>A new server joins a cluster</td>
                           <td>Email</td>
-                          <td class="cntr"><input type="checkbox" /><input type="hidden" value="1" /></td>
+                          <td class="cntr"><input type="checkbox" value="1" name="alert_server_joined" /><input type="hidden" value="0" /></td>
                         </tr>
                         <tr>
                           <td>A server leaves a cluster</td>
                           <td>Email</td>
-                          <td class="cntr"><input type="checkbox" /><input type="hidden" value="1" /></td>
+                          <td class="cntr"><input type="checkbox" value="1" name="alert_server_left" /><input type="hidden" value="0" /></td>
                         </tr>
                         <tr>
                           <td>A new bucket has been created</td>
                           <td>Email</td>
-                          <td class="cntr"><input type="checkbox" /><input type="hidden" value="1" /></td>
+                          <td class="cntr"><input type="checkbox" value="1" name="alert_bucket_created" /><input type="hidden" value="0" /></td>
                         </tr>
                         <tr>
                           <td>Bucket authentication failure</td>
                           <td>Email</td>
-                          <td class="cntr"><input type="checkbox" /><input type="hidden" value="1" /></td>
+                          <td class="cntr"><input type="checkbox" value="1" name="alert_bucket_auth_failed" /><input type="hidden" value="0" /></td>
                         </tr>
                       </table>
                     </div>

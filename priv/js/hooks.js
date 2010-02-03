@@ -217,6 +217,17 @@ var MockedRequest = mkClass({
                          bucket_deleted:"1",
                          bucket_auth_failed:"1"}},
               ports:{proxyPort:11213,directPort:11212}};
+      // var postData = {proxyPort:11213,
+      //                 directPort:11212,
+      //                 email: "",
+      //                 email_alerts: "0", //sendAlerts
+      //                 email_server_user: "",
+      //                 email_server_pass: "",
+      //                 email_server_addr: "",
+      //                 email_server_port: "",
+      //                 email_server_encrypt: "",
+      //                 alert_server_down: "1"//...
+      //                }
     } else if (path[0] == "pools") {
       if (path.length == 1) {
         // /pools

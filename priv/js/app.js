@@ -1151,6 +1151,27 @@ var AlertsSection = {
 }
 
 var SettingsSection = {
+  // GET of advanced settings returns structure, while POST accepts
+  // only plain key-value set. We convert data we get from GET to
+  // format of POST requests.
+  flattenAdvancedSettings: function (data) {
+    var rv = {};
+    $.extend(rv, data.ports); // proxyPort & directPort
+
+    var alerts = data.alerts;
+    rv['email'] = alerts['email']
+    rv['email_alerts'] = alerts['sendAlerts'];
+
+    for (var k in alerts.email_server) {
+      rv['email_server_' + k] = alerts.email_server[k];
+    }
+
+    for (var k in alerts.alerts) {
+      rv['alert_' + k] = alerts.alerts[k];
+    }
+
+    return rv;
+  },
   init: function () {
     var self = this;
     self.tabs = new TabsCell("settingsTab",
@@ -1167,12 +1188,12 @@ var SettingsSection = {
     self.advancedSettings = new Cell(function (mode) {
       if (mode != 'settings')
         return;
-      return future.get({url: '/settings/advanced'});
+      return future.get({url: '/settings/advanced'}, $m(self, 'flattenAdvancedSettings'));
     }).setSources({mode: DAO.cells.mode});
     self.advancedSettings.setValue({});
 
     self.webSettingsOverlay = null;
-    self.advancedSettinsOverlay = null;
+    self.advancedSettingsOverlay = null;
 
     function bindOverlay(cell, varName, form) {
       function onUndef() {
@@ -1190,7 +1211,7 @@ var SettingsSection = {
     }
 
     bindOverlay(self.webSettings, 'webSettingsOverlay', '#basic_settings_form');
-    bindOverlay(self.advancedSettings, 'advancedSettinsOverlay', '#advanced_settings_form');
+    bindOverlay(self.advancedSettings, 'advancedSettingsOverlay', '#advanced_settings_form');
 
     self.webSettings.subscribe($m(this, 'fillBasicForm'));
     self.advancedSettings.subscribe($m(this, 'fillAdvancedForm'));
