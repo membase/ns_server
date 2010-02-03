@@ -2,9 +2,30 @@
    bug, as rotation is not perfect sometimes
 * clicking on small graphs doesn't always work. Probably due to
    concurrent graph refresh.
-* I need 'Cluster Memory Available' for 'Add New Bucket' dialog
-o [DONE] implement ModalAction
 * be consistent with respect to URI versus URL
+
+NOW
+
+* allow no auth for login
+* configure view
+* log for alerts section
+* not reloading app after cluster join and displaying success
+   indicator on overview
+
+* fix ugliness of analytics graphs
+* xx nodes last collected ?? secs ago on analytics
+* 'cluster memory available' for bucket creation
+
+* cookies for login credentials
+* edit cache sz (no design!)
+* dismiss for alerts
+* sign-out
+
+LATER
+
+* sorting on buckets list
+* Escape key handling for closing dialogs (broken due to jqModal)
+
 
 Items to be completed.  Listed in only-web when mocked up/working
 there, listed in Menelaus when wired in.
@@ -54,69 +75,20 @@ there, listed in Menelaus when wired in.
 CLUSTER OVERVIEW
 * 'Get Started' section
 o [DONE] no node list
-* correct fields in node list on overview page (done for OS and 
+o [DONE] correct fields in node list on overview page (done for OS and 
   version, need REST response for memory)
 o [DONE] expandable node list in overview status
 * leave cluster
 * "Cluster Disk Usage" should be "Cluster Cache Allocated"
 * Wire up memory usage and cache allocated
-* Accordion for nodes should allow multiple to be open at the same time
+
+* (Andrew) Accordion for nodes should allow multiple to be open at the same time
 
 POOL ANALYTICS UI
-* [DONE] Remove the 24 Hour zoom level
-* Have the zoom level show the right thing
-
-BUCKETS UI
-o [DONE] (re)implement
-o [DONE] prepare new API to mass-fetch bucket details with support for pagination
-o [DONE] mass bucket stats for buckets section
-o [DROPPED for now] pagination
-* implement sorting
-* implement link to bucket analytics (works)
-
-BUCKET PROPERTIES UI
-o [DONE] basic
-* remove bucket
-o [DONE] flush all
-o [DONE] change password
-* implement REST server side 
-
-TEST APPLICATION BUCKET
-* implement
-
-CONFIGURE THIS VIEW (graphs view configuration)
-* implement
-
-JOIN CLUSTER
-* implement
-
-ALERTS
-* implement dismiss via client filtering (though REST would
-  be better)
-* log
-
-CLUSTER SETTINGS
-* base UI
-* security
-* web address/port
-* proxy/cache port config (advanced)
-* alert mail settings
-* alert types settings
-
-CONSOLE LOGIN
-* [ALMOST DONE]implement the new login screen (as seen in the artwork assets and the
-  mockingbird mock ups) with a cookie to recall previous login.  Also
-  implement logout.  logout needed
-
-ADD BUCKET
-o [DONE] implement (with button on BUCKET PROPERTIES section)
-* fix ?? in Total Cluster Memory estimation in creation form
-* implement server side
+* ???? Have the zoom level show the right thing
 
 ERROR HANDLING
-o [DONE] actually reload the page when an error occurs; right now a dialog is displayed
-* (low priority) serve up customized 404 and 500 pages
+* ???? (low priority) serve up customized 404 and 500 pages
 
 * complete API switch to camelCase by converting all parameter names
    [DONE] [alk: not quite. Several query params are still underscore-styled]
-* loading indicator for alert settings form
