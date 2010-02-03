@@ -1172,8 +1172,20 @@ var SettingsSection = {
 
     return rv;
   },
+  handleHideShowCheckboxes: function () {
+    var alertSet = $('#alert_set');
+    var method = (alertSet.get(0).checked) ? 'addClass' : 'removeClass'
+    $('#alerts_settings_guts')[method]('block');
+
+    var secureServ = $('#secure_serv');
+    method = (secureServ.get(0).checked) ? 'addClass' : 'removeClass';
+    $('#server_secure')[method]('block');
+  },
   init: function () {
     var self = this;
+
+    $('#alert_set, #secure_serv').click($m(self, 'handleHideShowCheckboxes'));
+
     self.tabs = new TabsCell("settingsTab",
                              '#settings .tabs',
                              '#settings .panes > div',
@@ -1235,14 +1247,24 @@ var SettingsSection = {
       var name = box.attr('name');
       if (!(name in values))
         return;
-      setBoolAttribute(box, 'checked', values[name]);
+
+      var boolValue = values[name];
+      if (_.isString(boolValue)) {
+        boolValue = (boolValue != "0");
+      }
+
+      setBoolAttribute(box, 'checked', boolValue);
     });
   },
   fillBasicForm: function () {
     this.fillForm($('#basic_settings_form'), this.webSettings.value);
+    setBoolAttribute($('#secure_serv'), 'checked', !!(this.webSettings.value['username']));
+    this.handleHideShowCheckboxes();
   },
   fillAdvancedForm: function () {
     this.fillForm($('#advanced_settings_form'), this.advancedSettings.value);
+//    setBoolAttribute($('#alert_set'), 'checked', !!(this.advancedSettings.value['email']));
+    this.handleHideShowCheckboxes();
   },
   onEnter: function () {
   },
@@ -1411,22 +1433,6 @@ $(window).bind('template:rendered', function () {
     function() {
       $(this).removeClass('hovered');
     });
-    $('#alert_set').click(
-      function() {
-        if (this.checked == true)
-        {
-          $('#alerts_settings_guts').addClass('block');
-        } else { $('#alerts_settings_guts').removeClass('block');}
-      }
-    );
-    $('#secure_serv').click(
-      function() {
-        if (this.checked == true)
-        {
-          $('#server_secure').addClass('block');
-        } else { $('#server_secure').removeClass('block');}
-      }
-    );
 });
 $('.remove_bucket').live('click', function() {
   BucketsSection.startRemovingBucket();

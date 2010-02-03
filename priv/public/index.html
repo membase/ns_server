@@ -539,7 +539,7 @@
                 <h2 class="head_2_underline">Alert settings</h2>
                 <div class="form">
                   <div>
-                    <label><input type="checkbox" class="check" value="1" id="alert_set"> Notify me by email with alerts <input type="hidden" value="0"></label>
+                    <label><input name="email_alerts" type="checkbox" class="check" value="1" id="alert_set"> Notify me by email with alerts <input type="hidden" value="0"></label>
                   </div>
                   <div id="alerts_settings_guts" style="display:none;">
                     <div class="labeled_line">
@@ -568,6 +568,7 @@
                         Port:
                         <select name="email_server_port" class="select select_short">
                           <option value="25">25</option>
+                          <option value="465">465 (SMTP over SSL)</option>
                           <option value="2525">2525</option>
                         </select>
                       </div>
@@ -575,7 +576,7 @@
                     <div class="labeled_line">
                       <div class="line_cnt">
                         <div>
-                          <label><input name="email_alerts" type="checkbox" value="1" class="check"> Notify me by email with alerts <input type="hidden" value="0" /></label>
+                          <label><input name="email_server_encrypt" type="checkbox" value="1" class="check"> Use legacy connection encryption (SMTP over SSL)<input type="hidden" value="0" /></label>
                         </div>
                       </div>
                     </div>
@@ -591,7 +592,7 @@
                           <th>Active</th>
                         </tr>
                         <tr>
-                          <td>A server is not responding TODO</td>
+                          <td>A server is not responding (TODO on server side)</td>
                           <td>Email</td>
                           <td class="cntr"><input type="checkbox" value="1" name="alert_server_unresponsive" /><input type="hidden" value="0" /></td>
                         </tr>

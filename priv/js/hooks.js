@@ -199,21 +199,21 @@ var MockedRequest = mkClass({
 
     var resp;
     if (_.isEqual(path, ["settings", "web"])) {
-      resp = {port:8080,username:"",password:""};
+      resp = {port:8080,username:"admin",password:""};
     } else if (_.isEqual(path, ["settings", "advanced"])) {
-      resp = {alerts: {email:"",
+      resp = {alerts: {email:"alk@tut.by",
                        email_server: {user:"",
                                       pass:"",
                                       addr:"",
                                       port:"",
                                       encrypt:"0"},
-                       sendAlerts:"0",
+                       sendAlerts:"1",
                        alerts: {
                          server_down:"1",
                          server_up:"1",
                          server_joined:"1",
                          server_left:"1",
-                         bucket_created:"1",
+                         bucket_created:"0",
                          bucket_deleted:"1",
                          bucket_auth_failed:"1"}},
               ports:{proxyPort:11213,directPort:11212}};
