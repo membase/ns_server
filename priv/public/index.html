@@ -99,6 +99,7 @@
                               <a id="cluster_leave_button" class="button_big" href="javascript:OverviewSection.leaveCluster();">
                                 <span><span>Leave Cluster</span></span>
                               </a>
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -285,13 +286,13 @@
             <th>Gets</th>
             <th>Misses</th>
             <th>Total</th></tr>
-          {% $.each(rows, function () { %}
+          <!-- {% $.each(rows, function () { %} -->
             <tr><td>{%= h(this.name) %}</td>
                 <td>{%= h(this.type) %}</td>
                 <td>{%= h(this.gets) %}</td>
                 <td>{%= h(this.misses) %}</td>
                 <td>{%= h(this.total) %}</td></tr>
-          {% }); %}
+          <!-- {% }); %} -->
         </table>
       </div>
     </div>
@@ -324,7 +325,7 @@
           <col width="" />
           <tr>
             <!-- to display sort arrow correctly you need to switch between "sort_desc" and "sort_asc" classes in span -->
-            <th>Name <span class="sort_desc"><img src="images/sort_down.gif" class="sort_down" /><img src="images/sort_up.gif" class="sort_up" /></span></th>
+            <th>Name <span class="sort_desc"><img src="images/sort_down.gif" alt="sorted descending" class="sort_down" /><img src="images/sort_up.gif" alt="sorted ascending" class="sort_up" /></span></th>
             <th>Ops/Sec</th>
             <th>Evictions/Sec</th>
             <th>Cache Used</th>
@@ -814,7 +815,7 @@ MemcachedClient client = manager.getClient();</textarea>
         </div>
         <div class="pas_20">
           <div class="right save_cancel">
-            <a class="save_button float_right" href="{%=renderJSLink('BucketsSection.completeFlushCache', bucket.uri)%}">FLUSH</a>
+            <a class="save_button float_right" href="{%=renderJSLink('BucketsSection.completeFlushCache',bucket.uri)%}">FLUSH</a>
             <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
           </div>
         </div>
