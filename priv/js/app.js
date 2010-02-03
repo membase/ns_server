@@ -1241,6 +1241,25 @@ var SettingsSection = {
       });
     });
   },
+  gotoSetupAlerts: function () {
+    var self = this;
+
+    self.tabs.setValue('advanced');
+
+    function switchAlertsOn() {
+      if ('email_alerts' in self.advancedSettings.value) {
+        _.defer(function () { // make sure we do it after form is filled
+          setBoolAttribute($('#advanced_settings_form [name=email_alerts]'), 'checked', true);
+          self.handleHideShowCheckboxes();
+        });
+        return
+      }
+
+      self.advancedSettings.changedSlot.subscribeOnce(switchAlertsOn);
+    }
+
+    switchAlertsOn();
+  },
   gotoSecureServer: function () {
     this.tabs.setValue('basic');
     nav.go('settings');

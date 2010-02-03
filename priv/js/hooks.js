@@ -207,7 +207,7 @@ var MockedRequest = mkClass({
                                       addr:"",
                                       port:"",
                                       encrypt:"0"},
-                       sendAlerts:"1",
+                       sendAlerts:"0",
                        alerts: {
                          server_down:"1",
                          server_up:"1",
