@@ -196,6 +196,28 @@ var DAO = {
   switchSection: function (section) {
     DAO.cells.mode.setValue(section);
   },
+  tryNoAuthLogin: function () {
+    $.ajax({
+      type: 'GET',
+      url: "/pools",
+      dataType: 'json',
+      async: false,
+      success: cb,
+      error: cb});
+
+    var rv;
+    return rv;
+
+    function cb(data, status) {
+      if (status == 'success') {
+        DAO.ready = true;
+        $(window).trigger('dao:ready');
+        var rows = data.pools;
+        DAO.cells.poolList.setValue(rows);
+        rv = true;
+      }
+    }
+  },
   performLogin: function (login, password, callback) {
     this.login = login;
     this.password = password;
@@ -1419,6 +1441,18 @@ $(function () {
     mydetails.toggleClass('opened', !opened);
     $(this).toggleClass('expanded', !opened);
   });
+
+  var spinner = overlayWithSpinner('#login_form', false);
+  try {
+    if (DAO.tryNoAuthLogin()) {
+      $('#container').show();
+      $('#auth_dialog').hide();
+    }
+  } finally {
+    try {
+      spinner.remove();
+    } catch (__ignore) {}
+  }
 });
 
 $(window).bind('template:rendered', function () {

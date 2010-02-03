@@ -150,14 +150,12 @@ var MockedRequest = mkClass({
   },
   fakeResponse: function (data) {
     var self = this;
-    _.defer(function () {
-      if (data instanceof Function) {
-        data.call(null, fakeResponse);
-        return;
-      }
-      if (self.options.success)
-        self.options.success(data, 'success');
-    });
+    if (data instanceof Function) {
+      data.call(null, fakeResponse);
+      return;
+    }
+    if (self.options.success)
+      self.options.success(data, 'success');
   },
   authError: (function () {
     try {
@@ -167,7 +165,10 @@ var MockedRequest = mkClass({
     }
   })(),
   respond: function () {
-    setTimeout($m(this, 'respondForReal'), window.ajaxRespondDelay);
+    if (this.options.async != false)
+      setTimeout($m(this, 'respondForReal'), window.ajaxRespondDelay);
+    else
+      this.respondForReal();
   },
   respondForReal: function () {
     if ($.ajaxSettings.beforeSend)
@@ -191,6 +192,8 @@ var MockedRequest = mkClass({
     }
   },
   checkAuth: function () {
+  },
+  checkAuthReal: function () {
     if (this.fakeXHR.login != 'admin' || this.fakeXHR.password != 'admin')
       throw this.authError;
   },
@@ -576,15 +579,8 @@ var __hookParams = {};
 
   console.log("params", params);
 
-  if ('noauth' in params) {
-    MockedRequest.prototype.checkAuth = function () {}
-    $(function () {
-      _.defer(function () {
-        $('#login_form input').val('admin');
-        loginFormSubmit();
-      });
-    });
-  }
+  if (params['auth'] == '1')
+    MockedRequest.prototype.checkAuth = MockedRequest.prototype.checkAuthReal;
 
   if (params['ajaxDelay']) {
     ajaxRespondDelay = parseInt(params['ajaxDelay'], 10);
