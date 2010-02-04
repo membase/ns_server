@@ -162,7 +162,7 @@ function overlayWithSpinner(jq, backgroundColor) {
     position: 'absolute',
     'z-level': 9999,
     top: pos.top + 'px',
-    left: pos.lext + 'px'
+    left: pos.left + 'px'
   }
   if (backgroundColor !== false) {
     var realBackgroundColor = backgroundColor || getRealBackgroundColor(jq);

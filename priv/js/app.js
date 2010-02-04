@@ -1499,7 +1499,8 @@ window.nav = {
 
 $(function () {
   _.defer(function () {
-    $('#auth_dialog [name=login]').get(0).focus();
+    var e = $('#auth_dialog [name=login]').get(0);
+    try {e.focus();} catch (ex) {}
   });
   if ($.cookie('cluster_join_flash')) {
     $.cookie('cluster_join_flash', null);
