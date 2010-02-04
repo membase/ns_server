@@ -1,10 +1,17 @@
 ----------- to discuss with Matt/Rod ------
-* don't use hardcoded uris for alerts, settings & logs as we do now
+* (low priority) don't use hardcoded uris for alerts, settings & logs
+   as we do now
+
 * "Cluster Disk Usage" should be "Cluster Cache Allocated" (spec or
    server-side implementation is needed)
+
 * I made 'Configure view' work in instant-apply mode, which is
    possible due to client-side storage of this prefs. And I assume
-   that it's better from usability standpoint.
+   that it's better from usability standpoint. OK ?
+
+* list of statistics on 'Configure View' should be adjusted to match
+   actually produced stats
+
 -------------------------------------------
 
 * there is also some hook.js rotation bug or (worse) SamplesRestorer
