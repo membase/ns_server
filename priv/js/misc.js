@@ -116,13 +116,13 @@ _.template = function (str, data) {
       }
     }
 
-    res.push("};\nreturn p.join('');"); // close with
+    res.push("};\nreturn p.join('');"); // close 'with'
 
     var body = _.map(res, function (e) {
       if (e instanceof Array) {
         return "p.push(" + e.join(", ") + ");"
       }
-      return e + ";console.log('p:', p);";
+      return e;
     }).join("\n");
 
     return [body, literals];
