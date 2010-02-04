@@ -40,6 +40,29 @@ function setBoolAttribute(jq, attr, value) {
   }
 }
 
+function setFormValues(form, values) {
+  form.find('input[type=text], input:not([type])').each(function () {
+    var text = $(this);
+    var name = text.attr('name');
+    var value = String(values[name] || '');
+    text.val(value);
+  });
+
+  form.find('input[type=checkbox]').each(function () {
+    var box = $(this);
+    var name = box.attr('name');
+    if (!(name in values))
+      return;
+
+    var boolValue = values[name];
+    if (_.isString(boolValue)) {
+      boolValue = (boolValue != "0");
+    }
+
+    setBoolAttribute(box, 'checked', boolValue);
+  });
+}
+
 function formatUptime(seconds, precision) {
   precision = precision || 8;
 
@@ -1285,37 +1308,13 @@ var SettingsSection = {
     }
     switchSecureOn();
   },
-  fillForm: function (form, values) {
-    var self = this;
-
-    form.find('input[type=text], input:not([type])').each(function () {
-      var text = $(this);
-      var name = text.attr('name');
-      var value = String(values[name] || '');
-      text.val(value);
-    });
-
-    form.find('input[type=checkbox]').each(function () {
-      var box = $(this);
-      var name = box.attr('name');
-      if (!(name in values))
-        return;
-
-      var boolValue = values[name];
-      if (_.isString(boolValue)) {
-        boolValue = (boolValue != "0");
-      }
-
-      setBoolAttribute(box, 'checked', boolValue);
-    });
-  },
   fillBasicForm: function () {
-    this.fillForm($('#basic_settings_form'), this.webSettings.value);
+    setFormValues($('#basic_settings_form'), this.webSettings.value);
     setBoolAttribute($('#secure_serv'), 'checked', !!(this.webSettings.value['username']));
     this.handleHideShowCheckboxes();
   },
   fillAdvancedForm: function () {
-    this.fillForm($('#advanced_settings_form'), this.advancedSettings.value);
+    setFormValues($('#advanced_settings_form'), this.advancedSettings.value);
     this.handleHideShowCheckboxes();
   },
   onEnter: function () {
