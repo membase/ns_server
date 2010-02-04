@@ -732,6 +732,14 @@ var StatGraphs = {
 
     var visibleStatsCookie = $.cookie('vs') || 'ops,misses,cmd_get,cmd_set';
     self.visibleStats = visibleStatsCookie.split(',').sort();
+
+    // init stat names
+    $('#analytics_settings_dialog input[type=checkbox]').each(function () {
+      var name = this.getAttribute('name');
+      var text = $.trim($(this).siblings('.cnt').children('span').text());
+      if (text && text.length)
+        self.statNames[name] = text;
+    });
   }
 }
 
