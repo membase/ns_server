@@ -72,8 +72,8 @@ _.template = function (str, data) {
     var str;
 
     var res = ['var p=[],print=function(){p.push.apply(p,arguments);};',
-               "var h = escapeHTML, jsLink = renderJSLink;",
                'with(obj){'];
+    var literals = {};
     var toPush;
 
     closeRE.lastIndex = 0;
@@ -93,7 +93,10 @@ _.template = function (str, data) {
         toPush.push(expr);
       }
 
-      addOut(["'", escapeJS(str).replace(/\r/g,'').replace(/\n/g,"\\n"), "'"].join(''));
+      var id = _.uniqueId("__STR");
+      literals[id] = str;
+
+      addOut(id);
 
       if (!match)
         break;
@@ -115,17 +118,27 @@ _.template = function (str, data) {
 
     res.push("};\nreturn p.join('');"); // close with
 
-    return _.map(res, function (e) {
+    var body = _.map(res, function (e) {
       if (e instanceof Array) {
         return "p.push(" + e.join(", ") + ");"
       }
       return e + ";console.log('p:', p);";
     }).join("\n");
+
+    return [body, literals];
   }
 
   try {
-    var body = translateTemplate(str);
-    var fn = new Function('obj', body);
+    var arr = translateTemplate(str);
+    var body = arr[0];
+    var literals = arr[1];
+    // add some common helpers into scope
+    _.extend(literals, {
+      h: escapeHTML,
+      V: ViewHelpers,
+      jsLink: renderJSLink});
+
+    var fn = reinterpretInEnv("function (obj) {\n" + body + "\n}", literals);
   } catch (e) {
     try {
       e.templateBody = body;
@@ -269,8 +282,6 @@ function renderTemplate(key, data) {
   if ($.isArray(data)) {
     data = {rows:data};
   }
-
-  data = _.extend({V: ViewHelpers}, data);
 
   var oldHooks = AfterTemplateHooks;
   AfterTemplateHooks = [];
