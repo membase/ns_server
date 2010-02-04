@@ -413,14 +413,14 @@ handle_bucket_update(PoolId, BucketId, Req) ->
     % Req will contain a urlencoded form which may contain
     % name, cacheSize, password, verifyPassword
     %
-    % A POST means create or update existing bucket settings.  For 1.0, this will *only*
-    % allow setting the memory to a higher or lower, but non-zero value.
+    % A POST means create or update existing bucket settings.  For
+    % 1.0, this will *only* allow setting the memory to a higher or
+    % lower, but non-zero value.
     %
     % TODO: convert to handling memory changes
     % TODO: remove password handling
     % TODO: define new URI for password handling for the pool
     %
-
     case mc_bucket:bucket_config_get(mc_pool:pools_config_get(),
                                      PoolId, BucketId) of
         false -> handle_bucket_create(PoolId, BucketId, Req);
@@ -447,14 +447,12 @@ handle_bucket_update(PoolId, BucketId, Req) ->
     end.
 
 handle_bucket_update(PoolId, Req) ->
-        PostArgs = Req:parse_post(),
-        case proplists:get_value("name", PostArgs) of
-            undefined -> undefined;
-            <<>>      -> undefined;
-            BucketId  -> handle_bucket_create(PoolId, BucketId, Req)
-        end.
-        %% TODO: should this handle a password or not?
-
+    PostArgs = Req:parse_post(),
+    case proplists:get_value("name", PostArgs) of
+        undefined -> Req:respond({400, [], []});
+        <<>>      -> Req:respond({400, [], []});
+        BucketId  -> handle_bucket_create(PoolId, BucketId, Req)
+    end.
 
 handle_bucket_create(_PoolId, [$_ | _], Req) ->
     % Bucket name cannot have a leading underscore character.
