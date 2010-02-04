@@ -1,7 +1,5 @@
 ----------- to discuss with Matt/Rod ------
 * don't use hardcoded uris for alerts, settings & logs as we do now
-* info in logs from server and design differ
-* really cannot do client-side dismiss of alerts
 * "Cluster Disk Usage" should be "Cluster Cache Allocated" (spec or
    server-side implementation is needed)
 -------------------------------------------
