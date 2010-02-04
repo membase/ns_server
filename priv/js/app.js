@@ -619,11 +619,9 @@ var StatGraphs = {
                     + "listen_disabled_num decr_hits cmd_flush engine_maxbytes bytes incr_misses "
                     + "cmd_set decr_misses accepting_conns cas_hits limit_maxbytes cmd_get "
                     + "connection_structures cas_badval auth_cmds").split(' '),
-  visibleStats: ["ops", "misses", "cmd_get", "cmd_set"],
+  visibleStats: [],
   visibleStatsIsDirty: true,
-  statDescriptions: {
-    // TODO: fill in
-  },
+  statNames: {},
   findGraphArea: function (statName) {
     return $('#analytics_graph_' + statName)
   },
@@ -664,8 +662,41 @@ var StatGraphs = {
       if (!stats[statName])
         return;
       var area = self.findGraphArea(statName);
-      var description = self.statDescriptions[statName] || statName;
+      var description = self.statNames[statName] || statName;
       renderSmallGraph(area, stats[statName], description, selected == statName);
+    });
+  },
+  configureStats: function () {
+    var self = this;
+
+    var dialog = $('#analytics_settings_dialog');
+    var values = {};
+
+    _.each(self.recognizedStats, function (name) {
+      values[name] = _.include(self.visibleStats, name);
+    });
+    setFormValues(dialog, values);
+
+    var observer = dialog.observePotentialChanges(watcher);
+
+    function watcher(e) {
+      var checked = $.map(dialog.find('input:checked'), function (el, idx) {
+        return el.getAttribute('name');
+      }).sort();
+
+      if (_.isEqual(checked, self.visibleStats))
+        return;
+
+      self.visibleStats = checked;
+      $.cookie('vs', checked.join(','));
+      self.visibleStatsIsDirty = true;
+      self.update();
+    }
+
+    showDialog('analytics_settings_dialog', {
+      onHide: function () {
+        observer.stopObserving();
+      }
     });
   },
   init: function () {
@@ -698,6 +729,9 @@ var StatGraphs = {
         hoverRect[method]();
       }
     }
+
+    var visibleStatsCookie = $.cookie('vs') || 'ops,misses,cmd_get,cmd_set';
+    self.visibleStats = visibleStatsCookie.split(',').sort();
   }
 }
 

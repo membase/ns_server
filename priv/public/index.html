@@ -204,7 +204,7 @@
 
   <div id="analytics" style="display:none">
 	<h1>
-		<span class="block nav float_right"><a>Configure View</a></span>
+		<span class="block nav float_right"><a href="javascript:StatGraphs.configureStats();">Configure View</a></span>
 		Analytics: <span class="stat_target_name"></span>
 	</h1>
 	<!-- shadow box -->
@@ -921,8 +921,7 @@ MemcachedClient client = manager.getClient();</textarea>
           <div class="pat_10">
             <div class="float_50">
               <label class="item">
-                <input type="checkbox" name="operations" />
-                <input type="hidden" value="0" />
+                <input type="checkbox" name="ops" />
                 <span class="cnt">
                   <span>Operations per Second</span>
                   Lorem ipsum dolor sit amet, consectetur adipiscing elit
@@ -930,23 +929,27 @@ MemcachedClient client = manager.getClient();</textarea>
               </label>
               <label class="item">
                 <input type="checkbox" name="misses" />
-                <input type="hidden" value="0" />
                 <span class="cnt">
                   <span>Misses per Second</span>
                   Lorem ipsum dolor sit amet, consectetur adipiscing elit
                 </span>
               </label>
               <label class="item">
-                <input type="checkbox" name="gets" />
-                <input type="hidden" value="0" />
+                <input type="checkbox" name="cmd_get" />
                 <span class="cnt">
                   <span>Gets per Second</span>
                   Lorem ipsum dolor sit amet, consectetur adipiscing elit
                 </span>
               </label>
               <label class="item">
+                <input type="checkbox" name="cmd_set" />
+                <span class="cnt">
+                  <span>Sets per Second</span>
+                  Lorem ipsum dolor sit amet, consectetur adipiscing elit
+                </span>
+              </label>
+              <label class="item">
                 <input type="checkbox" name="updates" />
-                <input type="hidden" value="0" />
                 <span class="cnt">
                   <span>Updates per Second</span>
                   Lorem ipsum dolor sit amet, consectetur adipiscing elit
@@ -954,15 +957,13 @@ MemcachedClient client = manager.getClient();</textarea>
               </label>
               <label class="item">
                 <input type="checkbox" name="get_misses" />
-                <input type="hidden" value="0" />
                 <span class="cnt">
                   <span>Get Misses per Second</span>
                   Lorem ipsum dolor sit amet, consectetur adipiscing elit
                 </span>
               </label>
               <label class="item">
-                <input type="checkbox" name="bytes_sent" />
-                <input type="hidden" value="0" />
+                <input type="checkbox" name="bytes_written" />
                 <span class="cnt">
                   <span>Bytes Sent per Second</span>
                   Lorem ipsum dolor sit amet, consectetur adipiscing elit
@@ -970,15 +971,13 @@ MemcachedClient client = manager.getClient();</textarea>
               </label>
               <label class="item">
                 <input type="checkbox" name="get_hits" />
-                <input type="hidden" value="0" />
                 <span class="cnt">
                   <span>Get Hits per Second</span>
                   Lorem ipsum dolor sit amet, consectetur adipiscing elit
                 </span>
               </label>
               <label class="item">
-                <input type="checkbox" name="bytes_received" />
-                <input type="hidden" value="0" />
+                <input type="checkbox" name="bytes_read" />
                 <span class="cnt">
                   <span>Bytes Received per Second</span>
                   Lorem ipsum dolor sit amet, consectetur adipiscing elit
@@ -986,15 +985,13 @@ MemcachedClient client = manager.getClient();</textarea>
               </label>
               <label class="item">
                 <input type="checkbox" name="sets_misses" />
-                <input type="hidden" value="0" />
                 <span class="cnt">
-                  <span>Sets Misses per Second</span>
+                  <span>TODO: missing this stat<br>Sets Misses per Second</span>
                   Lorem ipsum dolor sit amet, consectetur adipiscing elit
                 </span>
               </label>
               <label class="item">
                 <input type="checkbox" name="hit_ratio" />
-                <input type="hidden" value="0" />
                 <span class="cnt">
                   <span>Hit Ratio</span>
                   Lorem ipsum dolor sit amet, consectetur adipiscing elit
@@ -1004,7 +1001,7 @@ MemcachedClient client = manager.getClient();</textarea>
                 <input type="checkbox" name="evictions" />
                 <input type="hidden" value="0" />
                 <span class="cnt">
-                  <span>Evictions per Second</span>
+                  <span>TODO: missing this stat<br>Evictions per Second</span>
                   Lorem ipsum dolor sit amet, consectetur adipiscing elit
                 </span>
               </label>
@@ -1020,8 +1017,7 @@ MemcachedClient client = manager.getClient();</textarea>
             </div>
             <form>
               <div class="right save_cancel">
-                <button type="submit" class="save_button button_3 float_right">SAVE</button>
-                <a class="jqmClose cancel_button float_right" href="#">CANCEL</a>
+                <a class="jqmClose cancel_button float_right" href="#">CLOSE</a>
               </div>
             </form>
           </div>

@@ -2,6 +2,9 @@
 * don't use hardcoded uris for alerts, settings & logs as we do now
 * "Cluster Disk Usage" should be "Cluster Cache Allocated" (spec or
    server-side implementation is needed)
+* I made 'Configure view' work in instant-apply mode, which is
+   possible due to client-side storage of this prefs. And I assume
+   that it's better from usability standpoint.
 -------------------------------------------
 
 * there is also some hook.js rotation bug or (worse) SamplesRestorer
@@ -13,7 +16,7 @@
 NOW
 
 o [DONE] allow no auth for login
-* configure view (markup is done)
+o [DONE] configure view
 o [DONE] log for alerts section
 * not reloading app after cluster join and displaying success
    indicator on overview
@@ -24,7 +27,6 @@ o [DONE] log for alerts section
 
 o [DONE] cookies for login credentials
 * edit cache sz (no design!)
-* dismiss for alerts
 o [DONE] sign-out
 
 LATER
