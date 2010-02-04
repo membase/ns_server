@@ -36,6 +36,7 @@ function reinterpretInEnv(f, env) {
     vals.push(env[k]);
   }
   var body = 'return ' + String(f);
+  body = body.replace(/^return function\s+[^(]*\(/m, 'return function (');
   var maker = Function.apply(Function, keys.concat([body]));
   return maker.apply(null, vals);
 }
@@ -59,6 +60,81 @@ function escapeJS(string) {
 function renderJSLink(functionName, arg, prefix) {
   prefix = prefix || "javascript:"
   return escapeHTML(prefix + functionName + "('" + escapeJS(arg) + "')")
+}
+
+_.template = function (str, data) {
+  function translateTemplate(templ) {
+    var openRE = /{%=?/g;
+    var closeRE = /%}/g;
+
+    var len = templ.length;
+    var match, match2;
+    var str;
+
+    var res = ['var p=[],print=function(){p.push.apply(p,arguments);};',
+               "var h = escapeHTML, jsLink = renderJSLink;",
+               'with(obj){'];
+    var toPush;
+
+    closeRE.lastIndex = 0;
+
+    while (closeRE.lastIndex < len) {
+      openRE.lastIndex = closeRE.lastIndex;
+
+      match = openRE.exec(templ);
+      if (!match)
+        str = templ.slice(closeRE.lastIndex);
+      else
+        str = templ.slice(closeRE.lastIndex, match.index);
+
+      function addOut(expr) {
+        if (!toPush)
+          res.push(toPush = []);
+        toPush.push(expr);
+      }
+
+      addOut(["'", escapeJS(str).replace(/\r/g,'').replace(/\n/g,"\\n"), "'"].join(''));
+
+      if (!match)
+        break;
+
+      closeRE.lastIndex = openRE.lastIndex;
+      match2 = closeRE.exec(templ);
+
+      if (!match2)
+        throw new Error("missing %}");
+
+      str = templ.slice(openRE.lastIndex, match2.index);
+      if (match[0] == '{%=') {
+        addOut(str);
+      } else {
+        res.push(str);
+        toPush = null;
+      }
+    }
+
+    res.push("};\nreturn p.join('');"); // close with
+
+    return _.map(res, function (e) {
+      if (e instanceof Array) {
+        return "p.push(" + e.join(", ") + ");"
+      }
+      return e + ";console.log('p:', p);";
+    }).join("\n");
+  }
+
+  try {
+    var body = translateTemplate(str);
+    var fn = new Function('obj', body);
+  } catch (e) {
+    try {
+      e.templateBody = body;
+      e.templateSource = str;
+    } catch (e2) {} // sometimes exceptions do not allow expando props
+    throw e;
+  }
+
+  return data ? fn(data) : fn;
 }
 
 // Based on: http://ejohn.org/blog/javascript-micro-templating/
@@ -106,9 +182,6 @@ function renderJSLink(functionName, arg, prefix) {
       // Generate a reusable function that will serve as a template
       // generator (and which will be cached).
       fn = _.template(str);
-      // inject some common helpers
-      fn = reinterpretInEnv(fn, {h: escapeHTML,
-                                 jsLink: renderJSLink});
     }
 
     // Provide some basic currying to the user
@@ -164,6 +237,7 @@ function overlayWithSpinner(jq, backgroundColor) {
     top: pos.top + 'px',
     left: pos.left + 'px'
   }
+//  debugger
   if (backgroundColor !== false) {
     var realBackgroundColor = backgroundColor || getRealBackgroundColor(jq);
     newStyle['background-color'] = realBackgroundColor;
@@ -202,7 +276,8 @@ function renderTemplate(key, data) {
   AfterTemplateHooks = [];
   try {
     var fn = tmpl(from);
-    $i(to).innerHTML = fn(data);
+    var value = fn(data)
+    $i(to).innerHTML = value;
 
     _.each(AfterTemplateHooks, function (hook) {
       hook.call();
@@ -210,7 +285,10 @@ function renderTemplate(key, data) {
 
     $(window).trigger('template:rendered');
   } catch (e) {
-    alert('Template error:' + String(fn) + ', ' + e.templateBody);
+    if (confirm('Template error:' + String(fn) + ', ' + e.templateBody)) {
+      debugger
+      renderTemplate(key, data);
+    }
     throw e;
   } finally {
     AfterTemplateHooks = oldHooks;
