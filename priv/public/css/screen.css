@@ -511,7 +511,7 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 /* overview block */
 #server_list_container .expander div {width:10px; height:10px; overflow:hidden; background:url(../images/expander_bg.gif) 0 -10px no-repeat; position:relative; top:2px;}
 #server_list_container .expanded div {background:url(../images/expander_bg.gif) 0 0 no-repeat;}
-#server_list_container .name div {height:47px; line-height:47px; padding:0 0 0 35px; font-weight:bolder; background:url(../images/server_icon.gif) 0 0 no-repeat;}
+#server_list_container .name div {height:47px; line-height:47px; padding:0 0 0 35px; font-weight:bolder; background:url(../images/server_icon.gif) 0 0 no-repeat; cursor:pointer;}
 #server_list_container .status {*text-align:right;}
 #server_list_container .status div {width:89px; height:23px; float:right; *float:none; position:relative; top:7px;}
 #server_list_container .status .up {background:url(../images/status_icons.gif) 0 0 no-repeat;}

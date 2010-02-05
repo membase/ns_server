@@ -1533,7 +1533,7 @@ $(function () {
     $(window).trigger('hashchange');
   });
 
-  $('#server_list_container .expander').live('click', function (e) {
+  $('#server_list_container .expander, #server_list_container .name').live('click', function (e) {
     $('#server_list_container .expander').removeClass('expanded');
     var container = $('#server_list_container');
     var mydetails = $(e.target).parents("#server_list_container .primary").next();
@@ -1541,7 +1541,7 @@ $(function () {
 
     container.find(".details").removeClass('opened');
     mydetails.toggleClass('opened', !opened);
-    $(this).toggleClass('expanded', !opened);
+    $('#server_list_container .expander').toggleClass('expanded', !opened);
   });
 
   var spinner = overlayWithSpinner('#login_form', false);
