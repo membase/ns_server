@@ -392,13 +392,13 @@
             <table class="lined_tab">
               <tr>
                 <th>Event</th>
-                <!-- <th>Code</th> -->
+                <th>Module<br>Code</th>
                 <th>Time</th>
               </tr>
               <!-- {% _.each(rows, function (logRow) { %} -->
               <tr>
                 <td>{%= h(logRow.text) %}</td>
-                <!-- <td>NS100</td> -->
+                <td>{%= h(logRow.module) + '<br>' + (new String(1000 + parseInt(logRow.code))).slice(-3)%}</td>
                 <td class="text_11">{%=V.formatLogTStamp(logRow.tstamp)%}
               </tr>
               <!-- {% }); %} -->

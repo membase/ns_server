@@ -206,13 +206,33 @@ var MockedRequest = mkClass({
         "list": [
           {
             "type": "info",
-            "tstamp": 1265205800,
+            "code": 1,
+            "module": "ns_config_log",
+            "tstamp": 1265358398,
             "shortText": "message",
-            "text": "otp cookie sync: gyikrciyfcmbrupa"
+            "text": "config changed"
           },
           {
             "type": "info",
-            "tstamp": 1265205800,
+            "code": 1,
+            "module": "ns_node_disco",
+            "tstamp": 1265358398,
+            "shortText": "message",
+            "text": "otp cookie generated: bloeahcdnsddpotx"
+          },
+          {
+            "type": "info",
+            "code": 1,
+            "module": "ns_config_log",
+            "tstamp": 1265358398,
+            "shortText": "message",
+            "text": "config changed"
+          },
+          {
+            "type": "info",
+            "code": 1,
+            "module": "ns_config_log",
+            "tstamp": 1265358399,
             "shortText": "message",
             "text": "config changed"
           }
