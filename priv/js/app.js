@@ -1499,8 +1499,10 @@ function loginFormSubmit() {
   var login = $('#login_form [name=login]').val();
   var password = $('#login_form [name=password]').val();
   var spinner = overlayWithSpinner('#login_form', false);
+  $('#login_form').addClass('noform');
   DAO.performLogin(login, password, function (status) {
     spinner.remove();
+    $('#login_form').removeClass('noform');
 
     if (status == 'success') {
       $('#container').show();
