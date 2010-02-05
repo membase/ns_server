@@ -1222,6 +1222,14 @@ var AlertsSection = {
     $('#alerts_email_setting').text(who);
   },
   onEnter: function () {
+  },
+  navClick: function () {
+    if (DAO.cells.mode.value == 'alerts') {
+      this.alerts.setValue(undefined);
+      this.logs.setValue(undefined);
+      this.alerts.recalculate();
+      this.logs.recalculate();
+    }
   }
 }
 
