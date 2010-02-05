@@ -8,6 +8,7 @@
 * I made 'Configure view' work in instant-apply mode, which is
    possible due to client-side storage of this prefs. And I assume
    that it's better from usability standpoint. OK ?
+   Update: Okay, just change the button type to be the "Save" style button.
 
 * list of statistics on 'Configure View' should be adjusted to match
    actually produced stats
@@ -48,7 +49,7 @@ there, listed in Menelaus when wired in.
  | Mockingbird Screen   |  only-web       |     Menelaus      |
  |----------------------|-----------------|-------------------|
  | Login Screen         |   -DONE-        |   -DONE-          |
- |  Non-secure autolgin | not done        | not done          |
+ |  Non-secure autolgin |   -DONE-        |   -DONE-          |
  | Cluster Overview     | Test Server     | Test Server       |
  |                      | Get Std Cookie  | Get Std Cookie    |
  |                      | Secure Server   | Secure Server     |
@@ -59,6 +60,8 @@ there, listed in Menelaus when wired in.
  |                      | Cluster Health  | Cluster Health    |
  |                      |                 |                   |
  | Analytics            | Configure View  | Configure View    |
+ |                      | remove 1 hr     |                   |
+ |                      | remove "5 min" but keep node count  |
  |              done--> | Ops Remove 24hr | Ops Remove 24hr   |
  |              done--> | HK Remove 24hr  | HK Remove 24hr    |
  | Buckets List         |  almost done    | HK Stats          |
@@ -77,10 +80,10 @@ there, listed in Menelaus when wired in.
  |   - Success          | overview rdict  |                   |
  |   - Security reqd.   | not started     |                   |
  | Alerts - Current     | remove dismiss  | remove dismiss    |
- | Alerts - Log         |  html/css done  | not wired in      |
+ | Alerts - Log         |  html/css done  | needs code/module |
  | Alerts - Settings    | >remove<        | goes to settings  |
  | Cluster Settings Bas | -html/css done- |                   |
- | Cluster Settings Adv |   almost done   | not wired in      |
+ | Cluster Settings Adv |   almost done   | needs testing     |
  | New Bucket           |   -DONE-        |   -DONE-          |
  | Remove Bucket        |   -DONE-        |   -DONE & works-  |
  | Flush Cache          |   -DONE-        | sends error       |
