@@ -139,6 +139,8 @@ build_log_structs(LogEntriesIn, MinTStamp, Limit) ->
                       S when is_list(S) ->
                           CodeString = ns_log:code_string(Module, Code),
                           [{struct, [{type, category_bin(Cat)},
+                                     {code, Code},
+                                     {module, list_to_binary(atom_to_list(Module))},
                                      {tstamp, misc:time_to_epoch_int(TStamp)},
                                      {shortText, list_to_binary(CodeString)},
                                      {text, list_to_binary(S)}]} | Acc];
