@@ -794,6 +794,12 @@ var OverviewSection = {
     $('#server_list_container table tr.primary:first-child').addClass('nbrdr');
 
     this.renderStatus();
+
+    var activeNodeCount = _.select(nodes, function (n) {
+      return n.status == 'healthy';
+    }).length;
+
+    $('.active_node_count').text(ViewHelpers.count(activeNodeCount, "active node"));
   },
   startJoinCluster: function () {
     var dialog = $('#join_cluster_dialog');
