@@ -1211,7 +1211,7 @@ var AlertsSection = {
     prepareTemplateForCell('alert_logs', this.logs);
   },
   renderLogsList: function () {
-    renderTemplate('alert_logs', this.logs.value.list);
+    renderTemplate('alert_logs', this.logs.value.list.reverse());
   },
   updateAlertsDestination: function () {
     var cell = SettingsSection.advancedSettings.value;
