@@ -913,8 +913,12 @@ var BucketsSection = {
     cells.detailedBuckets.subscribe($m(this, 'onBucketList'));
   },
   buckets: null,
-  refreshBuckets: function () {
-    this.cells.detailedBuckets.recalculate();
+  refreshBuckets: function (callback) {
+    var cell = this.cells.detailedBuckets;
+    if (callback) {
+      cell.changedSlot.subscribeOnce(callback);
+    }
+    cell.recalculate();
   },
   onBucketList: function () {
     var buckets = this.buckets = this.cells.detailedBuckets.value;
@@ -1053,10 +1057,39 @@ var BucketsSection = {
     var self = this;
     var form = $('#bucket_password_form');
     $("#bucket_password_form input[type=password]").val('');
+    var oldPassword = form.find("[name=oldPassword]");
+    var newPassword = form.find("[name=password]");
 
     form.bind('submit', function (e) {
       e.preventDefault();
-      $.post(self.currentlyShownBucket.passwordURI, form.serialize(), reloadApp);
+      var pwd = newPassword.val();
+      var oldPwd = oldPassword.val();
+
+      // generate JSON by hand, no need to import json library just for one request
+      var data = ['{"password": "', escapeJS(pwd), '","oldPassword": "', escapeJS(oldPwd), '"}'].join('');
+
+      var spinner = overlayWithSpinner('#bucket_password_dialog');
+      var modal = new ModalAction();
+      $.ajax({
+        type: 'POST',
+        url: self.currentlyShownBucket.uri,
+        data: data,
+        success: continuation // TODO: will probably need to handle
+                              // some kind of validation errors from
+                              // oldPassword later
+      })
+
+      return;
+
+      function continuation() {
+        self.refreshBuckets(continuation2);
+      }
+      function continuation2() {
+        spinner.remove();
+        modal.finish();
+        hideDialog('bucket_password_dialog');
+        hideDialog('bucket_details_dialog_container');
+      }
     });
     var observer = form.observePotentialChanges(function () {
       self.handlePasswordMatch(form);
@@ -1094,8 +1127,7 @@ var BucketsSection = {
     return;
 
     function continuation() {
-      self.cells.detailedBuckets.changedSlot.subscribeOnce(continuation2);
-      self.refreshBuckets();
+      self.refreshBuckets(continuation2);
     }
 
     function continuation2() {
