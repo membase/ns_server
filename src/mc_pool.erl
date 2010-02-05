@@ -270,13 +270,13 @@ auth_to_bucket(PoolPid, Mech, AuthData) when is_pid(PoolPid) ->
                     {auth_to_bucket, Mech, AuthData});
 
 auth_to_bucket(#mc_pool{} = Pool,
-               "PLAIN", {BucketName, AuthName, AuthPswd}) ->
+               <<"PLAIN">>, {BucketName, AuthName, AuthPswd}) ->
     case get_bucket(Pool, BucketName) of
         {ok, Bucket} ->
             case mc_bucket:auth(Bucket) of
-                {"PLAIN", {AuthName, AuthPswd}} -> {ok, Bucket};
-                {"PLAIN", {_ForName,
-                           AuthName, AuthPswd}} -> {ok, Bucket};
+                {<<"PLAIN">>, {AuthName, AuthPswd}} -> {ok, Bucket};
+                {<<"PLAIN">>, {_ForName,
+                               AuthName, AuthPswd}} -> {ok, Bucket};
                 _NotPlain ->
                     ns_log:log(?MODULE, 0006, "bucket auth failure: ~p in ~p",
                                [BucketName, Pool]),

@@ -124,7 +124,7 @@ cmd(?STAT = O, Sess, _Sock, Out, {H, _E} = HE) ->
 cmd(?CMD_SASL_LIST_MECHS, Sess, _Sock, Out, {H, _E}) ->
     mc_binary:send(Out, res,
                    H#mc_header{status = ?SUCCESS},
-                   #mc_entry{data = "PLAIN"}),
+                   #mc_entry{data = <<"PLAIN">>}),
     {ok, Sess};
 
 cmd(?CMD_SASL_AUTH, Sess, _Sock, Out, {H, #mc_entry{key = Mech,
@@ -163,7 +163,7 @@ cmd(_, Sess, _, Out, {Header, _Entry}) ->
 
 % ------------------------------------------
 
-auth("PLAIN" = Mech, Data, #session_proxy{pool = Pool} = Sess, Out, H) ->
+auth(<<"PLAIN">> = Mech, Data, #session_proxy{pool = Pool} = Sess, Out, H) ->
     DataStr = binary_to_list(Data),
     DataAuth =
         case string:tokens(DataStr, "\0") of

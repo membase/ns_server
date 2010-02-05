@@ -83,17 +83,17 @@ send_list(Sock, RecvCallback, CBData,
 
 auth(_Sock, undefined) -> ok;
 
-auth(Sock, {"PLAIN", {AuthName, undefined}}) ->
-    auth(Sock, {"PLAIN", {<<>>, AuthName, <<>>}});
+auth(Sock, {<<"PLAIN">>, {AuthName, undefined}}) ->
+    auth(Sock, {<<"PLAIN">>, {<<>>, AuthName, <<>>}});
 
-auth(Sock, {"PLAIN", {AuthName, AuthPswd}}) ->
-    auth(Sock, {"PLAIN", {<<>>, AuthName, AuthPswd}});
+auth(Sock, {<<"PLAIN">>, {AuthName, AuthPswd}}) ->
+    auth(Sock, {<<"PLAIN">>, {<<>>, AuthName, AuthPswd}});
 
-auth(Sock, {"PLAIN", {ForName, AuthName, undefined}}) ->
-    auth(Sock, {"PLAIN", {ForName, AuthName, <<>>}});
+auth(Sock, {<<"PLAIN">>, {ForName, AuthName, undefined}}) ->
+    auth(Sock, {<<"PLAIN">>, {ForName, AuthName, <<>>}});
 
-auth(Sock, {"PLAIN", {ForName, AuthName, AuthPswd}}) ->
-    case auth(Sock, {"PLAIN", {ForName, AuthName, AuthPswd}},
+auth(Sock, {<<"PLAIN">>, {ForName, AuthName, AuthPswd}}) ->
+    case auth(Sock, {<<"PLAIN">>, {ForName, AuthName, AuthPswd}},
               undefined, undefined) of
         {ok, _, _, _} -> ok;
         Error         -> Error
@@ -102,13 +102,13 @@ auth(Sock, {"PLAIN", {ForName, AuthName, AuthPswd}}) ->
 auth(_Sock, _UnknownMech) ->
     {error, emech_unsupported}.
 
-auth(Sock, {"PLAIN", {ForName, AuthName, AuthPswd}}, CBFun, CBData) ->
+auth(Sock, {<<"PLAIN">>, {ForName, AuthName, AuthPswd}}, CBFun, CBData) ->
     BinForName  = mc_binary:bin(ForName),
     BinAuthName = mc_binary:bin(AuthName),
     BinAuthPswd = mc_binary:bin(AuthPswd),
     case mc_client_binary:cmd(?CMD_SASL_AUTH, Sock, CBFun, CBData,
                               {#mc_header{},
-                               #mc_entry{key = "PLAIN",
+                               #mc_entry{key = <<"PLAIN">>,
                                          data = <<BinForName/binary, 0:8,
                                                   BinAuthName/binary, 0:8,
                                                   BinAuthPswd/binary>>
@@ -197,7 +197,7 @@ do(Host, Port, HEList) ->
     R = lists:foldl(
           fun({auth, Name, Pass}, RHEList) ->
                   {ok, _RecvHeader, _RecvEntry, NewRHEList} =
-                          auth(Sock, {"PLAIN", {<<>>, Name, Pass}},
+                          auth(Sock, {<<"PLAIN">>, {<<>>, Name, Pass}},
                                CB, RHEList),
                   NewRHEList;
              ({set, K, V}, RHEList) ->

@@ -107,8 +107,8 @@ choose_addrs(#mc_bucket{cring = CRing, config = Config}, Key, N) ->
 get_bucket_auth(BucketConfig) ->
     case proplists:get_value(auth_plain, BucketConfig) of
         undefined                            -> undefined;
-        {_AuthName, _AuthPswd} = A           -> {"PLAIN", A};
-        {_ForName, _AuthName, _AuthPswd} = A -> {"PLAIN", A};
+        {_AuthName, _AuthPswd} = A           -> {<<"PLAIN">>, A};
+        {_ForName, _AuthName, _AuthPswd} = A -> {<<"PLAIN">>, A};
         X -> ns_log:log(?MODULE, 0001, "bucket auth_plain config error: ~p",
                         [X]),
              error

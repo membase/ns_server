@@ -17,8 +17,8 @@
 -record(mc_addr, {location, % eg, "localhost:11211"
                   kind,     % eg, binary or ascii
                   auth      % undefined, or {Mech, AuthData},
-                            % eg, {"PLAIN", {AuthName, AuthPswd}}.
-                            % eg, {"PLAIN", {ForName, AuthName, AuthPswd}}.
+                            % eg, {<<"PLAIN">>, {AuthName, AuthPswd}}.
+                            % eg, {<<"PLAIN">>, {ForName, AuthName, AuthPswd}}.
                   % TODO: bucket id, one day when we have bucket selection.
                   }).
 
