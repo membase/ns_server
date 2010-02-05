@@ -390,6 +390,9 @@
             <div id="alert_logs_container"></div>
             <div id="alert_logs_template" class="template">
             <table class="lined_tab">
+              <col width="" />
+              <col width="" />
+              <col width="160" />
               <tr>
                 <th>Event</th>
                 <th>Module<br>Code</th>
@@ -399,7 +402,7 @@
               <tr>
                 <td>{%= h(logRow.text) %}</td>
                 <td>{%= h(logRow.module) + '<br>' + (new String(1000 + parseInt(logRow.code))).slice(-3)%}</td>
-                <td class="text_11">{%=V.formatLogTStamp(logRow.tstamp)%}
+                <td class="text_11 nobr">{%=V.formatLogTStamp(logRow.tstamp)%}
               </tr>
               <!-- {% }); %} -->
             </table>

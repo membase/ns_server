@@ -25,6 +25,7 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 #buckets table td a.text_11 {text-decoration:none;}
 
 /* universal styles */
+.nobr {white-space:nowrap;}
 .tdn {text-decoration:none;}
 .tdn * {text-decoration:none;}
 .block {display:block !important;}
@@ -609,6 +610,3 @@ button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
 .float_50 .item input {float:left;}
 .float_50 .item .cnt {margin:0 0 0 20px; font-size:11px; color:#777a81; display:block;}
 .float_50 .item .cnt span {font-size:12px; font-weight:bolder; color:#368dba; display:block; cursor:pointer;}
-
-#auth_dialog {display:block !important;}
-#container {display:none !important;}
