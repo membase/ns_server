@@ -1419,6 +1419,12 @@ var ThePage = {
     });
     TrafficGen.init();
 
+    DAO.onReady(function () {
+      if (!DAO.login) {
+        $('.sign-out-link').hide();
+      }
+    });
+
     var self = this;
     watchHashParamChange('sec', 'overview', function (sec) {
       var oldSection = self.currentSection;
