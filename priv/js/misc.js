@@ -245,12 +245,29 @@ function overlayWithSpinner(jq, backgroundColor) {
     width: width+'px',
     height: height+'px',
     lineHeight: height+'px',
+    'margin-top': jq.css('margin-top'),
+    'margin-bottom': jq.css('margin-bottom'),
+    'margin-left': jq.css('margin-left'),
+    'margin-right': jq.css('margin-right'),
+    'padding-top': jq.css('padding-top'),
+    'padding-bottom': jq.css('padding-bottom'),
+    'padding-left': jq.css('padding-left'),
+    'padding-right': jq.css('padding-right'),
+    'border-width-top': jq.css('border-width-top'),
+    'border-width-bottom': jq.css('border-width-bottom'),
+    'border-width-left': jq.css('border-width-left'),
+    'border-width-right': jq.css('border-width-right'),
     position: 'absolute',
-    'z-level': 9999,
+    'z-index': '9999',
     top: pos.top + 'px',
     left: pos.left + 'px'
   }
-//  debugger
+  if (jq.css('position') == 'fixed') {
+    newStyle.position = 'fixed';
+    var offsetParent = jq.offsetParent().get(0);
+    newStyle.top = (parseFloat(newStyle.top) - offsetParent.scrollTop - offsetParent.parentNode.scrollTop) + 'px';
+    newStyle.left = (parseFloat(newStyle.left) - offsetParent.scrollLeft - offsetParent.parentNode.scrollLeft) + 'px';
+  }
   if (backgroundColor !== false) {
     var realBackgroundColor = backgroundColor || getRealBackgroundColor(jq);
     newStyle['background-color'] = realBackgroundColor;
