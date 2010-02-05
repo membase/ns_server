@@ -964,7 +964,7 @@ var BucketsSection = {
   completeFlushCache: function (uri) {
     hideDialog('flush_cache_dialog_container');
     this.withBucket(uri, function (bucket) {
-      $.post(bucket.flushCacheURI);
+      $.post(bucket.flushCacheUri);
     });
   },
   getPoolNodesCount: function () {

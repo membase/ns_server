@@ -434,7 +434,7 @@ var MockedRequest = mkClass({
   },
   bucketsList: [{name: "default",
                  uri: "/buckets/4",
-                 flushCacheURI: "/buckets/4/flush",
+                 flushCacheUri: "/buckets/4/flush",
                  passwordURI: "/buckets/4/password",
                  stats: {uri: "/buckets/4/stats"},
                  basicStats: {
