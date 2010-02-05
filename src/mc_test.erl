@@ -96,9 +96,9 @@ tests(emoxi) ->
     ];
 
 tests(emoxi_dyn) ->
-    [bootstrap,
-     vclock,
+    [vclock,
      stream
+     % bootstrap,
      % dmerkle,
      % dmerkle_tree,
      % partition,
