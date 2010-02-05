@@ -149,11 +149,7 @@ cmd(stats, #session_proxy{bucket = Bucket} = Session,
     {ok, Session};
 
 cmd(version, Session, _InSock, Out, []) ->
-    V = case catch(ns_config:search(version)) of
-            {value, X} -> X;
-            false      -> "X.X.X";
-            _          -> "unknown"
-        end,
+    V = mc_info:version(),
     mc_ascii:send(Out, [<<"VERSION ">>, V, <<"\r\n">>]),
     {ok, Session};
 

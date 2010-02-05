@@ -134,11 +134,7 @@ cmd(?CMD_SASL_AUTH, Sess, _Sock, Out, {H, #mc_entry{key = Mech,
 % ------------------------------------------
 
 cmd(?VERSION, Sess, _Sock, Out, {Header, _Entry}) ->
-    V = case catch(ns_config:search(version)) of
-            {value, X} -> X;
-            false      -> "X.X.X";
-            _          -> "unknown"
-        end,
+    V = mc_info:version(),
     mc_binary:send(Out, res, Header, #mc_entry{data = V}),
     {ok, Sess};
 
