@@ -360,7 +360,7 @@ body { font-family: Arial, sans-serif; _height:100%;}
 .graph_info_label {padding:3px; font-size:11px;}
 .graph_nav {padding:10px 0 10px 2px;}
 .graph_nav span {display:block; width:166px !important; height:61px !important; float:left; overflow:hidden; 
-background:url(../images/mini_graph_bg.gif) 0 0 no-repeat; margin:0 12px 7px 12px; cursor:pointer; border:1px solid red;}
+background:url(../images/mini_graph_bg.gif) 0 0 no-repeat; margin:0 12px 7px 12px; cursor:pointer;}
 .graph_nav span:hover {background-position:0 -122px;}
 .graph_nav span span {background:none; margin:0px;}
 .graph_nav .selected {background:url(../images/mini_graph_bg.gif) 0 -61px no-repeat !important;}
