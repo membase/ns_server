@@ -1,0 +1,44 @@
+# Needs to run from jruby, because this test client uses
+# spymemcached.  Also, your CLASSPATH env variable needs seeting,
+# like...
+#
+#  export CLASSPATH=./tmp/memcached-2.5rc1.jar
+#
+#  jruby ~/dev/emoxi/test/client_test.jrb set \
+#     "stevenmb.gateway.2wire.net:11212 stevenmb.gateway.2wire.net:11222"
+#
+#  jruby ~/dev/emoxi/test/client_test.jrb get \
+#     "stevenmb.gateway.2wire.net:11212 stevenmb.gateway.2wire.net:11222"
+#
+require 'java'
+
+include_class 'net.spy.memcached.MemcachedClient'
+include_class 'net.spy.memcached.AddrUtil'
+include_class 'net.spy.memcached.HashAlgorithm'
+
+print "ARGV: #{ARGV.join(' ')}\n"
+
+action = ARGV[0]
+servers = ARGV[1]
+key = ARGV[2] || 'x'
+val = ARGV[3] || 'XYZ'
+
+print "action: #{action}\n"
+print "servers: #{servers}\n"
+print "key: #{key}\n"
+
+# print "hash(key): #{HashAlgorithm.KETAMA_HASH.hash(key)}\n"
+
+c = MemcachedClient.new(AddrUtil.getAddresses(servers))
+
+if action == "set"
+  x = c.set(key, 0, val)
+  print "set #{key} to #{val}, result #{x}\n"
+end
+
+if action == "get"
+  x = c.get(key)
+  print "got #{key}, result #{x}\n"
+end
+
+exit
