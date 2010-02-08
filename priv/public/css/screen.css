@@ -616,4 +616,4 @@ button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
 .on_off_button span {display:block; position:absolute; width:64px; height:23px; background:url(../images/on_off_slider.png) 0 0 no-repeat; top:0px;}
 /*.button_on span {right:0px !important;}*/
 .stop-active .on_off_button span {right:0px !important;}
-.stop-active .spinner {dispay:none !important;}
+.leftNav .spinner {display:none !important;}
