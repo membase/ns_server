@@ -360,13 +360,18 @@ body { font-family: Arial, sans-serif; _height:100%;}
 .graph_info_label {padding:3px; font-size:11px;}
 .graph_nav {padding:10px 0 10px 2px;}
 .graph_nav a {display:block; width:166px !important; height:61px !important; float:left; overflow:hidden; 
-background:url(../images/mini_graph_bg.gif) 0 0 no-repeat; margin:0 12px 7px 12px; cursor:pointer;}
+background:url(../images/mini_graph_bg.gif) 0 0 no-repeat; margin:0 12px 7px 12px; cursor:pointer; position:relative; text-decoration:none;}
 .graph_nav a:hover {background-position:0 -122px;}
 .graph_nav a span {background:none; margin:0px;}
-.graph_nav .selected {background:url(../images/mini_graph_bg.gif) 0 -61px no-repeat !important;}
+.graph_nav .selected {background:url(../images/mini_graph_bg.gif) 0 -61px no-repeat !important; text-decoration:none;}
 .graph_nav .spinner {display:none !important;}
 .graph_nav .spinner span {position:relative; width:150px !important; height:15px !important; padding:20px 0 0 0; font-size:11px; color:#839aa6; margin:0 0 0 8px; top:5px; background:url(../images/spinner/spinner_gr_nav.gif) 66px 0 no-repeat; text-align:center; line-height:12px !important;}
 .graph_nav .selected .spinner span {background:url(../images/spinner/spinner2_gr_nav.gif) 66px 0 no-repeat; color:#d8e0e5;}
+
+.graph_nav .small_graph_block {display:block; width:160px; height:36px; background:red; margin:4px 0 0 3px;}
+.graph_nav .small_graph_label {display:block; text-align:center; font-size:11px; color:#4e5557; padding:4px 0 0 0;}
+.graph_nav .small_graph_label span {font-weight:bolder; color:#00a7df;}
+.graph_nav .selected .small_graph_label, .graph_nav .selected .small_graph_label * {color:#fff;}
 
 
 #left_pane, #right_pane, #middle_panel { vertical-align: top; }
