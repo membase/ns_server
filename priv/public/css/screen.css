@@ -371,6 +371,7 @@ background:url(../images/mini_graph_bg.gif) 0 0 no-repeat; margin:0 12px 7px 12p
 .graph_nav .small_graph_block {display:block; width:160px; height:36px; margin:4px 0 0 3px;}
 .graph_nav .small_graph_label {display:block; text-align:center; font-size:11px; color:#4e5557; padding:4px 0 0 0;}
 .graph_nav .small_graph_label .value {font-weight:bolder; color:#00a7df;}
+.graph_nav .label-text {color:#4e5557; font-weight:normal;}
 .graph_nav .selected .small_graph_label, .graph_nav .selected .small_graph_label * {color:#fff;}
 
 
