@@ -30,12 +30,14 @@ o [DONE] log for alerts section
    indicator on overview
 
 * fix ugliness of analytics graphs
-* xx nodes last collected ?? secs ago on analytics
+o [DONE] xx nodes last collected ?? secs ago on analytics
 * 'cluster memory available' for bucket creation
 
 o [DONE] cookies for login credentials
 * edit cache sz (no design!)
 o [DONE] sign-out
+
+* (Andrew) Accordion for nodes should allow multiple to be open at the same time
 
 LATER
 
@@ -88,24 +90,3 @@ there, listed in Menelaus when wired in.
  | Remove Bucket        |   -DONE-        |   -DONE & works-  |
  | Flush Cache          |   -DONE-        | sends error       |
  --------------------------------------------------------------
-
-
-CLUSTER OVERVIEW
-* 'Get Started' section
-o [DONE] no node list
-o [DONE] correct fields in node list on overview page (done for OS and 
-  version, need REST response for memory)
-o [DONE] expandable node list in overview status
-* leave cluster
-* Wire up memory usage and cache allocated
-
-* (Andrew) Accordion for nodes should allow multiple to be open at the same time
-
-POOL ANALYTICS UI
-* ???? Have the zoom level show the right thing
-
-ERROR HANDLING
-* ???? (low priority) serve up customized 404 and 500 pages
-
-* complete API switch to camelCase by converting all parameter names
-   [DONE] [alk: not quite. Several query params are still underscore-styled]
