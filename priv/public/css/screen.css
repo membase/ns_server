@@ -263,7 +263,7 @@ a:link {
 	width: 960px;
 	left: 12%;
 	/*margin-top: 50px;*/
-  padding:50px 0 220px 0;
+  padding:0 0 220px 0;
   _padding:50px 0 20px 0;
 }
 
@@ -616,3 +616,10 @@ button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
 .on_off_button span {display:block; position:absolute; width:64px; height:23px; background:url(../images/on_off_slider.png) 0 0 no-repeat; top:0px;}
 /*.button_on span {right:0px !important;}*/
 .stop-active .on_off_button span {right:0px !important;}
+
+/* bread crumbs */
+.bread_crumbs {overflow:hidden; margin:0 0 0 189px; height:45px; padding:5px 0 0 0;}
+.bread_crumbs ul {display:block; height:20px; font-size:12px; position:relative; left:-10px;}
+.bread_crumbs ul li {display:block; float:left; padding:0 6px 0 10px; background:url(../images/bc_arrow.gif) 0 4px no-repeat; color:#555557;}
+.bread_crumbs ul li a {text-decoration:underline;}
+.bread_crumbs ul li a:hover {text-decoration:none;}
