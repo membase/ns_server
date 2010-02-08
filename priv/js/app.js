@@ -333,17 +333,12 @@ var DAO = {
 
 var TrafficGen = {
   init: function () {
-    BucketsSection.cells.detailedBuckets.subscribeAny($m(this, 'updateUI'));
+    BucketsSection.cells.detailedBuckets.subscribeAny(_.bind(this.updateUI, this, undefined));
     _.defer($m(this, 'updateUI'));
   },
-  updateUI: function () {
-    var running = this.isRunning();
-    var isDefined = (running != this.isNotRunning());
-
-    if (this.spinner) {
-      this.spinner.remove();
-      this.spinner = null;
-    }
+  updateUI: function (forceRunning) {
+    var running = forceRunning !== undefined ? forceRunning : this.isRunning();
+    var isDefined = forceRunning !== undefined || (running != this.isNotRunning());
 
     if (!isDefined) {
       $('#test_cluster_block').hide();
@@ -370,19 +365,16 @@ var TrafficGen = {
     if (!uri) {
       throw new Error('start() should not be called in this state!');
     }
-    this.spinner = overlayWithSpinner('#test_cluster_block', 'none');
     $.ajax({
       type:'POST',
       url:uri,
       data: 'onOrOff=' + (isStart ? 'on' : 'off'),
       success: $m(BucketsSection, 'refreshBuckets')
     });
+    this.updateUI(isStart);
   },
-  start: function () {
-    this.startOrStop(true);
-  },
-  stop: function () {
-    this.startOrStop(false);
+  toggleRunning: function () {
+    this.startOrStop(this.isNotRunning());
   }
 };
 
