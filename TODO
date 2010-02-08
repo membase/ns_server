@@ -29,7 +29,8 @@ o [DONE] log for alerts section
 * not reloading app after cluster join and displaying success
    indicator on overview
 
-* fix ugliness of analytics graphs
+o [DONE] fix ugliness of analytics graphs
+* render pix-perfect graphs
 o [DONE] xx nodes last collected ?? secs ago on analytics
 * 'cluster memory available' for bucket creation
 

@@ -1,8 +1,8 @@
 //= require <jquery.js>
 //= require <jqModal.js>
 //= require <raphael.js>
-//= require <g.raphael.js>
-//= require <g.line.js>
+// !not used!= require <g.raphael.js>
+// !not used!= require <g.line.js>
 //= require <jquery.flot.js>
 //= require <jquery.ba-bbq.js>
 // !not used!= require <jquery.jeditable.js>
@@ -409,7 +409,7 @@ var SamplesRestorer = mkClass({
       var oldArray = oldOps[cat];
       var newArray = ops[cat];
       if (!oldArray || !newArray) {
-        console.log("no array for stat:", cat);
+        ops[cat] = ops['misses'];
         return;
       }
 
@@ -496,115 +496,36 @@ function renderTick(g, p1x, p1y, dx, dy, opts) {
 }
 
 function renderLargeGraph(main, data) {
-  var tick = renderTick;
+  var plotData = _.map(data, function (e, i) {
+    return [i+1, e];
+  });
 
-  main.html("");
-//  main.css("outline", "red solid 1px");
-  var width = Math.min(main.parent().innerWidth(), 740);
-  var height = 250;
-  var paper = Raphael(main.get(0), width, height+20);
-
-  var xs = _.map(data, function (_, i) {return i;});
-  var yMax = _.max(data);
-  paper.g.linechart(0, 0, width-25, height, xs, data,
-                    {
-                      gutter: 10,
-                      minY: 0,
-                      maxY: yMax ? yMax*1.2 : 10,
-                      colors: ['#a2a2a2'],
-                      width: 1,
-                      hook: function (h) {
-                        // axis
-                        var maxx = h.transformX(h.maxx);
-                        var maxy = h.transformY(h.maxy);
-                        var x0 = h.transformX(0);
-                        var y0 = h.transformY(0);
-                        h.paper.path(["M", x0, maxy,
-                                      "L", x0, y0,
-                                      "L", maxx, y0].join(","));
-                        // axis marks
-                        tick(h.paper, x0, maxy, 5, 0);
-                        for (var i = 1; i <= 4; i++) {
-                          tick(h.paper, h.transformX(h.maxx/4*i), y0, 0, 5);
-                        }
-
-                        var xMax = _.indexOf(data, yMax);
-                        var yMin = _.min(data);
-                        var xMin = _.indexOf(data, yMin);
-
-                        tick(h.paper, h.transformX(xMax), h.transformY(yMax), 0, 10);
-                        tick(h.paper, h.transformX(xMin), h.transformY(yMin), 0, 10);
-
-                        // text
-                        var maxText = h.paper.text(0, 0, yMax.toFixed(0)).attr({
-                          font: "16px Arial, sans-serif",
-                          'font-weight': 'bold',
-                          fill: "blue"});
-                        var bbox = maxText.getBBox();
-                        maxText.translate(h.transformX(xMax) + 6 - bbox.x,
-                                          h.transformY(yMax) - 9 - bbox.y);
-
-                        var minText = h.paper.text(0, 0, yMin.toFixed(0)).attr({
-                          font: "16px Arial, sans-serif",
-                          'font-weight': 'bold',
-                          fill: "red"});
-                        var bbox = minText.getBBox();
-                        minText.translate(h.transformX(xMin) + 6 - bbox.x,
-                                          h.transformY(yMin) - 9 - bbox.y);
-                      }
-                    });
+  $.plot(main, [{color: '#1d88ad',
+                 data: plotData}], {
+    xaxis: {ticks:0, autoscaleMargin: 0.04},
+    yaxis: {ticks:0, autoscaleMargin: 0.04},
+    grid: {show:false}
+  });
 }
 
-function renderSmallGraph(jq, data, text, isSelected) {
-  return;
-  jq.html("");
-  jq.removeData('hover-rect');
-//  jq.css("outline", "red solid 1px");
+function renderSmallGraph(jq, data, isSelected) {
+  jq.find('.small_graph_label > .value').text(String(_.max(data)));
 
-  var width = jq.innerWidth();
-  var plotHeight = 80;
-  var height = plotHeight+30+15;
-  var paper = Raphael(jq.get(0), width, height);
-
-  var xs = _.map(data, function (_, i) {return i;});
-
-  var plotY = isSelected ? 20 : 30;
-  var maxY = _.max(data);
-  paper.g.linechart(0, plotY, width, plotHeight, xs, data, {
-    width: $.browser.msie ? 2 : 1,
-    minY: 0,
-    maxY: maxY ? maxY : 10,
-    colors: ["#e2e2e2"]
+  var plotData = _.map(data, function (e, i) {
+    return [i+1, e];
   });
-  var ymax = _.max(data).toFixed(0);
-  paper.text(width/2, plotY + plotHeight/2, ymax).attr({
-    font: "18px Arial, sans-serif",
-    fill: "blue"
-  });
-  if (isSelected) {
-    paper.text(width/2, 10, text).attr({
-      font: "18px Arial, sans-serif"
-    });
-    paper.rect(1, 20, width-3, plotHeight+15-1).attr({
-      'stroke-width': 2,
-      'stroke': '#0099ff'
-    });
-  } else {
-    paper.text(width/2, height-10, text).attr({
-      font: "12px Arial, sans-serif"
-    });
-    var hoverRect = paper.rect(0, 30, width-1, plotHeight+15-1).attr({
-      'stroke-width': 1,
-      'stroke': '#0099ff'
-    });
-    hoverRect.hide();
-    jq.data('hover-rect', hoverRect);
-  }
+  
+  $.plot(jq.find('.small_graph_block'),
+         [{color: isSelected ? '#e2f1f9' : '#d95e28',
+           data: plotData}],
+         {xaxis: {ticks:0, autoscaleMargin: 0.04},
+          yaxis: {ticks:0, autoscaleMargin: 0.04},
+          grid: {show:false}});
 }
 
 var StatGraphs = {
   selected: new LinkSwitchCell('graph', {
-    linkSelector: 'span',
+    linkSelector: 'a',
     firstItemIsDefault: true}),
   selectedCounter: 0,
   recognizedStats: ("ops hit_ratio updates misses total_items curr_items bytes_read cas_misses "
@@ -616,20 +537,30 @@ var StatGraphs = {
   visibleStats: [],
   visibleStatsIsDirty: true,
   statNames: {},
+  spinners: [],
   findGraphArea: function (statName) {
     return $('#analytics_graph_' + statName)
   },
   renderNothing: function () {
+    return;
     var self = this;
+    if (self.spinners.length)
+      return;
+
     var main = $('#analytics_main_graph')
 
-    prepareAreaUpdate(main);
+    self.spinners.push(overlayWithSpinner(main));
+
+
+//    prepareAreaUpdate(main);
     _.each(self.recognizedStats, function (statName) {
-      prepareAreaUpdate(self.findGraphArea(statName));
+      //prepareAreaUpdate(self.findGraphArea(statName));
+      var area = self.findGraphArea(statName);
+      if (area)
+        self.spinners.push(overlayWithSpinner());
     });
   },
   update: function () {
-    return;
     var self = this;
 
     var cell = DAO.cells.stats;
@@ -640,12 +571,21 @@ var StatGraphs = {
     if (!stats)
       return self.renderNothing();
 
+    _.each(self.spinners, function (s) {
+      s.remove();
+    });
+    self.spinners = [];
+
     var main = $('#analytics_main_graph')
 
     if (self.visibleStatsIsDirty) {
       _.each(self.recognizedStats, function (name) {
         var op = _.include(self.visibleStats, name) ? 'show' : 'hide';
-        self.findGraphArea(name)[op]();
+        var area = self.findGraphArea(name);
+        area[op]();
+
+        var description = self.statNames[name] || name;
+        area.find('.small_graph_label .text').text(' ' + description)
       });
       self.visibleStatsIsDirty = false;
     }
@@ -657,8 +597,7 @@ var StatGraphs = {
       if (!stats[statName])
         return;
       var area = self.findGraphArea(statName);
-      var description = self.statNames[statName] || statName;
-      renderSmallGraph(area, stats[statName], description, selected == statName);
+      renderSmallGraph(area, stats[statName], selected == statName);
     });
   },
   configureStats: function () {
