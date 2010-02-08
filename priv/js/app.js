@@ -555,6 +555,7 @@ function renderLargeGraph(main, data) {
 }
 
 function renderSmallGraph(jq, data, text, isSelected) {
+  return;
   jq.html("");
   jq.removeData('hover-rect');
 //  jq.css("outline", "red solid 1px");
@@ -627,6 +628,7 @@ var StatGraphs = {
     });
   },
   update: function () {
+    return;
     var self = this;
 
     var cell = DAO.cells.stats;
