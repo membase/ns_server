@@ -585,7 +585,7 @@ var StatGraphs = {
         area[op]();
 
         var description = self.statNames[name] || name;
-        area.find('.small_graph_label .text').text(' ' + description)
+        area.find('.small_graph_label .label-text').text(' ' + description)
       });
       self.visibleStatsIsDirty = false;
     }
