@@ -484,17 +484,6 @@ var SamplesRestorer = mkClass({
   });
 })();
 
-function renderTick(g, p1x, p1y, dx, dy, opts) {
-  var p0x = p1x - dx;
-  var p0y = p1y - dy;
-  var p2x = p1x + dx;
-  var p2y = p1y + dy;
-  opts = _.extend({'stroke-width': 2},
-                  opts || {});
-  return g.path(["M", p0x, p0y,
-                 "L", p2x, p2y].join(",")).attr(opts);
-}
-
 function renderLargeGraph(main, data) {
   var plotData = _.map(data, function (e, i) {
     return [i+1, e];
