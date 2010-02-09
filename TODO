@@ -37,6 +37,8 @@ o [DONE] xx nodes last collected ?? secs ago on analytics
 o [DONE] cookies for login credentials
 * edit cache sz (no design!)
 o [DONE] sign-out
+* wire markup for cluster leave confirmation
+* make breadcrumbs work
 
 * (Andrew) Accordion for nodes should allow multiple to be open at the same time
 
@@ -44,7 +46,7 @@ LATER
 
 * sorting on buckets list
 * Escape key handling for closing dialogs (broken due to jqModal)
-
+* find out what's causing IE leaks
 
 Items to be completed.  Listed in only-web when mocked up/working
 there, listed in Menelaus when wired in.
