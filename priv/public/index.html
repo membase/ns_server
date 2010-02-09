@@ -17,7 +17,7 @@
           <a href="#">Help</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
           <a href="javascript:ThePage.signOut();" class="sign-out-link">Sign Out</a>
         </div>
-        <a href="/index.html"><span></span></a>
+        <a href="/index.html"><span>&nbsp;</span></a>
       </div>
     </div> <!-- header -->
 
@@ -48,14 +48,14 @@
 		<!-- test cluster -->
 		<div id = "test_cluster_block" class="blue_round_block test_cluster">
 			<div class="top">
-				<div></div>
+				<div>&nbsp;</div>
 			</div>
 			<div class="content">
 				<span class="label">Test Cluster</span>
           <!-- start button -->
           <span id="test_cluster_start_stop">
             <a href="javascript:TrafficGen.toggleRunning();" class="on_off_button">
-              <span></span>
+              <span>&nbsp;</span>
             </a>
           </span>
           <!-- END start button -->
@@ -64,7 +64,7 @@
 				</div>
 			</div>
 			<div class="bottom">
-				<div></div>
+				<div>&nbsp;</div>
 			</div>
 		</div>
 		<!-- End test cluster -->
@@ -75,8 +75,8 @@
   <div id="overview" style="display:none;">
     <!-- shadow box -->
 	<h1>Overview</h1>
-	<div class="shadow_box"><div class="top"><div><div></div></div></div><div class="cnt"><div class="pad"><div class="content">
-    <h2 class="header_2" id="get_started_expander"><span class="expander_2 block"></span>Get Started</h2>
+	<div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
+    <h2 class="header_2" id="get_started_expander"><span class="expander_2 block">&nbsp;</span>Get Started</h2>
     <div class="pad_10" id="get_started">
         Congratulations! You may also want to review our <a>Developer Guide</a> or <a>Getting Started Guide</a> before proceding.
         <div class="pat_10">
@@ -112,11 +112,11 @@
             </div>
         </div>
     </div>
-    </div></div></div><div class="bottom"><div><div></div></div></div></div>
+    </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
 	<!-- END shadow box -->
 	<!-- shadow box -->
 	<h1>Status</h1>
-	<div class="shadow_box"><div class="top"><div><div></div></div></div><div class="cnt"><div class="pad"><div class="content">
+	<div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
     <div class="darker_block with_devider pat_10" id="cluster_status_container">
     </div><div class="template" id="cluster_status_template">
         <div class="labeled_line">
@@ -162,7 +162,7 @@
             <table class="server_list"><tbody>
               <!-- {% $.each(rows, function (index) { %} -->
               <tr class="primary">
-                <td class="expander"><div></div></td>
+                <td class="expander"><div>&nbsp;</div></td>
                 <td class="name"><div>{%= h(this.hostname) %}</div></td>
                 <td class="status"><div class="{%=V.renderHealhClass(this.status)%}"></div></td>
               </tr>
@@ -209,17 +209,17 @@
           </div>
       </div>
     </div>
-	</div></div></div><div class="bottom"><div><div></div></div></div></div>
+	</div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
 	<!-- END shadow box -->
   </div>
 
   <div id="analytics" style="display:none">
 	<h1>
 		<span class="block nav float_right"><a href="javascript:StatGraphs.configureStats();">Configure View</a></span>
-		Analytics: <span class="stat_target_name"></span>
+		Analytics: <span class="stat_target_name">&nbsp;</span>
 	</h1>
 	<!-- shadow box -->
-	<div class="shadow_box"><div class="top"><div><div></div></div></div><div class="cnt"><div class="pad"><div class="content">
+	<div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
     <div class="section">
       <h2 class="header_2">
         <span class="block nav float_right">
@@ -227,153 +227,153 @@
         </span>
         System overview: <span><a id='analytics_graph_zoom_real_time'>Live View</a></span>
   	  </h2>
-      <p class="analytics_graph_main">
+      <div class="analytics_graph_main">
         <span class="graph_info_label block right active_node_count"><!-- 3 active nodes --></span>
         <div id="analytics_main_graph_grid" style="width:725px; height: 269px; background: url(images/graph_bg.png) 0 0 no-repeat;">
           <div id="analytics_main_graph" style="position: relative; left: 2px; width:720px; height: 264px;"></div>
         </div>
-      </p>
-      <p class="darker_block graph_nav">
-      <a href="#" class="analytics-small-graph" id="analytics_graph_hit_ratio">
+      </div>
+      <div class="darker_block graph_nav">
+      <div class="analytics-small-graph" id="analytics_graph_hit_ratio">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_updates">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_updates">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_misses">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_misses">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_ops">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_ops">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_total_items">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_total_items">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_curr_items">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_curr_items">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_bytes_read">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_bytes_read">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_cas_misses">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_cas_misses">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_delete_hits">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_delete_hits">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_conn_yields">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_conn_yields">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_get_hits">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_get_hits">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_delete_misses">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_delete_misses">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_total_connections">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_total_connections">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_curr_connections">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_curr_connections">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_threads">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_threads">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_bytes_written">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_bytes_written">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_incr_hits">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_incr_hits">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_get_misses">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_get_misses">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_listen_disabled_num">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_listen_disabled_num">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_decr_hits">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_decr_hits">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_cmd_flush">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_cmd_flush">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_engine_maxbytes">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_engine_maxbytes">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_bytes">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_bytes">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_incr_misses">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_incr_misses">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_cmd_set">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_cmd_set">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_decr_misses">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_decr_misses">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_accepting_conns">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_accepting_conns">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_cas_hits">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_cas_hits">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_limit_maxbytes">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_limit_maxbytes">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_cmd_get">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_cmd_get">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_connection_structures">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_connection_structures">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_cas_badval">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_cas_badval">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <a href="#" class="analytics-small-graph" id="analytics_graph_auth_cmds">
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_auth_cmds">
         <div class="small_graph_block"></div>
         <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
-      </a>
-      <b class="clear"></b>
-      </p>
+      </div>
+      <b class="clear">&nbsp;</b>
+      </div>
     </div>
-	</div></div></div><div class="bottom"><div><div></div></div></div></div>
+	</div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
 	<!-- END shadow box -->
-	<h1>Key Values: <span class="stat_target_name"></span></h1>
+	<h1>Key Values: <span class="stat_target_name">&nbsp;</span></h1>
 	<!-- shadow box -->
-	<div class="shadow_box"><div class="top"><div><div></div></div></div><div class="cnt"><div class="pad"><div class="content">
+	<div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
     <div class="section">
       <h2 class="header_2">
         <span class="block nav float_right">
@@ -404,14 +404,14 @@
         </table>
       </div>
     </div>
-	</div></div></div><div class="bottom"><div><div></div></div></div></div>
+	</div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
 	<!-- END shadow box -->
   </div>
 
   <div id="buckets" style="display:none">
     <!-- shadow box -->
     <h1>Buckets</h1>
-    <div class="shadow_box"><div class="top"><div><div></div></div></div><div class="cnt"><div class="pad"><div class="content">
+    <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
     <div class="darker_block">
         <div class="pad_10">
             <div class="pat_10 right">
@@ -421,7 +421,7 @@
     </div>
     <div id="bucket_list_container">
     </div>
-    </div></div></div><div class="bottom"><div><div></div></div></div></div>
+    </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
 	<!-- END shadow box -->
     <div id="bucket_list_template" class="template">
         <table class="lined_tab">
@@ -467,7 +467,7 @@
   <div id="alerts" style="display:none">
     <!-- Shadow box -->
     <h1>Alerts/Log</h1>
-    <div class="shadow_box"><div class="top"><div><div></div></div></div><div class="cnt"><div class="pad"><div class="content">
+    <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
         <div class="darker_block with_devider">
             <div class="pat_10">
                 <ul class="tabs">
@@ -521,12 +521,12 @@
             </div>
           </div>
         </div>
-    </div></div></div><div class="bottom"><div><div></div></div></div></div>
+    </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
     <!-- END shadow box -->
   </div>
   <div id="settings" style="display:none">
     <!-- shadow box -->
-    <div class="shadow_box"><div class="top"><div><div></div></div></div><div class="cnt"><div class="pad"><div class="content">
+    <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
       <div class="darker_block with_devider">
           <div class="pat_10">
               <ul class="tabs">
@@ -738,7 +738,7 @@
           </form>
         </div>
       </div>
-    </div></div></div><div class="bottom"><div><div></div></div></div></div>
+    </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
     <!-- END shadow box -->
   </div>
 
@@ -774,12 +774,12 @@
           {%= h(b.basicStats.cacheSize) %} MB 
           </p>
           <div class="pat_10">
-            <p class="normal text_12">
+            <div class="normal text_12">
             Sample Java Client Manager connection string:<br />
 <pre>URI base = new URI("{%= h(document.location.protocol) %}//{%= h(document.location.host) %}{%= h(b.uri) %}");
 ClientManager manager = new ClientManager(base, "{%= h(b.name) %}", "********");
 MemcachedClient client = manager.getClient();</pre>
-            </p>
+            </div>
             <div class="right save_cancel">
               <button class="save_button float_right" type="submit">DONE</button>
               <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
@@ -817,7 +817,7 @@ MemcachedClient client = manager.getClient();</pre>
 
         <form id="add_new_bucket_form">
           <p><label><b>Bucket Name:</b><input type="text" name="name" class="inp" style="width:290px;" value="No spaces, alphanumeric up to 12 characters"></label></p>
-          <p><label><b>Cache Size:</b><input type="text" name="cacheSize" class="inp" style="width:40px;"><span class="cache-details"></span><!-- MB x 3 server nodes = 192MB Total Cache Size/30GB Cluster memory available. --></label></p>
+          <p><label><b>Cache Size:</b><input type="text" name="cacheSize" class="inp" style="width:40px;"><span class="cache-details">&nbsp;</span><!-- MB x 3 server nodes = 192MB Total Cache Size/30GB Cluster memory available. --></label></p>
           <p><span class="block pas_20 text_12">NOTE: The username and password for this cache bucket is the same as the bucket name above.</span></p>
           <div class="pas_20">
             <div class="right save_cancel">
@@ -891,7 +891,7 @@ MemcachedClient client = manager.getClient();</pre>
         <div class="pas_20">
           <p class="u_line text_14">
             <span class="norm_14">Removing</span>
-            <strong class="bucket_name"></strong>
+            <strong class="bucket_name">&nbsp;</strong>
           </p>
           <div class="warning pat_20">
             	<strong>Warning</strong> – Removing this bucket will result in complete data loss for this bucket. Are you sure you want to remove it?
@@ -1143,6 +1143,36 @@ MemcachedClient client = manager.getClient();</pre>
   <!-- END join cluster -->
 </div>
 <!-- END configure analytics -->
+<!-- Leave cluster -->
+<div class="lbox leave_cluster" style="display:none;">
+  <div class="top">
+    <div class="top_left"></div>
+    <div class="top_right"></div>
+    <div class="top_center"></div>
+  </div>
+  <div class="center">
+    <div class="pad">
+      <p class="lbox_header">Leave Cluster</p>
+      <div class="pas_20">
+        <div class="pat_10">
+          <p>Really eject this node from cluster?</p>
+        </div>
+        <div class="right save_cancel">
+          <div class="float_right" style="margin-right:50%; position:relative; left:100px;">
+            <button type="submit" class="save_button button_3 float_right">OK</button>
+            <a class="jqmClose cancel_button float_right" href="#">CANCEL</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="bottom">
+    <div class="bottom_left"></div>
+    <div class="bottom_right"></div>
+    <div class="bottom_center"></div>
+  </div>
+</div>
+<!-- END leave cluster -->
 <div class="auth_block" id="auth_dialog">
   <div class="pad">
     <div class="alert_red" style="display:none;">
@@ -1183,7 +1213,7 @@ MemcachedClient client = manager.getClient();</pre>
         </tr>
       </table>
     </form>
-    <script>
+    <script type="text/javascript">
       $('#login_form').bind('submit', function (e) {
         e.preventDefault();
         loginFormSubmit();
