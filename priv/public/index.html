@@ -773,9 +773,6 @@
           <a class="float_right" href="{%=jsLink('BucketsSection.startFlushCache',b.uri)%}">Flush All</a>
           {%= h(b.basicStats.cacheSize) %} MB 
           </p>
-          <p class="u_line"><span class="label">Password:</span>
-          <a class="float_right" href="javascript:BucketsSection.startPasswordChange()">Change Password</a>
-          ***** </p>
           <div class="pat_10">
             <p class="normal text_12">
             Sample Java Client Manager connection string:<br />
@@ -821,8 +818,7 @@ MemcachedClient client = manager.getClient();</pre>
         <form id="add_new_bucket_form">
           <p><label><b>Bucket Name:</b><input type="text" name="name" class="inp" style="width:290px;" value="No spaces, alphanumeric up to 12 characters"></label></p>
           <p><label><b>Cache Size:</b><input type="text" name="cacheSize" class="inp" style="width:40px;"><span class="cache-details"></span><!-- MB x 3 server nodes = 192MB Total Cache Size/30GB Cluster memory available. --></label></p>
-          <p><label for="password"><b>Password:</b><input type="password" name="password" autocomplete="off" class="inp"></label></p>
-          <p><label for="verifyPassword"><b>Verify Password:</b><input type="password" name="verifyPassword" autocomplete="off" class="inp"></label> <span class="dont-match">Password don't match</span></p>
+          <p><span class="block pas_20 text_12">NOTE: The username and password for this cache bucket is the same as the bucket name above.</span></p>
           <div class="pas_20">
             <div class="right save_cancel">
               <button class="save_button float_right" type="submit">ADD</button>
