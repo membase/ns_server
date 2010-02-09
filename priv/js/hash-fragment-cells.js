@@ -149,9 +149,6 @@ var TabsCell = mkClass(HashFragmentCell, {
     if (!item)
       return;
     this.pushState(index);
-
-    if (event.originalEvent)
-      event.originalEvent.preventDefault();
   },
   updateSelected: function () {
     this.api.click(Number(this.selectedId));
