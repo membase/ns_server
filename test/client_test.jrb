@@ -16,6 +16,7 @@ include_class 'net.spy.memcached.MemcachedClient'
 include_class 'net.spy.memcached.AddrUtil'
 include_class 'net.spy.memcached.HashAlgorithm'
 include_class 'net.spy.memcached.ConnectionFactoryBuilder'
+include_class 'net.spy.memcached.util.DefaultKetamaNodeLocatorConfiguration'
 
 print "ARGV: #{ARGV.join(' ')}\n"
 
@@ -28,8 +29,9 @@ print "action: #{action}\n"
 print "servers: #{servers}\n"
 print "key: #{key}\n"
 
-b = ConnectionFactoryBuilder.new()
-b.setHashAlg(HashAlgorithm::KETAMA_HASH)
+b = ConnectionFactoryBuilder.new().
+      setHashAlg(HashAlgorithm::KETAMA_HASH).
+      setLocatorType(ConnectionFactoryBuilder::Locator::CONSISTENT)
 f = b.build()
 
 c = MemcachedClient.new(f, AddrUtil.getAddresses(servers))
