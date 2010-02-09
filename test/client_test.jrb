@@ -46,4 +46,29 @@ if action == "get"
   print "got #{key}, result #{x}\n"
 end
 
+if action == "set_many"
+  i = 0
+  while i < 1000
+    c.set("many_#{i}", 0, "MANY_#{i}")
+    i = i + 1
+  end
+end
+
+if action == "get_many"
+  good = 0
+  fail = 0
+  i = 0
+  while i < 1000
+    if c.get("many_#{i}") == "MANY_#{i}"
+      good = good + 1
+    else
+      fail = fail + 1
+      print "FAIL #{i}\n"
+    end
+    i = i + 1
+  end
+  print "total good #{good}\n"
+  print "total fail #{fail}\n"
+end
+
 exit
