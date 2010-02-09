@@ -15,6 +15,7 @@ require 'java'
 include_class 'net.spy.memcached.MemcachedClient'
 include_class 'net.spy.memcached.AddrUtil'
 include_class 'net.spy.memcached.HashAlgorithm'
+include_class 'net.spy.memcached.ConnectionFactoryBuilder'
 
 print "ARGV: #{ARGV.join(' ')}\n"
 
@@ -27,9 +28,13 @@ print "action: #{action}\n"
 print "servers: #{servers}\n"
 print "key: #{key}\n"
 
-# print "hash(key): #{HashAlgorithm.KETAMA_HASH.hash(key)}\n"
+b = ConnectionFactoryBuilder.new()
+b.setHashAlg(HashAlgorithm::KETAMA_HASH)
+f = b.build()
 
-c = MemcachedClient.new(AddrUtil.getAddresses(servers))
+print "hash(key): #{HashAlgorithm::KETAMA_HASH.hash(key)}\n"
+
+c = MemcachedClient.new(f, AddrUtil.getAddresses(servers))
 
 if action == "set"
   x = c.set(key, 0, val)
