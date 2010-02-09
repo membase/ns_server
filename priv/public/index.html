@@ -779,8 +779,9 @@
           <div class="pat_10">
             <p class="normal text_12">
             Sample Java Client Manager connection string:<br />
-            <textarea rows="3" readonly>ClientManager manager = new ClientManager({%= h(b.uri) %}, "{%= h(b.name) %}", "********");
-MemcachedClient client = manager.getClient();</textarea>
+<pre>URI base = new URI("{%= h(document.location.protocol) %}//{%= h(document.location.host) %}{%= h(b.uri) %}");
+ClientManager manager = new ClientManager(base, "{%= h(b.name) %}", "********");
+MemcachedClient client = manager.getClient();</pre>
             </p>
             <div class="right save_cancel">
               <button class="save_button float_right" type="submit">DONE</button>
