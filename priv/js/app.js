@@ -484,6 +484,18 @@ var SamplesRestorer = mkClass({
   });
 })();
 
+var maybeReloadAppDueToLeak = (function () {
+  var counter = 300;
+
+  return function () {
+    if (!window.G_vmlCanvasManager)
+      return;
+
+    if (!--counter)
+      reloadApp();
+  };
+})();
+
 function renderLargeGraph(main, data) {
   var plotData = _.map(data, function (e, i) {
     return [i+1, e];
@@ -495,6 +507,8 @@ function renderLargeGraph(main, data) {
     yaxis: {ticks:0, autoscaleMargin: 0.04},
     grid: {show:false}
   });
+
+  maybeReloadAppDueToLeak();
 }
 
 function renderSmallGraph(jq, data, isSelected) {
