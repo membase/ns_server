@@ -26,7 +26,8 @@
          bucket_config_get/3,
          bucket_config_delete/2,
          bucket_flush/2,
-         addrs/2,
+         addrs/2, addrs/1,
+         cring/2, cring/1,
          list/1]).
 
 %% API for buckets.
@@ -71,6 +72,14 @@ addrs(#mc_bucket{addrs = Addrs}) -> Addrs.
 addrs(PoolName, BucketName) ->
     {ok, B} = mc_pool:get_bucket(PoolName, BucketName),
     mc_bucket:addrs(B).
+
+cring({mc_pool_bucket, _PoolId, _BucketId} = BucketRef) ->
+    mc_pool:bucket_cring(BucketRef);
+cring(#mc_bucket{cring = CRing}) -> CRing.
+
+cring(PoolName, BucketName) ->
+    {ok, B} = mc_pool:get_bucket(PoolName, BucketName),
+    mc_bucket:cring(B).
 
 % Choose the Addr that should contain the Key.
 

@@ -32,8 +32,6 @@ b = ConnectionFactoryBuilder.new()
 b.setHashAlg(HashAlgorithm::KETAMA_HASH)
 f = b.build()
 
-print "hash(key): #{HashAlgorithm::KETAMA_HASH.hash(key)}\n"
-
 c = MemcachedClient.new(f, AddrUtil.getAddresses(servers))
 
 if action == "set"
@@ -59,11 +57,12 @@ if action == "get_many"
   fail = 0
   i = 0
   while i < 1000
-    if c.get("many_#{i}") == "MANY_#{i}"
+    key = "many_#{i}"
+    if c.get(key) == "MANY_#{i}"
       good = good + 1
     else
       fail = fail + 1
-      print "FAIL #{i}\n"
+      print "FAIL #{i}, hash: #{HashAlgorithm::KETAMA_HASH.hash(key)}\n"
     end
     i = i + 1
   end

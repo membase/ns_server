@@ -38,6 +38,9 @@
 -export([memcached_port/2,
          memcached_port_set/3]).
 
+-export([bucket_addrs/1,
+         bucket_cring/1]).
+
 %% gen_server callbacks
 -export([init/1, terminate/2, code_change/3,
          handle_call/3, handle_cast/2, handle_info/2]).
@@ -69,6 +72,10 @@ bucket_choose_addr({mc_pool_bucket, PoolName, BucketName}, Key) ->
 bucket_choose_addrs({mc_pool_bucket, PoolName, BucketName}, Key, N) ->
     gen_server:call(name_to_server_name(PoolName),
                     {bucket_choose_addrs, BucketName, Key, N}).
+
+bucket_cring({mc_pool_bucket, PoolName, BucketName}) ->
+    gen_server:call(name_to_server_name(PoolName),
+                    {bucket_cring, BucketName}).
 
 % -------------------------------------------------------
 
@@ -155,6 +162,12 @@ handle_call({bucket_choose_addr, BucketId, Key}, _From, State) ->
 handle_call({bucket_choose_addrs, BucketId, Key, N}, _From, State) ->
     case get_bucket(State, BucketId) of
         {ok, Bucket} -> {reply, mc_bucket:choose_addrs(Bucket, Key, N), State};
+        _            -> {reply, error, State}
+    end;
+
+handle_call({bucket_cring, BucketId}, _From, State) ->
+    case get_bucket(State, BucketId) of
+        {ok, Bucket} -> {reply, mc_bucket:cring(Bucket), State};
         _            -> {reply, error, State}
     end;
 
