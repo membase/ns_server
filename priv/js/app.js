@@ -408,43 +408,12 @@ var SamplesRestorer = mkClass({
   initialize: function () {
     this.birthTime = (new Date()).valueOf();
   },
-  nextSampleTime: function () {
+  nextSampleTime: function (ops) {
     var now = (new Date()).valueOf();
-    if (!this.lastOps)
+    if (!ops)
       return now;
-    var samplesInterval = this.lastOps['samplesInterval'];
-    return this.birthTime + Math.floor((now + samplesInterval - 1 - this.birthTime)/samplesInterval)*samplesInterval;
-  },
-  transformOp: function (op) {
-    var oldOps = this.lastOps;
-    var ops = this.lastOps = op;
-    var tstamp = this.lastTstamp = op.tstamp;
-    if (!tstamp)
-      return;
-
-    var oldTstamp = this.lastTstamp;
-    if (!this.lastTstamp || !oldOps)
-      return;
-
-    // if (op.misses.length == 0)
-    //   alert("Got it!");
-
-    var dataOffset = Math.round((tstamp - oldTstamp) / op['samplesInterval'])
-    _.each(StatGraphs.recognizedStats, function (cat) {
-      var oldArray = oldOps[cat];
-      var newArray = ops[cat];
-      if (!oldArray || !newArray) {
-        ops[cat] = ops['misses'];
-        return;
-      }
-
-      var oldLength = oldArray.length;
-      var nowLength = newArray.length;
-      if (nowLength < oldLength)
-        ops[cat] = oldArray.slice(-(oldLength-nowLength)-dataOffset,
-                                  (dataOffset == 0) ? oldLength : -dataOffset).concat(newArray);
-    });
-    console.log("op:", op);
+    var samplesInterval = ops['samplesInterval'];
+    return this.birthTime + Math.ceil((now - this.birthTime)/samplesInterval)*samplesInterval;
   }
 });
 
@@ -474,27 +443,16 @@ var SamplesRestorer = mkClass({
       delete data[n];
     });
 
-    var isUpdate = false;
-    if (samplesRestorer.lastTstamp) {
-      isUpdate = true;
-      data["opsbysecondStartTStamp"] = samplesRestorer.lastTstamp;
-    }
-
-    function valueTransformer(data) {
-      samplesRestorer.transformOp(data.op);
-      return data;
-    }
-
     return future.get({
       url: target.stats.uri,
       data: data
-    }, valueTransformer, isUpdate ? this.self.value : undefined);
+    });
   }).setSources({samplesRestorer: samplesRestorerCell,
                  options: statsOptionsCell,
                  target: targetCell});
 
   statsCell.subscribe(function (cell) {
-    var at = cell.context.samplesRestorer.value.nextSampleTime();
+    var at = cell.context.samplesRestorer.value.nextSampleTime(cell.value.op);
     cell.recalculateAt(at);
 
     var keysInterval = statsOptionsCell.value.keysInterval;
