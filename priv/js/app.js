@@ -1572,3 +1572,70 @@ $(function () {
     }
   })($('#get_started_expander'));
 });
+
+function genericDialog(options) {
+  options = _.extend({buttons: {ok: true,
+                                cancel: true},
+                      modal: true,
+                      callback: function () {}},
+                     options);
+  var text = options.text || 'I forgot to put text';
+  var header = options.header || 'I forgot to put header';
+  var dialogTemplate = $('#generic_dialog');
+  var dialog = $('<div></div>');
+  dialog.attr('class', dialogTemplate.attr('class'));
+  dialog.attr('id', _.uniqueId('generic_dialog_'));
+  dialogTemplate.after(dialog);
+  dialog.html(dialogTemplate.html());
+
+  dialogTemplate = null;
+
+  dialog.find('.lbox_header').text(header);
+  dialog.find('.dialog-text').text(text);
+
+  var b = options.buttons;
+  if (!b.ok && !b.cancel) {
+    dialog.find('.save_cancel').hide();
+  } else {
+    dialog.find('.save_cancel').show();
+    var ok = b.ok;
+    var cancel = b.cancel;
+
+    if (ok === true)
+      ok = 'OK';
+    if (cancel === true)
+      cancel == 'CANCEL';
+
+    function bind(jq, on, name) {
+      jq[on ? 'show' : 'hide']();
+      if (on) {
+        jq.bind('click', function (e) {
+          e.preventDefault();
+          options.callback.call(this, e, name, instance);
+        });
+      }
+    }
+    bind(dialog.find(".save_button"), ok, 'ok');
+    bind(dialog.find('.cancel_button'), cancel, 'cancel');
+  }
+
+  var modal = options.modal ? new ModalAction() : null;
+
+  showDialog(dialog, {
+    onHide: function () {
+      _.defer(function () {
+        dialog.remove();
+      });
+    }
+  });
+
+  var instance = {
+    close: function () {
+      if (modal)
+        modal.finish();
+      hideDialog(dialog);
+    }
+  };
+
+  return instance;
+}
