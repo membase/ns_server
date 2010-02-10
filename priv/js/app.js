@@ -361,6 +361,10 @@ var TrafficGen = {
     var tgenInfo = BucketsSection.findTGenBucket();
     return tgenInfo !== undefined && (!tgenInfo || !tgenInfo['status']);
   },
+  start: function () {
+    if (!this.isRunning())
+      this.startOrStop(true);
+  },
   startOrStop: function (isStart) {
     var uri = this.getControlURI();
     if (!uri) {
