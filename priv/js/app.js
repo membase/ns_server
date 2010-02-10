@@ -370,9 +370,30 @@ var TrafficGen = {
       type:'POST',
       url:uri,
       data: 'onOrOff=' + (isStart ? 'on' : 'off'),
-      success: $m(BucketsSection, 'refreshBuckets')
+      success: continuation
     });
     this.updateUI(isStart);
+
+    if (isStart) {
+      var dialog = genericDialog({
+        header: 'Starting...',
+        text: 'Start request was sent. Awaiting server response.',
+        buttons: {ok: false, cancel: false}
+      });
+    }
+
+    function continuation() {
+      BucketsSection.refreshBuckets(function () {
+        if (!dialog) // do not bother if it was stop request
+          return;
+
+        dialog.close();
+
+        var tgenBucket = BucketsSection.findTGenBucket();
+        if (tgenBucket)
+          AnalyticsSection.visitBucket(tgenBucket.uri);
+      });
+    }
   },
   toggleRunning: function () {
     this.startOrStop(this.isNotRunning());
