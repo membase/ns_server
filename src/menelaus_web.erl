@@ -473,7 +473,7 @@ handle_bucket_create_do(PoolId, BucketId, Req) ->
     BucketConfig =
         lists:foldl(
           fun({auth_plain, _}, C) ->
-                  case proplists:get_value("password", PostArgs) of
+                  case proplists:get_value("name", PostArgs) of
                       undefined -> C;
                       Pass -> lists:keystore(auth_plain, 1, C,
                                              {auth_plain, {BucketId, Pass}})
