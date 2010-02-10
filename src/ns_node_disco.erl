@@ -59,8 +59,6 @@ nodes_wanted_updated() ->
 %% gen_server implementation
 
 init([]) ->
-    % See: http://osdir.com/ml/lang.erlang.general/2004-04/msg00155.html
-    inet_db:set_lookup([file, dns]),
     % Proactively run one round of reconfiguration update.
     do_nodes_wanted_updated(do_nodes_wanted()),
     % Register for nodeup/down messages as handle_info callbacks.
