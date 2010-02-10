@@ -1398,6 +1398,64 @@ var DummySection = {
   onEnter: function () {}
 };
 
+
+var BreadCrumbs = {
+  update: function () {
+    var sec = DAO.cells.mode.value;
+    var path = [];
+
+    function pushSection(name) {
+      var el = $('#switch_' + name);
+      path.push([el.text(), el.attr('href')]);
+    }
+
+    // prepend overview
+    if (sec != 'settings' && sec != 'overview')
+      pushSection('overview');
+
+    if (sec == 'analytics' && DAO.cells.statsBucketURL.value) {
+      pushSection('buckets')
+      var bucketInfo = DAO.cells.currentStatTargetCell.value;
+      if (bucketInfo) {
+        path.push([bucketInfo.name, null]);
+      }
+    } else
+      pushSection(sec);
+
+    var container = $('.bread_crumbs > ul');
+    container.html('');
+    var first = true;
+
+    _.each(path.reverse(), function (pair) {
+      var name = pair[0];
+      var href = pair[1];
+
+      var li = $('<li></li>');
+      if (first) {
+        first = false;
+        li.text(name);
+      } else {
+        var a = $('<a></a>');
+        a.attr('href', href);
+        a.text(name);
+
+        li.prepend(a);
+      }
+
+      container.prepend(li);
+    });
+
+    container.find(':first-child').addClass('nobg');
+  },
+  init: function () {
+    var cells = DAO.cells;
+    var update = $m(this, 'update');
+
+    cells.mode.subscribe(update);
+    cells.statsBucketURL.subscribe(update);
+    cells.currentStatTargetCell.subscribe(update);
+  }
+};
 var ThePage = {
   sections: {overview: OverviewSection,
              analytics: AnalyticsSection,
@@ -1425,6 +1483,7 @@ var ThePage = {
         sec.init();
     });
     TrafficGen.init();
+    BreadCrumbs.init();
 
     DAO.onReady(function () {
       if (!DAO.login) {
