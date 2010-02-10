@@ -79,7 +79,8 @@ var LinkSwitchCell = mkClass(HashFragmentCell, {
     options = _.extend({
       selectedClass: 'selected',
       linkSelector: '*',
-      eventSpec: 'click'
+      eventSpec: 'click',
+      bindMethod: 'live'
     }, options);
 
     $super(paramName, options);
@@ -87,7 +88,7 @@ var LinkSwitchCell = mkClass(HashFragmentCell, {
     this.subscribeAny($m(this, 'updateSelected'));
 
     var self = this;
-    $(self.options.linkSelector).live(self.options.eventSpec, function (event) {
+    $(self.options.linkSelector)[self.options.bindMethod](self.options.eventSpec, function (event) {
       self.eventHandler(this, event);
     })
   },

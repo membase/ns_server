@@ -527,10 +527,7 @@ function renderSmallGraph(jq, data, isSelected) {
 }
 
 var StatGraphs = {
-  selected: new LinkSwitchCell('graph', {
-    linkSelector: 'a',
-    firstItemIsDefault: true}),
-  selectedCounter: 0,
+  selected: null,
   recognizedStats: ("ops hit_ratio updates misses total_items curr_items bytes_read cas_misses "
                     + "delete_hits conn_yields get_hits delete_misses total_connections "
                     + "curr_connections threads bytes_written incr_hits get_misses "
@@ -638,6 +635,12 @@ var StatGraphs = {
   },
   init: function () {
     var self = this;
+
+    self.selected = new LinkSwitchCell('graph', {
+      bindMethod: 'bind',
+      linkSelector: '.analytics-small-graph',
+      firstItemIsDefault: true}),
+
     DAO.cells.stats.subscribeAny($m(this, 'update'));
 
     var selected = self.selected;
