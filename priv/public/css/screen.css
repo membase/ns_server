@@ -66,6 +66,8 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 .nobg {background:none !important;}
 .lbox pre {background:none #fff; border:1px solid #CCD3D7; padding:10px; margin:5px 0;}
 
+.main_holder {width:960px; position:relative; margin:auto; left:0px !important;}
+
 .save_cancel {height:31px; padding:5px 0;}
 .save_cancel button {position:relative; top:-1px;}
 .save_cancel .save_button {display:block; width:121px; height:31px; font-weight:bolder; color:#fff; text-align:center; line-height:31px; font-size:14px; text-decoration:none; background:url(../images/button_blue.gif) 0 0 no-repeat; border:0px;}
@@ -242,6 +244,7 @@ a:link {
 #container {
 	position: absolute;
 	width: 100%;
+  min-width:960px;
 	min-height: 100%;
 }
 
@@ -280,7 +283,7 @@ a:link {
 
 #footer h1 {
 	padding-top: 30px;
-	margin-left: 12%;
+/*	margin-left: 12%;*/
 	font-family: Verdana;
 	font-weight: normal;
 	font-size: 11pt;
