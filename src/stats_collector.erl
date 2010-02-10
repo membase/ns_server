@@ -38,7 +38,9 @@ handle_call({set_buckets, Buckets}, State) ->
 handle_info(_Info, State) ->
     {ok, State}.
 
-terminate(_Reason, State) ->
+terminate(Reason, State) ->
+    error_logger:info_msg("Stats collector termination notice: ~p~n",
+                          [Reason]),
     notify_unmonitoring(State#state.hostname, State#state.port,
                         State#state.buckets),
     ok.
