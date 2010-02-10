@@ -63,17 +63,22 @@ notify_unmonitoring(Hostname, Port, Buckets) ->
                   end, Buckets).
 
 collect(T, State) ->
-    {ok, Sock} = gen_tcp:connect(State#state.hostname, State#state.port,
-                                 [binary, {packet, 0}, {active, false}]),
-    auth(Sock),
-    collect(T, State, "default", Sock),
-    % Collect all the other buckets
-    lists:foreach(fun(B) ->
-                          mc_client_binary:select_bucket(Sock, B),
-                          collect(T, State, B, Sock)
-                  end,
-                  State#state.buckets -- ["default"]),
-    ok = gen_tcp:close(Sock).
+    case gen_tcp:connect(State#state.hostname, State#state.port,
+                         [binary, {packet, 0}, {active, false}],
+                         1000) of
+        {ok, Sock} ->
+            auth(Sock),
+            %% collect(T, State, "default", Sock),
+            %% Collect all the other buckets
+            lists:foreach(fun(B) ->
+                                  mc_client_binary:select_bucket(Sock, B),
+                                  collect(T, State, B, Sock)
+                          end,
+                          State#state.buckets -- ["default"]),
+            ok = gen_tcp:close(Sock);
+        {error, WTF} ->
+            error_logger:info_msg("Error in collection:  ~p~n", [WTF])
+    end.
 
 auth(Sock) ->
     Config = ns_config:get(),
