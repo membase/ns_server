@@ -179,6 +179,10 @@ terminate(normal, State) ->
     error_logger:info_msg("e-port server terminating ~p: ~p~n",
                           [State#state.name, normal]),
     ok;
+terminate({port_exited, normal}, State) ->
+    error_logger:info_msg("e-port server terminating ~p: port exited~n",
+                          [State#state.name]),
+    ok;
 terminate(Reason, State) ->
     error_logger:info_msg("e-port server terminating ~p: ~p~n",
                           [State#state.name, Reason]),
