@@ -38,7 +38,7 @@ o [DONE] cookies for login credentials
 * edit cache sz (no design!)
 o [DONE] sign-out
 * wire markup for cluster leave confirmation
-* make breadcrumbs work
+o [DONE] make breadcrumbs work
 
 * (Andrew) Accordion for nodes should allow multiple to be open at the same time
 
