@@ -17,9 +17,7 @@ test() ->
     test_writing().
 
 test_parsing() ->
-    Expected = [{"default", [{auth_plain, undefined},
-                             {size_per_node, 64}
-                            ]},
+    Expected = [
                 {"other_application", [{auth_plain, {"other_application", "another_password"}},
                                        {size_per_node, 64}
                                       ]},
@@ -40,7 +38,6 @@ test_writing() ->
                                  {pools, sample_config()}, State),
     Expected = [
                 "admin admin\n",
-                "default  cache_size=64\n",
                 "other_application another_password cache_size=64\n",
                 "test_application plain_text_password cache_size=64\n"],
     {ok, F} = file:open(Path, [read]),

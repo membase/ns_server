@@ -78,8 +78,17 @@ examine_pool({_PoolName, PoolProps}, D) ->
     lists:foldl(fun examine_bucket/2, D,
                 proplists:get_value(buckets, PoolProps, [])).
 
+
 examine_bucket({BucketName, BucketProps}, D) ->
-    dict:store(BucketName, BucketProps, D).
+    case proplists:get_value(auth_plain, BucketProps) of
+        undefined -> D;
+        {BucketName, ""} ->
+            error_logger:info_msg("Rejecting user with empty password: ~p: ~p~n",
+                                  [BucketName, BucketProps]),
+            D;
+        {BucketName, _Passwd} ->
+            dict:store(BucketName, BucketProps, D)
+    end.
 
 %
 % Update the isasl stuff.
@@ -93,13 +102,10 @@ writeSASLConf(Path, Buckets, AU, AP) ->
     {ok, F} = file:open(FullPath, [write]),
     io:format(F, "~s ~s~n", [AU, AP]),
     lists:foreach(
-      fun({BucketName, BucketProps}) ->
+      fun({_BucketName, BucketProps}) ->
               SizePerNode = proplists:get_value(size_per_node, BucketProps, 64),
               Config = "cache_size=" ++ integer_to_list(SizePerNode),
-              {User, Pass} = case proplists:get_value(auth_plain, BucketProps) of
-                                 undefined       -> {BucketName, ""};
-                                 {BucketName, P} -> {BucketName, P}
-                             end,
+              {User, Pass} = proplists:get_value(auth_plain, BucketProps),
               io:format(F, "~s ~s ~s~n", [User, Pass, Config])
       end,
       Buckets),
