@@ -875,7 +875,7 @@ var BucketsSection = {
     renderTemplate('bucket_list', buckets);
   },
   withBucket: function (uri, body) {
-    var buckets = this.buckets;
+    var buckets = this.buckets || [];
     var bucketInfo = _.detect(buckets, function (info) {
       return info.uri == uri;
     });
