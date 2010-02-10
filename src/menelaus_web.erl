@@ -246,7 +246,7 @@ build_nodes_info(MyPool, IncludeOtp) ->
                         end,
                         0,
                         BucketsAll),
-    NodesBucketMemoryAllocated = NodesBucketMemoryTotal * 0.75, % TODO: Get from stats_aggregator.
+    NodesBucketMemoryAllocated = NodesBucketMemoryTotal * 0.75, % TODO: Get from stats_aggregator, all buckets for this node.
     Nodes =
         lists:map(
           fun(WantENode) ->
@@ -274,8 +274,8 @@ build_nodes_info(MyPool, IncludeOtp) ->
                          {os, list_to_binary(OS)},
                          {memoryTotal, erlang:trunc(MemoryTotal)},
                          {memoryFree, erlang:trunc(MemoryTotal - MemoryAlloced)},
-                         {mcMemoryTotal, erlang:trunc(NodesBucketMemoryTotal)},
-                         {mcMemoryAllocated, erlang:trunc(NodesBucketMemoryAllocated)},
+                         {mcdMemoryReserved, erlang:trunc(NodesBucketMemoryTotal)},
+                         {mcdMemoryAllocated, erlang:trunc(NodesBucketMemoryAllocated)},
                          {ports,
                           {struct, [{proxy, ProxyPort},
                                     {direct, DirectPort}]}}],

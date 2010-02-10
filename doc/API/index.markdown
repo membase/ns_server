@@ -255,48 +255,42 @@ transitions to the client, if backward compatibility is desirable.
  HTTP/1.1 200 OK
  Content-Type: application/com.northscale.store+json
  Content-Length: nnn
-
+ 
  {
-   "name" : "Default Pool",
-   "state": {
-     "current" : "transitioning"
-	 }
-   "nodes" : [
-     {
-       "hostname" : "10.0.1.20",
-       "uri" : "/addresses/10.0.1.20",
-       "status" : "healthy",
-       "ports" : {
-         "proxy" : 11211,
-         "direct" : 11311
-       }, 
-       "otpNode" : "ns_1@fully.qualified.hostname",
-       "otpCookie" : "dhwwiugygucgebxi"
-     },
-     {
-       "hostname" : "10.0.1.21",
-       "uri" : "/addresses/10.0.1.21",
-       "status" : "healthy",
-       "ports" : {
-         "proxy" : 11211,
-         "direct" : 11311
-       },
-       "otpNode" : "ns_1@fully.qualified.hostname",
-       "otpCookie" : "ehwwiugygucgebxi"
-     }
-   ],
-   "buckets" : {
-       "uri" : "https://node.in.pool.com/pools/default/buckets/yourbucket"
-     },
-   "controllers" : {
-      "testWorkload" : {
-        "uri" : "https://node.in.pool.com/pools/default/testWorkload"
-      }
-   },
-   "stats" : {
-     "uri" : "/pools/default/stats"
-    }
- }
+	    "name":"default",
+	    "nodes":[{
+	        "hostname":"10.0.1.20",
+	        "status":"healthy",
+	        "uptime":"14",
+	        "version":"1.0.0",
+	        "os":"i386-apple-darwin9.8.0",
+	        "memoryTotal":3584844000.0,
+	        "memoryFree":74972000,
+	        "mcdMemoryReserved":64,
+	        "mcdMemoryAllocated":48,
+	        "ports":{
+	            "proxy":11213,
+	            "direct":11212
+	        },
+	        "otpNode":"ns_1@node.in.your.pool.com",
+	        "otpCookie":"fsekryjfoeygvgcd"
+	    }],
+	    "buckets":{
+	        "uri":"/pools/default/buckets"
+	    },
+	    "controllers":{
+	        "ejectNode":{
+	            "uri":"/pools/default/controller/ejectNode"
+	        },
+	        "testWorkload":{
+	            "uri":"/pools/default/controller/testWorkload"
+	        }
+	    },
+	    "stats":{
+	        "uri":"/pools/default/stats"
+	    }
+	}
+ 
 </pre>
 
 The pool state could be "stable" "unstable" "transitioning" or other values
@@ -862,4 +856,5 @@ have been referenced.
 * 20100128 Removed todo list, it's duplicating Menelaus's TODO.
 * 20100128 Updated add bucket definition
 * 20100129 Updated create bucket documentation
+* 20100209 Updated pool details, many fixes, adding cache reserved and allocated
 

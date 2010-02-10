@@ -147,8 +147,8 @@
                 <div class="usage_big red">
                     <div class="unused">
                         <div class="used" style="width:50%;"></div>
-                    </div>
-                    <div class="comment">TODO: 50% Utilized (500MB Free) all nodes * memory per bucket for all buckets</div>
+                    </div>{%=V.setPercentBar(mcdItemUtilization)%}
+                    <div class="comment">{%=mcdItemUtilization%}% Allocated ({%=mcdMemReserved %}MB Reserved)</div>
                 </div>
             </div>
         </div>

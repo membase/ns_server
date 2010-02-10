@@ -706,6 +706,14 @@ var OverviewSection = {
     isCritical = isCritical || _.any(nodes, function (n) {
       return n.status != 'healthy';
     });
+    
+    var mcdMemReserved = 0;
+    var mcdMemAllocd = 0;
+    _.each(nodes, function (n) {
+        mcdMemReserved += n.mcdMemoryReserved;
+        mcdMemAllocd += n.mcdMemoryAllocated;
+      });
+    var mcdItemUtilization = 100-Math.round(mcdMemAllocd*100/mcdMemReserved);
     // TODO: need server-side help for second condition:
     // '2. server node in cluster has been or is unresponsive'
 
@@ -717,7 +725,9 @@ var OverviewSection = {
       nodesCount: nodes.length,
       bucketsCount: buckets && buckets.length,
       memoryUtilization: memoryUtilization,
-      memoryFreeMB: Math.floor(freeMem/1048576)
+      memoryFreeMB: Math.floor(freeMem/1048576), 
+      mcdItemUtilization: mcdItemUtilization,
+      mcdMemReserved: mcdMemReserved
     };
 
     renderTemplate('cluster_status', statusData);
