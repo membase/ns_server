@@ -37,6 +37,15 @@
 
 %% External API
 
+default_find(K, Default, Dict) ->
+    case dict:find(K, Dict) of
+        error -> Default;
+        {ok, Value} -> Value
+    end.
+
+default_find(K, Dict) ->
+    default_find(K, [], Dict).
+
 basic_stats(PoolId, BucketId) ->
     Pool = menelaus_web:find_pool_by_id(PoolId),
     Bucket = menelaus_web:find_bucket_by_id(Pool, BucketId),
@@ -45,10 +54,9 @@ basic_stats(PoolId, BucketId) ->
     SamplesNum = 10,
     Samples = get_stats_raw(PoolId, BucketId, SamplesNum),
     OpsPerSec = avg(deltas(sum_stats_ops(Samples))),
-    EvictionsPerSec = avg(deltas(proplists:get_value("evictions", Samples))),
-    CurBytes = erlang:max(avg(proplists:get_value("bytes", Samples)),
-                          1),
-    MaxBytes = erlang:max(avg(proplists:get_value("limit_maxbytes", Samples)),
+    EvictionsPerSec = avg(deltas(default_find("evictions", Samples))),
+    CurBytes = erlang:max(avg(default_find("bytes", Samples)), 1),
+    MaxBytes = erlang:max(avg(default_find("limit_maxbytes", Samples)),
                           CurBytes),
     [{cacheSize, NumNodes * MbPerNode},
      {opsPerSec, OpsPerSec},
@@ -168,47 +176,56 @@ get_stats(PoolId, BucketId, _Params) ->
     SamplesInterval = 1000, % A sample every second.
     SamplesNum = 60, % Sixty seconds worth of data.
     Samples = get_stats_raw(PoolId, BucketId, SamplesNum),
-    Samples2 = case lists:keytake(t, 1, Samples) of
-                   false -> [{t, []} | Samples];
-                   {value, {t, TStamps}, SamplesNoTStamps} ->
-                       [{t, lists:map(fun (A) -> misc:time_to_epoch_int(A) * 1000 end,
-                                      TStamps)} |
-                        SamplesNoTStamps]
-               end,
-    LastSampleTStamp = case Samples2 of
-                           [{t, []} | _]       -> 0;
-                           [{t, TStamps2} | _] -> lists:last(TStamps2);
-                           _                   -> 0
+    Samples2 = dict:map(fun (t, V) ->
+                                lists:map(fun (A) ->
+                                                  misc:time_to_epoch_int(A) * 1000
+                                          end, V);
+                            (_K, V) -> V
+                        end,
+                        Samples),
+
+    LastSampleTStamp = case default_find(t, Samples2) of
+                           [] -> 0;
+                           [First | _Rest] -> First
                        end,
-    Samples3 = [{ops, sum_stats_ops(Samples2)} | Samples2],
-    Samples4 = [{misses, sum_stats(["get_misses",
-                                    "incr_misses",
-                                    "decr_misses",
-                                    "delete_misses",
-                                    "cas_misses"],
-                                   Samples3)} |
-                Samples3],
-    Samples5 = [{updates, sum_stats(["cmd_set",
+
+    Samples3 = dict:store(ops, sum_stats_ops(Samples2), Samples2),
+    Samples4 = dict:store(misses,
+                          sum_stats(["get_misses",
+                                     "incr_misses",
+                                     "decr_misses",
+                                     "delete_misses",
+                                     "cas_misses"],
+                                    Samples3),
+                         Samples3),
+
+    Samples5 = dict:store(updates,
+                          sum_stats(["cmd_set",
                                      "incr_hits", "decr_hits", "cas_hits"],
-                                    Samples4)} |
-                Samples4],
-    Samples6 = [{hit_ratio,
-                 lists:zipwith(fun(undefined, _) -> 0;
-                                  (_, undefined) -> 0;
-                                  (_, 0)         -> 0;
-                                  (Hits, Gets)   -> float_round(Hits / Gets)
-                               end,
-                               proplists:get_value("get_hits", Samples5),
-                               proplists:get_value("cmd_get", Samples5))} |
-                Samples5],
-    Samples7 = lists:map(fun({t, Vals}) -> {t, Vals};
-                            ({K, Vals}) -> {K, deltas(Vals)}
-                         end,
-                         Samples6),
+                                    Samples4),
+                          Samples4),
+
+    Samples6 = dict:store(hit_ratio,
+                          lists:zipwith(fun (H,G) ->
+                                                float_round(case catch(H / G) of
+                                                                {'EXIT', _R} -> 0;
+                                                                V -> V
+                                                            end)
+                                        end,
+                                        default_find("get_hits", Samples5),
+                                        default_find("cmd_get", Samples5)),
+                          Samples5),
+
+    Samples7 = dict:to_list(dict:map(fun(t, Vals) -> Vals;
+                                        (_K, Vals) -> deltas(Vals)
+                                     end,
+                                     Samples6)),
     {ok, SamplesInterval, LastSampleTStamp, Samples7}.
 
 % get_stats_raw() returns something like, where lists are sorted
 % with most-recent last.
+%
+% (imagine this as a dict)
 %
 % [{"total_items",[0,0,0,0,0]},
 %  {"curr_items",[0,0,0,0,0]},
@@ -222,7 +239,7 @@ get_stats(PoolId, BucketId, _Params) ->
 %  ...]
 
 get_stats_raw(_PoolId, BucketId, SamplesNum) ->
-    dict:to_list(stats_aggregator:get_stats(BucketId, SamplesNum)).
+    stats_aggregator:get_stats(BucketId, SamplesNum).
 
 sum_stats_ops(Stats) ->
     sum_stats(["cmd_get", "cmd_set",
@@ -233,24 +250,13 @@ sum_stats_ops(Stats) ->
                "cmd_flush"],
               Stats).
 
-sum_stats([Key | Rest], Stats) ->
-    sum_stats(Rest, Stats, proplists:get_value(Key, Stats)).
-
-sum_stats([Key | Rest], Stats, undefined) ->
-    sum_stats(Rest, Stats, proplists:get_value(Key, Stats));
-sum_stats([], _Stats, undefined)    -> [];
-sum_stats([], _Stats, Acc)          -> Acc;
-sum_stats([Key | Rest], Stats, Acc) ->
-    case proplists:get_value(Key, Stats) of
-        undefined ->
-            sum_stats(Rest, Stats, Acc);
-        KeyStats ->
-            Acc2 = lists:zipwith(fun(undefined, undefined) -> Acc;
-                                    (undefined, _)         -> Acc;
-                                    (_,         undefined) -> Acc;
-                                    (X, Y) -> X + Y end, KeyStats, Acc),
-            sum_stats(Rest, Stats, Acc2)
-    end.
+sum_stats(Keys, Stats) ->
+    D = dict:filter(fun(K,_V) -> lists:member(K, Keys) end, Stats),
+    dict:fold(fun(_K, V, []) ->
+                      V;
+                 (_K, V, L) ->
+                      lists:zipwith(fun(X,Y) -> X+Y end, V, L)
+              end, [], D).
 
 avg(undefined) -> 0.0;
 avg(L)         -> avg(L, 0, 0).
