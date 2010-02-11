@@ -574,7 +574,8 @@ var StatGraphs = {
     }
 
     var selected = self.selected.value;
-    renderLargeGraph(main, stats[selected]);
+    if (stats[selected])
+      renderLargeGraph(main, stats[selected]);
 
     _.each(self.visibleStats, function (statName) {
       if (!stats[statName])
