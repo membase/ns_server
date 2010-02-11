@@ -1387,8 +1387,8 @@ var ThePage = {
     BreadCrumbs.init();
 
     DAO.onReady(function () {
-      if (!DAO.login) {
-        $('.sign-out-link').hide();
+      if (DAO.login) {
+        $('.sign-out-link').show();
       }
     });
 
@@ -1462,6 +1462,10 @@ _.extend(ViewHelpers, {
   }
 });
 
+function hideAuthForm() {
+  $(document.body).removeClass('auth');
+}
+
 function loginFormSubmit() {
   var login = $('#login_form [name=login]').val();
   var password = $('#login_form [name=password]').val();
@@ -1472,8 +1476,7 @@ function loginFormSubmit() {
     $('#login_form').removeClass('noform');
 
     if (status == 'success') {
-      $('#container').show();
-      $('#auth_dialog').hide();
+      hideAuthForm();
       return;
     }
 
@@ -1487,6 +1490,9 @@ window.nav = {
 };
 
 $(function () {
+  $(document.body).removeClass('nojs');
+  $(document.body).addClass('auth');
+
   _.defer(function () {
     var e = $('#auth_dialog [name=login]').get(0);
     try {e.focus();} catch (ex) {}
@@ -1516,8 +1522,7 @@ $(function () {
   var spinner = overlayWithSpinner('#login_form', false);
   try {
     if (DAO.tryNoAuthLogin()) {
-      $('#container').show();
-      $('#auth_dialog').hide();
+      hideAuthForm();
     }
   } finally {
     try {

@@ -7,22 +7,23 @@
 <!--[if IE]><script language="javascript" type="text/javascript" src="/js/excanvas.min.js"></script><![endif]-->
 <script src="/js/all.js"></script>
 </head>
-<body>
-  <div id="container" style="display:none;">
+<body class="nojs">
+  <div id="container">
     <div id="header">
       <div class="cnt_holder main_holder">
         <div class="topper_nav">
           <a href="#">About</a>
           <b>&bull;</b>
           <a href="#">Help</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-          <a href="javascript:ThePage.signOut();" class="sign-out-link">Sign Out</a>
+          <a href="javascript:ThePage.signOut();" class="sign-out-link" style="display:none;">Sign Out</a>
         </div>
         <a href="/index.html"><span>&nbsp;</span></a>
       </div>
     </div> <!-- header -->
 
+    <div id="nojs_alert">Either your browser doesn't support javascript or it's currently disabled. This is javascript application and it requires recent-enough browser and enabled javascript.</div>
+    <script type="text/javascript">$('#nojs_alert').hide();</script>
     <div id="mainContainer" class="main_holder">
-    <div id="nojs_alert">Javascript seems to be switched off in your browser!</div>
     <div class="bread_crumbs">
       <ul>
         <li class="nobg"><a href="#">Lorem</a></li>
@@ -1138,6 +1139,7 @@ MemcachedClient client = manager.getClient();</pre>
     </div>
   </div>
 </div>
+</div> <!-- #container -->
 <div class="auth_block" id="auth_dialog">
   <div class="pad">
     <div class="alert_red" style="display:none;">
