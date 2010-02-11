@@ -224,7 +224,7 @@ function prepareAreaUpdate(jq) {
 }
 
 function getRealBackgroundColor(jq) {
-  while (true) {
+  while (jq.get(0) != document) {
     if (!jq.length)
       return 'transparent';
     var rv = jq.css('background-color');
