@@ -132,7 +132,7 @@ loop(Req, DocRoot) ->
                          ["settings", "advanced"] ->
                              {auth, fun handle_settings_advanced_post/1};
                          ["pools", _PoolId] ->
-                             {done, Req:respond(403, [], "")};
+                             {done, Req:respond({403, [], ""})};
                          ["pools", _PoolId, "controller", "testWorkload"] ->
                              {auth, fun handle_traffic_generator_control_post/1};
                          ["controller", "ejectNode"] ->
