@@ -312,12 +312,12 @@ function renderTemplate(key, data) {
     });
 
     $(window).trigger('template:rendered');
-  } catch (e) {
-    if (confirm('Template error:' + String(fn) + ', ' + e.templateBody)) {
-      debugger
-      renderTemplate(key, data);
-    }
-    throw e;
+  // } catch (e) {
+  //   if (confirm('Template error:' + String(fn) + ', ' + e.templateBody)) {
+  //     debugger
+  //     renderTemplate(key, data);
+  //   }
+  //   throw e;
   } finally {
     AfterTemplateHooks = oldHooks;
   }
