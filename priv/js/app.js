@@ -910,19 +910,8 @@ var BucketsSection = {
   onEnter: function () {
     this.cells.detailsPageURI.recalculate();
   },
-  handlePasswordMatch: function (parent) {
-    var passwd = parent.find("[name=password]").val();
-    var passwd2 = parent.find("[name=verifyPassword]").val();
-    var show = (passwd != passwd2);
-    parent.find('.dont-match')[show ? 'show' : 'hide']();
-    parent.find('[type=submit]').each(function () {
-      setBoolAttribute($(this), 'disabled', show);
-    });
-    return !show;
-  },
   checkFormChanges: function () {
     var parent = $('#add_new_bucket_dialog');
-    this.handlePasswordMatch(parent);
 
     var cache = parent.find('[name=cacheSize]').val();
     if (cache != this.lastCacheValue) {
@@ -985,53 +974,6 @@ var BucketsSection = {
         self.cells.detailedBuckets.recalculate();
       }
     });
-  },
-  startPasswordChange: function () {
-    var self = this;
-    var form = $('#bucket_password_form');
-    $("#bucket_password_form input[type=password]").val('');
-    var oldPassword = form.find("[name=oldPassword]");
-    var newPassword = form.find("[name=password]");
-
-    form.bind('submit', function (e) {
-      e.preventDefault();
-      var pwd = newPassword.val();
-      var oldPwd = oldPassword.val();
-
-      // generate JSON by hand, no need to import json library just for one request
-      var data = ['{"password": "', escapeJS(pwd), '","oldPassword": "', escapeJS(oldPwd), '"}'].join('');
-
-      var spinner = overlayWithSpinner('#bucket_password_dialog');
-      var modal = new ModalAction();
-      $.ajax({
-        type: 'POST',
-        url: self.currentlyShownBucket.uri,
-        data: data,
-        success: continuation // TODO: will probably need to handle
-                              // some kind of validation errors from
-                              // oldPassword later
-      })
-
-      return;
-
-      function continuation() {
-        self.refreshBuckets(continuation2);
-      }
-      function continuation2() {
-        spinner.remove();
-        modal.finish();
-        hideDialog('bucket_password_dialog');
-        hideDialog('bucket_details_dialog_container');
-      }
-    });
-    var observer = form.observePotentialChanges(function () {
-      self.handlePasswordMatch(form);
-    })
-    showDialog("bucket_password_dialog", {
-      onHide: function () {
-        observer.stopObserving();
-        form.unbind();
-      }});
   },
   startRemovingBucket: function () {
     if (!this.currentlyShownBucket)
