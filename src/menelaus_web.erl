@@ -402,10 +402,10 @@ handle_bucket_delete(PoolId, BucketId, Req) ->
         true ->
             ns_log:log(?MODULE, 0011, "Deleted bucket ~p from pool ~p",
                        [BucketId, PoolId]),
-            Req:respond(204, [], []);
+            Req:respond({204, [], []});
         false ->
             %% if bucket isn't found
-            Req:respond(404, [], "The bucket to be deleted was not found.")
+            Req:respond({404, [], "The bucket to be deleted was not found.\r\n"})
     end,
     ok.
 
