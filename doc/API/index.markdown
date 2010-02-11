@@ -133,12 +133,10 @@ RESTful endpoints in the representation of the item one would control.
 ## Resources
 
 * Pool - A collection of physical resources grouped together and providing
-services and a management interface.  A member of a pool is a Node.  Pools
-were later renamed to "clusters" (and the previous concept of cluster changed)
-so this document may refer to either.
+services.  A member of a pool is a Node.  Pools were later renamed to "clusters"
+(and the previous concept of cluster changed) so this document may refer to either.
     * _Statistics_ - Pools provide an overall pool level data view of counters 
-      and periodic metrics of the overall system.  Historic storage of 
-      statistics can be configured and queried.
+      and periodic metrics of the overall system.
 * Node - A system within a pool.  Nodes may provide Node-local representations
 of a service, but are also required to provide or proxy Pool level resources.
 * Bucket - A logical grouping of resources within a pool.  A bucket provides a
@@ -149,9 +147,8 @@ number of things which ease pool management and enable management of resources:
     * _Storage Handling Rules_ - Rules on how data is persisted, replicated and
       otherwise handled is defined at the bucket level.
     * _Statistics_ - Buckets provide bucket level data view of counters and
-      periodic metrics of the overall system.  Historic storage of statistics
-      can be configured and queried.  These counters and metrics are specific to
-      the bucket.
+      periodic metrics of the overall system. These counters and metrics are
+      specific to the bucket.
 
 ## User Interface
 
@@ -730,13 +727,17 @@ At release of 1.0, this will always return a 403.
 
 #### Pool Operations
 
+Creating a new pool is not currently supported.
+
+A new pool may be supported in future releases.  At that time a pool can be
+created by posting to the /pools URI.
+
 *Request*
 
 <pre class="restcalls">
-POST /pools/My New Pool
-{
-   "name" : "My New Pool"
-}
+POST /pools/mynewpool
+
+ name=mynewpool
 </pre>
 
 *Response*
