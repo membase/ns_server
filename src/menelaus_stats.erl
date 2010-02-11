@@ -65,6 +65,7 @@ basic_stats(PoolId, BucketId) ->
 
 % GET /pools/default/stats?stat=opsbysecond
 % GET /pools/default/stats?stat=hot_keys
+% GET /pools/default/stats?stat=combined
 
 handle_bucket_stats(PoolId, all, Req) ->
     handle_bucket_stats(PoolId, "default", Req);
