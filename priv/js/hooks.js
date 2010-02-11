@@ -348,9 +348,6 @@ var MockedRequest = mkClass({
     var params = this.deserialize(this.options.data)
     console.log("params: ", params);
     var errors = [];
-    // check password at UI side
-    // if (params['password'] != params['verifyPassword'])
-    //   errors.push("passwords don't match");
 
     if (isBlank(params['name'])) {
       errors.push('name cannot be blank');
@@ -360,10 +357,6 @@ var MockedRequest = mkClass({
 
     if (!(/^\d*$/.exec(params['cacheSize']))) {
       errors.push("cache size must be an integer");
-    }
-
-    if (isBlank(params['password'])) {
-      errors.push('password cannot be blank');
     }
 
     if (errors.length) {
