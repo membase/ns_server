@@ -24,5 +24,5 @@ version() ->
                          end;
             X3 -> X3
         end,
-    V.
+    "northscale_proxy-" ++ V.
 
