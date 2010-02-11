@@ -525,10 +525,10 @@ handle_join(Req) ->
     %%                    user=admin&password=admin123
     %%
     Params = Req:parse_qs(),
-    OtherHost = proplist:get_value("clusterMemberHostIp", Params),
-    OtherPort = proplist:get_value("clusterMemberPort", Params),
-    OtherUser = proplist:get_value("user", Params),
-    OtherPswd = proplist:get_value("password", Params),
+    OtherHost = proplists:get_value("clusterMemberHostIp", Params),
+    OtherPort = proplists:get_value("clusterMemberPort", Params),
+    OtherUser = proplists:get_value("user", Params),
+    OtherPswd = proplists:get_value("password", Params),
     case lists:member(undefined,
                       [OtherHost, OtherPort, OtherUser, OtherPswd]) of
         true  -> Req:respond({400, [], []});
