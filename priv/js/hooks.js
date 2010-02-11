@@ -319,6 +319,10 @@ var MockedRequest = mkClass({
       return this.handleWorkloadControlPost();
     }
 
+    if (_.isEqual(this.path, ["settings", "web"])) {
+      return this.fakeResponse({newBaseUri: 'http://' + document.location.host + '/'});
+    }
+
     if (this.path[0] == "buckets" && this.options.type == 'DELETE')
       return this.handleBucketRemoval();
 

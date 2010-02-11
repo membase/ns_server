@@ -363,8 +363,11 @@ function jsComparator(a,b) {
 function reloadApp(middleCallback) {
   prepareAreaUpdate($(document.body));
   if (middleCallback)
-    middleCallback();
-  window.location.reload();
+    var rv = middleCallback();
+  if (rv)
+    window.location.href = rv;
+  else
+    window.location.reload();
 }
 
 // this thing ensures that a back button pressed during some modal

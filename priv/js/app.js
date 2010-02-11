@@ -1224,12 +1224,23 @@ var SettingsSection = {
       e.preventDefault();
 
       reloadApp(function () {
+        var data;
         $.ajax({
           type: 'POST',
           url: $(self).attr('action'),
           data: $(self).serialize(),
-          async: false
+          datatype: 'json',
+          async: false,
+          success: function (_data) {
+            data = _data;
+          }
         });
+        if (data && data.newBaseUri) {
+          var uri = data.newBaseUri;
+          if (uri.charAt(uri.length-1) == '/')
+            uri = uri.slice(0, -1);
+          return uri + document.location.pathname;
+        }
       });
     });
   },
