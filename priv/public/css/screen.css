@@ -272,6 +272,8 @@ a:link {
   _padding:0 0 40px 0;
 }
 
+#mainContainer #nojs_alert {display:block; font-size:16px; padding:20px 0; display:none;}
+
 #footer {
 	position: absolute;
 	background: url('../images/ns_console_footer.png') repeat-x;
