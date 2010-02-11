@@ -22,7 +22,7 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 #overview {_width:780px; _overflow:hidden;}
 
 /* links decoration */
-#buckets table td a.text_11 {text-decoration:none;}
+
 
 /* universal styles */
 .nobr {white-space:nowrap;}
@@ -44,7 +44,7 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 .nbrdr {border:0px !important;}
 .nbrdr * {border:0px !important;}
 .bimnone {background-image:none !important;}
-.gray_link {color:#444245 !important;}
+.gray_link {/*color:#444245 !important;*/}
 .text_11 {font-size:11px !important;}
 .text_12 {font-size:12px;}
 .text_14 {font-size:14px !important;}
@@ -69,12 +69,12 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 .main_holder {width:960px; position:relative; margin:auto; left:0px !important;}
 
 .save_cancel {height:31px; padding:5px 0;}
-.save_cancel button {position:relative; top:-1px;}
+.save_cancel button {position:relative; top:-1px; cursor:pointer;}
 .save_cancel .save_button {display:block; width:121px; height:31px; font-weight:bolder; color:#fff; text-align:center; line-height:31px; font-size:14px; text-decoration:none; background:url(../images/button_blue.gif) 0 0 no-repeat; border:0px;}
 .save_cancel .save_button:hover {background-position:0 -31px;}
 .save_cancel .save_button:active {background-position:0 -62px;}
 .save_cancel .button_3 {width:146px; height:31px; background:url(../images/button_blue_3.gif) 0 0 no-repeat;}
-.save_cancel .cancel_button {display:block; width:80px; height:31px; line-height:31px; color:#8b8b8e; text-align:center; font-weight:bolder; text-decoration:none;}
+.save_cancel .cancel_button {display:block; width:80px; height:31px; line-height:31px; color:#8b8b8e; text-align:center; font-weight:bolder; text-decoration:none; margin-right:30px;}
 .save_cancel .button_3:hover {background-position:0 -31px;}
 .save_cancel .button_3:active {background-position:0 -62px;}
 
@@ -91,7 +91,7 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 .topper_nav b {margin:0 2px; color:#848f96; font-weight:bolder;}
 
 /* buttons */
-a.button_medium {display:block; color:#444245 !important;}
+a.button_medium {display:block; color:#444245 !important; text-decoration:none !important}
 .button_medium {width:154px; height:32px; font-size:14px; border:0px; overflow:visible; background:url(../images/button_gray_medium.gif) 0 0 no-repeat; line-height:32px; cursor:pointer; color:#444245; text-align:center; text-decoration:none;}
 .button_medium:hover {background-position:0 -32px; color:#f8eeed !important;}
 .button_medium:active {background-position:0 -64px; color:#e0eff7 !important;}
@@ -102,7 +102,7 @@ a.button_medium {display:block; color:#444245 !important;}
 
 .header_2 {height:40px; line-height:40px; padding:5px 0 0 11px; font-size:18px; font-family:Verdana; background:url(../images/devider_line_1.gif) 0 100% repeat-x #dfe0e0; font-weight:normal;}
 .header_2 span {color:#f2692d;}
-.header_2 span a {color:#f2692d;}
+.header_2 span a {/*color:#f2692d;*/}
 .header_2 .nav {color:#b6b6ba; font-size:11px; padding:0 11px 0 0;}
 .header_2 .nav a {font-weight:bolder; color:#0095d6; margin:0 3px; cursor:pointer;}
 .header_2 .nav .current {color:#444245; cursor:default;}
@@ -141,7 +141,7 @@ h1 .nav a {font-size:11px; font-weight:bolder; cursor:pointer;}
 .gray_rb .right {height:71px; background:url(../images/gray_box_bg.gif) 100% -71px no-repeat;}
 .gray_rb .pad {padding:12px 10px 12px 13px !important; background:none !important;}
 
-.button_big {display:block; height:47px; overflow:hidden; background:url(../images/button_gray_big.gif) 0 -94px repeat-x; font-size:18px; color:#444245 !important; line-height:47px; text-align:center; width:31%; float:left; margin:0 1%; cursor:pointer; text-decoration:none;}
+.button_big {display:block; height:47px; overflow:hidden; background:url(../images/button_gray_big.gif) 0 -94px repeat-x; font-size:18px; color:#444245 !important; line-height:47px; text-align:center; width:31%; float:left; margin:0 1%; cursor:pointer; text-decoration:none !important;}
 .button_big span {display:block; background:url(../images/button_gray_big.gif) 0 0 no-repeat;}
 .button_big span span {height:47px; background:url(../images/button_gray_big.gif) 100% -47px no-repeat;}
 
@@ -174,7 +174,8 @@ h1 .nav a {font-size:11px; font-weight:bolder; cursor:pointer;}
 .usage_smallest_info {width:135px; font-size:11px; color:#8a8a8d; line-height:15px;}
 .usage_smallest_info .usage_smallest {float:left; margin:0 5px 0 0;}
 
-a {color:#0095d6; cursor:pointer;}
+a {color:#0095d6; cursor:pointer; text-decoration:none;}
+a:hover {text-decoration:underline;}
 
 body {
 	line-height: 1;
@@ -238,7 +239,7 @@ input { border: 0px solid white; margin: 0;  padding: 0; }
 a:link {
 /*	color: #00A6DE;*/
   color:#0095d6;
-	text-decoration: none;
+/*	text-decoration: none;*/
 }
 
 #container {
@@ -573,6 +574,7 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 
 .lbox .spinner {background:none #e9f3f9 !important;}
 .lbox .spinner span {display:block; position:relative; margin:0 auto 0 auto; top:50%; width:150px !important;height:20px !important; line-height:14px !important; padding:50px 0 0 0 !important; margin-top:-30px; background:url(../images/spinner/spinner_lightbox.gif) 55px 5px no-repeat; color:#6da2c2; font-size:12px; text-align:center;}
+.lbox .info_text {font-size:12px; padding:0 0 10px 0; line-height:15px;}
 
 #add_new_bucket_form {}
 #add_new_bucket_form p {min-height:15px; _height:15px; padding:0 0 15px 0; font-size:11px; line-height:15px;}
