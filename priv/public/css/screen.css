@@ -425,7 +425,7 @@ background:url(../images/mini_graph_bg.gif) 0 0 no-repeat; margin:0 12px 7px 12p
     z-index:3100 !important;
 }
 
-.jqmOverlay { background-color: #000; z-index:2000 !important; position:fixed; *display:none;}
+.jqmOverlay { background-color: #000; z-index:2000 !important; position:fixed; display:none !important;}
 
 /* Fixed posistioning emulation for IE6
      Star selector used to hide definition from browsers other than IE6
