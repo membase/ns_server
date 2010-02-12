@@ -2,9 +2,6 @@
 * (low priority) don't use hardcoded uris for alerts, settings & logs
    as we do now
 
-* "Cluster Disk Usage" should be "Cluster Cache Allocated" (spec or
-   server-side implementation is needed)
-
 * list of statistics on 'Configure View' should be adjusted to match
    actually produced stats
 
@@ -30,7 +27,7 @@ o [DONE] log for alerts section
    indicator on overview
 
 o [DONE] fix ugliness of analytics graphs
-* render pix-perfect graphs
+* render pix-perfect graphs (markers)
 o [DONE] xx nodes last collected ?? secs ago on analytics
 * 'cluster memory available' for bucket creation
 
