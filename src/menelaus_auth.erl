@@ -45,6 +45,8 @@ apply_auth_bucket(Req, F, Args) ->
 %                        {"admin", [{password, "admin"}]}]}
 %              ]}. % An empty list means no login/password auth check.
 
+check_auth_bucket(undefined) ->
+    false; %% no password -- false check, otherwise password-less buckets will allow access
 check_auth_bucket(UserPassword) ->
     % Default pool only for 1.0.
     case ns_config:search_prop(ns_config:get(), pools, "default", empty) of
