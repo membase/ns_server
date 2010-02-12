@@ -625,7 +625,7 @@ handle_settings_web(Req) ->
 
 build_settings_web() ->
     Config = ns_config:get(),
-    {U, P} = case ns_config:search_prop(Config, rest_cred, creds) of
+    {U, P} = case ns_config:search_prop(Config, rest_creds, creds) of
                  [{User, Auth} | _] ->
                      {User, proplists:get_value(password, Auth, "")};
                  _NoneFound ->
