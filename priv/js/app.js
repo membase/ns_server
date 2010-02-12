@@ -64,6 +64,17 @@ function setFormValues(form, values) {
   });
 }
 
+function handlePasswordMatch(parent) {
+  var passwd = parent.find("[name=password]:not([disabled])").val();
+  var passwd2 = parent.find("[name=verifyPassword]:not([disabled])").val();
+  var show = (passwd != passwd2);
+  parent.find('.dont-match')[show ? 'show' : 'hide']();
+  parent.find('[type=submit]').each(function () {
+    setBoolAttribute($(this), 'disabled', show);
+  });
+  return !show;
+}
+
 function formatUptime(seconds, precision) {
   precision = precision || 8;
 
@@ -1219,6 +1230,11 @@ var SettingsSection = {
 
     self.webSettings.subscribe($m(this, 'fillBasicForm'));
     self.advancedSettings.subscribe($m(this, 'fillAdvancedForm'));
+
+    var basicSettingsForm = $('#basic_settings_form');
+    basicSettingsForm.observePotentialChanges(_.bind(handlePasswordMatch,
+                                                     null,
+                                                     basicSettingsForm));
 
     $('#settings form').submit(function (e) {
       var self = this;
