@@ -42,7 +42,7 @@ function setBoolAttribute(jq, attr, value) {
 }
 
 function setFormValues(form, values) {
-  form.find('input[type=text], input:not([type])').each(function () {
+  form.find('input[type=text], input[type=password], input:not([type])').each(function () {
     var text = $(this);
     var name = text.attr('name');
     var value = String(values[name] || '');
@@ -1169,8 +1169,10 @@ var SettingsSection = {
     $('#alerts_settings_guts')[method]('block');
 
     var secureServ = $('#secure_serv');
-    method = (secureServ.get(0).checked) ? 'addClass' : 'removeClass';
+    var isVisible = (secureServ.get(0).checked);
+    method = isVisible ? 'addClass' : 'removeClass';
     $('#server_secure')[method]('block');
+    setBoolAttribute($('#server_secure input:not([type=hidden])'), 'disabled', !isVisible)
   },
   init: function () {
     var self = this;
@@ -1284,7 +1286,9 @@ var SettingsSection = {
     switchSecureOn();
   },
   fillBasicForm: function () {
-    setFormValues($('#basic_settings_form'), this.webSettings.value);
+    var form = $('#basic_settings_form');
+    setFormValues(form, this.webSettings.value);
+    form.find('[name=verifyPassword]').val(this.webSettings.value['password']);
     setBoolAttribute($('#secure_serv'), 'checked', !!(this.webSettings.value['username']));
     this.handleHideShowCheckboxes();
   },

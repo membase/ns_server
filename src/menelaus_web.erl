@@ -653,9 +653,14 @@ handle_settings_web_post(Req) ->
                 false ->
                     ns_config:set(rest,
                                   [{port, PortInt}]),
-                    ns_config:set(rest_creds,
-                                  [{creds,
-                                    [{U, [{password, P}]}]}])
+                    if
+                        {[], []} == {U,P} ->
+                            ns_config:set(rest_creds, [{creds, []}]);
+                        true ->
+                            ns_config:set(rest_creds,
+                                          [{creds,
+                                            [{U, [{password, P}]}]}])
+                    end
                     % No need to restart right here, as our ns_config
                     % event watcher will do it later if necessary.
             end,

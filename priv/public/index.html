@@ -560,16 +560,17 @@
                     <div class="labeled_line">
                       <label class="block label for_input" for="username">Username:</label>
                       <div class="line_cnt">
-                        <input type="text" name="username" class="text inp_short"/>
+                        <input type="text" name="username" disabled class="text inp_short"/>
                         <a href="javascript:SettingsSection.gotoSetupAlerts();" class="text_11">Setup Email Alerts</a>
                       </div>
                     </div>
                     <div class="labeled_line">
                       <label class="block label for_input" for="password">Password:</label>
                       <div class="line_cnt">
-                        <input name="password" type="password" class="text inp_short"/>
+                        <input name="password" type="password" disabled class="text inp_short"/>
                       </div>
                     </div>
+                    <input type="hidden" name="username" value=""><input type="hidden" name="password" value="">
                     <div class="labeled_line">
                       <label class="block label for_input" for="verifyPassword">Verify Password:</label>
                       <div class="line_cnt">
