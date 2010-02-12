@@ -596,8 +596,8 @@ body.nojs #mainContainer { display: none; }
 body.auth #auth_dialog { display: block; }
 body.auth #container { display: none; }
 
-#nojs_alert { display: none; }
-body.nojs #nojs_alert { display: block; }
+#nojs_alert { display: none;}
+body.nojs #nojs_alert { display: block; width:960px; margin:40px auto 0 auto;}
 
 .auth_block {height:737px; background:url(../images/watermark.jpg) 0 0 no-repeat; position:relative;}
 .auth_block h1 {color:#2f3536; text-transform:uppercase; font-size:28px; padding:28px 0 30px 0; position:relative; top:13px;}
