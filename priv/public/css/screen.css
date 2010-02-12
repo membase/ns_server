@@ -416,18 +416,16 @@ background:url(../images/mini_graph_bg.gif) 0 0 no-repeat; margin:0 12px 7px 12p
   
 .jqmWindow {
     display: none;
-    
     position: fixed;
     top: 17%;
     left: 50%;
-    
     margin-left: -357px;
     width: 715px;
-    
     color: #333;
+    z-index:3100 !important;
 }
 
-.jqmOverlay { background-color: #000; }
+.jqmOverlay { background-color: #000; z-index:2000 !important; position:fixed; *display:none;}
 
 /* Fixed posistioning emulation for IE6
      Star selector used to hide definition from browsers other than IE6
@@ -435,6 +433,7 @@ background:url(../images/mini_graph_bg.gif) 0 0 no-repeat; margin:0 12px 7px 12p
 * html .jqmWindow {
      position: absolute;
      top: expression((document.documentElement.scrollTop || document.body.scrollTop) + Math.round(17 * (document.documentElement.offsetHeight || document.body.clientHeight) / 100) + 'px');
+     z-index:3100 !important;
 }
 html {height:auto;}
 .spinner { vertical-align: middle; text-align: center; }
