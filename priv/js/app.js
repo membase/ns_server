@@ -1586,10 +1586,10 @@ $(function () {
       var op = expander.hasClass('expanded') ? off : on;
       op();
     });
-    if (cookie() == '1') {
-      on()
-    } else {
+    if (cookie() == '0') {
       off();
+    } else {
+      on();
     }
   })($('#get_started_expander'));
 });
