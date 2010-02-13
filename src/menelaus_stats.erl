@@ -125,24 +125,47 @@ build_buckets_stats_ops_response(PoolId, BucketIds, Params) ->
                              {samplesInterval, SamplesInterval}
                              | Samples2]}}]}.
 
-build_buckets_stats_hks_response(_PoolId, _BucketIds, _Params) ->
-    % TODO: hot key stats.
-    {struct, [{hot_keys, [{struct, [{name, <<"product:324:inventory">>},
-                                    {gets, 10000},
-                                    {bucket, <<"shopping application">>},
-                                    {misses, 100}]},
-                          {struct, [{name, <<"user:image:value2">>},
-                                    {gets, 10000},
-                                    {bucket, <<"chat application">>},
-                                    {misses, 100}]},
-                          {struct, [{name, <<"blog:117">>},
-                                    {gets, 10000},
-                                    {bucket, <<"blog application">>},
-                                    {misses, 100}]},
-                          {struct, [{name, <<"user:image:value4">>},
-                                    {gets, 10000},
-                                    {bucket, <<"chat application">>},
-                                    {misses, 100}]}]}]}.
+build_buckets_stats_hks_response(PoolId, BucketIds, Params) ->
+    {ok, BucketsTopKeys} =
+        get_buckets_hks(PoolId, BucketIds, Params),
+    % TODO: sort/chop here
+    HotKeyStructs = lists:map(
+        fun ({BucketId, Key, Evictions, Ratio, Ops}) ->
+                {struct, [{name, list_to_binary(Key)},
+                          {bucket, list_to_binary(BucketId)},
+                          {evictions, Evictions},
+                          {ratio, Ratio},
+                          {ops, Ops}]}
+        end,
+        BucketsTopKeys),
+    {struct, [{hot_keys, HotKeyStructs}]}.
+
+get_buckets_hks(PoolId, BucketIds, Params) ->
+    BucketsTopKeys = lists:flatmap(
+        fun (BucketId) ->
+                {ok, BucketTopKeys} = get_hks(PoolId, BucketId, Params),
+                BucketTopKeys
+        end,
+        BucketIds),
+    {ok, BucketsTopKeys}.
+
+%%#define TK_OPS(C) C(get_hits) C(get_misses) C(cmd_set) C(incr_hits) \
+%%                   C(incr_misses) C(decr_hits) C(decr_misses) \
+%%                   C(delete_hits) C(delete_misses) C(evictions)
+
+get_hks(_PoolId, BucketId, _Params) ->
+    TopKeys = stats_aggregator:get_topkeys(BucketId),
+    TopKeyList = lists:map(
+        fun ({Key, Stats}) ->
+                Ctime = dict:fetch("ctime", Stats),
+                Evictions = dict:fetch("evictions", Stats),
+                Hits = sum_hks(["get_hits", "incr_hits", "decr_hits", "delete_hits"], Stats),
+                Misses = sum_hks(["get_misses", "incr_misses", "decr_misses", "delete_misses"], Stats),
+                Ops = Hits + Misses + dict:fetch("cmd_set", Stats),
+                {BucketId, Key, Evictions / Ctime, Hits / (Hits + Misses), Ops / Ctime}
+        end,
+        dict:to_list(TopKeys)),
+    {ok, TopKeyList}.
 
 get_buckets_stats(PoolId, BucketIds, Params) ->
     [FirstStats | RestStats] =
@@ -258,6 +281,10 @@ sum_stats(Keys, Stats) ->
                  (_K, V, L) ->
                       lists:zipwith(fun(X,Y) -> X+Y end, V, L)
               end, [], D).
+
+sum_hks(Keys, Stats) ->
+    D = dict:filter(fun(K, _V) -> lists:member(K, Keys) end, Stats),
+    dict:fold(fun(_K, V, Acc) -> V + Acc end, 0, D).
 
 avg(undefined) -> 0.0;
 avg(L)         -> avg(L, 0, 0).

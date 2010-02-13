@@ -225,7 +225,7 @@
     <div class="section">
       <h2 class="header_2">
         <span class="block nav float_right">
-          <a class="current">1 Hour</a>
+          <a class="current">Real Time</a>
         </span>
         System overview: <span><a id='analytics_graph_zoom_real_time'>Live View</a></span>
   	  </h2>
@@ -389,18 +389,16 @@
         <table>
           <tr>
             <th>Top Key Values</th>
-            <th>Type</th>
-            <th>Gets</th>
-            <th>Misses</th>
-            <th>Total</th>
+	    <th>Evictions/Sec</th>
+            <th>Hit Ratio</th>
+            <th>Ops/Sec</th>
           </tr>
           <!-- {% $.each(rows, function () { %} -->
             <tr>
               <td>{%= h(this.name) %}</td>
-              <td>{%= h(this.type) %}</td>
-              <td>{%= h(this.gets) %}</td>
-              <td>{%= h(this.misses) %}</td>
-              <td>{%= h(this.total) %}</td>
+              <td>{%= h(Math.round(this.evictions * 100.0) / 100.0) %}</td>
+              <td>{%= h(Math.round(this.ratio * 1000.0) / 10.0) %}</td>
+              <td>{%= h(Math.round(this.ops * 100.0) / 100.0) %}</td>
             </tr>
           <!-- {% }); %} -->
         </table>
