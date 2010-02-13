@@ -1087,11 +1087,6 @@ var AlertsSection = {
     this.alerts = new Cell(function (active) {
       var value = this.self.value;
       var params = {url: "/alerts", data: {}};
-      if (value && value.list) {
-        var number = value.list[value.list.length-1].number;
-        if (number !== undefined)
-          params.data.lastNumber = number;
-      }
       return future.get(params, function (data) {
         if (value) {
           var newDataNumbers = _.pluck(data.list, 'number');
