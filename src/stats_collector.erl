@@ -102,7 +102,38 @@ collect(T, State, Bucket, Sock) ->
                                    State#state.hostname,
                                    State#state.port,
                                    Bucket,
-                                   Stats).
+                                   Stats),
+    {ok, _H, _E, Topkeys} = mc_client_binary:cmd(?STAT, Sock,
+                              fun (_MH, ME, CD) ->
+                                      dict:store(binary_to_list(ME#mc_entry.key),
+                                                 binary_to_list(ME#mc_entry.data),
+                                                 CD)
+                              end,
+                              dict:new(),
+                              {#mc_header{}, #mc_entry{key = <<"topkeys">>}}),
+    stats_aggregator:received_topkeys(T,
+                                      State#state.hostname,
+                                      State#state.port,
+                                      Bucket,
+                                      parse_topkeys(Topkeys)).
+
+parse_topkey_value(Value) ->
+    Tokens = string:tokens(Value, ","),
+    Pairs = lists:map(
+        fun (S) ->
+                [K, V] = string:tokens(S, "="),
+                {N, []} = string:to_integer(V),
+                {K, N}
+        end,
+        Tokens),
+    dict:from_list(Pairs).
+
+parse_topkeys(Topkeys) ->
+    dict:map(
+        fun (_Key, Value) ->
+                parse_topkey_value(Value)
+        end,
+        Topkeys).
 
 %
 %% Entry Points.

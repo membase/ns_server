@@ -8,22 +8,24 @@
 -export([start_link/0,
          monitoring/3,
          received_data/5,
+         received_topkeys/5,
          unmonitoring/3,
          get_stats/4,
-         get_stats/2]).
+         get_stats/2,
+         get_topkeys/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {vals}).
+-record(state, {vals, topkeys}).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
     timer:send_after(2000, post_startup_init),
-    {ok, #state{vals=dict:new()}}.
+    {ok, #state{vals=dict:new(), topkeys=dict:new()}}.
 
 handle_call({get, Hostname, Port, Bucket, Count}, _From, State) ->
     Reply = ringdict:to_dict(Count,
@@ -50,16 +52,37 @@ handle_call({get, Bucket, Count}, _From, State) ->
                  end,
                  dict:new(),
                  State#state.vals)),
+    {reply, Reply, State};
+handle_call({get_topkeys, Bucket}, _From, State) ->
+    Reply = (catch dict:fold(
+            fun ({_Host, _Port, B}, Dict, Acc)->
+                    case B of
+                        Bucket ->
+                            dict:merge(
+                                fun (_Key, Value1, _Value2) ->
+                                        Value1
+                                end,
+                                Dict, Acc);
+                        _ -> Acc
+                    end
+            end,
+            dict:new(),
+            State#state.topkeys)),
     {reply, Reply, State}.
 
 handle_cast({received, T, Hostname, Port, Bucket, Stats}, State) ->
-    % error_logger:info_msg("Got ~p~n", [dict:to_list(Stats)]),
     TS = dict:store(t, T, Stats),
     {noreply, State#state{vals=dict:update({Hostname, Port, Bucket},
                                            fun(R) ->
                                                    ringdict:add(TS, R)
                                            end,
-                                           State#state.vals)}};
+                                           State#state.vals),
+                           topkeys=State#state.topkeys}};
+handle_cast({received_topkeys, _T, Hostname, Port, Bucket, Topkeys}, State) ->
+    {noreply, State#state{vals=State#state.vals,
+                          topkeys=dict:store({Hostname, Port, Bucket},
+                                          Topkeys,
+                                          State#state.topkeys)}};
 handle_cast({monitoring, Hostname, Port, Bucket}, State) ->
     error_logger:info_msg("Beginning to monitor:  ~s@~s:~p~n",
                           [Bucket, Hostname, Port]),
@@ -136,6 +159,9 @@ classify(_) -> true.
 received_data(T, Hostname, Port, Bucket, Stats) ->
     gen_server:cast(?MODULE, {received, T, Hostname, Port, Bucket, Stats}).
 
+received_topkeys(T, Hostname, Port, Bucket, Topkeys) ->
+    gen_server:cast(?MODULE, {received_topkeys, T, Hostname, Port, Bucket, Topkeys}).
+
 monitoring(Hostname, Port, Bucket) ->
     gen_server:cast(?MODULE, {monitoring, Hostname, Port, Bucket}).
 
@@ -147,3 +173,6 @@ get_stats(Hostname, Port, Bucket, Count) ->
 
 get_stats(Bucket, Count) ->
     gen_server:call(?MODULE, {get, Bucket, Count}).
+
+get_topkeys(Bucket) ->
+    gen_server:call(?MODULE, {get_topkeys, Bucket}).
