@@ -29,7 +29,8 @@ default() ->
                       ],
                       [{env, [{"MEMCACHED_CHECK_STDIN", "thread"},
                               {"MEMCACHED_TOP_KEYS", "100"},
-                              {"ISASL_PWFILE", "./isasl.pw"}]}]
+                              {"ISASL_PWFILE", "./isasl.pw"},
+                              {"ISASL_DB_CHECK_TIME", "1"}]}]
                      }
                     ]},
      {alerts, [{'_ver', {0, 0, 0}},

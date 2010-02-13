@@ -94,7 +94,8 @@
      ],
     [{env, [{"MEMCACHED_CHECK_STDIN", "event"},
             {"MEMCACHED_TOP_KEYS", "100"},
-            {"ISASL_PWFILE", "./isasl.pw"} % Also isasl path above.
+            {"ISASL_PWFILE", "./isasl.pw"}, % Also isasl path above.
+            {"ISASL_DB_CHECK_TIME", "1"}
            ]}]
    }
   ]
