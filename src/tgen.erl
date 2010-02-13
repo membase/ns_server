@@ -40,8 +40,8 @@
 
 start_link() ->
     {ok, spawn_link(fun() ->
-                       gen_event:add_handler(ns_config_events,
-                                             ?MODULE, ignored)
+                       ok = gen_event:add_handler(ns_config_events,
+                                                  ?MODULE, ignored)
                     end)}.
 
 is_traffic_bucket(PoolName, BucketName) ->
@@ -200,7 +200,7 @@ traffic(Addrs) ->
 
 traffic(miss1, Addrs) ->
     H = #mc_header{opcode = ?GETK},
-    E = #mc_entry{key = <<"miss">>},
+    E = #mc_entry{key = <<"key0">>},
     bcast(Addrs, H, E);
 
 traffic(get1, Addrs) ->
