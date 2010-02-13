@@ -157,12 +157,16 @@ get_hks(_PoolId, BucketId, _Params) ->
     TopKeys = stats_aggregator:get_topkeys(BucketId),
     TopKeyList = lists:map(
         fun ({Key, Stats}) ->
-                Ctime = dict:fetch("ctime", Stats),
+                Ctime = dict:fetch("ctime", Stats) + 1, % add one to avoid divide by zero
                 Evictions = dict:fetch("evictions", Stats),
                 Hits = sum_hks(["get_hits", "incr_hits", "decr_hits", "delete_hits"], Stats),
                 Misses = sum_hks(["get_misses", "incr_misses", "decr_misses", "delete_misses"], Stats),
+                Ratio = case Hits of
+                    0 -> 0;
+                    _ -> Hits / (Hits + Misses)
+                end, % avoid divide by zero
                 Ops = Hits + Misses + dict:fetch("cmd_set", Stats),
-                {BucketId, Key, Evictions / Ctime, Hits / (Hits + Misses), Ops / Ctime}
+                {BucketId, Key, Evictions / Ctime, Ratio, Ops / Ctime}
         end,
         dict:to_list(TopKeys)),
     {ok, TopKeyList}.
