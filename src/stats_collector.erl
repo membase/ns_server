@@ -67,14 +67,11 @@ collect(T, State) ->
                          [binary, {packet, 0}, {active, false}],
                          1000) of
         {ok, Sock} ->
-            auth(Sock),
-            %% collect(T, State, "default", Sock),
-            %% Collect all the other buckets
+            ok = auth(Sock),
             lists:foreach(fun(B) ->
-                                  mc_client_binary:select_bucket(Sock, B),
-                                  collect(T, State, B, Sock)
+                                 collect(T, State, B, Sock)
                           end,
-                          State#state.buckets -- ["default"]),
+                          State#state.buckets),
             ok = gen_tcp:close(Sock);
         {error, WTF} ->
             error_logger:info_msg("Error in collection:  ~p~n", [WTF])
@@ -89,10 +86,10 @@ auth(Sock) ->
 auth(Sock, U, P) when is_list(U); is_list(P) ->
     % This command may not work unless bucket engine is running (and
     % creds are right).
-    _X = mc_client_binary:auth(Sock, {"PLAIN", {U, P}}),
-    ok.
+    mc_client_binary:auth(Sock, {<<"PLAIN">>, {U, P}}).
 
 collect(T, State, Bucket, Sock) ->
+    {ok, _RecvHeader, _RecvEntry, _NCB} = mc_client_binary:select_bucket(Sock, Bucket),
     {ok, _H, _E, Stats} = mc_client_binary:cmd(?STAT, Sock,
                               fun (_MH, ME, CD) ->
                                       dict:store(binary_to_list(ME#mc_entry.key),
