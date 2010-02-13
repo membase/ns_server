@@ -1050,8 +1050,8 @@ var AnalyticsSection = {
     });
   },
   visitBucket: function (bucketURL) {
-    DAO.cells.statsBucketURL.setValue(bucketURL);
     ThePage.gotoSection('analytics');
+    DAO.cells.statsBucketURL.setValue(bucketURL);
   },
   onLeave: function () {
     setHashFragmentParam('graph', undefined);
