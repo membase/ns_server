@@ -425,7 +425,7 @@ background:url(../images/mini_graph_bg.gif) 0 0 no-repeat; margin:0 12px 7px 12p
     z-index:3100 !important;
 }
 
-.jqmOverlay { background-color: #000; z-index:2000 !important; position:fixed; display:none !important;}
+.jqmOverlay { background-color: #000; z-index:2000 !important; position:fixed;}
 
 /* Fixed posistioning emulation for IE6
      Star selector used to hide definition from browsers other than IE6
@@ -551,10 +551,10 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 .lbox .top .top_right {width:12px; float:right; background:url(../images/lbox_rt.png) 0 0 no-repeat;}
 .lbox .top .top_center {/*margin:0 12px;*/ background:url(../images/lbox_t.png) 0 0 repeat-x; _float:left; *width:687px;}
 
-.lbox .center {background:url(../images/lbox_cent.png) 0 0 repeat-y;}
+.lbox .center {background:url(../images/lbox_cent.png) 0 0 repeat-y; overflow:hidden;}
 .lbox .center .pad {padding:0 7px;}
 
-.lbox .bottom {height:17px; overflow:hidden;}
+.lbox .bottom {height:17px; overflow:hidden; position:relative;}
 .lbox .bottom div {height:17px; overflow:hidden;}
 .lbox .bottom .bottom_left {width:12px;float:left; background:url(../images/lbox_lb.png) 0 0 no-repeat;}
 .lbox .bottom .bottom_right {width:12px; float:right; background:url(../images/lbox_rb.png) 0 0 no-repeat;}
