@@ -80,7 +80,7 @@
 	<div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
     <h2 class="header_2" id="get_started_expander"><span class="expander_2 block">&nbsp;</span>Get Started</h2>
     <div class="pad_10" id="get_started">
-        Congratulations! You may also want to review our <a>Developer Guide</a> or <a>Getting Started Guide</a> before proceding.
+        <span class="info_text">Congratulations! You may also want to review our <a>Developer Guide</a> or <a>Getting Started Guide</a> before proceding.</span>
         <div class="pat_10">
             <div class="gray_rb">
                 <div class="left">
@@ -784,7 +784,7 @@
 ClientManager manager = new ClientManager(base, "{%= h(b.name) %}", "********");
 MemcachedClient client = manager.getClient();</pre>
             </div>
-            <p class="pat_10 text_12">NOTE: The username and password for this cache bucket is the same as the bucket name above.</p>
+            <p class="pat_10 info_text">NOTE: The username and password for this cache bucket is the same as the bucket name above.</p>
             <div class="right save_cancel">
               <button class="save_button float_right" type="submit">DONE</button>
               <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
@@ -823,7 +823,7 @@ MemcachedClient client = manager.getClient();</pre>
         <form id="add_new_bucket_form">
           <p><label><b>Bucket Name:</b><input type="text" name="name" class="inp" style="width:290px;" value="No spaces, alphanumeric up to 12 characters"></label></p>
           <p><label><b>Cache Size:</b><input type="text" name="cacheSize" class="inp" style="width:40px;"><span class="cache-details">&nbsp;</span><!-- MB x 3 server nodes = 192MB Total Cache Size/30GB Cluster memory available. --></label></p>
-          <p><span class="block pas_20 text_12">NOTE: The username and password for this cache bucket is the same as the bucket name above.</span></p>
+          <p><span class="block pas_20 info_text">NOTE: The username and password for this cache bucket is the same as the bucket name above.</span></p>
           <div class="pas_20">
             <div class="right save_cancel">
               <button class="save_button float_right" type="submit">ADD</button>

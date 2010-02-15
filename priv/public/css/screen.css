@@ -65,6 +65,8 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 .select_short {width:120px;}
 .nobg {background:none !important;}
 .lbox pre {background:none #fff; border:1px solid #CCD3D7; padding:10px; margin:5px 0;}
+.info_text {font-size:13px !important;}
+#get_started .info_text {font-weight:bolder;}
 
 .main_holder {width:960px; position:relative; margin:auto; left:0px !important;}
 
@@ -141,8 +143,8 @@ h1 .nav a {font-size:11px; font-weight:bolder; cursor:pointer;}
 .gray_rb .right {height:71px; background:url(../images/gray_box_bg.gif) 100% -71px no-repeat;}
 .gray_rb .pad {padding:12px 10px 12px 13px !important; background:none !important;}
 
-.button_big {display:block; height:47px; overflow:hidden; background:url(../images/button_gray_big.gif) 0 -94px repeat-x; font-size:18px; color:#444245 !important; line-height:47px; text-align:center; width:31%; float:left; margin:0 1%; cursor:pointer; text-decoration:none !important;}
-.button_big span {display:block; background:url(../images/button_gray_big.gif) 0 0 no-repeat;}
+.button_big {display:block; height:47px; overflow:hidden; background:url(../images/button_gray_big.gif) 0 -94px repeat-x; font-size:18px; color:#444245 !important; line-height:47px; text-align:center; width:31%; float:left; margin:0 1%; cursor:pointer; text-decoration:none !important; position:relative;}
+.button_big span {display:block; background:url(../images/button_gray_big.gif) 0 0 no-repeat; overflow:hidden;}
 .button_big span span {height:47px; background:url(../images/button_gray_big.gif) 100% -47px no-repeat;}
 
 .button_big:hover {background-position:0 -235px; color:#f9efed !important;}
@@ -642,7 +644,7 @@ button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
 .stop-active .on_off_button span {right:0px !important;}
 
 /* bread crumbs */
-.bread_crumbs {overflow:hidden; margin:0 0 0 189px; height:45px; padding:5px 0 0 0;}
+.bread_crumbs {overflow:hidden; margin:30px 0 0 189px; height:20px; padding:5px 0 0 0;}
 .bread_crumbs ul {display:block; height:20px; font-size:12px; position:relative; left:-10px;}
 .bread_crumbs ul li {display:block; float:left; padding:0 6px 0 10px; background:url(../images/bc_arrow.gif) 0 4px no-repeat; color:#555557;}
 .bread_crumbs ul li a {text-decoration:underline;}
