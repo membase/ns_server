@@ -1,0 +1,75 @@
+# Needs to run from jruby, because this test client uses
+# spymemcached.  Also, your CLASSPATH env variable needs seeting,
+# like...
+#
+#  export CLASSPATH=./tmp/memcached-2.5rc1.jar
+#
+#  jruby ~/dev/emoxi/test/client_test.jrb set \
+#     "stevenmb.gateway.2wire.net:11212 stevenmb.gateway.2wire.net:11222"
+#
+#  jruby ~/dev/emoxi/test/client_test.jrb get \
+#     "stevenmb.gateway.2wire.net:11212 stevenmb.gateway.2wire.net:11222"
+#
+require 'java'
+
+include_class 'net.spy.memcached.MemcachedClient'
+include_class 'net.spy.memcached.AddrUtil'
+include_class 'net.spy.memcached.HashAlgorithm'
+include_class 'net.spy.memcached.ConnectionFactoryBuilder'
+include_class 'net.spy.memcached.util.DefaultKetamaNodeLocatorConfiguration'
+
+print "ARGV: #{ARGV.join(' ')}\n"
+
+action = ARGV[0]
+servers = ARGV[1]
+key = ARGV[2] || 'x'
+val = ARGV[3] || 'XYZ'
+
+print "action: #{action}\n"
+print "servers: #{servers}\n"
+print "key: #{key}\n"
+
+b = ConnectionFactoryBuilder.new().
+      setHashAlg(HashAlgorithm::KETAMA_HASH).
+      setLocatorType(ConnectionFactoryBuilder::Locator::CONSISTENT)
+f = b.build()
+
+c = MemcachedClient.new(f, AddrUtil.getAddresses(servers))
+
+if action == "set"
+  x = c.set(key, 0, val)
+  print "set #{key} to #{val}, result #{x}\n"
+end
+
+if action == "get"
+  x = c.get(key)
+  print "got #{key}, result #{x}\n"
+end
+
+if action == "set_many"
+  i = 0
+  while i < 1000
+    c.set("many_#{i}", 0, "MANY_#{i}")
+    i = i + 1
+  end
+end
+
+if action == "get_many"
+  good = 0
+  fail = 0
+  i = 0
+  while i < 1000
+    key = "many_#{i}"
+    if c.get(key) == "MANY_#{i}"
+      good = good + 1
+    else
+      fail = fail + 1
+      print "FAIL #{i}, hash: #{HashAlgorithm::KETAMA_HASH.hash(key)}\n"
+    end
+    i = i + 1
+  end
+  print "total good #{good}\n"
+  print "total fail #{fail}\n"
+end
+
+exit
