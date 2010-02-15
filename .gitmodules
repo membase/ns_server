@@ -1,7 +1,0 @@
-[submodule "deps/emoxi"]
-	path = deps/emoxi
-	url = git@github.com:northscale/emoxi.git
-[submodule "deps/menelaus"]
-	path = deps/menelaus
-	url = git@github.com:northscale/menelaus.git
-
