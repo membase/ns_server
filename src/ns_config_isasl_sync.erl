@@ -95,11 +95,15 @@ examine_bucket({BucketName, BucketProps}, D) ->
 %
 
 writeSASLConf(Path, Buckets, AU, AP) ->
+    writeSASLConf(Path, Buckets, AU, AP, 5, 101).
+
+writeSASLConf(Path, Buckets, AU, AP, Tries, SleepTime) ->
     {ok, Pwd} = file:get_cwd(),
     PrivDir = filename:join(Pwd, "priv"),
     FullPath = filename:join(PrivDir, Path),
+    FullTmpPath = filename:join(PrivDir, "isasl.tmp"),
     error_logger:info_msg("Writing isasl passwd file: ~p~n", [FullPath]),
-    {ok, F} = file:open(FullPath, [write]),
+    {ok, F} = file:open(FullTmpPath, [write]),
     io:format(F, "~s ~s~n", [AU, AP]),
     lists:foreach(
       fun({_BucketName, BucketProps}) ->
@@ -109,4 +113,15 @@ writeSASLConf(Path, Buckets, AU, AP) ->
               io:format(F, "~s ~s ~s~n", [User, Pass, Config])
       end,
       Buckets),
-    file:close(F).
+    file:close(F),
+    case file:rename(FullTmpPath, FullPath) of
+        ok -> ok;
+        {error, Reason} ->
+            error_logger:info_msg("Error renaming ~p to ~p: ~p~n", [FullTmpPath, FullPath, Reason]),
+            case Tries of
+                0 -> {error, Reason};
+                _ ->
+                    error_logger:info_msg("Trying again after ~p ms (~p tries remaining)~n", [SleepTime, Tries]),
+                    {ok, _TRef} = timer:apply_after(SleepTime, ?MODULE, writeSASLConf, [Path, Buckets, AU, AP, Tries - 1, SleepTime * 2.0])
+            end
+    end.
