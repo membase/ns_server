@@ -1,0 +1,14 @@
+**.tmp
+*.beam
+/TAGS
+/erlang-out
+/priv/public/js/all.js
+/priv/public/js/t-all.js
+deps/mochiweb-src/ebin/*
+doc/*.html
+ebin/*.app
+menelaus_*.tar.gz
+tmp
+*~
+erl_crash.dump
+/doc/API/_site

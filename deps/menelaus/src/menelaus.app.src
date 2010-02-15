@@ -1,0 +1,19 @@
+{application, menelaus,
+ [{description, "NorthScale menelaus"},
+  {vsn, "0.0.0"},
+  {modules, [
+    menelaus,
+    menelaus_app,
+    menelaus_sup,
+    menelaus_web,
+    menelaus_deps,
+    simple_cache
+  ]},
+  {registered, [
+    menelaus_sup,
+    menelaus_web,
+    simple_cache
+  ]},
+  {mod, {menelaus_app, []}},
+  {env, []},
+  {applications, [kernel, stdlib, crypto]}]}.

@@ -1,0 +1,1192 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<title>NorthScale Console</title>
+<link rel="stylesheet" type="text/css" href="/css/screen.css">
+<link rel="stylesheet" type="text/css" href="/css/tabs.css">
+<!--[if IE]><script language="javascript" type="text/javascript" src="/js/excanvas.min.js"></script><![endif]-->
+<script src="/js/all.js"></script>
+</head>
+<body class="nojs">
+  <div id="container">
+    <div id="header">
+      <div class="cnt_holder main_holder">
+        <div class="topper_nav">
+          <a href="#">About</a>
+          <b>&bull;</b>
+          <a href="#">Help</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+          <a href="javascript:ThePage.signOut();" class="sign-out-link" style="display:none;">Sign Out</a>
+        </div>
+        <a href="/index.html"><span>&nbsp;</span></a>
+      </div>
+    </div> <!-- header -->
+
+    <div id="nojs_alert">Either your browser doesn't support javascript or it's currently disabled. This is javascript application and it requires recent-enough browser and enabled javascript.</div>
+    <script type="text/javascript">$('#nojs_alert').hide();</script>
+    <div id="mainContainer" class="main_holder">
+    <div class="bread_crumbs">
+      <ul>
+        <li class="nobg"><a href="#">Lorem</a></li>
+        <li><a href="#">Ipsum</a></li>
+        <li>Dolor sit amet</li>
+      </ul>
+    </div>
+<table width="100%">
+<tr>
+
+      <td class="leftNav">
+        <h1>RUN</h1>
+        <ul>
+          <!--<li class="line"></li>-->
+          <li class="line"><a id="switch_overview" href="javascript:nav.go('overview');">Cluster Overview</a></li>
+          <li class="line"><a id="switch_analytics" href="javascript:nav.go('analytics');">Analytics</a></li>
+          <li class="line"><a id="switch_buckets" href="javascript:nav.go('buckets');">Buckets</a></li>
+          <li class="line"><a id="switch_alerts" href="javascript:nav.go('alerts');">Alerts/Logs</a></li>
+        </ul>
+		<h1>Configure</h1>
+		<ul>
+      <li class="line"><a id="switch_settings" href="javascript:nav.go('settings');">Cluster Settings</a></li>
+		</ul>
+		<!-- test cluster -->
+		<div id = "test_cluster_block" class="blue_round_block test_cluster">
+			<div class="top">
+				<div>&nbsp;</div>
+			</div>
+			<div class="content">
+				<span class="label">Test Cluster</span>
+          <!-- start button -->
+          <span id="test_cluster_start_stop">
+            <a href="javascript:TrafficGen.toggleRunning();" class="on_off_button">
+              <span>&nbsp;</span>
+            </a>
+          </span>
+          <!-- END start button -->
+				<div class="right">
+					<a href="#">Clear Test Data</a>
+				</div>
+			</div>
+			<div class="bottom">
+				<div>&nbsp;</div>
+			</div>
+		</div>
+		<!-- End test cluster -->
+      </td>
+
+  <td id="mainPanel">
+
+  <div id="overview" style="display:none;">
+    <!-- shadow box -->
+	<h1>Overview</h1>
+	<div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
+    <h2 class="header_2" id="get_started_expander"><span class="expander_2 block">&nbsp;</span>Get Started</h2>
+    <div class="pad_10" id="get_started">
+        Congratulations! You may also want to review our <a>Developer Guide</a> or <a>Getting Started Guide</a> before proceding.
+        <div class="pat_10">
+            <div class="gray_rb">
+                <div class="left">
+                    <div class="right">
+                        <div class="pad">
+                            <a href="javascript:TrafficGen.start();" class="button_big">
+                                <span>
+                                    <span>
+                                        Test Server
+                                    </span>
+                                </span>
+                            </a>
+                            <a href="javascript:SettingsSection.gotoSecureServer();" class="button_big button_big_click">
+                                <span>
+                                    <span>
+                                        Secure Server
+                                    </span>
+                                </span>
+                            </a>
+                            <span id="join_leave_switch" class="join-possible">
+                              <a id="cluster_join_button" class="button_big" href="javascript:OverviewSection.startJoinCluster();">
+                                <span><span>Join Cluster</span></span>
+                              </a>
+                              <a id="cluster_leave_button" class="button_big" href="javascript:OverviewSection.leaveCluster();">
+                                <span><span>Leave Cluster</span></span>
+                              </a>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
+	<!-- END shadow box -->
+	<!-- shadow box -->
+	<h1>Status</h1>
+	<div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
+    <div class="darker_block with_devider pat_10" id="cluster_status_container">
+    </div><div class="template" id="cluster_status_template">
+        <div class="labeled_line">
+            <h2 class="label">Cluster Health:</h2>
+            <div class="line_cnt">
+                {% if (canJoinCluster) { %}
+                <a href="javascript:OverviewSection.startJoinCluster();" class="button_medium float_right" style="margin-top:-9px;">Join Cluster</a>
+                {% }; %}
+                <div class="alert_1">{%=V.setAttribute('class', isCritical ? 'alert_1' : '')%}</div>
+                <a>{%= isCritical ? 'Critical' : 'Healthy' %}</a>
+                <span class="comment">({%= h(V.count(nodesCount, 'server node')) %} managing <a href="javascript:nav.go('buckets');">{%=h(V.count(bucketsCount, 'bucket'))%}</a>)</span>
+            </div>
+        </div>
+        <div class="labeled_line">
+            <h2 class="label for_usage_big">Cluster Memory Usage:</h2>
+            <div class="line_cnt">
+                <div class="usage_big">
+                    <div class="unused">
+                        <div class="used" style="width:1%;"></div>
+                    </div>{%=V.setPercentBar(memoryUtilization)%}
+                    <div class="comment">{%=memoryUtilization%}% Utilized ({%=memoryFreeMB%}MB Free)</div>
+                </div>
+            </div>
+        </div>
+        <div class="labeled_line">
+            <h2 class="label for_usage_big">Cluster Cache Allocated:</h2>
+            <div class="line_cnt">
+                <div class="usage_big red">
+                    <div class="unused">
+                        <div class="used" style="width:50%;"></div>
+                    </div>{%=V.setPercentBar(mcdItemUtilization)%}
+                    <div class="comment">{%=mcdItemUtilization%}% Allocated ({%=mcdMemReserved %}MB Reserved)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="section">
+      <div class="labeled_line">
+          <h2 class="label for_server_line">Server Nodes:</h2>
+          <p class="line_cnt" id="server_list_container">
+          </p>
+          <div id="server_list_template" class="template">
+            <table class="server_list"><tbody>
+              <!-- {% $.each(rows, function (index) { %} -->
+              <tr class="primary">
+                <td class="expander"><div>&nbsp;</div></td>
+                <td class="name"><div>{%= h(this.hostname) %}</div></td>
+                <td class="status"><div class="{%=V.renderHealhClass(this.status)%}"></div></td>
+              </tr>
+              <tr class="details"><td colspan="3">
+                <div class="first gong_rb">
+                  <div class="side side_1"></div>
+                  <div class="side side_2"></div>
+                  <div class="side side_3"></div>
+                  <div class="side side_4"></div>
+                  <div class="pad">
+                      <table>
+                        <col width="230" />
+                        <col width="" />
+                        <tr>
+                            <td>Uptime: <span>{%= h(formatUptime(this.uptime)) %}</span></td>
+                            <td>
+                                <div class="float_left">Memory Usage:</div>
+                                <div class="float_left usage_small">
+                                    <div class="side_shadow">
+                                        <div class="unused">
+                                            <div class="used" style="width:50%;"></div>
+                                        </div>{%=V.setPercentBar(Math.floor(this.memoryFree/this.memoryTotal*100))%}
+                                    </div>
+                                </div>
+                                <span class="float_left">{%=Math.floor(this.memoryFree/this.memoryTotal*100)%}% used</span></td>
+                        </tr>
+                        <tr>
+                            <td>OS: <span>{%= h(this.os) %}</span></td>
+                            <td>Cache Port: <span>{%=h(this.ports.direct)%}</span></td>
+                        </tr>
+                        <tr>
+                            <td>Version: <span>{%= h(this.version) %}</span></td>
+                            <td>Proxy Port: <span>{%=h(this.ports.proxy)%}</span></td>
+                        </tr>
+                      </table>
+                  </div>
+                </div>
+                <div class="right block tdn bolder">
+                  <a href="{%=jsLink('OverviewSection.removeNode',this.otpNode)%}">Remove Server from Cluster</a>
+                </div>
+              </td></tr>
+             <!-- {% }); %} -->
+            </tbody></table>
+          </div>
+      </div>
+    </div>
+	</div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
+	<!-- END shadow box -->
+  </div>
+
+  <div id="analytics" style="display:none">
+	<h1>
+		<span class="block nav float_right"><a href="javascript:StatGraphs.configureStats();">Configure View</a></span>
+		Analytics: <span class="stat_target_name">&nbsp;</span>
+	</h1>
+	<!-- shadow box -->
+	<div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
+    <div class="section">
+      <h2 class="header_2">
+        <span class="block nav float_right">
+          <a class="current">Real Time</a>
+        </span>
+        System overview: <span><a id='analytics_graph_zoom_real_time'>Live View</a></span>
+  	  </h2>
+      <div class="analytics_graph_main">
+        <span class="graph_info_label block right active_node_count"><!-- 3 active nodes --></span>
+        <div id="analytics_main_graph_grid" style="width:725px; height: 269px; background: url(images/graph_bg.png) 0 0 no-repeat;">
+          <div id="analytics_main_graph" style="position: relative; left: 2px; width:720px; height: 264px;"></div>
+        </div>
+      </div>
+      <div class="darker_block graph_nav">
+      <div class="analytics-small-graph" id="analytics_graph_hit_ratio">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_updates">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_misses">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_ops">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_total_items">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_curr_items">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_bytes_read">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_cas_misses">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_delete_hits">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_conn_yields">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_get_hits">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_delete_misses">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_total_connections">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_curr_connections">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_threads">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_bytes_written">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_incr_hits">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_get_misses">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_listen_disabled_num">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_decr_hits">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_cmd_flush">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_engine_maxbytes">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_bytes">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_incr_misses">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_cmd_set">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_decr_misses">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_accepting_conns">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_cas_hits">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_limit_maxbytes">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_cmd_get">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_connection_structures">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_cas_badval">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <div class="analytics-small-graph" id="analytics_graph_auth_cmds">
+        <div class="small_graph_block"></div>
+        <span class="small_graph_label"><span class="value">0</span><span class="label-text">-</span></span>
+      </div>
+      <b class="clear">&nbsp;</b>
+      </div>
+    </div>
+	</div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
+	<!-- END shadow box -->
+	<h1>Key Values: <span class="stat_target_name">&nbsp;</span></h1>
+	<!-- shadow box -->
+	<div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
+    <div class="section">
+      <h2 class="header_2">
+        <span class="block nav float_right">
+          <a class="current">1 Hour</a>
+        </span>
+        Interval Zoom: <span><a>Live View</a></span>
+      </h2>
+      <p id="top_keys_container">
+      </p>
+      <div id="top_keys_template" class="template">
+        <table>
+          <tr>
+            <th>Top Key Values</th>
+	    <th>Evictions/Sec</th>
+            <th>Hit Ratio</th>
+            <th>Ops/Sec</th>
+          </tr>
+          <!-- {% $.each(rows, function () { %} -->
+            <tr>
+              <td>{%= h(this.name) %}</td>
+              <td>{%= h(Math.round(this.evictions * 100.0) / 100.0) %}</td>
+              <td>{%= h(Math.round(this.ratio * 1000.0) / 10.0) %}</td>
+              <td>{%= h(Math.round(this.ops * 100.0) / 100.0) %}</td>
+            </tr>
+          <!-- {% }); %} -->
+        </table>
+      </div>
+    </div>
+	</div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
+	<!-- END shadow box -->
+  </div>
+
+  <div id="buckets" style="display:none">
+    <!-- shadow box -->
+    <h1>Buckets</h1>
+    <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
+    <div class="darker_block">
+        <div class="pad_10">
+            <div class="pat_10 right">
+                <button class="button_medium" onclick="BucketsSection.startCreate();">Add a New Bucket</button>
+            </div>
+        </div>
+    </div>
+    <div id="bucket_list_container">
+    </div>
+    </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
+	<!-- END shadow box -->
+    <div id="bucket_list_template" class="template">
+        <table class="lined_tab">
+          <col width="" />
+          <col width="" />
+          <col width="" />
+          <col width="135" />
+          <col width="" />
+          <tr>
+            <!-- to display sort arrow correctly you need to switch between "sort_desc" and "sort_asc" classes in span -->
+            <th>Name <span class="sort_desc"><img src="images/sort_down.gif" alt="sorted descending" class="sort_down" /><img src="images/sort_up.gif" alt="sorted ascending" class="sort_up" /></span></th>
+            <th>Ops/Sec</th>
+            <th>Evictions/Sec</th>
+            <th>Cache Used</th>
+            <th>Cache Size</th>
+          </tr>
+          <!-- {% $.each(rows, function () { %} -->
+            <tr>
+              <td>
+              <a class="float_right text_11" href="{%=jsLink('BucketsSection.showBucket',this.uri)%}">Properties</a>
+              <a class="gray_link" href="{%=jsLink('AnalyticsSection.visitBucket',this.uri)%}">{%= h(this.name) %}</a></td>
+              <td>{%= h(this.basicStats.opsPerSec) %}</td>
+              <td>{%= h(this.basicStats.evictionsPerSec) %}</td>
+              <td>
+                <div class="usage_smallest_info">
+                    <div class="usage_smallest">
+                        <div class="side_shadow">
+                            <div class="unused">
+                                <div class="used" style="width:1%;"></div>
+                            </div>
+                        </div>
+                    </div>{%= V.setPercentBar(this.basicStats.cachePercentUsed) %}
+                    {%= h(this.basicStats.cachePercentUsed) %}%
+                </div>
+              </td>
+              <td>{%= h(this.basicStats.cacheSize) %}MB</td>
+            </tr> <!-- This tr is important. Otherwise browser may close row after end of loop, causing incorrect resultant markup -->
+          <!-- {% }); %} -->
+        </table>
+    </div>
+  </div>
+
+  <div id="alerts" style="display:none">
+    <!-- Shadow box -->
+    <h1>Alerts/Log</h1>
+    <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
+        <div class="darker_block with_devider">
+            <div class="pat_10">
+                <ul class="tabs">
+                  <li><a href="#">Current Alerts</a></li>
+                  <li><a href="#">Log</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="panes">
+          <div class="pad_10">
+            <div id="alerts_list" class="alerts_list">
+              <p class="pab_10">Alerts are being sent to: <span id="alerts_email_setting" class="bolder"></span> <a href='javascript:AlertsSection.changeEmail();' class="text_11">Change</a></p>
+              <ol id="alert_list_container">
+              </ol>
+              <ol id="alert_list_template" class="template">
+                <!-- {% _.each(rows, function (alert) { %} -->
+                <li class="alert_{%= h(alert.type) %}">
+                  <div class="block pad_10">
+                    <h3><strong>{%= formatAlertType(alert.type) %}</strong> - {%= h(alert.shortText) %}</h3>
+                    <span class="time">{%= h(formatAlertTStamp(alert.tstamp)) %}</span>
+                    <p>
+                      <a class="dismiss point">Dismiss</a>
+                      {%= h(alert.text) %}
+                    </p>
+                  </div>
+                </li>
+                <!-- {% }); %} -->
+              </ol>
+            </div>
+          </div>
+          <div class="tab_holder">
+            <div id="alert_logs_container"></div>
+            <div id="alert_logs_template" class="template">
+            <table class="lined_tab">
+              <col width="" />
+              <col width="" />
+              <col width="160" />
+              <tr>
+                <th>Event</th>
+                <th>Module<br>Code</th>
+                <th>Time</th>
+              </tr>
+              <!-- {% _.each(rows, function (logRow) { %} -->
+              <tr>
+                <td>{%= h(logRow.text) %}</td>
+                <td>{%= h(logRow.module) + '<br>' + (new String(1000 + parseInt(logRow.code))).slice(-3)%}</td>
+                <td class="text_11 nobr">{%=V.formatLogTStamp(logRow.tstamp)%}
+              </tr>
+              <!-- {% }); %} -->
+            </table>
+            </div>
+          </div>
+        </div>
+    </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
+    <!-- END shadow box -->
+  </div>
+  <div id="settings" style="display:none">
+    <!-- shadow box -->
+    <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
+      <div class="darker_block with_devider">
+          <div class="pat_10">
+              <ul class="tabs">
+                <li><a href="#">Basic</a></li>
+                <li><a href="#">Advanced</a></li>
+              </ul>
+          </div>
+      </div>
+      <div class="panes">
+        <div class="brdr_exl_t">
+          <form id="basic_settings_form" action="/settings/web">
+            <div class="pad_10">
+              <div class="basic">
+                <h2 class="head_2_underline">Web Console</h2>
+                <div class="form">
+                  <div class="labeled_line">
+                    <label class="block label for_input" for="port">Port:</label>
+                    <div class="line_cnt">
+                      <input name="port" type="text" class="text inp_short"/>
+                    </div>
+                  </div>
+                </div>
+                <h2 class="head_2_underline">Security <a class="text_11">What’s this?</a></h2>
+                <div class="form">
+                  <div>
+                    <label><input type="checkbox" class="check" name="secureServer" id="secure_serv" value="1"/><input type="hidden" value="0" /> Secure this Server</label>
+                  </div>
+                  <div id="server_secure" style="display:none;">
+                    <div class="labeled_line">
+                      <label class="block label for_input" for="username">Username:</label>
+                      <div class="line_cnt">
+                        <input type="text" name="username" disabled class="text inp_short"/>
+                        <a href="javascript:SettingsSection.gotoSetupAlerts();" class="text_11">Setup Email Alerts</a>
+                      </div>
+                    </div>
+                    <div class="labeled_line">
+                      <label class="block label for_input" for="password">Password:</label>
+                      <div class="line_cnt">
+                        <input name="password" type="password" disabled class="text inp_short"/>
+                      </div>
+                    </div>
+                    <input type="hidden" name="username" value=""><input type="hidden" name="password" value="">
+                    <div class="labeled_line">
+                      <label class="block label for_input" for="verifyPassword">Verify Password:</label>
+                      <div class="line_cnt">
+                        <input name="verifyPassword" type="password" class="text inp_short"/>
+                        <span class="dont-match">Password doesn't match</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="darker_block">
+              <div class="pad_10">
+                <div class="right save_cancel">
+                  <button type="submit" class="save_button float_right">SAVE</button>
+                  <a href="#" class="cancel_button float_right">CANCEL</a>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="brdr_exl_t" style="display:none;">
+          <form id="advanced_settings_form" action="/settings/advanced">
+            <div class="pad_10">
+              <div class="advanced">
+                <h2 class="head_2_underline">Port Configuration <a class="text_11">What’s this?</a></h2>
+                <div class="form">
+                  <div class="labeled_line">
+                    <label class="block label for_input" for="proxyPort">Proxy Port:</label>
+                    <div class="line_cnt">
+                      <input type="text" name="proxyPort" class="text inp_short">
+                    </div>
+                  </div>
+                  <div class="labeled_line">
+                    <label class="block label for_input" for="directPort">Cache Port:</label>
+                    <div class="line_cnt">
+                      <input type="text" name="directPort" class="text inp_short">
+                    </div>
+                  </div>
+                </div>
+                <h2 class="head_2_underline">Alert settings</h2>
+                <div class="form">
+                  <div>
+                    <label><input name="email_alerts" type="checkbox" class="check" value="1" id="alert_set"> Notify me by email with alerts <input type="hidden" value="0"></label>
+                  </div>
+                  <div id="alerts_settings_guts" style="display:none;">
+                    <div class="labeled_line">
+                      <label class="block label for_input" for="email">Email Address:</label>
+                      <div class="line_cnt">
+                        <input type="text" name="email" class="text inp_short">
+                      </div>
+                    </div>
+                    <h2 class="form_section_title">Mail Server Settings</h2>
+                    <div class="labeled_line">
+                      <label class="block label for_input" for="email_server_user">Username:</label>
+                      <div class="line_cnt">
+                        <input type="text" name="email_server_user" class="text inp_short">
+                      </div>
+                    </div>
+                    <div class="labeled_line">
+                      <label class="block label for_input" for="email_server_password">Password:</label>
+                      <div class="line_cnt">
+                        <input type="text" name="email_server_password" class="text inp_short">
+                      </div>
+                    </div>
+                    <div class="labeled_line">
+                      <label class="block label for_input" for="email_server_addr">Mail Server Address:</label>
+                      <div class="line_cnt">
+                        <input type="text" name="email_server_addr" class="text inp_short">
+                        Port:
+                        <select name="email_server_port" class="select select_short">
+                          <option value="25">25</option>
+                          <option value="465">465 (SMTP over SSL)</option>
+                          <option value="2525">2525</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="labeled_line">
+                      <div class="line_cnt">
+                        <div>
+                          <label><input name="email_server_encrypt" type="checkbox" value="1" class="check"> Use legacy connection encryption (SMTP over SSL)<input type="hidden" value="0" /></label>
+                        </div>
+                      </div>
+                    </div>
+                    <h2 class="form_section_title">Alert me when there are...</h2>
+                    <div class="pat_10">
+                      <table class="lined_tab brdr_exl_r">
+                        <col width="" />
+                        <col width="115" />
+                        <col width="50" />
+                        <tr>
+                          <th>Critical Issues</th>
+                          <th>Type</th>
+                          <th>Active</th>
+                        </tr>
+                        <tr>
+                          <td>A server is not responding (TODO on server side)</td>
+                          <td>Email</td>
+                          <td class="cntr"><input type="checkbox" value="1" name="alert_server_unresponsive" /><input type="hidden" value="0" /></td>
+                        </tr>
+                        <tr>
+                          <td>A server is down</td>
+                          <td>Email</td>
+                          <td class="cntr"><input type="checkbox" value="1" name="alert_server_down" /><input type="hidden" value="0" /></td>
+                        </tr>
+                      </table>
+                    </div>
+                    <div class="pat_10">
+                      <table class="lined_tab brdr_exl_r">
+                        <col width="" />
+                        <col width="115" />
+                        <col width="50" />
+                        <tr>
+                          <th>Attention Required</th>
+                          <th>Type</th>
+                          <th>Active</th>
+                        </tr>
+                        <tr>
+                          <td>A bucket has been deleted</td>
+                          <td>Email</td>
+                          <td class="cntr"><input type="checkbox" value="1" name="alert_bucket_deleted" /><input type="hidden" value="0" /></td>
+                        </tr>
+                      </table>
+                    </div>
+                    <div class="pat_10">
+                      <table class="lined_tab brdr_exl_r">
+                        <col width="" />
+                        <col width="115" />
+                        <col width="50" />
+                        <tr>
+                          <th>Informational Issues</th>
+                          <th>Type</th>
+                          <th>Active</th>
+                        </tr>
+                        <tr>
+                          <td>A new server joins a cluster</td>
+                          <td>Email</td>
+                          <td class="cntr"><input type="checkbox" value="1" name="alert_server_joined" /><input type="hidden" value="0" /></td>
+                        </tr>
+                        <tr>
+                          <td>A server leaves a cluster</td>
+                          <td>Email</td>
+                          <td class="cntr"><input type="checkbox" value="1" name="alert_server_left" /><input type="hidden" value="0" /></td>
+                        </tr>
+                        <tr>
+                          <td>A new bucket has been created</td>
+                          <td>Email</td>
+                          <td class="cntr"><input type="checkbox" value="1" name="alert_bucket_created" /><input type="hidden" value="0" /></td>
+                        </tr>
+                        <tr>
+                          <td>Bucket authentication failure</td>
+                          <td>Email</td>
+                          <td class="cntr"><input type="checkbox" value="1" name="alert_bucket_auth_failed" /><input type="hidden" value="0" /></td>
+                        </tr>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="darker_block">
+              <div class="pad_10">
+                <div class="right save_cancel">
+                  <button type="submit" class="save_button float_right">SAVE</button>
+                  <a href="#" class="cancel_button float_right">CANCEL</a>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
+    <!-- END shadow box -->
+  </div>
+
+</tr>
+</table>
+
+
+</div> <!-- mainContainer -->
+
+<div id="footer">
+  <div class="main_holder">
+  <h1>Copyright 2010 <a href="http://northscale.com">NorthScale, Inc.</a> All rights reserved.</h1>
+</div>
+
+</div> <!-- container -->
+
+<!-- dialogs -->
+<div class="jqmWindow" id="bucket_details_dialog_container">
+</div>
+<div id="bucket_details_dialog_template" class="template">
+  <div class="lbox">
+    <div class="top">
+      <div class="top_left"></div>
+      <div class="top_right"></div>
+      <div class="top_center"></div>
+    </div>
+    <div class="center">
+      <div class="pad">
+        <p class="lbox_header">Bucket properties for {%= h(b.name) %}</p>
+        <div class="pas_20">
+          <p class="u_line"><span class="label">Bucket name:</span><a class="float_right remove_bucket">Remove</a> {%= h(b.name) %}</p>
+          <p class="u_line"><span class="label">Cache size:</span>
+          <a class="float_right" href="{%=jsLink('BucketsSection.startFlushCache',b.uri)%}">Flush All</a>
+          {%= h(b.basicStats.cacheSize) %} MB 
+          </p>
+          <div class="pat_10">
+            <div class="normal text_12">
+            Sample Java Client Manager connection string:<br />
+<pre>URI base = new URI("{%= h(document.location.protocol) %}//{%= h(document.location.host) %}{%= h(b.uri) %}");
+ClientManager manager = new ClientManager(base, "{%= h(b.name) %}", "********");
+MemcachedClient client = manager.getClient();</pre>
+            </div>
+            <p class="pat_10 text_12">NOTE: The username and password for this cache bucket is the same as the bucket name above.</p>
+            <div class="right save_cancel">
+              <button class="save_button float_right" type="submit">DONE</button>
+              <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="bottom">
+      <div class="bottom_left"></div>
+      <div class="bottom_right"></div>
+      <div class="bottom_center"></div>
+    </div>
+  </div>
+</div>
+<div class="jqmWindow" id="add_new_bucket_dialog">
+  <div class="lbox">
+    <div class="top">
+      <div class="top_left"></div>
+      <div class="top_right"></div>
+      <div class="top_center"></div>
+    </div>
+    <div class="center">
+      <div class="pad">
+        <p class="lbox_header">Add New Bucket</p>
+        <div id="add_new_bucket_errors_container" class="warning" style="padding:10px 20px;"></div>
+        <div id="add_new_bucket_errors_template" class="template">
+          <strong>Couldn't create bucket due to:</strong>
+          <ul>
+            <!-- {% _.each(rows, function (e) { %} -->
+            <li>{%= h(e) %}
+            <!-- {% }); %} -->
+          </ul>
+        </div>
+
+        <form id="add_new_bucket_form">
+          <p><label><b>Bucket Name:</b><input type="text" name="name" class="inp" style="width:290px;" value="No spaces, alphanumeric up to 12 characters"></label></p>
+          <p><label><b>Cache Size:</b><input type="text" name="cacheSize" class="inp" style="width:40px;"><span class="cache-details">&nbsp;</span><!-- MB x 3 server nodes = 192MB Total Cache Size/30GB Cluster memory available. --></label></p>
+          <p><span class="block pas_20 text_12">NOTE: The username and password for this cache bucket is the same as the bucket name above.</span></p>
+          <div class="pas_20">
+            <div class="right save_cancel">
+              <button class="save_button float_right" type="submit">ADD</button>
+              <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div class="bottom">
+      <div class="bottom_left"></div>
+      <div class="bottom_right"></div>
+      <div class="bottom_center"></div>
+    </div>
+  </div>
+</div>
+<div class="jqmWindow" id="flush_cache_dialog_container">
+</div>
+<div class="template" id="flush_cache_dialog_template">
+  <div class="lbox">
+    <div class="top">
+      <div class="top_left"></div>
+      <div class="top_right"></div>
+      <div class="top_center"></div>
+    </div>
+    <div class="center">
+      <div class="pad">
+        <p class="lbox_header">
+          Bucket Properties
+        </p>
+        <div class="pas_20">
+          <p class="u_line text_14">
+            <span class="label">Flushing Cache:</span>
+            <strong>
+              {%=h(bucket.basicStats.cacheSize)%}
+                [MB x {%=h(DAO.getBucketNodesCount(bucket))%} = {%=h(DAO.getBucketNodesCount(bucket) * bucket.basicStats.cacheSize)%}MB Total Cache]
+            </strong>
+          </p>
+          <div class="warning pat_20">
+            	<strong>Warning</strong> – Flushing all the cache will result in data loss for this bucket. Are you sure you want to flush the cache?
+          </div>
+        </div>
+        <div class="pas_20">
+          <div class="right save_cancel">
+            <a class="save_button float_right" href="{%=renderJSLink('BucketsSection.completeFlushCache',bucket.uri)%}">FLUSH</a>
+            <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="bottom">
+      <div class="bottom_left"></div>
+      <div class="bottom_right"></div>
+      <div class="bottom_center"></div>
+    </div>
+  </div>
+</div>
+<div class="jqmWindow" id="bucket_remove_dialog">
+  <div class="lbox">
+    <div class="top">
+      <div class="top_left"></div>
+      <div class="top_right"></div>
+      <div class="top_center"></div>
+    </div>
+    <div class="center">
+      <div class="pad">
+        <p class="lbox_header">
+          Bucket Properties
+        </p>
+        <div class="pas_20">
+          <p class="u_line text_14">
+            <span class="norm_14">Removing</span>
+            <strong class="bucket_name">&nbsp;</strong>
+          </p>
+          <div class="warning pat_20">
+            	<strong>Warning</strong> – Removing this bucket will result in complete data loss for this bucket. Are you sure you want to remove it?
+          </div>
+        </div>
+        <div class="pas_20">
+          <div class="right save_cancel">
+            <a class="save_button float_right" href="javascript:BucketsSection.removeCurrentBucket();">REMOVE</a>
+            <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="bottom">
+      <div class="bottom_left"></div>
+      <div class="bottom_right"></div>
+      <div class="bottom_center"></div>
+    </div>
+  </div>
+</div>
+<div class="jqmWindow" id="join_cluster_dialog">
+  <!-- Join cluster -->
+  <div class="lbox join_cluster">
+    <div class="top">
+      <div class="top_left"></div>
+      <div class="top_right"></div>
+      <div class="top_center"></div>
+    </div>
+    <div class="center">
+      <div class="pad">
+        <p class="lbox_header">Join a Cluster</p>
+        <div class="pas_20">
+          <p class="warning pat_10" id="join_cluster_dialog_errors_container"></p>
+          <p id="join_cluster_dialog_errors_template" class="template">
+          <!-- {% _.each(rows, function (e) { %} -->
+          <strong>Attention</strong> - {%= h(e) %}
+          <!-- {% }); %} -->
+          </p>
+          <form>
+            <table>
+              <tr>
+                <th>
+                  Cluster <a href="#" class="text_11">What’s this?</a>
+                </th>
+                <th>
+                  Security <a href="#" class="text_11">What’s this?</a>
+                </th>
+              </tr>
+              <tr>
+                <td>
+                  <div class="u_line_sm">
+                    <label class="label" for="clusterMemberHostIp">IP Address:</label>
+                    <input type="text" class="inp" name="clusterMemberHostIp" />
+                  </div>
+                  <div class="u_line_sm">
+                    <label class="label" for="clusterMemberPort">Port:</label>
+                    <input type="text" class="inp" name="clusterMemberPort" />
+                  </div>
+                </td>
+                <td>
+                  <div class="u_line_sm">
+                    <label class="label" for="user">Username:</label>
+                    <input type="text" class="inp" name="user" />
+                  </div>
+                  <div class="u_line_sm">
+                    <label class="label" for="password">Password:</label>
+                    <input type="password" class="inp" name="password" />
+                  </div>
+                </td>
+              </tr>
+            </table>
+            <div class="right save_cancel">
+              <button type="submit" class="save_button button_3 float_right">JOIN CLUSTER</button>
+              <a class="jqmClose cancel_button float_right" href="#">CANCEL</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <div class="bottom">
+      <div class="bottom_left"></div>
+      <div class="bottom_right"></div>
+      <div class="bottom_center"></div>
+    </div>
+  </div>
+  <!-- END join cluster -->
+</div>
+<!-- configure analytics -->
+<div class="jqmWindow" id="analytics_settings_dialog">
+  <div class="lbox join_cluster">
+    <div class="top">
+      <div class="top_left"></div>
+      <div class="top_right"></div>
+      <div class="top_center"></div>
+    </div>
+    <div class="center">
+      <div class="pad">
+        <p class="lbox_header">Configure Analytics</p>
+        <div class="pas_20">
+          <div class="pat_10">
+            <div class="float_50">
+              <label class="item">
+                <input type="checkbox" name="ops" />
+                <span class="cnt">
+                  <span>Operations per Second</span>
+                  Lorem ipsum dolor sit amet, consectetur adipiscing elit
+                </span>
+              </label>
+              <label class="item">
+                <input type="checkbox" name="misses" />
+                <span class="cnt">
+                  <span>Misses per Second</span>
+                  Lorem ipsum dolor sit amet, consectetur adipiscing elit
+                </span>
+              </label>
+              <label class="item">
+                <input type="checkbox" name="cmd_get" />
+                <span class="cnt">
+                  <span>Gets per Second</span>
+                  Lorem ipsum dolor sit amet, consectetur adipiscing elit
+                </span>
+              </label>
+              <label class="item">
+                <input type="checkbox" name="cmd_set" />
+                <span class="cnt">
+                  <span>Sets per Second</span>
+                  Lorem ipsum dolor sit amet, consectetur adipiscing elit
+                </span>
+              </label>
+              <label class="item">
+                <input type="checkbox" name="updates" />
+                <span class="cnt">
+                  <span>Updates per Second</span>
+                  Lorem ipsum dolor sit amet, consectetur adipiscing elit
+                </span>
+              </label>
+              <label class="item">
+                <input type="checkbox" name="get_misses" />
+                <span class="cnt">
+                  <span>Get Misses per Second</span>
+                  Lorem ipsum dolor sit amet, consectetur adipiscing elit
+                </span>
+              </label>
+              <label class="item">
+                <input type="checkbox" name="bytes_written" />
+                <span class="cnt">
+                  <span>Bytes Sent per Second</span>
+                  Lorem ipsum dolor sit amet, consectetur adipiscing elit
+                </span>
+              </label>
+              <label class="item">
+                <input type="checkbox" name="get_hits" />
+                <span class="cnt">
+                  <span>Get Hits per Second</span>
+                  Lorem ipsum dolor sit amet, consectetur adipiscing elit
+                </span>
+              </label>
+              <label class="item">
+                <input type="checkbox" name="bytes_read" />
+                <span class="cnt">
+                  <span>Bytes Received per Second</span>
+                  Lorem ipsum dolor sit amet, consectetur adipiscing elit
+                </span>
+              </label>
+              <label class="item">
+                <input type="checkbox" name="sets_misses" />
+                <span class="cnt">
+                  <span>TODO: missing this stat<br>Sets Misses per Second</span>
+                  Lorem ipsum dolor sit amet, consectetur adipiscing elit
+                </span>
+              </label>
+              <label class="item">
+                <input type="checkbox" name="hit_ratio" />
+                <span class="cnt">
+                  <span>Hit Ratio</span>
+                  Lorem ipsum dolor sit amet, consectetur adipiscing elit
+                </span>
+              </label>
+              <label class="item">
+                <input type="checkbox" name="evictions" />
+                <span class="cnt">
+                  <span>TODO: missing this stat<br>Evictions per Second</span>
+                  Lorem ipsum dolor sit amet, consectetur adipiscing elit
+                </span>
+              </label>
+              <label class="item">
+                <input type="checkbox" name="total_items" />
+                <span class="cnt">
+                  <span>Total Items</span>
+                  Lorem ipsum dolor sit amet, consectetur adipiscing elit
+                </span>
+              </label>
+              <div class="clear"></div>
+            </div>
+            <form>
+              <div class="right save_cancel">
+                <a class="jqmClose save_button float_right" href="#">CLOSE</a>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="bottom">
+      <div class="bottom_left"></div>
+      <div class="bottom_right"></div>
+      <div class="bottom_center"></div>
+    </div>
+  </div>
+  <!-- #analytics_settings_dialog -->
+</div>
+<!-- END configure analytics -->
+<!-- Leave cluster -->
+<div class="jqmWindow" id="generic_dialog">
+  <div class="lbox">
+    <div class="top">
+      <div class="top_left"></div>
+      <div class="top_right"></div>
+      <div class="top_center"></div>
+    </div>
+    <div class="center">
+      <div class="pad">
+        <p class="lbox_header">Leave Cluster</p>
+        <div class="pas_20">
+          <div class="pat_10">
+            <p class="dialog-text">Really eject this node from cluster?</p>
+          </div>
+          <div class="right save_cancel">
+            <div class="float_right">
+              <button type="button" class="save_button button_3 float_right">OK</button>
+              <a class="jqmClose cancel_button float_right" href="#">CANCEL</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="bottom">
+      <div class="bottom_left"></div>
+      <div class="bottom_right"></div>
+      <div class="bottom_center"></div>
+    </div>
+  </div>
+</div>
+</div> <!-- #container -->
+<div class="auth_block" id="auth_dialog">
+  <div class="pad">
+    <div class="alert_red" style="display:none;">
+      <div class="al_text">
+        Login failed. Try again.
+      </div>
+    </div>
+    <div class="alert_green" style="display:none;">
+      <div class="al_text">
+        You have successfully joined the cluster. Your settings may have been updated and you may need to log in again.
+      </div>
+    </div>
+    <h1>Welcome</h1>
+    <form id="login_form" class="form block">
+      <table>
+        <col width="" />
+        <col width="" />
+        <tr>
+          <td class="label"><label for="login">Username:</label></td>
+          <td><input type="text" name="login" class="inp" /></td>
+        </tr>
+        <tr>
+          <td class="label"><label for="password">Password:</label></td>
+          <td>
+            <input type="password" name="password" class="inp" />
+          </td>
+        </tr>
+        <tr>
+          <td class="label"></td>
+          <td>
+            <div class="right">
+              <a href="#" class="forgot tdn">Forgot password?</a><br />
+              <div class="pat_10">
+                <input type="submit" value="Sign In" class="submit" />
+              </div>
+            </div>
+          </td>
+        </tr>
+      </table>
+    </form>
+    <script type="text/javascript">
+      $('#login_form').bind('submit', function (e) {
+        e.preventDefault();
+        loginFormSubmit();
+      });
+    </script>
+  </div>
+</div>
+</body>
+</html>
