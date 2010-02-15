@@ -647,3 +647,5 @@ button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
 .bread_crumbs ul li {display:block; float:left; padding:0 6px 0 10px; background:url(../images/bc_arrow.gif) 0 4px no-repeat; color:#555557;}
 .bread_crumbs ul li a {text-decoration:underline;}
 .bread_crumbs ul li a:hover {text-decoration:none;}
+
+.stat_target_name {text-transform:none !important;}
