@@ -65,6 +65,8 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 .select_short {width:120px;}
 .nobg {background:none !important;}
 .lbox pre {background:none #fff; border:1px solid #CCD3D7; padding:10px; margin:5px 0;}
+.info_text {font-size:13px !important;}
+#get_started .info_text {font-weight:bolder;}
 
 .main_holder {width:960px; position:relative; margin:auto; left:0px !important;}
 
@@ -141,8 +143,8 @@ h1 .nav a {font-size:11px; font-weight:bolder; cursor:pointer;}
 .gray_rb .right {height:71px; background:url(../images/gray_box_bg.gif) 100% -71px no-repeat;}
 .gray_rb .pad {padding:12px 10px 12px 13px !important; background:none !important;}
 
-.button_big {display:block; height:47px; overflow:hidden; background:url(../images/button_gray_big.gif) 0 -94px repeat-x; font-size:18px; color:#444245 !important; line-height:47px; text-align:center; width:31%; float:left; margin:0 1%; cursor:pointer; text-decoration:none !important;}
-.button_big span {display:block; background:url(../images/button_gray_big.gif) 0 0 no-repeat;}
+.button_big {display:block; height:47px; overflow:hidden; background:url(../images/button_gray_big.gif) 0 -94px repeat-x; font-size:18px; color:#444245 !important; line-height:47px; text-align:center; width:31%; float:left; margin:0 1%; cursor:pointer; text-decoration:none !important; position:relative;}
+.button_big span {display:block; background:url(../images/button_gray_big.gif) 0 0 no-repeat; overflow:hidden;}
 .button_big span span {height:47px; background:url(../images/button_gray_big.gif) 100% -47px no-repeat;}
 
 .button_big:hover {background-position:0 -235px; color:#f9efed !important;}
@@ -425,7 +427,7 @@ background:url(../images/mini_graph_bg.gif) 0 0 no-repeat; margin:0 12px 7px 12p
     z-index:3100 !important;
 }
 
-.jqmOverlay { background-color: #000; z-index:2000 !important; position:fixed; display:none !important;}
+.jqmOverlay { background-color: #000; z-index:2000 !important; position:fixed;}
 
 /* Fixed posistioning emulation for IE6
      Star selector used to hide definition from browsers other than IE6
@@ -551,10 +553,10 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 .lbox .top .top_right {width:12px; float:right; background:url(../images/lbox_rt.png) 0 0 no-repeat;}
 .lbox .top .top_center {/*margin:0 12px;*/ background:url(../images/lbox_t.png) 0 0 repeat-x; _float:left; *width:687px;}
 
-.lbox .center {background:url(../images/lbox_cent.png) 0 0 repeat-y;}
+.lbox .center {background:url(../images/lbox_cent.png) 0 0 repeat-y; overflow:hidden;}
 .lbox .center .pad {padding:0 7px;}
 
-.lbox .bottom {height:17px; overflow:hidden;}
+.lbox .bottom {height:17px; overflow:hidden; position:relative;}
 .lbox .bottom div {height:17px; overflow:hidden;}
 .lbox .bottom .bottom_left {width:12px;float:left; background:url(../images/lbox_lb.png) 0 0 no-repeat;}
 .lbox .bottom .bottom_right {width:12px; float:right; background:url(../images/lbox_rb.png) 0 0 no-repeat;}
@@ -642,8 +644,10 @@ button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
 .stop-active .on_off_button span {right:0px !important;}
 
 /* bread crumbs */
-.bread_crumbs {overflow:hidden; margin:0 0 0 189px; height:45px; padding:5px 0 0 0;}
+.bread_crumbs {overflow:hidden; margin:30px 0 0 189px; height:20px; padding:5px 0 0 0;}
 .bread_crumbs ul {display:block; height:20px; font-size:12px; position:relative; left:-10px;}
 .bread_crumbs ul li {display:block; float:left; padding:0 6px 0 10px; background:url(../images/bc_arrow.gif) 0 4px no-repeat; color:#555557;}
 .bread_crumbs ul li a {text-decoration:underline;}
 .bread_crumbs ul li a:hover {text-decoration:none;}
+
+.stat_target_name {text-transform:none !important;}
