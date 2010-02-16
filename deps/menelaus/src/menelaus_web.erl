@@ -191,6 +191,11 @@ build_pools() ->
                       end,
                       expect_config(pools)),
     {struct, [{implementationVersion, implementation_version()},
+              {componentsVersion, {struct,
+                                   lists:map(fun ({K,V}) ->
+                                                     {K, list_to_binary(V)}
+                                             end,
+                                             proplists:delete(menelaus, ns_info:version()))}},
               {pools, Pools}]}.
 
 % {"default", [

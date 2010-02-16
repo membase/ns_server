@@ -221,6 +221,7 @@ $.ajaxSetup({
 
 var DAO = {
   ready: false,
+  version: undefined,
   cells: {},
   onReady: function (thunk) {
     if (DAO.ready)
@@ -240,6 +241,8 @@ var DAO = {
 
     // TMP TMP
     if (data.implementationVersion) {
+      DAO.version = data.implementationVersion;
+      DAO.componentsVersion = data.componentsVersion;
       document.title = document.title + " (" + data.implementationVersion + ")"
     }
   },
@@ -1602,7 +1605,9 @@ function genericDialog(options) {
   options = _.extend({buttons: {ok: true,
                                 cancel: true},
                       modal: true,
-                      callback: function () {}},
+                      callback: function () {
+                        instance.close();
+                      }},
                      options);
   var text = options.text || 'I forgot to put text';
   var header = options.header || 'I forgot to put header';
@@ -1615,8 +1620,12 @@ function genericDialog(options) {
 
   dialogTemplate = null;
 
-  dialog.find('.lbox_header').text(header);
-  dialog.find('.dialog-text').text(text);
+  function brIfy(text) {
+    return _.map(text.split("\n"), escapeHTML).join("<br>");
+  }
+
+  dialog.find('.lbox_header').html(options.headerHTML || brIfy(header));
+  dialog.find('.dialog-text').html(options.textHTML || brIfy(text));
 
   var b = options.buttons;
   if (!b.ok && !b.cancel) {
@@ -1663,4 +1672,18 @@ function genericDialog(options) {
   };
 
   return instance;
+}
+
+function showAbout() {
+  var text = "TODO: need text here\nVersion: " + (DAO.version || 'unknown');
+  var components = DAO.componentsVersion;
+  text = text + "\n\n" + _.map(_.keys(components).sort(), function (name) {
+    return [name, ": ", components[name]].join('');
+  }).join("\n");
+
+  genericDialog({
+    buttons: {ok: true, cancel: false},
+    header: "Northscale Server management console",
+    text: text
+  });
 }

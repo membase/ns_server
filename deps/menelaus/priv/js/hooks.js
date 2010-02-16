@@ -269,6 +269,10 @@ var MockedRequest = mkClass({
         // /pools
         resp = {
           implementationVersion: 'only-web.rb-unknown',
+          componentsVersion: {
+            'foo': 'v0.1',
+            'bar': 'v0.4'
+          },
           pools: [
           {name: 'default',
            uri: "/pools/default"}]};
