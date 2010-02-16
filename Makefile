@@ -16,7 +16,7 @@ deps_all:
 	$(MAKE) -C deps/emoxi ebins
 	$(MAKE) -C deps/menelaus all
 
-clean_all:
+clean_all: clean
 	$(MAKE) -C deps/emoxi clean
 	$(MAKE) -C deps/menelaus clean
 
@@ -32,8 +32,13 @@ version:
 	test -d $(TMP_DIR) || mkdir $(TMP_DIR)
 	git describe | sed s/-/_/g > $(TMP_VER)
 
-bdist: clean ebins
-	tar --directory=.. -czf ns_server_`cat $(TMP_VER)`.tar.gz ns_server/ebin
+bdist: clean ebins deps_all
+	tar --directory=.. -czf ns_server_`cat $(TMP_VER)`.tar.gz \
+       ns_server/ebin \
+       ns_server/deps/emoxi/ebin \
+       ns_server/deps/menelaus/ebin \
+       ns_server/deps/menelaus/deps/mochiweb/ebin \
+       ns_server/deps/menelaus/priv/public
 	echo created ns_server_`cat $(TMP_VER)`.tar.gz
 
 clean:
