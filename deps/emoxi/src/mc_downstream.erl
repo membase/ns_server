@@ -215,7 +215,8 @@ worker(Addr, Sock, Timeout) ->
                                ns_log:log(?MODULE, 1, "auth failed: ~p with ~p",
                                           [Err, Auth])
                     end
-            end
+            end;
+        Other -> error_logger:info_msg("Unhandled message:  ~p~n", [Other])
     after ?TIMEOUT_WORKER_GO -> stop
     end.
 
@@ -233,7 +234,10 @@ loop(Addr, Sock, Timeout) ->
                 {ok, _, _, _} -> loop(Addr, Sock, Timeout);
                 _Error        -> gen_tcp:close(Sock)
             end;
-        {tcp_closed, Sock} -> ok
+        {tcp_closed, Sock} -> ok;
+        Other ->
+            gen_tcp:close(Sock),
+            error_logger:info_msg("Unhandled message:  ~p~n", [Other])
     after Timeout ->
         gen_tcp:close(Sock),
         stop
