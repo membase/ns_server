@@ -589,7 +589,7 @@ handle_eject_post(Req) ->
     %
     % either Eject a running node, or eject a node which is down.
     %
-    % request is a urlencoded form with just clusterMemberHostIp
+    % request is a urlencoded form with otpNode
     %
     % responses are 200 when complete
     %               401 if creds were not supplied and are required

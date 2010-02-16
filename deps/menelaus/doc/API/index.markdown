@@ -46,7 +46,7 @@ to any URI.
 <tr><td> Authorization
 </td><td> &quot;Basic &quot; plus username and password (per RFC 2617).
 </td><td> Identifies the authorized user making this request.
-</td><td> Yes, on all requests.  The only exception is the few cases where
+</td><td> No, authorization headers are not required unless the server has been "secured".
 </td></tr>
 <tr><td> Content-Length
 </td><td> Length (in bytes) of the request message body.
@@ -144,8 +144,6 @@ number of things which ease pool management and enable management of resources:
     * _Namespace_ - Buckets provide unconstrained namespaces to users to define
       whatever bucket name makes sense to the user.  It also allows the same key
       in the same application to be available in multiple places.
-    * _Storage Handling Rules_ - Rules on how data is persisted, replicated and
-      otherwise handled is defined at the bucket level.
     * _Statistics_ - Buckets provide bucket level data view of counters and
       periodic metrics of the overall system. These counters and metrics are
       specific to the bucket.
@@ -761,7 +759,6 @@ cluster.
 
 <pre class="restcalls">
  POST /node/controller/doJoinCluster
- POST /pools/default/controller/testWorkload HTTP/1.1
  Host: target.node.to.do.join.from:8080
  Authorization: Basic xxxxxxxxxxxx
  Accept: */*
