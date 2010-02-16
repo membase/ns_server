@@ -179,8 +179,7 @@ loop(Req, DocRoot) ->
 %% Internal API
 
 implementation_version() ->
-    %% TODO: pull this from ns_info:version
-    <<"comes_from_git_describe">>.
+    list_to_binary(proplists:get_value(menelaus,ns_info:version())).
 
 handle_pools(Req) ->
     reply_json(Req, build_pools()).

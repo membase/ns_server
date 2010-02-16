@@ -1,7 +1,3 @@
-$(function () {
-  document.title = String(document.title) + " (testing)"
-});
-
 var TestingSupervisor = {
   chooseSingle: function (arg, predicate) {
     if (!_.isArray(arg)) {
@@ -271,7 +267,9 @@ var MockedRequest = mkClass({
     } else if (path[0] == "pools") {
       if (path.length == 1) {
         // /pools
-        resp = {pools: [
+        resp = {
+          implementationVersion: 'only-web.rb-unknown',
+          pools: [
           {name: 'default',
            uri: "/pools/default"}]};
       } else {

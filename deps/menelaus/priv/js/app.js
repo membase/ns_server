@@ -237,6 +237,11 @@ var DAO = {
       var auth = Base64.encode([DAO.login, ':', DAO.password].join(''))
       $.cookie('auth', auth);
     }
+
+    // TMP TMP
+    if (data.implementationVersion) {
+      document.title = document.title + " (" + data.implementationVersion + ")"
+    }
   },
   switchSection: function (section) {
     DAO.cells.mode.setValue(section);
