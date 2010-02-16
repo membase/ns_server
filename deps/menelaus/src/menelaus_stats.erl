@@ -35,6 +35,8 @@
          low_pass_filter/2,
          caching_result/2]).
 
+-import(menelaus_web, [all_accessible_buckets/2]).
+
 %% External API
 
 default_find(K, Default, Dict) ->
@@ -68,7 +70,8 @@ basic_stats(PoolId, BucketId) ->
 % GET /pools/default/stats?stat=combined
 
 handle_bucket_stats(PoolId, all, Req) ->
-    handle_bucket_stats(PoolId, "default", Req);
+    BucketNames = proplists:get_keys(all_accessible_buckets(PoolId, Req)),
+    handle_buckets_stats(PoolId, BucketNames, Req);
 
 handle_bucket_stats(PoolId, Id, Req) ->
     handle_buckets_stats(PoolId, [Id], Req).

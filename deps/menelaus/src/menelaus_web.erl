@@ -17,15 +17,12 @@
 -endif.
 
 -export([start_link/0, start_link/1, stop/0, loop/2, webconfig/0, restart/0,
-         find_pool_by_id/1,
+         find_pool_by_id/1, all_accessible_buckets/2,
          find_bucket_by_id/2]).
-
--import(simple_cache, [call_simple_cache/2]).
 
 -import(menelaus_util,
         [server_header/0,
          redirect_permanently/2,
-         redirect_permanently/3,
          reply_json/2,
          parse_json/1,
          expect_config/1,
@@ -332,24 +329,26 @@ handle_streaming(F, Req, HTTPRes, LastRes, Wait) ->
     end,
     handle_streaming(F, Req, HTTPRes, Res, Wait).
 
-handle_bucket_list(Id, Req) ->
-    MyPool = find_pool_by_id(Id),
+all_accessible_buckets(PoolId, Req) ->
+    MyPool = find_pool_by_id(PoolId),
     UserPassword = menelaus_auth:extract_auth(Req),
     IsSuper = menelaus_auth:check_auth(UserPassword),
     BucketsAll = expect_prop_value(buckets, MyPool),
-    Buckets =
-        % We got this far, so we assume we're authorized.
-        % Only emit the buckets that match our UserPassword;
-        % or, emit all buckets if our UserPassword matches the rest_creds
-        % or, emit all buckets if we're not secure.
-        case {IsSuper, UserPassword} of
-            {true, _}      -> BucketsAll;
-            {_, undefined} -> BucketsAll;
-            {_, {_User, _Password} = UserPassword} ->
-                lists:filter(
-                  menelaus_auth:bucket_auth_fun(UserPassword),
-                  BucketsAll)
-        end,
+    %% We got this far, so we assume we're authorized.
+    %% Only emit the buckets that match our UserPassword;
+    %% or, emit all buckets if our UserPassword matches the rest_creds
+    %% or, emit all buckets if we're not secure.
+    case {IsSuper, UserPassword} of
+        {true, _}      -> BucketsAll;
+        {_, undefined} -> BucketsAll;
+        {_, {_User, _Password} = UserPassword} ->
+            lists:filter(
+              menelaus_auth:bucket_auth_fun(UserPassword),
+              BucketsAll)
+    end.
+
+handle_bucket_list(Id, Req) ->
+    Buckets = all_accessible_buckets(Id, Req),
     BucketsInfo = [build_bucket_info(Id, Name, undefined)
                    || Name <- proplists:get_keys(Buckets)],
     reply_json(Req, BucketsInfo).
