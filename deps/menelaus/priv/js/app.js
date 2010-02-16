@@ -1232,9 +1232,13 @@ var SettingsSection = {
     self.advancedSettings.subscribe($m(this, 'fillAdvancedForm'));
 
     var basicSettingsForm = $('#basic_settings_form');
-    basicSettingsForm.observePotentialChanges(_.bind(handlePasswordMatch,
-                                                     null,
-                                                     basicSettingsForm));
+    basicSettingsForm.observePotentialChanges(function () {
+      if (basicSettingsForm.find('#secure_serv').is(':checked')) {
+        handlePasswordMatch(basicSettingsForm);
+      } else {
+        setBoolAttribute(basicSettingsForm.find('[type=submit]'), 'disabled', false)
+      }
+    });
 
     $('#settings form').submit(function (e) {
       var self = this;
