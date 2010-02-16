@@ -5,8 +5,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--export([start/2, start/3,
-         start_link/2, start_link/3,
+-export([start_link/2, start_link/3,
          init/3, session/4]).
 
 % Starting the server...
@@ -27,10 +26,6 @@
 %   session(SessionSock, ProcessorEnv, ProtocolModule)
 %   cmd(...)
 %
-start(PortNum, Env) ->
-    start(PortNum, "0.0.0.0", Env).
-start(PortNum, AddrStr, Env) ->
-    {ok, spawn(?MODULE, init, [PortNum, AddrStr, Env])}.
 
 start_link(PortNum, Env) ->
     start_link(PortNum, "0.0.0.0", Env).
