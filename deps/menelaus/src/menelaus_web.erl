@@ -522,14 +522,15 @@ handle_join(Req) ->
     %%                    clusterMemberPort=8080&
     %%                    user=admin&password=admin123
     %%
-    Params = Req:parse_qs(),
+    Params = Req:parse_post(),
     OtherHost = proplists:get_value("clusterMemberHostIp", Params),
     OtherPort = proplists:get_value("clusterMemberPort", Params),
     OtherUser = proplists:get_value("user", Params),
     OtherPswd = proplists:get_value("password", Params),
     case lists:member(undefined,
                       [OtherHost, OtherPort, OtherUser, OtherPswd]) of
-        true  -> Req:respond({400, [], []});
+        true  -> ns_log:log(?MODULE, 0013, "Received request to join cluster missing a parameter.", [Params]),
+                 Req:respond({400, [], "Attempt to join node to cluster received with missing parameters.\n"});
         false -> handle_join(Req, OtherHost, OtherPort, OtherUser, OtherPswd)
     end.
 
