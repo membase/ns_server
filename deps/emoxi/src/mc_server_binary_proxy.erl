@@ -223,8 +223,8 @@ forward_simple(Opcode, #session_proxy{bucket = Bucket} = Sess, Out,
             1 = await_ok(1),
             mc_downstream:demonitor(Monitors);
         _Error ->
-            mc_binary:send(Out, res,
-                           Header#mc_header{status = ?ENOMEM}, #mc_entry{})
+            ok = mc_binary:send(Out, res,
+                                Header#mc_header{status = ?ENOMEM}, #mc_entry{})
     end,
     {ok, Sess}.
 
