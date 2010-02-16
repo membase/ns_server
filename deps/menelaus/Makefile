@@ -30,11 +30,11 @@ priv/public/js/t-all.js: priv/js/*.js
 	$(SPROCKETIZE) -I priv/js priv/js/app.js priv/js/hooks.js >$@
 
 deps:
-	$(MAKE) -C deps/mochiweb-src
+	$(MAKE) -C deps/mochiweb
 
 clean:
 	-rm -f ebin/*
-	$(MAKE) -C deps/mochiweb-src clean
+	$(MAKE) -C deps/mochiweb clean
 	rm -f menelaus_*.tar.gz priv/public/js/t-all.js priv/public/js/all.js
 	rm -f $(TMP_VER)
 	rm -rf $(DIST_DIR)
@@ -52,7 +52,7 @@ bdist: clean all
 	test -d $(DIST_DIR)/deps/menelaus/priv || mkdir -p $(DIST_DIR)/deps/menelaus/priv
 	cp -R ebin $(DIST_DIR)/deps/menelaus
 	cp -R priv/public $(DIST_DIR)/deps/menelaus/priv/public
-	cp -R deps/mochiweb-src $(DIST_DIR)/deps/mochiweb
+	cp -R deps/mochiweb $(DIST_DIR)/deps/mochiweb
 	tar --directory=$(TMP_DIR) -czf menelaus_`cat $(TMP_VER)`.tar.gz menelaus
 	echo created menelaus_`cat $(TMP_VER)`.tar.gz
 

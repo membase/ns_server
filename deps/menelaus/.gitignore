@@ -4,7 +4,7 @@
 /erlang-out
 /priv/public/js/all.js
 /priv/public/js/t-all.js
-deps/mochiweb-src/ebin/*
+deps/mochiweb/ebin/*
 doc/*.html
 ebin/*.app
 menelaus_*.tar.gz
