@@ -105,7 +105,7 @@ await_ok(Prefix, N, T, Acc) when N > 0 ->
         {Prefix, _}                    -> await_ok(Prefix, N - 1, T, Acc);
         {'DOWN', _MonitorRef, _, _, _} -> await_ok(Prefix, N - 1, T, Acc);
         Other ->
-            error_logger:info_msg("Unhandled message:  ~p~n", [Other]), Other
+            exit({unhandled, Other})
     after T ->
         % When we've waited too long, free up the caller.
         % TODO: Need to demonitor?

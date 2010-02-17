@@ -135,7 +135,10 @@ bin_size(Binary)                  -> size(Binary).
 
 flush({OutPid, _CmdNum}) ->
     OutPid ! {flush, self()},
-    receive flushed -> ok after ?FLUSH_TIMEOUT -> ok
+    receive
+        flushed -> ok;
+        Unhandled -> exit({unhandled, Unhandled})
+    after ?FLUSH_TIMEOUT -> ok
     end;
 
 flush(_) -> ok.
