@@ -91,13 +91,16 @@ handle_info({nodeup, Node}, State) ->
     % We might be tempted to proactively push/pull/sync
     % our configs with the "new" Node.  Instead, it's
     % cleaner to asynchronous do a gen_event:notify()
-    %
-    % ns_config_rep:pull([Node]),
-    State2 = do_notify(State),
-    {noreply, State2};
+    % Delay the notification for five seconds to give the
+    % config a chance to settle before notifying clients.
+    {ok, _Tref} = timer:send_after(5000, notify_clients),
+    {noreply, State};
 
 handle_info({nodedown, Node}, State) ->
     ns_log:log(?MODULE, 0005, "node down: ~p", [Node]),
+    handle_info(notify_clients, State);
+
+handle_info(notify_clients, State) ->
     State2 = do_notify(State),
     {noreply, State2};
 
