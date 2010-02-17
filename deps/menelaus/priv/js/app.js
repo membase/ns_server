@@ -209,6 +209,7 @@ function postWithValidationErrors(url, data, callback) {
 
 $.ajaxSetup({
   error: onUnexpectedXHRError,
+  timeout: 5000,
   beforeSend: function (xhr) {
     if (DAO.login) {
       addBasicAuth(xhr, DAO.login, DAO.password);
