@@ -98,7 +98,8 @@ handle_info({nodeup, Node}, State) ->
 
 handle_info({nodedown, Node}, State) ->
     ns_log:log(?MODULE, 0005, "node down: ~p", [Node]),
-    handle_info(notify_clients, State);
+    {ok, _Tref} = timer:send_after(5000, notify_clients),
+    {noreply, State};
 
 handle_info(notify_clients, State) ->
     State2 = do_notify(State),
