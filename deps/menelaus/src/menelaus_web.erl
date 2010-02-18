@@ -7,6 +7,8 @@
 -module(menelaus_web).
 -author('NorthScale <info@northscale.com>').
 
+-behavior(ns_log_categorizing).
+
 -include_lib("eunit/include/eunit.hrl").
 
 -ifdef(EUNIT).
@@ -543,13 +545,18 @@ handle_join(Req, OtherHost, OtherPort, OtherUser, OtherPswd) ->
         true ->
             case menelaus_rest:rest_get_otp(OtherHost, OtherPort,
                                             {OtherUser, OtherPswd}) of
-                {ok, undefined, _} -> Req:respond({401, [], []});
-                {ok, _, undefined} -> Req:respond({401, [], []});
-                {ok, N, C} ->
+                {ok, undefined, _} -> 
+                    ns_log:log(?MODULE, 0014, "During node join, remote node returned an invalid response: missing otpCookie."), 
+                    Req:respond({500, [], "Invalid response from remote node, missing otpCookie."});
+                {ok, _, undefined} -> 
+                    ns_log:log(?MODULE, 0015, "During node join, remote node returned invalid response: missing otpNode."), 
+                    Req:respond({500, [], "Invalid response from remote node, missing otpNode."});
+                {ok, Node, Cookie} ->
                     handle_join(Req,
-                                list_to_atom(binary_to_list(N)),
-                                list_to_atom(binary_to_list(C)));
-                _ -> Req:respond({401, [], []})
+                                list_to_atom(binary_to_list(Node)),
+                                list_to_atom(binary_to_list(Cookie)));
+                _ -> ns_log:log(?MODULE, 0016, "During node join, the remote node did not return a REST response."),
+                     Req:respond({500, [], "Invalid response from remote node."})
             end;
         false ->
             % We are not an 'empty' node, so user should first remove
@@ -564,7 +571,8 @@ handle_join(Req, OtpNode, OtpCookie) ->
               % No need to restart here, as our ns_config event watcher
               % will do it if our rest config changes.
               Req:respond({200, [], []});
-        _  -> Req:respond({401, [], []})
+        Any -> ns_log:log(?MODULE, 0017, "Unexpected error encountered during cluster join ~p", [Any]),
+               Req:respond({500, [], []})
     end.
 
 %% waits till only one node is left in cluster
@@ -792,3 +800,16 @@ serve_index_html_for_tests(Req, DocRoot) ->
         _ -> {Req:not_found()}
     end.
 
+%% log categorizing, every logging line should be unique, and most 
+%% should be categorized
+
+ns_log_cat(0013) ->
+    crit;
+ns_log_cat(0014) ->
+    crit;
+ns_log_cat(0015) ->
+    crit;
+ns_log_cat(0016) ->
+    crit;
+ns_log_cat(0017) ->
+    crit.
