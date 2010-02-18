@@ -7,7 +7,8 @@
 -module(menelaus_web).
 -author('NorthScale <info@northscale.com>').
 
--behavior(ns_log_categorizing).
+% -behavior(ns_log_categorizing).
+% the above is commented out because of the way the project is structured
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -21,6 +22,8 @@
 -export([start_link/0, start_link/1, stop/0, loop/2, webconfig/0, restart/0,
          find_pool_by_id/1, all_accessible_buckets/2,
          find_bucket_by_id/2]).
+
+-export([ns_log_cat/1, ns_log_code_string/1]).
 
 -import(menelaus_util,
         [server_header/0,
@@ -535,7 +538,7 @@ handle_join(Req) ->
     OtherPswd = proplists:get_value("password", Params),
     case lists:member(undefined,
                       [OtherHost, OtherPort, OtherUser, OtherPswd]) of
-        true  -> ns_log:log(?MODULE, 0013, "Received request to join cluster missing a parameter.", [Params]),
+        true  -> ns_log:log(?MODULE, 0013, "Received request to join cluster missing a parameter.", []),
                  Req:respond({400, [], "Attempt to join node to cluster received with missing parameters.\n"});
         false -> handle_join(Req, OtherHost, OtherPort, OtherUser, OtherPswd)
     end.
@@ -813,3 +816,14 @@ ns_log_cat(0016) ->
     crit;
 ns_log_cat(0017) ->
     crit.
+
+ns_log_code_string(0013) ->
+    "node join failure";
+ns_log_code_string(0014) ->
+    "node join failure";
+ns_log_code_string(0015) ->
+    "node join failure";
+ns_log_code_string(0016) ->
+    "node join failure";
+ns_log_code_string(0017) ->
+    "node join failure".
