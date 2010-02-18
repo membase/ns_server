@@ -348,8 +348,8 @@ ping_jointo() ->
     end.
 
 ping_jointo(NodeName) ->
-    io:format("jointo: attempting to contact ~p~n", [NodeName]),
+    error_logger:info_msg("jointo: attempting to contact ~p~n", [NodeName]),
     case net_adm:ping(NodeName) of
-        pong -> io:format("jointo: connected to ~p~n", [NodeName]);
+        pong -> error_logger:info_msg("jointo: connected to ~p~n", [NodeName]);
         pang -> {error, io_lib:format("jointo: could not ping ~p~n", [NodeName])}
     end.
