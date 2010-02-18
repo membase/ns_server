@@ -30,6 +30,4 @@ stop(_State) ->
     ok.
 
 start_link() ->
-    misc:make_pidfile(),
-    misc:ping_jointo(),
     ns_server_sup:start_link().

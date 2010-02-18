@@ -11,6 +11,8 @@
 
 start_link() ->
     application:start(os_mon),
+    misc:make_pidfile(),
+    misc:ping_jointo(),
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 init([]) ->
