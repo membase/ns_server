@@ -73,8 +73,11 @@ collect(T, State) ->
                           end,
                           State#state.buckets),
             ok = gen_tcp:close(Sock);
-        {error, WTF} ->
-            error_logger:info_msg("Error in collection:  ~p~n", [WTF])
+        {error, Err} ->
+            error_logger:info_msg("Error in collection:  ~p ~p ~p~n",
+                                  [Err,
+                                   State#state.hostname,
+                                   State#state.port])
     end.
 
 auth(Sock) ->
