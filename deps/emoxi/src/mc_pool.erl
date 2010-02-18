@@ -180,6 +180,8 @@ handle_call({reconfig, Name, WantPoolConfig}, _From,
                 {ok, Pool} ->
                     ns_log:log(?MODULE, 0005, "reconfig: ~p",
                                [Name]),
+                    % send out an event saying the pool has changed
+                    gen_event:notify(mc_pool_events, reconfig),
                     {reply, ok, Pool};
                 error ->
                     ns_log:log(?MODULE, 0002, "reconfig error: ~p",

@@ -20,7 +20,7 @@ start_link() ->
 
 setup_handler() ->
     {ok, Servers} = monitor_all(),
-    gen_event:add_sup_handler(ns_config_events, ?MODULE, [Servers]).
+    gen_event:add_sup_handler(mc_pool_events, ?MODULE, [Servers]).
 
 init([Servers]) ->
     {ok, #state{servers=Servers}, hibernate}.
@@ -28,7 +28,7 @@ init([Servers]) ->
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
 
-handle_event({pools, _V}, State) ->
+handle_event(reconfig, State) ->
     Prev = State#state.servers,
     {Buckets, Servers} = get_buckets_and_servers(),
     lists:foreach(fun ({H, P}) ->
