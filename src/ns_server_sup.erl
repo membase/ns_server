@@ -11,15 +11,18 @@
 
 start_link() ->
     application:start(os_mon),
-    misc:make_pidfile(),
-    misc:ping_jointo(),
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 init([]) ->
+    pre_start(),
     {ok, {{rest_for_one,
            misc:get_env_default(max_r, 3),
            misc:get_env_default(max_t, 10)},
           get_child_specs()}}.
+
+pre_start() ->
+    misc:make_pidfile(),
+    misc:ping_jointo().
 
 get_child_specs() ->
     [
