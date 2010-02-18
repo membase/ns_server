@@ -39,7 +39,7 @@ rest_get_otp(Host, Port, Auth) ->
     {ok, {struct, KVList}} =
         rest_get_json(rest_url(Host, Port, "/pools/default"), Auth),
     case proplists:get_value(<<"nodes">>, KVList) of
-        undefined -> ns_log:log(?MODULE, 001, "During node join, remote node returned a response with no nodes."), 
+        undefined -> ns_log:log(?MODULE, 001, "During node join, remote node returned a response with no nodes."),
                      undefined;
         [Node | _] ->
             {struct, NodeKVList} = Node,
