@@ -630,7 +630,9 @@ handle_eject_post(Req) ->
                             Req:respond({200, [], []});
                         false ->
                             % Node doesn't exist.
-                            Req:respond({400, [], []})
+                            ns_log:log(?MODULE, 0018, "Request to eject nonexistant node failed.  Requested node:",
+                                       [OtpNode]),
+                            Req:respond({400, [], "Node does not exist.\n"})
                     end
             end
     end.

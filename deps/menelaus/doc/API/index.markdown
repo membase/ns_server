@@ -723,7 +723,7 @@ is administratively disabled to all users)
 At release of 1.0, this will always return a 403.
 
 
-#### Pool Operations
+#### Cluster and Pool Operations
 
 Creating a new pool is not currently supported.
 
@@ -784,6 +784,35 @@ If the server has been "secured" via the console, the following are also require
 
 For example to make this request from curl:
 `curl --data-urlencode clusterMemberHostIp=192.168.0.1 --data-urlencode clusterMemberHostPort=8080 --data-urlencode user=admin --data-urlencode password=admin123 http://localhost:8080/node/controller/doJoinCluster`
+
+#### Ejecting a node from a cluster
+
+In situations where a node is down either temporarily or permanently,
+we may need to eject it from the cluster.  It may also be important
+to eject a node from another node participating in the same cluster.
+
+* Request *
+
+<pre class="restcalls">
+POST /controller/ejectNode
+Host: altnernate.node.in.cluster:8080
+Authorization: Basic xxxxxxxxxxxx
+Accept: */*
+Content-Length: xxxxxxxxxx
+Content-Type: application/x-www-form-urlencoded
+
+otpNode=ns_1@192%2E168%2E0%2E1
+</pre>
+
+* Response *
+200 OK, node ejected
+401 Credentials were not supplied and are required
+403 Credentials were supplied and are incorrect
+400 Error, the node to be ejected doesn't exist
+
+For example, to make this request from curl:
+`$ curl --user admin -i --data otpNode=ns_1@192.168.0.107 http://192.168.0.106:8080/controller/ejectNode`
+
 
 #### System Logs
 
@@ -855,4 +884,5 @@ have been referenced.
 * 20100128 Updated add bucket definition
 * 20100129 Updated create bucket documentation
 * 20100209 Updated pool details, many fixes, adding cache reserved and allocated
+* 20100218 Added documentation on removing a node
 
