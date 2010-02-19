@@ -599,7 +599,7 @@ do_eject_myself_rec(IterationsLeft, Period) ->
     MySelf = node(),
     case ns_node_disco:nodes_actual_proper() of
         [MySelf] -> ok;
-        _ -> 
+        _ ->
             timer:sleep(Period),
             do_eject_myself_rec(IterationsLeft-1, Period)
     end.
@@ -628,7 +628,8 @@ handle_eject_post(Req) ->
     %
     case proplists:get_value("otpNode", PostArgs) of
         undefined -> Req:respond({400, [], "Bad Request\n"});
-        "Self" -> do_eject_myself();
+        "Self" -> do_eject_myself(),
+                  Req:respond({200, [], []});
         OtpNodeStr ->
             OtpNode = list_to_atom(OtpNodeStr),
             case OtpNode =:= node() of
