@@ -524,7 +524,7 @@ function renderSmallGraph(jq, data, isSelected) {
   var plotData = _.map(data, function (e, i) {
     return [i+1, e];
   });
-  
+
   $.plot(jq.find('.small_graph_block'),
          [{color: isSelected ? '#e2f1f9' : '#d95e28',
            data: plotData}],
@@ -717,7 +717,7 @@ var OverviewSection = {
     isCritical = isCritical || _.any(nodes, function (n) {
       return n.status != 'healthy';
     });
-    
+
     var mcdMemReserved = 0;
     var mcdMemAllocd = 0;
     _.each(nodes, function (n) {
@@ -736,7 +736,7 @@ var OverviewSection = {
       nodesCount: nodes.length,
       bucketsCount: buckets && buckets.length,
       memoryUtilization: memoryUtilization,
-      memoryFreeMB: Math.floor(freeMem/1048576), 
+      memoryFreeMB: Math.floor(freeMem/1048576),
       mcdItemUtilization: mcdItemUtilization,
       mcdMemReserved: mcdMemReserved
     };
