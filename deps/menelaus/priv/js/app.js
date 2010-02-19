@@ -164,7 +164,7 @@ function onUnexpectedXHRError(xhr) {
   if (reloadInfo) {
     ts = parseInt(reloadInfo);
     if ((now - ts) < 15*1000) {
-      alert('A second server failure has been detected in a short period of time.  The error has been logged.  Reloading the applciation has been suppressed.\n\nYou should consider browsing to another server in the cluster.');
+      alert('A second server failure has been detected in a short period of time.  The error has been logged.  Reloading the application has been suppressed.\n\nYou should consider browsing to another server in the cluster.');
       return;
     }
   }
