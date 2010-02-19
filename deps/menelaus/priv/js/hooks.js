@@ -366,7 +366,7 @@ var MockedRequest = mkClass({
     }
 
     if (errors.length) {
-      return self.errorResponse({errors: errors});
+      return self.errorResponse(errors);
     }
 
     self.fakeResponse('');

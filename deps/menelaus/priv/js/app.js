@@ -190,19 +190,22 @@ function postWithValidationErrors(url, data, callback) {
 
   function continuation(data, textStatus) {
     action.finish();
-    if (textStatus == 'parsererror' && data.status >= 200 && data.status < 300 && data.responseText == "") {
-      // empty response is OK
-      textStatus = 'success'
-      data = {}
-    } else if (textStatus != 'success') {
+    if (textStatus != 'success') {
+      if (data.status >= 200 && data.status < 300 && data.responseText == '') {
+        return callback.call(this, '', 'success');
+      }
+
       // jquery passes raw xhr object for errors
       if (data.status != 400 || textStatus != 'error') {
         return onUnexpectedXHRError(data);
       }
 
-      var errorsData = $.httpData(data, this.dataType, this);
-      if (!('errors' in errorsData))
-        errorsData.errors = ['unknown reason'];
+      var errorsData = $.httpData(data, null, this);
+      if (!_.isArray(errorsData)) {
+        if (errorsData.length == 0)
+          errorsData = "unknown reason";
+        errorsData = [errorsData];
+      }
       callback.call(this, errorsData, 'error');
       return;
     }
