@@ -1,3 +1,6 @@
+@media print {
+td.leftNav * {display:none !important;}
+}
 /* NorthScale Menelaus Web Console */
 /* begin ultimate reset */
 html, body, div, span, applet, object, iframe,
