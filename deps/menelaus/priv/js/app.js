@@ -822,19 +822,25 @@ var OverviewSection = {
       return this.leaveCluster();
     }
 
-	  showDialog("eject_confirmation_dialog");
-//    if (!window.confirm("Really remove " + node.hostname + " from cluster?\n\nTODO: needs markup")) {
-//      return;
-//    }
+    $('#eject_confirmation_dialog .save_button').bind('click', onClick);
+    showDialog("eject_confirmation_dialog", {
+      onHide: function () {
+        $('#eject_confirmation_dialog').unbind();
+      }
+    });
 
-//    $.ajax({
-//      type: 'POST',
-//      async: false,
-//      url: DAO.cells.currentPoolDetails.value.controllers.ejectNode.uri,
-//      data: {otpNode: node.otpNode}
-//    });
+    function onClick(e) {
+      e.preventDefault();
 
-//    reloadApp();
+      overlayWithSpinner('#eject_confirmation_dialog');
+      $.ajax({
+        type: 'POST',
+        url: DAO.cells.currentPoolDetails.value.controllers.ejectNode.uri,
+        data: {otpNode: node.otpNode},
+        error: reloadApp,
+        success: reloadApp()
+      });
+    }
   },
   init: function () {
     var self = this;
