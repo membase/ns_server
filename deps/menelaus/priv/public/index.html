@@ -981,6 +981,39 @@ MemcachedClient client = manager.getClient();</pre>
   </div>
   <!-- END join cluster -->
 </div>
+<!--  eject confirmation dialog -->
+<div class="jqmWindow" id="eject_confirmation_dialog">
+  <div class="lbox">
+    <div class="top">
+      <div class="top_left"></div>
+      <div class="top_right"></div>
+      <div class="top_center"></div>
+    </div>
+    <div class="center">
+      <div class="pad">
+        <p class="lbox_header">
+        Confirm Node Removal
+        </p>
+      </div>
+      <div class="pas_20">
+      <p class="text_14">
+      Removing this node from the cluster will take away from the cache available to all buckets.</p>
+      </div>
+      <div class="pas_20">
+        <div class="right save_cancel">
+          <a class="save_button float_right" href="{%=renderJSLink('OverviewSection.removeNode',node.otpNode)%}">REMOVE</a>
+            <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
+        </div>
+      </div>
+    </div>
+    <div class="bottom">
+      <div class="bottom_left"></div>
+      <div class="bottom_right"></div>
+      <div class="bottom_center"></div>
+    </div>
+  </div>
+</div>
+<!-- END eject confirmation dialog -->
 <!-- configure analytics -->
 <div class="jqmWindow" id="analytics_settings_dialog">
   <div class="lbox join_cluster">

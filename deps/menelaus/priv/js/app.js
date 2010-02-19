@@ -788,9 +788,10 @@ var OverviewSection = {
     });
   },
   leaveCluster: function () {
-    if (!window.confirm("Really eject this node from cluster?\n\nTODO: needs markup")) {
-      return;
-    }
+	  showDialog("eject_confirmation_dialog");
+//    if (!window.confirm("Really eject this node from cluster?\n\nTODO: needs markup")) {
+//      return;
+//    }
 
     $.ajax({
       type: 'POST',
@@ -821,18 +822,19 @@ var OverviewSection = {
       return this.leaveCluster();
     }
 
-    if (!window.confirm("Really remove " + node.hostname + " from cluster?\n\nTODO: needs markup")) {
-      return;
-    }
+	  showDialog("eject_confirmation_dialog");
+//    if (!window.confirm("Really remove " + node.hostname + " from cluster?\n\nTODO: needs markup")) {
+//      return;
+//    }
 
-    $.ajax({
-      type: 'POST',
-      async: false,
-      url: DAO.cells.currentPoolDetails.value.controllers.ejectNode.uri,
-      data: {otpNode: node.otpNode}
-    });
+//    $.ajax({
+//      type: 'POST',
+//      async: false,
+//      url: DAO.cells.currentPoolDetails.value.controllers.ejectNode.uri,
+//      data: {otpNode: node.otpNode}
+//    });
 
-    reloadApp();
+//    reloadApp();
   },
   init: function () {
     var self = this;
