@@ -8,5 +8,5 @@
   {registered, [ns_network_events, net_watcher, dist_manager]},
   {included_applications, []},
   {applications, [kernel, stdlib]},
-  {mod, {dist_manager_app, []}},
+  {mod, {dist_manager_app, []}}
  ]}.

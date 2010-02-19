@@ -27,6 +27,7 @@ ebins: ebin_app
 ebin_app: version
 	test -d ebin || mkdir ebin
 	sed s/0.0.0/`cat $(TMP_VER)`/g src/ns_server.app.src > ebin/ns_server.app
+	sed s/0.0.0/`cat $(TMP_VER)`/g src/dist_manager.app.src > ebin/dist_manager.app
 
 version:
 	test -d $(TMP_DIR) || mkdir $(TMP_DIR)
