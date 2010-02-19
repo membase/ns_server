@@ -79,104 +79,118 @@ webconfig() ->
     WebConfig.
 
 loop(Req, DocRoot) ->
-    "/" ++ Path = Req:get(path),
-    PathTokens = string:tokens(Path, "/"),
-    Action = case Req:get(method) of
-                 Method when Method =:= 'GET'; Method =:= 'HEAD' ->
-                     case PathTokens of
-                         [] ->
-                             {done, redirect_permanently("/index.html", Req)};
-                         ["pools"] ->
-                             {auth_bucket, fun handle_pools/1};
-                         ["pools", Id] ->
-                             {auth_bucket, fun handle_pool_info/2, [Id]};
-                         ["pools", Id, "stats"] ->
-                             {auth, fun menelaus_stats:handle_bucket_stats/3,
-                              [Id, all]};
-                         ["poolsStreaming", Id] ->
-                             {auth, fun handle_pool_info_streaming/2, [Id]};
-                         ["pools", PoolId, "buckets"] ->
-                             {auth, fun handle_bucket_list/2, [PoolId]};
-                         ["pools", PoolId, "buckets", Id] ->
-                             {auth_bucket, fun handle_bucket_info/3,
-                              [PoolId, Id]};
-                         ["pools", PoolId, "bucketsStreaming", Id] ->
-                             {auth_bucket, fun handle_bucket_info_streaming/3,
-                              [PoolId, Id]};
-                         ["pools", PoolId, "buckets", Id, "stats"] ->
-                             {auth, fun menelaus_stats:handle_bucket_stats/3,
-                              [PoolId, Id]};  %% todo: seems broken
-                         ["logs"] ->
-                             {auth, fun menelaus_alert:handle_logs/1};
-                         ["alerts"] ->
-                             {auth, fun menelaus_alert:handle_alerts/1};
-                         ["settings", "web"] ->
-                             {auth, fun handle_settings_web/1};
-                         ["settings", "advanced"] ->
-                             {auth, fun handle_settings_advanced/1};
-                         ["t", "index.html"] ->
-                             {done, serve_index_html_for_tests(Req, DocRoot)};
-                         ["index.html"] ->
-                             {done, serve_static_file(Req, {DocRoot, Path},
-                                                      "text/html; charset=utf8",
-                                                      [{"Pragma", "no-cache"},
-                                                       {"Cache-Control", "no-cache must-revalidate"}])};
-                         _ ->
-                             {done, Req:serve_file(Path, DocRoot, [{"Pragma", "no-cache"},
-                                                                   {"Cache-Control", "no-cache must-revalidate"}])}
-                     end;
-                 'POST' ->
-                     case PathTokens of
-                         ["node", "controller", "doJoinCluster"] ->
-                             {auth, fun handle_join/1};
-                         ["settings", "web"] ->
-                             {auth, fun handle_settings_web_post/1};
-                         ["settings", "advanced"] ->
-                             {auth, fun handle_settings_advanced_post/1};
-                         ["pools", _PoolId] ->
-                             {done, Req:respond({405, [], ""})};
-                         ["pools", _PoolId, "controller", "testWorkload"] ->
-                             {auth, fun handle_traffic_generator_control_post/1};
-                         ["controller", "ejectNode"] ->
-                             {auth, fun handle_eject_post/1};
-                         ["pools", PoolId, "buckets", Id] ->
-                             {auth_bucket, fun handle_bucket_update/3,
-                              [PoolId, Id]};
-                         ["pools", PoolId, "buckets"] ->
-                             {auth_bucket, fun handle_bucket_update/2,
-                              [PoolId]};
-                         ["pools", PoolId, "buckets", Id, "controller", "doFlush"] ->
-                             {auth_bucket, fun handle_bucket_flush/3,
-                              [PoolId, Id]};
-                         _ ->
-                             ns_log:log(?MODULE, 0001, "Invalid post received: ~p", [Req]),
-                             {done, Req:not_found()}
-                     end;
-                 'DELETE' ->
-                     case PathTokens of
-                         ["pools", PoolId, "buckets", Id] ->
-                             {auth, fun handle_bucket_delete/3, [PoolId, Id]};
-                         _ ->
-                             ns_log:log(?MODULE, 0002, "Invalid delete received: ~p", [Req]),
-                              {done, Req:respond({405, [], "Method Not Allowed"})}
-                     end;
-                 'PUT' ->
-                     case PathTokens of
-                         _ ->
-                             ns_log:log(?MODULE, 0003, "Invalid put received: ~p", [Req]),
-                             {done, Req:respond({405, [], "Method Not Allowed"})}
-                     end;
-                 _ ->
-                     ns_log:log(?MODULE, 0004, "Invalid request received: ~p", [Req]),
-                     {done, Req:respond({405, [], "Method Not Allowed"})}
-             end,
-    case Action of
-        {done, RV} -> RV;
-        {auth, F} -> menelaus_auth:apply_auth(Req, F, []);
-        {auth, F, Args} -> menelaus_auth:apply_auth(Req, F, Args);
-        {auth_bucket, F} -> menelaus_auth:apply_auth_bucket(Req, F, []);
-        {auth_bucket, F, Args} -> menelaus_auth:apply_auth_bucket(Req, F, Args)
+    try 
+        "/" ++ Path = Req:get(path),
+        PathTokens = string:tokens(Path, "/"),
+        Action = case Req:get(method) of
+                     Method when Method =:= 'GET'; Method =:= 'HEAD' ->
+                         case PathTokens of
+                             [] ->
+                                 {done, redirect_permanently("/index.html", Req)};
+                            ["pools"] ->
+                                 {auth_bucket, fun handle_pools/1};
+                             ["pools", Id] ->
+                                 {auth_bucket, fun handle_pool_info/2, [Id]};
+                             ["pools", Id, "stats"] ->
+                                 {auth, fun menelaus_stats:handle_bucket_stats/3,
+                                  [Id, all]};
+                             ["poolsStreaming", Id] ->
+                                 {auth, fun handle_pool_info_streaming/2, [Id]};
+                             ["pools", PoolId, "buckets"] ->
+                                 {auth, fun handle_bucket_list/2, [PoolId]};
+                             ["pools", PoolId, "buckets", Id] ->
+                                 {auth_bucket, fun handle_bucket_info/3,
+                                  [PoolId, Id]};
+                             ["pools", PoolId, "bucketsStreaming", Id] ->
+                                 {auth_bucket, fun handle_bucket_info_streaming/3,
+                                  [PoolId, Id]};
+                            ["pools", PoolId, "buckets", Id, "stats"] ->
+                                 {auth, fun menelaus_stats:handle_bucket_stats/3,
+                                  [PoolId, Id]};  %% todo: seems broken
+                             ["logs"] ->
+                                 {auth, fun menelaus_alert:handle_logs/1};
+                             ["alerts"] ->
+                                 {auth, fun menelaus_alert:handle_alerts/1};
+                             ["settings", "web"] ->
+                                 {auth, fun handle_settings_web/1};
+                             ["settings", "advanced"] ->
+                                 {auth, fun handle_settings_advanced/1};
+                             ["t", "index.html"] ->
+                                 {done, serve_index_html_for_tests(Req, DocRoot)};
+                             ["index.html"] ->
+                                 {done, serve_static_file(Req, {DocRoot, Path},
+                                                         "text/html; charset=utf8",
+                                                          [{"Pragma", "no-cache"},
+                                                           {"Cache-Control", "no-cache must-revalidate"}])};
+                             _ ->
+                                 {done, Req:serve_file(Path, DocRoot, [{"Pragma", "no-cache"},
+                                                                       {"Cache-Control", "no-cache must-revalidate"}])}
+                        end;
+                     'POST' ->
+                         case PathTokens of
+                             ["node", "controller", "doJoinCluster"] ->
+                                 {auth, fun handle_join/1};
+                             ["settings", "web"] ->
+                                 {auth, fun handle_settings_web_post/1};
+                            ["settings", "advanced"] ->
+                                 {auth, fun handle_settings_advanced_post/1};
+                             ["pools", _PoolId] ->
+                                 {done, Req:respond({405, [], ""})};
+                             ["pools", _PoolId, "controller", "testWorkload"] ->
+                                 {auth, fun handle_traffic_generator_control_post/1};
+                             ["controller", "ejectNode"] ->
+                                 {auth, fun handle_eject_post/1};
+                             ["pools", PoolId, "buckets", Id] ->
+                                 {auth_bucket, fun handle_bucket_update/3,
+                                  [PoolId, Id]};
+                             ["pools", PoolId, "buckets"] ->
+                                 {auth_bucket, fun handle_bucket_update/2,
+                                  [PoolId]};
+                             ["pools", PoolId, "buckets", Id, "controller", "doFlush"] ->
+                                 {auth_bucket, fun handle_bucket_flush/3,
+                                [PoolId, Id]};
+                             _ ->
+                                 ns_log:log(?MODULE, 0001, "Invalid post received: ~p", [Req]),
+                                 {done, Req:not_found()}
+                      end;
+                     'DELETE' ->
+                         case PathTokens of
+                             ["pools", PoolId, "buckets", Id] ->
+                                 {auth, fun handle_bucket_delete/3, [PoolId, Id]};
+                             _ ->
+                                 ns_log:log(?MODULE, 0002, "Invalid delete received: ~p", [Req]),
+                                  {done, Req:respond({405, [], "Method Not Allowed"})}
+                         end;
+                     'PUT' ->
+                         case PathTokens of
+                             _ ->
+                                 ns_log:log(?MODULE, 0003, "Invalid put received: ~p", [Req]),
+                                 {done, Req:respond({405, [], "Method Not Allowed"})}
+                         end;
+                     _ ->
+                         ns_log:log(?MODULE, 0004, "Invalid request received: ~p", [Req]),
+                         {done, Req:respond({405, [], "Method Not Allowed"})}
+                 end,
+        case Action of
+            {done, RV} -> RV;
+            {auth, F} -> menelaus_auth:apply_auth(Req, F, []);
+            {auth, F, Args} -> menelaus_auth:apply_auth(Req, F, Args);
+            {auth_bucket, F} -> menelaus_auth:apply_auth_bucket(Req, F, []);
+            {auth_bucket, F, Args} -> menelaus_auth:apply_auth_bucket(Req, F, Args)
+        end
+    catch
+        exit:normal ->
+            %% this happens when the client closed the connection
+            exit(normal);
+        Type:What ->
+            Report = ["web request failed",
+                      {path, Req:get(path)},
+                      {type, Type}, {what, What}],
+            %          {trace, erlang:get_stacktrace()}], % todo: find a way to enable this for field info gathering
+            ns_log:log(?MODULE, 0019, "Server error during processing: ~p", Report),
+            Req:respond({500, [], []})
     end.
+        
 
 %% Internal API
 
@@ -817,7 +831,9 @@ ns_log_cat(0015) ->
 ns_log_cat(0016) ->
     crit;
 ns_log_cat(0017) ->
-    crit.
+    crit;
+ns_log_cat(0019) -> 
+    warn.
 
 ns_log_code_string(0013) ->
     "node join failure";
@@ -828,4 +844,6 @@ ns_log_code_string(0015) ->
 ns_log_code_string(0016) ->
     "node join failure";
 ns_log_code_string(0017) ->
-    "node join failure".
+    "node join failure";
+ns_log_code_string(0019) ->
+    "server error during request processing".
