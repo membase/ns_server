@@ -788,19 +788,19 @@ var OverviewSection = {
     });
   },
   leaveCluster: function () {
-	  showDialog("eject_confirmation_dialog");
-//    if (!window.confirm("Really eject this node from cluster?\n\nTODO: needs markup")) {
-//      return;
-//    }
-
-    $.ajax({
-      type: 'POST',
-      async: false,
-      url: DAO.cells.currentPoolDetails.value.controllers.ejectNode.uri,
-      data: "otpNode=Self"
+    showDialog("eject_confirmation_dialog", {
+      eventBindings: [['.save_button', 'click', function (e) {
+        e.preventDefault();
+        overlayWithSpinner('#eject_confirmation_dialog');
+        $.ajax({
+          type: 'POST',
+          url: DAO.cells.currentPoolDetails.value.controllers.ejectNode.uri,
+          data: "otpNode=Self",
+          success: reloadApp,
+          errors: reloadApp
+        });
+      }]]
     });
-
-    reloadApp();
   },
   removeNode: function (otpNode) {
     var details = DAO.cells.currentPoolDetails.value.nodes;
@@ -822,25 +822,20 @@ var OverviewSection = {
       return this.leaveCluster();
     }
 
-    $('#eject_confirmation_dialog .save_button').bind('click', onClick);
     showDialog("eject_confirmation_dialog", {
-      onHide: function () {
-        $('#eject_confirmation_dialog').unbind();
-      }
+      eventBindings: [['.save_button', 'click', function (e) {
+        e.preventDefault();
+
+        overlayWithSpinner('#eject_confirmation_dialog');
+        $.ajax({
+          type: 'POST',
+          url: DAO.cells.currentPoolDetails.value.controllers.ejectNode.uri,
+          data: {otpNode: node.otpNode},
+          error: reloadApp,
+          success: reloadApp
+        });
+      }]]
     });
-
-    function onClick(e) {
-      e.preventDefault();
-
-      overlayWithSpinner('#eject_confirmation_dialog');
-      $.ajax({
-        type: 'POST',
-        url: DAO.cells.currentPoolDetails.value.controllers.ejectNode.uri,
-        data: {otpNode: node.otpNode},
-        error: reloadApp,
-        success: reloadApp()
-      });
-    }
   },
   init: function () {
     var self = this;
