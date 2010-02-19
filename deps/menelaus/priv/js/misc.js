@@ -476,6 +476,8 @@ function showDialog(idOrJQ, options) {
     hideDialog(jq);
   });
 
+  var eventBindings = options.eventBindings || [];
+
   jq.jqm({modal:true,
           onHide: function (h) {
             $(window).unbind('hashchange', onHashChange);
@@ -487,11 +489,31 @@ function showDialog(idOrJQ, options) {
               return showDialog(idOrJQ, options);
             }
 
+            iterateBindings(function (e, eventType, callback) {
+              e.unbind(eventType, callback);
+            });
+
             if (options.onHide)
               options.onHide(idOrJQ);
             // copied from jqmodal itself
             h.w.hide() && h.o && h.o.remove();
           }}).jqmShow();
+
+  function iterateBindings(body) {
+    _.each(eventBindings, function (arr) {
+      var selector, eventType, callback;
+      selector = arr[0];
+      eventType = arr[1];
+      callback = arr[2];
+
+      var found = jq.find(selector);
+      body(found, eventType, callback);
+    });
+  }
+
+  iterateBindings(function (e, eventType, callback) {
+    e.bind(eventType, callback);
+  });
 }
 
 function hideDialog(id) {
