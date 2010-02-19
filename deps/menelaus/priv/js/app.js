@@ -190,7 +190,11 @@ function postWithValidationErrors(url, data, callback) {
 
   function continuation(data, textStatus) {
     action.finish();
-    if (textStatus != 'success') {
+    if (textStatus == 'parsererror' && data.status >= 200 && data.status < 300 && data.responseText == "") {
+      // empty response is OK
+      textStatus = 'success'
+      data = {}
+    } else if (textStatus != 'success') {
       // jquery passes raw xhr object for errors
       if (data.status != 400 || textStatus != 'error') {
         return onUnexpectedXHRError(data);
