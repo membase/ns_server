@@ -10,6 +10,7 @@
 -export([start_win/0]).
 
 start() ->
+    application:start(dist_manager),
     application:start(ns_server).
 
 start_win() ->

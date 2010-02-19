@@ -1,0 +1,12 @@
+% Copyright (c) 2010, NorthScale, Inc.
+% All rights reserved.
+
+{application, dist_manager,
+ [{description, "Distributed erlang manager"},
+  {vsn, "0.0.0"},
+  {modules, [net_watcher, dist_manager, dist_sup, addr_util]},
+  {registered, [ns_network_events, net_watcher, dist_manager]},
+  {included_applications, []},
+  {applications, [kernel, stdlib]},
+  {mod, {dist_manager_app, []}},
+ ]}.
