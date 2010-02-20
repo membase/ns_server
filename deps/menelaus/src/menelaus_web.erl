@@ -79,7 +79,7 @@ webconfig() ->
     WebConfig.
 
 loop(Req, DocRoot) ->
-    try 
+    try
         "/" ++ Path = Req:get(path),
         PathTokens = string:tokens(Path, "/"),
         Action = case Req:get(method) of
@@ -190,7 +190,7 @@ loop(Req, DocRoot) ->
             ns_log:log(?MODULE, 0019, "Server error during processing: ~p", Report),
             Req:respond({500, add_header(), []})
     end.
-        
+
 
 %% Internal API
 
@@ -562,11 +562,11 @@ handle_join(Req, OtherHost, OtherPort, OtherUser, OtherPswd) ->
         true ->
             case menelaus_rest:rest_get_otp(OtherHost, OtherPort,
                                             {OtherUser, OtherPswd}) of
-                {ok, undefined, _} -> 
-                    ns_log:log(?MODULE, 0014, "During node join, remote node returned an invalid response: missing otpCookie."), 
+                {ok, undefined, _} ->
+                    ns_log:log(?MODULE, 0014, "During node join, remote node returned an invalid response: missing otpCookie."),
                     Req:respond({500, add_header(), "Invalid response from remote node, missing otpCookie."});
-                {ok, _, undefined} -> 
-                    ns_log:log(?MODULE, 0015, "During node join, remote node returned invalid response: missing otpNode."), 
+                {ok, _, undefined} ->
+                    ns_log:log(?MODULE, 0015, "During node join, remote node returned invalid response: missing otpNode."),
                     Req:respond({500, add_header(), "Invalid response from remote node, missing otpNode."});
                 {ok, Node, Cookie} ->
                     handle_join(Req,
@@ -628,7 +628,7 @@ handle_eject_post(Req) ->
     %
     case proplists:get_value("otpNode", PostArgs) of
         undefined -> Req:respond({400, add_header(), "Bad Request\n"});
-        "Self" -> do_eject_myself();
+        "Self" -> do_eject_myself(),
                   Req:respond({200, [], []});
         OtpNodeStr ->
             OtpNode = list_to_atom(OtpNodeStr),
@@ -824,7 +824,7 @@ serve_index_html_for_tests(Req, DocRoot) ->
 add_header() ->
     menelaus_util:server_header().
 
-%% log categorizing, every logging line should be unique, and most 
+%% log categorizing, every logging line should be unique, and most
 %% should be categorized
 
 ns_log_cat(0013) ->
@@ -837,7 +837,7 @@ ns_log_cat(0016) ->
     crit;
 ns_log_cat(0017) ->
     crit;
-ns_log_cat(0019) -> 
+ns_log_cat(0019) ->
     warn.
 
 ns_log_code_string(0013) ->
