@@ -39,7 +39,10 @@
 %% External API
 
 server_header() ->
-    [{"Server", "NorthScale menelaus %TODO gitversion%"}].
+    Versions = ns_info:version(),
+    ServerHeader = lists:concat([
+                       "NorthScale Server ", proplists:get_value(ns_server, Versions)]),
+    [{"Server", ServerHeader}].
 
 redirect_permanently(Path, Req) -> redirect_permanently(Path, Req, []).
 

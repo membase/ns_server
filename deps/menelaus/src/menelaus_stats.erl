@@ -88,7 +88,7 @@ handle_buckets_stats(PoolId, BucketIds, Req) ->
             {struct, PropList2} = build_buckets_stats_hks_response(PoolId, BucketIds, Params),
             reply_json(Req, {struct, PropList1 ++ PropList2});
         _ ->
-            Req:respond({400, [], []})
+            Req:respond({400, add_header(), []})
     end.
 
 handle_buckets_stats_ops(Req, PoolId, BucketIds, Params) ->
@@ -344,3 +344,6 @@ deltas_test() ->
 
 -endif.
 
+% too much typing to add this, and I'd rather not hide the response too much
+add_header() ->
+    menelaus_util:server_header().

@@ -26,7 +26,7 @@ apply_auth(Req, F, Args) ->
                      %% We need this for browsers that display auth
                      %% dialog when faced with 401 with
                      %% WWW-Authenticate header response, even via XHR
-                     Req:respond({401, [], []});
+                     Req:respond({401, add_header(), []});
                  _ ->
                      Req:respond({401, [{"WWW-Authenticate",
                                  "Basic realm=\"api\""}],
@@ -99,3 +99,6 @@ bucket_auth_fun(UserPassword) ->
             end
     end.
 
+% too much typing to add this, and I'd rather not hide the response too much
+add_header() ->
+    menelaus_util:server_header().

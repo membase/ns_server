@@ -135,7 +135,7 @@ loop(Req, DocRoot) ->
                             ["settings", "advanced"] ->
                                  {auth, fun handle_settings_advanced_post/1};
                              ["pools", _PoolId] ->
-                                 {done, Req:respond({405, [], ""})};
+                                 {done, Req:respond({405, add_header(), ""})};
                              ["pools", _PoolId, "controller", "testWorkload"] ->
                                  {auth, fun handle_traffic_generator_control_post/1};
                              ["controller", "ejectNode"] ->
@@ -159,17 +159,17 @@ loop(Req, DocRoot) ->
                                  {auth, fun handle_bucket_delete/3, [PoolId, Id]};
                              _ ->
                                  ns_log:log(?MODULE, 0002, "Invalid delete received: ~p", [Req]),
-                                  {done, Req:respond({405, [], "Method Not Allowed"})}
+                                  {done, Req:respond({405, add_header(), "Method Not Allowed"})}
                          end;
                      'PUT' ->
                          case PathTokens of
                              _ ->
                                  ns_log:log(?MODULE, 0003, "Invalid put received: ~p", [Req]),
-                                 {done, Req:respond({405, [], "Method Not Allowed"})}
+                                 {done, Req:respond({405, add_header(), "Method Not Allowed"})}
                          end;
                      _ ->
                          ns_log:log(?MODULE, 0004, "Invalid request received: ~p", [Req]),
-                         {done, Req:respond({405, [], "Method Not Allowed"})}
+                         {done, Req:respond({405, add_header(), "Method Not Allowed"})}
                  end,
         case Action of
             {done, RV} -> RV;
@@ -186,16 +186,16 @@ loop(Req, DocRoot) ->
             Report = ["web request failed",
                       {path, Req:get(path)},
                       {type, Type}, {what, What}],
-            %          {trace, erlang:get_stacktrace()}], % todo: find a way to enable this for field info gathering
+                      %{trace, erlang:get_stacktrace()}], % todo: find a way to enable this for field info gathering
             ns_log:log(?MODULE, 0019, "Server error during processing: ~p", Report),
-            Req:respond({500, [], []})
+            Req:respond({500, add_header(), []})
     end.
         
 
 %% Internal API
 
 implementation_version() ->
-    list_to_binary(proplists:get_value(menelaus,ns_info:version())).
+    list_to_binary(proplists:get_value(ns_server,ns_info:version())).
 
 handle_pools(Req) ->
     reply_json(Req, build_pools()).
@@ -423,10 +423,10 @@ handle_bucket_delete(PoolId, BucketId, Req) ->
         true ->
             ns_log:log(?MODULE, 0011, "Deleted bucket ~p from pool ~p",
                        [BucketId, PoolId]),
-            Req:respond({204, [], []});
+            Req:respond({204, add_header(), []});
         false ->
             %% if bucket isn't found
-            Req:respond({404, [], "The bucket to be deleted was not found.\r\n"})
+            Req:respond({404, add_header(), "The bucket to be deleted was not found.\r\n"})
     end,
     ok.
 
@@ -457,27 +457,27 @@ handle_bucket_update(PoolId, BucketId, Req) ->
                 lists:keystore(auth_plain, 1, BucketConfig,
                                {auth_plain, Auth}),
             case BucketConfig2 =:= BucketConfig of
-                true  -> Req:respond({200, [], []}); % No change.
+                true  -> Req:respond({200, add_header(), []}); % No change.
                 false -> ns_log:log(?MODULE, 0010, "bucket updated: ~p in: ~p",
                                     [BucketId, PoolId]),
                          mc_bucket:bucket_config_make(PoolId,
                                                       BucketId,
                                                       BucketConfig2),
-                         Req:respond({200, [], []})
+                         Req:respond({200, add_header(), []})
             end
     end.
 
 handle_bucket_update(PoolId, Req) ->
     PostArgs = Req:parse_post(),
     case proplists:get_value("name", PostArgs) of
-        undefined -> Req:respond({400, [], []});
-        <<>>      -> Req:respond({400, [], []});
+        undefined -> Req:respond({400, add_header(), []});
+        <<>>      -> Req:respond({400, add_header(), []});
         BucketId  -> handle_bucket_create(PoolId, BucketId, Req)
     end.
 
 handle_bucket_create(_PoolId, [$_ | _], Req) ->
     % Bucket name cannot have a leading underscore character.
-    Req:respond({400, [], []});
+    Req:respond({400, add_header(), []});
 
 handle_bucket_create(PoolId, BucketId, Req) ->
     PostArgs = Req:parse_post(),
@@ -485,7 +485,7 @@ handle_bucket_create(PoolId, BucketId, Req) ->
     % Input bucket name and password cannot have whitespace.
     case {is_clean(BucketId, false, 1), is_clean(Pass, true, 1)} of
         {true, true} -> handle_bucket_create_do(PoolId, BucketId, Req);
-        _ -> Req:respond({400, [], []})
+        _ -> Req:respond({400, add_header(), []})
     end.
 
 handle_bucket_create_do(PoolId, BucketId, Req) ->
@@ -524,8 +524,8 @@ handle_bucket_flush(PoolId, Id, Req) ->
     ns_log:log(?MODULE, 0005, "Flushing pool ~p bucket ~p from node ~p",
                [PoolId, Id, erlang:node()]),
     case mc_bucket:bucket_flush(PoolId, Id) of
-        ok    -> Req:respond({204, [], []});
-        false -> Req:respond({404, [], []})
+        ok    -> Req:respond({204, add_header(), []});
+        false -> Req:respond({404, add_header(), []})
     end.
 
 handle_join(Req) ->
@@ -553,7 +553,7 @@ handle_join(Req) ->
     case lists:member(undefined,
                       [OtherHost, OtherPort, OtherUser, OtherPswd]) of
         true  -> ns_log:log(?MODULE, 0013, "Received request to join cluster missing a parameter.", []),
-                 Req:respond({400, [], "Attempt to join node to cluster received with missing parameters.\n"});
+                 Req:respond({400, add_header(), "Attempt to join node to cluster received with missing parameters.\n"});
         false -> handle_join(Req, OtherHost, OtherPort, OtherUser, OtherPswd)
     end.
 
@@ -564,21 +564,21 @@ handle_join(Req, OtherHost, OtherPort, OtherUser, OtherPswd) ->
                                             {OtherUser, OtherPswd}) of
                 {ok, undefined, _} -> 
                     ns_log:log(?MODULE, 0014, "During node join, remote node returned an invalid response: missing otpCookie."), 
-                    Req:respond({500, [], "Invalid response from remote node, missing otpCookie."});
+                    Req:respond({500, add_header(), "Invalid response from remote node, missing otpCookie."});
                 {ok, _, undefined} -> 
                     ns_log:log(?MODULE, 0015, "During node join, remote node returned invalid response: missing otpNode."), 
-                    Req:respond({500, [], "Invalid response from remote node, missing otpNode."});
+                    Req:respond({500, add_header(), "Invalid response from remote node, missing otpNode."});
                 {ok, Node, Cookie} ->
                     handle_join(Req,
                                 list_to_atom(binary_to_list(Node)),
                                 list_to_atom(binary_to_list(Cookie)));
                 _ -> ns_log:log(?MODULE, 0016, "During node join, the remote node did not return a REST response."),
-                     Req:respond({500, [], "Invalid response from remote node."})
+                     Req:respond({500, add_header(), "Invalid response from remote node."})
             end;
         false ->
             % We are not an 'empty' node, so user should first remove
             % buckets, etc.
-            Req:respond({401, [], []})
+            Req:respond({401, add_header(), []})
     end.
 
 handle_join(Req, OtpNode, OtpCookie) ->
@@ -587,9 +587,9 @@ handle_join(Req, OtpNode, OtpCookie) ->
                          [OtpNode, OtpCookie, erlang:node()]),
               % No need to restart here, as our ns_config event watcher
               % will do it if our rest config changes.
-              Req:respond({200, [], []});
+              Req:respond({200, add_header(), []});
         Any -> ns_log:log(?MODULE, 0017, "Unexpected error encountered during cluster join ~p", [Any]),
-               Req:respond({500, [], []})
+               Req:respond({500, add_header(), []})
     end.
 
 %% waits till only one node is left in cluster
@@ -627,27 +627,27 @@ handle_eject_post(Req) ->
     %               400 if the node to be ejected doesn't exist
     %
     case proplists:get_value("otpNode", PostArgs) of
-        undefined -> Req:respond({400, [], "Bad Request\n"});
-        "Self" -> do_eject_myself(),
+        undefined -> Req:respond({400, add_header(), "Bad Request\n"});
+        "Self" -> do_eject_myself();
                   Req:respond({200, [], []});
         OtpNodeStr ->
             OtpNode = list_to_atom(OtpNodeStr),
             case OtpNode =:= node() of
                 true ->
                     % Cannot eject ourselves.
-                    Req:respond({400, [], "Bad Request\n"});
+                    Req:respond({400, add_header(), "Bad Request\n"});
                 false ->
                     case lists:member(OtpNode, ns_node_disco:nodes_wanted()) of
                         true ->
                             ok = ns_cluster:leave(OtpNode),
                             ns_log:log(?MODULE, 0013, "Node ejected: ~p from node: ~p",
                                        [OtpNode, erlang:node()]),
-                            Req:respond({200, [], []});
+                            Req:respond({200, add_header(), []});
                         false ->
                             % Node doesn't exist.
                             ns_log:log(?MODULE, 0018, "Request to eject nonexistant node failed.  Requested node:",
                                        [OtpNode]),
-                            Req:respond({400, [], "Node does not exist.\n"})
+                            Req:respond({400, add_header(), "Node does not exist.\n"})
                     end
             end
     end.
@@ -677,7 +677,7 @@ handle_settings_web_post(Req) ->
     U = proplists:get_value("username", PostArgs),
     P = proplists:get_value("password", PostArgs),
     case lists:member(undefined, [Port, U, P]) of
-        true -> Req:respond({400, [], []});
+        true -> Req:respond({400, add_header(), []});
         false ->
             PortInt = list_to_integer(Port),
             case build_settings_web() =:= build_settings_web(PortInt, U, P) of
@@ -718,8 +718,8 @@ handle_settings_advanced_post(Req) ->
     PostArgs = Req:parse_post(),
     case (ok =:= menelaus_alert:handle_alerts_settings_post(PostArgs)) andalso
          (ok =:= handle_port_settings_post(PostArgs, "default")) of
-        true  -> Req:respond({200, [], []});
-        false -> Req:respond({400, [], []})
+        true  -> Req:respond({200, add_header(), []});
+        false -> Req:respond({400, add_header(), []})
     end.
 
 build_port_settings(PoolId) ->
@@ -751,17 +751,17 @@ handle_traffic_generator_control_post(Req) ->
         "off" -> ns_log:log(?MODULE, 0006, "Stopping workload from node ~p",
                             [erlang:node()]),
                  tgen:traffic_stop(),
-                 Req:respond({204, [], []});
+                 Req:respond({204, add_header(), []});
         "on" -> ns_log:log(?MODULE, 0007, "Starting workload from node ~p",
                            [erlang:node()]),
                 % TODO: Use rpc:multicall here to turn off traffic
                 %       generation across all actual nodes in the cluster.
                 tgen:traffic_start(),
-                Req:respond({204, [], []});
+                Req:respond({204, add_header(), []});
         _ ->
             ns_log:log(?MODULE, 0008, "Invalid post to testWorkload controller.  PostArgs ~p evaluated to ~p",
                        [PostArgs, proplists:get_value(PostArgs, "onOrOff")]),
-            Req:respond({400, [], "Bad Request\n"})
+            Req:respond({400, add_header(), "Bad Request\n"})
     end.
 
 % Make sure an input parameter string is clean and not too long.
@@ -819,6 +819,10 @@ serve_index_html_for_tests(Req, DocRoot) ->
             Req:ok({"text/html", list_to_binary(StringData)});
         _ -> {Req:not_found()}
     end.
+
+% too much typing to add this, and I'd rather not hide the response too much
+add_header() ->
+    menelaus_util:server_header().
 
 %% log categorizing, every logging line should be unique, and most 
 %% should be categorized
