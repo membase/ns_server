@@ -76,28 +76,17 @@ handle_cast({received, T, Hostname, Port, Bucket, Stats}, State) ->
                                            fun(R) ->
                                                    ringdict:add(TS, R)
                                            end,
+                                           ringdict:new(?SAMPLE_SIZE),
                                            State#state.vals),
                            topkeys=State#state.topkeys}};
 handle_cast({received_topkeys, _T, Hostname, Port, Bucket, Topkeys}, State) ->
     {noreply, State#state{vals=State#state.vals,
                           topkeys=dict:store({Hostname, Port, Bucket},
                                           Topkeys,
-                                          State#state.topkeys)}};
-handle_cast({monitoring, Hostname, Port, Bucket}, State) ->
-    error_logger:info_msg("Beginning to monitor:  ~s@~s:~p~n",
-                          [Bucket, Hostname, Port]),
-    {noreply, State#state{vals=dict:store({Hostname, Port, Bucket},
-                                          ringdict:new(?SAMPLE_SIZE),
-                                          State#state.vals)}};
-handle_cast({unmonitoring, Hostname, Port, Bucket}, State) ->
-    error_logger:info_msg("No longer monitoring:  ~s@~s:~p~n",
-                          [Bucket, Hostname, Port]),
-    {noreply, State#state{vals=dict:erase({Hostname, Port},
-                                          State#state.vals)}}.
+                                          State#state.topkeys)}}.
 
 handle_info(post_startup_init, State) ->
-    error_logger:info_msg("Performing post-startup stats initialization.~n"),
-    stats_pool_event_listener:setup_handler(),
+    error_logger:info_msg("Performing post-startup stats initialization (NOOP).~n"),
     {noreply, State};
 handle_info(Info, State) ->
     error_logger:info_msg("Just received ~p~n", [Info]),

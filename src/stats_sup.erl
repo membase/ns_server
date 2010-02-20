@@ -12,8 +12,8 @@ start_link() ->
 init([]) ->
     {ok, {{one_for_all, 5, 10},
           [
-           {stat_collection_clock,
-            {stats_collection_clock, start_link, []},
+           {stat_collector,
+            {stats_collector, start_link, []},
             permanent, 10, worker, []},
            {stats_aggregator,
             {stats_aggregator, start_link, []},

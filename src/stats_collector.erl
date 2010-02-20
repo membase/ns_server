@@ -5,79 +5,65 @@
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
 
--behaviour(gen_event).
-%% API
--export([start_link/0,
-         monitor/3, unmonitor/2]).
+-behaviour(gen_server).
 
-%% gen_event callbacks
--export([init/1, handle_event/2, handle_call/2,
+%% API
+-export([start_link/0]).
+
+-record(state, {tref}).
+
+%% gen_server callbacks
+-export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
--record(state, {hostname, port, buckets}).
-
 start_link() ->
-    {error, "Don't start_link this."}.
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
-init([Hostname, Port, Buckets]) ->
-    notify_monitoring(Hostname, Port, Buckets),
-    {ok, #state{hostname=Hostname, port=Port, buckets=Buckets}}.
+init([]) ->
+    {ok, Tref} = timer:send_interval(1000, collect),
+    {ok, #state{tref=Tref}}.
 
-handle_event({collect, T}, State) ->
-    collect(T, State),
-    {ok, State}.
+handle_call(Request, From, State) ->
+    error_logger:info_message("stats_collector:handle_call(~p, ~p, ~p)~n",
+                              [Request, From, State]),
+    {reply, ok, State}.
 
-handle_call({set_buckets, Buckets}, State) ->
-    Removed = State#state.buckets -- Buckets,
-    Added = Buckets -- State#state.buckets,
-    error_logger:info_msg("Added:  ~p, Removed:  ~p~n", [Added, Removed]),
-    notify_monitoring(State#state.hostname, State#state.port, Added),
-    notify_unmonitoring(State#state.hostname, State#state.port, Removed),
-    {ok, ok, State#state{buckets=Buckets}}.
+handle_cast(Msg, State) ->
+    error_logger:info_message("stats_collector:handle_cast(~p, ~p)~n",
+                              [Msg, State]),
+    {noreply, State}.
 
-handle_info(_Info, State) ->
-    {ok, State}.
+handle_info(collect, State) ->
+    collect(),
+    {noreply, State}.
 
-terminate(Reason, State) ->
+terminate(Reason, _State) ->
     error_logger:info_msg("Stats collector termination notice: ~p~n",
                           [Reason]),
-    notify_unmonitoring(State#state.hostname, State#state.port,
-                        State#state.buckets),
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-notify_monitoring(Hostname, Port, Buckets) ->
-    lists:foreach(fun (Bucket) ->
-                          stats_aggregator:monitoring(Hostname,
-                                                      Port,
-                                                      Bucket)
-                  end, Buckets).
+collect() ->
+    {Buckets, Servers} = get_buckets_and_servers(),
+    T = erlang:now(),
+    lists:foreach(fun(Server) -> collect(T, Server, Buckets) end, Servers).
 
-notify_unmonitoring(Hostname, Port, Buckets) ->
-        lists:foreach(fun (Bucket) ->
-                          stats_aggregator:unmonitoring(Hostname,
-                                                        Port,
-                                                        Bucket)
-                  end, Buckets).
-
-collect(T, State) ->
-    case gen_tcp:connect(State#state.hostname, State#state.port,
+collect(T, {Host, Port}, Buckets) ->
+    case gen_tcp:connect(Host, Port,
                          [binary, {packet, 0}, {active, false}],
                          1000) of
         {ok, Sock} ->
             ok = auth(Sock),
             lists:foreach(fun(B) ->
-                                 collect(T, State, B, Sock)
+                                 collect(T, {Host, Port}, B, Sock)
                           end,
-                          State#state.buckets),
+                          Buckets),
             ok = gen_tcp:close(Sock);
         {error, Err} ->
             error_logger:info_msg("Error in collection:  ~p ~p ~p~n",
-                                  [Err,
-                                   State#state.hostname,
-                                   State#state.port])
+                                  [Err, Host, Port])
     end.
 
 auth(Sock) ->
@@ -91,7 +77,7 @@ auth(Sock, U, P) when is_list(U); is_list(P) ->
     % creds are right).
     mc_client_binary:auth(Sock, {<<"PLAIN">>, {U, P}}).
 
-collect(T, State, Bucket, Sock) ->
+collect(T, {Host, Port}, Bucket, Sock) ->
     {ok, _RecvHeader, _RecvEntry, _NCB} = mc_client_binary:select_bucket(Sock, Bucket),
     {ok, _H, _E, Stats} = mc_client_binary:cmd(?STAT, Sock,
                               fun (_MH, ME, CD) ->
@@ -101,11 +87,7 @@ collect(T, State, Bucket, Sock) ->
                               end,
                               dict:new(),
                               {#mc_header{}, #mc_entry{}}),
-    stats_aggregator:received_data(T,
-                                   State#state.hostname,
-                                   State#state.port,
-                                   Bucket,
-                                   Stats),
+    stats_aggregator:received_data(T, Host, Port, Bucket, Stats),
     {ok, _H, _E, Topkeys} = mc_client_binary:cmd(?STAT, Sock,
                               fun (_MH, ME, CD) ->
                                       dict:store(binary_to_list(ME#mc_entry.key),
@@ -114,10 +96,7 @@ collect(T, State, Bucket, Sock) ->
                               end,
                               dict:new(),
                               {#mc_header{}, #mc_entry{key = <<"topkeys">>}}),
-    stats_aggregator:received_topkeys(T,
-                                      State#state.hostname,
-                                      State#state.port,
-                                      Bucket,
+    stats_aggregator:received_topkeys(T, Host, Port, Bucket,
                                       parse_topkeys(Topkeys)).
 
 parse_topkey_value(Value) ->
@@ -138,18 +117,20 @@ parse_topkeys(Topkeys) ->
         end,
         Topkeys).
 
-%
-%% Entry Points.
-%
 
-monitor(Hostname, Port, Buckets) ->
-    case gen_event:call(?SERVER, {?MODULE, {Hostname, Port}},
-                        {set_buckets, Buckets}) of
-        {error, bad_module} ->
-            ok = gen_event:add_handler(?SERVER, {?MODULE, {Hostname, Port}},
-                                       [Hostname, Port, Buckets]);
-        ok -> ok
-    end.
+%% Internal functions
 
-unmonitor(Hostname, Port) ->
-    ok = gen_event:delete_handler(?SERVER, {?MODULE, {Hostname, Port}}, []).
+get_buckets_and_servers() ->
+    [Pool | []] = mc_pool:list(), % assume one pool
+    Buckets = mc_bucket:list(Pool),
+    Servers = lists:usort(lists:flatmap(fun(B) -> bucket_servers(Pool, B)
+                                        end, Buckets)),
+    {Buckets, Servers}.
+
+bucket_servers(Pool, B) ->
+    lists:map(fun({mc_addr, HP, _K, _A}) ->
+                      [H, P] = string:tokens(HP, ":"),
+                      {I, []} = string:to_integer(P),
+                      {H, I}
+              end,
+              mc_bucket:addrs(Pool, B)).
