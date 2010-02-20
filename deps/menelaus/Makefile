@@ -30,6 +30,7 @@ priv/public/js/t-all.js: priv/js/*.js
 	$(SPROCKETIZE) -I priv/js priv/js/app.js priv/js/hooks.js >$@
 
 deps:
+	test -d deps/mochiweb/ebin || mkdir deps/mochiweb/ebin
 	$(MAKE) -C deps/mochiweb
 
 clean:
