@@ -185,8 +185,8 @@ loop(Req, DocRoot) ->
         Type:What ->
             Report = ["web request failed",
                       {path, Req:get(path)},
-                      {type, Type}, {what, What}],
-                      %{trace, erlang:get_stacktrace()}], % todo: find a way to enable this for field info gathering
+                      {type, Type}, {what, What},
+                      {trace, erlang:get_stacktrace()}], % todo: find a way to enable this for field info gathering
             ns_log:log(?MODULE, 0019, "Server error during processing: ~p", Report),
             Req:respond({500, add_header(), []})
     end.
