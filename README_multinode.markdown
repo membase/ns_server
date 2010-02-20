@@ -5,6 +5,46 @@ node per box.  For example, you might want to run two nodes ("ns_1"
 and "ns_2") on your development laptop.  To do so requires priv/config
 file propery overrides.  Here are the step by step instructions...
 
+There are helper scripts that help generate the right multi-node
+configuration files.  To get a 5 node cluster config file, so that
+all the nodes (ns_0, ns_1, ...) run on 127.0.0.1...
+
+    ./test/gen_cluster_scripts.rb 5
+
+To start the cluster...
+
+    ./cluster_start_all.sh
+
+Now, you can point your web browser to...
+
+    http://localhost:9000
+    http://localhost:9001
+    ...
+    http://localhost:9004
+
+And, you can join the nodes together with the web console UI.
+
+The memcached direct servers will be running on even port numbers...
+
+   12000, 12002, 12004, ...
+
+The emoxi servers will be running on odd port numbers
+
+   12001, 12003, 12005, ...
+
+To stop the cluster...
+
+    ./cluster_stop_all.sh
+
+After you've joined nodes together, they will remember their join
+configuration (in the ./config directory) and when you start/stop
+the cluster, they should automatically rejoin.
+
+-------------------
+
+Below are the old manual instructions for joining nodes together into
+a cluster...
+
 Make a copy of the priv/config file...
 
     cp priv/config priv/config2
