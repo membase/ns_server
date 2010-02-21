@@ -11,7 +11,9 @@
          received_topkeys/5,
          unmonitoring/3,
          get_stats/4,
+         get_stats/3,
          get_stats/2,
+         get_stats/1,
          get_topkeys/1]).
 
 %% gen_server callbacks
@@ -32,6 +34,27 @@ handle_call({get, Hostname, Port, Bucket, Count}, _From, State) ->
                              dict:fetch({Hostname, Port, Bucket},
                                         State#state.vals)),
     {reply, Reply, State};
+handle_call({get, Hostname, Port, Count}, _From, State) ->
+    Reply =
+        (catch dict:fold(
+                 fun ({H, P, _B}, V, A) ->
+                         case {H, P} of
+                             {Hostname, Port} ->
+                                 D = combine_stats(Count, V, A),
+                                 % Need a final to_int since combine_stats
+                                 % is a no-op when only one host/node is
+                                 % being monitored.
+                                 dict:map(
+                                   fun(t, TStamps) -> TStamps;
+                                      (_K, L) -> lists:map(fun to_int/1, L)
+                                   end,
+                                   D);
+                             _ -> A
+                         end
+                 end,
+                 dict:new(),
+                 State#state.vals)),
+    {reply, Reply, State};
 handle_call({get, Bucket, Count}, _From, State) ->
     Reply =
         (catch dict:fold(
@@ -49,6 +72,23 @@ handle_call({get, Bucket, Count}, _From, State) ->
                                    D);
                              _ -> A
                          end
+                 end,
+                 dict:new(),
+                 State#state.vals)),
+    {reply, Reply, State};
+handle_call({get, Count}, _From, State) ->
+    Reply =
+        (catch dict:fold(
+                 fun ({_H, _P, _B}, V, A) ->
+                         D = combine_stats(Count, V, A),
+                         % Need a final to_int since combine_stats
+                         % is a no-op when only one host/node is
+                         % being monitored.
+                         dict:map(
+                           fun(t, TStamps) -> TStamps;
+                              (_K, L) -> lists:map(fun to_int/1, L)
+                           end,
+                           D)
                  end,
                  dict:new(),
                  State#state.vals)),
@@ -160,8 +200,14 @@ unmonitoring(Hostname, Port, Bucket) ->
 get_stats(Hostname, Port, Bucket, Count) ->
     gen_server:call(?MODULE, {get, Hostname, Port, Bucket, Count}).
 
+get_stats(Hostname, Port, Count) ->
+    gen_server:call(?MODULE, {get, Hostname, Port, Count}).
+
 get_stats(Bucket, Count) ->
     gen_server:call(?MODULE, {get, Bucket, Count}).
+
+get_stats(Count) ->
+    gen_server:call(?MODULE, {get, Count}).
 
 get_topkeys(Bucket) ->
     gen_server:call(?MODULE, {get_topkeys, Bucket}).

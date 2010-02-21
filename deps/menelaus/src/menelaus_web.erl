@@ -265,7 +265,8 @@ build_nodes_info(MyPool, IncludeOtp) ->
                         end,
                         0,
                         BucketsAll),
-    NodesBucketMemoryAllocated = NodesBucketMemoryTotal * 0.75, % TODO: Get from stats_aggregator, all buckets for this node.
+    Stats = stats_aggregator:get_stats(1),
+    [NodesBucketMemoryAllocated | []] = dict:fetch("bytes", Stats),
     Nodes =
         lists:map(
           fun(WantENode) ->
