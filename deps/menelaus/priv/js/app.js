@@ -1605,14 +1605,12 @@ $(function () {
   });
 
   $('#server_list_container .expander, #server_list_container .name').live('click', function (e) {
-    $('#server_list_container .expander').removeClass('expanded');
     var container = $('#server_list_container');
     var mydetails = $(e.target).parents("#server_list_container .primary").next();
     var opened = mydetails.hasClass('opened');
 
-    container.find(".details").removeClass('opened');
     mydetails.toggleClass('opened', !opened);
-    $('#server_list_container .expander').toggleClass('expanded', !opened);
+    mydetails.prev().find(".expander").toggleClass('expanded', !opened);
   });
 
   var spinner = overlayWithSpinner('#login_form', false);
