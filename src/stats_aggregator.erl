@@ -6,10 +6,8 @@
 
 %% API
 -export([start_link/0,
-         monitoring/3,
          received_data/5,
          received_topkeys/5,
-         unmonitoring/3,
          get_stats/4,
          get_stats/3,
          get_stats/2,
@@ -26,7 +24,7 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
-    timer:send_after(2000, post_startup_init),
+    timer:send_interval(60000, garbage_collect),
     {ok, #state{vals=dict:new(), topkeys=dict:new()}}.
 
 handle_call({get, Hostname, Port, Bucket, Count}, _From, State) ->
@@ -125,9 +123,25 @@ handle_cast({received_topkeys, _T, Hostname, Port, Bucket, Topkeys}, State) ->
                                           Topkeys,
                                           State#state.topkeys)}}.
 
-handle_info(post_startup_init, State) ->
-    error_logger:info_msg("Performing post-startup stats initialization (NOOP).~n"),
-    {noreply, State};
+handle_info(garbage_collect, State) ->
+    {Buckets, Servers} = mc_pool:get_buckets_and_servers(),
+    OldVals = State#state.vals,
+    Vals = dict:filter(fun({H, P, B}, _V) ->
+                           lists:member(B, Buckets) and
+                               lists:member({H, P}, Servers)
+                       end, OldVals),
+    OldTopkeys = State#state.topkeys,
+    Topkeys = dict:filter(fun({H, P, B}, _V) ->
+                              lists:member(B, Buckets) and
+                                  lists:member({H, P}, Servers)
+                          end, OldTopkeys),
+    ValsDeleted    = length(dict:fetch_keys(OldVals)) -
+                     length(dict:fetch_keys(Vals)),
+    TopkeysDeleted = length(dict:fetch_keys(OldTopkeys)) -
+                     length(dict:fetch_keys(Topkeys)),
+    error_logger:info_msg("stats_aggregator garbage collected ~p vals and ~p topkeys",
+                          [ValsDeleted, TopkeysDeleted]),
+    {noreply, State#state{vals=Vals, topkeys=Topkeys}};
 handle_info(Info, State) ->
     error_logger:info_msg("Just received ~p~n", [Info]),
     {noreply, State}.
@@ -191,12 +205,6 @@ received_data(T, Hostname, Port, Bucket, Stats) ->
 received_topkeys(T, Hostname, Port, Bucket, Topkeys) ->
     gen_server:cast(?MODULE, {received_topkeys, T, Hostname, Port, Bucket, Topkeys}).
 
-monitoring(Hostname, Port, Bucket) ->
-    gen_server:cast(?MODULE, {monitoring, Hostname, Port, Bucket}).
-
-unmonitoring(Hostname, Port, Bucket) ->
-    gen_server:cast(?MODULE, {unmonitoring, Hostname, Port, Bucket}).
-
 get_stats(Hostname, Port, Bucket, Count) ->
     gen_server:call(?MODULE, {get, Hostname, Port, Bucket, Count}).
 
@@ -211,3 +219,4 @@ get_stats(Count) ->
 
 get_topkeys(Bucket) ->
     gen_server:call(?MODULE, {get_topkeys, Bucket}).
+

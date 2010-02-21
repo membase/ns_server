@@ -1,7 +1,5 @@
 -module(stats_collector).
 
--define(SERVER, stats_collection_clock).
-
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
 
@@ -46,7 +44,7 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 collect() ->
-    {Buckets, Servers} = get_buckets_and_servers(),
+    {Buckets, Servers} = mc_pool:get_buckets_and_servers(),
     T = erlang:now(),
     lists:foreach(fun(Server) -> collect(T, Server, Buckets) end, Servers).
 
@@ -116,21 +114,3 @@ parse_topkeys(Topkeys) ->
                 parse_topkey_value(Value)
         end,
         Topkeys).
-
-
-%% Internal functions
-
-get_buckets_and_servers() ->
-    [Pool | []] = mc_pool:list(), % assume one pool
-    Buckets = mc_bucket:list(Pool),
-    Servers = lists:usort(lists:flatmap(fun(B) -> bucket_servers(Pool, B)
-                                        end, Buckets)),
-    {Buckets, Servers}.
-
-bucket_servers(Pool, B) ->
-    lists:map(fun({mc_addr, HP, _K, _A}) ->
-                      [H, P] = string:tokens(HP, ":"),
-                      {I, []} = string:to_integer(P),
-                      {H, I}
-              end,
-              mc_bucket:addrs(Pool, B)).

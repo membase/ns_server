@@ -23,7 +23,8 @@
 -export([start_link/1, reconfig/2, reconfig/3, reconfig_nodes/3,
          get_state/1,
          get_bucket/2,
-         auth_to_bucket/3]).
+         auth_to_bucket/3,
+         get_buckets_and_servers/0]).
 
 -export([pools_config_get/0,
          pools_config_get/1,
@@ -302,6 +303,21 @@ auth_to_bucket(#mc_pool{} = Pool,
 
 auth_to_bucket(#mc_pool{}, _Mech, _AuthData) ->
     error.
+
+get_buckets_and_servers() ->
+    [Pool | []] = list(), % assume one pool
+    Buckets = mc_bucket:list(Pool),
+    Servers = lists:usort(lists:flatmap(fun(B) -> bucket_servers(Pool, B)
+                                        end, Buckets)),
+    {Buckets, Servers}.
+
+bucket_servers(Pool, B) ->
+    lists:map(fun({mc_addr, HP, _K, _A}) ->
+                      [H, P] = string:tokens(HP, ":"),
+                      {I, []} = string:to_integer(P),
+                      {H, I}
+              end,
+              mc_bucket:addrs(Pool, B)).
 
 % ------------------------------------------------
 
