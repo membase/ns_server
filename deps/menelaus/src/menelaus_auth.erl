@@ -88,7 +88,7 @@ parse_user_password(UserPasswordStr) ->
 bucket_auth_fun(UserPassword) ->
     fun({BucketName, BucketProps}) ->
             case proplists:get_value(auth_plain, BucketProps) of
-                undefined -> true;
+                undefined -> false;
                 BucketPassword ->
                     case UserPassword of
                         undefined -> false;
