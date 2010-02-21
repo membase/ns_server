@@ -18,4 +18,6 @@ init([]) ->
     {ok,{{one_for_all, 5, 5},
          [
           %% Everything in here is run once per entire cluster.  Be careful.
+          {ns_log, {ns_log, start_link, []},
+           permanent, 10, worker, [ns_log]}
          ]}}.

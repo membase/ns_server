@@ -30,7 +30,7 @@
 -record(state, {recent}).
 
 start_link() ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+    gen_server:start_link({global, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
     {ok, #state{recent=emptyRecent()}}.
@@ -97,15 +97,15 @@ log(Module, Code, Msg) ->
 
 -spec log(atom(), integer(), string(), list()) -> ok.
 log(Module, Code, Fmt, Args) ->
-    gen_server:cast(?MODULE, {log, Module, Code, Fmt, Args}).
+    gen_server:cast({global, ?MODULE}, {log, Module, Code, Fmt, Args}).
 
 -spec recent() -> list(#log_entry{}).
 recent() ->
-    gen_server:call(?MODULE, recent).
+    gen_server:call({global, ?MODULE}, recent).
 
 -spec recent(atom()) -> list(#log_entry{}).
 recent(Module) ->
-    lists:usort([E || E <- gen_server:call(?MODULE, recent),
+    lists:usort([E || E <- gen_server:call({global, ?MODULE}, recent),
                      E#log_entry.module =:= Module ]).
 
 % {crit, warn, info}
@@ -125,7 +125,7 @@ recent_by_category() ->
 
 -spec clear() -> ok.
 clear() ->
-    gen_server:cast(?MODULE, clear).
+    gen_server:cast({global, ?MODULE}, clear).
 
 
 % Example categorization -- pretty much exists for the test below, but
@@ -147,7 +147,7 @@ ns_log_code_string(2) ->
 log_test() ->
     ok = log(?MODULE, 1, "not ready log"),
 
-    {ok, Pid} = gen_server:start({local, ?MODULE}, ?MODULE, [], []),
+    {ok, Pid} = gen_server:start({global, ?MODULE}, ?MODULE, [], []),
     ok = log(?MODULE, 1, "test log 1"),
     ok = log(?MODULE, 2, "test log 2 ~p ~p", [x, y]),
     ok = log(?MODULE, 3, "test log 3 ~p ~p", [x, y]),
