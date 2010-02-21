@@ -42,7 +42,7 @@ code_change(_OldVsn, State, _Extra) ->
 network_changed({unix,_}) ->
     ok;
 network_changed({win32,_}) ->
-    case application:get_env(restart_script) of
+    case application:get_env(ns_server, restart_script) of
         {ok, Val} -> os:cmd(Val), ok;
         undefined -> error_logger:info_msg("restart_script not defined.~n")
     end;
