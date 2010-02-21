@@ -26,6 +26,11 @@ pre_start() ->
 
 get_child_specs() ->
     [
+     %% This supervises the (or monitors an existing) global singleton
+     %% supervisor.  It's used by a few things below.
+     {dist_sup_dispatch, {dist_sup_dispatch, start_link, []},
+      permanent, 2000, worker, [dist_sup_dispatch]},
+
      {ns_log, {ns_log, start_link, []},
       permanent, 10, worker, [ns_log]},
 
