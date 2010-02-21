@@ -391,6 +391,13 @@ var TrafficGen = {
   start: function () {
     if (!this.isRunning())
       this.startOrStop(true);
+    else
+      this.showTGenBucket();
+  },
+  showTGenBucket: function () {
+    var tgenBucket = BucketsSection.findTGenBucket();
+    if (tgenBucket)
+      AnalyticsSection.visitBucket(tgenBucket.uri);
   },
   startOrStop: function (isStart) {
     var uri = this.getControlURI();
@@ -420,9 +427,7 @@ var TrafficGen = {
 
         dialog.close();
 
-        var tgenBucket = BucketsSection.findTGenBucket();
-        if (tgenBucket)
-          AnalyticsSection.visitBucket(tgenBucket.uri);
+        TrafficGen.showTGenBucket();
       });
     }
   },
