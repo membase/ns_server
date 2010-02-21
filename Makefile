@@ -22,7 +22,7 @@ clean_all: clean
 
 ebins: ebin_app
 	test -d ebin || mkdir ebin
-	erl $(EFLAGS) -make
+	erl -noinput +B $(EFLAGS) -eval 'case make:all() of up_to_date -> halt(0); error -> halt(1) end.'
 
 ebin_app: version
 	test -d ebin || mkdir ebin
