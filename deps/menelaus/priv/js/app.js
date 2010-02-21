@@ -1554,7 +1554,7 @@ _.extend(ViewHelpers, {
       return "down";
   },
   formatLogTStamp: function (ts) {
-    return window.formatLogTStamp(ts*1000);
+    return window.formatLogTStamp(ts);
   }
 });
 
