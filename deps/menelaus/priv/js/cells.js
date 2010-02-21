@@ -180,6 +180,14 @@ var Cell = mkClass({
     _.defer($m(this, 'tryUpdatingValue'));
     this.queuedValueUpdate = true;
   },
+  // forces cell recalculation unless async set is in progress
+  // recalculate() call would abort and re-issue in-flight XHR
+  // request, which is almost always bad thing
+  dirty: function () {
+    if (this.pendingFuture)
+      return;
+    this.recalculate();
+  },
   mkFormulaContext: function () {
     var context = {};
     _.each(this.context, function (cell, key) {

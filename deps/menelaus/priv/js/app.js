@@ -886,12 +886,10 @@ var OverviewSection = {
     prepareTemplateForCell('pool_list', DAO.cells.poolList);
   },
   navClick: function () {
-    if (DAO.cells.currentPoolDetailsCell.value)
-      DAO.cells.currentPoolDetailsCell.recalculate();
+    DAO.cells.currentPoolDetailsCell.dirty();
   },
   onEnter: function () {
-    if (DAO.cells.currentPoolDetailsCell.value)
-      DAO.cells.currentPoolDetailsCell.recalculate();
+    DAO.cells.currentPoolDetailsCell.dirty();
   }
 };
 
