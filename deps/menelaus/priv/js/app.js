@@ -1294,24 +1294,27 @@ var SettingsSection = {
 
       e.preventDefault();
 
-      reloadApp(function () {
-        var data;
-        $.ajax({
-          type: 'POST',
-          url: $(self).attr('action'),
-          data: $(self).serialize(),
-          datatype: 'json',
-          async: false,
-          success: function (_data) {
-            data = _data;
+      var dialog = genericDialog({
+        header: 'Saving...',
+        text: 'Saving settings, wait a bit',
+        buttons: {ok: false, cancel: false}});
+
+      var postData = $(self).serialize();
+
+      postWithValidationErrors($(self).attr('action'), postData, function (data, status) {
+        if (status != 'success') {
+          alert("TODO: DESIGN\n" + data.join('\n'));
+          return dialog.close();
+        }
+
+        reloadApp(function () {
+          if (data && data.newBaseUri) {
+            var uri = data.newBaseUri;
+            if (uri.charAt(uri.length-1) == '/')
+              uri = uri.slice(0, -1);
+            return uri + document.location.pathname;
           }
         });
-        if (data && data.newBaseUri) {
-          var uri = data.newBaseUri;
-          if (uri.charAt(uri.length-1) == '/')
-            uri = uri.slice(0, -1);
-          return uri + document.location.pathname;
-        }
       });
     });
   },
@@ -1710,6 +1713,7 @@ function genericDialog(options) {
   });
 
   var instance = {
+    dialog: dialog,
     close: function () {
       if (modal)
         modal.finish();

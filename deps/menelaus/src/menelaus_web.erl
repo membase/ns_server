@@ -29,6 +29,7 @@
         [server_header/0,
          redirect_permanently/2,
          reply_json/2,
+         reply_json/3,
          parse_json/1,
          expect_config/1,
          expect_prop_value/2,
@@ -672,14 +673,32 @@ build_settings_web(Port, U, P) ->
               {username, list_to_binary(U)},
               {password, list_to_binary(P)}]}.
 
+validate_settings(Port, U, P) ->
+    case lists:all(fun erlang:is_list/1, [Port, U, P]) of
+        false -> [<<"All parameters must be given">>];
+        _ -> Candidates = [begin
+                               PortNumber = (catch list_to_integer(Port)),
+                               (is_integer(PortNumber) andalso (PortNumber > 0) andalso (PortNumber =< 65535))
+                                   orelse <<"Port must be natural number less then 65536">>
+                           end,
+                           case {U, P} of
+                               {[], []} -> true;
+                               {[_Head | _], _} -> true;
+                               _ -> <<"Username must not be blank if Password is provided">>
+                           end],
+             lists:filter(fun (E) -> E =/= true end,
+                          Candidates)
+    end.
+
 handle_settings_web_post(Req) ->
     PostArgs = Req:parse_post(),
     Port = proplists:get_value("port", PostArgs),
     U = proplists:get_value("username", PostArgs),
     P = proplists:get_value("password", PostArgs),
-    case lists:member(undefined, [Port, U, P]) of
-        true -> Req:respond({400, add_header(), []});
-        false ->
+    case validate_settings(Port, U, P) of
+        [_Head | _]=Errors ->
+            reply_json(Req, Errors, 400);
+        [] ->
             PortInt = list_to_integer(Port),
             case build_settings_web() =:= build_settings_web(PortInt, U, P) of
                 true -> ok; % No change.
