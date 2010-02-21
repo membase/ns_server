@@ -504,18 +504,53 @@ var maybeReloadAppDueToLeak = (function () {
 })();
 
 function renderLargeGraph(main, data) {
+  var minX, minY = 1/0;
+  var maxX, maxY = -1/0;
   var plotData = _.map(data, function (e, i) {
+    if (e <= minY) {
+      minX = i+1;
+      minY = e;
+    }
+    if (e >= maxY) {
+      maxX = i+1;
+      maxY = e;
+    }
     return [i+1, e];
   });
 
-  $.plot(main, [{color: '#1d88ad',
-                 data: plotData}], {
-    xaxis: {ticks:0, autoscaleMargin: 0.04},
-    yaxis: {ticks:0, autoscaleMargin: 0.04},
-    grid: {show:false}
-  });
-
+  $.plot(main,
+         [{color: '#1d88ad',
+           data: plotData}],
+         {xaxis: {ticks:0, autoscaleMargin: 0.04},
+          yaxis: {ticks:0, autoscaleMargin: 0.04},
+          grid: {show:false},
+          hooks: {draw: [drawMarkers]}});
+  
   maybeReloadAppDueToLeak();
+
+  function singleMarker(center, text) {
+    var marker = $('<span class="marker"><span class="l"></span><span class="r"></span></span>');
+    marker.find('.l').text(text);
+    main.append(marker);
+    marker.css({
+      'overflow': 'visible',
+      'z-index': '9999',
+      position: 'absolute',
+      top: center.top - 16 + 'px',
+      left: center.left - 10 + 'px'
+    });
+    return marker;
+  }
+
+  function drawMarkers(plot) {
+    main.find('.marker').remove();
+
+    var offset = plot.pointOffset({x: minX, y: minY});
+    singleMarker(offset, String(minY)).addClass('marker-min');
+
+    var offset = plot.pointOffset({x: maxX, y: maxY});
+    singleMarker(offset, String(maxY)).addClass('marker-max');
+  }
 }
 
 function renderSmallGraph(jq, data, isSelected) {

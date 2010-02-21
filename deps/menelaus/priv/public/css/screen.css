@@ -651,3 +651,12 @@ button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
 .stat_target_name {text-transform:none !important;}
 
 .lbox .top .top_center {_float:left;}
+
+.marker { display: block; height: 23px; font-size: 13px; font-weight: bolder; color: white; margin: 5px 0px; width: 200px;}
+.marker span { display: block; float: left; height: 23px; background: url(../images/markers.png) no-repeat; vertical-align: middle; line-height: 23px;}
+.marker span.l { padding-left: 26px;}
+.marker span.r { padding-right: 13px;}
+.marker-min span.l { background-position: left top;}
+.marker-min span.r { background-position: right top;}
+.marker-max span.l { background-position: left bottom;}
+.marker-max span.r { background-position: right bottom;}
