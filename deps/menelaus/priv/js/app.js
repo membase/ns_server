@@ -885,7 +885,13 @@ var OverviewSection = {
     prepareTemplateForCell('cluster_status', DAO.cells.currentPoolDetails);
     prepareTemplateForCell('pool_list', DAO.cells.poolList);
   },
+  navClick: function () {
+    if (DAO.cells.currentPoolDetailsCell.value)
+      DAO.cells.currentPoolDetailsCell.recalculate();
+  },
   onEnter: function () {
+    if (DAO.cells.currentPoolDetailsCell.value)
+      DAO.cells.currentPoolDetailsCell.recalculate();
   }
 };
 
