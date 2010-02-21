@@ -18,6 +18,7 @@
          redirect_permanently/2,
          redirect_permanently/3,
          reply_json/2,
+         reply_json/3,
          parse_json/1,
          parse_boolean/1,
          expect_config/1,
@@ -70,6 +71,12 @@ reply_json(Req, Body) ->
     Req:ok({"application/json",
             server_header(),
             mochijson2:encode(Body)}).
+
+reply_json(Req, Body, Status) ->
+    Req:respond({Status,
+                 [{"Content-Type", "application/json"}
+                  | server_header()],
+                 mochijson2:encode(Body)}).
 
 expect_config(Key) ->
     {value, RV} = ns_config:search(Key),
