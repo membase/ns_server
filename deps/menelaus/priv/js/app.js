@@ -1545,7 +1545,7 @@ _.extend(ViewHelpers, {
     }
     return [String(count), ' ', text].join('')
   },
-  renderHealhClass: function (status) {
+  renderHealthClass: function (status) {
     if (status == "healthy")
       return "up";
     else
