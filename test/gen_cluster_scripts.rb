@@ -12,7 +12,7 @@
 #   cluster_start_all.sh
 #   cluster_stop_all.sh
 #
-# The node names will look like ns_0@127.0.0.1, ns_1@127.0.0.1, ...
+# The node names will look like n_0@127.0.0.1, n_1@127.0.0.1, ...
 #
 prefix = ARGV[1] || "cluster"
 
@@ -24,10 +24,10 @@ nodes = ""
 x = 0
 while x < num_nodes
   nodes = nodes + <<-END
-    {{node, 'ns_#{x}@127.0.0.1', rest},
+    {{node, 'n_#{x}@127.0.0.1', rest},
       [{'_ver', {0, 0, 0}},
        {port, #{x + 9000}}]}.
-    {{node, 'ns_#{x}@127.0.0.1', port_servers},
+    {{node, 'n_#{x}@127.0.0.1', port_servers},
       [{'_ver', {0, 0, 0}},
        {memcached, "./memcached",
         ["-p", "#{(x * 2) + 12000}",
@@ -50,7 +50,7 @@ END
 
 x = 0
 while x < num_nodes
-  pools = pools + "{{node, 'ns_#{x}@127.0.0.1', port}, #{(x * 2) + 12001}},\n"
+  pools = pools + "{{node, 'n_#{x}@127.0.0.1', port}, #{(x * 2) + 12001}},\n"
   x = x + 1
 end
 
@@ -78,7 +78,7 @@ File.open(prefix + "_start_all.sh", 'w') {|f|
   f.write("# num_nodes is #{num_nodes}\n")
   x = 0
   while x < num_nodes
-    f.write("./start_shell.sh -name ns_#{x}@127.0.0.1 -noshell" +
+    f.write("./start_shell.sh -name n_#{x}@127.0.0.1 -noshell" +
                " -ns_server ns_server_config \\\"#{prefix}_config\\\"" +
                " -ns_server pidfile \\\"./tmp/node_#{x}.pid\\\" </dev/null &\n")
     x = x + 1
