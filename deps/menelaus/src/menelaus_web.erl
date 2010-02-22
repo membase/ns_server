@@ -105,7 +105,7 @@ loop(Req, DocRoot) ->
                              ["pools", PoolId, "bucketsStreaming", Id] ->
                                  {auth_bucket, fun handle_bucket_info_streaming/3,
                                   [PoolId, Id]};
-                            ["pools", PoolId, "buckets", Id, "stats"] ->
+                             ["pools", PoolId, "buckets", Id, "stats"] ->
                                  {auth, fun menelaus_stats:handle_bucket_stats/3,
                                   [PoolId, Id]};  %% todo: seems broken
                              ["logs"] ->
