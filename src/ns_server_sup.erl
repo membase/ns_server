@@ -47,12 +47,6 @@ get_child_specs() ->
       permanent, infinity, supervisor,
       []},
 
-     {stats_sup,
-      {stats_sup, start_link, []},
-      permanent, infinity, supervisor,
-      [stats_sup, stats_aggregator, stat_collection_clock,
-       stats_collector]},
-
      {menelaus, {menelaus_app, start_subapp, []},
       permanent, infinity, supervisor,
       []}

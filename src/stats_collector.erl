@@ -15,7 +15,7 @@
          handle_info/2, terminate/2, code_change/3]).
 
 start_link() ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+    gen_server:start_link({global, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
     {ok, Tref} = timer:send_interval(1000, collect),

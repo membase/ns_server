@@ -19,5 +19,9 @@ init([]) ->
          [
           %% Everything in here is run once per entire cluster.  Be careful.
           {ns_log, {ns_log, start_link, []},
-           permanent, 10, worker, [ns_log]}
+           permanent, 10, worker, [ns_log]},
+          {stats_aggregator, {stats_aggregator, start_link, []},
+           permanent, 10, worker, [stats_aggregator]},
+          {stats_collector, {stats_collector, start_link, []},
+           permanent, 10, worker, [stats_collector]}
          ]}}.

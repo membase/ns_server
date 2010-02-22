@@ -21,7 +21,7 @@
 -record(state, {vals, topkeys}).
 
 start_link() ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+    gen_server:start_link({global, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
     timer:send_interval(60000, garbage_collect),
@@ -200,23 +200,23 @@ classify(_) -> true.
 %
 
 received_data(T, Hostname, Port, Bucket, Stats) ->
-    gen_server:cast(?MODULE, {received, T, Hostname, Port, Bucket, Stats}).
+    gen_server:cast({global, ?MODULE}, {received, T, Hostname, Port, Bucket, Stats}).
 
 received_topkeys(T, Hostname, Port, Bucket, Topkeys) ->
-    gen_server:cast(?MODULE, {received_topkeys, T, Hostname, Port, Bucket, Topkeys}).
+    gen_server:cast({global, ?MODULE}, {received_topkeys, T, Hostname, Port, Bucket, Topkeys}).
 
 get_stats(Hostname, Port, Bucket, Count) ->
-    gen_server:call(?MODULE, {get, Hostname, Port, Bucket, Count}).
+    gen_server:call({global, ?MODULE}, {get, Hostname, Port, Bucket, Count}).
 
 get_stats(Hostname, Port, Count) ->
-    gen_server:call(?MODULE, {get, Hostname, Port, Count}).
+    gen_server:call({global, ?MODULE}, {get, Hostname, Port, Count}).
 
 get_stats(Bucket, Count) ->
-    gen_server:call(?MODULE, {get, Bucket, Count}).
+    gen_server:call({global, ?MODULE}, {get, Bucket, Count}).
 
 get_stats(Count) ->
-    gen_server:call(?MODULE, {get, Count}).
+    gen_server:call({global, ?MODULE}, {get, Count}).
 
 get_topkeys(Bucket) ->
-    gen_server:call(?MODULE, {get_topkeys, Bucket}).
+    gen_server:call({global, ?MODULE}, {get_topkeys, Bucket}).
 
