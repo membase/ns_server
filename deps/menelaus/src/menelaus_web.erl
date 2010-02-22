@@ -502,8 +502,12 @@ handle_bucket_create_do(PoolId, BucketId, Req) ->
                                              {auth_plain, {BucketId, Pass}})
                   end;
              ({size_per_node, _}, C) ->
-                  case proplists:get_value("size", PostArgs) of
+                  case proplists:get_value("cacheSize", PostArgs) of
                       undefined -> C;
+                      SList when is_list(SList) ->
+                          S = list_to_integer(SList),
+                          lists:keystore(size_per_node, 1, C,
+                                         {size_per_node, S});
                       SBin when is_binary(SBin) ->
                           S = list_to_integer(binary_to_list(SBin)),
                           lists:keystore(size_per_node, 1, C,
