@@ -541,8 +541,6 @@ function renderLargeGraph(main, data) {
     marker.find('.l').text(text);
     main.append(marker);
     marker.css({
-      'overflow': 'visible',
-      'z-index': '9999',
       position: 'absolute',
       top: center.top - 16 + 'px',
       left: center.left - 10 + 'px'
