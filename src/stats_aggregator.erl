@@ -135,12 +135,6 @@ handle_info(garbage_collect, State) ->
                               lists:member(B, Buckets) and
                                   lists:member({H, P}, Servers)
                           end, OldTopkeys),
-    ValsDeleted    = length(dict:fetch_keys(OldVals)) -
-                     length(dict:fetch_keys(Vals)),
-    TopkeysDeleted = length(dict:fetch_keys(OldTopkeys)) -
-                     length(dict:fetch_keys(Topkeys)),
-    error_logger:info_msg("stats_aggregator garbage collected ~p vals and ~p topkeys",
-                          [ValsDeleted, TopkeysDeleted]),
     {noreply, State#state{vals=Vals, topkeys=Topkeys}};
 handle_info(Info, State) ->
     error_logger:info_msg("Just received ~p~n", [Info]),

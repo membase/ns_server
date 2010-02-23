@@ -79,13 +79,11 @@ current_ports() ->
     %
     Children = supervisor:which_children(?MODULE),
     Children2 = proplists:delete(ns_port_init, Children),
-    lists:foldl(fun({Name, Pid, _, _} = X, Acc) ->
-                    case is_pid(Pid) of
-                        true  -> [X | Acc];
-                        false -> supervisor:delete_child(?MODULE, Name),
-                                 Acc
-                    end
-                end,
-                [],
-                Children2).
+    {Running, NotRunning} = lists:partition(fun ({_, Pid, _, _}) ->
+                                                is_pid(Pid)
+                                            end, Children2),
+    lists:foreach(fun ({Name, _, _, _}) ->
+                      supervisor:delete_child(?MODULE, Name)
+                  end, NotRunning),
+    Running.
 

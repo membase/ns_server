@@ -59,9 +59,7 @@ collect(T, {Host, Port}, Buckets) ->
                           end,
                           Buckets),
             ok = gen_tcp:close(Sock);
-        {error, Err} ->
-            error_logger:info_msg("Error in collection:  ~p ~p ~p~n",
-                                  [Err, Host, Port])
+        {error, _Err} -> error
     end.
 
 auth(Sock) ->

@@ -3,7 +3,7 @@
 
 -module(ns_server_sup).
 
--behavior(supervisor).
+-behaviour(supervisor).
 
 -export([start_link/0]).
 
