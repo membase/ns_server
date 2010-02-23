@@ -896,10 +896,10 @@ var OverviewSection = {
     prepareTemplateForCell('pool_list', DAO.cells.poolList);
   },
   navClick: function () {
-    DAO.cells.currentPoolDetailsCell.dirty();
+    DAO.cells.currentPoolDetailsCell.invalidate();
   },
   onEnter: function () {
-    DAO.cells.currentPoolDetailsCell.dirty();
+    DAO.cells.currentPoolDetailsCell.invalidate();
   }
 };
 

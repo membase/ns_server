@@ -187,7 +187,7 @@ var Cell = mkClass({
   // forces cell recalculation unless async set is in progress
   // recalculate() call would abort and re-issue in-flight XHR
   // request, which is almost always bad thing
-  dirty: function () {
+  invalidate: function () {
     if (this.pendingFuture)
       return;
     this.recalculate();
@@ -240,27 +240,24 @@ var Cell = mkClass({
     this.recalculateAtTimeout = undefined;
   },
   recalculateAt: function (time) {
-    var self = this;
-
     if (time instanceof Date)
       time = time.valueOf();
 
-    if (self.recalculateAtTime) {
-      if (self.recalculateAtTime < time)
+    if (this.recalculateAtTime) {
+      if (this.recalculateAtTime < time)
         return;
-      clearTimeout(self.recalculateAtTimeout);
+      clearTimeout(this.recalculateAtTimeout);
     }
-    self.recalculateAtTime = time;
+    this.recalculateAtTime = time;
 
     var delay = time - (new Date()).valueOf();
-    var f = $m(self, 'recalculate');
 
     if (delay <= 0)
-      f();
+      this.invalidate();
     else
       // yes we re-check current time after delay
       // as I've seen few cases where browsers run callback earlier by few milliseconds
-      self.recalculateAtTimeout = setTimeout(_.bind(this.recalculateAt, this, time), delay);
+      this.recalculateAtTimeout = setTimeout(_.bind(this.recalculateAt, this, time), delay);
   }
 });
 
