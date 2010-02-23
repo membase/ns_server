@@ -76,26 +76,33 @@ auth(Sock, U, P) when is_list(U); is_list(P) ->
     mc_client_binary:auth(Sock, {<<"PLAIN">>, {U, P}}).
 
 collect(T, {Host, Port}, Bucket, Sock) ->
-    {ok, _RecvHeader, _RecvEntry, _NCB} = mc_client_binary:select_bucket(Sock, Bucket),
-    {ok, _H, _E, Stats} = mc_client_binary:cmd(?STAT, Sock,
-                              fun (_MH, ME, CD) ->
-                                      dict:store(binary_to_list(ME#mc_entry.key),
-                                                 binary_to_list(ME#mc_entry.data),
-                                                 CD)
-                              end,
-                              dict:new(),
-                              {#mc_header{}, #mc_entry{}}),
-    stats_aggregator:received_data(T, Host, Port, Bucket, Stats),
-    {ok, _H, _E, Topkeys} = mc_client_binary:cmd(?STAT, Sock,
-                              fun (_MH, ME, CD) ->
-                                      dict:store(binary_to_list(ME#mc_entry.key),
-                                                 binary_to_list(ME#mc_entry.data),
-                                                 CD)
-                              end,
-                              dict:new(),
-                              {#mc_header{}, #mc_entry{key = <<"topkeys">>}}),
-    stats_aggregator:received_topkeys(T, Host, Port, Bucket,
-                                      parse_topkeys(Topkeys)).
+    {ok, RecvHeader, _RecvEntry, _NCB} = mc_client_binary:select_bucket(Sock, Bucket),
+    case RecvHeader#mc_header.status of
+        ?SUCCESS ->
+            {ok, _H, _E, Stats} = mc_client_binary:cmd(?STAT, Sock,
+                          fun (_MH, ME, CD) ->
+                                  dict:store(binary_to_list(ME#mc_entry.key),
+                                             binary_to_list(ME#mc_entry.data),
+                                             CD)
+                          end,
+                          dict:new(),
+                          {#mc_header{}, #mc_entry{}}),
+            stats_aggregator:received_data(T, Host, Port, Bucket, Stats),
+            {ok, _H, _E, Topkeys} = mc_client_binary:cmd(?STAT, Sock,
+                          fun (_MH, ME, CD) ->
+                                  dict:store(binary_to_list(ME#mc_entry.key),
+                                             binary_to_list(ME#mc_entry.data),
+                                             CD)
+                          end,
+                          dict:new(),
+                          {#mc_header{}, #mc_entry{key = <<"topkeys">>}}),
+            stats_aggregator:received_topkeys(T, Host, Port, Bucket,
+                                              parse_topkeys(Topkeys)),
+            ok;
+        ?KEY_ENOENT ->
+            % Bucket hasn't been lazily created in memcached, which is ok.
+            no_bucket
+    end.
 
 parse_topkey_value(Value) ->
     Tokens = string:tokens(Value, ","),
