@@ -246,7 +246,6 @@ build_pool_info(Id, _UserPassword) ->
                               {testWorkload, {struct,
                                              [{uri,
                                                list_to_binary("/pools/" ++ Id ++ "/controller/testWorkload")}]}}]}},
-              %%
               {stats, {struct,
                        [{uri,
                          list_to_binary("/pools/" ++ Id ++ "/stats")}]}}]}.
@@ -479,15 +478,47 @@ handle_bucket_update(PoolId, Req) ->
 
 handle_bucket_create(_PoolId, [$_ | _], Req) ->
     % Bucket name cannot have a leading underscore character.
-    Req:respond({400, add_header(), []});
+    reply_json(Req, [list_to_binary("Bucket name cannot start with an underscore.")], 400);
 
 handle_bucket_create(PoolId, BucketId, Req) ->
+    % Bucket size validation.
     PostArgs = Req:parse_post(),
-    Pass = proplists:get_value("password", PostArgs),
-    % Input bucket name and password cannot have whitespace.
-    case {is_clean(BucketId, false, 1), is_clean(Pass, true, 1)} of
-        {true, true} -> handle_bucket_create_do(PoolId, BucketId, Req);
-        _ -> Req:respond({400, add_header(), []})
+    SizeWanted = list_to_integer(proplists:get_value("cacheSize", PostArgs)),
+    %  go get the memory out there, reusing nodes_info, not caring about OTP
+    Pool = find_pool_by_id(PoolId),
+    PoolNodes = build_nodes_info(Pool, false),
+    %  figure out what the lowest reported memoryFree is
+    %      note this is a foolproof way to determine what we can allocate, though
+    %      users can actually go further, as the OS has something it can shove out
+    %      to paging land; this is pretty OS dependent though
+    MinMemFree = lists:min(lists:map(
+                             fun(X) -> proplists:get_value(memoryFree, X) end,
+                             proplists:get_all_values(struct, PoolNodes))),
+    ns_log:log(?MODULE, "debugging size validation ~p ~p~n", [SizeWanted, MinMemFree]),
+    % allow slightly more memory, since there should be some slack space
+    case SizeWanted > MinMemFree * 1.25 of
+      true -> SzV = list_to_binary(
+                      io_lib:format("OS reported free memory for a bucket is ~p",
+                                    [MinMemFree]));
+      false -> SzV = undefined
+    end,
+    % Input bucket name cannot have whitespace.
+    case is_clean(BucketId, false, 1) of
+        true -> FmtV = undefined;
+        _ -> FmtV = list_to_binary("Bucket name cannot have whitespace.")
+    end,
+    PossMsg = [SzV, FmtV],
+    io:format("PossMsg ~p~n", [PossMsg]),
+    Msgs = lists:filter(fun (X) ->
+                          case X of
+                            undefined -> false;
+                            _Msg -> true
+                          end
+                        end,
+                        PossMsg),
+    case length(Msgs) of
+        0 -> handle_bucket_create_do(PoolId, BucketId, Req);
+        _ -> reply_json(Req, Msgs, 400)
     end.
 
 handle_bucket_create_do(PoolId, BucketId, Req) ->
