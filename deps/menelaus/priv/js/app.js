@@ -1039,7 +1039,7 @@ var BucketsSection = {
     postWithValidationErrors(self.cells.detailsPageURI.value, form, function (data, status) {
       loading.remove();
       if (status == 'error') {
-        renderTemplate("add_new_bucket_errors", data.errors);
+        renderTemplate("add_new_bucket_errors", data);
       } else {
         self.cells.detailedBuckets.changedSlot.subscribeOnce(function () {
           self.finishCreate();
