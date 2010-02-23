@@ -482,6 +482,7 @@ var SamplesRestorer = mkClass({
   }).setSources({samplesRestorer: samplesRestorerCell,
                  options: statsOptionsCell,
                  target: targetCell});
+  statsCell.keepValueDuringAsync = true;
 
   statsCell.subscribe(function (cell) {
     var at = cell.context.samplesRestorer.value.nextSampleTime(cell.value.op);
@@ -597,22 +598,17 @@ var StatGraphs = {
     return $('#analytics_graph_' + statName)
   },
   renderNothing: function () {
-    return;
     var self = this;
     if (self.spinners.length)
       return;
 
     var main = $('#analytics_main_graph')
-
     self.spinners.push(overlayWithSpinner(main));
+    main.find('.marker').remove();
 
-
-//    prepareAreaUpdate(main);
-    _.each(self.recognizedStats, function (statName) {
-      //prepareAreaUpdate(self.findGraphArea(statName));
+    _.each(self.visibleStats, function (statName) {
       var area = self.findGraphArea(statName);
-      if (area)
-        self.spinners.push(overlayWithSpinner());
+      self.spinners.push(overlayWithSpinner(area));
     });
   },
   update: function () {
@@ -650,10 +646,9 @@ var StatGraphs = {
       renderLargeGraph(main, stats[selected]);
 
     _.each(self.visibleStats, function (statName) {
-      if (!stats[statName])
-        return;
+      var ops = stats[statName] || [];
       var area = self.findGraphArea(statName);
-      renderSmallGraph(area, stats[statName], selected == statName);
+      renderSmallGraph(area, ops, selected == statName);
     });
   },
   configureStats: function () {
