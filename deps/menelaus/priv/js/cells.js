@@ -149,7 +149,11 @@ var Cell = mkClass({
 
     if (newValue instanceof Future) {
       var async = newValue;
-      newValue = async.removeNowValue();
+      if (this.keepValueDuringAsync) {
+        newValue = this.value;
+      } else {
+        newValue = async.removeNowValue();
+      }
       this.pendingFuture = async;
       if (this.recalcGeneration != Cell.recalcGeneration) {
         this.recalcGeneration = Cell.recalcGeneration;
