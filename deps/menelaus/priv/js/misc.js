@@ -313,7 +313,16 @@ function renderTemplate(key, data) {
 
     $(window).trigger('template:rendered');
   } catch (e) {
-    if (confirm('Template error:' + String(fn) + ', ' + e.templateBody)) {
+    var stringError;
+    try {
+      stringError = String(e);
+    } catch (e2) {
+      stringError = '(failed to stringify exception)';
+    }
+    if (confirm('Got exception from template. Do you want to run javascript debugger?\n\n'
+                + 'Exception: ' + stringError
+                + '\nTemplate details:'
+                + String(fn) + ', ' + e.templateBody)) {
       debugger
       renderTemplate(key, data);
     }
