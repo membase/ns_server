@@ -124,13 +124,13 @@ loop(Req, AppRoot, DocRoot) ->
                                  {done, serve_static_file(Req, {AppRoot, Path},
                                                          "text/html; charset=utf8",
                                                           [{"Pragma", "no-cache"},
-                                                           {"Cache-Control", "no-cache must-revalidate"}])};
+                                                           {"Cache-Control", "must-revalidate"}])};
                              ["docs" | _PRem ] ->
                                  DocFile = string:sub_string(Path, 6),
                                  {done, Req:serve_file(DocFile, DocRoot, add_header())};
                              _ ->
-                                 {done, Req:serve_file(Path, AppRoot, [{"Pragma", "no-cache"},
-                                                                       {"Cache-Control", "no-cache must-revalidate"}])}
+                                 {done, Req:serve_file(Path, AppRoot)}%% , [{"Pragma", "no-cache"},
+                                                                      %%  {"Cache-Control", "no-cache must-revalidate"}])}
                         end;
                      'POST' ->
                          case PathTokens of
