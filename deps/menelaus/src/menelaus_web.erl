@@ -483,14 +483,19 @@ handle_bucket_create(_PoolId, [$_ | _], Req) ->
 handle_bucket_create(PoolId, BucketId, Req) ->
     % Bucket size validation.
     PostArgs = Req:parse_post(),
-    SizeWanted = try list_to_integer(proplists:get_value("cacheSize", PostArgs))
-                     catch
-                         _:_ -> reply_json(Req, [list_to_binary("The cacheSize must be an integer.")], 400)
-    end,
-    case SizeWanted < 0 of
-        true -> NzV = list_to_binary("The cacheSize must be non-zero");
-        false -> NzV = undefined
-    end,
+    ParsedSizeWanted = (catch list_to_integer(proplists:get_value("cacheSize", PostArgs))),
+    NzV = if
+              is_integer(ParsedSizeWanted) ->
+                  if
+                      ParsedSizeWanted =< 0 -> <<"The cacheSize must be non-zero">>;
+                      true -> undefined
+                  end;
+              true -> <<"The cacheSize must be an integer.">>
+          end,
+    SizeWanted = if
+                     NzV =:= undefined -> ParsedSizeWanted;
+                     true -> 0
+                 end,
     %  go get the memory out there, reusing nodes_info, not caring about OTP
     Pool = find_pool_by_id(PoolId),
     PoolNodes = build_nodes_info(Pool, false),
@@ -502,28 +507,23 @@ handle_bucket_create(PoolId, BucketId, Req) ->
                              fun(X) -> proplists:get_value(memoryFree, X) end,
                              proplists:get_all_values(struct, PoolNodes))),
     % allow slightly more memory, since there should be some slack space
-    case SizeWanted > MinMemFree * 1.25 of
-      true -> SzV = list_to_binary(
-                      io_lib:format("OS reported free memory for a bucket is ~p",
-                                    [MinMemFree]));
-      false -> SzV = undefined
-    end,
+    SzV = case SizeWanted > MinMemFree * 1.25 of
+              true -> list_to_binary(
+                        io_lib:format("OS reported free memory for a bucket is ~p",
+                                      [MinMemFree]));
+              false -> undefined
+          end,
     % Input bucket name cannot have whitespace.
-    case is_clean(BucketId, false, 1) of
-        true -> FmtV = undefined;
-        _ -> FmtV = list_to_binary("Bucket name cannot have whitespace.")
+    FmtV = case is_clean(BucketId, false, 1) of
+               true -> undefined;
+               _ -> <<"Bucket name cannot have whitespace.">>
     end,
     PossMsg = [SzV, FmtV, NzV],
     io:format("PossMsg ~p~n", [PossMsg]),
-    Msgs = lists:filter(fun (X) ->
-                          case X of
-                            undefined -> false;
-                            _Msg -> true
-                          end
-                        end,
+    Msgs = lists:filter(fun (X) -> X =/= undefined end,
                         PossMsg),
-    case length(Msgs) of
-        0 -> handle_bucket_create_do(PoolId, BucketId, Req);
+    case Msgs of
+        [] -> handle_bucket_create_do(PoolId, BucketId, Req);
         _ -> reply_json(Req, Msgs, 400)
     end.
 
