@@ -32,7 +32,7 @@ decode_status({error, {{already_started, _Pid}, _Stack}}) ->
 %% Bring up distributed erlang.
 bringup() ->
     MyAddress = net_watcher:current_address(),
-    MyNodeName = list_to_atom("ns1@" ++ MyAddress),
+    MyNodeName = list_to_atom("ns_1@" ++ MyAddress),
     Rv = decode_status(net_kernel:start([MyNodeName, longnames])),
     gen_event:notify(ns_network_events, {self_up, node()}),
     Rv.
