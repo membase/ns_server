@@ -233,6 +233,9 @@ handle_pool_info(Id, Req) ->
     UserPassword = menelaus_auth:extract_auth(Req),
     reply_json(Req, build_pool_info(Id, UserPassword)).
 
+is_healthy(InfoNode) ->
+    proplists:get_bool(memcached_running, InfoNode).
+
 build_pool_info(Id, _UserPassword) ->
     MyPool = find_pool_by_id(Id),
     Nodes = build_nodes_info(MyPool, true),
@@ -255,8 +258,7 @@ find_pool_by_id(Id) -> expect_prop_value(Id, expect_config(pools)).
 build_nodes_info(MyPool, IncludeOtp) ->
     OtpCookie = list_to_binary(atom_to_list(ns_node_disco:cookie_get())),
     WantENodes = ns_node_disco:nodes_wanted(),
-    ActualENodes = ns_node_disco:nodes_actual_proper(),
-    {InfoList, _} = rpc:multicall(ActualENodes, ns_info, basic_info, [], 200),
+    NodeStatuses = ns_doctor:get_nodes(),
     BucketsAll = expect_prop_value(buckets, MyPool),
     NodesBucketMemoryTotal =
         length(WantENodes) *
@@ -271,15 +273,16 @@ build_nodes_info(MyPool, IncludeOtp) ->
         lists:map(
           fun(WantENode) ->
                   {_Name, Host} = misc:node_name_host(WantENode),
-                  %% TODO: more granular, more efficient node status
-                  %%       that's not O(N^2).
-                  Status = case lists:member(WantENode, ActualENodes) of
+                  InfoNode = case dict:find(WantENode, NodeStatuses) of
+                                 {ok, Info} -> Info;
+                                 error -> []
+                             end,
+                  Status = case is_healthy(InfoNode) of
                                true -> <<"healthy">>;
                                false -> <<"unhealthy">>
                            end,
                   {value, DirectPort} = direct_port(WantENode),
                   ProxyPort = pool_proxy_port(MyPool, WantENode),
-                  InfoNode = proplists:get_value(WantENode, InfoList, []),
                   Versions = proplists:get_value(version, InfoNode, []),
                   Version = proplists:get_value(ns_server, Versions, "unknown"),
                   UpSecs = proplists:get_value(wall_clock, InfoNode, 0),

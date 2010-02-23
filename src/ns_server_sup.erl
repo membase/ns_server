@@ -49,5 +49,8 @@ get_child_specs() ->
 
      {menelaus, {menelaus_app, start_subapp, []},
       permanent, infinity, supervisor,
-      []}
+      []},
+
+     {ns_heart, {ns_heart, start_link, []},
+      permanent, 10, worker, [ns_heart, ns_doctor, ns_info]}
     ].
