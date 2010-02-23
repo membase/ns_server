@@ -483,7 +483,14 @@ handle_bucket_create(_PoolId, [$_ | _], Req) ->
 handle_bucket_create(PoolId, BucketId, Req) ->
     % Bucket size validation.
     PostArgs = Req:parse_post(),
-    SizeWanted = list_to_integer(proplists:get_value("cacheSize", PostArgs)),
+    SizeWanted = try list_to_integer(proplists:get_value("cacheSize", PostArgs))
+                     catch
+                         _:_ -> reply_json(Req, [list_to_binary("The cacheSize must be an integer.")], 400)
+    end,
+    case SizeWanted < 0 of
+        true -> NzV = list_to_binary("The cacheSize must be non-zero");
+        false -> NzV = undefined
+    end,
     %  go get the memory out there, reusing nodes_info, not caring about OTP
     Pool = find_pool_by_id(PoolId),
     PoolNodes = build_nodes_info(Pool, false),
@@ -494,7 +501,6 @@ handle_bucket_create(PoolId, BucketId, Req) ->
     MinMemFree = lists:min(lists:map(
                              fun(X) -> proplists:get_value(memoryFree, X) end,
                              proplists:get_all_values(struct, PoolNodes))),
-    ns_log:log(?MODULE, "debugging size validation ~p ~p~n", [SizeWanted, MinMemFree]),
     % allow slightly more memory, since there should be some slack space
     case SizeWanted > MinMemFree * 1.25 of
       true -> SzV = list_to_binary(
@@ -507,7 +513,7 @@ handle_bucket_create(PoolId, BucketId, Req) ->
         true -> FmtV = undefined;
         _ -> FmtV = list_to_binary("Bucket name cannot have whitespace.")
     end,
-    PossMsg = [SzV, FmtV],
+    PossMsg = [SzV, FmtV, NzV],
     io:format("PossMsg ~p~n", [PossMsg]),
     Msgs = lists:filter(fun (X) ->
                           case X of
