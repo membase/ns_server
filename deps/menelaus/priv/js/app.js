@@ -514,6 +514,9 @@ var maybeReloadAppDueToLeak = (function () {
 function renderLargeGraph(main, data) {
   var minX, minY = 1/0;
   var maxX, maxY = -1/0;
+  var minInf = minY;
+  var maxInf = maxY;
+
   var plotData = _.map(data, function (e, i) {
     if (e <= minY) {
       minX = i+1;
@@ -551,11 +554,15 @@ function renderLargeGraph(main, data) {
   function drawMarkers(plot) {
     main.find('.marker').remove();
 
-    var offset = plot.pointOffset({x: minX, y: minY});
-    singleMarker(offset, String(minY)).addClass('marker-min');
+    if (minY != minInf) {
+      var offset = plot.pointOffset({x: minX, y: minY});
+      singleMarker(offset, String(minY)).addClass('marker-min');
+    }
 
-    var offset = plot.pointOffset({x: maxX, y: maxY});
-    singleMarker(offset, String(maxY)).addClass('marker-max');
+    if (maxY != maxInf) {
+      var offset = plot.pointOffset({x: maxX, y: maxY});
+      singleMarker(offset, String(maxY)).addClass('marker-max');
+    }
   }
 }
 
