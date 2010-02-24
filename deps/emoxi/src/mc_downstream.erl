@@ -185,7 +185,7 @@ make_mbox(#dmgr{curr = Dict, timeout = Timeout} = DMgr, Addr) ->
     end.
 
 start_mbox(Addr, Timeout) ->
-    case mc_downstream_conn:start_link(Addr, Timeout) of
+    case mc_downstream_sup:add_downstream(Addr, Timeout) of
         {ok, Pid} -> {ok, #mbox{addr = Addr, pid = Pid,
                                 started = erlang:now()}};
         Error     -> Error

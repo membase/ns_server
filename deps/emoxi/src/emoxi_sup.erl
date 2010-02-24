@@ -34,7 +34,10 @@ init([]) ->
 %     one supervisor for each named pool.
 
 child_specs() ->
-    [{mc_downstream,
+    [{mc_downstream_sup,
+      {mc_downstream_sup, start_link, []},
+      permanent, 1000, supervisor, [mc_downstream_sup]},
+     {mc_downstream,
       {mc_downstream, start_link, []},
       permanent, 1000, worker, [mc_downstream]},
      {mc_pool_init,
