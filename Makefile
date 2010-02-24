@@ -34,7 +34,8 @@ bdist: clean ebins deps_all
 	(cd .. && tar cf -  \
                           ns_server/ebin \
                           ns_server/deps/*/ebin \
-                          ns_server/deps/*/deps/*/ebin | gzip -9 -c > \
+                          ns_server/deps/*/deps/*/ebin \
+                          ns_server/deps/menelaus/priv/public | gzip -9 -c > \
                           ns_server/ns_server_`cat ns_server/$(TMP_VER)`.tar.gz )
 	echo created ns_server_`cat $(TMP_VER)`.tar.gz
 
