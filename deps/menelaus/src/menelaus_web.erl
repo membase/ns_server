@@ -19,7 +19,7 @@
          wrap_tests_with_cache_setup/1]).
 -endif.
 
--export([start_link/0, start_link/1, stop/0, loop/2, webconfig/0, restart/0,
+-export([start_link/0, start_link/1, stop/0, loop/3, webconfig/0, restart/0,
          find_pool_by_id/1, all_accessible_buckets/2,
          find_bucket_by_id/2]).
 
@@ -42,11 +42,12 @@ start_link() ->
     start_link(webconfig()).
 
 start_link(Options) ->
-    {DocRoot, Options1} = get_option(docroot, Options),
+    {AppRoot, Options1} = get_option(approot, Options),
+    {DocRoot, Options2} = get_option(docroot, Options1),
     Loop = fun (Req) ->
-                   ?MODULE:loop(Req, DocRoot)
+                   ?MODULE:loop(Req, AppRoot, DocRoot)
            end,
-    mochiweb_http:start([{name, ?MODULE}, {loop, Loop} | Options1]).
+    mochiweb_http:start([{name, ?MODULE}, {loop, Loop} | Options2]).
 
 stop() ->
     % Note that a supervisor might restart us right away.
@@ -75,11 +76,12 @@ webconfig() ->
            end,
     WebConfig = [{ip, Ip},
                  {port, Port},
-                 {docroot, menelaus_deps:local_path(["priv","public"],
-                                                    ?MODULE)}],
+                 {approot, menelaus_deps:local_path(["priv","public"],
+                                                    ?MODULE)},
+                 {docroot, menelaus_deps:doc_path()}],
     WebConfig.
 
-loop(Req, DocRoot) ->
+loop(Req, AppRoot, DocRoot) ->
     try
         "/" ++ Path = Req:get(path),
         PathTokens = string:tokens(Path, "/"),
@@ -88,7 +90,7 @@ loop(Req, DocRoot) ->
                          case PathTokens of
                              [] ->
                                  {done, redirect_permanently("/index.html", Req)};
-                            ["pools"] ->
+                             ["pools"] ->
                                  {auth_bucket, fun handle_pools/1};
                              ["pools", Id] ->
                                  {auth_bucket, fun handle_pool_info/2, [Id]};
@@ -117,14 +119,17 @@ loop(Req, DocRoot) ->
                              ["settings", "advanced"] ->
                                  {auth, fun handle_settings_advanced/1};
                              ["t", "index.html"] ->
-                                 {done, serve_index_html_for_tests(Req, DocRoot)};
+                                 {done, serve_index_html_for_tests(Req, AppRoot)};
                              ["index.html"] ->
-                                 {done, serve_static_file(Req, {DocRoot, Path},
+                                 {done, serve_static_file(Req, {AppRoot, Path},
                                                          "text/html; charset=utf8",
                                                           [{"Pragma", "no-cache"},
                                                            {"Cache-Control", "no-cache must-revalidate"}])};
+                             ["docs" | _PRem ] ->
+                                 DocFile = string:sub_string(Path, 6),
+                                 {done, Req:serve_file(DocFile, DocRoot, add_header())};
                              _ ->
-                                 {done, Req:serve_file(Path, DocRoot, [{"Pragma", "no-cache"},
+                                 {done, Req:serve_file(Path, AppRoot, [{"Pragma", "no-cache"},
                                                                        {"Cache-Control", "no-cache must-revalidate"}])}
                         end;
                      'POST' ->
