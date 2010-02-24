@@ -851,8 +851,8 @@ var OverviewSection = {
           type: 'POST',
           url: DAO.cells.currentPoolDetails.value.controllers.ejectNode.uri,
           data: "otpNode=Self",
-          success: reloadApp,
-          errors: reloadApp
+          success: reloadAppNoArg,
+          errors: reloadAppNoArg
         });
       }]]
     });
@@ -862,20 +862,8 @@ var OverviewSection = {
     var node = _.detect(details, function (n) {
       return n.otpNode == otpNode;
     });
-    if (!node) {
-      alert('!node. this is unexpected!')
-      return;
-    }
-
-    // TODO: need current node mark in nodes list, 'cause the following is unreliable
-    var thisHost = document.location.host;
-    var match;
-    if ((match = /(.*):\d+/.exec(thisHost))) {
-      thisHost = match[1]
-    }
-    if (thisHost == node.hostname) {
-      return this.leaveCluster();
-    }
+    if (!node)
+      throw new Error('!node. this is unexpected!');
 
     showDialog("eject_confirmation_dialog", {
       eventBindings: [['.save_button', 'click', function (e) {
@@ -886,8 +874,8 @@ var OverviewSection = {
           type: 'POST',
           url: DAO.cells.currentPoolDetails.value.controllers.ejectNode.uri,
           data: {otpNode: node.otpNode},
-          error: reloadApp,
-          success: reloadApp
+          error: reloadAppNoArg,
+          success: reloadAppNoArg
         });
       }]]
     });

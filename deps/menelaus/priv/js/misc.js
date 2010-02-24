@@ -379,6 +379,10 @@ function reloadApp(middleCallback) {
     window.location.reload();
 }
 
+function reloadAppNoArg() {
+  reloadApp();
+}
+
 // this thing ensures that a back button pressed during some modal
 // action (waiting http POST response, for example) will reload the
 // page, so that we don't have to face issues caused by unexpected
