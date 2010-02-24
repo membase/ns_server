@@ -15,6 +15,7 @@ all: ebins test deps_all
 deps_all:
 	(cd deps/emoxi && $(MAKE) ebins)
 	(cd deps/menelaus && $(MAKE) all)
+	(cd deps/gen_smtp && $(MAKE) ebins)
 
 ebins: ebin_app
 	test -d ebin || mkdir ebin
@@ -42,6 +43,7 @@ bdist: clean ebins deps_all
 clean clean_all:
 	@(cd deps/emoxi && $(MAKE) clean)
 	@(cd deps/menelaus && $(MAKE) clean)
+	@(cd deps/gen_smtp && $(MAKE) clean)
 	rm -f $(TMP_VER)
 	rm -f $(TMP_DIR)/*.cov.html
 	rm -f cov.html

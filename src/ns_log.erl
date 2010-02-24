@@ -47,10 +47,17 @@ handle_call(recent, _From, State) ->
 handle_cast({log, Module, Code, Fmt, Args}, State) ->
     error_logger:info_msg("Logging ~p:~p(~p, ~p)~n",
                           [Module, Code, Fmt, Args]),
+    Category = categorize(Module, Code),
     NR = ringbuffer:add(#log_entry{module=Module, code=Code, msg=Fmt, args=Args,
-                                   cat=categorize(Module, Code),
+                                   cat=Category,
                                    tstamp=erlang:now()},
                         State#state.recent),
+    try gen_event:notify(ns_log_events, {ns_log, Category, Module, Code,
+                         Fmt, Args})
+    catch _:Reason ->
+        error_logger:info_msg("ns_log: couldn't send notification: ~p~n",
+                              [Reason])
+    end,
     {noreply, State#state{recent=NR}};
 handle_cast(clear, _State) ->
     error_logger:info_msg("Clearing log.~n", []),

@@ -24,7 +24,8 @@
          build_alerts_settings/0]).
 
 -export([get_alert_config/0,
-         set_alert_config/1]).
+         set_alert_config/1,
+         alert_key/2]).
 
 -import(simple_cache, [call_simple_cache/2]).
 
@@ -84,7 +85,8 @@ handle_alerts_settings_post(PostArgs) ->
                                              list_to_existing_atom(K2),
                                              V, C);
                               false -> C
-                          end
+                          end;
+                      _ -> C
                   end;
              (_, C) -> C
           end,

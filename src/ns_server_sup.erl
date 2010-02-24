@@ -52,5 +52,6 @@ get_child_specs() ->
       []},
 
      {ns_heart, {ns_heart, start_link, []},
-      permanent, 10, worker, [ns_heart, ns_doctor, ns_info]}
+      permanent, 10, worker,
+      [ns_heart, ns_log, ns_port_sup, ns_doctor, ns_info]}
     ].

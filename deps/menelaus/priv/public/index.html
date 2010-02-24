@@ -629,9 +629,9 @@
                       </div>
                     </div>
                     <div class="labeled_line">
-                      <label class="block label for_input" for="email_server_password">Password:</label>
+                      <label class="block label for_input" for="email_server_pass">Password:</label>
                       <div class="line_cnt">
-                        <input type="text" name="email_server_password" class="text inp_short">
+                        <input type="text" name="email_server_pass" class="text inp_short">
                       </div>
                     </div>
                     <div class="labeled_line">
@@ -775,7 +775,7 @@
           <p class="u_line"><span class="label">Bucket name:</span><a class="float_right remove_bucket">Remove</a> {%= h(b.name) %}</p>
           <p class="u_line"><span class="label">Cache size:</span>
           <a class="float_right" href="{%=jsLink('BucketsSection.startFlushCache',b.uri)%}">Flush All</a>
-          {%= h(b.basicStats.cacheSize) %} MB 
+          {%= h(b.basicStats.cacheSize) %} MB
           </p>
           <div class="pat_10">
             <div class="normal text_12">
@@ -1090,7 +1090,7 @@ MemcachedClient client = manager.getClient();</pre>
                 <input type="checkbox" name="bytes_read" />
                 <span class="cnt">
                   <span>Bytes Received per Second</span>
-                  Network bytes received by all servers, per second 
+                  Network bytes received by all servers, per second
                 </span>
               </label>
               <label class="item">
