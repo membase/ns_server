@@ -6,12 +6,9 @@ A walkthrough of the design and key files in the emoxi system...
 
 We depend on `gen_tcp` and using tcp sockets in 'passive' mode.  That
 means tcp messages are not integrated into the erlang
-process/messagebox system, and we are doing explicit, e-process
+process/messagebox system, and we are doing explicit, process
 "blocking" calls to send and receive messages.  We use multiple erlang
 processes for asynchronicity and concurrency.
-
-The term "e-process" and "e-port" are used to clarify when we're
-talking about erlang processes (as opposed to OS processes).
 
 ## Protocol Utilities
 
@@ -19,7 +16,7 @@ talking about erlang processes (as opposed to OS processes).
     mc_binary.erl
 
 These lowest level utility modules help parse, encode/decode packets.
-There are also functions to make synchronous, (e-process) blocking
+There are also functions to make synchronous, (process) blocking
 send/recv calls against a tcp socket.
 
 # The Client Side
@@ -90,10 +87,10 @@ single call into into 3 binary GETKQ calls and a NOOP call.
 
     mc_accept.erl
 
-This module opens up a listening port and spawns child e-processes to
+This module opens up a listening port and spawns child processes to
 manage each client connection (or session).  Each client connection
-gets two child e-processes, which are paired: one child-process to
-receive incoming messages, and another child-e-process to do sends of
+gets two child processes, which are paired: one child-process to
+receive incoming messages, and another child-process to do sends of
 responses.
 
 The `mc_accept` module is genericized so that different server
@@ -133,7 +130,7 @@ commands.
 The `mc_server_XXX_proxy` modules receive protocol-specific messages and
 forward those (potentially replicated) messages onwards to downstream
 servers.  During the forwarding, the client session/connection
-handling e-process is blocked.  That is, each message from an upstream
+handling process is blocked.  That is, each message from an upstream
 client is processed synchronously.
 
 The `mc_server_ascii_proxy` processor allows ascii-protocol clients to
@@ -152,7 +149,7 @@ for message forwarding.
 
     mc_replication.erl
 
-The `mc_replication.erl` module is a `gen_server` e-process that
+The `mc_replication.erl` module is a `gen_server` process that
 manages replication state and the W+R>N algorithm.  If no replication
 is needed (number of replicas (or N) == 1, for example), then, the
 replication module just forwards the message to the downstream
@@ -162,14 +159,14 @@ If replication is needed (N > 1), the replication module creates
 state-tracking data and forwards multiple messages to the downstream
 manager as necessary.
 
-Instead of spawning a separate e-process for each replication
-situation, by instead using the state-tracking data, we have only one
-replication e-process/`gen_server` for the entire erlang VM, no matter
-how many replication requests are concurrently in-flight.
+Instead of spawning a separate process for each replication situation,
+by instead using the state-tracking data, we have only one replication
+`gen_server` for the entire erlang VM, no matter how many replication
+requests are concurrently in-flight.
 
 When the replication of a request has reached an W+R>N quorum safety
 point, the replication module notifies the replication invoker (the
-client session/connection e-process).  The replication invoker, for
+client session/connection process).  The replication invoker, for
 example, can then proceed to respond to the upstream client and
 process more client messages.
 
@@ -177,12 +174,12 @@ process more client messages.
 
     mc_downstream.erl
 
-The downstream manager (`mc_downstream.erl`) is another
-e-process/`gen_server` that manages a set of downstream connections.
-Each downstream connection has its own spawned and linked e-process.
-These child e-processes each manage an individual tcp
-socket/connection to a memcached server and use the appropriate
-`mc_client_XXX` module to send/receive messages on that socket.
+The downstream manager (`mc_downstream.erl`) is another `gen_server`
+that manages a set of downstream connections.  Each downstream
+connection has its own spawned and linked process.  These child
+processes each manage an individual tcp socket/connection to a
+memcached server and use the appropriate `mc_client_XXX` module to
+send/receive messages on that socket.
 
 The downstream manager is unaware of pool or bucket concepts, but has
 enough monitoring features to allow higher layers of the system to be
