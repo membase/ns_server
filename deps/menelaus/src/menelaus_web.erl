@@ -155,6 +155,11 @@ loop(Req, AppRoot, DocRoot) ->
                              ["pools", PoolId, "buckets", Id, "controller", "doFlush"] ->
                                  {auth_bucket, fun handle_bucket_flush/3,
                                 [PoolId, Id]};
+                             ["logClientError"] -> {auth_bucket,
+                                                    fun (R) ->
+                                                            ns_log:log(?MODULE, 0020, "Client-side error-report: ~p", [R:recv_body()]),
+                                                            R:ok({"text/plain", <<"">>})
+                                                    end};
                              _ ->
                                  ns_log:log(?MODULE, 0001, "Invalid post received: ~p", [Req]),
                                  {done, Req:not_found()}

@@ -1746,3 +1746,34 @@ function showAbout() {
     text: text
   });
 }
+
+(function () {
+  var sentReports = 0;
+  var ErrorReportsLimit = 8;
+
+  function appOnError(message, fileName, lineNo) {
+    var report = [];
+    if (++sentReports < ErrorReportsLimit) {
+      report.push("Got unhandled error: ", message, "\nAt: ", fileName, ":", lineNo, "\n");
+      var bt = collectBacktraceViaCaller();
+      if (bt) {
+        report.push("Backtrace:\n", bt);
+      }
+      if (sentReports == ErrorReportsLimit - 1) {
+        report.push("Further reports will be suppressed\n")
+      }
+    }
+
+    // mozilla can report errors in some cases when user leaves current page
+    // so delay report sending
+    _.delay(function () {
+      function ignore() {}
+      $.ajax({type: 'POST',
+              url: "/logClientError",
+              data: report.join(''),
+              success: ignore,
+              errors: ignore});
+    }, 500);
+  }
+  window.onerror = appOnError;
+})();
