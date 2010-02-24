@@ -63,16 +63,14 @@ current_pools() ->
     Children2 = proplists:delete(mc_downstream, Children1),
     Children3 = proplists:delete(mc_pool_init, Children2),
     Children4 = proplists:delete(tgen, Children3),
-    lists:foldl(fun({{mc_pool_sup, Name} = Id, Pid, _, _}, Acc) ->
-                        case is_pid(Pid) of
-                            true  -> [Name | Acc];
-                            false -> supervisor:delete_child(?MODULE, Id),
-                                     Acc
-                        end;
-                   (_, Acc) -> Acc
-                end,
-                [],
-                Children4).
+    %% Some children will be dead.  Unsupervise those.
+    {Rv, Dead} = lists:partition(fun({_, Pid, _, _}) -> is_pid(Pid) end, Children4),
+    lists:foreach(
+      fun(Id) ->
+              error_logger:info_msg("Unsupervising dead child:  ~p~n", [Id]),
+              supervisor:delete_child(?MODULE, Id)
+      end, Dead),
+    Rv.
 
 start_pool(Name) ->
     case lists:member(Name, current_pools()) of
