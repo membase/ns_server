@@ -535,7 +535,6 @@ handle_bucket_create(PoolId, BucketId, Req) ->
                _ -> <<"Bucket name cannot have whitespace.">>
     end,
     PossMsg = [SzV, FmtV, NzV],
-    io:format("PossMsg ~p~n", [PossMsg]),
     Msgs = lists:filter(fun (X) -> X =/= undefined end,
                         PossMsg),
     case Msgs of
@@ -605,15 +604,36 @@ handle_join(Req) ->
     %%                    user=admin&password=admin123
     %%
     Params = Req:parse_post(),
+        ParsedOtherPort = (catch list_to_integer(proplists:get_value("clusterMemberPort", Params))),
+    % the erlang http client crashes if the port number is invalid, so we validate for ourselves here
+    NzV = if
+              is_integer(ParsedOtherPort) ->
+                  if
+                      ParsedOtherPort =< 0 -> <<"The port number must be greater than zero.">>;
+                      ParsedOtherPort >65535 -> <<"The port number cannot be larger than 65535.">>;
+                      true -> undefined
+                  end;
+              true -> <<"The cache size must be an integer.">>
+          end,
+    OtherPort = if
+                     NzV =:= undefined -> ParsedOtherPort;
+                     true -> 0
+                 end,
     OtherHost = proplists:get_value("clusterMemberHostIp", Params),
-    OtherPort = proplists:get_value("clusterMemberPort", Params),
     OtherUser = proplists:get_value("user", Params),
     OtherPswd = proplists:get_value("password", Params),
     case lists:member(undefined,
                       [OtherHost, OtherPort, OtherUser, OtherPswd]) of
         true  -> ns_log:log(?MODULE, 0013, "Received request to join cluster missing a parameter.", []),
                  Req:respond({400, add_header(), "Attempt to join node to cluster received with missing parameters.\n"});
-        false -> handle_join(Req, OtherHost, OtherPort, OtherUser, OtherPswd)
+        false ->
+            PossMsg = [NzV],
+            Msgs = lists:filter(fun (X) -> X =/= undefined end,
+                   PossMsg),
+            case Msgs of
+                [] -> handle_join(Req, OtherHost, OtherPort, OtherUser, OtherPswd);
+                _ -> reply_json(Req, Msgs, 400)
+            end
     end.
 
 handle_join(Req, OtherHost, OtherPort, OtherUser, OtherPswd) ->
@@ -623,24 +643,31 @@ handle_join(Req, OtherHost, OtherPort, OtherUser, OtherPswd) ->
                                             {OtherUser, OtherPswd}) of
                 {ok, undefined, _} ->
                     ns_log:log(?MODULE, 0014, "During node join, remote node returned an invalid response: missing otpCookie."),
-                    reply_json(Req, [list_to_binary("Invalid response from remote node, missing otpCookie.")],500);
+                    reply_json(Req, [list_to_binary("Invalid response from remote node, missing otpCookie.")],400);
                 {ok, _, undefined} ->
                     ns_log:log(?MODULE, 0015, "During node join, remote node returned invalid response: missing otpNode."),
-                    reply_json(Req, [list_to_binary("Invalid response from remote node, missing otpNode.")],500);
+                    reply_json(Req, [list_to_binary("Invalid response from remote node, missing otpNode.")],400);
                 {ok, Node, Cookie} ->
                     handle_join(Req,
                                 list_to_atom(binary_to_list(Node)),
                                 list_to_atom(binary_to_list(Cookie)));
-                {error, econnectionrefused} ->
+                {error, econnrefused} ->
                     ns_log:log(?MODULE, 0016, "During node join, could not connect to ~p on port ~p.", [OtherHost, OtherPort]),
-                    reply_json(Req, [list_to_binary(io_lib:format("Could not connect to ~p on port ~p.", [OtherHost, OtherPort]))]);
-                _ -> ns_log:log(?MODULE, 0016, "During node join, the remote node did not return a REST response."),
-                     reply_json(Req, [list_to_binary("Invalid response from remote node.")],500)
+                    reply_json(Req, [list_to_binary(io_lib:format("Could not connect to ~p on port ~p.", [OtherHost, OtherPort]))], 400);
+                {error, nxdomain} ->
+                    ns_log:log(?MODULE, 0020, "During node join, failed to resolve ~p.", [OtherHost, OtherPort]),
+                    reply_json(Req, [list_to_binary(io_lib:format("Failed to resolve address for ~p.  The hostname may be incorrect or not resolvable.", [OtherHost]))], 400);
+                {error, timeout} ->
+                    ns_log:log(?MODULE, 0021, "During node join, timeout connecting to ~p on port ~p.", [OtherHost, OtherPort]),
+                    reply_json(Req, [list_to_binary(io_lib:format("Timeout connecting to ~p on port ~p.", [OtherHost, OtherPort]))], 400);
+                Any ->
+                    ns_log:log(?MODULE, 0022, "During node join, the remote node did not return a REST response.  Error encountered was: ~p", [Any]),
+                    reply_json(Req, [list_to_binary("Invalid response from remote node.  Error logged.")],400)
             end;
         false ->
             % We are not an 'empty' node, so user should first remove
             % buckets, etc.
-            reply_json(Req, [list_to_binary("System cannot be joined in the current state.  Remove buckets, etc.")],500)
+            reply_json(Req, [list_to_binary("System cannot be joined in the current state.  Remove buckets, etc.")],400)
     end.
 
 handle_join(Req, OtpNode, OtpCookie) ->
