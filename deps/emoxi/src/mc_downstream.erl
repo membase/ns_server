@@ -28,8 +28,7 @@
 -define(TIMEOUT_WORKER_GO,          1000). % 1 seconds.
 -define(TIMEOUT_WORKER_INACTIVE, 1000000). % 1000 seconds.
 
--record(dmgr, {curr,   % A dict of all the currently active, alive mboxes.
-               timeout % Timeout for worker inactivity.
+-record(dmgr, {timeout % Timeout for worker inactivity.
               }).
 
 % We have one MBox (or worker) per Addr.
@@ -48,21 +47,22 @@
 start_link()     -> start_link([{timeout, ?TIMEOUT_WORKER_INACTIVE}]).
 start_link(Args) -> gen_server:start_link({local, ?MODULE}, ?MODULE, Args, []).
 
-monitor(Addr) ->
-    case gen_server:call(?MODULE, {pid, Addr}) of
-        {ok, MBoxPid} -> monitor_mbox(MBoxPid);
-        Error         -> Error
-    end.
+monitor(_Addr) ->
+    %% case gen_server:call(?MODULE, {pid, Addr}) of
+    %%     {ok, MBoxPid} -> monitor_mbox(MBoxPid);
+    %%     Error         -> Error
+    %% end.
+    {ok, self()}.
 
-demonitor(undefined)   -> ok;
-demonitor(MonitorRefs) ->
-    % The flush removes a single DOWN message, if any, that are
-    % already waiting in our/self()'s mailbox.
-    lists:foreach(fun(MonitorRef) ->
-                          erlang:demonitor(MonitorRef, [flush])
-                  end,
-                  MonitorRefs),
-    ok.
+demonitor(_)   -> ok.
+%% demonitor(MonitorRefs) ->
+%%     % The flush removes a single DOWN message, if any, that are
+%%     % already waiting in our/self()'s mailbox.
+%%     lists:foreach(fun(MonitorRef) ->
+%%                           erlang:demonitor(MonitorRef, [flush])
+%%                   end,
+%%                   MonitorRefs),
+%%     ok.
 
 send(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule) ->
     send(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule,
@@ -87,11 +87,11 @@ send(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule,
         end,
     case gen_server:call(?MODULE, {pid, Addr}) of
         {ok, MBoxPid} ->
-            {ok, Monitor} = monitor_mbox(MBoxPid),
+            Monitor = erlang:monitor(process, MBoxPid),
             MBoxPid ! {send, NotifyPid, NotifyData, ResponseFun,
                        kind_to_module(Kind), Cmd, CmdArgs},
             {ok, [Monitor]};
-        _Error -> {error, []}
+        Error -> Error
     end.
 
 kind_to_module(ascii)  -> mc_client_ascii_ac;
@@ -129,18 +129,10 @@ await_ok(_, _, _, Acc) -> Acc.
 %% gen_server implementation.
 
 init([{timeout, Timeout}]) ->
-    {ok, #dmgr{curr = dict:new(), timeout = Timeout}}.
+    {ok, #dmgr{timeout = Timeout}}.
 
 terminate(_Reason, _DMgr) -> ok.
 code_change(_OldVn, DMgr, _Extra) -> {ok, DMgr}.
-
-handle_info({'EXIT', ChildPid, _Reason}, #dmgr{curr = Dict} = DMgr) ->
-    % ?debugVal({exit_downstream, ChildPid, Reason}),
-    Dict2 = dict:filter(fun(_Addr, #mbox{pid = Pid}) ->
-                            Pid =/= ChildPid
-                        end,
-                        Dict),
-    {noreply, DMgr#dmgr{curr = Dict2}};
 
 handle_info(_Info, DMgr) -> {noreply, DMgr}.
 
@@ -168,27 +160,11 @@ handle_call({send, Addr, Op, NotifyPid, NotifyData,
 
 % ---------------------------------------------------
 
-monitor_mbox(MBoxPid) ->
-    {ok, erlang:monitor(process, MBoxPid)}.
-
 % Retrieves or starts an mbox for an Addr.
-make_mbox(#dmgr{curr = Dict, timeout = Timeout} = DMgr, Addr) ->
-    case dict:find(Addr, Dict) of
-        {ok, MBox} ->
-            {ok, DMgr, MBox};
-        error ->
-            case start_mbox(Addr, Timeout) of
-                {ok, MBox} -> Dict2 = dict:store(Addr, MBox, Dict),
-                              {ok, DMgr#dmgr{curr = Dict2}, MBox};
-                Error      -> Error
-            end
-    end.
-
-start_mbox(Addr, Timeout) ->
-    case mc_downstream_sup:add_downstream(Addr, Timeout) of
-        {ok, Pid} -> {ok, #mbox{addr = Addr, pid = Pid,
-                                started = erlang:now()}};
-        Error     -> Error
+make_mbox(State, Addr) ->
+    case mc_downstream_sup:add_downstream(Addr, State#dmgr.timeout) of
+        {ok, Child} -> {ok, Child};
+        {error, {already_started, Child}} -> {ok, Child}
     end.
 
 group_by(Keys, KeyFunc) ->
@@ -206,12 +182,6 @@ group_by([], _KeyFunc, Dict) ->
 
 % For testing...
 %
-mbox_test() ->
-    D1 = dict:new(),
-    M1 = #dmgr{curr = D1},
-    A1 = mc_addr:local(ascii),
-    {ok, M2, B1} = make_mbox(M1, A1),
-    ?assertMatch({ok, M2, B1}, make_mbox(M2, A1)).
 
 element2({_X, Y}) -> Y.
 
