@@ -12,9 +12,9 @@
 %
 % Example:
 %
-%   mc_accept:start(PortNum, {ProtocolModule, ProcessorModule, ProcessorEnv}).
+%   mc_accept:start_link(PortNum, {ProtocolModule, ProcessorModule, ProcessorEnv}).
 %
-%   mc_accept:start(11222, {mc_server_ascii, mc_server_ascii_dict, {}}).
+%   mc_accept:start_link(11222, {mc_server_ascii, mc_server_ascii_dict, {}}).
 %
 % A server ProtocolModule must implement callbacks of...
 %
