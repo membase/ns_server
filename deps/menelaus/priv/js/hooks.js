@@ -451,8 +451,8 @@ var MockedRequest = mkClass({
                  uri: "/buckets/5",
                  testAppBucket: true,
                  status: false,
-                 testAppStatusURI: "/testappuri",
-                 flushCacheURI: "/buckets/5/flush",
+                 controlURL: "/testappuri",
+                 flushCacheUri: "/buckets/5/flush",
                  stats: {uri: "/buckets/5/stats"},
                  basicStats: {
                    cacheSize: 65, // in megs
@@ -462,7 +462,7 @@ var MockedRequest = mkClass({
                  }},
                 {name: "new-year-site",
                  uri: "/buckets/6",
-                 flushCacheURI: "/buckets/6/flush",
+                 flushCacheUri: "/buckets/6/flush",
                  stats: {uri: "/buckets/6/stats"},
                  basicStats: {
                    cacheSize: 66, // in megs
@@ -472,7 +472,7 @@ var MockedRequest = mkClass({
                  }},
                 {name: "new-year-site-staging",
                  uri: "/buckets/7",
-                 flushCacheURI: "/buckets/7/flush",
+                 flushCacheUri: "/buckets/7/flush",
                  stats: {uri: "/buckets/7/stats"},
                  basicStats: {
                    cacheSize: 67, // in megs
