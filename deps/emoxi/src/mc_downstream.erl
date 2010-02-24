@@ -172,81 +172,11 @@ make_mbox(#dmgr{curr = Dict, timeout = Timeout} = DMgr, Addr) ->
     end.
 
 start_mbox(Addr, Timeout) ->
-    case start_link(Addr, Timeout) of
+    case mc_downstream_conn:start_link(Addr, Timeout) of
         {ok, Pid} -> {ok, #mbox{addr = Addr, pid = Pid,
                                 started = erlang:now()}};
         Error     -> Error
     end.
-
-start_link(Addr, Timeout) ->
-    Location = mc_addr:location(Addr),
-    [Host, Port | _] = string:tokens(Location, ":"),
-    PortNum = list_to_integer(Port),
-    % We connect here, instead of in the worker, to
-    % allow faster error detection and avoid the races we'd have
-    % otherwise between ?MODULE:monitor() and ?MODULE:send().
-    case gen_tcp:connect(Host, PortNum,
-                         [binary, {packet, 0}, {active, false}]) of
-        {ok, Sock} ->
-            process_flag(trap_exit, true),
-            WorkerPid = spawn_link(?MODULE, worker, [Addr, Sock, Timeout]),
-            gen_tcp:controlling_process(Sock, WorkerPid),
-            WorkerPid ! go,
-            {ok, WorkerPid};
-        Error -> Error
-    end.
-
-%% Child/worker process implementation, where we have one child/worker
-%% process per downstream Addr or MBox.  Note, this can one day be a
-%% child/worker in a supervision tree.
-
-worker(Addr, Sock, Timeout) ->
-    % The go delay allows the spawner to setup gen_tcp:controller_process.
-    receive
-        go ->
-            case mc_addr:kind(Addr) of
-                ascii  -> loop(Addr, Sock, Timeout);
-                binary ->
-                    % TODO: Need a way to prevent auth & re-auth storms.
-                    % TODO: Bucket selection, one day.
-                    %
-                    Auth = mc_addr:auth(Addr),
-                    case mc_client_binary:auth(Sock, Auth) of
-                        ok  -> loop(Addr, Sock, Timeout);
-                        Err -> gen_tcp:close(Sock),
-                               ns_log:log(?MODULE, 1, "auth failed: ~p with ~p",
-                                          [Err, Auth])
-                    end
-            end;
-        Other -> error_logger:info_msg("Unhandled message:  ~p~n", [Other])
-    after ?TIMEOUT_WORKER_GO -> stop
-    end.
-
-loop(Addr, Sock, Timeout) ->
-    inet:setopts(Sock, [{active, once}]),
-    receive
-        {send, NotifyPid, NotifyData, ResponseFun,
-               CmdModule, Cmd, CmdArgs} ->
-            inet:setopts(Sock, [{active, false}]),
-            RV = CmdModule:cmd(Cmd, Sock, ResponseFun, undefined, CmdArgs),
-            notify(NotifyPid, NotifyData, RV),
-            case RV of
-                {ok, _}       -> loop(Addr, Sock, Timeout);
-                {ok, _, _}    -> loop(Addr, Sock, Timeout);
-                {ok, _, _, _} -> loop(Addr, Sock, Timeout);
-                _Error        -> gen_tcp:close(Sock)
-            end;
-        {tcp_closed, Sock} -> ok;
-        Other ->
-            gen_tcp:close(Sock),
-            error_logger:info_msg("Unhandled message:  ~p~n", [Other])
-    after Timeout ->
-        gen_tcp:close(Sock),
-        stop
-    end.
-
-notify(P, D, V) when is_pid(P) -> P ! {D, V};
-notify(_, _, _)                -> ok.
 
 group_by(Keys, KeyFunc) ->
     group_by(Keys, KeyFunc, dict:new()).
