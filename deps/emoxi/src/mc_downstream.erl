@@ -13,12 +13,11 @@
 
 %% API
 -export([start_link/0, start_link/1,
-         monitor/1, demonitor/1,
          send/6, send/8, kind_to_module/1,
          await_ok/1, accum/2]).
 
 %% Does not belong here.
--export([group_by/2]).
+-export([group_by/2, demonitor/1]).
 
 %% gen_server
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -46,23 +45,6 @@
 
 start_link()     -> start_link([{timeout, ?TIMEOUT_WORKER_INACTIVE}]).
 start_link(Args) -> gen_server:start_link({local, ?MODULE}, ?MODULE, Args, []).
-
-monitor(_Addr) ->
-    %% case gen_server:call(?MODULE, {pid, Addr}) of
-    %%     {ok, MBoxPid} -> monitor_mbox(MBoxPid);
-    %%     Error         -> Error
-    %% end.
-    {ok, self()}.
-
-demonitor(_)   -> ok.
-%% demonitor(MonitorRefs) ->
-%%     % The flush removes a single DOWN message, if any, that are
-%%     % already waiting in our/self()'s mailbox.
-%%     lists:foreach(fun(MonitorRef) ->
-%%                           erlang:demonitor(MonitorRef, [flush])
-%%                   end,
-%%                   MonitorRefs),
-%%     ok.
 
 send(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule) ->
     send(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule,
@@ -96,6 +78,16 @@ send(Addr, Out, Cmd, CmdArgs, ResponseFilter, ResponseModule,
 
 kind_to_module(ascii)  -> mc_client_ascii_ac;
 kind_to_module(binary) -> mc_client_binary_ac.
+
+demonitor(undefined) -> ok;
+demonitor(MonitorRefs) ->
+    %% The flush removes a single DOWN message, if any, that are
+    %% already waiting in our/self()'s mailbox.
+    lists:foreach(fun(MonitorRef) ->
+                          erlang:demonitor(MonitorRef, [flush])
+                  end,
+                  MonitorRefs),
+    ok.
 
 % Accumulate results of send calls, useful with foldl.
 accum(CallResult, {NumOks, AccMonitors}) ->
