@@ -192,10 +192,11 @@ get_buckets_stats(PoolId, BucketIds, Params) ->
                             ({Key, XVals}) ->
                                  case proplists:get_value(Key, YStat) of
                                      undefined -> {Key, XVals};
-                                     YVals ->
+                                     YVals when length(XVals) == length(YVals) ->
                                          {Key, lists:zipwith(
                                                  fun(A, B) -> A + B end,
-                                                 XVals, YVals)}
+                                                 XVals, YVals)};
+                                     _ -> {Key, XVals}
                                  end
                         end,
                         XStat)}
