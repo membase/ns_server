@@ -315,7 +315,7 @@ function renderTemplate(key, data) {
   } catch (e) {
     var stringError;
     try {
-      stringError = String(e);
+      stringError = e.message + ':' + String(e);
     } catch (e2) {
       stringError = '(failed to stringify exception)';
     }
