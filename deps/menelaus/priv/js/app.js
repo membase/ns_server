@@ -834,7 +834,7 @@ var OverviewSection = {
         overlay.remove();
 
         if (status != 'success') {
-          renderTemplate('join_cluster_dialog_errors', data.errors)
+          renderTemplate('join_cluster_dialog_errors', data)
         } else {
           $.cookie('cluster_join_flash', '1');
           reloadApp();
