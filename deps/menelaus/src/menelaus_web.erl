@@ -194,7 +194,7 @@ loop(Req, AppRoot, DocRoot) ->
                       {type, Type}, {what, What},
                       {trace, erlang:get_stacktrace()}], % todo: find a way to enable this for field info gathering
             ns_log:log(?MODULE, 0019, "Server error during processing: ~p", Report),
-            Req:respond({500, add_header(), []})
+            reply_json(Req, [list_to_binary("Unexpected server error, request logged.")], 500)
     end.
 
 
@@ -615,21 +615,24 @@ handle_join(Req, OtherHost, OtherPort, OtherUser, OtherPswd) ->
                                             {OtherUser, OtherPswd}) of
                 {ok, undefined, _} ->
                     ns_log:log(?MODULE, 0014, "During node join, remote node returned an invalid response: missing otpCookie."),
-                    Req:respond({500, add_header(), "Invalid response from remote node, missing otpCookie."});
+                    reply_json(Req, [list_to_binary("Invalid response from remote node, missing otpCookie.")],500);
                 {ok, _, undefined} ->
                     ns_log:log(?MODULE, 0015, "During node join, remote node returned invalid response: missing otpNode."),
-                    Req:respond({500, add_header(), "Invalid response from remote node, missing otpNode."});
+                    reply_json(Req, [list_to_binary("Invalid response from remote node, missing otpNode.")],500);
                 {ok, Node, Cookie} ->
                     handle_join(Req,
                                 list_to_atom(binary_to_list(Node)),
                                 list_to_atom(binary_to_list(Cookie)));
+                {error, econnectionrefused} ->
+                    ns_log:log(?MODULE, 0016, "During node join, could not connect to ~p on port ~p.", [OtherHost, OtherPort]),
+                    reply_json(Req, [list_to_binary(io_lib:format("Could not connect to ~p on port ~p.", [OtherHost, OtherPort]))]);
                 _ -> ns_log:log(?MODULE, 0016, "During node join, the remote node did not return a REST response."),
-                     Req:respond({500, add_header(), "Invalid response from remote node."})
+                     reply_json(Req, [list_to_binary("Invalid response from remote node.")],500)
             end;
         false ->
             % We are not an 'empty' node, so user should first remove
             % buckets, etc.
-            Req:respond({401, add_header(), []})
+            reply_json(Req, [list_to_binary("System cannot be joined in the current state.  Remove buckets, etc.")],500)
     end.
 
 handle_join(Req, OtpNode, OtpCookie) ->
@@ -640,7 +643,7 @@ handle_join(Req, OtpNode, OtpCookie) ->
               % will do it if our rest config changes.
               Req:respond({200, add_header(), []});
         Any -> ns_log:log(?MODULE, 0017, "Unexpected error encountered during cluster join ~p", [Any]),
-               Req:respond({500, add_header(), []})
+               reply_json(Req, [list_to_binary("Unexpected error encountered during cluster join.")],500)
     end.
 
 %% waits till only one node is left in cluster
