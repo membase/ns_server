@@ -3,13 +3,26 @@
 
 -module(mc_downstream).
 
+-behavior(gen_server).
+
 -include_lib("eunit/include/eunit.hrl").
 
 -include("mc_constants.hrl").
 
 -include("mc_entry.hrl").
 
--compile(export_all).
+%% API
+-export([start_link/0, start_link/1,
+         monitor/1, demonitor/1,
+         send/6, send/8, kind_to_module/1,
+         await_ok/1, accum/2]).
+
+%% Does not belong here.
+-export([group_by/2]).
+
+%% gen_server
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2,
+         terminate/2, code_change/3]).
 
 -define(TIMEOUT_AWAIT_OK,         100000). % 100 seconds.
 -define(TIMEOUT_WORKER_GO,          1000). % 1 seconds.
