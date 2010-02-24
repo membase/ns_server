@@ -32,7 +32,11 @@ terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
 
 handle_event({ns_log, _Category, Module, Code, Fmt, Args}, State) ->
-    AlertConfig = try menelaus_alert:get_alert_config() catch _:_ -> [] end,
+    AlertConfig = try menelaus_alert:get_alert_config() catch _:Reason ->
+        error_logger:info_msg("ns_mail_log: unable to get alert config from menelaus_alert: ~p~n",
+                              [Reason]),
+        []
+    end,
     case proplists:get_bool(email_alerts, AlertConfig) of
         true ->
             AlertKey = menelaus_alert:alert_key(Module, Code),
