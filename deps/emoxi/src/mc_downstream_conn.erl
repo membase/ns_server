@@ -1,3 +1,6 @@
+% Copyright (c) 2010, NorthScale, Inc.
+% All rights reserved.
+
 -module(mc_downstream_conn).
 
 -export([start_link/2, init/3]).

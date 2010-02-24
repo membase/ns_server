@@ -1,3 +1,6 @@
+% Copyright (c) 2010, NorthScale, Inc.
+% All rights reserved.
+
 -module(mc_downstream_sup).
 
 -behaviour(supervisor).
