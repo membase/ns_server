@@ -278,7 +278,10 @@ build_nodes_info(MyPool, IncludeOtp) ->
                         0,
                         BucketsAll),
     Stats = stats_aggregator:get_stats(1),
-    [NodesBucketMemoryAllocated | []] = dict:fetch("bytes", Stats),
+    NodesBucketMemoryAllocated = case dict:find("bytes", Stats) of
+        {ok, [Bytes]} -> Bytes;
+        error -> 0
+    end,
     Nodes =
         lists:map(
           fun(WantENode) ->
