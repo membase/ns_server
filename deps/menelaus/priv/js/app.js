@@ -191,12 +191,17 @@ function postWithValidationErrors(url, data, callback) {
   function continuation(data, textStatus) {
     action.finish();
     if (textStatus != 'success') {
-      if (data.status >= 200 && data.status < 300 && data.responseText == '') {
+      var status = 0;
+      try {
+        status = data.status // can raise exception on IE sometimes
+      } catch (e) {
+        // ignore
+      }
+      if (status >= 200 && status < 300 && data.responseText == '') {
         return callback.call(this, '', 'success');
       }
 
-      // jquery passes raw xhr object for errors
-      if (data.status != 400 || textStatus != 'error') {
+      if (status != 400 || textStatus != 'error') {
         return onUnexpectedXHRError(data);
       }
 
