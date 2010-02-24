@@ -309,7 +309,8 @@ bucket_config_set_test() ->
     ok.
 
 bucket_flush_test() ->
-    {ok, _Pid} = mc_downstream:start_link(),
+    {ok, _Pid1} = mc_downstream_sup:start_link(),
+    {ok, _Pid2} = mc_downstream:start_link(),
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
     (fun () ->

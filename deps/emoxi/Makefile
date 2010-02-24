@@ -5,7 +5,7 @@ SHELL=/bin/sh
 # ns_server repo, these values can be overridded by using -e on the make
 # command
 #
-NS_SERVER_REPO=../ns_server
+NS_SERVER_REPO=../..
 NS_SERVER_EBIN=$(NS_SERVER_REPO)/ebin
 
 EFLAGS=-pa ebin $(NS_SERVER_EBIN)
@@ -68,12 +68,12 @@ test_full: test memcapable
 
 test_unit: ebins $(NS_SERVER_EBIN)
 	$(MEMCACHED) -p 11211 -d -P /tmp/memcached.pid -E $(MEMCACHED_ENGINE)
-	erl $(EFLAGS) ../../ebin -noshell -s mc_test test -s init stop -kernel error_logger silent
+	erl $(EFLAGS) -noshell -s mc_test test -s init stop -kernel error_logger silent
 	kill `cat /tmp/memcached.pid`
 
 test_unit_verbose: ebins $(NS_SERVER_EBIN)
 	$(MEMCACHED) -p 11211 -d -P /tmp/memcached.pid -E $(MEMCACHED_ENGINE)
-	erl $(EFLAGS) ../../ebin -noshell -s mc_test test -s init stop
+	erl $(EFLAGS) -noshell -s mc_test test -s init stop
 	kill `cat /tmp/memcached.pid`
 
 test_main: ebin $(NS_SERVER_EBIN)
@@ -101,7 +101,7 @@ test_client_binary:
 test_client: test_client_ascii test_client_binary
 
 cucumber: ebin $(NS_SERVER_EBIN)
-	erl $(EFLAGS) ../../ebin -noshell -s mc_test cucumber -s init stop
+	erl $(EFLAGS) -noshell -s mc_test cucumber -s init stop
 
 dialyzer: ebin $(NS_SERVER_EBIN)
 	dialyzer -pa ebin -I include -r .
