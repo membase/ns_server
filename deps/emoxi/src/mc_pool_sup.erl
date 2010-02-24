@@ -98,16 +98,10 @@ reconfig(Name, PoolConfig) ->
                                             [?MODULE, CurrArgs, WantArgs]),
                       supervisor:terminate_child(ServerName, mc_accept),
                       supervisor:delete_child(ServerName, mc_accept),
-                      supervisor:start_child(ServerName, WantSpec),
-                      ok
+                      supervisor:start_child(ServerName, WantSpec)
               end;
          ({{mc_pool, N}, Pid, _, _}) when N =:= Name ->
-              mc_pool:reconfig(Pid, Name, PoolConfig),
-              ok;
-         (X) ->
-              error_logger:info_msg("~p reconfig unknown msg: ~p~n",
-                                    [?MODULE, X]),
-              ok
+              mc_pool:reconfig(Pid, Name, PoolConfig)
       end,
       CurrentChildren).
 
@@ -116,12 +110,7 @@ reconfig_nodes(Name, _) ->
     CurrentChildren = current_children(Name),
     lists:foreach(
       fun({{mc_pool, N}, Pid, _, _}) when N =:= Name ->
-              mc_pool:reconfig_nodes(Pid, Name, Nodes),
-              ok;
-         (X) ->
-              error_logger:info_msg("~p reconfig unknown msg: ~p~n",
-                                    [?MODULE, X]),
-              ok
+              mc_pool:reconfig_nodes(Pid, Name, Nodes)
       end,
       CurrentChildren).
 
