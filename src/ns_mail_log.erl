@@ -31,7 +31,7 @@ init(_) ->
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
 
-handle_event({ns_log, Category, Module, Code, Fmt, Args}, State) ->
+handle_event({ns_log, _Category, Module, Code, Fmt, Args}, State) ->
     AlertConfig = try menelaus_alert:get_alert_config() catch _:_ -> [] end,
     case proplists:get_bool(email_alerts, AlertConfig) of
         true ->
