@@ -693,8 +693,8 @@ handle_eject_post(Req) ->
             OtpNode = list_to_atom(OtpNodeStr),
             case OtpNode =:= node() of
                 true ->
-                    % Cannot eject ourselves.
-                    Req:respond({400, add_header(), "Bad Request\n"});
+                    do_eject_myself(),
+                    Req:respond({200, [], []});
                 false ->
                     case lists:member(OtpNode, ns_node_disco:nodes_wanted()) of
                         true ->
