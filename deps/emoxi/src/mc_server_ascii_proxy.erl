@@ -63,10 +63,15 @@ cmd(delete, #session_proxy{bucket = Bucket} = Session,
         {ok, Monitors} ->
             case await_ok(1) of
                 1 -> true;
-                _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
+                X ->
+                    error_logger:info_msg("Error waiting for cmd result: ~p~n",
+                                          [X]),
+                    mc_ascii:send(Out, <<"ERROR\r\n">>)
             end,
             mc_downstream:demonitor(Monitors);
-        _Error ->
+        Error ->
+            error_logger:info_msg("Error sending downstream: ~p~n",
+                                  [Error]),
             mc_ascii:send(Out, <<"ERROR\r\n">>)
     end,
     {ok, Session};
@@ -226,10 +231,15 @@ forward_update(Cmd, #session_proxy{bucket = Bucket} = Session,
         {ok, Monitors} ->
             case await_ok(1) of
                 1 -> true;
-                _ -> mc_ascii:send(Out, <<"ERROR\r\n">>)
+                X ->
+                    error_logger:info_msg("Error waiting for cmd result: ~p~n",
+                                          [X]),
+                    mc_ascii:send(Out, <<"ERROR\r\n">>)
             end,
             mc_downstream:demonitor(Monitors);
-        _Error ->
+        Error ->
+            error_logger:info_msg("Error forwarding downstream update: ~p~n",
+                                  [Error]),
             mc_ascii:send(Out, <<"ERROR\r\n">>)
     end,
     {ok, Session};
