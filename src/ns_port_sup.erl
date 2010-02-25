@@ -36,7 +36,7 @@ port_servers_config() ->
 
 dynamic_children() ->
     {value, PortServers} = port_servers_config(),
-    error_logger:info_msg("initializing e-ports: ~p~n", [PortServers]),
+    error_logger:info_msg("initializing ports: ~p~n", [PortServers]),
     lists:map(fun create_child_spec/1, PortServers).
 
 launch_port(Name, Cmd) ->
@@ -44,10 +44,10 @@ launch_port(Name, Cmd) ->
 
 launch_port(Name, Cmd, Args, Opts)
   when is_atom(Name); is_list(Cmd); is_list(Args) ->
-    error_logger:info_msg("supervising e-port: ~p~n", [Cmd]),
+    error_logger:info_msg("supervising port: ~p~n", [Cmd]),
     {ok, C} = supervisor:start_child(?MODULE,
                                      create_child_spec({Name, Cmd, Args, Opts})),
-    error_logger:info_msg("new child e-port: ~p~n", [C]),
+    error_logger:info_msg("new child port: ~p~n", [C]),
     {ok, C}.
 
 create_child_spec({Name, Cmd, Args, Opts}) ->
@@ -64,7 +64,7 @@ create_child_spec({Name, Cmd, Args, Opts}) ->
      [ns_port_server]}.
 
 terminate_port(Name) ->
-    error_logger:info_msg("unsupervising e-port: ~p~n", [Name]),
+    error_logger:info_msg("unsupervising port: ~p~n", [Name]),
     ok = supervisor:terminate_child(?MODULE, Name),
     ok = supervisor:delete_child(?MODULE, Name).
 

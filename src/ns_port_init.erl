@@ -58,7 +58,7 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 reconfig(PortServers) ->
-    error_logger:info_msg("ns_port_init reconfig e-ports: ~p...~n",
+    error_logger:info_msg("ns_port_init reconfig ports: ~p...~n",
                           [PortServers]),
 
     % CurrPorts looks like...
