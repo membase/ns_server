@@ -10,6 +10,7 @@
 -export([apply_auth/3,
          apply_auth_bucket/3,
          extract_auth/1,
+         extract_auth/2,
          check_auth/1,
          check_auth_bucket/1,
          bucket_auth_fun/1,
@@ -71,6 +72,13 @@ check_auth({User, Password}, [{User, PropList} | _]) ->
 check_auth(UserPassword, [_NotRightUser | Rest]) ->
     check_auth(UserPassword, Rest).
 
+extract_auth(username, Req) ->
+    case Req:get_header_value("authorization") of
+        "Basic " ++ Value ->
+            parse_user(base64:decode_to_string(Value));
+        _ -> undefined
+    end.
+
 extract_auth(Req) ->
     case Req:get_header_value("authorization") of
         "Basic " ++ Value ->
@@ -83,6 +91,13 @@ parse_user_password(UserPasswordStr) ->
         [] -> undefined;
         [User] -> {User, ""};
         [User, Password] -> {User, Password}
+    end.
+
+parse_user(UserPasswordStr) ->
+    case string:tokens(UserPasswordStr, ":") of
+        [] -> undefined;
+        [User] -> User;
+        [User, _Password] -> User
     end.
 
 bucket_auth_fun(UserPassword) ->

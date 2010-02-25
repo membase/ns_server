@@ -138,7 +138,7 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_join/1};
                              ["settings", "web"] ->
                                  {auth, fun handle_settings_web_post/1};
-                            ["settings", "advanced"] ->
+                             ["settings", "advanced"] ->
                                  {auth, fun handle_settings_advanced_post/1};
                              ["pools", _PoolId] ->
                                  {done, Req:respond({405, add_header(), ""})};
@@ -157,8 +157,9 @@ loop(Req, AppRoot, DocRoot) ->
                                 [PoolId, Id]};
                              ["logClientError"] -> {auth_bucket,
                                                     fun (R) ->
-                                                            ns_log:log(?MODULE, 0020, "Client-side error-report: ~p", [R:recv_body()]),
-                                                            R:ok({"text/plain", <<"">>})
+                                                            User = menelaus_auth:extract_auth(username, R),
+                                                            ns_log:log(?MODULE, 0020, "Client-side error-report for user ~w: ~w~n", [User, R:recv_body()]),
+                                                            R:ok({"text/plain", add_header(), <<"">>})
                                                     end};
                              _ ->
                                  ns_log:log(?MODULE, 0001, "Invalid post received: ~p", [Req]),
