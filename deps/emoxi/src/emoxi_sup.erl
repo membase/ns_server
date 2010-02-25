@@ -73,7 +73,11 @@ current_pools() ->
               error_logger:info_msg("Unsupervising dead child:  ~p~n", [Id]),
               supervisor:delete_child(?MODULE, Id)
       end, Dead),
-    Rv.
+    Rv2 = lists:filter(fun({{mc_pool_sup, _}, _, _, _}) -> true;
+                          ({_, _, _, _}) -> false
+                       end,
+                       Rv),
+    lists:map(fun({{mc_pool_sup, Name}, _, _, _}) -> Name end, Rv2).
 
 start_pool(Name) ->
     case lists:member(Name, current_pools()) of
