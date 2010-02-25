@@ -818,7 +818,8 @@ var OverviewSection = {
     var dialog = $('#join_cluster_dialog');
     var form = dialog.find('form');
     $('#join_cluster_dialog_errors_container').empty();
-    dialog.find("input:not([type]), input[type=text], input[type=password]").val('');
+    $('#join_cluster_dialog form').get(0).reset();
+    dialog.find("input:not([type]), input[type=text], input[type=password]").not('[name=clusterMemberHostIp], [name=clusterMemberPort]').val('');
 
     showDialog('join_cluster_dialog', {
       onHide: function () {
