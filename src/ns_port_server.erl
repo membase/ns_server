@@ -162,7 +162,11 @@ handle_info({'EXIT', _Port, Reason}, State) ->
             ns_log:log(?MODULE, 0003, "process exited: ~p",
                        [State#state.params]),
             {stop, {port_exited, Reason}, State}
-    end.
+    end;
+handle_info(Something, State) ->
+    error_logger:info_msg("Got unexpected message while monitoring ~p: ~p~n",
+                          [State#state.name, Something]),
+    {stop, Something, State}.
 
 handle_call(params, _From, #state{params = Params} = State) ->
     {reply, {ok, Params}, State};
