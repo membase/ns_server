@@ -67,7 +67,7 @@ main_mock() ->
     AsciiPool = mc_pool:create(default, AsciiAddrs, Config,
                                [mc_bucket:create("default", AsciiAddrs,
                                                   Config)]),
-    {application:start(ns_server),
+    {ns_bootstrap:start(),
      mc_downstream_sup:start_link(),
      mc_downstream:start_link(),
      mc_accept:start_link(11333,

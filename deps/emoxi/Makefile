@@ -8,7 +8,7 @@ SHELL=/bin/sh
 NS_SERVER_REPO=../..
 NS_SERVER_EBIN=$(NS_SERVER_REPO)/ebin
 
-EFLAGS=-pa ebin $(NS_SERVER_EBIN)
+EFLAGS=-pa ebin $(NS_SERVER_EBIN) $(NS_SERVER_REPO)/deps/menelaus/ebin
 
 MOXILUA_REPO=../../../moxilua
 
