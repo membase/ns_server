@@ -247,8 +247,8 @@ a:link {
 }
 
 #container {
-	position: absolute;
-	width: 100%;
+  position: absolute;
+    width: 100%;
   min-width:960px;
 	min-height: 100%;
 }
@@ -610,7 +610,7 @@ body.nojs #nojs_alert { display: block; width:960px; margin:40px auto 0 auto;}
 .auth_block .form table .submit {width:210px; height:45px; overflow:visible; border:0px; background:url(../images/sign_in_button.gif) 0 0 no-repeat; font-size:22px; color:#fff;}
 .auth_block .form table .submit:hover {background-position:0 -45px;}
 .auth_block .form table .submit:active {background-position:0 -90px;}
-.auth_block .alert_red {width:779px; height:71px; position:absolute; left:-8px; top:60px; line-height:65px; font-size:14px; color:#fff; background:url(../images/alert_red.png) 0 0 no-repeat; z-index:1000;}
+.auth_block .alert_red {width:588px; height:71px; position:absolute; left:-8px; top:60px; line-height:65px; font-size:14px; color:#fff; background:url(../images/alert_red.png) 0 0 no-repeat; z-index:1000;}
 .auth_block .alert_red .al_text {padding:0 0 0 30px;}
 .alert_green {width:760px; height:75px; font-size:14px; color:#fff; background:url(../images/alert_green.png) 0 0 no-repeat; position:absolute; left:0px; top:44px; line-height:16px; z-index:1000;}
 .alert_green .al_text {padding:20px 100px 0 20px;}
