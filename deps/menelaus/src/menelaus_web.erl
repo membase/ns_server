@@ -757,7 +757,7 @@ build_settings_web() ->
                  _NoneFound ->
                      {"", ""}
              end,
-    Port = ns_config:search_prop(Config, rest, port),
+    Port = proplists:get_value(port, webconfig()),
     build_settings_web(Port, U, P).
 
 build_settings_web(Port, U, P) ->
