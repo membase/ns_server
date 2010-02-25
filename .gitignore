@@ -17,4 +17,4 @@ priv/memcached.exe
 priv/memcached_pthreadGC2.dll
 priv/isasl.pw
 config
-
+docs/*
