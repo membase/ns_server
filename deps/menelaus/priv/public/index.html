@@ -95,9 +95,14 @@
                             <a href="javascript:TrafficGen.start();" class="button_big">
                               Test Server
                             </a>
-                            <a href="javascript:SettingsSection.gotoSecureServer();" class="button_big button_big_click">
-                              Secure Server
-                            </a>
+                            <span class="secure_enabled">
+                              <a href="javascript:SettingsSection.gotoSecureServer();" class="button_big button_big_click">
+                                Secure Server
+                              </a>
+                              <a href="#" class="button_big button_big_click disabled">
+                                Secure Server
+                              </a>
+                            </span>
                             <span id="join_leave_switch" class="join-possible">
                               <a id="cluster_join_button" class="button_big" href="javascript:OverviewSection.startJoinCluster();">
                                 Join Cluster
