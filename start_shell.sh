@@ -2,7 +2,7 @@
 # Copyright (c) 2010, NorthScale, Inc.
 # All rights reserved.
 cd `dirname $0`
-mkdir -p logs
+mkdir logs > /dev/null 2>&1
 exec erl -pa `find . -type d -name ebin` \
     -setcookie nocookie \
     -run ns_bootstrap \
