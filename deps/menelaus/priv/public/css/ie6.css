@@ -1,18 +1,22 @@
 /* styles for Iternet Explorer 6 */
 
-body {_height:100%;}
+body {height:100%;}
 
 /* set width for ie6 */
-#overview {_width:780px; _overflow:hidden;}
+#overview {width:780px; overflow:hidden;}
 
-#mainContainer {_padding:0 0 40px 0;}
-#footer {_position:relative;}
+#mainContainer {padding:0 0 40px 0;}
+#footer {position:relative;}
 
-.analytics-small-graph {_margin:0 10px 7px 10px;}
-.alert_warning, .alert_attention, .alert_info {_height:47px;}
-#get_started {_width:740px; _overflow:hidden; _position:relative;}
-.lbox .top .top_center {_float:left;}
-.lbox .lbox_header {_width:85px;}
-#add_new_bucket_form p {_height:15px;}
-.float_50 .item {_height:30px;}
-.button_big {_width:223px;}
+.analytics-small-graph {margin:0 10px 7px 10px;}
+.alert_warning, .alert_attention, .alert_info {height:47px;}
+#get_started {width:740px; overflow:hidden; position:relative;}
+.lbox .top .top_center {float:left;}
+.lbox .lbox_header {width:85px;}
+#add_new_bucket_form p {height:15px;}
+.float_50 .item {height:30px;}
+.button_big {width:223px;}
+
+.lbox {overflow:hidden;}
+.lbox .center {float:left; width:100%;}
+.lbox .lbox_header {width:660px;}
