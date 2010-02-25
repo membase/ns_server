@@ -29,7 +29,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 %% Server state
--record(state, {port, name, params, started}).
+-record(state, {port, name, params}).
 
 % ----------------------------------------------
 
@@ -121,8 +121,7 @@ set_param(X, [Y | Rest], NewVal, Acc) ->
 init({Name, _Cmd, _Args, _Opts} = Params) ->
     Port = open_port(Params),
     case is_port(Port) of
-        true  -> {ok, #state{port = Port, name = Name, params = Params,
-                             started = now()}};
+        true  -> {ok, #state{port = Port, name = Name, params = Params}};
         false -> ns_log:log(?MODULE, 0001, "could not start process: ~p",
                             [Params]),
                  {stop, Port}
@@ -149,20 +148,7 @@ open_port({Name, Cmd, ArgsIn, Opts}) ->
 
 handle_info({'EXIT', _Port, Reason}, State) ->
     error_logger:info_msg("port server (~p) exited: ~p~n",
-                          [State#state.name, Reason]),
-    case (misc:time_to_epoch_float(now()) -
-          misc:time_to_epoch_float(State#state.started)) =< 1 of
-        true ->
-            % Failed right away, so a normal Reason means don't restart.
-            ns_log:log(?MODULE, 0002, "process could not start: ~p",
-                       [State#state.params]),
-            {stop, normal, State};
-        false ->
-            % Failed after awhile, so a non-normal Reason means restart.
-            ns_log:log(?MODULE, 0003, "process exited: ~p",
-                       [State#state.params]),
-            {stop, {port_exited, Reason}, State}
-    end;
+                          [State#state.name, Reason]);
 handle_info(Something, State) ->
     error_logger:info_msg("Got unexpected message while monitoring ~p: ~p~n",
                           [State#state.name, Something]),
