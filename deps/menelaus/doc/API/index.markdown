@@ -4,11 +4,11 @@ title: kvstore REST APIs
 ---
 # caching kvstore APIs
 
-Version 20091202
+Version 20100224
 
 This document specifies request and response for both the Management Console
-(management channel) and the KVStore itself (data channel) when talking to
-a caching kvstore (a.k.a. NorthScale Enterprise Storage).
+(management channel) and the cache itself (data channel) when talking to
+a cache.
 
 Note, *Reveal* referred to in this document is code for 1.0.
 
@@ -19,9 +19,9 @@ Note, *Reveal* referred to in this document is code for 1.0.
 JSON is the only response type the system is capable of at the moment, as
 specified under [RFC 4627](http://www.ietf.org/rfc/rfc4627.txt).
 
-Authentication will be HTTP Basic, generally over SSL/TLS.  There may be some
+Authentication will be HTTP Basic.  There may be some
 non-authenticated content to bootstrap browser based user interfaces that then use
-HTTP Basic with SSL/TLS.
+HTTP Basic.
 
 Any node of the pool will be able to handle any request.  If the node which
 receives the request cannot service it directly (due to lack of access to state
@@ -842,6 +842,27 @@ Content-Length: nnn
 Types may be "info" "crit" or "warn".  Accessing logs requires administrator credentials if
 the system is secured.
 
+#### Client logging interface
+
+* Request *
+
+<pre class="restcalls">
+POST /logClientError
+Host: node.in.your.pool.com
+Authorization: Basic xxxxxxxxxxxxxxxxxxx
+Accept: application/com.northscale.store+json
+X-memcachekv-Store-Client-Specification-Version: 0.1
+</pre>
+
+* Response *
+
+200 - OK
+
+Clients may wish to add entries to the service's central logger.  These entries would
+typically be responses to exceptional like difficulty handling a server response.
+For instance, the  Web UI uses this functionality to log client error conditions for
+later diagnosis.
+
 # Notes, Questions and References
 
 ## Open Questions
@@ -885,4 +906,5 @@ have been referenced.
 * 20100129 Updated create bucket documentation
 * 20100209 Updated pool details, many fixes, adding cache reserved and allocated
 * 20100218 Added documentation on removing a node
+* 20100224 Documented client logging interface and cleaned up some legacy things
 
