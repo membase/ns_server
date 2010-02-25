@@ -1732,17 +1732,9 @@ function genericDialog(options) {
 }
 
 function showAbout() {
-  var text = "TODO: need text here\nVersion: " + (DAO.version || 'unknown');
   var components = DAO.componentsVersion;
-  text = text + "\n\n" + _.map(_.keys(components).sort(), function (name) {
-    return [name, ": ", components[name]].join('');
-  }).join("\n");
-
-  genericDialog({
-    buttons: {ok: true, cancel: false},
-    header: "Northscale Server management console",
-    text: text
-  });
+  $('#about_versions').text("Version: " + components['ns_server'] + ", Kernel: " + components['kernel']);
+  showDialog('about_server_dialog');
 }
 
 (function () {

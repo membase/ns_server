@@ -270,8 +270,8 @@ var MockedRequest = mkClass({
         resp = {
           implementationVersion: 'only-web.rb-unknown',
           componentsVersion: {
-            'foo': 'v0.1',
-            'bar': 'v0.4'
+            "kernel": "2.13.4",
+            "ns_server": "asdasd"
           },
           pools: [
           {name: 'default',
