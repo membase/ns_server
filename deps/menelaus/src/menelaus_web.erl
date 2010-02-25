@@ -127,7 +127,7 @@ loop(Req, AppRoot, DocRoot) ->
                                                            {"Cache-Control", "must-revalidate"}])};
                              ["docs" | _PRem ] ->
                                  DocFile = string:sub_string(Path, 6),
-                                 {done, Req:serve_file(DocFile, DocRoot, add_header())};
+                                 {done, Req:serve_file(DocFile, DocRoot)};
                              _ ->
                                  {done, Req:serve_file(Path, AppRoot)}%% , [{"Pragma", "no-cache"},
                                                                       %%  {"Cache-Control", "no-cache must-revalidate"}])}
