@@ -10,7 +10,9 @@ NS_SERVER_EBIN=$(NS_SERVER_REPO)/ebin
 
 EFLAGS=-pa ebin $(NS_SERVER_EBIN)
 
-LUA=cd ../moxilua && lua -l luarocks.require
+MOXILUA_REPO=../../../moxilua
+
+LUA=cd $(MOXILUA_REPO) && lua -l luarocks.require
 
 MEMCAPABLE_SCRIPT=./test/memcapable_test.sh
 
