@@ -62,25 +62,22 @@ current_pools() ->
     %    {mc_pool_init,undefined,worker,[_]},
     %    {{mc_pool_sup, Name},undefined,supervisor,[_]}]
     %
-    % We only return the alive mc_pool_sup children as a
-    % list of Name strings.
+    % We only return the mc_pool_sup children as a list of Name
+    % strings.
     %
-    Children1 = supervisor:which_children(?MODULE),
-    Children2 = proplists:delete(mc_downstream, Children1),
-    Children3 = proplists:delete(mc_pool_init, Children2),
-    Children4 = proplists:delete(tgen, Children3),
-    %% Some children will be dead.  Unsupervise those.
-    {Rv, Dead} = lists:partition(fun({_, Pid, _, _}) -> is_pid(Pid) end, Children4),
-    lists:foreach(
-      fun(Id) ->
-              error_logger:info_msg("Unsupervising dead child:  ~p~n", [Id]),
-              supervisor:delete_child(?MODULE, Id)
-      end, Dead),
-    Rv2 = lists:filter(fun({{mc_pool_sup, _}, _, _, _}) -> true;
-                          ({_, _, _, _}) -> false
-                       end,
-                       Rv),
-    lists:map(fun({{mc_pool_sup, Name}, _, _, _}) -> Name end, Rv2).
+
+    %% These should never be dead (contrary to the above comment), as
+    %% they're permanent with a restart strategy.  If someone is
+    %% uncomfortable with this idea, it's possible to further assert
+    %% it here, though it should probably include a comment describing
+    %% exactly how one might end up dead.
+    Rv = lists:filter(fun({{mc_pool_sup, _}, _, _, _}) -> true;
+                         ({_, _, _, _}) -> false
+                      end,
+                      supervisor:which_children(?MODULE)),
+
+    %% Only returning their names.
+    lists:map(fun({{mc_pool_sup, Name}, _, _, _}) -> Name end, Rv).
 
 start_pool(Name) ->
     case lists:member(Name, current_pools()) of
