@@ -34,10 +34,7 @@ init(Name) ->
     end.
 
 child_specs(Name, PoolConfig) ->
-    Children = [{mc_pool_events,
-                 {gen_event, start_link, [{local, mc_pool_events}]},
-                 permanent, 10, worker, []},
-                child_spec_pool(Name, PoolConfig),
+    Children = [child_spec_pool(Name, PoolConfig),
                 child_spec_accept(Name, PoolConfig)],
     {ok, {{rest_for_one, 3, 10}, Children}}.
 
