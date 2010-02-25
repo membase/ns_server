@@ -2,6 +2,8 @@
 # Copyright (c) 2010, NorthScale, Inc.
 # All rights reserved.
 cd `dirname $0`
+mkdir -f logs
 exec erl -pa `find . -type d -name ebin` \
     -setcookie nocookie \
-    -run ns_bootstrap -- "$@"
+    -run ns_bootstrap \
+    -config priv/erlang_app -- "$@"

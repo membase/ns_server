@@ -1,6 +1,7 @@
 tmp
 ebin
 data
+logs
 TAGS
 erl_crash.dump
 **.cov.html
