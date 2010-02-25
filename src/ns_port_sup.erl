@@ -54,13 +54,7 @@ create_child_spec({Name, Cmd, Args, Opts}) ->
     {Name,
      {ns_port_server, start_link,
       [Name, Cmd, Args, Opts]},
-     % Using transient, not permanent, because child process might
-     % correctly stop due to wrong parameters, tcp-port is already
-     % taken, etc.  And, that does not mean we should take down
-     % the entire ns_server supervisor tree.  We want our web
-     % console UI to keep on working, for example, so that
-     % the user can assign a new port.
-     transient, 10, worker,
+     permanent, 10, worker,
      [ns_port_server]}.
 
 terminate_port(Name) ->
