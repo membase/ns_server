@@ -79,19 +79,12 @@ current_pools() ->
     %% Only returning their names.
     lists:map(fun({{mc_pool_sup, Name}, _, _, _}) -> Name end, Rv).
 
+%% Return {ok, Child} or {error, {already_started, Child}}
 start_pool(Name) ->
-    case lists:member(Name, current_pools()) of
-        false ->
-            ChildSpec =
-                {{mc_pool_sup, Name},
+    ChildSpec = {{mc_pool_sup, Name},
                  {mc_pool_sup, start_link, [Name]},
                  permanent, 10, supervisor, [mc_pool_sup]},
-            {ok, C} = supervisor:start_child(?MODULE, ChildSpec),
-            error_logger:info_msg("new mc_pool_sup: ~p~n", [C]),
-            {ok, C};
-        true ->
-            {error, alreadystarted}
-    end.
+    supervisor:start_child(?MODULE, ChildSpec).
 
 stop_pool(Name) ->
     Id = {mc_pool_sup, Name},
