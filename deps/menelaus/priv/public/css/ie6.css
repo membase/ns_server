@@ -20,3 +20,5 @@ body {height:100%;}
 .lbox {overflow:hidden;}
 .lbox .center {float:left; width:100%;}
 .lbox .lbox_header {width:660px;}
+
+#settings .form label input.check {float:left; position:relative; top:-4px;}
