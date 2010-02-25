@@ -7,16 +7,8 @@
 
 %% API
 -export([start_link/4, params/1,
-         get_port_server_config/1,
-         get_port_server_config/2,
-         get_port_server_config/3,
-         get_port_server_param/3,
          get_port_server_param/4,
-         set_port_server_config/3,
-         set_port_server_param/4,
-         set_port_server_param/5,
-         find_param/2,
-         set_param/3]).
+         set_port_server_param/5]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -56,12 +48,6 @@ params(Pid) ->
 %
 % {{node, 'ns_1@foo.bar.com', port_servers}, ...}
 
-get_port_server_config(PortName) ->
-    get_port_server_config(ns_config:get(), PortName).
-
-get_port_server_config(Config, PortName) ->
-    get_port_server_config(Config, PortName, node()).
-
 get_port_server_config(Config, PortName, Node) ->
     case ns_config:search_prop_tuple(Config, {node, Node, port_servers},
                                      PortName, false) of
@@ -78,9 +64,6 @@ set_port_server_config(Config, PortServerName, PortConfig) ->
     ns_config:set(port_servers,
                   lists:keystore(PortServerName, 1, PortServers, PortConfig)).
 
-get_port_server_param(Config, PortServerName, ParameterName) ->
-    get_port_server_param(Config, PortServerName, ParameterName, node()).
-
 get_port_server_param(Config, PortServerName, ParameterName, Node) ->
     StartArgs =
         case get_port_server_config(Config, PortServerName, Node) of
@@ -89,9 +72,6 @@ get_port_server_param(Config, PortServerName, ParameterName, Node) ->
             {PortServerName, _Path, S, _Env} -> S
         end,
     find_param(ParameterName, StartArgs).
-
-set_port_server_param(Config, PortServerName, ParameterName, V) ->
-    set_port_server_param(Config, PortServerName, ParameterName, V, node()).
 
 set_port_server_param(Config, PortServerName, ParameterName, V, Node) ->
     {Path, StartArgs, Env} =
