@@ -566,7 +566,7 @@ function renderLargeGraph(main, data) {
   function drawMarkers(plot) {
     main.find('.marker').remove();
 
-    if (minY != minInf) {
+    if (minY != minInf && minY != 0) {
       var offset = plot.pointOffset({x: minX, y: minY});
       singleMarker(offset, String(minY)).addClass('marker-min');
     }
