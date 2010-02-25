@@ -22,3 +22,8 @@ body {height:100%;}
 .lbox .lbox_header {width:660px;}
 
 #settings .form label input.check {float:left; position:relative; top:-4px;}
+.marker-min span.l {background:none; filter:progid:DXImageTransform.Microsoft.AlphaImageLoader(src='../images/marker_min_l_ie6.png', sizingMethod='crop');}
+.marker-min span.r {background:none; filter:progid:DXImageTransform.Microsoft.AlphaImageLoader(src='../images/marker_min_r_ie6.png', sizingMethod='crop'); background-position:100% 0 !important; width:10px;}
+
+.marker-max span.l {background:none; filter:progid:DXImageTransform.Microsoft.AlphaImageLoader(src='../images/marker_max_l_ie6.png', sizingMethod='crop');}
+.marker-max span.r {background:none; filter:progid:DXImageTransform.Microsoft.AlphaImageLoader(src='../images/marker_max_r_ie6.png', sizingMethod='crop'); background-position:100% 0 !important; width:11px;}
