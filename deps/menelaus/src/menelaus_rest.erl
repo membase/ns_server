@@ -15,12 +15,13 @@ rest_url(Host, Port, Path) ->
     "http://" ++ Host ++ ":" ++ integer_to_list(Port) ++ Path.
 
 rest_get(Url, undefined) ->
-    http:request(Url);
+    http:request(get, {Url, []}, [{timeout, 2500}, {connect_timeout, 2500}], []);
 
 rest_get(Url, {User, Password}) ->
     UserPassword = base64:encode_to_string(User ++ ":" ++ Password),
     http:request(get, {Url, [{"Authorization",
-                              "Basic " ++ UserPassword}]}, [], []).
+                              "Basic " ++ UserPassword}]}, 
+                              [{timeout, 2500}, {connect_timeout, 2500}], []).
 
 
 rest_get_json(Url, Auth) ->
