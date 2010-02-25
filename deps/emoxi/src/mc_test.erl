@@ -8,6 +8,9 @@
 -compile(export_all).
 
 main() ->
+    {ok, _Pid1} = mc_downstream_sup:start_link(),
+    {ok, _Pid2} = mc_downstream:start_link(),
+
     Config = [],
 
     AsciiAddrs = [mc_addr:local(ascii)],
@@ -28,9 +31,7 @@ main() ->
     Pool3 = mc_pool:create(pool3, Addrs3, Config,
                            [mc_bucket:create("default", Addrs3,
                                              Config)]),
-    [mc_downstream_sup:start_link(),
-     mc_downstream:start_link(),
-     mc_accept:start_link(11300,
+    [mc_accept:start_link(11300,
                      {mc_server_ascii,
                       mc_server_ascii_proxy, AsciiPool}),
      mc_accept:start_link(11400,
@@ -67,6 +68,7 @@ main_mock() ->
                                [mc_bucket:create("default", AsciiAddrs,
                                                   Config)]),
     {application:start(ns_server),
+     mc_downstream_sup:start_link(),
      mc_downstream:start_link(),
      mc_accept:start_link(11333,
                      {mc_server_detect,
