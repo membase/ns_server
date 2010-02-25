@@ -101,6 +101,8 @@ await_ok(Prefix, N, T, Acc) when N > 0 ->
     % TODO: Decrementing N due to a DOWN might be incorrect
     %       during edge/race conditions.
     % TODO: Need to match the MonitorRef's we get from 'DOWN' messages?
+    % WARNING: this needs to handle every message that we could be causing
+    % to get sent to the process or the mailbox will overflow.
     %
     % Receive messages from worker processes doing a notify().
     receive
@@ -108,9 +110,7 @@ await_ok(Prefix, N, T, Acc) when N > 0 ->
         {Prefix, {ok, _, _}}           -> await_ok(Prefix, N - 1, T, Acc + 1);
         {Prefix, {ok, _, _, _}}        -> await_ok(Prefix, N - 1, T, Acc + 1);
         {Prefix, _}                    -> await_ok(Prefix, N - 1, T, Acc);
-        {'DOWN', _MonitorRef, _, _, _} -> await_ok(Prefix, N - 1, T, Acc);
-        Other ->
-            exit({unhandled, ?MODULE, await_ok, Other})
+        {'DOWN', _MonitorRef, _, _, _} -> await_ok(Prefix, N - 1, T, Acc)
     after T ->
         % When we've waited too long, free up the caller.
         % TODO: Need to demonitor?
