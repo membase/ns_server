@@ -500,14 +500,18 @@ handle_bucket_create(_PoolId, [$_ | _], Req) ->
 handle_bucket_create(PoolId, BucketId, Req) ->
     % Bucket size validation.
     PostArgs = Req:parse_post(),
+    %% TODO: we have a race here, but it's not very bad, and there are
+    %% more, so we'll simply ignore it for now
+    DupNameV = case mc_bucket:bucket_config_get(mc_pool:pools_config_get(),
+                                                PoolId, BucketId) of
+                   false -> undefined;
+                   _ -> <<"Bucket with given name already exists">>
+               end,
     ParsedSizeWanted = (catch list_to_integer(proplists:get_value("cacheSize", PostArgs))),
     NzV = if
-              is_integer(ParsedSizeWanted) ->
-                  if
-                      ParsedSizeWanted =< 0 -> <<"The cacheSize must be non-zero">>;
-                      true -> undefined
-                  end;
-              true -> <<"The cacheSize must be an integer.">>
+              not is_integer(ParsedSizeWanted) -> <<"The cacheSize must be an integer.">>;
+              ParsedSizeWanted =< 0 -> <<"The cacheSize must be non-zero">>;
+              true -> undefined
           end,
     SizeWanted = if
                      NzV =:= undefined -> ParsedSizeWanted;
@@ -535,7 +539,7 @@ handle_bucket_create(PoolId, BucketId, Req) ->
                true -> undefined;
                _ -> <<"Bucket name cannot have whitespace.">>
     end,
-    PossMsg = [SzV, FmtV, NzV],
+    PossMsg = [DupNameV, SzV, FmtV, NzV],
     Msgs = lists:filter(fun (X) -> X =/= undefined end,
                         PossMsg),
     case Msgs of
