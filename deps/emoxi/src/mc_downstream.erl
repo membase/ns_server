@@ -155,8 +155,9 @@ handle_call({send, Addr, Op, NotifyPid, NotifyData,
 % Retrieves or starts an mbox for an Addr.
 make_mbox(State, Addr) ->
     case mc_downstream_sup:add_downstream(Addr, State#dmgr.timeout) of
-        {ok, Child} -> {ok, Child};
-        {error, {already_started, Child}} -> {ok, Child}
+        {ok, Child}                       -> {ok, Child};
+        {error, {already_started, Child}} -> {ok, Child};
+        Err                               -> Err
     end.
 
 group_by(Keys, KeyFunc) ->
