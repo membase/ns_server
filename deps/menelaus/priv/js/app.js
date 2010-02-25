@@ -542,7 +542,6 @@ function renderLargeGraph(main, data) {
 
   $.plot(main,
          [{color: '#1d88ad',
-           shadowSize: 0,
            data: plotData}],
          {xaxis: {ticks:0, autoscaleMargin: 0.04},
           yaxis: {ticks:0, autoscaleMargin: 0.04},
@@ -587,7 +586,6 @@ function renderSmallGraph(jq, data, isSelected) {
 
   $.plot(jq.find('.small_graph_block'),
          [{color: isSelected ? '#e2f1f9' : '#d95e28',
-           shadowSize: 0,
            data: plotData}],
          {xaxis: {ticks:0, autoscaleMargin: 0.04},
           yaxis: {ticks:0, autoscaleMargin: 0.04},
