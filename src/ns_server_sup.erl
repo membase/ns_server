@@ -39,9 +39,10 @@ get_child_specs() ->
       permanent, infinity, supervisor,
       [ns_node_disco_sup, ns_node_disco_events, ns_node_disco]},
 
-     {ns_port_sup, {ns_port_sup, start_link, []},
-      permanent, infinity, supervisor,
-      [ns_port_sup, ns_port_server]},
+     {ns_port_sup, {supervisor_cushion, start_link,
+                    [5000, ns_port_sup, start_link, []]},
+      permanent, 10, worker,
+      [supervisor_cushion, ns_port_sup, ns_port_server]},
 
      {emoxi_sup, {emoxi_sup, start_link, []},
       permanent, infinity, supervisor,
