@@ -85,7 +85,7 @@ eat_exit_sessions() ->
             % ?debugVal({exit_session, ChildPid, Reason}),
             eat_exit_sessions();
         Unhandled ->
-            exit({unhandled, Unhandled})
+            exit({unhandled, ?MODULE, eat_exit_sessions, Unhandled})
     after 0 ->
         ok
     end.

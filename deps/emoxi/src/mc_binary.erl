@@ -137,7 +137,7 @@ flush({OutPid, _CmdNum}) ->
     OutPid ! {flush, self()},
     receive
         flushed -> ok;
-        Unhandled -> exit({unhandled, Unhandled})
+        Unhandled -> exit({unhandled, ?MODULE, flush, Unhandled})
     after ?FLUSH_TIMEOUT -> ok
     end;
 

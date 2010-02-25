@@ -110,7 +110,7 @@ await_ok(Prefix, N, T, Acc) when N > 0 ->
         {Prefix, _}                    -> await_ok(Prefix, N - 1, T, Acc);
         {'DOWN', _MonitorRef, _, _, _} -> await_ok(Prefix, N - 1, T, Acc);
         Other ->
-            exit({unhandled, Other})
+            exit({unhandled, ?MODULE, await_ok, Other})
     after T ->
         % When we've waited too long, free up the caller.
         % TODO: Need to demonitor?

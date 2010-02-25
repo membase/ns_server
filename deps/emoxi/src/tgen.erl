@@ -7,14 +7,14 @@
 
 -include("mc_entry.hrl").
 
--behaviour(gen_event).
+-behaviour(gen_server).
 
 -export([start_link/0,
          is_traffic_bucket/2,
          traffic_start/0,
          traffic_stop/0,
          traffic_started/0,
-         traffic_more/0]).
+         send_response/5]).
 
 -export([system_joinable/0]).
 
@@ -23,47 +23,33 @@
 -define(TGEN_INTERVAL, 200). % In millisecs.
 -define(TGEN_POOL,     "default").
 -define(TGEN_BUCKET,   "test_application").
--define(TGEN_SIZE,     1). % In MB.
+-define(TGEN_SIZE,     1). % In MB
+%% gen_server callbacks
 
-%% gen_event callbacks
-
--export([init/1, handle_event/2, handle_call/2,
+-export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
 -record(state, {timer}).
 
--compile(export_all).
-
 -include_lib("eunit/include/eunit.hrl").
 
-% Noop process to get initialized in the supervision tree.
-
 start_link() ->
-    {ok, spawn_link(fun() ->
-                       ok = gen_event:add_handler(ns_config_events,
-                                                  ?MODULE, ignored)
-                    end)}.
+    gen_server:start_link({local, tgen}, ?MODULE, ignored, []).
 
 is_traffic_bucket(PoolName, BucketName) ->
     PoolName =:= ?TGEN_POOL andalso
     BucketName =:= ?TGEN_BUCKET.
 
 traffic_start() ->
-    gen_event:call(ns_config_events, ?MODULE, traffic_start).
+    gen_server:cast(?MODULE, traffic_start).
 
 traffic_stop() ->
-    gen_event:call(ns_config_events, ?MODULE, traffic_stop).
+    gen_server:cast(?MODULE, traffic_stop).
 
 % Returns true/false depending if the traffic generator is started/stopped.
 
 traffic_started() ->
-    gen_event:call(ns_config_events, ?MODULE, traffic_started).
-
-% Sends a little more traffic against the test bucket, which is
-% created if not already.
-
-traffic_more() ->
-    gen_event:call(ns_config_events, ?MODULE, traffic_more).
+    gen_server:call(?MODULE, traffic_started).
 
 % -------------------------------------------------------
 
@@ -99,51 +85,40 @@ init(ignored) ->
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
 
-handle_event({pools, Pools}, State) ->
-    % Stop generating traffic if the target bucket disappears.
-    case mc_bucket:bucket_config_get(Pools, ?TGEN_POOL, ?TGEN_BUCKET) of
-        false -> {ok, _, State2} = handle_call(traffic_stop, State),
-                 {ok, State2};
-        _ -> {ok, State}
-    end;
 
-handle_event(_, State) ->
-    {ok, State}.
-
-handle_call(traffic_start, #state{timer = undefined} = State) ->
+handle_cast(traffic_start, #state{timer = undefined} = State) ->
     bucket_make(?TGEN_POOL, ?TGEN_BUCKET),
-    case timer:apply_interval(?TGEN_INTERVAL, ?MODULE,
-                              traffic_more, []) of
-        {ok, TRef} -> {ok, ok, State#state{timer = TRef}};
+    timer:sleep(2000), % Wait a couple seconds to avoid spammy auth errors
+    case timer:send_interval(?TGEN_INTERVAL, traffic_more) of
+        {ok, TRef} -> {noreply, State#state{timer = TRef}};
         Error      -> ns_log:log(?MODULE, 0001, "timer failed: ~p", [Error]),
-                      {ok, ok, State}
+                      {noreply, State}
     end;
 
-handle_call(traffic_start, #state{timer = TRef} = State) ->
+handle_cast(traffic_start, #state{timer = TRef} = State) ->
     timer:cancel(TRef),
-    handle_call(traffic_start, State#state{timer = undefined});
+    handle_cast(traffic_start, State#state{timer = undefined});
 
-handle_call(traffic_stop, #state{timer = undefined} = State) ->
-    {ok, ok, State};
+handle_cast(traffic_stop, #state{timer = undefined} = State) ->
+    {noreply, State};
 
-handle_call(traffic_stop, #state{timer = TRef} = State) ->
+handle_cast(traffic_stop, #state{timer = TRef} = State) ->
     timer:cancel(TRef),
-    {ok, ok, State#state{timer = undefined}};
+    {noreply, State#state{timer = undefined}}.
 
-handle_call(traffic_started, #state{timer = TRef} = State) ->
-    {ok, TRef =/= undefined, State};
 
-handle_call(traffic_more, #state{timer = _TRef} = State) ->
+handle_call(traffic_started, _From, #state{timer = TRef} = State) ->
+    {reply, TRef =/= undefined, State}.
+
+
+handle_info(traffic_more, #state{timer = _TRef} = State) ->
     send_traffic(?TGEN_POOL, ?TGEN_BUCKET),
-    {ok, ok, State};
-
-handle_call(_, State) ->
-    {ok, unknown, State}.
+    {noreply, State};
 
 handle_info(Info, State) ->
-    error_logger:info_msg("mc_pool_init handle_info(~p, ~p)~n",
+    error_logger:info_msg("tgen handle_info(~p, ~p)~n",
                           [Info, State]),
-    {ok, State}.
+    {noreply, State}.
 
 % ---------------------------------------------------------
 
@@ -163,7 +138,7 @@ send_traffic(PoolName, BucketName) ->
     case catch(mc_pool:get_bucket(PoolName, BucketName)) of
         {'EXIT', _} ->
             ?debugVal({send_traffic, missing_bucket, PoolName, BucketName}),
-            ok;
+            traffic_stop();
         {ok, Bucket} ->
             Addrs = mc_bucket:addrs(Bucket),
             traffic(Addrs)

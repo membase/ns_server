@@ -44,7 +44,7 @@ loop_out(OutSock) ->
         stop -> ok;
         Other ->
             error_logger:info_msg("Unhandled message:  ~p~n", [Other]),
-            exit({unhandled, Other})
+            exit({unhandled, ?MODULE, loop_out, Other})
     end.
 
 recv(InSock) ->

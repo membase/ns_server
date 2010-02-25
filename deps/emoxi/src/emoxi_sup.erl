@@ -45,7 +45,7 @@ child_specs() ->
       transient, 1000, worker, [mc_pool_init]},
      {tgen,
       {tgen, start_link, []},
-      transient, 1000, worker, [tgen]}
+      permanent, 1000, worker, [tgen]}
     ].
 
 current_pools() ->

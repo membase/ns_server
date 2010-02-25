@@ -44,9 +44,16 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 collect() ->
-    {Buckets, Servers} = mc_pool:get_buckets_and_servers(),
-    T = erlang:now(),
-    lists:foreach(fun(Server) -> collect(T, Server, Buckets) end, Servers).
+    try mc_pool:get_buckets_and_servers() of {Buckets, Servers} ->
+        T = erlang:now(),
+        lists:foreach(fun(Server) -> collect(T, Server, Buckets) end,
+                      Servers),
+        ok
+    catch _:Reason ->
+        error_logger:info_msg("stats_collector:collect couldn't get buckets/servers: ~p~n",
+                              [Reason]),
+        {error, Reason}
+    end.
 
 collect(T, {Host, Port}, Buckets) ->
     case gen_tcp:connect(Host, Port,
