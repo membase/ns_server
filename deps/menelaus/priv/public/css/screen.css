@@ -584,8 +584,8 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 
 .join_cluster table {width:100%;}
 .join_cluster table tr td {width:50%; padding:7px 0 0 0;}
-.join_cluster table tr th {text-align:left; font-size:14px; font-weight:normal; padding:10px 0 7px 0; border-bottom:1px solid #dbe3e8;}
-.join_cluster table tr th a {text-decoration:none;}
+.join_cluster table tr .th {text-align:left; font-size:14px; font-weight:normal; padding:10px 0 7px 0; border-bottom:1px solid #dbe3e8;}
+.join_cluster table tr .th a {text-decoration:none;}
 .join_cluster .label {width:65px !important;}
 
 /* auth */
@@ -659,3 +659,5 @@ button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
 .marker-min span.r { background-position: right top;}
 .marker-max span.l { background-position: left bottom;}
 .marker-max span.r { background-position: right bottom;}
+
+#join_cluster_dialog label {width:150px !important;}
