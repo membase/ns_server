@@ -455,7 +455,10 @@ var SamplesRestorer = mkClass({
     if (!ops)
       return now;
     var samplesInterval = ops['samplesInterval'];
-    return this.birthTime + Math.ceil((now - this.birthTime)/samplesInterval)*samplesInterval;
+    var at = this.birthTime + Math.ceil((now - this.birthTime)/samplesInterval)*samplesInterval;
+    if (at - now < samplesInterval/2)
+      at += samplesInterval;
+    return at;
   }
 });
 
@@ -494,14 +497,10 @@ var SamplesRestorer = mkClass({
                  target: targetCell});
   statsCell.keepValueDuringAsync = true;
 
-  statsCell.subscribe(function (cell) {
-    var at = cell.context.samplesRestorer.value.nextSampleTime(cell.value.op);
-    cell.recalculateAt(at);
-
-    var keysInterval = statsOptionsCell.value.keysInterval;
-    if (keysInterval)
-      cell.recalculateAt((new Date()).valueOf() + keysInterval);
-  });
+  statsCell.setRecalculateTime = function () {
+    var at = this.context.samplesRestorer.value.nextSampleTime(this.value.op);
+    this.recalculateAt(at);
+  }
 
   _.extend(DAO.cells, {
     stats: statsCell,
@@ -660,6 +659,8 @@ var StatGraphs = {
       var area = self.findGraphArea(statName);
       renderSmallGraph(area, ops, selected == statName);
     });
+
+    cell.setRecalculateTime();
   },
   configureStats: function () {
     var self = this;
