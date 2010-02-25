@@ -12,7 +12,7 @@
 -export([rest_url/3, rest_get/2, rest_get_json/2, rest_get_otp/3]).
 
 rest_url(Host, Port, Path) ->
-    "http://" ++ Host ++ ":" ++ Port ++ Path.
+    "http://" ++ Host ++ ":" ++ integer_to_list(Port) ++ Path.
 
 rest_get(Url, undefined) ->
     http:request(Url);
