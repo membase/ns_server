@@ -252,7 +252,8 @@ var DAO = {
       $.cookie('auth', auth);
     }
 
-    // TMP TMP
+    $('#secure_server_buttons').attr('class', DAO.login ? 'secure_disabled' : 'secure_enabled');
+
     if (data.implementationVersion) {
       DAO.version = data.implementationVersion;
       DAO.componentsVersion = data.componentsVersion;
