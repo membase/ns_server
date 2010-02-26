@@ -1360,6 +1360,7 @@ var SettingsSection = {
     }
 
     switchAlertsOn();
+    nav.go('settings');
   },
   gotoSecureServer: function () {
     var self = this;
