@@ -157,7 +157,9 @@ make_mbox(State, Addr) ->
     case mc_downstream_sup:add_downstream(Addr, State#dmgr.timeout) of
         {ok, Child}                       -> {ok, Child};
         {error, {already_started, Child}} -> {ok, Child};
-        Err                               -> Err
+        Err                               ->
+            error_logger:info_msg("downstream creation error:  ~p~n", [Err]),
+            Err
     end.
 
 group_by(Keys, KeyFunc) ->
