@@ -1421,8 +1421,14 @@ var BreadCrumbs = {
       path.push([el.text(), el.attr('href')]);
     }
 
+    var container = $('.bread_crumbs > ul');
+    container.html('');
+
+    if (sec == 'overview')
+      return;
+
     // prepend overview
-    if (sec != 'settings' && sec != 'overview')
+    if (sec != 'settings')
       pushSection('overview');
 
     if (sec == 'analytics' && DAO.cells.statsBucketURL.value) {
@@ -1434,8 +1440,6 @@ var BreadCrumbs = {
     } else
       pushSection(sec);
 
-    var container = $('.bread_crumbs > ul');
-    container.html('');
     var first = true;
 
     _.each(path.reverse(), function (pair) {
