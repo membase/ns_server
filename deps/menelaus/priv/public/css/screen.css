@@ -70,6 +70,7 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 .info_text {font-size:13px !important;}
 #get_started .info_text {font-weight:bolder;}
 .disabled {opacity:0.7; cursor:default !important;}
+.blue_highlighted {color:#0095D6 !important;}
 
 .main_holder {width:960px; position:relative; margin:auto; left:0px !important;}
 
