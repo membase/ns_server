@@ -107,17 +107,16 @@ init({Name, _Cmd, _Args, _Opts} = Params) ->
                  {stop, Port}
     end.
 
-open_port({Name, Cmd, Args, Opts}) ->
+open_port({_Name, Cmd, Args, OptsIn}) ->
     {ok, Pwd} = file:get_cwd(),
     PrivDir = filename:join(Pwd, "priv"),
     FullPath = filename:join(PrivDir, Cmd),
+    %% Incoming options override existing ones (specified in proplists docs)
+    Opts = OptsIn ++ [{args, Args}, {cd, PrivDir}, exit_status],
     error_logger:info_msg("port server starting: ~p in ~p with ~p / ~p~n",
-                          [FullPath, PrivDir, Args, Opts]),
+                          [FullPath, proplists:get_value(cd, Opts), Args, Opts]),
     process_flag(trap_exit, true),
-    open_port({spawn_executable, FullPath},
-              [{args, Args},
-               {cd, PrivDir},
-               exit_status] ++ Opts).
+    open_port({spawn_executable, FullPath}, Opts).
 
 handle_info({'EXIT', _Port, Reason}, State) ->
     error_logger:info_msg("port server (~p) exited: ~p~n",
