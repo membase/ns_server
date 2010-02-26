@@ -548,9 +548,9 @@
                 <h2 class="head_2_underline">Web Console</h2>
                 <div class="form">
                   <div class="labeled_line">
-                    <label class="block label for_input" for="port">Port:</label>
+                    <label class="block label for_input" for="port_inp">Port:</label>
                     <div class="line_cnt">
-                      <input name="port" type="text" class="text inp_short"/>
+                      <input name="port" type="text" id="port_inp" class="text inp_short"/>
                     </div>
                   </div>
                 </div>
@@ -562,23 +562,23 @@
                   <div class="clear"></div>
                   <div id="server_secure" style="display:none;">
                     <div class="labeled_line">
-                      <label class="block label for_input" for="username">Username:</label>
+                      <label class="block label for_input" for="uname_inp">Username:</label>
                       <div class="line_cnt">
-                        <input type="text" name="username" disabled class="text inp_short"/>
+                        <input type="text" name="username" id="uname_inp" disabled class="text inp_short" />
                         <a href="javascript:SettingsSection.gotoSetupAlerts();" class="text_11">Setup Email Alerts</a>
                       </div>
                     </div>
                     <div class="labeled_line">
-                      <label class="block label for_input" for="password">Password:</label>
+                      <label class="block label for_input" for="pass_inp">Password:</label>
                       <div class="line_cnt">
-                        <input name="password" type="password" disabled class="text inp_short"/>
+                        <input name="password" type="password"m id="pass_inp" disabled class="text inp_short"/>
                       </div>
                     </div>
                     <input type="hidden" name="username" value=""><input type="hidden" name="password" value="">
                     <div class="labeled_line">
                       <label class="block label for_input" for="verifyPassword">Verify Password:</label>
                       <div class="line_cnt">
-                        <input name="verifyPassword" type="password" class="text inp_short"/>
+                        <input name="verifyPassword" id="verifyPassword" type="password" class="text inp_short"/>
                         <span class="dont-match">Password doesn't match</span>
                       </div>
                     </div>
@@ -605,13 +605,13 @@
                   <div class="labeled_line">
                     <label class="block label for_input" for="proxyPort">Proxy Port:</label>
                     <div class="line_cnt">
-                      <input type="text" name="proxyPort" class="text inp_short">
+                      <input type="text" name="proxyPort" id="proxyPort" class="text inp_short">
                     </div>
                   </div>
                   <div class="labeled_line">
                     <label class="block label for_input" for="directPort">Cache Port:</label>
                     <div class="line_cnt">
-                      <input type="text" name="directPort" class="text inp_short">
+                      <input type="text" name="directPort" id="directPort" class="text inp_short">
                     </div>
                   </div>
                 </div>
@@ -622,9 +622,9 @@
                   </div>
                   <div id="alerts_settings_guts" style="display:none;">
                     <div class="labeled_line">
-                      <label class="block label for_input" for="email">Recipient Email Address:</label>
+                      <label class="block label for_input" for="email_inp">Recipient Email Address:</label>
                       <div class="line_cnt">
-                        <input type="text" name="email" class="text inp_short">
+                        <input type="text" name="email" id="email_inp" class="text inp_short">
                       </div>
                     </div>
                     <h2 class="form_section_title">Mail Server Settings</h2>
@@ -637,19 +637,19 @@
                     <div class="labeled_line">
                       <label class="block label for_input" for="email_server_user">Username:</label>
                       <div class="line_cnt">
-                        <input type="text" name="email_server_user" class="text inp_short">
+                        <input type="text" name="email_server_user" id="email_server_user" class="text inp_short">
                       </div>
                     </div>
                     <div class="labeled_line">
                       <label class="block label for_input" for="email_server_pass">Password:</label>
                       <div class="line_cnt">
-                        <input type="text" name="email_server_pass" class="text inp_short">
+                        <input type="text" name="email_server_pass" id="email_server_pass" class="text inp_short">
                       </div>
                     </div>
                     <div class="labeled_line">
                       <label class="block label for_input" for="email_server_addr">Mail Server Address:</label>
                       <div class="line_cnt">
-                        <input type="text" name="email_server_addr" class="text inp_short">
+                        <input type="text" name="email_server_addr" id="email_server_addr" class="text inp_short">
                         Port:
                         <select name="email_server_port" class="select select_short">
                           <option value="25">25</option>
@@ -949,12 +949,12 @@ MemcachedClient client = manager.getClient();</pre>
                 <td>
                   <div class="u_line_sm">
                     <label class="label" for="clusterMemberHostIp">Web Console IP Address*:</label>
-                    <input type="text" class="inp" name="clusterMemberHostIp" value="IP.IP.IP.IP" onfocus="this.value=='IP.IP.IP.IP'?this.value='':false;" onblur="this.value==''?this.value='IP.IP.IP.IP':false;" /> <a href="#" class="text_11">What's this</a><br />
+                    <input type="text" class="inp" name="clusterMemberHostIp" id="clusterMemberHostIp" value="IP.IP.IP.IP" onfocus="this.value=='IP.IP.IP.IP'?this.value='':false;" onblur="this.value==''?this.value='IP.IP.IP.IP':false;" /> <a href="#" class="text_11">What's this</a><br />
                     <label class="label"></label><span class="text_11">(Use any server in an existing cluster)</span>
                   </div>
                   <div class="u_line_sm">
                     <label class="label" for="clusterMemberPort">Web Console Port:</label>
-                    <input type="text" class="inp" name="clusterMemberPort" value="8080" onfocus="this.value=='8080'?this.value='':false;" onblur="this.value==''?this.value='8080':false;" /> <a href="#" class="text_11">What's this</a>
+                    <input type="text" class="inp" name="clusterMemberPort" id="clusterMemberPort" value="8080" onfocus="this.value=='8080'?this.value='':false;" onblur="this.value==''?this.value='8080':false;" /> <a href="#" class="text_11">What's this</a>
                   </div>
                 </td>
               </tr>
@@ -966,12 +966,12 @@ MemcachedClient client = manager.getClient();</pre>
               <tr>
                 <td>
                   <div class="u_line_sm">
-                    <label class="label" for="user">Username:</label>
-                    <input type="text" class="inp" name="user" />
+                    <label class="label" for="user_inp">Username:</label>
+                    <input type="text" class="inp" name="user" id="user_inp" />
                   </div>
                   <div class="u_line_sm">
-                    <label class="label" for="password">Password:</label>
-                    <input type="password" class="inp" name="password" />
+                    <label class="label" for="password_inp">Password:</label>
+                    <input type="password" class="inp" name="password" id="password_inp" />
                   </div>
                 </td>
               </tr>
@@ -1231,13 +1231,13 @@ MemcachedClient client = manager.getClient();</pre>
         <col width="" />
         <col width="" />
         <tr>
-          <td class="label"><label for="login">Username:</label></td>
-          <td><input type="text" name="login" class="inp" /></td>
+          <td class="label"><label for="login_inp">Username:</label></td>
+          <td><input type="text" name="login" id="login_inp" class="inp" /></td>
         </tr>
         <tr>
-          <td class="label"><label for="password">Password:</label></td>
+          <td class="label"><label for="password2_inp">Password:</label></td>
           <td>
-            <input type="password" name="password" class="inp" />
+            <input type="password" name="password" id="password2_inp" class="inp" />
           </td>
         </tr>
         <tr>
