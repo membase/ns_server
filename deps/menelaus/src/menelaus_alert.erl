@@ -58,6 +58,8 @@ handle_alerts_settings_post(PostArgs) ->
         lists:foldl(
           fun({"email", V}, C) ->
                   lists:keystore(email, 1, C, {email, V});
+             ({"sender", V}, C) ->
+                  lists:keystore(sender, 1, C, {sender, V});
              ({"email_alerts", "1"}, C) ->
                   lists:keystore(email_alerts, 1, C, {email_alerts, true});
              ({"email_alerts", "0"}, C) ->
@@ -105,12 +107,12 @@ build_alerts_settings() ->
     C = get_alert_config(),
     S = proplists:get_value(email_server, C, []),
     [{email, list_to_binary(proplists:get_value(email, C, ""))},
+     {sender, list_to_binary(proplists:get_value(sender, C, ""))},
      {email_server,
       {struct, [{user, bin_string(proplists:get_value(user, S, ""))},
                 {pass, bin_string(proplists:get_value(pass, S, ""))},
                 {addr, bin_string(proplists:get_value(addr, S, ""))},
                 {port, bin_string(proplists:get_value(port, S, ""))},
-                {from, bin_string(proplists:get_value(from, S, ""))},
                 {encrypt, bin_boolean(proplists:get_value(encrypt, S, false))}
                ]}},
      {sendAlerts, bin_boolean(proplists:get_value(email_alerts, C, false))},
@@ -205,7 +207,6 @@ is_email_server_key("pass")    -> true;
 is_email_server_key("addr")    -> true;
 is_email_server_key("port")    -> true;
 is_email_server_key("encrypt") -> true;
-is_email_server_key("from")    -> true;
 is_email_server_key(_)         -> false.
 
 default_alert_config() ->

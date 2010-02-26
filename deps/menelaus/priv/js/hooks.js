@@ -238,6 +238,7 @@ var MockedRequest = mkClass({
       resp = {port:8080,username:"admin",password:""};
     } else if (_.isEqual(path, ["settings", "advanced"])) {
       resp = {alerts: {email:"alk@tut.by",
+                       sender: "alk@tut.by",
                        email_server: {user:"",
                                       pass:"",
                                       addr:"",

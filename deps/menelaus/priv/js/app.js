@@ -1247,6 +1247,7 @@ var SettingsSection = {
 
     var alerts = data.alerts;
     rv['email'] = alerts['email']
+    rv['sender'] = alerts['sender']
     rv['email_alerts'] = alerts['sendAlerts'];
 
     for (var k in alerts.email_server) {
