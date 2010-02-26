@@ -124,7 +124,8 @@ open_port({Name, Cmd, ArgsIn, Opts}) ->
     process_flag(trap_exit, true),
     open_port({spawn_executable, FullPath},
               [{args, Args},
-               {cd, PrivDir}] ++ Opts).
+               {cd, PrivDir},
+               exit_status] ++ Opts).
 
 handle_info({'EXIT', _Port, Reason}, State) ->
     error_logger:info_msg("port server (~p) exited: ~p~n",
