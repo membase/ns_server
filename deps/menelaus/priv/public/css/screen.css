@@ -675,9 +675,10 @@ button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
 
 #join_cluster_dialog label {width:150px !important;}
 
+.secure_enabled, .secure_disabled {display:block; float:left; margin:0 1%; width:223px;}
 .secure_enabled .disabled {display:none;}
-.secure_disabled .button_big {display:none;}
-.secure_disabled .disabled {display:block !important;}
+.secure_disabled .button_big {display:none; margin:0px;}
+.secure_disabled .disabled {display:block !important; margin:0px;}
 .secure_disabled .disabled:hover {background:url(../images/large_buttons_bg.gif) repeat-x scroll 0 0 !important; color:#444245 !important;}
 .secure_disabled .disabled:active {background:url(../images/large_buttons_bg.gif) repeat-x scroll 0 0 !important; color:#444245 !important;}
 
@@ -690,3 +691,7 @@ button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
 #about_server_dialog .lbox .center {background:url(../images/lbox_cent_narrow.png) repeat-y scroll 0 0;}
 #about_server_dialog .lbox .top .top_center {*width:356px;}
 #about_server_dialog .lbox .bottom .bottom_center {*width:356px;}
+
+.configure_view {display:inline-block; padding:0 10px 0 0;}
+.configure_view a {position:relative; top:5px; text-decoration:underline;}
+.configure_view a:hover {text-decoration:none;}
