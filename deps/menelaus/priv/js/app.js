@@ -625,6 +625,8 @@ var StatGraphs = {
       var area = self.findGraphArea(statName);
       self.spinners.push(overlayWithSpinner(area));
     });
+
+    $('.stats_visible_period').text('?');
   },
   update: function () {
     var self = this;
@@ -657,8 +659,11 @@ var StatGraphs = {
     }
 
     var selected = self.selected.value;
-    if (stats[selected])
+    if (stats[selected]) {
       renderLargeGraph(main, stats[selected]);
+      $('.stats_visible_period').text(Math.ceil(stats[selected].length * stats['samplesInterval'] / 1000));
+    }
+
 
     _.each(self.visibleStats, function (statName) {
       var ops = stats[statName] || [];
@@ -1114,8 +1119,12 @@ var AnalyticsSection = {
     StatGraphs.init();
 
     DAO.cells.currentStatTargetCell.subscribe(function (cell) {
+      var value = cell.value.name;
       var names = $('.stat_target_name');
-      names.text(cell.value.name);
+      names.text(value);
+      if (value == '') {
+        names.filter('.live_view_of').text('Cluster');
+      }
     });
   },
   visitBucket: function (bucketURL) {
