@@ -527,6 +527,14 @@ var maybeReloadAppDueToLeak = (function () {
   };
 })();
 
+// make sure around 3 digits of value is visible. Less for for too
+// small numbers
+function truncateTo3Digits(value) {
+  var scale = _.detect([100, 10, 1, 0.1], function (v) {return value >= v;}) || 0.01;
+  scale = 100 / scale;
+  return Math.floor(value*scale)/scale;
+}
+
 function renderLargeGraph(main, data) {
   var minX, minY = 1/0;
   var maxX, maxY = -1/0;
@@ -555,7 +563,11 @@ function renderLargeGraph(main, data) {
   
   maybeReloadAppDueToLeak();
 
-  function singleMarker(center, text) {
+  function singleMarker(center, value) {
+    var text;
+    value = truncateTo3Digits(value);
+
+    text = String(value);
     var marker = $('<span class="marker"><span class="l"></span><span class="r"></span></span>');
     marker.find('.l').text(text);
     main.append(marker);
@@ -572,18 +584,18 @@ function renderLargeGraph(main, data) {
 
     if (minY != minInf && minY != 0) {
       var offset = plot.pointOffset({x: minX, y: minY});
-      singleMarker(offset, String(minY)).addClass('marker-min');
+      singleMarker(offset, minY).addClass('marker-min');
     }
 
     if (maxY != maxInf) {
       var offset = plot.pointOffset({x: maxX, y: maxY});
-      singleMarker(offset, String(maxY)).addClass('marker-max');
+      singleMarker(offset, maxY).addClass('marker-max');
     }
   }
 }
 
 function renderSmallGraph(jq, data, isSelected) {
-  jq.find('.small_graph_label > .value').text(String(_.max(data)));
+  jq.find('.small_graph_label > .value').text(String(truncateTo3Digits(_.max(data))));
 
   var plotData = _.map(data, function (e, i) {
     return [i+1, e];
