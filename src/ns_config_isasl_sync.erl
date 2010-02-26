@@ -107,10 +107,8 @@ writeSASLConf(Path, Buckets, AU, AP, Tries, SleepTime) ->
     io:format(F, "~s ~s~n", [AU, AP]),
     lists:foreach(
       fun({_BucketName, BucketProps}) ->
-              SizePerNode = proplists:get_value(size_per_node, BucketProps, 64),
-              Config = "cache_size=" ++ integer_to_list(SizePerNode),
               {User, Pass} = proplists:get_value(auth_plain, BucketProps),
-              io:format(F, "~s ~s ~s~n", [User, Pass, Config])
+              io:format(F, "~s ~s~n", [User, Pass])
       end,
       Buckets),
     file:close(F),

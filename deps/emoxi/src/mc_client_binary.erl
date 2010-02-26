@@ -15,7 +15,8 @@
 
 -export([cmd/5]).
 
--export([auth/2, auth/4, select_bucket/2]).
+-export([auth/2, auth/4, select_bucket/2, create_bucket/3, delete_bucket/2,
+         list_buckets/1]).
 
 -compile(export_all).
 
@@ -131,6 +132,21 @@ select_bucket(Sock, BucketName) ->
     mc_client_binary:cmd(?CMD_SELECT_BUCKET, Sock, undefined, undefined,
                          {#mc_header{},
                           #mc_entry{key = BucketName}}).
+
+create_bucket(Sock, BucketName, Config) ->
+    mc_client_binary:cmd(?CMD_CREATE_BUCKET, Sock, undefined, undefined,
+                         {#mc_header{},
+                          #mc_entry{key = BucketName, data = Config}}).
+
+delete_bucket(Sock, BucketName) ->
+    mc_client_binary:cmd(?CMD_DELETE_BUCKET, Sock, undefined, undefined,
+                         {#mc_header{},
+                          #mc_entry{key = BucketName}}).
+
+list_buckets(Sock) ->
+    mc_client_binary:cmd(?CMD_LIST_BUCKETS, Sock, undefined, undefined,
+                         {#mc_header{},
+                          #mc_entry{}}).
 
 % -------------------------------------------------
 

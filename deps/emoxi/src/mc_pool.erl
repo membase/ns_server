@@ -306,8 +306,8 @@ auth_to_bucket(#mc_pool{}, _Mech, _AuthData) ->
 
 get_buckets_and_servers() ->
     [Pool | []] = list(), % assume one pool
-    Buckets = mc_bucket:list(Pool),
-    Servers = lists:usort(lists:flatmap(fun(B) -> bucket_servers(Pool, B)
+    Buckets = mc_bucket:get(Pool),
+    Servers = lists:usort(lists:flatmap(fun({B, _}) -> bucket_servers(Pool, B)
                                         end, Buckets)),
     {Buckets, Servers}.
 

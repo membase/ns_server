@@ -124,7 +124,8 @@ handle_cast({received_topkeys, _T, Hostname, Port, Bucket, Topkeys}, State) ->
                                           State#state.topkeys)}}.
 
 handle_info(garbage_collect, State) ->
-    {Buckets, Servers} = mc_pool:get_buckets_and_servers(),
+    {BucketConfigs, Servers} = mc_pool:get_buckets_and_servers(),
+    Buckets = lists:map(fun({K, _V}) -> K end, BucketConfigs),
     OldVals = State#state.vals,
     Vals = dict:filter(fun({H, P, B}, _V) ->
                            lists:member(B, Buckets) and

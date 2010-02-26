@@ -28,7 +28,8 @@
          bucket_flush/2,
          addrs/2, addrs/1,
          cring/2, cring/1,
-         list/1]).
+         list/1,
+         get/1]).
 
 %% API for buckets.
 
@@ -206,9 +207,13 @@ bucket_delete(PoolId, Id) ->
             end
     end.
 
-list(Pool) ->
+
+get(Pool) ->
     PoolConf = mc_pool:pool_config_get(mc_pool:pools_config_get(), Pool),
-    Buckets = proplists:get_value(buckets, PoolConf),
+    proplists:get_value(buckets, PoolConf).
+
+list(Pool) ->
+    Buckets = mc_bucket:get(Pool),
     lists:map(fun({K, _V}) -> K end, Buckets).
 
 bucket_flush(PoolId, BucketId) ->
