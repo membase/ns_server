@@ -509,7 +509,7 @@ handle_bucket_create(PoolId, BucketId, Req) ->
                end,
     ParsedSizeWanted = (catch list_to_integer(proplists:get_value("cacheSize", PostArgs))),
     NzV = if
-              not is_integer(ParsedSizeWanted) -> <<"The cacheSize must be an integer.">>;
+              not is_integer(ParsedSizeWanted) -> <<"The cache size must be an integer.">>;
               ParsedSizeWanted =< 0 -> <<"The cacheSize must be non-zero">>;
               true -> undefined
           end,
