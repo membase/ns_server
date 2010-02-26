@@ -91,25 +91,25 @@ loop(Req, AppRoot, DocRoot) ->
                              [] ->
                                  {done, redirect_permanently("/index.html", Req)};
                              ["pools"] ->
-                                 {auth_bucket, fun handle_pools/1};
+                                 {auth_any_bucket, fun handle_pools/1};
                              ["pools", Id] ->
-                                 {auth_bucket, fun handle_pool_info/2, [Id]};
+                                 {auth_any_bucket, fun handle_pool_info/2, [Id]};
                              ["pools", Id, "stats"] ->
-                                 {auth, fun menelaus_stats:handle_bucket_stats/3,
+                                 {auth_any_bucket, fun menelaus_stats:handle_bucket_stats/3,
                                   [Id, all]};
                              ["poolsStreaming", Id] ->
-                                 {auth, fun handle_pool_info_streaming/2, [Id]};
+                                 {auth_any_bucket, fun handle_pool_info_streaming/2, [Id]};
                              ["pools", PoolId, "buckets"] ->
-                                 {auth, fun handle_bucket_list/2, [PoolId]};
+                                 {auth_any_bucket, fun handle_bucket_list/2, [PoolId]};
                              ["pools", PoolId, "buckets", Id] ->
-                                 {auth_bucket, fun handle_bucket_info/3,
+                                 {auth_bucket_with_info, fun handle_bucket_info/5,
                                   [PoolId, Id]};
                              ["pools", PoolId, "bucketsStreaming", Id] ->
-                                 {auth_bucket, fun handle_bucket_info_streaming/3,
+                                 {auth_bucket_with_info, fun handle_bucket_info_streaming/5,
                                   [PoolId, Id]};
                              ["pools", PoolId, "buckets", Id, "stats"] ->
-                                 {auth, fun menelaus_stats:handle_bucket_stats/3,
-                                  [PoolId, Id]};  %% todo: seems broken
+                                 {auth_bucket, fun menelaus_stats:handle_bucket_stats/3,
+                                  [PoolId, Id]};
                              ["logs"] ->
                                  {auth, fun menelaus_alert:handle_logs/1};
                              ["alerts"] ->
@@ -150,7 +150,7 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth_bucket, fun handle_bucket_update/3,
                                   [PoolId, Id]};
                              ["pools", PoolId, "buckets"] ->
-                                 {auth_bucket, fun handle_bucket_update/2,
+                                 {auth, fun handle_bucket_update/2,
                                   [PoolId]};
                              ["pools", PoolId, "buckets", Id, "controller", "doFlush"] ->
                                  {auth_bucket, fun handle_bucket_flush/3,
@@ -187,8 +187,18 @@ loop(Req, AppRoot, DocRoot) ->
             {done, RV} -> RV;
             {auth, F} -> menelaus_auth:apply_auth(Req, F, []);
             {auth, F, Args} -> menelaus_auth:apply_auth(Req, F, Args);
-            {auth_bucket, F} -> menelaus_auth:apply_auth_bucket(Req, F, []);
-            {auth_bucket, F, Args} -> menelaus_auth:apply_auth_bucket(Req, F, Args)
+            {auth_bucket_with_info, F, [ArgPoolId, ArgBucketId | RestArgs]} ->
+                checking_bucket_access(ArgPoolId, ArgBucketId, Req,
+                                       fun (Pool, Bucket) ->
+                                               apply(F, [ArgPoolId, ArgBucketId] ++ RestArgs ++ [Req, Pool, Bucket])
+                                       end);
+            {auth_bucket, F, [ArgPoolId, ArgBucketId | RestArgs]} ->
+                checking_bucket_access(ArgPoolId, ArgBucketId, Req,
+                                       fun (_, _) ->
+                                               apply(F, [ArgPoolId, ArgBucketId] ++ RestArgs ++ [Req])
+                                       end);
+            {auth_any_bucket, F} -> menelaus_auth:apply_auth_bucket(Req, F, []);
+            {auth_any_bucket, F, Args} -> menelaus_auth:apply_auth_bucket(Req, F, Args)
         end
     catch
         exit:normal ->
@@ -372,26 +382,25 @@ handle_streaming(F, Req, HTTPRes, LastRes, Wait) ->
     handle_streaming(F, Req, HTTPRes, Res, Wait).
 
 all_accessible_buckets(PoolId, Req) ->
-    MyPool = find_pool_by_id(PoolId),
-    UserPassword = menelaus_auth:extract_auth(Req),
-    IsSuper = menelaus_auth:check_auth(UserPassword),
-    BucketsAll = expect_prop_value(buckets, MyPool),
-    %% We got this far, so we assume we're authorized.
-    %% Only emit the buckets that match our UserPassword;
-    %% or, emit all buckets if our UserPassword matches the rest_creds
-    %% or, emit all buckets if we're not secure.
-    case {IsSuper, UserPassword} of
-        {true, _}      -> BucketsAll;
-        {_, undefined} -> BucketsAll;
-        {_, {_User, _Password} = UserPassword} ->
-            lists:filter(
-              menelaus_auth:bucket_auth_fun(UserPassword),
-              BucketsAll)
+    Pool = find_pool_by_id(PoolId),
+    all_accessible_buckets_in_pool(Pool, Req).
+
+all_accessible_buckets_in_pool(Pool, Req) ->
+    BucketsAll = expect_prop_value(buckets, Pool),
+    menelaus_auth:filter_accessible_buckets(BucketsAll, Req).
+
+checking_bucket_access(PoolId, Id, Req, Body) ->
+    Pool = find_pool_by_id(PoolId),
+    Bucket = find_bucket_by_id(Pool, Id),
+    case menelaus_auth:is_bucket_accessible({Id, Bucket}, Req) of
+        true -> apply(Body, [Pool, Bucket]);
+        _ -> menelaus_auth:require_auth(Req)
     end.
 
 handle_bucket_list(Id, Req) ->
-    Buckets = all_accessible_buckets(Id, Req),
-    BucketsInfo = [build_bucket_info(Id, Name, undefined)
+    Pool = find_pool_by_id(Id),
+    Buckets = all_accessible_buckets_in_pool(Pool, Req),
+    BucketsInfo = [build_bucket_info(Id, Name, Pool)
                    || Name <- proplists:get_keys(Buckets)],
     reply_json(Req, BucketsInfo).
 
@@ -399,13 +408,15 @@ find_bucket_by_id(Pool, Id) ->
     Buckets = expect_prop_value(buckets, Pool),
     expect_prop_value(Id, Buckets).
 
-handle_bucket_info(PoolId, Id, Req) ->
-    UserPassword = menelaus_auth:extract_auth(Req),
-    reply_json(Req, build_bucket_info(PoolId, Id, UserPassword)).
+handle_bucket_info(PoolId, Id, Req, Pool, _Bucket) ->
+    reply_json(Req, build_bucket_info(PoolId, Id, Pool)).
 
-build_bucket_info(PoolId, Id, _UserPassword) ->
+handle_bucket_info(PoolId, Id, Req) ->
     Pool = find_pool_by_id(PoolId),
-    _Bucket = find_bucket_by_id(Pool, Id),
+    Bucket = find_bucket_by_id(Pool, Id),
+    handle_bucket_info(PoolId, Id, Req, Pool, Bucket).
+
+build_bucket_info(PoolId, Id, Pool) ->
     StatsUri = list_to_binary("/pools/"++PoolId++"/buckets/"++Id++"/stats"),
     Nodes = build_nodes_info(Pool, false),
     List1 = [{name, list_to_binary(Id)},
@@ -431,9 +442,8 @@ build_bucket_info(PoolId, Id, _UserPassword) ->
             end,
     {struct, List2}.
 
-handle_bucket_info_streaming(PoolId, Id, Req) ->
-    UserPassword = menelaus_auth:extract_auth(Req),
-    F = fun() -> build_bucket_info(PoolId, Id, UserPassword) end,
+handle_bucket_info_streaming(PoolId, Id, Req, Pool, _Bucket) ->
+    F = fun() -> build_bucket_info(PoolId, Id, Pool) end,
     handle_streaming(F, Req, undefined, 3000).
 
 handle_bucket_delete(PoolId, BucketId, Req) ->

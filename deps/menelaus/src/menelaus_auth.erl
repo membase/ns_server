@@ -8,6 +8,9 @@
 -author('Northscale <info@northscale.com>').
 
 -export([apply_auth/3,
+         require_auth/1,
+         filter_accessible_buckets/2,
+         is_bucket_accessible/2,
          apply_auth_bucket/3,
          extract_auth/1,
          extract_auth/2,
@@ -18,21 +21,46 @@
 
 %% External API
 
+%% Respond with 401 Auth. required
+require_auth(Req) ->
+    case Req:get_header_value("invalid-auth-response") of
+        "on" ->
+            %% We need this for browsers that display auth
+            %% dialog when faced with 401 with
+            %% WWW-Authenticate header response, even via XHR
+            Req:respond({401, add_header(), []});
+        _ ->
+            Req:respond({401, [{"WWW-Authenticate",
+                                "Basic realm=\"api\""}],
+                         []})
+    end.
+
+filter_accessible_buckets(BucketsAll, Req) ->
+    UserPassword = menelaus_auth:extract_auth(Req),
+    IsSuper = menelaus_auth:check_auth(UserPassword),
+    %% We got this far, so we assume we're authorized.
+    %% Only emit the buckets that match our UserPassword;
+    %% or, emit all buckets if our UserPassword matches the rest_creds
+    %% or, emit all buckets if we're not secure.
+    case {IsSuper, UserPassword} of
+        {true, _}      -> BucketsAll;
+        {_, undefined} -> []; %% we're secured and no password is given
+        {_, {_User, _Password} = UserPassword} ->
+            lists:filter(
+              menelaus_auth:bucket_auth_fun(UserPassword),
+              BucketsAll)
+    end.
+
+is_bucket_accessible(Bucket, Req) ->
+    UserPassword = menelaus_auth:extract_auth(Req),
+    IsSuper = menelaus_auth:check_auth(UserPassword),
+    IsSuper orelse apply(menelaus_auth:bucket_auth_fun(UserPassword), [Bucket]).
+
 apply_auth(Req, F, Args) ->
     UserPassword = extract_auth(Req),
     case check_auth(UserPassword) of
         true -> apply(F, Args ++ [Req]);
-        _ -> case Req:get_header_value("invalid-auth-response") of
-                 "on" ->
-                     %% We need this for browsers that display auth
-                     %% dialog when faced with 401 with
-                     %% WWW-Authenticate header response, even via XHR
-                     Req:respond({401, add_header(), []});
-                 _ ->
-                     Req:respond({401, [{"WWW-Authenticate",
-                                 "Basic realm=\"api\""}],
-                                  []})
-             end
+        _ -> require_auth(Req)
     end.
 
 apply_auth_bucket(Req, F, Args) ->
