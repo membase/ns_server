@@ -129,11 +129,12 @@ open_port({Name, Cmd, ArgsIn, Opts}) ->
 
 handle_info({'EXIT', _Port, Reason}, State) ->
     error_logger:info_msg("port server (~p) exited: ~p~n",
-                          [State#state.name, Reason]);
+                          [State#state.name, Reason]),
+    {stop, {error, {port_exited, Reason}}, State};
 handle_info(Something, State) ->
     error_logger:info_msg("Got unexpected message while monitoring ~p: ~p~n",
                           [State#state.name, Something]),
-    {stop, Something, State}.
+    {stop, {error, {unhandled, Something}}, State}.
 
 handle_call(params, _From, #state{params = Params} = State) ->
     {reply, {ok, Params}, State};
