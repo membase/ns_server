@@ -133,6 +133,12 @@ h1 .nav a {font-size:11px; font-weight:bolder; cursor:pointer;}
 .labeled_line .line_cnt table {width:100%;}
 .form .labeled_line .line_cnt {line-height:15px;}
 
+.percentage_big {height:25px;}
+.percentage_big .usage_big {float:left; width:513px;}
+.percentage_big .usage_big .unused {width:320px;}
+.percentage_big .usage_big .comment {margin:0 0 0 336px;}
+.percentage_big a.text_11 {position:relative; top:6px; margin:0 0 0 5px;}
+
 .gong_rb {background:none #e2e3e3; position:relative;}
 .gong_rb .pad {padding:10px !important; background:none !important;}
 .gong_rb .side {width:9px; height:9px; position:absolute; background:url(../images/gong_rb.gif) 0 0 no-repeat; overflow:hidden;}
@@ -668,3 +674,7 @@ button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
 .secure_disabled .disabled {display:block !important;}
 .secure_disabled .disabled:hover {background:url(../images/large_buttons_bg.gif) repeat-x scroll 0 0 !important; color:#444245 !important;}
 .secure_disabled .disabled:active {background:url(../images/large_buttons_bg.gif) repeat-x scroll 0 0 !important; color:#444245 !important;}
+
+.tooltip {position:relative; display:inline-block;}
+.tooltip .tooltip_msg {display:block; position:absolute; width:150px; padding:6px 0 0 0; right:0px; top:14px; background:url(../images/tooltip_bg.gif) 100% 0 no-repeat; z-index:10;}
+.tooltip .tooltip_msg span {display:block; padding:5px; background:none #555557; font-size:11px; text-decoration:none !important; color:#fff !important;}

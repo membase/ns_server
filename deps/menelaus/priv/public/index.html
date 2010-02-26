@@ -135,7 +135,7 @@
                 <span class="comment">({%= h(V.count(nodesCount, 'server node')) %} managing <a href="javascript:nav.go('buckets');">{%=h(V.count(bucketsCount, 'bucket'))%}</a>)</span>
             </div>
         </div>
-        <div class="labeled_line">
+        <div class="labeled_line percentage_big">
             <h2 class="label for_usage_big">Cluster Memory Usage:</h2>
             <div class="line_cnt">
                 <div class="usage_big">
@@ -144,9 +144,17 @@
                     </div>{%=V.setPercentBar(memoryUtilization)%}
                     <div class="comment">{%=memoryUtilization%}% Utilized ({%=memoryFreeMB%}MB Free)</div>
                 </div>
+                <!-- Tooltip should be shown by onClick event. Apart from that 'style="z-index:2;"' shoould be added to the <a> container when tooltip is shown and removed when it's hidden -->
+                <a href="#" class="text_11 tooltip">What's this?
+                  <span class="tooltip_msg" style="display:none;">
+                    <span>
+                      Lorem ipsum dolor sit amet lorem ipsum dolor sit amet lorem ipsum dolor sit amet
+                    </span>
+                  </span>
+                </a>
             </div>
         </div>
-        <div class="labeled_line">
+        <div class="labeled_line percentage_big">
             <h2 class="label for_usage_big">Cluster Cache Allocated:</h2>
             <div class="line_cnt">
                 <div class="usage_big red">
@@ -155,6 +163,7 @@
                     </div>{%=V.setPercentBar(mcdItemUtilization)%}
                     <div class="comment">{%=mcdItemUtilization%}% Allocated ({%=mcdMemReserved %}MB Reserved)</div>
                 </div>
+                <a href="#" class="text_11">What's this?</a>
             </div>
         </div>
     </div>
