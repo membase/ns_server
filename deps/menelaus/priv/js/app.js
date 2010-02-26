@@ -336,8 +336,13 @@ var DAO = {
   this.poolList = new Cell();
 
   this.currentPoolDetailsCell = new Cell(function (poolList) {
+    function poolDetailsValueTransformer(data) {
+      // we clear pool's name to display empty name in analytics
+      data.name = '';
+      return data;
+    }
     var uri = poolList[0].uri;
-    return future.get({url: uri});
+    return future.get({url: uri}, poolDetailsValueTransformer);
   }).setSources({poolList: this.poolList});
 
   var statsBucketURL = this.statsBucketURL = new Cell();
