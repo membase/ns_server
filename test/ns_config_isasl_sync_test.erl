@@ -27,7 +27,8 @@ test_parsing() ->
     Expected = ns_config_isasl_sync:extract_creds(sample_config()).
 
 test_writing() ->
-    Path = "/tmp/isasl_test.db",
+    Path = "isasl_test.db",
+    FullPath = filename:join("priv", Path),
     % {ok, State, hibernate} = ns_config_isasl_sync:init(Path),
     State = #state{updates=0, path=Path, buckets=[],
                   admin_user="admin", admin_pass="admin"},
@@ -40,10 +41,10 @@ test_writing() ->
                 "admin admin\n",
                 "other_application another_password\n",
                 "test_application plain_text_password\n"],
-    {ok, F} = file:open(Path, [read]),
+    {ok, F} = file:open(FullPath, [read]),
     lists:foreach(fun (E) -> E = io:get_line(F, "") end, Expected),
     file:close(F),
-    ok = file:delete(Path),
+    ok = file:delete(FullPath),
     1 = State2#state.updates,
 
     % another update should not cause data to be written.
