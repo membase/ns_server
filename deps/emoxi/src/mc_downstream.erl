@@ -93,7 +93,7 @@ demonitor(MonitorRefs) ->
 accum(CallResult, {NumOks, AccMonitors}) ->
     case CallResult of
         {ok, Monitors} -> {NumOks + 1, Monitors ++ AccMonitors};
-        {_,  Monitors} -> {NumOks, Monitors ++ AccMonitors}
+        _ -> {NumOks, AccMonitors}
     end.
 
 await_ok(N) -> await_ok(undefined, N, ?TIMEOUT_AWAIT_OK, 0).
