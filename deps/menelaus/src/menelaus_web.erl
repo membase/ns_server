@@ -399,9 +399,10 @@ checking_bucket_access(PoolId, Id, Req, Body) ->
 
 handle_bucket_list(Id, Req) ->
     Pool = find_pool_by_id(Id),
-    Buckets = all_accessible_buckets_in_pool(Pool, Req),
+    Buckets = lists:sort(fun (A,B) -> element(1, A) =< element(1, B) end,
+                         all_accessible_buckets_in_pool(Pool, Req)),
     BucketsInfo = [build_bucket_info(Id, Name, Pool)
-                   || Name <- proplists:get_keys(Buckets)],
+                   || {Name, _} <- Buckets],
     reply_json(Req, BucketsInfo).
 
 find_bucket_by_id(Pool, Id) ->
