@@ -110,6 +110,7 @@ build_alerts_settings() ->
                 {pass, bin_string(proplists:get_value(pass, S, ""))},
                 {addr, bin_string(proplists:get_value(addr, S, ""))},
                 {port, bin_string(proplists:get_value(port, S, ""))},
+                {from, bin_string(proplists:get_value(from, S, ""))},
                 {encrypt, bin_boolean(proplists:get_value(encrypt, S, false))}
                ]}},
      {sendAlerts, bin_boolean(proplists:get_value(email_alerts, C, false))},
@@ -204,6 +205,7 @@ is_email_server_key("pass")    -> true;
 is_email_server_key("addr")    -> true;
 is_email_server_key("port")    -> true;
 is_email_server_key("encrypt") -> true;
+is_email_server_key("from")    -> true;
 is_email_server_key(_)         -> false.
 
 default_alert_config() ->
