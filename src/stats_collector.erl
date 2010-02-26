@@ -22,13 +22,13 @@ init([]) ->
     {ok, #state{tref=Tref}}.
 
 handle_call(Request, From, State) ->
-    error_logger:info_message("stats_collector:handle_call(~p, ~p, ~p)~n",
-                              [Request, From, State]),
+    error_logger:info_msg("stats_collector:handle_call(~p, ~p, ~p)~n",
+                          [Request, From, State]),
     {reply, ok, State}.
 
 handle_cast(Msg, State) ->
-    error_logger:info_message("stats_collector:handle_cast(~p, ~p)~n",
-                              [Msg, State]),
+    error_logger:info_msg("stats_collector:handle_cast(~p, ~p)~n",
+                          [Msg, State]),
     {noreply, State}.
 
 handle_info(collect, State) ->
