@@ -1,6 +1,5 @@
 % Copyright (c) 2010, NorthScale, Inc.
 % All rights reserved.
--compile(export_all).
 
 % ------------------------------------------
 

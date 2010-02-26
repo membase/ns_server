@@ -39,7 +39,7 @@
 -define(METADATA_VER, '_ver').
 -define(DEFAULT_TIMEOUT, 500).
 
--export([start_link/2, start_link/1, stop/0,
+-export([start_link/2, start_link/1,
          get_remote/1, set_remote/2, set_remote/3,
          get/2, get/1, get/0, set/2, set/1,
          search/2, search/1,
@@ -66,6 +66,8 @@
 
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
+
+-export([stop/0, reload/0, resave/0, reannounce/0, replace/1]).
 
 -include_lib("eunit/include/eunit.hrl").
 

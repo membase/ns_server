@@ -34,7 +34,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--compile(export_all).
+-export([default/0]).
 
 all_test_() ->
   {foreach,

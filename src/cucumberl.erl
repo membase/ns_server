@@ -26,7 +26,8 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--compile(export_all).
+-export([run/1, run/2, run/3,
+         stats_add/2, stats_blank/0]).
 
 -record(cucumberl_stats, {scenarios = 0,
                           steps = 0}).
@@ -208,11 +209,6 @@ process_line({LineNum, Line},
         _                 -> io:format("~n"),
                              {Section2, GWT2, Stats2}
     end.
-
-step(['feature:' | _], _Line)  -> true;
-step(['scenario:' | _], _Line) -> true;
-step([], _) -> true;
-step(_, _)  -> undefined.
 
 numbered_lines(Lines) ->
     NLines = length(Lines),
