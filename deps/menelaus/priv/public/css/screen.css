@@ -684,3 +684,9 @@ button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
 .tooltip {position:relative; display:inline-block;}
 .tooltip .tooltip_msg {display:block; position:absolute; width:150px; padding:6px 0 0 0; right:0px; top:14px; background:url(../images/tooltip_bg.gif) 100% 0 no-repeat; z-index:10;}
 .tooltip .tooltip_msg span {display:block; padding:5px; background:none #555557; font-size:11px; text-decoration:none !important; color:#fff !important;}
+
+#about_server_dialog {width:390px !important; margin-left:-195px !important;}
+#about_server_dialog .lbox {width:380px !important;}
+#about_server_dialog .lbox .center {background:url(../images/lbox_cent_narrow.png) repeat-y scroll 0 0;}
+#about_server_dialog .lbox .top .top_center {*width:356px;}
+#about_server_dialog .lbox .bottom .bottom_center {*width:356px;}
