@@ -387,7 +387,7 @@ var MockedRequest = mkClass({
     if (ok)
       this.fakeResponse('');
     else
-      this.errorResponse({});
+      this.errorResponse([]);
   },
 
   handlePoolDetails: function () {

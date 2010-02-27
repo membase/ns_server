@@ -242,15 +242,20 @@ var DAO = {
     else
       $(window).one('dao:ready', function () {thunk();});
   },
+  setAuthCookie: function (user, password) {
+    if (user != '') {
+      var auth = Base64.encode([user, ':', password].join(''))
+      $.cookie('auth', auth);
+    } else {
+      $.cookie('auth', null);
+    }
+  },
   loginSuccess: function (data) {
     DAO.ready = true;
     $(window).trigger('dao:ready');
     var rows = data.pools;
     DAO.cells.poolList.setValue(rows);
-    if (DAO.login) {
-      var auth = Base64.encode([DAO.login, ':', DAO.password].join(''))
-      $.cookie('auth', auth);
-    }
+    DAO.setAuthCookie(DAO.login, DAO.password);
 
     $('#secure_server_buttons').attr('class', DAO.login ? 'secure_disabled' : 'secure_enabled');
 
@@ -859,6 +864,9 @@ var OverviewSection = {
         if (status != 'success') {
           renderTemplate('join_cluster_dialog_errors', data)
         } else {
+          var user = form.find('[name=user]').val();
+          var password = form.find('[name=password]').val();
+          DAO.setAuthCookie(user, password);
           $.cookie('cluster_join_flash', '1');
           reloadApp();
         }
@@ -1534,7 +1542,7 @@ var ThePage = {
 
       DAO.switchSection(sec);
 
-      $('#mainPanel > div').css('display', 'none');
+      $('#mainPanel > div:not(.notice)').css('display', 'none');
       $('#'+sec).css('display','block');
       _.defer(function () {
         if (oldSection && oldSection.onLeave)
@@ -1628,7 +1636,7 @@ $(function () {
   });
   if ($.cookie('cluster_join_flash')) {
     $.cookie('cluster_join_flash', null);
-    $('#auth_dialog .alert_green').fadeIn('normal');
+    displayNotice('You have successfully joined the cluster');
   }
 
   ThePage.initialize();
@@ -1800,3 +1808,13 @@ function showAbout() {
   }
   window.onerror = appOnError;
 })();
+
+function displayNotice(text) {
+  var div = $('<div></div>');
+  renderTemplate('notice', {text: text}, div.get(0));
+  $('#mainPanel').prepend(div.children());
+}
+
+$('.notice').live('click', function () {
+  $(this).fadeOut('fast');
+});

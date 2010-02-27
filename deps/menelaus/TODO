@@ -17,11 +17,7 @@
 
 NOW
 
-* not reloading app after cluster join and displaying success
-   indicator on overview
-
 * 'cluster memory available' for bucket creation
-
 * edit cache sz (no design!)
 
 LATER
