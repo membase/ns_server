@@ -1,6 +1,6 @@
 //= require <jquery.js>
 //= require <jqModal.js>
-//= require <raphael.js>
+// !not used!= require <raphael.js>
 // !not used!= require <g.raphael.js>
 // !not used!= require <g.line.js>
 //= require <jquery.flot.js>
