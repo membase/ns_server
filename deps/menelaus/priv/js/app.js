@@ -957,7 +957,7 @@ var BucketsSection = {
     if (callback) {
       cell.changedSlot.subscribeOnce(callback);
     }
-    cell.recalculate();
+    cell.invalidate();
   },
   onBucketList: function () {
     var buckets = this.buckets = this.cells.detailedBuckets.value;
@@ -1014,7 +1014,10 @@ var BucketsSection = {
     return DAO.cells.currentPoolDetails.value.nodes.length;
   },
   onEnter: function () {
-    this.cells.detailsPageURI.recalculate();
+    this.refreshBuckets();
+  },
+  navClick: function () {
+    this.onEnter();
   },
   checkFormChanges: function () {
     var parent = $('#add_new_bucket_dialog');
