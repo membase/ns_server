@@ -7,7 +7,7 @@ SPROCKETIZE=`which sprocketize`
 
 .PHONY: ebins ebin_app version
 
-all: deps priv/public/js/all.js priv/public/js/t-all.js ebins
+all: deps priv/public/js/all.js ebins
 
 ebins: ebin_app
 	test -d ebin || mkdir ebin
