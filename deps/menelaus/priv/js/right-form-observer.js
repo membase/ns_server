@@ -17,7 +17,6 @@ $.fn.observePotentialChanges = (function () {
 
     if (!hadActivity) {
       if (++idlePeriods >= maxIdlePeriods) {
-        console.log("right-observer: suspend due to idleness");
         suspendTimer();
         idlePeriods = 0;
       }
@@ -30,7 +29,6 @@ $.fn.observePotentialChanges = (function () {
     hadActivity = true;
     if (intervalId != null)
       return;
-    console.log("right-observer: major activate");
     intervalId = setInterval(timerCallback, period);
   }
   function suspendTimer() {
