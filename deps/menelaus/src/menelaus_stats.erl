@@ -174,6 +174,18 @@ get_hks(_PoolId, BucketId, _Params) ->
         dict:to_list(TopKeys)),
     {ok, TopKeyList}.
 
+sum_stats_values_rec([], [], Rec) ->
+    Rec;
+sum_stats_values_rec([], YVals, Rec) ->
+    lists:reverse(YVals, Rec);
+sum_stats_values_rec(XVals, [], Rec) ->
+    lists:reverse(XVals, Rec);
+sum_stats_values_rec([X | XS], [Y | YS], Rec) ->
+    sum_stats_values_rec(XS, YS, [X+Y | Rec]).
+
+sum_stats_values(XVals, YVals) ->
+    sum_stats_values_rec(lists:reverse(XVals), lists:reverse(YVals), []).
+
 get_buckets_stats(PoolId, BucketIds, Params) ->
     [FirstStats | RestStats] =
         lists:map(fun(BucketId) ->
@@ -183,21 +195,15 @@ get_buckets_stats(PoolId, BucketIds, Params) ->
     lists:foldl(
       fun({ok, XSamplesInterval, XLastSampleTStamp, XStat},
           {ok, YSamplesInterval, YLastSampleTStamp, YStat}) ->
+              XSamplesInterval = YSamplesInterval,
               {ok,
-               erlang:max(XSamplesInterval,
-                          YSamplesInterval),
-               erlang:max(XLastSampleTStamp,
-                          YLastSampleTStamp),
+               XSamplesInterval,
+               %% usually are equal too except when one value is 0 (empty stats)
+               erlang:max(XLastSampleTStamp, YLastSampleTStamp),
                lists:map(fun({t, TStamps}) -> {t, TStamps};
                             ({Key, XVals}) ->
-                                 case proplists:get_value(Key, YStat) of
-                                     undefined -> {Key, XVals};
-                                     YVals when length(XVals) == length(YVals) ->
-                                         {Key, lists:zipwith(
-                                                 fun(A, B) -> A + B end,
-                                                 XVals, YVals)};
-                                     _ -> {Key, XVals}
-                                 end
+                                 YVals = proplists:get_value(Key, YStat),
+                                 {Key, sum_stats_values(XVals, YVals)}
                         end,
                         XStat)}
       end,
@@ -218,7 +224,7 @@ get_stats(PoolId, BucketId, _Params) ->
 
     LastSampleTStamp = case default_find(t, Samples2) of
                            [] -> 0;
-                           [First | _Rest] -> First
+                           List -> lists:last(List)
                        end,
 
     Samples3 = dict:store(ops, sum_stats_ops(Samples2), Samples2),
@@ -342,6 +348,18 @@ deltas_test() ->
     ?assertEqual([0, 1, 1, 0],
                  deltas([10, 10, 11, 12, 12])),
     ok.
+
+sum_stats_values_test() ->
+    ?assertEqual([], sum_stats_values([], [])),
+    ?assertEqual([1,2], sum_stats_values([1,2],[])),
+    ?assertEqual([1,2], sum_stats_values([],[1,2])),
+    ?assertEqual([0,0,0,1,2,3,4], sum_stats_values([1,2,3,4],[0,0,0,0,0,0,0])),
+    ?assertEqual([0,0,0,1,2,3,4], sum_stats_values([0,0,0,0,0,0,0],[1,2,3,4])),
+    ?assertEqual([4,6], sum_stats_values([1,2],[3,4])),
+    ?assertEqual([4,6], sum_stats_values([3,4],[1,2])),
+    ?assertEqual([1,5,7], sum_stats_values([3,4],[1,2,3])),
+    ?assertEqual([1,5], sum_stats_values([1,2],[3])),
+    ?assertEqual([1,5], sum_stats_values([3],[1,2])).
 
 -endif.
 
