@@ -229,6 +229,11 @@ $.ajaxSetup({
     xhr.setRequestHeader('invalid-auth-response', 'on');
     xhr.setRequestHeader('Cache-Control', 'no-cache');
     xhr.setRequestHeader('Pragma', 'no-cache');
+  },
+  dataFilter: function (data, type) {
+    if (type == "json" && data == "")
+      throw new Error("empty json");
+    return data;
   }
 });
 
