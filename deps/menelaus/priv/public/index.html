@@ -144,13 +144,10 @@
                     </div>{%=V.setPercentBar(memoryUtilization)%}
                     <div class="comment">{%=memoryUtilization%}% Utilized ({%=memoryFreeMB%}MB Free)</div>
                 </div>
-                <!-- Tooltip should be shown by onClick event. Apart from that 'style="z-index:2;"' shoould be added to the <a> container when tooltip is shown and removed when it's hidden -->
-                <a href="#" class="text_11 tooltip">What's this?
-                  <span class="tooltip_msg" style="display:none;">
-                    <span>
-                      Lorem ipsum dolor sit amet lorem ipsum dolor sit amet lorem ipsum dolor sit amet
-                    </span>
-                  </span>
+                <a class="text_11 tooltip">What's this?
+                  <span class="tooltip_msg"><span>
+                    Lorem ipsum dolor sit amet lorem ipsum dolor sit amet lorem ipsum dolor sit amet
+                  </span></span>
                 </a>
             </div>
         </div>
@@ -163,7 +160,11 @@
                     </div>{%=V.setPercentBar(mcdItemUtilization)%}
                     <div class="comment">{%=mcdItemUtilization%}% Allocated ({%=mcdMemReserved %}MB Reserved)</div>
                 </div>
-                <a href="#" class="text_11">What's this?</a>
+                <a class="text_11 tooltip">What's this?
+                  <span class="tooltip_msg"><span>
+                    Lorem ipsum dolor sit amet lorem ipsum dolor sit amet lorem ipsum dolor sit amet
+                  </span></span>
+                </a>
             </div>
         </div>
     </div>
@@ -563,7 +564,11 @@
                     </div>
                   </div>
                 </div>
-                <h2 class="head_2_underline">Security <a class="text_11">What's this?</a></h2>
+                <h2 class="head_2_underline">Security <a class="text_11 tooltip">What's this?
+                  <span class="tooltip_msg"><span>
+                    Lorem ipsum dolor sit amet lorem ipsum dolor sit amet lorem ipsum dolor sit amet
+                  </span></span>
+                </a></h2>
                 <div class="form">
                   <div>
                     <label><input type="checkbox" class="check" name="secureServer" id="secure_serv" value="1"/><input type="hidden" value="0" /> Secure this Server</label>
@@ -609,7 +614,11 @@
           <form id="advanced_settings_form" action="/settings/advanced">
             <div class="pad_10">
               <div class="advanced">
-                <h2 class="head_2_underline">Port Configuration <a class="text_11">What's this?</a></h2>
+                <h2 class="head_2_underline">Port Configuration <a class="text_11 tooltip">What's this?
+                  <span class="tooltip_msg"><span>
+                    Lorem ipsum dolor sit amet lorem ipsum dolor sit amet lorem ipsum dolor sit amet
+                  </span></span>
+                </a></h2>
                 <div class="form">
                   <div class="labeled_line">
                     <label class="block label for_input" for="proxyPort">Proxy Port:</label>
@@ -951,25 +960,43 @@ MemcachedClient client = manager.getClient();</pre>
             <table>
               <tr>
                 <td class="th">
-                  Cluster <a href="#" class="text_11">What's this?</a>
+                  Cluster <a class="text_11 tooltip">What's this?
+                    <span class="tooltip_msg"><span>
+                      Lorem ipsum dolor sit amet lorem ipsum dolor sit amet lorem ipsum dolor sit amet
+                    </span></span>
+                  </a>
                 </td>
               </tr>
               <tr>
                 <td>
                   <div class="u_line_sm">
                     <label class="label" for="clusterMemberHostIp">Web Console IP Address*:</label>
-                    <input type="text" class="inp" name="clusterMemberHostIp" id="clusterMemberHostIp" value="" /> <a href="#" class="text_11">What's this?</a><br />
+                    <input type="text" class="inp" name="clusterMemberHostIp" id="clusterMemberHostIp" value="" />
+                    <a class="text_11 tooltip">What's this?
+                      <span class="tooltip_msg"><span>
+                        Lorem ipsum dolor sit amet lorem ipsum dolor sit amet lorem ipsum dolor sit amet
+                      </span></span>
+                    </a><br />
                     <label class="label"></label><span class="text_11">(Use any server in an existing cluster)</span>
                   </div>
                   <div class="u_line_sm">
                     <label class="label" for="clusterMemberPort">Web Console Port:</label>
-                    <input type="text" class="inp" name="clusterMemberPort" id="clusterMemberPort" value="8080" onfocus="this.value=='8080'?this.value='':false;" onblur="this.value==''?this.value='8080':false;" /> <a href="#" class="text_11">What's this?</a>
+                    <input type="text" class="inp" name="clusterMemberPort" id="clusterMemberPort" value="8080" onfocus="this.value=='8080'?this.value='':false;" onblur="this.value==''?this.value='8080':false;" />
+                    <a class="text_11 tooltip">What's this?
+                      <span class="tooltip_msg"><span>
+                        Lorem ipsum dolor sit amet lorem ipsum dolor sit amet lorem ipsum dolor sit amet
+                      </span></span>
+                    </a>
                   </div>
                 </td>
               </tr>
               <tr>
                 <td class="th">
-                  Security <a href="#" class="text_11">What's this?</a>
+                  Security <a class="text_11 tooltip">What's this?
+                    <span class="tooltip_msg"><span>
+                      Lorem ipsum dolor sit amet lorem ipsum dolor sit amet lorem ipsum dolor sit amet
+                    </span></span>
+                  </a>
                 </td>
               </tr>
               <tr>

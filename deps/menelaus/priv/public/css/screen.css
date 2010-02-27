@@ -682,8 +682,10 @@ button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
 .secure_disabled .disabled:hover {background:url(../images/large_buttons_bg.gif) repeat-x scroll 0 0 !important; color:#444245 !important;}
 .secure_disabled .disabled:active {background:url(../images/large_buttons_bg.gif) repeat-x scroll 0 0 !important; color:#444245 !important;}
 
+.active_tooltip {z-index: 2;}
+.active_tooltip span.tooltip_msg {display:block;}
 .tooltip {position:relative; display:inline-block;}
-.tooltip .tooltip_msg {display:block; position:absolute; width:150px; padding:6px 0 0 0; right:0px; top:14px; background:url(../images/tooltip_bg.gif) 100% 0 no-repeat; z-index:10;}
+.tooltip .tooltip_msg {display:none; position:absolute; width:150px; padding:6px 0 0 0; right:0px; top:14px; background:url(../images/tooltip_bg.gif) 100% 0 no-repeat; z-index:10;}
 .tooltip .tooltip_msg span {display:block; padding:5px; background:none #555557; font-size:11px; text-decoration:none !important; color:#fff !important;}
 
 #about_server_dialog {width:390px !important; margin-left:-195px !important;}
