@@ -1061,6 +1061,8 @@ var BucketsSection = {
       BucketsSection.createSubmit();
     });
 
+    parent.find('[name=cacheSize]').val('64');
+
     showDialog(parent, {
       onHide: function () {
         observer.stopObserving();
