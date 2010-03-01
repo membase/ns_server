@@ -16,7 +16,7 @@ default() ->
      {rest_creds, [{'_ver', {0, 0, 0}},
                    {creds, []}]},
      {isasl, [{'_ver', {0, 0, 0}},
-              {path, "./isasl.pw"}]}, % Relative to priv directory.
+              {path, "./priv/isasl.pw"}]}, % Relative to startup directory.
      {bucket_admin, [{'_ver', {0, 0, 0}},
                      {user, "_admin"},
                      {pass, "_admin"}]},
