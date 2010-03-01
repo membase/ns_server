@@ -1296,9 +1296,14 @@ MemcachedClient client = manager.getClient();</pre>
   </div>
 </div>
 <div id="notice_template">
-  <div class="notice" style="outline: solid red 1px">
-    <h1>NorthScale Message</h1>
-    <p>{%= h(text) %}</p>
+  <div class="notice">
+    <div>
+      <h3>
+        <span class="hide_notice">close <span>x</span></span>
+        NorthScale Message
+      </h3>
+      <p>{%= h(text) %}</p>
+    </div>
   </div>
 </div>
 </body>

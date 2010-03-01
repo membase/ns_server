@@ -697,3 +697,10 @@ button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
 .configure_view {display:inline-block; padding:0 10px 0 0;}
 .configure_view a {position:relative; top:5px; text-decoration:underline;}
 .configure_view a:hover {text-decoration:none;}
+
+.notice {width:789px; height:76px; overflow:hidden; background:url(../images/notice_bg.png) 0 0 no-repeat;}
+.notice div {padding:16px 20px 14px 20px; position:relative;}
+.notice h3 {font-size:14px; font-weight:bolder; margin:0px; padding:0px; color:#b5c7d2;}
+.notice p {font-size:14px; color:#fff; padding:10px 0 5px 0;}
+.notice .hide_notice {float:right; font-size:11px; cursor:pointer;}
+.notice .hide_notice span {font-size:12px;}
