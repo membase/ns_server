@@ -5,7 +5,9 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--compile(export_all).
+-export([create/3,
+         search/2, search/3,
+         search_by_point/3]).
 
 % Functional, immutable consistent-hash-ring.
 
@@ -129,6 +131,8 @@ make({HashMod, HashCfg} = Hash, [{Addr, Data} | Rest], Acc) ->
           Points),
     make(Hash, Rest, Acc2).
 
+% Returns [CArc*], where length might be <= TakeN.
+
 carc_not_member_by_addr(#carc{addr = Addr}, CArcs) ->
     case lists:keysearch(Addr, #carc.addr, CArcs) of
         {value, _} -> false;
@@ -146,13 +150,6 @@ hash_addr(_, _, 0, Acc) -> lists:sort(Acc);
 hash_addr(Addr, Seed, N, Acc) ->
     Point = misc:hash(Addr, Seed),
     hash_addr(Addr, Point, N - 1, [Point | Acc]).
-
-% Finds a diff in CArc lists Before and After.
-
-delta(CArcsBefore, CArcsAfter) ->
-    delta(CArcsBefore, CArcsAfter, fun carc_less_than/2).
-
-carc_less_than(X, Y) -> X#carc.pt_end < Y#carc.pt_end.
 
 % Finds a diff in lists Before and After.
 
