@@ -2,9 +2,9 @@
 
 # Helper script to generate a priv/config file and start/stop scripts
 # with num_nodes of unjoined nodes, all running on 127.0.0.1.  For
-# example, to get a 100 setup, try...
+# example, to get a 100 node setup with 5 extra buckets, try...
 #
-#   ./gen_priv_config.rb 100 cluster
+#   ./gen_priv_config.rb 100 5
 #
 # The above will generate files like...
 #
@@ -14,10 +14,16 @@
 #
 # The node names will look like n_0@127.0.0.1, n_1@127.0.0.1, ...
 #
-prefix = ARGV[1] || "cluster"
+# The extra buckets (which are in addition to the usual default
+# bucket) will look like b_0, b_1, ...
+#
+prefix = ARGV[2] || "cluster"
 
 num_nodes = ARGV[0] || "10"
 num_nodes = num_nodes.to_i
+
+num_buckets = ARGV[1] || "0"
+num_buckets = num_buckets.to_i
 
 nodes = ""
 
@@ -32,7 +38,7 @@ while x < num_nodes
        {memcached, "./memcached",
         ["-p", "#{(x * 2) + 12000}",
          "-E", "./engines/bucket_engine.so",
-         "-e", "admin=_admin;engine=./engines/default_engine.so;default_bucket_name=default;auto_create=true",
+         "-e", "admin=_admin;engine=./engines/default_engine.so;default_bucket_name=default;auto_create=false",
          "-B", "auto"],
         [{env, [{"MEMCACHED_CHECK_STDIN", "thread"},
                 {"MEMCACHED_TOP_KEYS", "100"},
@@ -54,12 +60,20 @@ while x < num_nodes
   x = x + 1
 end
 
+buckets = ""
+x = 0
+while x < num_buckets
+  buckets = buckets + ",{\"b_#{x}\", [{auth_plain, undefined}, {size_per_node, #{x + 1}}]}\n"
+  x = x + 1
+end
+
 pools = pools + <<END
     {buckets, [
       {"default", [
         {auth_plain, undefined},
         {size_per_node, 2} % In MB.
       ]}
+#{buckets}
     ]}
   ]}
 ]}.
