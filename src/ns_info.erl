@@ -15,7 +15,8 @@ runtime() ->
     [{otp_release, erlang:system_info(otp_release)},
      {erl_version, erlang:system_info(version)},
      {erl_version_long, erlang:system_info(system_version)},
-     {system_arch, erlang:system_info(system_architecture)},
+     {system_arch_raw, erlang:system_info(system_architecture)},
+     {system_arch, system_arch()},
      {localtime, erlang:localtime()},
      {memory, erlang:memory()},
      {loaded, erlang:loaded()},
@@ -34,6 +35,15 @@ basic_info() ->
     {WallClockMSecs, _} = erlang:statistics(wall_clock),
     {erlang:node(),
      [{version, version()},
-      {system_arch, erlang:system_info(system_architecture)},
+      {system_arch, system_arch()},
       {wall_clock, trunc(WallClockMSecs / 1000)},
       {memory_data, memsup:get_memory_data()}]}.
+
+system_arch() ->
+    case erlang:system_info(system_architecture) of
+        "win32" ->
+            % Per bug 607, erlang R13B03 doesn't know it's on a 64-bit windows,
+            % and always reports "win32".  So, just report "windows".
+            "windows";
+        X -> X
+    end.
