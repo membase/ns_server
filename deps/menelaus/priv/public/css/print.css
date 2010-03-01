@@ -1,0 +1,56 @@
+@media print {
+
+td.leftNav * {display:none !important;}
+
+#header {background:none #5d6567; background-color:#5d6567;}
+#footer {background:none #5d6567;}
+
+.shadow_box .cnt {background:none #eeeeef;}
+.shadow_box .cnt .pad {background:none; padding:0px;}
+.shadow_box .bottom {background:none;}
+.shadow_box .bottom * {background:none;}
+.shadow_box .top {background:none;}
+.shadow_box .top * {background:none;}
+
+.header_2 {background:none #DFE0E0; border-bottom:1px solid #9a9fa6;}
+.with_devider {background:none; border-bottom:1px solid #9a9fa6;}
+
+.button_big {background:none #b8bcc0 !important; border:1px solid #b1b5b9; width:221px;}
+.button_medium {background:none #b8bcc0 !important; border:1px solid #b1b5b9;}
+.button_200 {background:none #b8bcc0 !important; border:1px solid #b1b5b9;}
+
+.usage_big {background:none #ededed;}
+.usage_big .comment {background:none #ededed;}
+.usage_big .unused {background:none #c9c9c9;}
+.usage_big .used {background:none #1baddc;}
+.red .used {background:none #559a29;}
+
+.usage_small {background:none;}
+.usage_small * {background:none;}
+.usage_small .used {background:#1fb2e0;}
+.usage_small .unused {background:#b2b2b2;}
+.gong_rb, .gong_rb .side {background:none;}
+.gong_rb {background:none #e2e3e3;}
+
+.analytics_grid {display:block;}
+.analytics-small-graph {background:none #d0d5d8 !important; border:1px solid #b6c0c7; width:164px !important;}
+
+.usage_smallest, .usage_smallest * {background:none;}
+.usage_smallest .used {background:none #1fb0de;}
+.usage_smallest .unused {background:none #cacccd;}
+
+.gray_rb, .gray_rb * {background-image:none !important;}
+.gray_rb {background:none #d8dada; border:1px solid #cbcdce;}
+
+#server_list_container .status .up {background:none #45c200;}
+#server_list_container .status .warning {background:none #fabf46;}
+#server_list_container .status .down {background:none #f84642;}
+
+.save_cancel .button_3 {background:none #1191cc;}
+.save_cancel .save_button {background:none #1191cc;}
+
+.alert_info {background-image:none !important; padding-left:0px; border-left:10px solid #ff9448;}
+.alert_attention {background-image:none !important; padding-left:0px; border-left:10px solid #f1c818;}
+.alert_warning {background-image:none !important; padding-left:0px; border-left:10px solid #ff453e;}
+
+}

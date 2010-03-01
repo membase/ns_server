@@ -4,6 +4,7 @@
 <title>NorthScale Console</title>
 <link rel="stylesheet" type="text/css" href="/css/screen.css">
 <link rel="stylesheet" type="text/css" href="/css/tabs.css">
+<link rel="stylesheet" type="text/css" href="/css/print.css">
 <!--[if IE]><script language="javascript" type="text/javascript" src="/js/excanvas.min.js"></script><![endif]-->
 <!--[if IE 6]>
 <link rel="stylesheet" type="text/css" href="/css/ie6.css" />
@@ -247,7 +248,8 @@
   	  </h2>
       <div class="analytics_graph_main">
         <span class="graph_info_label block right active_node_count"><!-- 3 active nodes --></span>
-        <div id="analytics_main_graph_grid" style="width:725px; height: 269px; background: url(images/graph_bg.png) 0 0 no-repeat;">
+        <div id="analytics_main_graph_grid" style="width:725px; height: 269px; background: url(images/graph_bg.png) 0 0 no-repeat; position:relative;">
+          <img src="images/graph_bg.png" style="position:absolute; left:0px; top:0px;" class="analytics_grid">
           <div id="analytics_main_graph" style="position: relative; left: 2px; width:720px; height: 264px;"></div>
         </div>
       </div>
