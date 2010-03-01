@@ -1822,7 +1822,7 @@ function showAbout() {
 function displayNotice(text) {
   var div = $('<div></div>');
   renderTemplate('notice', {text: text}, div.get(0));
-  $('#mainPanel').prepend(div.children());
+  $('#mainContainer').prepend(div.children());
 }
 
 $('.notice').live('click', function () {
