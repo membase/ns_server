@@ -1368,11 +1368,21 @@ var SettingsSection = {
         text: 'Saving settings, wait a bit',
         buttons: {ok: false, cancel: false}});
 
-      var postData = $(self).serialize();
+      var form = $(self);
+
+      var postData = form.serialize();
+
+      form.find('.warn li').remove();
 
       postWithValidationErrors($(self).attr('action'), postData, function (data, status) {
         if (status != 'success') {
-          alert(data.join('\n'));
+          var ul = form.find('.warn ul');
+          _.each(data, function (error) {
+            var li = $('<li></li>');
+            li.text(error);
+            ul.prepend(li);
+          });
+          $('html, body').animate({scrollTop: ul.offset().top-100}, 250);
           return dialog.close();
         }
 
