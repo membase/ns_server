@@ -9,8 +9,9 @@
 
 start(_Type, _Args) ->
     Result = ns_server_sup:start_link(),
-    ns_log:log(?MODULE, 1, "NorthScale Memcached Server has started on port ~p.",
-               [ns_config:search_prop(ns_config:get(), rest, port, 8080)]),
+    WConfig = menelaus_web:webconfig(),
+    ns_log:log(?MODULE, 1, "NorthScale Memcached Server has started on web/REST port ~p.",
+               [proplists:get_value(port, WConfig)]),
     Result.
 
 stop(_State) ->
