@@ -50,7 +50,8 @@ Before you start the server, you may need to do the following
     memcached/.libs/default_engine.so to
     <REPO_ROOT>/priv/engines/default_engine.so
   * If your sym links are correct, you should be able to cd <REPO_ROOT>/priv
-    and run: ./memcached -E ./engines/default_engine.so -vvv
+    and run:
+./memcached -E ./engines/default_engine.so -e "engine=./engines/default_engine.so" -vvv
   * If you're not doing sym links, instead make sure that the
     memcached/.libs/default_engine.so and
     bucket_engine/.libs/bucket_engine.so
