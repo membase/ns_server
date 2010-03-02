@@ -13,12 +13,15 @@
 %% @spec start(_Type, _StartArgs) -> ServerRet
 %% @doc application start callback for menelaus.
 start(_Type, _StartArgs) ->
-    menelaus_deps:ensure(),
-    menelaus_sup:start_link().
+    start_subapp().
 
 start_subapp() ->
     menelaus_deps:ensure(),
-    menelaus_sup:start_link().
+    Result = menelaus_sup:start_link(),
+    WConfig = menelaus_web:webconfig(),
+    ns_log:log(?MODULE, 1, "NorthScale Memcached Server has started on web/REST port ~p.",
+               [proplists:get_value(port, WConfig)]),
+    Result.
 
 %% @spec stop(_State) -> ServerRet
 %% @doc application stop callback for menelaus.
