@@ -25,7 +25,8 @@
          expect_prop_value/2,
          get_option/2,
          direct_port/1,
-         concat_url_path/1]).
+         concat_url_path/1,
+         validate_email_address/1]).
 
 -export([java_date/0,
          string_hash/1,
@@ -221,3 +222,12 @@ parse_boolean(Value) ->
 
 concat_url_path(Segments) ->
     "/" ++ string:join(lists:map(fun mochiweb_util:quote_plus/1, Segments), "/").
+
+%% does a simple email address validation
+validate_email_address(Address) ->
+    {ok, RE} = re:compile("^[^@]+@.+$", [multiline]), %%" "hm, even erlang-mode is buggy :("),
+    RV = re:run(Address, RE),
+    case RV of
+        {match, _} -> true;
+        _ -> false
+    end.

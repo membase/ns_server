@@ -774,14 +774,15 @@ build_settings_web(Port, U, P) ->
               {username, list_to_binary(U)},
               {password, list_to_binary(P)}]}.
 
+is_valid_port_number(String) ->
+    PortNumber = (catch list_to_integer(String)),
+    (is_integer(PortNumber) andalso (PortNumber > 0) andalso (PortNumber =< 65535)).
+
 validate_settings(Port, U, P) ->
     case lists:all(fun erlang:is_list/1, [Port, U, P]) of
         false -> [<<"All parameters must be given">>];
-        _ -> Candidates = [begin
-                               PortNumber = (catch list_to_integer(Port)),
-                               (is_integer(PortNumber) andalso (PortNumber > 0) andalso (PortNumber =< 65535))
-                                   orelse <<"Port must be a positive integer less than 65536">>
-                           end,
+        _ -> Candidates = [is_valid_port_number(Port)
+                           orelse <<"Port must be a positive integer less than 65536">>,
                            case {U, P} of
                                {[], []} -> true;
                                {[_Head | _], _} -> true;
@@ -837,10 +838,19 @@ handle_settings_advanced(Req) ->
 
 handle_settings_advanced_post(Req) ->
     PostArgs = Req:parse_post(),
-    case (ok =:= menelaus_alert:handle_alerts_settings_post(PostArgs)) andalso
-         (ok =:= handle_port_settings_post(PostArgs, "default")) of
-        true  -> Req:respond({200, add_header(), []});
-        false -> Req:respond({400, add_header(), []})
+    Results = [menelaus_alert:handle_alerts_settings_post(PostArgs),
+               handle_port_settings_post(PostArgs, "default")],
+    case proplists:get_all_values(errors, Results) of
+        [] -> %% no errors
+            CommitFunctions = proplists:get_all_values(ok, Results),
+            lists:foreach(fun (F) -> apply(F, []) end,
+                          CommitFunctions),
+            Req:respond({200, add_header(), []});
+        [Head | RestErrors] ->
+            Errors = lists:foldl(fun (A, B) -> A ++ B end,
+                                 Head,
+                                 RestErrors),
+            reply_json(Req, Errors, 400)
     end.
 
 build_port_settings(PoolId) ->
@@ -849,21 +859,28 @@ build_port_settings(PoolId) ->
      {directPort, list_to_integer(mc_pool:memcached_port(ns_config:get(),
                                                          node()))}].
 
+validate_port_settings(ProxyPort, DirectPort) ->
+    CS = [is_valid_port_number(ProxyPort) orelse <<"Proxy port must be a positive integer less than 65536">>,
+         is_valid_port_number(DirectPort) orelse <<"Direct port must be a positive integer less than 65536">>],
+    lists:filter(fun (C) -> C =/= true end,
+                 CS).
+
 handle_port_settings_post(PostArgs, PoolId) ->
     PPort = proplists:get_value("proxyPort", PostArgs),
     DPort = proplists:get_value("directPort", PostArgs),
-    case lists:member(undefined, [PPort, DPort]) of
-        true -> error;
-        false ->
-            Config = ns_config:get(),
-            Pools = mc_pool:pools_config_get(Config),
-            Pool = mc_pool:pool_config_get(Pools, PoolId),
-            Pool2 = lists:keystore(port, 1, Pool,
-                                   {port, list_to_integer(PPort)}),
-            mc_pool:pools_config_set(
-              mc_pool:pool_config_set(Pools, PoolId, Pool2)),
-            mc_pool:memcached_port_set(Config, undefined, DPort),
-            ok
+    case validate_port_settings(PPort, DPort) of
+        [] -> {ok, fun () ->
+                           Config = ns_config:get(),
+                           Pools = mc_pool:pools_config_get(Config),
+                           Pool = mc_pool:pool_config_get(Pools, PoolId),
+                           Pool2 = lists:keystore(port, 1, Pool,
+                                                  {port, list_to_integer(PPort)}),
+                           mc_pool:pools_config_set(
+                             mc_pool:pool_config_set(Pools, PoolId, Pool2)),
+                           mc_pool:memcached_port_set(Config, undefined, DPort),
+                           ok
+                   end};
+        Errors -> {errors, Errors}
     end.
 
 handle_traffic_generator_control_post(Req) ->

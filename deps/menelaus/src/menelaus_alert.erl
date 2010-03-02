@@ -15,6 +15,7 @@
 -export([test/0]).
 -import(menelaus_util,
         [test_under_debugger/0, debugger_apply/2,
+         validate_email_address/1,
          wrap_tests_with_cache_setup/1]).
 -endif.
 
@@ -94,8 +95,12 @@ handle_alerts_settings_post(PostArgs) ->
           end,
           AlertConfig,
           PostArgs),
-    set_alert_config(AlertConfig2),
-    ok.
+    case validate_alert_config(AlertConfig2) of
+        [] -> {ok, fun () ->
+                           set_alert_config(AlertConfig2)
+                   end};
+        Errors -> {errors, Errors}
+    end.
 
 set_subkey(Key, SubKey, V, Config) ->
     S = proplists:get_value(Key, Config),
@@ -218,6 +223,24 @@ get_alert_config() ->
     case ns_config:search(ns_config:get(), alerts) of
         {value, X} -> X;
         false      -> default_alert_config()
+    end.
+
+
+validate_alert_config(AlertConfig) ->
+    EmailServer = proplists:get_value(email_server, AlertConfig, []),
+    case proplists:get_value(email_alerts, AlertConfig) of
+        true ->
+            Candidates = [validate_email_address(proplists:get_value(sender, AlertConfig, []))
+                          orelse <<"Sender field is not valid email address">>,
+                          validate_email_address(proplists:get_value(email, AlertConfig, []))
+                          orelse <<"Email field is not valid email address">>,
+                          proplists:get_value(addr, EmailServer, []) =/= ""
+                          orelse <<"Email server name field cannot be blank">>,
+                          proplists:get_value(port, EmailServer, []) =/= ""
+                          orelse <<"Email server port field cannot be blank">>],
+            lists:filter(fun (C) -> C =/= true end,
+                         Candidates);
+        _ -> []
     end.
 
 set_alert_config(AlertConfig) ->
