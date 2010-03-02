@@ -544,10 +544,10 @@ handle_bucket_create(PoolId, BucketId, Req) ->
               false -> undefined
           end,
     % Input bucket name cannot have whitespace.
-    FmtV = case is_clean(BucketId, false, 1) of
+    FmtV = case mc_bucket:is_valid_bucket_name(BucketId) of
                true -> undefined;
-               _ -> <<"Bucket name cannot have whitespace.">>
-    end,
+               _ -> <<"Bucket name is invalid.">>
+           end,
     PossMsg = [DupNameV, SzV, FmtV, NzV],
     Msgs = lists:filter(fun (X) -> X =/= undefined end,
                         PossMsg),
@@ -888,11 +888,11 @@ handle_traffic_generator_control_post(Req) ->
 % Make sure an input parameter string is clean and not too long.
 % Second argument means "undefinedIsAllowed"
 
-is_clean(undefined, true, _MinLen)  -> true;
-is_clean(undefined, false, _MinLen) -> false;
-is_clean(S, _UndefinedIsAllowed, MinLen) ->
-    Len = length(S),
-    (Len >= MinLen) andalso (Len < 80) andalso (S =:= (S -- " \t\n")).
+%% is_clean(undefined, true, _MinLen)  -> true;
+%% is_clean(undefined, false, _MinLen) -> false;
+%% is_clean(S, _UndefinedIsAllowed, MinLen) ->
+%%     Len = length(S),
+%%     (Len >= MinLen) andalso (Len < 80) andalso (S =:= (S -- " \t\n")).
 
 -ifdef(EUNIT).
 

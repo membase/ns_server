@@ -33,6 +33,21 @@
 
 %% API for buckets.
 
+%% mirrors has_valid_bucket_name in bucket_engine.c
+%% and also doesn't allow too long bucket names
+is_valid_bucket_name(Name) ->
+    %% suboptimal for really long lists, but nthtail is too strict and
+    %% I see no easy & fast way to not count beyond 81 chars.
+    Len = length(Name),
+    Len > 0 andalso Len =< 80
+        andalso lists:all(fun (C) ->
+                                  (C >= $A andalso C =< $Z)
+                                      orelse (C >= $a andalso C =< $z)
+                                      orelse (C >= $0 andalso C =< $9)
+                                      orelse C =:= $- orelse C =:= $_ orelse C =:= $%
+                                      orelse C =:= $.
+                          end, Name).
+
 % Callers should consider the returned value to be opaque.
 % One day, the return value, for example, might be changed
 % into a gen_server Pid.
