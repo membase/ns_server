@@ -35,14 +35,14 @@ while x < num_nodes
        {port, #{x + 9000}}]}.
     {{node, 'n_#{x}@127.0.0.1', port_servers},
       [{'_ver', {0, 0, 0}},
-       {memcached, "./memcached",
+       {memcached, "./priv/memcached",
         ["-p", "#{(x * 2) + 12000}",
-         "-E", "./engines/bucket_engine.so",
-         "-e", "admin=_admin;engine=./engines/default_engine.so;default_bucket_name=default;auto_create=false",
+         "-E", "./priv/engines/bucket_engine.so",
+         "-e", "admin=_admin;engine=./priv/engines/default_engine.so;default_bucket_name=default;auto_create=false",
          "-B", "auto"],
         [{env, [{"MEMCACHED_CHECK_STDIN", "thread"},
                 {"MEMCACHED_TOP_KEYS", "100"},
-                {"ISASL_PWFILE", "./isasl.pw"},
+                {"ISASL_PWFILE", "./priv/isasl.pw"},
                 {"ISASL_DB_CHECK_TIME", "1"}]}]}]}.
     END
   x = x + 1
