@@ -2,7 +2,7 @@
 
 td.leftNav * {display:none !important;}
 
-#header {background:none #5d6567; background-color:#5d6567;}
+/*#header {background:none #5d6567; background-color:#5d6567;}
 #footer {background:none #5d6567;}
 
 .shadow_box .cnt {background:none #eeeeef;}
@@ -52,5 +52,5 @@ td.leftNav * {display:none !important;}
 .alert_info {background-image:none !important; padding-left:0px; border-left:10px solid #ff9448;}
 .alert_attention {background-image:none !important; padding-left:0px; border-left:10px solid #f1c818;}
 .alert_warning {background-image:none !important; padding-left:0px; border-left:10px solid #ff453e;}
-
+*/
 }
