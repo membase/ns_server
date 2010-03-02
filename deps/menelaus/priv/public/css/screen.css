@@ -69,6 +69,7 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 .disabled {opacity:0.5; cursor:default !important; filter:progid:DXImageTransform.Microsoft.Alpha(opacity=50);}
 .blue_highlighted {color:#0095D6 !important;}
 .warn {font-size:14px; color:#ec5223;}
+.warn ul {list-style-type:disc; margin:0 0 0 15px;}
 
 .main_holder {width:960px; position:relative; margin:auto; left:0px !important;}
 
