@@ -15,7 +15,7 @@
 -ifdef(EUNIT).
 -export([test/0]).
 -import(menelaus_util,
-        [test_under_debugger/0, debugger_apply/2,
+        [test_under_debugger/0, debugger_apply/2, concat_url_path/1,
          wrap_tests_with_cache_setup/1]).
 -endif.
 
@@ -226,9 +226,9 @@ build_pools() ->
     Pools = lists:map(fun ({Name, _}) ->
                               {struct,
                                [{name, list_to_binary(Name)},
-                                {uri, list_to_binary("/pools/" ++ Name)},
+                                {uri, list_to_binary(concat_url_path(["pools", Name]))},
                                 {streamingUri,
-                                 list_to_binary("/poolsStreaming/" ++ Name)}]}
+                                 list_to_binary(concat_url_path(["poolsStreaming", Name]))}]}
                       end,
                       expect_config(pools)),
     {struct, [{implementationVersion, implementation_version()},
@@ -261,7 +261,7 @@ build_pool_info(Id, _UserPassword) ->
     MyPool = find_pool_by_id(Id),
     Nodes = build_nodes_info(MyPool, true),
     BucketsInfo = {struct, [{uri,
-                             list_to_binary("/pools/" ++ Id ++ "/buckets")}]},
+                             list_to_binary(concat_url_path(["pools", Id, "buckets"]))}]},
     {struct, [{name, list_to_binary(Id)},
               {nodes, Nodes},
               {buckets, BucketsInfo},
@@ -269,10 +269,10 @@ build_pool_info(Id, _UserPassword) ->
                              [{ejectNode, {struct, [{uri, <<"/controller/ejectNode">>}]}},
                               {testWorkload, {struct,
                                              [{uri,
-                                               list_to_binary("/pools/" ++ Id ++ "/controller/testWorkload")}]}}]}},
+                                               list_to_binary(concat_url_path(["pools", Id, "controller", "testWorkload"]))}]}}]}},
               {stats, {struct,
                        [{uri,
-                         list_to_binary("/pools/" ++ Id ++ "/stats")}]}}]}.
+                         list_to_binary(concat_url_path(["pools", Id, "stats"]))}]}}]}.
 
 find_pool_by_id(Id) -> expect_prop_value(Id, expect_config(pools)).
 
@@ -418,16 +418,14 @@ handle_bucket_info(PoolId, Id, Req) ->
     handle_bucket_info(PoolId, Id, Req, Pool, Bucket).
 
 build_bucket_info(PoolId, Id, Pool) ->
-    StatsUri = list_to_binary("/pools/"++PoolId++"/buckets/"++Id++"/stats"),
+    StatsUri = list_to_binary(concat_url_path(["pools", PoolId, "buckets", Id, "stats"])),
     Nodes = build_nodes_info(Pool, false),
     List1 = [{name, list_to_binary(Id)},
-             {uri, list_to_binary("/pools/" ++ PoolId ++
-                                  "/buckets/" ++ Id)},
-             {streamingUri, list_to_binary("/pools/" ++ PoolId ++
-                                           "/bucketsStreaming/" ++ Id)},
+             {uri, list_to_binary(concat_url_path(["pools", PoolId, "buckets", Id]))},
+             {streamingUri, list_to_binary(concat_url_path(["pools", PoolId, "bucketsStreaming", Id]))},
              %% TODO: this should be under a controllers/ kind of namespacing
-             {flushCacheUri, list_to_binary("/pools/" ++ PoolId ++
-                                           "/buckets/" ++ Id ++ "/controller/doFlush")},
+             {flushCacheUri, list_to_binary(concat_url_path(["pools", PoolId,
+                                                             "buckets", Id, "controller", "doFlush"]))},
              %% TODO: move this somewhere else
              %% {passwordUri, <<"none">>},
              {basicStats, {struct, menelaus_stats:basic_stats(PoolId, Id)}},
@@ -435,8 +433,8 @@ build_bucket_info(PoolId, Id, Pool) ->
              {stats, {struct, [{uri, StatsUri}]}}],
     List2 = case tgen:is_traffic_bucket(PoolId, Id) of
                 true -> [{testAppBucket, true},
-                         {controlURL, list_to_binary("/pools/"++PoolId++
-                                                     "/controller/testWorkload")},
+                         {controlURL, list_to_binary(concat_url_path(["pools", PoolId,
+                                                                      "controller", "testWorkload"]))},
                          {status, tgen:traffic_started()}
                          | List1];
                 _ -> List1

@@ -24,7 +24,8 @@
          expect_config/1,
          expect_prop_value/2,
          get_option/2,
-         direct_port/1]).
+         direct_port/1,
+         concat_url_path/1]).
 
 -export([java_date/0,
          string_hash/1,
@@ -218,3 +219,5 @@ parse_boolean(Value) ->
         0 -> false
     end.
 
+concat_url_path(Segments) ->
+    "/" ++ string:join(lists:map(fun mochiweb_util:quote_plus/1, Segments), "/").
