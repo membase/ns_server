@@ -62,6 +62,20 @@ function setFormValues(form, values) {
 
     setBoolAttribute(box, 'checked', boolValue);
   });
+
+  form.find("select").each(function () {
+    var select = $(this);
+    var name = select.attr('name');
+    if (!(name in values))
+      return;
+
+    var value = values[name];
+
+    select.find('option').each(function () {
+      var option = $(this);
+      setBoolAttribute($(this), 'selected', option.val() == value);
+    });
+  });
 }
 
 function handlePasswordMatch(parent) {
