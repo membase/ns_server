@@ -1358,7 +1358,7 @@ var SettingsSection = {
 
       postWithValidationErrors($(self).attr('action'), postData, function (data, status) {
         if (status != 'success') {
-          alert("TODO: DESIGN\n" + data.join('\n'));
+          alert(data.join('\n'));
           return dialog.close();
         }
 

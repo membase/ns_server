@@ -782,7 +782,7 @@ validate_settings(Port, U, P) ->
         _ -> Candidates = [begin
                                PortNumber = (catch list_to_integer(Port)),
                                (is_integer(PortNumber) andalso (PortNumber > 0) andalso (PortNumber =< 65535))
-                                   orelse <<"Port must be natural number less then 65536">>
+                                   orelse <<"Port must be a positive integer less than 65536">>
                            end,
                            case {U, P} of
                                {[], []} -> true;
