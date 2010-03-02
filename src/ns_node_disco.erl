@@ -5,6 +5,8 @@
 
 -behaviour(gen_server).
 
+-define(PING_FREQ, 60000).
+
 %% API
 -export([start_link/0,
          nodes_wanted/0,
@@ -20,7 +22,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {nodes}).
+-record(state, {nodes, timer}).
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -63,10 +65,13 @@ init([]) ->
     do_nodes_wanted_updated(do_nodes_wanted()),
     % Register for nodeup/down messages as handle_info callbacks.
     ok = net_kernel:monitor_nodes(true),
+    {ok, Timer} = timer:send_interval(?PING_FREQ, ping_all),
     % Track the last list of actual ndoes.
-    {ok, #state{nodes = false}}.
+    {ok, #state{nodes = false, timer = Timer}}.
 
-terminate(_Reason, _State)     -> ok.
+terminate(_Reason, State) ->
+    timer:cancel(State#state.timer),
+    ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
 handle_cast(_Msg, State)       -> {noreply, State}.
 
@@ -104,6 +109,10 @@ handle_info({nodedown, Node}, State) ->
 handle_info(notify_clients, State) ->
     State2 = do_notify(State),
     {noreply, State2};
+
+handle_info(ping_all, State) ->
+    ping_all(),
+    {noreply, State};
 
 handle_info(_Msg, State) -> {noreply, State}.
 
@@ -161,6 +170,9 @@ do_notify(#state{nodes = NodesOld} = State) ->
                                   {ns_node_disco_events, NodesOld, NodesNew}),
                  State#state{nodes = NodesNew}
     end.
+
+ping_all() ->
+    lists:foreach(fun net_adm:ping/1, do_nodes_wanted()).
 
 % -----------------------------------------------------------
 
