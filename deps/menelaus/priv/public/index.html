@@ -880,14 +880,14 @@ MemcachedClient client = manager.getClient();</pre>
         </p>
         <div class="pas_20">
           <p class="u_line text_14">
-            <span class="label">Flushing Cache:</span>
+            <span class="label">Flushing Bucket:</span>
             <strong>
               {%=h(bucket.basicStats.cacheSize)%}
                 [MB x {%=h(DAO.getBucketNodesCount(bucket))%} = {%=h(DAO.getBucketNodesCount(bucket) * bucket.basicStats.cacheSize)%}MB Total Cache]
             </strong>
           </p>
           <div class="warning pat_20">
-		<strong>Warning</strong>- Flushing all the cache will result in data loss for this bucket. Are you sure you want to flush the cache?
+            <strong>Warning</strong> - Flushing will reset this bucket to be empty. Are you sure you want to flush this cache bucket?
           </div>
         </div>
         <div class="pas_20">
@@ -923,7 +923,7 @@ MemcachedClient client = manager.getClient();</pre>
             <strong class="bucket_name">&nbsp;</strong>
           </p>
           <div class="warning pat_20">
-		<strong>Warning</strong>- Removing this bucket will result in complete data loss for this bucket. Are you sure you want to remove it?
+		<strong>Warning</strong> - Removing this bucket will result in complete data loss for this bucket. Are you sure you want to remove it?
           </div>
         </div>
         <div class="pas_20">
@@ -1048,8 +1048,10 @@ MemcachedClient client = manager.getClient();</pre>
         </p>
       </div>
       <div class="pas_20">
-      <p class="text_14">
-      Removing this node from the cluster will take away from the cache available to all buckets.</p>
+        <div class="warning pat_20">
+          <strong>Warning</strong> - Removing this node from the cluster will reduce cache capacity across all buckets.
+                                       Are you sure you want to remove this node from the cluster?
+        </div>
       </div>
       <div class="pas_20">
         <div class="right save_cancel">
