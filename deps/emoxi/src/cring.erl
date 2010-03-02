@@ -7,7 +7,9 @@
 
 -export([create/3,
          search/2, search/3,
-         search_by_point/3]).
+         search_by_point/2,
+         search_by_point/3,
+         hash_addr/2]).
 
 % Functional, immutable consistent-hash-ring.
 

@@ -5,7 +5,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--compile(export_all).
+-export([hash_key/2, hash_addr/2, default_config/0]).
 
 % IsWeighted
 % PointsPerServer = POINTS_PER_SERVER = 100 % the default
@@ -23,7 +23,7 @@ hash_addr({Host, Port} = _Addr, NumPoints) ->
     BinPrefix = <<BinHost/binary, $:, BinPort/binary, $->>,
     hash_addr(BinPrefix, 0, NumPoints / 4, []).
 
-hash_addr(_, Iter, Until, Points) when Iter >= Until ->
+hash_addr(_Addr, Iter, Until, Points) when Iter >= Until ->
     lists:usort(Points);
 
 hash_addr(BinPrefix, Iter, Until, Points) ->
@@ -135,3 +135,39 @@ more_ketama_test() ->
     AssertSame(5, "49044"),
     ok.
 
+ketama_c_lib_extraction_test() ->
+    HostsAndPorts = [{"10.0.1.1", 11211},
+                     {"10.0.1.2", 11211},
+                     {"10.0.1.3", 11211},
+                     {"10.0.1.4", 11211},
+                     {"10.0.1.5", 11211},
+                     {"10.0.1.6", 11211},
+                     {"10.0.1.7", 11211},
+                     {"10.0.1.8", 11211}],
+    Addrs = lists:zip(HostsAndPorts, lists:seq(0, length(HostsAndPorts)-1)),
+    R = cring:create(Addrs, ?MODULE, default_config()),
+    AssertSame = fun(ExpectAddr, Key) ->
+                         {{H,P},_N} = cring:search_by_point(R, hash_key(Key, undefined)),
+                         ActualAddr = lists:flatten(io_lib:format("~s:~p", [H, P])),
+                         ?assertEqual(ExpectAddr, ActualAddr),
+                         ok
+                 end,
+    {ok, SavedFile} = file:open("test/libketama-test.out", [read]),
+    process_continuum(SavedFile, AssertSame, io:get_line(SavedFile, "")).
+
+%% Processing continuum list until we hit an empty line.
+process_continuum(_SavedFile, _AssertSame, eof) ->
+    exit(eof);
+process_continuum(SavedFile, AssertSame, "\n") ->
+    process_keys(SavedFile, AssertSame, io:get_line(SavedFile, ""));
+process_continuum(SavedFile, AssertSame, _Line) ->
+    process_continuum(SavedFile, AssertSame, io:get_line(SavedFile, "")).
+
+process_keys(_SavedFile, _AssertSame, eof) ->
+     ok;
+process_keys(SavedFile, AssertSame, "\n") ->
+    process_keys(SavedFile, AssertSame, io:get_line(SavedFile, ""));
+process_keys(SavedFile, AssertSame, Line) ->
+    [Key, _Point, _NearPoint, Server] = string:tokens(string:strip(Line, right, $\n), " "),
+    AssertSame(Server, Key),
+    process_keys(SavedFile, AssertSame, io:get_line(SavedFile, "")).
