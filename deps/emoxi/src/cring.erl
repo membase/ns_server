@@ -129,21 +129,6 @@ make({HashMod, HashCfg} = Hash, [{Addr, Data} | Rest], Acc) ->
           Points),
     make(Hash, Rest, Acc2).
 
-% Returns [CArc*], where length might be <= TakeN.
-
-search_ring_by_point([], _SearchPoint, RingAsc, TakeN) ->
-    util:take_ring_n(fun carc_not_member_by_addr/2, RingAsc, TakeN);
-
-search_ring_by_point([#carc{pt_end = Point} | Rest] = CArcsAsc,
-                     SearchPoint, RingAsc, TakeN) ->
-    % TODO: Do better than linear search.
-    % For example, use erlang array instead of list for binary search.
-    case SearchPoint =< Point of
-        true  -> util:take_ring_n(fun carc_not_member_by_addr/2,
-                                  CArcsAsc, TakeN, RingAsc);
-        false -> search_ring_by_point(Rest, SearchPoint, RingAsc, TakeN)
-    end.
-
 carc_not_member_by_addr(#carc{addr = Addr}, CArcs) ->
     case lists:keysearch(Addr, #carc.addr, CArcs) of
         {value, _} -> false;
