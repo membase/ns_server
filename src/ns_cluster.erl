@@ -53,6 +53,7 @@ leave(RemoteNode) ->
     % removed remote node, which might be down and not have received
     % our leave command, and which therefore still knows our cluster's
     % cookie, cannot re-join?
+    erlang:disconnect_node(RemoteNode),
     ok.
 
 leave() ->
@@ -63,6 +64,7 @@ leave() ->
     % Next, go through proper ns_config cookie & config changing.
     ns_node_disco:cookie_init(),
     ns_config:set(nodes_wanted, [node()]),
+    lists:foreach(fun erlang:disconnect_node/1, nodes()),
     ok.
 
 % Parameters to pass to join() to allow a remote node to join to
