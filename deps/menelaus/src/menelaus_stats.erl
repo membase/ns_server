@@ -186,6 +186,8 @@ sum_stats_values_rec([X | XS], [Y | YS], Rec) ->
 sum_stats_values(XVals, YVals) ->
     sum_stats_values_rec(lists:reverse(XVals), lists:reverse(YVals), []).
 
+get_buckets_stats(_PoolId, [], _Params) ->
+    {ok, 0, 0, []};
 get_buckets_stats(PoolId, BucketIds, Params) ->
     [FirstStats | RestStats] =
         lists:map(fun(BucketId) ->
