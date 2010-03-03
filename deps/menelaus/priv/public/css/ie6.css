@@ -18,7 +18,7 @@ body {height:100%;}
 .button_big {width:223px;}
 .secure_enabled, .secure_disabled {margin:0;}
 
-.lbox {overflow:hidden;}
+.lbox {/*overflow:hidden;*/}
 .lbox .center {float:left; width:100%;}
 .lbox .lbox_header {width:660px;}
 

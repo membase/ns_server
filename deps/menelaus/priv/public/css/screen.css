@@ -566,7 +566,7 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 .lbox .top .top_right {width:12px; float:right; background:url(../images/lbox_rt.png) 0 0 no-repeat;}
 .lbox .top .top_center {background:url(../images/lbox_t.png) 0 0 repeat-x; *width:687px;}
 
-.lbox .center {background:url(../images/lbox_cent.png) 0 0 repeat-y; overflow:hidden;}
+.lbox .center {background:url(../images/lbox_cent.png) 0 0 repeat-y;}
 .lbox .center .pad {padding:0 7px;}
 
 .lbox .bottom {height:17px; overflow:hidden; position:relative;}
