@@ -135,7 +135,7 @@ build_log_structs(LogEntriesIn, MinTStamp, Limit) ->
                                       misc:time_to_epoch_ms_int(TStamp) > MinTStamp
                               end,
                               LogEntriesIn),
-    LogEntries2 = lists:keysort(#log_entry.tstamp, LogEntries),
+    LogEntries2 = lists:reverse(lists:keysort(#log_entry.tstamp, LogEntries)),
     LogEntries3 = lists:sublist(LogEntries2, Limit),
     LogStructs =
         lists:foldl(
