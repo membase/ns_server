@@ -12,35 +12,54 @@
 %% API
 -export([join/2, leave/1, leave/0]).
 
--record(state, {}).
+-record(state, {child, action}).
 
 %% gen_server handlers
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
-    ns_server_sup:start_link(),
-    {ok, #state{}}.
+    process_flag(trap_exit, true),
+    {ok, Pid} = ns_server_sup:start_link(),
+    {ok, #state{child=Pid, action=undefined}}.
 
 handle_call(Request, _From, State) ->
     {reply, {unhandled, ?MODULE, Request}, State}.
+
+handle_cast({join, RemoteNode, NewCookie}, State) ->
+    ns_config:set(otp, [{cookie, NewCookie}]),
+    true = exit(ns_server_sup, shutdown),
+    {noreply, State#state{action={join, RemoteNode, NewCookie}}};
+
+handle_cast(leave, State) ->
+    ns_log:log(?MODULE, 0001, "leaving cluster"),
+    NewCookie = ns_node_disco:cookie_gen(),
+    true = erlang:set_cookie(node(), NewCookie),
+    lists:foreach(fun erlang:disconnect_node/1, nodes()),
+    ns_config:set(nodes_wanted, [node()]),
+    ns_config:set(otp, [{cookie, NewCookie}]),
+    true = exit(ns_server_sup, shutdown),
+    {noreply, State#state{action=leave}};
 
 handle_cast(Msg, State) ->
     error_logger:error_report("ns_cluster: got unexpected cast ~p~n", Msg),
     {noreply, State}.
 
-handle_info({'EXIT', {join, RemoteNode, NewCookie}}, _State) ->
+handle_info({'EXIT', Pid, shutdown},
+            State = #state{child=Pid, action={join, RemoteNode, NewCookie}}) ->
+    error_logger:info_msg("ns_cluster: joining cluster~n"),
     true = erlang:set_cookie(node(), NewCookie),
     true = erlang:set_cookie(RemoteNode, NewCookie),
     ns_server_sup:start_link(),
-    error_logger:info_msg("ns_cluster: joining cluster~n"),
     {noreply, init([])};
-handle_info({'EXIT', normal}, State) ->
-    {stop, normal, State};
-handle_info({'EXIT', Reason}, State) ->
-    error_logger:error_report("ns_cluster: got exit ~p and state ~p. Restarting.~n",
+handle_info({'EXIT', Pid, shutdown},
+            State = #state{child=Pid, action=leave}) ->
+    error_logger:info_msg("ns_cluster: leaving cluster~n"),
+    {noreply, init([])};
+handle_info({'EXIT', Pid, Reason}, State) ->
+    error_logger:error_report("ns_cluster: got exit ~p in state ~p.~n",
                               [Reason, State]),
-    {noreply, init([])}.
+    {stop, Reason, State}.
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
@@ -49,10 +68,7 @@ terminate(_Reason, _State) -> ok.
 
 %% API
 join(RemoteNode, NewCookie) ->
-    ns_config:set(otp, [{cookie, NewCookie}]),
-    process_flag(trap_exit, true),
-    true = exit(ns_server_sup, {join, RemoteNode, NewCookie}),
-    ok.
+    gen_server:cast(?MODULE, {join, RemoteNode, NewCookie}).
 
 % Should be invoked on a node that remains in the cluster,
 % where the leaving RemoteNode is passed in as an argument.
@@ -69,12 +85,5 @@ leave(RemoteNode) ->
     ok.
 
 leave() ->
-    ns_log:log(?MODULE, 0001, "leaving cluster"),
-    NewCookie = ns_node_disco:cookie_gen(),
-    true = erlang:set_cookie(node(), NewCookie),
-    lists:foreach(fun erlang:disconnect_node/1, nodes()),
-    ns_config:set(otp, [{cookie, NewCookie}]),
-    ns_config:set(nodes_wanted, [node()]),
-    true = exit(ns_server_sup, leave),
-    ok.
+    gen_server:cast(?MODULE, leave).
 
