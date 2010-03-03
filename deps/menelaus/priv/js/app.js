@@ -409,8 +409,6 @@ var TrafficGen = {
       $('#test_cluster_block').show();
       var className = running ? 'stop-active' : 'start-active';
       $('#test_cluster_start_stop').attr('class', className);
-
-      $('#clear_test_data')[BucketsSection.findTGenBucket() ? 'show' : 'hide']();
     }
   },
   getControlURI: function () {
@@ -435,9 +433,6 @@ var TrafficGen = {
     var tgenBucket = BucketsSection.findTGenBucket();
     if (tgenBucket)
       AnalyticsSection.visitBucket(tgenBucket.uri);
-  },
-  clearTestData: function () {
-    BucketsSection.startFlushCache(BucketsSection.findTGenBucket().uri);
   },
   startOrStop: function (isStart) {
     var uri = this.getControlURI();
