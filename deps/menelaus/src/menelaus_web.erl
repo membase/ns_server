@@ -155,7 +155,7 @@ loop(Req, AppRoot, DocRoot) ->
                              ["pools", PoolId, "buckets", Id, "controller", "doFlush"] ->
                                  {auth_bucket, fun handle_bucket_flush/3,
                                 [PoolId, Id]};
-                             ["logClientError"] -> {auth_bucket,
+                             ["logClientError"] -> {auth_any_bucket,
                                                     fun (R) ->
                                                             User = menelaus_auth:extract_auth(username, R),
                                                             ns_log:log(?MODULE, 0020, "Client-side error-report for user ~w: ~w~n", [User, R:recv_body()]),
