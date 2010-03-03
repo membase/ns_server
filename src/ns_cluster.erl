@@ -4,43 +4,55 @@
 
 -module(ns_cluster).
 
--export([join/2, leave/1, leave/0,
-         join_params/0]).
+-behaviour(gen_server).
 
-% Assuming our caller has made this node into an 'empty' node
-% that's joinable to another cluster, and assumes caller
-% has shutdown or is responsible for higher-level applications
-% (eg, emoxi, menelaus) as needed.
-%
-% After this function finishes, the caller may restart
-% higher-level applications, and then it should call
-% ns_config:reannounce() to get config-change
-% event callbacks asynchronously fired.
-%
-join(RemoteNode, NewCookie) ->
-    OldCookie = ns_node_disco:cookie_get(),
+-export([start_link/0, init/1, handle_cast/2, handle_call/3, handle_info/2,
+         terminate/2, code_change/3]).
+
+%% API
+-export([join/2, leave/1, leave/0]).
+
+-record(state, {}).
+
+%% gen_server handlers
+start_link() ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+init([]) ->
+    ns_server_sup:start_link(),
+    {ok, #state{}}.
+
+handle_call(Request, _From, State) ->
+    {reply, {unhandled, ?MODULE, Request}, State}.
+
+handle_cast(Msg, State) ->
+    error_logger:error_report("ns_cluster: got unexpected cast ~p~n", Msg),
+    {noreply, State}.
+
+handle_info({'EXIT', {join, RemoteNode, NewCookie}}, _State) ->
     true = erlang:set_cookie(node(), NewCookie),
     true = erlang:set_cookie(RemoteNode, NewCookie),
-    case net_adm:ping(RemoteNode) of
-        pong ->
-            case ns_config:get_remote(RemoteNode) of
-                RemoteDynamic when is_list(RemoteDynamic) ->
-                    case ns_config:replace(RemoteDynamic) of
-                        ok -> % The following adds node() to nodes_wanted.
-                              ns_node_disco:nodes_wanted(),
-                              ok = ns_config:resave(),
-                              ok = ns_config:reannounce(),
-                              ok;
-                        E -> join_err(OldCookie, E)
-                    end;
-                E -> join_err(OldCookie, E)
-            end;
-        E -> join_err(OldCookie, E)
-    end.
+    ns_server_sup:start_link(),
+    error_logger:info_msg("ns_cluster: joining cluster~n"),
+    {noreply, init([])};
+handle_info({'EXIT', normal}, State) ->
+    {stop, normal, State};
+handle_info({'EXIT', Reason}, State) ->
+    error_logger:error_report("ns_cluster: got exit ~p and state ~p. Restarting.~n",
+                              [Reason, State]),
+    {noreply, init([])}.
 
-join_err(undefined, E) -> {error, E};
-join_err(OldCookie, E) -> erlang:set_cookie(node(), OldCookie),
-                          {error, E}.
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
+
+terminate(_Reason, _State) -> ok.
+
+%% API
+join(RemoteNode, NewCookie) ->
+    ns_config:set(otp, [{cookie, NewCookie}]),
+    process_flag(trap_exit, true),
+    true = exit(ns_server_sup, {join, RemoteNode, NewCookie}),
+    ok.
 
 % Should be invoked on a node that remains in the cluster,
 % where the leaving RemoteNode is passed in as an argument.
@@ -58,17 +70,11 @@ leave(RemoteNode) ->
 
 leave() ->
     ns_log:log(?MODULE, 0001, "leaving cluster"),
-    % First, change our cookie to stop talking with the rest
-    % of the cluster.
-    erlang:set_cookie(node(), ns_node_disco:cookie_gen()),
-    % Next, go through proper ns_config cookie & config changing.
-    ns_node_disco:cookie_init(),
-    ns_config:set(nodes_wanted, [node()]),
+    NewCookie = ns_node_disco:cookie_gen(),
+    true = erlang:set_cookie(node(), NewCookie),
     lists:foreach(fun erlang:disconnect_node/1, nodes()),
+    ns_config:set(otp, [{cookie, NewCookie}]),
+    ns_config:set(nodes_wanted, [node()]),
+    true = exit(ns_server_sup, leave),
     ok.
 
-% Parameters to pass to join() to allow a remote node to join to
-% me, mostly for more convenient debugging/development.
-
-join_params() ->
-    [node(), ns_node_disco:cookie_get()].

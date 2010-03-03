@@ -15,7 +15,7 @@ start_link() ->
 
 init([]) ->
     pre_start(),
-    {ok, {{one_for_one,
+    {ok, {{rest_for_one,
            misc:get_env_default(max_r, 3),
            misc:get_env_default(max_t, 10)},
           get_child_specs()}}.

@@ -8,7 +8,7 @@
 -export([start/2, stop/1, ns_log_cat/1]).
 
 start(_Type, _Args) ->
-    ns_server_sup:start_link().
+    ns_cluster:start_link().
 
 stop(_State) ->
     ok.
