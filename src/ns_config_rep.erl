@@ -41,9 +41,9 @@ init([]) ->
     {ok, #state{}}.
 
 handle_call({push, List}, _From, State) ->
-    error_logger:info_report("Pushing config"),
+    error_logger:info_report("Pushing config~n"),
     do_push(List),
-    error_logger:info_report("Pushing config done"),
+    error_logger:info_report("Pushing config done~n"),
     {reply, ok, State};
 handle_call(Msg, _From, State) ->
     error_logger:info_msg("Unhandled ~p call: ~p~n", [?MODULE, Msg]),
@@ -53,9 +53,9 @@ handle_cast(push, State) ->
     do_push(),
     {noreply, State};
 handle_cast({pull, Nodes}, State) ->
-    error_logger:info_report("Pulling config"),
+    error_logger:info_report("Pulling config~n"),
     do_pull(Nodes, 5),
-    error_logger:info_report("Pulling config done"),
+    error_logger:info_report("Pulling config done~n"),
     {noreply, State};
 handle_cast(Msg, State) ->
     error_logger:info_msg("Unhandled ~p cast: ~p~n", [?MODULE, Msg]),
