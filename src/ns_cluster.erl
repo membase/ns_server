@@ -26,36 +26,40 @@ init([]) ->
 handle_call(Request, _From, State) ->
     {reply, {unhandled, ?MODULE, Request}, State}.
 
-handle_cast({join, RemoteNode, NewCookie}, State) ->
+handle_cast({join, RemoteNode, NewCookie}, State = #state{child=Pid, action=undefined}) ->
+    error_logger:info_msg("ns_cluster: joining cluster.~n"),
+    ns_config:set(nodes_wanted, [node(), RemoteNode]),
     ns_config:set(otp, [{cookie, NewCookie}]),
-    true = exit(ns_server_sup, shutdown),
+    true = exit(Pid, shutdown),
     {noreply, State#state{action={join, RemoteNode, NewCookie}}};
 
-handle_cast(leave, State) ->
+handle_cast(leave, State = #state{child=Pid, action=undefined}) ->
     ns_log:log(?MODULE, 0001, "leaving cluster"),
     NewCookie = ns_node_disco:cookie_gen(),
     true = erlang:set_cookie(node(), NewCookie),
     lists:foreach(fun erlang:disconnect_node/1, nodes()),
     ns_config:set(nodes_wanted, [node()]),
     ns_config:set(otp, [{cookie, NewCookie}]),
-    true = exit(ns_server_sup, shutdown),
+    true = exit(Pid, shutdown),
     {noreply, State#state{action=leave}};
 
 handle_cast(Msg, State) ->
-    error_logger:error_report("ns_cluster: got unexpected cast ~p~n", Msg),
+    error_logger:info_msg("ns_cluster: got unexpected cast ~p in state ~p~n",
+                              [Msg, State]),
     {noreply, State}.
 
 handle_info({'EXIT', Pid, shutdown},
             #state{child=Pid, action={join, RemoteNode, NewCookie}}) ->
-    error_logger:info_msg("ns_cluster: joining cluster~n"),
+    error_logger:info_msg("ns_cluster: joining cluster. Child has exited.~n"),
     true = erlang:set_cookie(node(), NewCookie),
     true = erlang:set_cookie(RemoteNode, NewCookie),
-    ns_server_sup:start_link(),
-    {noreply, init([])};
+    {ok, State} = init([]),
+    {noreply, State};
 handle_info({'EXIT', Pid, shutdown},
             #state{child=Pid, action=leave}) ->
     error_logger:info_msg("ns_cluster: leaving cluster~n"),
-    {noreply, init([])};
+    {ok, State} = init([]),
+    {noreply, State};
 handle_info({'EXIT', _Pid, Reason}, State) ->
     error_logger:error_report("ns_cluster: got exit ~p in state ~p.~n",
                               [Reason, State]),
@@ -74,7 +78,9 @@ join(RemoteNode, NewCookie) ->
 % where the leaving RemoteNode is passed in as an argument.
 %
 leave(RemoteNode) ->
-    catch(rpc:call(RemoteNode, ?MODULE, leave, [], 500)),
+    Result = (catch(rpc:call(RemoteNode, ?MODULE, leave, [], 500))),
+    error_logger:info_msg("ns_cluster: result of calling leave on ~p: ~p~n",
+                          [RemoteNode, Result]),
     NewWanted = lists:subtract(ns_node_disco:nodes_wanted(), [RemoteNode]),
     ns_config:set(nodes_wanted, NewWanted),
     % TODO: Do we need to reset our cluster's cookie, so that the
@@ -85,5 +91,6 @@ leave(RemoteNode) ->
     ok.
 
 leave() ->
+    error_logger:info_msg("ns_cluster: we've been asked to leave the cluster.~n"),
     gen_server:cast(?MODULE, leave).
 

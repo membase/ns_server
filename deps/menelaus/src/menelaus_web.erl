@@ -712,6 +712,7 @@ do_eject_myself() ->
     %% to respond after being ejected and trying all nodes,
     %% because we don't know who of them are actually alife
     OtherNodes = lists:subtract(ns_node_disco:nodes_actual_proper(), [node()]),
+    error_logger:info_msg("Calling leave on ~p~n", [OtherNodes]),
     lists:foreach(fun (Node) ->
                           rpc:cast(Node, ns_cluster, leave, [node()])
                           end, OtherNodes),

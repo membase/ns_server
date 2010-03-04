@@ -2,6 +2,8 @@
 %%  1. monitors an existing instance and crashes when it exits.
 %%  2. registers itself as a global process and runs a supervisor.
 
+-define(DEATH_TIMEOUT, 5000).
+
 -module(dist_sup_dispatch).
 
 -export([start_link/0, init/1]).
@@ -10,28 +12,51 @@ start_link() ->
     proc_lib:start_link(?MODULE, init, [self()]).
 
 init(Parent) ->
+    process_flag(trap_exit, true),
     case do_initialization() of
-        ok ->
-            proc_lib:init_ack(Parent, {ok, self()});
+        {ok, Pid} ->
+            proc_lib:init_ack(Parent, {ok, self()}),
+            wait(Pid);
         {error, Reason} ->
             exit(Reason)
-    end,
-    wait().
+    end.
 
 do_initialization() ->
-    monitor_or_supervise(global:whereis_name(?MODULE)).
+    case global:register_name(?MODULE, self()) of
+    yes ->
+        error_logger:info_msg("dist_sup_dispatch: starting global singleton.~n"),
+        global_singleton_supervisor:start_link();
+    no ->
+        Pid = global:whereis_name(?MODULE),
+        true = is_pid(Pid),
+        erlang:monitor(process, Pid),
+        {ok, undefined}
+    end.
 
-monitor_or_supervise(undefined) ->
-    yes = global:register_name(?MODULE, self()),
-    {ok, _Pid} = global_singleton_supervisor:start_link(),
-    ok;
-monitor_or_supervise(Pid) when is_pid(Pid) ->
-    erlang:monitor(process, Pid),
-    ok.
-
-wait() ->
+drown_in_lake(Pid) ->
+    error_logger:info_msg("dist_sup_dispatch: Drowning ~p in a lake.~n", [Pid]),
+    exit(Pid, shutdown),
     receive
+        {'EXIT', Pid, Reason} ->
+            error_logger:info_msg("dist_sup_dispatch: Child exited with reason ~p~n",
+                                  [Reason]),
+        {drowned, Reason}
+    after ?DEATH_TIMEOUT ->
+        shoot_in_head(Pid)
+    end.
+
+shoot_in_head(Pid) ->
+    error_logger:info_msg("dist_sup_dispatch: Shooting ~p in the head.~n", [Pid]),
+        exit(Pid, kill),
+        receive
+            {'DOWN', _MRef, process, Pid, Reason} -> {shot_in_head, Reason}
+        end.
+
+wait(Pid) ->
+    receive
+        {'EXIT', From, _Reason} when Pid =/= undefined, From =/= Pid ->
+            drown_in_lake(Pid);
         LikelyExitMessage ->
-            error_logger:info_msg("Exiting, I got a message: ~p~n",
+            error_logger:info_msg("dist_sup_dispatch: Exiting, I got a message: ~p~n",
                                   [LikelyExitMessage])
     end.
