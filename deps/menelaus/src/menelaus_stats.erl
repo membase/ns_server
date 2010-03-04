@@ -128,19 +128,28 @@ build_buckets_stats_ops_response(PoolId, BucketIds, Params) ->
                              {samplesInterval, SamplesInterval}
                              | Samples2]}}]}.
 
+is_safe_key_name(Name) ->
+    lists:all(fun (C) ->
+                      C >= 16#20 andalso C =< 16#7f
+              end, Name).
+
 build_buckets_stats_hks_response(PoolId, BucketIds, Params) ->
     {ok, BucketsTopKeys} =
         get_buckets_hks(PoolId, BucketIds, Params),
     % TODO: sort/chop here
     HotKeyStructs = lists:map(
-        fun ({BucketId, Key, Evictions, Ratio, Ops}) ->
-                {struct, [{name, list_to_binary(Key)},
-                          {bucket, list_to_binary(BucketId)},
-                          {evictions, Evictions},
-                          {ratio, Ratio},
-                          {ops, Ops}]}
-        end,
-        BucketsTopKeys),
+                      fun ({BucketId, Key, Evictions, Ratio, Ops}) ->
+                              EscapedKey = case is_safe_key_name(Key) of
+                                               true -> Key;
+                                               _ -> "BIN_" ++ base64:encode_to_string(Key)
+                                           end,
+                              {struct, [{name, list_to_binary(EscapedKey)},
+                                        {bucket, list_to_binary(BucketId)},
+                                        {evictions, Evictions},
+                                        {ratio, Ratio},
+                                        {ops, Ops}]}
+                      end,
+                      BucketsTopKeys),
     {struct, [{hot_keys, HotKeyStructs}]}.
 
 get_buckets_hks(PoolId, BucketIds, Params) ->
