@@ -149,7 +149,7 @@ build_buckets_stats_hks_response(PoolId, BucketIds, Params) ->
                                         {ratio, Ratio},
                                         {ops, Ops}]}
                       end,
-                      BucketsTopKeys),
+                      lists:sublist(lists:reverse(lists:keysort(5, BucketsTopKeys)), 15)),
     {struct, [{hot_keys, HotKeyStructs}]}.
 
 get_buckets_hks(PoolId, BucketIds, Params) ->
