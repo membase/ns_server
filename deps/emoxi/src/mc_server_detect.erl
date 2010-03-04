@@ -38,7 +38,8 @@ switch(ProtocolModule, ProcessorModule, ProcessorEnv,
 loop_out(OutSock) ->
     receive
         {switch, ProtocolModule} ->
-            ProtocolModule:loop_out(OutSock)
+            ProtocolModule:loop_out(OutSock);
+        {'EXIT', _From, Reason} -> exit(Reason)
     end.
 
 session(_Sock, ProcessorEnv) ->

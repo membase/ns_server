@@ -43,6 +43,7 @@ loop_out(OutSock) ->
                     error_logger:info_msg("Unexpected error in send: ~p~n", [E])
             end;
         {flush, From} -> From ! flushed;
+        {'EXIT', _From, Reason} -> exit(Reason);
         Other ->
             error_logger:info_msg("Unhandled message:  ~p~n", [Other]),
             exit({unhandled, ?MODULE, loop_out, Other})

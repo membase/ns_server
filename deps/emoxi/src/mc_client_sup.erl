@@ -41,8 +41,13 @@ start_session(ProtocolModule, ProcessorModule, ProcessorEnv, NS) ->
 new_session(NS, ProtocolModule, ProcessorModule, ProcessorEnv) ->
     case ProcessorModule:session(NS, ProcessorEnv) of
         {ok, _, Session} ->
-            Outpid = spawn_link(ProtocolModule,
-                                loop_out, [NS]),
+            Outpid = spawn_link(fun() ->
+                                        %% This process wants normal
+                                        %% exit signals from its peer.
+                                        process_flag(trap_exit, true),
+                                        ProtocolModule:loop_out(NS)
+                                end),
+
             ProtocolModule:loop_in(NS, Outpid, 1,
                                    ProcessorModule,
                                    Session);

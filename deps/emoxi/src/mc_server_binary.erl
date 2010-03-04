@@ -39,6 +39,7 @@ loop_out(OutSock) ->
             ok = mc_binary:send(OutSock, Data),
             loop_out(OutSock);
         {flush, From} -> From ! flushed;
+        {'EXIT', _From, Reason} -> exit(Reason);
         Other ->
             error_logger:info_msg("Unhandled message:  ~p~n", [Other]),
             exit({unhandled, ?MODULE, loop_out, Other})
