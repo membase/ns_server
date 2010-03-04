@@ -10,4 +10,8 @@ erl -noshell -setcookie nocookie -sname init -run init stop 2>&1 > /dev/null
 exec erl -pa `find . -type d -name ebin` \
     -setcookie nocookie \
     -run ns_bootstrap \
-    -config priv/erlang_app -- "$@"
+    -sasl sasl_error_logger false \
+    -sasl error_logger_mf_dir '"logs"' \
+    -sasl error_logger_mf_maxbytes 10485760 \
+    -sasl error_logger_mf_maxfiles 10 \
+    -- "$@"
