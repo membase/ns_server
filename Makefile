@@ -52,10 +52,16 @@ clean clean_all:
 	rm -rf test/log
 	rm -rf ebin
 
-test: test_unit
+test: test_unit test_unit_emoxi test_menelaus
 
 test_unit: ebins
 	erl $(EFLAGS) -noshell -s ns_server_test test -s init stop -kernel error_logger silent
+
+test_unit_emoxi: deps/emoxi
+	(cd deps/emoxi; $(MAKE) test_unit)
+
+test_menelaus: deps/menelaus
+	(cd deps/menelaus; $(MAKE) test)
 
 dialyzer: ebins
 	dialyzer -pa ebin -r .
