@@ -16,8 +16,7 @@
 start_link(PortNum, Env) ->
     start_link(PortNum, "0.0.0.0", Env).
 start_link(PortNum, AddrStr, Env) ->
-    Name = server_name(PortNum, AddrStr),
-    gen_server:start_link({local, Name}, ?MODULE,
+    gen_server:start_link(?MODULE,
                           [PortNum, AddrStr, Env], []).
 
 handle_call(_Request, _From, State) ->
@@ -141,13 +140,9 @@ start_session(NS, {ProtocolModule, ProcessorModule, ProcessorEnv}) ->
 session(Parent, Sock, ProtocolModule, ProcessorModule, ProcessorSession) ->
     % Spawn a linked, protocol-specific output-loop/writer process.
     OutPid = spawn_link(fun() ->
-                                Mref2 = erlang:monitor(process, Parent),
+                                _Mref2 = erlang:monitor(process, Parent),
                                 ProtocolModule:loop_out(Sock)
                         end),
     % Continue with a protocol-specific input-loop to receive messages.
     ProtocolModule:loop_in(Sock, OutPid, 1,
                            ProcessorModule, ProcessorSession).
-
-server_name(PortNum, AddrStr) ->
-    list_to_atom("mc_accept-" ++ integer_to_list(PortNum) ++ "_" ++ AddrStr).
-
