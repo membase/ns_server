@@ -23,7 +23,9 @@ do_initialization() ->
     case global:register_name(?MODULE, self()) of
     yes ->
         error_logger:info_msg("dist_sup_dispatch: starting global singleton.~n"),
-        global_singleton_supervisor:start_link();
+        {ok, Pid} = global_singleton_supervisor:start_link(),
+        ns_log:log(?MODULE, 1, "Global singleton started on node ~p", [node()]),
+        {ok, Pid};
     no ->
         Pid = global:whereis_name(?MODULE),
         true = is_pid(Pid),
