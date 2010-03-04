@@ -39,6 +39,8 @@ loop_out(OutSock) ->
     receive
         {switch, ProtocolModule} ->
             ProtocolModule:loop_out(OutSock);
+        {'DOWN', _MonitorRef, _Type, _Object, Info} ->
+            exit({exited, Info});
         stop -> ok
     end.
 

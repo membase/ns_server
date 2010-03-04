@@ -1,12 +1,36 @@
-% Copyright (c) 2010, NorthScale, Inc.
-% All rights reserved.
-
 -module(mc_accept).
 
--include_lib("eunit/include/eunit.hrl").
+-behaviour(gen_server).
 
--export([start_link/2, start_link/3,
-         init/3, session/4]).
+%% API
+-export([start_link/2, start_link/3]).
+
+%% gen_server callbacks
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2,
+         terminate/2, code_change/3]).
+
+-export([session/5]).
+
+-record(state, {listener, acceptor, env}).
+
+start_link(PortNum, Env) ->
+    start_link(PortNum, "0.0.0.0", Env).
+start_link(PortNum, AddrStr, Env) ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE,
+                          [PortNum, AddrStr, Env], []).
+
+handle_call(_Request, _From, State) ->
+    Reply = ok,
+    {reply, Reply, State}.
+
+handle_cast(_Msg, State) ->
+    {noreply, State}.
+
+terminate(_Reason, _State) ->
+    ok.
+
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
 
 % Starting the server...
 %
@@ -27,15 +51,7 @@
 %   cmd(...)
 %
 
-start_link(PortNum, Env) ->
-    start_link(PortNum, "0.0.0.0", Env).
-start_link(PortNum, AddrStr, Env) ->
-    {ok, spawn_link(?MODULE, init, [PortNum, AddrStr, Env])}.
-
-% Note: this cannot be a gen_server, since our accept_loop
-% has its own receive blocking implementation.
-
-init(PortNum, AddrStr, Env) ->
+init([PortNum, AddrStr, Env]) ->
     case inet_parse:address(AddrStr) of
         {ok, Addr} ->
             case gen_tcp:listen(PortNum, [binary,
@@ -43,57 +59,90 @@ init(PortNum, AddrStr, Env) ->
                                           {packet, raw},
                                           {active, false},
                                           {ip, Addr}]) of
-                {ok, L} -> accept_loop(L, Env);
+                {ok, Listener} ->
+                    {ok, Ref} = prim_inet:async_accept(Listener, -1),
+                    {ok, #state{listener = Listener,
+                                acceptor = Ref,
+                                env = Env}};
                 Error   -> ns_log:log(?MODULE, 0002, "listen error: ~p",
                                       [{PortNum, AddrStr, Error}]),
-                           ok % A normal exit, prevents supervisor exit.
+                           {stop, Error}
             end;
         Error -> ns_log:log(?MODULE, 0003, "parse address error: ~p",
                             [AddrStr]),
-                 {error, Error}
+                 {stop, Error}
+    end.
+
+handle_info({inet_async, ListSock, Ref, {ok, CliSocket}},
+            #state{listener=ListSock, acceptor=Ref, env=Env} = State) ->
+    try
+        case set_sockopt(ListSock, CliSocket) of
+            ok              -> ok;
+            {error, Reason} -> exit({set_sockopt, Reason})
+        end,
+
+        start_session(CliSocket, Env),
+
+        %% %% New client connected - spawn a new process using the simple_one_for_one
+        %% %% supervisor.
+        %% {ok, Pid} = tcp_server_app:start_client(),
+        %% gen_tcp:controlling_process(CliSocket, Pid),
+        %% %% Instruct the new FSM that it owns the socket.
+        %% Module:set_socket(Pid, CliSocket),
+
+        %% Signal the network driver that we are ready to accept another connection
+        case prim_inet:async_accept(ListSock, -1) of
+            {ok,    NewRef} -> ok;
+            {error, NewRef} -> exit({async_accept, inet:format_error(NewRef)})
+        end,
+
+        {noreply, State#state{acceptor=NewRef}}
+    catch exit:Why ->
+            error_logger:error_msg("Error in async accept: ~p.\n", [Why]),
+            {stop, Why, State}
+    end;
+
+handle_info(Something, State) ->
+    error_logger:info_msg("Unhandled message: ~p~n", [Something]),
+    {noreply, State}.
+
+%% Taken from prim_inet.  We are merely copying some socket options
+%% from the listening socket to the new client socket.
+set_sockopt(ListSock, CliSocket) ->
+    true = inet_db:register_socket(CliSocket, inet_tcp),
+    case prim_inet:getopts(ListSock, [active, nodelay, keepalive, delay_send, priority, tos]) of
+        {ok, Opts} ->
+            case prim_inet:setopts(CliSocket, Opts) of
+                ok    -> ok;
+                Error -> gen_tcp:close(CliSocket), Error
+            end;
+        Error ->
+            gen_tcp:close(CliSocket), Error
     end.
 
 % Accept incoming connections.
-accept_loop(LS, {ProtocolModule, ProcessorModule, ProcessorEnv}) ->
-    eat_exit_sessions(),
-    {ok, NS} = gen_tcp:accept(LS),
+start_session(NS, {ProtocolModule, ProcessorModule, ProcessorEnv}) ->
     % Ask the processor for a new session object.
     case ProcessorModule:session(NS, ProcessorEnv) of
-        {ok, ProcessorEnv2, ProcessorSession} ->
-            % We use spawn_link with trap_exit, so that if our supervisor
-            % kills us (such as due to a reconfiguration), we propagate
-            % the kill to our session children.  But, a dying session
-            % child will not take down us or propagate back.
-            process_flag(trap_exit, true),
+        {ok, _ProcessorEnv2, ProcessorSession} ->
             % Do spawn_link of a session-handling process.
-            Pid = spawn_link(?MODULE, session,
-                             [NS, ProtocolModule,
-                              ProcessorModule, ProcessorSession]),
-            gen_tcp:controlling_process(NS, Pid),
-            accept_loop(LS, {ProtocolModule, ProcessorModule, ProcessorEnv2});
+            Pid = spawn(?MODULE, session,
+                        [self(), NS, ProtocolModule,
+                         ProcessorModule, ProcessorSession]),
+            gen_tcp:controlling_process(NS, Pid);
         Error ->
             ns_log:log(?MODULE, 0001, "could not start session: ~p",
                        [Error]),
-            gen_tcp:close(NS),
-            accept_loop(LS, {ProtocolModule, ProcessorModule, ProcessorEnv})
-    end.
-
-eat_exit_sessions() ->
-    % We do a quick non-blocking receive to eat any EXIT notifications.
-    receive
-        {'EXIT', _ChildPid, _Reason} ->
-            % ?debugVal({exit_session, ChildPid, Reason}),
-            eat_exit_sessions();
-        Unhandled ->
-            exit({unhandled, ?MODULE, eat_exit_sessions, Unhandled})
-    after 0 ->
-        ok
+            gen_tcp:close(NS)
     end.
 
 % The main entry-point/driver for a session-handling process.
-session(Sock, ProtocolModule, ProcessorModule, ProcessorSession) ->
+session(Parent, Sock, ProtocolModule, ProcessorModule, ProcessorSession) ->
     % Spawn a linked, protocol-specific output-loop/writer process.
-    OutPid = spawn_link(ProtocolModule, loop_out, [Sock]),
+    OutPid = spawn_link(fun() ->
+                                Mref2 = erlang:monitor(process, Parent),
+                                ProtocolModule:loop_out(Sock)
+                        end),
     % Continue with a protocol-specific input-loop to receive messages.
     ProtocolModule:loop_in(Sock, OutPid, 1,
                            ProcessorModule, ProcessorSession).

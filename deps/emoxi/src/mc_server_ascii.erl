@@ -21,7 +21,9 @@ loop_in(InSock, OutPid, CmdNum, Module, Session) ->
             loop_in(InSock, OutPid, CmdNum + 1, Module, Session2);
         {error, closed} ->
             OutPid ! stop,
-            ok
+            ok;
+        {'DOWN', _MonitorRef, _Type, _Object, _Info} -> ok;
+        X -> error_logger:info_msg("WTF is ~p?~n", [X])
     end.
 
 loop_in_prefix(Prefix, InSock, OutPid, CmdNum, Module, Session) ->
@@ -32,16 +34,23 @@ loop_in_prefix(Prefix, InSock, OutPid, CmdNum, Module, Session) ->
             loop_in(InSock, OutPid, CmdNum + 1, Module, Session2);
         {error, closed} ->
             OutPid ! stop,
-            ok
+            ok;
+        {'DOWN', _MonitorRef, _Type, _Object, _Info} -> ok
     end.
 
 loop_out(OutSock) ->
     receive
         {send, _CmdNum, Data} ->
-            ok = mc_ascii:send(OutSock, Data),
-            loop_out(OutSock);
+            case mc_ascii:send(OutSock, Data) of
+                ok -> loop_out(OutSock);
+                {error, closed} -> ok;
+                E ->
+                    error_logger:info_msg("Unexpected error in send: ~p~n", [E])
+            end;
         {flush, From} -> From ! flushed;
         stop -> ok;
+        {'DOWN', _MonitorRef, _Type, _Object, Info} ->
+            exit({exited, Info});
         Other ->
             error_logger:info_msg("Unhandled message:  ~p~n", [Other]),
             exit({unhandled, ?MODULE, loop_out, Other})
