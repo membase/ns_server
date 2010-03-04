@@ -813,11 +813,25 @@
           <div class="pat_10">
             <div class="normal text_12">
             Sample Java Client Manager connection string:<br />
+            {% if (b.name != "default") { %}
 <pre>URI base = new URI("{%= h(document.location.protocol) %}//{%= h(document.location.host) %}{%= h(b.uri) %}");
-ClientManager manager = new ClientManager(base, "{%= h(b.name) %}", "********");
+ClientManager manager = new ClientManager(base, 
+                                          "{%= h(b.name) %}", 
+                                          "{%= h(b.name) %}");
 MemcachedClient client = manager.getClient();</pre>
+            {% }
+               else { %}
+<pre>URI base = new URI("{%= h(document.location.protocol) %}//{%= h(document.location.host) %}{%= h(b.uri) %}");
+ClientManager manager = new ClientManager(base);
+MemcachedClient client = manager.getClient();</pre>
+             {% }; %}
             </div>
+            {% if (b.name != "default") { %}
             <p class="block pas_20 info_text">NOTE: The username and password for this cache bucket is the same as the bucket name above.</p>
+            {% }
+               else { %}
+            <p class="block pas_20 info_text">NOTE: This will create a connection to the anonymous authentication "default" bucket.</p>
+            {% }; %}            
             <div class="right save_cancel">
               <button class="save_button jqmClose float_right" type="submit">OK</button>
             </div>
