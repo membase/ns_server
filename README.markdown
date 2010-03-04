@@ -52,6 +52,7 @@ Before you start the server, you may need to do the following
   * If your sym links are correct, you should be able to cd <REPO_ROOT>/priv
     and run:
 ./memcached -E ./engines/default_engine.so -e "engine=./engines/default_engine.so" -vvv
+    NOTE: the emoxi tests will run this from ../../priv
   * If you're not doing sym links, instead make sure that the
     memcached/.libs/default_engine.so and
     bucket_engine/.libs/bucket_engine.so

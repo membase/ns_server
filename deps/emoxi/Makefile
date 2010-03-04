@@ -22,13 +22,11 @@ MEMCACHED=/usr/local/bin/memcached
 
 MEMCACHED_LIBS=$(realpath $(dir $(MEMCACHED)).libs)
 
-MEMCACHED_ENGINE=$(MEMCACHED_LIBS)/default_engine.so
-
-MEMCACHED = ../../priv/memcached
-MEMCACHED_PORT = 11211
-MEMCACHED_DEFAULT_ENGINE = ../../priv/engines/default_engine.so
-MEMCACHED_BUCKET_ENGINE = ../../priv/engines/bucket_engine.so
-MEMCACHED_ENGINE_STRING = "admin=_admin;engine=$(MEMCACHED_DEFAULT_ENGINE);default_bucket_name=default;auto_create=false"
+MEMCACHED=../../priv/memcached
+MEMCACHED_PORT=11211
+MEMCACHED_DEFAULT_ENGINE=../../priv/engines/default_engine.so
+MEMCACHED_BUCKET_ENGINE=../../priv/engines/bucket_engine.so
+MEMCACHED_ENGINE_STRING="admin=_admin;engine=$(MEMCACHED_DEFAULT_ENGINE);default_bucket_name=default"
 
 MEMCACHED_COMMAND=$(MEMCACHED) -p $(MEMCACHED_PORT) -d -P /tmp/memcached.pid -E $(MEMCACHED_BUCKET_ENGINE) -e $(MEMCACHED_ENGINE_STRING)
 
@@ -82,7 +80,7 @@ test_unit: ebins $(NS_SERVER_EBIN)
 	kill `cat /tmp/memcached.pid`
 
 test_unit_verbose: ebins $(NS_SERVER_EBIN)
-	$(MEMCACHED) -p 11211 -d -P /tmp/memcached.pid -E $(MEMCACHED_ENGINE)
+	$(MEMCACHED_COMMAND)
 	erl $(EFLAGS) -noshell -s mc_test test -s init stop
 	kill `cat /tmp/memcached.pid`
 
