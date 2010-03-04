@@ -16,7 +16,8 @@
 start_link(PortNum, Env) ->
     start_link(PortNum, "0.0.0.0", Env).
 start_link(PortNum, AddrStr, Env) ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE,
+    Name = server_name(PortNum, AddrStr),
+    gen_server:start_link({local, Name}, ?MODULE,
                           [PortNum, AddrStr, Env], []).
 
 handle_call(_Request, _From, State) ->
@@ -146,4 +147,7 @@ session(Parent, Sock, ProtocolModule, ProcessorModule, ProcessorSession) ->
     % Continue with a protocol-specific input-loop to receive messages.
     ProtocolModule:loop_in(Sock, OutPid, 1,
                            ProcessorModule, ProcessorSession).
+
+server_name(PortNum, AddrStr) ->
+    list_to_atom("mc_accept-" ++ integer_to_list(PortNum) ++ "_" ++ AddrStr).
 
