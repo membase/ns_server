@@ -131,7 +131,7 @@
                 <a href="javascript:OverviewSection.startJoinCluster();" class="button_medium float_right" style="margin-top:-9px;">Join Cluster</a>
                 {% }; %}
                 <div class="alert_1">{%=V.setAttribute('class', isCritical ? 'alert_1' : '')%}</div>
-                <a>{%= isCritical ? 'Critical' : 'Healthy' %}</a>
+                <a href="javascript:nav.go('alerts');">{%= isCritical ? 'Critical' : 'Healthy' %}</a>
                 <span class="comment">({%= h(V.count(nodesCount, 'server node')) %} managing <a href="javascript:nav.go('buckets');">{%=h(V.count(bucketsCount, 'bucket'))%}</a>)</span>
             </div>
         </div>

@@ -821,8 +821,6 @@ var OverviewSection = {
         mcdMemAllocd += n.mcdMemoryAllocated;
       });
     var mcdItemUtilization = Math.round((mcdMemAllocd/1048576)*100/mcdMemReserved);
-    // TODO: need server-side help for second condition:
-    // '2. server node in cluster has been or is unresponsive'
 
     var canJoinCluster = (nodes.length == 1);
 
