@@ -63,7 +63,7 @@ child_spec_accept(Name, PoolConfig) ->
            {mc_pool, Name}},
     Args = [PortNum, AddrStr, Env],
     {{mc_accept, Args}, {mc_accept, start_link, Args},
-     temporary, 10, worker, []}.
+     permanent, 10, worker, []}.
 
 reconfig(Name) ->
     case ns_config:search_prop(ns_config:get(), pools, Name) of
