@@ -46,17 +46,17 @@ handle_cast(Msg, State) ->
     {noreply, State}.
 
 handle_info({'EXIT', Pid, shutdown},
-            State = #state{child=Pid, action={join, RemoteNode, NewCookie}}) ->
+            #state{child=Pid, action={join, RemoteNode, NewCookie}}) ->
     error_logger:info_msg("ns_cluster: joining cluster~n"),
     true = erlang:set_cookie(node(), NewCookie),
     true = erlang:set_cookie(RemoteNode, NewCookie),
     ns_server_sup:start_link(),
     {noreply, init([])};
 handle_info({'EXIT', Pid, shutdown},
-            State = #state{child=Pid, action=leave}) ->
+            #state{child=Pid, action=leave}) ->
     error_logger:info_msg("ns_cluster: leaving cluster~n"),
     {noreply, init([])};
-handle_info({'EXIT', Pid, Reason}, State) ->
+handle_info({'EXIT', _Pid, Reason}, State) ->
     error_logger:error_report("ns_cluster: got exit ~p in state ~p.~n",
                               [Reason, State]),
     {stop, Reason, State}.
