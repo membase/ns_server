@@ -2,8 +2,6 @@
 %%  1. monitors an existing instance and crashes when it exits.
 %%  2. registers itself as a global process and runs a supervisor.
 
--define(DEATH_TIMEOUT, 5000).
-
 -module(dist_sup_dispatch).
 
 -export([start_link/0, init/1]).
@@ -40,17 +38,8 @@ drown_in_lake(Pid) ->
         {'EXIT', Pid, Reason} ->
             error_logger:info_msg("dist_sup_dispatch: Child exited with reason ~p~n",
                                   [Reason]),
-        {drowned, Reason}
-    after ?DEATH_TIMEOUT ->
-        shoot_in_head(Pid)
+            {shutdown, Reason}
     end.
-
-shoot_in_head(Pid) ->
-    error_logger:info_msg("dist_sup_dispatch: Shooting ~p in the head.~n", [Pid]),
-        exit(Pid, kill),
-        receive
-            {'DOWN', _MRef, process, Pid, Reason} -> {shot_in_head, Reason}
-        end.
 
 wait(Pid) ->
     receive
