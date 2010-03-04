@@ -20,10 +20,7 @@ loop_in(InSock, OutPid, CmdNum, Module, Session) ->
                 Module:cmd(Cmd, Session, InSock, {OutPid, CmdNum}, CmdArgs),
             loop_in(InSock, OutPid, CmdNum + 1, Module, Session2);
         {error, closed} ->
-            OutPid ! stop,
-            ok;
-        {'DOWN', _MonitorRef, _Type, _Object, _Info} -> ok;
-        X -> error_logger:info_msg("WTF is ~p?~n", [X])
+            ok
     end.
 
 loop_in_prefix(Prefix, InSock, OutPid, CmdNum, Module, Session) ->
@@ -33,9 +30,7 @@ loop_in_prefix(Prefix, InSock, OutPid, CmdNum, Module, Session) ->
                 Module:cmd(Cmd, Session, InSock, {OutPid, CmdNum}, CmdArgs),
             loop_in(InSock, OutPid, CmdNum + 1, Module, Session2);
         {error, closed} ->
-            OutPid ! stop,
-            ok;
-        {'DOWN', _MonitorRef, _Type, _Object, _Info} -> ok
+            ok
     end.
 
 loop_out(OutSock) ->
@@ -48,9 +43,6 @@ loop_out(OutSock) ->
                     error_logger:info_msg("Unexpected error in send: ~p~n", [E])
             end;
         {flush, From} -> From ! flushed;
-        stop -> ok;
-        {'DOWN', _MonitorRef, _Type, _Object, Info} ->
-            exit({exited, Info});
         Other ->
             error_logger:info_msg("Unhandled message:  ~p~n", [Other]),
             exit({unhandled, ?MODULE, loop_out, Other})

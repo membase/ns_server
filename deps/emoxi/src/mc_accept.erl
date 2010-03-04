@@ -9,9 +9,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--export([session/5]).
-
--record(state, {listener, acceptor, env}).
+-record(state, {listener, acceptor, client_sup}).
 
 start_link(PortNum, Env) ->
     start_link(PortNum, "0.0.0.0", Env).
@@ -60,10 +58,12 @@ init([PortNum, AddrStr, Env]) ->
                                           {active, false},
                                           {ip, Addr}]) of
                 {ok, Listener} ->
+                    {S, E, M} = Env,
+                    {ok, ClientSup} = mc_client_sup:start_link(S, E, M),
                     {ok, Ref} = prim_inet:async_accept(Listener, -1),
                     {ok, #state{listener = Listener,
                                 acceptor = Ref,
-                                env = Env}};
+                                client_sup = ClientSup}};
                 Error   -> ns_log:log(?MODULE, 0002, "listen error: ~p",
                                       [{PortNum, AddrStr, Error}]),
                            {stop, Error}
@@ -74,21 +74,14 @@ init([PortNum, AddrStr, Env]) ->
     end.
 
 handle_info({inet_async, ListSock, Ref, {ok, CliSocket}},
-            #state{listener=ListSock, acceptor=Ref, env=Env} = State) ->
+            #state{listener=ListSock, acceptor=Ref, client_sup=ClientSup} = State) ->
     try
         case set_sockopt(ListSock, CliSocket) of
             ok              -> ok;
             {error, Reason} -> exit({set_sockopt, Reason})
         end,
 
-        start_session(CliSocket, Env),
-
-        %% %% New client connected - spawn a new process using the simple_one_for_one
-        %% %% supervisor.
-        %% {ok, Pid} = tcp_server_app:start_client(),
-        %% gen_tcp:controlling_process(CliSocket, Pid),
-        %% %% Instruct the new FSM that it owns the socket.
-        %% Module:set_socket(Pid, CliSocket),
+        mc_client_sup:start_child(ClientSup, CliSocket),
 
         %% Signal the network driver that we are ready to accept another connection
         case prim_inet:async_accept(ListSock, -1) of
@@ -119,30 +112,3 @@ set_sockopt(ListSock, CliSocket) ->
         Error ->
             gen_tcp:close(CliSocket), Error
     end.
-
-% Accept incoming connections.
-start_session(NS, {ProtocolModule, ProcessorModule, ProcessorEnv}) ->
-    % Ask the processor for a new session object.
-    case ProcessorModule:session(NS, ProcessorEnv) of
-        {ok, _ProcessorEnv2, ProcessorSession} ->
-            % Do spawn_link of a session-handling process.
-            Pid = spawn(?MODULE, session,
-                        [self(), NS, ProtocolModule,
-                         ProcessorModule, ProcessorSession]),
-            gen_tcp:controlling_process(NS, Pid);
-        Error ->
-            ns_log:log(?MODULE, 0001, "could not start session: ~p",
-                       [Error]),
-            gen_tcp:close(NS)
-    end.
-
-% The main entry-point/driver for a session-handling process.
-session(Parent, Sock, ProtocolModule, ProcessorModule, ProcessorSession) ->
-    % Spawn a linked, protocol-specific output-loop/writer process.
-    OutPid = spawn_link(fun() ->
-                                _Mref2 = erlang:monitor(process, Parent),
-                                ProtocolModule:loop_out(Sock)
-                        end),
-    % Continue with a protocol-specific input-loop to receive messages.
-    ProtocolModule:loop_in(Sock, OutPid, 1,
-                           ProcessorModule, ProcessorSession).

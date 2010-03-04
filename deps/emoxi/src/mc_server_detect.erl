@@ -38,10 +38,7 @@ switch(ProtocolModule, ProcessorModule, ProcessorEnv,
 loop_out(OutSock) ->
     receive
         {switch, ProtocolModule} ->
-            ProtocolModule:loop_out(OutSock);
-        {'DOWN', _MonitorRef, _Type, _Object, Info} ->
-            exit({exited, Info});
-        stop -> ok
+            ProtocolModule:loop_out(OutSock)
     end.
 
 session(_Sock, ProcessorEnv) ->
