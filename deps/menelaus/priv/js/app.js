@@ -1597,6 +1597,7 @@ _.extend(ViewHelpers, {
 
   setPercentBar: function (percents) {
     return this.thisElement(function (q) {
+      percents = (percents << 0); // coerces NaN and infinities to 0
       q.find('.used').css('width', String(percents)+'%')
     });
   },
