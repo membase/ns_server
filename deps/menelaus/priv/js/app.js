@@ -1800,7 +1800,7 @@ function genericDialog(options) {
 
 function showAbout() {
   var components = DAO.componentsVersion;
-  $('#about_versions').text("Version: " + components['ns_server'] + ", Kernel: " + components['kernel']);
+  $('#about_versions').text("Version: " + components['ns_server']);
   showDialog('about_server_dialog');
 }
 
