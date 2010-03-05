@@ -391,8 +391,10 @@ function reloadAppWithDelay(millis) {
   });
 }
 
-function reloadAppNoArg() {
-  reloadApp();
+function mkReloadWithDelay(millis) {
+  return function () {
+    reloadAppWithDelay(millis);
+  }
 }
 
 // this thing ensures that a back button pressed during some modal

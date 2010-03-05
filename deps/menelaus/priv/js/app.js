@@ -888,6 +888,8 @@ var OverviewSection = {
       eventBindings: [['.save_button', 'click', function (e) {
         e.preventDefault();
         overlayWithSpinner('#eject_confirmation_dialog');
+
+        var reload = mkReloadWithDelay();
         $.ajax({
           type: 'POST',
           url: DAO.cells.currentPoolDetails.value.controllers.ejectNode.uri,
@@ -895,10 +897,6 @@ var OverviewSection = {
           success: reload,
           errors: reload
         });
-
-        function reload() {
-          reloadAppWithDelay();
-        }
       }]]
     });
   },
@@ -915,12 +913,13 @@ var OverviewSection = {
         e.preventDefault();
 
         overlayWithSpinner('#eject_confirmation_dialog');
+        var reload = mkReloadWithDelay();
         $.ajax({
           type: 'POST',
           url: DAO.cells.currentPoolDetails.value.controllers.ejectNode.uri,
           data: {otpNode: node.otpNode},
-          error: reloadAppNoArg,
-          success: reloadAppNoArg
+          error: reload,
+          success: reload
         });
       }]]
     });
