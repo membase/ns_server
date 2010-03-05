@@ -18,7 +18,7 @@ version() ->
              _                 -> []
          end,
     V = case proplists:get_value(ns_server, VA) of
-            undefined -> case proplists:get_value(emoxi, VA) of
+            undefined -> case proplists:get_value(ns_server, VA) of
                              undefined -> "unknown";
                              X2        -> X2
                          end;
