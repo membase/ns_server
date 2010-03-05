@@ -166,7 +166,7 @@ get_buckets_hks(PoolId, BucketIds, Params) ->
 %%                   C(delete_hits) C(delete_misses) C(evictions)
 
 get_hks(_PoolId, BucketId, _Params) ->
-    TopKeys = stats_aggregator:get_topkeys(BucketId),
+    {ok, TopKeys} = stats_aggregator:get_topkeys(BucketId),
     TopKeyList = lists:map(
         fun ({Key, Stats}) ->
                 Ctime = dict:fetch("ctime", Stats) + 1, % add one to avoid divide by zero
@@ -288,7 +288,8 @@ get_stats(PoolId, BucketId, _Params) ->
 %  ...]
 
 get_stats_raw(_PoolId, BucketId, SamplesNum) ->
-    stats_aggregator:get_stats(BucketId, SamplesNum).
+    {ok, Stats} = stats_aggregator:get_stats(BucketId, SamplesNum),
+    Stats.
 
 sum_stats_ops(Stats) ->
     sum_stats(["cmd_get", "cmd_set",

@@ -28,13 +28,13 @@ init([]) ->
     {ok, #state{vals=dict:new(), topkeys=dict:new()}}.
 
 handle_call({get, Hostname, Port, Bucket, Count}, _From, State) ->
-    Reply = ringdict:to_dict(Count,
+    Reply = (catch {ok, ringdict:to_dict(Count,
                              dict:fetch({Hostname, Port, Bucket},
-                                        State#state.vals)),
+                                        State#state.vals))}),
     {reply, Reply, State};
 handle_call({get, Hostname, Port, Count}, _From, State) ->
     Reply =
-        (catch dict:fold(
+        (catch {ok, dict:fold(
                  fun ({H, P, _B}, V, A) ->
                          case {H, P} of
                              {Hostname, Port} ->
@@ -51,11 +51,11 @@ handle_call({get, Hostname, Port, Count}, _From, State) ->
                          end
                  end,
                  dict:new(),
-                 State#state.vals)),
+                 State#state.vals)}),
     {reply, Reply, State};
 handle_call({get, Bucket, Count}, _From, State) ->
     Reply =
-        (catch dict:fold(
+        (catch {ok, dict:fold(
                  fun ({_H, _P, B}, V, A) ->
                          case B of
                              Bucket ->
@@ -72,11 +72,11 @@ handle_call({get, Bucket, Count}, _From, State) ->
                          end
                  end,
                  dict:new(),
-                 State#state.vals)),
+                 State#state.vals)}),
     {reply, Reply, State};
 handle_call({get, Count}, _From, State) ->
     Reply =
-        (catch dict:fold(
+        (catch {ok, dict:fold(
                  fun ({_H, _P, _B}, V, A) ->
                          D = combine_stats(Count, V, A),
                          % Need a final to_int since combine_stats
@@ -89,10 +89,10 @@ handle_call({get, Count}, _From, State) ->
                            D)
                  end,
                  dict:new(),
-                 State#state.vals)),
+                 State#state.vals)}),
     {reply, Reply, State};
 handle_call({get_topkeys, Bucket}, _From, State) ->
-    Reply = (catch dict:fold(
+    Reply = (catch {ok, dict:fold(
             fun ({_Host, _Port, B}, Dict, Acc)->
                     case B of
                         Bucket ->
@@ -105,7 +105,7 @@ handle_call({get_topkeys, Bucket}, _From, State) ->
                     end
             end,
             dict:new(),
-            State#state.topkeys)),
+            State#state.topkeys)}),
     {reply, Reply, State}.
 
 handle_cast({received, T, Hostname, Port, Bucket, Stats}, State) ->

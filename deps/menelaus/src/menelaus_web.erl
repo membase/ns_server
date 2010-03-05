@@ -288,7 +288,7 @@ build_nodes_info(MyPool, IncludeOtp) ->
                         end,
                         0,
                         BucketsAll),
-    Stats = stats_aggregator:get_stats(1),
+    {ok, Stats} = stats_aggregator:get_stats(1),
     NodesBucketMemoryAllocated = case dict:find("bytes", Stats) of
         {ok, [Bytes]} -> Bytes;
         error -> 0
