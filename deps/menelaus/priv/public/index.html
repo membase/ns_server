@@ -821,15 +821,15 @@
             <div class="normal text_12">
             Sample Java Client Manager connection string:<br />
               {% if (b.name != "default") { %}
-<pre>URI base = new URI("{%= h(document.location.protocol) %}//{%= h(document.location.host) %}{%= h(b.uri) %}");
+<pre>URI base = new URI("{%= h(document.location.protocol) %}//{%= h(document.location.host) %}{%= h(b.uri) %}");<br />
 ClientManager manager = new ClientManager(base, 
                                           "{%= h(b.name) %}", 
-                                          "{%= h(b.name) %}");
+                                          "{%= h(b.name) %}");<br />
 MemcachedClient client = manager.getClient();</pre>
             {% }
                else { %}
-<pre>URI base = new URI("{%= h(document.location.protocol) %}//{%= h(document.location.host) %}{%= h(b.uri) %}");
-ClientManager manager = new ClientManager(base);
+<pre>URI base = new URI("{%= h(document.location.protocol) %}//{%= h(document.location.host) %}{%= h(b.uri) %}");<br />
+ClientManager manager = new ClientManager(base);<br />
 MemcachedClient client = manager.getClient();</pre>
              {% }; %}
             </div>
