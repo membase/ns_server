@@ -385,7 +385,7 @@ function reloadApp(middleCallback) {
 }
 
 function reloadAppWithDelay(millis) {
-  millis = millis || 1000;
+  millis = millis || 1500;
   reloadApp(function (reload) {
     _.delay(reload, millis);
   });
