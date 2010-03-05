@@ -236,7 +236,7 @@ build_pools() ->
                                    lists:map(fun ({K,V}) ->
                                                      {K, list_to_binary(V)}
                                              end,
-                                             proplists:delete(menelaus, ns_info:version()))}},
+                                             ns_info:version())}},
               {pools, Pools}]}.
 
 % {"default", [
