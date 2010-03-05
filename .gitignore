@@ -2,6 +2,9 @@
 *~
 .project
 .settings
+/cluster_config
+/cluster_start_all.sh
+/cluster_stop_all.sh
 TAGS
 config
 cov.html
