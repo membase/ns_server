@@ -92,7 +92,7 @@ handle_call(Msg, _From, State) ->
     {reply, error, State}.
 
 handle_info({nodeup, Node}, State) ->
-    ns_log:log(?MODULE, 0004, "node up: ~p", [Node]),
+    ns_log:log(?MODULE, 0004, "A node went up: ~p", [Node]),
     % We might be tempted to proactively push/pull/sync
     % our configs with the "new" Node.  Instead, it's
     % cleaner to asynchronous do a gen_event:notify()
@@ -102,7 +102,7 @@ handle_info({nodeup, Node}, State) ->
     {noreply, State};
 
 handle_info({nodedown, Node}, State) ->
-    ns_log:log(?MODULE, 0005, "node down: ~p", [Node]),
+    ns_log:log(?MODULE, 0005, "A node went down: ~p", [Node]),
     {ok, _Tref} = timer:send_after(5000, notify_clients),
     {noreply, State};
 
@@ -138,7 +138,7 @@ do_nodes_wanted() ->
 do_nodes_wanted_updated(NodeListIn) ->
     {ok, Cookie} = cookie_sync(),
     NodeList = lists:usort(NodeListIn),
-    error_logger:info_msg("nodes_wanted updated: ~p, with cookie: ~p~n",
+    error_logger:info_msg("ns_node_disco: nodes_wanted updated: ~p, with cookie: ~p~n",
                           [NodeList, erlang:get_cookie()]),
     erlang:set_cookie(node(), Cookie),
     PongList = lists:filter(fun(N) ->
@@ -146,7 +146,7 @@ do_nodes_wanted_updated(NodeListIn) ->
                                     net_adm:ping(N) == pong
                             end,
                             NodeList),
-    error_logger:info_msg("nodes_wanted pong: ~p, with cookie: ~p~n",
+    error_logger:info_msg("ns_node_disco: nodes_wanted pong: ~p, with cookie: ~p~n",
                           [PongList, erlang:get_cookie()]),
     ok.
 
@@ -183,7 +183,7 @@ cookie_gen() ->
 
 cookie_init() ->
     NewCookie = cookie_gen(),
-    ns_log:log(?MODULE, 0001, "otp cookie generated: ~p",
+    ns_log:log(?MODULE, 0001, "Initial otp cookie generated: ~p",
                [NewCookie]),
     ok = cookie_set(NewCookie),
     {ok, NewCookie}.
@@ -204,7 +204,7 @@ cookie_get() ->
 % Will generate a cookie if needed for the first time.
 %
 cookie_sync() ->
-    error_logger:info_msg("cookie_sync~n"),
+    error_logger:info_msg("ns_node_disco cookie_sync~n"),
     case cookie_get() of
         undefined ->
             case erlang:get_cookie() of
@@ -213,8 +213,8 @@ cookie_sync() ->
                     %       so, we should check that assumption.
                     cookie_init();
                 CurrCookie ->
-                    ns_log:log(?MODULE, 0002, "otp cookie inherited: ~p",
-                               [CurrCookie]),
+                    ns_log:log(?MODULE, 0002, "Node ~p inherited otp cookie ~p from cluster",
+                               [self(), CurrCookie]),
                     cookie_set(CurrCookie),
                     {ok, CurrCookie}
             end;
@@ -222,8 +222,8 @@ cookie_sync() ->
             case erlang:get_cookie() of
                 WantedCookie -> {ok, WantedCookie};
                 _ ->
-                    ns_log:log(?MODULE, 0003, "otp cookie sync: ~p",
-                               [WantedCookie]),
+                    ns_log:log(?MODULE, 0003, "Node ~p synchronized otp cookie ~p from cluster",
+                               [self(), WantedCookie]),
                     erlang:set_cookie(node(), WantedCookie),
                     {ok, WantedCookie}
             end
