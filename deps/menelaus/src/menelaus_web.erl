@@ -681,7 +681,7 @@ handle_join(Req, OtherHost, OtherPort, OtherUser, OtherPswd) ->
         false ->
             % We are not an 'empty' node, so user should first remove
             % buckets, etc.
-            reply_json(Req, [list_to_binary("System cannot be joined in the current state.  Remove buckets, etc.")],400)
+            reply_json(Req, [list_to_binary("Your server cannot join this cluster because you have existing buckets configured on this server. Please remove them before joining a cluster.")],400)
     end.
 
 handle_join(Req, OtpNode, OtpCookie) ->
