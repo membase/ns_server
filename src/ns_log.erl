@@ -47,8 +47,6 @@ handle_call(recent, _From, State) ->
 
 % Inbound logging request.
 handle_cast({log, Module, Code, Fmt, Args}, State) ->
-    error_logger:info_msg("Logging ~p:~p(~p, ~p)~n",
-                          [Module, Code, Fmt, Args]),
     Category = categorize(Module, Code),
     NR = ringbuffer:add(#log_entry{module=Module, code=Code, msg=Fmt, args=Args,
                                    cat=Category,
@@ -106,6 +104,8 @@ log(Module, Code, Msg) ->
 
 -spec log(atom(), integer(), string(), list()) -> ok.
 log(Module, Code, Fmt, Args) ->
+    error_logger:info_msg("Logging ~p:~p(~p, ~p)~n",
+                          [Module, Code, Fmt, Args]),
     gen_server:cast({global, ?MODULE}, {log, Module, Code, Fmt, Args}).
 
 -spec recent() -> list(#log_entry{}).

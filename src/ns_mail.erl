@@ -30,15 +30,9 @@ handle_info({'EXIT', _Pid, Reason}, State) ->
     case Reason of
         normal ->
             error_logger:info_msg("ns_mail: successfully sent mail~n");
-        {error, Error, Desc} ->
-            try
-                ns_log:log(?MODULE, 0001, "error sending mail: ~p",
-                           [{Error, Desc}])
-            catch
-                _:_ ->
-                    error_logger:info_msg("ns_mail: error sending mail (could not log with ns_log): ~p~n",
-                                          [{Error, Desc}])
-            end
+        Error ->
+            ns_log:log(?MODULE, 0001, "error sending mail: ~p",
+                           [Error])
     end,
     {noreply, State}.
 

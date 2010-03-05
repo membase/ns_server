@@ -24,8 +24,8 @@ watch(Pid) ->
     error_logger:info_msg("Monitoring global singleton at ~p~n", [Pid]),
     receive
     LikelyExit ->
-        error_logger:info_msg("Global singleton supervisor at ~p exited. Restarting.~n",
-                              [Pid])
+        error_logger:info_msg("Global singleton supervisor at ~p exited for reason ~p. Restarting.~n",
+                              [Pid, LikelyExit])
     end.
 
 
