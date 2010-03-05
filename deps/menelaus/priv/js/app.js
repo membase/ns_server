@@ -1,11 +1,7 @@
 //= require <jquery.js>
 //= require <jqModal.js>
-// !not used!= require <raphael.js>
-// !not used!= require <g.raphael.js>
-// !not used!= require <g.line.js>
 //= require <jquery.flot.js>
 //= require <jquery.ba-bbq.js>
-// !not used!= require <jquery.jeditable.js>
 //= require <underscore.js>
 //= require <tools.tabs.js>
 //= require <jquery.cookie.js>
