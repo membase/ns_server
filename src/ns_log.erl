@@ -30,7 +30,9 @@
 -record(state, {recent}).
 
 start_link() ->
-    gen_server:start_link({global, ?MODULE}, ?MODULE, [], []).
+    Result = gen_server:start_link({global, ?MODULE}, ?MODULE, [], []),
+    ns_log:log(?MODULE, 4, "log server started on node ~p~n", [node()]),
+    Result.
 
 init([]) ->
     {ok, #state{recent=emptyRecent()}}.

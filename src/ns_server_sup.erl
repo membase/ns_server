@@ -26,11 +26,6 @@ pre_start() ->
 
 get_child_specs() ->
     [
-     %% This supervises the (or monitors an existing) global singleton
-     %% supervisor.  It's used by a few things below.
-     {dist_sup_dispatch, {dist_sup_dispatch, start_link, []},
-      permanent, 2000, worker, [dist_sup_dispatch]},
-
      {ns_config_sup, {ns_config_sup, start_link, []},
       permanent, infinity, supervisor,
       [ns_config_sup, ns_config, ns_config_default]},
@@ -38,6 +33,9 @@ get_child_specs() ->
      {ns_node_disco_sup, {ns_node_disco_sup, start_link, []},
       permanent, infinity, supervisor,
       [ns_node_disco_sup, ns_node_disco_events, ns_node_disco]},
+
+     {global_singleton_supervisor, {global_singleton_supervisor, start_link, []},
+      permanent, infinity, supervisor, [global_singleton_supervisor]},
 
      {ns_port_sup, {ns_port_sup, start_link, []},
       permanent, 10, worker,

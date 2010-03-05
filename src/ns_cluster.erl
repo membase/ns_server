@@ -30,14 +30,12 @@ handle_cast({join, RemoteNode, NewCookie}, State = #state{child=Pid, action=unde
     error_logger:info_msg("ns_cluster: joining cluster.~n"),
     ns_config:set(nodes_wanted, [node(), RemoteNode]),
     ns_config:set(otp, [{cookie, NewCookie}]),
-    true = exit(Pid, shutdown),
+    true = exit(Pid, shutdown), % Pull the rug out from under the app
     {noreply, State#state{action={join, RemoteNode, NewCookie}}};
 
 handle_cast(leave, State = #state{child=Pid, action=undefined}) ->
     ns_log:log(?MODULE, 0001, "leaving cluster"),
     NewCookie = ns_node_disco:cookie_gen(),
-    true = erlang:set_cookie(node(), NewCookie),
-    lists:foreach(fun erlang:disconnect_node/1, nodes()),
     ns_config:set(nodes_wanted, [node()]),
     ns_config:set(otp, [{cookie, NewCookie}]),
     true = exit(Pid, shutdown),
@@ -51,6 +49,7 @@ handle_cast(Msg, State) ->
 handle_info({'EXIT', Pid, shutdown},
             #state{child=Pid, action={join, RemoteNode, NewCookie}}) ->
     error_logger:info_msg("ns_cluster: joining cluster. Child has exited.~n"),
+    timer:sleep(1000), % Sleep for a second to let things settle
     true = erlang:set_cookie(node(), NewCookie),
     true = erlang:set_cookie(RemoteNode, NewCookie),
     {ok, State} = init([]),
@@ -58,6 +57,8 @@ handle_info({'EXIT', Pid, shutdown},
 handle_info({'EXIT', Pid, shutdown},
             #state{child=Pid, action=leave}) ->
     error_logger:info_msg("ns_cluster: leaving cluster~n"),
+    timer:sleep(1000),
+    lists:foreach(fun erlang:disconnect_node/1, nodes()),
     {ok, State} = init([]),
     {noreply, State};
 handle_info({'EXIT', _Pid, Reason}, State) ->
@@ -78,16 +79,14 @@ join(RemoteNode, NewCookie) ->
 % where the leaving RemoteNode is passed in as an argument.
 %
 leave(RemoteNode) ->
-    Result = (catch(rpc:call(RemoteNode, ?MODULE, leave, [], 500))),
-    error_logger:info_msg("ns_cluster: result of calling leave on ~p: ~p~n",
-                          [RemoteNode, Result]),
+    catch(rpc:call(RemoteNode, ?MODULE, leave, [], 500)),
+    erlang:disconnect_node(RemoteNode),
     NewWanted = lists:subtract(ns_node_disco:nodes_wanted(), [RemoteNode]),
     ns_config:set(nodes_wanted, NewWanted),
     % TODO: Do we need to reset our cluster's cookie, so that the
     % removed remote node, which might be down and not have received
     % our leave command, and which therefore still knows our cluster's
     % cookie, cannot re-join?
-    erlang:disconnect_node(RemoteNode),
     ok.
 
 leave() ->

@@ -12,7 +12,22 @@
 -export([init/1]).
 
 start_link() ->
-    supervisor:start_link({global, ?MODULE}, ?MODULE, []).
+    case supervisor:start_link({global, ?MODULE}, ?MODULE, []) of
+    {ok, Pid} -> {ok, Pid};
+    {error, {already_started, Pid}} ->
+        {ok, spawn_link(fun () -> watch(Pid) end)}
+    end.
+
+watch(Pid) ->
+    process_flag(trap_exit, true),
+    erlang:monitor(process, Pid),
+    error_logger:info_msg("Monitoring global singleton at ~p~n", [Pid]),
+    receive
+    LikelyExit ->
+        error_logger:info_msg("Global singleton supervisor at ~p exited. Restarting.~n",
+                              [Pid])
+    end.
+
 
 init([]) ->
     {ok,{{one_for_all, 5, 5},
