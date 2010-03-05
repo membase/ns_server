@@ -591,21 +591,21 @@
                     <div class="labeled_line">
                       <label class="block label for_input" for="uname_inp">Username:</label>
                       <div class="line_cnt">
-                        <input type="text" name="username" id="uname_inp" disabled class="text inp_short" />
-                        <a tabindex='1000' href="javascript:SettingsSection.gotoSetupAlerts();" class="text_11">Setup Email Alerts</a>
+                        <input tabindex="1" type="text" name="username" id="uname_inp" disabled class="text inp_short" />
+                        <a tabindex="4" href="javascript:SettingsSection.gotoSetupAlerts();" class="text_11 link">Setup Email Alerts</a>
                       </div>
                     </div>
                     <div class="labeled_line">
                       <label class="block label for_input" for="pass_inp">Password:</label>
                       <div class="line_cnt">
-                        <input name="password" type="password" id="pass_inp" disabled class="text inp_short"/>
+                        <input tabindex="2" name="password" type="password" id="pass_inp" disabled class="text inp_short"/>
                       </div>
                     </div>
                     <input type="hidden" name="username" value=""><input type="hidden" name="password" value="">
                     <div class="labeled_line">
                       <label class="block label for_input" for="verifyPassword">Verify Password:</label>
                       <div class="line_cnt">
-                        <input name="verifyPassword" id="verifyPassword" type="password" class="text inp_short"/>
+                        <input tabindex="3" name="verifyPassword" id="verifyPassword" type="password" class="text inp_short"/>
                         <span class="dont-match">Password doesn't match</span>
                       </div>
                     </div>
