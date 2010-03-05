@@ -47,11 +47,10 @@ handle_cast(Msg, State) ->
     {noreply, State}.
 
 handle_info({'EXIT', Pid, shutdown},
-            #state{child=Pid, action={join, RemoteNode, NewCookie}}) ->
+            #state{child=Pid, action={join, _RemoteNode, NewCookie}}) ->
     error_logger:info_msg("ns_cluster: joining cluster. Child has exited.~n"),
     timer:sleep(1000), % Sleep for a second to let things settle
     true = erlang:set_cookie(node(), NewCookie),
-    true = erlang:set_cookie(RemoteNode, NewCookie),
     {ok, State} = init([]),
     {noreply, State};
 handle_info({'EXIT', Pid, shutdown},

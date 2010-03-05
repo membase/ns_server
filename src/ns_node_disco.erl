@@ -142,7 +142,6 @@ do_nodes_wanted_updated(NodeListIn) ->
                           [NodeList, erlang:get_cookie()]),
     erlang:set_cookie(node(), Cookie),
     PongList = lists:filter(fun(N) ->
-                                    erlang:set_cookie(N, Cookie),
                                     net_adm:ping(N) == pong
                             end,
                             NodeList),
