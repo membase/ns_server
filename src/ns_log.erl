@@ -31,7 +31,7 @@
 
 start_link() ->
     Result = gen_server:start_link({global, ?MODULE}, ?MODULE, [], []),
-    ns_log:log(?MODULE, 4, "log server started on node ~p~n", [node()]),
+    ns_log:log(?MODULE, 4, "Log server started on node ~p~n", [node()]),
     Result.
 
 init([]) ->

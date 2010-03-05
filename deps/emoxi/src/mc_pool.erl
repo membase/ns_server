@@ -179,13 +179,13 @@ handle_call({reconfig, Name, WantPoolConfig}, _From,
         false ->
             case build_pool(Name, ns_config:get(), WantPoolConfig) of
                 {ok, Pool} ->
-                    ns_log:log(?MODULE, 0005, "reconfig: ~p",
+                    ns_log:log(?MODULE, 0005, "Pool reconfigured: ~p",
                                [Name]),
                     % send out an event saying the pool has changed
                     gen_event:notify(mc_pool_events, reconfig),
                     {reply, ok, Pool};
                 error ->
-                    ns_log:log(?MODULE, 0002, "reconfig error: ~p",
+                    ns_log:log(?MODULE, 0002, "Pool reconfigured to no-op for: ~p",
                                [Name]),
                     NoopPool = create(Name, [], [], []),
                     {reply, error, NoopPool}
@@ -214,7 +214,7 @@ create(Id, Nodes, Config, Buckets) ->
 build_pool(Name, NSConfig) ->
     case ns_config:search_prop(NSConfig, pools, Name) of
         undefined ->
-            ns_log:log(?MODULE, 0001, "missing pool config: ~p", [Name]),
+            ns_log:log(?MODULE, 0001, "Missing configuration entries for unknown pool: ~p", [Name]),
             error;
         PoolConfig ->
             build_pool(Name, NSConfig, PoolConfig)
@@ -294,7 +294,7 @@ auth_to_bucket(#mc_pool{} = Pool,
                 {<<"PLAIN">>, {_ForName,
                                AuthName, AuthPswd}} -> {ok, Bucket};
                 _NotPlain ->
-                    ns_log:log(?MODULE, 0006, "bucket auth failure: ~p in ~p",
+                    ns_log:log(?MODULE, 0006, "Unsupported authorization mechanism for bucket ~p in ~p",
                                [BucketName, Pool]),
                     error
             end;
@@ -350,7 +350,7 @@ memcached_port(NSConfig, Node) ->
                                               memcached, "-p",
                                               Node) of
         false ->
-            ns_log:log(?MODULE, 0003, "missing memcached port: ~p",
+            ns_log:log(?MODULE, 0003, "Missing memcached port in configuration for node: ~p",
                        [Node]),
             error;
         {value, PortStr} -> PortStr
