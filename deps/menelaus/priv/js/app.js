@@ -809,7 +809,9 @@ var OverviewSection = {
 
     var memoryUtilization = 100-Math.round(freeMem*100/totalMem);
 
-    var isCritical = memoryUtilization > 90;
+    var isWarning = memoryUtilization > 90;
+    
+    var isCritical = false;
     isCritical = isCritical || _.any(nodes, function (n) {
       return n.status != 'healthy';
     });
@@ -826,6 +828,7 @@ var OverviewSection = {
 
     var statusData = {
       isCritical: isCritical,
+      isWarning: isWarning,
       canJoinCluster: canJoinCluster,
       nodesCount: nodes.length,
       bucketsCount: buckets && buckets.length,
