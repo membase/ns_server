@@ -21,8 +21,6 @@ Building...
 
     git clone git@github.com:northscale/ns_server.git
     cd ns_server
-    git submodule init
-    git submodule update
     make
 
 ## Starting
@@ -48,17 +46,24 @@ Before you start the server, you may need to do the following
     that you just built to <REPO_ROOT>/priv/memcached
   * Create a sym link from the for_release northscale memcached
     memcached/.libs/default_engine.so to
-    <REPO_ROOT>/priv/engines/default_engine.so
+    <REPO_ROOT>/priv/default_engine.so
   * If your sym links are correct, you should be able to cd <REPO_ROOT>/priv
-    and run:
-./memcached -E ./engines/default_engine.so -e "engine=./engines/default_engine.so" -vvv
+    and run (just to test):
+./memcached -d -P /tmp/memcached.pid -E default_engine.so -e "engine=./engines/default_engine.so" -vvv
     NOTE: the emoxi tests will run this from ../../priv
-  * If you're not doing sym links, instead make sure that the
+    then kill:
+kill `cat /tmp/memcached.pid`
+    The build process, when running 'make test', will start memcached
+    in this manner to ensure the test succesfully runs.
+  * If you're not employing the use of sym links, instead make sure that the
     memcached/.libs/default_engine.so and
     bucket_engine/.libs/bucket_engine.so
     created when building the for_release northscale memcached
-    and bucket_engine are on your LD_LIBRARY_PATH (in OS X
-    this is the DYLD_LIBRARY_PATH).  Or...
+    and bucket_engine are in the same directory as the memcached executable 
+    either by copying or by soft links. 
+    For the buildbot machines, these shared libraries are not installed
+    system-wide because they could intefere with the state of the build
+    machine.
   * Just a general note, if you are making changes to the priv/config file
     and these changes don't appear to be reflected in the start up
     procedures, try deleting the <REPO_ROOT>/config dir.
@@ -96,19 +101,12 @@ Then you will have to add backslashes around the path double-quotes --
 like \"priv/config\"
 
 ## Development
-
-### Pulling the latest dependencies
-
-   git submodule update
+  Note: there were previously directions here instructing one to 
+  update submodules. Both emoxi and menelaus are now part of 
+  ns_server and there is no need to treat them as submodules.
 
 ### Updating the dependencies (deps subdirectory)
 
-   cd deps/emoxi
-   git pull origin master
-   cd ../menelaus
-   git pull origin master
-   cd ../..
-   git add deps/emoxi deps/menelaus
    make clean
    make
    git commit -m "updated emoxi & menelaus"
