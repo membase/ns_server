@@ -12,8 +12,6 @@ TMP_VER=$(TMP_DIR)/version_num.tmp
 
 all: ebins test deps_all
 
-all_win: ebins test_win deps_all
-
 deps_all:
 	(cd deps/emoxi && $(MAKE) ebins)
 	(cd deps/menelaus && $(MAKE) all)
@@ -54,9 +52,11 @@ clean clean_all:
 	rm -rf test/log
 	rm -rf ebin
 
-test: test_unit test_menelaus
+test: test_$(OS)
 
-test_win: test_unit test_menelaus
+test_: test_unit test_unit_emoxi test_menelaus
+
+test_Windows_NT: test_unit test_menelaus
 
 test_unit: ebins
 	erl $(EFLAGS) -noshell -s ns_server_test test -s init stop -kernel error_logger silent
