@@ -92,7 +92,7 @@ handle_call(Msg, _From, State) ->
     {reply, error, State}.
 
 handle_info({nodeup, Node}, State) ->
-    ns_log:log(?MODULE, 0004, "A node went up: ~p", [Node]),
+    ns_log:log(?MODULE, 0004, "Node ~p saw that node ~p came up.", [node(), Node]),
     % We might be tempted to proactively push/pull/sync
     % our configs with the "new" Node.  Instead, it's
     % cleaner to asynchronous do a gen_event:notify()
@@ -102,7 +102,7 @@ handle_info({nodeup, Node}, State) ->
     {noreply, State};
 
 handle_info({nodedown, Node}, State) ->
-    ns_log:log(?MODULE, 0005, "A node went down: ~p", [Node]),
+    ns_log:log(?MODULE, 0005, "Node ~p saw that node ~p went down.", [node(), Node]),
     {ok, _Tref} = timer:send_after(5000, notify_clients),
     {noreply, State};
 
@@ -214,7 +214,7 @@ cookie_sync() ->
                     cookie_init();
                 CurrCookie ->
                     ns_log:log(?MODULE, 0002, "Node ~p inherited otp cookie ~p from cluster",
-                               [self(), CurrCookie]),
+                               [node(), CurrCookie]),
                     cookie_set(CurrCookie),
                     {ok, CurrCookie}
             end;
@@ -223,7 +223,7 @@ cookie_sync() ->
                 WantedCookie -> {ok, WantedCookie};
                 _ ->
                     ns_log:log(?MODULE, 0003, "Node ~p synchronized otp cookie ~p from cluster",
-                               [self(), WantedCookie]),
+                               [node(), WantedCookie]),
                     erlang:set_cookie(node(), WantedCookie),
                     {ok, WantedCookie}
             end
