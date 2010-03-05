@@ -32,8 +32,10 @@ worker(Addr, Sock, Timeout) ->
             case mc_client_binary:auth(Sock, Auth) of
                 ok  -> loop(Addr, Sock, Timeout);
                 Err -> gen_tcp:close(Sock),
-                       ns_log:log(?MODULE, 1, "auth failed: ~p with ~p",
-                                  [Err, Auth])
+                       ns_log:log(?MODULE, 001, "Authorization failed during proxy worker creation. " ++
+                                                "The proxy attempted to authorize against memcached ~p" ++
+                                                "using authorization ~p, and received the error: ~p on node ~p",
+                                  [Addr, Auth, Err, node()])
             end
     end.
 

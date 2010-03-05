@@ -64,12 +64,15 @@ init([PortNum, AddrStr, Env]) ->
                     {ok, #state{listener = Listener,
                                 acceptor = Ref,
                                 client_sup = ClientSup}};
-                Error   -> ns_log:log(?MODULE, 0002, "listen error: ~p",
-                                      [{PortNum, AddrStr, Error}]),
+                Error   -> ns_log:log(?MODULE, 0002, "Could not listen on port ~p (with binding address ~p). " ++
+                                                     "Perhaps another process has taken that port already? " ++
+                                                     "To address this, you may change port number configurations via the Cluster Settings page, " ++
+                                                     "or stop the other listening process and restart this server. (error: ~p on node ~p)",
+                                      [{PortNum, AddrStr, Error, node()}]),
                            {stop, Error}
             end;
-        Error -> ns_log:log(?MODULE, 0003, "parse address error: ~p",
-                            [AddrStr]),
+        Error -> ns_log:log(?MODULE, 0003, "Could not parse address ~p to listen on port ~p",
+                            [AddrStr, PortNum]),
                  {stop, Error}
     end.
 

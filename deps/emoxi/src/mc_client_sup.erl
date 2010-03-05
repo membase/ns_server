@@ -52,7 +52,7 @@ new_session(NS, ProtocolModule, ProcessorModule, ProcessorEnv) ->
                                    ProcessorModule,
                                    Session);
         Error ->
-            ns_log:log(?MODULE, 0001, "could not start session: ~p",
+            ns_log:log(?MODULE, 0001, "Error starting proxy session: ~p",
                        [Error]),
             gen_tcp:close(NS)
     end.
