@@ -24,6 +24,7 @@
 -define(TGEN_POOL,     "default").
 -define(TGEN_BUCKET,   "test_application").
 -define(TGEN_SIZE,     1). % In MB
+
 %% gen_server callbacks
 
 -export([init/1, handle_call/3, handle_cast/2,
@@ -85,7 +86,6 @@ init(ignored) ->
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
 
-
 handle_cast(traffic_start, #state{timer = undefined} = State) ->
     bucket_make(?TGEN_POOL, ?TGEN_BUCKET),
     timer:sleep(2000), % Wait a couple seconds to avoid spammy auth errors
@@ -106,10 +106,8 @@ handle_cast(traffic_stop, #state{timer = TRef} = State) ->
     timer:cancel(TRef),
     {noreply, State#state{timer = undefined}}.
 
-
 handle_call(traffic_started, _From, #state{timer = TRef} = State) ->
     {reply, TRef =/= undefined, State}.
-
 
 handle_info(traffic_more, #state{timer = _TRef} = State) ->
     send_traffic(?TGEN_POOL, ?TGEN_BUCKET),
@@ -137,7 +135,6 @@ bucket_make(PoolName, BucketName) ->
 send_traffic(PoolName, BucketName) ->
     case catch(mc_pool:get_bucket(PoolName, BucketName)) of
         {'EXIT', _} ->
-            ?debugVal({send_traffic, missing_bucket, PoolName, BucketName}),
             traffic_stop();
         {ok, Bucket} ->
             Addrs = mc_bucket:addrs(Bucket),
