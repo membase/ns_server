@@ -870,16 +870,15 @@ var OverviewSection = {
       var overlay = overlayWithSpinner(form);
 
       postWithValidationErrors('/node/controller/doJoinCluster', form, function (data, status) {
-        overlay.remove();
-
         if (status != 'success') {
+          overlay.remove();
           renderTemplate('join_cluster_dialog_errors', data)
         } else {
           var user = form.find('[name=user]').val();
           var password = form.find('[name=password]').val();
           DAO.setAuthCookie(user, password);
           $.cookie('cluster_join_flash', '1');
-          reloadApp();
+          reloadAppWithDelay();
         }
       })
     });
@@ -893,9 +892,13 @@ var OverviewSection = {
           type: 'POST',
           url: DAO.cells.currentPoolDetails.value.controllers.ejectNode.uri,
           data: "otpNode=Self",
-          success: reloadAppNoArg,
-          errors: reloadAppNoArg
+          success: reload,
+          errors: reload
         });
+
+        function reload() {
+          reloadAppWithDelay();
+        }
       }]]
     });
   },
@@ -1378,13 +1381,14 @@ var SettingsSection = {
           return dialog.close();
         }
 
-        reloadApp(function () {
+        reloadApp(function (reload) {
           if (data && data.newBaseUri) {
             var uri = data.newBaseUri;
             if (uri.charAt(uri.length-1) == '/')
               uri = uri.slice(0, -1);
-            return uri + document.location.pathname;
+            uri += document.location.pathname;
           }
+          _.delay(_.bind(reload, null, uri), 1000);
         });
       });
     });

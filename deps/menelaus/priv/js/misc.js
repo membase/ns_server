@@ -372,11 +372,23 @@ function jsComparator(a,b) {
 function reloadApp(middleCallback) {
   prepareAreaUpdate($(document.body));
   if (middleCallback)
-    var rv = middleCallback();
-  if (rv)
-    window.location.href = rv;
+    middleCallback(reloader);
   else
-    window.location.reload();
+    reloader();
+
+  function reloader(where) {
+    if (where)
+      window.location.href = where;
+    else
+      window.location.reload();
+  }
+}
+
+function reloadAppWithDelay(millis) {
+  millis = millis || 1000;
+  reloadApp(function (reload) {
+    _.delay(reload, millis);
+  });
 }
 
 function reloadAppNoArg() {
