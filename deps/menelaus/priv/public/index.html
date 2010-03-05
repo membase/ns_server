@@ -820,7 +820,7 @@
           <div class="pat_10">
             <div class="normal text_12">
             Sample Java Client Manager connection string:<br />
-            {% if (b.name != "default") { %}
+              {% if (b.name != "default") { %}
 <pre>URI base = new URI("{%= h(document.location.protocol) %}//{%= h(document.location.host) %}{%= h(b.uri) %}");
 ClientManager manager = new ClientManager(base, 
                                           "{%= h(b.name) %}", 
