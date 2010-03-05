@@ -95,25 +95,11 @@ tests(mc) ->
 tests(emoxi) ->
     [util,
      cring,
-     ketama
-    ];
-
-tests(emoxi_dyn) ->
-    [vclock,
-     stream
-     % bootstrap,
-     % dmerkle,
-     % dmerkle_tree,
-     % partition,
-     % membership,     -- failing due to config to ns_config change.
-     % storage_server, -- failing due to config to ns_config change.
-     % storage_manager,
-     % sync_manager
-    ].
+     ketama].
 
 % For cmd-line...
 
-test() -> test([mc, emoxi, emoxi_dyn]).
+test() -> test([mc, emoxi]).
 
 test([])         -> [];
 test([X | Rest]) -> [ test_list(tests(X)) | test(Rest) ].

@@ -5,11 +5,8 @@
    {mod, {emoxi, []}},
    {vsn, "0.0.0"},
    {modules, [
-      bootstrap,
       emoxi,
-      emoxi_sup,
-      stream,
-      vclock
+      emoxi_sup
    ]},
    {registered, []},
    {applications, [kernel,
