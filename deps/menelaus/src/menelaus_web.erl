@@ -628,7 +628,7 @@ handle_join(Req) ->
                       ParsedOtherPort >65535 -> <<"The port number cannot be larger than 65535.">>;
                       true -> undefined
                   end;
-              true -> <<"The cache size must be an integer.">>
+              true -> <<"The port number must be a number.">>
           end,
     OtherPort = if
                      NzV =:= undefined -> ParsedOtherPort;
