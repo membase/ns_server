@@ -61,6 +61,8 @@ nodes_wanted_updated() ->
 %% gen_server implementation
 
 init([]) ->
+    error_logger:info_msg("Initting ns_node_disco with ~p~n",
+                          [do_nodes_wanted()]),
     % Proactively run one round of reconfiguration update.
     do_nodes_wanted_updated(do_nodes_wanted()),
     % Register for nodeup/down messages as handle_info callbacks.
