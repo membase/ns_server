@@ -25,6 +25,22 @@ init(ignored) ->
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
 
+% Don't log values for some password/auth-related config values.
+
+handle_event({rest_creds = K, _V}, State) ->
+    error_logger:info_msg("config change: ~p -> ********", [K]),
+    {ok, State, hibernate};
+handle_event({alerts = K, V}, State) ->
+    V2 = lists:map(fun({email_server, ES}) ->
+                           lists:map(fun({pass, _}) -> {pass, "********"};
+                                        (ESKeyVal)  -> ESKeyVal
+                                     end,
+                                     ES);
+                      (V2KeyVal) -> V2KeyVal
+                   end,
+                   V),
+    error_logger:info_msg("config change: ~p -> ~p~n", [K, V2]),
+    {ok, State, hibernate};
 handle_event({K, V}, State) ->
     error_logger:info_msg("config change: ~p -> ~p~n", [K, V]),
     {ok, State, hibernate};
