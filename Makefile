@@ -10,7 +10,7 @@ TMP_VER=$(TMP_DIR)/version_num.tmp
 
 .PHONY: ebins ebin_app version
 
-all: ebins test deps_all
+all: ebins deps_all
 
 deps_all:
 	(cd deps/emoxi && $(MAKE) ebins)
