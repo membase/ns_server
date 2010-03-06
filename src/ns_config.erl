@@ -353,26 +353,29 @@ merge_configs([Field | Fields], Remote, Local, Acc) ->
     LS = search_raw(Local, Field),
     A2 = case {RS, LS} of
              {{value, RV}, {value, LV}} when is_list(RV), is_list(LV) ->
-                 RVer = misc:time_to_epoch_float(
-                          proplists:get_value(?METADATA_VER, RV)),
-                 LVer = misc:time_to_epoch_float(
-                          proplists:get_value(?METADATA_VER, LV)),
-                 case {RVer, LVer} of
-                     {undefined, undefined} -> [{Field, RV} | Acc];
-                     {_,         undefined} -> [{Field, RV} | Acc];
-                     {undefined, _}         -> [{Field, LV} | Acc];
-                     {RTime, LTime} when is_float(RTime),
-                                         is_float(LTime) ->
-                         case RTime > LTime of
-                             true  -> [{Field, RV} | Acc];
-                             false -> [{Field, LV} | Acc]
-                         end
-                 end;
+                 merge_lists(Field, Acc, RV, LV);
              {{value, RV}, _} -> [{Field, RV} | Acc];
              {_, {value, LV}} -> [{Field, LV} | Acc];
              _                -> Acc
          end,
     merge_configs(Fields, Remote, Local, A2).
+
+merge_lists(Field, Acc, RV, LV) ->
+    RVer = misc:time_to_epoch_float(
+             proplists:get_value(?METADATA_VER, RV)),
+    LVer = misc:time_to_epoch_float(
+             proplists:get_value(?METADATA_VER, LV)),
+    case {RVer, LVer} of
+        {undefined, undefined} -> [{Field, RV} | Acc];
+        {_,         undefined} -> [{Field, RV} | Acc];
+        {undefined, _}         -> [{Field, LV} | Acc];
+        {RTime, LTime} when is_float(RTime),
+                            is_float(LTime) ->
+            case RTime > LTime of
+                true  -> [{Field, RV} | Acc];
+                false -> [{Field, LV} | Acc]
+            end
+    end.
 
 read_includes(Path) -> read_includes([{include, Path}], []).
 
