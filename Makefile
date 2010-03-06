@@ -10,7 +10,7 @@ TMP_VER=$(TMP_DIR)/version_num.tmp
 
 .PHONY: ebins ebin_app version
 
-all: ebins deps_all
+all: ebins test_noemoxi deps_all
 
 deps_all:
 	(cd deps/emoxi && $(MAKE) ebins)
@@ -53,6 +53,8 @@ clean clean_all:
 	rm -rf ebin
 
 test: test_$(OS)
+
+test_noemoxi: test_unit test_menelaus
 
 test_: test_unit test_unit_emoxi test_menelaus
 
