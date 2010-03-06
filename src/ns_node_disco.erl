@@ -99,6 +99,8 @@ handle_info({nodeup, Node}, State) ->
     % Delay the notification for five seconds to give the
     % config a chance to settle before notifying clients.
     {ok, _Tref} = timer:send_after(5000, notify_clients),
+    %% Have every known node ping this new node.
+    rpc:multicall(net_adm, ping, [Node]),
     {noreply, State};
 
 handle_info({nodedown, Node}, State) ->
