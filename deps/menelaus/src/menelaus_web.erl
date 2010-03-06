@@ -158,7 +158,7 @@ loop(Req, AppRoot, DocRoot) ->
                              ["logClientError"] -> {auth_any_bucket,
                                                     fun (R) ->
                                                             User = menelaus_auth:extract_auth(username, R),
-                                                            ns_log:log(?MODULE, 0020, "Client-side error-report for user ~w: ~w~n",
+                                                            ns_log:log(?MODULE, 0020, "Client-side error-report for user ~p: ~p~n",
                                                                        [User, binary_to_list(R:recv_body())]),
                                                             R:ok({"text/plain", add_header(), <<"">>})
                                                     end};
