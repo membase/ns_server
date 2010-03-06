@@ -146,7 +146,7 @@
                 </div>
                 <a class="text_11 tooltip">What's this?
                   <span class="tooltip_msg"><span>
-                    The amount of memory your cluster has, and how much has been used as reported by the operating system.
+                    The amount of physical memory your cluster has, and how much has been used as reported by the operating system.
                   </span></span>
                 </a>
             </div>
@@ -573,7 +573,7 @@
                 </div>
                 <h2 class="head_2_underline">Security <a class="text_11 tooltip">What's this?
                   <span class="tooltip_msg"><span>
-                    Securing the server will force logins for administration and restrict web services to authorized users.
+                    Securing the server will force logins for administration and restrict web/REST services to authorized users.
                   </span></span>
                 </a></h2>
                 <div class="form">
@@ -627,8 +627,8 @@
                 </div>
                 <h2 class="head_2_underline">Port Configuration <a class="text_11 tooltip">What's this?
                   <span class="tooltip_msg"><span>
-                    The standard port for memecached is 11211 and the standard port for the proxy is 11212.  From
-                    here you can change this to meet the specific needs of your environment.
+                    The standard port for memcached is 11211 and the standard port for the proxy is 11212.
+                    You can change port numbers here to meet the specific needs of your environment.
                   </span></span>
                 </a></h2>
                 <div class="form">
@@ -1000,7 +1000,7 @@ MemcachedClient client = manager.getClient();</pre>
                     <input type="text" class="inp" name="clusterMemberHostIp" id="clusterMemberHostIp" value="" />
                     <a class="text_11 tooltip">What's this?
                       <span class="tooltip_msg"><span>
-                        This is the hostname or IP address of a system in the cluster you wish to join.
+                        This is the hostname or IP address of a server node in the cluster that you wish to join.
                       </span></span>
                     </a><br />
                     <label class="label"></label><span class="text_11">(Use any server in an existing cluster)</span>
@@ -1010,7 +1010,7 @@ MemcachedClient client = manager.getClient();</pre>
                     <input type="text" class="inp" name="clusterMemberPort" id="clusterMemberPort" value="8080" onfocus="this.value=='8080'?this.value='':false;" onblur="this.value==''?this.value='8080':false;" />
                     <a class="text_11 tooltip">What's this?
                       <span class="tooltip_msg"><span>
-                        This is the port number the Web Interface and REST services run on in the cluster.
+                        This is the port number of the Web Console interface and REST services in the cluster.
                       </span></span>
                     </a>
                   </div>
@@ -1020,9 +1020,9 @@ MemcachedClient client = manager.getClient();</pre>
                 <td class="th">
                   Security <a class="text_11 tooltip">What's this?
                     <span class="tooltip_msg"><span>
-                      If you have secured the cluster you will be joining this system to, you must enter a username
+                      If you are joining this server node to a cluster that has been secured, you must enter a username
                       and password.  These are the username and password of the cluster you are joining, not of your
-                      current system.
+                      current server node.
                     </span></span>
                   </a>
                 </td>
