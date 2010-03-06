@@ -887,11 +887,11 @@ handle_port_settings_post(PostArgs, PoolId) ->
 handle_traffic_generator_control_post(Req) ->
     PostArgs = Req:parse_post(),
     case proplists:get_value("onOrOff", PostArgs) of
-        "off" -> ns_log:log(?MODULE, 0006, "Stopping workload from node ~p",
+        "off" -> ns_log:log(?MODULE, 0006, "Stopping Test Server workload from node ~p",
                             [erlang:node()]),
                  tgen:traffic_stop(),
                  Req:respond({204, add_header(), []});
-        "on" -> ns_log:log(?MODULE, 0007, "Starting workload from node ~p",
+        "on" -> ns_log:log(?MODULE, 0007, "Starting Test Server workload from node ~p",
                            [erlang:node()]),
                 % TODO: Use rpc:multicall here to turn off traffic
                 %       generation across all actual nodes in the cluster.
