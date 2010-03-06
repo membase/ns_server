@@ -18,8 +18,8 @@ hash_addr(Addr, undefined) ->
     hash_addr(Addr, default_config());
 
 hash_addr({Host, Port} = _Addr, NumPoints) ->
-    BinHost = bin(Host),
-    BinPort = bin(integer_to_list(Port)),
+    BinHost = mc_binary:bin(Host),
+    BinPort = mc_binary:bin(integer_to_list(Port)),
     BinPrefix = <<BinHost/binary, $:, BinPort/binary, $->>,
     hash_addr(BinPrefix, 0, NumPoints / 4, []).
 
@@ -27,7 +27,7 @@ hash_addr(_Addr, Iter, Until, Points) when Iter >= Until ->
     lists:usort(Points);
 
 hash_addr(BinPrefix, Iter, Until, Points) ->
-    BinIter = bin(integer_to_list(Iter)),
+    BinIter = mc_binary:bin(integer_to_list(Iter)),
     BinInput = <<BinPrefix/binary, BinIter/binary>>,
     BinDigest = erlang:md5(BinInput),
     <<H0:8, H1:8, H2:8, H3:8,
@@ -42,16 +42,12 @@ hash_addr(BinPrefix, Iter, Until, Points) ->
     hash_addr(BinPrefix, Iter + 1, Until, [B1, B2, B3, B4 | Points]).
 
 hash_key(Key, _HashCfg) ->
-    BinKey = bin(Key),
+    BinKey = mc_binary:bin(Key),
     Digest = erlang:md5(BinKey),
     <<H0:8, H1:8, H2:8, H3:8, _:96>> = Digest,
     BinPoint = <<H3:8, H2:8, H1:8, H0:8>>,
     <<Point:32>> = BinPoint,
     Point.
-
-bin(undefined)         -> <<>>;
-bin(L) when is_list(L) -> iolist_to_binary(L);
-bin(X)                 -> <<X/binary>>.
 
 % -------------------------------------------------
 

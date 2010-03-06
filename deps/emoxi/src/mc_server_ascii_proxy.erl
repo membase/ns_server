@@ -305,7 +305,7 @@ send_response(binary, Out, Cmd,
 
 send_entry_binary(Cmd, Out, #mc_entry{key = Key, data = Data,
                                       cas = Cas, flag = Flag}) ->
-    DataLen = integer_to_list(bin_size(Data)),
+    DataLen = integer_to_list(mc_binary:bin_size(Data)),
     FlagStr = integer_to_list(Flag),
     case Cmd of
         get ->
@@ -329,8 +329,4 @@ send_arith_response(Out, #mc_entry{data = Data}) ->
 
 kind_to_module(ascii)  -> mc_client_ascii_ac;
 kind_to_module(binary) -> mc_client_binary_ac.
-
-bin_size(undefined)               -> 0;
-bin_size(List) when is_list(List) -> bin_size(iolist_to_binary(List));
-bin_size(Binary)                  -> size(Binary).
 

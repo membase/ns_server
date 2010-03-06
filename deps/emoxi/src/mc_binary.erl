@@ -125,13 +125,11 @@ b2a_code(?DELETE,  ?KEY_ENOENT) -> <<"NOT_FOUND\r\n">>;
 b2a_code(_, ?SUCCESS) -> <<"OK\r\n">>;
 b2a_code(_, _)        -> <<"ERROR\r\n">>.
 
-bin(undefined)         -> <<>>;
-bin(L) when is_list(L) -> iolist_to_binary(L);
-bin(X)                 -> <<X/binary>>.
+bin(undefined) -> <<>>;
+bin(X)         -> iolist_to_binary(X).
 
-bin_size(undefined)               -> 0;
-bin_size(List) when is_list(List) -> bin_size(iolist_to_binary(List));
-bin_size(Binary)                  -> size(Binary).
+bin_size(undefined) -> 0;
+bin_size(X)         -> iolist_size(X).
 
 flush({OutPid, _CmdNum}) ->
     OutPid ! {flush, self()},

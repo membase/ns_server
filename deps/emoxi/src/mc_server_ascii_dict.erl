@@ -30,7 +30,7 @@ cmd(get, Dict, InSock, Out, [Key | Rest]) ->
     case dict:find(Key, Dict#session_dict.tbl) of
         {ok, #mc_entry{flag = Flag, data = Data}} ->
             FlagStr = integer_to_list(Flag),
-            DataLen = integer_to_list(bin_size(Data)),
+            DataLen = integer_to_list(mc_binary:bin_size(Data)),
             mc_ascii:send(Out, [<<"VALUE ">>, Key,
                                 " ", FlagStr,
                                 " ", DataLen, <<"\r\n">>,
@@ -76,10 +76,6 @@ cmd(quit, _Dict, _InSock, _Out, _Rest) ->
 cmd(_UnknownCmd, Dict, _InSock, Out, []) ->
     mc_ascii:send(Out, <<"ERROR\r\n">>),
     {ok, Dict}.
-
-bin_size(undefined) -> 0;
-bin_size(List) when is_list(List) -> bin_size(iolist_to_binary(List));
-bin_size(Binary) -> size(Binary).
 
 % ------------------------------------------
 
