@@ -27,7 +27,7 @@ handle_call(Request, _From, State) ->
     {reply, {unhandled, ?MODULE, Request}, State}.
 
 handle_cast({join, RemoteNode, NewCookie}, State = #state{child=Pid, action=undefined}) ->
-    error_logger:info_msg("ns_cluster: joining cluster.~n"),
+    error_logger:info_msg("ns_cluster: joining cluster to ~p.~n", [RemoteNode]),
     ns_config:set(nodes_wanted, [node(), RemoteNode]),
     ns_config:set(otp, [{cookie, NewCookie}]),
     true = exit(Pid, shutdown), % Pull the rug out from under the app
