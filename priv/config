@@ -90,7 +90,7 @@
    {memcached, "./priv/memcached",
     ["-p", "11212",
      "-E", "./priv/engines/bucket_engine.so",
-     "-e", "admin=_admin;engine=./priv/engines/default_engine.so;default_bucket_name=default;auto_create=false"
+     "-e", "admin=_admin;engine=./priv/engines/default_engine.so;default_bucket_name=default;auto_create=true"
      ],
     [{env, [{"MEMCACHED_CHECK_STDIN", "event"},
             {"MEMCACHED_TOP_KEYS", "100"},
