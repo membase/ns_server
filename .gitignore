@@ -12,6 +12,7 @@ data
 docs/*
 ebin
 erl_crash.dump
+fprof.trace
 logs
 ns_server_*.tar.gz
 priv/isasl.pw
