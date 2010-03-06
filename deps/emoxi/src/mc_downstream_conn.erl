@@ -33,9 +33,9 @@ worker(Addr, Sock, Timeout) ->
                 ok  -> loop(Addr, Sock, Timeout);
                 Err -> gen_tcp:close(Sock),
                        ns_log:log(?MODULE, 001, "Authorization failed during proxy worker creation. " ++
-                                                "The proxy attempted to authorize against memcached ~p" ++
-                                                "using authorization ~p, and received the error: ~p on node ~p",
-                                  [Addr, Auth, Err, node()])
+                                                "The proxy attempted to authorize against memcached ~p " ++
+                                                "and received the error: ~p on node ~p",
+                                  [Addr, Err, node()])
             end
     end.
 
