@@ -19,8 +19,8 @@ start_subapp() ->
     menelaus_deps:ensure(),
     Result = menelaus_sup:start_link(),
     WConfig = menelaus_web:webconfig(),
-    ns_log:log(?MODULE, 1, "NorthScale Memcached Server has started on web/REST port ~p.",
-               [proplists:get_value(port, WConfig)]),
+    ns_log:log(?MODULE, 1, "NorthScale Memcached Server has started on web/REST port ~p on node ~p.",
+               [proplists:get_value(port, WConfig), node()]),
     Result.
 
 %% @spec stop(_State) -> ServerRet
