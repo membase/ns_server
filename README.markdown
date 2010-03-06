@@ -49,10 +49,15 @@ Before you start the server, you may need to do the following
     <REPO_ROOT>/priv/default_engine.so
   * If your sym links are correct, you should be able to cd <REPO_ROOT>/priv
     and run (just to test):
-./memcached -d -P /tmp/memcached.pid -E default_engine.so -e "engine=./engines/default_engine.so" -vvv
-    NOTE: the emoxi tests will run this from ../../priv
-    then kill:
+
+/.memcached -p 11211 -d -P /tmp/memcached.pid -E bucket_engine.so -e "admin=_admin;engine=default_engine.so;default_bucket_name=default
+
+    NOTE: the emoxi tests will run this from ../../priv - you do not have to 
+    manually run memcached.
+
+    then kill your test memcached:
 kill `cat /tmp/memcached.pid`
+
     The build process, when running 'make test', will start memcached
     in this manner to ensure the test succesfully runs.
   * If you're not employing the use of sym links, instead make sure that the
