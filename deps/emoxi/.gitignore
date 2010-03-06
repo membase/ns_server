@@ -1,11 +1,11 @@
-tmp
-ebin
-erl_crash.dump
-test/log
-emoxi_*.tar.gz
 **.cov.html
 *~
 *.pyc
 .project
 .settings
-priv/isasl.pw
+ebin
+emoxi_*.tar.gz
+erl_crash.dump
+priv
+test/log
+tmp
