@@ -38,15 +38,7 @@ handle_call({get, Hostname, Port, Count}, _From, State) ->
                  fun ({H, P, _B}, V, A) ->
                          case {H, P} of
                              {Hostname, Port} ->
-                                 D = combine_stats(Count, V, A),
-                                 % Need a final to_int since combine_stats
-                                 % is a no-op when only one host/node is
-                                 % being monitored.
-                                 dict:map(
-                                   fun(t, TStamps) -> TStamps;
-                                      (_K, L) -> lists:map(fun to_int/1, L)
-                                   end,
-                                   D);
+                                 combine_stats(Count, V, A);
                              _ -> A
                          end
                  end,
@@ -59,15 +51,7 @@ handle_call({get, Bucket, Count}, _From, State) ->
                  fun ({_H, _P, B}, V, A) ->
                          case B of
                              Bucket ->
-                                 D = combine_stats(Count, V, A),
-                                 % Need a final to_int since combine_stats
-                                 % is a no-op when only one host/node is
-                                 % being monitored.
-                                 dict:map(
-                                   fun(t, TStamps) -> TStamps;
-                                      (_K, L) -> lists:map(fun to_int/1, L)
-                                   end,
-                                   D);
+                                 combine_stats(Count, V, A);
                              _ -> A
                          end
                  end,
@@ -78,15 +62,7 @@ handle_call({get, Count}, _From, State) ->
     Reply =
         (catch {ok, dict:fold(
                  fun ({_H, _P, _B}, V, A) ->
-                         D = combine_stats(Count, V, A),
-                         % Need a final to_int since combine_stats
-                         % is a no-op when only one host/node is
-                         % being monitored.
-                         dict:map(
-                           fun(t, TStamps) -> TStamps;
-                              (_K, L) -> lists:map(fun to_int/1, L)
-                           end,
-                           D)
+                         combine_stats(Count, V, A)
                  end,
                  dict:new(),
                  State#state.vals)}),
@@ -148,21 +124,23 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 combine_stats(N, New, Existing) ->
-    dict:merge(fun val_sum/3,
-               dict:filter(fun classify/2, ringdict:to_dict(N, New)),
+    dict:merge(fun val_sum/3, dict:map(fun (_K, V) ->
+                                       lists:map(fun to_int/1, V) end,
+               dict:filter(fun (K, _V) -> classify(K) end,
+                           ringdict:to_dict(N, New, true))),
                Existing).
 
+to_int(empty) -> 0;
 to_int(X) when is_list(X) -> list_to_integer(X);
-to_int(X) when is_integer(X) -> X.
+to_int(X) when is_integer(X) -> X;
+to_int(X = {_, _, _}) -> misc:time_to_epoch_ms_int(X).
 
-val_sum(t, L1, _) -> L1;
+val_sum(t, empty, L2) -> L2;
+val_sum(t, L1, _L2) -> L1;
 val_sum(_K, L1, L2) ->
     % TODO: Need a better zipwith if L1 and L2's aren't the same length,
     % which could happen if a new server appears and its list is short.
-    lists:zipwith(fun(V1, V2) -> to_int(V1)+to_int(V2) end, L1, L2).
-
-classify(K, _V) ->
-     classify(K).
+    lists:zipwith(fun(V1, V2) -> V1 + V2 end, L1, L2).
 
 classify("pid") -> false;
 classify("uptime") -> false;

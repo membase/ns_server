@@ -225,20 +225,12 @@ get_stats(PoolId, BucketId, _Params) ->
     SamplesInterval = 1000, % A sample every second.
     SamplesNum = 60, % Sixty seconds worth of data.
     Samples = get_stats_raw(PoolId, BucketId, SamplesNum),
-    Samples2 = dict:map(fun (t, V) ->
-                                lists:map(fun (A) ->
-                                                  misc:time_to_epoch_int(A) * 1000
-                                          end, V);
-                            (_K, V) -> V
-                        end,
-                        Samples),
-
-    LastSampleTStamp = case default_find(t, Samples2) of
+    LastSampleTStamp = case default_find(t, Samples) of
                            [] -> 0;
                            List -> lists:last(List)
                        end,
 
-    Samples3 = dict:store(ops, sum_stats_ops(Samples2), Samples2),
+    Samples3 = dict:store(ops, sum_stats_ops(Samples), Samples),
     Samples4 = dict:store(misses,
                           sum_stats(["get_misses",
                                      "incr_misses",

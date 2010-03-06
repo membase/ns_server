@@ -133,12 +133,14 @@ bucket_make(PoolName, BucketName) ->
     end.
 
 send_traffic(PoolName, BucketName) ->
-    case catch(mc_pool:get_bucket(PoolName, BucketName)) of
-        {'EXIT', _} ->
-            traffic_stop();
-        {ok, Bucket} ->
-            Addrs = mc_bucket:addrs(Bucket),
-            traffic(Addrs)
+    case (catch mc_pool:get_bucket(PoolName, BucketName)) of
+    {ok, Bucket} ->
+        Addrs = mc_bucket:addrs(Bucket),
+        traffic(Addrs);
+    Error ->
+        error_logger:info_msg("tgen: can't look up bucket because of ~p. Shutting down traffic.~n",
+                              [Error]),
+        traffic_stop()
     end,
     true.
 
