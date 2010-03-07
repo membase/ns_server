@@ -360,19 +360,6 @@ merge_configs([Field | Fields], Remote, Local, Acc) ->
          end,
     merge_configs(Fields, Remote, Local, A2).
 
-merge_lists(F = nodes_wanted, Acc, RV, LV) ->
-    LVPlain = lists:filter(fun erlang:is_atom/1, LV),
-    RVPlain = lists:filter(fun erlang:is_atom/1, RV),
-    Combined = lists:usort(RVPlain ++ LVPlain),
-    case Combined of
-        LVPlain ->
-            [{F, LV} | Acc];
-        _ ->
-            error_logger:info_msg("Merging nodes_wanted: ~p + ~p = ~p~n",
-                                  [RV, LV, Combined]),
-            Stamped = [{?METADATA_VER, erlang:now()} | Combined],
-            [{F, Stamped} | Acc]
-    end;
 merge_lists(Field, Acc, RV, LV) ->
     RVer = misc:time_to_epoch_float(
              proplists:get_value(?METADATA_VER, RV)),
