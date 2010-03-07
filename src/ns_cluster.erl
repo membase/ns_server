@@ -34,7 +34,7 @@ handle_cast({join, RemoteNode, NewCookie}, State = #state{child=Pid, action=unde
     {noreply, State#state{action={join, RemoteNode, NewCookie}}};
 
 handle_cast(leave, State = #state{child=Pid, action=undefined}) ->
-    ns_log:log(?MODULE, 0001, "leaving cluster"),
+    ns_log:log(?MODULE, 0001, "Node ~p is leaving cluster.", [node()]),
     NewCookie = ns_node_disco:cookie_gen(),
     ns_config:set(nodes_wanted, [node()]),
     ns_config:set(otp, [{cookie, NewCookie}]),
