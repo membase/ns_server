@@ -26,6 +26,7 @@
 
 -import(menelaus_util,
         [reply_json/2,
+         reply_json/3,
          expect_prop_value/2,
          java_date/0,
          string_hash/1,
@@ -88,7 +89,7 @@ handle_buckets_stats(PoolId, BucketIds, Req) ->
             {struct, PropList2} = build_buckets_stats_hks_response(PoolId, BucketIds, Params),
             reply_json(Req, {struct, PropList1 ++ PropList2});
         _ ->
-            Req:respond({400, add_header(), []})
+            reply_json(Req, [list_to_binary("Stats requests require parameters.")], 400)
     end.
 
 handle_buckets_stats_ops(Req, PoolId, BucketIds, Params) ->
