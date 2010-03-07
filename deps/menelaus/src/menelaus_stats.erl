@@ -287,7 +287,7 @@ sum_stats_ops(Stats) ->
     sum_stats(["cmd_get", "cmd_set",
                "incr_misses", "incr_hits",
                "decr_misses", "decr_hits",
-               "delete_misses", "delete_hits",
+               "delete_misses", "delete_hits", "evictions",
                "cas_misses", "cas_hits", "cas_badval",
                "cmd_flush"],
               Stats).

@@ -154,7 +154,6 @@ classify("udpport") -> false;
 classify("inter") -> false;
 classify("verbosity") -> false;
 classify("oldest") -> false;
-classify("evictions") -> false;
 classify("domain_socket") -> false;
 classify("umask") -> false;
 classify("growth_factor") -> false;

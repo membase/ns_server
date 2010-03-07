@@ -631,7 +631,7 @@ var StatGraphs = {
                     + "curr_connections threads bytes_written incr_hits get_misses "
                     + "listen_disabled_num decr_hits cmd_flush engine_maxbytes bytes incr_misses "
                     + "cmd_set decr_misses accepting_conns cas_hits limit_maxbytes cmd_get "
-                    + "connection_structures cas_badval auth_cmds").split(' '),
+                    + "connection_structures cas_badval auth_cmds evictions").split(' '),
   visibleStats: [],
   visibleStatsIsDirty: true,
   statNames: {},
