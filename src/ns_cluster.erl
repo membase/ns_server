@@ -28,7 +28,6 @@ handle_call(Request, _From, State) ->
 
 handle_cast({join, RemoteNode, NewCookie}, State = #state{child=Pid, action=undefined}) ->
     ns_log:log(?MODULE, 0002, "Node ~p is joining cluster.", [RemoteNode]),
-    ns_config:set(nodes_wanted, [node(), RemoteNode]),
     ns_config:set(otp, [{cookie, NewCookie}]),
     true = exit(Pid, shutdown), % Pull the rug out from under the app
     {noreply, State#state{action={join, RemoteNode, NewCookie}}};
@@ -47,10 +46,17 @@ handle_cast(Msg, State) ->
     {noreply, State}.
 
 handle_info({'EXIT', Pid, shutdown},
-            #state{child=Pid, action={join, _RemoteNode, NewCookie}}) ->
+            #state{child=Pid, action={join, RemoteNode, NewCookie}}) ->
     error_logger:info_msg("ns_cluster: joining cluster. Child has exited.~n"),
     timer:sleep(1000), % Sleep for a second to let things settle
     true = erlang:set_cookie(node(), NewCookie),
+    %% Add ourselves to nodes_wanted on the remote node after shutting
+    %% down our own config server.
+    case rpc:call(RemoteNode, ns_node_disco, nodes_wanted, []) of
+        {badrpc, Crap} -> exit({badrpc, Crap});
+        Nodes -> rpc:cast(RemoteNode, ns_config, set,
+                          [nodes_wanted, [node() | Nodes]])
+    end,
     {ok, State} = init([]),
     {noreply, State};
 handle_info({'EXIT', Pid, shutdown},
