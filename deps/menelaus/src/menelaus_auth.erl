@@ -31,7 +31,7 @@ require_auth(Req) ->
             Req:respond({401, add_header(), []});
         _ ->
             Req:respond({401, [{"WWW-Authenticate",
-                                "Basic realm=\"api\""}],
+                                "Basic realm=\"api\""} | add_header()],
                          []})
     end.
 
