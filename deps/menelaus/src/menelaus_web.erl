@@ -36,6 +36,8 @@
          get_option/2,
          direct_port/1]).
 
+-define(IMPL_VERSION, "1.0").
+
 %% External API
 
 start_link() ->
@@ -218,7 +220,7 @@ loop(Req, AppRoot, DocRoot) ->
 %% Internal API
 
 implementation_version() ->
-    list_to_binary(proplists:get_value(ns_server,ns_info:version())).
+    list_to_binary(?IMPL_VERSION).
 
 handle_pools(Req) ->
     reply_json(Req, build_pools()).
