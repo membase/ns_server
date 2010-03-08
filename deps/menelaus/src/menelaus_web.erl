@@ -260,9 +260,12 @@ handle_pool_info(Id, Req) ->
 is_healthy(InfoNode) ->
     proplists:get_bool(memcached_running, InfoNode).
 
-build_pool_info(Id, _UserPassword) ->
+build_pool_info(Id, UserPassword) ->
+    build_pool_info(Id, UserPassword, normal).
+
+build_pool_info(Id, _UserPassword, InfoLevel) ->
     MyPool = find_pool_by_id(Id),
-    Nodes = build_nodes_info(MyPool, true),
+    Nodes = build_nodes_info(MyPool, true, InfoLevel),
     BucketsInfo = {struct, [{uri,
                              list_to_binary(concat_url_path(["pools", Id, "buckets"]))}]},
     {struct, [{name, list_to_binary(Id)},
@@ -280,6 +283,9 @@ build_pool_info(Id, _UserPassword) ->
 find_pool_by_id(Id) -> expect_prop_value(Id, expect_config(pools)).
 
 build_nodes_info(MyPool, IncludeOtp) ->
+    build_nodes_info(MyPool, IncludeOtp, normal).
+
+build_nodes_info(MyPool, IncludeOtp, InfoLevel) ->
     OtpCookie = list_to_binary(atom_to_list(ns_node_disco:cookie_get())),
     WantENodes = ns_node_disco:nodes_wanted(),
     NodeStatuses = ns_doctor:get_nodes(),
@@ -312,11 +318,20 @@ build_nodes_info(MyPool, IncludeOtp) ->
                   ProxyPort = pool_proxy_port(MyPool, WantENode),
                   Versions = proplists:get_value(version, InfoNode, []),
                   Version = proplists:get_value(ns_server, Versions, "unknown"),
-                  UpSecs = proplists:get_value(wall_clock, InfoNode, 0),
                   OS = proplists:get_value(system_arch, InfoNode, "unknown"),
-                  {MemoryTotal, MemoryAlloced, _} =
-                      proplists:get_value(memory_data, InfoNode,
-                                          {0, 0, undefined}),
+                  {UpSecs, {MemoryTotal, MemoryAlloced, _}} =
+                      case InfoLevel of
+                          normal ->
+                              {proplists:get_value(wall_clock, InfoNode, 0),
+                               proplists:get_value(memory_data, InfoNode,
+                                                   {0, 0, undefined})};
+                          stable ->
+                              % These stats are zero'ed so that
+                              % successive calls will provide results
+                              % that are comparable and appear stable as long
+                              % the cluster is stable (health is stable, no-reconfigurations).
+                              {0, {0, 0, undefined}}
+                      end,
                   KV1 = [{hostname, list_to_binary(Host)},
                          {status, Status},
                          {uptime, list_to_binary(integer_to_list(UpSecs))},
@@ -350,7 +365,7 @@ pool_proxy_port(PoolConfig, Node) ->
 
 handle_pool_info_streaming(Id, Req) ->
     UserPassword = menelaus_auth:extract_auth(Req),
-    F = fun() -> build_pool_info(Id, UserPassword) end,
+    F = fun(InfoLevel) -> build_pool_info(Id, UserPassword, InfoLevel) end,
     handle_streaming(F, Req, undefined, 3000).
 
 handle_streaming(F, Req, LastRes, Wait) ->
@@ -364,13 +379,14 @@ handle_streaming(F, Req, LastRes, Wait) ->
     handle_streaming(F, Req, HTTPRes, LastRes, Wait).
 
 handle_streaming(F, Req, HTTPRes, LastRes, Wait) ->
-    Res = F(),
+    Res = F(stable),
     case Res =:= LastRes of
         true -> ok;
         false ->
+            ResNormal = F(normal),
             error_logger:info_msg("menelaus_web streaming: ~p~n",
-                                  [Res]),
-            HTTPRes:write_chunk(mochijson2:encode(Res)),
+                                  [ResNormal]),
+            HTTPRes:write_chunk(mochijson2:encode(ResNormal)),
             %% TODO: resolve why mochiweb doesn't support zero chunk... this
             %%       indicates the end of a response for now
             HTTPRes:write_chunk("\n\n\n\n")
@@ -421,8 +437,11 @@ handle_bucket_info(PoolId, Id, Req) ->
     handle_bucket_info(PoolId, Id, Req, Pool, Bucket).
 
 build_bucket_info(PoolId, Id, Pool) ->
+    build_bucket_info(PoolId, Id, Pool, normal).
+
+build_bucket_info(PoolId, Id, Pool, InfoLevel) ->
     StatsUri = list_to_binary(concat_url_path(["pools", PoolId, "buckets", Id, "stats"])),
-    Nodes = build_nodes_info(Pool, false),
+    Nodes = build_nodes_info(Pool, false, InfoLevel),
     List1 = [{name, list_to_binary(Id)},
              {uri, list_to_binary(concat_url_path(["pools", PoolId, "buckets", Id]))},
              {streamingUri, list_to_binary(concat_url_path(["pools", PoolId, "bucketsStreaming", Id]))},
@@ -431,7 +450,10 @@ build_bucket_info(PoolId, Id, Pool) ->
                                                              "buckets", Id, "controller", "doFlush"]))},
              %% TODO: move this somewhere else
              %% {passwordUri, <<"none">>},
-             {basicStats, {struct, menelaus_stats:basic_stats(PoolId, Id)}},
+             {basicStats, {struct, case InfoLevel of
+                                       normal -> menelaus_stats:basic_stats(PoolId, Id);
+                                       stable -> []
+                                   end}},
              {nodes, Nodes},
              {stats, {struct, [{uri, StatsUri}]}}],
     List2 = case tgen:is_traffic_bucket(PoolId, Id) of
@@ -445,7 +467,7 @@ build_bucket_info(PoolId, Id, Pool) ->
     {struct, List2}.
 
 handle_bucket_info_streaming(PoolId, Id, Req, Pool, _Bucket) ->
-    F = fun() -> build_bucket_info(PoolId, Id, Pool) end,
+    F = fun(InfoLevel) -> build_bucket_info(PoolId, Id, Pool, InfoLevel) end,
     handle_streaming(F, Req, undefined, 3000).
 
 handle_bucket_delete(PoolId, BucketId, Req) ->
