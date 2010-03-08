@@ -30,7 +30,8 @@ handle_info(check_addr, State) ->
         PrevAddr ->
             {noreply, State};
         NewAddress ->
-            error_logger:info_msg("Changed IP address to ~p~n", [NewAddress]),
+            ns_log:log(?MODULE, 0001, "IP address on node ~p changed from ~p to ~p",
+                       [node(), PrevAddr, NewAddress]),
             gen_event:notify(ns_network_events, {new_addr, NewAddress}),
             {noreply, State#state{current_address=NewAddress}}
     end.
