@@ -607,7 +607,8 @@ function renderLargeGraph(main, data) {
 }
 
 function renderSmallGraph(jq, data, isSelected) {
-  jq.find('.small_graph_label > .value').text(String(truncateTo3Digits(_.max(data))));
+  var average = _.foldl(data, 0, function (s,v) {return s+v}) / data.length;
+  jq.find('.small_graph_label > .value').text(String(truncateTo3Digits(average)));
 
   var plotData = _.map(data, function (e, i) {
     return [i+1, e];
