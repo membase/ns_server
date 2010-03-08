@@ -1,10 +1,14 @@
+%% @author Northscale <info@northscale.com>
+%% @copyright 2010 NorthScale, Inc.
+%% All rights reserved.
+
 -module(dist_manager_informer).
 
 -behaviour(gen_event).
 
 -export([start_link/0, add_handler/0]).
 
--export([init/1, handle_event/2, handle_call/2, 
+-export([init/1, handle_event/2, handle_call/2,
          handle_info/2, terminate/2, code_change/3]).
 
 -record(state, {}).

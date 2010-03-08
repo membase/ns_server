@@ -1,3 +1,6 @@
+%% @author Northscale <info@northscale.com>
+%% @copyright 2010 NorthScale, Inc.
+%% All rights reserved.
 
 -module(ns_doctor).
 

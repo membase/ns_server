@@ -1,3 +1,7 @@
+%% @author Northscale <info@northscale.com>
+%% @copyright 2010 NorthScale, Inc.
+%% All rights reserved.
+
 % Distributed erlang configuration and management
 
 -module(dist_manager).

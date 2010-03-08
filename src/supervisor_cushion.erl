@@ -1,5 +1,10 @@
+%% @author Northscale <info@northscale.com>
+%% @copyright 2010 NorthScale, Inc.
+%% All rights reserved.
+
 %% This module exists to slow down supervisors to prevent fast spins
 %% on crashes.
+
 -module(supervisor_cushion).
 
 -behaviour(gen_server).

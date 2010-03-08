@@ -1,3 +1,7 @@
+%% @author Northscale <info@northscale.com>
+%% @copyright 2010 NorthScale, Inc.
+%% All rights reserved.
+
 -module(addr_util).
 
 -export([get_my_address/0]).

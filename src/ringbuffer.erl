@@ -1,3 +1,7 @@
+%% @author Northscale <info@northscale.com>
+%% @copyright 2010 NorthScale, Inc.
+%% All rights reserved.
+
 -module(ringbuffer).
 
 -export([new/1, to_list/1, to_list/2, to_list/3, add/2]).

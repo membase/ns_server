@@ -1,3 +1,7 @@
+%% @author Northscale <info@northscale.com>
+%% @copyright 2010 NorthScale, Inc.
+%% All rights reserved.
+
 -module(ringdict).
 
 -export([new/1, to_dict/1, to_dict/2, to_dict/3, add/2]).

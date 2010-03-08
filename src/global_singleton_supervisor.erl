@@ -1,3 +1,7 @@
+%% @author Northscale <info@northscale.com>
+%% @copyright 2010 NorthScale, Inc.
+%% All rights reserved.
+
 %% Processes supervised by this supervisor will only exist in one
 %% place in a cluster.
 
