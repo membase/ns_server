@@ -3,9 +3,13 @@
 -module(supervisor_cushion).
 
 -behaviour(gen_server).
+-behavior(ns_log_categorizing).
+
+-define(FAST_CRASH, 1).
 
 %% API
 -export([start_link/5]).
+-export([ns_log_cat/1, ns_log_code_string/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -42,11 +46,16 @@ handle_info(Info, State) ->
     exit({error, cushioned_supervisor, Info}).
 
 maybe_sleep(State) ->
+    %% How long (in microseconds) has this service been running?
+    Lifetime = timer:now_diff(now(), State#state.started),
     %% now_diff returns microseconds, so let's do the same.
-    Microseconds = State#state.delay * 1000,
+    MinDelay = State#state.delay * 1000,
     %% If the restart was too soon, slow down a bit.
-    case timer:now_diff(now(), State#state.started) < Microseconds of
+    case Lifetime < MinDelay of
         true ->
+            ns_log:log(?MODULE, ?FAST_CRASH,
+                       "Service ~p crashed in ~.2fs~n",
+                       [State#state.name, Lifetime / 1000000]),
             timer:sleep(State#state.delay);
         _ -> ok %% default case, no delay
     end.
@@ -56,3 +65,7 @@ terminate(_Reason, _State) ->
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+
+ns_log_cat(?FAST_CRASH) -> warn.
+
+ns_log_code_string(?FAST_CRASH) -> "port crashed too soon after restart".
