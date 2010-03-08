@@ -25,11 +25,12 @@ start_link() ->
 watch(Pid) ->
     process_flag(trap_exit, true),
     erlang:monitor(process, Pid),
-    error_logger:info_msg("Monitoring global singleton at ~p~n", [Pid]),
+    error_logger:info_msg("Monitoring global singleton at ~p (at node: ~p) from node ~p~n",
+                          [Pid, node(Pid), node()]),
     receive
     LikelyExit ->
-        error_logger:info_msg("Global singleton supervisor at ~p exited for reason ~p. Restarting.~n",
-                              [Pid, LikelyExit])
+        error_logger:info_msg("Global singleton supervisor at ~p (at node: ~p) exited for reason ~p, seen from node ~p. Restarting.~n",
+                              [Pid, node(Pid), LikelyExit, node()])
     end.
 
 
