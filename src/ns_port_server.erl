@@ -4,6 +4,7 @@
 -module(ns_port_server).
 
 -behavior(gen_server).
+-behavior(ns_log_categorizing).
 
 %% API
 -export([start_link/4, params/1,
@@ -17,6 +18,9 @@
          handle_info/2,
          code_change/3,
          terminate/2]).
+
+-define(UNEXPECTED, 1).
+-export([ns_log_cat/1, ns_log_code_string/1]).
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -120,6 +124,11 @@ handle_info({'EXIT', _Port, Reason}, State) ->
     error_logger:info_msg("port server (~p) exited: ~p~n",
                           [State#state.name, Reason]),
     {stop, {error, {port_exited, Reason}}, State};
+handle_info({_Port, {data, Msg}} = Reason, State) ->
+    ns_log:log(?MODULE, ?UNEXPECTED,
+               "Unexpected message monitoring ~p: ~s~n",
+               [State#state.name, Msg]),
+    {stop, {error, {port_exited, Reason}}, State};
 handle_info(Something, State) ->
     error_logger:info_msg("Got unexpected message while monitoring ~p: ~p~n",
                           [State#state.name, Something]),
@@ -184,3 +193,7 @@ set_param_test() ->
                                   "-E", "foo"],
                            "11212")),
     ok.
+
+ns_log_cat(?UNEXPECTED) -> warn.
+
+ns_log_code_string(?UNEXPECTED) -> "unexpected message monitoring port".
