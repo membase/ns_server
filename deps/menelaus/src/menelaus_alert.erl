@@ -182,6 +182,7 @@ build_alerts(Params) ->
 % The defined alert_key() responses are...
 %
 %  server_down
+%  server_unresponsive
 %  server_up
 %  server_joined
 %  server_left
@@ -190,6 +191,7 @@ build_alerts(Params) ->
 %  bucket_auth_failed
 
 is_alert_key("server_down")    -> true;
+is_alert_key("server_unresponsive") -> true;
 is_alert_key("server_up")      -> true;
 is_alert_key("server_joined")  -> true;
 is_alert_key("server_left")    -> true;
@@ -199,6 +201,7 @@ is_alert_key("bucket_auth_failed") -> true;
 is_alert_key(_) -> false.
 
 alert_key(ns_node_disco, 0005) -> server_down;
+alert_key(ns_node_disco, 0014) -> server_unresponsive;
 alert_key(ns_node_disco, 0004) -> server_up;
 alert_key(menelaus_web, 0009)  -> server_joined;
 alert_key(menelaus_web, 0013)  -> server_left;

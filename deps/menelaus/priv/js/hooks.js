@@ -247,6 +247,7 @@ var MockedRequest = mkClass({
                        sendAlerts:"0",
                        alerts: {
                          server_down:"1",
+                         server_unresponsive:"1",
                          server_up:"1",
                          server_joined:"1",
                          server_left:"1",
@@ -263,7 +264,7 @@ var MockedRequest = mkClass({
       //                 email_server_addr: "",
       //                 email_server_port: "",
       //                 email_server_encrypt: "",
-      //                 alert_server_down: "1"//...
+      //                 alert_server_down: "1" ...
       //                }
     } else if (path[0] == "pools") {
       if (path.length == 1) {

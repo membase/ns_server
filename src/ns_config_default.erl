@@ -42,6 +42,7 @@ default() ->
                                {port, undefined},
                                {encrypt, false}]},
                {alerts, [server_down,
+                         server_unresponsive,
                          server_up,
                          server_joined,
                          server_left,
