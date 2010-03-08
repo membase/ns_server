@@ -337,9 +337,6 @@ var DAO = {
       success: cb,
       error: cb});
   },
-  getTotalClusterMemory: function () {
-    return '??'; // TODO: implement
-  },
   getBucketNodesCount: function (_dummy) {
     return DAO.cells.currentPoolDetailsCell.value.nodes.length;
   },
@@ -803,6 +800,8 @@ var OverviewSection = {
       freeMem += n.memoryFree;
     });
 
+    this.freeClusterMemory = freeMem;
+
     var memoryUtilization = 100-Math.round(freeMem*100/totalMem);
 
     var isWarning = memoryUtilization > 90;
@@ -1047,7 +1046,13 @@ var BucketsSection = {
       var detailsText;
       if (cacheValue != undefined) {
         var nodesCnt = this.getPoolNodesCount();
-        detailsText = " MB x " + nodesCnt + " server nodes = " + cacheValue * nodesCnt + "MB Total Cache Size/" + DAO.getTotalClusterMemory() + " Cluster Memory Available"
+        detailsText = [" MB x ",
+                       nodesCnt,
+                       " server nodes = ",
+                       ViewHelpers.formatQuantity(cacheValue * nodesCnt * 1024 *1024),
+                       " Total Cache Size/",
+                       ViewHelpers.formatQuantity(OverviewSection.freeClusterMemory),
+                       " Cluster Memory Available"].join('')
       } else {
         detailsText = "";
       }
@@ -1626,6 +1631,19 @@ _.extend(ViewHelpers, {
   },
   formatLogTStamp: function (ts) {
     return window.formatLogTStamp(ts);
+  },
+  formatQuantity: function (value, kind) {
+    if (kind == null)
+      kind = 'B'; //bytes is default
+
+    var K = 1024;
+    var M = K*K;
+    var G = M*K;
+    var T = G*K;
+
+    var t = _.detect([[T,'T'],[G,'G'],[M,'M'],[K,'K']], function (t) {return value > 1.1*t[0]});
+    t = t || [1, ''];
+    return [truncateTo3Digits(value/t[0]), t[1], kind].join('');
   }
 });
 
