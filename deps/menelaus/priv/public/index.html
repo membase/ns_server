@@ -473,8 +473,8 @@
                                 <div class="used" style="width:1%;"></div>
                             </div>
                         </div>
-                    </div>{%= V.setPercentBar(this.basicStats.cachePercentUsed) %}
-                    {%= h(this.basicStats.cachePercentUsed) %}%
+                    </div>{%= V.setPercentBar(this.basicStats.cachePercentUsed*100) %}
+                    {%= h(this.basicStats.cachePercentUsed*100) %}%
                 </div>
               </td>
               <td>{%= h(this.basicStats.cacheSize) %}MB</td>

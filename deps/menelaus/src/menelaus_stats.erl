@@ -64,7 +64,7 @@ basic_stats(PoolId, BucketId) ->
     [{cacheSize, NumNodes * MbPerNode},
      {opsPerSec, OpsPerSec},
      {evictionsPerSec, EvictionsPerSec},
-     {cachePercentUsed, 100 * float_round(CurBytes / MaxBytes)}].
+     {cachePercentUsed, float_round(CurBytes / MaxBytes)}].
 
 % GET /pools/default/stats?stat=opsbysecond
 % GET /pools/default/stats?stat=hot_keys
