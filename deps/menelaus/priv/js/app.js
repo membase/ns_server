@@ -828,7 +828,7 @@ var OverviewSection = {
       nodesCount: nodes.length,
       bucketsCount: buckets && buckets.length,
       memoryUtilization: memoryUtilization,
-      memoryFreeMB: Math.floor(freeMem/1048576),
+      memoryFree: freeMem,
       mcdItemUtilization: mcdItemUtilization,
       mcdMemReserved: mcdMemReserved
     };

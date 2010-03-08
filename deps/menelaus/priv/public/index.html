@@ -142,7 +142,7 @@
                     <div class="unused">
                         <div class="used" style="width:1%;"></div>
                     </div>{%=V.setPercentBar(memoryUtilization)%}
-                    <div class="comment">{%=memoryUtilization%}% Utilized ({%=memoryFreeMB%}MB Free)</div>
+                    <div class="comment">{%=memoryUtilization%}% Utilized ({%=V.formatQuantity(memoryFree)%} Free)</div>
                 </div>
                 <a class="text_11 tooltip">What's this?
                   <span class="tooltip_msg"><span>
@@ -158,7 +158,7 @@
                     <div class="unused">
                         <div class="used" style="width:50%;"></div>
                     </div>{%=V.setPercentBar(mcdItemUtilization)%}
-                    <div class="comment">{%=mcdItemUtilization%}% Allocated ({%=mcdMemReserved %}MB Reserved)</div>
+                    <div class="comment">{%=mcdItemUtilization%}% Allocated ({%= V.formatQuantity(mcdMemReserved*1024*1024)%} Reserved)</div>
                 </div>
                 <a class="text_11 tooltip">What's this?
                   <span class="tooltip_msg"><span>
