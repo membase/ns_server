@@ -37,6 +37,10 @@ function setBoolAttribute(jq, attr, value) {
   }
 }
 
+function normalizeNaN(possNaN) {
+	return possNaN << 0;
+}
+
 function setFormValues(form, values) {
   form.find('input[type=text], input[type=password], input:not([type])').each(function () {
     var text = $(this);
@@ -803,7 +807,7 @@ var OverviewSection = {
 
     this.freeClusterMemory = freeMem;
 
-    var memoryUtilization = 100-Math.round(freeMem*100/totalMem);
+    var memoryUtilization = 100-Math.round(freeMem*100/totalMem) << 0;
 
     var isWarning = memoryUtilization > 90;
     
