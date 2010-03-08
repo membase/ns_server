@@ -463,8 +463,8 @@
               <td>
               <a class="float_right text_11" href="{%=jsLink('BucketsSection.showBucket',this.uri)%}">Properties</a>
               <a class="gray_link" href="{%=jsLink('AnalyticsSection.visitBucket',this.uri)%}">{%= h(this.name) %}</a></td>
-              <td>{%= h(this.basicStats.opsPerSec) %}</td>
-              <td>{%= h(this.basicStats.evictionsPerSec) %}</td>
+              <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
+              <td>{%= h(truncateTo3Digits(this.basicStats.evictionsPerSec)) %}</td>
               <td>
                 <div class="usage_smallest_info">
                     <div class="usage_smallest">
@@ -474,7 +474,7 @@
                             </div>
                         </div>
                     </div>{%= V.setPercentBar(this.basicStats.cachePercentUsed*100) %}
-                    {%= h(this.basicStats.cachePercentUsed*100) %}%
+                    {%= h(truncateTo3Digits(this.basicStats.cachePercentUsed*100)) %}%
                 </div>
               </td>
               <td>{%= h(this.basicStats.cacheSize) %}MB</td>
