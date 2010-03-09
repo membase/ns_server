@@ -1698,7 +1698,6 @@ $(function () {
 	    ts = parseInt(reloadInfo);
 	    if ((now - ts) > 2*1000) {
           $.cookie('ri', null);
-	      return;
 	    }
       }
 	  displayNotice('An error was encountered when requesting data from the server.  ' +
