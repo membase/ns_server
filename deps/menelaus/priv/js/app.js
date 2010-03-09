@@ -178,14 +178,24 @@ function onUnexpectedXHRError(xhr) {
   if (reloadInfo) {
     ts = parseInt(reloadInfo);
     if ((now - ts) < 15*1000) {
-      alert('A second server failure has been detected in a short period of time.  The error has been logged.  Reloading the application has been suppressed.\n\nYou should consider browsing to another server in the cluster.');
+      alert('The application received multiple invalid responses from the server.  The server log may have details on this error.  Reloading the application has been suppressed.\n\nYou may be able to load the console from another server in the cluster.');
       return;
     }
   }
 
-  alert("Either a network or server side error has occured.  The server has logged the error.  We will reload the console now to attempt to recover.");
+  // remove this alert("Either a network or server side error has occurred.  The server log may have details on the error.  The console will reload to attempt to recover.");
   $.cookie('ri', String((new Date()).valueOf()), {expires:0});
-  reloadApp();
+  $.cookie('cluster_join_flash', null);
+  reloadApp(function (reload) {
+      var uri = window.location.href;
+      if (uri.charAt(uri.length-1) == '/')
+          uri = uri.slice(0, -1);
+      uri += document.location.pathname;
+      var position = uri.indexOf('#');
+      if (position > 0)
+          uri = uri.substring(0, position);
+      _.delay(_.bind(reload, null, uri), 500);
+    });
 }
 
 function postWithValidationErrors(url, data, callback) {
@@ -1690,6 +1700,22 @@ $(function () {
   if ($.cookie('cluster_join_flash')) {
     $.cookie('cluster_join_flash', null);
     displayNotice('You have successfully joined the cluster');
+  }
+  if ($.cookie('ri')) {
+	  var reloadInfo = $.cookie('ri');
+	  var ts;
+
+	  var now = (new Date()).valueOf();
+	  if (reloadInfo) {
+	    ts = parseInt(reloadInfo);
+	    if ((now - ts) > 2*1000) {
+          $.cookie('ri', null);
+	      return;
+	    }
+      }
+	  displayNotice('An error was encountered when requesting data from the server.  ' +
+			        'The console has been reloaded to attempt to recover.  There ' +
+			        'may be additional information about the error in the log.');
   }
 
   ThePage.initialize();
