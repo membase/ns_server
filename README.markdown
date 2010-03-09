@@ -29,25 +29,26 @@ Before you start the server, you may need to do the following
   * Below, <REPO_ROOT> is where you checked out and built ns_server above.
   * Make sure the needed ports are not being used (these include
     8080, 11211, 11212, etc).
-  * Build the "for_release" branch of northscale memcached that has isasl
-    enabled (git clone git@github.com:northscale/memcached.git &&
-    cd memcached &&
-    git checkout --track origin/for_release &&
-    ./config/autorun.sh &&
-    ./configure --enable-isasl &&
-    make && make test).
-  * Build the bucket_engine library from the
+  * UNIX
+    ** Build the "for_release" branch of northscale memcached that has isasl
+      enabled (git clone git@github.com:northscale/memcached.git &&
+cd memcached &&
+git checkout --track origin/for_release &&
+./config/autorun.sh &&
+./configure --enable-isasl && make && make test).
+
+    ** Build the bucket_engine library from the
     git@github.com:northscale/bucket_engine.git repository.
     (git clone git@github.com:northscale/bucket_engine.git &&
     cd bucket_engine &&
-    ./configure --with-memcached=/path/to/your/above/dir/for/memcached/ &&
-    make && make test)
-  * Create a sym link from the for_release northscale memcached
+./configure --with-memcached=/path/to/your/above/dir/for/memcached/ && make && make test)
+
+    ** Create a sym link from the for_release northscale memcached
     that you just built to <REPO_ROOT>/priv/memcached
-  * Create a sym link from the for_release northscale memcached
+    ** Create a sym link from the for_release northscale memcached
     memcached/.libs/default_engine.so to
     <REPO_ROOT>/priv/default_engine.so
-  * If your sym links are correct, you should be able to cd <REPO_ROOT>/priv
+    ** If your sym links are correct, you should be able to cd <REPO_ROOT>/priv
     and run (just to test):
 
 /.memcached -p 11211 -d -P /tmp/memcached.pid -E bucket_engine.so -e "admin=_admin;engine=default_engine.so;default_bucket_name=default
@@ -56,10 +57,27 @@ Before you start the server, you may need to do the following
     manually run memcached.
 
     then kill your test memcached:
+
 kill `cat /tmp/memcached.pid`
 
     The build process, when running 'make test', will start memcached
     in this manner to ensure the test succesfully runs.
+
+    * Windows:
+    ** To make life easy, use the appropriate binary from the Northscale website. Install 
+       it in /c/memcached
+    ** If you insist on building memcached on windows, read the README file in the 
+       buildbot-internal repository for instructions
+    ** Copy  memcached.exe and default_engine.so into the ./priv directory
+    ** If your copying was correct, you should be able to cd <REPO_ROOT>/priv
+    and run (just to test):
+
+/.memcached -p 11211 -E bucket_engine.so & 
+
+    ** Kill memcached:
+
+taskkill //F //PID `tasklist.exe |grep memcached|awk '/^(\w+)\W+(\w+)/ {print $2}'`
+
   * If you're not employing the use of sym links, instead make sure that the
     memcached/.libs/default_engine.so and
     bucket_engine/.libs/bucket_engine.so

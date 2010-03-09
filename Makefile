@@ -58,7 +58,7 @@ test_noemoxi: test_unit test_menelaus
 
 test_: test_unit test_unit_emoxi test_menelaus
 
-test_Windows_NT: test_unit test_menelaus
+test_Windows_NT: test_unit test_unit_emoxi test_menelaus
 
 test_unit: ebins
 	erl $(EFLAGS) -noshell -s ns_server_test test -s init stop -kernel error_logger silent

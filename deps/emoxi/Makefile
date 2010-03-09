@@ -30,6 +30,8 @@ MEMCACHED_ENGINE_STRING="admin=_admin;engine=$(MEMCACHED_DEFAULT_ENGINE);default
 
 MEMCACHED_COMMAND=$(MEMCACHED) -p $(MEMCACHED_PORT) -d -P /tmp/memcached.pid -E $(MEMCACHED_BUCKET_ENGINE) -e $(MEMCACHED_ENGINE_STRING)
 
+MEMCACHED_WIN_COMMAND=$(MEMCACHED) -p $(MEMCACHED_PORT) -E $(MEMCACHED_DEFAULT_ENGINE) &
+
 TMP_DIR=./tmp
 
 TMP_VER=$(TMP_DIR)/version_num.tmp
@@ -74,10 +76,17 @@ test: test_unit
 
 test_full: test memcapable
 
-test_unit: ebins $(NS_SERVER_EBIN)
+test_unit: test_unit_$(OS) ebins $(NS_SERVER_EBIN)
+
+test_unit_:
 	$(MEMCACHED_COMMAND)
 	erl $(EFLAGS) -noshell -s mc_test test -s init stop -kernel error_logger silent
 	kill `cat /tmp/memcached.pid`
+
+test_unit_Windows_NT:
+	$(MEMCACHED_WIN_COMMAND) 
+	erl $(EFLAGS) -noshell -s mc_test test -s init stop -kernel error_logger silent
+	taskkill //F //PID `tasklist.exe |grep memcached|awk '/^(\w+)\W+(\w+)/ {print $$2}'`
 
 test_unit_verbose: ebins $(NS_SERVER_EBIN)
 	$(MEMCACHED_COMMAND)
