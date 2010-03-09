@@ -312,21 +312,6 @@ function renderTemplate(key, data, to) {
     });
 
     $(window).trigger('template:rendered');
-  } catch (e) {
-    var stringError;
-    try {
-      stringError = e.message + ':' + String(e);
-    } catch (e2) {
-      stringError = '(failed to stringify exception)';
-    }
-    if (confirm('Got exception from template. Do you want to run javascript debugger?\n\n'
-                + 'Exception: ' + stringError
-                + '\nTemplate details:'
-                + String(fn) + ', ' + e.templateBody)) {
-      debugger
-      renderTemplate.apply(this, arguments);
-    }
-    throw e;
   } finally {
     AfterTemplateHooks = oldHooks;
   }
