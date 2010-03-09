@@ -79,14 +79,14 @@ reconfig(Name, PoolConfig) ->
     error_logger:info_msg("Reconfiguring ~p from within ~p~n",
                           [Name, CurrentChildren]),
     lists:foreach(
-      fun({{mc_accept, _}, undefined, _, _}) ->
+      fun({{mc_accept, _} = Spec, undefined, _, _}) ->
               ns_log:log(?MODULE, 0003, "reconfig accept start ~p", [Name]),
-              supervisor:terminate_child(ServerName, mc_accept),
-              supervisor:delete_child(ServerName, mc_accept),
+              supervisor:terminate_child(ServerName, Spec),
+              ok = supervisor:delete_child(ServerName, Spec),
               supervisor:start_child(ServerName,
                                      child_spec_accept(Name, PoolConfig)),
               ok;
-         ({{mc_accept, CurrArgs}, _Pid, _, _}) ->
+         ({{mc_accept, CurrArgs} = Spec, _Pid, _, _}) ->
               WantSpec = child_spec_accept(Name, PoolConfig),
               {_, {_, _, WantArgs}, _, _, _, _} = WantSpec,
               error_logger:info_msg("Wanted ~p, got ~p~n", [WantArgs, CurrArgs]),
@@ -97,8 +97,8 @@ reconfig(Name, PoolConfig) ->
                                  [Name]),
                       error_logger:info_msg("~p reconfig ~p -> ~p~n",
                                             [?MODULE, CurrArgs, WantArgs]),
-                      supervisor:terminate_child(ServerName, mc_accept),
-                      supervisor:delete_child(ServerName, mc_accept),
+                      supervisor:terminate_child(ServerName, Spec),
+                      ok = supervisor:delete_child(ServerName, Spec),
                       supervisor:start_child(ServerName, WantSpec)
               end;
          ({{mc_pool, N}, Pid, _, _}) when N =:= Name ->
