@@ -38,8 +38,8 @@ test_writing() ->
                                  {pools, sample_config()}, State),
     Expected = [
                 "admin admin\n",
-                "other_application another_password cache_size=67108864\n",
-                "test_application plain_text_password cache_size=67108864\n"],
+                "other_application another_password\n",
+                "test_application plain_text_password\n"],
     {ok, F} = file:open(Path, [read]),
     lists:foreach(fun (E) -> E = io:get_line(F, "") end, Expected),
     file:close(F),

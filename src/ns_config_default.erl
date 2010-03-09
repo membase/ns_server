@@ -24,7 +24,7 @@ default() ->
                      {memcached, "./priv/memcached",
                       ["-p", "11211",
                        "-E", "./engines/bucket_engine.so",
-                       "-e", "admin=_admin;engine=./priv/engines/default_engine.so;default_bucket_name=default;auto_create=true",
+                       "-e", "admin=_admin;engine=./priv/engines/default_engine.so;default_bucket_name=default;auto_create=false",
                        "-B", "auto"
                       ],
                       [{env, [{"MEMCACHED_CHECK_STDIN", "thread"},
