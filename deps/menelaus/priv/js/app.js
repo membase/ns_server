@@ -1222,19 +1222,10 @@ var AlertsSection = {
 
     this.alerts = new Cell(function (active) {
       var value = this.self.value;
-      var params = {url: "/alerts", data: {}};
-      return future.get(params, function (data) {
-        if (value) {
-          var newDataNumbers = _.pluck(data.list, 'number');
-          _.each(value.list, function (oldItem) {
-            if (!_.include(newDataNumbers, oldItem.number))
-              data.list.push(oldItem);
-          });
-          data.list = data.list.slice(0, data.limit);
-        }
-        return data;
-      }, this.self.value);
+      var params = {url: "/alerts"};
+      return future.get(params);
     }).setSources({active: this.active});
+    this.alerts.keepValueDuringAsync = true;
     prepareTemplateForCell("alert_list", this.alerts);
     this.alerts.subscribe($m(this, 'renderAlertsList'));
     this.alerts.subscribe(function (cell) {
