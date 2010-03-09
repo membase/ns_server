@@ -91,6 +91,9 @@ reconfig_pools(Pools) ->
     NewPoolNames = lists:subtract(WantPoolNames, CurrPoolNames),
     SamePoolNames = lists:subtract(CurrPoolNames, OldPoolNames),
 
+    error_logger:info_msg("Removing ~p, Adding ~p, Updating ~p~n",
+                          [OldPoolNames, NewPoolNames, SamePoolNames]),
+
     lists:foreach(fun(Name) -> emoxi_sup:stop_pool(Name) end,
                   OldPoolNames),
     lists:foreach(fun(Name) -> emoxi_sup:start_pool(Name) end,

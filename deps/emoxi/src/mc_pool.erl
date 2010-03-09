@@ -214,7 +214,9 @@ create(Id, Nodes, Config, Buckets) ->
 build_pool(Name, NSConfig) ->
     case ns_config:search_prop(NSConfig, pools, Name) of
         undefined ->
-            ns_log:log(?MODULE, 0001, "Missing configuration entries for unknown pool: ~p", [Name]),
+            ns_log:log(?MODULE, 1,
+                       "Missing configuration entries for unknown pool: ~p",
+                       [Name]),
             error;
         PoolConfig ->
             build_pool(Name, NSConfig, PoolConfig)

@@ -76,6 +76,8 @@ reconfig(Name) ->
 reconfig(Name, PoolConfig) ->
     ServerName = name_to_server_name(Name),
     CurrentChildren = current_children(Name),
+    error_logger:info_msg("Reconfiguring ~p from within ~p~n",
+                          [Name, CurrentChildren]),
     lists:foreach(
       fun({{mc_accept, _}, undefined, _, _}) ->
               ns_log:log(?MODULE, 0003, "reconfig accept start ~p", [Name]),
@@ -87,6 +89,7 @@ reconfig(Name, PoolConfig) ->
          ({{mc_accept, CurrArgs}, _Pid, _, _}) ->
               WantSpec = child_spec_accept(Name, PoolConfig),
               {_, {_, _, WantArgs}, _, _, _, _} = WantSpec,
+              error_logger:info_msg("Wanted ~p, got ~p~n", [WantArgs, CurrArgs]),
               case CurrArgs =:= WantArgs of
                   true  -> ok;
                   false ->
