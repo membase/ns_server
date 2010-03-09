@@ -332,9 +332,8 @@ function $m(self, method, klass) {
     return f.apply(self, arguments);
   }
 
-  // TODO: this is debugging measure. Disable it later.
-  rv['$m'] = _.toArray(arguments);
-  rv['$m.f'] = f;
+  // rv['$m'] = _.toArray(arguments);
+  // rv['$m.f'] = f;
 
   return rv;
 }
