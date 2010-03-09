@@ -69,6 +69,10 @@ test_unit_emoxi: deps/emoxi
 test_menelaus: deps/menelaus
 	(cd deps/menelaus; $(MAKE) test)
 
+# assuming exuberant-ctags
+TAGS:
+	ctags -eR .
+
 dialyzer: ebins
 	dialyzer -pa ebin -r .
 

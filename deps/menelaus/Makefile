@@ -41,10 +41,6 @@ clean:
 	rm -rf $(DIST_DIR)
 	rm -f TAGS
 
-# assuming exuberant-ctags
-TAGS:
-	ctags -eR .
-
 test: all
 	erl -noshell -pa ./ebin ./deps/*/ebin -boot start_sasl -s menelaus_web test -s menelaus_util test -s menelaus_stats test -s init stop
 
