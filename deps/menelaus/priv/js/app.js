@@ -1882,7 +1882,7 @@ function showAbout() {
               url: "/logClientError",
               data: report.join(''),
               success: ignore,
-              errors: ignore});
+              error: ignore});
     }, 500);
   }
   window.onerror = appOnError;
