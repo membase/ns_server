@@ -1105,14 +1105,14 @@ var BucketsSection = {
     var loading = overlayWithSpinner(form);
 
     postWithValidationErrors(self.cells.detailsPageURI.value, form, function (data, status) {
-      loading.remove();
       if (status == 'error') {
+        loading.remove();
         renderTemplate("add_new_bucket_errors", data);
       } else {
-        self.cells.detailedBuckets.changedSlot.subscribeOnce(function () {
+        DAO.cells.currentPoolDetails.invalidate(function () {
+          loading.remove();
           self.finishCreate();
         });
-        self.cells.detailedBuckets.recalculate();
       }
     });
   },

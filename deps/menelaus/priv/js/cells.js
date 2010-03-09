@@ -187,7 +187,9 @@ var Cell = mkClass({
   // forces cell recalculation unless async set is in progress
   // recalculate() call would abort and re-issue in-flight XHR
   // request, which is almost always bad thing
-  invalidate: function () {
+  invalidate: function (callback) {
+    if (callback)
+      this.changedSlot.subscribeOnce(callback);
     if (this.pendingFuture)
       return;
     this.recalculate();
