@@ -137,7 +137,6 @@ is_safe_key_name(Name) ->
 build_buckets_stats_hks_response(PoolId, BucketIds, Params) ->
     {ok, BucketsTopKeys} =
         get_buckets_hks(PoolId, BucketIds, Params),
-    % TODO: sort/chop here
     HotKeyStructs = lists:map(
                       fun ({BucketId, Key, Evictions, Ratio, Ops}) ->
                               EscapedKey = case is_safe_key_name(Key) of

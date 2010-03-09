@@ -45,7 +45,6 @@ clean:
 TAGS:
 	ctags -eR .
 
-# TODO: somehow fix dependency on ns_server's ns_log at least in tests
 test: all
 	erl -noshell -pa ./ebin ./deps/*/ebin -boot start_sasl -s menelaus_web test -s menelaus_util test -s menelaus_stats test -s init stop
 
