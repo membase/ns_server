@@ -364,7 +364,7 @@ function reloadApp(middleCallback) {
     if (where)
       window.location.href = where;
     else
-      window.location.reload();
+      window.location.href = "/";
   }
 }
 

@@ -171,6 +171,14 @@ function addBasicAuth(xhr, login, password) {
 function onUnexpectedXHRError(xhr) {
   window.onUnexpectedXHRError = function () {}
 
+  var status;
+  try {status = xhr.status} catch (e) {};
+
+  if (status == 401) {
+    $.cookie('auth', null);
+    return reloadApp();
+  }
+
   var reloadInfo = $.cookie('ri');
   var ts;
 
@@ -183,19 +191,8 @@ function onUnexpectedXHRError(xhr) {
     }
   }
 
-  // remove this alert("Either a network or server side error has occurred.  The server log may have details on the error.  The console will reload to attempt to recover.");
   $.cookie('ri', String((new Date()).valueOf()), {expires:0});
-  $.cookie('cluster_join_flash', null);
-  reloadApp(function (reload) {
-      var uri = window.location.href;
-      if (uri.charAt(uri.length-1) == '/')
-          uri = uri.slice(0, -1);
-      uri += document.location.pathname;
-      var position = uri.indexOf('#');
-      if (position > 0)
-          uri = uri.substring(0, position);
-      _.delay(_.bind(reload, null, uri), 500);
-    });
+  reloadAppWithDelay(500);
 }
 
 function postWithValidationErrors(url, data, callback) {
