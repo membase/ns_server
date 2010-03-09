@@ -4,50 +4,52 @@
 
 -module(ns_cluster).
 
--behaviour(gen_server).
+-behaviour(gen_fsm).
 
--export([start_link/0, init/1, handle_cast/2, handle_call/3, handle_info/2,
-         terminate/2, code_change/3]).
+%% General FSMness
+-export([start_link/0, init/1, handle_info/3,
+         handle_event/3, handle_sync_event/4,
+         code_change/4, terminate/3]).
+
+%% States
+-export([running/2, joining/2, leaving/2]).
 
 %% API
 -export([join/2, leave/1, leave/0]).
 
--record(state, {child, action}).
+-record(running_state, {child}).
+-record(joining_state, {remote, cookie}).
+-record(leaving_state, {}).
 
 %% gen_server handlers
 start_link() ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+    gen_fsm:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
     process_flag(trap_exit, true),
     {ok, Pid} = ns_server_sup:start_link(),
-    {ok, #state{child=Pid, action=undefined}}.
+    {ok, running, #running_state{child=Pid}}.
 
-handle_call(Request, _From, State) ->
-    {reply, {unhandled, ?MODULE, Request}, State}.
+%%
+%% State Transitions
+%%
 
-handle_cast({join, RemoteNode, NewCookie}, State = #state{child=Pid, action=undefined}) ->
+running({join, RemoteNode, NewCookie}, State) ->
     ns_log:log(?MODULE, 0002, "Node ~p is joining cluster.", [RemoteNode]),
     ns_config:set(otp, [{cookie, NewCookie}]),
     ns_config:clear([directory, otp]),
-    true = exit(Pid, shutdown), % Pull the rug out from under the app
-    {noreply, State#state{action={join, RemoteNode, NewCookie}}};
+    true = exit(State#running_state.child, shutdown), % Pull the rug out from under the app
+    {next_state, joining, #joining_state{remote=RemoteNode, cookie=NewCookie}};
 
-handle_cast(leave, State = #state{child=Pid, action=undefined}) ->
+running(leave, State) ->
     ns_log:log(?MODULE, 0001, "Node ~p is leaving cluster.", [node()]),
     NewCookie = ns_node_disco:cookie_gen(),
     ns_config:set(nodes_wanted, [node()]),
     ns_config:set(otp, [{cookie, NewCookie}]),
-    true = exit(Pid, shutdown),
-    {noreply, State#state{action=leave}};
+    true = exit(State#running_state.child, shutdown),
+    {next_state, leaving, #leaving_state{}}.
 
-handle_cast(Msg, State) ->
-    error_logger:info_msg("ns_cluster: got unexpected cast ~p in state ~p~n",
-                              [Msg, State]),
-    {noreply, State}.
-
-handle_info({'EXIT', Pid, shutdown},
-            #state{child=Pid, action={join, RemoteNode, NewCookie}}) ->
+joining({exit, _Pid}, #joining_state{remote=RemoteNode, cookie=NewCookie}) ->
     error_logger:info_msg("ns_cluster: joining cluster. Child has exited.~n"),
     timer:sleep(1000), % Sleep for a second to let things settle
     true = erlang:set_cookie(node(), NewCookie),
@@ -58,28 +60,41 @@ handle_info({'EXIT', Pid, shutdown},
         Nodes -> rpc:cast(RemoteNode, ns_config, set,
                           [nodes_wanted, [node() | Nodes]])
     end,
-    {ok, State} = init([]),
-    {noreply, State};
-handle_info({'EXIT', Pid, shutdown},
-            #state{child=Pid, action=leave}) ->
+    {ok, running, State} = init([]),
+    {next_state, running, State}.
+
+leaving({exit, _Pid}, _LeaveData) ->
     error_logger:info_msg("ns_cluster: leaving cluster~n"),
     timer:sleep(1000),
     lists:foreach(fun erlang:disconnect_node/1, nodes()),
-    {ok, State} = init([]),
-    {noreply, State};
-handle_info({'EXIT', _Pid, Reason}, State) ->
-    error_logger:error_report("ns_cluster: got exit ~p in state ~p.~n",
-                              [Reason, State]),
-    {stop, Reason, State}.
+    {ok, running, State} = init([]),
+    {next_state, running, State};
 
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+leaving(leave, LeaveData) ->
+    %% If we are told to leave in the leaving state, continue leaving.
+    {next_state, leaving, LeaveData}.
 
-terminate(_Reason, _State) -> ok.
+%%
+%% Miscellaneous gen_fsm callbacks.
+%%
+
+handle_info({'EXIT', Pid, shutdown}, CurrentState, CurrentData) ->
+    ?MODULE:CurrentState({exit, Pid}, CurrentData).
+
+handle_event(Event, State, _StateData) ->
+    exit({unhandled_event, Event, State}).
+
+handle_sync_event(Event, _From, State, _StateData) ->
+    exit({unhandled_event, Event, State}).
+
+code_change(_OldVsn, State, StateData, _Extra) ->
+    {ok, State, StateData}.
+
+terminate(_Reason, _StateName, _StateData) -> ok.
 
 %% API
 join(RemoteNode, NewCookie) ->
-    gen_server:cast(?MODULE, {join, RemoteNode, NewCookie}).
+    gen_fsm:send_event(?MODULE, {join, RemoteNode, NewCookie}).
 
 % Should be invoked on a node that remains in the cluster,
 % where the leaving RemoteNode is passed in as an argument.
@@ -97,5 +112,5 @@ leave(RemoteNode) ->
 
 leave() ->
     error_logger:info_msg("ns_cluster: we've been asked to leave the cluster.~n"),
-    gen_server:cast(?MODULE, leave).
+    gen_fsm:send_event(?MODULE, leave).
 
