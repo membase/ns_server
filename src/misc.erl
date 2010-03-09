@@ -356,3 +356,11 @@ ping_jointo(NodeName) ->
         pong -> error_logger:info_msg("jointo: connected to ~p~n", [NodeName]);
         pang -> {error, io_lib:format("jointo: could not ping ~p~n", [NodeName])}
     end.
+
+mapfilter(F, Ref, List) ->
+    lists:foldr(fun (Item, Acc) ->
+                    case F(Item) of
+                    Ref -> Acc;
+                    Value -> [Value|Acc]
+                    end
+                 end, [], List).

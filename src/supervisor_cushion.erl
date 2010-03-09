@@ -14,13 +14,13 @@
 
 %% API
 -export([start_link/5]).
--export([ns_log_cat/1, ns_log_code_string/1]).
+-export([ns_log_cat/1, ns_log_code_string/1, child_pid/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {name, delay, started}).
+-record(state, {name, delay, started, child_pid}).
 
 start_link(Name, Delay, M, F, A) ->
     gen_server:start_link(?MODULE, [Name, Delay, M, F, A], []).
@@ -28,10 +28,11 @@ start_link(Name, Delay, M, F, A) ->
 init([Name, Delay, M, F, A]) ->
     process_flag(trap_exit, true),
     error_logger:info_msg("starting ~p with delay of ~p~n", [M, Delay]),
-    Val = apply(M, F, A),
-    error_logger:info_msg("~p:~p(~p) returned ~p~n", [M, F, A, Val]),
-    {ok, #state{name=Name, delay=Delay, started=now()}}.
+    {ok, Pid} = apply(M, F, A),
+    {ok, #state{name=Name, delay=Delay, started=now(), child_pid=Pid}}.
 
+handle_call(child_pid, _From, State) ->
+    {reply, State#state.child_pid, State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -42,15 +43,17 @@ handle_cast(_Msg, State) ->
 handle_info({'EXIT', _Pid, Reason}, State) ->
     error_logger:info_msg("Cushion managed supervisor for ~p failed:  ~p~n",
                           [State#state.name, Reason]),
-    maybe_sleep(State),
-    exit({error, cushioned_supervisor, Reason});
+    State1 = die_slowly({error, cushioned_supervisor, Reason}, State),
+    {noreply, State1};
+handle_info({die, Reason}, State) ->
+    {stop, Reason, State};
 handle_info(Info, State) ->
     error_logger:info_msg("Cushion got unexpected info supervising ~p: ~p~n",
                           [State#state.name, Info]),
-    maybe_sleep(State),
-    exit({error, cushioned_supervisor, Info}).
+    State1 = die_slowly({error, cushioned_supervisor, Info}, State),
+    {noreply, State1}.
 
-maybe_sleep(State) ->
+die_slowly(Reason, State) ->
     %% How long (in microseconds) has this service been running?
     Lifetime = timer:now_diff(now(), State#state.started),
     %% now_diff returns microseconds, so let's do the same.
@@ -61,9 +64,10 @@ maybe_sleep(State) ->
             ns_log:log(?MODULE, ?FAST_CRASH,
                        "Service ~p crashed in ~.2fs~n",
                        [State#state.name, Lifetime / 1000000]),
-            timer:sleep(State#state.delay);
-        _ -> ok %% default case, no delay
-    end.
+            timer:send_after(State#state.delay, {die, Reason});
+        _ -> self() ! {die, Reason}
+    end,
+    State#state{child_pid=undefined}.
 
 terminate(_Reason, _State) ->
     ok.
@@ -74,3 +78,7 @@ code_change(_OldVsn, State, _Extra) ->
 ns_log_cat(?FAST_CRASH) -> warn.
 
 ns_log_code_string(?FAST_CRASH) -> "port crashed too soon after restart".
+
+%% API
+child_pid(Pid) ->
+    gen_server:call(Pid, child_pid).

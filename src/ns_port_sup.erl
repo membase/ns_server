@@ -72,12 +72,17 @@ current_ports() ->
     %    {ns_port_init,undefined,worker,[]}]
     %
     Children = supervisor:which_children(?MODULE),
-    Children2 = proplists:delete(ns_port_init, Children),
-    {Running, NotRunning} = lists:partition(fun ({_, Pid, _, _}) ->
-                                                is_pid(Pid)
-                                            end, Children2),
-    lists:foreach(fun ({Name, _, _, _}) ->
-                      supervisor:delete_child(?MODULE, Name)
-                  end, NotRunning),
-    Running.
+    misc:mapfilter(fun ({ns_port_init, _, _, _}) ->
+                           false;
+                       ({_, undefined, _, _}) ->
+                           false;
+                       ({Name, Pid, Args, Opts}) ->
+                           case supervisor_cushion:child_pid(Pid) of
+                           undefined -> false;
+                           ChildPid ->
+                               % Return the PID of the cushion's child
+                               % so stuff can talk to it.
+                               {Name, ChildPid, Args, Opts}
+                           end
+                   end, false, Children).
 
