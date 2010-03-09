@@ -20,6 +20,7 @@
 -endif.
 
 -export([handle_logs/1,
+         build_logs/1,
          handle_alerts/1,
          handle_alerts_settings_post/1,
          build_alerts_settings/0]).

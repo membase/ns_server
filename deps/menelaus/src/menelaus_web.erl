@@ -122,6 +122,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_settings_web/1};
                              ["settings", "advanced"] ->
                                  {auth, fun handle_settings_advanced/1};
+                             ["diag"] ->
+                                 {auth, fun handle_diag/1};
                              ["t", "index.html"] ->
                                  {done, serve_index_html_for_tests(Req, AppRoot)};
                              ["index.html"] ->
@@ -1023,3 +1025,18 @@ ns_log_code_string(0017) ->
     "node join failure";
 ns_log_code_string(0019) ->
     "server error during request processing".
+
+handle_diag(Req) ->
+    Pool = find_pool_by_id("default"),
+    Buckets = lists:sort(fun (A,B) -> element(1, A) =< element(1, B) end,
+                         all_accessible_buckets_in_pool(Pool, Req)),
+    Text = io_lib:format("version = ~p~n~nns_config = ~p~n~nnodes_info = ~p~n~nbuckets = ~p~n~nbasic_info() = ~p~n~nlogs = ~p~n~n",
+                         [ns_info:version(),
+                          ns_config:get(),
+                          build_nodes_info(Pool, true),
+                          Buckets,
+                          ns_info:basic_info(),
+                          menelaus_alert:build_logs([{"limit", "1000000"}])]),
+    Req:ok({"text/plain; charset=utf-8",
+            server_header(),
+            list_to_binary(Text)}).
