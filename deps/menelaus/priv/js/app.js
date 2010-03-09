@@ -1840,8 +1840,18 @@ function genericDialog(options) {
 }
 
 function showAbout() {
-  var components = DAO.componentsVersion;
-  $('#about_versions').text("Version: " + components['ns_server']);
+  function updateVersion() {
+    var components = DAO.componentsVersion;
+    if (components)
+      $('#about_versions').text("Version: " + components['ns_server']);
+    else {
+      $.get('/versions', function (data) {
+        DAO.componentsVersion = data.componentsVersion;
+        updateVersion();
+      }, 'json')
+    }
+  }
+  updateVersion();
   showDialog('about_server_dialog');
 }
 

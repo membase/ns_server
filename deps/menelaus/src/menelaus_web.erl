@@ -92,6 +92,8 @@ loop(Req, AppRoot, DocRoot) ->
                          case PathTokens of
                              [] ->
                                  {done, redirect_permanently("/index.html", Req)};
+                             ["versions"] ->
+                                 {done, handle_versions(Req)};
                              ["pools"] ->
                                  {auth_any_bucket, fun handle_pools/1};
                              ["pools", Id] ->
@@ -225,6 +227,14 @@ implementation_version() ->
 handle_pools(Req) ->
     reply_json(Req, build_pools()).
 
+build_versions() ->
+    [{implementationVersion, implementation_version()},
+     {componentsVersion, {struct,
+                          lists:map(fun ({K,V}) ->
+                                            {K, list_to_binary(V)}
+                                    end,
+                                    ns_info:version())}}].
+
 build_pools() ->
     Pools = lists:map(fun ({Name, _}) ->
                               {struct,
@@ -234,13 +244,10 @@ build_pools() ->
                                  list_to_binary(concat_url_path(["poolsStreaming", Name]))}]}
                       end,
                       expect_config(pools)),
-    {struct, [{implementationVersion, implementation_version()},
-              {componentsVersion, {struct,
-                                   lists:map(fun ({K,V}) ->
-                                                     {K, list_to_binary(V)}
-                                             end,
-                                             ns_info:version())}},
-              {pools, Pools}]}.
+    {struct, [{pools, Pools} | build_versions()]}.
+
+handle_versions(Req) ->
+    reply_json(Req, {struct, build_versions()}).
 
 % {"default", [
 %   {port, 11211},
