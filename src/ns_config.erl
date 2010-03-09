@@ -46,6 +46,7 @@
          search_prop/3, search_prop/4,
          search_prop_tuple/3, search_prop_tuple/4,
          search_raw/2,
+         clear/0, clear/1,
          proplist_get_value/3]).
 
 % A static config file is often hand edited.
@@ -110,6 +111,9 @@ set(Key, PropList) when is_list(PropList) ->
 set(Key, Val)   -> gen_server:call(?MODULE, {merge, [{Key, Val}]}).
 set(KVList)     -> gen_server:call(?MODULE, {merge,   KVList}).
 replace(KVList) -> gen_server:call(?MODULE, {replace, KVList}).
+
+clear() -> clear([]).
+clear(Keep) -> gen_server:call(?MODULE, {clear, Keep}).
 
 % ----------------------------------------
 
@@ -240,6 +244,11 @@ handle_call(get, _From, State) -> {reply, State, State};
 
 handle_call({replace, KVList}, _From, State) ->
     {reply, ok, State#config{dynamic = [KVList]}};
+
+handle_call({clear, Keep}, From, State) ->
+    NewList = lists:filter(fun({K,_V}) -> lists:member(K, Keep) end,
+                           config_dynamic(State)),
+    handle_call(resave, From, State#config{dynamic=[NewList]});
 
 handle_call({merge, KVList}, From, State) ->
     PolicyMod = State#config.policy_mod,

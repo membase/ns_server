@@ -29,6 +29,7 @@ handle_call(Request, _From, State) ->
 handle_cast({join, RemoteNode, NewCookie}, State = #state{child=Pid, action=undefined}) ->
     ns_log:log(?MODULE, 0002, "Node ~p is joining cluster.", [RemoteNode]),
     ns_config:set(otp, [{cookie, NewCookie}]),
+    ns_config:clear([directory, otp]),
     true = exit(Pid, shutdown), % Pull the rug out from under the app
     {noreply, State#state{action={join, RemoteNode, NewCookie}}};
 
