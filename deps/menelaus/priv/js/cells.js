@@ -61,6 +61,7 @@ var Cell = mkClass({
   initialize: function (formula, sources) {
     this.changedSlot = new CallbackSlot();
     this.undefinedSlot = new CallbackSlot();
+    this.dependenciesSlot = new CallbackSlot();
     this.formula = formula;
     this.effectiveFormula = formula;
     this.value = undefined;
@@ -91,9 +92,9 @@ var Cell = mkClass({
       throw new Error('cannot adjust sources yet');
     if (!this.formula)
       throw new Error("formula-less cells cannot have sources");
-    var slots = this.sources = _.values(context);
+    var cells = this.sources = _.values(context);
     this.context = _.extend({self: this}, context);
-    if (_.any(slots, function (v) {return v == null;})) {
+    if (_.any(cells, function (v) {return v == null;})) {
       var badSources = [];
       _.each(this.context, function (v, k) {
         if (!v)
@@ -102,8 +103,9 @@ var Cell = mkClass({
       throw new Error("null for following source cells: " + badSources.join(', '));
     }
 
-    _.each(slots, function (slot) {
-      slot.subscribeAny($m(self, 'recalculate'));
+    var recalculate = $m(self, 'recalculate');
+    _.each(cells, function (cell) {
+      cell.dependenciesSlot.subscribeWithSlave(recalculate);
     });
 
     var argumentSourceNames = this.argumentSourceNames = functionArgumentNames(this.formula);
@@ -143,6 +145,12 @@ var Cell = mkClass({
     extra.shift();
     this.setValue(f.apply(null, [this.value].concat(extra)));
   },
+  _markForCompletion: function () {
+    if (this.recalcGeneration != Cell.recalcGeneration) {
+      this.recalcGeneration = Cell.recalcGeneration;
+      Cell.updatedCells.push(this);
+    }
+  },
   setValue: function (newValue) {
     this.cancelAsyncSet();
     this.resetRecalculateAt();
@@ -155,10 +163,7 @@ var Cell = mkClass({
         newValue = async.removeNowValue();
       }
       this.pendingFuture = async;
-      if (this.recalcGeneration != Cell.recalcGeneration) {
-        this.recalcGeneration = Cell.recalcGeneration;
-        Cell.asyncCells.push(this);
-      }
+      this._markForCompletion();
     }
 
     var oldValue = this.value;
@@ -167,13 +172,35 @@ var Cell = mkClass({
     this.value = newValue;
 
     if (newValue === undefined) {
-      if (oldValue !== undefined)
-        this.undefinedSlot.broadcast(this);
-      return;
+      if (oldValue == undefined)
+        return
+    } else { // newValue !== undefined
+      if (this.equality(oldValue, newValue))
+        return;
     }
 
-    if (!this.equality(oldValue, newValue))
-      this.changedSlot.broadcast(this);
+    this.dependenciesSlot.broadcast(this);
+
+    if (Cell.recalcCount == 0) {
+      // if everything is stable, notify watchers now
+      notifyWatchers.call(this, newValue);
+    } else {
+      // if there are pending slot recomputations -- delay
+      if (!this.delayedBroadcast)
+        this.delayedBroadcast = notifyWatchers;
+      this._markForCompletion();
+    }
+
+    function notifyWatchers(newValue) {
+      if (newValue === undefined) {
+        if (oldValue !== undefined)
+          this.undefinedSlot.broadcast(this);
+        return;
+      }
+
+      if (!this.equality(oldValue, newValue))
+        this.changedSlot.broadcast(this);
+    }
   },
   // schedules cell value recalculation
   recalculate: function () {
@@ -264,24 +291,31 @@ var Cell = mkClass({
 });
 
 _.extend(Cell, {
-  asyncCells: [],
+  updatedCells: [],
   recalcGeneration: {},
   recalcCount: 0,
+  // this thing is called when there are no pending cell
+  // recomputations. We use delay future value computations (XHR gets,
+  // for example) and observers update till such 'quiescent'
+  // state. Otherwise it's possible to initiate XHR GET only to abort
+  // it few milliseconds later due to new dependency value
   completeGeneration: function () {
-    var asyncCells = this.asyncCells;
-    this.asyncCells = [];
+    var updatedCells = this.updatedCells;
+    this.updatedCells = [];
     this.recalcGeneration = {};
-    var i, len = asyncCells.length;
+    var i, len = updatedCells.length;
     for (i = 0; i < len; i++) {
-      var cell = asyncCells[i];
+      var cell = updatedCells[i];
       var future = cell.pendingFuture;
-      if (!future)
-        continue;
-      try {
-        future.start(cell);
-      } catch (e) {
-        console.log("Got error trying to start future: ", e);
+      if (future) {
+        try {
+          future.start(cell);
+        } catch (e) {
+          console.log("Got error trying to start future: ", e);
+        }
       }
+      if (cell.delayedBroadcast)
+        cell.delayedBroadcast.call(cell, cell.value);
     }
   }
 })
