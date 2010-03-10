@@ -34,9 +34,6 @@ get_child_specs() ->
       permanent, infinity, supervisor,
       [ns_node_disco_sup, ns_node_disco_events, ns_node_disco]},
 
-     {global_singleton_supervisor, {global_singleton_supervisor, start_link, []},
-      permanent, infinity, supervisor, [global_singleton_supervisor]},
-
      {ns_port_sup, {ns_port_sup, start_link, []},
       permanent, 10, worker,
       [supervisor_cushion, ns_port_sup, ns_port_server]},
@@ -48,6 +45,9 @@ get_child_specs() ->
      {menelaus, {menelaus_app, start_subapp, []},
       permanent, infinity, supervisor,
       []},
+
+     {global_singleton_supervisor, {global_singleton_supervisor, start_link, []},
+      permanent, infinity, supervisor, [global_singleton_supervisor]},
 
      {ns_heart, {ns_heart, start_link, []},
       permanent, 10, worker,
