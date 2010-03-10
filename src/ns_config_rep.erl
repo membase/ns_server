@@ -18,7 +18,7 @@
          terminate/2, code_change/3]).
 
 % API
--export([push/0, push/1, pull/1]).
+-export([push/0, push/1, pull/1, pull/0]).
 
 -record(state, {}).
 
@@ -38,6 +38,7 @@ init([]) ->
     % Schedule some random config syncs.
     Frequency = 5000 + trunc(random:uniform() * 55000),
     erlang:start_timer(Frequency, self(), pull_random),
+    ok = ns_node_disco_rep_events:add_handler(),
     {ok, #state{}}.
 
 handle_call({push, List}, _From, State) ->
@@ -83,6 +84,9 @@ push() ->
 
 push(List) ->
     gen_server:call(?MODULE, {push, List}).
+
+pull() ->
+    pull(nodes()).
 
 pull(Nodes) ->
     gen_server:cast(?MODULE, {pull, Nodes}).
