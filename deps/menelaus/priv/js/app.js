@@ -1085,6 +1085,7 @@ var BucketsSection = {
     var inputs = parent.find('input[type=text]');
     inputs = inputs.add(parent.find('input[type=password]'));
     inputs.val('');
+    $('#add_new_bucket_errors_container').empty();
     this.lastCacheValue = undefined;
 
     var observer = parent.observePotentialChanges($m(this, 'checkFormChanges'));
