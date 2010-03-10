@@ -34,11 +34,12 @@ to_dict(N, R, WithEmpties) ->
 % Add a dictionary to a ringdict.
 -spec add(dict(), #rdict{}) -> #rdict{}.
 add(D, R) ->
-    R#rdict{d=dict:fold(fun (K, V, Din) ->
-                                dict:update(K, fun(Rin) ->
-                                                       ringbuffer:add(V, Rin)
-                                               end,
-                                            ringbuffer:add(V, ringbuffer:new(R#rdict.size)),
-                                            Din)
-                        end,
+    R#rdict{d=dict:fold(fun (K, V, Din) -> append_to_rdict(K, V, R, Din) end,
                         R#rdict.d, D)}.
+
+append_to_rdict(K, V, R, Din) ->
+    try dict:update(K, fun(Rin) -> ringbuffer:add(V, Rin) end, Din)
+    catch _:_ -> dict:store(K,
+                            ringbuffer:add(V, ringbuffer:new(R#rdict.size)),
+                            Din)
+    end.
