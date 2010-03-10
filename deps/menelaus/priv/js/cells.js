@@ -41,7 +41,7 @@ future.get = function (ajaxOptions, valueTransformer, nowValue) {
   var options = {
     valueTransformer: valueTransformer,
     cancel: function () {
-      xhr.abort();
+      Abortarium.abortRequest(xhr);
     },
     nowValue: nowValue
   }

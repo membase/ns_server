@@ -611,3 +611,33 @@ function collectBacktraceViaCaller() {
   }
   return rv.join('');
 }
+
+var Abortarium = {
+  recentlyAborted: [],
+  MAX_LENGTH: 50,
+  abortRequest: function (xhr) {
+    if (this.isAborted(xhr))
+      return;
+    console.log("aborting request:", xhr);
+    this.recentlyAborted.push(xhr);
+    if (this.recentlyAborted.length > this.MAX_LENGTH)
+      this.recentlyAborted = this.recentlyAborted.slice(-this.MAX_LENGTH);
+    try {
+      return xhr.abort();
+    } finally {
+      try {xhr.onreadystatechange = $.noop();} catch (e) {}
+    }
+  },
+  isAborted: function (xhr) {
+    return _.include(this.recentlyAborted, xhr);
+  },
+  wrapSuccessCallback: function (callback) {
+    if (!callback)
+      return callback;
+    return function (data, status, xhr) {
+      if (Abortarium.isAborted(xhr))
+        return;
+      return callback.apply(this, arguments);
+    }
+  }
+};

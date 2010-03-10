@@ -171,6 +171,14 @@ function addBasicAuth(xhr, login, password) {
 function onUnexpectedXHRError(xhr) {
   window.onUnexpectedXHRError = function () {}
 
+  if (Abortarium.isAborted(xhr))
+    return;
+
+  // for manual interception
+  if ('debuggerHook' in onUnexpectedXHRError) {
+    onUnexpectedXHRError['debuggerHook'](xhr);
+  }
+
   var status;
   try {status = xhr.status} catch (e) {};
 
