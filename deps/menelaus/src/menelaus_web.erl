@@ -25,6 +25,8 @@
 
 -export([ns_log_cat/1, ns_log_code_string/1]).
 
+-export([do_diag_per_node/0]).
+
 -import(menelaus_util,
         [server_header/0,
          redirect_permanently/2,
@@ -1044,18 +1046,90 @@ ns_log_code_string(0019) ->
 ns_log_code_string(?START_FAIL) ->
     "failed to start service".
 
+%% I'm trying to avoid consing here, but, probably, too much
+diag_filter_out_config_password_list([], UnchangedMarker) ->
+    UnchangedMarker;
+diag_filter_out_config_password_list([X | Rest], UnchangedMarker) ->
+    NewX = diag_filter_out_config_password_rec(X, UnchangedMarker),
+    case diag_filter_out_config_password_list(Rest, UnchangedMarker) of
+        UnchangedMarker ->
+            case NewX of
+                UnchangedMarker -> UnchangedMarker;
+                _ -> [NewX | Rest]
+            end;
+        NewRest -> [case NewX of
+                        UnchangedMarker -> X;
+                        _ -> NewX
+                    end | NewRest]
+    end.
+
+diag_filter_out_config_password_rec(Config, UnchangedMarker) when is_tuple(Config) ->
+    case Config of
+        {password, _} ->
+            {password, 'filtered-out'};
+        _ -> case diag_filter_out_config_password_rec(tuple_to_list(Config), UnchangedMarker) of
+                 UnchangedMarker -> Config;
+                 List -> list_to_tuple(List)
+             end
+    end;
+diag_filter_out_config_password_rec(Config, UnchangedMarker) when is_list(Config) ->
+    diag_filter_out_config_password_list(Config, UnchangedMarker);
+diag_filter_out_config_password_rec(_Config, UnchangedMarker) -> UnchangedMarker.
+
+diag_filter_out_config_password(Config) ->
+    UnchangedMarker = make_ref(),
+    case diag_filter_out_config_password_rec(Config, UnchangedMarker) of
+        UnchangedMarker -> Config;
+        NewConfig -> NewConfig
+    end.
+
+do_diag_per_node() ->
+    [{version, ns_info:version()},
+     {config, diag_filter_out_config_password(ns_config:get())},
+     {basic_info, element(2, ns_info:basic_info())},
+     {memory, memsup:get_memory_data()},
+     {disk, disksup:get_disk_data()}].
+
+diag_multicall(Mod, F, Args) ->
+    Nodes = [node() | nodes()],
+    {Results, BadNodes} = rpc:multicall(Nodes, Mod, F, Args, 5000),
+    lists:zipwith(fun (Node,Res) -> {Node, Res} end,
+                  lists:subtract(Nodes, BadNodes),
+                  Results)
+        ++ lists:map(fun (Node) -> {Node, diag_failed} end,
+                     BadNodes).
+
+diag_format_timestamp(EpochMilliseconds) ->
+    SecondsRaw = trunc(EpochMilliseconds/1000),
+    AsNow = {SecondsRaw div 1000000, SecondsRaw rem 1000000, 0},
+    %% not sure about local time here
+    {{YYYY, MM, DD}, {Hour, Min, Sec}} = calendar:now_to_local_time(AsNow),
+    io_lib:format("~4.4.0w-~2.2.0w-~2.2.0w ~2.2.0w:~2.2.0w:~2.2.0w.~3.3.0w",
+                  [YYYY, MM, DD, Hour, Min, Sec, EpochMilliseconds rem 1000]).
+
+diag_format_log_entry(Entry) ->
+    [Type, Code, Module,
+     TStamp, ShortText, Text] = lists:map(fun (K) ->
+                                                  proplists:get_value(K, Entry)
+                                          end,
+                                          [type, code, module, tstamp, shortText, text]),
+    FormattedTStamp = diag_format_timestamp(TStamp),
+    io_lib:format("~s ~s:~B:~s:~s - ~s~n",
+                  [FormattedTStamp, Module, Code, Type, ShortText, Text]).
+
 handle_diag(Req) ->
     Pool = find_pool_by_id("default"),
     Buckets = lists:sort(fun (A,B) -> element(1, A) =< element(1, B) end,
-                         all_accessible_buckets_in_pool(Pool, Req)),
-    Text = io_lib:format("version = ~p~n~nns_config = ~p~n~nnodes_info = ~p~n~nbuckets = ~p~n~nbasic_info() = ~p~n~nlogs = ~p~n~n",
-                         [ns_info:version(),
-                          ns_config:get(),
-                          build_nodes_info(Pool, true),
-                          Buckets,
-                          ns_info:basic_info(),
-                          menelaus_alert:build_logs([{"limit", "1000000"}])]),
+                         expect_prop_value(buckets, Pool)),
+    Logs = lists:flatmap(fun ({struct, Entry}) -> diag_format_log_entry(Entry) end,
+                         menelaus_alert:build_logs([{"limit", "1000000"}])),
+    Infos = [["per_node_diag = ~p", diag_multicall(?MODULE, do_diag_per_node, [])],
+             ["nodes_info = ~p", build_nodes_info(Pool, true)],
+             ["buckets = ~p", Buckets],
+             ["logs:~n-------------------------------~n~s", Logs]],
+    Text = lists:flatmap(fun ([Fmt | Args]) ->
+                                 io_lib:format(Fmt ++ "~n~n", Args)
+                         end, Infos),
     Req:ok({"text/plain; charset=utf-8",
             server_header(),
             list_to_binary(Text)}).
-
