@@ -573,20 +573,22 @@ handle_bucket_create(PoolId, BucketId, Req) ->
     %  go get the memory out there, reusing nodes_info, not caring about OTP
     Pool = find_pool_by_id(PoolId),
     PoolNodes = build_nodes_info(Pool, false),
-    %  figure out what the lowest reported memoryFree is
-    %      note this is a foolproof way to determine what we can allocate, though
-    %      users can actually go further, as the OS has something it can shove out
-    %      to paging land; this is pretty OS dependent though
-    MinMemFree = lists:min(lists:map(
-                             fun(X) -> proplists:get_value(memoryFree, X) end,
-                             proplists:get_all_values(struct, PoolNodes))),
-    % allow slightly more memory, since there should be some slack space
-    SzV = case SizeWanted > MinMemFree * 1.25 of
+
+    TotalBucketsSize = lists:foldl(fun (B,A) -> A + expect_prop_value(size_per_node, element(2, B)) end,
+                                   0,
+                                   expect_prop_value(buckets, Pool)),
+    SmallestNodeRAM = lists:min(lists:map(
+                                  fun(X) -> proplists:get_value(memoryTotal, X) end,
+                                  proplists:get_all_values(struct, PoolNodes))),
+    % let's reserve 128MB of memory for OS & our code
+    MinMemFree = (trunc(SmallestNodeRAM/1048576) - TotalBucketsSize - 128),
+    SzV = case SizeWanted > MinMemFree of
               true -> list_to_binary(
-                        io_lib:format("OS reported free memory for a bucket is ~p",
-                                      [MinMemFree]));
+                        io_lib:format("OS reported free memory for a bucket is ~p megabytes",
+                                      [trunc(MinMemFree)]));
               false -> undefined
           end,
+
     % Input bucket name cannot have whitespace.
     FmtV = case mc_bucket:is_valid_bucket_name(BucketId) of
                true -> undefined;
