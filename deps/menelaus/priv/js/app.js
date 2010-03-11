@@ -1958,3 +1958,51 @@ $('.tooltip').live('click', function (e) {
     resetEffects();
   })
 });
+
+$(function () {
+  var re = /javascript:nav.go\(['"](.*?)['"]\)/
+  $("a[href^='javascript:nav.go(']").each(function () {
+    var jq = $(this);
+    var href = jq.attr('href');
+    var match = re.exec(href);
+    var section = match[1];
+    jq.attr('href', '#sec=' + section);
+  });
+});
+
+// clicks to links with href of '#<param>=' will be
+// intercepted. Default action (navigating) will be prevented and body
+// will be executed.
+//
+// Middle-clicks that open link in new tab/window will not be (and
+// cannot be) intercepted
+//
+// We use this function to preserve other state that may be in url
+// hash string in normal case, while still supporting middle-clicking.
+function watchHashParamLinks(param, body) {
+  param = '#' + param + '=';
+  $('a').live('click', function (e) {
+    var href = $(this).attr('href');
+    if (href.slice(0,param.length) != param)
+      return;
+    e.preventDefault();
+    body.call(this, e, href.slice(param.length));
+  });
+}
+watchHashParamLinks('sec', function (e, href) {
+  nav.go(href);
+});
+
+// we use #visitBucket=<url> links to support opening bucket analytics
+// via middle-click. This statement handles normal clicks
+watchHashParamLinks('visitBucket', function (e, href) {
+  AnalyticsSection.visitBucket(href);
+});
+// This statement handles opening visitBucket link in new tab/window
+DAO.onReady(function () {
+  var value = getHashFragmentParam('visitBucket');
+  if (value) {
+    AnalyticsSection.visitBucket(value);
+    setHashFragmentParam('visitBucket', null);
+  }
+});
