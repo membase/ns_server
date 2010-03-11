@@ -314,8 +314,10 @@ _.extend(Cell, {
           console.log("Got error trying to start future: ", e);
         }
       }
-      if (cell.delayedBroadcast)
+      if (cell.delayedBroadcast) {
         cell.delayedBroadcast.call(cell, cell.value);
+        cell.delayedBroadcast = null
+      }
     }
   }
 })
