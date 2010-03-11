@@ -42,6 +42,7 @@
 -export([start_link/2, start_link/1,
          get_remote/1, set_remote/2, set_remote/3,
          get/2, get/1, get/0, set/2, set/1,
+         update/2,
          search/2, search/1,
          search_prop/3, search_prop/4,
          search_prop_tuple/3, search_prop_tuple/4,
@@ -108,9 +109,10 @@ set(Key, PropList) when is_list(PropList) ->
                  strip_metadata(PropList, [])],
     gen_server:call(?MODULE, {merge, [{Key, PropList2}]});
 
-set(Key, Val)   -> gen_server:call(?MODULE, {merge, [{Key, Val}]}).
-set(KVList)     -> gen_server:call(?MODULE, {merge,   KVList}).
-replace(KVList) -> gen_server:call(?MODULE, {replace, KVList}).
+set(Key, Val)         -> gen_server:call(?MODULE, {merge, [{Key, Val}]}).
+set(KVList)           -> gen_server:call(?MODULE, {merge,   KVList}).
+replace(KVList)       -> gen_server:call(?MODULE, {replace, KVList}).
+update(Fun, Sentinal) -> gen_server:call(?MODULE, {update, Fun, Sentinal}).
 
 clear() -> clear([]).
 clear(Keep) -> gen_server:call(?MODULE, {clear, Keep}).
@@ -244,6 +246,23 @@ handle_call(get, _From, State) -> {reply, State, State};
 
 handle_call({replace, KVList}, _From, State) ->
     {reply, ok, State#config{dynamic = [KVList]}};
+
+handle_call({update, Fun, Sentinel}, From, State) ->
+    UpdateFun = fun(Pair) ->
+                        case Fun(Pair) of
+                            Pair -> Pair;
+                            Sentinel -> Sentinel;
+                            {K, Data} ->
+                                NewData = [{?METADATA_VER, erlang:now()} |
+                                           strip_metadata(Data, [])],
+                                error_logger:info_msg("Atomic update of ~p from ~p to ~p~n",
+                                                      [K, element(2, Pair), NewData]),
+                                {K, NewData}
+                        end
+                end,
+
+    NewList = misc:mapfilter(UpdateFun, Sentinel, config_dynamic(State)),
+    handle_call(resave, From, State#config{dynamic=[NewList]});
 
 handle_call({clear, Keep}, From, State) ->
     NewList = lists:filter(fun({K,_V}) -> lists:member(K, Keep) end,
