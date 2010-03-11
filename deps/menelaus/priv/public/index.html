@@ -583,7 +583,7 @@
                 </a></h2>
                 <div class="form">
                   <div>
-                    <label><input type="checkbox" class="check" name="secureServer" id="secure_serv" value="1"/><input type="hidden" value="0" /> Secure this Server</label>
+                    <label><input type="checkbox" class="check" name="secureServer" id="secure_serv" value="1"/><input type="hidden" name="secureServer" value="0" /> Secure this Server</label>
                   </div>
                   <div class="clear"></div>
                   <div id="server_secure" style="display:none;">
@@ -653,7 +653,7 @@
                 <h2 class="head_2_underline">Alert settings</h2>
                 <div class="form">
                   <div>
-                    <label><input name="email_alerts" type="checkbox" class="check" value="1" id="alert_set"> Notify me by email with alerts <input type="hidden" value="0"></label>
+                    <label><input name="email_alerts" type="checkbox" class="check" value="1" id="alert_set"> Notify me by email with alerts <input type="hidden" name="email_alerts" value="0"></label>
                   </div>
                   <div id="alerts_settings_guts" style="display:none;">
                     <div class="labeled_line">
@@ -707,12 +707,12 @@
                         <tr>
                           <td>A server is not responding</td>
                           <td>Email</td>
-                          <td class="cntr"><input type="checkbox" value="1" name="alert_server_unresponsive" /><input type="hidden" value="0" /></td>
+                          <td class="cntr"><input type="checkbox" value="1" name="alert_server_unresponsive" /><input type="hidden" name="alert_server_unresponsive" value="0" /></td>
                         </tr>
                         <tr>
                           <td>A server is down</td>
                           <td>Email</td>
-                          <td class="cntr"><input type="checkbox" value="1" name="alert_server_down" /><input type="hidden" value="0" /></td>
+                          <td class="cntr"><input type="checkbox" value="1" name="alert_server_down" /><input type="hidden" name="alert_server_down" value="0" /></td>
                         </tr>
                       </table>
                     </div>
@@ -729,7 +729,7 @@
                         <tr>
                           <td>A bucket has been deleted</td>
                           <td>Email</td>
-                          <td class="cntr"><input type="checkbox" value="1" name="alert_bucket_deleted" /><input type="hidden" value="0" /></td>
+                          <td class="cntr"><input type="checkbox" value="1" name="alert_bucket_deleted" /><input type="hidden" name="alert_bucket_deleted" value="0" /></td>
                         </tr>
                       </table>
                     </div>
@@ -746,22 +746,22 @@
                         <tr>
                           <td>A new server joins a cluster</td>
                           <td>Email</td>
-                          <td class="cntr"><input type="checkbox" value="1" name="alert_server_joined" /><input type="hidden" value="0" /></td>
+                          <td class="cntr"><input type="checkbox" value="1" name="alert_server_joined" /><input type="hidden" name="alert_server_joined" value="0" /></td>
                         </tr>
                         <tr>
                           <td>A server leaves a cluster</td>
                           <td>Email</td>
-                          <td class="cntr"><input type="checkbox" value="1" name="alert_server_left" /><input type="hidden" value="0" /></td>
+                          <td class="cntr"><input type="checkbox" value="1" name="alert_server_left" /><input type="hidden" name="alert_server_left" value="0" /></td>
                         </tr>
                         <tr>
                           <td>A new bucket has been created</td>
                           <td>Email</td>
-                          <td class="cntr"><input type="checkbox" value="1" name="alert_bucket_created" /><input type="hidden" value="0" /></td>
+                          <td class="cntr"><input type="checkbox" value="1" name="alert_bucket_created" /><input type="hidden" name="alert_bucket_created" value="0" /></td>
                         </tr>
                         <tr>
                           <td>Bucket authentication failure</td>
                           <td>Email</td>
-                          <td class="cntr"><input type="checkbox" value="1" name="alert_bucket_auth_failed" /><input type="hidden" value="0" /></td>
+                          <td class="cntr"><input type="checkbox" value="1" name="alert_bucket_auth_failed" /><input type="hidden" name="alert_bucket_auth_failed" value="0" /></td>
                         </tr>
                       </table>
                     </div>
