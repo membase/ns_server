@@ -205,7 +205,7 @@ function onUnexpectedXHRError(xhr) {
 
 function postWithValidationErrors(url, data, callback) {
   if (!_.isString(data))
-    data = $(data).serialize();
+    data = serializeForm($(data));
   $.ajax({
     type:'POST',
     url: url,
@@ -1390,7 +1390,7 @@ var SettingsSection = {
 
       var form = $(self);
 
-      var postData = form.serialize();
+      var postData = serializeForm(form);
 
       form.find('.warn li').remove();
 

@@ -641,3 +641,17 @@ var Abortarium = {
     }
   }
 };
+
+function serializeForm(f) {
+  f = $(f);
+  var array = f.serializeArray();
+  var seenKeys = {};
+  array = _.filter(array, function (pair) {
+    if (seenKeys[pair.name])
+      return false;
+    seenKeys[pair.name] = true;
+    return true;
+  });
+
+  return $.param(array);
+}
