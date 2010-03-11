@@ -7,6 +7,7 @@
 -behaviour(gen_server).
 
 -define(SAMPLE_SIZE, 61).
+-define(CACHE_MAXAGE, 1000000). % max age of stuff in the cache in microsecs
 
 %% API
 -export([start_link/0,
@@ -22,71 +23,40 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {vals, topkeys}).
+-record(state, {vals, topkeys, cache}).
 
 start_link() ->
     gen_server:start_link({global, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
     timer:send_interval(60000, garbage_collect),
-    {ok, #state{vals=dict:new(), topkeys=dict:new()}}.
+    {ok, #state{vals=dict:new(), topkeys=dict:new(), cache=dict:new()}}.
 
 handle_call({get, Hostname, Port, Bucket, Count}, _From, State) ->
     Reply = (catch {ok, ringdict:to_dict(Count,
                              dict:fetch({Hostname, Port, Bucket},
                                         State#state.vals))}),
     {reply, Reply, State};
-handle_call({get, Hostname, Port, Count}, _From, State) ->
-    Reply =
-        (catch {ok, dict:fold(
-                 fun ({H, P, _B}, V, A) ->
-                         case {H, P} of
-                             {Hostname, Port} ->
-                                 combine_stats(Count, V, A);
-                             _ -> A
-                         end
-                 end,
-                 dict:new(),
-                 State#state.vals)}),
-    {reply, Reply, State};
-handle_call({get, Bucket, Count}, _From, State) ->
-    Reply =
-        (catch {ok, dict:fold(
-                 fun ({_H, _P, B}, V, A) ->
-                         case B of
-                             Bucket ->
-                                 combine_stats(Count, V, A);
-                             _ -> A
-                         end
-                 end,
-                 dict:new(),
-                 State#state.vals)}),
-    {reply, Reply, State};
-handle_call({get, Count}, _From, State) ->
-    Reply =
-        (catch {ok, dict:fold(
-                 fun ({_H, _P, _B}, V, A) ->
-                         combine_stats(Count, V, A)
-                 end,
-                 dict:new(),
-                 State#state.vals)}),
-    {reply, Reply, State};
-handle_call({get_topkeys, Bucket}, _From, State) ->
-    Reply = (catch {ok, dict:fold(
-            fun ({_Host, _Port, B}, Dict, Acc)->
-                    case B of
-                        Bucket ->
-                            dict:merge(
-                                fun (_Key, Value1, _Value2) ->
-                                        Value1
-                                end,
-                                Dict, Acc);
-                        _ -> Acc
-                    end
-            end,
-            dict:new(),
-            State#state.topkeys)}),
-    {reply, Reply, State}.
+handle_call(Req = {get, Hostname, Port, Count}, _From, State) ->
+    {Value, Cache} = cache_lookup(Req, State#state.cache, ?CACHE_MAXAGE,
+                                  fun () -> do_get(Hostname, Port, Count,
+                                                   State) end),
+    {reply, Value, State#state{cache=Cache}};
+handle_call(Req = {get, Bucket, Count}, _From, State) ->
+    {Value, Cache} = cache_lookup(Req, State#state.cache, ?CACHE_MAXAGE,
+                                  fun () -> do_get(Bucket, Count,
+                                                   State) end),
+    {reply, Value, State#state{cache=Cache}};
+handle_call(Req = {get, Count}, _From, State) ->
+    {Value, Cache} = cache_lookup(Req, State#state.cache, ?CACHE_MAXAGE,
+                                  fun () -> do_get(Count,
+                                                   State) end),
+    {reply, Value, State#state{cache=Cache}};
+handle_call(Req = {get_topkeys, Bucket}, _From, State) ->
+    {Value, Cache} = cache_lookup(Req, State#state.cache, ?CACHE_MAXAGE,
+                                  fun () -> do_get_topkeys(Bucket,
+                                                           State) end),
+    {reply, Value, State#state{cache=Cache}}.
 
 handle_cast({received, T, Hostname, Port, Bucket, Stats}, State) ->
     TS = dict:store(t, T, Stats),
@@ -116,7 +86,10 @@ handle_info(garbage_collect, State) ->
                               lists:member(B, Buckets) and
                                   lists:member({H, P}, Servers)
                           end, OldTopkeys),
-    {noreply, State#state{vals=Vals, topkeys=Topkeys}};
+    Now = erlang:now(),
+    Cache = dict:filter(fun (_K, {TS, _V}) -> timer:now_diff(Now, TS) < ?CACHE_MAXAGE end,
+                        State#state.cache),
+    {noreply, State#state{vals=Vals, topkeys=Topkeys, cache=Cache}};
 handle_info(Info, State) ->
     error_logger:info_msg("Just received ~p~n", [Info]),
     {noreply, State}.
@@ -127,6 +100,8 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
+
+%% Internal functions
 combine_stats(N, New, Existing) ->
     dict:merge(fun val_sum/3, dict:map(fun (_K, V) ->
                                        lists:map(fun to_int/1, V) end,
@@ -171,6 +146,68 @@ classify("tcp_backlog") -> false;
 classify("binding_protocol") -> false;
 classify(_) -> true.
 
+cache_lookup(Key, Cache, MaxAge, F) ->
+    Now = erlang:now(),
+    case dict:find(Key, Cache) of
+    {ok, {Timestamp, CachedValue}} ->
+        case timer:now_diff(Now, Timestamp) < MaxAge of
+        true -> {CachedValue, Cache};
+        false -> % expired
+            NewValue = F(),
+            {NewValue, dict:store(Key, {Now, NewValue}, Cache)}
+        end;
+    error ->
+        NewValue = F(),
+        {NewValue, dict:store(Key, {Now, NewValue}, Cache)}
+    end.
+
+do_get(Hostname, Port, Count, State) ->
+    (catch {ok, dict:fold(
+             fun ({H, P, _B}, V, A) ->
+                     case {H, P} of
+                         {Hostname, Port} ->
+                             combine_stats(Count, V, A);
+                         _ -> A
+                     end
+             end,
+             dict:new(),
+             State#state.vals)}).
+
+do_get(Bucket, Count, State) ->
+    (catch {ok, dict:fold(
+             fun ({_H, _P, B}, V, A) ->
+                     case B of
+                         Bucket ->
+                             combine_stats(Count, V, A);
+                         _ -> A
+                     end
+             end,
+             dict:new(),
+             State#state.vals)}).
+
+do_get(Count, State) ->
+    (catch {ok, dict:fold(
+             fun ({_H, _P, _B}, V, A) ->
+                     combine_stats(Count, V, A)
+             end,
+             dict:new(),
+             State#state.vals)}).
+
+do_get_topkeys(Bucket, State) ->
+    (catch {ok, dict:fold(
+            fun ({_Host, _Port, B}, Dict, Acc)->
+                    case B of
+                        Bucket ->
+                            dict:merge(
+                                fun (_Key, Value1, _Value2) ->
+                                        Value1
+                                end,
+                                Dict, Acc);
+                        _ -> Acc
+                    end
+            end,
+            dict:new(),
+            State#state.topkeys)}).
 %
 % API
 %
