@@ -65,10 +65,16 @@ joining({exit, _Pid}, #joining_state{remote=RemoteNode, cookie=NewCookie}) ->
                           [node(), RemoteNode, Connected]),
     %% Add ourselves to nodes_wanted on the remote node after shutting
     %% down our own config server.
-    case rpc:call(RemoteNode, ns_node_disco, nodes_wanted, []) of
+    MyNode = node(),
+    Fun = fun({nodes_wanted, X}) ->
+                  {nodes_wanted, lists:usort([MyNode | X])};
+             (X) -> X
+          end,
+    Ref = make_ref(),
+    case rpc:call(RemoteNode, ns_config, update, [Fun, Ref]) of
         {badrpc, Crap} -> exit({badrpc, Crap});
-        Nodes -> rpc:cast(RemoteNode, ns_config, set,
-                          [nodes_wanted, [node() | Nodes]])
+        _ -> error_logger:info_msg("Remote config updated to add ~p to ~p~n",
+                                   [node(), RemoteNode])
     end,
     {ok, running, State} = bringup(),
     {next_state, running, State}.
