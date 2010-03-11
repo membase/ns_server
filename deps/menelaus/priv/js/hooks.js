@@ -62,7 +62,7 @@ var TestingSupervisor = {
     this.installInterceptor('interceptedAddBasicAuth', window, 'addBasicAuth');
   },
   interceptedAjax: function (original, options) {
-    console.log("intercepted ajax:", options);
+    console.log("intercepted ajax:", options.url, options);
     (new MockedRequest(options)).respond();
   },
   interceptedAddBasicAuth: function (original, xhr, login, password) {
