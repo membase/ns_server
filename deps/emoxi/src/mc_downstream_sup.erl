@@ -21,10 +21,14 @@ init([]) ->
     {ok, {{one_for_one, 10, 10}, []}}.
 
 add_downstream(Addr, Timeout) ->
-    supervisor:start_child(?MODULE,
-                           {Addr,
-                            {mc_downstream_conn, start_link, [Addr, Timeout]},
-                            permanent, 10, worker, [mc_downstream_conn]}).
+    case supervisor:start_child(?MODULE,
+                               {Addr,
+                                {mc_downstream_conn, start_link, [Addr, Timeout]},
+                                temporary, 10, worker, [mc_downstream_conn]}) of
+    {error, already_present} ->
+        supervisor:restart_child(?MODULE, Addr);
+    Result -> Result
+    end.
 
 rm_downstream(Addr) ->
     ok = supervisor:terminate_child(?MODULE, Addr),
