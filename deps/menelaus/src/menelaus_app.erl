@@ -9,6 +9,10 @@
 
 -behaviour(application).
 -export([start/2,stop/1,start_subapp/0]).
+-export([ns_log_cat/1, ns_log_code_string/1]).
+
+-define(START_OK, 1).
+-define(START_FAIL, 2).
 
 %% @spec start(_Type, _StartArgs) -> ServerRet
 %% @doc application start callback for menelaus.
@@ -19,11 +23,32 @@ start_subapp() ->
     menelaus_deps:ensure(),
     Result = menelaus_sup:start_link(),
     WConfig = menelaus_web:webconfig(),
-    ns_log:log(?MODULE, 1, "NorthScale Memcached Server has started on web/REST port ~p on node ~p.",
-               [proplists:get_value(port, WConfig), node()]),
+    case Result of
+        {ok, _Pid} ->
+            ns_log:log(?MODULE, ?START_OK,
+                       "NorthScale Memcached Server has started on web port ~p on node ~p.",
+                       [proplists:get_value(port, WConfig), node()]);
+        _Err ->
+            %% The exact error message is not logged here since this
+            %% is a supervisor start, but a more helpful message
+            %% should've been logged before.
+            ns_log:log(?MODULE, ?START_FAIL,
+                       "NorthScale Memcached Server has failed to start on web port ~p on node ~p",
+                       [proplists:get_value(port, WConfig), node()])
+    end,
     Result.
 
 %% @spec stop(_State) -> ServerRet
 %% @doc application stop callback for menelaus.
 stop(_State) ->
     ok.
+
+ns_log_cat(?START_OK) ->
+    info;
+ns_log_cat(?START_FAIL) ->
+    crit.
+
+ns_log_code_string(?START_OK) ->
+    "web start ok";
+ns_log_code_string(?START_FAIL) ->
+    "web start fail".
