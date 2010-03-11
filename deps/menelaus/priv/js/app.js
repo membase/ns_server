@@ -820,6 +820,13 @@ var OverviewSection = {
       freeMem += n.memoryFree;
     });
 
+    var bucketsSizeTotal = 0;  // The total of the buckets defined
+    if(buckets) {
+      _.each(buckets, function(b) {
+          bucketsSizeTotal += b.basicStats.cacheSize;
+      });
+    }
+
     this.freeClusterMemory = freeMem;
 
     var memoryUtilization = 100-Math.round(freeMem*100/totalMem) << 0;
@@ -837,7 +844,8 @@ var OverviewSection = {
         mcdMemReserved += n.mcdMemoryReserved;
         mcdMemAllocd += n.mcdMemoryAllocated;
       });
-    var mcdItemUtilization = Math.round((mcdMemAllocd/1048576)*100/mcdMemReserved);
+    mcdMemReserved *= 1048576;
+    var mcdItemUtilization = Math.round(mcdMemReserved*100/totalMem);
 
     var canJoinCluster = (nodes.length == 1);
 
@@ -847,6 +855,7 @@ var OverviewSection = {
       canJoinCluster: canJoinCluster,
       nodesCount: nodes.length,
       bucketsCount: buckets && buckets.length,
+      bucketsSizeTotal: bucketsSizeTotal,
       memoryUtilization: memoryUtilization,
       memoryFree: freeMem,
       mcdItemUtilization: mcdItemUtilization,

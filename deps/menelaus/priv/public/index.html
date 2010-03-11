@@ -152,17 +152,17 @@
             </div>
         </div>
         <div class="labeled_line percentage_big">
-            <h2 class="label for_usage_big">Cluster Cache Allocated:</h2>
+            <h2 class="label for_usage_big">Total Cache Size:</h2>
             <div class="line_cnt">
                 <div class="usage_big red">
                     <div class="unused">
                         <div class="used" style="width:50%;"></div>
                     </div>{%=V.setPercentBar(mcdItemUtilization)%}
-                    <div class="comment">{%=mcdItemUtilization%}% Allocated ({%= V.formatQuantity(mcdMemReserved*1024*1024)%} Reserved)</div>
+                    <div class="comment">{%=V.formatQuantity(bucketsSizeTotal*1024*1024)%} Across <a class="bimnone" href="javascript:nav.go('buckets');">{%=h(V.count(bucketsCount, 'bucket'))%}</a>.</div>
                 </div>
                 <a class="text_11 tooltip">What's this?
                   <span class="tooltip_msg"><span>
-                    The amount of memory in use by cached items in the cluster across all buckets.  This includes expired items.
+                    Total cache size across all nodes of the cluster.
                   </span></span>
                 </a>
             </div>
