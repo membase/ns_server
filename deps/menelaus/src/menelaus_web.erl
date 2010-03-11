@@ -385,9 +385,9 @@ pool_proxy_port(PoolConfig, Node) ->
 handle_pool_info_streaming(Id, Req) ->
     UserPassword = menelaus_auth:extract_auth(Req),
     F = fun(InfoLevel) -> build_pool_info(Id, UserPassword, InfoLevel) end,
-    handle_streaming(F, Req, undefined, 3000).
+    handle_streaming(F, Req, undefined).
 
-handle_streaming(F, Req, LastRes, Wait) ->
+handle_streaming(F, Req, LastRes) ->
     HTTPRes = Req:ok({"application/json; charset=utf-8",
                       server_header(),
                       chunked}),
@@ -395,9 +395,9 @@ handle_streaming(F, Req, LastRes, Wait) ->
     menelaus_event:register_watcher(self()),
     Sock = Req:get(socket),
     inet:setopts(Sock, [{active, true}]),
-    handle_streaming(F, Req, HTTPRes, LastRes, Wait).
+    handle_streaming(F, Req, HTTPRes, LastRes).
 
-handle_streaming(F, Req, HTTPRes, LastRes, Wait) ->
+handle_streaming(F, Req, HTTPRes, LastRes) ->
     Res = F(stable),
     case Res =:= LastRes of
         true -> ok;
@@ -415,9 +415,8 @@ handle_streaming(F, Req, HTTPRes, LastRes, Wait) ->
         _ ->
             error_logger:info_msg("menelaus_web streaming socket closed~n"),
             exit(normal)
-    after Wait -> ok
     end,
-    handle_streaming(F, Req, HTTPRes, Res, Wait).
+    handle_streaming(F, Req, HTTPRes, Res).
 
 all_accessible_buckets(PoolId, Req) ->
     Pool = find_pool_by_id(PoolId),
@@ -487,7 +486,7 @@ build_bucket_info(PoolId, Id, Pool, InfoLevel) ->
 
 handle_bucket_info_streaming(PoolId, Id, Req, Pool, _Bucket) ->
     F = fun(InfoLevel) -> build_bucket_info(PoolId, Id, Pool, InfoLevel) end,
-    handle_streaming(F, Req, undefined, 3000).
+    handle_streaming(F, Req, undefined).
 
 handle_bucket_delete(PoolId, BucketId, Req) ->
     case mc_bucket:bucket_delete(PoolId, BucketId) of
