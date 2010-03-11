@@ -99,7 +99,7 @@ direct_port(Node) ->
                                               memcached, "-p",
                                               Node) of
         false ->
-            ns_log:log(?MODULE, 0003, "missing memcached port"),
+            ns_log:log(?MODULE, 0003, "missing memcached port in confirguration for node ~p (as seen on node ~p)", [Node, node()]),
             false;
         {value, MemcachedPortStr} ->
             {value, list_to_integer(MemcachedPortStr)}

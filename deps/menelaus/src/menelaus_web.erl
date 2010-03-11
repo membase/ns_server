@@ -174,8 +174,8 @@ loop(Req, AppRoot, DocRoot) ->
                              ["logClientError"] -> {auth_any_bucket,
                                                     fun (R) ->
                                                             User = menelaus_auth:extract_auth(username, R),
-                                                            ns_log:log(?MODULE, 0020, "Client-side error-report for user ~p: ~p~n",
-                                                                       [User, binary_to_list(R:recv_body())]),
+                                                            ns_log:log(?MODULE, 0020, "Client-side error-report for user ~p on node ~p: ~p~n",
+                                                                       [User, node(), binary_to_list(R:recv_body())]),
                                                             R:ok({"text/plain", add_header(), <<"">>})
                                                     end};
                              _ ->
@@ -492,8 +492,8 @@ handle_bucket_info_streaming(PoolId, Id, Req, Pool, _Bucket) ->
 handle_bucket_delete(PoolId, BucketId, Req) ->
     case mc_bucket:bucket_delete(PoolId, BucketId) of
         true ->
-            ns_log:log(?MODULE, 0011, "Deleted bucket ~p from pool ~p",
-                       [BucketId, PoolId]),
+            ns_log:log(?MODULE, 0011, "Deleted bucket ~p from pool ~p (via node ~p).",
+                       [BucketId, PoolId, node()]),
             Req:respond({204, add_header(), []});
         false ->
             %% if bucket isn't found
@@ -529,8 +529,8 @@ handle_bucket_update(PoolId, BucketId, Req) ->
                                {auth_plain, Auth}),
             case BucketConfig2 =:= BucketConfig of
                 true  -> Req:respond({200, add_header(), []}); % No change.
-                false -> ns_log:log(?MODULE, 0010, "bucket updated: ~p in: ~p",
-                                    [BucketId, PoolId]),
+                false -> ns_log:log(?MODULE, 0010, "updating bucket config: ~p in: ~p via node ~p",
+                                    [BucketId, PoolId, node()]),
                          mc_bucket:bucket_config_make(PoolId,
                                                       BucketId,
                                                       BucketConfig2),
@@ -700,26 +700,29 @@ handle_join(Req, OtherHost, OtherPort, OtherUser, OtherPswd) ->
             case menelaus_rest:rest_get_otp(OtherHost, OtherPort,
                                             {OtherUser, OtherPswd}) of
                 {ok, undefined, _} ->
-                    ns_log:log(?MODULE, 0014, "During node join, remote node returned an invalid response: missing otpCookie."),
-                    reply_json(Req, [list_to_binary("Invalid response from remote node, missing otpCookie.")],400);
+                    ns_log:log(?MODULE, 0014, "During node join, remote node (~p:~p) returned an invalid response: missing otpCookie (from node ~p).",
+                               [OtherHost, OtherPort, node()]),
+                    reply_json(Req, [list_to_binary("Invalid response from remote node, missing otpCookie.")], 400);
                 {ok, _, undefined} ->
-                    ns_log:log(?MODULE, 0015, "During node join, remote node returned invalid response: missing otpNode."),
-                    reply_json(Req, [list_to_binary("Invalid response from remote node, missing otpNode.")],400);
+                    ns_log:log(?MODULE, 0015, "During node join, remote node (~p:~p) returned an invalid response: missing otpNode (from node ~p).",
+                               [OtherHost, OtherPort, node()]),
+                    reply_json(Req, [list_to_binary("Invalid response from remote node, missing otpNode.")], 400);
                 {ok, Node, Cookie} ->
                     handle_join(Req,
                                 list_to_atom(binary_to_list(Node)),
                                 list_to_atom(binary_to_list(Cookie)));
                 {error, econnrefused} ->
-                    ns_log:log(?MODULE, 0016, "During node join, could not connect to ~p on port ~p.", [OtherHost, OtherPort]),
+                    ns_log:log(?MODULE, 0016, "During node join, could not connect to ~p on port ~p from node ~p.", [OtherHost, OtherPort, node()]),
                     reply_json(Req, [list_to_binary(io_lib:format("Could not connect to ~p on port ~p.", [OtherHost, OtherPort]))], 400);
                 {error, nxdomain} ->
-                    ns_log:log(?MODULE, 0020, "During node join, failed to resolve ~p.", [OtherHost, OtherPort]),
+                    ns_log:log(?MODULE, 0020, "During node join, failed to resolve host ~p on port ~p from node ~p.", [OtherHost, OtherPort, node()]),
                     reply_json(Req, [list_to_binary(io_lib:format("Failed to resolve address for ~p.  The hostname may be incorrect or not resolvable.", [OtherHost]))], 400);
                 {error, timeout} ->
-                    ns_log:log(?MODULE, 0021, "During node join, timeout connecting to ~p on port ~p.", [OtherHost, OtherPort]),
+                    ns_log:log(?MODULE, 0021, "During node join, timeout connecting to ~p on port ~p from node ~p.", [OtherHost, OtherPort, node()]),
                     reply_json(Req, [list_to_binary(io_lib:format("Timeout connecting to ~p on port ~p.", [OtherHost, OtherPort]))], 400);
                 Any ->
-                    ns_log:log(?MODULE, 0022, "During node join, the remote node did not return a REST response.  Error encountered was: ~p", [Any]),
+                    ns_log:log(?MODULE, 0022, "During node join, the remote host ~p on port ~p did not return a REST response.  Error encountered was: ~p",
+                               [OtherHost, OtherPort, Any]),
                     reply_json(Req, [list_to_binary("Invalid response from remote node.  Error logged.")],400)
             end;
         false ->
@@ -793,7 +796,7 @@ handle_eject_post(Req) ->
                             Req:respond({200, add_header(), []});
                         false ->
                             % Node doesn't exist.
-                            ns_log:log(?MODULE, 0018, "Request to eject nonexistant node failed.  Requested node:",
+                            ns_log:log(?MODULE, 0018, "Request to eject nonexistant node failed.  Requested node: ~p",
                                        [OtpNode]),
                             Req:respond({400, add_header(), "Node does not exist.\n"})
                     end
@@ -906,7 +909,7 @@ build_port_settings(PoolId) ->
 
 validate_port_settings(ProxyPort, DirectPort) ->
     CS = [is_valid_port_number(ProxyPort) orelse <<"Proxy port must be a positive integer less than 65536">>,
-         is_valid_port_number(DirectPort) orelse <<"Direct port must be a positive integer less than 65536">>],
+          is_valid_port_number(DirectPort) orelse <<"Direct port must be a positive integer less than 65536">>],
     lists:filter(fun (C) -> C =/= true end,
                  CS).
 
@@ -966,7 +969,7 @@ test() ->
 
 -include_lib("kernel/include/file.hrl").
 
-%% stolen from mochiweb_request.erl maybe_serve_file/2
+%% Originally from mochiweb_request.erl maybe_serve_file/2
 %% and modified to handle user-defined content-type
 serve_static_file(Req, {DocRoot, Path}, ContentType, ExtraHeaders) ->
     serve_static_file(Req, filename:join(DocRoot, Path), ContentType, ExtraHeaders);

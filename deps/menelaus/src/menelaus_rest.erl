@@ -20,9 +20,8 @@ rest_get(Url, undefined) ->
 rest_get(Url, {User, Password}) ->
     UserPassword = base64:encode_to_string(User ++ ":" ++ Password),
     http:request(get, {Url, [{"Authorization",
-                              "Basic " ++ UserPassword}]}, 
+                              "Basic " ++ UserPassword}]},
                               [{timeout, 2500}, {connect_timeout, 2500}], []).
-
 
 rest_get_json(Url, Auth) ->
     inets:start(),
@@ -44,7 +43,9 @@ rest_get_otp(Host, Port, Auth) ->
     case rest_get_json(rest_url(Host, Port, "/pools/default"), Auth) of
         {ok, {struct, KVList}} ->
             case proplists:get_value(<<"nodes">>, KVList) of
-                undefined -> ns_log:log(?MODULE, 001, "During node join, remote node returned a response with no nodes."),
+                undefined ->
+                    ns_log:log(?MODULE, 001, "During attempted node join (from ~p), the remote node at ~p (port ~p) returned a response with no nodes.",
+                              [node(), Host, Port]),
                     undefined;
                 [Node | _] ->
                   {struct, NodeKVList} = Node,
@@ -52,6 +53,11 @@ rest_get_otp(Host, Port, Auth) ->
                   OtpCookie = proplists:get_value(<<"otpCookie">>, NodeKVList),
                   {ok, OtpNode, OtpCookie}
             end;
-        {error, Any} -> {error, Any}
+        {error, Err} ->
+            ns_log:log(?MODULE, 002, "During attempted node join (from ~p), the remote node at ~p (port ~p) returned an error response (~p). " ++
+                                     "Perhaps the wrong host/port was used, or there's a firewall in-between? " ++
+                                     "Or, perhaps authorization credentials were incorrect?",
+                       [node(), Host, Port, Err]),
+            {error, Err}
     end.
 

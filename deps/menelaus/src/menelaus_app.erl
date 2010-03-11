@@ -23,18 +23,21 @@ start_subapp() ->
     menelaus_deps:ensure(),
     Result = menelaus_sup:start_link(),
     WConfig = menelaus_web:webconfig(),
+    Port = proplists:get_value(port, WConfig),
     case Result of
         {ok, _Pid} ->
             ns_log:log(?MODULE, ?START_OK,
                        "NorthScale Memcached Server has started on web port ~p on node ~p.",
-                       [proplists:get_value(port, WConfig), node()]);
+                       [Port, node()]);
         _Err ->
             %% The exact error message is not logged here since this
             %% is a supervisor start, but a more helpful message
             %% should've been logged before.
             ns_log:log(?MODULE, ?START_FAIL,
-                       "NorthScale Memcached Server has failed to start on web port ~p on node ~p",
-                       [proplists:get_value(port, WConfig), node()])
+                       "NorthScale Memcached Server has failed to start on web port ~p on node ~p. " ++
+                       "Perhaps another process has taken port ~p already? " ++
+                       "If so, please stop that process first before trying again.",
+                       [Port, node(), Port])
     end,
     Result.
 

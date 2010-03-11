@@ -128,14 +128,14 @@ handle_info({'DOWN', MonitorRef, _, _, _},
     Watchers2 = case lists:keytake(MonitorRef, 2, Watchers) of
                     false -> Watchers;
                     {value, {Pid, MonitorRef}, WatchersRest} ->
-                        error_logger:info_msg("menelaus_event watcher down: ~p~n", [Pid]),
+                        error_logger:info_msg("menelaus_event watcher down: ~p on node ~p~n", [Pid, node()]),
                         erlang:demonitor(MonitorRef, [flush]),
                         WatchersRest
                 end,
     {ok, State#state{watchers = Watchers2}};
 
 handle_info(Info, State) ->
-    error_logger:info_msg("menelaus_event handle_info(~p, ~p)~n",
+    error_logger:info_msg("menelaus_event handle_info unhandled(~p, ~p)~n",
                           [Info, State]),
     {ok, State}.
 
