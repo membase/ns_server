@@ -59,6 +59,10 @@ joining({exit, _Pid}, #joining_state{remote=RemoteNode, cookie=NewCookie}) ->
     error_logger:info_msg("ns_cluster: joining cluster. Child has exited.~n"),
     timer:sleep(1000), % Sleep for a second to let things settle
     true = erlang:set_cookie(node(), NewCookie),
+    %% Let's verify connectivity.
+    Connected = net_kernel:connect_node(RemoteNode),
+    error_logger:info_msg("Connection from ~p to ~p:  ~p~n",
+                          [node(), RemoteNode, Connected]),
     %% Add ourselves to nodes_wanted on the remote node after shutting
     %% down our own config server.
     case rpc:call(RemoteNode, ns_node_disco, nodes_wanted, []) of
