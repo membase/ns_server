@@ -1225,7 +1225,7 @@ function checkboxValue(value) {
 var AlertsSection = {
   renderAlertsList: function () {
     var value = this.alerts.value;
-    renderTemplate('alert_list', value.list);
+    renderTemplate('alert_list', _.clone(value.list).reverse());
   },
   changeEmail: function () {
     SettingsSection.gotoSetupAlerts();
@@ -1267,7 +1267,7 @@ var AlertsSection = {
     prepareTemplateForCell('alert_logs', this.logs);
   },
   renderLogsList: function () {
-    renderTemplate('alert_logs', this.logs.value.list.reverse());
+    renderTemplate('alert_logs', _.clone(this.logs.value.list).reverse());
   },
   updateAlertsDestination: function () {
     var cell = SettingsSection.advancedSettings.value;
