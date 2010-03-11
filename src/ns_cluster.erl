@@ -27,6 +27,10 @@ start_link() ->
 
 init([]) ->
     process_flag(trap_exit, true),
+    bringup().
+
+%% Bringup services.
+bringup() ->
     {ok, Pid} = ns_server_sup:start_link(),
     {ok, running, #running_state{child=Pid}}.
 
@@ -60,14 +64,14 @@ joining({exit, _Pid}, #joining_state{remote=RemoteNode, cookie=NewCookie}) ->
         Nodes -> rpc:cast(RemoteNode, ns_config, set,
                           [nodes_wanted, [node() | Nodes]])
     end,
-    {ok, running, State} = init([]),
+    {ok, running, State} = bringup(),
     {next_state, running, State}.
 
 leaving({exit, _Pid}, _LeaveData) ->
     error_logger:info_msg("ns_cluster: leaving cluster~n"),
     timer:sleep(1000),
     lists:foreach(fun erlang:disconnect_node/1, nodes()),
-    {ok, running, State} = init([]),
+    {ok, running, State} = bringup(),
     {next_state, running, State};
 
 leaving(leave, LeaveData) ->
