@@ -21,7 +21,7 @@ init([]) ->
     {ok, #state{}}.
 
 handle_event({ns_node_disco_events, _O, _N}, State) ->
-    error_logger:info_msg("Detecteda new node.  Moving config around.~n"),
+    error_logger:info_msg("Detected a new node (from node ~p).  Moving config around.~n", [node()]),
     ns_config_rep:pull(),
     ns_config_rep:push(),
     {ok, State}.
