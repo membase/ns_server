@@ -14,4 +14,5 @@ exec erl -pa `find . -type d -name ebin` \
     -sasl error_logger_mf_dir '"logs"' \
     -sasl error_logger_mf_maxbytes 10485760 \
     -sasl error_logger_mf_maxfiles 10 \
+    -kernel inet_dist_listen_min 21100 inet_dist_listen_max 21199 \
     -- "$@"
