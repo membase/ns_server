@@ -27,6 +27,8 @@ start_link() ->
 
 init([]) ->
     process_flag(trap_exit, true),
+    ok = net_kernel:monitor_nodes(true,
+                                  [{node_type, all}, nodedown_reason]),
     bringup().
 
 %% Bringup services.
@@ -83,7 +85,11 @@ leaving(leave, LeaveData) ->
 %%
 
 handle_info({'EXIT', Pid, shutdown}, CurrentState, CurrentData) ->
-    ?MODULE:CurrentState({exit, Pid}, CurrentData).
+    ?MODULE:CurrentState({exit, Pid}, CurrentData);
+handle_info(Other, CurrentState, CurrentData) ->
+    error_logger:info_msg("ns_cluster saw ~p in state ~p~n",
+                          [Other, CurrentState]),
+    {next_state, CurrentState, CurrentData}.
 
 handle_event(Event, State, _StateData) ->
     exit({unhandled_event, Event, State}).
