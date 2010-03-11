@@ -827,7 +827,7 @@ var OverviewSection = {
       });
     }
 
-    this.freeClusterMemory = freeMem;
+    this.clusterMemoryAvailable = totalMem - bucketsSizeTotal*1048576;
 
     var memoryUtilization = 100-Math.round(freeMem*100/totalMem) << 0;
 
@@ -1080,7 +1080,7 @@ var BucketsSection = {
                        " server nodes = ",
                        ViewHelpers.formatQuantity(cacheValue * nodesCnt * 1024 *1024),
                        " Total Cache Size/",
-                       ViewHelpers.formatQuantity(OverviewSection.freeClusterMemory),
+                       ViewHelpers.formatQuantity(OverviewSection.clusterMemoryAvailable),
                        " Cluster Memory Available"].join('')
       } else {
         detailsText = "";
