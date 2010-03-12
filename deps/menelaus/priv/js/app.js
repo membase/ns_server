@@ -591,12 +591,13 @@ function renderLargeGraph(main, data) {
          [{color: '#1d88ad',
            data: plotData}],
          {xaxis: {ticks:0, autoscaleMargin: 0.04},
+          yaxis: {tickFormatter: function (val, axis) {return ViewHelpers.formatQuantity(val, '', 1000);}},
           grid: {borderWidth: 0},
           hooks: {draw: [drawMarkers]}});
   
   function singleMarker(center, value) {
     var text;
-    value = truncateTo3Digits(value);
+    value = ViewHelpers.formatQuantity(value, '', 1000);
 
     text = String(value);
     var marker = $('<span class="marker"><span class="l"></span><span class="r"></span></span>');
@@ -1653,11 +1654,11 @@ _.extend(ViewHelpers, {
   formatLogTStamp: function (ts) {
     return window.formatLogTStamp(ts);
   },
-  formatQuantity: function (value, kind) {
+  formatQuantity: function (value, kind, K) {
     if (kind == null)
       kind = 'B'; //bytes is default
 
-    var K = 1024;
+    K = K || 1024;
     var M = K*K;
     var G = M*K;
     var T = G*K;

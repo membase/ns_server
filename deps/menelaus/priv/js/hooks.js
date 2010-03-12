@@ -516,7 +516,7 @@ var MockedRequest = mkClass({
     var samples = {};
     for (var idx in StatGraphs.recognizedStats) {
       var data = samplesSelection[idx%4];
-      samples[StatGraphs.recognizedStats[idx]] = data;
+      samples[StatGraphs.recognizedStats[idx]] = _.map(data, function (i) {return i*10E9});
     }
     var samplesSize = samplesSelection[0].length;
 
