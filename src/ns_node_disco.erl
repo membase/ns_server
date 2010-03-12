@@ -6,6 +6,13 @@
 -behaviour(gen_server).
 
 -define(PING_FREQ, 60000).
+-define(NODE_CHANGE_DELAY, 5000).
+
+-define(COOKIE_INHERITED, 1).
+-define(COOKIE_SYNCHRONIZED, 2).
+-define(COOKIE_GEN, 3).
+-define(NODE_UP, 4).
+-define(NODE_DOWN, 5).
 
 %% API
 -export([start_link/0,
@@ -94,20 +101,22 @@ handle_call(Msg, _From, State) ->
     {reply, error, State}.
 
 handle_info({nodeup, Node}, State) ->
-    ns_log:log(?MODULE, 0004, "Node ~p saw that node ~p came up.", [node(), Node]),
+    ns_log:log(?MODULE, ?NODE_UP, "Node ~p saw that node ~p came up.",
+               [node(), Node]),
     % We might be tempted to proactively push/pull/sync
     % our configs with the "new" Node.  Instead, it's
     % cleaner to asynchronous do a gen_event:notify()
     % Delay the notification for five seconds to give the
     % config a chance to settle before notifying clients.
-    {ok, _Tref} = timer:send_after(5000, notify_clients),
+    {ok, _Tref} = timer:send_after(?NODE_CHANGE_DELAY, notify_clients),
     %% Have every known node ping this new node.
     rpc:multicall(net_adm, ping, [Node]),
     {noreply, State};
 
 handle_info({nodedown, Node}, State) ->
-    ns_log:log(?MODULE, 0005, "Node ~p saw that node ~p went down.", [node(), Node]),
-    {ok, _Tref} = timer:send_after(5000, notify_clients),
+    ns_log:log(?MODULE, ?NODE_DOWN, "Node ~p saw that node ~p went down.",
+               [node(), Node]),
+    {ok, _Tref} = timer:send_after(?NODE_CHANGE_DELAY, notify_clients),
     {noreply, State};
 
 handle_info(notify_clients, State) ->
@@ -186,7 +195,7 @@ cookie_gen() ->
 
 cookie_init() ->
     NewCookie = cookie_gen(),
-    ns_log:log(?MODULE, 0001, "Initial otp cookie generated: ~p",
+    ns_log:log(?MODULE, ?COOKIE_GEN, "Initial otp cookie generated: ~p",
                [NewCookie]),
     ok = cookie_set(NewCookie),
     {ok, NewCookie}.
@@ -216,7 +225,8 @@ cookie_sync() ->
                     %       so, we should check that assumption.
                     cookie_init();
                 CurrCookie ->
-                    ns_log:log(?MODULE, 0002, "Node ~p inherited otp cookie ~p from cluster",
+                    ns_log:log(?MODULE, ?COOKIE_INHERITED,
+                               "Node ~p inherited otp cookie ~p from cluster",
                                [node(), CurrCookie]),
                     cookie_set(CurrCookie),
                     {ok, CurrCookie}
@@ -225,7 +235,8 @@ cookie_sync() ->
             case erlang:get_cookie() of
                 WantedCookie -> {ok, WantedCookie};
                 _ ->
-                    ns_log:log(?MODULE, 0003, "Node ~p synchronized otp cookie ~p from cluster",
+                    ns_log:log(?MODULE, ?COOKIE_SYNCHRONIZED,
+                               "Node ~p synchronized otp cookie ~p from cluster",
                                [node(), WantedCookie]),
                     erlang:set_cookie(node(), WantedCookie),
                     {ok, WantedCookie}
