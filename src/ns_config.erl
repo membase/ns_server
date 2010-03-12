@@ -41,7 +41,7 @@
 
 -export([start_link/2, start_link/1,
          get_remote/1, set_remote/2, set_remote/3,
-         get/2, get/1, get/0, set/2, set/1,
+         get/2, get/1, get/0, set/2, set/1, set/3,
          update/2,
          search/2, search/1,
          search_prop/3, search_prop/4,
@@ -104,10 +104,13 @@ get_remote(Node) -> config_dynamic(?MODULE:get(Node)).
 
 % ----------------------------------------
 
+set(Key, PropList, Timestamp) ->
+        PropList2 = [{?METADATA_VER, Timestamp} |
+                     strip_metadata(PropList, [])],
+    gen_server:call(?MODULE, {merge, [{Key, PropList2}]}).
+
 set(Key, PropList) when is_list(PropList) ->
-    PropList2 = [{?METADATA_VER, erlang:now()} |
-                 strip_metadata(PropList, [])],
-    gen_server:call(?MODULE, {merge, [{Key, PropList2}]});
+    set(Key, PropList, erlang:now());
 
 set(Key, Val)         -> gen_server:call(?MODULE, {merge, [{Key, Val}]}).
 set(KVList)           -> gen_server:call(?MODULE, {merge,   KVList}).
