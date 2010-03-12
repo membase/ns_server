@@ -43,7 +43,8 @@ bringup() ->
 running({join, RemoteNode, NewCookie}, State) ->
     ns_log:log(?MODULE, 0002, "Node ~p is joining cluster.", [RemoteNode]),
     ns_config:set(otp, [{cookie, NewCookie}]),
-    ns_config:clear([directory, otp]),
+    ns_config:set(nodes_wanted, [node(), RemoteNode], {0, 0, 0}),
+    ns_config:clear([directory, otp, nodes_wanted]),
     true = exit(State#running_state.child, shutdown), % Pull the rug out from under the app
     {next_state, joining, #joining_state{remote=RemoteNode, cookie=NewCookie}};
 
