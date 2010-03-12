@@ -28,8 +28,12 @@ start_link(Name, Delay, M, F, A) ->
 init([Name, Delay, M, F, A]) ->
     process_flag(trap_exit, true),
     error_logger:info_msg("starting ~p with delay of ~p~n", [M, Delay]),
-    {ok, Pid} = apply(M, F, A),
-    {ok, #state{name=Name, delay=Delay, started=now(), child_pid=Pid}}.
+    case apply(M, F, A) of
+        {ok, Pid} ->
+            {ok, #state{name=Name, delay=Delay, started=now(), child_pid=Pid}};
+        X ->
+            {ok, die_slowly(X, #state{name=Name, delay=Delay, started=now()})}
+    end.
 
 handle_call(child_pid, _From, State) ->
     {reply, State#state.child_pid, State};
