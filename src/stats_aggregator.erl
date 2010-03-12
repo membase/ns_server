@@ -6,7 +6,7 @@
 
 -behaviour(gen_server).
 
--define(SAMPLE_SIZE, 1800).
+-define(SAMPLE_SIZE, 61).
 
 %% API
 -export([start_link/0,
