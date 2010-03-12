@@ -55,8 +55,8 @@ handle_cast({log, Module, Code, Fmt, Args}, State) ->
     try gen_event:notify(ns_log_events, {ns_log, Category, Module, Code,
                          Fmt, Args})
     catch _:Reason ->
-        error_logger:info_msg("ns_log: couldn't send notification: ~p~n",
-                              [Reason])
+        error_logger:info_msg("ns_log: message: ~p, ~p, ~p, ~p~n",
+                              [Module, Code, Fmt, Args])
     end,
     {noreply, State#state{recent=NR}};
 handle_cast(clear, _State) ->
