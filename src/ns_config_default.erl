@@ -60,7 +60,7 @@ default() ->
                           ]}
                ]}
              ]},
-     {nodes_wanted, []}
+     {nodes_wanted, [node()]}
     ].
 
 default_path(Name) ->
