@@ -102,7 +102,7 @@ reconfig(Name, PoolConfig) ->
                       supervisor:start_child(ServerName, WantSpec)
               end;
          ({{mc_pool, N}, Pid, _, _}) when N =:= Name ->
-              mc_pool:reconfig(Pid, Name, PoolConfig);
+              mc_pool:reconfig(Pid, Name);
          (_) -> ok % We don't care about non-matching children.
       end,
       CurrentChildren).
@@ -112,7 +112,7 @@ reconfig_nodes(Name, _) ->
     CurrentChildren = current_children(Name),
     lists:foreach(
       fun({{mc_pool, N}, Pid, _, _}) when N =:= Name ->
-              mc_pool:reconfig_nodes(Pid, Name, Nodes);
+              mc_pool:reconfig(Pid, Name);
          (_) -> ok % We don't care about non-matching children.
       end,
       CurrentChildren).

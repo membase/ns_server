@@ -14,13 +14,11 @@
 -compile(export_all).
 
 -record(mc_pool, {id,     % Pool id.
-                  nodes,  % [node()*].
-                  config, % A PoolConfig from ns_config:get().
                   buckets % [mc_bucket:create()*].
                   }).
 
 %% API
--export([start_link/1, reconfig/2, reconfig/3, reconfig_nodes/3,
+-export([start_link/1, reconfig/1, reconfig/2,
          get_state/1,
          get_bucket/2,
          auth_to_bucket/3,
@@ -50,17 +48,12 @@ start_link(Name) ->
     gen_server:start_link({local, name_to_server_name(Name)},
                           ?MODULE, Name, []).
 
-reconfig(PoolName, PoolConfig) ->
+reconfig(PoolName) ->
     gen_server:call(name_to_server_name(PoolName),
-                    {reconfig, PoolName, PoolConfig}).
+                    {reconfig, PoolName}).
 
-reconfig(PoolPid, PoolName, PoolConfig) ->
-    gen_server:call(PoolPid,
-                    {reconfig, PoolName, PoolConfig}).
-
-reconfig_nodes(PoolPid, PoolName, Nodes) ->
-    gen_server:call(PoolPid,
-                    {reconfig_nodes, PoolName, Nodes}).
+reconfig(PoolPid, PoolName) ->
+    gen_server:call(PoolPid, {reconfig, PoolName}).
 
 bucket_addrs({mc_pool_bucket, PoolName, BucketName}) ->
     gen_server:call(name_to_server_name(PoolName),
@@ -172,33 +165,20 @@ handle_call({bucket_cring, BucketId}, _From, State) ->
         _            -> {reply, error, State}
     end;
 
-handle_call({reconfig, Name, WantPoolConfig}, _From,
-            #mc_pool{config = CurrPoolConfig} = State) ->
-    case WantPoolConfig =:= CurrPoolConfig of
-        true  -> {reply, ok, State};
-        false ->
-            case build_pool(Name, ns_config:get(), WantPoolConfig) of
-                {ok, Pool} ->
-                    ns_log:log(?MODULE, 0005, "Pool reconfigured: ~p",
-                               [Name]),
-                    % send out an event saying the pool has changed
-                    gen_event:notify(mc_pool_events, reconfig),
-                    {reply, ok, Pool};
-                error ->
-                    ns_log:log(?MODULE, 0002, "Pool reconfigured to no-op for: ~p",
-                               [Name]),
-                    NoopPool = create(Name, [], [], []),
-                    {reply, error, NoopPool}
-            end
-    end;
-
-handle_call({reconfig_nodes, Name, WantNodes}, From,
-            #mc_pool{nodes = CurrNodes,
-                     config = PoolConfig} = State) ->
-    case WantNodes =:= CurrNodes of
-        true  -> {reply, ok, State};
-        false -> handle_call({reconfig, Name, PoolConfig}, From,
-                             State#mc_pool{config = undefined})
+handle_call({reconfig, Name}, _From,
+            _State) ->
+    case build_pool(Name, ns_config:get()) of
+        {ok, Pool} ->
+            ns_log:log(?MODULE, 0005, "Pool reconfigured: ~p",
+                       [Name]),
+            % send out an event saying the pool has changed
+            gen_event:notify(mc_pool_events, reconfig),
+            {reply, ok, Pool};
+        error ->
+            ns_log:log(?MODULE, 0002, "Pool reconfigured to no-op for: ~p",
+                       [Name]),
+            NoopPool = create(Name, []),
+            {reply, error, NoopPool}
     end;
 
 handle_call(_, _From, State) ->
@@ -206,8 +186,8 @@ handle_call(_, _From, State) ->
 
 %% API for pool.
 
-create(Id, Nodes, Config, Buckets) ->
-    #mc_pool{id = Id, nodes = Nodes, config = Config, buckets = Buckets}.
+create(Id, Buckets) ->
+    #mc_pool{id = Id, buckets = Buckets}.
 
 % Reads ns_config and creates a mc_pool object.
 
@@ -255,7 +235,7 @@ build_pool(Name, NSConfig, PoolConfig, Nodes) ->
                   Acc
           end,
           [], BucketConfigs),
-    Pool = create(Name, Nodes, PoolConfig, Buckets),
+    Pool = create(Name, Buckets),
     {ok, Pool}.
 
 get_state(PoolId) ->
@@ -380,7 +360,7 @@ foreach_bucket(#mc_pool{buckets = Buckets}, VisitorFun) ->
 get_bucket_test() ->
     B1 = mc_bucket:create("default", [mc_addr:local(ascii)], []),
     Addrs = [mc_addr:local(ascii)],
-    P1 = create(p1, Addrs, config,
+    P1 = create(p1,
                 [mc_bucket:create("default", Addrs, [])]),
     ?assertMatch({ok, B1}, get_bucket(P1, "default")),
     ok.
@@ -388,7 +368,7 @@ get_bucket_test() ->
 foreach_bucket_test() ->
     B1 = mc_bucket:create("default", [mc_addr:local(ascii)], []),
     Addrs = [mc_addr:local(ascii)],
-    P1 = create(p1, Addrs, config,
+    P1 = create(p1,
                 [mc_bucket:create("default", Addrs, [])]),
     foreach_bucket(P1, fun (B) ->
                            ?assertMatch(B1, B)
