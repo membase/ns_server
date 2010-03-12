@@ -906,7 +906,7 @@ var OverviewSection = {
           var password = form.find('[name=password]').val();
           DAO.setAuthCookie(user, password);
           $.cookie('cluster_join_flash', '1');
-          reloadAppWithDelay();
+          reloadAppWithDelay(5000);
         }
       })
     });
