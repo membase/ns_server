@@ -71,8 +71,7 @@ nodes_wanted_updated() ->
 %% gen_server implementation
 
 init([]) ->
-    error_logger:info_msg("Initting ns_node_disco with ~p~n",
-                          [do_nodes_wanted()]),
+    error_logger:info_msg("Initting ns_node_disco with ~p~n", [nodes()]),
     % Proactively run one round of reconfiguration update.
     do_nodes_wanted_updated(do_nodes_wanted()),
     % Register for nodeup/down messages as handle_info callbacks.
@@ -136,20 +135,11 @@ handle_info(_Msg, State) -> {noreply, State}.
 
 % Read from ns_config nodes_wanted.
 
-do_nodes_wanted_raw() ->
+do_nodes_wanted() ->
     case ns_config:search(ns_config:get(), nodes_wanted) of
         {value, L} -> lists:usort(L);
         false      -> []
     end.
-
-do_nodes_wanted() ->
-    W1 = do_nodes_wanted_raw(),
-    W2 = lists:usort([node() | W1]),
-    case W2 =/= W1 of
-        true  -> ns_config:set(nodes_wanted, W2);
-        false -> ok
-    end,
-    W2.
 
 do_nodes_wanted_updated(NodeListIn) ->
     {ok, Cookie} = cookie_sync(),
