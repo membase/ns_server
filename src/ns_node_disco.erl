@@ -4,6 +4,7 @@
 -module(ns_node_disco).
 
 -behaviour(gen_server).
+-behavior(ns_log_categorizing).
 
 -define(PING_FREQ, 60000).
 -define(NODE_CHANGE_DELAY, 5000).
@@ -23,6 +24,8 @@
          nodes_actual_other/0,
          cookie_init/0, cookie_gen/0,
          cookie_get/0, cookie_set/1, cookie_sync/0]).
+
+-export([ns_log_cat/1, ns_log_code_string/1]).
 
 %% gen_server
 
@@ -243,3 +246,18 @@ cookie_sync() ->
             end
     end.
 
+ns_log_cat(?NODE_DOWN) ->
+    warn;
+ns_log_cat(_X) ->
+    info.
+
+ns_log_code_string(?COOKIE_INHERITED) ->
+    "cookie update";
+ns_log_code_string(?COOKIE_SYNCHRONIZED) ->
+    "cookie update";
+ns_log_code_string(?COOKIE_GEN) ->
+    "cookie update";
+ns_log_code_string(?NODE_UP) ->
+    "node up";
+ns_log_code_string(?NODE_DOWN) ->
+    "node down".
