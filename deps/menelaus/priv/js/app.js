@@ -567,33 +567,33 @@ function truncateTo3Digits(value) {
 }
 
 function renderLargeGraph(main, data) {
+  maybeReloadAppDueToLeak();
+
   var minX, minY = 1/0;
   var maxX, maxY = -1/0;
   var minInf = minY;
   var maxInf = maxY;
 
   var plotData = _.map(data, function (e, i) {
+    var x = -data.length + i+1
     if (e <= minY) {
-      minX = i+1;
+      minX = x;
       minY = e;
     }
     if (e >= maxY) {
-      maxX = i+1;
+      maxX = x;
       maxY = e;
     }
-    return [i+1, e];
+    return [x, e];
   });
 
   $.plot(main,
          [{color: '#1d88ad',
            data: plotData}],
          {xaxis: {ticks:0, autoscaleMargin: 0.04},
-          yaxis: {ticks:0, autoscaleMargin: 0.04},
-          grid: {show:false},
+          grid: {borderWidth: 0},
           hooks: {draw: [drawMarkers]}});
   
-  maybeReloadAppDueToLeak();
-
   function singleMarker(center, value) {
     var text;
     value = truncateTo3Digits(value);

@@ -380,9 +380,8 @@ td.leftNav li.indent {
 body { font-family: Helvetica, Verdana;}
 
 /* analytics graph */
-#analytics_main_graph { width: 100%; }
-#analytics_main_graph_grid {position:relative; margin:0 auto 10px auto;}
-.analytics_grid {display:none;}
+#analytics_main_graph { position: relative; width:742px; height:269px;}
+#analytics_main_graph_grid {position:relative; margin:0 auto 10px auto; width:742px; height:269px;}
 
 .analytics-small-graph {display:block; width:166px !important; height:61px !important; float:left; overflow:hidden; background:url(../images/mini_graph_bg.gif) 0 0 no-repeat; margin:0 12px 7px 12px; cursor:pointer; position:relative; text-decoration:none;}
 
