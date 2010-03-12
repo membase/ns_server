@@ -485,6 +485,7 @@
 
   <div id="alerts" style="display:none">
     <!-- Shadow box -->
+    <span class="block nav float_right configure_view"><a href="/diag" target="_blank">Generate Diagnostic Report</a></span>
     <h1>Alerts/Log</h1>
     <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
         <div class="darker_block with_devider">
@@ -521,7 +522,6 @@
           </div>
           <div class="tab_holder">
             <div id="alert_logs_container"></div>
-            <a href="/diag" target="_blank" class="diag-report-link">Generate Diagnostic Report</a>
             <div id="alert_logs_template" class="template">
             <table class="lined_tab">
               <col width="" />
@@ -529,13 +529,13 @@
               <col width="160" />
               <tr>
                 <th>Event</th>
-                <th>Module<br>Code</th>
+                <th>Module Code</th>
                 <th>Time</th>
               </tr>
               <!-- {% _.each(rows, function (logRow) { %} -->
               <tr>
                 <td>{%= h(logRow.text) %}</td>
-                <td>{%= h(logRow.module) + '<br>' + (new String(1000 + parseInt(logRow.code))).slice(-3)%}</td>
+                <td>{%= h(logRow.module) + (new String(1000 + parseInt(logRow.code))).slice(-3)%}</td>
                 <td class="text_11 nobr">{%=V.formatLogTStamp(logRow.tstamp)%}
               </tr>
               <!-- {% }); %} -->
