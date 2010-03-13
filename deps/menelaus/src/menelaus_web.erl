@@ -552,6 +552,15 @@ handle_bucket_create(_PoolId, [$_ | _], Req) ->
     reply_json(Req, [list_to_binary("Bucket name cannot start with an underscore.")], 400);
 
 handle_bucket_create(PoolId, BucketId, Req) ->
+    case ns_node_disco:nodes_wanted() =:= ns_node_disco:nodes_actual_proper() of
+        true -> handle_bucket_create_prep(PoolId, BucketId, Req);
+        false ->
+            reply_json(Req, [list_to_binary("One or more server nodes appear to be down. " ++
+                                            "Please first restore or remove those servers nodes " ++
+                                            "so that the entire cluster is healthy.")], 400)
+    end.
+
+handle_bucket_create_prep(PoolId, BucketId, Req) ->
     % Bucket size validation.
     PostArgs = Req:parse_post(),
     %% TODO: we have a race here, but it's not very bad, and there are
