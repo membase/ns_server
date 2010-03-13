@@ -14,7 +14,6 @@
 -export([heartbeat/1, get_nodes/0]).
 
 -record(state, {nodes}).
--record(node, {status, last_heard}).
 
 %% gen_server handlers
 
@@ -22,25 +21,28 @@ start_link() ->
     gen_server:start_link({global, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
-    {ok, _Tref} = timer:send_interval(5000, garbage_collect),
     {ok, #state{nodes=dict:new()}}.
 
 handle_call(get_nodes, _From, State) ->
-    Statuses = dict:map(fun (_Name, #node{status=Status}) -> Status end,
-                        State#state.nodes),
-    {reply, Statuses, State}.
+    Now = erlang:now(),
+    Nodes = lists:map(fun (Node) ->
+            LastHeard = proplists:lookup(last_heard, Node),
+            case timer:now_diff(Now, LastHeard) > ?STALE_TIME of
+            true -> [ stale | Node];
+            false -> Node
+            end
+        end, State#state.nodes),
+    {reply, Nodes, State}.
 
 handle_cast({heartbeat, Name, Status}, State) ->
-    Node = #node{status=Status, last_heard=erlang:now()},
+    Node = [{last_heard, erlang:now()} | Status],
     Nodes = dict:store(Name, Node, State#state.nodes),
     {noreply, State#state{nodes=Nodes}}.
 
-handle_info(garbage_collect, State) ->
-    Now = erlang:now(),
-    Nodes = dict:filter(fun (_Name, #node{last_heard=LastHeard}) ->
-                            timer:now_diff(Now, LastHeard) < ?STALE_TIME
-                        end, State#state.nodes),
-    {noreply, State#state{nodes=Nodes}}.
+handle_info(Info, State) ->
+    error_logger:info_msg("ns_doctor: got unexpected message ~p in state ~p.~n",
+                          [Info, State]),
+    {noreply, State}.
 
 terminate(_Reason, _State) -> ok.
 

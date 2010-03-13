@@ -281,7 +281,8 @@ handle_pool_info(Id, Req) ->
     reply_json(Req, build_pool_info(Id, UserPassword)).
 
 is_healthy(InfoNode) ->
-    proplists:get_bool(memcached_running, InfoNode).
+    not proplists:get_bool(stale, InfoNode) and
+        proplists:get_bool(memcached_running, InfoNode).
 
 build_pool_info(Id, UserPassword) ->
     build_pool_info(Id, UserPassword, normal).
@@ -331,7 +332,7 @@ build_nodes_info(MyPool, IncludeOtp, InfoLevel) ->
                   {_Name, Host} = misc:node_name_host(WantENode),
                   InfoNode = case dict:find(WantENode, NodeStatuses) of
                                  {ok, Info} -> Info;
-                                 error -> []
+                                 error -> <<"unknown">>
                              end,
                   Status = case is_healthy(InfoNode) of
                                true -> <<"healthy">>;
