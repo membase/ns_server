@@ -7,7 +7,7 @@
 -behaviour(gen_server).
 
 -define(SAMPLE_SIZE, 61).
--define(CACHE_MAXAGE, 1000000). % max age of stuff in the cache in microsecs
+-define(CACHE_MAXAGE, 750000). % max age of stuff in the cache in microsecs
 
 %% API
 -export([start_link/0,
@@ -61,12 +61,13 @@ handle_call(Req = {get_topkeys, Bucket}, _From, State) ->
 handle_cast({received, T, Hostname, Port, Bucket, Stats}, State) ->
     TS = dict:store(t, T, Stats),
     {noreply, State#state{vals=dict:update({Hostname, Port, Bucket},
-                                           fun(R) ->
-                                                   ringdict:add(TS, R)
+                                           fun (undefined) ->
+                                                   R = ringdict:new(?SAMPLE_SIZE),
+                                                   ringdict:add(TS, R);
+                                               (R) -> ringdict:add(TS, R)
                                            end,
-                                           ringdict:new(?SAMPLE_SIZE),
-                                           State#state.vals),
-                           topkeys=State#state.topkeys}};
+                                           undefined,
+                                           State#state.vals)}};
 handle_cast({received_topkeys, _T, Hostname, Port, Bucket, Topkeys}, State) ->
     {noreply, State#state{vals=State#state.vals,
                           topkeys=dict:store({Hostname, Port, Bucket},
