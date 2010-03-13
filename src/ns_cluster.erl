@@ -123,8 +123,12 @@ join(RemoteNode, NewCookie) ->
 leave(RemoteNode) ->
     catch(rpc:call(RemoteNode, ?MODULE, leave, [], 500)),
     erlang:disconnect_node(RemoteNode),
-    NewWanted = lists:subtract(ns_node_disco:nodes_wanted(), [RemoteNode]),
-    ns_config:set(nodes_wanted, NewWanted),
+
+    ok = ns_config:update(fun({nodes_wanted, X}) ->
+                                  {nodes_wanted, X -- [RemoteNode]};
+                             (X) -> X
+                          end,
+                          make_ref()),
     % TODO: Do we need to reset our cluster's cookie, so that the
     % removed remote node, which might be down and not have received
     % our leave command, and which therefore still knows our cluster's
