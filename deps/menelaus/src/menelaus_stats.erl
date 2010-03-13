@@ -38,8 +38,6 @@
 
 -import(menelaus_web, [all_accessible_buckets/2]).
 
-%% External API
-
 default_find(K, Default, Dict) ->
     case dict:find(K, Dict) of
         error -> Default;
@@ -48,6 +46,8 @@ default_find(K, Default, Dict) ->
 
 default_find(K, Dict) ->
     default_find(K, [], Dict).
+
+%% External API
 
 basic_stats(PoolId, BucketId) ->
     Pool = menelaus_web:find_pool_by_id(PoolId),
@@ -58,9 +58,9 @@ basic_stats(PoolId, BucketId) ->
     Samples = get_stats_raw(PoolId, BucketId, SamplesNum),
     OpsPerSec = avg(deltas(sum_stats_ops(Samples))),
     EvictionsPerSec = avg(deltas(default_find("evictions", Samples))),
-    CurBytes = erlang:max(avg(default_find("bytes", Samples)), 1),
+    CurBytes = erlang:max(avg(default_find("bytes", Samples)), 0),
     MaxBytes = erlang:max(avg(default_find("limit_maxbytes", Samples)),
-                          CurBytes),
+                          1),
     [{cacheSize, NumNodes * MbPerNode},
      {opsPerSec, OpsPerSec},
      {evictionsPerSec, EvictionsPerSec},
