@@ -41,11 +41,27 @@ handle_cast(Msg, State) ->
     {noreply, State}.
 
 handle_info(collect_stats, State) ->
+    flush(collect_stats),
     collect_stats(),
     {noreply, State};
 handle_info(collect_topkeys, State) ->
     collect_topkeys(),
     {noreply, State}.
+
+flush(Msg) -> flush(Msg, 0).
+flush(Msg, N) ->
+    % Remove any further matching messages from the queue
+    receive
+    Msg -> flush(Msg, N+1)
+    after 0 ->
+        case N of
+        0 -> N;
+        _ ->
+            error_logger:info_msg("stats_collector dropped ~p ~p messages.~n", [N]),
+            N
+        end
+
+    end.
 
 terminate(Reason, _State) ->
     error_logger:info_msg("Stats collector termination notice: ~p~n",
