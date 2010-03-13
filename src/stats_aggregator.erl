@@ -7,7 +7,8 @@
 -behaviour(gen_server).
 
 -define(SAMPLE_SIZE, 61).
--define(CACHE_MAXAGE, 750000). % max age of stuff in the cache in microsecs
+-define(STATS_MAXAGE, 750000). % max age of stats in the cache in microsecs
+-define(TOPKEYS_MAXAGE, 5000000). % max age of topkeys in the cache in microsecs
 
 %% API
 -export([start_link/0,
@@ -40,22 +41,22 @@ handle_call({get, Hostname, Port, Bucket, Count}, _From, State) ->
                                         State#state.vals))}),
     {reply, Reply, State};
 handle_call(Req = {get, Hostname, Port, Count}, _From, State) ->
-    {Value, Cache} = cache_lookup(Req, State#state.cache, ?CACHE_MAXAGE,
+    {Value, Cache} = cache_lookup(Req, State#state.cache, ?STATS_MAXAGE,
                                   fun () -> do_get(Hostname, Port, Count,
                                                    State) end),
     {reply, Value, State#state{cache=Cache}};
 handle_call(Req = {get, Bucket, Count}, _From, State) ->
-    {Value, Cache} = cache_lookup(Req, State#state.cache, ?CACHE_MAXAGE,
+    {Value, Cache} = cache_lookup(Req, State#state.cache, ?STATS_MAXAGE,
                                   fun () -> do_get(Bucket, Count,
                                                    State) end),
     {reply, Value, State#state{cache=Cache}};
 handle_call(Req = {get, Count}, _From, State) ->
-    {Value, Cache} = cache_lookup(Req, State#state.cache, ?CACHE_MAXAGE,
+    {Value, Cache} = cache_lookup(Req, State#state.cache, ?STATS_MAXAGE,
                                   fun () -> do_get(Count,
                                                    State) end),
     {reply, Value, State#state{cache=Cache}};
 handle_call(Req = {get_topkeys, Bucket}, _From, State) ->
-    {Value, Cache} = cache_lookup(Req, State#state.cache, ?CACHE_MAXAGE,
+    {Value, Cache} = cache_lookup(Req, State#state.cache, ?TOPKEYS_MAXAGE,
                                   fun () -> do_get_topkeys(Bucket,
                                                            State) end),
     {reply, Value, State#state{cache=Cache}};
@@ -86,8 +87,12 @@ handle_info(garbage_collect, State) ->
                                   lists:member({H, P}, Servers)
                           end, OldTopkeys),
     Now = erlang:now(),
-    Cache = dict:filter(fun (_K, {TS, _V}) -> timer:now_diff(Now, TS) < ?CACHE_MAXAGE end,
-                        State#state.cache),
+    Cache = dict:filter(
+        fun (K, {TS, _V}) when element(1, K) =:= get ->
+            timer:now_diff(Now, TS) < ?STATS_MAXAGE;
+            (K, {TS, _V}) when element(1, K) =:= get_topkeys ->
+            timer:now_diff(Now, TS) < ?TOPKEYS_MAXAGE
+        end, State#state.cache),
     {noreply, State#state{vals=Vals, topkeys=Topkeys, cache=Cache}};
 handle_info(Info, State) ->
     error_logger:info_msg("Just received ~p~n", [Info]),
