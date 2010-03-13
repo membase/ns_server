@@ -70,14 +70,14 @@ handle_info(Info, State) ->
 %% Internal functions
 
 config_to_options(ServerConfig) ->
-    Username = proplists:get_value(user, ServerConfig),
+    Username = proplists:get_value(user, ServerConfig, []),
     Password = proplists:get_value(pass, ServerConfig),
     Relay = proplists:get_value(addr, ServerConfig),
     Port = proplists:get_value(port, ServerConfig),
     Encrypt = proplists:get_bool(encrypt, ServerConfig),
     Options = [{relay, Relay}],
     Options2 = case Username of
-        undefined -> Options;
+       [] -> Options;
         _ -> lists:append(Options, [{username, Username}, {password, Password}])
     end,
     Options3 = case Encrypt of
