@@ -95,9 +95,9 @@ do_log(Module, Code, Fmt, Args, State) ->
                         State#state.recent),
     try gen_event:notify(ns_log_events, {ns_log, Category, Module, Code,
                          Fmt, Args})
-    catch _:Reason ->
-        error_logger:error_msg("ns_log: unable to notify listeners "
-                               "because of ~p~n", [Reason])
+    catch _:_Reason ->
+        error_logger:info_msg("ns_log: message: ~p, ~p, ~p, ~p~n",
+                              [Module, Code, Fmt, Args])
     end,
     State#state{recent=NR}.
 
