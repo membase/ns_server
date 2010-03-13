@@ -36,8 +36,7 @@ init([]) ->
     error_logger:info_msg("~p init reannouncing~n", [?MODULE]),
     ns_config:reannounce(),
     % Schedule some random config syncs.
-    Frequency = 5000 + trunc(random:uniform() * 55000),
-    erlang:start_timer(Frequency, self(), pull_random),
+    schedule_config_sync(),
     ok = ns_node_disco_rep_events:add_handler(),
     {ok, #state{}}.
 
@@ -62,7 +61,8 @@ handle_cast(Msg, State) ->
     error_logger:info_msg("Unhandled ~p cast: ~p~n", [?MODULE, Msg]),
     {noreply, State}.
 
-handle_info({timeout, _TimerRef, pull_random}, State) ->
+handle_info(sync_random, State) ->
+    schedule_config_sync(),
     do_pull(1),
     {noreply, State};
 handle_info(Msg, State) ->
@@ -94,6 +94,10 @@ pull(Nodes) ->
 %
 % Privates
 %
+
+schedule_config_sync() ->
+    Frequency = 5000 + trunc(random:uniform() * 55000),
+    timer:send_after(Frequency, self(), sync_random).
 
 do_push() ->
     do_push(ns_config:get_remote(node())).
