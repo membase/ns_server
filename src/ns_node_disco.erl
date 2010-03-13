@@ -20,6 +20,7 @@
          nodes_wanted/0,
          nodes_wanted_updated/0,
          nodes_actual/0,
+         random_node/0,
          nodes_actual_proper/0,
          nodes_actual_other/0,
          cookie_init/0, cookie_gen/0,
@@ -51,6 +52,17 @@ nodes_actual() ->
 
 nodes_actual_proper() ->
     gen_server:call(?MODULE, nodes_actual_proper).
+
+random_node() ->
+    WorkingNodes = lists:filter(fun(N) ->
+                                        net_adm:ping(N) == pong
+                                end,
+                                nodes_wanted() -- [node()]),
+
+    case WorkingNodes of
+        [] -> exit(nonode);
+        [N|_] -> N
+    end.
 
 % Returns nodes_actual_proper(), but with self node() filtered out.
 % This is not the same as nodes([visible]), because this function may

@@ -15,7 +15,7 @@
 -export([running/2, joining/2, leaving/2]).
 
 %% API
--export([join/2, leave/1, leave/0]).
+-export([join/2, leave/0]).
 
 -record(running_state, {child}).
 -record(joining_state, {remote, cookie}).
@@ -51,8 +51,11 @@ running({join, RemoteNode, NewCookie}, State) ->
 running(leave, State) ->
     ns_log:log(?MODULE, 0001, "Node ~p is leaving cluster.", [node()]),
     NewCookie = ns_node_disco:cookie_gen(),
-    ns_config:set(nodes_wanted, [node()]),
-    ns_config:set(otp, [{cookie, NewCookie}]),
+    erlang:set_cookie(node(), NewCookie),
+    lists:foreach(fun erlang:disconnect_node/1, nodes()),
+    ns_config:clear([directory]),
+    ns_config:set(nodes_wanted, [node()], {0, 0, 0}),
+    ns_config:set(otp, [{cookie, NewCookie}], {0, 0, 0}),
     true = exit(State#running_state.child, shutdown),
     {next_state, leaving, #leaving_state{}}.
 
@@ -83,7 +86,6 @@ joining({exit, _Pid}, #joining_state{remote=RemoteNode, cookie=NewCookie}) ->
 leaving({exit, _Pid}, _LeaveData) ->
     error_logger:info_msg("ns_cluster: leaving cluster~n"),
     timer:sleep(1000),
-    lists:foreach(fun erlang:disconnect_node/1, nodes()),
     {ok, running, State} = bringup(),
     {next_state, running, State};
 
@@ -117,25 +119,26 @@ terminate(_Reason, _StateName, _StateData) -> ok.
 join(RemoteNode, NewCookie) ->
     gen_fsm:send_event(?MODULE, {join, RemoteNode, NewCookie}).
 
-% Should be invoked on a node that remains in the cluster,
-% where the leaving RemoteNode is passed in as an argument.
-%
-leave(RemoteNode) ->
-    catch(rpc:call(RemoteNode, ?MODULE, leave, [], 500)),
-    erlang:disconnect_node(RemoteNode),
-
-    ok = ns_config:update(fun({nodes_wanted, X}) ->
-                                  {nodes_wanted, X -- [RemoteNode]};
-                             (X) -> X
-                          end,
-                          make_ref()),
-    % TODO: Do we need to reset our cluster's cookie, so that the
-    % removed remote node, which might be down and not have received
-    % our leave command, and which therefore still knows our cluster's
-    % cookie, cannot re-join?
-    ok.
-
 leave() ->
-    error_logger:info_msg("ns_cluster: we've been asked to leave the cluster.~n"),
-    gen_fsm:send_event(?MODULE, leave).
+    RemoteNode = ns_node_disco:random_node(),
 
+    error_logger:info_msg("ns_cluster: leaving the cluster from ~p.~n",
+                         [RemoteNode]),
+
+    %% Remove ourselves from nodes_wanted on the remote node before
+    %% shutting down our own config server.
+    MyNode = node(),
+    Fun = fun({nodes_wanted, X}) ->
+                  {nodes_wanted, X -- [MyNode]};
+             (X) -> X
+          end,
+    case rpc:call(RemoteNode, ns_config, update, [Fun, make_ref()]) of
+        {badrpc, Crap} -> exit({badrpc, Crap});
+        _ -> error_logger:info_msg("Remote config updated to add ~p to ~p~n",
+                                   [node(), RemoteNode])
+    end,
+
+    %% Tell the remote side to start talking about this.
+    spawn(RemoteNode, ns_config_rep, push, []),
+
+    gen_fsm:send_event(?MODULE, leave).
