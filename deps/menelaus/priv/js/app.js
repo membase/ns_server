@@ -766,6 +766,7 @@ var StatGraphs = {
     var t;
     _.each(self.recognizedStats, function (statName) {
       var area = self.findGraphArea(statName);
+      area.hide();
       if (!t)
         t = area;
       else
