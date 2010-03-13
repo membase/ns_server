@@ -68,7 +68,7 @@ init([PortNum, AddrStr, Env]) ->
                                                      "Perhaps another process has taken that port already? " ++
                                                      "To address this, you may change port number configurations via the Cluster Settings page, " ++
                                                      "or stop the other listening process and restart this server. (error: ~p on node ~p)",
-                                      [{PortNum, AddrStr, Error, node()}]),
+                                      [PortNum, AddrStr, Error, node()]),
                            {stop, Error}
             end;
         Error -> ns_log:log(?MODULE, 0003, "Could not parse address ~p to listen on port ~p",
