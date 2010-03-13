@@ -195,18 +195,13 @@ do_get(Count, State) ->
 
 do_get_topkeys(Bucket, State) ->
     (catch {ok, dict:fold(
-            fun ({_Host, _Port, B}, Dict, Acc)->
+            fun ({_Host, _Port, B}, Topkeys, Acc)->
                     case B of
-                        Bucket ->
-                            dict:merge(
-                                fun (_Key, Value1, _Value2) ->
-                                        Value1
-                                end,
-                                Dict, Acc);
+                        Bucket -> Topkeys ++ Acc;
                         _ -> Acc
                     end
             end,
-            dict:new(),
+            [],
             State#state.topkeys)}).
 %
 % API

@@ -152,36 +152,16 @@ build_buckets_stats_hks_response(PoolId, BucketIds, Params) ->
                       lists:sublist(lists:reverse(lists:keysort(5, BucketsTopKeys)), 15)),
     {struct, [{hot_keys, HotKeyStructs}]}.
 
-get_buckets_hks(PoolId, BucketIds, Params) ->
+get_buckets_hks(_PoolId, BucketIds, Params) ->
     BucketsTopKeys = lists:flatmap(
         fun (BucketId) ->
-                {ok, BucketTopKeys} = get_hks(PoolId, BucketId, Params),
-                BucketTopKeys
+                {ok, BucketTopKeys} = stats_aggregator:get_topkeys(BucketId),
+                lists:map(fun({Key, Evictions, Ratio, Ops}) ->
+                              {BucketId, Key, Evictions, Ratio, Ops}
+                          end, BucketTopKeys)
         end,
         BucketIds),
     {ok, BucketsTopKeys}.
-
-%%#define TK_OPS(C) C(get_hits) C(get_misses) C(cmd_set) C(incr_hits) \
-%%                   C(incr_misses) C(decr_hits) C(decr_misses) \
-%%                   C(delete_hits) C(delete_misses) C(evictions)
-
-get_hks(_PoolId, BucketId, _Params) ->
-    {ok, TopKeys} = stats_aggregator:get_topkeys(BucketId),
-    TopKeyList = lists:map(
-        fun ({Key, Stats}) ->
-                Ctime = dict:fetch("ctime", Stats) + 1, % add one to avoid divide by zero
-                Evictions = dict:fetch("evictions", Stats),
-                Hits = sum_hks(["get_hits", "incr_hits", "decr_hits", "delete_hits"], Stats),
-                Misses = sum_hks(["get_misses", "incr_misses", "decr_misses", "delete_misses"], Stats),
-                Ratio = case Hits of
-                    0 -> 0;
-                    _ -> Hits / (Hits + Misses)
-                end, % avoid divide by zero
-                Ops = Hits + Misses + dict:fetch("cmd_set", Stats),
-                {BucketId, Key, Evictions / Ctime, Ratio, Ops / Ctime}
-        end,
-        dict:to_list(TopKeys)),
-    {ok, TopKeyList}.
 
 sum_stats_values_rec([], [], Rec) ->
     Rec;
