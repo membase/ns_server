@@ -72,14 +72,13 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 collect_stats() ->
-    collect(fun collect_stats/4).
+    collect(fun collect_stats/3).
 
 collect_topkeys() ->
-    collect(fun collect_topkeys/4).
+    collect(fun collect_topkeys/3).
 
 collect(F) ->
     try mc_pool:get_buckets_and_servers() of {Buckets, Servers} ->
-        T = erlang:now(),
         BucketConfigs = dict:from_list(Buckets),
         lists:foreach(fun(Server = {Host, Port}) ->
                           case gen_tcp:connect(Host, Port,
@@ -87,7 +86,7 @@ collect(F) ->
                                      1000) of
                           {ok, Sock} ->
                               ok = auth(Sock),
-                              F(T, Server, BucketConfigs, Sock),
+                              F(Server, BucketConfigs, Sock),
                               ok = gen_tcp:close(Sock);
                           {error, _Err} -> error
                           end
@@ -110,7 +109,7 @@ foreach_bucket(F, Sock, Buckets) ->
             end
         end, Buckets).
 
-collect_stats(T, {Host, Port}, BucketConfigs, Sock) ->
+collect_stats({Host, Port}, BucketConfigs, Sock) ->
     MCBuckets = lists:filter(fun([C|_]) -> C =/= $_ end,
         list_buckets(Sock)), % ignore buckets starting with _ for now
     Buckets = dict:fetch_keys(BucketConfigs),
@@ -129,14 +128,14 @@ collect_stats(T, {Host, Port}, BucketConfigs, Sock) ->
             create_bucket(Sock, B, Size)
         end, NewBuckets),
     foreach_bucket(fun(B) ->
-            collect_stats(T, {Host, Port}, B,
+            collect_stats({Host, Port}, B,
                           dict:fetch(B, BucketConfigs), Sock)
         end, Sock, CurrBuckets).
 
-collect_stats(T, {Host, Port}, Bucket, Config, Sock) ->
+collect_stats({Host, Port}, Bucket, Config, Sock) ->
     WantedSize = proplists:get_value(size_per_node, Config) * ?BUCKET_SIZE_UNIT,
     Stats = dict:from_list(stats(Sock, "")),
-    stats_aggregator:received_data(T, Host, Port, Bucket, Stats),
+    stats_aggregator:received_data(Host, Port, Bucket, Stats),
     CurrSize = list_to_integer(dict:fetch("engine_maxbytes", Stats)),
     if
         CurrSize =/= WantedSize ->
@@ -147,13 +146,13 @@ collect_stats(T, {Host, Port}, Bucket, Config, Sock) ->
         true -> true
     end.
 
-collect_topkeys(T, Server, BucketConfigs, Sock) when is_tuple(BucketConfigs) ->
-    foreach_bucket(fun(B) -> collect_topkeys(T, Server, B, Sock) end,
+collect_topkeys(Server, BucketConfigs, Sock) when is_tuple(BucketConfigs) ->
+    foreach_bucket(fun(B) -> collect_topkeys(Server, B, Sock) end,
                    Sock, dict:fetch_keys(BucketConfigs));
 
-collect_topkeys(T, {Host, Port}, Bucket, Sock) ->
+collect_topkeys({Host, Port}, Bucket, Sock) ->
     Topkeys = stats(Sock, "topkeys"),
-    stats_aggregator:received_topkeys(T, Host, Port, Bucket,
+    stats_aggregator:received_topkeys(Host, Port, Bucket,
                                       parse_topkeys(Topkeys)).
 
 %%#define TK_OPS(C) C(get_hits) C(get_misses) C(cmd_set) C(incr_hits) \

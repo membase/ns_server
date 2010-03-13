@@ -11,8 +11,8 @@
 
 %% API
 -export([start_link/0,
-         received_data/5,
-         received_topkeys/5,
+         received_data/4,
+         received_topkeys/4,
          get_stats/4,
          get_stats/3,
          get_stats/2,
@@ -56,19 +56,19 @@ handle_call(Req = {get_topkeys, Bucket}, _From, State) ->
     {Value, Cache} = cache_lookup(Req, State#state.cache, ?CACHE_MAXAGE,
                                   fun () -> do_get_topkeys(Bucket,
                                                            State) end),
-    {reply, Value, State#state{cache=Cache}}.
-
-handle_cast({received, T, Hostname, Port, Bucket, Stats}, State) ->
-    TS = dict:store(t, T, Stats),
-    {noreply, State#state{vals=dict:update({Hostname, Port, Bucket},
+    {reply, Value, State#state{cache=Cache}};
+handle_call({received, Hostname, Port, Bucket, Stats}, _From, State) ->
+    TS = dict:store(t, erlang:now(), Stats),
+    {reply, ok, State#state{vals=dict:update({Hostname, Port, Bucket},
                                            fun (undefined) ->
                                                    R = ringdict:new(?SAMPLE_SIZE),
                                                    ringdict:add(TS, R);
                                                (R) -> ringdict:add(TS, R)
                                            end,
                                            undefined,
-                                           State#state.vals)}};
-handle_cast({received_topkeys, _T, Hostname, Port, Bucket, Topkeys}, State) ->
+                                           State#state.vals)}}.
+
+handle_cast({received_topkeys, Hostname, Port, Bucket, Topkeys}, State) ->
     {noreply, State#state{vals=State#state.vals,
                           topkeys=dict:store({Hostname, Port, Bucket},
                                           Topkeys,
@@ -208,11 +208,11 @@ do_get_topkeys(Bucket, State) ->
 % API
 %
 
-received_data(T, Hostname, Port, Bucket, Stats) ->
-    gen_server:cast({global, ?MODULE}, {received, T, Hostname, Port, Bucket, Stats}).
+received_data(Hostname, Port, Bucket, Stats) ->
+    gen_server:call({global, ?MODULE}, {received, Hostname, Port, Bucket, Stats}).
 
-received_topkeys(T, Hostname, Port, Bucket, Topkeys) ->
-    gen_server:cast({global, ?MODULE}, {received_topkeys, T, Hostname, Port, Bucket, Topkeys}).
+received_topkeys(Hostname, Port, Bucket, Topkeys) ->
+    gen_server:cast({global, ?MODULE}, {received_topkeys, Hostname, Port, Bucket, Topkeys}).
 
 get_stats(Hostname, Port, Bucket, Count) ->
     gen_server:call({global, ?MODULE}, {get, Hostname, Port, Bucket, Count}).
