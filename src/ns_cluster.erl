@@ -15,7 +15,7 @@
 -export([running/2, joining/2, leaving/2]).
 
 %% API
--export([join/2, leave/0]).
+-export([join/2, leave/0, shun/1]).
 
 -record(running_state, {child}).
 -record(joining_state, {remote, cookie}).
@@ -125,20 +125,15 @@ leave() ->
     error_logger:info_msg("ns_cluster: leaving the cluster from ~p.~n",
                          [RemoteNode]),
 
-    %% Remove ourselves from nodes_wanted on the remote node before
-    %% shutting down our own config server.
-    MyNode = node(),
-    Fun = fun({nodes_wanted, X}) ->
-                  {nodes_wanted, X -- [MyNode]};
-             (X) -> X
-          end,
-    case rpc:call(RemoteNode, ns_config, update, [Fun, make_ref()]) of
-        {badrpc, Crap} -> exit({badrpc, Crap});
-        _ -> error_logger:info_msg("Remote config updated to add ~p to ~p~n",
-                                   [node(), RemoteNode])
-    end,
-
-    %% Tell the remote side to start talking about this.
-    spawn(RemoteNode, ns_config_rep, push, []),
-
+    %% Tell the remote server to tell everyone to shun me.
+    rpc:cast(RemoteNode, ?MODULE, shun, [node()]),
+    %% Then drop ourselves into a leaving state.
     gen_fsm:send_event(?MODULE, leave).
+
+shun(RemoteNode) ->
+    ns_config:update(fun({nodes_wanted, X}) ->
+                             {nodes_wanted, X -- [RemoteNode]};
+                        (X) -> X
+                     end,
+                     make_ref()),
+    ns_config_rep:push().

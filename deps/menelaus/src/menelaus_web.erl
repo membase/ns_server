@@ -795,7 +795,7 @@ handle_eject_post(Req) ->
                 false ->
                     case lists:member(OtpNode, ns_node_disco:nodes_wanted()) of
                         true ->
-                            ok = ns_cluster:leave(OtpNode),
+                            ok = ns_cluster:shun(OtpNode),
                             ns_log:log(?MODULE, 0013, "Node ejected: ~p from node: ~p",
                                        [OtpNode, erlang:node()]),
                             Req:respond({200, add_header(), []});
