@@ -72,7 +72,8 @@ code_change(_OldVsn, State, _Extra) ->
 
 collect_stats() ->
     ns_watchdog:bark(?MODULE),
-    collect(fun collect_stats/3).
+    {ok, Stats} = collect(fun collect_stats/3),
+    stats_aggregator:received_data(Stats).
 
 collect_topkeys() ->
     collect(fun collect_topkeys/3).
@@ -80,34 +81,36 @@ collect_topkeys() ->
 collect(F) ->
     try mc_pool:get_buckets_and_servers() of {Buckets, Servers} ->
         BucketConfigs = dict:from_list(Buckets),
-        lists:foreach(fun(Server = {Host, Port}) ->
+        {ok, lists:flatmap(fun(Server = {Host, Port}) ->
                           case gen_tcp:connect(Host, Port,
                                      [binary, {packet, 0}, {active, false}],
                                      1000) of
                           {ok, Sock} ->
                               ok = auth(Sock),
-                              F(Server, BucketConfigs, Sock),
-                              ok = gen_tcp:close(Sock);
-                          {error, _Err} -> error
+                              Data = F(Server, BucketConfigs, Sock),
+                              ok = gen_tcp:close(Sock),
+                              Data;
+                          {error, _Err} -> []
                           end
-                      end, Servers)
+                      end, Servers)}
     catch _:Reason ->
         error_logger:info_msg("stats_collector:collect couldn't get buckets/servers: ~p~n",
                               [Reason]),
         {error, Reason}
     end.
 
-foreach_bucket(F, Sock, Buckets) ->
-    lists:foreach(fun (Bucket) ->
+map_buckets(F, Sock, Buckets) ->
+    misc:mapfilter(fun (Bucket) ->
             {ok, RecvHeader, _RecvEntry, _NCB} = mc_client_binary:select_bucket(Sock, Bucket),
             case RecvHeader#mc_header.status of
             ?SUCCESS -> F(Bucket);
             ?KEY_ENOENT ->
                 % Shouldn't get this any more now that we're controlling buckets
                 error_logger:error_report("stats_collector:foreach_bucket missing bucket ~p~n",
-                                          [Bucket])
+                                          [Bucket]),
+                error
             end
-        end, Buckets).
+        end, error, Buckets).
 
 collect_stats({Host, Port}, BucketConfigs, Sock) ->
     MCBuckets = lists:filter(fun([C|_]) -> C =/= $_ end,
@@ -127,7 +130,7 @@ collect_stats({Host, Port}, BucketConfigs, Sock) ->
                                   [B, Size, Host, Port]),
             create_bucket(Sock, B, Size)
         end, NewBuckets),
-    foreach_bucket(fun(B) ->
+    map_buckets(fun(B) ->
             collect_stats({Host, Port}, B,
                           dict:fetch(B, BucketConfigs), Sock)
         end, Sock, CurrBuckets).
@@ -135,7 +138,6 @@ collect_stats({Host, Port}, BucketConfigs, Sock) ->
 collect_stats({Host, Port}, Bucket, Config, Sock) ->
     WantedSize = proplists:get_value(size_per_node, Config) * ?BUCKET_SIZE_UNIT,
     Stats = dict:from_list(stats(Sock, "")),
-    stats_aggregator:received_data(Host, Port, Bucket, Stats),
     CurrSize = list_to_integer(dict:fetch("engine_maxbytes", Stats)),
     if
         CurrSize =/= WantedSize ->
@@ -144,10 +146,11 @@ collect_stats({Host, Port}, Bucket, Config, Sock) ->
             delete_bucket(Sock, Bucket),
             create_bucket(Sock, Bucket, WantedSize);
         true -> true
-    end.
+    end,
+    {Host, Port, Bucket, Stats}.
 
 collect_topkeys(Server, BucketConfigs, Sock) when is_tuple(BucketConfigs) ->
-    foreach_bucket(fun(B) -> collect_topkeys(Server, B, Sock) end,
+    map_buckets(fun(B) -> collect_topkeys(Server, B, Sock) end,
                    Sock, dict:fetch_keys(BucketConfigs));
 
 collect_topkeys({Host, Port}, Bucket, Sock) ->

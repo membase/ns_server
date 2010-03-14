@@ -3,6 +3,7 @@
 %% All rights reserved.
 
 -module(stats_aggregator).
+-include_lib("eunit/include/eunit.hrl").
 
 -behaviour(gen_server).
 
@@ -12,7 +13,7 @@
 
 %% API
 -export([start_link/0,
-         received_data/4,
+         received_data/1,
          received_topkeys/4,
          get_stats/4,
          get_stats/3,
@@ -59,13 +60,17 @@ handle_call(Req = {get_topkeys, Bucket}, _From, State) ->
     {Value, Cache} = cache_lookup(Req, State#state.cache, ?TOPKEYS_MAXAGE,
                                   fun () -> do_get_topkeys(Bucket,
                                                            State) end),
-    {reply, Value, State#state{cache=Cache}};
-handle_call({received, Hostname, Port, Bucket, Stats}, _From, State) ->
-    TS = dict:store(t, erlang:now(), Stats),
-    {reply, ok, State#state{vals=dict:update({Hostname, Port, Bucket},
-                                           fun (R) -> ringdict:add(TS, R) end,
-                                           State#state.empty_ringdict,
-                                           State#state.vals)}}.
+     {reply, Value, State#state{cache=Cache}};
+handle_call({received, Data}, _From, State) ->
+    Now = erlang:now(),
+    Vals = lists:foldl(fun ({Host, Port, Bucket, Stats}, Acc) ->
+            TS = dict:store(t, Now, Stats),
+            dict:update({Host, Port, Bucket},
+                                  fun (R) -> ringdict:add(TS, R) end,
+                                  State#state.empty_ringdict,
+                                  Acc)
+        end, State#state.vals, Data),
+    {reply, ok, State#state{vals=Vals}}.
 
 handle_cast({received_topkeys, Hostname, Port, Bucket, Topkeys}, State) ->
     {noreply, State#state{vals=State#state.vals,
@@ -211,8 +216,8 @@ do_get_topkeys(Bucket, State) ->
 % API
 %
 
-received_data(Hostname, Port, Bucket, Stats) ->
-    gen_server:call({global, ?MODULE}, {received, Hostname, Port, Bucket, Stats}).
+received_data(Data) ->
+    gen_server:call({global, ?MODULE}, {received, Data}).
 
 received_topkeys(Hostname, Port, Bucket, Topkeys) ->
     gen_server:cast({global, ?MODULE}, {received_topkeys, Hostname, Port, Bucket, Topkeys}).
@@ -236,4 +241,37 @@ stats_age(Hostname, Port, Bucket) ->
     {ok, Stats} = get_stats(Hostname, Port, Bucket, 1),
     [Timestamp] = dict:fetch(t, Stats),
     timer:now_diff(erlang:now(), Timestamp) / 1000000.0.
+
+%% Tests
+config(host1) -> "10.0.0.1";
+config(host2) -> "10.0.0.2";
+config(port) -> 11211;
+config(bucket1) -> "default";
+config(bucket2) -> "my_test_bucket";
+config(stats1) -> dict:from_list([{config(stat1), 100}, {config(stat2), 1010}]);
+config(stats2) -> dict:from_list([{config(stat1), 200}, {config(stat2), 2020}]);
+config(stat1) -> "cmd_get";
+config(stat2) -> "get_miss".
+
+
+check_stat(Args, Key, Value) ->
+    {ok, Stats} = apply(?MODULE, get_stats, Args),
+    ?assertEqual(Value, dict:fetch(Key, Stats)).
+
+stats_test() ->
+    process_flag(trap_exit, true),
+    {ok, Pid} = start_link(),
+    Stats1 = config(stats1),
+    Stats2 = config(stats2),
+    ok = received_data([{config(host1), config(port), config(bucket1), Stats1},
+                        {config(host2), config(port), config(bucket1), Stats2}]),
+    ok = received_data([{config(host1), config(port), config(bucket1), Stats1},
+                        {config(host2), config(port), config(bucket1), Stats2}]),
+    check_stat([config(host1), config(port), config(bucket1), 2], config(stat1), [100]),
+    check_stat([config(host2), config(port), 1], config(stat2), [2020]),
+    check_stat([config(bucket1), 1], config(stat1), [300]),
+    check_stat([10], config(stat2), [0, 0, 0, 0, 0, 0, 0, 0, 0, 3030]),
+    exit(Pid, kill),
+    receive {'EXIT', Pid, killed} -> ok end.
+
 
