@@ -702,6 +702,9 @@ button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
 .configure_view a {position:relative; top:5px; text-decoration:underline;}
 .configure_view a:hover {text-decoration:none;}
 
+.success_msg {background-color: #a0fca0;}
+.error_msg {background-color: #fca0a0;}
+
 /* temporary - working with login screen */
 /*
 #container {display:none;}

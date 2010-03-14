@@ -1907,7 +1907,11 @@ function showAbout() {
 
 function displayNotice(text) {
   var div = $('<div></div>');
-  renderTemplate('notice', {text: text}, div.get(0));
+  var tname = 'notice';
+  if (text.indexOf('error') >= 0) {
+    tname = 'noticeErr';
+  }
+  renderTemplate(tname, {text: text}, div.get(0));
   $('#notice_container').prepend(div.children());
 }
 

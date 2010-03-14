@@ -1345,7 +1345,15 @@ MemcachedClient client = manager.getClient();</pre>
 <div id="notice_template" class="template">
   <div class="shadow_box notice"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
     <h2 class="header_2">NorthScale Message</h2>
-    <div class="pad_10">
+    <div class="pad_10 success_msg">
+      <p class="info_text">{%= h(text) %}</p>
+    </div>
+  </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
+</div>
+<div id="noticeErr_template" class="template">
+  <div class="shadow_box notice"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
+    <h2 class="header_2">NorthScale Message</h2>
+    <div class="pad_10 error_msg">
       <p class="info_text">{%= h(text) %}</p>
     </div>
   </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
