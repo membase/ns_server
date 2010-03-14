@@ -2,6 +2,7 @@
 -module(ns_log_browser).
 
 -export([start/0]).
+-export([get_logs/3, get_logs_as_file/3]).
 
 usage(Fmt, Args) ->
     io:format(Fmt, Args),
@@ -46,6 +47,52 @@ start() ->
     undefined -> rb:show();
     E -> io:format("grepping for ~p~n", [E]), rb:grep(E)
     end.
+
+tempfile(Prefix, Suffix) ->
+    Dir = case os:getenv("TEMP") of
+    false ->
+        case os:getenv("TMP") of
+        false ->
+            case os:getenv("TMPDIR") of
+            false -> "/tmp";
+            D1 -> D1
+            end;
+        D2 -> D2
+        end;
+    D3 -> D3
+    end,
+    {_, _, MicroSecs} = erlang:now(),
+    Pid = os:getpid(),
+    Filename = Prefix ++ integer_to_list(MicroSecs) ++ "_" ++
+               Pid ++ Suffix,
+    filename:join(Dir, Filename).
+
+get_logs_as_file(Types, NumReports, RegExp) ->
+    catch rb:stop(),
+    TempFile = tempfile("nslogs", ".log"),
+    Options = [{start_log, TempFile}, {type, Types}, {max, NumReports}],
+    case rb:start(Options) of
+    {ok, _Pid} -> ok;
+    {error, already_present} ->
+        % Can sometimes get wedged
+        supervisor:restart_child(sasl_sup, rb_server),
+        rb:stop(),
+        erlang:error(try_again);
+    {error, Reason} ->
+        erlang:error(Reason)
+    end,
+    case RegExp of
+    [] -> rb:show();
+    _ -> rb:grep(RegExp)
+    end,
+    catch rb:stop(),
+    TempFile.
+
+get_logs(Types, NumReports, RegExp) ->
+    Filename = get_logs_as_file(Types, NumReports, RegExp),
+    {ok, Data} = file:read_file(Filename),
+    file:delete(Filename),
+    Data.
 
 %% Option parser
 map_args(K, N, undefined, D, A) ->
