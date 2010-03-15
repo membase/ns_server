@@ -820,8 +820,10 @@
             <div class="normal text_12">
             Sample Java Client Manager connection string:<br />
               {% if (b.name != "default") { %}
-<pre>URI base = new URI("{%= h(document.location.protocol) %}//{%= h(document.location.host) %}/pools/default");<br />
-ClientManager manager = new ClientManager(base, 
+<pre>ArrayList&lt;URI&gt; baseList = new ArrayList&lt;URI&gt;();<br />
+URI base = new URI("{%= h(document.location.protocol) %}//{%= h(document.location.host) %}/pools/default");<br />
+baseList.add(base);<br />
+ClientManager manager = new ClientManager(baseList,
                                           "{%= h(b.name) %}", 
                                           "{%= h(b.name) %}");<br />
 MemcachedClient client = manager.getClient();</pre>
