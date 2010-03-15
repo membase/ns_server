@@ -303,7 +303,8 @@ a:link {
 }
 
 #footer h1 {
-	padding-top: 30px;
+  text-transform: none;
+	padding-top: 32px;
 /*	margin-left: 12%;*/
 	font-family: Verdana;
 	font-weight: normal;
