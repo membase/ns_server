@@ -345,7 +345,9 @@ make_pidfile() ->
 
 make_pidfile(PidFile) ->
     Pid = os:getpid(),
-    ok = file:write_file(PidFile, list_to_binary(Pid)),
+    %% Pid is a string representation of the process id, so we append
+    %% a newline to the end.
+    ok = file:write_file(PidFile, list_to_binary(Pid ++ "\n")),
     ok.
 
 ping_jointo() ->
