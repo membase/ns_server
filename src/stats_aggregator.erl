@@ -23,14 +23,15 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {vals, topkeys, cache}).
+-record(state, {vals, topkeys, cache, empty_ringdict}).
 
 start_link() ->
     gen_server:start_link({global, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
     timer:send_interval(60000, garbage_collect),
-    {ok, #state{vals=dict:new(), topkeys=dict:new(), cache=dict:new()}}.
+    {ok, #state{vals=dict:new(), topkeys=dict:new(), cache=dict:new(),
+                empty_ringdict=ringdict:new(?SAMPLE_SIZE)}}.
 
 handle_call({get, Hostname, Port, Bucket, Count}, _From, State) ->
     Reply = (catch {ok, ringdict:to_dict(Count,
@@ -60,12 +61,8 @@ handle_call(Req = {get_topkeys, Bucket}, _From, State) ->
 handle_call({received, Hostname, Port, Bucket, Stats}, _From, State) ->
     TS = dict:store(t, erlang:now(), Stats),
     {reply, ok, State#state{vals=dict:update({Hostname, Port, Bucket},
-                                           fun (undefined) ->
-                                                   R = ringdict:new(?SAMPLE_SIZE),
-                                                   ringdict:add(TS, R);
-                                               (R) -> ringdict:add(TS, R)
-                                           end,
-                                           undefined,
+                                           fun (R) -> ringdict:add(TS, R) end,
+                                           State#state.empty_ringdict,
                                            State#state.vals)}}.
 
 handle_cast({received_topkeys, Hostname, Port, Bucket, Topkeys}, State) ->
