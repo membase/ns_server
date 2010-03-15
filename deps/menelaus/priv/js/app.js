@@ -628,7 +628,8 @@ function renderLargeGraph(main, data) {
 
 function renderSmallGraph(jq, data, isSelected) {
   var average = _.foldl(data, 0, function (s,v) {return s+v}) / data.length;
-  jq.find('.small_graph_label > .value').text(String(truncateTo3Digits(average)));
+  var avgString = ViewHelpers.formatQuantity(average, '', 1000);
+  jq.find('.small_graph_label > .value').text(avgString);
 
   var plotData = _.map(data, function (e, i) {
     return [i+1, e];
