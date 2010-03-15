@@ -106,8 +106,8 @@ map_buckets(F, Sock, Buckets) ->
             ?SUCCESS -> F(Bucket);
             ?KEY_ENOENT ->
                 % Shouldn't get this any more now that we're controlling buckets
-                error_logger:error_report("stats_collector:foreach_bucket missing bucket ~p~n",
-                                          [Bucket]),
+                error_logger:error_msg("stats_collector:foreach_bucket missing bucket ~p~n",
+                                           [Bucket]),
                 error
             end
         end, error, Buckets).
@@ -175,19 +175,15 @@ parse_topkey_value(Value) ->
     Hits = GetHits + IncrHits + DecrHits + DeleteHits,
     Misses = GetMisses + IncrMisses + DecrMisses + DeleteMisses,
     Ops = Hits + Misses + CmdSet,
-    Ratio = case Hits of
-        0 -> 0;
-        _ -> Hits / (Hits + Misses)
-    end, % avoid divide by zero
-    {Evictions / (Ctime + 1), Ratio, Ops / (Ctime + 1)}.
+    {Hits, Misses, Ops / (Ctime + 1), Evictions / (Ctime + 1)}.
 
 parse_topkeys(Topkeys) ->
-    lists:map(
-        fun ({Key, Value}) ->
-                {Evictions, Ratio, Ops} = parse_topkey_value(Value),
-                {Key, Evictions, Ratio, Ops}
+    dict:from_list(lists:map(
+        fun ({Key, ValueString}) ->
+                Value = parse_topkey_value(ValueString),
+                {Key, Value}
         end,
-        Topkeys).
+        Topkeys)).
 
 %% Memcached higher level interface stuff
 
