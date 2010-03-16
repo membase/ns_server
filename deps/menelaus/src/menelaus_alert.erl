@@ -59,9 +59,9 @@ handle_alerts_settings_post(PostArgs) ->
     AlertConfig2 =
         lists:foldl(
           fun({"email", V}, C) ->
-                  lists:keystore(email, 1, C, {email, V});
+                  lists:keystore(email, 1, C, {email, misc:trim(V)});
              ({"sender", V}, C) ->
-                  lists:keystore(sender, 1, C, {sender, V});
+                  lists:keystore(sender, 1, C, {sender, misc:trim(V)});
              ({"email_alerts", "1"}, C) ->
                   lists:keystore(email_alerts, 1, C, {email_alerts, true});
              ({"email_alerts", "0"}, C) ->
@@ -87,7 +87,7 @@ handle_alerts_settings_post(PostArgs) ->
                               true ->
                                   set_subkey(email_server,
                                              list_to_existing_atom(K2),
-                                             V, C);
+                                             misc:trim(V), C);
                               false -> C
                           end;
                       _ -> C
