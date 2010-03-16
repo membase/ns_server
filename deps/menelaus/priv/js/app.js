@@ -259,6 +259,22 @@ function postWithValidationErrors(url, data, callback) {
   }
 }
 
+var LogoutTimer = {
+  reset: function () {
+    if (this.timeoutId) {
+      clearTimeout(this.timeoutId);
+    }
+    if (!DAO.login)
+      return;
+    this.timeoutId = setTimeout($m(this, 'onTimeout'), 300000);
+  },
+  onTimeout: function () {
+    $.cookie('inactivity_reload', '1');
+    DAO.setAuthCookie(null);
+    reloadApp();
+  }
+};
+
 $.ajaxSetup({
   error: onUnexpectedXHRError,
   timeout: 5000,
@@ -269,6 +285,7 @@ $.ajaxSetup({
     xhr.setRequestHeader('invalid-auth-response', 'on');
     xhr.setRequestHeader('Cache-Control', 'no-cache');
     xhr.setRequestHeader('Pragma', 'no-cache');
+    LogoutTimer.reset();
   },
   dataFilter: function (data, type) {
     if (type == "json" && data == "")
@@ -1696,7 +1713,7 @@ function loginFormSubmit() {
       return;
     }
 
-    $('#auth_dialog .alert_red').show();
+    $('#auth_failed_message').show();
   });
   return false;
 }
@@ -1713,24 +1730,30 @@ $(function () {
     var e = $('#auth_dialog [name=login]').get(0);
     try {e.focus();} catch (ex) {}
   });
+
+  if ($.cookie('inactivity_reload')) {
+    $.cookie('inactivity_reload');
+    $('#auth_inactivity_message').show();
+  }
+
   if ($.cookie('cluster_join_flash')) {
     $.cookie('cluster_join_flash', null);
     displayNotice('You have successfully joined the cluster');
   }
   if ($.cookie('ri')) {
-	  var reloadInfo = $.cookie('ri');
-	  var ts;
+    var reloadInfo = $.cookie('ri');
+    var ts;
 
-	  var now = (new Date()).valueOf();
-	  if (reloadInfo) {
-	    ts = parseInt(reloadInfo);
-	    if ((now - ts) > 2*1000) {
-          $.cookie('ri', null);
-	    }
+    var now = (new Date()).valueOf();
+    if (reloadInfo) {
+      ts = parseInt(reloadInfo);
+      if ((now - ts) > 2*1000) {
+        $.cookie('ri', null);
       }
-	  displayNotice('An error was encountered when requesting data from the server.  ' +
-			        'The console has been reloaded to attempt to recover.  There ' +
-			        'may be additional information about the error in the log.');
+    }
+    displayNotice('An error was encountered when requesting data from the server.  ' +
+		  'The console has been reloaded to attempt to recover.  There ' +
+		  'may be additional information about the error in the log.');
   }
 
   ThePage.initialize();
