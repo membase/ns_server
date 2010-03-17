@@ -349,10 +349,6 @@ function functionArgumentNames(f) {
   return names.length == 1 && !names[0] ? [] : names;
 };
 
-function jsComparator(a,b) {
-  return (a == b) ? 0 : ((a < b) ? -1 : 1);
-}
-
 function reloadApp(middleCallback) {
   prepareAreaUpdate($(document.body));
   if (middleCallback)
