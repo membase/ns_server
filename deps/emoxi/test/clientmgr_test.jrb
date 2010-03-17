@@ -1,0 +1,99 @@
+# Needs to run from jruby, because this test client uses
+# spymemcached.  Also, your CLASSPATH env variable needs seeting,
+# like...
+#
+#  export CLASSPATH=$CLASSPATH:./tmp/memcached-2.5rc1.jar:./tmp/commons-codec-1.4.jar
+#  export CLASSPATH=$CLASSPATH:./tmp/jettison-1.1.jar:./tmp/memcached-2.5-ns.jar
+#  export CLASSPATH=$CLASSPATH:./tmp/netty-3.1.5.GA.jar:./tmp/northscale_client-1.0.0.jar
+#  export CLASSPATH=$CLASSPATH:./tmp/version_num.tmp:.
+#
+#  jruby test/clientmgr_test.jrb set \
+#     "stevenmb.gateway.2wire.net:11212 stevenmb.gateway.2wire.net:11222"
+#
+#  jruby test/clientmgr_test.jrb get \
+#     "stevenmb.gateway.2wire.net:11212 stevenmb.gateway.2wire.net:11222"
+#
+require 'java'
+
+include_class 'net.spy.memcached.MemcachedClient'
+include_class 'net.spy.memcached.AddrUtil'
+include_class 'net.spy.memcached.HashAlgorithm'
+include_class 'net.spy.memcached.ConnectionFactoryBuilder'
+include_class 'net.spy.memcached.util.DefaultKetamaNodeLocatorConfiguration'
+
+include_class 'java.net.URI'
+include_class 'com.northscale.store.ClientManager'
+
+print "ARGV: #{ARGV.join(' ')}\n"
+
+action0 = ARGV[0]
+restsvr = ARGV[1] || 'http://localhost:9000'
+$key = ARGV[2] || 'x'
+$val = ARGV[3] || 'XYZ'
+
+print "action: #{action0}\n"
+print "restsvr: #{restsvr}\n"
+print "key: #{$key}\n"
+
+resturl = restsvr + '/pools/default'
+
+print "resturl: #{resturl}\n"
+
+base = URI.new(resturl)
+manager = ClientManager.new(base)
+c = manager.getClient()
+
+def go(action, c)
+  if action == "set"
+    x = c.set($key, 0, $val)
+    print "set #{$key} to #{$val}, result #{x}\n"
+  end
+
+  if action == "get"
+    x = c.get($key)
+    print "got #{$key}, result #{x}\n"
+  end
+
+  if action == "set_many"
+    i = 0
+    while i < 1000
+      c.set("many_#{i}", 0, "MANY_#{i}")
+      i = i + 1
+    end
+  end
+
+  if action == "get_many"
+    good = 0
+    fail = 0
+    i = 0
+    while i < 1000
+      key = "many_#{i}"
+      if c.get(key) == "MANY_#{i}"
+        good = good + 1
+      else
+        fail = fail + 1
+        print "FAIL #{i}, hash: #{HashAlgorithm::KETAMA_HASH.hash(key)}\n"
+      end
+      i = i + 1
+    end
+    print "total good #{good}\n"
+    print "total fail #{fail}\n"
+  end
+
+  if action == "long"
+    print "action long starting\n"
+    a = 0
+    while a < 100000
+      print "---------------------- #{a}\n"
+      go("set_many", c)
+      go("get_many", c)
+      a = a + 1
+    end
+  end
+end
+
+go(action0, c)
+
+print "DONE\n"
+
+exit
