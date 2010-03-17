@@ -3,10 +3,14 @@ require 'json'
 
 PREFIX = "cucumberCluster"
 
+def dbg(m)
+  # p(m)
+end
+
 def cluster_stop(prefix = nil)
   prefix ||= PREFIX
   if File.exists?("./#{prefix}_stop_all.sh")
-    p "stopping cluster..."
+    dbg "stopping cluster..."
     `./#{prefix}_stop_all.sh`
     FileUtils.rm_f Dir.glob("./tmp/node_*.pid")
     sleep(2.0)
@@ -28,7 +32,7 @@ def cluster_start(prefix = nil)
              end
   if pid
     # In the parent process...
-    p "starting cluster..."
+    dbg "starting cluster..."
     sleep(3.0)
   end
 end
@@ -45,7 +49,7 @@ def cluster_join(joiner, joinee)
     # This is expected, as the joiner to might restart webservices when joining.
     sleep(10.0)
   rescue Exception => x
-    p "doJoinCluster exception #{x}"
+    dbg "doJoinCluster exception #{x}"
     raise x
   end
 end
@@ -111,7 +115,7 @@ def node_pid(node_label)
 end
 
 def node_kill(node_label)
-  p "killing node #{node_label}..."
+  dbg "killing node #{node_label}..."
   `kill #{node_pid(node_label)}`
   sleep(0.1)
 end
@@ -119,7 +123,7 @@ end
 def node_start(node_label, prefix = nil)
   prefix ||= PREFIX
   node_i = node_index(node_label)
-  p "starting node #{node_label} (#{node_i})..."
+  dbg "starting node #{node_label} (#{node_i})..."
   pid = fork do # In the child process...
                `./start_shell.sh -name n_#{node_i}@127.0.0.1 -noshell -ns_server ns_server_config \\"#{prefix}_config\\" -ns_server pidfile \\"./tmp/node_#{node_i}.pid\\"`
                exit
