@@ -53,15 +53,7 @@ end
 def cluster_eject(ejectee, ejecter = nil)
   ejecter ||= ejectee
 
-  d = JSON.parse(RestClient.get("http://localhost:#{rest_port(ejecter)}" +
-                                "/pools/default"))
-
-  assert d
-  assert d['nodes']
-
-  ejectee_node_info = d['nodes'].find {|node_info|
-    node_info['ports']['direct'] == direct_port(ejectee)
-  }
+  ejectee_node_info = node_info(ejectee, ejecter)
 
   assert ejectee_node_info
   assert ejectee_node_info['otpNode']
@@ -79,6 +71,19 @@ def cluster_eject(ejectee, ejecter = nil)
       raise e
     end
   end
+end
+
+def node_info(node_target, node_to_ask = nil)
+  node_to_ask ||= node_target
+
+  d = JSON.parse(RestClient.get("http://localhost:#{rest_port(node_to_ask)}" +
+                                "/pools/default"))
+  assert d
+  assert d['nodes']
+
+  d['nodes'].find {|node_info|
+    node_info['ports']['direct'] == direct_port(node_target)
+  }
 end
 
 def assert_cluster_not_joined()
@@ -101,19 +106,43 @@ def assert_cluster_fully_joined()
   end
 end
 
+def node_pid(node_label)
+  IO.read("./tmp/node_#{node_index(node_label)}.pid").chomp
+end
+
+def node_kill(node_label)
+  p "killing node #{node_label}..."
+  `kill #{node_pid(node_label)}`
+  sleep(0.1)
+end
+
+def node_start(node_label, prefix = nil)
+  prefix ||= PREFIX
+  node_i = node_index(node_label)
+  p "starting node #{node_label} (#{node_i})..."
+  pid = fork do # In the child process...
+               `./start_shell.sh -name n_#{node_i}@127.0.0.1 -noshell -ns_server ns_server_config \\"#{prefix}_config\\" -ns_server pidfile \\"./tmp/node_#{node_i}.pid\\"`
+               exit
+             end
+  if pid
+    # In the parent process...
+    sleep(8.0)
+  end
+end
+
+def node_index(node_label)
+  node_label[0] - 65 # 'A' == 65.
+end
+
 def rest_port(node_label) # Ex: "A"
-  i = node_label[0] - 65 # 'A' == 65.
-  9000 + i
+  9000 + node_index(node_label)
 end
 
 def direct_port(node_label) # Ex: "A"
-  i = node_label[0] - 65 # 'A' == 65.
-  12000 + (i * 2)
+  12000 + (node_index(node_label) * 2)
 end
 
 def proxy_port(node_label)
   direct_port(node_label) + 1
 end
-
-
 
