@@ -66,15 +66,16 @@ def cluster_eject(ejectee, ejecter = nil)
     RestClient.post("http://localhost:#{rest_port(ejecter)}" +
                     "/controller/ejectNode",
                     "otpNode" => ejectee_node_info['otpNode'])
-    sleep(5.0)
   rescue RestClient::ServerBrokeConnection => e
     if ejectee == ejecter
       # This is expected, as the leaver resets.
-      sleep(5.0)
+      true
     else
       raise e
     end
   end
+
+  sleep(5.0)
 end
 
 def node_info(node_target, node_to_ask = nil)
@@ -106,7 +107,7 @@ def assert_cluster_fully_joined()
 
   $node_labels.each do |x|
     d = JSON.parse(RestClient.get("http://localhost:#{rest_port(x)}/pools/default"))
-    assert d['nodes'].length == $node_labels.length
+    assert d['nodes'].length == $node_labels.length, "node #{x} is not aware of all nodes: #{d}"
   end
 end
 

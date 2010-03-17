@@ -8,13 +8,7 @@ Given /^I have configured nodes (.*)$/ do |nodes|
 end
 
 Given /^they are not joined$/ do
-  assert $node_labels
-  assert $node_labels.length > 1
-
-  $node_labels.each do |x|
-    d = JSON.parse(RestClient.get("http://localhost:#{rest_port(x)}/pools/default"))
-    assert d['nodes'].length == 1
-  end
+  assert_cluster_not_joined()
 end
 
 Given /^they are already joined$/ do
@@ -48,3 +42,12 @@ Then /^the nodes stop knowing about each other$/ do
   assert_cluster_not_joined()
 end
 
+Then /^node ([A-Z]+) and ([A-Z]+) know about each other$/ do |x, y|
+  assert node_info(x, y)
+  assert node_info(y, x)
+end
+
+Then /^node ([A-Z]+) and ([A-Z]+) don\'t know about each other$/ do |x, y|
+  assert node_info(x, y).nil?
+  assert node_info(y, x).nil?
+end
