@@ -15,7 +15,7 @@ Feature: Simple Clustering With > 2 Nodes
       | A       | B       | C       | B       |
       | A       | B       | C       | A       |
 
-  Scenario: Unjoin 3 nodes
+  Scenario: Eject 1 out of 3 nodes
     Given I have configured nodes A, B, C
     And they are already joined
     When I tell node A to leave the cluster
