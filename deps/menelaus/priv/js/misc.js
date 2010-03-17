@@ -202,14 +202,10 @@ _.template = function (str, data) {
   };
 })();
 
-$.isString = function (s) {
-  return typeof(s) == "string" || (s instanceof String);
-}
-
 var SpinnerHTML = "<div class='spinner'><span>Loading...</span></div>";
 
 function prepareAreaUpdate(jq) {
-  if ($.isString(jq))
+  if (_.isString(jq))
     jq = $(jq);
   var height = jq.height();
   var width = jq.width();
@@ -235,7 +231,7 @@ function getRealBackgroundColor(jq) {
 }
 
 function overlayWithSpinner(jq, backgroundColor) {
-  if ($.isString(jq))
+  if (_.isString(jq))
     jq = $(jq);
   var height = jq.height();
   var width = jq.width();
