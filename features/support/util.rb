@@ -82,7 +82,7 @@ def node_info(node_target, node_to_ask = nil)
   node_to_ask ||= node_target
 
   d = JSON.parse(RestClient.get("http://localhost:#{rest_port(node_to_ask)}" +
-                                "/pools/default"))
+                                "/pools/default").body)
   assert d
   assert d['nodes']
 
@@ -96,7 +96,7 @@ def assert_cluster_not_joined()
   assert $node_labels.length > 1
 
   $node_labels.each do |x|
-    d = JSON.parse(RestClient.get("http://localhost:#{rest_port(x)}/pools/default"))
+    d = JSON.parse(RestClient.get("http://localhost:#{rest_port(x)}/pools/default").body)
     assert d['nodes'].length == 1
   end
 end
@@ -106,7 +106,7 @@ def assert_cluster_fully_joined()
   assert $node_labels.length > 1
 
   $node_labels.each do |x|
-    d = JSON.parse(RestClient.get("http://localhost:#{rest_port(x)}/pools/default"))
+    d = JSON.parse(RestClient.get("http://localhost:#{rest_port(x)}/pools/default").body)
     assert d['nodes'].length == $node_labels.length, "node #{x} is not aware of all nodes: #{d}"
   end
 end
