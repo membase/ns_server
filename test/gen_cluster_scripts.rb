@@ -27,8 +27,7 @@ num_buckets = num_buckets.to_i
 
 nodes = ""
 
-x = 0
-while x < num_nodes
+num_nodes.times do |x|
   nodes = nodes + <<-END
     {{node, 'n_#{x}@127.0.0.1', rest},
       [{'_ver', {0, 0, 0}},
@@ -45,7 +44,6 @@ while x < num_nodes
                 {"ISASL_PWFILE", "./priv/isasl.pw"},
                 {"ISASL_DB_CHECK_TIME", "1"}]}]}]}.
     END
-  x = x + 1
 end
 
 pools = <<END
@@ -54,17 +52,13 @@ pools = <<END
   {"default", [
 END
 
-x = 0
-while x < num_nodes
+num_nodes.times do |x|
   pools = pools + "{{node, 'n_#{x}@127.0.0.1', port}, #{(x * 2) + 12001}},\n"
-  x = x + 1
 end
 
 buckets = ""
-x = 0
-while x < num_buckets
+num_buckets.times do |x|
   buckets = buckets + ",{\"b_#{x}\", [{auth_plain, undefined}, {size_per_node, #{x + 1}}]}\n"
-  x = x + 1
 end
 
 pools = pools + <<END
