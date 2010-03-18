@@ -1,0 +1,16 @@
+
+This is tests for javascript components of menelaus. They test only
+javascript code and not UI.
+
+Running:
+
+1) Prepare test environment:
+
+1a) start server at some machine:
+   make run_server
+   (you can lauch JsTestDriver jar by hand)
+
+1b) point one/few browsers at http://<server machine>:11981/capture
+   This connects browsers with test running server making them execute your tests
+
+2) run tests by 'make LOC=http://<server machine>:11981 test'
