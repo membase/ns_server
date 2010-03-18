@@ -37,6 +37,8 @@ def cluster_start(prefix = nil)
   end
 end
 
+# ------------------------------------------------------
+
 def cluster_join(joiner, joinee)
   begin
     RestClient.post("http://localhost:#{rest_port(joiner)}/node/controller/doJoinCluster",
@@ -78,6 +80,8 @@ def cluster_eject(ejectee, ejecter = nil)
   sleep(5.0)
 end
 
+# ------------------------------------------------------
+
 def node_info(node_target, node_to_ask = nil)
   node_to_ask ||= node_target
 
@@ -90,6 +94,8 @@ def node_info(node_target, node_to_ask = nil)
     node_info['ports']['direct'] == direct_port(node_target)
   }
 end
+
+# ------------------------------------------------------
 
 def assert_cluster_not_joined()
   assert $node_labels
@@ -110,6 +116,8 @@ def assert_cluster_fully_joined()
     assert d['nodes'].length == $node_labels.length, "node #{x} is not aware of all nodes: #{d}"
   end
 end
+
+# ------------------------------------------------------
 
 def node_pid(node_label)
   IO.read("./tmp/node_#{node_index(node_label)}.pid").chomp
@@ -139,6 +147,8 @@ def node_index(node_label)
   node_label[0] - 65 # 'A' == 65.
 end
 
+# ------------------------------------------------------
+
 def rest_port(node_label) # Ex: "A"
   9000 + node_index(node_label)
 end
@@ -151,3 +161,19 @@ def proxy_port(node_label)
   direct_port(node_label) + 1
 end
 
+# ------------------------------------------------------
+
+def bucket_create(node, bucket_to_create, params = {})
+  RestClient.post("http://localhost:#{rest_port(node)}/pools/default/buckets",
+                  "name" => bucket_to_create,
+                  "cacheSize" => params[:cacheSize] || "2")
+  sleep(0.1)
+end
+
+def bucket_info(node, bucket)
+  r = RestClient.get("http://localhost:#{rest_port(node)}/pools/default/buckets/#{bucket}")
+  if r
+    return JSON.parse(r.body)
+  end
+  nil
+end
