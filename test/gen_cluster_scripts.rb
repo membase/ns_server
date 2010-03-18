@@ -87,26 +87,56 @@ File.open(prefix + "_config", 'w') {|f|
   f.write("#{pools}\n")
 }
 
+# Backwards compatibility for ruby 1.8.6
+numbers = []
+num_nodes.times { |x| numbers << x }
+
 File.open(prefix + "_start_all.sh", 'w') {|f|
-  f.write("#!/bin/sh\n")
-  f.write("# num_nodes is #{num_nodes}\n")
-  x = 0
-  while x < num_nodes
-    f.write("./start_shell.sh -name n_#{x}@127.0.0.1 -noshell" +
-               " -ns_server ns_server_config \\\"#{prefix}_config\\\"" +
-               " -ns_server pidfile \\\"./tmp/node_#{x}.pid\\\" </dev/null &\n")
-    x = x + 1
-  end
+
+  s=<<EOF
+#!/bin/sh
+
+# num_nodes is #{num_nodes}
+
+start_node() {
+    echo "Starting $1"
+
+    erl -pa \`find . -type d -name ebin\` \\
+        -setcookie nocookie \\
+        -run ns_bootstrap \\
+        -kernel inet_dist_listen_min 21100 inet_dist_listen_max 21199 \\
+        -sasl sasl_error_logger false \\
+        -sasl error_logger_mf_dir '"logs"' \\
+        -sasl error_logger_mf_maxbytes 10485760 \\
+        -sasl error_logger_mf_maxfiles 10 \\
+        -- \\
+        -no-input \\
+        -name $1@127.0.0.1 -noshell \\
+        -ns_server ns_server_config \\"cluster_config\\" \\
+        -ns_server pidfile \\"tmp/$1.pid\\" &
+}
+
+erl -noshell -setcookie nocookie -sname init -run init stop 2>&1 > /dev/null
+
+for node in #{numbers.map{|i| "n_" + i.to_s}.join(" ")}
+do
+    start_node $node
+done
+EOF
+
+  f.write s
 }
 
 File.open(prefix + "_stop_all.sh", 'w') {|f|
-  f.write("#!/bin/sh\n")
-  f.write("# num_nodes is #{num_nodes}\n")
-  x = 0
-  while x < num_nodes
-    f.write("kill `cat ./tmp/node_#{x}.pid`\n")
-    x = x + 1
-  end
+
+  s=<<EOF
+#!/bin/sh
+# num_nodes is #{num_nodes}
+
+kill `cat #{numbers.map{|i| "tmp/n_#{i}.pid"}.join(" ")}`
+EOF
+
+  f.write s
 }
 
 # -------------------------------------------------------
