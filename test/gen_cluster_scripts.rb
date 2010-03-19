@@ -135,9 +135,4 @@ EOF
 
 # -------------------------------------------------------
 
-`chmod a+x #{prefix}_start_all.sh`
-`chmod a+x #{prefix}_stop_all.sh`
-
-
-
-
+File.chmod 0755, "#{prefix}_start_all.sh", "#{prefix}_stop_all.sh"
