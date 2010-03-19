@@ -14,5 +14,6 @@ Feature: Node Up/Down
     And they are already joined
     And node A is down
     When node A comes back up
-    Then node B sees that node A is back up
+    Then node B sees that node A is up
+    And node A sees that node B is up
 

@@ -13,6 +13,7 @@ end
 Then /^node (.*?) sees that node (.*?) is (.*)$/ do |to_ask, target, health|
   health = health.gsub(/down/, 'unhealthy')
   health = health.gsub(/back up/, 'healthy')
+  health = health.gsub(/up/, 'healthy')
 
   assert node_info(target, to_ask)['status'] == health
 end
