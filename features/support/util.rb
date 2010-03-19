@@ -167,7 +167,7 @@ def bucket_create(node, bucket_to_create, params = {})
   RestClient.post("http://localhost:#{rest_port(node)}/pools/default/buckets",
                   "name" => bucket_to_create,
                   "cacheSize" => params[:cacheSize] || "2")
-  sleep(0.1)
+  sleep(0.5)
 end
 
 def bucket_info(node, bucket)
