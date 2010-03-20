@@ -11,7 +11,7 @@ def cluster_stop(prefix = nil)
   prefix ||= PREFIX
   if File.exists?("./#{prefix}_stop_all.sh")
     dbg "stopping cluster..."
-    `./#{prefix}_stop_all.sh`
+    `./#{prefix}_stop_all.sh 2>/dev/null`
     FileUtils.rm_f Dir.glob("./tmp/node_*.pid")
     sleep(2.0)
   end
@@ -65,12 +65,15 @@ def cluster_eject(ejectee, ejecter = nil)
   assert ejectee_node_info['otpNode']
 
   begin
-    RestClient.post("http://localhost:#{rest_port(ejecter)}" +
-                    "/controller/ejectNode",
-                    "otpNode" => ejectee_node_info['otpNode'])
+    dbg "ejectNode #{ejectee}, on #{ejecter}..."
+    x = RestClient.post("http://localhost:#{rest_port(ejecter)}" +
+                        "/controller/ejectNode",
+                        "otpNode" => ejectee_node_info['otpNode'])
+    dbg "ejectNode #{ejectee}, on #{ejecter}...done #{x}"
   rescue RestClient::ServerBrokeConnection => e
     if ejectee == ejecter
       # This is expected, as the leaver resets.
+      dbg "ejectNode #{ejectee}, on #{ejecter}...end"
       true
     else
       raise e
