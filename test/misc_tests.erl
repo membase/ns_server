@@ -32,22 +32,25 @@
 %
 % Original Author: Cliff Moon
 
+-module(misc_tests).
+-include_lib("eunit/include/eunit.hrl").
+
 reverse_bits_test() ->
-  3869426816 = reverse_bits(19088743),
-  1458223569 = reverse_bits(2342344554).
+  3869426816 = misc:reverse_bits(19088743),
+  1458223569 = misc:reverse_bits(2342344554).
 
 nthdelete_test() ->
   A = [1,2,3,4,5],
-  ?assertEqual([1,2,3,4,5], nthdelete(0, A)),
-  ?assertEqual([1,2,3,4,5], nthdelete(6, A)),
-  ?assertEqual([2,3,4,5], nthdelete(1, A)),
-  ?assertEqual([1,2,4,5], nthdelete(3, A)).
+  ?assertEqual([1,2,3,4,5], misc:nthdelete(0, A)),
+  ?assertEqual([1,2,3,4,5], misc:nthdelete(6, A)),
+  ?assertEqual([2,3,4,5], misc:nthdelete(1, A)),
+  ?assertEqual([1,2,4,5], misc:nthdelete(3, A)).
 
 zero_split_test() ->
-  ?assertEqual({<<"">>, <<0,"abcdefg">>}, zero_split(<<0, "abcdefg">>)),
-  ?assertEqual({<<"abd">>, <<0, "efg">>}, zero_split(<<"abd", 0, "efg">>)),
-  ?assertEqual({<<"abcdefg">>, <<0>>}, zero_split(<<"abcdefg",0>>)),
-  ?assertEqual(<<"abcdefg">>, zero_split(<<"abcdefg">>)).
+  ?assertEqual({<<"">>, <<0,"abcdefg">>}, misc:zero_split(<<0, "abcdefg">>)),
+  ?assertEqual({<<"abd">>, <<0, "efg">>}, misc:zero_split(<<"abd", 0, "efg">>)),
+  ?assertEqual({<<"abcdefg">>, <<0>>}, misc:zero_split(<<"abcdefg",0>>)),
+  ?assertEqual(<<"abcdefg">>, misc:zero_split(<<"abcdefg">>)).
 
 % hash_throughput_test_() ->
 %   {timeout, 120, [{?LINE, fun() ->
@@ -83,7 +86,7 @@ shuffle_test() ->
   % we can really only test that they aren't equals,
   % which won't even always work, weak
   A = [a, b, c, d, e, f, g],
-  B = shuffle(A),
+  B = misc:shuffle(A),
   % ?debugFmt("shuffled: ~p", [B]),
   ?assertEqual(7, length(B)),
   ?assert(A =/= B).
@@ -96,7 +99,7 @@ rm_rf_test() ->
       file:write_file(File, "blahblah"),
       NewDir
     end, priv_dir(), ["a", "b", "c", "d", "e"]),
-  rm_rf(filename:join(priv_dir(), "a")),
+  misc:rm_rf(filename:join(priv_dir(), "a")),
   ?assertEqual({ok, []}, file:list_dir(priv_dir())).
 
 priv_dir() ->
@@ -107,11 +110,11 @@ priv_dir() ->
 pmap_test() ->
   L = [0, 1, 2],
   ?assertEqual([0, 1],
-               ?MODULE:pmap(fun(N) -> timer:sleep(N),
+               misc:pmap(fun(N) -> timer:sleep(N),
                                       N
                             end, L, 2)).
 
 pmap_1_test() ->
   L = [0],
-  ?assertEqual([0], ?MODULE:pmap(fun(N) -> N end, L, 1)).
+  ?assertEqual([0], misc:pmap(fun(N) -> N end, L, 1)).
 

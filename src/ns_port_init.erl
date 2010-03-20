@@ -13,12 +13,6 @@
 
 -record(state, {}).
 
--include_lib("eunit/include/eunit.hrl").
-
--ifdef(TEST).
--include("test/ns_port_init_test.erl").
--endif.
-
 % Noop process to get initialized in the supervision tree.
 start_link() ->
     {ok, spawn_link(fun() ->

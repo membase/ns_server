@@ -7,9 +7,5 @@
            warn_export_all,
            warn_unused_import
           ]}.
-{"test/t.erl",
-	[debug_info, {outdir, "ebin"}, {i, "include"}]}.
-{"test/ns_server_test.erl",
-	[debug_info, {outdir, "ebin"}, {i, "include"}]}.
-{"test/ns_config_isasl_sync_test.erl",
+{"test/*",
 	[debug_info, {outdir, "ebin"}, {i, "include"}]}.

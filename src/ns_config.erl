@@ -36,7 +36,6 @@
 
 -behaviour(gen_server).
 
--define(METADATA_VER, '_ver').
 -define(DEFAULT_TIMEOUT, 500).
 
 -export([start_link/2, start_link/1,
@@ -50,6 +49,10 @@
          clear/0, clear/1,
          proplist_get_value/3]).
 
+% Exported for tests only
+-export([strip_metadata/2, merge_configs/3, save_file/3, load_config/3,
+         load_file/2, save_config/2]).
+
 % A static config file is often hand edited.
 % potentially with in-line manual comments.
 %
@@ -58,11 +61,7 @@
 % nodes getting added/removed, and gossiping about config
 % information.
 %
--record(config, {init,         % Initialization parameters.
-                 static = [],  % List of TupleList's; TupleList is {K, V}.
-                 dynamic = [], % List of TupleList's; TupleList is {K, V}.
-                 policy_mod
-                }).
+-include("ns_config.hrl").
 
 %% gen_server callbacks
 
@@ -70,12 +69,6 @@
          terminate/2, code_change/3]).
 
 -export([stop/0, reload/0, resave/0, reannounce/0, replace/1]).
-
--include_lib("eunit/include/eunit.hrl").
-
--ifdef(TEST).
--include("test/ns_config_test.erl").
--endif.
 
 %% API
 

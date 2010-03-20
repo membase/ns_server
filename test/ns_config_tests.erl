@@ -32,8 +32,9 @@
 %
 % Original Author: Cliff Moon
 
+-module(ns_config_tests).
 -include_lib("eunit/include/eunit.hrl").
-
+-include("ns_config.hrl").
 -export([default/0]).
 
 all_test_() ->
@@ -71,51 +72,53 @@ all_test_() ->
      ?_test(test_svc())}
   ]}.
 
+default() -> [].
+
 test_search_list() ->
-    ?assertMatch(false, search([], foo)),
-    ?assertMatch(false, search([[], []], foo)),
-    ?assertMatch(false, search([[{x, 1}]], foo)),
-    ?assertMatch({value, 1}, search([[{x, 1}], [{x, 2}]], x)),
+    ?assertMatch(false, ns_config:search([], foo)),
+    ?assertMatch(false, ns_config:search([[], []], foo)),
+    ?assertMatch(false, ns_config:search([[{x, 1}]], foo)),
+    ?assertMatch({value, 1}, ns_config:search([[{x, 1}], [{x, 2}]], x)),
     ok.
 
 test_strip_metadata() ->
-    ?assertMatch(x, strip_metadata(x, [])),
-    ?assertMatch([], strip_metadata([], [])),
-    ?assertMatch([1, 2], strip_metadata([1, 2], [])),
-    ?assertMatch([1, 2], strip_metadata([{?METADATA_VER, x}, 1, 2], [])),
-    ?assertMatch([], strip_metadata([{?METADATA_VER, x}], [])),
+    ?assertMatch(x, ns_config:strip_metadata(x, [])),
+    ?assertMatch([], ns_config:strip_metadata([], [])),
+    ?assertMatch([1, 2], ns_config:strip_metadata([1, 2], [])),
+    ?assertMatch([1, 2], ns_config:strip_metadata([{?METADATA_VER, x}, 1, 2], [])),
+    ?assertMatch([], ns_config:strip_metadata([{?METADATA_VER, x}], [])),
     ok.
 
 test_search_config() ->
     ?assertMatch(false,
-                 search(#config{},
+                 ns_config:search(#config{},
                         x)),
     ?assertMatch(false,
-                 search(#config{dynamic = [[], []],
+                 ns_config:search(#config{dynamic = [[], []],
                                 static = [[], []]},
                         x)),
     ?assertMatch({value, 1},
-                 search(#config{dynamic = [[{x, 1}], [{x, 2}]],
+                 ns_config:search(#config{dynamic = [[{x, 1}], [{x, 2}]],
                                 static = []},
                         x)),
     ?assertMatch({value, 2},
-                 search(#config{dynamic = [[{y, 1}], [{x, 2}]],
+                 ns_config:search(#config{dynamic = [[{y, 1}], [{x, 2}]],
                                 static = [[], []]},
                         x)),
     ?assertMatch({value, 3},
-                 search(#config{dynamic = [[{y, 1}], [{x, 2}]],
+                 ns_config:search(#config{dynamic = [[{y, 1}], [{x, 2}]],
                                 static = [[{w, 4}], [{z, 3}]]},
                         z)),
     ?assertMatch({value, 2},
-                 search(#config{dynamic = [[{y, 1}], [{z, 2}]],
+                 ns_config:search(#config{dynamic = [[{y, 1}], [{z, 2}]],
                                 static = [[{w, 4}], [{z, 3}]]},
                         z)),
     ?assertMatch({value, [{hi, there}]},
-                 search(#config{dynamic = [[{y, 1}], [{z, [{hi, there}]}]],
+                 ns_config:search(#config{dynamic = [[{y, 1}], [{z, [{hi, there}]}]],
                                 static = [[{w, 4}], [{z, 3}]]},
                         z)),
     ?assertMatch({value, [{hi, there}]},
-                 search(#config{dynamic = [[{y, 1}], [{z, [{'_ver', stripped},
+                 ns_config:search(#config{dynamic = [[{y, 1}], [{z, [{'_ver', stripped},
                                                            {hi, there}]}]],
                                 static = [[{w, 4}], [{z, 3}]]},
                         z)),
@@ -123,27 +126,27 @@ test_search_config() ->
 
 test_search_prop_config() ->
     ?assertMatch(foo,
-                 search_prop(#config{},
+                 ns_config:search_prop(#config{},
                              x, a, foo)),
     ?assertMatch(foo,
-                 search_prop(#config{dynamic = [[], []],
+                 ns_config:search_prop(#config{dynamic = [[], []],
                                      static = [[], []]},
                              x, a, foo)),
     ?assertMatch(foo,
-                 search_prop(#config{dynamic = [[{x, []}], [{x, []}]],
+                 ns_config:search_prop(#config{dynamic = [[{x, []}], [{x, []}]],
                                      static = []},
                              x, a, foo)),
     ?assertMatch(foo,
-                 search_prop(#config{dynamic = [[{x, [{b, bar}]}], [{x, []}]],
+                 ns_config:search_prop(#config{dynamic = [[{x, [{b, bar}]}], [{x, []}]],
                                      static = []},
                              x, a, foo)),
     ?assertMatch(baz,
-                 search_prop(#config{dynamic = [[{x, [{b, bar},
+                 ns_config:search_prop(#config{dynamic = [[{x, [{b, bar},
                                                       {a, baz}]}], [{x, []}]],
                                      static = []},
                              x, a, foo)),
     ?assertMatch(foo,
-                 search_prop(#config{dynamic = [[{x, [{b, bar}]}],
+                 ns_config:search_prop(#config{dynamic = [[{x, [{b, bar}]}],
                                                 [{x, [{a, baz}]}]],
                                      static = []},
                              x, a, foo)),
@@ -153,13 +156,13 @@ test_merge_config_static() ->
     Mergable = [x, y, z, rx, lx],
     ?assertEqual(
        #config{},
-       merge_configs(Mergable,
+       ns_config:merge_configs(Mergable,
          #config{},
          #config{})),
     X0 = #config{dynamic = [],
                  static = []},
     ?assertEqual(X0,
-       merge_configs(Mergable,
+       ns_config:merge_configs(Mergable,
          #config{dynamic = [],
                  static = []},
          #config{dynamic = [],
@@ -167,7 +170,7 @@ test_merge_config_static() ->
     X1 = #config{dynamic = [[{x,1}]],
                  static = [[{x,1}]]},
     ?assertEqual(X1,
-       merge_configs(Mergable,
+       ns_config:merge_configs(Mergable,
          #config{dynamic = [],
                  static = []},
          #config{dynamic = [],
@@ -175,7 +178,7 @@ test_merge_config_static() ->
     X2 = #config{dynamic = [[{rx,1},{lx,1}]],
                  static = [[{lx,1}]]},
     ?assertEqual(X2,
-       merge_configs(Mergable,
+       ns_config:merge_configs(Mergable,
          #config{dynamic = [],
                  static = [[{rx,1}]]},
          #config{dynamic = [],
@@ -183,7 +186,7 @@ test_merge_config_static() ->
     X3 = #config{dynamic = [[{lx,2}]],
                  static = [[{lx,1}]]},
     ?assertEqual(X3,
-       merge_configs(Mergable,
+       ns_config:merge_configs(Mergable,
          #config{dynamic = [],
                  static = [[{lx,2}]]},
          #config{dynamic = [],
@@ -191,7 +194,7 @@ test_merge_config_static() ->
     X4 = #config{dynamic = [[{rx,1},{lx,1}]],
                  static = [[{lx,1},{foo,9}]]},
     ?assertEqual(X4,
-       merge_configs(Mergable,
+       ns_config:merge_configs(Mergable,
          #config{dynamic = [],
                  static = [[{rx,1},{lx,1},{foo,10}]]},
          #config{dynamic = [],
@@ -203,7 +206,7 @@ test_merge_config_dynamic() ->
     X0 = #config{dynamic = [[{x,1},{y,1}]],
                  static = [[{x,1}]]},
     ?assertEqual(X0,
-       merge_configs(Mergable,
+       ns_config:merge_configs(Mergable,
          #config{dynamic = [],
                  static = []},
          #config{dynamic = [[{y,1}]],
@@ -211,7 +214,7 @@ test_merge_config_dynamic() ->
     X1 = #config{dynamic = [[{x,1},{y,1}]],
                  static = [[{x,1}]]},
     ?assertEqual(X1,
-       merge_configs(Mergable,
+       ns_config:merge_configs(Mergable,
          #config{dynamic = [[{y,1}]],
                  static = []},
          #config{dynamic = [],
@@ -219,7 +222,7 @@ test_merge_config_dynamic() ->
     X2 = #config{dynamic = [[{x,1},{y,1}]],
                  static = [[{x,1},{foo,9}]]},
     ?assertEqual(X2,
-       merge_configs(Mergable,
+       ns_config:merge_configs(Mergable,
          #config{dynamic = [[{y,1}]],
                  static = []},
          #config{dynamic = [[{y,2}]],
@@ -227,7 +230,7 @@ test_merge_config_dynamic() ->
     X3 = #config{dynamic = [[{x,1},{y,1}]],
                  static = [[{x,1},{foo,9}]]},
     ?assertEqual(X3,
-       merge_configs(Mergable,
+       ns_config:merge_configs(Mergable,
          #config{dynamic = [[{y,1}]],
                  static = [[{foo,10}]]},
          #config{dynamic = [[{y,2}]],
@@ -240,7 +243,7 @@ test_merge_config_ver() ->
                              {y,[{?METADATA_VER,{0,0,1}}, yy]}]],
                  static = [[{x,1}]]},
     ?assertEqual(X0,
-       merge_configs(Mergable,
+       ns_config:merge_configs(Mergable,
          #config{dynamic = [],
                  static = []},
          #config{dynamic = [[{y,[{?METADATA_VER,{0,0,1}}, yy]}]],
@@ -248,7 +251,7 @@ test_merge_config_ver() ->
     X2 = #config{dynamic = [[{x,1},{y,[{?METADATA_VER,{0,0,2}}, y2]}]],
                  static = [[{x,1},{foo,9}]]},
     ?assertEqual(X2,
-       merge_configs(Mergable,
+       ns_config:merge_configs(Mergable,
          #config{dynamic = [[{y,[{?METADATA_VER,{0,0,1}}, y1]}]],
                  static = []},
          #config{dynamic = [[{y,[{?METADATA_VER,{0,0,2}}, y2]}]],
@@ -257,7 +260,7 @@ test_merge_config_ver() ->
                              {y,[{?METADATA_VER,{0,0,2}}, y2]}]],
                  static = [[{x,1},{foo,9}]]},
     ?assertEqual(X3,
-       merge_configs(Mergable,
+       ns_config:merge_configs(Mergable,
          #config{dynamic = [[{x,[{?METADATA_VER,{0,1,2}}, x1]},
                              {y,[{?METADATA_VER,{0,0,1}}, y1]}]],
                  static = []},
@@ -269,19 +272,17 @@ test_merge_config_ver() ->
 test_bin_persist() ->
     CP = data_file(),
     D = [[{x,1},{y,2},{z,3}]],
-    ?assertEqual(ok, save_file(bin, CP, D)),
-    R = load_file(bin, CP),
+    ?assertEqual(ok, ns_config:save_file(bin, CP, D)),
+    R = ns_config:load_file(bin, CP),
     ?assertEqual({ok, D}, R),
     ok.
-
-default() -> []. % For testing.
 
 test_load_config_improper() ->
     CP = data_file(),
     {ok, F} = file:open(CP, [write, raw]),
     ok = file:write(F, <<"improper config file">>),
     ok = file:close(F),
-    R = load_config(CP, test_dir(), ?MODULE),
+    R = ns_config:load_config(CP, test_dir(), ?MODULE),
     ?assertMatch({error, _}, R),
     ok.
 
@@ -290,7 +291,7 @@ test_load_config() ->
     {ok, F} = file:open(CP, [write, raw]),
     ok = file:write(F, <<"{x,1}.">>),
     ok = file:close(F),
-    R = load_config(CP, test_dir(), ?MODULE),
+    R = ns_config:load_config(CP, test_dir(), ?MODULE),
     E = #config{static = [[{x,1}], []], policy_mod = ?MODULE},
     ?assertEqual({ok, E}, R),
     ok.
@@ -300,12 +301,12 @@ test_save_config() ->
     {ok, F} = file:open(CP, [write, raw]),
     ok = file:write(F, <<"{x,1}.">>),
     ok = file:close(F),
-    R = load_config(CP, test_dir(), ?MODULE),
+    R = ns_config:load_config(CP, test_dir(), ?MODULE),
     E = #config{static = [[{x,1}], []], policy_mod = ?MODULE},
     ?assertMatch({ok, E}, R),
     X = E#config{dynamic = [[{x,2},{y,3}]], policy_mod = ?MODULE},
-    ?assertEqual(ok, save_config(X, test_dir())),
-    R2 = load_config(CP, test_dir(), ?MODULE),
+    ?assertEqual(ok, ns_config:save_config(X, test_dir())),
+    R2 = ns_config:load_config(CP, test_dir(), ?MODULE),
     ?assertMatch({ok, X}, R2),
     ok.
 
@@ -317,24 +318,24 @@ test_svc() ->
     {ok, F} = file:open(CP, [write, raw]),
     ok = file:write(F, B),
     ok = file:close(F),
-    {ok, _ConfigPid} = ?MODULE:start_link({full, CP, D, ns_config_default}),
+    {ok, _ConfigPid} = ns_config:start_link({full, CP, D, ns_config_default}),
     (fun() ->
-      C = ?MODULE:get(),
-      R = ?MODULE:search(C, x),
+      C = ns_config:get(),
+      R = ns_config:search(C, x),
       ?assertMatch({value, 1}, R),
       ok
      end)(),
     (fun() ->
-      R = ?MODULE:search(x),
+      R = ns_config:search(x),
       ?assertMatch({value, 1}, R),
       ok
      end)(),
     (fun() ->
-      R = ?MODULE:search(y),
+      R = ns_config:search(y),
       ?assertMatch(false, R),
       ok
      end)(),
-    ?MODULE:stop(),
+    ns_config:stop(),
     ok.
 
 test_include_config() ->
@@ -349,7 +350,7 @@ test_include_config() ->
     {ok, F2} = file:open(CP2, [write, raw]),
     ok = file:write(F2, <<"{z,9}.">>),
     ok = file:close(F2),
-    R = load_config(CP1, test_dir(), ?MODULE),
+    R = ns_config:load_config(CP1, test_dir(), ?MODULE),
     E = #config{static = [[{x,1}, {z,9}, {y,1}], []], policy_mod = ?MODULE},
     ?assertEqual({ok, E}, R),
     ok.
@@ -362,7 +363,7 @@ test_include_missing_config() ->
     ok = file:write(F1, list_to_binary(X)),
     ok = file:write(F1, <<"{y,1}.\n">>),
     ok = file:close(F1),
-    R = load_config(CP1, test_dir(), ?MODULE),
+    R = ns_config:load_config(CP1, test_dir(), ?MODULE),
     ?assertEqual({error, {bad_config_path, "not_a_config_path"}}, R),
     ok.
 

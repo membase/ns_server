@@ -61,7 +61,7 @@ test_: test_unit test_unit_emoxi test_menelaus
 test_Windows_NT: test_unit test_unit_emoxi test_menelaus
 
 test_unit: ebins
-	erl $(EFLAGS) -noshell -s ns_server_test test -s init stop -kernel error_logger silent
+	erl $(EFLAGS) -noshell -s t start -s init stop -kernel error_logger silent
 
 test_unit_emoxi: deps/emoxi
 	(cd deps/emoxi; $(MAKE) test_unit)

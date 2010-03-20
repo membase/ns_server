@@ -34,15 +34,32 @@
 
 -module(t).
 
--include_lib("eunit/include/eunit.hrl").
-
 -export([start/0, config/1]).
 
-start() -> eunit:test(config(src_dir)).
+start() ->
+    cover:compile_beam_directory(config(ebin_dir)),
+    Modules = lists:filter(fun (M) -> erlang:function_exported(M, test, 0) end,
+                           cover:modules()),
+    eunit:test(Modules, [verbose]),
+    CovDir = config(cov_dir),
+    misc:rm_rf(CovDir),
+    file:make_dir(CovDir),
+    lists:foreach(fun (M) ->
+        cover:analyse_to_file(M, filename:join([CovDir, atom_to_list(M) ++
+                                                ".COVERAGE.html"]), [html])
+        end, Modules).
+
+config(cov_dir) ->
+    filename:absname(filename:join([config(root_dir), "coverage"]));
+
+config(root_dir) ->
+    filename:dirname(config(test_dir));
+
+config(ebin_dir) ->
+    filename:absname(filename:join([config(root_dir), "ebin"]));
 
 config(src_dir) ->
-    Root = filename:dirname(config(test_dir)),
-    filename:absname(filename:join([Root, "src"]));
+    filename:absname(filename:join([config(root_dir), "src"]));
 
 config(test_dir) ->
     filename:dirname(?FILE);

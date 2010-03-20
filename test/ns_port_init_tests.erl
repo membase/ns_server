@@ -1,7 +1,8 @@
 % Copyright (c) 2010, NorthScale, Inc.
 % All rights reserved.
 
-% ------------------------------------------
+-module(ns_port_init_tests).
+-include_lib("eunit/include/eunit.hrl").
 
 diff_test() ->
     L1 = [

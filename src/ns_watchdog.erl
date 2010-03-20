@@ -29,7 +29,6 @@ eat(Pid, Info, Timeout) ->
 
 %% Tests
 kill_test() ->
-    process_flag(trap_exit, true),
     Pid = spawn_link(fun test_killed/0),
     wait_for_killed(Pid).
 
@@ -43,6 +42,7 @@ test_killed() ->
     timer:sleep(1000).
 
 wait_for_killed(Pid) ->
+    process_flag(trap_exit, true),
     receive
     {'EXIT', Pid, killed} -> pass;
     {'EXIT', Pid, Other} -> exit({fail, Other})
@@ -54,12 +54,12 @@ test_normal() ->
 
 test_normal(0) -> ok;
 test_normal(N) ->
-    ns_watchdog:bark(500, ?MODULE),
+    bark(500, ?MODULE),
     timer:sleep(250),
     test_normal(N-1).
 
 wait_for_normal(Pid) ->
-    io:format("waiting for ~p~n", [Pid]),
+    process_flag(trap_exit, true),
     receive
     {'EXIT', Pid, normal} -> pass;
     {'EXIT', Pid, Other} -> exit({fail, Other})

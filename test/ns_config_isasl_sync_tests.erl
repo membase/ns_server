@@ -1,6 +1,5 @@
--module(ns_config_isasl_sync_test).
-
--export([test/0]).
+-module(ns_config_isasl_sync_tests).
+-include_lib("eunit/include/eunit.hrl").
 
 % This is copied from the code under test.  If something isn't working
 % right, it's probably because this fell out of sync.
@@ -12,11 +11,7 @@
 % wrong, we'll fix it.
 -record(state, {buckets, path, updates, admin_user, admin_pass}).
 
-test() ->
-    test_parsing(),
-    test_writing().
-
-test_parsing() ->
+parsing_test() ->
     Expected = [
                 {"other_application", [{auth_plain, {"other_application", "another_password"}},
                                        {size_per_node, 64}
@@ -26,7 +21,7 @@ test_parsing() ->
                                      ]}],
     Expected = ns_config_isasl_sync:extract_creds(sample_config()).
 
-test_writing() ->
+writing_test() ->
     Path = "/tmp/isasl_test.db",
     % {ok, State, hibernate} = ns_config_isasl_sync:init(Path),
     State = #state{updates=0, path=Path, buckets=[],

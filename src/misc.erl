@@ -39,15 +39,9 @@
 
 -compile(export_all).
 
--include_lib("eunit/include/eunit.hrl").
-
 -define(prof(Label), true).
 -define(forp(Label), true).
 -define(balance_prof, true).
-
--ifdef(TEST).
--include("test/misc_test.erl").
--endif.
 
 shuffle(List) when is_list(List) ->
     [N || {_R, N} <- lists:keysort(1, [{random:uniform(), X} || X <- List])].
