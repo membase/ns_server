@@ -17,7 +17,8 @@
          get_stats/3,
          get_stats/2,
          get_stats/1,
-         get_topkeys/1]).
+         get_topkeys/1,
+         stats_age/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -29,7 +30,7 @@ start_link() ->
     gen_server:start_link({global, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
-    timer:send_interval(60000, garbage_collect),
+    timer:send_interval(5, garbage_collect),
     {ok, #state{vals=dict:new(), topkeys=dict:new(), cache=dict:new(),
                 empty_ringdict=ringdict:new(?SAMPLE_SIZE)}}.
 
@@ -225,4 +226,9 @@ get_stats(Count) ->
 
 get_topkeys(Bucket) ->
     gen_server:call({global, ?MODULE}, {get_topkeys, Bucket}).
+
+stats_age(Hostname, Port, Bucket) ->
+    {ok, Stats} = get_stats(Hostname, Port, Bucket, 1),
+    [Timestamp] = dict:fetch(t, Stats),
+    timer:now_diff(erlang:now(), Timestamp) / 1000000.0.
 
