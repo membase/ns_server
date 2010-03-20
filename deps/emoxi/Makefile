@@ -24,8 +24,8 @@ MEMCACHED_LIBS=$(realpath $(dir $(MEMCACHED)).libs)
 
 MEMCACHED=../../priv/memcached
 MEMCACHED_PORT=11211
-MEMCACHED_DEFAULT_ENGINE=default_engine.so
-MEMCACHED_BUCKET_ENGINE=bucket_engine.so
+MEMCACHED_DEFAULT_ENGINE=$(CURDIR)/../../priv/engines/default_engine.so
+MEMCACHED_BUCKET_ENGINE=$(CURDIR)/../../priv/engines/bucket_engine.so
 MEMCACHED_ENGINE_STRING="admin=_admin;engine=$(MEMCACHED_DEFAULT_ENGINE);default_bucket_name=default"
 
 MEMCACHED_COMMAND=$(MEMCACHED) -p $(MEMCACHED_PORT) -d -P /tmp/memcached.pid -E $(MEMCACHED_BUCKET_ENGINE) -e $(MEMCACHED_ENGINE_STRING)
