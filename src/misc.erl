@@ -310,6 +310,16 @@ running(Node, Module) ->
   erlang:demonitor(Ref),
   R.
 
+running(Pid) ->
+  Ref = erlang:monitor(process, Pid),
+  R = receive
+          {'DOWN', Ref, _, _, _} -> false
+      after 1 ->
+          true
+      end,
+  erlang:demonitor(Ref),
+  R.
+
 running_nodes(Module) ->
   [Node || Node <- erlang:nodes([this, visible]), running(Node, Module)].
 

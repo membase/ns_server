@@ -72,6 +72,7 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 collect_stats() ->
+    ns_watchdog:bark(?MODULE),
     collect(fun collect_stats/3).
 
 collect_topkeys() ->
