@@ -38,8 +38,7 @@
 
 start() ->
     cover:compile_beam_directory(config(ebin_dir)),
-    Modules = lists:filter(fun (M) -> erlang:function_exported(M, test, 0) end,
-                           cover:modules()),
+    Modules = cover:modules(),
     eunit:test(Modules, [verbose]),
     CovDir = config(cov_dir),
     misc:rm_rf(CovDir),
