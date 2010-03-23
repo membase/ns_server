@@ -5,8 +5,30 @@ require 'fileutils'
 
 PREFIX = "cucumberCluster"
 
-def dbg(m)
-  # p(m)
+if ENV['CUC_DEBUG']
+  def dbg(m)
+    p(m)
+  end
+
+  RestClient.log = RestClient.create_log 'stdout'
+
+  # monkey-patch RestClient for more detailed response logging
+  class RestClient::Request
+    def log_response res
+      return unless RestClient.log
+
+      size = @raw_response ? File.size(@tf.path) : (res.body.nil? ? 0 : res.body.size)
+      if !@raw_response && size > 0 && size < 1024
+        RestClient.log << "# => #{res.code} #{res.class.to_s.gsub(/^Net::HTTP/, '')} | #{(res['Content-type'] || '').gsub(/;.*$/, '')} #{size} bytes:#{res.body}\n"
+      else
+        RestClient.log << "# => #{res.code} #{res.class.to_s.gsub(/^Net::HTTP/, '')} | #{(res['Content-type'] || '').gsub(/;.*$/, '')} #{size} bytes\n"
+      end
+    end
+  end
+
+else
+  def dbg(m)
+  end
 end
 
 module Kernel
