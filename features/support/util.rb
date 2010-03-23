@@ -12,7 +12,7 @@ def cluster_stop(prefix = nil)
   if File.exists?("./#{prefix}_stop_all.sh")
     dbg "stopping cluster..."
     `./#{prefix}_stop_all.sh 2>/dev/null`
-    FileUtils.rm_f Dir.glob("./tmp/node_*.pid")
+    FileUtils.rm_f Dir.glob("./tmp/n_*.pid")
     sleep(2.0)
   end
 end
@@ -123,7 +123,7 @@ end
 # ------------------------------------------------------
 
 def node_pid(node_label)
-  IO.read("./tmp/node_#{node_index(node_label)}.pid").chomp
+  IO.read("./tmp/n_#{node_index(node_label)}.pid").chomp
 end
 
 def node_kill(node_label)
@@ -137,7 +137,7 @@ def node_start(node_label, prefix = nil)
   node_i = node_index(node_label)
   dbg "starting node #{node_label} (#{node_i})..."
   pid = fork do # In the child process...
-               `./start_shell.sh -name n_#{node_i}@127.0.0.1 -noshell -ns_server ns_server_config \\"#{prefix}_config\\" -ns_server pidfile \\"./tmp/node_#{node_i}.pid\\"`
+               `./start_shell.sh -name n_#{node_i}@127.0.0.1 -noshell -ns_server ns_server_config \\"#{prefix}_config\\" -ns_server pidfile \\"./tmp/n_#{node_i}.pid\\"`
                exit
              end
   if pid
