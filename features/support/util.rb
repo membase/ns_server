@@ -95,6 +95,10 @@ class ClusterConfig
     direct_port(node_label) + 1
   end
 
+  def node_labels
+    (0...@size).map {|i| (?A + i).chr}
+  end
+
   # ------------------------------------------------------
 
   def node_pid(node_label)
@@ -300,7 +304,16 @@ def cluster_eject(ejectee, ejecter = nil)
     end
   end
 
-  sleep(5.0)
+  sleep 5
+
+  poll_for_condition(7, false) do
+    ClusterConfig.active_cluster.node_labels.all? do |label|
+      label == ejectee || !((node_info(label, ejectee) rescue true) ||
+                            (node_info(ejectee, label) rescue true))
+    end
+  end
+
+  sleep 1
 end
 
 # ------------------------------------------------------
