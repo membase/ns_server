@@ -43,6 +43,8 @@
 %% The range used within this file is arbitrary and undefined, so I'm
 %% defining an arbitrary value here just to be rebellious.
 -define(START_FAIL, 100).
+-define(NODE_EJECTED, 101).
+-define(UI_SIDE_ERROR_REPORT, 102).
 
 %% External API
 
@@ -176,7 +178,7 @@ loop(Req, AppRoot, DocRoot) ->
                              ["logClientError"] -> {auth_any_bucket,
                                                     fun (R) ->
                                                             User = menelaus_auth:extract_auth(username, R),
-                                                            ns_log:log(?MODULE, 0020, "Client-side error-report for user ~p on node ~p: ~p~n",
+                                                            ns_log:log(?MODULE, ?UI_SIDE_ERROR_REPORT, "Client-side error-report for user ~p on node ~p: ~p~n",
                                                                        [User, node(), binary_to_list(R:recv_body())]),
                                                             R:ok({"text/plain", add_header(), <<"">>})
                                                     end};
@@ -796,7 +798,7 @@ handle_eject_post(Req) ->
                     case lists:member(OtpNode, ns_node_disco:nodes_wanted()) of
                         true ->
                             ok = ns_cluster:shun(OtpNode),
-                            ns_log:log(?MODULE, 0013, "Node ejected: ~p from node: ~p",
+                            ns_log:log(?MODULE, ?NODE_EJECTED, "Node ejected: ~p from node: ~p",
                                        [OtpNode, erlang:node()]),
                             Req:respond({200, add_header(), []});
                         false ->
@@ -1035,7 +1037,11 @@ ns_log_cat(0017) ->
 ns_log_cat(0019) ->
     warn;
 ns_log_cat(?START_FAIL) ->
-    crit.
+    crit;
+ns_log_cat(?NODE_EJECTED) ->
+    info;
+ns_log_cat(?UI_SIDE_ERROR_REPORT) ->
+    warn.
 
 ns_log_code_string(0013) ->
     "node join failure";
@@ -1050,7 +1056,11 @@ ns_log_code_string(0017) ->
 ns_log_code_string(0019) ->
     "server error during request processing";
 ns_log_code_string(?START_FAIL) ->
-    "failed to start service".
+    "failed to start service";
+ns_log_code_string(?NODE_EJECTED) ->
+    "node was ejected";
+ns_log_code_string(?UI_SIDE_ERROR_REPORT) ->
+    "client-side error report".
 
 %% I'm trying to avoid consing here, but, probably, too much
 diag_filter_out_config_password_list([], UnchangedMarker) ->
