@@ -370,3 +370,46 @@ mapfilter(F, Ref, List) ->
                     Value -> [Value|Acc]
                     end
                  end, [], List).
+
+%% http://github.com/joearms/elib1/blob/master/lib/src/elib1_misc.erl#L1367
+
+%%----------------------------------------------------------------------
+%% @doc remove leading and trailing white space from a string.
+
+-spec trim(string()) -> string().
+
+trim(S) ->
+    remove_leading_and_trailing_whitespace(S).
+
+trim_test() ->
+    "abc" = trim("    abc   ").
+
+%%----------------------------------------------------------------------
+%% @doc remove leading and trailing white space from a string.
+
+-spec remove_leading_and_trailing_whitespace(string()) -> string().
+
+remove_leading_and_trailing_whitespace(X) ->
+    remove_leading_whitespace(remove_trailing_whitespace(X)).
+
+remove_leading_and_trailing_whitespace_test() ->
+    "abc" = remove_leading_and_trailing_whitespace("\r\t  \n \s  abc").
+
+%%----------------------------------------------------------------------
+%% @doc remove leading white space from a string.
+
+-spec remove_leading_whitespace(string()) -> string().
+
+remove_leading_whitespace([$\n|T]) -> remove_leading_whitespace(T);
+remove_leading_whitespace([$\r|T]) -> remove_leading_whitespace(T);
+remove_leading_whitespace([$\s|T]) -> remove_leading_whitespace(T);
+remove_leading_whitespace([$\t|T]) -> remove_leading_whitespace(T);
+remove_leading_whitespace(X) -> X.
+
+%%----------------------------------------------------------------------
+%% @doc remove trailing white space from a string.
+
+-spec remove_trailing_whitespace(string()) -> string().
+
+remove_trailing_whitespace(X) ->
+    lists:reverse(remove_leading_whitespace(lists:reverse(X))).
