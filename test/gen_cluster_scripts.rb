@@ -106,7 +106,7 @@ start_node() {
         -- \\
         -no-input \\
         -name $1@127.0.0.1 -noshell \\
-        -ns_server ns_server_config \\"cluster_config\\" \\
+        -ns_server ns_server_config \\"#{prefix}_config\\" \\
         -ns_server pidfile \\"tmp/$1.pid\\" &
 }
 
