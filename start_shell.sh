@@ -5,7 +5,9 @@ cd `dirname $0`
 mkdir logs > /dev/null 2>&1
 
 # Initialize distributed erlang on the system (i.e. epmd)
-erl -noshell -setcookie nocookie -sname init -run init stop 2>&1 > /dev/null
+if [ -z "$DONT_START_EPMD" ]; then
+  erl -noshell -setcookie nocookie -sname init -run init stop 2>&1 > /dev/null
+fi
 
 exec erl -pa `find . -type d -name ebin` \
     -setcookie nocookie \
