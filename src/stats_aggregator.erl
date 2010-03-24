@@ -32,7 +32,7 @@ start_link() ->
     gen_server:start_link({global, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
-    timer:send_interval(5, garbage_collect),
+    timer:send_interval(5000, garbage_collect),
     {ok, #state{vals=dict:new(), topkeys=dict:new(), cache=dict:new(),
                 empty_ringdict=ringdict:new(?SAMPLE_SIZE)}}.
 
