@@ -59,7 +59,7 @@ basic_stats(PoolId, BucketId) ->
     OpsPerSec = avg(deltas(sum_stats_ops(Samples))),
     EvictionsPerSec = avg(deltas(default_find("evictions", Samples))),
     CurBytes = erlang:max(avg(default_find("bytes", Samples)), 0),
-    MaxBytes = erlang:max(avg(default_find("limit_maxbytes", Samples)),
+    MaxBytes = erlang:max(avg(default_find("engine_maxbytes", Samples)),
                           1),
     [{cacheSize, NumNodes * MbPerNode},
      {opsPerSec, OpsPerSec},

@@ -180,3 +180,16 @@ def bucket_info(node, bucket)
   end
   nil
 end
+
+def node_rpc(node, method, path, *params)
+  url = "http://localhost:#{rest_port(node)}" + path
+  rv = RestClient.send(method, url, *params)
+
+  if rv.body.size != 0
+    JSON.parse(rv.body)
+  end
+end
+
+def node_get(node, path, *params)
+  node_rpc(node, :get, path, *params)
+end
