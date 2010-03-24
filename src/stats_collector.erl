@@ -57,10 +57,9 @@ flush(Msg, N) ->
         case N of
         0 -> N;
         _ ->
-            error_logger:info_msg("stats_collector dropped ~p ~p messages.~n", [N]),
+            error_logger:info_msg("stats_collector dropped ~p messages.~n", [N]),
             N
         end
-
     end.
 
 terminate(Reason, _State) ->
