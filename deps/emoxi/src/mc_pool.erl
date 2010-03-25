@@ -166,8 +166,8 @@ handle_call({bucket_cring, BucketId}, _From, State) ->
     end;
 
 handle_call({reconfig, Name}, _From,
-            _State) ->
-    case build_pool(Name, ns_config:get()) of
+            PrevPool) ->
+    Ret = case build_pool(Name, ns_config:get()) of
         {ok, Pool} ->
             ns_log:log(?MODULE, 0005, "Pool reconfigured: ~p",
                        [Name]),
@@ -179,7 +179,19 @@ handle_call({reconfig, Name}, _From,
                        [Name]),
             NoopPool = create(Name, []),
             {reply, error, NoopPool}
-    end;
+    end,
+    % If the pool/buckets configuration changed, restart our
+    % downstream connections, for bug 938.  We don't want to have
+    % mc_downstream/mc_downstream_sup holding onto old connections
+    % to buckets which don't exist and which emoxi doesn't realize
+    % are bad connections until it tries a later send() attempt on
+    % them.
+    {_, _, CurrPool} = Ret,
+    case CurrPool of
+        PrevPool -> ok; %% did not change
+        _ -> emoxi_sup:restart_downstream_sup()
+    end,
+    Ret;
 
 handle_call(_, _From, State) ->
     {reply, ok, State}.

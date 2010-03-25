@@ -7,6 +7,7 @@
 
 -export([start_link/0, init/1,
          start_pool/1, stop_pool/1,
+         restart_downstream_sup/0,
          current_pools/0]).
 
 -include_lib("eunit/include/eunit.hrl").
@@ -90,4 +91,9 @@ stop_pool(Name) ->
     Id = {mc_pool_sup, Name},
     supervisor:terminate_child(?MODULE, Id),
     supervisor:delete_child(?MODULE, Id),
+    ok.
+
+restart_downstream_sup() ->
+    ok = supervisor:terminate_child(?MODULE, mc_downstream_sup),
+    {ok, _Pid} = supervisor:restart_child(?MODULE, mc_downstream_sup),
     ok.
