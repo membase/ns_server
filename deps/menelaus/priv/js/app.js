@@ -194,7 +194,18 @@ function onUnexpectedXHRError(xhr) {
   if (reloadInfo) {
     ts = parseInt(reloadInfo);
     if ((now - ts) < 15*1000) {
-      alert('The application received multiple invalid responses from the server.  The server log may have details on this error.  Reloading the application has been suppressed.\n\nYou may be able to load the console from another server in the cluster.');
+      $.cookie('ri', null); // clear reload-info cookie, so that
+                            // manual reload don't cause 'console has
+                            // been reloaded' flash message
+
+      var details = DAO.cells.currentPoolDetailsCell.value;
+      var notAlone = details && details.nodes.length > 1;
+      var msg = 'The application received multiple invalid responses from the server.  The server log may have details on this error.  Reloading the application has been suppressed.';
+      if (notAlone) {
+        msg += '\n\nYou may be able to load the console from another server in the cluster.';
+      }
+      alert(msg);
+
       return;
     }
   }
