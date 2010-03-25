@@ -84,7 +84,7 @@ test_unit_:
 	kill `cat /tmp/memcached.pid`
 
 test_unit_Windows_NT:
-	$(MEMCACHED_WIN_COMMAND) 
+	$(MEMCACHED_WIN_COMMAND)
 	erl $(EFLAGS) -noshell -s mc_test test -s init stop -kernel error_logger silent
 	taskkill //F //PID `tasklist.exe |grep memcached|awk '/^(\w+)\W+(\w+)/ {print $$2}'`
 
@@ -93,6 +93,9 @@ test_unit_verbose: ebins $(NS_SERVER_EBIN)
 	erl $(EFLAGS) -noshell -s mc_test test -s init stop
 	kill `cat /tmp/memcached.pid`
 
+test_shell:
+	erl $(EFLAGS)
+
 test_main: ebin $(NS_SERVER_EBIN)
 	erl $(EFLAGS) -s mc_test main -noshell
 
@@ -100,6 +103,7 @@ test_main_shell: ebin $(NS_SERVER_EBIN)
 	erl $(EFLAGS) -s mc_test main
 
 test_main_mock: ebin $(NS_SERVER_EBIN)
+	test -d priv || ln -s ../../priv
 	erl $(EFLAGS) -s mc_test main_mock
 
 test_main_mock_driver: ebin $(NS_SERVER_EBIN)
