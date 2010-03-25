@@ -80,6 +80,10 @@ use Middleware
 
 set :public, $DOCROOT
 
+get "/" do
+  redirect "/index.html"
+end
+
 get "/test_auth" do
   user, pwd = *auth_credentials
   if user != 'admin' || pwd != 'admin'
