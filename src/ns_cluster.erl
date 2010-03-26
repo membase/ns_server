@@ -53,7 +53,12 @@ running(leave, State) ->
     NewCookie = ns_node_disco:cookie_gen(),
     erlang:set_cookie(node(), NewCookie),
     lists:foreach(fun erlang:disconnect_node/1, nodes()),
+    WebPort = ns_config:search_prop(ns_config:get(), rest, port, false),
     ns_config:clear([directory]),
+    case WebPort of
+        false -> false;
+        _ -> ns_config:set(rest, [{port, WebPort}])
+    end,
     ns_config:set(nodes_wanted, [node()], {0, 0, 0}),
     ns_config:set(otp, [{cookie, NewCookie}], {0, 0, 0}),
     true = exit(State#running_state.child, shutdown),
