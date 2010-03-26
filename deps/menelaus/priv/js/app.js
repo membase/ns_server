@@ -890,6 +890,8 @@ var OverviewSection = {
     $('#join_cluster_dialog form').get(0).reset();
     dialog.find("input:not([type]), input[type=text], input[type=password]").not('[name=clusterMemberHostIp], [name=clusterMemberPort]').val('');
 
+    $('#join_cluster_dialog_errors_container').empty();
+
     showDialog('join_cluster_dialog', {
       onHide: function () {
         form.unbind('submit');
@@ -897,7 +899,31 @@ var OverviewSection = {
     form.bind('submit', function (e) {
       e.preventDefault();
 
-      $('#join_cluster_dialog_errors_container').empty();
+      function simpleValidation() {
+        var p = {};
+        _.each("clusterMemberHostIp clusterMemberPort user password".split(' '), function (name) {
+          p[name] = form.find('[name=' + name + ']').val();
+        });
+
+        var errors = [];
+
+        if (p['clusterMemberHostIp'] == "")
+          errors.push("Web Console IP Address cannot be blank.");
+        if (p['clusterMemberPort'] == '')
+          errors.push("Web Console Port cannot be blank.");
+        if ((p['user'] || p['password']) && !(p['user'] && p['password'])) {
+          errors.push("Username and Password must either both be present or missing.");
+        }
+
+        return errors;
+      }
+
+      var errors = simpleValidation();
+      if (errors.length) {
+        renderTemplate('join_cluster_dialog_errors', errors);
+        return;
+      }
+
       var overlay = overlayWithSpinner(form);
 
       postWithValidationErrors('/node/controller/doJoinCluster', form, function (data, status) {
