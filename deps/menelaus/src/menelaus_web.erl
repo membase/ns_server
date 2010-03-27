@@ -727,17 +727,21 @@ handle_join(Req, OtherHost, OtherPort, OtherUser, OtherPswd) ->
                                 list_to_atom(binary_to_list(Cookie)));
                 {error, econnrefused} ->
                     ns_log:log(?MODULE, 0016, "During node join, could not connect to ~p on port ~p from node ~p.", [OtherHost, OtherPort, node()]),
-                    reply_json(Req, [list_to_binary(io_lib:format("Could not connect to ~p on port ~p.", [OtherHost, OtherPort]))], 400);
+                    reply_json(Req, [list_to_binary(io_lib:format("Could not connect to ~p on port ~p.  "
+                                                                  "This could be due to an incorrect host/port combination or a "
+                                                                  "firewall configured between the two nodes.", [OtherHost, OtherPort]))], 400);
                 {error, nxdomain} ->
                     ns_log:log(?MODULE, 0020, "During node join, failed to resolve host ~p on port ~p from node ~p.", [OtherHost, OtherPort, node()]),
                     reply_json(Req, [list_to_binary(io_lib:format("Failed to resolve address for ~p.  The hostname may be incorrect or not resolvable.", [OtherHost]))], 400);
                 {error, timeout} ->
                     ns_log:log(?MODULE, 0021, "During node join, timeout connecting to ~p on port ~p from node ~p.", [OtherHost, OtherPort, node()]),
-                    reply_json(Req, [list_to_binary(io_lib:format("Timeout connecting to ~p on port ~p.", [OtherHost, OtherPort]))], 400);
+                    reply_json(Req, [list_to_binary(io_lib:format("Timeout connecting to ~p on port ~p.  "
+                                                                  "This could be due to an incorrect host/port combination or a "
+                                                                  "firewall configured between the two nodes.", [OtherHost, OtherPort]))], 400);
                 Any ->
                     ns_log:log(?MODULE, 0022, "During node join, the remote host ~p on port ~p did not return a REST response.  Error encountered was: ~p",
                                [OtherHost, OtherPort, Any]),
-                    reply_json(Req, [list_to_binary("Invalid response from remote node.  Error logged.")],400)
+                    reply_json(Req, [list_to_binary("Invalid response from remote node.  An error has been logged which may contain more information.")],400)
             end;
         false ->
             % We are not an 'empty' node, so user should first remove
