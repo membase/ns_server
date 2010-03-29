@@ -235,13 +235,13 @@ validate_alert_config(AlertConfig) ->
     case proplists:get_value(email_alerts, AlertConfig) of
         true ->
             Candidates = [validate_email_address(proplists:get_value(sender, AlertConfig, []))
-                          orelse <<"Sender field is not valid email address">>,
+                          orelse <<"Sender email must be supplied.">>,
                           validate_email_address(proplists:get_value(email, AlertConfig, []))
-                          orelse <<"Email field is not valid email address">>,
+                          orelse <<"Recipient email must be supplied.">>,
                           proplists:get_value(addr, EmailServer, []) =/= ""
-                          orelse <<"Email server name field cannot be blank">>,
+                          orelse <<"Mail server address must be supplied.">>,
                           proplists:get_value(port, EmailServer, []) =/= ""
-                          orelse <<"Email server port field cannot be blank">>],
+                          orelse <<"A mail server port must be supplied.">>],
             lists:filter(fun (C) -> C =/= true end,
                          Candidates);
         _ -> []
