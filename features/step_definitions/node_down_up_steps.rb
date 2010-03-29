@@ -7,7 +7,7 @@ When /^node (.*) goes down$/ do |to_be_killed|
 end
 
 When /^node (.*) comes back up$/ do |to_be_started|
-  node_start(to_be_started)
+  node_resurrect(to_be_started)
 end
 
 Then /^node (.*?) sees that node (.*?) is (.*)$/ do |to_ask, target, health|

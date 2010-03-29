@@ -3,8 +3,7 @@ Given /^I have configured nodes (.*)$/ do |nodes|
   $node_labels = nodes.gsub(/,/, '').
                        gsub(/and /, '').
                        split(' ') # Looks like ["A", "B', C"].
-  cluster_prep($node_labels.length)
-  cluster_start()
+  ClusterConfig.activate!($node_labels.length)
 end
 
 Given /^they are not joined$/ do

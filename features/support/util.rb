@@ -1,5 +1,7 @@
 require 'rest_client'
 require 'json'
+require 'socket'
+require 'fileutils'
 
 PREFIX = "cucumberCluster"
 
@@ -7,33 +9,218 @@ def dbg(m)
   # p(m)
 end
 
-def cluster_stop(prefix = nil)
-  prefix ||= PREFIX
-  if File.exists?("./#{prefix}_stop_all.sh")
-    dbg "stopping cluster..."
-    `./#{prefix}_stop_all.sh 2>/dev/null`
-    FileUtils.rm_f Dir.glob("./tmp/n_*.pid")
-    sleep(2.0)
+module Kernel
+  def poll_for_condition(timeout = 10, fail_unless_ok = true)
+    start = Time.now.to_f
+
+    ok = false
+    begin
+      break if (ok = yield)
+      sleep 0.1
+    end while (Time.now.to_f - start) < timeout
+
+    unless ok
+      if fail_unless_ok
+        # puts "Timeout!!"
+        # STDIN.gets
+        raise "Timeout hit while waiting for condition"
+      end
+    end
+    ok
   end
 end
 
-def cluster_prep(size, prefix = nil)
-  prefix ||= PREFIX
-  cluster_stop()
-  `./test/gen_cluster_scripts.rb #{size} 0 #{prefix}`
-end
+class ClusterConfig
+  include Test::Unit::Assertions
+  extend Test::Unit::Assertions
 
-def cluster_start(prefix = nil)
-  prefix ||= PREFIX
-  pid = fork do # In the child process...
-               FileUtils.rm_rf Dir.glob("./config/n_*")
-               `./#{prefix}_start_all.sh`
-               exit
-             end
-  if pid
-    # In the parent process...
-    dbg "starting cluster..."
-    sleep(3.0)
+  @@active_cluster = nil
+  def self.active_cluster(prefix = nil)
+    rv = @@active_cluster
+    if prefix
+      assert_equal prefix, @@active_cluster.prefix
+    end
+    rv
+  end
+
+  attr_reader :size
+  attr_reader :configs
+  attr_reader :prefix
+  attr_reader :num_buckets
+
+  def initialize(size, prefix = PREFIX, num_buckets = 0)
+    @size = size
+    @prefix = prefix
+    @num_buckets = num_buckets
+    @cluster_ptys = []
+  end
+
+  # ------------------------------------------------------
+
+  def node_index(node_label)
+    node_label[0] - 65 # 'A' == 65.
+  end
+
+  def rest_port(node_label) # Ex: "A"
+    9000 + node_index(node_label)
+  end
+
+  def direct_port(node_label) # Ex: "A"
+    12000 + (node_index(node_label) * 2)
+  end
+
+  def proxy_port(node_label)
+    direct_port(node_label) + 1
+  end
+
+  # ------------------------------------------------------
+
+  def node_pid(node_label)
+    i = node_index(node_label)
+    pid, ports = @cluster_ptys[i]
+    pid
+  end
+
+  def node_kill(node_label)
+    i = node_index(node_label)
+    pid, ports = @cluster_ptys[i]
+
+    Process.kill("KILL", pid)
+    Process.wait(pid)
+
+    wait_down_ports(ports)
+
+    @cluster_ptys[i] = []
+  end
+
+  def node_resurrect(node_label)
+    i = node_index(node_label)
+    pid, ports = @cluster_ptys[i]
+    assert !pid
+    @cluster_ptys[i] = start_single_node(i)
+    wait_up_ports(@cluster_ptys[i][-1])
+    sleep 3
+  end
+
+  # ------------------------------------------------------
+
+  def start_single_node(i)
+    ports = [12000+i*2,12000+i*2+1,9000+i]
+
+    wait_down_ports(ports, -1)
+
+    reader, writer = IO.pipe
+    pid = fork do
+      ENV['RELIABLE_START_FD'] = reader.fileno.to_s
+      time = Time.now.utc
+      tstamp = "%04d%02d%02dT%02d%02d%02d" % [time.year, time.month, time.day, time.hour, time.min, time.sec]
+      STDOUT.reopen("tmp/log_#{tstamp}_#{(?A+i).chr}", "w")
+      STDERR.reopen(STDOUT)
+
+      Process.setpgid(0,0)
+      exec "./test/orphaner.rb ./start_shell.sh -noshell -name n_#{i}@127.0.0.1 -ns_server ns_server_config \"#{prefix}_config\" </dev/null"
+    end
+    reader.close
+    writer.write('O')
+    writer.close
+    # puts "started one process"
+    # gets
+    [pid, ports]
+  end
+
+  def start!
+    if @@active_cluster
+      @@active_cluster.stop!
+    end
+
+    system "./test/gen_cluster_scripts.rb #{size} 0 #{prefix}"
+    FileUtils.rm_rf './config'
+
+    @cluster_ptys = []
+
+    ports_to_wait = []
+
+    begin
+      size.times do |i|
+        pid, ports = rv = start_single_node(i)
+        ports_to_wait.concat(ports)
+        @cluster_ptys << rv
+      end
+
+      wait_up_ports(ports_to_wait)
+    rescue Exception
+      stop!
+      raise
+    end
+
+    # we need some extra time to settle some things (free memory at least)
+    sleep 5
+  end
+
+  def wait_up_ports(ports_to_wait, timeout = 10)
+    poll_for_condition(timeout) do
+      tmp = ports_to_wait
+      ports_to_wait = []
+      tmp.each do |p|
+        begin
+          TCPSocket.new('127.0.0.1',p).close
+        rescue Errno::ECONNREFUSED
+          ports_to_wait << p
+        end
+      end
+      ports_to_wait.empty?
+    end
+  end
+
+  def wait_down_ports(wait_ports, timeout = 120)
+    poll_for_condition(timeout) do
+      wait_ports = wait_ports.select do |p|
+        begin
+          TCPSocket.new('127.0.0.1', p).close
+          true
+        rescue Exception => exc
+          false
+        end
+      end
+      wait_ports.empty?
+    end
+  end
+
+  def stop!
+    # puts "before stop"
+    # gets
+
+    wait_ports = []
+    @cluster_ptys.each do |(pid, ports)|
+      next unless pid
+      Process.kill("KILL", pid)
+      Process.wait(pid)
+      wait_ports.concat(ports)
+    end
+    @cluster_ptys.clear
+
+    wait_down_ports(wait_ports)
+
+    @@active_cluster = nil if self == @@active_cluster
+  end
+
+  def self.activate!(*args)
+    config = self.new(*args)
+    config.start!
+    @@active_cluster = config
+  end
+
+  def self.stop_active!(prefix = PREFIX)
+    cluster = ClusterConfig.active_cluster(prefix)
+    assert cluster
+
+    assert_equal prefix, cluster.prefix
+
+    # puts "before stopping"
+    # gets
+    cluster.stop
+    # puts "stopped cluster"
+    # gets
   end
 end
 
@@ -122,46 +309,30 @@ end
 
 # ------------------------------------------------------
 
+def rest_port(node_label)
+  ClusterConfig.active_cluster.rest_port(node_label)
+end
+
+def direct_port(node_label)
+  ClusterConfig.active_cluster.direct_port(node_label)
+end
+
+def proxy_port(node_label)
+  ClusterConfig.active_cluster.proxy_port(node_label)
+end
+
 def node_pid(node_label)
-  IO.read("./tmp/n_#{node_index(node_label)}.pid").chomp
+  ClusterConfig.active_cluster.node_pid(node_label)
 end
 
 def node_kill(node_label)
-  dbg "killing node #{node_label}..."
-  `kill #{node_pid(node_label)}`
-  sleep(0.1)
-end
-
-def node_start(node_label, prefix = nil)
-  prefix ||= PREFIX
-  node_i = node_index(node_label)
-  dbg "starting node #{node_label} (#{node_i})..."
-  pid = fork do # In the child process...
-               `./start_shell.sh -name n_#{node_i}@127.0.0.1 -noshell -ns_server ns_server_config \\"#{prefix}_config\\" -ns_server pidfile \\"./tmp/n_#{node_i}.pid\\"`
-               exit
-             end
-  if pid
-    # In the parent process...
-    sleep(8.0)
-  end
-end
-
-def node_index(node_label)
-  node_label[0] - 65 # 'A' == 65.
+  ClusterConfig.active_cluster.node_kill(node_label)
 end
 
 # ------------------------------------------------------
 
-def rest_port(node_label) # Ex: "A"
-  9000 + node_index(node_label)
-end
-
-def direct_port(node_label) # Ex: "A"
-  12000 + (node_index(node_label) * 2)
-end
-
-def proxy_port(node_label)
-  direct_port(node_label) + 1
+def node_resurrect(node_label, prefix = PREFIX)
+  ClusterConfig.active_cluster(prefix).node_resurrect(node_label)
 end
 
 # ------------------------------------------------------
