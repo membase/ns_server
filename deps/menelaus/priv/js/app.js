@@ -666,6 +666,20 @@ var StatGraphs = {
   visibleStatsIsDirty: true,
   statNames: {},
   spinners: [],
+  preventUpdatesCounter: 0,
+  freeze: function () {
+    this.preventUpdatesCounter++;
+  },
+  thaw: function () {
+    this.preventUpdatesCounter--;
+  },
+  freezeIfIE: function () {
+    if (!window.G_vmlCanvasManager)
+      return _.identity;
+
+    this.freeze();
+    return _.bind(this.thaw, this);
+  },
   findGraphArea: function (statName) {
     return $('#analytics_graph_' + statName)
   },
@@ -685,8 +699,11 @@ var StatGraphs = {
 
     $('.stats_visible_period').text('?');
   },
-  update: function () {
+  doUpdate: function () {
     var self = this;
+
+    if (self.preventUpdatesCounter)
+      return;
 
     var cell = DAO.cells.stats;
     var stats = cell.value;
@@ -727,8 +744,16 @@ var StatGraphs = {
       var area = self.findGraphArea(statName);
       renderSmallGraph(area, ops, selected == statName);
     });
+  },
+  update: function () {
+    this.doUpdate();
 
-    cell.setRecalculateTime();
+    var cell = DAO.cells.stats;
+    var stats = cell.value;
+    // it is important to calculate refresh time _after_ we render, so
+    // that if we're slow we'll safely skip samples
+    if (stats && stats.op)
+      cell.setRecalculateTime();
   },
   configureStats: function () {
     var self = this;
@@ -757,8 +782,10 @@ var StatGraphs = {
       self.update();
     }
 
+    var thaw = StatGraphs.freezeIfIE();
     showDialog('analytics_settings_dialog', {
       onHide: function () {
+        thaw();
         observer.stopObserving();
       }
     });
