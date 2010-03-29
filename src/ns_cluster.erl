@@ -11,11 +11,16 @@
          handle_event/3, handle_sync_event/4,
          code_change/4, terminate/3]).
 
+-define(NODE_JOINED, 3).
+-define(NODE_EJECTED, 4).
+
 %% States
 -export([running/2, joining/2, leaving/2]).
 
 %% API
 -export([join/2, leave/0, shun/1]).
+
+-export([alert_key/1]).
 
 -record(running_state, {child}).
 -record(joining_state, {remote, cookie}).
@@ -86,6 +91,8 @@ joining({exit, _Pid}, #joining_state{remote=RemoteNode, cookie=NewCookie}) ->
                                    [node(), RemoteNode])
     end,
     {ok, running, State} = bringup(),
+
+    timer:apply_after(1000, ?MODULE, log_joined, []),
     {next_state, running, State}.
 
 leaving({exit, _Pid}, _LeaveData) ->
@@ -97,6 +104,15 @@ leaving({exit, _Pid}, _LeaveData) ->
 leaving(leave, LeaveData) ->
     %% If we are told to leave in the leaving state, continue leaving.
     {next_state, leaving, LeaveData}.
+
+%%
+%% Internal functions
+%%
+
+log_joining() ->
+    ns_log:log(?MODULE, ?NODE_JOINED, "Node ~s joined cluster",
+               [node()]).
+
 
 %%
 %% Miscellaneous gen_fsm callbacks.
@@ -127,6 +143,8 @@ join(RemoteNode, NewCookie) ->
 leave() ->
     RemoteNode = ns_node_disco:random_node(),
 
+    ns_log:log(?MODULE, ?NODE_EJECTED, "Node ~s left cluster", [node()]),
+
     error_logger:info_msg("ns_cluster: leaving the cluster from ~p.~n",
                          [RemoteNode]),
 
@@ -142,3 +160,7 @@ shun(RemoteNode) ->
                      end,
                      make_ref()),
     ns_config_rep:push().
+
+alert_key(?NODE_JOINED) -> server_joined;
+alert_key(?NODE_EJECTED) -> server_left;
+alert_key(_) -> all.

@@ -23,7 +23,7 @@
          find_pool_by_id/1, all_accessible_buckets/2,
          find_bucket_by_id/2]).
 
--export([ns_log_cat/1, ns_log_code_string/1]).
+-export([ns_log_cat/1, ns_log_code_string/1, alert_key/1]).
 
 -export([do_diag_per_node/0]).
 
@@ -45,6 +45,8 @@
 -define(START_FAIL, 100).
 -define(NODE_EJECTED, 101).
 -define(UI_SIDE_ERROR_REPORT, 102).
+-define(BUCKET_DELETED, 11).
+-define(BUCKET_CREATED, 12).
 
 %% External API
 
@@ -1065,6 +1067,10 @@ ns_log_code_string(?NODE_EJECTED) ->
     "node was ejected";
 ns_log_code_string(?UI_SIDE_ERROR_REPORT) ->
     "client-side error report".
+
+alert_key(?BUCKET_CREATED)  -> bucket_created;
+alert_key(?BUCKET_DELETED)  -> bucket_deleted;
+alert_key(_) -> all.
 
 %% I'm trying to avoid consing here, but, probably, too much
 diag_filter_out_config_password_list([], UnchangedMarker) ->
