@@ -1215,7 +1215,8 @@ var AnalyticsSection = {
     });
   },
   visitBucket: function (bucketURL) {
-    ThePage.gotoSection('analytics');
+    if (DAO.cells.mode.value != 'analytics')
+      ThePage.gotoSection('analytics');
     DAO.cells.statsBucketURL.setValue(bucketURL);
   },
   onLeave: function () {
