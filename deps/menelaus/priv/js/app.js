@@ -1152,6 +1152,8 @@ var BucketsSection = {
     if (!this.currentlyShownBucket)
       return;
 
+    hideDialog('bucket_details_dialog_container');
+
     $('#bucket_remove_dialog .bucket_name').text(this.currentlyShownBucket.name);
     showDialog('bucket_remove_dialog');
   },
