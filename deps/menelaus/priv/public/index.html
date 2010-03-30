@@ -910,7 +910,7 @@ MemcachedClient client = manager.getClient();</pre>
         </p>
         <div class="pas_20">
           <p class="u_line text_14">
-            <span class="label">Flushing Bucket:</span>
+            <span class="label">Flushing Bucket <strong class="bucket_name">{%= h(bucket.name) %}</strong>:</span>
             <strong>
               {%=h(bucket.basicStats.cacheSize)%}
                 [MB x {%=h(DAO.getBucketNodesCount(bucket))%} = {%=h(DAO.getBucketNodesCount(bucket) * bucket.basicStats.cacheSize)%}MB Total Cache]
