@@ -252,11 +252,12 @@ def cluster_eject(ejectee, ejecter = nil)
   assert ejectee_node_info['otpNode']
 
   begin
-    dbg "ejectNode #{ejectee}, on #{ejecter}..."
-    x = RestClient.post("http://localhost:#{rest_port(ejecter)}" +
-                        "/controller/ejectNode",
-                        "otpNode" => ejectee_node_info['otpNode'])
-    dbg "ejectNode #{ejectee}, on #{ejecter}...done #{x}"
+    RestClient.diag do
+      x = RestClient.post("http://localhost:#{rest_port(ejecter)}" +
+                          "/controller/ejectNode",
+                          "otpNode" => ejectee_node_info['otpNode'])
+      dbg "ejectNode #{ejectee}, on #{ejecter}...done #{x}"
+    end
   rescue RestClient::ServerBrokeConnection => e
     if ejectee == ejecter
       # This is expected, as the leaver resets.
@@ -275,8 +276,8 @@ end
 def node_info(node_target, node_to_ask = nil)
   node_to_ask ||= node_target
 
-  d = JSON.parse(RestClient.get("http://localhost:#{rest_port(node_to_ask)}" +
-                                "/pools/default").body)
+  d = JSON.parse(RestClient.diag_get("http://localhost:#{rest_port(node_to_ask)}" +
+                                     "/pools/default").body)
   assert d
   assert d['nodes']
 
@@ -292,7 +293,7 @@ def assert_cluster_not_joined()
   assert $node_labels.length > 1
 
   $node_labels.each do |x|
-    d = JSON.parse(RestClient.get("http://localhost:#{rest_port(x)}/pools/default").body)
+    d = JSON.parse(RestClient.diag_get("http://localhost:#{rest_port(x)}/pools/default").body)
     assert d['nodes'].length == 1
   end
 end
@@ -302,7 +303,7 @@ def assert_cluster_fully_joined()
   assert $node_labels.length > 1
 
   $node_labels.each do |x|
-    d = JSON.parse(RestClient.get("http://localhost:#{rest_port(x)}/pools/default").body)
+    d = JSON.parse(RestClient.diag_get("http://localhost:#{rest_port(x)}/pools/default").body)
     assert d['nodes'].length == $node_labels.length, "node #{x} is not aware of all nodes: #{d}"
   end
 end
@@ -337,19 +338,34 @@ end
 
 # ------------------------------------------------------
 
+def RestClient.diag
+  yield
+rescue RestClient::BadRequest => exc
+  puts "exc.response: #{exc.response.body.inspect}"
+  raise exc
+end
+
+def RestClient.diag_get(*args)
+  RestClient.diag do
+    RestClient.get(*args)
+  end
+end
+
 def bucket_create(node, bucket_to_create, params = {})
-  RestClient.post("http://localhost:#{rest_port(node)}/pools/default/buckets",
-                  "name" => bucket_to_create,
-                  "cacheSize" => params[:cacheSize] || "2")
+  RestClient.diag do
+    RestClient.post("http://localhost:#{rest_port(node)}/pools/default/buckets",
+                    "name" => bucket_to_create,
+                    "cacheSize" => params[:cacheSize] || "2")
+  end
   sleep(0.5)
 end
 
 def bucket_info(node, bucket)
-  r = RestClient.get("http://localhost:#{rest_port(node)}/pools/default/buckets/#{bucket}")
-  if r
-    return JSON.parse(r.body)
+  r = RestClient.diag do
+    RestClient.get("http://localhost:#{rest_port(node)}/pools/default/buckets/#{bucket}")
   end
-  nil
+  return unless r
+  JSON.parse(r.body)
 end
 
 def node_rpc(node, method, path, *params)
