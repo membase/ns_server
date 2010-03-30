@@ -1529,28 +1529,21 @@ var BreadCrumbs = {
       pushSection('buckets')
       var bucketInfo = DAO.cells.currentStatTargetCell.value;
       if (bucketInfo) {
-        path.push([bucketInfo.name, null]);
+        path.push([bucketInfo.name, '#visitBucket='+bucketInfo.uri]);
       }
     } else
       pushSection(sec);
-
-    var first = true;
 
     _.each(path.reverse(), function (pair) {
       var name = pair[0];
       var href = pair[1];
 
       var li = $('<li></li>');
-      if (first) {
-        first = false;
-        li.text(name);
-      } else {
-        var a = $('<a></a>');
-        a.attr('href', href);
-        a.text(name);
+      var a = $('<a></a>');
+      a.attr('href', href);
+      a.text(name);
 
-        li.prepend(a);
-      }
+      li.prepend(a);
 
       container.prepend(li);
     });
