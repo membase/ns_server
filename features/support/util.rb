@@ -413,9 +413,13 @@ def bucket_info(node, bucket)
   JSON.parse(r.body)
 end
 
-def node_rpc(node, method, path, *params)
+def raw_node_rpc(node, method, path, *params)
   url = "http://localhost:#{rest_port(node)}" + path
-  rv = RestClient.send(method, url, *params)
+  RestClient.send(method, url, *params)
+end
+
+def node_rpc(node, method, path, *params)
+  rv = raw_node_rpc(node, method, path, *params)
 
   if rv.body.size != 0
     JSON.parse(rv.body)

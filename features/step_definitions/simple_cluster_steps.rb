@@ -1,4 +1,4 @@
-Given /^I have configured nodes (.*)$/ do |nodes|
+Given /^I have configured nodes? (.*)$/ do |nodes|
   # The nodes looks like "A, B and C".
   $node_labels = nodes.gsub(/,/, '').
                        gsub(/and /, '').

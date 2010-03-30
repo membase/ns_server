@@ -306,6 +306,8 @@ build_pool_info(Id, _UserPassword, InfoLevel) ->
 
 find_pool_by_id(Id) -> expect_prop_value(Id, expect_config(pools)).
 
+find_pool_by_id_with_default(Id, Default) -> proplists:get_value(Id, expect_config(pools), Default).
+
 build_nodes_info(MyPool, IncludeOtp) ->
     build_nodes_info(MyPool, IncludeOtp, normal).
 
@@ -432,11 +434,22 @@ all_accessible_buckets_in_pool(Pool, Req) ->
     menelaus_auth:filter_accessible_buckets(BucketsAll, Req).
 
 checking_bucket_access(PoolId, Id, Req, Body) ->
-    Pool = find_pool_by_id(PoolId),
-    Bucket = find_bucket_by_id(Pool, Id),
-    case menelaus_auth:is_bucket_accessible({Id, Bucket}, Req) of
-        true -> apply(Body, [Pool, Bucket]);
-        _ -> menelaus_auth:require_auth(Req)
+    E404 = make_ref(),
+    try
+        {Pool, Bucket} = case find_pool_by_id_with_default(PoolId, undefined) of
+                             undefined -> exit(E404);
+                             PoolC -> case find_bucket_by_id_with_default(PoolC, Id, undefined) of
+                                          undefined -> exit(E404);
+                                          BucketC -> {PoolC, BucketC}
+                                      end
+                         end,
+        case menelaus_auth:is_bucket_accessible({Id, Bucket}, Req) of
+            true -> apply(Body, [Pool, Bucket]);
+            _ -> menelaus_auth:require_auth(Req)
+        end
+    catch
+        exit:E404 ->
+            Req:respond({404, add_header(), "Requested resource not found.\r\n"})
     end.
 
 handle_bucket_list(Id, Req) ->
@@ -450,6 +463,10 @@ handle_bucket_list(Id, Req) ->
 find_bucket_by_id(Pool, Id) ->
     Buckets = expect_prop_value(buckets, Pool),
     expect_prop_value(Id, Buckets).
+
+find_bucket_by_id_with_default(Pool, Id, Default) ->
+    Buckets = expect_prop_value(buckets, Pool),
+    proplists:get_value(Id, Buckets, Default).
 
 handle_bucket_info(PoolId, Id, Req, Pool, _Bucket) ->
     reply_json(Req, build_bucket_info(PoolId, Id, Pool)).
