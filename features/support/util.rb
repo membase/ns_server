@@ -226,21 +226,31 @@ end
 
 # ------------------------------------------------------
 
-def cluster_join(joiner, joinee)
-  begin
+def do_join(joiner, joinee)
+  RestClient.diag do
     RestClient.post("http://localhost:#{rest_port(joiner)}/node/controller/doJoinCluster",
                     "clusterMemberHostIp" => "127.0.0.1",
                     "clusterMemberPort" => rest_port(joinee),
                     "user" => "",
                     "password" => "")
-    sleep(10.0)
-  rescue RestClient::ServerBrokeConnection => ok
-    # This is expected, as the joiner to might restart webservices when joining.
-    sleep(10.0)
-  rescue Exception => x
-    dbg "doJoinCluster exception #{x}"
-    raise x
   end
+rescue RestClient::ServerBrokeConnection => ok
+  dbg "do_join: ServerBrokeConnection"
+end
+
+def cluster_join(joiner, joinee)
+  do_join(joiner, joinee)
+
+  poll_for_condition(10) do
+    (node_info(joinee, joiner) rescue false) && (node_info(joiner, joinee) rescue false)
+  end
+
+  # we need little extra time to settle some things (free memory at least)
+  sleep 5
+
+rescue Exception => x
+  dbg "doJoinCluster exception #{x}"
+  raise x
 end
 
 def cluster_eject(ejectee, ejecter = nil)
