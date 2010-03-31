@@ -25,13 +25,13 @@ init([]) ->
 
 handle_call(get_nodes, _From, State) ->
     Now = erlang:now(),
-    Nodes = lists:map(fun (Node) ->
-            LastHeard = proplists:lookup(last_heard, Node),
-            case timer:now_diff(Now, LastHeard) > ?STALE_TIME of
-            true -> [ stale | Node];
-            false -> Node
-            end
-        end, State#state.nodes),
+    Nodes = dict:map(fun (_, Node) ->
+                             LastHeard = proplists:get_value(last_heard, Node),
+                             case timer:now_diff(Now, LastHeard) > ?STALE_TIME of
+                                     true -> [ stale | Node];
+                                 false -> Node
+                             end
+                      end, State#state.nodes),
     {reply, Nodes, State}.
 
 handle_cast({heartbeat, Name, Status}, State) ->

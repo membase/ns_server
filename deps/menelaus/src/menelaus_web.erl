@@ -332,7 +332,7 @@ build_nodes_info(MyPool, IncludeOtp, InfoLevel) ->
                   {_Name, Host} = misc:node_name_host(WantENode),
                   InfoNode = case dict:find(WantENode, NodeStatuses) of
                                  {ok, Info} -> Info;
-                                 error -> <<"unknown">>
+                                 error -> [stale]
                              end,
                   Status = case is_healthy(InfoNode) of
                                true -> <<"healthy">>;
