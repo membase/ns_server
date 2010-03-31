@@ -147,7 +147,7 @@ log(Module, Code, Msg) ->
 
 -spec log(atom(), integer(), string(), list()) -> ok.
 log(Module, Code, Fmt, Args) ->
-    error_logger:info_msg("ns_log: logging ~p:~p(~p)~n",
+    error_logger:info_msg("ns_log: logging ~p:~p:~s~n",
                           [Module, Code, lists:flatten(io_lib:format(Fmt, Args))]),
     gen_server:cast({global, ?MODULE}, {log, Module, Code, Fmt, Args}).
 
