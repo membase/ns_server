@@ -232,7 +232,7 @@ loop(Req, AppRoot, DocRoot) ->
                       {path, Req:get(path)},
                       {type, Type}, {what, What},
                       {trace, erlang:get_stacktrace()}], % todo: find a way to enable this for field info gathering
-            ns_log:log(?MODULE, 0019, "Server error during processing: ~p", Report),
+            ns_log:log(?MODULE, 0019, "Server error during processing: ~p", [Report]),
             reply_json(Req, [list_to_binary("Unexpected server error, request logged.")], 500)
     end.
 
