@@ -413,3 +413,29 @@ remove_leading_whitespace(X) -> X.
 
 remove_trailing_whitespace(X) ->
     lists:reverse(remove_leading_whitespace(lists:reverse(X))).
+
+%% Wait for a process.
+
+wait_for_process(Pid, Timeout) ->
+    Me = self(),
+    spawn(fun() ->
+                  process_flag(trap_exit, true),
+                  link(Pid),
+                  erlang:monitor(process, Me),
+                  receive _ -> Me ! finished end
+          end),
+    receive finished -> ok
+    after Timeout -> {error, timeout}
+    end.
+
+wait_for_process_test() ->
+    %% Normal
+    ok = wait_for_process(spawn(fun() -> ok end), 100),
+    %% Timeout
+    {error, timeout} = wait_for_process(spawn(fun() ->
+                                                      timer:sleep(100), ok end),
+                                        1),
+    %% Process that exited before we went.
+    Pid = spawn(fun() -> ok end),
+    ok = wait_for_process(Pid, 100),
+    ok = wait_for_process(Pid, 100).
