@@ -78,7 +78,7 @@ nodes_wanted() ->
 % keys have changed.
 
 nodes_wanted_updated() ->
-    gen_server:call(?MODULE, nodes_wanted_updated).
+    gen_server:cast(?MODULE, nodes_wanted_updated).
 
 %% gen_server implementation
 
@@ -96,6 +96,11 @@ terminate(_Reason, State) ->
     timer:cancel(State#state.timer),
     ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
+
+handle_cast(nodes_wanted_updated, State) ->
+    do_nodes_wanted_updated(do_nodes_wanted()),
+    {noreply, State};
+
 handle_cast(_Msg, State)       -> {noreply, State}.
 
 % Read from ns_config nodes_wanted, and add ourselves to the
@@ -106,9 +111,6 @@ handle_call(nodes_actual_proper, _From, State) ->
 
 handle_call(nodes_wanted, _From, State) ->
     {reply, do_nodes_wanted(), State};
-
-handle_call(nodes_wanted_updated, _From, State) ->
-    {reply, do_nodes_wanted_updated(do_nodes_wanted()), State};
 
 handle_call(Msg, _From, State) ->
     error_logger:info_msg("Unhandled ~p call: ~p~n", [?MODULE, Msg]),
