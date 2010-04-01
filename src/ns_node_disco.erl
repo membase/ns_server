@@ -8,6 +8,7 @@
 
 -define(PING_FREQ, 60000).
 -define(NODE_CHANGE_DELAY, 5000).
+-define(SYNC_TIMEOUT, 5000).
 
 -define(COOKIE_INHERITED, 1).
 -define(COOKIE_SYNCHRONIZED, 2).
@@ -85,7 +86,8 @@ nodes_wanted_updated() ->
 init([]) ->
     error_logger:info_msg("Initting ns_node_disco with ~p~n", [nodes()]),
     % Proactively run one round of reconfiguration update.
-    do_nodes_wanted_updated(do_nodes_wanted()),
+    ok = misc:wait_for_process(do_nodes_wanted_updated(do_nodes_wanted()),
+                              ?SYNC_TIMEOUT),
     % Register for nodeup/down messages as handle_info callbacks.
     ok = net_kernel:monitor_nodes(true),
     {ok, Timer} = timer:send_interval(?PING_FREQ, ping_all),
@@ -155,7 +157,9 @@ do_nodes_wanted() ->
         false      -> []
     end.
 
-do_nodes_wanted_updated(NodeListIn) ->
+%% The core of what happens when nodelists change
+%% only used by do_nodes_wanted_updated
+do_nodes_wanted_updated_fun(NodeListIn) ->
     {ok, Cookie} = cookie_sync(),
     NodeList = lists:usort(NodeListIn),
     error_logger:info_msg("ns_node_disco: nodes_wanted updated: ~p, with cookie: ~p~n",
@@ -168,6 +172,10 @@ do_nodes_wanted_updated(NodeListIn) ->
     error_logger:info_msg("ns_node_disco: nodes_wanted pong: ~p, with cookie: ~p~n",
                           [PongList, erlang:get_cookie()]),
     ok.
+
+%% Run do_nodes_wanted_updated_fun in a process, return the Pid.
+do_nodes_wanted_updated(NodeListIn) ->
+    spawn(fun() -> do_nodes_wanted_updated_fun(NodeListIn) end).
 
 % Returns a subset of the nodes_wanted() that we see.  This is not the
 % same as nodes([this, visible]) because this function may return a
