@@ -3,6 +3,7 @@ Feature: Node Removal
   As a user of northscale software
   I want to be able to remove nodes from a cluster
 
+  @later
   Scenario: Remove self from cluster
     Given I have configured nodes A and B
     And they are already joined
@@ -15,6 +16,7 @@ Feature: Node Removal
     When I ask node A to remove node B from the cluster
     Then node A and B don't know about each other
 
+  @later
   Scenario: Remove self from 3-node cluster
     Given I have configured nodes A, B and C
     And they are already joined
