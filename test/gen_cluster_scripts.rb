@@ -25,17 +25,20 @@ num_nodes = num_nodes.to_i
 num_buckets = ARGV[1] || "0"
 num_buckets = num_buckets.to_i
 
+base_cache_port = ENV['BASE_CACHE_PORT'] ? ENV['BASE_CACHE_PORT'].to_i : 12000
+base_api_port = ENV['BASE_API_PORT'] ? ENV['BASE_API_PORT'].to_i : 9000
+
 nodes = ""
 
 num_nodes.times do |x|
   nodes = nodes + <<-END
-    {{node, 'n_#{x}@127.0.0.1', rest},
+    {{node, 'n_#{x + base_api_port - 9000}@127.0.0.1', rest},
       [{'_ver', {0, 0, 0}},
-       {port, #{x + 9000}}]}.
-    {{node, 'n_#{x}@127.0.0.1', port_servers},
+       {port, #{x + base_api_port}}]}.
+    {{node, 'n_#{x + base_api_port - 9000}@127.0.0.1', port_servers},
       [{'_ver', {0, 0, 0}},
        {memcached, "./priv/memcached",
-        ["-p", "#{(x * 2) + 12000}",
+        ["-p", "#{(x * 2) + base_cache_port}",
          "-E", "./priv/engines/bucket_engine.so",
          "-e", "admin=_admin;engine=./priv/engines/default_engine.so;default_bucket_name=default;auto_create=false",
          "-B", "auto"],
@@ -53,7 +56,7 @@ pools = <<END
 END
 
 num_nodes.times do |x|
-  pools = pools + "{{node, 'n_#{x}@127.0.0.1', port}, #{(x * 2) + 12001}},\n"
+  pools = pools + "{{node, 'n_#{x + base_api_port - 9000}@127.0.0.1', port}, #{(x * 2) + base_cache_port + 1}},\n"
 end
 
 buckets = ""
@@ -112,7 +115,7 @@ start_node() {
 
 erl -noshell -setcookie nocookie -sname init -run init stop 2>&1 > /dev/null
 
-for node in #{numbers.map{|i| "n_" + i.to_s}.join(" ")}
+for node in #{numbers.map{|i| "n_" + (i + base_api_port - 9000).to_s}.join(" ")}
 do
     start_node $node
 done
@@ -127,7 +130,7 @@ File.open(prefix + "_stop_all.sh", 'w') {|f|
 #!/bin/sh
 # num_nodes is #{num_nodes}
 
-kill `cat #{numbers.map{|i| "tmp/n_#{i}.pid"}.join(" ")}`
+kill `cat #{numbers.map{|i| "tmp/n_#{i + base_api_port - 9000}.pid"}.join(" ")}`
 EOF
 
   f.write s

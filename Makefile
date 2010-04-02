@@ -76,3 +76,10 @@ TAGS:
 dialyzer: ebins
 	dialyzer -pa ebin -r .
 
+features/Makefile:
+	(cd features && ../test/parallellize_features.rb) >features/Makefile
+
+.PHONY : features/Makefile
+
+parallel_cucumber: features/Makefile
+	$(MAKE) -k -C features all_branches

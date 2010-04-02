@@ -84,11 +84,11 @@ class ClusterConfig
   end
 
   def rest_port(node_label) # Ex: "A"
-    9000 + node_index(node_label)
+    $base_api_port + node_index(node_label)
   end
 
   def direct_port(node_label) # Ex: "A"
-    12000 + (node_index(node_label) * 2)
+    $base_cache_port + (node_index(node_label) * 2)
   end
 
   def proxy_port(node_label)
@@ -131,7 +131,7 @@ class ClusterConfig
   # ------------------------------------------------------
 
   def start_single_node(i)
-    ports = [12000+i*2,12000+i*2+1,9000+i]
+    ports = [$base_cache_port + i*2, $base_cache_port + i*2 + 1, $base_api_port + i]
 
     wait_down_ports(ports, -1)
 
@@ -144,7 +144,7 @@ class ClusterConfig
       STDERR.reopen(STDOUT)
 
       Process.setpgid(0,0)
-      exec "./test/orphaner.rb ./start_shell.sh -noshell -name n_#{i}@127.0.0.1 -ns_server ns_server_config \"#{prefix}_config\" </dev/null"
+      exec "./test/orphaner.rb ./start_shell.sh -noshell -name n_#{i + $base_api_port - 9000}@127.0.0.1 -ns_server ns_server_config \"#{prefix}_config\" </dev/null"
     end
     reader.close
     writer.write('O')
