@@ -26,6 +26,8 @@ function mkClass(methods) {
         methods[methodName] = mkMethodWrapper(method, superclass, methodName);
       }
     });
+  } else {
+    methods = _.extend({}, methods);
   }
 
   var constructor = __topEval(function () {
@@ -33,6 +35,8 @@ function mkClass(methods) {
       return this.initialize.apply(this, arguments);
   });
 
+  methods.constructor = constructor;
   constructor.prototype = methods;
+
   return constructor;
 }
