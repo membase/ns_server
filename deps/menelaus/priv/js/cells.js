@@ -66,9 +66,12 @@ var Cell = mkClass({
     this.effectiveFormula = formula;
     this.value = undefined;
     this.sources = [];
+    this.context = {};
     this.argumentSourceNames = [];
     if (sources)
       this.setSources(sources);
+    else if (this.formula)
+      this.recalculate();
   },
   equality: function (a, b) {
     return a == b;
@@ -146,6 +149,11 @@ var Cell = mkClass({
     this.setValue(f.apply(null, [this.value].concat(extra)));
   },
   _markForCompletion: function () {
+    if (Cell.recalcCount == 0) {
+      Cell.completeCellDelay(this);
+      return;
+    }
+
     if (this.recalcGeneration != Cell.recalcGeneration) {
       this.recalcGeneration = Cell.recalcGeneration;
       Cell.updatedCells.push(this);
@@ -294,6 +302,11 @@ _.extend(Cell, {
   updatedCells: [],
   recalcGeneration: {},
   recalcCount: 0,
+  forgetState: function () {
+    updatedCells = [];
+    recalcGeneration = {};
+    recalcCount = 0;
+  },
   // this thing is called when there are no pending cell
   // recomputations. We use delay future value computations (XHR gets,
   // for example) and observers update till such 'quiescent'
@@ -305,19 +318,21 @@ _.extend(Cell, {
     this.recalcGeneration = {};
     var i, len = updatedCells.length;
     for (i = 0; i < len; i++) {
-      var cell = updatedCells[i];
-      var future = cell.pendingFuture;
-      if (future) {
-        try {
-          future.start(cell);
-        } catch (e) {
-          console.log("Got error trying to start future: ", e);
-        }
+      Cell.completeCellDelay(updatedCells[i]);
+    }
+  },
+  completeCellDelay: function (cell) {
+    var future = cell.pendingFuture;
+    if (future) {
+      try {
+        future.start(cell);
+      } catch (e) {
+        console.log("Got error trying to start future: ", e);
       }
-      if (cell.delayedBroadcast) {
-        cell.delayedBroadcast.call(cell, cell.value);
-        cell.delayedBroadcast = null
-      }
+    }
+    if (cell.delayedBroadcast) {
+      cell.delayedBroadcast.call(cell, cell.value);
+      cell.delayedBroadcast = null
     }
   }
 })
