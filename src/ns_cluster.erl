@@ -46,7 +46,7 @@ bringup() ->
 %%
 
 running({join, RemoteNode, NewCookie}, State) ->
-    ns_log:log(?MODULE, 0002, "Node ~p is joining cluster.", [RemoteNode]),
+    ns_log:log(?MODULE, 0002, "Node ~p is joining cluster via node ~p.", [node(), RemoteNode]),
     ns_config:set(otp, [{cookie, NewCookie}]),
     ns_config:set(nodes_wanted, [node(), RemoteNode], {0, 0, 0}),
     ns_config:clear([directory, otp, nodes_wanted]),
@@ -109,7 +109,7 @@ leaving(leave, LeaveData) ->
 %% Internal functions
 %%
 
-log_joining() ->
+log_joined() ->
     ns_log:log(?MODULE, ?NODE_JOINED, "Node ~s joined cluster",
                [node()]).
 
