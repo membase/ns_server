@@ -523,7 +523,7 @@ handle_streaming(F, Req, HTTPRes, LastRes) ->
     receive
         {notify_watcher, _} -> ok;
         _ ->
-            error_logger:info_msg("menelaus_web streaming socket closed~n"),
+            error_logger:info_msg("menelaus_web streaming socket closed by client~n"),
             exit(normal)
     end,
     handle_streaming(F, Req, HTTPRes, Res).
