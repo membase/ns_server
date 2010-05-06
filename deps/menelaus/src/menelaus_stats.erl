@@ -12,8 +12,7 @@
 -ifdef(EUNIT).
 -export([test/0]).
 -import(menelaus_util,
-        [test_under_debugger/0, debugger_apply/2,
-         wrap_tests_with_cache_setup/1]).
+        [wrap_tests_with_cache_setup/1]).
 -endif.
 
 -export([handle_bucket_stats/3, basic_stats/2]).
@@ -27,14 +26,7 @@
 -import(menelaus_util,
         [reply_json/2,
          reply_json/3,
-         expect_prop_value/2,
-         java_date/0,
-         string_hash/1,
-         my_seed/1,
-         stateful_map/3,
-         stateful_takewhile/3,
-         low_pass_filter/2,
-         caching_result/2]).
+         expect_prop_value/2]).
 
 -import(menelaus_web, [all_accessible_buckets/2]).
 
@@ -152,7 +144,7 @@ build_buckets_stats_hks_response(PoolId, BucketIds, Params) ->
                       lists:sublist(lists:reverse(lists:keysort(5, BucketsTopKeys)), 15)),
     {struct, [{hot_keys, HotKeyStructs}]}.
 
-get_buckets_hks(_PoolId, BucketIds, Params) ->
+get_buckets_hks(_PoolId, BucketIds, _Params) ->
     BucketsTopKeys = lists:flatmap(
         fun (BucketId) ->
                 {ok, BucketTopKeys} = stats_aggregator:get_topkeys(BucketId),
@@ -346,7 +338,3 @@ sum_stats_values_test() ->
     ?assertEqual([1,5], sum_stats_values([3],[1,2])).
 
 -endif.
-
-% too much typing to add this, and I'd rather not hide the response too much
-add_header() ->
-    menelaus_util:server_header().
