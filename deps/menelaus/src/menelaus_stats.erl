@@ -20,7 +20,6 @@
 -export([build_buckets_stats_ops_response/3,
          build_buckets_stats_hks_response/3,
          get_buckets_stats/3,
-         get_stats/3,
          get_stats_raw/3]).
 
 -import(menelaus_util,
@@ -167,36 +166,45 @@ sum_stats_values_rec([X | XS], [Y | YS], Rec) ->
 sum_stats_values(XVals, YVals) ->
     sum_stats_values_rec(lists:reverse(XVals), lists:reverse(YVals), []).
 
-get_buckets_stats(_PoolId, [], _Params) ->
-    {ok, 0, 0, []};
-get_buckets_stats(PoolId, BucketIds, Params) ->
-    [FirstStats | RestStats] =
-        lists:map(fun(BucketId) ->
-                          get_stats(PoolId, BucketId, Params)
-                  end,
-                  BucketIds),
-    lists:foldl(
-      fun({ok, XSamplesInterval, XLastSampleTStamp, XStat},
-          {ok, YSamplesInterval, YLastSampleTStamp, YStat}) ->
-              XSamplesInterval = YSamplesInterval,
-              {ok,
-               XSamplesInterval,
-               %% usually are equal too except when one value is 0 (empty stats)
-               erlang:max(XLastSampleTStamp, YLastSampleTStamp),
-               lists:map(fun({t, TStamps}) -> {t, TStamps};
-                            ({Key, XVals}) ->
-                                 YVals = proplists:get_value(Key, YStat),
-                                 {Key, sum_stats_values(XVals, YVals)}
-                        end,
-                        XStat)}
-      end,
-      FirstStats,
-      RestStats).
+get_buckets_stats(PoolId, BucketIds, _Params) ->
+    AllStatsList = lists:map(fun(BucketId) ->
+                                     Samples = get_stats_raw(PoolId, BucketId, 60),
+                                     case dict:size(Samples) =:= 0 of
+                                         true -> undefined;
+                                         _ -> process_raw_stats(Samples)
+                                     end
+                             end,
+                             BucketIds),
+    StatsList = lists:filter(fun (undefined) -> false;
+                                 (_) -> true
+                             end, AllStatsList),
+    case StatsList of
+        [] -> {ok, 0, 0, []};
+        [FirstStats | RestStats] ->
+            lists:foldl(
+              fun({ok, XSamplesInterval, XLastSampleTStamp, XStat},
+                  {ok, YSamplesInterval, YLastSampleTStamp, YStat}) ->
+                      XSamplesInterval = YSamplesInterval,
+                      {ok,
+                       XSamplesInterval,
+                       %% usually are equal too except when one value is 0 (empty stats)
+                       erlang:max(XLastSampleTStamp, YLastSampleTStamp),
+                       lists:map(fun({t, TStamps}) -> {t, TStamps};
+                                    ({Key, XVals}) ->
+                                         YVals = proplists:get_value(Key, YStat),
+                                         {Key, sum_stats_values(XVals, YVals)}
+                                 end,
+                                 XStat)}
+              end,
+              FirstStats,
+              RestStats)
+    end.
 
-get_stats(PoolId, BucketId, _Params) ->
+process_raw_stats(Samples) ->
     SamplesInterval = 1000, % A sample every second.
-    SamplesNum = 60, % Sixty seconds worth of data.
-    Samples = get_stats_raw(PoolId, BucketId, SamplesNum),
+    process_raw_stats(SamplesInterval, Samples).
+
+process_raw_stats(SamplesInterval, Samples) ->
     LastSampleTStamp = case default_find(t, Samples) of
                            [] -> 0;
                            List -> lists:last(List)
