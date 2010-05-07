@@ -214,17 +214,19 @@ function onUnexpectedXHRError(xhr) {
   reloadAppWithDelay(500);
 }
 
-function postWithValidationErrors(url, data, callback) {
+function postWithValidationErrors(url, data, callback, ajaxOptions) {
   if (!_.isString(data))
     data = serializeForm($(data));
-  $.ajax({
+  var finalAjaxOptions = {
     type:'POST',
     url: url,
     data: data,
     success: continuation,
     error: continuation,
     dataType: 'json'
-  });
+  };
+  _.extend(finalAjaxOptions, ajaxOptions || {});
+  $.ajax(finalAjaxOptions);
   var action = new ModalAction();
   return
 
@@ -939,6 +941,8 @@ var OverviewSection = {
           $.cookie('cluster_join_flash', '1');
           reloadAppWithDelay(5000);
         }
+      }, {
+        timeout: 7000
       })
     });
   },
