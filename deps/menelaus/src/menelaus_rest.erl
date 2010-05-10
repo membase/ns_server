@@ -9,32 +9,39 @@
 
 %% API
 
--export([rest_url/3, rest_get/2, rest_get_json/2, rest_get_otp/3]).
+-export([rest_url/3, json_request/3, rest_get_json/2, rest_get_otp/3]).
 
 rest_url(Host, Port, Path) ->
     "http://" ++ Host ++ ":" ++ integer_to_list(Port) ++ Path.
 
-rest_get(Url, undefined) ->
-    http:request(get, {Url, []}, [{timeout, 2500}, {connect_timeout, 2500}], []);
-
-rest_get(Url, {User, Password}) ->
+rest_add_auth(Request, {User, Password}) ->
+    [Url, Headers | Rest] = erlang:tuple_to_list(Request),
     UserPassword = base64:encode_to_string(User ++ ":" ++ Password),
-    http:request(get, {Url, [{"Authorization",
-                              "Basic " ++ UserPassword}]},
-                              [{timeout, 2500}, {connect_timeout, 2500}], []).
+    NewHeaders = [{"Authorization",
+                   "Basic " ++ UserPassword} | Headers],
+    erlang:list_to_tuple([Url, NewHeaders | Rest]);
+rest_add_auth(Request, undefined) ->
+    Request.
+
+rest_request(Method, Request, Auth) ->
+    inets:start(),
+    http:request(Method, rest_add_auth(Request, Auth),
+                 [{timeout, 7500}, {connect_timeout, 2500}], []).
+
+decode_json_response({ok, Result}) ->
+    {StatusLine, _Headers, Body} = Result,
+    {_HttpVersion, StatusCode, _ReasonPhrase} = StatusLine,
+    case StatusCode of
+        200 -> {ok, mochijson2:decode(Body)};
+        _   -> {error, Result}
+    end;
+decode_json_response({error, _} = Other) -> Other.
+
+json_request(Method, Request, Auth) ->
+    decode_json_response(rest_request(Method, Request, Auth)).
 
 rest_get_json(Url, Auth) ->
-    inets:start(),
-    case menelaus_rest:rest_get(Url, Auth) of
-        {ok, Result} ->
-            {StatusLine, _Headers, Body} = Result,
-            {_HttpVersion, StatusCode, _ReasonPhrase} = StatusLine,
-            case StatusCode of
-                200 -> {ok, mochijson2:decode(Body)};
-                _   -> {error, Result}
-            end;
-        {error, Any} -> {error, Any}
-    end.
+    json_request(get, {Url, []}, Auth).
 
 % Returns the otpNode & otpCookie for a remote node.
 % This is part of joining a node to an otp cluster.
