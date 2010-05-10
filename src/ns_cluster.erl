@@ -18,7 +18,7 @@
 -export([running/2, joining/2, leaving/2]).
 
 %% API
--export([join/2, leave/0, shun/1]).
+-export([join/2, leave/0, shun/1, log_joined/0]).
 
 -export([alert_key/1]).
 
