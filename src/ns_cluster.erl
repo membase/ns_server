@@ -9,7 +9,7 @@
 %% General FSMness
 -export([start_link/0, init/1, handle_info/3,
          handle_event/3, handle_sync_event/4,
-         code_change/4, terminate/3]).
+         code_change/4, terminate/3, prepare_join_to/1]).
 
 -define(NODE_JOINED, 3).
 -define(NODE_EJECTED, 4).
@@ -18,13 +18,13 @@
 -export([running/2, joining/2, leaving/2]).
 
 %% API
--export([join/2, leave/0, shun/1, log_joined/0]).
+-export([join/2, leave/0, shun/1, log_joined/0, leave_sync/0]).
 
 -export([alert_key/1]).
 
 -record(running_state, {child}).
--record(joining_state, {remote, cookie}).
--record(leaving_state, {}).
+-record(joining_state, {remote, cookie, my_ip}).
+-record(leaving_state, {callback}).
 
 %% gen_server handlers
 start_link() ->
@@ -53,7 +53,7 @@ running({join, RemoteNode, NewCookie}, State) ->
     true = exit(State#running_state.child, shutdown), % Pull the rug out from under the app
     {next_state, joining, #joining_state{remote=RemoteNode, cookie=NewCookie}};
 
-running(leave, State) ->
+running({leave, Data}, State) ->
     ns_log:log(?MODULE, 0001, "Node ~p is leaving cluster.", [node()]),
     NewCookie = ns_node_disco:cookie_gen(),
     erlang:set_cookie(node(), NewCookie),
@@ -67,7 +67,10 @@ running(leave, State) ->
     ns_config:set(nodes_wanted, [node()], {0, 0, 0}),
     ns_config:set(otp, [{cookie, NewCookie}], {0, 0, 0}),
     true = exit(State#running_state.child, shutdown),
-    {next_state, leaving, #leaving_state{}}.
+    {next_state, leaving, Data};
+
+running(leave, State) ->
+    running({leave, #leaving_state{}}, State).
 
 joining({exit, _Pid}, #joining_state{remote=RemoteNode, cookie=NewCookie}) ->
     error_logger:info_msg("ns_cluster: joining cluster. Child has exited.~n"),
@@ -95,13 +98,20 @@ joining({exit, _Pid}, #joining_state{remote=RemoteNode, cookie=NewCookie}) ->
     timer:apply_after(1000, ?MODULE, log_joined, []),
     {next_state, running, State}.
 
-leaving({exit, _Pid}, _LeaveData) ->
+leaving({exit, _Pid}, LeaveData) ->
     error_logger:info_msg("ns_cluster: leaving cluster~n"),
     timer:sleep(1000),
     {ok, running, State} = bringup(),
+    case LeaveData#leaving_state.callback of
+        F when is_function(F) -> F();
+        _ -> ok
+    end,
     {next_state, running, State};
 
 leaving(leave, LeaveData) ->
+    %% If we are told to leave in the leaving state, continue leaving.
+    {next_state, leaving, LeaveData};
+leaving({leave, _}, LeaveData) ->
     %% If we are told to leave in the leaving state, continue leaving.
     {next_state, leaving, LeaveData}.
 
@@ -153,6 +163,20 @@ leave() ->
     %% Then drop ourselves into a leaving state.
     gen_fsm:send_event(?MODULE, leave).
 
+leave_sync() ->
+    Ref = make_ref(),
+    Pid = self(),
+    Fun = fun () ->
+                  Pid ! Ref
+          end,
+    gen_fsm:send_event(?MODULE, {leave, #leaving_state{callback = Fun}}),
+    receive
+        Ref ->
+            ok
+    end,
+    % we still need some time to settle things
+    timer:sleep(5000).
+
 shun(RemoteNode) ->
     ns_config:update(fun({nodes_wanted, X}) ->
                              {nodes_wanted, X -- [RemoteNode]};
@@ -164,3 +188,16 @@ shun(RemoteNode) ->
 alert_key(?NODE_JOINED) -> server_joined;
 alert_key(?NODE_EJECTED) -> server_left;
 alert_key(_) -> all.
+
+prepare_join_to(OtherHost) ->
+    %% connect to epmd at other side
+    case gen_tcp:connect(OtherHost, 4369,
+                         [binary, {packet, 0}, {active, false}]) of
+        {ok, Socket} ->
+            %% and determine our ip address
+            {ok, {IpAddr, _}} = inet:sockname(Socket),
+            inet:close(Socket),
+            RV = string:join(lists:map(fun erlang:integer_to_list/1, tuple_to_list(IpAddr)), "."),
+            {ok, RV};
+        {error, _} = X -> X
+    end.

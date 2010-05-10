@@ -49,6 +49,7 @@
 -define(UI_SIDE_ERROR_REPORT, 102).
 -define(INIT_STATUS_BAD_PARAM, 103).
 -define(INIT_STATUS_UPDATED, 104).
+-define(PREPARE_JOIN_FAILED, 105).
 
 %% External API
 
@@ -163,7 +164,9 @@ loop(Req, AppRoot, DocRoot) ->
                         end;
                      'POST' ->
                          case PathTokens of
-                             ["node", "controller", "doJoinCluster"] ->
+                             ["engageCluster"] ->
+                                 {auth, fun handle_engage_cluster/1};
+                            ["node", "controller", "doJoinCluster"] ->
                                  {auth, fun handle_join/1};
                              ["node", "controller", "initStatus"] ->
                                  {auth, fun handle_init_status/1};
@@ -256,6 +259,43 @@ implementation_version() ->
 
 handle_pools(Req) ->
     reply_json(Req, build_pools()).
+
+handle_engage_cluster(Req) ->
+    Params = Req:parse_post(),
+    %% a bit kludgy, but 100% correct way to protect ourselves when
+    %% everything will restart.
+    process_flag(trap_exit, true),
+    Ok = case proplists:get_value("MyIP", Params, undefined) of
+             undefined ->
+                 reply_json(Req, [<<"Missing MyIP parameter">>], 400),
+                 failed;
+             IP ->
+                 case ns_cluster:prepare_join_to(IP) of
+                     {ok, MyAddr} ->
+                         MyNode = node(),
+                         case ns_node_disco:nodes_wanted() of
+                             [MyNode] ->
+                                 %% we're alone, so adjust our name
+                                 case dist_manager:adjust_my_address(MyAddr) of
+                                     nothing -> ok;
+                                     net_restarted ->
+                                         %% and potentially restart services
+                                         ns_cluster:leave_sync(),
+                                         ok
+                                 end;
+                             %% not alone, keep present config
+                             _ -> ok
+                         end;
+                     {error, Reason} ->
+                         ErrorMsg = io_lib:format("Failed to reach erlang port mapper at your node. Error: ~p", Reason),
+                         reply_json(Req, list_to_binary(ErrorMsg) , 400),
+                         failed
+                 end
+         end,
+    case Ok of
+        ok -> handle_pool_info("default", Req);
+        _ -> nothing
+    end.
 
 build_versions() ->
     [{implementationVersion, implementation_version()},
@@ -781,48 +821,70 @@ handle_join(Req) ->
             end
     end.
 
-handle_join(Req, OtherHost, OtherPort, OtherUser, OtherPswd) ->
+handle_join_inner(OtherHost, OtherPort, OtherUser, OtherPswd) ->
     case tgen:system_joinable() of
         true ->
-            case menelaus_rest:rest_get_otp(OtherHost, OtherPort,
-                                            {OtherUser, OtherPswd}) of
-                {ok, undefined, _} ->
-                    ns_log:log(?MODULE, 0014, "During node join, remote node (~p:~p) returned an invalid response: missing otpCookie (from node ~p).",
-                               [OtherHost, OtherPort, node()]),
-                    reply_json(Req, [list_to_binary("Invalid response from remote node, missing otpCookie.")], 400);
-                {ok, _, undefined} ->
-                    ns_log:log(?MODULE, 0015, "During node join, remote node (~p:~p) returned an invalid response: missing otpNode (from node ~p).",
-                               [OtherHost, OtherPort, node()]),
-                    reply_json(Req, [list_to_binary("Invalid response from remote node, missing otpNode.")], 400);
-                {ok, Node, Cookie} ->
-                    handle_join(Req,
-                                list_to_atom(binary_to_list(Node)),
-                                list_to_atom(binary_to_list(Cookie)));
-                {error, econnrefused} ->
-                    ns_log:log(?MODULE, 0016, "During node join, could not connect to ~p on port ~p from node ~p.", [OtherHost, OtherPort, node()]),
-                    reply_json(Req, [list_to_binary(io_lib:format("Could not connect to ~p on port ~p.  "
-                                                                  "This could be due to an incorrect host/port combination or a "
-                                                                  "firewall configured between the two nodes.", [OtherHost, OtherPort]))], 400);
-                {error, nxdomain} ->
-                    ns_log:log(?MODULE, 0020, "During node join, failed to resolve host ~p on port ~p from node ~p.", [OtherHost, OtherPort, node()]),
-                    reply_json(Req, [list_to_binary(io_lib:format("Failed to resolve address for ~p.  The hostname may be incorrect or not resolvable.", [OtherHost]))], 400);
-                {error, timeout} ->
-                    ns_log:log(?MODULE, 0021, "During node join, timeout connecting to ~p on port ~p from node ~p.", [OtherHost, OtherPort, node()]),
-                    reply_json(Req, [list_to_binary(io_lib:format("Timeout connecting to ~p on port ~p.  "
-                                                                  "This could be due to an incorrect host/port combination or a "
-                                                                  "firewall configured between the two nodes.", [OtherHost, OtherPort]))], 400);
-                Any ->
-                    ns_log:log(?MODULE, 0022, "During node join, the remote host ~p on port ~p did not return a REST response.  Error encountered was: ~p",
-                               [OtherHost, OtherPort, Any]),
-                    reply_json(Req, [list_to_binary("Invalid response from remote node.  An error has been logged which may contain more information.")],400)
+            case ns_cluster:prepare_join_to(OtherHost) of
+                {ok, MyIP} ->
+                    case menelaus_rest:rest_engage_cluster(OtherHost, OtherPort,
+                                                           {OtherUser, OtherPswd},
+                                                           MyIP) of
+                        {ok, Node, Cookie} -> {ok, Node, Cookie, MyIP};
+                        X -> X
+                    end;
+                {error, Reason} ->
+                    {error, prepare_failed, Reason}
             end;
         false ->
-            % We are not an 'empty' node, so user should first remove
-            % buckets, etc.
-            reply_json(Req, [list_to_binary("Your server cannot join this cluster because you have existing buckets configured on this server. Please remove them before joining a cluster.")],400)
+            {error, system_not_joinable}
     end.
 
-handle_join(Req, OtpNode, OtpCookie) ->
+handle_join(Req, OtherHost, OtherPort, OtherUser, OtherPswd) ->
+    case handle_join_inner(OtherHost, OtherPort, OtherUser, OtherPswd) of
+        {ok, undefined, _, _} ->
+            ns_log:log(?MODULE, 0014, "During node join, remote node (~p:~p) returned an invalid response: missing otpCookie (from node ~p).",
+                       [OtherHost, OtherPort, node()]),
+            reply_json(Req, [list_to_binary("Invalid response from remote node, missing otpCookie.")], 400);
+        {ok, _, undefined, _} ->
+            ns_log:log(?MODULE, 0015, "During node join, remote node (~p:~p) returned an invalid response: missing otpNode (from node ~p).",
+                       [OtherHost, OtherPort, node()]),
+            reply_json(Req, [list_to_binary("Invalid response from remote node, missing otpNode.")], 400);
+        {ok, Node, Cookie, MyIP} ->
+            handle_join(Req,
+                        list_to_atom(binary_to_list(Node)),
+                        list_to_atom(binary_to_list(Cookie)),
+                        MyIP);
+        {error, prepare_failed, Reason} ->
+            ns_log:log(?MODULE, ?PREPARE_JOIN_FAILED,
+                       "During node join, could not connect to port mapper at ~p with reason ~p", [OtherHost, Reason]),
+            reply_json(Req, [list_to_binary(io_lib:format("Could not connect port mapper at ~p (tcp port 4369). With error Reason ~p. "
+                                                          "This could be due to "
+                                                          "firewall configured between the two nodes.", [OtherHost, Reason]))], 400);
+        {error, econnrefused} ->
+            ns_log:log(?MODULE, 0016, "During node join, could not connect to ~p on port ~p from node ~p.", [OtherHost, OtherPort, node()]),
+            reply_json(Req, [list_to_binary(io_lib:format("Could not connect to ~p on port ~p.  "
+                                                          "This could be due to an incorrect host/port combination or a "
+                                                          "firewall configured between the two nodes.", [OtherHost, OtherPort]))], 400);
+        {error, nxdomain} ->
+            ns_log:log(?MODULE, 0020, "During node join, failed to resolve host ~p on port ~p from node ~p.", [OtherHost, OtherPort, node()]),
+            reply_json(Req, [list_to_binary(io_lib:format("Failed to resolve address for ~p.  The hostname may be incorrect or not resolvable.", [OtherHost]))], 400);
+        {error, timeout} ->
+            ns_log:log(?MODULE, 0021, "During node join, timeout connecting to ~p on port ~p from node ~p.", [OtherHost, OtherPort, node()]),
+            reply_json(Req, [list_to_binary(io_lib:format("Timeout connecting to ~p on port ~p.  "
+                                                          "This could be due to an incorrect host/port combination or a "
+                                                          "firewall configured between the two nodes.", [OtherHost, OtherPort]))], 400);
+        {error, system_not_joinable} ->
+            %% We are not an 'empty' node, so user should first remove
+            %% buckets, etc.
+            reply_json(Req, [list_to_binary("Your server cannot join this cluster because you have existing buckets configured on this server. Please remove them before joining a cluster.")],400);
+        Any ->
+            ns_log:log(?MODULE, 0022, "During node join, the remote host ~p on port ~p did not return a REST response.  Error encountered was: ~p",
+                       [OtherHost, OtherPort, Any]),
+            reply_json(Req, [list_to_binary("Invalid response from remote node.  An error has been logged which may contain more information.")],400)
+    end.
+
+handle_join(Req, OtpNode, OtpCookie, MyIP) ->
+    dist_manager:adjust_my_address(MyIP),
     case ns_cluster:join(OtpNode, OtpCookie) of
         ok -> ns_log:log(?MODULE, 0009, "Joined cluster at node: ~p with cookie: ~p from node: ~p",
                          [OtpNode, OtpCookie, erlang:node()]),

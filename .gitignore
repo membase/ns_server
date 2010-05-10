@@ -15,6 +15,7 @@ erl_crash.dump
 fprof.trace
 logs
 ns_server_*.tar.gz
+priv/ip
 priv/isasl.pw
 priv/memcached
 priv/memcached.exe
