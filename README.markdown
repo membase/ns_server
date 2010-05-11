@@ -135,6 +135,5 @@ like \"priv/config\"
    git commit -m "updated emoxi & menelaus"
    git push
 
-
 * * * * *
 Copyright (c) 2010, NorthScale, Inc.
