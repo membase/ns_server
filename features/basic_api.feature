@@ -1,6 +1,6 @@
 Feature: Basic API
   As a user of northscale software
-  I want meaningfull behavior of REST API
+  I want meaningful behavior of REST API
 
   Scenario: Requesting unknown bucket details
     Given I have configured node A
