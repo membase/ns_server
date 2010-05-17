@@ -353,11 +353,21 @@ function reloadApp(middleCallback) {
     reloader();
 
   function reloader(where) {
-    if (where)
-      window.location.href = where;
-    else
+    if (where) {
+      if (where == window.location.href)
+        window.location.reload();
+      else
+        window.location.href = where;
+    } else
       window.location.href = "/";
   }
+}
+
+// reloads application keeping current URL
+function reloadPage() {
+  reloadApp(function (reloader) {
+    reloader(window.location.href);
+  });
 }
 
 function reloadAppWithDelay(millis) {

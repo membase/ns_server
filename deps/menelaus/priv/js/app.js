@@ -587,7 +587,7 @@ var maybeReloadAppDueToLeak = (function () {
       return;
 
     if (!--counter)
-      reloadApp();
+      reloadPage();
   };
 })();
 
