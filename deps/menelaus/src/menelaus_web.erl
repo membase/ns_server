@@ -1101,6 +1101,8 @@ diag_filter_out_config_password_rec(Config, UnchangedMarker) when is_tuple(Confi
     case Config of
         {password, _} ->
             {password, 'filtered-out'};
+        {pass, _} ->
+            {pass, 'filtered-out'};
         _ -> case diag_filter_out_config_password_rec(tuple_to_list(Config), UnchangedMarker) of
                  UnchangedMarker -> Config;
                  List -> list_to_tuple(List)
