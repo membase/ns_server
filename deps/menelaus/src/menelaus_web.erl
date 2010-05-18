@@ -38,8 +38,6 @@
          get_option/2,
          direct_port/1]).
 
--define(IMPL_VERSION, "1.0").
-
 %% The range used within this file is arbitrary and undefined, so I'm
 %% defining an arbitrary value here just to be rebellious.
 -define(START_FAIL, 100).
@@ -238,7 +236,7 @@ loop(Req, AppRoot, DocRoot) ->
 %% Internal API
 
 implementation_version() ->
-    list_to_binary(?IMPL_VERSION).
+    list_to_binary(proplists:get_value(menelaus, ns_info:version(), "unknown")).
 
 handle_pools(Req) ->
     reply_json(Req, build_pools()).
