@@ -40,9 +40,36 @@
 <tr>
 
       <td class="leftNav">
-        <h1>RUN</h1>
+        <h1>MONITOR</h1>
         <ul>
           <!--<li class="line"></li>-->
+
+          <li class="line"><a id="switch_overview" href="javascript:nav.go('overview');">Cluster Overview</a></li>
+          <li class="line"><a id="switch_buckets" href="javascript:nav.go('analytics');">Data Buckets</a></li>
+          <li class="line"><a id="switch_alerts" href="javascript:nav.go('overview');">Servers</a></li>
+        </ul>
+
+        <h1>MANAGE</h1>
+        <ul>
+          <li class="line"><a id="switch_conf_buckets" href="javascript:nav.go('buckets');">Data Buckets</a></li>
+          <li class="line"><a id="switch_conf_servers" href="javascript:nav.go('overview');">Servers</a></li>
+        </ul>
+
+        <h1>SETUP</h1>
+        <ul>
+          <li class="line"><a id="switch_conf_server_settings" href="javascript:nav.go('settings');">Settings</a></li>
+          <li class="line"><a id="switch_conf_server_diagnostics" href="javascript:nav.go('alerts');">Diagnostics</a></li>
+        </ul>
+
+        <h1>SUPPORT</h1>
+        <ul>
+          <li class="line"><a id="switch_support_docs" href="/docs/index_CSH.html#1002|northscale">Documentation</a></li>
+          <li class="line"><a id="switch_support_forums" href="http://forums.northscale.com/">Support Forums</a></li>
+          <li class="line"><a id="switch_support_suggest" href="http://forums.northscale.com/">Suggest a Feature</a></li>
+        </ul>
+
+        <h1>RUN</h1>
+        <ul>
           <li class="line"><a id="switch_overview" href="javascript:nav.go('overview');">Cluster Overview</a>
             <ul>
               <li class="line"><a id="switch_analytics" href="javascript:nav.go('analytics');">Analytics</a></li>
@@ -55,7 +82,6 @@
 		<ul>
       <li class="line"><a id="switch_settings" href="javascript:nav.go('settings');">Cluster Settings</a></li>
 		</ul>
-		<!-- test cluster -->
 		<div id = "test_cluster_block" class="blue_round_block test_cluster">
 			<div class="top">
 				<div>&nbsp;</div>
