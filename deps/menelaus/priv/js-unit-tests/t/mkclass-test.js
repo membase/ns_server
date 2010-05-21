@@ -18,8 +18,16 @@ mkClassTest.prototype.testBasic = function () {
   var completeProto = _.extend({
     constructor: klass
   }, proto);
-  assert(_.isEqual(klass.prototype, completeProto));
-  assertNotEquals(klass.prototype, proto);
+  // In cursed browser dontEnum properties are not enumerable even if
+  // re-defined in descendant object
+  if (_.include(_.keys(completeProto), "constructor")) {
+    console.log("not ie");
+    assertEquals(klass.prototype, completeProto);
+    assertNotEquals(klass.prototype, proto);
+  } else {
+    assertEquals(klass.prototype, completeProto);
+    assertEquals(klass.prototype, proto);
+  }
 
   var obj = new klass();
 
