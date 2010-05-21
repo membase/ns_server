@@ -123,6 +123,9 @@ loop(Req, AppRoot, DocRoot) ->
                              ["pools", PoolId, "bucketsStreaming", Id] ->
                                  {auth_bucket_with_info, fun handle_bucket_info_streaming/5,
                                   [PoolId, Id]};
+                             ["pools", PoolId, "bucketsStreamingConfig", Id] ->
+                                 {auth_bucket_with_info, fun handle_bucket_info_streaming_config/5,
+                                  [PoolId, Id]};
                              ["pools", PoolId, "buckets", Id, "stats"] ->
                                  {auth_bucket, fun menelaus_stats:handle_bucket_stats/3,
                                   [PoolId, Id]};
@@ -313,19 +316,6 @@ build_nodes_info(MyPool, IncludeOtp, InfoLevel) ->
     OtpCookie = list_to_binary(atom_to_list(ns_node_disco:cookie_get())),
     WantENodes = ns_node_disco:nodes_wanted(),
     NodeStatuses = ns_doctor:get_nodes(),
-    BucketsAll = expect_prop_value(buckets, MyPool),
-    NodesBucketMemoryTotal =
-        length(WantENodes) *
-            lists:foldl(fun({_BucketName, BucketConfig}, Acc) ->
-                                Acc + proplists:get_value(size_per_node, BucketConfig, 0)
-                        end,
-                        0,
-                        BucketsAll),
-    {ok, Stats} = stats_aggregator:get_stats(1),
-    NodesBucketMemoryAllocated = case dict:find("bytes", Stats) of
-        {ok, [Bytes]} -> Bytes;
-        error -> 0
-    end,
     Nodes =
         lists:map(
           fun(WantENode) ->
@@ -343,28 +333,10 @@ build_nodes_info(MyPool, IncludeOtp, InfoLevel) ->
                   Versions = proplists:get_value(version, InfoNode, []),
                   Version = proplists:get_value(ns_server, Versions, "unknown"),
                   OS = proplists:get_value(system_arch, InfoNode, "unknown"),
-                  {UpSecs, {MemoryTotal, MemoryAlloced, _}} =
-                      case InfoLevel of
-                          normal ->
-                              {proplists:get_value(wall_clock, InfoNode, 0),
-                               proplists:get_value(memory_data, InfoNode,
-                                                   {0, 0, undefined})};
-                          stable ->
-                              % These stats are zero'ed so that
-                              % successive calls will provide results
-                              % that are comparable and appear stable as long
-                              % the cluster is stable (health is stable, no-reconfigurations).
-                              {0, {0, 0, undefined}}
-                      end,
                   KV1 = [{hostname, list_to_binary(Host)},
                          {status, Status},
-                         {uptime, list_to_binary(integer_to_list(UpSecs))},
                          {version, list_to_binary(Version)},
                          {os, list_to_binary(OS)},
-                         {memoryTotal, erlang:trunc(MemoryTotal)},
-                         {memoryFree, erlang:trunc(MemoryTotal - MemoryAlloced)},
-                         {mcdMemoryReserved, erlang:trunc(NodesBucketMemoryTotal)},
-                         {mcdMemoryAllocated, erlang:trunc(NodesBucketMemoryAllocated)},
                          {ports,
                           {struct, [{proxy, ProxyPort},
                                     {direct, DirectPort}]}}],
@@ -376,7 +348,35 @@ build_nodes_info(MyPool, IncludeOtp, InfoLevel) ->
                                            {otpCookie, OtpCookie}];
                                false -> KV1
                         end,
-                  {struct, KV2}
+                  KV3 = case InfoLevel of
+                            stable -> KV2;
+                            normal ->
+                                BucketsAll = expect_prop_value(buckets, MyPool),
+                                NodesBucketMemoryTotal =
+                                    length(WantENodes) *
+                                    lists:foldl(fun({_BucketName, BucketConfig}, Acc) ->
+                                                        Acc + proplists:get_value(size_per_node,
+                                                                                  BucketConfig, 0)
+                                                end,
+                                                0,
+                                                BucketsAll),
+                                {ok, Stats} = stats_aggregator:get_stats(1),
+                                NodesBucketMemoryAllocated =
+                                    case dict:find("bytes", Stats) of
+                                        {ok, [Bytes]} -> Bytes;
+                                        _ -> 0
+                                    end,
+                                {UpSecs, {MemoryTotal, MemoryAlloced, _}} =
+                                    {proplists:get_value(wall_clock, InfoNode, 0),
+                                     proplists:get_value(memory_data, InfoNode,
+                                                         {0, 0, undefined})},
+                                KV2 ++ [{uptime, list_to_binary(integer_to_list(UpSecs))},
+                                        {memoryTotal, erlang:trunc(MemoryTotal)},
+                                        {memoryFree, erlang:trunc(MemoryTotal - MemoryAlloced)},
+                                        {mcdMemoryReserved, erlang:trunc(NodesBucketMemoryTotal)},
+                                        {mcdMemoryAllocated, erlang:trunc(NodesBucketMemoryAllocated)}]
+                        end,
+                  {struct, KV3}
           end,
           WantENodes),
     Nodes.
@@ -486,12 +486,6 @@ build_bucket_info(PoolId, Id, Pool, InfoLevel) ->
              %% TODO: this should be under a controllers/ kind of namespacing
              {flushCacheUri, list_to_binary(concat_url_path(["pools", PoolId,
                                                              "buckets", Id, "controller", "doFlush"]))},
-             %% TODO: move this somewhere else
-             %% {passwordUri, <<"none">>},
-             {basicStats, {struct, case InfoLevel of
-                                       normal -> menelaus_stats:basic_stats(PoolId, Id);
-                                       stable -> []
-                                   end}},
              {nodes, Nodes},
              {stats, {struct, [{uri, StatsUri}]}}],
     List2 = case tgen:is_traffic_bucket(PoolId, Id) of
@@ -502,10 +496,25 @@ build_bucket_info(PoolId, Id, Pool, InfoLevel) ->
                          | List1];
                 _ -> List1
             end,
-    {struct, List2}.
+    List3 = case InfoLevel of
+                stable -> List2;
+                normal -> List2 ++ [{basicStats, {struct, menelaus_stats:basic_stats(PoolId, Id)}}]
+            end,
+    {struct, List3}.
 
 handle_bucket_info_streaming(PoolId, Id, Req, Pool, _Bucket) ->
-    F = fun(InfoLevel) -> build_bucket_info(PoolId, Id, Pool, InfoLevel) end,
+    handle_bucket_info_streaming(PoolId, Id, Req, Pool, _Bucket, undefined).
+
+handle_bucket_info_streaming_config(PoolId, Id, Req, Pool, _Bucket) ->
+    handle_bucket_info_streaming(PoolId, Id, Req, Pool, _Bucket, stable).
+
+handle_bucket_info_streaming(PoolId, Id, Req, Pool, _Bucket, ForceInfoLevel) ->
+    F = fun(InfoLevel) ->
+                case ForceInfoLevel of
+                    undefined -> build_bucket_info(PoolId, Id, Pool, InfoLevel);
+                    _         -> build_bucket_info(PoolId, Id, Pool, ForceInfoLevel)
+                end
+        end,
     handle_streaming(F, Req, undefined).
 
 handle_bucket_delete(PoolId, BucketId, Req) ->
