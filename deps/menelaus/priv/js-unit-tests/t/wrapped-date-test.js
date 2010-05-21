@@ -44,6 +44,28 @@ WrappedDateTest.prototype.testBasic = function () {
                Date.UTC(2010, 3, 14, 13, 26, 45, 879));
 }
 
+function mockDateNow(methods, NewDate) {
+  var originalInitialize = methods.initialize;
+
+  methods.initialize = function (originalDate, args) {
+    if (args.length == 0) {
+      return originalInitialize.call(this, originalDate, [NewDate.now]);
+    }
+    return originalInitialize.call(this, originalDate, args);
+  }
+}
+
+function mkMockedDateNow(now) {
+  if (now instanceof Date) {
+    now = now.valueOf();
+  }
+  now = Number(now);
+
+  var rv = mkDateWrapper(mockDateNow);
+  rv.now = now;
+  return rv;
+}
+
 WrappedDateTest.prototype.testMockedNow = function () {
   var mockedNow = new Date(Date.UTC(2010, 1, 14, 13, 30));
   var MockedDate = mkMockedDateNow(mockedNow);

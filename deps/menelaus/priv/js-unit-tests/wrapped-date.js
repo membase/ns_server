@@ -86,25 +86,3 @@ mkDateWrapper.mkDelegator = function (name) {
     mkDateWrapper.defaultMethods[name] = mkDateWrapper.mkDelegator(name);
   });
 })();
-
-function mockDateNow(methods, NewDate) {
-  var originalInitialize = methods.initialize;
-
-  methods.initialize = function (originalDate, args) {
-    if (args.length == 0) {
-      return originalInitialize.call(this, originalDate, [NewDate.now]);
-    }
-    return originalInitialize.call(this, originalDate, args);
-  }
-}
-
-function mkMockedDateNow(now) {
-  if (now instanceof Date) {
-    now = now.valueOf();
-  }
-  now = Number(now);
-
-  var rv = mkDateWrapper(mockDateNow);
-  rv.now = now;
-  return rv;
-}
