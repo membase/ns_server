@@ -204,11 +204,9 @@ is_alert_key(_) -> false.
 alert_key(ns_node_disco, 0005) -> server_down;
 alert_key(ns_node_disco, 0014) -> server_unresponsive;
 alert_key(ns_node_disco, 0004) -> server_up;
-alert_key(menelaus_web, 0009)  -> server_joined;
-alert_key(menelaus_web, 0013)  -> server_left;
-alert_key(menelaus_web, 0012)  -> bucket_created;
-alert_key(menelaus_web, 0011)  -> bucket_deleted;
 alert_key(mc_pool, 0006)       -> bucket_auth_failed;
+alert_key(menelaus_web, Code) -> menelaus_web:alert_key(Code);
+alert_key(ns_cluster, Code) -> ns_cluster:alert_key(Code);
 alert_key(_Module, _Code) -> all.
 
 is_email_server_key("user")    -> true;
@@ -235,13 +233,13 @@ validate_alert_config(AlertConfig) ->
     case proplists:get_value(email_alerts, AlertConfig) of
         true ->
             Candidates = [validate_email_address(proplists:get_value(sender, AlertConfig, []))
-                          orelse <<"Sender field is not valid email address">>,
+                          orelse <<"Sender email must be supplied.">>,
                           validate_email_address(proplists:get_value(email, AlertConfig, []))
-                          orelse <<"Email field is not valid email address">>,
+                          orelse <<"Recipient email must be supplied.">>,
                           proplists:get_value(addr, EmailServer, []) =/= ""
-                          orelse <<"Email server name field cannot be blank">>,
+                          orelse <<"Mail server address must be supplied.">>,
                           proplists:get_value(port, EmailServer, []) =/= ""
-                          orelse <<"Email server port field cannot be blank">>],
+                          orelse <<"A mail server port must be supplied.">>],
             lists:filter(fun (C) -> C =/= true end,
                          Candidates);
         _ -> []

@@ -147,9 +147,13 @@ get_buckets_hks(_PoolId, BucketIds, _Params) ->
     BucketsTopKeys = lists:flatmap(
         fun (BucketId) ->
                 {ok, BucketTopKeys} = stats_aggregator:get_topkeys(BucketId),
-                lists:map(fun({Key, Evictions, Ratio, Ops}) ->
+                lists:map(fun({Key, {Hits, Misses, Ops, Evictions}}) ->
+                              Ratio = case Hits of
+                                  0 -> 0.0;
+                                  _ -> Hits / (Hits + Misses)
+                              end,
                               {BucketId, Key, Evictions, Ratio, Ops}
-                          end, BucketTopKeys)
+                          end, dict:to_list(BucketTopKeys))
         end,
         BucketIds),
     {ok, BucketsTopKeys}.

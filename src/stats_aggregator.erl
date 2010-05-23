@@ -172,24 +172,19 @@ cache_lookup(Key, Cache, MaxAge, F) ->
 
 do_get(Hostname, Port, Count, State) ->
     (catch {ok, dict:fold(
-             fun ({H, P, _B}, V, A) ->
-                     case {H, P} of
-                         {Hostname, Port} ->
-                             combine_stats(Count, V, A);
-                         _ -> A
-                     end
+             fun ({H, P, _B}, V, A) when H =:= Hostname andalso P =:= Port ->
+                     combine_stats(Count, V, A);
+
+                 (_, _, A) -> A
              end,
              dict:new(),
              State#state.vals)}).
 
 do_get(Bucket, Count, State) ->
     (catch {ok, dict:fold(
-             fun ({_H, _P, B}, V, A) ->
-                     case B of
-                         Bucket ->
-                             combine_stats(Count, V, A);
-                         _ -> A
-                     end
+             fun ({_H, _P, B}, V, A) when B =:= Bucket ->
+                         combine_stats(Count, V, A);
+                 (_, _, A) -> A
              end,
              dict:new(),
              State#state.vals)}).
@@ -204,13 +199,14 @@ do_get(Count, State) ->
 
 do_get_topkeys(Bucket, State) ->
     (catch {ok, dict:fold(
-            fun ({_Host, _Port, B}, Topkeys, Acc)->
-                    case B of
-                        Bucket -> Topkeys ++ Acc;
-                        _ -> Acc
-                    end
+            fun ({_Host, _Port, B}, Topkeys, Acc) when B =:= Bucket ->
+                    dict:merge(fun (_K, {H1, M1, O1, E1}, {H2, M2, O2, E2}) ->
+                                   {H1+H2, M1+M2, O1+O2, E1+E2}
+                               end,
+                               Topkeys, Acc);
+                (_, _, Acc) -> Acc
             end,
-            [],
+            dict:new(),
             State#state.topkeys)}).
 %
 % API

@@ -685,6 +685,20 @@ var StatGraphs = {
   visibleStatsIsDirty: true,
   statNames: {},
   spinners: [],
+  preventUpdatesCounter: 0,
+  freeze: function () {
+    this.preventUpdatesCounter++;
+  },
+  thaw: function () {
+    this.preventUpdatesCounter--;
+  },
+  freezeIfIE: function () {
+    if (!window.G_vmlCanvasManager)
+      return _.identity;
+
+    this.freeze();
+    return _.bind(this.thaw, this);
+  },
   findGraphArea: function (statName) {
     return $('#analytics_graph_' + statName)
   },
@@ -704,8 +718,11 @@ var StatGraphs = {
 
     $('.stats_visible_period').text('?');
   },
-  update: function () {
+  doUpdate: function () {
     var self = this;
+
+    if (self.preventUpdatesCounter)
+      return;
 
     var cell = DAO.cells.stats;
     var stats = cell.value;
@@ -746,8 +763,16 @@ var StatGraphs = {
       var area = self.findGraphArea(statName);
       renderSmallGraph(area, ops, selected == statName);
     });
+  },
+  update: function () {
+    this.doUpdate();
 
-    cell.setRecalculateTime();
+    var cell = DAO.cells.stats;
+    var stats = cell.value;
+    // it is important to calculate refresh time _after_ we render, so
+    // that if we're slow we'll safely skip samples
+    if (stats && stats.op)
+      cell.setRecalculateTime();
   },
   configureStats: function () {
     var self = this;
@@ -776,8 +801,10 @@ var StatGraphs = {
       self.update();
     }
 
+    var thaw = StatGraphs.freezeIfIE();
     showDialog('analytics_settings_dialog', {
       onHide: function () {
+        thaw();
         observer.stopObserving();
       }
     });
@@ -920,6 +947,8 @@ var OverviewSection = {
     $('#join_cluster_dialog form').get(0).reset();
     dialog.find("input:not([type]), input[type=text], input[type=password]").not('[name=clusterMemberHostIp], [name=clusterMemberPort]').val('');
 
+    $('#join_cluster_dialog_errors_container').empty();
+
     showDialog('join_cluster_dialog', {
       onHide: function () {
         form.unbind('submit');
@@ -927,7 +956,31 @@ var OverviewSection = {
     form.bind('submit', function (e) {
       e.preventDefault();
 
-      $('#join_cluster_dialog_errors_container').empty();
+      function simpleValidation() {
+        var p = {};
+        _.each("clusterMemberHostIp clusterMemberPort user password".split(' '), function (name) {
+          p[name] = form.find('[name=' + name + ']').val();
+        });
+
+        var errors = [];
+
+        if (p['clusterMemberHostIp'] == "")
+          errors.push("Web Console IP Address cannot be blank.");
+        if (p['clusterMemberPort'] == '')
+          errors.push("Web Console Port cannot be blank.");
+        if ((p['user'] || p['password']) && !(p['user'] && p['password'])) {
+          errors.push("Username and Password must either both be present or missing.");
+        }
+
+        return errors;
+      }
+
+      var errors = simpleValidation();
+      if (errors.length) {
+        renderTemplate('join_cluster_dialog_errors', errors);
+        return;
+      }
+
       var overlay = overlayWithSpinner(form);
 
       postWithValidationErrors('/node/controller/doJoinCluster', form, function (data, status) {

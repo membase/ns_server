@@ -30,7 +30,7 @@ handle_cast(Msg, _State) ->
 
 handle_info(check_addr, State) ->
     PrevAddr = State#state.current_address,
-    case addr_util:get_my_address() of
+    case addr_util:get_my_address(PrevAddr) of
         PrevAddr ->
             {noreply, State};
         NewAddress ->

@@ -53,7 +53,7 @@ git checkout --track origin/for_release &&
 
 /.memcached -p 11211 -d -P /tmp/memcached.pid -E bucket_engine.so -e "admin=_admin;engine=default_engine.so;default_bucket_name=default
 
-    NOTE: the emoxi tests will run this from ../../priv - you do not have to 
+    NOTE: the emoxi tests will run this from ../../priv - you do not have to
     manually run memcached.
 
     then kill your test memcached:
@@ -64,15 +64,15 @@ kill `cat /tmp/memcached.pid`
     in this manner to ensure the test succesfully runs.
 
     * Windows:
-    ** To make life easy, use the appropriate binary from the Northscale website. Install 
+    ** To make life easy, use the appropriate binary from the Northscale website. Install
        it in /c/memcached
-    ** If you insist on building memcached on windows, read the README file in the 
+    ** If you insist on building memcached on windows, read the README file in the
        buildbot-internal repository for instructions
     ** Copy  memcached.exe and default_engine.so into the ./priv directory
     ** If your copying was correct, you should be able to cd <REPO_ROOT>/priv
     and run (just to test):
 
-/.memcached -p 11211 -E bucket_engine.so & 
+/.memcached -p 11211 -E bucket_engine.so &
 
     ** Kill memcached:
 
@@ -82,8 +82,8 @@ taskkill //F //PID `tasklist.exe |grep memcached|awk '/^(\w+)\W+(\w+)/ {print $2
     memcached/.libs/default_engine.so and
     bucket_engine/.libs/bucket_engine.so
     created when building the for_release northscale memcached
-    and bucket_engine are in the same directory as the memcached executable 
-    either by copying or by soft links. 
+    and bucket_engine are in the same directory as the memcached executable
+    either by copying or by soft links.
     For the buildbot machines, these shared libraries are not installed
     system-wide because they could intefere with the state of the build
     machine.
@@ -124,8 +124,8 @@ Then you will have to add backslashes around the path double-quotes --
 like \"priv/config\"
 
 ## Development
-  Note: there were previously directions here instructing one to 
-  update submodules. Both emoxi and menelaus are now part of 
+  Note: there were previously directions here instructing one to
+  update submodules. Both emoxi and menelaus are now part of
   ns_server and there is no need to treat them as submodules.
 
 ### Updating the dependencies (deps subdirectory)
@@ -134,7 +134,6 @@ like \"priv/config\"
    make
    git commit -m "updated emoxi & menelaus"
    git push
-
 
 * * * * *
 Copyright (c) 2010, NorthScale, Inc.
