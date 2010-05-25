@@ -1471,6 +1471,7 @@ MemcachedClient client = manager.getClient();</pre>
         e.preventDefault();
         // TODO: Make this real, call to server, handle license errors, etc.
         $(document.body).removeClass('init_license');
+        $(document.body).addClass('init_ip');
       });
     </script>
   </div>
@@ -1481,6 +1482,71 @@ MemcachedClient client = manager.getClient();</pre>
   </div>
 </div>
 <!-- END init_license_block -->
+<div class="init_ip_block" id="init_ip_dialog">
+  <!-- screen S.4 -->
+  <div id="header">
+    <div class="cnt_holder main_holder">
+      <div class="topper_nav">
+        <a href="javascript:showAbout();">About</a>
+        <b>•</b>
+        <a target="MCWebHelp" href="/docs/index_CSH.html#1001|northscale">Help</a>      
+        <a style="display: none;" class="sign-out-link" href="javascript:ThePage.signOut();">Sign Out</a>
+      </div>
+      <a href="/index.html"><span> </span></a>
+    </div>
+  </div>
+  <div class="pad">
+    <div class="alert_red" id="init_ip_failed_message" style="display:none;">
+      <div class="al_text">
+        Invalid IP Address. Try again.
+      </div>
+    </div>
+    <h1>IP Address Setup</h1>
+    <h2>3 of 4</h2>
+    <form id="init_ip_form" class="form block">
+      <table>
+        <col width="" />
+        <tr>
+          <td>
+            <select>
+              <option value="127.0.0.1">127.0.0.1</option>
+            </select>
+            &nbsp;
+            <input type="text" name="ip" id="lp_inp" class="inp" value="127.0.0.1"/>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            ~~~ Some informative text about DHCP goes here ~~~
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div class="pat_10">
+              <input type="submit" value="Back" class="submit" />
+              <input type="submit" value="Next" class="submit" />
+            </div>
+          </td>
+        </tr>
+      </table>
+    </form>
+    <script type="text/javascript">
+      $('#init_ip_form').bind('submit', function (e) {
+        e.preventDefault();
+        // TODO: Make this real, call to server to get a list of IP addresses to
+        // populate select/option dropdown, handle errors, etc.
+        // TODO: Make Back button work.
+        $(document.body).removeClass('init_ip');
+      });
+    </script>
+  </div>
+  <div id="footer">
+    <div class="main_holder">
+      <h1>Copyright 2010 <a href="http://northscale.com">NorthScale, Inc.</a> All rights reserved.</h1>
+    </div>
+  </div>
+</div>
+<!-- END init_ip_block -->
 <div id="notice_template" class="template">
   <div class="shadow_box notice"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
     <h2 class="header_2">NorthScale Message</h2>
