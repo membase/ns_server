@@ -712,106 +712,46 @@ button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
 #auth_dialog { display: block; }
 */
 
-/* welcome_block */
+/* init_block */
 
-#welcome_dialog { display: none; }
+#init_block { display: none; }
+#init_block .pad { display: none; }
+
+body.welcome #init_block { display: block; }
 body.welcome #welcome_dialog { display: block; }
 body.welcome #container { display: none; }
 
-.welcome_block {min-height:737px; height:100%; background:url(../images/watermark.jpg) 0 0 no-repeat; position:relative;}
-.welcome_block h1 {color:#2f3536; text-transform:uppercase; font-size:28px; padding:28px 0 30px 0; position:relative; top:13px;}
-.welcome_block .pad {/*padding:0 0 0 180px;*/ position:relative; width:580px; margin:auto; /*top:100px;*/ top:0px; height:537px;}
-.welcome_block .form {display:block; width:580px; height:275px; background:url(../images/welcome_form_bg.png) 0 0 no-repeat;}
-.welcome_block .form table {margin:25px 0 0 25px;}
-.welcome_block .form table td {vertical-align:middle; padding:10px 0;}
-.welcome_block .form table .submit {width:210px; height:45px; overflow:visible; border:0px; background:url(../images/sign_in_button.gif) 0 0 no-repeat; font-size:22px; color:#fff;}
-.welcome_block .form table .submit:hover {background-position:0 -45px;}
-.welcome_block .form table .submit:active {background-position:0 -90px;}
-
-/* init_license_block */
-
-#init_license_dialog { display: none; }
+body.init_license #init_block { display: block; }
 body.init_license #init_license_dialog { display: block; }
 body.init_license #container { display: none; }
 
-.init_license_block {min-height:737px; height:100%; background:url(../images/watermark.jpg) 0 0 no-repeat; position:relative;}
-.init_license_block h1 {color:#2f3536; text-transform:uppercase; font-size:28px; padding:28px 0 30px 0; position:relative; top:13px;}
-.init_license_block .pad {/*padding:0 0 0 180px;*/ position:relative; width:580px; margin:auto; /*top:100px;*/ top:0px; height:537px;}
-.init_license_block .form {display:block; width:580px; height:275px; background:url(../images/init_license_form_bg.png) 0 0 no-repeat;}
-.init_license_block .form table {margin:25px 0 0 25px;}
-.init_license_block .form table td {vertical-align:middle; padding:10px 0;}
-.init_license_block .form table .label {text-align:right; font-size:18px; color:#e6f5ff; padding:0 7px 0 0;}
-.init_license_block .form table .inp {border:1px solid #60696b; background:none #fff; padding:12px 5px; width:390px; font-size:16px;}
-.init_license_block .form table .submit {width:210px; height:45px; overflow:visible; border:0px; background:url(../images/sign_in_button.gif) 0 0 no-repeat; font-size:22px; color:#fff;}
-.init_license_block .form table .submit:hover {background-position:0 -45px;}
-.init_license_block .form table .submit:active {background-position:0 -90px;}
-.init_license_block .alert_red {width:588px; height:71px; position:absolute; left:-8px; top:60px; line-height:65px; font-size:14px; color:#fff; background:url(../images/alert_red.png) 0 0 no-repeat; z-index:1000;}
-.init_license_block .alert_red .al_text {padding:0 0 0 30px;}
-.init_license_block .pad .spinner {width:582px !important; height:245px !important; position:absolute !important; left:0px !important; top:90px !important; /*background:url(../images/login_screen.png) 100% -72px no-repeat !important;*/ background:none #747e7c !important; line-height:14px !important;}
-.init_license_block .pad .spinner span {display:block; width: 150px; height:20px; padding:50px 0 0 0; text-align:center; font-size:12px; color:#a6b1b3; background:url(../images/spinner/spinner_1.gif) 55px 5px no-repeat; position:relative; margin:auto; top:122px;}
-
-/* init_ip_block */
-
-#init_ip_dialog { display: none; }
+body.init_ip #init_block { display: block; }
 body.init_ip #init_ip_dialog { display: block; }
 body.init_ip #container { display: none; }
 
-.init_ip_block {min-height:737px; height:100%; background:url(../images/watermark.jpg) 0 0 no-repeat; position:relative;}
-.init_ip_block h1 {color:#2f3536; text-transform:uppercase; font-size:28px; padding:28px 0 30px 0; position:relative; top:13px;}
-.init_ip_block .pad {/*padding:0 0 0 180px;*/ position:relative; width:580px; margin:auto; /*top:100px;*/ top:0px; height:537px;}
-.init_ip_block .form {display:block; width:580px; height:275px; background:url(../images/init_ip_form_bg.png) 0 0 no-repeat;}
-.init_ip_block .form table {margin:25px 0 0 25px;}
-.init_ip_block .form table td {vertical-align:middle; padding:10px 0;}
-.init_ip_block .form table .label {text-align:right; font-size:18px; color:#e6f5ff; padding:0 7px 0 0;}
-.init_ip_block .form table .inp {border:1px solid #60696b; background:none #fff; padding:12px 5px; width:390px; font-size:16px;}
-.init_ip_block .form table .submit {width:210px; height:45px; overflow:visible; border:0px; background:url(../images/sign_in_button.gif) 0 0 no-repeat; font-size:22px; color:#fff;}
-.init_ip_block .form table .submit:hover {background-position:0 -45px;}
-.init_ip_block .form table .submit:active {background-position:0 -90px;}
-.init_ip_block .alert_red {width:588px; height:71px; position:absolute; left:-8px; top:60px; line-height:65px; font-size:14px; color:#fff; background:url(../images/alert_red.png) 0 0 no-repeat; z-index:1000;}
-.init_ip_block .alert_red .al_text {padding:0 0 0 30px;}
-.init_ip_block .pad .spinner {width:582px !important; height:245px !important; position:absolute !important; left:0px !important; top:90px !important; /*background:url(../images/login_screen.png) 100% -72px no-repeat !important;*/ background:none #747e7c !important; line-height:14px !important;}
-.init_ip_block .pad .spinner span {display:block; width: 150px; height:20px; padding:50px 0 0 0; text-align:center; font-size:12px; color:#a6b1b3; background:url(../images/spinner/spinner_1.gif) 55px 5px no-repeat; position:relative; margin:auto; top:122px;}
-
-/* init_resources_block */
-
-#init_resources_dialog { display: none; }
+body.init_resources #init_block { display: block; }
 body.init_resources #init_resources_dialog { display: block; }
 body.init_resources #container { display: none; }
 
-.init_resources_block {min-height:737px; height:100%; background:url(../images/watermark.jpg) 0 0 no-repeat; position:relative;}
-.init_resources_block h1 {color:#2f3536; text-transform:uppercase; font-size:28px; padding:28px 0 30px 0; position:relative; top:13px;}
-.init_resources_block .pad {/*padding:0 0 0 180px;*/ position:relative; width:580px; margin:auto; /*top:100px;*/ top:0px; height:537px;}
-.init_resources_block .form {display:block; width:580px; height:275px; background:url(../images/init_resources_form_bg.png) 0 0 no-repeat;}
-.init_resources_block .form table {margin:25px 0 0 25px;}
-.init_resources_block .form table td {vertical-align:middle; padding:10px 0;}
-.init_resources_block .form table .label {text-align:right; font-size:18px; color:#e6f5ff; padding:0 7px 0 0;}
-.init_resources_block .form table .inp {border:1px solid #60696b; background:none #fff; padding:12px 5px; width:390px; font-size:16px;}
-.init_resources_block .form table .submit {width:210px; height:45px; overflow:visible; border:0px; background:url(../images/sign_in_button.gif) 0 0 no-repeat; font-size:22px; color:#fff;}
-.init_resources_block .form table .submit:hover {background-position:0 -45px;}
-.init_resources_block .form table .submit:active {background-position:0 -90px;}
-.init_resources_block .alert_red {width:588px; height:71px; position:absolute; left:-8px; top:60px; line-height:65px; font-size:14px; color:#fff; background:url(../images/alert_red.png) 0 0 no-repeat; z-index:1000;}
-.init_resources_block .alert_red .al_text {padding:0 0 0 30px;}
-.init_resources_block .pad .spinner {width:582px !important; height:245px !important; position:absolute !important; left:0px !important; top:90px !important; /*background:url(../images/login_screen.png) 100% -72px no-repeat !important;*/ background:none #747e7c !important; line-height:14px !important;}
-.init_resources_block .pad .spinner span {display:block; width: 150px; height:20px; padding:50px 0 0 0; text-align:center; font-size:12px; color:#a6b1b3; background:url(../images/spinner/spinner_1.gif) 55px 5px no-repeat; position:relative; margin:auto; top:122px;}
-
-/* init_cluster_block */
-
-#init_cluster_dialog { display: none; }
+body.init_cluster #init_block { display: block; }
 body.init_cluster #init_cluster_dialog { display: block; }
 body.init_cluster #container { display: none; }
 
-.init_cluster_block {min-height:737px; height:100%; background:url(../images/watermark.jpg) 0 0 no-repeat; position:relative;}
-.init_cluster_block h1 {color:#2f3536; text-transform:uppercase; font-size:28px; padding:28px 0 30px 0; position:relative; top:13px;}
-.init_cluster_block .pad {/*padding:0 0 0 180px;*/ position:relative; width:580px; margin:auto; /*top:100px;*/ top:0px; height:537px;}
-.init_cluster_block .form {display:block; width:580px; height:275px; background:url(../images/init_cluster_form_bg.png) 0 0 no-repeat;}
-.init_cluster_block .form table {margin:25px 0 0 25px;}
-.init_cluster_block .form table td {vertical-align:middle; padding:10px 0;}
-.init_cluster_block .form table .label {text-align:right; font-size:18px; color:#e6f5ff; padding:0 7px 0 0;}
-.init_cluster_block .form table .inp {border:1px solid #60696b; background:none #fff; padding:12px 5px; width:390px; font-size:16px;}
-.init_cluster_block .form table .submit {width:210px; height:45px; overflow:visible; border:0px; background:url(../images/sign_in_button.gif) 0 0 no-repeat; font-size:22px; color:#fff;}
-.init_cluster_block .form table .submit:hover {background-position:0 -45px;}
-.init_cluster_block .form table .submit:active {background-position:0 -90px;}
-.init_cluster_block .alert_red {width:588px; height:71px; position:absolute; left:-8px; top:60px; line-height:65px; font-size:14px; color:#fff; background:url(../images/alert_red.png) 0 0 no-repeat; z-index:1000;}
-.init_cluster_block .alert_red .al_text {padding:0 0 0 30px;}
-.init_cluster_block .pad .spinner {width:582px !important; height:245px !important; position:absolute !important; left:0px !important; top:90px !important; /*background:url(../images/login_screen.png) 100% -72px no-repeat !important;*/ background:none #747e7c !important; line-height:14px !important;}
-.init_cluster_block .pad .spinner span {display:block; width: 150px; height:20px; padding:50px 0 0 0; text-align:center; font-size:12px; color:#a6b1b3; background:url(../images/spinner/spinner_1.gif) 55px 5px no-repeat; position:relative; margin:auto; top:122px;}
+/* init_block */
+
+.init_block {min-height:737px; height:100%; background:url(../images/watermark.jpg) 0 0 no-repeat; position:relative;}
+.init_block h1 {color:#2f3536; text-transform:uppercase; font-size:28px; padding:28px 0 30px 0; position:relative; top:13px;}
+.init_block .pad {/*padding:0 0 0 180px;*/ position:relative; width:580px; margin:auto; /*top:100px;*/ top:0px; height:537px;}
+.init_block .form {display:block; width:580px; height:275px; background:url(../images/welcome_form_bg.png) 0 0 no-repeat;}
+.init_block .form table {margin:25px 0 0 25px;}
+.init_block .form table td {vertical-align:middle; padding:10px 0;}
+.init_block .form table .label {text-align:right; font-size:18px; color:#e6f5ff; padding:0 7px 0 0;}
+.init_block .form table .inp {border:1px solid #60696b; background:none #fff; padding:12px 5px; width:390px; font-size:16px;}
+.init_block .form table .submit {width:210px; height:45px; overflow:visible; border:0px; background:url(../images/sign_in_button.gif) 0 0 no-repeat; font-size:22px; color:#fff;}
+.init_block .form table .submit:hover {background-position:0 -45px;}
+.init_block .form table .submit:active {background-position:0 -90px;}
+.init_block .alert_red {width:588px; height:71px; position:absolute; left:-8px; top:60px; line-height:65px; font-size:14px; color:#fff; background:url(../images/alert_red.png) 0 0 no-repeat; z-index:1000;}
+.init_block .alert_red .al_text {padding:0 0 0 30px;}
+.init_block .pad .spinner {width:582px !important; height:245px !important; position:absolute !important; left:0px !important; top:90px !important; /*background:url(../images/login_screen.png) 100% -72px no-repeat !important;*/ background:none #747e7c !important; line-height:14px !important;}
+.init_block .pad .spinner span {display:block; width: 150px; height:20px; padding:50px 0 0 0; text-align:center; font-size:12px; color:#a6b1b3; background:url(../images/spinner/spinner_1.gif) 55px 5px no-repeat; position:relative; margin:auto; top:122px;}
+

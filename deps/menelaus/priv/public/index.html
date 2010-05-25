@@ -1381,8 +1381,7 @@ MemcachedClient client = manager.getClient();</pre>
   </div>
 </div>
 <!-- END auth_block -->
-<div class="welcome_block" id="welcome_dialog">
-  <!-- screen S.1 -->
+<div class="init_block" id="init_block">
   <div id="header">
     <div class="cnt_holder main_holder">
       <div class="topper_nav">
@@ -1394,7 +1393,8 @@ MemcachedClient client = manager.getClient();</pre>
       <a href="/index.html"><span> </span></a>
     </div>
   </div>
-  <div class="pad">
+  <div class="pad" id="welcome_dialog">
+    <!-- screen S.1 -->
     <h1>Congratulations</h1>
     <form id="welcome_form" class="form block">
       <table>
@@ -1421,27 +1421,9 @@ MemcachedClient client = manager.getClient();</pre>
       });
     </script>
   </div>
-  <div id="footer">
-    <div class="main_holder">
-      <h1>Copyright 2010 <a href="http://northscale.com">NorthScale, Inc.</a> All rights reserved.</h1>
-    </div>
-  </div>
-</div>
-<!-- END welcome_block -->
-<div class="init_license_block" id="init_license_dialog">
-  <!-- screen S.2 -->
-  <div id="header">
-    <div class="cnt_holder main_holder">
-      <div class="topper_nav">
-        <a href="javascript:showAbout();">About</a>
-        <b>•</b>
-        <a target="MCWebHelp" href="/docs/index_CSH.html#1001|northscale">Help</a>      
-        <a style="display: none;" class="sign-out-link" href="javascript:ThePage.signOut();">Sign Out</a>
-      </div>
-      <a href="/index.html"><span> </span></a>
-    </div>
-  </div>
-  <div class="pad">
+  <!-- END welcome_block -->
+  <div class="pad" id="init_license_dialog">
+    <!-- screen S.2 -->
     <div class="alert_red" id="init_license_failed_message" style="display:none;">
       <div class="al_text">
         Invalid license. Try again.
@@ -1475,27 +1457,9 @@ MemcachedClient client = manager.getClient();</pre>
       });
     </script>
   </div>
-  <div id="footer">
-    <div class="main_holder">
-      <h1>Copyright 2010 <a href="http://northscale.com">NorthScale, Inc.</a> All rights reserved.</h1>
-    </div>
-  </div>
-</div>
-<!-- END init_license_block -->
-<div class="init_resources_block" id="init_resources_dialog">
-  <!-- screen S.3 -->
-  <div id="header">
-    <div class="cnt_holder main_holder">
-      <div class="topper_nav">
-        <a href="javascript:showAbout();">About</a>
-        <b>•</b>
-        <a target="MCWebHelp" href="/docs/index_CSH.html#1001|northscale">Help</a>      
-        <a style="display: none;" class="sign-out-link" href="javascript:ThePage.signOut();">Sign Out</a>
-      </div>
-      <a href="/index.html"><span> </span></a>
-    </div>
-  </div>
-  <div class="pad">
+  <!-- END init_license_block -->
+  <div class="pad" id="init_resources_dialog">
+    <!-- screen S.3 -->
     <div class="alert_red" id="init_resources_failed_message" style="display:none;">
       <div class="al_text">
         Invalid Resource. Try again.
@@ -1555,27 +1519,9 @@ MemcachedClient client = manager.getClient();</pre>
       });
     </script>
   </div>
-  <div id="footer">
-    <div class="main_holder">
-      <h1>Copyright 2010 <a href="http://northscale.com">NorthScale, Inc.</a> All rights reserved.</h1>
-    </div>
-  </div>
-</div>
-<!-- END init_resources_block -->
-<div class="init_ip_block" id="init_ip_dialog">
-  <!-- screen S.4 -->
-  <div id="header">
-    <div class="cnt_holder main_holder">
-      <div class="topper_nav">
-        <a href="javascript:showAbout();">About</a>
-        <b>•</b>
-        <a target="MCWebHelp" href="/docs/index_CSH.html#1001|northscale">Help</a>      
-        <a style="display: none;" class="sign-out-link" href="javascript:ThePage.signOut();">Sign Out</a>
-      </div>
-      <a href="/index.html"><span> </span></a>
-    </div>
-  </div>
-  <div class="pad">
+  <!-- END init_resources_block -->
+  <div class="pad" id="init_ip_dialog">
+    <!-- screen S.4 -->
     <div class="alert_red" id="init_ip_failed_message" style="display:none;">
       <div class="al_text">
         Invalid IP Address. Try again.
@@ -1621,27 +1567,9 @@ MemcachedClient client = manager.getClient();</pre>
       });
     </script>
   </div>
-  <div id="footer">
-    <div class="main_holder">
-      <h1>Copyright 2010 <a href="http://northscale.com">NorthScale, Inc.</a> All rights reserved.</h1>
-    </div>
-  </div>
-</div>
-<!-- END init_ip_block -->
-<div class="init_cluster_block" id="init_cluster_dialog">
-  <!-- screen S.5 -->
-  <div id="header">
-    <div class="cnt_holder main_holder">
-      <div class="topper_nav">
-        <a href="javascript:showAbout();">About</a>
-        <b>•</b>
-        <a target="MCWebHelp" href="/docs/index_CSH.html#1001|northscale">Help</a>      
-        <a style="display: none;" class="sign-out-link" href="javascript:ThePage.signOut();">Sign Out</a>
-      </div>
-      <a href="/index.html"><span> </span></a>
-    </div>
-  </div>
-  <div class="pad">
+  <!-- END init_ip_block -->
+  <div class="pad" id="init_cluster_dialog">
+    <!-- screen S.5 -->
     <div class="alert_red" id="init_cluster_failed_message" style="display:none;">
       <div class="al_text">
         Could not join the cluster because of bad input.
@@ -1702,13 +1630,13 @@ MemcachedClient client = manager.getClient();</pre>
       });
     </script>
   </div>
+  <!-- END init_cluster_block -->
   <div id="footer">
     <div class="main_holder">
       <h1>Copyright 2010 <a href="http://northscale.com">NorthScale, Inc.</a> All rights reserved.</h1>
     </div>
   </div>
 </div>
-<!-- END init_cluster_block -->
 <div id="notice_template" class="template">
   <div class="shadow_box notice"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
     <h2 class="header_2">NorthScale Message</h2>
