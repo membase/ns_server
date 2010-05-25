@@ -487,7 +487,18 @@ build_bucket_info(PoolId, Id, Pool, InfoLevel) ->
              {flushCacheUri, list_to_binary(concat_url_path(["pools", PoolId,
                                                              "buckets", Id, "controller", "doFlush"]))},
              {nodes, Nodes},
-             {stats, {struct, [{uri, StatsUri}]}}],
+             {stats, {struct, [{uri, StatsUri}]}},
+             %% TODO: placeholder for a real vbucketServerMap.
+             {vbucketServerMap, {struct, [{hashAlgorithm, <<"CRC">>},
+                                          {numReplicas, 0},
+                                          {serverList, lists:map(
+                                            fun(ENode) ->
+                                              {_Name, Host} = misc:node_name_host(ENode),
+                                              {value, DirectPort} = direct_port(ENode),
+                                              list_to_binary(Host ++ ":" ++ integer_to_list(DirectPort))
+                                            end,
+                                            ns_node_disco:nodes_wanted())},
+                                          {vBucketMap, [[0], [0], [0]]}]}}],
     List2 = case tgen:is_traffic_bucket(PoolId, Id) of
                 true -> [{testAppBucket, true},
                          {controlURL, list_to_binary(concat_url_path(["pools", PoolId,
