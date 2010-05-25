@@ -711,3 +711,20 @@ button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
 #container {display:none;}
 #auth_dialog { display: block; }
 */
+
+/* welcome_block */
+
+#welcome_dialog { display: none; }
+body.welcome #welcome_dialog { display: block; }
+body.welcome #container { display: none; }
+
+.welcome_block {min-height:737px; height:100%; background:url(../images/watermark.jpg) 0 0 no-repeat; position:relative;}
+.welcome_block h1 {color:#2f3536; text-transform:uppercase; font-size:28px; padding:28px 0 30px 0; position:relative; top:13px;}
+.welcome_block .pad {/*padding:0 0 0 180px;*/ position:relative; width:580px; margin:auto; /*top:100px;*/ top:0px; height:537px;}
+.welcome_block .form {display:block; width:580px; height:275px; background:url(../images/welcome_form_bg.png) 0 0 no-repeat;}
+.welcome_block .form table {margin:25px 0 0 25px;}
+.welcome_block .form table td {vertical-align:middle; padding:10px 0;}
+.welcome_block .form table .submit {width:210px; height:45px; overflow:visible; border:0px; background:url(../images/sign_in_button.gif) 0 0 no-repeat; font-size:22px; color:#fff;}
+.welcome_block .form table .submit:hover {background-position:0 -45px;}
+.welcome_block .form table .submit:active {background-position:0 -90px;}
+
