@@ -1561,7 +1561,7 @@ MemcachedClient client = manager.getClient();</pre>
     </div>
   </div>
 </div>
-<!-- END init_ip_block -->
+<!-- END init_resources_block -->
 <div class="init_ip_block" id="init_ip_dialog">
   <!-- screen S.4 -->
   <div id="header">
@@ -1617,6 +1617,7 @@ MemcachedClient client = manager.getClient();</pre>
         // populate select/option dropdown, handle errors, etc.
         // TODO: Make Back button work.
         $(document.body).removeClass('init_ip');
+        $(document.body).addClass('init_cluster');
       });
     </script>
   </div>
@@ -1627,6 +1628,87 @@ MemcachedClient client = manager.getClient();</pre>
   </div>
 </div>
 <!-- END init_ip_block -->
+<div class="init_cluster_block" id="init_cluster_dialog">
+  <!-- screen S.5 -->
+  <div id="header">
+    <div class="cnt_holder main_holder">
+      <div class="topper_nav">
+        <a href="javascript:showAbout();">About</a>
+        <b>•</b>
+        <a target="MCWebHelp" href="/docs/index_CSH.html#1001|northscale">Help</a>      
+        <a style="display: none;" class="sign-out-link" href="javascript:ThePage.signOut();">Sign Out</a>
+      </div>
+      <a href="/index.html"><span> </span></a>
+    </div>
+  </div>
+  <div class="pad">
+    <div class="alert_red" id="init_cluster_failed_message" style="display:none;">
+      <div class="al_text">
+        Could not join the cluster because of bad input.
+      </div>
+    </div>
+    <h1>Start or Join Cluster?</h1>
+    <h2>4 of 4</h2>
+    <form id="init_cluster_form" class="form block">
+      <table>
+        <col width="" />
+        <col width="" />
+        <tr>
+          <td>
+            <h3>This is a new cluster...</h3>
+            <label>Admin</label>
+            <input type="text" name="ip" id="lp_inp" class="inp"/>
+            <label>Password</label>
+            <input type="text" name="ip" id="lp_inp" class="inp"/>
+          </td>
+          <td>
+            <div class="pat_10">
+              <input type="submit" value="Create and Finish" class="submit" />
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <h3>Or, join an existing cluster...</h3>
+            <label>IP</label>
+            <input type="text" name="ip" id="lp_inp" class="inp"/>
+            <label>Admin</label>
+            <input type="text" name="ip" id="lp_inp" class="inp"/>
+            <label>Password</label>
+            <input type="text" name="ip" id="lp_inp" class="inp"/>
+            <br/>
+          </td>
+          <td>
+            <div class="pat_10">
+              <input type="submit" value="Join and Finish" class="submit" />
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2">
+            Note: you can join a cluster later if you want.
+          </td>
+        </tr>
+        <tr>
+        </tr>
+      </table>
+    </form>
+    <script type="text/javascript">
+      $('#init_cluster_form').bind('submit', function (e) {
+        e.preventDefault();
+        // TODO: Make this real.
+        // TODO: Make Back button work.
+        $(document.body).removeClass('init_cluster');
+      });
+    </script>
+  </div>
+  <div id="footer">
+    <div class="main_holder">
+      <h1>Copyright 2010 <a href="http://northscale.com">NorthScale, Inc.</a> All rights reserved.</h1>
+    </div>
+  </div>
+</div>
+<!-- END init_cluster_block -->
 <div id="notice_template" class="template">
   <div class="shadow_box notice"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
     <h2 class="header_2">NorthScale Message</h2>
