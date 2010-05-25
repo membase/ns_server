@@ -56,6 +56,16 @@ future.get = function (ajaxOptions, valueTransformer, nowValue) {
   }, options);
 }
 
+future.infinite = function () {
+  var rv = future(function () {
+    rv.active = true;
+    rv.cancel = function () {
+      rv.active = false;
+    }
+  });
+  return rv;
+}
+
 // inspired in part by http://common-lisp.net/project/cells/
 var Cell = mkClass({
   initialize: function (formula, sources) {

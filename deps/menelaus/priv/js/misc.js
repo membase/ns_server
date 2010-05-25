@@ -647,3 +647,22 @@ function serializeForm(f) {
 
   return $.param(array);
 }
+
+// this is how built-in sort compares arguments. I was shocked to see
+// that numbers are sorted as strings!
+function defaultComparator(a, b) {
+  a = String(a);
+  b = String(b);
+  if (a < b)
+    return -1;
+  if (a > b)
+    return 1;
+  return 0;
+}
+
+function mkComparatorByProp(propName, propComparator) {
+  propComparator = propComparator || defaultComparator;
+  return function (a,b) {
+    return propComparator(a[propName], b[propName]);
+  }
+}

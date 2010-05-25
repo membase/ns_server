@@ -1057,11 +1057,202 @@ var OverviewSection = {
     prepareTemplateForCell('cluster_status', DAO.cells.currentPoolDetails);
     prepareTemplateForCell('pool_list', DAO.cells.poolList);
   },
-  navClick: function () {
-    DAO.cells.currentPoolDetailsCell.invalidate();
-  },
   onEnter: function () {
     DAO.cells.currentPoolDetailsCell.invalidate();
+  }
+};
+
+var ServersSection = {
+  hostnameComparator: mkComparatorByProp('hostname'),
+  pendingEject: [],
+  onPoolDetailsReady: function () {
+    var self = this;
+
+    var details = this.poolDetails.value;
+    if (!details)
+      return;
+    var nodes = details.nodes;
+    var nodeNames = _.pluck(nodes, 'hostname');
+    var pending = [];
+    var active = [];
+    _.each(nodes, function (n) {
+      if (n.clusterMembership == 'inactiveAdded')
+        pending.push(n);
+      else
+        active.push(n);
+    });
+
+    var stillActualEject = [];
+    _.each(this.pendingEject, function (node) {
+      var original = _.detect(nodes, function (n) {
+        return n.hostname == node.hostname;
+      });
+      if (!original || original.clusterMembership == 'inactiveAdded') {
+        return;
+      }
+      stillActualEject.push(original);
+      original.pendingEject = true;
+    });
+
+    this.pendingEject = stillActualEject;
+
+    pending = pending.concat(this.pendingEject);
+    pending.sort(this.hostnameComparator);
+    active.sort(this.hostnameComparator);
+
+    this.active = active;
+    this.pending = pending;
+
+    this.allNodes = _.uniq(this.active.concat(this.pending));
+
+    _.each(this.allNodes, function (n) {
+      n.ejectPossible = !n.pendingEject;
+      n.failoverPossible = (n.clusterMembership != 'inactiveFailed');
+      n.reAddPossible = (n.clusterMembership == 'inactiveFailed');
+    });
+
+    renderTemplate('active_server_list', active);
+    renderTemplate('pending_server_list', pending);
+
+    $('#servers .rebalance_button').toggle(!!pending.length);
+    $('#servers .add_button').show();
+  },
+  init: function () {
+    this.poolDetails = DAO.cells.currentPoolDetailsCell;
+
+    this.poolDetails.subscribe($m(this, "onPoolDetailsReady"));
+    prepareTemplateForCell('active_server_list', this.poolDetails);
+    prepareTemplateForCell('pending_server_list', this.poolDetails);
+
+    var serversQ = this.serversQ = $('#servers');
+
+    this.poolDetails.subscribeOnUndefined(function () {
+      serversQ.find('.rebalance_button, .add_button').hide();
+    });
+
+    serversQ.find('.rebalance_button').bind('click', $m(this, 'onRebalance'));
+    serversQ.find('.add_button').bind('click', $m(this, 'onAdd'));
+  },
+  onEnter: function () {
+    this.poolDetails.invalidate();
+  },
+  onRebalance: function () {
+    this.postAndReload(this.poolDetails.value.controllers.rebalance.uri,
+                       {knownNodes: _.pluck(this.allNodes, 'hostname'),
+                        ejectedNodes: _.pluck(this.pendingEject, 'hostname')});
+  },
+  onAdd: function () {
+    var self = this;
+    // cut & pasted from OverviewSection.startJoinCluster 'cause we're
+    // reusing it's cluster join dialog for
+    // now. OverviewSection.startJoinCluster will probably die soon
+
+    var dialog = $('#join_cluster_dialog');
+    var form = dialog.find('form');
+    $('#join_cluster_dialog_errors_container').empty();
+    $('#join_cluster_dialog form').get(0).reset();
+    dialog.find("input:not([type]), input[type=text], input[type=password]").not('[name=clusterMemberHostIp], [name=clusterMemberPort]').val('');
+
+    $('#join_cluster_dialog_errors_container').empty();
+    showDialog('join_cluster_dialog', {
+      onHide: function () {
+        form.unbind('submit');
+      }});
+    form.bind('submit', function (e) {
+      e.preventDefault();
+
+      function simpleValidation() {
+        var p = {};
+        _.each("clusterMemberHostIp clusterMemberPort user password".split(' '), function (name) {
+          p[name] = form.find('[name=' + name + ']').val();
+        });
+
+        var errors = [];
+
+        if (p['clusterMemberHostIp'] == "")
+          errors.push("Web Console IP Address cannot be blank.");
+        if (p['clusterMemberPort'] == '')
+          errors.push("Web Console Port cannot be blank.");
+        if ((p['user'] || p['password']) && !(p['user'] && p['password'])) {
+          errors.push("Username and Password must either both be present or missing.");
+        }
+
+        return errors;
+      }
+
+      var errors = simpleValidation();
+      if (errors.length) {
+        renderTemplate('join_cluster_dialog_errors', errors);
+        return;
+      }
+
+      var overlay = overlayWithSpinner(form);
+
+      var uri = self.poolDetails.value.controllers.addNode.uri;
+      self.poolDetails.setValue(undefined);
+      postWithValidationErrors(uri, form, function (data, status) {
+        self.poolDetails.invalidate();
+        if (status != 'success') {
+          overlay.remove();
+          renderTemplate('join_cluster_dialog_errors', data)
+        } else {
+          hideDialog('join_cluster_dialog');
+        }
+      })
+    });
+  },
+  findNode: function (hostname) {
+    return _.detect(this.allNodes, function (n) {
+      return n.hostname == hostname;
+    });
+  },
+  mustFindNode: function (hostname) {
+    var rv = this.findNode(hostname);
+    if (!rv) {
+      throw new Error("failed to find node info for: " + hostname);
+    }
+    return rv;
+  },
+  reDraw: function () {
+    _.defer($m(this, 'onPoolDetailsReady'));
+  },
+  ejectNode: function (hostname) {
+    var node = this.mustFindNode(hostname);
+    if (node.pendingEject)
+      return;
+    this.pendingEject.push(node);
+    this.reDraw();
+  },
+  failoverNode: function (hostname) {
+    var node = this.mustFindNode(hostname);
+    this.postAndReload(this.poolDetails.value.controllers.failOver.uri,
+                       {otpNode: node.otpNode});
+  },
+  reAddNode: function (hostname) {
+    var node = this.mustFindNode(hostname);
+    this.postAndReload(this.poolDetails.value.controllers.reAddNode.uri,
+                       {otpNode: node.otpNode});
+  },
+  removeFromList: function (hostname) {
+    var node = this.mustFindNode(hostname);
+
+    if (node.pendingEject) {
+      node.pendingEject = false;
+      this.pendingEject = _.without(this.pendingEject, node);
+      return this.reDraw();
+    }
+
+    var ejectNodeURI = this.poolDetails.value.controllers.ejectNode.uri;
+    this.postAndReload(ejectNodeURI, {otpNode: node.otpNode});
+  },
+  postAndReload: function (uri, data) {
+    var self = this;
+    // keep poolDetails undefined for now
+    self.poolDetails.setValue(undefined);
+    postWithValidationErrors(uri, $.param(data), function () {
+      // re-calc poolDetails according to it's formula
+      self.poolDetails.invalidate();
+    });
   }
 };
 
@@ -1151,9 +1342,6 @@ var BucketsSection = {
   },
   onEnter: function () {
     this.refreshBuckets();
-  },
-  navClick: function () {
-    this.onEnter();
   },
   checkFormChanges: function () {
     var parent = $('#add_new_bucket_dialog');
@@ -1659,6 +1847,7 @@ var BreadCrumbs = {
 };
 var ThePage = {
   sections: {overview: OverviewSection,
+             servers: ServersSection,
              analytics: AnalyticsSection,
              buckets: BucketsSection,
              alerts: AlertsSection,
@@ -1674,9 +1863,12 @@ var ThePage = {
     if (!(this.sections[section])) {
       throw new Error('unknown section:' + section);
     }
-    if (this.currentSectionName == section && 'navClick' in this.currentSection)
-      this.currentSection.navClick();
-    else
+    if (this.currentSectionName == section) {
+      if ('navClick' in this.currentSection)
+        this.currentSection.navClick();
+      else
+        this.currentSection.onEnter();
+    } else
       setHashFragmentParam('sec', section);
   },
   initialize: function () {
@@ -1774,6 +1966,26 @@ _.extend(ViewHelpers, {
     var t = _.detect([[T,'T'],[G,'G'],[M,'M'],[K,'K']], function (t) {return value > 1.1*t[0]});
     t = t || [1, ''];
     return [truncateTo3Digits(value/t[0]), t[1], kind].join('');
+  },
+
+  renderPendingStatus: function (node) {
+    if (node.clusterMembership == 'inactiveFailed') {
+      if (node.pendingEject) {
+        return "PENDING EJECT FAILED OVER"
+      } else {
+        return "FAILED OVER";
+      }
+    }
+    if (node.pendingEject) {
+      return "PENDING EJECT";
+    }
+    if (node.clusterMembership == 'active')
+      return '';
+    if (node.clusterMembership == 'inactiveAdded') {
+      return 'PENDING ADD';
+    }
+    debugger
+    throw new Error('cannot reach');
   }
 });
 
@@ -2067,9 +2279,11 @@ var NodeDialog = {
   }
 };
 
+var originalOnError;
 (function () {
   var sentReports = 0;
   var ErrorReportsLimit = 8;
+  originalOnError = window.onerror;
 
   function appOnError(message, fileName, lineNo) {
     var report = [];
@@ -2094,6 +2308,9 @@ var NodeDialog = {
               success: ignore,
               error: ignore});
     }, 500);
+
+    if (originalOnError)
+      originalOnError.call(window, message, fileName, lineNo);
   }
   window.onerror = appOnError;
 })();
@@ -2182,7 +2399,7 @@ function watchHashParamLinks(param, body) {
   param = '#' + param + '=';
   $('a').live('click', function (e) {
     var href = $(this).attr('href');
-    if (href.slice(0,param.length) != param)
+    if (href == null || href.slice(0,param.length) != param)
       return;
     e.preventDefault();
     body.call(this, e, href.slice(param.length));

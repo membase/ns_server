@@ -402,6 +402,10 @@ var MockedRequest = mkClass({
   handlePoolDetails: function () {
     var rv = {nodes: [{hostname: "mickey-mouse.disney.com",
                        status: "healthy",
+                       clusterMembership: "inactiveAdded",
+                       os: 'Linux',
+                       version: 'only-web.rb',
+                       uptime: 86400,
                        ports: {proxy: 11211,
                                direct: 11311},
                        memoryTotal: 2032574464,
@@ -411,7 +415,11 @@ var MockedRequest = mkClass({
                        otpNode: "ns1@mickey-mouse.disney.com",
                        otpCookie: "SADFDFGDFG"},
                       {hostname: "donald-duck.disney.com",
+                       os: 'Linux',
+                       uptime: 86420,
+                       version: 'only-web.rb',
                        status: "healthy",
+                       clusterMembership: "inactiveFailed",
                        ports: {proxy: 11211,
                                direct: 11311},
                        memoryTotal: 2032574464,
@@ -421,7 +429,12 @@ var MockedRequest = mkClass({
                        otpNode: "ns1@donald-duck.disney.com",
                        otpCookie: "SADFDFGDFG"},
                       {hostname: "goofy.disney.com",
+                       uptime: 86430,
+                       os: 'Linux',
+                       version: 'only-web.rb',
                        status: "healthy",
+                       clusterMembership: "active",
+                       failedOver: false,
                        memoryTotal: 2032574464,
                        memoryFree: 889864960,
                        mcdMemoryAllocated: 64,
@@ -437,6 +450,11 @@ var MockedRequest = mkClass({
                 shallowList: "/buckets?shallow=true"
               },
               controllers: {
+                addNode: {uri: '/controllers/addNode'},
+                prepareNodeRemoval: {uri: '/controllers/prepareNodeRemoval'},
+                rebalance: {uri: '/controllers/rebalance'},
+                failOver: {uri: '/controllers/failOver'},
+                reAddNode: {uri: '/controllers/reAddNode'},
                 testWorkload: {uri: '/controllers/testWorkload'},
                 ejectNode: {uri: "/controllers/ejectNode"}
               },
@@ -594,3 +612,5 @@ var __hookParams = {};
     MockedRequest.prototype.initValue = params['initValue'];
   }
 })();
+
+//window.onerror = originalOnError;

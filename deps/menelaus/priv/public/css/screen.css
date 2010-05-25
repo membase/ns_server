@@ -758,4 +758,11 @@ body.init_cluster #container { display: none; }
 
 
 
+#servers .list_button, #servers .add_button,
+#servers .rebalance_button {display: block; float: right; margin-left: 5px;
+                             border: 1px solid green;
+                             -moz-border-radius: 4px; -webkit-border-radius: 4px; padding: 2px;}
+#servers h2 { height: 25px;}
+#servers .servers_list li { list-style: none; height: min-25px; margin-top: 3px;}
 
+#servers .gong_rb { margin-top: 10px; margin-bottom: 10px; }
