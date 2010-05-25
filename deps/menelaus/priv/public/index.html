@@ -68,9 +68,9 @@
           <li class="line"><a id="switch_support_suggest" href="http://forums.northscale.com/">Suggest a Feature</a></li>
         </ul>
 
-		<h1>DEV/TODO</h1>
+		<h1>DEV/W-I-P</h1>
 		<ul>
-          <li class="line"><a href="javascript:void($(document.body).addClass('welcome'))">Welcome Screen</a></li>
+          <li class="line"><a href="javascript:void($(document.body).addClass('welcome'))">Init Screens</a></li>
         </ul>
 
         <h1>RUN</h1>
@@ -1417,6 +1417,7 @@ MemcachedClient client = manager.getClient();</pre>
       $('#welcome_form').bind('submit', function (e) {
         e.preventDefault();
         $(document.body).removeClass('welcome');
+        $(document.body).addClass('init_license');
       });
     </script>
   </div>
@@ -1427,6 +1428,59 @@ MemcachedClient client = manager.getClient();</pre>
   </div>
 </div>
 <!-- END welcome_block -->
+<div class="init_license_block" id="init_license_dialog">
+  <!-- screen S.2 -->
+  <div id="header">
+    <div class="cnt_holder main_holder">
+      <div class="topper_nav">
+        <a href="javascript:showAbout();">About</a>
+        <b>•</b>
+        <a target="MCWebHelp" href="/docs/index_CSH.html#1001|northscale">Help</a>      
+        <a style="display: none;" class="sign-out-link" href="javascript:ThePage.signOut();">Sign Out</a>
+      </div>
+      <a href="/index.html"><span> </span></a>
+    </div>
+  </div>
+  <div class="pad">
+    <div class="alert_red" id="init_license_failed_message" style="display:none;">
+      <div class="al_text">
+        Invalid license. Try again.
+      </div>
+    </div>
+    <h1>Enter License Key</h1>
+    <h2>1 of 4</h2>
+    <form id="init_license_form" class="form block">
+      <table>
+        <col width="" />
+        <tr>
+          <td>
+            <input type="text" name="license" id="license_inp" class="inp" />
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div class="pat_10">
+              <input type="submit" value="Next" class="submit" />
+            </div>
+          </td>
+        </tr>
+      </table>
+    </form>
+    <script type="text/javascript">
+      $('#init_license_form').bind('submit', function (e) {
+        e.preventDefault();
+        // TODO: Make this real, call to server, handle license errors, etc.
+        $(document.body).removeClass('init_license');
+      });
+    </script>
+  </div>
+  <div id="footer">
+    <div class="main_holder">
+      <h1>Copyright 2010 <a href="http://northscale.com">NorthScale, Inc.</a> All rights reserved.</h1>
+    </div>
+  </div>
+</div>
+<!-- END init_license_block -->
 <div id="notice_template" class="template">
   <div class="shadow_box notice"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
     <h2 class="header_2">NorthScale Message</h2>
