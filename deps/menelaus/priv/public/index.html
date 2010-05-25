@@ -70,7 +70,7 @@
 
 		<h1>DEV/W-I-P</h1>
 		<ul>
-          <li class="line"><a href="javascript:void($(document.body).addClass('welcome'))">Init Screens</a></li>
+          <li class="line"><a href="javascript:showInitDialog('welcome')">Init Screens</a></li>
         </ul>
 
         <h1>RUN</h1>
@@ -1393,10 +1393,10 @@ MemcachedClient client = manager.getClient();</pre>
       <a href="/index.html"><span> </span></a>
     </div>
   </div>
-  <div class="pad" id="welcome_dialog">
+  <div class="pad" id="init_welcome_dialog">
     <!-- screen S.1 -->
     <h1>Congratulations</h1>
-    <form id="welcome_form" class="form block">
+    <form id="init_welcome_form" class="form block">
       <table>
         <col width="" />
         <tr>
@@ -1414,10 +1414,9 @@ MemcachedClient client = manager.getClient();</pre>
       </table>
     </form>
     <script type="text/javascript">
-      $('#welcome_form').bind('submit', function (e) {
+      $('#init_welcome_form').bind('submit', function (e) {
         e.preventDefault();
-        $(document.body).removeClass('welcome');
-        $(document.body).addClass('init_license');
+        showInitDialog("license");
       });
     </script>
   </div>
@@ -1452,8 +1451,7 @@ MemcachedClient client = manager.getClient();</pre>
       $('#init_license_form').bind('submit', function (e) {
         e.preventDefault();
         // TODO: Make this real, call to server, handle license errors, etc.
-        $(document.body).removeClass('init_license');
-        $(document.body).addClass('init_resources');
+        showInitDialog("resources");
       });
     </script>
   </div>
@@ -1514,8 +1512,7 @@ MemcachedClient client = manager.getClient();</pre>
         e.preventDefault();
         // TODO: Make this real, call to server to retrieve resources.
         // TODO: Make Back button work.
-        $(document.body).removeClass('init_resources');
-        $(document.body).addClass('init_ip');
+        showInitDialog("ip");
       });
     </script>
   </div>
@@ -1562,8 +1559,7 @@ MemcachedClient client = manager.getClient();</pre>
         // TODO: Make this real, call to server to get a list of IP addresses to
         // populate select/option dropdown, handle errors, etc.
         // TODO: Make Back button work.
-        $(document.body).removeClass('init_ip');
-        $(document.body).addClass('init_cluster');
+        showInitDialog("cluster");
       });
     </script>
   </div>
@@ -1626,7 +1622,7 @@ MemcachedClient client = manager.getClient();</pre>
         e.preventDefault();
         // TODO: Make this real.
         // TODO: Make Back button work.
-        $(document.body).removeClass('init_cluster');
+        showInitDialog("done");
       });
     </script>
   </div>

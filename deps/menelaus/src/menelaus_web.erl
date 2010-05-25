@@ -261,7 +261,9 @@ build_pools() ->
                                  list_to_binary(concat_url_path(["poolsStreaming", Name]))}]}
                       end,
                       expect_config(pools)),
-    {struct, [{pools, Pools} | build_versions()]}.
+    {struct, [{pools, Pools},
+              {initStatus, <<"">>} | %% TODO: get initStatus from ns_config.
+              build_versions()]}.
 
 handle_versions(Req) ->
     reply_json(Req, {struct, build_versions()}).

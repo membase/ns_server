@@ -717,9 +717,9 @@ button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
 #init_block { display: none; }
 #init_block .pad { display: none; }
 
-body.welcome #init_block { display: block; }
-body.welcome #welcome_dialog { display: block; }
-body.welcome #container { display: none; }
+body.init_welcome #init_block { display: block; }
+body.init_welcome #init_welcome_dialog { display: block; }
+body.init_welcome #container { display: none; }
 
 body.init_license #init_block { display: block; }
 body.init_license #init_license_dialog { display: block; }

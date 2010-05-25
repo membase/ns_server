@@ -328,6 +328,8 @@ var DAO = {
       DAO.componentsVersion = data.componentsVersion;
       document.title = document.title + " (" + data.implementationVersion + ")"
     }
+
+    showInitDialog(data.initStatus);
   },
   switchSection: function (section) {
     DAO.cells.mode.setValue(section);
@@ -1907,6 +1909,18 @@ function showAbout() {
   }
   updateVersion();
   showDialog('about_server_dialog');
+}
+
+function showInitDialog(page) {
+  var pages = [ "welcome", "license", "resources", "ip", "cluster" ];
+  if (page == "")
+    page = "welcome";
+  for (var i = 0; i < pages.length; i++) {
+    $(document.body).removeClass('init_' + pages[i]);
+    if (page == pages[i]) {
+      $(document.body).addClass('init_' + page);
+    }
+  }
 }
 
 (function () {
