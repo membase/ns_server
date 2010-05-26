@@ -38,6 +38,8 @@
          get_option/2,
          direct_port/1]).
 
+-import(ns_license, [license/0]).
+
 %% The range used within this file is arbitrary and undefined, so I'm
 %% defining an arbitrary value here just to be rebellious.
 -define(START_FAIL, 100).
@@ -139,6 +141,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_settings_web/1};
                              ["settings", "advanced"] ->
                                  {auth, fun handle_settings_advanced/1};
+                             ["node"] ->
+                                 {auth, fun handle_node/1};
                              ["diag"] ->
                                  {auth, fun handle_diag/1};
                              ["t", "index.html"] ->
@@ -1216,3 +1220,16 @@ handle_diag(Req) ->
     Req:ok({"text/plain; charset=utf-8",
             server_header(),
             list_to_binary(Text)}).
+
+handle_node(Req) ->
+    {License, LicenseValidUntil} = case ns_license:license() of
+        {undefined, _} -> {"", "invalid"};
+        {X, invalid}   -> {X, "invalid"};
+        {X, forever}   -> {X, "forever"};
+        {X, {Y, M, D}} -> {X, integer_to_list(Y) ++ "/" ++
+                              integer_to_list(M) ++ "/" ++
+                              integer_to_list(D)}
+    end,
+    reply_json(Req,
+               {struct, [{"license", list_to_binary(License)},
+                         {"licenseValidUntil", list_to_binary(LicenseValidUntil)}]}).

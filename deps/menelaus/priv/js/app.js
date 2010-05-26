@@ -1793,6 +1793,7 @@ $(function () {
 $(window).bind('template:rendered', function () {
   $('table.lined_tab tr:has(td):odd').addClass('highlight');
 });
+
 $('.remove_bucket').live('click', function() {
   BucketsSection.startRemovingBucket();
 });
@@ -1923,13 +1924,13 @@ function showInitDialog(page) {
 
   DAO.initStatus = page;
 
-  for (var i = 0; i < pages.length; i++) {
+  for (var i = pages.length; i >= 0; i--) { // Reversed iteration for more UI stability.
     $(document.body).removeClass('init_' + pages[i]);
     if (page == pages[i]) {
-      $(document.body).addClass('init_' + page);
-      if (InitDialog["startPage_" + page]) {
-        InitDialog["startPage_" + page]();
+      if (NodeDialog["startPage_" + page]) {
+        NodeDialog["startPage_" + page](page);
       }
+      $(document.body).addClass('init_' + page);
     }
   }
 
@@ -1938,8 +1939,19 @@ function showInitDialog(page) {
   });
 }
 
-InitDialog = {
-  startPage_resources: function() {
+NodeDialog = {
+  startPage_license: function(page) {
+    $.ajax({
+      type:'GET', url:'/node', dataType: 'json', async: false,
+      success: cb, error: cb});
+
+    function cb(data, status) {
+      if (status == 'success') {
+        $i('license_inp').value = data.license;
+      }
+    }
+  },
+  startPage_resources: function(page) {
     var c;
     c = $i('ssd_resource_container');
     renderTemplate('resource_list',
