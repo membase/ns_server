@@ -329,7 +329,8 @@ var DAO = {
       document.title = document.title + " (" + data.implementationVersion + ")"
     }
 
-    showInitDialog(data.initStatus);
+    DAO.initStatus = data.initStatus || "";
+    showInitDialog(DAO.initStatus);
   },
   switchSection: function (section) {
     DAO.cells.mode.setValue(section);
@@ -1913,14 +1914,25 @@ function showAbout() {
 
 function showInitDialog(page) {
   var pages = [ "welcome", "license", "resources", "ip", "cluster" ];
+
   if (page == "")
     page = "welcome";
+
+  if (DAO.initStatus == "done") // If our current initStatus is already "done",
+    page = "done";              // then don't let user go back through init dialog.
+
+  DAO.initStatus = page;
+
   for (var i = 0; i < pages.length; i++) {
     $(document.body).removeClass('init_' + pages[i]);
     if (page == pages[i]) {
       $(document.body).addClass('init_' + page);
     }
   }
+
+  $.ajax({
+    type:'POST', url:'/node/controller/initStatus', data: 'value=' + page
+  });
 }
 
 (function () {

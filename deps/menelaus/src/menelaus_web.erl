@@ -43,6 +43,8 @@
 -define(START_FAIL, 100).
 -define(NODE_EJECTED, 101).
 -define(UI_SIDE_ERROR_REPORT, 102).
+-define(INIT_STATUS_BAD_PARAM, 103).
+-define(INIT_STATUS_UPDATED, 104).
 
 %% External API
 
@@ -157,6 +159,8 @@ loop(Req, AppRoot, DocRoot) ->
                          case PathTokens of
                              ["node", "controller", "doJoinCluster"] ->
                                  {auth, fun handle_join/1};
+                             ["node", "controller", "initStatus"] ->
+                                 {auth, fun handle_init_status/1};
                              ["settings", "web"] ->
                                  {auth, fun handle_settings_web_post/1};
                              ["settings", "advanced"] ->
@@ -261,8 +265,9 @@ build_pools() ->
                                  list_to_binary(concat_url_path(["poolsStreaming", Name]))}]}
                       end,
                       expect_config(pools)),
+    Config = ns_config:get(),
     {struct, [{pools, Pools},
-              {initStatus, <<"">>} | %% TODO: get initStatus from ns_config.
+              {initStatus, list_to_binary(ns_config:search_prop(Config, init_status, value, ""))} |
               build_versions()]}.
 
 handle_versions(Req) ->
@@ -696,6 +701,20 @@ handle_bucket_flush(PoolId, Id, Req) ->
         false -> Req:respond({404, add_header(), []})
     end.
 
+handle_init_status(Req) ->
+    %% parameter example: value=done, value=welcome, value=someOpaqueValueFromJavaScript
+    %%
+    Params = Req:parse_post(),
+    case proplists:get_value("value", Params) of
+        undefined ->
+            ns_log:log(?MODULE, ?INIT_STATUS_BAD_PARAM, "Received request to initStatus but missing value parameter.", []),
+            Req:respond({400, add_header(), "Attempt to initStatus but missing value parameter.\n"});
+        InitStatus ->
+            ns_log:log(?MODULE, ?INIT_STATUS_UPDATED, "initStatus updated to ~p.", [InitStatus]),
+            ns_config:set(init_status, [{value, InitStatus}]),
+            Req:respond({200, add_header(), []})
+    end.
+
 handle_join(Req) ->
     %% paths:
     %%  cluster secured, admin logged in:
@@ -714,7 +733,7 @@ handle_join(Req) ->
     %%                    user=admin&password=admin123
     %%
     Params = Req:parse_post(),
-        ParsedOtherPort = (catch list_to_integer(proplists:get_value("clusterMemberPort", Params))),
+    ParsedOtherPort = (catch list_to_integer(proplists:get_value("clusterMemberPort", Params))),
     % the erlang http client crashes if the port number is invalid, so we validate for ourselves here
     NzV = if
               is_integer(ParsedOtherPort) ->
@@ -1079,7 +1098,11 @@ ns_log_cat(?START_FAIL) ->
 ns_log_cat(?NODE_EJECTED) ->
     info;
 ns_log_cat(?UI_SIDE_ERROR_REPORT) ->
-    warn.
+    warn;
+ns_log_cat(?INIT_STATUS_BAD_PARAM) ->
+    warn;
+ns_log_cat(?INIT_STATUS_UPDATED) ->
+    info.
 
 ns_log_code_string(0013) ->
     "node join failure";
@@ -1098,7 +1121,11 @@ ns_log_code_string(?START_FAIL) ->
 ns_log_code_string(?NODE_EJECTED) ->
     "node was ejected";
 ns_log_code_string(?UI_SIDE_ERROR_REPORT) ->
-    "client-side error report".
+    "client-side error report";
+ns_log_code_string(?INIT_STATUS_BAD_PARAM) ->
+    "init status bad parameter";
+ns_log_code_string(?INIT_STATUS_UPDATED) ->
+    "init status".
 
 %% I'm trying to avoid consing here, but, probably, too much
 diag_filter_out_config_password_list([], UnchangedMarker) ->

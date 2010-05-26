@@ -68,11 +68,6 @@
           <li class="line"><a id="switch_support_suggest" href="http://forums.northscale.com/">Suggest a Feature</a></li>
         </ul>
 
-		<h1>DEV/W-I-P</h1>
-		<ul>
-          <li class="line"><a href="javascript:showInitDialog('welcome')">Init Screens</a></li>
-        </ul>
-
         <h1>RUN</h1>
         <ul>
           <li class="line"><a id="switch_overview" href="javascript:nav.go('overview');">Cluster Overview</a>
@@ -1500,18 +1495,20 @@ MemcachedClient client = manager.getClient();</pre>
         <tr>
           <td>
             <div class="pat_10">
-              <input type="submit" value="Back" class="submit" />
-              <input type="submit" value="Next" class="submit" />
+              <input type="submit" value="Back" class="submit back" />
+              <input type="submit" value="Next" class="submit next" />
             </div>
           </td>
         </tr>
       </table>
     </form>
     <script type="text/javascript">
-      $('#init_resources_form').bind('submit', function (e) {
+      $('#init_resources_form input.back').click(function (e) {
         e.preventDefault();
-        // TODO: Make this real, call to server to retrieve resources.
-        // TODO: Make Back button work.
+        showInitDialog("license");
+      });
+      $('#init_resources_form input.next').click(function (e) {
+        e.preventDefault();
         showInitDialog("ip");
       });
     </script>
@@ -1546,19 +1543,22 @@ MemcachedClient client = manager.getClient();</pre>
         <tr>
           <td>
             <div class="pat_10">
-              <input type="submit" value="Back" class="submit" />
-              <input type="submit" value="Next" class="submit" />
+              <input type="submit" value="Back" class="submit back" />
+              <input type="submit" value="Next" class="submit next" />
             </div>
           </td>
         </tr>
       </table>
     </form>
     <script type="text/javascript">
-      $('#init_ip_form').bind('submit', function (e) {
+      $('#init_ip_form input.back').click(function (e) {
+        e.preventDefault();
+        showInitDialog("resources");
+      });
+      $('#init_ip_form input.next').click(function (e) {
         e.preventDefault();
         // TODO: Make this real, call to server to get a list of IP addresses to
         // populate select/option dropdown, handle errors, etc.
-        // TODO: Make Back button work.
         showInitDialog("cluster");
       });
     </script>
@@ -1614,14 +1614,22 @@ MemcachedClient client = manager.getClient();</pre>
           </td>
         </tr>
         <tr>
+          <td colspan="2">
+            <div class="pat_10">
+              <input type="submit" value="Back" class="submit back" />
+            </div>
+          </td>
         </tr>
       </table>
     </form>
     <script type="text/javascript">
+      $('#init_cluster_form input.back').click(function (e) {
+        e.preventDefault();
+        showInitDialog("ip");
+      });
       $('#init_cluster_form').bind('submit', function (e) {
         e.preventDefault();
         // TODO: Make this real.
-        // TODO: Make Back button work.
         showInitDialog("done");
       });
     </script>
