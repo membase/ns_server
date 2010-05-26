@@ -38,7 +38,7 @@
          get_option/2,
          direct_port/1]).
 
--import(ns_license, [license/0]).
+-import(ns_license, [license/1, change_license/2]).
 
 %% The range used within this file is arbitrary and undefined, so I'm
 %% defining an arbitrary value here just to be rebellious.
@@ -49,6 +49,7 @@
 -define(UI_SIDE_ERROR_REPORT, 102).
 -define(INIT_STATUS_BAD_PARAM, 103).
 -define(INIT_STATUS_UPDATED, 104).
+-define(LICENSE_UPDATE, 105).
 
 %% External API
 
@@ -167,6 +168,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_join/1};
                              ["node", "controller", "initStatus"] ->
                                  {auth, fun handle_init_status/1};
+                             ["node", "controller", "license"] ->
+                                 {auth, fun handle_license/1};
                              ["settings", "web"] ->
                                  {auth, fun handle_settings_web_post/1};
                              ["settings", "advanced"] ->
@@ -1231,15 +1234,37 @@ handle_diag(Req) ->
             server_header(),
             list_to_binary(Text)}).
 
+ymd_to_string({Y, M, D}) ->
+    integer_to_list(Y) ++ "/" ++
+    integer_to_list(M) ++ "/" ++
+    integer_to_list(D);
+
+ymd_to_string(invalid) -> "invalid";
+ymd_to_string(forever) -> "forever".
+
 handle_node(Req) ->
-    {License, LicenseValidUntil} = case ns_license:license() of
-        {undefined, _} -> {"", "invalid"};
-        {X, invalid}   -> {X, "invalid"};
-        {X, forever}   -> {X, "forever"};
-        {X, {Y, M, D}} -> {X, integer_to_list(Y) ++ "/" ++
-                              integer_to_list(M) ++ "/" ++
-                              integer_to_list(D)}
+    {License, Valid, ValidUntil} = case ns_license:license(node()) of
+        {undefined, V, VU} -> {"", V, ymd_to_string(VU)};
+        {X, V, VU}         -> {X, V, ymd_to_string(VU)}
     end,
     reply_json(Req,
                {struct, [{"license", list_to_binary(License)},
-                         {"licenseValidUntil", list_to_binary(LicenseValidUntil)}]}).
+                         {"licenseValid", Valid},
+                         {"licenseValidUntil", list_to_binary(ValidUntil)}]}).
+
+handle_license(Req) ->
+    %% parameter example: value=some_license_string
+    %%
+    Params = Req:parse_post(),
+    case proplists:get_value("value", Params) of
+        undefined ->
+            Req:respond({400, add_header(), "Missing value parameter during license change request.\n"});
+        License ->
+            ns_log:log(?MODULE, ?LICENSE_UPDATE,
+                       "Updating license to:  ~p~n", [License]),
+            case ns_license:change_license(node(), License) of
+                ok         -> Req:respond({200, add_header(), []});
+                {error, _} -> Req:respond({400, add_header(), "Error changing license.\n"})
+            end
+    end.
+

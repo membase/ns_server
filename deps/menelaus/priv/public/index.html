@@ -1418,9 +1418,9 @@ MemcachedClient client = manager.getClient();</pre>
   <!-- END welcome_block -->
   <div class="pad" id="init_license_dialog">
     <!-- screen S.2 -->
-    <div class="alert_red" id="init_license_failed_message" style="display:none;">
+    <div class="alert_red license_failed_message" style="display:none;">
       <div class="al_text">
-        Invalid license. Try again.
+        Invalid license. Please try again.
       </div>
     </div>
     <h1>Enter License Key</h1>
@@ -1430,25 +1430,18 @@ MemcachedClient client = manager.getClient();</pre>
         <col width="" />
         <tr>
           <td>
-            <input type="text" name="license" id="license_inp" class="inp" />
+            <input type="text" name="license" class="inp" />
           </td>
         </tr>
         <tr>
           <td>
             <div class="pat_10">
-              <input type="submit" value="Next" class="submit" />
+              <input type="submit" value="Next" class="submit next" />
             </div>
           </td>
         </tr>
       </table>
     </form>
-    <script type="text/javascript">
-      $('#init_license_form').bind('submit', function (e) {
-        e.preventDefault();
-        // TODO: Make this real, call to server, handle license errors, etc.
-        showInitDialog("resources");
-      });
-    </script>
   </div>
   <!-- END init_license_block -->
   <div class="pad" id="init_resources_dialog">
@@ -1534,7 +1527,7 @@ MemcachedClient client = manager.getClient();</pre>
               <option value="127.0.0.1">127.0.0.1</option>
             </select>
             &nbsp;
-            <input type="text" name="ip" id="lp_inp" class="inp" value="127.0.0.1"/>
+            <input type="text" name="ip" class="inp" value="127.0.0.1"/>
           </td>
         </tr>
         <tr>
@@ -1583,9 +1576,9 @@ MemcachedClient client = manager.getClient();</pre>
           <td>
             <h3>This is a new cluster...</h3>
             <label>Admin</label>
-            <input type="text" name="ip" id="lp_inp" class="inp"/>
+            <input type="text" name="user" class="inp"/>
             <label>Password</label>
-            <input type="text" name="ip" id="lp_inp" class="inp"/>
+            <input type="text" name="password" class="inp"/>
           </td>
           <td>
             <div class="pat_10">
@@ -1597,11 +1590,11 @@ MemcachedClient client = manager.getClient();</pre>
           <td>
             <h3>Or, join an existing cluster...</h3>
             <label>IP</label>
-            <input type="text" name="ip" id="lp_inp" class="inp"/>
+            <input type="text" name="ip" class="inp"/>
             <label>Admin</label>
-            <input type="text" name="ip" id="lp_inp" class="inp"/>
+            <input type="text" name="user" class="inp"/>
             <label>Password</label>
-            <input type="text" name="ip" id="lp_inp" class="inp"/>
+            <input type="text" name="password" class="inp"/>
             <br/>
           </td>
           <td>

@@ -1975,36 +1975,64 @@ function showInitDialog(page) {
   if (DAO.initStatus == "done") // If our current initStatus is already "done",
     page = "done";              // then don't let user go back through init dialog.
 
-  DAO.initStatus = page;
-
   for (var i = pages.length; i >= 0; i--) { // Reversed iteration for more UI stability.
     $(document.body).removeClass('init_' + pages[i]);
     if (page == pages[i]) {
       if (NodeDialog["startPage_" + page]) {
-        NodeDialog["startPage_" + page](page);
+        NodeDialog["startPage_" + page]('init_' + page);
       }
       $(document.body).addClass('init_' + page);
     }
   }
 
-  $.ajax({
-    type:'POST', url:'/node/controller/initStatus', data: 'value=' + page
-  });
+  if (DAO.initStatus != page) {
+    DAO.initStatus = page;
+    $.ajax({
+      type:'POST', url:'/node/controller/initStatus', data: 'value=' + page
+    });
+  }
 }
 
-NodeDialog = {
-  startPage_license: function(page) {
+var NodeDialog = {
+  // The pagePrefix looks like 'init_license', and allows reusability.
+  startPage_license: function(pagePrefix) {
+    var parentName = '#' + pagePrefix + '_dialog';
+
+    $(parentName + ' .license_failed_message').hide();
+
     $.ajax({
       type:'GET', url:'/node', dataType: 'json', async: false,
       success: cb, error: cb});
 
     function cb(data, status) {
       if (status == 'success') {
-        $i('license_inp').value = data.license;
+        $(parentName).find('[name=license]').val(data.license);
       }
     }
+
+    $(parentName + ' input.next').click(function (e) {
+        e.preventDefault();
+
+        $(parentName + ' .license_failed_message').hide();
+
+        var license = $(parentName).find('[name=license]').val() || "";
+
+        $.ajax({
+          type:'POST', url:'/node/controller/license', data: 'value=' + license,
+          async:false, success:cbPost, error:cbPost
+        });
+
+        function cbPost(data, status) {
+          if (status == 'success') {
+            showInitDialog("resources");
+          } else {
+            alert('error ' + status);
+            $(parentName + ' .license_failed_message').show();
+          }
+        }
+      });
   },
-  startPage_resources: function(page) {
+  startPage_resources: function(pagePrefix) {
     var c;
     c = $i('ssd_resource_container');
     renderTemplate('resource_list',

@@ -4,22 +4,28 @@
 
 -module(ns_license).
 
--export([license/0, license/1,
-         change_license/1, change_license/2]).
+-export([license/1, change_license/2]).
 
-license() ->
-    license(node()).
-
+% {"0MEM-BASE-BETA-0001", %% A string or the atom undefined if no license.
+%  true,                  %% Boolean whether the license is currently valid
+%                         %% so this is false if license is invalid or expired.
+%  {2010, 9, 15}          %% License is valid until this date, inclusive,
+%                         %% in {Y, M, D} format, or the atoms forever or invalid.
+% }
+%
 license(_Node) ->
     %% TODO: License placeholder.
     %% We should read this out of a per-node-specific place in the ns_config.
-    {"HDJ1-HQR1-23J4-3847", %% A string or the atom undefined if no license.
-     {2010, 9, 15}          %% License is valid until this date, inclusive,
-                            %% in {Y, M, D} format, or the atoms forever or invalid.
-    }.
+    {undefined, false, invalid}.
 
-change_license(L) ->
-    change_license(node(), L).
+change_license(_Node, "0MEM-BASE-BETA-0001") ->
+    ok;
 
 change_license(_Node, _L) ->
-    todo.
+    %% TODO: License change placeholder.  Should validate it and save it if successful.
+    {error, todo}.
+
+past_today({Y, M, D}) ->
+    {NY, NM, ND} = erlang:date(),
+    (10000 * NY + 100 * NM + ND) > (10000 * Y + 100 * M + D).
+
