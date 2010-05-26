@@ -1927,6 +1927,9 @@ function showInitDialog(page) {
     $(document.body).removeClass('init_' + pages[i]);
     if (page == pages[i]) {
       $(document.body).addClass('init_' + page);
+      if (InitDialog["startPage_" + page]) {
+        InitDialog["startPage_" + page]();
+      }
     }
   }
 
@@ -1934,6 +1937,22 @@ function showInitDialog(page) {
     type:'POST', url:'/node/controller/initStatus', data: 'value=' + page
   });
 }
+
+InitDialog = {
+  startPage_resources: function() {
+    var c;
+    c = $i('ssd_resource_container');
+    renderTemplate('resource_list',
+                   [{path: "some/path", quota: 1234},
+                    {path: "other/path", quota: 1122}],
+                   c);
+    c = $i('disk_resource_container');
+    renderTemplate('resource_list',
+                   [{path: "/disk/some/path", quota: 124},
+                    {path: "/disk/other/path", quota: 122}],
+                   c);
+  }
+};
 
 (function () {
   var sentReports = 0;

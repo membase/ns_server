@@ -1474,19 +1474,21 @@ MemcachedClient client = manager.getClient();</pre>
         <tr>
           <td>Solid State Drive Storage
           </td>
-          <td><a href="#">ADD</a></td>
+          <td><a href="javascript:showDialog('add_resource_dialog')">ADD</a></td>
         </tr>
         <tr>
-          <td colspan="2">none configured
+          <td colspan="2">
+            <div id="ssd_resource_container">none configured</div>
           </td>
         </tr>
         <tr>
           <td>Disk Storage
           </td>
-          <td><a href="#">ADD</a></td>
+          <td><a href="javascript:showDialog('add_resource_dialog')">ADD</a></td>
         </tr>
         <tr>
-          <td colspan="2">none configured
+          <td colspan="2">
+            <div id="disk_resource_container">none configured</div>
           </td>
         </tr>
       </table>
@@ -1638,6 +1640,59 @@ MemcachedClient client = manager.getClient();</pre>
   <div id="footer">
     <div class="main_holder">
       <h1>Copyright 2010 <a href="http://northscale.com">NorthScale, Inc.</a> All rights reserved.</h1>
+    </div>
+  </div>
+</div>
+<!-- END init_block -->
+<div id="resource_list_template" class="template">
+  <table class="lined_tab">
+    <col width="" />
+    <col width="" />
+    <!-- {% $.each(rows, function () { %} -->
+    <tr>
+      <td><a href="#">{%= h(this.path) %}</a></td>
+      <td><a href="#">{%= h(this.quota) %}</a></td>
+    </tr>
+    <!-- {% }); %} -->
+  </table>
+</div>
+<!-- END resource_list_template -->
+<div class="jqmWindow" id="add_resource_dialog">
+  <div class="lbox">
+    <div class="top">
+      <div class="top_left"></div>
+      <div class="top_right"></div>
+      <div class="top_center"></div>
+    </div>
+    <div class="center">
+      <div class="pad">
+        <p class="lbox_header">Add Resource Location</p>
+        <div id="add_new_resource_errors_container" class="warning" style="padding:10px 20px;"></div>
+        <div id="add_new_resource_errors_template" class="template">
+          <strong>Couldn't create resource due to:</strong>
+          <ul>
+            <!-- {% _.each(rows, function (e) { %} -->
+            <li>{%= h(e) %}
+            <!-- {% }); %} -->
+          </ul>
+        </div>
+
+        <form id="add_new_resource_form">
+          <p><label><b>Path:</b><input type="text" name="path" class="inp" style="width:290px;" value="absolute path to directory on the server"></label></p>
+          <p><label><b>Quota:</b><input type="text" name="quota" class="inp" style="width:40px;"><span class="cache-details">&nbsp;</span><!-- MB x 3 server nodes = 192MB Total Cache Size/30GB Cluster memory available. --></label></p>
+          <div class="pas_20">
+            <div class="right save_cancel">
+              <button class="save_button float_right" type="submit">ADD</button>
+              <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div class="bottom">
+      <div class="bottom_left"></div>
+      <div class="bottom_right"></div>
+      <div class="bottom_center"></div>
     </div>
   </div>
 </div>
