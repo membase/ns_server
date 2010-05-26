@@ -120,5 +120,6 @@ mergable(_CurrList) ->
      alerts,
      pools,
      nodes_wanted,
+     init_status,
      test0, test1, test2].
 

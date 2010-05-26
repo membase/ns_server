@@ -328,6 +328,9 @@ var DAO = {
       DAO.componentsVersion = data.componentsVersion;
       document.title = document.title + " (" + data.implementationVersion + ")"
     }
+
+    DAO.initStatus = data.initStatus || "";
+    showInitDialog(DAO.initStatus);
   },
   switchSection: function (section) {
     DAO.cells.mode.setValue(section);
@@ -1843,6 +1846,7 @@ $(function () {
 $(window).bind('template:rendered', function () {
   $('table.lined_tab tr:has(td):odd').addClass('highlight');
 });
+
 $('.remove_bucket').live('click', function() {
   BucketsSection.startRemovingBucket();
 });
@@ -1961,6 +1965,59 @@ function showAbout() {
   updateVersion();
   showDialog('about_server_dialog');
 }
+
+function showInitDialog(page) {
+  var pages = [ "welcome", "license", "resources", "ip", "cluster" ];
+
+  if (page == "")
+    page = "welcome";
+
+  if (DAO.initStatus == "done") // If our current initStatus is already "done",
+    page = "done";              // then don't let user go back through init dialog.
+
+  DAO.initStatus = page;
+
+  for (var i = pages.length; i >= 0; i--) { // Reversed iteration for more UI stability.
+    $(document.body).removeClass('init_' + pages[i]);
+    if (page == pages[i]) {
+      if (NodeDialog["startPage_" + page]) {
+        NodeDialog["startPage_" + page](page);
+      }
+      $(document.body).addClass('init_' + page);
+    }
+  }
+
+  $.ajax({
+    type:'POST', url:'/node/controller/initStatus', data: 'value=' + page
+  });
+}
+
+NodeDialog = {
+  startPage_license: function(page) {
+    $.ajax({
+      type:'GET', url:'/node', dataType: 'json', async: false,
+      success: cb, error: cb});
+
+    function cb(data, status) {
+      if (status == 'success') {
+        $i('license_inp').value = data.license;
+      }
+    }
+  },
+  startPage_resources: function(page) {
+    var c;
+    c = $i('ssd_resource_container');
+    renderTemplate('resource_list',
+                   [{path: "some/path", quota: 1234},
+                    {path: "other/path", quota: 1122}],
+                   c);
+    c = $i('disk_resource_container');
+    renderTemplate('resource_list',
+                   [{path: "/disk/some/path", quota: 124},
+                    {path: "/disk/other/path", quota: 122}],
+                   c);
+  }
+};
 
 (function () {
   var sentReports = 0;

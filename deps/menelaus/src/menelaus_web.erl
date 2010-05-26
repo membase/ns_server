@@ -38,13 +38,17 @@
          get_option/2,
          direct_port/1]).
 
+-import(ns_license, [license/0]).
+
 %% The range used within this file is arbitrary and undefined, so I'm
 %% defining an arbitrary value here just to be rebellious.
+-define(BUCKET_DELETED, 11).
+-define(BUCKET_CREATED, 12).
 -define(START_FAIL, 100).
 -define(NODE_EJECTED, 101).
 -define(UI_SIDE_ERROR_REPORT, 102).
--define(BUCKET_DELETED, 11).
--define(BUCKET_CREATED, 12).
+-define(INIT_STATUS_BAD_PARAM, 103).
+-define(INIT_STATUS_UPDATED, 104).
 
 %% External API
 
@@ -139,6 +143,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_settings_web/1};
                              ["settings", "advanced"] ->
                                  {auth, fun handle_settings_advanced/1};
+                             ["node"] ->
+                                 {auth, fun handle_node/1};
                              ["diag"] ->
                                  {auth, fun handle_diag/1};
                              ["t", "index.html"] ->
@@ -159,6 +165,8 @@ loop(Req, AppRoot, DocRoot) ->
                          case PathTokens of
                              ["node", "controller", "doJoinCluster"] ->
                                  {auth, fun handle_join/1};
+                             ["node", "controller", "initStatus"] ->
+                                 {auth, fun handle_init_status/1};
                              ["settings", "web"] ->
                                  {auth, fun handle_settings_web_post/1};
                              ["settings", "advanced"] ->
@@ -263,7 +271,10 @@ build_pools() ->
                                  list_to_binary(concat_url_path(["poolsStreaming", Name]))}]}
                       end,
                       expect_config(pools)),
-    {struct, [{pools, Pools} | build_versions()]}.
+    Config = ns_config:get(),
+    {struct, [{pools, Pools},
+              {initStatus, list_to_binary(ns_config:search_prop(Config, init_status, value, ""))} |
+              build_versions()]}.
 
 handle_versions(Req) ->
     reply_json(Req, {struct, build_versions()}).
@@ -489,7 +500,18 @@ build_bucket_info(PoolId, Id, Pool, InfoLevel) ->
              {flushCacheUri, list_to_binary(concat_url_path(["pools", PoolId,
                                                              "buckets", Id, "controller", "doFlush"]))},
              {nodes, Nodes},
-             {stats, {struct, [{uri, StatsUri}]}}],
+             {stats, {struct, [{uri, StatsUri}]}},
+             %% TODO: placeholder for a real vbucketServerMap.
+             {vbucketServerMap, {struct, [{hashAlgorithm, <<"CRC">>},
+                                          {numReplicas, 0},
+                                          {serverList, lists:map(
+                                            fun(ENode) ->
+                                              {_Name, Host} = misc:node_name_host(ENode),
+                                              {value, DirectPort} = direct_port(ENode),
+                                              list_to_binary(Host ++ ":" ++ integer_to_list(DirectPort))
+                                            end,
+                                            ns_node_disco:nodes_wanted())},
+                                          {vBucketMap, [[0], [0], [0]]}]}}],
     List2 = case tgen:is_traffic_bucket(PoolId, Id) of
                 true -> [{testAppBucket, true},
                          {controlURL, list_to_binary(concat_url_path(["pools", PoolId,
@@ -685,6 +707,20 @@ handle_bucket_flush(PoolId, Id, Req) ->
         false -> Req:respond({404, add_header(), []})
     end.
 
+handle_init_status(Req) ->
+    %% parameter example: value=done, value=welcome, value=someOpaqueValueFromJavaScript
+    %%
+    Params = Req:parse_post(),
+    case proplists:get_value("value", Params) of
+        undefined ->
+            ns_log:log(?MODULE, ?INIT_STATUS_BAD_PARAM, "Received request to initStatus but missing value parameter.", []),
+            Req:respond({400, add_header(), "Attempt to initStatus but missing value parameter.\n"});
+        InitStatus ->
+            ns_log:log(?MODULE, ?INIT_STATUS_UPDATED, "initStatus updated to ~p.", [InitStatus]),
+            ns_config:set(init_status, [{value, InitStatus}]),
+            Req:respond({200, add_header(), []})
+    end.
+
 handle_join(Req) ->
     %% paths:
     %%  cluster secured, admin logged in:
@@ -703,7 +739,7 @@ handle_join(Req) ->
     %%                    user=admin&password=admin123
     %%
     Params = Req:parse_post(),
-        ParsedOtherPort = (catch list_to_integer(proplists:get_value("clusterMemberPort", Params))),
+    ParsedOtherPort = (catch list_to_integer(proplists:get_value("clusterMemberPort", Params))),
     % the erlang http client crashes if the port number is invalid, so we validate for ourselves here
     NzV = if
               is_integer(ParsedOtherPort) ->
@@ -1072,7 +1108,11 @@ ns_log_cat(?START_FAIL) ->
 ns_log_cat(?NODE_EJECTED) ->
     info;
 ns_log_cat(?UI_SIDE_ERROR_REPORT) ->
-    warn.
+    warn;
+ns_log_cat(?INIT_STATUS_BAD_PARAM) ->
+    warn;
+ns_log_cat(?INIT_STATUS_UPDATED) ->
+    info.
 
 ns_log_code_string(0013) ->
     "node join failure";
@@ -1091,7 +1131,11 @@ ns_log_code_string(?START_FAIL) ->
 ns_log_code_string(?NODE_EJECTED) ->
     "node was ejected";
 ns_log_code_string(?UI_SIDE_ERROR_REPORT) ->
-    "client-side error report".
+    "client-side error report";
+ns_log_code_string(?INIT_STATUS_BAD_PARAM) ->
+    "init status bad parameter";
+ns_log_code_string(?INIT_STATUS_UPDATED) ->
+    "init status".
 
 alert_key(?BUCKET_CREATED)  -> bucket_created;
 alert_key(?BUCKET_DELETED)  -> bucket_deleted;
@@ -1186,3 +1230,16 @@ handle_diag(Req) ->
     Req:ok({"text/plain; charset=utf-8",
             server_header(),
             list_to_binary(Text)}).
+
+handle_node(Req) ->
+    {License, LicenseValidUntil} = case ns_license:license() of
+        {undefined, _} -> {"", "invalid"};
+        {X, invalid}   -> {X, "invalid"};
+        {X, forever}   -> {X, "forever"};
+        {X, {Y, M, D}} -> {X, integer_to_list(Y) ++ "/" ++
+                              integer_to_list(M) ++ "/" ++
+                              integer_to_list(D)}
+    end,
+    reply_json(Req,
+               {struct, [{"license", list_to_binary(License)},
+                         {"licenseValidUntil", list_to_binary(LicenseValidUntil)}]}).

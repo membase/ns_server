@@ -98,8 +98,8 @@ get_remote(Node) -> config_dynamic(?MODULE:get(Node)).
 % ----------------------------------------
 
 set(Key, PropList, Timestamp) ->
-        PropList2 = [{?METADATA_VER, Timestamp} |
-                     strip_metadata(PropList, [])],
+    PropList2 = [{?METADATA_VER, Timestamp} |
+                 strip_metadata(PropList, [])],
     gen_server:call(?MODULE, {merge, [{Key, PropList2}]}).
 
 set(Key, PropList) when is_list(PropList) ->
