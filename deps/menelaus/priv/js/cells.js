@@ -323,7 +323,7 @@ _.extend(Cell, {
   },
   completeCellDelay: function (cell) {
     var future = cell.pendingFuture;
-    if (future) {
+    if (future && !future.started) {
       try {
         future.start(cell);
       } catch (e) {

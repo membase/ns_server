@@ -310,3 +310,32 @@ CellsTest.prototype.testInvalidate = function () {
   assertEquals("invalidate causes recalculation",
                ["recalc", "recalc"], events);
 }
+
+CellsTest.prototype.testDoubleFutureStartBug = function () {
+  var cell = new Cell(function () {
+    return future(function (deliver) {
+      setTimeout(function () {
+        deliver(3);
+      }, 2000);
+    });
+  });
+  var dependentCell = new Cell(function (a) {
+    return future(function (deliver) {
+      setTimeout(function () {
+        deliver(a + 1);
+      }, 500);
+    });
+  }, {a: cell});
+
+  Clock.tickFarAway();
+
+  cell.setValue(future(function () {}));
+  Clock.tickFarAway();
+  assertSame(undefined, cell.value);
+  assert(!!cell.pendingFuture);
+
+  cell.recalculate();
+  Clock.tickFarAway();
+  assertEquals(3, cell.value);
+  assertEquals(4, dependentCell.value);
+}
