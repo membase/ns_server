@@ -241,11 +241,12 @@
                       </table>
                   </div>
                 </div>
-                <!-- {% if (rows.length != 1) { %} -->
                 <div class="right block tdn bolder">
+                  <a href="{%=jsLink('OverviewSection.showNodeSettings',this.otpNode)%}">Server Settings</a>
+                <!-- {% if (rows.length != 1) { %} -->
                   <a href="{%=jsLink('OverviewSection.removeNode',this.otpNode)%}">Remove Server from Cluster</a>
-                </div>
                 <!-- {% } %} -->
+                </div>
               </td></tr>
              <!-- {% }); %} -->
             </tbody></table>
@@ -1689,6 +1690,7 @@ MemcachedClient client = manager.getClient();</pre>
     </div>
   </div>
 </div>
+<!-- END add_resource_dialog -->
 <div id="notice_template" class="template">
   <div class="shadow_box notice"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
     <h2 class="header_2">NorthScale Message</h2>

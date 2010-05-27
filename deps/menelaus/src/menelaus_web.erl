@@ -49,7 +49,6 @@
 -define(UI_SIDE_ERROR_REPORT, 102).
 -define(INIT_STATUS_BAD_PARAM, 103).
 -define(INIT_STATUS_UPDATED, 104).
--define(LICENSE_UPDATE, 105).
 
 %% External API
 
@@ -168,8 +167,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_join/1};
                              ["node", "controller", "initStatus"] ->
                                  {auth, fun handle_init_status/1};
-                             ["node", "controller", "license"] ->
-                                 {auth, fun handle_license/1};
+                             ["node", "controller", "settings"] ->
+                                 {auth, fun handle_node_settings_post/1};
                              ["settings", "web"] ->
                                  {auth, fun handle_settings_web_post/1};
                              ["settings", "advanced"] ->
@@ -1250,21 +1249,30 @@ handle_node(Req) ->
     reply_json(Req,
                {struct, [{"license", list_to_binary(License)},
                          {"licenseValid", Valid},
-                         {"licenseValidUntil", list_to_binary(ValidUntil)}]}).
+                         {"licenseValidUntil", list_to_binary(ValidUntil)},
+                         %% TODO: Make ip and ip choices real.
+                         {"ip", undefined},
+                         {"ipChoices", []}]}).
 
-handle_license(Req) ->
-    %% parameter example: value=some_license_string
+handle_node_settings_post(Req) ->
+    %% parameter example: license=some_license_string, ip=10.1.1.100
     %%
     Params = Req:parse_post(),
-    case proplists:get_value("value", Params) of
-        undefined ->
-            Req:respond({400, add_header(), "Missing value parameter during license change request.\n"});
-        License ->
-            ns_log:log(?MODULE, ?LICENSE_UPDATE,
-                       "Updating license to:  ~p~n", [License]),
-            case ns_license:change_license(node(), License) of
-                ok         -> Req:respond({200, add_header(), []});
-                {error, _} -> Req:respond({400, add_header(), "Error changing license.\n"})
-            end
+    Results = [
+        case proplists:get_value("license", Params) of
+            undefined -> ok;
+            License -> case ns_license:change_license(node(), License) of
+                            ok         -> ok;
+                            {error, _} -> "Error changing license.\n"
+                       end
+        end,
+        case proplists:get_value("ip", Params) of
+            undefined -> ok;
+            _IpAddr -> ok % TODO: Make ip changes real.
+        end
+        % TODO: Add port number changes here.
+    ],
+    case lists:filter(fun(X) -> X =/= ok end, Results) of
+        [] -> Req:respond({200, add_header(), []});
+        Errs -> Req:respond({400, add_header(), lists:flatten(Errs)})
     end.
-

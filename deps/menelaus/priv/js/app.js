@@ -1043,6 +1043,8 @@ var OverviewSection = {
       }]]
     });
   },
+  showNodeSettings: function (otpNode) {
+  },
   init: function () {
     var self = this;
     _.defer(function () {
@@ -2018,7 +2020,7 @@ var NodeDialog = {
         var license = $(parentName).find('[name=license]').val() || "";
 
         $.ajax({
-          type:'POST', url:'/node/controller/license', data: 'value=' + license,
+          type:'POST', url:'/node/controller/settings', data: 'license=' + license,
           async:false, success:cbPost, error:cbPost
         });
 
@@ -2026,7 +2028,6 @@ var NodeDialog = {
           if (status == 'success') {
             showInitDialog("resources");
           } else {
-            alert('error ' + status);
             $(parentName + ' .license_failed_message').show();
           }
         }
