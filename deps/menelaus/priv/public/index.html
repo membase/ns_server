@@ -456,12 +456,12 @@
 
   <div id="buckets" style="display:none">
     <!-- shadow box -->
-    <h1>Buckets</h1>
+    <h1>Data Buckets</h1>
     <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
     <div class="darker_block">
         <div class="pad_10">
             <div class="pat_10 right">
-                <button class="button_200" onclick="BucketsSection.startCreate();">Create New Cache Bucket</button>
+                <button class="button_200" onclick="BucketsSection.startCreate();">Create New Data Bucket</button>
             </div>
         </div>
     </div>
@@ -573,6 +573,7 @@
     </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
     <!-- END shadow box -->
   </div>
+
   <div id="settings" style="display:none">
     <!-- shadow box -->
     <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
@@ -810,9 +811,12 @@
     <!-- END shadow box -->
   </div>
 
+  <div id="nodeSettings" style="display:none">
+    <h1>SERVER > 10.1.2.18, screen MA.2.1 (a) placeholder</h1>
+  </div>
+
 </tr>
 </table>
-
 
 </div> <!-- mainContainer -->
 
@@ -851,7 +855,7 @@
 URI base = new URI("{%= h(document.location.protocol) %}//{%= h(document.location.host) %}/pools/default");<br />
 baseList.add(base);<br />
 ClientManager manager = new ClientManager(baseList,
-                                          "{%= h(b.name) %}", 
+                                          "{%= h(b.name) %}",
                                           "{%= h(b.name) %}");<br />
 MemcachedClient client = manager.getClient();</pre>
             {% }
@@ -862,11 +866,11 @@ MemcachedClient client = manager.getClient();</pre>
              {% }; %}
             </div>
             {% if (b.name != "default") { %}
-            <p class="block pas_20 info_text">NOTE: The username and password for this cache bucket is the same as the bucket name above.</p>
+            <p class="block pas_20 info_text">NOTE: The username and password for this data bucket is the same as the bucket name above.</p>
             {% }
                else { %}
             <p class="block pas_20 info_text">NOTE: This will create a connection to the anonymous authentication "default" bucket.</p>
-            {% }; %}            
+            {% }; %}
             <div class="right save_cancel">
               <button class="save_button jqmClose float_right" type="submit">OK</button>
             </div>
@@ -904,7 +908,7 @@ MemcachedClient client = manager.getClient();</pre>
         <form id="add_new_bucket_form">
           <p><label><b>Bucket Name:</b><input type="text" name="name" class="inp" style="width:290px;" value="No spaces, alphanumeric up to 12 characters"></label></p>
           <p><label><b>Cache Size:</b><input type="text" name="cacheSize" class="inp" style="width:40px;"><span class="cache-details">&nbsp;</span><!-- MB x 3 server nodes = 192MB Total Cache Size/30GB Cluster memory available. --></label></p>
-          <p><span class="block pas_20 info_text">NOTE: The username and password for this cache bucket is the same as the bucket name above.</span></p>
+          <p><span class="block pas_20 info_text">NOTE: The username and password for this data bucket is the same as the bucket name above.</span></p>
           <div class="pas_20">
             <div class="right save_cancel">
               <button class="save_button float_right" type="submit">ADD</button>
@@ -944,7 +948,7 @@ MemcachedClient client = manager.getClient();</pre>
             </strong>
           </p>
           <div class="warning pat_20">
-            <strong>Warning</strong> - Flushing will reset this bucket to be empty. Are you sure you want to flush this cache bucket?
+            <strong>Warning</strong> - Flushing will reset this bucket to be empty. Are you sure you want to flush this data bucket?
           </div>
         </div>
         <div class="pas_20">
@@ -1106,7 +1110,7 @@ MemcachedClient client = manager.getClient();</pre>
       </div>
       <div class="pas_20">
         <div class="warning pat_20">
-          <strong>Warning</strong> - Removing this node from the cluster will reduce cache capacity across all buckets.
+          <strong>Warning</strong> - Removing this node from the cluster will reduce cache capacity across all data buckets.
                                        Are you sure you want to remove this node from the cluster?
         </div>
       </div>

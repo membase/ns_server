@@ -895,7 +895,7 @@ var OverviewSection = {
     var memoryUtilization = 100-Math.round(freeMem*100/totalMem) << 0;
 
     var isWarning = memoryUtilization > 90;
-    
+
     var isCritical = false;
     isCritical = isCritical || _.any(nodes, function (n) {
       return n.status != 'healthy';
@@ -1044,6 +1044,8 @@ var OverviewSection = {
     });
   },
   showNodeSettings: function (otpNode) {
+    // TODO: Need to pass along otpNode param.
+    nav.go('nodeSettings');
   },
   init: function () {
     var self = this;
@@ -1643,7 +1645,8 @@ var ThePage = {
              analytics: AnalyticsSection,
              buckets: BucketsSection,
              alerts: AlertsSection,
-             settings: SettingsSection},
+             settings: SettingsSection,
+             nodeSettings: DummySection},
   currentSection: null,
   currentSectionName: null,
   signOut: function () {
