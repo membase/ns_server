@@ -812,7 +812,32 @@
   </div>
 
   <div id="nodeSettings" style="display:none">
-    <h1>SERVER > 10.1.2.18, screen MA.2.1 (a) placeholder</h1>
+    <div id="node_properties_container">
+    </div>
+    <div id="node_properties_template" class="template">
+      <div>
+        Server Summary
+        <span><a href="javascript:alert('TODO');">EDIT</a></span>
+        <table>
+          <tr>
+            <td>IP Address: <span>{%= h(hostname) %}</span></td>
+            <td>License Key: <span>{%= h(license) %}</span></td>
+          </tr>
+          <tr>
+            <td>Version: <span>{%= h(version) %}</span></td>
+            <td>Cache Port: <span>{%=h(ports.direct)%}</span></td>
+          </tr>
+          <tr>
+            <td>OS: <span>{%= h(os) %}</span></td>
+            <td>Proxy Port: <span>{%=h(ports.proxy)%}</span></td>
+          </tr>
+        </table>
+      </div>
+    </div>
+    <form id="edit_resources_dialog" class="form block">
+      <div class="resource_panel_container">
+      </div>
+    </form>
   </div>
 
 </tr>
@@ -1459,37 +1484,8 @@ MemcachedClient client = manager.getClient();</pre>
     <h1>Configure Server Resources</h1>
     <h2>2 of 4</h2>
     <form id="init_resources_form" class="form block">
-      <table>
-        <col width="" />
-        <col width="" />
-        <tr>
-          <td colspan="2">Memory Cache
-          </td>
-        </tr>
-        <tr>
-          <td>DRAM</td><td>|----|-------|-----|</td>
-        </tr>
-        <tr>
-          <td>Solid State Drive Storage
-          </td>
-          <td><a href="javascript:showDialog('add_resource_dialog')">ADD</a></td>
-        </tr>
-        <tr>
-          <td colspan="2">
-            <div id="ssd_resource_container">none configured</div>
-          </td>
-        </tr>
-        <tr>
-          <td>Disk Storage
-          </td>
-          <td><a href="javascript:showDialog('add_resource_dialog')">ADD</a></td>
-        </tr>
-        <tr>
-          <td colspan="2">
-            <div id="disk_resource_container">none configured</div>
-          </td>
-        </tr>
-      </table>
+      <div class="resource_panel_container">
+      </div>
       <table>
         <col width="" />
         <tr>
@@ -1642,19 +1638,74 @@ MemcachedClient client = manager.getClient();</pre>
   </div>
 </div>
 <!-- END init_block -->
-<div id="resource_list_template" class="template">
-  <table class="lined_tab">
-    <col width="" />
-    <col width="" />
-    <!-- {% $.each(rows, function () { %} -->
-    <tr>
-      <td><a href="#">{%= h(this.path) %}</a></td>
-      <td><a href="#">{%= h(this.quota) %}</a></td>
-    </tr>
-    <!-- {% }); %} -->
-  </table>
+<div id="resource_panel_template" class="template">
+      <table>
+        <col width="" />
+        <col width="" />
+        <tr>
+          <td colspan="2">Memory Cache
+          </td>
+        </tr>
+        <tr>
+          <td>DRAM</td><td>|----|-------|-----|</td>
+        </tr>
+        <tr>
+          <td>Solid State Drive Storage
+          </td>
+          <td><a href="javascript:showDialog('add_resource_dialog')">ADD</a></td>
+        </tr>
+        <tr>
+          <td colspan="2">
+            <div class="ssd_resource_container">
+              <!-- {% if (ssdResources.length > 0) { %} -->
+                <table class="lined_tab">
+                  <col width="" />
+                  <col width="" />
+                  <col width="" />
+                  <!-- {% $.each(ssdResources, function () { %} -->
+                  <tr>
+                    <td>{%= h(this.path) %}</td>
+                    <td>{%= h(this.quota) %}</td>
+                    <td><a href="#">Remove</a></td>
+                  </tr>
+                  <!-- {% }); %} -->
+                </table>
+              <!-- {% } else { %} -->
+                none configured
+              <!-- {% }; %} -->
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td>Disk Storage
+          </td>
+          <td><a href="javascript:showDialog('add_resource_dialog')">ADD</a></td>
+        </tr>
+        <tr>
+          <td colspan="2">
+            <div class="disk_resource_container">
+              <!-- {% if (diskResources.length > 0) { %} -->
+                <table class="lined_tab">
+                  <col width="" />
+                  <col width="" />
+                  <col width="" />
+                  <!-- {% $.each(diskResources, function () { %} -->
+                  <tr>
+                    <td>{%= h(this.path) %}</td>
+                    <td>{%= h(this.quota) %}</td>
+                    <td><a href="#">Remove</a></td>
+                  </tr>
+                  <!-- {% }); %} -->
+                </table>
+              <!-- {% } else { %} -->
+                none configured
+              <!-- {% }; %} -->
+            </div>
+          </td>
+        </tr>
+      </table>
 </div>
-<!-- END resource_list_template -->
+<!-- END resource_panel_template -->
 <div class="jqmWindow" id="add_resource_dialog">
   <div class="lbox">
     <div class="top">
@@ -1674,7 +1725,6 @@ MemcachedClient client = manager.getClient();</pre>
             <!-- {% }); %} -->
           </ul>
         </div>
-
         <form id="add_new_resource_form">
           <p><label><b>Path:</b><input type="text" name="path" class="inp" style="width:290px;" value="absolute path to directory on the server"></label></p>
           <p><label><b>Quota:</b><input type="text" name="quota" class="inp" style="width:40px;"><span class="cache-details">&nbsp;</span><!-- MB x 3 server nodes = 192MB Total Cache Size/30GB Cluster memory available. --></label></p>

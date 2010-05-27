@@ -1581,10 +1581,27 @@ var SettingsSection = {
   }
 };
 
+var NodeSettingsSection = {
+  init: function () {
+  },
+  onEnter: function () {
+    renderTemplate('node_properties', {
+      hostname: "10.1.1.123",
+      license: "NOT0-A000-REAL-LICN",
+      version: "2.0",
+      ports: {direct: 11210, proxy: 11211},
+      os: "cp/m"
+    });
+    NodeDialog.startPage_resources('edit_resources');
+  },
+  navClick: function () {
+    this.onEnter();
+  }
+};
+
 var DummySection = {
   onEnter: function () {}
 };
-
 
 var BreadCrumbs = {
   update: function () {
@@ -1646,7 +1663,7 @@ var ThePage = {
              buckets: BucketsSection,
              alerts: AlertsSection,
              settings: SettingsSection,
-             nodeSettings: DummySection},
+             nodeSettings: NodeSettingsSection},
   currentSection: null,
   currentSectionName: null,
   signOut: function () {
@@ -2037,16 +2054,14 @@ var NodeDialog = {
       });
   },
   startPage_resources: function(pagePrefix) {
-    var c;
-    c = $i('ssd_resource_container');
-    renderTemplate('resource_list',
-                   [{path: "some/path", quota: 1234},
-                    {path: "other/path", quota: 1122}],
-                   c);
-    c = $i('disk_resource_container');
-    renderTemplate('resource_list',
-                   [{path: "/disk/some/path", quota: 124},
-                    {path: "/disk/other/path", quota: 122}],
+    var parentName = '#' + pagePrefix + '_dialog';
+
+    var c = $(parentName + ' .resource_panel_container')[0];
+    renderTemplate('resource_panel',
+                   {ssdResources: [{path: "some/ssd/path", quota: 1234},
+                                   {path: "other/ssd/path", quota: 1122}],
+                    diskResources: [{path: "some/disk/path", quota: 1234},
+                                    {path: "other/disk/path", quota: 1122}]},
                    c);
   }
 };
