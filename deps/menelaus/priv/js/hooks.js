@@ -112,6 +112,7 @@ var MockedRequest = mkClass({
                            tstamp: 1259836260000,
                            shortText: "Server Node Down",
                            text: "Server node is no longer available"}]},
+  initValue: "",
   initialize: function (options) {
     if (options.type != 'GET' && options.type != 'POST' && options.type != 'DELETE') {
       throw new Error("unknown method: " + options.type);
@@ -274,6 +275,7 @@ var MockedRequest = mkClass({
           componentsVersion: {
             "ns_server": "asdasd"
           },
+          initStatus: this.initValue,
           pools: [
           {name: 'default',
            uri: "/pools/default"}]};
@@ -304,6 +306,8 @@ var MockedRequest = mkClass({
     } else if (path[0] == 'alerts' && path.length == 1) {
       // /alerts
       resp = this.alertsResponse;
+    } else if (_.isEqual(path, ["node"])) {
+      resp = {"license":"HDJ1-HQR1-23J4-3847","licenseValidUntil":"2010/9/15"}
     } else {
       throw new Error("Unknown ajax path: " + this.options.url);
     }
@@ -312,6 +316,11 @@ var MockedRequest = mkClass({
     this.fakeResponse(resp);
   },
   respondPOST: function () {
+    if (_.isEqual(this.path, ["node", "controller", "initStatus"])) {
+      var data = this.deserialize(this.options.data);
+      this.initValue = data['value'];
+      return;
+    }
     if (_.isEqual(this.path, ["buckets"])) {
       return this.handleBucketsPost();
     }
@@ -579,5 +588,9 @@ var __hookParams = {};
 
   if (params['ajaxDelay']) {
     ajaxRespondDelay = parseInt(params['ajaxDelay'], 10);
+  }
+
+  if (params['initValue']) {
+    MockedRequest.prototype.initValue = params['initValue'];
   }
 })();
