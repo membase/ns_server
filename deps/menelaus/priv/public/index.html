@@ -812,32 +812,40 @@
   </div>
 
   <div id="nodeSettings" style="display:none">
-    <div id="node_properties_container">
-    </div>
-    <div id="node_properties_template" class="template">
-      <div>
-        Server Summary
-        <span><a href="javascript:alert('TODO');">EDIT</a></span>
-        <table>
-          <tr>
-            <td>IP Address: <span>{%= h(hostname) %}</span></td>
-            <td>License Key: <span>{%= h(license) %}</span></td>
-          </tr>
-          <tr>
-            <td>Version: <span>{%= h(version) %}</span></td>
-            <td>Cache Port: <span>{%=h(ports.direct)%}</span></td>
-          </tr>
-          <tr>
-            <td>OS: <span>{%= h(os) %}</span></td>
-            <td>Proxy Port: <span>{%=h(ports.proxy)%}</span></td>
-          </tr>
-        </table>
+    <div>
+      <div id="node_properties_container">
       </div>
-    </div>
-    <form id="edit_resources_dialog" class="form block">
-      <div class="resource_panel_container">
+      <div id="node_properties_template" class="template">
+        <h1>Server Summary</h1>
+        <div class="pad_10">
+          <span><a href="javascript:alert('TODO');">EDIT</a></span>
+          <table>
+            <col width="50%" />
+            <col width="50%" />
+            <tr>
+              <td>IP Address: <span>{%= h(hostname) %}</span></td>
+              <td>License Key: <span>{%= h(license) %}</span></td>
+            </tr>
+            <tr>
+              <td>Version: <span>{%= h(version) %}</span></td>
+              <td>Cache Port: <span>{%=h(ports.direct)%}</span></td>
+            </tr>
+            <tr>
+              <td>OS: <span>{%= h(os) %}</span></td>
+              <td>Proxy Port: <span>{%=h(ports.proxy)%}</span></td>
+            </tr>
+          </table>
+        </div>
       </div>
-    </form>
+      <hr/>
+      <form id="edit_resources_dialog" class="form block">
+        <h1>Data Storage Resources</h1>
+        <div class="pad_10">
+          <div class="resource_panel_container">
+          </div>
+        </div>
+      </form>
+    </div>
   </div>
 
 </tr>
@@ -1524,10 +1532,6 @@ MemcachedClient client = manager.getClient();</pre>
         <col width="" />
         <tr>
           <td>
-            <select>
-              <option value="127.0.0.1">127.0.0.1</option>
-            </select>
-            &nbsp;
             <input type="text" name="ip" class="inp" value="127.0.0.1"/>
           </td>
         </tr>
@@ -1639,18 +1643,27 @@ MemcachedClient client = manager.getClient();</pre>
 </div>
 <!-- END init_block -->
 <div id="resource_panel_template" class="template">
+  <div class="resource_panel">
       <table>
-        <col width="" />
+        <col width="90%" />
         <col width="" />
         <tr>
-          <td colspan="2">Memory Cache
+          <td colspan="2"><h2>Memory Cache</h2>
           </td>
         </tr>
         <tr>
-          <td>DRAM</td><td>|----|-------|-----|</td>
+          <td>Dynamic RAM</td>
+          <td><a href="javascript:alert('TODO')">EDIT</a></td>
         </tr>
         <tr>
-          <td>Solid State Drive Storage
+          <td colspan="2">|--------------------|-------|-----| 1024 MB<br/></td>
+        </tr>
+        <tr>
+          <td colspan="2"><br/>
+          </td>
+        </tr>
+        <tr>
+          <td><h2>Solid State Drive Storage</h2>
           </td>
           <td><a href="javascript:showDialog('add_resource_dialog')">ADD</a></td>
         </tr>
@@ -1658,15 +1671,18 @@ MemcachedClient client = manager.getClient();</pre>
           <td colspan="2">
             <div class="ssd_resource_container">
               <!-- {% if (ssdResources.length > 0) { %} -->
-                <table class="lined_tab">
+                <table>
                   <col width="" />
-                  <col width="" />
+                  <col width="100%" />
                   <col width="" />
                   <!-- {% $.each(ssdResources, function () { %} -->
                   <tr>
                     <td>{%= h(this.path) %}</td>
-                    <td>{%= h(this.quota) %}</td>
+                    <td>{%= h(this.quota) %} MB</td>
                     <td><a href="#">Remove</a></td>
+                  </tr>
+                  <tr>
+                    <td colspan="3">|--------------------|-------|-----| 10 GB<br/></td>
                   </tr>
                   <!-- {% }); %} -->
                 </table>
@@ -1677,7 +1693,11 @@ MemcachedClient client = manager.getClient();</pre>
           </td>
         </tr>
         <tr>
-          <td>Disk Storage
+          <td colspan="2"><br/>
+          </td>
+        </tr>
+        <tr>
+          <td><h2>Disk Storage</h2>
           </td>
           <td><a href="javascript:showDialog('add_resource_dialog')">ADD</a></td>
         </tr>
@@ -1685,15 +1705,18 @@ MemcachedClient client = manager.getClient();</pre>
           <td colspan="2">
             <div class="disk_resource_container">
               <!-- {% if (diskResources.length > 0) { %} -->
-                <table class="lined_tab">
+                <table>
                   <col width="" />
-                  <col width="" />
+                  <col width="100%" />
                   <col width="" />
                   <!-- {% $.each(diskResources, function () { %} -->
                   <tr>
                     <td>{%= h(this.path) %}</td>
                     <td>{%= h(this.quota) %}</td>
                     <td><a href="#">Remove</a></td>
+                  </tr>
+                  <tr>
+                    <td colspan="3">|--------------------|-------|-----| 100 GB<br/></td>
                   </tr>
                   <!-- {% }); %} -->
                 </table>
@@ -1704,6 +1727,7 @@ MemcachedClient client = manager.getClient();</pre>
           </td>
         </tr>
       </table>
+  </div>
 </div>
 <!-- END resource_panel_template -->
 <div class="jqmWindow" id="add_resource_dialog">

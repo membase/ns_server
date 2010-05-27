@@ -143,8 +143,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_settings_web/1};
                              ["settings", "advanced"] ->
                                  {auth, fun handle_settings_advanced/1};
-                             ["node"] ->
-                                 {auth, fun handle_node/1};
+                             ["nodes", NodeId] ->
+                                 {auth, fun handle_node/2, [NodeId]};
                              ["diag"] ->
                                  {auth, fun handle_diag/1};
                              ["t", "index.html"] ->
@@ -167,8 +167,9 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_join/1};
                              ["node", "controller", "initStatus"] ->
                                  {auth, fun handle_init_status/1};
-                             ["node", "controller", "settings"] ->
-                                 {auth, fun handle_node_settings_post/1};
+                             ["nodes", NodeId, "controller", "settings"] ->
+                                 {auth, fun handle_node_settings_post/2,
+                                  [NodeId]};
                              ["settings", "web"] ->
                                  {auth, fun handle_settings_web_post/1};
                              ["settings", "advanced"] ->
@@ -1241,8 +1242,11 @@ ymd_to_string({Y, M, D}) ->
 ymd_to_string(invalid) -> "invalid";
 ymd_to_string(forever) -> "forever".
 
-handle_node(Req) ->
-    {License, Valid, ValidUntil} = case ns_license:license(node()) of
+handle_node("Self", Req)            -> handle_node(node(), Req);
+handle_node(S, Req) when is_list(S) -> handle_node(list_to_atom(S), Req);
+
+handle_node(Node, Req) ->
+    {License, Valid, ValidUntil} = case ns_license:license(Node) of
         {undefined, V, VU} -> {"", V, ymd_to_string(VU)};
         {X, V, VU}         -> {X, V, ymd_to_string(VU)}
     end,
@@ -1251,17 +1255,20 @@ handle_node(Req) ->
                          {"licenseValid", Valid},
                          {"licenseValidUntil", list_to_binary(ValidUntil)},
                          %% TODO: Make ip and ip choices real.
-                         {"ip", undefined},
-                         {"ipChoices", []}]}).
+                         {"ip", <<"127.0.0.1">>},
+                         {"ipChoices", [<<"127.0.0.1">>, <<"192.168.0.1">>]}]}).
 
-handle_node_settings_post(Req) ->
+handle_node_settings_post("Self", Req)            -> handle_node_settings_post(node(), Req);
+handle_node_settings_post(S, Req) when is_list(S) -> handle_node_settings_post(list_to_atom(S), Req);
+
+handle_node_settings_post(Node, Req) ->
     %% parameter example: license=some_license_string, ip=10.1.1.100
     %%
     Params = Req:parse_post(),
     Results = [
         case proplists:get_value("license", Params) of
             undefined -> ok;
-            License -> case ns_license:change_license(node(), License) of
+            License -> case ns_license:change_license(Node, License) of
                             ok         -> ok;
                             {error, _} -> "Error changing license.\n"
                        end

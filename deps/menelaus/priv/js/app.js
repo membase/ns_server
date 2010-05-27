@@ -1592,7 +1592,7 @@ var NodeSettingsSection = {
       ports: {direct: 11210, proxy: 11211},
       os: "cp/m"
     });
-    NodeDialog.startPage_resources('edit_resources');
+    NodeDialog.startPage_resources('Self', 'edit_resources');
   },
   navClick: function () {
     this.onEnter();
@@ -2001,7 +2001,7 @@ function showInitDialog(page) {
     $(document.body).removeClass('init_' + pages[i]);
     if (page == pages[i]) {
       if (NodeDialog["startPage_" + page]) {
-        NodeDialog["startPage_" + page]('init_' + page);
+        NodeDialog["startPage_" + page]('Self', 'init_' + page);
       }
       $(document.body).addClass('init_' + page);
     }
@@ -2017,13 +2017,13 @@ function showInitDialog(page) {
 
 var NodeDialog = {
   // The pagePrefix looks like 'init_license', and allows reusability.
-  startPage_license: function(pagePrefix) {
+  startPage_license: function(node, pagePrefix) {
     var parentName = '#' + pagePrefix + '_dialog';
 
     $(parentName + ' .license_failed_message').hide();
 
     $.ajax({
-      type:'GET', url:'/node', dataType: 'json', async: false,
+      type:'GET', url:'/nodes/' + node, dataType: 'json', async: false,
       success: cb, error: cb});
 
     function cb(data, status) {
@@ -2040,7 +2040,8 @@ var NodeDialog = {
         var license = $(parentName).find('[name=license]').val() || "";
 
         $.ajax({
-          type:'POST', url:'/node/controller/settings', data: 'license=' + license,
+          type:'POST', url:'/nodes/' + node + '/controller/settings',
+          data: 'license=' + license,
           async:false, success:cbPost, error:cbPost
         });
 
@@ -2053,7 +2054,7 @@ var NodeDialog = {
         }
       });
   },
-  startPage_resources: function(pagePrefix) {
+  startPage_resources: function(node, pagePrefix) {
     var parentName = '#' + pagePrefix + '_dialog';
 
     var c = $(parentName + ' .resource_panel_container')[0];
