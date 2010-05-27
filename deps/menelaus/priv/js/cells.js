@@ -86,6 +86,9 @@ var Cell = mkClass({
       this.changedSlot.subscribeWithSlave(slave);
     return slave;
   },
+  subscribeOnUndefined: function (cb) {
+    return this.subscribe(cb, {'undefined': true, changed: false});
+  },
   subscribeAny: function (cb) {
     return this.subscribe(cb, {'undefined': true});
   },
