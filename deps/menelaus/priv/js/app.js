@@ -1343,6 +1343,11 @@ var BucketsSection = {
   onEnter: function () {
     this.refreshBuckets();
   },
+  domId: function (sec) {
+    if (sec == 'monitor_buckets')
+      return 'buckets';
+    return sec;
+  },
   checkFormChanges: function () {
     var parent = $('#add_new_bucket_dialog');
 
@@ -1845,6 +1850,7 @@ var BreadCrumbs = {
     cells.currentStatTargetCell.subscribe(update);
   }
 };
+
 var ThePage = {
   sections: {overview: OverviewSection,
              servers: ServersSection,
@@ -1852,7 +1858,9 @@ var ThePage = {
              buckets: BucketsSection,
              alerts: AlertsSection,
              settings: SettingsSection,
-             nodeSettings: NodeSettingsSection},
+             nodeSettings: NodeSettingsSection,
+             monitor_buckets: BucketsSection,
+             monitor_servers: OverviewSection},
   currentSection: null,
   currentSectionName: null,
   signOut: function () {
@@ -1872,7 +1880,7 @@ var ThePage = {
       setHashFragmentParam('sec', section);
   },
   initialize: function () {
-    _.each(_.values(this.sections), function (sec) {
+    _.each(_.uniq(_.values(this.sections)), function (sec) {
       if (sec.init)
         sec.init();
     });
@@ -1898,8 +1906,18 @@ var ThePage = {
 
       DAO.switchSection(sec);
 
+      var secId = sec;
+      if (currentSection.domId != null) {
+        secId = currentSection.domId(sec);
+      }
+
       $('#mainPanel > div:not(.notice)').css('display', 'none');
-      $('#'+sec).css('display','block');
+      $('#'+secId).css('display','block');
+
+      // Allow reuse of same section DOM for different contexts, via CSS.
+      // For example, secId might be 'buckets' and sec might by 'monitor_buckets'.
+      $('#'+secId)[0].className = sec;
+
       _.defer(function () {
         if (oldSection && oldSection.onLeave)
           oldSection.onLeave();

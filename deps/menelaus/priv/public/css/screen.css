@@ -389,7 +389,7 @@ body { font-family: Helvetica, Verdana;}
 .analytics_graph_main {/*height:300px; background:url(../images/devider_line_2.gif) 0 100% repeat-x #eeeeef;*/ /*border-left:1px solid #dbdbdb; border-right:1px solid #dbdbdb;*/ padding:0 10px;}
 .graph_info_label {padding:3px; font-size:11px;}
 .graph_nav {padding:10px 0 10px 2px;}
-.graph_nav .analytics-small-graph {display:block; width:166px !important; height:61px !important; float:left; overflow:hidden; 
+.graph_nav .analytics-small-graph {display:block; width:166px !important; height:61px !important; float:left; overflow:hidden;
 background:url(../images/mini_graph_bg.gif) 0 0 no-repeat; margin:0 12px 7px 12px; cursor:pointer; position:relative; text-decoration:none;}
 .graph_nav .analytics-small-graph:hover {background-position:0 -122px;}
 .graph_nav .analytics-small-graph span {background:none; margin:0px;}
@@ -431,7 +431,7 @@ background:url(../images/mini_graph_bg.gif) 0 0 no-repeat; margin:0 12px 7px 12p
   can change this value by either;
     a) supplying one via CSS
     b) passing the "zIndex" parameter. E.g.  (window).jqm({zIndex: 500}); */
-  
+
 .jqmWindow {
     display: none;
     position: fixed;
@@ -560,6 +560,9 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 #get_started {display:none;}
 
 #bucket_list_container {border-left:1px solid #c8ccce; border-bottom:1px solid #c8ccce;}
+
+.monitor_buckets .buckets_action_bar {display:none;}
+.monitor_buckets .bucket_properties_link {display:none;}
 
 /* lightbox styles */
 .lbox {width:711px; position:relative;}

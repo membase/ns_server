@@ -43,15 +43,14 @@
         <h1>MONITOR</h1>
         <ul>
           <!--<li class="line"></li>-->
-
           <li class="line"><a id="switch_overview" href="javascript:nav.go('overview');">Cluster Overview</a></li>
-          <li class="line"><a id="switch_buckets" href="javascript:nav.go('analytics');">Data Buckets</a></li>
-          <li class="line"><a id="switch_alerts" href="javascript:nav.go('overview');">Servers</a></li>
+          <li class="line"><a id="switch_monitor_buckets" href="javascript:nav.go('monitor_buckets');">Data Buckets</a></li>
+          <li class="line"><a id="switch_monitor_servers" href="javascript:nav.go('monitor_servers');">Servers</a></li>
         </ul>
 
         <h1>MANAGE</h1>
         <ul>
-          <li class="line"><a id="switch_conf_buckets" href="javascript:nav.go('buckets');">Data Buckets</a></li>
+          <li class="line"><a id="switch_buckets" href="javascript:nav.go('buckets');">Data Buckets</a></li>
           <li class="line"><a id="switch_servers" href="javascript:nav.go('servers');">Servers</a></li>
         </ul>
 
@@ -532,7 +531,7 @@
     <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
     <div class="darker_block">
         <div class="pad_10">
-            <div class="pat_10 right">
+            <div class="pat_10 right buckets_action_bar">
                 <button class="button_200" onclick="BucketsSection.startCreate();">Create New Data Bucket</button>
             </div>
         </div>
@@ -559,8 +558,10 @@
           <!-- {% $.each(rows, function () { %} -->
             <tr>
               <td>
-              <a class="float_right text_11" href="{%=jsLink('BucketsSection.showBucket',this.uri)%}">Properties</a>
-              <a class="gray_link" href="#visitBucket={%=h(this.uri)%}">{%= h(this.name) %}</a></td>
+              <a class="bucket_properties_link float_right text_11"
+                href="{%=jsLink('BucketsSection.showBucket',this.uri)%}">Properties</a>
+              <a class="gray_link" href="#visitBucket={%=h(this.uri)%}">{%= h(this.name) %}</a>
+              </td>
               <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
               <td>{%= h(truncateTo3Digits(this.basicStats.evictionsPerSec)) %}</td>
               <td>

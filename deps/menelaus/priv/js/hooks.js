@@ -306,8 +306,9 @@ var MockedRequest = mkClass({
     } else if (path[0] == 'alerts' && path.length == 1) {
       // /alerts
       resp = this.alertsResponse;
-    } else if (_.isEqual(path, ["node"])) {
-      resp = {"license":"HDJ1-HQR1-23J4-3847","licenseValidUntil":"2010/9/15"}
+    } else if (path[0] == 'nodes') {
+      resp = {"license":"","licenseValue":false,"licenseValidUntil":"invalid",
+              "ip":"10.1.1.321","ipChoices":["10.1.1.321", "10.1.1.333"]}
     } else {
       throw new Error("Unknown ajax path: " + this.options.url);
     }
