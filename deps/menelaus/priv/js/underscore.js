@@ -45,7 +45,7 @@
     nativeIsArray      = Array.isArray,
     nativeKeys         = Object.keys;
 
-  // Create a safe reference to the Underscore object for reference below.
+  // Create a safe reference to the Underscore object for use below.
   var _ = function(obj) { return new wrapper(obj); };
 
   // Export the Underscore object for CommonJS.
@@ -55,7 +55,7 @@
   root._ = _;
 
   // Current version.
-  _.VERSION = '0.6.0';
+  _.VERSION = '1.0.2';
 
   // ------------------------ Collection Functions: ---------------------------
 
@@ -209,7 +209,7 @@
     return result.value;
   };
 
-  // Sort the object's values by a criteria produced by an iterator.
+  // Sort the object's values by a criterion produced by an iterator.
   _.sortBy = function(obj, iterator, context) {
     return _.pluck(_.map(obj, function(value, index, list) {
       return {
@@ -432,10 +432,12 @@
     return _.filter(_.keys(obj), function(key){ return _.isFunction(obj[key]); }).sort();
   };
 
-  // Extend a given object with all of the properties in a source object.
-  _.extend = function(destination, source) {
-    for (var property in source) destination[property] = source[property];
-    return destination;
+  // Extend a given object with all the properties in passed-in object(s).
+  _.extend = function(obj) {
+    each(_.rest(arguments), function(source) {
+      for (var prop in source) obj[prop] = source[prop];
+    });
+    return obj;
   };
 
   // Create a (shallow-cloned) duplicate of an object.
@@ -483,7 +485,7 @@
     // Different object sizes?
     if (aKeys.length != bKeys.length) return false;
     // Recursive comparison of contents.
-    for (var key in a) if (!_.isEqual(a[key], b[key])) return false;
+    for (var key in a) if (!(key in b) || !_.isEqual(a[key], b[key])) return false;
     return true;
   };
 
@@ -502,12 +504,12 @@
   // Is a given value an array?
   // Delegates to ECMA5's native Array.isArray
   _.isArray = nativeIsArray || function(obj) {
-    return !!(obj && obj.concat && obj.unshift);
+    return !!(obj && obj.concat && obj.unshift && !obj.callee);
   };
 
   // Is a given variable an arguments object?
   _.isArguments = function(obj) {
-    return obj && _.isNumber(obj.length) && !obj.concat && !obj.substr && !obj.apply && !propertyIsEnumerable.call(obj, 'length');
+    return obj && obj.callee;
   };
 
   // Is a given value a function?
