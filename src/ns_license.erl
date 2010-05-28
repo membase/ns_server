@@ -24,8 +24,3 @@ change_license(_Node, "0MEM-BASE-BETA-0001") ->
 change_license(_Node, _L) ->
     %% TODO: License change placeholder.  Should validate it and save it if successful.
     {error, todo}.
-
-past_today({Y, M, D}) ->
-    {NY, NM, ND} = erlang:date(),
-    (10000 * NY + 100 * NM + ND) > (10000 * Y + 100 * M + D).
-
