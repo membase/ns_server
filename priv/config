@@ -89,11 +89,11 @@
   [{'_ver', {0, 0, 0}},
    {memcached, "./priv/memcached",
     ["-p", "11212",
+     "-X", "./priv/engines/stdin_term_handler.so",
      "-E", "./priv/engines/bucket_engine.so",
      "-e", "admin=_admin;engine=./priv/engines/default_engine.so;default_bucket_name=default;auto_create=false"
      ],
-    [{env, [{"MEMCACHED_CHECK_STDIN", "event"},
-            {"MEMCACHED_TOP_KEYS", "100"},
+    [{env, [{"MEMCACHED_TOP_KEYS", "100"},
             {"ISASL_PWFILE", "./priv/isasl.pw"}, % Also isasl path above.
             {"ISASL_DB_CHECK_TIME", "1"}
            ]},

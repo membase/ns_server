@@ -23,73 +23,95 @@ Building...
     cd ns_server
     make
 
-## Starting
+## Runtime dependencies
 
 Before you start the server, you may need to do the following
   * Below, <REPO_ROOT> is where you checked out and built ns_server above.
   * Make sure the needed ports are not being used (these include
     8080, 11211, 11212, etc).
-  * UNIX
-    ** Build the "for_release" branch of northscale memcached that has isasl
-      enabled (git clone git@github.com:northscale/memcached.git &&
-cd memcached &&
-git checkout --track origin/for_release &&
-./config/autorun.sh &&
-./configure --enable-isasl && make && make test).
 
-    ** Build the bucket_engine library from the
-    git@github.com:northscale/bucket_engine.git repository.
-    (git clone git@github.com:northscale/bucket_engine.git &&
-    cd bucket_engine &&
-./configure --with-memcached=/path/to/your/above/dir/for/memcached/ && make && make test)
+### UNIX
 
-    ** Create a sym link from the for_release northscale memcached
-    that you just built to <REPO_ROOT>/priv/memcached
-    ** Create a sym link from the for_release northscale memcached
-    memcached/.libs/default_engine.so to
-    <REPO_ROOT>/priv/default_engine.so
-    ** If your sym links are correct, you should be able to cd <REPO_ROOT>/priv
-    and run (just to test):
+For 1.0/Reveal memcached...
 
-/.memcached -p 11211 -d -P /tmp/memcached.pid -E bucket_engine.so -e "admin=_admin;engine=default_engine.so;default_bucket_name=default
+Build the "for_release" branch of northscale memcached that
+has isasl enabled...
 
-    NOTE: the emoxi tests will run this from ../../priv - you do not have to
-    manually run memcached.
+  git clone git@github.com:northscale/memcached.git &&
+  cd memcached &&
+  git checkout --track origin/for_release &&
+  ./config/autorun.sh &&
+  ./configure --enable-isasl &&
+  make &&
+  make test
 
-    then kill your test memcached:
+For membase, instead use git://github.com/trondn/memcached.git
+engine branch...
 
-kill `cat /tmp/memcached.pid`
+  git clone git://github.com/trondn/memcached.git
+  git checkout --track origin/engine
 
-    The build process, when running 'make test', will start memcached
-    in this manner to ensure the test succesfully runs.
+Build the bucket_engine library from the
+git@github.com:northscale/bucket_engine.git repository.
 
-    * Windows:
-    ** To make life easy, use the appropriate binary from the Northscale website. Install
-       it in /c/memcached
-    ** If you insist on building memcached on windows, read the README file in the
-       buildbot-internal repository for instructions
-    ** Copy  memcached.exe and default_engine.so into the ./priv directory
-    ** If your copying was correct, you should be able to cd <REPO_ROOT>/priv
-    and run (just to test):
+  git clone git@github.com:northscale/bucket_engine.git &&
+  cd bucket_engine &&
+  ./configure --with-memcached=/path/to/your/above/dir/for/memcached/ &&
+  make &&
+  make test
 
-/.memcached -p 11211 -E bucket_engine.so &
+Next, create symlinks...
 
-    ** Kill memcached:
+ * Create a sym link from the for_release northscale memcached
+   that you just built to <REPO_ROOT>/priv/memcached
+ * Create a sym link from the memcached/.libs/default_engine.so to
+   <REPO_ROOT>/priv/engines/default_engine.so
+ * Create a sym link from the bucket_engine/.libs/bucket_engine.so to
+   <REPO_ROOT>/priv/engines/bucket_engine.so
 
-taskkill //F //PID `tasklist.exe |grep memcached|awk '/^(\w+)\W+(\w+)/ {print $2}'`
+For membase, also symlink...
 
-  * If you're not employing the use of sym links, instead make sure that the
-    memcached/.libs/default_engine.so and
-    bucket_engine/.libs/bucket_engine.so
-    created when building the for_release northscale memcached
-    and bucket_engine are in the same directory as the memcached executable
-    either by copying or by soft links.
-    For the buildbot machines, these shared libraries are not installed
-    system-wide because they could intefere with the state of the build
-    machine.
-  * Just a general note, if you are making changes to the priv/config file
-    and these changes don't appear to be reflected in the start up
-    procedures, try deleting the <REPO_ROOT>/config dir.
+  <REPO_ROOT>/priv/engines/stdin_term_handler.so to memcached/.libs/stdin_term_handler.so
+
+Also, for membase, build the ep engine and symlink it the .libs/ep.so the priv/engines...
+
+  git clone git@github.com:northscale/ep-engine.git &&
+  cd ep-engine &&
+  ./configure --with-memcached=/path/to/your/above/dir/for/memcached/ &&
+  make &&
+  make test
+
+If your sym links are correct, you should be able to cd
+to <REPO_ROOT>/priv and run (just to test):
+
+  ./memcached -p 11211 -d -P /tmp/memcached.pid -E engines/bucket_engine.so -e "admin=_admin;engine=engines/default_engine.so;default_bucket_name=default
+
+To kill your test memcached:
+
+  kill `cat /tmp/memcached.pid`
+
+### Windows:
+
+To make life easy, use the appropriate binary from the Northscale
+website.  Copy the installed memcached.exe and default_engine.so into
+the ./priv and ./priv/engines directories.
+
+If your copying was correct, you should be able to cd <REPO_ROOT>/priv
+and run (just to test):
+
+  ./memcached -p 11211 -E engines/default_engine.so
+
+To kill memcached:
+
+  taskkill //F //PID `tasklist.exe |grep memcached|awk '/^(\w+)\W+(\w+)/ {print $2}'`
+
+## Other
+
+Just a general note, if you are making changes to the priv/config file
+and these changes don't appear to be reflected in the start up
+procedures, try deleting the <REPO_ROOT>/config dir.
+
+## Running
 
 The ns_server can be started through the `start.sh` script found in the
 main directory.
@@ -122,18 +144,6 @@ Tip: if you see error message like...
 
 Then you will have to add backslashes around the path double-quotes --
 like \"priv/config\"
-
-## Development
-  Note: there were previously directions here instructing one to
-  update submodules. Both emoxi and menelaus are now part of
-  ns_server and there is no need to treat them as submodules.
-
-### Updating the dependencies (deps subdirectory)
-
-   make clean
-   make
-   git commit -m "updated emoxi & menelaus"
-   git push
 
 * * * * *
 Copyright (c) 2010, NorthScale, Inc.

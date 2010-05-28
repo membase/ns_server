@@ -23,12 +23,11 @@ default() ->
      {port_servers, [{'_ver', {0, 0, 0}},
                      {memcached, "./priv/memcached",
                       ["-p", "11211",
-                       "-E", "./engines/bucket_engine.so",
-                       "-e", "admin=_admin;engine=./priv/engines/default_engine.so;default_bucket_name=default;auto_create=false",
-                       "-B", "auto"
+                       "-X", "./priv/engines/stdin_term_handler.so",
+                       "-E", "./priv/engines/bucket_engine.so",
+                       "-e", "admin=_admin;engine=./priv/engines/default_engine.so;default_bucket_name=default;auto_create=false"
                       ],
-                      [{env, [{"MEMCACHED_CHECK_STDIN", "thread"},
-                              {"MEMCACHED_TOP_KEYS", "100"},
+                      [{env, [{"MEMCACHED_TOP_KEYS", "100"},
                               {"ISASL_PWFILE", "./priv/isasl.pw"},
                               {"ISASL_DB_CHECK_TIME", "1"}]}]
                      }
