@@ -891,7 +891,7 @@
       <div id="node_properties_template" class="template">
         <h1>Server Summary</h1>
         <div class="pad_10">
-          <span><a href="javascript:alert('TODO');">EDIT</a></span>
+          <span><a href="javascript:showDialog('edit_server_memory_dialog');">EDIT</a></span>
           <table>
             <col width="50%" />
             <col width="50%" />
@@ -1726,7 +1726,7 @@ MemcachedClient client = manager.getClient();</pre>
         </tr>
         <tr>
           <td>Dynamic RAM</td>
-          <td><a href="javascript:alert('TODO')">EDIT</a></td>
+          <td><a href="javascript:showDialog('edit_server_memory_dialog');">EDIT</a></td>
         </tr>
         <tr>
           <td colspan="2">|--------------------|-------|-----| 1024 MB<br/></td>
@@ -1823,8 +1823,9 @@ MemcachedClient client = manager.getClient();</pre>
           </ul>
         </div>
         <form id="add_new_resource_form">
-          <p><label><b>Path:</b><input type="text" name="path" class="inp" style="width:290px;" value="absolute path to directory on the server"></label></p>
-          <p><label><b>Quota:</b><input type="text" name="quota" class="inp" style="width:40px;"><span class="cache-details">&nbsp;</span><!-- MB x 3 server nodes = 192MB Total Cache Size/30GB Cluster memory available. --></label></p>
+          <p><label><b>Path:</b><input type="text" name="path" class="inp" style="width:290px;"
+                                    value="absolute path to directory on the server"></label></p>
+          <p><label><b>Quota:</b><input type="text" name="quota" class="inp" style="width:40px;"></label></p>
           <div class="pas_20">
             <div class="right save_cancel">
               <button class="save_button float_right" type="submit">ADD</button>
@@ -1842,6 +1843,45 @@ MemcachedClient client = manager.getClient();</pre>
   </div>
 </div>
 <!-- END add_resource_dialog -->
+<div class="jqmWindow" id="edit_server_memory_dialog">
+  <div class="lbox">
+    <div class="top">
+      <div class="top_left"></div>
+      <div class="top_right"></div>
+      <div class="top_center"></div>
+    </div>
+    <div class="center">
+      <div class="pad">
+        <p class="lbox_header">Edit Server Memory Quota</p>
+        <div id="edit_server_memory_errors_container" class="warning" style="padding:10px 20px;"></div>
+        <div id="edit_server_memory_errors_template" class="template">
+          <strong>Could not change server memory quota due to:</strong>
+          <ul>
+            <!-- {% _.each(rows, function (e) { %} -->
+            <li>{%= h(e) %}
+            <!-- {% }); %} -->
+          </ul>
+        </div>
+        <form id="edit_server_memory_form">
+          <p><label><b>Server Memory Quota:</b><input type="text" name="quota" class="inp" style="width:40px;">
+             </label></p>
+          <div class="pas_20">
+            <div class="right save_cancel">
+              <button class="save_button float_right" type="submit">CHANGE</button>
+              <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div class="bottom">
+      <div class="bottom_left"></div>
+      <div class="bottom_right"></div>
+      <div class="bottom_center"></div>
+    </div>
+  </div>
+</div>
+<!-- END edit_server_memory_dialog -->
 <div id="notice_template" class="template">
   <div class="shadow_box notice"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
     <h2 class="header_2">NorthScale Message</h2>
