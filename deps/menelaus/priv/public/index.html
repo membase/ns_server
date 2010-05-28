@@ -891,13 +891,13 @@
       <div id="node_properties_template" class="template">
         <h1>Server Summary</h1>
         <div class="pad_10">
-          <span><a href="javascript:showDialog('edit_server_memory_dialog');">EDIT</a></span>
           <table>
             <col width="50%" />
             <col width="50%" />
             <tr>
               <td>IP Address: <span>{%= h(hostname) %}</span></td>
-              <td>License Key: <span>{%= h(license) %}</span></td>
+              <td>License Key: <span>{%= h(license) %}</span>
+                  <span><a href="javascript:showDialog('edit_server_license_dialog');">EDIT</a></span></td>
             </tr>
             <tr>
               <td>Version: <span>{%= h(version) %}</span></td>
@@ -1867,7 +1867,7 @@ MemcachedClient client = manager.getClient();</pre>
              </label></p>
           <div class="pas_20">
             <div class="right save_cancel">
-              <button class="save_button float_right" type="submit">CHANGE</button>
+              <button class="save_button float_right" type="submit">SAVE</button>
               <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
             </div>
           </div>
@@ -1882,6 +1882,45 @@ MemcachedClient client = manager.getClient();</pre>
   </div>
 </div>
 <!-- END edit_server_memory_dialog -->
+<div class="jqmWindow" id="edit_server_license_dialog">
+  <div class="lbox">
+    <div class="top">
+      <div class="top_left"></div>
+      <div class="top_right"></div>
+      <div class="top_center"></div>
+    </div>
+    <div class="center">
+      <div class="pad">
+        <p class="lbox_header">Edit Server License</p>
+        <div id="edit_server_license_errors_container" class="warning" style="padding:10px 20px;"></div>
+        <div id="edit_server_license_errors_template" class="template">
+          <strong>Could not change server license due to:</strong>
+          <ul>
+            <!-- {% _.each(rows, function (e) { %} -->
+            <li>{%= h(e) %}
+            <!-- {% }); %} -->
+          </ul>
+        </div>
+        <form id="edit_server_license_form">
+          <p><label><b>License Key:</b><input type="text" name="license" class="inp" style="width:40px;">
+             </label></p>
+          <div class="pas_20">
+            <div class="right save_cancel">
+              <button class="save_button float_right" type="submit">SAVE</button>
+              <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div class="bottom">
+      <div class="bottom_left"></div>
+      <div class="bottom_right"></div>
+      <div class="bottom_center"></div>
+    </div>
+  </div>
+</div>
+<!-- END edit_server_license_dialog -->
 <div id="notice_template" class="template">
   <div class="shadow_box notice"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
     <h2 class="header_2">NorthScale Message</h2>
