@@ -111,14 +111,17 @@ is_root(DirPath) ->
     filelib:is_dir(filename:join(DirPath, "bin")) =:= true andalso
     filelib:is_dir(filename:join(DirPath, "priv")) =:= true.
 
-mergable(_CurrList) ->
-    [otp,
-     rest,
-     rest_creds,
-     port_servers,
-     alerts,
-     pools,
-     nodes_wanted,
-     init_status,
-     test0, test1, test2].
+% Allow all keys to be mergable.
+
+mergable(ListOfKVLists) ->
+    sets:to_list(sets:from_list(mergable(ListOfKVLists, []))).
+
+mergable([], Accum) ->
+    Accum;
+mergable([KVLists | Rest], Accum) ->
+    mergable(Rest, keys(KVLists, Accum)).
+
+keys([], Accum) -> Accum;
+keys([KVList | Rest], Accum) ->
+    keys(Rest, lists:map(fun({Key, _Val}) -> Key end, KVList) ++ Accum).
 
