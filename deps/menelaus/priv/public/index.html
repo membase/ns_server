@@ -1501,60 +1501,39 @@ MemcachedClient client = manager.getClient();</pre>
   </div>
   <div class="pad" id="init_welcome_dialog">
     <!-- screen S.1 -->
+    <div class="alert_red license_failed_message" style="display:none;">
+      <div class="al_text">
+        Invalid license. Please try again.
+      </div>
+    </div>
     <h1>Congratulations</h1>
     <form id="init_welcome_form" class="form block">
       <table>
         <col width="" />
         <tr>
           <td>
-            Welcome to the NorthScale Server.
+            <p>You have successfully installed the NorthScale Server.</p>
+            <br/>
+            <p>Please enter your NorthScale license key below and press Setup to step through a brief server setup wizard.</p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <input type="text" name="license" class="inp"
+                  disabled="disabled"/> <!-- Disabled during BETA PERIOD -->
           </td>
         </tr>
         <tr>
           <td>
             <div class="pat_10">
-              <input type="submit" value="Setup" class="submit" />
+              <input type="submit" value="Setup" class="submit next" />
             </div>
           </td>
         </tr>
       </table>
     </form>
-    <script type="text/javascript">
-      $('#init_welcome_form').bind('submit', function (e) {
-        e.preventDefault();
-        showInitDialog("license");
-      });
-    </script>
   </div>
   <!-- END welcome_block -->
-  <div class="pad" id="init_license_dialog">
-    <!-- screen S.2 -->
-    <div class="alert_red license_failed_message" style="display:none;">
-      <div class="al_text">
-        Invalid license. Please try again.
-      </div>
-    </div>
-    <h1>Enter License Key</h1>
-    <h2>1 of 4</h2>
-    <form id="init_license_form" class="form block">
-      <table>
-        <col width="" />
-        <tr>
-          <td>
-            <input type="text" name="license" class="inp" />
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <div class="pat_10">
-              <input type="submit" value="Next" class="submit next" />
-            </div>
-          </td>
-        </tr>
-      </table>
-    </form>
-  </div>
-  <!-- END init_license_block -->
   <div class="pad" id="init_resources_dialog">
     <!-- screen S.3 -->
     <div class="alert_red" id="init_resources_failed_message" style="display:none;">
@@ -1562,8 +1541,16 @@ MemcachedClient client = manager.getClient();</pre>
         Invalid Resource. Try again.
       </div>
     </div>
-    <h1>Configure Server Resources</h1>
-    <h2>2 of 4</h2>
+    <h1>Configure Data Storage Locations</h1>
+    <h2>Step 1 of 3</h2>
+    <div class="pad_10">
+    <p>
+    NorthScale Membase Server stores data in RAM, on solid-state drives and on disk.
+    To use this server to store data, you must indicate where you
+    would like that data stored, and set the maximum amount of data
+    you will allow in each location.
+    </p>
+    </div>
     <form id="init_resources_form" class="form block">
       <div class="resource_panel_container">
       </div>
@@ -1572,7 +1559,6 @@ MemcachedClient client = manager.getClient();</pre>
         <tr>
           <td>
             <div class="pat_10">
-              <input type="submit" value="Back" class="submit back" />
               <input type="submit" value="Next" class="submit next" />
             </div>
           </td>
@@ -1580,63 +1566,13 @@ MemcachedClient client = manager.getClient();</pre>
       </table>
     </form>
     <script type="text/javascript">
-      $('#init_resources_form input.back').click(function (e) {
-        e.preventDefault();
-        showInitDialog("license");
-      });
       $('#init_resources_form input.next').click(function (e) {
         e.preventDefault();
-        showInitDialog("ip");
-      });
-    </script>
-  </div>
-  <!-- END init_resources_block -->
-  <div class="pad" id="init_ip_dialog">
-    <!-- screen S.4 -->
-    <div class="alert_red" id="init_ip_failed_message" style="display:none;">
-      <div class="al_text">
-        Invalid IP Address. Try again.
-      </div>
-    </div>
-    <h1>IP Address Setup</h1>
-    <h2>3 of 4</h2>
-    <form id="init_ip_form" class="form block">
-      <table>
-        <col width="" />
-        <tr>
-          <td>
-            <input type="text" name="ip" class="inp" value="127.0.0.1"/>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            ~~~ Some informative text about DHCP goes here ~~~
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <div class="pat_10">
-              <input type="submit" value="Back" class="submit back" />
-              <input type="submit" value="Next" class="submit next" />
-            </div>
-          </td>
-        </tr>
-      </table>
-    </form>
-    <script type="text/javascript">
-      $('#init_ip_form input.back').click(function (e) {
-        e.preventDefault();
-        showInitDialog("resources");
-      });
-      $('#init_ip_form input.next').click(function (e) {
-        e.preventDefault();
-        // TODO: Make this real, call to server to get a list of IP addresses to
-        // populate select/option dropdown, handle errors, etc.
         showInitDialog("cluster");
       });
     </script>
   </div>
-  <!-- END init_ip_block -->
+  <!-- END init_resources_block -->
   <div class="pad" id="init_cluster_dialog">
     <!-- screen S.5 -->
     <div class="alert_red" id="init_cluster_failed_message" style="display:none;">
@@ -1644,46 +1580,57 @@ MemcachedClient client = manager.getClient();</pre>
         Could not join the cluster because of bad input.
       </div>
     </div>
-    <h1>Start or Join Cluster?</h1>
-    <h2>4 of 4</h2>
+    <h1>Would you like to join an existing Membase Cluster?</h1>
+    <h2>Step 2 of 3</h2>
+    <p class="pad_10">
+      If this new server will be added to an existing membase cluster
+      you may join that cluster now. To do so, please enter the IP
+      address of an existing cluster member, and the cluster
+      administrator password then select Join Cluster. You can join a
+      cluster later if you prefer, but should do so before storing data
+      on this server. Only servers not already storing data may be
+      joined to a Membase cluster.
+    </p>
     <form id="init_cluster_form" class="form block">
       <table>
         <col width="" />
         <col width="" />
         <tr>
-          <td>
-            <h3>This is a new cluster...</h3>
-            <label>Admin</label>
-            <input type="text" name="user" class="inp"/>
-            <label>Password</label>
-            <input type="text" name="password" class="inp"/>
-          </td>
-          <td>
+          <td colspan="2">
             <div class="pat_10">
-              <input type="submit" value="Create and Finish" class="submit" />
+              <input type="submit" value="Do NOT join a cluster now, maybe later" class="submit next" />
             </div>
           </td>
         </tr>
         <tr>
           <td>
-            <h3>Or, join an existing cluster...</h3>
-            <label>IP</label>
-            <input type="text" name="ip" class="inp"/>
-            <label>Admin</label>
-            <input type="text" name="user" class="inp"/>
-            <label>Password</label>
-            <input type="text" name="password" class="inp"/>
-            <br/>
+            <label>IP Address</label>
           </td>
           <td>
-            <div class="pat_10">
-              <input type="submit" value="Join and Finish" class="submit" />
-            </div>
+            <input type="text" name="ip" class="inp"/>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <label>User</label>
+          </td>
+          <td>
+            <input type="text" name="user" class="inp" value="Administrator"/>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <label>Password</label>
+          </td>
+          <td>
+            <input type="text" name="password" class="inp"/>
           </td>
         </tr>
         <tr>
           <td colspan="2">
-            Note: you can join a cluster later if you want.
+            <div class="pat_10">
+              <input type="submit" value="Join and Finish" class="submit join" />
+            </div>
           </td>
         </tr>
         <tr>
@@ -1698,7 +1645,11 @@ MemcachedClient client = manager.getClient();</pre>
     <script type="text/javascript">
       $('#init_cluster_form input.back').click(function (e) {
         e.preventDefault();
-        showInitDialog("ip");
+        showInitDialog("resources");
+      });
+      $('#init_cluster_form input.next').click(function (e) {
+        e.preventDefault();
+        showInitDialog("secure");
       });
       $('#init_cluster_form').bind('submit', function (e) {
         e.preventDefault();
@@ -1708,6 +1659,58 @@ MemcachedClient client = manager.getClient();</pre>
     </script>
   </div>
   <!-- END init_cluster_block -->
+  <div class="pad" id="init_secure_dialog">
+    <!-- screen S.5 -->
+    <div class="alert_red" id="init_secure_failed_message" style="display:none;">
+      <div class="al_text">
+        Could not join the secure because of bad input.
+      </div>
+    </div>
+    <h1>Secure this server</h1>
+    <h2>Step 3 of 3</h2>
+    <p class="pad_10">
+      Please enter an Administrator password for this Server. If this is
+      the first server in a Membase cluster, other servers will need, and
+      then they will inherit, this administrator password as they join the
+      cluster.
+    </p>
+    <form id="init_secure_form" class="form block">
+      <table>
+        <col width="" />
+        <col width="" />
+        <tr>
+          <td colspan="2">
+            <label>Password</label>
+            <input type="text" name="password" class="inp"/>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div class="pat_10">
+              <input type="submit" value="Back" class="submit back" />
+            </div>
+          </td>
+          <td>
+            <div class="pat_10">
+              <input type="submit" value="Finish" class="submit next" />
+            </div>
+          </td>
+        </tr>
+      </table>
+    </form>
+    <script type="text/javascript">
+      $('#init_secure_form input.back').click(function (e) {
+        e.preventDefault();
+        showInitDialog("cluster");
+      });
+      $('#init_secure_form').bind('submit', function (e) {
+        e.preventDefault();
+        // TODO: Make this real.
+        showInitDialog("done");
+      });
+    </script>
+  </div>
+  <!-- END init_secure_block -->
   <div id="footer">
     <div class="main_holder">
       <h1>Copyright 2010 <a href="http://northscale.com">NorthScale, Inc.</a> All rights reserved.</h1>

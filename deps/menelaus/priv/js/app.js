@@ -2219,7 +2219,7 @@ function showAbout() {
 }
 
 function showInitDialog(page) {
-  var pages = [ "welcome", "license", "resources", "ip", "cluster" ];
+  var pages = [ "welcome", "resources", "cluster", "secure" ];
 
   if (page == "")
     page = "welcome";
@@ -2258,7 +2258,12 @@ var NodeDialog = {
 
     function cb(data, status) {
       if (status == 'success') {
-        $(parentName).find('[name=license]').val(data.license);
+        var lic = data.license;
+        if (lic == null || lic == "") {
+          lic = "2372AA-F32F1G-M3SA01"; // Hardcoded BETA license.
+        }
+
+        $(parentName).find('[name=license]').val(lic);
       }
     }
 
@@ -2296,6 +2301,8 @@ var NodeDialog = {
                    c);
   }
 };
+
+NodeDialog.startPage_welcome = NodeDialog.startPage_license;
 
 var originalOnError;
 (function () {

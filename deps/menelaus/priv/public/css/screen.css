@@ -724,14 +724,6 @@ body.init_welcome #init_block { display: block; }
 body.init_welcome #init_welcome_dialog { display: block; }
 body.init_welcome #container { display: none; }
 
-body.init_license #init_block { display: block; }
-body.init_license #init_license_dialog { display: block; }
-body.init_license #container { display: none; }
-
-body.init_ip #init_block { display: block; }
-body.init_ip #init_ip_dialog { display: block; }
-body.init_ip #container { display: none; }
-
 body.init_resources #init_block { display: block; }
 body.init_resources #init_resources_dialog { display: block; }
 body.init_resources #container { display: none; }
@@ -739,6 +731,10 @@ body.init_resources #container { display: none; }
 body.init_cluster #init_block { display: block; }
 body.init_cluster #init_cluster_dialog { display: block; }
 body.init_cluster #container { display: none; }
+
+body.init_secure #init_block { display: block; }
+body.init_secure #init_secure_dialog { display: block; }
+body.init_secure #container { display: none; }
 
 /* init_block */
 
