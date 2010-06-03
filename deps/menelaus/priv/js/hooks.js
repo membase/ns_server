@@ -95,24 +95,6 @@ function deserializeQueryString(dataString) {
 }
 
 var MockedRequest = mkClass({
-  alertsResponse: {limit: 15,
-                   settings: {updateURI: "/alerts/settings"},
-                   list: [{number: 3,
-                           type: "info",
-                           tstamp: 1259836260000,
-                           shortText: "Above Average Operations per Second",
-                           text: "Licensing, capacity, NorthScale issues, etc."},
-                          {number: 2,
-                           type: "attention",
-                           tstamp: 1259836260000,
-                           shortText: "New Node Joined Pool",
-                           text: "A new node is now online"},
-                          {number: 1,
-                           type: "warning",
-                           tstamp: 1259836260000,
-                           shortText: "Server Node Down",
-                           text: "Server node is no longer available"}]},
-  initValue: "",
   initialize: function (options) {
     if (options.type != 'GET' && options.type != 'POST' && options.type != 'DELETE') {
       throw new Error("unknown method: " + options.type);
@@ -144,15 +126,18 @@ var MockedRequest = mkClass({
 
     var path = url.split("/")
     this.path = path;
+
+    // we modify that list in place in few actions
+    this.bucketsList = this.findResponseFor('GET', ['pools', 'default', 'buckets']);
   },
   fakeResponse: function (data) {
-    var self = this;
     if (data instanceof Function) {
       data.call(null, fakeResponse);
       return;
     }
-    if (self.options.success)
-      self.options.success(data, 'success');
+    this.responded = true;
+    if (this.options.success)
+      this.options.success(data, 'success');
   },
   authError: (function () {
     try {
@@ -167,26 +152,70 @@ var MockedRequest = mkClass({
     else
       this.respondForReal();
   },
+  findResponseFor: function (method, path, body) {
+    var x = this.routes.x;
+    var foundResp;
+    var routeArgs;
+    _.each(this.routes, function (rt) {
+      var key = rt[0];
+      if (key[0] != method)
+        return;
+      var pattern = key[1];
+      if (pattern.length != path.length)
+        return;
+      var args = [];
+      for (var i = pattern.length-1; i >= 0; i--) {
+        var value = pattern[i];
+        if (value == x)
+          args.push(path[i]);
+        else if (value != path[i])
+          return;
+      }
+      foundResp = rt[1];
+      if (rt[2])
+        foundResp = rt[2].apply(this, [foundResp].concat(args));
+      routeArgs = args;
+      _.breakLoop();
+    });
+    if (body)
+      return body.call(this, foundResp, routeArgs);
+    return foundResp;
+  },
   respondForReal: function () {
     if ($.ajaxSettings.beforeSend)
       $.ajaxSettings.beforeSend(this.fakeXHR);
-    try {
-      this.checkAuth();
-      if (this.options.type == 'GET')
-        return this.respondGET();
-      return this.respondPOST();
-    } catch (e) {
-      if (e !== this.authError) {
-        throw e;
+
+    this.findResponseFor(this.options.type, this.path, function (foundResp, routeArgs) {
+      if (!foundResp) {
+        console.log("Bad request is: ", this);
+        throw new Error("Unknown ajax request: Method: " + this.options.type + ", Path: " + this.options.url);
       }
 
-      this.fakeXHR.status = 401;
-      // auth error
-      if (this.options.error) {
-        this.options.error(this.fakeXHR, 'error');
-      } else
-        $.ajaxSettings.error(this.fakeXHR, 'error');
-    }
+      try {
+        this.checkAuth();
+        if (_.isFunction(foundResp)) {
+          if (functionArgumentNames(foundResp)[0] == "$data")
+            routeArgs.unshift(this.deserialize());
+          foundResp = foundResp.apply(this, routeArgs);
+          if (this.responded)
+            return;
+          if (foundResp == null)
+            foundResp = "";
+        }
+        this.fakeResponse(_.clone(foundResp));
+      } catch (e) {
+        if (e !== this.authError) {
+          throw e;
+        }
+
+        this.fakeXHR.status = 401;
+        // auth error
+        if (this.options.error) {
+          this.options.error(this.fakeXHR, 'error');
+        } else
+          $.ajaxSettings.error(this.fakeXHR, 'error');
+      }
+    });
   },
   checkAuth: function () {
   },
@@ -194,155 +223,11 @@ var MockedRequest = mkClass({
     if (this.fakeXHR.login != 'admin' || this.fakeXHR.password != 'admin')
       throw this.authError;
   },
-  respondGET: function () {
-    var path = this.path;
 
-    var resp;
-    if (_.isEqual(path, ["logs"])) {
-      resp = {
-        "list": [
-          {
-            "type": "info",
-            "code": 1,
-            "module": "ns_config_log",
-            "tstamp": 1265358398000,
-            "shortText": "message",
-            "text": "config changed"
-          },
-          {
-            "type": "info",
-            "code": 1,
-            "module": "ns_node_disco",
-            "tstamp": 1265358398000,
-            "shortText": "message",
-            "text": "otp cookie generated: bloeahcdnsddpotx"
-          },
-          {
-            "type": "info",
-            "code": 1,
-            "module": "ns_config_log",
-            "tstamp": 1265358398000,
-            "shortText": "message",
-            "text": "config changed"
-          },
-          {
-            "type": "info",
-            "code": 1,
-            "module": "ns_config_log",
-            "tstamp": 1265358399000,
-            "shortText": "message",
-            "text": "config changed"
-          }
-        ]
-      }
-    } else if (_.isEqual(path, ["settings", "web"])) {
-      resp = {port:8080,username:"admin",password:""};
-    } else if (_.isEqual(path, ["settings", "advanced"])) {
-      resp = {alerts: {email:"alk@tut.by",
-                       sender: "alk@tut.by",
-                       email_server: {user:"",
-                                      pass:"",
-                                      addr:"",
-                                      port:"",
-                                      encrypt:"0"},
-                       sendAlerts:"0",
-                       alerts: {
-                         server_down:"1",
-                         server_unresponsive:"1",
-                         server_up:"1",
-                         server_joined:"1",
-                         server_left:"1",
-                         bucket_created:"0",
-                         bucket_deleted:"1",
-                         bucket_auth_failed:"1"}},
-              ports:{proxyPort:11213,directPort:11212}};
-      // var postData = {proxyPort:11213,
-      //                 directPort:11212,
-      //                 email: "",
-      //                 email_alerts: "0", //sendAlerts
-      //                 email_server_user: "",
-      //                 email_server_pass: "",
-      //                 email_server_addr: "",
-      //                 email_server_port: "",
-      //                 email_server_encrypt: "",
-      //                 alert_server_down: "1" ...
-      //                }
-    } else if (path[0] == "pools") {
-      if (path.length == 1) {
-        // /pools
-        resp = {
-          implementationVersion: 'only-web.rb-unknown',
-          componentsVersion: {
-            "ns_server": "asdasd"
-          },
-          initStatus: this.initValue,
-          pools: [
-          {name: 'default',
-           uri: "/pools/default"}]};
-      } else {
-        // /pools/:id
-        resp = this.handlePoolDetails();
-      }
-    } else if (path[0] == "buckets" && path.length == 1) {
-      resp = this.handleBucketList();
-    } else if (path[0] == 'buckets') {
-      if (path.length == 2) {
-        // /buckets/:id
-        if (path[1] == "5")
-          resp = {nodes:[], // not used for now
-                  testAppBucket: true,
-                  testAppRunning: false,
-                  controlURL: "asdasdasdasdasdasd",
-                  stats: {uri: "/buckets/5/stats"},
-                  name: "Excerciser Application"};
-        else
-          resp = {nodes: [], // not used for now
-                  stats: {uri: "/buckets/4/stats"},
-                  name: "default"};
-      } else {
-        // /buckets/:id/stats
-        resp = this.handleStats();
-      }
-    } else if (path[0] == 'alerts' && path.length == 1) {
-      // /alerts
-      resp = this.alertsResponse;
-    } else if (path[0] == 'nodes') {
-      resp = {"license":"","licenseValue":false,"licenseValidUntil":"invalid",
-              "ip":"10.1.1.321","ipChoices":["10.1.1.321", "10.1.1.333"]}
-    } else {
-      throw new Error("Unknown ajax path: " + this.options.url);
-    }
-
-    console.log("res is", resp);
-    this.fakeResponse(resp);
+  deserialize: function (data) {
+    data = data || this.options.data;
+    return deserializeQueryString(data);
   },
-  respondPOST: function () {
-    if (_.isEqual(this.path, ["node", "controller", "initStatus"])) {
-      var data = this.deserialize(this.options.data);
-      this.initValue = data['value'];
-      return;
-    }
-    if (_.isEqual(this.path, ["buckets"])) {
-      return this.handleBucketsPost();
-    }
-    if (_.isEqual(this.path, ["node", "controller", "doJoinCluster"])) {
-      return this.handleJoinCluster();
-    }
-    if (_.isEqual(this.path, ["controllers", "testWorkload"])) {
-      return this.handleWorkloadControlPost();
-    }
-
-    if (_.isEqual(this.path, ["settings", "web"])) {
-      return this.fakeResponse({newBaseUri: 'http://' + document.location.host + '/'});
-    }
-
-    if (this.path[0] == "buckets" && this.options.type == 'DELETE')
-      return this.handleBucketRemoval();
-
-    this.fakeResponse('');
-  },
-
-  deserialize: deserializeQueryString,
 
   errorResponse: function (resp) {
     var self = this;
@@ -362,7 +247,7 @@ var MockedRequest = mkClass({
   handleBucketsPost: function () {
     var self = this;
 
-    var params = this.deserialize(this.options.data)
+    var params = this.deserialize()
     console.log("params: ", params);
     var errors = [];
 
@@ -384,7 +269,7 @@ var MockedRequest = mkClass({
   },
 
   handleJoinCluster: function () {
-    var params = this.deserialize(this.options.data)
+    var params = this.deserialize()
     console.log("params: ", params);
     var ok = true;
 
@@ -400,117 +285,8 @@ var MockedRequest = mkClass({
       this.errorResponse([]);
   },
 
-  handlePoolDetails: function () {
-    var rv = {nodes: [{hostname: "mickey-mouse.disney.com",
-                       status: "healthy",
-                       clusterMembership: "inactiveAdded",
-                       os: 'Linux',
-                       version: 'only-web.rb',
-                       uptime: 86400,
-                       ports: {proxy: 11211,
-                               direct: 11311},
-                       memoryTotal: 2032574464,
-                       memoryFree: 1589864960,
-                       mcMemoryTotal: 2032574464,
-                       mcMemoryAllocated: 89864960,
-                       otpNode: "ns1@mickey-mouse.disney.com",
-                       otpCookie: "SADFDFGDFG"},
-                      {hostname: "donald-duck.disney.com",
-                       os: 'Linux',
-                       uptime: 86420,
-                       version: 'only-web.rb',
-                       status: "healthy",
-                       clusterMembership: "inactiveFailed",
-                       ports: {proxy: 11211,
-                               direct: 11311},
-                       memoryTotal: 2032574464,
-                       memoryFree: 89864960,
-                       mcdMemoryAllocated: 64,
-                       mcdMemoryReserved: 256,
-                       otpNode: "ns1@donald-duck.disney.com",
-                       otpCookie: "SADFDFGDFG"},
-                      {hostname: "goofy.disney.com",
-                       uptime: 86430,
-                       os: 'Linux',
-                       version: 'only-web.rb',
-                       status: "healthy",
-                       clusterMembership: "active",
-                       failedOver: false,
-                       memoryTotal: 2032574464,
-                       memoryFree: 889864960,
-                       mcdMemoryAllocated: 64,
-                       mcdMemoryReserved: 256,
-                       ports: {proxy: 11211,
-                               direct: 11311},
-                       otpNode: "ns1@goofy.disney.com",
-                       otpCookie: "SADFDFGDFG"}],
-              buckets: {
-                // GET returns first page of bucket details with link to next page
-                uri: "/buckets",
-                // returns just names and uris, but complete (i.e. without pagination)
-                shallowList: "/buckets?shallow=true"
-              },
-              controllers: {
-                addNode: {uri: '/controllers/addNode'},
-                prepareNodeRemoval: {uri: '/controllers/prepareNodeRemoval'},
-                rebalance: {uri: '/controllers/rebalance'},
-                failOver: {uri: '/controllers/failOver'},
-                reAddNode: {uri: '/controllers/reAddNode'},
-                testWorkload: {uri: '/controllers/testWorkload'},
-                ejectNode: {uri: "/controllers/ejectNode"}
-              },
-              stats: {uri: "/buckets/4/stats?really_for_pool=1"},
-              name: "Default Pool"}
-    if (!__hookParams['multinode']) {
-      rv.nodes = rv.nodes.slice(-1);
-    }
-    return rv;
-  },
-  bucketsList: [{name: "default",
-                 uri: "/buckets/4",
-                 flushCacheUri: "/buckets/4/flush",
-                 stats: {uri: "/buckets/4/stats"},
-                 basicStats: {
-                   cacheSize: 64, // in megs
-                   opsPerSec: 100,
-                   evictionsPerSec: 5,
-                   cachePercentUsed: 50
-                 }},
-                {name: "Excerciser Application",
-                 uri: "/buckets/5",
-                 testAppBucket: true,
-                 status: false,
-                 controlURL: "/testappuri",
-                 flushCacheUri: "/buckets/5/flush",
-                 stats: {uri: "/buckets/5/stats"},
-                 basicStats: {
-                   cacheSize: 65, // in megs
-                   opsPerSec: 101,
-                   evictionsPerSec: 6,
-                   cachePercentUsed: 51
-                 }},
-                {name: "new-year-site",
-                 uri: "/buckets/6",
-                 flushCacheUri: "/buckets/6/flush",
-                 stats: {uri: "/buckets/6/stats"},
-                 basicStats: {
-                   cacheSize: 66, // in megs
-                   opsPerSec: 102,
-                   evictionsPerSec: 7,
-                   cachePercentUsed: 52
-                 }},
-                {name: "new-year-site-staging",
-                 uri: "/buckets/7",
-                 flushCacheUri: "/buckets/7/flush",
-                 stats: {uri: "/buckets/7/stats"},
-                 basicStats: {
-                   cacheSize: 67, // in megs
-                   opsPerSec: 103,
-                   evictionsPerSec: 8,
-                   cachePercentUsed: 53
-                 }}],
   handleWorkloadControlPost: function () {
-    var params = this.deserialize(this.options.data)
+    var params = this.deserialize()
     if (params['onOrOff'] == 'on') {
       this.bucketsList[1].status = true;
     } else {
@@ -530,9 +306,6 @@ var MockedRequest = mkClass({
     MockedRequest.prototype.bucketsList = _.without(self.bucketsList, bucket);
 
     return this.fakeResponse('');
-  },
-  handleBucketList: function () {
-    return _.clone(this.bucketsList);
   },
   handleStats: function () {
     var params = this.options['data'];
@@ -564,30 +337,258 @@ var MockedRequest = mkClass({
     }
 
     return {hot_keys: [{name: "user:image:value",
-                        gets: 10000,
-                        bucket: "Excerciser application",
-                        misses: 100,
-                        type: "Persistent"},
+                        ops: 10000,
+                        evictions: 10,
+                        ratio: 0.89,
+                        bucket: "Excerciser application"},
                        {name: "user:image:value2",
-                        gets: 10000,
-                        bucket: "Excerciser application",
-                        misses: 100,
-                        type: "Cache"},
+                        ops: 10000,
+                        ratio: 0.90,
+                        evictions: 11,
+                        bucket: "Excerciser application"},
                        {name: "user:image:value3",
-                        gets: 10000,
-                        bucket: "Excerciser application",
-                        misses: 100,
-                        type: "Persistent"},
+                        ops: 10000,
+                        ratio: 0.91,
+                        evictions: 12,
+                        bucket: "Excerciser application"},
                        {name: "user:image:value4",
-                        gets: 10000,
-                        bucket: "Excerciser application",
-                        misses: 100,
-                        type: "Cache"}],
+                        ops: 10000,
+                        ratio: 0.92,
+                        evictions: 13,
+                        bucket: "Excerciser application"}],
             op: _.extend({tstamp: lastSampleTstamp,
                           'samplesInterval': samplesInterval},
                          samples)};
+  },
+  __defineRouting: function () {
+    var x = {}
+    function mkHTTPMethod(method) {
+      return function () {
+        return [method, _.toArray(arguments)];
+      }
+    }
+
+    var get = mkHTTPMethod("GET");
+    var post = mkHTTPMethod("POST");
+    var del = mkHTTPMethod("DELETE");
+    function method(name) {
+      return function () {
+        return this[name].apply(this, arguments);
+      }
+    }
+
+    var rv = [
+      [post("logClientError"), method('doNothingPOST')],
+      [get("logs"), {list: [{type: "info", code: 1, module: "ns_config_log", tstamp: 1265358398000, shortText: "message", text: "config changed"},
+                            {type: "info", code: 1, module: "ns_node_disco", tstamp: 1265358398000, shortText: "message", text: "otp cookie generated: bloeahcdnsddpotx"},
+                            {type: "info", code: 1, module: "ns_config_log", tstamp: 1265358398000, shortText: "message", text: "config changed"},
+                            {type: "info", code: 1, module: "ns_config_log", tstamp: 1265358399000, shortText: "message", text: "config changed"}]}],
+      [get("alerts"), {limit: 15,
+                       settings: {updateURI: "/alerts/settings"},
+                       list: [{number: 3,
+                               type: "info",
+                               tstamp: 1259836260000,
+                               shortText: "Above Average Operations per Second",
+                               text: "Licensing, capacity, NorthScale issues, etc."},
+                              {number: 2,
+                               type: "attention",
+                               tstamp: 1259836260000,
+                               shortText: "New Node Joined Pool",
+                               text: "A new node is now online"},
+                              {number: 1,
+                               type: "warning",
+                               tstamp: 1259836260000,
+                               shortText: "Server Node Down",
+                               text: "Server node is no longer available"}]}],
+
+
+      [get("settings", "web"), {port:8080,
+                                username:"admin",
+                                password:""}],
+      [get("settings", "advanced"), {alerts: {email:"alk@tut.by",
+                                              sender: "alk@tut.by",
+                                              email_server: {user:"",
+                                                             pass:"",
+                                                             addr:"",
+                                                             port:"",
+                                                             encrypt:"0"},
+                                              sendAlerts:"0",
+                                              alerts: {
+                                                server_down:"1",
+                                                server_unresponsive:"1",
+                                                server_up:"1",
+                                                server_joined:"1",
+                                                server_left:"1",
+                                                bucket_created:"0",
+                                                bucket_deleted:"1",
+                                                bucket_auth_failed:"1"}},
+                                     ports:{proxyPort:11213,
+                                            directPort:11212}}],
+
+      [get("pools"), function () {
+        return {implementationVersion: 'only-web.rb-unknown',
+                componentsVersion: {
+                  "ns_server": "asdasd"
+                },
+                initStatus: MockedRequest.globalData.initValue,
+                pools: [
+                  {name: 'default',
+                   uri: "/pools/default"}]}
+      }],
+      [get("pools", x), {nodes: [{hostname: "mickey-mouse.disney.com",
+                                  status: "healthy",
+                                  clusterMembership: "inactiveAdded",
+                                  os: 'Linux',
+                                  version: 'only-web.rb',
+                                  uptime: 86400,
+                                  ports: {proxy: 11211,
+                                          direct: 11311},
+                                  memoryTotal: 2032574464,
+                                  memoryFree: 1589864960,
+                                  mcMemoryTotal: 2032574464,
+                                  mcMemoryAllocated: 89864960,
+                                  otpNode: "ns1@mickey-mouse.disney.com",
+                                  otpCookie: "SADFDFGDFG"},
+                                 {hostname: "donald-duck.disney.com",
+                                  os: 'Linux',
+                                  uptime: 86420,
+                                  version: 'only-web.rb',
+                                  status: "healthy",
+                                  clusterMembership: "inactiveFailed",
+                                  ports: {proxy: 11211,
+                                          direct: 11311},
+                                  memoryTotal: 2032574464,
+                                  memoryFree: 89864960,
+                                  mcdMemoryAllocated: 64,
+                                  mcdMemoryReserved: 256,
+                                  otpNode: "ns1@donald-duck.disney.com",
+                                  otpCookie: "SADFDFGDFG"},
+                                 {hostname: "goofy.disney.com",
+                                  uptime: 86430,
+                                  os: 'Linux',
+                                  version: 'only-web.rb',
+                                  status: "healthy",
+                                  clusterMembership: "active",
+                                  failedOver: false,
+                                  memoryTotal: 2032574464,
+                                  memoryFree: 889864960,
+                                  mcdMemoryAllocated: 64,
+                                  mcdMemoryReserved: 256,
+                                  ports: {proxy: 11211,
+                                          direct: 11311},
+                                  otpNode: "ns1@goofy.disney.com",
+                                  otpCookie: "SADFDFGDFG"}],
+                         buckets: {
+                           // GET returns first page of bucket details with link to next page
+                           uri: "/pools/default/buckets"
+                         },
+                         controllers: {
+                           addNode: {uri: '/controller/addNode'},
+                           rebalance: {uri: '/controller/rebalance'},
+                           failOver: {uri: '/controller/failOver'},
+                           reAddNode: {uri: '/controller/reAddNode'},
+                           testWorkload: {uri: '/pools/default/controller/testWorkload'},
+                           ejectNode: {uri: "/controller/ejectNode"}
+                         },
+                         rebalanceStatus: 'none',
+                         stats: {uri: "/pools/default/buckets/4/stats"}, // really for pool
+                         name: "Default Pool"}],
+      [get("pools", "default", "buckets"), [{name: "default",
+                         uri: "/pools/default/buckets/4",
+                         flushCacheUri: "/pools/default/buckets/4/controller/doFlush",
+                         stats: {uri: "/pools/default/buckets/4/stats"},
+                         basicStats: {
+                           cacheSize: 64, // in megs
+                           opsPerSec: 100,
+                           evictionsPerSec: 5,
+                           cachePercentUsed: 50
+                         }},
+                        {name: "Excerciser Application",
+                         uri: "/pools/default/buckets/5",
+                         testAppBucket: true,
+                         status: false,
+                         flushCacheUri: "/pools/default/buckets/5/controller/doFlush",
+                         stats: {uri: "/pools/default/buckets/5/stats"},
+                         basicStats: {
+                           cacheSize: 65, // in megs
+                           opsPerSec: 101,
+                           evictionsPerSec: 6,
+                           cachePercentUsed: 51
+                         }},
+                        {name: "new-year-site",
+                         uri: "/pools/default/buckets/6",
+                         flushCacheUri: "/pools/default/buckets/6/controller/doFlush",
+                         stats: {uri: "/pools/default/buckets/6/stats"},
+                         basicStats: {
+                           cacheSize: 66, // in megs
+                           opsPerSec: 102,
+                           evictionsPerSec: 7,
+                           cachePercentUsed: 52
+                         }},
+                        {name: "new-year-site-staging",
+                         uri: "/pools/default/buckets/7",
+                         flushCacheUri: "/pools/default/buckets/7/controller/doFlush",
+                         stats: {uri: "/pools/default/buckets/7/stats"},
+                         basicStats: {
+                           cacheSize: 67, // in megs
+                           opsPerSec: 103,
+                           evictionsPerSec: 8,
+                           cachePercentUsed: 53
+                         }}]],
+      [get("pools", "default", "buckets", x), function (x) {
+        if (x == "5")
+          return {nodes:[], // not used for now
+                  testAppBucket: true,
+                  testAppRunning: false,
+                  stats: {uri: "/pools/default/buckets/5/stats"},
+                  name: "Excerciser Application"};
+        else
+          return {nodes: [], // not used for now
+                  stats: {uri: "/pools/default/buckets/4/stats"},
+                  name: "default"};
+      }],
+      [get("pools", "default", "buckets", x, "stats"), method('handleStats')],
+      [post("pools", "default", "buckets"), method('handleBucketsPost')],
+      [post("pools", "default", "buckets", x), method('doNothingPOST')], //unused
+      [post("pools", "default", "buckets", x, "controller", "doFlush"), method('doNothingPOST')], //unused
+      [del("pools", "default", "buckets", x), method('handleBucketRemoval')],
+
+      [get("nodes"), {"license":"","licenseValue":false,"licenseValidUntil":"invalid",
+                      "ip":"10.1.1.321","ipChoices":["10.1.1.321", "10.1.1.333"]}],
+      [get("nodes", x), {}], //missing
+      [get("nodes", x, "resources"), {}], //todo
+      [post("nodes", x, "resources"), {}], //todo
+      [del("nodes", x, "resources", x), {}], //todo
+      [post("nodes", x, "controller", "settings"), {}], //missing
+
+      [post("node", "controller", "initStatus"), function ($data) {
+        this.globalData.initValue = $data;
+      }],
+
+      [post("node", "controller", "doJoinCluster"), method('handleJoinCluster')],
+      [post("pools", "default", "controller", "testWorkload"), method('handleWorkloadControlPost')],
+      [post("controllers", "ejectNode"), method('doNothingPOST')],
+      [post("controllers", "rebalance"), method('doNothingPOST')],
+      [post("controllers", "addNode"), method("doNothingPOST")],
+      [post("controllers", "failOver"), method("doNothingPOST")],
+      [post("controllers", "reAddNode"), method("doNothingPOST")]
+    ];
+
+    rv.x = x;
+    return rv;
+  },
+  doNothingPOST: function () {
   }
 });
+
+MockedRequest.prototype.globalData = MockedRequest.globalData = {
+  initValue: ""
+};
+
+
+;(function () {
+  MockedRequest.prototype.routes = MockedRequest.prototype.__defineRouting();
+})();
 
 TestingSupervisor.interceptAjax();
 
@@ -610,7 +611,12 @@ var __hookParams = {};
   }
 
   if (params['initValue']) {
-    MockedRequest.prototype.initValue = params['initValue'];
+    MockedRequest.globalData.initValue = params['initValue'];
+  }
+
+  if (!params['multinode']) {
+    var pools = MockedRequest.prototype.findResponseFor("GET", ["pools", "default"]);
+    pools.nodes = pools.nodes.slice(-1);
   }
 })();
 
