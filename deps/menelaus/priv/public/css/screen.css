@@ -596,11 +596,14 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 .lbox .spinner span {display:block; position:relative; margin:0 auto 0 auto; top:50%; width:150px !important;height:20px !important; line-height:14px !important; padding:50px 0 0 0 !important; margin-top:-30px; background:url(../images/spinner/spinner_lightbox.gif) 55px 5px no-repeat; color:#6da2c2; font-size:12px; text-align:center;}
 .lbox .info_text {font-size:12px; padding-bottom:10px; line-height:15px;}
 
+#add_new_bucket_form h2 {padding:0 0 15px 20px; font-size:12px; line-height:15px;}
+#add_new_bucket_form table p {padding:0 0 15px 20px; font-size:12px; line-height:15px;}
 #add_new_bucket_form p {min-height:15px; padding:0 0 15px 0; font-size:11px; line-height:15px;}
 #add_new_bucket_form p b {display:block; font-weight:normal; width:130px; float:left; padding:5px 5px 0 0; font-size:12px; text-align:right;}
 #add_new_bucket_form p .inp {padding:2px 3px; border:1px solid #cdd3d8; background:none #fff; margin:0 5px 0 0;}
 #add_new_bucket_form p .chkbx {float:left; margin:0 5px 0 0;}
 #add_new_bucket_dialog form {padding:10px 0 0 0;}
+#add_new_bucket_dialog {position:absolute;}
 
 .join_cluster table {width:100%;}
 .join_cluster table tr td {width:50%; padding:7px 0 0 0;}

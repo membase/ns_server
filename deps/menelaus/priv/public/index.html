@@ -975,24 +975,91 @@ MemcachedClient client = manager.getClient();</pre>
     </div>
     <div class="center">
       <div class="pad">
-        <p class="lbox_header">Add New Bucket</p>
+        <p class="lbox_header">Create New Data Bucket</p>
         <div id="add_new_bucket_errors_container" class="warning" style="padding:10px 20px;"></div>
         <div id="add_new_bucket_errors_template" class="template">
           <strong>Couldn't create bucket due to:</strong>
           <ul>
             <!-- {% _.each(rows, function (e) { %} -->
-            <li>{%= h(e) %}
+            <li>{%= h(e) %}</li>
             <!-- {% }); %} -->
           </ul>
         </div>
 
         <form id="add_new_bucket_form">
-          <p><label><b>Bucket Name:</b><input type="text" name="name" class="inp" style="width:290px;" value="No spaces, alphanumeric up to 12 characters"></label></p>
-          <p><label><b>Cache Size:</b><input type="text" name="cacheSize" class="inp" style="width:40px;"><span class="cache-details">&nbsp;</span><!-- MB x 3 server nodes = 192MB Total Cache Size/30GB Cluster memory available. --></label></p>
-          <p><span class="block pas_20 info_text">NOTE: The username and password for this data bucket is the same as the bucket name above.</span></p>
+          <p><label><b>Bucket Name:</b>
+                     <input type="text" name="name" class="inp" style="width:200px;" tabindex="1"
+                         value="No spaces, alphanumeric up to 12 characters"/></label></p>
+          <p><label><b>Bucket Type:</b>
+                     <select name="bucketType">
+                       <option value="memory">Memory Only</option>
+                       <option value="persistent">Persisted</option>
+                     </select></label></p>
+          <p><label><b>Number of servers:</b>
+                     <input type="radio" name="stretch" value="true">Stretch to All</input>
+                     <br/>
+                     <input type="radio" name="stretch" value="false">Fixed</input>
+                     <input type="text" name="numServers" class="inp" style="width:30px;"
+                         value=""><span class="numServers-details">(of N servers in cluster)</span>
+                                      <!-- (of 12 servers in cluster) -->
+                     </label></p>
+
+          <h2>Blocking Behavior</h2>
+          <table>
+            <tr>
+              <td>
+                <p><label><input type="checkbox" name="waitForReplica" class="inp"/>
+                           Wait for replication
+                           </label></p>
+              </td>
+              <td>
+                <p><label><input type="text" name="waitForReplicaCount" class="inp" style="width:30px;"
+                              value="3"/>
+                           Wait until this many copies sent
+                           </label></p>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <p><label><input type="checkbox" name="waitForPersist" class="inp"/>
+                           Wait for disk write
+                           </label></p>
+              </td>
+            </tr>
+          </table>
+
+          <h2>Replication</h2>
+          <table>
+            <tr>
+              <td>
+                <p><label><input type="checkbox" name="replicate" class="inp"/>
+                           Enable replication
+                           </label></p>
+                <p><label><input type="text" name="replicaCount" class="inp" style="width:30px;"
+                               value="3"/>
+                           Number of backup (replica) copies
+                           </label></p>
+              </td>
+            </tr>
+          </table>
+
+          <h2>Storage</h2>
+          <p><label><b>Cache Size:</b>
+                     <input type="text" name="cacheSize" class="inp" style="width:40px;">
+                     <span class="cache-details">&nbsp;</span>
+                     <!-- MB x 3 server nodes = 192MB Total Cache Size/30GB Cluster memory available. --></label></p>
+
+          <p><label><b>Storage Size:</b>
+                     <input type="text" name="storageSize" class="inp" style="width:40px;">
+                     <span class="storage-details">&nbsp;</span>
+                     <!-- MB x 3 server nodes = 192MB Total Storage Size/30GB Cluster storage available. --></label></p>
+
+          <br/>
+          <p><span class="block pas_20 info_text">
+               NOTE: The username and password for this data bucket is the same as the bucket name above.</span></p>
           <div class="pas_20">
             <div class="right save_cancel">
-              <button class="save_button float_right" type="submit">ADD</button>
+              <button class="save_button float_right" type="submit">CREATE</button>
               <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
             </div>
           </div>
@@ -1501,7 +1568,7 @@ MemcachedClient client = manager.getClient();</pre>
         <tr>
           <td>
             <div class="pat_10">
-              <input type="submit" value="Setup" class="submit next" />
+              <input type="submit" value="Setup" class="submit next"/>
             </div>
           </td>
         </tr>

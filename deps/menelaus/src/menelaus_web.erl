@@ -660,7 +660,7 @@ handle_bucket_create_prep(PoolId, BucketId, Req) ->
     DupNameV = case mc_bucket:bucket_config_get(mc_pool:pools_config_get(),
                                                 PoolId, BucketId) of
                    false -> undefined;
-                   _ -> <<"A cache bucket with given name already exists.">>
+                   _ -> <<"A data bucket with given name already exists.">>
                end,
     ParsedSizeWanted = (catch list_to_integer(proplists:get_value("cacheSize", PostArgs))),
     NzV = if
@@ -686,7 +686,7 @@ handle_bucket_create_prep(PoolId, BucketId, Req) ->
     MinMemFree = (trunc(SmallestNodeRAM/1048576) - TotalBucketsSize - 128),
     SzV = case SizeWanted > MinMemFree of
               true -> list_to_binary(
-                        io_lib:format("Cannot create cache bucket; the cluster only has ~p megabytes free for new cache buckets.",
+                        io_lib:format("Cannot create data bucket; the cluster only has ~p megabytes free for new data buckets.",
                                       [trunc(MinMemFree)]));
               false -> undefined
           end,
@@ -694,7 +694,7 @@ handle_bucket_create_prep(PoolId, BucketId, Req) ->
     % Input bucket name cannot have whitespace.
     FmtV = case mc_bucket:is_valid_bucket_name(BucketId) of
                true -> undefined;
-               _ -> <<"The cache bucket name is invalid.">>
+               _ -> <<"The data bucket name is invalid.">>
            end,
     PossMsg = [DupNameV, SzV, FmtV, NzV],
     Msgs = lists:filter(fun (X) -> X =/= undefined end,
