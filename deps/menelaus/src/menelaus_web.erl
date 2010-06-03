@@ -169,7 +169,7 @@ loop(Req, AppRoot, DocRoot) ->
                             ["node", "controller", "doJoinCluster"] ->
                                  {auth, fun handle_join/1};
                              ["node", "controller", "initStatus"] ->
-                                 {auth, fun handle_init_status/1};
+                                 {auth, fun handle_init_status_post/1};
                              ["nodes", NodeId, "controller", "settings"] ->
                                  {auth, fun handle_node_settings_post/2,
                                   [NodeId]};
@@ -757,19 +757,23 @@ handle_bucket_flush(PoolId, Id, Req) ->
         false -> Req:respond({404, add_header(), []})
     end.
 
-handle_init_status(Req) ->
+handle_init_status_post(Req) ->
     %% parameter example: value=done, value=welcome, value=someOpaqueValueFromJavaScript
     %%
     Params = Req:parse_post(),
-    case proplists:get_value("value", Params) of
-        undefined ->
-            ns_log:log(?MODULE, ?INIT_STATUS_BAD_PARAM, "Received request to initStatus but missing value parameter.", []),
-            Req:respond({400, add_header(), "Attempt to initStatus but missing value parameter.\n"});
-        InitStatus ->
-            ns_log:log(?MODULE, ?INIT_STATUS_UPDATED, "initStatus updated to ~p.", [InitStatus]),
-            ns_config:set(init_status, [{value, InitStatus}]),
-            Req:respond({200, add_header(), []})
+    case change_init_status(proplists:get_value("value", Params)) of
+        false -> Req:respond({400, add_header(), "Attempt to initStatus but missing value parameter.\n"});
+        true  -> Req:respond({200, add_header(), []})
     end.
+
+change_init_status(undefined) ->
+    ns_log:log(?MODULE, ?INIT_STATUS_BAD_PARAM, "Received request to initStatus but missing value parameter.", []),
+    false;
+
+change_init_status(InitStatus) ->
+    ns_log:log(?MODULE, ?INIT_STATUS_UPDATED, "initStatus updated to ~p.", [InitStatus]),
+    ns_config:set(init_status, [{value, InitStatus}]),
+    true.
 
 handle_join(Req) ->
     %% paths:
@@ -968,6 +972,7 @@ build_settings_web(Port, U, P) ->
               {username, list_to_binary(U)},
               {password, list_to_binary(P)}]}.
 
+is_valid_port_number("SAME") -> true;
 is_valid_port_number(String) ->
     PortNumber = (catch list_to_integer(String)),
     (is_integer(PortNumber) andalso (PortNumber > 0) andalso (PortNumber =< 65535)).
@@ -995,18 +1000,22 @@ handle_settings_web_post(Req) ->
     Port = proplists:get_value("port", PostArgs),
     U = proplists:get_value("username", PostArgs),
     P = proplists:get_value("password", PostArgs),
+    InitStatus = proplists:get_value("initStatus", PostArgs),
     case validate_settings(Port, U, P) of
-        [_Head | _]=Errors ->
+        [_Head | _] = Errors ->
             reply_json(Req, Errors, 400);
         [] ->
-            PortInt = list_to_integer(Port),
+            PortInt = case Port of
+                         "SAME" -> proplists:get_value(port, webconfig());
+                         _      -> list_to_integer(Port)
+                      end,
             case build_settings_web() =:= build_settings_web(PortInt, U, P) of
                 true -> ok; % No change.
                 false ->
                     ns_config:set(rest,
                                   [{port, PortInt}]),
                     if
-                        {[], []} == {U,P} ->
+                        {[], []} == {U, P} ->
                             ns_config:set(rest_creds, [{creds, []}]);
                         true ->
                             ns_config:set(rest_creds,
@@ -1016,6 +1025,7 @@ handle_settings_web_post(Req) ->
                     % No need to restart right here, as our ns_config
                     % event watcher will do it later if necessary.
             end,
+            change_init_status(InitStatus),
             Host = Req:get_header_value("host"),
             PureHostName = case string:tokens(Host, ":") of
                                [Host] -> Host;

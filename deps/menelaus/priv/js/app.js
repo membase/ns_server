@@ -1581,6 +1581,41 @@ var AlertsSection = {
 }
 
 var SettingsSection = {
+   processSave: function(self) {
+      var dialog = genericDialog({
+        header: 'Saving...',
+        text: 'Saving settings.  Please wait a bit.',
+        buttons: {ok: false, cancel: false}});
+
+      var form = $(self);
+
+      var postData = serializeForm(form);
+
+      form.find('.warn li').remove();
+
+      postWithValidationErrors($(self).attr('action'), postData, function (data, status) {
+        if (status != 'success') {
+          var ul = form.find('.warn ul');
+          _.each(data, function (error) {
+            var li = $('<li></li>');
+            li.text(error);
+            ul.prepend(li);
+          });
+          $('html, body').animate({scrollTop: ul.offset().top-100}, 250);
+          return dialog.close();
+        }
+
+        reloadApp(function (reload) {
+          if (data && data.newBaseUri) {
+            var uri = data.newBaseUri;
+            if (uri.charAt(uri.length-1) == '/')
+              uri = uri.slice(0, -1);
+            uri += document.location.pathname;
+          }
+          _.delay(_.bind(reload, null, uri), 1000);
+        });
+      });
+  },
   // GET of advanced settings returns structure, while POST accepts
   // only plain key-value set. We convert data we get from GET to
   // format of POST requests.
@@ -1670,43 +1705,8 @@ var SettingsSection = {
     });
 
     $('#settings form').submit(function (e) {
-      var self = this;
-
       e.preventDefault();
-
-      var dialog = genericDialog({
-        header: 'Saving...',
-        text: 'Saving settings, wait a bit',
-        buttons: {ok: false, cancel: false}});
-
-      var form = $(self);
-
-      var postData = serializeForm(form);
-
-      form.find('.warn li').remove();
-
-      postWithValidationErrors($(self).attr('action'), postData, function (data, status) {
-        if (status != 'success') {
-          var ul = form.find('.warn ul');
-          _.each(data, function (error) {
-            var li = $('<li></li>');
-            li.text(error);
-            ul.prepend(li);
-          });
-          $('html, body').animate({scrollTop: ul.offset().top-100}, 250);
-          return dialog.close();
-        }
-
-        reloadApp(function (reload) {
-          if (data && data.newBaseUri) {
-            var uri = data.newBaseUri;
-            if (uri.charAt(uri.length-1) == '/')
-              uri = uri.slice(0, -1);
-            uri += document.location.pathname;
-          }
-          _.delay(_.bind(reload, null, uri), 1000);
-        });
-      });
+      SetingsSection.processSave(this);
     });
   },
   gotoSetupAlerts: function () {
@@ -2299,6 +2299,21 @@ var NodeDialog = {
                     diskResources: [{path: "some/disk/path", quota: 1234},
                                     {path: "other/disk/path", quota: 1122}]},
                    c);
+  },
+  startPage_secure: function(node, pagePrefix) {
+    var parentName = '#' + pagePrefix + '_dialog';
+
+    $(parentName + ' form').submit(function (e) {
+      e.preventDefault();
+
+      var pw = $(parentName).find('[name=password]').val();
+      if (pw == null || pw == "") {
+        showInitDialog("done");
+        return;
+      }
+
+      SettingsSection.processSave(this);
+    });
   }
 };
 

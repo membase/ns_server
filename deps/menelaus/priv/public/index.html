@@ -1663,7 +1663,7 @@ MemcachedClient client = manager.getClient();</pre>
     <!-- screen S.5 -->
     <div class="alert_red" id="init_secure_failed_message" style="display:none;">
       <div class="al_text">
-        Could not join the secure because of bad input.
+        Could not secure the server because of bad input.
       </div>
     </div>
     <h1>Secure this server</h1>
@@ -1674,7 +1674,10 @@ MemcachedClient client = manager.getClient();</pre>
       then they will inherit, this administrator password as they join the
       cluster.
     </p>
-    <form id="init_secure_form" class="form block">
+    <form id="init_secure_form" class="form block" action="/settings/web">
+      <div class="warn">
+        <ul></ul>
+      </div>
       <table>
         <col width="" />
         <col width="" />
@@ -1682,6 +1685,12 @@ MemcachedClient client = manager.getClient();</pre>
           <td colspan="2">
             <label>Password</label>
             <input type="text" name="password" class="inp"/>
+            <input type="text" name="username"
+                  style="display:none;" value="Administrator"/>
+            <input type="text" name="port"
+                  style="display:none;" value="SAME"/>
+            <input type="text" name="initStatus"
+                  style="display:none;" value="done"/>
           </td>
         </tr>
         <tr>
@@ -1702,11 +1711,6 @@ MemcachedClient client = manager.getClient();</pre>
       $('#init_secure_form input.back').click(function (e) {
         e.preventDefault();
         showInitDialog("cluster");
-      });
-      $('#init_secure_form').bind('submit', function (e) {
-        e.preventDefault();
-        // TODO: Make this real.
-        showInitDialog("done");
       });
     </script>
   </div>
