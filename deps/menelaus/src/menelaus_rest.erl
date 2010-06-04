@@ -9,7 +9,8 @@
 
 %% API
 
--export([rest_url/3, json_request/3, rest_get_json/2, rest_get_otp/3, rest_engage_cluster/4]).
+-export([rest_url/3, json_request/3, rest_get_json/2,
+         rest_get_otp/3, rest_engage_cluster/4]).
 
 rest_url(Host, Port, Path) ->
     "http://" ++ Host ++ ":" ++ integer_to_list(Port) ++ Path.

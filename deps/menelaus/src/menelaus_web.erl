@@ -165,7 +165,9 @@ loop(Req, AppRoot, DocRoot) ->
                          case PathTokens of
                              ["engageCluster"] ->
                                  {auth, fun handle_engage_cluster/1};
-                            ["node", "controller", "doJoinCluster"] ->
+                             ["addNodeRequest"] ->
+                                 {auth, fun handle_add_node_request/1};
+                             ["node", "controller", "doJoinCluster"] ->
                                  {auth, fun handle_join/1};
                              ["node", "controller", "initStatus"] ->
                                  {auth, fun handle_init_status_post/1};
@@ -287,6 +289,24 @@ handle_engage_cluster(Req) ->
     case Ok of
         ok -> handle_pool_info("default", Req);
         _ -> nothing
+    end.
+
+handle_add_node_request(Req) ->
+    Params = Req:parse_post(),
+    OtpNode = proplists:get_value("otpNode", Params, undefined),
+    OtpCookie = proplists:get_value("otpCookie", Params, undefined),
+    case {OtpNode, OtpCookie} of
+        {undefined, _} ->
+            reply_json(Req, [<<"Missing parameter(s)">>], 400);
+        {_, undefined} ->
+            reply_json(Req, [<<"Missing parameter(s)">>], 400);
+        _ ->
+            erlang:process_flag(trap_exit, true),
+            case ns_cluster_membership:handle_add_node_request(list_to_atom(OtpNode),
+                                                               list_to_atom(OtpCookie)) of
+                ok -> reply_json(Req, <<"ok">>, 200);
+                {failed, Msg} -> reply_json(Req, [list_to_binary(Msg)], 400)
+            end
     end.
 
 build_versions() ->
@@ -1269,9 +1289,26 @@ handle_node_settings_post(Node, Req) ->
         Errs -> Req:respond({400, add_header(), lists:flatten(Errs)})
     end.
 
-%% TODO
+validate_add_node_params(_Hostname, _Port, _User, _Password) ->
+    ok.
+
 handle_add_node(Req) ->
-    Req:respond({200, [], []}).
+    %% parameter example: hostname=epsilon.local, user=Administrator, password=asd!23
+    Params = Req:parse_post(),
+    {Hostname, Port} = case string:tokens(proplists:get_value("hostname", Params, ""), ":") of
+                           [N] -> {N, 8080};
+                           [N, P] -> {N, list_to_integer(P)}
+                       end,
+    User = proplists:get_value("user", Params, ""),
+    Password = proplists:get_value("password", Params, ""),
+    case validate_add_node_params(Hostname, Port, User, Password) of
+        ok ->
+            process_flag(trap_exit, true),
+            ns_cluster_membership:add_node(Hostname, Port, User, Password),
+            timer:sleep(3000),
+            Req:respond({200, [], []});
+        ErrorList -> reply_json(Req, ErrorList, 400)
+    end.
 
 %% TODO
 handle_failover(Req) -> 

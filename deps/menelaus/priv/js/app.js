@@ -1161,43 +1161,55 @@ var ServersSection = {
     form.bind('submit', function (e) {
       e.preventDefault();
 
-      function simpleValidation() {
-        var p = {};
-        _.each("clusterMemberHostIp clusterMemberPort user password".split(' '), function (name) {
-          p[name] = form.find('[name=' + name + ']').val();
-        });
+      var data = {}
+      _.each("clusterMemberHostIp clusterMemberPort user password".split(' '), function (name) {
+        data[name] = form.find('[name=' + name + ']').val();
+      });
 
+      function simpleValidation(data) {
         var errors = [];
 
-        if (p['clusterMemberHostIp'] == "")
+        if (data['clusterMemberHostIp'] == "")
           errors.push("Web Console IP Address cannot be blank.");
-        if (p['clusterMemberPort'] == '')
+        if (data['clusterMemberPort'] == '')
           errors.push("Web Console Port cannot be blank.");
-        if ((p['user'] || p['password']) && !(p['user'] && p['password'])) {
+        if ((data['user'] || data['password']) && !(data['user'] && data['password'])) {
           errors.push("Username and Password must either both be present or missing.");
         }
 
         return errors;
       }
 
-      var errors = simpleValidation();
+      var errors = simpleValidation(data);
       if (errors.length) {
         renderTemplate('join_cluster_dialog_errors', errors);
         return;
       }
 
+      $('#join_cluster_dialog_errors_container').html('');
       var overlay = overlayWithSpinner(form);
 
       var uri = self.poolDetails.value.controllers.addNode.uri;
       self.poolDetails.setValue(undefined);
-      postWithValidationErrors(uri, form, function (data, status) {
+
+      var toSend = {
+        hostname: data['clusterMemberHostIp'],
+        user: data['user'],
+        password: data['password']
+      };
+      if (data['clusterMemberPort'] != '8080')
+        toSend['hostname'] += ':' + data['clusterMemberPort']
+
+      postWithValidationErrors(uri, $.param(toSend), function (data, status) {
         self.poolDetails.invalidate();
+        overlay.remove();
         if (status != 'success') {
-          overlay.remove();
           renderTemplate('join_cluster_dialog_errors', data)
         } else {
           hideDialog('join_cluster_dialog');
         }
+      }, {
+        timeout: 15000
       })
     });
   },

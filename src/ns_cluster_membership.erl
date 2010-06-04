@@ -9,6 +9,7 @@
          add_node/4,
          engage_cluster/1,
          engage_cluster/2,
+         handle_add_node_request/2,
          join_cluster/4]).
 
 -export([ns_log_cat/1,
@@ -80,9 +81,24 @@ engage_cluster(RemoteIP, Options) ->
             {failed, ErrorMsg}
     end.
 
-%% TODO
 add_node(OtherHost, OtherPort, OtherUser, OtherPswd) ->
-    ok.
+    case engage_cluster(OtherHost) of
+        ok ->
+            URL = menelaus_rest:rest_url(OtherHost, OtherPort, "/addNodeRequest"),
+            menelaus_rest:json_request(post,
+                                       {URL, [], "application/x-www-form-urlencoded",
+                                        mochiweb_util:urlencode([{<<"otpNode">>, node()},
+                                                                 {<<"otpCookie">>, erlang:get_cookie()}])},
+                                       {OtherUser, OtherPswd});
+        X -> X
+    end.
+
+handle_add_node_request(OtpNode, OtpCookie) ->
+    [_Local, Hostname] = string:tokens(atom_to_list(OtpNode), "@"),
+    case engage_cluster(Hostname, []) of
+        ok -> ns_cluster:join(OtpNode, OtpCookie);
+        X -> X
+    end.
 
 handle_join_rest_failure(ReturnValue, OtherHost, OtherPort) ->
     case ReturnValue of
