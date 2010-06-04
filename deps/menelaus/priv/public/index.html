@@ -1640,38 +1640,18 @@ MemcachedClient client = manager.getClient();</pre>
         <tr>
           <td colspan="2">
             <div class="pat_10">
-              <input type="submit" value="Do NOT join a cluster now, maybe later" class="submit next" />
+              <a class="button_big" href="javascript:showInitDialog('secure');">
+                Do NOT join a cluster now
+              </a>
             </div>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <label>IP Address</label>
-          </td>
-          <td>
-            <input type="text" name="ip" class="inp"/>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <label>User</label>
-          </td>
-          <td>
-            <input type="text" name="user" class="inp" value="Administrator"/>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <label>Password</label>
-          </td>
-          <td>
-            <input type="text" name="password" class="inp"/>
           </td>
         </tr>
         <tr>
           <td colspan="2">
             <div class="pat_10">
-              <input type="submit" value="Join and Finish" class="submit join" />
+              <a class="button_big" href="javascript:OverviewSection.startJoinCluster();">
+                Join Cluster
+              </a>
             </div>
           </td>
         </tr>
@@ -1688,15 +1668,6 @@ MemcachedClient client = manager.getClient();</pre>
       $('#init_cluster_form input.back').click(function (e) {
         e.preventDefault();
         showInitDialog("resources");
-      });
-      $('#init_cluster_form input.next').click(function (e) {
-        e.preventDefault();
-        showInitDialog("secure");
-      });
-      $('#init_cluster_form').bind('submit', function (e) {
-        e.preventDefault();
-        // TODO: Make this real.
-        showInitDialog("done");
       });
     </script>
   </div>
