@@ -372,6 +372,12 @@ merge_configs([], _Remote, Local, []) ->
     Local#config{dynamic = []};
 merge_configs([], _Remote, Local, Acc) ->
     Local#config{dynamic = [lists:reverse(Acc)]};
+merge_configs([directory = Field | Fields], Remote, Local, Acc) ->
+    NewAcc = case search_raw(Local, Fields) of
+                 {value, LV} -> [{Field, LV} | Acc];
+                 _ -> Acc
+             end,
+    merge_configs(Fields, Remote, Local, NewAcc);
 merge_configs([Field | Fields], Remote, Local, Acc) ->
     RS = search_raw(Remote, Field),
     LS = search_raw(Local, Field),
