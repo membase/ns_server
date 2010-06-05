@@ -1861,6 +1861,9 @@ var ThePage = {
              nodeSettings: NodeSettingsSection,
              monitor_buckets: BucketsSection,
              monitor_servers: OverviewSection},
+
+  coming: {monitor_buckets:true, monitor_servers:true, settings:true, alerts:true},
+
   currentSection: null,
   currentSectionName: null,
   signOut: function () {
@@ -1909,6 +1912,10 @@ var ThePage = {
       var secId = sec;
       if (currentSection.domId != null) {
         secId = currentSection.domId(sec);
+      }
+
+      if (self.coming[sec] == true && window.location.href.indexOf("FORCE") < 0) {
+        secId = 'coming';
       }
 
       $('#mainPanel > div:not(.notice)').css('display', 'none');
