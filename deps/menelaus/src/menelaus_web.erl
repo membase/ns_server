@@ -1237,19 +1237,22 @@ handle_node(Node, Req) ->
         {undefined, V, VU} -> {"", V, ymd_to_string(VU)};
         {X, V, VU}         -> {X, V, ymd_to_string(VU)}
     end,
+    % TODO: Make real resources.
+    R = {struct, [{"ssd", [{struct, [{"path", <<"nice/ssd/path">>}, {"quotaMb", 1234}]},
+                           {struct, [{"path", <<"good/ssd/path">>}, {"quotaMb", 5678}]}]},
+                  {"hdd", [{struct, [{"path", <<"nice/disk/path">>}, {"quotaMb", 1234}]},
+                           {struct, [{"path", <<"good/disk/path">>}, {"quotaMb", 5678}]}]}]},
     reply_json(Req,
                {struct, [{"license", list_to_binary(License)},
                          {"licenseValid", Valid},
                          {"licenseValidUntil", list_to_binary(ValidUntil)},
-                         %% TODO: Make ip and ip choices real.
-                         {"ip", <<"127.0.0.1">>},
-                         {"ipChoices", [<<"127.0.0.1">>, <<"192.168.0.1">>]}]}).
+                         {"resources", R}]}).
 
 handle_node_settings_post("Self", Req)            -> handle_node_settings_post(node(), Req);
 handle_node_settings_post(S, Req) when is_list(S) -> handle_node_settings_post(list_to_atom(S), Req);
 
 handle_node_settings_post(Node, Req) ->
-    %% parameter example: license=some_license_string, ip=10.1.1.100
+    %% parameter example: license=some_license_string
     %%
     Params = Req:parse_post(),
     Results = [
@@ -1259,12 +1262,7 @@ handle_node_settings_post(Node, Req) ->
                             ok         -> ok;
                             {error, _} -> "Error changing license.\n"
                        end
-        end,
-        case proplists:get_value("ip", Params) of
-            undefined -> ok;
-            _IpAddr -> ok % TODO: Make ip changes real.
         end
-        % TODO: Add port number changes here.
     ],
     case lists:filter(fun(X) -> X =/= ok end, Results) of
         [] -> Req:respond({200, add_header(), []});

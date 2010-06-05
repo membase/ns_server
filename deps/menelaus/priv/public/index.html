@@ -1750,15 +1750,15 @@ MemcachedClient client = manager.getClient();</pre>
         <tr>
           <td colspan="2">
             <div class="ssd_resource_container">
-              <!-- {% if (ssdResources.length > 0) { %} -->
+              <!-- {% if (ssd.length > 0) { %} -->
                 <table>
                   <col width="" />
                   <col width="100%" />
                   <col width="" />
-                  <!-- {% $.each(ssdResources, function () { %} -->
+                  <!-- {% $.each(ssd, function () { %} -->
                   <tr>
                     <td>{%= h(this.path) %}</td>
-                    <td>{%= h(this.quota) %} MB</td>
+                    <td>{%= h(this.quotaMb) %} MB</td>
                     <td><a href="#">Remove</a></td>
                   </tr>
                   <tr>
@@ -1783,16 +1783,16 @@ MemcachedClient client = manager.getClient();</pre>
         </tr>
         <tr>
           <td colspan="2">
-            <div class="disk_resource_container">
-              <!-- {% if (diskResources.length > 0) { %} -->
+            <div class="hdd_resource_container">
+              <!-- {% if (hdd.length > 0) { %} -->
                 <table>
                   <col width="" />
                   <col width="100%" />
                   <col width="" />
-                  <!-- {% $.each(diskResources, function () { %} -->
+                  <!-- {% $.each(hdd, function () { %} -->
                   <tr>
                     <td>{%= h(this.path) %}</td>
-                    <td>{%= h(this.quota) %}</td>
+                    <td>{%= h(this.quotaMb) %}</td>
                     <td><a href="#">Remove</a></td>
                   </tr>
                   <tr>

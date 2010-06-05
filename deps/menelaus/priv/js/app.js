@@ -2300,13 +2300,16 @@ var NodeDialog = {
   startPage_resources: function(node, pagePrefix) {
     var parentName = '#' + pagePrefix + '_dialog';
 
-    var c = $(parentName + ' .resource_panel_container')[0];
-    renderTemplate('resource_panel',
-                   {ssdResources: [{path: "some/ssd/path", quota: 1234},
-                                   {path: "other/ssd/path", quota: 1122}],
-                    diskResources: [{path: "some/disk/path", quota: 1234},
-                                    {path: "other/disk/path", quota: 1122}]},
-                   c);
+    $.ajax({
+      type:'GET', url:'/nodes/' + node, dataType: 'json', async: false,
+      success: cb, error: cb});
+
+    function cb(data, status) {
+      if (status == 'success') {
+        var c = $(parentName + ' .resource_panel_container')[0];
+        renderTemplate('resource_panel', data['resources'], c);
+      }
+    }
   },
   startPage_secure: function(node, pagePrefix) {
     var parentName = '#' + pagePrefix + '_dialog';
