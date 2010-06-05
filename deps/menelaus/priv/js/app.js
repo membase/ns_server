@@ -1402,6 +1402,7 @@ var BucketsSection = {
   },
   finishCreate: function () {
     hideDialog('add_new_bucket_dialog');
+    nav.go('buckets');
   },
   createSubmit: function () {
     var self = this;
