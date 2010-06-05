@@ -8,6 +8,7 @@
          get_cluster_membership/1,
          add_node/4,
          engage_cluster/1,
+         engage_cluster/2,
          join_cluster/4]).
 
 -export([ns_log_cat/1,
@@ -40,12 +41,15 @@ get_cluster_membership(Node) ->
         _ -> inactiveAdded
     end.
 
+engage_cluster(RemoteIP) ->
+    engage_cluster(RemoteIP, [restart]).
+
 %% called on cluster node with IP of node to be added
 %%
 %% If cluster is single node cluster, then it might need to change
 %% erlang node name, before other node joins it. This function
 %% implements it. It also checks that other node ip is indeed reachable.
-engage_cluster(RemoteIP) ->
+engage_cluster(RemoteIP, Options) ->
     case ns_cluster:prepare_join_to(RemoteIP) of
         {ok, MyAddr} ->
             MyNode = node(),
@@ -55,13 +59,17 @@ engage_cluster(RemoteIP) ->
                     case dist_manager:adjust_my_address(MyAddr) of
                         nothing -> ok;
                         net_restarted ->
-                            %% and potentially restart services
-                            PrevInitStatus = ns_config:search_prop(ns_config:get(),
-                                                                   init_status,
-                                                                   value, ""),
-                            ns_cluster:leave_sync(),
-                            ns_config:set(init_status, [{value, PrevInitStatus}]),
-                            ok
+                            case lists:member(restart, Options) of
+                                true ->
+                                    %% and potentially restart services
+                                    PrevInitStatus = ns_config:search_prop(ns_config:get(),
+                                                                           init_status,
+                                                                           value, ""),
+                                    ns_cluster:leave_sync(),
+                                    ns_config:set(init_status, [{value, PrevInitStatus}]),
+                                    ok;
+                                _ -> ok
+                            end
                     end;
                 %% not alone, keep present config
                 _ -> ok
