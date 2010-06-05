@@ -56,7 +56,11 @@ engage_cluster(RemoteIP) ->
                         nothing -> ok;
                         net_restarted ->
                             %% and potentially restart services
+                            PrevInitStatus = ns_config:search_prop(ns_config:get(),
+                                                                   init_status,
+                                                                   value, ""),
                             ns_cluster:leave_sync(),
+                            ns_config:set(init_status, [{value, PrevInitStatus}]),
                             ok
                     end;
                 %% not alone, keep present config
