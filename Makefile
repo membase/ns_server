@@ -12,10 +12,16 @@ TMP_VER=$(TMP_DIR)/version_num.tmp
 
 all: ebins test_noemoxi deps_all
 
-deps_all:
+deps_emoxi:
 	(cd deps/emoxi && $(MAKE) ebins)
+
+deps_menelaus:
 	(cd deps/menelaus && $(MAKE) all)
+
+deps_smtp:
 	(cd deps/gen_smtp && $(MAKE) ebins)
+
+deps_all: deps_emoxi deps_menelaus deps_smtp
 
 ebins: ebin_app
 	test -d ebin || mkdir ebin
