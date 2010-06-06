@@ -22,6 +22,7 @@
 -define(TIMEDOUT, 4).
 -define(REST_ERROR, 5).
 -define(OTHER_ERROR, 6).
+-define(REST_FAILED, 7).
 %% category warn
 -define(PREPARE_JOIN_FAILED, 32).
 %% categeory info. Starts from 256 - 32
@@ -83,6 +84,48 @@ engage_cluster(RemoteIP, Options) ->
 add_node(OtherHost, OtherPort, OtherUser, OtherPswd) ->
     ok.
 
+handle_join_rest_failure(ReturnValue, OtherHost, OtherPort) ->
+    case ReturnValue of
+        {error, prepare_failed, Reason} ->
+            ns_log:log(?MODULE, ?PREPARE_JOIN_FAILED,
+                       "During node join, could not connect to port mapper at ~p with reason ~p", [OtherHost, Reason]),
+            {error, [list_to_binary(io_lib:format("Could not connect port mapper at ~p (tcp port 4369). With error Reason ~p. "
+                                                  "This could be due to "
+                                                  "firewall configured between the two nodes.", [OtherHost, Reason]))]};
+        {error, econnrefused} ->
+            ns_log:log(?MODULE, ?CONNREFUSED, "During node join, could not connect to ~p on port ~p from node ~p.", [OtherHost, OtherPort, node()]),
+            {error, [list_to_binary(io_lib:format("Could not connect to ~p on port ~p.  "
+                                                  "This could be due to an incorrect host/port combination or a "
+                                                  "firewall configured between the two nodes.", [OtherHost, OtherPort]))]};
+        {error, nxdomain} ->
+            ns_log:log(?MODULE, ?NXDOMAIN, "During node join, failed to resolve host ~p on port ~p from node ~p.", [OtherHost, OtherPort, node()]),
+            Msg = io_lib:format("Failed to resolve address for ~p.  The hostname may be incorrect or not resolvable.", [OtherHost]),
+            {error, [list_to_binary(Msg)]};
+        {error, timeout} ->
+            ns_log:log(?MODULE, ?TIMEDOUT, "During node join, timeout connecting to ~p on port ~p from node ~p.", [OtherHost, OtherPort, node()]),
+            {error, [list_to_binary(io_lib:format("Timeout connecting to ~p on port ~p.  "
+                                                  "This could be due to an incorrect host/port combination or a "
+                                                  "firewall configured between the two nodes.", [OtherHost, OtherPort]))]};
+        Other ->
+            Handled = case Other of
+                          {error, {_HttpInfo, _HeadersInfo, Body}} ->
+                              DecodedErrors = mochijson2:decode(Body),
+                              ns_log:log(?MODULE, ?REST_FAILED,
+                                         "During node join, the remote host ~p on port ~p returned failure.~nError encountered was: ~p",
+                                         [OtherHost, OtherPort, DecodedErrors]),
+                              {error, [<<"Got error response from remote node.  An error has been logged which may contain more information.">>]};
+                          _ -> false
+                      end,
+            case Handled of
+                false ->
+                    ns_log:log(?MODULE, ?REST_ERROR,
+                               "During node join, the remote host ~p on port ~p did not return a REST response.~nError encountered was: ~p",
+                               [OtherHost, OtherPort, Other]),
+                    {error, [<<"Invalid response from remote node.  An error has been logged which may contain more information.">>]};
+                X -> X
+            end
+    end.
+
 join_cluster(OtherHost, OtherPort, OtherUser, OtherPswd) ->
     case handle_join_inner(OtherHost, OtherPort, OtherUser, OtherPswd) of
         {ok, undefined, _, _} ->
@@ -97,33 +140,11 @@ join_cluster(OtherHost, OtherPort, OtherUser, OtherPswd) ->
             handle_join(list_to_atom(binary_to_list(Node)),
                         list_to_atom(binary_to_list(Cookie)),
                         MyIP);
-        {error, prepare_failed, Reason} ->
-            ns_log:log(?MODULE, ?PREPARE_JOIN_FAILED,
-                       "During node join, could not connect to port mapper at ~p with reason ~p", [OtherHost, Reason]),
-            {error, [list_to_binary(io_lib:format("Could not connect port mapper at ~p (tcp port 4369). With error Reason ~p. "
-                                                  "This could be due to "
-                                                  "firewall configured between the two nodes.", [OtherHost, Reason]))]};
-        {error, econnrefused} ->
-            ns_log:log(?MODULE, ?CONNREFUSED, "During node join, could not connect to ~p on port ~p from node ~p.", [OtherHost, OtherPort, node()]),
-            {error, [list_to_binary(io_lib:format("Could not connect to ~p on port ~p.  "
-                                                  "This could be due to an incorrect host/port combination or a "
-                                                  "firewall configured between the two nodes.", [OtherHost, OtherPort]))]};
-        {error, nxdomain} ->
-            ns_log:log(?MODULE, ?NXDOMAIN, "During node join, failed to resolve host ~p on port ~p from node ~p.", [OtherHost, OtherPort, node()]),
-            {error, [list_to_binary(io_lib:format("Failed to resolve address for ~p.  The hostname may be incorrect or not resolvable.", [OtherHost]))]};
-        {error, timeout} ->
-            ns_log:log(?MODULE, ?TIMEDOUT, "During node join, timeout connecting to ~p on port ~p from node ~p.", [OtherHost, OtherPort, node()]),
-            {error, [list_to_binary(io_lib:format("Timeout connecting to ~p on port ~p.  "
-                                                  "This could be due to an incorrect host/port combination or a "
-                                                  "firewall configured between the two nodes.", [OtherHost, OtherPort]))]};
         {error, system_not_joinable} ->
             %% We are not an 'empty' node, so user should first remove
             %% buckets, etc.
             {error, [list_to_binary("Your server cannot join this cluster because you have existing buckets configured on this server. Please remove them before joining a cluster.")]};
-        Any ->
-            ns_log:log(?MODULE, ?REST_ERROR, "During node join, the remote host ~p on port ~p did not return a REST response.  Error encountered was: ~p",
-                       [OtherHost, OtherPort, Any]),
-            {error, [list_to_binary("Invalid response from remote node.  An error has been logged which may contain more information.")]}
+        OtherError -> handle_join_rest_failure(OtherError, OtherHost, OtherPort)
     end.
 
 handle_join_inner(OtherHost, OtherPort, OtherUser, OtherPswd) ->
