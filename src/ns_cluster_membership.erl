@@ -77,20 +77,33 @@ engage_cluster(RemoteIP, Options) ->
                 _ -> ok
             end;
         {error, Reason} ->
-            ErrorMsg = io_lib:format("Failed to reach erlang port mapper at your node. Error: ~p", Reason),
-            {failed, ErrorMsg}
+            case lists:member(raw_error, Options) of
+                true -> {error, prepare_failed, Reason}; % compatible with handle_join_rest_failure
+                _ ->
+                    ErrorMsg = io_lib:format("Failed to reach erlang port mapper at your node. Error: ~p", [Reason]),
+                    {error_msg, ErrorMsg}
+            end
     end.
 
 add_node(OtherHost, OtherPort, OtherUser, OtherPswd) ->
-    case engage_cluster(OtherHost) of
-        ok ->
-            URL = menelaus_rest:rest_url(OtherHost, OtherPort, "/addNodeRequest"),
-            menelaus_rest:json_request(post,
-                                       {URL, [], "application/x-www-form-urlencoded",
-                                        mochiweb_util:urlencode([{<<"otpNode">>, node()},
-                                                                 {<<"otpCookie">>, erlang:get_cookie()}])},
-                                       {OtherUser, OtherPswd});
-        X -> X
+    Res = case engage_cluster(OtherHost, [raw_error, restart]) of
+              ok ->
+                  URL = menelaus_rest:rest_url(OtherHost, OtherPort, "/addNodeRequest"),
+                  case menelaus_rest:json_request(post,
+                                                  {URL, [], "application/x-www-form-urlencoded",
+                                                   mochiweb_util:urlencode([{<<"otpNode">>, node()},
+                                                                            {<<"otpCookie">>, erlang:get_cookie()}])},
+                                                  {OtherUser, OtherPswd}) of
+                      {ok, {struct, KVList}} ->
+                          Value = menelaus_util:expect_prop_value(<<"otpNode">>, KVList),
+                          {ok, list_to_atom(binary_to_list(Value))};
+                      {error, _} = E -> E
+                  end;
+              X -> X
+          end,
+    case Res of
+        {ok, _} = OK -> OK;
+        Error -> handle_join_rest_failure(Error, OtherHost, OtherPort)
     end.
 
 handle_add_node_request(OtpNode, OtpCookie) ->

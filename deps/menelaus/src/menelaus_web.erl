@@ -281,8 +281,8 @@ handle_engage_cluster(Req) ->
              IP ->
                  case ns_cluster_membership:engage_cluster(IP) of
                      ok -> ok;
-                     {error, ErrorMsg} ->
-                         reply_json(Req, list_to_binary(ErrorMsg) , 400),
+                     {error_msg, ErrorMsg} ->
+                         reply_json(Req, [list_to_binary(ErrorMsg)] , 400),
                          failed
                  end
          end,
@@ -295,18 +295,24 @@ handle_add_node_request(Req) ->
     Params = Req:parse_post(),
     OtpNode = proplists:get_value("otpNode", Params, undefined),
     OtpCookie = proplists:get_value("otpCookie", Params, undefined),
-    case {OtpNode, OtpCookie} of
-        {undefined, _} ->
-            reply_json(Req, [<<"Missing parameter(s)">>], 400);
-        {_, undefined} ->
-            reply_json(Req, [<<"Missing parameter(s)">>], 400);
-        _ ->
-            erlang:process_flag(trap_exit, true),
-            case ns_cluster_membership:handle_add_node_request(list_to_atom(OtpNode),
-                                                               list_to_atom(OtpCookie)) of
-                ok -> reply_json(Req, <<"ok">>, 200);
-                {failed, Msg} -> reply_json(Req, [list_to_binary(Msg)], 400)
-            end
+    Reaction = case {OtpNode, OtpCookie} of
+                   {undefined, _} ->
+                       {errors, [<<"Missing parameter(s)">>]};
+                   {_, undefined} ->
+                       {errors, [<<"Missing parameter(s)">>]};
+                   _ ->
+                       erlang:process_flag(trap_exit, true),
+                       case ns_cluster_membership:handle_add_node_request(list_to_atom(OtpNode),
+                                                                          list_to_atom(OtpCookie)) of
+                           ok -> {ok, {struct, [{otpNode, atom_to_binary(node(), latin1)}]}};
+                           {error_msg, Msg} -> {errors, [list_to_binary(Msg)]}
+                       end
+               end,
+    case Reaction of
+        {ok, Data} ->
+            reply_json(Req, Data, 200);
+        {errors, Array} ->
+            reply_json(Req, Array, 400)
     end.
 
 build_versions() ->
@@ -1289,24 +1295,54 @@ handle_node_settings_post(Node, Req) ->
         Errs -> Req:respond({400, add_header(), lists:flatten(Errs)})
     end.
 
-validate_add_node_params(_Hostname, _Port, _User, _Password) ->
-    ok.
+validate_add_node_params(Hostname, Port, User, Password) ->
+    Candidates = case lists:member(undefined, [Hostname, Port, User, Password]) of 
+                     true -> [<<"Missing required parameter">>];
+                     _ -> [is_valid_port_number(Port) orelse <<"Invalid rest port specified">>,
+                           case Hostname of
+                               [] -> <<"Hostname cannot be empty">>;
+                               _ -> true
+                           end,
+                           case {User, Password} of
+                               {[], []} -> true;
+                               {[_Head | _], [_PasswordHead | _]} -> true;
+                               {[], [_PasswordHead | _]} -> <<"Password must be passed with non-empty username">>;
+                               _ -> <<"Empty password given">>
+                           end]
+                 end,
+    lists:filter(fun (E) -> E =/= true end, Candidates).
 
 handle_add_node(Req) ->
     %% parameter example: hostname=epsilon.local, user=Administrator, password=asd!23
     Params = Req:parse_post(),
-    {Hostname, Port} = case string:tokens(proplists:get_value("hostname", Params, ""), ":") of
-                           [N] -> {N, 8080};
-                           [N, P] -> {N, list_to_integer(P)}
-                       end,
+    {Hostname, StringPort} = case proplists:get_value("hostname", Params, "") of
+                                 [_ | _] = V ->
+                                     case string:tokens(V, ":") of
+                                         [N] -> {N, "8080"};
+                                         [N, P] -> {N, P}
+                                     end;
+                                 _ -> {"", ""}
+                             end,
     User = proplists:get_value("user", Params, ""),
     Password = proplists:get_value("password", Params, ""),
-    case validate_add_node_params(Hostname, Port, User, Password) of
-        ok ->
+    case validate_add_node_params(Hostname, StringPort, User, Password) of
+        [] ->
+            Port = list_to_integer(StringPort),
             process_flag(trap_exit, true),
-            ns_cluster_membership:add_node(Hostname, Port, User, Password),
-            timer:sleep(3000),
-            Req:respond({200, [], []});
+            case ns_cluster_membership:add_node(Hostname, Port, User, Password) of
+                {ok, OtpNode} ->
+                    case misc:poll_for_condition(fun () ->
+                                                         lists:member(OtpNode, [node() | nodes()])
+                                                 end,
+                                                 2000, 100) of
+                        ok ->
+                            timer:sleep(2000), %% and wait a bit more for things to settle
+                            Req:respond({200, [], []});
+                        timeout ->
+                            reply_json(Req, [<<"Wait for join completion has timed out">>], 400)
+                    end;
+                {error, Error} -> reply_json(Req, Error, 400)
+            end;
         ErrorList -> reply_json(Req, ErrorList, 400)
     end.
 

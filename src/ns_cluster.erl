@@ -192,7 +192,8 @@ alert_key(_) -> all.
 prepare_join_to(OtherHost) ->
     %% connect to epmd at other side
     case gen_tcp:connect(OtherHost, 4369,
-                         [binary, {packet, 0}, {active, false}]) of
+                         [binary, {packet, 0}, {active, false}],
+                         5000) of
         {ok, Socket} ->
             %% and determine our ip address
             {ok, {IpAddr, _}} = inet:sockname(Socket),
