@@ -1895,6 +1895,67 @@ var NodeSettingsSection = {
       });
 
     showDialog('edit_server_memory_dialog');
+  },
+
+  startAddLocationDialog : function (node, storageKind, regularDialog) {
+    var parentName = '#add_storage_location_dialog';
+
+    $(parentName + ' .storage_location_error_message').hide();
+
+    $(parentName).find('input[type=text]').val();
+
+    $(parentName + ' button.save_button').click(function (e) {
+        e.preventDefault();
+
+        $(parentName + ' .storage_location_error_message').hide();
+
+        var p = $(parentName).find('[name=path]').val() || "";
+        var q = $(parentName).find('[name=quota]').val() || "";
+        if (q == "") {
+          q = "none";
+        }
+
+        $.ajax({
+          type:'POST', url:'/nodes/' + node + '/controller/resources',
+          data: 'path=' + p + '&quota=' + q + '&kind=' + storageKind,
+          async:false, success:cbPost, error:cbPost
+        });
+
+        function cbPost(data, status) {
+          if (status == 'success') {
+            $(parentName).jqmHide();
+
+            if (regularDialog == false) {
+              showInitDialog("resources"); // Same screen used in init-config wizard.
+            } else {
+              OverviewSection.showNodeSettings(node);
+            }
+          } else {
+            $(parentName + ' .storage_location_error_message').show();
+          }
+        }
+      });
+
+    $(parentName + ' .add_storage_location_title').text("Add " + storageKind.toUpperCase() + " Storage Location");
+
+    showDialog('add_storage_location_dialog');
+  },
+
+  startRemoveLocationDialog : function (node, path, regularDialog) {
+    if (confirm("Are you sure you want to remove the storage location: " + path + "?  " +
+                "Click OK to Remove.")) {
+      $.ajax({
+        type:'DELETE',
+        url:'/nodes/' + node + '/resources/' + encodeURIComponent(path),
+        async:false
+      });
+
+      if (regularDialog == false) {
+        showInitDialog("resources"); // Same screen used in init-config wizard.
+      } else {
+        OverviewSection.showNodeSettings(node);
+      }
+    }
   }
 };
 

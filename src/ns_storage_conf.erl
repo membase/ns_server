@@ -8,7 +8,7 @@
 -module(ns_storage_conf).
 
 -export([memory_quota/1, change_memory_quota/2,
-         storage_conf/1, change_storage_conf/2]).
+         storage_conf/1, add_storage/4, remove_storage/2]).
 
 memory_quota(_Node) -> none. % TODO.
 
@@ -32,5 +32,16 @@ storage_conf(_Node) ->
     [{"ssd", []},
      {"hdd", [[{"path", "./data"}, {"quotaMb", none}, {"state", ok}]]}].
 
-change_storage_conf(_Node, _NewConf) ->
-    {error, todo}. % TODO.
+% Quota is an integer or atom none.
+% Kind is atom ssd or hdd.
+%
+add_storage(_Node, "", _Kind, _Quota) ->
+    {error, invalid_path};
+
+add_storage(_Node, _Path, _Kind, _Quota) ->
+    % TODO.
+    ok.
+
+remove_storage(_Node, _Path) ->
+    % TODO.
+    {error, todo}.

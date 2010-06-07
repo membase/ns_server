@@ -1740,7 +1740,7 @@ MemcachedClient client = manager.getClient();</pre>
         <tr>
           <td><h2>Solid State Storage</h2>
           </td>
-          <td><a href="javascript:showDialog('add_storage_location_dialog')">ADD</a></td>
+          <td><a href="javascript:NodeSettingsSection.startAddLocationDialog('{%= node %}', 'ssd', {%= regularDialog %});">ADD</a></td>
         </tr>
         <tr>
           <td colspan="2">
@@ -1754,7 +1754,8 @@ MemcachedClient client = manager.getClient();</pre>
                   <tr>
                     <td>Path: {%= h(this.path) %}</td>
                     <td>{%= h(this.quotaMb != 'none' ? ((this.quotaMb * 1024) + ' GB') : '[no&nbsp;quota]') %}</td>
-                    <td><a href="javascript:void(alert('Coming In Beta 2'));">Remove</a></td>
+
+                    <td><a href="javascript:NodeSettingsSection.startRemoveLocationDialog('{%= node %}', '{%= h(this.path) %}', {%= regularDialog %});">Remove</a></td>
                   </tr>
                   <!-- {% }); %} -->
                 </table>
@@ -1767,7 +1768,7 @@ MemcachedClient client = manager.getClient();</pre>
         <tr>
           <td><h2>Disk Storage</h2>
           </td>
-          <td><a href="javascript:showDialog('add_storage_location_dialog')">ADD</a></td>
+          <td><a href="javascript:NodeSettingsSection.startAddLocationDialog('{%= node %}', 'hdd', {%= regularDialog %});">ADD</a></td>
         </tr>
         <tr>
           <td colspan="2">
@@ -1781,7 +1782,7 @@ MemcachedClient client = manager.getClient();</pre>
                   <tr>
                     <td>Path: {%= h(this.path) %}</td>
                     <td>{%= h(this.quotaMb != 'none' ? ((this.quotaMb * 1024) + ' GB') : '[no quota]') %}</td>
-                    <td><a href="javascript:void(alert('Coming In Beta 2'));">Remove</a></td>
+                    <td><a href="javascript:NodeSettingsSection.startRemoveLocationDialog('{%= node %}', '{%= h(this.path) %}', {%= regularDialog %});">Remove</a></td>
                   </tr>
                   <!-- {% }); %} -->
                 </table>
@@ -1804,17 +1805,13 @@ MemcachedClient client = manager.getClient();</pre>
     </div>
     <div class="center">
       <div class="pad">
-        <p class="lbox_header">Add Storage Location</p>
-        <div id="add_new_resource_errors_container" class="warning" style="padding:10px 20px;"></div>
-        <div id="add_new_resource_errors_template" class="template">
-          <strong>Couldn't create resource due to:</strong>
-          <ul>
-            <!-- {% _.each(rows, function (e) { %} -->
-            <li>{%= h(e) %}
-            <!-- {% }); %} -->
-          </ul>
+        <p class="lbox_header add_storage_location_title">Add Storage Location</p>
+        <div class="alert_red storage_location_error_message" style="display:none;">
+          <div class="al_text">
+            Invalid location or quota. Please try again.
+          </div>
         </div>
-        <form id="add_new_resource_form">
+        <form id="add_storage_location_form">
           <p><label><b>Path:</b><input type="text" name="path" class="inp" style="width:290px;"
                                     value="absolute path to directory on the server"></label></p>
           <p><label><b>Quota:</b><input type="text" name="quota" class="inp" style="width:40px;"></label></p>

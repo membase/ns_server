@@ -103,8 +103,10 @@ webconfig() ->
 
 loop(Req, AppRoot, DocRoot) ->
     try
-        "/" ++ Path = Req:get(path),
-        PathTokens = string:tokens(Path, "/"),
+        % Using raw_path so encoded slash characters like %2F are handed correctly,
+        % in that we delay converting %2F's to slash characters until after we split by slashes.
+        "/" ++ Path = Req:get(raw_path),
+        PathTokens = lists:map(fun mochiweb_util:unquote/1, string:tokens(Path, "/")),
         Action = case Req:get(method) of
                      Method when Method =:= 'GET'; Method =:= 'HEAD' ->
                          case PathTokens of
@@ -176,6 +178,9 @@ loop(Req, AppRoot, DocRoot) ->
                              ["nodes", NodeId, "controller", "settings"] ->
                                  {auth, fun handle_node_settings_post/2,
                                   [NodeId]};
+                             ["nodes", NodeId, "controller", "resources"] ->
+                                 {auth, fun handle_node_resources_post/2,
+                                  [NodeId]};
                              ["settings", "web"] ->
                                  {auth, fun handle_settings_web_post/1};
                              ["settings", "advanced"] ->
@@ -218,8 +223,10 @@ loop(Req, AppRoot, DocRoot) ->
                          case PathTokens of
                              ["pools", PoolId, "buckets", Id] ->
                                  {auth, fun handle_bucket_delete/3, [PoolId, Id]};
+                             ["nodes", Node, "resources", LocationPath] ->
+                                 {auth, fun handle_resource_delete/3, [Node, LocationPath]};
                              _ ->
-                                 ns_log:log(?MODULE, 0002, "Invalid delete received: ~p", [Req]),
+                                 ns_log:log(?MODULE, 0002, "Invalid delete received: ~p as ~p", [Req, PathTokens]),
                                   {done, Req:respond({405, add_header(), "Method Not Allowed"})}
                          end;
                      'PUT' ->
@@ -1325,6 +1332,39 @@ location_prop_to_json({"path", L}) -> {"path", list_to_binary(L)};
 location_prop_to_json({"quotaMb", none}) -> {"quotaMb", <<"none">>};
 location_prop_to_json({"state", ok}) -> {"state", <<"ok">>};
 location_prop_to_json(KV) -> KV.
+
+handle_node_resources_post("Self", Req)            -> handle_node_resources_post(node(), Req);
+handle_node_resources_post(S, Req) when is_list(S) -> handle_node_resources_post(list_to_atom(S), Req);
+
+handle_node_resources_post(Node, Req) ->
+    Params = Req:parse_post(),
+    Path = proplists:get_value("path", Params),
+    Quota = case proplists:get_value("quota", Params) of
+              "none" -> none;
+              X      -> list_to_integer(X)
+            end,
+    Kind = case proplists:get_value("kind", Params) of
+              "ssd" -> ssd;
+              "hhd" -> hdd;
+              _     -> undefined
+           end,
+    case lists:member(undefined, [Path, Quota, Kind]) of
+        true -> Req:respond({400, add_header(), "Invalid input while adding storage resource to node"});
+        false ->
+            case ns_storage_conf:add_storage(Node, Path, Kind, Quota) of
+                ok -> Req:respond({200, add_header(), "Added storage location to node"});
+                {error, _} -> Req:respond({400, add_header(), "Error while adding storage resource to node"})
+            end
+    end.
+
+handle_resource_delete("Self", Path, Req)            -> handle_resource_delete(node(), Path, Req);
+handle_resource_delete(S, Path, Req) when is_list(S) -> handle_resource_delete(list_to_atom(S), Path, Req);
+
+handle_resource_delete(Node, Path, Req) ->
+    case ns_storage_conf:remove_storage(Node, Path) of
+        ok -> Req:respond({204, add_header(), []});
+        {error, _} -> Req:respond({404, add_header(), "The storage location could not be removed.\r\n"})
+    end.
 
 handle_node_settings_post("Self", Req)            -> handle_node_settings_post(node(), Req);
 handle_node_settings_post(S, Req) when is_list(S) -> handle_node_settings_post(list_to_atom(S), Req);
