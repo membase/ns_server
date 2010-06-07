@@ -553,12 +553,16 @@ var MockedRequest = mkClass({
       [post("pools", "default", "buckets", x, "controller", "doFlush"), method('doNothingPOST')], //unused
       [del("pools", "default", "buckets", x), method('handleBucketRemoval')],
 
-      [get("nodes"), {"license":"","licenseValue":false,"licenseValidUntil":"invalid",
-                      "ip":"10.1.1.321","ipChoices":["10.1.1.321", "10.1.1.333"]}],
-      [get("nodes", x), {}], //missing
-      [get("nodes", x, "resources"), {}], //todo
-      [post("nodes", x, "resources"), {}], //todo
-      [del("nodes", x, "resources", x), {}], //todo
+      [get("nodes", x), {
+          "license":"","licenseValue":false,"licenseValidUntil":"invalid"
+          "memoryQuota":"none",
+          "storage":{"ssd":[],
+                     "hdd":[{"path":"./data","quotaMb":"none","state":"ok"}]},
+          "hostname":"127.0.0.1",
+          "version":"1.0.3_98_g5d1f7a2",
+          "os":"i386-apple-darwin10.3.0",
+          "ports":{"proxy":11211,"direct":11210}}
+        }],
       [post("nodes", x, "controller", "settings"), {}], //missing
 
       [post("node", "controller", "initStatus"), function ($data) {

@@ -18,7 +18,7 @@ license(Node) ->
     C = ns_config:get(),
     case ns_config:search_prop(C, {node, Node, license}, license) of
         undefined -> {undefined, false, invalid};
-        License   -> {License, true, {2010, 9, 15}}
+        License   -> {License, true, {2010, 11, 15}}
     end.
 
 change_license(Node, "000MEM-BASE00-BETA00" = License) ->

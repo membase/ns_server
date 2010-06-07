@@ -2321,7 +2321,7 @@ var NodeDialog = {
         }
 
         var c = $(parentName + ' .resource_panel_container')[0];
-        renderTemplate('resource_panel', data['resources'], c);
+        renderTemplate('resource_panel', data['storage'], c);
       }
     }
   },

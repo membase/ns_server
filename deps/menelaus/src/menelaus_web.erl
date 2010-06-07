@@ -1276,16 +1276,35 @@ handle_node(PoolId, Node, Req) ->
         {undefined, V, VU} -> {"", V, ymd_to_string(VU)};
         {X, V, VU}         -> {X, V, ymd_to_string(VU)}
     end,
-    % TODO: Make real resources.
-    R = {struct, [{"ssd", [{struct, [{"path", <<"nice/ssd/path">>}, {"quotaMb", 1234}]},
-                           {struct, [{"path", <<"good/ssd/path">>}, {"quotaMb", 5678}]}]},
-                  {"hdd", [{struct, [{"path", <<"nice/disk/path">>}, {"quotaMb", 1234}]},
-                           {struct, [{"path", <<"good/disk/path">>}, {"quotaMb", 5678}]}]}]},
+    MemQuota = case ns_storage_conf:memory_quota(Node) of
+                   none -> <<"none">>;
+                   Y    -> Y
+               end,
+    R = {struct, storage_conf_to_json(ns_storage_conf:storage_conf(Node))},
     reply_json(Req,
                {struct, [{"license", list_to_binary(License)},
                          {"licenseValid", Valid},
                          {"licenseValidUntil", list_to_binary(ValidUntil)},
-                         {"resources", R}] ++ KV}).
+                         {"memoryQuota", MemQuota},
+                         {"storage", R}] ++ KV}).
+
+% S = [{"ssd", []},
+%      {"hdd", [[{"path", "/some/nice/disk/path"}, {"quotaMb", 1234}, {"state", ok}],
+%               [{"path", "/another/good/disk/path"}, {"quotaMb", 5678}, {"state", ok}]]}].
+%
+storage_conf_to_json(S) ->
+    lists:map(fun ({StorageType, Locations}) -> % StorageType is "ssd" or "hdd".
+                  {StorageType, lists:map(fun (LocationPropList) ->
+                                              {struct, lists:map(fun location_prop_to_json/1, LocationPropList)}
+                                          end,
+                                          Locations)}
+              end,
+              S).
+
+location_prop_to_json({"path", L}) -> {"path", list_to_binary(L)};
+location_prop_to_json({"quotaMb", none}) -> {"quotaMb", <<"none">>};
+location_prop_to_json({"state", ok}) -> {"state", <<"ok">>};
+location_prop_to_json(KV) -> KV.
 
 handle_node_settings_post("Self", Req)            -> handle_node_settings_post(node(), Req);
 handle_node_settings_post(S, Req) when is_list(S) -> handle_node_settings_post(list_to_atom(S), Req);
