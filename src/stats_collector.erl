@@ -136,17 +136,7 @@ collect_stats({Host, Port}, BucketConfigs, Sock) ->
         end, Sock, CurrBuckets).
 
 collect_stats({Host, Port}, Bucket, Config, Sock) ->
-    WantedSize = proplists:get_value(size_per_node, Config) * ?BUCKET_SIZE_UNIT,
     Stats = dict:from_list(stats(Sock, "")),
-    CurrSize = list_to_integer(dict:fetch("engine_maxbytes", Stats)),
-    if
-        CurrSize =/= WantedSize ->
-            error_logger:info_msg("Reconfiguring bucket ~p on ~p:~p from size ~p to ~p",
-                                  [Bucket, Host, Port, CurrSize, WantedSize]),
-            delete_bucket(Sock, Bucket),
-            create_bucket(Sock, Bucket, WantedSize);
-        true -> true
-    end,
     {Host, Port, Bucket, Stats}.
 
 collect_topkeys(Server, BucketConfigs, Sock) when is_tuple(BucketConfigs) ->
@@ -210,10 +200,18 @@ delete_bucket(Sock, Bucket) ->
     {ok, #mc_header{status=0}, _ME, _NCB} =
         mc_client_binary:delete_bucket(Sock, Bucket).
 
-create_bucket(Sock, Bucket, Size) ->
+get_dbname(Bucket) ->
+    DataDir = filename:join(ns_config_default:default_path("data"), misc:node_name_short()),
+    DbName = filename:join(DataDir, Bucket),
+    error_logger:info_msg("built DbName ~p~n", [DbName]),
+    ok = filelib:ensure_dir(DbName),
+    DbName.
+
+% TODO: use appropriate parameters for the engine that's in use.
+create_bucket(Sock, Bucket, _Size) ->
     {ok, #mc_header{status=0}, _ME, _NCB} =
         mc_client_binary:create_bucket(Sock, Bucket,
-                                       "cache_size=" ++ integer_to_list(Size)).
+                                       "dbname=" ++ get_dbname(Bucket)).
 
 stats(Sock, Key) ->
     {ok, _H, _E, Stats} = mc_client_binary:cmd(?STAT, Sock,

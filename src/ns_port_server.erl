@@ -119,16 +119,13 @@ open_port({_Name, Cmd, Args, OptsIn}) ->
                           [Cmd, Pwd, Args, Opts]),
     process_flag(trap_exit, true),
     open_port({spawn_executable, Cmd}, Opts).
-
 handle_info({'EXIT', _Port, Reason}, State) ->
     error_logger:info_msg("port server (~p) exited: ~p~n",
                           [State#state.name, Reason]),
     {stop, {error, {port_exited, Reason}}, State};
-handle_info({_Port, {data, Msg}} = Reason, State) ->
-    ns_log:log(?MODULE, ?UNEXPECTED,
-               "Unexpected message monitoring ~p: ~s~n",
-               [State#state.name, Msg]),
-    {stop, {error, {port_exited, Reason}}, State};
+handle_info({_Port, {data, Msg}}, State) ->
+    error_logger:info_msg("Message from ~p: ~s~n", [State#state.name, Msg]),
+    {noreply, State};
 handle_info(Something, State) ->
     error_logger:info_msg("Got unexpected message while monitoring ~p: ~p~n",
                           [State#state.name, Something]),

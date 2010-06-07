@@ -91,7 +91,7 @@
     ["-p", "11212",
      "-X", "./priv/engines/stdin_term_handler.so",
      "-E", "./priv/engines/bucket_engine.so",
-     "-e", "admin=_admin;engine=./priv/engines/default_engine.so;default_bucket_name=default;auto_create=false"
+     "-e", "admin=_admin;engine=./priv/engines/ep.so;default_bucket_name=default;auto_create=false"
      ],
     [{env, [{"MEMCACHED_TOP_KEYS", "100"},
             {"ISASL_PWFILE", "./priv/isasl.pw"}, % Also isasl path above.
