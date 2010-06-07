@@ -550,6 +550,8 @@ var MockedRequest = mkClass({
                            ejectNode: {uri: "/controller/ejectNode"}
                          },
                          rebalanceStatus: 'none',
+                         rebalanceProgressUri: '/pools/default/rebalanceProgress',
+                         stopRebalanceUri: '/controller/stopRebalance',
                          stats: {uri: "/pools/default/buckets/4/stats"}, // really for pool
                          name: "Default Pool"}],
       [get("pools", "default", "buckets"), [{name: "default",
@@ -632,13 +634,36 @@ var MockedRequest = mkClass({
                                                                  "user", "password")],
       [post("pools", "default", "controller", "testWorkload"), method('handleWorkloadControlPost')],
       [post("controller", "ejectNode"), expectParams(method('doNothingPOST'),
-                                                      "otpNode")],
+                                                     "otpNode")],
+
       // params are otpNodes of nodes to be kept/ejected
       [post("controller", "rebalance"), expectParams(function () {
         if (__hookParams['rebalanceMismatch']) {
-          this.errorResponse({mismatch: 1});
+          return this.errorResponse({mismatch: 1});
         }
+
+        MockedRequest.globalData.setRebalanceStatus('running');
+        _.delay(function () {
+          console.log("rebalance delay hit!");
+          MockedRequest.globalData.setRebalanceStatus('none');
+        }, 4000);
       }, "knownNodes", "ejectedNodes")],
+      [get("pools", "default", "rebalanceProgress"), function () {
+        var pools = this.findResponseFor("GET", ["pools", "default"]);
+        if (pools.rebalanceStatus == 'none') {
+          return {status: 'none'};
+        }
+        var nodes = _.pluck(pools.nodes, 'otpNode');
+        var rv = {
+          status: pools.rebalanceStatus
+        };
+        _.each(nodes, function (name) {
+          rv[name] = {progress: 0.5};
+        });
+        return rv;
+      }],
+      [post("controller", "stopRebalance"), method("doNothingPOST")],
+
       [post("controller", "addNode"), expectParams(method("doNothingPOST"),
                                                    "hostname",
                                                    "user", "password")],
@@ -656,7 +681,14 @@ var MockedRequest = mkClass({
 });
 
 MockedRequest.prototype.globalData = MockedRequest.globalData = {
-  initValue: ""
+  initValue: "",
+  findResponseFor: function (method, path) {
+    return MockedRequest.prototype.findResponseFor(method, path);
+  },
+  setRebalanceStatus: function (status) {
+    var pools = this.findResponseFor("GET", ["pools", "default"]);
+    pools.rebalanceStatus = status;
+  }
 };
 
 
@@ -692,9 +724,13 @@ var __hookParams = {};
     MockedRequest.globalData.initValue = params['initValue'];
   }
 
-  if (!params['multinode']) {
+  if (params['single']) {
     var pools = MockedRequest.prototype.findResponseFor("GET", ["pools", "default"]);
     pools.nodes = pools.nodes.slice(-1);
+  }
+
+  if (params['rebalanceStatus']) {
+    MockedRequest.globalData.setRebalanceStatus(params['rebalanceStatus']);
   }
 })();
 

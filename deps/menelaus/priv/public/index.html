@@ -214,7 +214,7 @@
 	<!-- END shadow box -->
   </div>
 
-  <div id="servers" style="display:none">
+  <div id="servers" style="display:none"><div class="servers-not-rebalancing">
     <!-- shadow box -->
     <h1>SERVERS</h1>
     <h2>ACTIVE<a class="rebalance_button">Rebalance</a><a class="add_button">Add Server</a></h2>
@@ -222,7 +222,9 @@
     <h2>PENDING REBALANCE<a class="rebalance_button">Rebalance</a></h2>
     <div id="pending_server_list_container" class="servers_list"></div>
     
-  </div>
+  </div><div class="servers-rebalancing">
+    Rebalancing is in progress!!
+  </div></div>
   <div id="active_server_list_template" class="template">
     <ul>
       <!-- {% _.each(rows, function (s) { %} -->

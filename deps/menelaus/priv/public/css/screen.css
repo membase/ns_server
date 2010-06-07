@@ -768,3 +768,9 @@ body.init_secure #container { display: none; }
 #servers .servers_list li { list-style: none; height: min-25px; margin-top: 3px;}
 
 #servers .gong_rb { margin-top: 10px; margin-bottom: 10px; }
+
+#servers .servers-not-rebalancing { display: block; }
+#servers .servers-rebalancing { display: none; }
+
+#servers.rebalancing .servers-not-rebalancing { display: none; }
+#servers.rebalancing .servers-rebalancing { display: block; }

@@ -308,6 +308,11 @@ var Cell = mkClass({
       // yes we re-check current time after delay
       // as I've seen few cases where browsers run callback earlier by few milliseconds
       this.recalculateAtTimeout = setTimeout(_.bind(this.recalculateAt, this, time), delay);
+  },
+  recalculateAfterDelay: function (delayMillis) {
+    var time = (new Date()).valueOf();
+    time += delayMillis;
+    this.recalculateAt(time);
   }
 });
 

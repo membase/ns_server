@@ -1068,9 +1068,15 @@ var ServersSection = {
   onPoolDetailsReady: function () {
     var self = this;
 
+    $('#servers').toggleClass('rebalancing', false);
+
     var details = this.poolDetails.value;
     if (!details)
       return;
+
+    var rebalancing = details.rebalanceStatus != 'none';
+    $('#servers').toggleClass('rebalancing', rebalancing);
+
     var nodes = details.nodes;
     var nodeNames = _.pluck(nodes, 'hostname');
     var pending = [];
@@ -1111,16 +1117,29 @@ var ServersSection = {
       n.reAddPossible = (n.clusterMembership == 'inactiveFailed');
     });
 
-    renderTemplate('active_server_list', active);
-    renderTemplate('pending_server_list', pending);
+    
+    if (!rebalancing) {
+      renderTemplate('active_server_list', active);
+      renderTemplate('pending_server_list', pending);
 
-    $('#servers .rebalance_button').toggle(!!pending.length);
-    $('#servers .add_button').show();
+      $('#servers .rebalance_button').toggle(!!pending.length);
+      $('#servers .add_button').show();
+    }
+  },
+  onRebalanceProgress: function () {
+    var value = this.rebalanceProgress.value;
+    console.log("got progress: ", value);
+    if (value.status == 'none') {
+      this.poolDetails.invalidate();
+      return
+    }
+
+    this.rebalanceProgress.recalculateAfterDelay(1000);
   },
   init: function () {
     this.poolDetails = DAO.cells.currentPoolDetailsCell;
 
-    this.poolDetails.subscribe($m(this, "onPoolDetailsReady"));
+    this.poolDetails.subscribeAny($m(this, "onPoolDetailsReady"));
     prepareTemplateForCell('active_server_list', this.poolDetails);
     prepareTemplateForCell('pending_server_list', this.poolDetails);
 
@@ -1132,6 +1151,13 @@ var ServersSection = {
 
     serversQ.find('.rebalance_button').bind('click', $m(this, 'onRebalance'));
     serversQ.find('.add_button').bind('click', $m(this, 'onAdd'));
+
+    this.rebalanceProgress = new Cell(function (poolDetails) {
+      if (poolDetails.rebalanceStatus == 'none')
+        return;
+      return future.get({url: poolDetails.rebalanceProgressUri});
+    }, {poolDetails: this.poolDetails});
+    this.rebalanceProgress.subscribe($m(this, 'onRebalanceProgress'));
   },
   onEnter: function () {
     this.poolDetails.invalidate();

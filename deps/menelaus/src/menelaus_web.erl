@@ -147,6 +147,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_node/2, [NodeId]};
                              ["diag"] ->
                                  {auth, fun handle_diag/1};
+                             ["pools", PoolId, "rebalanceProgress"] ->
+                                 {auth, fun handle_rebalance_progress/2, [PoolId]};
                              ["t", "index.html"] ->
                                  {done, serve_index_html_for_tests(Req, AppRoot)};
                              ["index.html"] ->
@@ -367,6 +369,10 @@ build_pool_info(Id, _UserPassword, InfoLevel) ->
     Nodes = build_nodes_info(MyPool, true, InfoLevel),
     BucketsInfo = {struct, [{uri,
                              list_to_binary(concat_url_path(["pools", Id, "buckets"]))}]},
+    RebalanceStatus = case ns_cluster_membership:get_rebalance_status() of
+                          {running, _ProgressList} -> <<"running">>;
+                          _ -> <<"none">>
+                      end,
     {struct, [{name, list_to_binary(Id)},
               {nodes, Nodes},
               {buckets, BucketsInfo},
@@ -379,6 +385,9 @@ build_pool_info(Id, _UserPassword, InfoLevel) ->
                               {testWorkload, {struct,
                                              [{uri,
                                                list_to_binary(concat_url_path(["pools", Id, "controller", "testWorkload"]))}]}}]}},
+              {rebalanceStatus, RebalanceStatus},
+              {rebalanceProgressUri, list_to_binary(concat_url_path(["pools", Id, "rebalanceProgress"]))},
+              {stopRebalanceUri, <<"/controller/stopRebalance">>},
               {stats, {struct,
                        [{uri,
                          list_to_binary(concat_url_path(["pools", Id, "stats"]))}]}}]}.
@@ -1405,6 +1414,16 @@ handle_rebalance(Req) ->
         ok ->
             Req:respond({200, [], []})
     end.
+
+handle_rebalance_progress(_PoolId, Req) ->
+    Status = case ns_cluster_membership:get_rebalance_status() of
+                 {running, PerNode} ->
+                     [{status, <<"running">>}
+                      | [{atom_to_binary(Node, latin1),
+                          {struct, [{progress, Progress}]}} || {Node, Progress} <- PerNode]];
+                 _ -> [{status, <<"none">>}]
+             end,
+    reply_json(Req, {struct, Status}, 200).
 
 %% TODO
 handle_re_add_node(Req) ->

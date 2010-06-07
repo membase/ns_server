@@ -209,6 +209,7 @@ handle_join(OtpNode, OtpCookie, MyIP) ->
                {internal_error, [list_to_binary("Unexpected error encountered during cluster join.")]}
     end.
 
+%% TODO: this is temporary until proper rebalancer will be implemented
 ensure_public_ets(Name) ->
     try
         ets:lookup(Name, status)
@@ -230,9 +231,10 @@ lookup_public_ets(Name, Key) ->
 %% TODO: this is temporary until proper rebalancer will be implemented
 get_rebalance_status() ->
     case lookup_public_ets(rebalance_tmp, status) of
-        undefined ->
+        [] ->
             none;
-        X -> X
+        [{status, X} | _] ->
+            X
     end.
 
 %% TODO: this is temporary until proper rebalancer will be implemented
@@ -244,7 +246,7 @@ start_rebalance(KnownNodes, EjectedNodes) ->
             insert_public_ets(rebalance_tmp,
                               {status, {running, [{N, 0.5} || N <- KnownNodes]}}),
             spawn(fun () ->
-                          timer:sleep(1600),
+                          timer:sleep(16000),
                           lists:foreach(fun (N) ->
                                                 ns_config:set({node, N, membership}, active)
                                         end, KeepNodes),
