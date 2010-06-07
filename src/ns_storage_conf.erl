@@ -12,6 +12,10 @@
 
 memory_quota(_Node) -> none. % TODO.
 
+change_memory_quota(_Node, none) ->
+  % TODO: This placeholder only handles no memory quota.
+  ok;
+
 change_memory_quota(_Node, _NewMemQuota) ->
   {error, todo}.
 

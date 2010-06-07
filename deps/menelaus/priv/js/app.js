@@ -1823,21 +1823,79 @@ var NodeSettingsSection = {
   init: function () {
   },
   onEnter: function () {
-    NodeDialog.startPage_resources('Self', 'edit_resources', {});
+    NodeDialog.startPage_resources('Self', 'edit_resources', {regularDialog: true});
   },
   navClick: function () {
     this.onEnter();
   },
+
   startLicenseDialog: function (node) {
     NodeDialog.startPage_license(node, 'edit_server_license', {
       submitSelector: 'button.save_button',
       successFunc: function(node, pagePrefix) {
         $('#edit_server_license_dialog').jqmHide();
-        NodeDialog.startPage_resources(node, 'edit_resources', {});
+        NodeDialog.startPage_resources(node, 'edit_resources', {regularDialog: true});
       }
     });
     showDialog('edit_server_license_dialog');
   },
+
+  // The regularDialog boolean flag allows for code-reuse and is false
+  // when we're in the initial-config-wizard context.
+  //
+  startMemoryDialog: function (node, regularDialog) {
+    var parentName = '#edit_server_memory_dialog';
+
+    $(parentName + ' .quota_error_message').hide();
+
+    $.ajax({
+      type:'GET', url:'/nodes/' + node, dataType: 'json', async: false,
+      success: cb, error: cb});
+
+    function cb(data, status) {
+      if (status == 'success') {
+        var m = data['memoryQuota'];
+        if (m == null || m == "none") {
+          m = "";
+        }
+
+        $(parentName).find('[name=quota]').val(m);
+      }
+    }
+
+    $(parentName + ' button.save_button').click(function (e) {
+        e.preventDefault();
+
+        $(parentName + ' .quota_error_message').hide();
+
+        var m = $(parentName).find('[name=quota]').val() || "";
+        if (m == "") {
+          m = "none";
+        }
+
+        $.ajax({
+          type:'POST', url:'/nodes/' + node + '/controller/settings',
+          data: 'memoryQuota=' + m,
+          async:false, success:cbPost, error:cbPost
+        });
+
+        function cbPost(data, status) {
+          if (status == 'success') {
+            $(parentName).jqmHide();
+
+            if (regularDialog == false) {
+              showInitDialog("resources"); // Same screen used in init-config wizard.
+            } else {
+              OverviewSection.showNodeSettings(node);
+            }
+          } else {
+            $(parentName + ' .quota_error_message').show();
+          }
+        }
+      });
+
+    showDialog('edit_server_memory_dialog');
+  }
 };
 
 var DummySection = {
@@ -2273,7 +2331,9 @@ function showAbout() {
   showDialog('about_server_dialog');
 }
 
-function showInitDialog(page) {
+function showInitDialog(page, opt) {
+  opt = opt || {};
+
   var pages = [ "welcome", "resources", "cluster", "secure" ];
 
   if (page == "")
@@ -2285,7 +2345,7 @@ function showInitDialog(page) {
   for (var i = 0; i < pages.length; i++) {
     if (page == pages[i]) {
       if (NodeDialog["startPage_" + page]) {
-        NodeDialog["startPage_" + page]('Self', 'init_' + page);
+        NodeDialog["startPage_" + page]('Self', 'init_' + page, opt);
       }
       $(document.body).addClass('init_' + page);
     }
@@ -2360,6 +2420,8 @@ var NodeDialog = {
   startPage_resources: function(node, pagePrefix, opt) {
     var parentName = '#' + pagePrefix + '_dialog';
 
+    opt = opt || {};
+
     $.ajax({
       type:'GET', url:'/nodes/' + node, dataType: 'json', async: false,
       success: cb, error: cb});
@@ -2368,12 +2430,14 @@ var NodeDialog = {
       data['node'] = data['node'] || node;
 
       if (status == 'success') {
+        data['regularDialog'] = opt['regularDialog'] || false; // Need explicit false instead of undefined.
+
         if (pagePrefix == 'edit_resources') {
           renderTemplate('node_properties', data);
         }
 
         var c = $(parentName + ' .resource_panel_container')[0];
-        renderTemplate('resource_panel', data['storage'], c);
+        renderTemplate('resource_panel', data, c);
       }
     }
   },

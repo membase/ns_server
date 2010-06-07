@@ -1330,7 +1330,7 @@ handle_node_settings_post("Self", Req)            -> handle_node_settings_post(n
 handle_node_settings_post(S, Req) when is_list(S) -> handle_node_settings_post(list_to_atom(S), Req);
 
 handle_node_settings_post(Node, Req) ->
-    %% parameter example: license=some_license_string
+    %% parameter example: license=some_license_string, memoryQuota=NumInMb
     %%
     Params = Req:parse_post(),
     Results = [
@@ -1340,6 +1340,17 @@ handle_node_settings_post(Node, Req) ->
                             ok         -> ok;
                             {error, _} -> "Error changing license.\n"
                        end
+        end,
+        case proplists:get_value("memoryQuota", Params) of
+            undefined -> ok;
+            X -> MQNum = case X of
+                             "none" -> none;
+                             _      -> list_to_integer(X)
+                         end,
+                 case ns_storage_conf:change_memory_quota(Node, MQNum) of
+                     ok         -> ok;
+                     {error, _} -> "Error changing memory quota.\n"
+                 end
         end
     ],
     case lists:filter(fun(X) -> X =/= ok end, Results) of

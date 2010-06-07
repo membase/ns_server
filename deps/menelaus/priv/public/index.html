@@ -1735,10 +1735,10 @@ MemcachedClient client = manager.getClient();</pre>
         </tr>
         <tr>
           <td>Dynamic RAM</td>
-          <td><a href="javascript:showDialog('edit_server_memory_dialog');">EDIT</a></td>
+          <td><a href="javascript:NodeSettingsSection.startMemoryDialog('{%= node %}', {%= regularDialog %});">EDIT</a></td>
         </tr>
         <tr>
-          <td colspan="2">|--------------------|-------|-----| 1024 MB<br/></td>
+          <td colspan="2">|--------------------|-------|-----| {%= memoryQuota %}<br/></td>
         </tr>
         <tr>
           <td colspan="2"><br/>
@@ -1752,12 +1752,12 @@ MemcachedClient client = manager.getClient();</pre>
         <tr>
           <td colspan="2">
             <div class="ssd_resource_container">
-              <!-- {% if (ssd.length > 0) { %} -->
+              <!-- {% if (storage['ssd'].length > 0) { %} -->
                 <table>
                   <col width="" />
                   <col width="100%" />
                   <col width="" />
-                  <!-- {% $.each(ssd, function () { %} -->
+                  <!-- {% $.each(storage['ssd'], function () { %} -->
                   <tr>
                     <td>{%= h(this.path) %}</td>
                     <td>{%= h(this.quotaMb) %} MB</td>
@@ -1786,12 +1786,12 @@ MemcachedClient client = manager.getClient();</pre>
         <tr>
           <td colspan="2">
             <div class="hdd_resource_container">
-              <!-- {% if (hdd.length > 0) { %} -->
+              <!-- {% if (storage['hdd'].length > 0) { %} -->
                 <table>
                   <col width="" />
                   <col width="100%" />
                   <col width="" />
-                  <!-- {% $.each(hdd, function () { %} -->
+                  <!-- {% $.each(storage['hdd'], function () { %} -->
                   <tr>
                     <td>{%= h(this.path) %}</td>
                     <td>{%= h(this.quotaMb) %}</td>
@@ -1862,14 +1862,10 @@ MemcachedClient client = manager.getClient();</pre>
     <div class="center">
       <div class="pad">
         <p class="lbox_header">Edit Server Memory Quota</p>
-        <div id="edit_server_memory_errors_container" class="warning" style="padding:10px 20px;"></div>
-        <div id="edit_server_memory_errors_template" class="template">
-          <strong>Could not change server memory quota due to:</strong>
-          <ul>
-            <!-- {% _.each(rows, function (e) { %} -->
-            <li>{%= h(e) %}
-            <!-- {% }); %} -->
-          </ul>
+        <div class="alert_red quota_error_message" style="display:none;">
+          <div class="al_text">
+            Invalid quota. Please try again.
+          </div>
         </div>
         <form id="edit_server_memory_form">
           <p><label><b>Server Memory Quota:</b><input type="text" name="quota" class="inp" style="width:40px;">
