@@ -1572,7 +1572,7 @@ MemcachedClient client = manager.getClient();</pre>
         Invalid Resource. Try again.
       </div>
     </div>
-    <h1>Configure Data Storage Locations</h1>
+    <h1>Configure Server</h1>
     <h2>Step 1 of 3</h2>
     <div class="pad_10">
     <p>
@@ -1734,37 +1734,27 @@ MemcachedClient client = manager.getClient();</pre>
           </td>
         </tr>
         <tr>
-          <td>Dynamic RAM</td>
+          <td>Dynamic RAM Quota: {%= memoryQuota %}</td>
           <td><a href="javascript:NodeSettingsSection.startMemoryDialog('{%= node %}', {%= regularDialog %});">EDIT</a></td>
         </tr>
         <tr>
-          <td colspan="2">|--------------------|-------|-----| {%= memoryQuota %}<br/></td>
-        </tr>
-        <tr>
-          <td colspan="2"><br/>
+          <td><h2>Solid State Storage</h2>
           </td>
-        </tr>
-        <tr>
-          <td><h2>Solid State Drive Storage</h2>
-          </td>
-          <td><a href="javascript:showDialog('add_resource_dialog')">ADD</a></td>
+          <td><a href="javascript:showDialog('add_storage_location_dialog')">ADD</a></td>
         </tr>
         <tr>
           <td colspan="2">
             <div class="ssd_resource_container">
               <!-- {% if (storage['ssd'].length > 0) { %} -->
                 <table>
-                  <col width="" />
-                  <col width="100%" />
+                  <col width="60%" />
+                  <col width="40%" />
                   <col width="" />
                   <!-- {% $.each(storage['ssd'], function () { %} -->
                   <tr>
-                    <td>{%= h(this.path) %}</td>
-                    <td>{%= h(this.quotaMb) %} MB</td>
-                    <td><a href="#">Remove</a></td>
-                  </tr>
-                  <tr>
-                    <td colspan="3">|--------------------|-------|-----| 10 GB<br/></td>
+                    <td>Path: {%= h(this.path) %}</td>
+                    <td>{%= h(this.quotaMb != 'none' ? ((this.quotaMb * 1024) + ' GB') : '[no&nbsp;quota]') %}</td>
+                    <td><a href="javascript:void(alert('Coming In Beta 2'));">Remove</a></td>
                   </tr>
                   <!-- {% }); %} -->
                 </table>
@@ -1775,30 +1765,23 @@ MemcachedClient client = manager.getClient();</pre>
           </td>
         </tr>
         <tr>
-          <td colspan="2"><br/>
-          </td>
-        </tr>
-        <tr>
           <td><h2>Disk Storage</h2>
           </td>
-          <td><a href="javascript:showDialog('add_resource_dialog')">ADD</a></td>
+          <td><a href="javascript:showDialog('add_storage_location_dialog')">ADD</a></td>
         </tr>
         <tr>
           <td colspan="2">
             <div class="hdd_resource_container">
               <!-- {% if (storage['hdd'].length > 0) { %} -->
                 <table>
-                  <col width="" />
-                  <col width="100%" />
+                  <col width="60%" />
+                  <col width="40%" />
                   <col width="" />
                   <!-- {% $.each(storage['hdd'], function () { %} -->
                   <tr>
-                    <td>{%= h(this.path) %}</td>
-                    <td>{%= h(this.quotaMb) %}</td>
-                    <td><a href="#">Remove</a></td>
-                  </tr>
-                  <tr>
-                    <td colspan="3">|--------------------|-------|-----| 100 GB<br/></td>
+                    <td>Path: {%= h(this.path) %}</td>
+                    <td>{%= h(this.quotaMb != 'none' ? ((this.quotaMb * 1024) + ' GB') : '[no quota]') %}</td>
+                    <td><a href="javascript:void(alert('Coming In Beta 2'));">Remove</a></td>
                   </tr>
                   <!-- {% }); %} -->
                 </table>
@@ -1812,7 +1795,7 @@ MemcachedClient client = manager.getClient();</pre>
   </div>
 </div>
 <!-- END resource_panel_template -->
-<div class="jqmWindow" id="add_resource_dialog">
+<div class="jqmWindow" id="add_storage_location_dialog">
   <div class="lbox">
     <div class="top">
       <div class="top_left"></div>
@@ -1821,7 +1804,7 @@ MemcachedClient client = manager.getClient();</pre>
     </div>
     <div class="center">
       <div class="pad">
-        <p class="lbox_header">Add Resource Location</p>
+        <p class="lbox_header">Add Storage Location</p>
         <div id="add_new_resource_errors_container" class="warning" style="padding:10px 20px;"></div>
         <div id="add_new_resource_errors_template" class="template">
           <strong>Couldn't create resource due to:</strong>
@@ -1851,7 +1834,7 @@ MemcachedClient client = manager.getClient();</pre>
     </div>
   </div>
 </div>
-<!-- END add_resource_dialog -->
+<!-- END add_storage_location_dialog -->
 <div class="jqmWindow" id="edit_server_memory_dialog">
   <div class="lbox">
     <div class="top">
@@ -1861,14 +1844,15 @@ MemcachedClient client = manager.getClient();</pre>
     </div>
     <div class="center">
       <div class="pad">
-        <p class="lbox_header">Edit Server Memory Quota</p>
+        <p class="lbox_header">Server Memory Cache</p>
         <div class="alert_red quota_error_message" style="display:none;">
           <div class="al_text">
             Invalid quota. Please try again.
           </div>
         </div>
         <form id="edit_server_memory_form">
-          <p><label><b>Server Memory Quota:</b><input type="text" name="quota" class="inp" style="width:40px;">
+          <p><label><b>Dynamic RAM Quota:</b>
+                     <input type="text" name="quota" class="inp">
              </label></p>
           <div class="pas_20">
             <div class="right save_cancel">
