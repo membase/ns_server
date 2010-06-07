@@ -1791,13 +1791,6 @@ var NodeSettingsSection = {
   init: function () {
   },
   onEnter: function () {
-    renderTemplate('node_properties', {
-      hostname: "10.1.1.123",
-      license: "NOT0-A000-REAL-LICN",
-      version: "2.0",
-      ports: {direct: 11210, proxy: 11211},
-      os: "cp/m"
-    });
     NodeDialog.startPage_resources('Self', 'edit_resources');
   },
   navClick: function () {
@@ -2247,13 +2240,18 @@ function showInitDialog(page) {
   if (DAO.initStatus == "done") // If our current initStatus is already "done",
     page = "done";              // then don't let user go back through init dialog.
 
-  for (var i = pages.length; i >= 0; i--) { // Reversed iteration for more UI stability.
-    $(document.body).removeClass('init_' + pages[i]);
+  for (var i = 0; i < pages.length; i++) {
     if (page == pages[i]) {
       if (NodeDialog["startPage_" + page]) {
         NodeDialog["startPage_" + page]('Self', 'init_' + page);
       }
       $(document.body).addClass('init_' + page);
+    }
+  }
+
+  for (var i = 0; i < pages.length; i++) { // Hide in a 2nd loop for more UI stability.
+    if (page != pages[i]) {
+      $(document.body).removeClass('init_' + pages[i]);
     }
   }
 
@@ -2318,6 +2316,10 @@ var NodeDialog = {
 
     function cb(data, status) {
       if (status == 'success') {
+        if (pagePrefix == 'edit_resources') {
+          renderTemplate('node_properties', data);
+        }
+
         var c = $(parentName + ' .resource_panel_container')[0];
         renderTemplate('resource_panel', data['resources'], c);
       }

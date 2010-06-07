@@ -397,29 +397,18 @@ build_nodes_info(MyPool, IncludeOtp, InfoLevel) ->
     Nodes =
         lists:map(
           fun(WantENode) ->
-                  {_Name, Host} = misc:node_name_host(WantENode),
                   InfoNode = case dict:find(WantENode, NodeStatuses) of
                                  {ok, Info} -> Info;
                                  error -> [stale]
                              end,
+                  KV = build_node_info(MyPool, WantENode, InfoNode),
                   Status = case is_healthy(InfoNode) of
                                true -> <<"healthy">>;
                                false -> <<"unhealthy">>
                            end,
-                  {value, DirectPort} = direct_port(WantENode),
-                  ProxyPort = pool_proxy_port(MyPool, WantENode),
-                  Versions = proplists:get_value(version, InfoNode, []),
-                  Version = proplists:get_value(ns_server, Versions, "unknown"),
-                  OS = proplists:get_value(system_arch, InfoNode, "unknown"),
-                  KV1 = [{hostname, list_to_binary(Host)},
-                         {clusterMembership, atom_to_binary(ns_cluster_membership:get_cluster_membership(WantENode),
+                  KV1 = [{clusterMembership, atom_to_binary(ns_cluster_membership:get_cluster_membership(WantENode),
                                                             latin1)},
-                         {status, Status},
-                         {version, list_to_binary(Version)},
-                         {os, list_to_binary(OS)},
-                         {ports,
-                          {struct, [{proxy, ProxyPort},
-                                    {direct, DirectPort}]}}],
+                         {status, Status}] ++ KV,
                   KV2 = case IncludeOtp of
                                true ->
                                    KV1 ++ [{otpNode,
@@ -460,6 +449,28 @@ build_nodes_info(MyPool, IncludeOtp, InfoLevel) ->
           end,
           WantENodes),
     Nodes.
+
+build_node_info(MyPool, WantENode) ->
+    NodeStatuses = ns_doctor:get_nodes(),
+    InfoNode = case dict:find(WantENode, NodeStatuses) of
+                   {ok, Info} -> Info;
+                   error -> [stale]
+               end,
+    build_node_info(MyPool, WantENode, InfoNode).
+
+build_node_info(MyPool, WantENode, InfoNode) ->
+    {_Name, Host} = misc:node_name_host(WantENode),
+    {value, DirectPort} = direct_port(WantENode),
+    ProxyPort = pool_proxy_port(MyPool, WantENode),
+    Versions = proplists:get_value(version, InfoNode, []),
+    Version = proplists:get_value(ns_server, Versions, "unknown"),
+    OS = proplists:get_value(system_arch, InfoNode, "unknown"),
+    V = [{hostname, list_to_binary(Host)},
+         {version, list_to_binary(Version)},
+         {os, list_to_binary(OS)},
+         {ports, {struct, [{proxy, ProxyPort},
+                           {direct, DirectPort}]}}],
+    V.
 
 pool_proxy_port(PoolConfig, Node) ->
     case proplists:get_value({node, Node, port}, PoolConfig, false) of
@@ -1255,10 +1266,12 @@ ymd_to_string({Y, M, D}) ->
 ymd_to_string(invalid) -> "invalid";
 ymd_to_string(forever) -> "forever".
 
-handle_node("Self", Req)            -> handle_node(node(), Req);
-handle_node(S, Req) when is_list(S) -> handle_node(list_to_atom(S), Req);
+handle_node("Self", Req)            -> handle_node("default", node(), Req);
+handle_node(S, Req) when is_list(S) -> handle_node("default", list_to_atom(S), Req).
 
-handle_node(Node, Req) ->
+handle_node(PoolId, Node, Req) ->
+    MyPool = find_pool_by_id(PoolId),
+    KV = build_node_info(MyPool, Node),
     {License, Valid, ValidUntil} = case ns_license:license(Node) of
         {undefined, V, VU} -> {"", V, ymd_to_string(VU)};
         {X, V, VU}         -> {X, V, ymd_to_string(VU)}
@@ -1272,7 +1285,7 @@ handle_node(Node, Req) ->
                {struct, [{"license", list_to_binary(License)},
                          {"licenseValid", Valid},
                          {"licenseValidUntil", list_to_binary(ValidUntil)},
-                         {"resources", R}]}).
+                         {"resources", R}] ++ KV}).
 
 handle_node_settings_post("Self", Req)            -> handle_node_settings_post(node(), Req);
 handle_node_settings_post(S, Req) when is_list(S) -> handle_node_settings_post(list_to_atom(S), Req);
