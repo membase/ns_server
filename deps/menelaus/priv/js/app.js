@@ -1791,11 +1791,21 @@ var NodeSettingsSection = {
   init: function () {
   },
   onEnter: function () {
-    NodeDialog.startPage_resources('Self', 'edit_resources');
+    NodeDialog.startPage_resources('Self', 'edit_resources', {});
   },
   navClick: function () {
     this.onEnter();
-  }
+  },
+  startLicenseDialog: function (node) {
+    NodeDialog.startPage_license(node, 'edit_server_license', {
+      submitSelector: 'button.save_button',
+      successFunc: function(node, pagePrefix) {
+        $('#edit_server_license_dialog').jqmHide();
+        NodeDialog.startPage_resources(node, 'edit_resources', {});
+      }
+    });
+    showDialog('edit_server_license_dialog');
+  },
 };
 
 var DummySection = {
@@ -2265,8 +2275,10 @@ function showInitDialog(page) {
 
 var NodeDialog = {
   // The pagePrefix looks like 'init_license', and allows reusability.
-  startPage_license: function(node, pagePrefix) {
+  startPage_license: function(node, pagePrefix, opt) {
     var parentName = '#' + pagePrefix + '_dialog';
+
+    opt = opt || {};
 
     $(parentName + ' .license_failed_message').hide();
 
@@ -2285,7 +2297,9 @@ var NodeDialog = {
       }
     }
 
-    $(parentName + ' input.next').click(function (e) {
+    var submitSelector = opt['submitSelector'] || 'input.next';
+
+    $(parentName + ' ' + submitSelector).click(function (e) {
         e.preventDefault();
 
         $(parentName + ' .license_failed_message').hide();
@@ -2300,14 +2314,18 @@ var NodeDialog = {
 
         function cbPost(data, status) {
           if (status == 'success') {
-            showInitDialog("resources");
+            if (opt['successFunc'] != null) {
+              opt['successFunc'](node, pagePrefix);
+            } else {
+              showInitDialog(opt["successNext"] || "resources");
+            }
           } else {
             $(parentName + ' .license_failed_message').show();
           }
         }
       });
   },
-  startPage_resources: function(node, pagePrefix) {
+  startPage_resources: function(node, pagePrefix, opt) {
     var parentName = '#' + pagePrefix + '_dialog';
 
     $.ajax({
@@ -2315,6 +2333,8 @@ var NodeDialog = {
       success: cb, error: cb});
 
     function cb(data, status) {
+      data['node'] = data['node'] || node;
+
       if (status == 'success') {
         if (pagePrefix == 'edit_resources') {
           renderTemplate('node_properties', data);
@@ -2325,7 +2345,7 @@ var NodeDialog = {
       }
     }
   },
-  startPage_secure: function(node, pagePrefix) {
+  startPage_secure: function(node, pagePrefix, opt) {
     var parentName = '#' + pagePrefix + '_dialog';
 
     $(parentName + ' form').submit(function (e) {

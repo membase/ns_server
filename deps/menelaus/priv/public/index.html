@@ -855,15 +855,15 @@
             <tr>
               <td>IP Address: <span>{%= h(hostname) %}</span></td>
               <td>License Key: <span>{%= h(license) %}</span>
-                  <span><a href="javascript:showDialog('edit_server_license_dialog');">EDIT</a></span></td>
+                  <span><a href="javascript:NodeSettingsSection.startLicenseDialog('{%= node %}');">EDIT</a></span></td>
             </tr>
             <tr>
               <td>Version: <span>{%= h(version) %}</span></td>
-              <td>Direct Port: <span>{%=h(ports.direct)%}</span></td>
+              <td>Direct Port: <span>{%= h(ports.direct)%}</span></td>
             </tr>
             <tr>
               <td>OS: <span>{%= h(os) %}</span></td>
-              <td>Proxy Port: <span>{%=h(ports.proxy)%}</span></td>
+              <td>Proxy Port: <span>{%= h(ports.proxy)%}</span></td>
             </tr>
           </table>
         </div>
@@ -1899,17 +1899,13 @@ MemcachedClient client = manager.getClient();</pre>
     <div class="center">
       <div class="pad">
         <p class="lbox_header">Edit Server License</p>
-        <div id="edit_server_license_errors_container" class="warning" style="padding:10px 20px;"></div>
-        <div id="edit_server_license_errors_template" class="template">
-          <strong>Could not change server license due to:</strong>
-          <ul>
-            <!-- {% _.each(rows, function (e) { %} -->
-            <li>{%= h(e) %}
-            <!-- {% }); %} -->
-          </ul>
+        <div class="alert_red license_failed_message" style="display:none;">
+          <div class="al_text">
+            Invalid license. Please try again.
+          </div>
         </div>
         <form id="edit_server_license_form">
-          <p><label><b>License Key:</b><input type="text" name="license" class="inp" style="width:40px;">
+          <p><label><b>License Key:</b><input type="text" name="license" class="inp">
              </label></p>
           <div class="pas_20">
             <div class="right save_cancel">
