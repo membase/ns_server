@@ -1138,8 +1138,8 @@ var ServersSection = {
   },
   onRebalance: function () {
     this.postAndReload(this.poolDetails.value.controllers.rebalance.uri,
-                       {knownNodes: _.pluck(this.allNodes, 'hostname'),
-                        ejectedNodes: _.pluck(this.pendingEject, 'hostname')});
+                       {knownNodes: _.pluck(this.allNodes, 'otpNode').join(','),
+                        ejectedNodes: _.pluck(this.pendingEject, 'otpNode').join(',')});
   },
   onAdd: function () {
     var self = this;
@@ -1261,9 +1261,15 @@ var ServersSection = {
     var self = this;
     // keep poolDetails undefined for now
     self.poolDetails.setValue(undefined);
-    postWithValidationErrors(uri, $.param(data), function () {
+    postWithValidationErrors(uri, $.param(data), function (data, status) {
       // re-calc poolDetails according to it's formula
       self.poolDetails.invalidate();
+      if (status == 'error' && data[0].mismatch) {
+        self.poolDetails.changedSlot.subscribeOnce(function () {
+          var msg = "Somebody else modified cluster configuration.\nRepeat rebalance after checking that changes.";
+          alert(msg);
+        });
+      }
     });
   }
 };

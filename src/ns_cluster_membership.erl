@@ -10,7 +10,10 @@
          engage_cluster/1,
          engage_cluster/2,
          handle_add_node_request/2,
-         join_cluster/4]).
+         join_cluster/4,
+         start_rebalance/2,
+         get_rebalance_status/0
+        ]).
 
 -export([ns_log_cat/1,
          ns_log_code_string/1]).
@@ -204,6 +207,55 @@ handle_join(OtpNode, OtpCookie, MyIP) ->
               ok;
         Any -> ns_log:log(?MODULE, ?OTHER_ERROR, "Unexpected error encountered during cluster join ~p", [Any]),
                {internal_error, [list_to_binary("Unexpected error encountered during cluster join.")]}
+    end.
+
+ensure_public_ets(Name) ->
+    try
+        ets:lookup(Name, status)
+    catch
+        error:badarg ->
+            ets:new(Name, [set, named_table, public])
+    end.
+
+%% TODO: this is temporary until proper rebalancer will be implemented
+insert_public_ets(Name, Data) ->
+    ensure_public_ets(Name),
+    ets:insert(Name, Data).
+
+%% TODO: this is temporary until proper rebalancer will be implemented
+lookup_public_ets(Name, Key) ->
+    ensure_public_ets(Name),
+    ets:lookup(Name, Key).
+    
+%% TODO: this is temporary until proper rebalancer will be implemented
+get_rebalance_status() ->
+    case lookup_public_ets(rebalance_tmp, status) of
+        undefined ->
+            none;
+        X -> X
+    end.
+
+%% TODO: this is temporary until proper rebalancer will be implemented
+start_rebalance(KnownNodes, EjectedNodes) ->
+    case {lists:sort(ns_node_disco:nodes_wanted()),
+          lists:sort(KnownNodes)} of
+        {X, X} ->
+            KeepNodes = lists:subtract(KnownNodes, EjectedNodes),
+            insert_public_ets(rebalance_tmp,
+                              {status, {running, [{N, 0.5} || N <- KnownNodes]}}),
+            spawn(fun () ->
+                          timer:sleep(1600),
+                          lists:foreach(fun (N) ->
+                                                ns_config:set({node, N, membership}, active)
+                                        end, KeepNodes),
+                          lists:foreach(fun (N) ->
+                                                ns_cluster:shun(N)
+                                        end, EjectedNodes),
+                          insert_public_ets(rebalance_tmp, {status, none}),
+                          io:format("fake rebalance is complete!~n")
+                  end),
+            ok;
+        _ -> nodes_mismatch
     end.
 
 ns_log_cat(Number) ->

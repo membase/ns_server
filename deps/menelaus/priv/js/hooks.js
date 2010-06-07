@@ -236,6 +236,7 @@ var MockedRequest = mkClass({
 
   errorResponse: function (resp) {
     var self = this;
+    self.responded = true;
     var fakeXHR = {status: 400};
     _.defer(function () {
       var oldHttpData = $.httpData;
@@ -630,17 +631,21 @@ var MockedRequest = mkClass({
                                                                  "clusterMemberHostIp", "clusterMemberPort",
                                                                  "user", "password")],
       [post("pools", "default", "controller", "testWorkload"), method('handleWorkloadControlPost')],
-      [post("controllers", "ejectNode"), expectParams(method('doNothingPOST'),
+      [post("controller", "ejectNode"), expectParams(method('doNothingPOST'),
                                                       "otpNode")],
-      [post("controllers", "rebalance"), expectParams(method('doNothingPOST'),
-                                                      opt("knownNodes"), opt("ejectedNodes"))], //opt is tmp
-      [post("controllers", "addNode"), expectParams(method("doNothingPOST"),
-                                                    "hostname",
-                                                    "user", "password")],
-      [post("controllers", "failOver"), expectParams(method("doNothingPOST"),
-                                                     opt("hostname"))],
-      [post("controllers", "reAddNode"), expectParams(method("doNothingPOST"),
-                                                      "hostname")]
+      // params are otpNodes of nodes to be kept/ejected
+      [post("controller", "rebalance"), expectParams(function () {
+        if (__hookParams['rebalanceMismatch']) {
+          this.errorResponse({mismatch: 1});
+        }
+      }, "knownNodes", "ejectedNodes")],
+      [post("controller", "addNode"), expectParams(method("doNothingPOST"),
+                                                   "hostname",
+                                                   "user", "password")],
+      [post("controller", "failOver"), expectParams(method("doNothingPOST"),
+                                                    opt("hostname"))],
+      [post("controller", "reAddNode"), expectParams(method("doNothingPOST"),
+                                                     "hostname")]
     ];
 
     rv.x = x;
@@ -677,6 +682,10 @@ var __hookParams = {};
 
   if (params['ajaxDelay']) {
     ajaxRespondDelay = parseInt(params['ajaxDelay'], 10);
+  }
+
+  if (params['nowiz']) {
+    params['initValue'] = 'done';
   }
 
   if (params['initValue']) {

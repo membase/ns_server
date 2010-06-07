@@ -1393,9 +1393,18 @@ handle_add_node(Req) ->
 handle_failover(Req) -> 
     Req:respond({200, [], []}).
 
-%% TODO
 handle_rebalance(Req) ->
-    Req:respond({200, [], []}).
+    Params = Req:parse_post(),
+    KnownNodesS = string:tokens(proplists:get_value("knownNodes", Params, ""),","),
+    EjectedNodesS = string:tokens(proplists:get_value("ejectedNodes", Params, ""), ","),
+    KnownNodes = [list_to_atom(N) || N <- KnownNodesS],
+    EjectedNodes = [list_to_atom(N) || N <- EjectedNodesS],
+    case ns_cluster_membership:start_rebalance(KnownNodes, EjectedNodes) of
+        nodes_mismatch ->
+            reply_json(Req, {struct, [{mismatch, 1}]}, 400);
+        ok ->
+            Req:respond({200, [], []})
+    end.
 
 %% TODO
 handle_re_add_node(Req) ->
