@@ -181,6 +181,18 @@ var MockedRequest = mkClass({
       return body.call(this, foundResp, routeArgs);
     return foundResp;
   },
+  executeRouteResponse: function (foundResp, routeArgs) {
+    if (_.isFunction(foundResp)) {
+      if (functionArgumentNames(foundResp)[0] == "$data")
+        routeArgs.unshift(this.deserialize());
+      foundResp = foundResp.apply(this, routeArgs);
+      if (this.responded)
+        return;
+      if (foundResp == null)
+        foundResp = "";
+    }
+    return _.clone(foundResp);
+  },
   respondForReal: function () {
     if ($.ajaxSettings.beforeSend)
       $.ajaxSettings.beforeSend(this.fakeXHR);
@@ -193,16 +205,9 @@ var MockedRequest = mkClass({
 
       try {
         this.checkAuth();
-        if (_.isFunction(foundResp)) {
-          if (functionArgumentNames(foundResp)[0] == "$data")
-            routeArgs.unshift(this.deserialize());
-          foundResp = foundResp.apply(this, routeArgs);
-          if (this.responded)
-            return;
-          if (foundResp == null)
-            foundResp = "";
-        }
-        this.fakeResponse(_.clone(foundResp));
+        foundResp = this.executeRouteResponse(foundResp, routeArgs);
+        if (!this.responded)
+          this.fakeResponse(foundResp);
       } catch (e) {
         if (e !== this.authError) {
           throw e;
@@ -374,6 +379,59 @@ var MockedRequest = mkClass({
     function method(name) {
       return function () {
         return this[name].apply(this, arguments);
+      }
+    }
+
+    // for optional params
+    function opt(name) {
+      name = new String(name);
+      name.__opt = true;
+      return name;
+    }
+
+    function expectParams() {
+      var expectedParams = _.toArray(arguments);
+
+      var chainedRoute = expectedParams[0];
+      if (!_.isString(chainedRoute))
+        expectedParams.shift();
+      else
+        chainedRoute = null;
+
+      var mustParams = [], optionalParams = [];
+      _.each(expectedParams, function (p) {
+        if (p.__opt)
+          optionalParams.push(p.valueOf());
+        else
+          mustParams.push(p);
+      });
+
+      var difference = function (a, b) {
+        return _.reject(a, function (e) {
+          return _.include(b, e);
+        });
+      }
+
+      return function () {
+        var params = this.deserialize();
+        var keys = _.keys(params);
+
+        var missingParams = difference(mustParams, keys);
+        if (missingParams.length) {
+          var msg = "Missing required parameter(s): " + missingParams.join(', ');
+          alert("hooks.js: " + msg);
+          throw new Error(msg);
+        }
+
+        var unexpectedParams = difference(difference(keys, mustParams), optionalParams);
+        if (unexpectedParams.length) {
+          var msg = "Post has unexpected parameter(s): " + unexpectedParams.join(', ');
+          alert("hooks.js: " + msg);
+          throw new Error(msg);
+        }
+
+        if (chainedRoute)
+          return this.executeRouteResponse(chainedRoute, _.toArray(arguments));
       }
     }
 
@@ -554,28 +612,35 @@ var MockedRequest = mkClass({
       [del("pools", "default", "buckets", x), method('handleBucketRemoval')],
 
       [get("nodes", x), {
-          "license":"","licenseValue":false,"licenseValidUntil":"invalid"
-          "memoryQuota":"none",
-          "storage":{"ssd":[],
-                     "hdd":[{"path":"./data","quotaMb":"none","state":"ok"}]},
-          "hostname":"127.0.0.1",
-          "version":"1.0.3_98_g5d1f7a2",
-          "os":"i386-apple-darwin10.3.0",
-          "ports":{"proxy":11211,"direct":11210}}
-        }],
+        "license":"","licenseValue":false,"licenseValidUntil":"invalid",
+        "memoryQuota":"none",
+        "storage":{"ssd":[],
+                   "hdd":[{"path":"./data","quotaMb":"none","state":"ok"}]},
+        "hostname":"127.0.0.1",
+        "version":"1.0.3_98_g5d1f7a2",
+        "os":"i386-apple-darwin10.3.0",
+        "ports":{"proxy":11211,"direct":11210}}],
       [post("nodes", x, "controller", "settings"), {}], //missing
 
       [post("node", "controller", "initStatus"), function ($data) {
-        this.globalData.initValue = $data;
+        this.globalData.initValue = $data.initValue;
       }],
 
-      [post("node", "controller", "doJoinCluster"), method('handleJoinCluster')],
+      [post("node", "controller", "doJoinCluster"), expectParams(method('handleJoinCluster'),
+                                                                 "clusterMemberHostIp", "clusterMemberPort",
+                                                                 "user", "password")],
       [post("pools", "default", "controller", "testWorkload"), method('handleWorkloadControlPost')],
-      [post("controllers", "ejectNode"), method('doNothingPOST')],
-      [post("controllers", "rebalance"), method('doNothingPOST')],
-      [post("controllers", "addNode"), method("doNothingPOST")],
-      [post("controllers", "failOver"), method("doNothingPOST")],
-      [post("controllers", "reAddNode"), method("doNothingPOST")]
+      [post("controllers", "ejectNode"), expectParams(method('doNothingPOST'),
+                                                      "otpNode")],
+      [post("controllers", "rebalance"), expectParams(method('doNothingPOST'),
+                                                      opt("knownNodes"), opt("ejectedNodes"))], //opt is tmp
+      [post("controllers", "addNode"), expectParams(method("doNothingPOST"),
+                                                    "hostname",
+                                                    "user", "password")],
+      [post("controllers", "failOver"), expectParams(method("doNothingPOST"),
+                                                     opt("hostname"))],
+      [post("controllers", "reAddNode"), expectParams(method("doNothingPOST"),
+                                                      "hostname")]
     ];
 
     rv.x = x;
