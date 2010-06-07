@@ -1915,12 +1915,9 @@ var BreadCrumbs = {
     var container = $('.bread_crumbs > ul');
     container.html('');
 
-    if (sec == 'overview')
-      return;
-
-    // prepend overview
-    if (sec != 'settings')
-      pushSection('overview');
+    // TODO: Revisit bread-crumbs for server-specific or bucket-specific drill-down screens.
+    //
+    return;
 
     if (sec == 'analytics' && DAO.cells.statsBucketURL.value) {
       pushSection('buckets')
@@ -1968,7 +1965,7 @@ var ThePage = {
              monitor_buckets: BucketsSection,
              monitor_servers: OverviewSection},
 
-  coming: {monitor_buckets:true, monitor_servers:true, settings:true, alerts:true},
+  coming: {monitor_buckets:true, monitor_servers:true, settings:true},
 
   currentSection: null,
   currentSectionName: null,
