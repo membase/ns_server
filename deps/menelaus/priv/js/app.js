@@ -1915,6 +1915,9 @@ var BreadCrumbs = {
     var container = $('.bread_crumbs > ul');
     container.html('');
 
+    $('.currentNav').removeClass('currentNav');
+    $('#switch_' + sec).addClass('currentNav');
+
     // TODO: Revisit bread-crumbs for server-specific or bucket-specific drill-down screens.
     //
     return;

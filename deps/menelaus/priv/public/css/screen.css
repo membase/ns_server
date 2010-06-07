@@ -372,6 +372,8 @@ td.leftNav li.indent {
 	margin-left: 20px;
 }
 
+td.leftNav li a.currentNav {background:none #dae4e9;}
+
 #mainPanel {
 	font-family: Helvetica;
 	font-weight: normal;
