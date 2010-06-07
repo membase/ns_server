@@ -580,16 +580,7 @@ build_bucket_info(PoolId, Id, Pool, InfoLevel) ->
              {nodes, Nodes},
              {stats, {struct, [{uri, StatsUri}]}},
              %% TODO: placeholder for a real vbucketServerMap.
-             {vbucketServerMap, {struct, [{hashAlgorithm, <<"CRC">>},
-                                          {numReplicas, 0},
-                                          {serverList, lists:map(
-                                            fun(ENode) ->
-                                              {_Name, Host} = misc:node_name_host(ENode),
-                                              {value, DirectPort} = direct_port(ENode),
-                                              list_to_binary(Host ++ ":" ++ integer_to_list(DirectPort))
-                                            end,
-                                            ns_node_disco:nodes_wanted())},
-                                          {vBucketMap, [[0], [0], [0]]}]}}],
+             {vbucketServerMap, vbucket_map_to_json(vbucket_map(PoolId, Id))}],
     List2 = case tgen:is_traffic_bucket(PoolId, Id) of
                 true -> [{testAppBucket, true},
                          {controlURL, list_to_binary(concat_url_path(["pools", PoolId,
@@ -784,6 +775,26 @@ handle_bucket_flush(PoolId, Id, Req) ->
         ok    -> Req:respond({204, add_header(), []});
         false -> Req:respond({404, add_header(), []})
     end.
+
+vbucket_map(_PoolId, _BucketId) ->
+    % TODO: Need a real vbucket server map.
+    [{hashAlgorithm, crc},
+     {numReplicas, 0},
+     {serverList, lists:map(fun (ENode) ->
+                                {_Name, Host} = misc:node_name_host(ENode),
+                                {value, DirectPort} = direct_port(ENode),
+                                Host ++ ":" ++ integer_to_list(DirectPort)
+                            end,
+                            ns_node_disco:nodes_wanted())},
+     {vBucketMap, [[0], [0], [0]]}].
+
+vbucket_map_to_json(PropList) ->
+    {struct, lists:map(
+                 fun ({hashAlgorithm, crc}) -> {hashAlgorithm, <<"CRC">>};
+                     ({serverList, SL}) -> {serverList, lists:map(fun list_to_binary/1, SL)};
+                     (X) -> X
+                 end,
+                 PropList)}.
 
 handle_init_status_post(Req) ->
     %% parameter example: value=done, value=welcome, value=someOpaqueValueFromJavaScript
