@@ -12,7 +12,9 @@
          handle_add_node_request/2,
          join_cluster/4,
          start_rebalance/2,
-         get_rebalance_status/0
+         stop_rebalance/0,
+         get_rebalance_status/0,
+         is_balanced/0
         ]).
 
 -export([ns_log_cat/1,
@@ -259,6 +261,12 @@ start_rebalance(KnownNodes, EjectedNodes) ->
             ok;
         _ -> nodes_mismatch
     end.
+
+stop_rebalance() ->
+    ok.
+
+is_balanced() ->
+    true.
 
 ns_log_cat(Number) ->
     case (Number rem 256) div 32 of

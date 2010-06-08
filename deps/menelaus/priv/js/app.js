@@ -1077,6 +1077,14 @@ var ServersSection = {
     var rebalancing = details.rebalanceStatus != 'none';
     $('#servers').toggleClass('rebalancing', rebalancing);
 
+    if (!rebalancing)
+      return this.renderNoRebalance(details);
+    else
+      return this.renderRebalance(details);
+  },
+  renderNoRebalance: function (details) {
+    var self = this;
+
     var nodes = details.nodes;
     var nodeNames = _.pluck(nodes, 'hostname');
     var pending = [];
@@ -1117,14 +1125,36 @@ var ServersSection = {
       n.reAddPossible = (n.clusterMembership == 'inactiveFailed');
     });
 
-    
-    if (!rebalancing) {
-      renderTemplate('active_server_list', active);
-      renderTemplate('pending_server_list', pending);
+    var imbalance = !!pending.length;
 
-      $('#servers .rebalance_button').toggle(!!pending.length);
-      $('#servers .add_button').show();
+    $('#servers').removeClass('imbalance');
+
+    if (!imbalance && !details.balanced) {
+      $('#servers').addClass('imbalance');
+      imbalance = true;
     }
+    
+    renderTemplate('active_server_list', active);
+    renderTemplate('pending_server_list', pending);
+
+    $('#servers .rebalance_button').toggle(imbalance);
+    $('#servers .add_button').show();
+  },
+  renderRebalance: function (details) {
+    var progress = this.rebalanceProgress.value;
+    if (!progress) {
+      progress = {};
+    }
+    nodes = _.clone(details.nodes);
+    nodes.sort(this.hostnameComparator);
+    _.each(nodes, function (n) {
+      var p = progress[n.otpNode];
+      if (!p)
+        return;
+      n.progress = p.progress;
+    });
+
+    renderTemplate('rebalancing_list', nodes);
   },
   onRebalanceProgress: function () {
     var value = this.rebalanceProgress.value;
@@ -1134,6 +1164,7 @@ var ServersSection = {
       return
     }
 
+    this.renderRebalance(this.poolDetails.value);
     this.rebalanceProgress.recalculateAfterDelay(1000);
   },
   init: function () {
@@ -1149,14 +1180,16 @@ var ServersSection = {
       serversQ.find('.rebalance_button, .add_button').hide();
     });
 
-    serversQ.find('.rebalance_button').bind('click', $m(this, 'onRebalance'));
-    serversQ.find('.add_button').bind('click', $m(this, 'onAdd'));
+    serversQ.find('.rebalance_button').live('click', $m(this, 'onRebalance'));
+    serversQ.find('.add_button').live('click', $m(this, 'onAdd'));
+    serversQ.find('.stop_rebalance_button').live('click', $m(this, 'onStopRebalance'));
 
     this.rebalanceProgress = new Cell(function (poolDetails) {
       if (poolDetails.rebalanceStatus == 'none')
         return;
       return future.get({url: poolDetails.rebalanceProgressUri});
     }, {poolDetails: this.poolDetails});
+    this.rebalanceProgress.keepValueDuringAsync = true;
     this.rebalanceProgress.subscribe($m(this, 'onRebalanceProgress'));
   },
   onEnter: function () {
@@ -1166,6 +1199,9 @@ var ServersSection = {
     this.postAndReload(this.poolDetails.value.controllers.rebalance.uri,
                        {knownNodes: _.pluck(this.allNodes, 'otpNode').join(','),
                         ejectedNodes: _.pluck(this.pendingEject, 'otpNode').join(',')});
+  },
+  onStopRebalance: function () {
+    this.postAndReload(this.poolDetails.value.stopRebalanceUri, "");
   },
   onAdd: function () {
     var self = this;

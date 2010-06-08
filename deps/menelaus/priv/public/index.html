@@ -217,13 +217,15 @@
   <div id="servers" style="display:none"><div class="servers-not-rebalancing">
     <!-- shadow box -->
     <h1>SERVERS</h1>
-    <h2>ACTIVE<a class="rebalance_button">Rebalance</a><a class="add_button">Add Server</a></h2>
+    <h2>ACTIVE <span class="imbalance">(NOT BALANCED)</span><a class="rebalance_button">Rebalance</a><a class="add_button">Add Server</a></h2>
     <div id="active_server_list_container" class="servers_list"></div>
     <h2>PENDING REBALANCE<a class="rebalance_button">Rebalance</a></h2>
     <div id="pending_server_list_container" class="servers_list"></div>
     
   </div><div class="servers-rebalancing">
-    Rebalancing is in progress!!
+    <h1>&lt;&lt;REBALANCING&gt;&gt;</h1>
+    <p><a class="stop_rebalance_button">Stop Rebalance</a></p>
+    <div id="rebalancing_list_container"></div>
   </div></div>
   <div id="active_server_list_template" class="template">
     <ul>
@@ -291,6 +293,13 @@
                       </table>
                   </div>
                 </div>
+  </div>
+  <div id="rebalancing_list_template" class="template">
+    <ul>
+      <!-- {% _.each(rows, function (server) { %} -->
+      <li>{%= h(server.hostname) %}. Progress: {%= h((server.progress || 0) * 100) %}</li>
+      <!-- {% }); %}-->
+    </ul>
   </div>
 
   <div id="analytics" style="display:none">

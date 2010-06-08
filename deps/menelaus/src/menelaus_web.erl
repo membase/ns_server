@@ -200,6 +200,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_rebalance/1};
                              ["controller", "reAddNode"] ->
                                  {auth, fun handle_re_add_node/1};
+                             ["controller", "stopRebalance"] ->
+                                 {auth, fun handle_stop_rebalance/1};
                              ["pools", PoolId, "buckets", Id] ->
                                  {auth_bucket, fun handle_bucket_update/3,
                                   [PoolId, Id]};
@@ -393,6 +395,7 @@ build_pool_info(Id, _UserPassword, InfoLevel) ->
                               {testWorkload, {struct,
                                              [{uri,
                                                list_to_binary(concat_url_path(["pools", Id, "controller", "testWorkload"]))}]}}]}},
+              {balanced, ns_cluster_membership:is_balanced()},
               {rebalanceStatus, RebalanceStatus},
               {rebalanceProgressUri, list_to_binary(concat_url_path(["pools", Id, "rebalanceProgress"]))},
               {stopRebalanceUri, <<"/controller/stopRebalance">>},
@@ -1476,6 +1479,10 @@ handle_rebalance_progress(_PoolId, Req) ->
                  _ -> [{status, <<"none">>}]
              end,
     reply_json(Req, {struct, Status}, 200).
+
+handle_stop_rebalance(Req) ->
+    ns_cluster_membership:stop_rebalance(),
+    Req:respond({200, [], []}).
 
 %% TODO
 handle_re_add_node(Req) ->

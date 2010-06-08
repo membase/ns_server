@@ -549,6 +549,7 @@ var MockedRequest = mkClass({
                            testWorkload: {uri: '/pools/default/controller/testWorkload'},
                            ejectNode: {uri: "/controller/ejectNode"}
                          },
+                         balanced: true,
                          rebalanceStatus: 'none',
                          rebalanceProgressUri: '/pools/default/rebalanceProgress',
                          stopRebalanceUri: '/controller/stopRebalance',

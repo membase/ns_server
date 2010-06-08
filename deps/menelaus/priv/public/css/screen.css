@@ -776,3 +776,6 @@ body.init_secure #container { display: none; }
 
 #servers.rebalancing .servers-not-rebalancing { display: none; }
 #servers.rebalancing .servers-rebalancing { display: block; }
+
+#servers .imbalance { display: none; }
+#servers.imbalance .imbalance { display: inline; }
