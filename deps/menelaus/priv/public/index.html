@@ -283,6 +283,11 @@
                             <td>Version: <span>{%= h(node.version) %}</span></td>
                             <td>Proxy Port: <span>{%=h(node.ports.proxy)%}</span></td>
                         </tr>
+                        <tr>
+                            <td colspan="2">
+                              <a href="javascript:OverviewSection.showNodeSettings('{%= node.otpNode %}');">Server Settings</a>
+                            </td>
+                        </tr>
                       </table>
                   </div>
                 </div>
