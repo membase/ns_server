@@ -105,7 +105,8 @@ loop(Req, AppRoot, DocRoot) ->
     try
         % Using raw_path so encoded slash characters like %2F are handed correctly,
         % in that we delay converting %2F's to slash characters until after we split by slashes.
-        "/" ++ Path = Req:get(raw_path),
+        "/" ++ RawPath = Req:get(raw_path),
+        {Path, _, _} = mochiweb_util:urlsplit_path(RawPath),
         PathTokens = lists:map(fun mochiweb_util:unquote/1, string:tokens(Path, "/")),
         Action = case Req:get(method) of
                      Method when Method =:= 'GET'; Method =:= 'HEAD' ->
