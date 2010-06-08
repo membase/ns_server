@@ -986,17 +986,17 @@ MemcachedClient client = manager.getClient();</pre>
                          value="No spaces, alphanumeric up to 12 characters"/></label></p>
           <p><label><b>Bucket Type:</b>
                      <select name="bucketType">
-                       <option value="memory">Memory Only</option>
-                       <option value="persistent">Persisted</option>
+                       <option value="cache">Cache</option>
+                       <option value="database">Database</option>
                      </select></label></p>
-          <p><label><b>Number of servers:</b>
-                     <input type="radio" name="numServersAll" value="true">Stretch to All</input>
-                     <br/>
-                     <input type="radio" name="numServersAll" value="false">Fixed</input>
-                     <input type="text" name="numServers" class="inp" style="width:30px;"
-                         value=""><span class="numServers-details">(of N servers in cluster)</span>
-                                      <!-- (of 12 servers in cluster) -->
-                     </label></p>
+          <p><b>Number of servers:</b>
+                 <label><input type="radio" name="numServersAll" value="true" checked="checked"/>Stretch to All</label>
+                 <br/>
+                 <label><input type="radio" name="numServersAll" value="false"/>Fixed</label>
+                 <label><input type="text" name="numServers" class="inp" style="width:30px;"
+                             value=""><span class="numServers-details">(of N servers in cluster)</span>
+                                           <!-- (of 12 servers in cluster) -->
+                         </label></p>
 
           <h2>Blocking Behavior</h2>
           <table>
@@ -1029,6 +1029,8 @@ MemcachedClient client = manager.getClient();</pre>
                 <p><label><input type="checkbox" name="replicate" class="inp"/>
                            Enable replication
                            </label></p>
+              </td>
+              <td>
                 <p><label><input type="text" name="replicaCount" class="inp" style="width:30px;"
                                value="3"/>
                            Number of backup (replica) copies
@@ -1168,7 +1170,7 @@ MemcachedClient client = manager.getClient();</pre>
                 <td class="th">
                   Cluster <a class="text_11 tooltip">What's this?
                     <span class="tooltip_msg"><span>
-                      A cluster is a group of servers which operate together to provide a caching service.
+                      A cluster is a group of servers which operate together to provide an elastic data service.
                     </span></span>
                   </a>
                 </td>
