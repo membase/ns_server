@@ -29,7 +29,10 @@ default() ->
                       ],
                       [{env, [{"MEMCACHED_TOP_KEYS", "100"},
                               {"ISASL_PWFILE", "./priv/isasl.pw"},
-                              {"ISASL_DB_CHECK_TIME", "1"}]}]
+                              {"ISASL_DB_CHECK_TIME", "1"}]},
+                       use_stdio,
+                       stderr_to_stdout,
+                       stream]
                      }
                     ]},
      {alerts, [{'_ver', {0, 0, 0}},

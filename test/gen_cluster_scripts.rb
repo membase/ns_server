@@ -45,7 +45,11 @@ num_nodes.times do |x|
          "-B", "auto"],
         [{env, [{"MEMCACHED_TOP_KEYS", "100"},
                 {"ISASL_PWFILE", "./priv/isasl.pw"},
-                {"ISASL_DB_CHECK_TIME", "1"}]}]}]}.
+                {"ISASL_DB_CHECK_TIME", "1"}]},
+         use_stdio,
+         stderr_to_stdout,
+         stream]
+       }]}.
     END
 end
 
