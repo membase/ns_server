@@ -13,15 +13,24 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--export([adjust_my_address/1, read_address_config/0, save_address_config/1]).
+-export([adjust_my_address/1, read_address_config/0, save_address_config/1, ip_config_path/0]).
 
 -record(state, {self_started, my_ip}).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
+ip_config_path() ->
+    %% this smells bad, but we live higher on supervisor/process
+    %% hierarchy than ns_config, so I see no other way
+    {ok, CfgPath} = application:get_env(ns_server, ns_server_config),
+    Path = filename:dirname(CfgPath),
+    filename:join(Path, "ip").
+
 read_address_config() ->
-    case file:read_file("priv/ip") of
+    Path = ip_config_path(),
+    error_logger:info_msg("reading ip config from ~p~n", [Path]),
+    case file:read_file(Path) of
         {ok, BinaryContents} ->
             AddrString = string:strip(binary_to_list(BinaryContents)),
             case inet:getaddr(AddrString, inet) of
@@ -42,9 +51,12 @@ read_address_config() ->
     end.
 
 save_address_config(State) ->
-    case file:write_file("priv/ip.tmp", State#state.my_ip) of
+    Path = ip_config_path(),
+    error_logger:info_msg("saving ip config to ~p~n", [Path]),
+    TmpPath = Path ++ ".tmp",
+    case file:write_file(TmpPath, State#state.my_ip) of
         ok ->
-            file:rename("priv/ip.tmp", "priv/ip");
+            file:rename(TmpPath, Path);
         X -> X
     end.
 
@@ -81,9 +93,10 @@ handle_call({adjust_my_address, MyIP}, _From,
     case MyIP =:= MyOldIP of
         true -> {reply, nothing, State};
         false -> teardown(),
-                 io:format("Adjusted IP to ~p~n", [MyIP]),
+                 error_logger:info_msg("Adjusted IP to ~p~n", [MyIP]),
                  NewState = bringup(MyIP),
-                 io:format("save_address_config: ~p~n", [save_address_config(NewState)]),
+                 RV = save_address_config(NewState),
+                 error_logger:info_msg("save_address_config: ~p~n", [RV]),
                  {reply, net_restarted, NewState}
     end;
 handle_call({adjust_my_address, _}, _From,
