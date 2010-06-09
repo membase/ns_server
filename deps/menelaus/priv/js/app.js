@@ -1099,7 +1099,7 @@ var ServersSection = {
     var stillActualEject = [];
     _.each(this.pendingEject, function (node) {
       var original = _.detect(nodes, function (n) {
-        return n.hostname == node.hostname;
+        return n.otpNode == node.otpNode;
       });
       if (!original || original.clusterMembership == 'inactiveAdded') {
         return;
