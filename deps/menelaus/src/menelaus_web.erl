@@ -580,11 +580,6 @@ find_bucket_by_id_with_default(Pool, Id, Default) ->
 handle_bucket_info(PoolId, Id, Req, Pool, _Bucket) ->
     reply_json(Req, build_bucket_info(PoolId, Id, Pool)).
 
-handle_bucket_info(PoolId, Id, Req) ->
-    Pool = find_pool_by_id(PoolId),
-    Bucket = find_bucket_by_id(Pool, Id),
-    handle_bucket_info(PoolId, Id, Req, Pool, Bucket).
-
 build_bucket_info(PoolId, Id, Pool) ->
     build_bucket_info(PoolId, Id, Pool, normal).
 
@@ -630,54 +625,14 @@ handle_bucket_info_streaming(PoolId, Id, Req, Pool, _Bucket, ForceInfoLevel) ->
         end,
     handle_streaming(F, Req, undefined).
 
-handle_bucket_delete(PoolId, BucketId, Req) ->
-    case mc_bucket:bucket_delete(PoolId, BucketId) of
-        true ->
-            ns_log:log(?MODULE, 0011, "Deleted bucket ~p from pool ~p (via node ~p).",
-                       [BucketId, PoolId, node()]),
-            Req:respond({204, add_header(), []});
-        false ->
-            %% if bucket isn't found
-            Req:respond({404, add_header(), "The bucket to be deleted was not found.\r\n"})
-    end,
+handle_bucket_delete(_PoolId, _BucketId, Req) ->
+    %% We don't currently allow deleting buckets.
+    Req:respond({404, add_header(), "The bucket to be deleted was not found.\r\n"}),
     ok.
 
-handle_bucket_update(PoolId, BucketId, Req) ->
-    % Req will contain a urlencoded form which may contain
-    % name, cacheSize, password, verifyPassword
-    %
-    % A POST means create or update existing bucket settings.  For
-    % 1.0, this will *only* allow setting the memory to a higher or
-    % lower, but non-zero value.
-    %
-    % TODO: convert to handling memory changes
-    % TODO: remove password handling
-    % TODO: define new URI for password handling for the pool
-    %
-    case mc_bucket:bucket_config_get(mc_pool:pools_config_get(),
-                                     PoolId, BucketId) of
-        false -> handle_bucket_create(PoolId, BucketId, Req);
-        BucketConfig ->
-            % Update, only the auth_plain/password field for 1.0.
-            {struct, Params} = parse_json(Req),
-            Auth = case proplists:get_value(<<"password">>, Params) of
-                       undefined -> undefined;
-                       <<>>      -> undefined;
-                       Password  -> {BucketId, binary_to_list(Password)}
-                   end,
-            BucketConfig2 =
-                lists:keystore(auth_plain, 1, BucketConfig,
-                               {auth_plain, Auth}),
-            case BucketConfig2 =:= BucketConfig of
-                true  -> Req:respond({200, add_header(), []}); % No change.
-                false -> ns_log:log(?MODULE, 0010, "updating bucket config: ~p in: ~p via node ~p",
-                                    [BucketId, PoolId, node()]),
-                         mc_bucket:bucket_config_make(PoolId,
-                                                      BucketId,
-                                                      BucketConfig2),
-                         Req:respond({200, add_header(), []})
-            end
-    end.
+handle_bucket_update(_PoolId, _BucketId, Req) ->
+    Req:respond({404, add_header(), "The bucket to be updated was not found.\r\n"}),
+    ok.
 
 handle_bucket_update(PoolId, Req) ->
     PostArgs = Req:parse_post(),
@@ -691,110 +646,20 @@ handle_bucket_create(_PoolId, [$_ | _], Req) ->
     % Bucket name cannot have a leading underscore character.
     reply_json(Req, [list_to_binary("Bucket name cannot start with an underscore.")], 400);
 
-handle_bucket_create(PoolId, BucketId, Req) ->
+handle_bucket_create(_PoolId, _BucketId, Req) ->
     case ns_node_disco:nodes_wanted() =:= ns_node_disco:nodes_actual_proper() of
-        true -> handle_bucket_create_prep(PoolId, BucketId, Req);
+        true ->
+            Req:respond({400, add_header(), "Sorry, can't create buckets yet."});
         false ->
             reply_json(Req, [list_to_binary("One or more server nodes appear to be down. " ++
                                             "Please first restore or remove those servers nodes " ++
                                             "so that the entire cluster is healthy.")], 400)
     end.
 
-handle_bucket_create_prep(PoolId, BucketId, Req) ->
-    % Bucket size validation.
-    PostArgs = Req:parse_post(),
-    %% TODO: we have a race here, but it's not very bad, and there are
-    %% more, so we'll simply ignore it for now
-    DupNameV = case mc_bucket:bucket_config_get(mc_pool:pools_config_get(),
-                                                PoolId, BucketId) of
-                   false -> undefined;
-                   _ -> <<"A data bucket with given name already exists.">>
-               end,
-    ParsedSizeWanted = (catch list_to_integer(proplists:get_value("cacheSize", PostArgs))),
-    NzV = if
-              not is_integer(ParsedSizeWanted) -> <<"The cache size must be an integer.">>;
-              ParsedSizeWanted =< 0 -> <<"The cache size must be non-zero.">>;
-              true -> undefined
-          end,
-    SizeWanted = if
-                     NzV =:= undefined -> ParsedSizeWanted;
-                     true -> 0
-                 end,
-    %  go get the memory out there, reusing nodes_info, not caring about OTP
-    Pool = find_pool_by_id(PoolId),
-    PoolNodes = build_nodes_info(Pool, false),
-
-    TotalBucketsSize = lists:foldl(fun (B,A) -> A + expect_prop_value(size_per_node, element(2, B)) end,
-                                   0,
-                                   expect_prop_value(buckets, Pool)),
-    SmallestNodeRAM = lists:min(lists:map(
-                                  fun(X) -> proplists:get_value(memoryTotal, X) end,
-                                  proplists:get_all_values(struct, PoolNodes))),
-    % let's reserve 128MB of memory for OS & our code
-    MinMemFree = (trunc(SmallestNodeRAM/1048576) - TotalBucketsSize - 128),
-    SzV = case SizeWanted > MinMemFree of
-              true -> list_to_binary(
-                        io_lib:format("Cannot create data bucket; the cluster only has ~p megabytes free for new data buckets.",
-                                      [trunc(MinMemFree)]));
-              false -> undefined
-          end,
-
-    % Input bucket name cannot have whitespace.
-    FmtV = case mc_bucket:is_valid_bucket_name(BucketId) of
-               true -> undefined;
-               _ -> <<"The data bucket name is invalid.">>
-           end,
-    PossMsg = [DupNameV, SzV, FmtV, NzV],
-    Msgs = lists:filter(fun (X) -> X =/= undefined end,
-                        PossMsg),
-    case Msgs of
-        [] -> handle_bucket_create_do(PoolId, BucketId, Req);
-        _ -> reply_json(Req, Msgs, 400)
-    end.
-
-handle_bucket_create_do(PoolId, BucketId, Req) ->
-    PostArgs = Req:parse_post(),
-    BucketConfigDefault = mc_bucket:bucket_config_default(),
-    BucketConfig =
-        lists:foldl(
-          fun({auth_plain, _}, C) ->
-                  case proplists:get_value("name", PostArgs) of
-                      undefined -> C;
-                      Pass -> lists:keystore(auth_plain, 1, C,
-                                             {auth_plain, {BucketId, Pass}})
-                  end;
-             ({size_per_node, _}, C) ->
-                  case proplists:get_value("cacheSize", PostArgs) of
-                      undefined -> C;
-                      SList when is_list(SList) ->
-                          S = list_to_integer(SList),
-                          lists:keystore(size_per_node, 1, C,
-                                         {size_per_node, S});
-                      SBin when is_binary(SBin) ->
-                          S = list_to_integer(binary_to_list(SBin)),
-                          lists:keystore(size_per_node, 1, C,
-                                         {size_per_node, S});
-                      S when is_integer(S) ->
-                          lists:keystore(size_per_node, 1, C,
-                                         {size_per_node, S})
-                  end
-          end,
-          BucketConfigDefault,
-          BucketConfigDefault),
-    mc_bucket:bucket_config_make(PoolId,
-                                 BucketId,
-                                 BucketConfig),
-    ns_log:log(?MODULE, 0012, "bucket created: ~p in: ~p",
-               [BucketId, PoolId]),
-    handle_bucket_info(PoolId, BucketId, Req).
-
 handle_bucket_flush(PoolId, Id, Req) ->
     ns_log:log(?MODULE, 0005, "Flushing pool ~p bucket ~p from node ~p",
                [PoolId, Id, erlang:node()]),
-    case mc_bucket:bucket_flush(PoolId, Id) of
-        ok    -> Req:respond({204, add_header(), []});
-        false -> Req:respond({404, add_header(), []})
-    end.
+    Req:respond({400, add_header(), "Flushing is not currently implemented."}).
 
 vbucket_map(_PoolId, _BucketId) ->
     % TODO: Need a real vbucket server map.
@@ -1056,8 +921,7 @@ handle_settings_advanced_post(Req) ->
 build_port_settings(PoolId) ->
     PoolConfig = find_pool_by_id(PoolId),
     [{proxyPort, proplists:get_value(port, PoolConfig)},
-     {directPort, list_to_integer(mc_pool:memcached_port(ns_config:get(),
-                                                         node()))}].
+     {directPort, 11212}]. % TODO: this needs to come from the config
 
 validate_port_settings(ProxyPort, DirectPort) ->
     CS = [is_valid_port_number(ProxyPort) orelse <<"Proxy port must be a positive integer less than 65536">>,
@@ -1065,51 +929,19 @@ validate_port_settings(ProxyPort, DirectPort) ->
     lists:filter(fun (C) -> C =/= true end,
                  CS).
 
-handle_port_settings_post(PostArgs, PoolId) ->
+handle_port_settings_post(PostArgs, _PoolId) ->
     PPort = proplists:get_value("proxyPort", PostArgs),
     DPort = proplists:get_value("directPort", PostArgs),
     case validate_port_settings(PPort, DPort) of
-        [] -> {ok, fun () ->
-                           Config = ns_config:get(),
-                           Pools = mc_pool:pools_config_get(Config),
-                           Pool = mc_pool:pool_config_get(Pools, PoolId),
-                           Pool2 = lists:keystore(port, 1, Pool,
-                                                  {port, list_to_integer(PPort)}),
-                           mc_pool:pools_config_set(
-                             mc_pool:pool_config_set(Pools, PoolId, Pool2)),
-                           mc_pool:memcached_port_set(Config, undefined, DPort),
-                           ok
-                   end};
+        % TODO: this should change the config
+        [] -> {ok, ok};
         Errors -> {errors, Errors}
     end.
 
 handle_traffic_generator_control_post(Req) ->
-    PostArgs = Req:parse_post(),
-    case proplists:get_value("onOrOff", PostArgs) of
-        "off" -> ns_log:log(?MODULE, 0006, "Stopping Test Server workload from node ~p",
-                            [erlang:node()]),
-                 tgen:traffic_stop(),
-                 Req:respond({204, add_header(), []});
-        "on" -> ns_log:log(?MODULE, 0007, "Starting Test Server workload from node ~p",
-                           [erlang:node()]),
-                % TODO: Use rpc:multicall here to turn off traffic
-                %       generation across all actual nodes in the cluster.
-                tgen:traffic_start(),
-                Req:respond({204, add_header(), []});
-        _ ->
-            ns_log:log(?MODULE, 0008, "Invalid post to testWorkload controller.  PostArgs ~p evaluated to ~p",
-                       [PostArgs, proplists:get_value(PostArgs, "onOrOff")]),
-            Req:respond({400, add_header(), "Bad Request\n"})
-    end.
+    % TODO: rip traffic generation the hell out.
+    Req:respond({400, add_header(), "Bad Request\n"}).
 
-% Make sure an input parameter string is clean and not too long.
-% Second argument means "undefinedIsAllowed"
-
-%% is_clean(undefined, true, _MinLen)  -> true;
-%% is_clean(undefined, false, _MinLen) -> false;
-%% is_clean(S, _UndefinedIsAllowed, MinLen) ->
-%%     Len = length(S),
-%%     (Len >= MinLen) andalso (Len < 80) andalso (S =:= (S -- " \t\n")).
 
 -ifdef(EUNIT).
 
