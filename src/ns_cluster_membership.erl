@@ -11,6 +11,7 @@
          engage_cluster/2,
          handle_add_node_request/2,
          join_cluster/4,
+         system_joinable/0,
          start_rebalance/2,
          stop_rebalance/0,
          get_rebalance_status/0,
@@ -181,8 +182,11 @@ join_cluster(OtherHost, OtherPort, OtherUser, OtherPswd) ->
         OtherError -> handle_join_rest_failure(OtherError, OtherHost, OtherPort)
     end.
 
+system_joinable() ->
+    true.
+
 handle_join_inner(OtherHost, OtherPort, OtherUser, OtherPswd) ->
-    case tgen:system_joinable() of
+    case system_joinable() of
         true ->
             case ns_cluster:prepare_join_to(OtherHost) of
                 {ok, MyIP} ->
