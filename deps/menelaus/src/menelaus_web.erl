@@ -449,12 +449,7 @@ build_nodes_info(MyPool, IncludeOtp, InfoLevel) ->
                                                 end,
                                                 0,
                                                 BucketsAll),
-                                {ok, Stats} = stats_aggregator:get_stats(1),
-                                NodesBucketMemoryAllocated =
-                                    case dict:find("bytes", Stats) of
-                                        {ok, [Bytes]} -> Bytes;
-                                        _ -> 0
-                                    end,
+                                NodesBucketMemoryAllocated = 0,
                                 {UpSecs, {MemoryTotal, MemoryAlloced, _}} =
                                     {proplists:get_value(wall_clock, InfoNode, 0),
                                      proplists:get_value(memory_data, InfoNode,
@@ -596,19 +591,11 @@ build_bucket_info(PoolId, Id, Pool, InfoLevel) ->
              {stats, {struct, [{uri, StatsUri}]}},
              %% TODO: placeholder for a real vbucketServerMap.
              {vbucketServerMap, vbucket_map_to_json(vbucket_map(PoolId, Id))}],
-    List2 = case tgen:is_traffic_bucket(PoolId, Id) of
-                true -> [{testAppBucket, true},
-                         {controlURL, list_to_binary(concat_url_path(["pools", PoolId,
-                                                                      "controller", "testWorkload"]))},
-                         {status, tgen:traffic_started()}
-                         | List1];
-                _ -> List1
+    List2 = case InfoLevel of
+                stable -> List1;
+                normal -> List1 ++ [{basicStats, {struct, menelaus_stats:basic_stats(PoolId, Id)}}]
             end,
-    List3 = case InfoLevel of
-                stable -> List2;
-                normal -> List2 ++ [{basicStats, {struct, menelaus_stats:basic_stats(PoolId, Id)}}]
-            end,
-    {struct, List3}.
+    {struct, List2}.
 
 handle_bucket_info_streaming(PoolId, Id, Req, Pool, _Bucket) ->
     handle_bucket_info_streaming(PoolId, Id, Req, Pool, _Bucket, undefined).

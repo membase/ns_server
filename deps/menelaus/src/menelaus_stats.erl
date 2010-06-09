@@ -143,20 +143,8 @@ build_buckets_stats_hks_response(PoolId, BucketIds, Params) ->
                       lists:sublist(lists:reverse(lists:keysort(5, BucketsTopKeys)), 15)),
     {struct, [{hot_keys, HotKeyStructs}]}.
 
-get_buckets_hks(_PoolId, BucketIds, _Params) ->
-    BucketsTopKeys = lists:flatmap(
-        fun (BucketId) ->
-                {ok, BucketTopKeys} = stats_aggregator:get_topkeys(BucketId),
-                lists:map(fun({Key, {Hits, Misses, Ops, Evictions}}) ->
-                              Ratio = case Hits of
-                                  0 -> 0.0;
-                                  _ -> Hits / (Hits + Misses)
-                              end,
-                              {BucketId, Key, Evictions, Ratio, Ops}
-                          end, dict:to_list(BucketTopKeys))
-        end,
-        BucketIds),
-    {ok, BucketsTopKeys}.
+get_buckets_hks(_PoolId, _BucketIds, _Params) ->
+    {ok, []}.
 
 sum_stats_values_rec([], [], Rec) ->
     Rec;
@@ -263,9 +251,8 @@ process_raw_stats(SamplesInterval, Samples) ->
 %       {1263,946877,864065}]},
 %  ...]
 
-get_stats_raw(_PoolId, BucketId, SamplesNum) ->
-    {ok, Stats} = stats_aggregator:get_stats(BucketId, SamplesNum),
-    Stats.
+get_stats_raw(_PoolId, _BucketId, _SamplesNum) ->
+    dict:from_list([]).
 
 sum_stats_ops(Stats) ->
     sum_stats(["cmd_get", "cmd_set",
