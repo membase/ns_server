@@ -13,7 +13,7 @@ all the nodes (n_0, n_1, ...) run on 127.0.0.1...
 
 To start the cluster...
 
-    ./cluster_start_all.sh
+    ./cluster_run.sh
 
 Now, you can point your web browser to...
 
@@ -32,9 +32,7 @@ The emoxi servers will be running on odd port numbers
 
    12001, 12003, 12005, ...
 
-To stop the cluster...
-
-    ./cluster_stop_all.sh
+To stop the cluster press Ctrl-D or Ctrl-C.
 
 After you've joined nodes together, they will remember their join
 configuration (in the ./config directory) and when you start/stop

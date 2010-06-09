@@ -9,8 +9,7 @@
 # The above will generate files like...
 #
 #   cluster_config
-#   cluster_start_all.sh
-#   cluster_stop_all.sh
+#   cluster_run.sh
 #
 # The node names will look like n_0@127.0.0.1, n_1@127.0.0.1, ...
 #
@@ -88,13 +87,10 @@ File.open(prefix + "_config", 'w') {|f|
   f.write("#{pools}\n")
 }
 
-# Backwards compatibility for ruby 1.8.6
-numbers = []
-num_nodes.times { |x| numbers << x }
+numbers = (0...num_nodes).to_a
 
-File.open(prefix + "_start_all.sh", 'w') {|f|
-
-  s=<<EOF
+File.open(prefix + "_run.sh", File::CREAT|File::TRUNC|File::WRONLY, 0755) do |f|
+  f.write(<<EOF)
 #!/bin/sh
 
 # num_nodes is #{num_nodes}
@@ -102,7 +98,7 @@ File.open(prefix + "_start_all.sh", 'w') {|f|
 start_node() {
     echo "Starting $1"
 
-    erl -pa \`find . -type d -name ebin\` \\
+    ./test/orphaner.rb erl -pa \`find . -type d -name ebin\` \\
         -setcookie nocookie \\
         -run ns_bootstrap \\
         -kernel inet_dist_listen_min 21100 inet_dist_listen_max 21199 \\
@@ -113,8 +109,7 @@ start_node() {
         -- \\
         -no-input \\
         -name $1@127.0.0.1 -noshell \\
-        -ns_server ns_server_config \\"#{prefix}_config\\" \\
-        -ns_server pidfile \\"tmp/$1.pid\\" &
+        -ns_server ns_server_config \\"#{prefix}_config\\" &
 }
 
 erl -noshell -setcookie nocookie -sname init -run init stop 2>&1 > /dev/null
@@ -123,23 +118,7 @@ for node in #{numbers.map{|i| "n_" + (i + base_api_port - 9000).to_s}.join(" ")}
 do
     start_node $node
 done
+echo "Ctrl-C or Ctrl-D to quit"
+exec cat
 EOF
-
-  f.write s
-}
-
-File.open(prefix + "_stop_all.sh", 'w') {|f|
-
-  s=<<EOF
-#!/bin/sh
-# num_nodes is #{num_nodes}
-
-kill `cat #{numbers.map{|i| "tmp/n_#{i + base_api_port - 9000}.pid"}.join(" ")}`
-EOF
-
-  f.write s
-}
-
-# -------------------------------------------------------
-
-File.chmod 0755, "#{prefix}_start_all.sh", "#{prefix}_stop_all.sh"
+end

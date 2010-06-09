@@ -3,8 +3,7 @@
 .settings
 /features/Makefile
 /*luster_config
-/*luster_start_all.sh
-/*luster_stop_all.sh
+/*luster_run.sh
 TAGS
 config
 coverage
