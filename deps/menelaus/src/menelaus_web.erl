@@ -77,21 +77,26 @@ restart() ->
     % Depend on our supervision tree to restart us right away.
     stop().
 
-webconfig() ->
+get_node_rest_port(Config, Node, node_specific) ->
+    ns_config:search_prop(Config,
+                          {node, Node, rest},
+                          port, false).
+
+get_node_rest_port(Node) ->
     Config = ns_config:get(),
+    case get_node_rest_port(Config, Node, node_specific) of
+        false ->
+            ns_config:search_prop(Config, rest, port, 8080);
+        P -> P
+    end.
+
+webconfig() ->
     Ip = case os:getenv("MOCHIWEB_IP") of
              false -> "0.0.0.0";
              Any -> Any
          end,
     Port = case os:getenv("MOCHIWEB_PORT") of
-               false ->
-                   case ns_config:search_prop(Config,
-                                              {node, node(), rest},
-                                              port, false) of
-                       false ->
-                           ns_config:search_prop(Config, rest, port, 8080);
-                       P -> P
-                   end;
+               false -> get_node_rest_port(node());
                P -> list_to_integer(P)
            end,
     WebConfig = [{ip, Ip},
@@ -480,7 +485,11 @@ build_node_info(MyPool, WantENode, InfoNode) ->
     Versions = proplists:get_value(version, InfoNode, []),
     Version = proplists:get_value(ns_server, Versions, "unknown"),
     OS = proplists:get_value(system_arch, InfoNode, "unknown"),
-    V = [{hostname, list_to_binary(Host)},
+    HostName = case get_node_rest_port(ns_config:get(), WantENode, node_specific) of
+                   false -> Host;
+                   Port -> Host ++ ":" ++ integer_to_list(Port)
+               end,
+    V = [{hostname, list_to_binary(HostName)},
          {version, list_to_binary(Version)},
          {os, list_to_binary(OS)},
          {ports, {struct, [{proxy, ProxyPort},
