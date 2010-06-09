@@ -3,22 +3,14 @@
 
 -module(mc_client_binary).
 
--behavior(mc_client).
-
 -include_lib("eunit/include/eunit.hrl").
 
 -include("mc_constants.hrl").
 
 -include("mc_entry.hrl").
 
--import(mc_binary, [send/2, send/4, send_recv/5, recv/2]).
-
--export([cmd/5]).
-
--export([auth/2, auth/4, select_bucket/2, create_bucket/3, delete_bucket/2,
-         list_buckets/1]).
-
--compile(export_all).
+-export([auth/2, auth/4, create_bucket/3, delete_bucket/2,
+         list_buckets/1, select_bucket/2, stats/1, stats/2, topkeys/1]).
 
 %% A memcached client that speaks binary protocol.
 
@@ -32,22 +24,22 @@ cmd(Opcode, Sock, RecvCallback, CBData, HE) ->
     end.
 
 cmd_binary_quiet(Opcode, Sock, _RecvCallback, _CBData, {Header, Entry}) ->
-    ok = send(Sock, req,
+    ok = mc_binary:send(Sock, req,
               Header#mc_header{opcode = Opcode}, ext(Opcode, Entry)),
     {ok, quiet}.
 
 cmd_binary_vocal(?STAT = Opcode, Sock, RecvCallback, CBData,
                  {Header, Entry}) ->
-    ok = send(Sock, req, Header#mc_header{opcode = Opcode}, Entry),
+    ok = mc_binary:send(Sock, req, Header#mc_header{opcode = Opcode}, Entry),
     stats_recv(Sock, RecvCallback, CBData);
 
 cmd_binary_vocal(Opcode, Sock, RecvCallback, CBData, {Header, Entry}) ->
-    ok = send(Sock, req,
+    ok = mc_binary:send(Sock, req,
               Header#mc_header{opcode = Opcode}, ext(Opcode, Entry)),
     cmd_binary_vocal_recv(Opcode, Sock, RecvCallback, CBData).
 
 cmd_binary_vocal_recv(Opcode, Sock, RecvCallback, CBData) ->
-    {ok, RecvHeader, RecvEntry} = recv(Sock, res),
+    {ok, RecvHeader, RecvEntry} = mc_binary:recv(Sock, res),
     NCB = case is_function(RecvCallback) of
               true  -> RecvCallback(RecvHeader, RecvEntry, CBData);
               false -> CBData
@@ -61,7 +53,7 @@ cmd_binary_vocal_recv(Opcode, Sock, RecvCallback, CBData) ->
 
 stats_recv(Sock, RecvCallback, State) ->
     {ok, #mc_header{opcode = ROpcode,
-                    keylen = RKeyLen} = RecvHeader, RecvEntry} = recv(Sock, res),
+                    keylen = RKeyLen} = RecvHeader, RecvEntry} = mc_binary:recv(Sock, res),
     case ?STAT =:= ROpcode andalso 0 =:= RKeyLen of
         true  -> {ok, RecvHeader, RecvEntry, State};
         false -> NCB = case is_function(RecvCallback) of
@@ -107,13 +99,13 @@ auth(Sock, {<<"PLAIN">>, {ForName, AuthName, AuthPswd}}, CBFun, CBData) ->
     BinForName  = mc_binary:bin(ForName),
     BinAuthName = mc_binary:bin(AuthName),
     BinAuthPswd = mc_binary:bin(AuthPswd),
-    case mc_client_binary:cmd(?CMD_SASL_AUTH, Sock, CBFun, CBData,
-                              {#mc_header{},
-                               #mc_entry{key = <<"PLAIN">>,
-                                         data = <<BinForName/binary, 0:8,
-                                                  BinAuthName/binary, 0:8,
-                                                  BinAuthPswd/binary>>
-                                        }}) of
+    case cmd(?CMD_SASL_AUTH, Sock, CBFun, CBData,
+             {#mc_header{},
+              #mc_entry{key = <<"PLAIN">>,
+                        data = <<BinForName/binary, 0:8,
+                                 BinAuthName/binary, 0:8,
+                                 BinAuthPswd/binary>>
+                       }}) of
 
         {ok, H, E, NCBData} ->
             case H#mc_header.status == ?SUCCESS of
@@ -128,27 +120,70 @@ auth(_Sock, _UnknownMech, _CBFun, _CBData) ->
 
 % -------------------------------------------------
 
-select_bucket(Sock, BucketName) ->
-    mc_client_binary:cmd(?CMD_SELECT_BUCKET, Sock, undefined, undefined,
-                         {#mc_header{},
-                          #mc_entry{key = BucketName}}).
-
 create_bucket(Sock, BucketName, Config) ->
-    mc_client_binary:cmd(?CMD_CREATE_BUCKET, Sock, undefined, undefined,
-                         {#mc_header{},
-                          #mc_entry{key = BucketName, data = Config}}).
+    case cmd(?CMD_CREATE_BUCKET, Sock, undefined, undefined,
+             {#mc_header{},
+              #mc_entry{key = BucketName, data = Config}}) of
+        {ok, #mc_header{status=?SUCCESS}, _ME, _NCB} ->
+            ok;
+        Response -> process_error_response(Response)
+    end.
 
 delete_bucket(Sock, BucketName) ->
-    mc_client_binary:cmd(?CMD_DELETE_BUCKET, Sock, undefined, undefined,
-                         {#mc_header{},
-                          #mc_entry{key = BucketName}}).
+    case cmd(?CMD_DELETE_BUCKET, Sock, undefined, undefined,
+             {#mc_header{},
+              #mc_entry{key = BucketName}}) of
+        {ok, #mc_header{status=?SUCCESS}, _ME, _NCB} ->
+            ok;
+        Response -> process_error_response(Response)
+    end.
 
 list_buckets(Sock) ->
-    mc_client_binary:cmd(?CMD_LIST_BUCKETS, Sock, undefined, undefined,
-                         {#mc_header{},
-                          #mc_entry{}}).
+    case cmd(?CMD_LIST_BUCKETS, Sock, undefined, undefined,
+             {#mc_header{},
+              #mc_entry{}}) of
+        {ok, #mc_header{status=?SUCCESS}, #mc_entry{data=BucketsBin}, _NCB} ->
+            case BucketsBin of
+                undefined -> {ok, []};
+                _ -> {ok, string:tokens(binary_to_list(BucketsBin), " ")}
+            end;
+        Response -> process_error_response(Response)
+    end.
 
-% -------------------------------------------------
+select_bucket(Sock, BucketName) ->
+    case cmd(?CMD_SELECT_BUCKET, Sock, undefined, undefined,
+             {#mc_header{},
+              #mc_entry{key = BucketName}}) of
+        {ok, #mc_header{status=?SUCCESS}, _ME, _NCB} ->
+            ok;
+        Response -> process_error_response(Response)
+    end.
+
+stats(Sock) ->
+    stats(Sock, "").
+
+stats(Sock, Key) ->
+    case cmd(?STAT, Sock,
+             fun (_MH, ME, CD) ->
+                     [[binary_to_list(ME#mc_entry.key),
+                       binary_to_list(ME#mc_entry.data)] | CD]
+             end,
+             [],
+             {#mc_header{}, #mc_entry{key=list_to_binary(Key)}}) of
+        {ok, #mc_header{status=?SUCCESS}, _E, Stats} ->
+            {ok, Stats};
+        Response -> process_error_response(Response)
+    end.
+
+topkeys(Sock) ->
+    case stats(Sock, "topkeys") of
+        {ok, Stats} ->
+            {ok, parse_topkeys(Stats)};
+        Response -> Response
+    end.
+
+
+%% -------------------------------------------------
 
 is_quiet(?GETQ)       -> true;
 is_quiet(?GETKQ)      -> true;
@@ -200,45 +235,43 @@ ext_arith(#mc_entry{ext = Ext, data = Data, expire = Expire} = Entry) ->
         _ -> Entry
     end.
 
-% -------------------------------------------------
+map_status(?SUCCESS) ->
+    mc_status_success;
+map_status(?KEY_ENOENT) ->
+    mc_status_key_enoent;
+map_status(?KEY_EEXISTS) ->
+    mc_status_key_eexists;
+map_status(?E2BIG) ->
+    mc_status_e2big;
+map_status(?EINVAL) ->
+    mc_status_einval;
+map_status(?NOT_STORED) ->
+    mc_status_not_stored;
+map_status(?DELTA_BADVAL) ->
+    mc_status_delta_badval;
+map_status(?UNKNOWN_COMMAND) ->
+    mc_status_unknown_command;
+map_status(?ENOMEM) ->
+    mc_status_enomem.
 
-% Example:
-%
-%  mc_client_binary:do("localhost", 11211, [{set, "x", "X"}, {get, "x"}]).
-%
-do(Host, Port, HEList) ->
-    {ok, Sock} = gen_tcp:connect(Host, Port,
-                                 [binary, {packet, 0}, {active, false}]),
-    CB = fun(RH, RE, CD) -> [{RH, RE} | CD] end,
-    R = lists:foldl(
-          fun({auth, Name, Pass}, RHEList) ->
-                  {ok, _RecvHeader, _RecvEntry, NewRHEList} =
-                          auth(Sock, {<<"PLAIN">>, {<<>>, Name, Pass}},
-                               CB, RHEList),
-                  NewRHEList;
-             ({set, K, V}, RHEList) ->
-                  {ok, _RecvHeader, _RecvEntry, NewRHEList} =
-                          send_recv(Sock, CB, RHEList,
-                                    #mc_header{opcode = ?SET},
-                                    ext(?SET,
-                                        #mc_entry{key = K,
-                                                  data = V})),
-                  NewRHEList;
-             ({get, K}, RHEList) ->
-                  {ok, _RecvHeader, _RecvEntry, NewRHEList} =
-                          send_recv(Sock, CB, RHEList,
-                                    #mc_header{opcode = ?GETK},
-                                    #mc_entry{key = K}),
-                  NewRHEList;
-             ({#mc_header{} = H, #mc_entry{} = E}, RHEList) ->
-                  {ok, _RecvHeader, _RecvEntry, NewRHEList} =
-                          send_recv(Sock, CB, RHEList, H, E),
-                  NewRHEList
-          end,
-          [],
-          HEList),
-    ok = gen_tcp:close(Sock),
-    lists:reverse(R).
+parse_topkeys(Topkeys) ->
+    lists:map(fun ([Key, ValueString]) ->
+                      [Key, parse_topkey_value(ValueString)]
+              end,
+              Topkeys).
+
+parse_topkey_value(Value) ->
+    Tokens = string:tokens(Value, ","),
+    lists:map(fun (S) ->
+                      [K, V] = string:tokens(S, "="),
+                      [K, list_to_integer(V)]
+              end,
+              Tokens).
+
+process_error_response({ok, #mc_header{status=Status}, #mc_entry{data=Data}, _NCB}) ->
+    {memcached_error, map_status(Status), binary_to_list(Data)};
+process_error_response(Error) ->
+    {client_error, Error}.
 
 % -------------------------------------------------
 

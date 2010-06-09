@@ -10,10 +10,7 @@ TMP_VER=$(TMP_DIR)/version_num.tmp
 
 .PHONY: ebins ebin_app version
 
-all: ebins test_noemoxi deps_all
-
-deps_emoxi:
-	(cd deps/emoxi && $(MAKE) ebins)
+all: ebins deps_all
 
 deps_menelaus:
 	(cd deps/menelaus && $(MAKE) all)
@@ -21,7 +18,7 @@ deps_menelaus:
 deps_smtp:
 	(cd deps/gen_smtp && $(MAKE) ebins)
 
-deps_all: deps_emoxi deps_menelaus deps_smtp
+deps_all: deps_menelaus deps_smtp
 
 ebins: ebin_app
 	test -d ebin || mkdir ebin
@@ -45,7 +42,6 @@ bdist: clean ebins deps_all
 	echo created ns_server_`cat $(TMP_VER)`.tar.gz
 
 clean clean_all:
-	@(cd deps/emoxi && $(MAKE) clean)
 	@(cd deps/menelaus && $(MAKE) clean)
 	@(cd deps/gen_smtp && $(MAKE) clean)
 	rm -f $(TMP_VER)
@@ -59,17 +55,12 @@ clean clean_all:
 
 test: test_$(OS)
 
-test_noemoxi: test_unit test_menelaus
+test_: test_unit test_menelaus
 
-test_: test_unit test_unit_emoxi test_menelaus
-
-test_Windows_NT: test_unit test_unit_emoxi test_menelaus
+test_Windows_NT: test_unit test_menelaus
 
 test_unit: ebins
 	erl $(EFLAGS) -noshell -s t start -s init stop -kernel error_logger silent
-
-test_unit_emoxi: deps/emoxi
-	(cd deps/emoxi; $(MAKE) test_unit)
 
 test_menelaus: deps/menelaus
 	(cd deps/menelaus; $(MAKE) test)

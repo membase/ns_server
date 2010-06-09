@@ -9,7 +9,7 @@
 version() ->
     Loaded = lists:map(fun({App, _, Version}) -> {App, Version} end,
               application:loaded_applications()),
-    proplists:delete([menelaus, emoxi], Loaded).
+    proplists:delete([menelaus], Loaded).
 
 runtime() ->
     {WallClockMSecs, _} = erlang:statistics(wall_clock),

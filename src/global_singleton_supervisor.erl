@@ -45,9 +45,5 @@ init([]) ->
           {ns_mail_sup, {ns_mail_sup, start_link, []},
            permanent, infinity, supervisor, []},
           {ns_doctor, {ns_doctor, start_link, []},
-           permanent, 10, worker, [ns_doctor]},
-          {stats_aggregator, {stats_aggregator, start_link, []},
-           permanent, 10, worker, [stats_aggregator]},
-          {stats_collector, {stats_collector, start_link, []},
-           permanent, 10, worker, [stats_collector]}
+           permanent, 10, worker, [ns_doctor]}
          ]}}.

@@ -478,5 +478,17 @@ poll_for_condition_test() ->
     after 0 ->
             erlang:error(should_not_happen)
     end.
-    
-    
+
+
+%% Remove matching messages from the inbox.
+%% Returns a count of messages removed.
+
+flush(Msg) -> flush(Msg, 0).
+
+flush(Msg, N) ->
+    receive
+        Msg ->
+            flush(Msg, N+1)
+    after 0 ->
+            N
+    end.

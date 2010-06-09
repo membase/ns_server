@@ -26,7 +26,7 @@
                 ns_config_events,
                 ns_node_disco,
                 ns_node_disco_events]},
-  {included_applications, [emoxi, menelaus]},
+  {included_applications, [menelaus]},
   {applications, [kernel, stdlib]},
   {mod, {ns_server, []}},
 
