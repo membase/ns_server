@@ -42,6 +42,8 @@
          get_remote/1, set_remote/2, set_remote/3,
          get/2, get/1, get/0, set/2, set/1, set/3,
          update/2,
+         search_node/2, search_node/1,
+         search_node_prop/3, search_node_prop/4,
          search/2, search/1,
          search_prop/3, search_prop/4,
          search_prop_tuple/3, search_prop_tuple/4,
@@ -127,10 +129,18 @@ get(Node, Timeout) -> gen_server:call({?MODULE, Node}, get, Timeout).
 
 search(Key) -> search(?MODULE:get(), Key).
 
+search_node(Key) -> search_node(?MODULE:get(), Key).
+
 search(Config, Key) ->
     case search_raw(Config, Key) of
-        false      -> false;
-        {value, X} -> {value, strip_metadata(X, [])}
+        {value, X} -> {value, strip_metadata(X, [])};
+        false      -> false
+    end.
+
+search_node(Config, Key) ->
+    case search(Config, {node, node(), Key}) of
+        {value, _} = V -> V;
+        false          -> search(Config, Key)
     end.
 
 % Returns the Value or undefined.
@@ -138,10 +148,21 @@ search(Config, Key) ->
 search_prop(Config, Key, SubKey) ->
     search_prop(Config, Key, SubKey, undefined).
 
+search_node_prop(Config, Key, SubKey) ->
+    search_node_prop(Config, Key, SubKey, undefined).
+
 % Returns the Value or the DefaultSubVal.
 
 search_prop(Config, Key, SubKey, DefaultSubVal) ->
     case search(Config, Key) of
+        {value, PropList} ->
+            proplists:get_value(SubKey, PropList, DefaultSubVal);
+        false ->
+            DefaultSubVal
+    end.
+
+search_node_prop(Config, Key, SubKey, DefaultSubVal) ->
+    case search_node(Config, Key) of
         {value, PropList} ->
             proplists:get_value(SubKey, PropList, DefaultSubVal);
         false ->
