@@ -42,6 +42,11 @@ get_child_specs() ->
       permanent, infinity, supervisor,
       []},
 
+     {ns_memcached_cushion,
+      {supervisor_cushion, start_link,
+       [ns_memcached, 5000, ns_memcached, start_link, []]},
+      permanent, 10, worker, [mc_client_binary]},
+
      {global_singleton_supervisor, {global_singleton_supervisor, start_link, []},
       permanent, infinity, supervisor, [global_singleton_supervisor]},
 
