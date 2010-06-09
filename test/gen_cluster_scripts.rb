@@ -40,11 +40,12 @@ num_nodes.times do |x|
         ["-p", "#{(x * 2) + base_cache_port}",
          "-X", "./priv/engines/stdin_term_handler.so",
          "-E", "./priv/engines/bucket_engine.so",
-         "-e", "admin=_admin;engine=./priv/engines/default_engine.so;default_bucket_name=default;auto_create=false",
-         "-B", "auto"],
+         "-e", "admin=_admin;engine=./priv/engines/ep.so;default_bucket_name=default;auto_create=false"
+        ],
         [{env, [{"MEMCACHED_TOP_KEYS", "100"},
-                {"ISASL_PWFILE", "./priv/isasl.pw"},
-                {"ISASL_DB_CHECK_TIME", "1"}]},
+                {"ISASL_PWFILE", "./priv/isasl.pw"}, % Also isasl path above.
+                {"ISASL_DB_CHECK_TIME", "1"}
+               ]},
          use_stdio,
          stderr_to_stdout,
          stream]
@@ -53,6 +54,12 @@ num_nodes.times do |x|
 end
 
 pools = <<END
+{memcached, [{'_ver', {0, 0, 0}},
+        {port, #{base_cache_port}},
+        {admin_user, "_admin"},
+        {admin_pass, "_admin"},
+        {buckets, ["default"]}]}.
+
 {pools, [
   {'_ver', {0, 0, 0}},
   {"default", [

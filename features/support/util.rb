@@ -45,7 +45,7 @@ module Kernel
       if fail_unless_ok
         # puts "Timeout!!"
         # STDIN.gets
-        raise "Timeout hit while waiting for condition"
+        raise "Timeout hit (#{timeout}) while waiting for condition"
       end
     end
     ok
@@ -131,7 +131,7 @@ class ClusterConfig
   # ------------------------------------------------------
 
   def start_single_node(i)
-    ports = [$base_cache_port + i*2, $base_cache_port + i*2 + 1, $base_api_port + i]
+    ports = [$base_cache_port + i*2, $base_api_port + i]
 
     wait_down_ports(ports, -1)
 
@@ -173,7 +173,7 @@ class ClusterConfig
         @cluster_ptys << rv
       end
 
-      wait_up_ports(ports_to_wait)
+      wait_up_ports(ports_to_wait, 30)
     rescue Exception
       stop!
       raise
@@ -183,7 +183,7 @@ class ClusterConfig
     sleep 5
   end
 
-  def wait_up_ports(ports_to_wait, timeout = 10)
+  def wait_up_ports(ports_to_wait, timeout = 20)
     poll_for_condition(timeout) do
       tmp = ports_to_wait
       ports_to_wait = []
@@ -267,7 +267,7 @@ end
 def cluster_join(joiner, joinee)
   do_join(joiner, joinee)
 
-  poll_for_condition(10) do
+  poll_for_condition(30) do
     (node_info(joinee, joiner) rescue false) && (node_info(joiner, joinee) rescue false)
   end
 
@@ -306,7 +306,7 @@ def cluster_eject(ejectee, ejecter = nil)
 
   sleep 5
 
-  poll_for_condition(7, false) do
+  poll_for_condition(20, false) do
     ClusterConfig.active_cluster.node_labels.all? do |label|
       label == ejectee || !((node_info(label, ejectee) rescue true) ||
                             (node_info(ejectee, label) rescue true))
