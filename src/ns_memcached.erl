@@ -22,8 +22,9 @@
 -record(state, {sock}).
 
 %% external API
--export([create_bucket/3, delete_bucket/2, list_buckets/1, stats/2,
-         stats/3, topkeys/2]).
+-export([create_bucket/2, create_bucket/3, delete_bucket/1, delete_bucket/2,
+         list_buckets/0, list_buckets/1, stats/1, stats/2, stats/3,
+         topkeys/1, topkeys/2]).
 
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
@@ -37,11 +38,11 @@ start_link() ->
 %% gen_server callback implementation
 
 init([]) ->
-    % TODO: hostname and port need to come from the config
     Config = ns_config:get(),
-    Username = ns_config:search_prop(Config, bucket_admin, user),
-    Password = ns_config:search_prop(Config, bucket_admin, pass),
-    {ok, Sock} = gen_tcp:connect("127.0.0.1", 11212, [binary, {packet, 0}, {active, false}], 5000),
+    Username = ns_config:search_prop(Config, memcached, admin_user),
+    Password = ns_config:search_prop(Config, memcached, admin_pass),
+    Port = ns_config:search_prop(Config, memcached, port),
+    {ok, Sock} = gen_tcp:connect("127.0.0.1", Port, [binary, {packet, 0}, {active, false}], 5000),
     ok = mc_client_binary:auth(Sock, {<<"PLAIN">>, {Username, Password}}),
     {ok, #state{sock=Sock}}.
 
@@ -92,20 +93,37 @@ code_change(_OldVsn, State, _Extra) ->
 
 %% External API
 
+create_bucket(Bucket, Config) ->
+    create_bucket(node(), Bucket, Config).
+
 create_bucket(Node, Bucket, Config) ->
     gen_server:call({?MODULE, Node}, {create_bucket, Bucket, Config}).
+
+delete_bucket(Bucket) ->
+    delete_bucket(node(), Bucket).
 
 delete_bucket(Node, Bucket) ->
     gen_server:call({?MODULE, Node}, {delete_bucket, Bucket}).
 
+list_buckets() ->
+    list_buckets(node()).
+
 list_buckets(Node) ->
     gen_server:call({?MODULE, Node}, list_buckets).
 
-stats(Node, Bucket) ->
-    gen_server:call({?MODULE, Node}, {stats, Bucket, ""}).
+stats(Bucket) ->
+    stats(node(), Bucket).
+
+stats(Node, Bucket) when node(Node) ->
+    gen_server:call({?MODULE, Node}, {stats, Bucket, ""});
+stats(Bucket, Key) ->
+    stats(node(), Bucket, Key).
 
 stats(Node, Bucket, Key) ->
     gen_server:call({?MODULE, Node}, {stats, Bucket, Key}).
+
+topkeys(Bucket) ->
+    topkeys(node(), Bucket).
 
 topkeys(Node, Bucket) ->
     gen_server:call({?MODULE, Node}, {topkeys, Bucket}).

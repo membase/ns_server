@@ -71,10 +71,12 @@
 {isasl, [{'_ver', {0, 0, 0}},
          {path, "./priv/isasl.pw"}]}. % Relative to startup directory.
 
-% Credentials for authenticating to a bucket.
-{bucket_admin, [{'_ver', {0, 0, 0}},
-                {user, "_admin"},
-                {pass, "_admin"}]}.
+% Memcached config
+{memcached, [{'_ver', {0, 0, 0}},
+             {port, 11212},
+             {admin_user, "_admin"},
+             {admin_pass, "_admin"},
+             {buckets, ["default"]}]}.
 
 % Modifiers: menelaus (may change the 11212 port number)
 % Listeners: ns_port_sup (needs to restart its memcached processes)
