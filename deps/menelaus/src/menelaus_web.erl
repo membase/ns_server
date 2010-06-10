@@ -598,8 +598,8 @@ build_bucket_info(PoolId, Id, Pool, InfoLevel) ->
                                                              "buckets", Id, "controller", "doFlush"]))},
              {nodes, Nodes},
              {stats, {struct, [{uri, StatsUri}]}},
-             %% TODO: placeholder for a real vbucketServerMap.
-             {vbucketServerMap, vbucket_map_to_json(vbucket_map(PoolId, Id))}],
+             %% TODO: placeholder for a real vBucketServerMap.
+             {vBucketServerMap, vbucket_map_to_json(vbucket_map(PoolId, Id))}],
     List2 = case InfoLevel of
                 stable -> List1;
                 normal -> List1 ++ [{basicStats, {struct, menelaus_stats:basic_stats(PoolId, Id)}}]
