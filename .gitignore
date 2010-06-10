@@ -19,6 +19,7 @@ priv/isasl.pw
 priv/memcached
 priv/memcached.exe
 priv/memcached_pthreadGC2.dll
+priv/moxi
 test/log
 tmp
 version_num.tmp

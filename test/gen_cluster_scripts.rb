@@ -24,8 +24,8 @@ num_nodes = num_nodes.to_i
 num_buckets = ARGV[1] || "0"
 num_buckets = num_buckets.to_i
 
-base_cache_port = ENV['BASE_CACHE_PORT'] ? ENV['BASE_CACHE_PORT'].to_i : 12000
-base_api_port = ENV['BASE_API_PORT'] ? ENV['BASE_API_PORT'].to_i : 9000
+base_direct_port = (ENV['BASE_DIRECT_PORT'] || ENV['BASE_CACHE_PORT'] || "12000").to_i
+base_api_port = (ENV['BASE_API_PORT'] || "9000").to_i
 
 nodes = ""
 
@@ -37,7 +37,7 @@ num_nodes.times do |x|
     {{node, 'n_#{x + base_api_port - 9000}@127.0.0.1', port_servers},
       [{'_ver', {0, 0, 0}},
        {memcached, "./priv/memcached",
-        ["-p", "#{(x * 2) + base_cache_port}",
+        ["-p", "#{(x * 2) + base_direct_port}",
          "-X", "./priv/engines/stdin_term_handler.so",
          "-E", "./priv/engines/bucket_engine.so",
          "-e", "admin=_admin;engine=./priv/engines/ep.so;default_bucket_name=default;auto_create=false"
@@ -49,13 +49,20 @@ num_nodes.times do |x|
          use_stdio,
          stderr_to_stdout,
          stream]
+       },
+       {moxi, "./priv/moxi",
+                ["-Z", "port_listen="#{(x * 2) + base_direct_port + 1}",
+                 "-z", "auth=,url=http://127.0.0.1:8080/pools/default/bucketsStreaming/default,\#@"
+                ],
+                [{env, []},
+                 use_stdio, stderr_to_stdout, stream]
        }]}.
     END
 end
 
 pools = <<END
 {memcached, [{'_ver', {0, 0, 0}},
-        {port, #{base_cache_port}},
+        {port, #{base_direct_port}},
         {admin_user, "_admin"},
         {admin_pass, "_admin"},
         {buckets, ["default"]}]}.
@@ -66,7 +73,7 @@ pools = <<END
 END
 
 num_nodes.times do |x|
-  pools = pools + "{{node, 'n_#{x + base_api_port - 9000}@127.0.0.1', port}, #{(x * 2) + base_cache_port + 1}},\n"
+  pools = pools + "{{node, 'n_#{x + base_api_port - 9000}@127.0.0.1', port}, #{(x * 2) + base_direct_port + 1}},\n"
 end
 
 buckets = ""

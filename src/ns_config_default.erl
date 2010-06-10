@@ -125,6 +125,10 @@ default_static() ->
             {admin_pass, "_admin"},
             {buckets, ["default"]}]},
 
+    % Moxi config
+    {moxi, [{'_ver', {0, 0, 0}},
+            {port, 11213}]},
+
     % Modifiers: menelaus (may change the 11212 port number)
     % Listeners: ns_port_sup (needs to restart its memcached processes)
     %
@@ -145,6 +149,15 @@ default_static() ->
                         {"ISASL_PWFILE", "./priv/isasl.pw"}, % Also isasl path above.
                         {"ISASL_DB_CHECK_TIME", "1"}
                        ]},
+                    use_stdio,
+                    stderr_to_stdout,
+                    stream]
+            },
+            {moxi, "./priv/moxi",
+                ["-Z", "port_listen=11213",
+                 "-z", "auth=,url=http://127.0.0.1:8080/pools/default/bucketsStreaming/default,#@"
+                ],
+                [{env, []},
                     use_stdio,
                     stderr_to_stdout,
                     stream]

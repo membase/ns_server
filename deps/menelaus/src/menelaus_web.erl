@@ -667,7 +667,7 @@ vbucket_map(_PoolId, _BucketId) ->
                                 Host ++ ":" ++ integer_to_list(DirectPort)
                             end,
                             ns_node_disco:nodes_wanted())},
-     {vBucketMap, [[0], [0], [0]]}].
+     {vBucketMap, [[0], [0]]}].
 
 vbucket_map_to_json(PropList) ->
     {struct, lists:map(
