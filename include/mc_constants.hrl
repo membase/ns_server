@@ -41,6 +41,9 @@
 -define(CMD_EXPAND_BUCKET, 16#28).
 -define(CMD_SELECT_BUCKET, 16#29).
 
+-define(CMD_SET_VBUCKET_STATE, 16#83).
+-define(CMD_GET_VBUCKET_STATE, 16#84).
+
 -define(RGET,        16#30).
 -define(RSET,        16#31).
 -define(RSETQ,       16#32).

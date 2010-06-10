@@ -22,8 +22,14 @@
 -record(state, {sock}).
 
 %% external API
--export([create_bucket/2, create_bucket/3, delete_bucket/1, delete_bucket/2,
-         list_buckets/0, list_buckets/1, stats/1, stats/2, stats/3,
+-export([create_bucket/2, create_bucket/3,
+         delete_bucket/1, delete_bucket/2,
+         list_buckets/0, list_buckets/1,
+         list_vbuckets/1, list_vbuckets/2,
+         list_vbuckets_multi/2,
+         set_vbucket_state/3, set_vbucket_state/4,
+         stats/1, stats/2, stats/3,
+         stats_multi/2, stats_multi/3,
          topkeys/1, topkeys/2]).
 
 -include("mc_constants.hrl").
@@ -55,16 +61,17 @@ handle_call({create_bucket, Bucket, Config}, _From, State) ->
 handle_call({delete_bucket, Bucket}, _From, State) ->
     Reply = mc_client_binary:delete_bucket(State#state.sock, Bucket),
     {reply, Reply, State};
+handle_call({set_vbucket_state, Bucket, VBucket, VBState}, _From, State) ->
+    Reply = do_in_bucket(State#state.sock, Bucket,
+                         fun() ->
+                                 mc_client_binary:set_vbucket_state(State#state.sock, VBucket,
+                                                                    atom_to_list(VBState))
+                         end),
+    {reply, Reply, State};
 handle_call({stats, Bucket, Key}, _From, State) ->
     Reply = do_in_bucket(State#state.sock, Bucket,
                          fun () ->
                                  mc_client_binary:stats(State#state.sock, Key)
-                         end),
-    {reply, Reply, State};
-handle_call({topkeys, Bucket}, _From, State) ->
-    Reply = do_in_bucket(State#state.sock, Bucket,
-                         fun () ->
-                                 mc_client_binary:topkeys(State#state.sock)
                          end),
     {reply, Reply, State};
 handle_call(Request, From, State) ->
@@ -111,23 +118,51 @@ list_buckets() ->
 list_buckets(Node) ->
     gen_server:call({?MODULE, Node}, list_buckets).
 
+list_vbuckets(Bucket) ->
+    list_vbuckets(node(), Bucket).
+
+list_vbuckets(Node, Bucket) ->
+    case stats(Node, Bucket, "vbucket") of
+        {ok, Stats} ->
+            parse_vbuckets(Stats);
+        Response -> Response
+    end.
+
+list_vbuckets_multi(Nodes, Bucket) ->
+    process_multi(fun parse_vbuckets/1, stats_multi(Nodes, Bucket, "vbucket")).
+
+set_vbucket_state(Bucket, VBucket, VBState) ->
+    set_vbucket_state(node(), Bucket, VBucket, VBState).
+
+set_vbucket_state(Node, Bucket, VBucket, VBState) ->
+    gen_server:call({?MODULE, Node}, {set_vbucket_state, Bucket, VBucket, VBState}).
+
 stats(Bucket) ->
     stats(node(), Bucket).
 
-stats(Node, Bucket) when node(Node) ->
-    gen_server:call({?MODULE, Node}, {stats, Bucket, ""});
-stats(Bucket, Key) ->
-    stats(node(), Bucket, Key).
+stats(Bucket, Key) when is_list(Bucket) ->
+    stats(node(), Bucket, Key);
+stats(Node, Bucket) ->
+    gen_server:call({?MODULE, Node}, {stats, Bucket, ""}).
 
 stats(Node, Bucket, Key) ->
     gen_server:call({?MODULE, Node}, {stats, Bucket, Key}).
+
+stats_multi(Nodes, Bucket) ->
+    gen_server:multi_call(Nodes, ?MODULE, {stats, Bucket, ""}).
+
+stats_multi(Nodes, Bucket, Key) ->
+    gen_server:multi_call(Nodes, ?MODULE, {stats, Bucket, Key}).
 
 topkeys(Bucket) ->
     topkeys(node(), Bucket).
 
 topkeys(Node, Bucket) ->
-    gen_server:call({?MODULE, Node}, {topkeys, Bucket}).
-
+    case stats(Node, Bucket, "topkeys") of
+        {ok, Stats} ->
+            {ok, parse_topkeys(Stats)};
+        Response -> Response
+    end.
 
 %% Internal functions
 
@@ -138,3 +173,39 @@ do_in_bucket(Sock, Bucket, Fun) ->
         R ->
             R
     end.
+
+map_vbucket_state("active") -> active;
+map_vbucket_state("replica") -> replica;
+map_vbucket_state("pending") -> pending;
+map_vbucket_state("dead") -> dead.
+
+parse_topkey_value(Value) ->
+    Tokens = string:tokens(Value, ","),
+    lists:map(fun (S) ->
+                      [K, V] = string:tokens(S, "="),
+                      [list_to_atom(K), list_to_integer(V)]
+              end,
+              Tokens).
+
+parse_topkeys(Topkeys) ->
+    lists:map(fun ([Key, ValueString]) ->
+                      [Key, parse_topkey_value(ValueString)]
+              end, Topkeys).
+
+parse_vbucket_name("vb_" ++ Key) ->
+    list_to_integer(Key);
+parse_vbucket_name(Key) ->
+    {unrecognized_vbucket, Key}.
+
+parse_vbuckets(Stats) ->
+    lists:map(fun ([Key, Value]) ->
+                      {parse_vbucket_name(Key), map_vbucket_state(Value)}
+              end, Stats).
+
+process_multi(Fun, {Replies, BadNodes}) ->
+    ProcessedReplies = lists:map(fun ({Node, {ok, Reply}}) ->
+                                         {Node, Fun(Reply)};
+                                     ({Node, Response}) ->
+                                         {Node, Response}
+                                 end, Replies),
+    {ProcessedReplies, BadNodes}.

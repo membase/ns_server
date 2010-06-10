@@ -10,7 +10,8 @@
 -include("mc_entry.hrl").
 
 -export([auth/2, auth/4, create_bucket/3, delete_bucket/2,
-         list_buckets/1, select_bucket/2, stats/1, stats/2, topkeys/1]).
+         list_buckets/1, select_bucket/2, set_vbucket_state/3,
+         stats/1, stats/2]).
 
 %% A memcached client that speaks binary protocol.
 
@@ -159,6 +160,16 @@ select_bucket(Sock, BucketName) ->
         Response -> process_error_response(Response)
     end.
 
+set_vbucket_state(Sock, VBucket, VBucketState) ->
+    case cmd(?CMD_SET_VBUCKET_STATE, Sock, undefined, undefined,
+             {#mc_header{},
+              #mc_entry{key = list_to_binary(integer_to_list(VBucket)),
+                        data = list_to_binary(VBucketState)}}) of
+        {ok, #mc_header{status=?SUCCESS}, _ME, _NCB} ->
+            ok;
+        Response -> process_error_response(Response)
+    end.
+
 stats(Sock) ->
     stats(Sock, "").
 
@@ -173,13 +184,6 @@ stats(Sock, Key) ->
         {ok, #mc_header{status=?SUCCESS}, _E, Stats} ->
             {ok, Stats};
         Response -> process_error_response(Response)
-    end.
-
-topkeys(Sock) ->
-    case stats(Sock, "topkeys") of
-        {ok, Stats} ->
-            {ok, parse_topkeys(Stats)};
-        Response -> Response
     end.
 
 
@@ -253,20 +257,6 @@ map_status(?UNKNOWN_COMMAND) ->
     mc_status_unknown_command;
 map_status(?ENOMEM) ->
     mc_status_enomem.
-
-parse_topkeys(Topkeys) ->
-    lists:map(fun ([Key, ValueString]) ->
-                      [Key, parse_topkey_value(ValueString)]
-              end,
-              Topkeys).
-
-parse_topkey_value(Value) ->
-    Tokens = string:tokens(Value, ","),
-    lists:map(fun (S) ->
-                      [K, V] = string:tokens(S, "="),
-                      [K, list_to_integer(V)]
-              end,
-              Tokens).
 
 process_error_response({ok, #mc_header{status=Status}, #mc_entry{data=Data}, _NCB}) ->
     {memcached_error, map_status(Status), binary_to_list(Data)};
