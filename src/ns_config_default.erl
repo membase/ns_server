@@ -156,7 +156,8 @@ default_static() ->
             },
             {moxi, "./bin/moxi/moxi",
                 ["-Z", "port_listen=11213",
-                 "-z", "auth=,url=http://127.0.0.1:8080/pools/default/bucketsStreaming/default,#@"
+                 "-z", "auth=,url=http://127.0.0.1:8080/pools/default/bucketsStreaming/default,#@",
+                 "-p", "0"
                 ],
                 [{env, []},
                     use_stdio,
