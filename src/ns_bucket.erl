@@ -12,7 +12,13 @@
 
 %% API
 -export([start_link/0]).
--export([get_buckets/0, create_bucket/1]).
+-export([create_bucket/1,
+         get_bucket/1,
+         get_buckets/0,
+         get_bucket_names/0,
+         set_bucket_config/2,
+         set_map/2,
+         new_bucket/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -37,19 +43,54 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
+create_bucket(Bucket) ->
+    BucketConfigs = get_buckets(),
+    case lists:keymember(Bucket, 1, BucketConfigs) of
+        true ->
+            {error, already_exists};
+        false ->
+            NewBucketConfig = new_bucket(Bucket, 4096, 2),
+            ns_config:set(memcached, buckets, [NewBucketConfig|BucketConfigs])
+    end.
+
+get_bucket(Bucket) ->
+    BucketConfigs = get_buckets(),
+    case lists:keysearch(Bucket, 1, BucketConfigs) of
+        {value, {_, Config}} ->
+            {ok, Config};
+        false -> not_present
+    end.
+
+get_bucket_names() ->
+    % The config just has the list of bucket names right now.
+    BucketConfigs = get_buckets(),
+    proplists:get_keys(BucketConfigs).
+
 get_buckets() ->
     Config = ns_config:get(),
     ns_config:search_prop(Config, memcached, buckets, []).
 
-create_bucket(Bucket) ->
-    Buckets = get_buckets(),
-    case lists:member(Bucket, Buckets) of
-        true ->
-            {error, already_exists};
-        false ->
-            ns_config:set(memcached, buckets, [Bucket|Buckets])
-    end.
+set_bucket_config(Bucket, NewConfig) ->
+    update_bucket_config(Bucket, fun (_) -> NewConfig end).
 
+set_map(Bucket, Map) ->
+    update_bucket_config(
+      Bucket,
+      fun (OldConfig) ->
+              lists:keyreplace(map, 1, OldConfig, {map, Map})
+      end).
+
+% Update the bucket config atomically.
+update_bucket_config(Bucket, Fun) ->
+    ok = ns_config:update(
+      fun ({memcached, List}) ->
+              Buckets = proplists:get_value(buckets, List, []),
+              OldConfig = proplists:get_value(Bucket, Buckets),
+              NewConfig = Fun(OldConfig),
+              NewBuckets = lists:keyreplace(Bucket, 1, Buckets, {Bucket, NewConfig}),
+              {memcached, lists:keyreplace(buckets, 1, List, {buckets, NewBuckets})};
+          (Pair) -> Pair
+      end, make_ref()).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -149,28 +190,33 @@ code_change(_OldVsn, State, _Extra) ->
 
 %% Check the current config against the list of buckets on this server.
 check_config() ->
-    Buckets = get_buckets(),
+    BucketConfigs = get_buckets(),
     {ok, CurBuckets} = ns_memcached:list_buckets(),
-    MissingBuckets = lists:filter(
-                       fun (Bucket) ->
-                               not lists:member(Bucket, CurBuckets)
-                       end, Buckets),
-    case MissingBuckets of
-        [] -> ok;
-        _ ->
-            error_logger:info_msg("~p:check_config(): creating missing buckets: ~p~n",
-                                  [?MODULE, MissingBuckets]),
-            lists:foreach(fun create_missing_bucket/1, MissingBuckets)
-    end.
+    lists:foreach(
+      fun ({BucketName, BucketConfig}) ->
+              case lists:member(BucketName, CurBuckets) of
+                  true -> ok;
+                  false ->
+                      error_logger:info_msg("~p:check_config(): creating missing bucket: ~p~n",
+                                            [?MODULE, BucketName]),
+                      ConfigString = config_string(BucketConfig),
+                      ns_memcached:create_bucket(BucketName, ConfigString)
+              end
+      end, BucketConfigs).
 
-create_missing_bucket(Bucket) ->
-    DbName = get_dbname(Bucket),
-    ns_memcached:create_bucket(Bucket, "dbname=" ++ DbName).
-
-get_dbname(Bucket) ->
+dbname(Bucket) ->
     DataDir = filename:join(ns_config_default:default_path("data"), misc:node_name_short()),
     DbName = filename:join(DataDir, Bucket),
     error_logger:info_msg("built DbName ~p~n", [DbName]),
     ok = filelib:ensure_dir(DbName),
     DbName.
 
+config_string(BucketConfig) ->
+    lists:flatten(io_lib:format("vb0=false;dbname=~s", [proplists:get_value(dbname, BucketConfig)])).
+
+new_bucket(Name, NumReplicas, NumVBuckets) ->
+    {Name, [{num_replicas, NumReplicas},
+            {num_vbuckets, NumVBuckets},
+            {dbname, dbname(Name)},
+            {map, undefined} % The orchestrator will build this when it sees that no servers own vbuckets
+           ]}.
