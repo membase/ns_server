@@ -499,4 +499,4 @@ enumerate(List) ->
     enumerate(List, 1).
 
 enumerate(List, Start) ->
-    lists:zip(lists:seq(Start, lists:length(List) + Start - 1), List).
+    lists:zip(lists:seq(Start, length(List) + Start - 1), List).
