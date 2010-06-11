@@ -17,7 +17,7 @@ init([]) ->
            misc:get_env_default(max_r, 3),
            misc:get_env_default(max_t, 10)},
            [{ns_mail, {ns_mail, start_link, []},
-             permanent, 10, worker, [ns_mail, gen_smtp_client]},
+             permanent, 10, worker, [ns_mail]},
             {ns_mail_log, {ns_mail_log, start_link, []},
-             transient, 10, worker, []}
+             transient, 10, worker, [ns_mail_log]}
            ]}}.
