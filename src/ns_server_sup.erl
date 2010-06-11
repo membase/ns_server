@@ -28,11 +28,17 @@ get_child_specs() ->
     [
      {ns_config_sup, {ns_config_sup, start_link, []},
       permanent, infinity, supervisor,
-      [ns_config_sup, ns_config, ns_config_default]},
+      [ns_config_sup]},
 
      {ns_node_disco_sup, {ns_node_disco_sup, start_link, []},
       permanent, infinity, supervisor,
-      [ns_node_disco_sup, ns_node_disco_events, ns_node_disco]},
+      [ns_node_disco_sup]},
+
+     {ns_memcached_port,
+      {supervisor_cushion, start_link,
+       [ns_memcached_port, 5000, ns_memcached_port, start_link, []]},
+      permanent, 10, worker,
+      [supervisor_cushion]},
 
      {ns_port_sup, {ns_port_sup, start_link, []},
       permanent, 10, worker,
@@ -42,10 +48,10 @@ get_child_specs() ->
       permanent, infinity, supervisor,
       []},
 
-     {ns_memcached_cushion,
+     {ns_memcached,
       {supervisor_cushion, start_link,
        [ns_memcached, 5000, ns_memcached, start_link, []]},
-      permanent, 10, worker, [mc_client_binary]},
+      permanent, 10, worker, [supervisor_cushion]},
 
      {global_singleton_supervisor, {global_singleton_supervisor, start_link, []},
       permanent, infinity, supervisor, [global_singleton_supervisor]},

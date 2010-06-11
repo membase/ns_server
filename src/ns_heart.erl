@@ -36,9 +36,8 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 current_status() ->
     NodeInfo = element(2, ns_info:basic_info()),
     lists:append([
-        [proplists:property(memcached_running, is_memcached_running())],
+                                                % If memcached is running, our connection to it will be up
+        [proplists:property(memcached_running, misc:running(ns_memcached))],
         NodeInfo]).
 
-is_memcached_running() ->
-    length(ns_port_sup:current_ports()) == 1.
 

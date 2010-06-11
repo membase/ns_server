@@ -120,10 +120,10 @@ default_static() ->
 
     % Memcached config
     {memcached, [{'_ver', {0, 0, 0}},
-            {port, 11212},
-            {admin_user, "_admin"},
-            {admin_pass, "_admin"},
-            {buckets, ["default"]}]},
+                 {port, 11210},
+                 {admin_user, "_admin"},
+                 {admin_pass, "_admin"},
+                 {buckets, [ns_bucket:new_bucket("default", 0, 1)]}]},
 
     % Moxi config
     {moxi, [{'_ver', {0, 0, 0}},
@@ -139,21 +139,6 @@ default_static() ->
     % to try to start child processes.  If it fails, it should ns_log errors.
     {port_servers,
         [{'_ver', {0, 0, 0}},
-            {memcached, "./bin/memcached/memcached",
-                ["-p", "11212",
-                 "-X", "./bin/memcached/stdin_term_handler.so",
-                 "-E", "./bin/bucket_engine/bucket_engine.so",
-                 "-e", "admin=_admin;engine=./bin/ep_engine/ep.so;default_bucket_name=default;auto_create=false"
-                ],
-                [{env, [{"MEMCACHED_TOP_KEYS", "100"},
-                        {"ISASL_PWFILE", "./priv/isasl.pw"}, % Also isasl path above.
-                        {"ISASL_DB_CHECK_TIME", "1"}
-                        % TODO: Windows requires a EVENT_NOSELECT = 1 env var.
-                       ]},
-                    use_stdio,
-                    stderr_to_stdout,
-                    stream]
-            },
             {moxi, "./bin/moxi/moxi",
                 ["-Z", "port_listen=11213",
                  "-z", "auth=,url=http://127.0.0.1:8080/pools/default/bucketsStreaming/default,#@",
