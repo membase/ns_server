@@ -223,6 +223,17 @@ var Cell = mkClass({
         this.changedSlot.broadcast(this);
     }
   },
+  // 'returns' value in continuation-passing style way. Calls body
+  // with cell's value. If value is undefined, calls body when value
+  // becomes defined. Returns undefined
+  getValue: function (body) {
+    if (this.value)
+      body(this.value);
+    else
+      this.subscribeOnce(function (self) {
+        body(self.value);
+      });
+  },
   // schedules cell value recalculation
   recalculate: function () {
     if (this.queuedValueUpdate)
