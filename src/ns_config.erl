@@ -278,8 +278,13 @@ handle_call({update, Fun, Sentinel}, From, State) ->
                         end
                 end,
 
-    NewList = misc:mapfilter(UpdateFun, Sentinel, config_dynamic(State)),
-    handle_call(resave, From, State#config{dynamic=[NewList]});
+    try misc:mapfilter(UpdateFun, Sentinel, config_dynamic(State)) of
+        NewList ->
+            handle_call(resave, From, State#config{dynamic=[NewList]})
+    catch
+        X:Error ->
+            {reply, {X, Error, erlang:get_stacktrace()}, State}
+    end;
 
 handle_call({clear, Keep}, From, State) ->
     NewList = lists:filter(fun({K,_V}) -> lists:member(K, Keep) end,
