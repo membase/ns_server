@@ -51,7 +51,7 @@ num_nodes.times do |x|
          stream]
        },
        {moxi, "./priv/moxi",
-                ["-Z", "port_listen="#{(x * 2) + base_direct_port + 1}",
+                ["-Z", "port_listen=#{(x * 2) + base_direct_port + 1}",
                  "-z", "auth=,url=http://127.0.0.1:8080/pools/default/bucketsStreaming/default,\#@"
                 ],
                 [{env, []},
