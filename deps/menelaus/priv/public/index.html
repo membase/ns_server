@@ -1693,6 +1693,11 @@ MemcachedClient client = manager.getClient();</pre>
       cluster.
     </p>
     <form id="init_secure_form" class="form block" action="/settings/web">
+      <input type="text" name="port"
+            style="display:none;" value="SAME"/>
+      <input type="text" name="initStatus"
+            style="display:none;" value="done"/>
+
       <div class="warn">
         <ul></ul>
       </div>
@@ -1701,14 +1706,14 @@ MemcachedClient client = manager.getClient();</pre>
         <col width="" />
         <tr>
           <td colspan="2">
-            <label>Password</label>
+            <label>User:</label>
+            <input type="text" name="username" class="inp" value="Administrator"/>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2">
+            <label>Password:</label>
             <input type="text" name="password" class="inp"/>
-            <input type="text" name="username"
-                  style="display:none;" value="Administrator"/>
-            <input type="text" name="port"
-                  style="display:none;" value="SAME"/>
-            <input type="text" name="initStatus"
-                  style="display:none;" value="done"/>
           </td>
         </tr>
         <tr>
