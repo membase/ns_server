@@ -492,3 +492,11 @@ flush(Msg, N) ->
     after 0 ->
             N
     end.
+
+
+%% You know, like in Python
+enumerate(List) ->
+    enumerate(List, 1).
+
+enumerate(List, Start) ->
+    lists:zip(lists:seq(Start, lists:length(List) + Start - 1), List).
