@@ -443,8 +443,8 @@ function isBlank(e) {
         plannedState = undefined;
         timeoutId = undefined;
       }, 100);
-      $(window).trigger('hashchange');
     }
+    $(window).trigger('hashchange');
   }
   function setHashFragmentParam(name, value) {
     var state = _.extend({}, plannedState || $.bbq.getState());
