@@ -432,83 +432,6 @@ var DAO = {
                  mode: this.mode});
 }).call(DAO.cells);
 
-var TrafficGen = {
-  init: function () {
-    BucketsSection.cells.detailedBuckets.subscribeAny(_.bind(this.updateUI, this, undefined));
-    _.defer($m(this, 'updateUI'));
-  },
-  updateUI: function (forceRunning) {
-    var running = forceRunning !== undefined ? forceRunning : this.isRunning();
-    var isDefined = forceRunning !== undefined || (running != this.isNotRunning());
-
-    if (!isDefined) {
-      $('#test_cluster_block').hide();
-    } else {
-      $('#test_cluster_block').show();
-      var className = running ? 'stop-active' : 'start-active';
-      $('#test_cluster_start_stop').attr('class', className);
-    }
-  },
-  getControlURI: function () {
-    var poolDetails = DAO.cells.currentPoolDetailsCell.value;
-    return poolDetails && poolDetails.controllers.testWorkload.uri;
-  },
-  isRunning: function () {
-    var tgenInfo = BucketsSection.findTGenBucket();
-    return !!(tgenInfo && tgenInfo['status']);
-  },
-  isNotRunning: function () {
-    var tgenInfo = BucketsSection.findTGenBucket();
-    return tgenInfo !== undefined && (!tgenInfo || !tgenInfo['status']);
-  },
-  start: function () {
-    if (!this.isRunning())
-      this.startOrStop(true);
-    else
-      this.showTGenBucket();
-  },
-  showTGenBucket: function () {
-    var tgenBucket = BucketsSection.findTGenBucket();
-    if (tgenBucket)
-      AnalyticsSection.visitBucket(tgenBucket.uri);
-  },
-  startOrStop: function (isStart) {
-    var uri = this.getControlURI();
-    if (!uri) {
-      throw new Error('start() should not be called in this state!');
-    }
-    $.ajax({
-      type:'POST',
-      url:uri,
-      data: 'onOrOff=' + (isStart ? 'on' : 'off'),
-      success: continuation
-    });
-    this.updateUI(isStart);
-
-    if (isStart) {
-      var dialog = genericDialog({
-        header: 'Starting...',
-        text: 'Start request was sent. Awaiting server response.',
-        buttons: {ok: false, cancel: false}
-      });
-    }
-
-    function continuation() {
-      BucketsSection.refreshBuckets(function () {
-        if (!dialog) // do not bother if it was stop request
-          return;
-
-        dialog.close();
-
-        TrafficGen.showTGenBucket();
-      });
-    }
-  },
-  toggleRunning: function () {
-    this.startOrStop(this.isNotRunning());
-  }
-};
-
 var SamplesRestorer = mkClass({
   initialize: function () {
     this.birthTime = (new Date()).valueOf();
@@ -1609,16 +1532,6 @@ var BucketsSection = {
   findBucket: function (uri) {
     return this.withBucket(uri, function (r) {return r});
   },
-  findTGenBucket: function () {
-    if (!this.buckets)
-      return;
-    var rv = _.detect(this.buckets, function (info) {
-      return info['testAppBucket'];
-    });
-    if (!rv)
-      return null;
-    return rv;
-  },
   showBucket: function (uri) {
     this.withBucket(uri, function (bucketDetails) {
       // TODO: clear on hide
@@ -2328,7 +2241,6 @@ var ThePage = {
       if (sec.init)
         sec.init();
     });
-    TrafficGen.init();
     BreadCrumbs.init();
 
     DAO.onReady(function () {
