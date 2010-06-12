@@ -153,7 +153,12 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(check_config, State) ->
-    check_config(),
+    try check_config()
+    catch
+        E:R ->
+            error_logger:info_msg("~p could not check config because of ~p~n",
+                                  [?MODULE, {E, R}])
+    end,
     {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.

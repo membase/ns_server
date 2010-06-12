@@ -656,10 +656,13 @@ handle_bucket_flush(PoolId, Id, Req) ->
     Req:respond({400, add_header(), "Flushing is not currently implemented."}).
 
 vbucket_map(_PoolId, BucketId) ->
-    {ok, BucketConfig} = ns_bucket:get_bucket(BucketId),
-    NumReplicas = proplists:get_value(num_replicas, BucketConfig),
+    BucketConfig = case ns_bucket:get_bucket(BucketId) of
+                       {ok, C} -> C;
+                       _ -> []
+                   end,
+    NumReplicas = proplists:get_value(num_replicas, BucketConfig, 0),
     ENodes = lists:sort(ns_node_disco:nodes_wanted()),
-    Port = ns_config:search_prop(ns_config:get(), memcached, port),
+    Port = ns_config:search_prop(ns_config:get(), memcached, port, 11210),
     PortStr = integer_to_list(Port),
     Servers = lists:map(fun (ENode) ->
                                 {_Name, Host} = misc:node_name_host(ENode),

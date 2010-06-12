@@ -18,7 +18,7 @@
 
 -define(INTERVAL, 5000).
 
--record(state, {bucket, map}).
+-record(state, {bucket, map=[]}).
 
 %% API
 -export([start_link/1]).
@@ -34,7 +34,11 @@ start_link(Bucket) ->
     gen_server:start_link(server(Bucket), ?MODULE, Bucket, []).
 
 get_map(Bucket) ->
-    gen_server:call(server(Bucket), get_map).
+    try gen_server:call(server(Bucket), get_map) of
+        Result -> Result
+    catch
+        _:_ -> []
+    end.
 
 
 %% gen_server callbacks

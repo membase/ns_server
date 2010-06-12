@@ -54,6 +54,9 @@ heartbeat(Status) ->
     gen_server:cast({global, ?MODULE}, {heartbeat, erlang:node(), Status}).
 
 get_nodes() ->
-    gen_server:call({global, ?MODULE}, get_nodes).
-
+    try gen_server:call({global, ?MODULE}, get_nodes) of
+        Nodes -> Nodes
+    catch
+        _:_ -> dict:new()
+    end.
 
