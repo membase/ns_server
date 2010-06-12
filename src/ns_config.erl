@@ -280,6 +280,7 @@ handle_call({update, Fun, Sentinel}, From, State) ->
 
     try misc:mapfilter(UpdateFun, Sentinel, config_dynamic(State)) of
         NewList ->
+            announce_changes(NewList),
             handle_call(resave, From, State#config{dynamic=[NewList]})
     catch
         X:Error ->
