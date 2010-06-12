@@ -192,7 +192,7 @@ code_change(_OldVsn, State, _Extra) ->
 check_config() ->
     BucketConfigs = get_buckets(),
     case ns_memcached:list_buckets() of
-        {ok, Buckets} ->
+        {ok, CurBuckets} ->
             lists:foreach(
               fun ({BucketName, BucketConfig}) ->
                       case lists:member(BucketName, CurBuckets) of
