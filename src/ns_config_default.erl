@@ -25,6 +25,7 @@ default_path(Name) ->
 % install directory.  In development, that might be the ns_server
 % directory.  On windows, at install, that might be the
 % C:/Program Files/NorthScale/Server.
+% On linux, /opt/NorthScale/<ver>/
 
 default_root_path() ->
     % When installed, we live in something that looks like...
@@ -61,8 +62,7 @@ find_root(DirPath) ->
     end.
 
 is_root(DirPath) ->
-    filelib:is_dir(filename:join(DirPath, "bin")) =:= true andalso
-    filelib:is_dir(filename:join(DirPath, "priv")) =:= true.
+    filelib:is_dir(filename:join(DirPath, "bin")).
 
 % Allow all keys to be mergable.
 
