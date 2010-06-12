@@ -449,9 +449,13 @@ function isBlank(e) {
   function setHashFragmentParam(name, value) {
     var state = _.extend({}, plannedState || $.bbq.getState());
     if (value == null) {
+      if (!(name in state))
+        return;
       delete state[name];
       planPushState(state);
     } else if (value != state[name]) {
+      if (state[name] == value)
+        return;
       state[name] = value;
       planPushState(state);
     }
