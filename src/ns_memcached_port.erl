@@ -31,17 +31,17 @@ init([]) ->
     MCPort = ns_config:search_prop(Config, memcached, port),
     ISaslPath = ns_config:search_prop(Config, isasl, path),
     AdminUser = ns_config:search_prop(Config, memcached, admin_user),
-    Command = "./priv/memcached", % TODO get this from the config
-    PluginPath = "./priv/engines",
-    EnginePath = "./priv/engines",
+    Command = "./bin/memcached/memcached", % TODO get this from the config
+    PluginPath = "./bin",
+    EnginePath = "./bin",
     Args = ["-p", integer_to_list(MCPort),
-            "-X", filename:join(PluginPath, "stdin_term_handler.so"),
-            "-E", filename:join(EnginePath, "bucket_engine.so"),
+            "-X", filename:join(PluginPath, "/memcached/stdin_term_handler.so"),
+            "-E", filename:join(EnginePath, "/bucket_engine/bucket_engine.so"),
             "-r", % Needed so we'll dump core
             "-e", lists:flatten(
                     io_lib:format(
                       "admin=~s;engine=~s;default_bucket_name=default;auto_create=false",
-                      [AdminUser, filename:join(EnginePath, "ep.so")]))],
+                      [AdminUser, filename:join(EnginePath, "/ep-engine/ep.so")]))],
     Opts = [{args, Args},
             {env, [{"MEMCACHED_TOP_KEYS", "100"},
                    {"ISASL_PWFILE", ISaslPath},
