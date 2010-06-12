@@ -328,8 +328,8 @@ function $m(self, method, klass) {
     return f.apply(self, arguments);
   }
 
-  // rv['$m'] = _.toArray(arguments);
-  // rv['$m.f'] = f;
+  rv['$m'] = _.toArray(arguments);
+  rv['$m.f'] = f;
 
   return rv;
 }
