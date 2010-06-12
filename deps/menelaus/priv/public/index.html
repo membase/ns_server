@@ -199,7 +199,7 @@
                   </div>
                 </div>
                 <div class="right block tdn bolder">
-                  <a href="{%=jsLink('OverviewSection.showNodeSettings',this.otpNode)%}">Server Settings</a>
+                  <a href="#openServer={%=this.otpNode%}">Server Settings</a>
                 <!-- {% if (rows.length != 1) { %} -->
                   <a href="{%=jsLink('OverviewSection.removeNode',this.otpNode)%}">Remove Server from Cluster</a>
                 <!-- {% } %} -->
@@ -230,7 +230,7 @@
   <div id="active_server_list_template" class="template">
     <ul>
       <!-- {% _.each(rows, function (s) { %} -->
-      <li>{%= h(s.hostname) %} {%= V.renderPendingStatus(s) %}
+      <li><a href="#openServer={%= s.otpNode %}">{%= h(s.hostname) %}</a> {%= V.renderPendingStatus(s) %}
       <!-- {% if (s.ejectPossible) { %} -->
       <a class="list_button" href="{%=jsLink('ServersSection.ejectNode', s.hostname)%}">Eject</a>
       <!-- {% } %} -->
@@ -240,17 +240,18 @@
       <!-- {% if (s.reAddPossible) { %} -->
       <a class="list_button" href="{%=jsLink('ServersSection.reAddNode', s.hostname)%}">Add Back</a>
       <!-- {% } %} -->
-      {%= _.template($('#server_details_template').html(), {node: s}) %}
+      <!-- { %= _.template($('#server_details_template').html(), {node: s}) %} -->
       </li>
+      <li id="{%= s.detailsRowID %}" class="settings-placeholder"></li>
       <!-- {% }); %} -->
     </ul>
   </div>
   <div id="pending_server_list_template" class="template">
     <ul>
     <!-- {% _.each(rows, function (s) { %} -->
-    <li>{%= h(s.hostname) %} {%= V.renderPendingStatus(s) %}<a class="list_button" href="{%=jsLink('ServersSection.removeFromList', s.hostname)%}">Remove from list</a>
-       {%= _.template($('#server_details_template').html(), {node: s}) %}
-    </li>
+    <li><a href="#openServer={%=s.otpNode%}">{%= h(s.hostname) %}</a> {%= V.renderPendingStatus(s) %}<a class="list_button" href="{%=jsLink('ServersSection.removeFromList', s.hostname)%}">Remove from list</a>
+       <!-- { % = _.template($('#server_details_template').html(), {node: s}) %} -->
+    </li><li id="{%= s.detailsRowID %}" class="settings-placeholder"></li>
     <!-- {% }); %} -->
     </ul>
   </div>
@@ -265,32 +266,33 @@
                         <col width="230" />
                         <col width="" />
                         <tr>
-                            <td>Uptime: <span>{%= h(formatUptime(node.uptime)) %}</span></td>
+                            <td>Uptime: <span>{%= h(formatUptime(uptime)) %}</span></td>
                             <td>
                                 <div class="float_left">Memory Usage:</div>
                                 <div class="float_left usage_small">
                                     <div class="side_shadow">
                                         <div class="unused">
                                             <div class="used" style="width:50%;"></div>
-                                        </div>{%=V.setPercentBar(normalizeNaN(Math.floor(100-Math.round(node.memoryFree*100/node.memoryTotal))))%}
+                                        </div>{%=V.setPercentBar(normalizeNaN(Math.floor(100-Math.round(memoryFree*100/memoryTotal))))%}
                                     </div>
                                 </div>
-                                <span class="float_left">{%=normalizeNaN(Math.floor(100-Math.round(node.memoryFree*100/node.memoryTotal)))%}% used</span></td>
+                                <span class="float_left">{%=normalizeNaN(Math.floor(100-Math.round(memoryFree*100/memoryTotal)))%}% used</span></td>
                         </tr>
                         <tr>
-                            <td>OS: <span>{%= h(node.os) %}</span></td>
-                            <td>Direct Port: <span>{%=h(node.ports.direct)%}</span></td>
+                            <td>OS: <span>{%= h(os) %}</span></td>
+                            <td>Direct Port: <span>{%=h(ports.direct)%}</span></td>
                         </tr>
                         <tr>
-                            <td>Version: <span>{%= h(node.version) %}</span></td>
-                            <td>Proxy Port: <span>{%=h(node.ports.proxy)%}</span></td>
+                            <td>Version: <span>{%= h(version) %}</span></td>
+                            <td>Proxy Port: <span>{%=h(ports.proxy)%}</span></td>
                         </tr>
                         <tr>
                             <td colspan="2">
-                              <a href="javascript:OverviewSection.showNodeSettings('{%= node.otpNode %}');">Server Settings</a>
+                              <a href="#openServer={%= otpNode %}">Server Settings</a>
                             </td>
                         </tr>
                       </table>
+                      <pre>Settings: {%=h(JSON.stringify(obj))%}</pre>
                   </div>
                 </div>
   </div>
@@ -533,8 +535,8 @@
             <tr>
               <td>
               <a class="bucket_properties_link float_right text_11"
-                href="{%=jsLink('BucketsSection.showBucket',this.uri)%}">Properties</a>
-              <a class="gray_link" href="#visitBucket={%=h(this.uri)%}">{%= h(this.name) %}</a>
+                href="#visitBucket={%=h(this.name)%}">Properties</a>
+              <a class="gray_link" href="#visitBucket={%=h(this.name)%}">{%= h(this.name) %}</a>
               </td>
               <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
               <td>{%= h(truncateTo3Digits(this.basicStats.evictionsPerSec)) %}</td>
@@ -551,10 +553,15 @@
                 </div>
               </td>
               <td>{%= h(this.basicStats.cacheSize) %}MB</td>
-            </tr> <!-- This tr is important. Otherwise browser may close row after end of loop, causing incorrect resultant markup -->
+            </tr>
+            <tr id="{%= this.settingsRowID %}" class="settings-placeholder"><td colspan="5"></td></tr>
           <!-- {% }); %} -->
         </table>
     </div>
+  </div>
+
+  <div id="bucket_settings_template">
+    {%= h(JSON.stringify(obj)) %}
   </div>
 
   <div id="alerts" style="display:none">

@@ -1085,10 +1085,6 @@ var OverviewSection = {
       }]]
     });
   },
-  showNodeSettings: function (otpNode) {
-    // TODO: Need to pass along otpNode param.
-    nav.go('nodeSettings');
-  },
   init: function () {
     var self = this;
     _.defer(function () {
@@ -1212,6 +1208,31 @@ var ServersSection = {
   init: function () {
     this.poolDetails = DAO.cells.currentPoolDetailsCell;
 
+    var detailsWidget = this.detailsWidget = new MultiDrawersWidget({
+      hashFragmentParam: 'openedServers',
+      template: 'server_details',
+      elementsKey: 'otpNode',
+      drawerCellName: 'detailsCell',
+      idPrefix: 'detailsRowID',
+      placeholderCSS: '#servers .settings-placeholder',
+      placeholderContainerChildCSS: null,
+      actionLink: 'openServer',
+      actionLinkCallback: function () {
+        ThePage.ensureSection('servers');
+      },
+      uriExtractor: function (nodeInfo) {
+        return "/nodes/" + encodeURIComponent(nodeInfo.otpNode);
+      },
+      valueTransformer: function (nodeInfo, nodeSettings) {
+        var rv = _.extend({}, nodeInfo, nodeSettings);
+        delete rv.detailsCell;
+        return rv;
+      }
+    });
+    this.poolDetails.subscribe(function (cell) {
+      detailsWidget.valuesTransformer(cell.value.nodes);
+    });
+
     this.poolDetails.subscribeAny($m(this, "onPoolDetailsReady"));
     prepareTemplateForCell('active_server_list', this.poolDetails);
     prepareTemplateForCell('pending_server_list', this.poolDetails);
@@ -1233,9 +1254,18 @@ var ServersSection = {
     }, {poolDetails: this.poolDetails});
     this.rebalanceProgress.keepValueDuringAsync = true;
     this.rebalanceProgress.subscribe($m(this, 'onRebalanceProgress'));
+
+    detailsWidget.hookRedrawToCell(this.poolDetails);
   },
   onEnter: function () {
     this.poolDetails.invalidate();
+  },
+  navClick: function () {
+    this.onLeave();
+    this.onEnter();
+  },
+  onLeave: function () {
+    this.detailsWidget.reset();
   },
   onRebalance: function () {
     this.postAndReload(this.poolDetails.value.controllers.rebalance.uri,
@@ -1378,10 +1408,145 @@ var ServersSection = {
   }
 };
 
+var MultiDrawersWidget = mkClass({
+  mandatoryOptions: "hashFragmentParam template elementsKey drawerCellName idPrefix".split(" "),
+  initialize: function (options) {
+    options = this.options = _.extend({
+      placeholderCSS: '.settings-placeholder',
+      placeholderContainerChildCSS: 'td',
+      uriExtractor: function (e) {return e.uri;}
+    }, options);
+
+    var missingOptions = _.reject(this.mandatoryOptions, function (n) {
+      return (n in options);
+    });
+
+    if (missingOptions.length)
+      throw new Error("Missing mandatory option(s): " + missingOptions.join(','));
+
+    this.openedNames = new StringSetHashFragmentCell(options.hashFragmentParam);
+
+    if (options.actionLink) {
+      configureActionHashParam(options.actionLink, $m(this, 'onActionLinkClick'));
+    }
+
+    this.subscriptions = [];
+    this.reDrawElements = $m(this, 'reDrawElements');
+    this.hookRedrawToCell(this.openedNames);
+  },
+  hookRedrawToCell: function (cell) {
+    cell.subscribe(this.reDrawElements);
+  },
+  onActionLinkClick: function (uri, isMiddleClick) {
+    this.options.actionLinkCallback(uri);
+    if (isMiddleClick) {
+      this.openElement(uri);
+    } else
+      this.toggleElement(uri);
+  },
+  valuesTransformer: function (elements) {
+    var self = this;
+    var idPrefix = self.options.idPrefix;
+    var key = self.options.elementsKey;
+    var drawerCellName = self.options.drawerCellName;
+
+    self.elementsByName = {};
+
+    _.each(elements, function (e) {
+      e[idPrefix] = _.uniqueId(idPrefix);
+
+      var uriCell = new Cell(function (openedNames) {
+        if (this.self.value || !_.include(openedNames, e[key]))
+          return this.self.value;
+
+        return self.options.uriExtractor(e);
+      }, {openedNames: self.openedNames});
+      e[drawerCellName] = new Cell(function (uri) {
+        return future.get({url: uri}, function (childItem) {
+          if (self.options.valueTransformer)
+            childItem = self.options.valueTransformer(e, childItem);
+          return childItem;
+        });
+      }, {uri: uriCell});
+
+      self.elementsByName[e[key]] = e;
+    });
+    return elements;
+  },
+  reDrawElements: function () {
+    var self = this;
+
+    var subscriptions = self.subscriptions;
+    _.each(subscriptions, function (s) {
+      s.cancel();
+    });
+    subscriptions.length = 0;
+
+    $(self.options.placeholderCSS).hide();
+
+    var elementsByName = self.elementsByName;
+    if (!elementsByName)
+      return;
+
+    _.each(self.openedNames.value, function (name) {
+      var element = elementsByName[name];
+      if (!element) {
+        console.log("element: ", name, "not found");
+        return;
+      }
+
+      var parentNode = $i(element[self.options.idPrefix]);
+      if (!parentNode) {
+        console.log("should not happen");
+        return;
+      }
+
+      var cell = element[self.options.drawerCellName];
+
+      var q = $(parentNode);
+
+      var container;
+      var childCSS = self.options.placeholderContainerChildCSS;
+      if (childCSS)
+        container = q.find(childCSS)[0];
+      else
+        container = q[0];
+
+      if (!container) {
+        throw new Error("MultiDrawersWidget: bad markup!");
+      }
+
+      var s = renderCellTemplate(element[self.options.drawerCellName], [container, self.options.template]);
+      subscriptions.push(s);
+
+      q.show();
+    });
+  },
+  toggleElement: function (name) {
+    if (_.include(this.openedNames.value, name)) {
+      this.closeElement(name);
+    } else {
+      this.openElement(name);
+    }
+  },
+  openElement: function (name) {
+    this.openedNames.addValue(name);
+  },
+  closeElement: function (name) {
+    this.openedNames.removeValue(name);
+  },
+  reset: function () {
+    this.openedNames.reset();
+  }
+});
+
 var BucketsSection = {
   cells: {},
   init: function () {
-    var cells = this.cells;
+    var self = this;
+    var cells = self.cells;
+
+    cells.mode = DAO.cells.mode;
 
     cells.firstPageDetailsURI = new Cell(function (poolDetails) {
       return poolDetails.buckets.uri;
@@ -1392,13 +1557,31 @@ var BucketsSection = {
       return firstPageURI;
     }).setSources({firstPageURI: cells.firstPageDetailsURI});
 
+    self.settingsWidget = new MultiDrawersWidget({
+      hashFragmentParam: "buckets",
+      template: "bucket_settings",
+      placeholderCSS: '#buckets .settings-placeholder',
+      elementsKey: 'name',
+      drawerCellName: 'settingsCell',
+      idPrefix: 'settingsRowID',
+      actionLink: 'visitBucket',
+      actionLinkCallback: function () {
+        ThePage.ensureSection('buckets');
+      }
+    });
+
+    var bucketsListTransformer = function (values) {
+      self.buckets = values;
+      values = self.settingsWidget.valuesTransformer(values);
+      return values;
+    }
     cells.detailedBuckets = new Cell(function (pageURI) {
-      return future.get({url: pageURI}, null, this.self.value);
+      return future.get({url: pageURI}, bucketsListTransformer, this.self.value);
     }).setSources({pageURI: cells.detailsPageURI});
 
-    prepareTemplateForCell("bucket_list", cells.detailedBuckets);
+    renderCellTemplate(cells.detailedBuckets, 'bucket_list');
 
-    cells.detailedBuckets.subscribe($m(this, 'onBucketList'));
+    self.settingsWidget.hookRedrawToCell(cells.detailedBuckets);
   },
   buckets: null,
   refreshBuckets: function (callback) {
@@ -1408,11 +1591,9 @@ var BucketsSection = {
     }
     cell.invalidate();
   },
-  onBucketList: function () {
-    var buckets = this.buckets = this.cells.detailedBuckets.value;
-    renderTemplate('bucket_list', buckets);
-  },
   withBucket: function (uri, body) {
+    if (!this.buckets)
+      return;
     var buckets = this.buckets || [];
     var bucketInfo = _.detect(buckets, function (info) {
       return info.uri == uri;
@@ -1420,7 +1601,7 @@ var BucketsSection = {
 
     if (!bucketInfo) {
       console.log("Not found bucket for uri:", uri);
-      return;
+      return null;
     }
 
     return body.call(this, bucketInfo);
@@ -1464,6 +1645,13 @@ var BucketsSection = {
   },
   onEnter: function () {
     this.refreshBuckets();
+  },
+  navClick: function () {
+    this.onLeave();
+    this.onEnter();
+  },
+  onLeave: function () {
+    this.settingsWidget.reset();
   },
   domId: function (sec) {
     if (sec == 'monitor_buckets')
@@ -1897,14 +2085,18 @@ var SettingsSection = {
   }
 };
 
+// TODO: move this to other places & kill this due to latest screens
+// not having that section
 var NodeSettingsSection = {
+  showNodeSettings: function (otpNode) {
+    throw new Error("should not happen");
+    // nav.go('nodeSettings');
+    // NodeSettingsSection.cells.nodeName.setValue(otpNode);
+  },
   init: function () {
   },
-  onEnter: function () {
+  onEdit: function () {
     NodeDialog.startPage_resources('Self', 'edit_resources', {regularDialog: true});
-  },
-  navClick: function () {
-    this.onEnter();
   },
 
   startLicenseDialog: function (node) {
@@ -2114,6 +2306,10 @@ var ThePage = {
   signOut: function () {
     $.cookie('auth', null);
     reloadApp();
+  },
+  ensureSection: function (section) {
+    if (this.currentSectionName != section)
+      this.gotoSection(section);
   },
   gotoSection: function (section) {
     if (!(this.sections[section])) {
@@ -2729,16 +2925,22 @@ watchHashParamLinks('sec', function (e, href) {
   nav.go(href);
 });
 
-// we use #visitBucket=<url> links to support opening bucket analytics
-// via middle-click. This statement handles normal clicks
-watchHashParamLinks('visitBucket', function (e, href) {
-  AnalyticsSection.visitBucket(href);
-});
-// This statement handles opening visitBucket link in new tab/window
-DAO.onReady(function () {
-  var value = getHashFragmentParam('visitBucket');
-  if (value) {
-    AnalyticsSection.visitBucket(value);
-    setHashFragmentParam('visitBucket', null);
-  }
-});
+// used for links that do some action (like displaying certain bucket,
+// dialog, ...). This function adds support for middle clicking on
+// such action links.
+function configureActionHashParam(param, body) {
+  // this handles normal clicks (NOTE: no change to url/history is
+  // done in that case)
+  watchHashParamLinks(param, function (e, hash) {
+    body(hash);
+  });
+  // this handles middle clicks. In such case the only hash fragment
+  // of our url will be 'param'. We delete that param and call body
+  DAO.onReady(function () {
+    var value = getHashFragmentParam(param);
+    if (value) {
+      setHashFragmentParam(param, null);
+      body(value, true);
+    }
+  });
+}

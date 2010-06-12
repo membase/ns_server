@@ -780,3 +780,5 @@ body.init_secure #container { display: none; }
 
 #servers .imbalance { display: none; }
 #servers.imbalance .imbalance { display: inline; }
+
+#buckets .settings-placeholder { display: none; }
