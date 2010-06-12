@@ -214,19 +214,24 @@
 	<!-- END shadow box -->
   </div>
 
-  <div id="servers" style="display:none"><div class="servers-not-rebalancing">
+  <div id="servers" style="display:none">
     <!-- shadow box -->
     <h1>SERVERS</h1>
-    <h2>ACTIVE <span class="imbalance">(NOT BALANCED)</span><a class="rebalance_button">Rebalance</a><a class="add_button">Add Server</a></h2>
-    <div id="active_server_list_container" class="servers_list"></div>
-    <h2>PENDING REBALANCE<a class="rebalance_button">Rebalance</a></h2>
-    <div id="pending_server_list_container" class="servers_list"></div>
-    
-  </div><div class="servers-rebalancing">
-    <h1>&lt;&lt;REBALANCING&gt;&gt;</h1>
-    <p><a class="stop_rebalance_button">Stop Rebalance</a></p>
-    <div id="rebalancing_list_container"></div>
-  </div></div>
+    <a class="rebalance_button">Rebalance</a><a class="add_button">Add Server</a><a class="stop_rebalance_button">Stop Rebalance</a>
+    <ul class="tabs">
+      <li><a href="#">Active Servers</a></li>
+      <li><a href="#">Pending Rebalance</a></li>
+    </ul>
+    <div class="panes">
+      <div><h2>ACTIVE <span class="imbalance">(NOT BALANCED)</span></h2>
+        <div id="active_server_list_container" class="servers_list"></div>
+      </div><div>
+        <h2>PENDING REBALANCE</h2>
+        <div id="pending_server_list_container" class="servers-not-rebalancing servers_list"></div>
+        <div id="rebalancing_list_container" class="servers-rebalancing"></div>
+      </div>
+    </div>
+  </div>
   <script id="active_server_list_template" type="text/html">
     <ul>
       <!-- {% _.each(rows, function (s) { %} -->
@@ -1777,12 +1782,12 @@ MemcachedClient client = manager.getClient();</pre>
         </tr>
         <tr>
           <td>Dynamic RAM Quota: {%= memoryQuota %}</td>
-          <td><a href="javascript:NodeSettingsSection.startMemoryDialog('{%= node %}', {%= regularDialog %});">EDIT</a></td>
+          <td><a>EDIT</a></td>
         </tr>
         <tr>
           <td><h2>Solid State Storage</h2>
           </td>
-          <td><a href="javascript:NodeSettingsSection.startAddLocationDialog('{%= node %}', 'ssd', {%= regularDialog %});">ADD</a></td>
+          <td><a href="javascript:ServersSection.startAddLocationDialog('{%= node %}', 'ssd', {%= regularDialog %});">ADD</a></td>
         </tr>
         <tr>
           <td colspan="2">
@@ -1797,7 +1802,7 @@ MemcachedClient client = manager.getClient();</pre>
                     <td>Path: {%= h(this.path) %}</td>
                     <td>{%= h(this.quotaMb != 'none' ? ((this.quotaMb * 1024) + ' GB') : '[no&nbsp;quota]') %}</td>
 
-                    <td><a href="javascript:NodeSettingsSection.startRemoveLocationDialog('{%= node %}', '{%= h(this.path) %}', {%= regularDialog %});">Remove</a></td>
+                    <td><a href="javascript:ServersSection.startRemoveLocationDialog('{%= node %}', '{%= h(this.path) %}', {%= regularDialog %});">Remove</a></td>
                   </tr>
                   <!-- {% }); %} -->
                 </table>
@@ -1810,7 +1815,7 @@ MemcachedClient client = manager.getClient();</pre>
         <tr>
           <td><h2>Disk Storage</h2>
           </td>
-          <td><a href="javascript:NodeSettingsSection.startAddLocationDialog('{%= node %}', 'hdd', {%= regularDialog %});">ADD</a></td>
+          <td><a href="javascript:ServersSection.startAddLocationDialog('{%= node %}', 'hdd', {%= regularDialog %});">ADD</a></td>
         </tr>
         <tr>
           <td colspan="2">

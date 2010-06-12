@@ -1038,12 +1038,11 @@ var ServersSection = {
     var rebalancing = details.rebalanceStatus != 'none';
     $('#servers').toggleClass('rebalancing', rebalancing);
 
-    if (!rebalancing)
-      return this.renderNoRebalance(details);
-    else
+    this.renderNoRebalance(details, rebalancing);
+    if (rebalancing)
       return this.renderRebalance(details);
   },
-  renderNoRebalance: function (details) {
+  renderNoRebalance: function (details, rebalancing) {
     var self = this;
 
     var nodes = details.nodes;
@@ -1096,7 +1095,8 @@ var ServersSection = {
     }
     
     renderTemplate('active_server_list', active);
-    renderTemplate('pending_server_list', pending);
+    if (!rebalancing)
+      renderTemplate('pending_server_list', pending);
 
     $('#servers .rebalance_button').toggle(imbalance);
     $('#servers .add_button').show();
@@ -1130,6 +1130,11 @@ var ServersSection = {
   },
   init: function () {
     this.poolDetails = DAO.cells.currentPoolDetailsCell;
+
+    this.tabs = new TabsCell("serversTab",
+                             "#servers .tabs",
+                             "#servers .panes > div",
+                             ["active", "pending"]);
 
     var detailsWidget = this.detailsWidget = new MultiDrawersWidget({
       hashFragmentParam: 'openedServers',
