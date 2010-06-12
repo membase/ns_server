@@ -41,7 +41,7 @@ init([]) ->
             "-e", lists:flatten(
                     io_lib:format(
                       "admin=~s;engine=~s;default_bucket_name=default;auto_create=false",
-                      [AdminUser, filename:join(EnginePath, "ep-engine/ep.so")]))],
+                      [AdminUser, filename:join(EnginePath, "ep_engine/ep.so")]))],
     Opts = [{args, Args},
             {env, [{"MEMCACHED_TOP_KEYS", "100"},
                    {"ISASL_PWFILE", ISaslPath},
