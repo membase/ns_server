@@ -871,6 +871,55 @@ function prepareTemplateForCell(templateName, cell) {
     prepareRenderTemplate(templateName);
 }
 
+// renderCellTemplate(cell, "something");
+// renderCellTemplate(cell, ["something_container", "foorbar"]);
+function renderCellTemplate(cell, to, valueTransformer) {
+  var template;
+
+  if (_.isArray(to)) {
+    template = to[1] + '_template';
+    to = to[0];
+  } else {
+    template = to + "_template";
+    to += '_container'
+  }
+
+  var toGetter;
+  if (_.isString(to)) {
+    toGetter = function () {
+      return $i(to);
+    }
+  } else {
+    toGetter = function () {
+      return to;
+    }
+  }
+
+  var clearSlave = new Slave(function () {
+    prepareAreaUpdate($(toGetter()));
+  });
+  cell.undefinedSlot.subscribeWithSlave(clearSlave);
+  if (cell.value === undefined)
+    clearSlave.thunk(cell);
+
+  var renderSlave = new Slave(function (cell) {
+    var value = cell.value;
+    if (valueTransformer)
+      value = valueTransformer(value);
+    renderRawTemplate(toGetter(), template, value);
+  });
+  cell.changedSlot.subscribeWithSlave(renderSlave);
+  if (cell.value !== undefined)
+    renderSlave.thunk(cell);
+
+  return {
+    cancel: function () {
+      cell.changedSlot.unsubscribe(renderSlave);
+      cell.undefinedSlot.unsubscribe(clearSlave);
+    }
+  }
+}
+
 var OverviewSection = {
   renderStatus: function () {
     var nodes = DAO.cells.currentPoolDetails.value.nodes;

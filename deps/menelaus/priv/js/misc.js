@@ -289,9 +289,7 @@ function prepareRenderTemplate() {
 var ViewHelpers = {};
 var AfterTemplateHooks;
 
-function renderTemplate(key, data, to) {
-  to = to || $i(key + '_container');
-  var from = key + '_template';
+function renderRawTemplate(toElement, templateID, data) {
   if ($.isArray(data)) {
     data = {rows:data};
   }
@@ -299,9 +297,9 @@ function renderTemplate(key, data, to) {
   var oldHooks = AfterTemplateHooks;
   AfterTemplateHooks = [];
   try {
-    var fn = tmpl(from);
+    var fn = tmpl(templateID);
     var value = fn(data)
-    to.innerHTML = value;
+    toElement.innerHTML = value;
 
     _.each(AfterTemplateHooks, function (hook) {
       hook.call();
@@ -311,6 +309,13 @@ function renderTemplate(key, data, to) {
   } finally {
     AfterTemplateHooks = oldHooks;
   }
+}
+
+function renderTemplate(key, data, to) {
+  to = to || $i(key + '_container');
+  var from = key + '_template';
+
+  return renderRawTemplate(to, from, data);
 }
 
 function $m(self, method, klass) {
