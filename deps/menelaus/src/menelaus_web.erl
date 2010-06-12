@@ -35,8 +35,7 @@
          parse_json/1,
          expect_config/1,
          expect_prop_value/2,
-         get_option/2,
-         direct_port/1]).
+         get_option/2]).
 
 -import(ns_license, [license/1, change_license/2]).
 
@@ -480,7 +479,7 @@ build_node_info(MyPool, WantENode) ->
 
 build_node_info(MyPool, WantENode, InfoNode) ->
     {_Name, Host} = misc:node_name_host(WantENode),
-    {value, DirectPort} = direct_port(WantENode),
+    DirectPort = ns_config:search_prop(ns_config:get(), memcached, port),
     ProxyPort = pool_proxy_port(MyPool, WantENode),
     Versions = proplists:get_value(version, InfoNode, []),
     Version = proplists:get_value(ns_server, Versions, "unknown"),
@@ -598,7 +597,6 @@ build_bucket_info(PoolId, Id, Pool, InfoLevel) ->
                                                              "buckets", Id, "controller", "doFlush"]))},
              {nodes, Nodes},
              {stats, {struct, [{uri, StatsUri}]}},
-             %% TODO: placeholder for a real vBucketServerMap.
              {vBucketServerMap, vbucket_map_to_json(vbucket_map(PoolId, Id))}],
     List2 = case InfoLevel of
                 stable -> List1;
@@ -657,17 +655,24 @@ handle_bucket_flush(PoolId, Id, Req) ->
                [PoolId, Id, erlang:node()]),
     Req:respond({400, add_header(), "Flushing is not currently implemented."}).
 
-vbucket_map(_PoolId, _BucketId) ->
-    % TODO: Need a real vbucket server map.
-    [{hashAlgorithm, crc},
-     {numReplicas, 0},
-     {serverList, lists:map(fun (ENode) ->
+vbucket_map(_PoolId, BucketId) ->
+    {ok, BucketConfig} = ns_bucket:get_bucket(BucketId),
+    NumReplicas = proplists:get_value(num_replicas, BucketConfig),
+    ENodes = lists:sort(ns_node_disco:nodes_wanted()),
+    Port = ns_config:search_prop(ns_config:get(), memcached, port),
+    PortStr = integer_to_list(Port),
+    Servers = lists:map(fun (ENode) ->
                                 {_Name, Host} = misc:node_name_host(ENode),
-                                {value, DirectPort} = direct_port(ENode),
-                                Host ++ ":" ++ integer_to_list(DirectPort)
-                            end,
-                            ns_node_disco:nodes_wanted())},
-     {vBucketMap, [[0], [0]]}].
+                                Host ++ ":" ++ PortStr
+                        end, ENodes),
+    Map = lists:map(fun (VBucket) ->
+                            lists:map(fun (ENode) -> misc:position(ENode, ENodes) - 1 end,
+                                      VBucket)
+                    end, ns_orchestrator:get_map(BucketId)),
+    [{hashAlgorithm, crc},
+     {numReplicas, NumReplicas},
+     {serverList, Servers},
+     {vBucketMap, Map}].
 
 vbucket_map_to_json(PropList) ->
     {struct, lists:map(
@@ -1282,7 +1287,7 @@ handle_add_node(Req) ->
     end.
 
 %% TODO
-handle_failover(Req) -> 
+handle_failover(Req) ->
     Req:respond({200, [], []}).
 
 handle_rebalance(Req) ->

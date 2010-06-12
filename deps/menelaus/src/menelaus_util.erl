@@ -24,7 +24,6 @@
          expect_config/1,
          expect_prop_value/2,
          get_option/2,
-         direct_port/1,
          concat_url_path/1,
          validate_email_address/1]).
 
@@ -92,17 +91,6 @@ expect_prop_value(K, List) ->
         end
     catch
         error:X -> erlang:error(X, [K, List])
-    end.
-
-direct_port(Node) ->
-    case ns_port_server:get_port_server_param(ns_config:get(),
-                                              memcached, "-p",
-                                              Node) of
-        false ->
-            ns_log:log(?MODULE, 0003, "missing memcached port in confirguration for node ~p (as seen on node ~p)", [Node, node()]),
-            false;
-        {value, MemcachedPortStr} ->
-            {value, list_to_integer(MemcachedPortStr)}
     end.
 
 %% milliseconds since 1970 Jan 1 at UTC
