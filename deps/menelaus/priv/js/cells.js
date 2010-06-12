@@ -157,8 +157,7 @@ var Cell = mkClass({
   // applies f to current cell value and extra arguments
   // and sets value to it's return value
   modifyValue: function (f) {
-    var extra = _.toArray(arguments);
-    extra.shift();
+    var extra = _.rest(arguments);
     this.setValue(f.apply(null, [this.value].concat(extra)));
   },
   _markForCompletion: function () {
@@ -261,8 +260,8 @@ var Cell = mkClass({
     return context;
   },
   tryUpdatingValue: function () {
-    var context = this.mkFormulaContext();
     try {
+      var context = this.mkFormulaContext();
       var value = this.effectiveFormula.call(context);
       this.setValue(value);
     } finally {
