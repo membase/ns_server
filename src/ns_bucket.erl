@@ -215,7 +215,6 @@ check_config() ->
 dbname(Bucket) ->
     DataDir = filename:join(ns_config_default:default_path("data"), misc:node_name_short()),
     DbName = filename:join(DataDir, Bucket),
-    error_logger:info_msg("built DbName ~p~n", [DbName]),
     ok = filelib:ensure_dir(DbName),
     DbName.
 
