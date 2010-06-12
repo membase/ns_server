@@ -14,7 +14,7 @@
 </head>
 <body class="nojs">
   <div id="container">
-    <div id="header">
+    <div class="page-header">
       <div class="cnt_holder main_holder">
         <div class="topper_nav">
           <a href="javascript:showAbout();">About</a>
@@ -227,7 +227,7 @@
     <p><a class="stop_rebalance_button">Stop Rebalance</a></p>
     <div id="rebalancing_list_container"></div>
   </div></div>
-  <div id="active_server_list_template" class="template">
+  <script id="active_server_list_template" type="text/html">
     <ul>
       <!-- {% _.each(rows, function (s) { %} -->
       <li><a href="#openServer={%= s.otpNode %}">{%= h(s.hostname) %}</a> {%= V.renderPendingStatus(s) %}
@@ -245,8 +245,8 @@
       <li id="{%= s.detailsRowID %}" class="settings-placeholder"></li>
       <!-- {% }); %} -->
     </ul>
-  </div>
-  <div id="pending_server_list_template" class="template">
+  </script>
+  <script id="pending_server_list_template" type="text/html">
     <ul>
     <!-- {% _.each(rows, function (s) { %} -->
     <li><a href="#openServer={%=s.otpNode%}">{%= h(s.hostname) %}</a> {%= V.renderPendingStatus(s) %}<a class="list_button" href="{%=jsLink('ServersSection.removeFromList', s.hostname)%}">Remove from list</a>
@@ -254,7 +254,7 @@
     </li><li id="{%= s.detailsRowID %}" class="settings-placeholder"></li>
     <!-- {% }); %} -->
     </ul>
-  </div>
+  </script>
   <div id="server_details_template" class="template">
                 <div class="first gong_rb">
                   <div class="side side_1"></div>
@@ -516,7 +516,7 @@
     </div>
     </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
 	<!-- END shadow box -->
-    <div id="bucket_list_template" class="template">
+    <script id="bucket_list_template" type="text/html">
         <table class="lined_tab">
           <col width="" />
           <col width="" />
@@ -557,7 +557,7 @@
             <tr id="{%= this.settingsRowID %}" class="settings-placeholder"><td colspan="5"></td></tr>
           <!-- {% }); %} -->
         </table>
-    </div>
+    </script>
   </div>
 
   <div id="bucket_settings_template">
@@ -911,7 +911,7 @@
 
 </div> <!-- mainContainer -->
 
-<div id="footer">
+<div class="page-footer">
   <div class="main_holder">
   <h1>Copyright 2010 <a href="http://northscale.com" target="_blank">NorthScale, Inc.</a> All rights reserved.</h1>
 </div>
@@ -1453,12 +1453,10 @@ MemcachedClient client = manager.getClient();</pre>
         <div class="pas_20">
           <div class="pat_10">
             <p class="dialog-text" id="about_versions"></p><br>
-            <p class="dialog-text">
-              <ul>
-                <li><a target="_blank" href="http://northscale.com/support">Get Support</a></li>
-                <li><a target="MCWebHelp" href="/docs/index_CSH.html#1001|northscale">Documentation</a></li>
-              </ul>
-            </p>
+            <ul>
+              <li><a target="_blank" href="http://northscale.com/support">Get Support</a></li>
+              <li><a target="MCWebHelp" href="/docs/index_CSH.html#1001|northscale">Documentation</a></li>
+            </ul>
           </div>
           <div class="right save_cancel">
             <div class="float_right">
@@ -1477,7 +1475,7 @@ MemcachedClient client = manager.getClient();</pre>
 </div>
 <!-- END about -->
 <div class="auth_block" id="auth_dialog">
-  <div id="header">
+  <div class="page-header">
     <div class="cnt_holder main_holder">
       <div class="topper_nav">
         <a href="javascript:showAbout();">About</a>
@@ -1534,7 +1532,7 @@ MemcachedClient client = manager.getClient();</pre>
       });
     </script>
   </div>
-  <div id="footer">
+  <div class="page-footer">
     <div class="main_holder">
       <h1>Copyright 2010 <a href="http://northscale.com">NorthScale, Inc.</a> All rights reserved.</h1>
     </div>
@@ -1542,7 +1540,7 @@ MemcachedClient client = manager.getClient();</pre>
 </div>
 <!-- END auth_block -->
 <div class="init_block" id="init_block">
-  <div id="header">
+  <div class="page-header">
     <div class="cnt_holder main_holder">
       <div class="topper_nav">
         <a href="javascript:showAbout();">About</a>
@@ -1745,7 +1743,7 @@ MemcachedClient client = manager.getClient();</pre>
     </script>
   </div>
   <!-- END init_secure_block -->
-  <div id="footer">
+  <div class="page-footer">
     <div class="main_holder">
       <h1>Copyright 2010 <a href="http://northscale.com">NorthScale, Inc.</a> All rights reserved.</h1>
     </div>

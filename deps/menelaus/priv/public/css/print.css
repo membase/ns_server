@@ -2,8 +2,8 @@
 
 td.leftNav * {display:none !important;}
 
-/*#header {background:none #5d6567; background-color:#5d6567;}
-#footer {background:none #5d6567;}
+/*.page-header {background:none #5d6567; background-color:#5d6567;}
+.page-footer {background:none #5d6567;}
 
 .shadow_box .cnt {background:none #eeeeef;}
 .shadow_box .cnt .pad {background:none; padding:0px;}

@@ -6,7 +6,7 @@ body {height:100%;}
 #overview {width:780px; overflow:hidden;}
 
 #mainContainer {padding:0 0 40px 0;}
-#footer {position:relative;}
+.page-footer {position:relative;}
 
 .analytics-small-graph {margin:0 10px 7px 10px;}
 .alert_warning, .alert_attention, .alert_info {height:47px;}
