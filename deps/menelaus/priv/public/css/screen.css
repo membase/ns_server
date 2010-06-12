@@ -729,6 +729,15 @@ button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
 body.init_welcome #init_block { display: block; }
 body.init_welcome #init_welcome_dialog { display: block; }
 body.init_welcome #container { display: none; }
+body.init_welcome #init_welcome_dialog h1 {color:#fff; font-family:Verdana, Helvetica, sans-serif; font-size:26pt; font-weight:100; padding-left:25px;}
+body.init_welcome #init_welcome_dialog p {color:#acbbc4; font-family:Verdana, Helvetica, sans-serif; font-size:14pt; font-weight:100;}
+body.init_welcome #init_welcome_dialog .pad-header .tagline, .init_block .pad .pad-header .version {float:left; margin-top:73px;}
+body.init_welcome #init_welcome_dialog .pad-header .tagline {color:#00a6de; font-size:12pt; margin-left:225px; margin-right:25px;}
+body.init_welcome #init_welcome_dialog .pad-header .version {color:#ec5223; font-size:11pt;}
+body.init_welcome #init_welcome_dialog .welcome-footer {color:#9aa3a8; font-family:Verdana, Helvetica, sans-serif; font-size:10pt; margin-top:60px; text-align:center; width:724px;}
+body.init_welcome #init_welcome_dialog .welcome-footer a {color:#a7e4ff; margin-left:15px; margin-right:15px;}
+body.init_welcome #init_welcome_form p {color:#bdccd4; font-family:Verdana, Helvetica, sans-serif; font-size:13pt; font-weight:100; line-height:20px;}
+
 
 body.init_resources #init_block { display: block; }
 body.init_resources #init_resources_dialog { display: block; }
@@ -744,17 +753,15 @@ body.init_secure #container { display: none; }
 
 /* init_block */
 
-.init_block {min-height:737px; height:100%; background:url(../images/watermark.jpg) 0 0 no-repeat; position:relative;}
+.init_block {min-height:737px; height:100%; position:relative;}
 .init_block h1 {color:#2f3536; text-transform:uppercase; font-size:28px; padding:28px 0 30px 0; position:relative; top:13px;}
-.init_block .pad {position:relative; width:580px; margin:auto; top:0px;}
+.init_block .pad {background:url(../images/welcome-background.png) no-repeat; position:relative; width:724px; height:566px; margin:auto; top:100px;}
+.init_block .pad .pad-header {height:115px; width:703px;}
 .init_block .form {display:block; width:580px; height:275px; background:url(../images/welcome_form_bg.png) 0 0 no-repeat;}
 .init_block .form table {margin:25px 0 0 25px;}
 .init_block .form table td {vertical-align:middle; padding:10px 0;}
 .init_block .form table .label {text-align:right; font-size:18px; color:#e6f5ff; padding:0 7px 0 0;}
-.init_block .form table .inp {border:1px solid #60696b; background:none #fff; padding:12px 5px; width:390px; font-size:16px;}
-.init_block .form table .submit {width:210px; height:45px; overflow:visible; border:0px; background:url(../images/sign_in_button.gif) 0 0 no-repeat; font-size:22px; color:#fff;}
-.init_block .form table .submit:hover {background-position:0 -45px;}
-.init_block .form table .submit:active {background-position:0 -90px;}
+.init_block .form table .inp {border:1px solid #60696b; background:none #fff; padding:12px 5px; width:225px; font-size:16px;}
 .init_block .alert_red {width:588px; height:71px; position:absolute; left:-8px; top:60px; line-height:65px; font-size:14px; color:#fff; background:url(../images/alert_red.png) 0 0 no-repeat; z-index:1000;}
 .init_block .alert_red .al_text {padding:0 0 0 30px;}
 .init_block .pad .spinner {width:582px !important; height:245px !important; position:absolute !important; left:0px !important; top:90px !important; /*background:url(../images/login_screen.png) 100% -72px no-repeat !important;*/ background:none #747e7c !important; line-height:14px !important;}
