@@ -24,6 +24,7 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 
 
 /* universal styles */
+body { background: url(../images/background.png) repeat-x; }
 .nobr {white-space:nowrap;}
 .tdn {text-decoration:none;}
 .tdn * {text-decoration:none;}
