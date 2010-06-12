@@ -191,18 +191,21 @@ code_change(_OldVsn, State, _Extra) ->
 %% Check the current config against the list of buckets on this server.
 check_config() ->
     BucketConfigs = get_buckets(),
-    {ok, CurBuckets} = ns_memcached:list_buckets(),
-    lists:foreach(
-      fun ({BucketName, BucketConfig}) ->
-              case lists:member(BucketName, CurBuckets) of
-                  true -> ok;
-                  false ->
-                      error_logger:info_msg("~p:check_config(): creating missing bucket: ~p~n",
-                                            [?MODULE, BucketName]),
-                      ConfigString = config_string(BucketConfig),
-                      ns_memcached:create_bucket(BucketName, ConfigString)
-              end
-      end, BucketConfigs).
+    case ns_memcached:list_buckets() of
+        {ok, Buckets} ->
+            lists:foreach(
+              fun ({BucketName, BucketConfig}) ->
+                      case lists:member(BucketName, CurBuckets) of
+                          true -> ok;
+                          false ->
+                              error_logger:info_msg("~p:check_config(): creating missing bucket: ~p~n",
+                                                    [?MODULE, BucketName]),
+                              ConfigString = config_string(BucketConfig),
+                              ns_memcached:create_bucket(BucketName, ConfigString)
+                      end
+              end, BucketConfigs);
+        _ -> ok
+    end.
 
 dbname(Bucket) ->
     DataDir = filename:join(ns_config_default:default_path("data"), misc:node_name_short()),
