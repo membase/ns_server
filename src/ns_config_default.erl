@@ -127,12 +127,9 @@ default_static() ->
 
     % Moxi config
     {moxi, [{'_ver', {0, 0, 0}},
-            {port, 11213}]},
+            {port, 11211}]},
 
-    % Modifiers: menelaus (may change the 11212 port number)
-    % Listeners: ns_port_sup (needs to restart its memcached processes)
-    %
-    % Note that we currently assume the port (11212) is available
+    % Note that we currently assume the ports are available
     % across all servers in the cluster.
     %
     % This is a classic "should" key, where ns_port_sup needs
@@ -140,7 +137,7 @@ default_static() ->
     {port_servers,
         [{'_ver', {0, 0, 0}},
             {moxi, "./bin/moxi/moxi",
-                ["-Z", "port_listen=11213",
+                ["-Z", "port_listen=11211",
                  "-z", "auth=,url=http://127.0.0.1:8080/pools/default/bucketsStreaming/default,#@",
                  "-p", "0"
                 ],
@@ -174,7 +171,7 @@ default_static() ->
 
     {pools, [{'_ver', {0, 0, 0}},
             {"default", [
-                    {port, 11213},
+                    {port, 11211},
                     {buckets, [
                             {"default", [
                                     {auth_plain, undefined},
