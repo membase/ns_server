@@ -1471,14 +1471,9 @@ var BucketsSection = {
 
     cells.mode = DAO.cells.mode;
 
-    cells.firstPageDetailsURI = new Cell(function (poolDetails) {
+    cells.detailsPageURI = new Cell(function (poolDetails) {
       return poolDetails.buckets.uri;
     }).setSources({poolDetails: DAO.cells.currentPoolDetails});
-
-    // by default copy first page uri, but we'll set it explicitly for pagination
-    cells.detailsPageURI = new Cell(function (firstPageURI) {
-      return firstPageURI;
-    }).setSources({firstPageURI: cells.firstPageDetailsURI});
 
     self.settingsWidget = new MultiDrawersWidget({
       hashFragmentParam: "buckets",
