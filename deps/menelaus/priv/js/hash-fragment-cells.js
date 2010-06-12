@@ -7,6 +7,25 @@ function ensureElementId(jq) {
   return jq;
 }
 
+// this cell type supports only string values and synchronizes
+// window.location hash fragment value and cell value
+var StringHashFragmentCell = mkClass(Cell, {
+  initialize: function ($super, paramName) {
+    $super();
+    this.paramName = paramName;
+    watchHashParamChange(this.paramName, $m(this, 'interpretHashFragment'));
+    this.subscribeAny($m(this, 'updateHashFragment'));
+  },
+  interpretHashFragment: function (value) {
+    this.setValue(value);
+  },
+  updateHashFragment: function () {
+    setHashFragmentParam(this.paramName, this.value);
+  }
+});
+
+// this cell synchronizes set of values (not necessarily strings) and
+// set of string values of window.location hash fragment
 var HashFragmentCell = mkClass(Cell, {
   initialize: function ($super, paramName, options) {
     $super();
@@ -74,6 +93,9 @@ var HashFragmentCell = mkClass(Cell, {
   }
 });
 
+// this cell type associates a set of HTML links with a set of values
+// (any type) and persists selected value in window.location hash
+// fragment
 var LinkSwitchCell = mkClass(HashFragmentCell, {
   initialize: function ($super, paramName, options) {
     options = _.extend({
@@ -153,5 +175,45 @@ var TabsCell = mkClass(HashFragmentCell, {
   },
   updateSelected: function () {
     this.api.click(Number(this.selectedId));
+  }
+});
+
+
+var StringSetHashFragmentCell = mkClass(StringHashFragmentCell, {
+  initialize: function ($super, paramName) {
+    $super.apply(null, _.rest(arguments));
+    // TODO: setValue([]) may trigger interesting cells bug with setValue
+    // being called from cell watcher. That has side effect of wiping
+    // slaves list
+    this.value = [];
+  },
+  interpretHashFragment: function (value) {
+    if (value == null || value == "")
+      value = [];
+    else
+      value = value.split(",");
+
+    this.setValue(value);
+  },
+  updateHashFragment: function () {
+    var value = this.value;
+    if (value == null || value.length == 0) {
+      value = null;
+    } else
+      value = value.concat([]).sort().join(',');
+    setHashFragmentParam(this.paramName, value);
+  },
+  addValue: function (value) {
+    return this.modifyValue(function (set) {
+      return _.uniq(set.concat([value]))
+    });
+  },
+  removeValue: function (value) {
+    return this.modifyValue(function (set) {
+      return _.without(set, value);
+    });
+  },
+  reset: function () {
+    this.setValue([]);
   }
 });

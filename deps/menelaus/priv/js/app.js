@@ -414,14 +414,7 @@ var DAO = {
     return future.get({url: uri}, poolDetailsValueTransformer);
   }).setSources({poolList: this.poolList});
 
-  var statsBucketURL = this.statsBucketURL = new Cell();
-  watchHashParamChange("statsBucket", function (value) {
-    statsBucketURL.setValue(value);
-  });
-  statsBucketURL.subscribeAny(function (cell) {
-    console.log("cell.value:", cell.value);
-    setHashFragmentParam("statsBucket", cell.value);
-  });
+  var statsBucketURL = this.statsBucketURL = new StringHashFragmentCell("statsBucket");
 
   this.currentStatTargetCell = new Cell(function (poolDetails, mode) {
     if (mode != 'analytics')
