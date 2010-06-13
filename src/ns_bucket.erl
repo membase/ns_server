@@ -12,13 +12,11 @@
 
 %% API
 -export([start_link/0]).
--export([create_bucket/1,
-         get_bucket/1,
+-export([get_bucket/1,
          get_buckets/0,
          get_bucket_names/0,
          set_bucket_config/2,
-         set_map/2,
-         new_bucket/3]).
+         set_map/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -42,16 +40,6 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
-
-create_bucket(Bucket) ->
-    BucketConfigs = get_buckets(),
-    case lists:keymember(Bucket, 1, BucketConfigs) of
-        true ->
-            {error, already_exists};
-        false ->
-            NewBucketConfig = new_bucket(Bucket, 4096, 2),
-            ns_config:set(memcached, buckets, [NewBucketConfig|BucketConfigs])
-    end.
 
 get_bucket(Bucket) ->
     BucketConfigs = get_buckets(),
@@ -203,27 +191,23 @@ check_config() ->
                       case lists:member(BucketName, CurBuckets) of
                           true -> ok;
                           false ->
-                              error_logger:info_msg("~p:check_config(): creating missing bucket: ~p~n",
-                                                    [?MODULE, BucketName]),
-                              ConfigString = config_string(BucketConfig),
+                              ConfigString = config_string(BucketName, BucketConfig),
+                              error_logger:info_msg(
+                                "~p:check_config(): activating bucket ~p with config ~p~n",
+                                [?MODULE, BucketName, ConfigString]),
                               ns_memcached:create_bucket(BucketName, ConfigString)
                       end
               end, BucketConfigs);
         _ -> ok
     end.
 
-dbname(Bucket) ->
-    DataDir = filename:join(ns_config_default:default_path("data"), misc:node_name_short()),
-    DbName = filename:join(DataDir, Bucket),
+config_string(BucketName, BucketConfig) ->
+    DbName = case proplists:get_value(dbname, BucketConfig) of
+                 undefined ->
+                     DataDir = filename:join(ns_config_default:default_path("data"),
+                                             misc:node_name_short()),
+                     filename:join(DataDir, BucketName);
+                 N -> N
+             end,
     ok = filelib:ensure_dir(DbName),
-    DbName.
-
-config_string(BucketConfig) ->
-    lists:flatten(io_lib:format("vb0=false;dbname=~s", [proplists:get_value(dbname, BucketConfig)])).
-
-new_bucket(Name, NumReplicas, NumVBuckets) ->
-    {Name, [{num_replicas, NumReplicas},
-            {num_vbuckets, NumVBuckets},
-            {dbname, dbname(Name)},
-            {map, undefined} % The orchestrator will build this when it sees that no servers own vbuckets
-           ]}.
+    lists:flatten(io_lib:format("vb0=false;dbname=~s", [DbName])).
