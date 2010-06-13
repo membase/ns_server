@@ -20,6 +20,7 @@ priv/memcached
 priv/memcached.exe
 priv/memcached_pthreadGC2.dll
 priv/moxi
+priv/vbucketmigrator
 test/log
 tmp
 version_num.tmp
