@@ -228,7 +228,7 @@
               <li class="tab_right"><a href="#">Pending Rebalance</a></li>
             </ul>
           </div>
-          <div class="panes pad">
+          <div class="panes">
             <div><h2>ACTIVE <span class="imbalance">(NOT BALANCED)</span></h2>
               <div id="active_server_list_container" class="servers_list"></div>
             </div><div>
@@ -244,7 +244,7 @@
   <script id="active_server_list_template" type="text/html">
     <ul>
       <!-- {% _.each(rows, function (s) { %} -->
-      <li><a href="#openServer={%= s.otpNode %}">{%= h(s.hostname) %}</a> {%= V.renderPendingStatus(s) %}
+      <li class="server_row"><a href="#openServer={%= s.otpNode %}" class="serverName">{%= h(s.hostname) %}</a> {%= V.renderPendingStatus(s) %}
       <!-- {% if (s.ejectPossible) { %} -->
       <a class="list_button" href="{%=jsLink('ServersSection.ejectNode', s.hostname)%}">Eject</a>
       <!-- {% } %} -->
