@@ -35,17 +35,31 @@ default_root_path() ->
     %       ns_server/ebin/ns_config_default.beam
     %     priv/
     %       config
-    %     data
+    %     data/ (installer created)
+    %
+    %   /opt/NorthScale/<ver>/
+    %     bin/
+    %       ns_server/ebin/ns_config_default.beam
+    %     data/ (installer created)
+    %
+    %   /some/dev/work/dir/ns_server/
+    %     .git/
+    %     bin/
+    %     ebin/ns_config_default.beam
+    %     priv/
+    %       config
+    %     data/ (dynamically created)
     %
     P1 = filename:absname(code:which(ns_config_default)), % Our beam path.
-    P2 = filename:dirname(P1), % ".../ebin"
-    P3 = filename:dirname(P2), % ".../ns_server"
-    P4 = filename:dirname(P3), % might be sibling to /priv
-    RootPath = case find_root(P4) of
-                   false -> P3;
+    P2 = filename:dirname(P1), % "ebin"
+    P3 = filename:dirname(P2), % "ns_server" (possibly)
+    RootPath = case find_root(P3) of
+                   false -> filename:dirname(filename:dirname(P3));
                    X     -> X
                end,
     RootPath.
+
+% Go up dir paths and find a development root dir.
 
 find_root("") -> false;
 find_root(".") -> false;
@@ -61,8 +75,11 @@ find_root(DirPath) ->
                  end
     end.
 
+% Is a development root dir?
+
 is_root(DirPath) ->
-    filelib:is_dir(filename:join(DirPath, "bin")).
+    filelib:is_dir(filename:join(DirPath, "bin")) andalso
+    filelib:is_dir(filename:join(DirPath, "priv")).
 
 % Allow all keys to be mergable.
 
