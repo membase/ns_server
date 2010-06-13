@@ -776,7 +776,10 @@ body.init_secure #container { display: none; }
 #servers .rebalance_button, #servers .stop_rebalance_button
 {display: block; float: right; margin-left: 5px;
   /*border: 1px solid green;*/
-  moz-border-radius: 4px; -webkit-border-radius: 4px; padding: 2px;}
+  /*moz-border-radius: 4px; -webkit-border-radius: 4px; padding: 2px;*/
+  }
+#servers .list_button {height:31px; padding:0 3px 0 0; background:url(../images/btn_2_bg.png) 100% -31px no-repeat; color:#000; margin-top:14px;}
+#servers .list_button span {display:block; height:31px; line-height:31px; padding:0 6px 0 10px; background:url(../images/btn_2_bg.png) 0 0 no-repeat;}
 
 #servers h2 { height: 25px;}
 #servers .servers_list li { list-style: none; height: min-25px; /*margin-top: 3px; */ display:block; padding:0 10px;}

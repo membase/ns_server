@@ -246,13 +246,13 @@
       <!-- {% _.each(rows, function (s) { %} -->
       <li class="server_row"><a href="#openServer={%= s.otpNode %}" class="serverName">{%= h(s.hostname) %}</a> <span class="failed_over_message">{%= V.renderPendingStatus(s) %}</span>
       <!-- {% if (s.ejectPossible) { %} -->
-      <a class="list_button" href="{%=jsLink('ServersSection.ejectNode', s.hostname)%}">Eject</a>
+      <a class="list_button" href="{%=jsLink('ServersSection.ejectNode', s.hostname)%}"><span>Eject</span></a>
       <!-- {% } %} -->
       <!-- {% if (s.failoverPossible) { %} -->
-      <a class="list_button" href="{%=jsLink('ServersSection.failoverNode', s.hostname)%}">Failover</a>
+      <a class="list_button" href="{%=jsLink('ServersSection.failoverNode', s.hostname)%}"><span>Failover</span></a>
       <!-- {% } %} -->
       <!-- {% if (s.reAddPossible) { %} -->
-      <a class="list_button" href="{%=jsLink('ServersSection.reAddNode', s.hostname)%}">Add Back</a>
+      <a class="list_button" href="{%=jsLink('ServersSection.reAddNode', s.hostname)%}"><span>Add Back</span></a>
       <!-- {% } %} -->
       <!-- { %= _.template($('#server_details_template').html(), {node: s}) %} -->
       </li>
