@@ -198,9 +198,9 @@ parse_vbucket_name(Key) ->
     {unrecognized_vbucket, Key}.
 
 parse_vbuckets(Stats) ->
-    lists:map(fun ([Key, Value]) ->
-                      {parse_vbucket_name(Key), map_vbucket_state(Value)}
-              end, Stats).
+    {ok, lists:map(fun ([Key, Value]) ->
+                           {parse_vbucket_name(Key), map_vbucket_state(Value)}
+                   end, Stats)}.
 
 process_multi(Fun, {Replies, BadNodes}) ->
     ProcessedReplies = lists:map(fun ({Node, {ok, Reply}}) ->

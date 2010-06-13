@@ -51,10 +51,9 @@ filter_accessible_buckets(BucketsAll, Req) ->
               BucketsAll)
     end.
 
-is_bucket_accessible(Bucket, Req) ->
-    UserPassword = menelaus_auth:extract_auth(Req),
-    IsSuper = menelaus_auth:check_auth(UserPassword),
-    IsSuper orelse apply(menelaus_auth:bucket_auth_fun(UserPassword), [Bucket]).
+is_bucket_accessible(_Bucket, _Req) ->
+    %% TODO this should probably do something, or be ripped out.
+    true.
 
 apply_auth(Req, F, Args) ->
     UserPassword = extract_auth(Req),

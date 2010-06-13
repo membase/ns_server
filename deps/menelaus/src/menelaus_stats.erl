@@ -40,13 +40,11 @@ default_find(K, Dict) ->
 
 %% External API
 
-basic_stats(PoolId, BucketId) ->
-    Pool = menelaus_web:find_pool_by_id(PoolId),
-    Bucket = menelaus_web:find_bucket_by_id(Pool, BucketId),
-    MbPerNode = expect_prop_value(size_per_node, Bucket),
+basic_stats(_PoolId, BucketId) ->
+    MbPerNode = 1,
     NumNodes = length(ns_node_disco:nodes_wanted()),
     SamplesNum = 10,
-    Samples = get_stats_raw(PoolId, BucketId, SamplesNum),
+    Samples = get_stats_raw(fakepool, BucketId, SamplesNum),
     OpsPerSec = avg(deltas(sum_stats_ops(Samples))),
     EvictionsPerSec = avg(deltas(default_find("evictions", Samples))),
     CurBytes = erlang:max(avg(default_find("bytes", Samples)), 0),

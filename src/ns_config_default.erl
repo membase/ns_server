@@ -123,7 +123,14 @@ default_static() ->
                  {port, 11210},
                  {admin_user, "_admin"},
                  {admin_pass, "_admin"},
-                 {buckets, [ns_bucket:new_bucket("default", 0, 1)]}]},
+                 {buckets,
+                  [{"default",
+                    [{num_vbuckets, 16},
+                     {num_replicas, 0},
+                     {map, undefined}]
+                   }]
+                 }]
+    },
 
     % Moxi config
     {moxi, [{'_ver', {0, 0, 0}},
@@ -167,23 +174,6 @@ default_static() ->
                     bucket_created,
                     bucket_deleted,
                     bucket_auth_failed]}
-            ]},
-
-    {pools, [{'_ver', {0, 0, 0}},
-            {"default", [
-                    {port, 11211},
-                    {buckets, [
-                            {"default", [
-                                    {auth_plain, undefined},
-                                    {size_per_node, 64} % In MB.
-                                    ]}
-                            %      ,
-                            %      {"test_application", [
-                            %        {auth_plain, {"username", "plain_text_password"}},
-                            %        {size_per_node, 64} % In MB.
-                            %      ]}
-                            ]}
-                    ]}
             ]}
   ].
 

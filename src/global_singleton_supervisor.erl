@@ -44,8 +44,6 @@ init([]) ->
            permanent, 10, worker, [ns_log_events]},
           {ns_mail_sup, {ns_mail_sup, start_link, []},
            permanent, infinity, supervisor, [ns_mail_sup]},
-          {ns_orchestrator_events, {gen_event, start_link, [{global, ns_orchestrator_events}]},
-           permanent, 10, worker, [gen_event]},
           {ns_orchestrator_sup, {ns_orchestrator_sup, start_link, []},
            permanent, infinity, supervisor, [ns_orchestrator_sup]},
           {ns_doctor, {ns_doctor, start_link, []},

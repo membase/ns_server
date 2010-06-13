@@ -20,8 +20,7 @@
 -endif.
 
 -export([start_link/0, start_link/1, stop/0, loop/3, webconfig/0, restart/0,
-         find_pool_by_id/1, all_accessible_buckets/2,
-         find_bucket_by_id/2]).
+         all_accessible_buckets/2]).
 
 -export([ns_log_cat/1, ns_log_code_string/1, alert_key/1]).
 
@@ -34,7 +33,6 @@
          reply_json/3,
          parse_json/1,
          expect_config/1,
-         expect_prop_value/2,
          get_option/2]).
 
 -import(ns_license, [license/1, change_license/2]).
@@ -340,14 +338,11 @@ build_versions() ->
                                     ns_info:version())}}].
 
 build_pools() ->
-    Pools = lists:map(fun ({Name, _}) ->
-                              {struct,
-                               [{name, list_to_binary(Name)},
-                                {uri, list_to_binary(concat_url_path(["pools", Name]))},
-                                {streamingUri,
-                                 list_to_binary(concat_url_path(["poolsStreaming", Name]))}]}
-                      end,
-                      expect_config(pools)),
+    Pools = [{struct,
+             [{name, <<"default">>},
+              {uri, list_to_binary(concat_url_path(["pools", "default"]))},
+              {streamingUri, list_to_binary(concat_url_path(["poolsStreaming", "default"]))}
+             ]}],
     Config = ns_config:get(),
     {struct, [{pools, Pools},
               {initStatus, list_to_binary(ns_config:search_prop(Config, init_status, value, ""))} |
@@ -379,7 +374,7 @@ build_pool_info(Id, UserPassword) ->
     build_pool_info(Id, UserPassword, normal).
 
 build_pool_info(Id, _UserPassword, InfoLevel) ->
-    MyPool = find_pool_by_id(Id),
+    MyPool = fakepool,
     Nodes = build_nodes_info(MyPool, true, InfoLevel),
     BucketsInfo = {struct, [{uri,
                              list_to_binary(concat_url_path(["pools", Id, "buckets"]))}]},
@@ -406,10 +401,6 @@ build_pool_info(Id, _UserPassword, InfoLevel) ->
               {stats, {struct,
                        [{uri,
                          list_to_binary(concat_url_path(["pools", Id, "stats"]))}]}}]}.
-
-find_pool_by_id(Id) -> expect_prop_value(Id, expect_config(pools)).
-
-find_pool_by_id_with_default(Id, Default) -> proplists:get_value(Id, expect_config(pools), Default).
 
 build_nodes_info(MyPool, IncludeOtp) ->
     build_nodes_info(MyPool, IncludeOtp, normal).
@@ -444,7 +435,7 @@ build_nodes_info(MyPool, IncludeOtp, InfoLevel) ->
                   KV3 = case InfoLevel of
                             stable -> KV2;
                             normal ->
-                                BucketsAll = expect_prop_value(buckets, MyPool),
+                                BucketsAll = ns_bucket:get_buckets(),
                                 NodesBucketMemoryTotal =
                                     length(WantENodes) *
                                     lists:foldl(fun({_BucketName, BucketConfig}, Acc) ->
@@ -495,11 +486,9 @@ build_node_info(MyPool, WantENode, InfoNode) ->
                            {direct, DirectPort}]}}],
     V.
 
-pool_proxy_port(PoolConfig, Node) ->
-    case proplists:get_value({node, Node, port}, PoolConfig, false) of
-        false -> expect_prop_value(port, PoolConfig);
-        Port  -> Port
-    end.
+pool_proxy_port(_PoolConfig, _Node) ->
+    Config = ns_config:get(),
+    ns_config:search_prop(Config, moxi, port).
 
 handle_pool_info_streaming(Id, Req) ->
     UserPassword = menelaus_auth:extract_auth(Req),
@@ -519,7 +508,9 @@ handle_streaming(F, Req, LastRes) ->
 handle_streaming(F, Req, HTTPRes, LastRes) ->
     Res = F(stable),
     case Res =:= LastRes of
-        true -> ok;
+        true ->
+            error_logger:info_msg("menelaus_web streaming: not sending because it didn't change: ~n~p~n",
+                                 [Res]);
         false ->
             ResNormal = F(normal),
             error_logger:info_msg("menelaus_web streaming: ~p~n",
@@ -537,26 +528,18 @@ handle_streaming(F, Req, HTTPRes, LastRes) ->
     end,
     handle_streaming(F, Req, HTTPRes, Res).
 
-all_accessible_buckets(PoolId, Req) ->
-    Pool = find_pool_by_id(PoolId),
-    all_accessible_buckets_in_pool(Pool, Req).
+all_accessible_buckets(_PoolId, Req) ->
+    all_accessible_buckets_in_pool(fakepool, Req).
 
-all_accessible_buckets_in_pool(Pool, Req) ->
-    BucketsAll = expect_prop_value(buckets, Pool),
+all_accessible_buckets_in_pool(_Pool, Req) ->
+    BucketsAll = ns_bucket:get_bucket_names(),
     menelaus_auth:filter_accessible_buckets(BucketsAll, Req).
 
-checking_bucket_access(PoolId, Id, Req, Body) ->
+checking_bucket_access(_PoolId, Id, Req, Body) ->
     E404 = make_ref(),
     try
-        {Pool, Bucket} = case find_pool_by_id_with_default(PoolId, undefined) of
-                             undefined -> exit(E404);
-                             PoolC -> case find_bucket_by_id_with_default(PoolC, Id, undefined) of
-                                          undefined -> exit(E404);
-                                          BucketC -> {PoolC, BucketC}
-                                      end
-                         end,
-        case menelaus_auth:is_bucket_accessible({Id, Bucket}, Req) of
-            true -> apply(Body, [Pool, Bucket]);
+        case menelaus_auth:is_bucket_accessible({Id, fakebucket}, Req) of
+            true -> apply(Body, [fakepool, fakebucket]);
             _ -> menelaus_auth:require_auth(Req)
         end
     catch
@@ -565,20 +548,11 @@ checking_bucket_access(PoolId, Id, Req, Body) ->
     end.
 
 handle_bucket_list(Id, Req) ->
-    Pool = find_pool_by_id(Id),
     Buckets = lists:sort(fun (A,B) -> element(1, A) =< element(1, B) end,
-                         all_accessible_buckets_in_pool(Pool, Req)),
-    BucketsInfo = [build_bucket_info(Id, Name, Pool)
+                         all_accessible_buckets_in_pool(fakepool, Req)),
+    BucketsInfo = [build_bucket_info(Id, Name, fakepool)
                    || {Name, _} <- Buckets],
     reply_json(Req, BucketsInfo).
-
-find_bucket_by_id(Pool, Id) ->
-    Buckets = expect_prop_value(buckets, Pool),
-    expect_prop_value(Id, Buckets).
-
-find_bucket_by_id_with_default(Pool, Id, Default) ->
-    Buckets = expect_prop_value(buckets, Pool),
-    proplists:get_value(Id, Buckets, Default).
 
 handle_bucket_info(PoolId, Id, Req, Pool, _Bucket) ->
     reply_json(Req, build_bucket_info(PoolId, Id, Pool)).
@@ -668,10 +642,14 @@ vbucket_map(_PoolId, BucketId) ->
                                 {_Name, Host} = misc:node_name_host(ENode),
                                 Host ++ ":" ++ PortStr
                         end, ENodes),
+    VBMap = ns_orchestrator:get_map(BucketId),
+    error_logger:info_msg("~p:vbucket_map(~p): got map ~p~n",
+                         [?MODULE, BucketId, VBMap]),
     Map = lists:map(fun (VBucket) ->
-                            lists:map(fun (ENode) -> misc:position(ENode, ENodes) - 1 end,
-                                      VBucket)
-                    end, ns_orchestrator:get_map(BucketId)),
+                            lists:map(fun (undefined) -> -1;
+                                          (ENode) -> misc:position(ENode, ENodes) - 1
+                                      end, VBucket)
+                    end, VBMap),
     [{hashAlgorithm, crc},
      {numReplicas, NumReplicas},
      {serverList, Servers},
@@ -922,10 +900,10 @@ handle_settings_advanced_post(Req) ->
             reply_json(Req, Errors, 400)
     end.
 
-build_port_settings(PoolId) ->
-    PoolConfig = find_pool_by_id(PoolId),
-    [{proxyPort, proplists:get_value(port, PoolConfig)},
-     {directPort, 11212}]. % TODO: this needs to come from the config
+build_port_settings(_PoolId) ->
+    Config = ns_config:get(),
+    [{proxyPort, ns_config:search_prop(Config, moxi, port)},
+     {directPort, ns_config:search_prop(Config, memcached, port)}].
 
 validate_port_settings(ProxyPort, DirectPort) ->
     CS = [is_valid_port_number(ProxyPort) orelse <<"Proxy port must be a positive integer less than 65536">>,
@@ -1109,13 +1087,12 @@ diag_format_log_entry(Entry) ->
                   [FormattedTStamp, Module, Code, Type, ShortText, Text]).
 
 handle_diag(Req) ->
-    Pool = find_pool_by_id("default"),
     Buckets = lists:sort(fun (A,B) -> element(1, A) =< element(1, B) end,
-                         expect_prop_value(buckets, Pool)),
+                         ns_bucket:get_buckets()),
     Logs = lists:flatmap(fun ({struct, Entry}) -> diag_format_log_entry(Entry) end,
                          menelaus_alert:build_logs([{"limit", "1000000"}])),
     Infos = [["per_node_diag = ~p", diag_multicall(?MODULE, do_diag_per_node, [])],
-             ["nodes_info = ~p", build_nodes_info(Pool, true)],
+             ["nodes_info = ~p", build_nodes_info(fakepool, true)],
              ["buckets = ~p", Buckets],
              ["logs:~n-------------------------------~n~s", Logs]],
     Text = lists:flatmap(fun ([Fmt | Args]) ->
@@ -1136,8 +1113,8 @@ ymd_to_string(forever) -> "forever".
 handle_node("Self", Req)            -> handle_node("default", node(), Req);
 handle_node(S, Req) when is_list(S) -> handle_node("default", list_to_atom(S), Req).
 
-handle_node(PoolId, Node, Req) ->
-    MyPool = find_pool_by_id(PoolId),
+handle_node(_PoolId, Node, Req) ->
+    MyPool = fakepool,
     KV = build_node_info(MyPool, Node),
     {License, Valid, ValidUntil} = case ns_license:license(Node) of
         {undefined, V, VU} -> {"", V, ymd_to_string(VU)};

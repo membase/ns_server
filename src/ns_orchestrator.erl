@@ -18,7 +18,7 @@
 
 -define(INTERVAL, 5000).
 
--record(state, {bucket, map=[]}).
+-record(state, {bucket, map}).
 
 %% API
 -export([start_link/1]).
@@ -37,7 +37,12 @@ get_map(Bucket) ->
     try gen_server:call(server(Bucket), get_map) of
         Result -> Result
     catch
-        _:_ -> []
+        _:_ ->
+            case config(Bucket) of
+                {NumVBuckets, NumReplicas, undefined} ->
+                    lists:duplicate(NumVBuckets, lists:duplicate(NumReplicas, undefined));
+                {_, _, Map} -> Map
+            end
     end.
 
 
@@ -109,14 +114,30 @@ check(State = #state{bucket=Bucket}) ->
              State
     end.
 
+config(Bucket) ->
+    {ok, CurrentConfig} = ns_bucket:get_bucket(Bucket),
+    NumReplicas = proplists:get_value(num_replicas, CurrentConfig),
+    NumVBuckets = proplists:get_value(num_vbuckets, CurrentConfig),
+    Map = case proplists:get_value(map, CurrentConfig) of
+              undefined ->
+                  lists:duplicate(NumVBuckets, lists:duplicate(NumReplicas+1, undefined));
+              M -> M
+          end,
+    {NumReplicas, NumVBuckets, Map}.
+
+
 current_states(Bucket) ->
     NodesWanted = ns_node_disco:nodes_wanted(),
     AliveNodes = ns_node_disco:nodes_actual_proper(),
     DeadNodes = lists:filter(fun (Node) -> not lists:member(Node, AliveNodes) end,
                              NodesWanted),
     {Replies, BadNodes} = ns_memcached:list_vbuckets_multi(AliveNodes, Bucket),
-    StateDict = lists:foldl(fun vbucket_states/2, dict:new(), Replies),
-    {StateDict, AliveNodes, BadNodes ++ DeadNodes}.
+    {GoodReplies, BadReplies} = lists:splitwith(fun ({Node, {ok, _}}) -> true;
+                                                    (_) -> false
+                                                end, Replies),
+    ErrorNodes = [Node || {Node, _} <- BadReplies],
+    StateDict = lists:foldl(fun vbucket_states/2, dict:new(), GoodReplies),
+    {StateDict, AliveNodes, BadNodes ++ DeadNodes ++ ErrorNodes}.
 
 histogram(Map, NumReplicas, Servers) ->
     DefaultDict = dict:from_list(lists:map(fun (Server) -> {Server, 0} end, Servers)),
@@ -149,10 +170,10 @@ map(StateDict, NumReplicas, NumVBuckets) ->
                       [Master|lists:duplicate(NumReplicas, undefined)]
               end, lists:seq(0, NumVBuckets-1)).
 
+
+
 migrate(State = #state{bucket=Bucket}, CurrentStates, Servers) ->
-    {ok, CurrentConfig} = ns_bucket:get_bucket(Bucket),
-    NumReplicas = proplists:get_value(num_replicas, CurrentConfig),
-    NumVBuckets = proplists:get_value(num_vbuckets, CurrentConfig),
+    {NumReplicas, NumVBuckets, _ConfigMap} = config(Bucket),
     Map = map(CurrentStates, NumReplicas, NumVBuckets),
     adopt_orphans(State, Map, NumReplicas, Servers).
 
@@ -162,12 +183,10 @@ server(Bucket) ->
 set_map(State = #state{map = OldMap}, Map) when Map == OldMap ->
     State;
 set_map(State = #state{bucket = Bucket}, Map) ->
-    error_logger:info_msg("~p:set_map(): new map for bucket ~p: ~p~n",
-                          [?MODULE, Bucket, Map]),
-    gen_event:notify({global, ns_orchestrator_events}, {new_map, Bucket, Map}),
+    ns_bucket:set_map(Bucket, Map),
     State#state{map = Map}.
 
-vbucket_states({Node, Reply}, Dict) ->
+vbucket_states({Node, {ok, Reply}}, Dict) ->
     lists:foldl(fun ({VBucket, State}, D) ->
                         dict:update(VBucket,
                                     fun (L) -> [{Node, State}|L] end,
