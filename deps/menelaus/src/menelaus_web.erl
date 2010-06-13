@@ -571,7 +571,7 @@ build_bucket_info(PoolId, Id, Pool, InfoLevel) ->
                                                              "buckets", Id, "controller", "doFlush"]))},
              {nodes, Nodes},
              {stats, {struct, [{uri, StatsUri}]}},
-             {vBucketServerMap, vbucket_map_to_json(vbucket_map(PoolId, Id))}],
+             {vBucketServerMap, ns_orchestrator:get_json_map(Id)}],
     List2 = case InfoLevel of
                 stable -> List1;
                 normal -> List1 ++ [{basicStats, {struct, menelaus_stats:basic_stats(PoolId, Id)}}]
@@ -628,40 +628,6 @@ handle_bucket_flush(PoolId, Id, Req) ->
     ns_log:log(?MODULE, 0005, "Flushing pool ~p bucket ~p from node ~p",
                [PoolId, Id, erlang:node()]),
     Req:respond({400, add_header(), "Flushing is not currently implemented."}).
-
-vbucket_map(_PoolId, BucketId) ->
-    BucketConfig = case ns_bucket:get_bucket(BucketId) of
-                       {ok, C} -> C;
-                       _ -> []
-                   end,
-    NumReplicas = proplists:get_value(num_replicas, BucketConfig, 0),
-    ENodes = lists:sort(ns_node_disco:nodes_wanted()),
-    Port = ns_config:search_prop(ns_config:get(), memcached, port, 11210),
-    PortStr = integer_to_list(Port),
-    Servers = lists:map(fun (ENode) ->
-                                {_Name, Host} = misc:node_name_host(ENode),
-                                Host ++ ":" ++ PortStr
-                        end, ENodes),
-    VBMap = ns_orchestrator:get_map(BucketId),
-    error_logger:info_msg("~p:vbucket_map(~p): got map ~p~n",
-                         [?MODULE, BucketId, VBMap]),
-    Map = lists:map(fun (VBucket) ->
-                            lists:map(fun (undefined) -> -1;
-                                          (ENode) -> misc:position(ENode, ENodes) - 1
-                                      end, VBucket)
-                    end, VBMap),
-    [{hashAlgorithm, crc},
-     {numReplicas, NumReplicas},
-     {serverList, Servers},
-     {vBucketMap, Map}].
-
-vbucket_map_to_json(PropList) ->
-    {struct, lists:map(
-                 fun ({hashAlgorithm, crc}) -> {hashAlgorithm, <<"CRC">>};
-                     ({serverList, SL}) -> {serverList, lists:map(fun list_to_binary/1, SL)};
-                     (X) -> X
-                 end,
-                 PropList)}.
 
 handle_init_status_post(Req) ->
     %% parameter example: value=done, value=welcome, value=someOpaqueValueFromJavaScript

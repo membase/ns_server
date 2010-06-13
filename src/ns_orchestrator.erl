@@ -23,7 +23,7 @@
 %% API
 -export([start_link/1]).
 
--export([get_map/1]).
+-export([get_json_map/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2,
@@ -33,17 +33,34 @@
 start_link(Bucket) ->
     gen_server:start_link(server(Bucket), ?MODULE, Bucket, []).
 
-get_map(Bucket) ->
-    try gen_server:call(server(Bucket), get_map) of
-        Result -> Result
-    catch
-        _:_ ->
-            case config(Bucket) of
-                {NumVBuckets, NumReplicas, undefined} ->
-                    lists:duplicate(NumVBuckets, lists:duplicate(NumReplicas, undefined));
-                {_, _, Map} -> Map
-            end
-    end.
+get_json_map(BucketId) ->
+    Config = ns_config:get(),
+    Buckets = ns_config:search_prop(Config, memcached, buckets),
+    BucketConfig = proplists:get_value(BucketId, Buckets),
+    NumVBuckets = proplists:get_value(num_vbuckets, BucketConfig),
+    NumReplicas = proplists:get_value(num_replicas, BucketConfig),
+    ENodes = lists:sort(ns_node_disco:nodes_wanted()),
+    Port = ns_config:search_prop(Config, memcached, port),
+    PortStr = integer_to_list(Port),
+    Servers = lists:map(fun (ENode) ->
+                                {_Name, Host} = misc:node_name_host(ENode),
+                                list_to_binary(Host ++ ":" ++ PortStr)
+                        end, ENodes),
+    VBMap = case proplists:get_value(map, BucketConfig) of
+                undefined ->
+                    lists:duplicate(NumVBuckets,
+                                    lists:duplicate(NumReplicas + 1, undefined));
+                M -> M
+            end,
+    Map = lists:map(fun (VBucket) ->
+                            lists:map(fun (undefined) -> -1;
+                                          (ENode) -> misc:position(ENode, ENodes) - 1
+                                      end, VBucket)
+                    end, VBMap),
+    {struct, [{hashAlgorithm, <<"CRC">>},
+              {numReplicas, NumReplicas},
+              {serverList, Servers},
+              {vBucketMap, Map}]}.
 
 
 %% gen_server callbacks
@@ -132,7 +149,7 @@ current_states(Bucket) ->
     DeadNodes = lists:filter(fun (Node) -> not lists:member(Node, AliveNodes) end,
                              NodesWanted),
     {Replies, BadNodes} = ns_memcached:list_vbuckets_multi(AliveNodes, Bucket),
-    {GoodReplies, BadReplies} = lists:splitwith(fun ({Node, {ok, _}}) -> true;
+    {GoodReplies, BadReplies} = lists:splitwith(fun ({_, {ok, _}}) -> true;
                                                     (_) -> false
                                                 end, Replies),
     ErrorNodes = [Node || {Node, _} <- BadReplies],
