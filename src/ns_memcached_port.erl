@@ -47,6 +47,7 @@ init([]) ->
     Args = ["-p", integer_to_list(MCPort),
             "-X", filename:join(PluginPath, "memcached/stdin_term_handler.so"),
             "-E", filename:join(EnginePath, "ep_engine/ep.so"),
+            "-B", "binary",
             "-r", % Needed so we'll dump core
             %% "-e", lists:flatten(
             %%         io_lib:format(
@@ -59,9 +60,7 @@ init([]) ->
                    {"ISASL_PWFILE", ISaslPath},
                    {"ISASL_DB_CHECK_TIME", "1"}]},
             use_stdio,
-            stderr_to_stdout,
-            stream,
-            exit_status],
+            stderr_to_stdout],
     error_logger:info_msg("~p:init(): spawning ~p in ~p with options:~n~p~n",
                           [?MODULE, Command, file:get_cwd(), Opts]),
     Port = open_port({spawn_executable, Command}, Opts),
