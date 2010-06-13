@@ -216,7 +216,7 @@ function onUnexpectedXHRError(xhr) {
 
 function postWithValidationErrors(url, data, callback, ajaxOptions) {
   if (!_.isString(data))
-    data = serializeForm($(data));
+    data = serializeForm(data);
   var finalAjaxOptions = {
     type:'POST',
     url: url,
@@ -259,6 +259,65 @@ function postWithValidationErrors(url, data, callback, ajaxOptions) {
 
     callback.call(this, data, textStatus);
   }
+}
+
+function runFormDialog(uriOrPoster, dialogID, options) {
+  options = options || {};
+  var dialogQ = $('#' + dialogID);
+  var form = dialogQ.find('form');
+  var response = false;
+
+  var errors = dialogQ.find('.errors');
+  errors.hide();
+
+  var poster;
+  if (_.isString(uriOrPoster))
+    poster = _.bind(postWithValidationErrors, null, uriOrPoster);
+  else
+    poster = uriOrPoster;
+
+  function callback(data, status) {
+    if (status == 'success') {
+      response = data;
+      hideDialog(dialogID);
+      return;
+    }
+
+    if (!errors.length) {
+      alert('submit failed: ' + data.join(' and '));
+      return;
+    }
+    errors.html();
+    _.each(data, function (message) {
+      var li = $('<li></li>');
+      li.text(message);
+      errors.append(li);
+    });
+    errors.show();
+  }
+
+  function onSubmit(e) {
+    e.preventDefault();
+    if (options.validate) {
+      var errors = options.validate();
+      if (errors && errors.length) {
+        callback(errors, 'error');
+        return;
+      }
+    }
+    poster(form, callback);
+  }
+
+  form.bind('submit', onSubmit);
+  setFormValues(form, options.initialValues || {});
+  showDialog(dialogID, {
+    onHide: function () {
+      form.unbind('submit', onSubmit);
+      if (options.closeCallback) {
+        options.closeCallback(response);
+      }
+    }
+  });
 }
 
 var LogoutTimer = {
@@ -1333,6 +1392,19 @@ var ServersSection = {
         });
       }
     });
+  },
+  editServerSettings: function (otpNode) {
+    var nodes = this.poolDetails.value.nodes;
+    var node = _.detect(nodes, function (e) {return e.otpNode == otpNode});
+    if (!node)
+      return;
+
+    var values = _.extend({}, node, node.detailsCell.value);
+    values['directPort'] = values.ports.direct;
+    values['proxyPort'] = values.ports.proxy;
+    runFormDialog("/nodes/" + otpNode + "/controller/settings", 'edit_server_settings_dialog', {
+      initialValues: values
+    });
   }
 };
 
@@ -1490,6 +1562,11 @@ var BucketsSection = {
       actionLink: 'visitBucket',
       actionLinkCallback: function () {
         ThePage.ensureSection('buckets');
+      },
+      valueTransformer: function (bucketInfo, bucketSettings) {
+        var rv = _.extend({}, bucketInfo, bucketSettings);
+        delete rv.settingsCell;
+        return rv;
       }
     });
 
@@ -1534,10 +1611,14 @@ var BucketsSection = {
   },
   showBucket: function (uri) {
     this.withBucket(uri, function (bucketDetails) {
-      // TODO: clear on hide
-      this.currentlyShownBucket = bucketDetails;
-      renderTemplate('bucket_details_dialog', {b: bucketDetails});
-      showDialog('bucket_details_dialog_container');
+      var values = _.extend({}, bucketDetails, bucketDetails.settingsCell.value);
+      var uri = function (data, cb) {
+        alert('posted!');
+        return cb('', 'success');
+      }
+      runFormDialog(uri, 'bucket_details_dialog', {
+        initialValues: values
+      });
     });
   },
   startFlushCache: function (uri) {
@@ -1646,6 +1727,7 @@ var BucketsSection = {
       }
     });
   },
+  // TODO: currently inaccessible from UI
   startRemovingBucket: function () {
     if (!this.currentlyShownBucket)
       return;
@@ -1655,6 +1737,7 @@ var BucketsSection = {
     $('#bucket_remove_dialog .bucket_name').text(this.currentlyShownBucket.name);
     showDialog('bucket_remove_dialog');
   },
+  // TODO: currently inaccessible from UI
   removeCurrentBucket: function () {
     var self = this;
 

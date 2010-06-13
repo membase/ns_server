@@ -306,6 +306,7 @@
                             </td>
                         </tr>
                       </table>
+                      <a href="javascript:ServersSection.editServerSettings('{%= escapeJS(obj.otpNode) %}');">EDIT</a>
                       <pre>Settings: {%=h(JSON.stringify(obj))%}</pre>
                   </div>
                 </div>
@@ -549,7 +550,7 @@
             <tr>
               <td>
               <a class="bucket_properties_link float_right text_11"
-                href="#visitBucket={%=h(this.name)%}">Properties</a>
+                href="{%= jsLink('BucketsSection.showBucket', this.uri)%}">Properties</a>
               <a class="gray_link" href="#visitBucket={%=h(this.name)%}">{%= h(this.name) %}</a>
               </td>
               <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
@@ -574,7 +575,7 @@
     </script>
   </div>
 
-  <div id="bucket_settings_template">
+  <div id="bucket_settings_template"><a href="{%=jsLink('BucketsSection.showBucket', obj.uri)%}">EDIT</a>
     {%= h(JSON.stringify(obj)) %}
   </div>
 
@@ -934,9 +935,7 @@
 
 <!-- dialogs -->
 </div> <!-- #container -->
-<div class="jqmWindow" id="bucket_details_dialog_container">
-</div>
-<div id="bucket_details_dialog_template" class="template">
+<div class="jqmWindow" id="bucket_details_dialog">
   <div class="lbox">
     <div class="top">
       <div class="top_left"></div>
@@ -945,42 +944,79 @@
     </div>
     <div class="center" style="overflow-x:hidden;">
       <div class="pad">
-        <p class="lbox_header">Bucket properties for {%= h(b.name) %}</p>
-        <div class="pas_20">
-          <p class="u_line"><span class="label">Bucket name:</span><a class="float_right remove_bucket">Remove</a> {%= h(b.name) %}</p>
-          <p class="u_line"><span class="label">Cache size:</span>
-          <a class="float_right" href="{%=jsLink('BucketsSection.startFlushCache',b.uri)%}">Flush All</a>
-          {%= h(b.basicStats.cacheSize) %} MB
-          </p>
-          <div class="pat_10">
-            <div class="normal text_12">
-            Sample Java Client Manager connection string:<br />
-              {% if (b.name != "default") { %}
-<pre>ArrayList&lt;URI&gt; baseList = new ArrayList&lt;URI&gt;();<br />
-URI base = new URI("{%= h(document.location.protocol) %}//{%= h(document.location.host) %}/pools/default");<br />
-baseList.add(base);<br />
-ClientManager manager = new ClientManager(baseList,
-                                          "{%= h(b.name) %}",
-                                          "{%= h(b.name) %}");<br />
-MemcachedClient client = manager.getClient();</pre>
-            {% }
-               else { %}
-<pre>URI base = new URI("{%= h(document.location.protocol) %}//{%= h(document.location.host) %}/pools/default");<br />
-ClientManager manager = new ClientManager(base);<br />
-MemcachedClient client = manager.getClient();</pre>
-             {% }; %}
-            </div>
-            {% if (b.name != "default") { %}
-            <p class="block pas_20 info_text">NOTE: The username and password for this data bucket is the same as the bucket name above.</p>
-            {% }
-               else { %}
-            <p class="block pas_20 info_text">NOTE: This will create a connection to the anonymous authentication "default" bucket.</p>
-            {% }; %}
-            <div class="right save_cancel">
-              <button class="save_button jqmClose float_right" type="submit">OK</button>
-            </div>
+        <form>
+        <label>Bucket Name:<input name="name" disabled></label>
+        <label>Bucket Type:<select disabled><option>Membase</option></select>
+
+        <p><b>Number of servers:</b>
+        <label><input type="radio" name="numServersAll" value="true" checked="checked"/>Stretch to All</label>
+        <br/>
+        <label><input type="radio" name="numServersAll" value="false"/>Fixed</label>
+        <label><input type="text" name="numServers" class="inp" style="width:30px;"
+        value=""><span class="numServers-details">(of N servers in cluster)</span>
+        <!-- (of 12 servers in cluster) -->
+        </label></p>
+
+          <h2>Blocking Behavior</h2>
+          <table>
+            <tr>
+              <td>
+                <p><label><input type="checkbox" name="waitForReplica" class="inp"/>
+                           Wait for replication
+                           </label></p>
+              </td>
+              <td>
+                <p><label><input type="text" name="waitForReplicaCount" class="inp" style="width:30px;"
+                              value="3"/>
+                           Wait until this many copies sent
+                           </label></p>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <p><label><input type="checkbox" name="waitForPersist" class="inp"/>
+                           Wait for disk write
+                           </label></p>
+              </td>
+            </tr>
+          </table>
+
+          <h2>Replication</h2>
+          <table>
+            <tr>
+              <td>
+                <p><label><input type="checkbox" name="replicate" class="inp"/>
+                           Enable replication
+                           </label></p>
+              </td>
+              <td>
+                <p><label><input type="text" name="replicaCount" class="inp" style="width:30px;"
+                               value="3"/>
+                           Number of backup (replica) copies
+                           </label></p>
+              </td>
+            </tr>
+          </table>
+
+          <h2>Storage</h2>
+          <p><label><b>Cache Size:</b>
+                     <input type="text" name="cacheSize" class="inp" style="width:40px;">
+                     <span class="cache-details">&nbsp;</span>
+                     <!-- MB x 3 server nodes = 192MB Total Cache Size/30GB Cluster memory available. --></label></p>
+
+          <p><label><b>Storage Size:</b>
+                     <input type="text" name="storageSize" class="inp" style="width:40px;">
+                     <span class="storage-details">&nbsp;</span>
+                     <!-- MB x 3 server nodes = 192MB Total Storage Size/30GB Cluster storage available. --></label></p>
+
+          <div class="pas_20">
+          <div class="right save_cancel">
+            <button class="save_button float_right" type="submit">SAVE</button>
+            <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
           </div>
-        </div>
+          </div>
+
+        </form>
       </div>
     </div>
     <div class="bottom">
@@ -1770,6 +1806,52 @@ MemcachedClient client = manager.getClient();</pre>
   </div>
 </div>
 <!-- END init_block -->
+<div class="jqmWindow" id="edit_server_settings_dialog">
+  <div class="lbox">
+    <div class="top">
+      <div class="top_left"></div>
+      <div class="top_right"></div>
+      <div class="top_center"></div>
+    </div>
+    <div class="center">
+      <div class="pad">
+        <p class="lbox_header">EDIT SERVER</p>
+        <form>
+          <h1>Server configuration<h1>
+          <p><label><b>Server name:</b><input type="text" name="hostname" disabled class="inp"></label></p>
+          <p><label><b>IP Address:</b><input type="text" name="ip" disabled class="inp"></label></p>
+          <p><label><b>Operating System:</b><input type="text" name="os" disabled class="inp"></label></p>
+          <p><label><b>Version:</b><input type="text" name="version" disabled class="inp"></label></p>
+          <p><label><b>License Key:</b><input type="text" name="license" disabled class="inp"></label></p>
+          <p><label><b>Direct Port:</b><input type="text" name="directPort" class="inp"></label></p>
+          <p><label><b>Proxy Port:</b><input type="text" name="proxyPort" class="inp"></label></p>
+
+          <h1>Memory Cache</h1>
+          <p><label><b>Dynamic RAM Allocated:</b><input type="text" name="ramQuota" class="inp"></label></p>
+
+          <h1>Solid State Storage</h1>
+          <p>TODO</p>
+          
+          <h1>DiskStorage</h1>
+          <p>TODO</p>
+
+          <div class="pas_20">
+            <div class="right save_cancel">
+              <button class="save_button float_right" type="submit">SAVE</button>
+              <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div class="bottom">
+      <div class="bottom_left"></div>
+      <div class="bottom_right"></div>
+      <div class="bottom_center"></div>
+    </div>
+  </div>
+</div>
+<!-- END edit_server_settings_dialog -->
 <div id="resource_panel_template" class="template">
   <div class="resource_panel">
       <table width="93%">
