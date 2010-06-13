@@ -822,6 +822,10 @@ body.init_secure #container { display: none; }
 #servers .imbalance { display: none; }
 #servers.imbalance .imbalance { display: inline; }
 
+.add_back_row {height:31px; display:block; background:url(../images/add_back_bg.png) 0 0 repeat-x;}
+.add_b_message {line-height:31px; color:#fff;}
+.add_back_btn {display:block; width:148px; height:31px; background:url(../images/add_back_btn.png) 0 0 no-repeat; float:right; margin-right:-10px;}
+
 #buckets .settings-placeholder { display: none; }
 
 .tabs switcher {}

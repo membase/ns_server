@@ -245,7 +245,6 @@
             <div>
               <div id="active_server_list_container" class="servers_list"></div>
             </div><div>
-              <h2>PENDING REBALANCE</h2>
               <div id="pending_server_list_container" class="servers-not-rebalancing servers_list"></div>
               <div id="rebalancing_list_container" class="servers-rebalancing"></div>
             </div>
@@ -275,8 +274,12 @@
   </script>
   <script id="pending_server_list_template" type="text/html">
     <ul>
+    <li class="add_back_row">
+      <a href="#" class="add_back_btn"></a>
+      <span class="add_b_message">This server is now reachable. Do you want to add it back to the cluster on the next rebalance?</span>
+    </li>
     <!-- {% _.each(rows, function (s) { %} -->
-    <li><a href="#openServer={%=s.otpNode%}">{%= h(s.hostname) %}</a> {%= V.renderPendingStatus(s) %}<a class="list_button" href="{%=jsLink('ServersSection.removeFromList', s.hostname)%}">Remove from list</a>
+    <li class="server_row failed_over"><a href="#openServer={%=s.otpNode%}">{%= h(s.hostname) %}</a> <span class="failed_over_message">{%= V.renderPendingStatus(s) %}</span><a class="list_button" href="{%=jsLink('ServersSection.removeFromList', s.hostname)%}"><span>Remove from list</span></a>
        <!-- { % = _.template($('#server_details_template').html(), {node: s}) %} -->
     </li><li id="{%= s.detailsRowID %}" class="settings-placeholder"></li>
     <!-- {% }); %} -->
