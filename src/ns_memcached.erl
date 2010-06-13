@@ -53,13 +53,16 @@ init([]) ->
     {ok, #state{sock=Sock}}.
 
 handle_call(list_buckets, _From, State) ->
-    Reply = mc_client_binary:list_buckets(State#state.sock),
+    %% Reply = mc_client_binary:list_buckets(State#state.sock),
+    Reply = {ok, ["default"]},
     {reply, Reply, State};
-handle_call({create_bucket, Bucket, Config}, _From, State) ->
-    Reply = mc_client_binary:create_bucket(State#state.sock, Bucket, Config),
+handle_call({create_bucket, _Bucket, _Config}, _From, State) ->
+    %% Reply = mc_client_binary:create_bucket(State#state.sock, Bucket, Config),
+    Reply = unimplemented,
     {reply, Reply, State};
-handle_call({delete_bucket, Bucket}, _From, State) ->
-    Reply = mc_client_binary:delete_bucket(State#state.sock, Bucket),
+handle_call({delete_bucket, _Bucket}, _From, State) ->
+    %% Reply = mc_client_binary:delete_bucket(State#state.sock, Bucket),
+    Reply = unimplemented,
     {reply, Reply, State};
 handle_call({set_vbucket_state, Bucket, VBucket, VBState}, _From, State) ->
     Reply = do_in_bucket(State#state.sock, Bucket,
@@ -166,13 +169,20 @@ topkeys(Node, Bucket) ->
 
 %% Internal functions
 
-do_in_bucket(Sock, Bucket, Fun) ->
-    case mc_client_binary:select_bucket(Sock, Bucket) of
-        ok ->
+do_in_bucket(_Sock, Bucket, Fun) ->
+    %% TODO: real multi-tenancy
+    case Bucket of
+        "default" ->
             Fun();
-        R ->
-            R
+        _ ->
+            {memcached_error, {mc_status_key_enoent, []}}
     end.
+    %% case mc_client_binary:select_bucket(Sock, Bucket) of
+    %%     ok ->
+    %%         Fun();
+    %%     R ->
+    %%         R
+    %% end.
 
 map_vbucket_state("active") -> active;
 map_vbucket_state("replica") -> replica;

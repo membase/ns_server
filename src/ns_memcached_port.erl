@@ -30,18 +30,29 @@ init([]) ->
     Config = ns_config:get(),
     MCPort = ns_config:search_prop(Config, memcached, port),
     ISaslPath = ns_config:search_prop(Config, isasl, path),
-    AdminUser = ns_config:search_prop(Config, memcached, admin_user),
+    %% AdminUser = ns_config:search_prop(Config, memcached, admin_user),
     Command = "./bin/memcached/memcached", % TODO get this from the config
     PluginPath = "./bin",
     EnginePath = "./bin",
+    {ok, DefaultBucketConfig} = ns_bucket:get_bucket("default"),
+    DbName = case proplists:get_value(dbname, DefaultBucketConfig) of
+                 undefined ->
+                     DbDir = filename:join("./data", misc:node_name_short()),
+                     Name = filename:join(DbDir, "default"),
+                     ok = filelib:ensure_dir(Name),
+                     Name;
+                 Name -> Name
+             end,
     Args = ["-p", integer_to_list(MCPort),
             "-X", filename:join(PluginPath, "memcached/stdin_term_handler.so"),
-            "-E", filename:join(EnginePath, "bucket_engine/bucket_engine.so"),
+            "-E", filename:join(EnginePath, "ep_engine/ep.so"),
             "-r", % Needed so we'll dump core
-            "-e", lists:flatten(
-                    io_lib:format(
-                      "admin=~s;engine=~s;default_bucket_name=default;auto_create=false",
-                      [AdminUser, filename:join(EnginePath, "ep_engine/ep.so")]))],
+            %% "-e", lists:flatten(
+            %%         io_lib:format(
+            %%           "admin=~s;engine=~s;default_bucket_name=default;auto_create=false",
+            %%           [AdminUser, filename:join(EnginePath, "ep_engine/ep.so")]))
+            "-e", "vb0=false;dbname=" ++ DbName
+           ],
     Opts = [{args, Args},
             {env, [{"MEMCACHED_TOP_KEYS", "100"},
                    {"ISASL_PWFILE", ISaslPath},

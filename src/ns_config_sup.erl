@@ -32,10 +32,10 @@ init([]) ->
             {ns_config_isasl_sync, start_link, []},
             transient, 10, worker, []},
 
-           % Manage buckets
-           {ns_bucket,
-            {ns_bucket, start_link, []},
-            permanent, 10, worker, []},
+           %% % Manage buckets
+           %% {ns_bucket,
+           %%  {ns_bucket, start_link, []},
+           %%  permanent, 10, worker, []},
 
            % logs config changes for debugging.
            {ns_config_log,
