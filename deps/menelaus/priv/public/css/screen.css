@@ -780,8 +780,8 @@ body.init_secure #container { display: none; }
 
 #servers h2 { height: 25px;}
 #servers .servers_list li { list-style: none; height: min-25px; /*margin-top: 3px; */ display:block; padding:0 10px;}
-#servers .servers_list li.server_row {height:60px; line-height:60px; border-bottom:1px solid #d1d5d8; overflow:hidden;}
-#servers .servers_list li.server_row:hover {background-color:#606a6c;}
+#servers .servers_list li.server_row {height:60px; line-height:60px; border-bottom:1px solid #d1d5d8; overflow:hidden; background:url(../images/server_status_icons.png) 10px 20px no-repeat; padding:0 10px 0 85px;}
+#servers .servers_list li.server_row.server_down {background:url(../images/server_status_icons.png) 10px -157px no-repeat; background-color:#61696c;}
 
 #servers .servers_list .serverName {display:inline-block; height:60px; padding:0 0 0 45px; background:url(../images/server_icon.png) 0 10px no-repeat; font-size:12px; font-weight:bolder;}
 
