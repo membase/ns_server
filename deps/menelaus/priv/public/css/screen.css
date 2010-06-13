@@ -111,7 +111,7 @@ a.button_200 {display:block; color:#444245 !important; text-decoration:none !imp
 .alert_1 {display:block; width:28px; height:29px; background:url(../images/alert_1.gif) 0 0 no-repeat; margin:-7px 0 0 0;}
 .labeled_line .alert_1 {float:left;}
 
-.header_2 {height:40px; line-height:40px; padding:5px 0 0 11px; font-size:18px; font-family:Helvetica, Verdana; background:url(../images/devider_line_1.gif) 0 100% repeat-x #dfe0e0; font-weight:normal;}
+.header_2 {height:40px; line-height:40px; padding:5px 10px 0 11px; font-size:18px; font-family:Helvetica, Verdana; background:url(../images/devider_line_1.gif) 0 100% repeat-x #dfe0e0; font-weight:normal;}
 .header_2 span {color:#f2692d;}
 .header_2 span a {/*color:#f2692d;*/}
 .header_2 .nav {color:#b6b6ba; font-size:11px; padding:0 11px 0 0;}
@@ -503,7 +503,7 @@ a.selected { text-decoration: underline; }
 #test_cluster_start_stop.stop-active #test_cluster_start { display:none; }
 
 /* shadow block */
-.shadow_box {padding:0; margin:0 0 20px 0;}
+.shadow_box {padding:0; margin:0 0 20px 0; width:780px;}
 .shadow_box .top {height:8px; overflow:hidden; background:url(../images/shadow_box_bg.gif) 0 -48px repeat-x;}
 .shadow_box .top div {height:12px; background:url(../images/shadow_box_bg.gif) 0 0 no-repeat;}
 .shadow_box .top div div {background:url(../images/shadow_box_bg.gif) 100% -12px no-repeat;}
@@ -514,6 +514,8 @@ a.selected { text-decoration: underline; }
 .shadow_box .cnt .pad {background:url(../images/shadow_box_side_bg.gif) 100% 0 repeat-y; padding:0 9px;}
 .shadow_box .content {background:none #eeeeef;}
 .shadow_box .section {border:0px;}
+
+.shadow_box pre {white-space:normal; display:block; overflow:auto; padding:5px;}
 
 .shadow_box .darker_block {background-color:#d4d4d5;}
 .with_devider {background-image:url(../images/devider_line_1.gif); background-position:0 100%; background-repeat:repeat-x;}
@@ -773,7 +775,7 @@ body.init_secure #container { display: none; }
 #servers .list_button, #servers .add_button,
 #servers .rebalance_button, #servers .stop_rebalance_button
 {display: block; float: right; margin-left: 5px;
-  border: 1px solid green;
+  /*border: 1px solid green;*/
   moz-border-radius: 4px; -webkit-border-radius: 4px; padding: 2px;}
 
 #servers h2 { height: 25px;}
@@ -791,3 +793,19 @@ body.init_secure #container { display: none; }
 #servers.imbalance .imbalance { display: inline; }
 
 #buckets .settings-placeholder { display: none; }
+
+.tabs switcher {}
+.switcher li {padding:0px !important; background:none !important;}
+.switcher li a {display:block; height:32px !important; font-size:14px !important; padding:0 10px !important; color:#182022;}
+html body .switcher li a.current {color:#e6e6e6 !important;}
+.tab_left a {background:url(../images/switcher_bg.png) 0 -96px no-repeat !important;}
+.tab_left .current {background:url(../images/switcher_bg.png) 0 0 no-repeat !important;}
+.tab_right a {background:url(../images/switcher_bg.png) 100% -64px no-repeat !important;}
+.tab_right .current {background:url(../images/switcher_bg.png) 100% -32px no-repeat !important;}
+ul.tabs.switcher {height:32px; overflow:visible;}
+
+.btn_1 {display:inline-block; height:31px; font-size:14px !important; background:url(../images/btn_1_bg.png) 100% -31px no-repeat; padding:0 4px 0 0 !important; color:#000;}
+.btn_1 span {color:#000;}
+.btn_1 span {display:inline-block; height:31px; padding:0 6px 0 10px; line-height:31px; background:url(../images/btn_1_bg.png) 0 0 no-repeat;}
+
+.panes.pad {background:none !important;}

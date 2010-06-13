@@ -213,22 +213,31 @@
 	</div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
 	<!-- END shadow box -->
   </div>
-
   <div id="servers" style="display:none">
-    <!-- shadow box -->
     <h1>SERVERS</h1>
-    <a class="rebalance_button">Rebalance</a><a class="add_button">Add Server</a><a class="stop_rebalance_button">Stop Rebalance</a>
-    <ul class="tabs">
-      <li><a href="#">Active Servers</a></li>
-      <li><a href="#">Pending Rebalance</a></li>
-    </ul>
-    <div class="panes">
-      <div><h2>ACTIVE <span class="imbalance">(NOT BALANCED)</span></h2>
-        <div id="active_server_list_container" class="servers_list"></div>
-      </div><div>
-        <h2>PENDING REBALANCE</h2>
-        <div id="pending_server_list_container" class="servers-not-rebalancing servers_list"></div>
-        <div id="rebalancing_list_container" class="servers-rebalancing"></div>
+    <div class="shadow_box">
+      <div class="cnt">
+        <div class="content">
+          <!-- shadow box -->
+            <div class="header_2">
+            <a class="rebalance_button btn_1"><span>Rebalance</span></a>
+            <a class="add_button btn_1"><span>Add Server</span></a>
+            <a class="stop_rebalance_button btn_1"><span>Stop Rebalance</span></a>
+            <ul class="tabs switcher">
+              <li class="tab_left"><a href="#">Active Servers</a></li>
+              <li class="tab_right"><a href="#">Pending Rebalance</a></li>
+            </ul>
+          </div>
+          <div class="panes pad">
+            <div><h2>ACTIVE <span class="imbalance">(NOT BALANCED)</span></h2>
+              <div id="active_server_list_container" class="servers_list"></div>
+            </div><div>
+              <h2>PENDING REBALANCE</h2>
+              <div id="pending_server_list_container" class="servers-not-rebalancing servers_list"></div>
+              <div id="rebalancing_list_container" class="servers-rebalancing"></div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1965,6 +1974,9 @@ MemcachedClient client = manager.getClient();</pre>
       <p class="info_text">{%= h(text) %}</p>
     </div>
   </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
+</div>
+<div class="popup_2">
+  
 </div>
 </body>
 </html>
