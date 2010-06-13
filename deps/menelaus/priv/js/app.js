@@ -2689,6 +2689,9 @@ function showInitDialog(page, opt) {
     }
   }
 
+  if (page == "done")
+	  $('.page-header').show();
+
   if (DAO.initStatus != page) {
     DAO.initStatus = page;
     $.ajax({
