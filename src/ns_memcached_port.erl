@@ -37,8 +37,9 @@ init([]) ->
     {ok, DefaultBucketConfig} = ns_bucket:get_bucket("default"),
     DbName = case proplists:get_value(dbname, DefaultBucketConfig) of
                  undefined ->
-                     DbDir = filename:join("./data", misc:node_name_short()),
-                     Name = filename:join(DbDir, "default"),
+                     DataDir = filename:join(ns_config_default:default_path("data"),
+                                             misc:node_name_short()),
+                     Name = filename:join(DataDir, "default"),
                      ok = filelib:ensure_dir(Name),
                      Name;
                  Name -> Name
@@ -61,6 +62,8 @@ init([]) ->
             stderr_to_stdout,
             stream,
             exit_status],
+    error_logger:info_msg("~p:init(): spawning ~p in ~p with options:~n~p~n",
+                          [?MODULE, Command, file:get_cwd(), Opts]),
     Port = open_port({spawn_executable, Command}, Opts),
     {ok, #state{port=Port}}.
 
