@@ -27,10 +27,10 @@ init([]) ->
             {ns_config, start_link, [CfgPath, ns_config_default]},
             permanent, 10, worker, [ns_config, ns_config_default]},
 
-           % Track bucket configs and ensure isasl is sync'd up
-           {ns_config_isasl_sync,
-            {ns_config_isasl_sync, start_link, []},
-            transient, 10, worker, []},
+           %% % Track bucket configs and ensure isasl is sync'd up
+           %% {ns_config_isasl_sync,
+           %%  {ns_config_isasl_sync, start_link, []},
+           %%  transient, 10, worker, []},
 
            %% % Manage buckets
            %% {ns_bucket,

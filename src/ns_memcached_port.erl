@@ -29,7 +29,7 @@ start_link() ->
 init([]) ->
     Config = ns_config:get(),
     MCPort = ns_config:search_prop(Config, memcached, port),
-    ISaslPath = ns_config:search_prop(Config, isasl, path),
+    %% ISaslPath = ns_config:search_prop(Config, isasl, path),
     %% AdminUser = ns_config:search_prop(Config, memcached, admin_user),
     Command = "./bin/memcached/memcached", % TODO get this from the config
     PluginPath = "./bin",
@@ -53,12 +53,12 @@ init([]) ->
             %%         io_lib:format(
             %%           "admin=~s;engine=~s;default_bucket_name=default;auto_create=false",
             %%           [AdminUser, filename:join(EnginePath, "ep_engine/ep.so")]))
-            "-e", "vb0=false;dbname=" ++ DbName
+            "-e", "vb0=false;ht_size=786433;dbname=" ++ DbName
            ],
     Opts = [{args, Args},
-            {env, [{"MEMCACHED_TOP_KEYS", "100"},
-                   {"ISASL_PWFILE", ISaslPath},
-                   {"ISASL_DB_CHECK_TIME", "1"}]},
+            {env, [{"MEMCACHED_TOP_KEYS", "100"}]},
+                  %% {"ISASL_PWFILE", ISaslPath},
+                  %% {"ISASL_DB_CHECK_TIME", "1"}]},
             use_stdio,
             stderr_to_stdout],
     error_logger:info_msg("~p:init(): spawning ~p in ~p with options:~n~p~n",
@@ -81,5 +81,12 @@ handle_info({_Port, {data, Msg}}, State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-terminate(_Reason, _State) ->
+terminate({port_exited, Reason}, _State) ->
+    error_logger:info_msg("~p:terminate(): port exited: ~p~n",
+                          [?MODULE, Reason]),
+    ok;
+terminate(Reason, State) ->
+    Result = port_close(State#state.port),
+    error_logger:info_msg("~p:terminate(): exiting: ~p~nport_close() returned ~p~p",
+                          [?MODULE, Reason, Result]),
     ok.
