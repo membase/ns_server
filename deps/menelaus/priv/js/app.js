@@ -2404,7 +2404,7 @@ $(function () {
   });
 
   if ($.cookie('inactivity_reload')) {
-    $.cookie('inactivity_reload');
+    $.cookie('inactivity_reload', null);
     $('#auth_inactivity_message').show();
   }
 
