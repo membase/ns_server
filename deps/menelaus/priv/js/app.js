@@ -2579,6 +2579,8 @@ function showAbout() {
 }
 
 function showInitDialog(page, opt) {
+  $('.page-header').hide();
+
   opt = opt || {};
 
   var pages = [ "welcome", "resources", "cluster", "secure" ];

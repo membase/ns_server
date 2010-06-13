@@ -480,7 +480,12 @@ a.selected { text-decoration: underline; }
 
 #alerts_settings_guts li { list-style-type: none; }
 
-.template { display: none; }
+.template { display:none; }
+div.resource_panel {width:124%;}
+div.resource_panel h2 {border-bottom:2px solid #e3e5e6; color:#444245; font-family:Verdana, Helvetica, Sans-Serif; font-size:13pt; font-weight:lighter; padding-bottom:5px;}
+div.resource_panel td#pad-left {color:#444245; font-size:10pt; font-family:Verdana, Helvetica, Sans-Serif; padding-left:50px;}
+div.resource_panel td#pad-left input {border:2px solid #e0e4e6; font-size:10pt; height:25px; width:95px;}
+div.resource_panel div.ssd_resource_container, div.resource_panel div.hdd_resource_container {color:#444245;font-family:Verdana,Helvetica, Sans-Serif; font-size:10pt;}
 
 #middle_pane { vertical-align: top; }
 
@@ -740,9 +745,29 @@ body.init_welcome #init_welcome_dialog .welcome-footer {color:#9aa3a8; font-fami
 body.init_welcome #init_welcome_dialog .welcome-footer a {color:#a7e4ff; margin-left:15px; margin-right:15px;}
 body.init_welcome #init_welcome_form p {color:#bdccd4; font-family:Verdana, Helvetica, sans-serif; font-size:13pt; font-weight:100; line-height:20px;}
 
+/* config */
+button.direction-button {
+  background:url(../images/blue-button.png) no-repeat;
+  border:none;
+  color:#fff;
+  float:right;
+  font-family:Arial, Helvetica, Sans-Serif;
+  font-size:12pt;
+  margin-right:20px;
+  margin-top:20px;
+  width:121px;
+  height:31px;
+}
+
+div.config-top {background:url(../images/config-top.png) repeat-x; height:60px; line-height:60px; margin:0px 0px 0px -8px;}
+div.config-top h1, div.config-top h2 {font-family:Verdana, Helvetica, Sans-Serif; text-shadow: 0px 1px 2px #fff;}
+div.config-top h1 {color:#444245; float:left; font-size:16pt; margin:-15px 0px 0px 20px; padding:0px;}
+div.config-top h2 {color:#8b8b8e; float:right; font-size:10pt; margin-right:20px;}
+div.config-bottom {background:url(../images/config-bottom.png) repeat-x; height:74px; line-height:84px; margin:50px 0px 0px -8px;}
+div.config-bottom a.cancel {color:#8b8b8e; float:right; font-family:Arial, Helvetica, Sans-Serif; font-size:12pt; margin-right:25px; margin-top:-5px; text-decoration:none;}
 
 body.init_resources #init_block { display: block; }
-body.init_resources #init_resources_dialog { display: block; }
+body.init_resources #init_resources_dialog {background:none; background-color:#eee; display: block; padding-bottom:-50px;}
 body.init_resources #container { display: none; }
 
 body.init_cluster #init_block { display: block; }
@@ -757,7 +782,7 @@ body.init_secure #container { display: none; }
 
 .init_block {min-height:737px; height:100%; position:relative;}
 .init_block h1 {color:#2f3536; text-transform:uppercase; font-size:28px; padding:28px 0 30px 0; position:relative; top:13px;}
-.init_block .pad {background:url(../images/welcome-background.png) no-repeat; position:relative; width:724px; height:566px; margin:auto; top:100px;}
+.init_block .pad {background:url(../images/welcome-background.png) no-repeat; position:relative; width:724px; margin:auto; top:100px;}
 .init_block .pad .pad-header {height:115px; width:703px;}
 .init_block .form {display:block; width:580px; height:275px; background:url(../images/welcome_form_bg.png) 0 0 no-repeat;}
 .init_block .form table {margin:25px 0 0 25px;}

@@ -1618,39 +1618,29 @@ MemcachedClient client = manager.getClient();</pre>
   <!-- END welcome_block -->
   <div class="pad" id="init_resources_dialog">
     <!-- screen S.3 -->
+    <div class="config-top">
+      <h1>Configure Server</h1>
+      <h2>Step <span class="current-step">1</span> of 3</h2>      
+    </div>
     <div class="alert_red" id="init_resources_failed_message" style="display:none;">
       <div class="al_text">
         Invalid Resource. Try again.
       </div>
     </div>
-    <h1>Configure Server</h1>
-    <h2>Step 1 of 3</h2>
-    <div class="pad_10">
-    <p>
-    NorthScale Membase Server stores data in RAM, on solid-state drives and on disk.
-    To use this server to store data, you must indicate where you
-    would like that data stored, and set the maximum amount of data
-    you will allow in each location.
-    </p>
-    </div>
     <form id="init_resources_form" class="form block">
       <div class="resource_panel_container">
       </div>
-      <table>
-        <col width="" />
-        <tr>
-          <td>
-            <div class="pat_10">
-              <input type="submit" value="Next" class="submit next" />
-            </div>
-          </td>
-        </tr>
-      </table>
     </form>
+    <div class="config-bottom">
+      <button name="next" value="Next" class="submit next direction-button" type="submit">Next</button>
+      <a href="/index.html" class="cancel">Cancel</a>
+    </div>
     <script type="text/javascript">
-      $('#init_resources_form input.next').click(function (e) {
-        e.preventDefault();
-        showInitDialog("cluster");
+      $(function(){
+        $('.config-bottom button.next').click(function (e) {
+          e.preventDefault();
+          showInitDialog("cluster");
+        });
       });
     </script>
   </div>
@@ -1782,21 +1772,27 @@ MemcachedClient client = manager.getClient();</pre>
 <!-- END init_block -->
 <div id="resource_panel_template" class="template">
   <div class="resource_panel">
-      <table>
+      <table width="93%">
         <col width="90%" />
         <col width="" />
         <tr>
-          <td colspan="2"><h2>Memory Cache</h2>
+          <td colspan="2">
+            <h2>Memory Cache</h2>
           </td>
         </tr>
         <tr>
           <td>Dynamic RAM Quota: {%= memoryQuota %}</td>
-          <td><a>EDIT</a></td>
+          <td><a><img src="../images/edit-button.png" alt="Edit" /></a></td>
         </tr>
         <tr>
-          <td><h2>Solid State Storage</h2>
+          <td>
+            <h2>Solid State Storage</h2>
           </td>
-          <td><a href="javascript:ServersSection.startAddLocationDialog('{%= node %}', 'ssd', {%= regularDialog %});">ADD</a></td>
+          <td>
+            <a href="javascript:NodeSettingsSection.startAddLocationDialog('{%= node %}', 'ssd', {%= regularDialog %});">
+              <img src="../images/add-button.png" alt="Add" />
+            </a>
+          </td>
         </tr>
         <tr>
           <td colspan="2">
@@ -1824,7 +1820,11 @@ MemcachedClient client = manager.getClient();</pre>
         <tr>
           <td><h2>Disk Storage</h2>
           </td>
-          <td><a href="javascript:ServersSection.startAddLocationDialog('{%= node %}', 'hdd', {%= regularDialog %});">ADD</a></td>
+          <td>
+            <a href="javascript:ServersSection.startAddLocationDialog('{%= node %}', 'hdd', {%= regularDialog %});">
+              <img src="../images/add-button.png" alt="Add" />
+            </a>
+          </td>
         </tr>
         <tr>
           <td colspan="2">
