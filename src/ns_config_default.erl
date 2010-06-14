@@ -139,6 +139,7 @@ default_static() ->
     {memcached, [{'_ver', {0, 0, 0}},
                  {port, 11210},
                  {ht_size, 786433},
+                 {dbname, filename:join(default_path("data"), misc:node_name_short())},
                  {admin_user, "_admin"},
                  {admin_pass, "_admin"},
                  {buckets,
