@@ -44,6 +44,7 @@
          update/2,
          search_node/2, search_node/1,
          search_node_prop/3, search_node_prop/4,
+         search_node_prop/5,
          search/2, search/1,
          search_prop/3, search_prop/4,
          search_prop_tuple/3, search_prop_tuple/4,
@@ -138,7 +139,10 @@ search(Config, Key) ->
     end.
 
 search_node(Config, Key) ->
-    case search(Config, {node, node(), Key}) of
+    search_node(node(), Config, Key).
+
+search_node(Node, Config, Key) ->
+    case search(Config, {node, Node, Key}) of
         {value, _} = V -> V;
         false          -> search(Config, Key)
     end.
@@ -149,7 +153,7 @@ search_prop(Config, Key, SubKey) ->
     search_prop(Config, Key, SubKey, undefined).
 
 search_node_prop(Config, Key, SubKey) ->
-    search_node_prop(Config, Key, SubKey, undefined).
+    search_node_prop(node(), Config, Key, SubKey, undefined).
 
 % Returns the Value or the DefaultSubVal.
 
@@ -161,8 +165,13 @@ search_prop(Config, Key, SubKey, DefaultSubVal) ->
             DefaultSubVal
     end.
 
+search_node_prop(Node, Config, Key, SubKey) when is_atom(Node) ->
+    search_node_prop(Node, Config, Key, SubKey, undefined);
 search_node_prop(Config, Key, SubKey, DefaultSubVal) ->
-    case search_node(Config, Key) of
+    search_node_prop(node(), Config, Key, SubKey, DefaultSubVal).
+
+search_node_prop(Node, Config, Key, SubKey, DefaultSubVal) ->
+    case search_node(Node, Config, Key) of
         {value, PropList} ->
             proplists:get_value(SubKey, PropList, DefaultSubVal);
         false ->
