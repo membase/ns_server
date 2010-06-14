@@ -2081,150 +2081,6 @@ var SettingsSection = {
   }
 };
 
-// TODO: move this to other places & kill this due to latest screens
-// not having that section
-var NodeSettingsSection = {
-  showNodeSettings: function (otpNode) {
-    throw new Error("should not happen");
-    // nav.go('nodeSettings');
-    // NodeSettingsSection.cells.nodeName.setValue(otpNode);
-  },
-  init: function () {
-  },
-  onEdit: function () {
-    NodeDialog.startPage_resources('Self', 'edit_resources', {regularDialog: true});
-  },
-
-  startLicenseDialog: function (node) {
-    NodeDialog.startPage_license(node, 'edit_server_license', {
-      submitSelector: 'button.save_button',
-      successFunc: function(node, pagePrefix) {
-        $('#edit_server_license_dialog').jqmHide();
-        NodeDialog.startPage_resources(node, 'edit_resources', {regularDialog: true});
-      }
-    });
-    showDialog('edit_server_license_dialog');
-  },
-
-  // The regularDialog boolean flag allows for code-reuse and is false
-  // when we're in the initial-config-wizard context.
-  //
-  startMemoryDialog: function (node, regularDialog) {
-    var parentName = '#edit_server_memory_dialog';
-
-    $(parentName + ' .quota_error_message').hide();
-
-    $.ajax({
-      type:'GET', url:'/nodes/' + node, dataType: 'json', async: false,
-      success: cb, error: cb});
-
-    function cb(data, status) {
-      if (status == 'success') {
-        var m = data['memoryQuota'];
-        if (m == null || m == "none") {
-          m = "";
-        }
-
-        $(parentName).find('[name=quota]').val(m);
-      }
-    }
-
-    $(parentName + ' button.save_button').click(function (e) {
-        e.preventDefault();
-
-        $(parentName + ' .quota_error_message').hide();
-
-        var m = $(parentName).find('[name=quota]').val() || "";
-        if (m == "") {
-          m = "none";
-        }
-
-        $.ajax({
-          type:'POST', url:'/nodes/' + node + '/controller/settings',
-          data: 'memoryQuota=' + m,
-          async:false, success:cbPost, error:cbPost
-        });
-
-        function cbPost(data, status) {
-          if (status == 'success') {
-            $(parentName).jqmHide();
-
-            if (regularDialog == false) {
-              showInitDialog("resources"); // Same screen used in init-config wizard.
-            } else {
-              OverviewSection.showNodeSettings(node);
-            }
-          } else {
-            $(parentName + ' .quota_error_message').show();
-          }
-        }
-      });
-
-    showDialog('edit_server_memory_dialog');
-  },
-
-  startAddLocationDialog : function (node, storageKind, regularDialog) {
-    var parentName = '#add_storage_location_dialog';
-
-    $(parentName + ' .storage_location_error_message').hide();
-
-    $(parentName).find('input[type=text]').val();
-
-    $(parentName + ' button.save_button').click(function (e) {
-        e.preventDefault();
-
-        $(parentName + ' .storage_location_error_message').hide();
-
-        var p = $(parentName).find('[name=path]').val() || "";
-        var q = $(parentName).find('[name=quota]').val() || "";
-        if (q == "") {
-          q = "none";
-        }
-
-        $.ajax({
-          type:'POST', url:'/nodes/' + node + '/controller/resources',
-          data: 'path=' + p + '&quota=' + q + '&kind=' + storageKind,
-          async:false, success:cbPost, error:cbPost
-        });
-
-        function cbPost(data, status) {
-          if (status == 'success') {
-            $(parentName).jqmHide();
-
-            if (regularDialog == false) {
-              showInitDialog("resources"); // Same screen used in init-config wizard.
-            } else {
-              OverviewSection.showNodeSettings(node);
-            }
-          } else {
-            $(parentName + ' .storage_location_error_message').show();
-          }
-        }
-      });
-
-    $(parentName + ' .add_storage_location_title').text("Add " + storageKind.toUpperCase() + " Storage Location");
-
-    showDialog('add_storage_location_dialog');
-  },
-
-  startRemoveLocationDialog : function (node, path, regularDialog) {
-    if (confirm("Are you sure you want to remove the storage location: " + path + "?  " +
-                "Click OK to Remove.")) {
-      $.ajax({
-        type:'DELETE',
-        url:'/nodes/' + node + '/resources/' + encodeURIComponent(path),
-        async:false
-      });
-
-      if (regularDialog == false) {
-        showInitDialog("resources"); // Same screen used in init-config wizard.
-      } else {
-        OverviewSection.showNodeSettings(node);
-      }
-    }
-  }
-};
-
 var DummySection = {
   onEnter: function () {}
 };
@@ -2291,7 +2147,6 @@ var ThePage = {
              buckets: BucketsSection,
              alerts: AlertsSection,
              settings: SettingsSection,
-             nodeSettings: NodeSettingsSection,
              monitor_buckets: BucketsSection,
              monitor_servers: OverviewSection},
 
@@ -2690,7 +2545,7 @@ function showInitDialog(page, opt) {
   }
 
   if (page == "done")
-	  $('.page-header').show();
+    $('.page-header').show();
 
   if (DAO.initStatus != page) {
     DAO.initStatus = page;
@@ -2701,6 +2556,106 @@ function showInitDialog(page, opt) {
 }
 
 var NodeDialog = {
+  startMemoryDialog: function (node) {
+    var parentName = '#edit_server_memory_dialog';
+
+    $(parentName + ' .quota_error_message').hide();
+
+    $.ajax({
+      type:'GET', url:'/nodes/' + node, dataType: 'json', async: false,
+      success: cb, error: cb});
+
+    function cb(data, status) {
+      if (status == 'success') {
+        var m = data['memoryQuota'];
+        if (m == null || m == "none") {
+          m = "";
+        }
+
+        $(parentName).find('[name=quota]').val(m);
+      }
+    }
+
+    $(parentName + ' button.save_button').click(function (e) {
+        e.preventDefault();
+
+        $(parentName + ' .quota_error_message').hide();
+
+        var m = $(parentName).find('[name=quota]').val() || "";
+        if (m == "") {
+          m = "none";
+        }
+
+        $.ajax({
+          type:'POST', url:'/nodes/' + node + '/controller/settings',
+          data: 'memoryQuota=' + m,
+          async:false, success:cbPost, error:cbPost
+        });
+
+        function cbPost(data, status) {
+          if (status == 'success') {
+            $(parentName).jqmHide();
+
+            showInitDialog("resources"); // Same screen used in init-config wizard.
+          } else {
+            $(parentName + ' .quota_error_message').show();
+          }
+        }
+      });
+
+    showDialog('edit_server_memory_dialog');
+  },
+
+  startAddLocationDialog : function (node, storageKind) {
+    var parentName = '#add_storage_location_dialog';
+
+    $(parentName + ' .storage_location_error_message').hide();
+
+    $(parentName).find('input[type=text]').val();
+
+    $(parentName + ' button.save_button').click(function (e) {
+        e.preventDefault();
+
+        $(parentName + ' .storage_location_error_message').hide();
+
+        var p = $(parentName).find('[name=path]').val() || "";
+        var q = $(parentName).find('[name=quota]').val() || "none";
+
+        $.ajax({
+          type:'POST', url:'/nodes/' + node + '/controller/resources',
+          data: 'path=' + p + '&quota=' + q + '&kind=' + storageKind,
+          async:false, success:cbPost, error:cbPost
+        });
+
+        function cbPost(data, status) {
+          if (status == 'success') {
+            $(parentName).jqmHide();
+
+            showInitDialog("resources");
+          } else {
+            $(parentName + ' .storage_location_error_message').show();
+          }
+        }
+      });
+
+    $(parentName + ' .add_storage_location_title').text("Add " + storageKind.toUpperCase() + " Storage Location");
+
+    showDialog('add_storage_location_dialog');
+  },
+
+  startRemoveLocationDialog : function (node, path) {
+    if (confirm("Are you sure you want to remove the storage location: " + path + "?  " +
+                "Click OK to Remove.")) {
+      $.ajax({
+        type:'DELETE',
+        url:'/nodes/' + node + '/resources/' + encodeURIComponent(path),
+        async:false
+      });
+
+      showInitDialog("resources"); // Same screen used in init-config wizard.
+    }
+  },
+
   // The pagePrefix looks like 'init_license', and allows reusability.
   startPage_license: function(node, pagePrefix, opt) {
     var parentName = '#' + pagePrefix + '_dialog';
@@ -2765,12 +2720,6 @@ var NodeDialog = {
       data['node'] = data['node'] || node;
 
       if (status == 'success') {
-        data['regularDialog'] = opt['regularDialog'] || false; // Need explicit false instead of undefined.
-
-        if (pagePrefix == 'edit_resources') {
-          renderTemplate('node_properties', data);
-        }
-
         var c = $(parentName + ' .resource_panel_container')[0];
         renderTemplate('resource_panel', data, c);
       }

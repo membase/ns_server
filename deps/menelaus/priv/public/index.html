@@ -1087,43 +1087,6 @@
     <!-- END shadow box -->
   </div>
 
-  <div id="nodeSettings" style="display:none">
-    <div>
-      <div id="node_properties_container">
-      </div>
-      <div id="node_properties_template" class="template">
-        <h1>Server Summary</h1>
-        <div class="pad_10">
-          <table>
-            <col width="50%" />
-            <col width="50%" />
-            <tr>
-              <td>IP Address: <span>{%= h(hostname) %}</span></td>
-              <td>License Key: <span>{%= h(license) %}</span>
-                  <span><a href="javascript:NodeSettingsSection.startLicenseDialog('{%= node %}');">EDIT</a></span></td>
-            </tr>
-            <tr>
-              <td>Version: <span>{%= h(version) %}</span></td>
-              <td>Direct Port: <span>{%= h(ports.direct)%}</span></td>
-            </tr>
-            <tr>
-              <td>OS: <span>{%= h(os) %}</span></td>
-              <td>Proxy Port: <span>{%= h(ports.proxy)%}</span></td>
-            </tr>
-          </table>
-        </div>
-      </div>
-      <hr/>
-      <form id="edit_resources_dialog" class="form block">
-        <h1>Data Storage Resources</h1>
-        <div class="pad_10">
-          <div class="resource_panel_container">
-          </div>
-        </div>
-      </form>
-    </div>
-  </div>
-
   <div id="coming" style="display:none">
     <h1>Coming in Beta 2</h1>
   </div>
@@ -2303,7 +2266,7 @@
             <h2>Solid State Storage</h2>
           </td>
           <td>
-            <a href="javascript:NodeSettingsSection.startAddLocationDialog('{%= node %}', 'ssd', {%= regularDialog %});">
+            <a href="javascript:NodeDialog.startAddLocationDialog('{%= node %}', 'ssd');">
               <img src="../images/add-button.png" alt="Add" />
             </a>
           </td>
@@ -2321,7 +2284,7 @@
                     <td>Path: {%= h(this.path) %}</td>
                     <td>{%= h(this.quotaMb != 'none' ? ((this.quotaMb * 1024) + ' GB') : '[no&nbsp;quota]') %}</td>
 
-                    <td><a href="javascript:ServersSection.startRemoveLocationDialog('{%= node %}', '{%= h(this.path) %}', {%= regularDialog %});">Remove</a></td>
+                    <td><a href="javascript:ServersSection.startRemoveLocationDialog('{%= node %}', '{%= h(this.path) %}');">Remove</a></td>
                   </tr>
                   <!-- {% }); %} -->
                 </table>
@@ -2335,7 +2298,7 @@
           <td><h2>Disk Storage</h2>
           </td>
           <td>
-            <a href="javascript:ServersSection.startAddLocationDialog('{%= node %}', 'hdd', {%= regularDialog %});">
+            <a href="javascript:ServersSection.startAddLocationDialog('{%= node %}', 'hdd');">
               <img src="../images/add-button.png" alt="Add" />
             </a>
           </td>
@@ -2352,7 +2315,7 @@
                   <tr>
                     <td>Path: {%= h(this.path) %}</td>
                     <td>{%= h(this.quotaMb != 'none' ? ((this.quotaMb * 1024) + ' GB') : '[no quota]') %}</td>
-                    <td><a href="javascript:NodeSettingsSection.startRemoveLocationDialog('{%= node %}', '{%= h(this.path) %}', {%= regularDialog %});">Remove</a></td>
+                    <td><a href="javascript:NodeDialog.startRemoveLocationDialog('{%= node %}', '{%= h(this.path) %}');">Remove</a></td>
                   </tr>
                   <!-- {% }); %} -->
                 </table>
