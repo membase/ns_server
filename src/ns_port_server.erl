@@ -102,6 +102,10 @@ set_param(X, [Y | Rest], NewVal, Acc) ->
 
 % ----------------------------------------------
 
+format(Config, Name, Format, Keys) ->
+    Values = [ns_config:search_prop(Config, Name, K) || K <- Keys],
+    lists:flatten(io_lib:format(Format, Values)).
+
 init({Name, _Cmd, _Args, _Opts} = Params) ->
     Port = open_port(Params),
     case is_port(Port) of
@@ -111,7 +115,15 @@ init({Name, _Cmd, _Args, _Opts} = Params) ->
                  {stop, Port}
     end.
 
-open_port({_Name, Cmd, Args, OptsIn}) ->
+open_port({Name, Cmd, ArgsIn, OptsIn}) ->
+    Config = ns_config:get(),
+    Args = lists:map(fun ({Format, Keys}) ->
+                             format(Config, Name, Format, Keys);
+                          (K) when is_atom(K) ->
+                             format(Config, Name, "~s", [K]);
+                          (X) -> X
+                      end,
+                      ArgsIn),
     {ok, Pwd} = file:get_cwd(),
     %% Incoming options override existing ones (specified in proplists docs)
     Opts = OptsIn ++ [{args, Args}, exit_status],
@@ -119,6 +131,7 @@ open_port({_Name, Cmd, Args, OptsIn}) ->
                           [Cmd, Pwd, Args, Opts]),
     process_flag(trap_exit, true),
     open_port({spawn_executable, Cmd}, Opts).
+
 handle_info({'EXIT', _Port, Reason}, State) ->
     error_logger:info_msg("port server (~p) exited: ~p~n",
                           [State#state.name, Reason]),
