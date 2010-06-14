@@ -1138,93 +1138,238 @@
 <!-- dialogs -->
 </div> <!-- #container -->
 <div class="jqmWindow" id="bucket_details_dialog">
-  <div class="lbox">
-    <div class="top">
-      <div class="top_left"></div>
-      <div class="top_right"></div>
-      <div class="top_center"></div>
-    </div>
-    <div class="center" style="overflow-x:hidden;">
-      <div class="pad">
-        <form>
-        <label>Bucket Name:<input name="name" disabled></label>
-        <label>Bucket Type:<select disabled><option>Membase</option></select>
+  <div class="lbox type_2 shadow_box">
+    <div class="cnt">
+      <div class="content">
+        <div class="header_2">CONFIGURE BUCKET</div>
+          <form class="lbox_form">
+            <h3>Bucket Settings</h3>
+            <table>
+            <col width="172" />
+            <col width="" />
+              <tr>
+                <td class="label"><label>Bucket Name:</label></td>
+                <td><input type="text" class="inp inp_size_2" /></td>
+              </tr>
+              <tr>
+                <td class="label"><label>Bucket Type:</label></td>
+                <td>
+                  <select class="inp_size_2">
+                    <option>Membase</option>
+                  </select>
+                </td>
+              </tr>
+              <tr>
+                <td class="label"><label>Number of Servers:</label></td>
+                <td class="content_cell">
+                  <div class="spac_5"></div>
+                  <label><input type="radio" name="num_serv" /> Stretch to All</label><br />
+                  <label><input type="radio" name="num_serv" /> Fixed</label>
+                  <input type="text" value="3" /> (of 12 servers in this cluster)
+                </td>
+              </tr>
+            </table>
+            <h3>Access Control</h3>
+            <table>
+            <col width="172" />
+            <col width="" />
+              <tr>
+                <td></td>
+                <td>
+                  <label><input type="radio" name="access_bucket" /> SASL Password</label>
+                </td>
+              </tr>
+              <tr>
+                <td></td>
+                <td>
+                  <input type="password" class="inp inp_size_2" value="Password" />
+                </td>
+              </tr>
+              <tr>
+                <td></td>
+                <td>
+                  <label><input type="radio" name="access_bucket" /> Key Prefix</label>
+                </td>
+              </tr>
+              <tr>
+                <td></td>
+                <td>
+                  <label><input type="radio" name="access_bucket" /> Sourse IP Address</label>
+                </td>
+              </tr>
+            </table>
+            <h3>Cache Size</h3>
+            <div>
+              <table class="full_width">
+              <col width="172" />
+              <col width="" />
+                <tr>
+                  <td colspan="2">
+                    <span class="total_ram">Total RAM (192 Gb)</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="label"><label>Dynamic RAM Allocated:</label></td>
+                  <td>
+                    <div class="float_left">
+                      <input type="text" value="30" /> MB
+                    </div>
+                    <table class="RAM_diagramm float_right">
+                    <col width="">
+                    <col width="">
+                    <col width="">
+                    <col width="">
+                      <tr>
+                        <td colspan="4">
+                          <span class="diagr_ram">
+                            <span style="width: 33%;" class="blue"></span>
+                            <span style="width: 68%;" class="green"></span>
+                          </span>
+                        </td>
+                      </tr>
+                      <tr class="diagr_labels">
+                        <td class="blue">Membase Quota (15Gb)</td>
+                        <td class="green">Other (5Gb)</td>
+                        <td>Free (12Gb)</td>
+                        <td class="right">32Gb</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              <h3>Storage Size</h3>
+              <div>
+                <table class="full_width">
+                <col width="172" />
+                <col width="" />
+                  <tr>
+                    <td colspan="2"><label><input type="checkbox" /> Enable Persistence</label></td>
+                  </tr>
+                  <tr>
+                    <td colspan="2">
+                      <span class="total_ram">Total RAM (192 Gb)</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="label">Solid State Quota:</td>
+                    <td>
+                      <div class="float_left">
+                        <input type="text" value="30" /> GB
+                      </div>
+                      <table class="RAM_diagramm float_right">
+                      <col width="">
+                      <col width="">
+                      <col width="">
+                      <col width="">
+                        <tr>
+                          <td colspan="4">
+                            <span class="diagr_ram">
+                              <span style="width: 33%;" class="blue"></span>
+                              <span style="width: 68%;" class="green"></span>
+                            </span>
+                          </td>
+                        </tr>
+                        <tr class="diagr_labels">
+                          <td class="blue">Membase Quota (15Gb)</td>
+                          <td class="green">Other (5Gb)</td>
+                          <td>Free (12Gb)</td>
+                          <td class="right">32Gb</td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colspan="2">
+                      <span class="total_ram">Total RAM (192 Gb)</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="label">Solid State Quota:</td>
+                    <td>
+                      <div class="float_left">
+                        <input type="text" value="30" /> GB
+                      </div>
+                      <table class="RAM_diagramm float_right">
+                      <col width="">
+                      <col width="">
+                      <col width="">
+                      <col width="">
+                        <tr>
+                          <td colspan="4">
+                            <span class="diagr_ram">
+                              <span style="width: 33%;" class="blue"></span>
+                              <span style="width: 68%;" class="green"></span>
+                            </span>
+                          </td>
+                        </tr>
+                        <tr class="diagr_labels">
+                          <td class="blue">Membase Quota (15Gb)</td>
+                          <td class="green">Other (5Gb)</td>
+                          <td>Free (12Gb)</td>
+                          <td class="right">32Gb</td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+              </div>
+              <h3>Replication</h3>
+              <div>
+                <table class="full_width">
+                <col width="172" />
+                <col width="" />
+                  <tr>
+                    <td>
+                      <label><input type="checkbox" /> Enable Persistence</label>
+                    </td>
+                    <td>
+                      <input type="text" /> number of replica (backup) copies:
+                    </td>
+                  </tr>
+                </table>
+              </div>
+              <h3>Blocking Behaviuor on Writes</h3>
+              <div>
+                <table class="full_width">
+                <col width="172" />
+                <col width="" />
+                  <tr>
+                    <td colspan="2">
+                      <label>
+                        <input type="radio" /> Wait for replication to complete
+                      </label>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td></td>
+                    <td>
+                      <label>
+                        <input type="text" value="3" />
+                        Wait until this many copies sent
+                      </label>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colspan="2">
+                      <label>
+                        <input type="radio" /> Wait until stored to persistent media
+                      </label>
+                    </td>
+                  </tr>
+                </table>
+              </div>
+            </div>
 
-        <p><b>Number of servers:</b>
-        <label><input type="radio" name="numServersAll" value="true" checked="checked"/>Stretch to All</label>
-        <br/>
-        <label><input type="radio" name="numServersAll" value="false"/>Fixed</label>
-        <label><input type="text" name="numServers" class="inp" style="width:30px;"
-        value=""><span class="numServers-details">(of N servers in cluster)</span>
-        <!-- (of 12 servers in cluster) -->
-        </label></p>
+              <div class="pas_20">
+              <div class="right save_cancel">
+                <button class="save_button float_right" type="submit">SAVE</button>
+                <button class="delete_button float_right">DELETE</button>
+                <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
+              </div>
+              </div>
 
-          <h2>Blocking Behavior</h2>
-          <table>
-            <tr>
-              <td>
-                <p><label><input type="checkbox" name="waitForReplica" class="inp"/>
-                           Wait for replication
-                           </label></p>
-              </td>
-              <td>
-                <p><label><input type="text" name="waitForReplicaCount" class="inp" style="width:30px;"
-                              value="3"/>
-                           Wait until this many copies sent
-                           </label></p>
-              </td>
-            </tr>
-            <tr>
-              <td>
-                <p><label><input type="checkbox" name="waitForPersist" class="inp"/>
-                           Wait for disk write
-                           </label></p>
-              </td>
-            </tr>
-          </table>
-
-          <h2>Replication</h2>
-          <table>
-            <tr>
-              <td>
-                <p><label><input type="checkbox" name="replicate" class="inp"/>
-                           Enable replication
-                           </label></p>
-              </td>
-              <td>
-                <p><label><input type="text" name="replicaCount" class="inp" style="width:30px;"
-                               value="3"/>
-                           Number of backup (replica) copies
-                           </label></p>
-              </td>
-            </tr>
-          </table>
-
-          <h2>Storage</h2>
-          <p><label><b>Cache Size:</b>
-                     <input type="text" name="cacheSize" class="inp" style="width:40px;">
-                     <span class="cache-details">&nbsp;</span>
-                     <!-- MB x 3 server nodes = 192MB Total Cache Size/30GB Cluster memory available. --></label></p>
-
-          <p><label><b>Storage Size:</b>
-                     <input type="text" name="storageSize" class="inp" style="width:40px;">
-                     <span class="storage-details">&nbsp;</span>
-                     <!-- MB x 3 server nodes = 192MB Total Storage Size/30GB Cluster storage available. --></label></p>
-
-          <div class="pas_20">
-          <div class="right save_cancel">
-            <button class="save_button float_right" type="submit">SAVE</button>
-            <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
-          </div>
-          </div>
-
-        </form>
+          </form>
       </div>
-    </div>
-    <div class="bottom">
-      <div class="bottom_left"></div>
-      <div class="bottom_right"></div>
-      <div class="bottom_center"></div>
     </div>
   </div>
 </div>
@@ -2008,33 +2153,119 @@
 </div>
 <!-- END init_block -->
 <div class="jqmWindow" id="edit_server_settings_dialog">
-  <div class="lbox">
-    <div class="top">
-      <div class="top_left"></div>
-      <div class="top_right"></div>
-      <div class="top_center"></div>
-    </div>
-    <div class="center">
-      <div class="pad">
-        <p class="lbox_header">EDIT SERVER</p>
-        <form>
-          <h1>Server configuration<h1>
-          <p><label><b>Server name:</b><input type="text" name="hostname" disabled class="inp"></label></p>
-          <p><label><b>IP Address:</b><input type="text" name="ip" disabled class="inp"></label></p>
-          <p><label><b>Operating System:</b><input type="text" name="os" disabled class="inp"></label></p>
-          <p><label><b>Version:</b><input type="text" name="version" disabled class="inp"></label></p>
-          <p><label><b>License Key:</b><input type="text" name="license" disabled class="inp"></label></p>
-          <p><label><b>Direct Port:</b><input type="text" name="directPort" class="inp"></label></p>
-          <p><label><b>Proxy Port:</b><input type="text" name="proxyPort" class="inp"></label></p>
+  <div class="lbox type_2 shadow_box">
+    <div class="cnt">
+      <div class="content">
+        <div class="top_save_cancel right save_cancel float_right">
+          <button type="submit" class="save_button float_right">SAVE</button>
+          <a class="jqmClose cancel_button float_right" href="#">CANCEL</a>
+        </div>
+        <p class="lbox_header header_2">EDIT SERVER</p>
+        <form class="lbox_form">
+          <h3>Server configuration<h3>
+          <table>
+          <col width="230" />
+          <col width="300" />
+            <tr>
+              <td class="label">
+                <label>Server name:</label>
+              </td>
+              <td>
+                <input type="text" name="hostname" disabled class="inp inp_size_2">
+              </td>
+            </tr>
+            <tr>
+              <td class="label">IP Address:<label></label></td>
+              <td><input type="text" name="ip" disabled class="inp inp_size_2"></td>
+            </tr>
+            <tr>
+              <td class="label"><label>Operating System:</label></td>
+              <td><input type="text" name="os" disabled class="inp inp_size_2"></td>
+            </tr>
+            <tr>
+              <td class="label"><label>Version:</label></td>
+              <td><input type="text" name="version" disabled class="inp inp_size_2"></td>
+            </tr>
+            <tr>
+              <td class="label">License Key:<label></label></td>
+              <td><input type="text" name="license" disabled class="inp inp_size_2"></td>
+            </tr>
+            <tr>
+              <td class="label"><label>Direct Port:</label></td>
+              <td><input type="text" name="directPort" class="inp inp_size_1"></td>
+            </tr>
+            <tr>
+              <td class="label"><label>Proxy Port:</label></td>
+              <td><input type="text" name="proxyPort" class="inp inp_size_1"></td>
+            </tr>
+          </table>
 
-          <h1>Memory Cache</h1>
-          <p><label><b>Dynamic RAM Allocated:</b><input type="text" name="ramQuota" class="inp"></label></p>
+          <h3>Memory Cache</h3>
+          <table>
+          <col width="230" />
+          <col width="300" />
+            <tr>
+              <td class="label"><label>Dynamic RAM Allocated:</label></td>
+              <td><input type="text" name="ramQuota" class="inp inp_size_1"> GB</td>
+            </tr>
+          </table>
 
-          <h1>Solid State Storage</h1>
-          <p>TODO</p>
+          <h3>
+            <a href="#" class="add_btn"></a>
+            Solid State Storage
+          </h3>
+          <table>
+          <col width="230" />
+          <col width="300" />
+            <tr>
+              <td class="label"><label>Flash One - Memory Allocated:</label></td>
+              <td><input type="text" name="fl_one" class="inp inp_size_1"> GB</td>
+            </tr>
+            <tr>
+              <td class="label"><label>Path:</label></td>
+              <td>
+                <input type="text" name="fl_one" class="inp inp_size_3">
+                <a href="#" class="del_link">Delete</a>
+              </td>
+            </tr>
+          </table>
           
-          <h1>DiskStorage</h1>
-          <p>TODO</p>
+          <h3>
+            <a href="#" class="add_btn"></a>
+            Disk Storage
+          </h3>
+          <table>
+          <col width="230" />
+          <col width="300" />
+            <tr>
+              <td class="label"><label>Disk One Memory Allocated:</label></td>
+              <td>
+                <span class="float_right">Total: 300Gb</span>
+                <input type="text" name="fl_one" class="inp inp_size_1"> GB
+              </td>
+            </tr>
+            <tr>
+              <td class="label"><label>Path:</label></td>
+              <td>
+                <input type="text" name="fl_one" class="inp inp_size_3">
+                <a href="#" class="del_link">Delete</a>
+              </td>
+            </tr>
+            <tr>
+              <td class="label"><label>Disk Two Memory Allocated:</label></td>
+              <td>
+                <span class="float_right">Total: 300Gb</span>
+                <input type="text" name="fl_one" class="inp inp_size_1"> GB
+              </td>
+            </tr>
+            <tr>
+              <td class="label"><label>Path:</label></td>
+              <td>
+                <input type="text" name="fl_one" class="inp inp_size_3">
+                <a href="#" class="del_link">Delete</a>
+              </td>
+            </tr>
+          </table>
 
           <div class="pas_20">
             <div class="right save_cancel">
@@ -2044,11 +2275,6 @@
           </div>
         </form>
       </div>
-    </div>
-    <div class="bottom">
-      <div class="bottom_left"></div>
-      <div class="bottom_right"></div>
-      <div class="bottom_center"></div>
     </div>
   </div>
 </div>

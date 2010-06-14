@@ -72,6 +72,8 @@ body { background: url(../images/background.png) repeat-x; }
 .warn {font-size:14px; color:#ec5223;}
 .warn ul {list-style-type:disc; margin:0 0 0 15px;}
 .ovf {overflow:hidden;}
+.spac_5 {height:5px; overflow:hidden;}
+.full_width {width:100%;}
 
 .main_holder {width:960px; position:relative; margin:auto; left:0px !important;}
 
@@ -80,6 +82,11 @@ body { background: url(../images/background.png) repeat-x; }
 .save_cancel .save_button {display:block; width:121px; height:31px; font-weight:bolder; color:#fff; text-align:center; line-height:31px; font-size:14px; text-decoration:none; background:url(../images/button_blue.gif) 0 0 no-repeat; border:0px;}
 .save_cancel .save_button:hover {background-position:0 -31px;}
 .save_cancel .save_button:active {background-position:0 -62px;}
+
+.save_cancel .delete_button {display:block; width:121px; height:31px; font-weight:bolder; color:#fff; text-align:center; line-height:31px; font-size:14px; text-decoration:none; background:url(../images/button_red.gif) 0 0 no-repeat; border:0px; margin-right:10px;}
+.save_cancel .delete_button:hover {background-position:0 -31px;}
+.save_cancel .delete_button:active {background-position:0 -62px;}
+
 .save_cancel .button_3 {width:146px; height:31px; background:url(../images/button_blue_3.gif) 0 0 no-repeat;}
 .save_cancel .cancel_button {display:block; width:80px; height:31px; line-height:31px; color:#8b8b8e; text-align:center; font-weight:bolder; text-decoration:none; margin-right:30px;}
 .save_cancel .button_3:hover {background-position:0 -31px;}
@@ -609,6 +616,26 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 .lbox .spinner span {display:block; position:relative; margin:0 auto 0 auto; top:50%; width:150px !important;height:20px !important; line-height:14px !important; padding:50px 0 0 0 !important; margin-top:-30px; background:url(../images/spinner/spinner_lightbox.gif) 55px 5px no-repeat; color:#6da2c2; font-size:12px; text-align:center;}
 .lbox .info_text {font-size:12px; padding-bottom:10px; line-height:15px;}
 
+.lbox_form {display:block; padding:10px;}
+.lbox_form h3 {font-size:18px; padding:5px 0 10px 0; border-bottom:1px solid #d8d9db; margin:0 0 10px 0; color:#444245; font-weight:normal;}
+.lbox_form table td {padding:3px 0; color:#7d7d7f; font-size:12px; vertical-align:middle;}
+.lbox_form table td.label {text-align:right; color:#444245; font-size:12px; font-weight:normal; padding:0 10px 0 0; vertical-align:top; line-height:30px;}
+.inp_size_1 {width:93px;}
+.inp_size_2 {width:185px;}
+.inp_size_3 {width:287px;}
+select.inp_size_2 {width:193px;}
+.lbox_form input[type="text"] {width:20px; border:1px solid #cfd3d6; background:none #fff; padding:3px; color:#444245;}
+.lbox_form input.inp {border:1px solid #cfd3d6; background:none #fff; padding:3px; color:#444245;}
+.lbox_form .del_link {color:#e34c31; padding:10px 0 0 0; display:block; float:left;}
+.lbox_form table td span.float_right {line-height:25px;}
+.top_save_cancel {padding-right:10px;}
+.lbox .header_2 {border:0px !important;}
+.lbox .add_btn {display:block; width:61px; height:21px; background:url(../images/add_btn.png) 0 0 no-repeat; float:right; float:right;}
+.content_cell label {margin:0 0 5px 0; display:inline-block;}
+
+#bucket_details_dialog {width:765px; margin-left:-383px;}
+#bucket_details_dialog .lbox {width:765px;}
+
 #add_new_bucket_form h2 {padding:0 0 15px 20px; font-size:12px; line-height:15px;}
 #add_new_bucket_form table p {padding:0 0 15px 20px; font-size:12px; line-height:15px;}
 #add_new_bucket_form p {min-height:15px; padding:0 0 15px 0; font-size:11px; line-height:15px;}
@@ -863,6 +890,7 @@ body .buckets_tab .settings-placeholder td .pad .pad {padding:10px 10px 10px 80p
 .buckets_tab .settings-placeholder .edit_btn {display:block; width:65px; height:21px; background:url(../images/edit-button.png) 0 0 no-repeat; float:right;}
 .buckets_tab .ovf {padding:10px 0;}
 
+
 .bucket_properties_table {width:550px;}
 .bucket_properties_table td {text-align:left !important; vertical-align:top !important; color:#444245; line-height:16px; background:none !important; border:0px !important;}
 .bucket_properties_table td span {color:#949597;}
@@ -885,3 +913,7 @@ ul.tabs.switcher {height:32px; overflow:visible;}
 .btn_1 span {display:inline-block; height:31px; padding:0 6px 0 10px; line-height:31px; background:url(../images/btn_1_bg.png) 0 0 no-repeat;}
 
 .panes.pad {background:none !important;}
+
+
+/* temporary styles */
+.jqmWindow {position:absolute;}
