@@ -71,6 +71,7 @@ body { background: url(../images/background.png) repeat-x; }
 .blue_highlighted {color:#0095D6 !important;}
 .warn {font-size:14px; color:#ec5223;}
 .warn ul {list-style-type:disc; margin:0 0 0 15px;}
+.ovf {overflow:hidden;}
 
 .main_holder {width:960px; position:relative; margin:auto; left:0px !important;}
 
@@ -537,6 +538,7 @@ div.resource_panel div.ssd_resource_container, div.resource_panel div.hdd_resour
 table.lined_tab {width:100%; border-collapse:collapse;}
 table.lined_tab th {padding:10px 5px; text-align:left; border-right:1px solid #d9dce0; border-bottom:1px solid #eaedef; font-size:12px; font-weight:bolder; color:#f2692d; background:none #fbfbfb; font-weight:bolder;}
 table.lined_tab td {border-right:1px solid #d9dce0; font-size:12px; vertical-align:middle; padding:10px 5px; background:none #fff;}
+table.lined_tab td td {background:none !important; border:0px !important;}
 table.lined_tab .highlight td {background:none #ececef;}
 table.lined_tab .hovered td {background:none #f5f5f7;}
 
@@ -827,16 +829,19 @@ body.init_secure #container { display: none; }
 .additional_server_info .info_block {display:block; overflow:hidden;}
 .additional_server_info .info_block.last {padding:0 0 10px 0;}
 .dynamic_ram {display:block; height:40px; padding:0 0 0 77px; background:url(../images/icons.png) 0 -190px no-repeat; float:left;}
+.total_ram {display:block; height:14px; text-align:right;}
 
 .RAM_diagramm {width:420px; float:right;}
 .RAM_diagramm .diagr_ram {display:block; width:420px; height:15px; position:relative; background:url(../images/ram_diagr_bg.png) 0 0 no-repeat;}
 .RAM_diagramm .diagr_ram span {display:block; width:420px; height:15px; position:absolute; left:0px; top:0px; background:url(../images/ram_diagr_bg.png) 0 0 no-repeat;}
 .RAM_diagramm .diagr_ram span.blue {z-index:5; background-position:0 -15px;}
 .RAM_diagramm .diagr_ram span.yellow {z-index:4; background-position:0 -30px;}
+.RAM_diagramm .diagr_ram span.green {z-index:3; background-position:0 -45px;}
 .diagr_labels td {padding:3px 0 0 0;}
 .RAM_diagramm td {color:#808080;}
 .RAM_diagramm td.blue {color:#1878a2;}
 .RAM_diagramm td.yellow {color:#c19710;}
+.RAM_diagramm td.green {color:#6cc74c;}
 
 .solid_state {display:block; height:40px; width:341px; float:left; background:url(../images/icons.png) 0 -289px no-repeat;}
 .disk_storage {display:block; height:40px; width:341px; float:left; background:url(../images/icons.png) 0 -390px no-repeat;}
@@ -848,6 +853,22 @@ body.init_secure #container { display: none; }
 .add_back_btn {display:block; width:148px; height:31px; background:url(../images/add_back_btn.png) 0 0 no-repeat; float:right; margin-right:-10px;}
 
 #buckets .settings-placeholder { display: none; }
+body table.buckets_tab td {background:none #eee; border-bottom:1px solid #ced5d9; padding:0px 5px; color:#7e7e80; border-right:0px; text-align:center;}
+body table.buckets_tab tr td:first-child {text-align:left;}
+body table.buckets_tab tr th {background:none #f6f6f7; border-right:0px; border-bottom:1px solid #fff; color:#4d4d4d; font-weight:normal; text-align:center;}
+body table.buckets_tab tr th:first-child span {display:block; white-space:nowrap; padding:0 0 0 56px; text-align:left;}
+.bucket_name {display:block; float:left; height:68px; line-height:60px; font-size:12px; font-weight:bolder; padding:0 0 0 56px; background:url(../images/icons.png) -12px -98px no-repeat;}
+.buckets_tab .settings-placeholder td .pad {padding:10px 0; background:none;}
+body .buckets_tab .settings-placeholder td .pad .pad {padding:10px 10px 10px 80px !important; background:url(../images/icons.png) 0 -98px no-repeat !important; min-height:60px;}
+.buckets_tab .settings-placeholder .edit_btn {display:block; width:65px; height:21px; background:url(../images/edit-button.png) 0 0 no-repeat; float:right;}
+.buckets_tab .ovf {padding:10px 0;}
+
+.bucket_properties_table {width:550px;}
+.bucket_properties_table td {text-align:left !important; vertical-align:top !important; color:#444245; line-height:16px; background:none !important; border:0px !important;}
+.bucket_properties_table td span {color:#949597;}
+.buckets_tab table.label {float:left;}
+.buckets_tab table.label td {color:#7e7e80;}
+.buckets_tab table.label td:first-child {color:#444245; text-align:right;}
 
 .tabs switcher {}
 .switcher li {padding:0px !important; background:none !important;}
