@@ -23,7 +23,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 %% Server state
--record(state, {port, name, params}).
+-record(state, {port, name}).
 
 
 %% API
@@ -35,7 +35,7 @@ start_link(Name, Cmd, Args, Opts) ->
 init({Name, _Cmd, _Args, _Opts} = Params) ->
     Port = open_port(Params),
     case is_port(Port) of
-        true  -> {ok, #state{port = Port, name = Name, params = Params}};
+        true  -> {ok, #state{port = Port, name = Name}};
         false -> ns_log:log(?MODULE, 0001, "could not start process: ~p",
                             [Params]),
                  {stop, Port}
