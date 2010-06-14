@@ -226,8 +226,8 @@ function postWithValidationErrors(url, data, callback, ajaxOptions) {
     dataType: 'json'
   };
   _.extend(finalAjaxOptions, ajaxOptions || {});
-  $.ajax(finalAjaxOptions);
   var action = new ModalAction();
+  $.ajax(finalAjaxOptions);
   return
 
   function continuation(data, textStatus) {
