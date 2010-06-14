@@ -140,7 +140,7 @@
                     </div>{%=V.setPercentBar(memoryUtilization)%}
                     <div class="comment">{%=memoryUtilization%}% Utilized ({%=V.formatQuantity(memoryFree)%} Free)</div>
                 </div>
-                <a class="text_11 tooltip">What's this?
+                <a class="text_11 tooltip"><span>What's this?</span>
                   <span class="tooltip_msg"><span>
                     The amount of physical memory your cluster has, and how much has been used as reported by the operating system.
                   </span></span>
@@ -156,7 +156,7 @@
                     </div>{%=V.setPercentBar(mcdItemUtilization)%}
                     <div class="comment">{%=V.formatQuantity(bucketsSizeTotal*1024*1024)%} Across <a class="bimnone" href="javascript:nav.go('buckets');">{%=h(V.count(bucketsCount, 'bucket'))%}</a>.</div>
                 </div>
-                <a class="text_11 tooltip">What's this?
+                <a class="text_11 tooltip"><span>What's this?</span>
                   <span class="tooltip_msg"><span>
                     Total cache size across all nodes of the cluster.
                   </span></span>
@@ -874,7 +874,7 @@
                     </div>
                   </div>
                 </div>
-                <h2 class="head_2_underline">Security <a class="text_11 tooltip">What's this?
+                <h2 class="head_2_underline">Security <a class="text_11 tooltip"><span>What's this?</span>
                   <span class="tooltip_msg"><span>
                     Securing the server will force logins for administration and restrict web/REST services to authorized users.
                   </span></span>
@@ -928,7 +928,7 @@
                   <ul>
                   </ul>
                 </div>
-                <h2 class="head_2_underline">Port Configuration <a class="text_11 tooltip">What's this?
+                <h2 class="head_2_underline">Port Configuration <a class="text_11 tooltip"><span>What's this?</span>
                   <span class="tooltip_msg"><span>
                     The standard port for memcached is 11211 and the standard port for the proxy is 11212.
                     You can change port numbers here to meet the specific needs of your environment.
@@ -1581,7 +1581,7 @@
             <table>
               <tr>
                 <td class="th">
-                  Cluster <a class="text_11 tooltip">What's this?
+                  Cluster <a class="text_11 tooltip"><span>What's this?</span>
                     <span class="tooltip_msg"><span>
                       A cluster is a group of servers which operate together to provide an elastic data service.
                     </span></span>
@@ -1593,7 +1593,7 @@
                   <div class="u_line_sm">
                     <label class="label" for="clusterMemberHostIp">Web Console IP Address*:</label>
                     <input type="text" class="inp" name="clusterMemberHostIp" id="clusterMemberHostIp" value="" />
-                    <a class="text_11 tooltip">What's this?
+                    <a class="text_11 tooltip"><span>What's this?</span>
                       <span class="tooltip_msg"><span>
                         This is the hostname or IP address of a server node in the cluster that you wish to join.
                       </span></span>
@@ -1603,7 +1603,7 @@
                   <div class="u_line_sm">
                     <label class="label" for="clusterMemberPort">Web Console Port*:</label>
                     <input type="text" class="inp" name="clusterMemberPort" id="clusterMemberPort" value="8080" onfocus="this.value=='8080'?this.value='':false;" onblur="this.value==''?this.value='8080':false;" />
-                    <a class="text_11 tooltip">What's this?
+                    <a class="text_11 tooltip"><span>What's this?</span>
                       <span class="tooltip_msg"><span>
                         This is the port number of the Web Console interface and REST services in the cluster.
                       </span></span>
@@ -1613,7 +1613,7 @@
               </tr>
               <tr>
                 <td class="th">
-                  Security <a class="text_11 tooltip">What's this?
+                  Security <a class="text_11 tooltip"><span>What's this?</span>
                     <span class="tooltip_msg"><span>
                       If you are joining this server node to a cluster that has been secured, you must enter a username
                       and password.  These are the username and password of the cluster you are joining, not of your
