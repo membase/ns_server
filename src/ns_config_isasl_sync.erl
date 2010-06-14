@@ -18,9 +18,9 @@
 
 start_link() ->
     Config = ns_config:get(),
-    Path = ns_config:search_prop(Config, isasl, path),
-    AU = ns_config:search_prop(Config, memcached, admin_user),
-    AP = ns_config:search_prop(Config, memcached, admin_pass),
+    Path = ns_config:search_node_prop(Config, isasl, path),
+    AU = ns_config:search_node_prop(Config, memcached, admin_user),
+    AP = ns_config:search_node_prop(Config, memcached, admin_pass),
     start_link(Path, AU, AP).
 
 start_link(Path, AU, AP) when is_list(Path); is_list(AU); is_list(AP) ->
@@ -31,7 +31,7 @@ setup_handler(Path, AU, AP) ->
 
 init([Path, AU, AP] = Args) ->
     error_logger:info_msg("isasl_sync init: ~p~n", [Args]),
-    {value, Pools} = ns_config:search(ns_config:get(), pools),
+    {value, Pools} = ns_config:search_node(ns_config:get(), pools),
     Buckets = extract_creds(Pools),
     error_logger:info_msg("isasl_sync init buckets: ~p~n", [Buckets]),
     writeSASLConf(Path, Buckets, AU, AP),

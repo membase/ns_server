@@ -58,7 +58,7 @@ running({leave, Data}, State) ->
     NewCookie = ns_node_disco:cookie_gen(),
     erlang:set_cookie(node(), NewCookie),
     lists:foreach(fun erlang:disconnect_node/1, nodes()),
-    WebPort = ns_config:search_prop(ns_config:get(), rest, port, false),
+    WebPort = ns_config:search_node_prop(ns_config:get(), rest, port, false),
     ns_config:clear([directory]),
     case WebPort of
         false -> false;

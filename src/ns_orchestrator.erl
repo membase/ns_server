@@ -35,12 +35,12 @@ start_link(Bucket) ->
 
 get_json_map(BucketId) ->
     Config = ns_config:get(),
-    Buckets = ns_config:search_prop(Config, memcached, buckets),
+    Buckets = ns_config:search_node_prop(Config, memcached, buckets),
     BucketConfig = proplists:get_value(BucketId, Buckets),
     NumVBuckets = proplists:get_value(num_vbuckets, BucketConfig),
     NumReplicas = proplists:get_value(num_replicas, BucketConfig),
     ENodes = lists:sort(ns_node_disco:nodes_wanted()),
-    Port = ns_config:search_prop(Config, memcached, port),
+    Port = ns_config:search_node_prop(Config, memcached, port),
     PortStr = integer_to_list(Port),
     Servers = lists:map(fun (ENode) ->
                                 {_Name, Host} = misc:node_name_host(ENode),

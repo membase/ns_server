@@ -470,7 +470,7 @@ build_node_info(MyPool, WantENode) ->
 
 build_node_info(MyPool, WantENode, InfoNode) ->
     {_Name, Host} = misc:node_name_host(WantENode),
-    DirectPort = ns_config:search_prop(ns_config:get(), memcached, port),
+    DirectPort = ns_config:search_node_prop(ns_config:get(), memcached, port),
     ProxyPort = pool_proxy_port(MyPool, WantENode),
     Versions = proplists:get_value(version, InfoNode, []),
     Version = proplists:get_value(ns_server, Versions, "unknown"),
@@ -488,7 +488,7 @@ build_node_info(MyPool, WantENode, InfoNode) ->
 
 pool_proxy_port(_PoolConfig, _Node) ->
     Config = ns_config:get(),
-    ns_config:search_prop(Config, moxi, port).
+    ns_config:search_node_prop(Config, moxi, port).
 
 handle_pool_info_streaming(Id, Req) ->
     UserPassword = menelaus_auth:extract_auth(Req),
@@ -763,7 +763,7 @@ handle_settings_web(Req) ->
 
 build_settings_web() ->
     Config = ns_config:get(),
-    {U, P} = case ns_config:search_prop(Config, rest_creds, creds) of
+    {U, P} = case ns_config:search_node_prop(Config, rest_creds, creds) of
                  [{User, Auth} | _] ->
                      {User, proplists:get_value(password, Auth, "")};
                  _NoneFound ->
@@ -868,8 +868,8 @@ handle_settings_advanced_post(Req) ->
 
 build_port_settings(_PoolId) ->
     Config = ns_config:get(),
-    [{proxyPort, ns_config:search_prop(Config, moxi, port)},
-     {directPort, ns_config:search_prop(Config, memcached, port)}].
+    [{proxyPort, ns_config:search_node_prop(Config, moxi, port)},
+     {directPort, ns_config:search_node_prop(Config, memcached, port)}].
 
 validate_port_settings(ProxyPort, DirectPort) ->
     CS = [is_valid_port_number(ProxyPort) orelse <<"Proxy port must be a positive integer less than 65536">>,

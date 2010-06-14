@@ -45,9 +45,9 @@ start_link() ->
 
 init([]) ->
     Config = ns_config:get(),
-    %% Username = ns_config:search_prop(Config, memcached, admin_user),
-    %% Password = ns_config:search_prop(Config, memcached, admin_pass),
-    Port = ns_config:search_prop(Config, memcached, port),
+    %% Username = ns_config:search_node_prop(Config, memcached, admin_user),
+    %% Password = ns_config:search_node_prop(Config, memcached, admin_pass),
+    Port = ns_config:search_node_prop(Config, memcached, port),
     {ok, Sock} = gen_tcp:connect("127.0.0.1", Port, [binary, {packet, 0}, {active, false}], 5000),
     %% ok = mc_client_binary:auth(Sock, {<<"PLAIN">>, {Username, Password}}),
     {ok, #state{sock=Sock}}.

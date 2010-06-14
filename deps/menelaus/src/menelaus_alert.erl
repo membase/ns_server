@@ -222,7 +222,7 @@ default_alert_config() ->
      {alerts, []}].
 
 get_alert_config() ->
-    case ns_config:search(ns_config:get(), alerts) of
+    case ns_config:search_node(ns_config:get(), alerts) of
         {value, X} -> X;
         false      -> default_alert_config()
     end.

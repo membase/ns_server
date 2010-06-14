@@ -30,75 +30,36 @@ base_api_port = (ENV['BASE_API_PORT'] || "9000").to_i
 nodes = ""
 
 num_nodes.times do |x|
+  node_id = "'n_#{x + base_api_port - 9000}@127.0.0.1'"
   nodes = nodes + <<-END
-    {{node, 'n_#{x + base_api_port - 9000}@127.0.0.1', rest},
+    {{node, #{node_id}, rest},
       [{'_ver', {0, 0, 0}},
        {port, #{x + base_api_port}}]}.
-    {{node, 'n_#{x + base_api_port - 9000}@127.0.0.1', port_servers},
-      [{'_ver', {0, 0, 0}},
-       {memcached, "./priv/memcached",
-        ["-p", "#{(x * 2) + base_direct_port}",
-         "-X", "./priv/engines/stdin_term_handler.so",
-         "-E", "./priv/engines/bucket_engine.so",
-         "-e", "admin=_admin;engine=./priv/engines/ep.so;default_bucket_name=default;auto_create=false"
-        ],
-        [{env, [{"MEMCACHED_TOP_KEYS", "100"},
-                {"ISASL_PWFILE", "./priv/isasl.pw"}, % Also isasl path above.
-                {"ISASL_DB_CHECK_TIME", "1"}
-               ]},
-         use_stdio,
-         stderr_to_stdout,
-         stream]
-       },
-       {moxi, "./priv/moxi",
-                ["-Z", "port_listen=#{(x * 2) + base_direct_port + 1}",
-                 "-z", "auth=,url=http://127.0.0.1:8080/pools/default/bucketsStreaming/default,\#@"
-                ],
-                [{env, []},
-                 use_stdio, stderr_to_stdout, stream]
-       }]}.
+
+    {{node, #{node_id}, memcached}, [{'_ver', {0, 0, 0}},
+                 {port, #{(x * 2) + base_direct_port}},
+                 {ht_size,786433},
+                 {admin_user, "_admin"},
+                 {admin_pass, "_admin"},
+                 {buckets,
+                  [{"default",
+                    [{num_vbuckets, 16},
+                     {num_replicas, 0},
+                     {map, undefined}]
+                   }]
+                 }]}.
+
+    {{node, #{node_id}, moxi}, [{'_ver', {0, 0, 0}},
+            {port, #{(x * 2) + base_direct_port + 1}}]}.
+
     END
 end
-
-pools = <<END
-{memcached, [{'_ver', {0, 0, 0}},
-        {port, #{base_direct_port}},
-        {admin_user, "_admin"},
-        {admin_pass, "_admin"},
-        {buckets, ["default"]}]}.
-
-{pools, [
-  {'_ver', {0, 0, 0}},
-  {"default", [
-END
-
-num_nodes.times do |x|
-  pools = pools + "{{node, 'n_#{x + base_api_port - 9000}@127.0.0.1', port}, #{(x * 2) + base_direct_port + 1}},\n"
-end
-
-buckets = ""
-num_buckets.times do |x|
-  buckets = buckets + ",{\"b_#{x}\", [{auth_plain, undefined}, {size_per_node, #{x + 1}}]}\n"
-end
-
-pools = pools + <<END
-    {buckets, [
-      {"default", [
-        {auth_plain, undefined},
-        {size_per_node, 2} % In MB.
-      ]}
-#{buckets}
-    ]}
-  ]}
-]}.
-END
 
 # -------------------------------------------------------
 
 File.open(prefix + "_config", 'w') {|f|
   f.write("% num_nodes is #{num_nodes}\n")
   f.write("#{nodes}\n")
-  f.write("#{pools}\n")
 }
 
 numbers = (0...num_nodes).to_a

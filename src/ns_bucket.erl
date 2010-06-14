@@ -56,7 +56,7 @@ get_bucket_names() ->
 
 get_buckets() ->
     Config = ns_config:get(),
-    ns_config:search_prop(Config, memcached, buckets, []).
+    ns_config:search_node_prop(Config, memcached, buckets, []).
 
 set_bucket_config(Bucket, NewConfig) ->
     update_bucket_config(Bucket, fun (_) -> NewConfig end).

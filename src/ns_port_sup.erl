@@ -29,11 +29,7 @@ init([]) ->
 % Returns {value, PortServers}.
 
 port_servers_config() ->
-    Config = ns_config:get(),
-    case ns_config:search(Config, {node, node(), port_servers}) of
-        false -> ns_config:search(Config, port_servers);
-        X     -> X
-    end.
+    ns_config:search_node(ns_config:get(), port_servers).
 
 dynamic_children() ->
     {value, PortServers} = port_servers_config(),
@@ -86,7 +82,7 @@ current_ports() ->
 
 %% internal functions
 format(Config, Name, Format, Keys) ->
-    error_logger:info_msg("format args ~p~n", [[Config, Name, Format, Keys]]),
-    Values = [ns_config:search_prop(Config, Name, K) || K <- Keys],
+    error_logger:info_msg("format args ~p~n", [[Name, Format, Keys]]),
+    Values = [ns_config:search_node_prop(Config, Name, K) || K <- Keys],
     lists:flatten(io_lib:format(Format, Values)).
 

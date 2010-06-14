@@ -80,7 +80,7 @@ reply_json(Req, Body, Status) ->
                  mochijson2:encode(Body)}).
 
 expect_config(Key) ->
-    {value, RV} = ns_config:search(Key),
+    {value, RV} = ns_config:search_node(Key),
     RV.
 
 expect_prop_value(K, List) ->
