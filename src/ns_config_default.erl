@@ -8,13 +8,6 @@
          default_root_path/0,
          find_root/1, is_root/1]).
 
-%% The only stuff that needs to be here are dynamic
-%% defaults that can't be in priv/config
-default() ->
-    [{directory, default_path("config")},
-     {nodes_wanted, [node()]}
-    ] ++ default_static().
-
 default_path(Name) ->
     RootPath = default_root_path(),
     NamePath = filename:join(RootPath, Name),
@@ -95,8 +88,13 @@ keys([], Accum) -> Accum;
 keys([KVList | Rest], Accum) ->
     keys(Rest, lists:map(fun({Key, _Val}) -> Key end, KVList) ++ Accum).
 
-default_static() ->
-  [ % In general, the value in these key-value pairs are property lists,
+default() ->
+   DataDir = filename:join(default_path("data"), misc:node_name_short()),
+   DbName = filename:join(DataDir, "default"),
+   ok = filelib:ensure_dir(DbName),
+   [{directory, default_path("config")},
+    {nodes_wanted, [node()]},
+    % In general, the value in these key-value pairs are property lists,
     % like [{prop_atom1, value1}, {prop_atom2, value2}].
     %
     % See the proplists erlang module.
@@ -139,7 +137,7 @@ default_static() ->
     {memcached, [{'_ver', {0, 0, 0}},
                  {port, 11210},
                  {ht_size, 786433},
-                 {dbname, filename:join(default_path("data"), misc:node_name_short())},
+                 {dbname, DbName},
                  {admin_user, "_admin"},
                  {admin_pass, "_admin"},
                  {buckets,
