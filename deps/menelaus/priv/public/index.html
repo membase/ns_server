@@ -270,6 +270,46 @@
       </li>
       <li id="{%= s.detailsRowID %}" class="settings-placeholder"></li>
       <!-- {% }); %} -->
+      <li>
+        <span class="additional_server_info">
+          <h3>Memory Cache</h3>
+          <span class="info_block">
+            <span class="dynamic_ram">Dynamic RAM:</span>
+            <table class="RAM_diagramm">
+            <col width="" />
+            <col width="" />
+            <col width="" />
+            <col width="" />
+              <tr>
+                <td colspan="4">
+                  <span class="diagr_ram">
+                    <span class="blue" style="width:33%;"></span>
+                    <span class="yellow" style="width:68%;"></span>
+                  </span>
+                </td>
+              </tr>
+              <tr class="diagr_labels">
+                <td class="blue">Membase Quota (15Gb)</td>
+                <td class="yellow">Other (5Gb)</td>
+                <td>Free (12Gb)</td>
+                <td class="right">32Gb</td>
+              </tr>
+            </table>
+          </span>
+          <h3>Solid State Storage</h3>
+          <span class="info_block">
+            <span class="solid_state"></span>
+            <a href="#" class="add_btn"></a>
+            <span class="info_message">None configured</span>
+          </span>
+          <h3>Dick Storage</h3>
+          <span class="info_block last">
+            <span class="disk_storage"></span>
+            <a href="#" class="add_btn"></a>
+            <span class="info_message">None configured</span>
+          </span>
+        </span>
+      </li>
     </ul>
   </script>
   <script id="pending_server_list_template" type="text/html">

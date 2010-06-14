@@ -822,6 +822,27 @@ body.init_secure #container { display: none; }
 #servers .imbalance { display: none; }
 #servers.imbalance .imbalance { display: inline; }
 
+.additional_server_info {display:block;}
+.additional_server_info h3 {font-size:14px; color:#444245; padding:5px 0 10px 0; border-bottom:1px solid #bbbdbf; font-weight:normal; margin:0 0 10px 0;}
+.additional_server_info .info_block {display:block; overflow:hidden;}
+.additional_server_info .info_block.last {padding:0 0 10px 0;}
+.dynamic_ram {display:block; height:40px; padding:0 0 0 77px; background:url(../images/icons.png) 0 -190px no-repeat; float:left;}
+
+.RAM_diagramm {width:420px; float:right;}
+.RAM_diagramm .diagr_ram {display:block; width:420px; height:15px; position:relative; background:url(../images/ram_diagr_bg.png) 0 0 no-repeat;}
+.RAM_diagramm .diagr_ram span {display:block; width:420px; height:15px; position:absolute; left:0px; top:0px; background:url(../images/ram_diagr_bg.png) 0 0 no-repeat;}
+.RAM_diagramm .diagr_ram span.blue {z-index:5; background-position:0 -15px;}
+.RAM_diagramm .diagr_ram span.yellow {z-index:4; background-position:0 -30px;}
+.diagr_labels td {padding:3px 0 0 0;}
+.RAM_diagramm td {color:#808080;}
+.RAM_diagramm td.blue {color:#1878a2;}
+.RAM_diagramm td.yellow {color:#c19710;}
+
+.solid_state {display:block; height:40px; width:341px; float:left; background:url(../images/icons.png) 0 -289px no-repeat;}
+.disk_storage {display:block; height:40px; width:341px; float:left; background:url(../images/icons.png) 0 -390px no-repeat;}
+.additional_server_info .add_btn {display:block; width:61px; height:21px; background:url(../images/add_btn.png) 0 0 no-repeat; float:right;}
+.additional_server_info .info_message {font-size:16px;}
+
 .add_back_row {height:31px; display:block; background:url(../images/add_back_bg.png) 0 0 repeat-x;}
 .add_b_message {line-height:31px; color:#fff;}
 .add_back_btn {display:block; width:148px; height:31px; background:url(../images/add_back_btn.png) 0 0 no-repeat; float:right; margin-right:-10px;}
