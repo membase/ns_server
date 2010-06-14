@@ -1668,12 +1668,12 @@
       </div>
     </form>
     <div class="config-bottom">
-      <button name="next" value="Next" class="submit next direction-button" type="submit">Next</button>
+      <button name="next" value="Next" class="submit next direction-button" id="step-1-next" type="submit">Next</button>
       <a href="/index.html" class="cancel">Cancel</a>
     </div>
     <script type="text/javascript">
       $(function(){
-        $('.config-bottom button.next').click(function (e) {
+        $('.config-bottom button#step-1-next').click(function (e) {
           e.preventDefault();
           showInitDialog("cluster");
         });
@@ -1683,13 +1683,16 @@
   <!-- END init_resources_block -->
   <div class="pad" id="init_cluster_dialog">
     <!-- screen S.5 -->
+    <div class="config-top">
+      <h1>Configure Server</h1>
+      <h2>Step <span class="current-step">2</span> of 3</h2>
+    </div>
     <div class="alert_red" id="init_cluster_failed_message" style="display:none;">
       <div class="al_text">
         Could not join the cluster because of bad input.
       </div>
     </div>
-    <h1>Would you like to join an existing Membase Cluster?</h1>
-    <h2>Step 2 of 3</h2>
+    <h2 class="question">Would you like to join an existing Membase Cluster?</h2>
     <p class="pad_10">
       If this new server will be added to an existing membase cluster
       you may join that cluster now. To do so, please enter the IP
@@ -1700,40 +1703,36 @@
       joined to a Membase cluster.
     </p>
     <form id="init_cluster_form" class="form block">
-      <table>
-        <col width="" />
-        <col width="" />
-        <tr>
-          <td colspan="2">
-            <div class="pat_10">
-              <a class="button_big" href="javascript:showInitDialog('secure');">
-                Do NOT join a cluster now
-              </a>
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <td colspan="2">
-            <div class="pat_10">
-              <a class="button_big" href="javascript:OverviewSection.startJoinCluster();">
-                Join Cluster
-              </a>
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <td colspan="2">
-            <div class="pat_10">
-              <input type="submit" value="Back" class="submit back" />
-            </div>
-          </td>
-        </tr>
-      </table>
+      <div class="pat_10">
+        <input type="radio" name="join_cluster" id="join-cluster" />
+        Do NOT join a cluster now, maybe later.
+      </div>
+      <div class="pat_10">
+        <input type="radio" name="join_cluster" id="no-join-cluster" />
+        Join a cluster now.
+      </div>
     </form>
+    <div class="config-bottom">
+      <button name="next" value="Next" class="submit next direction-button" id="step-2-next" type="submit">Next</button>
+      <button name="next" value="Back" class="submit back direction-button" id="step-2-back" type="submit">Back</button>
+      <a href="/index.html" class="cancel">Cancel</a>
+    </div>
     <script type="text/javascript">
-      $('#init_cluster_form input.back').click(function (e) {
-        e.preventDefault();
-        showInitDialog("resources");
+      $(function(){
+        $('input#join-cluster').click(function (e) {
+          showInitDialog('secure');
+        });
+        $('input#no-join-cluster').click(function (e) {
+          OverviewSection.startJoinCluster();
+        });
+        $('div.config-bottom button#step-2-next').click(function (e) {
+          e.preventDefault();
+          showInitDialog("secure");
+        });      
+        $('div.config-bottom button#step-2-back').click(function (e) {
+          e.preventDefault();
+          showInitDialog("resources");
+        });      
       });
     </script>
   </div>
