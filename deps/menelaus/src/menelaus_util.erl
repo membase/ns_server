@@ -24,6 +24,7 @@
          expect_config/1,
          expect_prop_value/2,
          get_option/2,
+         local_addr/1,
          concat_url_path/1,
          validate_email_address/1]).
 
@@ -219,3 +220,8 @@ validate_email_address(Address) ->
         {match, _} -> true;
         _ -> false
     end.
+
+%% Extract the local address of the socket used for the request
+local_addr(Req) ->
+    {ok, {Address, _Port}} = inet:sockname(Req:get(socket)),
+    string:join(lists:map(fun integer_to_list/1, tuple_to_list(Address)), ".").
