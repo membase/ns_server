@@ -34,12 +34,6 @@ get_child_specs() ->
       permanent, infinity, supervisor,
       [ns_node_disco_sup]},
 
-     {ns_memcached_port,
-      {supervisor_cushion, start_link,
-       [ns_memcached_port, 5000, ns_memcached_port, start_link, []]},
-      permanent, 10, worker,
-      [supervisor_cushion]},
-
      {ns_port_sup, {ns_port_sup, start_link, []},
       permanent, 10, worker,
       [supervisor_cushion, ns_port_sup, ns_port_server]},

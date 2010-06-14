@@ -138,6 +138,7 @@ default_static() ->
     % Memcached config
     {memcached, [{'_ver', {0, 0, 0}},
                  {port, 11210},
+                 {ht_size, 786433},
                  {admin_user, "_admin"},
                  {admin_pass, "_admin"},
                  {buckets,
@@ -159,18 +160,29 @@ default_static() ->
     % This is a classic "should" key, where ns_port_sup needs
     % to try to start child processes.  If it fails, it should ns_log errors.
     {port_servers,
-        [{'_ver', {0, 0, 0}},
-            {moxi, "./bin/moxi/moxi",
-                ["-Z", {"port_listen=~p", [port]},
-                 "-z", "auth=,url=http://127.0.0.1:8080/pools/default/bucketsStreaming/default,#@",
-                 "-p", "0"
-                ],
-                [{env, []},
-                    use_stdio,
-                    stderr_to_stdout,
-                    stream]
-            }
-        ]
+     [{'_ver', {0, 0, 0}},
+      {moxi, "./bin/moxi/moxi",
+       ["-Z", {"port_listen=~B", [port]},
+        "-z", "auth=,url=http://127.0.0.1:8080/pools/default/bucketsStreaming/default,#@",
+        "-p", "0"
+       ],
+       [{env, []},
+        use_stdio,
+        stderr_to_stdout,
+        stream]
+      },
+      {memcached, "./bin/memcached/memcached",
+       ["-p", {"~B", [port]},
+        "-X", "./bin/memcached/stdin_term_handler.so",
+        "-E", "./bin/ep_engine/ep.so",
+        "-B", "binary",
+        "-r",
+        "-e", {"vb0=false;ht_size=~B;dbname=~s", [ht_size, dbname]}],
+       [{env, [{"MEMCACHED_TOP_KEYS", "100"}]},
+        use_stdio,
+        stderr_to_stdout,
+        stream]
+      }]
     },
 
     % Modifiers: menelaus
@@ -193,4 +205,3 @@ default_static() ->
                     bucket_auth_failed]}
             ]}
   ].
-
