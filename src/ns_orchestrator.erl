@@ -23,7 +23,7 @@
 %% API
 -export([start_link/1]).
 
--export([get_json_map/1]).
+-export([json_map/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2,
@@ -33,18 +33,20 @@
 start_link(Bucket) ->
     gen_server:start_link(server(Bucket), ?MODULE, Bucket, []).
 
-get_json_map(BucketId) ->
+json_map(BucketId, LocalAddr) ->
     Config = ns_config:get(),
     Buckets = ns_config:search_node_prop(Config, memcached, buckets),
     BucketConfig = proplists:get_value(BucketId, Buckets),
     NumVBuckets = proplists:get_value(num_vbuckets, BucketConfig),
     NumReplicas = proplists:get_value(num_replicas, BucketConfig),
     ENodes = lists:sort(ns_node_disco:nodes_wanted()),
-    Port = ns_config:search_node_prop(Config, memcached, port),
-    PortStr = integer_to_list(Port),
     Servers = lists:map(fun (ENode) ->
-                                {_Name, Host} = misc:node_name_host(ENode),
-                                list_to_binary(Host ++ ":" ++ PortStr)
+                                Port = ns_config:search_node_prop(ENode, Config, memcached, port),
+                                Host = case misc:node_name_host(ENode) of
+                                           {_Name, "127.0.0.1"} -> LocalAddr;
+                                           {_Name, H} -> H
+                                       end,
+                                list_to_binary(Host ++ ":" ++ integer_to_list(Port))
                         end, ENodes),
     VBMap = case proplists:get_value(map, BucketConfig) of
                 undefined ->
@@ -209,4 +211,3 @@ vbucket_states({Node, {ok, Reply}}, Dict) ->
                                     fun (L) -> [{Node, State}|L] end,
                                     [{Node, State}], D)
                 end, Dict, Reply).
-

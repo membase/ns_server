@@ -15,7 +15,7 @@
 -ifdef(EUNIT).
 -export([test/0]).
 -import(menelaus_util,
-        [test_under_debugger/0, debugger_apply/2, concat_url_path/1,
+        [concat_url_path/1,
          wrap_tests_with_cache_setup/1]).
 -endif.
 
@@ -31,11 +31,7 @@
          redirect_permanently/2,
          reply_json/2,
          reply_json/3,
-         parse_json/1,
-         expect_config/1,
          get_option/2]).
-
--import(ns_license, [license/1, change_license/2]).
 
 %% The range used within this file is arbitrary and undefined, so I'm
 %% defining an arbitrary value here just to be rebellious.
@@ -550,17 +546,18 @@ checking_bucket_access(_PoolId, Id, Req, Body) ->
 handle_bucket_list(Id, Req) ->
     Buckets = lists:sort(fun (A,B) -> element(1, A) =< element(1, B) end,
                          all_accessible_buckets_in_pool(fakepool, Req)),
-    BucketsInfo = [build_bucket_info(Id, Name, fakepool)
+    LocalAddr = menelaus_util:local_addr(Req),
+    BucketsInfo = [build_bucket_info(Id, Name, fakepool, LocalAddr)
                    || {Name, _} <- Buckets],
     reply_json(Req, BucketsInfo).
 
 handle_bucket_info(PoolId, Id, Req, Pool, _Bucket) ->
-    reply_json(Req, build_bucket_info(PoolId, Id, Pool)).
+    reply_json(Req, build_bucket_info(PoolId, Id, Pool, menelaus_util:local_addr(Req))).
 
-build_bucket_info(PoolId, Id, Pool) ->
-    build_bucket_info(PoolId, Id, Pool, normal).
+build_bucket_info(PoolId, Id, Pool, LocalAddr) ->
+    build_bucket_info(PoolId, Id, Pool, normal, LocalAddr).
 
-build_bucket_info(PoolId, Id, Pool, InfoLevel) ->
+build_bucket_info(PoolId, Id, Pool, InfoLevel, LocalAddr) ->
     StatsUri = list_to_binary(concat_url_path(["pools", PoolId, "buckets", Id, "stats"])),
     Nodes = build_nodes_info(Pool, false, InfoLevel),
     List1 = [{name, list_to_binary(Id)},
@@ -571,7 +568,7 @@ build_bucket_info(PoolId, Id, Pool, InfoLevel) ->
                                                              "buckets", Id, "controller", "doFlush"]))},
              {nodes, Nodes},
              {stats, {struct, [{uri, StatsUri}]}},
-             {vBucketServerMap, ns_orchestrator:get_json_map(Id)}],
+             {vBucketServerMap, ns_orchestrator:json_map(Id, LocalAddr)}],
     List2 = case InfoLevel of
                 stable -> List1;
                 normal -> List1 ++ [{basicStats, {struct, menelaus_stats:basic_stats(PoolId, Id)}}]
@@ -585,10 +582,11 @@ handle_bucket_info_streaming_config(PoolId, Id, Req, Pool, _Bucket) ->
     handle_bucket_info_streaming(PoolId, Id, Req, Pool, _Bucket, stable).
 
 handle_bucket_info_streaming(PoolId, Id, Req, Pool, _Bucket, ForceInfoLevel) ->
+    LocalAddr = menelaus_util:local_addr(Req),
     F = fun(InfoLevel) ->
                 case ForceInfoLevel of
-                    undefined -> build_bucket_info(PoolId, Id, Pool, InfoLevel);
-                    _         -> build_bucket_info(PoolId, Id, Pool, ForceInfoLevel)
+                    undefined -> build_bucket_info(PoolId, Id, Pool, InfoLevel, LocalAddr);
+                    _         -> build_bucket_info(PoolId, Id, Pool, ForceInfoLevel, LocalAddr)
                 end
         end,
     handle_streaming(F, Req, undefined).
