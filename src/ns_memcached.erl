@@ -55,7 +55,7 @@ init([]) ->
     %% ok = mc_client_binary:auth(Sock, {<<"PLAIN">>, {Username, Password}}),
     {ok, #state{sock=Sock}}.
 
-handle_call({create_bucket, _Bucket, _Config}, _FXrom, State) ->
+handle_call({create_bucket, _Bucket, _Config}, _From, State) ->
     %% Reply = mc_client_binary:create_bucket(State#state.sock, Bucket, Config),
     Reply = unimplemented,
     {reply, Reply, State};
