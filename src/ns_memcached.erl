@@ -52,17 +52,17 @@ init([]) ->
     %% ok = mc_client_binary:auth(Sock, {<<"PLAIN">>, {Username, Password}}),
     {ok, #state{sock=Sock}}.
 
-handle_call(list_buckets, _From, State) ->
-    %% Reply = mc_client_binary:list_buckets(State#state.sock),
-    Reply = {ok, ["default"]},
-    {reply, Reply, State};
-handle_call({create_bucket, _Bucket, _Config}, _From, State) ->
+handle_call({create_bucket, _Bucket, _Config}, _FXrom, State) ->
     %% Reply = mc_client_binary:create_bucket(State#state.sock, Bucket, Config),
     Reply = unimplemented,
     {reply, Reply, State};
 handle_call({delete_bucket, _Bucket}, _From, State) ->
     %% Reply = mc_client_binary:delete_bucket(State#state.sock, Bucket),
     Reply = unimplemented,
+    {reply, Reply, State};
+handle_call(list_buckets, _From, State) ->
+    %% Reply = mc_client_binary:list_buckets(State#state.sock),
+    Reply = {ok, ["default"]},
     {reply, Reply, State};
 handle_call({set_vbucket_state, Bucket, VBucket, VBState}, _From, State) ->
     Reply = do_in_bucket(State#state.sock, Bucket,
