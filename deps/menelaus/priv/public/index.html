@@ -37,70 +37,83 @@
       </ul>
     </div>
 <table width="100%">
-<tr>
+  <tr>
+    <td class="leftNav">
+      <h1>MONITOR</h1>
+      <ul>
+        <!--<li class="line"></li>-->
+        <li class="line"><a id="switch_overview" href="javascript:nav.go('overview');">Cluster Overview</a></li>
+        <li class="line"><a id="switch_monitor_buckets" href="javascript:nav.go('monitor_buckets');">Data Buckets</a></li>
+        <li class="line"><a id="switch_monitor_servers" href="javascript:nav.go('monitor_servers');">Servers</a></li>
+        <li class="line"><a id="switch_alerts" href="javascript:nav.go('alerts');">Alerts / Log</a></li>
+      </ul>
 
-      <td class="leftNav">
-        <h1>MONITOR</h1>
-        <ul>
-          <!--<li class="line"></li>-->
-          <li class="line"><a id="switch_overview" href="javascript:nav.go('overview');">Cluster Overview</a></li>
-          <li class="line"><a id="switch_monitor_buckets" href="javascript:nav.go('monitor_buckets');">Data Buckets</a></li>
-          <li class="line"><a id="switch_monitor_servers" href="javascript:nav.go('monitor_servers');">Servers</a></li>
-          <li class="line"><a id="switch_alerts" href="javascript:nav.go('alerts');">Alerts / Log</a></li>
-        </ul>
+      <h1>MANAGE</h1>
+      <ul>
+        <li class="line"><a id="switch_buckets" href="javascript:nav.go('buckets');">Data Buckets</a></li>
+        <li class="line"><a id="switch_servers" href="javascript:nav.go('servers');">Servers</a></li>
+      </ul>
 
-        <h1>MANAGE</h1>
-        <ul>
-          <li class="line"><a id="switch_buckets" href="javascript:nav.go('buckets');">Data Buckets</a></li>
-          <li class="line"><a id="switch_servers" href="javascript:nav.go('servers');">Servers</a></li>
-        </ul>
+      <h1>SETUP</h1>
+      <ul>
+        <li class="line"><a id="switch_settings" href="javascript:nav.go('settings');">Settings</a></li>
+      </ul>
 
-        <h1>SETUP</h1>
-        <ul>
-          <li class="line"><a id="switch_settings" href="javascript:nav.go('settings');">Settings</a></li>
-        </ul>
-
-        <h1>SUPPORT</h1>
-        <ul>
-          <li class="line"><a id="switch_support_docs" href="/docs/index_CSH.html#1002|northscale" target="MCWebHelp">Documentation</a></li>
-          <li class="line"><a id="switch_support_forums" href="http://forums.northscale.com/" target="nsforums">Support Forums</a></li>
-          <li class="line"><a id="switch_support_suggest" href="http://forums.northscale.com/" target="nsforums">Suggest a Feature</a></li>
-        </ul>
-      </td>
-
-  <td id="mainPanel">
-
-  <div id="overview" style="display:none;">
-    <!-- shadow box -->
-	<h1>Cluster Overview</h1>
-  <div id="notice_container"></div>
-	<div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
-    <h2 class="header_2" id="get_started_expander"><span class="expander_2 block">&nbsp;</span>Get Started</h2>
-    <div class="pad_10" id="get_started">
-        <span class="info_text">You may also want to review the <a href="/docs/index_CSH.html#1002|northscale" target="MCWebHelp">Quick Start</a> documentation.</span>
-        <div class="pat_10">
-            <div class="gray_rb">
-                <div class="left">
-                    <div class="right">
-                        <div class="pad">
-                            <span id="join_leave_switch" class="join-possible">
-                              <a id="cluster_join_button" class="button_big" href="javascript:OverviewSection.startJoinCluster();">
-                                Join Cluster
-                              </a>
-                              <a id="cluster_leave_button" class="button_big" href="javascript:OverviewSection.leaveCluster();">
-                                Leave Cluster
-                              </a>
-                            </span>
-                            <a href="javascript:BucketsSection.startCreate();" class="button_big">
-                              Create Data Bucket
-                            </a>
+      <h1>SUPPORT</h1>
+      <ul>
+        <li class="line"><a id="switch_support_docs" href="/docs/index_CSH.html#1002|northscale" target="MCWebHelp">Documentation</a></li>
+        <li class="line"><a id="switch_support_forums" href="http://forums.northscale.com/" target="nsforums">Support Forums</a></li>
+        <li class="line"><a id="switch_support_suggest" href="http://forums.northscale.com/" target="nsforums">Suggest a Feature</a></li>
+      </ul>
+    </td>
+    <td id="mainPanel">
+      <div id="overview" style="display:none;">
+      <!-- shadow box -->
+      <h1>Cluster Overview</h1>
+      <div id="notice_container"></div>
+      <div class="shadow_box">
+        <div class="top">
+          <div>
+            <div>&nbsp;</div>
+          </div>
+        </div>
+        <div class="cnt">
+          <div class="pad">
+            <div class="content">
+              <h2 class="header_2" id="get_started_expander"><span class="expander_2 block">&nbsp;</span>Get Started</h2>
+              <div class="pad_10" id="get_started">
+                <span class="info_text">You may also want to review the <a href="/docs/index_CSH.html#1002|northscale" target="MCWebHelp">Quick Start</a> documentation.</span>
+                <div class="pat_10">
+                    <div class="gray_rb">
+                        <div class="left">
+                            <div class="right">
+                                <div class="pad">
+                                    <span id="join_leave_switch" class="join-possible">
+                                      <a id="cluster_join_button" class="button_big" href="javascript:OverviewSection.startJoinCluster();">
+                                        Join Cluster
+                                      </a>
+                                      <a id="cluster_leave_button" class="button_big" href="javascript:OverviewSection.leaveCluster();">
+                                        Leave Cluster
+                                      </a>
+                                    </span>
+                                    <a href="javascript:BucketsSection.startCreate();" class="button_big">
+                                      Create Data Bucket
+                                    </a>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
+              </div>
             </div>
+          </div>
         </div>
-    </div>
-    </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
+        <div class="bottom">
+          <div>
+            <div>&nbsp;</div>
+          </div>
+        </div>
+      </div>
 	<!-- END shadow box -->
 	<!-- shadow box -->
 	<h1>Status</h1>

@@ -264,6 +264,7 @@ a:link {
 }
 
 #container {
+  background-color: #fff;
   position: absolute;
     width: 100%;
   min-width:960px;
