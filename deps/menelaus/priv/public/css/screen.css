@@ -620,11 +620,11 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 .lbox_form h3 {font-size:18px; padding:5px 0 10px 0; border-bottom:1px solid #d8d9db; margin:0 0 10px 0; color:#444245; font-weight:normal;}
 .lbox_form table td {padding:3px 0; color:#7d7d7f; font-size:12px; vertical-align:middle;}
 .lbox_form table td.label {text-align:right; color:#444245; font-size:12px; font-weight:normal; padding:0 10px 0 0; vertical-align:top; line-height:30px;}
-.inp_size_1 {width:93px;}
-.inp_size_2 {width:185px;}
-.inp_size_3 {width:287px;}
-select.inp_size_2 {width:193px;}
-.lbox_form input[type="text"] {width:20px; border:1px solid #cfd3d6; background:none #fff; padding:3px; color:#444245;}
+.inp_size_1 {width:93px !important;}
+.inp_size_2 {width:185px !important;}
+.inp_size_3 {width:287px !important;}
+select.inp_size_2 {width:193px !important;}
+.lbox_form input[type="text"] {width:55px; border:1px solid #cfd3d6; background:none #fff; padding:3px; color:#444245;}
 .lbox_form input.inp {border:1px solid #cfd3d6; background:none #fff; padding:3px; color:#444245;}
 .lbox_form .del_link {color:#e34c31; padding:10px 0 0 0; display:block; float:left;}
 .lbox_form table td span.float_right {line-height:25px;}
@@ -836,6 +836,12 @@ body.init_secure #container { display: none; }
 #servers .servers_list li.server_row.failed_over {background:url(../images/server_status_icons.png) 10px -309px no-repeat; background-color:#c9cccc;}
 #servers .servers_list li.server_row.failed_over .list_button {display:none;}
 #servers .servers_list li.server_row.failed_over .serverName {color:#9c9e9e;}
+
+.server_usage {display:block; width:183px; height:16px; float:right; background:url(../images/usage_small_2.gif) 0 -16px no-repeat; position:relative; top:20px;}
+.server_usage span {display:block; width:183px; height:16px; overflow:hidden; position:absolute; left:0px; top:0px; background:url(../images/usage_small_2.gif) 0 0 no-repeat; width:30%;}
+.usage_info {display:block; float:right; font-weight:normal; color:#808080; width:150px; margin-left:-150px; position:relative; top:16px; text-align:right;}
+.rebalancing li {display:block; position:relative;}
+.rebalancing li a {text-decoration:none !important; cursor:default;}
 
 .failed_over_message {float:right; color:#9c9e9e;}
 
