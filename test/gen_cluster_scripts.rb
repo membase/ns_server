@@ -16,6 +16,8 @@
 # The extra buckets (which are in addition to the usual default
 # bucket) will look like b_0, b_1, ...
 #
+require 'fileutils'
+
 prefix = ARGV[2] || "cluster"
 
 num_nodes = ARGV[0] || "10"
@@ -31,6 +33,8 @@ nodes = ""
 
 num_nodes.times do |x|
   node_id = "'n_#{x + base_api_port - 9000}@127.0.0.1'"
+  node_data = "./data/n_#{x + base_api_port - 9000}"
+  FileUtils.mkdir_p node_data
   nodes = nodes + <<-END
     {{node, #{node_id}, rest},
       [{'_ver', {0, 0, 0}},
@@ -39,6 +43,7 @@ num_nodes.times do |x|
     {{node, #{node_id}, memcached}, [{'_ver', {0, 0, 0}},
                  {port, #{(x * 2) + base_direct_port}},
                  {ht_size,786433},
+                 {dbname, "#{node_data}/default"},
                  {admin_user, "_admin"},
                  {admin_pass, "_admin"},
                  {buckets,
