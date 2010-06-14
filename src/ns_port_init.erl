@@ -34,6 +34,16 @@ handle_event({{node, Node, port_servers}, PortServers}, State) ->
     end,
     {ok, State, hibernate};
 
+handle_event({Key, _NewValue}, State) ->
+    case lists:keymember(Key, 1, ns_port_sup:current_ports()) of
+        true ->
+            {value, PortServers} = ns_port_sup:port_servers_config(),
+            ok = reconfig(PortServers);
+        false ->
+            ok
+    end,
+    {ok, State, hibernate};
+
 handle_event(_Stuff, State) ->
     {ok, State, hibernate}.
 
@@ -60,17 +70,13 @@ reconfig(PortServers) ->
     % Or, if the child process went down, then...
     %   [{memcached,undefined,worker,[ns_port_server]}]
     %
-    CurrPorts = ns_port_sup:current_ports(),
-    CurrPortParams = lists:map(fun({_Name, Pid, _, _}) ->
-                                   {ok, Params} = ns_port_server:params(Pid),
-                                   Params
-                               end,
-                               CurrPorts),
-    OldPortParams = lists:subtract(CurrPortParams, PortServers),
-    NewPortParams = lists:subtract(PortServers, CurrPortParams),
+    PortParams = [ns_port_sup:expand_args(NCAO) || NCAO <- PortServers],
+    CurrPortParams = ns_port_sup:current_ports(),
+    OldPortParams = lists:subtract(CurrPortParams, PortParams),
+    NewPortParams = lists:subtract(PortParams, CurrPortParams),
 
-    lists:foreach(fun({Name, _Cmd, _Args, _Opts}) ->
-                      ns_port_sup:terminate_port(Name)
+    lists:foreach(fun(NCAO) ->
+                      ns_port_sup:terminate_port(NCAO)
                   end,
                   OldPortParams),
     lists:foreach(fun({Name, Cmd, Args, Opts}) ->

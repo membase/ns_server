@@ -7,7 +7,8 @@
 
 -export([start_link/0]).
 
--export([init/1, launch_port/2, launch_port/4, terminate_port/1,
+-export([init/1, launch_port/1, terminate_port/1,
+         expand_args/1,
          current_ports/0,
          port_servers_config/0]).
 
@@ -36,22 +37,29 @@ port_servers_config() ->
 
 dynamic_children() ->
     {value, PortServers} = port_servers_config(),
+    error_logger:info_msg("dynamic_children PortServers=~p~n", [PortServers]),
     error_logger:info_msg("initializing ports: ~p~n", [PortServers]),
-    lists:map(fun create_child_spec/1, PortServers).
+    [create_child_spec(expand_args(NCAO)) || NCAO <- PortServers].
 
-launch_port(Name, Cmd) ->
-    launch_port(Name, Cmd, [], []).
-
-launch_port(Name, Cmd, Args, Opts)
-  when is_atom(Name); is_list(Cmd); is_list(Args) ->
-    error_logger:info_msg("supervising port: ~p~n", [Cmd]),
+launch_port(NCAO) ->
+    error_logger:info_msg("supervising port: ~p~n", [NCAO]),
     {ok, C} = supervisor:start_child(?MODULE,
-                                     create_child_spec({Name, Cmd, Args, Opts})),
+                                     create_child_spec(NCAO)),
     error_logger:info_msg("new child port: ~p~n", [C]),
     {ok, C}.
 
+expand_args({Name, Cmd, ArgsIn, Opts}) ->
+    error_logger:info_msg("expand_args args: ~p~n", [{Name, Cmd, ArgsIn, Opts}]),
+    Config = ns_config:get(),
+    Args = lists:map(fun ({Format, Keys}) ->
+                             format(Config, Name, Format, Keys);
+                           (X) -> X
+                      end,
+                      ArgsIn),
+    {Name, Cmd, Args, Opts}.
+
 create_child_spec({Name, Cmd, Args, Opts}) ->
-    {Name,
+    {{Name, Cmd, Args, Opts},
      {supervisor_cushion, start_link,
       [Name, 5000, ns_port_server, start_link, [Name, Cmd, Args, Opts]]},
      permanent, 10, worker,
@@ -72,17 +80,13 @@ current_ports() ->
     %    {ns_port_init,undefined,worker,[]}]
     %
     Children = supervisor:which_children(?MODULE),
-    misc:mapfilter(fun ({ns_port_init, _, _, _}) ->
-                           false;
-                       ({_, undefined, _, _}) ->
-                           false;
-                       ({Name, Pid, Args, Opts}) ->
-                           case supervisor_cushion:child_pid(Pid) of
-                           undefined -> false;
-                           ChildPid ->
-                               % Return the PID of the cushion's child
-                               % so stuff can talk to it.
-                               {Name, ChildPid, Args, Opts}
-                           end
-                   end, false, Children).
+    [NCAO || {NCAO, Pid, _, _} <- Children,
+             Pid /= undefined,
+             NCAO /= ns_port_init].
+
+%% internal functions
+format(Config, Name, Format, Keys) ->
+    error_logger:info_msg("format args ~p~n", [[Config, Name, Format, Keys]]),
+    Values = [ns_config:search_prop(Config, Name, K) || K <- Keys],
+    lists:flatten(io_lib:format(Format, Values)).
 
