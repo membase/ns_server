@@ -33,19 +33,15 @@ port_servers_config() ->
 
 dynamic_children() ->
     {value, PortServers} = port_servers_config(),
-    error_logger:info_msg("dynamic_children PortServers=~p~n", [PortServers]),
-    error_logger:info_msg("initializing ports: ~p~n", [PortServers]),
     [create_child_spec(expand_args(NCAO)) || NCAO <- PortServers].
 
 launch_port(NCAO) ->
     error_logger:info_msg("supervising port: ~p~n", [NCAO]),
     {ok, C} = supervisor:start_child(?MODULE,
                                      create_child_spec(NCAO)),
-    error_logger:info_msg("new child port: ~p~n", [C]),
     {ok, C}.
 
 expand_args({Name, Cmd, ArgsIn, Opts}) ->
-    error_logger:info_msg("expand_args args: ~p~n", [{Name, Cmd, ArgsIn, Opts}]),
     Config = ns_config:get(),
     Args = lists:map(fun ({Format, Keys}) ->
                              format(Config, Name, Format, Keys);
@@ -82,7 +78,5 @@ current_ports() ->
 
 %% internal functions
 format(Config, Name, Format, Keys) ->
-    error_logger:info_msg("format args ~p~n", [[Name, Format, Keys]]),
     Values = [ns_config:search_node_prop(Config, Name, K) || K <- Keys],
     lists:flatten(io_lib:format(Format, Values)).
-
