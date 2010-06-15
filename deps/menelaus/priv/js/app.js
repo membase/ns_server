@@ -1212,6 +1212,15 @@ var ServersSection = {
       },
       valueTransformer: function (nodeInfo, nodeSettings) {
         var rv = _.extend({}, nodeInfo, nodeSettings);
+
+        var memReserved = rv.memoryReserved = rv.mcdMemoryReserved * 1048576;
+        var memoryTotal = rv.memoryTotal;
+        var memoryFree = rv.memoryFree;
+        rv.percentReserved = (memReserved * 100 / memoryTotal) << 0;
+        var percentFree = (memoryFree * 100 / memoryTotal) << 0;
+        rv.percentOther = 100 - percentFree; // this is actually reserved + other as required by CSS
+        rv.memoryOther = memoryTotal - memoryFree - memReserved;
+
         delete rv.detailsCell;
         return rv;
       }
