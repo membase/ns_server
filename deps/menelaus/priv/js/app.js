@@ -2738,7 +2738,11 @@ var NodeDialog = {
 
       var pw = $(parentName).find('[name=password]').val();
       if (pw == null || pw == "") {
-        showInitDialog("done");
+        genericDialog({
+          header: 'Cannot do this',
+          text: 'Empty password is not allowed',
+          buttons: {cancel: false, ok: true}
+        });
         return;
       }
 
