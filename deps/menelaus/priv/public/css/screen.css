@@ -871,6 +871,13 @@ li.server_row.status_down {background-position:10px -157px !important; backgroun
 .warning_message {min-height:20px; padding:5px 0 0 25px; color:#dd3b2c; margin:0 0 5px 0; background:url(../images/warning_bg_2.png) 0 0 no-repeat;}
 .failover_warning { display: none; }
 
+.alert_num {display:block; position:absolute; right:-25px; top:-16px; background:url(../images/alert_num_bg.png) 0 0 no-repeat; z-index:10; width:44px; height:44px;}
+.alert_num span {display:block; width:16px; position:relative; top:13px; left:11px; text-align:center; color:#fff; font-size:11px; line-height:11px;}
+ul.tabs .tab_right .alert_num {display:none;}
+ul.tabs .alert_num_display .alert_num {display:block;}
+
+.servers_header {padding:11px 10px 5px 11px;}
+
 .server_usage {display:block; width:183px; height:16px; float:right; background:url(../images/usage_small_2.gif) 0 -16px no-repeat; position:relative; top:20px;}
 .server_usage span {display:block; width:183px; height:16px; overflow:hidden; position:absolute; left:0px; top:0px; background:url(../images/usage_small_2.gif) 0 0 no-repeat; width:30%;}
 .usage_info {display:block; float:right; font-weight:normal; color:#808080; width:150px; margin-left:-150px; position:relative; top:16px; text-align:right;}
