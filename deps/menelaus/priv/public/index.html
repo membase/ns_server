@@ -1807,34 +1807,27 @@
 <!-- About -->
 <div class="jqmWindow" id="about_server_dialog">
   <div class="lbox">
-    <div class="top">
-      <div class="top_left"></div>
-      <div class="top_right"></div>
-      <div class="top_center"></div>
+    <div class="config-top">
+      <img src="../images/northscale-logo.png" alt="NorthScale Logo" />
+      <h1>About NorthScale Server</h1>
     </div>
     <div class="center">
-      <div class="pad">
-        <p class="lbox_header">About NorthScale Server</p>
-        <div class="pas_20">
-          <div class="pat_10">
-            <p class="dialog-text" id="about_versions"></p><br>
-            <ul>
-              <li><a target="_blank" href="http://northscale.com/support">Get Support</a></li>
-              <li><a target="MCWebHelp" href="/docs/index_CSH.html#1001|northscale">Documentation</a></li>
-            </ul>
-          </div>
-          <div class="right save_cancel">
-            <div class="float_right">
-              <button type="button" class="jqmClose save_button button_3 float_right">CLOSE</button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <p class="dialog-text" id="about_versions"></p>
+      <ul>
+        <li><a target="_blank" href="http://northscale.com/support">Get Support</a></li>
+        <li><a target="MCWebHelp" href="/docs/index_CSH.html#1001|northscale">Documentation</a></li>
+      </ul>
     </div>
-    <div class="bottom">
-      <div class="bottom_left"></div>
-      <div class="bottom_right"></div>
-      <div class="bottom_center"></div>
+    <div class="config-bottom">
+      <button name="close" value="Close" class="submit close direction-button" id="about-close" type="submit">Close</button>
+      <script type="text/javascript">
+        $(function(){
+          $('.config-bottom button#about-close').click(function (e) {
+            e.preventDefault();
+            hideDialog('about_server_dialog');
+          });
+        });
+      </script>
     </div>
   </div>
 </div>

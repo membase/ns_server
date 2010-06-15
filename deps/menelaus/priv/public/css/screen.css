@@ -740,11 +740,17 @@ button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
 .tooltip .tooltip_msg {display:none; position:absolute; width:150px; padding:6px 0 0 0; right:0px; top:14px; background:url(../images/tooltip_bg.gif) 100% 0 no-repeat; z-index:10;}
 .tooltip .tooltip_msg span {display:block; padding:5px; background:none #555557; font-size:11px; text-decoration:none !important; color:#fff !important;}
 
-#about_server_dialog {width:390px !important; margin-left:-195px !important;}
-#about_server_dialog .lbox {width:380px !important;}
-#about_server_dialog .lbox .center {background:url(../images/lbox_cent_narrow.png) repeat-y scroll 0 0;}
+#about_server_dialog {background-color:#fff; box-shadow: 0px 5px 25px #222; height:250px; margin-left:-195px !important; width:390px; -moz-box-shadow: 0px 5px 25px #222; -webkit-box-shadow: 0px 5px 25px #222;}
+#about_server_dialog .lbox {background:none; width:100%;}
+#about_server_dialog .lbox .config-top {width:390px; margin:-6px 0px 0px -9px; padding-right:9px;}
+#about_server_dialog .lbox .config-top img {float:left; margin-top:6px; margin-left:15px;}
+#about_server_dialog .lbox .config-top h1 {float:right; font-family:Verdana,Helvetica,Sans-Serif; font-size:12pt; font-weight:normal; margin-right:15px; margin-top:14px;}
+#about_server_dialog .lbox .config-bottom {margin-top:21px;}
+#about_server_dialog .lbox .center {background:none; padding: 10px;}
 #about_server_dialog .lbox .top .top_center {*width:356px;}
 #about_server_dialog .lbox .bottom .bottom_center {*width:356px;}
+#about_server_dialog .lbox .center p#about_versions {margin-bottom: 25px;}
+#about_server_dialog .lbox .center ul li {margin:5px;}
 
 .configure_view {display:inline-block; padding:0 10px 0 0;}
 .configure_view a {position:relative; top:5px; text-decoration:underline;}
@@ -777,7 +783,7 @@ body.init_welcome #init_welcome_dialog .welcome-footer a {color:#a7e4ff; margin-
 body.init_welcome #init_welcome_form p {color:#bdccd4; font-family:Verdana, Helvetica, sans-serif; font-size:13pt; font-weight:100; line-height:20px;}
 
 /* config */
-button.direction-button {background:url(../images/blue-button.png) no-repeat; border:none; color:#fff; float:right; font-family:Arial, Helvetica, Sans-Serif; font-size:12pt; margin-right:20px; margin-top:20px; width:121px; height:31px;}
+button.direction-button {background:url(../images/blue-button.png) no-repeat; border:none; color:#fff; cursor:pointer; float:right; font-family:Arial, Helvetica, Sans-Serif; font-size:12pt; margin-right:20px; margin-top:20px; width:121px; height:31px;}
 
 div.config-top {background:url(../images/config-top.png) repeat-x; height:60px; line-height:60px; margin:0px 0px 0px -8px;}
 div.config-top h1, div.config-top h2 {font-family:Verdana, Helvetica, Sans-Serif; text-shadow: 0px 1px 2px #fff;}
