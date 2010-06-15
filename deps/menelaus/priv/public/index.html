@@ -2252,16 +2252,20 @@
         </tr>
         <tr>
           <td>Dynamic RAM Quota: {%= memoryQuota %}</td>
-          <td><a><img src="../images/edit-button.png" alt="Edit" /></a></td>
+          <td>
+            <!-- <a href="javascript:void();"> -->
+              <img src="../images/edit-button.png" alt="Edit" style="opacity:0.5;" />
+            <!-- </a> -->
+          </td>
         </tr>
         <tr>
           <td>
             <h2>Solid State Storage</h2>
           </td>
           <td>
-            <a href="javascript:NodeDialog.startAddLocationDialog('{%= node %}', 'ssd');">
-              <img src="../images/add-button.png" alt="Add" />
-            </a>
+            <!-- <a href="javascript:NodeDialog.startAddLocationDialog('{%= node %}', 'ssd');"> -->
+              <img src="../images/add-button.png" alt="Add" style="opacity:0.5;" />
+            <!-- </a> -->
           </td>
         </tr>
         <tr>
@@ -2291,9 +2295,9 @@
           <td><h2>Disk Storage</h2>
           </td>
           <td>
-            <a href="javascript:ServersSection.startAddLocationDialog('{%= node %}', 'hdd');">
-              <img src="../images/add-button.png" alt="Add" />
-            </a>
+            <!-- <a href="javascript:ServersSection.startAddLocationDialog('{%= node %}', 'hdd');"> -->
+                <img src="../images/add-button.png" alt="Add" style="opacity:0.5;" />
+            <!-- </a> -->
           </td>
         </tr>
         <tr>
@@ -2308,7 +2312,9 @@
                   <tr>
                     <td>Path: {%= h(this.path) %}</td>
                     <td>{%= h(this.quotaMb != 'none' ? ((this.quotaMb * 1024) + ' GB') : '[no quota]') %}</td>
-                    <td><a href="javascript:NodeDialog.startRemoveLocationDialog('{%= node %}', '{%= h(this.path) %}');">Remove</a></td>
+                    <td>
+                      <!-- <a href="javascript:NodeDialog.startRemoveLocationDialog('{%= node %}', '{%= h(this.path) %}');">Remove</a> -->
+                    </td>
                   </tr>
                   <!-- {% }); %} -->
                 </table>
