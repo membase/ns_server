@@ -1353,8 +1353,13 @@ var ServersSection = {
     var node = this.mustFindNode(hostname);
     if (node.pendingEject)
       return;
-    this.pendingEject.push(node);
-    this.reDraw();
+    if (node.clusterMembership == 'inactiveAdded') {
+      this.postAndReload(this.poolDetails.value.controllers.ejectNode.uri,
+                         {otpNode: node.otpNode});
+    } else {
+      this.pendingEject.push(node);
+      this.reDraw();
+    }
   },
   failoverNode: function (hostname) {
     var node = this.mustFindNode(hostname);
