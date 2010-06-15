@@ -1289,6 +1289,19 @@ var ServersSection = {
     this.rebalanceProgress.subscribe($m(this, 'onRebalanceProgress'));
 
     detailsWidget.hookRedrawToCell(this.poolDetails);
+
+    this.tabs.subscribeValue(function (value) {
+      var addVisible;
+      var stopVisible;
+      if (value == 'pending') {
+        var details = DAO.cells.currentPoolDetailsCell.value;
+        stopVisible = (details && details.rebalanceStatus != 'none');
+      } else if (value == 'active') {
+        addVisible = true;
+      }
+      serversQ.find('.add_button').toggle(!!addVisible);
+      serversQ.find('.stop_rebalance_button').toggle(!!stopVisible);
+    });
   },
   onEnter: function () {
     this.poolDetails.invalidate();
