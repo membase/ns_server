@@ -869,6 +869,7 @@ li.server_row.status_up {background-position:10px 20px !important;}
 li.server_row.status_down {background-position:10px -157px !important; background-color:#61696c;}
 
 .warning_message {min-height:20px; padding:5px 0 0 25px; color:#dd3b2c; margin:0 0 5px 0; background:url(../images/warning_bg_2.png) 0 0 no-repeat;}
+.failover_warning { display: none; }
 
 .server_usage {display:block; width:183px; height:16px; float:right; background:url(../images/usage_small_2.gif) 0 -16px no-repeat; position:relative; top:20px;}
 .server_usage span {display:block; width:183px; height:16px; overflow:hidden; position:absolute; left:0px; top:0px; background:url(../images/usage_small_2.gif) 0 0 no-repeat; width:30%;}

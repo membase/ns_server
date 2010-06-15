@@ -1239,6 +1239,13 @@ var ServersSection = {
       detailsWidget.valuesTransformer(cell.value.nodes);
     });
 
+    this.poolDetails.subscribeValue(function (poolDetails) {
+      var hasFailover;
+      if (poolDetails)
+        hasFailover = _.detect(poolDetails.nodes, function (n) {return n.clusterMembership == 'inactiveFailed'});
+      $('#servers .failover_warning').toggle(!!hasFailover);
+    });
+
     this.poolDetails.subscribeAny($m(this, "onPoolDetailsReady"));
     prepareTemplateForCell('active_server_list', this.poolDetails);
     prepareTemplateForCell('pending_server_list', this.poolDetails);
