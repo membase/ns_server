@@ -1952,40 +1952,40 @@ var AlertsSection = {
 }
 
 var SettingsSection = {
-   processSave: function(self) {
-      var dialog = genericDialog({
-        header: 'Saving...',
-        text: 'Saving settings.  Please wait a bit.',
-        buttons: {ok: false, cancel: false}});
+  processSave: function(self) {
+    var dialog = genericDialog({
+      header: 'Saving...',
+      text: 'Saving settings.  Please wait a bit.',
+      buttons: {ok: false, cancel: false}});
 
-      var form = $(self);
+    var form = $(self);
 
-      var postData = serializeForm(form);
+    var postData = serializeForm(form);
 
-      form.find('.warn li').remove();
+    form.find('.warn li').remove();
 
-      postWithValidationErrors($(self).attr('action'), postData, function (data, status) {
-        if (status != 'success') {
-          var ul = form.find('.warn ul');
-          _.each(data, function (error) {
-            var li = $('<li></li>');
-            li.text(error);
-            ul.prepend(li);
-          });
-          $('html, body').animate({scrollTop: ul.offset().top-100}, 250);
-          return dialog.close();
-        }
-
-        reloadApp(function (reload) {
-          if (data && data.newBaseUri) {
-            var uri = data.newBaseUri;
-            if (uri.charAt(uri.length-1) == '/')
-              uri = uri.slice(0, -1);
-            uri += document.location.pathname;
-          }
-          _.delay(_.bind(reload, null, uri), 1000);
+    postWithValidationErrors($(self).attr('action'), postData, function (data, status) {
+      if (status != 'success') {
+        var ul = form.find('.warn ul');
+        _.each(data, function (error) {
+          var li = $('<li></li>');
+          li.text(error);
+          ul.prepend(li);
         });
+        $('html, body').animate({scrollTop: ul.offset().top-100}, 250);
+        return dialog.close();
+      }
+
+      reloadApp(function (reload) {
+        if (data && data.newBaseUri) {
+          var uri = data.newBaseUri;
+          if (uri.charAt(uri.length-1) == '/')
+            uri = uri.slice(0, -1);
+          uri += document.location.pathname;
+        }
+        _.delay(_.bind(reload, null, uri), 1000);
       });
+    });
   },
   // GET of advanced settings returns structure, while POST accepts
   // only plain key-value set. We convert data we get from GET to
