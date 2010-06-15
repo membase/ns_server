@@ -838,8 +838,13 @@ body.init_secure #container { display: none; }
   /*border: 1px solid green;*/
   /*moz-border-radius: 4px; -webkit-border-radius: 4px; padding: 2px;*/
   }
-#servers .list_button {height:31px; padding:0 3px 0 0; background:url(../images/btn_2_bg.png) 100% -31px no-repeat; color:#000; margin-top:14px;}
-#servers .list_button span {display:block; height:31px; line-height:31px; padding:0 6px 0 10px; background:url(../images/btn_2_bg.png) 0 0 no-repeat;}
+li.server_row .btn_cancel {display:block; height:15px; color:#7a7a7a; padding:0 18px 0 0; background:url(../images/btn_cancel_bg.png) 100% 0 no-repeat; line-height:15px; margin-top:23px;}
+#servers .add_button {width:124px;}
+#servers .btn_width_2 {width:125px;}
+#servers .rebalance_button {width:115px;}
+#servers .btn_width_1 {width:116px;}
+#servers .list_button {height:31px; padding:0 3px 0 0; background:url(../images/btn_2_bg.png) 100% -31px no-repeat; color:#000; margin-top:14px; font-size:14px;}
+#servers .list_button span {display:block; text-align:center; height:31px; line-height:31px; padding:0 6px 0 10px; background:url(../images/btn_2_bg.png) 0 0 no-repeat;}
 
 #servers h2 { height: 25px;}
 #servers .servers_list li { list-style: none; height: min-25px; /*margin-top: 3px; */ display:block; padding:0 10px;}
@@ -847,7 +852,23 @@ body.init_secure #container { display: none; }
 #servers .servers_list li.server_row.server_down {background:url(../images/server_status_icons.png) 10px -157px no-repeat; background-color:#61696c;}
 #servers .servers_list li.server_row.failed_over {background:url(../images/server_status_icons.png) 10px -309px no-repeat; background-color:#c9cccc;}
 #servers .servers_list li.server_row.failed_over .list_button {display:none;}
-#servers .servers_list li.server_row.failed_over .serverName {color:#9c9e9e;}
+#servers .servers_list li.server_row.failed_over .serverName {/*color:#9c9e9e;*/ color:#333; opacity:0.3;}
+
+#servers .servers_list li.server_row.rebalance_empty {padding:0 15px; background:none; color:#656565;}
+#servers .servers_list li.server_row.rebalance_empty * {display:none;}
+#servers .servers_list li.server_row.rebalance_empty .rebalance_empty_message {display:block;}
+
+#servers .servers_list li.server_row.pending_add {background:url(../images/server_status_icons.png) 10px -309px no-repeat;}
+li.server_row.pending_add .btn_cancel {float:right;}
+li.server_row.pending_add .pending_add_message {float:right; margin:0 10px 0 0; color:#e54c2a;}
+
+#servers .servers_list li.server_row.pending_removal {background:url(../images/server_status_icons.png) 10px -309px no-repeat;}
+li.server_row.pending_removal .btn_cancel {float:right;}
+li.server_row.pending_removal .pending_removal_message {float:right; margin:0 10px 0 0; color:#e54c2a;}
+li.server_row.status_up {background-position:10px 20px !important;}
+li.server_row.status_down {background-position:10px -157px !important; background-color:#61696c;}
+
+.warning_message {min-height:20px; padding:5px 0 0 25px; color:#dd3b2c; margin:0 0 5px 0; background:url(../images/warning_bg_2.png) 0 0 no-repeat;}
 
 .server_usage {display:block; width:183px; height:16px; float:right; background:url(../images/usage_small_2.gif) 0 -16px no-repeat; position:relative; top:20px;}
 .server_usage span {display:block; width:183px; height:16px; overflow:hidden; position:absolute; left:0px; top:0px; background:url(../images/usage_small_2.gif) 0 0 no-repeat; width:30%;}
@@ -855,7 +876,8 @@ body.init_secure #container { display: none; }
 .rebalancing li {display:block; position:relative;}
 .rebalancing li a {text-decoration:none !important; cursor:default;}
 
-.failed_over_message {float:right; color:#9c9e9e;}
+.failed_over_message {float:right; color:#9c9e9e; display:none;}
+.failed_over .failed_over_message {display:block;}
 
 #servers .servers_list .serverName {display:inline-block; height:60px; padding:0 0 0 45px; background:url(../images/server_icon.png) 0 10px no-repeat; font-size:12px; font-weight:bolder;}
 
@@ -929,7 +951,7 @@ ul.tabs.switcher {height:32px; overflow:visible;}
 
 .btn_1 {display:inline-block; height:31px; font-size:14px !important; background:url(../images/btn_1_bg.png) 100% -31px no-repeat; padding:0 4px 0 0 !important; color:#000;}
 .btn_1 span {color:#000;}
-.btn_1 span {display:inline-block; height:31px; padding:0 6px 0 10px; line-height:31px; background:url(../images/btn_1_bg.png) 0 0 no-repeat;}
+.btn_1 span {/*display:inline-block;*/ display:block; text-align:center; height:31px; padding:0 6px 0 10px; line-height:31px; background:url(../images/btn_1_bg.png) 0 0 no-repeat;}
 
 .panes.pad {background:none !important;}
 

@@ -228,13 +228,16 @@
   </div>
   <div id="servers" style="display:none">
     <h1>SERVERS</h1>
+    <div class="warning_message">
+      Fail Over Warning: Your system is missing replicants until you rebalance.
+    </div>
     <div class="shadow_box">
       <div class="cnt">
         <div class="content">
           <!-- shadow box -->
             <div class="header_2">
-            <a class="rebalance_button btn_1"><span>Rebalance</span></a>
             <a class="add_button btn_1"><span>Add Server</span></a>
+            <a class="rebalance_button btn_1"><span>Rebalance</span></a>
             <a class="stop_rebalance_button btn_1"><span>Stop Rebalance</span></a>
             <ul class="tabs switcher">
               <li class="tab_left"><a href="#">Active Servers</a></li>
@@ -255,17 +258,23 @@
   </div>
   <script id="active_server_list_template" type="text/html">
     <ul>
+      <li class="server_row rebalance_empty">
+        <span class="rebalance_empty_message">There are no servers pending rebalance.</span>
+      </li>
+      <li class="server_row pending_add">
+        <a class="serverName" href="#openServer=ns1@donald-duck.disney.com">donald-duck.disney.com</a>
+        <a href="#" class="btn_cancel">CANCEL</a>
+        <span class="pending_add_message">PENDING ADD</span>
+      </li>
+      <li class="server_row pending_removal status_up">
+        <a class="serverName" href="#openServer=ns1@donald-duck.disney.com">donald-duck.disney.com</a>
+        <a href="#" class="btn_cancel">CANCEL</a>
+        <span class="pending_removal_message">PENDING ADD</span>
+      </li>
       <!-- {% _.each(rows, function (s) { %} -->
-      <li class="server_row"><a href="#openServer={%= s.otpNode %}" class="serverName">{%= h(s.hostname) %}</a> <span class="failed_over_message">{%= V.renderPendingStatus(s) %}</span>
-      <!-- {% if (s.ejectPossible) { %} -->
-      <a class="list_button" href="{%=jsLink('ServersSection.ejectNode', s.hostname)%}"><span>Eject</span></a>
-      <!-- {% } %} -->
-      <!-- {% if (s.failoverPossible) { %} -->
-      <a class="list_button" href="{%=jsLink('ServersSection.failoverNode', s.hostname)%}"><span>Failover</span></a>
-      <!-- {% } %} -->
-      <!-- {% if (s.reAddPossible) { %} -->
-      <a class="list_button" href="{%=jsLink('ServersSection.reAddNode', s.hostname)%}"><span>Add Back</span></a>
-      <!-- {% } %} -->
+      <li class="server_row"><a href="#openServer={%= s.otpNode %}" class="serverName">{%= h(s.hostname) %}</a> <span class="failed_over_message">FAILED OVER: PENDING REMOVAL</span>
+      <a class="list_button btn_width_2 eject_server"><span>Remove Server</span></a>
+      <a class="list_button btn_width_1 failover_server"><span>Fail Over</span></a>
       <!-- { %= _.template($('#server_details_template').html(), {node: s}) %} -->
       </li>
       <li id="{%= s.detailsRowID %}" class="settings-placeholder"></li>
