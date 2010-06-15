@@ -2047,13 +2047,16 @@
   <!-- END init_cluster_block -->
   <div class="pad" id="init_secure_dialog">
     <!-- screen S.5 -->
+    <div class="config-top">
+      <h1>Configure Server</h1>
+      <h2>Step <span class="current-step">3</span> of 3</h2>
+    </div>
     <div class="alert_red" id="init_secure_failed_message" style="display:none;">
       <div class="al_text">
         Could not secure the server because of bad input.
       </div>
     </div>
-    <h1>Secure this server</h1>
-    <h2>Step 3 of 3</h2>
+    <h2 class="title">Secure this Server</h2>
     <p class="pad_10">
       Please enter an Administrator password for this Server. If this is
       the first server in a Membase cluster, other servers will need, and
@@ -2065,43 +2068,29 @@
             style="display:none;" value="SAME"/>
       <input type="text" name="initStatus"
             style="display:none;" value="done"/>
-
       <div class="warn">
         <ul></ul>
       </div>
-      <table>
-        <col width="" />
-        <col width="" />
-        <tr>
-          <td colspan="2">
-            <label>User:</label>
-            <input type="text" name="username" class="inp" value="Administrator"/>
-          </td>
-        </tr>
-        <tr>
-          <td colspan="2">
-            <label>Password:</label>
-            <input type="password" name="password" class="inp"/>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <div class="pat_10">
-              <input type="button" value="Back" class="submit back" />
-            </div>
-          </td>
-          <td>
-            <div class="pat_10">
-              <input type="submit" value="Finish" class="submit next" />
-            </div>
-          </td>
-        </tr>
-      </table>
+      <div class="password-input">
+        <label for="secure-password">Password:</label>
+        <input type="password" name="password" class="inp" id="secure-password"/>
+      </div>
     </form>
+    <div class="config-bottom">
+      <button name="finish" value="Finish" class="submit finish direction-button" id="step-3-finish" type="submit">Finish</button>
+      <button name="back" value="Back" class="submit back direction-button" id="step-3-back" type="submit">Back</button>
+      <a href="/index.html" class="cancel">Cancel</a>
+    </div>
     <script type="text/javascript">
-      $('#init_secure_form input.back').click(function (e) {
-        e.preventDefault();
-        showInitDialog("cluster");
+      $(function(){
+        $('div.config-bottom button#step-3-finish').click(function (e) {
+          e.preventDefault();
+          $('#init_secure_form').submit();
+        });
+        $('div.config-bottom button#step-3-back').click(function (e) {
+          e.preventDefault();
+          showInitDialog("cluster");
+        });      
       });
     </script>
   </div>
