@@ -671,7 +671,11 @@ var MockedRequest = mkClass({
       [post("controller", "failOver"), expectParams(method("doNothingPOST"),
                                                     "otpNode")],
       [post("controller", "reAddNode"), expectParams(method("doNothingPOST"),
-                                                     "otpNode")]
+                                                     "otpNode")],
+
+      [post("settings", "web"), expectParams(method("doNothingPOST"),
+                                             "port", "username", "password",
+                                             opt("initStatus"))]
     ];
 
     rv.x = x;
