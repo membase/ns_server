@@ -233,6 +233,15 @@ var Cell = mkClass({
         body(self.value);
       });
   },
+  // continuus getValue. Will call cb now and every time the value changes,
+  // passing it to cb.
+  subscribeValue: function (cb) {
+    var cell = this;
+    this.subscribeAny(function () {
+      cb(cell.value);
+    });
+    cb(cell.value);
+  },
   // schedules cell value recalculation
   recalculate: function () {
     if (this.queuedValueUpdate)
