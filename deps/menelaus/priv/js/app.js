@@ -1164,11 +1164,13 @@ var ServersSection = {
     }
 
     renderTemplate('manage_server_list', active, $i('active_server_list_container'));
-    if (!rebalancing)
+    if (!rebalancing) {
       renderTemplate('manage_server_list', pending, $i('pending_server_list_container'));
+    }
 
-    $('#servers .rebalance_button').toggle(imbalance);
-    $('#servers .add_button').show();
+    //$('#servers .rebalance_button').toggle(imbalance);
+    // if (!rebalancing)
+    //   $('#servers .add_button').show();
   },
   renderRebalance: function (details) {
     var progress = this.rebalanceProgress.value;
@@ -1252,10 +1254,6 @@ var ServersSection = {
 
     var serversQ = this.serversQ = $('#servers');
 
-    this.poolDetails.subscribeOnUndefined(function () {
-      serversQ.find('.rebalance_button, .add_button').hide();
-    });
-
     serversQ.find('.rebalance_button').live('click', $m(this, 'onRebalance'));
     serversQ.find('.add_button').live('click', $m(this, 'onAdd'));
     serversQ.find('.stop_rebalance_button').live('click', $m(this, 'onStopRebalance'));
@@ -1290,18 +1288,29 @@ var ServersSection = {
 
     detailsWidget.hookRedrawToCell(this.poolDetails);
 
-    this.tabs.subscribeValue(function (value) {
-      var addVisible;
-      var stopVisible;
-      if (value == 'pending') {
-        var details = DAO.cells.currentPoolDetailsCell.value;
-        stopVisible = (details && details.rebalanceStatus != 'none');
-      } else if (value == 'active') {
-        addVisible = true;
-      }
-      serversQ.find('.add_button').toggle(!!addVisible);
-      serversQ.find('.stop_rebalance_button').toggle(!!stopVisible);
+    var tabsWatcher = $m(this, 'tabsWatcher');
+    this.tabs.subscribeAny(tabsWatcher);
+    this.poolDetails.subscribeAny(tabsWatcher);
+
+    this.poolDetails.subscribeValue(function (details) {
+      var rebalancing = details && details.rebalanceStatus != 'none';
+      serversQ.find('.add_button').toggle(details && !rebalancing);
+      serversQ.find('.stop_rebalance_button').toggle(rebalancing);
+
+      serversQ.find('.rebalance_button').toggle(!!details);
     });
+  },
+  tabsWatcher: function () {
+    var value = this.tabs.value;
+    var details = this.poolDetails.value;
+
+    if (details && details.rebalanceStatus == 'none' && value == 'active') {
+      var pending = this.pending;
+      $('#rebalance_tab .alert_num span').text(pending.length);
+      $('#rebalance_tab').toggleClass('alert_num_display', !!pending.length);
+    } else {
+      $('#rebalance_tab').toggleClass('alert_num_display', false);
+    }
   },
   onEnter: function () {
     this.poolDetails.invalidate();
