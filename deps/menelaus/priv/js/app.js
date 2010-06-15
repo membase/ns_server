@@ -1952,7 +1952,7 @@ var AlertsSection = {
 }
 
 var SettingsSection = {
-  processSave: function(self) {
+  processSave: function(self, continuation) {
     var dialog = genericDialog({
       header: 'Saving...',
       text: 'Saving settings.  Please wait a bit.',
@@ -1976,15 +1976,19 @@ var SettingsSection = {
         return dialog.close();
       }
 
-      reloadApp(function (reload) {
-        if (data && data.newBaseUri) {
-          var uri = data.newBaseUri;
-          if (uri.charAt(uri.length-1) == '/')
-            uri = uri.slice(0, -1);
-          uri += document.location.pathname;
-        }
-        _.delay(_.bind(reload, null, uri), 1000);
-      });
+      continuation = continuation || function () {
+        reloadApp(function (reload) {
+          if (data && data.newBaseUri) {
+            var uri = data.newBaseUri;
+            if (uri.charAt(uri.length-1) == '/')
+              uri = uri.slice(0, -1);
+            uri += document.location.pathname;
+          }
+          _.delay(_.bind(reload, null, uri), 1000);
+        });
+      }
+
+      continuation(dialog);
     });
   },
   // GET of advanced settings returns structure, while POST accepts
@@ -2803,7 +2807,10 @@ var NodeDialog = {
     $(parentName + ' form').submit(function (e) {
       e.preventDefault();
 
-      var pw = $(parentName).find('[name=password]').val();
+      var parent = $(parentName)
+
+      var user = parent.find('[name=username]').val();
+      var pw = parent.find('[name=password]').val();
       if (pw == null || pw == "") {
         genericDialog({
           header: 'Cannot do this',
@@ -2813,7 +2820,12 @@ var NodeDialog = {
         return;
       }
 
-      SettingsSection.processSave(this);
+      SettingsSection.processSave(this, function (dialog) {
+        DAO.login = user;
+        DAO.password = pw;
+        showInitDialog('done');
+        dialog.close();
+      });
     });
   }
 };
