@@ -669,9 +669,9 @@ var MockedRequest = mkClass({
                                                    "hostname",
                                                    "user", "password")],
       [post("controller", "failOver"), expectParams(method("doNothingPOST"),
-                                                    opt("hostname"))],
+                                                    "otpNode")],
       [post("controller", "reAddNode"), expectParams(method("doNothingPOST"),
-                                                     "hostname")]
+                                                     "otpNode")]
     ];
 
     rv.x = x;

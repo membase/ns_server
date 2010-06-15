@@ -1141,7 +1141,17 @@ var ServersSection = {
     _.each(this.allNodes, function (n) {
       n.ejectPossible = !n.pendingEject;
       n.failoverPossible = (n.clusterMembership != 'inactiveFailed');
-      n.reAddPossible = (n.clusterMembership == 'inactiveFailed');
+      n.reAddPossible = (n.clusterMembership == 'inactiveFailed' && n.status == 'healthy');
+
+      var nodeClass = ''
+      if (n.clusterMembership == 'inactiveFailed') {
+        nodeClass = 'failed_over'
+      } else if (n.status != 'healthy') {
+        nodeClass = 'server_down'
+      } else {
+        nodeClass = 'status_up'
+      }
+      n.nodeClass = nodeClass;
     });
 
     var imbalance = !!pending.length;
@@ -1152,10 +1162,10 @@ var ServersSection = {
       $('#servers').addClass('imbalance');
       imbalance = true;
     }
-    
-    renderTemplate('active_server_list', active);
+
+    renderTemplate('manage_server_list', active, $i('active_server_list_container'));
     if (!rebalancing)
-      renderTemplate('pending_server_list', pending);
+      renderTemplate('manage_server_list', pending, $i('pending_server_list_container'));
 
     $('#servers .rebalance_button').toggle(imbalance);
     $('#servers .add_button').show();
@@ -1242,6 +1252,26 @@ var ServersSection = {
     serversQ.find('.rebalance_button').live('click', $m(this, 'onRebalance'));
     serversQ.find('.add_button').live('click', $m(this, 'onAdd'));
     serversQ.find('.stop_rebalance_button').live('click', $m(this, 'onStopRebalance'));
+
+    function mkServerRowHandler(handler) {
+      return function (e) {
+        var serverRow = $(this).parents(".server_row").get(0) || $(this).parents('.add_back_row').get(0);
+        var serverInfo = $.data(serverRow, 'server');
+        return handler.call(this, e, serverInfo);
+      }
+    }
+
+    function mkServerAction(handler) {
+      return mkServerRowHandler(function (e, serverRow) {
+        e.preventDefault();
+        return handler(serverRow.hostname);
+      });
+    }
+
+    serversQ.find('.re_add_button').live('click', mkServerAction($m(this, 'reAddNode')));
+    serversQ.find('.eject_server').live('click', mkServerAction($m(this, 'ejectNode')));
+    serversQ.find('.failover_server').live('click', mkServerAction($m(this, 'failoverNode')));
+    serversQ.find('.remove_from_list').live('click', mkServerAction($m(this, 'removeFromList')));
 
     this.rebalanceProgress = new Cell(function (poolDetails) {
       if (poolDetails.rebalanceStatus == 'none')
@@ -2253,6 +2283,14 @@ _.extend(ViewHelpers, {
     });
 
     return ["<span id='", id, "'></span>"].join('');
+  },
+
+  // assigns $.data on current element
+  // use with {%= %} !
+  setData: function (name, value) {
+    return this.thisElement(function (thisElement) {
+      $.data(thisElement.get(0), name, value);
+    });
   },
 
   setPercentBar: function (percents) {

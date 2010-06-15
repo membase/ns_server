@@ -256,41 +256,41 @@
       </div>
     </div>
   </div>
-  <script id="active_server_list_template" type="text/html">
+  <script id="manage_server_list_template" type="text/html">
     <ul>
+    <!-- {% if (!rows.length) { %} -->
       <li class="server_row rebalance_empty">
         <span class="rebalance_empty_message">There are no servers pending rebalance.</span>
       </li>
-      <li class="server_row pending_add">
-        <a class="serverName" href="#openServer=ns1@donald-duck.disney.com">donald-duck.disney.com</a>
-        <a href="#" class="btn_cancel">CANCEL</a>
+    <!-- {% } %} -->
+    <!-- {% _.each(rows, function (s) { %} -->
+      <!-- {% if (s.clusterMembership == 'inactiveAdded') { %}-->
+      <li class="server_row pending_add {%= s.nodeClass %}">{%= V.setData('server', s) %}
+        <a class="serverName" href="#openServer={%= s.otpNode %}">{%= h(s.hostname) %}</a>
+        <a href="#" class="btn_cancel eject_server">CANCEL</a>
         <span class="pending_add_message">PENDING ADD</span>
       </li>
-      <li class="server_row pending_removal status_up">
-        <a class="serverName" href="#openServer=ns1@donald-duck.disney.com">donald-duck.disney.com</a>
-        <a href="#" class="btn_cancel">CANCEL</a>
-        <span class="pending_removal_message">PENDING ADD</span>
+      <!-- {% } else if (s.pendingEject) { %} -->
+      <li class="server_row pending_removal {%= s.nodeClass %}">{%= V.setData('server', s) %}
+        <a class="serverName" href="#openServer={%= s.otpNode %}">{%= h(s.hostname) %}</a>
+        <a href="#" class="btn_cancel remove_from_list">CANCEL</a>
+        <span class="pending_removal_message">PENDING REMOVAL</span>
       </li>
-      <!-- {% _.each(rows, function (s) { %} -->
-      <li class="server_row"><a href="#openServer={%= s.otpNode %}" class="serverName">{%= h(s.hostname) %}</a> <span class="failed_over_message">FAILED OVER: PENDING REMOVAL</span>
-      <a class="list_button btn_width_2 eject_server"><span>Remove Server</span></a>
-      <a class="list_button btn_width_1 failover_server"><span>Fail Over</span></a>
-      <!-- { %= _.template($('#server_details_template').html(), {node: s}) %} -->
+      <!-- {% } else { %} -->
+        <!-- {% if (s.reAddPossible) { %} -->
+        <li class="add_back_row">{%= V.setData('server', s) %}
+          <a href="#" class="add_back_btn re_add_button"></a>
+          <span class="add_b_message">This server is now reachable. Do you want to add it back to the cluster on the next rebalance?</span>
+        </li>
+        <!-- {% } %} -->
+      <li class="server_row {%= s.nodeClass %}">{%= V.setData('server', s) %}
+        <a href="#openServer={%= s.otpNode %}" class="serverName">{%= h(s.hostname) %}</a>
+        <span class="failed_over_message">FAILED OVER: PENDING REMOVAL</span>
+        <a class="list_button btn_width_2 eject_server"><span>Remove Server</span></a>
+        <a class="list_button btn_width_1 failover_server"><span>Fail Over</span></a>
       </li>
+      <!-- {% } %} -->
       <li id="{%= s.detailsRowID %}" class="settings-placeholder"></li>
-      <!-- {% }); %} -->
-    </ul>
-  </script>
-  <script id="pending_server_list_template" type="text/html">
-    <ul>
-    <li class="add_back_row">
-      <a href="#" class="add_back_btn"></a>
-      <span class="add_b_message">This server is now reachable. Do you want to add it back to the cluster on the next rebalance?</span>
-    </li>
-    <!-- {% _.each(rows, function (s) { %} -->
-    <li class="server_row failed_over"><a href="#openServer={%=s.otpNode%}">{%= h(s.hostname) %}</a> <span class="failed_over_message">{%= V.renderPendingStatus(s) %}</span><a class="list_button" href="{%=jsLink('ServersSection.removeFromList', s.hostname)%}"><span>Remove from list</span></a>
-       <!-- { % = _.template($('#server_details_template').html(), {node: s}) %} -->
-    </li><li id="{%= s.detailsRowID %}" class="settings-placeholder"></li>
     <!-- {% }); %} -->
     </ul>
   </script>
