@@ -900,7 +900,8 @@ ul.tabs .alert_num_display .alert_num {display:block;}
 .additional_server_info {display:block;}
 .additional_server_info h3 {font-size:14px; color:#444245; padding:5px 0 10px 0; border-bottom:1px solid #bbbdbf; font-weight:normal; margin:0 0 10px 0;}
 .additional_server_info .info_block {display:block; overflow:hidden;}
-.additional_server_info .info_block.last {padding:0 0 10px 0;}
+.additional_server_info .info_block .path {display:block; padding:10px 0 0 0; font-size:11px; color:#828284;}
+.additional_server_info .info_block.last {padding:10px 0 10px 0;}
 .dynamic_ram {display:block; height:40px; padding:0 0 0 77px; background:url(../images/icons.png) 0 -190px no-repeat; float:left;}
 .total_ram {display:block; height:14px; text-align:right;}
 
@@ -916,8 +917,8 @@ ul.tabs .alert_num_display .alert_num {display:block;}
 .RAM_diagramm td.yellow {color:#c19710;}
 .RAM_diagramm td.green {color:#6cc74c;}
 
-.solid_state {display:block; height:40px; width:341px; float:left; background:url(../images/icons.png) 0 -289px no-repeat;}
-.disk_storage {display:block; height:40px; width:341px; float:left; background:url(../images/icons.png) 0 -390px no-repeat;}
+.solid_state {display:block; height:40px; width:262px; padding:0 0 0 77px; float:left; background:url(../images/icons.png) 0 -289px no-repeat;}
+.disk_storage {display:block; height:40px; width:262px; padding:0 0 0 77px; float:left; background:url(../images/icons.png) 0 -390px no-repeat;}
 .additional_server_info .add_btn {display:block; width:61px; height:21px; background:url(../images/add_btn.png) 0 0 no-repeat; float:right;}
 .additional_server_info .info_message {font-size:16px;}
 
@@ -955,7 +956,7 @@ html body .switcher li a.current {color:#e6e6e6 !important;}
 ul.tabs.switcher {height:32px; overflow:visible;}
 
 .btn_1 {display:inline-block; height:31px; font-size:14px !important; background:url(../images/btn_1_bg.png) 100% -31px no-repeat; padding:0 4px 0 0 !important; color:#000;}
-.btn_1 span {color:#000;}
+.btn_1 span {color:#000; text-shadow:#bbbfc2 1px 1px;}
 .btn_1 span {/*display:inline-block;*/ display:block; text-align:center; height:31px; padding:0 6px 0 10px; line-height:31px; background:url(../images/btn_1_bg.png) 0 0 no-repeat;}
 
 .panes.pad {background:none !important;}
@@ -963,3 +964,7 @@ ul.tabs.switcher {height:32px; overflow:visible;}
 
 /* temporary styles */
 .jqmWindow {position:absolute;}
+
+ul.tabs .tab_left a, ul.tabs .tab_right a {text-shadow:#bbbfc2 1px 1px;}
+ul.tabs .tab_left a.current, ul.tabs .tab_right a.current, ul.tabs .tab_left a:hover, ul.tabs .tab_right a:hover {text-shadow:none;}
+ul.tabs .tab_left a.current:hover, ul.tabs .tab_right a.current:hover {text-shadow:#bbbfc2 1px 1px;}
