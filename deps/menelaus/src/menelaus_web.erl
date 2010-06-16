@@ -360,18 +360,16 @@ handle_versions(Req) ->
 
 handle_pool_info(Id, Req) ->
     UserPassword = menelaus_auth:extract_auth(Req),
-    reply_json(Req, build_pool_info(Id, UserPassword)).
+    LocalAddr = menelaus_util:local_addr(Req),
+    reply_json(Req, build_pool_info(Id, UserPassword, normal, LocalAddr)).
 
 is_healthy(InfoNode) ->
     not proplists:get_bool(stale, InfoNode) and
         proplists:get_bool(memcached_running, InfoNode).
 
-build_pool_info(Id, UserPassword) ->
-    build_pool_info(Id, UserPassword, normal).
-
-build_pool_info(Id, _UserPassword, InfoLevel) ->
+build_pool_info(Id, _UserPassword, InfoLevel, LocalAddr) ->
     MyPool = fakepool,
-    Nodes = build_nodes_info(MyPool, true, InfoLevel),
+    Nodes = build_nodes_info(MyPool, true, InfoLevel, LocalAddr),
     BucketsInfo = {struct, [{uri,
                              list_to_binary(concat_url_path(["pools", Id, "buckets"]))}]},
     RebalanceStatus = case ns_cluster_membership:get_rebalance_status() of
@@ -398,10 +396,7 @@ build_pool_info(Id, _UserPassword, InfoLevel) ->
                        [{uri,
                          list_to_binary(concat_url_path(["pools", Id, "stats"]))}]}}]}.
 
-build_nodes_info(MyPool, IncludeOtp) ->
-    build_nodes_info(MyPool, IncludeOtp, normal).
-
-build_nodes_info(MyPool, IncludeOtp, InfoLevel) ->
+build_nodes_info(MyPool, IncludeOtp, InfoLevel, LocalAddr) ->
     OtpCookie = list_to_binary(atom_to_list(ns_node_disco:cookie_get())),
     WantENodes = ns_node_disco:nodes_wanted(),
     NodeStatuses = ns_doctor:get_nodes(),
@@ -412,7 +407,7 @@ build_nodes_info(MyPool, IncludeOtp, InfoLevel) ->
                                  {ok, Info} -> Info;
                                  error -> [stale]
                              end,
-                  KV = build_node_info(MyPool, WantENode, InfoNode),
+                  KV = build_node_info(MyPool, WantENode, InfoNode, LocalAddr),
                   Status = case is_healthy(InfoNode) of
                                true -> <<"healthy">>;
                                false -> <<"unhealthy">>
@@ -456,16 +451,19 @@ build_nodes_info(MyPool, IncludeOtp, InfoLevel) ->
           WantENodes),
     Nodes.
 
-build_node_info(MyPool, WantENode) ->
+build_node_info_no_node_info(MyPool, WantENode, LocalAddr) ->
     NodeStatuses = ns_doctor:get_nodes(),
     InfoNode = case dict:find(WantENode, NodeStatuses) of
                    {ok, Info} -> Info;
                    error -> [stale]
                end,
-    build_node_info(MyPool, WantENode, InfoNode).
+    build_node_info(MyPool, WantENode, InfoNode, LocalAddr).
 
-build_node_info(MyPool, WantENode, InfoNode) ->
-    {_Name, Host} = misc:node_name_host(WantENode),
+build_node_info(MyPool, WantENode, InfoNode, LocalAddr) ->
+    Host = case misc:node_name_host(WantENode) of
+               {_, "127.0.0.1"} -> LocalAddr;
+               {_Name, H} -> H
+           end,
     DirectPort = ns_config:search_node_prop(ns_config:get(), memcached, port),
     ProxyPort = pool_proxy_port(MyPool, WantENode),
     Versions = proplists:get_value(version, InfoNode, []),
@@ -488,7 +486,8 @@ pool_proxy_port(_PoolConfig, _Node) ->
 
 handle_pool_info_streaming(Id, Req) ->
     UserPassword = menelaus_auth:extract_auth(Req),
-    F = fun(InfoLevel) -> build_pool_info(Id, UserPassword, InfoLevel) end,
+    LocalAddr = menelaus_util:local_addr(Req),
+    F = fun(InfoLevel) -> build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) end,
     handle_streaming(F, Req, undefined).
 
 handle_streaming(F, Req, LastRes) ->
@@ -559,7 +558,7 @@ build_bucket_info(PoolId, Id, Pool, LocalAddr) ->
 
 build_bucket_info(PoolId, Id, Pool, InfoLevel, LocalAddr) ->
     StatsUri = list_to_binary(concat_url_path(["pools", PoolId, "buckets", Id, "stats"])),
-    Nodes = build_nodes_info(Pool, false, InfoLevel),
+    Nodes = build_nodes_info(Pool, false, InfoLevel, LocalAddr),
     List1 = [{name, list_to_binary(Id)},
              {uri, list_to_binary(concat_url_path(["pools", PoolId, "buckets", Id]))},
              {streamingUri, list_to_binary(concat_url_path(["pools", PoolId, "bucketsStreaming", Id]))},
@@ -1056,7 +1055,7 @@ handle_diag(Req) ->
     Logs = lists:flatmap(fun ({struct, Entry}) -> diag_format_log_entry(Entry) end,
                          menelaus_alert:build_logs([{"limit", "1000000"}])),
     Infos = [["per_node_diag = ~p", diag_multicall(?MODULE, do_diag_per_node, [])],
-             ["nodes_info = ~p", build_nodes_info(fakepool, true)],
+             ["nodes_info = ~p", build_nodes_info(fakepool, true, normal, "127.0.0.1")],
              ["buckets = ~p", Buckets],
              ["logs:~n-------------------------------~n~s", Logs]],
     Text = lists:flatmap(fun ([Fmt | Args]) ->
@@ -1079,7 +1078,8 @@ handle_node(S, Req) when is_list(S) -> handle_node("default", list_to_atom(S), R
 
 handle_node(_PoolId, Node, Req) ->
     MyPool = fakepool,
-    KV = build_node_info(MyPool, Node),
+    LocalAddr = menelaus_util:local_addr(Req),
+    KV = build_node_info_no_node_info(MyPool, Node, LocalAddr),
     {License, Valid, ValidUntil} = case ns_license:license(Node) of
         {undefined, V, VU} -> {"", V, ymd_to_string(VU)};
         {X, V, VU}         -> {X, V, ymd_to_string(VU)}
