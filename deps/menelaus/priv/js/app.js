@@ -1288,23 +1288,18 @@ var ServersSection = {
 
     detailsWidget.hookRedrawToCell(this.poolDetails);
 
-    var tabsWatcher = $m(this, 'tabsWatcher');
-    this.tabs.subscribeAny(tabsWatcher);
-    this.poolDetails.subscribeAny(tabsWatcher);
-
-    this.poolDetails.subscribeValue(function (details) {
-      var rebalancing = details && details.rebalanceStatus != 'none';
-      serversQ.find('.add_button').toggle(details && !rebalancing);
-      serversQ.find('.stop_rebalance_button').toggle(rebalancing);
-
-      serversQ.find('.rebalance_button').toggle(!!details);
-    });
+    this.poolDetails.subscribeAny($m(this, 'buttonsEnabler'));
   },
-  tabsWatcher: function () {
-    var value = this.tabs.value;
+  buttonsEnabler: function () {
     var details = this.poolDetails.value;
 
-    if (details && details.rebalanceStatus == 'none' && value == 'active') {
+    var rebalancing = details && details.rebalanceStatus != 'none';
+    this.serversQ.find('.add_button').toggle(details && !rebalancing);
+    this.serversQ.find('.stop_rebalance_button').toggle(rebalancing);
+
+    this.serversQ.find('.rebalance_button').toggle(!!details);
+
+    if (details && details.rebalanceStatus == 'none') {
       var pending = this.pending;
       $('#rebalance_tab .alert_num span').text(pending.length);
       $('#rebalance_tab').toggleClass('alert_num_display', !!pending.length);
