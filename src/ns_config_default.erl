@@ -161,7 +161,7 @@ default() ->
     {port_servers,
      [{'_ver', {0, 0, 0}},
       {moxi, "./bin/moxi/moxi",
-       ["-Z", {"port_listen=~B", [port]},
+       ["-Z", {"port_listen=~B,downstream_max=1", [port]},
         "-z", "auth=,url=http://127.0.0.1:8080/pools/default/bucketsStreamingConfig/default,#@",
         "-p", "0"
        ],
