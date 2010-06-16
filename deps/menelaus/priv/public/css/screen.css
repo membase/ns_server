@@ -897,9 +897,6 @@ ul.tabs .alert_num_display .alert_num {display:block;}
 #servers.rebalancing .servers-not-rebalancing { display: none; }
 #servers.rebalancing .servers-rebalancing { display: block; }
 
-#servers .imbalance { display: none; }
-#servers.imbalance .imbalance { display: inline; }
-
 .additional_server_info {display:block;}
 .additional_server_info h3 {font-size:14px; color:#444245; padding:5px 0 10px 0; border-bottom:1px solid #bbbdbf; font-weight:normal; margin:0 0 10px 0;}
 .additional_server_info .info_block {display:block; overflow:hidden;}

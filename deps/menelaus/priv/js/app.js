@@ -1084,30 +1084,24 @@ var OverviewSection = {
 
 var ServersSection = {
   hostnameComparator: mkComparatorByProp('hostname'),
-  pendingEject: [],
-  onPoolDetailsReady: function () {
+  pendingEject: [], // nodes to eject on next rebalance
+  pending: [], // nodes for pending tab
+  active: [], // nodes for active tab
+  allNodes: [], // all known nodes
+
+  updateData: function () {
     var self = this;
 
-    $('#servers').toggleClass('rebalancing', false);
+    var pending = this.pending = [];
+    var active = this.active = [];
+    this.allNodes = [];
 
     var details = this.poolDetails.value;
     if (!details)
       return;
 
-    var rebalancing = details.rebalanceStatus != 'none';
-    $('#servers').toggleClass('rebalancing', rebalancing);
-
-    this.renderNoRebalance(details, rebalancing);
-    if (rebalancing)
-      return this.renderRebalance(details);
-  },
-  renderNoRebalance: function (details, rebalancing) {
-    var self = this;
-
     var nodes = details.nodes;
     var nodeNames = _.pluck(nodes, 'hostname');
-    var pending = [];
-    var active = [];
     _.each(nodes, function (n) {
       if (n.clusterMembership == 'inactiveAdded')
         pending.push(n);
@@ -1129,12 +1123,9 @@ var ServersSection = {
 
     this.pendingEject = stillActualEject;
 
-    pending = pending.concat(this.pendingEject);
+    this.pending = pending = pending.concat(this.pendingEject);
     pending.sort(this.hostnameComparator);
     active.sort(this.hostnameComparator);
-
-    this.active = active;
-    this.pending = pending;
 
     this.allNodes = _.uniq(this.active.concat(this.pending));
 
@@ -1154,23 +1145,43 @@ var ServersSection = {
       n.nodeClass = nodeClass;
     });
 
-    var imbalance = !!pending.length;
+  },
+  renderEverything: function () {
+    var details = this.poolDetails.value;
+    var rebalancing = details && details.rebalanceStatus != 'none';
+    var pending = this.pending;
+    var active = this.active;
 
-    $('#servers').removeClass('imbalance');
+    this.serversQ.find('.add_button').toggle(details && !rebalancing);
+    this.serversQ.find('.stop_rebalance_button').toggle(rebalancing);
 
-    if (!imbalance && !details.balanced) {
-      $('#servers').addClass('imbalance');
-      imbalance = true;
+    var rebalanceButton = this.serversQ.find('.rebalance_button').toggle(!!details);
+    rebalanceButton.toggleClass('disabled', rebalancing || pending.length == 0);
+
+    if (details && !rebalancing) {
+      $('#rebalance_tab .alert_num span').text(pending.length);
+      $('#rebalance_tab').toggleClass('alert_num_display', !!pending.length);
+    } else {
+      $('#rebalance_tab').toggleClass('alert_num_display', false);
     }
+
+    this.serversQ.toggleClass('rebalancing', rebalancing);
+
+    if (!details)
+      return;
 
     renderTemplate('manage_server_list', active, $i('active_server_list_container'));
-    if (!rebalancing) {
-      renderTemplate('manage_server_list', pending, $i('pending_server_list_container'));
+
+    if (active.length == 1) {
+      $('#active_server_list_container').find('.eject_server').addClass('disabled').end()
+        .find('.failover_server').addClass('disabled');
     }
 
-    //$('#servers .rebalance_button').toggle(imbalance);
-    // if (!rebalancing)
-    //   $('#servers .add_button').show();
+    if (!rebalancing) {
+      renderTemplate('manage_server_list', pending, $i('pending_server_list_container'));
+    } else {
+      this.renderRebalance(details);
+    }
   },
   renderRebalance: function (details) {
     var progress = this.rebalanceProgress.value;
@@ -1187,6 +1198,10 @@ var ServersSection = {
     });
 
     renderTemplate('rebalancing_list', nodes);
+  },
+  refreshEverything: function () {
+    this.updateData();
+    this.renderEverything();
   },
   onRebalanceProgress: function () {
     var value = this.rebalanceProgress.value;
@@ -1248,13 +1263,13 @@ var ServersSection = {
       $('#servers .failover_warning').toggle(!!hasFailover);
     });
 
-    this.poolDetails.subscribeAny($m(this, "onPoolDetailsReady"));
+    this.poolDetails.subscribeAny($m(this, "refreshEverything"));
     prepareTemplateForCell('active_server_list', this.poolDetails);
     prepareTemplateForCell('pending_server_list', this.poolDetails);
 
     var serversQ = this.serversQ = $('#servers');
 
-    serversQ.find('.rebalance_button').live('click', $m(this, 'onRebalance'));
+    serversQ.find('.rebalance_button').live('click', this.accountForDisabled($m(this, 'onRebalance')));
     serversQ.find('.add_button').live('click', $m(this, 'onAdd'));
     serversQ.find('.stop_rebalance_button').live('click', $m(this, 'onStopRebalance'));
 
@@ -1267,10 +1282,10 @@ var ServersSection = {
     }
 
     function mkServerAction(handler) {
-      return mkServerRowHandler(function (e, serverRow) {
+      return ServersSection.accountForDisabled(mkServerRowHandler(function (e, serverRow) {
         e.preventDefault();
         return handler(serverRow.hostname);
-      });
+      }));
     }
 
     serversQ.find('.re_add_button').live('click', mkServerAction($m(this, 'reAddNode')));
@@ -1287,24 +1302,14 @@ var ServersSection = {
     this.rebalanceProgress.subscribe($m(this, 'onRebalanceProgress'));
 
     detailsWidget.hookRedrawToCell(this.poolDetails);
-
-    this.poolDetails.subscribeAny($m(this, 'buttonsEnabler'));
   },
-  buttonsEnabler: function () {
-    var details = this.poolDetails.value;
-
-    var rebalancing = details && details.rebalanceStatus != 'none';
-    this.serversQ.find('.add_button').toggle(details && !rebalancing);
-    this.serversQ.find('.stop_rebalance_button').toggle(rebalancing);
-
-    this.serversQ.find('.rebalance_button').toggle(!!details);
-
-    if (details && details.rebalanceStatus == 'none') {
-      var pending = this.pending;
-      $('#rebalance_tab .alert_num span').text(pending.length);
-      $('#rebalance_tab').toggleClass('alert_num_display', !!pending.length);
-    } else {
-      $('#rebalance_tab').toggleClass('alert_num_display', false);
+  accountForDisabled: function (handler) {
+    return function (e) {
+      if ($(e.currentTarget).hasClass('disabled')) {
+        e.preventDefault();
+        return;
+      }
+      return handler.call(this, e);
     }
   },
   onEnter: function () {
@@ -1410,7 +1415,7 @@ var ServersSection = {
     return rv;
   },
   reDraw: function () {
-    _.defer($m(this, 'onPoolDetailsReady'));
+    _.defer($m(this, 'refreshEverything'));
   },
   ejectNode: function (hostname) {
     var node = this.mustFindNode(hostname);
