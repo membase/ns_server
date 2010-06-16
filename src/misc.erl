@@ -418,13 +418,14 @@ remove_trailing_whitespace(X) ->
 
 wait_for_process(Pid, Timeout) ->
     Me = self(),
+    Signal = make_ref(),
     spawn(fun() ->
                   process_flag(trap_exit, true),
                   link(Pid),
                   erlang:monitor(process, Me),
-                  receive _ -> Me ! finished end
+                  receive _ -> Me ! Signal end
           end),
-    receive finished -> ok
+    receive Signal -> ok
     after Timeout -> {error, timeout}
     end.
 
