@@ -43,6 +43,7 @@
 
 -define(CMD_SET_VBUCKET_STATE, 16#83).
 -define(CMD_GET_VBUCKET_STATE, 16#84).
+-define(CMD_DELETE_VBUCKET, 16#85).
 
 -define(RGET,        16#30).
 -define(RSET,        16#31).

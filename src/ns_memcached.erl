@@ -24,6 +24,8 @@
 %% external API
 -export([create_bucket/2, create_bucket/3,
          delete_bucket/1, delete_bucket/2,
+         delete_vbucket/2, delete_vbucket/3,
+         host_port_str/0, host_port_str/1,
          list_buckets/0, list_buckets/1,
          list_vbuckets/1, list_vbuckets/2,
          list_vbuckets_multi/2,
@@ -48,6 +50,7 @@ init([]) ->
     %% Username = ns_config:search_node_prop(Config, memcached, admin_user),
     %% Password = ns_config:search_node_prop(Config, memcached, admin_pass),
     Port = ns_config:search_node_prop(Config, memcached, port),
+    error_logger:info_msg("ns_memcached connecting to memcached on port ~p~n", [Port]),
     {ok, Sock} = gen_tcp:connect("127.0.0.1", Port, [binary, {packet, 0}, {active, false}], 5000),
     %% ok = mc_client_binary:auth(Sock, {<<"PLAIN">>, {Username, Password}}),
     {ok, #state{sock=Sock}}.
@@ -59,6 +62,12 @@ handle_call({create_bucket, _Bucket, _Config}, _FXrom, State) ->
 handle_call({delete_bucket, _Bucket}, _From, State) ->
     %% Reply = mc_client_binary:delete_bucket(State#state.sock, Bucket),
     Reply = unimplemented,
+    {reply, Reply, State};
+handle_call({delete_vbucket, Bucket, VBucket}, _From, State) ->
+    Reply = do_in_bucket(State#state.sock, Bucket,
+                        fun() ->
+                                mc_client_binary:delete_vbucket(State#state.sock, VBucket)
+                        end),
     {reply, Reply, State};
 handle_call(list_buckets, _From, State) ->
     %% Reply = mc_client_binary:list_buckets(State#state.sock),
@@ -114,6 +123,21 @@ delete_bucket(Bucket) ->
 
 delete_bucket(Node, Bucket) ->
     gen_server:call({?MODULE, Node}, {delete_bucket, Bucket}).
+
+delete_vbucket(Bucket, VBucket) ->
+    delete_vbucket(node(), Bucket, VBucket).
+
+delete_vbucket(Node, Bucket, VBucket) ->
+    gen_server:call({?MODULE, Node}, {delete_vbucket, Bucket, VBucket}).
+
+host_port_str() ->
+    host_port_str(node()).
+
+host_port_str(Node) ->
+    Config = ns_config:get(),
+    Port = ns_config:search_node_prop(Node, Config, memcached, port),
+    {_Name, Host} = misc:node_name_host(Node),
+    Host ++ ":" ++ integer_to_list(Port).
 
 list_buckets() ->
     list_buckets(node()).
