@@ -84,6 +84,10 @@ handle_event({memcached, _}, State) ->
     ok = notify_watchers(memcached, State),
     {ok, State};
 
+handle_event({buckets, _}, State) ->
+    ok = notify_watchers(buckets, State),
+    {ok, State};
+
 handle_event({nodes_wanted, _}, State) ->
     ok = notify_watchers(nodes_wanted, State),
     {ok, State};
