@@ -916,6 +916,7 @@ body table.buckets_tab tr th:first-child span {display:block; white-space:nowrap
 .buckets_tab .settings-placeholder td .pad {padding:10px 0; background:none;}
 body .buckets_tab .settings-placeholder td .pad .pad {padding:10px 10px 10px 80px !important; background:url(../images/icons.png) 0 -98px no-repeat !important; min-height:60px;}
 .buckets_tab .settings-placeholder .edit_btn {display:block; width:65px; height:21px; background:url(../images/edit-button.png) 0 0 no-repeat; float:right;}
+.edit_btn {display:block; width:65px; height:21px; background:url(../images/edit-button.png) 0 0 no-repeat; float:right;}
 .buckets_tab .ovf {padding:10px 0;}
 
 
@@ -956,3 +957,6 @@ ul.tabs.switcher {height:32px; overflow:visible;}
 ul.tabs .tab_left a, ul.tabs .tab_right a {text-shadow:#bbbfc2 1px 1px;}
 ul.tabs .tab_left a.current, ul.tabs .tab_right a.current, ul.tabs .tab_left a:hover, ul.tabs .tab_right a:hover {text-shadow:none;}
 ul.tabs .tab_left a.current:hover, ul.tabs .tab_right a.current:hover {text-shadow:#bbbfc2 1px 1px;}
+
+.server_details_tab td {color:#434446; padding:0 0 5px 0;}
+.server_details_tab td span {color:#87888a;}
