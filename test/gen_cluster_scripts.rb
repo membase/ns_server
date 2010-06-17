@@ -46,13 +46,8 @@ num_nodes.times do |x|
                  {dbname, "#{node_data}/default"},
                  {admin_user, "_admin"},
                  {admin_pass, "_admin"},
-                 {buckets,
-                  [{"default",
-                    [{num_vbuckets, 16},
-                     {num_replicas, 0},
-                     {map, undefined}]
-                   }]
-                 }]}.
+                 {dbname, "./data/n_#{x + base_api_port - 9000}/default"}
+                 ]}.
 
     {{node, #{node_id}, moxi}, [{'_ver', {0, 0, 0}},
             {port, #{(x * 2) + base_direct_port + 1}}]}.
@@ -77,13 +72,13 @@ File.open(prefix + "_run.sh", File::CREAT|File::TRUNC|File::WRONLY, 0755) do |f|
 
 start_node() {
     echo "Starting $1"
-
+    mkdir -p logs/"$1" > /dev/null
     ./test/orphaner.rb erl -pa \`find . -type d -name ebin\` \\
         -setcookie nocookie \\
         -run ns_bootstrap \\
         -kernel inet_dist_listen_min 21100 inet_dist_listen_max 21199 \\
         -sasl sasl_error_logger false \\
-        -sasl error_logger_mf_dir '"logs"' \\
+        -sasl error_logger_mf_dir '"logs/'$1'"' \\
         -sasl error_logger_mf_maxbytes 10485760 \\
         -sasl error_logger_mf_maxfiles 10 \\
         -- \\
