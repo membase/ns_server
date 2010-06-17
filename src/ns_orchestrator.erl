@@ -46,12 +46,10 @@ stop_rebalance(Bucket) ->
 init(Bucket) ->
     {ok, #state{bucket=Bucket}}.
 
-handle_call(rebalance_progress, _from, State = #state{rebalance_progress = Progress}) ->
-    {reply, Progress, State};
-handle_call(rebalance_status, _From, State = #state{rebalancer=undefined}) ->
+handle_call(rebalance_progress, _From, State = #state{rebalancer = {_Pid, _Ref}, rebalance_progress = Progress}) ->
+    {reply, {running, Progress}, State};
+handle_call(rebalance_progress, _From, State = #state{}) ->
     {reply, not_running, State};
-handle_call(rebalance_status, _From, State) ->
-    {reply, running, State};
 handle_call({start_rebalance, KeepNodes, EjectNodes}, _From, State = #state{bucket=Bucket, rebalancer=undefined}) ->
     {_NumReplicas, _NumVBuckets, Map, Servers} = ns_bucket:config(Bucket),
     Histograms = histograms(Map, Servers),
@@ -60,8 +58,13 @@ handle_call({start_rebalance, KeepNodes, EjectNodes}, _From, State = #state{buck
         {S, S, [], false} ->
             {reply, already_balanced, State};
         _ ->
-            {ok, Pid, Ref} = misc:spawn_link_safe(fun () -> do_rebalance(Bucket, KeepNodes, EjectNodes, Map) end),
-            {reply, ok, State#state{rebalancer={Pid, Ref}, rebalance_progress=undefined}}
+            {ok, Pid, Ref} = misc:spawn_link_safe(
+                               fun () -> spawn_link(
+                                           fun() ->
+                                                   do_rebalance(Bucket, KeepNodes, EjectNodes, Map)
+                                           end)
+                               end),
+            {reply, ok, State#state{rebalancer={Pid, Ref}, rebalance_progress=[]}}
     end;
 handle_call({start_rebalance, _, _}, _From, State) ->
     {reply, in_progress, State};
@@ -83,6 +86,10 @@ handle_cast(Msg, State) ->
 
 handle_info({rebalance_progress, Progress}, State) ->
     {noreply, State#state{rebalance_progress = Progress}};
+handle_info({Ref, Reason}, State = #state{rebalancer={_Pid, Ref}}) ->
+    error_logger:info_msg("~p:handle_info(): rebalance finished with reason ~p~n",
+                          [?MODULE, Reason]),
+    {noreply, State#state{rebalancer=undefined}};
 handle_info(Msg, State) ->
     error_logger:info_msg("~p:handle_info(~p, ~p)~n",
                           [?MODULE, Msg, State]),
@@ -142,6 +149,8 @@ evacuate_masters(Bucket, EvacuateNodes, [Chain|MapTail], Histograms, V, NewMapRe
             {_, true} ->
                 [MasterHistogram|ReplicaHistograms] = Histograms,
                 {NewMaster, MasterHistogram1} = assign(MasterHistogram, Chain),
+                error_logger:info_msg("~p:evacuate_masters(~p): moving vbucket ~p from ~p to ~p~n",
+                                     [?MODULE, Bucket, V, OldMaster, NewMaster]),
                 ok = ns_vbm_sup:move(Bucket, V, OldMaster, NewMaster),
                 {[NewMaster|Replicas], [MasterHistogram1|ReplicaHistograms]};
             {_, false} ->
@@ -174,8 +183,9 @@ move_replicas(Bucket, EjectNodes, [Chain|MapTail], Histograms, V, NewMapReversed
 
 promote_replicas(Bucket, V, RemapNodes, Chain) ->
     [OldMaster|_] = Chain,
+    Bad = fun (Node) -> lists:member(Node, RemapNodes) end,
     NotBad = fun (Node) -> not lists:member(Node, RemapNodes) end,
-    NewChain = lists:takewhile(NotBad, lists:dropwhile(NotBad, RemapNodes)), % TODO garbage collect orphaned pending buckets later
+    NewChain = lists:takewhile(NotBad, lists:dropwhile(Bad, Chain)), % TODO garbage collect orphaned pending buckets later
     NewChainExtended = NewChain ++ lists:duplicate(length(Chain) - length(NewChain), undefined),
     case NewChainExtended of
         [OldMaster|_] ->

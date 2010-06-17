@@ -29,8 +29,11 @@ set_replicas(Node, Bucket, Replicas) ->
     lists:foreach(fun ({Dst, R}) ->
                           VBuckets = [V || {V, _} <- R],
                           lists:foreach(fun (V) ->
-                                                ns_memcached:set_vbucket_state(Node, Bucket, V, dead),
-                                                ns_memcached:delete_vbucket(Node, Bucket, V)
+                                                error_logger:info_msg("Starting replica for vbucket ~p on node ~p~n",
+                                                                      [V, Dst]),
+                                                ns_memcached:set_vbucket_state(Dst, Bucket, V, dead),
+                                                ns_memcached:delete_vbucket(Dst, Bucket, V),
+                                                ns_memcached:set_vbucket_state(Dst, Bucket, V, replica)
                                         end, VBuckets),
                           {ok, _Pid} = start_child(Node, Bucket, VBuckets, Dst, false)
                   end, Grouped).
@@ -38,7 +41,7 @@ set_replicas(Node, Bucket, Replicas) ->
 move(Bucket, VBucket, SrcNode, DstNode) ->
     kill_children(SrcNode, Bucket, [VBucket]),
     Args = args(SrcNode, Bucket, [VBucket], DstNode, true),
-    case misc:spawn_and_wait(SrcNode, ns_port_server, start_link, Args) of
+    case misc:spawn_and_wait(SrcNode, fun () -> ns_port_server:start_link(Args) end) of
         normal -> ok;
         Reason -> {error, Reason}
     end.

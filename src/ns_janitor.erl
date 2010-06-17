@@ -10,9 +10,6 @@
 
 cleanup(Bucket, Map, Servers) ->
     Replicas = lists:keysort(1, map_to_replicas(Map)),
-    lists:foreach(fun ({_, Dst, V}) ->
-                          ns_memcached:set_vbucket_state(Dst, Bucket, V, replica)
-                  end, Replicas),
     ReplicaGroups = misc:keygroup(1, Replicas),
     NodesReplicas = lists:map(fun ({Src, R}) -> % R is the replicas for this node
                                       {Src, [{V, Dst} || {_, Dst, V} <- R]}
@@ -29,8 +26,9 @@ sanify_masters(Bucket, Map, Servers) ->
 
 sanify_master(_, _, [], _) ->
     ok;
-sanify_master(Bucket, Nodes, [[Master|Replicas]|Map], VBucket) ->
-    BadNodes = lists:keydelete(Master, 1, Nodes),
+sanify_master(Bucket, ActiveStates, [[Master|Replicas]|Map], VBucket) ->
+    Nodes = [N || {V, N} <- ActiveStates, V == VBucket],
+    BadNodes = lists:delete(Master, Nodes),
     lists:foreach(fun (Node) ->
                           case lists:member(Node, Replicas) of
                               true ->
@@ -38,7 +36,7 @@ sanify_master(Bucket, Nodes, [[Master|Replicas]|Map], VBucket) ->
                                                          [?MODULE, Bucket, Node, VBucket]);
                               false ->
                                   error_logger:error_msg("~p:sanify_master(~p): extra active node ~p for vbucket ~p, setting to dead~n",
-                                                         [?MODULE, Bucket, VBucket, Node]),
+                                                         [?MODULE, Bucket, Node, VBucket]),
                                   ns_memcached:set_vbucket_state(Node, Bucket, VBucket, dead)
                           end
                   end, BadNodes),
