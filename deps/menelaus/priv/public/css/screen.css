@@ -943,6 +943,13 @@ ul.tabs.switcher {height:32px; overflow:visible;}
 
 .panes.pad {background:none !important;}
 
+/* Elastro */
+#elastro-cling {
+  float:right;
+  position: relative;
+  right:-149px;
+  top:-50px;
+}
 
 /* temporary styles */
 .jqmWindow {position:absolute;}
