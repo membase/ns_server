@@ -363,7 +363,7 @@ td.leftNav li {
   font-size:12px;
   border-bottom:1px solid #e4e9eb;
 }
-td.leftNav li a {display:block; height:29px; padding:0 0 0 12px; text-decoration:none;}
+td.leftNav li a {display:block; height:29px; text-decoration:none;}
 td.leftNav li a:hover {background:none #eaf4f9;}
 td.leftNav ul ul a {padding:0 0 0 24px;}
 td.leftNav li.line {
@@ -371,6 +371,7 @@ td.leftNav li.line {
 	background-position: bottom left;
 }
 
+td.leftNav li {padding:0 0 0 12px;}
 td.leftNav li:hover {
 /*	background: url('../images/ns_console_ahover.png') no-repeat;
 	background-position: center;*/
@@ -383,6 +384,8 @@ td.leftNav li.indent {
 }
 
 td.leftNav li a.currentNav {background:none #dae4e9;}
+
+td.leftNavDisabled {color:#ff0000;}
 
 #mainPanel {
 	font-family: Helvetica;
