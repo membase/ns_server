@@ -2822,7 +2822,7 @@ var NodeDialog = {
       var pw = parent.find('[name=password]').val();
       if (pw == null || pw == "") {
         genericDialog({
-          header: 'Cannot do this',
+          header: 'Please try again',
           text: 'Empty password is not allowed',
           buttons: {cancel: false, ok: true}
         });
@@ -2833,6 +2833,11 @@ var NodeDialog = {
         DAO.login = user;
         DAO.password = pw;
         showInitDialog('done');
+
+        if (user != null && user != "") {
+          $('.sign-out-link').show();
+        }
+
         dialog.close();
       });
     });
