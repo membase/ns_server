@@ -41,7 +41,8 @@ terminate(Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-reconfig(PortServers) ->
+reconfig(_PortServers) ->
+    {value, PortServers} = ns_port_sup:port_servers_config(),
     error_logger:info_msg("ns_port_init reconfig ports: ~p...~n",
                           [PortServers]),
 
