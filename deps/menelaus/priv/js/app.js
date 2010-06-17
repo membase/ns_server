@@ -1172,7 +1172,9 @@ var ServersSection = {
 
     renderTemplate('manage_server_list', active, $i('active_server_list_container'));
 
-    if (active.length == 1) {
+    var reallyActive = _.select(active, function (n) {return n.clusterMembership == 'active'});
+
+    if (reallyActive.length == 1) {
       $('#active_server_list_container').find('.eject_server').addClass('disabled').end()
         .find('.failover_server').addClass('disabled');
     }

@@ -522,6 +522,19 @@ var MockedRequest = mkClass({
                                   mcdMemoryReserved: 256,
                                   otpNode: "ns1@donald-duck.disney.com",
                                   otpCookie: "SADFDFGDFG"},
+                                 {hostname: "scrooge-mcduck.disney.com",
+                                  uptime: 865000,
+                                  version: "only-web.rb-2",
+                                  status: "healthy",
+                                  clusterMembership: "active",
+                                  ports: {proxy: 11211,
+                                          direct: 11311},
+                                  memoryTotal: 2032574464,
+                                  memoryFree: 89864960,
+                                  mcdMemoryAllocated: 64,
+                                  mcdMemoryReserved: 256,
+                                  otpNode: "ns1@scrooge-mcduck.disney.com",
+                                  otpCookie: "SADFDFGDFG"},
                                  {hostname: "goofy.disney.com",
                                   uptime: 86430,
                                   os: 'Linux',
@@ -732,6 +745,11 @@ var __hookParams = {};
   if (params['single']) {
     var pools = MockedRequest.prototype.findResponseFor("GET", ["pools", "default"]);
     pools.nodes = pools.nodes.slice(-1);
+  }
+
+  if (params['no-mcduck']) {
+    var pools = MockedRequest.prototype.findResponseFor("GET", ["pools", "default"]);
+    pools.nodes = _.reject(pools.nodes, function (n) {return n.hostname == "scrooge-mcduck.disney.com"});
   }
 
   if (params['rebalanceStatus']) {
