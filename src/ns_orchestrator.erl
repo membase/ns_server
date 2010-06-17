@@ -5,11 +5,6 @@
 %% Monitor and maintain the vbucket layout of each bucket.
 %% There is one of these per bucket.
 
-%% The goal is to keep the orchestrator as stateless as possible
-%% so it can crash with impunity.
-
-%% States: initializing, idle, rebalancing
-
 -module(ns_orchestrator).
 
 -behaviour(gen_server).
@@ -18,12 +13,12 @@
 
 -define(INTERVAL, 5000).
 
--record(state, {bucket, map}).
+-record(state, {bucket, janitor, rebalancer, rebalance_progress}).
 
 %% API
 -export([start_link/1]).
 
--export([json_map/2]).
+-export([needs_rebalance/1, rebalance_progress/1, start_rebalance/3, stop_rebalance/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2,
@@ -33,45 +28,49 @@
 start_link(Bucket) ->
     gen_server:start_link(server(Bucket), ?MODULE, Bucket, []).
 
-json_map(BucketId, LocalAddr) ->
-    Config = ns_config:get(),
-    Buckets = ns_config:search_node_prop(Config, memcached, buckets),
-    BucketConfig = proplists:get_value(BucketId, Buckets),
-    NumVBuckets = proplists:get_value(num_vbuckets, BucketConfig),
-    NumReplicas = proplists:get_value(num_replicas, BucketConfig),
-    ENodes = lists:sort(ns_node_disco:nodes_wanted()),
-    Servers = lists:map(fun (ENode) ->
-                                Port = ns_config:search_node_prop(ENode, Config, memcached, port),
-                                Host = case misc:node_name_host(ENode) of
-                                           {_Name, "127.0.0.1"} -> LocalAddr;
-                                           {_Name, H} -> H
-                                       end,
-                                list_to_binary(Host ++ ":" ++ integer_to_list(Port))
-                        end, ENodes),
-    VBMap = case proplists:get_value(map, BucketConfig) of
-                undefined ->
-                    lists:duplicate(NumVBuckets,
-                                    lists:duplicate(NumReplicas + 1, undefined));
-                M -> M
-            end,
-    Map = lists:map(fun (VBucket) ->
-                            lists:map(fun (undefined) -> -1;
-                                          (ENode) -> misc:position(ENode, ENodes) - 1
-                                      end, VBucket)
-                    end, VBMap),
-    {struct, [{hashAlgorithm, <<"CRC">>},
-              {numReplicas, NumReplicas},
-              {serverList, Servers},
-              {vBucketMap, Map}]}.
+needs_rebalance(Bucket) ->
+    {_NumReplicas, _NumVBuckets, Map, Servers} = ns_bucket:config(Bucket),
+    lists:any(fun (N) -> N == undefined end, lists:append(Map)) orelse
+        unbalanced(histograms(Map, Servers)).
 
+rebalance_progress(Bucket) ->
+    gen_server:call(server(Bucket), rebalance_progress).
+
+start_rebalance(Bucket, KeepNodes, EjectNodes) ->
+    gen_server:call(server(Bucket), {start_rebalance, KeepNodes, EjectNodes}).
+
+stop_rebalance(Bucket) ->
+    gen_server:call(server(Bucket), stop_rebalance).
 
 %% gen_server callbacks
 init(Bucket) ->
-    {ok, _} = timer:send_interval(?INTERVAL, check),
     {ok, #state{bucket=Bucket}}.
 
-handle_call(get_map, _From, State = #state{map = Map}) ->
-    {reply, Map, State};
+handle_call(rebalance_progress, _from, State = #state{rebalance_progress = Progress}) ->
+    {reply, Progress, State};
+handle_call(rebalance_status, _From, State = #state{rebalancer=undefined}) ->
+    {reply, not_running, State};
+handle_call(rebalance_status, _From, State) ->
+    {reply, running, State};
+handle_call({start_rebalance, KeepNodes, EjectNodes}, _From, State = #state{bucket=Bucket, rebalancer=undefined}) ->
+    {_NumReplicas, _NumVBuckets, Map, Servers} = ns_bucket:config(Bucket),
+    Histograms = histograms(Map, Servers),
+    case {lists:sort(Servers), lists:sort(KeepNodes), EjectNodes,
+          unbalanced(Histograms)} of
+        {S, S, [], false} ->
+            {reply, already_balanced, State};
+        _ ->
+            {ok, Pid, Ref} = misc:spawn_link_safe(fun () -> do_rebalance(Bucket, KeepNodes, EjectNodes, Map) end),
+            {reply, ok, State#state{rebalancer={Pid, Ref}, rebalance_progress=undefined}}
+    end;
+handle_call({start_rebalance, _, _}, _From, State) ->
+    {reply, in_progress, State};
+handle_call(stop_rebalance, _From, State = #state{rebalancer={Pid, Ref}}) ->
+    Pid ! stop,
+    Reply = receive {Ref, Reason} -> Reason end,
+    {reply, Reply, State#state{rebalancer=undefined}};
+handle_call(stop_rebalance, _From, State) ->
+    {reply, not_rebalancing, State};
 handle_call(Request, From, State) ->
     error_logger:info_msg("~p:handle_call(~p, ~p, ~p)~n",
                           [?MODULE, Request, From, State]),
@@ -82,14 +81,12 @@ handle_cast(Msg, State) ->
                           [?MODULE, Msg, State]),
     {noreply, State}.
 
-handle_info(check, State) ->
-    NewState = check(State),
-    {noreply, NewState};
+handle_info({rebalance_progress, Progress}, State) ->
+    {noreply, State#state{rebalance_progress = Progress}};
 handle_info(Msg, State) ->
     error_logger:info_msg("~p:handle_info(~p, ~p)~n",
                           [?MODULE, Msg, State]),
     {noreply, State}.
-
 
 terminate(_Reason, _State) ->
     ok.
@@ -99,115 +96,111 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 %% Internal functions
-
-%% Count of buckets at each position in the replication chain for each server
-adopt([], _Histogram, Adoptions) -> Adoptions;
-adopt([Orphan|Rest], Histogram, Adoptions) ->
-    [{Server, N}|Servers] = lists:keysort(2, Histogram),
-    adopt(Rest, [{Server, N+1}|Servers], [{Orphan, Server}|Adoptions]).
-
-adopt_orphans(State = #state{bucket = Bucket}, Map, NumReplicas, Servers) ->
-    Histograms = histogram(Map, NumReplicas, Servers),
-    [MasterHistogram|_ReplicaHistograms] = Histograms,
-    case lists:map(fun ({N, _}) -> N end,
-                   lists:filter(fun ({_, [undefined|_]}) -> true;
-                                    (_) -> false
-                                end, misc:enumerate(Map, 0))) of
-        [] ->
-            set_map(State, Map);
-        MasterOrphans ->
-            Assignments = adopt(MasterOrphans, dict:to_list(MasterHistogram), []),
-            lists:foreach(fun ({VBucketId, Master}) ->
-                                  ns_memcached:set_vbucket_state(Master, Bucket, VBucketId, active)
-                          end, Assignments),
-            self() ! check,
-            State
+assign(Histogram, AvoidNodes) ->
+    Histogram1 = lists:keysort(2, Histogram),
+    case lists:splitwith(fun ({N, _}) -> lists:member(N, AvoidNodes) end, Histogram1) of
+        {Head, [{Node, N}|Rest]} ->
+            {Node, Head ++ [{Node, N+1}|Rest]};
+        {_, []} ->
+            {undefined, Histogram1}
     end.
 
-check(State = #state{bucket=Bucket}) ->
-    {CurrentStates, Servers, Zombies} = current_states(Bucket),
-    case Zombies of
-        [] -> migrate(State, CurrentStates, Servers);
-        _ -> error_logger:error_msg("~p:check(~p): Eek! Zombies! ~p~n",
-                                    [?MODULE, State, Zombies]),
-             State
-    end.
-
-config(Bucket) ->
-    {ok, CurrentConfig} = ns_bucket:get_bucket(Bucket),
-    NumReplicas = proplists:get_value(num_replicas, CurrentConfig),
-    NumVBuckets = proplists:get_value(num_vbuckets, CurrentConfig),
-    Map = case proplists:get_value(map, CurrentConfig) of
-              undefined ->
-                  lists:duplicate(NumVBuckets, lists:duplicate(NumReplicas+1, undefined));
-              M -> M
-          end,
-    {NumReplicas, NumVBuckets, Map}.
-
-
-current_states(Bucket) ->
-    NodesWanted = ns_node_disco:nodes_wanted(),
+do_rebalance(Bucket, KeepNodes, EjectNodes, Map) ->
     AliveNodes = ns_node_disco:nodes_actual_proper(),
-    DeadNodes = lists:filter(fun (Node) -> not lists:member(Node, AliveNodes) end,
-                             NodesWanted),
-    {Replies, BadNodes} = ns_memcached:list_vbuckets_multi(AliveNodes, Bucket),
-    {GoodReplies, BadReplies} = lists:splitwith(fun ({_, {ok, _}}) -> true;
-                                                    (_) -> false
-                                                end, Replies),
-    ErrorNodes = [Node || {Node, _} <- BadReplies],
-    StateDict = lists:foldl(fun vbucket_states/2, dict:new(), GoodReplies),
-    {StateDict, AliveNodes, BadNodes ++ DeadNodes ++ ErrorNodes}.
+    RemapNodes = EjectNodes -- AliveNodes, % No active node, promote a replica
+    lists:foreach(fun (N) -> ns_cluster:shun(N) end, RemapNodes),
+    EvacuateNodes = EjectNodes -- RemapNodes, % Nodes we can move data off of
+    error_logger:info_msg("~p:do_rebalance(~p, ~p, ~p, ~p):~nAliveNodes = ~p, RemapNodes = ~p, EvacuateNodes = ~p~n",
+                          [?MODULE, Bucket, KeepNodes, EjectNodes, Map, AliveNodes, RemapNodes, EvacuateNodes]),
+    Map1 = [promote_replicas(Bucket, V, RemapNodes, Chain) ||
+               {V, Chain} <- misc:enumerate(Map, 0)],
+    Histograms1 = histograms(Map1, KeepNodes),
+    error_logger:info_msg("~p:do_rebalance(~p, ~p, ~p, ~p):~nMap1 = ~p~nHistograms1 = ~p~n",
+                          [?MODULE, Bucket, KeepNodes, EjectNodes, Map, Map1, Histograms1]),
+    {Map2, Histograms2} = evacuate_masters(Bucket, EvacuateNodes, Map1, Histograms1),
+    error_logger:info_msg("~p:do_rebalance(~p, ~p, ~p, ~p):~nMap2 = ~p~nHistograms2 = ~p~n",
+                          [?MODULE, Bucket, KeepNodes, EjectNodes, Map, Map2, Histograms2]),
+    {Map3, _} = move_replicas(Bucket, EjectNodes, Map2, Histograms2),
+    lists:foreach(fun (N) -> ns_cluster:shun(N) end, EvacuateNodes),
+    ns_bucket:set_servers(Bucket, KeepNodes),
+    ns_bucket:set_map(Bucket, Map3),
+    ns_janitor:cleanup(Bucket, Map3, KeepNodes).
 
-histogram(Map, NumReplicas, Servers) ->
-    DefaultDict = dict:from_list(lists:map(fun (Server) -> {Server, 0} end, Servers)),
-    lists:map(
-      fun (Position) ->
-              lists:foldl(
-                fun (L, D) ->
-                        case lists:nth(Position, L) of
-                            undefined -> D;
-                            Server ->
-                                dict:update(Server, fun (N) -> N + 1 end, 1, D)
-                        end
-                end, DefaultDict, Map)
-      end, lists:seq(1, NumReplicas + 1)).
+evacuate_masters(Bucket, EvacuateNodes, Map, Histograms) ->
+    evacuate_masters(Bucket, EvacuateNodes, Map, Histograms, 0, []).
 
-map(StateDict, NumReplicas, NumVBuckets) ->
-    lists:map(fun (VBucketId) ->
-                      States = case dict:find(VBucketId, StateDict) of
-                                   {ok, List} -> List;
-                                   error -> []
-                               end,
-                      ActiveServers = misc:mapfilter(fun ({Server, active}) -> Server;
-                                                         ({_Server, _}) -> false
-                                                     end, false, States),
-                      Master = case ActiveServers of
-                                   [M] -> M;
-                                   [] -> undefined;
-                                   _ -> conflict
-                               end,
-                      [Master|lists:duplicate(NumReplicas, undefined)]
-              end, lists:seq(0, NumVBuckets-1)).
+evacuate_masters(_, _, [], Histograms, _, NewMapReversed) ->
+    {lists:reverse(NewMapReversed), Histograms};
+evacuate_masters(Bucket, EvacuateNodes, [Chain|MapTail], Histograms, V, NewMapReversed) ->
+    [OldMaster|Replicas] = Chain,
+    {Chain1, Histograms1} =
+        case {OldMaster, lists:member(OldMaster, EvacuateNodes)} of
+            {undefined, _} ->
+                [MasterHistogram|ReplicaHistograms] = Histograms,
+                {NewMaster, MasterHistogram1} = assign(MasterHistogram, Chain),
+                {[NewMaster|Replicas], [MasterHistogram1|ReplicaHistograms]};
+            {_, true} ->
+                [MasterHistogram|ReplicaHistograms] = Histograms,
+                {NewMaster, MasterHistogram1} = assign(MasterHistogram, Chain),
+                ok = ns_vbm_sup:move(Bucket, V, OldMaster, NewMaster),
+                {[NewMaster|Replicas], [MasterHistogram1|ReplicaHistograms]};
+            {_, false} ->
+                {Chain, Histograms}
+        end,
+    evacuate_masters(Bucket, EvacuateNodes, MapTail, Histograms1, V+1, [Chain1|NewMapReversed]).
 
+move_replicas(Bucket, EjectNodes, Map, Histograms) ->
+    move_replicas(Bucket, EjectNodes, Map, Histograms, 0, []).
 
+move_replicas(_, _, [], Histograms, _, NewMapReversed) ->
+    {lists:reverse(NewMapReversed), Histograms};
+move_replicas(Bucket, EjectNodes, [Chain|MapTail], Histograms, V, NewMapReversed) ->
+    %% Split off the masters - we don't want to move them!
+    {[Master|Replicas], [MHist|RHists]} = {Chain, Histograms},
+    ChainHist = lists:zip(Replicas, RHists),
+    {Replicas1, RHists1} =
+        lists:unzip(
+          lists:map(fun ({undefined, Histogram}) ->
+                            assign(Histogram, Chain ++ EjectNodes);
+                        (X = {OldNode, Histogram}) ->
+                            case lists:member(OldNode, EjectNodes) of
+                                true ->
+                                    assign(Histogram, Chain ++ EjectNodes);
+                                false ->
+                                    X
+                            end
+                    end, ChainHist)),
+    move_replicas(Bucket, EjectNodes, MapTail, [MHist|RHists1], V + 1, [[Master|Replicas1]|NewMapReversed]).
 
-migrate(State = #state{bucket=Bucket}, CurrentStates, Servers) ->
-    {NumReplicas, NumVBuckets, _ConfigMap} = config(Bucket),
-    Map = map(CurrentStates, NumReplicas, NumVBuckets),
-    adopt_orphans(State, Map, NumReplicas, Servers).
+promote_replicas(Bucket, V, RemapNodes, Chain) ->
+    [OldMaster|_] = Chain,
+    NotBad = fun (Node) -> not lists:member(Node, RemapNodes) end,
+    NewChain = lists:takewhile(NotBad, lists:dropwhile(NotBad, RemapNodes)), % TODO garbage collect orphaned pending buckets later
+    NewChainExtended = NewChain ++ lists:duplicate(length(Chain) - length(NewChain), undefined),
+    case NewChainExtended of
+        [OldMaster|_] ->
+            %% No need to promote
+            NewChainExtended;
+        [undefined|_] ->
+            error_logger:error_msg("~p:promote_replicas(~p, ~p, ~p, ~p): No master~n", [?MODULE, Bucket, V, RemapNodes, Chain]),
+            NewChainExtended;
+        [_|_] ->
+            NewChainExtended
+    end.
+
+histograms(Map, Servers) ->
+    Histograms = [lists:keydelete(undefined, 1, misc:uniqc(lists:sort(L))) || L <- misc:rotate(Map)],
+    lists:map(fun (H) ->
+                      Missing = [{N, 0} || N <- Servers, not lists:keymember(N, 1, H)],
+                      Missing ++ H
+              end, Histograms).
 
 server(Bucket) ->
     {global, list_to_atom(lists:flatten(io_lib:format("~s-~s", [?MODULE, Bucket])))}.
 
-set_map(State = #state{map = OldMap}, Map) when Map == OldMap ->
-    State;
-set_map(State = #state{bucket = Bucket}, Map) ->
-    ns_bucket:set_map(Bucket, Map),
-    State#state{map = Map}.
-
-vbucket_states({Node, {ok, Reply}}, Dict) ->
-    lists:foldl(fun ({VBucket, State}, D) ->
-                        dict:update(VBucket,
-                                    fun (L) -> [{Node, State}|L] end,
-                                    [{Node, State}], D)
-                end, Dict, Reply).
+%% returns true iff the max vbucket count in any class on any server is >2 more than the min
+unbalanced(Histograms) ->
+    case [N || Histogram <- Histograms, {_, N} <- Histogram] of
+        [] -> true;
+        Counts -> lists:max(Counts) - lists:min(Counts) > 2
+    end.

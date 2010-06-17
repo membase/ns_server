@@ -9,7 +9,7 @@
 
 -include("mc_entry.hrl").
 
--export([auth/2, auth/4, create_bucket/3, delete_bucket/2,
+-export([auth/2, auth/4, create_bucket/3, delete_bucket/2, delete_vbucket/2,
          list_buckets/1, select_bucket/2, set_vbucket_state/3,
          stats/1, stats/2]).
 
@@ -134,6 +134,15 @@ delete_bucket(Sock, BucketName) ->
     case cmd(?CMD_DELETE_BUCKET, Sock, undefined, undefined,
              {#mc_header{},
               #mc_entry{key = BucketName}}) of
+        {ok, #mc_header{status=?SUCCESS}, _ME, _NCB} ->
+            ok;
+        Response -> process_error_response(Response)
+    end.
+
+delete_vbucket(Sock, VBucket) ->
+    case cmd(?CMD_DELETE_VBUCKET, Sock, undefined, undefined,
+             {#mc_header{},
+              #mc_entry{key = list_to_binary(integer_to_list(VBucket))}}) of
         {ok, #mc_header{status=?SUCCESS}, _ME, _NCB} ->
             ok;
         Response -> process_error_response(Response)

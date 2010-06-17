@@ -441,6 +441,35 @@ wait_for_process_test() ->
     ok = wait_for_process(Pid, 100),
     ok = wait_for_process(Pid, 100).
 
+spawn_link_safe(Fun) ->
+    spawn_link_safe(node(), Fun).
+
+spawn_link_safe(Node, Fun) ->
+    Me = self(),
+    Ref = make_ref(),
+    Pid = spawn_link(
+            Node,
+            fun () ->
+                    process_flag(trap_exit, true),
+                    Pid = Fun(),
+                    receive
+                        {'EXIT', Pid, Reason} -> Me ! {Ref, Reason}
+                    end
+            end),
+    {ok, Pid, Ref}.
+
+
+spawn_and_wait(Fun) ->
+    spawn_and_wait(node(), Fun).
+
+spawn_and_wait(Node, Fun) ->
+    {ok, _Pid, Ref} = spawn_link_safe(Node, Fun),
+    receive
+        {Ref, Reason} ->
+            Reason
+    end.
+
+
 poll_for_condition_rec(Condition, _Sleep, 0) ->
     case Condition() of
         false -> timeout;
@@ -501,3 +530,72 @@ enumerate(List) ->
 
 enumerate(List, Start) ->
     lists:zip(lists:seq(Start, length(List) + Start - 1), List).
+
+%% Equivalent of sort|uniq -c
+uniqc(List) ->
+    uniqc(List, 1, []).
+
+uniqc([], _, Acc) ->
+    lists:reverse(Acc);
+uniqc([H], Count, Acc) ->
+    uniqc([], 0, [{H, Count}|Acc]);
+uniqc([H,H|T], Count, Acc) ->
+    uniqc([H|T], Count+1, Acc);
+uniqc([H1,H2|T], Count, Acc) ->
+    uniqc([H2|T], 1, [{H1, Count}|Acc]).
+
+uniqc_test() ->
+    [{a, 2}, {b, 5}] = uniqc([a, a, b, b, b, b, b]),
+    [] = uniqc([]),
+    [{c, 1}] = uniqc([c]).
+
+
+keygroup(Index, List) ->
+    keygroup(Index, List, []).
+
+keygroup(_, [], Groups) ->
+    lists:reverse(Groups);
+keygroup(Index, [H|T], Groups) ->
+    Key = element(Index, H),
+    {G, Rest} = lists:splitwith(fun (Elem) -> element(Index, Elem) == Key end, T),
+    keygroup(Index, Rest, [{Key, [H|G]}|Groups]).
+
+keygroup_test() ->
+    [{a, [{a, 1}, {a, 2}]},
+     {b, [{b, 2}, {b, 3}]}] = keygroup(1, [{a, 1}, {a, 2}, {b, 2}, {b, 3}]),
+    [] = keygroup(1, []).
+
+%% Turn [[1, 2, 3], [4, 5, 6], [7, 8, 9]] info
+%% [[1, 4, 7], [2, 5, 8], [3, 6, 9]]
+rotate(List) ->
+    rotate(List, [], [], []).
+
+rotate([], [], [], Acc) ->
+    lists:reverse(Acc);
+rotate([], Heads, Tails, Acc) ->
+    rotate(lists:reverse(Tails), [], [], [lists:reverse(Heads)|Acc]);
+rotate([[H|T]|Rest], Heads, Tails, Acc) ->
+    rotate(Rest, [H|Heads], [T|Tails], Acc);
+rotate(_, [], [], Acc) ->
+    lists:reverse(Acc).
+
+rotate_test() ->
+    [[1, 4, 7], [2, 5, 8], [3, 6, 9]] =
+        rotate([[1, 2, 3], [4, 5, 6], [7, 8, 9]]),
+    [] = rotate([]).
+
+
+pairs(L) ->
+    pairs(L, []).
+
+pairs([H1,H2|T], P) ->
+    pairs([H2|T], [{H1, H2}|P]);
+pairs(_, P) ->
+    lists:reverse(P).
+
+pairs_test() ->
+    [{1,2}, {2,3}, {3,4}] = pairs([1,2,3,4]),
+    [] = pairs([]),
+    [{1,2}, {2,3}] = pairs([1,2,3]),
+    [] = pairs([1]),
+    [{1,2}] = pairs([1,2]).

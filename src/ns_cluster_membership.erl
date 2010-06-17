@@ -215,62 +215,23 @@ handle_join(OtpNode, OtpCookie, MyIP) ->
                {internal_error, [list_to_binary("Unexpected error encountered during cluster join.")]}
     end.
 
-%% TODO: this is temporary until proper rebalancer will be implemented
-ensure_public_ets(Name) ->
-    try
-        ets:lookup(Name, status)
-    catch
-        error:badarg ->
-            ets:new(Name, [set, named_table, public])
-    end.
-
-%% TODO: this is temporary until proper rebalancer will be implemented
-insert_public_ets(Name, Data) ->
-    ensure_public_ets(Name),
-    ets:insert(Name, Data).
-
-%% TODO: this is temporary until proper rebalancer will be implemented
-lookup_public_ets(Name, Key) ->
-    ensure_public_ets(Name),
-    ets:lookup(Name, Key).
-    
-%% TODO: this is temporary until proper rebalancer will be implemented
 get_rebalance_status() ->
-    case lookup_public_ets(rebalance_tmp, status) of
-        [] ->
-            none;
-        [{status, X} | _] ->
-            X
-    end.
+    ns_orchestrator:rebalance_progress("default").
 
-%% TODO: this is temporary until proper rebalancer will be implemented
 start_rebalance(KnownNodes, EjectedNodes) ->
     case {lists:sort(ns_node_disco:nodes_wanted()),
           lists:sort(KnownNodes)} of
         {X, X} ->
             KeepNodes = lists:subtract(KnownNodes, EjectedNodes),
-            insert_public_ets(rebalance_tmp,
-                              {status, {running, [{N, 0.5} || N <- KnownNodes]}}),
-            spawn(fun () ->
-                          timer:sleep(16000),
-                          lists:foreach(fun (N) ->
-                                                ns_config:set({node, N, membership}, active)
-                                        end, KeepNodes),
-                          lists:foreach(fun (N) ->
-                                                ns_cluster:shun(N)
-                                        end, EjectedNodes),
-                          insert_public_ets(rebalance_tmp, {status, none}),
-                          io:format("fake rebalance is complete!~n")
-                  end),
-            ok;
+            ns_orchestrator:start_rebalance("default", KnownNodes, EjectedNodes);
         _ -> nodes_mismatch
     end.
 
 stop_rebalance() ->
-    ok.
+    ns_orchestrator:stop_rebalance("default").
 
 is_balanced() ->
-    true.
+    not ns_orchestrator:needs_rebalance("default").
 
 ns_log_cat(Number) ->
     case (Number rem 256) div 32 of

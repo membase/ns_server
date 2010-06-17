@@ -139,19 +139,23 @@ default() ->
                  {ht_size, 786433},
                  {dbname, DbName},
                  {admin_user, "_admin"},
-                 {admin_pass, "_admin"},
-                 {buckets,
-                  [{"default",
-                    [{num_vbuckets, 16},
-                     {num_replicas, 0},
-                     {map, undefined}]
-                   }]
-                 }]
+                 {admin_pass, "_admin"}
+                ]
     },
+
+    {buckets, [{'_ver', {0, 0, 0}},
+               {configs, [{"default",
+                           [{num_vbuckets, 16},
+                            {num_replicas, 1},
+                            {servers, []},
+                            {map, undefined}]
+                          }]
+               }]},
 
     % Moxi config
     {moxi, [{'_ver', {0, 0, 0}},
-            {port, 11211}]},
+            {port, 11211}
+           ]},
 
     % Note that we currently assume the ports are available
     % across all servers in the cluster.
@@ -162,7 +166,7 @@ default() ->
      [{'_ver', {0, 0, 0}},
       {moxi, "./bin/moxi/moxi",
        ["-Z", {"port_listen=~B,downstream_max=1", [port]},
-        "-z", "auth=,url=http://127.0.0.1:8080/pools/default/bucketsStreamingConfig/default,#@",
+        "-z", {"auth=,url=http://127.0.0.1:~B/pools/default/bucketsStreamingConfig/default,#@", [{rest, port}]},
         "-p", "0"
        ],
        [{env, []},

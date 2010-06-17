@@ -78,5 +78,7 @@ current_ports() ->
 
 %% internal functions
 format(Config, Name, Format, Keys) ->
-    Values = [ns_config:search_node_prop(Config, Name, K) || K <- Keys],
+    Values = lists:map(fun ({Key, SubKey}) -> ns_config:search_node_prop(Config, Key, SubKey);
+                           (Key) -> ns_config:search_node_prop(Config, Name, Key)
+                       end, Keys),
     lists:flatten(io_lib:format(Format, Values)).

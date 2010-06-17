@@ -504,8 +504,7 @@ handle_streaming(F, Req, HTTPRes, LastRes) ->
     Res = F(stable),
     case Res =:= LastRes of
         true ->
-            error_logger:info_msg("menelaus_web streaming: not sending because it didn't change: ~n~p~n",
-                                 [Res]);
+            ok;
         false ->
             ResNormal = F(normal),
             error_logger:info_msg("menelaus_web streaming: ~p~n",
@@ -567,7 +566,7 @@ build_bucket_info(PoolId, Id, Pool, InfoLevel, LocalAddr) ->
                                                              "buckets", Id, "controller", "doFlush"]))},
              {nodes, Nodes},
              {stats, {struct, [{uri, StatsUri}]}},
-             {vBucketServerMap, ns_orchestrator:json_map(Id, LocalAddr)}],
+             {vBucketServerMap, ns_bucket:json_map(Id, LocalAddr)}],
     List2 = case InfoLevel of
                 stable -> List1;
                 normal -> List1 ++ [{basicStats, {struct, menelaus_stats:basic_stats(PoolId, Id)}}]

@@ -22,29 +22,9 @@ start_link() ->
 init(ignored) ->
     {ok, #state{}, hibernate}.
 
-handle_event({port_servers, _PortServersIn}, State) ->
+handle_event(_Event, State) ->
     {value, PortServers} = ns_port_sup:port_servers_config(),
     ok = reconfig(PortServers),
-    {ok, State, hibernate};
-
-handle_event({{node, Node, port_servers}, PortServers}, State) ->
-    case Node =:= node() of
-        true  -> ok = reconfig(PortServers);
-        false -> ok
-    end,
-    {ok, State, hibernate};
-
-handle_event({Key, _NewValue}, State) ->
-    case lists:keymember(Key, 1, ns_port_sup:current_ports()) of
-        true ->
-            {value, PortServers} = ns_port_sup:port_servers_config(),
-            ok = reconfig(PortServers);
-        false ->
-            ok
-    end,
-    {ok, State, hibernate};
-
-handle_event(_Stuff, State) ->
     {ok, State, hibernate}.
 
 handle_call(_Request, State) ->

@@ -12,11 +12,14 @@
 
 %% API
 -export([start_link/0]).
--export([get_bucket/1,
+-export([config/1,
+         get_bucket/1,
          get_buckets/0,
          get_bucket_names/0,
+         json_map/2,
          set_bucket_config/2,
-         set_map/2]).
+         set_map/2,
+         set_servers/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -41,6 +44,17 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
+config(Bucket) ->
+    {ok, CurrentConfig} = get_bucket(Bucket),
+    NumReplicas = proplists:get_value(num_replicas, CurrentConfig),
+    NumVBuckets = proplists:get_value(num_vbuckets, CurrentConfig),
+    Map = case proplists:get_value(map, CurrentConfig) of
+              undefined -> lists:duplicate(NumVBuckets, lists:duplicate(NumReplicas+1, undefined));
+              M -> M
+          end,
+    Servers = proplists:get_value(servers, CurrentConfig),
+    {NumReplicas, NumVBuckets, Map, Servers}.
+
 get_bucket(Bucket) ->
     BucketConfigs = get_buckets(),
     case lists:keysearch(Bucket, 1, BucketConfigs) of
@@ -56,7 +70,28 @@ get_bucket_names() ->
 
 get_buckets() ->
     Config = ns_config:get(),
-    ns_config:search_node_prop(Config, memcached, buckets, []).
+    ns_config:search_prop(Config, buckets, configs, []).
+
+json_map(BucketId, LocalAddr) ->
+    Config = ns_config:get(),
+    {NumReplicas, _, EMap, ENodes} = config(BucketId),
+    Servers = lists:map(fun (ENode) ->
+                                Port = ns_config:search_node_prop(ENode, Config, memcached, port),
+                                Host = case misc:node_name_host(ENode) of
+                                           {_Name, "127.0.0.1"} -> LocalAddr;
+                                           {_Name, H} -> H
+                                       end,
+                                list_to_binary(Host ++ ":" ++ integer_to_list(Port))
+                        end, ENodes),
+    Map = lists:map(fun (Chain) ->
+                            lists:map(fun (undefined) -> -1;
+                                          (N) -> misc:position(N, ENodes) - 1
+                                      end, Chain)
+                    end, EMap),
+    {struct, [{hashAlgorithm, <<"CRC">>},
+              {numReplicas, NumReplicas},
+              {serverList, Servers},
+              {vBucketMap, Map}]}.
 
 set_bucket_config(Bucket, NewConfig) ->
     update_bucket_config(Bucket, fun (_) -> NewConfig end).
@@ -68,15 +103,22 @@ set_map(Bucket, Map) ->
               lists:keyreplace(map, 1, OldConfig, {map, Map})
       end).
 
+set_servers(Bucket, Servers) ->
+    update_bucket_config(
+      Bucket,
+      fun (OldConfig) ->
+              lists:keyreplace(servers, 1, OldConfig, {servers, Servers})
+      end).
+
 % Update the bucket config atomically.
 update_bucket_config(Bucket, Fun) ->
     ok = ns_config:update(
-      fun ({memcached, List}) ->
-              Buckets = proplists:get_value(buckets, List, []),
+      fun ({buckets, List}) ->
+              Buckets = proplists:get_value(configs, List, []),
               OldConfig = proplists:get_value(Bucket, Buckets),
               NewConfig = Fun(OldConfig),
               NewBuckets = lists:keyreplace(Bucket, 1, Buckets, {Bucket, NewConfig}),
-              {memcached, lists:keyreplace(buckets, 1, List, {buckets, NewBuckets})};
+              {buckets, lists:keyreplace(configs, 1, List, {configs, NewBuckets})};
           (Pair) -> Pair
       end, make_ref()).
 
