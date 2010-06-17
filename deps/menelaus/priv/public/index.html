@@ -2006,7 +2006,7 @@
         ELASTIC DATA MANAGEMENT
       </div>
       <div class="version">
-        NorthScale Server 1.6.0 Beta
+        NorthScale Server 1.6.0 Beta 1
       </div>
     </div>
     <!-- screen S.1 -->
@@ -2037,9 +2037,11 @@
             <div class="pat_10">
               <input type="image" name="setup" value="Setup" class="submit next" src="../images/welcome-setup-button.png" style="width:145px; height:55px; color:#fff;" />
             </div>
+            <!-- Hidden for Beta.
             <p style="font-size:0.9em;">
               If you don't have a NorthScale license key, you can <a href="#">request one here</a>.
             </p>
+            -->
           </td>
         </tr>
       </table>
@@ -2047,8 +2049,6 @@
     <div class="welcome-footer">
       Copyright &copy; 2010 NorthScale, Inc. All Rights Reserved
       <a href="#" id="welcome-footer-contact">Contact</a>
-      &bull;
-      <a href="#" id="welcome-footer-tos">Terms of Service</a>
     </div>
   </div>
   <!-- END welcome_block -->
@@ -2103,11 +2103,11 @@
     </p>
     <form id="init_cluster_form" class="form block">
       <div class="pat_10"><label>
-        <input type="radio" name="join_cluster" id="join-cluster" />
+        <input type="radio" name="join_cluster" id="no-join-cluster" checked />
         Do NOT join a cluster now, maybe later.
       </label></div>
       <div class="pat_10"><label>
-        <input type="radio" name="join_cluster" id="no-join-cluster" />
+        <input type="radio" name="join_cluster" id="join-cluster" />
         Join a cluster now.
       </label></div>
     </form>
@@ -2118,19 +2118,16 @@
     <script type="text/javascript">
       $(function(){
         $('input#join-cluster').click(function (e) {
-          showInitDialog('secure');
-        });
-        $('input#no-join-cluster').click(function (e) {
           OverviewSection.startJoinCluster();
         });
         $('div.config-bottom button#step-2-next').click(function (e) {
           e.preventDefault();
           showInitDialog("secure");
-        });      
+        });
         $('div.config-bottom button#step-2-back').click(function (e) {
           e.preventDefault();
           showInitDialog("resources");
-        });      
+        });
       });
     </script>
   </div>
@@ -2269,7 +2266,7 @@
               </td>
             </tr>
           </table>
-          
+
           <h3>
             <a href="#" class="add_btn"></a>
             Disk Storage
@@ -2330,7 +2327,7 @@
           </td>
         </tr>
         <tr>
-          <td>Dynamic RAM Quota: {%= memoryQuota %}</td>
+          <td>Dynamic RAM Quota: {%= (memoryQuota == 'none' ? 'unlimited' : memoryQuota) %}</td>
           <td>
             <!-- <a href="javascript:void();"> -->
               <img src="../images/edit-button.png" alt="Edit" style="opacity:0.5;" />
@@ -2390,7 +2387,7 @@
                   <!-- {% $.each(storage['hdd'], function () { %} -->
                   <tr>
                     <td>Path: {%= h(this.path) %}</td>
-                    <td>{%= h(this.quotaMb != 'none' ? ((this.quotaMb * 1024) + ' GB') : '[no quota]') %}</td>
+                    <td>{%= h(this.quotaMb != 'none' ? ((this.quotaMb * 1024) + ' GB') : '[unlimited]') %}</td>
                     <td>
                       <!-- <a href="javascript:NodeDialog.startRemoveLocationDialog('{%= node %}', '{%= h(this.path) %}');">Remove</a> -->
                     </td>
