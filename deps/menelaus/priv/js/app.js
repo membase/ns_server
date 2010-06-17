@@ -2844,8 +2844,9 @@ var NodeDialog = {
       }
 
       SettingsSection.processSave(this, function (dialog) {
-        DAO.login = user;
-        DAO.password = pw;
+        // temporarily turned off. Bug 1407
+        // DAO.login = user;
+        // DAO.password = pw;
         showInitDialog('done');
 
         if (user != null && user != "") {

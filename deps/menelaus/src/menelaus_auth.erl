@@ -85,19 +85,24 @@ check_auth_bucket(UserPassword) ->
                       Buckets)
     end.
 
-check_auth(UserPassword) ->
-    case ns_config:search_prop(ns_config:get(), rest_creds, creds, empty) of
-        []    -> true; % An empty list means no login/password auth check.
-        empty -> true; % An empty list means no login/password auth check.
-        Creds -> check_auth(UserPassword, Creds)
-    end.
+%% NOTE: this effectively disables authorization, 'cause every
+%% credentials (including lack of) are 'superuser' now
+%% See bug 1407
+check_auth(_) -> true.
 
-check_auth(_UserPassword, []) ->
-    false;
-check_auth({User, Password}, [{User, PropList} | _]) ->
-    Password =:= proplists:get_value(password, PropList, "");
-check_auth(UserPassword, [_NotRightUser | Rest]) ->
-    check_auth(UserPassword, Rest).
+%% check_auth(UserPassword) ->
+%%     case ns_config:search_prop(ns_config:get(), rest_creds, creds, empty) of
+%%         []    -> true; % An empty list means no login/password auth check.
+%%         empty -> true; % An empty list means no login/password auth check.
+%%         Creds -> check_auth(UserPassword, Creds)
+%%     end.
+
+%% check_auth(_UserPassword, []) ->
+%%     false;
+%% check_auth({User, Password}, [{User, PropList} | _]) ->
+%%     Password =:= proplists:get_value(password, PropList, "");
+%% check_auth(UserPassword, [_NotRightUser | Rest]) ->
+%%     check_auth(UserPassword, Rest).
 
 extract_auth(username, Req) ->
     case Req:get_header_value("authorization") of
