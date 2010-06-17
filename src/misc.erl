@@ -451,9 +451,9 @@ spawn_link_safe(Node, Fun) ->
             Node,
             fun () ->
                     process_flag(trap_exit, true),
-                    Pid = Fun(),
+                    Fun(),
                     receive
-                        {'EXIT', Pid, Reason} -> Me ! {Ref, Reason}
+                        Msg -> Me ! {Ref, Msg}
                     end
             end),
     {ok, Pid, Ref}.
