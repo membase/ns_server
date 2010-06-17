@@ -2145,9 +2145,9 @@
     </div>
     <h2 class="title">Secure this Server</h2>
     <p class="pad_10">
-      Please enter an Administrator password for this Server. If this is
+      Please enter an Administrator username and password for this Server. If this is
       the first server in a Membase cluster, other servers will need, and
-      then they will inherit, this administrator password as they join the
+      then they will inherit, this administrator username and password as they join the
       cluster.
     </p>
     <form id="init_secure_form" class="form block" action="/settings/web">
@@ -2155,18 +2155,25 @@
             style="display:none;" value="SAME"/>
       <input type="text" name="initStatus"
             style="display:none;" value="done"/>
-      <input type="hidden" name="username" value="Administrator" />
       <div class="warn">
         <ul></ul>
+      </div>
+      <div class="username-input">
+        <label for="secure-username">Username:</label>
+        <input type="text" name="username" class="inp" value="Administrator" id="secure-username"/>
       </div>
       <div class="password-input">
         <label for="secure-password">Password:</label>
         <input type="password" name="password" class="inp" id="secure-password"/>
       </div>
+      <div class="password-input-verify">
+        <label for="secure-password">Verify Password:</label>
+        <input type="password" name="password" class="inp" id="secure-password-verify"/>
+      </div>
     </form>
     <div class="config-bottom">
       <button name="finish" value="Finish" class="submit finish direction-button" id="step-3-finish" type="submit">Finish</button>
-      <button name="back" value="Back" class="submit back direction-button" id="step-3-back" type="submit">Back</button>
+      <button name="back" value="Back" class="submit back direction-button" id="step-3-back" type="button">Back</button>
     </div>
     <script type="text/javascript">
       $(function(){
