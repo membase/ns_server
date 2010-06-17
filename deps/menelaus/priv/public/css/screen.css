@@ -749,7 +749,7 @@ button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
 body.init_welcome #init_block { display: block; }
 body.init_welcome #init_welcome_dialog { display: block; }
 body.init_welcome #container { display: none; }
-body.init_welcome #init_welcome_dialog h1 {color:#fff; font-family:Verdana, Helvetica, sans-serif; font-size:26pt; font-weight:100; padding-left:25px;}
+body.init_welcome #init_welcome_dialog h1 {color:#fff; font-family:Verdana, Helvetica, sans-serif; font-size:18pt; font-weight:100; margin-bottom:-25px; padding-left:25px;}
 body.init_welcome #init_welcome_dialog p {color:#acbbc4; font-family:Verdana, Helvetica, sans-serif; font-size:14pt; font-weight:100;}
 body.init_welcome #init_welcome_dialog .pad-header .tagline, .init_block .pad .pad-header .version {float:left; margin-top:73px;}
 body.init_welcome #init_welcome_dialog .pad-header .tagline {color:#00a6de; font-size:12pt; margin-left:225px; margin-right:25px;}
@@ -757,7 +757,6 @@ body.init_welcome #init_welcome_dialog .pad-header .version {color:#ec5223; font
 body.init_welcome #init_welcome_dialog .welcome-footer {color:#9aa3a8; font-family:Verdana, Helvetica, sans-serif; font-size:10pt; margin-top:60px; text-align:center; width:724px;}
 body.init_welcome #init_welcome_dialog .welcome-footer a {color:#a7e4ff; margin-left:15px; margin-right:15px;}
 body.init_welcome #init_welcome_form p {color:#bdccd4; font-family:Verdana, Helvetica, sans-serif; font-size:13pt; font-weight:100; line-height:20px;}
-
 /* config */
 button.direction-button {background:url(../images/blue-button.png) no-repeat; border:none; color:#fff; cursor:pointer; float:right; font-family:Arial, Helvetica, Sans-Serif; font-size:12pt; margin-right:20px; margin-top:20px; width:121px; height:31px;}
 
