@@ -46,7 +46,7 @@
         <li class="line disabled"><!-- disabled for beta1 a id="switch_monitor_buckets" href="javascript:nav.go('monitor_buckets');" -->Data Buckets<!-- /a --></li>
         <li class="line disabled"><!-- disabled for beta1 a id="switch_monitor_servers" href="javascript:nav.go('monitor_servers');" -->Servers<!-- /a --></li>
         <li class="line disabled"><!-- disabled for beta1 a id="switch_alerts" href="javascript:nav.go('alerts');" -->Alerts<!-- /a --></li>
-        <li class="line disabled"><!-- disabled for beta1 a id="switch_alerts" href="javascript:nav.go('alerts');" -->Log<!-- /a --></li>
+        <li class="line"><a id="switch_alerts" href="javascript:nav.go('log');">Log</a></li>
       </ul>
 
       <h1>MANAGE</h1>
@@ -880,40 +880,17 @@
   <div id="alerts" style="display:none">
     <!-- Shadow box -->
     <span class="block nav float_right configure_view"><a href="/diag" target="_blank">Generate Diagnostic Report</a></span>
-    <h1>Alerts / Log</h1>
+    <h1><!-- Alerts / -->Log</h1>
     <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
-        <div class="darker_block with_devider">
+        <div class="darker_block with_devider" style="display:none;">
             <div class="pat_10">
                 <ul class="tabs">
-                  <li><a href="#">Current Alerts</a></li>
                   <li><a href="#">Log</a></li>
+                  <li><a href="#">Current Alerts</a></li>
                 </ul>
             </div>
         </div>
         <div class="panes">
-          <div class="pad_10">
-            <div id="alerts_list" class="alerts_list">
-              <p class="pab_10">Alerts are being sent to: <span id="alerts_email_setting" class="bolder"></span>
-                &nbsp;
-                <a href='javascript:AlertsSection.changeEmail();' class="text_11">Change</a>
-              </p>
-              <ol id="alert_list_container">
-              </ol>
-              <ol id="alert_list_template" class="template">
-                <!-- {% _.each(rows, function (alert) { %} -->
-                <li class="alert_{%= h(alert.type) %}">
-                  <div class="block pad_10">
-                    <h3><strong>{%= formatAlertType(alert.type) %}</strong> - {%= h(alert.shortText) %}</h3>
-                    <span class="time">{%= h(formatAlertTStamp(alert.tstamp)) %}</span>
-                    <p>
-                      {%= h(alert.text) %}
-                    </p>
-                  </div>
-                </li>
-                <!-- {% }); %} -->
-              </ol>
-            </div>
-          </div>
           <div class="tab_holder">
             <div id="alert_logs_container"></div>
             <div id="alert_logs_template" class="template">
@@ -934,6 +911,29 @@
               </tr>
               <!-- {% }); %} -->
             </table>
+            </div>
+          </div>
+          <div class="pad_10" style="display:none;">
+            <div id="alerts_list" class="alerts_list">
+              <p class="pab_10">Alerts are being sent to: <span id="alerts_email_setting" class="bolder"></span>
+                &nbsp;
+                <a href='javascript:AlertsSection.changeEmail();' class="text_11">Change</a>
+              </p>
+              <ol id="alert_list_container">
+              </ol>
+              <ol id="alert_list_template" class="template">
+                <!-- {% _.each(rows, function (alert) { %} -->
+                <li class="alert_{%= h(alert.type) %}">
+                  <div class="block pad_10">
+                    <h3><strong>{%= formatAlertType(alert.type) %}</strong> - {%= h(alert.shortText) %}</h3>
+                    <span class="time">{%= h(formatAlertTStamp(alert.tstamp)) %}</span>
+                    <p>
+                      {%= h(alert.text) %}
+                    </p>
+                  </div>
+                </li>
+                <!-- {% }); %} -->
+              </ol>
             </div>
           </div>
         </div>

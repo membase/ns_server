@@ -1903,7 +1903,7 @@ var AlertsSection = {
   },
   init: function () {
     this.active = new Cell(function (mode) {
-      return (mode == "alerts") ? true : undefined;
+      return (mode == "alerts" || mode == "log") ? true : undefined;
     }).setSources({mode: DAO.cells.mode});
 
     this.alerts = new Cell(function (active) {
@@ -1922,7 +1922,7 @@ var AlertsSection = {
     this.alertTab = new TabsCell("alertsTab",
                                  "#alerts .tabs",
                                  "#alerts .panes > div",
-                                 ["list", "log"]);
+                                 ["log", "list"]);
 
     _.defer(function () {
       SettingsSection.advancedSettings.subscribe($m(AlertsSection, 'updateAlertsDestination'));
@@ -1951,12 +1951,16 @@ var AlertsSection = {
   onEnter: function () {
   },
   navClick: function () {
-    if (DAO.cells.mode.value == 'alerts') {
+    if (DAO.cells.mode.value == 'alerts' ||
+        DAO.cells.mode.value == 'log') {
       this.alerts.setValue(undefined);
       this.logs.setValue(undefined);
       this.alerts.recalculate();
       this.logs.recalculate();
     }
+  },
+  domId: function (sec) {
+    return 'alerts';
   }
 }
 
@@ -2223,6 +2227,7 @@ var ThePage = {
              analytics: AnalyticsSection,
              buckets: BucketsSection,
              alerts: AlertsSection,
+             log: AlertsSection,
              settings: SettingsSection,
              monitor_buckets: BucketsSection,
              monitor_servers: OverviewSection},
