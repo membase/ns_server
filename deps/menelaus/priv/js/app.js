@@ -2825,10 +2825,19 @@ var NodeDialog = {
 
       var user = parent.find('[name=username]').val();
       var pw = parent.find('[name=password]').val();
+      var vpw = parent.find('[id=secure-password-verify]').val();
       if (pw == null || pw == "") {
         genericDialog({
           header: 'Please try again',
           text: 'Empty password is not allowed',
+          buttons: {cancel: false, ok: true}
+        });
+        return;
+      }
+      if (pw !== vpw) {
+        genericDialog({
+          header: 'Please try again',
+          text: 'Password and Verify Password do not match',
           buttons: {cancel: false, ok: true}
         });
         return;
