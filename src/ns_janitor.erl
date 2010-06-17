@@ -10,6 +10,9 @@
 
 cleanup(Bucket, Map, Servers) ->
     Replicas = lists:keysort(1, map_to_replicas(Map)),
+    lists:foreach(fun ({_, Dst, V}) ->
+                          ns_memcached:set_vbucket_state(Dst, Bucket, V, replica)
+                  end, Replicas),
     ReplicaGroups = misc:keygroup(1, Replicas),
     NodesReplicas = lists:map(fun ({Src, R}) -> % R is the replicas for this node
                                       {Src, [{V, Dst} || {_, Dst, V} <- R]}
