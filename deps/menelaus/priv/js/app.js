@@ -2265,7 +2265,7 @@ var ThePage = {
     });
 
     var self = this;
-    watchHashParamChange('sec', 'overview', function (sec) {
+    watchHashParamChange('sec', 'servers', function (sec) {
       var oldSection = self.currentSection;
       var currentSection = self.sections[sec];
       if (!currentSection) {
