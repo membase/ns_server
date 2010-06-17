@@ -725,7 +725,7 @@ button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
 #about_server_dialog .lbox .center {background:none; padding: 10px;}
 #about_server_dialog .lbox .top .top_center {*width:356px;}
 #about_server_dialog .lbox .bottom .bottom_center {*width:356px;}
-#about_server_dialog .lbox .center p#about_versions {margin-bottom: 25px;}
+#about_server_dialog .lbox .center p#about_versions {margin-bottom: 25px; white-space:nowrap;}
 #about_server_dialog .lbox .center ul li {margin:5px;}
 
 .configure_view {display:inline-block; padding:0 10px 0 0;}
