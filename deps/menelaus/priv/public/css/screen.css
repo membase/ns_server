@@ -330,54 +330,26 @@ a:link {
 td.notify {
 }
 
-/*
-td.leftNav, td.leftNav ul {
-	width: 161px;
-	height: 31px;
-	font-family: Helvetica;
-	font-style: none;
-	font-weight: normal;
-	font-size: 12pt;
-}
-
-/*
-td.leftNav ul {
-	width: 161px;
-	height: 31px;
-	cursor: default;
-}
-*/
-
 td.leftNav {width:180px; vertical-align:top;}
 td.leftNav ul {display:block; width:160px; border-top:1px solid #e4e9eb; margin:0 0 20px 0;}
 td.leftNav ul ul {margin:0 0 -1px 0;}
 td.leftNav h1 {padding:0 0 15px 5px; color:#444245; text-transform:uppercase;}
 td.leftNav li {
-	display: block;
+  display:block;
   min-height:29px;
-	_height: 29px;
-	width:160px;
-	vertical-align: middle;
-	text-align: left;
+  width:160px;
+  vertical-align:middle;
+  text-align:left;
   line-height:29px;
   font-size:12px;
   border-bottom:1px solid #e4e9eb;
 }
-td.leftNav li a {display:block; height:29px; text-decoration:none;}
+td.leftNav li a {display:block; height:29px; text-decoration:none;padding:0 0 0 12px}
 td.leftNav li a:hover {background:none #eaf4f9;}
-td.leftNav ul ul a {padding:0 0 0 24px;}
 td.leftNav li.line {
-	/*background: url('../images/ns_menu_line.png') no-repeat;*/
 	background-position: bottom left;
 }
-
-td.leftNav li {padding:0 0 0 12px;}
-td.leftNav li:hover {
-/*	background: url('../images/ns_console_ahover.png') no-repeat;
-	background-position: center;*/
-/*	height: 30px;
-	width: 160px;*/
-}
+td.leftNav li.disabled {padding:0 0 0 12px;}
 
 td.leftNav li.indent {
 	margin-left: 20px;
