@@ -39,15 +39,17 @@ get_nodes_cluster_membership() ->
     get_nodes_cluster_membership(ns_node_disco:nodes_wanted()).
 
 get_nodes_cluster_membership(Nodes) ->
+    {_, _, _, Servers} = ns_bucket:config("default"),
     lists:map(fun (Node) ->
-                      {Node, get_cluster_membership(Node)}
+                      {Node, case lists:member(Node, Servers) of
+                                 true -> active;
+                                 false -> inactiveAdded
+                             end}
                 end, Nodes).
 
 get_cluster_membership(Node) ->
-    case ns_config:search({node, Node, membership}) of
-        {value, Value} -> Value;
-        _ -> inactiveAdded
-    end.
+    [{Node, Value}] = get_nodes_cluster_membership([Node]),
+    Value.
 
 engage_cluster(RemoteIP) ->
     engage_cluster(RemoteIP, [restart]).
@@ -223,7 +225,7 @@ start_rebalance(KnownNodes, EjectedNodes) ->
           lists:sort(KnownNodes)} of
         {X, X} ->
             KeepNodes = lists:subtract(KnownNodes, EjectedNodes),
-            ns_orchestrator:start_rebalance("default", KnownNodes, EjectedNodes);
+            ns_orchestrator:start_rebalance("default", KeepNodes, EjectedNodes);
         _ -> nodes_mismatch
     end.
 
