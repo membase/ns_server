@@ -16,7 +16,7 @@ start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 actions(Children) ->
-    [{VBucket, Dst} || {VBuckets, Dst, false} <- Children,
+    [{VBucket, Dst} || {_, VBuckets, Dst, false} <- Children,
                        VBucket <- VBuckets].
 
 set_replicas(Node, Bucket, Replicas) ->
@@ -41,7 +41,11 @@ set_replicas(Node, Bucket, Replicas) ->
 move(Bucket, VBucket, SrcNode, DstNode) ->
     kill_children(SrcNode, Bucket, [VBucket]),
     Args = args(SrcNode, Bucket, [VBucket], DstNode, true),
-    case misc:spawn_and_wait(SrcNode, fun () -> ns_port_server:start_link(Args) end) of
+    case misc:spawn_and_wait(
+           SrcNode,
+           fun () ->
+                   apply(ns_port_server, start_link, Args)
+           end) of
         normal -> ok;
         Reason -> {error, Reason}
     end.
@@ -67,7 +71,11 @@ kill_runaway_children(Node, Bucket, Replicas) ->
                                                        NodeReplicas = [{DstNode, V} || V <- VBuckets],
                                                        lists:all(fun (NR) -> lists:member(NR, Replicas) end, NodeReplicas)
                                                end, Children),
-    lists:foreach(fun (Runaway) -> kill_child(Node, Runaway) end, Runaways),
+    lists:foreach(fun (Runaway) ->
+                          error_logger:info_msg("~p:kill_runaway_children(): Killling replicator ~p on node ~p~n",
+                                               [?MODULE, Runaway, Node]),
+                          kill_child(Node, Runaway)
+                  end, Runaways),
     GoodChildren.
 
 
