@@ -305,7 +305,8 @@
                   <div class="side side_3"></div>
                   <div class="side side_4"></div>
                   <div class="pad">
-                    <a class="edit_btn float_right" href="javascript:ServersSection.editServerSettings('{%= escapeJS(obj.otpNode) %}');"></a>
+                    <!-- disabled for beta1 a class="edit_btn float_right" href="javascript:ServersSection.editServerSettings('{%= escapeJS(obj.otpNode) %}');"></a -->
+                    <a class="edit_btn float_right disabled"></a>
                     <table class="server_details_tab">
                       <col width="230" />
                       <col width="" />
@@ -314,11 +315,11 @@
                           <td>OS: <span>{%= h(os) %}</span></td>
                       </tr>
                       <tr>
-                          <td>Internal Cluster Port: <span>{%=h(ports.direct)%}</span></td>
+                          <td>Data Port: <span>{%=h(ports.proxy)%}</span></td>
                           <td>Version: <span>{%= h(version) %}</span></td>
                       </tr>
                       <tr>
-                          <td>Data Port: <span>{%=h(ports.proxy)%}</span></td>
+                          <td>Internal Cluster Port: <span>{%=h(ports.direct)%}</span></td>
                           <td></td>
                       </tr>
                     </table>
