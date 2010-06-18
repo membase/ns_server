@@ -679,7 +679,7 @@ var MockedRequest = mkClass({
           clearInterval(intervalID);
 
           MockedRequest.globalData.setRebalanceStatus('none');
-        }, 40000);
+        }, 8000);
       }, "knownNodes", "ejectedNodes")],
       [get("pools", "default", "rebalanceProgress"), function () {
         var pools = this.findResponseFor("GET", ["pools", "default"]);

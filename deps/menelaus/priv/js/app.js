@@ -1149,14 +1149,15 @@ var ServersSection = {
   renderEverything: function () {
     var details = this.poolDetails.value;
     var rebalancing = details && details.rebalanceStatus != 'none';
+
     var pending = this.pending;
     var active = this.active;
 
-    this.serversQ.find('.add_button').toggle(details && !rebalancing);
-    this.serversQ.find('.stop_rebalance_button').toggle(rebalancing);
+    this.serversQ.find('.add_button').toggle(!!(details && !rebalancing));
+    this.serversQ.find('.stop_rebalance_button').toggle(!!rebalancing);
 
     var rebalanceButton = this.serversQ.find('.rebalance_button').toggle(!!details);
-    rebalanceButton.toggleClass('disabled', rebalancing || pending.length == 0);
+    rebalanceButton.toggleClass('disabled', !!(rebalancing || pending.length == 0));
 
     if (details && !rebalancing) {
       $('#rebalance_tab .alert_num span').text(pending.length);
@@ -1165,10 +1166,15 @@ var ServersSection = {
       $('#rebalance_tab').toggleClass('alert_num_display', false);
     }
 
-    this.serversQ.toggleClass('rebalancing', rebalancing);
+    this.serversQ.toggleClass('rebalancing', !!rebalancing);
 
     if (!details)
       return;
+
+    if (rebalancing) {
+      renderTemplate('manage_server_list', [], $i('pending_server_list_container'));
+      return this.renderRebalance(details);
+    }
 
     renderTemplate('manage_server_list', active, $i('active_server_list_container'));
 
