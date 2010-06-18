@@ -632,7 +632,7 @@ var MockedRequest = mkClass({
         "license":"","licenseValue":false,"licenseValidUntil":"invalid",
         "memoryQuota":"none",
         "storage":{"ssd":[],
-                   "hdd":[{"path":"./data",
+                   "hdd":[{"path":"/opt/",
                            "quotaMb":"none",
                            "state":"ok",
                            "diskStats": {
