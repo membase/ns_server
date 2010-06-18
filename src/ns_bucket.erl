@@ -74,7 +74,8 @@ get_buckets() ->
 
 json_map(BucketId, LocalAddr) ->
     Config = ns_config:get(),
-    {NumReplicas, _, EMap, ENodes} = config(BucketId),
+    {NumReplicas, _, EMap, _} = config(BucketId),
+    ENodes = lists:delete(undefined, lists:usort(lists:append(EMap))),
     Servers = lists:map(fun (ENode) ->
                                 Port = ns_config:search_node_prop(ENode, Config, memcached, port),
                                 Host = case misc:node_name_host(ENode) of
