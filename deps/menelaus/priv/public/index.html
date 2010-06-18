@@ -311,16 +311,12 @@
                       <col width="230" />
                       <col width="" />
                       <tr>
-                          <td>Uptime: <span>{%= h(formatUptime(uptime)) %}</span></td>
-                          <td>OS: <span>{%= h(os) %}</span></td>
+                        <td>Server Name: <span>{%= h(hostname) %}</span></td>
+                        <td>Uptime: <span>{%= h(formatUptime(uptime)) %}</span></td>
                       </tr>
                       <tr>
-                          <td>Data Port: <span>{%=h(ports.proxy)%}</span></td>
-                          <td>Version: <span>{%= h(version) %}</span></td>
-                      </tr>
-                      <tr>
-                          <td>Internal Cluster Port: <span>{%=h(ports.direct)%}</span></td>
-                          <td></td>
+                        <td>OS: <span>{%= h(os) %}</span></td>
+                        <td>Version: <span>{%= h(version) %}</span></td>
                       </tr>
                     </table>
                   </div>
@@ -2149,15 +2145,15 @@
       </div>
       <div class="username-input">
         <label for="secure-username">Username:</label>
-        <input type="text" name="username" class="inp" value="Administrator" id="secure-username"/>
+        <input type="text" name="username" class="inp" value="Administrator" id="secure-username" maxlength="24" />
       </div>
       <div class="password-input">
         <label for="secure-password">Password:</label>
-        <input type="password" name="password" class="inp" id="secure-password"/>
+        <input type="password" name="password" class="inp" id="secure-password" maxlength="24" />
       </div>
       <div class="password-input-verify">
         <label for="secure-password">Verify Password:</label>
-        <input type="password" name="password" class="inp" id="secure-password-verify"/>
+        <input type="password" name="password" class="inp" id="secure-password-verify" maxlength="24" />
       </div>
       <button type="submit" style="display:none;"></button>
     </form>
