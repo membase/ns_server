@@ -521,6 +521,8 @@ function showDialog(idOrJQ, options) {
             h.w.hide() && h.o && h.o.remove();
           }}).jqmShow();
 
+  $('html, body').animate({scrollTop: jq.offset().top - 100}, 250);
+
   function iterateBindings(body) {
     _.each(eventBindings, function (arr) {
       var selector, eventType, callback;
@@ -535,6 +537,16 @@ function showDialog(idOrJQ, options) {
 
   iterateBindings(function (e, eventType, callback) {
     e.bind(eventType, callback);
+  });
+}
+
+function showDialogHijackingSave(dialogID, saveCSS, onSave) {
+  showDialog(dialogID, {
+    eventBindings: [[saveCSS, 'click', function (e) {
+      e.preventDefault();
+      hideDialog(dialogID);
+      onSave.call(this, e);
+    }]]
   });
 }
 

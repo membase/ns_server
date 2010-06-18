@@ -1377,31 +1377,45 @@ var ServersSection = {
         return;
       }
 
-      $('#join_cluster_dialog_errors_container').html('');
-      var overlay = overlayWithSpinner(form);
+      var confirmed;
 
-      var uri = self.poolDetails.value.controllers.addNode.uri;
-      self.poolDetails.setValue(undefined);
+      showDialog('add_confirmation_dialog', {
+        eventBindings: [['.save_button', 'click', function (e) {
+          e.preventDefault();
+          hideDialog('add_confirmation_dialog');
+          confirmed = true;
 
-      var toSend = {
-        hostname: data['clusterMemberHostIp'],
-        user: data['user'],
-        password: data['password']
-      };
-      if (data['clusterMemberPort'] != '8080')
-        toSend['hostname'] += ':' + data['clusterMemberPort']
+          $('#join_cluster_dialog_errors_container').html('');
+          var overlay = overlayWithSpinner(form);
 
-      postWithValidationErrors(uri, $.param(toSend), function (data, status) {
-        self.poolDetails.invalidate();
-        overlay.remove();
-        if (status != 'success') {
-          renderTemplate('join_cluster_dialog_errors', data)
-        } else {
-          hideDialog('join_cluster_dialog');
+          var uri = self.poolDetails.value.controllers.addNode.uri;
+          self.poolDetails.setValue(undefined);
+
+          var toSend = {
+            hostname: data['clusterMemberHostIp'],
+            user: data['user'],
+            password: data['password']
+          };
+          if (data['clusterMemberPort'] != '8080')
+            toSend['hostname'] += ':' + data['clusterMemberPort']
+
+          postWithValidationErrors(uri, $.param(toSend), function (data, status) {
+            self.poolDetails.invalidate();
+            overlay.remove();
+            if (status != 'success') {
+              renderTemplate('join_cluster_dialog_errors', data)
+            } else {
+              hideDialog('join_cluster_dialog');
+            }
+          }, {
+            timeout: 15000
+          })
+        }]],
+        onHide: function () {
+          if (!confirmed)
+            hideDialog('join_cluster_dialog'); // cancel pressed on confirmation dialog
         }
-      }, {
-        timeout: 15000
-      })
+      });
     });
   },
   findNode: function (hostname) {
@@ -1420,21 +1434,29 @@ var ServersSection = {
     _.defer($m(this, 'refreshEverything'));
   },
   ejectNode: function (hostname) {
-    var node = this.mustFindNode(hostname);
+    var self = this;
+
+    var node = self.mustFindNode(hostname);
     if (node.pendingEject)
       return;
-    if (node.clusterMembership == 'inactiveAdded') {
-      this.postAndReload(this.poolDetails.value.controllers.ejectNode.uri,
-                         {otpNode: node.otpNode});
-    } else {
-      this.pendingEject.push(node);
-      this.reDraw();
-    }
+
+    showDialogHijackingSave("eject_confirmation_dialog", ".save_button", function () {
+      if (node.clusterMembership == 'inactiveAdded') {
+        self.postAndReload(self.poolDetails.value.controllers.ejectNode.uri,
+                           {otpNode: node.otpNode});
+      } else {
+        self.pendingEject.push(node);
+        self.reDraw();
+      }
+    });
   },
   failoverNode: function (hostname) {
-    var node = this.mustFindNode(hostname);
-    this.postAndReload(this.poolDetails.value.controllers.failOver.uri,
-                       {otpNode: node.otpNode});
+    var self = this;
+    var node = self.mustFindNode(hostname);
+    showDialogHijackingSave("failover_confirmation_dialog", ".save_button", function () {
+      self.postAndReload(self.poolDetails.value.controllers.failOver.uri,
+                         {otpNode: node.otpNode});
+    });
   },
   reAddNode: function (hostname) {
     var node = this.mustFindNode(hostname);
