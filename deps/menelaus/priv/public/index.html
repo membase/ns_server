@@ -213,7 +213,7 @@
                   </div>
                 </div>
                 <div class="right block tdn bolder">
-                  <a href="#openServer={%=this.otpNode%}">Server Settings</a>
+                  <a href="#openServer={%= h(this.otpNode) %}">Server Settings</a>
                 <!-- {% if (rows.length != 1) { %} -->
                   <a href="{%=jsLink('OverviewSection.removeNode',this.otpNode)%}">Remove Server from Cluster</a>
                 <!-- {% } %} -->
@@ -288,13 +288,13 @@
         </li>
         <!-- {% } %} -->
       <li class="server_row {%= s.nodeClass %}">{%= V.setData('server', s) %}
-        <a href="#openServer={%= s.otpNode %}" class="serverName">{%= h(s.hostname) %}</a>
+        <a href="#openServer={%= h(s.otpNode) %}" class="serverName">{%= h(s.hostname) %}</a>
         <span class="failed_over_message">FAILED OVER: PENDING REMOVAL</span>
         <a class="list_button btn_width_2 eject_server"><span>Remove Server</span></a>
         <a class="list_button btn_width_1 failover_server"><span>Fail Over</span></a>
       </li>
       <!-- {% } %} -->
-      <li id="{%= s.detailsRowID %}" class="settings-placeholder"></li>
+      <li id="{%= h(s.detailsRowID) %}" class="settings-placeholder"></li>
     <!-- {% }); %} -->
     </ul>
   </script>
@@ -305,7 +305,7 @@
                   <div class="side side_3"></div>
                   <div class="side side_4"></div>
                   <div class="pad">
-                    <!-- disabled for beta1 a class="edit_btn float_right" href="javascript:ServersSection.editServerSettings('{%= escapeJS(obj.otpNode) %}');"></a -->
+                    <!-- disabled for beta1 a class="edit_btn float_right" href="javascript:ServersSection.editServerSettings('{%= h(escapeJS(obj.otpNode)) %}');"></a -->
                     <a class="edit_btn float_right disabled"></a>
                     <table class="server_details_tab">
                       <col width="230" />
@@ -712,7 +712,7 @@
               <td>20Gb</td>
               <td>10Gb</td>
             </tr>
-            <tr id="{%= this.settingsRowID %}" class="settings-placeholder"><td colspan="6"></td></tr>
+            <tr id="{%= h(this.settingsRowID) %}" class="settings-placeholder"><td colspan="6"></td></tr>
           <!-- {% }); %} -->
         </table>
     </script>
@@ -727,7 +727,6 @@
         <div class="side side_4"></div>
         <div class="pad">
           <a href="{%=jsLink('BucketsSection.showBucket', obj.uri)%}" class="edit_btn"><!--EDIT--></a>
-          <!--{%= h(JSON.stringify(obj)) %}-->
           <table class="bucket_properties_table">
           <col width="50%" />
           <col width="50%" />
@@ -2320,7 +2319,7 @@
           </td>
         </tr>
         <tr>
-          <td>Dynamic RAM Quota: {%= (memoryQuota == 'none' ? 'unlimited' : memoryQuota) %}</td>
+          <td>Dynamic RAM Quota: {%= h(memoryQuota == 'none' ? 'unlimited' : memoryQuota) %}</td>
           <td>
             <!-- <a href="javascript:void();"> -->
               <img src="../images/edit-button.png" alt="Edit" style="opacity:0.5;" />
@@ -2332,7 +2331,7 @@
             <h2>Solid State Storage</h2>
           </td>
           <td>
-            <!-- <a href="javascript:NodeDialog.startAddLocationDialog('{%= node %}', 'ssd');"> -->
+            <!-- <a href="javascript:NodeDialog.startAddLocationDialog('{%= h(escapeJS(node)) %}', 'ssd');"> -->
               <img src="../images/add-button.png" alt="Add" style="opacity:0.5;" />
             <!-- </a> -->
           </td>
@@ -2350,7 +2349,7 @@
                     <td>Path: {%= h(this.path) %}</td>
                     <td>{%= h(this.quotaMb != 'none' ? ((this.quotaMb * 1024) + ' GB') : '[no&nbsp;quota]') %}</td>
 
-                    <td><a href="javascript:ServersSection.startRemoveLocationDialog('{%= node %}', '{%= h(this.path) %}');">Remove</a></td>
+                    <td><a href="javascript:ServersSection.startRemoveLocationDialog('{%= h(escapeJS(node)) %}', '{%= h(this.path) %}');">Remove</a></td>
                   </tr>
                   <!-- {% }); %} -->
                 </table>
@@ -2364,7 +2363,7 @@
           <td><h2>Disk Storage</h2>
           </td>
           <td>
-            <!-- <a href="javascript:ServersSection.startAddLocationDialog('{%= node %}', 'hdd');"> -->
+            <!-- <a href="javascript:ServersSection.startAddLocationDialog('{%= h(escapeJS(node)) %}', 'hdd');"> -->
                 <img src="../images/add-button.png" alt="Add" style="opacity:0.5;" />
             <!-- </a> -->
           </td>
@@ -2382,7 +2381,7 @@
                     <td>Path: {%= h(this.path) %}</td>
                     <td>{%= h(this.quotaMb != 'none' ? ((this.quotaMb * 1024) + ' GB') : '[unlimited]') %}</td>
                     <td>
-                      <!-- <a href="javascript:NodeDialog.startRemoveLocationDialog('{%= node %}', '{%= h(this.path) %}');">Remove</a> -->
+                      <!-- <a href="javascript:NodeDialog.startRemoveLocationDialog('{%= h(escapeJS(node)) %}', '{%= h(this.path) %}');">Remove</a> -->
                     </td>
                   </tr>
                   <!-- {% }); %} -->
