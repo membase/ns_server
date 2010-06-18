@@ -47,7 +47,7 @@ sanify_master(Bucket, ActiveStates, [[Master|Replicas]|Map], VBucket) ->
                                   [?MODULE, Bucket, Master, VBucket]),
             ns_memcached:set_vbucket_state(Master, Bucket, VBucket, active)
     end,
-    sanify_master(Bucket, Nodes, Map, VBucket+1).
+    sanify_master(Bucket, ActiveStates, Map, VBucket+1).
 
 %% [{Node, VBucket, State}...]
 -spec current_states(list(atom()), string()) ->
