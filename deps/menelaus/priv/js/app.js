@@ -602,7 +602,7 @@ function renderLargeGraph(main, data) {
           yaxis: {tickFormatter: function (val, axis) {return ViewHelpers.formatQuantity(val, '', 1000);}},
           grid: {borderWidth: 0},
           hooks: {draw: [drawMarkers]}});
-  
+
   function singleMarker(center, value) {
     var text;
     value = ViewHelpers.formatQuantity(value, '', 1000);
