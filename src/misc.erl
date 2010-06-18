@@ -565,6 +565,38 @@ keygroup_test() ->
      {b, [{b, 2}, {b, 3}]}] = keygroup(1, [{a, 1}, {a, 2}, {b, 2}, {b, 3}]),
     [] = keygroup(1, []).
 
+keymin(I, [H|T]) ->
+    keymin(I, T, H).
+
+keymin(_, [], M) ->
+    M;
+keymin(I, [H|T], M) ->
+    case element(I, H) < element(I, M) of
+        true ->
+            keymin(I, T, H);
+        false ->
+            keymin(I, T, M)
+    end.
+
+keymin_test() ->
+    {c, 3} = keymin(2, [{a, 5}, {c, 3}, {d, 10}]).
+
+keymax(I, [H|T]) ->
+    keymax(I, T, H).
+
+keymax(_, [], M) ->
+    M;
+keymax(I, [H|T], M) ->
+    case element(I, H) > element(I, M) of
+        true ->
+            keymax(I, T, H);
+        false ->
+            keymax(I, T, M)
+    end.
+
+keymax_test() ->
+    {20, g} = keymax(1, [{5, d}, {19, n}, {20, g}, {15, z}]).
+
 %% Turn [[1, 2, 3], [4, 5, 6], [7, 8, 9]] info
 %% [[1, 4, 7], [2, 5, 8], [3, 6, 9]]
 rotate(List) ->
