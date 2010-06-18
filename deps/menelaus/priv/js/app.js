@@ -1251,6 +1251,24 @@ var ServersSection = {
         rv.percentOther = 100 - percentFree; // this is actually reserved + other as required by CSS
         rv.memoryOther = memoryTotal - memoryFree - memReserved;
 
+        _.each(rv.storage.hdd, function (r) {
+          var diskStats = r.diskStats || {};
+          r.memoryTotal = diskStats.sizeKBytes * 1024;
+          var quota = r.quotaMb;
+          var quotaText;
+          if (quota == 'none') {
+            quota = 0;
+            quotaText = "none"
+          }
+
+          r.memoryQuota = quota * 1048576;
+          r.quotaText = quotaText || ViewHelpers.formatQuantity(r.memoryQuota, 'b', 1024)
+          r.quotaPercent = (r.memoryQuota * 100 / r.memoryTotal) << 0;
+          r.memoryUsed = r.memoryTotal * diskStats.usagePercent / 100;
+          r.memoryUsedPercent = diskStats.usagePercent;
+          r.memoryFree = r.memoryTotal - r.memoryUsed;
+        });
+
         delete rv.detailsCell;
         return rv;
       }

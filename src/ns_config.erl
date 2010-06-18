@@ -42,7 +42,7 @@
          get_remote/1, set_remote/2, set_remote/3,
          get/2, get/1, get/0, set/2, set/1, set/3,
          update/2,
-         search_node/2, search_node/1,
+         search_node/3, search_node/2, search_node/1,
          search_node_prop/3, search_node_prop/4,
          search_node_prop/5,
          search/2, search/1,

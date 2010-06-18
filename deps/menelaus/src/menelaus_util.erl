@@ -26,7 +26,9 @@
          get_option/2,
          local_addr/1,
          concat_url_path/1,
-         validate_email_address/1]).
+         validate_email_address/1,
+         extract_disk_stats_for_path/2,
+         get_disk_stats_for_path/2]).
 
 -export([java_date/0,
          string_hash/1,
@@ -225,3 +227,24 @@ validate_email_address(Address) ->
 local_addr(Req) ->
     {ok, {Address, _Port}} = inet:sockname(Req:get(socket)),
     string:join(lists:map(fun integer_to_list/1, tuple_to_list(Address)), ".").
+
+extract_disk_stats_for_path([], _Path) ->
+    none;
+extract_disk_stats_for_path([{MountPoint, _, _} = Info | Rest], Path) ->
+    MPath = case MountPoint of
+                "/" -> MountPoint;
+                _ -> MountPoint ++ "/"
+            end,
+    case MPath =:= string:substr(Path, 1, length(MPath)) of
+        true -> {ok, Info};
+        _ -> extract_disk_stats_for_path(Rest, Path)
+    end.
+
+get_disk_stats_for_path(Node, Path) ->
+    case rpc:call(Node, disksup, get_disk_data, [], 2000) of
+        {badrpc, _} = Crap -> Crap;
+        List -> case extract_disk_stats_for_path(List, Path) of
+                    none -> none;
+                    {ok, {_MPoint, KBytes, Cap}} -> {ok, KBytes, Cap}
+                end
+    end.

@@ -28,9 +28,16 @@ change_memory_quota(_Node, _NewMemQuota) ->
 %  {"hdd", [[{"path", "/some/nice/disk/path"}, {"quotaMb", 1234}, {"state", ok}],
 %           [{"path", "/another/good/disk/path"}, {"quotaMb", 5678}, {"state", ok}]]}]
 %
-storage_conf(_Node) ->
+storage_conf(Node) ->
+    {value, PropList} = ns_config:search_node(Node, ns_config:get(), memcached),
+    HDDInfo = case proplists:get_value(dbname, PropList) of
+                  undefined -> [];
+                  DBName -> [{"path", filename:absname(DBName)},
+                             {"quotaMb", none},
+                             {"state", ok}]
+              end,
     [{"ssd", []},
-     {"hdd", [[{"path", "./data"}, {"quotaMb", none}, {"state", ok}]]}].
+     {"hdd", [HDDInfo]}].
 
 % Quota is an integer or atom none.
 % Kind is atom ssd or hdd.

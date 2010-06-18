@@ -354,42 +354,9 @@
                 </span>
                 <h3>Disk Storage</h3>
                 <span class="info_block">
-                  <span class="disk_storage"></span>
-                  <!-- <a href="#" class="add_btn"></a> -->
-                  <span class="info_message">None configured</span>
-                </span>
-                <h3>Solid State Storage</h3>
-                <span class="info_block">
-                  <span class="solid_state">
-                    Flash One:
-                    <span class="path">C:\northscale\dxm\mbase\data</span>
-                  </span>
-                  <table class="RAM_diagramm">
-                  <col width="" />
-                  <col width="" />
-                  <col width="" />
-                  <col width="" />
-                    <tr>
-                      <td colspan="4">
-                        <span class="diagr_ram">
-                          <span class="blue" style="width:1%;">{%= V.thisElement(function (e) {e.css('width', percentReserved + '%')}) %}</span>
-                          <span class="yellow" style="width:2%;">{%= V.thisElement(function (e) {e.css('width', percentOther + '%')}) %}</span>
-                        </span>
-                      </td>
-                    </tr>
-                    <tr class="diagr_labels">
-                      <td class="blue">Membase Quota ({%= V.formatQuantity(memoryReserved, 'b', 1024) %})</td>
-                      <td class="yellow">Other ({%= V.formatQuantity(memoryOther, 'b', 1024) %})</td>
-                      <td>Free ({%= V.formatQuantity(memoryFree, 'b', 1024) %})</td>
-                      <td class="right">{%= V.formatQuantity(memoryTotal, 'b', 1024) %}</td>
-                    </tr>
-                  </table>
-                </span>
-                <h3>Disk Storage</h3>
-                <span class="info_block">
                   <span class="disk_storage">
                     Disk One:
-                    <span class="path">C:\northscale\dxm\mbase\data</span>
+                    <span class="path">{%= h(storage.hdd[0].path) %}</span>
                   </span>
                   <table class="RAM_diagramm">
                   <col width="" />
@@ -399,42 +366,16 @@
                     <tr>
                       <td colspan="4">
                         <span class="diagr_ram">
-                          <span class="blue" style="width:1%;">{%= V.thisElement(function (e) {e.css('width', percentReserved + '%')}) %}</span>
-                          <span class="yellow" style="width:2%;">{%= V.thisElement(function (e) {e.css('width', percentOther + '%')}) %}</span>
+                          <span class="blue" style="width:1%;">{%= V.thisElement(function (e) {e.css('width', storage.hdd[0].quotaPercent + '%')}) %}</span>
+                          <span class="yellow" style="width:2%;">{%= V.thisElement(function (e) {e.css('width', storage.hdd[0].memoryUsedPercent + '%')}) %}</span>
                         </span>
                       </td>
                     </tr>
                     <tr class="diagr_labels">
-                      <td class="blue">Membase Quota ({%= V.formatQuantity(memoryReserved, 'b', 1024) %})</td>
-                      <td class="yellow">Other ({%= V.formatQuantity(memoryOther, 'b', 1024) %})</td>
-                      <td>Free ({%= V.formatQuantity(memoryFree, 'b', 1024) %})</td>
-                      <td class="right">{%= V.formatQuantity(memoryTotal, 'b', 1024) %}</td>
-                    </tr>
-                  </table>
-                </span>
-                <span class="info_block last">
-                  <span class="disk_storage">
-                    Disk Two:
-                    <span class="path">C:\northscale\dxm\mbase\data</span>
-                  </span>
-                  <table class="RAM_diagramm">
-                  <col width="" />
-                  <col width="" />
-                  <col width="" />
-                  <col width="" />
-                    <tr>
-                      <td colspan="4">
-                        <span class="diagr_ram">
-                          <span class="blue" style="width:1%;">{%= V.thisElement(function (e) {e.css('width', percentReserved + '%')}) %}</span>
-                          <span class="yellow" style="width:2%;">{%= V.thisElement(function (e) {e.css('width', percentOther + '%')}) %}</span>
-                        </span>
-                      </td>
-                    </tr>
-                    <tr class="diagr_labels">
-                      <td class="blue">Membase Quota ({%= V.formatQuantity(memoryReserved, 'b', 1024) %})</td>
-                      <td class="yellow">Other ({%= V.formatQuantity(memoryOther, 'b', 1024) %})</td>
-                      <td>Free ({%= V.formatQuantity(memoryFree, 'b', 1024) %})</td>
-                      <td class="right">{%= V.formatQuantity(memoryTotal, 'b', 1024) %}</td>
+                      <td class="blue">Membase Quota ({%= h(storage.hdd[0].quotaText) %})</td>
+                      <td class="yellow">Other ({%= V.formatQuantity(storage.hdd[0].memoryUsed, 'b', 1024) %})</td>
+                      <td>Free ({%= V.formatQuantity(storage.hdd[0].memoryFree, 'b', 1024) %})</td>
+                      <td class="right">{%= V.formatQuantity(storage.hdd[0].memoryTotal, 'b', 1024) %}</td>
                     </tr>
                   </table>
                 </span>

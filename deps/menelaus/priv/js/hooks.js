@@ -632,7 +632,12 @@ var MockedRequest = mkClass({
         "license":"","licenseValue":false,"licenseValidUntil":"invalid",
         "memoryQuota":"none",
         "storage":{"ssd":[],
-                   "hdd":[{"path":"./data","quotaMb":"none","state":"ok"}]},
+                   "hdd":[{"path":"./data",
+                           "quotaMb":"none",
+                           "state":"ok",
+                           "diskStats": {
+                             "sizeKBytes": 233706396,
+                             "usagePercent": 96}}]},
         "hostname":"127.0.0.1",
         "version":"1.0.3_98_g5d1f7a2",
         "os":"i386-apple-darwin10.3.0",

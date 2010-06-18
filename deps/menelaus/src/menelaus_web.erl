@@ -1087,13 +1087,32 @@ handle_node(_PoolId, Node, Req) ->
                    none -> <<"none">>;
                    Y    -> Y
                end,
-    R = {struct, storage_conf_to_json(ns_storage_conf:storage_conf(Node))},
+    StorageConf0 = ns_storage_conf:storage_conf(Node),
+    HDDStorageConf = case proplists:get_value("hdd", StorageConf0) of
+                         [Props] ->                % only single storage storage resource is supported now
+                             Path = proplists:get_value("path", Props),
+                             case menelaus_util:get_disk_stats_for_path(Node, Path) of
+                                 {ok, KBytes, Capacity} ->
+                                     [[{diskStats, {struct, [{sizeKBytes, KBytes},
+                                                             {usagePercent, Capacity}]}}
+                                       | Props]];
+                                 Error ->
+                                     error_logger:error_msg("Failed to grab disksup stats from ~p due to ~p~n", [Node, Error]),
+                                     [Props]
+                             end;
+                         _ -> undefined
+                     end,
+    StorageConf = lists:map(fun ({"hdd", _}) -> {"hdd", HDDStorageConf};
+                                (X) -> X
+                            end, StorageConf0),
+    R = {struct, storage_conf_to_json(StorageConf)},
+    Fields = [{license, list_to_binary(License)},
+              {licenseValid, Valid},
+              {licenseValidUntil, list_to_binary(ValidUntil)},
+              {memoryQuota, MemQuota},
+              {storage, R}] ++ KV,
     reply_json(Req,
-               {struct, [{"license", list_to_binary(License)},
-                         {"licenseValid", Valid},
-                         {"licenseValidUntil", list_to_binary(ValidUntil)},
-                         {"memoryQuota", MemQuota},
-                         {"storage", R}] ++ KV}).
+               {struct, lists:filter(fun (X) -> X =/= undefined end, Fields)}).
 
 % S = [{"ssd", []},
 %      {"hdd", [[{"path", "/some/nice/disk/path"}, {"quotaMb", 1234}, {"state", ok}],
