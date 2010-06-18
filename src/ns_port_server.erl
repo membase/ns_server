@@ -41,13 +41,13 @@ init({Name, _Cmd, _Args, _Opts} = Params) ->
                  {stop, Port}
     end.
 
-handle_info({'EXIT', _Port, Reason}, State) ->
-    error_logger:info_msg("port server (~p) exited: ~p~n",
-                          [State#state.name, Reason]),
-    {stop, {error, {port_exited, Reason}}, State};
 handle_info({_Port, {data, Msg}}, State) ->
     error_logger:info_msg("Message from ~p: ~s~n", [State#state.name, Msg]),
     {noreply, State};
+handle_info({_Port, {exit_status, Status}}, State) ->
+    error_logger:info_msg("~p exited with status ~p~n",
+                          [State#state.name, Status]),
+    {stop, normal, State};
 handle_info(Something, State) ->
     error_logger:info_msg("Got unexpected message while monitoring ~p: ~p~n",
                           [State#state.name, Something]),
@@ -65,14 +65,15 @@ terminate(normal, State) ->
     error_logger:info_msg("port server terminating ~p: ~p~n",
                           [State#state.name, normal]),
     ok;
-terminate({port_exited, normal}, State) ->
-    error_logger:info_msg("port server terminating ~p: port exited~n",
-                          [State#state.name]),
+terminate({port_exited, Reason}, State) ->
+    error_logger:info_msg("port server terminating ~p: port exited with reason ~p~n",
+                          [State#state.name, Reason]),
     ok;
 terminate(Reason, State) ->
     error_logger:info_msg("port server terminating ~p: ~p~n",
                           [State#state.name, Reason]),
-    true = port_close(State#state.port).
+    (catch port_close(State#state.port)),
+    ok.
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
@@ -86,7 +87,6 @@ open_port({_Name, Cmd, Args, OptsIn}) ->
     Opts = OptsIn ++ [{args, Args}, exit_status],
     error_logger:info_msg("port server starting: ~p in ~p with ~p / ~p~n",
                           [Cmd, Pwd, Args, Opts]),
-    process_flag(trap_exit, true),
     open_port({spawn_executable, Cmd}, Opts).
 
 
