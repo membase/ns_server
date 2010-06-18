@@ -815,7 +815,7 @@ body.init_secure #container { display: none; }
 
 #servers .list_button, #servers .add_button,
 #servers .rebalance_button, #servers .stop_rebalance_button
-{display: block; float: right; margin-left: 5px;
+{display: block; float: right; margin-left: 5px; text-decoration:none !important;
   /*border: 1px solid green;*/
   /*moz-border-radius: 4px; -webkit-border-radius: 4px; padding: 2px;*/
   }
@@ -824,8 +824,10 @@ li.server_row .btn_cancel {display:block; height:15px; color:#7a7a7a; padding:0 
 #servers .btn_width_2 {width:125px;}
 #servers .rebalance_button {width:115px;}
 #servers .btn_width_1 {width:116px;}
-#servers .list_button {height:31px; padding:0 3px 0 0; background:url(../images/btn_2_bg.png) 100% -31px no-repeat; color:#000; margin-top:14px; font-size:14px;}
+#servers .list_button {height:31px; padding:0 3px 0 0; background:url(../images/btn_2_bg.png) 100% -31px no-repeat; color:#000; margin-top:14px; font-size:14px; text-decoration:none !important;}
 #servers .list_button span {display:block; text-align:center; height:31px; line-height:31px; padding:0 6px 0 10px; background:url(../images/btn_2_bg.png) 0 0 no-repeat;}
+#servers .list_button.disabled {background-position:100% -93px; color:#cacbce !important;opacity:1 !important;}
+#servers .list_button.disabled span {background-position:0 -62px; color:#cacbce !important;}
 
 #servers h2 { height: 25px;}
 #servers .servers_list li { list-style: none; height: min-25px; /*margin-top: 3px; */ display:block; padding:0 10px;}
@@ -960,3 +962,7 @@ ul.tabs .tab_left a.current:hover, ul.tabs .tab_right a.current:hover {text-shad
 
 .server_details_tab td {color:#434446; padding:0 0 5px 0;}
 .server_details_tab td span {color:#87888a;}
+
+.servers_list .settings-placeholder {background-color:#e7e7e9; padding-top:5px !important;}
+.servers_list .settings-placeholder .gong_rb {background-color:#d9dadc !important;}
+.servers_list .settings-placeholder .gong_rb .side {background-image:url(../images/gong_rb_2.gif) !important;}
