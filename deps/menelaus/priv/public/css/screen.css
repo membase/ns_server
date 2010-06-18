@@ -872,7 +872,7 @@ ul.tabs .alert_num_display .alert_num {display:block;}
 
 #servers .servers_list .serverName {display:inline-block; height:60px; padding:0 0 0 45px; background:url(../images/server_icon.png) 0 10px no-repeat; font-size:12px; font-weight:bolder;}
 
-#servers .gong_rb { margin-top: 10px; margin-bottom: 10px; }
+#servers .gong_rb { margin-top: 10px; margin-bottom: 10px; padding-left:77px; background-image:url(../images/icons.png); background-position:0 5px; background-repeat:no-repeat;}
 
 #servers .servers-not-rebalancing { display: block; }
 #servers .servers-rebalancing { display: none; }
