@@ -1197,6 +1197,7 @@ var ServersSection = {
       if (!p)
         return;
       n.progress = p.progress;
+      n.percent = truncateTo3Digits(n.progress * 100);
     });
 
     renderTemplate('rebalancing_list', nodes);
@@ -1214,7 +1215,7 @@ var ServersSection = {
     }
 
     this.renderRebalance(this.poolDetails.value);
-    this.rebalanceProgress.recalculateAfterDelay(1000);
+    this.rebalanceProgress.recalculateAfterDelay(250);
   },
   init: function () {
     this.poolDetails = DAO.cells.currentPoolDetailsCell;

@@ -656,11 +656,25 @@ var MockedRequest = mkClass({
           return this.errorResponse({mismatch: 1});
         }
 
+        var percent = 0;
+
+        MockedRequest.globalData.rebalanceProgress = function () {
+          return percent;
+        }
+
+        var intervalID = setInterval(function () {
+          percent += 0.001;
+        }, 50);
+
         MockedRequest.globalData.setRebalanceStatus('running');
         _.delay(function () {
           console.log("rebalance delay hit!");
+
+          MockedRequest.globalData.rebalanceProgress = null;
+          clearInterval(intervalID);
+
           MockedRequest.globalData.setRebalanceStatus('none');
-        }, 4000);
+        }, 40000);
       }, "knownNodes", "ejectedNodes")],
       [get("pools", "default", "rebalanceProgress"), function () {
         var pools = this.findResponseFor("GET", ["pools", "default"]);
@@ -671,8 +685,12 @@ var MockedRequest = mkClass({
         var rv = {
           status: pools.rebalanceStatus
         };
+        var percent = 0.5;
+        if (MockedRequest.globalData.rebalanceProgress) {
+          percent = MockedRequest.globalData.rebalanceProgress();
+        }
         _.each(nodes, function (name) {
-          rv[name] = {progress: 0.5};
+          rv[name] = {progress: percent};
         });
         return rv;
       }],

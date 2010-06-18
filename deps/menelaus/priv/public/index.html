@@ -440,18 +440,18 @@
                 </span>
               </span>
   </div>
-  <div id="rebalancing_list_template" class="template">
+  <script type="text/html" id="rebalancing_list_template">
     <ul class="servers_list rebalancing">
       <!-- {% _.each(rows, function (server) { %} -->
       <li class="server_row">
-        <span class="usage_info">{%= h((server.progress || 0) * 100) %}% Complete</span>
+        <span class="usage_info">{%= h(server.percent) %}% Complete</span>
         <!-- width attribute of span that is set below is not working properly - needs to be fixed -->
-        <span class="server_usage"><span style="width:{%= h((server.progress || 0) * 100) %}%;"></span></span>
+        <span class="server_usage"><span style="width: {%= h(server.percent) %}%;"></span></span>
         <a href="javascript:;" class="serverName">{%= h(server.hostname) %}</a>.
       </li>
       <!-- {% }); %}-->
     </ul>
-  </div>
+  </script>
 
   <div id="analytics" style="display:none">
   <span class="block nav float_right configure_view"><a href="javascript:StatGraphs.configureStats();">Configure View</a></span>
