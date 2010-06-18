@@ -24,20 +24,20 @@ change_memory_quota(_Node, _NewMemQuota) ->
 % A quotaMb of -1 means no quota.
 % Disks can get full, disappear, etc, so non-ok state is used to signal issues.
 %
-% [{"ssd", []},
-%  {"hdd", [[{"path", "/some/nice/disk/path"}, {"quotaMb", 1234}, {"state", ok}],
-%           [{"path", "/another/good/disk/path"}, {"quotaMb", 5678}, {"state", ok}]]}]
+% [{ssd, []},
+%  {hdd, [[{path, /some/nice/disk/path}, {quotaMb, 1234}, {state, ok}],
+%         [{path", /another/good/disk/path}, {quotaMb, 5678}, {state, ok}]]}]
 %
 storage_conf(Node) ->
     {value, PropList} = ns_config:search_node(Node, ns_config:get(), memcached),
     HDDInfo = case proplists:get_value(dbname, PropList) of
                   undefined -> [];
-                  DBName -> [{"path", filename:absname(DBName)},
-                             {"quotaMb", none},
-                             {"state", ok}]
+                  DBName -> [{path, filename:absname(DBName)},
+                             {quotaMb, none},
+                             {state, ok}]
               end,
-    [{"ssd", []},
-     {"hdd", [HDDInfo]}].
+    [{ssd, []},
+     {hdd, [HDDInfo]}].
 
 % Quota is an integer or atom none.
 % Kind is atom ssd or hdd.

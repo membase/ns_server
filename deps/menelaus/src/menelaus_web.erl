@@ -1088,9 +1088,9 @@ handle_node(_PoolId, Node, Req) ->
                    Y    -> Y
                end,
     StorageConf0 = ns_storage_conf:storage_conf(Node),
-    HDDStorageConf = case proplists:get_value("hdd", StorageConf0) of
+    HDDStorageConf = case proplists:get_value(hdd, StorageConf0) of
                          [Props] ->                % only single storage storage resource is supported now
-                             Path = proplists:get_value("path", Props),
+                             Path = proplists:get_value(path, Props),
                              case menelaus_util:get_disk_stats_for_path(Node, Path) of
                                  {ok, KBytes, Capacity} ->
                                      [[{diskStats, {struct, [{sizeKBytes, KBytes},
@@ -1102,7 +1102,7 @@ handle_node(_PoolId, Node, Req) ->
                              end;
                          _ -> undefined
                      end,
-    StorageConf = lists:map(fun ({"hdd", _}) -> {"hdd", HDDStorageConf};
+    StorageConf = lists:map(fun ({hdd, _}) -> {hdd, HDDStorageConf};
                                 (X) -> X
                             end, StorageConf0),
     R = {struct, storage_conf_to_json(StorageConf)},
@@ -1114,12 +1114,12 @@ handle_node(_PoolId, Node, Req) ->
     reply_json(Req,
                {struct, lists:filter(fun (X) -> X =/= undefined end, Fields)}).
 
-% S = [{"ssd", []},
-%      {"hdd", [[{"path", "/some/nice/disk/path"}, {"quotaMb", 1234}, {"state", ok}],
-%               [{"path", "/another/good/disk/path"}, {"quotaMb", 5678}, {"state", ok}]]}].
+% S = [{ssd, []},
+%      {hdd, [[{path, /some/nice/disk/path}, {quotaMb, 1234}, {state, ok}],
+%            [{path, /another/good/disk/path}, {quotaMb, 5678}, {state, ok}]]}].
 %
 storage_conf_to_json(S) ->
-    lists:map(fun ({StorageType, Locations}) -> % StorageType is "ssd" or "hdd".
+    lists:map(fun ({StorageType, Locations}) -> % StorageType is ssd or hdd.
                   {StorageType, lists:map(fun (LocationPropList) ->
                                               {struct, lists:map(fun location_prop_to_json/1, LocationPropList)}
                                           end,
@@ -1127,9 +1127,9 @@ storage_conf_to_json(S) ->
               end,
               S).
 
-location_prop_to_json({"path", L}) -> {"path", list_to_binary(L)};
-location_prop_to_json({"quotaMb", none}) -> {"quotaMb", <<"none">>};
-location_prop_to_json({"state", ok}) -> {"state", <<"ok">>};
+location_prop_to_json({path, L}) -> {path, list_to_binary(L)};
+location_prop_to_json({quotaMb, none}) -> {quotaMb, none};
+location_prop_to_json({state, ok}) -> {state, ok};
 location_prop_to_json(KV) -> KV.
 
 handle_node_resources_post("Self", Req)            -> handle_node_resources_post(node(), Req);
