@@ -81,6 +81,9 @@ sanify(Bucket, States, [Chain|Map], VBucket) ->
     ExtraStates = [X || X = {N, _} <- NodeStates,
                         not lists:member(N, Chain)],
     case ChainStates of
+        [{undefined, _}|_] ->
+            error_logger:info_msg("~p:sanify: No master for vbucket ~p~n",
+                                  [?MODULE, VBucket]);
         [{Master, State}|ReplicaStates] when State == pending orelse
                                              State == replica ->
             %% If we have any active nodes, do nothing, otherwise, set
@@ -106,6 +109,8 @@ sanify(Bucket, States, [Chain|Map], VBucket) ->
                       ns_memcached:delete_vbucket(N, Bucket, VBucket),
                       ns_vbm_sup:kill_children(N, Bucket, [VBucket]);
                   ({_, replica})-> % This is what we expect
+                      ok;
+                  ({undefined, missing}) -> % Probably fewer nodes than copies
                       ok;
                   ({N, State}) ->
                       error_logger:error_msg("~p:sanify: Replica on ~p in ~p state for vbucket ~p. Killing any existing replicators for that vbucket.~n",
