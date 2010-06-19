@@ -43,9 +43,6 @@ code_change(_OldVsn, State, _Extra) ->
 
 reconfig(_PortServers) ->
     {value, PortServers} = ns_port_sup:port_servers_config(),
-    error_logger:info_msg("ns_port_init reconfig ports: ~p...~n",
-                          [PortServers]),
-
     % CurrPorts looks like...
     %   [{memcached,<0.77.0>,worker,[ns_port_server]}]
     % Or, if the child process went down, then...
@@ -53,8 +50,8 @@ reconfig(_PortServers) ->
     %
     PortParams = [ns_port_sup:expand_args(NCAO) || NCAO <- PortServers],
     CurrPortParams = ns_port_sup:current_ports(),
-    OldPortParams = lists:subtract(CurrPortParams, PortParams),
-    NewPortParams = lists:subtract(PortParams, CurrPortParams),
+    OldPortParams = CurrPortParams -- PortParams,
+    NewPortParams = PortParams -- CurrPortParams,
 
     lists:foreach(fun(NCAO) ->
                       ns_port_sup:terminate_port(NCAO)
