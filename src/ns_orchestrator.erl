@@ -16,7 +16,10 @@
 %% API
 -export([start_link/1]).
 
--export([needs_rebalance/1, rebalance_progress/1, start_rebalance/3,
+-export([failover/2,
+         needs_rebalance/1,
+         rebalance_progress/1,
+         start_rebalance/3,
          stop_rebalance/1]).
 
 %% gen_server callbacks
@@ -26,6 +29,9 @@
 %% API
 start_link(Bucket) ->
     gen_server:start_link(server(Bucket), ?MODULE, Bucket, []).
+
+failover(Bucket, Node) ->
+    gen_server:call(server(Bucket), {failover, Node}).
 
 needs_rebalance(Bucket) ->
     {_NumReplicas, _NumVBuckets, Map, Servers} = ns_bucket:config(Bucket),
@@ -47,6 +53,46 @@ init(Bucket) ->
     timer:send_interval(10000, janitor),
     {ok, #state{bucket=Bucket}}.
 
+kill_vbuckets(_, _, []) ->
+    ok;
+kill_vbuckets(Node, Bucket, [V|Vs]) ->
+    case ns_memcached:set_vbucket_state(Node, Bucket, V, dead) of
+        {ok, _} ->
+            kill_vbuckets(Node, Bucket, Vs);
+        Error -> {error, Error}
+    end.
+
+handle_call({failover, Node}, _From, State = #state{bucket = Bucket}) ->
+    {_, _, Map, Servers} = ns_bucket:config(Bucket),
+    case lists:member(Node, Servers) of
+        true ->
+            case lists:member(Node, ns_node_disco:nodes_actual_proper()) of
+                true ->
+                    %% Make a last-ditch attempt to set vbuckets to dead
+                    case ns_memcached:list_vbuckets(Node, Bucket) of
+                        {ok, States} ->
+                            ActiveVBuckets = [V || {V, active} <- States],
+                            Result = kill_vbuckets(Node, Bucket, ActiveVBuckets),
+                            error_logger:info_msg(
+                              "~p:failover: got result ~p from attempt to kill vbuckets ~p on node ~p~n",
+                              [?MODULE, Result, ActiveVBuckets, Node]),
+                            ns_vbm_sup:set_replicas(Node, Bucket, []);
+                        _ -> ok
+                    end;
+                false ->
+                    ok
+           end,
+            ns_cluster:shun(Node),
+            lists:foreach(fun (N) ->
+                                  ns_vbm_sup:kill_dst_children(N, Bucket, Node)
+                          end, lists:delete(Node, Servers)),
+            %% Promote replicas of vbuckets on this node
+            Map1 = promote_replicas(Bucket, Map, [Node]),
+            ns_bucket:set_map(Map1),
+            ns_bucket:set_servers(lists:delete(Node, Servers)),
+            {reply, ok, State};
+        false -> {reply, not_member, State}
+    end;
 handle_call(rebalance_progress, _From, State = #state{rebalancer = {_Pid, _Ref},
                                                       progress = Progress}) ->
     {reply, {running, Progress}, State};
@@ -59,8 +105,9 @@ handle_call({start_rebalance, KeepNodes, EjectNodes}, _From,
     case {lists:sort(Servers), lists:sort(KeepNodes), EjectNodes,
           unbalanced(Histograms)} of
         {S, S, [], false} ->
-            error_loger:info_msg("ns_orchestrator not rebalancing because already_balanced~n~p~n",
-                                [{Servers, KeepNodes, EjectNodes, Histograms}]),
+            error_logger:info_msg(
+              "ns_orchestrator not rebalancing because already_balanced~n~p~n",
+              [{Servers, KeepNodes, EjectNodes, Histograms}]),
             {reply, already_balanced, State};
         _ ->
             {ok, Pid, Ref} =
@@ -134,6 +181,13 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 %% Internal functions
+apply_moves(_, [], Map) ->
+    Map;
+apply_moves(I, [{V, _, New}|Tail], Map) ->
+    Chain = lists:nth(V+1, Map),
+    NewChain = misc:nthreplace(I, New, Chain),
+    apply_moves(I, Tail, misc:nthreplace(V+1, NewChain, Map)).
+
 assign(Histogram, AvoidNodes) ->
     Histogram1 = lists:keysort(2, Histogram),
     case lists:splitwith(fun ({N, _}) -> lists:member(N, AvoidNodes) end,
@@ -144,24 +198,37 @@ assign(Histogram, AvoidNodes) ->
             {undefined, Histogram1}
     end.
 
-balance_masters(Bucket, Map, Histograms) ->
-    Masters = [Master || [Master|_] <- Map],
-    [MHist|_] = Histograms,
-    balance_masters(Bucket, Masters, MHist, []).
-
-balance_masters(Bucket, Masters, MHist, Moves) ->
-    {MinNode, MinCount} = misc:keymin(2, MHist),
-    {MaxNode, MaxCount} = misc:keymax(2, MHist),
-    error_logger:info_msg("~p:balance_masters() ~p ~p ~p ~p ~p ~p~n",
-                          [?MODULE, Masters, MHist, MinNode, MinCount, MaxNode, MaxCount]),
+balance_nodes(Bucket, Map, Histograms, I) when is_integer(I) ->
+    error_logger:info_msg("balance_nodes1(~p, ~p, ~p, ~p)~n",
+                          [Bucket, Map, Histograms, I]),
+    VNF = [{V, lists:nth(I, Chain), misc:nthdelete(I, Chain)} ||
+              {V, Chain} <- misc:enumerate(Map, 0)],
+    Hist = lists:nth(I, Histograms),
+    balance_nodes(Bucket, VNF, Hist, []);
+balance_nodes(Bucket, VNF, Hist, Moves) ->
+    error_logger:info_msg("balance_nodes2(~p, ~p, ~p, ~p)~n",
+                          [Bucket, VNF, Hist, Moves]),
+    {MinNode, MinCount} = misc:keymin(2, Hist),
+    {MaxNode, MaxCount} = misc:keymax(2, Hist),
     case MaxCount - MinCount > 1 of
         true ->
-            VBucket = misc:position(MaxNode, Masters) - 1,
-            Masters1 = misc:nthreplace(VBucket+1, MinNode, Masters),
-            MHist1 = lists:keyreplace(MinNode, 1, MHist, {MinNode, MinCount + 1}),
-            MHist2 = lists:keyreplace(MaxNode, 1, MHist1, {MaxNode, MaxCount - 1}),
-            balance_masters(Bucket, Masters1, MHist2,
-                            [{VBucket, MaxNode, MinNode}|Moves]);
+            %% Get the first vbucket that is on MaxNode and for which MinNode is not forbidden
+            case lists:splitwith(
+                   fun ({_, N, F}) ->
+                           N /= MaxNode orelse
+                               lists:member(MinNode, F)
+                   end, VNF) of
+                {Prefix, [{V, N, F}|Tail]} ->
+                    N = MaxNode,
+                    VNF1 = Prefix ++ [{V, MinNode, F}|Tail],
+                    Hist1 = lists:keyreplace(MinNode, 1, Hist, {MinNode, MinCount + 1}),
+                    Hist2 = lists:keyreplace(MaxNode, 1, Hist1, {MaxNode, MaxCount - 1}),
+                    balance_nodes(Bucket, VNF1, Hist2, [{V, MaxNode, MinNode}|Moves]);
+                X ->
+                    error_logger:info_msg("~p:balance_nodes(~p, ~p, ~p, ~p): No further moves (~p)~p",
+                                          [?MODULE, VNF, Hist, Moves, X]),
+                    Moves
+            end;
         false ->
             Moves
     end.
@@ -171,8 +238,7 @@ do_rebalance(Bucket, KeepNodes, EjectNodes, Map) ->
     RemapNodes = EjectNodes -- AliveNodes, % No active node, promote a replica
     lists:foreach(fun (N) -> ns_cluster:shun(N) end, RemapNodes),
     EvacuateNodes = EjectNodes -- RemapNodes, % Nodes we can move data off of
-    Map1 = [promote_replicas(Bucket, V, RemapNodes, Chain) ||
-               {V, Chain} <- misc:enumerate(Map, 0)],
+    Map1 = promote_replicas(Bucket, Map, RemapNodes),
     error_logger:info_msg("Map1 = ~p~n", [Map1]),
     ns_bucket:set_map(Bucket, Map1),
     Histograms1 = histograms(Map1, KeepNodes),
@@ -183,7 +249,7 @@ do_rebalance(Bucket, KeepNodes, EjectNodes, Map) ->
     error_logger:info_msg("Map2 = ~p~n", [Map2]),
     Histograms2 = histograms(Map2, KeepNodes),
     error_logger:info_msg("Histograms2 = ~p~n", [Histograms2]),
-    Moves2 = balance_masters(Bucket, Map2, Histograms2),
+    Moves2 = balance_nodes(Bucket, Map2, Histograms2, 1),
     error_logger:info_msg("Moves2 = ~p~n", [Moves2]),
     Map3 = perform_moves(Bucket, Map2, Moves2),
     error_logger:info_msg("Map3 = ~p~n", [Map3]),
@@ -191,10 +257,20 @@ do_rebalance(Bucket, KeepNodes, EjectNodes, Map) ->
     error_logger:info_msg("Histograms3 = ~p~n", [Histograms3]),
     Map4 = new_replicas(Bucket, EjectNodes, Map3, Histograms3),
     error_logger:info_msg("Map4 = ~p~n", [Map4]),
-    lists:foreach(fun (N) -> ns_cluster:shun(N) end, EjectNodes),
-    ns_bucket:set_servers(Bucket, KeepNodes),
     ns_bucket:set_map(Bucket, Map4),
-    ns_janitor:cleanup(Bucket, Map4, KeepNodes).
+    Histograms4 = histograms(Map4, KeepNodes),
+    ChainLength = length(lists:nth(1, Map4)),
+    Map5 = lists:foldl(
+             fun (I, M) ->
+                     error_logger:info_msg("applying balance_nodes to map ~p and histograms ~p~n",
+                                          [M, Histograms4]),
+                     Moves = balance_nodes(Bucket, M, Histograms4, I),
+                     apply_moves(I, Moves, M)
+             end, Map4, lists:seq(2, ChainLength)),
+    lists:foreach(fun (N) -> ns_cluster:shun(N) end, EvacuateNodes),
+    ns_bucket:set_servers(Bucket, KeepNodes),
+    ns_bucket:set_map(Bucket, Map5),
+    ns_janitor:cleanup(Bucket, Map5, KeepNodes).
 
 master_moves(Bucket, EvacuateNodes, Map, Histograms) ->
     master_moves(Bucket, EvacuateNodes, Map, Histograms, 0, []).
@@ -208,7 +284,7 @@ master_moves(Bucket, EvacuateNodes, [[OldMaster|_]|MapTail], Histograms, V,
         true ->
             {NewMaster, MHist1} = assign(MHist, []),
             master_moves(Bucket, EvacuateNodes, MapTail, [MHist1|RHists],
-                             V+1, [{V, undefined, NewMaster}|Moves]);
+                             V+1, [{V, OldMaster, NewMaster}|Moves]);
         false ->
             master_moves(Bucket, EvacuateNodes, MapTail, Histograms, V+1,
                              Moves)
@@ -227,7 +303,7 @@ new_replicas(Bucket, EjectNodes, [Chain|MapTail], Histograms, V,
     {Replicas1, RHists1} =
         lists:unzip(
           lists:map(fun ({undefined, Histogram}) ->
-                            assign(Histogram, Chain ++ EjectNodes);
+                            assign(Histogram, [Master|EjectNodes]);
                         (X = {OldNode, Histogram}) ->
                             case lists:member(OldNode, EjectNodes) of
                                 true ->
@@ -235,13 +311,16 @@ new_replicas(Bucket, EjectNodes, [Chain|MapTail], Histograms, V,
                                 false ->
                                     X
                             end
-                    end, ChainHist)),
+                        end, ChainHist)),
     new_replicas(Bucket, EjectNodes, MapTail, [MHist|RHists1], V + 1,
                   [[Master|Replicas1]|NewMapReversed]).
 
-perform_moves(_, Map, []) ->
+perform_moves(Bucket, Map, []) ->
+    ns_bucket:set_map(Bucket, Map),
     Map;
 perform_moves(Bucket, Map, [{V, Old, New}|Moves]) ->
+    error_logger:info_msg("~p:perform_moves(~p, ~p, ~p)~n",
+                         [Bucket, Map, [{V, Old, New} | Moves]]),
     [Old|Replicas] = lists:nth(V+1, Map),
     case {Old, New} of
         {X, X} ->
@@ -255,13 +334,17 @@ perform_moves(Bucket, Map, [{V, Old, New}|Moves]) ->
                 undefined ->
                     ns_memcached:set_vbucket_state(New, Bucket, V, active);
                 _ ->
+                    ns_bucket:set_map(Bucket, Map1),
                     ns_vbm_sup:move(Bucket, V, Old, New)
             end,
-            ns_bucket:set_map(Bucket, Map1),
             perform_moves(Bucket, Map1, Moves)
     end.
 
-promote_replicas(Bucket, V, RemapNodes, Chain) ->
+promote_replicas(Bucket, Map, RemapNodes) ->
+    [promote_replica(Bucket, Chain, RemapNodes, V) ||
+        {V, Chain} <- misc:enumerate(Map, 0)].
+
+promote_replica(Bucket, Chain, RemapNodes, V) ->
     [OldMaster|_] = Chain,
     Bad = fun (Node) -> lists:member(Node, RemapNodes) end,
     NotBad = fun (Node) -> not lists:member(Node, RemapNodes) end,
