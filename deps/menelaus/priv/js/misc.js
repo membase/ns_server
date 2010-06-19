@@ -489,6 +489,15 @@ function watchHashParamChange(param, defaultValue, callback) {
   });
 }
 
+// separate function so that it's closure is minimal, 'cause it is
+// being retained forever by jqModal
+function __jqmShow(jq) {
+  jq.jqm({modal:true,
+          onHide: function (h) {
+            jq.data('real-hide')(h);
+          }}).jqmShow();
+}
+
 function showDialog(idOrJQ, options) {
   var jq = _.isString(idOrJQ) ? $($i(idOrJQ)) : idOrJQ;
   options = options || {};
@@ -500,26 +509,34 @@ function showDialog(idOrJQ, options) {
 
   var eventBindings = options.eventBindings || [];
 
-  jq.jqm({modal:true,
-          onHide: function (h) {
-            $(window).unbind('hashchange', onHashChange);
+  function onHide(h) {
+    $(window).unbind('hashchange', onHashChange);
 
-            // prevent closing if modal action is in progress
-            if (ModalAction.isActive()) {
-              // copied from jqmodal itself
-              h.w.hide() && h.o && h.o.remove();
-              return showDialog(idOrJQ, options);
-            }
+    // copied from jqmodal itself
+    // this hides our dialog
+    h.w.hide() && h.o && h.o.remove();
 
-            iterateBindings(function (e, eventType, callback) {
-              e.unbind(eventType, callback);
-            });
+    // this removes us as onHide value
+    jq.removeData('real-hide');
 
-            if (options.onHide)
-              options.onHide(idOrJQ);
-            // copied from jqmodal itself
-            h.w.hide() && h.o && h.o.remove();
-          }}).jqmShow();
+    // unbind events that we bound
+    iterateBindings(function (e, eventType, callback) {
+      e.unbind(eventType, callback);
+    });
+
+    // prevent closing if modal action is in progress
+    if (ModalAction.isActive()) {
+      // and now when cleanup is done, we can re-activate dialog
+      return showDialog(idOrJQ, options);
+    }
+
+    if (options.onHide)
+      options.onHide(idOrJQ);
+  }
+
+  jq.data('real-hide', onHide);
+
+  __jqmShow(jq);
 
   $('html, body').animate({scrollTop: jq.offset().top - 100}, 250);
 
