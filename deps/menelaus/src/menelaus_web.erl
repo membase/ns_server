@@ -160,6 +160,8 @@ loop(Req, AppRoot, DocRoot) ->
                              ["docs" | _PRem ] ->
                                  DocFile = string:sub_string(Path, 6),
                                  {done, Req:serve_file(DocFile, DocRoot)};
+                             ["dot", Bucket] ->
+                                 {auth, fun handle_dot/2, [Bucket]};
                              _ ->
                                  {done, Req:serve_file(Path, AppRoot)}%% , [{"Pragma", "no-cache"},
                                                                       %%  {"Cache-Control", "no-cache must-revalidate"}])}
@@ -1064,6 +1066,12 @@ handle_diag(Req) ->
             server_header(),
             list_to_binary(Text)}).
 
+handle_dot(Bucket, Req) ->
+    Dot = ns_janitor:graphviz(Bucket),
+    Req:ok({"test/plain; charset=utf-8",
+            server_header(),
+            iolist_to_binary(Dot)}).
+
 ymd_to_string({Y, M, D}) ->
     integer_to_list(Y) ++ "/" ++
     integer_to_list(M) ++ "/" ++
@@ -1250,7 +1258,15 @@ handle_add_node(Req) ->
 
 %% TODO
 handle_failover(Req) ->
-    Req:respond({200, [], []}).
+    Params = Req:parse_post(),
+    Node = list_to_atom(proplists:get_value("otpNode", Params, "undefined")),
+    case Node of
+        undefined ->
+            Req:respond({400, add_header(), "No node specified"});
+        _ ->
+            ok = ns_orchestrator:failover("default", Node), % TODO multi-tenancy in REST, or automatically do it for all buckets
+            Req:respond({200, [], []})
+    end.
 
 handle_rebalance(Req) ->
     Params = Req:parse_post(),

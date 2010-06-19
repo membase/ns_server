@@ -6,7 +6,7 @@
 
 -module(ns_janitor).
 
--export([cleanup/3, current_states/2]).
+-export([cleanup/3, current_states/2, graphviz/1]).
 
 cleanup(Bucket, Map, Servers) ->
     Replicas = lists:keysort(1, map_to_replicas(Map)),
@@ -18,6 +18,51 @@ cleanup(Bucket, Map, Servers) ->
                           ns_vbm_sup:set_replicas(Src, Bucket, R)
                   end, NodesReplicas),
     sanify_masters(Bucket, Map, Servers).
+
+state_color(active) ->
+    "color=green";
+state_color(pending) ->
+    "color=blue";
+state_color(replica) ->
+    "color=yellow";
+state_color(dead) ->
+    "color=red".
+
+node_vbuckets(I, Node, States, Map) ->
+    GState = lists:keysort(1,
+               [{VBucket, state_color(State)} || {N, VBucket, State} <- States,
+                                                 N == Node]),
+    GMap = [{VBucket, "color=gray"} || {VBucket, Chain} <- misc:enumerate(Map, 0),
+                                         lists:member(Node, Chain)],
+    [io_lib:format("n~Bv~B [style=filled ~s];~n", [I, V, Style]) ||
+        {V, Style} <- lists:ukeymerge(1, GState, GMap)].
+
+graphviz(Bucket) ->
+    {_, _, Map, Servers} = ns_bucket:config(Bucket),
+    {States, Zombies} = current_states(Servers, Bucket),
+    Nodes = lists:sort(Servers),
+    NodeColors = lists:map(fun (Node) ->
+                                   case lists:member(Node, Zombies) of
+                                       true -> {Node, "red"};
+                                       false -> {Node, "black"}
+                                   end
+                           end, Nodes),
+    SubGraphs = [io_lib:format("subgraph cluster_n~B {~ncolor=~s;~nlabel=\"~s\";~n~s}~n",
+                              [I, Color, Node, node_vbuckets(I, Node, States, Map)]) ||
+                    {I, {Node, Color}} <- misc:enumerate(NodeColors)],
+    Replicants = lists:sort(map_to_replicas(Map)),
+    Replicators = lists:sort(ns_vbm_sup:replicators(Nodes, Bucket)),
+    AllRep = lists:umerge(Replicants, Replicators),
+    Edges = [io_lib:format("n~pv~B -> n~pv~B [color=~s];~n",
+                            [misc:position(Src, Nodes), V,
+                             misc:position(Dst, Nodes), V,
+                             case {lists:member(R, Replicants), lists:member(R, Replicators)} of
+                                 {true, true} -> "black";
+                                 {true, false} -> "red";
+                                 {false, true} -> "blue"
+                             end]) ||
+                R = {Src, Dst, V} <- AllRep],
+    ["digraph G {", SubGraphs, Edges, "}"].
 
 sanify_masters(Bucket, Map, Servers) ->
     {States, _Zombies} = current_states(Servers, Bucket),
@@ -58,7 +103,6 @@ current_states(Nodes, Buckets) ->
 current_states(Nodes, Bucket, Tries) ->
     case ns_memcached:list_vbuckets_multi(Nodes, Bucket) of
         {Replies, []} ->
-            error_logger:info_msg("got replies ~p~n", [Replies]),
             {GoodReplies, BadReplies} = lists:partition(fun ({_, {ok, _}}) -> true;
                                                             (_) -> false
                                                         end, Replies),
