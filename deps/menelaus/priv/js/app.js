@@ -1156,8 +1156,13 @@ var ServersSection = {
     this.serversQ.find('.add_button').toggle(!!(details && !rebalancing));
     this.serversQ.find('.stop_rebalance_button').toggle(!!rebalancing);
 
+    var mayRebalance = !rebalancing && pending.length !=0;
+
+    if (details && !details.balanced)
+      mayRebalance = true;
+
     var rebalanceButton = this.serversQ.find('.rebalance_button').toggle(!!details);
-    rebalanceButton.toggleClass('disabled', !!(rebalancing || pending.length == 0));
+    rebalanceButton.toggleClass('disabled', !mayRebalance);
 
     if (details && !rebalancing) {
       $('#rebalance_tab .alert_num span').text(pending.length);
@@ -1286,7 +1291,7 @@ var ServersSection = {
     this.poolDetails.subscribeValue(function (poolDetails) {
       var hasFailover;
       if (poolDetails)
-        hasFailover = _.detect(poolDetails.nodes, function (n) {return n.clusterMembership == 'inactiveFailed'});
+        hasFailover = !poolDetails.balanced;
       $('#servers .failover_warning').toggle(!!hasFailover);
     });
 
