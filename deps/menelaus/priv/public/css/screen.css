@@ -112,8 +112,8 @@ a.button_medium {display:block; color:#444245 !important; text-decoration:none !
 
 a.button_200 {display:block; color:#444245 !important; text-decoration:none !important}
 .button_200 {width:200px; height:32px; font-size:14px; border:0px; overflow:visible; background:url(../images/button_gray_200.gif) 0 0 no-repeat; line-height:32px; cursor:pointer; color:#444245; text-align:center; text-decoration:none;}
-.button_200:hover {background-position:0 -32px; color:#f8eeed !important;}
-.button_200:active {background-position:0 -64px; color:#e0eff7 !important;}
+/* disabled for beta1 .button_200:hover {background-position:0 -32px; color:#f8eeed !important;}
+.button_200:active {background-position:0 -64px; color:#e0eff7 !important;} */
 
 /* alerts */
 .alert_1 {display:block; width:28px; height:29px; background:url(../images/alert_1.gif) 0 0 no-repeat; margin:-7px 0 0 0;}
