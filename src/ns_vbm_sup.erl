@@ -6,6 +6,7 @@
 -behaviour(supervisor).
 
 -export([start_link/0,
+         kill_children/3,
          kill_all_children/1,
          kill_dst_children/3,
          move/4,
