@@ -34,7 +34,7 @@ node_vbuckets(I, Node, States, Map) ->
                                                  N == Node]),
     GMap = [{VBucket, "color=gray"} || {VBucket, Chain} <- misc:enumerate(Map, 0),
                                          lists:member(Node, Chain)],
-    [io_lib:format("n~Bv~B [style=filled ~s];~n", [I, V, Style]) ||
+    [io_lib:format("n~Bv~B [style=filled label=\"~B\" ~s];~n", [I, V, V, Style]) ||
         {V, Style} <- lists:ukeymerge(1, GState, GMap)].
 
 graphviz(Bucket) ->
