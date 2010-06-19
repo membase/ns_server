@@ -39,10 +39,10 @@ handle_event({alerts = K, V}, State) ->
                       (V2KeyVal) -> V2KeyVal
                    end,
                    V),
-    error_logger:info_msg("config change: ~p -> ~p~n", [K, V2]),
+    error_logger:info_msg("config change: ~w -> ~w~n", [K, V2]),
     {ok, State, hibernate};
 handle_event({K, V}, State) ->
-    error_logger:info_msg("config change: ~p -> ~p~n", [K, V]),
+    error_logger:info_msg("config change: ~w -> ~w~n", [K, V]),
     {ok, State, hibernate};
 
 handle_event(KVList, State) when is_list(KVList) ->
@@ -62,4 +62,3 @@ handle_call(Request, State) ->
 handle_info(Info, State) ->
     error_logger:info_msg("handle_info(~p, ~p)~n", [Info, State]),
     {ok, State, hibernate}.
-

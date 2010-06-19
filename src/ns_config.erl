@@ -281,8 +281,6 @@ handle_call({update, Fun, Sentinel}, From, State) ->
                             {K, Data} ->
                                 NewData = [{?METADATA_VER, erlang:now()} |
                                            strip_metadata(Data, [])],
-                                error_logger:info_msg("Atomic update of ~p from ~p to ~p~n",
-                                                      [K, element(2, Pair), NewData]),
                                 {K, NewData}
                         end
                 end,

@@ -199,15 +199,11 @@ assign(Histogram, AvoidNodes) ->
     end.
 
 balance_nodes(Bucket, Map, Histograms, I) when is_integer(I) ->
-    error_logger:info_msg("balance_nodes1(~p, ~p, ~p, ~p)~n",
-                          [Bucket, Map, Histograms, I]),
     VNF = [{V, lists:nth(I, Chain), misc:nthdelete(I, Chain)} ||
               {V, Chain} <- misc:enumerate(Map, 0)],
     Hist = lists:nth(I, Histograms),
     balance_nodes(Bucket, VNF, Hist, []);
 balance_nodes(Bucket, VNF, Hist, Moves) ->
-    error_logger:info_msg("balance_nodes2(~p, ~p, ~p, ~p)~n",
-                          [Bucket, VNF, Hist, Moves]),
     {MinNode, MinCount} = misc:keymin(2, Hist),
     {MaxNode, MaxCount} = misc:keymax(2, Hist),
     case MaxCount - MinCount > 1 of
@@ -225,7 +221,7 @@ balance_nodes(Bucket, VNF, Hist, Moves) ->
                     Hist2 = lists:keyreplace(MaxNode, 1, Hist1, {MaxNode, MaxCount - 1}),
                     balance_nodes(Bucket, VNF1, Hist2, [{V, MaxNode, MinNode}|Moves]);
                 X ->
-                    error_logger:info_msg("~p:balance_nodes(~p, ~p, ~p, ~p): No further moves (~p)~p",
+                    error_logger:info_msg("~p:balance_nodes: No further moves (~p)~p",
                                           [?MODULE, VNF, Hist, Moves, X]),
                     Moves
             end;
@@ -234,36 +230,26 @@ balance_nodes(Bucket, VNF, Hist, Moves) ->
     end.
 
 do_rebalance(Bucket, KeepNodes, EjectNodes, Map) ->
+    ns_bucket:set_servers(Bucket, KeepNodes ++ EjectNodes),
     AliveNodes = ns_node_disco:nodes_actual_proper(),
     RemapNodes = EjectNodes -- AliveNodes, % No active node, promote a replica
     lists:foreach(fun (N) -> ns_cluster:shun(N) end, RemapNodes),
     EvacuateNodes = EjectNodes -- RemapNodes, % Nodes we can move data off of
     Map1 = promote_replicas(Bucket, Map, RemapNodes),
-    error_logger:info_msg("Map1 = ~p~n", [Map1]),
     ns_bucket:set_map(Bucket, Map1),
     Histograms1 = histograms(Map1, KeepNodes),
-    error_logger:info_msg("Histograms1 = ~p~n", [Histograms1]),
     Moves1 = master_moves(Bucket, EvacuateNodes, Map1, Histograms1),
-    error_logger:info_msg("Moves1 = ~p~n", [Moves1]),
     Map2 = perform_moves(Bucket, Map1, Moves1),
-    error_logger:info_msg("Map2 = ~p~n", [Map2]),
     Histograms2 = histograms(Map2, KeepNodes),
-    error_logger:info_msg("Histograms2 = ~p~n", [Histograms2]),
     Moves2 = balance_nodes(Bucket, Map2, Histograms2, 1),
-    error_logger:info_msg("Moves2 = ~p~n", [Moves2]),
     Map3 = perform_moves(Bucket, Map2, Moves2),
-    error_logger:info_msg("Map3 = ~p~n", [Map3]),
     Histograms3 = histograms(Map3, KeepNodes),
-    error_logger:info_msg("Histograms3 = ~p~n", [Histograms3]),
     Map4 = new_replicas(Bucket, EjectNodes, Map3, Histograms3),
-    error_logger:info_msg("Map4 = ~p~n", [Map4]),
     ns_bucket:set_map(Bucket, Map4),
     Histograms4 = histograms(Map4, KeepNodes),
     ChainLength = length(lists:nth(1, Map4)),
     Map5 = lists:foldl(
              fun (I, M) ->
-                     error_logger:info_msg("applying balance_nodes to map ~p and histograms ~p~n",
-                                          [M, Histograms4]),
                      Moves = balance_nodes(Bucket, M, Histograms4, I),
                      apply_moves(I, Moves, M)
              end, Map4, lists:seq(2, ChainLength)),
@@ -319,8 +305,6 @@ perform_moves(Bucket, Map, []) ->
     ns_bucket:set_map(Bucket, Map),
     Map;
 perform_moves(Bucket, Map, [{V, Old, New}|Moves]) ->
-    error_logger:info_msg("~p:perform_moves(~p, ~p, ~p)~n",
-                         [Bucket, Map, [{V, Old, New} | Moves]]),
     [Old|Replicas] = lists:nth(V+1, Map),
     case {Old, New} of
         {X, X} ->

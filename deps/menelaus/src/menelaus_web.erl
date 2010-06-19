@@ -509,8 +509,6 @@ handle_streaming(F, Req, HTTPRes, LastRes) ->
             ok;
         false ->
             ResNormal = F(normal),
-            error_logger:info_msg("menelaus_web streaming: ~p~n",
-                                  [ResNormal]),
             HTTPRes:write_chunk(mochijson2:encode(ResNormal)),
             %% TODO: resolve why mochiweb doesn't support zero chunk... this
             %%       indicates the end of a response for now
