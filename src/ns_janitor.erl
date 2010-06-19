@@ -9,6 +9,7 @@
 -export([cleanup/3, current_states/2, graphviz/1]).
 
 cleanup(Bucket, Map, Servers) ->
+    sanify(Bucket, Map, Servers),
     Replicas = lists:keysort(1, map_to_replicas(Map)),
     ReplicaGroups = misc:keygroup(1, Replicas),
     NodesReplicas = lists:map(fun ({Src, R}) -> % R is the replicas for this node
@@ -16,8 +17,7 @@ cleanup(Bucket, Map, Servers) ->
                               end, ReplicaGroups),
     lists:foreach(fun ({Src, R}) ->
                           ns_vbm_sup:set_replicas(Src, Bucket, R)
-                  end, NodesReplicas),
-    sanify_masters(Bucket, Map, Servers).
+                  end, NodesReplicas).
 
 state_color(active) ->
     "color=green";
@@ -64,35 +64,78 @@ graphviz(Bucket) ->
                 R = {Src, Dst, V} <- AllRep],
     ["digraph G {", SubGraphs, Edges, "}"].
 
-sanify_masters(Bucket, Map, Servers) ->
+sanify(Bucket, Map, Servers) ->
     {States, _Zombies} = current_states(Servers, Bucket),
-    ActiveNodes = [{VBucket, Node} || {Node, VBucket, active} <- States],
-    sanify_master(Bucket, ActiveNodes, Map, 0).
+    sanify(Bucket, States, Map, 0).
 
-sanify_master(_, _, [], _) ->
+sanify(_, _, [], _) ->
     ok;
-sanify_master(Bucket, ActiveStates, [[Master|Replicas]|Map], VBucket) ->
-    Nodes = [N || {V, N} <- ActiveStates, V == VBucket],
-    BadNodes = lists:delete(Master, Nodes),
-    lists:foreach(fun (Node) ->
-                          case lists:member(Node, Replicas) of
-                              true ->
-                                  error_logger:error_msg("~p:sanify_master(~p): active replica ~p for vbucket ~p~n",
-                                                         [?MODULE, Bucket, Node, VBucket]);
-                              false ->
-                                  error_logger:error_msg("~p:sanify_master(~p): extra active node ~p for vbucket ~p, setting to dead~n",
-                                                         [?MODULE, Bucket, Node, VBucket]),
-                                  ns_memcached:set_vbucket_state(Node, Bucket, VBucket, dead)
-                          end
-                  end, BadNodes),
-    case lists:member(Master, Nodes) of
-        true -> ok;
-        false ->
-            error_logger:info_msg("~p:sanify_master(~p): setting master node ~p for vbucket ~p to active state~n",
-                                  [?MODULE, Bucket, Master, VBucket]),
-            ns_memcached:set_vbucket_state(Master, Bucket, VBucket, active)
+sanify(Bucket, States, [Chain|Map], VBucket) ->
+    NodeStates = [{N, S} || {N, V, S} <- States, V == VBucket],
+    ChainStates = lists:map(fun (N) ->
+                                    case lists:keyfind(N, 1, NodeStates) of
+                                        false -> {N, missing};
+                                        X -> X
+                                    end
+                            end, Chain),
+    ExtraStates = [X || X = {N, _} <- NodeStates,
+                        not lists:member(N, Chain)],
+    case ChainStates of
+        [{Master, State}|ReplicaStates] when State == pending orelse
+                                             State == replica ->
+            %% If we have any active nodes, do nothing, otherwise, set
+            %% it to active.
+            case [N || {N, active} <- ReplicaStates ++ ExtraStates] of
+                [] ->
+                    %% We'll let the next pass catch the replicas.
+                    error_logger:info_msg(
+                      "~p:sanify: Setting master ~p from ~p to active for vbucket ~p~n",
+                      [?MODULE, Master, State, VBucket]),
+                    ns_memcached:set_vbucket_state(Master, Bucket, VBucket, active);
+                Nodes ->
+                    error_logger:error_msg(
+                      "~p:sanify: Extra active nodes ~p for vbucket ~p. If there is only one, we should probably just change the map, but this should never happen, so I'm going to do nothing.~n",
+                      [?MODULE, Nodes, VBucket])
+            end;
+        [{_, active}|ReplicaStates] ->
+            lists:foreach(
+              fun ({N, active}) ->
+                      error_logger:error_msg("~p:sanify: Active replica ~p for vbucket ~p. This should never happen, but we have an active master, so I'm deleting it.~n",
+                                             [?MODULE, N]),
+                      ns_memcached:set_vbucket_state(N, Bucket, VBucket, dead),
+                      ns_memcached:delete_vbucket(N, Bucket, VBucket),
+                      ns_vbm_sup:kill_children(N, Bucket, [VBucket]);
+                  ({_, replica})-> % This is what we expect
+                      ok;
+                  ({N, State}) ->
+                      error_logger:error_msg("~p:sanify: Replica on ~p in ~p state for vbucket ~p. Killing any existing replicators for that vbucket.~n",
+                                             [?MODULE, N, State, VBucket]),
+                      ns_vbm_sup:kill_children(N, Bucket, [VBucket])
+              end, ReplicaStates),
+            %% Clean up turds
+            lists:foreach(
+              fun ({N, State}) ->
+                      error_logger:info_msg("~p:sanify: deleting old data for vbucket ~p in state ~p on node ~p~n",
+                                            [?MODULE, VBucket, State, N]),
+                      %% There'd better not be any replicators, but kill any
+                      %% just in case.
+                      ns_vbm_sup:kill_children(N, Bucket, [VBucket]),
+                      ns_memcached:set_vbucket_state(N, Bucket, VBucket, dead),
+                      ns_memcached:delete_vbucket(N, Bucket, VBucket)
+              end, ExtraStates);
+        [{Master, State}|ReplicaStates] ->
+            case [N||{N, RState} <- ReplicaStates ++ ExtraStates,
+                     lists:member(RState, [active, pending, replica])] of
+                [] ->
+                    error_logger:info_msg("~p:sanify: Setting master ~p for (hopefully new) vbucket ~p from ~p to active~n",
+                                          [?MODULE, Master, VBucket, State]),
+                    ns_memcached:set_vbucket_state(Master, Bucket, VBucket, active);
+                X ->
+                    error_logger:error_msg("~p:sanify: Master ~p in state ~p for vbucket ~p but we have extra nodes ~p!~n",
+                                           [?MODULE, Master, State, VBucket, X])
+            end
     end,
-    sanify_master(Bucket, ActiveStates, Map, VBucket+1).
+    sanify(Bucket, States, Map, VBucket+1).
 
 %% [{Node, VBucket, State}...]
 -spec current_states(list(atom()), string()) ->
