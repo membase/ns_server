@@ -6,7 +6,10 @@
 -behaviour(supervisor).
 
 -export([start_link/0,
+         kill_all_children/1,
+         kill_dst_children/3,
          move/4,
+         replicators/2,
          set_replicas/3]).
 
 -export([init/1]).
@@ -14,6 +17,15 @@
 %% API
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+
+replicators(Nodes, Bucket) ->
+    lists:flatmap(
+      fun (Node) ->
+              [{Node, Dst, VBucket} ||
+                  {B, VBuckets, Dst, false} <- children(Node),
+                  VBucket <- VBuckets,
+                  B == Bucket]
+      end, Nodes).
 
 actions(Children) ->
     [{VBucket, Dst} || {_, VBuckets, Dst, false} <- Children,
@@ -50,8 +62,13 @@ move(Bucket, VBucket, SrcNode, DstNode) ->
         Reason -> {error, Reason}
     end.
 
+kill_all_children(Node) ->
+    lists:foreach(fun (Child) ->
+                          kill_child(Node, Child)
+                  end, children(Node)).
+
 kill_child(Node, Child) ->
-    ok = supervisor:terminate_child({?MODULE, Node}, Child),
+    supervisor:terminate_child({?MODULE, Node}, Child),
     ok = supervisor:delete_child({?MODULE, Node}, Child).
 
 kill_children(Node, Bucket, VBuckets) ->
@@ -63,6 +80,14 @@ kill_children(Node, Bucket, VBuckets) ->
                           kill_child(Node, Child)
                   end, Children),
     Children.
+
+kill_dst_children(Node, Bucket, Dst) ->
+    Children = [Id || Id = {B, _, D, _} <- children(Node),
+                      B == Bucket,
+                      D == Dst],
+    lists:foreach(fun (Child) ->
+                          kill_child(Node, Child)
+                  end, Children).
 
 kill_runaway_children(Node, Bucket, Replicas) ->
     %% Kill any children not in Replicas
@@ -102,8 +127,7 @@ args(Node, Bucket, VBuckets, DstNode, TakeOver) ->
     [vbucketmigrator, Command, Args, [use_stdio, stderr_to_stdout]].
 
 children(Node) ->
-    [Id || {Id, Pid, _, _} <- supervisor:which_children({?MODULE, Node}),
-           Pid /= undefined].
+    [Id || {Id, _, _, _} <- supervisor:which_children({?MODULE, Node})].
 
 start_child(Node, Bucket, VBuckets, DstNode, TakeOver) ->
     PortServerArgs = args(Node, Bucket, VBuckets, DstNode, TakeOver),

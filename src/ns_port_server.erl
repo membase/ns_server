@@ -29,7 +29,7 @@
 %% API
 
 start_link(Name, Cmd, Args, Opts) ->
-    gen_server:start_link({local, Name}, ?MODULE,
+    gen_server:start_link(?MODULE,
                           {Name, Cmd, Args, Opts}, []).
 
 init({Name, _Cmd, _Args, _Opts} = Params) ->
