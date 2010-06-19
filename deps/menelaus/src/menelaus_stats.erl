@@ -27,8 +27,6 @@
          reply_json/3,
          expect_prop_value/2]).
 
--import(menelaus_web, [all_accessible_buckets/2]).
-
 default_find(K, Default, Dict) ->
     case dict:find(K, Dict) of
         error -> Default;
@@ -60,7 +58,7 @@ basic_stats(_PoolId, BucketId) ->
 % GET /pools/default/stats?stat=combined
 
 handle_bucket_stats(PoolId, all, Req) ->
-    BucketNames = proplists:get_keys(all_accessible_buckets(PoolId, Req)),
+    BucketNames = menelaus_web:all_accessible_bucket_names(PoolId, Req),
     handle_buckets_stats(PoolId, BucketNames, Req);
 
 handle_bucket_stats(PoolId, Id, Req) ->

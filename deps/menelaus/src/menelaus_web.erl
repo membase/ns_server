@@ -20,7 +20,7 @@
 -endif.
 
 -export([start_link/0, start_link/1, stop/0, loop/3, webconfig/0, restart/0,
-         all_accessible_buckets/2]).
+         all_accessible_bucket_names/2]).
 
 -export([ns_log_cat/1, ns_log_code_string/1, alert_key/1]).
 
@@ -522,10 +522,10 @@ handle_streaming(F, Req, HTTPRes, LastRes) ->
     end,
     handle_streaming(F, Req, HTTPRes, Res).
 
-all_accessible_buckets(_PoolId, Req) ->
-    all_accessible_buckets_in_pool(fakepool, Req).
+all_accessible_bucket_names(_PoolId, Req) ->
+    all_accessible_bucket_names_in_pool(fakepool, Req).
 
-all_accessible_buckets_in_pool(_Pool, Req) ->
+all_accessible_bucket_names_in_pool(_Pool, Req) ->
     BucketsAll = ns_bucket:get_bucket_names(),
     menelaus_auth:filter_accessible_buckets(BucketsAll, Req).
 
@@ -542,11 +542,11 @@ checking_bucket_access(_PoolId, Id, Req, Body) ->
     end.
 
 handle_bucket_list(Id, Req) ->
-    Buckets = lists:sort(fun (A,B) -> element(1, A) =< element(1, B) end,
-                         all_accessible_buckets_in_pool(fakepool, Req)),
+    BucketNames = lists:sort(fun (A,B) -> element(1, A) =< element(1, B) end,
+                         all_accessible_bucket_names_in_pool(fakepool, Req)),
     LocalAddr = menelaus_util:local_addr(Req),
     BucketsInfo = [build_bucket_info(Id, Name, fakepool, LocalAddr)
-                   || {Name, _} <- Buckets],
+                   || Name <- BucketNames],
     reply_json(Req, BucketsInfo).
 
 handle_bucket_info(PoolId, Id, Req, Pool, _Bucket) ->
