@@ -648,10 +648,10 @@
             <tr>
               <td><a class="gray_link bucket_name" href="#visitBucket={%=h(this.name)%}">{%= h(this.name) %}</a></td>
               <td>Membase</td>
-              <td>Stretch to All</td>
-              <td>3</td>
-              <td>20Gb</td>
-              <td>10Gb</td>
+              <td>...</td>
+              <td>...</td>
+              <td>...</td>
+              <td>...</td>
             </tr>
             <tr id="{%= h(this.settingsRowID) %}" class="settings-placeholder"><td colspan="6"></td></tr>
           <!-- {% }); %} -->
@@ -667,20 +667,20 @@
         <div class="side side_3"></div>
         <div class="side side_4"></div>
         <div class="pad">
-          <a href="{%=jsLink('BucketsSection.showBucket', obj.uri)%}" class="edit_btn"><!--EDIT--></a>
+          <a class="edit_btn disabled"><!--EDIT--></a>
           <table class="bucket_properties_table">
           <col width="50%" />
           <col width="50%" />
             <tr>
               <td>
-                Bucket Name: <span>Bucket Name Here </span><br />
+                Bucket Name: <span>default</span><br />
                 Bucket Type: <span>Membase</span><br />
                 Number of Servers: <span> Stretch to All</span><br />
-                Access Control <span>SASL Password</span>
+                Access Control: <span>None</span>
               </td>
               <td>
-                Replication: <span>3 replica (backup) copies</span><br />
-                Blocking Behaviour: <span>Wait for replication to complete. Wait untill 3 copied sent.</span>
+                Replication: <span>...</span><br />
+                Blocking Behaviour: <span>...</span>
               </td>
             </tr>
           </table>
@@ -707,16 +707,16 @@
               <tr>
                 <td colspan="4">
                   <span class="diagr_ram">
-                    <span style="width: 33%;" class="blue"></span>
-                    <span style="width: 68%;" class="green"></span>
+                    <span style="width: 5%;" class="blue"></span>
+                    <span style="width: 5%;" class="green"></span>
                   </span>
                 </td>
               </tr>
               <tr class="diagr_labels">
-                <td class="blue">Membase Quota (15Gb)</td>
-                <td class="green">Other (5Gb)</td>
-                <td>Free (12Gb)</td>
-                <td class="right">32Gb</td>
+                <td class="blue">Membase Quota ...</td>
+                <td class="green">Other ...</td>
+                <td>Free ...</td>
+                <td class="right">...</td>
               </tr>
             </table>
           </div>
@@ -734,13 +734,13 @@
             </table>
           </div>
           <div class="ovf">
-            <span class="total_ram">Total RAM (192 Gb)</span>
+            <span class="total_ram">Total RAM ...</span>
             <table class="label">
             <col width="245" />
             <col width="" />
               <tr>
-                <td>Solid State Quota:</td>
-                <td>30 GB</td>
+                <td>Disk Quota:</td>
+                <td>...</td>
               </tr>
             </table>
             <table class="RAM_diagramm">
@@ -751,47 +751,16 @@
               <tr>
                 <td colspan="4">
                   <span class="diagr_ram">
-                    <span style="width: 33%;" class="blue"></span>
-                    <span style="width: 68%;" class="green"></span>
+                    <span style="width: 5%;" class="blue"></span>
+                    <span style="width: 5%;" class="green"></span>
                   </span>
                 </td>
               </tr>
               <tr class="diagr_labels">
-                <td class="blue">Membase Quota (15Gb)</td>
-                <td class="green">Other (5Gb)</td>
-                <td>Free (12Gb)</td>
-                <td class="right">32Gb</td>
-              </tr>
-            </table>
-          </div>
-          <div class="ovf">
-            <span class="total_ram">Total RAM (192 Gb)</span>
-            <table class="label">
-            <col width="245" />
-            <col width="" />
-              <tr>
-                <td>Solid State Quota:</td>
-                <td>30 GB</td>
-              </tr>
-            </table>
-            <table class="RAM_diagramm">
-            <col width="">
-            <col width="">
-            <col width="">
-            <col width="">
-              <tr>
-                <td colspan="4">
-                  <span class="diagr_ram">
-                    <span style="width: 33%;" class="blue"></span>
-                    <span style="width: 68%;" class="green"></span>
-                  </span>
-                </td>
-              </tr>
-              <tr class="diagr_labels">
-                <td class="blue">Membase Quota (15Gb)</td>
-                <td class="green">Other (5Gb)</td>
-                <td>Free (12Gb)</td>
-                <td class="right">32Gb</td>
+                <td class="blue">Membase Quota ...</td>
+                <td class="green">Other ...</td>
+                <td>Free ...</td>
+                <td class="right">...</td>
               </tr>
             </table>
           </div>
