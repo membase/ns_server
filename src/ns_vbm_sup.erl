@@ -38,17 +38,19 @@ set_replicas(Node, Bucket, Replicas) ->
     NeededReplicas = Replicas -- Actions,
     Sorted = lists:keysort(2, NeededReplicas),
     Grouped = misc:keygroup(2, Sorted),
-    lists:foreach(fun ({Dst, R}) ->
-                          VBuckets = [V || {V, _} <- R],
-                          lists:foreach(fun (V) ->
-                                                error_logger:info_msg("Starting replica for vbucket ~p on node ~p~n",
-                                                                      [V, Dst]),
-                                                ns_memcached:set_vbucket_state(Dst, Bucket, V, dead),
-                                                ns_memcached:delete_vbucket(Dst, Bucket, V),
-                                                ns_memcached:set_vbucket_state(Dst, Bucket, V, replica)
-                                        end, VBuckets),
-                          {ok, _Pid} = start_child(Node, Bucket, VBuckets, Dst, false)
-                  end, Grouped).
+    lists:foreach(
+      fun ({Dst, R}) ->
+              VBuckets = [V || {V, _} <- R],
+              lists:foreach(fun (V) ->
+                                    error_logger:info_msg(
+                                      "Starting replica for vbucket ~p on node ~p~n",
+                                      [V, Dst]),
+                                    ns_memcached:set_vbucket_state(Dst, Bucket, V, dead),
+                                    ns_memcached:delete_vbucket(Dst, Bucket, V),
+                                    ns_memcached:set_vbucket_state(Dst, Bucket, V, replica)
+                            end, VBuckets),
+              {ok, _Pid} = start_child(Node, Bucket, VBuckets, Dst, false)
+      end, Grouped).
 
 move(Bucket, VBucket, SrcNode, DstNode) ->
     kill_children(SrcNode, Bucket, [VBucket]),
@@ -92,12 +94,17 @@ kill_dst_children(Node, Bucket, Dst) ->
 kill_runaway_children(Node, Bucket, Replicas) ->
     %% Kill any children not in Replicas
     Children = [Child || Child = {B, _, _, _} <- children(Node), B == Bucket],
-    {Runaways, GoodChildren} = lists:partition(fun ({_, VBuckets, DstNode, false}) ->
-                                                       NodeReplicas = [{DstNode, V} || V <- VBuckets],
-                                                       lists:all(fun (NR) -> lists:member(NR, Replicas) end, NodeReplicas)
-                                               end, Children),
-    lists:foreach(fun (Runaway) ->
-                          error_logger:info_msg("~p:kill_runaway_children(): Killling replicator ~p on node ~p~n",
+    {GoodChildren, Runaways} =
+        lists:partition(
+          fun ({_, VBuckets, DstNode, false}) ->
+                  NodeReplicas = [{V, DstNode} || V <- VBuckets],
+                  lists:all(fun (NR) -> lists:member(NR, Replicas) end,
+                            NodeReplicas)
+          end, Children),
+    lists:foreach(
+      fun (Runaway) ->
+              error_logger:info_msg(
+                "~p:kill_runaway_children(): Killling replicator ~p on node ~p~n",
                                                [?MODULE, Runaway, Node]),
                           kill_child(Node, Runaway)
                   end, Runaways),
