@@ -41,15 +41,27 @@ set_replicas(Node, Bucket, Replicas) ->
     Grouped = misc:keygroup(2, Sorted),
     lists:foreach(
       fun ({Dst, R}) ->
+              {ok, States} = ns_memcached:list_vbuckets(Dst, Bucket),
+              ExistingVBuckets = [V || {V, _} <- States],
               VBuckets = [V || {V, _} <- R],
-              lists:foreach(fun (V) ->
-                                    error_logger:info_msg(
-                                      "Starting replica for vbucket ~p on node ~p~n",
-                                      [V, Dst]),
-                                    ns_memcached:set_vbucket_state(Dst, Bucket, V, dead),
-                                    ns_memcached:delete_vbucket(Dst, Bucket, V),
-                                    ns_memcached:set_vbucket_state(Dst, Bucket, V, replica)
-                            end, VBuckets),
+              lists:foreach(
+                fun (V) ->
+                        error_logger:info_msg(
+                          "Starting replica for vbucket ~p on node ~p~n",
+                          [V, Dst]),
+                        case lists:member(V, ExistingVBuckets) of
+                            true ->
+                                error_logger:info_msg(
+                                  "~p:set_replicas: deleting existing data for vbucket ~p on node ~p~n",
+                                  [?MODULE, V, Dst]),
+                                ns_memcached:set_vbucket_state(Dst, Bucket, V, dead),
+                                ns_memcached:delete_vbucket(Dst, Bucket, V),
+                                timer:sleep(500);
+                            false ->
+                                ok
+                        end,
+                        ns_memcached:set_vbucket_state(Dst, Bucket, V, replica)
+                end, VBuckets),
               {ok, _Pid} = start_child(Node, Bucket, VBuckets, Dst, false)
       end, Grouped).
 
