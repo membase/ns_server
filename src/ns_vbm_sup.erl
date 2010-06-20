@@ -56,6 +56,11 @@ set_replicas(Node, Bucket, Replicas) ->
 move(Bucket, VBucket, SrcNode, DstNode) ->
     kill_children(SrcNode, Bucket, [VBucket]),
     Args = args(SrcNode, Bucket, [VBucket], DstNode, true),
+    %% Delete any data from the target node. This has the added
+    %% advantage of crashing us if the target node is not ready
+    %% to receive data, or at least delaying us until it is.
+    ns_memcached:set_vbucket_state(DstNode, Bucket, VBucket, dead),
+    ns_memcached:delete_vbucket(DstNode, Bucket, VBucket),
     case misc:spawn_and_wait(
            SrcNode,
            fun () ->
