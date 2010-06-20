@@ -34,7 +34,8 @@ node_vbuckets(I, Node, States, Map) ->
                                                  N == Node]),
     GMap = [{VBucket, "color=gray"} || {VBucket, Chain} <- misc:enumerate(Map, 0),
                                          lists:member(Node, Chain)],
-    [io_lib:format("n~Bv~B [style=filled label=\"~B\" ~s];~n", [I, V, V, Style]) ||
+    [io_lib:format("n~Bv~B [style=filled label=\"~B\" group=g~B ~s];~n",
+                   [I, V, V, V, Style]) ||
         {V, Style} <- lists:ukeymerge(1, GState, GMap)].
 
 graphviz(Bucket) ->
@@ -62,7 +63,7 @@ graphviz(Bucket) ->
                                  {false, true} -> "blue"
                              end]) ||
                 R = {Src, Dst, V} <- AllRep],
-    ["digraph G {", SubGraphs, Edges, "}"].
+    ["digraph G { rankdir=LR; ranksep=6;", SubGraphs, Edges, "}"].
 
 sanify(Bucket, Map, Servers) ->
     {States, _Zombies} = current_states(Servers, Bucket),
