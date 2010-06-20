@@ -40,7 +40,7 @@ node_vbuckets(I, Node, States, Map) ->
 
 graphviz(Bucket) ->
     {_, _, Map, Servers} = ns_bucket:config(Bucket),
-    {States, Zombies} = current_states(Servers, Bucket),
+    {ok, States, Zombies} = current_states(Servers, Bucket),
     Nodes = lists:sort(Servers),
     NodeColors = lists:map(fun (Node) ->
                                    case lists:member(Node, Zombies) of
@@ -66,7 +66,7 @@ graphviz(Bucket) ->
     ["digraph G { rankdir=LR; ranksep=6;", SubGraphs, Edges, "}"].
 
 sanify(Bucket, Map, Servers) ->
-    {States, _Zombies} = current_states(Servers, Bucket),
+    {ok, States, _Zombies} = current_states(Servers, Bucket),
     sanify(Bucket, States, Map, 0).
 
 sanify(_, _, [], _) ->
@@ -101,33 +101,44 @@ sanify(Bucket, States, [Chain|Map], VBucket) ->
                       "~p:sanify: Extra active nodes ~p for vbucket ~p. If there is only one, we should probably just change the map, but this should never happen, so I'm going to do nothing.~n",
                       [?MODULE, Nodes, VBucket])
             end;
-        [{_, active}|ReplicaStates] ->
+        C = [{_, active}|ReplicaStates] ->
             lists:foreach(
-              fun ({N, active}) ->
+              fun ({_, {N, active}}) ->
                       error_logger:error_msg("~p:sanify: Active replica ~p for vbucket ~p. This should never happen, but we have an active master, so I'm deleting it.~n",
                                              [?MODULE, N]),
                       ns_memcached:set_vbucket_state(N, Bucket, VBucket, dead),
-                      ns_memcached:delete_vbucket(N, Bucket, VBucket),
                       ns_vbm_sup:kill_children(N, Bucket, [VBucket]);
-                  ({_, replica})-> % This is what we expect
+                  ({_, {_, replica}})-> % This is what we expect
                       ok;
-                  ({undefined, missing}) -> % Probably fewer nodes than copies
+                  ({_, {undefined, missing}}) -> % Probably fewer nodes than copies
                       ok;
-                  ({N, State}) ->
+                  ({{M, _}, {N, State}}) ->
                       error_logger:error_msg("~p:sanify: Replica on ~p in ~p state for vbucket ~p. Killing any existing replicators for that vbucket.~n",
                                              [?MODULE, N, State, VBucket]),
-                      ns_vbm_sup:kill_children(N, Bucket, [VBucket])
-              end, ReplicaStates),
-            %% Clean up turds
+                      ns_vbm_sup:kill_children(M, Bucket, [VBucket])
+              end, misc:pairs(C)),
+            HaveAllCopies = lists:all(
+                              fun ({undefined, _}) -> false;
+                                  ({_, replica}) -> true;
+                                  (_) -> false
+                              end, ReplicaStates),
             lists:foreach(
               fun ({N, State}) ->
-                      error_logger:info_msg("~p:sanify: deleting old data for vbucket ~p in state ~p on node ~p~n",
-                                            [?MODULE, VBucket, State, N]),
-                      %% There'd better not be any replicators, but kill any
-                      %% just in case.
-                      ns_vbm_sup:kill_children(N, Bucket, [VBucket]),
                       ns_memcached:set_vbucket_state(N, Bucket, VBucket, dead),
-                      ns_memcached:delete_vbucket(N, Bucket, VBucket)
+                      case {HaveAllCopies, State} of
+                          {true, _} ->
+                              error_logger:info_msg("~p:cleanup: deleting extra copy of vbucket ~p on node ~p in state ~p.~n",
+                                                    [?MODULE, VBucket, N, State]),
+                              ns_memcached:delete_vbucket(N, Bucket, VBucket);
+                          {false, dead} ->
+                              ok;
+                          {false, _} ->
+                              error_logger:info_msg(
+                                "~p:sanify: setting extra copy of vbucket ~p on node ~p from ~p to dead.~n",
+                                [?MODULE, VBucket, N, State]),
+                              ns_memcached:set_vbucket_state(
+                                N, Bucket, VBucket, dead)
+                      end
               end, ExtraStates);
         [{Master, State}|ReplicaStates] ->
             case [N||{N, RState} <- ReplicaStates ++ ExtraStates,
@@ -145,11 +156,8 @@ sanify(Bucket, States, [Chain|Map], VBucket) ->
 
 %% [{Node, VBucket, State}...]
 -spec current_states(list(atom()), string()) ->
-                            list({atom(), integer(), atom()}).
-current_states(Nodes, Buckets) ->
-    current_states(Nodes, Buckets, 5).
-
-current_states(Nodes, Bucket, Tries) ->
+                            {ok, list({atom(), integer(), atom()})}.
+current_states(Nodes, Bucket) ->
     case ns_memcached:list_vbuckets_multi(Nodes, Bucket) of
         {Replies, []} ->
             {GoodReplies, BadReplies} = lists:partition(fun ({_, {ok, _}}) -> true;
@@ -158,11 +166,10 @@ current_states(Nodes, Bucket, Tries) ->
             ErrorNodes = [Node || {Node, _} <- BadReplies],
             States = [{Node, VBucket, State} || {Node, {ok, Reply}} <- GoodReplies,
                                                 {VBucket, State} <- Reply],
-            {States, ErrorNodes};
+            {ok, States, ErrorNodes};
         {_, BadNodes} ->
-            error_logger:info_msg("~p:current_states: can't reach nodes ~p: trying again~n", [?MODULE, BadNodes]),
-            timer:sleep(1000),
-            current_states(Nodes, Bucket, Tries-1)
+            error_logger:info_msg("~p:current_states: can't reach nodes ~p~n", [?MODULE, BadNodes]),
+            {error, {unreachable_nodes, BadNodes}}
     end.
 
 map_to_replicas(Map) ->
