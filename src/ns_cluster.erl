@@ -178,12 +178,17 @@ leave_sync() ->
     timer:sleep(5000).
 
 shun(RemoteNode) ->
-    ns_config:update(fun({nodes_wanted, X}) ->
-                             {nodes_wanted, X -- [RemoteNode]};
-                        (X) -> X
-                     end,
-                     make_ref()),
-    ns_config_rep:push().
+    case RemoteNode == node() of
+        false ->
+            ns_config:update(fun({nodes_wanted, X}) ->
+                                     {nodes_wanted, X -- [RemoteNode]};
+                                (X) -> X
+                             end,
+                             make_ref()),
+                ns_config_rep:push();
+        true ->
+            leave()
+    end.
 
 alert_key(?NODE_JOINED) -> server_joined;
 alert_key(?NODE_EJECTED) -> server_left;
