@@ -162,6 +162,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {done, Req:serve_file(DocFile, DocRoot)};
                              ["dot", Bucket] ->
                                  {auth, fun handle_dot/2, [Bucket]};
+                             ["sasl_logs"] ->
+                                 {auth, fun handle_sasl_logs/1};
                              _ ->
                                  {done, Req:serve_file(Path, AppRoot)}%% , [{"Pragma", "no-cache"},
                                                                       %%  {"Cache-Control", "no-cache must-revalidate"}])}
@@ -1066,9 +1068,15 @@ handle_diag(Req) ->
 
 handle_dot(Bucket, Req) ->
     Dot = ns_janitor:graphviz(Bucket),
-    Req:ok({"test/plain; charset=utf-8",
+    Req:ok({"text/plain; charset=utf-8",
             server_header(),
             iolist_to_binary(Dot)}).
+
+handle_sasl_logs(Req) ->
+    Logs = ns_log_browser:get_logs(all, 200, []),
+    Req:ok({"text/plain; charset=utf-8",
+            server_header(),
+            Logs}).
 
 ymd_to_string({Y, M, D}) ->
     integer_to_list(Y) ++ "/" ++
