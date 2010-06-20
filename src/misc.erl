@@ -447,16 +447,20 @@ spawn_link_safe(Fun) ->
 spawn_link_safe(Node, Fun) ->
     Me = self(),
     Ref = make_ref(),
-    Pid = spawn_link(
-            Node,
-            fun () ->
-                    process_flag(trap_exit, true),
-                    Fun(),
-                    receive
-                        Msg -> Me ! {Ref, Msg}
-                    end
-            end),
-    {ok, Pid, Ref}.
+    spawn_link(
+      Node,
+      fun () ->
+              process_flag(trap_exit, true),
+              SubPid = Fun(),
+              Me ! {Ref, pid, SubPid},
+              receive
+                  Msg -> Me ! {Ref, Msg}
+              end
+      end),
+    receive
+        {Ref, pid, SubPid} ->
+            {ok, SubPid, Ref}
+    end.
 
 
 spawn_and_wait(Fun) ->
