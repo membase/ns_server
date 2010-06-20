@@ -39,6 +39,7 @@
          concat_url_path/1,
          validate_email_address/1,
          extract_disk_stats_for_path/2,
+         insecure_pipe_through_command/2,
          get_disk_stats_for_path/2]).
 
 -export([java_date/0,
@@ -259,3 +260,25 @@ get_disk_stats_for_path(Node, Path) ->
                     {ok, {_MPoint, KBytes, Cap}} -> {ok, KBytes, Cap}
                 end
     end.
+
+pipe_through_command_rec(Port, Acc) ->
+    receive
+        {Port, {data, Data}} ->
+            pipe_through_command_rec(Port, [Data | Acc]);
+        {Port, {exit_status, _}} ->
+            lists:reverse(Acc);
+        X when is_tuple(X) andalso element(1, X) =:= Port ->
+            io:format("ignoring port message: ~p~n", [X]),
+            pipe_through_command_rec(Port, Acc)
+    end.
+
+%% this is NOT secure, because I cannot make erlang ports work as
+%% popen. We're missing ability to close write side of the port.
+insecure_pipe_through_command(Command, IOList) ->
+    TmpFile = filename:join(ns_config_default:default_path("tmp"),
+                            "pipethrough." ++ integer_to_list(erlang:phash2([self(), os:getpid(), timestamp]))),
+    file:write_file(TmpFile, IOList),
+    Port = open_port({spawn, Command ++ " <" ++ mochiweb_util:shell_quote(TmpFile)}, [binary, in, exit_status]),
+    RV = pipe_through_command_rec(Port, []),
+    file:delete(TmpFile),
+    RV.
