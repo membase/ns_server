@@ -49,7 +49,6 @@ stop_rebalance(Bucket) ->
 
 %% gen_server callbacks
 init(Bucket) ->
-    timer:send_after(1000, rebalance_if_new),
     timer:send_interval(10000, janitor),
     {ok, #state{bucket=Bucket}}.
 
@@ -144,13 +143,8 @@ handle_cast(Msg, State) ->
 handle_info(janitor, State = #state{bucket=Bucket, rebalancer=undefined}) ->
     misc:flush(janitor),
     {_, _, Map, Servers} = ns_bucket:config(Bucket),
-    ns_janitor:cleanup(Bucket, Map, Servers),
-    {noreply, State};
-handle_info(rebalance_if_new, State = #state{bucket=Bucket,
-                                             rebalancer=undefined}) ->
-    case ns_bucket:config(Bucket) of
-        {_, _, Map, Servers} when Servers == undefined orelse
-                                Servers == [] ->
+    case Servers == undefined orelse Servers == [] of
+        true ->
             error_logger:info_msg("Performing initial rebalance~n"),
             {ok, Pid, Ref} =
                 misc:spawn_link_safe(
@@ -162,6 +156,7 @@ handle_info(rebalance_if_new, State = #state{bucket=Bucket,
                   end),
             {noreply, State#state{rebalancer={Pid, Ref}, progress=[]}};
         _ ->
+            ns_janitor:cleanup(Bucket, Map, Servers),
             {noreply, State}
     end;
 handle_info({Ref, Reason}, State = #state{rebalancer={_Pid, Ref}}) ->
