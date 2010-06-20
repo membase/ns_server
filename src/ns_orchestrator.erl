@@ -248,10 +248,18 @@ do_rebalance(Bucket, KeepNodes, EjectNodes, Map) ->
                      Moves = balance_nodes(Bucket, M, Histograms4, I),
                      apply_moves(I, Moves, M)
              end, Map4, lists:seq(2, ChainLength)),
-    lists:foreach(fun (N) -> ns_cluster:shun(N) end, EvacuateNodes),
     ns_bucket:set_servers(Bucket, KeepNodes),
     ns_bucket:set_map(Bucket, Map5),
-    ns_janitor:cleanup(Bucket, Map5, KeepNodes).
+    ns_janitor:cleanup(Bucket, Map5, KeepNodes),
+    %% Shun myself last
+    ShunNodes = lists:delete(node(), EvacuateNodes),
+    lists:foreach(fun (N) -> ns_cluster:shun(N) end, ShunNodes),
+    case lists:member(node(), EvacuateNodes) of
+        true ->
+            ns_cluster:leave();
+        false ->
+            ok
+    end.
 
 master_moves(Bucket, EvacuateNodes, Map, Histograms) ->
     master_moves(Bucket, EvacuateNodes, Map, Histograms, 0, []).
@@ -313,7 +321,6 @@ perform_moves(Bucket, Map, [{V, Old, New}|Moves]) ->
                 undefined ->
                     ns_memcached:set_vbucket_state(New, Bucket, V, active);
                 _ ->
-                    ns_bucket:set_map(Bucket, Map1),
                     ns_vbm_sup:move(Bucket, V, Old, New)
             end,
             perform_moves(Bucket, Map1, Moves)
