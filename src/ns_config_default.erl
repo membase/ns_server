@@ -136,7 +136,8 @@ default() ->
     % Memcached config
     {memcached, [{'_ver', {0, 0, 0}},
                  {port, 11210},
-                 {ht_size, 786433},
+                 {ht_size, 12289},
+                 {ht_locks, 23},
                  {dbname, DbName},
                  {admin_user, "_admin"},
                  {admin_pass, "_admin"}
@@ -145,7 +146,7 @@ default() ->
 
     {buckets, [{'_ver', {0, 0, 0}},
                {configs, [{"default",
-                           [{num_vbuckets, 16},
+                           [{num_vbuckets, 256},
                             {num_replicas, 1},
                             {servers, []},
                             {map, undefined}]
@@ -180,7 +181,8 @@ default() ->
         "-E", "./bin/ep_engine/ep.so",
         "-B", "binary",
         "-r",
-        "-e", {"vb0=false;ht_size=~B;dbname=~s", [ht_size, dbname]}],
+        "-e", {"vb0=false;ht_size=~B;ht_locks=~B;dbname=~s",
+               [ht_size, ht_locks, dbname]}],
        [{env, [{"MEMCACHED_TOP_KEYS", "100"}]},
         use_stdio,
         stderr_to_stdout,

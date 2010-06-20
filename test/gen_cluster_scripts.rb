@@ -42,7 +42,8 @@ num_nodes.times do |x|
 
     {{node, #{node_id}, memcached}, [{'_ver', {0, 0, 0}},
                  {port, #{(x * 2) + base_direct_port}},
-                 {ht_size,786433},
+                 {ht_size, 12289},
+                 {ht_locks, 23},
                  {dbname, "#{node_data}/default"},
                  {admin_user, "_admin"},
                  {admin_pass, "_admin"},
