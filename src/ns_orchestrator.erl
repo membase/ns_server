@@ -81,7 +81,6 @@ handle_call({failover, Node}, _From, State = #state{bucket = Bucket}) ->
                 false ->
                     ok
            end,
-            ns_cluster:shun(Node),
             lists:foreach(fun (N) ->
                                   ns_vbm_sup:kill_dst_children(N, Bucket, Node)
                           end, lists:delete(Node, Servers)),
@@ -89,6 +88,7 @@ handle_call({failover, Node}, _From, State = #state{bucket = Bucket}) ->
             Map1 = promote_replicas(Bucket, Map, [Node]),
             ns_bucket:set_map(Map1),
             ns_bucket:set_servers(lists:delete(Node, Servers)),
+            ns_cluster:shun(Node),
             {reply, ok, State};
         false -> {reply, not_member, State}
     end;
