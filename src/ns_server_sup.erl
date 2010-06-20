@@ -43,9 +43,8 @@ get_child_specs() ->
       []},
 
      {ns_memcached,
-      {supervisor_cushion, start_link,
-       [ns_memcached, 5000, ns_memcached, start_link, []]},
-      permanent, 10, worker, [supervisor_cushion]},
+      {ns_memcached, start_link, []},
+      permanent, 10, worker, [ns_memcached]},
 
      {ns_vbm_sup, {ns_vbm_sup, start_link, []},
       permanent, infinity, supervisor, [ns_vbm_sup]},

@@ -104,6 +104,7 @@ handle_info(Msg, State) ->
 terminate(Reason, State) ->
     error_logger:error_msg("~p:terminate(~p, ~p)~n",
                            [?MODULE, Reason, State]),
+    timer:sleep(2000),
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
@@ -116,19 +117,19 @@ create_bucket(Bucket, Config) ->
     create_bucket(node(), Bucket, Config).
 
 create_bucket(Node, Bucket, Config) ->
-    gen_server:call({?MODULE, Node}, {create_bucket, Bucket, Config}).
+    call(Node, {create_bucket, Bucket, Config}).
 
 delete_bucket(Bucket) ->
     delete_bucket(node(), Bucket).
 
 delete_bucket(Node, Bucket) ->
-    gen_server:call({?MODULE, Node}, {delete_bucket, Bucket}).
+    call(Node, {delete_bucket, Bucket}).
 
 delete_vbucket(Bucket, VBucket) ->
     delete_vbucket(node(), Bucket, VBucket).
 
 delete_vbucket(Node, Bucket, VBucket) ->
-    gen_server:call({?MODULE, Node}, {delete_vbucket, Bucket, VBucket}).
+    call(Node, {delete_vbucket, Bucket, VBucket}).
 
 host_port_str() ->
     host_port_str(node()).
@@ -143,7 +144,7 @@ list_buckets() ->
     list_buckets(node()).
 
 list_buckets(Node) ->
-    gen_server:call({?MODULE, Node}, list_buckets).
+    call(Node, list_buckets).
 
 list_vbuckets(Bucket) ->
     list_vbuckets(node(), Bucket).
@@ -162,7 +163,7 @@ set_vbucket_state(Bucket, VBucket, VBState) ->
     set_vbucket_state(node(), Bucket, VBucket, VBState).
 
 set_vbucket_state(Node, Bucket, VBucket, VBState) ->
-    gen_server:call({?MODULE, Node}, {set_vbucket_state, Bucket, VBucket, VBState}).
+    call(Node, {set_vbucket_state, Bucket, VBucket, VBState}).
 
 stats(Bucket) ->
     stats(node(), Bucket).
@@ -170,10 +171,10 @@ stats(Bucket) ->
 stats(Bucket, Key) when is_list(Bucket) ->
     stats(node(), Bucket, Key);
 stats(Node, Bucket) ->
-    gen_server:call({?MODULE, Node}, {stats, Bucket, ""}).
+    call(Node, {stats, Bucket, ""}).
 
 stats(Node, Bucket, Key) ->
-    gen_server:call({?MODULE, Node}, {stats, Bucket, Key}).
+    call(Node, {stats, Bucket, Key}).
 
 stats_multi(Nodes, Bucket) ->
     gen_server:multi_call(Nodes, ?MODULE, {stats, Bucket, ""}).
@@ -192,6 +193,22 @@ topkeys(Node, Bucket) ->
     end.
 
 %% Internal functions
+call(Node, Call) ->
+    call(Node, Call, 3).
+
+call(Node, Call, 0) ->
+    gen_server:call({?MODULE, Node}, Call);
+call(Node, Call, Tries) ->
+    try gen_server:call({?MODULE, Node}, Call) of
+        Result -> Result
+    catch
+        Error:Reason ->
+            error_logger:info_msg("~p:call(~p, ~p): got ~p:~p; retrying~n",
+                                  [?MODULE, Node, Call, Error, Reason]),
+
+            timer:sleep(3000),
+            call(Node, Call, Tries-1)
+    end.
 
 do_in_bucket(_Sock, Bucket, Fun) ->
     %% TODO: real multi-tenancy
