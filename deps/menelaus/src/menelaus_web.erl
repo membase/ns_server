@@ -1058,7 +1058,8 @@ handle_diag(Req) ->
     Infos = [["per_node_diag = ~p", diag_multicall(?MODULE, do_diag_per_node, [])],
              ["nodes_info = ~p", build_nodes_info(fakepool, true, normal, "127.0.0.1")],
              ["buckets = ~p", Buckets],
-             ["logs:~n-------------------------------~n~s", Logs]],
+             ["logs:~n-------------------------------~n~s", Logs],
+             ["logs_node:~n-------------------------------~n~s", ns_log_browser:get_logs(all, 200, [])]],
     Text = lists:flatmap(fun ([Fmt | Args]) ->
                                  io_lib:format(Fmt ++ "~n~n", Args)
                          end, Infos),
