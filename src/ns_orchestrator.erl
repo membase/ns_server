@@ -55,7 +55,7 @@ init(Bucket) ->
 kill_vbuckets(_, _, []) ->
     ok;
 kill_vbuckets(Node, Bucket, [V|Vs]) ->
-    case ns_memcached:set_vbucket_state(Node, Bucket, V, dead) of
+    case catch ns_memcached:set_vbucket_state(Node, Bucket, V, dead) of
         {ok, _} ->
             kill_vbuckets(Node, Bucket, Vs);
         Error -> {error, Error}
@@ -250,7 +250,6 @@ do_rebalance(Bucket, KeepNodes, EjectNodes, Map) ->
              end, Map4, lists:seq(2, ChainLength)),
     ns_bucket:set_servers(Bucket, KeepNodes),
     ns_bucket:set_map(Bucket, Map5),
-    ns_janitor:cleanup(Bucket, Map5, KeepNodes),
     %% Shun myself last
     ShunNodes = lists:delete(node(), EvacuateNodes),
     lists:foreach(fun (N) -> ns_cluster:shun(N) end, ShunNodes),
@@ -319,7 +318,9 @@ perform_moves(Bucket, Map, [{V, Old, New}|Moves]) ->
                                   [V, Bucket, Old, New]),
             case Old of
                 undefined ->
-                    ns_memcached:set_vbucket_state(New, Bucket, V, active);
+                    %% This will fail if another node is restarting.
+                    %% The janitor will catch it later if it does.
+                    catch ns_memcached:set_vbucket_state(New, Bucket, V, active);
                 _ ->
                     ns_vbm_sup:move(Bucket, V, Old, New)
             end,
@@ -346,7 +347,8 @@ promote_replica(Bucket, Chain, RemapNodes, V) ->
         [NewMaster|_] ->
             error_logger:info_msg("~p:promote_replicas(~p, ~p, ~p, ~p): Setting node ~p active for vbucket ~p~n",
                                   [?MODULE, Bucket, V, RemapNodes, Chain, NewMaster, V]),
-            ns_memcached:set_vbucket_state(NewMaster, V, active),
+            %% The janitor will catch it if this fails.
+            catch ns_memcached:set_vbucket_state(NewMaster, V, active),
             NewChainExtended
     end.
 
