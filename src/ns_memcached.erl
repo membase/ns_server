@@ -46,46 +46,41 @@ start_link() ->
 %% gen_server callback implementation
 
 init([]) ->
-    Config = ns_config:get(),
-    %% Username = ns_config:search_node_prop(Config, memcached, admin_user),
-    %% Password = ns_config:search_node_prop(Config, memcached, admin_pass),
-    Port = ns_config:search_node_prop(Config, memcached, port),
-    error_logger:info_msg("ns_memcached connecting to memcached on port ~p~n", [Port]),
-    {ok, Sock} = gen_tcp:connect("127.0.0.1", Port, [binary, {packet, 0}, {active, false}], 5000),
-    %% ok = mc_client_binary:auth(Sock, {<<"PLAIN">>, {Username, Password}}),
-    {ok, #state{sock=Sock}}.
+    {ok, #state{}}.
 
 handle_call({create_bucket, _Bucket, _Config}, _From, State) ->
-    %% Reply = mc_client_binary:create_bucket(State#state.sock, Bucket, Config),
     Reply = unimplemented,
     {reply, Reply, State};
 handle_call({delete_bucket, _Bucket}, _From, State) ->
-    %% Reply = mc_client_binary:delete_bucket(State#state.sock, Bucket),
     Reply = unimplemented,
     {reply, Reply, State};
 handle_call({delete_vbucket, Bucket, VBucket}, _From, State) ->
-    Reply = do_in_bucket(State#state.sock, Bucket,
+    Sock = connect(State),
+    Reply = do_in_bucket(Sock, Bucket,
                         fun() ->
-                                mc_client_binary:delete_vbucket(State#state.sock, VBucket)
+                                mc_client_binary:delete_vbucket(
+                                  Sock, VBucket)
                         end),
-    {reply, Reply, State};
+    {reply, Reply, State#state{sock=Sock}};
 handle_call(list_buckets, _From, State) ->
-    %% Reply = mc_client_binary:list_buckets(State#state.sock),
     Reply = {ok, ["default"]},
     {reply, Reply, State};
 handle_call({set_vbucket_state, Bucket, VBucket, VBState}, _From, State) ->
-    Reply = do_in_bucket(State#state.sock, Bucket,
+    Sock = connect(State),
+    Reply = do_in_bucket(Sock, Bucket,
                          fun() ->
-                                 mc_client_binary:set_vbucket_state(State#state.sock, VBucket,
-                                                                    atom_to_list(VBState))
+                                 mc_client_binary:set_vbucket_state(
+                                   Sock, VBucket,
+                                   atom_to_list(VBState))
                          end),
-    {reply, Reply, State};
+    {reply, Reply, State#state{sock=Sock}};
 handle_call({stats, Bucket, Key}, _From, State) ->
-    Reply = do_in_bucket(State#state.sock, Bucket,
+    Sock = connect(State),
+    Reply = do_in_bucket(Sock, Bucket,
                          fun () ->
-                                 mc_client_binary:stats(State#state.sock, Key)
+                                 mc_client_binary:stats(Sock, Key)
                          end),
-    {reply, Reply, State};
+    {reply, Reply, State#state{sock=Sock}};
 handle_call(Request, From, State) ->
     error_logger:error_msg("~p:handle_call(~p, ~p, ~p)~n",
                            [?MODULE, Request, From, State]),
@@ -112,6 +107,17 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 %% External API
+connect(State) ->
+    case State#state.sock of
+        undefined ->
+            Config = ns_config:get(),
+            Port = ns_config:search_node_prop(Config, memcached, port),
+            error_logger:info_msg("ns_memcached connecting to memcached on port ~p~n", [Port]),
+            {ok, Sock} = gen_tcp:connect("127.0.0.1", Port, [binary, {packet, 0}, {active, false}], 5000),
+            Sock;
+        Sock ->
+            Sock
+    end.
 
 create_bucket(Bucket, Config) ->
     create_bucket(node(), Bucket, Config).
