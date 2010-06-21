@@ -57,8 +57,8 @@ reconfig(_PortServers) ->
                       ns_port_sup:terminate_port(NCAO)
                   end,
                   OldPortParams),
-    lists:foreach(fun({Name, Cmd, Args, Opts}) ->
-                      ns_port_sup:launch_port(Name, Cmd, Args, Opts)
+    lists:foreach(fun(NCAO) ->
+                      ns_port_sup:launch_port(NCAO)
                   end,
                   NewPortParams),
     ok.
