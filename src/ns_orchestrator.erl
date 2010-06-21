@@ -87,7 +87,6 @@ handle_call({failover, Node}, _From, State = #state{bucket = Bucket}) ->
         false ->
             ok
     end,
-    ns_cluster:leave(Node),
     {reply, ok, State};
 handle_call(rebalance_progress, _From, State = #state{rebalancer = {_Pid, _Ref},
                                                       progress = Progress}) ->

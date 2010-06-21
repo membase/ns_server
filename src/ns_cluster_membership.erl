@@ -9,8 +9,10 @@
          add_node/4,
          engage_cluster/1,
          engage_cluster/2,
+         failover/1,
          handle_add_node_request/2,
          join_cluster/4,
+         re_add_node/1,
          system_joinable/0,
          start_rebalance/2,
          stop_rebalance/0,
@@ -39,17 +41,15 @@ get_nodes_cluster_membership() ->
     get_nodes_cluster_membership(ns_node_disco:nodes_wanted()).
 
 get_nodes_cluster_membership(Nodes) ->
-    {_, _, _, Servers} = ns_bucket:config("default"),
-    lists:map(fun (Node) ->
-                      {Node, case lists:member(Node, Servers) of
-                                 true -> active;
-                                 false -> inactiveAdded
-                             end}
-                end, Nodes).
+    [{Node, get_cluster_membership(Node)} || Node <- Nodes].
 
 get_cluster_membership(Node) ->
-    [{Node, Value}] = get_nodes_cluster_membership([Node]),
-    Value.
+    case ns_config:search({node, Node, membership}) of
+        {value, Value} ->
+             Value;
+        _ ->
+            inactiveAdded
+    end.
 
 engage_cluster(RemoteIP) ->
     engage_cluster(RemoteIP, [restart]).
@@ -225,6 +225,8 @@ start_rebalance(KnownNodes, EjectedNodes) ->
           lists:sort(KnownNodes)} of
         {X, X} ->
             KeepNodes = lists:subtract(KnownNodes, EjectedNodes),
+            ns_config:set([{{node, Node, membership}, active} ||
+                              Node <- KeepNodes]),
             ns_orchestrator:start_rebalance("default", KeepNodes, EjectedNodes);
         _ -> nodes_mismatch
     end.
@@ -234,6 +236,13 @@ stop_rebalance() ->
 
 is_balanced() ->
     not ns_orchestrator:needs_rebalance("default").
+
+failover(Node) ->
+    ok = ns_orchestrator:failover("default", Node),
+    ns_config:set({node, Node, membership}, inactiveFailed).
+
+re_add_node(Node) ->
+    ns_config:set({node, Node, membership}, inactiveAdded).
 
 ns_log_cat(Number) ->
     case (Number rem 256) div 32 of

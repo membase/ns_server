@@ -1270,7 +1270,7 @@ handle_failover(Req) ->
         undefined ->
             Req:respond({400, add_header(), "No node specified"});
         _ ->
-            ok = ns_orchestrator:failover("default", Node), % TODO multi-tenancy in REST, or automatically do it for all buckets
+            ns_cluster_membership:failover(Node),
             Req:respond({200, [], []})
     end.
 
@@ -1301,6 +1301,8 @@ handle_stop_rebalance(Req) ->
     ns_cluster_membership:stop_rebalance(),
     Req:respond({200, [], []}).
 
-%% TODO
 handle_re_add_node(Req) ->
+    Params = Req:parse_post(),
+    Node = list_to_atom(proplists:get_value("otpNode", Params, "undefined")),
+    ok = ns_cluster_membership:re_add_node(Node),
     Req:respond({200, [], []}).
