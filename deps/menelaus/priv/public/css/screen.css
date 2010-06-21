@@ -836,7 +836,7 @@ li.server_row .btn_cancel {display:block; height:15px; color:#7a7a7a; padding:0 
 #servers .list_button {height:31px; padding:0 3px 0 0; background:url(../images/btn_2_bg.png) 100% -31px no-repeat; color:#000; margin-top:14px; font-size:14px; text-decoration:none !important;}
 #servers .list_button span {display:block; text-align:center; height:31px; line-height:31px; padding:0 6px 0 10px; background:url(../images/btn_2_bg.png) 0 0 no-repeat;}
 #servers .list_button.disabled {background-position:100% -93px; color:#cacbce !important;opacity:1 !important;}
-#servers .list_button.disabled span {background-position:0 -62px; color:#cacbce !important;}
+#servers .list_button.disabled span {background-position:0 -62px; color:#9E9FA3 !important;}
 
 #servers h2 { height: 25px;}
 #servers .servers_list li { list-style: none; height: min-25px; /*margin-top: 3px; */ display:block; padding:0 10px;}
