@@ -35,7 +35,15 @@ failover(Bucket, Node) ->
 
 needs_rebalance(Bucket) ->
     {_NumReplicas, _NumVBuckets, Map, Servers} = ns_bucket:config(Bucket),
-    lists:any(fun (N) -> N == undefined end, lists:append(Map)) orelse
+    NumServers = length(Servers),
+    %% Don't warn about missing replicas when you have fewer servers
+    %% than your copy count!
+    lists:any(
+      fun (Chain) ->
+              lists:member(
+                undefined,
+                lists:sublist(Chain, NumServers))
+      end, Map) orelse
         unbalanced(histograms(Map, Servers)).
 
 rebalance_progress(Bucket) ->
@@ -397,10 +405,12 @@ server(Bucket) ->
 
 %% returns true iff the max vbucket count in any class on any server is >2 more than the min
 unbalanced(Histograms) ->
-    case [N || Histogram <- Histograms, {_, N} <- Histogram] of
-        [] -> true;
-        Counts -> lists:max(Counts) - lists:min(Counts) > 2
-    end.
+    lists:any(fun (Histogram) ->
+                      case [N || {_, N} <- Histogram] of
+                          [] -> false;
+                          Counts -> lists:max(Counts) - lists:min(Counts) > 2
+                      end
+              end, Histograms).
 
 update_progress(Bucket, Nodes, Fraction) ->
     Progress = [{Node, Fraction} || Node <- Nodes],
