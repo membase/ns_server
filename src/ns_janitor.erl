@@ -11,7 +11,8 @@
 cleanup(Bucket, Map, Servers) ->
     sanify(Bucket, Map, Servers),
     Replicas = lists:keysort(1, map_to_replicas(Map)),
-    ReplicaGroups = misc:keygroup(1, Replicas),
+    ReplicaGroups = lists:ukeymerge(1, misc:keygroup(1, Replicas),
+                                    [{N, []} || N <- lists:sort(Servers)]),
     NodesReplicas = lists:map(fun ({Src, R}) -> % R is the replicas for this node
                                       {Src, [{V, Dst} || {_, Dst, V} <- R]}
                               end, ReplicaGroups),
