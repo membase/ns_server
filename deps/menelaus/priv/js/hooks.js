@@ -641,6 +641,11 @@ var MockedRequest = mkClass({
         "hostname":"127.0.0.1",
         "version":"1.0.3_98_g5d1f7a2",
         "os":"i386-apple-darwin10.3.0",
+        uptime: 86400,
+        memoryTotal: 2032574464,
+        memoryFree: 1589864960,
+        mcdMemoryReserved: 2032574464,
+        mcdMemoryAllocated: 89864960,
         "ports":{"proxy":11211,"direct":11210}}],
       [post("nodes", x, "controller", "settings"), {}], //missing
 

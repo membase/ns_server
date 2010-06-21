@@ -404,6 +404,7 @@ build_nodes_info(MyPool, IncludeOtp, InfoLevel, LocalAddr) ->
     OtpCookie = list_to_binary(atom_to_list(ns_node_disco:cookie_get())),
     WantENodes = ns_node_disco:nodes_wanted(),
     NodeStatuses = ns_doctor:get_nodes(),
+    BucketsAll = ns_bucket:get_buckets(),
     Nodes =
         lists:map(
           fun(WantENode) ->
@@ -429,39 +430,39 @@ build_nodes_info(MyPool, IncludeOtp, InfoLevel, LocalAddr) ->
                         end,
                   KV3 = case InfoLevel of
                             stable -> KV2;
-                            normal ->
-                                BucketsAll = ns_bucket:get_buckets(),
-                                NodesBucketMemoryTotal =
-                                    length(WantENodes) *
-                                    lists:foldl(fun({_BucketName, BucketConfig}, Acc) ->
-                                                        Acc + proplists:get_value(size_per_node,
-                                                                                  BucketConfig, 0)
-                                                end,
-                                                0,
-                                                BucketsAll),
-                                NodesBucketMemoryAllocated = 0,
-                                {UpSecs, {MemoryTotal, MemoryAlloced, _}} =
-                                    {proplists:get_value(wall_clock, InfoNode, 0),
-                                     proplists:get_value(memory_data, InfoNode,
-                                                         {0, 0, undefined})},
-                                KV2 ++ [{uptime, list_to_binary(integer_to_list(UpSecs))},
-                                        {memoryTotal, erlang:trunc(MemoryTotal)},
-                                        {memoryFree, erlang:trunc(MemoryTotal - MemoryAlloced)},
-                                        {mcdMemoryReserved, erlang:trunc(NodesBucketMemoryTotal)},
-                                        {mcdMemoryAllocated, erlang:trunc(NodesBucketMemoryAllocated)}]
+                            normal -> build_extra_node_info(InfoNode, BucketsAll, KV2)
                         end,
                   {struct, KV3}
           end,
           WantENodes),
     Nodes.
 
-build_node_info_no_node_info(MyPool, WantENode, LocalAddr) ->
+build_extra_node_info(InfoNode, BucketsAll, Append) ->
+    NodesBucketMemoryTotal =
+        lists:foldl(fun({_BucketName, BucketConfig}, Acc) ->
+                            Acc + proplists:get_value(size_per_node,
+                                                      BucketConfig, 0)
+                    end,
+                    0,
+                    BucketsAll),
+    NodesBucketMemoryAllocated = 0,
+    {UpSecs, {MemoryTotal, MemoryAlloced, _}} =
+        {proplists:get_value(wall_clock, InfoNode, 0),
+         proplists:get_value(memory_data, InfoNode,
+                             {0, 0, undefined})},
+    [{uptime, list_to_binary(integer_to_list(UpSecs))},
+     {memoryTotal, erlang:trunc(MemoryTotal)},
+     {memoryFree, erlang:trunc(MemoryTotal - MemoryAlloced)},
+     {mcdMemoryReserved, erlang:trunc(NodesBucketMemoryTotal)},
+     {mcdMemoryAllocated, erlang:trunc(NodesBucketMemoryAllocated)}
+     | Append].
+
+get_node_info(WantENode) ->
     NodeStatuses = ns_doctor:get_nodes(),
-    InfoNode = case dict:find(WantENode, NodeStatuses) of
-                   {ok, Info} -> Info;
-                   error -> [stale]
-               end,
-    build_node_info(MyPool, WantENode, InfoNode, LocalAddr).
+    case dict:find(WantENode, NodeStatuses) of
+        {ok, Info} -> Info;
+        error -> [stale]
+    end.
 
 build_node_info(MyPool, WantENode, InfoNode, LocalAddr) ->
     Host = case misc:node_name_host(WantENode) of
@@ -1093,7 +1094,9 @@ handle_node(S, Req) when is_list(S) -> handle_node("default", list_to_atom(S), R
 handle_node(_PoolId, Node, Req) ->
     MyPool = fakepool,
     LocalAddr = menelaus_util:local_addr(Req),
-    KV = build_node_info_no_node_info(MyPool, Node, LocalAddr),
+    InfoNode = get_node_info(Node),
+    KV = build_extra_node_info(InfoNode, ns_bucket:get_buckets(),
+                               build_node_info(MyPool, Node, InfoNode, LocalAddr)),
     {License, Valid, ValidUntil} = case ns_license:license(Node) of
         {undefined, V, VU} -> {"", V, ymd_to_string(VU)};
         {X, V, VU}         -> {X, V, ymd_to_string(VU)}
