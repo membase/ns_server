@@ -1102,7 +1102,7 @@ handle_node(_PoolId, Node, Req) ->
         {X, V, VU}         -> {X, V, ymd_to_string(VU)}
     end,
     MemQuota = case ns_storage_conf:memory_quota(Node) of
-                   none -> <<"none">>;
+                   undefined -> <<"">>;
                    Y    -> Y
                end,
     StorageConf0 = ns_storage_conf:storage_conf(Node),
@@ -1183,6 +1183,18 @@ handle_resource_delete(Node, Path, Req) ->
         {error, _} -> Req:respond({404, add_header(), "The storage location could not be removed.\r\n"})
     end.
 
+parse_validate_number(String, Min, Max) ->
+    Parsed = (catch list_to_integer(String)),
+    if
+        is_integer(Parsed) ->
+            if
+                Parsed < Min -> too_small;
+                Parsed > Max -> too_large;
+                true -> {ok, Parsed}
+            end;
+       true -> invalid
+    end.
+
 handle_node_settings_post("Self", Req)            -> handle_node_settings_post(node(), Req);
 handle_node_settings_post(S, Req) when is_list(S) -> handle_node_settings_post(list_to_atom(S), Req);
 
@@ -1200,19 +1212,29 @@ handle_node_settings_post(Node, Req) ->
         end,
         case proplists:get_value("memoryQuota", Params) of
             undefined -> ok;
-            X -> MQNum = case X of
-                             "none" -> none;
-                             _      -> list_to_integer(X)
-                         end,
-                 case ns_storage_conf:change_memory_quota(Node, MQNum) of
-                     ok         -> ok;
-                     {error, _} -> "Error changing memory quota.\n"
-                 end
+            X ->
+                case Node =/= node() of
+                   true -> exit('setting quota for other nodes is not yet supported');
+                   _ -> ok
+                end,
+                {MaxMemoryBytes0, _, _} = memsup:get_memory_data(),
+                MaxMemoryBytes = (MaxMemoryBytes0 * 4) div 5,
+                MaxMemoryMB = MaxMemoryBytes div 1048576,
+                case parse_validate_number(X, 0, MaxMemoryMB) of
+                    {ok, Number} ->
+                        case ns_storage_conf:change_memory_quota(Node, Number) of
+                            ok         -> ok;
+                            {error, _} -> <<"Error changing memory quota.\n">>
+                        end;
+                    too_small -> <<"Value is too small">>;
+                    too_large -> <<"Value is too large">>;
+                    invalid -> <<"Value is not a number">>
+                end
         end
     ],
     case lists:filter(fun(X) -> X =/= ok end, Results) of
         [] -> Req:respond({200, add_header(), []});
-        Errs -> Req:respond({400, add_header(), lists:flatten(Errs)})
+        Errs -> reply_json(Req, Errs, 400)
     end.
 
 validate_add_node_params(Hostname, Port, User, Password) ->

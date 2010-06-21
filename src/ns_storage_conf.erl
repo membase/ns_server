@@ -8,16 +8,32 @@
 -module(ns_storage_conf).
 
 -export([memory_quota/1, change_memory_quota/2,
-         storage_conf/1, add_storage/4, remove_storage/2]).
+         storage_conf/1, add_storage/4, remove_storage/2, format_engine_max_size/0]).
 
-memory_quota(_Node) -> none. % TODO.
+format_engine_max_size() ->
+    RawValue = ns_config:search_node_prop(ns_config:get(), memcached, max_size),
+    case RawValue of
+        undefined -> "";
+        X -> io_lib:format(";max_size=~B", [X * 1048576])
+    end.
 
-change_memory_quota(_Node, none) ->
-  % TODO: This placeholder only handles no memory quota.
-  ok;
+memory_quota(Node) ->
+    {value, PropList} = ns_config:search_node(Node, ns_config:get(), memcached),
+    proplists:get_value(max_size, PropList).
 
-change_memory_quota(_Node, _NewMemQuota) ->
-  {error, todo}.
+update_max_size(Node, Quota) ->
+    {value, PropList} = ns_config:search_node(Node, ns_config:get(), memcached),
+    UpdatedProps = lists:map(fun ({max_size, _}) -> {max_size, Quota};
+                                 (X) -> X
+                             end, PropList),
+    ns_config:set({node, Node, memcached}, UpdatedProps),
+    ok.
+
+change_memory_quota(Node, none) ->
+    update_max_size(Node, none);
+
+change_memory_quota(Node, NewMemQuotaMB) when is_integer(NewMemQuotaMB) ->
+    update_max_size(Node, NewMemQuotaMB).
 
 % Returns a proplist of lists of proplists.
 %

@@ -140,7 +140,8 @@ default() ->
                  {ht_locks, 23},
                  {dbname, DbName},
                  {admin_user, "_admin"},
-                 {admin_pass, "_admin"}
+                 {admin_pass, "_admin"},
+                 {max_size, undefined}
                 ]
     },
 
@@ -181,8 +182,8 @@ default() ->
         "-E", "./bin/ep_engine/ep.so",
         "-B", "binary",
         "-r",
-        "-e", {"vb0=false;ht_size=~B;ht_locks=~B;dbname=~s",
-               [ht_size, ht_locks, dbname]}],
+        "-e", {"vb0=false;ht_size=~B;ht_locks=~B;dbname=~s~s",
+               [ht_size, ht_locks, dbname, {ns_storage_conf, format_engine_max_size, []}]}],
        [{env, [{"MEMCACHED_TOP_KEYS", "100"}]},
         use_stdio,
         stderr_to_stdout,
