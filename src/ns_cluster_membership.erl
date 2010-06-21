@@ -227,7 +227,10 @@ start_rebalance(KnownNodes, EjectedNodes) ->
             KeepNodes = lists:subtract(KnownNodes, EjectedNodes),
             ns_config:set([{{node, Node, membership}, active} ||
                               Node <- KeepNodes]),
-            ns_orchestrator:start_rebalance("default", KeepNodes, EjectedNodes);
+            ns_orchestrator:start_rebalance("default", KeepNodes, EjectedNodes),
+            %% TODO: we should have a way to delete keys
+            ns_config:set([{{node, Node, membership}, inactiveAdded}
+                           || Node <- EjectedNodes]);
         _ -> nodes_mismatch
     end.
 
