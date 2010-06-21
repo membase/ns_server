@@ -1284,6 +1284,8 @@ handle_rebalance(Req) ->
     KnownNodes = [list_to_atom(N) || N <- KnownNodesS],
     EjectedNodes = [list_to_atom(N) || N <- EjectedNodesS],
     case ns_cluster_membership:start_rebalance(KnownNodes, EjectedNodes) of
+        already_balanced ->
+            Req:respond({200, [], []});
         nodes_mismatch ->
             reply_json(Req, {struct, [{mismatch, 1}]}, 400);
         ok ->
