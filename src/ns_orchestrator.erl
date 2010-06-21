@@ -148,20 +148,14 @@ handle_info(janitor, State = #state{bucket=Bucket, rebalancer=undefined}) ->
     {_, _, Map, Servers} = ns_bucket:config(Bucket),
     case Servers == undefined orelse Servers == [] of
         true ->
+            %% TODO: this is a hack and should happen someplace else.
             error_logger:info_msg("Performing initial rebalance~n"),
-            {ok, Pid, Ref} =
-                misc:spawn_link_safe(
-                  fun () ->
-                          spawn_link(
-                            fun() ->
-                                    do_rebalance(Bucket, [node()], [], Map)
-                            end)
-                  end),
-            {noreply, State#state{rebalancer={Pid, Ref}, progress=[]}};
+            timer:apply_after(0, ns_cluster_membership,
+                              start_rebalance, [[node()], []]);
         _ ->
-            ns_janitor:cleanup(Bucket, Map, Servers),
-            {noreply, State}
-    end;
+            ns_janitor:cleanup(Bucket, Map, Servers)
+    end,
+    {noreply, State};
 handle_info({Ref, Reason}, State = #state{rebalancer={_Pid, Ref}}) ->
     error_logger:info_msg("~p:handle_info(): rebalance finished with reason ~p~n",
                           [?MODULE, Reason]),
