@@ -2879,7 +2879,8 @@ var NodeDialog = {
   startPage_secure: function(node, pagePrefix, opt) {
     var parentName = '#' + pagePrefix + '_dialog';
 
-    $(parentName + ' form').submit(function (e) {
+    var form = $(parentName + ' form').unbind('submit');
+    form.submit(function (e) {
       e.preventDefault();
 
       var parent = $(parentName)
