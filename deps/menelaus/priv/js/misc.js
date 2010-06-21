@@ -409,6 +409,10 @@ function mkReloadWithDelay(millis) {
     return modalLevel;
   }
 
+  ModalAction.getModalLevel = function () {
+    return modalLevel;
+  }
+
   ModalAction.leavingNow = function () {
     if (modalLevel) {
       reloadApp();
