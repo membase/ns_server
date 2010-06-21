@@ -22,6 +22,9 @@
          start_rebalance/3,
          stop_rebalance/1]).
 
+-define(REBALANCE_SUCCESSFUL, 1).
+-define(REBALANCE_FAILED, 2).
+
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
@@ -157,8 +160,17 @@ handle_info(janitor, State = #state{bucket=Bucket, rebalancer=undefined}) ->
     end,
     {noreply, State};
 handle_info({Ref, Reason}, State = #state{rebalancer={_Pid, Ref}}) ->
-    error_logger:info_msg("~p:handle_info(): rebalance finished with reason ~p~n",
-                          [?MODULE, Reason]),
+    case Reason of
+        {'EXIT', _, normal} ->
+            ns_log:log(?MODULE, ?REBALANCE_SUCCESSFUL,
+                       "Rebalance completed successfully.~n");
+        {'EXIT', _, R} ->
+            ns_log:log(?MODULE, ?REBALANCE_FAILED,
+                       "Rebalance exited with reason ~p~n", [R]);
+        _ ->
+            ns_log:log(?MODULE, ?REBALANCE_FAILED,
+                       "Rebalance failed with reason ~p~n", [Reason])
+    end,
     {noreply, State#state{rebalancer=undefined}};
 handle_info(Msg, State) ->
     error_logger:info_msg("~p:handle_info(~p, ~p)~n",
