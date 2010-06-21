@@ -1967,17 +1967,21 @@
       </div>
     </div>
     <form id="init_resources_form" class="form block">
-      <div class="resource_panel_container">
-      </div>
+      <input type="submit" style="display:none" />
+      <div id="resource_panel_container"></div>
     </form>
     <div class="config-bottom">
       <button name="next" value="Next" class="submit next direction-button" id="step-1-next" type="submit">Next</button>
     </div>
     <script type="text/javascript">
       $(function(){
-        $('.config-bottom button#step-1-next').click(function (e) {
+        $('#step-1-next').click(function (e) {
           e.preventDefault();
-          showInitDialog("cluster");
+          NodeDialog.submitResources();
+        });
+        $('#init_resources_form').bind('submit', function (e) {
+          e.preventDefault();
+          NodeDialog.submitResources();
         });
       });
     </script>
@@ -2240,7 +2244,8 @@
           <td class="dynamic-ram-quota">
             <div>
               Dynamic RAM Quota:
-              <input type="text" name="dynamic-ram-quota" value="{%= h(memoryQuota == 'none' ? 'unlimited' : memoryQuota) %}" id="dynamic-ram-quota" style="border:1px solid #ccd3d7; color:#7e7e80; font-size:10pt; height:25px; margin-left:5px; padding-left:5px; width:95px;" />
+              <input type="text" name="dynamic-ram-quota" value="{%= h(V.ifNull(memoryQuota, 'unlimited')) %}"
+                style="border:1px solid #ccd3d7; color:#7e7e80; font-size:10pt; height:25px; margin-left:5px; padding-left:5px; width:95px;" />
               <span style="color:#7e7e80; font-size:10pt;">MB</span>
               <span style="color:#7e7e80; font-size:10pt; margin-left:50px;">
                 Total: {%= h(ViewHelpers.formatQuantity(memoryTotal)) %}
@@ -2302,10 +2307,10 @@
                   <div class="resource-row">
                     <div>
                       <label>Disk One Quota:</label>
-                      <input type="text" name="" value="{%= h(this.quotaMb != 'none' ? ((this.quotaMb * 1024) + ' MB') : 'unlimited') %}" disabled />
+                      <input type="text" name="memoryQuota" value="{%= V.ifNull(memoryQuota, '') %}" disabled />
                       <span style="color:#7e7e80; font-size:10pt;">MB</span>
                       <span style="color:#7e7e80; font-size:10pt; margin-left:50px;">
-                        Total: {%= h(memoryQuota != 'none' ? memoryQuota : 'Unlimited ') %}MB
+                        Total: <span class="total-quota-span">{%= V.ifNull(memoryQuota, '') + 'MB' %}</span>
                       </span>
                       <br style="clear:both;" />
                     </div>

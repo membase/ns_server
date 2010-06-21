@@ -2449,6 +2449,11 @@ _.extend(ViewHelpers, {
     }
     debugger
     throw new Error('cannot reach');
+  },
+  ifNull: function (value, replacement) {
+    if (value == null || value == '')
+      return replacement;
+    return value;
   }
 });
 
@@ -2872,10 +2877,28 @@ var NodeDialog = {
     function cb(data, status) {
       data['node'] = data['node'] || node;
 
+      NodeDialog.resourceNode = data;
+
       if (status == 'success') {
-        var c = $(parentName + ' .resource_panel_container')[0];
-        renderTemplate('resource_panel', data, c);
+        renderTemplate('resource_panel', data);
       }
+    }
+  },
+  submitResources: function () {
+    var quota = $('#init_resources_form input[name=dynamic-ram-quota]').val();
+
+    postWithValidationErrors('/nodes/Self/controller/settings',
+                             $.param({memoryQuota: quota}),
+                             continuation,
+                             {async: false});
+
+    function continuation(data, textStatus) {
+      if (textStatus == 'error') {
+        alert('Validation failed: ' + data);
+        $('#init_resources_form input[name=dynamic-ram-quota]')[0].focus();
+        return;
+      }
+      showInitDialog('cluster');
     }
   },
   startPage_secure: function(node, pagePrefix, opt) {
@@ -3074,3 +3097,64 @@ function configureActionHashParam(param, body) {
     }
   });
 }
+
+
+// this handles memory -> disk quota sync on init wizard 1
+$(function () {
+  function onBlur() {
+    var value = input.val();
+    if (!value)
+      input.val("unlimited");
+  }
+  function onFocus() {
+    var value = input.val();
+    if (value == "unlimited")
+      input.val("");
+  }
+
+  var resourcePanel = $('#resource_panel_container');
+  var observer;
+  var input;
+  var observedValue;
+
+  var oldBound = [];
+
+  function valueObserver() {
+    var value = input.val();
+    if (observedValue == value)
+      return;
+    observedValue = value;
+    if (value == 'unlimited')
+      value = '';
+    resourcePanel.find('input[name=memoryQuota]').val(value);
+    resourcePanel.find('.total-quota-span').text(ViewHelpers.ifNull(value, '') + 'MB');
+  }
+
+  $(window).bind('template:rendered', function () {
+    var oldInput = input;
+
+    input = resourcePanel.find('input[name=dynamic-ram-quota]');
+    if (!input.length)
+      return;
+
+    if (oldInput) {
+      _.each(oldBound, function (pair) {
+        oldInput.unbind.apply(input, pair);
+      });
+    }
+
+    if (observer)
+      observer.stopObserving();
+
+    observer = resourcePanel.observePotentialChanges(valueObserver);
+
+    oldBound = [
+      ['focus', onFocus],
+      ['blur', onBlur]
+    ];
+
+    _.each(oldBound, function (pair) {
+      input.bind.apply(input, pair);
+    });
+  });
+});
