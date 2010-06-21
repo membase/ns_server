@@ -1160,8 +1160,17 @@ var ServersSection = {
 
     var mayRebalance = !rebalancing && pending.length !=0;
 
-    if (details && !details.balanced)
+    if (details && !rebalancing && !details.balanced)
       mayRebalance = true;
+
+    var unhealthyActive = _.detect(active, function (n) {
+      return n.clusterMembership == 'active'
+        && !n.pendingEject
+        && n.status != 'healthy'
+    })
+
+    if (unhealthyActive)
+      mayRebalance = false;
 
     var rebalanceButton = this.serversQ.find('.rebalance_button').toggle(!!details);
     rebalanceButton.toggleClass('disabled', !mayRebalance);

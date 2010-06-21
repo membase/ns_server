@@ -539,7 +539,7 @@ var MockedRequest = mkClass({
                                   uptime: 86430,
                                   os: 'Linux',
                                   version: 'only-web.rb',
-                                  status: "healthy",
+                                  status: "unhealthy",
                                   clusterMembership: "active",
                                   failedOver: false,
                                   memoryTotal: 2032574464,
