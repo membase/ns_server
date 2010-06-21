@@ -540,9 +540,17 @@ function showDialog(idOrJQ, options) {
 
   jq.data('real-hide', onHide);
 
+  var fixed = options.fixed;
+
+  if (fixed == null && jq.hasClass('always-fixed'))
+      fixed = true;
+
+  jq.toggleClass('fixed', !!fixed);
+
   __jqmShow(jq);
 
-  $('html, body').animate({scrollTop: jq.offset().top - 100}, 250);
+  if (!fixed)
+    $('html, body').animate({scrollTop: jq.offset().top - 100}, 250);
 
   function iterateBindings(body) {
     _.each(eventBindings, function (arr) {

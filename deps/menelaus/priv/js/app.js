@@ -2581,6 +2581,7 @@ function genericDialog(options) {
   options = _.extend({buttons: {ok: true,
                                 cancel: true},
                       modal: true,
+                      fixed: true,
                       callback: function () {
                         instance.close();
                       }},
@@ -2636,7 +2637,8 @@ function genericDialog(options) {
       _.defer(function () {
         dialog.remove();
       });
-    }
+    },
+    fixed: options.fixed
   });
 
   var instance = {
