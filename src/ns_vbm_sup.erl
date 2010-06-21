@@ -55,8 +55,7 @@ set_replicas(Node, Bucket, Replicas) ->
                                   "~p:set_replicas: deleting existing data for vbucket ~p on node ~p~n",
                                   [?MODULE, V, Dst]),
                                 ns_memcached:set_vbucket_state(Dst, Bucket, V, dead),
-                                ns_memcached:delete_vbucket(Dst, Bucket, V),
-                                timer:sleep(500);
+                                ns_memcached:delete_vbucket(Dst, Bucket, V);
                             false ->
                                 ok
                         end,
