@@ -1511,23 +1511,18 @@
 </div>
 <div class="jqmWindow" id="join_cluster_dialog">
   <!-- Join cluster -->
-  <div class="lbox join_cluster">
-    <div class="top">
-      <div class="top_left"></div>
-      <div class="top_right"></div>
-      <div class="top_center"></div>
-    </div>
-    <div class="center">
+  <div class="lbox join_cluster type_2 shadow_box">
+    <div class="content">
       <div class="pad">
-        <p class="lbox_header">Join a Cluster</p>
-        <div class="pas_20">
-          <p class="warning pat_10" id="join_cluster_dialog_errors_container"></p>
-          <p id="join_cluster_dialog_errors_template" class="template">
-          <!-- {% _.each(rows, function (e) { %} -->
-          <strong>Attention</strong> - {%= h(e) %}<br>
-          <!-- {% }); %} -->
-          </p>
-          <form>
+        <p class="lbox_header header_2">Join a Cluster</p>
+        <p class="warning pat_10" id="join_cluster_dialog_errors_container"></p>
+        <p id="join_cluster_dialog_errors_template" class="template">
+        <!-- {% _.each(rows, function (e) { %} -->
+        <strong>Attention</strong> - {%= h(e) %}<br>
+        <!-- {% }); %} -->
+        </p>
+        <form>
+          <div class="pas_20">
             <table>
               <tr>
                 <td class="th">
@@ -1585,33 +1580,23 @@
                 </td>
               </tr>
             </table>
-            <div class="right save_cancel">
-              <button type="submit" class="save_button button_3 float_right">JOIN CLUSTER</button>
-              <a class="jqmClose cancel_button float_right" href="#">CANCEL</a>
-            </div>
-          </form>
-        </div>
+          </div>
+          <div class="right save_cancel footer_bg pas_20">
+            <button type="submit" class="save_button button_3 float_right">JOIN CLUSTER</button>
+            <a class="jqmClose cancel_button float_right" href="#">CANCEL</a>
+          </div>
+        </form>
       </div>
-    </div>
-    <div class="bottom">
-      <div class="bottom_left"></div>
-      <div class="bottom_right"></div>
-      <div class="bottom_center"></div>
     </div>
   </div>
   <!-- END join cluster -->
 </div>
 <!--  eject confirmation dialog -->
 <div class="jqmWindow" id="eject_confirmation_dialog">
-  <div class="lbox">
-    <div class="top">
-      <div class="top_left"></div>
-      <div class="top_right"></div>
-      <div class="top_center"></div>
-    </div>
-    <div class="center">
+  <div class="lbox type_2 shadow_box">
+    <div class="content">
       <div class="pad">
-        <p class="lbox_header">
+        <p class="lbox_header header_2">
         Confirm Node Removal
         </p>
       </div>
@@ -1621,17 +1606,10 @@
                                        Are you sure you want to remove this node from the cluster?
         </div>
       </div>
-      <div class="pas_20">
-        <div class="right save_cancel">
-          <a class="save_button float_right" href="#">REMOVE</a>
-            <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
-        </div>
+      <div class="right save_cancel pas_20 footer_bg">
+        <a class="save_button float_right" href="#">REMOVE</a>
+        <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
       </div>
-    </div>
-    <div class="bottom">
-      <div class="bottom_left"></div>
-      <div class="bottom_right"></div>
-      <div class="bottom_center"></div>
     </div>
   </div>
 </div>
@@ -1672,15 +1650,10 @@
 <!-- END add confirmation dialog -->
 <!--  add confirmation dialog -->
 <div class="jqmWindow" id="failover_confirmation_dialog">
-  <div class="lbox">
-    <div class="top">
-      <div class="top_left"></div>
-      <div class="top_right"></div>
-      <div class="top_center"></div>
-    </div>
-    <div class="center">
+  <div class="lbox type_2 shadow_box">
+    <div class="content">
       <div class="pad">
-        <p class="lbox_header">
+        <p class="lbox_header header_2">
         Confirm Node Fail Over
         </p>
       </div>
@@ -1689,17 +1662,12 @@
           <strong>Warning</strong> - Failing over node will push it out of cluster. Please, confirm.
         </div>
       </div>
-      <div class="pas_20">
+      <div class="pas_20 footer_bg">
         <div class="right save_cancel">
           <a class="save_button float_right" href="#">FAIL OVER</a>
             <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
         </div>
       </div>
-    </div>
-    <div class="bottom">
-      <div class="bottom_left"></div>
-      <div class="bottom_right"></div>
-      <div class="bottom_center"></div>
     </div>
   </div>
 </div>

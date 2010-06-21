@@ -38,7 +38,7 @@ body { background: url(../images/background.png) repeat-x; }
 .pat_10 {padding:10px 0;}
 .pat_20 {padding:20px 0;}
 .pas_10 {padding:0 10px;}
-.pas_20 {padding:0 20px;}
+.pas_20 {padding-left:20px !important; padding-right:20px !important;}
 .pab_10 {padding-bottom:10px;}
 .comment {font-size:11px; color:#8b8b8e;}
 .nbrdr {border:0px !important;}
@@ -967,3 +967,5 @@ ul.tabs .tab_left a.current:hover, ul.tabs .tab_right a.current:hover {text-shad
 .servers_list .settings-placeholder {background-color:#e7e7e9; padding-top:5px !important;}
 .servers_list .settings-placeholder .gong_rb {background-color:#d9dadc !important;}
 .servers_list .settings-placeholder .gong_rb .side {background-image:url(../images/gong_rb_2.gif) !important;}
+
+.footer_bg {background-color:#cbcfd2; padding-top:10px; padding-bottom:10px;}
