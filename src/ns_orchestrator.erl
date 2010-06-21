@@ -87,7 +87,7 @@ handle_call({failover, Node}, _From, State = #state{bucket = Bucket}) ->
         false ->
             ok
     end,
-    ns_cluster:shun(Node),
+    ns_cluster:leave(Node),
     {reply, ok, State};
 handle_call(rebalance_progress, _From, State = #state{rebalancer = {_Pid, _Ref},
                                                       progress = Progress}) ->
@@ -226,7 +226,7 @@ do_rebalance(Bucket, KeepNodes, EjectNodes, Map) ->
         ns_bucket:set_servers(Bucket, AllNodes),
         AliveNodes = ns_node_disco:nodes_actual_proper(),
         RemapNodes = EjectNodes -- AliveNodes, % No active node, promote a replica
-        lists:foreach(fun (N) -> ns_cluster:shun(N) end, RemapNodes),
+        lists:foreach(fun (N) -> ns_cluster:leave(N) end, RemapNodes),
         update_progress(Bucket, AllNodes, 0.1),
         maybe_stop(),
         EvacuateNodes = EjectNodes -- RemapNodes, % Nodes we can move data off of
@@ -260,9 +260,9 @@ do_rebalance(Bucket, KeepNodes, EjectNodes, Map) ->
         ns_bucket:set_map(Bucket, Map5),
         update_progress(Bucket, AllNodes, 0.9),
         maybe_stop(),
-        %% Shun myself last
-        ShunNodes = lists:delete(node(), EvacuateNodes),
-        lists:foreach(fun (N) -> ns_cluster:shun(N) end, ShunNodes),
+        %% Leave myself last
+        LeaveNodes = lists:delete(node(), EvacuateNodes),
+        lists:foreach(fun (N) -> ns_cluster:leave(N) end, LeaveNodes),
         case lists:member(node(), EvacuateNodes) of
             true ->
                 ns_cluster:leave();

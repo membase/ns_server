@@ -18,7 +18,7 @@
 -export([running/2, joining/2, leaving/2]).
 
 %% API
--export([join/2, leave/0, shun/1, log_joined/0, leave_sync/0]).
+-export([join/2, leave/0, leave/1, shun/1, log_joined/0, leave_sync/0]).
 
 -export([alert_key/1]).
 
@@ -177,6 +177,17 @@ leave_sync() ->
     % we still need some time to settle things
     timer:sleep(5000).
 
+%% Cause another node to leave the cluster if it's up
+leave(Node) ->
+    case Node == node() of
+        true ->
+            leave();
+        false ->
+            catch gen_fsm:send_event({?MODULE, Node}, leave),
+            shun(Node)
+    end.
+
+%% Note that shun does *not* cause the other node to reset its config!
 shun(RemoteNode) ->
     case RemoteNode == node() of
         false ->

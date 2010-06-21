@@ -743,7 +743,7 @@ handle_eject_post(Req) ->
                 false ->
                     case lists:member(OtpNode, ns_node_disco:nodes_wanted()) of
                         true ->
-                            ok = ns_cluster:shun(OtpNode),
+                            ns_cluster:leave(OtpNode),
                             ns_log:log(?MODULE, ?NODE_EJECTED, "Node ejected: ~p from node: ~p",
                                        [OtpNode, erlang:node()]),
                             Req:respond({200, add_header(), []});
@@ -1263,7 +1263,6 @@ handle_add_node(Req) ->
         ErrorList -> reply_json(Req, ErrorList, 400)
     end.
 
-%% TODO
 handle_failover(Req) ->
     Params = Req:parse_post(),
     Node = list_to_atom(proplists:get_value("otpNode", Params, "undefined")),
