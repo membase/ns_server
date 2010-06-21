@@ -265,7 +265,13 @@ map_status(?DELTA_BADVAL) ->
 map_status(?UNKNOWN_COMMAND) ->
     mc_status_unknown_command;
 map_status(?ENOMEM) ->
-    mc_status_enomem.
+    mc_status_enomem;
+map_status(?NOT_SUPPORTED) ->
+    mc_status_not_supported;
+map_status(?EINTERNAL) ->
+    mc_status_internal;
+map_status(?EBUSY) ->
+    mc_status_ebusy.
 
 process_error_response({ok, #mc_header{status=Status}, #mc_entry{data=Data}, _NCB}) ->
     {memcached_error, map_status(Status), binary_to_list(Data)};

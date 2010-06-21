@@ -69,4 +69,6 @@
 -define(DELTA_BADVAL,     16#06).
 -define(UNKNOWN_COMMAND,  16#81).
 -define(ENOMEM,           16#82).
-
+-define(NOT_SUPPORTED,    16#83).
+-define(EINTERNAL,        16#84).
+-define(EBUSY,            16#85).
