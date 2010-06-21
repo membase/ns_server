@@ -969,65 +969,6 @@ var OverviewSection = {
 
     $('.active_node_count').text(ViewHelpers.count(activeNodeCount, "active node"));
   },
-  startJoinCluster: function () {
-    var dialog = $('#join_cluster_dialog');
-    var form = dialog.find('form');
-    $('#join_cluster_dialog_errors_container').empty();
-    $('#join_cluster_dialog form').get(0).reset();
-    dialog.find("input:not([type]), input[type=text], input[type=password]").not('[name=clusterMemberHostIp], [name=clusterMemberPort]').val('');
-
-    $('#join_cluster_dialog_errors_container').empty();
-
-    showDialog('join_cluster_dialog', {
-      onHide: function () {
-        form.unbind('submit');
-      }});
-    form.bind('submit', function (e) {
-      e.preventDefault();
-
-      function simpleValidation() {
-        var p = {};
-        _.each("clusterMemberHostIp user password".split(' '), function (name) {
-          p[name] = form.find('[name=' + name + ']').val();
-        });
-
-        var errors = [];
-
-        if (p['clusterMemberHostIp'] == "")
-          errors.push("Web Console IP Address cannot be blank.");
-        if (p['clusterMemberPort'] == '')
-          errors.push("Web Console Port cannot be blank.");
-        if ((p['user'] || p['password']) && !(p['user'] && p['password'])) {
-          errors.push("Username and Password must either both be present or missing.");
-        }
-
-        return errors;
-      }
-
-      var errors = simpleValidation();
-      if (errors.length) {
-        renderTemplate('join_cluster_dialog_errors', errors);
-        return;
-      }
-
-      var overlay = overlayWithSpinner(form);
-
-      postWithValidationErrors('/node/controller/doJoinCluster', form, function (data, status) {
-        if (status != 'success') {
-          overlay.remove();
-          renderTemplate('join_cluster_dialog_errors', data)
-        } else {
-          var user = form.find('[name=user]').val();
-          var password = form.find('[name=password]').val();
-          DAO.setAuthCookie(user, password);
-          $.cookie('cluster_join_flash', '1');
-          reloadAppWithDelay(5000);
-        }
-      }, {
-        timeout: 7000
-      })
-    });
-  },
   leaveCluster: function () {
     showDialog("eject_confirmation_dialog", {
       eventBindings: [['.save_button', 'click', function (e) {
@@ -1398,9 +1339,6 @@ var ServersSection = {
   },
   onAdd: function () {
     var self = this;
-    // cut & pasted from OverviewSection.startJoinCluster 'cause we're
-    // reusing it's cluster join dialog for
-    // now. OverviewSection.startJoinCluster will probably die soon
 
     var dialog = $('#join_cluster_dialog');
     var form = dialog.find('form');
