@@ -14,8 +14,7 @@
 -ifdef(EUNIT).
 -export([test/0]).
 -import(menelaus_util,
-        [test_under_debugger/0, debugger_apply/2,
-         validate_email_address/1,
+        [validate_email_address/1,
          wrap_tests_with_cache_setup/1]).
 -endif.
 
@@ -29,13 +28,8 @@
          set_alert_config/1,
          alert_key/2]).
 
--import(simple_cache, [call_simple_cache/2]).
-
 -import(menelaus_util,
-        [reply_json/2,
-         java_date/0,
-         stateful_takewhile/3,
-         caching_result/2]).
+        [reply_json/2]).
 
 %% External API
 

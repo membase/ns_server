@@ -24,8 +24,7 @@
 
 -import(menelaus_util,
         [reply_json/2,
-         reply_json/3,
-         expect_prop_value/2]).
+         reply_json/3]).
 
 default_find(K, Default, Dict) ->
     case dict:find(K, Dict) of
