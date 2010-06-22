@@ -1048,9 +1048,12 @@ var ServersSection = {
     var nodes = details.nodes;
     var nodeNames = _.pluck(nodes, 'hostname');
     _.each(nodes, function (n) {
-      if (n.clusterMembership == 'inactiveAdded')
-        pending.push(n);
+      var mship = n.clusterMembership;
+      if (mship == 'active')
+        active.push(n);
       else
+        pending.push(n);
+      if (mship == 'inactiveFailed')
         active.push(n);
     });
 
