@@ -570,8 +570,10 @@ var maybeReloadAppDueToLeak = (function () {
 
 // make sure around 3 digits of value is visible. Less for for too
 // small numbers
-function truncateTo3Digits(value) {
-  var scale = _.detect([100, 10, 1, 0.1], function (v) {return value >= v;}) || 0.01;
+function truncateTo3Digits(value, leastScale) {
+  var scale = _.detect([100, 10, 1, 0.1, 0.01, 0.001], function (v) {return value >= v;}) || 0.0001;
+  if (leastScale != undefined && leastScale > scale)
+    scale = leastScale;
   scale = 100 / scale;
   return Math.floor(value*scale)/scale;
 }
@@ -2363,10 +2365,7 @@ _.extend(ViewHelpers, {
   formatLogTStamp: function (ts) {
     return window.formatLogTStamp(ts);
   },
-  formatQuantity: function (value, kind, K) {
-    if (kind == null)
-      kind = 'B'; //bytes is default
-
+  prepareQuantity: function (value, K) {
     K = K || 1024;
     var M = K*K;
     var G = M*K;
@@ -2374,7 +2373,16 @@ _.extend(ViewHelpers, {
 
     var t = _.detect([[T,'T'],[G,'G'],[M,'M'],[K,'K']], function (t) {return value > 1.1*t[0]});
     t = t || [1, ''];
-    return [truncateTo3Digits(value/t[0]), t[1], kind].join('');
+    return t;
+  },
+  formatQuantity: function (value, kind, K, spacing) {
+    if (spacing == null)
+      spacing = '';
+    if (kind == null)
+      kind = 'B'; //bytes is default
+
+    var t = ViewHelpers.prepareQuantity(value, K);
+    return [truncateTo3Digits(value/t[0]), spacing, t[1], kind].join('');
   },
 
   renderPendingStatus: function (node) {
@@ -3126,6 +3134,14 @@ $(function () {
     observedValue = value;
     if (value == 'unlimited')
       value = '';
+    if (!(/^[0-9]+$/.exec(value))) {
+      value = '';
+    } else {
+      var intValue = parseInt(value, 10) * 1048576;
+      var otherValue = NodeDialog.resourceNode.storage.hdd[0].diskStats.sizeKBytes * 1024;
+      var t = ViewHelpers.prepareQuantity(otherValue, 1024);
+      value = [truncateTo3Digits(intValue/t[0]), ' ', t[1], 'B'].join('');
+    }
     resourcePanel.find('input[name=memoryQuota]').val(value);
   }
 
