@@ -971,3 +971,5 @@ ul.tabs .tab_left a.current:hover, ul.tabs .tab_right a.current:hover {text-shad
 .footer_bg {background-color:#cbcfd2; padding-top:10px; padding-bottom:10px;}
 
 .fixed {position:fixed !important;}
+
+html body .overlayed {z-index:999 !important;}
