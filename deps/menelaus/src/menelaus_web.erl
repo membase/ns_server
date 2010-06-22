@@ -1232,7 +1232,10 @@ handle_node_settings_post(Node, Req) ->
                         end;
                     too_small -> <<"Value is too small">>;
                     too_large -> <<"Value is too large">>;
-                    invalid -> <<"Value is not a number">>
+                    invalid -> case X of
+                        "unlimited" -> ok;
+                        _ -> <<"Value is not a number.">>
+                    end
                 end
         end
     ],
