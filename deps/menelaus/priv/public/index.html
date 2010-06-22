@@ -1971,7 +1971,7 @@
     <!-- screen S.3 -->
     <div class="config-top">
       <h1>Configure Server</h1>
-      <h2>Step <span class="current-step">1</span> of 3</h2>      
+      <h2>Step <span class="current-step">1</span> of 3</h2>
     </div>
     <div class="alert_red" id="init_resources_failed_message" style="display:none;">
       <div class="al_text">
@@ -2099,7 +2099,7 @@
         $('div.config-bottom button#step-3-back').click(function (e) {
           e.preventDefault();
           showInitDialog("cluster");
-        });      
+        });
       });
     </script>
   </div>
@@ -2197,7 +2197,7 @@
           <col width="230" />
           <col width="300" />
             <tr>
-              <td class="label"><label>Disk One Memory Allocated:</label></td>
+              <td class="label"><label>Disk One Quota:</label></td>
               <td>
                 <span class="float_right">Total: 300Gb</span>
                 <input type="text" name="fl_one" class="inp inp_size_1"> GB
@@ -2211,7 +2211,7 @@
               </td>
             </tr>
             <tr>
-              <td class="label"><label>Disk Two Memory Allocated:</label></td>
+              <td class="label"><label>Disk Two Quota:</label></td>
               <td>
                 <span class="float_right">Total: 300Gb</span>
                 <input type="text" name="fl_one" class="inp inp_size_1"> GB
@@ -2313,7 +2313,7 @@
                   <!-- {% $.each(storage['hdd'], function () { %} -->
                   <div class="resource-row">
                     <div>
-                      <label>Disk One Memory Allocated:</label>
+                      <label>Disk One Quota:</label>
                       <input type="text" name="" value="{%= h(this.quotaMb != 'none' ? ((this.quotaMb * 1024) + ' MB') : 'unlimited') %}" disabled />
                       <span style="color:#7e7e80; font-size:10pt;">MB</span>
                       <span style="color:#7e7e80; font-size:10pt; margin-left:50px;">
@@ -2465,7 +2465,7 @@
   </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
 </div>
 <div class="popup_2">
-  
+
 </div>
 </body>
 </html>
