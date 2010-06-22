@@ -284,8 +284,17 @@ do_rebalance(Bucket, KeepNodes, EjectNodes, Map) ->
         end
     catch
         throw:stopped ->
-             stopped
+            fixup_replicas(Bucket, KeepNodes, EjectNodes),
+            exit(stopped)
     end.
+
+%% Ensure there are replicas for any unreplicated buckets if we stop
+fixup_replicas(Bucket, KeepNodes, EjectNodes) ->
+    {_, _, Map, _} = ns_bucket:config(Bucket),
+    Histograms = histograms(Map, KeepNodes),
+    Map1 = new_replicas(Bucket, EjectNodes, Map, Histograms),
+    ns_bucket:set_servers(Bucket, KeepNodes ++ EjectNodes),
+    ns_bucket:set_map(Bucket, Map1).
 
 master_moves(Bucket, EvacuateNodes, Map, Histograms) ->
     master_moves(Bucket, EvacuateNodes, Map, Histograms, 0, []).
