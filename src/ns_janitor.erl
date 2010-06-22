@@ -9,7 +9,12 @@
 -export([cleanup/3, current_states/2, graphviz/1]).
 
 cleanup(Bucket, Map, Servers) ->
-    sanify(Bucket, Map, Servers),
+    case sanify(Bucket, Map, Servers) of
+        Map -> ok;
+        Map1 ->
+            error_logger:info_msg("~p:sanify changed map: ~p~n", [?MODULE, Map1]),
+            ns_bucket:set_map(Bucket, Map1)
+    end,
     Replicas = lists:keysort(1, map_to_replicas(Map)),
     ReplicaGroups = lists:ukeymerge(1, misc:keygroup(1, Replicas),
                                     [{N, []} || N <- lists:sort(Servers)]),
@@ -68,11 +73,10 @@ graphviz(Bucket) ->
 
 sanify(Bucket, Map, Servers) ->
     {ok, States, _Zombies} = current_states(Servers, Bucket),
-    sanify(Bucket, States, Map, 0).
+    [sanify_chain(Bucket, States, Chain, VBucket)
+     || {VBucket, Chain} <- misc:enumerate(Map, 0)].
 
-sanify(_, _, [], _) ->
-    ok;
-sanify(Bucket, States, [Chain|Map], VBucket) ->
+sanify_chain(Bucket, States, Chain, VBucket) ->
     NodeStates = [{N, S} || {N, V, S} <- States, V == VBucket],
     ChainStates = lists:map(fun (N) ->
                                     case lists:keyfind(N, 1, NodeStates) of
@@ -85,7 +89,8 @@ sanify(Bucket, States, [Chain|Map], VBucket) ->
     case ChainStates of
         [{undefined, _}|_] ->
             error_logger:info_msg("~p:sanify: No master for vbucket ~p~n",
-                                  [?MODULE, VBucket]);
+                                  [?MODULE, VBucket]),
+            Chain;
         [{Master, State}|ReplicaStates] when State == pending orelse
                                              State == replica ->
             %% If we have any active nodes, do nothing, otherwise, set
@@ -96,11 +101,26 @@ sanify(Bucket, States, [Chain|Map], VBucket) ->
                     error_logger:info_msg(
                       "~p:sanify: Setting master ~p from ~p to active for vbucket ~p~n",
                       [?MODULE, Master, State, VBucket]),
-                    ns_memcached:set_vbucket_state(Master, Bucket, VBucket, active);
+                    ns_memcached:set_vbucket_state(Master, Bucket, VBucket, active),
+                    Chain;
+                [Node] ->
+                    %% One active node, but it's not the master
+                    case lists:position(Node, Chain) of
+                        undefined ->
+                            %% It's an extra node
+                            error_logger:info_msg(
+                              "~p:sanify: Master for vbucket ~p is not active, but ~p is, so making that the master.~n",
+                              [?MODULE, VBucket, Node]),
+                            [Node|lists:duplicate(length(Chain) - 1,
+                                                  undefined)];
+                        Pos ->
+                            [Node|lists:nthtail(1, Pos)]
+                    end;
                 Nodes ->
                     error_logger:error_msg(
-                      "~p:sanify: Extra active nodes ~p for vbucket ~p. If there is only one, we should probably just change the map, but this should never happen, so I'm going to do nothing.~n",
-                      [?MODULE, Nodes, VBucket])
+                      "~p:sanify: Extra active nodes ~p for vbucket ~p. This should never happen!~n",
+                      [?MODULE, Nodes, VBucket]),
+                    Chain
             end;
         C = [{_, active}|ReplicaStates] ->
             lists:foreach(
@@ -140,20 +160,22 @@ sanify(Bucket, States, [Chain|Map], VBucket) ->
                               ns_memcached:set_vbucket_state(
                                 N, Bucket, VBucket, dead)
                       end
-              end, ExtraStates);
+              end, ExtraStates),
+            Chain;
         [{Master, State}|ReplicaStates] ->
             case [N||{N, RState} <- ReplicaStates ++ ExtraStates,
                      lists:member(RState, [active, pending, replica])] of
                 [] ->
                     error_logger:info_msg("~p:sanify: Setting master ~p for (hopefully new) vbucket ~p from ~p to active~n",
                                           [?MODULE, Master, VBucket, State]),
-                    ns_memcached:set_vbucket_state(Master, Bucket, VBucket, active);
+                    ns_memcached:set_vbucket_state(Master, Bucket, VBucket, active),
+                    Chain;
                 X ->
                     error_logger:error_msg("~p:sanify: Master ~p in state ~p for vbucket ~p but we have extra nodes ~p!~n",
-                                           [?MODULE, Master, State, VBucket, X])
+                                           [?MODULE, Master, State, VBucket, X]),
+                    Chain
             end
-    end,
-    sanify(Bucket, States, Map, VBucket+1).
+    end.
 
 %% [{Node, VBucket, State}...]
 -spec current_states(list(atom()), string()) ->
