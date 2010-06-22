@@ -272,6 +272,8 @@ do_rebalance(Bucket, KeepNodes, EjectNodes, Map) ->
         ns_bucket:set_servers(Bucket, KeepNodes),
         ns_bucket:set_map(Bucket, Map5),
         update_progress(Bucket, AllNodes, 0.9),
+        %% Push out the config with the new map in case this node is being removed
+        ns_config_rep:push(),
         maybe_stop(),
         ns_cluster_membership:deactivate(EjectNodes),
         %% Leave myself last
