@@ -22,10 +22,15 @@ start_link() ->
 replicators(Nodes, Bucket) ->
     lists:flatmap(
       fun (Node) ->
-              [{Node, Dst, VBucket} ||
-                  {B, VBuckets, Dst, false} <- children(Node),
-                  VBucket <- VBuckets,
-                  B == Bucket]
+              try children(Node) of
+                  Children ->
+                      [{Node, Dst, VBucket} ||
+                          {B, VBuckets, Dst, false} <- Children,
+                          VBucket <- VBuckets,
+                          B == Bucket]
+              catch
+                  _:_ -> []
+              end
       end, Nodes).
 
 actions(Children) ->

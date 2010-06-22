@@ -22,7 +22,7 @@ cleanup(Bucket, Map, Servers) ->
                                       {Src, [{V, Dst} || {_, Dst, V} <- R]}
                               end, ReplicaGroups),
     lists:foreach(fun ({Src, R}) ->
-                          ns_vbm_sup:set_replicas(Src, Bucket, R)
+                          catch ns_vbm_sup:set_replicas(Src, Bucket, R)
                   end, NodesReplicas).
 
 state_color(active) ->
@@ -181,19 +181,14 @@ sanify_chain(Bucket, States, Chain, VBucket) ->
 -spec current_states(list(atom()), string()) ->
                             {ok, list({atom(), integer(), atom()})}.
 current_states(Nodes, Bucket) ->
-    case ns_memcached:list_vbuckets_multi(Nodes, Bucket) of
-        {Replies, []} ->
-            {GoodReplies, BadReplies} = lists:partition(fun ({_, {ok, _}}) -> true;
-                                                            (_) -> false
-                                                        end, Replies),
-            ErrorNodes = [Node || {Node, _} <- BadReplies],
-            States = [{Node, VBucket, State} || {Node, {ok, Reply}} <- GoodReplies,
-                                                {VBucket, State} <- Reply],
-            {ok, States, ErrorNodes};
-        {_, BadNodes} ->
-            error_logger:info_msg("~p:current_states: can't reach nodes ~p~n", [?MODULE, BadNodes]),
-            {error, {unreachable_nodes, BadNodes}}
-    end.
+    {Replies, DownNodes} = ns_memcached:list_vbuckets_multi(Nodes, Bucket),
+    {GoodReplies, BadReplies} = lists:partition(fun ({_, {ok, _}}) -> true;
+                                                    (_) -> false
+                                                     end, Replies),
+    ErrorNodes = [Node || {Node, _} <- BadReplies],
+    States = [{Node, VBucket, State} || {Node, {ok, Reply}} <- GoodReplies,
+                                        {VBucket, State} <- Reply],
+    {ok, States, ErrorNodes ++ DownNodes}.
 
 map_to_replicas(Map) ->
     map_to_replicas(Map, 0, []).
