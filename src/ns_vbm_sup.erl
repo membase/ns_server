@@ -37,6 +37,24 @@ actions(Children) ->
     [{VBucket, Dst} || {_, VBuckets, Dst, false} <- Children,
                        VBucket <- VBuckets].
 
+kill_vbuckets(Node, Bucket, VBuckets) ->
+    {ok, States} = ns_memcached:list_vbuckets(Node, Bucket),
+    case [X || X = {V, _} <- States, lists:member(V, VBuckets)] of
+        [] ->
+            ok;
+        RemainingVBuckets ->
+            error_logger:info_msg("~p:kill_vbuckets: ~w~n",
+                                  [?MODULE, RemainingVBuckets]),
+            lists:foreach(fun ({V, dead}) ->
+                                  ns_memcached:delete_vbucket(Node, Bucket, V);
+                              ({V, _}) ->
+                                  ns_memcached:set_vbucket_state(Node, Bucket,
+                                                                 V, dead)
+                          end, RemainingVBuckets),
+            timer:sleep(500),
+            kill_vbuckets(Node, Bucket, VBuckets)
+    end.
+
 set_replicas(Node, Bucket, Replicas) ->
     case lists:member(Node, ns_node_disco:nodes_actual_proper()) of
         true ->
@@ -48,24 +66,13 @@ set_replicas(Node, Bucket, Replicas) ->
             Grouped = misc:keygroup(2, Sorted),
             lists:foreach(
               fun ({Dst, R}) ->
-                      {ok, States} = ns_memcached:list_vbuckets(Dst, Bucket),
-                      ExistingVBuckets = [V || {V, _} <- States],
                       VBuckets = [V || {V, _} <- R],
+                      error_logger:info_msg(
+                        "Starting replica for vbuckets ~w on node ~p~n",
+                        [VBuckets, Dst]),
+                      kill_vbuckets(Dst, Bucket, VBuckets),
                       lists:foreach(
                         fun (V) ->
-                                error_logger:info_msg(
-                                  "Starting replica for vbucket ~p on node ~p~n",
-                                  [V, Dst]),
-                                case lists:member(V, ExistingVBuckets) of
-                                    true ->
-                                        error_logger:info_msg(
-                                          "~p:set_replicas: deleting existing data for vbucket ~p on node ~p~n",
-                                          [?MODULE, V, Dst]),
-                                        ns_memcached:set_vbucket_state(Dst, Bucket, V, dead),
-                                        ns_memcached:delete_vbucket(Dst, Bucket, V);
-                                    false ->
-                                        ok
-                                end,
                                 ns_memcached:set_vbucket_state(Dst, Bucket, V, replica)
                         end, VBuckets),
                       {ok, _Pid} = start_child(Node, Bucket, VBuckets, Dst, false)
