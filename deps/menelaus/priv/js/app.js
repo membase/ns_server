@@ -3127,7 +3127,6 @@ $(function () {
     if (value == 'unlimited')
       value = '';
     resourcePanel.find('input[name=memoryQuota]').val(value);
-    resourcePanel.find('.total-quota-span').text(ViewHelpers.ifNull(value, '') + 'MB');
   }
 
   $(window).bind('template:rendered', function () {
