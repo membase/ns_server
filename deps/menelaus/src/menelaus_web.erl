@@ -164,6 +164,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_dot/2, [Bucket]};
                              ["sasl_logs"] ->
                                  {auth, fun handle_sasl_logs/1};
+                             ["erlwsh" | _] ->
+                                 erlwsh_web:loop(Req, erlwsh_deps:local_path(["priv", "www"]));
                              _ ->
                                  {done, Req:serve_file(Path, AppRoot)}%% , [{"Pragma", "no-cache"},
                                                                       %%  {"Cache-Control", "no-cache must-revalidate"}])}
@@ -220,6 +222,8 @@ loop(Req, AppRoot, DocRoot) ->
                                                                        [User, node(), binary_to_list(R:recv_body())]),
                                                             R:ok({"text/plain", add_header(), <<"">>})
                                                     end};
+                             ["erlwsh" | _] ->
+                                 erlwsh_web:loop(Req, erlwsh_deps:local_path(["priv", "www"]));
                              _ ->
                                  ns_log:log(?MODULE, 0001, "Invalid post received: ~p", [Req]),
                                  {done, Req:not_found()}
