@@ -987,7 +987,7 @@ var OverviewSection = {
 
       function simpleValidation() {
         var p = {};
-        _.each("clusterMemberHostIp clusterMemberPort user password".split(' '), function (name) {
+        _.each("clusterMemberHostIp user password".split(' '), function (name) {
           p[name] = form.find('[name=' + name + ']').val();
         });
 
@@ -1378,6 +1378,24 @@ var ServersSection = {
   onStopRebalance: function () {
     this.postAndReload(this.poolDetails.value.stopRebalanceUri, "");
   },
+  validateJoinClusterParams: function (form) {
+    var data = {}
+    _.each("hostname user password".split(' '), function (name) {
+      data[name] = form.find('[name=' + name + ']').val();
+    });
+
+    var errors = [];
+
+    if (data['hostname'] == "")
+      errors.push("Server IP Address cannot be blank.");
+    if ((data['user'] || data['password']) && !(data['user'] && data['password'])) {
+      errors.push("Username and Password must either both be present or missing.");
+    }
+
+    if (!errors.length)
+      return data;
+    return errors;
+  },
   onAdd: function () {
     var self = this;
     // cut & pasted from OverviewSection.startJoinCluster 'cause we're
@@ -1388,7 +1406,8 @@ var ServersSection = {
     var form = dialog.find('form');
     $('#join_cluster_dialog_errors_container').empty();
     $('#join_cluster_dialog form').get(0).reset();
-    dialog.find("input:not([type]), input[type=text], input[type=password]").not('[name=clusterMemberHostIp], [name=clusterMemberPort]').val('');
+    dialog.find("input:not([type]), input[type=text], input[type=password]").val('');
+    dialog.find('[name=user]').val('Administrator');
 
     $('#join_cluster_dialog_errors_container').empty();
     showDialog('join_cluster_dialog', {
@@ -1398,26 +1417,7 @@ var ServersSection = {
     form.bind('submit', function (e) {
       e.preventDefault();
 
-      var data = {}
-      _.each("clusterMemberHostIp clusterMemberPort user password".split(' '), function (name) {
-        data[name] = form.find('[name=' + name + ']').val();
-      });
-
-      function simpleValidation(data) {
-        var errors = [];
-
-        if (data['clusterMemberHostIp'] == "")
-          errors.push("Web Console IP Address cannot be blank.");
-        if (data['clusterMemberPort'] == '')
-          errors.push("Web Console Port cannot be blank.");
-        if ((data['user'] || data['password']) && !(data['user'] && data['password'])) {
-          errors.push("Username and Password must either both be present or missing.");
-        }
-
-        return errors;
-      }
-
-      var errors = simpleValidation(data);
+      var errors = self.validateJoinClusterParams(form);
       if (errors.length) {
         renderTemplate('join_cluster_dialog_errors', errors);
         return;
@@ -1425,6 +1425,7 @@ var ServersSection = {
 
       var confirmed;
 
+      $('#join_cluster_dialog').addClass('overlayed');
       showDialog('add_confirmation_dialog', {
         eventBindings: [['.save_button', 'click', function (e) {
           e.preventDefault();
@@ -1437,15 +1438,7 @@ var ServersSection = {
           var uri = self.poolDetails.value.controllers.addNode.uri;
           self.poolDetails.setValue(undefined);
 
-          var toSend = {
-            hostname: data['clusterMemberHostIp'],
-            user: data['user'],
-            password: data['password']
-          };
-          if (data['clusterMemberPort'] != '8080')
-            toSend['hostname'] += ':' + data['clusterMemberPort']
-
-          postWithValidationErrors(uri, $.param(toSend), function (data, status) {
+          postWithValidationErrors(uri, form, function (data, status) {
             self.poolDetails.invalidate();
             overlay.remove();
             if (status != 'success') {
@@ -1458,6 +1451,7 @@ var ServersSection = {
           })
         }]],
         onHide: function () {
+          $('#join_cluster_dialog').removeClass('overlayed');
           if (!confirmed)
             hideDialog('join_cluster_dialog'); // cancel pressed on confirmation dialog
         }
@@ -2728,6 +2722,54 @@ function showInitDialog(page, opt) {
 }
 
 var NodeDialog = {
+  submitClusterForm: function (e) {
+    if (e)
+      e.preventDefault();
+
+    var form = $('#init_cluster_form');
+
+    if ($('#no-join-cluster')[0].checked)
+      return showInitDialog('secure');
+
+    var errorsContainer = form.parent().find('.join_cluster_dialog_errors_container');
+    errorsContainer.hide();
+
+    var data = ServersSection.validateJoinClusterParams(form);
+    if (data.length) {
+      renderTemplate('join_cluster_dialog_errors', data, errorsContainer[0]);
+      errorsContainer.show();
+      return;
+    }
+
+    var hostname = data.hostname;
+    data.clusterMemberHostIp = hostname;
+    data.clusterMemberPort = '8080';
+    if (hostname.indexOf(':') >= 0) {
+      var arr = hostname.split(':');
+      data.clusterMemberHostIp = arr[0];
+      data.clusterMemberPort = arr[1];
+    }
+    delete data.hostname;
+
+    var overlay = overlayWithSpinner($('#init_cluster_dialog'), '#EEE');
+    postWithValidationErrors('/node/controller/doJoinCluster', $.param(data), function (errors, status) {
+      if (status != 'success') {
+        overlay.remove();
+        renderTemplate('join_cluster_dialog_errors', errors, errorsContainer[0]);
+        errorsContainer.show();
+        return;
+      }
+
+      DAO.setAuthCookie(data.user, data.password);
+      $.cookie('cluster_join_flash', 1);
+      _.delay(function () {
+        DAO.tryNoAuthLogin();
+        overlay.remove();
+      }, 5000);
+    }, {
+      timeout: 8000
+    });
+  },
   startMemoryDialog: function (node) {
     var parentName = '#edit_server_memory_dialog';
 
@@ -2956,6 +2998,12 @@ var NodeDialog = {
 
         dialog.close();
       });
+    });
+  },
+  startPage_cluster: function () {
+    _.defer(function () {
+      if ($('#join-cluster')[0].checked)
+        $('.login-credentials').show();
     });
   }
 };

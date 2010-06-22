@@ -1525,32 +1525,13 @@
           <div class="pas_20">
             <table>
               <tr>
-                <td class="th">
-                  Cluster <a class="text_11 tooltip"><span>What's this?</span>
-                    <span class="tooltip_msg"><span>
-                      A cluster is a group of servers which operate together to provide an elastic data service.
-                    </span></span>
-                  </a>
-                </td>
-              </tr>
-              <tr>
                 <td>
                   <div class="u_line_sm">
-                    <label class="label" for="clusterMemberHostIp">Web Console IP Address*:</label>
-                    <input type="text" class="inp" name="clusterMemberHostIp" id="clusterMemberHostIp" value="" />
+                    <label class="label" for="add-server-hostname">Server IP Address*:</label>
+                    <input type="text" class="inp" name="hostname" id="add-server-hostname" />
                     <a class="text_11 tooltip"><span>What's this?</span>
                       <span class="tooltip_msg"><span>
-                        This is the hostname or IP address of a server node in the cluster that you wish to join.
-                      </span></span>
-                    </a><br />
-                    <label class="label"></label><span class="text_11">(Use any server in an existing cluster)</span>
-                  </div>
-                  <div class="u_line_sm">
-                    <label class="label" for="clusterMemberPort">Web Console Port*:</label>
-                    <input type="text" class="inp" name="clusterMemberPort" id="clusterMemberPort" value="8080" onfocus="this.value=='8080'?this.value='':false;" onblur="this.value==''?this.value='8080':false;" />
-                    <a class="text_11 tooltip"><span>What's this?</span>
-                      <span class="tooltip_msg"><span>
-                        This is the port number of the Web Console interface and REST services in the cluster.
+                        This is the hostname or IP address of a server node that you wish to add.
                       </span></span>
                     </a>
                   </div>
@@ -1560,8 +1541,8 @@
                 <td class="th">
                   Security <a class="text_11 tooltip"><span>What's this?</span>
                     <span class="tooltip_msg"><span>
-                      If you are joining this server node to a cluster that has been secured, you must enter a username
-                      and password.  These are the username and password of the cluster you are joining, not of your
+                      If you are add server node that has been secured, you must enter a username
+                      and password.  These are the username and password of the node you are joining, not of your
                       current server node.
                     </span></span>
                   </a>
@@ -2008,15 +1989,35 @@
       on this server. Only servers not already storing data may be
       joined to a Membase cluster.
     </p>
-    <form id="init_cluster_form" class="form block">
+    <div class="warning pat_10 join_cluster_dialog_errors_container"></div>
+    <form id="init_cluster_form" class="form block"><input type="submit" style="display:none;" />
       <div class="pat_10"><label>
         <input type="radio" name="join_cluster" id="no-join-cluster" checked />
         Do NOT join a cluster now, maybe later.
       </label></div>
-      <div class="pat_10"><label>
-        <input type="radio" name="join_cluster" id="join-cluster" />
-        Join a cluster now.
-      </label></div>
+      <div class="pat_10">
+        <label>
+          <input type="radio" name="join_cluster" id="join-cluster" />
+          Join a cluster now.
+          <div class="login-credentials">
+            <div>
+              <label for="clusterMemberHostIp">IP Address:</label>
+              <input type="text" class="inp" name="hostname" id="clusterMemberHostIp" value="" />
+              <br class="clear" />
+            </div>
+            <div>
+              <label for="user_inp">Username:</label>
+              <input type="text" class="inp" name="user" id="user_inp" value="Administrator" />
+              <br class="clear" />
+            </div>
+            <div>
+              <label for="password_inp">Password:</label>
+              <input type="password" class="inp" name="password" id="password_inp" />
+              <br class="clear" />
+            </div>
+          </div>
+        </label>
+      </div>
     </form>
     <div class="config-bottom">
       <button name="next" value="Next" class="submit next direction-button" id="step-2-next" type="submit">Next</button>
@@ -2025,12 +2026,13 @@
     <script type="text/javascript">
       $(function(){
         $('input#join-cluster').click(function (e) {
-          OverviewSection.startJoinCluster();
+          $('.login-credentials').slideDown();
         });
-        $('div.config-bottom button#step-2-next').click(function (e) {
-          e.preventDefault();
-          showInitDialog("secure");
+        $('input#no-join-cluster').click(function (e) {
+          $('.login-credentials').slideUp();
         });
+        $('div.config-bottom button#step-2-next').click(NodeDialog.submitClusterForm);
+        $('#init_cluster_form').bind('submit', NodeDialog.submitClusterForm);
         $('div.config-bottom button#step-2-back').click(function (e) {
           e.preventDefault();
           showInitDialog("resources");

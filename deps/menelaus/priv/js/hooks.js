@@ -285,10 +285,11 @@ var MockedRequest = mkClass({
       }
     });
 
-    if (ok)
+    if (ok) {
+      MockedRequest.globalData.initValue = 'done'
       this.fakeResponse('');
-    else
-      this.errorResponse([]);
+    } else
+      this.errorResponse(['error1', 'error2']);
   },
 
   handleWorkloadControlPost: function () {
