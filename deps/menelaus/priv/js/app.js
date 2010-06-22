@@ -1131,6 +1131,14 @@ var ServersSection = {
 
     this.allNodes = _.uniq(this.active.concat(this.pending));
 
+    var reallyActive = _.select(active, function (n) {
+      return n.clusterMembership == 'active' && !n.pendingEject && n.status =='healthy';
+    });
+
+    if (reallyActive.length == 1) {
+      reallyActive[0].lastActive = true;
+    }
+
     _.each(this.allNodes, function (n) {
       n.ejectPossible = !n.pendingEject;
       n.failoverPossible = (n.clusterMembership != 'inactiveFailed');
@@ -1144,9 +1152,10 @@ var ServersSection = {
       } else {
         nodeClass = 'status_up'
       }
+      if (n.lastActive)
+        nodeClass += ' last-active';
       n.nodeClass = nodeClass;
     });
-
   },
   renderEverything: function () {
     var details = this.poolDetails.value;
@@ -1194,12 +1203,8 @@ var ServersSection = {
 
     renderTemplate('manage_server_list', active, $i('active_server_list_container'));
 
-    var reallyActive = _.select(active, function (n) {return n.clusterMembership == 'active'});
-
-    if (reallyActive.length == 1) {
-      $('#active_server_list_container').find('.eject_server').addClass('disabled').end()
-        .find('.failover_server').addClass('disabled');
-    }
+    $('#active_server_list_container .last-active').find('.eject_server').addClass('disabled').end()
+      .find('.failover_server').addClass('disabled');
 
     if (!rebalancing) {
       renderTemplate('manage_server_list', pending, $i('pending_server_list_container'));
