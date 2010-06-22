@@ -105,7 +105,7 @@ sanify_chain(Bucket, States, Chain, VBucket) ->
                     Chain;
                 [Node] ->
                     %% One active node, but it's not the master
-                    case lists:position(Node, Chain) of
+                    case misc:position(Node, Chain) of
                         undefined ->
                             %% It's an extra node
                             error_logger:info_msg(
