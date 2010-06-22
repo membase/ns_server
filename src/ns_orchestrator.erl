@@ -273,6 +273,7 @@ do_rebalance(Bucket, KeepNodes, EjectNodes, Map) ->
         ns_bucket:set_map(Bucket, Map5),
         update_progress(Bucket, AllNodes, 0.9),
         maybe_stop(),
+        ns_cluster_membership:deactivate(EjectNodes),
         %% Leave myself last
         LeaveNodes = lists:delete(node(), EvacuateNodes),
         lists:foreach(fun (N) -> ns_cluster:leave(N) end, LeaveNodes),

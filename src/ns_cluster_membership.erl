@@ -7,6 +7,7 @@
          get_nodes_cluster_membership/1,
          get_cluster_membership/1,
          add_node/4,
+         deactivate/1,
          engage_cluster/1,
          engage_cluster/2,
          failover/1,
@@ -227,12 +228,15 @@ start_rebalance(KnownNodes, EjectedNodes) ->
             KeepNodes = lists:subtract(KnownNodes, EjectedNodes),
             ns_config:set([{{node, Node, membership}, active} ||
                               Node <- KeepNodes]),
-            ns_orchestrator:start_rebalance("default", KeepNodes, EjectedNodes),
-            %% TODO: we should have a way to delete keys
-            ns_config:set([{{node, Node, membership}, inactiveAdded}
-                           || Node <- EjectedNodes]);
+            ns_orchestrator:start_rebalance("default", KeepNodes, EjectedNodes);
         _ -> nodes_mismatch
     end.
+
+deactivate(Nodes) ->
+    %% TODO: we should have a way to delete keys
+    ns_config:set([{{node, Node, membership}, inactiveAdded}
+                   || Node <- Nodes]).
+
 
 stop_rebalance() ->
     ns_orchestrator:stop_rebalance("default").
