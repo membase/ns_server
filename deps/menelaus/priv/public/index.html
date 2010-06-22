@@ -1979,12 +1979,10 @@
     <h2 class="question">Would you like to join an existing Membase Cluster?</h2>
     <p class="pad_10">
       If this new server will be added to an existing membase cluster
-      you may join that cluster now. To do so, please enter the IP
-      address of an existing cluster member, and the cluster
-      administrator password then select Join Cluster. You can join a
-      cluster later if you prefer, but should do so before storing data
-      on this server. Only servers not already storing data may be
-      joined to a Membase cluster.
+      you may join that cluster now. To do so select "Join a cluster now". You
+      can join a cluster later, but should do so before storing important data
+      on this server.  When joining a cluster, the joining server will drop all
+      of the data it currently holds.
     </p>
     <div class="warning pat_10 join_cluster_dialog_errors_container"></div>
     <form id="init_cluster_form" class="form block"><input type="submit" style="display:none;" />
