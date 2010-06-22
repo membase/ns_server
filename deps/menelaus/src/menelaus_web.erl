@@ -422,22 +422,32 @@ build_nodes_info(MyPool, IncludeOtp, InfoLevel, LocalAddr) ->
                         end,
                   KV3 = case InfoLevel of
                             stable -> KV2;
-                            normal -> build_extra_node_info(InfoNode, BucketsAll, KV2)
+                            normal -> build_extra_node_info(WantENode, InfoNode, BucketsAll, KV2)
                         end,
                   {struct, KV3}
           end,
           WantENodes),
     Nodes.
 
-build_extra_node_info(InfoNode, BucketsAll, Append) ->
-    NodesBucketMemoryTotal =
-        lists:foldl(fun({_BucketName, BucketConfig}, Acc) ->
-                            Acc + proplists:get_value(size_per_node,
-                                                      BucketConfig, 0)
-                    end,
-                    0,
-                    BucketsAll),
-    NodesBucketMemoryAllocated = 0,
+build_extra_node_info(Node, InfoNode, _BucketsAll, Append) ->
+    %% TODO: right now size_per_node is not being set/used, so we're
+    %% using memory quota instead
+
+    %% NodesBucketMemoryTotal =
+    %%     lists:foldl(fun({_BucketName, BucketConfig}, Acc) ->
+    %%                         Acc + proplists:get_value(size_per_node,
+    %%                                                   BucketConfig, 0)
+    %%                 end,
+    %%                 0,
+    %%                 BucketsAll),
+    NodesBucketMemoryTotal = case ns_config:search_node_prop(Node,
+                                                             ns_config:get(),
+                                                             memcached,
+                                                             max_size) of
+                                 X when is_integer(X) -> X;
+                                 undefined -> 0 % don't know what to choose
+                             end,
+    NodesBucketMemoryAllocated = NodesBucketMemoryTotal,
     {UpSecs, {MemoryTotal, MemoryAlloced, _}} =
         {proplists:get_value(wall_clock, InfoNode, 0),
          proplists:get_value(memory_data, InfoNode,
@@ -1086,7 +1096,7 @@ handle_node(_PoolId, Node, Req) ->
     MyPool = fakepool,
     LocalAddr = menelaus_util:local_addr(Req),
     InfoNode = get_node_info(Node),
-    KV = build_extra_node_info(InfoNode, ns_bucket:get_buckets(),
+    KV = build_extra_node_info(Node, InfoNode, ns_bucket:get_buckets(),
                                build_node_info(MyPool, Node, InfoNode, LocalAddr)),
     {License, Valid, ValidUntil} = case ns_license:license(Node) of
         {undefined, V, VU} -> {"", V, ymd_to_string(VU)};
