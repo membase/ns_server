@@ -225,10 +225,15 @@ start_rebalance(KnownNodes, EjectedNodes) ->
     case {lists:sort(ns_node_disco:nodes_wanted()),
           lists:sort(KnownNodes)} of
         {X, X} ->
-            KeepNodes = lists:subtract(KnownNodes, EjectedNodes),
+            MaybeKeepNodes = KnownNodes -- EjectedNodes,
+            FailedNodes = [N || {N, State} <-
+                                    get_nodes_cluster_membership(MaybeKeepNodes),
+                                State == inactiveFailed],
+            KeepNodes = MaybeKeepNodes -- FailedNodes,
             ns_config:set([{{node, Node, membership}, active} ||
                               Node <- KeepNodes]),
-            ns_orchestrator:start_rebalance("default", KeepNodes, EjectedNodes);
+            ns_orchestrator:start_rebalance("default", KeepNodes,
+                                            EjectedNodes ++ FailedNodes);
         _ -> nodes_mismatch
     end.
 
