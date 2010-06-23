@@ -635,3 +635,31 @@ pairs_test() ->
     [{1,2}, {2,3}] = pairs([1,2,3]),
     [] = pairs([1]),
     [{1,2}] = pairs([1,2]).
+
+
+
+rewrite_value(Old, New, Old) ->
+    New;
+rewrite_value(Old, New, L) when is_list(L) ->
+    lists:map(fun (V) -> rewrite_value(Old, New, V) end, L);
+rewrite_value(Old, New, T) when is_tuple(T) ->
+    list_to_tuple(rewrite_value(Old, New, tuple_to_list(T)));
+rewrite_value(_Old, _New, X) -> X.
+
+rewrite_value_test() ->
+    x = rewrite_value(a, b, x),
+    b = rewrite_value(a, b, a),
+    b = rewrite_value(a, b, b),
+
+    [x, y, z] = rewrite_value(a, b, [x, y, z]),
+
+    [x, b, c, b] = rewrite_value(a, b, [x, a, c, a]),
+
+    {x, y} = rewrite_value(a, b, {x, y}),
+    {x, b} = rewrite_value(a, b, {x, a}),
+
+    X = rewrite_value(a, b,
+                      [ {"a string", 1, x},
+                        {"b string", 4, a, {blah, a, b}}]),
+    X = [{"a string", 1, x},
+         {"b string", 4, b, {blah, b, b}}].
