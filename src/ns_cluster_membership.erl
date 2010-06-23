@@ -112,10 +112,15 @@ add_node(OtherHost, OtherPort, OtherUser, OtherPswd) ->
     end.
 
 handle_add_node_request(OtpNode, OtpCookie) ->
-    [_Local, Hostname] = string:tokens(atom_to_list(OtpNode), "@"),
-    case engage_cluster(Hostname, []) of
-        ok -> ns_cluster:join(OtpNode, OtpCookie);
-        X -> X
+    case system_joinable() of
+        true -> % When a user wants to add a node to an existing cluster, this
+                % codepath is called on the to-be-added node.
+                [_Local, Hostname] = string:tokens(atom_to_list(OtpNode), "@"),
+                case engage_cluster(Hostname, []) of
+                    ok -> ns_cluster:join(OtpNode, OtpCookie);
+                    X -> X
+                end;
+         false -> {error, system_not_addable}
     end.
 
 handle_join_rest_failure(ReturnValue, OtherHost, OtherPort) ->
@@ -182,7 +187,7 @@ join_cluster(OtherHost, OtherPort, OtherUser, OtherPswd) ->
     end.
 
 system_joinable() ->
-    true.
+    ns_node_disco:nodes_wanted() =:= [node()].
 
 handle_join_inner(OtherHost, OtherPort, OtherUser, OtherPswd) ->
     case system_joinable() of

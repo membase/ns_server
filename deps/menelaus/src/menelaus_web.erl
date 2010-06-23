@@ -1245,7 +1245,7 @@ handle_node_settings_post(Node, Req) ->
     end.
 
 validate_add_node_params(Hostname, Port, User, Password) ->
-    Candidates = case lists:member(undefined, [Hostname, Port, User, Password]) of 
+    Candidates = case lists:member(undefined, [Hostname, Port, User, Password]) of
                      true -> [<<"Missing required parameter">>];
                      _ -> [is_valid_port_number(Port) orelse <<"Invalid rest port specified">>,
                            case Hostname of
