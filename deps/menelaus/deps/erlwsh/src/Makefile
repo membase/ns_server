@@ -6,4 +6,4 @@ debug:
 	$(MAKE) DEBUG=-DDEBUG
 
 clean:
-	rm -rf $(EBIN_FILES)
+	rm -rf $(EBIN_FILES_NO_DOCS)
