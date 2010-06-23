@@ -12,6 +12,7 @@
 -export([bin/1, recv/2, send/4]).
 
 -define(FLUSH_TIMEOUT, 5000).
+-define(RECV_TIMEOUT, 5000).
 
 %% Functions to work with memcached binary protocol packets.
 
@@ -111,7 +112,7 @@ send(Sock, Data)                    -> gen_tcp:send(Sock, Data).
 
 %% @doc Receive binary data of specified number of bytes length.
 recv_data(_, 0)           -> {ok, <<>>};
-recv_data(Sock, NumBytes) -> gen_tcp:recv(Sock, NumBytes).
+recv_data(Sock, NumBytes) -> gen_tcp:recv(Sock, NumBytes, ?RECV_TIMEOUT).
 
 % -------------------------------------------------
 
@@ -131,4 +132,3 @@ flush_test() ->
 test_flush(Sock) ->
     {ok, works, undefined} = send_recv(Sock, undefined, undefined,
                             #mc_header{opcode = ?FLUSH}, #mc_entry{}, works).
-
