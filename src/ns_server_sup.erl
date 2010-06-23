@@ -58,7 +58,7 @@ get_child_specs() ->
     ].
 
 pull_plug(Fun) ->
-    GoodChildren = [ns_config_sup, ns_port_sup],
+    GoodChildren = [ns_config_sup, ns_port_sup, menelaus, ns_node_disco_sup],
     BadChildren = [Id || {Id,_,_,_} <- supervisor:which_children(?MODULE),
                          not lists:member(Id, GoodChildren)],
     error_logger:info_msg("~p plug pulled.  Killing ~p, keeping ~p~n",

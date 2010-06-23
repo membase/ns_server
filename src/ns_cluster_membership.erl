@@ -73,12 +73,7 @@ engage_cluster(RemoteIP, Options) ->
                         net_restarted ->
                             case lists:member(restart, Options) of
                                 true ->
-                                    %% and potentially restart services
-                                    PrevInitStatus = ns_config:search_prop(ns_config:get(),
-                                                                           init_status,
-                                                                           value, ""),
-                                    ns_cluster:leave_sync(),
-                                    ns_config:set(init_status, [{value, PrevInitStatus}]),
+                                    ns_cluster:rename_node(MyNode, node()),
                                     ok;
                                 _ -> ok
                             end

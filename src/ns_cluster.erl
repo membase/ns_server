@@ -18,7 +18,8 @@
 -export([running/2, joining/2, leaving/2]).
 
 %% API
--export([join/2, leave/0, leave/1, shun/1, log_joined/0, leave_sync/0]).
+-export([join/2, leave/0, leave/1, shun/1, log_joined/0,
+        rename_node/2]).
 
 -export([alert_key/1]).
 
@@ -163,20 +164,6 @@ leave() ->
     %% Then drop ourselves into a leaving state.
     gen_fsm:send_event(?MODULE, leave).
 
-leave_sync() ->
-    Ref = make_ref(),
-    Pid = self(),
-    Fun = fun () ->
-                  Pid ! Ref
-          end,
-    gen_fsm:send_event(?MODULE, {leave, #leaving_state{callback = Fun}}),
-    receive
-        Ref ->
-            ok
-    end,
-    % we still need some time to settle things
-    timer:sleep(5000).
-
 %% Cause another node to leave the cluster if it's up
 leave(Node) ->
     case Node == node() of
@@ -218,3 +205,16 @@ prepare_join_to(OtherHost) ->
             {ok, RV};
         {error, _} = X -> X
     end.
+
+rename_node(Old, New) ->
+    ns_server_sup:pull_plug(
+      fun() ->
+              ns_config:update(fun ({K, V}) ->
+                                       NewK = misc:rewrite_value(Old, New, K),
+                                       NewV = misc:rewrite_value(Old, New, V),
+                                       error_logger:info_msg(
+                                         "renaming node conf ~p -> ~p:~n  ~p ->~n  ~p~n",
+                                         [K, NewK, V, NewV]),
+                                       {NewK, NewV}
+                               end, erlang:make_ref())
+      end).
