@@ -49,9 +49,10 @@ kill_vbuckets(Node, Bucket, VBuckets) ->
                                   ns_memcached:delete_vbucket(Node, Bucket, V);
                               ({V, _}) ->
                                   ns_memcached:set_vbucket_state(Node, Bucket,
-                                                                 V, dead)
-                          end, RemainingVBuckets),
-            timer:sleep(500),
+                                                                 V, dead),
+                                  ns_memcached:delete_vbucket(Node, Bucket, V)
+                              end, RemainingVBuckets),
+            timer:sleep(100),
             kill_vbuckets(Node, Bucket, VBuckets)
     end.
 
