@@ -63,15 +63,6 @@ init(Bucket) ->
     timer:send_interval(10000, janitor),
     {ok, #state{bucket=Bucket}}.
 
-kill_vbuckets(_, _, []) ->
-    ok;
-kill_vbuckets(Node, Bucket, [V|Vs]) ->
-    case catch ns_memcached:set_vbucket_state(Node, Bucket, V, dead) of
-        {ok, _} ->
-            kill_vbuckets(Node, Bucket, Vs);
-        Error -> {error, Error}
-    end.
-
 handle_call({failover, Node}, _From, State = #state{bucket = Bucket}) ->
     {_, _, Map, Servers} = ns_bucket:config(Bucket),
     %% Promote replicas of vbuckets on this node
@@ -81,23 +72,6 @@ handle_call({failover, Node}, _From, State = #state{bucket = Bucket}) ->
     lists:foreach(fun (N) ->
                           ns_vbm_sup:kill_dst_children(N, Bucket, Node)
                   end, lists:delete(Node, Servers)),
-    case lists:member(Node, Servers) andalso
-        lists:member(Node, ns_node_disco:nodes_actual_proper()) of
-        true ->
-            %% Make a last-ditch attempt to set vbuckets to dead
-            case ns_memcached:list_vbuckets(Node, Bucket) of
-                {ok, States} ->
-                    ActiveVBuckets = [V || {V, active} <- States],
-                    Result = kill_vbuckets(Node, Bucket, ActiveVBuckets),
-                    error_logger:info_msg(
-                      "~p:failover: got result ~p from attempt to kill vbuckets ~p on node ~p~n",
-                      [?MODULE, Result, ActiveVBuckets, Node]);
-                _ -> ok
-            end,
-            ns_vbm_sup:set_replicas(Node, Bucket, []);
-        false ->
-            ok
-    end,
     {reply, ok, State};
 handle_call(rebalance_progress, _From, State = #state{rebalancer = {_Pid, _Ref},
                                                       progress = Progress}) ->
@@ -105,7 +79,7 @@ handle_call(rebalance_progress, _From, State = #state{rebalancer = {_Pid, _Ref},
 handle_call(rebalance_progress, _From, State) ->
     {reply, not_running, State};
 handle_call({start_rebalance, KeepNodes, EjectNodes}, _From,
-            State = #state{bucket=Bucket, rebalancer=undefined}) ->
+            State = #state{bucket=Bucket, rebalancer=undefined, janitor=Janitor}) ->
     {_NumReplicas, _NumVBuckets, Map, Servers} = ns_bucket:config(Bucket),
     Histograms = histograms(Map, Servers),
     case {lists:sort(Servers), lists:sort(KeepNodes), EjectNodes,
@@ -121,6 +95,12 @@ handle_call({start_rebalance, KeepNodes, EjectNodes}, _From,
                   fun () ->
                           spawn_link(
                             fun() ->
+                                    case Janitor of
+                                        undefined ->
+                                            ok;
+                                        {JPid, _Ref} ->
+                                            ok = misc:wait_for_process(JPid)
+                                    end,
                                     do_rebalance(Bucket, KeepNodes, EjectNodes, Map)
                             end)
                   end),
@@ -146,7 +126,7 @@ handle_cast(Msg, State) ->
                           [?MODULE, Msg, State]),
     {noreply, State}.
 
-handle_info(janitor, State = #state{bucket=Bucket, rebalancer=undefined}) ->
+handle_info(janitor, State = #state{bucket=Bucket, rebalancer=undefined, janitor=undefined}) ->
     misc:flush(janitor),
     {_, _, Map, Servers} = ns_bucket:config(Bucket),
     case Servers == undefined orelse Servers == [] of
@@ -154,11 +134,19 @@ handle_info(janitor, State = #state{bucket=Bucket, rebalancer=undefined}) ->
             %% TODO: this is a hack and should happen someplace else.
             error_logger:info_msg("Performing initial rebalance~n"),
             timer:apply_after(0, ns_cluster_membership,
-                              start_rebalance, [[node()], []]);
+                              start_rebalance, [[node()], []]),
+            {noreply, State};
         _ ->
-            ns_janitor:cleanup(Bucket, Map, Servers)
-    end,
-    {noreply, State};
+            {ok, Pid, Ref} =
+                misc:spawn_link_safe(
+                  fun () ->
+                          spawn_link(
+                            fun () ->
+                                    ns_janitor:cleanup(Bucket, Map, Servers)
+                           end)
+                  end),
+            {noreply, State#state{janitor={Pid, Ref}}}
+    end;
 handle_info({Ref, Reason}, State = #state{rebalancer={_Pid, Ref}}) ->
     case Reason of
         {'EXIT', _, normal} ->
@@ -172,6 +160,8 @@ handle_info({Ref, Reason}, State = #state{rebalancer={_Pid, Ref}}) ->
                        "Rebalance failed with reason ~p~n", [Reason])
     end,
     {noreply, State#state{rebalancer=undefined}};
+handle_info({Ref, _Reason}, State = #state{janitor={_Pid, Ref}}) ->
+    {noreply, State#state{janitor=undefined}};
 handle_info(Msg, State) ->
     error_logger:info_msg("~p:handle_info(~p, ~p)~n",
                           [?MODULE, Msg, State]),
@@ -234,6 +224,8 @@ balance_nodes(Bucket, VNF, Hist, Moves) ->
     end.
 
 do_rebalance(Bucket, KeepNodes, EjectNodes, Map) ->
+    error_logger:info_msg("~p:do_rebalance(~p, ~p, ~p, ~p)~n",
+                          [?MODULE, Bucket, KeepNodes, EjectNodes, Map]),
     try
         AllNodes = KeepNodes ++ EjectNodes,
         ns_bucket:set_servers(Bucket, AllNodes),

@@ -72,11 +72,11 @@ graphviz(Bucket) ->
     ["digraph G { rankdir=LR; ranksep=6;", SubGraphs, Edges, "}"].
 
 sanify(Bucket, Map, Servers) ->
-    {ok, States, _Zombies} = current_states(Servers, Bucket),
-    [sanify_chain(Bucket, States, Chain, VBucket)
+    {ok, States, Zombies} = current_states(Servers, Bucket),
+    [sanify_chain(Bucket, States, Chain, VBucket, Zombies)
      || {VBucket, Chain} <- misc:enumerate(Map, 0)].
 
-sanify_chain(Bucket, States, Chain, VBucket) ->
+sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
     NodeStates = [{N, S} || {N, V, S} <- States, V == VBucket],
     ChainStates = lists:map(fun (N) ->
                                     case lists:keyfind(N, 1, NodeStates) of
@@ -134,9 +134,15 @@ sanify_chain(Bucket, States, Chain, VBucket) ->
                   ({_, {undefined, missing}}) -> % Probably fewer nodes than copies
                       ok;
                   ({{M, _}, {N, State}}) ->
-                      error_logger:error_msg("~p:sanify: Replica on ~p in ~p state for vbucket ~p. Killing any existing replicators for that vbucket.~n",
-                                             [?MODULE, N, State, VBucket]),
-                      ns_vbm_sup:kill_children(M, Bucket, [VBucket])
+                      %% Only do anything if the replica's not a zombie
+                      case lists:member(N, Zombies) of
+                          true->
+                              ok;
+                          false ->
+                              error_logger:error_msg("~p:sanify: Replica on ~p in ~p state for vbucket ~p. Killing any existing replicators for that vbucket.~n",
+                                                     [?MODULE, N, State, VBucket]),
+                              ns_vbm_sup:kill_children(M, Bucket, [VBucket])
+                      end
               end, misc:pairs(C)),
             HaveAllCopies = lists:all(
                               fun ({undefined, _}) -> false;
@@ -171,8 +177,12 @@ sanify_chain(Bucket, States, Chain, VBucket) ->
                     ns_memcached:set_vbucket_state(Master, Bucket, VBucket, active),
                     Chain;
                 X ->
-                    error_logger:error_msg("~p:sanify: Master ~p in state ~p for vbucket ~p but we have extra nodes ~p!~n",
-                                           [?MODULE, Master, State, VBucket, X]),
+                    case lists:member(Master, Zombies) of
+                        true -> ok;
+                        false ->
+                            error_logger:error_msg("~p:sanify: Master ~p in state ~p for vbucket ~p but we have extra nodes ~p!~n",
+                                                   [?MODULE, Master, State, VBucket, X])
+                    end,
                     Chain
             end
     end.
