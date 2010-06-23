@@ -1645,6 +1645,7 @@ var BucketsSection = {
       },
       valueTransformer: function (bucketInfo, bucketSettings) {
         var rv = _.extend({}, bucketInfo, bucketSettings);
+        rv.totalSize = rv.totalSizeMB * 1048576;
         delete rv.settingsCell;
         return rv;
       }

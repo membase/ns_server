@@ -562,12 +562,31 @@ build_bucket_info(PoolId, Id, Pool, LocalAddr) ->
 build_bucket_info(PoolId, Id, Pool, InfoLevel, LocalAddr) ->
     StatsUri = list_to_binary(concat_url_path(["pools", PoolId, "buckets", Id, "stats"])),
     Nodes = build_nodes_info(Pool, false, InfoLevel, LocalAddr),
+
+    %% for now we have only single bucket & we simply sum quotas from all nodes
+    AllActiveNodes = [N || {N, active} <- ns_cluster_membership:get_nodes_cluster_membership()],
+    TotalSize0 = lists:foldl(fun (V, Acc) -> if
+                                                 is_integer(V) -> Acc + V;
+                                                 true -> Acc
+                                             end
+                             end, 0,
+                             [ns_storage_conf:memory_quota(N) || N <- AllActiveNodes]),
+    TotalSize = case AllActiveNodes of
+                    %% This too is not 100% correct approach, so it's disabled for now
+                    %% [_, _ | _] ->
+                    %%     %% but if there're replicas we must half the sum
+                    %%     %% 'cause we hardcode single replica for now
+                    %%     TotalSize0 div 2;
+                    _ -> TotalSize0
+               end,
+
     List1 = [{name, list_to_binary(Id)},
              {uri, list_to_binary(concat_url_path(["pools", PoolId, "buckets", Id]))},
              {streamingUri, list_to_binary(concat_url_path(["pools", PoolId, "bucketsStreaming", Id]))},
              %% TODO: this should be under a controllers/ kind of namespacing
              {flushCacheUri, list_to_binary(concat_url_path(["pools", PoolId,
                                                              "buckets", Id, "controller", "doFlush"]))},
+             {totalSizeMB, TotalSize},
              {nodes, Nodes},
              {stats, {struct, [{uri, StatsUri}]}},
              {vBucketServerMap, ns_bucket:json_map(Id, LocalAddr)}],

@@ -616,10 +616,12 @@ var MockedRequest = mkClass({
           return {nodes:[], // not used for now
                   testAppBucket: true,
                   testAppRunning: false,
+                  totalSizeMB: 1045,
                   stats: {uri: "/pools/default/buckets/5/stats"},
                   name: "Excerciser Application"};
         else
           return {nodes: [], // not used for now
+                  totalSizeMB: 1445,
                   stats: {uri: "/pools/default/buckets/4/stats"},
                   name: "default"};
       }],

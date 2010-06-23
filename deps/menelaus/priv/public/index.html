@@ -686,13 +686,13 @@
         <h3>Cache Size</h3>
         <span class="info_block">
           <div class="ovf">
-            <span class="total_ram">Total RAM ...</span>
+            <span class="total_ram">Total RAM {%= h(V.formatQuantity(totalSize)) %}</span>
             <table class="label">
             <col width="245" />
             <col width="" />
               <tr>
                 <td>Dynamic RAM Allocated:</td>
-                <td>...</td>
+                <td>{%= h(V.formatQuantity(totalSize)) %}</td>
               </tr>
             </table>
             <table class="RAM_diagramm">
@@ -703,16 +703,15 @@
               <tr>
                 <td colspan="4">
                   <span class="diagr_ram">
-                    <span style="width: 5%;" class="blue"></span>
-                    <span style="width: 5%;" class="green"></span>
+                    <span style="width: 0%;" class="blue"></span>
+                    <span style="width: 100%;" class="green"></span>
                   </span>
                 </td>
               </tr>
               <tr class="diagr_labels">
-                <td class="blue">Membase Quota ...</td>
-                <td class="green">Other ...</td>
-                <td>Free ...</td>
-                <td class="right">...</td>
+                <td class="blue">OTHER BUCKETS (0B)</td>
+                <td class="green">THIS BUCKET ({%= h(V.formatQuantity(totalSize)) %})</td>
+                <td colspan=2 class="right">Free (0B)</td>
               </tr>
             </table>
           </div>
@@ -730,13 +729,13 @@
             </table>
           </div>
           <div class="ovf">
-            <span class="total_ram">Total RAM ...</span>
+            <span class="total_ram">Total RAM {%= h(V.formatQuantity(totalSize)) %}</span>
             <table class="label">
             <col width="245" />
             <col width="" />
               <tr>
                 <td>Disk Quota:</td>
-                <td>...</td>
+                <td>{%= h(V.formatQuantity(totalSize)) %}</td>
               </tr>
             </table>
             <table class="RAM_diagramm">
@@ -747,16 +746,15 @@
               <tr>
                 <td colspan="4">
                   <span class="diagr_ram">
-                    <span style="width: 5%;" class="blue"></span>
-                    <span style="width: 5%;" class="green"></span>
+                    <span style="width: 0%;" class="blue"></span>
+                    <span style="width: 100%;" class="green"></span>
                   </span>
                 </td>
               </tr>
               <tr class="diagr_labels">
-                <td class="blue">Membase Quota ...</td>
-                <td class="green">Other ...</td>
-                <td>Free ...</td>
-                <td class="right">...</td>
+                <td class="blue">OTHER BUCKETS (0B)</td>
+                <td class="green">THIS BUCKET ({%= h(V.formatQuantity(totalSize)) %})</td>
+                <td colspan=2 class="right">Free (0B)</td>
               </tr>
             </table>
           </div>
