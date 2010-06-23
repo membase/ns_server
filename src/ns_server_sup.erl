@@ -7,7 +7,7 @@
 
 -export([start_link/0]).
 
--export([init/1]).
+-export([init/1, pull_plug/1]).
 
 start_link() ->
     application:start(os_mon),
@@ -56,3 +56,21 @@ get_child_specs() ->
       permanent, 10, worker,
       [ns_heart, ns_log, ns_port_sup, ns_doctor, ns_info]}
     ].
+
+pull_plug(Fun) ->
+    GoodChildren = [ns_config_sup, ns_port_sup],
+    BadChildren = [Id || {Id,_,_,_} <- supervisor:which_children(?MODULE),
+                         not lists:member(Id, GoodChildren)],
+    error_logger:info_msg("~p plug pulled.  Killing ~p, keeping ~p~n",
+                          [?MODULE, BadChildren, GoodChildren]),
+    spawn(fun() ->
+                  lists:foreach(fun(C) -> ok = supervisor:terminate_child(?MODULE, C) end,
+                                BadChildren),
+                  Fun(),
+                  lists:foreach(
+                    fun(C) ->
+                            R = supervisor:restart_child(?MODULE, C),
+                            error_logger:info_msg("Restarting ~p: ~p~n", [C, R])
+                    end,
+                    BadChildren)
+          end).
