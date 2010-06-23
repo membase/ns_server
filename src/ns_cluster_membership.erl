@@ -6,6 +6,7 @@
 -export([get_nodes_cluster_membership/0,
          get_nodes_cluster_membership/1,
          get_cluster_membership/1,
+         activate/1,
          add_node/4,
          deactivate/1,
          engage_cluster/1,
@@ -230,12 +231,15 @@ start_rebalance(KnownNodes, EjectedNodes) ->
                                     get_nodes_cluster_membership(MaybeKeepNodes),
                                 State == inactiveFailed],
             KeepNodes = MaybeKeepNodes -- FailedNodes,
-            ns_config:set([{{node, Node, membership}, active} ||
-                              Node <- KeepNodes]),
+            activate(KeepNodes),
             ns_orchestrator:start_rebalance("default", KeepNodes,
                                             EjectedNodes ++ FailedNodes);
         _ -> nodes_mismatch
     end.
+
+activate(Nodes) ->
+    ns_config:set([{{node, Node, membership}, active} ||
+                      Node <- Nodes]).
 
 deactivate(Nodes) ->
     %% TODO: we should have a way to delete keys

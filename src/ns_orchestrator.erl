@@ -133,8 +133,8 @@ handle_info(janitor, State = #state{bucket=Bucket, rebalancer=undefined, janitor
         true ->
             %% TODO: this is a hack and should happen someplace else.
             error_logger:info_msg("Performing initial rebalance~n"),
-            timer:apply_after(0, ns_cluster_membership,
-                              start_rebalance, [[node()], []]),
+            ns_cluster_membership:activate([node()]),
+            timer:apply_after(0, ?MODULE, start_rebalance, [Bucket, [node()], []]),
             {noreply, State};
         _ ->
             {ok, Pid, Ref} =
