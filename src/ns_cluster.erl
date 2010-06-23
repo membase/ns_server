@@ -11,6 +11,7 @@
          handle_event/3, handle_sync_event/4,
          code_change/4, terminate/3, prepare_join_to/1]).
 
+-define(NODE_JOIN_REQUEST, 2).
 -define(NODE_JOINED, 3).
 -define(NODE_EJECTED, 4).
 
@@ -149,7 +150,13 @@ terminate(_Reason, _StateName, _StateData) -> ok.
 
 %% API
 join(RemoteNode, NewCookie) ->
-    gen_fsm:send_event(?MODULE, {join, RemoteNode, NewCookie}).
+    ns_log:log(?MODULE, ?NODE_JOIN_REQUEST, "Node join request on ~s to ~s",
+               [node(), RemoteNode]),
+
+    case lists:member(RemoteNode, ns_node_disco:nodes_wanted()) of
+        true -> {error, already_joined};
+        false-> gen_fsm:send_event(?MODULE, {join, RemoteNode, NewCookie})
+    end.
 
 leave() ->
     RemoteNode = ns_node_disco:random_node(),
