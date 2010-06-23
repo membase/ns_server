@@ -278,10 +278,11 @@ handle_call({update, Fun, Sentinel}, From, State) ->
                         case Fun(Pair) of
                             Pair -> Pair;
                             Sentinel -> Sentinel;
-                            {K, Data} ->
+                            {K, Data} when is_list(Data) ->
                                 NewData = [{?METADATA_VER, erlang:now()} |
                                            strip_metadata(Data, [])],
-                                {K, NewData}
+                                {K, NewData};
+                            {_K, _Data} = X -> X
                         end
                 end,
 
