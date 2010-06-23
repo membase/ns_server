@@ -35,9 +35,12 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 %% Internal fuctions
 current_status() ->
     NodeInfo = element(2, ns_info:basic_info()),
+    MemcachedRunning = try ns_memcached:connected() of
+                           Result -> Result
+                       catch
+                           _:_ -> false
+                       end,
     lists:append([
                                                 % If memcached is running, our connection to it will be up
-        [proplists:property(memcached_running, misc:running(ns_memcached))],
+        [proplists:property(memcached_running, MemcachedRunning)],
         NodeInfo]).
-
-

@@ -22,7 +22,8 @@
 -record(state, {sock}).
 
 %% external API
--export([create_bucket/2, create_bucket/3,
+-export([connected/0, connected/1,
+         create_bucket/2, create_bucket/3,
          delete_bucket/1, delete_bucket/2,
          delete_vbucket/2, delete_vbucket/3,
          host_port_str/0, host_port_str/1,
@@ -46,8 +47,17 @@ start_link() ->
 %% gen_server callback implementation
 
 init([]) ->
+    self() ! connect,
     {ok, #state{}}.
 
+handle_call(connected, _From, State) ->
+    Reply = case State#state.sock of
+                undefined ->
+                    false;
+                _ ->
+                    true
+            end,
+    {reply, Reply, State};
 handle_call({create_bucket, _Bucket, _Config}, _From, State) ->
     Reply = unimplemented,
     {reply, Reply, State};
@@ -91,6 +101,8 @@ handle_cast(Msg, State) ->
                            [?MODULE, Msg, State]),
     {noreply, State}.
 
+handle_info(connect, State) ->
+    {noreply, State#state{sock=connect(State)}};
 handle_info(Msg, State) ->
     error_logger:error_msg("~p:handle_info(~p, ~p)~n",
                            [?MODULE, Msg, State]),
@@ -118,6 +130,12 @@ connect(State) ->
         Sock ->
             Sock
     end.
+
+connected() ->
+    connected(node()).
+
+connected(Node) ->
+    call(Node, connected).
 
 create_bucket(Bucket, Config) ->
     create_bucket(node(), Bucket, Config).
@@ -200,21 +218,7 @@ topkeys(Node, Bucket) ->
 
 %% Internal functions
 call(Node, Call) ->
-    call(Node, Call, 3).
-
-call(Node, Call, 0) ->
-    gen_server:call({?MODULE, Node}, Call);
-call(Node, Call, Tries) ->
-    try gen_server:call({?MODULE, Node}, Call) of
-        Result -> Result
-    catch
-        Error:Reason ->
-            error_logger:info_msg("~p:call(~p, ~p): got ~p:~p; retrying~n",
-                                  [?MODULE, Node, Call, Error, Reason]),
-
-            timer:sleep(3000),
-            call(Node, Call, Tries-1)
-    end.
+    gen_server:call({?MODULE, Node}, Call).
 
 do_in_bucket(_Sock, Bucket, Fun) ->
     %% TODO: real multi-tenancy
