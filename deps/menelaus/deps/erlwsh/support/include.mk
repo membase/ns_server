@@ -41,6 +41,11 @@ $(EBIN_DIR)/%.$(EMULATOR): %.erl
 ./%.$(EMULATOR): %.erl
 	$(ERLC) $(ERLC_FLAGS) -o . $<
 
-$(DOC_DIR)/%.html: %.erl
+$(DOC_DIR):
+	mkdir -p $(DOC_DIR)
+
+%.html : %.erl
 	$(ERL) -noshell -run edoc file $< -run init stop
-	mv *.html $(DOC_DIR)
+
+$(DOC_DIR)/%.html: %.html $(DOC_DIR)
+	mv $(notdir $@) $(DOC_DIR)
