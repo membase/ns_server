@@ -49,9 +49,18 @@ bringup() ->
 
 running({join, RemoteNode, NewCookie}, State) ->
     ns_log:log(?MODULE, 0002, "Node ~p is joining cluster via node ~p.", [node(), RemoteNode]),
-    ns_config:set(otp, [{cookie, NewCookie}]),
+    BlackSpot = make_ref(),
+    MyNode = node(),
+    ns_config:update(fun ({directory,_} = X) -> X;
+                         ({otp, _}) -> {otp, [{cookie, NewCookie}]};
+                         ({nodes_wanted, _} = X) -> X;
+                         ({{node, _, membership}, _}) -> BlackSpot;
+                         ({{node, Node, _}, _} = X) when Node =:= MyNode -> X;
+                         (_) -> BlackSpot
+                     end, BlackSpot),
+    %% cannot force low timestamp with ns_config update, so we set it separateley
     ns_config:set_initial(nodes_wanted, [node(), RemoteNode]),
-    ns_config:clear([directory, otp, nodes_wanted]),
+    error_logger:info_msg("pre-join cleaned config is:~n~p~n", [ns_config:get()]),
     true = exit(State#running_state.child, shutdown), % Pull the rug out from under the app
     {next_state, joining, #joining_state{remote=RemoteNode, cookie=NewCookie}};
 
