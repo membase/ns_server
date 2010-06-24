@@ -113,15 +113,15 @@ set_servers(Bucket, Servers) ->
 
 % Update the bucket config atomically.
 update_bucket_config(Bucket, Fun) ->
-    ok = ns_config:update(
-      fun ({buckets, List}) ->
-              Buckets = proplists:get_value(configs, List, []),
-              OldConfig = proplists:get_value(Bucket, Buckets),
-              NewConfig = Fun(OldConfig),
-              NewBuckets = lists:keyreplace(Bucket, 1, Buckets, {Bucket, NewConfig}),
-              {buckets, lists:keyreplace(configs, 1, List, {configs, NewBuckets})};
-          (Pair) -> Pair
-      end, make_ref()).
+    ok = ns_config:update_key(
+           buckets,
+           fun (List) ->
+                   Buckets = proplists:get_value(configs, List, []),
+                   OldConfig = proplists:get_value(Bucket, Buckets),
+                   NewConfig = Fun(OldConfig),
+                   NewBuckets = lists:keyreplace(Bucket, 1, Buckets, {Bucket, NewConfig}),
+                   lists:keyreplace(configs, 1, List, {configs, NewBuckets})
+           end).
 
 %%%===================================================================
 %%% gen_server callbacks

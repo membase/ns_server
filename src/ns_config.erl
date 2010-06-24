@@ -38,10 +38,15 @@
 
 -define(DEFAULT_TIMEOUT, 500).
 
+%% log codes
+-define(RELOAD_FAILED, 1).
+-define(RESAVE_FAILED, 2).
+-define(CONFIG_CONFLICT, 3).
+
 -export([start_link/2, start_link/1,
          get_remote/1, set_remote/2, set_remote/3,
-         get/2, get/1, get/0, set/2, set/1, set/3,
-         update/2,
+         get/2, get/1, get/0, set/2, set/1,
+         set_initial/2, update/2, update_key/2,
          search_node/3, search_node/2, search_node/1,
          search_node_prop/3, search_node_prop/4,
          search_node_prop/5,
@@ -53,7 +58,7 @@
          proplist_get_value/3]).
 
 % Exported for tests only
--export([strip_metadata/2, merge_configs/3, save_file/3, load_config/3,
+-export([merge_configs/3, save_file/3, load_config/3,
          load_file/2, save_config/2]).
 
 % A static config file is often hand edited.
@@ -99,19 +104,42 @@ set_remote(Node, KVList, Timeout) ->
 get_remote(Node) -> config_dynamic(?MODULE:get(Node)).
 
 % ----------------------------------------
+%% Set a value that will be overridden by any merged config
+set_initial(Key, Value) ->
+    ok = update(fun (Config) ->
+                        [{Key, Value} | lists:keydelete(Key, 1, Config)]
+                end).
 
-set(Key, PropList, Timestamp) ->
-    PropList2 = [{?METADATA_VER, Timestamp} |
-                 strip_metadata(PropList, [])],
-    gen_server:call(?MODULE, {merge, [{Key, PropList2}]}).
+set(Key, Value) ->
+    set([{Key, Value}]).
 
-set(Key, PropList) when is_list(PropList) ->
-    set(Key, PropList, erlang:now());
+set(KVList) ->
+    ok = update(fun (Config) ->
+                   misc:ukeymergewith(fun ({K, V1}, {_, V2}) ->
+                                              {K, merge_vclocks(V1, V2)}
+                                      end, 1,
+                                      lists:ukeysort(1, KVList),
+                                      lists:ukeysort(1, Config))
+                end).
 
-set(Key, Val)         -> gen_server:call(?MODULE, {merge, [{Key, Val}]}).
-set(KVList)           -> gen_server:call(?MODULE, {merge,   KVList}).
-replace(KVList)       -> gen_server:call(?MODULE, {replace, KVList}).
-update(Fun, Sentinal) -> gen_server:call(?MODULE, {update, Fun, Sentinal}).
+replace(KVList) -> gen_server:call(?MODULE, {replace, KVList}).
+
+update(Fun) ->
+    gen_server:call(?MODULE, {update, Fun}).
+
+update(Fun, Sentinel) ->
+    UpdateFun = fun(Pair = {_OldKey, OldValue}) ->
+                        case Fun(Pair) of
+                            Pair -> Pair;
+                            Sentinel -> Sentinel;
+                            {K, Data} ->
+                                {K, merge_vclocks(Data, OldValue)}
+                        end
+                end,
+    update(fun (Config) -> misc:mapfilter(UpdateFun, Sentinel, Config) end).
+
+update_key(Key, Fun) ->
+    gen_server:call(?MODULE, {update, Key, Fun}).
 
 clear() -> clear([]).
 clear(Keep) -> gen_server:call(?MODULE, {clear, Keep}).
@@ -134,7 +162,7 @@ search_node(Key) -> search_node(?MODULE:get(), Key).
 
 search(Config, Key) ->
     case search_raw(Config, Key) of
-        {value, X} -> {value, strip_metadata(X, [])};
+        {value, X} -> {value, strip_metadata(X)};
         false      -> false
     end.
 
@@ -224,12 +252,31 @@ proplist_get_value(Key, [KeyValTuple | Rest], DefaultTuple) ->
         false -> proplist_get_value(Key, Rest, DefaultTuple)
     end.
 
-% Removes metadata like METADATA_VER from results.
+% Removes metadata like METADATA_VCLOCK from results.
+strip_metadata(Value) when is_list(Value) ->
+    lists:keydelete(?METADATA_VCLOCK, 1, Value);
+strip_metadata(Value) ->
+    Value.
 
-strip_metadata([], Acc)                       -> lists:reverse(Acc);
-strip_metadata([{?METADATA_VER, _} | T], Acc) -> strip_metadata(T, Acc);
-strip_metadata([X | T], Acc)                  -> strip_metadata(T, [X | Acc]);
-strip_metadata(X, _)                          -> X.
+%% Set the vclock in NewValue to one that descends from both and that
+%% neither descends from
+merge_vclocks(NewValue, OldValue) ->
+    case is_list(NewValue) of
+        true ->
+            NewValueVClock = proplists:get_value(?METADATA_VCLOCK, NewValue, []),
+            OldValueVClock =
+                case is_list(OldValue) of
+                    true ->
+                        proplists:get_value(?METADATA_VCLOCK, NewValue, []);
+                    false -> []
+                end,
+            NewVClock = vclock:increment(node(), vclock:merge([OldValueVClock,
+                                                               NewValueVClock])),
+            [{?METADATA_VCLOCK, NewVClock} | lists:keydelete(?METADATA_VCLOCK,
+                                                             1, NewValue)];
+        false ->
+            NewValue
+    end.
 
 %% gen_server callbacks
 
@@ -252,7 +299,7 @@ handle_info(_Info, State)           -> {noreply, State}.
 handle_call(reload, _From, State) ->
     case init(State#config.init) of
         {ok, State2}  -> {reply, ok, State2};
-        {stop, Error} -> ns_log:log(?MODULE, 0001, "reload failed: ~p",
+        {stop, Error} -> ns_log:log(?MODULE, ?RELOAD_FAILED, "reload failed: ~p",
                                     [Error]),
                          {reply, {error, Error}, State}
     end;
@@ -260,7 +307,7 @@ handle_call(reload, _From, State) ->
 handle_call(resave, _From, State) ->
     case save_config(State) of
         ok    -> {reply, ok, State};
-        Error -> ns_log:log(?MODULE, 0002, "resave failed: ~p", [Error]),
+        Error -> ns_log:log(?MODULE, ?RESAVE_FAILED, "resave failed: ~p", [Error]),
                  {reply, Error, State}
     end;
 
@@ -273,26 +320,25 @@ handle_call(get, _From, State) -> {reply, State, State};
 handle_call({replace, KVList}, _From, State) ->
     {reply, ok, State#config{dynamic = [KVList]}};
 
-handle_call({update, Fun, Sentinel}, From, State) ->
-    UpdateFun = fun(Pair) ->
-                        case Fun(Pair) of
-                            Pair -> Pair;
-                            Sentinel -> Sentinel;
-                            {K, Data} when is_list(Data) ->
-                                NewData = [{?METADATA_VER, erlang:now()} |
-                                           strip_metadata(Data, [])],
-                                {K, NewData};
-                            {_K, _Data} = X -> X
-                        end
-                end,
-
-    try misc:mapfilter(UpdateFun, Sentinel, config_dynamic(State)) of
+handle_call({update, Fun}, From, State) ->
+    try Fun(config_dynamic(State)) of
         NewList ->
             announce_changes(NewList),
             handle_call(resave, From, State#config{dynamic=[NewList]})
     catch
         X:Error ->
             {reply, {X, Error, erlang:get_stacktrace()}, State}
+    end;
+
+handle_call({update, Key, Fun}, From, State) ->
+    case search_raw(State, Key) of
+        {value, OldValue} ->
+            NewValue = Fun(OldValue),
+            handle_call(resave, From,
+                        State#config{dynamic=[[{Key, NewValue} |
+                                              lists:keydelete(
+                                                Key, 1, config_dynamic(State))]]});
+        error -> {reply, {error, not_found}, State}
     end;
 
 handle_call({clear, Keep}, From, State) ->
@@ -311,9 +357,9 @@ handle_call({merge, KVList}, From, State) ->
         true ->
             case handle_call(resave, From, State2) of
                 {reply, ok, State3} = Result ->
-                    DynOld = config_dynamic(State),
-                    DynNew = config_dynamic(State3),
-                    DynChg = lists:subtract(DynNew, DynOld),
+                    DynOld = lists:map(fun strip_metadata/1, config_dynamic(State)),
+                    DynNew = lists:map(fun strip_metadata/1, config_dynamic(State3)),
+                    DynChg = DynNew -- DynOld,
                     announce_changes(DynChg),
                     Result;
                 Error ->
@@ -379,8 +425,8 @@ announce_changes([]) -> ok;
 announce_changes(KVList) ->
     % Fire a event per changed key.
     lists:foreach(fun ({Key, Value}) ->
-                      gen_event:notify(ns_config_events,
-                                       {Key, strip_metadata(Value, [])})
+                          gen_event:notify(ns_config_events,
+                                           {Key, strip_metadata(Value)})
                   end,
                   KVList),
     % Fire a generic event that 'something changed'.
@@ -426,20 +472,21 @@ merge_configs([Field | Fields], Remote, Local, Acc) ->
     merge_configs(Fields, Remote, Local, A2).
 
 merge_lists(Field, Acc, RV, LV) ->
-    RVer = misc:time_to_epoch_float(
-             proplists:get_value(?METADATA_VER, RV)),
-    LVer = misc:time_to_epoch_float(
-             proplists:get_value(?METADATA_VER, LV)),
-    case {RVer, LVer} of
-        {undefined, undefined} -> [{Field, RV} | Acc];
-        {_,         undefined} -> [{Field, RV} | Acc];
-        {undefined, _}         -> [{Field, LV} | Acc];
-        {RTime, LTime} when is_float(RTime),
-                            is_float(LTime) ->
-            case RTime > LTime of
-                true  -> [{Field, RV} | Acc];
-                false -> [{Field, LV} | Acc]
-            end
+    RClock = proplists:get_value(?METADATA_VCLOCK, RV, []),
+    LClock = proplists:get_value(?METADATA_VCLOCK, LV, []),
+    case {vclock:descends(RClock, LClock),
+          vclock:descends(LClock, RClock)} of
+        {true, true} ->
+            RClock = LClock,
+            [{Field, RV} | Acc];
+        {false, false} ->
+            ns_log:log(?MODULE, ?CONFIG_CONFLICT,
+                       "Conflicting configuration changes to field ~p:~n~p and~n~p, choosing the former.~n",
+                       [Field, RV, LV]),
+            NewValue = merge_vclocks(RV, LV),
+            [{Field, NewValue} | Acc];
+        {true, false} -> [{Field, RV} | Acc];
+        {false, true} -> [{Field, LV} | Acc]
     end.
 
 read_includes(Path) -> read_includes([{include, Path}], []).
@@ -452,4 +499,3 @@ read_includes([{include, Path} | Terms], Acc) ->
   end;
 read_includes([X | Rest], Acc) -> read_includes(Rest, [X | Acc]);
 read_includes([], Result)      -> {ok, lists:reverse(Result)}.
-

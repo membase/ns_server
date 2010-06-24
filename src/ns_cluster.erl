@@ -50,7 +50,7 @@ bringup() ->
 running({join, RemoteNode, NewCookie}, State) ->
     ns_log:log(?MODULE, 0002, "Node ~p is joining cluster via node ~p.", [node(), RemoteNode]),
     ns_config:set(otp, [{cookie, NewCookie}]),
-    ns_config:set(nodes_wanted, [node(), RemoteNode], {0, 0, 0}),
+    ns_config:set_initial(nodes_wanted, [node(), RemoteNode]),
     ns_config:clear([directory, otp, nodes_wanted]),
     true = exit(State#running_state.child, shutdown), % Pull the rug out from under the app
     {next_state, joining, #joining_state{remote=RemoteNode, cookie=NewCookie}};
@@ -66,8 +66,8 @@ running({leave, Data}, State) ->
         false -> false;
         _ -> ns_config:set(rest, [{port, WebPort}])
     end,
-    ns_config:set(nodes_wanted, [node()], {0, 0, 0}),
-    ns_config:set(otp, [{cookie, NewCookie}], {0, 0, 0}),
+    ns_config:set_initial(nodes_wanted, [node()]),
+    ns_config:set_initial(otp, [{cookie, NewCookie}]),
     true = exit(State#running_state.child, shutdown),
     {next_state, leaving, Data};
 
@@ -85,12 +85,10 @@ joining({exit, _Pid}, #joining_state{remote=RemoteNode, cookie=NewCookie}) ->
     %% Add ourselves to nodes_wanted on the remote node after shutting
     %% down our own config server.
     MyNode = node(),
-    Fun = fun({nodes_wanted, X}) ->
-                  {nodes_wanted, lists:usort([MyNode | X])};
-             (X) -> X
+    Fun = fun(X) ->
+                  lists:usort([MyNode | X])
           end,
-    Ref = make_ref(),
-    case rpc:call(RemoteNode, ns_config, update, [Fun, Ref]) of
+    case rpc:call(RemoteNode, ns_config, update_key, [nodes_wanted, Fun]) of
         {badrpc, Crap} -> exit({badrpc, Crap});
         _ -> error_logger:info_msg("Remote config updated to add ~p to ~p~n",
                                    [node(), RemoteNode])
@@ -185,12 +183,11 @@ leave(Node) ->
 shun(RemoteNode) ->
     case RemoteNode == node() of
         false ->
-            ns_config:update(fun({nodes_wanted, X}) ->
-                                     {nodes_wanted, X -- [RemoteNode]};
-                                (X) -> X
-                             end,
-                             make_ref()),
-                ns_config_rep:push();
+            ns_config:update_key(nodes_wanted,
+                                 fun (X) ->
+                                         X -- [RemoteNode]
+                                 end),
+            ns_config_rep:push();
         true ->
             leave()
     end.

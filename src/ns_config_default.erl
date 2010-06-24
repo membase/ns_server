@@ -109,7 +109,7 @@ default() ->
     %
     % Modifiers: menelaus REST API
     % Listeners: some menelaus module that configures/reconfigures mochiweb
-    {rest, [{'_ver', {0, 0, 0}},
+    {rest, [{'_vclock', []},
             {port, 8080} % Port number of the REST admin API and UI.
             ]},
 
@@ -118,23 +118,23 @@ default() ->
     %
     % Modifiers: menelaus REST API
     % Listeners: some menelaus module that configures/reconfigures mochiweb??
-    {rest_creds, [{'_ver', {0, 0, 0}},
+    {rest_creds, [{'_vclock', []},
                   {creds, []}
                  ]}, % An empty list means no login/password auth check.
 
     % Example rest_cred when a login/password is setup.
     %
-    % {rest_creds, [{'_ver', {0, 0, 0}},
+    % {rest_creds, [{'_vclock', []},
     %               {creds, [{"user", [{password, "password"}]},
     %                        {"admin", [{password, "admin"}]}]}
     %              ]}, % An empty list means no login/password auth check.
 
     % This is also a parameter to memcached ports below.
-    {isasl, [{'_ver', {0, 0, 0}},
+    {isasl, [{'_vclock', []},
              {path, "./priv/isasl.pw"}]}, % Relative to startup directory.
 
     % Memcached config
-    {memcached, [{'_ver', {0, 0, 0}},
+    {memcached, [{'_vclock', []},
                  {port, 11210},
                  {ht_size, 12289},
                  {ht_locks, 23},
@@ -145,7 +145,7 @@ default() ->
                 ]
     },
 
-    {buckets, [{'_ver', {0, 0, 0}},
+    {buckets, [{'_vclock', []},
                {configs, [{"default",
                            [{num_vbuckets, 256},
                             {num_replicas, 1},
@@ -155,7 +155,7 @@ default() ->
                }]},
 
     % Moxi config
-    {moxi, [{'_ver', {0, 0, 0}},
+    {moxi, [{'_vclock', []},
             {port, 11211}
            ]},
 
@@ -165,7 +165,7 @@ default() ->
     % This is a classic "should" key, where ns_port_sup needs
     % to try to start child processes.  If it fails, it should ns_log errors.
     {port_servers,
-     [{'_ver', {0, 0, 0}},
+     [{'_vclock', []},
       {moxi, "./bin/moxi/moxi",
        ["-Z", {"port_listen=~B,downstream_max=1", [port]},
         "-z", {"auth=,url=http://127.0.0.1:~B/pools/default/bucketsStreamingConfig/default,#@", [{rest, port}]},
@@ -193,7 +193,7 @@ default() ->
 
     % Modifiers: menelaus
     % Listeners: ? possibly ns_log
-    {alerts, [{'_ver', {0, 0, 0}},
+    {alerts, [{'_vclock', []},
             {email, ""},
             {email_alerts, false},
             {email_server, [{user, undefined},

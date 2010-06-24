@@ -37,10 +37,10 @@ num_nodes.times do |x|
   FileUtils.mkdir_p node_data
   nodes = nodes + <<-END
     {{node, #{node_id}, rest},
-      [{'_ver', {0, 0, 0}},
+      [{'_vclock', []},
        {port, #{x + base_api_port}}]}.
 
-    {{node, #{node_id}, memcached}, [{'_ver', {0, 0, 0}},
+    {{node, #{node_id}, memcached}, [{'_vclock', []},
                  {port, #{(x * 2) + base_direct_port}},
                  {ht_size, 12289},
                  {ht_locks, 23},
@@ -49,7 +49,7 @@ num_nodes.times do |x|
                  {admin_pass, "_admin"}
                  ]}.
 
-    {{node, #{node_id}, moxi}, [{'_ver', {0, 0, 0}},
+    {{node, #{node_id}, moxi}, [{'_vclock', []},
             {port, #{(x * 2) + base_direct_port + 1}}]}.
 
     END
