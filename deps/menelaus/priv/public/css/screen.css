@@ -704,6 +704,7 @@ button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
 .marker-max span.r { background-position: right bottom;}
 
 #join_cluster_dialog label {width:150px !important;}
+#join_cluster_dialog_errors_container {padding-left: 40px;}
 
 .secure_enabled, .secure_disabled {display:block; float:left; margin:0 1%; width:223px; margin:0 10px !important;}
 .secure_enabled .button_big {margin:0px;}
