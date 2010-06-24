@@ -13,6 +13,7 @@ function Future(body, options) {
   _.extend(this, options || {});
 }
 Future.prototype = {
+  constructor: Future,
   removeNowValue: function () {
     var rv = this.nowValue;
     delete this.nowValue;
@@ -20,11 +21,16 @@ Future.prototype = {
   },
   mkCallback: function (cell) {
     var async = this;
-    return function (data) {
+    var rv = function (data) {
       if (async.action)
         async.action.finish();
-      cell.deliverFutureValue(async, data);
+      return cell.deliverFutureValue(async, data);
     }
+    rv.continuing = function (data) {
+      async.nowValue = data;
+      return rv(async);
+    }
+    return rv;
   },
   start: function (cell) {
     if (this.modal) {
@@ -37,7 +43,7 @@ Future.prototype = {
   }
 };
 
-future.get = function (ajaxOptions, valueTransformer, nowValue) {
+future.get = function (ajaxOptions, valueTransformer, nowValue, futureWrapper) {
   var options = {
     valueTransformer: valueTransformer,
     cancel: function () {
@@ -48,12 +54,35 @@ future.get = function (ajaxOptions, valueTransformer, nowValue) {
   var xhr;
   if (ajaxOptions.url === undefined)
     throw new Error("url is undefined");
-  return future(function (dataCallback) {
+  return (futureWrapper || future)(function (dataCallback) {
     xhr = $.ajax(_.extend({type: 'GET',
                            dataType: 'json',
                            success: dataCallback},
                           ajaxOptions));
   }, options);
+}
+
+future.pollingGET = function (ajaxOptions, valueTransformer, nowValue, futureWrapper) {
+  var initiator = futureWrapper || future;
+  var interval = 2000;
+  if (ajaxOptions.interval) {
+    interval = ajaxOptions.interval;
+    delete ajaxOptions.interval;
+  }
+  return future.get(ajaxOptions, valueTransformer, nowValue, function (body, options) {
+    return initiator(function (dataCallback) {
+      var context = this;
+      function dataCallbackWrapper(data) {
+        if (!dataCallback.continuing(data))
+          return;
+        setTimeout(function () {
+          if (dataCallback.continuing(data))
+            body.call(context, dataCallbackWrapper);
+        }, interval);
+      }
+      body.call(context, dataCallbackWrapper);
+    }, options);
+  });
 }
 
 future.infinite = function () {
@@ -282,7 +311,7 @@ var Cell = mkClass({
   deliverFutureValue: function (future, value) {
     // detect cancellation
     if (this.pendingFuture != future)
-      return;
+      return false;
 
     this.pendingFuture = null;
 
@@ -290,6 +319,7 @@ var Cell = mkClass({
       value = (future.valueTransformer)(value);
 
     this.setValue(value);
+    return true;
   },
   cancelAsyncSet: function () {
     var async = this.pendingFuture;
