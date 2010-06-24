@@ -224,8 +224,6 @@ balance_nodes(Bucket, VNF, Hist, Moves) ->
     end.
 
 do_rebalance(Bucket, KeepNodes, EjectNodes, Map) ->
-    error_logger:info_msg("~p:do_rebalance(~p, ~p, ~p, ~p)~n",
-                          [?MODULE, Bucket, KeepNodes, EjectNodes, Map]),
     try
         AllNodes = KeepNodes ++ EjectNodes,
         ns_bucket:set_servers(Bucket, AllNodes),
@@ -358,8 +356,6 @@ perform_moves(Bucket, Map, [{V, Old, New}|Moves]) ->
         {_, _} ->
             Map1 = misc:nthreplace(V+1, [New|lists:duplicate(length(Replicas),
                                                            undefined)], Map),
-            error_logger:info_msg("Moving vbucket ~p for bucket ~p from ~p to ~p~n",
-                                  [V, Bucket, Old, New]),
             case Old of
                 undefined ->
                     %% This will fail if another node is restarting.

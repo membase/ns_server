@@ -12,7 +12,6 @@ cleanup(Bucket, Map, Servers) ->
     case sanify(Bucket, Map, Servers) of
         Map -> ok;
         Map1 ->
-            error_logger:info_msg("~p:sanify changed map: ~p~n", [?MODULE, Map1]),
             ns_bucket:set_map(Bucket, Map1)
     end,
     Replicas = lists:keysort(1, map_to_replicas(Map)),
