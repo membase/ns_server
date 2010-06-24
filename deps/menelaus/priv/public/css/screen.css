@@ -768,7 +768,7 @@ body.init_welcome form#init_welcome_form p {color:#bdccd4; font-family:Verdana,H
 body.init_welcome form#init_welcome_form input.license-input {border:1px solid #b6bdc1; color:#7e7e80; font-family:Verdana, Helvetica, sans-serif; font-size:12pt; height:30px; line-height:30px; margin:0px; padding:0px 0px 0px 5px; width:210px;}
 body.init_welcome form#init_welcome_form {margin-bottom:175px; margin-left:50px; margin-top:25px; width:600px;}
 /* config */
-button.direction-button {background:url(../images/blue-button.png) no-repeat; border:none; color:#fff; cursor:pointer; float:right; font-family:Arial, Helvetica, Sans-Serif; font-size:12pt; margin-right:20px; margin-top:20px; width:121px; height:31px;}
+button.direction-button {background:url(../images/blue-button.png) no-repeat; border:none; color:#fff; cursor:pointer; float:right; font-family:Arial, Helvetica, Sans-Serif; font-size:12pt; margin-right:20px; margin-top:20px; width:121px; height:31px; line-height:31px !important;}
 
 div.config-top {background:url(../images/config-top.png) repeat-x; height:60px; line-height:60px; margin:0px 0px 0px -8px;}
 div.config-top h1, div.config-top h2 {font-family:Verdana, Helvetica, Sans-Serif; text-shadow: 0px 1px 2px #fff;}
@@ -979,3 +979,5 @@ ul.tabs .tab_left a.current:hover, ul.tabs .tab_right a.current:hover {text-shad
 .fixed {position:fixed !important;}
 
 html body .overlayed {z-index:999 !important;}
+
+#about-close {line-height:31px !important;}
