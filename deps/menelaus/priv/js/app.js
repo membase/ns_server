@@ -472,8 +472,9 @@ var DAO = {
       return data;
     }
     var uri = poolList[0].uri;
-    return future.get({url: uri}, poolDetailsValueTransformer);
+    return future.pollingGET({url: uri}, poolDetailsValueTransformer);
   }).setSources({poolList: this.poolList});
+  this.currentPoolDetailsCell.equality = _.isEqual;
 
   var statsBucketURL = this.statsBucketURL = new StringHashFragmentCell("statsBucket");
 
