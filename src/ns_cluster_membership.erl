@@ -54,7 +54,7 @@ get_cluster_membership(Node) ->
     end.
 
 engage_cluster(RemoteIP) ->
-    engage_cluster(RemoteIP, [restart]).
+    engage_cluster(RemoteIP, []).
 
 %% called on cluster node with IP of node to be added
 %%
@@ -79,12 +79,8 @@ engage_cluster(RemoteIP, Options) ->
                                     error_logger:info_msg("critical: Cookie has changed from ~p to ~p~n", [CookieBefore, CookieAfter]),
                                     exit(bad_cookie)
                             end,
-                            case lists:member(restart, Options) of
-                                true ->
-                                    ns_cluster:rename_node(MyNode, node()),
-                                    ok;
-                                _ -> ok
-                            end
+                            ns_cluster:rename_node(MyNode, node()),
+                            ok
                     end;
                 %% not alone, keep present config
                 _ -> ok
@@ -124,7 +120,7 @@ handle_add_node_request(OtpNode, OtpCookie) ->
         true -> % When a user wants to add a node to an existing cluster, this
                 % codepath is called on the to-be-added node.
                 [_Local, Hostname] = string:tokens(atom_to_list(OtpNode), "@"),
-                case engage_cluster(Hostname, []) of
+                case engage_cluster(Hostname) of
                     ok -> ns_cluster:join(OtpNode, OtpCookie);
                     X -> X
                 end;
