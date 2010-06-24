@@ -663,3 +663,33 @@ rewrite_value_test() ->
                         {"b string", 4, a, {blah, a, b}}]),
     X = [{"a string", 1, x},
          {"b string", 4, b, {blah, b, b}}].
+
+
+ukeymergewith(Fun, N, L1, L2) ->
+    ukeymergewith(Fun, N, L1, L2, []).
+
+ukeymergewith(_, _, [], [], Out) ->
+    lists:reverse(Out);
+ukeymergewith(_, _, L1, [], Out) ->
+    lists:reverse(Out, L1);
+ukeymergewith(_, _, [], L2, Out) ->
+    lists:reverse(Out, L2);
+ukeymergewith(Fun, N, L1 = [T1|R1], L2 = [T2|R2], Out) ->
+    K1 = element(N, T1),
+    K2 = element(N, T2),
+    case K1 of
+        K2 ->
+            ukeymergewith(Fun, N, R1, R2, [Fun(T1, T2) | Out]);
+        K when K < K2 ->
+            ukeymergewith(Fun, N, R1, L2, [T1|Out]);
+        _ ->
+            ukeymergewith(Fun, N, L1, R2, [T2|Out])
+    end.
+
+ukeymergewith_test() ->
+    Fun = fun ({K, A}, {_, B}) ->
+                  {K, A + B}
+          end,
+    [{a, 3}] = ukeymergewith(Fun, 1, [{a, 1}], [{a, 2}]),
+    [{a, 3}, {b, 1}] = ukeymergewith(Fun, 1, [{a, 1}], [{a, 2}, {b, 1}]),
+    [{a, 1}, {b, 3}] = ukeymergewith(Fun, 1, [{b, 1}], [{a, 1}, {b, 2}]).
