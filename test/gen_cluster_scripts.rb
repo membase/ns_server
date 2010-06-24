@@ -46,8 +46,7 @@ num_nodes.times do |x|
                  {ht_locks, 23},
                  {dbname, "#{node_data}/default"},
                  {admin_user, "_admin"},
-                 {admin_pass, "_admin"},
-                 {dbname, "./data/n_#{x + base_api_port - 9000}/default"}
+                 {admin_pass, "_admin"}
                  ]}.
 
     {{node, #{node_id}, moxi}, [{'_ver', {0, 0, 0}},

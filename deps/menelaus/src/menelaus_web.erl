@@ -557,7 +557,10 @@ handle_bucket_list(Id, Req) ->
     reply_json(Req, BucketsInfo).
 
 handle_bucket_info(PoolId, Id, Req, Pool, _Bucket) ->
-    reply_json(Req, build_bucket_info(PoolId, Id, Pool, menelaus_util:local_addr(Req))).
+    case ns_bucket:get_bucket(Id) of
+        not_present -> Req:respond({404, add_header(), "The bucket was not found.\r\n"});
+        _ -> reply_json(Req, build_bucket_info(PoolId, Id, Pool, menelaus_util:local_addr(Req)))
+    end.
 
 build_bucket_info(PoolId, Id, Pool, LocalAddr) ->
     build_bucket_info(PoolId, Id, Pool, normal, LocalAddr).
