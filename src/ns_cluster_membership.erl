@@ -68,9 +68,17 @@ engage_cluster(RemoteIP, Options) ->
             case ns_node_disco:nodes_wanted() of
                 [MyNode] ->
                     %% we're alone, so adjust our name
+                    CookieBefore = erlang:get_cookie(),
                     case dist_manager:adjust_my_address(MyAddr) of
                         nothing -> ok;
                         net_restarted ->
+                            case erlang:get_cookie() of
+                                CookieBefore ->
+                                    ok;
+                                CookieAfter ->
+                                    error_logger:info_msg("critical: Cookie has changed from ~p to ~p~n", [CookieBefore, CookieAfter]),
+                                    exit(bad_cookie)
+                            end,
                             case lists:member(restart, Options) of
                                 true ->
                                     ns_cluster:rename_node(MyNode, node()),

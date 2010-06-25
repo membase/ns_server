@@ -92,9 +92,17 @@ handle_call({adjust_my_address, MyIP}, _From,
             #state{self_started = true, my_ip = MyOldIP} = State) ->
     case MyIP =:= MyOldIP of
         true -> {reply, nothing, State};
-        false -> teardown(),
+        false -> Cookie = erlang:get_cookie(),
+                 teardown(),
                  error_logger:info_msg("Adjusted IP to ~p~n", [MyIP]),
                  NewState = bringup(MyIP),
+                 if
+                     NewState#state.self_started ->
+                         error_logger:info_msg("Re-setting cookie ~p~n", [{Cookie, node()}]),
+                         erlang:set_cookie(node(), Cookie);
+                     true -> ok
+                 end,
+
                  RV = save_address_config(NewState),
                  error_logger:info_msg("save_address_config: ~p~n", [RV]),
                  {reply, net_restarted, NewState}
