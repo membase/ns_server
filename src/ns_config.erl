@@ -406,8 +406,18 @@ load_config(ConfigPath, DirPath, PolicyMod) ->
                     {ok, DRead} -> DRead;
                     _           -> []
                 end,
+            {_, DynamicPropList} = lists:foldl(fun (Tuple, {Seen, Acc}) ->
+                                                       K = element(1, Tuple),
+                                                       case sets:is_element(K, Seen) of
+                                                           true -> {Seen, Acc};
+                                                           false -> {sets:add_element(K, Seen),
+                                                                     [Tuple | Acc]}
+                                                       end
+                                               end,
+                                               {sets:from_list([directory]), []},
+                                               lists:append(D ++ [S, DefaultConfig])),
             {ok, #config{static = [S, DefaultConfig],
-                         dynamic = D,
+                         dynamic = [lists:keysort(1, DynamicPropList)],
                          policy_mod = PolicyMod}};
         E -> E
     end.

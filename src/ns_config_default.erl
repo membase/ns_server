@@ -99,18 +99,12 @@ default() ->
     %
     % See the proplists erlang module.
     %
-    % The special '_ver' property, by convention, is a versioning timestamp,
-    % which holds the output of erlang:now().  It helps us replicate
-    % configuration information out to all the nodes and helps to
-    % eventually quiesce any configuration changes.
-    %
     % A change to any of these rest properties probably means a restart of
     % mochiweb is needed.
     %
     % Modifiers: menelaus REST API
     % Listeners: some menelaus module that configures/reconfigures mochiweb
-    {rest, [{'_vclock', []},
-            {port, 8080} % Port number of the REST admin API and UI.
+    {rest, [{port, 8080} % Port number of the REST admin API and UI.
             ]},
 
     % In 1.0, only the first entry in the creds list is displayed in the UI
@@ -118,24 +112,20 @@ default() ->
     %
     % Modifiers: menelaus REST API
     % Listeners: some menelaus module that configures/reconfigures mochiweb??
-    {rest_creds, [{'_vclock', []},
-                  {creds, []}
+    {rest_creds, [{creds, []}
                  ]}, % An empty list means no login/password auth check.
 
     % Example rest_cred when a login/password is setup.
     %
-    % {rest_creds, [{'_vclock', []},
-    %               {creds, [{"user", [{password, "password"}]},
+    % {rest_creds, [{creds, [{"user", [{password, "password"}]},
     %                        {"admin", [{password, "admin"}]}]}
     %              ]}, % An empty list means no login/password auth check.
 
     % This is also a parameter to memcached ports below.
-    {isasl, [{'_vclock', []},
-             {path, "./priv/isasl.pw"}]}, % Relative to startup directory.
+    {isasl, [{path, "./priv/isasl.pw"}]}, % Relative to startup directory.
 
     % Memcached config
-    {memcached, [{'_vclock', []},
-                 {port, 11210},
+    {memcached, [{port, 11210},
                  {ht_size, 12289},
                  {ht_locks, 23},
                  {dbname, DbName},
@@ -145,8 +135,7 @@ default() ->
                 ]
     },
 
-    {buckets, [{'_vclock', []},
-               {configs, [{"default",
+    {buckets, [{configs, [{"default",
                            [{num_vbuckets, 256},
                             {num_replicas, 1},
                             {servers, []},
@@ -155,8 +144,7 @@ default() ->
                }]},
 
     % Moxi config
-    {moxi, [{'_vclock', []},
-            {port, 11211}
+    {moxi, [{port, 11211}
            ]},
 
     % Note that we currently assume the ports are available
@@ -165,8 +153,7 @@ default() ->
     % This is a classic "should" key, where ns_port_sup needs
     % to try to start child processes.  If it fails, it should ns_log errors.
     {port_servers,
-     [{'_vclock', []},
-      {moxi, "./bin/moxi/moxi",
+     [{moxi, "./bin/moxi/moxi",
        ["-Z", {"port_listen=~B,downstream_max=1", [port]},
         "-z", {"auth=,url=http://127.0.0.1:~B/pools/default/bucketsStreamingConfig/default,#@", [{rest, port}]},
         "-p", "0"
@@ -193,8 +180,7 @@ default() ->
 
     % Modifiers: menelaus
     % Listeners: ? possibly ns_log
-    {alerts, [{'_vclock', []},
-            {email, ""},
+    {alerts, [{email, ""},
             {email_alerts, false},
             {email_server, [{user, undefined},
                     {pass, undefined},
