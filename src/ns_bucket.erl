@@ -74,16 +74,19 @@ get_buckets() ->
 
 json_map(BucketId, LocalAddr) ->
     Config = ns_config:get(),
-    {NumReplicas, _, EMap, _} = config(BucketId),
-    ENodes = lists:delete(undefined, lists:usort(lists:append(EMap))),
-    Servers = lists:map(fun (ENode) ->
-                                Port = ns_config:search_node_prop(ENode, Config, memcached, port),
-                                Host = case misc:node_name_host(ENode) of
-                                           {_Name, "127.0.0.1"} -> LocalAddr;
-                                           {_Name, H} -> H
-                                       end,
-                                list_to_binary(Host ++ ":" ++ integer_to_list(Port))
-                        end, ENodes),
+    {NumReplicas, _, EMap, BucketNodes} = config(BucketId),
+    ENodes = lists:delete(undefined, lists:usort(lists:append([BucketNodes |
+                                                               EMap]))),
+    Servers = lists:map(
+                fun (ENode) ->
+                        Port = ns_config:search_node_prop(ENode, Config,
+                                                          memcached, port),
+                        Host = case misc:node_name_host(ENode) of
+                                   {_Name, "127.0.0.1"} -> LocalAddr;
+                                   {_Name, H} -> H
+                               end,
+                        list_to_binary(Host ++ ":" ++ integer_to_list(Port))
+                end, ENodes),
     Map = lists:map(fun (Chain) ->
                             lists:map(fun (undefined) -> -1;
                                           (N) -> misc:position(N, ENodes) - 1
