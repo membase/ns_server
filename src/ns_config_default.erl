@@ -169,7 +169,7 @@ default() ->
         "-E", "./bin/ep_engine/ep.so",
         "-B", "binary",
         "-r",
-        "-e", {"vb0=false;ht_size=~B;ht_locks=~B;dbname=~s~s",
+        "-e", {"vb0=false;ht_size=~B;ht_locks=~B;dbname=~s;min_data_age=1;queue_age_cap=5~s",
                [ht_size, ht_locks, dbname, {ns_storage_conf, format_engine_max_size, []}]}],
        [{env, [{"MEMCACHED_TOP_KEYS", "100"}]},
         use_stdio,
