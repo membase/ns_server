@@ -68,20 +68,7 @@ engage_cluster(RemoteIP, Options) ->
             case ns_node_disco:nodes_wanted() of
                 [MyNode] ->
                     %% we're alone, so adjust our name
-                    CookieBefore = erlang:get_cookie(),
-                    case dist_manager:adjust_my_address(MyAddr) of
-                        nothing -> ok;
-                        net_restarted ->
-                            case erlang:get_cookie() of
-                                CookieBefore ->
-                                    ok;
-                                CookieAfter ->
-                                    error_logger:info_msg("critical: Cookie has changed from ~p to ~p~n", [CookieBefore, CookieAfter]),
-                                    exit(bad_cookie)
-                            end,
-                            ns_cluster:rename_node(MyNode, node()),
-                            ok
-                    end;
+                    ns_cluster:change_my_address(MyAddr);
                 %% not alone, keep present config
                 _ -> ok
             end;
@@ -212,7 +199,7 @@ handle_join_inner(OtherHost, OtherPort, OtherUser, OtherPswd) ->
     end.
 
 handle_join(OtpNode, OtpCookie, MyIP) ->
-    dist_manager:adjust_my_address(MyIP),
+    ns_cluster:change_my_address(MyIP),
     case ns_cluster:join(OtpNode, OtpCookie) of
         ok -> ns_log:log(?MODULE, ?JOINED_CLUSTER, "Joined cluster at node: ~p with cookie: ~p from node: ~p",
                          [OtpNode, OtpCookie, erlang:node()]),

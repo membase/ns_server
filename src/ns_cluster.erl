@@ -9,7 +9,7 @@
 %% General FSMness
 -export([start_link/0, init/1, handle_info/3,
          handle_event/3, handle_sync_event/4,
-         code_change/4, terminate/3, prepare_join_to/1]).
+         code_change/4, terminate/3, prepare_join_to/1, change_my_address/1]).
 
 -define(NODE_JOIN_REQUEST, 2).
 -define(NODE_JOINED, 3).
@@ -231,3 +231,20 @@ rename_node(Old, New) ->
                                        {NewK, NewV}
                                end, erlang:make_ref())
       end).
+
+change_my_address(MyAddr) ->
+    MyNode = node(),
+    CookieBefore = erlang:get_cookie(),
+    case dist_manager:adjust_my_address(MyAddr) of
+        nothing -> ok;
+        net_restarted ->
+            case erlang:get_cookie() of
+                CookieBefore ->
+                    ok;
+                CookieAfter ->
+                    error_logger:info_msg("critical: Cookie has changed from ~p to ~p~n", [CookieBefore, CookieAfter]),
+                    exit(bad_cookie)
+            end,
+            ns_cluster:rename_node(MyNode, node()),
+            ok
+    end.
