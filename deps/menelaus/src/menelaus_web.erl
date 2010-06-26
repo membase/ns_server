@@ -70,26 +70,14 @@ restart() ->
     % Depend on our supervision tree to restart us right away.
     stop().
 
-get_node_rest_port(Config, Node, node_specific) ->
-    ns_config:search_prop(Config,
-                          {node, Node, rest},
-                          port, false).
-
-get_node_rest_port(Node) ->
-    Config = ns_config:get(),
-    case get_node_rest_port(Config, Node, node_specific) of
-        false ->
-            ns_config:search_prop(Config, rest, port, 8080);
-        P -> P
-    end.
-
 webconfig() ->
     Ip = case os:getenv("MOCHIWEB_IP") of
              false -> "0.0.0.0";
              Any -> Any
          end,
     Port = case os:getenv("MOCHIWEB_PORT") of
-               false -> get_node_rest_port(node());
+               false -> Config = ns_config:get(),
+                        ns_config:search_node_prop(Config, rest, port, 8080);
                P -> list_to_integer(P)
            end,
     WebConfig = [{ip, Ip},
@@ -468,7 +456,7 @@ get_node_info(WantENode) ->
         error -> [stale]
     end.
 
-build_node_info(MyPool, WantENode, InfoNode, LocalAddr) ->
+build_node_info(_MyPool, WantENode, InfoNode, LocalAddr) ->
     Host = case misc:node_name_host(WantENode) of
                {_, "127.0.0.1"} -> LocalAddr;
                {_Name, H} -> H
@@ -479,10 +467,8 @@ build_node_info(MyPool, WantENode, InfoNode, LocalAddr) ->
     Versions = proplists:get_value(version, InfoNode, []),
     Version = proplists:get_value(ns_server, Versions, "unknown"),
     OS = proplists:get_value(system_arch, InfoNode, "unknown"),
-    HostName = case get_node_rest_port(ns_config:get(), WantENode, node_specific) of
-                   false -> Host;
-                   Port -> Host ++ ":" ++ integer_to_list(Port)
-               end,
+    HostName = Host ++ ":" ++
+               integer_to_list(ns_config:search_node_prop(Config, rest, port, 8080)),
     V = [{hostname, list_to_binary(HostName)},
          {version, list_to_binary(Version)},
          {os, list_to_binary(OS)},
