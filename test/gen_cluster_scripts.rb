@@ -45,10 +45,14 @@ num_nodes.times do |x|
                  {ht_locks, 23},
                  {dbname, "#{node_data}/default"},
                  {admin_user, "_admin"},
-                 {admin_pass, "_admin"}
+                 {admin_pass, "_admin"},
+                 {verbosity, ""}
                  ]}.
 
-    {{node, #{node_id}, moxi}, [{port, #{(x * 2) + base_direct_port + 1}}]}.
+    {{node, #{node_id}, moxi}, [
+            {port, #{(x * 2) + base_direct_port + 1}},
+            {verbosity, ""}
+            ]}.
 
     END
 end

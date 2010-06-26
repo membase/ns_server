@@ -143,7 +143,8 @@ default() ->
                  {dbname, DbName},
                  {admin_user, "_admin"},
                  {admin_pass, "_admin"},
-                 {max_size, undefined}
+                 {max_size, undefined},
+                 {verbosity, ""}
                 ]
     },
 
@@ -156,7 +157,8 @@ default() ->
                }]},
 
     % Moxi config
-    {moxi, [{port, 11211}
+    {moxi, [{port, 11211},
+            {verbosity, ""}
            ]},
 
     % Note that we currently assume the ports are available
@@ -168,7 +170,8 @@ default() ->
      [{moxi, "./bin/moxi/moxi",
        ["-Z", {"port_listen=~B,downstream_max=1", [port]},
         "-z", {"auth=,url=http://127.0.0.1:~B/pools/default/bucketsStreamingConfig/default,#@", [{rest, port}]},
-        "-p", "0"
+        "-p", "0",
+        {"~s", [verbosity]}
        ],
        [{env, []},
         use_stdio,
@@ -182,7 +185,9 @@ default() ->
         "-B", "binary",
         "-r",
         "-e", {"vb0=false;ht_size=~B;ht_locks=~B;dbname=~s;min_data_age=1;queue_age_cap=5~s",
-               [ht_size, ht_locks, dbname, {ns_storage_conf, format_engine_max_size, []}]}],
+               [ht_size, ht_locks, dbname, {ns_storage_conf, format_engine_max_size, []}]},
+        {"~s", [verbosity]}
+       ],
        [{env, [{"MEMCACHED_TOP_KEYS", "100"}]},
         use_stdio,
         stderr_to_stdout,
