@@ -473,8 +473,9 @@ build_node_info(MyPool, WantENode, InfoNode, LocalAddr) ->
                {_, "127.0.0.1"} -> LocalAddr;
                {_Name, H} -> H
            end,
-    DirectPort = ns_config:search_node_prop(ns_config:get(), memcached, port),
-    ProxyPort = pool_proxy_port(MyPool, WantENode),
+    Config = ns_config:get(),
+    DirectPort = ns_config:search_node_prop(WantENode, Config, memcached, port),
+    ProxyPort = ns_config:search_node_prop(WantENode, Config, moxi, port),
     Versions = proplists:get_value(version, InfoNode, []),
     Version = proplists:get_value(ns_server, Versions, "unknown"),
     OS = proplists:get_value(system_arch, InfoNode, "unknown"),
@@ -488,10 +489,6 @@ build_node_info(MyPool, WantENode, InfoNode, LocalAddr) ->
          {ports, {struct, [{proxy, ProxyPort},
                            {direct, DirectPort}]}}],
     V.
-
-pool_proxy_port(_PoolConfig, _Node) ->
-    Config = ns_config:get(),
-    ns_config:search_node_prop(Config, moxi, port).
 
 handle_pool_info_streaming(Id, Req) ->
     UserPassword = menelaus_auth:extract_auth(Req),
