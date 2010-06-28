@@ -468,7 +468,8 @@ build_node_info(_MyPool, WantENode, InfoNode, LocalAddr) ->
     Version = proplists:get_value(ns_server, Versions, "unknown"),
     OS = proplists:get_value(system_arch, InfoNode, "unknown"),
     HostName = Host ++ ":" ++
-               integer_to_list(ns_config:search_node_prop(Config, rest, port, 8080)),
+               integer_to_list(ns_config:search_node_prop(WantENode, Config,
+                                                          rest, port, 8080)),
     V = [{hostname, list_to_binary(HostName)},
          {version, list_to_binary(Version)},
          {os, list_to_binary(OS)},
