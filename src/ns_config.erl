@@ -263,7 +263,9 @@ proplist_get_value(Key, [KeyValTuple | Rest], DefaultTuple) ->
 
 % Removes metadata like METADATA_VCLOCK from results.
 strip_metadata(Value) when is_list(Value) ->
-    lists:keydelete(?METADATA_VCLOCK, 1, Value);
+    [X || X <- Value, not (is_tuple(X) andalso
+                           lists:member(element(1, X), [?METADATA_VCLOCK,
+                                                        '_ver']))];
 strip_metadata(Value) ->
     Value.
 
