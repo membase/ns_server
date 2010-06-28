@@ -14,6 +14,7 @@ function Future(body, options) {
 }
 Future.prototype = {
   constructor: Future,
+  cancelled: false,
   removeNowValue: function () {
     var rv = this.nowValue;
     delete this.nowValue;
@@ -26,6 +27,8 @@ Future.prototype = {
         async.action.finish();
       return cell.deliverFutureValue(async, data);
     }
+    rv.async = async;
+    rv.cell = cell;
     rv.continuing = function (data) {
       async.nowValue = data;
       return rv(async);
@@ -282,11 +285,16 @@ var Cell = mkClass({
   },
   // forces cell recalculation unless async set is in progress
   // recalculate() call would abort and re-issue in-flight XHR
-  // request, which is almost always bad thing
+  // request, which is almost always bad thing.
+  //
+  // If in-progress future is marked as weak then we force
+  // recalculation. Weak futures are can be handy in same cases, in
+  // particular during network error recovery, where invalidate() call
+  // should force new network request.
   invalidate: function (callback) {
     if (callback)
       this.changedSlot.subscribeOnce(callback);
-    if (this.pendingFuture)
+    if (this.pendingFuture && !this.pendingFuture.weak)
       return;
     this.recalculate();
   },
@@ -326,6 +334,7 @@ var Cell = mkClass({
     if (!async)
       return;
     this.pendingFuture = null;
+    async.cancelled = true;
     if (async.started && async.cancel) {
       try {
         async.cancel();

@@ -168,6 +168,24 @@ function addBasicAuth(xhr, login, password) {
   xhr.setRequestHeader('Authorization', auth);
 }
 
+function onNoncriticalXHRError(xhr) {
+  if (Abortarium.isAborted(xhr))
+    return;
+
+  var status;
+  try {status = xhr.status} catch (e) {};
+
+  // everything except timeout & service unavailable
+  if (status != 503 && status != 504 && status > 0) {
+    onUnexpectedXHRError(xhr);
+    throw new Error("xhr error is critical");
+  }
+
+  // TODO: implement some UI for that and maybe some request repeating
+  // policy too
+  console.log("failed non-critical request");
+}
+
 function onUnexpectedXHRError(xhr) {
   window.onUnexpectedXHRError = function () {}
 
@@ -471,31 +489,59 @@ future.getPush = function (ajaxOptions, valueTransformer, nowValue) {
   }
   var xhr;
   var etag;
+  var recovingFromError;
+
   if (ajaxOptions.url == undefined)
     throw new Error("url is undefined");
 
   function sendRequest(dataCallback) {
     var options = _.extend({type: 'GET',
-                            timeout: 30000,
                             dataType: 'json',
+                            error: onError,
                             success: continuation},
                            ajaxOptions);
     if (options.url.indexOf("?") < 0)
       options.url += '?waitChange=20000'
     else
       options.url += '&waitChange=20000'
-    if (etag)
+    if (etag && !recovingFromError) {
       options.url += "&etag=" + encodeURIComponent(etag)
+      options.timeout = 30000;
+    }
 
     xhr = $.ajax(options);
 
     function continuation(data) {
+      recovingFromError = false;
+      dataCallback.async.weak = false;
+
       etag = data.etag;
       // pass our data to cell
-      if (!dataCallback.continuing(data))
+      if (dataCallback.continuing(data))
+        // and submit new request if we are not cancelled
+        _.defer(_.bind(sendRequest, null, dataCallback));
+    }
+
+    function onError(xhr) {
+      if (dataCallback.async.cancelled)
         return;
-      // and submit new request if we are not cancelled
-      _.defer(_.bind(sendRequest, null, dataCallback));
+
+      if (!etag)
+        return onUnexpectedXHRError(xhr);
+
+      onNoncriticalXHRError(xhr);
+      recovingFromError = true;
+
+      // make us weak so that cell invalidations will force new
+      // network request
+      dataCallback.async.weak = true;
+
+      // try to repeat request after 10 seconds
+      setTimeout(function () {
+        if (dataCallback.async.cancelled)
+          return;
+        sendRequest(dataCallback);
+      }, 10000);
     }
   }
 
