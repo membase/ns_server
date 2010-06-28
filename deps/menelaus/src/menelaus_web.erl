@@ -1247,7 +1247,9 @@ handle_node_settings_post(Node, Req) ->
                             {error, _} -> <<"Error changing memory quota.\n">>
                         end;
                     too_small -> <<"Value is too small">>;
-                    too_large -> <<"Value is too large">>;
+                    too_large -> iolist_to_binary(["Value is too large. Maximum allowed value is ",
+                                                   integer_to_list(MaxMemoryMB),
+                                                   " MB"]);
                     invalid -> case X of
                         "unlimited" -> ok;
                         _ -> <<"Value is not a number.">>
