@@ -115,8 +115,10 @@ set(Key, Value) ->
 
 set(KVList) ->
     ok = update(fun (Config) ->
-                   misc:ukeymergewith(fun ({K, V1}, {_, V2}) ->
-                                              {K, merge_vclocks(V1, V2)}
+                   misc:ukeymergewith(fun ({K, V}, {_, V}) ->
+                                              {K, V};
+                                          ({K, V1}, {_, V2}) ->
+                                              {K, increment_vclock(V1, V2)}
                                       end, 1,
                                       lists:ukeysort(1, KVList),
                                       lists:ukeysort(1, Config))
@@ -133,7 +135,7 @@ update(Fun, Sentinel) ->
                             Pair -> Pair;
                             Sentinel -> Sentinel;
                             {K, Data} ->
-                                {K, merge_vclocks(Data, OldValue)}
+                                {K, increment_vclock(Data, OldValue)}
                         end
                 end,
     update(fun (Config) -> misc:mapfilter(UpdateFun, Sentinel, Config) end).
@@ -258,8 +260,27 @@ strip_metadata(Value) when is_list(Value) ->
 strip_metadata(Value) ->
     Value.
 
-%% Set the vclock in NewValue to one that descends from both and that
-%% neither descends from
+
+
+%% Increment the vclock in V2 and replace the one in V1
+increment_vclock(NewValue, OldValue) ->
+    case is_list(NewValue) of
+        true ->
+            OldVClock =
+                case is_list(OldValue) of
+                    true ->
+                        proplists:get_value(?METADATA_VCLOCK, OldValue, []);
+                    false ->
+                        []
+                end,
+            NewVClock = vclock:increment(node(), OldVClock),
+            [{?METADATA_VCLOCK, NewVClock} | lists:keydelete(?METADATA_VCLOCK, 1,
+                                                             NewValue)];
+        false ->
+            NewValue
+    end.
+
+%% Set the vclock in NewValue to one that descends from both
 merge_vclocks(NewValue, OldValue) ->
     case is_list(NewValue) of
         true ->
@@ -270,8 +291,7 @@ merge_vclocks(NewValue, OldValue) ->
                         proplists:get_value(?METADATA_VCLOCK, NewValue, []);
                     false -> []
                 end,
-            NewVClock = vclock:increment(node(), vclock:merge([OldValueVClock,
-                                                               NewValueVClock])),
+            NewVClock = vclock:merge([OldValueVClock, NewValueVClock]),
             [{?METADATA_VCLOCK, NewVClock} | lists:keydelete(?METADATA_VCLOCK,
                                                              1, NewValue)];
         false ->
