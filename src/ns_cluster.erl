@@ -242,7 +242,7 @@ change_my_address(MyAddr) ->
                 CookieBefore ->
                     ok;
                 CookieAfter ->
-                    error_logger:info_msg("critical: Cookie has changed from ~p to ~p~n", [CookieBefore, CookieAfter]),
+                    error_logger:error_msg("critical: Cookie has changed from ~p to ~p~n", [CookieBefore, CookieAfter]),
                     exit(bad_cookie)
             end,
             ns_cluster:rename_node(MyNode, node()),
