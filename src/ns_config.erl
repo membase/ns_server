@@ -490,9 +490,14 @@ merge_lists(Field, Acc, RV, LV) ->
             RClock = LClock,
             [{Field, RV} | Acc];
         {false, false} ->
-            ns_log:log(?MODULE, ?CONFIG_CONFLICT,
-                       "Conflicting configuration changes to field ~p:~n~p and~n~p, choosing the former.~n",
-                       [Field, RV, LV]),
+            case strip_metadata(RV) =:= strip_metadata(LV) of
+                true ->
+                    ok;
+                false ->
+                    ns_log:log(?MODULE, ?CONFIG_CONFLICT,
+                               "Conflicting configuration changes to field ~p:~n~p and~n~p, choosing the former.~n",
+                               [Field, RV, LV])
+            end,
             NewValue = merge_vclocks(RV, LV),
             [{Field, NewValue} | Acc];
         {true, false} -> [{Field, RV} | Acc];
