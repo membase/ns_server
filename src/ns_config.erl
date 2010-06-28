@@ -44,7 +44,9 @@
 -define(CONFIG_CONFLICT, 3).
 
 -export([start_link/2, start_link/1,
-         get_remote/1, set_remote/2, set_remote/3,
+         get_remote/1,
+         merge/1,
+         merge_remote/2, merge_remote/3,
          get/2, get/1, get/0, set/2, set/1,
          set_initial/2, update/2, update_key/2,
          search_node/3, search_node/2, search_node/1,
@@ -96,14 +98,19 @@ reannounce() -> gen_server:call(?MODULE, reannounce).
 %
 % The get_remote() only returns dyanmic tuples as its KVList result.
 
-set_remote(Node, KVList) ->
-    set_remote(Node, KVList, ?DEFAULT_TIMEOUT).
-set_remote(Node, KVList, Timeout) ->
+merge_remote(Node, KVList) ->
+    merge_remote(Node, KVList, ?DEFAULT_TIMEOUT).
+merge_remote(Node, KVList, Timeout) ->
     gen_server:call({?MODULE, Node}, {merge, KVList}, Timeout).
 
 get_remote(Node) -> config_dynamic(?MODULE:get(Node)).
 
 % ----------------------------------------
+
+%% Merge another config rather than replacing ours
+merge(KVList) ->
+    gen_server:call(?MODULE, {merge, KVList}).
+
 %% Set a value that will be overridden by any merged config
 set_initial(Key, Value) ->
     ok = update(fun (Config) ->

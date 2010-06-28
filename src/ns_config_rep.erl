@@ -106,7 +106,7 @@ do_push(RawKVList) ->
     do_push(RawKVList, ns_node_disco:nodes_actual_other()).
 
 do_push(RawKVList, OtherNodes) ->
-    misc:pmap(fun(Node) -> ns_config:set_remote(Node, RawKVList) end,
+    misc:pmap(fun(Node) -> ns_config:merge_remote(Node, RawKVList) end,
               OtherNodes, length(OtherNodes), 2000).
 
 do_pull()  -> do_pull(5).
@@ -119,6 +119,6 @@ do_pull([Node | Rest], N) ->
     case (catch ns_config:get_remote(Node)) of
         {'EXIT', _, _} -> do_pull(Rest, N - 1);
         {'EXIT', _}    -> do_pull(Rest, N - 1);
-        RemoteKVList   -> ns_config:set(RemoteKVList),
+        RemoteKVList   -> ns_config:merge(RemoteKVList),
                           ok
     end.
