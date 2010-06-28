@@ -147,7 +147,9 @@ var MockedRequest = mkClass({
     }
   })(),
   respond: function () {
-    if (this.options.async != false)
+    if  (this.options.url.indexOf("&etag") > 0) {
+      setTimeout($m(this, 'respondForReal'), 5000);
+    } else if (this.options.async != false)
       setTimeout($m(this, 'respondForReal'), window.ajaxRespondDelay);
     else
       this.respondForReal();
@@ -563,6 +565,7 @@ var MockedRequest = mkClass({
                            testWorkload: {uri: '/pools/default/controller/testWorkload'},
                            ejectNode: {uri: "/controller/ejectNode"}
                          },
+                         etag: "asdas123",
                          balanced: true,
                          rebalanceStatus: 'none',
                          rebalanceProgressUri: '/pools/default/rebalanceProgress',

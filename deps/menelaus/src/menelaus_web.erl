@@ -368,7 +368,51 @@ handle_versions(Req) ->
 handle_pool_info(Id, Req) ->
     UserPassword = menelaus_auth:extract_auth(Req),
     LocalAddr = menelaus_util:local_addr(Req),
-    reply_json(Req, build_pool_info(Id, UserPassword, normal, LocalAddr)).
+    Query = Req:parse_qs(),
+    {WaitChangeS, PassedETag} = {proplists:get_value("waitChange", Query),
+                                  proplists:get_value("etag", Query)},
+    case WaitChangeS of
+        undefined -> reply_json(Req, build_pool_info(Id, UserPassword, normal, LocalAddr));
+        _ ->
+            WaitChange = list_to_integer(WaitChangeS),
+            menelaus_event:register_watcher(self()),
+            handle_pool_info_wait(Req, Id, UserPassword, LocalAddr, WaitChange, PassedETag)
+    end.
+
+handle_pool_info_wait(Req, Id, UserPassword, LocalAddr, WaitChange, PassedETag) ->
+    Info = mochijson2:encode(build_pool_info(Id, UserPassword, stable, LocalAddr)),
+    %% ETag = base64:encode_to_string(crypto:sha(Info)),
+    ETag = integer_to_list(erlang:phash2(Info)),
+    if
+        ETag =:= PassedETag ->
+            receive
+                {notify_watcher, _} ->
+                    timer:sleep(200), %% delay a bit to catch more notifications
+                    handle_pool_info_wait(Req, Id, UserPassword, LocalAddr, 0, PassedETag);
+                _ ->
+                    exit(normal)
+            after WaitChange ->
+                    handle_pool_info_wait_tail(Req, Id, UserPassword, LocalAddr, ETag)
+            end;
+        true ->
+            handle_pool_info_wait_tail(Req, Id, UserPassword, LocalAddr, ETag)
+    end.
+
+consume_notifications() ->
+    receive
+        {notify_watcher, _} -> consume_notifications()
+    after 0 ->
+            done
+    end.
+
+handle_pool_info_wait_tail(Req, Id, UserPassword, LocalAddr, ETag) ->
+    menelaus_event:unregister_watcher(self()),
+    %% consume all notifications
+    consume_notifications(),
+    %% and reply
+    {struct, PList} = build_pool_info(Id, UserPassword, normal, LocalAddr),
+    Info = {struct, [{etag, list_to_binary(ETag)} | PList]},
+    reply_json(Req, Info).
 
 is_healthy(InfoNode) ->
     not proplists:get_bool(stale, InfoNode) and

@@ -461,7 +461,49 @@ var DAO = {
   }
 };
 
-(function () {
+future.getPush = function (ajaxOptions, valueTransformer, nowValue) {
+  var options = {
+    valueTransformer: valueTransformer,
+    cancel: function () {
+      Abortarium.abortRequest(xhr);
+    },
+    nowValue: nowValue
+  }
+  var xhr;
+  var etag;
+  if (ajaxOptions.url == undefined)
+    throw new Error("url is undefined");
+
+  function sendRequest(dataCallback) {
+    var options = _.extend({type: 'GET',
+                            timeout: 30000,
+                            dataType: 'json',
+                            success: continuation},
+                           ajaxOptions);
+    if (options.url.indexOf("?") < 0)
+      options.url += '?waitChange=20000'
+    else
+      options.url += '&waitChange=20000'
+    if (etag)
+      options.url += "&etag=" + encodeURIComponent(etag)
+
+    xhr = $.ajax(options);
+
+    function continuation(data) {
+      etag = data.etag;
+      // pass our data to cell
+      if (!dataCallback.continuing(data))
+        return;
+      // and submit new request if we are not cancelled
+      _.defer(_.bind(sendRequest, null, dataCallback));
+    }
+  }
+
+  return future(sendRequest, options);
+}
+
+
+;(function () {
   this.mode = new Cell();
   this.poolList = new Cell();
 
@@ -472,7 +514,7 @@ var DAO = {
       return data;
     }
     var uri = poolList[0].uri;
-    return future.pollingGET({url: uri}, poolDetailsValueTransformer);
+    return future.getPush({url: uri}, poolDetailsValueTransformer);
   }).setSources({poolList: this.poolList});
   this.currentPoolDetailsCell.equality = _.isEqual;
 
