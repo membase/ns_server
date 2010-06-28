@@ -58,7 +58,7 @@ running({join, RemoteNode, NewCookie}, State) ->
                          ({{node, Node, _}, _} = X) when Node =:= MyNode -> X;
                          (_) -> BlackSpot
                      end, BlackSpot),
-    %% cannot force low timestamp with ns_config update, so we set it separateley
+    %% cannot force low timestamp with ns_config update, so we set it separately
     ns_config:set_initial(nodes_wanted, [node(), RemoteNode]),
     error_logger:info_msg("pre-join cleaned config is:~n~p~n", [ns_config:get()]),
     true = exit(State#running_state.child, shutdown), % Pull the rug out from under the app
