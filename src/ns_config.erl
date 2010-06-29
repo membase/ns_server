@@ -515,10 +515,7 @@ merge_lists(Field, Acc, RV, LV) ->
     LClock = proplists:get_value(?METADATA_VCLOCK, LV, []),
     case {vclock:descends(RClock, LClock),
           vclock:descends(LClock, RClock)} of
-        {true, true} ->
-            RClock = LClock,
-            [{Field, RV} | Acc];
-        {false, false} ->
+        {X, X} ->
             case strip_metadata(RV) =:= strip_metadata(LV) of
                 true ->
                     ok;
