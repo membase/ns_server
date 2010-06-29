@@ -17,8 +17,7 @@
 
 -include("ns_log.hrl").
 
-% Number of recent log entries.
--define(RB_SIZE, 50).
+-define(RB_SIZE, 100). % Number of recent log entries
 -define(DUP_TIME, 300000000). % 300 secs in microsecs
 -define(GC_TIME, 60000). % 60 secs in millisecs
 
@@ -43,48 +42,77 @@
 -record(state, {recent, dedup}).
 
 start_link() ->
-    Result = gen_server:start_link({global, ?MODULE}, ?MODULE, [], []),
-    ns_log:log(?MODULE, 4, "Log server started on node ~p~n", [node()]),
-    Result.
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
     timer:send_interval(?GC_TIME, garbage_collect),
-    {ok, #state{recent=emptyRecent(), dedup=dict:new()}}.
-
-emptyRecent() ->
-    ringbuffer:new(?RB_SIZE).
+    {ok, #state{recent=[], dedup=dict:new()}}.
 
 % Request for recent items.
 handle_call(recent, _From, State) ->
-    Reply = ringbuffer:to_list(State#state.recent),
-    {reply, Reply, State}.
+    {reply, State#state.recent, State};
+handle_call({sync, Hash}, _From, State) ->
+    Recent = lists:sublist(?RB_SIZE, State#state.recent),
+    Reply = case erlang:phash(Recent) of
+                Hash ->
+                    false;
+                _ ->
+                    Recent
+            end,
+    {reply, Reply, State#state{recent=Recent}}.
 
 % Inbound logging request.
 handle_cast({log, Module, Code, Fmt, Args}, State = #state{dedup=Dedup}) ->
     Now = erlang:now(),
     Key = {Module, Code, Fmt, Args},
     case dict:find(Key, Dedup) of
-    {ok, {Count, FirstSeen, LastSeen}} ->
-        error_logger:info_msg("ns_log: suppressing duplicate log ~p:~p(~p) because it's been "
-                           "seen ~p times in the past ~p secs (last seen ~p secs ago~n",
-                           [Module, Code, lists:flatten(io_lib:format(Fmt, Args)),
-                            Count+1, timer:now_diff(Now, FirstSeen) / 1000000,
-                            timer:now_diff(Now, LastSeen) / 1000000]),
-        Dedup2 = dict:store(Key, {Count+1, FirstSeen, Now}, Dedup),
-        {noreply, State#state{dedup=Dedup2}};
-    error ->
-        State2 = do_log(Module, Code, Fmt, Args, State),
-        Dedup2 = dict:store(Key, {0, Now, Now}, Dedup),
-        {noreply, State2#state{dedup=Dedup2}}
+        {ok, {Count, FirstSeen, LastSeen}} ->
+            error_logger:info_msg("ns_log: suppressing duplicate log ~p:~p(~p) because it's been "
+                                  "seen ~p times in the past ~p secs (last seen ~p secs ago~n",
+                                  [Module, Code, lists:flatten(io_lib:format(Fmt, Args)),
+                                   Count+1, timer:now_diff(Now, FirstSeen) / 1000000,
+                                   timer:now_diff(Now, LastSeen) / 1000000]),
+            Dedup2 = dict:store(Key, {Count+1, FirstSeen, Now}, Dedup),
+            {noreply, State#state{dedup=Dedup2}};
+        error ->
+            Category = categorize(Module, Code),
+            Entry = #log_entry{node=node(), module=Module, code=Code, msg=Fmt,
+                               args=Args, cat=Category, tstamp=Now},
+            gen_server:abcast(?MODULE, {do_log, Entry}),
+            try gen_event:notify(ns_log_events, {ns_log, Category, Module, Code,
+                                                 Fmt, Args})
+            catch _:Reason ->
+                    error_logger:error_msg("ns_log: unable to notify listeners "
+                                           "because of ~p~n", [Reason])
+            end,
+            Dedup2 = dict:store(Key, {0, Now, Now}, Dedup),
+            {noreply, State#state{dedup=Dedup2}}
     end;
+handle_cast({do_log, Entry}, State = #state{recent=Recent}) ->
+    {noreply, State#state{recent=lists:usort([Entry|Recent])}};
 handle_cast(clear, _State) ->
     error_logger:info_msg("Clearing log.~n", []),
-    {noreply,  #state{recent=emptyRecent(), dedup=dict:new()}}.
+    {noreply,  #state{recent=[], dedup=dict:new()}};
+handle_cast({sync, Compressed}, State = #state{recent=Recent}) ->
+    case binary_to_term(zlib:uncompress(Compressed)) of
+        Recent ->
+            {noreply, State};
+        Logs ->
+            {noreply, State#state{recent=lists:sublist(
+                                           ?RB_SIZE, lists:umerge(Recent, Logs))}}
+    end.
+
 % Not handling any other state.
 
 % Nothing special.
 handle_info(garbage_collect, State) ->
     {noreply, gc(State)};
+handle_info(sync, State = #state{recent=Recent}) ->
+    timer:send_after(5000 + random:uniform(55000), sync),
+    Nodes = ns_node_disco:nodes_actual_other(),
+    Node = lists:nth(Nodes, random:uniform(length(Nodes))),
+    gen_server:cast({?MODULE, Node}, {sync, zlib:compress(term_to_binary(Recent))}),
+    {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -98,38 +126,30 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%--------------------------------------------------------------------
 
-do_log(Module, Code, Fmt, Args, State) ->
-    Category = categorize(Module, Code),
-    NR = ringbuffer:add(#log_entry{module=Module, code=Code, msg=Fmt, args=Args,
-                                   cat=Category,
-                                   tstamp=erlang:now()},
-                        State#state.recent),
-    try gen_event:notify(ns_log_events, {ns_log, Category, Module, Code,
-                         Fmt, Args})
-    catch _:Reason ->
-        error_logger:error_msg("ns_log: unable to notify listeners "
-                               "because of ~p~n", [Reason])
-    end,
-    State#state{recent=NR}.
-
 gc(State = #state{dedup=Dupes}) ->
-    {DupesList, State2} = gc(erlang:now(), dict:to_list(Dupes),
-                                           [], State),
-    State2#state{dedup=dict:from_list(DupesList)}.
+    DupesList = gc(erlang:now(), dict:to_list(Dupes),
+                             []),
+    State#state{dedup=dict:from_list(DupesList)}.
 
-gc(_Now, [], DupesList, State) -> {DupesList, State};
-gc(Now, [{Key, Value} | Rest], DupesList, State) ->
+gc(_Now, [], DupesList) -> DupesList;
+gc(Now, [{Key, Value} | Rest], DupesList) ->
      {Count, FirstSeen, _LastSeen} = Value,
      case timer:now_diff(Now, FirstSeen) >= ?DUP_TIME of
      true ->
          {Module, Code, Fmt, Args} = Key,
-         State2 = case Count of
-         0 -> State;
-         _ -> do_log(Module, Code, Fmt ++ " (repeated ~p times)",
-                     Args ++ [Count], State)
+         case Count of
+             0 -> ok;
+             _ ->
+                 Entry = #log_entry{node=node(), module=Module,
+                                    code=Code,
+                                    msg=Fmt ++ " (repeated ~p times)",
+                                    args=Args ++ [Count],
+                                    cat=categorize(Module, Code),
+                                    tstamp=Now},
+                 gen_server:abcast(?MODULE, {do_log, Entry})
          end,
-         gc(Now, Rest, DupesList, State2);
-     false -> gc(Now, Rest, [{Key, Value} | DupesList], State)
+         gc(Now, Rest, DupesList);
+     false -> gc(Now, Rest, [{Key, Value} | DupesList])
      end.
 
 %% API
@@ -160,15 +180,15 @@ log(Module, Code, Msg) ->
 log(Module, Code, Fmt, Args) ->
     error_logger:info_msg("ns_log: logging ~p:~p:~s~n",
                           [Module, Code, lists:flatten(io_lib:format(Fmt, Args))]),
-    gen_server:cast({global, ?MODULE}, {log, Module, Code, Fmt, Args}).
+    gen_server:cast(?MODULE, {log, Module, Code, Fmt, Args}).
 
 -spec recent() -> list(#log_entry{}).
 recent() ->
-    gen_server:call({global, ?MODULE}, recent).
+    gen_server:call(?MODULE, recent).
 
 -spec recent(atom()) -> list(#log_entry{}).
 recent(Module) ->
-    lists:usort([E || E <- gen_server:call({global, ?MODULE}, recent),
+    lists:usort([E || E <- gen_server:call(?MODULE, recent),
                      E#log_entry.module =:= Module ]).
 
 % {crit, warn, info}
@@ -188,7 +208,7 @@ recent_by_category() ->
 
 -spec clear() -> ok.
 clear() ->
-    gen_server:cast({global, ?MODULE}, clear).
+    gen_server:cast(?MODULE, clear).
 
 
 % Example categorization -- pretty much exists for the test below, but
@@ -210,7 +230,7 @@ ns_log_code_string(2) ->
 log_test() ->
     ok = log(?MODULE, 1, "not ready log"),
 
-    {ok, Pid} = gen_server:start({global, ?MODULE}, ?MODULE, [], []),
+    {ok, Pid} = gen_server:start(?MODULE, ?MODULE, [], []),
     ok = log(?MODULE, 1, "test log 1"),
     ok = log(?MODULE, 2, "test log 2 ~p ~p", [x, y]),
     ok = log(?MODULE, 3, "test log 3 ~p ~p", [x, y]),

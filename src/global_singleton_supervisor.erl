@@ -64,12 +64,6 @@ init([]) ->
     {ok,{{one_for_one, 5, 5},
          [
           %% Everything in here is run once per entire cluster.  Be careful.
-          {ns_log, {ns_log, start_link, []},
-           permanent, 10, worker, [ns_log]},
-          {ns_log_events, {gen_event, start_link, [{local, ns_log_events}]},
-           permanent, 10, worker, [ns_log_events]},
-          {ns_mail_sup, {ns_mail_sup, start_link, []},
-           permanent, infinity, supervisor, [ns_mail_sup]},
           {ns_bucket_sup_sup, {ns_bucket_sup_sup, start_link, []},
            permanent, infinity, supervisor, [ns_bucket_sup_sup]},
           {ns_doctor, {ns_doctor, start_link, []},

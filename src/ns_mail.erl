@@ -24,7 +24,7 @@
 -export([send/5, ns_log_cat/1]).
 
 start_link() ->
-    gen_server:start_link({global, ?MODULE}, ?MODULE, [], []).
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
     process_flag(trap_exit, true),

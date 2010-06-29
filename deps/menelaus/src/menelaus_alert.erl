@@ -145,7 +145,8 @@ build_log_structs(LogEntriesIn, MinTStamp, Limit) ->
     LogEntries3 = lists:sublist(LogEntries2, Limit),
     LogStructs =
         lists:foldl(
-          fun(#log_entry{module = Module,
+          fun(#log_entry{node = Node,
+                         module = Module,
                          code = Code,
                          msg = Msg,
                          args = Args,
@@ -154,7 +155,8 @@ build_log_structs(LogEntriesIn, MinTStamp, Limit) ->
                   case catch(io_lib:format(Msg, Args)) of
                       S when is_list(S) ->
                           CodeString = ns_log:code_string(Module, Code),
-                          [{struct, [{type, category_bin(Cat)},
+                          [{struct, [{node, Node},
+                                     {type, category_bin(Cat)},
                                      {code, Code},
                                      {module, list_to_binary(atom_to_list(Module))},
                                      {tstamp, misc:time_to_epoch_ms_int(TStamp)},

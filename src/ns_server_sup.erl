@@ -37,7 +37,14 @@ pre_start() ->
     misc:ping_jointo().
 
 get_child_specs() ->
-    [
+    [{ns_log, {ns_log, start_link, []},
+      permanent, 10, worker, [ns_log]},
+
+     {ns_log_events, {gen_event, start_link, [{local, ns_log_events}]},
+      permanent, 10, worker, [ns_log_events]},
+     {ns_mail_sup, {ns_mail_sup, start_link, []},
+      permanent, infinity, supervisor, [ns_mail_sup]},
+
      {ns_config_sup, {ns_config_sup, start_link, []},
       permanent, infinity, supervisor,
       [ns_config_sup]},
