@@ -981,3 +981,5 @@ ul.tabs .tab_left a.current:hover, ul.tabs .tab_right a.current:hover {text-shad
 html body .overlayed {z-index:999 !important;}
 
 #about-close {line-height:31px !important;}
+
+.failover_server {position:relative !important; float:none !important; display:block !important;}
