@@ -929,7 +929,7 @@ body table.buckets_tab td {background:none #eee; border-bottom:1px solid #ced5d9
 body table.buckets_tab tr td:first-child {text-align:left;}
 body table.buckets_tab tr th {background:none #f6f6f7; border-right:0px; border-bottom:1px solid #fff; color:#4d4d4d; font-weight:normal; text-align:center;}
 body table.buckets_tab tr th:first-child span {display:block; white-space:nowrap; padding:0 0 0 56px; text-align:left;}
-.bucket_name {display:block; float:left; height:68px; line-height:60px; font-size:12px; font-weight:bolder; padding:0 0 0 56px; background:url(../images/icons.png) -12px -98px no-repeat;}
+.bucket_name {display:block; float:left; height:68px; line-height:69px; font-size:12px; font-weight:bolder; padding:0 0 0 56px; background:url(../images/icons.png) -12px -98px no-repeat;}
 .buckets_tab .settings-placeholder td .pad {padding:10px 0; background:none;}
 body .buckets_tab .settings-placeholder td .pad .pad {padding:10px 10px 10px 80px !important; background:url(../images/icons.png) 0 -98px no-repeat !important; min-height:60px;}
 .buckets_tab .settings-placeholder .edit_btn {display:block; width:65px; height:21px; background:url(../images/edit-button.png) 0 0 no-repeat; float:right;}
