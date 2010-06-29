@@ -1626,6 +1626,8 @@ var MultiDrawersWidget = mkClass({
     var key = self.options.elementsKey;
     var drawerCellName = self.options.drawerCellName;
 
+    var oldElementsByName = self.elementsByName || {};
+
     self.elementsByName = {};
 
     _.each(elements, function (e) {
@@ -1637,13 +1639,24 @@ var MultiDrawersWidget = mkClass({
 
         return self.options.uriExtractor(e);
       }, {openedNames: self.openedNames});
-      e[drawerCellName] = new Cell(function (uri) {
+
+      var cell = e[drawerCellName] = new Cell(function (uri) {
         return future.get({url: uri}, function (childItem) {
           if (self.options.valueTransformer)
             childItem = self.options.valueTransformer(e, childItem);
           return childItem;
         });
       }, {uri: uriCell});
+
+      var oldE = oldElementsByName[e[key]];
+      var oldCell = oldE && oldE[drawerCellName];
+
+      // use previous value if possible, but refresh it
+      if (oldCell && oldCell.value) {
+        cell.setValue(oldCell.value);
+        cell.keepValueDuringAsync = true;
+        cell.invalidate();
+      }
 
       self.elementsByName[e[key]] = e;
     });
