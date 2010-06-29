@@ -101,7 +101,8 @@ handle_call({start_rebalance, KeepNodes, EjectNodes}, _From,
                                         {JPid, _Ref} ->
                                             ok = misc:wait_for_process(JPid)
                                     end,
-                                    do_rebalance(Bucket, KeepNodes, EjectNodes, Map)
+                                    do_rebalance(Bucket, KeepNodes, EjectNodes,
+                                                 Map, 2)
                             end)
                   end),
             {reply, ok, State#state{rebalancer={Pid, Ref}, progress=[]}}
@@ -223,7 +224,7 @@ balance_nodes(Bucket, VNF, Hist, Moves) ->
             Moves
     end.
 
-do_rebalance(Bucket, KeepNodes, EjectNodes, Map) ->
+do_rebalance(Bucket, KeepNodes, EjectNodes, Map, Tries) ->
     try
         AllNodes = KeepNodes ++ EjectNodes,
         ns_bucket:set_servers(Bucket, AllNodes),
@@ -278,7 +279,17 @@ do_rebalance(Bucket, KeepNodes, EjectNodes, Map) ->
     catch
         throw:stopped ->
             fixup_replicas(Bucket, KeepNodes, EjectNodes),
-            exit(stopped)
+            exit(stopped);
+        exit:Reason ->
+            case Tries of
+                0 ->
+                    exit(Reason);
+                _ ->
+                    error_logger:warning_msg(
+                      "Rebalance received exit: ~p, retrying.~n", [Reason]),
+                    timer:sleep(1500),
+                    do_rebalance(Bucket, KeepNodes, EjectNodes, Map, Tries - 1)
+            end
     end.
 
 %% Ensure there are replicas for any unreplicated buckets if we stop
