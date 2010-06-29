@@ -362,11 +362,19 @@ handle_call({update, Fun}, From, State) ->
 handle_call({update, Key, Fun}, From, State) ->
     case search_raw(State, Key) of
         {value, OldValue} ->
-            NewValue = Fun(OldValue),
-            handle_call(resave, From,
-                        State#config{dynamic=[[{Key, NewValue} |
-                                              lists:keydelete(
-                                                Key, 1, config_dynamic(State))]]});
+            case Fun(OldValue) of
+                OldValue ->
+                    {reply, ok, State};
+                NewValue ->
+                    handle_call(
+                      resave, From,
+                      State#config{dynamic=[[{Key,
+                                              increment_vclock(NewValue,
+                                                               OldValue)} |
+                                             lists:keydelete(
+                                               Key, 1,
+                                               config_dynamic(State))]]})
+            end;
         error -> {reply, {error, not_found}, State}
     end;
 
