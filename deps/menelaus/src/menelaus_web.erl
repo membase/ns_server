@@ -430,6 +430,10 @@ build_nodes_info(MyPool, IncludeOtp, InfoLevel, LocalAddr) ->
     Nodes.
 
 build_extra_node_info(Node, InfoNode, _BucketsAll, Append) ->
+    {UpSecs, {MemoryTotal, MemoryAlloced, _}} =
+        {proplists:get_value(wall_clock, InfoNode, 0),
+         proplists:get_value(memory_data, InfoNode,
+                             {0, 0, undefined})},
     %% TODO: right now size_per_node is not being set/used, so we're
     %% using memory quota instead
 
@@ -445,13 +449,9 @@ build_extra_node_info(Node, InfoNode, _BucketsAll, Append) ->
                                                              memcached,
                                                              max_size) of
                                  X when is_integer(X) -> X;
-                                 undefined -> 0 % don't know what to choose
+                                 undefined -> (MemoryTotal * 4) div (5 * 1048576)
                              end,
     NodesBucketMemoryAllocated = NodesBucketMemoryTotal,
-    {UpSecs, {MemoryTotal, MemoryAlloced, _}} =
-        {proplists:get_value(wall_clock, InfoNode, 0),
-         proplists:get_value(memory_data, InfoNode,
-                             {0, 0, undefined})},
     [{uptime, list_to_binary(integer_to_list(UpSecs))},
      {memoryTotal, erlang:trunc(MemoryTotal)},
      {memoryFree, erlang:trunc(MemoryTotal - MemoryAlloced)},
@@ -563,14 +563,23 @@ build_bucket_info(PoolId, Id, Pool, InfoLevel, LocalAddr) ->
     StatsUri = list_to_binary(concat_url_path(["pools", PoolId, "buckets", Id, "stats"])),
     Nodes = build_nodes_info(Pool, false, InfoLevel, LocalAddr),
 
+    Infos = ns_doctor:get_nodes(),
+
     %% for now we have only single bucket & we simply sum quotas from all nodes
     AllActiveNodes = [N || {N, active} <- ns_cluster_membership:get_nodes_cluster_membership()],
-    TotalSize0 = lists:foldl(fun (V, Acc) -> if
-                                                 is_integer(V) -> Acc + V;
-                                                 true -> Acc
-                                             end
-                             end, 0,
-                             [ns_storage_conf:memory_quota(N) || N <- AllActiveNodes]),
+    FoldFun = fun ({V, N}, Acc) -> if is_integer(V) -> Acc + V;
+                                      true ->
+                                           Size = case dict:find(N, Infos) of
+                                                      {ok, Info} ->
+                                                          Tuple = proplists:get_value(memory_data, Info, {0}),
+                                                          element(1, Tuple) * 4 div (5 * 1048576);
+                                                      _ -> 0
+                                                  end,
+                                           Acc + Size
+                                   end
+              end,
+    TotalSize0 = lists:foldl(FoldFun, 0,
+                             [{ns_storage_conf:memory_quota(N), N} || N <- AllActiveNodes]),
     TotalSize = case AllActiveNodes of
                     %% This too is not 100% correct approach, so it's disabled for now
                     %% [_, _ | _] ->
