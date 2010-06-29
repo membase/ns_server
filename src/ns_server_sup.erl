@@ -48,7 +48,7 @@ get_child_specs() ->
 
      {ns_port_sup, {ns_port_sup, start_link, []},
       permanent, 10, worker,
-      [supervisor_cushion, ns_port_sup, ns_port_server]},
+      [supervisor_cushion]},
 
      {menelaus, {menelaus_app, start_subapp, []},
       permanent, infinity, supervisor,
@@ -61,12 +61,12 @@ get_child_specs() ->
      {ns_vbm_sup, {ns_vbm_sup, start_link, []},
       permanent, infinity, supervisor, [ns_vbm_sup]},
 
-     {global_singleton_supervisor, {global_singleton_supervisor, start_link, []},
-      permanent, infinity, supervisor, [global_singleton_supervisor]},
-
      {ns_heart, {ns_heart, start_link, []},
       permanent, 10, worker,
-      [ns_heart, ns_log, ns_port_sup, ns_doctor, ns_info]}
+      [ns_heart]},
+
+     {global_singleton_supervisor, {global_singleton_supervisor, start_link, []},
+      permanent, infinity, supervisor, [global_singleton_supervisor]}
     ].
 
 %% beware that if it's called from one of restarted childs it won't

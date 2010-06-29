@@ -32,7 +32,21 @@ start_link() ->
     gen_server:start_link({global, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
-    {ok, #state{nodes=dict:new()}}.
+    {Replies, BadNodes} = gen_server:multi_call(ns_heart, status),
+    case BadNodes of
+        [] ->
+            ok;
+        _ ->
+            error_logger:error_message(
+              "~p couldn't contact the following nodes on startup: ~p~n",
+              [?MODULE, BadNodes])
+    end,
+    %% Get an initial status so we don't start up thinking everything's down
+    Nodes = lists:foldl(fun ({Node, Status}, Dict) ->
+                                update_status(Node, Status, Dict)
+                        end, dict:new(), Replies),
+    error_logger:info_msg("~p got initial status ~p~n", [?MODULE, Nodes]),
+    {ok, #state{nodes=Nodes}}.
 
 handle_call(get_nodes, _From, State) ->
     Now = erlang:now(),
@@ -46,8 +60,7 @@ handle_call(get_nodes, _From, State) ->
     {reply, Nodes, State}.
 
 handle_cast({heartbeat, Name, Status}, State) ->
-    Node = [{last_heard, erlang:now()} | Status],
-    Nodes = dict:store(Name, Node, State#state.nodes),
+    Nodes = update_status(Name, Status, State#state.nodes),
     {noreply, State#state{nodes=Nodes}}.
 
 handle_info(Info, State) ->
@@ -62,7 +75,10 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 %% API
 
 heartbeat(Status) ->
-    gen_server:cast({global, ?MODULE}, {heartbeat, erlang:node(), Status}).
+    heartbeat(node(), Status).
+
+heartbeat(Node, Status) ->
+    gen_server:cast({global, ?MODULE}, {heartbeat, Node, Status}).
 
 get_nodes() ->
     try gen_server:call({global, ?MODULE}, get_nodes) of
@@ -71,3 +87,9 @@ get_nodes() ->
         _:_ -> dict:new()
     end.
 
+
+%% Internal functions
+
+update_status(Name, Status, Dict) ->
+    Node = [{last_heard, erlang:now()} | Status],
+    dict:store(Name, Node, Dict).

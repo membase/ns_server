@@ -29,7 +29,10 @@ init([]) ->
     timer:send_interval(1000, beat),
     {ok, empty_state}.
 
-handle_call(_Request, _From, State) -> {reply, empty_reply, State}.
+handle_call(status, _From, State) ->
+    {reply, current_status(), State};
+handle_call(Request, _From, State) ->
+    {reply, {unhandled, ?MODULE, Request}, State}.
 
 handle_cast(_Msg, State) -> {noreply, State}.
 
@@ -51,7 +54,5 @@ current_status() ->
                        catch
                            _:_ -> false
                        end,
-    lists:append([
-                                                % If memcached is running, our connection to it will be up
-        [proplists:property(memcached_running, MemcachedRunning)],
-        NodeInfo]).
+    lists:append([[proplists:property(memcached_running, MemcachedRunning)],
+                  NodeInfo]).
