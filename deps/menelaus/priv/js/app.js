@@ -1645,14 +1645,34 @@ var BucketsSection = {
       },
       valueTransformer: function (bucketInfo, bucketSettings) {
         var rv = _.extend({}, bucketInfo, bucketSettings);
-        rv.totalSize = rv.totalSizeMB * 1048576;
         delete rv.settingsCell;
         return rv;
       }
     });
 
+    var poolDetailsValue;
+    var clusterMemorySize = 0;
+    DAO.cells.currentPoolDetails.subscribeValue(function (v) {
+      if (!v)
+        return;
+
+      poolDetailsValue = v;
+      clusterMemorySize = _.reduce(poolDetailsValue.nodes, 0, function (s, node) {
+        return s + node.memoryTotal;
+      });
+    });
+
     var bucketsListTransformer = function (values) {
       self.buckets = values;
+      _.each(values, function (bucket) {
+        bucket.serversCount = poolDetailsValue.nodes.length;
+        bucket.totalSize = bucket.totalSizeMB * 1048576;
+        bucket.clusterMemorySize = clusterMemorySize;
+
+        bucket.clusterFreeSize = bucket.clusterMemorySize - bucket.totalSize;
+
+        bucket.clusterUsedPercent = bucket.totalSize * 100 / bucket.clusterMemorySize;
+      });
       values = self.settingsWidget.valuesTransformer(values);
       return values;
     }

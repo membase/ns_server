@@ -570,47 +570,51 @@ var MockedRequest = mkClass({
                          stats: {uri: "/pools/default/buckets/4/stats"}, // really for pool
                          name: "Default Pool"}],
       [get("pools", "default", "buckets"), [{name: "default",
-                         uri: "/pools/default/buckets/4",
-                         flushCacheUri: "/pools/default/buckets/4/controller/doFlush",
-                         stats: {uri: "/pools/default/buckets/4/stats"},
-                         basicStats: {
-                           cacheSize: 64, // in megs
-                           opsPerSec: 100,
-                           evictionsPerSec: 5,
-                           cachePercentUsed: 50
-                         }},
-                        {name: "Excerciser Application",
-                         uri: "/pools/default/buckets/5",
-                         testAppBucket: true,
-                         status: false,
-                         flushCacheUri: "/pools/default/buckets/5/controller/doFlush",
-                         stats: {uri: "/pools/default/buckets/5/stats"},
-                         basicStats: {
-                           cacheSize: 65, // in megs
-                           opsPerSec: 101,
-                           evictionsPerSec: 6,
-                           cachePercentUsed: 51
-                         }},
-                        {name: "new-year-site",
-                         uri: "/pools/default/buckets/6",
-                         flushCacheUri: "/pools/default/buckets/6/controller/doFlush",
-                         stats: {uri: "/pools/default/buckets/6/stats"},
-                         basicStats: {
-                           cacheSize: 66, // in megs
-                           opsPerSec: 102,
-                           evictionsPerSec: 7,
-                           cachePercentUsed: 52
-                         }},
-                        {name: "new-year-site-staging",
-                         uri: "/pools/default/buckets/7",
-                         flushCacheUri: "/pools/default/buckets/7/controller/doFlush",
-                         stats: {uri: "/pools/default/buckets/7/stats"},
-                         basicStats: {
-                           cacheSize: 67, // in megs
-                           opsPerSec: 103,
-                           evictionsPerSec: 8,
-                           cachePercentUsed: 53
-                         }}]],
+                                             uri: "/pools/default/buckets/4",
+                                             flushCacheUri: "/pools/default/buckets/4/controller/doFlush",
+                                             stats: {uri: "/pools/default/buckets/4/stats"},
+                                             totalSizeMB: 1024,
+                                             basicStats: {
+                                               cacheSize: 64, // in megs
+                                               opsPerSec: 100,
+                                               evictionsPerSec: 5,
+                                               cachePercentUsed: 50
+                                             }},
+                                            {name: "Excerciser Application",
+                                             uri: "/pools/default/buckets/5",
+                                             testAppBucket: true,
+                                             status: false,
+                                             flushCacheUri: "/pools/default/buckets/5/controller/doFlush",
+                                             stats: {uri: "/pools/default/buckets/5/stats"},
+                                             totalSizeMB: 1464,
+                                             basicStats: {
+                                               cacheSize: 65, // in megs
+                                               opsPerSec: 101,
+                                               evictionsPerSec: 6,
+                                               cachePercentUsed: 51
+                                             }},
+                                            {name: "new-year-site",
+                                             uri: "/pools/default/buckets/6",
+                                             flushCacheUri: "/pools/default/buckets/6/controller/doFlush",
+                                             stats: {uri: "/pools/default/buckets/6/stats"},
+                                             totalSizeMB: 1024,
+                                             basicStats: {
+                                               cacheSize: 66, // in megs
+                                               opsPerSec: 102,
+                                               evictionsPerSec: 7,
+                                               cachePercentUsed: 52
+                                             }},
+                                            {name: "new-year-site-staging",
+                                             uri: "/pools/default/buckets/7",
+                                             flushCacheUri: "/pools/default/buckets/7/controller/doFlush",
+                                             stats: {uri: "/pools/default/buckets/7/stats"},
+                                             totalSizeMB: 1424,
+                                             basicStats: {
+                                               cacheSize: 67, // in megs
+                                               opsPerSec: 103,
+                                               evictionsPerSec: 8,
+                                               cachePercentUsed: 53
+                                             }}]],
       [get("pools", "default", "buckets", x), function (x) {
         if (x == "5")
           return {nodes:[], // not used for now

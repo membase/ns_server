@@ -644,10 +644,10 @@
             <tr>
               <td><a class="gray_link bucket_name" href="#visitBucket={%=h(this.name)%}">{%= h(this.name) %}</a></td>
               <td>Membase</td>
-              <td>...</td>
-              <td>...</td>
-              <td>...</td>
-              <td>...</td>
+              <td>stretch to all</td>
+              <td>{%= h(this.serversCount) %}</td>
+              <td>{%= V.formatQuantity(this.totalSize) %}</td>
+              <td>{%= V.formatQuantity(this.totalSize) %}</td>
             </tr>
             <tr id="{%= h(this.settingsRowID) %}" class="settings-placeholder"><td colspan="6"></td></tr>
           <!-- {% }); %} -->
@@ -686,7 +686,7 @@
         <h3>Cache Size</h3>
         <span class="info_block">
           <div class="ovf">
-            <span class="total_ram">Total RAM {%= h(V.formatQuantity(totalSize)) %}</span>
+            <span class="total_ram">Total RAM {%= h(V.formatQuantity(clusterMemorySize)) %}</span>
             <table class="label">
             <col width="245" />
             <col width="" />
@@ -704,14 +704,14 @@
                 <td colspan="4">
                   <span class="diagr_ram">
                     <span style="width: 0%;" class="blue"></span>
-                    <span style="width: 100%;" class="green"></span>
+                    <span style="width: 100%;" class="green">{%= V.thisElement(function (e) {$(e).css('width', (~~clusterUsedPercent) + '%')}) %}</span>
                   </span>
                 </td>
               </tr>
               <tr class="diagr_labels">
                 <td class="blue">OTHER BUCKETS (0B)</td>
                 <td class="green">THIS BUCKET ({%= h(V.formatQuantity(totalSize)) %})</td>
-                <td colspan=2 class="right">Free (0B)</td>
+                <td colspan=2 class="right">Free ({%= h(V.formatQuantity(clusterFreeSize)) %})</td>
               </tr>
             </table>
           </div>
@@ -729,7 +729,7 @@
             </table>
           </div>
           <div class="ovf">
-            <span class="total_ram">Total RAM {%= h(V.formatQuantity(totalSize)) %}</span>
+            <span class="total_ram">Total RAM {%= h(V.formatQuantity(clusterMemorySize)) %}</span>
             <table class="label">
             <col width="245" />
             <col width="" />
@@ -747,14 +747,14 @@
                 <td colspan="4">
                   <span class="diagr_ram">
                     <span style="width: 0%;" class="blue"></span>
-                    <span style="width: 100%;" class="green"></span>
+                    <span style="width: 100%;" class="green">{%= V.thisElement(function (e) {$(e).css('width', (~~clusterUsedPercent) + '%')}) %}</span>
                   </span>
                 </td>
               </tr>
               <tr class="diagr_labels">
                 <td class="blue">OTHER BUCKETS (0B)</td>
                 <td class="green">THIS BUCKET ({%= h(V.formatQuantity(totalSize)) %})</td>
-                <td colspan=2 class="right">Free (0B)</td>
+                <td colspan=2 class="right">Free ({%= h(V.formatQuantity(clusterFreeSize)) %})</td>
               </tr>
             </table>
           </div>
