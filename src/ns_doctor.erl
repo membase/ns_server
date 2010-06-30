@@ -37,7 +37,7 @@ init([]) ->
         [] ->
             ok;
         _ ->
-            error_logger:error_message(
+            error_logger:error_msg(
               "~p couldn't contact the following nodes on startup: ~p~n",
               [?MODULE, BadNodes])
     end,
