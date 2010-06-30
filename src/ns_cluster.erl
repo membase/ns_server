@@ -51,8 +51,15 @@ init([]) ->
 
 %% Bringup services.
 bringup() ->
-    {ok, Pid} = ns_server_sup:start_link(),
-    {ok, running, #running_state{child=Pid}}.
+    case ns_server_sup:start_link() of
+        {ok, Pid} ->
+            {ok, running, #running_state{child=Pid}};
+        E ->
+            %% Sleep a second and a half to give the global singleton
+            %% watchdog time to realize it's not registered
+            timer:sleep(1500),
+            {error, E}
+    end.
 
 %%
 %% State Transitions

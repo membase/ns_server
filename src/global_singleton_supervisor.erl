@@ -20,6 +20,10 @@
 
 -behaviour(supervisor).
 
+-include_lib("eunit/include/eunit.hrl").
+
+-define(CHECK_DELAY, 1000).
+
 %% API
 -export([start_link/0]).
 
@@ -44,9 +48,20 @@ watch(Pid) ->
                               [Pid, node(Pid), LikelyExit, node()])
     end.
 
+%% Check to make sure the name is still registered. For some reason we
+%% don't always receive the exit signal.
+check(Pid) ->
+    case global:whereis_name(?MODULE) =:= Pid of
+        true -> ok;
+        false -> exit(Pid, kill)
+    end,
+    timer:sleep(?CHECK_DELAY),
+    check(Pid).
 
 init([]) ->
-    {ok,{{one_for_all, 5, 5},
+    Pid = self(),
+    spawn_link(fun () -> check(Pid) end),
+    {ok,{{one_for_one, 5, 5},
          [
           %% Everything in here is run once per entire cluster.  Be careful.
           {ns_log, {ns_log, start_link, []},
@@ -60,3 +75,21 @@ init([]) ->
           {ns_doctor, {ns_doctor, start_link, []},
            permanent, 10, worker, [ns_doctor]}
          ]}}.
+
+
+%% Tests
+global_singleton_watchdog_test() ->
+    process_flag(trap_exit, true),
+    Pid = spawn_link(fun () ->
+                             global:register_name(?MODULE, self()),
+                             check(self()),
+                             global:unregister_name(?MODULE),
+                             timer:sleep(5000)
+                     end),
+    receive
+        {'EXIT', Pid, killed} ->
+            ok;
+        E -> {error, E}
+    after 2000 ->
+            {error, timeout}
+    end.
