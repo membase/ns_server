@@ -830,10 +830,10 @@ body.init_secure #container { display: none; }
 
 #servers .list_button, #servers .add_button,
 #servers .rebalance_button, #servers .stop_rebalance_button
-{display: block; float: right; margin-left: 5px; text-decoration:none !important;
-  /*border: 1px solid green;*/
-  /*moz-border-radius: 4px; -webkit-border-radius: 4px; padding: 2px;*/
-  }
+{display: block; float: right; *float:right !important; margin-left: 5px; text-decoration:none !important;}
+
+
+
 li.server_row .btn_cancel {display:block; height:15px; color:#7a7a7a; padding:0 18px 0 0; background:url(../images/btn_cancel_bg.png) 100% 0 no-repeat; line-height:15px; margin-top:23px;}
 #servers .add_button {width:124px;}
 #servers .btn_width_2 {width:125px;}
@@ -982,4 +982,4 @@ html body .overlayed {z-index:999 !important;}
 
 #about-close {line-height:31px !important;}
 
-.failover_server {position:relative !important; float:none !important; display:block !important;}
+.failover_server {position:relative !important; float:none !important; display:block;}
