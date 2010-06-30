@@ -1220,9 +1220,16 @@ var ServersSection = {
         var memoryTotal = rv.memoryTotal;
         var memoryFree = rv.memoryFree;
         rv.percentReserved = (memReserved * 100 / memoryTotal) << 0;
-        var percentFree = (memoryFree * 100 / memoryTotal) << 0;
-        rv.percentOther = 100 - percentFree; // this is actually reserved + other as required by CSS
         rv.memoryOther = memoryTotal - memoryFree - memReserved;
+
+        if (rv.memoryOther < 0) {
+          rv.memoryOther = 0;
+          rv.memoryFree = memoryFree = memoryTotal - memReserved;
+        }
+
+        var percentFree = (memoryFree * 100 / memoryTotal) << 0;
+        // this is actually reserved + other as required by CSS
+        rv.percentOther = ((memReserved + rv.memoryOther) * 100 / memoryTotal) << 0;
 
         _.each(rv.storage.hdd, function (r) {
           var diskStats = r.diskStats || {};
