@@ -282,7 +282,7 @@ increment_vclock(NewValue, OldValue) ->
                     false ->
                         []
                 end,
-            NewVClock = vclock:increment(node(), OldVClock),
+            NewVClock = lists:sort(vclock:increment(node(), OldVClock)),
             [{?METADATA_VCLOCK, NewVClock} | lists:keydelete(?METADATA_VCLOCK, 1,
                                                              NewValue)];
         false ->
@@ -300,7 +300,7 @@ merge_vclocks(NewValue, OldValue) ->
                         proplists:get_value(?METADATA_VCLOCK, NewValue, []);
                     false -> []
                 end,
-            NewVClock = vclock:merge([OldValueVClock, NewValueVClock]),
+            NewVClock = lists:sort(vclock:merge([OldValueVClock, NewValueVClock])),
             [{?METADATA_VCLOCK, NewVClock} | lists:keydelete(?METADATA_VCLOCK,
                                                              1, NewValue)];
         false ->
@@ -524,15 +524,18 @@ merge_lists(Field, Acc, RV, LV) ->
     case {vclock:descends(RClock, LClock),
           vclock:descends(LClock, RClock)} of
         {X, X} ->
-            case strip_metadata(RV) =:= strip_metadata(LV) of
-                true ->
-                    ok;
-                false ->
-                    ns_log:log(?MODULE, ?CONFIG_CONFLICT,
-                               "Conflicting configuration changes to field ~p:~n~p and~n~p, choosing the former.~n",
-                               [Field, RV, LV])
-            end,
-            NewValue = merge_vclocks(RV, LV),
+            NewValue =
+                case RV =:= LV of
+                    true ->
+                        RV;
+                    false ->
+                        ns_log:log(?MODULE, ?CONFIG_CONFLICT,
+                                   "Conflicting configuration changes to field "
+                                   "~p:~n~p and~n~p, choosing the former.~n",
+                                   [Field, RV, LV]),
+                        %% Increment the merged vclock so we don't pingpong
+                        increment_vclock(RV, merge_vclocks(RV, LV))
+                end,
             [{Field, NewValue} | Acc];
         {true, false} -> [{Field, RV} | Acc];
         {false, true} -> [{Field, LV} | Acc]
