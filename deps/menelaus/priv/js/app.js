@@ -1468,8 +1468,8 @@ var ServersSection = {
       showDialog('add_confirmation_dialog', {
         eventBindings: [['.save_button', 'click', function (e) {
           e.preventDefault();
-          hideDialog('add_confirmation_dialog');
           confirmed = true;
+          hideDialog('add_confirmation_dialog');
 
           $('#join_cluster_dialog_errors_container').html('');
           var overlay = overlayWithSpinner(form);
