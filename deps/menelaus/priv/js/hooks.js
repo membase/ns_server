@@ -654,9 +654,11 @@ var MockedRequest = mkClass({
         mcdMemoryReserved: 2032574464,
         mcdMemoryAllocated: 89864960,
         "ports":{"proxy":11211,"direct":11210}}],
-      [post("nodes", x, "controller", "settings"), expectParams({},
-                                                                opt("memoryQuota"),
-                                                                opt("license"))], //missing
+      [post("nodes", x, "controller", "settings"), expectParams(function ($data) {
+        if ($data.memoryQuota && $data.memoryQuota != 'unlimited' && !(/^[0-9]+$/.exec($data.memoryQuota))) {
+          this.errorResponse(["invalid memory quota", "second message"]);
+        }
+      }, opt("memoryQuota"), opt("license"))], //missing
 
       [post("node", "controller", "initStatus"), function ($data) {
         this.globalData.initValue = $data.initValue;
