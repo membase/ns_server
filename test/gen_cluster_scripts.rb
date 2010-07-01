@@ -49,6 +49,8 @@ num_nodes.times do |x|
                  {verbosity, ""}
                  ]}.
 
+    {{node, #{node_id}, ns_log}, [{filename, "#{node_data}/logs.bin"}]}.
+
     {{node, #{node_id}, moxi}, [
             {port, #{(x * 2) + base_direct_port + 1}},
             {verbosity, ""}

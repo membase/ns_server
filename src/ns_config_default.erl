@@ -195,6 +195,8 @@ default() ->
       }]
     },
 
+    {ns_log, [{filename, filename:join(DataDir, "logs.bin")}]},
+
     % Modifiers: menelaus
     % Listeners: ? possibly ns_log
     {alerts, [{email, ""},

@@ -20,9 +20,10 @@
 -define(RB_SIZE, 100). % Number of recent log entries
 -define(DUP_TIME, 300000000). % 300 secs in microsecs
 -define(GC_TIME, 60000). % 60 secs in millisecs
+-define(SAVE_DELAY, 5000). % 5 secs in millisecs
 
 -behaviour(gen_server).
--behavior(ns_log_categorizing).
+-behaviour(ns_log_categorizing).
 
 %% API
 -export([start_link/0]).
@@ -31,7 +32,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--export([log/3, log/4, recent/0, recent/1, recent_by_category/0, clear/0]).
+-export([log/3, log/4, recent/0, recent/1]).
 
 -export([categorize/2, code_string/2]).
 
@@ -39,27 +40,28 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--record(state, {recent, dedup}).
+-record(state, {recent, dedup, save_tref, filename}).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
     timer:send_interval(?GC_TIME, garbage_collect),
-    {ok, #state{recent=[], dedup=dict:new()}}.
+    Filename = ns_config:search_node_prop(ns_config:get(), ns_log, filename),
+    Recent = case file:read_file(Filename) of
+                 {ok, <<>>} -> [];
+                 {ok, B} -> binary_to_term(zlib:uncompress(B));
+                 E ->
+                     error_logger:info_msg(
+                       "~p:init(): Couldn't load logs from ~p: ~p~n",
+                       [?MODULE, Filename, E]),
+                     []
+             end,
+    {ok, #state{recent=Recent, dedup=dict:new(), filename=Filename}}.
 
 % Request for recent items.
 handle_call(recent, _From, State) ->
-    {reply, State#state.recent, State};
-handle_call({sync, Hash}, _From, State) ->
-    Recent = lists:sublist(?RB_SIZE, State#state.recent),
-    Reply = case erlang:phash(Recent) of
-                Hash ->
-                    false;
-                _ ->
-                    Recent
-            end,
-    {reply, Reply, State#state{recent=Recent}}.
+    {reply, State#state.recent, State}.
 
 % Inbound logging request.
 handle_cast({log, Module, Code, Fmt, Args}, State = #state{dedup=Dedup}) ->
@@ -89,17 +91,15 @@ handle_cast({log, Module, Code, Fmt, Args}, State = #state{dedup=Dedup}) ->
             {noreply, State#state{dedup=Dedup2}}
     end;
 handle_cast({do_log, Entry}, State = #state{recent=Recent}) ->
-    {noreply, State#state{recent=lists:usort([Entry|Recent])}};
-handle_cast(clear, _State) ->
-    error_logger:info_msg("Clearing log.~n", []),
-    {noreply,  #state{recent=[], dedup=dict:new()}};
+    {noreply, schedule_save(State#state{recent=lists:usort([Entry|Recent])})};
 handle_cast({sync, Compressed}, State = #state{recent=Recent}) ->
     case binary_to_term(zlib:uncompress(Compressed)) of
         Recent ->
             {noreply, State};
         Logs ->
-            {noreply, State#state{recent=lists:sublist(
-                                           ?RB_SIZE, lists:umerge(Recent, Logs))}}
+            State1 = schedule_save(State),
+            {noreply, State1#state{recent=lists:sublist(
+                                            ?RB_SIZE, lists:umerge(Recent, Logs))}}
     end.
 
 % Not handling any other state.
@@ -113,6 +113,15 @@ handle_info(sync, State = #state{recent=Recent}) ->
     Node = lists:nth(Nodes, random:uniform(length(Nodes))),
     gen_server:cast({?MODULE, Node}, {sync, zlib:compress(term_to_binary(Recent))}),
     {noreply, State};
+handle_info(save, State = #state{filename=Filename, recent=Recent}) ->
+    Compressed = zlib:compress(term_to_binary(Recent)),
+    case file:write_file(Filename, Compressed) of
+        ok -> ok;
+        E ->
+            error_logger:error_msg("~p: unable to write log to ~p: ~p~n",
+                                   [?MODULE, Filename, E])
+    end,
+    {noreply, State#state{save_tref=undefined}};
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -152,6 +161,14 @@ gc(Now, [{Key, Value} | Rest], DupesList) ->
      false -> gc(Now, Rest, [{Key, Value} | DupesList])
      end.
 
+schedule_save(State = #state{save_tref=undefined}) ->
+    {ok, TRef} = timer:send_after(?SAVE_DELAY, save),
+    State#state{save_tref=TRef};
+schedule_save(State) ->
+    %% Don't reschedule if a save is already scheduled.
+    State.
+
+
 %% API
 
 -spec categorize(atom(), integer()) -> log_classification().
@@ -188,28 +205,8 @@ recent() ->
 
 -spec recent(atom()) -> list(#log_entry{}).
 recent(Module) ->
-    lists:usort([E || E <- gen_server:call(?MODULE, recent),
-                     E#log_entry.module =:= Module ]).
-
-% {crit, warn, info}
--spec recent_by_category() -> {list(#log_entry{}),
-                               list(#log_entry{}),
-                               list(#log_entry{})}.
-recent_by_category() ->
-    lists:foldl(fun(E, {C, W, I}) ->
-                        case E#log_entry.cat of
-                            crit -> {[E | C], W, I};
-                            warn -> {C, [E | W], I};
-                            info -> {C, W, [E | I]}
-                        end
-                end,
-                {[], [], []},
-                recent()).
-
--spec clear() -> ok.
-clear() ->
-    gen_server:cast(?MODULE, clear).
-
+    [E || E <- gen_server:call(?MODULE, recent),
+          E#log_entry.module =:= Module ].
 
 % Example categorization -- pretty much exists for the test below, but
 % this is what any module that logs should look like.
@@ -235,11 +232,6 @@ log_test() ->
     ok = log(?MODULE, 2, "test log 2 ~p ~p", [x, y]),
     ok = log(?MODULE, 3, "test log 3 ~p ~p", [x, y]),
     ok = log(?MODULE, 4, "test log 4 ~p ~p", [x, y]),
-
-    {C, W, I} = recent_by_category(),
-    ["test log 1"] = [E#log_entry.msg || E <- C],
-    ["test log 2 ~p ~p"] = [E#log_entry.msg || E <- W],
-    ["test log 4 ~p ~p", "test log 3 ~p ~p"] = [E#log_entry.msg || E <- I],
 
     exit(Pid, exiting),
     ok.
