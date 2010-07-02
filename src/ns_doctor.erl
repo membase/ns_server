@@ -29,7 +29,13 @@
 %% gen_server handlers
 
 start_link() ->
-    gen_server:start_link({global, ?MODULE}, ?MODULE, [], []).
+    %% If it's already running elsewhere in the cluster, just monitor
+    %% the existing process.
+    case gen_server:start_link({global, ?MODULE}, ?MODULE, [], []) of
+        {error, {already_started, Pid}} ->
+            {ok, spawn_link(fun () -> misc:wait_for_process(Pid, infinity) end)};
+        X -> X
+    end.
 
 init([]) ->
     {Replies, BadNodes} = gen_server:multi_call(ns_heart, status),

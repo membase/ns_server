@@ -13,29 +13,60 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
-%% Run an orchestrator and vbm supervisor per bucket
+%% Run a set of processes per bucket
 
 -module(ns_bucket_sup).
 
 -behaviour(supervisor).
 
--export([start_link/1]).
-
--export ([notify/2]).
+-export([start_link/0, notify/1]).
 
 -export([init/1]).
 
 
 %% API
 
-start_link(Bucket) ->
-    supervisor:start_link(?MODULE, [Bucket]).
+start_link() ->
+    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+
+%% buckets key got updated
+notify(Config) ->
+    ChildSpecs = child_specs(Config),
+    CurrentChildren = [Id || {Id, Pid, _, _} <-
+                                 supervisor:which_children(?MODULE),
+                             Pid /= undefined],
+    ZombieChildren = [Child || Child <- CurrentChildren,
+                               not lists:keymember(Child, 1, ChildSpecs)],
+    lists:foreach(fun (Id) -> supervisor:terminate_child(?MODULE, Id) end,
+                  ZombieChildren),
+    NewChildSpecs = [ChildSpec || ChildSpec = {Id, _} <- ChildSpecs,
+                                  not lists:member(Id, CurrentChildren)],
+    lists:foreach(fun (ChildSpec) ->
+                          supervisor:start_child(?MODULE, ChildSpec) end,
+                  NewChildSpecs),
+    lists:foreach(fun ({Bucket, BucketConfig}) ->
+                          ns_bucket_sup:notify(Bucket, BucketConfig) end,
+                  proplists:get_value(configs, Config)).
 
 
-notify(Bucket, BucketConfig) ->
-    ns_orchestrator:notify(Bucket, BucketConfig).
+%% supervisor callbacks
 
-init([Bucket]) ->
+init([]) ->
     {ok, {{one_for_all, 3, 10},
-          [{ns_orchestrator, {ns_orchestrator, start_link, [Bucket]},
-            permanent, 10, worker, [ns_orchestrator]}]}}.
+          child_specs()}}.
+
+
+%% Internal functions
+child_specs() ->
+    Configs = ns_bucket:get_buckets(),
+    ChildSpecs = child_specs(Configs),
+    error_logger:info_msg("~p:child_specs(): ChildSpecs = ~p~n",
+                          [?MODULE, ChildSpecs]),
+    ChildSpecs.
+
+child_specs(Configs) ->
+    lists:append([child_spec(B) || {B, _} <- Configs]).
+
+child_spec(Bucket) ->
+    [{{Bucket, ns_orchestrator}, {ns_orchestrator, start_link, [Bucket]},
+      permanent, 10, worker, [ns_orchestrator]}].

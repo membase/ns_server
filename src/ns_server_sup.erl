@@ -71,12 +71,15 @@ get_child_specs() ->
      {ns_vbm_sup, {ns_vbm_sup, start_link, []},
       permanent, infinity, supervisor, [ns_vbm_sup]},
 
+     {ns_bucket_sup, {ns_bucket_sup, start_link, []},
+      permanent, infinity, supervisor, [ns_bucket_sup]},
+
      {ns_heart, {ns_heart, start_link, []},
       permanent, 10, worker,
       [ns_heart]},
 
-     {global_singleton_supervisor, {global_singleton_supervisor, start_link, []},
-      permanent, infinity, supervisor, [global_singleton_supervisor]}
+     {ns_doctor, {ns_doctor, start_link, []},
+      permanent, 10, worker, [ns_doctor]}
     ].
 
 %% beware that if it's called from one of restarted childs it won't

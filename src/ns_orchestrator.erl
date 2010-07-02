@@ -42,7 +42,13 @@
 
 %% API
 start_link(Bucket) ->
-    gen_server:start_link(server(Bucket), ?MODULE, Bucket, []).
+    %% If it's already running elsewhere in the cluster, just monitor
+    %% the existing process.
+    case gen_server:start_link(server(Bucket), ?MODULE, Bucket, []) of
+        {error, {already_started, Pid}} ->
+            {ok, spawn_link(fun () -> misc:wait_for_process(Pid, infinity) end)};
+        X -> X
+    end.
 
 failover(Bucket, Node) ->
     gen_server:call(server(Bucket), {failover, Node}).
