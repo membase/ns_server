@@ -1934,10 +1934,14 @@
       <h1>Configure Server</h1>
       <h2>Step <span class="current-step">1</span> of 3</h2>
     </div>
-    <div class="alert_red" id="init_resources_failed_message" style="display:none;">
-      <div class="al_text">
-        Invalid Resource. Try again.
-      </div>
+    <div id="init_resources_errors_container" class="warning" style="padding:10px 20px;"></div>
+    <div id="init_resources_errors_template" class="template">
+      <strong>Couldn't configure resources due to:</strong>
+      <ul>
+        <!-- {% _.each(rows, function (e) { %} -->
+        <li>{%= h(e) %}</li>
+        <!-- {% }); %} -->
+      </ul>
     </div>
     <form id="init_resources_form" class="form block">
       <input type="submit" style="display:none" />

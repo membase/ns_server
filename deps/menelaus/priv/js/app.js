@@ -3003,6 +3003,8 @@ var NodeDialog = {
   startPage_resources: function(node, pagePrefix, opt) {
     var parentName = '#' + pagePrefix + '_dialog';
 
+    $('#init_resources_errors_container').html('');
+
     opt = opt || {};
 
     $.ajax({
@@ -3022,6 +3024,8 @@ var NodeDialog = {
   submitResources: function () {
     var quota = $('#init_resources_form input[name=dynamic-ram-quota]').val();
 
+    $('#init_resources_errors_container').html('');
+
     postWithValidationErrors('/nodes/Self/controller/settings',
                              $.param({memoryQuota: quota}),
                              continuation,
@@ -3029,7 +3033,7 @@ var NodeDialog = {
 
     function continuation(data, textStatus) {
       if (textStatus == 'error') {
-        alert('Validation failed: ' + data);
+        renderTemplate('init_resources_errors', data);
         $('#init_resources_form input[name=dynamic-ram-quota]')[0].focus();
         return;
       }
