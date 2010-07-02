@@ -619,9 +619,25 @@ build_bucket_info(PoolId, Id, Pool, LocalAddr) ->
 build_bucket_info(PoolId, Id, Pool, InfoLevel, LocalAddr) ->
     StatsUri = list_to_binary(concat_url_path(["pools", PoolId, "buckets", Id, "stats"])),
     Nodes = build_nodes_info(Pool, false, InfoLevel, LocalAddr),
+    List1 = [{name, list_to_binary(Id)},
+             {uri, list_to_binary(concat_url_path(["pools", PoolId, "buckets", Id]))},
+             {streamingUri, list_to_binary(concat_url_path(["pools", PoolId, "bucketsStreaming", Id]))},
+             %% TODO: this should be under a controllers/ kind of namespacing
+             {flushCacheUri, list_to_binary(concat_url_path(["pools", PoolId,
+                                                             "buckets", Id, "controller", "doFlush"]))},
+             {nodes, Nodes},
+             {stats, {struct, [{uri, StatsUri}]}},
+             {vBucketServerMap, ns_bucket:json_map(Id, LocalAddr)}],
+    List2 = case InfoLevel of
+                stable -> List1;
+                normal ->
+                    List1 ++ [{totalSizeMB, total_size_mb()},
+                              {basicStats, {struct, menelaus_stats:basic_stats(PoolId, Id)}}]
+            end,
+    {struct, List2}.
 
+total_size_mb() ->
     Infos = ns_doctor:get_nodes(),
-
     %% for now we have only single bucket & we simply sum quotas from all nodes
     AllActiveNodes = [N || {N, active} <- ns_cluster_membership:get_nodes_cluster_membership()],
     FoldFun = fun ({V, N}, Acc) -> if is_integer(V) -> Acc + V;
@@ -645,22 +661,7 @@ build_bucket_info(PoolId, Id, Pool, InfoLevel, LocalAddr) ->
                     %%     TotalSize0 div 2;
                     _ -> TotalSize0
                end,
-
-    List1 = [{name, list_to_binary(Id)},
-             {uri, list_to_binary(concat_url_path(["pools", PoolId, "buckets", Id]))},
-             {streamingUri, list_to_binary(concat_url_path(["pools", PoolId, "bucketsStreaming", Id]))},
-             %% TODO: this should be under a controllers/ kind of namespacing
-             {flushCacheUri, list_to_binary(concat_url_path(["pools", PoolId,
-                                                             "buckets", Id, "controller", "doFlush"]))},
-             {totalSizeMB, TotalSize},
-             {nodes, Nodes},
-             {stats, {struct, [{uri, StatsUri}]}},
-             {vBucketServerMap, ns_bucket:json_map(Id, LocalAddr)}],
-    List2 = case InfoLevel of
-                stable -> List1;
-                normal -> List1 ++ [{basicStats, {struct, menelaus_stats:basic_stats(PoolId, Id)}}]
-            end,
-    {struct, List2}.
+    TotalSize.
 
 handle_bucket_info_streaming(PoolId, Id, Req, Pool, _Bucket) ->
     handle_bucket_info_streaming(PoolId, Id, Req, Pool, _Bucket, undefined).
