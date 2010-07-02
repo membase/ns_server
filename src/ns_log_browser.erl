@@ -49,18 +49,7 @@ start() ->
     end.
 
 tempfile(Prefix, Suffix) ->
-    Dir = case os:getenv("TEMP") of
-    false ->
-        case os:getenv("TMP") of
-        false ->
-            case os:getenv("TMPDIR") of
-            false -> "/tmp";
-            D1 -> D1
-            end;
-        D2 -> D2
-        end;
-    D3 -> D3
-    end,
+    Dir = ns_config_default:default_path("tmp"),
     {_, _, MicroSecs} = erlang:now(),
     Pid = os:getpid(),
     Filename = Prefix ++ integer_to_list(MicroSecs) ++ "_" ++
