@@ -982,4 +982,4 @@ html body .overlayed {z-index:999 !important;}
 
 #about-close {line-height:31px !important;}
 
-.failover_server {position:relative !important; /*float:none !important;*/ display:block;}
+.failover_server {position:relative !important; display:block;}
