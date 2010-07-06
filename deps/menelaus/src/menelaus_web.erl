@@ -164,7 +164,7 @@ loop(Req, AppRoot, DocRoot) ->
                              ["sasl_logs"] ->
                                  {auth, fun handle_sasl_logs/1};
                              ["erlwsh" | _] ->
-                                 erlwsh_web:loop(Req, erlwsh_deps:local_path(["priv", "www"]));
+                                 {done, erlwsh_web:loop(Req, erlwsh_deps:local_path(["priv", "www"]))};
                              _ ->
                                  {done, Req:serve_file(Path, AppRoot)}%% , [{"Pragma", "no-cache"},
                                                                       %%  {"Cache-Control", "no-cache must-revalidate"}])}
@@ -222,7 +222,7 @@ loop(Req, AppRoot, DocRoot) ->
                                                             R:ok({"text/plain", add_header(), <<"">>})
                                                     end};
                              ["erlwsh" | _] ->
-                                 erlwsh_web:loop(Req, erlwsh_deps:local_path(["priv", "www"]));
+                                 {done, erlwsh_web:loop(Req, erlwsh_deps:local_path(["priv", "www"]))};
                              _ ->
                                  ns_log:log(?MODULE, 0001, "Invalid post received: ~p", [Req]),
                                  {done, Req:not_found()}
