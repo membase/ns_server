@@ -61,7 +61,12 @@ needs_rebalance(Bucket) ->
         unbalanced(histograms(Map, Servers)).
 
 rebalance_progress(Bucket) ->
-    gen_server:call(server(Bucket), rebalance_progress).
+    try gen_server:call(server(Bucket), rebalance_progress, 2000) of
+        Result -> Result
+    catch
+        exit:{timeout, _} ->
+            not_running
+    end.
 
 start_rebalance(Bucket, KeepNodes, EjectNodes) ->
     gen_server:call(server(Bucket), {start_rebalance, KeepNodes, EjectNodes}).
