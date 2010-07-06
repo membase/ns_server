@@ -1,0 +1,467 @@
+var ServersSection = {
+  hostnameComparator: mkComparatorByProp('hostname'),
+  pendingEject: [], // nodes to eject on next rebalance
+  pending: [], // nodes for pending tab
+  active: [], // nodes for active tab
+  allNodes: [], // all known nodes
+
+  updateData: function () {
+    var self = this;
+
+    var pending = this.pending = [];
+    var active = this.active = [];
+    this.allNodes = [];
+
+    var details = this.poolDetails.value;
+    if (!details)
+      return;
+
+    var nodes = details.nodes;
+    var nodeNames = _.pluck(nodes, 'hostname');
+    _.each(nodes, function (n) {
+      var mship = n.clusterMembership;
+      if (mship == 'active')
+        active.push(n);
+      else
+        pending.push(n);
+      if (mship == 'inactiveFailed')
+        active.push(n);
+    });
+
+    var stillActualEject = [];
+    _.each(this.pendingEject, function (node) {
+      var original = _.detect(nodes, function (n) {
+        return n.otpNode == node.otpNode;
+      });
+      if (!original || original.clusterMembership == 'inactiveAdded') {
+        return;
+      }
+      stillActualEject.push(original);
+      original.pendingEject = true;
+    });
+
+    this.pendingEject = stillActualEject;
+
+    this.pending = pending = pending.concat(this.pendingEject);
+    pending.sort(this.hostnameComparator);
+    active.sort(this.hostnameComparator);
+
+    this.allNodes = _.uniq(this.active.concat(this.pending));
+
+    var reallyActive = _.select(active, function (n) {
+      return n.clusterMembership == 'active' && !n.pendingEject && n.status =='healthy';
+    });
+
+    if (reallyActive.length == 1) {
+      reallyActive[0].lastActive = true;
+    }
+
+    _.each(this.allNodes, function (n) {
+      n.ejectPossible = !n.pendingEject;
+      n.failoverPossible = (n.clusterMembership != 'inactiveFailed');
+      n.reAddPossible = (n.clusterMembership == 'inactiveFailed' && n.status == 'healthy');
+
+      var nodeClass = ''
+      if (n.clusterMembership == 'inactiveFailed') {
+        nodeClass = 'failed_over'
+      } else if (n.status != 'healthy') {
+        nodeClass = 'server_down'
+      } else {
+        nodeClass = 'status_up'
+      }
+      if (n.lastActive)
+        nodeClass += ' last-active';
+      n.nodeClass = nodeClass;
+    });
+  },
+  renderEverything: function () {
+    var details = this.poolDetails.value;
+    var rebalancing = details && details.rebalanceStatus != 'none';
+
+    var pending = this.pending;
+    var active = this.active;
+
+    this.serversQ.find('.add_button').toggle(!!(details && !rebalancing));
+    this.serversQ.find('.stop_rebalance_button').toggle(!!rebalancing);
+
+    var mayRebalance = !rebalancing && pending.length !=0;
+
+    if (details && !rebalancing && !details.balanced)
+      mayRebalance = true;
+
+    var unhealthyActive = _.detect(active, function (n) {
+      return n.clusterMembership == 'active'
+        && !n.pendingEject
+        && n.status != 'healthy'
+    })
+
+    if (unhealthyActive)
+      mayRebalance = false;
+
+    var rebalanceButton = this.serversQ.find('.rebalance_button').toggle(!!details);
+    rebalanceButton.toggleClass('disabled', !mayRebalance);
+
+    if (details && !rebalancing) {
+      $('#rebalance_tab .alert_num span').text(pending.length);
+      $('#rebalance_tab').toggleClass('alert_num_display', !!pending.length);
+    } else {
+      $('#rebalance_tab').toggleClass('alert_num_display', false);
+    }
+
+    this.serversQ.toggleClass('rebalancing', !!rebalancing);
+
+    if (!details)
+      return;
+
+    if (rebalancing) {
+      renderTemplate('manage_server_list', [], $i('pending_server_list_container'));
+      return this.renderRebalance(details);
+    }
+
+    renderTemplate('manage_server_list', active, $i('active_server_list_container'));
+
+    $('#active_server_list_container .last-active').find('.eject_server').addClass('disabled').end()
+      .find('.failover_server').addClass('disabled');
+
+    if (!rebalancing) {
+      renderTemplate('manage_server_list', pending, $i('pending_server_list_container'));
+    } else {
+      this.renderRebalance(details);
+    }
+  },
+  renderRebalance: function (details) {
+    var progress = this.rebalanceProgress.value;
+    if (!progress) {
+      progress = {};
+    }
+    nodes = _.clone(details.nodes);
+    nodes.sort(this.hostnameComparator);
+    _.each(nodes, function (n) {
+      var p = progress[n.otpNode];
+      if (!p)
+        return;
+      n.progress = p.progress;
+      n.percent = truncateTo3Digits(n.progress * 100);
+    });
+
+    renderTemplate('rebalancing_list', nodes);
+  },
+  refreshEverything: function () {
+    this.updateData();
+    this.renderEverything();
+  },
+  onRebalanceProgress: function () {
+    var value = this.rebalanceProgress.value;
+    console.log("got progress: ", value);
+    if (value.status == 'none') {
+      this.poolDetails.invalidate();
+      return
+    }
+
+    this.renderRebalance(this.poolDetails.value);
+    this.rebalanceProgress.recalculateAfterDelay(250);
+  },
+  init: function () {
+    this.poolDetails = DAO.cells.currentPoolDetailsCell;
+
+    this.tabs = new TabsCell("serversTab",
+                             "#servers .tabs",
+                             "#servers .panes > div",
+                             ["active", "pending"]);
+
+    var detailsWidget = this.detailsWidget = new MultiDrawersWidget({
+      hashFragmentParam: 'openedServers',
+      template: 'server_details',
+      elementsKey: 'otpNode',
+      drawerCellName: 'detailsCell',
+      idPrefix: 'detailsRowID',
+      placeholderCSS: '#servers .settings-placeholder',
+      placeholderContainerChildCSS: null,
+      actionLink: 'openServer',
+      actionLinkCallback: function () {
+        ThePage.ensureSection('servers');
+      },
+      uriExtractor: function (nodeInfo) {
+        return "/nodes/" + encodeURIComponent(nodeInfo.otpNode);
+      },
+      valueTransformer: function (nodeInfo, nodeSettings) {
+        var rv = _.extend({}, nodeInfo, nodeSettings);
+
+        var memReserved = rv.memoryReserved = rv.mcdMemoryReserved * 1048576;
+        var memoryTotal = rv.memoryTotal;
+        var memoryFree = rv.memoryFree;
+        rv.percentReserved = (memReserved * 100 / memoryTotal) << 0;
+        rv.memoryOther = memoryTotal - memoryFree - memReserved;
+
+        if (rv.memoryOther < 0) {
+          rv.memoryOther = 0;
+          rv.memoryFree = memoryFree = memoryTotal - memReserved;
+        }
+
+        var percentFree = (memoryFree * 100 / memoryTotal) << 0;
+        // this is actually reserved + other as required by CSS
+        rv.percentOther = ((memReserved + rv.memoryOther) * 100 / memoryTotal) << 0;
+
+        _.each(rv.storage.hdd, function (r) {
+          var diskStats = r.diskStats || {};
+          r.memoryTotal = diskStats.sizeKBytes * 1024;
+          var quota = memReserved;
+          var quotaText;
+          if (quota == 'none') {
+            quota = 0;
+            quotaText = "none"
+          }
+
+          r.memoryQuota = quota;
+          r.quotaText = quotaText || ViewHelpers.formatQuantity(r.memoryQuota, 'b', 1024)
+          r.quotaPercent = (r.memoryQuota * 100 / r.memoryTotal) << 0;
+          r.memoryUsed = r.memoryTotal * diskStats.usagePercent / 100;
+          r.memoryUsedPercent = diskStats.usagePercent;
+          r.memoryFree = r.memoryTotal - r.memoryUsed;
+        });
+
+        delete rv.detailsCell;
+        return rv;
+      }
+    });
+    this.poolDetails.subscribe(function (cell) {
+      detailsWidget.valuesTransformer(cell.value.nodes);
+    });
+
+    this.poolDetails.subscribeValue(function (poolDetails) {
+      var hasFailover;
+      if (poolDetails)
+        hasFailover = !poolDetails.balanced;
+      $('#servers .failover_warning').toggle(!!hasFailover);
+    });
+
+    this.poolDetails.subscribeAny($m(this, "refreshEverything"));
+    prepareTemplateForCell('active_server_list', this.poolDetails);
+    prepareTemplateForCell('pending_server_list', this.poolDetails);
+
+    var serversQ = this.serversQ = $('#servers');
+
+    serversQ.find('.rebalance_button').live('click', this.accountForDisabled($m(this, 'onRebalance')));
+    serversQ.find('.add_button').live('click', $m(this, 'onAdd'));
+    serversQ.find('.stop_rebalance_button').live('click', $m(this, 'onStopRebalance'));
+
+    function mkServerRowHandler(handler) {
+      return function (e) {
+        var serverRow = $(this).parents(".server_row").get(0) || $(this).parents('.add_back_row').get(0);
+        var serverInfo = $.data(serverRow, 'server');
+        return handler.call(this, e, serverInfo);
+      }
+    }
+
+    function mkServerAction(handler) {
+      return ServersSection.accountForDisabled(mkServerRowHandler(function (e, serverRow) {
+        e.preventDefault();
+        return handler(serverRow.hostname);
+      }));
+    }
+
+    serversQ.find('.re_add_button').live('click', mkServerAction($m(this, 'reAddNode')));
+    serversQ.find('.eject_server').live('click', mkServerAction($m(this, 'ejectNode')));
+    serversQ.find('.failover_server').live('click', mkServerAction($m(this, 'failoverNode')));
+    serversQ.find('.remove_from_list').live('click', mkServerAction($m(this, 'removeFromList')));
+
+    this.rebalanceProgress = new Cell(function (poolDetails) {
+      if (poolDetails.rebalanceStatus == 'none')
+        return;
+      return future.get({url: poolDetails.rebalanceProgressUri});
+    }, {poolDetails: this.poolDetails});
+    this.rebalanceProgress.keepValueDuringAsync = true;
+    this.rebalanceProgress.subscribe($m(this, 'onRebalanceProgress'));
+
+    detailsWidget.hookRedrawToCell(this.poolDetails);
+  },
+  accountForDisabled: function (handler) {
+    return function (e) {
+      if ($(e.currentTarget).hasClass('disabled')) {
+        e.preventDefault();
+        return;
+      }
+      return handler.call(this, e);
+    }
+  },
+  onEnter: function () {
+    this.poolDetails.invalidate();
+  },
+  navClick: function () {
+    this.onLeave();
+    this.onEnter();
+  },
+  onLeave: function () {
+    this.detailsWidget.reset();
+  },
+  onRebalance: function () {
+    this.postAndReload(this.poolDetails.value.controllers.rebalance.uri,
+                       {knownNodes: _.pluck(this.allNodes, 'otpNode').join(','),
+                        ejectedNodes: _.pluck(this.pendingEject, 'otpNode').join(',')});
+  },
+  onStopRebalance: function () {
+    this.postAndReload(this.poolDetails.value.stopRebalanceUri, "");
+  },
+  validateJoinClusterParams: function (form) {
+    var data = {}
+    _.each("hostname user password".split(' '), function (name) {
+      data[name] = form.find('[name=' + name + ']').val();
+    });
+
+    var errors = [];
+
+    if (data['hostname'] == "")
+      errors.push("Server IP Address cannot be blank.");
+    if ((data['user'] || data['password']) && !(data['user'] && data['password'])) {
+      errors.push("Username and Password must either both be present or missing.");
+    }
+
+    if (!errors.length)
+      return data;
+    return errors;
+  },
+  onAdd: function () {
+    var self = this;
+
+    var dialog = $('#join_cluster_dialog');
+    var form = dialog.find('form');
+    $('#join_cluster_dialog_errors_container').empty();
+    $('#join_cluster_dialog form').get(0).reset();
+    dialog.find("input:not([type]), input[type=text], input[type=password]").val('');
+    dialog.find('[name=user]').val('Administrator');
+
+    $('#join_cluster_dialog_errors_container').empty();
+    showDialog('join_cluster_dialog', {
+      onHide: function () {
+        form.unbind('submit');
+      }});
+    form.bind('submit', function (e) {
+      e.preventDefault();
+
+      var errors = self.validateJoinClusterParams(form);
+      if (errors.length) {
+        renderTemplate('join_cluster_dialog_errors', errors);
+        return;
+      }
+
+      var confirmed;
+
+      $('#join_cluster_dialog').addClass('overlayed');
+      showDialog('add_confirmation_dialog', {
+        eventBindings: [['.save_button', 'click', function (e) {
+          e.preventDefault();
+          confirmed = true;
+          hideDialog('add_confirmation_dialog');
+
+          $('#join_cluster_dialog_errors_container').html('');
+          var overlay = overlayWithSpinner(form);
+
+          var uri = self.poolDetails.value.controllers.addNode.uri;
+          self.poolDetails.setValue(undefined);
+
+          postWithValidationErrors(uri, form, function (data, status) {
+            self.poolDetails.invalidate();
+            overlay.remove();
+            if (status != 'success') {
+              renderTemplate('join_cluster_dialog_errors', data)
+            } else {
+              hideDialog('join_cluster_dialog');
+            }
+          }, {
+            timeout: 15000
+          })
+        }]],
+        onHide: function () {
+          $('#join_cluster_dialog').removeClass('overlayed');
+          if (!confirmed)
+            hideDialog('join_cluster_dialog'); // cancel pressed on confirmation dialog
+        }
+      });
+    });
+  },
+  findNode: function (hostname) {
+    return _.detect(this.allNodes, function (n) {
+      return n.hostname == hostname;
+    });
+  },
+  mustFindNode: function (hostname) {
+    var rv = this.findNode(hostname);
+    if (!rv) {
+      throw new Error("failed to find node info for: " + hostname);
+    }
+    return rv;
+  },
+  reDraw: function () {
+    _.defer($m(this, 'refreshEverything'));
+  },
+  ejectNode: function (hostname) {
+    var self = this;
+
+    var node = self.mustFindNode(hostname);
+    if (node.pendingEject)
+      return;
+
+    showDialogHijackingSave("eject_confirmation_dialog", ".save_button", function () {
+      if (node.clusterMembership == 'inactiveAdded') {
+        self.postAndReload(self.poolDetails.value.controllers.ejectNode.uri,
+                           {otpNode: node.otpNode});
+      } else {
+        self.pendingEject.push(node);
+        self.reDraw();
+      }
+    });
+  },
+  failoverNode: function (hostname) {
+    var self = this;
+    var node = self.mustFindNode(hostname);
+    showDialogHijackingSave("failover_confirmation_dialog", ".save_button", function () {
+      self.postAndReload(self.poolDetails.value.controllers.failOver.uri,
+                         {otpNode: node.otpNode});
+    });
+  },
+  reAddNode: function (hostname) {
+    var node = this.mustFindNode(hostname);
+    this.postAndReload(this.poolDetails.value.controllers.reAddNode.uri,
+                       {otpNode: node.otpNode});
+  },
+  removeFromList: function (hostname) {
+    var node = this.mustFindNode(hostname);
+
+    if (node.pendingEject) {
+      node.pendingEject = false;
+      this.pendingEject = _.without(this.pendingEject, node);
+      return this.reDraw();
+    }
+
+    var ejectNodeURI = this.poolDetails.value.controllers.ejectNode.uri;
+    this.postAndReload(ejectNodeURI, {otpNode: node.otpNode});
+  },
+  postAndReload: function (uri, data) {
+    var self = this;
+    // keep poolDetails undefined for now
+    self.poolDetails.setValue(undefined);
+    postWithValidationErrors(uri, $.param(data), function (data, status) {
+      // re-calc poolDetails according to it's formula
+      self.poolDetails.invalidate();
+      if (status == 'error' && data[0].mismatch) {
+        self.poolDetails.changedSlot.subscribeOnce(function () {
+          var msg = "Somebody else modified cluster configuration.\nRepeat rebalance after checking that changes.";
+          alert(msg);
+        });
+      }
+    });
+  },
+  editServerSettings: function (otpNode) {
+    var nodes = this.poolDetails.value.nodes;
+    var node = _.detect(nodes, function (e) {return e.otpNode == otpNode});
+    if (!node)
+      return;
+
+    var values = _.extend({}, node, node.detailsCell.value);
+    values['directPort'] = values.ports.direct;
+    values['proxyPort'] = values.ports.proxy;
+    runFormDialog("/nodes/" + otpNode + "/controller/settings", 'edit_server_settings_dialog', {
+      initialValues: values
+    });
+  }
+};
