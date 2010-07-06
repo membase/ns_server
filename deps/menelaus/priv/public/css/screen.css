@@ -833,13 +833,12 @@ body.init_secure #container { display: none; }
 {display: block; float: right; *float:right !important; margin-left: 5px; text-decoration:none !important;}
 
 
-
 li.server_row .btn_cancel {display:block; height:15px; color:#7a7a7a; padding:0 18px 0 0; background:url(../images/btn_cancel_bg.png) 100% 0 no-repeat; line-height:15px; margin-top:23px;}
 #servers .add_button {width:124px;}
 #servers .btn_width_2 {width:125px;}
 #servers .rebalance_button {width:115px;}
 #servers .btn_width_1 {width:116px;}
-#servers .list_button {height:31px; padding:0 3px 0 0; background:url(../images/btn_2_bg.png) 100% -31px no-repeat; color:#000; margin-top:14px; font-size:14px; text-decoration:none !important; position:relative; *top:-60px;}
+#servers .list_button {height:31px; padding:0 3px 0 0; background:url(../images/btn_2_bg.png) 100% -31px no-repeat; color:#000; margin-top:14px; font-size:14px; text-decoration:none !important; position:relative; }
 #servers .list_button span {display:block; text-align:center; height:31px; line-height:31px; padding:0 6px 0 10px; background:url(../images/btn_2_bg.png) 0 0 no-repeat; float:right;}
 #servers .list_button.disabled {background-position:100% -93px; color:#cacbce !important; opacity:1 !important;}
 #servers .list_button.disabled span {background-position:0 -62px; color:#9E9FA3 !important;}
@@ -885,7 +884,7 @@ ul.tabs .alert_num_display .alert_num {display:block;}
 .failed_over_message {float:right; color:#9c9e9e; display:none;}
 .failed_over .failed_over_message {display:block;}
 
-#servers .servers_list .serverName {display:inline-block; height:60px; padding:0 0 0 45px; background:url(../images/server_icon.png) 0 10px no-repeat; font-size:12px; font-weight:bolder;}
+#servers .servers_list .serverName {display:inline-block; height:60px; padding:0 0 0 45px; background:url(../images/server_icon.png) 0 10px no-repeat; font-size:12px; font-weight:bolder; float:left;}
 
 #servers .gong_rb { margin-top: 10px; margin-bottom: 10px; padding-left:77px; background-image:url(../images/icons.png); background-position:0 5px; background-repeat:no-repeat;}
 
@@ -983,3 +982,7 @@ html body .overlayed {z-index:999 !important;}
 #about-close {line-height:31px !important;}
 
 .failover_server {position:relative !important; display:block;}
+
+ {float:none !important;}
+html>/**/body #servers .list_button, x:-moz-any-link, x:default {position:relative; /*top:-60px;*/} /* Only FireFox 3 */
+html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none !important;}
