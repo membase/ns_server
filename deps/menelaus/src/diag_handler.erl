@@ -93,6 +93,15 @@ diag_format_log_entry(Entry) ->
     io_lib:format("~s ~s:~B:~s:~s - ~s~n",
                   [FormattedTStamp, Module, Code, Type, ShortText, Text]).
 
+get_logs() ->
+    try ns_log_browser:get_logs_as_file(all, all, []) of
+        X -> X
+    catch
+        error:try_again ->
+            timer:sleep(250),
+            get_logs()
+    end.
+
 handle_diag(Req) ->
     Buckets = lists:sort(fun (A,B) -> element(1, A) =< element(1, B) end,
                          ns_bucket:get_buckets()),
@@ -102,11 +111,26 @@ handle_diag(Req) ->
              ["nodes_info = ~p", menelaus_web:build_nodes_info(fakepool, true, normal, "127.0.0.1")],
              ["buckets = ~p", Buckets],
              ["logs:~n-------------------------------~n~s", Logs],
-             ["logs_node:~n-------------------------------~n~s", ns_log_browser:get_logs(all, 200, [])]],
+             ["logs_node:~n-------------------------------~n"]],
     Text = lists:flatmap(fun ([Fmt | Args]) ->
                                  io_lib:format(Fmt ++ "~n~n", Args)
                          end, Infos),
-    Req:ok({"text/plain; charset=utf-8",
-            menelaus_util:server_header(),
-            list_to_binary(Text)}).
+    Resp = Req:ok({"text/plain; charset=utf-8",
+                   menelaus_util:server_header(),
+                   chunked}),
+    Resp:write_chunk(list_to_binary(Text)),
+    TempFile = get_logs(),
+    {ok, IO} = file:open(TempFile, [raw, binary]),
+    stream_logs(Resp, IO),
+    file:close(IO),
+    file:delete(TempFile).
 
+stream_logs(Resp, IO) ->
+    case file:read(IO, 65536) of
+        eof ->
+            Resp:write_chunk(<<"">>),
+            ok;
+        {ok, Data} ->
+            Resp:write_chunk(Data),
+            stream_logs(Resp, IO)
+    end.
