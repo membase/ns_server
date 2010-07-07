@@ -197,8 +197,8 @@ stats(Sock) ->
 stats(Sock, Key) ->
     case cmd(?STAT, Sock,
              fun (_MH, ME, CD) ->
-                     [[binary_to_list(ME#mc_entry.key),
-                       binary_to_list(ME#mc_entry.data)] | CD]
+                     [{binary_to_list(ME#mc_entry.key),
+                       binary_to_list(ME#mc_entry.data)} | CD]
              end,
              [],
              {#mc_header{}, #mc_entry{key=list_to_binary(Key)}}) of

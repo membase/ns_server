@@ -254,13 +254,13 @@ parse_topkey_value(Value) ->
     Tokens = string:tokens(Value, ","),
     lists:map(fun (S) ->
                       [K, V] = string:tokens(S, "="),
-                      [list_to_atom(K), list_to_integer(V)]
+                      {list_to_atom(K), list_to_integer(V)}
               end,
               Tokens).
 
 parse_topkeys(Topkeys) ->
     lists:map(fun ([Key, ValueString]) ->
-                      [Key, parse_topkey_value(ValueString)]
+                      {Key, parse_topkey_value(ValueString)}
               end, Topkeys).
 
 parse_vbucket_name("vb_" ++ Key) ->
@@ -269,7 +269,7 @@ parse_vbucket_name(Key) ->
     {unrecognized_vbucket, Key}.
 
 parse_vbuckets(Stats) ->
-    {ok, lists:map(fun ([Key, Value]) ->
+    {ok, lists:map(fun ({Key, Value}) ->
                            {parse_vbucket_name(Key), map_vbucket_state(Value)}
                    end, Stats)}.
 
