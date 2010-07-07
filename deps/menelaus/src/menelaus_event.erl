@@ -150,9 +150,7 @@ handle_info({'DOWN', MonitorRef, _, _, _},
                 end,
     {ok, State#state{watchers = Watchers2}};
 
-handle_info(Info, State) ->
-    error_logger:info_msg("menelaus_event handle_info unhandled(~p, ~p)~n",
-                          [Info, State]),
+handle_info(_Info, State) ->
     {ok, State}.
 
 % ------------------------------------------------------------
