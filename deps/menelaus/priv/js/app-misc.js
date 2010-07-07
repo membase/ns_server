@@ -665,3 +665,43 @@ var originalOnError;
   }
   window.onerror = appOnError;
 })();
+
+// clicks to links with href of '#<param>=' will be
+// intercepted. Default action (navigating) will be prevented and body
+// will be executed.
+//
+// Middle-clicks that open link in new tab/window will not be (and
+// cannot be) intercepted
+//
+// We use this function to preserve other state that may be in url
+// hash string in normal case, while still supporting middle-clicking.
+function watchHashParamLinks(param, body) {
+  param = '#' + param + '=';
+  $('a').live('click', function (e) {
+    var href = $(this).attr('href');
+    if (href == null || href.slice(0,param.length) != param)
+      return;
+    e.preventDefault();
+    body.call(this, e, href.slice(param.length));
+  });
+}
+
+// used for links that do some action (like displaying certain bucket,
+// dialog, ...). This function adds support for middle clicking on
+// such action links.
+function configureActionHashParam(param, body) {
+  // this handles normal clicks (NOTE: no change to url/history is
+  // done in that case)
+  watchHashParamLinks(param, function (e, hash) {
+    body(hash);
+  });
+  // this handles middle clicks. In such case the only hash fragment
+  // of our url will be 'param'. We delete that param and call body
+  DAO.onReady(function () {
+    var value = getHashFragmentParam(param);
+    if (value) {
+      setHashFragmentParam(param, null);
+      body(value, true);
+    }
+  });
+}

@@ -41,10 +41,10 @@
       <h1>MONITOR</h1>
       <ul>
         <!--<li class="line"></li>-->
-        <li class="line disabled"><!-- disabled for beta1 a id="switch_overview" href="javascript:nav.go('overview');" -->Cluster Overview<!-- /a --></li>
-        <li class="line disabled"><!-- disabled for beta1 a id="switch_monitor_buckets" href="javascript:nav.go('monitor_buckets');" -->Data Buckets<!-- /a --></li>
-        <li class="line disabled"><!-- disabled for beta1 a id="switch_monitor_servers" href="javascript:nav.go('monitor_servers');" -->Servers<!-- /a --></li>
-        <li class="line disabled"><!-- disabled for beta1 a id="switch_alerts" href="javascript:nav.go('alerts');" -->Alerts<!-- /a --></li>
+        <li class="line disabled"><!-- a id="switch_overview" href="javascript:nav.go('overview');" -->Cluster Overview<!-- /a --></li>
+        <li class="line"><a id="switch_monitor_buckets" href="javascript:nav.go('monitor_buckets');">Data Buckets</a></li>
+        <li class="line disabled"><!-- a id="switch_monitor_servers" href="javascript:nav.go('monitor_servers');" -->Servers<!-- /a --></li>
+        <!-- <li class="line disabled"><a id="switch_alerts" href="javascript:nav.go('alerts');">Alerts</a></li> -->
         <li class="line"><a id="switch_alerts" href="javascript:nav.go('log');">Log</a></li>
       </ul>
 
@@ -443,6 +443,59 @@
     </div>
 	</div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
 	<!-- END shadow box -->
+  </div>
+
+  <div id="monitor_buckets" style="display:none;">
+    <!-- shadow box -->
+    <h1>Data Buckets</h1>
+    <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
+    <div class="darker_block">
+        <div class="pad_10">
+        </div>
+    </div>
+    <div id="monitor_buckets_list_container"></div>
+    </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
+    <script id="monitor_buckets_list_template" type="text/html">
+        <table class="lined_tab buckets_tab">
+          <col width="" />
+          <col width="" />
+          <col width="" />
+          <col width="135" />
+          <col width="" />
+          <tr>
+            <!-- to display sort arrow correctly you need to switch between "sort_desc" and "sort_asc" classes in span -->
+            <th><span>Bucket Name</span></th>
+            <th>Ops/sec</th>
+            <th>Evictions/sec</th>
+            <th>Cache Used</th>
+            <th>Cache Size</th>
+          </tr>
+          <!-- {% $.each(rows, function () { %} -->
+          <tr>
+              <td>
+              <a class="bucket_properties_link float_right text_11"
+                href="{%= jsLink('BucketsSection.showBucket', this.uri)%}">Properties</a>
+              <a class="gray_link bucket_name" href="#visitStats={%=h(this.uri)%}">{%= h(this.name) %}</a>
+              </td>
+              <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
+              <td>{%= h(truncateTo3Digits(this.basicStats.evictionsPerSec)) %}</td>
+              <td>
+                <div class="usage_smallest_info">
+                    <div class="usage_smallest">
+                        <div class="side_shadow">
+                            <div class="unused">
+                                <div class="used" style="width:1%;"></div>
+                            </div>
+                        </div>
+                    </div>{%= V.setPercentBar(this.basicStats.cachePercentUsed*100) %}
+                    {%= h(truncateTo3Digits(this.basicStats.cachePercentUsed*100)) %}%
+                </div>
+              </td>
+              <td>{%= h(this.basicStats.cacheSize) %}MB</td>
+            </tr>
+          <!-- {% }); %} -->
+        </table>
+    </script>
   </div>
 
   <div id="buckets" style="display:none">
