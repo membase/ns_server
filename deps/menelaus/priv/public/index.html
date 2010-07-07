@@ -68,161 +68,22 @@
     </td>
     <td id="mainPanel">
       <div id="overview" style="display:none;">
-      <!-- shadow box -->
-      <h1>Cluster Overview</h1>
-      <div id="notice_container"></div>
-      <div class="shadow_box">
-        <div class="top">
-          <div>
-            <div>&nbsp;</div>
-          </div>
-        </div>
-        <div class="cnt">
-          <div class="pad">
-            <div class="content">
-              <h2 class="header_2" id="get_started_expander"><span class="expander_2 block">&nbsp;</span>Get Started</h2>
-              <div class="pad_10" id="get_started">
-                <span class="info_text">You may also want to review the <a href="/docs/index_CSH.html#1002|northscale" target="MCWebHelp">Quick Start</a> documentation.</span>
-                <div class="pat_10">
-                    <div class="gray_rb">
-                        <div class="left">
-                            <div class="right">
-                                <div class="pad">
-                                    <span id="join_leave_switch" class="join-possible">
-                                      <a id="cluster_join_button" class="button_big">
-                                        Join Cluster
-                                      </a>
-                                      <a id="cluster_leave_button" class="button_big" href="javascript:OverviewSection.leaveCluster();">
-                                        Leave Cluster
-                                      </a>
-                                    </span>
-                                    <a href="javascript:BucketsSection.startCreate();" class="button_big">
-                                      Create Data Bucket
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="bottom">
-          <div>
-            <div>&nbsp;</div>
-          </div>
-        </div>
-      </div>
-	<!-- END shadow box -->
-	<!-- shadow box -->
-	<h1>Status</h1>
-	<div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
-    <div class="darker_block with_devider pat_10" id="cluster_status_container">
-    </div><div class="template" id="cluster_status_template">
-        <div class="labeled_line">
-            <h2 class="label">Cluster Health:</h2>
-            <div class="line_cnt">
-                <div class="alert_1">{%= V.setAttribute('class', isWarning ? 'warning_1' : '') %}{%=  V.setAttribute('class', isCritical ? 'critical_1' : '') %}</div>
-                <a href="javascript:nav.go('alerts');">{% if (isCritical) { %}Critical{% } else if (isWarning) { %}Warning{% } else { %}Healthy{% } %}</a>
-                <span class="comment">({%= h(V.count(nodesCount, 'server node')) %} managing <a href="javascript:nav.go('buckets');">{%=h(V.count(bucketsCount, 'bucket'))%}</a>)</span>
-            </div>
-        </div>
-        <div class="labeled_line percentage_big">
-            <h2 class="label for_usage_big">Cluster Memory Usage:</h2>
-            <div class="line_cnt">
-                <div class="usage_big">
-                    <div class="unused">
-                        <div class="used" style="width:1%;"></div>
-                    </div>{%=V.setPercentBar(memoryUtilization)%}
-                    <div class="comment">{%=memoryUtilization%}% Utilized ({%=V.formatQuantity(memoryFree)%} Free)</div>
-                </div>
-                <a class="text_11 tooltip"><span>What's this?</span>
-                  <span class="tooltip_msg"><span>
-                    The amount of physical memory your cluster has, and how much has been used as reported by the operating system.
-                  </span></span>
-                </a>
-            </div>
-        </div>
-        <div class="labeled_line percentage_big">
-            <h2 class="label for_usage_big">Total Cache Size:</h2>
-            <div class="line_cnt">
-                <div class="usage_big red">
-                    <div class="unused">
-                        <div class="used" style="width:50%;"></div>
-                    </div>{%=V.setPercentBar(mcdItemUtilization)%}
-                    <div class="comment">{%=V.formatQuantity(bucketsSizeTotal*1024*1024)%} Across <a class="bimnone" href="javascript:nav.go('buckets');">{%=h(V.count(bucketsCount, 'bucket'))%}</a>.</div>
-                </div>
-                <a class="text_11 tooltip"><span>What's this?</span>
-                  <span class="tooltip_msg"><span>
-                    Total cache size across all nodes of the cluster.
-                  </span></span>
-                </a>
-            </div>
-        </div>
-    </div>
-    <div class="section">
-      <div class="labeled_line">
-          <h2 class="label for_server_line">Server Nodes:</h2>
-          <p class="line_cnt" id="server_list_container">
-          </p>
-          <div id="server_list_template" class="template">
-            <table class="server_list"><tbody>
-              <!-- {% $.each(rows, function (index) { %} -->
-              <tr class="primary">
-                <td class="expander"><div>&nbsp;</div></td>
-                <td class="name"><div>{%= h(this.hostname) %}</div></td>
-                <td class="status"><div class="{%=V.renderHealthClass(this.status)%}"></div></td>
-              </tr>
-              <tr class="details"><td colspan="3">
-                <div class="first gong_rb">
-                  <div class="side side_1"></div>
-                  <div class="side side_2"></div>
-                  <div class="side side_3"></div>
-                  <div class="side side_4"></div>
-                  <div class="pad">
-                      <table>
-                        <col width="230" />
-                        <col width="" />
-                        <tr>
-                            <td>Uptime: <span>{%= h(formatUptime(this.uptime)) %}</span></td>
-                            <td>
-                                <div class="float_left">Memory Usage:</div>
-                                <div class="float_left usage_small">
-                                    <div class="side_shadow">
-                                        <div class="unused">
-                                            <div class="used" style="width:50%;"></div>
-                                        </div>{%=V.setPercentBar(normalizeNaN(Math.floor(100-Math.round(this.memoryFree*100/this.memoryTotal))))%}
-                                    </div>
-                                </div>
-                                <span class="float_left">{%=normalizeNaN(Math.floor(100-Math.round(this.memoryFree*100/this.memoryTotal)))%}% used</span></td>
-                        </tr>
-                        <tr>
-                            <td>OS: <span>{%= h(this.os) %}</span></td>
-                            <td>Direct Port: <span>{%=h(this.ports.direct)%}</span></td>
-                        </tr>
-                        <tr>
-                            <td>Version: <span>{%= h(this.version) %}</span></td>
-                            <td>Proxy Port: <span>{%=h(this.ports.proxy)%}</span></td>
-                        </tr>
-                      </table>
+              <ol id="overview_alert_list_container">
+              </ol>
+              <ol id="overview_alert_list_template" class="template">
+                <!-- {% _.each(rows, function (alert) { %} -->
+                <li class="alert_{%= h(alert.type) %}">
+                  <div class="block pad_10">
+                    <h3><strong>{%= formatAlertType(alert.type) %}</strong> - {%= h(alert.shortText) %}</h3>
+                    <span class="time">{%= h(formatAlertTStamp(alert.tstamp)) %}</span>
+                    <p>
+                      {%= h(alert.text) %}
+                    </p>
                   </div>
-                </div>
-                <div class="right block tdn bolder">
-                  <a href="#openServer={%= h(this.otpNode) %}">Server Settings</a>
-                <!-- {% if (rows.length != 1) { %} -->
-                  <a href="{%=jsLink('OverviewSection.removeNode',this.otpNode)%}">Remove Server from Cluster</a>
-                <!-- {% } %} -->
-                </div>
-              </td></tr>
-             <!-- {% }); %} -->
-            </tbody></table>
-          </div>
+                </li>
+                <!-- {% }); %} -->
+              </ol>
       </div>
-    </div>
-	</div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
-	<!-- END shadow box -->
-  </div>
   <div id="servers" style="display:none">
     <h1>SERVERS</h1>
     <div class="warning_message failover_warning">
