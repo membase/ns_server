@@ -71,6 +71,9 @@ get_child_specs() ->
      {ns_vbm_sup, {ns_vbm_sup, start_link, []},
       permanent, infinity, supervisor, [ns_vbm_sup]},
 
+     {ns_stats_event, {gen_event, start_link, [{local, ns_stats_event}]},
+      permanent, 10, worker, [gen_event]},
+
      {ns_bucket_sup, {ns_bucket_sup, start_link, []},
       permanent, infinity, supervisor, [ns_bucket_sup]},
 
