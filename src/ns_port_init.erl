@@ -39,15 +39,13 @@ handle_event(_Event, State) ->
     ok = reconfig(PortServers),
     {ok, State, hibernate}.
 
-handle_call(_Request, State) ->
-    {ok, ok, State, hibernate}.
+handle_call(unhandled, unhandled) ->
+    unhandled.
 
-handle_info(Info, State) ->
-    error_logger:info_msg("ns_port_init unhandled message: ~p...~n", [Info]),
-    {ok, State, hibernate}.
+handle_info(unhandled, unhandled) ->
+    unhandled.
 
-terminate(Reason, _State) ->
-    error_logger:info_msg("ns_port_init terminating: ~p...~n", [Reason]),
+terminate(_Reason, _State) ->
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
