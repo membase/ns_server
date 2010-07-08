@@ -527,6 +527,17 @@ flush(Msg, N) ->
             N
     end.
 
+flush_head(Head) ->
+    flush_head(Head, 0).
+
+flush_head(Head, N) ->
+    receive
+        Msg when element(1, Msg) == Head ->
+            flush_head(Head, N+1)
+    after 0 ->
+            N
+    end.
+
 
 %% You know, like in Python
 enumerate(List) ->
@@ -693,3 +704,19 @@ ukeymergewith_test() ->
     [{a, 3}] = ukeymergewith(Fun, 1, [{a, 1}], [{a, 2}]),
     [{a, 3}, {b, 1}] = ukeymergewith(Fun, 1, [{a, 1}], [{a, 2}, {b, 1}]),
     [{a, 1}, {b, 3}] = ukeymergewith(Fun, 1, [{b, 1}], [{a, 1}, {b, 2}]).
+
+
+start_singleton_gen_server(Name, Args, Opts) ->
+    case gen_server:start_link({global, Name}, Name, Args, Opts) of
+        {error, {already_started, Pid}} ->
+            error_logger:info_msg("misc:start_singleton_gen_server(~p, ~p, ~p):"
+                                  " monitoring ~p from ~p~n",
+                                  [Name, Args, Opts, Pid, node()]),
+            {ok, spawn_link(fun () -> misc:wait_for_process(Pid, infinity) end)};
+        {ok, Pid} = X ->
+            error_logger:info_msg("misc:start_singleton_gen_server(~p, ~p, ~p):"
+                                 " started as ~p on ~p~n",
+                                 [Name, Args, Opts, Pid, node()]),
+            X;
+        X -> X
+    end.
