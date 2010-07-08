@@ -60,7 +60,7 @@ latest_all(Bucket, N) ->
     gen_server:multi_call(server(Bucket), {latest, N}).
 
 
-%% gen_servr callbacks
+%% gen_server callbacks
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
@@ -87,7 +87,7 @@ handle_cast(unhandled, unhandled) ->
 
 handle_info({stats, Bucket, Sample}, State = #state{bucket=Bucket,
                                                    samples=Samples}) ->
-    {noreply, State#state{samples=ringbuffer:add({erlang:now(), Sample},
+    {noreply, State#state{samples=ringbuffer:add(Sample,
                                                  Samples)}}.
 
 

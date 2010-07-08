@@ -42,7 +42,7 @@ start_link(Bucket) ->
     gen_server:start_link(?MODULE, Bucket, []).
 
 init(Bucket) ->
-    {ok, _} = timer:send_interval(?STATS_TIMER, collect_stats),
+    ns_pubsub:subscribe(ns_tick_event),
     {ok, #state{bucket=Bucket}}.
 
 handle_call(unhandled, unhandled, unhandled) ->
@@ -51,12 +51,12 @@ handle_call(unhandled, unhandled, unhandled) ->
 handle_cast(unhandled, unhandled) ->
     unhandled.
 
-handle_info(collect_stats, State = #state{bucket=Bucket}) ->
-    misc:flush(collect_stats),
+handle_info({tick, TS}, #state{bucket=Bucket} = State) ->
+    misc:flush_head(tick),
     case ns_memcached:stats("default") of
         {ok, Stats} ->
             gen_event:notify(ns_stats_event, {stats, Bucket,
-                                              parse_stats(Stats)});
+                                              parse_stats(TS, Stats)});
         _ ->
             ok
     end,
@@ -71,7 +71,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 %% Internal functions
 
-parse_stats(Stats) ->
+parse_stats(TS, Stats) ->
     Fields = tuple_to_list(?STAT_ENTRY),
     Size = tuple_size(?STAT_ENTRY) + 1,
     RecFields = lists:foldl(
@@ -80,13 +80,14 @@ parse_stats(Stats) ->
                               false -> L;
                               N -> [{N+1, list_to_integer(V)}|L]
                           end
-                  end, [{1, stat_entry}], Stats),
+                  end, [{1, stat_entry}, {2, TS}], Stats),
     erlang:make_tuple(Size, undefined, RecFields).
 
 
 %% Tests
 
 parse_stats_test() ->
+    Now = now(),
     Input =
         [{"conn_yields","0"},
          {"threads","4"},
@@ -154,7 +155,8 @@ parse_stats_test() ->
          {"ep_storage_age","0"},
          {"ep_version","0.0.1_191_ga1119ca"}],
 
-    #stat_entry{bytes_read=10332,
+    #stat_entry{timestamp=Now,
+                bytes_read=10332,
                 bytes_written=580019,
                 cas_badval=0,
                 cas_hits=0,
@@ -173,4 +175,4 @@ parse_stats_test() ->
                 get_misses=0,
                 incr_hits=0,
                 incr_misses=0,
-                mem_used=0} = parse_stats(Input).
+                mem_used=0} = parse_stats(Now, Input).

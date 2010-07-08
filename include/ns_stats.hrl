@@ -13,7 +13,8 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 
--define(STAT_ENTRY, {bytes_read,
+-define(STAT_ENTRY, {timestamp,
+                     bytes_read,
                      bytes_written,
                      cas_badval,
                      cas_hits,
