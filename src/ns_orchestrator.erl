@@ -216,7 +216,7 @@ assign(Histogram, AvoidNodes) ->
     end.
 
 balance_nodes(Bucket, Map, Histograms, I) when is_integer(I) ->
-    VNF = [{V, lists:nth(I, Chain), misc:nthdelete(I, Chain)} ||
+    VNF = [{V, lists:nth(I, Chain), lists:sublist(Chain, I-1)} ||
               {V, Chain} <- misc:enumerate(Map, 0)],
     Hist = lists:nth(I, Histograms),
     balance_nodes(Bucket, VNF, Hist, []);
@@ -238,7 +238,7 @@ balance_nodes(Bucket, VNF, Hist, Moves) ->
                     Hist2 = lists:keyreplace(MaxNode, 1, Hist1, {MaxNode, MaxCount - 1}),
                     balance_nodes(Bucket, VNF1, Hist2, [{V, MaxNode, MinNode}|Moves]);
                 X ->
-                    error_logger:info_msg("~p:balance_nodes: No further moves (~p)~p",
+                    error_logger:info_msg("~p:balance_nodes(~p, ~p, ~p): No further moves (~p)~n",
                                           [?MODULE, VNF, Hist, Moves, X]),
                     Moves
             end;
