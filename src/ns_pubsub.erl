@@ -23,16 +23,30 @@
 -export([code_change/3, init/1, handle_call/2, handle_event/2, handle_info/2,
          terminate/2]).
 
--export([subscribe/3, subscribe_all/3, unsubscribe/2, unsubscribe_all/1]).
+-export([subscribe/1, subscribe/3,
+         subscribe_all/1, subscribe_all/3,
+         unsubscribe/2, unsubscribe_all/1]).
 
+
+%%
 %% API
+%%
+subscribe(Name) ->
+    subscribe(Name, msg_fun(self()), ignored).
+
+
 subscribe(Name, Fun, State) ->
     Ref = make_ref(),
     ok = gen_event:add_sup_handler(Name, {?MODULE, Ref},
                                    #state{func=Fun, func_state=State}),
     Ref.
 
+
 %% Subscribe to the same event on all nodes
+subscribe_all(Name) ->
+    subscribe_all(Name, msg_fun(self()), ignored).
+
+
 subscribe_all(Name, Fun, State) ->
     Ref = make_ref(),
     ok = gen_event:add_sup_handler(ns_node_disco_events, {?MODULE, Ref},
@@ -43,8 +57,10 @@ subscribe_all(Name, Fun, State) ->
                         {init_nodes, ns_node_disco:nodes_actual_proper()}),
     Ref.
 
+
 unsubscribe(Name, Ref) ->
     gen_event:delete_handler(Name, {?MODULE, Ref}, unsubscribed).
+
 
 %% We don't need the name for this because it's in the state of the
 %% handler installed on ns_node_disco_events
@@ -53,9 +69,12 @@ unsubscribe_all(Ref) ->
                              unsubscribed).
 
 
+%%
 %% gen_event callbacks
+%%
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+
 
 init(State) ->
     {ok, State}.
@@ -67,6 +86,7 @@ handle_call({init_nodes, Nodes}, State = #subscribe_all_state{noderefs=[]}) ->
 handle_call({init_nodes, _}, State = #subscribe_all_state{noderefs=[_|_]}) ->
     {ok, ok, State}.
 
+
 handle_event(Event, State = #state{func=Fun, func_state=FS}) ->
     NewState = Fun(Event, FS),
     {ok, State#state{func_state=NewState}};
@@ -77,8 +97,10 @@ handle_event({ns_node_disco_events, _OldNodes, Nodes},
     KeepNodeRefs = [NR || NR = {N, _} <- NodeRefs, not lists:member(N, Nodes)],
     {ok, State#subscribe_all_state{noderefs=NewNodeRefs ++ KeepNodeRefs}}.
 
+
 handle_info(_Msg, State) ->
     {ok, State}.
+
 
 terminate(Reason, #subscribe_all_state{noderefs=NodeRefs, name=Name}) ->
     error_logger:info_msg("~p removing subscribe_all handler ~p: ~p~n",
@@ -89,7 +111,19 @@ terminate(Reason, #subscribe_all_state{noderefs=NodeRefs, name=Name}) ->
 terminate(Reason, State) ->
     error_logger:info_msg("~p unsubscribed ~p: ~p~n", [?MODULE, State, Reason]).
 
+
+%%
 %% Internal functions
+%%
+
+%% Function sending a message to a pid
+msg_fun(Pid) ->
+    fun (Event, ignored) ->
+            Pid ! Event,
+            ignored
+    end.
+
+
 subscribe_node(Node, #subscribe_all_state{name=Name, func=Fun,
                                           func_state=FState}) ->
     subscribe({Name, Node}, Fun, FState).
