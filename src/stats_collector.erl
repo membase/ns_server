@@ -32,7 +32,7 @@
 %% API
 -export([start_link/1]).
 
--record(state, {bucket}).
+-record(state, {bucket, counters}).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2,
@@ -51,16 +51,16 @@ handle_call(unhandled, unhandled, unhandled) ->
 handle_cast(unhandled, unhandled) ->
     unhandled.
 
-handle_info({tick, TS}, #state{bucket=Bucket} = State) ->
+handle_info({tick, TS}, #state{bucket=Bucket, counters=Counters} = State) ->
     misc:flush_head(tick),
     case ns_memcached:stats("default") of
         {ok, Stats} ->
-            gen_event:notify(ns_stats_event, {stats, Bucket,
-                                              parse_stats(TS, Stats)});
+            {Entry, NewCounters} = parse_stats(TS, Stats, Counters),
+            gen_event:notify(ns_stats_event, {stats, Bucket, Entry}),
+            {noreply, State#state{counters=NewCounters}};
         _ ->
-            ok
-    end,
-    {noreply, State}.
+            {noreply, State}
+    end.
 
 terminate(_Reason, _State) ->
     ok.
@@ -71,17 +71,18 @@ code_change(_OldVsn, State, _Extra) ->
 
 %% Internal functions
 
-parse_stats(TS, Stats) ->
-    Fields = tuple_to_list(?STAT_ENTRY),
-    Size = tuple_size(?STAT_ENTRY) + 1,
-    RecFields = lists:foldl(
-                  fun ({K, V}, L) ->
-                          case misc:position(list_to_atom(K), Fields) of
-                              false -> L;
-                              N -> [{N+1, list_to_integer(V)}|L]
-                          end
-                  end, [{1, stat_entry}, {2, TS}], Stats),
-    erlang:make_tuple(Size, undefined, RecFields).
+parse_stats(TS, Stats, LastCounters) ->
+    Dict = dict:from_list([{list_to_atom(K), V} || {K, V} <- Stats]),
+    Gauges = [list_to_integer(dict:fetch(K, Dict)) || K <- [?STAT_GAUGES]],
+    Counters = [list_to_integer(dict:fetch(K, Dict)) || K <- [?STAT_COUNTERS]],
+    Deltas = case LastCounters of
+                 undefined ->
+                     lists:duplicate(length([?STAT_COUNTERS]), undefined);
+                 _ ->
+                     lists:zipwith(fun (A, B) -> A - B end,
+                                   Counters, LastCounters)
+             end,
+    {list_to_tuple([stat_entry, TS] ++ Gauges ++ Deltas), Counters}.
 
 
 %% Tests
@@ -155,24 +156,27 @@ parse_stats_test() ->
          {"ep_storage_age","0"},
          {"ep_version","0.0.1_191_ga1119ca"}],
 
-    #stat_entry{timestamp=Now,
-                bytes_read=10332,
-                bytes_written=580019,
-                cas_badval=0,
-                cas_hits=0,
-                cas_misses=0,
-                cmd_get=0,
-                cmd_set=0,
-                curr_connections=11,
-                curr_items=0,
-                decr_hits=0,
-                decr_misses=0,
-                delete_hits=0,
-                delete_misses=0,
-                ep_flusher_todo=0,
-                ep_queue_size=0,
-                get_hits=0,
-                get_misses=0,
-                incr_hits=0,
-                incr_misses=0,
-                mem_used=0} = parse_stats(Now, Input).
+    {#stat_entry{timestamp=Now,
+                 bytes_read=10332,
+                 bytes_written=580019,
+                 cas_badval=0,
+                 cas_hits=0,
+                 cas_misses=0,
+                 cmd_get=0,
+                 cmd_set=0,
+                 curr_connections=11,
+                 curr_items=0,
+                 decr_hits=0,
+                 decr_misses=0,
+                 delete_hits=0,
+                 delete_misses=0,
+                 ep_flusher_todo=0,
+                 ep_queue_size=0,
+                 get_hits=0,
+                 get_misses=0,
+                 incr_hits=0,
+                 incr_misses=0,
+                 mem_used=0},
+     [10332,580019,0,0,0,0,0,0,0,0,0,0,0,0,0]} =
+         parse_stats(Now, Input,
+                    lists:duplicate(length([?STAT_COUNTERS]), 0)).
