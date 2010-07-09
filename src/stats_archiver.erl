@@ -26,8 +26,8 @@
 -record(state, {bucket, samples}).
 
 -export([start_link/1,
-         latest/1, latest/2, latest/3,
-         latest_all/1, latest_all/2]).
+         latest/2, latest/3, latest/4,
+         latest_all/2, latest_all/3]).
 
 -export([code_change/3, init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2]).
@@ -38,25 +38,25 @@
 start_link(Bucket) ->
     gen_server:start_link({local, server(Bucket)}, ?MODULE, Bucket, []).
 
-latest(Bucket) ->
+latest(minute, Bucket) ->
     gen_server:call(server(Bucket), latest).
 
-latest(Node, Bucket) when is_atom(Node), is_list(Bucket) ->
+latest(minute, Node, Bucket) when is_atom(Node), is_list(Bucket) ->
     gen_server:call({server(Bucket), Node}, latest);
-latest(Nodes, Bucket) when is_list(Bucket) ->
+latest(minute, Nodes, Bucket) when is_list(Bucket) ->
     gen_server:multi_call(Nodes, server(Bucket), latest);
-latest(Bucket, N) ->
+latest(minute, Bucket, N) ->
     gen_server:call(server(Bucket), {latest, N}).
 
-latest(Node, Bucket, N) when is_atom(Node) ->
+latest(minute, Node, Bucket, N) when is_atom(Node) ->
     gen_server:call({server(Bucket), Node}, {latest, N});
-latest(Nodes, Bucket, N) ->
+latest(minute, Nodes, Bucket, N) ->
     gen_server:multi_call(Nodes, server(Bucket), {latest, N}).
 
-latest_all(Bucket) ->
+latest_all(minute, Bucket) ->
     gen_server:multi_call(server(Bucket), latest).
 
-latest_all(Bucket, N) ->
+latest_all(minute, Bucket, N) ->
     gen_server:multi_call(server(Bucket), {latest, N}).
 
 
@@ -96,5 +96,6 @@ terminate(_Reason, _State) ->
 
 
 %% Internal functions
+
 server(Bucket) ->
     list_to_atom(?MODULE_STRING ++ "-" ++ Bucket).
