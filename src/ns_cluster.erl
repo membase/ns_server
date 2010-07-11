@@ -17,8 +17,6 @@
 
 -behaviour(gen_fsm).
 
--include("ns_common.hrl").
-
 %% General FSMness
 -export([start_link/0, init/1, handle_info/3,
          handle_event/3, handle_sync_event/4,
@@ -32,7 +30,7 @@
 -export([running/2, joining/2, leaving/2]).
 
 %% API
--export([add_node/1, join/2, leave/0, leave/1, shun/1, log_joined/0,
+-export([join/2, leave/0, leave/1, shun/1, log_joined/0,
         rename_node/2]).
 
 -export([alert_key/1]).
@@ -49,7 +47,6 @@ init([]) ->
     process_flag(trap_exit, true),
     ok = net_kernel:monitor_nodes(true,
                                   [{node_type, all}, nodedown_reason]),
-    ns_mnesia:start(),
     bringup().
 
 %% Bringup services.
@@ -98,7 +95,6 @@ running({leave, Data}, State) ->
     end,
     ns_config:set_initial(nodes_wanted, [node()]),
     ns_config:set_initial(otp, [{cookie, NewCookie}]),
-    ns_mnesia:delete_schema_and_stop(),
     true = exit(State#running_state.child, shutdown),
     {next_state, leaving, Data};
 
@@ -107,16 +103,19 @@ running(leave, State) ->
 
 joining({exit, _Pid}, #joining_state{remote=RemoteNode, cookie=NewCookie}) ->
     error_logger:info_msg("ns_cluster: joining cluster. Child has exited.~n"),
-    ns_mnesia:delete_schema(),
     timer:sleep(1000), % Sleep for a second to let things settle
     true = erlang:set_cookie(node(), NewCookie),
     %% Let's verify connectivity.
     Connected = net_kernel:connect_node(RemoteNode),
-    ?log_info("Connection from ~p to ~p:  ~p",
-              [node(), RemoteNode, Connected]),
+    error_logger:info_msg("Connection from ~p to ~p:  ~p~n",
+                          [node(), RemoteNode, Connected]),
     %% Add ourselves to nodes_wanted on the remote node after shutting
     %% down our own config server.
-    case rpc:call(RemoteNode, ns_cluster, add_node, [node()]) of
+    MyNode = node(),
+    Fun = fun(X) ->
+                  lists:usort([MyNode | X])
+          end,
+    case rpc:call(RemoteNode, ns_config, update_key, [nodes_wanted, Fun]) of
         {badrpc, Crap} -> exit({badrpc, Crap});
         _ -> error_logger:info_msg("Remote config updated to add ~p to ~p~n",
                                    [node(), RemoteNode])
@@ -129,7 +128,6 @@ joining({exit, _Pid}, #joining_state{remote=RemoteNode, cookie=NewCookie}) ->
 leaving({exit, _Pid}, LeaveData) ->
     error_logger:info_msg("ns_cluster: leaving cluster~n"),
     timer:sleep(1000),
-    ns_mnesia:start(),
     {ok, running, State} = bringup(),
     case LeaveData#leaving_state.callback of
         F when is_function(F) -> F();
@@ -175,21 +173,7 @@ code_change(_OldVsn, State, StateData, _Extra) ->
 
 terminate(_Reason, _StateName, _StateData) -> ok.
 
-%%
 %% API
-%%
-
-%% Called on a node in the cluster to add us to its nodes_wanted
-add_node(Node) ->
-    Fun = fun(X) ->
-                  lists:usort([Node | X])
-          end,
-    ns_config:update_key(nodes_wanted, Fun),
-    ns_mnesia:add_node(Node),
-    error_logger:info_msg("~p:add_node: successfully added ~p to cluster.~n",
-                          [?MODULE, Node]).
-
-
 join(RemoteNode, NewCookie) ->
     ns_log:log(?MODULE, ?NODE_JOIN_REQUEST, "Node join request on ~s to ~s",
                [node(), RemoteNode]),
@@ -230,8 +214,7 @@ shun(RemoteNode) ->
                                  fun (X) ->
                                          X -- [RemoteNode]
                                  end),
-            ns_config_rep:push(),
-            ns_mnesia:delete_node(RemoteNode);
+            ns_config_rep:push();
         true ->
             leave()
     end.
