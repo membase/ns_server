@@ -1,23 +1,55 @@
 var SamplesRestorer = mkClass({
-  initialize: function () {
+  initialize: function (url, options) {
     this.birthTime = (new Date()).valueOf();
+    this.url = url;
+    this.options = options;
+    this.valueTransformer = $m(this, 'transformData');
   },
-  nextSampleTime: function (ops) {
+  getRequestData: function () {
+    var data = _.extend({}, this.options);
+    _.each(data.nonQ, function (n) {
+      delete data[n];
+    });
+    if (this.prevTimestamp !== undefined)
+      data['haveTStamp'] = this.prevTimestamp;
+    return data;
+  },
+  transformData: function (value) {
+    var op = value.op;
+    var samples = op.samples;
+    this.prevTimestamp = op.lastTStamp;
+
+    if (!op.tstampParam) {
+      this.prevSamples = samples;
+      return value;
+    }
+
+    var prevSamples = this.prevSamples;
+    var newSamples = {};
+
+    for (var keyName in samples) {
+      newSamples[keyName] = prevSamples[keyName].concat(samples[keyName]).slice(-60);
+    }
+
+    this.prevSamples = op.samples = newSamples;
+
+    return value;
+  },
+  nextSampleTime: function () {
     var now = (new Date()).valueOf();
-    if (!ops)
-      return now;
-    var samplesInterval = ops['samplesInterval'];
-    var at = this.birthTime + Math.ceil((now - this.birthTime)/samplesInterval)*samplesInterval;
-    if (at - now < samplesInterval/2)
-      at += samplesInterval;
-    return at;
+    return now;
+    // if (this.samplesInterval === undefined)
+    //   return now;
+    // var samplesInterval = this.samplesInterval;
+    // var at = this.birthTime + Math.ceil((now - this.birthTime)/samplesInterval)*samplesInterval;
+    // return at - 1.0;
   }
 });
 
 ;(function () {
   var statsBucketURL = this.statsBucketURL = new StringHashFragmentCell("statsBucket");
 
-  this.currentStatTargetCell = new Cell(function (poolDetails, mode) {
+  var targetCell = this.currentStatTargetCell = new Cell(function (poolDetails, mode) {
     if (mode != 'analytics')
       return;
 
@@ -31,8 +63,6 @@ var SamplesRestorer = mkClass({
   }).setSources({bucketURL: statsBucketURL,
                  poolDetails: this.currentPoolDetailsCell,
                  mode: this.mode});
-
-  var targetCell = DAO.cells.currentStatTargetCell;
 
   var StatsArgsCell = new Cell(function (target) {
     return {url: target.stats.uri};
@@ -48,26 +78,21 @@ var SamplesRestorer = mkClass({
   });
 
   var samplesRestorerCell = new Cell(function (target, options) {
-    return new SamplesRestorer();
+    return new SamplesRestorer(target.stats.uri, options);
   }).setSources({target: targetCell, options: statsOptionsCell});
 
-  var statsCell = new Cell(function (samplesRestorer, options, target) {
-    var data = _.extend({}, options);
-    _.each(data.nonQ, function (n) {
-      delete data[n];
-    });
-
+  var statsCell = new Cell(function (samplesRestorer) {
     return future.get({
-      url: target.stats.uri,
-      data: data
-    });
+      url: samplesRestorer.url,
+      data: samplesRestorer.getRequestData()
+    }, samplesRestorer.valueTransformer);
   }).setSources({samplesRestorer: samplesRestorerCell,
                  options: statsOptionsCell,
                  target: targetCell});
   statsCell.keepValueDuringAsync = true;
 
   statsCell.setRecalculateTime = function () {
-    var at = this.context.samplesRestorer.value.nextSampleTime(this.value.op);
+    var at = this.context.samplesRestorer.value.nextSampleTime();
     this.recalculateAt(at);
   }
 
@@ -167,14 +192,32 @@ function renderSmallGraph(jq, data, isSelected) {
           grid: {show:false}});
 }
 
+var KnownStats = {
+  bytes_read: "Bytes Received per second\nNetwork bytes received by all servers, per second",
+  bytes_written: "Bytes Sent per second\nNetwork bytes sent by all servers, per second",
+  cas_badval: "CAS badval per second",
+  cas_hits: "CAS hits per second",
+  cas_misses: "CAS misses per second",
+  cmd_get: "Gets per second\nGet operations per second",
+  cmd_set: "Sets per second\nSet operations per second",
+  curr_connections: "Connections count",
+  curr_items: "Items count",
+  decr_hits: "Decr hits per second",
+  decr_misses: "Decr misses per second",
+  delete_hits: "Delete hits per second",
+  delete_misses: "Delete misses per second",
+  ep_flusher_todo: "EP-flusher todo",
+  ep_queue_size: "EP queue size",
+  get_hits: "Get hits per second",
+  get_misses: "Get Misses per second",
+  incr_hits: "Incr hits per second",
+  incr_misses: "Incr misses per second",
+  mem_used: "Memory bytes used"
+};
+
 var StatGraphs = {
   selected: null,
-  recognizedStats: ("ops hit_ratio updates misses total_items curr_items bytes_read cas_misses "
-                    + "delete_hits conn_yields get_hits delete_misses total_connections "
-                    + "curr_connections threads bytes_written incr_hits get_misses "
-                    + "listen_disabled_num decr_hits cmd_flush engine_maxbytes bytes incr_misses "
-                    + "cmd_set decr_misses accepting_conns cas_hits limit_maxbytes cmd_get "
-                    + "connection_structures cas_badval auth_cmds evictions").split(' '),
+  recognizedStats: ['cmd_get'].concat(_.without(_.keys(KnownStats), 'cmd_get')),
   visibleStats: [],
   visibleStatsIsDirty: true,
   statNames: {},
@@ -222,9 +265,10 @@ var StatGraphs = {
     var stats = cell.value;
     if (!stats)
       return self.renderNothing();
-    stats = stats.op;
+    var op = stats = stats.op;
     if (!stats)
       return self.renderNothing();
+    stats = stats.samples;
 
     _.each(self.spinners, function (s) {
       s.remove();
@@ -248,7 +292,7 @@ var StatGraphs = {
     var selected = self.selected.value;
     if (stats[selected]) {
       renderLargeGraph(main, stats[selected]);
-      $('.stats_visible_period').text(Math.ceil(stats[selected].length * stats['samplesInterval'] / 1000));
+      $('.stats_visible_period').text(Math.ceil(stats[selected].length * op.interval / 1000));
     }
 
 
@@ -304,6 +348,19 @@ var StatGraphs = {
     });
   },
   init: function () {
+    renderTemplate('stats_nav', _.keys(KnownStats));
+    renderTemplate('configure_stats_items',
+                   _.map(_.keys(KnownStats), function (name) {
+                     var ar = KnownStats[name].split("\n", 2);
+                     if (ar.length == 1)
+                       ar[1] = ar[0];
+                     return {
+                       name: name,
+                       'short': ar[0],
+                       full: ar[1]
+                     };
+                   }))
+
     var self = this;
 
     self.selected = new LinkSwitchCell('graph', {
@@ -318,6 +375,9 @@ var StatGraphs = {
     var t;
     _.each(self.recognizedStats, function (statName) {
       var area = self.findGraphArea(statName);
+      if (!area.length) {
+        debugger
+      }
       area.hide();
       if (!t)
         t = area;
@@ -341,7 +401,7 @@ var StatGraphs = {
       }
     }
 
-    var visibleStatsCookie = $.cookie('vs') || 'ops,misses,cmd_get,cmd_set';
+    var visibleStatsCookie = $.cookie('vs') || 'cmd_get,cmd_set,mem_used,curr_items';
     self.visibleStats = visibleStatsCookie.split(',').sort();
 
     // init stat names
@@ -356,10 +416,10 @@ var StatGraphs = {
 
 var AnalyticsSection = {
   onKeyStats: function (cell) {
-    renderTemplate('top_keys', $.map(cell.value.hot_keys, function (e) {
-      return $.extend({}, e, {total: 0 + e.gets + e.misses});
-    }));
-    $('#top_keys_container table tr:has(td):odd').addClass('even');
+    // renderTemplate('top_keys', $.map(cell.value.hot_keys, function (e) {
+    //   return $.extend({}, e, {total: 0 + e.gets + e.misses});
+    // }));
+    // $('#top_keys_container table tr:has(td):odd').addClass('even');
   },
   init: function () {
     DAO.cells.stats.subscribe($m(this, 'onKeyStats'));

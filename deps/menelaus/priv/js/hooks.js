@@ -135,6 +135,7 @@ var MockedRequest = mkClass({
       data.call(null, fakeResponse);
       return;
     }
+    console.log("responded with: ", data);
     this.responded = true;
     if (this.options.success)
       this.options.success(data, 'success');
@@ -319,10 +320,10 @@ var MockedRequest = mkClass({
   handleStats: function () {
     var params = this.options['data'];
     var opsPerSecondZoom = params['opsPerSecondZoom'] || "now";
-    var samplesSelection = [[3,14,23,52,45,25,23,22,50,67,59,55,54,41,36,35,26,61,72,49,60],
-                            [23,14,45,64,41,45,43,25,14,11,18,36,64,76,86,86,79,78,55,59,49],
-                            [42,65,42,63,81,87,74,84,56,44,71,64,49,48,55,46,37,46,64,33,18],
-                            [61,65,64,75,77,57,68,76,64,61,66,63,68,37,32,60,72,54,43,41,55]];
+    var samplesSelection = [[3,14,23,52,45,25,23,22,50,67,59,55,54,41,36,35,26,61,72,49,60,52,45,25,23,22,50,67,59,55,14,23,52,45,25,23,22,50,67,59,55,54,41,36,35,26,61,72,49,60,52,45,25,23,22,50,67,59,55],
+                            [23,14,45,64,41,45,43,25,14,11,18,36,64,76,86,86,79,78,55,59,49,52,45,25,23,22,50,67,59,55,14,45,64,41,45,43,25,14,11,18,36,64,76,86,86,79,78,55,59,49,52,45,25,23,22,50,67,59,55],
+                            [42,65,42,63,81,87,74,84,56,44,71,64,49,48,55,46,37,46,64,33,18,52,45,25,23,22,50,67,59,55,65,42,63,81,87,74,84,56,44,71,64,49,48,55,46,37,46,64,33,18,52,45,25,23,22,50,67,59,55],
+                            [61,65,64,75,77,57,68,76,64,61,66,63,68,37,32,60,72,54,43,41,55,52,45,25,23,22,50,67,59,55,65,64,75,77,57,68,76,64,61,66,63,68,37,32,60,72,54,43,41,55,52,45,25,23,22,50,67,59,55]];
     var samples = {};
     for (var idx in StatGraphs.recognizedStats) {
       var data = samplesSelection[idx%4];
@@ -333,7 +334,8 @@ var MockedRequest = mkClass({
     var samplesInterval = 1000;
 
     var now = (new Date()).valueOf();
-    var lastSampleTstamp = now;
+    var base = (new Date(2010, 1, 1)).valueOf();
+    var lastSampleTstamp = Math.ceil((now - base) / 1000) * 1000;
 
     if (samplesInterval == 1000) {
       var rotates = ((now / 1000) >> 0) % samplesSize;
@@ -343,6 +345,18 @@ var MockedRequest = mkClass({
         newSamples[k] = data.concat(data).slice(rotates, rotates + samplesSize);
       }
       samples = newSamples;
+    }
+
+    samples.t = _.range(lastSampleTstamp - samplesSelection[0].length * samplesInterval, lastSampleTstamp, samplesInterval);
+
+    var lastSampleT = params['haveT']
+    if (lastSampleT) {
+      var index = _.lastIndexOf(samples.t, lastSampleT);
+      if (index >= 0) {
+        for (var statName in samples) {
+          samples[statName] = samples[statName].slice(index+1);
+        }
+      }
     }
 
     return {hot_keys: [{name: "user:image:value",
@@ -365,9 +379,10 @@ var MockedRequest = mkClass({
                         ratio: 0.92,
                         evictions: 13,
                         bucket: "Excerciser application"}],
-            op: _.extend({tstamp: lastSampleTstamp,
-                          'samplesInterval': samplesInterval},
-                         samples)};
+            op: {
+              interval: samplesInterval,
+              samples: samples
+            }};
   },
   __defineRouting: function () {
     var x = {}

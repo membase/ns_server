@@ -18,6 +18,8 @@
 -module(menelaus_stats).
 -author('NorthScale <info@northscale.com>').
 
+-include("ns_stats.hrl").
+
 -include_lib("eunit/include/eunit.hrl").
 
 -ifdef(EUNIT).
@@ -83,8 +85,8 @@ handle_buckets_stats(PoolId, BucketIds, Req) ->
             handle_buckets_stats_hks(Req, PoolId, BucketIds, Params);
         "combined" ->
             {struct, PropList1} = build_buckets_stats_ops_response(PoolId, BucketIds, Params),
-            {struct, PropList2} = build_buckets_stats_hks_response(PoolId, BucketIds, Params),
-            reply_json(Req, {struct, PropList1 ++ PropList2});
+            %% {struct, PropList2} = build_buckets_stats_hks_response(PoolId, BucketIds, Params),
+            reply_json(Req, {struct, PropList1});
         _ ->
             reply_json(Req, [list_to_binary("Stats requests require parameters.")], 400)
     end.
@@ -119,12 +121,115 @@ handle_buckets_stats_hks(Req, PoolId, BucketIds, Params) ->
 
 %% Implementation
 
-build_buckets_stats_ops_response(PoolId, BucketIds, Params) ->
-    {ok, SamplesInterval, LastSampleTStamp, Samples2} =
-        get_buckets_stats(PoolId, BucketIds, Params),
-    {struct, [{op, {struct, [{tstamp, LastSampleTStamp},
-                             {samplesInterval, SamplesInterval}
-                             | Samples2]}}]}.
+merge_samples(MainSamples, OtherSamples, MergerFun, MergerState) ->
+    OtherSamplesDict = lists:foldl(fun (Sample, Dict) ->
+                                           dict:append(Sample#stat_entry.timestamp,
+                                                       Sample,
+                                                       Dict)
+                                   end, dict:new(), OtherSamples),
+    MergedSamples = lists:fold(fun (Sample, {Acc, MergerState2}) ->
+                                       TStamp = Sample#stat_entry.timestamp,
+                                       {NewSample, NextState} =
+                                           case dict:find(TStamp, OtherSamplesDict) of
+                                               {ok, AnotherSample} ->
+                                                   MergerFun(Sample, AnotherSample, MergerState2);
+                                               _ -> {Sample, MergerState2}
+                                           end,
+                                       {[NewSample | Acc], NextState}
+                               end, {[], MergerState}, MainSamples),
+    lists:reverse(MergedSamples).
+
+grab_op_stats(Bucket, Params) ->
+    ClientTStamp = case proplists:get_value("haveTStamp", Params) of
+                       undefined -> undefined;
+                       %% TODO: handle errors here
+                       X -> list_to_integer(X)
+                   end,
+    Self = self(),
+    Ref = make_ref(),
+    Subscription = ns_pubsub:subscribe(ns_stats_event, fun (_, done) -> done;
+                                                           ({sample_archived, _, _}, _) ->
+                                                               Self ! Ref,
+                                                               done;
+                                                           (_, X) -> X
+                                                       end, []),
+    try grab_op_stats_body(Bucket, ClientTStamp, Ref) of
+        V -> case V =/= [] andalso (hd(V))#stat_entry.timestamp of
+                 ClientTStamp -> {V, ClientTStamp};
+                 _ -> {V, undefined}
+             end
+    after
+        misc:flush(Ref),
+        ns_pubsub:unsubscribe(ns_stats_event, Subscription)
+    end.
+
+grab_op_stats_body(Bucket, ClientTStamp, Ref) ->
+    RV = stats_archiver:latest(minute, node(), "default", 60),
+    case RV of
+        [] -> [];
+        [_] -> [];
+        _ ->
+            %% we throw out last sample 'cause it might be missing on other nodes yet
+            %% previous samples should be ok on all live nodes
+            Samples = tl(lists:reverse(RV)),
+            LastTStamp = (hd(Samples))#stat_entry.timestamp,
+            case LastTStamp of
+                %% wait if we don't yet have fresh sample
+                ClientTStamp ->
+                    receive
+                        Ref ->
+                            grab_op_stats_body(Bucket, ClientTStamp, Ref)
+                    after 2000 ->
+                            grab_op_stats_body(Bucket, undefined, Ref)
+                    end;
+                _ ->
+                    %% cut samples up-to and including ClientTStamp
+                    CutSamples = lists:dropwhile(fun (Sample) ->
+                                                         Sample#stat_entry.timestamp =/= ClientTStamp
+                                                 end, lists:reverse(Samples)),
+                    MainSamples = case CutSamples of
+                                      [] -> Samples;
+                                      _ -> lists:reverse(CutSamples)
+                                  end,
+                    {Replies, _} = stats_archiver:latest_all(minute, "default"),
+                    %% merge samples from other nodes
+                    MergedSamples = lists:foldl(fun ({Node, _}, AccSamples) when Node =:= node() -> AccSamples;
+                                                    ({_Node, RemoteSamples}, AccSamples) ->
+                                                        merge_samples(AccSamples, RemoteSamples,
+                                                                      fun (A, B, _) ->
+                                                                              aggregate_stat_entries([A, B])
+                                                                      end, [])
+                                                end, MainSamples, Replies),
+                    lists:reverse(MergedSamples)
+            end
+    end.
+
+
+build_buckets_stats_ops_response(_PoolId, ["default"], Params) ->
+    {Samples0, ClientTStamp} = grab_op_stats("default", Params),
+    StatsList = tuple_to_list({timestamp, ?STAT_GAUGES, ?STAT_COUNTERS}),
+    EmptyLists = [[] || _ <- StatsList],
+    Samples = case Samples0 of
+                  [#stat_entry{bytes_read = undefined} | T] -> T;
+                  _ -> Samples0
+              end,
+    PropList0 = lists:zip(StatsList,
+                         lists:foldl(fun (Sample, Acc) ->
+                                             [[X | Y] || {X,Y} <- lists:zip(tl(tuple_to_list(Sample)), Acc)]
+                                     end, EmptyLists, Samples)),
+    PropList = [{K, lists:reverse(V)} || {K,V} <- PropList0],
+    OpPropList0 = [{samples, {struct, PropList}},
+                   {lastTStamp, case proplists:get_value(timestamp, PropList) of
+                                    [] -> 0;
+                                    L -> lists:last(L)
+                                end},
+                   {interval, 1000}],
+    OpPropList = case ClientTStamp of
+                     undefined -> OpPropList0;
+                     _ -> [{tstampParam, ClientTStamp}
+                           | OpPropList0]
+                 end,
+    {struct, [{op, {struct, OpPropList}}]}.
 
 is_safe_key_name(Name) ->
     lists:all(fun (C) ->
@@ -297,6 +402,16 @@ deltas([X | Rest]) -> deltas(Rest, X, []).
 deltas([], _, Acc) -> lists:reverse(Acc);
 deltas([X | Rest], Prev, Acc) ->
     deltas(Rest, X, [erlang:max(X - Prev, 0) | Acc]).
+
+aggregate_stat_entries([Entry | Rest]) ->
+    aggregate_stat_entries_rec(Rest, tuple_to_list(Entry)).
+
+aggregate_stat_entries_rec([], Acc) ->
+    list_to_tuple(Acc);
+aggregate_stat_entries_rec([Entry | Rest], Acc) ->
+    [{stat_entry, stat_entry} | Meat] = lists:zip(tuple_to_list(Entry), Acc),
+    NewAcc = [stat_entry | [X+Y || {X,Y} <- Meat]],
+    aggregate_stat_entries_rec(Rest, NewAcc).
 
 -ifdef(EUNIT).
 
