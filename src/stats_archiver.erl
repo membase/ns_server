@@ -87,6 +87,7 @@ handle_cast(unhandled, unhandled) ->
 
 handle_info({stats, Bucket, Sample}, State = #state{bucket=Bucket,
                                                    samples=Samples}) ->
+    gen_event:notify(ns_stats_event, {sample_archived, Bucket, Sample}),
     {noreply, State#state{samples=ringbuffer:add(Sample,
                                                  Samples)}}.
 
