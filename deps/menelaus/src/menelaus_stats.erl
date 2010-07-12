@@ -142,8 +142,11 @@ merge_samples(MainSamples, OtherSamples, MergerFun, MergerState) ->
 grab_op_stats(Bucket, Params) ->
     ClientTStamp = case proplists:get_value("haveTStamp", Params) of
                        undefined -> undefined;
-                       %% TODO: handle errors here
-                       X -> list_to_integer(X)
+                       X -> try list_to_integer(X) of
+                                XI -> XI
+                            catch
+                                _:_ -> undefined
+                            end
                    end,
     Self = self(),
     Ref = make_ref(),
