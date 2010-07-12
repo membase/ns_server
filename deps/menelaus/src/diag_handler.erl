@@ -59,8 +59,21 @@ diag_filter_out_config_password(Config) ->
         NewConfig -> NewConfig
     end.
 
+% Read the manifest.txt file, wherever it might exist across different versions and O/S'es.
+%
+manifest() ->
+    % The cwd should look like /opt/NorthScale with a /opt/NorthScale/bin symlink
+    % to the right /opt/NorthScale/VERSION/bin directory.
+    %
+    lists:filter(fun ({ok, _}) -> true;
+                     ({error, _}) -> false
+                 end,
+                 lists:map(fun file:read_file/1,
+                           ["./bin/../manifest.txt", "./bin/../src/manifest.txt"])).
+
 do_diag_per_node() ->
     [{version, ns_info:version()},
+     {manifest, manifest()},
      {config, diag_filter_out_config_password(ns_config:get())},
      {basic_info, element(2, ns_info:basic_info())},
      {memory, memsup:get_memory_data()},
