@@ -327,7 +327,8 @@
     <div id="monitor_buckets_list_container"></div>
     </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
     <script id="monitor_buckets_list_template" type="text/html">
-        <table class="lined_tab buckets_tab">
+        <!-- className 'buckets_tab' goesWith '_' to desable thisStyle forNow -->
+        <table class="lined_tab buckets_tab_">
           <col width="" />
           <col width="" />
           <col width="" />
@@ -346,7 +347,8 @@
               <td>
               <a class="bucket_properties_link float_right text_11"
                 href="{%= jsLink('BucketsSection.showBucket', this.uri)%}">Properties</a>
-              <a class="gray_link bucket_name" href="#visitStats={%=h(this.uri)%}">{%= h(this.name) %}</a>
+              <a class="gray_link bucket_name_" href="#visitStats={%=h(this.uri)%}">{%= h(this.name) %}</a>
+              <!-- className 'bucket_name' goesWith '_' to desable thisStyle forNow -->
               </td>
               <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
               <td>{%= h(truncateTo3Digits(this.basicStats.evictionsPerSec)) %}</td>
