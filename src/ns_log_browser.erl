@@ -59,6 +59,7 @@ tempfile(Prefix, Suffix) ->
 get_logs_as_file(Types, NumReports, RegExp) ->
     catch rb:stop(),
     TempFile = tempfile("nslogs", ".log"),
+    filelib:ensure_dir(TempFile),
     Options = [{start_log, TempFile}, {type, Types}, {max, NumReports}],
     case rb:start(Options) of
     {ok, _Pid} -> ok;
