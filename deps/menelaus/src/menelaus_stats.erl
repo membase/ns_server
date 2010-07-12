@@ -122,21 +122,18 @@ handle_buckets_stats_hks(Req, PoolId, BucketIds, Params) ->
 %% Implementation
 
 merge_samples(MainSamples, OtherSamples, MergerFun, MergerState) ->
-    OtherSamplesDict = lists:foldl(fun (Sample, Dict) ->
-                                           dict:append(Sample#stat_entry.timestamp,
-                                                       Sample,
-                                                       Dict)
-                                   end, dict:new(), OtherSamples),
-    MergedSamples = lists:fold(fun (Sample, {Acc, MergerState2}) ->
-                                       TStamp = Sample#stat_entry.timestamp,
-                                       {NewSample, NextState} =
-                                           case dict:find(TStamp, OtherSamplesDict) of
-                                               {ok, AnotherSample} ->
-                                                   MergerFun(Sample, AnotherSample, MergerState2);
-                                               _ -> {Sample, MergerState2}
-                                           end,
-                                       {[NewSample | Acc], NextState}
-                               end, {[], MergerState}, MainSamples),
+    OtherSamplesDict = dict:from_list([{Sample#stat_entry.timestamp, Sample} ||
+                                          Sample <- OtherSamples]),
+    {MergedSamples, _} = lists:foldl(fun (Sample, {Acc, MergerState2}) ->
+                                             TStamp = Sample#stat_entry.timestamp,
+                                             {NewSample, NextState} =
+                                                 case dict:find(TStamp, OtherSamplesDict) of
+                                                     {ok, AnotherSample} ->
+                                                         MergerFun(Sample, AnotherSample, MergerState2);
+                                                     _ -> {Sample, MergerState2}
+                                                 end,
+                                             {[NewSample | Acc], NextState}
+                                     end, {[], MergerState}, MainSamples),
     lists:reverse(MergedSamples).
 
 grab_op_stats(Bucket, Params) ->
@@ -194,13 +191,13 @@ grab_op_stats_body(Bucket, ClientTStamp, Ref) ->
                                       [] -> Samples;
                                       _ -> lists:reverse(CutSamples)
                                   end,
-                    {Replies, _} = stats_archiver:latest_all(minute, "default"),
+                    {Replies, _} = stats_archiver:latest_all(minute, "default", 60),
                     %% merge samples from other nodes
                     MergedSamples = lists:foldl(fun ({Node, _}, AccSamples) when Node =:= node() -> AccSamples;
                                                     ({_Node, RemoteSamples}, AccSamples) ->
                                                         merge_samples(AccSamples, RemoteSamples,
                                                                       fun (A, B, _) ->
-                                                                              aggregate_stat_entries([A, B])
+                                                                              {aggregate_stat_entries([A, B]), []}
                                                                       end, [])
                                                 end, MainSamples, Replies),
                     lists:reverse(MergedSamples)
@@ -413,8 +410,16 @@ aggregate_stat_entries_rec([], Acc) ->
     list_to_tuple(Acc);
 aggregate_stat_entries_rec([Entry | Rest], Acc) ->
     [{stat_entry, stat_entry} | Meat] = lists:zip(tuple_to_list(Entry), Acc),
-    NewAcc = [stat_entry | [X+Y || {X,Y} <- Meat]],
-    aggregate_stat_entries_rec(Rest, NewAcc).
+    NewAcc = lists:map(fun ({X,Y}) ->
+                               case X of
+                                   undefined -> 0;
+                                   _ -> X
+                               end + case Y of
+                                         undefined -> 0;
+                                         _ -> Y
+                                     end
+                       end, Meat),
+    aggregate_stat_entries_rec(Rest, [stat_entry | NewAcc]).
 
 -ifdef(EUNIT).
 
