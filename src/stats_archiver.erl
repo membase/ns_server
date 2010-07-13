@@ -28,7 +28,7 @@
 -define(INIT_TIMEOUT, 5000).
 -define(TRUNC_FREQ, 10).
 
--record(state, {bucket, table, samples_since_truncate = 1}).
+-record(state, {bucket, samples_since_truncate = 1}).
 
 -export([start_link/1,
          latest/3, latest/4,
@@ -48,35 +48,35 @@ start_link(Bucket) ->
 
 
 %% @doc Get the latest samples for a given interval from the archive
-latest(minute, Node, Bucket) when is_atom(Node) ->
-    [{Node, [Result]}] = latest(minute, [Node], Bucket),
+latest(Period, Node, Bucket) when is_atom(Node) ->
+    [{Node, [Result]}] = latest(Period, [Node], Bucket),
     Result;
-latest(minute, Nodes, Bucket) when is_list(Nodes), is_list(Bucket) ->
+latest(Period, Nodes, Bucket) when is_list(Nodes), is_list(Bucket) ->
     misc:pmap(fun (Node) ->
                       {Node, mnesia:transaction(
                                fun () ->
-                                       Tab = table_name(Node, Bucket),
+                                       Tab = table_name(Node, Bucket, Period),
                                        Key = mnesia:last(Tab),
                                        mnesia:read(Tab, Key)
                                end)}
               end, Nodes, length(Nodes)).
 
 
-latest(minute, Node, Bucket, N) when is_atom(Node), is_list(Bucket) ->
-    [{Node, Results}] = latest(minute, [Node], Bucket, N),
+latest(Period, Node, Bucket, N) when is_atom(Node), is_list(Bucket) ->
+    [{Node, Results}] = latest(Period, [Node], Bucket, N),
     Results;
-latest(minute, Nodes, Bucket, N) when is_list(Nodes), is_list(Bucket) ->
+latest(Period, Nodes, Bucket, N) when is_list(Nodes), is_list(Bucket) ->
     misc:pmap(fun (Node) ->
-                      {Node, walk(table_name(Node, Bucket), N)}
+                      {Node, walk(table_name(Node, Bucket, Period), N)}
               end, Nodes, length(Nodes)).
 
 
-latest_all(minute, Bucket) ->
-    latest(minute, ns_node_disco:nodes_wanted(), Bucket).
+latest_all(Period, Bucket) ->
+    latest(Period, ns_node_disco:nodes_wanted(), Bucket).
 
 
-latest_all(minute, Bucket, N) ->
-    latest(minute, ns_node_disco:nodes_wanted(), Bucket, N).
+latest_all(Period, Bucket, N) ->
+    latest(Period, ns_node_disco:nodes_wanted(), Bucket, N).
 
 
 %%
@@ -88,9 +88,9 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 init(Bucket) ->
-    TableName = create_table(Bucket),
+    create_tables(Bucket),
     ns_pubsub:subscribe(ns_stats_event),
-    {ok, #state{bucket=Bucket, table=TableName}}.
+    {ok, #state{bucket=Bucket}}.
 
 
 handle_call(unhandled, unhandled, unhandled) ->
@@ -101,7 +101,8 @@ handle_cast(unhandled, unhandled) ->
     unhandled.
 
 
-handle_info({stats, Bucket, Sample}, State = #state{bucket=Bucket, table=Tab}) ->
+handle_info({stats, Bucket, Sample}, State = #state{bucket=Bucket}) ->
+    Tab = table_name(node(), Bucket, minute),
     {atomic, ok} = mnesia:transaction(fun () -> mnesia:write(Tab, Sample, write) end),
     gen_event:notify(ns_stats_event, {sample_archived, Bucket, Sample}),
     {noreply, maybe_truncate(State)};
@@ -117,6 +118,14 @@ terminate(_Reason, _State) ->
 %% Internal functions
 %%
 
+archives() ->
+    [{minute, 1, 60}, % in seconds
+     {hour, 10, 360}, % 10 second intervals
+     {day, 24, 360},  % 240 second intervals (4 minutes)
+     {week, 7, 360}   % 1680 second intervals (28 minutes)
+    ].
+
+
 %% @doc Compute the average of a list of entries.
 %% Timestamp is taken from the first entry.
 avg(Samples) ->
@@ -131,24 +140,26 @@ avg(Samples) ->
     list_to_stat(TS, Avgs).
 
 
-create_table(Bucket) ->
+create_tables(Bucket) ->
     Node = node(),
-    TableName = table_name(Node, Bucket),
-    ?log_info("Creating table for bucket ~p if it doesn't already exist.",
+    ?log_info("Creating tables for bucket ~p if they don't already exist.",
               [Bucket]),
-    case mnesia:create_table(TableName,
-                             [{disc_copies, [Node]},
-                              {record_name, stat_entry},
-                              {type, ordered_set},
-                              {attributes, record_info(fields, stat_entry)}]) of
-        {atomic, ok} ->
-            ?log_info("Created table for bucket ~p.", [Bucket]),
-            ok;
-        {aborted, {already_exists, _}} ->
-            ?log_info("Table already existed for bucket ~p.", [Bucket]),
-            ok
-    end,
-    TableName.
+    lists:foreach(
+      fun ({Period, _, _}) ->
+              TableName = table_name(Node, Bucket, Period),
+              case mnesia:create_table(TableName,
+                                       [{disc_copies, [Node]},
+                                        {record_name, stat_entry},
+                                        {type, ordered_set},
+                                        {attributes,
+                                         record_info(fields, stat_entry)}]) of
+                  {atomic, ok} ->
+                      ?log_info("Created table for bucket ~p.", [Bucket]);
+                  {aborted, {already_exists, _}} ->
+                      ?log_info("Table already existed for bucket ~p.",
+                                [Bucket])
+              end
+      end, archives()).
 
 
 %% @doc Convert a list of values from stat_to_list back to a stat entry.
@@ -157,8 +168,8 @@ list_to_stat(TS, List) ->
 
 
 %% @doc Truncate the table if necessary.
-maybe_truncate(#state{table=Tab, samples_since_truncate=?TRUNC_FREQ} = State) ->
-    truncate(Tab, 60),
+maybe_truncate(#state{bucket=Bucket, samples_since_truncate=?TRUNC_FREQ} = State) ->
+    truncate(table_name(node(), Bucket, minute), 60),
     State#state{samples_since_truncate=1};
 maybe_truncate(#state{samples_since_truncate=N} = State) when N < ?TRUNC_FREQ ->
     State#state{samples_since_truncate=N+1}.
@@ -175,9 +186,10 @@ server(Bucket) ->
     list_to_atom(?MODULE_STRING ++ "-" ++ Bucket).
 
 %% @doc Generate a suitable name for the Mnesia table.
-table_name(Node, Bucket) ->
-    list_to_atom(lists:flatten(io_lib:format("~s-~s-~s", [?MODULE_STRING,
-                                                          Node, Bucket]))).
+table_name(Node, Bucket, Period) ->
+    list_to_atom(lists:flatten(io_lib:format("~s-~s-~s-~s",
+                                             [?MODULE_STRING,
+                                              Node, Bucket, Period]))).
 
 
 %% @doc Truncate the given table to the last N records.
