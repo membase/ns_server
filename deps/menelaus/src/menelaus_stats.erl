@@ -85,8 +85,8 @@ handle_buckets_stats(PoolId, BucketIds, Req) ->
             handle_buckets_stats_hks(Req, PoolId, BucketIds, Params);
         "combined" ->
             {struct, PropList1} = build_buckets_stats_ops_response(PoolId, BucketIds, Params),
-            %% {struct, PropList2} = build_buckets_stats_hks_response(PoolId, BucketIds, Params),
-            reply_json(Req, {struct, PropList1});
+            {struct, PropList2} = build_buckets_stats_hks_response(PoolId, BucketIds, Params),
+            reply_json(Req, {struct, PropList1 ++ PropList2});
         _ ->
             reply_json(Req, [list_to_binary("Stats requests require parameters.")], 400)
     end.
@@ -240,22 +240,26 @@ build_buckets_stats_hks_response(PoolId, BucketIds, Params) ->
     {ok, BucketsTopKeys} =
         get_buckets_hks(PoolId, BucketIds, Params),
     HotKeyStructs = lists:map(
-                      fun ({BucketId, Key, Evictions, Ratio, Ops}) ->
+                      fun ({BucketId, Key, Ratio, Ops}) ->
                               EscapedKey = case is_safe_key_name(Key) of
                                                true -> Key;
                                                _ -> "BIN_" ++ base64:encode_to_string(Key)
                                            end,
                               {struct, [{name, list_to_binary(EscapedKey)},
                                         {bucket, list_to_binary(BucketId)},
-                                        {evictions, Evictions},
                                         {ratio, Ratio},
                                         {ops, Ops}]}
                       end,
-                      lists:sublist(lists:reverse(lists:keysort(5, BucketsTopKeys)), 15)),
+                      lists:sublist(lists:reverse(lists:keysort(4, BucketsTopKeys)), 15)),
     {struct, [{hot_keys, HotKeyStructs}]}.
 
 get_buckets_hks(_PoolId, _BucketIds, _Params) ->
-    {ok, []}.
+    {ok, [
+          {"default", "key1", 0.60, 3000},
+          {"default", "key3", 0.8, 3345},
+          {"default", "key2", 0.75, 3030},
+          {"default", "keydf", 0.3, 450}
+         ]}.
 
 sum_stats_values_rec([], [], Rec) ->
     Rec;

@@ -297,15 +297,11 @@
         <table>
           <tr>
             <th>Key</th>
-	    <th>Evictions/Sec</th>
-            <th>Hit Ratio</th>
             <th>Ops/Sec</th>
           </tr>
           <!-- {% $.each(rows, function () { %} -->
             <tr>
               <td>{%= h(this.name) %}</td>
-              <td>{%= h(Math.round(this.evictions * 100.0) / 100.0) %}</td>
-              <td>{%= h(Math.round(this.ratio * 1000.0) / 10.0) %}</td>
               <td>{%= h(Math.round(this.ops * 100.0) / 100.0) %}</td>
             </tr>
           <!-- {% }); %} -->
