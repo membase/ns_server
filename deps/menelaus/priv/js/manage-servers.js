@@ -445,7 +445,7 @@ var ServersSection = {
       self.poolDetails.invalidate();
       if (status == 'error' && data[0].mismatch) {
         self.poolDetails.changedSlot.subscribeOnce(function () {
-          var msg = "Somebody else modified cluster configuration.\nRepeat rebalance after checking that changes.";
+          var msg = "Could not Rebalance because the cluster configuration was modified by someone else.\nYou may want to verify the latest cluster configuration and, if necessary, please retry a Rebalance."
           alert(msg);
         });
       }
