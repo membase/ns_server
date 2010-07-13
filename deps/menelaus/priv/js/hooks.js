@@ -209,7 +209,7 @@ var MockedRequest = mkClass({
       try {
         this.checkAuth();
         foundResp = this.executeRouteResponse(foundResp, routeArgs);
-        if (!this.responded)
+        if (!this.responded && !this.responseDelayed)
           this.fakeResponse(foundResp);
       } catch (e) {
         if (e !== this.authError) {
@@ -347,11 +347,20 @@ var MockedRequest = mkClass({
       samples = newSamples;
     }
 
-    samples.t = _.range(lastSampleTstamp - samplesSelection[0].length * samplesInterval, lastSampleTstamp, samplesInterval);
+    samples.timestamp = _.range(lastSampleTstamp - samplesSelection[0].length * samplesInterval, lastSampleTstamp, samplesInterval);
 
-    var lastSampleT = params['haveT']
+    var lastSampleT = params['haveTStamp']
     if (lastSampleT) {
-      var index = _.lastIndexOf(samples.t, lastSampleT);
+      lastSampleT = parseInt(lastSampleT, 10);
+      var index = _.lastIndexOf(samples.timestamp, lastSampleT);
+      if (index == samples.timestamp.length-1) {
+        var self = this;
+        _.delay(function () {
+          self.fakeResponse(self.handleStats());
+        }, 1000);
+        this.responseDelayed = true;
+        return;
+      }
       if (index >= 0) {
         for (var statName in samples) {
           samples[statName] = samples[statName].slice(index+1);
@@ -380,6 +389,8 @@ var MockedRequest = mkClass({
                         evictions: 13,
                         bucket: "Excerciser application"}],
             op: {
+              lastTStamp: samples.timestamp.slice(-1)[0],
+              tstampParam: (lastSampleT != null) ? lastSampleT : null,
               interval: samplesInterval,
               samples: samples
             }};
