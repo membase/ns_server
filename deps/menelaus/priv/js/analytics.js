@@ -192,32 +192,35 @@ function renderSmallGraph(jq, data, isSelected) {
           grid: {show:false}});
 }
 
-var KnownStats = {
-  bytes_read: "Bytes Received per second\nNetwork bytes received by all servers, per second",
-  bytes_written: "Bytes Sent per second\nNetwork bytes sent by all servers, per second",
-  cas_badval: "CAS badval per second",
-  cas_hits: "CAS hits per second",
-  cas_misses: "CAS misses per second",
-  cmd_get: "Gets per second\nGet operations per second",
-  cmd_set: "Sets per second\nSet operations per second",
-  curr_connections: "Connections count",
-  curr_items: "Items count",
-  decr_hits: "Decr hits per second",
-  decr_misses: "Decr misses per second",
-  delete_hits: "Delete hits per second",
-  delete_misses: "Delete misses per second",
-  ep_flusher_todo: "EP-flusher todo",
-  ep_queue_size: "EP queue size",
-  get_hits: "Get hits per second",
-  get_misses: "Get Misses per second",
-  incr_hits: "Incr hits per second",
-  incr_misses: "Incr misses per second",
-  mem_used: "Memory bytes used"
-};
+var KnownStats = [
+  ["ops", "Operations per second\nSum of set, get, increment, decrement, cas and delete operations per second"],
+  ["mem_used", "Memory bytes used"],
+  ["curr_items", "Items count"],
+  ["cmd_set", "Sets per second\nSet operations per second"],
+  ["cmd_get", "Gets per second\nGet operations per second"],
+  ["bytes_written", "Bytes Sent per second\nNetwork bytes sent by all servers, per second"],
+  ["bytes_read", "Bytes Received per second\nNetwork bytes received by all servers, per second"],
+  ["disk_writes", "Disk writes"],
+  ["get_hits", "Get hits per second"],
+  ["delete_hits", "Delete hits per second"],
+  ["incr_hits", "Incr hits per second"],
+  ["decr_hits", "Decr hits per second"],
+  ["delete_misses", "Delete misses per second"],
+  ["decr_misses", "Decr misses per second"],
+  ["get_misses", "Get Misses per second"],
+  ["incr_misses", "Incr misses per second"],
+  ["curr_connections", "Connections count"],
+  ["cas_hits", "CAS hits per second"],
+  ["cas_badval", "CAS badval per second"],
+  ["cas_misses", "CAS misses per second"]
+  // ["ep_flusher_todo", "EP-flusher todo"],
+  // ["ep_queue_size", "EP queue size"],
+  // ["updates", "Updates per second\nSum of set, increment, decrement, cas and delete operations per second"], 
+];
 
 var StatGraphs = {
   selected: null,
-  recognizedStats: ['cmd_get'].concat(_.without(_.keys(KnownStats), 'cmd_get')),
+  recognizedStats: _.pluck(KnownStats, 0),
   visibleStats: [],
   visibleStatsIsDirty: true,
   statNames: {},
@@ -348,18 +351,31 @@ var StatGraphs = {
     });
   },
   init: function () {
-    renderTemplate('stats_nav', _.keys(KnownStats));
-    renderTemplate('configure_stats_items',
-                   _.map(_.keys(KnownStats), function (name) {
-                     var ar = KnownStats[name].split("\n", 2);
-                     if (ar.length == 1)
-                       ar[1] = ar[0];
-                     return {
-                       name: name,
-                       'short': ar[0],
-                       full: ar[1]
-                     };
-                   }))
+    renderTemplate('stats_nav', this.recognizedStats);
+
+    ;(function () {
+      var leftCount = (KnownStats.length + 1) >> 1;
+      var shuffledPairs = new Array(KnownStats.length);
+      var i,k;
+      for (i = 0, k = 0; i < KnownStats.length; i += 2, k++) {
+        shuffledPairs[i] = KnownStats[k];
+        shuffledPairs[i+1] = KnownStats[leftCount + k];
+      }
+      shuffledPairs.length = KnownStats.length;
+
+      renderTemplate('configure_stats_items',
+                     _.map(shuffledPairs, function (pair) {
+                       var name = pair[0];
+                       var ar = pair[1].split("\n", 2);
+                       if (ar.length == 1)
+                         ar[1] = ar[0];
+                       return {
+                         name: name,
+                         'short': ar[0],
+                         full: ar[1]
+                       };
+                     }));
+    })();
 
     var self = this;
 
@@ -401,7 +417,7 @@ var StatGraphs = {
       }
     }
 
-    var visibleStatsCookie = $.cookie('vs') || 'cmd_get,cmd_set,mem_used,curr_items';
+    var visibleStatsCookie = $.cookie('vs') || self.recognizedStats.slice(0,4).join(',');
     self.visibleStats = visibleStatsCookie.split(',').sort();
 
     // init stat names

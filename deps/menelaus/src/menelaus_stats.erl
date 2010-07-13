@@ -217,6 +217,7 @@ add_stat_sums(Samples) ->
                               delete_misses, delete_hits], Samples)},
      {misses, produce_sum_stats([get_misses, delete_misses, incr_misses, decr_misses,
                                  cas_misses], Samples)},
+     {disk_writes, produce_sum_stats([ep_flusher_todo, ep_queue_size], Samples)},
      {updates, produce_sum_stats([cmd_set, incr_hits, decr_hits, cas_hits], Samples)}
      | Samples].
 
