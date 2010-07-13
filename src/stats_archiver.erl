@@ -20,16 +20,18 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-include("ns_common.hrl").
 -include("ns_stats.hrl").
 
 -behaviour(gen_server).
 
--define(NUM_SAMPLES, 61).
+-define(INIT_TIMEOUT, 5000).
+-define(TRUNC_FREQ, 10).
 
--record(state, {bucket, samples, table}).
+-record(state, {bucket, table, samples_since_truncate = 1}).
 
 -export([start_link/1,
-         latest/2, latest/3, latest/4,
+         latest/3, latest/4,
          latest_all/2, latest_all/3]).
 
 -export([code_change/3, init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -41,39 +43,40 @@
 %%
 
 start_link(Bucket) ->
-    gen_server:start_link({local, server(Bucket)}, ?MODULE, Bucket, []).
+    gen_server:start_link({local, server(Bucket)}, ?MODULE, Bucket,
+                          [{timeout, ?INIT_TIMEOUT}]).
 
 
 %% @doc Get the latest samples for a given interval from the archive
-latest(minute, Bucket) ->
-    mnesia:activity(transaction,
-                    fun () ->
-                            Tab = table_name(Bucket),
-                            Key = mnesia:last(table_name(Bucket)),
-                            mnesia:read(Tab, Key)
-                    end).
+latest(minute, Node, Bucket) when is_atom(Node) ->
+    [{Node, [Result]}] = latest(minute, [Node], Bucket),
+    Result;
+latest(minute, Nodes, Bucket) when is_list(Nodes), is_list(Bucket) ->
+    misc:pmap(fun (Node) ->
+                      {Node, mnesia:transaction(
+                               fun () ->
+                                       Tab = table_name(Node, Bucket),
+                                       Key = mnesia:last(Tab),
+                                       mnesia:read(Tab, Key)
+                               end)}
+              end, Nodes, length(Nodes)).
 
 
-latest(minute, Node, Bucket) when is_atom(Node), is_list(Bucket) ->
-    gen_server:call({server(Bucket), Node}, latest);
-latest(minute, Nodes, Bucket) when is_list(Bucket) ->
-    gen_server:multi_call(Nodes, server(Bucket), latest);
-latest(minute, Bucket, N) ->
-    gen_server:call(server(Bucket), {latest, N}).
-
-
-latest(minute, Node, Bucket, N) when is_atom(Node) ->
-    gen_server:call({server(Bucket), Node}, {latest, N});
-latest(minute, Nodes, Bucket, N) ->
-    gen_server:multi_call(Nodes, server(Bucket), {latest, N}).
+latest(minute, Node, Bucket, N) when is_atom(Node), is_list(Bucket) ->
+    [{Node, Results}] = latest(minute, [Node], Bucket, N),
+    Results;
+latest(minute, Nodes, Bucket, N) when is_list(Nodes), is_list(Bucket) ->
+    misc:pmap(fun (Node) ->
+                      {Node, walk(table_name(Node, Bucket), N)}
+              end, Nodes, length(Nodes)).
 
 
 latest_all(minute, Bucket) ->
-    gen_server:multi_call(server(Bucket), latest).
+    latest(minute, ns_node_disco:nodes_wanted(), Bucket).
 
 
 latest_all(minute, Bucket, N) ->
-    gen_server:multi_call(server(Bucket), {latest, N}).
+    latest(minute, ns_node_disco:nodes_wanted(), Bucket, N).
 
 
 %%
@@ -86,31 +89,24 @@ code_change(_OldVsn, State, _Extra) ->
 
 init(Bucket) ->
     TableName = create_table(Bucket),
-    ns_pubsub:subscribe(ns_stats_event,
-                        fun ({stats, B, Stats}, {B, Pid}) ->
-                                received(Pid, Stats),
-                                {B, Pid};
-                            (_, State) -> State
-                        end, {Bucket, self()}),
-    {ok, #state{bucket=Bucket, samples=ringbuffer:new(?NUM_SAMPLES),
-                table=TableName}}.
+    ns_pubsub:subscribe(ns_stats_event),
+    {ok, #state{bucket=Bucket, table=TableName}}.
 
 
-handle_call(latest, _From, State = #state{samples=Samples}) ->
-    {reply, lists:last(ringbuffer:to_list(Samples)), State};
-handle_call({latest, N}, _From, State = #state{samples=Samples}) ->
-    {reply, ringbuffer:to_list(N, Samples), State}.
-
-
-handle_cast({stats, Sample}, State = #state{bucket=Bucket, table=Tab}) ->
-    ok = mnesia:activity(transaction,
-                         fun () -> mnesia:write(Tab, Sample, write) end),
-    gen_event:notify(ns_stats_event, {sample_archived, Bucket, Sample}),
-    {noreply, State}.
-
-
-handle_info(unhandled, unhandled) ->
+handle_call(unhandled, unhandled, unhandled) ->
     unhandled.
+
+
+handle_cast(unhandled, unhandled) ->
+    unhandled.
+
+
+handle_info({stats, Bucket, Sample}, State = #state{bucket=Bucket, table=Tab}) ->
+    {atomic, ok} = mnesia:transaction(fun () -> mnesia:write(Tab, Sample, write) end),
+    gen_event:notify(ns_stats_event, {sample_archived, Bucket, Sample}),
+    {noreply, maybe_truncate(State)};
+handle_info({sample_archived, _, _}, State) ->
+    {noreply, State}.
 
 
 terminate(_Reason, _State) ->
@@ -136,15 +132,20 @@ avg(Samples) ->
 
 
 create_table(Bucket) ->
-    TableName = table_name(Bucket),
+    Node = node(),
+    TableName = table_name(Node, Bucket),
+    ?log_info("Creating table for bucket ~p if it doesn't already exist.",
+              [Bucket]),
     case mnesia:create_table(TableName,
-                             [{disc_copies, [node()]},
+                             [{disc_copies, [Node]},
                               {record_name, stat_entry},
                               {type, ordered_set},
                               {attributes, record_info(fields, stat_entry)}]) of
         {atomic, ok} ->
+            ?log_info("Created table for bucket ~p.", [Bucket]),
             ok;
         {aborted, {already_exists, _}} ->
+            ?log_info("Table already existed for bucket ~p.", [Bucket]),
             ok
     end,
     TableName.
@@ -155,9 +156,12 @@ list_to_stat(TS, List) ->
     list_to_tuple([stat_entry, TS | List]).
 
 
-%% @doc Pass received stats to the archiver.
-received(Pid, Stats) ->
-    gen_server:cast(Pid, {stats, Stats}).
+%% @doc Truncate the table if necessary.
+maybe_truncate(#state{table=Tab, samples_since_truncate=?TRUNC_FREQ} = State) ->
+    truncate(Tab, 60),
+    State#state{samples_since_truncate=1};
+maybe_truncate(#state{samples_since_truncate=N} = State) when N < ?TRUNC_FREQ ->
+    State#state{samples_since_truncate=N+1}.
 
 
 %% @doc Convert a stat entry to a list of values.
@@ -166,17 +170,46 @@ stat_to_list(Entry) ->
     {TS, L}.
 
 
-%% @doc Truncate a timestamp to a multiple of the given number of seconds.
-ts_trunc(Resolution, TS) ->
-    {MegaSecs, Secs, _} = TS,
-    MegaSecs * 1000000 + trunc(Secs / Resolution) * Resolution.
-
-
 %% @doc Generate a suitable name for the per-bucket gen_server.
 server(Bucket) ->
     list_to_atom(?MODULE_STRING ++ "-" ++ Bucket).
 
 %% @doc Generate a suitable name for the Mnesia table.
-table_name(Bucket) ->
+table_name(Node, Bucket) ->
     list_to_atom(lists:flatten(io_lib:format("~s-~s-~s", [?MODULE_STRING,
-                                                          node(), Bucket]))).
+                                                          Node, Bucket]))).
+
+
+%% @doc Truncate the given table to the last N records.
+truncate(Tab, N) ->
+    {atomic, _M} = mnesia:transaction(
+                     fun () -> truncate(Tab, mnesia:last(Tab), N, 0) end).
+
+
+
+truncate(_Tab, '$end_of_table', N, M) ->
+    case N of
+        0 -> M;
+        _ -> -N
+    end;
+truncate(Tab, Key, 0, M) ->
+    NextKey = mnesia:prev(Tab, Key),
+    ok = mnesia:delete({Tab, Key}),
+    truncate(Tab, NextKey, 0, M + 1);
+truncate(Tab, Key, N, 0) ->
+    truncate(Tab, mnesia:prev(Tab, Key), N - 1, 0).
+
+
+%% @doc Return the last N records starting with the given key from Tab.
+walk(Tab, N) ->
+    {atomic, Results} = mnesia:transaction(
+                          fun () -> walk(Tab, mnesia:last(Tab), N, []) end),
+    Results.
+
+
+walk(_Tab, Key, N, Records) when N == 0; Key == '$end_of_table' ->
+    Records;
+walk(Tab, Key, N, Records) ->
+    [Record] = mnesia:read(Tab, Key),
+    NextKey = mnesia:prev(Tab, Key),
+    walk(Tab, NextKey, N - 1, [Record | Records]).
