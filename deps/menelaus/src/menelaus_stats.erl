@@ -204,6 +204,21 @@ grab_op_stats_body(Bucket, ClientTStamp, Ref) ->
             end
     end.
 
+produce_sum_stats([FirstStat | RestStats], Samples) ->
+    lists:foldl(fun (StatName, XSamples) ->
+                        YSamples = proplists:get_value(StatName, Samples),
+                        [X+Y || {X,Y} <- lists:zip(XSamples, YSamples)]
+                end, proplists:get_value(FirstStat, Samples), RestStats).
+
+add_stat_sums(Samples) ->
+    [{ops, produce_sum_stats([cmd_get, cmd_set,
+                              incr_misses, incr_hits,
+                              decr_misses, decr_hits,
+                              delete_misses, delete_hits], Samples)},
+     {misses, produce_sum_stats([get_misses, delete_misses, incr_misses, decr_misses,
+                                 cas_misses], Samples)},
+     {updates, produce_sum_stats([cmd_set, incr_hits, decr_hits, cas_hits], Samples)}
+     | Samples].
 
 build_buckets_stats_ops_response(_PoolId, ["default"], Params) ->
     {Samples0, ClientTStamp} = grab_op_stats("default", Params),
@@ -217,9 +232,10 @@ build_buckets_stats_ops_response(_PoolId, ["default"], Params) ->
                          lists:foldl(fun (Sample, Acc) ->
                                              [[X | Y] || {X,Y} <- lists:zip(tl(tuple_to_list(Sample)), Acc)]
                                      end, EmptyLists, Samples)),
-    PropList = [{K, lists:reverse(V)} || {K,V} <- PropList0],
-    OpPropList0 = [{samples, {struct, PropList}},
-                   {lastTStamp, case proplists:get_value(timestamp, PropList) of
+    PropList1 = [{K, lists:reverse(V)} || {K,V} <- PropList0],
+    PropList2 = add_stat_sums(PropList1),
+    OpPropList0 = [{samples, {struct, PropList2}},
+                   {lastTStamp, case proplists:get_value(timestamp, PropList2) of
                                     [] -> 0;
                                     L -> lists:last(L)
                                 end},
