@@ -823,8 +823,6 @@ var __hookParams = {};
   if (params['rebalanceStatus']) {
     MockedRequest.globalData.setRebalanceStatus(params['rebalanceStatus']);
   }
-
-  $.cookie('fakeauth', 1);
 })();
 
 //window.onerror = originalOnError;

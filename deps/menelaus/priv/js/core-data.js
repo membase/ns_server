@@ -37,7 +37,6 @@ function onUnexpectedXHRError(xhr) {
 
   if (status == 401) {
     $.cookie('auth', null);
-    $.cookie('fakeauth', null); /* for beta1 */
     return reloadApp();
   }
 

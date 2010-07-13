@@ -48,7 +48,6 @@ var LogoutTimer = {
   onTimeout: function () {
     $.cookie('inactivity_reload', '1');
     DAO.setAuthCookie(null);
-    $.cookie('fakeauth', null); /* for beta1 */
     reloadApp();
   }
 };
@@ -284,7 +283,6 @@ var ThePage = {
   currentSectionName: null,
   signOut: function () {
     $.cookie('auth', null);
-    $.cookie('fakeauth', null); /* for beta1 */
     reloadApp();
   },
   ensureSection: function (section) {
@@ -370,7 +368,6 @@ function loginFormSubmit() {
 
     if (status == 'success') {
       hideAuthForm();
-      $.cookie('fakeauth', "1");
       return;
     }
 
@@ -435,9 +432,7 @@ $(function () {
   var spinner = overlayWithSpinner('#login_form', false);
   try {
     var noAuthStatus = DAO.tryNoAuthLogin();
-    if (DAO.initStatus != "done") {
-      hideAuthForm();
-    } else if (noAuthStatus && $.cookie('fakeauth') == "1") { /* fakeauth is a workaround for deciding to not do auth in beta1 */
+    if (DAO.tryNoAuthLogin()) {
       hideAuthForm();
     }
   } finally {
@@ -783,9 +778,8 @@ var NodeDialog = {
       }
 
       SettingsSection.processSave(this, function (dialog) {
-        // temporarily turned off. Bug 1407
-        // DAO.login = user;
-        // DAO.password = pw;
+        DAO.login = user;
+        DAO.password = pw;
         showInitDialog('done');
 
         if (user != null && user != "") {
