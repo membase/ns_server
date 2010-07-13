@@ -155,7 +155,8 @@ handle_join_rest_failure(ReturnValue, OtherHost, OtherPort) ->
                               ns_log:log(?MODULE, ?REST_FAILED,
                                          "During node join, the remote host ~p on port ~p returned failure.~nError encountered was: ~p",
                                          [OtherHost, OtherPort, DecodedErrors]),
-                              {error, [<<"Got error response from remote node.  An error has been logged which may contain more information.">>]};
+                              {error, [list_to_binary(io_lib:format("Got error response from remote node: ~s",
+                                                                    [string:join([binary_to_list(E) || E <- DecodedErrors], ", ")]))]};
                           _ -> false
                       end,
             case Handled of

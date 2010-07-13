@@ -322,6 +322,10 @@ handle_add_node_request(Req) ->
                        case ns_cluster_membership:handle_add_node_request(list_to_atom(OtpNode),
                                                                           list_to_atom(OtpCookie)) of
                            ok -> {ok, {struct, [{otpNode, atom_to_binary(node(), latin1)}]}};
+                           {error, already_joined} ->
+                               {errors, [<<"The node is already joined to this cluster">>]};
+                           {errors, system_not_addable} ->
+                               {errors, [<<"The node is already joined to another cluster">>]};
                            {error_msg, Msg} -> {errors, [list_to_binary(Msg)]}
                        end
                end,
