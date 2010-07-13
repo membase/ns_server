@@ -37,6 +37,14 @@ pre_start() ->
     misc:ping_jointo().
 
 get_child_specs() ->
+    good_children() ++ bad_children().
+
+
+%% Children that needn't be restarted when we pull the plug. These
+%% cannot crash or hang if Mnesia is down, but they can depend on it
+%% for proper operation unless they will cause other good children to
+%% crash without it.
+good_children() ->
     [{ns_config_sup, {ns_config_sup, start_link, []},
       permanent, infinity, supervisor,
       [ns_config_sup]},
@@ -64,45 +72,52 @@ get_child_specs() ->
       permanent, infinity, supervisor,
       []},
 
-     {ns_memcached,
+     {ns_tick_event, {gen_event, start_link, [{local, ns_tick_event}]},
+      permanent, 10, worker, [gen_event]},
+
+     {ns_stats_event, {gen_event, start_link, [{local, ns_stats_event}]},
+      permanent, 10, worker, [gen_event]},
+
+     {ns_heart, {ns_heart, start_link, []},
+      permanent, 10, worker,
+      [ns_heart]}].
+
+
+%% Children that get restarted if we pull the plug. These can depend
+%% on Mnesia.
+bad_children() ->
+    [{ns_memcached,
       {ns_memcached, start_link, []},
       permanent, 10, worker, [ns_memcached]},
 
      {ns_vbm_sup, {ns_vbm_sup, start_link, []},
       permanent, infinity, supervisor, [ns_vbm_sup]},
 
-     {ns_tick_event, {gen_event, start_link, [{local, ns_tick_event}]},
-      permanent, 10, worker, [gen_event]},
-
      {ns_tick, {ns_tick, start_link, []},
       permanent, 10, worker, [ns_tick]},
-
-     {ns_stats_event, {gen_event, start_link, [{local, ns_stats_event}]},
-      permanent, 10, worker, [gen_event]},
 
      {ns_bucket_sup, {ns_bucket_sup, start_link, []},
       permanent, infinity, supervisor, [ns_bucket_sup]},
 
-     {ns_heart, {ns_heart, start_link, []},
-      permanent, 10, worker,
-      [ns_heart]},
-
      {ns_doctor, {ns_doctor, start_link, []},
-      permanent, 10, worker, [ns_doctor]}
-    ].
+      permanent, 10, worker, [ns_doctor]}].
+
 
 %% beware that if it's called from one of restarted childs it won't
-%% work. This can be allowed with further work here. As of now it's not needed
+%% work. This can be allowed with further work here.
 pull_plug(Fun) ->
-    GoodChildren = [ns_config_sup, ns_port_sup, menelaus, ns_node_disco_sup,
-                    ns_tick, ns_tick_event, ns_stats_event, ns_log_events],
-    BadChildren = [Id || {Id,_,_,_,_,_} <- get_child_specs(),
-                         not lists:member(Id, GoodChildren)],
+    GoodChildren = [Id || {Id, _, _, _, _, _} <- good_children()],
+    BadChildren = [Id || {Id, _, _, _, _, _} <- bad_children()],
     error_logger:info_msg("~p plug pulled.  Killing ~p, keeping ~p~n",
                           [?MODULE, BadChildren, GoodChildren]),
     lists:foreach(fun(C) -> ok = supervisor:terminate_child(?MODULE, C) end,
-                  BadChildren),
+                  lists:reverse(BadChildren)),
+    %% Just wipe the current mnesia schema since renaming the node
+    %% borks Mnesia anyway. Nothing in GoodChildren is allowed to
+    %% depend on Mnesia.
+    ns_mnesia:delete_schema_and_stop(),
     Fun(),
+    ns_mnesia:start(),
     lists:foreach(fun(C) ->
                           R = supervisor:restart_child(?MODULE, C),
                           error_logger:info_msg("Restarting ~p: ~p~n", [C, R])
