@@ -679,10 +679,13 @@ function watchHashParamLinks(param, body) {
   param = '#' + param + '=';
   $('a').live('click', function (e) {
     var href = $(this).attr('href');
-    if (href == null || href.slice(0,param.length) != param)
+    if (href == null)
+      return;
+    var pos = href.indexOf(param)
+    if (pos < 0)
       return;
     e.preventDefault();
-    body.call(this, e, href.slice(param.length));
+    body.call(this, e, href.slice(pos + param.length));
   });
 }
 
