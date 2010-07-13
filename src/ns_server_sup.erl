@@ -94,8 +94,9 @@ get_child_specs() ->
 %% beware that if it's called from one of restarted childs it won't
 %% work. This can be allowed with further work here. As of now it's not needed
 pull_plug(Fun) ->
-    GoodChildren = [ns_config_sup, ns_port_sup, menelaus, ns_node_disco_sup],
-    BadChildren = [Id || {Id,_,_,_} <- supervisor:which_children(?MODULE),
+    GoodChildren = [ns_config_sup, ns_port_sup, menelaus, ns_node_disco_sup,
+                    ns_tick, ns_tick_event, ns_stats_event, ns_log_events],
+    BadChildren = [Id || {Id,_,_,_,_,_} <- get_child_specs(),
                          not lists:member(Id, GoodChildren)],
     error_logger:info_msg("~p plug pulled.  Killing ~p, keeping ~p~n",
                           [?MODULE, BadChildren, GoodChildren]),
