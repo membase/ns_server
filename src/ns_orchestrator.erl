@@ -20,6 +20,8 @@
 
 -behaviour(gen_server).
 
+-include("ns_common.hrl").
+
 %% Constants and definitions
 
 -record(state, {bucket, janitor, rebalancer, progress}).
@@ -70,7 +72,8 @@ rebalance_progress(Bucket) ->
     try gen_server:call(server(Bucket), rebalance_progress, 2000) of
         Result -> Result
     catch
-        exit:{timeout, _} ->
+        Err ->
+            ?log_error("Couldn't talk to orchestrator: ~p", [Err]),
             not_running
     end.
 
