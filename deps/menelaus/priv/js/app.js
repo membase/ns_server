@@ -754,6 +754,9 @@ var NodeDialog = {
     var parentName = '#' + pagePrefix + '_dialog';
 
     var form = $(parentName + ' form').unbind('submit');
+    _.defer(function () {
+      $(parentName).find('[name=password]')[0].focus();
+    });
     form.submit(function (e) {
       e.preventDefault();
 
