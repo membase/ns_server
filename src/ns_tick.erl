@@ -67,7 +67,7 @@ handle_cast(unhandled, unhandled) ->
 
 %% Called once per second on the node where the gen_server runs
 handle_info(tick, State) ->
-    Now = erlang:now(),
+    Now = misc:time_to_epoch_ms_int(now()),
     rpc:eval_everywhere(?MODULE, tick, [Now]),
     {noreply, State#state{time=Now}}.
 

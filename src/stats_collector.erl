@@ -51,9 +51,8 @@ handle_call(unhandled, unhandled, unhandled) ->
 handle_cast(unhandled, unhandled) ->
     unhandled.
 
-handle_info({tick, TSRaw}, #state{bucket=Bucket, counters=Counters} = State) ->
+handle_info({tick, TS}, #state{bucket=Bucket, counters=Counters} = State) ->
     misc:flush_head(tick),
-    TS = misc:time_to_epoch_ms_int(TSRaw),
     case ns_memcached:stats("default") of
         {ok, Stats} ->
             {Entry, NewCounters} = parse_stats(TS, Stats, Counters),
