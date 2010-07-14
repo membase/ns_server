@@ -780,6 +780,7 @@ var NodeDialog = {
       SettingsSection.processSave(this, function (dialog) {
         DAO.login = user;
         DAO.password = pw;
+        DAO.setAuthCookie(user, pw);
         showInitDialog('done');
 
         if (user != null && user != "") {
