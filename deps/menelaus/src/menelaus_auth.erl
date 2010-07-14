@@ -19,6 +19,7 @@
 -author('Northscale <info@northscale.com>').
 
 -export([apply_auth/3,
+         apply_auth_cookie/3,
          require_auth/1,
          filter_accessible_buckets/2,
          is_bucket_accessible/2,
@@ -68,10 +69,29 @@ is_bucket_accessible(_Bucket, _Req) ->
 
 apply_auth(Req, F, Args) ->
     UserPassword = extract_auth(Req),
+    apply_auth_with_auth_data(Req, F, Args, UserPassword).
+
+apply_auth_with_auth_data(Req, F, Args, UserPassword) ->
     case check_auth(UserPassword) of
         true -> apply(F, Args ++ [Req]);
         _ -> require_auth(Req)
-    end.
+    end.    
+
+apply_auth_cookie(Req, F, Args) ->
+    UserPassword = case extract_auth(Req) of
+                       undefined ->
+                           case Req:get_header_value("Cookie") of
+                               undefined -> undefined;
+                               RawCookies ->
+                                   ParsedCookies = mochiweb_cookies:parse_cookie(RawCookies),
+                                   case proplists:get_value("auth", ParsedCookies) of
+                                       undefined -> undefined;
+                                       V -> parse_user_password(base64:decode_to_string(mochiweb_util:unquote(V)))
+                                   end
+                           end;
+                       X -> X
+                   end,
+    apply_auth_with_auth_data(Req, F, Args, UserPassword).
 
 apply_auth_bucket(Req, F, Args) ->
     UserPassword = extract_auth(Req),

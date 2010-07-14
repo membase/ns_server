@@ -144,7 +144,7 @@ loop(Req, AppRoot, DocRoot) ->
                              ["nodes", NodeId] ->
                                  {auth, fun handle_node/2, [NodeId]};
                              ["diag"] ->
-                                 {auth, fun diag_handler:handle_diag/1};
+                                 {auth_cookie, fun diag_handler:handle_diag/1};
                              ["pools", PoolId, "rebalanceProgress"] ->
                                  {auth, fun handle_rebalance_progress/2, [PoolId]};
                              ["t", "index.html"] ->
@@ -158,11 +158,11 @@ loop(Req, AppRoot, DocRoot) ->
                                  DocFile = string:sub_string(Path, 6),
                                  {done, Req:serve_file(DocFile, DocRoot)};
                              ["dot", Bucket] ->
-                                 {auth, fun handle_dot/2, [Bucket]};
+                                 {auth_cookie, fun handle_dot/2, [Bucket]};
                              ["dotsvg", Bucket] ->
-                                 {auth, fun handle_dotsvg/2, [Bucket]};
+                                 {auth_cookie, fun handle_dotsvg/2, [Bucket]};
                              ["sasl_logs"] ->
-                                 {auth, fun handle_sasl_logs/1};
+                                 {auth_cookie, fun handle_sasl_logs/1};
                              ["erlwsh" | _] ->
                                  {done, erlwsh_web:loop(Req, erlwsh_deps:local_path(["priv", "www"]))};
                              _ ->
@@ -249,7 +249,9 @@ loop(Req, AppRoot, DocRoot) ->
                  end,
         case Action of
             {done, RV} -> RV;
+            {auth_cookie, F} -> menelaus_auth:apply_auth_cookie(Req, F, []);
             {auth, F} -> menelaus_auth:apply_auth(Req, F, []);
+            {auth_cookie, F, Args} -> menelaus_auth:apply_auth_cookie(Req, F, Args);
             {auth, F, Args} -> menelaus_auth:apply_auth(Req, F, Args);
             {auth_bucket_with_info, F, [ArgPoolId, ArgBucketId | RestArgs]} ->
                 checking_bucket_access(ArgPoolId, ArgBucketId, Req,
