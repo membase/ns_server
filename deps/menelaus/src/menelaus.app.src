@@ -6,13 +6,11 @@
     menelaus_app,
     menelaus_sup,
     menelaus_web,
-    menelaus_deps,
-    simple_cache
+    menelaus_deps
   ]},
   {registered, [
     menelaus_sup,
-    menelaus_web,
-    simple_cache
+    menelaus_web
   ]},
   {mod, {menelaus_app, []}},
   {env, []},

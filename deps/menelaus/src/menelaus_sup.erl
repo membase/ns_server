@@ -61,10 +61,6 @@ init([]) ->
                 {menelaus_event, start_link, []},
                 transient, 5000, worker, dynamic},
 
-    SimpleCache = {simple_cache,
-                   {simple_cache, start_link, []},
-                   permanent, 5000, worker, dynamic},
-
-    Processes = [Web, WebEvent, SimpleCache],
+    Processes = [Web, WebEvent],
     {ok, {{one_for_one, 10, 10}, Processes}}.
 

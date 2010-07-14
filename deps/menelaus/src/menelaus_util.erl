@@ -21,8 +21,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -ifdef(EUNIT).
--export([test_under_debugger/0, debugger_apply/2,
-         wrap_tests_with_cache_setup/1]).
+-export([test_under_debugger/0, debugger_apply/2]).
 -endif.
 
 -export([server_header/0,
@@ -48,10 +47,7 @@
 
 -export([stateful_map/3,
          stateful_takewhile/3,
-         low_pass_filter/2,
-         caching_result/2]).
-
--import(simple_cache, [call_simple_cache/2]).
+         low_pass_filter/2]).
 
 %% External API
 
@@ -149,16 +145,6 @@ low_pass_filter(Alpha, List) ->
         [H|Tail] -> [H | stateful_map(F, H, Tail)]
     end.
 
-caching_result(Key, Computation) ->
-    case call_simple_cache(lookup, [Key]) of
-        [] -> begin
-                  V = Computation(),
-                  call_simple_cache(insert, [{Key, V}]),
-                  V
-              end;
-        [{_, V}] -> V
-    end.
-
 -ifdef(EUNIT).
 
 string_hash_test_() ->
@@ -166,16 +152,6 @@ string_hash_test_() ->
      ?_assert(string_hash("hello1") /= string_hash("hi")),
      ?_assert(string_hash("hi") == ($h*31+$i))
     ].
-
-wrap_tests_with_cache_setup(Tests) ->
-    {spawn, {setup,
-             fun () ->
-                     simple_cache:start_link()
-             end,
-             fun (_) ->
-                     exit(whereis(simple_cache), die)
-             end,
-             Tests}}.
 
 debugger_apply(Fun, Args) ->
     i:im(),
