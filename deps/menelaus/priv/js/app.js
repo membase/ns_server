@@ -431,7 +431,6 @@ $(function () {
 
   var spinner = overlayWithSpinner('#login_form', false);
   try {
-    var noAuthStatus = DAO.tryNoAuthLogin();
     if (DAO.tryNoAuthLogin()) {
       hideAuthForm();
     }
