@@ -430,7 +430,8 @@ aggregate_stat_entries([Entry | Rest]) ->
 aggregate_stat_entries_rec([], Acc) ->
     list_to_tuple(Acc);
 aggregate_stat_entries_rec([Entry | Rest], Acc) ->
-    [{stat_entry, stat_entry} | Meat] = lists:zip(tuple_to_list(Entry), Acc),
+    [{stat_entry, stat_entry}, {TStamp1, TStamp2} | Meat] = lists:zip(tuple_to_list(Entry), Acc),
+    TStamp1 = TStamp2,
     NewAcc = lists:map(fun ({X,Y}) ->
                                case X of
                                    undefined -> 0;
@@ -440,7 +441,7 @@ aggregate_stat_entries_rec([Entry | Rest], Acc) ->
                                          _ -> Y
                                      end
                        end, Meat),
-    aggregate_stat_entries_rec(Rest, [stat_entry | NewAcc]).
+    aggregate_stat_entries_rec(Rest, [stat_entry, TStamp1 | NewAcc]).
 
 -ifdef(EUNIT).
 
