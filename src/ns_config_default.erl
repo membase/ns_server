@@ -137,16 +137,14 @@ default() ->
     {isasl, [{path, "./priv/isasl.pw"}]}, % Relative to startup directory.
 
     % Memcached config
-    {memcached, [{port, 11210},
-                 {ht_size, 12289},
-                 {ht_locks, 23},
-                 {dbname, DbName},
-                 {admin_user, "_admin"},
-                 {admin_pass, "_admin"},
-                 {max_size, undefined},
-                 {verbosity, ""}
-                ]
-    },
+    {{node, node(), memcached}, [{port, 11210},
+                                 {ht_size, 12289},
+                                 {ht_locks, 23},
+                                 {dbname, DbName},
+                                 {admin_user, "_admin"},
+                                 {admin_pass, "_admin"},
+                                 {max_size, undefined},
+                                 {verbosity, ""}]},
 
     {buckets, [{configs, [{"default",
                            [{num_vbuckets, 256},
@@ -195,7 +193,7 @@ default() ->
       }]
     },
 
-    {ns_log, [{filename, filename:join(DataDir, "logs.bin")}]},
+    {{node, node(), ns_log}, [{filename, filename:join(DataDir, "logs.bin")}]},
 
     % Modifiers: menelaus
     % Listeners: ? possibly ns_log
