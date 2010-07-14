@@ -17,6 +17,7 @@ var SamplesRestorer = mkClass({
   transformData: function (value) {
     var op = value.op;
     var samples = op.samples;
+    this.samplesInterval = op.interval;
     this.prevTimestamp = op.lastTStamp;
 
     if (!op.tstampParam) {
@@ -37,12 +38,11 @@ var SamplesRestorer = mkClass({
   },
   nextSampleTime: function () {
     var now = (new Date()).valueOf();
-    return now;
-    // if (this.samplesInterval === undefined)
-    //   return now;
-    // var samplesInterval = this.samplesInterval;
-    // var at = this.birthTime + Math.ceil((now - this.birthTime)/samplesInterval)*samplesInterval;
-    // return at - 1.0;
+    if (this.samplesInterval === undefined)
+      return now;
+    if (this.samplesInterval < 2000)
+      return now;
+    return now + Math.min(this.samplesInterval/2, 60000);
   }
 });
 
@@ -295,7 +295,8 @@ var StatGraphs = {
     var selected = self.selected.value;
     if (stats[selected]) {
       renderLargeGraph(main, stats[selected]);
-      $('.stats_visible_period').text(Math.ceil(stats[selected].length * op.interval / 1000));
+      var visibleSeconds = Math.ceil(stats[selected].length * op.interval / 1000);
+      $('.stats_visible_period').text(formatUptime(visibleSeconds));
     }
 
 
@@ -438,6 +439,22 @@ var AnalyticsSection = {
     $('#top_keys_container table tr:has(td):odd').addClass('even');
   },
   init: function () {
+    DAO.cells.zoomLevel = new LinkSwitchCell('zoom', {
+      firstItemIsDefault: true
+    });
+
+    _.each('minute hour day week month year'.split(' '), function (name) {
+      DAO.cells.zoomLevel.addItem('zoom_' + name, name)
+    });
+
+    DAO.cells.zoomLevel.finalizeBuilding();
+
+    DAO.cells.zoomLevel.subscribeValue(function (zoomLevel) {
+      DAO.cells.statsOptions.update({
+        zoom: zoomLevel
+      });
+    });
+
     DAO.cells.stats.subscribe($m(this, 'onKeyStats'));
     prepareTemplateForCell('top_keys', DAO.cells.currentStatTargetCell);
 

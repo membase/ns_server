@@ -145,6 +145,15 @@ grab_op_stats(Bucket, Params) ->
                                 _:_ -> undefined
                             end
                    end,
+    {Step, Period} = case proplists:get_value("zoom", Params) of
+                         "minute" -> {1, minute};
+                         "hour" -> {60, hour};
+                         "day" -> {1440, day};
+                         "week" -> {11520, week};
+                         "month" -> {44640, month};
+                         "year" -> {527040, year};
+                         undefined -> {1, minute}
+                     end,
     Self = self(),
     Ref = make_ref(),
     Subscription = ns_pubsub:subscribe(ns_stats_event, fun (_, done) -> done;
@@ -153,18 +162,32 @@ grab_op_stats(Bucket, Params) ->
                                                                done;
                                                            (_, X) -> X
                                                        end, []),
-    try grab_op_stats_body(Bucket, ClientTStamp, Ref) of
+    %% don't wait next sample for anything other than real-time stats
+    RefToPass = case Period of
+                    minute -> Ref;
+                    _ -> []
+                end,
+    try grab_op_stats_body(Bucket, ClientTStamp, RefToPass, Step, Period) of
         V -> case V =/= [] andalso (hd(V))#stat_entry.timestamp of
-                 ClientTStamp -> {V, ClientTStamp};
-                 _ -> {V, undefined}
+                 ClientTStamp -> {V, ClientTStamp, Step, 60};
+                 _ -> {V, undefined, Step, 60}
              end
     after
         misc:flush(Ref),
         ns_pubsub:unsubscribe(ns_stats_event, Subscription)
     end.
 
-grab_op_stats_body(Bucket, ClientTStamp, Ref) ->
-    RV = stats_archiver:latest(minute, node(), "default", 60),
+invoke_archiver(Bucket, NodeS, Step, Period) ->
+    case Step of
+        1 ->
+            Period = minute,
+            stats_archiver:latest(minute, NodeS, Bucket, 60);
+        _ ->
+            stats_archiver:latest(Period, NodeS, Bucket, Step, 60)
+    end.
+
+grab_op_stats_body(Bucket, ClientTStamp, Ref, Step, Period) ->
+    RV = invoke_archiver(Bucket, node(), Step, Period),
     case RV of
         [] -> [];
         [_] -> [];
@@ -175,12 +198,12 @@ grab_op_stats_body(Bucket, ClientTStamp, Ref) ->
             LastTStamp = (hd(Samples))#stat_entry.timestamp,
             case LastTStamp of
                 %% wait if we don't yet have fresh sample
-                ClientTStamp ->
+                ClientTStamp when Ref =/= [] ->
                     receive
                         Ref ->
-                            grab_op_stats_body(Bucket, ClientTStamp, Ref)
+                            grab_op_stats_body(Bucket, ClientTStamp, [], Step, Period)
                     after 2000 ->
-                            grab_op_stats_body(Bucket, undefined, Ref)
+                            grab_op_stats_body(Bucket, undefined, [], Step, Period)
                     end;
                 _ ->
                     %% cut samples up-to and including ClientTStamp
@@ -191,7 +214,7 @@ grab_op_stats_body(Bucket, ClientTStamp, Ref) ->
                                       [] -> Samples;
                                       _ -> lists:reverse(CutSamples)
                                   end,
-                    Replies = stats_archiver:latest_all(minute, "default", 60),
+                    Replies = invoke_archiver(Bucket, ns_node_disco:nodes_wanted(), Step, Period),
                     %% merge samples from other nodes
                     MergedSamples = lists:foldl(fun ({Node, _}, AccSamples) when Node =:= node() -> AccSamples;
                                                     ({_Node, RemoteSamples}, AccSamples) ->
@@ -222,7 +245,7 @@ add_stat_sums(Samples) ->
      | Samples].
 
 build_buckets_stats_ops_response(_PoolId, ["default"], Params) ->
-    {Samples0, ClientTStamp} = grab_op_stats("default", Params),
+    {Samples0, ClientTStamp, Step, TotalNumber} = grab_op_stats("default", Params),
     StatsList = tuple_to_list({timestamp, ?STAT_GAUGES, ?STAT_COUNTERS}),
     EmptyLists = [[] || _ <- StatsList],
     Samples = case Samples0 of
@@ -236,11 +259,12 @@ build_buckets_stats_ops_response(_PoolId, ["default"], Params) ->
     PropList1 = [{K, lists:reverse(V)} || {K,V} <- PropList0],
     PropList2 = add_stat_sums(PropList1),
     OpPropList0 = [{samples, {struct, PropList2}},
+                   {samplesCount, TotalNumber},
                    {lastTStamp, case proplists:get_value(timestamp, PropList2) of
                                     [] -> 0;
                                     L -> lists:last(L)
                                 end},
-                   {interval, 1000}],
+                   {interval, Step * 1000}],
     OpPropList = case ClientTStamp of
                      undefined -> OpPropList0;
                      _ -> [{tstampParam, ClientTStamp}

@@ -319,19 +319,27 @@ var MockedRequest = mkClass({
   },
   handleStats: function () {
     var params = this.options['data'];
-    var opsPerSecondZoom = params['opsPerSecondZoom'] || "now";
+    var zoom = params['zoom'] || 'minute'
     var samplesSelection = [[3,14,23,52,45,25,23,22,50,67,59,55,54,41,36,35,26,61,72,49,60,52,45,25,23,22,50,67,59,55,14,23,52,45,25,23,22,50,67,59,55,54,41,36,35,26,61,72,49,60,52,45,25,23,22,50,67,59,55],
                             [23,14,45,64,41,45,43,25,14,11,18,36,64,76,86,86,79,78,55,59,49,52,45,25,23,22,50,67,59,55,14,45,64,41,45,43,25,14,11,18,36,64,76,86,86,79,78,55,59,49,52,45,25,23,22,50,67,59,55],
                             [42,65,42,63,81,87,74,84,56,44,71,64,49,48,55,46,37,46,64,33,18,52,45,25,23,22,50,67,59,55,65,42,63,81,87,74,84,56,44,71,64,49,48,55,46,37,46,64,33,18,52,45,25,23,22,50,67,59,55],
                             [61,65,64,75,77,57,68,76,64,61,66,63,68,37,32,60,72,54,43,41,55,52,45,25,23,22,50,67,59,55,65,64,75,77,57,68,76,64,61,66,63,68,37,32,60,72,54,43,41,55,52,45,25,23,22,50,67,59,55]];
     var samples = {};
     for (var idx in StatGraphs.recognizedStats) {
-      var data = samplesSelection[idx%4];
+      var data = samplesSelection[(idx + zoom.charCodeAt(0))%4];
       samples[StatGraphs.recognizedStats[idx]] = _.map(data, function (i) {return i*10E9});
     }
     var samplesSize = samplesSelection[0].length;
 
     var samplesInterval = 1000;
+
+    switch (zoom) {
+    case 'hour':
+      samplesInterval = 60000;
+      break;
+    case 'day':
+      samplesInterval = 1440000;
+    }
 
     var now = (new Date()).valueOf();
     var base = (new Date(2010, 1, 1)).valueOf();
@@ -390,8 +398,9 @@ var MockedRequest = mkClass({
                         bucket: "Excerciser application"}],
             op: {
               lastTStamp: samples.timestamp.slice(-1)[0],
-              tstampParam: (lastSampleT != null) ? lastSampleT : null,
+              tstampParam: lastSampleT,
               interval: samplesInterval,
+              samplesCount: 60,
               samples: samples
             }};
   },
