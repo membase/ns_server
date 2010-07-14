@@ -28,7 +28,7 @@
 -define(INIT_TIMEOUT, 5000).
 -define(TRUNC_FREQ, 10).
 
--record(state, {bucket, samples_since_truncate = 1}).
+-record(state, {bucket}).
 
 -export([start_link/1,
          latest/3, latest/4,
@@ -49,7 +49,7 @@ start_link(Bucket) ->
 
 %% @doc Get the latest samples for a given interval from the archive
 latest(Period, Node, Bucket) when is_atom(Node) ->
-    [{Node, [Result]}] = latest(Period, [Node], Bucket),
+    [{Node, Result}] = latest(Period, [Node], Bucket),
     Result;
 latest(Period, Nodes, Bucket) when is_list(Nodes), is_list(Bucket) ->
     misc:pmap(fun (Node) ->
@@ -57,7 +57,7 @@ latest(Period, Nodes, Bucket) when is_list(Nodes), is_list(Bucket) ->
                                fun () ->
                                        Tab = table_name(Node, Bucket, Period),
                                        Key = mnesia:last(Tab),
-                                       mnesia:read(Tab, Key)
+                                       hd(mnesia:read(Tab, Key))
                                end)}
               end, Nodes, length(Nodes)).
 
@@ -89,6 +89,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 init(Bucket) ->
     create_tables(Bucket),
+    start_timers(),
     ns_pubsub:subscribe(ns_stats_event),
     {ok, #state{bucket=Bucket}}.
 
@@ -105,8 +106,15 @@ handle_info({stats, Bucket, Sample}, State = #state{bucket=Bucket}) ->
     Tab = table_name(node(), Bucket, minute),
     {atomic, ok} = mnesia:transaction(fun () -> mnesia:write(Tab, Sample, write) end),
     gen_event:notify(ns_stats_event, {sample_archived, Bucket, Sample}),
-    {noreply, maybe_truncate(State)};
+    {noreply, State};
 handle_info({sample_archived, _, _}, State) ->
+    {noreply, State};
+handle_info({truncate, Period, N}, #state{bucket=Bucket} = State) ->
+    Tab = table_name(node(), Bucket, Period),
+    truncate(Tab, N),
+    {noreply, State};
+handle_info({cascade, Prev, Period, Step}, #state{bucket=Bucket} = State) ->
+    cascade(Bucket, Prev, Period, Step),
     {noreply, State}.
 
 
@@ -118,35 +126,62 @@ terminate(_Reason, _State) ->
 %% Internal functions
 %%
 
+%% {Period, Seconds, Samples}
 archives() ->
-    [{minute, 1, 60}, % in seconds
-     {hour, 10, 360}, % 10 second intervals
-     {day, 24, 360},  % 240 second intervals (4 minutes)
-     {week, 7, 360}   % 1680 second intervals (28 minutes)
-    ].
+    [{minute, 1, 60},
+     {hour, 4, 900},
+     {day, 60, 1440}, % 24 hours
+     {week, 600, 1152}, % eight days (computer weeks)
+     {month, 1800, 1488}, % 31 days
+     {year, 21600, 1464}]. % 366 days
 
 
 %% @doc Compute the average of a list of entries.
-%% Timestamp is taken from the first entry.
-avg(Samples) ->
+avg(TS, Samples) ->
     [First|Rest] = Samples,
-    {TS, FirstList} = stat_to_list(First),
+    {_, FirstList} = stat_to_list(First),
     Sums = lists:foldl(fun (E, Acc) ->
                                {_, L} = stat_to_list(E),
-                               lists:zipwith(fun (A, B) -> A + B end, L, Acc)
+                               lists:zipwith(   % I cleverly duplicate samples
+                                                % to avoid having to keep
+                                                % separate counts per field.
+                                 fun (undefined, undefined) ->
+                                         0;     % Zero is better than trying to
+                                                % do math with undefined. This
+                                                % should be rare anyway.
+                                     (undefined, B) ->
+                                         B;
+                                     (A, undefined) ->
+                                         A;
+                                     (A, B) ->
+                                         A + B
+                                 end, L, Acc)
                        end, FirstList, Rest),
     Count = length(Samples),
     Avgs = [X / Count || X <- Sums],
     list_to_stat(TS, Avgs).
 
 
+cascade(Bucket, Prev, Period, Step) ->
+    Node = node(),
+    PrevTab = table_name(Node, Bucket, Prev),
+    NextTab = table_name(Node, Bucket, Period),
+    {atomic, ok} = mnesia:transaction(
+                     fun () ->
+                             case last_chunk(PrevTab, Step) of
+                                 false -> ok;
+                                 Avg ->
+                                     mnesia:write(NextTab, Avg, write)
+                             end
+                     end).
+
+
 create_tables(Bucket) ->
     Node = node(),
-    ?log_info("Creating tables for bucket ~p if they don't already exist.",
-              [Bucket]),
     lists:foreach(
       fun ({Period, _, _}) ->
               TableName = table_name(Node, Bucket, Period),
+              ?log_info("Creating table ~p.", [TableName]),
               case mnesia:create_table(TableName,
                                        [{disc_copies, [Node]},
                                         {record_name, stat_entry},
@@ -154,12 +189,33 @@ create_tables(Bucket) ->
                                         {attributes,
                                          record_info(fields, stat_entry)}]) of
                   {atomic, ok} ->
-                      ?log_info("Created table for bucket ~p.", [Bucket]);
+                      ?log_info("Created table ~p.", [TableName]);
                   {aborted, {already_exists, _}} ->
-                      ?log_info("Table already existed for bucket ~p.",
+                      ?log_info("Table ~p already existed.",
                                 [Bucket])
               end
       end, archives()).
+
+
+last_chunk(Tab, Step) ->
+    case mnesia:last(Tab) of
+        '$end_of_table' ->
+            false;
+        TS ->
+            last_chunk(Tab, TS, Step, [])
+    end.
+
+
+last_chunk(Tab, TS, Step, Samples) ->
+    Samples1 = [hd(mnesia:read(Tab, TS))|Samples],
+    TS1 = mnesia:prev(Tab, TS),
+    T = trunc_ts(TS, Step),
+    case TS1 == '$end_of_table' orelse trunc_ts(TS1, Step) /= T of
+        false ->
+            last_chunk(Tab, TS1, Step, Samples1);
+        true ->
+            avg(T, Samples1)
+    end.
 
 
 %% @doc Convert a list of values from stat_to_list back to a stat entry.
@@ -167,12 +223,14 @@ list_to_stat(TS, List) ->
     list_to_tuple([stat_entry, TS | List]).
 
 
-%% @doc Truncate the table if necessary.
-maybe_truncate(#state{bucket=Bucket, samples_since_truncate=?TRUNC_FREQ} = State) ->
-    truncate(table_name(node(), Bucket, minute), 60),
-    State#state{samples_since_truncate=1};
-maybe_truncate(#state{samples_since_truncate=N} = State) when N < ?TRUNC_FREQ ->
-    State#state{samples_since_truncate=N+1}.
+%% @doc Truncate a timestamp to the nearest multiple of N seconds.
+trunc_ts(TS, N) ->
+    TS - (TS rem (N*1000)).
+
+
+%% @doc Generate a suitable name for the per-bucket gen_server.
+server(Bucket) ->
+    list_to_atom(?MODULE_STRING ++ "-" ++ Bucket).
 
 
 %% @doc Convert a stat entry to a list of values.
@@ -181,9 +239,25 @@ stat_to_list(Entry) ->
     {TS, L}.
 
 
-%% @doc Generate a suitable name for the per-bucket gen_server.
-server(Bucket) ->
-    list_to_atom(?MODULE_STRING ++ "-" ++ Bucket).
+%% @doc Start the timers to cascade samples to the next resolution.
+start_cascade_timers([{Prev, _, _} | [{Next, Step, _} | _] = Rest]) ->
+    timer:send_interval(200 * Step, {cascade, Prev, Next, Step}),
+    start_cascade_timers(Rest);
+start_cascade_timers([_]) ->
+    ok.
+
+
+%% @doc Start timers for various housekeeping tasks.
+start_timers() ->
+    Archives = archives(),
+    lists:foreach(
+      fun ({Period, Step, Samples}) ->
+              Interval = 100 * Step * Samples,  % Allow to go over by 10% of the
+                                                % total samples
+              timer:send_interval(Interval, {truncate, Period, Samples})
+      end, Archives),
+    start_cascade_timers(Archives).
+
 
 %% @doc Generate a suitable name for the Mnesia table.
 table_name(Node, Bucket, Period) ->
