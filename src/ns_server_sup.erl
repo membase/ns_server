@@ -112,12 +112,7 @@ pull_plug(Fun) ->
                           [?MODULE, BadChildren, GoodChildren]),
     lists:foreach(fun(C) -> ok = supervisor:terminate_child(?MODULE, C) end,
                   lists:reverse(BadChildren)),
-    %% Just wipe the current mnesia schema since renaming the node
-    %% borks Mnesia anyway. Nothing in GoodChildren is allowed to
-    %% depend on Mnesia.
-    ns_mnesia:delete_schema_and_stop(),
     Fun(),
-    ns_mnesia:start(),
     lists:foreach(fun(C) ->
                           R = supervisor:restart_child(?MODULE, C),
                           error_logger:info_msg("Restarting ~p: ~p~n", [C, R])

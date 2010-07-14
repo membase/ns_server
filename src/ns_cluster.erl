@@ -32,8 +32,7 @@
 -export([running/2, joining/2, leaving/2]).
 
 %% API
--export([add_node/1, join/2, leave/0, leave/1, shun/1, log_joined/0,
-        rename_node/2]).
+-export([add_node/1, join/2, leave/0, leave/1, shun/1, log_joined/0]).
 
 -export([alert_key/1]).
 
@@ -255,31 +254,34 @@ prepare_join_to(OtherHost) ->
     end.
 
 rename_node(Old, New) ->
-    ns_server_sup:pull_plug(
-      fun() ->
-              ns_config:update(fun ({K, V}) ->
-                                       NewK = misc:rewrite_value(Old, New, K),
-                                       NewV = misc:rewrite_value(Old, New, V),
-                                       error_logger:info_msg(
-                                         "renaming node conf ~p -> ~p:~n  ~p ->~n  ~p~n",
-                                         [K, NewK, V, NewV]),
-                                       {NewK, NewV}
-                               end, erlang:make_ref())
-      end).
+    ns_config:update(fun ({K, V}) ->
+                             NewK = misc:rewrite_value(Old, New, K),
+                             NewV = misc:rewrite_value(Old, New, V),
+                             error_logger:info_msg(
+                               "renaming node conf ~p -> ~p:~n  ~p ->~n  ~p~n",
+                               [K, NewK, V, NewV]),
+                             {NewK, NewV}
+                     end, erlang:make_ref()).
 
 change_my_address(MyAddr) ->
     MyNode = node(),
     CookieBefore = erlang:get_cookie(),
-    case dist_manager:adjust_my_address(MyAddr) of
-        nothing -> ok;
-        net_restarted ->
-            case erlang:get_cookie() of
-                CookieBefore ->
-                    ok;
-                CookieAfter ->
-                    error_logger:error_msg("critical: Cookie has changed from ~p to ~p~n", [CookieBefore, CookieAfter]),
-                    exit(bad_cookie)
-            end,
-            ns_cluster:rename_node(MyNode, node()),
-            ok
-    end.
+    ns_server_sup:pull_plug(
+      fun() ->
+              ns_mnesia:prepare_rename(),
+              case dist_manager:adjust_my_address(MyAddr) of
+                  nothing ->
+                      ns_mnesia:backout_rename();
+                  net_restarted ->
+                      case erlang:get_cookie() of
+                          CookieBefore ->
+                              ok;
+                          CookieAfter ->
+                              error_logger:error_msg("critical: Cookie has changed from ~p to ~p~n", [CookieBefore, CookieAfter]),
+                              exit(bad_cookie)
+                      end,
+                      ns_mnesia:rename_node(MyNode, node()),
+                      rename_node(MyNode, node()),
+                      ok
+              end
+      end).
