@@ -31,7 +31,7 @@
 -record(state, {bucket}).
 
 -export([start_link/1,
-         latest/3, latest/4,
+         latest/3, latest/4, latest/5,
          latest_all/2, latest_all/3]).
 
 -export([code_change/3, init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -49,26 +49,33 @@ start_link(Bucket) ->
 
 %% @doc Get the latest samples for a given interval from the archive
 latest(Period, Node, Bucket) when is_atom(Node) ->
-    [{Node, Result}] = latest(Period, [Node], Bucket),
+    {atomic, Result} = mnesia:transaction(
+                         fun () ->
+                                 Tab = table(Node, Bucket, Period),
+                                 Key = mnesia:last(Tab),
+                                 hd(mnesia:read(Tab, Key))
+                         end),
     Result;
 latest(Period, Nodes, Bucket) when is_list(Nodes), is_list(Bucket) ->
     misc:pmap(fun (Node) ->
-                      {Node, mnesia:transaction(
-                               fun () ->
-                                       Tab = table_name(Node, Bucket, Period),
-                                       Key = mnesia:last(Tab),
-                                       hd(mnesia:read(Tab, Key))
-                               end)}
+                      {Node, latest(Period, Node, Bucket)}
               end, Nodes, length(Nodes)).
 
 
 latest(Period, Node, Bucket, N) when is_atom(Node), is_list(Bucket) ->
-    [{Node, Results}] = latest(Period, [Node], Bucket, N),
-    Results;
+    walk(table(Node, Bucket, Period), N);
 latest(Period, Nodes, Bucket, N) when is_list(Nodes), is_list(Bucket) ->
     misc:pmap(fun (Node) ->
-                      {Node, walk(table_name(Node, Bucket, Period), N)}
+                      {Node, latest(Period, Node, Bucket, N)}
               end, Nodes, length(Nodes)).
+
+
+latest(Period, Nodes, Bucket, Step, N) when is_list(Nodes) ->
+    misc:pmap(fun (Node) ->
+                      {Node, latest(Period, Node, Bucket, Step, N)}
+              end, Nodes, length(Nodes));
+latest(Period, Node, Bucket, Step, N) when is_atom(Node) ->
+    resample(table(Node, Bucket, Period), Step, N).
 
 
 latest_all(Period, Bucket) ->
@@ -103,14 +110,14 @@ handle_cast(unhandled, unhandled) ->
 
 
 handle_info({stats, Bucket, Sample}, State = #state{bucket=Bucket}) ->
-    Tab = table_name(node(), Bucket, minute),
+    Tab = table(node(), Bucket, minute),
     {atomic, ok} = mnesia:transaction(fun () -> mnesia:write(Tab, Sample, write) end),
     gen_event:notify(ns_stats_event, {sample_archived, Bucket, Sample}),
     {noreply, State};
 handle_info({sample_archived, _, _}, State) ->
     {noreply, State};
 handle_info({truncate, Period, N}, #state{bucket=Bucket} = State) ->
-    Tab = table_name(node(), Bucket, Period),
+    Tab = table(node(), Bucket, Period),
     truncate(Tab, N),
     {noreply, State};
 handle_info({cascade, Prev, Period, Step}, #state{bucket=Bucket} = State) ->
@@ -142,20 +149,7 @@ avg(TS, Samples) ->
     {_, FirstList} = stat_to_list(First),
     Sums = lists:foldl(fun (E, Acc) ->
                                {_, L} = stat_to_list(E),
-                               lists:zipwith(   % I cleverly duplicate samples
-                                                % to avoid having to keep
-                                                % separate counts per field.
-                                 fun (undefined, undefined) ->
-                                         0;     % Zero is better than trying to
-                                                % do math with undefined. This
-                                                % should be rare anyway.
-                                     (undefined, B) ->
-                                         B;
-                                     (A, undefined) ->
-                                         A;
-                                     (A, B) ->
-                                         A + B
-                                 end, L, Acc)
+                               lists:zipwith(fun (A, B) -> A + B end, L, Acc)
                        end, FirstList, Rest),
     Count = length(Samples),
     Avgs = [X / Count || X <- Sums],
@@ -164,8 +158,8 @@ avg(TS, Samples) ->
 
 cascade(Bucket, Prev, Period, Step) ->
     Node = node(),
-    PrevTab = table_name(Node, Bucket, Prev),
-    NextTab = table_name(Node, Bucket, Period),
+    PrevTab = table(Node, Bucket, Prev),
+    NextTab = table(Node, Bucket, Period),
     {atomic, ok} = mnesia:transaction(
                      fun () ->
                              case last_chunk(PrevTab, Step) of
@@ -180,7 +174,7 @@ create_tables(Bucket) ->
     Node = node(),
     lists:foreach(
       fun ({Period, _, _}) ->
-              TableName = table_name(Node, Bucket, Period),
+              TableName = table(Node, Bucket, Period),
               ?log_info("Creating table ~p.", [TableName]),
               case mnesia:create_table(TableName,
                                        [{disc_copies, [Node]},
@@ -223,9 +217,33 @@ list_to_stat(TS, List) ->
     list_to_tuple([stat_entry, TS | List]).
 
 
-%% @doc Truncate a timestamp to the nearest multiple of N seconds.
-trunc_ts(TS, N) ->
-    TS - (TS rem (N*1000)).
+%% @doc Resample the stats in a table. Only reads the necessary number of rows.
+resample(Tab, Step, N) ->
+    {atomic, Result} = mnesia:transaction(
+                         fun () ->
+                                 TS = mnesia:last(Tab),
+                                 resample(Tab, Step, TS, trunc_ts(TS, Step), [],
+                                          [], N)
+                         end),
+    Result.
+
+
+resample(_, _, TS, _, Acc, [], N) when TS == '$end_of_table'; N == 0 ->
+    Acc;
+resample(_, _, _, _, Acc, _, 0)  ->
+    Acc;
+resample(_, _, '$end_of_table', T, Acc, Chunk, _) ->
+    [avg(T, Chunk)|Acc];
+resample(Tab, Step, TS, T, Acc, Chunk, N) ->
+    T1 = trunc_ts(TS, Step),
+    [Rec] = mnesia:read(Tab, TS),
+    Prev = mnesia:prev(Tab, TS),
+    case T of
+        T1 ->
+            resample(Tab, Step, Prev, T1, Acc, [Rec|Chunk], N);
+        _ ->
+            resample(Tab, Step, Prev, T1, [avg(T, Chunk)|Acc], [], N-1)
+    end.
 
 
 %% @doc Generate a suitable name for the per-bucket gen_server.
@@ -260,10 +278,15 @@ start_timers() ->
 
 
 %% @doc Generate a suitable name for the Mnesia table.
-table_name(Node, Bucket, Period) ->
+table(Node, Bucket, Period) ->
     list_to_atom(lists:flatten(io_lib:format("~s-~s-~s-~s",
                                              [?MODULE_STRING,
                                               Node, Bucket, Period]))).
+
+
+%% @doc Truncate a timestamp to the nearest multiple of N seconds.
+trunc_ts(TS, N) ->
+    TS - (TS rem (N*1000)).
 
 
 %% @doc Truncate the given table to the last N records.
