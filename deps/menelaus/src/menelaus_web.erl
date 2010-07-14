@@ -164,7 +164,7 @@ loop(Req, AppRoot, DocRoot) ->
                              ["sasl_logs"] ->
                                  {auth_cookie, fun diag_handler:handle_sasl_logs/1};
                              ["erlwsh" | _] ->
-                                 {done, erlwsh_web:loop(Req, erlwsh_deps:local_path(["priv", "www"]))};
+                                 {auth_cookie, fun (R) -> erlwsh_web:loop(R, erlwsh_deps:local_path(["priv", "www"])) end};
                              _ ->
                                  {done, Req:serve_file(Path, AppRoot)}%% , [{"Pragma", "no-cache"},
                                                                       %%  {"Cache-Control", "no-cache must-revalidate"}])}
