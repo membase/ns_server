@@ -56,7 +56,12 @@ handle_info({tick, TS}, #state{bucket=Bucket, counters=Counters} = State) ->
     case ns_memcached:stats("default") of
         {ok, Stats} ->
             {Entry, NewCounters} = parse_stats(TS, Stats, Counters),
-            gen_event:notify(ns_stats_event, {stats, Bucket, Entry}),
+            case Counters of % Don't send event with undefined values
+                undefined ->
+                    ok;
+                _ ->
+                    gen_event:notify(ns_stats_event, {stats, Bucket, Entry})
+            end,
             {noreply, State#state{counters=NewCounters}};
         _ ->
             {noreply, State}
