@@ -191,7 +191,7 @@ grab_op_stats_body(Bucket, ClientTStamp, Ref) ->
                                       [] -> Samples;
                                       _ -> lists:reverse(CutSamples)
                                   end,
-                    {Replies, _} = stats_archiver:latest_all(minute, "default", 60),
+                    Replies = stats_archiver:latest_all(minute, "default", 60),
                     %% merge samples from other nodes
                     MergedSamples = lists:foldl(fun ({Node, _}, AccSamples) when Node =:= node() -> AccSamples;
                                                     ({_Node, RemoteSamples}, AccSamples) ->
