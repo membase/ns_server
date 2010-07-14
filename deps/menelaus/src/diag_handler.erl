@@ -17,7 +17,7 @@
 -module(diag_handler).
 -author('NorthScale <info@northscale.com>').
 
--export([do_diag_per_node/0, handle_diag/1]).
+-export([do_diag_per_node/0, handle_diag/1, handle_sasl_logs/1]).
 
 
 %% I'm trying to avoid consing here, but, probably, too much
@@ -132,6 +132,9 @@ handle_diag(Req) ->
                    menelaus_util:server_header(),
                    chunked}),
     Resp:write_chunk(list_to_binary(Text)),
+    handle_logs(Resp).
+
+handle_logs(Resp) ->
     TempFile = get_logs(),
     {ok, IO} = file:open(TempFile, [raw, binary]),
     stream_logs(Resp, IO),
@@ -147,3 +150,11 @@ stream_logs(Resp, IO) ->
             Resp:write_chunk(Data),
             stream_logs(Resp, IO)
     end.
+
+handle_sasl_logs(Req) ->
+    Resp = Req:ok({"text/plain; charset=utf-8",
+            menelaus_util:server_header(),
+            chunked}),
+    handle_logs(Resp).
+    
+

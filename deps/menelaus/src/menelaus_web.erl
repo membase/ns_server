@@ -162,7 +162,7 @@ loop(Req, AppRoot, DocRoot) ->
                              ["dotsvg", Bucket] ->
                                  {auth_cookie, fun handle_dotsvg/2, [Bucket]};
                              ["sasl_logs"] ->
-                                 {auth_cookie, fun handle_sasl_logs/1};
+                                 {auth_cookie, fun diag_handler:handle_sasl_logs/1};
                              ["erlwsh" | _] ->
                                  {done, erlwsh_web:loop(Req, erlwsh_deps:local_path(["priv", "www"]))};
                              _ ->
@@ -1081,12 +1081,6 @@ handle_dotsvg(Bucket, Req) ->
     Dot = ns_janitor:graphviz(Bucket),
     Req:ok({"image/svg+xml", [{"refresh", 1}  | server_header()],
            iolist_to_binary(menelaus_util:insecure_pipe_through_command("dot -Tsvg", Dot))}).
-
-handle_sasl_logs(Req) ->
-    Logs = ns_log_browser:get_logs(all, 200, []),
-    Req:ok({"text/plain; charset=utf-8",
-            server_header(),
-            Logs}).
 
 ymd_to_string({Y, M, D}) ->
     integer_to_list(Y) ++ "/" ++
