@@ -169,6 +169,7 @@ default() ->
        ["-Z", {"port_listen=~B,downstream_max=1", [port]},
         "-z", {"auth=,url=http://127.0.0.1:~B/pools/default/bucketsStreamingConfig/default,#@", [{rest, port}]},
         "-p", "0",
+        "-Y", "y",
         {"~s", [verbosity]}
        ],
        [{env, []},
