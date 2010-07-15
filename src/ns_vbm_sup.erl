@@ -167,13 +167,14 @@ init([]) ->
 %% Internal functions
 args(Node, Bucket, VBuckets, DstNode, TakeOver) ->
     "default" = Bucket, % vbucketmigrator doesn't support multi-tenancy yet
-    Command = "./bin/vbucketmigrator/vbucketmigrator",
+    Command = "./bin/port_adaptor/port_adaptor",
     BucketArgs = lists:append([["-b", integer_to_list(B)] || B <- VBuckets]),
     TakeOverArg = case TakeOver of
                       true -> ["-t"];
                       false -> []
                   end,
-    OtherArgs = ["-h", ns_memcached:host_port_str(Node),
+    OtherArgs = ["1", "./bin/vbucketmigrator/vbucketmigrator",
+                 "-h", ns_memcached:host_port_str(Node),
                  "-d", ns_memcached:host_port_str(DstNode),
                  "-v"],
     Args = lists:append([OtherArgs, TakeOverArg, BucketArgs]),
