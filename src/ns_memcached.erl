@@ -29,6 +29,8 @@
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
+-include("ns_common.hrl").
+
 -record(state, {sock}).
 
 %% external API
@@ -75,48 +77,38 @@ handle_call({delete_bucket, _Bucket}, _From, State) ->
     Reply = unimplemented,
     {reply, Reply, State};
 handle_call({delete_vbucket, Bucket, VBucket}, _From, State) ->
-    Sock = connect(State),
-    Reply = do_in_bucket(Sock, Bucket,
-                        fun() ->
-                                mc_client_binary:delete_vbucket(
-                                  Sock, VBucket)
-                        end),
-    {reply, Reply, State#state{sock=Sock}};
+    do_in_bucket(State, Bucket,
+                 fun(Sock) ->
+                         mc_client_binary:delete_vbucket(
+                           Sock, VBucket)
+                 end);
 handle_call(list_buckets, _From, State) ->
     Reply = {ok, ["default"]},
     {reply, Reply, State};
 handle_call({set_vbucket_state, Bucket, VBucket, VBState}, _From, State) ->
-    Sock = connect(State),
-    Reply = do_in_bucket(Sock, Bucket,
-                         fun() ->
-                                 mc_client_binary:set_vbucket_state(
-                                   Sock, VBucket,
-                                   atom_to_list(VBState))
-                         end),
-    {reply, Reply, State#state{sock=Sock}};
+    do_in_bucket(State, Bucket,
+                 fun(Sock) ->
+                         mc_client_binary:set_vbucket_state(
+                           Sock, VBucket,
+                           atom_to_list(VBState))
+                 end);
 handle_call({stats, Bucket, Key}, _From, State) ->
-    Sock = connect(State),
-    Reply = do_in_bucket(Sock, Bucket,
-                         fun () ->
-                                 mc_client_binary:stats(Sock, Key)
-                         end),
-    {reply, Reply, State#state{sock=Sock}};
-handle_call(Request, From, State) ->
-    error_logger:error_msg("~p:handle_call(~p, ~p, ~p)~n",
-                           [?MODULE, Request, From, State]),
-    {reply, {unhandled, ?MODULE, Request}, State}.
+    do_in_bucket(State, Bucket,
+                 fun (Sock) ->
+                         mc_client_binary:stats(Sock, Key)
+                 end).
 
-handle_cast(Msg, State) ->
-    error_logger:error_msg("~p:handle_cast(~p, ~p)~n",
-                           [?MODULE, Msg, State]),
-    {noreply, State}.
+handle_cast(undefined, undefined) ->
+    undefined.
 
 handle_info(connect, State) ->
-    {noreply, State#state{sock=connect(State)}};
-handle_info(Msg, State) ->
-    error_logger:error_msg("~p:handle_info(~p, ~p)~n",
-                           [?MODULE, Msg, State]),
-    {noreply, State}.
+    case connect(State) of
+        {ok, Sock} ->
+            {noreply, State#state{sock=Sock}};
+        _ ->
+            timer:send_after(500, connect),
+            {noreply, State}
+    end.
 
 terminate(Reason, State) ->
     error_logger:error_msg("~p:terminate(~p, ~p)~n",
@@ -132,13 +124,19 @@ code_change(_OldVsn, State, _Extra) ->
 connect(State) ->
     case State#state.sock of
         undefined ->
-            Config = ns_config:get(),
-            Port = ns_config:search_node_prop(Config, memcached, port),
-            error_logger:info_msg("ns_memcached connecting to memcached on port ~p~n", [Port]),
-            {ok, Sock} = gen_tcp:connect("127.0.0.1", Port, [binary, {packet, 0}, {active, false}], 5000),
-            Sock;
+            try
+                Config = ns_config:get(),
+                Port = ns_config:search_node_prop(Config, memcached, port),
+                gen_tcp:connect("127.0.0.1", Port, [binary, {packet, 0},
+                                                    {active, false}], 5000)
+            catch
+                E ->
+                    %% Retry after 500ms
+                    timer:send_after(500, connect),
+                    E
+            end;
         Sock ->
-            Sock
+            {ok, Sock}
     end.
 
 connected() ->
@@ -230,20 +228,21 @@ topkeys(Node, Bucket) ->
 call(Node, Call) ->
     gen_server:call({?MODULE, Node}, Call).
 
-do_in_bucket(_Sock, Bucket, Fun) ->
-    %% TODO: real multi-tenancy
-    case Bucket of
-        "default" ->
-            Fun();
-        _ ->
-            {memcached_error, {mc_status_key_enoent, []}}
+do_in_bucket(State, Bucket, Fun) ->
+    case connect(State) of
+        {ok, Sock} ->
+            State1 = State#state{sock=Sock},
+            %% TODO: real multi-tenancy
+            case Bucket of
+                "default" ->
+                    {reply, catch Fun(Sock), State1};
+                _ ->
+                    {reply, {memcached_error, {mc_status_key_enoent, []}},
+                     State1}
+            end;
+        E ->
+            {reply, {could_not_connect, E}, State}
     end.
-    %% case mc_client_binary:select_bucket(Sock, Bucket) of
-    %%     ok ->
-    %%         Fun();
-    %%     R ->
-    %%         R
-    %% end.
 
 map_vbucket_state("active") -> active;
 map_vbucket_state("replica") -> replica;
