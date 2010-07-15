@@ -53,35 +53,130 @@ var LogoutTimer = {
 };
 
 var OverviewSection = {
+  renderStatus: function () {
+    var nodes = DAO.cells.currentPoolDetails.value.nodes;
+    var buckets = BucketsSection.cells.detailedBuckets.value;
+
+    var totalMem = 0;
+    var freeMem = 0;
+    _.each(nodes, function (n) {
+      totalMem += n.memoryTotal;
+      freeMem += n.memoryFree;
+    });
+
+    var bucketsSizeTotal = 0;  // The total of the buckets defined
+    if(buckets) {
+      _.each(buckets, function(b) {
+          bucketsSizeTotal += b.basicStats.cacheSize;
+      });
+    }
+
+    this.clusterMemoryAvailable = totalMem - bucketsSizeTotal*1048576;
+
+    var memoryUtilization = 100-Math.round(freeMem*100/totalMem) << 0;
+
+    var isWarning = memoryUtilization > 90;
+
+    var isCritical = false;
+    isCritical = isCritical || _.any(nodes, function (n) {
+      return n.status != 'healthy';
+    });
+
+    var mcdMemReserved = 0;
+    var mcdMemAllocd = 0;
+    _.each(nodes, function (n) {
+        mcdMemReserved += n.mcdMemoryReserved;
+        mcdMemAllocd += n.mcdMemoryAllocated;
+      });
+    mcdMemReserved *= 1048576;
+    var mcdItemUtilization = Math.round(mcdMemReserved*100/totalMem);
+
+    var canJoinCluster = (nodes.length == 1);
+
+    var statusData = {
+      isCritical: isCritical,
+      isWarning: isWarning,
+      canJoinCluster: canJoinCluster,
+      nodesCount: nodes.length,
+      bucketsCount: buckets && buckets.length,
+      bucketsSizeTotal: bucketsSizeTotal,
+      memoryUtilization: memoryUtilization,
+      memoryFree: freeMem,
+      mcdItemUtilization: mcdItemUtilization,
+      mcdMemReserved: mcdMemReserved
+    };
+
+    renderTemplate('cluster_status', statusData);
+
+    var leaveJoinClass = canJoinCluster ? 'join-possible' : 'leave-possible';
+    $('#join_leave_switch').attr('class', leaveJoinClass);
+  },
+  onFreshNodeList: function () {
+    var nodes = DAO.cells.currentPoolDetails.value.nodes;
+    renderTemplate('server_list', nodes);
+    $('#server_list_container table tr.primary:first-child').addClass('nbrdr');
+
+    this.renderStatus();
+
+    var activeNodeCount = _.select(nodes, function (n) {
+      return n.status == 'healthy';
+    }).length;
+
+    $('.active_node_count').text(ViewHelpers.count(activeNodeCount, "active node"));
+  },
+  leaveCluster: function () {
+    showDialog("eject_confirmation_dialog", {
+      eventBindings: [['.save_button', 'click', function (e) {
+        e.preventDefault();
+        overlayWithSpinner('#eject_confirmation_dialog');
+
+        var reload = mkReloadWithDelay();
+        $.ajax({
+          type: 'POST',
+          url: DAO.cells.currentPoolDetails.value.controllers.ejectNode.uri,
+          data: "otpNode=Self",
+          success: reload,
+          errors: reload
+        });
+      }]]
+    });
+  },
+  removeNode: function (otpNode) {
+    var details = DAO.cells.currentPoolDetails.value.nodes;
+    var node = _.detect(details, function (n) {
+      return n.otpNode == otpNode;
+    });
+    if (!node)
+      throw new Error('!node. this is unexpected!');
+
+    showDialog("eject_confirmation_dialog", {
+      eventBindings: [['.save_button', 'click', function (e) {
+        e.preventDefault();
+
+        overlayWithSpinner('#eject_confirmation_dialog');
+        var reload = mkReloadWithDelay();
+        $.ajax({
+          type: 'POST',
+          url: DAO.cells.currentPoolDetails.value.controllers.ejectNode.uri,
+          data: {otpNode: node.otpNode},
+          error: reload,
+          success: reload
+        });
+      }]]
+    });
+  },
   init: function () {
-    this.active = new Cell(function (mode) {
-      return mode == "overview"
-    }).setSources({mode: DAO.cells.mode});
-
-    this.alerts = new Cell(function (active) {
-      var value = this.self.value;
-      var params = {url: "/alerts"};
-      return future.get(params);
-    }).setSources({active: this.active});
-    this.alerts.keepValueDuringAsync = true;
-    renderCellTemplate(this.alerts, "overview_alert_list", function (v) {
-      return v.list;
+    var self = this;
+    _.defer(function () {
+      BucketsSection.cells.detailedBuckets.subscribe($m(self, 'renderStatus'));
     });
-    this.alerts.subscribe(function (cell) {
-      // refresh every 30 seconds
-      cell.recalculateAt((new Date()).valueOf() + 30000);
-    });
-
-    // var self = this;
-    // _.defer(function () {
-    //   BucketsSection.cells.detailedBuckets.subscribe($m(self, 'renderStatus'));
-    // });
-    // DAO.cells.currentPoolDetails.subscribe($m(self, 'onFreshNodeList'));
-    // prepareTemplateForCell('server_list', DAO.cells.currentPoolDetails);
-    // prepareTemplateForCell('cluster_status', DAO.cells.currentPoolDetails);
-    // prepareTemplateForCell('pool_list', DAO.cells.poolList);
+    DAO.cells.currentPoolDetails.subscribe($m(self, 'onFreshNodeList'));
+    prepareTemplateForCell('server_list', DAO.cells.currentPoolDetails);
+    prepareTemplateForCell('cluster_status', DAO.cells.currentPoolDetails);
+    prepareTemplateForCell('pool_list', DAO.cells.poolList);
   },
   onEnter: function () {
+    DAO.cells.currentPoolDetailsCell.invalidate();
   }
 };
 
