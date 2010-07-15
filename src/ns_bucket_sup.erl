@@ -52,7 +52,7 @@ notify(Config) ->
 %% supervisor callbacks
 
 init([]) ->
-    {ok, {{one_for_all, 3, 10},
+    {ok, {{one_for_one, 3, 10},
           child_specs()}}.
 
 
