@@ -64,19 +64,23 @@ good_children() ->
       permanent, infinity, supervisor,
       [ns_node_disco_sup]},
 
-     {ns_port_sup, {ns_port_sup, start_link, []},
-      permanent, 10, worker,
-      [supervisor_cushion]},
-
      {menelaus, {menelaus_app, start_subapp, []},
       permanent, infinity, supervisor,
       []},
+
+     {ns_port_sup, {ns_port_sup, start_link, []},
+      permanent, 10, worker,
+      [supervisor_cushion]},
 
      {ns_tick_event, {gen_event, start_link, [{local, ns_tick_event}]},
       permanent, 10, worker, [gen_event]},
 
      {ns_stats_event, {gen_event, start_link, [{local, ns_stats_event}]},
       permanent, 10, worker, [gen_event]},
+
+     {ns_memcached,
+      {ns_memcached, start_link, []},
+      permanent, 10, worker, [ns_memcached]},
 
      {ns_heart, {ns_heart, start_link, []},
       permanent, 10, worker,
@@ -86,11 +90,7 @@ good_children() ->
 %% Children that get restarted if we pull the plug. These can depend
 %% on Mnesia.
 bad_children() ->
-    [{ns_memcached,
-      {ns_memcached, start_link, []},
-      permanent, 10, worker, [ns_memcached]},
-
-     {ns_vbm_sup, {ns_vbm_sup, start_link, []},
+    [{ns_vbm_sup, {ns_vbm_sup, start_link, []},
       permanent, infinity, supervisor, [ns_vbm_sup]},
 
      {ns_tick, {ns_tick, start_link, []},
