@@ -177,9 +177,9 @@ default() ->
         stderr_to_stdout,
         stream]
       },
-      {memcached, "./bin/memcached/memcached",
-       ["-p", {"~B", [port]},
-        "-X", "./bin/memcached/stdin_term_handler.so",
+      {memcached, "./bin/port_adaptor/port_adaptor",
+       ["7200", "./bin/memcached/memcached",
+        "-p", {"~B", [port]},
         "-E", "./bin/ep_engine/ep.so",
         "-B", "binary",
         "-r",
