@@ -25,8 +25,7 @@
 -ifdef(EUNIT).
 -export([test/0]).
 -import(menelaus_util,
-        [validate_email_address/1,
-         wrap_tests_with_cache_setup/1]).
+        [validate_email_address/1]).
 -endif.
 
 -export([handle_logs/1,
@@ -275,7 +274,7 @@ bin_string(S)         -> list_to_binary(S).
 -ifdef(EUNIT).
 
 test() ->
-    eunit:test(wrap_tests_with_cache_setup({module, ?MODULE}),
+    eunit:test({module, ?MODULE},
                [verbose]).
 
 -endif.

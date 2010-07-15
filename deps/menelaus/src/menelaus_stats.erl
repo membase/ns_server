@@ -24,8 +24,6 @@
 
 -ifdef(EUNIT).
 -export([test/0]).
--import(menelaus_util,
-        [wrap_tests_with_cache_setup/1]).
 -endif.
 
 -export([handle_bucket_stats/3, basic_stats/2]).
@@ -470,7 +468,7 @@ aggregate_stat_entries_rec([Entry | Rest], Acc) ->
 -ifdef(EUNIT).
 
 test() ->
-    eunit:test(wrap_tests_with_cache_setup({module, ?MODULE}),
+    eunit:test({module, ?MODULE},
                [verbose]).
 
 avg_test() ->

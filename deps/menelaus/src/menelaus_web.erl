@@ -26,8 +26,7 @@
 -ifdef(EUNIT).
 -export([test/0]).
 -import(menelaus_util,
-        [concat_url_path/1,
-         wrap_tests_with_cache_setup/1]).
+        [concat_url_path/1]).
 -endif.
 
 -export([start_link/0, start_link/1, stop/0, loop/3, webconfig/0, restart/0,
@@ -986,7 +985,7 @@ handle_traffic_generator_control_post(Req) ->
 -ifdef(EUNIT).
 
 test() ->
-    eunit:test(wrap_tests_with_cache_setup({module, ?MODULE}),
+    eunit:test({module, ?MODULE},
                [verbose]).
 
 -endif.
