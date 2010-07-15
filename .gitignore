@@ -1,6 +1,7 @@
 *~
 .project
 .settings
+/Mnesia.*
 /features/Makefile
 /*luster_config
 /*luster_run.sh
