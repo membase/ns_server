@@ -24,7 +24,7 @@
 
 %% Constants and definitions
 
--record(state, {bucket, janitor, rebalancer, progress}).
+-record(state, {bucket, janitor, rebalancer, progress=[], moves}).
 
 %% API
 -export([start_link/1]).
@@ -105,6 +105,7 @@ handle_call(rebalance_progress, _From, State) ->
     {reply, not_running, State};
 handle_call({start_rebalance, KeepNodes, EjectNodes}, _From,
             State = #state{bucket=Bucket, rebalancer=undefined, janitor=Janitor}) ->
+    ?log_info("Starting rebalance", []),
     {_NumReplicas, _NumVBuckets, Map, Servers} = ns_bucket:config(Bucket),
     Histograms = histograms(Map, Servers),
     case {lists:sort(Servers), lists:sort(KeepNodes), EjectNodes,
@@ -139,20 +140,23 @@ handle_call(stop_rebalance, _From, State = #state{rebalancer={Pid, _Ref}}) ->
     Pid ! stop,
     {reply, ok, State};
 handle_call(stop_rebalance, _From, State) ->
-    {reply, not_rebalancing, State};
-handle_call(Request, From, State) ->
-    error_logger:info_msg("~p:handle_call(~p, ~p, ~p)~n",
-                          [?MODULE, Request, From, State]),
-    {reply, {unhandled, ?MODULE, Request}, State}.
+    {reply, not_rebalancing, State}.
 
-handle_cast({progress, Progress}, State) ->
-    {noreply, State#state{progress=Progress}};
-handle_cast(Msg, State) ->
-    error_logger:info_msg("~p:handle_cast(~p, ~p)~n",
-                          [?MODULE, Msg, State]),
-    {noreply, State}.
 
-handle_info(janitor, State = #state{bucket=Bucket, rebalancer=undefined, janitor=undefined}) ->
+handle_cast({update_progress, Progress}, #state{progress=Old} = State) ->
+    {noreply, State#state{progress=lists:ukeymerge(1, Progress, Old)}};
+handle_cast(reset_progress, State) ->
+    {noreply, State#state{progress=[], moves=undefined}};
+handle_cast({remaining_moves, M}, #state{moves=Moves, progress=Progress} =
+                State) ->
+    P = [{Node, 1.0 - N / dict:fetch(Node, Moves)} || {Node, N} <- M],
+    ?log_info("Remaining moves: ~p, progress: ~p", [M, P]),
+    {noreply, State#state{progress=lists:ukeymerge(1, P, Progress)}};
+handle_cast({starting_moves, M}, State) ->
+    {noreply, State#state{moves=dict:from_list(M)}}.
+
+handle_info(janitor, State = #state{bucket=Bucket, rebalancer=undefined,
+                                    janitor=undefined}) ->
     misc:flush(janitor),
     {_, _, Map, Servers} = ns_bucket:config(Bucket),
     case Servers == undefined orelse Servers == [] of
@@ -249,34 +253,43 @@ balance_nodes(Bucket, VNF, Hist, Moves) ->
             Moves
     end.
 
+
+%% Count the number of moves remaining from each node.
+count_moves(Moves) ->
+    M = lists:flatmap(fun ({_, Old, New}) -> [Old, New] end, Moves),
+    misc:uniqc(lists:sort([N || N <- M, N /= undefined])).
+
+
 do_rebalance(Bucket, KeepNodes, EjectNodes, Map, Tries) ->
     try
         AllNodes = KeepNodes ++ EjectNodes,
+        reset_progress(Bucket),
+        update_progress(Bucket, AllNodes, 0.0),
         ns_bucket:set_servers(Bucket, AllNodes),
         AliveNodes = ns_node_disco:nodes_actual_proper(),
         RemapNodes = EjectNodes -- AliveNodes, % No active node, promote a replica
         lists:foreach(fun (N) -> ns_cluster:leave(N) end, RemapNodes),
-        update_progress(Bucket, AllNodes, 0.1),
         maybe_stop(),
         EvacuateNodes = EjectNodes -- RemapNodes, % Nodes we can move data off of
         Map1 = promote_replicas(Bucket, Map, RemapNodes),
         ns_bucket:set_map(Bucket, Map1),
-        update_progress(Bucket, AllNodes, 0.3),
+        update_progress(Bucket, RemapNodes, 1.0),
         maybe_stop(),
         Histograms1 = histograms(Map1, KeepNodes),
         Moves1 = master_moves(Bucket, EvacuateNodes, Map1, Histograms1),
+        starting_moves(Bucket, Moves1),
         Map2 = perform_moves(Bucket, Map1, Moves1),
-        update_progress(Bucket, AllNodes, 0.6),
+        update_progress(Bucket, EvacuateNodes, 1.0),
         maybe_stop(),
         Histograms2 = histograms(Map2, KeepNodes),
         Moves2 = balance_nodes(Bucket, Map2, Histograms2, 1),
+        starting_moves(Bucket, Moves2),
         Map3 = perform_moves(Bucket, Map2, Moves2),
-        update_progress(Bucket, AllNodes, 0.7),
+        update_progress(Bucket, KeepNodes, 0.9),
         maybe_stop(),
         Histograms3 = histograms(Map3, KeepNodes),
         Map4 = new_replicas(Bucket, EjectNodes, Map3, Histograms3),
         ns_bucket:set_map(Bucket, Map4),
-        update_progress(Bucket, AllNodes, 0.8),
         maybe_stop(),
         Histograms4 = histograms(Map4, KeepNodes),
         ChainLength = length(lists:nth(1, Map4)),
@@ -287,7 +300,6 @@ do_rebalance(Bucket, KeepNodes, EjectNodes, Map, Tries) ->
                  end, Map4, lists:seq(2, ChainLength)),
         ns_bucket:set_servers(Bucket, KeepNodes),
         ns_bucket:set_map(Bucket, Map5),
-        update_progress(Bucket, AllNodes, 0.9),
         %% Push out the config with the new map in case this node is being removed
         ns_config_rep:push(),
         maybe_stop(),
@@ -378,13 +390,14 @@ new_replicas(Bucket, EjectNodes, [Chain|MapTail], Histograms, V,
 perform_moves(Bucket, Map, []) ->
     ns_bucket:set_map(Bucket, Map),
     Map;
-perform_moves(Bucket, Map, [{V, Old, New}|Moves]) ->
+perform_moves(Bucket, Map, [{V, Old, New}|Moves] = Remaining) ->
     try maybe_stop()
     catch
         throw:stopped ->
             ns_bucket:set_map(Bucket, Map),
             throw(stopped)
     end,
+    remaining_moves(Bucket, Remaining),
     [Old|Replicas] = lists:nth(V+1, Map),
     case {Old, New} of
         {X, X} ->
@@ -442,6 +455,21 @@ histograms(Map, Servers) ->
                       Missing ++ H
               end, Histograms).
 
+
+%% Tell the orchestrator how many moves are remaining for each node.
+remaining_moves(Bucket, Moves) ->
+    gen_server:cast(server(Bucket), {remaining_moves, count_moves(Moves)}).
+
+
+reset_progress(Bucket) ->
+    gen_server:cast(server(Bucket), reset_progress).
+
+
+%% Tell the orchestrator about the set of moves we're starting.
+starting_moves(Bucket, Moves) ->
+    gen_server:cast(server(Bucket), {starting_moves, count_moves(Moves)}).
+
+
 server(Bucket) ->
     {global, list_to_atom(lists:flatten(io_lib:format("~s-~s", [?MODULE, Bucket])))}.
 
@@ -455,5 +483,5 @@ unbalanced(Histograms) ->
               end, Histograms).
 
 update_progress(Bucket, Nodes, Fraction) ->
-    Progress = [{Node, Fraction} || Node <- Nodes],
-    gen_server:cast(server(Bucket), {progress, Progress}).
+    Progress = [{Node, Fraction} || Node <- lists:usort(Nodes)],
+    gen_server:cast(server(Bucket), {update_progress, Progress}).
