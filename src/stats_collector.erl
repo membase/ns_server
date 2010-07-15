@@ -53,7 +53,7 @@ handle_cast(unhandled, unhandled) ->
 
 handle_info({tick, TS}, #state{bucket=Bucket, counters=Counters} = State) ->
     misc:flush_head(tick),
-    case ns_memcached:stats("default") of
+    case catch ns_memcached:stats("default") of
         {ok, Stats} ->
             {Entry, NewCounters} = parse_stats(TS, Stats, Counters),
             case Counters of % Don't send event with undefined values
