@@ -1128,6 +1128,10 @@ handle_node(_PoolId, Node, Req) ->
     Fields = [{license, list_to_binary(License)},
               {licenseValid, Valid},
               {licenseValidUntil, list_to_binary(ValidUntil)},
+              {availableStorage, {struct, [{hdd, [{struct, [{path, list_to_binary(Path)},
+                                                            {sizeKBytes, SizeKBytes},
+                                                            {usagePercent, UsagePercent}]}
+                                                  || {Path, SizeKBytes, UsagePercent} <- disksup:get_disk_data()]}]}},
               {memoryQuota, MemQuota},
               {storage, R}] ++ KV,
     reply_json(Req,
@@ -1203,41 +1207,47 @@ handle_node_settings_post(Node, Req) ->
     %% parameter example: license=some_license_string, memoryQuota=NumInMb
     %%
     Params = Req:parse_post(),
-    Results = [
-        case proplists:get_value("license", Params) of
-            undefined -> ok;
-            License -> case ns_license:change_license(Node, License) of
-                            ok         -> ok;
-                            {error, _} -> "Error changing license.\n"
+    Results = [case proplists:get_value("license", Params) of
+                   undefined -> ok;
+                   License -> case ns_license:change_license(Node, License) of
+                                  ok         -> ok;
+                                  {error, _} -> "Error changing license.\n"
+                              end
+               end,
+               case proplists:get_value("path", Params) of
+                   undefined -> ok;
+                   Path ->
+                       case Node =/= node() of
+                           true -> exit('setting disk storage path for other nodes is not yet supported');
+                           _ -> ok
+                       end,
+                       case ns_storage_conf:setup_disk_storage_conf(node(), Path) of
+                           ok -> ok;
+                           error -> <<"Couldn't set storage path. It must be new directory and northscale user must be able to create it">>
                        end
-        end,
-        case proplists:get_value("memoryQuota", Params) of
-            undefined -> ok;
-            X ->
-                case Node =/= node() of
-                   true -> exit('setting quota for other nodes is not yet supported');
-                   _ -> ok
-                end,
-                {MaxMemoryBytes0, _, _} = memsup:get_memory_data(),
-                MaxMemoryBytes = (MaxMemoryBytes0 * 4) div 5,
-                MaxMemoryMB = MaxMemoryBytes div 1048576,
-                case parse_validate_number(X, 0, MaxMemoryMB) of
-                    {ok, Number} ->
-                        case ns_storage_conf:change_memory_quota(Node, Number) of
-                            ok         -> ok;
-                            {error, _} -> <<"Error changing memory quota.\n">>
-                        end;
-                    too_small -> <<"Value is too small">>;
-                    too_large -> iolist_to_binary(["Value is too large. Maximum allowed value is ",
-                                                   integer_to_list(MaxMemoryMB),
-                                                   " MB"]);
-                    invalid -> case X of
-                        "unlimited" -> ok;
-                        _ -> <<"Value is not a number.">>
-                    end
-                end
-        end
-    ],
+               end,
+               case proplists:get_value("memoryQuota", Params) of
+                   undefined -> ok;
+                   X ->
+                       case Node =/= node() of
+                           true -> exit('setting quota for other nodes is not yet supported');
+                           _ -> ok
+                       end,
+                       {MaxMemoryBytes0, _, _} = memsup:get_memory_data(),
+                       MaxMemoryBytes = (MaxMemoryBytes0 * 4) div 5,
+                       MinMemoryMB = MaxMemoryBytes0 div (10 * 1048576),
+                       MaxMemoryMB = MaxMemoryBytes div 1048576,
+                       case parse_validate_number(X, MinMemoryMB, MaxMemoryMB) of
+                           {ok, Number} ->
+                               case ns_storage_conf:change_memory_quota(Node, Number) of
+                                   ok         -> ok;
+                                   {error, _} -> <<"Error changing memory quota.\n">>
+                               end;
+                           too_small -> <<"Value is too small. Quota must be between 10% and 80% of memory size.">>;
+                           too_large -> <<"Value is too large. Quota must be between 10% and 80% of memory size.">>
+                       end
+               end
+              ],
     case lists:filter(fun(X) -> X =/= ok end, Results) of
         [] -> Req:respond({200, add_header(), []});
         Errs -> reply_json(Req, Errs, 400)

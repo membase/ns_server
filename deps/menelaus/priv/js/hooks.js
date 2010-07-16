@@ -677,12 +677,35 @@ var MockedRequest = mkClass({
         "license":"","licenseValue":false,"licenseValidUntil":"invalid",
         "memoryQuota":"",
         "storage":{"ssd":[],
-                   "hdd":[{"path":"/opt/",
+                   "hdd":[{"path":"/srv/test",
                            "quotaMb":"none",
                            "state":"ok",
                            "diskStats": {
                              "sizeKBytes": 233706396,
                              "usagePercent": 96}}]},
+        availableStorage: {
+          hdd: [{
+            path: "/",
+            sizeKBytes: 20000,
+            usagePercent: 80
+          }, {
+            path: "/srv",
+            sizeKBytes: 20000000,
+            usagePercent: 10
+          }, {
+            path: "/usr",
+            sizeKBytes: 2000000,
+            usagePercent: 60
+          }, {
+            path: "/usr/local",
+            sizeKBytes: 30000000,
+            usagePercent: 0
+          }, {
+            path: "/home",
+            sizeKBytes: 40000000,
+            usagePercent: 90
+          }
+        ]},
         "hostname":"127.0.0.1",
         "version":"1.0.3_98_g5d1f7a2",
         "os":"i386-apple-darwin10.3.0",

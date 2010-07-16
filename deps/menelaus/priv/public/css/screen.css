@@ -987,3 +987,5 @@ html body .overlayed {z-index:999 !important;}
  {float:none !important;}
 html>/**/body #servers .list_button, x:-moz-any-link, x:default {position:relative; /*top:-60px;*/} /* Only FireFox 3 */
 html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none !important;}
+
+input.bad-value { border-color: red !important; }

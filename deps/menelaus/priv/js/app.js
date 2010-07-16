@@ -800,9 +800,8 @@ var NodeDialog = {
       });
   },
   startPage_resources: function(node, pagePrefix, opt) {
+    var self = this;
     var parentName = '#' + pagePrefix + '_dialog';
-
-    $('#init_resources_errors_container').html('');
 
     opt = opt || {};
 
@@ -811,22 +810,113 @@ var NodeDialog = {
       success: cb, error: cb});
 
     function cb(data, status) {
-      data['node'] = data['node'] || node;
+      if (status != 'success')
+        return;
 
+
+      data['node'] = data['node'] || node;
       NodeDialog.resourceNode = data;
 
-      if (status == 'success') {
-        renderTemplate('resource_panel', data);
+      var dialog = $('#init_resources_dialog');
+      var totalRAMMegs = Math.floor(data.memoryTotal/1024/1024);
+
+      var ramQuota;
+      var maxRAMMegs = Math.floor(totalRAMMegs * 0.80);
+      // TODO: unknown quota -> 80%
+      (ramQuota = dialog.find('[name=dynamic-ram-quota]')).val(ViewHelpers.ifNull(data.memoryQuota, maxRAMMegs));
+      dialog.find('.ram-total-size').text(escapeHTML(totalRAMMegs) + ' MB');
+
+      var firstResource = data.storage.hdd[0];
+      var diskTotalGigs = Math.floor(firstResource.diskStats.sizeKBytes * (100 - firstResource.diskStats.usagePercent) / 100 / (1024 * 1024));
+      var diskPath, diskTotal;
+
+      diskTotal = dialog.find('.resource-row .total-size');
+      function updateDiskTotal() {
+        diskTotal.text(escapeHTML(diskTotalGigs) + ' GB');
       }
+      updateDiskTotal();
+      (diskPath = dialog.find('.resource-row [name=path]')).val(escapeHTML(firstResource.path));
+
+      var prevRamValue, prevPathValue;
+
+      self.resourcesObserver = dialog.observePotentialChanges(function () {
+        var ramValue = ramQuota.val();
+
+        var anythingBad = false;
+
+        var pathValue = diskPath.val();
+
+        if (pathValue != prevPathValue) {
+          ;(function () {
+            prevPathValue = pathValue;
+
+            if (pathValue == "") {
+              anythingBad = true;
+              diskPath.addClass('bad-value');
+              diskTotalGigs = 0;
+              prevDiskValue = null;
+              updateDiskTotal();
+              return;
+            }
+            diskPath.removeClass('bad-value');
+
+            var hddResources = data.availableStorage.hdd;
+            hddResources = hddResources.sort(function (a,b) {return b.path.length - a.path.length;});
+            var pathResource = _.detect(hddResources, function (resource) {
+              var path = resource.path;
+              if (path[path.length-1] != '/')
+                path += '/';
+              if (pathValue.substring(0, path.length) == path)
+                return true;
+            });
+
+            if (!pathResource)
+              pathResource = {path:"/", sizeKBytes: 0, usagePercent: 0};
+
+            diskTotalGigs = Math.floor(pathResource.sizeKBytes * (100 - pathResource.usagePercent) / 100 / (1024 * 1024));
+            updateDiskTotal();
+            prevDiskValue = null;
+          })();
+        }
+
+        if (prevRamValue == ramValue)
+          return;
+        prevRamValue = ramValue;
+
+        function validateQuotaValue(ramValue, total) {
+          if (!/^\s*[0-9]+\s*$/.exec(ramValue))
+            return false;
+
+          var megs = parseInt(ramValue, 10);
+          if (megs < total * 0.1 || megs > total * 0.8)
+            return false;
+          return true;
+        }
+
+        if (!validateQuotaValue(ramValue, totalRAMMegs)) {
+          ramQuota.addClass('bad-value');
+          anythingBad = true;
+        } else {
+          ramQuota.removeClass('bad-value');
+        }
+
+        dialog.find('.submit')[anythingBad ? 'attr' : 'removeAttr']('disabled', 'disabled');
+      });
     }
   },
   submitResources: function () {
+    if (this.resourcesObserver) {
+      this.resourcesObserver.stopObserving();
+      this.resourcesObserver = null;
+    }
+
     var quota = $('#init_resources_form input[name=dynamic-ram-quota]').val();
+    var diskPath = $('#init_resources_form input[name=path]').val();
 
     $('#init_resources_errors_container').html('');
 
     postWithValidationErrors('/nodes/Self/controller/settings',
-                             $.param({memoryQuota: quota}),
+                             $.param({memoryQuota: quota, path: diskPath}),
                              continuation,
                              {async: false});
 
@@ -973,7 +1063,8 @@ watchHashParamLinks('sec', function (e, href) {
 
 
 // this handles memory -> disk quota sync on init wizard 1
-$(function () {
+// TODO: kill
+;(function () {})(function () {
   function onBlur() {
     var value = input.val();
     if (!value)

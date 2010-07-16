@@ -1749,9 +1749,60 @@
         <!-- {% }); %} -->
       </ul>
     </div>
-    <form id="init_resources_form" class="form block">
-      <input type="submit" style="display:none" />
-      <div id="resource_panel_container"></div>
+    <form id="init_resources_form" class="form block"><input type="submit" class="submit" style="display:none" />
+      <div id="resource_panel_container">
+        <div class="resource_panel">
+          <table width="93%">
+            <col width="90%" />
+            <col width="" />
+            <tr>
+              <td colspan="2">
+                <h2>Memory Cache</h2>
+              </td>
+            </tr>
+            <tr>
+              <td class="dynamic-ram-quota">
+                <div>
+                  Dynamic RAM Quota:
+                  <input type="text" name="dynamic-ram-quota" value=""
+                  style="border:1px solid #ccd3d7; color:#7e7e80; font-size:10pt; height:25px; margin-left:5px; padding-left:5px; width:95px;" />
+                  <span style="color:#7e7e80; font-size:10pt;">MB</span>
+                  <span style="color:#7e7e80; font-size:10pt; margin-left:50px;">
+                    Total: <span class="ram-total-size">0GB</span>
+                  </span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td><h2>Disk Storage</h2>
+              </td>
+              <td>
+                <!-- <a href="javascript:ServersSection.startAddLocationDialog('{%= h(escapeJS(node)) %}', 'hdd');"> -->
+                <!-- <img src="../images/add-button.png" alt="Add" style="opacity:0.5;" /> -->
+                <!-- </a> -->
+              </td>
+            </tr>
+            <tr>
+              <td colspan="2">
+                <div class="hdd_resource_container">
+                  <div class="resource-row">
+                    <div>
+                      <label>Size:</label>
+                      <span style="color:#7e7e80; font-size:10pt; margin-left:5px; line-height: 25px;" class="total-size">---</span>
+                      <br style="clear:both;" />
+                    </div>
+                    <div>
+                      <label>Path:</label>
+                      <input type="text" name="path" class="path-box" />
+                      <br style="clear:both;" />
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
     </form>
     <div class="config-bottom">
       <button name="next" value="Next" class="submit next direction-button" id="step-1-next" type="submit">Next</button>
@@ -2033,107 +2084,6 @@
 </div>
 <!-- END edit_server_settings_dialog -->
 <div id="resource_panel_template" class="template">
-  <div class="resource_panel">
-      <table width="93%">
-        <col width="90%" />
-        <col width="" />
-        <tr>
-          <td colspan="2">
-            <h2>Memory Cache</h2>
-          </td>
-        </tr>
-        <tr>
-          <td class="dynamic-ram-quota">
-            <div>
-              Dynamic RAM Quota:
-              <input type="text" name="dynamic-ram-quota" value="{%= h(V.ifNull(memoryQuota, 'unlimited')) %}"
-                style="border:1px solid #ccd3d7; color:#7e7e80; font-size:10pt; height:25px; margin-left:5px; padding-left:5px; width:95px;" />
-              <span style="color:#7e7e80; font-size:10pt;">MB</span>
-              <span style="color:#7e7e80; font-size:10pt; margin-left:50px;">
-                Total: {%= h(Math.floor(memoryTotal/1024/1024)) %} MB
-              </span>
-            </div>
-          </td>
-          <td>
-            <!-- <a href="javascript:void();">
-              <img src="../images/edit-button.png" alt="Edit" />
-            </a> -->
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <h2>Solid State Storage</h2>
-          </td>
-          <td>
-            <!-- <a href="javascript:NodeDialog.startAddLocationDialog('{%= h(escapeJS(node)) %}', 'ssd');"> -->
-              <img src="../images/add-button.png" alt="Add" style="opacity:0.5;" />
-            <!-- </a> -->
-          </td>
-        </tr>
-        <tr>
-          <td colspan="2">
-            <div class="ssd_resource_container">
-              <!-- {% if (storage['ssd'].length > 0) { %} -->
-                  <!-- {% $.each(storage['ssd'], function () { %} -->
-              <div class="resource-row">
-                <div>Path: {%= h(this.path) %}</div>
-                <div>
-                  {%= h(this.quotaMb != 'none' ? ((this.quotaMb * 1024) + ' MB') : '[no&nbsp;quota]') %}
-                </div>
-                <div>
-                  <a href="javascript:ServersSection.startRemoveLocationDialog('{%= node %}', '{%= h(this.path) %}');">Remove</a>
-                </div>
-                <br style="clear:both;" />
-                  <!-- {% }); %} -->
-              <!-- {% } else { %} -->
-                None Configured
-              <!-- {% }; %} -->
-              </div>
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <td><h2>Disk Storage</h2>
-          </td>
-          <td>
-            <!-- <a href="javascript:ServersSection.startAddLocationDialog('{%= h(escapeJS(node)) %}', 'hdd');"> -->
-                <img src="../images/add-button.png" alt="Add" style="opacity:0.5;" />
-            <!-- </a> -->
-          </td>
-        </tr>
-        <tr>
-          <td colspan="2">
-            <div class="hdd_resource_container">
-              <!-- {% if (storage['hdd'].length > 0) { %} -->
-                  <!-- {% $.each(storage['hdd'], function () { %} -->
-                  <div class="resource-row">
-                    <div>
-                      <label>Disk One Quota:</label>
-                      <input type="text" name="memoryQuota" value="{%= V.ifNull(memoryQuota, '') %}" disabled />
-                      <span style="color:#7e7e80; font-size:10pt;">{%= ViewHelpers.prepareQuantity(this.diskStats.sizeKBytes * 1024)[1] %}B</span>
-                      <span style="color:#7e7e80; font-size:10pt; margin-left:50px;">
-                        Total: {%= h(ViewHelpers.formatQuantity(this.diskStats.sizeKBytes * 1024, 'B', 1024, ' ')) %}
-                      </span>
-                      <br style="clear:both;" />
-                    </div>
-                    <div>
-                      <label>Path:</label>
-                      <input type="text" name="" value="{%= h(this.path) %}" class="path-box" disabled />
-                      <br style="clear:both;" />
-                    </div>
-                    <div>
-                      <!-- <a href="javascript:NodeDialog.startRemoveLocationDialog('{%= node %}', '{%= h(this.path) %}');">Remove</a> -->
-                    </div>
-                  </div>
-                  <!-- {% }); %} -->
-              <!-- {% } else { %} -->
-                none configured
-              <!-- {% }; %} -->
-            </div>
-          </td>
-        </tr>
-      </table>
-  </div>
 </div>
 <!-- END resource_panel_template -->
 <div class="jqmWindow" id="add_storage_location_dialog">
