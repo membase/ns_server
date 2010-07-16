@@ -220,8 +220,11 @@ resample(Tab, Step, N) ->
     {atomic, Result} = mnesia:transaction(
                          fun () ->
                                  TS = mnesia:last(Tab),
-                                 resample(Tab, Step, TS, trunc_ts(TS, Step), [],
-                                          [], N)
+                                 T = case TS of
+                                         '$end_of_table' -> '$end_of_table';
+                                         _ -> trunc_ts(TS, Step)
+                                     end,
+                                 resample(Tab, Step, TS, T, [], [], N)
                          end),
     Result.
 
