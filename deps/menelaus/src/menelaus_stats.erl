@@ -26,12 +26,28 @@
 
 %% External API
 
-basic_stats(_PoolId, _BucketId) ->
-    %% TODO
-    [{cacheSize, 0},
-     {opsPerSec, 0},
-     {evictionsPerSec, 0},
-     {cachePercentUsed, 0}].
+basic_stats(_PoolId, "default") ->
+    {Samples, _, _, _} = grab_op_stats("default", [{"zoom", "minute"}]),
+    LastSample = case Samples of
+                     [] -> [{X, [0]} || X <- tuple_to_list({timestamp, ?STAT_GAUGES, ?STAT_COUNTERS})];
+                     _ -> samples_to_proplists([lists:last(Samples)])
+                 end,
+    GetValue = fun (Name) ->
+                       hd(proplists:get_value(Name, LastSample))
+               end,
+    Ops = GetValue(ops),
+    Fetches = GetValue(ep_io_num_read),
+    MemUsed = GetValue(mem_used),
+    QuotaMB = lists:sum([ns_storage_conf:memory_quota(N) || N <- ns_node_disco:nodes_wanted()]), 
+    ItemCount = GetValue(curr_items),
+    [{opsPerSec, Ops},
+     {diskFetches, Fetches},
+     {quotaPercentUsed, try (MemUsed * 100.0 / (QuotaMB * 1048576.0)) of
+                            X -> X
+                        catch
+                            error:badarith -> 0
+                        end},
+     {itemCount, ItemCount}].
 
 %% GET /pools/default/stats
 %% Supported query params:
@@ -207,20 +223,23 @@ add_stat_sums(Samples) ->
      {updates, produce_sum_stats([cmd_set, incr_hits, decr_hits, cas_hits], Samples)}
      | Samples].
 
-build_buckets_stats_ops_response(_PoolId, ["default"], Params) ->
-    {Samples0, ClientTStamp, Step, TotalNumber} = grab_op_stats("default", Params),
+samples_to_proplists(Samples) ->
     StatsList = tuple_to_list({timestamp, ?STAT_GAUGES, ?STAT_COUNTERS}),
     EmptyLists = [[] || _ <- StatsList],
-    Samples = case Samples0 of
-                  [#stat_entry{bytes_read = undefined} | T] -> T;
-                  _ -> Samples0
-              end,
     PropList0 = lists:zip(StatsList,
                          lists:foldl(fun (Sample, Acc) ->
                                              [[X | Y] || {X,Y} <- lists:zip(tl(tuple_to_list(Sample)), Acc)]
                                      end, EmptyLists, Samples)),
     PropList1 = [{K, lists:reverse(V)} || {K,V} <- PropList0],
-    PropList2 = add_stat_sums(PropList1),
+    add_stat_sums(PropList1).
+
+build_buckets_stats_ops_response(_PoolId, ["default"], Params) ->
+    {Samples0, ClientTStamp, Step, TotalNumber} = grab_op_stats("default", Params),
+    Samples = case Samples0 of
+                  [#stat_entry{bytes_read = undefined} | T] -> T;
+                  _ -> Samples0
+              end,
+    PropList2 = samples_to_proplists(Samples),
     OpPropList0 = [{samples, {struct, PropList2}},
                    {samplesCount, TotalNumber},
                    {lastTStamp, case proplists:get_value(timestamp, PropList2) of

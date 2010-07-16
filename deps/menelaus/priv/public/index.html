@@ -430,9 +430,9 @@
             <!-- to display sort arrow correctly you need to switch between "sort_desc" and "sort_asc" classes in span -->
             <th><span>Bucket Name</span></th>
             <th>Ops/sec</th>
-            <th>Evictions/sec</th>
-            <th>Cache Used</th>
-            <th>Cache Size</th>
+            <th>Disk Fetches/sec</th>
+            <th>RAM Used</th>
+            <th>Item Count</th>
           </tr>
           <!-- {% $.each(rows, function () { %} -->
           <tr>
@@ -443,7 +443,7 @@
               <!-- className 'bucket_name' goesWith '_' to desable thisStyle forNow -->
               </td>
               <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
-              <td>{%= h(truncateTo3Digits(this.basicStats.evictionsPerSec)) %}</td>
+              <td>{%= h(truncateTo3Digits(this.basicStats.diskFetches)) %}</td>
               <td>
                 <div class="usage_smallest_info">
                     <div class="usage_smallest">
@@ -452,11 +452,11 @@
                                 <div class="used" style="width:1%;"></div>
                             </div>
                         </div>
-                    </div>{%= V.setPercentBar(this.basicStats.cachePercentUsed*100) %}
-                    {%= h(truncateTo3Digits(this.basicStats.cachePercentUsed*100)) %}%
+                    </div>{%= V.setPercentBar(this.basicStats.quotaPercentUsed) %}
+                    {%= h(truncateTo3Digits(this.basicStats.quotaPercentUsed)) %}%
                 </div>
               </td>
-              <td>{%= h(this.basicStats.cacheSize) %}MB</td>
+              <td>{%= h(this.basicStats.itemCount) %}MB</td>
             </tr>
           <!-- {% }); %} -->
         </table>
