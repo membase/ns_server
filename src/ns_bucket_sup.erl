@@ -19,7 +19,7 @@
 
 -behaviour(supervisor).
 
--export([start_link/0, notify/1]).
+-export([start_link/0]).
 
 -export([init/1]).
 
@@ -28,26 +28,6 @@
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
-
-%% buckets key got updated
-notify(Config) ->
-    ChildSpecs = child_specs(Config),
-    CurrentChildren = [Id || {Id, Pid, _, _} <-
-                                 supervisor:which_children(?MODULE),
-                             Pid /= undefined],
-    ZombieChildren = [Child || Child <- CurrentChildren,
-                               not lists:keymember(Child, 1, ChildSpecs)],
-    lists:foreach(fun (Id) -> supervisor:terminate_child(?MODULE, Id) end,
-                  ZombieChildren),
-    NewChildSpecs = [ChildSpec || ChildSpec = {Id, _} <- ChildSpecs,
-                                  not lists:member(Id, CurrentChildren)],
-    lists:foreach(fun (ChildSpec) ->
-                          supervisor:start_child(?MODULE, ChildSpec) end,
-                  NewChildSpecs),
-    lists:foreach(fun ({Bucket, BucketConfig}) ->
-                          ns_bucket_sup:notify(Bucket, BucketConfig) end,
-                  proplists:get_value(configs, Config)).
-
 
 %% supervisor callbacks
 
