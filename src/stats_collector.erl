@@ -65,7 +65,9 @@ handle_info({tick, TS}, #state{bucket=Bucket, counters=Counters} = State) ->
             {noreply, State#state{counters=NewCounters}};
         _ ->
             {noreply, State}
-    end.
+    end;
+handle_info(_Msg, State) -> % Don't crash on delayed responses to calls
+    {noreply, State}.
 
 terminate(_Reason, _State) ->
     ok.

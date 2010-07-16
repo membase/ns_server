@@ -122,6 +122,8 @@ handle_info({truncate, Period, N}, #state{bucket=Bucket} = State) ->
     {noreply, State};
 handle_info({cascade, Prev, Period, Step}, #state{bucket=Bucket} = State) ->
     cascade(Bucket, Prev, Period, Step),
+    {noreply, State};
+handle_info(_Msg, State) -> % Don't crash on delayed responses from calls
     {noreply, State}.
 
 
