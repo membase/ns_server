@@ -37,6 +37,7 @@
 
 -define(REBALANCE_SUCCESSFUL, 1).
 -define(REBALANCE_FAILED, 2).
+-define(REBALANCE_NOT_STARTED, 3).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2,
@@ -111,9 +112,8 @@ handle_call({start_rebalance, KeepNodes, EjectNodes}, _From,
     case {lists:sort(Servers), lists:sort(KeepNodes), EjectNodes,
           unbalanced(Histograms)} of
         {S, S, [], false} ->
-            error_logger:info_msg(
-              "ns_orchestrator not rebalancing because already_balanced~n~p~n",
-              [{Servers, KeepNodes, EjectNodes, Histograms}]),
+            ns_log:log(?MODULE, ?REBALANCE_NOT_STARTED,
+              "Not rebalancing because the cluster is alread balanced~n"),
             {reply, already_balanced, State};
         _ ->
             {ok, Pid, Ref} =
@@ -134,7 +134,8 @@ handle_call({start_rebalance, KeepNodes, EjectNodes}, _From,
             {reply, ok, State#state{rebalancer={Pid, Ref}, progress=[]}}
     end;
 handle_call({start_rebalance, _, _}, _From, State) ->
-    error_logger:info_msg("ns_orchestrator not rebalancing because in_progress~n", []),
+    ns_log:log(?MODULE, ?REBALANCE_NOT_STARTED,
+               "Not rebalancing because rebalance is already in progress.~n"),
     {reply, in_progress, State};
 handle_call(stop_rebalance, _From, State = #state{rebalancer={Pid, _Ref}}) ->
     Pid ! stop,
@@ -150,7 +151,6 @@ handle_cast(reset_progress, State) ->
 handle_cast({remaining_moves, M}, #state{moves=Moves, progress=Progress} =
                 State) ->
     P = [{Node, 1.0 - N / dict:fetch(Node, Moves)} || {Node, N} <- M],
-    ?log_info("Remaining moves: ~p, progress: ~p", [M, P]),
     {noreply, State#state{progress=lists:ukeymerge(1, P, Progress)}};
 handle_cast({starting_moves, M}, State) ->
     {noreply, State#state{moves=dict:from_list(M)}}.
@@ -303,12 +303,15 @@ do_rebalance(Bucket, KeepNodes, EjectNodes, Map, Tries) ->
         %% Push out the config with the new map in case this node is being removed
         ns_config_rep:push(),
         maybe_stop(),
-        ns_cluster_membership:deactivate(EjectNodes),
         %% Leave myself last
         LeaveNodes = lists:delete(node(), EvacuateNodes),
-        lists:foreach(fun (N) -> ns_cluster:leave(N) end, LeaveNodes),
+        lists:foreach(fun (N) ->
+                              ns_cluster_membership:deactivate([N]),
+                              ns_cluster:leave(N)
+                      end, LeaveNodes),
         case lists:member(node(), EvacuateNodes) of
             true ->
+                ns_cluster_membership:deactivate([node()]),
                 ns_cluster:leave();
             false ->
                 ok
@@ -434,8 +437,6 @@ promote_replica(Bucket, Chain, RemapNodes, V) ->
             error_logger:error_msg("~p:promote_replicas(~p, ~p, ~p, ~p): No master~n", [?MODULE, Bucket, V, RemapNodes, Chain]),
             NewChainExtended;
         [NewMaster|_] ->
-            error_logger:info_msg("~p:promote_replicas(~p, ~p, ~p, ~p): Setting node ~p active for vbucket ~p~n",
-                                  [?MODULE, Bucket, V, RemapNodes, Chain, NewMaster, V]),
             %% The janitor will catch it if this fails.
             catch ns_memcached:set_vbucket_state(NewMaster, V, active),
             NewChainExtended
