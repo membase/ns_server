@@ -113,8 +113,23 @@ var OverviewSection = {
   },
   onFreshNodeList: function () {
     var nodes = DAO.cells.currentPoolDetails.value.nodes;
+    var expandedHostnames = [];
+    $('#server_list_container .primary .expander.expanded').each(function () {
+      var server = $.data(this, 'server')
+      if (server)
+        expandedHostnames.push(server.hostname);
+    });
     renderTemplate('server_list', nodes);
     $('#server_list_container table tr.primary:first-child').addClass('nbrdr');
+    $('#server_list_container .primary .expander').each(function () {
+      var server = $.data(this, 'server');
+      if (!server)
+        return;
+      if (!_.include(expandedHostnames, server.hostname))
+        return;
+      $(this).parents('#server_list_container .primary').next().addClass('opened');
+      $(this).addClass('expanded');
+    });
 
     this.renderStatus();
 

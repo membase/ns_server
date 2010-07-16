@@ -124,7 +124,7 @@
             <table class="server_list"><tbody>
               <!-- {% $.each(rows, function (index) { %} -->
               <tr class="primary">
-                <td class="expander"><div>&nbsp;</div></td>
+                <td class="expander">{%=V.setData('server', this)%}<div>&nbsp;</div></td>
                 <td class="name"><div>{%= h(this.hostname) %}</div></td>
                 <td class="status"><div class="{%=V.renderHealthClass(this.status)%}"></div></td>
               </tr>
