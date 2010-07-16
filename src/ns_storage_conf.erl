@@ -48,8 +48,8 @@ change_memory_quota(Node, NewMemQuotaMB) when is_integer(NewMemQuotaMB) ->
 
 setup_disk_storage_conf(Node, Path) when Node =:= node() ->
     {value, PropList} = ns_config:search_node(Node, ns_config:get(), memcached),
-    DBName = proplists:get_value(dbname, PropList),
-    NewDBName = filename:join(Path, "default"),
+    DBName = filename:absname(proplists:get_value(dbname, PropList)),
+    NewDBName = filename:absname(filename:join(Path, "default")),
     case DBName of
         NewDBName -> ok;
         _ ->
