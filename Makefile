@@ -70,7 +70,7 @@ TAGS:
 	ctags -eR .
 
 dialyzer: ebins
-	dialyzer -pa ebin -r .
+	dialyzer --build_plt --apps erts kernel stdlib mnesia crypto -pa ebin -r .
 
 features/Makefile:
 	(cd features && ../test/parallellize_features.rb) >features/Makefile
