@@ -76,26 +76,9 @@ handle_bucket_stats(PoolId, Id, Req) ->
 
 handle_buckets_stats(PoolId, BucketIds, Req) ->
     Params = Req:parse_qs(),
-    case proplists:get_value("stat", Params) of
-        "opsbysecond" ->
-            handle_buckets_stats_ops(Req, PoolId, BucketIds, Params);
-        "hot_keys" ->
-            handle_buckets_stats_hks(Req, PoolId, BucketIds, Params);
-        "combined" ->
-            {struct, PropList1} = build_buckets_stats_ops_response(PoolId, BucketIds, Params),
-            {struct, PropList2} = build_buckets_stats_hks_response(PoolId, BucketIds, Params),
-            reply_json(Req, {struct, PropList1 ++ PropList2});
-        _ ->
-            reply_json(Req, [list_to_binary("Stats requests require parameters.")], 400)
-    end.
-
-handle_buckets_stats_ops(Req, PoolId, BucketIds, Params) ->
-    Res = build_buckets_stats_ops_response(PoolId, BucketIds, Params),
-    reply_json(Req, Res).
-
-handle_buckets_stats_hks(Req, PoolId, BucketIds, Params) ->
-    Res = build_buckets_stats_hks_response(PoolId, BucketIds, Params),
-    reply_json(Req, Res).
+    {struct, PropList1} = build_buckets_stats_ops_response(PoolId, BucketIds, Params),
+    {struct, PropList2} = build_buckets_stats_hks_response(PoolId, BucketIds, Params),
+    reply_json(Req, {struct, PropList1 ++ PropList2}).
 
 %% ops SUM(cmd_get, cmd_set,
 %%         incr_misses, incr_hits,
@@ -293,12 +276,13 @@ build_buckets_stats_hks_response(PoolId, BucketIds, Params) ->
     {struct, [{hot_keys, HotKeyStructs}]}.
 
 get_buckets_hks(_PoolId, _BucketIds, _Params) ->
-    {ok, [
-          {"default", "key1", 0.60, 3000},
-          {"default", "key3", 0.8, 3345},
-          {"default", "key2", 0.75, 3030},
-          {"default", "keydf", 0.3, 450}
-         ]}.
+    Keys = case hot_keys_keeper:bucket_hot_keys("default") of
+               undefined -> [];
+               X -> X
+           end,
+    {ok, lists:map(fun ({Key, Props}) ->
+                           {"default", Key, 1.0, proplists:get_value(ops, Props)}
+                   end, Keys)}.
 
 sum_stats_values_rec([], [], Rec) ->
     Rec;

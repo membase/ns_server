@@ -258,7 +258,7 @@ parse_topkey_value(Value) ->
               Tokens).
 
 parse_topkeys(Topkeys) ->
-    lists:map(fun ([Key, ValueString]) ->
+    lists:map(fun ({Key, ValueString}) ->
                       {Key, parse_topkey_value(ValueString)}
               end, Topkeys).
 

@@ -6,11 +6,13 @@
     menelaus_app,
     menelaus_sup,
     menelaus_web,
-    menelaus_deps
+    menelaus_deps,
+    hot_keys_keeper
   ]},
   {registered, [
     menelaus_sup,
-    menelaus_web
+    menelaus_web,
+    hot_keys_keeper
   ]},
   {mod, {menelaus_app, []}},
   {env, []},

@@ -61,6 +61,10 @@ init([]) ->
                 {menelaus_event, start_link, []},
                 transient, 5000, worker, dynamic},
 
-    Processes = [Web, WebEvent],
+    HotKeysKeeper = {hot_keys_keeper,
+                     {hot_keys_keeper, start_link, []},
+                     permanent, 5000, worker, dynamic},
+
+    Processes = [Web, WebEvent, HotKeysKeeper],
     {ok, {{one_for_one, 10, 10}, Processes}}.
 
