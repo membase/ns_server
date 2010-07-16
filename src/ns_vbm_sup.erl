@@ -17,6 +17,8 @@
 
 -behaviour(supervisor).
 
+-include("ns_common.hrl").
+
 -export([start_link/0,
          kill_children/3,
          kill_all_children/1,
@@ -55,8 +57,6 @@ kill_vbuckets(Node, Bucket, VBuckets) ->
         [] ->
             ok;
         RemainingVBuckets ->
-            error_logger:info_msg("~p:kill_vbuckets: ~w~n",
-                                  [?MODULE, RemainingVBuckets]),
             lists:foreach(fun ({V, dead}) ->
                                   ns_memcached:delete_vbucket(Node, Bucket, V);
                               ({V, _}) ->
@@ -80,9 +80,9 @@ set_replicas(Node, Bucket, Replicas) ->
             lists:foreach(
               fun ({Dst, R}) ->
                       VBuckets = [V || {V, _} <- R],
-                      error_logger:info_msg(
-                        "Starting replica for vbuckets ~w on node ~p~n",
-                        [VBuckets, Dst]),
+                      ?log_info(
+                         "Starting replica for vbuckets ~w on node ~p",
+                         [VBuckets, Dst]),
                       kill_vbuckets(Dst, Bucket, VBuckets),
                       lists:foreach(
                         fun (V) ->
@@ -149,11 +149,11 @@ kill_runaway_children(Node, Bucket, Replicas) ->
           end, Children),
     lists:foreach(
       fun (Runaway) ->
-              error_logger:info_msg(
-                "~p:kill_runaway_children(): Killling replicator ~p on node ~p~n",
-                                               [?MODULE, Runaway, Node]),
-                          kill_child(Node, Runaway)
-                  end, Runaways),
+              ?log_info(
+                "Killing replicator ~p on node ~p",
+                 [Runaway, Node]),
+              kill_child(Node, Runaway)
+      end, Runaways),
     GoodChildren.
 
 
@@ -185,8 +185,8 @@ children(Node) ->
 
 start_child(Node, Bucket, VBuckets, DstNode, TakeOver) ->
     PortServerArgs = args(Node, Bucket, VBuckets, DstNode, TakeOver),
-    error_logger:info_msg("~p:start_child(~p, ~p, ~p, ~p, ~p):~nArgs = ~p~n",
-                          [?MODULE, Node, Bucket, VBuckets, DstNode, TakeOver, PortServerArgs]),
+    ?log_info("start_child(~p, ~p, ~p, ~p, ~p):~nArgs = ~p",
+              [Node, Bucket, VBuckets, DstNode, TakeOver, PortServerArgs]),
     Type = case TakeOver of true -> transient; false -> permanent end,
     ChildSpec = {{Bucket, VBuckets, DstNode, TakeOver},
                  {ns_port_server, start_link, PortServerArgs},

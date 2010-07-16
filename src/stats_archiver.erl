@@ -175,7 +175,6 @@ create_tables(Bucket) ->
     lists:foreach(
       fun ({Period, _, _}) ->
               TableName = table(Node, Bucket, Period),
-              ?log_info("Creating table ~p.", [TableName]),
               case mnesia:create_table(TableName,
                                        [{disc_copies, [Node]},
                                         {record_name, stat_entry},
@@ -183,10 +182,9 @@ create_tables(Bucket) ->
                                         {attributes,
                                          record_info(fields, stat_entry)}]) of
                   {atomic, ok} ->
-                      ?log_info("Created table ~p.", [TableName]);
+                      ?log_info("Created table ~p", [TableName]);
                   {aborted, {already_exists, _}} ->
-                      ?log_info("Table ~p already existed.",
-                                [Bucket])
+                      ok
               end
       end, archives()).
 
