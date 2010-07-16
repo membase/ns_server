@@ -125,7 +125,7 @@ handle_call({start_rebalance, KeepNodes, EjectNodes}, _From,
                                         undefined ->
                                             ok;
                                         {JPid, _Ref} ->
-                                            ok = misc:wait_for_process(JPid)
+                                            ok = misc:wait_for_process(JPid, infinity)
                                     end,
                                     do_rebalance(Bucket, KeepNodes, EjectNodes,
                                                  Map, 2)
