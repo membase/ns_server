@@ -143,7 +143,10 @@ default() ->
                                  {dbname, DbName},
                                  {admin_user, "_admin"},
                                  {admin_pass, "_admin"},
-                                 {max_size, undefined},
+                                 {max_size, case memsup:get_memory_data() of
+                                                {Total, _, _} -> (Total * 4) div (1048576 * 5);
+                                                _ -> undefined
+                                            end},
                                  {verbosity, ""}]},
 
     {buckets, [{configs, [{"default",
