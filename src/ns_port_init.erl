@@ -39,11 +39,11 @@ handle_event(_Event, State) ->
     ok = reconfig(PortServers),
     {ok, State, hibernate}.
 
-handle_call(_, State) ->
-    {noreply, State}.
+handle_call(unhandled, unhandled) ->
+    unhandled.
 
 handle_info(_, State) ->
-    {noreply, State}.
+    {ok, State}.
 
 terminate(_Reason, _State) ->
     ok.
