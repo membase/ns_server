@@ -72,8 +72,8 @@ rebalance_progress(Bucket) ->
     try gen_server:call(server(Bucket), rebalance_progress, 2000) of
         Result -> Result
     catch
-        Err ->
-            ?log_error("Couldn't talk to orchestrator: ~p", [Err]),
+        Type:Err ->
+            ?log_error("Couldn't talk to orchestrator: ~p", [{Type, Err}]),
             not_running
     end.
 
