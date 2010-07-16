@@ -177,7 +177,7 @@ function renderLargeGraph(main, data) {
 
 function renderSmallGraph(jq, data, isSelected) {
   var average = _.foldl(data, 0, function (s,v) {return s+v}) / data.length;
-  var avgString = ViewHelpers.formatQuantity(average, '', 1000);
+  var avgString = isNaN(average) ? '?' : ViewHelpers.formatQuantity(average, '', 1000);
   jq.find('.small_graph_label > .value').text(avgString);
 
   var plotData = _.map(data, function (e, i) {
@@ -296,6 +296,7 @@ var StatGraphs = {
     var selected = self.selected.value;
     if (stats[selected]) {
       renderLargeGraph(main, stats[selected]);
+      $('.stats-period-container').toggleClass('missing-samples', !stats[selected].length);
       var visibleSeconds = Math.ceil(stats[selected].length * op.interval / 1000);
       $('.stats_visible_period').text(formatUptime(visibleSeconds));
     }
