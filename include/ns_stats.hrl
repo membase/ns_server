@@ -35,7 +35,8 @@
         get_hits,
         get_misses,
         incr_hits,
-        incr_misses).
+        incr_misses,
+        ep_io_num_read).
 
 -record(stat_entry, {timestamp, ?STAT_GAUGES, ?STAT_COUNTERS}).
 -define(STAT_FIELD_START, 2).

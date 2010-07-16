@@ -194,6 +194,7 @@ function renderSmallGraph(jq, data, isSelected) {
 
 var KnownStats = [
   ["ops", "Operations per second\nSum of set, get, increment, decrement, cas and delete operations per second"],
+  ["ep_io_num_read", "Disk fetches\nNumber of disk reads per second"],
   ["mem_used", "Memory bytes used"],
   ["curr_items", "Items count"],
   ["cmd_set", "Sets per second\nSet operations per second"],
