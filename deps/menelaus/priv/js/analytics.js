@@ -459,12 +459,6 @@ var AnalyticsSection = {
     DAO.cells.stats.subscribe($m(this, 'onKeyStats'));
     prepareTemplateForCell('top_keys', DAO.cells.currentStatTargetCell);
 
-    DAO.cells.statsOptions.update({
-      "stat": "combined",
-      "keysOpsPerSecondZoom": 'now',
-      "keysInterval": 5000
-    });
-
     StatGraphs.init();
 
     DAO.cells.currentStatTargetCell.subscribe(function (cell) {
