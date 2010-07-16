@@ -40,4 +40,3 @@
 
 -record(stat_entry, {timestamp, ?STAT_GAUGES, ?STAT_COUNTERS}).
 -define(STAT_FIELD_START, 2).
--define(STAT_SIZE, 22).
