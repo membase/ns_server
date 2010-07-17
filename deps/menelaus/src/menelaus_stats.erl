@@ -29,11 +29,11 @@
 basic_stats(_PoolId, "default") ->
     {Samples, _, _, _} = grab_op_stats("default", [{"zoom", "minute"}]),
     LastSample = case Samples of
-                     [] -> [{X, [0]} || X <- tuple_to_list({timestamp, ?STAT_GAUGES, ?STAT_COUNTERS})];
+                     [] -> [];
                      _ -> samples_to_proplists([lists:last(Samples)])
                  end,
     GetValue = fun (Name) ->
-                       hd(proplists:get_value(Name, LastSample))
+                       hd(proplists:get_value(Name, LastSample, [0]))
                end,
     Ops = GetValue(ops),
     Fetches = GetValue(ep_io_num_read),
