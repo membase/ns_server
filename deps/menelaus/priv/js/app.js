@@ -836,9 +836,7 @@ var NodeDialog = {
       var totalRAMMegs = Math.floor(data.memoryTotal/1024/1024);
 
       var ramQuota;
-      var maxRAMMegs = Math.floor(totalRAMMegs * 0.80);
-      // TODO: unknown quota -> 80%
-      (ramQuota = dialog.find('[name=dynamic-ram-quota]')).val(ViewHelpers.ifNull(data.memoryQuota, maxRAMMegs));
+      (ramQuota = dialog.find('[name=dynamic-ram-quota]')).val(ViewHelpers.ifNull(data.memoryQuota, Math.floor(totalRAMMegs * 0.80)));
       dialog.find('.ram-total-size').text(escapeHTML(totalRAMMegs) + ' MB');
 
       var firstResource = data.storage.hdd[0];
@@ -895,17 +893,18 @@ var NodeDialog = {
 
         prevRamValue = ramValue;
 
-        function validateQuotaValue(ramValue, total) {
+        function validateQuotaValue(ramValue, min, max) {
           if (!/^\s*[0-9]+\s*$/.exec(ramValue))
             return false;
 
           var megs = parseInt(ramValue, 10);
-          if (megs < total * 0.1 || megs > total * 0.8)
+          if (megs < min || megs > max)
             return false;
           return true;
         }
 
-        if (!validateQuotaValue(ramValue, totalRAMMegs)) {
+        var totalRam = data.memoryTotal/1048576;
+        if (!validateQuotaValue(ramValue, Math.floor(totalRam/10), Math.floor(totalRam*0.8))) {
           errors.push("Dynamic RAM Quota must be between 10% and 80% of machine's physical RAM size");
           ramQuota.addClass('bad-value');
         } else {

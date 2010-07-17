@@ -1234,9 +1234,8 @@ handle_node_settings_post(Node, Req) ->
                            _ -> ok
                        end,
                        {MaxMemoryBytes0, _, _} = memsup:get_memory_data(),
-                       MaxMemoryBytes = (MaxMemoryBytes0 * 4) div 5,
                        MinMemoryMB = MaxMemoryBytes0 div (10 * 1048576),
-                       MaxMemoryMB = MaxMemoryBytes div 1048576,
+                       MaxMemoryMB = (MaxMemoryBytes0 * 4) div (5 * 1048576),
                        case parse_validate_number(X, MinMemoryMB, MaxMemoryMB) of
                            {ok, Number} ->
                                case ns_storage_conf:change_memory_quota(Node, Number) of
