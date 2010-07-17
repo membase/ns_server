@@ -32,7 +32,7 @@
 
 -export([start_link/1,
          latest/3, latest/4, latest/5,
-         latest_all/2, latest_all/3]).
+         latest_all/2, latest_all/3, latest_all/4]).
 
 -export([code_change/3, init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2]).
@@ -49,13 +49,19 @@ start_link(Bucket) ->
 
 %% @doc Get the latest samples for a given interval from the archive
 latest(Period, Node, Bucket) when is_atom(Node) ->
-    {atomic, Result} = mnesia:transaction(
-                         fun () ->
-                                 Tab = table(Node, Bucket, Period),
-                                 Key = mnesia:last(Tab),
-                                 hd(mnesia:read(Tab, Key))
-                         end),
-    Result;
+    try mnesia:transaction(
+          fun () ->
+                  Tab = table(Node, Bucket, Period),
+                  Key = mnesia:last(Tab),
+                  hd(mnesia:read(Tab, Key))
+          end) of
+        {atomic, Result} ->
+            {ok, Result};
+        Err ->
+            {error, Err}
+    catch
+        Type:Err -> {error, {Type, Err}}
+    end;
 latest(Period, Nodes, Bucket) when is_list(Nodes), is_list(Bucket) ->
     misc:pmap(fun (Node) ->
                       {Node, latest(Period, Node, Bucket)}
@@ -63,7 +69,11 @@ latest(Period, Nodes, Bucket) when is_list(Nodes), is_list(Bucket) ->
 
 
 latest(Period, Node, Bucket, N) when is_atom(Node), is_list(Bucket) ->
-    walk(table(Node, Bucket, Period), N);
+    try walk(table(Node, Bucket, Period), N) of
+        Result -> {ok, Result}
+    catch
+        Type:Err -> {error, {Type, Err}}
+    end;
 latest(Period, Nodes, Bucket, N) when is_list(Nodes), is_list(Bucket) ->
     misc:pmap(fun (Node) ->
                       {Node, latest(Period, Node, Bucket, N)}
@@ -75,7 +85,11 @@ latest(Period, Nodes, Bucket, Step, N) when is_list(Nodes) ->
                       {Node, latest(Period, Node, Bucket, Step, N)}
               end, Nodes, length(Nodes));
 latest(Period, Node, Bucket, Step, N) when is_atom(Node) ->
-    resample(table(Node, Bucket, Period), Step, N).
+    try resample(table(Node, Bucket, Period), Step, N) of
+        Result -> {ok, Result}
+    catch
+        Type:Err -> {error, {Type, Err}}
+    end.
 
 
 latest_all(Period, Bucket) ->
@@ -84,6 +98,10 @@ latest_all(Period, Bucket) ->
 
 latest_all(Period, Bucket, N) ->
     latest(Period, ns_node_disco:nodes_wanted(), Bucket, N).
+
+
+latest_all(Period, Bucket, Step, N) ->
+    latest(Period, ns_node_disco:nodes_wanted(), Bucket, Step, N).
 
 
 %%
