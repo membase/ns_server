@@ -157,12 +157,20 @@ grab_op_stats(Bucket, Params) ->
     end.
 
 invoke_archiver(Bucket, NodeS, Step, Period) ->
-    case Step of
-        1 ->
-            Period = minute,
-            stats_archiver:latest(minute, NodeS, Bucket, 60);
+    RV = case Step of
+             1 ->
+                 Period = minute,
+                 stats_archiver:latest(minute, NodeS, Bucket, 60);
+             _ ->
+                 stats_archiver:latest(Period, NodeS, Bucket, Step, 60)
+         end,
+    case is_list(NodeS) of
+        true -> [{K, V} || {K, {ok, V}} <- RV];
         _ ->
-            stats_archiver:latest(Period, NodeS, Bucket, Step, 60)
+            case RV of
+                {ok, List} -> List;
+                _ -> []
+            end
     end.
 
 grab_op_stats_body(Bucket, ClientTStamp, Ref, Step, Period) ->
