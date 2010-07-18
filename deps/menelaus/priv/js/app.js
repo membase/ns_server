@@ -835,8 +835,7 @@ var NodeDialog = {
       var dialog = $('#init_resources_dialog');
       var totalRAMMegs = Math.floor(data.memoryTotal/1024/1024);
 
-      var ramQuota;
-      (ramQuota = dialog.find('[name=dynamic-ram-quota]')).val(ViewHelpers.ifNull(data.memoryQuota, Math.floor(totalRAMMegs * 0.80)));
+      dialog.find('[name=dynamic-ram-quota]').val(ViewHelpers.ifNull(data.memoryQuota, Math.floor(totalRAMMegs * 0.80)));
       dialog.find('.ram-total-size').text(escapeHTML(totalRAMMegs) + ' MB');
 
       var firstResource = data.storage.hdd[0];
@@ -850,73 +849,36 @@ var NodeDialog = {
       updateDiskTotal();
       (diskPath = dialog.find('.resource-row [name=path]')).val(escapeHTML(firstResource.path));
 
-      var prevRamValue, prevPathValue;
+      var prevPathValue;
 
       self.resourcesObserver = dialog.observePotentialChanges(function () {
-        var ramValue = ramQuota.val();
-
-        var errors = [];
-
         var pathValue = diskPath.val();
 
-        if (pathValue == prevPathValue && ramValue == prevRamValue)
+        if (pathValue == prevPathValue)
           return;
 
-        ;(function () {
-          prevPathValue = pathValue;
-          if (pathValue == "") {
-            errors.push("path cannot be empty");
-            diskPath.addClass('bad-value');
-            diskTotalGigs = 0;
-            updateDiskTotal();
-            return;
-          }
-          diskPath.removeClass('bad-value');
-
-          var hddResources = data.availableStorage.hdd;
-          hddResources = hddResources.sort(function (a,b) {return b.path.length - a.path.length;});
-          var pathResource = _.detect(hddResources, function (resource) {
-            var path = resource.path;
-            if (path[path.length-1] != '/')
-              path += '/';
-            if (pathValue.substring(0, path.length) == path)
-              return true;
-          });
-
-          if (!pathResource)
-            pathResource = {path:"/", sizeKBytes: 0, usagePercent: 0};
-
-          diskTotalGigs = Math.floor(pathResource.sizeKBytes * (100 - pathResource.usagePercent) / 100 / (1024 * 1024));
+        prevPathValue = pathValue;
+        if (pathValue == "") {
+          diskTotalGigs = 0;
           updateDiskTotal();
-          prevDiskValue = null;
-        })();
-
-        prevRamValue = ramValue;
-
-        function validateQuotaValue(ramValue, min, max) {
-          if (!/^\s*[0-9]+\s*$/.exec(ramValue))
-            return false;
-
-          var megs = parseInt(ramValue, 10);
-          if (megs < min || megs > max)
-            return false;
-          return true;
+          return;
         }
 
-        var totalRam = data.memoryTotal/1048576;
-        if (!validateQuotaValue(ramValue, Math.floor(totalRam/10), Math.floor(totalRam*0.8))) {
-          errors.push("Dynamic RAM Quota must be between 10% and 80% of machine's physical RAM size");
-          ramQuota.addClass('bad-value');
-        } else {
-          ramQuota.removeClass('bad-value');
-        }
+        var hddResources = data.availableStorage.hdd;
+        hddResources = hddResources.sort(function (a,b) {return b.path.length - a.path.length;});
+        var pathResource = _.detect(hddResources, function (resource) {
+          var path = resource.path;
+          if (path[path.length-1] != '/')
+            path += '/';
+          if (pathValue.substring(0, path.length) == path)
+            return true;
+        });
 
-        dialog.find('.submit')[errors.length ? 'attr' : 'removeAttr']('disabled', 'disabled');
-        if (errors.length) {
-          renderTemplate('init_resources_errors', errors);
-        } else {
-          $('#init_resources_errors_container').html('')
-        }
+        if (!pathResource)
+          pathResource = {path:"/", sizeKBytes: 0, usagePercent: 0};
+
+        diskTotalGigs = Math.floor(pathResource.sizeKBytes * (100 - pathResource.usagePercent) / 100 / (1024 * 1024));
+        updateDiskTotal();
       });
     }
   },
