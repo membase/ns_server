@@ -104,6 +104,7 @@ var DAO = {
       $.cookie('auth', null);
     }
   },
+  appendedVersion: false,
   loginSuccess: function (data) {
     DAO.ready = true;
     $(window).trigger('dao:ready');
@@ -116,7 +117,10 @@ var DAO = {
     if (data.implementationVersion) {
       DAO.version = data.implementationVersion;
       DAO.componentsVersion = data.componentsVersion;
-      document.title = document.title + " (" + data.implementationVersion + ")"
+      if (!DAO.appendedVersion) {
+        document.title = document.title + " (" + data.implementationVersion + ")"
+        DAO.appendedVersion = true
+      }
     }
 
     DAO.initStatus = data.initStatus || "";
