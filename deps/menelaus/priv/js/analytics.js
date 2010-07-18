@@ -69,7 +69,7 @@ var SamplesRestorer = mkClass({
   }).setSources({target: targetCell});
 
   var statsOptionsCell = new Cell();
-  statsOptionsCell.setValue({nonQ: ['keysInterval', 'nonQ']});
+  statsOptionsCell.setValue({nonQ: ['keysInterval', 'nonQ'], resampleForUI: '1'});
   _.extend(statsOptionsCell, {
     update: function (options) {
       this.modifyValue(_.bind($.extend, $, {}), options);

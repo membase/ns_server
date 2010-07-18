@@ -51,6 +51,7 @@ basic_stats(_PoolId, "default") ->
 
 %% GET /pools/default/stats
 %% Supported query params:
+%%  resampleForUI - pass 1 if you need 60 samples
 %%  zoom - stats zoom level (minute | hour | day | week | month | year)
 %%  haveTStamp - omit samples earlier than given
 %%
@@ -124,14 +125,18 @@ grab_op_stats(Bucket, Params) ->
                                 _:_ -> undefined
                             end
                    end,
-    {Step, Period} = case proplists:get_value("zoom", Params) of
-                         "minute" -> {1, minute};
-                         "hour" -> {60, hour};
-                         "day" -> {1440, day};
-                         "week" -> {11520, week};
-                         "month" -> {44640, month};
-                         "year" -> {527040, year};
+    {Step0, Period, Window0} = case proplists:get_value("zoom", Params) of
+                         "minute" -> {1, minute, 60};
+                         "hour" -> {60, hour, 900};
+                         "day" -> {1440, day, 1440};
+                         "week" -> {11520, week, 1152};
+                         "month" -> {44640, month, 1488};
+                         "year" -> {527040, year, 1464};
                          undefined -> {1, minute}
+                     end,
+    {Step, Window} = case proplists:get_value("resampleForUI", Params) of
+                         undefined -> {1, Window0};
+                         _ -> {Step0, 60}
                      end,
     Self = self(),
     Ref = make_ref(),
@@ -146,23 +151,22 @@ grab_op_stats(Bucket, Params) ->
                     minute -> Ref;
                     _ -> []
                 end,
-    try grab_op_stats_body(Bucket, ClientTStamp, RefToPass, Step, Period) of
+    try grab_op_stats_body(Bucket, ClientTStamp, RefToPass, {Step, Period, Window}) of
         V -> case V =/= [] andalso (hd(V))#stat_entry.timestamp of
-                 ClientTStamp -> {V, ClientTStamp, Step, 60};
-                 _ -> {V, undefined, Step, 60}
+                 ClientTStamp -> {V, ClientTStamp, Step, Window};
+                 _ -> {V, undefined, Step, Window}
              end
     after
         misc:flush(Ref),
         ns_pubsub:unsubscribe(ns_stats_event, Subscription)
     end.
 
-invoke_archiver(Bucket, NodeS, Step, Period) ->
+invoke_archiver(Bucket, NodeS, {Step, Period, Window}) ->
     RV = case Step of
              1 ->
-                 Period = minute,
-                 stats_archiver:latest(minute, NodeS, Bucket, 60);
+                 stats_archiver:latest(Period, NodeS, Bucket, Window);
              _ ->
-                 stats_archiver:latest(Period, NodeS, Bucket, Step, 60)
+                 stats_archiver:latest(Period, NodeS, Bucket, Step, Window)
          end,
     case is_list(NodeS) of
         true -> [{K, V} || {K, {ok, V}} <- RV];
@@ -173,8 +177,8 @@ invoke_archiver(Bucket, NodeS, Step, Period) ->
             end
     end.
 
-grab_op_stats_body(Bucket, ClientTStamp, Ref, Step, Period) ->
-    RV = invoke_archiver(Bucket, node(), Step, Period),
+grab_op_stats_body(Bucket, ClientTStamp, Ref, PeriodParams) ->
+    RV = invoke_archiver(Bucket, node(), PeriodParams),
     case RV of
         [] -> [];
         [_] -> [];
@@ -188,9 +192,9 @@ grab_op_stats_body(Bucket, ClientTStamp, Ref, Step, Period) ->
                 ClientTStamp when Ref =/= [] ->
                     receive
                         Ref ->
-                            grab_op_stats_body(Bucket, ClientTStamp, [], Step, Period)
+                            grab_op_stats_body(Bucket, ClientTStamp, [], PeriodParams)
                     after 2000 ->
-                            grab_op_stats_body(Bucket, undefined, [], Step, Period)
+                            grab_op_stats_body(Bucket, undefined, [], PeriodParams)
                     end;
                 _ ->
                     %% cut samples up-to and including ClientTStamp
@@ -201,7 +205,7 @@ grab_op_stats_body(Bucket, ClientTStamp, Ref, Step, Period) ->
                                       [] -> Samples;
                                       _ -> lists:reverse(CutSamples)
                                   end,
-                    Replies = invoke_archiver(Bucket, ns_node_disco:nodes_wanted(), Step, Period),
+                    Replies = invoke_archiver(Bucket, ns_node_disco:nodes_wanted(), PeriodParams),
                     %% merge samples from other nodes
                     MergedSamples = lists:foldl(fun ({Node, _}, AccSamples) when Node =:= node() -> AccSamples;
                                                     ({_Node, RemoteSamples}, AccSamples) ->
