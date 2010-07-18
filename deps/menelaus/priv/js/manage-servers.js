@@ -118,16 +118,13 @@ var ServersSection = {
       return this.renderRebalance(details);
     }
 
-    renderTemplate('manage_server_list', active, $i('active_server_list_container'));
+    if (active.length) {
+      renderTemplate('manage_server_list', active, $i('active_server_list_container'));
+      renderTemplate('manage_server_list', pending, $i('pending_server_list_container'));
+    }
 
     $('#active_server_list_container .last-active').find('.eject_server').addClass('disabled').end()
       .find('.failover_server').addClass('disabled');
-
-    if (!rebalancing) {
-      renderTemplate('manage_server_list', pending, $i('pending_server_list_container'));
-    } else {
-      this.renderRebalance(details);
-    }
   },
   renderRebalance: function (details) {
     var progress = this.rebalanceProgress.value;
