@@ -46,6 +46,7 @@ num_nodes.times do |x|
                  {dbname, "#{node_data}/default"},
                  {admin_user, "_admin"},
                  {admin_pass, "_admin"},
+                 {max_size, 400},
                  {verbosity, ""}
                  ]}.
 
