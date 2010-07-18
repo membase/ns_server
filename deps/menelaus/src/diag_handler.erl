@@ -96,6 +96,12 @@ diag_format_timestamp(EpochMilliseconds) ->
     io_lib:format("~4.4.0w-~2.2.0w-~2.2.0w ~2.2.0w:~2.2.0w:~2.2.0w.~3.3.0w",
                   [YYYY, MM, DD, Hour, Min, Sec, EpochMilliseconds rem 1000]).
 
+generate_diag_filename() ->
+    {{YYYY, MM, DD}, {Hour, Min, Sec}} = calendar:now_to_local_time(now()),
+    io_lib:format("ns-diag-~4.4.0w~2.2.0w~2.2.0w~2.2.0w~2.2.0w~2.2.0w.txt",
+                  [YYYY, MM, DD, Hour, Min, Sec]).
+    
+
 diag_format_log_entry(Entry) ->
     [Type, Code, Module,
      TStamp, ShortText, Text] = lists:map(fun (K) ->
@@ -129,7 +135,9 @@ handle_diag(Req) ->
                                  io_lib:format(Fmt ++ "~n~n", Args)
                          end, Infos),
     Resp = Req:ok({"text/plain; charset=utf-8",
-                   menelaus_util:server_header(),
+                   [{"Content-Disposition", "attachment; filename=" ++ generate_diag_filename()},
+                    {"Content-Type", "text/plain"}
+                    | menelaus_util:server_header()],
                    chunked}),
     Resp:write_chunk(list_to_binary(Text)),
     handle_logs(Resp).
