@@ -509,10 +509,16 @@ $(function () {
     displayNotice('You have successfully joined the cluster');
   }
   if ($.cookie('rf')) {
-    $.cookie('rf', null);
     displayNotice('An error was encountered when requesting data from the server.  ' +
 		  'The console has been reloaded to attempt to recover.  There ' +
 		  'may be additional information about the error in the log.');
+    DAO.onReady(function () {
+      $.cookie('rf', null);
+      if ('sessionStorage' in window && window.sessionStorage.reloadCause) {
+        postClientErrorReport("Had XHR failure. Here's diag: " + window.sessionStorage.reloadCause);
+        delete window.sessionStorage.reloadCause;
+      }
+    });
   }
 
   ThePage.initialize();

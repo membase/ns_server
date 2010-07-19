@@ -40,6 +40,37 @@ function onUnexpectedXHRError(xhr) {
     return reloadApp();
   }
 
+  if ('JSON' in window && 'sessionStorage' in window) {
+    var self = this;
+    (function () {
+      var json;
+      var responseText;
+      try {responseText = String(xhr.responseText)} catch (e) {};
+      try {
+        var s = {};
+        _.each(self, function (value, key) {
+          if (_.isString(key) || _.isNumber(key))
+            s[key] = value;
+        });
+        json = JSON.stringify({
+          s: s,
+          statusCode: status,
+          responseText: responseText
+        });
+      } catch (e) {
+        try {
+          json = JSON.stringify({
+            statusCode: status,
+            responseText: responseText
+          });
+        } catch (e2) {
+          return;
+        }
+      }
+      sessionStorage.reloadCause = json;
+    })();
+  }
+
   var reloadInfo = $.cookie('ri');
   var ts;
 

@@ -630,6 +630,15 @@ function genericDialog(options) {
   return instance;
 }
 
+function postClientErrorReport(text) {
+  function ignore() {}
+  $.ajax({type: 'POST',
+          url: "/logClientError",
+          data: text,
+          success: ignore,
+          error: ignore});
+}
+
 var originalOnError;
 (function () {
   var sentReports = 0;
@@ -652,12 +661,7 @@ var originalOnError;
     // mozilla can report errors in some cases when user leaves current page
     // so delay report sending
     _.delay(function () {
-      function ignore() {}
-      $.ajax({type: 'POST',
-              url: "/logClientError",
-              data: report.join(''),
-              success: ignore,
-              error: ignore});
+      postClientErrorReport(report.join(''));
     }, 500);
 
     if (originalOnError)
