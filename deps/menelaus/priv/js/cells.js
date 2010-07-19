@@ -261,7 +261,7 @@ var Cell = mkClass({
     if (this.value)
       body(this.value);
     else
-      this.subscribeOnce(function (self) {
+      this.changedSlot.subscribeOnce(function (self) {
         body(self.value);
       });
   },
