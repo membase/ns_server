@@ -1216,15 +1216,19 @@ handle_node_settings_post(Node, Req) ->
                end,
                case proplists:get_value("path", Params) of
                    undefined -> ok;
-                   Path ->
+                   [] -> <<"The database path cannot be empty.">>;
+                   %% TODO: windows pathes
+                   "/" ++ _ = Path ->
                        case Node =/= node() of
                            true -> exit('setting disk storage path for other nodes is not yet supported');
                            _ -> ok
                        end,
-                       case ns_storage_conf:setup_disk_storage_conf(node(), Path) of
+                       case ns_storage_conf:prepare_setup_disk_storage_conf(node(), Path) of
+                           {ok, _} = R -> R;
                            ok -> ok;
-                           error -> <<"Couldn't set storage path. It must be new directory and northscale user must be able to create it">>
-                       end
+                           error -> <<"Could not set the storage path. It must be a new directory and the 'northscale' user must have permissions to create it.">>
+                       end;
+                   _ -> <<"An absolute path is required.">>
                end,
                case proplists:get_value("memoryQuota", Params) of
                    undefined -> ok;
@@ -1238,33 +1242,50 @@ handle_node_settings_post(Node, Req) ->
                        MaxMemoryMB = (MaxMemoryBytes0 * 4) div (5 * 1048576),
                        case parse_validate_number(X, MinMemoryMB, MaxMemoryMB) of
                            {ok, Number} ->
-                               case ns_storage_conf:change_memory_quota(Node, Number) of
-                                   ok         -> ok;
-                                   {error, _} -> <<"Error changing memory quota.\n">>
-                               end;
-                           too_small -> <<"Value is too small. Quota must be between 10% and 80% of memory size.">>;
-                           too_large -> <<"Value is too large. Quota must be between 10% and 80% of memory size.">>
+                               {ok, fun () ->
+                                            ok = ns_storage_conf:change_memory_quota(Node, Number)
+                                    end};
+                           invalid -> <<"The RAM Quota value must be a number.">>;
+                           too_small ->
+                               list_to_binary(io_lib:format("The RAM Quota value is too small."
+                                                            ++ " Quota must be between 10% (~w MB) and 80% (~w MB) of memory size.", [MinMemoryMB, MaxMemoryMB]));
+                           too_large ->
+                               list_to_binary(io_lib:format("The RAM Quota value is too large."
+                                                            ++ " Quota must be between 10% (~w MB) and 80% (~w MB) of memory size.", [MinMemoryMB, MaxMemoryMB]))
+
                        end
                end
               ],
-    case lists:filter(fun(X) -> X =/= ok end, Results) of
-        [] -> Req:respond({200, add_header(), []});
+    case lists:filter(fun(ok) -> false;
+                         ({ok, _}) -> false;
+                         (_) -> true
+                      end, Results) of
+        [] ->
+            lists:foreach(fun ({ok, CommitF}) ->
+                                  try CommitF()
+                                  catch
+                                      E:T ->
+                                          error_logger:error_msg("Got exception from node settings commit function: ~p. Ignoring.~n", [{E,T}])
+                                  end;
+                              (_) -> ok
+                          end, Results),
+            Req:respond({200, add_header(), []});
         Errs -> reply_json(Req, Errs, 400)
     end.
 
 validate_add_node_params(Hostname, Port, User, Password) ->
     Candidates = case lists:member(undefined, [Hostname, Port, User, Password]) of
-                     true -> [<<"Missing required parameter">>];
-                     _ -> [is_valid_port_number(Port) orelse <<"Invalid rest port specified">>,
+                     true -> [<<"Missing required parameter.">>];
+                     _ -> [is_valid_port_number(Port) orelse <<"Invalid rest port specified.">>,
                            case Hostname of
-                               [] -> <<"Hostname cannot be empty">>;
+                               [] -> <<"Hostname is required.">>;
                                _ -> true
                            end,
                            case {User, Password} of
                                {[], []} -> true;
                                {[_Head | _], [_PasswordHead | _]} -> true;
-                               {[], [_PasswordHead | _]} -> <<"Password must be passed with non-empty username">>;
-                               _ -> <<"Empty password given">>
+                               {[], [_PasswordHead | _]} -> <<"If a username is specified, a password must be supplied.">>;
+                               _ -> <<"A password must be supplied.">>
                            end]
                  end,
     lists:filter(fun (E) -> E =/= true end, Candidates).

@@ -18,7 +18,7 @@
 %
 -module(ns_storage_conf).
 
--export([memory_quota/1, change_memory_quota/2, setup_disk_storage_conf/2,
+-export([memory_quota/1, change_memory_quota/2, prepare_setup_disk_storage_conf/2,
          storage_conf/1, add_storage/4, remove_storage/2, format_engine_max_size/0]).
 
 format_engine_max_size() ->
@@ -46,7 +46,7 @@ change_memory_quota(Node, none) ->
 change_memory_quota(Node, NewMemQuotaMB) when is_integer(NewMemQuotaMB) ->
     update_max_size(Node, NewMemQuotaMB).
 
-setup_disk_storage_conf(Node, Path) when Node =:= node() ->
+prepare_setup_disk_storage_conf(Node, Path) when Node =:= node() ->
     {value, PropList} = ns_config:search_node(Node, ns_config:get(), memcached),
     DBName = filename:absname(proplists:get_value(dbname, PropList)),
     NewDBName = filename:absname(filename:join(Path, "default")),
@@ -56,9 +56,10 @@ setup_disk_storage_conf(Node, Path) when Node =:= node() ->
             filelib:ensure_dir(Path),
             case file:make_dir(Path) of
                 ok ->
-                    ns_config:set({node, node(), memcached},
-                                  [{dbname, NewDBName} | lists:keydelete(dbname, 1, PropList)]),
-                    ok;
+                    {ok, fun () ->
+                                 ns_config:set({node, node(), memcached},
+                                               [{dbname, NewDBName} | lists:keydelete(dbname, 1, PropList)])
+                         end};
                 _ -> error
             end
     end.
