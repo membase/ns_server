@@ -268,20 +268,24 @@ change_my_address(MyAddr) ->
     CookieBefore = erlang:get_cookie(),
     ns_server_sup:pull_plug(
       fun() ->
-              ns_mnesia:prepare_rename(),
-              case dist_manager:adjust_my_address(MyAddr) of
-                  nothing ->
-                      ns_mnesia:backout_rename();
-                  net_restarted ->
-                      case erlang:get_cookie() of
-                          CookieBefore ->
-                              ok;
-                          CookieAfter ->
-                              error_logger:error_msg("critical: Cookie has changed from ~p to ~p~n", [CookieBefore, CookieAfter]),
-                              exit(bad_cookie)
-                      end,
-                      ns_mnesia:rename_node(MyNode, node()),
-                      rename_node(MyNode, node()),
-                      ok
+              case ns_mnesia:prepare_rename() of
+                  ok ->
+                      case dist_manager:adjust_my_address(MyAddr) of
+                          nothing ->
+                              ns_mnesia:backout_rename();
+                          net_restarted ->
+                              case erlang:get_cookie() of
+                                  CookieBefore ->
+                                      ok;
+                                  CookieAfter ->
+                                      error_logger:error_msg("critical: Cookie has changed from ~p to ~p~n", [CookieBefore, CookieAfter]),
+                                      exit(bad_cookie)
+                              end,
+                              ns_mnesia:rename_node(MyNode, node()),
+                              rename_node(MyNode, node()),
+                              ok
+                      end;
+                  E ->
+                      ?log_error("Not attempting to rename node: ~p", [E])
               end
       end).

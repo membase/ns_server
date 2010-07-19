@@ -84,7 +84,11 @@ change_table_name(Tab, FromString, ToString) ->
 
 %% @doc Remove an mnesia node.
 delete_node(Node) ->
-    ok = mnesia:del_table_copy(schema, Node),
+    lists:foreach(fun (Table) ->
+                          Result = mnesia:del_table_copy(Table, Node),
+                          ?log_info("Result of attempt to delete ~p from ~p: ~p",
+                                    [Table, Node, Result])
+                  end, mnesia:system_info(tables)),
     ?log_info("Removed node ~p from cluster.~nCurrent config: ~p",
               [Node, mnesia:system_info(all)]).
 
@@ -93,7 +97,7 @@ delete_node(Node) ->
 delete_schema() ->
     stopped = mnesia:stop(),
     ok = mnesia:delete_schema([node()]),
-    ok = mnesia:start(),
+    do_start(),
     ?log_info("Deleted schema.~nCurrent config: ~p",
               [mnesia:system_info(all)]).
 
@@ -109,17 +113,23 @@ delete_schema_and_stop() ->
 backout_rename() ->
     ?log_info("Starting Mnesia from backup.", []),
     ok = mnesia:install_fallback(tmpdir("pre_rename")),
-    ok = mnesia:start().
+    do_start().
 
 
 %% @doc Back up the database in preparation for a node rename.
 prepare_rename() ->
     Pre = tmpdir("pre_rename"),
-    ok = mnesia:backup(Pre),
-    ?log_info("Backed up database to ~p.", [Pre]),
-    stopped = mnesia:stop(),
-    ?log_info("Deleting old schema.", []),
-    ok = mnesia:delete_schema([node()]).
+    case mnesia:backup(Pre) of
+        ok ->
+            ?log_info("Backed up database to ~p.", [Pre]),
+            stopped = mnesia:stop(),
+            ?log_info("Deleting old schema.", []),
+            ok = mnesia:delete_schema([node()]),
+            ok;
+        E ->
+            ?log_error("Could not back up database for rename: ~p", [E]),
+            {backup_error, E}
+    end.
 
 
 %% @doc Rename a node. Assumes there is only one node. Leaves Mnesia
@@ -134,7 +144,7 @@ rename_node(From, To) ->
     change_node_name(mnesia_backup, From, To, Pre, Post),
     ?log_info("Installing new backup as fallback.", []),
     ok = mnesia:install_fallback(Post),
-    ok = mnesia:start().
+    do_start().
 
 
 %% @doc Start Mnesia, creating a new schema if we don't already have one.
@@ -146,8 +156,14 @@ start() ->
         {error, {_, {already_exists, _}}} ->
             ?log_info("Using existing disk schema.", [])
     end,
-    ok = mnesia:start(),
+    do_start(),
     ?log_info("Current config: ~p", [mnesia:system_info(all)]).
+
+
+%% @doc Start mnesia and monitor it
+do_start() ->
+    ok = mnesia:start(),
+    {ok, _} = mnesia:subscribe(system).
 
 
 %% @doc Hack.
