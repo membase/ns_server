@@ -189,6 +189,7 @@ handle_info({Ref, Reason}, State = #state{rebalancer={_Pid, Ref}}) ->
             ns_log:log(?MODULE, ?REBALANCE_FAILED,
                        "Rebalance failed with reason ~p~n", [Reason])
     end,
+    ns_config:set(rebalance_status, none),
     {noreply, State#state{rebalancer=undefined}};
 handle_info({Ref, _Reason}, State = #state{janitor={_Pid, Ref}}) ->
     {noreply, State#state{janitor=undefined}};
@@ -262,6 +263,7 @@ count_moves(Moves) ->
 
 do_rebalance(Bucket, KeepNodes, EjectNodes, Map, Tries) ->
     try
+        ns_config:set(rebalance_status, running),
         AllNodes = KeepNodes ++ EjectNodes,
         reset_progress(Bucket),
         update_progress(Bucket, AllNodes, 0.0),
