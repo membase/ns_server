@@ -612,6 +612,20 @@ function showInitDialog(page, opt) {
       type:'POST', url:'/node/controller/initStatus', data: 'value=' + page
     });
   }
+
+  if (page != 'done') {
+    var notices = [];
+    $('#notice_container > *').each(function () {
+      var text = $.data(this, 'notice-text');
+      if (!text)
+        return;
+      notices.push(text);
+    });
+    if (notices.length) {
+      $('#notice_container').html('');
+      alert(notices.join("\n\n"));
+    }
+  }
 }
 
 var NodeDialog = {
@@ -970,7 +984,9 @@ function displayNotice(text) {
     tname = 'noticeErr';
   }
   renderTemplate(tname, {text: text}, div.get(0));
+  $.data(div.children()[0], 'notice-text', text);
   $('#notice_container').prepend(div.children());
+  ThePage.gotoSection("servers");
 }
 
 $('.notice').live('click', function () {
