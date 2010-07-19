@@ -102,14 +102,12 @@ handle_info(_Msg, State) ->
     {ok, State}.
 
 
-terminate(Reason, #subscribe_all_state{noderefs=NodeRefs, name=Name}) ->
-    error_logger:info_msg("~p removing subscribe_all handler ~p: ~p~n",
-                          [?MODULE, Name, Reason]),
+terminate(_Reason, #subscribe_all_state{noderefs=NodeRefs, name=Name}) ->
     lists:foreach(fun ({Node, Ref}) ->
                           unsubscribe({Name, Node}, Ref)
                   end, NodeRefs);
-terminate(Reason, State) ->
-    error_logger:info_msg("~p unsubscribed ~p: ~p~n", [?MODULE, State, Reason]).
+terminate(_Reason, _State) ->
+    ok.
 
 
 %%
