@@ -101,6 +101,7 @@ init([]) ->
     %% It may take longer than SYNC_TIMEOUT to complete if nodes are down.
     misc:wait_for_process(do_nodes_wanted_updated(do_nodes_wanted()),
                           ?SYNC_TIMEOUT),
+    global:sync(),
     % Register for nodeup/down messages as handle_info callbacks.
     ok = net_kernel:monitor_nodes(true),
     {ok, Timer} = timer:send_interval(?PING_FREQ, ping_all),
@@ -140,8 +141,6 @@ handle_info({nodeup, Node}, State) ->
     % Delay the notification for five seconds to give the
     % config a chance to settle before notifying clients.
     {ok, _Tref} = timer:send_after(?NODE_CHANGE_DELAY, notify_clients),
-    %% Have every known node ping this new node.
-    spawn_link(fun () -> rpc:multicall(net_adm, ping, [Node]) end),
     {noreply, State};
 
 handle_info({nodedown, Node}, State) ->
