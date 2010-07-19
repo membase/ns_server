@@ -47,7 +47,7 @@ function onUnexpectedXHRError(xhr) {
   if (reloadInfo) {
     ts = parseInt(reloadInfo);
     if ((now - ts) < 15*1000) {
-      $.cookie('ri', null); // clear reload-info cookie, so that
+      $.cookie('rf', null); // clear reload-info cookie, so that
                             // manual reload don't cause 'console has
                             // been reloaded' flash message
 
@@ -64,6 +64,7 @@ function onUnexpectedXHRError(xhr) {
   }
 
   $.cookie('ri', String((new Date()).valueOf()), {expires:0});
+  $.cookie('rf', '1');
   reloadAppWithDelay(500);
 }
 

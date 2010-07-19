@@ -508,17 +508,8 @@ $(function () {
     $.cookie('cluster_join_flash', null);
     displayNotice('You have successfully joined the cluster');
   }
-  if ($.cookie('ri')) {
-    var reloadInfo = $.cookie('ri');
-    var ts;
-
-    var now = (new Date()).valueOf();
-    if (reloadInfo) {
-      ts = parseInt(reloadInfo);
-      if ((now - ts) > 2*1000) {
-        $.cookie('ri', null);
-      }
-    }
+  if ($.cookie('rf')) {
+    $.cookie('rf', null);
     displayNotice('An error was encountered when requesting data from the server.  ' +
 		  'The console has been reloaded to attempt to recover.  There ' +
 		  'may be additional information about the error in the log.');
