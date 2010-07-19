@@ -41,7 +41,7 @@
       <h1>MONITOR</h1>
       <ul>
         <!--<li class="line"></li>-->
-        <li class="line"><a id="switch_overview" href="javascript:nav.go('overview');">Cluster Overview</a></li>
+        <li class="line disabled"><!-- a id="switch_overview" href="javascript:nav.go('overview');" -->Cluster Overview<!-- /a --></li>
         <li class="line"><a id="switch_monitor_buckets" href="javascript:nav.go('monitor_buckets');">Data Buckets</a></li>
         <li class="line disabled"><!-- a id="switch_monitor_servers" href="javascript:nav.go('monitor_servers');" -->Servers<!-- /a --></li>
         <!-- <li class="line disabled"><a id="switch_alerts" href="javascript:nav.go('alerts');">Alerts</a></li> -->
@@ -70,7 +70,6 @@
       <div id="overview" style="display:none;">
       <!-- shadow box -->
       <h1>Cluster Overview</h1>
-      <div id="notice_container"></div>
 	<div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
     <div class="darker_block with_devider pat_10" id="cluster_status_container">
     </div><div class="template" id="cluster_status_template">
@@ -176,6 +175,7 @@
   </div>
   <div id="servers" style="display:none">
     <h1>SERVERS</h1>
+    <div id="notice_container"></div>
     <div class="warning_message failover_warning">
       Fail Over Warning: Your system is missing replicants until you rebalance.
     </div>

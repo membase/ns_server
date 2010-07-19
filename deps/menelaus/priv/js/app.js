@@ -387,7 +387,7 @@ var ThePage = {
              monitor_buckets: MonitorBucketsSection,
              monitor_servers: OverviewSection},
 
-  coming: {monitor_servers:true, settings:true},
+  coming: {monitor_servers:true, settings:true, overview:true},
 
   currentSection: null,
   currentSectionName: null,
@@ -425,7 +425,7 @@ var ThePage = {
     });
 
     var self = this;
-    watchHashParamChange('sec', 'overview', function (sec) {
+    watchHashParamChange('sec', 'servers', function (sec) {
       var oldSection = self.currentSection;
       var currentSection = self.sections[sec];
       if (!currentSection) {
