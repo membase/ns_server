@@ -18,6 +18,8 @@
 -behavior(gen_server).
 -behavior(ns_log_categorizing).
 
+-include("ns_common.hrl").
+
 %% API
 -export([start_link/4]).
 
@@ -54,7 +56,8 @@ init({Name, _Cmd, _Args, _Opts} = Params) ->
     end.
 
 handle_info({_Port, {data, Msg}}, State) ->
-    error_logger:info_msg("Message from ~p: ~s~n", [State#state.name, Msg]),
+    timer:sleep(100), % Let messages build up in our queue
+    log_messages(State#state.name, [Msg]),
     {noreply, State};
 handle_info({_Port, {exit_status, Status}}, State) ->
     error_logger:info_msg("~p exited with status ~p~n",
@@ -100,6 +103,15 @@ open_port({_Name, Cmd, Args, OptsIn}) ->
     error_logger:info_msg("port server starting: ~p in ~p with ~p / ~p~n",
                           [Cmd, Pwd, Args, Opts]),
     open_port({spawn_executable, Cmd}, Opts).
+
+log_messages(Name, L) ->
+    receive
+        {_Port, {data, Msg}} ->
+            log_messages(Name, [Msg|L])
+    after 0 ->
+            ?log_info("Message from ~p:~n~s",
+                      [Name, lists:append(lists:reverse(L))])
+    end.
 
 
 %% ns_log stuff
