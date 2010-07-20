@@ -37,49 +37,11 @@ add_node(Node) ->
               [Node, mnesia:system_info(all)]).
 
 
-%% Shamelessly stolen from Mnesia docs.
-change_node_name(Mod, From, To, Source, Target) ->
-    FromString = atom_to_list(From),
-    ToString = atom_to_list(To),
-    Switch =
-        fun(Node) when Node == From -> To;
-           (Node) when Node == To -> throw({error, already_exists});
-           (Node) -> Node
-        end,
-    Convert =
-        fun({schema, db_nodes, Nodes}, Acc) ->
-                {[{schema, db_nodes, lists:map(Switch,Nodes)}], Acc};
-           ({schema, version, Version}, Acc) ->
-                {[{schema, version, Version}], Acc};
-           ({schema, cookie, Cookie}, Acc) ->
-                {[{schema, cookie, Cookie}], Acc};
-           ({schema, Tab, CreateList}, Acc) ->
-                Keys = [ram_copies, disc_copies, disc_only_copies],
-                OptSwitch =
-                    fun({Key, Val}) ->
-                            case lists:member(Key, Keys) of
-                                true -> {Key, lists:map(Switch, Val)};
-                                false-> {Key, Val}
-                            end
-                    end,
-                Tab1 = change_table_name(Tab, FromString, ToString),
-                {[{schema, Tab1, lists:map(OptSwitch, CreateList)}], Acc};
-           (Tuple, Acc) ->
-                Tab = element(1, Tuple),
-                Tab1 = change_table_name(Tab, FromString, ToString),
-                {[setelement(1, Tuple, Tab1)], Acc}
-        end,
-    {ok, switched} = mnesia:traverse_backup(Source, Mod, Target, Mod, Convert,
-                                            switched),
-    ok.
-
-%% @doc Alter node-specific table names if necessary.
-change_table_name(Tab, FromString, ToString) ->
-    L1 = string:tokens(atom_to_list(Tab), "-"),
-    L2 = lists:map(fun (S) when S == FromString -> ToString;
-                       (S) -> S
-                   end, L1),
-    list_to_atom(string:join(L2, "-")).
+%% @doc Call this if you decide you don't need to rename after all.
+backout_rename() ->
+    ?log_info("Starting Mnesia from backup.", []),
+    ok = mnesia:install_fallback(tmpdir("pre_rename")),
+    do_start().
 
 
 %% @doc Remove an mnesia node.
@@ -107,13 +69,6 @@ delete_schema_and_stop() ->
     ?log_info("Deleting schema and stopping Mnesia.", []),
     stopped = mnesia:stop(),
     ok = mnesia:delete_schema([node()]).
-
-
-%% @doc Call this if you decide you don't need to rename after all.
-backout_rename() ->
-    ?log_info("Starting Mnesia from backup.", []),
-    ok = mnesia:install_fallback(tmpdir("pre_rename")),
-    do_start().
 
 
 %% @doc Back up the database in preparation for a node rename.
@@ -158,6 +113,56 @@ start() ->
     end,
     do_start(),
     ?log_info("Current config: ~p", [mnesia:system_info(all)]).
+
+
+%%
+%% Internal functions
+%%
+
+%% Shamelessly stolen from Mnesia docs.
+change_node_name(Mod, From, To, Source, Target) ->
+    FromString = atom_to_list(From),
+    ToString = atom_to_list(To),
+    Switch =
+        fun(Node) when Node == From -> To;
+           (Node) when Node == To -> throw({error, already_exists});
+           (Node) -> Node
+        end,
+    Convert =
+        fun({schema, db_nodes, Nodes}, Acc) ->
+                {[{schema, db_nodes, lists:map(Switch,Nodes)}], Acc};
+           ({schema, version, Version}, Acc) ->
+                {[{schema, version, Version}], Acc};
+           ({schema, cookie, Cookie}, Acc) ->
+                {[{schema, cookie, Cookie}], Acc};
+           ({schema, Tab, CreateList}, Acc) ->
+                Keys = [ram_copies, disc_copies, disc_only_copies],
+                OptSwitch =
+                    fun({Key, Val}) ->
+                            case lists:member(Key, Keys) of
+                                true -> {Key, lists:map(Switch, Val)};
+                                false-> {Key, Val}
+                            end
+                    end,
+                Tab1 = change_table_name(Tab, FromString, ToString),
+                {[{schema, Tab1, lists:map(OptSwitch, CreateList)}], Acc};
+           (Tuple, Acc) ->
+                Tab = element(1, Tuple),
+                Tab1 = change_table_name(Tab, FromString, ToString),
+                {[setelement(1, Tuple, Tab1)], Acc}
+        end,
+    {ok, switched} = mnesia:traverse_backup(Source, Mod, Target, Mod, Convert,
+                                            switched),
+    ok.
+
+
+%% @doc Alter node-specific table names if necessary.
+change_table_name(Tab, FromString, ToString) ->
+    L1 = string:tokens(atom_to_list(Tab), "-"),
+    L2 = lists:map(fun (S) when S == FromString -> ToString;
+                       (S) -> S
+                   end, L1),
+    list_to_atom(string:join(L2, "-")).
 
 
 %% @doc Start mnesia and monitor it
