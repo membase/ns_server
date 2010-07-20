@@ -235,7 +235,7 @@ var ServersSection = {
     self.poolDetails.subscribeValue(function (poolDetails) {
       var hasFailover;
       if (poolDetails)
-        hasFailover = !poolDetails.balanced;
+        hasFailover = !poolDetails.balanced && poolDetails.rebalanceStatus == 'none';
       $('#servers .failover_warning').toggle(!!hasFailover);
     });
 
