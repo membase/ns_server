@@ -68,7 +68,8 @@ bringup() ->
 %%
 
 running({join, RemoteNode, NewCookie}, State) ->
-    ns_log:log(?MODULE, 0002, "Node ~p is joining cluster via node ~p.", [node(), RemoteNode]),
+    ns_log:log(?MODULE, 0002, "Node ~p is joining cluster via node ~p.",
+               [node(), RemoteNode]),
     BlackSpot = make_ref(),
     MyNode = node(),
     ns_config:update(fun ({directory,_} = X) -> X;
@@ -80,8 +81,10 @@ running({join, RemoteNode, NewCookie}, State) ->
                      end, BlackSpot),
     %% cannot force low timestamp with ns_config update, so we set it separately
     ns_config:set_initial(nodes_wanted, [node(), RemoteNode]),
-    error_logger:info_msg("pre-join cleaned config is:~n~p~n", [ns_config:get()]),
-    true = exit(State#running_state.child, shutdown), % Pull the rug out from under the app
+    error_logger:info_msg("pre-join cleaned config is:~n~p~n",
+                          [ns_config:get()]),
+    true = exit(State#running_state.child, shutdown), % Pull the rug out from
+                                                      % under the app
     {next_state, joining, #joining_state{remote=RemoteNode, cookie=NewCookie}};
 
 running({leave, Data}, State) ->
@@ -184,6 +187,7 @@ add_node(Node) ->
                   lists:usort([Node | X])
           end,
     ns_config:update_key(nodes_wanted, Fun),
+    ns_config:set({node, Node, membership}, inactiveAdded),
     ns_mnesia:add_node(Node),
     error_logger:info_msg("~p:add_node: successfully added ~p to cluster.~n",
                           [?MODULE, Node]).
@@ -248,7 +252,8 @@ prepare_join_to(OtherHost) ->
             %% and determine our ip address
             {ok, {IpAddr, _}} = inet:sockname(Socket),
             inet:close(Socket),
-            RV = string:join(lists:map(fun erlang:integer_to_list/1, tuple_to_list(IpAddr)), "."),
+            RV = string:join(lists:map(fun erlang:integer_to_list/1,
+                                       tuple_to_list(IpAddr)), "."),
             {ok, RV};
         {error, _} = X -> X
     end.
@@ -278,7 +283,9 @@ change_my_address(MyAddr) ->
                                   CookieBefore ->
                                       ok;
                                   CookieAfter ->
-                                      error_logger:error_msg("critical: Cookie has changed from ~p to ~p~n", [CookieBefore, CookieAfter]),
+                                      error_logger:error_msg(
+                                        "critical: Cookie has changed from ~p "
+                                        "to ~p~n", [CookieBefore, CookieAfter]),
                                       exit(bad_cookie)
                               end,
                               ns_mnesia:rename_node(MyNode, node()),
