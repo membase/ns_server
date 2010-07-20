@@ -90,6 +90,7 @@ init(Bucket) ->
     {ok, #state{bucket=Bucket}}.
 
 handle_call({failover, Node}, _From, State = #state{bucket = Bucket}) ->
+    ?log_info("Failing over ~p", [Node]),
     {_, _, Map, Servers} = ns_bucket:config(Bucket),
     %% Promote replicas of vbuckets on this node
     Map1 = promote_replicas(Bucket, Map, [Node]),
@@ -106,7 +107,8 @@ handle_call(rebalance_progress, _From, State) ->
     {reply, not_running, State};
 handle_call({start_rebalance, KeepNodes, EjectNodes}, _From,
             State = #state{bucket=Bucket, rebalancer=undefined, janitor=Janitor}) ->
-    ?log_info("Starting rebalance", []),
+    ?log_info("Starting rebalance, KeepNodes = ~p, EjectNodes = ~p",
+              [KeepNodes, EjectNodes]),
     {_NumReplicas, _NumVBuckets, Map, Servers} = ns_bucket:config(Bucket),
     Histograms = histograms(Map, Servers),
     case {lists:sort(Servers), lists:sort(KeepNodes), EjectNodes,
