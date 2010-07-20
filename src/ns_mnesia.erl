@@ -162,8 +162,10 @@ start() ->
 
 %% @doc Start mnesia and monitor it
 do_start() ->
+    mnesia:set_debug_level(verbose),
     ok = mnesia:start(),
-    {ok, _} = mnesia:subscribe(system).
+    {ok, _} = mnesia:subscribe(system),
+    {ok, _} = mnesia:subscribe({table, schema, detailed}).
 
 
 %% @doc Hack.
