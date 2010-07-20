@@ -974,10 +974,10 @@ var NodeDialog = {
 
 NodeDialog.startPage_welcome = NodeDialog.startPage_license;
 
-function displayNotice(text) {
+function displayNotice(text, isError) {
   var div = $('<div></div>');
   var tname = 'notice';
-  if (text.indexOf('error') >= 0) {
+  if (isError || (isError === undefined && text.indexOf('error') >= 0)) {
     tname = 'noticeErr';
   }
   renderTemplate(tname, {text: text}, div.get(0));
