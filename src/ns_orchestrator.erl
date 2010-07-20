@@ -113,7 +113,7 @@ handle_call({start_rebalance, KeepNodes, EjectNodes}, _From,
           unbalanced(Histograms)} of
         {S, S, [], false} ->
             ns_log:log(?MODULE, ?REBALANCE_NOT_STARTED,
-              "Not rebalancing because the cluster is alread balanced~n"),
+              "Not rebalancing because the cluster is already balanced~n"),
             {reply, already_balanced, State};
         _ ->
             {ok, Pid, Ref} =
