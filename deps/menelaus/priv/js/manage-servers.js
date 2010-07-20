@@ -322,9 +322,8 @@ var ServersSection = {
 
     if (data['hostname'] == "")
       errors.push("Server IP Address cannot be blank.");
-    if ((data['user'] || data['password']) && !(data['user'] && data['password'])) {
-      errors.push("Username and Password must either both be present or missing.");
-    }
+    if (!data['user'] || !data['password'])
+      errors.push("Username and Password are both required to join a cluster.");
 
     if (!errors.length)
       return data;
