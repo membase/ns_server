@@ -59,35 +59,21 @@ handle_info({_Port, {data, Msg}}, State) ->
     timer:sleep(100), % Let messages build up in our queue
     log_messages(State#state.name, [Msg]),
     {noreply, State};
-handle_info({_Port, {exit_status, Status}}, State) ->
-    error_logger:info_msg("~p exited with status ~p~n",
-                          [State#state.name, Status]),
+handle_info({_Port, {exit_status, 0}}, State) ->
     {stop, normal, State};
-handle_info(Something, State) ->
-    error_logger:info_msg("Got unexpected message while monitoring ~p: ~p~n",
-                          [State#state.name, Something]),
-    {stop, {error, {unhandled, Something}}, State}.
+handle_info({_Port, {exit_status, Status}}, State) ->
+    ?log_error("~p exited with status ~p", [State#state.name, Status]),
+    {stop, {abnormal, Status}}.
 
-handle_call(Something, _From, State) ->
-    error_logger:info_msg("Unexpected call: ~p~n", [Something]),
-    {reply, {error, {unhandled, Something}}, State}.
+handle_call(unhandled, unhandled, unhandled) ->
+    unhandled.
 
-handle_cast(Something, State) ->
-    error_logger:info_msg("Unexpected cast: ~p~n", [Something]),
-    {noreply, State}.
+handle_cast(unhandled, unhandled) ->
+    unhandled.
 
-terminate(normal, State) ->
-    error_logger:info_msg("port server terminating ~p: ~p~n",
-                          [State#state.name, normal]),
-    ok;
-terminate({port_exited, Reason}, State) ->
-    error_logger:info_msg("port server terminating ~p: port exited with reason ~p~n",
-                          [State#state.name, Reason]),
-    ok;
-terminate(Reason, State) ->
-    error_logger:info_msg("port server terminating ~p: ~p~n",
-                          [State#state.name, Reason]),
-    (catch port_close(State#state.port)),
+terminate(Reason, #state{name=Name, port=Port}) ->
+    (catch port_close(Port)),
+    ?log_info("Port ~p terminating: ~p", [Name, Reason]),
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
