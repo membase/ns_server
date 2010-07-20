@@ -29,27 +29,34 @@ var BucketsSection = {
     });
 
     var poolDetailsValue;
-    var clusterMemorySize = 0;
     DAO.cells.currentPoolDetails.subscribeValue(function (v) {
       if (!v)
         return;
 
       poolDetailsValue = v;
-      clusterMemorySize = _.reduce(poolDetailsValue.nodes, 0, function (s, node) {
-        return s + node.memoryTotal;
-      });
     });
 
     var bucketsListTransformer = function (values) {
       self.buckets = values;
       _.each(values, function (bucket) {
         bucket.serversCount = poolDetailsValue.nodes.length;
-        bucket.totalSize = bucket.totalSizeMB * 1048576;
-        bucket.clusterMemorySize = clusterMemorySize;
+        bucket.ramQuota = bucket.totalSizeMB * 1048576;
+        var storageTotals = poolDetailsValue.storageTotals
+        bucket.totalRAMSize = storageTotals.ram.total;
+        bucket.totalRAMUsed = bucket.basicStats.memUsed;
+        bucket.otherRAMSize = storageTotals.ram.used - bucket.totalRAMUsed;
+        bucket.totalRAMFree = storageTotals.ram.total - storageTotals.ram.used;
 
-        bucket.clusterFreeSize = bucket.clusterMemorySize - bucket.totalSize;
+        bucket.RAMUsedPercent = calculatePercent(bucket.totalRAMUsed, bucket.totalRAMSize);
+        bucket.RAMOtherPercent = calculatePercent(bucket.totalRAMUsed + bucket.otherRAMSize, bucket.totalRAMSize);
 
-        bucket.clusterUsedPercent = bucket.totalSize * 100 / bucket.clusterMemorySize;
+        bucket.totalDiskSize = storageTotals.hdd.total;
+        bucket.totalDiskUsed = bucket.basicStats.diskUsed;
+        bucket.otherDiskSize = storageTotals.hdd.used - bucket.totalDiskUsed;
+        bucket.totalDiskFree = storageTotals.hdd.total - storageTotals.hdd.used;
+
+        bucket.diskUsedPercent = calculatePercent(bucket.totalDiskUsed, bucket.totalDiskSize);
+        bucket.diskOtherPercent = calculatePercent(bucket.otherDiskSize + bucket.totalDiskUsed, bucket.totalDiskSize);
       });
       values = self.settingsWidget.valuesTransformer(values);
       return values;

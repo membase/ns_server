@@ -726,3 +726,7 @@ function mkComparatorByProp(propName, propComparator) {
     return propComparator(a[propName], b[propName]);
   }
 }
+
+function calculatePercent(value, total) {
+  return (value * 100 / total) >> 0;
+}

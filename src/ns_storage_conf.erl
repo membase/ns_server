@@ -19,7 +19,12 @@
 -module(ns_storage_conf).
 
 -export([memory_quota/1, change_memory_quota/2, prepare_setup_disk_storage_conf/2,
-         storage_conf/1, add_storage/4, remove_storage/2, format_engine_max_size/0]).
+         storage_conf/1, add_storage/4, remove_storage/2, format_engine_max_size/0,
+         local_bucket_disk_usage/1, bucket_disk_usage/2]).
+
+-export([node_storage_info/1, cluster_storage_info/0]).
+
+-export([extract_disk_stats_for_path/2, disk_stats_for_path/2]).
 
 format_engine_max_size() ->
     RawValue = ns_config:search_node_prop(ns_config:get(), memcached, max_size),
@@ -64,6 +69,21 @@ prepare_setup_disk_storage_conf(Node, Path) when Node =:= node() ->
             end
     end.
 
+local_bucket_disk_usage("default" = _Bucket) ->
+    {value, PropList} = ns_config:search_node(node(), ns_config:get(), memcached),
+    DBPath = proplists:get_value(dbname, PropList),
+    DBDir = filename:dirname(DBPath),
+    {ok, Filenames} = file:list_dir(DBDir),
+    %% this doesn't include filesystem slack
+    lists:sum([filelib:file_size(filename:join([DBDir, Name])) || Name <- Filenames]).
+
+bucket_disk_usage(Node, Bucket) ->
+    case rpc:call(Node, ns_storage_conf, local_bucket_disk_usage, [Bucket]) of
+        {badrpc, _} ->
+            0;
+        X -> X
+    end.
+
 % Returns a proplist of lists of proplists.
 %
 % A quotaMb of -1 means no quota.
@@ -97,3 +117,69 @@ add_storage(_Node, _Path, _Kind, _Quota) ->
 remove_storage(_Node, _Path) ->
     % TODO.
     {error, todo}.
+
+node_storage_info(Node) ->
+    case dict:find(Node, ns_doctor:get_nodes()) of
+        {ok, NodeInfo} ->
+            extract_node_storage_info(NodeInfo, Node);
+        _ -> []
+    end.
+
+extract_node_storage_info(NodeInfo, Node) ->
+    {RAMTotal, RAMUsed, _} = proplists:get_value(memory_data, NodeInfo),
+    DiskStats = proplists:get_value(disk_data, NodeInfo),
+    DiskPathes = [proplists:get_value(path, X) || X <- proplists:get_value(hdd, ns_storage_conf:storage_conf(Node))],
+    {DiskTotal, DiskUsed} =
+        lists:foldl(fun (Path, {ATotal, AUsed} = Tuple) ->
+                            %% move it over here
+                            case extract_disk_stats_for_path(DiskStats, Path) of
+                                none -> Tuple;
+                                {ok, {_MPoint, KBytesTotal, Cap}} ->
+                                    Total = KBytesTotal * 1024,
+                                    Used = (Total * Cap) div 100,
+                                    {ATotal + Total,
+                                     AUsed + Used}
+                            end
+                    end, {0, 0}, DiskPathes),
+    [{ram, [{total, RAMTotal},
+            {used, RAMUsed}]},
+     {hdd, [{total, DiskTotal},
+            {used, DiskUsed}]}].
+
+cluster_storage_info() ->
+    Nodes = dict:to_list(ns_doctor:get_nodes()),
+    case Nodes of
+        [] -> [];
+        [{FirstNode, FirstInfo} | Rest] ->
+            lists:foldl(fun ({Node, Info}, Acc) ->
+                                ThisInfo = extract_node_storage_info(Info, Node),
+                                lists:zipwith(fun ({StatName, [{total, TotalA},
+                                                               {used, UsedA}]},
+                                                   {StatName, [{total, TotalB},
+                                                               {used, UsedB}]}) ->
+                                                      {StatName, [{total, TotalA + TotalB},
+                                                                  {used, UsedA + UsedB}]}
+                                              end, Acc, ThisInfo)
+                        end, extract_node_storage_info(FirstInfo, FirstNode), Rest)
+    end.
+
+extract_disk_stats_for_path([], _Path) ->
+    none;
+extract_disk_stats_for_path([{MountPoint, _, _} = Info | Rest], Path) ->
+    MPath = case MountPoint of
+                "/" -> MountPoint;
+                _ -> MountPoint ++ "/"
+            end,
+    case MPath =:= string:substr(Path, 1, length(MPath)) of
+        true -> {ok, Info};
+        _ -> extract_disk_stats_for_path(Rest, Path)
+    end.
+
+disk_stats_for_path(Node, Path) ->
+    case rpc:call(Node, disksup, get_disk_data, [], 2000) of
+        {badrpc, _} = Crap -> Crap;
+        List -> case extract_disk_stats_for_path(List, Path) of
+                    none -> none;
+                    {ok, {_MPoint, KBytes, Cap}} -> {ok, KBytes, Cap}
+                end
+    end.

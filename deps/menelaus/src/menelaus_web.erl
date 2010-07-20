@@ -432,25 +432,34 @@ build_pool_info(Id, _UserPassword, InfoLevel, LocalAddr) ->
                           {running, _ProgressList} -> <<"running">>;
                           _ -> <<"none">>
                       end,
-    {struct, [{name, list_to_binary(Id)},
-              {nodes, Nodes},
-              {buckets, BucketsInfo},
-              {controllers, {struct,
-                             [{addNode, {struct, [{uri, <<"/controller/addNode">>}]}},
-                              {rebalance, {struct, [{uri, <<"/controller/rebalance">>}]}},
-                              {failOver, {struct, [{uri, <<"/controller/failOver">>}]}},
-                              {reAddNode, {struct, [{uri, <<"/controller/reAddNode">>}]}},
-                              {ejectNode, {struct, [{uri, <<"/controller/ejectNode">>}]}},
-                              {testWorkload, {struct,
-                                             [{uri,
-                                               list_to_binary(concat_url_path(["pools", Id, "controller", "testWorkload"]))}]}}]}},
-              {balanced, ns_cluster_membership:is_balanced()},
-              {rebalanceStatus, RebalanceStatus},
-              {rebalanceProgressUri, list_to_binary(concat_url_path(["pools", Id, "rebalanceProgress"]))},
-              {stopRebalanceUri, <<"/controller/stopRebalance">>},
-              {stats, {struct,
-                       [{uri,
-                         list_to_binary(concat_url_path(["pools", Id, "stats"]))}]}}]}.
+    PropList0 = [{name, list_to_binary(Id)},
+                 {nodes, Nodes},
+                 {buckets, BucketsInfo},
+                 {controllers, {struct,
+                                [{addNode, {struct, [{uri, <<"/controller/addNode">>}]}},
+                                 {rebalance, {struct, [{uri, <<"/controller/rebalance">>}]}},
+                                 {failOver, {struct, [{uri, <<"/controller/failOver">>}]}},
+                                 {reAddNode, {struct, [{uri, <<"/controller/reAddNode">>}]}},
+                                 {ejectNode, {struct, [{uri, <<"/controller/ejectNode">>}]}},
+                                 {testWorkload, {struct,
+                                                 [{uri,
+                                                   list_to_binary(concat_url_path(["pools", Id, "controller", "testWorkload"]))}]}}]}},
+                 {balanced, ns_cluster_membership:is_balanced()},
+                 {rebalanceStatus, RebalanceStatus},
+                 {rebalanceProgressUri, list_to_binary(concat_url_path(["pools", Id, "rebalanceProgress"]))},
+                 {stopRebalanceUri, <<"/controller/stopRebalance">>},
+                 {stats, {struct,
+                          [{uri,
+                            list_to_binary(concat_url_path(["pools", Id, "stats"]))}]}}],
+    PropList =
+        case InfoLevel of
+            normal ->
+                [{storageTotals, {struct, [{Key, {struct, StoragePList}}
+                                           || {Key, StoragePList} <- ns_storage_conf:cluster_storage_info()]}}
+                 | PropList0];
+            _ -> PropList0
+        end,
+    {struct, PropList}.
 
 build_nodes_info(MyPool, IncludeOtp, InfoLevel, LocalAddr) ->
     OtpCookie = list_to_binary(atom_to_list(ns_node_disco:cookie_get())),
@@ -1108,9 +1117,11 @@ handle_node(_PoolId, Node, Req) ->
                end,
     StorageConf0 = ns_storage_conf:storage_conf(Node),
     HDDStorageConf = case proplists:get_value(hdd, StorageConf0) of
-                         [Props] ->                % only single storage storage resource is supported now
+                         [Props0] ->                % only single storage storage resource is supported now
+                             Props = [{usedByData, ns_storage_conf:bucket_disk_usage(Node, "default")}
+                                      | Props0],
                              Path = proplists:get_value(path, Props),
-                             case menelaus_util:get_disk_stats_for_path(Node, Path) of
+                             case ns_storage_conf:disk_stats_for_path(Node, Path) of
                                  {ok, KBytes, Capacity} ->
                                      [[{diskStats, {struct, [{sizeKBytes, KBytes},
                                                              {usagePercent, Capacity}]}}
@@ -1133,6 +1144,8 @@ handle_node(_PoolId, Node, Req) ->
                                                             {usagePercent, UsagePercent}]}
                                                   || {Path, SizeKBytes, UsagePercent} <- disksup:get_disk_data()]}]}},
               {memoryQuota, MemQuota},
+              {storageTotals, {struct, [{Type, {struct, PropList}}
+                                        || {Type, PropList} <- ns_storage_conf:node_storage_info(Node)]}},
               {storage, R}] ++ KV,
     reply_json(Req,
                {struct, lists:filter(fun (X) -> X =/= undefined end, Fields)}).

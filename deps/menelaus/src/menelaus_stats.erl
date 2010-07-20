@@ -22,12 +22,16 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--export([handle_bucket_stats/3, basic_stats/2]).
+-export([handle_bucket_stats/3, basic_stats/2, bucket_disk_usage/1]).
 
 %% External API
 
-basic_stats(_PoolId, "default") ->
-    {Samples, _, _, _} = grab_op_stats("default", [{"zoom", "minute"}]),
+bucket_disk_usage(BucketName) ->
+    {Res, _} = rpc:multicall(ns_node_disco:nodes_actual_proper(), ns_storage_conf, local_bucket_disk_usage, [BucketName], 2000),
+    lists:sum([X || X <- Res]).
+
+basic_stats(_PoolId, BucketName = "default") ->
+    {Samples, _, _, _} = grab_op_stats(BucketName, [{"zoom", "minute"}]),
     LastSample = case Samples of
                      [] -> [];
                      _ -> samples_to_proplists([lists:last(Samples)])
@@ -38,7 +42,7 @@ basic_stats(_PoolId, "default") ->
     Ops = GetValue(ops),
     Fetches = GetValue(ep_io_num_read),
     MemUsed = GetValue(mem_used),
-    QuotaMB = lists:sum([ns_storage_conf:memory_quota(N) || N <- ns_node_disco:nodes_wanted()]), 
+    QuotaMB = lists:sum([ns_storage_conf:memory_quota(N) || N <- ns_node_disco:nodes_wanted()]),
     ItemCount = GetValue(curr_items),
     [{opsPerSec, Ops},
      {diskFetches, Fetches},
@@ -47,6 +51,8 @@ basic_stats(_PoolId, "default") ->
                         catch
                             error:badarith -> 0
                         end},
+     {diskUsed, bucket_disk_usage(BucketName)},
+     {memUsed, MemUsed},
      {itemCount, ItemCount}].
 
 %% GET /pools/default/stats

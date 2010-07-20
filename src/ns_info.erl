@@ -49,7 +49,8 @@ basic_info() ->
      [{version, version()},
       {system_arch, system_arch()},
       {wall_clock, trunc(WallClockMSecs / 1000)},
-      {memory_data, memsup:get_memory_data()}]}.
+      {memory_data, memsup:get_memory_data()},
+      {disk_data, disksup:get_disk_data()}]}.
 
 system_arch() ->
     case erlang:system_info(system_architecture) of
