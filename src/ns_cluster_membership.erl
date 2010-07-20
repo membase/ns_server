@@ -48,6 +48,7 @@
 -define(REST_FAILED, 7).
 %% category warn
 -define(PREPARE_JOIN_FAILED, 32).
+-define(AUTH_FAILED, 33).
 %% categeory info. Starts from 256 - 32
 -define(JOINED_CLUSTER, 224).
 
@@ -148,15 +149,26 @@ handle_join_rest_failure(ReturnValue, OtherHost, OtherPort) ->
             {error, [list_to_binary(io_lib:format("Timeout connecting to ~p on port ~p.  "
                                                   "This could be due to an incorrect host/port combination or a "
                                                   "firewall configured between the two nodes.", [OtherHost, OtherPort]))]};
+        {error, {{_, 401, _}, _, _}} ->
+            ns_log:log(?MODULE, ?AUTH_FAILED, "During node join, failed to authenticate to ~p on port ~p from node ~p.", [OtherHost, OtherPort, node()]),
+            {error, <<"Authentication failed. Verify username and password.">>};
         Other ->
             Handled = case Other of
                           {error, {_HttpInfo, _HeadersInfo, Body}} ->
-                              DecodedErrors = mochijson2:decode(Body),
-                              ns_log:log(?MODULE, ?REST_FAILED,
-                                         "During node join, the remote host ~p on port ~p returned failure.~nError encountered was: ~p",
-                                         [OtherHost, OtherPort, DecodedErrors]),
-                              {error, [list_to_binary(io_lib:format("Got error response from remote node: ~s",
-                                                                    [string:join([binary_to_list(E) || E <- DecodedErrors], ", ")]))]};
+                              try mochijson2:decode(Body) of
+                                  DecodedErrors ->
+                                      ns_log:log(?MODULE, ?REST_FAILED,
+                                                 "During node join, the remote host ~p on port ~p returned failure.~nError encountered was: ~p",
+                                                 [OtherHost, OtherPort, DecodedErrors]),
+                                      {error, [list_to_binary(io_lib:format("Got error response from remote node: ~s",
+                                                                            [string:join([binary_to_list(E) || E <- DecodedErrors], ", ")]))]}
+                              catch
+                                  _:_ ->
+                                      ns_log:log(?MODULE, ?REST_FAILED,
+                                                 "During node join, the remote host ~p on port ~p returned failure.~n",
+                                                 [OtherHost, OtherPort]),
+                                      {error, [<<"Got error response from remote node">>]}
+                              end;
                           _ -> false
                       end,
             case Handled of
