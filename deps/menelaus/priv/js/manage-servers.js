@@ -133,10 +133,11 @@ var ServersSection = {
     }
     nodes = _.clone(details.nodes);
     nodes.sort(this.hostnameComparator);
+    var emptyProgress = {progress: 0};
     _.each(nodes, function (n) {
       var p = progress[n.otpNode];
       if (!p)
-        return;
+        p = emptyProgress;
       n.progress = p.progress;
       n.percent = truncateTo3Digits(n.progress * 100);
     });
