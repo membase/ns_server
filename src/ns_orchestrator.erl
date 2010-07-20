@@ -178,18 +178,21 @@ handle_info(janitor, State = #state{bucket=Bucket, rebalancer=undefined,
             {noreply, State#state{janitor={Pid, Ref}}}
     end;
 handle_info({Ref, Reason}, State = #state{rebalancer={_Pid, Ref}}) ->
-    case Reason of
-        {'EXIT', _, normal} ->
-            ns_log:log(?MODULE, ?REBALANCE_SUCCESSFUL,
-                       "Rebalance completed successfully.~n");
-        {'EXIT', _, R} ->
-            ns_log:log(?MODULE, ?REBALANCE_FAILED,
-                       "Rebalance exited with reason ~p~n", [R]);
-        _ ->
-            ns_log:log(?MODULE, ?REBALANCE_FAILED,
-                       "Rebalance failed with reason ~p~n", [Reason])
-    end,
-    ns_config:set(rebalance_status, none),
+    Status = case Reason of
+                 {'EXIT', _, normal} ->
+                     ns_log:log(?MODULE, ?REBALANCE_SUCCESSFUL,
+                                "Rebalance completed successfully.~n"),
+                     none;
+                 {'EXIT', _, R} ->
+                     ns_log:log(?MODULE, ?REBALANCE_FAILED,
+                                "Rebalance exited with reason ~p~n", [R]),
+                     {none, <<"Rebalance failed. See logs for detailed reason. You can try rebalance again.">>};
+                 _ ->
+                     ns_log:log(?MODULE, ?REBALANCE_FAILED,
+                                "Rebalance failed with reason ~p~n", [Reason]),
+                     {none, <<"Rebalance failed. See logs for detailed reason. You can try rebalance again.">>}
+             end,
+    ns_config:set(rebalance_status, Status),
     {noreply, State#state{rebalancer=undefined}};
 handle_info({Ref, _Reason}, State = #state{janitor={_Pid, Ref}}) ->
     {noreply, State#state{janitor=undefined}};

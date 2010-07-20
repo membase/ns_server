@@ -152,6 +152,10 @@ var ServersSection = {
     console.log("got progress: ", value);
     if (value.status == 'none') {
       this.poolDetails.invalidate();
+      this.rebalanceProgressIsInteresting.setValue(false);
+      if (value.errorMessage) {
+        displayNotice(value.errorMessage, true);
+      }
       return
     }
 
@@ -159,14 +163,16 @@ var ServersSection = {
     this.rebalanceProgress.recalculateAfterDelay(250);
   },
   init: function () {
-    this.poolDetails = DAO.cells.currentPoolDetailsCell;
+    var self = this;
 
-    this.tabs = new TabsCell("serversTab",
+    self.poolDetails = DAO.cells.currentPoolDetailsCell;
+
+    self.tabs = new TabsCell("serversTab",
                              "#servers .tabs",
                              "#servers .panes > div",
                              ["active", "pending"]);
 
-    var detailsWidget = this.detailsWidget = new MultiDrawersWidget({
+    var detailsWidget = self.detailsWidget = new MultiDrawersWidget({
       hashFragmentParam: 'openedServers',
       template: 'server_details',
       elementsKey: 'otpNode',
@@ -221,26 +227,26 @@ var ServersSection = {
         return rv;
       }
     });
-    this.poolDetails.subscribe(function (cell) {
+    self.poolDetails.subscribe(function (cell) {
       detailsWidget.valuesTransformer(cell.value.nodes);
     });
 
-    this.poolDetails.subscribeValue(function (poolDetails) {
+    self.poolDetails.subscribeValue(function (poolDetails) {
       var hasFailover;
       if (poolDetails)
         hasFailover = !poolDetails.balanced;
       $('#servers .failover_warning').toggle(!!hasFailover);
     });
 
-    this.poolDetails.subscribeAny($m(this, "refreshEverything"));
-    prepareTemplateForCell('active_server_list', this.poolDetails);
-    prepareTemplateForCell('pending_server_list', this.poolDetails);
+    self.poolDetails.subscribeAny($m(self, "refreshEverything"));
+    prepareTemplateForCell('active_server_list', self.poolDetails);
+    prepareTemplateForCell('pending_server_list', self.poolDetails);
 
-    var serversQ = this.serversQ = $('#servers');
+    var serversQ = self.serversQ = $('#servers');
 
-    serversQ.find('.rebalance_button').live('click', this.accountForDisabled($m(this, 'onRebalance')));
-    serversQ.find('.add_button').live('click', $m(this, 'onAdd'));
-    serversQ.find('.stop_rebalance_button').live('click', $m(this, 'onStopRebalance'));
+    serversQ.find('.rebalance_button').live('click', self.accountForDisabled($m(self, 'onRebalance')));
+    serversQ.find('.add_button').live('click', $m(self, 'onAdd'));
+    serversQ.find('.stop_rebalance_button').live('click', $m(self, 'onStopRebalance'));
 
     function mkServerRowHandler(handler) {
       return function (e) {
@@ -257,20 +263,28 @@ var ServersSection = {
       }));
     }
 
-    serversQ.find('.re_add_button').live('click', mkServerAction($m(this, 'reAddNode')));
-    serversQ.find('.eject_server').live('click', mkServerAction($m(this, 'ejectNode')));
-    serversQ.find('.failover_server').live('click', mkServerAction($m(this, 'failoverNode')));
-    serversQ.find('.remove_from_list').live('click', mkServerAction($m(this, 'removeFromList')));
+    serversQ.find('.re_add_button').live('click', mkServerAction($m(self, 'reAddNode')));
+    serversQ.find('.eject_server').live('click', mkServerAction($m(self, 'ejectNode')));
+    serversQ.find('.failover_server').live('click', mkServerAction($m(self, 'failoverNode')));
+    serversQ.find('.remove_from_list').live('click', mkServerAction($m(self, 'removeFromList')));
 
-    this.rebalanceProgress = new Cell(function (poolDetails) {
-      if (poolDetails.rebalanceStatus == 'none')
+    self.rebalanceProgressIsInteresting = new Cell();
+    self.rebalanceProgressIsInteresting.setValue(false);
+    self.poolDetails.subscribeValue(function (poolDetails) {
+      if (poolDetails && poolDetails.rebalanceStatus != 'none')
+        self.rebalanceProgressIsInteresting.setValue(true);
+    });
+
+    this.rebalanceProgress = new Cell(function (interesting, poolDetails) {
+      if (!interesting)
         return;
       return future.get({url: poolDetails.rebalanceProgressUri});
-    }, {poolDetails: this.poolDetails});
-    this.rebalanceProgress.keepValueDuringAsync = true;
-    this.rebalanceProgress.subscribe($m(this, 'onRebalanceProgress'));
+    }, {interesting: self.rebalanceProgressIsInteresting,
+        poolDetails: self.poolDetails});
+    self.rebalanceProgress.keepValueDuringAsync = true;
+    self.rebalanceProgress.subscribe($m(self, 'onRebalanceProgress'));
 
-    detailsWidget.hookRedrawToCell(this.poolDetails);
+    detailsWidget.hookRedrawToCell(self.poolDetails);
   },
   accountForDisabled: function (handler) {
     return function (e) {
