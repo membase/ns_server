@@ -471,6 +471,7 @@ function loginFormSubmit() {
   var login = $('#login_form [name=login]').val();
   var password = $('#login_form [name=password]').val();
   var spinner = overlayWithSpinner('#login_form', false);
+  $('#auth_dialog .alert_red').hide();
   $('#login_form').addClass('noform');
   DAO.performLogin(login, password, function (status) {
     spinner.remove();
