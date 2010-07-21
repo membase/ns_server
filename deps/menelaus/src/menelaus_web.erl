@@ -165,8 +165,8 @@ loop(Req, AppRoot, DocRoot) ->
                              ["erlwsh" | _] ->
                                  {auth_cookie, fun (R) -> erlwsh_web:loop(R, erlwsh_deps:local_path(["priv", "www"])) end};
                              _ ->
-                                 {done, Req:serve_file(Path, AppRoot)}%% , [{"Pragma", "no-cache"},
-                                                                      %%  {"Cache-Control", "no-cache must-revalidate"}])}
+                                 {done, Req:serve_file(Path, AppRoot,
+                                  [{"Cache-Control", "max-age=30"}])}
                         end;
                      'POST' ->
                          case PathTokens of
