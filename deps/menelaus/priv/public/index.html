@@ -513,8 +513,8 @@
               <td>Membase</td>
               <td>stretch to all</td>
               <td>{%= h(this.serversCount) %}</td>
-              <td>{%= V.formatQuantity(this.totalSize) %}</td>
-              <td>{%= V.formatQuantity(this.totalSize) %}</td>
+              <td>{%= V.formatQuantity(this.basicStats.memUsed) %}</td>
+              <td>unlimited</td>
             </tr>
             <tr id="{%= h(this.settingsRowID) %}" class="settings-placeholder"><td colspan="6"></td></tr>
           <!-- {% }); %} -->
