@@ -588,6 +588,16 @@ var MockedRequest = mkClass({
                                           direct: 11311},
                                   otpNode: "ns1@goofy.disney.com",
                                   otpCookie: "SADFDFGDFG"}],
+                         "storageTotals": {
+                           "ram": {
+                             "total": 2032558080,
+                             "used": 1641816064
+                           },
+                           "hdd": {
+                             "total": 239315349504.0,
+                             "used": 229742735523.0
+                           }
+                         },
                          buckets: {
                            // GET returns first page of bucket details with link to next page
                            uri: "/pools/default/buckets"
@@ -612,11 +622,13 @@ var MockedRequest = mkClass({
                                              flushCacheUri: "/pools/default/buckets/4/controller/doFlush",
                                              stats: {uri: "/pools/default/buckets/4/stats"},
                                              totalSizeMB: 1024,
-                                             basicStats: {
-                                               cacheSize: 64, // in megs
-                                               opsPerSec: 100,
-                                               evictionsPerSec: 5,
-                                               cachePercentUsed: 50
+                                             "basicStats": {
+                                               "opsPerSec": 12,
+                                               "diskFetches": 1,
+                                               "quotaPercentUsed": 0.0,
+                                               "diskUsed": 25935,
+                                               "memUsed": 1232423,
+                                               "itemCount": 1234
                                              }},
                                             {name: "Excerciser Application",
                                              uri: "/pools/default/buckets/5",
@@ -625,33 +637,39 @@ var MockedRequest = mkClass({
                                              flushCacheUri: "/pools/default/buckets/5/controller/doFlush",
                                              stats: {uri: "/pools/default/buckets/5/stats"},
                                              totalSizeMB: 1464,
-                                             basicStats: {
-                                               cacheSize: 65, // in megs
-                                               opsPerSec: 101,
-                                               evictionsPerSec: 6,
-                                               cachePercentUsed: 51
+                                             "basicStats": {
+                                               "opsPerSec": 13,
+                                               "diskFetches": 1,
+                                               "quotaPercentUsed": 0.0,
+                                               "diskUsed": 259235,
+                                               "memUsed": 12322423,
+                                               "itemCount": 12324
                                              }},
                                             {name: "new-year-site",
                                              uri: "/pools/default/buckets/6",
                                              flushCacheUri: "/pools/default/buckets/6/controller/doFlush",
                                              stats: {uri: "/pools/default/buckets/6/stats"},
                                              totalSizeMB: 1024,
-                                             basicStats: {
-                                               cacheSize: 66, // in megs
-                                               opsPerSec: 102,
-                                               evictionsPerSec: 7,
-                                               cachePercentUsed: 52
+                                             "basicStats": {
+                                               "opsPerSec": 13,
+                                               "diskFetches": 1.2,
+                                               "quotaPercentUsed": 0.0,
+                                               "diskUsed": 259353,
+                                               "memUsed": 12324223,
+                                               "itemCount": 12324
                                              }},
                                             {name: "new-year-site-staging",
                                              uri: "/pools/default/buckets/7",
                                              flushCacheUri: "/pools/default/buckets/7/controller/doFlush",
                                              stats: {uri: "/pools/default/buckets/7/stats"},
                                              totalSizeMB: 1424,
-                                             basicStats: {
-                                               cacheSize: 67, // in megs
-                                               opsPerSec: 103,
-                                               evictionsPerSec: 8,
-                                               cachePercentUsed: 53
+                                              "basicStats": {
+                                               "opsPerSec": 12,
+                                               "diskFetches": 1,
+                                               "quotaPercentUsed": 0.0,
+                                               "diskUsed": 25935,
+                                               "memUsed": 1232423,
+                                               "itemCount": 1234
                                              }}]],
       [get("pools", "default", "buckets", x), function (x) {
         if (x == "5")
@@ -680,9 +698,20 @@ var MockedRequest = mkClass({
                    "hdd":[{"path":"/srv/test",
                            "quotaMb":"none",
                            "state":"ok",
+                           "usedByData": 25935,
                            "diskStats": {
                              "sizeKBytes": 233706396,
                              "usagePercent": 96}}]},
+        "storageTotals": {
+          "ram": {
+            "total": 2032558080,
+            "used": 1689321472
+          },
+          "hdd": {
+            "total": 239315349504.0,
+            "used": 229742735523.0
+          }
+        },
         availableStorage: {
           hdd: [{
             path: "/",
