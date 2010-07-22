@@ -36,6 +36,8 @@
 
 -behaviour(gen_server).
 
+-include_lib("eunit/include/eunit.hrl").
+
 -define(DEFAULT_TIMEOUT, 500).
 
 %% log codes
@@ -113,42 +115,107 @@ merge(KVList) ->
 
 %% Set a value that will be overridden by any merged config
 set_initial(Key, Value) ->
-    ok = update(fun (Config) ->
-                        [{Key, Value} | lists:keydelete(Key, 1, Config)]
-                end).
+    ok = update_with_changes(fun (Config) ->
+                                     NewPair = {Key, Value},
+                                     {[NewPair], [NewPair | lists:keydelete(Key, 1, Config)]}
+                             end).
+
+update_config_key_rec(Key, Value, Rest, AccList) ->
+    case Rest of
+        [{Key, OldValue} | XX] ->
+            NewPair = {Key, increment_vclock(Value, OldValue)},
+            [NewPair | lists:reverse(AccList, XX)];
+        [Pair | XX2] ->
+            update_config_key_rec(Key, Value, XX2, [Pair | AccList]);
+        [] ->
+            none
+    end.
+
+%% updates KVList with {Key, Value}. Places new tuple at the beginning
+%% of list and removes old version for rest of list
+update_config_key(Key, Value, KVList) ->
+    case update_config_key_rec(Key, Value, KVList, []) of
+        none -> [{Key, Value} | KVList];
+        NewList -> NewList
+    end.
 
 set(Key, Value) ->
-    set([{Key, Value}]).
+    ok = update_with_changes(fun (Config) ->
+                                     NewList = update_config_key(Key, Value, Config),
+                                     {[hd(NewList)], NewList}
+                             end).
+
+%% Updates Config with list of {Key, Value} pairs. Places new pairs at
+%% the beginning of new list and removes old occurences of that keys.
+%% Returns pair: {NewPairs, NewConfig}, where NewPairs is list of
+%% updated KV pairs (with updated vclocks, if needed).
+%%
+%% Last parameter is accumulator. It's appended to NewPairs list.
+set_kvlist([], Config, NewPairs) ->
+    {NewPairs, Config};
+set_kvlist([{Key, Value} | Rest], Config, NewPairs) ->
+    NewList = update_config_key(Key, Value, Config),
+    set_kvlist(Rest, NewList, [hd(NewList) | NewPairs]).
 
 set(KVList) ->
-    ok = update(fun (Config) ->
-                   misc:ukeymergewith(fun ({K, V}, {_, V}) ->
-                                              {K, V};
-                                          ({K, V1}, {_, V2}) ->
-                                              {K, increment_vclock(V1, V2)}
-                                      end, 1,
-                                      lists:ukeysort(1, KVList),
-                                      lists:ukeysort(1, Config))
-                end).
+    ok = update_with_changes(fun (Config) ->
+                                     set_kvlist(KVList, Config, [])
+                             end).
 
 replace(KVList) -> gen_server:call(?MODULE, {replace, KVList}).
 
-update(Fun) ->
-    gen_server:call(?MODULE, {update, Fun}).
+%% update config by applying Fun to it. Fun should return a pair
+%% {NewPairs, NewConfig} where NewConfig is new config and NewPairs is
+%% list of changed pairs. That list of changed pairs is announced via
+%% ns_config_events.
+update_with_changes(Fun) ->
+    gen_server:call(?MODULE, {update_with_changes, Fun}).
+
+%% updates config by applying Fun to every {Key, Value} pair. Fun
+%% should return either new pair or Sentinel. In first case the pair
+%% is replaced with it's new value. In later case the pair is removed
+%% from config.
+%%
+%% Function returns a pair {NewPairs, NewConfig} where NewConfig is
+%% new config and NewPairs is list of changed pairs
+do_update_rec(_Fun, _Sentinel, [], NewConfig, NewPairs) ->
+    {NewPairs, NewConfig};
+do_update_rec(Fun, Sentinel, [Pair | Rest], NewConfig, NewPairs) ->
+    StrippedPair = case Pair of
+                       {K0, [_|_] = V0} -> {K0, strip_metadata(V0)};
+                       _ -> Pair
+                   end,
+    case Fun(StrippedPair) of
+        StrippedPair ->
+            do_update_rec(Fun, Sentinel, Rest, [Pair | NewConfig], NewPairs);
+        Sentinel ->
+            do_update_rec(Fun, Sentinel, Rest, NewConfig, NewPairs);
+        {K, Data} ->
+            {_, OldValue} = Pair,
+            NewPair = {K, increment_vclock(Data, OldValue)},
+            do_update_rec(Fun, Sentinel, Rest, [NewPair | NewConfig], [NewPair | NewPairs])
+    end.
 
 update(Fun, Sentinel) ->
-    UpdateFun = fun(Pair = {_OldKey, OldValue}) ->
-                        case Fun(Pair) of
-                            Pair -> Pair;
-                            Sentinel -> Sentinel;
-                            {K, Data} ->
-                                {K, increment_vclock(Data, OldValue)}
-                        end
-                end,
-    update(fun (Config) -> misc:mapfilter(UpdateFun, Sentinel, Config) end).
+    update_with_changes(fun (Config) ->
+                                do_update_rec(Fun, Sentinel, Config, [], [])
+                        end).
 
+%% Applies given Fun to value of given Key. The Key must exist.
 update_key(Key, Fun) ->
-    gen_server:call(?MODULE, {update, Key, Fun}).
+    update_with_changes(fun (Config) ->
+                                case lists:keyfind(Key, 1, Config) of
+                                    {_, OldValue} ->
+                                        StrippedValue = strip_metadata(OldValue),
+                                        case Fun(StrippedValue) of
+                                            StrippedValue ->
+                                                {[], Config};
+                                            NewValue ->
+                                                NewConfig = update_config_key(Key, NewValue, Config),
+                                                {[hd(NewConfig)], NewConfig}
+                                        end
+                                end
+                        end).
 
 clear() -> clear([]).
 clear(Keep) -> gen_server:call(?MODULE, {clear, Keep}).
@@ -349,33 +416,15 @@ handle_call(get, _From, State) -> {reply, State, State};
 handle_call({replace, KVList}, _From, State) ->
     {reply, ok, State#config{dynamic = [KVList]}};
 
-handle_call({update, Fun}, From, State) ->
-    try Fun(config_dynamic(State)) of
-        NewList ->
-            announce_changes(NewList),
-            handle_call(resave, From, State#config{dynamic=[NewList]})
+handle_call({update_with_changes, Fun}, From, State) ->
+    OldList = config_dynamic(State),
+    try Fun(OldList) of
+        {NewPairs, NewConfig} ->
+            announce_changes(NewPairs),
+            handle_call(resave, From, State#config{dynamic=[NewConfig]})
     catch
         X:Error ->
             {reply, {X, Error, erlang:get_stacktrace()}, State}
-    end;
-
-handle_call({update, Key, Fun}, From, State) ->
-    case search_raw(State, Key) of
-        {value, OldValue} ->
-            case Fun(OldValue) of
-                OldValue ->
-                    {reply, ok, State};
-                NewValue ->
-                    handle_call(
-                      resave, From,
-                      State#config{dynamic=[[{Key,
-                                              increment_vclock(NewValue,
-                                                               OldValue)} |
-                                             lists:keydelete(
-                                               Key, 1,
-                                               config_dynamic(State))]]})
-            end;
-        error -> {reply, {error, not_found}, State}
     end;
 
 handle_call({clear, Keep}, From, State) ->
@@ -551,3 +600,149 @@ read_includes([{include, Path} | Terms], Acc) ->
   end;
 read_includes([X | Rest], Acc) -> read_includes(Rest, [X | Acc]);
 read_includes([], Result)      -> {ok, lists:reverse(Result)}.
+
+-ifdef(EUNIT).
+
+do_setup() ->
+    mock_gen_server:start_link({local, ?MODULE}),
+    ok.
+
+do_teardown(_V) ->
+    Pid = whereis(?MODULE),
+    OldWaitFlag = erlang:process_flag(trap_exit, true),
+    mock_gen_server:stop(?MODULE),
+    receive
+        {'EXIT', Pid, _} -> ok
+    end,
+    erlang:process_flag(trap_exit, OldWaitFlag),
+    ok.
+
+all_test_() ->
+    {spawn, {foreach, fun do_setup/0, fun do_teardown/1,
+             [fun test_setup/0,
+              fun test_set/0,
+              fun test_update_config/0,
+              fun test_set_kvlist/0,
+              fun test_update/0]}}.
+
+test_setup() ->
+    F = fun () -> ok end,
+    mock_gen_server:stub_call(?MODULE,
+                              update_with_changes,
+                              fun ({update_with_changes, X}) ->
+                                      X
+                              end),
+    ?assertEqual(F, gen_server:call(ns_config, {update_with_changes, F})).
+
+-define(assertConfigEquals(A, B), ?assertEqual(lists:ukeysort(1, A),
+                                               lists:ukeysort(1, B))).
+
+test_set() ->
+    Self = self(),
+    mock_gen_server:stub_call(?MODULE,
+                              update_with_changes,
+                              fun (Msg) ->
+                                      Self ! Msg, ok
+                              end),
+    ns_config:set(test, 1),
+    Updater0 = (fun () -> receive {update_with_changes, F} -> F end end)(),
+
+    ?assertConfigEquals([{test, 1}], element(2, Updater0([]))),
+    {[{test, 1}], Val2} = Updater0([{foo, 2}]),
+    ?assertConfigEquals([{test, 1}, {foo, 2}], Val2),
+
+    {[{test, 1}], Val3} = Updater0([{foo, [{k, 1}, {v, 2}]},
+                                    {xar, true},
+                                    {test, [{a, b}, {c, d}]}]),
+
+    ?assertConfigEquals([{foo, [{k, 1}, {v, 2}]},
+                         {xar, true},
+                         {test, 1}], Val3),
+
+    SetVal1 = [{suba, true}, {subb, false}],
+    ns_config:set(test, SetVal1),
+    Updater1 = (fun () -> receive {update_with_changes, F} -> F end end)(),
+
+    {[{test, SetVal1Actual1}], Val4} = Updater1([{test, [{suba, false}, {subb, true}]}]),
+    MyNode = node(),
+    ?assertMatch([{'_vclock', [{MyNode, _}]} | SetVal1], SetVal1Actual1),
+    ?assertEqual(SetVal1, strip_metadata(SetVal1Actual1)),
+    ?assertMatch([{test, SetVal1Actual1}], Val4),
+    ok.
+
+test_update_config() ->
+    ?assertEqual([{test, 1}], update_config_key(test, 1, [])),
+    ?assertEqual([{test, 1},
+                  {foo, [{k, 1}, {v, 2}]},
+                  {xar, true}],
+                 update_config_key(test, 1, [{foo, [{k, 1}, {v, 2}]},
+                                             {xar, true},
+                                             {test, [{a, b}, {c, d}]}])).
+
+test_set_kvlist() ->
+    {NewPairs, [{foo, FooVal},
+                {bar, false},
+                {baz, [{nothing, false}]}]} =
+        set_kvlist([{bar, false},
+                    {foo, [{suba, a}, {subb, b}]}],
+                   [{baz, [{nothing, false}]},
+                    {foo, [{suba, undefined}, {subb, unlimited}]}], []),
+    ?assertConfigEquals(NewPairs, [{foo, FooVal}, {bar, false}]),
+    MyNode = node(),
+    ?assertMatch([{'_vclock', [{MyNode, _}]}, {suba, a}, {subb, b}],
+                 FooVal).
+
+test_update() ->
+    Self = self(),
+    mock_gen_server:stub_call(?MODULE,
+                              update_with_changes,
+                              fun (Msg) ->
+                                      Self ! Msg, ok
+                              end),
+    RecvUpdater = fun () ->
+                          receive
+                              {update_with_changes, F} -> F
+                          end
+                  end,
+
+    OldConfig = [{dont_change, 1},
+                 {erase, 2},
+                 {list_value, [{'_vclock', [{'n@never-really-possible-hostname', {1, 12345}}]},
+                               {a, b}, {c, d}]},
+                 {a, 3},
+                 {b, 4}],
+    BlackSpot = make_ref(),
+    ns_config:update(fun ({dont_change, _} = P) -> P;
+                         ({erase, _}) -> BlackSpot;
+                         ({list_value, V}) -> {list_value, [V | V]};
+                         ({K, V}) -> {K, -V}
+                     end, BlackSpot),
+    Updater = RecvUpdater(),
+    {Changes, NewConfig} = Updater(OldConfig),
+
+    ?assertConfigEquals(Changes ++ [{dont_change, 1}],
+                        NewConfig),
+    ?assertEqual(lists:keyfind(dont_change, 1, Changes), false),
+
+    ?assertEqual(lists:sort([dont_change, list_value, a, b]), lists:sort(proplists:get_keys(NewConfig))),
+
+    {list_value, [{'_vclock', Clocks} | ListValues]} = lists:keyfind(list_value, 1, NewConfig),
+
+    ?assertEqual({'n@never-really-possible-hostname', {1, 12345}},
+                 lists:keyfind('n@never-really-possible-hostname', 1, Clocks)),
+    MyNode = node(),
+    ?assertMatch([{MyNode, _}], lists:keydelete('n@never-really-possible-hostname', 1, Clocks)),
+
+    ?assertEqual([[{a, b}, {c, d}], {a, b}, {c, d}], ListValues),
+
+    ?assertEqual(-3, proplists:get_value(a, NewConfig)),
+    ?assertEqual(-4, proplists:get_value(b, NewConfig)),
+
+    ns_config:update_key(a, fun (3) -> 10 end),
+    Updater2 = RecvUpdater(),
+    {[{a, 10}], NewConfig2} = Updater2(OldConfig),
+
+    ?assertConfigEquals([{a, 10} | lists:keydelete(a, 1, OldConfig)], NewConfig2),
+    ok.
+
+-endif.

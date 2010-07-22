@@ -325,7 +325,7 @@ test_load_config() ->
     ok = file:write(F, <<"{x,1}.">>),
     ok = file:close(F),
     R = ns_config:load_config(CP, test_dir(), ?MODULE),
-    E = #config{static = [[{x,1}], []], policy_mod = ?MODULE},
+    E = #config{static = [[{x,1}], []], dynamic = [[{x,1}]], policy_mod = ?MODULE},
     ?assertEqual({ok, E}, R),
     ok.
 
@@ -335,7 +335,7 @@ test_save_config() ->
     ok = file:write(F, <<"{x,1}.">>),
     ok = file:close(F),
     R = ns_config:load_config(CP, test_dir(), ?MODULE),
-    E = #config{static = [[{x,1}], []], policy_mod = ?MODULE},
+    E = #config{static = [[{x,1}], []], dynamic = [[{x,1}]], policy_mod = ?MODULE},
     ?assertMatch({ok, E}, R),
     X = E#config{dynamic = [[{x,2},{y,3}]], policy_mod = ?MODULE},
     ?assertEqual(ok, ns_config:save_config(X, test_dir())),
@@ -384,8 +384,12 @@ test_include_config() ->
     ok = file:write(F2, <<"{z,9}.">>),
     ok = file:close(F2),
     R = ns_config:load_config(CP1, test_dir(), ?MODULE),
-    E = #config{static = [[{x,1}, {z,9}, {y,1}], []], policy_mod = ?MODULE},
-    ?assertEqual({ok, E}, R),
+    ?assertMatch({ok, #config{static = [[{x,1}, {z,9}, {y,1}], []],
+                              policy_mod = ?MODULE}},
+                 R),
+    {ok, #config{dynamic = [DynamicR]}} = R,
+    ?assertEqual(lists:ukeysort(1, DynamicR),
+                 lists:ukeysort(1, [{x,1}, {z,9}, {y,1}])),
     ok.
 
 test_include_missing_config() ->
