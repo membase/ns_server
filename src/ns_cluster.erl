@@ -259,13 +259,18 @@ prepare_join_to(OtherHost) ->
     end.
 
 rename_node(Old, New) ->
-    ns_config:update(fun ({K, V}) ->
+    ns_config:update(fun ({K, V} = Pair) ->
                              NewK = misc:rewrite_value(Old, New, K),
                              NewV = misc:rewrite_value(Old, New, V),
-                             error_logger:info_msg(
-                               "renaming node conf ~p -> ~p:~n  ~p ->~n  ~p~n",
-                               [K, NewK, V, NewV]),
-                             {NewK, NewV}
+                             if
+                                 NewK =/= K orelse NewV =/= V ->
+                                     error_logger:info_msg(
+                                       "renaming node conf ~p -> ~p:~n  ~p ->~n  ~p~n",
+                                       [K, NewK, V, NewV]),
+                                     {NewK, NewV};
+                                 true ->
+                                     Pair
+                             end
                      end, erlang:make_ref()).
 
 change_my_address(MyAddr) ->
