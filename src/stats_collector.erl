@@ -86,8 +86,12 @@ parse_stats(TS, Stats, LastCounters) ->
                  undefined ->
                      lists:duplicate(length([?STAT_COUNTERS]), undefined);
                  _ ->
-                     lists:zipwith(fun (A, B) -> A - B end,
-                                   Counters, LastCounters)
+                     lists:zipwith(fun (A, B) ->
+                                           Res = A - B,
+                                           if Res < 0 -> 0;
+                                              true -> Res
+                                           end
+                                   end, Counters, LastCounters)
              end,
     {list_to_tuple([stat_entry, TS] ++ Gauges ++ Deltas), Counters}.
 
