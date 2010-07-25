@@ -487,10 +487,6 @@ function loginFormSubmit() {
   return false;
 }
 
-window.nav = {
-  go: $m(ThePage, 'gotoSection')
-};
-
 $(function () {
   $(document.body).removeClass('nojs');
   $(document.body).addClass('auth');
@@ -1037,18 +1033,7 @@ $('.tooltip').live('click', function (e) {
   })
 });
 
-$(function () {
-  var re = /javascript:nav.go\(['"](.*?)['"]\)/
-  $("a[href^='javascript:nav.go(']").each(function () {
-    var jq = $(this);
-    var href = jq.attr('href');
-    var match = re.exec(href);
-    var section = match[1];
-    jq.attr('href', '#sec=' + section);
-  });
-});
-
 watchHashParamLinks('sec', function (e, href) {
-  nav.go(href);
+  ThePage.gotoSection(href);
 });
 

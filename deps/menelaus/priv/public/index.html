@@ -41,22 +41,22 @@
       <h1>MONITOR</h1>
       <ul>
         <!--<li class="line"></li>-->
-        <li class="line disabled"><!-- a id="switch_overview" href="javascript:nav.go('overview');" -->Cluster Overview<!-- /a --></li>
-        <li class="line"><a id="switch_monitor_buckets" href="javascript:nav.go('monitor_buckets');">Data Buckets</a></li>
-        <li class="line disabled"><!-- a id="switch_monitor_servers" href="javascript:nav.go('monitor_servers');" -->Servers<!-- /a --></li>
-        <!-- <li class="line disabled"><a id="switch_alerts" href="javascript:nav.go('alerts');">Alerts</a></li> -->
-        <li class="line"><a id="switch_alerts" href="javascript:nav.go('log');">Log</a></li>
+        <li class="line disabled"><!-- a id="switch_overview" href="#sec=overview" -->Cluster Overview<!-- /a --></li>
+        <li class="line"><a id="switch_monitor_buckets" href="#sec=monitor_buckets">Data Buckets</a></li>
+        <li class="line disabled"><!-- a id="switch_monitor_servers" href="#sec=monitor_servers" -->Servers<!-- /a --></li>
+        <!-- <li class="line disabled"><a id="switch_alerts" href="#sec=alerts">Alerts</a></li> -->
+        <li class="line"><a id="switch_alerts" href="#sec=log">Log</a></li>
       </ul>
 
       <h1>MANAGE</h1>
       <ul>
-        <li class="line"><a id="switch_buckets" href="javascript:nav.go('buckets');">Data Buckets</a></li>
-        <li class="line"><a id="switch_servers" href="javascript:nav.go('servers');">Servers</a></li>
+        <li class="line"><a id="switch_buckets" href="#sec=buckets">Data Buckets</a></li>
+        <li class="line"><a id="switch_servers" href="#sec=servers">Servers</a></li>
       </ul>
 
       <h1>SETUP</h1>
       <ul>
-        <li class="line disabled"><!-- disabled for beta1 a id="switch_settings" href="javascript:nav.go('settings');"  -->Settings<!-- /a --></li>
+        <li class="line disabled"><!-- disabled for beta1 a id="switch_settings" href="#sec=settings"  -->Settings<!-- /a --></li>
       </ul>
 
       <h1>SUPPORT</h1>
@@ -77,8 +77,8 @@
             <h2 class="label">Cluster Health:</h2>
             <div class="line_cnt">
                 <div class="alert_1">{%= V.setAttribute('class', isWarning ? 'warning_1' : '') %}{%=  V.setAttribute('class', isCritical ? 'critical_1' : '') %}</div>
-                <a href="javascript:nav.go('alerts');">{% if (isCritical) { %}Critical{% } else if (isWarning) { %}Warning{% } else { %}Healthy{% } %}</a>
-                <span class="comment">({%= h(V.count(nodesCount, 'server node')) %} managing <a href="javascript:nav.go('buckets');">{%=h(V.count(bucketsCount, 'bucket'))%}</a>)</span>
+                <a href="#sec=alerts">{% if (isCritical) { %}Critical{% } else if (isWarning) { %}Warning{% } else { %}Healthy{% } %}</a>
+                <span class="comment">({%= h(V.count(nodesCount, 'server node')) %} managing <a href="#sec=buckets">{%=h(V.count(bucketsCount, 'bucket'))%}</a>)</span>
             </div>
         </div>
         <div class="labeled_line percentage_big">
@@ -104,7 +104,7 @@
                     <div class="unused">
                         <div class="used" style="width:50%;"></div>
                     </div>{%=V.setPercentBar(mcdItemUtilization)%}
-                    <div class="comment">{%=V.formatQuantity(bucketsSizeTotal*1024*1024)%} Across <a class="bimnone" href="javascript:nav.go('buckets');">{%=h(V.count(bucketsCount, 'bucket'))%}</a>.</div>
+                    <div class="comment">{%=V.formatQuantity(bucketsSizeTotal*1024*1024)%} Across <a class="bimnone" href="#sec=buckets">{%=h(V.count(bucketsCount, 'bucket'))%}</a>.</div>
                 </div>
                 <a class="text_11 tooltip"><span>What's this?</span>
                   <span class="tooltip_msg"><span>

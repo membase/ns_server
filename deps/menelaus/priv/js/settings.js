@@ -160,13 +160,13 @@ var SettingsSection = {
     }
 
     switchAlertsOn();
-    nav.go('settings');
+    ThePage.gotoSection('settings');
   },
   gotoSecureServer: function () {
     var self = this;
 
     self.tabs.setValue('basic');
-    nav.go('settings');
+    ThePage.gotoSection('settings');
 
     function switchSecureOn() {
       if (self.webSettings.value && ('port' in self.webSettings.value)) {
