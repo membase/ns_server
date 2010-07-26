@@ -40,7 +40,7 @@ bucket_hot_keys(Bucket) ->
     gen_server:call(?MODULE, {get_keys, Bucket}).
 
 all_local_hot_keys() ->
-    get_server:call(?MODULE, all_local_hot_keys).
+    gen_server:call(?MODULE, all_local_hot_keys).
 
 %%--------------------------------------------------------------------
 %% @doc
