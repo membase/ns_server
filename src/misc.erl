@@ -34,6 +34,8 @@
 
 -module(misc).
 
+-include("ns_common.hrl").
+
 -define(FNV_OFFSET_BASIS, 2166136261).
 -define(FNV_PRIME,        16777619).
 
@@ -706,17 +708,21 @@ ukeymergewith_test() ->
     [{a, 1}, {b, 3}] = ukeymergewith(Fun, 1, [{b, 1}], [{a, 1}, {b, 2}]).
 
 
-start_singleton_gen_server(Name, Args, Opts) ->
-    case gen_server:start_link({global, Name}, Name, Args, Opts) of
+start_singleton(Module, Name, Args, Opts) ->
+    case Module:start_link({global, Name}, Name, Args, Opts) of
         {error, {already_started, Pid}} ->
-            error_logger:info_msg("misc:start_singleton_gen_server(~p, ~p, ~p):"
-                                  " monitoring ~p from ~p~n",
-                                  [Name, Args, Opts, Pid, node()]),
+            ?log_info("start_singleton(~p, ~p, ~p, ~p):"
+                      " monitoring ~p from ~p",
+                      [Module, Name, Args, Opts, Pid, node()]),
             {ok, spawn_link(fun () -> misc:wait_for_process(Pid, infinity) end)};
         {ok, Pid} = X ->
-            error_logger:info_msg("misc:start_singleton_gen_server(~p, ~p, ~p):"
-                                 " started as ~p on ~p~n",
-                                 [Name, Args, Opts, Pid, node()]),
+            ?log_info("start_singleton(~p, ~p, ~p, ~p):"
+                      " started as ~p on ~p~n",
+                      [Module, Name, Args, Opts, Pid, node()]),
             X;
         X -> X
     end.
+
+
+start_singleton_gen_server(Name, Args, Opts) ->
+    start_singleton(gen_server, Name, Args, Opts).
