@@ -83,8 +83,11 @@ good_children() ->
       permanent, 10, worker, [ns_memcached]},
 
      {ns_heart, {ns_heart, start_link, []},
-      permanent, 10, worker,
-      [ns_heart]}].
+      permanent, 10, worker, [ns_heart]},
+
+     {ns_orchestrator, {ns_orchestrator, start_link, []},
+      permanent, 20, worker, [ns_orchestrator]}
+    ].
 
 
 %% Children that get restarted if we pull the plug. These can depend

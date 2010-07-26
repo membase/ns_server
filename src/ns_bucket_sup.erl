@@ -48,9 +48,7 @@ child_specs(Configs) ->
     lists:append([child_spec(B) || {B, _} <- Configs]).
 
 child_spec(Bucket) ->
-    [{{ns_orchestrator, Bucket}, {ns_orchestrator, start_link, [Bucket]},
-      permanent, 10, worker, [ns_orchestrator]},
-     {{stats_collector, Bucket}, {stats_collector, start_link, [Bucket]},
+    [{{stats_collector, Bucket}, {stats_collector, start_link, [Bucket]},
       permanent, 10, worker, [stats_collector]},
      {{stats_archiver, Bucket}, {stats_archiver, start_link, [Bucket]},
       permanent, 10, worker, [stats_archiver]}].

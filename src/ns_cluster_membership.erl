@@ -236,20 +236,21 @@ handle_join(OtpNode, OtpCookie, MyIP) ->
     end.
 
 get_rebalance_status() ->
-    ns_orchestrator:rebalance_progress("default").
+    ns_orchestrator:rebalance_progress().
 
 start_rebalance(KnownNodes, EjectedNodes) ->
     case {lists:sort(ns_node_disco:nodes_wanted()),
           lists:sort(KnownNodes)} of
         {X, X} ->
             MaybeKeepNodes = KnownNodes -- EjectedNodes,
-            FailedNodes = [N || {N, State} <-
-                                    get_nodes_cluster_membership(MaybeKeepNodes),
-                                State == inactiveFailed],
+            FailedNodes =
+                [N || {N, State} <-
+                          get_nodes_cluster_membership(MaybeKeepNodes),
+                      State == inactiveFailed],
             KeepNodes = MaybeKeepNodes -- FailedNodes,
             activate(KeepNodes),
-            ns_orchestrator:start_rebalance("default", KeepNodes,
-                                            EjectedNodes ++ FailedNodes);
+            ns_orchestrator:start_rebalance(KeepNodes, EjectedNodes ++
+                                                FailedNodes);
         _ -> nodes_mismatch
     end.
 
@@ -264,13 +265,13 @@ deactivate(Nodes) ->
 
 
 stop_rebalance() ->
-    ns_orchestrator:stop_rebalance("default").
+    ns_orchestrator:stop_rebalance().
 
 is_balanced() ->
-    not ns_orchestrator:needs_rebalance("default").
+    not ns_orchestrator:needs_rebalance().
 
 failover(Node) ->
-    ok = ns_orchestrator:failover("default", Node),
+    ok = ns_orchestrator:failover(Node),
     ns_config:set({node, Node, membership}, inactiveFailed).
 
 re_add_node(Node) ->
