@@ -69,10 +69,11 @@ test_menelaus: deps/menelaus
 TAGS:
 	ctags -eR .
 
-dialyzer: ebins
-	dialyzer --build_plt --apps erts kernel stdlib mnesia crypto -pa ebin -r .
+dialyzer: all
+	dialyzer --check_plt --apps compiler crypto erts eunit inets kernel mnesia os_mon sasl ssl stdlib xmerl
+	dialyzer -pa ebin -r .
 
-features/Makefile:
+Features/Makefile:
 	(cd features && ../test/parallellize_features.rb) >features/Makefile
 
 .PHONY : features/Makefile
