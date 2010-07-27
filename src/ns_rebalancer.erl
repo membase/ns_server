@@ -20,11 +20,6 @@
 
 -include("ns_common.hrl").
 
--type histogram() :: [{atom(), non_neg_integer()}].
--type map() :: [[atom()]].
--type move_counts() :: [{atom(), non_neg_integer()}].
--type moves() :: [{non_neg_integer(), atom(), atom()}].
-
 -export([failover/2, rebalance/5, unbalanced/2]).
 
 

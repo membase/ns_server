@@ -48,8 +48,6 @@
 -define(REBALANCE_NOT_STARTED, 3).
 -define(REBALANCE_STARTED, 4).
 
--type move_counts() :: [{atom(), non_neg_integer()}].
-
 %% gen_fsm callbacks
 -export([code_change/4,
          init/1,

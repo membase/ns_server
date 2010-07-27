@@ -16,6 +16,12 @@
 %% @doc Macros used all over the place.
 %%
 
+-type histogram() :: [{atom(), non_neg_integer()}].
+-type map() :: [[atom()]].
+-type move_counts() :: [{atom(), non_neg_integer()}].
+-type moves() :: [{non_neg_integer(), atom(), atom()}].
+
+
 -define(LOG(Fun, Format, Args),
         error_logger:Fun("~p:~p:~p: " Format "~n",
                          [node(), ?MODULE, ?LINE] ++ Args)).
