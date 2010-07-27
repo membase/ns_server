@@ -1357,6 +1357,8 @@ handle_rebalance(Req) ->
     case ns_cluster_membership:start_rebalance(KnownNodes, EjectedNodes) of
         already_balanced ->
             Req:respond({200, [], []});
+        in_progress ->
+            Req:respond({200, [], []});
         nodes_mismatch ->
             reply_json(Req, {struct, [{mismatch, 1}]}, 400);
         ok ->
