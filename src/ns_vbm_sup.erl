@@ -57,6 +57,8 @@ kill_vbuckets(Node, Bucket, VBuckets) ->
         [] ->
             ok;
         RemainingVBuckets ->
+            ?log_info("kill_vbuckets: remaining vbuckets: ~p",
+                      [RemainingVBuckets]),
             lists:foreach(fun ({V, dead}) ->
                                   ns_memcached:delete_vbucket(Node, Bucket, V);
                               ({V, _}) ->
