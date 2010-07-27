@@ -20,7 +20,7 @@
 
 -include("ns_common.hrl").
 
--export([failover/2, rebalance/5, unbalanced/2]).
+-export([failover/2, rebalance/4, unbalanced/2]).
 
 
 %%
@@ -39,8 +39,8 @@ failover(Bucket, Node) ->
                   end, lists:delete(Node, Servers)).
 
 
--spec rebalance(string(), [atom()], [atom()], map(), non_neg_integer()) -> ok.
-rebalance(Bucket, KeepNodes, EjectNodes, Map, Tries) ->
+-spec rebalance(string(), [atom()], [atom()], map()) -> ok.
+rebalance(Bucket, KeepNodes, EjectNodes, Map) ->
     try
         ns_config:set(rebalance_status, running),
         AllNodes = KeepNodes ++ EjectNodes,
@@ -100,17 +100,7 @@ rebalance(Bucket, KeepNodes, EjectNodes, Map, Tries) ->
     catch
         throw:stopped ->
             fixup_replicas(Bucket, KeepNodes, EjectNodes),
-            exit(stopped);
-        exit:Reason ->
-            case Tries of
-                0 ->
-                    exit(Reason);
-                _ ->
-                    ?log_warning("Rebalance received exit: ~p, retrying.",
-                                 [Reason]),
-                    timer:sleep(1500),
-                    rebalance(Bucket, KeepNodes, EjectNodes, Map, Tries - 1)
-            end
+            exit(stopped)
     end.
 
 

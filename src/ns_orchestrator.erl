@@ -123,6 +123,7 @@ code_change(_OldVsn, StateName, StateData, _Extra) ->
 
 
 init([]) ->
+    process_flag(trap_exit, true),
     timer:send_interval(10000, janitor),
     self() ! check_initial,
     {ok, idle, #idle_state{}}.
@@ -160,21 +161,18 @@ handle_info(janitor, idle, State) ->
 handle_info(janitor, StateName, StateData) ->
     misc:flush(janitor),
     {next_state, StateName, StateData};
-handle_info({Ref, Reason}, rebalancing,
-            #rebalancing_state{rebalancer={_Pid, Ref}}) ->
+handle_info({'EXIT', Pid, Reason}, rebalancing,
+            #rebalancing_state{rebalancer=Pid}) ->
     Status = case Reason of
-                 {'EXIT', _, normal} ->
+                 normal ->
                      ns_log:log(?MODULE, ?REBALANCE_SUCCESSFUL,
                                 "Rebalance completed successfully.~n"),
                      none;
-                 {'EXIT', _, R} ->
-                     ns_log:log(?MODULE, ?REBALANCE_FAILED,
-                                "Rebalance exited with reason ~p~n", [R]),
-                     {none, <<"Rebalance failed. See logs for detailed reason. You can try rebalance again.">>};
                  _ ->
                      ns_log:log(?MODULE, ?REBALANCE_FAILED,
-                                "Rebalance failed with reason ~p~n", [Reason]),
-                     {none, <<"Rebalance failed. See logs for detailed reason. You can try rebalance again.">>}
+                                "Rebalance exited with reason ~p~n", [Reason]),
+                     {none, <<"Rebalance failed. See logs for detailed reason. "
+                              "You can try rebalance again.">>}
              end,
     ns_config:set(rebalance_status, Status),
     {next_state, idle, #idle_state{}};
@@ -213,16 +211,12 @@ idle({start_rebalance, KeepNodes, EjectNodes}, _From,
               "Not rebalancing because the cluster is already balanced~n"),
             {reply, already_balanced, idle, State};
         _ ->
-            {ok, Pid, Ref} =
-                misc:spawn_link_safe(
-                  fun () ->
-                          spawn_link(
-                            fun() ->
-                                    ns_rebalancer:rebalance(Bucket, KeepNodes,
-                                                            EjectNodes, Map, 2)
-                            end)
-                  end),
-            {reply, ok, rebalancing, #rebalancing_state{rebalancer={Pid, Ref},
+            Pid = spawn_link(
+                    fun() ->
+                            ns_rebalancer:rebalance(Bucket, KeepNodes,
+                                                    EjectNodes, Map)
+                    end),
+            {reply, ok, rebalancing, #rebalancing_state{rebalancer=Pid,
                                                         progress=[]}}
     end;
 idle(stop_rebalance, _From, State) ->
@@ -254,12 +248,11 @@ rebalancing(start_rebalance, _From, State) ->
                "Not rebalancing because rebalance is already in progress.~n"),
     {reply, in_progress, rebalancing, State};
 rebalancing(stop_rebalance, _From,
-            #rebalancing_state{rebalancer={Pid, _Ref}} = State) ->
+            #rebalancing_state{rebalancer=Pid} = State) ->
     Pid ! stop,
     {reply, ok, rebalancing, State};
 rebalancing(rebalance_progress, _From,
-            #rebalancing_state{rebalancer = {_Pid, _Ref},
-                               progress = Progress} = State) ->
+            #rebalancing_state{progress = Progress} = State) ->
     {reply, {running, Progress}, rebalancing, State}.
 
 
