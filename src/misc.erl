@@ -714,7 +714,11 @@ start_singleton(Module, Name, Args, Opts) ->
             ?log_info("start_singleton(~p, ~p, ~p, ~p):"
                       " monitoring ~p from ~p",
                       [Module, Name, Args, Opts, Pid, node()]),
-            {ok, spawn_link(fun () -> misc:wait_for_process(Pid, infinity) end)};
+            {ok, spawn_link(fun () ->
+                                    misc:wait_for_process(Pid, infinity),
+                                    ?log_info("~p saw ~p exit (was pid ~p).",
+                                              [self(), Name, Pid])
+                            end)};
         {ok, Pid} = X ->
             ?log_info("start_singleton(~p, ~p, ~p, ~p):"
                       " started as ~p on ~p~n",
