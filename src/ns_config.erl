@@ -406,11 +406,7 @@ handle_call(reload, _From, State) ->
     end;
 
 handle_call(resave, _From, State) ->
-    case save_config(State) of
-        ok    -> {reply, ok, State};
-        Error -> ns_log:log(?MODULE, ?RESAVE_FAILED, "resave failed: ~p", [Error]),
-                 {reply, Error, State}
-    end;
+    {reply, save_config(State), State};
 
 handle_call(reannounce, _From, State) ->
     announce_changes(config_dynamic(State)),

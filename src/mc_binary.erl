@@ -28,25 +28,24 @@
 
 %% Functions to work with memcached binary protocol packets.
 
-send_recv(Sock, RecvCallback, CBData, Header, Entry, Success) ->
-    {ok, RecvHeader, RecvEntry, NCB} =
-        send_recv(Sock, RecvCallback, CBData, Header, Entry),
+-spec send_recv(any(), #mc_header{}, #mc_entry{}, any()) ->
+                       {ok, any()} | {error, #mc_header{}, #mc_entry{}}.
+send_recv(Sock, Header, Entry, Success) ->
+    {ok, RecvHeader, RecvEntry} =
+        send_recv(Sock, Header, Entry),
     V1 = RecvHeader#mc_header.opcode,
     V1 = Header#mc_header.opcode,
     SR = RecvHeader#mc_header.status,
     case SR =:= ?SUCCESS of
-        true  -> {ok, Success, NCB};
-        false -> {error, RecvHeader, RecvEntry, NCB}
+        true  -> {ok, Success};
+        false -> {error, RecvHeader, RecvEntry}
     end.
 
-send_recv(Sock, RecvCallback, CBData, Header, Entry) ->
+-spec send_recv(any(), #mc_header{}, #mc_entry{}) ->
+                       {ok, #mc_header{}, #mc_entry{}} | {error, any()}.
+send_recv(Sock, Header, Entry) ->
     ok = send(Sock, req, Header, Entry),
-    {ok, RecvHeader, RecvEntry} = recv(Sock, res),
-    NCB = case is_function(RecvCallback) of
-       true  -> RecvCallback(RecvHeader, RecvEntry, CBData);
-       false -> CBData
-    end,
-    {ok, RecvHeader, RecvEntry, NCB}.
+    recv(Sock, res).
 
 send({OutPid, CmdNum}, Kind, Header, Entry) ->
     OutPid ! {send, CmdNum, encode(Kind, Header, Entry)},
@@ -117,7 +116,6 @@ send({OutPid, CmdNum}, Data) when is_pid(OutPid) ->
     OutPid ! {send, CmdNum, Data};
 
 send(undefined, _Data)              -> ok;
-send(_Sock, undefined)              -> ok;
 send(_Sock, <<>>)                   -> ok;
 send(Sock, List) when is_list(List) -> send(Sock, iolist_to_binary(List));
 send(Sock, Data)                    -> gen_tcp:send(Sock, Data).
@@ -131,8 +129,8 @@ recv_data(Sock, NumBytes) -> gen_tcp:recv(Sock, NumBytes, ?RECV_TIMEOUT).
 noop_test()->
     {ok, Sock} = gen_tcp:connect("localhost", 11211,
                                  [binary, {packet, 0}, {active, false}]),
-    {ok, works, undefined} = send_recv(Sock, undefined, undefined,
-                                       #mc_header{opcode = ?NOOP}, #mc_entry{}, works),
+    {ok, works} = send_recv(Sock,
+                            #mc_header{opcode = ?NOOP}, #mc_entry{}, works),
     ok = gen_tcp:close(Sock).
 
 flush_test() ->
@@ -142,5 +140,5 @@ flush_test() ->
     ok = gen_tcp:close(Sock).
 
 test_flush(Sock) ->
-    {ok, works, undefined} = send_recv(Sock, undefined, undefined,
+    {ok, works} = send_recv(Sock,
                             #mc_header{opcode = ?FLUSH}, #mc_entry{}, works).
