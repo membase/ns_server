@@ -138,7 +138,7 @@ grab_op_stats(Bucket, Params) ->
                          "week" -> {11520, week, 1152};
                          "month" -> {44640, month, 1488};
                          "year" -> {527040, year, 1464};
-                         undefined -> {1, minute}
+                         undefined -> {1, minute, 60}
                      end,
     {Step, Window} = case proplists:get_value("resampleForUI", Params) of
                          undefined -> {1, Window0};
