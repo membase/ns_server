@@ -189,7 +189,7 @@ sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
 
 %% [{Node, VBucket, State}...]
 -spec current_states(list(atom()), string()) ->
-                            {ok, list({atom(), integer(), atom()})}.
+                            {ok, list({atom(), integer(), atom()}), list(atom())}.
 current_states(Nodes, Bucket) ->
     {Replies, DownNodes} = ns_memcached:list_vbuckets_multi(Nodes, Bucket),
     {GoodReplies, BadReplies} = lists:partition(fun ({_, {ok, _}}) -> true;

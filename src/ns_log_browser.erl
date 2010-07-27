@@ -1,13 +1,14 @@
-
 -module(ns_log_browser).
 
 -export([start/0]).
 -export([get_logs/3, get_logs_as_file/3]).
 
+-spec usage(string(), list()) -> no_return().
 usage(Fmt, Args) ->
     io:format(Fmt, Args),
     usage().
 
+-spec usage() -> no_return().
 usage() ->
     io:format("Usage: <progname> [-n <max_reports>] [-e <regexp>] [-t <type>...]~n"),
     halt(1).
@@ -94,7 +95,6 @@ map_args(K, N, F, D, A) ->
     end.
 
 map_args(_N, _F, D, []) -> D;
-map_args(0, _F, D, []) -> D;
 map_args(0, _F, _D, _A) -> true;
 map_args(one_or_more, F, _D, A) ->
     L = lists:append(A),

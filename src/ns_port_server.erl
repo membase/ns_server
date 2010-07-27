@@ -48,12 +48,7 @@ start_link(Name, Cmd, Args, Opts) ->
 
 init({Name, _Cmd, _Args, _Opts} = Params) ->
     Port = open_port(Params),
-    case is_port(Port) of
-        true  -> {ok, #state{port = Port, name = Name}};
-        false -> ns_log:log(?MODULE, 0001, "could not start process: ~p",
-                            [Params]),
-                 {stop, Port}
-    end.
+    {ok, #state{port = Port, name = Name}}.
 
 handle_info({_Port, {data, Msg}}, State) ->
     timer:sleep(100), % Let messages build up in our queue

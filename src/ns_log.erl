@@ -99,7 +99,8 @@ handle_cast({sync, Compressed}, State = #state{recent=Recent}) ->
         Logs ->
             State1 = schedule_save(State),
             {noreply, State1#state{recent=lists:sublist(
-                                            ?RB_SIZE, lists:umerge(Recent, Logs))}}
+                                            lists:umerge(Recent, Logs),
+                                            ?RB_SIZE)}}
     end.
 
 % Not handling any other state.
@@ -110,7 +111,7 @@ handle_info(garbage_collect, State) ->
 handle_info(sync, State = #state{recent=Recent}) ->
     timer:send_after(5000 + random:uniform(55000), sync),
     Nodes = ns_node_disco:nodes_actual_other(),
-    Node = lists:nth(Nodes, random:uniform(length(Nodes))),
+    Node = lists:nth(random:uniform(length(Nodes)), Nodes),
     gen_server:cast({?MODULE, Node}, {sync, zlib:compress(term_to_binary(Recent))}),
     {noreply, State};
 handle_info(save, State = #state{filename=Filename, recent=Recent}) ->
@@ -227,7 +228,7 @@ ns_log_code_string(2) ->
 log_test() ->
     ok = log(?MODULE, 1, "not ready log"),
 
-    {ok, Pid} = gen_server:start(?MODULE, ?MODULE, [], []),
+    {ok, Pid} = gen_server:start(?MODULE, [], []),
     ok = log(?MODULE, 1, "test log 1"),
     ok = log(?MODULE, 2, "test log 2 ~p ~p", [x, y]),
     ok = log(?MODULE, 3, "test log 3 ~p ~p", [x, y]),

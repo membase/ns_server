@@ -325,7 +325,7 @@ handle_add_node_request(Req) ->
                            ok -> {ok, {struct, [{otpNode, atom_to_binary(node(), latin1)}]}};
                            {error, already_joined} ->
                                {errors, [<<"The node is already joined to this cluster">>]};
-                           {errors, system_not_addable} ->
+                           {error, system_not_addable} ->
                                {errors, [<<"The node is already joined to another cluster">>]};
                            {error_msg, Msg} -> {errors, [list_to_binary(Msg)]}
                        end
