@@ -21,6 +21,8 @@
 
 -export([cleanup/3, current_states/2, graphviz/1]).
 
+
+-spec cleanup(string(), map(), [node()]) -> ok.
 cleanup(Bucket, Map, Servers) ->
     case sanify(Bucket, Map, Servers) of
         Map -> ok;
@@ -37,6 +39,8 @@ cleanup(Bucket, Map, Servers) ->
                           catch ns_vbm_sup:set_replicas(Src, Bucket, R)
                   end, NodesReplicas).
 
+
+-spec state_color(atom()) -> string().
 state_color(active) ->
     "color=green";
 state_color(pending) ->
@@ -46,6 +50,9 @@ state_color(replica) ->
 state_color(dead) ->
     "color=red".
 
+
+-spec node_vbuckets(non_neg_integer(), atom(), [{atom(), non_neg_integer(),
+                                                 atom()}], map()) -> iolist().
 node_vbuckets(I, Node, States, Map) ->
     GState = lists:keysort(1,
                [{VBucket, state_color(State)} || {N, VBucket, State} <- States,
@@ -83,6 +90,8 @@ graphviz(Bucket) ->
                 R = {Src, Dst, V} <- AllRep],
     ["digraph G { rankdir=LR; ranksep=6;", SubGraphs, Edges, "}"].
 
+
+-spec sanify(string(), map(), [atom()]) -> map().
 sanify(Bucket, Map, Servers) ->
     {ok, States, Zombies} = current_states(Servers, Bucket),
     [sanify_chain(Bucket, States, Chain, VBucket, Zombies)
@@ -101,10 +110,7 @@ sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
     case ChainStates of
         [{undefined, _}|_] ->
             Chain;
-        [{Master, State}|ReplicaStates] when State == pending orelse
-                                             State == replica ->
-            %% If we have any active nodes, do nothing, otherwise, set
-            %% it to active.
+        [{Master, State}|ReplicaStates] when State /= active ->
             case [N || {N, active} <- ReplicaStates ++ ExtraStates] of
                 [] ->
                     %% We'll let the next pass catch the replicas.
@@ -121,7 +127,8 @@ sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                             [Node|lists:duplicate(length(Chain) - 1,
                                                   undefined)];
                         Pos ->
-                            [Node|lists:nthtail(1, Pos)]
+                            [Node|lists:nthtail(Pos, Chain)] ++
+                                lists:duplicate(length(Chain) - Pos, undefined)
                     end;
                 Nodes ->
                     ?log_error(
