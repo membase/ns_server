@@ -3,6 +3,7 @@
 /TAGS
 /erlang-out
 /priv/public/js/all.js
+/priv/public/js/less.js
 /priv/public/js/t-all.js
 deps/mochiweb/ebin/*
 doc/*.html

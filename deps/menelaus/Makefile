@@ -7,7 +7,7 @@ SPROCKETIZE=`which sprocketize`
 
 .PHONY: ebins ebin_app version
 
-all: deps priv/public/js/all.js ebins
+all: deps priv/public/js/all.js priv/public/js/less.js ebins
 
 ebins: ebin_app
 	test -d ebin || mkdir ebin
@@ -24,6 +24,9 @@ version:
 priv/public/js/all.js: priv/js/*.js
 	mkdir -p `dirname $@`
 	$(SPROCKETIZE) -I priv/js priv/js/app.js >$@
+
+priv/public/js/less.js: priv/js/less.js
+	cp $< $@
 
 priv/public/js/t-all.js: priv/js/*.js
 	mkdir -p `dirname $@`
