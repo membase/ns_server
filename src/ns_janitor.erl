@@ -114,6 +114,8 @@ sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
             case [N || {N, active} <- ReplicaStates ++ ExtraStates] of
                 [] ->
                     %% We'll let the next pass catch the replicas.
+                    ?log_info("Setting vbucket ~p on ~p to active.",
+                              [VBucket, Master]),
                     ns_memcached:set_vbucket_state(Master, Bucket, VBucket, active),
                     Chain;
                 [Node] ->
@@ -155,6 +157,8 @@ sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                           true->
                               ok;
                           false ->
+                              ?log_info("Killing replicators for vbucket ~p on"
+                                        " master ~p", [VBucket, M]),
                               ns_vbm_sup:kill_children(M, Bucket, [VBucket])
                       end
               end, misc:pairs(C)),
@@ -167,13 +171,17 @@ sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
               fun ({N, State}) ->
                       ns_memcached:set_vbucket_state(N, Bucket, VBucket, dead),
                       case {HaveAllCopies, State} of
-                          {true, _} ->
+                          {_, S} when S /= dead ->
+                              ?log_info("Setting vbucket ~p on ~p from ~p to"
+                                        " dead.", [VBucket, N, S]),
+                              ns_memcached:set_vbucket_state(
+                                N, Bucket, VBucket, dead);
+                          {true, dead} ->
+                              ?log_info("Deleting vbucket ~p on ~p",
+                                        [VBucket, N]),
                               ns_memcached:delete_vbucket(N, Bucket, VBucket);
                           {false, dead} ->
-                              ok;
-                          {false, _} ->
-                              ns_memcached:set_vbucket_state(
-                                N, Bucket, VBucket, dead)
+                              ok
                       end
               end, ExtraStates),
             Chain;
@@ -181,7 +189,10 @@ sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
             case [N||{N, RState} <- ReplicaStates ++ ExtraStates,
                      lists:member(RState, [active, pending, replica])] of
                 [] ->
-                    ns_memcached:set_vbucket_state(Master, Bucket, VBucket, active),
+                    ?log_info("Setting vbucket ~p on master ~p to active",
+                              [VBucket, Master]),
+                    ns_memcached:set_vbucket_state(Master, Bucket, VBucket,
+                                                   active),
                     Chain;
                 X ->
                     case lists:member(Master, Zombies) of
