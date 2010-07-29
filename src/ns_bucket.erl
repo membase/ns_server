@@ -13,14 +13,6 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
-%%%-------------------------------------------------------------------
-%%% @author Sean Lynch <sean@northscale.com>
-%%% @copyright (C) 2010, NorthScale, Inc.
-%%% @doc
-%%% Manages bucket configs on each node.
-%%% @end
-%%% Created :  8 Jun 2010 by Sean Lynch <sean@northscale.com>
-%%%-------------------------------------------------------------------
 -module(ns_bucket).
 
 -behaviour(gen_server).

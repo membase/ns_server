@@ -20,6 +20,9 @@ deps_smtp:
 
 deps_all: deps_menelaus deps_smtp
 
+docs:
+	erl -noshell -run edoc_run application "'ns_server'" '"."' '[]'
+
 ebins: ebin_app
 	test -d ebin || mkdir ebin
 	erl -noinput +B $(EFLAGS) -eval 'case make:all() of up_to_date -> halt(0); error -> halt(1) end.'

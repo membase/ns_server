@@ -80,11 +80,6 @@ stub_proxy_call(Module, Function, Args) ->
     {Ref, Answer} -> Answer
   end.
 
-%% @spec expects(Module::atom(),
-%%               Function::atom(),
-%%               Args::fun/1,
-%%               Ret::fun/2 | term()
-%%               Times:: {at_least, integer()} | never | {no_more_than, integer()} | integer()) -> term()
 %% @doc Sets the expectation that Function of Module will be called during a test with Args.
 %%      Args should be a fun predicate that will return true or false whether or not the argument
 %%      list matches.  The argument list of the function is passed in as a tuple.
@@ -92,10 +87,13 @@ stub_proxy_call(Module, Function, Args) ->
 %%      Ret is either a value to return or a fun of arity 2 to be evaluated in response to a proxied
 %%      call.  The first argument is the actual args from the call, the second is the call count starting
 %%      with 1.
+-spec expects(Module::atom(), Function::atom(), Args::fun(), Ret::fun() | any()) -> any().
 expects(Module, Function, Args, Ret) ->
   gen_server:call(mod_to_name(Module),
                   {expects, Function, Args, Ret, 1}).
 
+-spec expects(Module::atom(), Function::atom(), Args::fun(), Ret::fun() | any(),
+              Times::{at_least, integer()} | never | {no_more_than, integer()} | integer()) -> any().
 expects(Module, Function, Args, Ret, Times) ->
   gen_server:call(mod_to_name(Module),
                   {expects, Function, Args, Ret, Times}).
