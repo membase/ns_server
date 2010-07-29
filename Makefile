@@ -69,9 +69,11 @@ test_menelaus: deps/menelaus
 TAGS:
 	ctags -eR .
 
-dialyzer: all
-	dialyzer --check_plt --apps compiler crypto erts eunit inets kernel mnesia os_mon sasl ssl stdlib xmerl
-	dialyzer -pa ebin -r .
+ns_server.plt:
+	dialyzer --output_plt $@ --build_plt -pa ebin --apps compiler crypto erts inets kernel mnesia os_mon sasl ssl stdlib xmerl -c deps/gen_smtp/ebin deps/menelaus/deps/mochiweb/ebin deps/menelaus/deps/erlwsh/ebin
+
+dialyzer: all ns_server.plt
+	dialyzer --plt ns_server.plt -Wunderspecs -pa ebin -c ebin -c deps/menelaus/ebin
 
 Features/Makefile:
 	(cd features && ../test/parallellize_features.rb) >features/Makefile
