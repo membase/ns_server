@@ -3,7 +3,7 @@
 -export([start/0]).
 -export([get_logs/3, get_logs_as_file/3]).
 
--spec usage(string(), list()) -> no_return().
+-spec usage([byte(), ...], list()) -> no_return().
 usage(Fmt, Args) ->
     io:format(Fmt, Args),
     usage().
