@@ -272,7 +272,8 @@ perform_moves(Bucket, Map, Moves) ->
     case wait_for_mover(Pid) of
         ok ->
             MoveDict = dict:from_list([{V, N} || {V, _, N} <- Moves]),
-            [[case dict:find(V, MoveDict) of error -> M; {ok, N} -> N end | C ]
+            [[case dict:find(V, MoveDict) of error -> M; {ok, N} -> N end |
+              lists:duplicate(length(C), undefined)]
              || {V, [M|C]} <- misc:enumerate(Map, 0)];
         stopped -> throw(stopped);
         X -> exit({mover_failed, X})
