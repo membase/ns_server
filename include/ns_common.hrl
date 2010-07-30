@@ -17,8 +17,7 @@
 %%
 
 -type histogram() :: [{atom(), non_neg_integer()}].
--type map() :: [[atom()]].
--type move_counts() :: [{atom(), non_neg_integer()}].
+-type map() :: [[atom(), ...], ...].
 -type moves() :: [{non_neg_integer(), atom(), atom()}].
 
 

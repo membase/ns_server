@@ -25,7 +25,7 @@
 %% Constants and definitions
 
 -record(idle_state, {}).
--record(rebalancing_state, {rebalancer, progress=[], moves}).
+-record(rebalancing_state, {rebalancer, progress::dict(), moves}).
 
 
 %% API
@@ -38,6 +38,7 @@
          start_link/0,
          start_rebalance/2,
          stop_rebalance/0,
+         update_progress/1,
          update_progress/2
          ]).
 
@@ -216,8 +217,8 @@ idle({start_rebalance, KeepNodes, EjectNodes}, _From,
                             ns_rebalancer:rebalance(Bucket, KeepNodes,
                                                     EjectNodes, Map)
                     end),
-            {reply, ok, rebalancing, #rebalancing_state{rebalancer=Pid,
-                                                        progress=[]}}
+            {reply, ok, rebalancing, #rebalancing_state{progress=dict:new(),
+                                                        rebalancer=Pid}}
     end;
 idle(stop_rebalance, _From, State) ->
     {reply, not_rebalancing, idle, State}.
@@ -226,18 +227,21 @@ idle(stop_rebalance, _From, State) ->
 %% Asynchronous rebalancing events
 rebalancing({update_progress, Progress},
             #rebalancing_state{progress=Old} = State) ->
+    NewProgress = dict:merge(fun (_, _, New) -> New end, Old, Progress),
     {next_state, rebalancing,
-     State#rebalancing_state{progress=lists:ukeymerge(1, Progress, Old)}};
+     State#rebalancing_state{progress=NewProgress}};
 rebalancing(reset_progress, State) ->
     {next_state, rebalancing,
-     State#rebalancing_state{progress=[], moves=undefined}};
-rebalancing({remaining_moves, M},
+     State#rebalancing_state{progress=dict:new(), moves=undefined}};
+rebalancing({remaining_moves, Node, M},
             #rebalancing_state{moves=Moves, progress=Progress} = State) ->
-    P = [{Node, 1.0 - N / dict:fetch(Node, Moves)} || {Node, N} <- M],
+    N = 1.0 - dict:fetch(Node, Moves) / M,
     {next_state, rebalancing,
-     State#rebalancing_state{progress=lists:ukeymerge(1, P, Progress)}};
+     State#rebalancing_state{progress=dict:store(Node, N, Progress)}};
 rebalancing({starting_moves, M}, State) ->
-    {next_state, rebalancing, State#rebalancing_state{moves=dict:from_list(M)}}.
+    Progress = dict:map(fun (_, _) -> 0.0 end, M),
+    {next_state, rebalancing, State#rebalancing_state{moves=M,
+                                                      progress=Progress}}.
 
 
 %% Synchronous rebalancing events
@@ -253,7 +257,7 @@ rebalancing(stop_rebalance, _From,
     {reply, ok, rebalancing, State};
 rebalancing(rebalance_progress, _From,
             #rebalancing_state{progress = Progress} = State) ->
-    {reply, {running, Progress}, rebalancing, State}.
+    {reply, {running, dict:to_list(Progress)}, rebalancing, State}.
 
 
 
@@ -261,11 +265,8 @@ rebalancing(rebalance_progress, _From,
 %% Internal functions
 %%
 
-%% Count the number of moves remaining from each node.
-
-
 %% Tell the orchestrator how many moves are remaining for each node.
--spec remaining_moves(move_counts()) -> ok.
+-spec remaining_moves(dict()) -> ok.
 remaining_moves(Moves) ->
     gen_fsm:send_event(?SERVER, {remaining_moves, Moves}).
 
@@ -276,12 +277,17 @@ reset_progress() ->
 
 
 %% Tell the orchestrator about the set of moves we're starting.
--spec starting_moves(move_counts()) -> ok.
+-spec starting_moves(dict()) -> ok.
 starting_moves(Moves) ->
     gen_fsm:send_event(?SERVER, {starting_moves, Moves}).
 
 
+-spec update_progress(dict()) -> ok.
+update_progress(Progress) ->
+    gen_fsm:send_event(?SERVER, {update_progress, Progress}).
+
+
 -spec update_progress([atom()], float()) -> ok.
 update_progress(Nodes, Fraction) ->
-    Progress = [{Node, Fraction} || Node <- lists:usort(Nodes)],
-    gen_fsm:send_event(?SERVER, {update_progress, Progress}).
+    update_progress(dict:from_list([{Node, Fraction}
+                                    || Node <- lists:usort(Nodes)])).

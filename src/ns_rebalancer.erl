@@ -16,6 +16,9 @@
 %% Monitor and maintain the vbucket layout of each bucket.
 %% There is one of these per bucket.
 %%
+%% @doc Rebalancing functions.
+%%
+
 -module(ns_rebalancer).
 
 -include("ns_common.hrl").
@@ -27,6 +30,8 @@
 %% API
 %%
 
+%% @doc Fail a node. Doesn't eject the node from the cluster. Takes
+%% effect immediately.
 -spec failover(string(), atom()) -> ok.
 failover(Bucket, Node) ->
     {_, _, Map, Servers} = ns_bucket:config(Bucket),
@@ -39,34 +44,26 @@ failover(Bucket, Node) ->
                   end, lists:delete(Node, Servers)).
 
 
--spec rebalance(string(), [atom()], [atom()], map()) -> ok.
+%% @doc Rebalance the cluster. Operates on a single bucket. Will
+%% either return ok or exit with reason 'stopped' or whatever reason
+%% was given by whatever failed.
 rebalance(Bucket, KeepNodes, EjectNodes, Map) ->
     try
         ns_config:set(rebalance_status, running),
         AllNodes = KeepNodes ++ EjectNodes,
+        [] = AllNodes -- ns_node_disco:nodes_actual_proper(),
         ns_orchestrator:reset_progress(),
         ns_orchestrator:update_progress(AllNodes, 0.0),
         ns_bucket:set_servers(Bucket, AllNodes),
-        AliveNodes = ns_node_disco:nodes_actual_proper(),
-        RemapNodes = EjectNodes -- AliveNodes, % No active node, promote a replica
-        lists:foreach(fun (N) -> ns_cluster:leave(N) end, RemapNodes),
-        maybe_stop(),
-        EvacuateNodes = EjectNodes -- RemapNodes, % Nodes we can move data off of
-        Map1 = promote_replicas(Bucket, Map, RemapNodes),
-        ns_bucket:set_map(Bucket, Map1),
-        ns_orchestrator:update_progress(RemapNodes, 1.0),
-        maybe_stop(),
-        Histograms1 = histograms(Map1, KeepNodes),
-        Moves1 = master_moves(Bucket, EvacuateNodes, Map1, Histograms1),
-        ns_orchestrator:starting_moves(count_moves(Moves1)),
-        Map2 = perform_moves(Bucket, Map1, Moves1),
-        ns_orchestrator:update_progress(EvacuateNodes, 1.0),
+        Histograms1 = histograms(Map, KeepNodes),
+        Moves1 = master_moves(Bucket, EjectNodes, Map, Histograms1),
+        Map2 = perform_moves(Bucket, Map, Moves1),
+        ns_orchestrator:update_progress(EjectNodes, 1.0),
         maybe_stop(),
         Histograms2 = histograms(Map2, KeepNodes),
         Moves2 = balance_nodes(Bucket, Map2, Histograms2, 1),
-        ns_orchestrator:starting_moves(count_moves(Moves2)),
         Map3 = perform_moves(Bucket, Map2, Moves2),
-        ns_orchestrator:update_progress(KeepNodes, 0.9),
+        ns_orchestrator:update_progress(KeepNodes, 1.0),
         maybe_stop(),
         Histograms3 = histograms(Map3, KeepNodes),
         Map4 = new_replicas(Bucket, EjectNodes, Map3, Histograms3),
@@ -83,28 +80,30 @@ rebalance(Bucket, KeepNodes, EjectNodes, Map) ->
         ns_bucket:set_map(Bucket, Map5),
         %% Push out the config with the new map in case this node is being removed
         ns_config_rep:push(),
-        maybe_stop(),
-        %% Leave myself last
-        LeaveNodes = lists:delete(node(), EvacuateNodes),
-        lists:foreach(fun (N) ->
-                              ns_cluster_membership:deactivate([N]),
-                              ns_cluster:leave(N)
-                      end, LeaveNodes),
-        case lists:member(node(), EvacuateNodes) of
-            true ->
-                ns_cluster_membership:deactivate([node()]),
-                ns_cluster:leave();
-            false ->
-                ok
-        end
+        maybe_stop()
     catch
         throw:stopped ->
             fixup_replicas(Bucket, KeepNodes, EjectNodes),
             exit(stopped)
+    end,
+    %% Leave myself last
+    LeaveNodes = lists:delete(node(), EjectNodes),
+    lists:foreach(fun (N) ->
+                          ns_cluster_membership:deactivate([N]),
+                          ns_cluster:leave(N)
+                  end, LeaveNodes),
+    case lists:member(node(), EjectNodes) of
+        true ->
+            ns_cluster_membership:deactivate([node()]),
+            ns_cluster:leave();
+        false ->
+            ok
     end.
 
 
-%% returns true iff the max vbucket count in any class on any server is >2 more than the min
+%% @doc Determine if a particular bucket is unbalanced. Returns true
+%% iff the max vbucket count in any class on any server is >2 more
+%% than the min.
 -spec unbalanced(map(), [atom()]) -> boolean().
 unbalanced(Map, Servers) ->
     lists:any(fun (Histogram) ->
@@ -119,6 +118,7 @@ unbalanced(Map, Servers) ->
 %% Internal functions
 %%
 
+-spec apply_moves(non_neg_integer(), moves(), map()) -> map() | no_return().
 apply_moves(_, [], Map) ->
     Map;
 apply_moves(I, [{V, _, New}|Tail], Map) ->
@@ -168,13 +168,7 @@ balance_nodes(Bucket, VNF, Hist, Moves) ->
     end.
 
 
--spec count_moves(moves()) -> move_counts().
-count_moves(Moves) ->
-    M = lists:flatmap(fun ({_, Old, New}) -> [Old, New] end, Moves),
-    misc:uniqc(lists:sort([N || N <- M, N /= undefined])).
-
-
-%% Ensure there are replicas for any unreplicated buckets if we stop
+%% @doc Ensure there are replicas for any unreplicated buckets if we stop.
 fixup_replicas(Bucket, KeepNodes, EjectNodes) ->
     {_, _, Map, _} = ns_bucket:config(Bucket),
     Histograms = histograms(Map, KeepNodes),
@@ -220,7 +214,6 @@ master_moves(Bucket, EvacuateNodes, [[OldMaster|_]|MapTail], Histograms, V,
     end.
 
 
--spec maybe_stop() -> ok | no_return().
 maybe_stop() ->
     receive stop ->
             throw(stopped)
@@ -255,35 +248,36 @@ new_replicas(Bucket, EjectNodes, [Chain|MapTail], Histograms, V,
                   [[Master|Replicas1]|NewMapReversed]).
 
 
--spec perform_moves(string(), map(), moves()) -> map().
-perform_moves(Bucket, Map, []) ->
-    ns_bucket:set_map(Bucket, Map),
-    Map;
-perform_moves(Bucket, Map, [{V, Old, New}|Moves] = Remaining) ->
-    try maybe_stop()
-    catch
-        throw:stopped ->
-            ns_bucket:set_map(Bucket, Map),
-            throw(stopped)
-    end,
-    ns_orchestrator:remaining_moves(count_moves(Remaining)),
-    [Old|Replicas] = lists:nth(V+1, Map),
-    case {Old, New} of
-        {X, X} ->
-            perform_moves(Bucket, Map, Moves);
-        {_, _} ->
-            Map1 = misc:nthreplace(V+1, [New|lists:duplicate(length(Replicas),
-                                                           undefined)], Map),
-            case Old of
-                undefined ->
-                    %% This will fail if another node is restarting.
-                    %% The janitor will catch it later if it does.
-                    catch ns_memcached:set_vbucket_state(New, Bucket, V, active);
-                _ ->
-                    ns_vbm_sup:move(Bucket, V, Old, New)
-            end,
-            perform_moves(Bucket, Map1, Moves)
+-spec wait_for_mover(pid()) -> ok | stopped | {unhandled_message, any()}.
+wait_for_mover(Pid) ->
+    receive
+        stop ->
+            exit(Pid, stopped),
+            wait_for_mover(Pid);
+        {'EXIT', Pid, stopped} ->
+            stopped;
+        {'EXIT', Pid, normal} ->
+            ok;
+        Msg ->
+            {unhandled_message, Msg}
     end.
+
+
+-spec perform_moves(string(), map(), moves()) -> map() | no_return().
+perform_moves(Bucket, Map, Moves) ->
+    process_flag(trap_exit, true),
+    {ok, Pid} =
+        ns_vbucket_mover:start_link(Bucket, Moves,
+                                    fun ns_orchestrator:update_progress/1),
+    case wait_for_mover(Pid) of
+        ok ->
+            MoveDict = dict:from_list([{V, N} || {V, _, N} <- Moves]),
+            [[case dict:find(V, MoveDict) of error -> M; {ok, N} -> N end | C ]
+             || {V, [M|C]} <- misc:enumerate(Map, 0)];
+        stopped -> throw(stopped);
+        X -> exit({mover_failed, X})
+    end.
+
 
 promote_replicas(Bucket, Map, RemapNodes) ->
     [promote_replica(Bucket, Chain, RemapNodes, V) ||

@@ -40,7 +40,6 @@ cleanup(Bucket, Map, Servers) ->
                   end, NodesReplicas).
 
 
--spec state_color(atom()) -> string().
 state_color(active) ->
     "color=green";
 state_color(pending) ->
@@ -169,7 +168,6 @@ sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                               end, ReplicaStates),
             lists:foreach(
               fun ({N, State}) ->
-                      ns_memcached:set_vbucket_state(N, Bucket, VBucket, dead),
                       case {HaveAllCopies, State} of
                           {_, S} when S /= dead ->
                               ?log_info("Setting vbucket ~p on ~p from ~p to"
