@@ -1,10 +1,11 @@
 *~
 .project
 .settings
-/Mnesia.*
-/features/Makefile
 /*luster_config
 /*luster_run.sh
+/Mnesia.*
+/features/Makefile
+/ns_server.plt
 TAGS
 config
 coverage
@@ -21,8 +22,8 @@ priv/memcached
 priv/memcached.exe
 priv/memcached_pthreadGC2.dll
 priv/moxi
-priv/vbucketmigrator
 priv/port_adaptor
+priv/vbucketmigrator
 test/log
 tmp
 version_num.tmp
