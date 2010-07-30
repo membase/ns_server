@@ -68,7 +68,6 @@ handle_cast(unhandled, unhandled) ->
 
 terminate(Reason, #state{name=Name, port=Port}) ->
     (catch port_close(Port)),
-    ?log_info("Port ~p terminating: ~p", [Name, Reason]),
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
@@ -81,8 +80,6 @@ open_port({_Name, Cmd, Args, OptsIn}) ->
     {ok, Pwd} = file:get_cwd(),
     %% Incoming options override existing ones (specified in proplists docs)
     Opts = OptsIn ++ [{args, Args}, exit_status],
-    error_logger:info_msg("port server starting: ~p in ~p with ~p / ~p~n",
-                          [Cmd, Pwd, Args, Opts]),
     open_port({spawn_executable, Cmd}, Opts).
 
 log_messages(Name, L) ->

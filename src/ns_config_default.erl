@@ -138,8 +138,8 @@ default() ->
 
     % Memcached config
     {{node, node(), memcached}, [{port, 11210},
-                                 {ht_size, 12289},
-                                 {ht_locks, 23},
+                                 {ht_size, 3079},
+                                 {ht_locks, 5},
                                  {dbname, DbName},
                                  {admin_user, "_admin"},
                                  {admin_pass, "_admin"},
@@ -150,7 +150,7 @@ default() ->
                                  {verbosity, ""}]},
 
     {buckets, [{configs, [{"default",
-                           [{num_vbuckets, 256},
+                           [{num_vbuckets, 1024},
                             {num_replicas, 1},
                             {servers, []},
                             {map, undefined}]
