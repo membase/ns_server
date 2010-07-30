@@ -120,7 +120,7 @@ sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                 [Node] ->
                     %% One active node, but it's not the master
                     case misc:position(Node, Chain) of
-                        undefined ->
+                        false ->
                             %% It's an extra node
                             ?log_warning(
                                "Master for vbucket ~p is not active, but ~p is, so making that the master.",
