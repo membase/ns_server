@@ -21,14 +21,14 @@
 
 -include("mc_entry.hrl").
 
--export([bin/1, recv/2, send/4]).
+-export([bin/1, recv/2, send/4, send_recv/3, send_recv/4]).
 
 -define(FLUSH_TIMEOUT, 5000).
 -define(RECV_TIMEOUT, 5000).
 
 %% Functions to work with memcached binary protocol packets.
 
--spec send_recv(any(), #mc_header{}, #mc_entry{}, any()) ->
+-spec send_recv(port(), #mc_header{}, #mc_entry{}, any()) ->
                        {ok, any()} | {error, #mc_header{}, #mc_entry{}}.
 send_recv(Sock, Header, Entry, Success) ->
     {ok, RecvHeader, RecvEntry} =
@@ -41,7 +41,7 @@ send_recv(Sock, Header, Entry, Success) ->
         false -> {error, RecvHeader, RecvEntry}
     end.
 
--spec send_recv(any(), #mc_header{}, #mc_entry{}) ->
+-spec send_recv(port(), #mc_header{}, #mc_entry{}) ->
                        {ok, #mc_header{}, #mc_entry{}} | {error, any()}.
 send_recv(Sock, Header, Entry) ->
     ok = send(Sock, req, Header, Entry),
