@@ -66,7 +66,7 @@ handle_call(unhandled, unhandled, unhandled) ->
 handle_cast(unhandled, unhandled) ->
     unhandled.
 
-terminate(Reason, #state{name=Name, port=Port}) ->
+terminate(_Reason, #state{port=Port}) ->
     (catch port_close(Port)),
     ok.
 
@@ -77,7 +77,6 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal functions
 
 open_port({_Name, Cmd, Args, OptsIn}) ->
-    {ok, Pwd} = file:get_cwd(),
     %% Incoming options override existing ones (specified in proplists docs)
     Opts = OptsIn ++ [{args, Args}, exit_status],
     open_port({spawn_executable, Cmd}, Opts).
