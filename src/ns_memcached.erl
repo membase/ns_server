@@ -24,12 +24,14 @@
 
 -behaviour(gen_server).
 
+-include("ns_common.hrl").
+
 %% gen_server API
 -export([start_link/0]).
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
--record(state, {sock}).
+-record(state, {sock::port()}).
 
 %% external API
 -export([connected/0, connected/1,
@@ -43,7 +45,8 @@
          set_vbucket_state/3, set_vbucket_state/4,
          stats/1, stats/2, stats/3,
          stats_multi/2, stats_multi/3,
-         topkeys/1, topkeys/2]).
+         topkeys/1, topkeys/2,
+         wait_for_connection/2]).
 
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
@@ -51,72 +54,59 @@
 %% gen_server API implementation
 
 start_link() ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+    %% Use proc_lib so that start_link doesn't fail if we can't
+    %% connect.
+    proc_lib:start_link(?MODULE, init, [[]]).
 
 
 %% gen_server callback implementation
 
 init([]) ->
-    self() ! connect,
-    {ok, #state{}}.
+    proc_lib:init_ack({ok, self()}),
+    connect().
 
-handle_call(connected, _From, State) ->
-    Reply = case State#state.sock of
-                undefined ->
-                    false;
-                _ ->
-                    true
-            end,
-    {reply, Reply, State};
 handle_call({create_bucket, _Bucket, _Config}, _From, State) ->
     Reply = unimplemented,
     {reply, Reply, State};
 handle_call({delete_bucket, _Bucket}, _From, State) ->
     Reply = unimplemented,
     {reply, Reply, State};
-handle_call({delete_vbucket, Bucket, VBucket}, _From, State) ->
-    Sock = connect(State),
+handle_call({delete_vbucket, Bucket, VBucket}, _From,
+            #state{sock=Sock} = State) ->
     Reply = do_in_bucket(Sock, Bucket,
                         fun() ->
                                 mc_client_binary:delete_vbucket(
                                   Sock, VBucket)
                         end),
-    {reply, Reply, State#state{sock=Sock}};
+    {reply, Reply, State};
 handle_call(list_buckets, _From, State) ->
     Reply = {ok, ["default"]},
     {reply, Reply, State};
-handle_call({set_vbucket_state, Bucket, VBucket, VBState}, _From, State) ->
-    Sock = connect(State),
+handle_call({set_vbucket_state, Bucket, VBucket, VBState}, _From,
+            #state{sock=Sock} = State) ->
     Reply = do_in_bucket(Sock, Bucket,
                          fun() ->
                                  mc_client_binary:set_vbucket_state(
                                    Sock, VBucket,
                                    atom_to_list(VBState))
                          end),
-    {reply, Reply, State#state{sock=Sock}};
-handle_call({stats, Bucket, Key}, _From, State) ->
-    Sock = connect(State),
+    {reply, Reply, State};
+handle_call({stats, Bucket, Key}, _From, #state{sock=Sock} = State) ->
     Reply = do_in_bucket(Sock, Bucket,
                          fun () ->
                                  mc_client_binary:stats(Sock, Key)
                          end),
-    {reply, Reply, State#state{sock=Sock}};
-handle_call(Request, From, State) ->
-    error_logger:error_msg("~p:handle_call(~p, ~p, ~p)~n",
-                           [?MODULE, Request, From, State]),
-    {reply, {unhandled, ?MODULE, Request}, State}.
+    {reply, Reply, State}.
 
-handle_cast(Msg, State) ->
-    error_logger:error_msg("~p:handle_cast(~p, ~p)~n",
-                           [?MODULE, Msg, State]),
-    {noreply, State}.
 
-handle_info(connect, State) ->
-    {noreply, State#state{sock=connect(State)}};
+handle_cast(unhandled, unhandled) ->
+    unhandled.
+
+
 handle_info(Msg, State) ->
-    error_logger:error_msg("~p:handle_info(~p, ~p)~n",
-                           [?MODULE, Msg, State]),
+    ?log_info("handle_info(~p, ~p)", [Msg, State]),
     {noreply, State}.
+
 
 terminate(Reason, State) ->
     error_logger:error_msg("~p:terminate(~p, ~p)~n",
@@ -124,28 +114,17 @@ terminate(Reason, State) ->
     timer:sleep(2000),
     ok.
 
+
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 
 %% External API
-connect(State) ->
-    case State#state.sock of
-        undefined ->
-            Config = ns_config:get(),
-            Port = ns_config:search_node_prop(Config, memcached, port),
-            error_logger:info_msg("ns_memcached connecting to memcached on port ~p~n", [Port]),
-            {ok, Sock} = gen_tcp:connect("127.0.0.1", Port, [binary, {packet, 0}, {active, false}], 5000),
-            Sock;
-        Sock ->
-            Sock
-    end.
-
 connected() ->
-    connected(node()).
+    misc:running(?MODULE).
 
 connected(Node) ->
-    call(Node, connected).
+    misc:running(Node, ?MODULE).
 
 create_bucket(Bucket, Config) ->
     create_bucket(node(), Bucket, Config).
@@ -226,9 +205,49 @@ topkeys(Node, Bucket) ->
         Response -> Response
     end.
 
+
+%% @doc Wait for ns_memcached to be connected on a node or list of
+%% nodes. Will exit if one of the nodes goes down.
+wait_for_connection([], _Timeout) -> ok;
+wait_for_connection(Node, Timeout) when is_atom(Node) ->
+    wait_for_connection([Node], Timeout);
+wait_for_connection(Nodes, Timeout) ->
+    {Replies, BadNodes} = gen_server:multi_call(Nodes, ?MODULE,
+                                                {stats, "default", ""},
+                                                Timeout),
+    BadReplies = [X || {_, {R, _}} = X <- Replies, R /= ok],
+    case BadReplies ++ BadNodes of
+        [] ->
+            [];
+        X ->
+            ?log_warning("wait_for_connection: bad replies from ~p.",
+                         [X]),
+            [N || {N, _} <- BadReplies] ++ BadNodes
+    end.
+
+
 %% Internal functions
 call(Node, Call) ->
     gen_server:call({?MODULE, Node}, Call).
+
+%% @doc Connect to memcached, then register the process and convert it
+%% to a gen_server.
+connect() ->
+    Config = ns_config:get(),
+    Port = ns_config:search_node_prop(Config, memcached, port),
+    case gen_tcp:connect("127.0.0.1", Port, [binary, {packet, 0},
+                                             {active, false}]) of
+        {ok, Sock} ->
+            %% Register AFTER we connect so we can just use whether
+            %% the name is registered to see if we have a healthy
+            %% memcached.
+            register(?MODULE, self()),
+            gen_server:enter_loop(?MODULE, [], #state{sock=Sock});
+        {error, Reason} ->
+            ?log_warning("Unable to connect: ~p, retrying.", [Reason]),
+            timer:sleep(1000), % Avoid reconnecting too fast.
+            connect()
+    end.
 
 do_in_bucket(_Sock, Bucket, Fun) ->
     %% TODO: real multi-tenancy
