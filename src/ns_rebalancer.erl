@@ -48,15 +48,17 @@ failover(Bucket, Node) ->
 %% either return ok or exit with reason 'stopped' or whatever reason
 %% was given by whatever failed.
 rebalance(Bucket, KeepNodes, EjectNodes, Map) ->
+    ns_config:set(rebalance_status, running),
+    AllNodes = KeepNodes ++ EjectNodes,
+    [] = AllNodes -- ns_node_disco:nodes_actual_proper(),
+    wait_for_memcached(AllNodes),
+    ns_orchestrator:reset_progress(),
+    ns_orchestrator:update_progress(AllNodes, 0.0),
+    ns_bucket:set_servers(Bucket, AllNodes),
+    Histograms1 = histograms(Map, KeepNodes),
+    Moves1 = master_moves(Bucket, EjectNodes, Map, Histograms1),
     try
-        ns_config:set(rebalance_status, running),
-        AllNodes = KeepNodes ++ EjectNodes,
-        [] = AllNodes -- ns_node_disco:nodes_actual_proper(),
-        ns_orchestrator:reset_progress(),
-        ns_orchestrator:update_progress(AllNodes, 0.0),
-        ns_bucket:set_servers(Bucket, AllNodes),
-        Histograms1 = histograms(Map, KeepNodes),
-        Moves1 = master_moves(Bucket, EjectNodes, Map, Histograms1),
+        %% 'stopped' can be thrown past this point.
         Map2 = perform_moves(Bucket, Map, Moves1),
         ns_orchestrator:update_progress(EjectNodes, 1.0),
         maybe_stop(),
@@ -248,21 +250,6 @@ new_replicas(Bucket, EjectNodes, [Chain|MapTail], Histograms, V,
                   [[Master|Replicas1]|NewMapReversed]).
 
 
--spec wait_for_mover(pid()) -> ok | stopped | {unhandled_message, any()}.
-wait_for_mover(Pid) ->
-    receive
-        stop ->
-            exit(Pid, stopped),
-            wait_for_mover(Pid);
-        {'EXIT', Pid, stopped} ->
-            stopped;
-        {'EXIT', Pid, normal} ->
-            ok;
-        Msg ->
-            {unhandled_message, Msg}
-    end.
-
-
 -spec perform_moves(string(), map(), moves()) -> map() | no_return().
 perform_moves(Bucket, Map, Moves) ->
     process_flag(trap_exit, true),
@@ -301,4 +288,34 @@ promote_replica(Bucket, Chain, RemapNodes, V) ->
             %% The janitor will catch it if this fails.
             catch ns_memcached:set_vbucket_state(NewMaster, V, active),
             NewChainExtended
+    end.
+
+
+%% @doc Wait until either all memcacheds are up or stop is pressed.
+wait_for_memcached(Nodes) ->
+    case ns_memcached:wait_for_connection(Nodes, 5000) of
+        [] ->
+            ok;
+        Down ->
+            receive
+                stop ->
+                    exit(stopped)
+            after 1000 ->
+                    wait_for_memcached(Down)
+            end
+    end.
+
+
+-spec wait_for_mover(pid()) -> ok | stopped | {unhandled_message, any()}.
+wait_for_mover(Pid) ->
+    receive
+        stop ->
+            exit(Pid, stopped),
+            wait_for_mover(Pid);
+        {'EXIT', Pid, stopped} ->
+            stopped;
+        {'EXIT', Pid, normal} ->
+            ok;
+        Msg ->
+            {unhandled_message, Msg}
     end.
