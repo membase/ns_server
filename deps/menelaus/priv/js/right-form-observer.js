@@ -87,3 +87,18 @@ $.fn.observePotentialChanges = (function () {
     return instance;
   }
 })();
+
+$.fn.observeInput = function (callback) {
+  var query = this;
+  var prevObject = query.prevObject || $('html > body');
+  var lastValue = query.val();
+
+  return prevObject.observePotentialChanges(function (instance) {
+    var newValue = query.val();
+    if (newValue == lastValue)
+      return;
+
+    lastValue = newValue;
+    callback.call(query, lastValue, instance);
+  });
+}
