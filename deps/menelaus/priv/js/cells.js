@@ -371,6 +371,20 @@ var Cell = mkClass({
     var time = (new Date()).valueOf();
     time += delayMillis;
     this.recalculateAt(time);
+  },
+  // modifies some (potentially nested) attribute of value
+  // makes sure that old version of value doesn't notice the change
+  setValueAttr: function (attrValue, firstAttribute/*, restNestedAttributes... */) {
+    var currentValue = _.clone(this.value);
+    var topValue = currentValue;
+    var i;
+    for (i = 1; i < arguments.length - 1; i++) {
+      var nextValue = _.clone(currentValue[arguments[i]]);
+      currentValue[arguments[i]] = nextValue;
+      currentValue = nextValue;
+    }
+    currentValue[arguments[arguments.length-1]] = attrValue;
+    this.setValue(topValue);
   }
 });
 
