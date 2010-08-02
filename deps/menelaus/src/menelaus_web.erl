@@ -208,7 +208,7 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth_bucket, fun handle_bucket_update/3,
                                   [PoolId, Id]};
                              ["pools", PoolId, "buckets"] ->
-                                 {auth, fun handle_bucket_update/2,
+                                 {auth, fun handle_bucket_create/2,
                                   [PoolId]};
                              ["pools", PoolId, "buckets", Id, "controller", "doFlush"] ->
                                  {auth_bucket, fun handle_bucket_flush/3,
@@ -614,8 +614,8 @@ checking_bucket_access(_PoolId, Id, Req, Body) ->
     end.
 
 handle_bucket_list(Id, Req) ->
-    BucketNames = lists:sort(fun (A,B) -> element(1, A) =< element(1, B) end,
-                         all_accessible_bucket_names_in_pool(fakepool, Req)),
+    BucketNames = lists:sort(fun (A,B) -> A =< B end,
+                             all_accessible_bucket_names_in_pool(fakepool, Req)),
     LocalAddr = menelaus_util:local_addr(Req),
     BucketsInfo = [build_bucket_info(Id, Name, fakepool, LocalAddr)
                    || Name <- BucketNames],
@@ -633,49 +633,25 @@ build_bucket_info(PoolId, Id, Pool, LocalAddr) ->
 build_bucket_info(PoolId, Id, Pool, InfoLevel, LocalAddr) ->
     StatsUri = list_to_binary(concat_url_path(["pools", PoolId, "buckets", Id, "stats"])),
     Nodes = build_nodes_info(Pool, false, InfoLevel, LocalAddr),
-    List1 = [{name, list_to_binary(Id)},
-             {uri, list_to_binary(concat_url_path(["pools", PoolId, "buckets", Id]))},
-             {streamingUri, list_to_binary(concat_url_path(["pools", PoolId, "bucketsStreaming", Id]))},
-             %% TODO: this should be under a controllers/ kind of namespacing
-             {flushCacheUri, list_to_binary(concat_url_path(["pools", PoolId,
-                                                             "buckets", Id, "controller", "doFlush"]))},
-             {nodes, Nodes},
-             {stats, {struct, [{uri, StatsUri}]}},
-             {vBucketServerMap, ns_bucket:json_map(Id, LocalAddr)}],
-    List2 = case InfoLevel of
-                stable -> List1;
-                normal ->
-                    List1 ++ [{totalSizeMB, total_size_mb()},
-                              {basicStats, {struct, menelaus_stats:basic_stats(PoolId, Id)}}]
-            end,
-    {struct, List2}.
-
-total_size_mb() ->
-    Infos = ns_doctor:get_nodes(),
-    %% for now we have only single bucket & we simply sum quotas from all nodes
-    AllActiveNodes = [N || {N, active} <- ns_cluster_membership:get_nodes_cluster_membership()],
-    FoldFun = fun ({V, N}, Acc) -> if is_integer(V) -> Acc + V;
-                                      true ->
-                                           Size = case dict:find(N, Infos) of
-                                                      {ok, Info} ->
-                                                          Tuple = proplists:get_value(memory_data, Info, {0}),
-                                                          element(1, Tuple) * 4 div (5 * 1048576);
-                                                      _ -> 0
-                                                  end,
-                                           Acc + Size
-                                   end
-              end,
-    TotalSize0 = lists:foldl(FoldFun, 0,
-                             [{ns_storage_conf:memory_quota(N), N} || N <- AllActiveNodes]),
-    TotalSize = case AllActiveNodes of
-                    %% This too is not 100% correct approach, so it's disabled for now
-                    %% [_, _ | _] ->
-                    %%     %% but if there're replicas we must half the sum
-                    %%     %% 'cause we hardcode single replica for now
-                    %%     TotalSize0 div 2;
-                    _ -> TotalSize0
-               end,
-    TotalSize.
+    Suffix = case InfoLevel of
+                 stable -> [];
+                 normal ->
+                     {ok, BucketConfig} = ns_bucket:get_bucket(Id),
+                     [{replicaNumber, ns_bucket:num_replicas(BucketConfig)},
+                      {quota, {struct, [{ram, ns_bucket:ram_quota(BucketConfig)},
+                                        {hdd, ns_bucket:hdd_quota(BucketConfig)}]}},
+                      {basicStats, {struct, menelaus_stats:basic_stats(PoolId, Id)}}]
+             end,
+    {struct, [{name, list_to_binary(Id)},
+              {uri, list_to_binary(concat_url_path(["pools", PoolId, "buckets", Id]))},
+              {streamingUri, list_to_binary(concat_url_path(["pools", PoolId, "bucketsStreaming", Id]))},
+              %% TODO: this should be under a controllers/ kind of namespacing
+              {flushCacheUri, list_to_binary(concat_url_path(["pools", PoolId,
+                                                              "buckets", Id, "controller", "doFlush"]))},
+              {nodes, Nodes},
+              {stats, {struct, [{uri, StatsUri}]}},
+              {vBucketServerMap, ns_bucket:json_map(Id, LocalAddr)}
+              | Suffix]}.
 
 handle_bucket_info_streaming(PoolId, Id, Req, Pool, _Bucket) ->
     handle_bucket_info_streaming(PoolId, Id, Req, Pool, _Bucket, undefined).
@@ -698,31 +674,61 @@ handle_bucket_delete(_PoolId, _BucketId, Req) ->
     Req:respond({404, add_header(), "The bucket to be deleted was not found.\r\n"}),
     ok.
 
-handle_bucket_update(_PoolId, _BucketId, Req) ->
-    Req:respond({404, add_header(), "The bucket to be updated was not found.\r\n"}),
-    ok.
+%% TODO: validation
+parse_ram_quota(RAMQuotaMB) ->
+    list_to_integer(RAMQuotaMB) * 1048576.
 
-handle_bucket_update(PoolId, Req) ->
-    PostArgs = Req:parse_post(),
-    case proplists:get_value("name", PostArgs) of
-        undefined -> Req:respond({400, add_header(), []});
-        <<>>      -> Req:respond({400, add_header(), []});
-        BucketId  -> handle_bucket_create(PoolId, BucketId, Req)
-    end.
+parse_hdd_quota(HDDQuotaGB) ->
+    list_to_integer(HDDQuotaGB) * 1048576 * 1024.
 
-handle_bucket_create(_PoolId, [$_ | _], Req) ->
-    % Bucket name cannot have a leading underscore character.
-    reply_json(Req, [list_to_binary("Bucket name cannot start with an underscore.")], 400);
+parse_num_replicas(NumReplicas) ->
+    list_to_integer(NumReplicas).
 
-handle_bucket_create(_PoolId, _BucketId, Req) ->
+redirect_to_bucket(Req, PoolId, BucketId) ->
+    Req:respond({302, [{"Location", concat_url_path(["pools", PoolId, "buckets", BucketId])}
+                       | add_header()],
+                 ""}).
+
+handle_bucket_update(PoolId, BucketId, Req) ->
+    Params = Req:parse_post(),
+    UpdatedProps0 = [case proplists:get_value("ramQuotaMB", Params) of
+                         undefined -> undefined;
+                         RAMQuotaMB -> {ram_quota, parse_ram_quota(RAMQuotaMB)}
+                     end,
+                     case proplists:get_value("hddQuotaGB", Params) of
+                         undefined -> undefined;
+                         HDDQuotaGB -> {hdd_quota, parse_hdd_quota(HDDQuotaGB)}
+                     end,
+                     case proplists:get_value("replicaNumber", Params) of
+                         undefined -> undefined;
+                         NumReplicas -> {num_replicas, parse_num_replicas(NumReplicas)}
+                     end],
+    UpdatedProps = lists:filter(fun (undefined) -> false;
+                                    (_) -> true
+                                end, UpdatedProps0),
+    %% TODO: error handling
+    ns_bucket:update_bucket_props(BucketId, UpdatedProps),
+    Req:respond({200, add_header(), []}).
+
+handle_bucket_create(PoolId, Req) ->
     case ns_node_disco:nodes_wanted() =:= ns_node_disco:nodes_actual_proper() of
         true ->
-            Req:respond({400, add_header(), "Sorry, can't create buckets yet."});
+            Params = Req:parse_post(),
+            %% TODO: validation
+            Name = misc:expect_prop_value("name", Params),
+            RAMQuota = parse_ram_quota(misc:expect_prop_value("ramQuotaMB", Params)),
+            HDDQuota = parse_hdd_quota(misc:expect_prop_value("hddQuotaGB", Params)),
+            NumReplicas = parse_num_replicas(misc:expect_prop_value("replicaNumber", Params)),
+            ok = ns_bucket:create_bucket(Name, [{ram_quota, RAMQuota},
+                                                {hdd_quota, HDDQuota},
+                                                {num_replicas, NumReplicas}]),
+            redirect_to_bucket(Req, PoolId, Name);
         false ->
             reply_json(Req, [list_to_binary("One or more server nodes appear to be down. " ++
-                                            "Please first restore or remove those servers nodes " ++
-                                            "so that the entire cluster is healthy.")], 400)
+                                                "Please first restore or remove those servers nodes " ++
+                                                "so that the entire cluster is healthy.")], 400)
     end.
+
 
 handle_bucket_flush(PoolId, Id, Req) ->
     ns_log:log(?MODULE, 0005, "Flushing pool ~p bucket ~p from node ~p",
@@ -1118,6 +1124,7 @@ handle_node(_PoolId, Node, Req) ->
     StorageConf0 = ns_storage_conf:storage_conf(Node),
     HDDStorageConf = case proplists:get_value(hdd, StorageConf0) of
                          [Props0] ->                % only single storage storage resource is supported now
+                             %% TODO: multi-tenancy
                              Props = [{usedByData, ns_storage_conf:bucket_disk_usage(Node, "default")}
                                       | Props0],
                              Path = proplists:get_value(path, Props),

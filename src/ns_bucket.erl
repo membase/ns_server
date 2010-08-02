@@ -22,9 +22,15 @@
 -export([config/1,
          get_bucket/1,
          get_buckets/0,
+         ram_quota/1,
+         hdd_quota/1,
+         num_replicas/1,
          get_bucket_names/0,
          json_map/2,
          set_bucket_config/2,
+         create_bucket/2,
+         update_bucket_props/2,
+         delete_bucket/1,
          set_map/2,
          set_servers/2]).
 
@@ -79,6 +85,24 @@ get_buckets() ->
     Config = ns_config:get(),
     ns_config:search_prop(Config, buckets, configs, []).
 
+ram_quota(Bucket) ->
+    case proplists:get_value(ram_quota, Bucket) of
+        X when is_integer(X) ->
+            X
+    end.
+
+hdd_quota(Bucket) ->
+    case proplists:get_value(hdd_quota, Bucket) of
+        X when is_integer(X) ->
+            X
+    end.
+
+num_replicas(Bucket) ->
+    case proplists:get_value(num_replicas, Bucket) of
+        X when is_integer(X) ->
+            X
+    end.
+
 json_map(BucketId, LocalAddr) ->
     Config = ns_config:get(),
     {NumReplicas, _, EMap, BucketNodes} = config(BucketId),
@@ -106,6 +130,51 @@ json_map(BucketId, LocalAddr) ->
 
 set_bucket_config(Bucket, NewConfig) ->
     update_bucket_config(Bucket, fun (_) -> NewConfig end).
+
+create_bucket(BucketName, NewConfig) ->
+    MergedConfig = misc:update_proplist([{num_vbuckets, 16},
+                                         {num_replicas, 1},
+                                         {ram_quota, 0},
+                                         {hdd_quota, 0},
+                                         {servers, []},
+                                         {map, undefined}],
+                                        NewConfig),
+    ns_config:update_sub_key(buckets, configs,
+                             fun (List) ->
+                                     case lists:keyfind(BucketName, 1, List) of
+                                         false -> ok;
+                                         Tuple ->
+                                             exit({already_exists, Tuple})
+                                     end,
+                                     [{BucketName, MergedConfig} | List]
+                             end).
+
+delete_bucket(BucketName) ->
+    ns_config:update_sub_key(buckets, configs,
+                             fun (List) ->
+                                     case lists:keyfind(BucketName, 1, List) of
+                                         false -> exit({not_found, BucketName});
+                                         Tuple ->
+                                             lists:delete(Tuple, List)
+                                     end
+                             end).
+
+
+update_bucket_props(BucketName, Props) ->
+    ns_config:update_sub_key(buckets, configs,
+                             fun (List) ->
+                                     RV = misc:key_update(BucketName, List,
+                                                          fun (OldProps) ->
+                                                                  lists:foldl(fun ({K, _V} = Tuple, Acc) ->
+                                                                                      [Tuple | lists:keydelete(K, 1, Acc)]
+                                                                              end, OldProps, Props)
+                                                          end),
+                                     case RV of
+                                         false -> exit({not_found, BucketName});
+                                         _ -> ok
+                                     end,
+                                     RV
+                             end).
 
 set_map(Bucket, Map) ->
     ChainLengths = [length(Chain) || Chain <- Map],

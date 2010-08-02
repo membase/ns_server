@@ -53,7 +53,9 @@ basic_stats(_PoolId, BucketName = "default") ->
                         end},
      {diskUsed, bucket_disk_usage(BucketName)},
      {memUsed, MemUsed},
-     {itemCount, ItemCount}].
+     {itemCount, ItemCount}];
+%% TODO
+basic_stats(PoolId, _) -> basic_stats(PoolId, "default").
 
 %% GET /pools/default/stats
 %% Supported query params:
@@ -122,7 +124,7 @@ merge_samples(MainSamples, OtherSamples, MergerFun, MergerState) ->
                                      end, {[], MergerState}, MainSamples),
     lists:reverse(MergedSamples).
 
-grab_op_stats(Bucket, Params) ->
+grab_op_stats(Bucket = "default", Params) ->
     ClientTStamp = case proplists:get_value("haveTStamp", Params) of
                        undefined -> undefined;
                        X -> try list_to_integer(X) of
@@ -165,7 +167,9 @@ grab_op_stats(Bucket, Params) ->
     after
         misc:flush(Ref),
         ns_pubsub:unsubscribe(ns_stats_event, Subscription)
-    end.
+    end;
+%% TODO
+grab_op_stats(_, Params) -> grab_op_stats("default", Params).
 
 invoke_archiver(Bucket, NodeS, {Step, Period, Window}) ->
     RV = case Step of
@@ -251,8 +255,8 @@ samples_to_proplists(Samples) ->
     PropList1 = [{K, lists:reverse(V)} || {K,V} <- PropList0],
     add_stat_sums(PropList1).
 
-build_buckets_stats_ops_response(_PoolId, ["default"], Params) ->
-    {Samples0, ClientTStamp, Step, TotalNumber} = grab_op_stats("default", Params),
+build_buckets_stats_ops_response(_PoolId, [BucketName], Params) ->
+    {Samples0, ClientTStamp, Step, TotalNumber} = grab_op_stats(BucketName, Params),
     Samples = case Samples0 of
                   [#stat_entry{bytes_read = undefined} | T] -> T;
                   _ -> Samples0
@@ -277,7 +281,8 @@ is_safe_key_name(Name) ->
                       C >= 16#20 andalso C =< 16#7f
               end, Name).
 
-build_buckets_stats_hks_response(_PoolId, ["default"]) ->
+build_buckets_stats_hks_response(_PoolId, [_BucketName]) ->
+    %% TODO: use real bucket name
     BucketsTopKeys = case hot_keys_keeper:bucket_hot_keys("default") of
                          undefined -> [];
                          X -> X

@@ -591,11 +591,15 @@ var MockedRequest = mkClass({
                          "storageTotals": {
                            "ram": {
                              "total": 2032558080,
-                             "used": 1641816064
+                             "quotaTotal": 2032558080,
+                             "used": 1641816064,
+                             "quotaUsed": 1641816064
                            },
                            "hdd": {
                              "total": 239315349504.0,
-                             "used": 229742735523.0
+                             "quotaTotal": 239315349504.0,
+                             "used": 229742735523.0,
+                             "quotaUsed": 229742735523.0
                            }
                          },
                          buckets: {
@@ -621,7 +625,11 @@ var MockedRequest = mkClass({
                                              uri: "/pools/default/buckets/4",
                                              flushCacheUri: "/pools/default/buckets/4/controller/doFlush",
                                              stats: {uri: "/pools/default/buckets/4/stats"},
-                                             totalSizeMB: 1024,
+                                             quota: {
+                                               ram: 12322423,
+                                               hdd: 12322423
+                                             },
+                                             replicaNumber: 1,
                                              "basicStats": {
                                                "opsPerSec": 12,
                                                "diskFetches": 1,
@@ -636,7 +644,11 @@ var MockedRequest = mkClass({
                                              status: false,
                                              flushCacheUri: "/pools/default/buckets/5/controller/doFlush",
                                              stats: {uri: "/pools/default/buckets/5/stats"},
-                                             totalSizeMB: 1464,
+                                             quota: {
+                                               ram: 123224230,
+                                               hdd: 12322423000
+                                             },
+                                             replicaNumber: 1,
                                              "basicStats": {
                                                "opsPerSec": 13,
                                                "diskFetches": 1,
@@ -649,7 +661,11 @@ var MockedRequest = mkClass({
                                              uri: "/pools/default/buckets/6",
                                              flushCacheUri: "/pools/default/buckets/6/controller/doFlush",
                                              stats: {uri: "/pools/default/buckets/6/stats"},
-                                             totalSizeMB: 1024,
+                                             quota: {
+                                               ram: 12322423,
+                                               hdd: 12322423
+                                             },
+                                             replicaNumber: 1,
                                              "basicStats": {
                                                "opsPerSec": 13,
                                                "diskFetches": 1.2,
@@ -662,8 +678,12 @@ var MockedRequest = mkClass({
                                              uri: "/pools/default/buckets/7",
                                              flushCacheUri: "/pools/default/buckets/7/controller/doFlush",
                                              stats: {uri: "/pools/default/buckets/7/stats"},
-                                             totalSizeMB: 1424,
-                                              "basicStats": {
+                                             quota: {
+                                               ram: 12322423,
+                                               hdd: 12322423
+                                             },
+                                             replicaNumber: 1,
+                                             "basicStats": {
                                                "opsPerSec": 12,
                                                "diskFetches": 1,
                                                "quotaPercentUsed": 0.0,
@@ -672,18 +692,11 @@ var MockedRequest = mkClass({
                                                "itemCount": 1234
                                              }}]],
       [get("pools", "default", "buckets", x), function (x) {
-        if (x == "5")
-          return {nodes:[], // not used for now
-                  testAppBucket: true,
-                  testAppRunning: false,
-                  totalSizeMB: 1045,
-                  stats: {uri: "/pools/default/buckets/5/stats"},
-                  name: "Excerciser Application"};
-        else
-          return {nodes: [], // not used for now
-                  totalSizeMB: 1445,
-                  stats: {uri: "/pools/default/buckets/4/stats"},
-                  name: "default"};
+        var allBuckets = MockedRequest.prototype.findResponseFor("GET", ["pools", "default", "buckets"]);
+        x = parseInt(x, 10);
+        var rv = _.clone(allBuckets[x % allBuckets.length]);
+        rv.nodes = [];  // not used for now
+        return rv;
       }],
       [get("pools", "default", "buckets", x, "stats"), method('handleStats')],
       [post("pools", "default", "buckets"), method('handleBucketsPost')],

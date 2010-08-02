@@ -39,11 +39,18 @@ memory_quota(Node) ->
 
 update_max_size(Node, Quota) ->
     {value, PropList} = ns_config:search_node(Node, ns_config:get(), memcached),
-    UpdatedProps = lists:map(fun ({max_size, _}) -> {max_size, Quota};
-                                 (X) -> X
-                             end, PropList),
+    UpdatedProps = misc:key_update(max_size, PropList, fun (_) -> Quota end),
     ns_config:set({node, Node, memcached}, UpdatedProps),
-    ok.
+    case ns_bucket:get_bucket("default") of
+        {ok, Config} ->
+            case ns_bucket:ram_quota(Config) of
+                0 ->
+                    ns_bucket:update_bucket_props("default", [{ram_quota, Quota * 1048576}]),
+                    ok%% ;
+                %% _ -> ok
+            end%% ;
+        %% _ -> ok
+    end.
 
 change_memory_quota(Node, none) ->
     update_max_size(Node, none);
@@ -54,19 +61,35 @@ change_memory_quota(Node, NewMemQuotaMB) when is_integer(NewMemQuotaMB) ->
 prepare_setup_disk_storage_conf(Node, Path) when Node =:= node() ->
     {value, PropList} = ns_config:search_node(Node, ns_config:get(), memcached),
     DBName = filename:absname(proplists:get_value(dbname, PropList)),
+    {ok, NodeInfo} = dict:find(Node, ns_doctor:get_nodes()),
     NewDBName = filename:absname(filename:join(Path, "default")),
-    case DBName of
-        NewDBName -> ok;
-        _ ->
-            filelib:ensure_dir(Path),
-            case file:make_dir(Path) of
-                ok ->
-                    {ok, fun () ->
-                                 ns_config:set({node, node(), memcached},
-                                               [{dbname, NewDBName} | lists:keydelete(dbname, 1, PropList)])
-                         end};
-                _ -> error
-            end
+    PathOK = case DBName of
+                 NewDBName -> ok;
+                 _ ->
+                     filelib:ensure_dir(Path),
+                     case file:make_dir(Path) of
+                         ok -> ok;
+                         _ -> error
+                     end
+             end,
+    case PathOK of
+        ok ->
+            {ok, fun () ->
+                         %% we need to setup disk quota for node & default bucket
+                         DiskStats = proplists:get_value(disk_data, NodeInfo),
+                         {ok, {_MPoint, KBytesTotal, Cap}} = extract_disk_stats_for_path(DiskStats, NewDBName),
+                         Total = KBytesTotal * 1024,
+                         Used = (Total * Cap) div 100,
+                         FreeMB = (Total - Used) div 1048576,
+
+                         ns_config:set({node, node(), memcached},
+                                       [{dbname, NewDBName},
+                                        {hdd_quota, FreeMB}
+                                        | lists:keydelete(dbname, 1, PropList)]),
+
+                         ns_bucket:update_bucket_props("default", [{hdd_quota, FreeMB * 1048576}])
+                 end};
+        X -> X
     end.
 
 local_bucket_disk_usage("default" = _Bucket) ->
@@ -95,12 +118,11 @@ bucket_disk_usage(Node, Bucket) ->
 %
 storage_conf(Node) ->
     {value, PropList} = ns_config:search_node(Node, ns_config:get(), memcached),
-    HDDInfo = case proplists:get_value(dbname, PropList) of
-                  undefined -> [];
-                  DBName -> [{path, filename:dirname(filename:absname(DBName))},
-                             {quotaMb, none},
-                             {state, ok}]
-              end,
+    DBName = misc:expect_prop_value(dbname, PropList),
+    HDDQuotaMB = misc:expect_prop_value(hdd_quota, PropList),
+    HDDInfo = [{path, filename:dirname(filename:absname(DBName))},
+               {quotaMb, HDDQuotaMB},
+               {state, ok}],
     [{ssd, []},
      {hdd, [HDDInfo]}].
 
@@ -129,6 +151,10 @@ extract_node_storage_info(NodeInfo, Node) ->
     {RAMTotal, RAMUsed, _} = proplists:get_value(memory_data, NodeInfo),
     DiskStats = proplists:get_value(disk_data, NodeInfo),
     DiskPathes = [proplists:get_value(path, X) || X <- proplists:get_value(hdd, ns_storage_conf:storage_conf(Node))],
+    [{ssd, _},
+     {hdd, [HDDProps]}] = storage_conf(Node),
+    MemQuotaMB = memory_quota(Node),
+    HDDQuotaMB = misc:expect_prop_value(quotaMb, HDDProps),
     {DiskTotal, DiskUsed} =
         lists:foldl(fun (Path, {ATotal, AUsed} = Tuple) ->
                             %% move it over here
@@ -142,26 +168,42 @@ extract_node_storage_info(NodeInfo, Node) ->
                             end
                     end, {0, 0}, DiskPathes),
     [{ram, [{total, RAMTotal},
+            {quotaTotal, MemQuotaMB * 1048576},
             {used, RAMUsed}]},
      {hdd, [{total, DiskTotal},
+            {quotaTotal, HDDQuotaMB * 1048576},
             {used, DiskUsed}]}].
 
 cluster_storage_info() ->
     Nodes = dict:to_list(ns_doctor:get_nodes()),
-    case Nodes of
-        [] -> [];
-        [{FirstNode, FirstInfo} | Rest] ->
-            lists:foldl(fun ({Node, Info}, Acc) ->
-                                ThisInfo = extract_node_storage_info(Info, Node),
-                                lists:zipwith(fun ({StatName, [{total, TotalA},
-                                                               {used, UsedA}]},
-                                                   {StatName, [{total, TotalB},
-                                                               {used, UsedB}]}) ->
-                                                      {StatName, [{total, TotalA + TotalB},
-                                                                  {used, UsedA + UsedB}]}
-                                              end, Acc, ThisInfo)
-                        end, extract_node_storage_info(FirstInfo, FirstNode), Rest)
-    end.
+    PList1 = case Nodes of
+                 [] -> [];
+                 [{FirstNode, FirstInfo} | Rest] ->
+                     lists:foldl(fun ({Node, Info}, Acc) ->
+                                         ThisInfo = extract_node_storage_info(Info, Node),
+                                         lists:zipwith(fun ({StatName, [{total, TotalA},
+                                                                        {quotaTotal, QTotalA},
+                                                                        {used, UsedA}]},
+                                                            {StatName, [{total, TotalB},
+                                                                        {quotaTotal, QTotalB},
+                                                                        {used, UsedB}]}) ->
+                                                               {StatName, [{total, TotalA + TotalB},
+                                                                           {quotaTotal, QTotalA + QTotalB},
+                                                                           {used, UsedA + UsedB}]}
+                                                       end, Acc, ThisInfo)
+                                 end, extract_node_storage_info(FirstInfo, FirstNode), Rest)
+             end,
+    {RAMQuotaUsed, HDDQuotaUsed} =
+        lists:foldl(fun ({_, Config}, {RAMQuota, HDDQuota}) ->
+                            RepN = ns_bucket:num_replicas(Config),
+                            {ns_bucket:ram_quota(Config) * RepN + RAMQuota,
+                             ns_bucket:hdd_quota(Config) * RepN + HDDQuota}
+                    end, {0, 0}, ns_bucket:get_buckets()),
+    lists:map(fun ({ram, Props}) ->
+                      {ram, [{quotaUsed, RAMQuotaUsed} | Props]};
+                  ({hdd, Props}) ->
+                      {hdd, [{quotaUsed, HDDQuotaUsed} | Props]}
+              end, PList1).
 
 extract_disk_stats_for_path([], _Path) ->
     none;

@@ -147,11 +147,16 @@ default() ->
                                                 {Total, _, _} -> (Total * 4) div (1048576 * 5);
                                                 _ -> undefined
                                             end},
+                                 {hdd_quota, 0},
                                  {verbosity, ""}]},
 
     {buckets, [{configs, [{"default",
                            [{num_vbuckets, 1024},
                             {num_replicas, 1},
+                            %% default quotas will be defined when resources
+                            %% stage of wizard will post data
+                            {ram_quota, 0},
+                            {hdd_quota, 0},
                             {servers, []},
                             {map, undefined}]
                           }]
