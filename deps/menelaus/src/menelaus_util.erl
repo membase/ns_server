@@ -32,7 +32,6 @@
          parse_json/1,
          parse_boolean/1,
          expect_config/1,
-         expect_prop_value/2,
          get_option/2,
          local_addr/1,
          concat_url_path/1,
@@ -91,16 +90,6 @@ reply_json(Req, Body, Status) ->
 expect_config(Key) ->
     {value, RV} = ns_config:search_node(Key),
     RV.
-
-expect_prop_value(K, List) ->
-    Ref = make_ref(),
-    try
-        case proplists:get_value(K, List, Ref) of
-            RV when RV =/= Ref -> RV
-        end
-    catch
-        error:X -> erlang:error(X, [K, List])
-    end.
 
 %% milliseconds since 1970 Jan 1 at UTC
 java_date() ->

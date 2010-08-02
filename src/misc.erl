@@ -760,3 +760,14 @@ update_proplist(OldPList, NewPList) ->
                           {_, NewV} -> {K, NewV}
                       end
               end, OldPList).
+
+%% get proplist value or fail
+expect_prop_value(K, List) ->
+    Ref = make_ref(),
+    try
+        case proplists:get_value(K, List, Ref) of
+            RV when RV =/= Ref -> RV
+        end
+    catch
+        error:X -> erlang:error(X, [K, List])
+    end.

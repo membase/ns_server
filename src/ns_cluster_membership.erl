@@ -104,7 +104,7 @@ add_node(OtherHost, OtherPort, OtherUser, OtherPswd) ->
                                                                             {<<"otpCookie">>, erlang:get_cookie()}])},
                                                   {OtherUser, OtherPswd}) of
                       {ok, {struct, KVList}} ->
-                          Value = menelaus_util:expect_prop_value(<<"otpNode">>, KVList),
+                          Value = misc:expect_prop_value(<<"otpNode">>, KVList),
                           {ok, list_to_atom(binary_to_list(Value))};
                       {error, _} = E -> E
                   end;
