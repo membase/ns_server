@@ -51,6 +51,7 @@
          merge_remote/2, merge_remote/3,
          get/2, get/1, get/0, set/2, set/1,
          set_initial/2, update/2, update_key/2,
+         update_sub_key/3,
          search_node/3, search_node/2, search_node/1,
          search_node_prop/3, search_node_prop/4,
          search_node_prop/5,
@@ -216,6 +217,15 @@ update_key(Key, Fun) ->
                                         end
                                 end
                         end).
+
+update_sub_key(Key, SubKey, Fun) ->
+    update_key(Key, fun (PList) ->
+                            RV = misc:key_update(SubKey, PList, Fun),
+                            case RV of
+                                false -> PList;
+                                _ -> RV
+                            end
+                    end).
 
 clear() -> clear([]).
 clear(Keep) -> gen_server:call(?MODULE, {clear, Keep}).
