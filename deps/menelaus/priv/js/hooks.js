@@ -884,6 +884,12 @@ var __hookParams = {};
   if (params['rebalanceStatus']) {
     MockedRequest.globalData.setRebalanceStatus(params['rebalanceStatus']);
   }
+
+  if (params['dialog']) {
+    $(function () {
+      $($i(params['dialog'])).show();
+    });
+  }
 })();
 
 //window.onerror = originalOnError;
