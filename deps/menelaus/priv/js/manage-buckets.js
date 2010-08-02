@@ -40,7 +40,7 @@ var BucketsSection = {
       self.buckets = values;
       _.each(values, function (bucket) {
         bucket.serversCount = poolDetailsValue.nodes.length;
-        bucket.ramQuota = bucket.totalSizeMB * 1048576;
+        bucket.ramQuota = bucket.quota.ram;
         var storageTotals = poolDetailsValue.storageTotals
         bucket.totalRAMSize = storageTotals.ram.total;
         bucket.totalRAMUsed = bucket.basicStats.memUsed;
@@ -68,6 +68,11 @@ var BucketsSection = {
     renderCellTemplate(cells.detailedBuckets, 'bucket_list');
 
     self.settingsWidget.hookRedrawToCell(cells.detailedBuckets);
+
+    $('.create-bucket-button').live('click', function (e) {
+      e.preventDefault();
+      BucketsSection.startCreate();
+    });
   },
   buckets: null,
   refreshBuckets: function (callback) {
@@ -95,16 +100,201 @@ var BucketsSection = {
   findBucket: function (uri) {
     return this.withBucket(uri, function (r) {return r});
   },
-  showBucket: function (uri) {
-    this.withBucket(uri, function (bucketDetails) {
-      var values = _.extend({}, bucketDetails, bucketDetails.settingsCell.value);
-      var uri = function (data, cb) {
-        alert('posted!');
-        return cb('', 'success');
+  runBucketDetailsDialog: function (initValues, isNew) {
+    var poolDetails = DAO.cells.currentPoolDetailsCell.value;
+
+    initValues['ramQuotaMB'] = Math.floor(initValues.quota.ram / 1048576);
+    initValues['hddQuotaGB'] = Math.floor(initValues.quota.hdd / (1048576 * 1024));
+    initValues.otherQuota = {
+      ram: poolDetails.storageTotals.ram.quotaUsed,
+      hdd: poolDetails.storageTotals.hdd.quotaUsed
+    }
+    if (!isNew) {
+      initValues.otherQuota.ram -= initValues.quota.ram;
+      initValues.otherQuota.hdd -= initValues.quota.hdd;
+    }
+    initValues.errors = {ram: null, hdd: null};
+
+    var valuesCell = (function () {
+      var cell = new Cell();
+      cell.setValue(initValues);
+      return cell;
+    })();
+
+    var dialog = $('#bucket_details_dialog');
+    dialog.removeClass('editing').removeClass('creating');
+    dialog.addClass(isNew ? 'creating' : 'editing');
+
+    setBoolAttribute(dialog.find('[name=name]'), 'disabled', !isNew);
+
+    valuesCell.subscribeValue(function (values) {
+      if (!values)
+        return;
+
+      function renderGauge(jq, total, thisBucket, used) {
+        var thisValue = thisBucket
+        var formattedBucket = ViewHelpers.formatQuantity(thisBucket, null, null, ' ');
+
+        if (_.isString(thisValue)) {
+          formattedBucket = thisValue;
+          thisValue = 0;
+        }
+
+        jq.find('.total').text(ViewHelpers.formatQuantity(total, null, null, ' '));
+        var free = total - used - thisValue;
+        jq.find('.free').text(ViewHelpers.formatQuantity(free, null, null, ' '));
+        jq.find('.other').text(ViewHelpers.formatQuantity(used, null, null, ' '));
+        jq.find('.this').text(formattedBucket);
+
+        jq.find('.gauge .green').css('width', calculatePercent(used + thisValue, total) + '%');
+        jq.find('.gauge .blue').css('width', calculatePercent(used, total) + '%');
       }
-      runFormDialog(uri, 'bucket_details_dialog', {
-        initialValues: values
+
+      renderGauge(dialog.find(".size-gauge.for-ram"),
+                  poolDetails.storageTotals.ram.quotaTotal,
+                  values.quota.ram,
+                  values.otherQuota.ram);
+
+      renderGauge(dialog.find('.size-gauge.for-hdd'),
+                  poolDetails.storageTotals.hdd.quotaTotal,
+                  values.quota.hdd,
+                  values.otherQuota.hdd);
+
+      function renderError(label, error) {
+        label.find('input')[error ? 'addClass' : 'removeClass']('invalid');
+        label.next('.error-container').text(error || '')[error ? 'addClass' : 'removeClass']('active');
+      }
+
+      renderError(dialog.find('.for-ram-quota'), values.errors.ram);
+      renderError(dialog.find('.for-hdd-quota'), values.errors.hdd);
+    });
+
+    var cleanups = [];
+
+    runFormDialog(initValues.uri, 'bucket_details_dialog', {
+      initialValues: valuesCell.value,
+      closeCallback: function () {
+        _.each(cleanups, function (c) {
+          c();
+          BucketsSection.refreshBuckets();
+        });
+      }
+    });
+
+    function handleQuotaValidation(storageType) {
+      var props = {
+        name: 'ramQuotaMB',
+        unitSize: 1048576
+      }
+      if (storageType == 'hdd') {
+        props = {
+          name: 'hddQuotaGB',
+          unitSize: (1048576*1024)
+        }
+      }
+
+      function validation(newValue) {
+        var storageInfo = poolDetails.storageTotals[storageType];
+        var oldThisQuota = initValues.quota[storageType];
+        var other = initValues.otherQuota[storageType];
+        var max = storageInfo.quotaTotal - other;
+        var min = 10 * props.unitSize; // TODO
+
+        max = Math.floor(max / props.unitSize);
+        min = Math.floor(min / props.unitSize);
+        if (min >= max)
+          min = max >> 1;
+
+        var parsedQuota = parseValidateInteger(newValue, min, max);
+
+        var error = $(this).closest('label').next('.error-container');
+        var errorText;
+        if (typeof(parsedQuota) == 'string') {
+          errorText = parsedQuota;
+          parsedQuota = '??';
+        } else {
+          parsedQuota *= props.unitSize;
+        }
+
+        valuesCell.setValueAttr(parsedQuota, 'quota', storageType);
+        valuesCell.setValueAttr(errorText, 'errors', storageType);
+      }
+
+      var input = dialog.find('[name='+props.name+']');
+      var observer = input.observeInput(validation);
+
+      cleanups.push(function () {
+        observer.stopObserving();
       });
+
+      validation(input.val());
+    }
+
+    handleQuotaValidation('ram');
+    handleQuotaValidation('hdd');
+
+    (function () {
+      var enableReplicationCheckbox = dialog.find('[name=enableReplication]');
+      var replicaNumberInput = dialog.find('[name=replicaNumber]');
+      var preDisableReplicaNumber = replicaNumberInput.val();
+      enableReplicationCheckbox.bind('click', function () {
+        setBoolAttribute(replicaNumberInput, 'disabled', !this.checked);
+        if (!this.checked) {
+          preDisableReplicaNumber = replicaNumberInput.val();
+          replicaNumberInput.val('0');
+        } else {
+          replicaNumberInput.val(preDisableReplicaNumber);
+        }
+      });
+      cleanups.push(function () {
+        enableReplicationCheckbox.unbind('click');
+      });
+
+      function validateReplicas(newValue) {
+        var value = parseValidateInteger(newValue, 0, 1024); //poolDetails.nodes.length-1);
+        var errorsContainer = dialog.find('.for-replica-number .error-container');
+        var error;
+        if (_.isString(value)) {
+          error = value;
+          errorsContainer.text(error);
+        }
+        errorsContainer[error ? 'addClass' : 'removeClass']('active');
+        replicaNumberInput[error ? 'addClass' : 'removeClass']('invalid');
+        valuesCell.setValueAttr(error, 'errors', 'replicas');
+      }
+
+      var observer = replicaNumberInput.observeInput(validateReplicas);
+      cleanups.push(function () {
+        observer.stopObserving();
+      });
+      validateReplicas(preDisableReplicaNumber);
+
+      valuesCell.subscribeValue(function (values) {
+        if (!values)
+          return;
+
+        var hasErrors = _.some(_.keys(values.errors), function (k) {
+          return !!(values.errors[k]);
+        });
+
+        setBoolAttribute(dialog.find('.save_button'), 'disabled', hasErrors);
+      });
+    })();
+  },
+  showBucket: function (uri) {
+    ThePage.ensureSection('buckets');
+    if (!DAO.cells.currentPoolDetailsCell.value) {
+      // if don't have pool details wait for them
+      DAO.cell.currentPoolDetailsCell.subscribeOnce(function () {
+        _.defer(function () {
+          BucketsSection.showBucket(uri)
+        });
+      });
+      return;
+    }
+    this.withBucket(uri, function (bucketDetails) {
+      var initValues = _.extend({}, bucketDetails, bucketDetails.settingsCell.value);
+      BucketsSection.runBucketDetailsDialog(initValues, false);
     });
   },
   startFlushCache: function (uri) {
@@ -163,51 +353,15 @@ var BucketsSection = {
     }
   },
   startCreate: function () {
-    var parent = $('#add_new_bucket_dialog');
-
-    var inputs = parent.find('input[type=text]');
-    inputs = inputs.add(parent.find('input[type=password]'));
-    inputs.val('');
-    $('#add_new_bucket_errors_container').empty();
-    this.lastCacheValue = undefined;
-
-    var observer = parent.observePotentialChanges($m(this, 'checkFormChanges'));
-
-    parent.find('form').bind('submit', function (e) {
-      e.preventDefault();
-      BucketsSection.createSubmit();
-    });
-
-    parent.find('[name=cacheSize]').val('64');
-
-    showDialog(parent, {
-      onHide: function () {
-        observer.stopObserving();
-        parent.find('form').unbind();
-      }});
-  },
-  finishCreate: function () {
-    hideDialog('add_new_bucket_dialog');
-    ThePage.gotoSection('buckets');
-  },
-  createSubmit: function () {
-    var self = this;
-    var form = $('#add_new_bucket_form');
-
-    $('#add_new_bucket_errors_container').empty();
-    var loading = overlayWithSpinner(form);
-
-    postWithValidationErrors(self.cells.detailsPageURI.value, form, function (data, status) {
-      if (status == 'error') {
-        loading.remove();
-        renderTemplate("add_new_bucket_errors", data);
-      } else {
-        DAO.cells.currentPoolDetails.invalidate(function () {
-          loading.remove();
-          self.finishCreate();
-        });
-      }
-    });
+    var totals = DAO.cells.currentPoolDetails.value.storageTotals;
+    if (totals.ram.quotaTotal == totals.ram.quotaUsed || totals.hdd.quotaTotal == totals.hdd.quotaUsed) {
+      alert('TODO: No free quota left!')
+      return;
+    }
+    this.runBucketDetailsDialog({uri: '/pools/default/buckets',
+                                 quota: {ram: totals.ram.quotaTotal - totals.ram.quotaUsed,
+                                         hdd: totals.hdd.quotaTotal - totals.hdd.quotaUsed},
+                                 replicaNumber: 1}, true);
   },
   // TODO: currently inaccessible from UI
   startRemovingBucket: function () {
@@ -250,3 +404,19 @@ var BucketsSection = {
     }
   }
 };
+
+configureActionHashParam("editBucket", $m(BucketsSection, 'showBucket'));
+
+// $(function () {
+//   var oldIsSasl;
+//   var dialog = $('#bucket_details_dialog')
+//   dialog.observePotentialChanges(function () {
+//     var isSasl = $('#bucket_details_sasl_selected')[0].checked;
+//     if (oldIsSasl != null && isSasl == oldIsSasl)
+//       return;
+//     oldIsSasl = isSasl;
+
+//     setBoolAttribute(dialog.find('.for-sasl-password-input input'), 'disabled', !isSasl);
+//     setBoolAttribute(dialog.find('.for-proxy-port input'), 'disabled', isSasl);
+//   });
+// });

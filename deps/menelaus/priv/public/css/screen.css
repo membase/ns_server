@@ -567,7 +567,6 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 #bucket_list_container {border-left:1px solid #c8ccce; border-bottom:1px solid #c8ccce;}
 
 .monitor_buckets .buckets_action_bar {display:none;}
-.monitor_buckets .bucket_properties_link {display:none;}
 
 /* lightbox styles */
 .lbox {width:711px; position:relative;}
@@ -909,11 +908,11 @@ ul.tabs .alert_num_display .alert_num {display:block;}
 .total_ram {display:block; height:14px; text-align:right;}
 
 .RAM_diagramm {width:420px; float:right;}
-.RAM_diagramm .diagr_ram {display:block; width:420px; height:15px; position:relative; background:url(../images/ram_diagr_bg.png) 0 0 no-repeat;}
-.RAM_diagramm .diagr_ram span {display:block; width:420px; height:15px; position:absolute; left:0px; top:0px; background:url(../images/ram_diagr_bg.png) 0 0 no-repeat;}
-.RAM_diagramm .diagr_ram span.blue {z-index:5; background-position:0 -15px;}
-.RAM_diagramm .diagr_ram span.yellow {z-index:4; background-position:0 -30px;}
-.RAM_diagramm .diagr_ram span.green {z-index:3; background-position:0 -45px;}
+.diagr_ram {display:block; width:420px; height:15px; position:relative; background:url(../images/ram_diagr_bg.png) 0 0 no-repeat;}
+.diagr_ram span {display:block; width:420px; height:15px; position:absolute; left:0px; top:0px; background:url(../images/ram_diagr_bg.png) -2px 0 no-repeat;}
+.diagr_ram span.blue {z-index:5; background-position:0 -15px;}
+.diagr_ram span.yellow {z-index:4; background-position:0 -30px;}
+.diagr_ram span.green {z-index:3; background-position:0 -45px;}
 .diagr_labels td {padding:3px 0 0 0;}
 .RAM_diagramm td {color:#808080;}
 .RAM_diagramm td.blue {color:#1878a2;}
@@ -993,3 +992,18 @@ html body .overlayed {z-index:999 !important;}
  {float:none !important;}
 html>/**/body #servers .list_button, x:-moz-any-link, x:default {position:relative; /*top:-60px;*/} /* Only FireFox 3 */
 html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none !important;}
+
+/* stolen from 960.gs */
+.clearfix:after {
+	clear: both;
+	content: ' ';
+	display: block;
+	font-size: 0;
+	height: 0;
+	line-height: 0;
+	visibility: hidden;
+	width: 0;
+}
+* html .clearfix, *:first-child+html .clearfix {
+	zoom: 1;
+}

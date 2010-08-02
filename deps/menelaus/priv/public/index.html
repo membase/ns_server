@@ -11,6 +11,8 @@
 <link rel="stylesheet" type="text/css" href="/css/ie6.css" />
 <![endif]-->
 <script src="/js/all.js"></script>
+<link rel="stylesheet/less" href="/css/screen.less" type="text/css">
+<script src="/js/less.js" type="text/javascript"></script>
 </head>
 <body class="nojs">
   <div id="container">
@@ -428,8 +430,6 @@
           <!-- {% $.each(rows, function () { %} -->
           <tr>
               <td>
-              <a class="bucket_properties_link float_right text_11"
-                href="{%= jsLink('BucketsSection.showBucket', this.uri)%}">Properties</a>
               <a class="gray_link bucket_name_" href="#visitStats={%=h(this.uri)%}">{%= h(this.name) %}</a>
               <!-- className 'bucket_name' goesWith '_' to desable thisStyle forNow -->
               </td>
@@ -461,7 +461,7 @@
     <div class="darker_block">
         <div class="pad_10">
             <div class="pat_10 right buckets_action_bar">
-                <button class="button_200 disabled">Create New Data Bucket</button>
+                <button class="button_200 create-bucket-button">Create New Data Bucket</button>
             </div>
         </div>
     </div>
@@ -530,7 +530,7 @@
         <div class="side side_3"></div>
         <div class="side side_4"></div>
         <div class="pad">
-          <!-- <a class="edit_btn disabled">EDIT</a> -->
+          <a class="edit_btn" href="#editBucket={%= uri %}">EDIT</a>
           <table class="bucket_properties_table">
           <col width="50%" />
           <col width="50%" />
@@ -950,240 +950,66 @@
 <!-- dialogs -->
 </div> <!-- #container -->
 <div class="jqmWindow" id="bucket_details_dialog">
-  <div class="lbox type_2 shadow_box">
-    <div class="cnt">
-      <div class="content">
-        <div class="header_2">CONFIGURE BUCKET</div>
-          <form class="lbox_form">
-            <h3>Bucket Settings</h3>
-            <table>
-            <col width="172" />
-            <col width="" />
-              <tr>
-                <td class="label"><label>Bucket Name:</label></td>
-                <td><input type="text" class="inp inp_size_2" /></td>
-              </tr>
-              <tr>
-                <td class="label"><label>Bucket Type:</label></td>
-                <td>
-                  <select class="inp_size_2">
-                    <option>Membase</option>
-                  </select>
-                </td>
-              </tr>
-              <tr>
-                <td class="label"><label>Number of Servers:</label></td>
-                <td class="content_cell">
-                  <div class="spac_5"></div>
-                  <label><input type="radio" name="num_serv" /> Stretch to All</label><br />
-                  <label><input type="radio" name="num_serv" /> Fixed</label>
-                  <input type="text" value="3" /> (of 12 servers in this cluster)
-                </td>
-              </tr>
-            </table>
-            <h3>Access Control</h3>
-            <table>
-            <col width="172" />
-            <col width="" />
-              <tr>
-                <td></td>
-                <td>
-                  <label><input type="radio" name="access_bucket" /> SASL Password</label>
-                </td>
-              </tr>
-              <tr>
-                <td></td>
-                <td>
-                  <input type="password" class="inp inp_size_2" value="Password" />
-                </td>
-              </tr>
-              <tr>
-                <td></td>
-                <td>
-                  <label><input type="radio" name="access_bucket" /> Key Prefix</label>
-                </td>
-              </tr>
-              <tr>
-                <td></td>
-                <td>
-                  <label><input type="radio" name="access_bucket" /> Sourse IP Address</label>
-                </td>
-              </tr>
-            </table>
-            <h3>Cache Size</h3>
-            <div>
-              <table class="full_width">
-              <col width="172" />
-              <col width="" />
-                <tr>
-                  <td colspan="2">
-                    <span class="total_ram">Total RAM (192 Gb)</span>
-                  </td>
-                </tr>
-                <tr>
-                  <td class="label"><label>Dynamic RAM Allocated:</label></td>
-                  <td>
-                    <div class="float_left">
-                      <input type="text" value="30" /> MB
-                    </div>
-                    <table class="RAM_diagramm float_right">
-                    <col width="">
-                    <col width="">
-                    <col width="">
-                    <col width="">
-                      <tr>
-                        <td colspan="4">
-                          <span class="diagr_ram">
-                            <span style="width: 33%;" class="blue"></span>
-                            <span style="width: 68%;" class="green"></span>
-                          </span>
-                        </td>
-                      </tr>
-                      <tr class="diagr_labels">
-                        <td class="blue">Membase Quota (15Gb)</td>
-                        <td class="green">Other (5Gb)</td>
-                        <td>Free (12Gb)</td>
-                        <td class="right">32Gb</td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-              </table>
-              <h3>Storage Size</h3>
-              <div>
-                <table class="full_width">
-                <col width="172" />
-                <col width="" />
-                  <tr>
-                    <td colspan="2"><label><input type="checkbox" /> Enable Persistence</label></td>
-                  </tr>
-                  <tr>
-                    <td colspan="2">
-                      <span class="total_ram">Total RAM (192 Gb)</span>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td class="label">Solid State Quota:</td>
-                    <td>
-                      <div class="float_left">
-                        <input type="text" value="30" /> GB
-                      </div>
-                      <table class="RAM_diagramm float_right">
-                      <col width="">
-                      <col width="">
-                      <col width="">
-                      <col width="">
-                        <tr>
-                          <td colspan="4">
-                            <span class="diagr_ram">
-                              <span style="width: 33%;" class="blue"></span>
-                              <span style="width: 68%;" class="green"></span>
-                            </span>
-                          </td>
-                        </tr>
-                        <tr class="diagr_labels">
-                          <td class="blue">Membase Quota (15Gb)</td>
-                          <td class="green">Other (5Gb)</td>
-                          <td>Free (12Gb)</td>
-                          <td class="right">32Gb</td>
-                        </tr>
-                      </table>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td colspan="2">
-                      <span class="total_ram">Total RAM (192 Gb)</span>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td class="label">Solid State Quota:</td>
-                    <td>
-                      <div class="float_left">
-                        <input type="text" value="30" /> GB
-                      </div>
-                      <table class="RAM_diagramm float_right">
-                      <col width="">
-                      <col width="">
-                      <col width="">
-                      <col width="">
-                        <tr>
-                          <td colspan="4">
-                            <span class="diagr_ram">
-                              <span style="width: 33%;" class="blue"></span>
-                              <span style="width: 68%;" class="green"></span>
-                            </span>
-                          </td>
-                        </tr>
-                        <tr class="diagr_labels">
-                          <td class="blue">Membase Quota (15Gb)</td>
-                          <td class="green">Other (5Gb)</td>
-                          <td>Free (12Gb)</td>
-                          <td class="right">32Gb</td>
-                        </tr>
-                      </table>
-                    </td>
-                  </tr>
-                </table>
-              </div>
-              <h3>Replication</h3>
-              <div>
-                <table class="full_width">
-                <col width="172" />
-                <col width="" />
-                  <tr>
-                    <td>
-                      <label><input type="checkbox" /> Enable Persistence</label>
-                    </td>
-                    <td>
-                      <input type="text" /> number of replica (backup) copies:
-                    </td>
-                  </tr>
-                </table>
-              </div>
-              <h3>Blocking Behaviuor on Writes</h3>
-              <div>
-                <table class="full_width">
-                <col width="172" />
-                <col width="" />
-                  <tr>
-                    <td colspan="2">
-                      <label>
-                        <input type="radio" /> Wait for replication to complete
-                      </label>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td></td>
-                    <td>
-                      <label>
-                        <input type="text" value="3" />
-                        Wait until this many copies sent
-                      </label>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td colspan="2">
-                      <label>
-                        <input type="radio" /> Wait until stored to persistent media
-                      </label>
-                    </td>
-                  </tr>
-                </table>
-              </div>
-            </div>
-
-              <div class="pas_20">
-              <div class="right save_cancel">
-                <button class="save_button float_right" type="submit">SAVE</button>
-                <button class="delete_button float_right">DELETE</button>
-                <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
-              </div>
-              </div>
-
-          </form>
+  <h1><span class="when-editing">CONFIGURE BUCKET</span><span class="when-creating">CREATE BUCKET</span></h1>
+  <form><div class="clearfix">
+    <h2>Bucket Settings</h2>
+    <div class="bucket-icon"></div>
+    <label class="for-name"><span>Bucket Name:</span><input disabled name="name" value="Bucket Name"></label>
+    <label class="for-bucket-type"><span>Bucket Type:</span>Membase</label>
+    <!-- h2>Access Control</h2>
+    <label class="for-sasl-password"><input id="bucket_details_sasl_selected" type="radio" name="auth_type" value="sasl" checked>
+      <span>SASL Password (Binary protocol only on port 11211)</span>
+    </label>
+    <label class="for-sasl-password-input"><span>Enter password: </span><input type="password" name="saslPassword" disabled value=""></label>
+    <label class="for-ascii"><input type="radio" name="auth_type" value="none"><span>Password-less access (supports Binary and ASCII protocols)</span></label>
+    <label class="for-proxy-port"><span>Protocol Port:</span><input name="proxyPort"></label -->
+    <h2>Memory Size</h2>
+    <div class="size-gauge for-ram">
+      <div class="t">CLUSTER QUOTA (<span class="total">192 GB</span>)</div>
+      <div class="gauge">
+        <div>
+          <div style="width: 68%;" class="green"></div>
+          <div style="width: 33%;" class="blue"></div>
+        </div>
       </div>
+      <table class="b"><tr>
+        <td class="blue">OTHER BUCKETS (<span class="other">15 GB</span>)</td>
+        <td class="green">THIS BUCKET (<span class="this">5 GB</span>)</td>
+        <td>FREE (<span class="free">12 GB</span>)</td>
+      </tr></table>
     </div>
-  </div>
+    <label class="for-ram-quota"><span>Dynamic RAM Allocated:</span><input name="ramQuotaMB" value="30"><abbr>MB</abbr></label>
+    <div class="error-container"></div>
+    <h2>Storage Size</h2>
+    <label class="for-enable-persistence"><input type="checkbox" disabled checked><span>Enable Persistence</span></label>
+    <div class="size-gauge for-hdd">
+      <div class="t">CLUSTER QUOTA (<span class="total">192 GB</span>)</div>
+      <div class="gauge">
+        <div>
+          <div class="green"></div>
+          <div class="blue"></div>
+        </div>
+      </div>
+      <table class="b"><tr>
+        <td class="blue">OTHER BUCKETS (<span class="other">15 GB</span>)</td>
+        <td class="green">THIS BUCKET (<span class="this">5 GB</span>)</td>
+        <td>FREE (<span class="free">12 GB</span>)</td>
+      </tr></table>
+    </div>
+    <label class="for-hdd-quota"><span>Disk Quota:</span><input name="hddQuotaGB"><abbr>GB</abbr></label>
+    <div class="error-container"></div>
+    <h2>Replication</h2>
+    <label class="for-enable-replication"><input type="checkbox" name="enableReplication" checked><span>Enable Replication</span></label>
+    <label class="for-replica-number"><input value="1" name="replicaNumber">
+      <span>Number of replica (backup) copies</span>
+      <span class="error-container"></span>
+    </label>
+  </div><div class="save_cancel clearfix">
+    <span class="when-editing"><button class="save_button float_right" type="submit">SAVE</button></span>
+    <span class="when-creating"><button class="save_button float_right" type="submit">CREATE</button></span>
+    <!-- button class="delete_button float_right">DELETE</button -->
+    <a href="#" class="jqmClose">CANCEL</a>
+  </div></form>
 </div>
 <div class="jqmWindow" id="add_new_bucket_dialog">
   <div class="lbox">

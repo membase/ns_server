@@ -1,0 +1,264 @@
+/* -*- mode: css; -*- */
+
+#bucket_details_dialog {
+  @full_width: 765px;
+  @main_bg_color: #eeeeee;
+
+  width: @full_width;
+  background: @main_bg_color;
+  font-size: 13px;
+
+  h1 {
+    background: #dfdfe0;
+    padding-left: 20px;          /* TODO */
+    padding-top: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #BDBEC2;
+  }
+
+  form {
+    border-top: 1px solid #dfdfe0;
+  }
+
+  form > div {
+    padding: 0px 56px 48px;
+    border-bottom: 1px solid #cccfd2;
+    border-top: 1px solid #f8f8f8;
+  }
+
+  h2 {
+    clear: both;
+    font-size: 20px;
+    font-weight: normal;
+    padding-bottom: 6px;
+    margin-top: 18px;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #d4d9dc;
+  }
+
+  @bucket_icon_size: 64px;
+
+  .bucket-icon {
+    display: block;
+    float: left;
+    width: @bucket_icon_size;
+    height: @bucket_icon_size;
+    margin-top: 10px;
+    background: url(/images/icons.png) 50% -100px;
+  }
+
+  @line_height: 24px;
+
+  label {
+    display: block;
+    margin: 6px 0;
+    line-height: @line_height;
+
+    input {
+      padding: 3px 3px;
+    }
+
+    input {
+      border: 1px solid #ccd3d7;
+      font-size: 13px;
+      text-align: right;
+    }
+
+    abbr {
+      margin-left: 6px;
+    }
+
+    span {
+      display: block; float: left; text-align: right;
+      margin-right: 6px;
+    }
+  }
+
+  /*
+   * label.for-bucket-type {
+   *   margin-bottom: 18px;
+   * }
+   */
+
+  @main_label_width: 170px;
+
+  .for-sasl-password, .for-key-prefix, .for-ascii,
+  .for-source-ip {
+    padding-left: @main_label_width;
+    span {
+      float: none;
+      display: inline;
+      margin-left: 6px;
+    }
+  }
+
+  .for-sasl-password, .for-ascii {
+    padding-left: 20px;
+  }
+
+  @input_width: 174px;
+  @text_input_width: @input_width - 3px * 2 - 1px * 2; /* minus padding & border */
+
+  label.for-name, label.for-bucket-type {
+    span {
+      width: @main_label_width - @bucket_icon_size - 6px;
+    }
+    input {
+      width: @text_input_width;
+      text-align: left;
+    }
+  }
+
+  label.for-sasl-password-input {
+    span {
+      width: @main_label_width - 6px;
+    }
+    input {
+      width: @text_input_width;
+      text-align: left;
+    }
+  }
+
+  label.for-proxy-port {
+    span {
+      width: @main_label_width - 6px;
+    }
+    input {
+      width: 58px;
+    }
+  }
+
+  .size-gauge {
+    /* margin-top: 10px; */
+    line-height: 24px;
+    position: relative;
+    top: -6px;
+    float: right;
+    font-size: 11px;
+    width: 364px;
+    /* float: right; */
+    .t {text-align: right;}
+    .gauge {
+       /* margin: 4px; */
+       position: relative;
+       height:15px;
+       background:url(/images/ram_diagr_bg.png) 100% 0 no-repeat;
+       div {
+         width: 362px;
+         height: 15px;
+         position: absolute;
+         left: 0px;
+         top: 0px;
+         background:url(/images/ram_diagr_bg.png) 0 0 no-repeat;
+       }
+       .blue {background-position: 0px -15px;}
+       .yellow {background-position: 0px -30px;}
+       .green {background-position: 0px -45px;}
+    }
+
+    .b {
+      text-align: justify;
+      width: 100%;
+
+
+      /*
+       * > span {
+       *   display: block-inline;
+       * }
+       */
+
+      .blue { color: blue; text-align: left;}
+      .green { color: green; text-align: center;}
+      td { text-align: right;}
+    }
+  }
+
+  label.for-enable-persistence {
+    padding-left: 20px;
+    span {
+      float: none;
+      display: inline;
+      margin-left: 6px;
+    }
+  }
+
+  label.for-ram-quota, label.for-hdd-quota {
+    width: 275px;
+    display: block;
+    padding-top: 13px;
+
+    span {
+      width: @main_label_width - 6px;
+    }
+
+    input {
+      width: 58px;
+    }
+  }
+
+  .invalid {
+    border-color: red;
+  }
+
+  .error-container {
+    color: red;
+    float: left;
+    font-size: 66%;
+    padding-left: @main_label_width;
+    visibility: hidden;
+  }
+
+  .for-replica-number .error-container {
+    float: none;
+    padding-left: 0;
+  }
+
+  .error-container.active {
+    visibility: visible;
+  }
+
+  label.for-enable-replication {
+    padding-left: 20px;
+    width: @main_label_width - 20px;
+    float: left;
+    span {
+      display: inline; float: none; margin-left: 6px;
+    }
+  }
+
+  label.for-replica-number {
+    display: block; float: left;
+    span {
+      display: inline; float: none; margin-left: 6px;
+    }
+    input {
+      width: 29px;
+    }
+  }
+
+  .save_cancel {
+    border-top: 1px solid #eeeeee;
+    border-bottom-width: 0px;
+    padding: 18px;
+    clear: both;
+    background: #cccfd2;
+    /* padding: 16px 0; */
+    /* background: #efeff0; */
+
+    .delete_button {
+      margin-right: 16px;
+    }
+
+    .jqmClose {
+      float:right;
+      font-size: 14px;
+      height:31px; line-height:31px;
+      color:#8b8b8e; text-align: right; font-weight:bolder;
+      text-decoration:none;
+      margin-right: 16px;
+    }
+  }
+}
+
+#bucket_details_dialog.creating .when-editing { display: none; }
+#bucket_details_dialog.editing .when-creating { display: none; }
