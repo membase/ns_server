@@ -730,3 +730,20 @@ function mkComparatorByProp(propName, propComparator) {
 function calculatePercent(value, total) {
   return (value * 100 / total) >> 0;
 }
+
+function parseValidateInteger(number, min, max) {
+  number = String(number);
+
+  if (!(/^-?[0-9]+$/.exec(number)))
+    return "need integer";
+
+  number = parseInt(number, 10);
+  if (number < min) {
+    return "too small";
+  }
+  if (number > max) {
+    return "too large";
+  }
+
+  return number;
+}
