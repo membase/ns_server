@@ -110,7 +110,15 @@ terminate(_Reason, _State) ->
 %% @doc Count of remaining moves per node.
 -spec count_moves(dict()) -> dict().
 count_moves(Moves) ->
-    dict:map(fun (_, M) -> length(M) end, Moves).
+    %% Number of moves FROM a given node.
+    FromCount = dict:map(fun (_, M) -> length(M) end, Moves),
+    %% Add moves TO each node.
+    dict:fold(fun (_, M, D) ->
+                      lists:foldl(
+                        fun ({_, N}, E) ->
+                                dict:update_counter(N, 1, E)
+                        end, D, M)
+              end, FromCount, Moves).
 
 
 %% @doc Report progress using the supplied progress callback.
