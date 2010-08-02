@@ -730,3 +730,33 @@ start_singleton(Module, Name, Args, Opts) ->
 
 start_singleton_gen_server(Name, Args, Opts) ->
     start_singleton(gen_server, Name, Args, Opts).
+
+key_update_rec(Key, List, Fun, Acc) ->
+    case List of
+        [{Key, OldValue} | Rest] ->
+            %% once we found our key, compute new value and don't recurse anymore
+            %% just append rest of list to reversed accumulator
+            lists:reverse([{Key, Fun(OldValue)} | Acc],
+                          Rest);
+        [] ->
+            %% if we reach here, then we didn't found our tuple
+            false;
+        [X | XX] ->
+            %% anything that's not our pair is just kept intact
+            key_update_rec(Key, XX, Fun, [X | Acc])
+    end.
+
+%% replace value of given Key with result of applying Fun on it in
+%% given proplist. Preserves order of keys. Assumes Key occurs only
+%% once.
+key_update(Key, PList, Fun) ->
+    key_update_rec(Key, PList, Fun, []).
+
+%% replace values from OldPList with values from NewPList
+update_proplist(OldPList, NewPList) ->
+    lists:map(fun ({K,_} = Tuple) ->
+                      case lists:keyfind(K, 1, NewPList) of
+                          false -> Tuple;
+                          {_, NewV} -> {K, NewV}
+                      end
+              end, OldPList).
