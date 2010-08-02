@@ -108,6 +108,8 @@ set_bucket_config(Bucket, NewConfig) ->
     update_bucket_config(Bucket, fun (_) -> NewConfig end).
 
 set_map(Bucket, Map) ->
+    ChainLengths = [length(Chain) || Chain <- Map],
+    true = lists:max(ChainLengths) == lists:min(ChainLengths),
     update_bucket_config(
       Bucket,
       fun (OldConfig) ->

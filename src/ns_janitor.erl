@@ -96,7 +96,12 @@ sanify(Bucket, Map, Servers) ->
     [sanify_chain(Bucket, States, Chain, VBucket, Zombies)
      || {VBucket, Chain} <- misc:enumerate(Map, 0)].
 
-sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
+sanify_chain(Bucket, State, Chain, VBucket, Zombies) ->
+    NewChain = do_sanify_chain(Bucket, State, Chain, VBucket, Zombies),
+    true = length(NewChain) == length(Chain),
+    NewChain.
+
+do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
     NodeStates = [{N, S} || {N, V, S} <- States, V == VBucket],
     ChainStates = lists:map(fun (N) ->
                                     case lists:keyfind(N, 1, NodeStates) of
