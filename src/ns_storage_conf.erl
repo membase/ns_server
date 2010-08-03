@@ -205,17 +205,27 @@ cluster_storage_info() ->
                       {hdd, [{quotaUsed, HDDQuotaUsed} | Props]}
               end, PList1).
 
-extract_disk_stats_for_path([], _Path) ->
+extract_disk_stats_for_path_rec([], _Path) ->
     none;
-extract_disk_stats_for_path([{MountPoint, _, _} = Info | Rest], Path) ->
-    MPath = case MountPoint of
-                "/" -> MountPoint;
-                _ -> MountPoint ++ "/"
+extract_disk_stats_for_path_rec([{MountPoint0, _, _} = Info | Rest], Path) ->
+    MountPoint = filename:join([MountPoint0]),  % normalize path. See filename:join docs
+    MPath = case lists:reverse(MountPoint) of
+                %% ends of '/'
+                "/" ++ _ -> MountPoint;
+                %% doesn't. Append it
+                X -> lists:reverse("/" ++ X)
             end,
     case MPath =:= string:substr(Path, 1, length(MPath)) of
         true -> {ok, Info};
         _ -> extract_disk_stats_for_path(Rest, Path)
     end.
+
+extract_disk_stats_for_path(StatsList, Path0) ->
+    Path = case filename:join([Path0]) of
+               "/" -> "/";
+               X -> X ++ "/"
+           end,
+    extract_disk_stats_for_path_rec(StatsList, Path).
 
 disk_stats_for_path(Node, Path) ->
     case rpc:call(Node, disksup, get_disk_data, [], 2000) of
