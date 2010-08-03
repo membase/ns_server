@@ -82,6 +82,9 @@ handle_call({delete_vbucket, Bucket, VBucket}, _From,
 handle_call(list_buckets, _From, State) ->
     Reply = {ok, ["default"]},
     {reply, Reply, State};
+handle_call(noop, _From, State) ->
+    Reply = mc_client_binary:noop(State#state.sock),
+    {reply, Reply, State};
 handle_call({set_vbucket_state, Bucket, VBucket, VBState}, _From,
             #state{sock=Sock} = State) ->
     Reply = do_in_bucket(Sock, Bucket,
@@ -213,8 +216,7 @@ wait_for_connection(Node, Timeout) when is_atom(Node) ->
     wait_for_connection([Node], Timeout);
 wait_for_connection(Nodes, Timeout) ->
     {Replies, BadNodes} = gen_server:multi_call(Nodes, ?MODULE,
-                                                {stats, "default", ""},
-                                                Timeout),
+                                                noop, Timeout),
     BadReplies = [X || {_, {R, _}} = X <- Replies, R /= ok],
     case BadReplies ++ BadNodes of
         [] ->
