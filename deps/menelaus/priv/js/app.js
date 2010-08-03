@@ -859,6 +859,9 @@ var NodeDialog = {
 
       var prevPathValue;
 
+      var hddResources = data.availableStorage.hdd;
+      var mountPoints = new MountPoints(data, _.pluck(hddResources, 'path'));
+
       self.resourcesObserver = dialog.observePotentialChanges(function () {
         var pathValue = diskPath.val();
 
@@ -872,15 +875,8 @@ var NodeDialog = {
           return;
         }
 
-        var hddResources = data.availableStorage.hdd;
-        hddResources = hddResources.sort(function (a,b) {return b.path.length - a.path.length;});
-        var pathResource = _.detect(hddResources, function (resource) {
-          var path = resource.path;
-          if (path[path.length-1] != '/')
-            path += '/';
-          if (pathValue.substring(0, path.length) == path)
-            return true;
-        });
+        var rv = mountPoints.lookup(pathValue);
+        var pathResource = ((rv != null) && hddResources[rv]);
 
         if (!pathResource)
           pathResource = {path:"/", sizeKBytes: 0, usagePercent: 0};

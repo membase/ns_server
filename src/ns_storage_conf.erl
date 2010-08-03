@@ -120,7 +120,7 @@ storage_conf(Node) ->
     {value, PropList} = ns_config:search_node(Node, ns_config:get(), memcached),
     DBName = misc:expect_prop_value(dbname, PropList),
     HDDQuotaMB = misc:expect_prop_value(hdd_quota, PropList),
-    HDDInfo = [{path, filename:dirname(filename:absname(DBName))},
+    HDDInfo = [{path, filename:nativename(filename:dirname(filename:absname(DBName)))},
                {quotaMb, HDDQuotaMB},
                {state, ok}],
     [{ssd, []},

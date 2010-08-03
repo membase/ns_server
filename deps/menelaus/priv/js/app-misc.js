@@ -712,3 +712,49 @@ function configureActionHashParam(param, body) {
     }
   });
 }
+
+var MountPointsStd = mkClass({
+  initialize: function (paths) {
+    var self = this;
+    var infos = _.map(paths, function (p, i) {
+      p = self.preprocessPath(p);
+      return {p: p, i: i};
+    });
+    infos.sort(function (a,b) {return b.p.length - a.p.length});
+    this.infos = infos;
+  },
+  preprocessPath: function (p) {
+    if (p[p.length-1] != '/')
+      p += '/';
+    return p;
+  },
+  lookup: function (path) {
+    path = this.preprocessPath(path);
+    var info = _.detect(this.infos, function (info) {
+      if (path.substring(0, info.p.length) == info.p)
+        return true;
+    });
+    return info && info.i;
+  }
+});
+
+var MountPointsWnd = mkClass(MountPointsStd, {
+  preprocessPath: (function () {
+    var re = /^[A-Z]:\//
+    var overriden = MountPointsStd.prototype.preprocessPath;
+    return function (p) {
+      p = p.replace('\\', '/')
+      if (re.exec(p)) { // if we're using uppercase drive letter downcase it
+        p = String.fromCharCode(p.charCodeAt(0) + 0x20) + p.slice(1);
+      }
+      return overriden.call(this, p);
+    }
+  }())
+});
+
+function MountPoints(nodeInfo, paths) {
+  if (nodeInfo['os'] == 'windows' || nodeInfo['os'] == 'win32')
+    return new MountPointsWnd(paths);
+  else
+    return new MountPointsStd(paths);
+}

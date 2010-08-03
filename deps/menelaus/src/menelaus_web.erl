@@ -1238,17 +1238,20 @@ handle_node_settings_post(Node, Req) ->
                    undefined -> ok;
                    [] -> <<"The database path cannot be empty.">>;
                    %% TODO: windows pathes
-                   "/" ++ _ = Path ->
-                       case Node =/= node() of
-                           true -> exit('setting disk storage path for other nodes is not yet supported');
-                           _ -> ok
-                       end,
-                       case ns_storage_conf:prepare_setup_disk_storage_conf(node(), Path) of
-                           {ok, _} = R -> R;
-                           ok -> ok;
-                           error -> <<"Could not set the storage path. It must be a new directory and the 'northscale' user must have permissions to create it.">>
-                       end;
-                   _ -> <<"An absolute path is required.">>
+                   Path ->
+                       case misc:is_absolute_path(Path) of
+                           false -> <<"An absolute path is required.">>;
+                           _ ->
+                               case Node =/= node() of
+                                   true -> exit('setting disk storage path for other nodes is not yet supported');
+                                   _ -> ok
+                               end,
+                               case ns_storage_conf:prepare_setup_disk_storage_conf(node(), Path) of
+                                   {ok, _} = R -> R;
+                                   ok -> ok;
+                                   error -> <<"Could not set the storage path. It must be a new directory and the 'northscale' user must have permissions to create it.">>
+                               end
+                       end
                end,
                case proplists:get_value("memoryQuota", Params) of
                    undefined -> ok;

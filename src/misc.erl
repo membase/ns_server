@@ -771,3 +771,8 @@ expect_prop_value(K, List) ->
     catch
         error:X -> erlang:error(X, [K, List])
     end.
+
+%% true iff given path is absolute
+is_absolute_path(Path) ->
+    Normalized = filename:join([Path]),
+    filename:absname(Normalized) =:= Normalized.
