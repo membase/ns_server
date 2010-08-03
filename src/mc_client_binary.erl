@@ -22,7 +22,7 @@
 -include("mc_entry.hrl").
 
 -export([auth/2, auth/4, create_bucket/3, delete_bucket/2, delete_vbucket/2,
-         list_buckets/1, select_bucket/2, set_vbucket_state/3,
+         list_buckets/1, noop/1, select_bucket/2, set_vbucket_state/3,
          stats/1, stats/2]).
 
 %% A memcached client that speaks binary protocol.
@@ -157,6 +157,13 @@ list_buckets(Sock) ->
                 undefined -> {ok, []};
                 _ -> {ok, string:tokens(binary_to_list(BucketsBin), " ")}
             end;
+        Response -> process_error_response(Response)
+    end.
+
+noop(Sock) ->
+    case cmd(?NOOP, Sock, undefined, undefined, {#mc_header{}, #mc_entry{}}) of
+        {ok, #mc_header{status=?SUCCESS}, #mc_entry{}, _NCB} ->
+            ok;
         Response -> process_error_response(Response)
     end.
 
