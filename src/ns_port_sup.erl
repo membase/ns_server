@@ -53,13 +53,24 @@ launch_port(NCAO) ->
                                      create_child_spec(NCAO)),
     {ok, C}.
 
-expand_args({Name, Cmd, ArgsIn, Opts}) ->
+expand_args({Name, Cmd, ArgsIn, OptsIn}) ->
     Config = ns_config:get(),
+    %% Expand arguments
     Args = lists:map(fun ({Format, Keys}) ->
                              format(Config, Name, Format, Keys);
                            (X) -> X
                       end,
                       ArgsIn),
+    %% Expand environment variables within OptsIn
+    Opts = lists:map(
+             fun ({env, Env}) ->
+                     {env, lists:map(
+                             fun ({Var, {Format, Keys}}) ->
+                                     {Var, format(Config, Name, Format, Keys)};
+                                 (X) -> X
+                             end, Env)};
+                 (X) -> X
+             end, OptsIn),
     {Name, Cmd, Args, Opts}.
 
 create_child_spec({Name, Cmd, Args, Opts}) ->
