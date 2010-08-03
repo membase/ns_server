@@ -104,7 +104,7 @@ function postWithValidationErrors(url, data, callback, ajaxOptions) {
 
       var errorsData = $.httpData(data, null, this);
       if (!_.isArray(errorsData)) {
-        if (errorsData.length == 0)
+        if (errorsData == null)
           errorsData = "unknown reason";
         errorsData = [errorsData];
       }

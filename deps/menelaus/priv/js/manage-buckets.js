@@ -1,3 +1,271 @@
+var BucketDetailsDialog = mkClass({
+  initialize: function (initValues, isNew) {
+    this.isNew = isNew;
+    this.poolDetails = DAO.cells.currentPoolDetailsCell.value;
+    this.initValues = initValues;
+    initValues['ramQuotaMB'] = Math.floor(initValues.quota.ram / 1048576);
+    initValues['hddQuotaGB'] = Math.floor(initValues.quota.hdd / (1048576 * 1024));
+    initValues.otherQuota = {
+      ram: this.poolDetails.storageTotals.ram.quotaUsed,
+      hdd: this.poolDetails.storageTotals.hdd.quotaUsed
+    }
+    if (!isNew) {
+      initValues.otherQuota.ram -= initValues.quota.ram;
+      initValues.otherQuota.hdd -= initValues.quota.hdd;
+    }
+    initValues.errors = {};
+
+    this.valuesCell = new Cell();
+    this.valuesCell.setValue(initValues);
+
+    this.dialogID = 'bucket_details_dialog'
+
+    var dialog = this.dialog = $('#' + this.dialogID);
+
+    dialog.removeClass('editing').removeClass('creating');
+    dialog.addClass(isNew ? 'creating' : 'editing');
+
+    setBoolAttribute(dialog.find('[name=name]'), 'disabled', !isNew);
+
+    this.valuesCell.subscribeValue($m(this, 'onValues'));
+
+    this.cleanups = [];
+  },
+  
+  bindWithCleanup: function (jq, event, callback) {
+    jq.bind(event, callback);
+    return function () {
+      jq.unbind(event, callback);
+    };
+  },
+  
+  submit: function () {
+    var self = this;
+
+    var closeCleanup = self.bindWithCleanup(self.dialog.find('.jqmClose'),
+                                            'click',
+                                            function (e) {
+                                              e.preventDefault();
+                                              e.stopPropagation();
+                                            });
+    self.needBucketsRefresh = true;
+
+    postWithValidationErrors(self.valuesCell.value.uri, self.dialog.find('form'), function (data, status) {
+      if (status == 'success') {
+        BucketsSection.refreshBuckets(function () {
+          self.needBucketsRefresh = false;
+          enableForm();
+          hideDialog(self.dialogID);
+        });
+        return;
+      }
+
+      enableForm();
+
+      var errors = data[0]; // we expect errors as a hash in this case
+      self.valuesCell.setValueAttr(errors, 'errors');
+    });
+
+    var toDisable = self.dialog.find('input[type=text], input:not([type]), input[type=checkbox]')
+      .filter(':not([disabled])')
+      .add(self.dialog.find('button'));
+
+    // we need to disable after post is sent, 'cause disabled inputs are not sent
+    toDisable.add(self.dialog).css('cursor', 'wait');
+    setBoolAttribute(toDisable, 'disabled', true);
+
+    function enableForm() {
+      closeCleanup();
+      setBoolAttribute(toDisable, 'disabled', false);
+      toDisable.add(self.dialog).css('cursor', 'auto');
+    }
+  },
+  startDialog: function () {
+    var self = this;
+    var form = this.dialog.find('form');
+
+    setFormValues(form, self.valuesCell.value);
+
+    self.setupQuotaValidation('ram');
+    self.setupQuotaValidation('hdd');
+    self.setupReplicasValidation();
+    if (self.isNew)
+      self.setupNameValidation();
+
+    self.cleanups.push(self.bindWithCleanup(form, 'submit', function (e) {
+      e.preventDefault();
+      self.submit();
+    }));
+
+    showDialog(this.dialogID, {
+      onHide: function () {
+        self.cleanup();
+        if (self.needBucketsRefresh)
+          BucketsSection.refreshBuckets();
+      }
+    });
+  },
+  cleanup: function () {
+    _.each(this.cleanups, function (c) {
+      c();
+    });
+  },
+
+  renderGauge: function (jq, total, thisBucket, used) {
+    var thisValue = thisBucket
+    var formattedBucket = ViewHelpers.formatQuantity(thisBucket, null, null, ' ');
+
+    if (_.isString(thisValue)) {
+      formattedBucket = thisValue;
+      thisValue = 0;
+    }
+
+    jq.find('.total').text(ViewHelpers.formatQuantity(total, null, null, ' '));
+    var free = total - used - thisValue;
+    jq.find('.free').text(ViewHelpers.formatQuantity(free, null, null, ' '));
+    jq.find('.other').text(ViewHelpers.formatQuantity(used, null, null, ' '));
+    jq.find('.this').text(formattedBucket);
+
+    jq.find('.gauge .green').css('width', calculatePercent(used + thisValue, total) + '%');
+    jq.find('.gauge .blue').css('width', calculatePercent(used, total) + '%');
+  },
+
+  renderError: function (field, error) {
+    this.dialog.find('.error-container.err-' + field).text(error || '')[error ? 'addClass' : 'removeClass']('active');
+    this.dialog.find('[name=' + field + ']')[error ? 'addClass' : 'removeClass']('invalid');
+  },
+
+  // this updates our gauges and errors
+  // we don't use it to set input values, 'cause for the later we need to do it once
+  onValues: function (values) {
+    if (!values)
+      return;
+
+    this.renderGauge(this.dialog.find(".size-gauge.for-ram"),
+                     this.poolDetails.storageTotals.ram.quotaTotal,
+                     values.quota.ram,
+                     values.otherQuota.ram);
+
+    this.renderGauge(this.dialog.find('.size-gauge.for-hdd'),
+                     this.poolDetails.storageTotals.hdd.quotaTotal,
+                     values.quota.hdd,
+                     values.otherQuota.hdd);
+
+    this.renderError('name', values.errors.name);
+    this.renderError('ramQuotaMB', values.errors.ramQuotaMB);
+    this.renderError('hddQuotaGB', values.errors.hddQuotaGB);
+    this.renderError('replicaNumber', values.errors.replicaNumber);
+
+    var hasErrors = _.some(_.keys(values.errors), function (k) {
+      return !!(values.errors[k]);
+    });
+
+    setBoolAttribute(this.dialog.find('.save_button'), 'disabled', hasErrors);
+  },
+
+  setupQuotaValidation: function (storageType) {
+    var self = this;
+
+    var props = {
+      name: 'ramQuotaMB',
+      unitSize: 1048576
+    }
+    if (storageType == 'hdd') {
+      props = {
+        name: 'hddQuotaGB',
+        unitSize: (1048576*1024)
+      }
+    }
+
+    var input = self.dialog.find('[name='+props.name+']');
+    var observer = input.observeInput(validate);
+
+    self.cleanups.push(function () {
+      observer.stopObserving();
+    });
+
+    validate.call(input, input.val());
+
+    function validate(newValue) {
+      var storageInfo = self.poolDetails.storageTotals[storageType];
+      var oldThisQuota = self.initValues.quota[storageType];
+      var other = self.initValues.otherQuota[storageType];
+      var max = storageInfo.quotaTotal - other;
+      var min = 10 * props.unitSize; // TODO
+
+      max = Math.floor(max / props.unitSize);
+      min = Math.floor(min / props.unitSize);
+      if (min >= max)
+        min = max >> 1;
+
+      var parsedQuota = parseValidateInteger(newValue, min, max);
+
+      var error = $(this).closest('label').next('.error-container');
+      var errorText;
+      if (typeof(parsedQuota) == 'string') {
+        errorText = parsedQuota;
+        parsedQuota = '??';
+      } else {
+        parsedQuota *= props.unitSize;
+      }
+
+      self.valuesCell.setValueAttr(parsedQuota, 'quota', storageType);
+      self.valuesCell.setValueAttr(errorText, 'errors', props.name);
+    }
+  },
+
+  setupReplicasValidation: function () {
+    var self = this;
+
+    var enableReplicationCheckbox = self.dialog.find('.for-enable-replication input');
+    var replicaNumberInput = self.dialog.find('[name=replicaNumber]');
+    var preDisableReplicaNumber = replicaNumberInput.val();
+    enableReplicationCheckbox.bind('click', function () {
+      setBoolAttribute(replicaNumberInput, 'disabled', !this.checked);
+      if (!this.checked) {
+        preDisableReplicaNumber = replicaNumberInput.val();
+        replicaNumberInput.val('0');
+      } else {
+        replicaNumberInput.val(preDisableReplicaNumber);
+      }
+    });
+    self.cleanups.push(function () {
+      enableReplicationCheckbox.unbind('click');
+    });
+
+    function validateReplicas(newValue) {
+      var value = parseValidateInteger(newValue, 0, 1024); //poolDetails.nodes.length-1);
+      var errorsContainer = self.dialog.find('.for-replica-number .error-container');
+      var error;
+      if (_.isString(value)) {
+        error = value;
+        errorsContainer.text(error);
+      }
+      self.valuesCell.setValueAttr(error, 'errors', 'replicaNumber');
+    }
+
+    var observer = replicaNumberInput.observeInput(validateReplicas);
+    self.cleanups.push(function () {
+      observer.stopObserving();
+    });
+    validateReplicas(preDisableReplicaNumber);
+  },
+
+  setupNameValidation: function () {
+    var self = this;
+
+    var observer = self.dialog.find('[name=name]').observeInput(function (value) {
+      var error = null;
+      if (value.length == 0)
+        error = 'name cannot be empty';
+      self.valuesCell.setValueAttr(error, 'errors', 'name');
+    });
+    self.cleanups.push(function () {
+      observer.stopObserving();
+    });
+  }
+});
+
 var BucketsSection = {
   cells: {},
   init: function () {
@@ -100,201 +368,15 @@ var BucketsSection = {
   findBucket: function (uri) {
     return this.withBucket(uri, function (r) {return r});
   },
-  runBucketDetailsDialog: function (initValues, isNew) {
-    var poolDetails = DAO.cells.currentPoolDetailsCell.value;
-
-    initValues['ramQuotaMB'] = Math.floor(initValues.quota.ram / 1048576);
-    initValues['hddQuotaGB'] = Math.floor(initValues.quota.hdd / (1048576 * 1024));
-    initValues.otherQuota = {
-      ram: poolDetails.storageTotals.ram.quotaUsed,
-      hdd: poolDetails.storageTotals.hdd.quotaUsed
-    }
-    if (!isNew) {
-      initValues.otherQuota.ram -= initValues.quota.ram;
-      initValues.otherQuota.hdd -= initValues.quota.hdd;
-    }
-    initValues.errors = {ram: null, hdd: null};
-
-    var valuesCell = (function () {
-      var cell = new Cell();
-      cell.setValue(initValues);
-      return cell;
-    })();
-
-    var dialog = $('#bucket_details_dialog');
-    dialog.removeClass('editing').removeClass('creating');
-    dialog.addClass(isNew ? 'creating' : 'editing');
-
-    setBoolAttribute(dialog.find('[name=name]'), 'disabled', !isNew);
-
-    valuesCell.subscribeValue(function (values) {
-      if (!values)
-        return;
-
-      function renderGauge(jq, total, thisBucket, used) {
-        var thisValue = thisBucket
-        var formattedBucket = ViewHelpers.formatQuantity(thisBucket, null, null, ' ');
-
-        if (_.isString(thisValue)) {
-          formattedBucket = thisValue;
-          thisValue = 0;
-        }
-
-        jq.find('.total').text(ViewHelpers.formatQuantity(total, null, null, ' '));
-        var free = total - used - thisValue;
-        jq.find('.free').text(ViewHelpers.formatQuantity(free, null, null, ' '));
-        jq.find('.other').text(ViewHelpers.formatQuantity(used, null, null, ' '));
-        jq.find('.this').text(formattedBucket);
-
-        jq.find('.gauge .green').css('width', calculatePercent(used + thisValue, total) + '%');
-        jq.find('.gauge .blue').css('width', calculatePercent(used, total) + '%');
-      }
-
-      renderGauge(dialog.find(".size-gauge.for-ram"),
-                  poolDetails.storageTotals.ram.quotaTotal,
-                  values.quota.ram,
-                  values.otherQuota.ram);
-
-      renderGauge(dialog.find('.size-gauge.for-hdd'),
-                  poolDetails.storageTotals.hdd.quotaTotal,
-                  values.quota.hdd,
-                  values.otherQuota.hdd);
-
-      function renderError(label, error) {
-        label.find('input')[error ? 'addClass' : 'removeClass']('invalid');
-        label.next('.error-container').text(error || '')[error ? 'addClass' : 'removeClass']('active');
-      }
-
-      renderError(dialog.find('.for-ram-quota'), values.errors.ram);
-      renderError(dialog.find('.for-hdd-quota'), values.errors.hdd);
-    });
-
-    var cleanups = [];
-
-    runFormDialog(initValues.uri, 'bucket_details_dialog', {
-      initialValues: valuesCell.value,
-      closeCallback: function () {
-        _.each(cleanups, function (c) {
-          c();
-          BucketsSection.refreshBuckets();
-        });
-      }
-    });
-
-    function handleQuotaValidation(storageType) {
-      var props = {
-        name: 'ramQuotaMB',
-        unitSize: 1048576
-      }
-      if (storageType == 'hdd') {
-        props = {
-          name: 'hddQuotaGB',
-          unitSize: (1048576*1024)
-        }
-      }
-
-      function validation(newValue) {
-        var storageInfo = poolDetails.storageTotals[storageType];
-        var oldThisQuota = initValues.quota[storageType];
-        var other = initValues.otherQuota[storageType];
-        var max = storageInfo.quotaTotal - other;
-        var min = 10 * props.unitSize; // TODO
-
-        max = Math.floor(max / props.unitSize);
-        min = Math.floor(min / props.unitSize);
-        if (min >= max)
-          min = max >> 1;
-
-        var parsedQuota = parseValidateInteger(newValue, min, max);
-
-        var error = $(this).closest('label').next('.error-container');
-        var errorText;
-        if (typeof(parsedQuota) == 'string') {
-          errorText = parsedQuota;
-          parsedQuota = '??';
-        } else {
-          parsedQuota *= props.unitSize;
-        }
-
-        valuesCell.setValueAttr(parsedQuota, 'quota', storageType);
-        valuesCell.setValueAttr(errorText, 'errors', storageType);
-      }
-
-      var input = dialog.find('[name='+props.name+']');
-      var observer = input.observeInput(validation);
-
-      cleanups.push(function () {
-        observer.stopObserving();
-      });
-
-      validation(input.val());
-    }
-
-    handleQuotaValidation('ram');
-    handleQuotaValidation('hdd');
-
-    (function () {
-      var enableReplicationCheckbox = dialog.find('[name=enableReplication]');
-      var replicaNumberInput = dialog.find('[name=replicaNumber]');
-      var preDisableReplicaNumber = replicaNumberInput.val();
-      enableReplicationCheckbox.bind('click', function () {
-        setBoolAttribute(replicaNumberInput, 'disabled', !this.checked);
-        if (!this.checked) {
-          preDisableReplicaNumber = replicaNumberInput.val();
-          replicaNumberInput.val('0');
-        } else {
-          replicaNumberInput.val(preDisableReplicaNumber);
-        }
-      });
-      cleanups.push(function () {
-        enableReplicationCheckbox.unbind('click');
-      });
-
-      function validateReplicas(newValue) {
-        var value = parseValidateInteger(newValue, 0, 1024); //poolDetails.nodes.length-1);
-        var errorsContainer = dialog.find('.for-replica-number .error-container');
-        var error;
-        if (_.isString(value)) {
-          error = value;
-          errorsContainer.text(error);
-        }
-        errorsContainer[error ? 'addClass' : 'removeClass']('active');
-        replicaNumberInput[error ? 'addClass' : 'removeClass']('invalid');
-        valuesCell.setValueAttr(error, 'errors', 'replicas');
-      }
-
-      var observer = replicaNumberInput.observeInput(validateReplicas);
-      cleanups.push(function () {
-        observer.stopObserving();
-      });
-      validateReplicas(preDisableReplicaNumber);
-
-      valuesCell.subscribeValue(function (values) {
-        if (!values)
-          return;
-
-        var hasErrors = _.some(_.keys(values.errors), function (k) {
-          return !!(values.errors[k]);
-        });
-
-        setBoolAttribute(dialog.find('.save_button'), 'disabled', hasErrors);
-      });
-    })();
-  },
   showBucket: function (uri) {
     ThePage.ensureSection('buckets');
-    if (!DAO.cells.currentPoolDetailsCell.value) {
-      // if don't have pool details wait for them
-      DAO.cell.currentPoolDetailsCell.subscribeOnce(function () {
-        _.defer(function () {
-          BucketsSection.showBucket(uri)
-        });
+    // we don't care about value, but we care if it's defined
+    DAO.cells.currentPoolDetailsCell.getValue(function () {
+      BucketsSection.withBucket(uri, function (bucketDetails) {
+        var initValues = _.extend({}, bucketDetails, bucketDetails.settingsCell.value);
+        var dialog = new BucketDetailsDialog(initValues, false);
+        dialog.startDialog();
       });
-      return;
-    }
-    this.withBucket(uri, function (bucketDetails) {
-      var initValues = _.extend({}, bucketDetails, bucketDetails.settingsCell.value);
-      BucketsSection.runBucketDetailsDialog(initValues, false);
     });
   },
   startFlushCache: function (uri) {
@@ -358,10 +440,12 @@ var BucketsSection = {
       alert('TODO: No free quota left!')
       return;
     }
-    this.runBucketDetailsDialog({uri: '/pools/default/buckets',
-                                 quota: {ram: totals.ram.quotaTotal - totals.ram.quotaUsed,
-                                         hdd: totals.hdd.quotaTotal - totals.hdd.quotaUsed},
-                                 replicaNumber: 1}, true);
+    var initValues = {uri: '/pools/default/buckets',
+                      quota: {ram: totals.ram.quotaTotal - totals.ram.quotaUsed,
+                              hdd: totals.hdd.quotaTotal - totals.hdd.quotaUsed},
+                      replicaNumber: 1}
+    var dialog = new BucketDetailsDialog(initValues, true);
+    dialog.startDialog();
   },
   // TODO: currently inaccessible from UI
   startRemovingBucket: function () {

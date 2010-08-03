@@ -258,19 +258,23 @@ var MockedRequest = mkClass({
 
     var params = this.deserialize()
     console.log("params: ", params);
-    var errors = [];
+    var errors = {};
 
     if (isBlank(params['name'])) {
-      errors.push('name cannot be blank');
+      errors.name = 'name cannot be blank';
     } else if (params['name'] != 'new-name') {
-      errors.push('name has already been taken');
+      errors.name = 'name has already been taken';
     }
 
-    if (!(/^\d*$/.exec(params['cacheSize']))) {
-      errors.push("cache size must be an integer");
+    if (!(/^\d*$/.exec(params['ramQuotaMB']))) {
+      errors.ramQuotaMB = "RAM quota size must be an integer";
     }
 
-    if (errors.length) {
+    if (!(/^\d*$/.exec(params['hddQuotaGB']))) {
+      errors.ramQuotaMB = "Disk quota size must be an integer";
+    }
+
+    if (_.keys(errors).length) {
       return self.errorResponse(errors);
     }
 
@@ -457,7 +461,7 @@ var MockedRequest = mkClass({
 
         var missingParams = difference(mustParams, keys);
         if (missingParams.length) {
-          var msg = "Missing required parameter(s): " + missingParams.join(', ');
+          var msg = "Missing required parameter(s): " + missingParams.join(', ') + '\nHave: ' + keys.join(',');
           alert("hooks.js: " + msg);
           throw new Error(msg);
         }
@@ -700,7 +704,7 @@ var MockedRequest = mkClass({
       }],
       [get("pools", "default", "buckets", x, "stats"), method('handleStats')],
       [post("pools", "default", "buckets"), method('handleBucketsPost')],
-      [post("pools", "default", "buckets", x), method('doNothingPOST')], //unused
+      [post("pools", "default", "buckets", x), expectParams(method('doNothingPOST'), 'ramQuotaMB', 'hddQuotaGB', 'replicaNumber')],
       [post("pools", "default", "buckets", x, "controller", "doFlush"), method('doNothingPOST')], //unused
       [del("pools", "default", "buckets", x), method('handleBucketRemoval')],
 
