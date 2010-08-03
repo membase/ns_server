@@ -303,10 +303,13 @@ send_response(binary, Out, Cmd,
             mc_ascii:send(Out, mc_binary:b2a_code(Opcode, Status))
     end.
 
-send_entry_binary(Cmd, Out, #mc_entry{key = Key, data = Data,
+send_entry_binary(Cmd, Out, #mc_entry{key = Key, data = Data, ext = Ext,
                                       cas = Cas, flag = Flag}) ->
     DataLen = integer_to_list(mc_binary:bin_size(Data)),
-    FlagStr = integer_to_list(Flag),
+    FlagStr = case Ext of
+                <<FlagInExt:32>> -> integer_to_list(FlagInExt);
+                undefined -> integer_to_list(Flag)
+              end,
     case Cmd of
         get ->
             ok =:= mc_ascii:send(Out, [<<"VALUE ">>, Key,
