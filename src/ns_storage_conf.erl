@@ -18,57 +18,47 @@
 %
 -module(ns_storage_conf).
 
+-include("ns_common.hrl").
+
 -export([memory_quota/1, change_memory_quota/2, prepare_setup_disk_storage_conf/2,
-         storage_conf/1, add_storage/4, remove_storage/2, format_engine_max_size/0,
+         storage_conf/1, add_storage/4, remove_storage/2,
          local_bucket_disk_usage/1, bucket_disk_usage/2]).
 
 -export([node_storage_info/1, cluster_storage_info/0]).
 
 -export([extract_disk_stats_for_path/2, disk_stats_for_path/2]).
 
-format_engine_max_size() ->
-    RawValue = ns_config:search_node_prop(ns_config:get(), memcached, max_size),
-    case RawValue of
-        undefined -> "";
-        X -> io_lib:format(";max_size=~B", [X * 1048576])
-    end.
-
 memory_quota(Node) ->
     {value, PropList} = ns_config:search_node(Node, ns_config:get(), memcached),
     proplists:get_value(max_size, PropList).
 
-update_max_size(Node, Quota) ->
-    {value, PropList} = ns_config:search_node(Node, ns_config:get(), memcached),
-    UpdatedProps = misc:key_update(max_size, PropList, fun (_) -> Quota end),
-    ns_config:set({node, Node, memcached}, UpdatedProps),
+update_max_size(_Node, Quota) ->
     case ns_bucket:get_bucket("default") of
         {ok, Config} ->
             case ns_bucket:ram_quota(Config) of
                 0 ->
                     ns_bucket:update_bucket_props("default", [{ram_quota, Quota * 1048576}]),
-                    ok%% ;
-                %% _ -> ok
-            end%% ;
-        %% _ -> ok
+                    ok;
+                _ -> ok
+            end
     end.
-
-change_memory_quota(Node, none) ->
-    update_max_size(Node, none);
 
 change_memory_quota(Node, NewMemQuotaMB) when is_integer(NewMemQuotaMB) ->
     update_max_size(Node, NewMemQuotaMB).
 
 prepare_setup_disk_storage_conf(Node, Path) when Node =:= node() ->
     {value, PropList} = ns_config:search_node(Node, ns_config:get(), memcached),
-    DBName = filename:absname(proplists:get_value(dbname, PropList)),
+    DBDir = filename:absname(proplists:get_value(dbdir, PropList)),
     {ok, NodeInfo} = dict:find(Node, ns_doctor:get_nodes()),
-    NewDBName = filename:absname(filename:join(Path, "default")),
-    PathOK = case DBName of
-                 NewDBName -> ok;
+    NewDBDir = filename:absname(Path),
+    PathOK = case DBDir of
+                 NewDBDir -> ok;
                  _ ->
+                     %% TODO: check permission to write
                      filelib:ensure_dir(Path),
                      case file:make_dir(Path) of
                          ok -> ok;
+                         {error, eexist} -> ok;
                          _ -> error
                      end
              end,
@@ -77,15 +67,18 @@ prepare_setup_disk_storage_conf(Node, Path) when Node =:= node() ->
             {ok, fun () ->
                          %% we need to setup disk quota for node & default bucket
                          DiskStats = proplists:get_value(disk_data, NodeInfo),
-                         {ok, {_MPoint, KBytesTotal, Cap}} = extract_disk_stats_for_path(DiskStats, NewDBName),
+                         %% TODO: this will not work if they put it
+                         %% directly in a mount point
+                         {ok, {_MPoint, KBytesTotal, Cap}} =
+                             extract_disk_stats_for_path(DiskStats, NewDBDir),
                          Total = KBytesTotal * 1024,
                          Used = (Total * Cap) div 100,
                          FreeMB = (Total - Used) div 1048576,
 
                          ns_config:set({node, node(), memcached},
-                                       [{dbname, NewDBName},
+                                       [{dbdir, Path},
                                         {hdd_quota, FreeMB}
-                                        | lists:keydelete(dbname, 1, PropList)]),
+                                        | lists:keydelete(dbdir, 1, PropList)]),
 
                          ns_bucket:update_bucket_props("default", [{hdd_quota, FreeMB * 1048576}])
                  end};
@@ -94,8 +87,7 @@ prepare_setup_disk_storage_conf(Node, Path) when Node =:= node() ->
 
 local_bucket_disk_usage("default" = _Bucket) ->
     {value, PropList} = ns_config:search_node(node(), ns_config:get(), memcached),
-    DBPath = proplists:get_value(dbname, PropList),
-    DBDir = filename:dirname(DBPath),
+    DBDir = proplists:get_value(dbdir, PropList),
     {ok, Filenames} = file:list_dir(DBDir),
     %% this doesn't include filesystem slack
     lists:sum([filelib:file_size(filename:join([DBDir, Name])) || Name <- Filenames]).
@@ -118,11 +110,12 @@ bucket_disk_usage(Node, Bucket) ->
 %
 storage_conf(Node) ->
     {value, PropList} = ns_config:search_node(Node, ns_config:get(), memcached),
-    DBName = misc:expect_prop_value(dbname, PropList),
-    HDDQuotaMB = misc:expect_prop_value(hdd_quota, PropList),
-    HDDInfo = [{path, filename:nativename(filename:dirname(filename:absname(DBName)))},
-               {quotaMb, HDDQuotaMB},
-               {state, ok}],
+    HDDInfo = case proplists:get_value(dbdir, PropList) of
+                  undefined -> [];
+                  DBDir -> [{path, filename:absname(DBDir)},
+                             {quotaMb, none},
+                             {state, ok}]
+              end,
     [{ssd, []},
      {hdd, [HDDInfo]}].
 
@@ -150,29 +143,32 @@ node_storage_info(Node) ->
 extract_node_storage_info(NodeInfo, Node) ->
     {RAMTotal, RAMUsed, _} = proplists:get_value(memory_data, NodeInfo),
     DiskStats = proplists:get_value(disk_data, NodeInfo),
-    DiskPathes = [proplists:get_value(path, X) || X <- proplists:get_value(hdd, ns_storage_conf:storage_conf(Node))],
+    DiskPaths = [proplists:get_value(path, X) || X <- proplists:get_value(hdd, ns_storage_conf:storage_conf(Node))],
     [{ssd, _},
      {hdd, [HDDProps]}] = storage_conf(Node),
-    MemQuotaMB = memory_quota(Node),
-    HDDQuotaMB = misc:expect_prop_value(quotaMb, HDDProps),
-    {DiskTotal, DiskUsed} =
-        lists:foldl(fun (Path, {ATotal, AUsed} = Tuple) ->
-                            %% move it over here
-                            case extract_disk_stats_for_path(DiskStats, Path) of
-                                none -> Tuple;
-                                {ok, {_MPoint, KBytesTotal, Cap}} ->
-                                    Total = KBytesTotal * 1024,
-                                    Used = (Total * Cap) div 100,
-                                    {ATotal + Total,
-                                     AUsed + Used}
-                            end
-                    end, {0, 0}, DiskPathes),
-    [{ram, [{total, RAMTotal},
-            {quotaTotal, MemQuotaMB * 1048576},
-            {used, RAMUsed}]},
-     {hdd, [{total, DiskTotal},
-            {quotaTotal, HDDQuotaMB * 1048576},
-            {used, DiskUsed}]}].
+    case {memory_quota(Node), misc:expect_prop_value(quotaMb, HDDProps)} of
+        {MemQuotaMB, HDDQuotaMB} when is_integer(MemQuotaMB),
+                                      is_integer(HDDQuotaMB) ->
+            {DiskTotal, DiskUsed} =
+                lists:foldl(fun (Path, {ATotal, AUsed} = Tuple) ->
+                                    %% move it over here
+                                    case extract_disk_stats_for_path(DiskStats, Path) of
+                                        none -> Tuple;
+                                        {ok, {_MPoint, KBytesTotal, Cap}} ->
+                                            Total = KBytesTotal * 1024,
+                                            Used = (Total * Cap) div 100,
+                                            {ATotal + Total,
+                                             AUsed + Used}
+                                    end
+                            end, {0, 0}, DiskPaths),
+            [{ram, [{total, RAMTotal},
+                    {quotaTotal, MemQuotaMB * 1048576},
+                    {used, RAMUsed}]},
+             {hdd, [{total, DiskTotal},
+                    {quotaTotal, HDDQuotaMB * 1048576},
+                    {used, DiskUsed}]}];
+        _ -> []
+    end.
 
 cluster_storage_info() ->
     Nodes = dict:to_list(ns_doctor:get_nodes()),

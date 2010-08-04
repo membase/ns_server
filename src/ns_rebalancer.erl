@@ -293,7 +293,7 @@ promote_replica(Bucket, Chain, RemapNodes, V) ->
 
 %% @doc Wait until either all memcacheds are up or stop is pressed.
 wait_for_memcached(Nodes) ->
-    case ns_memcached:wait_for_connection(Nodes, 5000) of
+    case ns_memcached:check_bucket(Nodes, "default", 5000) of
         [] ->
             ok;
         Down ->

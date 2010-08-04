@@ -41,12 +41,11 @@ num_nodes.times do |x|
 
     {{node, #{node_id}, memcached}, [
                  {port, #{(x * 2) + base_direct_port}},
-                 {ht_size, 12289},
-                 {ht_locks, 23},
-                 {dbname, "#{node_data}/default"},
+                 {dbdir, "#{node_data}"},
                  {admin_user, "_admin"},
                  {admin_pass, "_admin"},
-                 {max_size, 400},
+                 {bucket_engine, "./bin/bucket_engine/bucket_engine.so"},
+                 {engine, "./bin/ep_engine/ep.so"},
                  {verbosity, ""}
                  ]}.
 

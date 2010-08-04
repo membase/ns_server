@@ -519,6 +519,9 @@ load_config(ConfigPath, DirPath, PolicyMod) ->
         E -> E
     end.
 
+validate_config(Config) ->
+    lists:foreach(fun ({_, V}) when V /= false -> ok end, hd(Config)).
+
 save_config(Config) ->
     {value, DirPath} = search(Config, directory),
     save_config(Config, DirPath).
@@ -526,6 +529,7 @@ save_config(Config) ->
 save_config(#config{dynamic = D}, DirPath) ->
     C = dynamic_config_path(DirPath),
     % Only saving the dynamic config parts.
+    validate_config(D),
     ok = save_file(bin, C, D).
 
 announce_changes([]) -> ok;

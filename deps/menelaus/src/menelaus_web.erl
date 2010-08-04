@@ -1333,11 +1333,7 @@ handle_node_settings_post(Node, Req) ->
                       end, Results) of
         [] ->
             lists:foreach(fun ({ok, CommitF}) ->
-                                  try CommitF()
-                                  catch
-                                      E:T ->
-                                          error_logger:error_msg("Got exception from node settings commit function: ~p. Ignoring.~n", [{E,T}])
-                                  end;
+                                  CommitF();
                               (_) -> ok
                           end, Results),
             Req:respond({200, add_header(), []});

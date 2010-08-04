@@ -35,6 +35,7 @@
 
 %% external API
 -export([connected/0, connected/1,
+         check_bucket/3,
          create_bucket/2, create_bucket/3,
          delete_bucket/1, delete_bucket/2,
          delete_vbucket/2, delete_vbucket/3,
@@ -45,8 +46,7 @@
          set_vbucket_state/3, set_vbucket_state/4,
          stats/1, stats/2, stats/3,
          stats_multi/2, stats_multi/3,
-         topkeys/1, topkeys/2,
-         wait_for_connection/2]).
+         topkeys/1, topkeys/2]).
 
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
@@ -65,11 +65,14 @@ init([]) ->
     proc_lib:init_ack({ok, self()}),
     connect().
 
-handle_call({create_bucket, _Bucket, _Config}, _From, State) ->
-    Reply = unimplemented,
+handle_call({check_bucket, Bucket}, _From, State) ->
+    Reply = mc_client_binary:select_bucket(State#state.sock, Bucket),
     {reply, Reply, State};
-handle_call({delete_bucket, _Bucket}, _From, State) ->
-    Reply = unimplemented,
+handle_call({create_bucket, Bucket, Config}, _From, State) ->
+    Reply = mc_client_binary:create_bucket(State#state.sock, Bucket, Config),
+    {reply, Reply, State};
+handle_call({delete_bucket, Bucket}, _From, State) ->
+    Reply = mc_client_binary:delete_bucket(State#state.sock, Bucket),
     {reply, Reply, State};
 handle_call({delete_vbucket, Bucket, VBucket}, _From,
             #state{sock=Sock} = State) ->
@@ -80,7 +83,7 @@ handle_call({delete_vbucket, Bucket, VBucket}, _From,
                         end),
     {reply, Reply, State};
 handle_call(list_buckets, _From, State) ->
-    Reply = {ok, ["default"]},
+    Reply = mc_client_binary:list_buckets(State#state.sock),
     {reply, Reply, State};
 handle_call(noop, _From, State) ->
     Reply = mc_client_binary:noop(State#state.sock),
@@ -111,10 +114,7 @@ handle_info(Msg, State) ->
     {noreply, State}.
 
 
-terminate(Reason, State) ->
-    error_logger:error_msg("~p:terminate(~p, ~p)~n",
-                           [?MODULE, Reason, State]),
-    timer:sleep(2000),
+terminate(_Reason, _State) ->
     ok.
 
 
@@ -128,6 +128,23 @@ connected() ->
 
 connected(Node) ->
     misc:running(Node, ?MODULE).
+
+check_bucket([], _Bucket, _Timeout) -> ok;
+check_bucket(Node, Bucket, Timeout) when is_atom(Node) ->
+    check_bucket([Node], Bucket, Timeout);
+check_bucket(Nodes, Bucket, Timeout) ->
+    {Replies, BadNodes} = gen_server:multi_call(Nodes, ?MODULE,
+                                                {check_bucket, Bucket},
+                                                Timeout),
+    BadReplies = [X || {_, {R, _}} = X <- Replies, R /= ok],
+    case BadReplies ++ BadNodes of
+        [] ->
+            [];
+        X ->
+            ?log_warning("wait_for_connection: bad replies from ~p.",
+                         [X]),
+            [N || {N, _} <- BadReplies] ++ BadNodes
+    end.
 
 create_bucket(Bucket, Config) ->
     create_bucket(node(), Bucket, Config).
@@ -209,25 +226,6 @@ topkeys(Node, Bucket) ->
     end.
 
 
-%% @doc Wait for ns_memcached to be connected on a node or list of
-%% nodes. Will exit if one of the nodes goes down.
-wait_for_connection([], _Timeout) -> ok;
-wait_for_connection(Node, Timeout) when is_atom(Node) ->
-    wait_for_connection([Node], Timeout);
-wait_for_connection(Nodes, Timeout) ->
-    {Replies, BadNodes} = gen_server:multi_call(Nodes, ?MODULE,
-                                                noop, Timeout),
-    BadReplies = [X || {_, {R, _}} = X <- Replies, R /= ok],
-    case BadReplies ++ BadNodes of
-        [] ->
-            [];
-        X ->
-            ?log_warning("wait_for_connection: bad replies from ~p.",
-                         [X]),
-            [N || {N, _} <- BadReplies] ++ BadNodes
-    end.
-
-
 %% Internal functions
 call(Node, Call) ->
     gen_server:call({?MODULE, Node}, Call).
@@ -237,34 +235,35 @@ call(Node, Call) ->
 connect() ->
     Config = ns_config:get(),
     Port = ns_config:search_node_prop(Config, memcached, port),
-    case gen_tcp:connect("127.0.0.1", Port, [binary, {packet, 0},
-                                             {active, false}]) of
-        {ok, Sock} ->
+    User = ns_config:search_node_prop(Config, memcached, admin_user),
+    Pass = ns_config:search_node_prop(Config, memcached, admin_pass),
+    try
+        {ok, S} = gen_tcp:connect("127.0.0.1", Port, [binary, {packet, 0},
+                                                         {active, false}]),
+        ok = mc_client_binary:auth(S, {<<"PLAIN">>,
+                                       {list_to_binary(User),
+                                        list_to_binary(Pass)}}),
+        S of
+        Sock ->
             %% Register AFTER we connect so we can just use whether
             %% the name is registered to see if we have a healthy
             %% memcached.
             register(?MODULE, self()),
-            gen_server:enter_loop(?MODULE, [], #state{sock=Sock});
-        {error, Reason} ->
-            ?log_warning("Unable to connect: ~p, retrying.", [Reason]),
+            gen_server:enter_loop(?MODULE, [], #state{sock=Sock})
+    catch
+        E:R ->
+            ?log_warning("Unable to connect: ~p, retrying.", [{E, R}]),
             timer:sleep(1000), % Avoid reconnecting too fast.
             connect()
     end.
 
-do_in_bucket(_Sock, Bucket, Fun) ->
-    %% TODO: real multi-tenancy
-    case Bucket of
-        "default" ->
+do_in_bucket(Sock, Bucket, Fun) ->
+    case mc_client_binary:select_bucket(Sock, Bucket) of
+        ok ->
             Fun();
-        _ ->
-            {memcached_error, {mc_status_key_enoent, []}}
+        R ->
+            R
     end.
-    %% case mc_client_binary:select_bucket(Sock, Bucket) of
-    %%     ok ->
-    %%         Fun();
-    %%     R ->
-    %%         R
-    %% end.
 
 map_vbucket_state("active") -> active;
 map_vbucket_state("replica") -> replica;
@@ -284,15 +283,9 @@ parse_topkeys(Topkeys) ->
                       {Key, parse_topkey_value(ValueString)}
               end, Topkeys).
 
-parse_vbucket_name("vb_" ++ Key) ->
-    list_to_integer(Key);
-parse_vbucket_name(Key) ->
-    {unrecognized_vbucket, Key}.
-
 parse_vbuckets(Stats) ->
-    {ok, lists:map(fun ({Key, Value}) ->
-                           {parse_vbucket_name(Key), map_vbucket_state(Value)}
-                   end, Stats)}.
+    {ok, [{list_to_integer(V), map_vbucket_state(Value)} ||
+             {"vb_" ++ V, Value} <- Stats]}.
 
 process_multi(Fun, {Replies, BadNodes}) ->
     ProcessedReplies = lists:map(fun ({Node, {ok, Reply}}) ->

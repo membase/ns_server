@@ -101,9 +101,7 @@ keys([KVList | Rest], Accum) ->
     keys(Rest, lists:map(fun({Key, _Val}) -> Key end, KVList) ++ Accum).
 
 default() ->
-   DataDir = filename:join(default_path("data"), misc:node_name_short()),
-   DbName = filename:join(DataDir, "default"),
-   ok = filelib:ensure_dir(DbName),
+   DbDir = filename:join(default_path("data"), misc:node_name_short()),
    [{directory, default_path("config")},
     {nodes_wanted, [node()]},
     % In general, the value in these key-value pairs are property lists,
@@ -138,16 +136,12 @@ default() ->
 
     % Memcached config
     {{node, node(), memcached}, [{port, 11210},
-                                 {ht_size, 3079},
-                                 {ht_locks, 5},
-                                 {dbname, DbName},
+                                 {dbdir, DbDir},
                                  {admin_user, "_admin"},
                                  {admin_pass, "_admin"},
-                                 {max_size, case memsup:get_memory_data() of
-                                                {Total, _, _} -> (Total * 4) div (1048576 * 5);
-                                                _ -> undefined
-                                            end},
-                                 {hdd_quota, 0},
+                                 {bucket_engine,
+                                  "./bin/bucket_engine/bucket_engine.so"},
+                                 {engine, "./bin/ep_engine/ep.so"},
                                  {verbosity, ""}]},
 
     {buckets, [{configs, [{"default",
@@ -155,8 +149,14 @@ default() ->
                             {num_replicas, 1},
                             %% default quotas will be defined when resources
                             %% stage of wizard will post data
-                            {ram_quota, 0},
+                            {ram_quota,
+                             case memsup:get_memory_data() of
+                                 {Total, _, _} -> (Total * 4) div (1048576 * 5);
+                                 _ -> undefined
+                             end},
                             {hdd_quota, 0},
+                            {ht_size, 3079},
+                            {ht_locks, 5},
                             {servers, []},
                             {map, undefined}]
                           }]
@@ -188,21 +188,23 @@ default() ->
       {memcached, "./bin/port_adaptor/port_adaptor",
        ["7200", "./bin/memcached/memcached",
         "-p", {"~B", [port]},
-        "-E", "./bin/ep_engine/ep.so",
+        "-E", "./bin/bucket_engine/bucket_engine.so",
         "-B", "binary",
         "-r",
-        "-e", {"vb0=false;ht_size=~B;ht_locks=~B;dbname=~s;min_data_age=1;queue_age_cap=5~s",
-               [ht_size, ht_locks, dbname, {ns_storage_conf, format_engine_max_size, []}]},
+        "-e", {"admin=~s;default_bucket_name=default;auto_create=false",
+               [admin_user]},
         {"~s", [verbosity]}
        ],
-       [{env, [{"MEMCACHED_TOP_KEYS", "100"}]},
+       [{env, [{"MEMCACHED_TOP_KEYS", "100"},
+               {"ISASL_PWFILE", {"~s", [{isasl, path}]}},
+               {"ISASL_DB_CHECK_TIME", "1"}]},
         use_stdio,
         stderr_to_stdout,
         stream]
       }]
     },
 
-    {{node, node(), ns_log}, [{filename, filename:join(DataDir, "logs.bin")}]},
+    {{node, node(), ns_log}, [{filename, filename:join(DbDir, "ns_log")}]},
 
     % Modifiers: menelaus
     % Listeners: ? possibly ns_log

@@ -17,6 +17,8 @@
 
 -behaviour(gen_server).
 
+-include("ns_common.hrl").
+
 %% API
 -export([start_link/0]).
 -export([config/1,
@@ -166,10 +168,12 @@ create_bucket(BucketName, NewConfig) ->
             exit({invalid_name, BucketName});
         _ -> ok
     end,
-    MergedConfig = misc:update_proplist([{num_vbuckets, 16},
+    MergedConfig = misc:update_proplist([{num_vbuckets, 1024},
                                          {num_replicas, 1},
                                          {ram_quota, 0},
                                          {hdd_quota, 0},
+                                         {ht_size, 3079},
+                                         {ht_locks, 5},
                                          {servers, []},
                                          {map, undefined}],
                                         NewConfig),
@@ -302,8 +306,8 @@ handle_info(check_config, State) ->
     try check_config()
     catch
         E:R ->
-            error_logger:info_msg("~p could not check config because of ~p~n",
-                                  [?MODULE, {E, R}])
+            ?log_warning("could not check config: ~p~n~p",
+                                  [{E, R}, erlang:get_stacktrace()])
     end,
     {noreply, State};
 handle_info(_Info, State) ->
@@ -360,12 +364,15 @@ check_config() ->
     end.
 
 config_string(BucketName, BucketConfig) ->
-    DbName = case proplists:get_value(dbname, BucketConfig) of
-                 undefined ->
-                     DataDir = filename:join(ns_config_default:default_path("data"),
-                                             misc:node_name_short()),
-                     filename:join(DataDir, BucketName);
-                 N -> N
-             end,
-    ok = filelib:ensure_dir(DbName),
-    lists:flatten(io_lib:format("vb0=false;dbname=~s", [DbName])).
+    DBDir = ns_config:search_node_prop(ns_config:get(), memcached, dbdir),
+    DBName = filename:join(DBDir, BucketName),
+    MemQuota = proplists:get_value(ram_quota, BucketConfig) * 1048576,
+    Engine = ns_config:search_node_prop(ns_config:get(), memcached, engine),
+    ok = filelib:ensure_dir(DBName),
+    lists:flatten(
+      io_lib:format(
+        "~s" ++ [0] ++ "vb0=false;ht_size=~p;ht_locks=~p;max_size=~p;dbname=~s",
+        [Engine,
+         proplists:get_value(ht_size, BucketConfig),
+         proplists:get_value(ht_locks, BucketConfig),
+         MemQuota, DBName])).

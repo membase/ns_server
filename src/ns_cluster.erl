@@ -118,11 +118,9 @@ joining({exit, _Pid}, #joining_state{remote=RemoteNode, cookie=NewCookie}) ->
               [node(), RemoteNode, Connected]),
     %% Add ourselves to nodes_wanted on the remote node after shutting
     %% down our own config server.
-    case rpc:call(RemoteNode, ns_cluster, add_node, [node()]) of
-        {badrpc, Crap} -> exit({badrpc, Crap});
-        _ -> error_logger:info_msg("Remote config updated to add ~p to ~p~n",
-                                   [node(), RemoteNode])
-    end,
+    ok = rpc:call(RemoteNode, ns_cluster, add_node, [node()]),
+    error_logger:info_msg("Remote config updated to add ~p to ~p~n",
+                          [node(), RemoteNode]),
     {ok, running, State} = bringup(),
 
     timer:apply_after(1000, ?MODULE, log_joined, []),
@@ -190,7 +188,8 @@ add_node(Node) ->
     ns_config:set({node, Node, membership}, inactiveAdded),
     ns_mnesia:add_node(Node),
     error_logger:info_msg("~p:add_node: successfully added ~p to cluster.~n",
-                          [?MODULE, Node]).
+                          [?MODULE, Node]),
+    ok.
 
 
 join(RemoteNode, NewCookie) ->
