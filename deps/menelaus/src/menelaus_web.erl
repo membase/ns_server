@@ -674,41 +674,74 @@ handle_bucket_delete(_PoolId, _BucketId, Req) ->
     Req:respond({404, add_header(), "The bucket to be deleted was not found.\r\n"}),
     ok.
 
-%% TODO: validation
-parse_ram_quota(RAMQuotaMB) ->
-    list_to_integer(RAMQuotaMB) * 1048576.
-
-parse_hdd_quota(HDDQuotaGB) ->
-    list_to_integer(HDDQuotaGB) * 1048576 * 1024.
-
-parse_num_replicas(NumReplicas) ->
-    list_to_integer(NumReplicas).
-
 redirect_to_bucket(Req, PoolId, BucketId) ->
     Req:respond({302, [{"Location", concat_url_path(["pools", PoolId, "buckets", BucketId])}
                        | add_header()],
                  ""}).
 
-handle_bucket_update(PoolId, BucketId, Req) ->
+parse_ram_quota(RAMQuotaMB) ->
+    (catch list_to_integer(RAMQuotaMB) * 1048576).
+
+parse_hdd_quota(HDDQuotaGB) ->
+    (catch list_to_integer(HDDQuotaGB) * 1048576 * 1024).
+
+parse_num_replicas(NumReplicas) ->
+    (catch list_to_integer(NumReplicas)).
+
+validate_bucket_params(RAMQuotaMB, HDDQuotaGB, NumReplicas) ->
+    RAMIsNumber = is_integer(RAMQuotaMB),
+    HDDIsNumber = is_integer(HDDQuotaGB),
+    ReplicasIsInt = is_integer(NumReplicas),
+
+    Errors = [{ramQuotaMB, case RAMIsNumber of
+                               true -> ok;
+                               _ ->
+                                   <<"RAM quota needs to be a number">>
+                           end},
+              {hddQuotaGB, case HDDIsNumber of
+                               true ->
+                                   case RAMIsNumber of
+                                       true ->
+                                           case RAMQuotaMB > HDDQuotaGB * 1024 of
+                                               true ->
+                                                   <<"Disk quota is smaller than RAM quota does not make sense">>;
+                                               _ -> ok
+                                           end;
+                                       _ -> ok
+                                   end;
+                               _ ->
+                                   <<"Disk quota needs to be a number">>
+                           end},
+              {replicaNumber, case ReplicasIsInt of
+                                  true -> ok;
+                                  _ -> <<"Replica number needs to be a number">>
+                              end}],
+    case lists:filter(fun ({_, ok}) -> false;
+                          (_) -> true
+                      end, Errors) of
+        [] -> ok;
+        X -> X
+    end.
+
+handle_bucket_update(_PoolId, BucketId, Req) ->
     Params = Req:parse_post(),
-    UpdatedProps0 = [case proplists:get_value("ramQuotaMB", Params) of
-                         undefined -> undefined;
-                         RAMQuotaMB -> {ram_quota, parse_ram_quota(RAMQuotaMB)}
-                     end,
-                     case proplists:get_value("hddQuotaGB", Params) of
-                         undefined -> undefined;
-                         HDDQuotaGB -> {hdd_quota, parse_hdd_quota(HDDQuotaGB)}
-                     end,
-                     case proplists:get_value("replicaNumber", Params) of
-                         undefined -> undefined;
-                         NumReplicas -> {num_replicas, parse_num_replicas(NumReplicas)}
-                     end],
-    UpdatedProps = lists:filter(fun (undefined) -> false;
-                                    (_) -> true
-                                end, UpdatedProps0),
-    %% TODO: error handling
-    ns_bucket:update_bucket_props(BucketId, UpdatedProps),
-    Req:respond({200, add_header(), []}).
+    RAMQuota = parse_ram_quota(proplists:get_value("ramQuotaMB", Params)),
+    HDDQuota = parse_hdd_quota(proplists:get_value("hddQuotaGB", Params)),
+    NumReplicas = parse_num_replicas(proplists:get_value("replicaNumber", Params)),
+    case validate_bucket_params(RAMQuota, HDDQuota, NumReplicas) of
+        ok ->
+            UpdatedProps = [{ram_quota, RAMQuota},
+                            {hdd_quota, HDDQuota},
+                            {num_replicas, NumReplicas}],
+            case ns_bucket:update_bucket_props(BucketId, UpdatedProps) of
+                ok ->
+                    Req:respond({200, add_header(), []});
+                {exit, {not_found, _}, _} ->
+                    reply_json(Req, {struct, [{'_', [<<"Bucket not found">>]}]}, 400)
+            end;
+        Errors ->
+            reply_json(Req, {struct, Errors}, 400)
+    end.
 
 handle_bucket_create(PoolId, Req) ->
     case ns_node_disco:nodes_wanted() =:= ns_node_disco:nodes_actual_proper() of
@@ -719,10 +752,19 @@ handle_bucket_create(PoolId, Req) ->
             RAMQuota = parse_ram_quota(misc:expect_prop_value("ramQuotaMB", Params)),
             HDDQuota = parse_hdd_quota(misc:expect_prop_value("hddQuotaGB", Params)),
             NumReplicas = parse_num_replicas(misc:expect_prop_value("replicaNumber", Params)),
-            ok = ns_bucket:create_bucket(Name, [{ram_quota, RAMQuota},
-                                                {hdd_quota, HDDQuota},
-                                                {num_replicas, NumReplicas}]),
-            redirect_to_bucket(Req, PoolId, Name);
+            case validate_bucket_params(RAMQuota, HDDQuota, NumReplicas) of
+                ok ->
+                    case ns_bucket:create_bucket(Name, [{ram_quota, RAMQuota},
+                                                        {hdd_quota, HDDQuota},
+                                                        {num_replicas, NumReplicas}]) of
+                        ok ->
+                            redirect_to_bucket(Req, PoolId, Name);
+                        {exit, {already_exists, _}, _} ->
+                            reply_json(Req, {struct, [{'_', [<<"Bucket with given name already exists">>]}]}, 400)
+                    end;
+                Errors ->
+                    reply_json(Req, {struct, Errors}, 400)
+            end;
         false ->
             reply_json(Req, [list_to_binary("One or more server nodes appear to be down. " ++
                                                 "Please first restore or remove those servers nodes " ++
