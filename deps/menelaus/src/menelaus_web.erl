@@ -669,10 +669,13 @@ handle_bucket_info_streaming(PoolId, Id, Req, Pool, _Bucket, ForceInfoLevel) ->
         end,
     handle_streaming(F, Req, undefined).
 
-handle_bucket_delete(_PoolId, _BucketId, Req) ->
-    %% We don't currently allow deleting buckets.
-    Req:respond({404, add_header(), "The bucket to be deleted was not found.\r\n"}),
-    ok.
+handle_bucket_delete(_PoolId, BucketId, Req) ->
+    case ns_bucket:delete_bucket(BucketId) of
+        ok ->
+            Req:respond({200, add_header(), []});
+        {exit, {not_found, _}, _} ->
+            Req:respond({404, add_header(), "The bucket to be deleted was not found.\r\n"})
+    end.
 
 redirect_to_bucket(Req, PoolId, BucketId) ->
     Req:respond({302, [{"Location", concat_url_path(["pools", PoolId, "buckets", BucketId])}
