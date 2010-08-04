@@ -28,6 +28,7 @@
          get_bucket_names/0,
          json_map/2,
          set_bucket_config/2,
+         is_valid_bucket_name/1,
          create_bucket/2,
          update_bucket_props/2,
          delete_bucket/1,
@@ -131,7 +132,40 @@ json_map(BucketId, LocalAddr) ->
 set_bucket_config(Bucket, NewConfig) ->
     update_bucket_config(Bucket, fun (_) -> NewConfig end).
 
+%% Here's code snippet from bucket-engine.  We also disallow '.' &&
+%% '..' which cause problems with browsers even when properly
+%% escaped. See bug 953
+%%
+%% static bool has_valid_bucket_name(const char *n) {
+%%     bool rv = strlen(n) > 0;
+%%     for (; *n; n++) {
+%%         rv &= isalpha(*n) || isdigit(*n) || *n == '.' || *n == '%' || *n == '_' || *n == '-';
+%%     }
+%%     return rv;
+%% }
+is_valid_bucket_name([]) -> false;
+is_valid_bucket_name(".") -> false;
+is_valid_bucket_name("..") -> false;
+is_valid_bucket_name([Char | Rest]) ->
+    case ($A =< Char andalso Char =< $Z)
+        orelse ($a =< Char andalso Char =< $z)
+        orelse ($0 =< Char andalso Char =< $9)
+        orelse Char =:= $. orelse Char =:= $%
+        orelse Char =:= $_ orelse Char =:= $- of
+        true ->
+            case Rest of
+                [] -> true;
+                _ -> is_valid_bucket_name(Rest)
+            end;
+        _ -> false
+    end.
+
 create_bucket(BucketName, NewConfig) ->
+    case is_valid_bucket_name(BucketName) of
+        false ->
+            exit({invalid_name, BucketName});
+        _ -> ok
+    end,
     MergedConfig = misc:update_proplist([{num_vbuckets, 16},
                                          {num_replicas, 1},
                                          {ram_quota, 0},

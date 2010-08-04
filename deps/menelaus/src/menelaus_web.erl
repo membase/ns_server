@@ -716,12 +716,9 @@ validate_bucket_params(RAMQuotaMB, HDDQuotaGB, NumReplicas) ->
                                   true -> ok;
                                   _ -> <<"Replica number needs to be a number">>
                               end}],
-    case lists:filter(fun ({_, ok}) -> false;
-                          (_) -> true
-                      end, Errors) of
-        [] -> ok;
-        X -> X
-    end.
+    lists:filter(fun ({_, ok}) -> false;
+                     (_) -> true
+                 end, Errors).
 
 handle_bucket_update(_PoolId, BucketId, Req) ->
     Params = Req:parse_post(),
@@ -729,7 +726,7 @@ handle_bucket_update(_PoolId, BucketId, Req) ->
     HDDQuota = parse_hdd_quota(proplists:get_value("hddQuotaGB", Params)),
     NumReplicas = parse_num_replicas(proplists:get_value("replicaNumber", Params)),
     case validate_bucket_params(RAMQuota, HDDQuota, NumReplicas) of
-        ok ->
+        [] ->
             UpdatedProps = [{ram_quota, RAMQuota},
                             {hdd_quota, HDDQuota},
                             {num_replicas, NumReplicas}],
@@ -752,8 +749,14 @@ handle_bucket_create(PoolId, Req) ->
             RAMQuota = parse_ram_quota(misc:expect_prop_value("ramQuotaMB", Params)),
             HDDQuota = parse_hdd_quota(misc:expect_prop_value("hddQuotaGB", Params)),
             NumReplicas = parse_num_replicas(misc:expect_prop_value("replicaNumber", Params)),
-            case validate_bucket_params(RAMQuota, HDDQuota, NumReplicas) of
-                ok ->
+            Errors0 = validate_bucket_params(RAMQuota, HDDQuota, NumReplicas),
+            Errors = case ns_bucket:is_valid_bucket_name(Name) of
+                         false -> [{name, <<"Given bucket name is invalid. Consult the documentation.">>}
+                                   | Errors0];
+                         _ -> Errors0
+                     end,
+            case Errors of
+                [] ->
                     case ns_bucket:create_bucket(Name, [{ram_quota, RAMQuota},
                                                         {hdd_quota, HDDQuota},
                                                         {num_replicas, NumReplicas}]) of
@@ -762,7 +765,7 @@ handle_bucket_create(PoolId, Req) ->
                         {exit, {already_exists, _}, _} ->
                             reply_json(Req, {struct, [{'_', [<<"Bucket with given name already exists">>]}]}, 400)
                     end;
-                Errors ->
+                _ ->
                     reply_json(Req, {struct, Errors}, 400)
             end;
         false ->
