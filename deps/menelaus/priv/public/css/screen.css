@@ -563,7 +563,9 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 #server_list_container .details table td span {color:#7e7e80;}
 
 /* cluster overview */
+#overview .shadow_box {margin:0 0 5px;}
 #overview .cnt .hdr {height:39px;padding:0 18px;line-height:39px;font-size:21px;background:url(../images/bg_h2.gif) 0 100% repeat-x #e3e3e4;}
+#overview .cnt .hdr span {font-size:18px;}
 #overview .section {border:2px solid #d4d4d5;border-width:0 2px;}
 #overview .section .item {padding:13px 13px 13px 16px;border-bottom:1px solid #ced5d9;}
 #overview .section .item .label {float:left;width:128px;color:#9b9b9b;line-height:1.4;}
@@ -579,6 +581,11 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 .usage_biggest + ul li+li {width:96px;color:#409f05;}
 .usage_biggest + ul li+li+li {width:175px;color:#e43a1b;}
 .usage_biggest + ul li+li+li+li {width:105px;color:#9b9b9b;}
+
+#overview .graph_main {display:inline-block;width:355px;margin:0 0 0 15px; *zoom:1;*display:inline;}
+#overview .graph_main:first-child {margin:0;}
+#overview .graph_main .graph {width:355px;height:140px;position:relative;}
+#overview .graph_main .graph_info_label {display:block;padding:11px 0 0;font-size:13px;}
 
 .actservers {float:left;width:232px;min-height:120px;padding:30px 0 0 120px;background:url(../images/ico_server_big.png) 11px 13px no-repeat;}
 .actservers h3 {padding:0 0 5px;font-size:18px;font-weight:normal;}
