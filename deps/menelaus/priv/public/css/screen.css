@@ -159,7 +159,7 @@ h1 .nav a {font-size:11px; font-weight:bolder; cursor:pointer;}
 .percentage_big .usage_big .comment {margin:0 0 0 336px;}
 .percentage_big a.text_11 {position:relative; top:6px; margin:0 0 0 5px;}
 
-.gong_rb {background:none #e2e3e3; position:relative;}
+.gong_rb {background:none #e2e3e3; position:relative;margin:5px 0 10px;}
 .gong_rb .pad {padding:10px !important; background:none !important;}
 .gong_rb .side {width:9px; height:9px; position:absolute; background:url(../images/gong_rb.gif) 0 0 no-repeat; overflow:hidden;}
 .gong_rb .side_1 {background-position:0 0px; left:0px; top:0px;}
@@ -891,7 +891,7 @@ ul.tabs .alert_num_display .alert_num {display:block;}
 
 #servers .servers_list .serverName {display:inline-block; height:60px; padding:0 0 0 45px; background:url(../images/server_icon.png) 0 10px no-repeat; font-size:12px; font-weight:bolder; float:left;}
 
-#servers .gong_rb { margin-top: 10px; margin-bottom: 10px; padding-left:77px; background-image:url(../images/icons.png); background-position:0 5px; background-repeat:no-repeat;}
+#servers .gong_rb { margin-top: 10px; margin-bottom: 10px; padding-left:67px; background-image:url(../images/icons.png); background-position:-6px 1px; background-repeat:no-repeat;}
 
 #servers .servers-not-rebalancing { display: block; }
 #servers .servers-rebalancing { display: none; }
@@ -904,7 +904,7 @@ ul.tabs .alert_num_display .alert_num {display:block;}
 .additional_server_info .info_block {display:block; overflow:hidden;}
 .additional_server_info .info_block .path {display:block; padding:2px 0 0 0; font-size:11px; color:#828284;}
 .additional_server_info .info_block.last {padding:10px 0 10px 0;}
-.dynamic_ram {display:block; height:40px; padding:0 0 0 77px; background:url(../images/icons.png) 0 -190px no-repeat; float:left;}
+.dynamic_ram {display:block; height:40px; padding:0 0 0 77px; background:url(../images/icons.png) -6px -190px no-repeat; float:left;}
 .total_ram {display:block; height:14px; text-align:right;}
 
 .RAM_diagramm {width:420px; float:right;}
@@ -919,8 +919,8 @@ ul.tabs .alert_num_display .alert_num {display:block;}
 .RAM_diagramm td.yellow {color:#c19710;}
 .RAM_diagramm td.green {color:#6cc74c;}
 
-.solid_state {display:block; height:40px; width:262px; padding:0 0 0 77px; float:left; background:url(../images/icons.png) 0 -289px no-repeat;}
-.disk_storage {display:block; height:40px; width:262px; padding:0 0 0 77px; float:left; background:url(../images/icons.png) 0 -390px no-repeat;}
+.solid_state {display:block; height:40px; width:262px; padding:0 0 0 77px; float:left; background:url(../images/icons.png) -6px -289px no-repeat;}
+.disk_storage {display:block; height:40px; width:262px; padding:0 0 0 77px; float:left; background:url(../images/icons.png) -6px -390px no-repeat;}
 .additional_server_info .add_btn {display:block; width:61px; height:21px; background:url(../images/add_btn.png) 0 0 no-repeat; float:right;}
 .additional_server_info .info_message {font-size:16px;}
 
@@ -929,13 +929,13 @@ ul.tabs .alert_num_display .alert_num {display:block;}
 .add_back_btn {display:block; width:148px; height:31px; background:url(../images/add_back_btn.png) 0 0 no-repeat; float:right; margin-right:-10px;}
 
 #buckets .settings-placeholder { display: none; }
-body table.buckets_tab td {background:none #eee; border-bottom:1px solid #ced5d9; padding:0px 5px; color:#7e7e80; border-right:0px; text-align:center;}
+body table.buckets_tab td {background:none #eee; border-bottom:1px solid #ced5d9; padding:0 10px 0 10px; color:#7e7e80; border-right:0px; text-align:center;}
 body table.buckets_tab tr td:first-child {text-align:left;}
 body table.buckets_tab tr th {background:none #f6f6f7; border-right:0px; border-bottom:1px solid #fff; color:#4d4d4d; font-weight:normal; text-align:center;}
 body table.buckets_tab tr th:first-child span {display:block; white-space:nowrap; padding:0 0 0 56px; text-align:left;}
 .bucket_name {display:block; float:left; height:68px; line-height:69px; font-size:12px; font-weight:bolder; padding:0 0 0 56px; background:url(../images/icons.png) -12px -98px no-repeat;}
 .buckets_tab .settings-placeholder td .pad {padding:10px 0; background:none;}
-body .buckets_tab .settings-placeholder td .pad .pad {padding:10px 10px 10px 80px !important; background:url(../images/icons.png) 0 -98px no-repeat !important; min-height:60px;}
+body .buckets_tab .settings-placeholder td .pad .pad {padding:10px 10px 10px 80px !important; background:url(../images/icons.png) 0 -94px no-repeat !important; min-height:60px;}
 .buckets_tab .settings-placeholder .edit_btn {display:block; width:65px; height:21px; background:url(../images/edit-button.png) 0 0 no-repeat; float:right;}
 .edit_btn {display:block; width:65px; height:21px; background:url(../images/edit-button.png) 0 0 no-repeat; float:right; text-align:center; font-size:13px; color:#000; line-height:20px; text-decoration:none !important; cursor:pointer;}
 .edit_btn.disabled {opacity:1 !important; background-position:0 -21px !important; color:#9E9FA3; cursor:default;}
@@ -975,7 +975,7 @@ ul.tabs .tab_left a.current:hover, ul.tabs .tab_right a.current:hover {text-shad
 .server_details_tab td {color:#434446; padding:0 0 5px 0;}
 .server_details_tab td span {color:#87888a;}
 
-.servers_list .settings-placeholder {background-color:#e7e7e9; padding-top:5px !important;}
+.servers_list .settings-placeholder {background-color:#e7e7e9; padding-top:5px !important;padding-bottom:15px !important;}
 .servers_list .settings-placeholder .gong_rb {background-color:#d9dadc !important;}
 .servers_list .settings-placeholder .gong_rb .side {background-image:url(../images/gong_rb_2.gif) !important;}
 
