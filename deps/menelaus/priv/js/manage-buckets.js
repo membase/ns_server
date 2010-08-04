@@ -31,14 +31,14 @@ var BucketDetailsDialog = mkClass({
 
     this.cleanups = [];
   },
-  
+
   bindWithCleanup: function (jq, event, callback) {
     jq.bind(event, callback);
     return function () {
       jq.unbind(event, callback);
     };
   },
-  
+
   submit: function () {
     var self = this;
 
