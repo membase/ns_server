@@ -341,6 +341,11 @@ var BucketsSection = {
       e.preventDefault();
       BucketsSection.startCreate();
     });
+
+    $('#bucket_details_dialog .delete_button').bind('click', function (e) {
+      e.preventDefault();
+      BucketsSection.startRemovingBucket();
+    });
   },
   buckets: null,
   refreshBuckets: function (callback) {
@@ -373,6 +378,7 @@ var BucketsSection = {
     // we don't care about value, but we care if it's defined
     DAO.cells.currentPoolDetailsCell.getValue(function () {
       BucketsSection.withBucket(uri, function (bucketDetails) {
+        BucketsSection.currentlyShownBucket = bucketDetails;
         var initValues = _.extend({}, bucketDetails, bucketDetails.settingsCell.value);
         var dialog = new BucketDetailsDialog(initValues, false);
         dialog.startDialog();
@@ -452,10 +458,13 @@ var BucketsSection = {
     if (!this.currentlyShownBucket)
       return;
 
-    hideDialog('bucket_details_dialog_container');
-
+    $('#bucket_details_dialog').addClass('overlayed');
     $('#bucket_remove_dialog .bucket_name').text(this.currentlyShownBucket.name);
-    showDialog('bucket_remove_dialog');
+    showDialog('bucket_remove_dialog', {
+      onHide: function () {
+        $('#bucket_details_dialog').removeClass('overlayed');
+      }
+    });
   },
   // TODO: currently inaccessible from UI
   removeCurrentBucket: function () {
@@ -464,8 +473,6 @@ var BucketsSection = {
     var bucket = self.currentlyShownBucket;
     if (!bucket)
       return;
-
-    hideDialog('bucket_details_dialog_container');
 
     var spinner = overlayWithSpinner('#bucket_remove_dialog');
     var modal = new ModalAction();
@@ -484,6 +491,7 @@ var BucketsSection = {
     function continuation2() {
       spinner.remove();
       modal.finish();
+      hideDialog('bucket_details_dialog');
       hideDialog('bucket_remove_dialog');
     }
   }
