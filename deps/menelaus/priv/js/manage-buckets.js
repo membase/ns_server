@@ -168,12 +168,14 @@ var BucketDetailsDialog = mkClass({
 
     var props = {
       name: 'ramQuotaMB',
-      unitSize: 1048576
+      unitSize: 1048576,
+      minSize: 128
     }
     if (storageType == 'hdd') {
       props = {
         name: 'hddQuotaGB',
-        unitSize: (1048576*1024)
+        unitSize: (1048576*1024),
+        minSize: 1
       }
     }
 
@@ -191,7 +193,7 @@ var BucketDetailsDialog = mkClass({
       var oldThisQuota = self.initValues.quota[storageType];
       var other = self.initValues.otherQuota[storageType];
       var max = storageInfo.quotaTotal - other;
-      var min = 10 * props.unitSize; // TODO
+      var min = props.minSize; // TODO
 
       max = Math.floor(max / props.unitSize);
       min = Math.floor(min / props.unitSize);
