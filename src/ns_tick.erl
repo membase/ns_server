@@ -28,8 +28,6 @@
 -export([code_change/3, handle_call/3, handle_cast/2, handle_info/2, init/1,
          terminate/2]).
 
--export([tick/1]). % used internally via rpc
-
 -record(state, {time}).
 
 %%
@@ -68,18 +66,13 @@ handle_cast(unhandled, unhandled) ->
 %% Called once per second on the node where the gen_server runs
 handle_info(tick, State) ->
     Now = misc:time_to_epoch_ms_int(now()),
-    rpc:eval_everywhere(?MODULE, tick, [Now]),
-    {noreply, State#state{time=Now}}.
+    lists:foreach(fun (Node) ->
+                          gen_event:notify({?EVENT_MANAGER, Node}, {tick, Now})
+                  end, nodes(known)),
+    {noreply, State#state{time=Now}};
+handle_info(_, State) ->
+    {noreply, State}.
 
 
 terminate(_Reason, _State) ->
     ok.
-
-
-%%
-%% Internal functions
-%%
-
-%% Called on all nodes via RPC to send an event to the local event manager
-tick(Now) ->
-    gen_event:notify(?EVENT_MANAGER, {tick, Now}).
