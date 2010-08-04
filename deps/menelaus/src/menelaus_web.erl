@@ -766,7 +766,7 @@ handle_bucket_create(PoolId, Req) ->
                         ok ->
                             redirect_to_bucket(Req, PoolId, Name);
                         {exit, {already_exists, _}, _} ->
-                            reply_json(Req, {struct, [{'_', [<<"Bucket with given name already exists">>]}]}, 400)
+                            reply_json(Req, {struct, [{name, <<"Bucket with given name already exists">>}]}, 400)
                     end;
                 _ ->
                     reply_json(Req, {struct, Errors}, 400)
