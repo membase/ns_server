@@ -69,11 +69,54 @@
       </ul>
     </td>
     <td id="mainPanel">
-      <div id="overview" style="display:none;">
+      <div id="overview" style="display:block !important;">
       <!-- shadow box -->
       <h1>Cluster Overview</h1>
 	<div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
-    <div class="darker_block with_devider pat_10" id="cluster_status_container">
+
+	<div class="hdr">Clusters</div>
+	<div class="section">
+		<div class="item">
+			<div class="label">
+				<strong>RAM Overview</strong>
+				<span>Total Cluster</span>
+				192 Gb (all buckets)
+			</div>
+			<div class="line_cnt">
+				<div class="usage_biggest">
+					<div class="used" style="width:40%;"></div>
+					<div class="free" style="width:20%;"><i></i></div>
+				</div>
+				<ul>
+					<li>In use by all buckets (160 Gb)</li>
+					<li>Free (20 Gb)</li>
+					<li>Total allocated (180 gb)</li>
+					<li>Unused (12 Gb)</li>
+				</ul>
+			</div>
+		</div>
+		<div class="item">
+			<div class="label">
+				<strong>Disk Usage</strong>
+				<span>Total Cluster</span>
+				1000 Gb (all buckets)
+			</div>
+			<div class="line_cnt">
+				<div class="usage_biggest">
+					<div class="used" style="width:32%;"></div>
+					<div class="free" style="width:27%;"><i></i></div>
+				</div>
+				<ul>
+					<li>In use by all buckets (580 Gb)</li>
+					<li>Free (340 Gb)</li>
+					<li>Total allocated (890 gb)</li>
+					<li>Unused (330 Gb)</li>
+				</ul>
+			</div>
+		</div>
+	</div>
+
+    <div class="darker_block with_devider pat_10" id="cluster_status_container" style="display:none">
     </div><div class="template" id="cluster_status_template">
         <div class="labeled_line">
             <h2 class="label">Cluster Health:</h2>
@@ -99,7 +142,8 @@
                 </a>
             </div>
         </div>
-        <!-- div class="labeled_line percentage_big">
+
+        <div class="labeled_line percentage_big">
             <h2 class="label for_usage_big">Total Cache Size:</h2>
             <div class="line_cnt">
                 <div class="usage_big red">
@@ -114,9 +158,9 @@
                   </span></span>
                 </a>
             </div>
-        </div -->
+        </div>
     </div>
-    <div class="section">
+    <div class="section" style="display:none;">
       <div class="labeled_line">
           <h2 class="label for_server_line">Server Nodes:</h2>
           <p class="line_cnt" id="server_list_container">
