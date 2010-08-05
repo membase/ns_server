@@ -840,7 +840,7 @@ function displayNotice(text, isError) {
   renderTemplate(tname, {text: text}, div.get(0));
   $.data(div.children()[0], 'notice-text', text);
   $('#notice_container').prepend(div.children());
-  ThePage.gotoSection("servers");
+  ThePage.gotoSection("overview");
 }
 
 $('.notice').live('click', function () {
