@@ -177,12 +177,12 @@ default() ->
     {port_servers,
      [{moxi, "./bin/moxi/moxi",
        ["-Z", {"port_listen=~B,downstream_max=1", [port]},
-        "-z", {"auth=,url=http://127.0.0.1:~B/pools/default/bucketsStreamingConfig/default,#@", [{rest, port}]},
+        "-z", {"auth=,url=http://127.0.0.1:~B/pools/default/bucketsStreamingConfig/default", [{rest, port}]},
         "-p", "0",
         "-Y", "y",
         {"~s", [verbosity]}
        ],
-       [{env, []},
+       [{env, [{"EVENT_NOSELECT", "1"}]},
         use_stdio,
         stderr_to_stdout,
         stream]
@@ -197,7 +197,8 @@ default() ->
                [admin_user]},
         {"~s", [verbosity]}
        ],
-       [{env, [{"MEMCACHED_TOP_KEYS", "100"},
+       [{env, [{"EVENT_NOSELECT", "1"},
+               {"MEMCACHED_TOP_KEYS", "100"},
                {"ISASL_PWFILE", {"~s", [{isasl, path}]}},
                {"ISASL_DB_CHECK_TIME", "1"}]},
         use_stdio,
