@@ -102,6 +102,10 @@ keys([KVList | Rest], Accum) ->
 
 default() ->
    DbDir = filename:join(default_path("data"), misc:node_name_short()),
+   InitQuota = case memsup:get_memory_data() of
+                   {Total, _, _} -> (Total * 4) div (1048576 * 5);
+                   _ -> undefined
+               end,
    [{directory, default_path("config")},
     {nodes_wanted, [node()]},
     % In general, the value in these key-value pairs are property lists,
@@ -144,16 +148,14 @@ default() ->
                                  {engine, "./bin/ep_engine/ep.so"},
                                  {verbosity, ""}]},
 
+    {memory_quota, InitQuota},
+
     {buckets, [{configs, [{"default",
                            [{num_vbuckets, 1024},
                             {num_replicas, 1},
                             %% default quotas will be defined when resources
                             %% stage of wizard will post data
-                            {ram_quota,
-                             case memsup:get_memory_data() of
-                                 {Total, _, _} -> (Total * 4) div (1048576 * 5);
-                                 _ -> undefined
-                             end},
+                            {ram_quota, InitQuota},
                             {hdd_quota, 0},
                             {ht_size, 3079},
                             {ht_locks, 5},

@@ -28,9 +28,9 @@
 
 -export([extract_disk_stats_for_path/2, disk_stats_for_path/2]).
 
-memory_quota(Node) ->
-    {value, PropList} = ns_config:search_node(Node, ns_config:get(), memcached),
-    proplists:get_value(max_size, PropList).
+memory_quota(_Node) ->
+    {value, RV} = ns_config:search(ns_config:get(), memory_quota),
+    RV.
 
 update_max_size(_Node, Quota) ->
     case ns_bucket:get_bucket("default") of
@@ -44,6 +44,7 @@ update_max_size(_Node, Quota) ->
     end.
 
 change_memory_quota(Node, NewMemQuotaMB) when is_integer(NewMemQuotaMB) ->
+    ns_config:set(memory_quota, NewMemQuotaMB),
     update_max_size(Node, NewMemQuotaMB).
 
 prepare_setup_disk_storage_conf(Node, Path) when Node =:= node() ->
