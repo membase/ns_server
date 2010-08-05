@@ -144,11 +144,8 @@ extract_node_storage_info(NodeInfo, Node) ->
     {RAMTotal, RAMUsed, _} = proplists:get_value(memory_data, NodeInfo),
     DiskStats = proplists:get_value(disk_data, NodeInfo),
     DiskPaths = [proplists:get_value(path, X) || X <- proplists:get_value(hdd, ns_storage_conf:storage_conf(Node))],
-    [{ssd, _},
-     {hdd, [HDDProps]}] = storage_conf(Node),
-    case {memory_quota(Node), misc:expect_prop_value(quotaMb, HDDProps)} of
-        {MemQuotaMB, HDDQuotaMB} when is_integer(MemQuotaMB),
-                                      is_integer(HDDQuotaMB) ->
+    case memory_quota(Node) of
+        MemQuotaMB when is_integer(MemQuotaMB) ->
             {DiskTotal, DiskUsed} =
                 lists:foldl(fun (Path, {ATotal, AUsed} = Tuple) ->
                                     %% move it over here
@@ -165,7 +162,7 @@ extract_node_storage_info(NodeInfo, Node) ->
                     {quotaTotal, MemQuotaMB * 1048576},
                     {used, RAMUsed}]},
              {hdd, [{total, DiskTotal},
-                    {quotaTotal, HDDQuotaMB * 1048576},
+                    {quotaTotal, DiskTotal},
                     {used, DiskUsed}]}];
         _ -> []
     end.
