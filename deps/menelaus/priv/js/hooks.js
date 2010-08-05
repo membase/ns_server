@@ -760,7 +760,7 @@ var MockedRequest = mkClass({
         if ($data.memoryQuota && $data.memoryQuota != 'unlimited' && !(/^[0-9]+$/.exec($data.memoryQuota))) {
           this.errorResponse(["invalid memory quota", "second message"]);
         }
-      }, opt("memoryQuota"), opt("license"))], //missing
+      }, opt("memoryQuota"), opt('path'), opt("license"))], //missing
 
       [post("node", "controller", "initStatus"), function ($data) {
         this.globalData.initValue = $data.initValue;
