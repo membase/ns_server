@@ -244,3 +244,95 @@ var DAO = {
 
 }).call(DAO.cells);
 
+;(function () {
+  var hostnameComparator = mkComparatorByProp('hostname');
+  var pendingEject = []; // nodes to eject on next rebalance
+  var pending = []; // nodes for pending tab
+  var active = []; // nodes for active tab
+  var allNodes = []; // all known nodes
+
+  var cell = DAO.cells.serversCell = new Cell(formula, {
+    details: DAO.cells.currentPoolDetailsCell
+  });
+
+  cell.cancelPendingEject = cancelPendingEject;
+
+  function cancelPendingEject(node) {
+    node.pendingEject = false;
+    pendingEject = _.without(pendingEject, node);
+    cell.invalidate();
+  }
+
+  function formula(details) {
+    var self = this;
+
+    var pending = [];
+    var active = [];
+    allNodes = [];
+
+    var nodes = details.nodes;
+    var nodeNames = _.pluck(nodes, 'hostname');
+    _.each(nodes, function (n) {
+      var mship = n.clusterMembership;
+      if (mship == 'active')
+        active.push(n);
+      else
+        pending.push(n);
+      if (mship == 'inactiveFailed')
+        active.push(n);
+    });
+
+    var stillActualEject = [];
+    _.each(pendingEject, function (node) {
+      var original = _.detect(nodes, function (n) {
+        return n.otpNode == node.otpNode;
+      });
+      if (!original || original.clusterMembership == 'inactiveAdded') {
+        return;
+      }
+      stillActualEject.push(original);
+      original.pendingEject = true;
+    });
+
+    pendingEject = stillActualEject;
+
+    pending = pending = pending.concat(pendingEject);
+    pending.sort(hostnameComparator);
+    active.sort(hostnameComparator);
+
+    allNodes = _.uniq(active.concat(pending));
+
+    var reallyActive = _.select(active, function (n) {
+      return n.clusterMembership == 'active' && !n.pendingEject && n.status =='healthy';
+    });
+
+    if (reallyActive.length == 1) {
+      reallyActive[0].lastActive = true;
+    }
+
+    _.each(allNodes, function (n) {
+      n.ejectPossible = !n.pendingEject;
+      n.failoverPossible = (n.clusterMembership != 'inactiveFailed');
+      n.reAddPossible = (n.clusterMembership == 'inactiveFailed' && n.status == 'healthy');
+
+      var nodeClass = ''
+      if (n.clusterMembership == 'inactiveFailed') {
+        nodeClass = 'failed_over'
+      } else if (n.status != 'healthy') {
+        nodeClass = 'server_down'
+      } else {
+        nodeClass = 'status_up'
+      }
+      if (n.lastActive)
+        nodeClass += ' last-active';
+      n.nodeClass = nodeClass;
+    });
+
+    return {
+      pendingEject: pendingEject,
+      pending: pending,
+      active: active,
+      allNodes: allNodes
+    }
+  }
+})();

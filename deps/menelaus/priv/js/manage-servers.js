@@ -7,71 +7,10 @@ var ServersSection = {
 
   updateData: function () {
     var self = this;
+    var serversValue = DAO.cells.serversCell.value || {};
 
-    var pending = this.pending = [];
-    var active = this.active = [];
-    this.allNodes = [];
-
-    var details = this.poolDetails.value;
-    if (!details)
-      return;
-
-    var nodes = details.nodes;
-    var nodeNames = _.pluck(nodes, 'hostname');
-    _.each(nodes, function (n) {
-      var mship = n.clusterMembership;
-      if (mship == 'active')
-        active.push(n);
-      else
-        pending.push(n);
-      if (mship == 'inactiveFailed')
-        active.push(n);
-    });
-
-    var stillActualEject = [];
-    _.each(this.pendingEject, function (node) {
-      var original = _.detect(nodes, function (n) {
-        return n.otpNode == node.otpNode;
-      });
-      if (!original || original.clusterMembership == 'inactiveAdded') {
-        return;
-      }
-      stillActualEject.push(original);
-      original.pendingEject = true;
-    });
-
-    this.pendingEject = stillActualEject;
-
-    this.pending = pending = pending.concat(this.pendingEject);
-    pending.sort(this.hostnameComparator);
-    active.sort(this.hostnameComparator);
-
-    this.allNodes = _.uniq(this.active.concat(this.pending));
-
-    var reallyActive = _.select(active, function (n) {
-      return n.clusterMembership == 'active' && !n.pendingEject && n.status =='healthy';
-    });
-
-    if (reallyActive.length == 1) {
-      reallyActive[0].lastActive = true;
-    }
-
-    _.each(this.allNodes, function (n) {
-      n.ejectPossible = !n.pendingEject;
-      n.failoverPossible = (n.clusterMembership != 'inactiveFailed');
-      n.reAddPossible = (n.clusterMembership == 'inactiveFailed' && n.status == 'healthy');
-
-      var nodeClass = ''
-      if (n.clusterMembership == 'inactiveFailed') {
-        nodeClass = 'failed_over'
-      } else if (n.status != 'healthy') {
-        nodeClass = 'server_down'
-      } else {
-        nodeClass = 'status_up'
-      }
-      if (n.lastActive)
-        nodeClass += ' last-active';
-      n.nodeClass = nodeClass;
+    _.each("pendingEject pending active allNodes".split(' '), function (attr) {
+      self[attr] = serversValue[attr] || [];
     });
   },
   renderEverything: function () {
@@ -167,6 +106,7 @@ var ServersSection = {
     var self = this;
 
     self.poolDetails = DAO.cells.currentPoolDetailsCell;
+    self.serversCell = DAO.cells.serversCell;
 
     self.tabs = new TabsCell("serversTab",
                              "#servers .tabs",
@@ -232,9 +172,9 @@ var ServersSection = {
       $('#servers .failover_warning').toggle(!!hasFailover);
     });
 
-    self.poolDetails.subscribeAny($m(self, "refreshEverything"));
-    prepareTemplateForCell('active_server_list', self.poolDetails);
-    prepareTemplateForCell('pending_server_list', self.poolDetails);
+    self.serversCell.subscribeAny($m(self, "refreshEverything"));
+    prepareTemplateForCell('active_server_list', self.serversCell);
+    prepareTemplateForCell('pending_server_list', self.serversCell);
 
     var serversQ = self.serversQ = $('#servers');
 
@@ -278,7 +218,7 @@ var ServersSection = {
     self.rebalanceProgress.keepValueDuringAsync = true;
     self.rebalanceProgress.subscribe($m(self, 'onRebalanceProgress'));
 
-    detailsWidget.hookRedrawToCell(self.poolDetails);
+    detailsWidget.hookRedrawToCell(self.serversCell);
   },
   accountForDisabled: function (handler) {
     return function (e) {
@@ -401,7 +341,7 @@ var ServersSection = {
     return rv;
   },
   reDraw: function () {
-    _.defer($m(this, 'refreshEverything'));
+    this.serversCell.invalidate();
   },
   ejectNode: function (hostname) {
     var self = this;
@@ -437,9 +377,8 @@ var ServersSection = {
     var node = this.mustFindNode(hostname);
 
     if (node.pendingEject) {
-      node.pendingEject = false;
-      this.pendingEject = _.without(this.pendingEject, node);
-      return this.reDraw();
+      this.serversCell.cancelPendingEject(node);
+      return;
     }
 
     var ejectNodeURI = this.poolDetails.value.controllers.ejectNode.uri;
