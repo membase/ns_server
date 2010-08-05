@@ -4,13 +4,12 @@ title: kvstore REST APIs
 ---
 # caching kvstore APIs
 
-Version 20100224
+Version 20100729
 
 This document specifies request and response for both the Management Console
 (management channel) and the cache itself (data channel) when talking to
-a cache.
+a server managing either a cache or a membase store.
 
-Note, *Reveal* referred to in this document is code for 1.0.
 
 # Assumptions
 
@@ -29,7 +28,7 @@ or some other information) it will proxy that request to the correct node.
 
 ####Accepted Request Headers
 
-Clients are expected to usethe following standard headers when making requests
+Clients are expected to use the following standard headers when making requests
 to any URI.
 
 <table border="1" width="100%">
@@ -126,7 +125,7 @@ in the following table, under the conditions listed in the description.
 
 # Resources and Operations
 
-A typical cluster of NorthScale Enterprise Storage systems has certain resources
+A typical cluster of NorthScale server systems have certain resources
 and those resources can optionally have one or more controllers, which have
 RESTful endpoints in the representation of the item one would control.
 
@@ -136,7 +135,7 @@ RESTful endpoints in the representation of the item one would control.
 services.  A member of a pool is a Node.  Pools were later renamed to "clusters"
 (and the previous concept of cluster changed) so this document may refer to either.
     * _Statistics_ - Pools provide an overall pool level data view of counters 
-      and periodic metrics of the overall system.
+      and periodic metrics of the overall system. (note, this is missing in version 1.6)
 * Node - A system within a pool.  Nodes may provide Node-local representations
 of a service, but are also required to provide or proxy Pool level resources.
 * Bucket - A logical grouping of resources within a pool.  A bucket provides a
@@ -147,15 +146,18 @@ number of things which ease pool management and enable management of resources:
     * _Statistics_ - Buckets provide bucket level data view of counters and
       periodic metrics of the overall system. These counters and metrics are
       specific to the bucket.
+    * _Storage Type_ - Buckets can implement different kinds of behaviors, such
+      as cache only or persisted (either synchronous or asynchronous) key-value
+      stores.
 
 ## User Interface
 
-The User Interface shipped by NorthScale is designed to load and run in a common
+The User Interface supplied is designed to load and run in a common
 Web Browser user agent.  The UI will be composed mainly of HTML, Images, CSS and
-Javascript.  It will support, as a minimum, Internet Explorer 6 / 7 / 8
+Javascript.  It will support, as a minimum, Internet Explorer 7 & 8
 and Firefox 3+.
 
-For this, a separate UI heirarcy will be served from each node of the system (though
+For this, a separate UI hierarchy will be served from each node of the system (though
 asking for the root "/" would likely return a redirect to the user agent.
 
 GET https://node.in.pool.com/ui
@@ -171,13 +173,13 @@ URI and in some ways may even appear as RPC or some other architectural style
 using HTTP operations and semantics.  That is only an artifact of the
 URIs NorthScale chose.
 
-Clients are advised to be (and NorthScale clients will
+Clients are advised to be (and NorthScale clients *should*
 be) properly RESTful and will not expect to receive any handling instructions
 resource descriptions or presume any conventions on URI structure for resources
 represented.
 
-Also note that the heirarchies shown here can allow reuse of agent handling
-of representations, since they are similar for different parts of the heirarchy.
+Also note that the hierarchies shown here can allow reuse of agent handling
+of representations, since they are similar for different parts of the hierarchy.
 
 *Request*
 
@@ -219,15 +221,15 @@ of representations, since they are similar for different parts of the heirarchy.
 }
 </pre>
 
-At *Reveal*, only one pool per group of systems will be known and it will likely
+As of now, only one pool per group of systems will be known and it will likely
 be defaulted to a name.  POSTing back a changed pool will return a 403.
 
 As can be seen, the "build" number of the implementation is apparent in the
 implementation_version, the specifications supported are apparent in the
-specficiation_version.  While this node can only be a member of one pool, there
+specification_version.  While this node can only be a member of one pool, there
 is flexibility which allows for any given node to be aware of other pools.
 
-The Client-Specificaion-Version is optional in the request, but advised.  It
+The Client-Specification-Version is optional in the request, but advised.  It
 allows for implementations to adjust to adjust representation and state
 transitions to the client, if backward compatibility is desirable.
 
@@ -257,7 +259,7 @@ transitions to the client, if backward compatibility is desirable.
 	        "hostname":"10.0.1.20",
 	        "status":"healthy",
 	        "uptime":"14",
-	        "version":"1.0.0",
+	        "version":"1.6.0",
 	        "os":"i386-apple-darwin9.8.0",
 	        "memoryTotal":3584844000.0,
 	        "memoryFree":74972000,
@@ -268,8 +270,19 @@ transitions to the client, if backward compatibility is desirable.
 	            "direct":11212
 	        },
 	        "otpNode":"ns_1@node.in.your.pool.com",
-	        "otpCookie":"fsekryjfoeygvgcd"
+	        "otpCookie":"fsekryjfoeygvgcd",
+                "clusterMembership":"active"
 	    }],
+            "storageTotals":{
+                "ram":{
+                    "total":2032558080,
+                    "used":1641816064
+                },
+                "hdd":{
+                    "total":239315349504.0,
+                    "used": 229742735523.0
+                }
+            },
 	    "buckets":{
 	        "uri":"/pools/default/buckets"
 	    },
@@ -277,10 +290,28 @@ transitions to the client, if backward compatibility is desirable.
 	        "ejectNode":{
 	            "uri":"/pools/default/controller/ejectNode"
 	        },
-	        "testWorkload":{
-	            "uri":"/pools/default/controller/testWorkload"
-	        }
+                "addNode":{
+                    "uri":"/controller/addNode"
+                },
+                "rebalance":{
+                    "uri":"/controller/rebalance"
+                },
+                "failover":{
+                    "uri":"/controller/failOver"
+                },
+                "reAddNode":{
+                    "uri":"/controller/reAddNode"
+                },
+                "stopRebalance":{
+                    "uri":"/controller/stopRebalance"
+                }
 	    },
+            "rebalanceProgress":{
+                "uri":"/pools/default/rebalanceProgress"
+            },
+            "balanced": true,
+            "etag":"asdas123",
+            "initStatus":"
 	    "stats":{
 	        "uri":"/pools/default/stats"
 	    }
@@ -288,40 +319,60 @@ transitions to the client, if backward compatibility is desirable.
  
 </pre>
 
-The pool state could be "stable" "unstable" "transitioning" or other values
-which allows the admin UI or clients to see current state and get further
-details if there are some about the updated state.  The URI may be optional
-and will likely be omitted in the "stable" case.
+At the highest level, a pool describes a cluster (as mentioned above).  This
+cluster exposes a number of properties which define attributes of the cluster
+and "controllers" which allow users to make certain requests of the cluster.
 
-Note that since buckets are renameable and there is no way to determine what
-the default bucket for a pool is, the system will attempt to connect dumb
-clients to a bucket named "default".  If it does not exist, the connection
-will be dropped.  An alert should be generated.
+Note that since buckets could be renamed and there is no way to determine what
+the default bucket for a pool is, the system will attempt to connect non-SASL,
+non-proxied to a bucket clients to a bucket named "default".  If it does not
+exist, the connection will be dropped.
 
 Clients MUST NOT rely on the node list here to create their "server list" for 
 when connecting.  They MUST instead issue an HTTP get call to the bucket to 
-get the node list for that specific bucket.  
+get the node list for that specific bucket.
 
-#### Bucket Test Workload Controllers
+The controllers, all of which accept parameters as x-www-form-urlencoded, for
+this list perform the following functions:
 
-<pre class="restcalls">
- POST /pools/default/controller/testWorkload HTTP/1.1
- User-Agent: curl/7.19.4 (i386-apple-darwin9.6.2) libcurl/7.19.4 zlib/1.2.3
- Host: localhost:8080
- Authorization: Basic xxxxxxxxxxxx
- Accept: */*
- Content-Length: 10
- Content-Type: application/x-www-form-urlencoded
+*ejectNode* - Eject a node from the cluster.  Required parameter:
+"otpNode", the node to be ejected.  
+*addNode* - Add a node to this cluster.  Required parameters: "hostname",
+"user" (which is the admin user for the node), and "password".  
+*rebalance* - Rebalance the existing cluster.  This controller is either used
+without any parameters or requires both "knownNodes" and "ejectedNodes".  When
+used with parameters, this allows a client to state the existing known nodes
+and which nodes should be removed from the cluster in a single
+operation.  To ensure no cluster state changes have occured since a
+client last got a list of nodes, both the known nodes and the node to
+be ejected must be supplied.  If the list does not match the set of
+nodes, the request will fail with an HTTP 400 indicating a mismatch.  Note
+rebalance progress is available via the rebalanceProgress uri.  
+*failover* - Failover the vbuckets from a given node to the nodes which have
+replicas of data for those vbuckets.  The "otpNode" parameter is required and
+specifies the node to be failed over.  
+*reAddNode* - The "otpNode" parameter is required and specifies the node to be
+re-added.  
+*stopRebalance* - Stop any rebalance operation currently running.
+This takes no parameters.  
 
- onOrOff=on
-</pre>
+The list of nodes will list each node in the cluster.  It will,
+additionally, list some attributes of the nodes.
 
-The response for this controller is a simple "204 No Content" or a 400 if the required
-post parameters are not matched.
-
-One example of how this may be done with a non-secured server from the commandline curl program is:
-`curl --data onOrOff=on http://localhost:8080/pools/default/controller/testWorkload`.  This is the
-source of the example above, as can be seen in the headers.
+<table>
+<tr><td>memoryTotal</td><td>The total amount of memory available
+to membase, allocated and free. May or may not be equal to the amount 
+of memory configured in the system.</td></tr>
+<tr><td>memoryFree</td><td>The amount of memory available to be
+allocated.  This is equal to the memoryTotal, subtracting out all
+memory allocated as reported by the host operating system.</td></tr>
+<tr><td>mcdMemoryReserved</td><td>The amount of memory reserved for
+use by membase across all buckets on this node.  This value does not
+include some overhead for managing items in the node or handling
+replication or other TAP streams.</td></tr>
+<tr><td>mcdMemoryAllocated</td><td>The amount of memory actually used
+by all buckets on this node.</td></tr>
+</table>
 
 ###List buckets and bucket operations
 
