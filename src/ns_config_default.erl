@@ -180,6 +180,7 @@ default() ->
         "-z", {"auth=,url=http://127.0.0.1:~B/pools/default/bucketsStreamingConfig/default", [{rest, port}]},
         "-p", "0",
         "-Y", "y",
+        "-O", "stderr",
         {"~s", [verbosity]}
        ],
        [{env, [{"EVENT_NOSELECT", "1"}]},
