@@ -53,145 +53,9 @@ var LogoutTimer = {
 };
 
 var OverviewSection = {
-  renderStatus: function () {
-    var nodes = DAO.cells.currentPoolDetails.value.nodes;
-    var buckets = BucketsSection.cells.detailedBuckets.value;
-
-    var totalMem = 0;
-    var freeMem = 0;
-    _.each(nodes, function (n) {
-      totalMem += n.memoryTotal;
-      freeMem += n.memoryFree;
-    });
-
-    var bucketsSizeTotal = 0;  // The total of the buckets defined
-    if(buckets) {
-      _.each(buckets, function(b) {
-          bucketsSizeTotal += b.basicStats.cacheSize;
-      });
-    }
-
-    this.clusterMemoryAvailable = totalMem - bucketsSizeTotal*1048576;
-
-    var memoryUtilization = 100-Math.round(freeMem*100/totalMem) << 0;
-
-    var isWarning = memoryUtilization > 90;
-
-    var isCritical = false;
-    isCritical = isCritical || _.any(nodes, function (n) {
-      return n.status != 'healthy';
-    });
-
-    var mcdMemReserved = 0;
-    var mcdMemAllocd = 0;
-    _.each(nodes, function (n) {
-        mcdMemReserved += n.mcdMemoryReserved;
-        mcdMemAllocd += n.mcdMemoryAllocated;
-      });
-    mcdMemReserved *= 1048576;
-    var mcdItemUtilization = Math.round(mcdMemReserved*100/totalMem);
-
-    var canJoinCluster = (nodes.length == 1);
-
-    var statusData = {
-      isCritical: isCritical,
-      isWarning: isWarning,
-      canJoinCluster: canJoinCluster,
-      nodesCount: nodes.length,
-      bucketsCount: buckets && buckets.length,
-      bucketsSizeTotal: bucketsSizeTotal,
-      memoryUtilization: memoryUtilization,
-      memoryFree: freeMem,
-      mcdItemUtilization: mcdItemUtilization,
-      mcdMemReserved: mcdMemReserved
-    };
-
-    renderTemplate('cluster_status', statusData);
-
-    var leaveJoinClass = canJoinCluster ? 'join-possible' : 'leave-possible';
-    $('#join_leave_switch').attr('class', leaveJoinClass);
-  },
-  onFreshNodeList: function () {
-    var nodes = DAO.cells.currentPoolDetails.value.nodes;
-    var expandedHostnames = [];
-    $('#server_list_container .primary .expander.expanded').each(function () {
-      var server = $.data(this, 'server')
-      if (server)
-        expandedHostnames.push(server.hostname);
-    });
-    renderTemplate('server_list', nodes);
-    $('#server_list_container table tr.primary:first-child').addClass('nbrdr');
-    $('#server_list_container .primary .expander').each(function () {
-      var server = $.data(this, 'server');
-      if (!server)
-        return;
-      if (!_.include(expandedHostnames, server.hostname))
-        return;
-      $(this).parents('#server_list_container .primary').next().addClass('opened');
-      $(this).addClass('expanded');
-    });
-
-    this.renderStatus();
-
-    var activeNodeCount = _.select(nodes, function (n) {
-      return n.status == 'healthy';
-    }).length;
-
-    $('.active_node_count').text(ViewHelpers.count(activeNodeCount, "active node"));
-  },
-  leaveCluster: function () {
-    showDialog("eject_confirmation_dialog", {
-      eventBindings: [['.save_button', 'click', function (e) {
-        e.preventDefault();
-        overlayWithSpinner('#eject_confirmation_dialog');
-
-        var reload = mkReloadWithDelay();
-        $.ajax({
-          type: 'POST',
-          url: DAO.cells.currentPoolDetails.value.controllers.ejectNode.uri,
-          data: "otpNode=Self",
-          success: reload,
-          errors: reload
-        });
-      }]]
-    });
-  },
-  removeNode: function (otpNode) {
-    var details = DAO.cells.currentPoolDetails.value.nodes;
-    var node = _.detect(details, function (n) {
-      return n.otpNode == otpNode;
-    });
-    if (!node)
-      throw new Error('!node. this is unexpected!');
-
-    showDialog("eject_confirmation_dialog", {
-      eventBindings: [['.save_button', 'click', function (e) {
-        e.preventDefault();
-
-        overlayWithSpinner('#eject_confirmation_dialog');
-        var reload = mkReloadWithDelay();
-        $.ajax({
-          type: 'POST',
-          url: DAO.cells.currentPoolDetails.value.controllers.ejectNode.uri,
-          data: {otpNode: node.otpNode},
-          error: reload,
-          success: reload
-        });
-      }]]
-    });
-  },
   init: function () {
-    var self = this;
-    _.defer(function () {
-      BucketsSection.cells.detailedBuckets.subscribe($m(self, 'renderStatus'));
-    });
-    DAO.cells.currentPoolDetails.subscribe($m(self, 'onFreshNodeList'));
-    prepareTemplateForCell('server_list', DAO.cells.currentPoolDetails);
-    prepareTemplateForCell('cluster_status', DAO.cells.currentPoolDetails);
-    prepareTemplateForCell('pool_list', DAO.cells.poolList);
   },
   onEnter: function () {
-    DAO.cells.currentPoolDetailsCell.invalidate();
   }
 };
 
@@ -387,7 +251,7 @@ var ThePage = {
              monitor_buckets: MonitorBucketsSection,
              monitor_servers: OverviewSection},
 
-  coming: {monitor_servers:true, settings:true, overview:true},
+  coming: {monitor_servers:true, settings:true},
 
   currentSection: null,
   currentSectionName: null,
@@ -425,7 +289,7 @@ var ThePage = {
     });
 
     var self = this;
-    watchHashParamChange('sec', 'servers', function (sec) {
+    watchHashParamChange('sec', 'overview', function (sec) {
       var oldSection = self.currentSection;
       var currentSection = self.sections[sec];
       if (!currentSection) {
