@@ -615,7 +615,6 @@ var MockedRequest = mkClass({
                            rebalance: {uri: '/controller/rebalance'},
                            failOver: {uri: '/controller/failOver'},
                            reAddNode: {uri: '/controller/reAddNode'},
-                           testWorkload: {uri: '/pools/default/controller/testWorkload'},
                            ejectNode: {uri: "/controller/ejectNode"}
                          },
                          etag: "asdas123",
@@ -627,7 +626,6 @@ var MockedRequest = mkClass({
                          name: "Default Pool"}],
       [get("pools", "default", "buckets"), [{name: "default",
                                              uri: "/pools/default/buckets/4",
-                                             flushCacheUri: "/pools/default/buckets/4/controller/doFlush",
                                              stats: {uri: "/pools/default/buckets/4/stats"},
                                              quota: {
                                                ram: 12322423,
@@ -646,7 +644,6 @@ var MockedRequest = mkClass({
                                              uri: "/pools/default/buckets/5",
                                              testAppBucket: true,
                                              status: false,
-                                             flushCacheUri: "/pools/default/buckets/5/controller/doFlush",
                                              stats: {uri: "/pools/default/buckets/5/stats"},
                                              quota: {
                                                ram: 123224230,
@@ -663,7 +660,6 @@ var MockedRequest = mkClass({
                                              }},
                                             {name: "new-year-site",
                                              uri: "/pools/default/buckets/6",
-                                             flushCacheUri: "/pools/default/buckets/6/controller/doFlush",
                                              stats: {uri: "/pools/default/buckets/6/stats"},
                                              quota: {
                                                ram: 12322423,
@@ -680,7 +676,6 @@ var MockedRequest = mkClass({
                                              }},
                                             {name: "new-year-site-staging",
                                              uri: "/pools/default/buckets/7",
-                                             flushCacheUri: "/pools/default/buckets/7/controller/doFlush",
                                              stats: {uri: "/pools/default/buckets/7/stats"},
                                              quota: {
                                                ram: 12322423,
