@@ -68,7 +68,7 @@ handle_info(tick, State) ->
     Now = misc:time_to_epoch_ms_int(now()),
     lists:foreach(fun (Node) ->
                           gen_event:notify({?EVENT_MANAGER, Node}, {tick, Now})
-                  end, nodes(known)),
+                  end, [node() | nodes()]),
     {noreply, State#state{time=Now}};
 handle_info(_, State) ->
     {noreply, State}.
