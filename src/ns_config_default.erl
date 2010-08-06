@@ -159,6 +159,9 @@ default() ->
                                             true -> InitQuota * 1048576;
                                             _ -> InitQuota
                                         end},
+                            {auth_type, sasl},  % none | sasl
+                            {sasl_password, ""},
+                            {moxi_port, 0},
                             {hdd_quota, 0},
                             {ht_size, 3079},
                             {ht_locks, 5},

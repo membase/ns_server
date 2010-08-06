@@ -633,16 +633,19 @@ build_bucket_info(PoolId, Id, Pool, LocalAddr) ->
 build_bucket_info(PoolId, Id, Pool, InfoLevel, LocalAddr) ->
     StatsUri = list_to_binary(concat_url_path(["pools", PoolId, "buckets", Id, "stats"])),
     Nodes = build_nodes_info(Pool, false, InfoLevel, LocalAddr),
+    {ok, BucketConfig} = ns_bucket:get_bucket(Id),
     Suffix = case InfoLevel of
                  stable -> [];
                  normal ->
-                     {ok, BucketConfig} = ns_bucket:get_bucket(Id),
                      [{replicaNumber, ns_bucket:num_replicas(BucketConfig)},
                       {quota, {struct, [{ram, ns_bucket:ram_quota(BucketConfig)},
                                         {hdd, ns_bucket:hdd_quota(BucketConfig)}]}},
                       {basicStats, {struct, menelaus_stats:basic_stats(PoolId, Id)}}]
              end,
     {struct, [{name, list_to_binary(Id)},
+              {authType, misc:expect_prop_value(auth_type, BucketConfig)},
+              {saslPassword, list_to_binary(misc:expect_prop_value(sasl_password, BucketConfig))},
+              {proxyPort, misc:expect_prop_value(moxi_port, BucketConfig)},
               {uri, list_to_binary(concat_url_path(["pools", PoolId, "buckets", Id]))},
               {streamingUri, list_to_binary(concat_url_path(["pools", PoolId, "bucketsStreaming", Id]))},
               %% TODO: this should be under a controllers/ kind of namespacing
@@ -691,9 +694,13 @@ parse_hdd_quota(HDDQuotaGB) ->
 parse_num_replicas(NumReplicas) ->
     (catch list_to_integer(NumReplicas)).
 
-validate_bucket_params(RAMQuotaMB, HDDQuotaGB, NumReplicas) ->
+parse_proxy_port(ProxyPort) ->
+    (catch list_to_integer(ProxyPort)).
+
+validate_bucket_params(RAMQuotaMB, HDDQuotaGB, NumReplicas, AuthType, _SASLPassword, ProxyPort) ->
     RAMIsNumber = is_integer(RAMQuotaMB),
     HDDIsNumber = is_integer(HDDQuotaGB),
+    ProxyPortIsNumber = is_integer(ProxyPort),
     ReplicasIsInt = is_integer(NumReplicas),
 
     Errors = [{ramQuotaMB, case RAMIsNumber of
@@ -715,6 +722,15 @@ validate_bucket_params(RAMQuotaMB, HDDQuotaGB, NumReplicas) ->
                                _ ->
                                    <<"Disk quota needs to be a number">>
                            end},
+              {authType, case AuthType of
+                             undefined -> <<"Authenication type is invalid">>;
+                             _ -> ok
+                         end},
+              {proxyPort, case ProxyPortIsNumber of
+                              true -> ok;
+                              %% need more validation here
+                              _ -> <<"Proxy port needs to be a number">>
+                          end},
               {replicaNumber, case ReplicasIsInt of
                                   true -> ok;
                                   _ -> <<"Replica number must be an integer.">>
@@ -728,9 +744,20 @@ handle_bucket_update(_PoolId, BucketId, Req) ->
     RAMQuota = parse_ram_quota(proplists:get_value("ramQuotaMB", Params)),
     HDDQuota = parse_hdd_quota(proplists:get_value("hddQuotaGB", Params)),
     NumReplicas = parse_num_replicas(proplists:get_value("replicaNumber", Params)),
-    case validate_bucket_params(RAMQuota, HDDQuota, NumReplicas) of
+    AuthType = case proplists:get_value("authType", Params) of
+                   "none" -> none;
+                   "sasl" -> sasl;
+                   _ -> undefined
+               end,
+    SASLPassword = proplists:get_value("saslPassword", Params, ""),
+    ProxyPort = parse_proxy_port(proplists:get_value("proxyPort", Params, "0")),
+
+    case validate_bucket_params(RAMQuota, HDDQuota, NumReplicas, AuthType, SASLPassword, ProxyPort) of
         [] ->
-            UpdatedProps = [{ram_quota, RAMQuota},
+            UpdatedProps = [{auth_type, AuthType},
+                            {sasl_password, SASLPassword},
+                            {moxi_port, ProxyPort},
+                            {ram_quota, RAMQuota},
                             {hdd_quota, HDDQuota},
                             {num_replicas, NumReplicas}],
             case ns_bucket:update_bucket_props(BucketId, UpdatedProps) of
@@ -752,7 +779,15 @@ handle_bucket_create(PoolId, Req) ->
             RAMQuota = parse_ram_quota(misc:expect_prop_value("ramQuotaMB", Params)),
             HDDQuota = parse_hdd_quota(misc:expect_prop_value("hddQuotaGB", Params)),
             NumReplicas = parse_num_replicas(misc:expect_prop_value("replicaNumber", Params)),
-            Errors0 = validate_bucket_params(RAMQuota, HDDQuota, NumReplicas),
+            AuthType = case proplists:get_value("authType", Params) of
+                           "none" -> none;
+                           "sasl" -> sasl;
+                           _ -> undefined
+                       end,
+            SASLPassword = proplists:get_value("saslPassword", Params),
+            ProxyPort = parse_proxy_port(proplists:get_value("proxyPort", Params)),
+
+            Errors0 = validate_bucket_params(RAMQuota, HDDQuota, NumReplicas, AuthType, SASLPassword, ProxyPort),
             Errors = case ns_bucket:is_valid_bucket_name(Name) of
                          false -> [{name, <<"Given bucket name is invalid. Consult the documentation.">>}
                                    | Errors0];
@@ -760,7 +795,10 @@ handle_bucket_create(PoolId, Req) ->
                      end,
             case Errors of
                 [] ->
-                    case ns_bucket:create_bucket(Name, [{ram_quota, RAMQuota},
+                    case ns_bucket:create_bucket(Name, [{auth_type, AuthType},
+                                                        {sasl_password, SASLPassword},
+                                                        {moxi_port, ProxyPort},
+                                                        {ram_quota, RAMQuota},
                                                         {hdd_quota, HDDQuota},
                                                         {num_replicas, NumReplicas}]) of
                         ok ->

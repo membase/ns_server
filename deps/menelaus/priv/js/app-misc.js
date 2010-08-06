@@ -18,7 +18,7 @@ function setFormValues(form, values) {
     text.val(value);
   });
 
-  form.find('input[type=checkbox]').each(function () {
+  form.find('input[type=checkbox], input[type=radio]').each(function () {
     var box = $(this);
     var name = box.attr('name');
     if (!(name in values))

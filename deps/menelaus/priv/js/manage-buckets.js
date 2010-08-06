@@ -501,16 +501,16 @@ var BucketsSection = {
 
 configureActionHashParam("editBucket", $m(BucketsSection, 'showBucket'));
 
-// $(function () {
-//   var oldIsSasl;
-//   var dialog = $('#bucket_details_dialog')
-//   dialog.observePotentialChanges(function () {
-//     var isSasl = $('#bucket_details_sasl_selected')[0].checked;
-//     if (oldIsSasl != null && isSasl == oldIsSasl)
-//       return;
-//     oldIsSasl = isSasl;
+$(function () {
+  var oldIsSasl;
+  var dialog = $('#bucket_details_dialog')
+  dialog.observePotentialChanges(function () {
+    var isSasl = $('#bucket_details_sasl_selected')[0].checked;
+    if (oldIsSasl != null && isSasl == oldIsSasl)
+      return;
+    oldIsSasl = isSasl;
 
-//     setBoolAttribute(dialog.find('.for-sasl-password-input input'), 'disabled', !isSasl);
-//     setBoolAttribute(dialog.find('.for-proxy-port input'), 'disabled', isSasl);
-//   });
-// });
+    setBoolAttribute(dialog.find('.for-sasl-password-input input'), 'disabled', !isSasl);
+    setBoolAttribute(dialog.find('.for-proxy-port input'), 'disabled', isSasl);
+  });
+});

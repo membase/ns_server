@@ -963,13 +963,13 @@
     <div class="bucket-icon"></div>
     <label class="for-name"><span>Bucket Name:</span><input disabled name="name" value="Bucket Name"><span class="error-container err-name"></span></label>
     <label class="for-bucket-type"><span>Bucket Type:</span>Membase</label>
-    <!-- h2>Access Control</h2>
-    <label class="for-sasl-password"><input id="bucket_details_sasl_selected" type="radio" name="auth_type" value="sasl" checked>
-      <span>SASL Password (Binary protocol only on port 11211)</span>
+    <h2>Access Control</h2>
+    <label class="for-sasl-password"><input id="bucket_details_sasl_selected" type="radio" name="authType" value="sasl" checked>
+      <span>Standard port (TCP port 11211. Needs SASL auth.)</span>
     </label>
     <label class="for-sasl-password-input"><span>Enter password: </span><input type="password" name="saslPassword" disabled value=""></label>
-    <label class="for-ascii"><input type="radio" name="auth_type" value="none"><span>Password-less access (supports Binary and ASCII protocols)</span></label>
-    <label class="for-proxy-port"><span>Protocol Port:</span><input name="proxyPort"></label -->
+    <label class="for-ascii"><input type="radio" name="authType" value="none"><span>Dedicated port (supports ASCII protocol and is auth-less)</span></label>
+    <label class="for-proxy-port"><span>Protocol Port:</span><input name="proxyPort"></label>
     <h2>Memory Size</h2>
     <div class="size-gauge for-ram">
       <div class="t">CLUSTER QUOTA (<span class="total">192 GB</span>)</div>
