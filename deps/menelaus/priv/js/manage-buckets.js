@@ -86,6 +86,8 @@ var BucketDetailsDialog = mkClass({
 
     setFormValues(form, self.valuesCell.value);
 
+    setBoolAttribute(form.find('[name=bucketType]'), 'disabled', !self.isNew);
+
     self.setupQuotaValidation('ram');
     self.setupQuotaValidation('hdd');
     self.setupReplicasValidation();
