@@ -54,6 +54,37 @@ var LogoutTimer = {
 
 var OverviewSection = {
   init: function () {
+    _.defer(function () {
+      BucketsSection.cells.detailedBuckets.subscribeValue(function (buckets) {
+        $('#overview .buckets-number').text(buckets ? buckets.length : '??');
+      });
+    });
+
+    DAO.cells.serversCell.subscribeValue(function (servers) {
+      $('.active-servers-count').text(servers ? servers.active.length : '??');
+
+      var block = $('#overview_servers_block');
+      if (!servers) {
+        block.find('.alert_num').hide();
+        return;
+      }
+      var pendingEject = servers.pendingEject;
+      var failedOver = _.select(servers.allNodes, function (node) {
+        return node.clusterMembership == 'inactiveFailed';
+      });
+      var pendingAdd = _.select(servers.allNodes, function (node) {
+        return node.clusterMembership == 'inactiveAdded';
+      });
+
+      function updateCount(selector, count) {
+        var span = block.find(selector).text(count);
+        span.parents('.alert_num')[count ? 'show' : 'hide']();
+      }
+
+      updateCount('.failed-over-count', failedOver.length);
+      updateCount('.pending-add-count', pendingAdd.length);
+      updateCount('.pending-eject-count', pendingEject.length);
+    });
   },
   onEnter: function () {
   }
