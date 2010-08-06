@@ -367,7 +367,7 @@ check_config() ->
 config_string(BucketName, BucketConfig) ->
     DBDir = ns_config:search_node_prop(ns_config:get(), memcached, dbdir),
     DBName = filename:join(DBDir, BucketName),
-    MemQuota = proplists:get_value(ram_quota, BucketConfig) * 1048576,
+    MemQuota = proplists:get_value(ram_quota, BucketConfig),
     Engine = ns_config:search_node_prop(ns_config:get(), memcached, engine),
     ok = filelib:ensure_dir(DBName),
     lists:flatten(

@@ -155,7 +155,10 @@ default() ->
                             {num_replicas, 1},
                             %% default quotas will be defined when resources
                             %% stage of wizard will post data
-                            {ram_quota, InitQuota},
+                            {ram_quota, case is_integer(InitQuota) of
+                                            true -> InitQuota * 1048576;
+                                            _ -> InitQuota
+                                        end},
                             {hdd_quota, 0},
                             {ht_size, 3079},
                             {ht_locks, 5},
