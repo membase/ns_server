@@ -185,7 +185,8 @@ create_bucket(BucketName, NewConfig) ->
                                              exit({already_exists, Tuple})
                                      end,
                                      [{BucketName, MergedConfig} | List]
-                             end).
+                             end),
+    ns_rebalancer:rebalance([BucketName], 1, ns_node_disco:nodes_wanted(), []).
 
 delete_bucket(BucketName) ->
     ns_config:update_sub_key(buckets, configs,

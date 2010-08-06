@@ -25,22 +25,18 @@
 %% Constants and definitions
 
 -record(idle_state, {}).
--record(rebalancing_state, {rebalancer, progress::dict(), moves}).
+-record(rebalancing_state, {rebalancer, progress::dict()}).
 
 
 %% API
 -export([failover/1,
          needs_rebalance/0,
          rebalance_progress/0,
-         remaining_moves/1,
-         reset_progress/0,
-         starting_moves/1,
          start_link/0,
          start_rebalance/2,
          stop_rebalance/0,
-         update_progress/1,
-         update_progress/2
-         ]).
+         update_progress/1
+        ]).
 
 -define(SERVER, {global, ?MODULE}).
 
@@ -48,6 +44,7 @@
 -define(REBALANCE_FAILED, 2).
 -define(REBALANCE_NOT_STARTED, 3).
 -define(REBALANCE_STARTED, 4).
+-define(REBALANCE_PROGRESS, 5).
 
 %% gen_fsm callbacks
 -export([code_change/4,
@@ -78,18 +75,13 @@ failover(Node) ->
 
 -spec needs_rebalance() -> boolean().
 needs_rebalance() ->
-    Bucket = "default",
-    {_NumReplicas, _NumVBuckets, Map, Servers} = ns_bucket:config(Bucket),
-    NumServers = length(Servers),
-    %% Don't warn about missing replicas when you have fewer servers
-    %% than your copy count!
-    lists:any(
-      fun (Chain) ->
-              lists:member(
-                undefined,
-                lists:sublist(Chain, NumServers))
-      end, Map) orelse
-        ns_rebalancer:unbalanced(Map, Servers).
+    needs_rebalance(ns_node_disco:nodes_wanted()).
+
+
+-spec needs_rebalance([atom(), ...]) -> boolean().
+needs_rebalance(Nodes) ->
+    lists:any(fun (Bucket) -> needs_rebalance(Nodes, Bucket) end,
+              ns_bucket:get_bucket_names()).
 
 
 -spec rebalance_progress() -> {running, [{atom(), float()}]} | not_running.
@@ -199,27 +191,16 @@ idle({failover, Node}, _From, State) ->
 idle(rebalance_progress, _From, State) ->
     {reply, not_running, idle, State};
 idle({start_rebalance, KeepNodes, EjectNodes}, _From,
-            State) ->
+            _State) ->
     ns_log:log(?MODULE, ?REBALANCE_STARTED,
                "Starting rebalance, KeepNodes = ~p, EjectNodes = ~p~n",
                [KeepNodes, EjectNodes]),
-    Bucket = "default",
-    {_NumReplicas, _NumVBuckets, Map, Servers} = ns_bucket:config(Bucket),
-    case {lists:sort(Servers), lists:sort(KeepNodes), EjectNodes,
-          ns_rebalancer:unbalanced(Map, Servers)} of
-        {S, S, [], false} ->
-            ns_log:log(?MODULE, ?REBALANCE_NOT_STARTED,
-              "Not rebalancing because the cluster is already balanced~n"),
-            {reply, already_balanced, idle, State};
-        _ ->
-            Pid = spawn_link(
-                    fun() ->
-                            ns_rebalancer:rebalance(Bucket, KeepNodes,
-                                                    EjectNodes, Map)
-                    end),
-            {reply, ok, rebalancing, #rebalancing_state{progress=dict:new(),
-                                                        rebalancer=Pid}}
-    end;
+    ns_config:set(rebalance_status, running),
+    Pid = spawn_link(fun () ->
+                             ns_rebalancer:rebalance(KeepNodes, EjectNodes)
+                     end),
+    {reply, ok, rebalancing, #rebalancing_state{rebalancer=Pid,
+                                                progress=dict:new()}};
 idle(stop_rebalance, _From, State) ->
     {reply, not_rebalancing, idle, State}.
 
@@ -229,20 +210,7 @@ rebalancing({update_progress, Progress},
             #rebalancing_state{progress=Old} = State) ->
     NewProgress = dict:merge(fun (_, _, New) -> New end, Old, Progress),
     {next_state, rebalancing,
-     State#rebalancing_state{progress=NewProgress}};
-rebalancing(reset_progress, State) ->
-    {next_state, rebalancing,
-     State#rebalancing_state{progress=dict:new(), moves=undefined}};
-rebalancing({remaining_moves, Node, M},
-            #rebalancing_state{moves=Moves, progress=Progress} = State) ->
-    N = 1.0 - dict:fetch(Node, Moves) / M,
-    {next_state, rebalancing,
-     State#rebalancing_state{progress=dict:store(Node, N, Progress)}};
-rebalancing({starting_moves, M}, State) ->
-    Progress = dict:map(fun (_, _) -> 0.0 end, M),
-    {next_state, rebalancing, State#rebalancing_state{moves=M,
-                                                      progress=Progress}}.
-
+     State#rebalancing_state{progress=NewProgress}}.
 
 %% Synchronous rebalancing events
 rebalancing({failover, _Node}, _From, State) ->
@@ -265,29 +233,21 @@ rebalancing(rebalance_progress, _From,
 %% Internal functions
 %%
 
-%% Tell the orchestrator how many moves are remaining for each node.
--spec remaining_moves(dict()) -> ok.
-remaining_moves(Moves) ->
-    gen_fsm:send_event(?SERVER, {remaining_moves, Moves}).
-
-
--spec reset_progress() -> ok.
-reset_progress() ->
-    gen_fsm:send_event(?SERVER, reset_progress).
-
-
-%% Tell the orchestrator about the set of moves we're starting.
--spec starting_moves(dict()) -> ok.
-starting_moves(Moves) ->
-    gen_fsm:send_event(?SERVER, {starting_moves, Moves}).
+needs_rebalance(Nodes, Bucket) ->
+    {_NumReplicas, _NumVBuckets, Map, Servers} = ns_bucket:config(Bucket),
+    NumServers = length(Servers),
+    lists:sort(Nodes) /= lists:sort(Servers) orelse
+        lists:any(
+          fun (Chain) ->
+                  lists:member(
+                    undefined,
+                    %% Don't warn about missing replicas when you have
+                    %% fewer servers than your copy count!
+                    lists:sublist(Chain, NumServers))
+          end, Map) orelse
+        ns_rebalancer:unbalanced(Map, Servers).
 
 
 -spec update_progress(dict()) -> ok.
 update_progress(Progress) ->
     gen_fsm:send_event(?SERVER, {update_progress, Progress}).
-
-
--spec update_progress([atom()], float()) -> ok.
-update_progress(Nodes, Fraction) ->
-    update_progress(dict:from_list([{Node, Fraction}
-                                    || Node <- lists:usort(Nodes)])).

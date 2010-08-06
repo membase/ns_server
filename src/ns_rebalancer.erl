@@ -23,7 +23,7 @@
 
 -include("ns_common.hrl").
 
--export([failover/2, rebalance/4, unbalanced/2]).
+-export([failover/2, rebalance/2, rebalance/4, unbalanced/2]).
 
 
 %%
@@ -44,28 +44,58 @@ failover(Bucket, Node) ->
                   end, lists:delete(Node, Servers)).
 
 
+rebalance(KeepNodes, EjectNodes) ->
+    AllNodes = KeepNodes ++ EjectNodes,
+    [] = AllNodes -- ns_node_disco:nodes_actual_proper(),
+    Buckets = ns_bucket:get_bucket_names(),
+    rebalance(Buckets, length(Buckets), KeepNodes, EjectNodes),
+    %% Leave myself last
+    LeaveNodes = lists:delete(node(), EjectNodes),
+    lists:foreach(fun (N) ->
+                          ns_cluster_membership:deactivate([N]),
+                          ns_cluster:leave(N)
+                  end, LeaveNodes),
+    case lists:member(node(), EjectNodes) of
+        true ->
+            ns_cluster_membership:deactivate([node()]),
+            ns_cluster:leave();
+        false ->
+            ok
+    end.
+
+
+
 %% @doc Rebalance the cluster. Operates on a single bucket. Will
 %% either return ok or exit with reason 'stopped' or whatever reason
 %% was given by whatever failed.
-rebalance(Bucket, KeepNodes, EjectNodes, Map) ->
-    ns_config:set(rebalance_status, running),
+rebalance([], _, _, _) ->
+    ok;
+rebalance([Bucket|Buckets], NumBuckets, KeepNodes, EjectNodes) ->
+    BucketCompletion = 1.0 - (length(Buckets)+1) / NumBuckets,
     AllNodes = KeepNodes ++ EjectNodes,
-    [] = AllNodes -- ns_node_disco:nodes_actual_proper(),
-    wait_for_memcached(AllNodes),
-    ns_orchestrator:reset_progress(),
-    ns_orchestrator:update_progress(AllNodes, 0.0),
-    ns_bucket:set_servers(Bucket, AllNodes),
+    wait_for_memcached(AllNodes, Bucket),
+    ns_orchestrator:update_progress(
+      dict:from_list([{N, BucketCompletion} || N <- AllNodes])),
+    {_, _, Map, _} = ns_bucket:config(Bucket),
+    ns_bucket:set_servers(Bucket, KeepNodes ++ EjectNodes),
     Histograms1 = histograms(Map, KeepNodes),
     Moves1 = master_moves(Bucket, EjectNodes, Map, Histograms1),
+    ProgressFun =
+        fun (P) ->
+                Progress = dict:map(fun (_, N) ->
+                                            N / NumBuckets + BucketCompletion
+                                    end, P),
+                ns_orchestrator:update_progress(Progress)
+        end,
     try
         %% 'stopped' can be thrown past this point.
-        Map2 = perform_moves(Bucket, Map, Moves1),
-        ns_orchestrator:update_progress(EjectNodes, 1.0),
+        Map2 = perform_moves(Bucket, Map, Moves1, ProgressFun),
         maybe_stop(),
         Histograms2 = histograms(Map2, KeepNodes),
         Moves2 = balance_nodes(Bucket, Map2, Histograms2, 1),
-        Map3 = perform_moves(Bucket, Map2, Moves2),
-        ns_orchestrator:update_progress(KeepNodes, 1.0),
+        Map3 = perform_moves(Bucket, Map2, Moves2, ProgressFun),
+        ns_orchestrator:update_progress(
+          dict:from_list([{N, 1.0} || N <- KeepNodes])),
         maybe_stop(),
         Histograms3 = histograms(Map3, KeepNodes),
         Map4 = new_replicas(Bucket, EjectNodes, Map3, Histograms3),
@@ -80,7 +110,8 @@ rebalance(Bucket, KeepNodes, EjectNodes, Map) ->
                  end, Map4, lists:seq(2, ChainLength)),
         ns_bucket:set_servers(Bucket, KeepNodes),
         ns_bucket:set_map(Bucket, Map5),
-        %% Push out the config with the new map in case this node is being removed
+        %% Push out the config with the new map in case this node is
+        %% being removed
         ns_config_rep:push(),
         maybe_stop()
     catch
@@ -88,19 +119,7 @@ rebalance(Bucket, KeepNodes, EjectNodes, Map) ->
             fixup_replicas(Bucket, KeepNodes, EjectNodes),
             exit(stopped)
     end,
-    %% Leave myself last
-    LeaveNodes = lists:delete(node(), EjectNodes),
-    lists:foreach(fun (N) ->
-                          ns_cluster_membership:deactivate([N]),
-                          ns_cluster:leave(N)
-                  end, LeaveNodes),
-    case lists:member(node(), EjectNodes) of
-        true ->
-            ns_cluster_membership:deactivate([node()]),
-            ns_cluster:leave();
-        false ->
-            ok
-    end.
+    rebalance(Buckets, NumBuckets, KeepNodes, EjectNodes).
 
 
 %% @doc Determine if a particular bucket is unbalanced. Returns true
@@ -250,12 +269,12 @@ new_replicas(Bucket, EjectNodes, [Chain|MapTail], Histograms, V,
                   [[Master|Replicas1]|NewMapReversed]).
 
 
--spec perform_moves(string(), map(), moves()) -> map() | no_return().
-perform_moves(Bucket, Map, Moves) ->
+-spec perform_moves(string(), map(), moves(), fun((dict()) -> any())) ->
+                           map() | no_return().
+perform_moves(Bucket, Map, Moves, ProgressFun) ->
     process_flag(trap_exit, true),
     {ok, Pid} =
-        ns_vbucket_mover:start_link(Bucket, Moves,
-                                    fun ns_orchestrator:update_progress/1),
+        ns_vbucket_mover:start_link(Bucket, Moves, ProgressFun),
     case wait_for_mover(Pid) of
         ok ->
             MoveDict = dict:from_list([{V, N} || {V, _, N} <- Moves]),
@@ -275,7 +294,7 @@ promote_replica(Bucket, Chain, RemapNodes, V) ->
     [OldMaster|_] = Chain,
     Bad = fun (Node) -> lists:member(Node, RemapNodes) end,
     NotBad = fun (Node) -> not lists:member(Node, RemapNodes) end,
-    NewChain = lists:takewhile(NotBad, lists:dropwhile(Bad, Chain)), % TODO garbage collect orphaned pending buckets later
+    NewChain = lists:takewhile(NotBad, lists:dropwhile(Bad, Chain)),
     NewChainExtended = NewChain ++ lists:duplicate(length(Chain) - length(NewChain), undefined),
     case NewChainExtended of
         [OldMaster|_] ->
@@ -292,8 +311,8 @@ promote_replica(Bucket, Chain, RemapNodes, V) ->
 
 
 %% @doc Wait until either all memcacheds are up or stop is pressed.
-wait_for_memcached(Nodes) ->
-    case ns_memcached:check_bucket(Nodes, "default", 5000) of
+wait_for_memcached(Nodes, Bucket) ->
+    case ns_memcached:check_bucket(Nodes, Bucket, 5000) of
         [] ->
             ok;
         Down ->
@@ -301,7 +320,7 @@ wait_for_memcached(Nodes) ->
                 stop ->
                     exit(stopped)
             after 1000 ->
-                    wait_for_memcached(Down)
+                    wait_for_memcached(Down, Bucket)
             end
     end.
 

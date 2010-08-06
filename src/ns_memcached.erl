@@ -136,7 +136,7 @@ check_bucket(Nodes, Bucket, Timeout) ->
     {Replies, BadNodes} = gen_server:multi_call(Nodes, ?MODULE,
                                                 {check_bucket, Bucket},
                                                 Timeout),
-    BadReplies = [X || {_, {R, _}} = X <- Replies, R /= ok],
+    BadReplies = [X || {_, R} = X <- Replies, R /= ok],
     case BadReplies ++ BadNodes of
         [] ->
             [];
