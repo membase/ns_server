@@ -76,12 +76,11 @@
 	<div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
 
 	<div class="hdr">Clusters</div>
-	<div class="section">
-		<div class="item">
+	<div class="section" id="overview_clusters_block">
+		<div class="item ram-item">
+                        <div class="usage_total">TOTAL CLUSTER (<span class="cluster-total"></span>)</div>
 			<div class="label">
 				<strong>RAM Overview</strong>
-				<span>Total Cluster</span>
-				192 Gb (all buckets)
 			</div>
 			<div class="line_cnt">
 				<div class="usage_biggest">
@@ -89,10 +88,10 @@
 					<div class="free" style="width:20%;"><i></i></div>
 				</div>
 				<ul>
-					<li>In use by all buckets (160 Gb)</li>
-					<li>Free (20 Gb)</li>
-					<li>Total allocated (180 gb)</li>
-					<li>Unused (12 Gb)</li>
+					<li>In use by all buckets (<span class="used-quota"></span>)</li>
+					<li>Unused (<span class="unused-quota"></span>)</li>
+					<li>Total allocated (<span class="buckets-quota"></span>)</li>
+					<li>Free (<span class="quota-free"></span>)</li>
 				</ul>
 			</div>
 		</div>
