@@ -507,7 +507,10 @@ $(function () {
   var oldIsSasl;
   var dialog = $('#bucket_details_dialog')
   dialog.observePotentialChanges(function () {
-    var isSasl = $('#bucket_details_sasl_selected')[0].checked;
+    var saslSelected = $('#bucket_details_sasl_selected')[0];
+    if (!saslSelected) // might happen just before page unload
+      return;
+    var isSasl = saslSelected.checked;
     if (oldIsSasl != null && isSasl == oldIsSasl)
       return;
     oldIsSasl = isSasl;
