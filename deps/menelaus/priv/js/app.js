@@ -67,7 +67,8 @@ var OverviewSection = {
     return String(d).substring(1);
   }
 
-  window.formatAlertTStamp = function formatAlertTStamp(mseconds) {
+  window.formatAlertTStamp = formatAlertTStamp;
+  function formatAlertTStamp(mseconds) {
     var date = new Date(mseconds);
     var rv = [weekDays[date.getDay()],
       ' ',
