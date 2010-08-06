@@ -27,6 +27,7 @@
          ram_quota/1,
          hdd_quota/1,
          num_replicas/1,
+         bucket_type/1,
          get_bucket_names/0,
          json_map/2,
          set_bucket_config/2,
@@ -105,6 +106,9 @@ num_replicas(Bucket) ->
         X when is_integer(X) ->
             X
     end.
+
+bucket_type(_Bucket) ->
+    membase.
 
 json_map(BucketId, LocalAddr) ->
     Config = ns_config:get(),
