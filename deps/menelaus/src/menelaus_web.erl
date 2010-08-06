@@ -699,7 +699,7 @@ validate_bucket_params(RAMQuotaMB, HDDQuotaGB, NumReplicas) ->
     Errors = [{ramQuotaMB, case RAMIsNumber of
                                true -> ok;
                                _ ->
-                                   <<"RAM quota needs to be a number">>
+                                   <<"RAM quota must be a number.">>
                            end},
               {hddQuotaGB, case HDDIsNumber of
                                true ->
@@ -707,7 +707,7 @@ validate_bucket_params(RAMQuotaMB, HDDQuotaGB, NumReplicas) ->
                                        true ->
                                            case RAMQuotaMB > HDDQuotaGB * 1024 of
                                                true ->
-                                                   <<"Disk quota is smaller than RAM quota does not make sense">>;
+                                                   <<"Disk quota is smaller than RAM.">>;
                                                _ -> ok
                                            end;
                                        _ -> ok
@@ -717,7 +717,7 @@ validate_bucket_params(RAMQuotaMB, HDDQuotaGB, NumReplicas) ->
                            end},
               {replicaNumber, case ReplicasIsInt of
                                   true -> ok;
-                                  _ -> <<"Replica number needs to be a number">>
+                                  _ -> <<"Replica number must be an integer.">>
                               end}],
     lists:filter(fun ({_, ok}) -> false;
                      (_) -> true
