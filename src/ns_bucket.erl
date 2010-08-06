@@ -31,7 +31,7 @@
          json_map/2,
          set_bucket_config/2,
          is_valid_bucket_name/1,
-         create_bucket/2,
+         create_bucket/3,
          update_bucket_props/2,
          delete_bucket/1,
          set_map/2,
@@ -162,12 +162,13 @@ is_valid_bucket_name([Char | Rest]) ->
         _ -> false
     end.
 
-create_bucket(BucketName, NewConfig) ->
+create_bucket(membase, BucketName, NewConfig) ->
     case is_valid_bucket_name(BucketName) of
         false ->
             exit({invalid_name, BucketName});
         _ -> ok
     end,
+    %% TODO: handle bucketType of memcache || membase
     MergedConfig = misc:update_proplist([{num_vbuckets, 1024},
                                          {num_replicas, 1},
                                          {ram_quota, 0},
@@ -186,7 +187,9 @@ create_bucket(BucketName, NewConfig) ->
                                      end,
                                      [{BucketName, MergedConfig} | List]
                              end),
-    ns_rebalancer:rebalance([BucketName], 1, ns_node_disco:nodes_wanted(), []).
+    ns_rebalancer:rebalance([BucketName], 1, ns_node_disco:nodes_wanted(), []);
+create_bucket(memcache, _BucketName, _NewConfig) ->
+    error.
 
 delete_bucket(BucketName) ->
     ns_config:update_sub_key(buckets, configs,

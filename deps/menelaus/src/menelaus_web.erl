@@ -16,6 +16,7 @@
 %% @doc Web server for menelaus.
 
 -module(menelaus_web).
+
 -author('NorthScale <info@northscale.com>').
 
 % -behavior(ns_log_categorizing).
@@ -688,22 +689,33 @@ redirect_to_bucket(Req, PoolId, BucketId) ->
 parse_ram_quota(RAMQuotaMB) ->
     (catch list_to_integer(RAMQuotaMB) * 1048576).
 
+parse_hdd_quota(undefined) ->
+    undefined;
 parse_hdd_quota(HDDQuotaGB) ->
     (catch list_to_integer(HDDQuotaGB) * 1048576 * 1024).
 
+parse_num_replicas(undefined) ->
+    undefined;
 parse_num_replicas(NumReplicas) ->
     (catch list_to_integer(NumReplicas)).
 
 parse_proxy_port(ProxyPort) ->
     (catch list_to_integer(ProxyPort)).
 
-validate_bucket_params(RAMQuotaMB, HDDQuotaGB, NumReplicas, AuthType, _SASLPassword, ProxyPort) ->
+validate_bucket_params(Type, RAMQuotaMB, HDDQuotaGB, NumReplicas, AuthType, _SASLPassword, ProxyPort) ->
+    %% TODO fix for handling memcache type bucket
     RAMIsNumber = is_integer(RAMQuotaMB),
     HDDIsNumber = is_integer(HDDQuotaGB),
     ProxyPortIsNumber = is_integer(ProxyPort),
     ReplicasIsInt = is_integer(NumReplicas),
+    TypeIsValid = is_valid_bucket_type(Type),
 
-    Errors = [{ramQuotaMB, case RAMIsNumber of
+    Errors = [{bucketType, case TypeIsValid of
+                               true -> ok;
+                               _ ->
+                                   <<"Invalid bucket type specified.">>
+                           end},
+              {ramQuotaMB, case RAMIsNumber of
                                true -> ok;
                                _ ->
                                    <<"RAM quota must be a number.">>
@@ -751,8 +763,9 @@ handle_bucket_update(_PoolId, BucketId, Req) ->
                end,
     SASLPassword = proplists:get_value("saslPassword", Params, ""),
     ProxyPort = parse_proxy_port(proplists:get_value("proxyPort", Params, "0")),
+    Type = proplists:get_value("bucketType", Params),
 
-    case validate_bucket_params(RAMQuota, HDDQuota, NumReplicas, AuthType, SASLPassword, ProxyPort) of
+    case validate_bucket_params(Type, RAMQuota, HDDQuota, NumReplicas, AuthType, SASLPassword, ProxyPort) of
         [] ->
             UpdatedProps = [{auth_type, AuthType},
                             {sasl_password, SASLPassword},
@@ -776,9 +789,10 @@ handle_bucket_create(PoolId, Req) ->
             Params = Req:parse_post(),
             %% TODO: validation
             Name = misc:expect_prop_value("name", Params),
-            RAMQuota = parse_ram_quota(misc:expect_prop_value("ramQuotaMB", Params)),
-            HDDQuota = parse_hdd_quota(misc:expect_prop_value("hddQuotaGB", Params)),
-            NumReplicas = parse_num_replicas(misc:expect_prop_value("replicaNumber", Params)),
+            Type = misc:expect_prop_value("bucketType", Params),
+            RAMQuota = parse_ram_quota(proplists:get_value("ramQuotaMB", Params, undefined)),
+            HDDQuota = parse_hdd_quota(proplists:get_value("hddQuotaGB", Params, undefined)),
+            NumReplicas = parse_num_replicas(proplists:get_value("replicaNumber", Params, undefined)),
             AuthType = case proplists:get_value("authType", Params) of
                            "none" -> none;
                            "sasl" -> sasl;
@@ -786,8 +800,14 @@ handle_bucket_create(PoolId, Req) ->
                        end,
             SASLPassword = proplists:get_value("saslPassword", Params),
             ProxyPort = parse_proxy_port(proplists:get_value("proxyPort", Params)),
+            case Type of
+                "membase" ->
+                    BucketType = membase;
+                _ ->
+                    BucketType = memcache
+            end,
 
-            Errors0 = validate_bucket_params(RAMQuota, HDDQuota, NumReplicas, AuthType, SASLPassword, ProxyPort),
+            Errors0 = validate_bucket_params(Type, RAMQuota, HDDQuota, NumReplicas, AuthType, SASLPassword, ProxyPort),
             Errors = case ns_bucket:is_valid_bucket_name(Name) of
                          false -> [{name, <<"Given bucket name is invalid. Consult the documentation.">>}
                                    | Errors0];
@@ -795,7 +815,7 @@ handle_bucket_create(PoolId, Req) ->
                      end,
             case Errors of
                 [] ->
-                    case ns_bucket:create_bucket(Name, [{auth_type, AuthType},
+                    case ns_bucket:create_bucket(BucketType, Name, [{auth_type, AuthType},
                                                         {sasl_password, SASLPassword},
                                                         {moxi_port, ProxyPort},
                                                         {ram_quota, RAMQuota},
@@ -1482,3 +1502,16 @@ handle_re_add_node(Req) ->
     Node = list_to_atom(proplists:get_value("otpNode", Params, "undefined")),
     ok = ns_cluster_membership:re_add_node(Node),
     Req:respond({200, [], []}).
+
+%% check bucket type
+%% In the future, this can check by comparing to something actually asserted
+%% or somehow sent up by the engine
+is_valid_bucket_type([]) -> false;
+is_valid_bucket_type(Type) ->
+    case Type of
+        "memcache" ->
+            true;
+        "membase" ->
+            true;
+        _ -> false
+    end.
