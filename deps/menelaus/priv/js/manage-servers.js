@@ -5,6 +5,13 @@ var ServersSection = {
   active: [], // nodes for active tab
   allNodes: [], // all known nodes
 
+  visitTab: function (tabName) {
+    if (ThePage.currentSection != 'servers') {
+      $('html, body').animate({scrollTop: 0}, 250);
+    }
+    ThePage.ensureSection('servers');
+    this.tabs.setValue(tabName);
+  },
   updateData: function () {
     var self = this;
     var serversValue = DAO.cells.serversCell.value || {};
@@ -413,3 +420,5 @@ var ServersSection = {
     });
   }
 };
+
+configureActionHashParam('visitServersTab', $m(ServersSection, 'visitTab'));
