@@ -34,6 +34,7 @@
          is_valid_bucket_name/1,
          create_bucket/3,
          update_bucket_props/2,
+         update_bucket_props/3,
          delete_bucket/1,
          set_map/2,
          set_servers/2]).
@@ -205,6 +206,13 @@ delete_bucket(BucketName) ->
                                      end
                              end).
 
+%% Updates properties of bucket of given name and type.  Check of type
+%% protects us from type change races in certain cases.
+%%
+%% If bucket with given name exists, but with different type, we
+%% should return {exit, {not_found, _}, _}
+update_bucket_props(membase, BucketName, Props) ->
+    update_bucket_props(BucketName, Props).
 
 update_bucket_props(BucketName, Props) ->
     ns_config:update_sub_key(buckets, configs,

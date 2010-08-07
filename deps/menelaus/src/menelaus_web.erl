@@ -644,6 +644,7 @@ build_bucket_info(PoolId, Id, Pool, InfoLevel, LocalAddr) ->
                       {basicStats, {struct, menelaus_stats:basic_stats(PoolId, Id)}}]
              end,
     {struct, [{name, list_to_binary(Id)},
+              {bucketType, ns_bucket:bucket_type(BucketConfig)},
               {authType, misc:expect_prop_value(auth_type, BucketConfig)},
               {saslPassword, list_to_binary(misc:expect_prop_value(sasl_password, BucketConfig))},
               {proxyPort, misc:expect_prop_value(moxi_port, BucketConfig)},
@@ -751,7 +752,15 @@ validate_bucket_params(Type, RAMQuotaMB, HDDQuotaGB, NumReplicas, AuthType, _SAS
                      (_) -> true
                  end, Errors).
 
-handle_bucket_update(_PoolId, BucketId, Req) ->
+handle_bucket_update(PoolId, BucketId, Req) ->
+    case ns_bucket:get_bucket(BucketId) of
+        {ok, BucketConfig} ->
+            handle_bucket_update(PoolId, BucketId, Req, BucketConfig);
+        _ ->
+            reply_json(Req, {struct, [{'_', [<<"Bucket not found">>]}]}, 400)
+    end.
+
+handle_bucket_update(_PoolId, BucketId, Req, BucketConfig) ->
     Params = Req:parse_post(),
     RAMQuota = parse_ram_quota(proplists:get_value("ramQuotaMB", Params)),
     HDDQuota = parse_hdd_quota(proplists:get_value("hddQuotaGB", Params)),
@@ -763,9 +772,12 @@ handle_bucket_update(_PoolId, BucketId, Req) ->
                end,
     SASLPassword = proplists:get_value("saslPassword", Params, ""),
     ProxyPort = parse_proxy_port(proplists:get_value("proxyPort", Params, "0")),
-    Type = proplists:get_value("bucketType", Params),
 
-    case validate_bucket_params(Type, RAMQuota, HDDQuota, NumReplicas, AuthType, SASLPassword, ProxyPort) of
+    BucketType = ns_bucket:bucket_type(BucketConfig),
+
+    case validate_bucket_params(atom_to_list(BucketType),
+                                RAMQuota, HDDQuota, NumReplicas,
+                                AuthType, SASLPassword, ProxyPort) of
         [] ->
             UpdatedProps = [{auth_type, AuthType},
                             {sasl_password, SASLPassword},
@@ -773,7 +785,7 @@ handle_bucket_update(_PoolId, BucketId, Req) ->
                             {ram_quota, RAMQuota},
                             {hdd_quota, HDDQuota},
                             {num_replicas, NumReplicas}],
-            case ns_bucket:update_bucket_props(BucketId, UpdatedProps) of
+            case ns_bucket:update_bucket_props(BucketType, BucketId, UpdatedProps) of
                 ok ->
                     Req:respond({200, add_header(), []});
                 {exit, {not_found, _}, _} ->
@@ -800,12 +812,12 @@ handle_bucket_create(PoolId, Req) ->
                        end,
             SASLPassword = proplists:get_value("saslPassword", Params),
             ProxyPort = parse_proxy_port(proplists:get_value("proxyPort", Params)),
-            case Type of
-                "membase" ->
-                    BucketType = membase;
-                _ ->
-                    BucketType = memcache
-            end,
+            BucketType = case Type of
+                             "membase" ->
+                                 membase;
+                             _ ->
+                                 memcache
+                         end,
 
             Errors0 = validate_bucket_params(Type, RAMQuota, HDDQuota, NumReplicas, AuthType, SASLPassword, ProxyPort),
             Errors = case ns_bucket:is_valid_bucket_name(Name) of
@@ -815,7 +827,8 @@ handle_bucket_create(PoolId, Req) ->
                      end,
             case Errors of
                 [] ->
-                    case ns_bucket:create_bucket(BucketType, Name, [{auth_type, AuthType},
+                    case ns_bucket:create_bucket(BucketType,
+                                                 Name, [{auth_type, AuthType},
                                                         {sasl_password, SASLPassword},
                                                         {moxi_port, ProxyPort},
                                                         {ram_quota, RAMQuota},
