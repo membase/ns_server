@@ -226,13 +226,13 @@
     <!-- {% _.each(rows, function (s) { %} -->
       <!-- {% if (s.clusterMembership == 'inactiveAdded') { %}-->
       <li class="server_row pending_add {%= s.nodeClass %}">{%= V.setData('server', s) %}
-        <a class="serverName" href="#openServer={%= s.otpNode %}">{%= h(s.hostname) %}</a>
+        <a class="serverName" href="#openServer={%= s.otpNode %}">{%= V.stripPort(s.hostname) %}</a>
         <a href="#" class="btn_cancel eject_server">CANCEL</a>
         <span class="pending_add_message">PENDING ADD</span>
       </li>
       <!-- {% } else if (s.pendingEject) { %} -->
       <li class="server_row pending_removal {%= s.nodeClass %}">{%= V.setData('server', s) %}
-        <a class="serverName" href="#openServer={%= s.otpNode %}">{%= h(s.hostname) %}</a>
+        <a class="serverName" href="#openServer={%= s.otpNode %}">{%= V.stripPort(s.hostname) %}</a>
         <a href="#" class="btn_cancel remove_from_list">CANCEL</a>
         <span class="pending_removal_message">PENDING REMOVAL</span>
       </li>
@@ -244,7 +244,7 @@
         </li>
         <!-- {% } %} -->
       <li class="server_row {%= s.nodeClass %}">{%= V.setData('server', s) %}
-        <a href="#openServer={%= h(s.otpNode) %}" class="serverName">{%= h(s.hostname) %}</a><a class="list_button btn_width_2 eject_server"><span>Remove Server</span></a><a class="list_button btn_width_1 failover_server"><span>Fail Over</span></a><span class="failed_over_message">FAILED OVER: PENDING REMOVAL</span>
+        <a href="#openServer={%= h(s.otpNode) %}" class="serverName">{%= V.stripPort(s.hostname) %}</a><a class="list_button btn_width_2 eject_server"><span>Remove Server</span></a><a class="list_button btn_width_1 failover_server"><span>Fail Over</span></a><span class="failed_over_message">FAILED OVER: PENDING REMOVAL</span>
       </li>
       <!-- {% } %} -->
       <li id="{%= h(s.detailsRowID) %}" class="settings-placeholder"></li>

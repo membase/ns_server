@@ -343,7 +343,7 @@ function $i(id) {
   return document.getElementById(id);
 }
 
-// stolen from MIT-licensed prototype.js http://www.prototypejs.org/
+// borrowed from MIT-licensed prototype.js http://www.prototypejs.org/
 function functionArgumentNames(f) {
   var names = f.toString().match(/^[\s\(]*function[^(]*\(([^\)]*)\)/)[1]
                                  .replace(/\s+/g, '').split(',');

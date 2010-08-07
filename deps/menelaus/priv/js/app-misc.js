@@ -547,11 +547,17 @@ _.extend(ViewHelpers, {
     debugger
     throw new Error('cannot reach');
   },
+
   ifNull: function (value, replacement) {
     if (value == null || value == '')
       return replacement;
     return value;
+  },
+
+  stripPort: function(value) {
+    return value.split(":",1);
   }
+
 });
 
 function genericDialog(options) {
