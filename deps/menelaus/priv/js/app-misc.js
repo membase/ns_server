@@ -569,8 +569,8 @@ function genericDialog(options) {
                         instance.close();
                       }},
                      options);
-  var text = options.text || 'I forgot to put text';
-  var header = options.header || 'I forgot to put header';
+  var text = options.text || 'No text.';
+  var header = options.header || 'No Header';
   var dialogTemplate = $('#generic_dialog');
   var dialog = $('<div></div>');
   dialog.attr('class', dialogTemplate.attr('class'));
