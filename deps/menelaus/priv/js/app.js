@@ -441,7 +441,7 @@ $(function () {
     DAO.onReady(function () {
       $.cookie('rf', null);
       if ('sessionStorage' in window && window.sessionStorage.reloadCause) {
-        postClientErrorReport("Had XHR failure. Here's diag: " + window.sessionStorage.reloadCause);
+        postClientErrorReport("Browser client XHR failure encountered.  Diagnostic info: " + window.sessionStorage.reloadCause);
         delete window.sessionStorage.reloadCause;
       }
     });
