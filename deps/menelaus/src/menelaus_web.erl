@@ -742,7 +742,10 @@ validate_bucket_params(Type, RAMQuotaMB, HDDQuotaGB, NumReplicas, AuthType, _SAS
               {proxyPort, case ProxyPortIsNumber of
                               true -> ok;
                               %% need more validation here
-                              _ -> <<"Proxy port needs to be a number">>
+                              _ -> case authType of
+                                       none -> <<"Proxy port needs to be a number">>;
+                                       _ -> ok
+                                   end
                           end},
               {replicaNumber, case ReplicasIsInt of
                                   true -> ok;
