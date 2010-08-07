@@ -174,7 +174,10 @@ create_bucket(membase, BucketName, NewConfig) ->
         _ -> ok
     end,
     %% TODO: handle bucketType of memcache || membase
-    MergedConfig = misc:update_proplist([{num_vbuckets, 1024},
+    MergedConfig = misc:update_proplist([{num_vbuckets, case (catch list_to_integer(os:getenv("VBUCKETS_NUM"))) of
+                                                            EnvBuckets when is_integer(EnvBuckets) -> EnvBuckets;
+                                                            _ -> 1024
+                                                        end},
                                          {num_replicas, 1},
                                          {ram_quota, 0},
                                          {hdd_quota, 0},

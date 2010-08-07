@@ -151,7 +151,10 @@ default() ->
     {memory_quota, InitQuota},
 
     {buckets, [{configs, [{"default",
-                           [{num_vbuckets, 1024},
+                           [{num_vbuckets, case (catch list_to_integer(os:getenv("VBUCKETS_NUM"))) of
+                                               EnvBuckets when is_integer(EnvBuckets) -> EnvBuckets;
+                                               _ -> 1024
+                                           end},
                             {num_replicas, 1},
                             %% default quotas will be defined when resources
                             %% stage of wizard will post data
