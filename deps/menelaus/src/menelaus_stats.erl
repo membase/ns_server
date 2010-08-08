@@ -43,12 +43,11 @@ basic_stats(_PoolId, BucketName = "default") ->
     Fetches = GetValue(ep_io_num_read),
     MemUsed = GetValue(mem_used),
     {ok, BucketConfig} = ns_bucket:get_bucket(BucketName),
-    NumNodes = length(ns_node_disco:nodes_wanted()),
-    QuotaMB = proplists:get_value(ram_quota, BucketConfig, 0) * NumNodes,
+    QuotaBytes = ns_bucket:ram_quota(BucketConfig),
     ItemCount = GetValue(curr_items),
     [{opsPerSec, Ops},
      {diskFetches, Fetches},
-     {quotaPercentUsed, try (MemUsed * 100.0 / (QuotaMB * 1048576.0)) of
+     {quotaPercentUsed, try (MemUsed * 100.0 / QuotaBytes) of
                             X -> X
                         catch
                             error:badarith -> 0
