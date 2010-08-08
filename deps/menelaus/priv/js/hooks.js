@@ -639,6 +639,7 @@ var MockedRequest = mkClass({
                          stats: {uri: "/pools/default/buckets/4/stats"}, // really for pool
                          name: "Default Pool"}],
       [get("pools", "default", "buckets"), [{name: "default",
+                                             bucketType: 'membase',
                                              uri: "/pools/default/buckets/4",
                                              stats: {uri: "/pools/default/buckets/4/stats"},
                                              quota: {
@@ -647,7 +648,7 @@ var MockedRequest = mkClass({
                                              },
                                              authType: 'sasl',
                                              proxyPort: 0,
-                                             saslPassword: '',
+                                             saslPassword: 'supermega',
                                              replicaNumber: 1,
                                              "basicStats": {
                                                "opsPerSec": 12,
@@ -658,6 +659,7 @@ var MockedRequest = mkClass({
                                                "itemCount": 1234
                                              }},
                                             {name: "Excerciser Application",
+                                             bucketType: 'memcache',
                                              uri: "/pools/default/buckets/5",
                                              testAppBucket: true,
                                              status: false,
@@ -669,7 +671,7 @@ var MockedRequest = mkClass({
                                              authType: 'none',
                                              proxyPort: 11213,
                                              saslPassword: '',
-                                             replicaNumber: 1,
+                                             replicaNumber: 2,
                                              "basicStats": {
                                                "opsPerSec": 13,
                                                "diskFetches": 1,
@@ -679,6 +681,7 @@ var MockedRequest = mkClass({
                                                "itemCount": 12324
                                              }},
                                             {name: "new-year-site",
+                                             bucketType: 'memcache',
                                              uri: "/pools/default/buckets/6",
                                              stats: {uri: "/pools/default/buckets/6/stats"},
                                              quota: {
@@ -698,6 +701,7 @@ var MockedRequest = mkClass({
                                                "itemCount": 12324
                                              }},
                                             {name: "new-year-site-staging",
+                                             bucketType: 'membase',
                                              uri: "/pools/default/buckets/7",
                                              stats: {uri: "/pools/default/buckets/7/stats"},
                                              quota: {
