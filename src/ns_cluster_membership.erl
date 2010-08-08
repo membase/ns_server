@@ -15,7 +15,8 @@
 %%
 -module(ns_cluster_membership).
 
--export([get_nodes_cluster_membership/0,
+-export([active_nodes/0,
+         get_nodes_cluster_membership/0,
          get_nodes_cluster_membership/1,
          get_cluster_membership/1,
          activate/1,
@@ -51,6 +52,10 @@
 -define(AUTH_FAILED, 33).
 %% categeory info. Starts from 256 - 32
 -define(JOINED_CLUSTER, 224).
+
+active_nodes() ->
+    [Node || Node <- ns_node_disco:nodes_wanted(),
+             get_cluster_membership(Node) == active].
 
 get_nodes_cluster_membership() ->
     get_nodes_cluster_membership(ns_node_disco:nodes_wanted()).
