@@ -18,7 +18,7 @@ function setFormValues(form, values) {
     text.val(value);
   });
 
-  form.find('input[type=checkbox], input[type=radio]').each(function () {
+  form.find('input[type=checkbox]').each(function () {
     var box = $(this);
     var name = box.attr('name');
     if (!(name in values))
@@ -29,6 +29,16 @@ function setFormValues(form, values) {
       boolValue = (boolValue != "0");
     }
 
+    setBoolAttribute(box, 'checked', boolValue);
+  });
+
+  form.find('input[type=radio]').each(function () {
+    var box = $(this);
+    var name = box.attr('name');
+    if (!(name in values))
+      return;
+
+    var boolValue = (values[name] == box.attr('value'));
     setBoolAttribute(box, 'checked', boolValue);
   });
 
