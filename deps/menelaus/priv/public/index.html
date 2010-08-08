@@ -489,8 +489,8 @@
             <th>Bucket Type</th>
             <th># of Servers</th>
             <th>Bucket Resides On</th>
-            <th>Total Memory</th>
-            <th>Flash & Disk Quota</th>
+            <th>RAM Size/Quota</th>
+            <th>Flash & Disk Size/Quota</th>
           </tr>
           <!-- {% $.each(rows, function () { %} -->
           <!--<tr>
@@ -520,8 +520,8 @@
               <td>{%= h(this.bucketTypeName) %} </td>
               <td>stretch to all</td>
               <td>{%= h(this.serversCount) %}</td>
-              <td>{%= V.formatQuantity(this.basicStats.memUsed) %}</td>
-              <td>{%= V.formatQuantity(this.quota.hdd) %}</td>
+              <td>{%= V.formatQuantity(this.basicStats.memUsed) %}/{%= V.formatQuantity(this.quota.ram) %}</td>
+              <td>{%= V.formatQuantity(this.basicStats.diskUsed) %}/{%= V.formatQuantity(this.quota.hdd) %}</td>
             </tr>
             <tr id="{%= h(this.settingsRowID) %}" class="settings-placeholder"><td colspan="6"></td></tr>
           <!-- {% }); %} -->
@@ -613,7 +613,7 @@
             <col width="" />
               <tr>
                 <td>Disk Quota:</td>
-                <td>{%= h(V.formatQuantity(totalDiskSize)) %}</td>
+                <td>{%= h(V.formatQuantity(quota.hdd)) %}</td>
               </tr>
             </table>
             <table class="RAM_diagramm">
