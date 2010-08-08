@@ -451,7 +451,7 @@
                             </div>
                         </div>
                     </div>{%= V.setPercentBar(this.basicStats.quotaPercentUsed) %}
-                    {%= h(truncateTo3Digits(this.basicStats.quotaPercentUsed)) %}%
+                    {%= h(truncateTo3Digits(Math.floor(this.basicStats.quotaPercentUsed * 100) / 100)) %}%
                 </div>
               </td>
               <td>{%= h(this.basicStats.itemCount) %}</td>
