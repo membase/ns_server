@@ -30,7 +30,7 @@ bucket_disk_usage(BucketName) ->
     {Res, _} = rpc:multicall(ns_node_disco:nodes_actual_proper(), ns_storage_conf, local_bucket_disk_usage, [BucketName], 2000),
     lists:sum([X || X <- Res]).
 
-basic_stats(_PoolId, BucketName = "default") ->
+basic_stats(_PoolId, BucketName) ->
     {Samples, _, _, _} = grab_op_stats(BucketName, [{"zoom", "minute"}]),
     LastSample = case Samples of
                      [] -> [];
@@ -54,9 +54,7 @@ basic_stats(_PoolId, BucketName = "default") ->
                         end},
      {diskUsed, bucket_disk_usage(BucketName)},
      {memUsed, MemUsed},
-     {itemCount, ItemCount}];
-%% TODO
-basic_stats(PoolId, _) -> basic_stats(PoolId, "default").
+     {itemCount, ItemCount}].
 
 %% GET /pools/default/stats
 %% Supported query params:
@@ -125,7 +123,7 @@ merge_samples(MainSamples, OtherSamples, MergerFun, MergerState) ->
                                      end, {[], MergerState}, MainSamples),
     lists:reverse(MergedSamples).
 
-grab_op_stats(Bucket = "default", Params) ->
+grab_op_stats(Bucket, Params) ->
     ClientTStamp = case proplists:get_value("haveTStamp", Params) of
                        undefined -> undefined;
                        X -> try list_to_integer(X) of
@@ -168,9 +166,7 @@ grab_op_stats(Bucket = "default", Params) ->
     after
         misc:flush(Ref),
         ns_pubsub:unsubscribe(ns_stats_event, Subscription)
-    end;
-%% TODO
-grab_op_stats(_, Params) -> grab_op_stats("default", Params).
+    end.
 
 invoke_archiver(Bucket, NodeS, {Step, Period, Window}) ->
     RV = case Step of
@@ -282,9 +278,9 @@ is_safe_key_name(Name) ->
                       C >= 16#20 andalso C =< 16#7f
               end, Name).
 
-build_buckets_stats_hks_response(_PoolId, [_BucketName]) ->
+build_buckets_stats_hks_response(_PoolId, [BucketName]) ->
     %% TODO: use real bucket name
-    BucketsTopKeys = case hot_keys_keeper:bucket_hot_keys("default") of
+    BucketsTopKeys = case hot_keys_keeper:bucket_hot_keys(BucketName) of
                          undefined -> [];
                          X -> X
                      end,

@@ -80,7 +80,10 @@ local_bucket_disk_usage("default" = _Bucket) ->
     DBDir = proplists:get_value(dbdir, PropList),
     {ok, Filenames} = file:list_dir(DBDir),
     %% this doesn't include filesystem slack
-    lists:sum([filelib:file_size(filename:join([DBDir, Name])) || Name <- Filenames]).
+    lists:sum([filelib:file_size(filename:join([DBDir, Name])) || Name <- Filenames]);
+local_bucket_disk_usage(_) ->
+    %% TODO
+    local_bucket_disk_usage("default").
 
 bucket_disk_usage(Node, Bucket) ->
     case rpc:call(Node, ns_storage_conf, local_bucket_disk_usage, [Bucket]) of
