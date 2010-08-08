@@ -181,7 +181,7 @@
 		</div>
 	</div>
 	</div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
-	
+
   </div>
   <div id="servers" style="display:none">
     <h1>SERVERS</h1>
@@ -1525,7 +1525,8 @@
       </div>
     </div>
   </div>
-  <div class="pad" id="init_welcome_dialog">
+  <div class="pad" id="init_welcome_license_dialog">
+    <!-- TODO: conditional inclusion of this section -->
     <div class="pad-header">
       <div class="tagline">
         ELASTIC DATA MANAGEMENT
@@ -1559,6 +1560,37 @@
         If you don't have a NorthScale license key, you can <a href="#">request one here</a>.
       </p>
       -->
+    </form>
+    <div class="welcome-footer">
+      Copyright &copy; 2010 NorthScale, Inc. All Rights Reserved
+      <a href="http://northscale.com/company/contact.html" id="welcome-footer-contact" target="_blank">Contact</a>
+    </div>
+  </div>
+  <!-- END welcome_license_block -->
+  <div class="pad" id="init_welcome_dialog">
+    <div class="pad-header">
+      <div class="tagline">
+        ELASTIC DATA MANAGEMENT
+      </div>
+      <div class="version">
+        NorthScale Server 1.6.0 Beta 3
+      </div>
+      <div class="elastro-cling"></div>
+    </div>
+    <!-- screen S.1 -->
+    <div class="alert_red license_failed_message" style="display:none;">
+      <div class="al_text">
+        Invalid license. Please try again.
+      </div>
+    </div>
+    <h1>Congratulations</h1>
+    <form id="init_welcome_form">
+      <p>
+        You have successfully installed the NorthScale Server.
+      </p>
+      <div class="pat_10">
+        <input type="image" name="setup" value="Setup" class="submit next" src="../images/welcome-setup-button.png" style="width:145px; height:55px; margin-left:-7px; color:#fff;" />
+      </div>
     </form>
     <div class="welcome-footer">
       Copyright &copy; 2010 NorthScale, Inc. All Rights Reserved
