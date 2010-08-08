@@ -754,12 +754,17 @@ key_update(Key, PList, Fun) ->
 
 %% replace values from OldPList with values from NewPList
 update_proplist(OldPList, NewPList) ->
-    lists:map(fun ({K,_} = Tuple) ->
-                      case lists:keyfind(K, 1, NewPList) of
-                          false -> Tuple;
-                          {_, NewV} -> {K, NewV}
-                      end
-              end, OldPList).
+    NewPList ++
+        lists:filter(fun ({K, _}) ->
+                             case lists:keyfind(K, 1, NewPList) of
+                                 false -> true;
+                                 _ -> false
+                             end
+                     end, OldPList).
+
+update_proplist_test() ->
+    [{a, 1}, {b, 2}, {c,3}] =:= update_proplist([{a,2}, {c,3}],
+                                                [{a,1}, {b,2}]).
 
 %% get proplist value or fail
 expect_prop_value(K, List) ->
