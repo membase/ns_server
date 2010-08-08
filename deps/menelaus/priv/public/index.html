@@ -990,30 +990,32 @@
     </div>
     <label class="for-ram-quota"><span>Dynamic RAM Allocated:</span><input name="ramQuotaMB" value="30"><abbr>MB</abbr></label>
     <div class="error-container err-ramQuotaMB"></div>
-    <h2>Storage Size</h2>
-    <label class="for-enable-persistence"><input type="checkbox" disabled checked><span>Enable Persistence</span></label>
-    <div class="size-gauge for-hdd">
-      <div class="t">CLUSTER QUOTA (<span class="total">192 GB</span>)</div>
-      <div class="gauge">
-        <div>
-          <div class="green"></div>
-          <div class="blue"></div>
+    <div class="persistent-only">
+      <h2>Storage Size</h2>
+      <label class="for-enable-persistence"><input type="checkbox" disabled checked><span>Enable Persistence</span></label>
+      <div class="size-gauge for-hdd">
+        <div class="t">CLUSTER QUOTA (<span class="total">192 GB</span>)</div>
+        <div class="gauge">
+          <div>
+            <div class="green"></div>
+            <div class="blue"></div>
+          </div>
         </div>
+        <table class="b"><tr>
+          <td class="blue">OTHER BUCKETS (<span class="other">15 GB</span>)</td>
+          <td class="green">THIS BUCKET (<span class="this">5 GB</span>)</td>
+          <td>FREE (<span class="free">12 GB</span>)</td>
+        </tr></table>
       </div>
-      <table class="b"><tr>
-        <td class="blue">OTHER BUCKETS (<span class="other">15 GB</span>)</td>
-        <td class="green">THIS BUCKET (<span class="this">5 GB</span>)</td>
-        <td>FREE (<span class="free">12 GB</span>)</td>
-      </tr></table>
-    </div>
-    <label class="for-hdd-quota"><span>Disk Quota:</span><input name="hddQuotaGB"><abbr>GB</abbr></label>
-    <div class="error-container err-hddQuotaGB"></div>
-    <h2>Replication</h2>
-    <label class="for-enable-replication"><input type="checkbox" checked><span>Enable Replication</span></label>
-    <label class="for-replica-number"><input value="1" name="replicaNumber">
-      <span>Number of replica (backup) copies</span>
-      <span class="error-container err-replicaNumber"></span>
-    </label>
+      <label class="for-hdd-quota"><span>Disk Quota:</span><input name="hddQuotaGB"><abbr>GB</abbr></label>
+      <div class="error-container err-hddQuotaGB"></div>
+      <h2>Replication</h2>
+      <label class="for-enable-replication"><input type="checkbox" checked><span>Enable Replication</span></label>
+      <label class="for-replica-number"><input value="1" name="replicaNumber">
+        <span>Number of replica (backup) copies</span>
+        <span class="error-container err-replicaNumber"></span>
+      </label>
+    </div> <!-- .persistent-only -->
   </div><div class="save_cancel clearfix">
     <span class="when-editing"><button class="save_button float_right" type="submit">SAVE</button><button class="delete_button float_right">DELETE</button></span>
     <span class="when-creating"><button class="save_button float_right" type="submit">CREATE</button></span>

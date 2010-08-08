@@ -29,6 +29,11 @@ var BucketDetailsDialog = mkClass({
 
     this.valuesCell.subscribeValue($m(this, 'onValues'));
 
+    dialog.find('[name=bucketType]').observeInput(function (newType) {
+      var isPersistent = (newType == 'membase');
+      dialog.find('.persistent-only')[isPersistent ? 'slideDown' : 'slideUp']('fast');
+    });
+
     this.cleanups = [];
   },
 
@@ -50,6 +55,12 @@ var BucketDetailsDialog = mkClass({
                                             });
     self.needBucketsRefresh = true;
 
+    var nonPersistent = null;
+    if (self.dialog.find('[name=bucketType]').val() != 'membase') {
+      nonPersistent = self.dialog.find('.persistent-only').find('input').filter(':not([disabled])');
+      setBoolAttribute(nonPersistent, 'disabled', true);
+    }
+
     postWithValidationErrors(self.valuesCell.value.uri, self.dialog.find('form'), function (data, status) {
       if (status == 'success') {
         BucketsSection.refreshBuckets(function () {
@@ -65,6 +76,10 @@ var BucketDetailsDialog = mkClass({
       var errors = data[0]; // we expect errors as a hash in this case
       self.valuesCell.setValueAttr(errors, 'errors');
     });
+
+    if (nonPersistent) {
+      setBoolAttribute(nonPersistent, 'disabled', false);
+    }
 
     var toDisable = self.dialog.find('input[type=text], input:not([type]), input[type=checkbox]')
       .filter(':not([disabled])')
