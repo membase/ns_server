@@ -500,12 +500,20 @@ _.extend(ViewHelpers, {
       q.attr(name, value);
     });
   },
+  specialPluralizations: {
+    'copy': 'copies'
+  },
   count: function (count, text) {
     if (count == null)
       return '?' + text + '(s)';
     count = Number(count);
     if (count > 1) {
-      text += 's';
+      var lastWord = text.split(/\s+/).slice(-1)[0];
+      var specialCase = ViewHelpers.specialPluralizations[lastWord];
+      if (specialCase)
+        text = specialCase;
+      else
+        text += 's';
     }
     return [String(count), ' ', text].join('')
   },

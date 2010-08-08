@@ -335,6 +335,14 @@ var BucketsSection = {
     var bucketsListTransformer = function (values) {
       self.buckets = values;
       _.each(values, function (bucket) {
+        if (bucket.bucketType == 'memcache') {
+          bucket.bucketTypeName = 'Memcache';
+        } else if (bucket.bucketType == 'membase') {
+          bucket.bucketTypeName = 'Membase';
+        } else {
+          bucket.bucketTypeName = bucket.bucketType;
+        }
+
         bucket.serversCount = poolDetailsValue.nodes.length;
         bucket.ramQuota = bucket.quota.ram;
         var storageTotals = poolDetailsValue.storageTotals

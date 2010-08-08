@@ -517,11 +517,11 @@
             </tr>-->
             <tr>
               <td><a class="gray_link bucket_name" href="#visitBucket={%=h(this.name)%}">{%= h(this.name) %}</a></td>
-              <td>Membase</td>
+              <td>{%= h(this.bucketTypeName) %} </td>
               <td>stretch to all</td>
               <td>{%= h(this.serversCount) %}</td>
               <td>{%= V.formatQuantity(this.basicStats.memUsed) %}</td>
-              <td>unlimited</td>
+              <td>{%= V.formatQuantity(this.quota.hdd) %}</td>
             </tr>
             <tr id="{%= h(this.settingsRowID) %}" class="settings-placeholder"><td colspan="6"></td></tr>
           <!-- {% }); %} -->
@@ -543,14 +543,18 @@
           <col width="50%" />
             <tr>
               <td>
-                Bucket Name: <span>default</span><br />
-                Bucket Type: <span>membase</span><br />
+                Bucket Name: <span>{%= h(name) %}</span><br />
+                Bucket Type: <span>{%= h(bucketTypeName) %}</span><br />
                 Number of Servers: <span> stretch to all</span><br />
-                Access Control: <span>port</span>
+                Access Control: <span>{%= (authType == 'none') ? 'port' : 'password' %}</span>
               </td>
               <td>
-                Replication: <span>1 replica (backup) copy</span><br />
-                Blocking Behavior: <span>do not wait for replication to complete; send 1 copy asynchronously</span>
+              {% if (replicaNumber != 0) { %}
+                Replication: <span>{%= V.count(replicaNumber, 'replica (backup) copy') %}</span><br />
+                Blocking Behavior: <span>do not wait for replication to complete; send {%= V.count(replicaNumber, 'copy') %} asynchronously</span>
+              {% } else { %}
+                Replication: <span>disabled</span><br />
+              {% } %}
               </td>
             </tr>
           </table>
