@@ -1226,58 +1226,64 @@ ymd_to_string({Y, M, D}) ->
 ymd_to_string(invalid) -> "invalid";
 ymd_to_string(forever) -> "forever".
 
-handle_node("Self", Req)            -> handle_node("default", node(), Req);
+handle_node("self", Req)            -> handle_node("default", node(), Req);
 handle_node(S, Req) when is_list(S) -> handle_node("default", list_to_atom(S), Req).
 
 handle_node(_PoolId, Node, Req) ->
     MyPool = fakepool,
     LocalAddr = menelaus_util:local_addr(Req),
-    InfoNode = get_node_info(Node),
-    KV = build_extra_node_info(Node, InfoNode, ns_bucket:get_buckets(),
-                               build_node_info(MyPool, Node, InfoNode, LocalAddr)),
-    {License, Valid, ValidUntil} = case ns_license:license(Node) of
-        {undefined, V, VU} -> {"", V, ymd_to_string(VU)};
-        {X, V, VU}         -> {X, V, ymd_to_string(VU)}
-    end,
-    MemQuota = case ns_storage_conf:memory_quota(Node) of
-                   undefined -> <<"">>;
-                   Y    -> Y
-               end,
-    StorageConf0 = ns_storage_conf:storage_conf(Node),
-    HDDStorageConf = case proplists:get_value(hdd, StorageConf0) of
-                         [Props0] ->                % only single storage storage resource is supported now
-                             %% TODO: multi-tenancy
-                             Props = [{usedByData, ns_storage_conf:bucket_disk_usage(Node, "default")}
-                                      | Props0],
-                             Path = proplists:get_value(path, Props),
-                             case ns_storage_conf:disk_stats_for_path(Node, Path) of
-                                 {ok, KBytes, Capacity} ->
-                                     [[{diskStats, {struct, [{sizeKBytes, KBytes},
-                                                             {usagePercent, Capacity}]}}
-                                       | Props]];
-                                 Error ->
-                                     error_logger:error_msg("Failed to grab disksup stats from ~p due to ~p~n", [Node, Error]),
-                                     [Props]
-                             end;
-                         _ -> undefined
-                     end,
-    StorageConf = lists:map(fun ({hdd, _}) -> {hdd, HDDStorageConf};
-                                (X) -> X
-                            end, StorageConf0),
-    R = {struct, storage_conf_to_json(StorageConf)},
-    Fields = [{license, list_to_binary(License)},
-              {licenseValid, Valid},
-              {licenseValidUntil, list_to_binary(ValidUntil)},
-              {availableStorage, {struct, [{hdd, [{struct, [{path, list_to_binary(Path)},
-                                                            {sizeKBytes, SizeKBytes},
-                                                            {usagePercent, UsagePercent}]}
-                                                  || {Path, SizeKBytes, UsagePercent} <- disksup:get_disk_data()]}]}},
-              {memoryQuota, MemQuota},
-              {storageTotals, {struct, [{Type, {struct, PropList}}
-                                        || {Type, PropList} <- ns_storage_conf:node_storage_info(Node)]}},
-              {storage, R}] ++ KV,
-    reply_json(Req,
-               {struct, lists:filter(fun (X) -> X =/= undefined end, Fields)}).
+    case lists:member(Node, ns_node_disco:nodes_wanted()) of
+        true ->
+            InfoNode = get_node_info(Node),
+            KV = build_extra_node_info(Node, InfoNode, ns_bucket:get_buckets(),
+                                       build_node_info(MyPool, Node, InfoNode, LocalAddr)),
+            {License, Valid, ValidUntil} = case ns_license:license(Node) of
+                                               {undefined, V, VU} -> {"", V, ymd_to_string(VU)};
+                                               {X, V, VU}         -> {X, V, ymd_to_string(VU)}
+                                           end,
+            MemQuota = case ns_storage_conf:memory_quota(Node) of
+                           undefined -> <<"">>;
+                           Y    -> Y
+                       end,
+            StorageConf0 = ns_storage_conf:storage_conf(Node),
+            HDDStorageConf = case proplists:get_value(hdd, StorageConf0) of
+                                 [Props0] ->                % only single storage storage resource is supported now
+                                     %% TODO: multi-tenancy
+                                     Props = [{usedByData, ns_storage_conf:bucket_disk_usage(Node, "default")}
+                                              | Props0],
+                                     Path = proplists:get_value(path, Props),
+                                     case ns_storage_conf:disk_stats_for_path(Node, Path) of
+                                         {ok, KBytes, Capacity} ->
+                                             [[{diskStats, {struct, [{sizeKBytes, KBytes},
+                                                                     {usagePercent, Capacity}]}}
+                                               | Props]];
+                                         Error ->
+                                             error_logger:error_msg("Failed to grab disksup stats from ~p due to ~p~n", [Node, Error]),
+                                             [Props]
+                                     end;
+                                 _ -> undefined
+                             end,
+            StorageConf = lists:map(fun ({hdd, _}) -> {hdd, HDDStorageConf};
+                                        (X) -> X
+                                    end, StorageConf0),
+            R = {struct, storage_conf_to_json(StorageConf)},
+            Fields = [{license, list_to_binary(License)},
+                      {licenseValid, Valid},
+                      {licenseValidUntil, list_to_binary(ValidUntil)},
+                      {availableStorage, {struct, [{hdd, [{struct, [{path, list_to_binary(Path)},
+                                                                    {sizeKBytes, SizeKBytes},
+                                                                    {usagePercent, UsagePercent}]}
+                                                          || {Path, SizeKBytes, UsagePercent} <- disksup:get_disk_data()]}]}},
+                      {memoryQuota, MemQuota},
+                      {storageTotals, {struct, [{Type, {struct, PropList}}
+                                                || {Type, PropList} <- ns_storage_conf:node_storage_info(Node)]}},
+                      {storage, R}] ++ KV,
+            reply_json(Req,
+                       {struct, lists:filter(fun (X) -> X =/= undefined end,
+                                             Fields)});
+        false ->
+            reply_json(Req, <<"Node is unknown to this cluster.">>, 404)
+    end.
 
 % S = [{ssd, []},
 %      {hdd, [[{path, /some/nice/disk/path}, {quotaMb, 1234}, {state, ok}],
@@ -1297,7 +1303,7 @@ location_prop_to_json({quotaMb, none}) -> {quotaMb, none};
 location_prop_to_json({state, ok}) -> {state, ok};
 location_prop_to_json(KV) -> KV.
 
-handle_node_resources_post("Self", Req)            -> handle_node_resources_post(node(), Req);
+handle_node_resources_post("self", Req)            -> handle_node_resources_post(node(), Req);
 handle_node_resources_post(S, Req) when is_list(S) -> handle_node_resources_post(list_to_atom(S), Req);
 
 handle_node_resources_post(Node, Req) ->
@@ -1321,7 +1327,7 @@ handle_node_resources_post(Node, Req) ->
             end
     end.
 
-handle_resource_delete("Self", Path, Req)            -> handle_resource_delete(node(), Path, Req);
+handle_resource_delete("self", Path, Req)            -> handle_resource_delete(node(), Path, Req);
 handle_resource_delete(S, Path, Req) when is_list(S) -> handle_resource_delete(list_to_atom(S), Path, Req);
 
 handle_resource_delete(Node, Path, Req) ->
@@ -1342,7 +1348,7 @@ parse_validate_number(String, Min, Max) ->
        true -> invalid
     end.
 
-handle_node_settings_post("Self", Req)            -> handle_node_settings_post(node(), Req);
+handle_node_settings_post("self", Req)            -> handle_node_settings_post(node(), Req);
 handle_node_settings_post(S, Req) when is_list(S) -> handle_node_settings_post(list_to_atom(S), Req);
 
 handle_node_settings_post(Node, Req) ->

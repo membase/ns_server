@@ -514,7 +514,7 @@ function showInitDialog(page, opt) {
   for (var i = 0; i < pages.length; i++) {
     if (page == pages[i]) {
       if (NodeDialog["startPage_" + page]) {
-        NodeDialog["startPage_" + page]('Self', 'init_' + page, opt);
+        NodeDialog["startPage_" + page]('self', 'init_' + page, opt);
       }
       $(document.body).addClass('init_' + page);
     }
@@ -826,7 +826,7 @@ var NodeDialog = {
 
     $('#init_resources_errors_container').html('');
 
-    postWithValidationErrors('/nodes/Self/controller/settings',
+    postWithValidationErrors('/nodes/self/controller/settings',
                              $.param({memoryQuota: quota, path: diskPath}),
                              continuation,
                              {async: false});
