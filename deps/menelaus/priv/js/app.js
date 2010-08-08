@@ -442,8 +442,8 @@ $(function () {
   }
   if ($.cookie('rf')) {
     displayNotice('An error was encountered when requesting data from the server.  ' +
-		  'The console has been reloaded to attempt to recover.  There ' +
-		  'may be additional information about the error in the log.');
+                  'The console has been reloaded to attempt to recover.  There ' +
+                  'may be additional information about the error in the log.');
     DAO.onReady(function () {
       $.cookie('rf', null);
       if ('sessionStorage' in window && window.sessionStorage.reloadCause) {
@@ -509,13 +509,13 @@ function showInitDialog(page, opt) {
 
   opt = opt || {};
 
-  var pages = [ "welcome", "resources", "cluster", "secure" ];
+  var pages = [ "welcome", "cluster", "secure" ];
 
   if (page == "")
     page = "welcome";
 
-  if (DAO.initStatus == "done") // If our current initStatus is already "done",
-    page = "done";              // then don't let user go back through init dialog.
+  if (DAO.login)        // If the cluster appears to be configured
+    page = "done";      // by being secured then don't let user go back through init dialog.
 
   for (var i = 0; i < pages.length; i++) {
     if (page == pages[i]) {
@@ -535,21 +535,21 @@ function showInitDialog(page, opt) {
   if (page == "done")
     $('.page-header').show();
 
-  if (DAO.initStatus != page) {
-    DAO.initStatus = page;
-    $.ajax({
-      type:'POST', url:'/node/controller/initStatus', data: 'value=' + page
-    });
-  }
+  //  if (DAO.initStatus != page) {
+  //  DAO.initStatus = page;
+  //   $.ajax({
+  //    type:'POST', url:'/node/controller/initStatus', data: 'value=' + page
+  //  });
+  //}
 
   if (page != 'done') {
     var notices = [];
     $('#notice_container > *').each(function () {
-      var text = $.data(this, 'notice-text');
-      if (!text)
-        return;
-      notices.push(text);
-    });
+        var text = $.data(this, 'notice-text');
+        if (!text)
+          return;
+        notices.push(text);
+      });
     if (notices.length) {
       $('#notice_container').html('');
       alert(notices.join("\n\n"));
@@ -564,8 +564,14 @@ var NodeDialog = {
 
     var form = $('#init_cluster_form');
 
-    if ($('#no-join-cluster')[0].checked)
-      return showInitDialog('secure');
+    if ($('#no-join-cluster')[0].checked) {
+      return showInitDialog('secure'); // not quite, need to get it
+                                       //from server state
+      var m = $(parentName).find('[name=quota]').val() || "";
+      if (m == "") {
+        m = "none";
+      }
+    }
 
     var errorsContainer = form.parent().find('.join_cluster_dialog_errors_container');
     errorsContainer.hide();
@@ -734,92 +740,29 @@ var NodeDialog = {
     $(parentName + ' ' + submitSelector).click(function (e) {
         e.preventDefault();
 
-        $(parentName + ' .license_failed_message').hide();
+        showInitDialog("cluster");
+        //$(parentName + ' .license_failed_message').hide();
 
-        var license = $(parentName).find('[name=license]').val() || "";
+        //var license = $(parentName).find('[name=license]').val() || "";
 
-        $.ajax({
-          type:'POST', url:'/nodes/' + node + '/controller/settings',
-          data: 'license=' + license,
-          async:false, success:cbPost, error:cbPost
-        });
+        //$.ajax({
+        //  type:'POST', url:'/nodes/' + node + '/controller/settings',
+        //  data: 'license=' + license,
+        //  async:false, success:cbPost, error:cbPost
+        //});
 
-        function cbPost(data, status) {
-          if (status == 'success') {
-            if (opt['successFunc'] != null) {
-              opt['successFunc'](node, pagePrefix);
-            } else {
-              showInitDialog(opt["successNext"] || "resources");
-            }
-          } else {
-            $(parentName + ' .license_failed_message').show();
-          }
-        }
+        //function cbPost(data, status) {
+          //if (status == 'success') {
+            //if (opt['successFunc'] != null) {
+              //opt['successFunc'](node, pagePrefix);
+              //} else {
+              //showInitDialog(opt["successNext"] || "resources");
+              //}
+            //} else {
+            //$(parentName + ' .license_failed_message').show();
+            //}
+          //}
       });
-  },
-  startPage_resources: function(node, pagePrefix, opt) {
-    var self = this;
-    var parentName = '#' + pagePrefix + '_dialog';
-
-    opt = opt || {};
-
-    $.ajax({
-      type:'GET', url:'/nodes/' + node, dataType: 'json', async: false,
-      success: cb, error: cb});
-
-    function cb(data, status) {
-      if (status != 'success')
-        return;
-
-
-      data['node'] = data['node'] || node;
-      NodeDialog.resourceNode = data;
-
-      var dialog = $('#init_resources_dialog');
-      var totalRAMMegs = Math.floor(data.memoryTotal/1024/1024);
-
-      dialog.find('[name=dynamic-ram-quota]').val(ViewHelpers.ifNull(data.memoryQuota, Math.floor(totalRAMMegs * 0.80)));
-      dialog.find('.ram-total-size').text(escapeHTML(totalRAMMegs) + ' MB');
-
-      var firstResource = data.storage.hdd[0];
-      var diskTotalGigs = Math.floor(firstResource.diskStats.sizeKBytes * (100 - firstResource.diskStats.usagePercent) / 100 / (1024 * 1024));
-      var diskPath, diskTotal;
-
-      diskTotal = dialog.find('.resource-row .total-size');
-      function updateDiskTotal() {
-        diskTotal.text(escapeHTML(diskTotalGigs) + ' GB');
-      }
-      updateDiskTotal();
-      (diskPath = dialog.find('.resource-row [name=path]')).val(escapeHTML(firstResource.path));
-
-      var prevPathValue;
-
-      var hddResources = data.availableStorage.hdd;
-      var mountPoints = new MountPoints(data, _.pluck(hddResources, 'path'));
-
-      self.resourcesObserver = dialog.observePotentialChanges(function () {
-        var pathValue = diskPath.val();
-
-        if (pathValue == prevPathValue)
-          return;
-
-        prevPathValue = pathValue;
-        if (pathValue == "") {
-          diskTotalGigs = 0;
-          updateDiskTotal();
-          return;
-        }
-
-        var rv = mountPoints.lookup(pathValue);
-        var pathResource = ((rv != null) && hddResources[rv]);
-
-        if (!pathResource)
-          pathResource = {path:"/", sizeKBytes: 0, usagePercent: 0};
-
-        diskTotalGigs = Math.floor(pathResource.sizeKBytes * (100 - pathResource.usagePercent) / 100 / (1024 * 1024));
-        updateDiskTotal();
-      });
-    }
   },
   submitResources: function () {
     if (this.resourcesObserver) {
@@ -864,7 +807,7 @@ var NodeDialog = {
       if (pw == null || pw == "") {
         genericDialog({
           header: 'Please try again',
-          text: 'Empty password is not allowed',
+          text: 'A password of at least six characters is required.',
           buttons: {cancel: false, ok: true}
         });
         return;
@@ -872,7 +815,7 @@ var NodeDialog = {
       if (pw !== vpw) {
         genericDialog({
           header: 'Please try again',
-          text: 'Password and Verify Password do not match',
+          text: '\'Password\' and \'Verify Password\' do not match',
           buttons: {cancel: false, ok: true}
         });
         return;
@@ -892,7 +835,116 @@ var NodeDialog = {
       });
     });
   },
-  startPage_cluster: function () {
+  startPage_cluster: function (node, pagePrefix, opt) {
+    var parentName = '#init_cluster_dialog';
+
+    $(parentName + ' .quota_error_message').hide();
+
+    $.ajax({
+      type:'GET', url:'/nodes/self', dataType: 'json', async: false,
+          success: cb, error: cb});
+
+    function cb(data, status) {
+      if (status == 'success') {
+        var m = data['memoryQuota'];
+        if (m == null || m == "none") {
+          m = "";
+        }
+
+        $(parentName).find('[name=quota]').val(m);
+
+        data['node'] = data['node'] || node;
+        NodeDialog.resourceNode = data;
+
+        var dialog = $('#init_cluster_dialog');
+        var totalRAMMegs = Math.floor(data.memoryTotal/1024/1024);
+
+        dialog.find('[name=dynamic-ram-quota]').val(ViewHelpers.ifNull(data.memoryQuota, Math.floor(totalRAMMegs * 0.80)));
+        dialog.find('.ram-total-size').text(escapeHTML(totalRAMMegs) + ' MB');
+
+        var firstResource = data.storage.hdd[0];
+        var diskTotalGigs = Math.floor(firstResource.diskStats.sizeKBytes * (100 - firstResource.diskStats.usagePercent) / 100 / (1024 * 1024));
+        var diskPath, diskTotal;
+
+        diskTotal = dialog.find('.resource-row .total-size');
+        function updateDiskTotal() {
+          diskTotal.text(escapeHTML(diskTotalGigs) + ' GB');
+        }
+        updateDiskTotal();
+        (diskPath = dialog.find('.resource-row [name=path]')).val(escapeHTML(firstResource.path));
+
+        var prevPathValue;
+
+        var hddResources = data.availableStorage.hdd;
+        var mountPoints = new MountPoints(data, _.pluck(hddResources, 'path'));
+
+        self.resourcesObserver = dialog.observePotentialChanges(function () {
+            var pathValue = diskPath.val();
+
+            if (pathValue == prevPathValue)
+              return;
+
+            prevPathValue = pathValue;
+            if (pathValue == "") {
+              diskTotalGigs = 0;
+              updateDiskTotal();
+              return;
+            }
+
+            var rv = mountPoints.lookup(pathValue);
+            var pathResource = ((rv != null) && hddResources[rv]);
+
+            if (!pathResource)
+              pathResource = {path:"/", sizeKBytes: 0, usagePercent: 0};
+
+            diskTotalGigs = Math.floor(pathResource.sizeKBytes * (100 - pathResource.usagePercent) / 100 / (1024 * 1024));
+            updateDiskTotal();
+          });
+      }
+    }
+
+    $(parentName + ' button.submit').click(function (e) {
+        e.preventDefault();
+
+        errorContainer = $(parentName + ' .init_cluster_dialog_errors_container');
+        errorContainer.hide();
+
+        var p = $(parentName).find('[name=path]').val() || "";
+
+        var m = $(parentName).find('[name=dynamic-ram-quota]').val() || "";
+        if (m == "") {
+          m = "none";
+        }
+
+        $.ajax({
+          type:'POST', url:'/nodes/' + node + '/controller/settings',
+          data: 'path=' + p,
+          async:false, success:diskPost, error:diskPost
+        });
+
+        function diskPost(data, status) {
+          if (status == 'success') {
+            $.ajax({
+              type:'POST', url:'/pools/default',
+                  data: 'memoryQuota=' + m,
+                  async:false, success:memPost, error:memPost
+                  });
+          } else {
+            errorContainer.html('failed disk validation');
+            errorContainer.show();
+          }
+        }
+
+        function memPost(data, status) {
+          if (status == 'success') {
+            showInitDialog("secure");
+          } else {
+            errorContainer.html('failed memory quota validation');
+            errorContainer.show();
+          }
+        }
+      });
+
     _.defer(function () {
       if ($('#join-cluster')[0].checked)
         $('.login-credentials').show();

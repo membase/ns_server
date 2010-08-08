@@ -862,7 +862,7 @@ body.init_secure #container { display: none; }
 .init_block h1 {color:#2f3536; text-transform:uppercase; font-size:28px; padding:28px 0 30px 0; position:relative; top:13px;}
 .init_block .pad {background:url(../images/welcome-background.png) no-repeat; width:724px; margin-left:auto; margin-right:auto; margin-top:55px;}
 .init_block .pad .pad-header {height:115px; width:703px;}
-.init_block .form {display:block; width:580px; background:url(../images/welcome_form_bg.png) 0 0 no-repeat;}
+.init_block .form {display:block; width:580px; 0 0 no-repeat;}
 .init_block .form table {margin:25px 0 0 25px;}
 .init_block .form table td {vertical-align:middle; padding:10px 0;}
 .init_block .form table .label {text-align:right; font-size:18px; color:#e6f5ff; padding:0 7px 0 0;}

@@ -74,8 +74,7 @@
       <!-- shadow box -->
       <h1>CLUSTER OVERVIEW</h1>
         <div id="notice_container"></div>
-	<div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
-
+        <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
 	<div class="hdr">Cluster</div>
 	<div class="section" id="overview_clusters_block">
 		<div class="item ram-item">
@@ -117,9 +116,8 @@
 		</div>
 	</div>
 
-	</div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
-	<!-- END shadow box -->
-
+        </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
+        <!-- END shadow box -->
 	<div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
 	<div class="hdr">Buckets <span>(<span class="buckets-number">??</span> active)</span></div>
 	<div class="section">
@@ -155,7 +153,6 @@
 		</div>
 	</div>
 	</div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
-
 	<div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
 	<div class="hdr">Servers</div>
 	<div class="section" id="overview_servers_block">
@@ -185,7 +182,6 @@
 		</div>
 	</div>
 	</div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
-
   </div>
   <div id="servers" style="display:none">
     <h1>SERVERS</h1>
@@ -347,11 +343,11 @@
 
   <div id="analytics" style="display:none">
   <span class="block nav float_right configure_view"><a href="javascript:StatGraphs.configureStats();">Configure View</a></span>
-	<h1>
-		Analytics: <span class="stat_target_name">&nbsp;</span>
-	</h1>
-	<!-- shadow box -->
-	<div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
+        <h1>
+                Analytics: <span class="stat_target_name">&nbsp;</span>
+        </h1>
+        <!-- shadow box -->
+        <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
     <div class="section">
       <h2 class="header_2">
         <span class="block nav float_right">
@@ -361,7 +357,7 @@
       <a id="zoom_minute">Minute</a> <a id="zoom_hour">Hour</a>
       <a id="zoom_day">Day</a> <a id="zoom_week">Week</a>
       <a id="zoom_month">Month</a> <a id="zoom_year">Year</a>
-  	  </h2>
+          </h2>
       <div class="analytics_graph_main">
         <span class="graph_info_label block right active_node_count"><!-- 3 active nodes --></span>
         <div id="analytics_main_graph_grid">
@@ -379,11 +375,11 @@
       <b class="clear">&nbsp;</b>
       </div>
     </div>
-	</div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
-	<!-- END shadow box -->
-	<h1>Top Keys: <span class="stat_target_name">&nbsp;</span></h1>
-	<!-- shadow box -->
-	<div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
+        </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
+        <!-- END shadow box -->
+        <h1>Top Keys: <span class="stat_target_name">&nbsp;</span></h1>
+        <!-- shadow box -->
+        <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
     <div class="section">
       <h2 class="header_2">
         <span class="block nav float_right">
@@ -408,8 +404,8 @@
         </table>
       </div>
     </div>
-	</div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
-	<!-- END shadow box -->
+        </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
+        <!-- END shadow box -->
   </div>
 
   <div id="monitor_buckets" style="display:none;">
@@ -479,7 +475,7 @@
     <div id="bucket_list_container">
     </div>
     </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
-	<!-- END shadow box -->
+        <!-- END shadow box -->
     <script id="bucket_list_template" type="text/html">
         <table class="lined_tab buckets_tab">
           <col width="" />
@@ -1191,7 +1187,7 @@
             <strong class="bucket_name">&nbsp;</strong>
           </p>
           <div class="warning pat_20">
-		<strong>Warning</strong> - Removing this bucket will result in complete data loss for this bucket. Are you sure you want to remove it?
+                <strong>Warning</strong> - Removing this bucket will result in complete data loss for this bucket. Are you sure you want to remove it?
           </div>
         </div>
         <div class="pas_20">
@@ -1575,11 +1571,6 @@
       <div class="elastro-cling"></div>
     </div>
     <!-- screen S.1 -->
-    <div class="alert_red license_failed_message" style="display:none;">
-      <div class="al_text">
-        Invalid license. Please try again.
-      </div>
-    </div>
     <h1>Congratulations</h1>
     <form id="init_welcome_form">
       <p>
@@ -1684,81 +1675,97 @@
   </div>
   <!-- END init_resources_block -->
   <div class="pad" id="init_cluster_dialog">
-    <!-- screen S.5 -->
     <div class="config-top">
       <h1>Configure Server</h1>
-      <h2>Step <span class="current-step">2</span> of 3</h2>
+      <h2>Step <span class="current-step">1</span> of 2</h2>
     </div>
     <div class="alert_red" id="init_cluster_failed_message" style="display:none;">
       <div class="al_text">
-        Could not join the cluster because of bad input.
+        Could not join the cluster due to incorrect parameters.
       </div>
     </div>
     <h2 class="question">Would you like to join an existing Membase Cluster?</h2>
     <p class="pad_10">
-      If this new server will be added to an existing membase cluster
-      you may join that cluster now. To do so select "Join a cluster now". You
-      can join a cluster later, but should do so before storing important data
-      on this server.  When joining a cluster, the joining server will drop all
-      of the data it currently holds.
+    If this new server will be added to an existing membase cluster
+    you may join that cluster now. To do so select "Join a cluster now". You
+    can join a cluster later, but should do so before storing important data
+    on this server.
     </p>
-    <div class="warning pat_10 join_cluster_dialog_errors_container"></div>
+    <div class="warning pat_10 init_cluster_dialog_errors_container" style="display:none;"></div>
     <form id="init_cluster_form" class="form block"><input type="submit" style="display:none;" />
-      <div class="pat_10"><label>
-        <input type="radio" name="join_cluster" id="no-join-cluster" checked />
-        Do NOT join a cluster now, maybe later.
-      </label></div>
-      <div class="pat_10">
-        <label>
-          <input type="radio" name="join_cluster" id="join-cluster" />
-          Join a cluster now.
-          <div class="login-credentials">
-            <div>
-              <label for="clusterMemberHostIp">IP Address:</label>
-              <input type="text" class="inp" name="hostname" id="clusterMemberHostIp" value="" />
-              <br class="clear" />
-            </div>
-            <div>
-              <label for="user_inp">Username:</label>
-              <input type="text" class="inp" name="user" id="user_inp" value="Administrator" />
-              <br class="clear" />
-            </div>
-            <div>
-              <label for="password_inp">Password:</label>
-              <input type="password" class="inp" name="password" id="password_inp" />
-              <br class="clear" />
-            </div>
+      <div>Disk Storage</div>
+        <div class="hdd_resource_container">
+          <div class="resource-row">
+          <div><label>Size:</label>
+            <span style="color:#7e7e80; font-size:10pt; margin-left:5px; line-height: 25px;" class="total-size">---</span>
+            <br style="clear:both;" />
           </div>
-        </label>
+          <div>
+            <label>Path:</label>
+            <input type="text" name="path" class="path-box" />
+            <br style="clear:both;" />
+          </div>
       </div>
+  </div>
+  <div class="pat_10"><label>
+    <input type="radio" name="join_cluster" id="no-join-cluster" checked />
+    Do NOT join a cluster now, maybe later.
+    </label></div>
+    <div class="memory-quota">
+      Dynamic RAM Quota:
+      <input type="text" name="dynamic-ram-quota" value=""
+      style="border:1px solid #ccd3d7; color:#7e7e80; font-size:10pt; height:25px; margin-left:5px; padding-left:5px; width:95px;" />
+      <span style="color:#7e7e80; font-size:10pt;">MB</span>
+      <span style="color:#7e7e80; font-size:10pt; margin-left:50px;">
+      Total: <span class="ram-total-size">0GB</span>
+      </span>
+    </div>
+    <div class="pat_10">
+      <label>
+      <input type="radio" name="join_cluster" id="join-cluster" />
+      Join a cluster now.
+    <div class="login-credentials">
+    <div style="padding-bottom:80px;">When joining a cluster, the joining server will drop all of the data it currently holds in any membase and memcache buckets.</div>
+    <div>
+      <label for="clusterMemberHostIp">IP Address:</label>
+      <input type="text" class="inp" name="hostname" id="clusterMemberHostIp" value="" />
+      <br class="clear" />
+    </div>
+    <div>
+      <label for="user_inp">Username:</label>
+      <input type="text" class="inp" name="user" id="user_inp" value="Administrator" />
+      <br class="clear" />
+    </div>
+    <div>
+      <label for="password_inp">Password:</label>
+      <input type="password" class="inp" name="password" id="password_inp" />
+      <br class="clear" />
+    </div>
+    </div>
+    </label>
+    </div>
     </form>
     <div class="config-bottom">
       <button name="next" value="Next" class="submit next direction-button" id="step-2-next" type="submit">Next</button>
-      <button name="next" value="Back" class="submit back direction-button" id="step-2-back" type="submit">Back</button>
     </div>
     <script type="text/javascript">
-      $(function(){
-        $('input#join-cluster').click(function (e) {
-          $('.login-credentials').slideDown();
-        });
-        $('input#no-join-cluster').click(function (e) {
-          $('.login-credentials').slideUp();
-        });
-        $('div.config-bottom button#step-2-next').click(NodeDialog.submitClusterForm);
-        $('#init_cluster_form').bind('submit', NodeDialog.submitClusterForm);
-        $('div.config-bottom button#step-2-back').click(function (e) {
-          e.preventDefault();
-          showInitDialog("resources");
-        });
-      });
+    $(function(){
+    $('input#join-cluster').click(function (e) {
+    $('.login-credentials').slideDown();
+    $('.memory-quota').slideUp();
+    });
+    $('input#no-join-cluster').click(function (e) {
+    $('.memory-quota').slideDown();
+    $('.login-credentials').slideUp();
+    });
+    });
     </script>
-  </div>
+    </div>
   <!-- END init_cluster_block -->
   <div class="pad" id="init_secure_dialog">
-    <!-- screen S.5 -->
-    <div class="config-top">
+   <div class="config-top">
       <h1>Configure Server</h1>
-      <h2>Step <span class="current-step">3</span> of 3</h2>
+      <h2>Step <span class="current-step">2</span> of 2</h2>
     </div>
     <div class="alert_red" id="init_secure_failed_message" style="display:none;">
       <div class="al_text">
@@ -1774,8 +1781,6 @@
     <form id="init_secure_form" class="form block" action="/settings/web">
       <input type="text" name="port"
             style="display:none;" value="SAME"/>
-      <input type="text" name="initStatus"
-            style="display:none;" value="done"/>
       <div class="warn">
         <ul></ul>
       </div>

@@ -233,6 +233,130 @@ The Client-Specification-Version is optional in the request, but advised.  It
 allows for implementations to adjust to adjust representation and state
 transitions to the client, if backward compatibility is desirable.
 
+### Provisioning a Node
+
+Before a node can be used in a cluster, a few things may need to be
+configured.  Specifically, if creating a new cluster, the memory quota
+per node for that cluster must be set.  Whether the node is joining an
+existing cluster or starting a new cluster, it's storage path must be
+configured.
+
+Either creating a new cluster or adding a node to a cluster is
+referred to as provisioning, and has several steps required.
+
+After bootstrapping the following will need to be accomplished.
+
+1. Configure the node's disk path.
+2. Configure the cluster's memory quota.  This is optional.  It will
+inherit the memory quota if the node is to be joined to a cluster and
+it will default to 80% of physical memory if not specified.
+
+The next step depends on whether a new cluster is being created or an
+existing cluster will be joined.  If a new cluster is to be created,
+it will need to be "secured" by providing a username and password for
+the administrator.  If the node is to be joined to another cluster,
+then it will need the location and credentials to the REST interface
+of that cluster.
+
+
+####Examples
+
+
+#####Configuring the disk path for a node.
+
+Node resources can be configured through a controller on the node.
+The primary resource to be configured is the path on the node for
+persisting files.  This must be configured prior to creating a new
+cluster or configuring the node into an existing cluster.
+
+*Request*
+
+<pre class="restcalls">
+POST /nodes/self/controller/settings HTTP/1.1
+Host: node.in.your.cluster:8080
+Content-Type: application/x-www-form-urlencoded; charset=UTF-8
+Authorization: Basic YWRtaW46YWRtaW4=
+Content-Length: xx
+
+path=/var/tmp/test
+</pre>
+
+*Response*
+
+<pre class="json">
+ HTTP/1.1 200 OK
+ Content-Type: application/com.northscale.store+json
+ Content-Length: 0
+ </pre>
+
+<pre>curl -i -d path=/var/tmp/test http://localhost:8080/nodes/self/controller/settings</pre>
+
+#####Configuring a cluster's memory quota.
+
+*Request*
+
+<pre class="restcalls">
+POST /pools/default HTTP/1.1
+Host: node.in.your.cluster:8080
+Content-Type: application/x-www-form-urlencoded; charset=UTF-8
+Authorization: Basic YWRtaW46YWRtaW4=
+Content-Length: xx
+
+memoryQuota=400
+</pre>
+
+*Response*
+
+<pre class="json">
+ HTTP/1.1 200 OK
+ Content-Type: application/com.northscale.store+json
+ Content-Length: 0
+ </pre>
+
+ This, for example could have been carried out with curl.
+
+<pre>curl -i -d memoryQuota=400 http://localhost:8080/pools/default</pre>
+
+#####Setting a node's username and password
+
+While this can be done at any time for a cluster, it is the last step
+in provisioning a node into being a new cluster.
+
+The response will indicate the new base URI if the parameters are
+accepted. Clients will want to re-bootstrap based on
+this response.
+
+*Request*
+
+<pre class="restcalls">
+POST /settings/web HTTP/1.1
+Host: node.in.your.cluster:8080
+Content-Type: application/x-www-form-urlencoded; charset=UTF-8
+Authorization: Basic YWRtaW46YWRtaW4=
+Content-Length: xx
+
+username=Administrator&password=letmein&port=8080
+</pre>
+
+*Response*
+
+<pre class="json">
+ HTTP/1.1 200 OK
+ Content-Type: application/com.northscale.store+json
+ Server: NorthScale Server 1.6.0beta3a_124_g0fa5bd9
+ Pragma: no-cache
+ Date: Mon, 09 Aug 2010 18:50:00 GMT
+ Content-Type: application/json
+ Content-Length: 39
+ Cache-Control: no-cache no-store max-age=0
+
+{"newBaseUri":"http://localhost:8080/"}
+</pre>
+
+<pre>curl -i -d username=Administrator -d password=letmein -d port=8080 http://localhost:8080/settings/web</pre>
+
+Note that even if it is not to be changed
+
 ###Pool Details
 
 *Request*
@@ -339,9 +463,9 @@ this list perform the following functions:
 "otpNode", the node to be ejected.  
 *addNode* - Add a node to this cluster.  Required parameters: "hostname",
 "user" (which is the admin user for the node), and "password".  
-*rebalance* - Rebalance the existing cluster.  This controller is either used
-without any parameters or requires both "knownNodes" and "ejectedNodes".  When
-used with parameters, this allows a client to state the existing known nodes
+*rebalance* - Rebalance the existing cluster.  This controller
+requires both
+"knownNodes" and "ejectedNodes".  This allows a client to state the existing known nodes
 and which nodes should be removed from the cluster in a single
 operation.  To ensure no cluster state changes have occured since a
 client last got a list of nodes, both the known nodes and the node to
@@ -373,6 +497,9 @@ replication or other TAP streams.</td></tr>
 <tr><td>mcdMemoryAllocated</td><td>The amount of memory actually used
 by all buckets on this node.</td></tr>
 </table>
+
+####Examples
+
 
 ###List buckets and bucket operations
 
@@ -957,5 +1084,7 @@ have been referenced.
 * 20100129 Updated create bucket documentation
 * 20100209 Updated pool details, many fixes, adding cache reserved and allocated
 * 20100218 Added documentation on removing a node
-* 20100224 Documented client logging interface and cleaned up some legacy things
-
+* 20100224 Documented client logging interface and cleaned up some
+  legacy things
+* 20100803 Various updates for 1.6, mostly to pool resource
+* 20100809 Added section on provisioning and provisioning calls

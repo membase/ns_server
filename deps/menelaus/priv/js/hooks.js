@@ -253,6 +253,20 @@ var MockedRequest = mkClass({
     });
   },
 
+  doHandlePoolsDefaultPost: function (params) {
+    var errors = {};
+
+    if (isBlank(params['memoryQuota'])) {
+      errors.memoryQuota = 'must have a memory quota';
+    }
+
+    if (_.keys(errors).length) {
+      return this.errorResponse(errors);
+    }
+
+    this.fakeResponse('');
+  },
+
   doHandleBucketsPost: function (params) {
     var errors = {};
 
@@ -286,6 +300,13 @@ var MockedRequest = mkClass({
     }
 
     this.fakeResponse('');
+  },
+
+  handlePoolsDefaultPost: function () {
+    var params = this.deserialize()
+      console.log("params: ", params);
+
+      return this.doHandlePoolsDefaultPost(params);
   },
 
   handleBucketsPost: function () {
@@ -545,7 +566,6 @@ var MockedRequest = mkClass({
                 componentsVersion: {
                   "ns_server": "asdasd"
                 },
-                initStatus: MockedRequest.globalData.initValue,
                 pools: [
                   {name: 'default',
                    uri: "/pools/default"}]}
@@ -728,6 +748,7 @@ var MockedRequest = mkClass({
         return rv;
       }],
       [get("pools", "default", "buckets", x, "stats"), method('handleStats')],
+      [post("pools", "default"), method('handlePoolsDefaultPost')],
       [post("pools", "default", "buckets"), method('handleBucketsPost')],
       [post("pools", "default", "buckets", x), expectParams(function (x) {
         var params = this.deserialize()
@@ -797,10 +818,6 @@ var MockedRequest = mkClass({
         }
       }, opt("memoryQuota"), opt('path'), opt("license"))], //missing
 
-      [post("node", "controller", "initStatus"), function ($data) {
-        this.globalData.initValue = $data.initValue;
-      }],
-
       [post("node", "controller", "doJoinCluster"), expectParams(method('handleJoinCluster'),
                                                                  "clusterMemberHostIp", "clusterMemberPort",
                                                                  "user", "password")],
@@ -863,8 +880,7 @@ var MockedRequest = mkClass({
                                                      "otpNode")],
 
       [post("settings", "web"), expectParams(method("doNothingPOST"),
-                                             "port", "username", "password",
-                                             opt("initStatus"))]
+                                             "port", "username", "password")]
     ];
 
     rv.x = x;
