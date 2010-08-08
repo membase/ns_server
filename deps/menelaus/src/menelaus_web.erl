@@ -1363,14 +1363,7 @@ handle_node_settings_post(Node, Req) ->
     %% parameter example: license=some_license_string, memoryQuota=NumInMb
     %%
     Params = Req:parse_post(),
-    Results = [case proplists:get_value("license", Params) of
-                   undefined -> ok;
-                   License -> case ns_license:change_license(Node, License) of
-                                  ok         -> ok;
-                                  {error, _} -> "Error changing license.\n"
-                              end
-               end,
-               case proplists:get_value("path", Params) of
+    Results = [case proplists:get_value("path", Params) of
                    undefined -> ok;
                    [] -> <<"The database path cannot be empty.">>;
                    %% TODO: windows pathes
