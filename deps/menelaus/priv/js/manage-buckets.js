@@ -140,29 +140,38 @@ var BucketDetailsDialog = mkClass({
   // this updates our gauges and errors
   // we don't use it to set input values, 'cause for the later we need to do it once
   onValues: function (values) {
+    var self = this;
+
     if (!values)
       return;
 
-    this.renderGauge(this.dialog.find(".size-gauge.for-ram"),
-                     this.poolDetails.storageTotals.ram.quotaTotal,
+    self.renderGauge(self.dialog.find(".size-gauge.for-ram"),
+                     self.poolDetails.storageTotals.ram.quotaTotal,
                      values.quota.ram,
                      values.otherQuota.ram);
 
-    this.renderGauge(this.dialog.find('.size-gauge.for-hdd'),
-                     this.poolDetails.storageTotals.hdd.quotaTotal,
+    self.renderGauge(self.dialog.find('.size-gauge.for-hdd'),
+                     self.poolDetails.storageTotals.hdd.quotaTotal,
                      values.quota.hdd,
                      values.otherQuota.hdd);
 
-    this.renderError('name', values.errors.name);
-    this.renderError('ramQuotaMB', values.errors.ramQuotaMB);
-    this.renderError('hddQuotaGB', values.errors.hddQuotaGB);
-    this.renderError('replicaNumber', values.errors.replicaNumber);
+    var knownFields = ('name ramQuotaMB hddQuotaGB replicaNumber proxyPort').split(' ');
+    _.each(knownFields, function (name) {
+      self.renderError(name, values.errors[name]);
+    });
+
+    // TODO: we should render other errors too
+    _.each(values.errors, function (v, k, errors) {
+      if (_.include(knownFields, k))
+        return;
+      delete errors[k];
+    });
 
     var hasErrors = _.some(_.keys(values.errors), function (k) {
       return !!(values.errors[k]);
     });
 
-    setBoolAttribute(this.dialog.find('.save_button'), 'disabled', hasErrors);
+    setBoolAttribute(self.dialog.find('.save_button'), 'disabled', hasErrors);
   },
 
   setupQuotaValidation: function (storageType) {
@@ -451,6 +460,8 @@ var BucketsSection = {
       return;
     }
     var initValues = {uri: '/pools/default/buckets',
+                      bucketType: 'membase',
+                      authType: 'sasl', //TODO: what's best default ?
                       quota: {ram: totals.ram.quotaTotal - totals.ram.quotaUsed,
                               hdd: totals.hdd.quotaTotal - totals.hdd.quotaUsed},
                       replicaNumber: 1}

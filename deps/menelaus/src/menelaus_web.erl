@@ -703,10 +703,10 @@ parse_num_replicas(NumReplicas) ->
 parse_proxy_port(ProxyPort) ->
     (catch list_to_integer(ProxyPort)).
 
-validate_bucket_params(Type, RAMQuotaMB, HDDQuotaGB, NumReplicas, AuthType, _SASLPassword, ProxyPort) ->
+validate_bucket_params(Type, RAMQuota, HDDQuota, NumReplicas, AuthType, SASLPassword, ProxyPort) ->
     %% TODO fix for handling memcache type bucket
-    RAMIsNumber = is_integer(RAMQuotaMB),
-    HDDIsNumber = is_integer(HDDQuotaGB),
+    RAMIsNumber = is_integer(RAMQuota),
+    HDDIsNumber = is_integer(HDDQuota),
     ProxyPortIsNumber = is_integer(ProxyPort),
     ReplicasIsInt = is_integer(NumReplicas),
     TypeIsValid = is_valid_bucket_type(Type),
@@ -725,7 +725,7 @@ validate_bucket_params(Type, RAMQuotaMB, HDDQuotaGB, NumReplicas, AuthType, _SAS
                                true ->
                                    case RAMIsNumber of
                                        true ->
-                                           case RAMQuotaMB > HDDQuotaGB * 1024 of
+                                           case RAMQuota > HDDQuota of
                                                true ->
                                                    <<"Disk quota is smaller than RAM.">>;
                                                _ -> ok
@@ -751,9 +751,25 @@ validate_bucket_params(Type, RAMQuotaMB, HDDQuotaGB, NumReplicas, AuthType, _SAS
                                   true -> ok;
                                   _ -> <<"Replica number must be an integer.">>
                               end}],
-    lists:filter(fun ({_, ok}) -> false;
-                     (_) -> true
-                 end, Errors).
+    case lists:filter(fun ({_, ok}) -> false;
+                          (_) -> true
+                      end, Errors) of
+        [] ->
+            {SASLPassword2, ProxyPort2} = case AuthType of
+                                              sasl ->
+                                                  {SASLPassword, 0};
+                                              none ->
+                                                  {"", ProxyPort}
+                                          end,
+            {ok, [{auth_type, AuthType},
+                  {sasl_password, SASLPassword2},
+                  {moxi_port, ProxyPort2},
+                  {ram_quota, RAMQuota},
+                  {hdd_quota, HDDQuota},
+                  {num_replicas, NumReplicas}]};
+        Errors2 -> {errors, Errors2}
+    end.
+
 
 handle_bucket_update(PoolId, BucketId, Req) ->
     case ns_bucket:get_bucket(BucketId) of
@@ -781,20 +797,14 @@ handle_bucket_update(_PoolId, BucketId, Req, BucketConfig) ->
     case validate_bucket_params(atom_to_list(BucketType),
                                 RAMQuota, HDDQuota, NumReplicas,
                                 AuthType, SASLPassword, ProxyPort) of
-        [] ->
-            UpdatedProps = [{auth_type, AuthType},
-                            {sasl_password, SASLPassword},
-                            {moxi_port, ProxyPort},
-                            {ram_quota, RAMQuota},
-                            {hdd_quota, HDDQuota},
-                            {num_replicas, NumReplicas}],
+        {ok, UpdatedProps} ->
             case ns_bucket:update_bucket_props(BucketType, BucketId, UpdatedProps) of
                 ok ->
                     Req:respond({200, add_header(), []});
                 {exit, {not_found, _}, _} ->
                     reply_json(Req, {struct, [{'_', [<<"Bucket not found">>]}]}, 400)
             end;
-        Errors ->
+        {errors, Errors} ->
             reply_json(Req, {struct, Errors}, 400)
     end.
 
@@ -821,28 +831,26 @@ handle_bucket_create(PoolId, Req) ->
                              _ ->
                                  memcache
                          end,
-
-            Errors0 = validate_bucket_params(Type, RAMQuota, HDDQuota, NumReplicas, AuthType, SASLPassword, ProxyPort),
-            Errors = case ns_bucket:is_valid_bucket_name(Name) of
-                         false -> [{name, <<"Given bucket name is invalid. Consult the documentation.">>}
-                                   | Errors0];
-                         _ -> Errors0
-                     end,
-            case Errors of
-                [] ->
-                    case ns_bucket:create_bucket(BucketType,
-                                                 Name, [{auth_type, AuthType},
-                                                        {sasl_password, SASLPassword},
-                                                        {moxi_port, ProxyPort},
-                                                        {ram_quota, RAMQuota},
-                                                        {hdd_quota, HDDQuota},
-                                                        {num_replicas, NumReplicas}]) of
+            ErrorsOrProps0 = validate_bucket_params(Type, RAMQuota, HDDQuota, NumReplicas, AuthType, SASLPassword, ProxyPort),
+            ErrorsOrProps = case ns_bucket:is_valid_bucket_name(Name) of
+                                false ->
+                                    Errors0 = case ErrorsOrProps0 of
+                                                  {errors, Errors0V} -> Errors0V;
+                                                  _ -> []
+                                              end,
+                                    {errors, [{name, <<"Given bucket name is invalid. Consult the documentation.">>}
+                                              | Errors0]};
+                                _ -> ErrorsOrProps0
+                            end,
+            case ErrorsOrProps of
+                {ok, Props} ->
+                    case ns_bucket:create_bucket(BucketType, Name, Props) of
                         ok ->
                             redirect_to_bucket(Req, PoolId, Name);
                         {exit, {already_exists, _}, _} ->
                             reply_json(Req, {struct, [{name, <<"Bucket with given name already exists">>}]}, 400)
                     end;
-                _ ->
+                {errors, Errors} ->
                     reply_json(Req, {struct, Errors}, 400)
             end;
         false ->

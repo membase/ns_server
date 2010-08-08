@@ -253,11 +253,7 @@ var MockedRequest = mkClass({
     });
   },
 
-  handleBucketsPost: function () {
-    var self = this;
-
-    var params = this.deserialize()
-    console.log("params: ", params);
+  doHandleBucketsPost: function (params) {
     var errors = {};
 
     if (isBlank(params['name'])) {
@@ -266,19 +262,37 @@ var MockedRequest = mkClass({
       errors.name = 'name has already been taken';
     }
 
-    if (!(/^\d*$/.exec(params['ramQuotaMB']))) {
+    if (!(/^\d+$/.exec(params['ramQuotaMB']))) {
       errors.ramQuotaMB = "RAM quota size must be an integer";
     }
 
-    if (!(/^\d*$/.exec(params['hddQuotaGB']))) {
-      errors.ramQuotaMB = "Disk quota size must be an integer";
+    if (!(/^\d+$/.exec(params['hddQuotaGB']))) {
+      errors.hddQuotaGB = "Disk quota size must be an integer";
+    }
+
+    var authType = params['authType'];
+    debugger
+    if (authType == 'none') {
+      if (!(/^\d+$/.exec(params['proxyPort']))) {
+        errors.proxyPort = 'bad'
+      }
+    } else if (authType == 'sasl') {
+    } else {
+      errors.authType = 'unknown auth type'
     }
 
     if (_.keys(errors).length) {
-      return self.errorResponse(errors);
+      return this.errorResponse(errors);
     }
 
-    self.fakeResponse('');
+    this.fakeResponse('');
+  },
+
+  handleBucketsPost: function () {
+    var params = this.deserialize()
+    console.log("params: ", params);
+
+    return this.doHandleBucketsPost(params);
   },
 
   handleJoinCluster: function () {
@@ -631,6 +645,9 @@ var MockedRequest = mkClass({
                                                ram: 12322423,
                                                hdd: 12322423
                                              },
+                                             authType: 'sasl',
+                                             proxyPort: 0,
+                                             saslPassword: '',
                                              replicaNumber: 1,
                                              "basicStats": {
                                                "opsPerSec": 12,
@@ -649,6 +666,9 @@ var MockedRequest = mkClass({
                                                ram: 123224230,
                                                hdd: 12322423000
                                              },
+                                             authType: 'none',
+                                             proxyPort: 11213,
+                                             saslPassword: '',
                                              replicaNumber: 1,
                                              "basicStats": {
                                                "opsPerSec": 13,
@@ -665,6 +685,9 @@ var MockedRequest = mkClass({
                                                ram: 12322423,
                                                hdd: 12322423
                                              },
+                                             authType: 'none',
+                                             proxyPort: 11213,
+                                             saslPassword: '',
                                              replicaNumber: 1,
                                              "basicStats": {
                                                "opsPerSec": 13,
@@ -681,6 +704,9 @@ var MockedRequest = mkClass({
                                                ram: 12322423,
                                                hdd: 12322423
                                              },
+                                             authType: 'sasl',
+                                             proxyPort: 0,
+                                             saslPassword: 'asdasd',
                                              replicaNumber: 1,
                                              "basicStats": {
                                                "opsPerSec": 12,
@@ -699,7 +725,12 @@ var MockedRequest = mkClass({
       }],
       [get("pools", "default", "buckets", x, "stats"), method('handleStats')],
       [post("pools", "default", "buckets"), method('handleBucketsPost')],
-      [post("pools", "default", "buckets", x), expectParams(method('doNothingPOST'), 'ramQuotaMB', 'hddQuotaGB', 'replicaNumber')],
+      [post("pools", "default", "buckets", x), expectParams(function (x) {
+        var params = this.deserialize()
+        console.log("params: ", params);
+        params['name'] = 'new-name';
+        return this.doHandleBucketsPost(params);
+      }, 'ramQuotaMB', 'hddQuotaGB', 'replicaNumber', 'authType', opt('saslPassword'), opt('proxyPort'))],
       [post("pools", "default", "buckets", x, "controller", "doFlush"), method('doNothingPOST')], //unused
       [del("pools", "default", "buckets", x), method('handleBucketRemoval')],
 
