@@ -19,25 +19,40 @@
 
 -include("ns_common.hrl").
 
--export([cleanup/3, current_states/2, graphviz/1]).
+-export([cleanup/1, current_states/2, graphviz/1]).
 
 
--spec cleanup(string(), map(), [node()]) -> ok.
-cleanup(Bucket, Map, Servers) ->
-    case sanify(Bucket, Map, Servers) of
-        Map -> ok;
-        Map1 ->
-            ns_bucket:set_map(Bucket, Map1)
-    end,
-    Replicas = lists:keysort(1, map_to_replicas(Map)),
-    ReplicaGroups = lists:ukeymerge(1, misc:keygroup(1, Replicas),
-                                    [{N, []} || N <- lists:sort(Servers)]),
-    NodesReplicas = lists:map(fun ({Src, R}) -> % R is the replicas for this node
-                                      {Src, [{V, Dst} || {_, Dst, V} <- R]}
-                              end, ReplicaGroups),
-    lists:foreach(fun ({Src, R}) ->
-                          catch ns_vbm_sup:set_replicas(Src, Bucket, R)
-                  end, NodesReplicas).
+-spec cleanup(string()) -> ok | repeat.
+cleanup(Bucket) ->
+    case ns_bucket:config(Bucket) of
+        {_, _, _, []} ->
+            ns_rebalancer:rebalance([Bucket], 1,
+                                    ns_cluster_membership:active_nodes(),
+                                    []),
+            repeat;
+        {_, _, Map, Servers} ->
+            case ns_bucket:ensure_bucket(Bucket, Servers) of
+                [] ->
+                    case sanify(Bucket, Map, Servers) of
+                        Map -> ok;
+                        Map1 ->
+                            ns_bucket:set_map(Bucket, Map1)
+                    end,
+                    Replicas = lists:keysort(1, map_to_replicas(Map)),
+                    ReplicaGroups = lists:ukeymerge(1, misc:keygroup(1, Replicas),
+                                                    [{N, []} || N <- lists:sort(Servers)]),
+                    NodesReplicas = lists:map(fun ({Src, R}) -> % R is the replicas for this node
+                                                      {Src, [{V, Dst} || {_, Dst, V} <- R]}
+                                              end, ReplicaGroups),
+                    lists:foreach(fun ({Src, R}) ->
+                                          catch ns_vbm_sup:set_replicas(Src, Bucket, R)
+                                  end, NodesReplicas),
+                    ok;
+                _ ->
+                    %% Couldn't talk to all nodes
+                    repeat
+            end
+    end.
 
 
 state_color(active) ->

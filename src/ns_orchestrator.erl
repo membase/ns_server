@@ -24,12 +24,13 @@
 
 %% Constants and definitions
 
--record(idle_state, {}).
--record(rebalancing_state, {rebalancer, progress::dict()}).
+-record(idle_state, {remaining_buckets=[]}).
+-record(rebalancing_state, {rebalancer, progress}).
 
 
 %% API
--export([failover/1,
+-export([create_bucket/3,
+         failover/1,
          needs_rebalance/0,
          rebalance_progress/0,
          start_link/0,
@@ -55,9 +56,8 @@
          terminate/3]).
 
 %% States
--export([idle/3,
-         rebalancing/2,
-         rebalancing/3]).
+-export([idle/2, idle/3,
+         rebalancing/2, rebalancing/3]).
 
 
 %%
@@ -66,6 +66,11 @@
 
 start_link() ->
     misc:start_singleton(gen_fsm, ?MODULE, [], []).
+
+
+create_bucket(BucketType, BucketName, NewConfig) ->
+    gen_fsm:sync_send_event(?SERVER, {create_bucket, BucketType, BucketName,
+                                      NewConfig}).
 
 
 -spec failover(atom()) -> ok.
@@ -118,7 +123,6 @@ code_change(_OldVsn, StateName, StateData, _Extra) ->
 init([]) ->
     process_flag(trap_exit, true),
     timer:send_interval(10000, janitor),
-    self() ! check_initial,
     {ok, idle, #idle_state{}}.
 
 
@@ -130,27 +134,20 @@ handle_sync_event(unhandled, unhandled, unhandled, unhandled) ->
     unhandled.
 
 
-handle_info(check_initial, StateName, StateData) ->
-    Bucket = "default",
-    {_, _, _, Servers} = ns_bucket:config(Bucket),
-    case Servers == undefined orelse Servers == [] of
-        true ->
-            ns_log:log(?MODULE, ?REBALANCE_STARTED,
-                       "Performing initial rebalance~n"),
-            ns_cluster_membership:activate([node()]),
-            timer:apply_after(0, ?MODULE, start_rebalance, [[node()], []]);
-        false ->
-            ok
-    end,
-    {next_state, StateName, StateData};
-handle_info(janitor, idle, State) ->
+handle_info(janitor, idle, #idle_state{remaining_buckets=[]} = State) ->
     misc:flush(janitor),
-    Bucket = "default",
-    {_, _, Map, Servers} = ns_bucket:config(Bucket),
-    %% Just block the gen_fsm while the janitor runs
-    %% This way we don't have to worry about queuing request.
-    ns_janitor:cleanup(Bucket, Map, Servers),
-    {next_state, idle, State};
+    Buckets = ns_bucket:get_bucket_names(),
+    handle_info(janitor, idle, State#idle_state{remaining_buckets=Buckets});
+handle_info(janitor, idle, #idle_state{remaining_buckets=[Bucket|Buckets]} =
+                State) ->
+    misc:flush(janitor),
+    case ns_janitor:cleanup(Bucket) of
+        ok ->
+            {next_state, idle, State#idle_state{remaining_buckets=Buckets}};
+        repeat ->
+            {next_state, idle,
+             State#idle_state{remaining_buckets=[Bucket|Buckets]}}
+    end;
 handle_info(janitor, StateName, StateData) ->
     misc:flush(janitor),
     {next_state, StateName, StateData};
@@ -183,7 +180,16 @@ terminate(_Reason, _StateName, _StateData) ->
 %% States
 %%
 
+%% Asynchronous idle events
+idle(_Event, State) ->
+    %% This will catch stray progress messages
+    {next_state, idle, State}.
+
+
 %% Synchronous idle events
+idle({create_bucket, BucketType, BucketName, NewConfig}, _From, State) ->
+    Reply = ns_bucket:create_bucket(BucketType, BucketName, NewConfig),
+    {reply, Reply, idle, State};
 idle({failover, Node}, _From, State) ->
     ?log_info("Failing over ~p", [Node]),
     Result = ns_rebalancer:failover("default", Node),
@@ -225,7 +231,10 @@ rebalancing(stop_rebalance, _From,
     {reply, ok, rebalancing, State};
 rebalancing(rebalance_progress, _From,
             #rebalancing_state{progress = Progress} = State) ->
-    {reply, {running, dict:to_list(Progress)}, rebalancing, State}.
+    {reply, {running, dict:to_list(Progress)}, rebalancing, State};
+rebalancing(Event, _From, State) ->
+    ?log_warning("Got event ~p while rebalancing.", [Event]),
+    {reply, rebalance_running, rebalancing, State}.
 
 
 

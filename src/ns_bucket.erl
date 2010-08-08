@@ -15,13 +15,11 @@
 %%
 -module(ns_bucket).
 
--behaviour(gen_server).
-
 -include("ns_common.hrl").
 
 %% API
--export([start_link/0]).
 -export([config/1,
+         ensure_bucket/2,
          get_bucket/1,
          get_buckets/0,
          ram_quota/1,
@@ -39,14 +37,6 @@
          set_map/2,
          set_servers/2]).
 
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
-
--define(SERVER, ?MODULE).
--define(CHECK_INTERVAL, 5000).
-
--record(state, {}).
 
 %%%===================================================================
 %%% API
@@ -59,9 +49,6 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
-
 config(Bucket) ->
     {ok, CurrentConfig} = get_bucket(Bucket),
     NumReplicas = proplists:get_value(num_replicas, CurrentConfig),
@@ -72,6 +59,32 @@ config(Bucket) ->
           end,
     Servers = proplists:get_value(servers, CurrentConfig),
     {NumReplicas, NumVBuckets, Map, Servers}.
+
+
+%% @doc Make sure the given bucket exists. Returns a list of nodes it
+%% wasn't able to check.
+ensure_bucket(Bucket, Nodes) ->
+    {Replies, BadNodes} = ns_memcached:stats_multi(Nodes, Bucket),
+    {MissingNodes, BadReplyNodes} =
+        lists:foldl(fun ({_, {ok, _}}, Acc) ->
+                            Acc;
+                        ({Node, {memcached_error, mc_status_key_enoent, _}},
+                         {M, B}) ->
+                            {[Node|M], B};
+                        ({Node, Error}, {M, B}) ->
+                            ?log_warning("Bad reply from ~p checking bucket "
+                                         "~p:~n~p", [Node, Bucket, Error]),
+                            {M, [Node|B]}
+                    end, {[], []}, Replies),
+    lists:foreach(
+      fun (Node) ->
+              ConfigString = config_string(Node, Bucket),
+              ?log_info("Creating bucket ~p on node ~p with config '~s'.",
+                        [Bucket, Node, ConfigString]),
+              ns_memcached:create_bucket(Node, Bucket, ConfigString)
+      end, MissingNodes),
+    BadNodes ++ BadReplyNodes.
+
 
 get_bucket(Bucket) ->
     BucketConfigs = get_buckets(),
@@ -170,32 +183,36 @@ is_valid_bucket_name([Char | Rest]) ->
 create_bucket(membase, BucketName, NewConfig) ->
     case is_valid_bucket_name(BucketName) of
         false ->
-            exit({invalid_name, BucketName});
-        _ -> ok
-    end,
-    %% TODO: handle bucketType of memcache || membase
-    MergedConfig = misc:update_proplist([{num_vbuckets, case (catch list_to_integer(os:getenv("VBUCKETS_NUM"))) of
-                                                            EnvBuckets when is_integer(EnvBuckets) -> EnvBuckets;
-                                                            _ -> 1024
-                                                        end},
-                                         {num_replicas, 1},
-                                         {ram_quota, 0},
-                                         {hdd_quota, 0},
-                                         {ht_size, 3079},
-                                         {ht_locks, 5},
-                                         {servers, []},
-                                         {map, undefined}],
-                                        NewConfig),
-    ns_config:update_sub_key(buckets, configs,
-                             fun (List) ->
-                                     case lists:keyfind(BucketName, 1, List) of
-                                         false -> ok;
-                                         Tuple ->
-                                             exit({already_exists, Tuple})
-                                     end,
-                                     [{BucketName, MergedConfig} | List]
-                             end),
-    ns_rebalancer:rebalance([BucketName], 1, ns_node_disco:nodes_wanted(), []);
+            {error, {invalid_name, BucketName}};
+        _ ->
+            %% TODO: handle bucketType of memcache || membase
+            MergedConfig =
+                misc:update_proplist(
+                  [{num_vbuckets,
+                    case (catch list_to_integer(os:getenv("VBUCKETS_NUM"))) of
+                        EnvBuckets when is_integer(EnvBuckets) -> EnvBuckets;
+                        _ -> 1024
+                    end},
+                   {num_replicas, 1},
+                   {ram_quota, 0},
+                   {hdd_quota, 0},
+                   {ht_size, 3079},
+                   {ht_locks, 5},
+                   {servers, []},
+                   {map, undefined}],
+                  NewConfig),
+            ns_config:update_sub_key(
+              buckets, configs,
+              fun (List) ->
+                      case lists:keyfind(BucketName, 1, List) of
+                          false -> ok;
+                          Tuple ->
+                              exit({already_exists, Tuple})
+                      end,
+                      [{BucketName, MergedConfig} | List]
+              end)
+            %% The janitor will handle creating the map.
+    end;
 create_bucket(memcache, _BucketName, _NewConfig) ->
     error.
 
@@ -261,130 +278,18 @@ update_bucket_config(Bucket, Fun) ->
                    lists:keyreplace(configs, 1, List, {configs, NewBuckets})
            end).
 
-%%%===================================================================
-%%% gen_server callbacks
-%%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%% @end
-%%--------------------------------------------------------------------
-init([]) ->
-    timer:send_interval(?CHECK_INTERVAL, check_config),
-    {ok, #state{}}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    {noreply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_info(check_config, State) ->
-    try check_config()
-    catch
-        E:R ->
-            ?log_warning("could not check config: ~p~n~p",
-                                  [{E, R}, erlang:get_stacktrace()])
-    end,
-    {noreply, State};
-handle_info(_Info, State) ->
-    {noreply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
-%% with Reason. The return value is ignored.
-%%
-%% @spec terminate(Reason, State) -> void()
-%% @end
-%%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-    ok.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
-%% @end
-%%--------------------------------------------------------------------
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
-
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 
 %% Check the current config against the list of buckets on this server.
-check_config() ->
-    BucketConfigs = get_buckets(),
-    case ns_memcached:list_buckets() of
-        {ok, CurBuckets} ->
-            lists:foreach(
-              fun ({BucketName, BucketConfig}) ->
-                      case lists:member(BucketName, CurBuckets) of
-                          true -> ok;
-                          false ->
-                              ConfigString = config_string(BucketName, BucketConfig),
-                              error_logger:info_msg(
-                                "~p:check_config(): activating bucket ~p with config ~p~n",
-                                [?MODULE, BucketName, ConfigString]),
-                              ns_memcached:create_bucket(BucketName, ConfigString)
-                      end
-              end, BucketConfigs);
-        _ -> ok
-    end.
-
-config_string(BucketName, BucketConfig) ->
-    DBDir = ns_config:search_node_prop(ns_config:get(), memcached, dbdir),
+config_string(Node, BucketName) ->
+    Config = ns_config:get(),
+    DBDir = ns_config:search_node_prop(Node, Config, memcached, dbdir),
     DBName = filename:join(DBDir, BucketName),
+    BucketConfigs = ns_config:search_prop(Config, buckets, configs),
+    BucketConfig = proplists:get_value(BucketName, BucketConfigs),
     MemQuota = proplists:get_value(ram_quota, BucketConfig),
     Engine = ns_config:search_node_prop(ns_config:get(), memcached, engine),
     ok = filelib:ensure_dir(DBName),

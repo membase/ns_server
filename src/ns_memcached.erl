@@ -35,7 +35,6 @@
 
 %% external API
 -export([connected/0, connected/1,
-         check_bucket/3,
          create_bucket/2, create_bucket/3,
          delete_bucket/1, delete_bucket/2,
          delete_vbucket/2, delete_vbucket/3,
@@ -65,9 +64,6 @@ init([]) ->
     proc_lib:init_ack({ok, self()}),
     connect().
 
-handle_call({check_bucket, Bucket}, _From, State) ->
-    Reply = mc_client_binary:select_bucket(State#state.sock, Bucket),
-    {reply, Reply, State};
 handle_call({create_bucket, Bucket, Config}, _From, State) ->
     Reply = mc_client_binary:create_bucket(State#state.sock, Bucket, Config),
     {reply, Reply, State};
@@ -84,9 +80,6 @@ handle_call({delete_vbucket, Bucket, VBucket}, _From,
     {reply, Reply, State};
 handle_call(list_buckets, _From, State) ->
     Reply = mc_client_binary:list_buckets(State#state.sock),
-    {reply, Reply, State};
-handle_call(noop, _From, State) ->
-    Reply = mc_client_binary:noop(State#state.sock),
     {reply, Reply, State};
 handle_call({set_vbucket_state, Bucket, VBucket, VBState}, _From,
             #state{sock=Sock} = State) ->
@@ -128,23 +121,6 @@ connected() ->
 
 connected(Node) ->
     misc:running(Node, ?MODULE).
-
-check_bucket([], _Bucket, _Timeout) -> ok;
-check_bucket(Node, Bucket, Timeout) when is_atom(Node) ->
-    check_bucket([Node], Bucket, Timeout);
-check_bucket(Nodes, Bucket, Timeout) ->
-    {Replies, BadNodes} = gen_server:multi_call(Nodes, ?MODULE,
-                                                {check_bucket, Bucket},
-                                                Timeout),
-    BadReplies = [X || {_, R} = X <- Replies, R /= ok],
-    case BadReplies ++ BadNodes of
-        [] ->
-            [];
-        X ->
-            ?log_warning("wait_for_connection: bad replies from ~p.",
-                         [X]),
-            [N || {N, _} <- BadReplies] ++ BadNodes
-    end.
 
 create_bucket(Bucket, Config) ->
     create_bucket(node(), Bucket, Config).

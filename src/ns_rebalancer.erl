@@ -48,6 +48,8 @@ rebalance(KeepNodes, EjectNodes) ->
     AllNodes = KeepNodes ++ EjectNodes,
     [] = AllNodes -- ns_node_disco:nodes_actual_proper(),
     Buckets = ns_bucket:get_bucket_names(),
+    lists:foreach(fun (Bucket) -> wait_for_memcached(AllNodes, Bucket) end,
+                  Buckets),
     rebalance(Buckets, length(Buckets), KeepNodes, EjectNodes),
     %% Leave myself last
     LeaveNodes = lists:delete(node(), EjectNodes),
@@ -73,7 +75,6 @@ rebalance([], _, _, _) ->
 rebalance([Bucket|Buckets], NumBuckets, KeepNodes, EjectNodes) ->
     BucketCompletion = 1.0 - (length(Buckets)+1) / NumBuckets,
     AllNodes = KeepNodes ++ EjectNodes,
-    wait_for_memcached(AllNodes, Bucket),
     ns_orchestrator:update_progress(
       dict:from_list([{N, BucketCompletion} || N <- AllNodes])),
     {_, _, Map, _} = ns_bucket:config(Bucket),
@@ -312,7 +313,7 @@ promote_replica(Bucket, Chain, RemapNodes, V) ->
 
 %% @doc Wait until either all memcacheds are up or stop is pressed.
 wait_for_memcached(Nodes, Bucket) ->
-    case ns_memcached:check_bucket(Nodes, Bucket, 5000) of
+    case ns_bucket:ensure_bucket(Bucket, Nodes) of
         [] ->
             ok;
         Down ->
@@ -320,12 +321,13 @@ wait_for_memcached(Nodes, Bucket) ->
                 stop ->
                     exit(stopped)
             after 1000 ->
+                    ?log_info("Waiting for ~p", [Down]),
                     wait_for_memcached(Down, Bucket)
             end
     end.
 
 
--spec wait_for_mover(pid()) -> ok | stopped | {unhandled_message, any()}.
+-spec wait_for_mover(pid()) -> ok | stopped.
 wait_for_mover(Pid) ->
     receive
         stop ->
@@ -335,6 +337,6 @@ wait_for_mover(Pid) ->
             stopped;
         {'EXIT', Pid, normal} ->
             ok;
-        Msg ->
-            {unhandled_message, Msg}
+        {'EXIT', Pid, Reason} ->
+            exit(Reason)
     end.

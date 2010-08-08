@@ -108,6 +108,7 @@ default() ->
                end,
    [{directory, default_path("config")},
     {nodes_wanted, [node()]},
+    {{node, node(), membership}, active},
     % In general, the value in these key-value pairs are property lists,
     % like [{prop_atom1, value1}, {prop_atom2, value2}].
     %
