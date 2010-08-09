@@ -1,22 +1,145 @@
+var validationMsgCounter = 0;
+
+function setupFormValidation(form, url, callback) {
+  var idleTime = 250;
+
+  var oldValue;
+  var inFlightXHR;
+  var timeoutId;
+
+  function showValidation() {
+    if (!validationMsgCounter) {
+      $('#validation_notice').show();
+    }
+    validationMsgCounter++;
+  }
+
+  function hideValidation() {
+    validationMsgCounter--;
+    if (!validationMsgCounter)
+      $('#validation_notice').hide();
+  }
+
+  function timerFunction() {
+    console.log("timerFunction!");
+
+    timeoutId = undefined;
+    inFlightXHR = $.ajax({
+      type: 'POST',
+      url: url,
+      data: oldValue,
+      dataType: 'json',
+      error: xhrCallback,
+      success: xhrCallback
+    });
+  }
+
+  function xhrCallback(data, textStatus) {
+    hideValidation();
+    console.log("xhr done: ", data, textStatus);
+
+    if (textStatus == 'success') {
+      console.log("plan success");
+      return callback('success', data);
+    }
+
+    var status = 0;
+    try {
+      status = data.status // can raise exception on IE sometimes
+    } catch (e) {
+      // ignore
+    }
+    if (status >= 200 && status < 300 && data.responseText == '') {
+      console.log("inplain success");
+      return callback('success');
+    }
+
+    if (status != 400 || textStatus != 'error') {
+      return onUnexpectedXHRError(data);
+    }
+
+    console.log("plain error");
+    var errorsData = $.httpData(data, null, this);
+    callback('error', errorsData);
+  }
+
+  function cancelXHR() {
+    if (inFlightXHR) {
+      Abortarium.abortRequest(inFlightXHR);
+      inFlightXHR = null;
+    }
+  }
+
+  var firstTime = true;
+
+  function onPotentialChanges() {
+    if (paused)
+      return;
+
+    var newValue = serializeForm(form);
+    if (newValue == oldValue)
+      return;
+    oldValue = newValue;
+
+    var wasFirstTime = firstTime;
+    firstTime = false;
+
+    showValidation();
+    if (timeoutId) {
+      hideValidation();         // because we already had in-progress validation
+      console.log("aborting next validation");
+      clearTimeout(timeoutId);
+    }
+    timeoutId = setTimeout(timerFunction, idleTime);
+    cancelXHR();
+
+    if (wasFirstTime) {
+      showValidation();
+      cancelTimeout();
+      timerFunction();
+    }
+  }
+
+  function cancelTimeout() {
+    if (timeoutId) {
+      hideValidation();
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+  }
+
+  var observer = form.observePotentialChanges(onPotentialChanges);
+
+  var paused = false;
+
+  return {
+    abort: function () {
+      cancelTimeout();
+      cancelXHR();
+      observer.stopObserving();
+    },
+    pause: function () {
+      if (paused)
+        return;
+      paused = true;
+      showValidation();
+      cancelXHR();
+      cancelTimeout();
+    },
+    unpause: function () {
+      paused = false;
+      hideValidation();
+      onPotentialChanges();
+    }
+  }
+}
+
 var BucketDetailsDialog = mkClass({
   initialize: function (initValues, isNew) {
     this.isNew = isNew;
-    this.poolDetails = DAO.cells.currentPoolDetailsCell.value;
     this.initValues = initValues;
     initValues['ramQuotaMB'] = Math.floor(initValues.quota.ram / 1048576);
     initValues['hddQuotaGB'] = Math.floor(initValues.quota.hdd / (1048576 * 1024));
-    initValues.otherQuota = {
-      ram: this.poolDetails.storageTotals.ram.quotaUsed,
-      hdd: this.poolDetails.storageTotals.hdd.quotaUsed
-    }
-    if (!isNew) {
-      initValues.otherQuota.ram -= initValues.quota.ram;
-      initValues.otherQuota.hdd -= initValues.quota.hdd;
-    }
-    initValues.errors = {};
-
-    this.valuesCell = new Cell();
-    this.valuesCell.setValue(initValues);
 
     this.dialogID = 'bucket_details_dialog'
 
@@ -27,14 +150,23 @@ var BucketDetailsDialog = mkClass({
 
     setBoolAttribute(dialog.find('[name=name]'), 'disabled', !isNew);
 
-    this.valuesCell.subscribeValue($m(this, 'onValues'));
-
     dialog.find('[name=bucketType]').observeInput(function (newType) {
       var isPersistent = (newType == 'membase');
       dialog.find('.persistent-only')[isPersistent ? 'slideDown' : 'slideUp']('fast');
     });
 
     this.cleanups = [];
+
+    var errorsCell = this.errorsCell = new Cell();
+    errorsCell.subscribeValue($m(this, 'onValidationResult'));
+    this.formValidator = setupFormValidation(dialog.find('form'),
+                                             this.initValues.uri + '?just_validate=1',
+                                             function (status, errors) {
+                                               console.log("setting errors: ", errors);
+                                               errorsCell.setValue(errors);
+                                             });
+
+    this.cleanups.push($m(this.formValidator, 'abort'));
   },
 
   bindWithCleanup: function (jq, event, callback) {
@@ -61,7 +193,9 @@ var BucketDetailsDialog = mkClass({
       setBoolAttribute(nonPersistent, 'disabled', true);
     }
 
-    postWithValidationErrors(self.valuesCell.value.uri, self.dialog.find('form'), function (data, status) {
+    self.formValidator.pause();
+
+    postWithValidationErrors(self.initValues.uri, self.dialog.find('form'), function (data, status) {
       if (status == 'success') {
         BucketsSection.refreshBuckets(function () {
           self.needBucketsRefresh = false;
@@ -74,7 +208,7 @@ var BucketDetailsDialog = mkClass({
       enableForm();
 
       var errors = data[0]; // we expect errors as a hash in this case
-      self.valuesCell.setValueAttr(errors, 'errors');
+      self.errorsCell.setValue(errors);
     });
 
     if (nonPersistent) {
@@ -90,6 +224,7 @@ var BucketDetailsDialog = mkClass({
     setBoolAttribute(toDisable, 'disabled', true);
 
     function enableForm() {
+      self.formValidator.unpause();
       closeCleanup();
       setBoolAttribute(toDisable, 'disabled', false);
       toDisable.add(self.dialog).css('cursor', 'auto');
@@ -99,15 +234,9 @@ var BucketDetailsDialog = mkClass({
     var self = this;
     var form = this.dialog.find('form');
 
-    setFormValues(form, self.valuesCell.value);
+    setFormValues(form, self.initValues);
 
     setBoolAttribute(form.find('[name=bucketType]'), 'disabled', !self.isNew);
-
-    self.setupQuotaValidation('ram');
-    self.setupQuotaValidation('hdd');
-    self.setupReplicasValidation();
-    if (self.isNew)
-      self.setupNameValidation();
 
     self.cleanups.push(self.bindWithCleanup(form, 'submit', function (e) {
       e.preventDefault();
@@ -154,142 +283,32 @@ var BucketDetailsDialog = mkClass({
 
   // this updates our gauges and errors
   // we don't use it to set input values, 'cause for the later we need to do it once
-  onValues: function (values) {
+  onValidationResult: function (result) {
     var self = this;
+    result = result || {};
+    // if (!result)                // TODO: handle it
+    //   return;
 
-    if (!values)
-      return;
+    var summaries = result.summaries || {};
+    var ramSummary = summaries.ramSummary;
+    var hddSummary = summaries.hddSummary;
 
-    self.renderGauge(self.dialog.find(".size-gauge.for-ram"),
-                     self.poolDetails.storageTotals.ram.quotaTotal,
-                     values.quota.ram,
-                     values.otherQuota.ram);
+    if (ramSummary)
+      self.renderGauge(self.dialog.find(".size-gauge.for-ram"),
+                       ramSummary.total,
+                       ramSummary.thisAlloc,
+                       ramSummary.otherBuckets);
 
-    self.renderGauge(self.dialog.find('.size-gauge.for-hdd'),
-                     self.poolDetails.storageTotals.hdd.quotaTotal,
-                     values.quota.hdd,
-                     values.otherQuota.hdd);
+    if (hddSummary)
+      self.renderGauge(self.dialog.find('.size-gauge.for-hdd'),
+                       hddSummary.total,
+                       hddSummary.thisAlloc,
+                       hddSummary.otherBuckets);
 
     var knownFields = ('name ramQuotaMB hddQuotaGB replicaNumber proxyPort').split(' ');
+    var errors = result.errors || {};
     _.each(knownFields, function (name) {
-      self.renderError(name, values.errors[name]);
-    });
-
-    // TODO: we should render other errors too
-    _.each(values.errors, function (v, k, errors) {
-      if (_.include(knownFields, k))
-        return;
-      delete errors[k];
-    });
-
-    var hasErrors = _.some(_.keys(values.errors), function (k) {
-      return !!(values.errors[k]);
-    });
-
-    setBoolAttribute(self.dialog.find('.save_button'), 'disabled', hasErrors);
-  },
-
-  setupQuotaValidation: function (storageType) {
-    var self = this;
-
-    var props = {
-      name: 'ramQuotaMB',
-      unitSize: 1048576,
-      minSize: 128
-    }
-    if (storageType == 'hdd') {
-      props = {
-        name: 'hddQuotaGB',
-        unitSize: (1048576*1024),
-        minSize: 1
-      }
-    }
-
-    var input = self.dialog.find('[name='+props.name+']');
-    var observer = input.observeInput(validate);
-
-    self.cleanups.push(function () {
-      observer.stopObserving();
-    });
-
-    validate.call(input, input.val());
-
-    function validate(newValue) {
-      var storageInfo = self.poolDetails.storageTotals[storageType];
-      var oldThisQuota = self.initValues.quota[storageType];
-      var other = self.initValues.otherQuota[storageType];
-      var max = storageInfo.quotaTotal - other;
-      var min = props.minSize; // TODO
-
-      max = Math.floor(max / props.unitSize);
-      min = Math.floor(min / props.unitSize);
-      if (min >= max)
-        min = max >> 1;
-
-      var parsedQuota = parseValidateInteger(newValue, min, max);
-
-      var error = $(this).closest('label').next('.error-container');
-      var errorText;
-      if (typeof(parsedQuota) == 'string') {
-        errorText = parsedQuota;
-        parsedQuota = '??';
-      } else {
-        parsedQuota *= props.unitSize;
-      }
-
-      self.valuesCell.setValueAttr(parsedQuota, 'quota', storageType);
-      self.valuesCell.setValueAttr(errorText, 'errors', props.name);
-    }
-  },
-
-  setupReplicasValidation: function () {
-    var self = this;
-
-    var enableReplicationCheckbox = self.dialog.find('.for-enable-replication input');
-    var replicaNumberInput = self.dialog.find('[name=replicaNumber]');
-    var preDisableReplicaNumber = replicaNumberInput.val();
-    enableReplicationCheckbox.bind('click', function () {
-      setBoolAttribute(replicaNumberInput, 'disabled', !this.checked);
-      if (!this.checked) {
-        preDisableReplicaNumber = replicaNumberInput.val();
-        replicaNumberInput.val('0');
-      } else {
-        replicaNumberInput.val(preDisableReplicaNumber);
-      }
-    });
-    self.cleanups.push(function () {
-      enableReplicationCheckbox.unbind('click');
-    });
-
-    function validateReplicas(newValue) {
-      var value = parseValidateInteger(newValue, 0, 1024); //poolDetails.nodes.length-1);
-      var errorsContainer = self.dialog.find('.for-replica-number .error-container');
-      var error;
-      if (_.isString(value)) {
-        error = value;
-        errorsContainer.text(error);
-      }
-      self.valuesCell.setValueAttr(error, 'errors', 'replicaNumber');
-    }
-
-    var observer = replicaNumberInput.observeInput(validateReplicas);
-    self.cleanups.push(function () {
-      observer.stopObserving();
-    });
-    validateReplicas(preDisableReplicaNumber);
-  },
-
-  setupNameValidation: function () {
-    var self = this;
-
-    var observer = self.dialog.find('[name=name]').observeInput(function (value) {
-      var error = null;
-      if (value.length == 0)
-        error = 'name cannot be empty';
-      self.valuesCell.setValueAttr(error, 'errors', 'name');
-    });
-    self.cleanups.push(function () {
-      observer.stopObserving();
+      self.renderError(name, errors[name]);
     });
   }
 });

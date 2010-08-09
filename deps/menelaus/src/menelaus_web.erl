@@ -1067,18 +1067,6 @@ handle_resource_delete(Node, Path, Req) ->
         {error, _} -> Req:respond({404, add_header(), "The storage location could not be removed.\r\n"})
     end.
 
-parse_validate_number(String, Min, Max) ->
-    Parsed = (catch list_to_integer(String)),
-    if
-        is_integer(Parsed) ->
-            if
-                Parsed < Min -> too_small;
-                Parsed > Max -> too_large;
-                true -> {ok, Parsed}
-            end;
-       true -> invalid
-    end.
-
 handle_node_settings_post("self", Req)            -> handle_node_settings_post(node(), Req);
 handle_node_settings_post(S, Req) when is_list(S) -> handle_node_settings_post(list_to_atom(S), Req);
 
@@ -1115,7 +1103,7 @@ handle_node_settings_post(Node, Req) ->
                        {MaxMemoryBytes0, _, _} = memsup:get_memory_data(),
                        MinMemoryMB = MaxMemoryBytes0 div (10 * 1048576),
                        MaxMemoryMB = (MaxMemoryBytes0 * 4) div (5 * 1048576),
-                       case parse_validate_number(X, MinMemoryMB, MaxMemoryMB) of
+                       case menelaus_util:parse_validate_number(X, MinMemoryMB, MaxMemoryMB) of
                            {ok, Number} ->
                                {ok, fun () ->
                                             ok = ns_storage_conf:change_memory_quota(Node, Number)

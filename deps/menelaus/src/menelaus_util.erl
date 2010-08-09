@@ -35,6 +35,7 @@
          get_option/2,
          local_addr/1,
          concat_url_path/1,
+         parse_validate_number/3,
          validate_email_address/1,
          insecure_pipe_through_command/2]).
 
@@ -188,6 +189,20 @@ parse_boolean(Value) ->
 
 concat_url_path(Segments) ->
     "/" ++ string:join(lists:map(fun mochiweb_util:quote_plus/1, Segments), "/").
+
+-spec parse_validate_number(string(), (integer() | undefined), (integer() | undefined)) ->
+                                   invalid | too_small | too_large | {ok, integer()}.
+parse_validate_number(String, Min, Max) ->
+    Parsed = (catch list_to_integer(String)),
+    if
+        is_integer(Parsed) ->
+            if
+                Min =/= undefined andalso Parsed < Min -> too_small;
+                Max =/= undefined andalso Parsed > Max -> too_large;
+                true -> {ok, Parsed}
+            end;
+       true -> invalid
+    end.
 
 %% does a simple email address validation
 validate_email_address(Address) ->

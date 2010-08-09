@@ -34,6 +34,7 @@
          handle_bucket_update/3,
          handle_bucket_create/2,
          handle_bucket_flush/3,
+         parse_bucket_params/5,
          redirect_to_bucket/3]).
 
 -import(menelaus_util,
@@ -144,194 +145,345 @@ redirect_to_bucket(Req, PoolId, BucketId) ->
                        | server_header()],
                  ""}).
 
-parse_ram_quota(RAMQuotaMB) ->
-    (catch list_to_integer(RAMQuotaMB) * 1048576).
+%% returns pprop list with only props useful for ns_bucket
+extract_bucket_props(Props) ->
+    [X || X <- [lists:keyfind(Y, 1, Props) || Y <- [num_replicas, ram_quota, hdd_quota, auth_type, sasl_password, moxi_port]],
+          X =/= false].
 
-parse_hdd_quota(undefined) ->
-    undefined;
-parse_hdd_quota(HDDQuotaGB) ->
-    (catch list_to_integer(HDDQuotaGB) * 1048576 * 1024).
-
-parse_num_replicas(undefined) ->
-    undefined;
-parse_num_replicas(NumReplicas) ->
-    (catch list_to_integer(NumReplicas)).
-
-parse_proxy_port(ProxyPort) ->
-    (catch list_to_integer(ProxyPort)).
-
-validate_bucket_params(Type, RAMQuota, HDDQuota, NumReplicas, AuthType, SASLPassword, ProxyPort) ->
-    %% TODO fix for handling memcache type bucket
-    RAMIsNumber = is_integer(RAMQuota),
-    HDDIsNumber = is_integer(HDDQuota),
-    ProxyPortIsNumber = is_integer(ProxyPort),
-    ReplicasIsInt = is_integer(NumReplicas),
-    TypeIsValid = is_valid_bucket_type(Type),
-
-    Errors = [{bucketType, case TypeIsValid of
-                               true -> ok;
-                               _ ->
-                                   <<"Invalid bucket type specified.">>
-                           end},
-              {ramQuotaMB, case RAMIsNumber of
-                               true -> ok;
-                               _ ->
-                                   <<"RAM quota must be a number.">>
-                           end},
-              {hddQuotaGB, case HDDIsNumber of
-                               true ->
-                                   case RAMIsNumber of
-                                       true ->
-                                           case RAMQuota > HDDQuota of
-                                               true ->
-                                                   <<"Disk quota is smaller than RAM.">>;
-                                               _ -> ok
-                                           end;
-                                       _ -> ok
-                                   end;
-                               _ ->
-                                   <<"Disk quota needs to be a number">>
-                           end},
-              {authType, case AuthType of
-                             undefined -> <<"Authenication type is invalid">>;
-                             _ -> ok
-                         end},
-              {proxyPort, case ProxyPortIsNumber of
-                              true -> ok;
-                              %% need more validation here
-                              _ -> case authType of
-                                       none -> <<"Proxy port needs to be a number">>;
-                                       _ -> ok
-                                   end
-                          end},
-              {replicaNumber, case ReplicasIsInt of
-                                  true -> ok;
-                                  _ -> <<"Replica number must be an integer.">>
-                              end}],
-    case lists:filter(fun ({_, ok}) -> false;
-                          (_) -> true
-                      end, Errors) of
-        [] ->
-            {SASLPassword2, ProxyPort2} = case AuthType of
-                                              sasl ->
-                                                  {SASLPassword, 0};
-                                              none ->
-                                                  {"", ProxyPort}
-                                          end,
-            {ok, [{auth_type, AuthType},
-                  {sasl_password, SASLPassword2},
-                  {moxi_port, ProxyPort2},
-                  {ram_quota, RAMQuota},
-                  {hdd_quota, HDDQuota},
-                  {num_replicas, NumReplicas}]};
-        Errors2 -> {errors, Errors2}
-    end.
-
-
-handle_bucket_update(PoolId, BucketId, Req) ->
-    case ns_bucket:get_bucket(BucketId) of
-        {ok, BucketConfig} ->
-            handle_bucket_update(PoolId, BucketId, Req, BucketConfig);
-        _ ->
-            reply_json(Req, {struct, [{'_', [<<"Bucket not found">>]}]}, 400)
-    end.
-
-handle_bucket_update(_PoolId, BucketId, Req, BucketConfig) ->
+handle_bucket_update(_PoolId, BucketId, Req) ->
     Params = Req:parse_post(),
-    RAMQuota = parse_ram_quota(proplists:get_value("ramQuotaMB", Params)),
-    HDDQuota = parse_hdd_quota(proplists:get_value("hddQuotaGB", Params)),
-    NumReplicas = parse_num_replicas(proplists:get_value("replicaNumber", Params)),
-    AuthType = case proplists:get_value("authType", Params) of
-                   "none" -> none;
-                   "sasl" -> sasl;
-                   _ -> undefined
-               end,
-    SASLPassword = proplists:get_value("saslPassword", Params, ""),
-    ProxyPort = parse_proxy_port(proplists:get_value("proxyPort", Params, "0")),
+    handle_bucket_update_inner(BucketId, Req, Params, 32).
 
-    BucketType = ns_bucket:bucket_type(BucketConfig),
-
-    case validate_bucket_params(atom_to_list(BucketType),
-                                RAMQuota, HDDQuota, NumReplicas,
-                                AuthType, SASLPassword, ProxyPort) of
-        {ok, UpdatedProps} ->
+handle_bucket_update_inner(_BucketId, _Req, _Params, 0) ->
+    exit(bucket_update_loop);
+handle_bucket_update_inner(BucketId, Req, Params, Limit) ->
+    ValidateOnly = (proplists:get_value("just_validate", Req:parse_qs()) =:= "1"),
+    case {ValidateOnly,
+          parse_bucket_params(false,
+                              BucketId,
+                              Params,
+                              ns_bucket:get_buckets(),
+                              ns_storage_conf:cluster_storage_info())} of
+        {_, {errors, Errors, JSONSummaries}} ->
+            io:format("Errors: ~p~n", [Errors]),
+            RV = {struct, [{errors, {struct, Errors}},
+                           {summaries, {struct, JSONSummaries}}]},
+            reply_json(Req, RV, 400);
+        {false, {ok, ParsedProps, _}} ->
+            BucketType = proplists:get_value(bucketType, ParsedProps),
+            UpdatedProps = extract_bucket_props(ParsedProps),
             case ns_bucket:update_bucket_props(BucketType, BucketId, UpdatedProps) of
                 ok ->
                     Req:respond({200, server_header(), []});
                 {exit, {not_found, _}, _} ->
-                    reply_json(Req, {struct, [{'_', [<<"Bucket not found">>]}]}, 400)
+                    %% if this happens then our validation raced, so repeat everything
+                    handle_bucket_update_inner(BucketId, Req, Params, Limit-1)
             end;
-        {errors, Errors} ->
-            reply_json(Req, {struct, Errors}, 400)
+        {true, {ok, _, JSONSummaries}} ->
+            reply_json(Req, {struct, [{errors, {struct, []}},
+                                      {summaries, {struct, JSONSummaries}}]}, 200)
     end.
 
 handle_bucket_create(PoolId, Req) ->
-    case ns_node_disco:nodes_wanted() =:= ns_node_disco:nodes_actual_proper() of
-        true ->
-            Params = Req:parse_post(),
-            %% TODO: validation
-            Name = misc:expect_prop_value("name", Params),
-            Type = misc:expect_prop_value("bucketType", Params),
-            RAMQuota = parse_ram_quota(proplists:get_value("ramQuotaMB", Params, undefined)),
-            HDDQuota = parse_hdd_quota(proplists:get_value("hddQuotaGB", Params, undefined)),
-            NumReplicas = parse_num_replicas(proplists:get_value("replicaNumber", Params, undefined)),
-            AuthType = case proplists:get_value("authType", Params) of
-                           "none" -> none;
-                           "sasl" -> sasl;
-                           _ -> undefined
-                       end,
-            SASLPassword = proplists:get_value("saslPassword", Params),
-            ProxyPort = parse_proxy_port(proplists:get_value("proxyPort", Params)),
-            BucketType = case Type of
-                             "membase" ->
-                                 membase;
-                             _ ->
-                                 memcache
-                         end,
-            ErrorsOrProps0 = validate_bucket_params(Type, RAMQuota, HDDQuota, NumReplicas, AuthType, SASLPassword, ProxyPort),
-            ErrorsOrProps = case ns_bucket:is_valid_bucket_name(Name) of
-                                false ->
-                                    Errors0 = case ErrorsOrProps0 of
-                                                  {errors, Errors0V} -> Errors0V;
-                                                  _ -> []
-                                              end,
-                                    {errors, [{name, <<"Given bucket name is invalid. Consult the documentation.">>}
-                                              | Errors0]};
-                                _ -> ErrorsOrProps0
-                            end,
-            case ErrorsOrProps of
-                {ok, Props} ->
-                    case ns_orchestrator:create_bucket(BucketType, Name, Props) of
-                        ok ->
-                            ?MENELAUS_WEB_LOG(?BUCKET_CREATED, "Created bucket \"~s\" of type: ~s~n", [Name, BucketType]),
-                            redirect_to_bucket(Req, PoolId, Name);
-                        {exit, {already_exists, _}, _} ->
-                            reply_json(Req, {struct, [{name, <<"Bucket with given name already exists">>}]}, 400)
-                    end;
-                {errors, Errors} ->
-                    reply_json(Req, {struct, Errors}, 400)
+    Params = Req:parse_post(),
+    Name = proplists:get_value("name", Params),
+    ValidateOnly = (proplists:get_value("just_validate", Req:parse_qs()) =:= "1"),
+    case {ValidateOnly,
+          parse_bucket_params(true,
+                              Name,
+                              Params,
+                              ns_bucket:get_buckets(),
+                              ns_storage_conf:cluster_storage_info())} of
+        {_, {errors, Errors, JSONSummaries}} ->
+            reply_json(Req, {struct, [{errors, {struct, Errors}},
+                                      {summaries, {struct, JSONSummaries}}]}, 400);
+        {false, {ok, ParsedProps, _}} ->
+            BucketType = proplists:get_value(bucketType, ParsedProps),
+            BucketProps = extract_bucket_props(ParsedProps),
+            case ns_orchestrator:create_bucket(BucketType, Name, BucketProps) of
+                ok ->
+                    ?MENELAUS_WEB_LOG(?BUCKET_CREATED, "Created bucket \"~s\" of type: ~s~n", [Name, BucketType]),
+                    redirect_to_bucket(Req, PoolId, Name);
+                %% TODO: check that!
+                {exit, {already_exists, _}, _} ->
+                    reply_json(Req, {struct, [{name, <<"Bucket with given name already exists">>}]}, 400);
+                rebalance_running ->
+                    %% TODO: fix that
+                    reply_json(Req, [], 200)
             end;
-        false ->
-            reply_json(Req, [list_to_binary("One or more server nodes appear to be down. " ++
-                                                "Please first restore or remove those servers nodes " ++
-                                                "so that the entire cluster is healthy.")], 400)
+        {true, {ok, _, JSONSummaries}} ->
+            reply_json(Req, {struct, [{errors, {struct, []}},
+                                      {summaries, {struct, JSONSummaries}}]}, 200)
     end.
-
 
 handle_bucket_flush(PoolId, Id, Req) ->
     ns_log:log(?MODULE, 0005, "Flushing pool ~p bucket ~p from node ~p",
                [PoolId, Id, erlang:node()]),
     Req:respond({400, server_header(), "Flushing is not currently implemented."}).
 
-%% check bucket type
-%% In the future, this can check by comparing to something actually asserted
-%% or somehow sent up by the engine
-is_valid_bucket_type([]) -> false;
-is_valid_bucket_type(Type) ->
-    case Type of
-        "memcache" ->
-            true;
-        "membase" ->
-            true;
-        _ -> false
+-record(ram_summary, {
+          total,                                % total cluster quota
+          other_buckets,
+          this_alloc,
+          this_used,                            % part of this bucket which is used already
+          free}).                               % total - other_buckets - this_alloc.
+                                                % So it's: Amount of cluster quota available for allocation
+
+-record(hdd_summary, {
+          total,                                % total cluster disk space
+          other_data,                           % disk space used by something other than our data
+          other_buckets,                        % space allocated for other buckets
+          this_alloc,                           % space allocated for this bucket
+          this_used,                            % space already used by this bucket
+          free}).                               % total - other_data - other_buckets - this_alloc
+                                                % So it's kind of: Amount of cluster disk space available of allocation,
+                                                % but with a number of 'but's.
+
+parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals) ->
+    UsageGetter = fun (ram, Name) ->
+                          menelaus_stats:bucket_ram_usage(Name);
+                      (hdd, all) ->
+                          lists:sum([menelaus_stats:bucket_disk_usage(X)
+                                     || {X, _} <- AllBuckets]);
+                      (hdd, Name) ->
+                          menelaus_stats:bucket_disk_usage(Name)
+                  end,
+    parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals, UsageGetter).
+
+parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals, UsageGetter) ->
+    {OKs, Errors} = basic_bucket_params_screening(IsNew, BucketName,
+                                                  Params, AllBuckets),
+    CurrentBucket = proplists:get_value(currentBucket, OKs),
+    HasRAMQuota = lists:keyfind(ram_quota, 1, OKs) =/= false,
+    RAMSummary = if
+                     HasRAMQuota ->
+                         interpret_ram_quota(CurrentBucket, OKs, ClusterStorageTotals, UsageGetter);
+                     true ->
+                         undefined
+                 end,
+    HasHDDQuota = lists:keyfind(hdd_quota, 1, OKs) =/= false,
+    HDDSummary = if
+                     HasHDDQuota ->
+                         interpret_hdd_quota(CurrentBucket, OKs, ClusterStorageTotals, UsageGetter);
+                     true -> undefined
+                 end,
+    JSONSummaries = [X || X <- [case RAMSummary of
+                                    undefined -> undefined;
+                                    _ -> {ramSummary, {struct, ram_summary_to_proplist(RAMSummary)}}
+                                end,
+                                case HDDSummary of
+                                    undefined -> undefined;
+                                    _ -> {hddSummary, {struct, hdd_summary_to_proplist(HDDSummary)}}
+                                end],
+                          X =/= undefined],
+    Errors2 = case {CurrentBucket, IsNew} of
+                  {undefined, _} -> Errors;
+                  {_, true} -> Errors;
+                  {_, false} ->
+                      case {proplists:get_value(bucketType, OKs),
+                            ns_bucket:bucket_type(CurrentBucket)} of
+                          {undefined, _} -> Errors;
+                          {NewType, NewType} -> Errors;
+                          {_NewType, _OldType} ->
+                              [{bucketType, <<"Cannot change bucket type">>}
+                               | Errors]
+                      end
+              end,
+    RAMErrors =
+        if
+            RAMSummary =:= undefined ->
+                [];
+            RAMSummary#ram_summary.free < 0 ->
+                [{ramQuotaMB, <<"This bucket doesn't fit cluster RAM quota">>}];
+            RAMSummary#ram_summary.this_alloc < RAMSummary#ram_summary.this_used ->
+                [{ramQuotaMB, <<"Cannot decrease below usage">>}];
+            true ->
+                []
+        end,
+    HDDErrors =
+        if
+            HDDSummary =:= undefined ->
+                [];
+            HDDSummary#hdd_summary.this_alloc < HDDSummary#hdd_summary.this_used ->
+                [{hddQuotaGB, <<"Cannot decrease below usage">>}];
+            RAMSummary =/= undefined andalso HDDSummary#hdd_summary.this_alloc < RAMSummary#ram_summary.this_alloc ->
+                [{hddQuotaGB, <<"Disk quota less that RAM quota doesn't make sense">>}];
+            true ->
+                []
+        end,
+    TotalErrors = RAMErrors ++ HDDErrors ++ Errors2,
+    if
+        TotalErrors =:= [] ->
+            {ok, OKs, JSONSummaries};
+        true ->
+            {errors, TotalErrors, JSONSummaries}
+    end.
+
+basic_bucket_params_screening(IsNew, BucketNames, Params, AllBuckets) ->
+    AuthType = case proplists:get_value("authType", Params) of
+                   "none" -> none;
+                   "sasl" -> sasl;
+                   _ -> {crap, <<"invalid authType">>} % this is not for end users
+               end,
+    case AuthType of
+        {crap, Crap} = Crap -> {[], [{authType, Crap}]};
+        _ -> basic_bucket_params_screening_tail(IsNew, BucketNames, Params, AllBuckets, AuthType)
+    end.
+
+basic_bucket_params_screening_tail(IsNew, BucketName, Params, AllBuckets, AuthType) ->
+    BucketConfig = lists:keyfind(BucketName, 1, AllBuckets),
+    Candidates0 = [{ok, name, BucketName},
+                   {ok, auth_type, AuthType},
+                   case IsNew of
+                       true ->
+                           case BucketConfig of
+                               false ->
+                                   case ns_bucket:is_valid_bucket_name(BucketName) of
+                                       false ->
+                                           {errors, name, <<"Bucket name can only contain characters in range A-Z, a-z, 0-9 as well as underscore, period, dash & percent. Consult the documentation.">>};
+                                       _ ->
+                                           undefined
+                                   end;
+                               _ ->
+                                   {error, name, <<"Bucket with given name already exists">>}
+                           end;
+                       _ ->
+                           case BucketConfig of
+                               false ->
+                                   {error, name, <<"Bucket with given name doesn't exist">>};
+                               {_, X} ->
+                                   {ok, currentBucket, X}
+                           end
+                   end,
+                   case BucketName of
+                       [] ->
+                           {error, name, <<"Bucket name cannot be empty">>};
+                       _ -> undefined
+                   end,
+                   case AuthType of
+                       none ->
+                           case menelaus_util:parse_validate_number(proplists:get_value("proxyPort", Params),
+                                                                    1025, 65535) of
+                               {ok, PP} -> {ok, moxi_port, PP};
+                               _ -> {error, proxyPort, <<"proxy port is invalid">>}
+                           end;
+                       sasl ->
+                           {ok, sasl_password, proplists:get_value("saslPassword", Params, "")}
+                   end,
+                   parse_validate_ram_quota(proplists:get_value("ramQuotaMB", Params))],
+    BucketType = if
+                     (not IsNew) andalso BucketConfig =/= false ->
+                         ns_bucket:bucket_type(BucketConfig);
+                     true ->
+                         case proplists:get_value("bucketType", Params) of
+                             "memcache" -> memcache;
+                             "membase" -> membase;
+                             _ -> invalid
+                         end
+                 end,
+    Candidates = case BucketType of
+                     memcache ->
+                         [{ok, bucketType, memcache}
+                          | Candidates0];
+                     membase ->
+                         [{ok, bucketType, membase},
+                          parse_validate_replicas_number(proplists:get_value("replicaNumber", Params)),
+                          parse_validate_hdd_quota(proplists:get_value("hddQuotaGB", Params))
+                          | Candidates0];
+                     _ ->
+                         [{error, bucketType, <<"invalid bucket type">>}
+                          | Candidates0]
+                 end,
+    {[{K,V} || {ok, K, V} <- Candidates],
+     [{K,V} || {error, K, V} <- Candidates]}.
+
+-define(PRAM(K, KO), {KO, V#ram_summary.K}).
+ram_summary_to_proplist(V) ->
+    [?PRAM(total, total),
+     ?PRAM(other_buckets, otherBuckets),
+     ?PRAM(this_alloc, thisAlloc),
+     ?PRAM(this_used, thisUsed),
+     ?PRAM(free, free)].
+
+interpret_ram_quota(CurrentBucket, ParsedProps, ClusterStorageTotals, UsageGetter) ->
+    ParsedQuota = proplists:get_value(ram_quota, ParsedProps),
+    ClusterTotals = proplists:get_value(ram, ClusterStorageTotals),
+    OtherBuckets = proplists:get_value(quotaUsed, ClusterTotals)
+        - case CurrentBucket of
+              [_|_] ->
+                  ns_bucket:ram_quota(CurrentBucket);
+              _ ->
+                  0
+          end,
+    ThisUsed = case CurrentBucket of
+                   [_|_] ->
+                       UsageGetter(ram, proplists:get_value(name, ParsedProps));
+                   _ -> 0
+               end,
+    Total = proplists:get_value(quotaTotal, ClusterTotals),
+    #ram_summary{total = Total,
+                 other_buckets = OtherBuckets,
+                 this_alloc = ParsedQuota,
+                 this_used = ThisUsed,
+                 free = Total - OtherBuckets - ParsedQuota}.
+
+-define(PHDD(K, KO), {KO, V#hdd_summary.K}).
+hdd_summary_to_proplist(V) ->
+    [?PHDD(total, total),
+     ?PHDD(other_data, otherData),
+     ?PHDD(other_buckets, otherBuckets),
+     ?PHDD(this_alloc, thisAlloc),
+     ?PHDD(this_used, thisUsed),
+     ?PHDD(free, free)].
+
+interpret_hdd_quota(CurrentBucket, ParsedProps, ClusterStorageTotals, UsageGetter) ->
+    ParsedQuota = proplists:get_value(hdd_quota, ParsedProps),
+    ClusterTotals = proplists:get_value(hdd, ClusterStorageTotals),
+    UsedByUs = UsageGetter(hdd, all),
+    OtherData = proplists:get_value(used, ClusterTotals) - UsedByUs,
+    OtherBuckets = proplists:get_value(quotaUsed, ClusterTotals)
+        - case CurrentBucket of
+              [_|_] ->
+                  ns_bucket:ram_quota(CurrentBucket);
+              _ ->
+                  0
+          end,
+    ThisUsed = case CurrentBucket of
+                   [_|_] ->
+                       UsageGetter(hdd, proplists:get_value(name, ParsedProps));
+                   _ -> 0
+               end,
+    Total = proplists:get_value(total, ClusterTotals),
+    #hdd_summary{total = Total,
+                 other_data = OtherData,
+                 other_buckets = OtherBuckets,
+                 this_alloc = ParsedQuota,
+                 this_used = ThisUsed,
+                 free = Total - OtherData - OtherBuckets - ParsedQuota}.
+
+parse_validate_replicas_number(NumReplicas) ->
+    case menelaus_util:parse_validate_number(NumReplicas, 0, undefined) of
+        invalid ->
+            {error, replicaNumber, <<"Replicas number must be a number">>};
+        too_small ->
+            {error, replicaNumber, <<"Replicas number cannot be negative">>};
+        {ok, X} -> {ok, num_replicas, X}
+    end.
+
+parse_validate_ram_quota(Value) ->
+    case menelaus_util:parse_validate_number(Value, 0, undefined) of
+        invalid ->
+            {error, ramQuotaMB, <<"RAM quota must be a number">>};
+        too_small ->
+            {error, ramQuotaMB, <<"RAM quota cannot be negative">>};
+        {ok, X} -> {ok, ram_quota, X * 1048576}
+    end.
+
+parse_validate_hdd_quota(Value) ->
+    case menelaus_util:parse_validate_number(Value, 0, undefined) of
+        invalid ->
+            {error, hddQuotaGB, <<"Disk quota must be a number">>};
+        too_small ->
+            {error, hddQuotaGB, <<"Disk quota cannot be negative">>};
+        {ok, X} -> {ok, hdd_quota, X * 1048576 * 1024}
     end.

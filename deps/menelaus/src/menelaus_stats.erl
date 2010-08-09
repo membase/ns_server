@@ -22,13 +22,16 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--export([handle_bucket_stats/3, basic_stats/2, bucket_disk_usage/1]).
+-export([handle_bucket_stats/3, basic_stats/2, bucket_disk_usage/1, bucket_ram_usage/1]).
 
 %% External API
 
 bucket_disk_usage(BucketName) ->
     {Res, _} = rpc:multicall(ns_node_disco:nodes_actual_proper(), ns_storage_conf, local_bucket_disk_usage, [BucketName], 2000),
     lists:sum([X || X <- Res]).
+
+bucket_ram_usage(BucketName) ->
+    proplists:get_value(memUsed, basic_stats([], BucketName)).
 
 basic_stats(_PoolId, BucketName) ->
     {Samples, _, _, _} = grab_op_stats(BucketName, [{"zoom", "minute"}]),

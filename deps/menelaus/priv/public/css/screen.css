@@ -1043,3 +1043,13 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 * html .clearfix, *:first-child+html .clearfix {
 	zoom: 1;
 }
+
+#validation_notice {
+  display: none;
+  position: fixed;
+  top: 0px;
+  left: 0px;
+  background-color: yellow;
+  z-index: 9999;
+  padding: 3px;
+}
