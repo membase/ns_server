@@ -89,8 +89,8 @@ build_bucket_info(PoolId, Id, Pool, InfoLevel, LocalAddr) ->
     {struct, [{name, list_to_binary(Id)},
               {bucketType, ns_bucket:bucket_type(BucketConfig)},
               {authType, misc:expect_prop_value(auth_type, BucketConfig)},
-              {saslPassword, list_to_binary(misc:expect_prop_value(sasl_password, BucketConfig))},
-              {proxyPort, misc:expect_prop_value(moxi_port, BucketConfig)},
+              {saslPassword, list_to_binary(proplists:get_value(sasl_password, BucketConfig, ""))},
+              {proxyPort, proplists:get_value(moxi_port, BucketConfig, 0)},
               {uri, list_to_binary(concat_url_path(["pools", PoolId, "buckets", Id]))},
               {streamingUri, list_to_binary(concat_url_path(["pools", PoolId, "bucketsStreaming", Id]))},
               %% TODO: this should be under a controllers/ kind of namespacing

@@ -110,7 +110,7 @@ ram_quota(Bucket) ->
     end.
 
 hdd_quota(Bucket) ->
-    case proplists:get_value(hdd_quota, Bucket) of
+    case proplists:get_value(hdd_quota, Bucket, 0) of
         X when is_integer(X) ->
             X
     end.

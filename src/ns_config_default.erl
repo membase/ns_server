@@ -165,8 +165,6 @@ default() ->
                                         end},
                             {auth_type, sasl},  % none | sasl
                             {sasl_password, ""},
-                            {moxi_port, 0},
-                            {hdd_quota, 0},
                             {ht_size, 3079},
                             {ht_locks, 5},
                             {servers, []},
