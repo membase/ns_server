@@ -22,6 +22,7 @@
          ensure_bucket/2,
          get_bucket/1,
          get_buckets/0,
+         get_buckets/1,
          ram_quota/1,
          hdd_quota/1,
          num_replicas/1,
@@ -103,8 +104,10 @@ get_bucket_names() ->
     proplists:get_keys(BucketConfigs).
 
 get_buckets() ->
-    Config = ns_config:get(),
-    ns_config:search_prop(Config, buckets, configs, []).
+    get_buckets(ns_config:get()).
+
+get_buckets(Config) ->
+     ns_config:search_prop(Config, buckets, configs, []).
 
 ram_quota(Bucket) ->
     case proplists:get_value(ram_quota, Bucket) of
