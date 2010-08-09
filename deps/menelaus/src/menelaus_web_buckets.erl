@@ -27,6 +27,7 @@
          handle_bucket_info/5,
          build_bucket_info/5,
          build_bucket_info/4,
+         handle_sasl_buckets_streaming/2,
          handle_bucket_info_streaming/5,
          handle_bucket_info_streaming/6,
          handle_bucket_delete/3,
@@ -100,6 +101,25 @@ build_bucket_info(PoolId, Id, Pool, InfoLevel, LocalAddr) ->
               {stats, {struct, [{uri, StatsUri}]}},
               {vBucketServerMap, ns_bucket:json_map(Id, LocalAddr)}
               | Suffix]}.
+
+handle_sasl_buckets_streaming(_PoolId, Req) ->
+    LocalAddr = menelaus_util:local_addr(Req),
+    F = fun (_) ->
+                SASLBuckets = lists:filter(fun ({_, BucketInfo}) ->
+                                                   ns_bucket:auth_type(BucketInfo) =:= sasl
+                                           end, ns_bucket:get_buckets()),
+                List = lists:map(fun ({Name, BucketInfo}) ->
+                                         {struct, MapProps} = ns_bucket:json_map(Name, LocalAddr),
+                                         BinName = list_to_binary(Name),
+                                         Props = [{user, BinName},
+                                                  {password, list_to_binary(ns_bucket:sasl_password(BucketInfo))}
+                                                  | MapProps],
+                                         {struct, [{name, BinName},
+                                                   {vBucketServerMap, {struct, Props}}]}
+                                 end, SASLBuckets),
+                {struct, [{buckets, List}]}
+        end,
+    menelaus_web:handle_streaming(F, Req, undefined).
 
 handle_bucket_info_streaming(PoolId, Id, Req, Pool, _Bucket) ->
     handle_bucket_info_streaming(PoolId, Id, Req, Pool, _Bucket, stable).

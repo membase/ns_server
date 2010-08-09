@@ -26,6 +26,9 @@
          hdd_quota/1,
          num_replicas/1,
          bucket_type/1,
+         auth_type/1,
+         sasl_password/1,
+         moxi_port/1,
          get_bucket_names/0,
          json_map/2,
          set_bucket_config/2,
@@ -123,6 +126,15 @@ num_replicas(Bucket) ->
 
 bucket_type(_Bucket) ->
     membase.
+
+auth_type(Bucket) ->
+    proplists:get_value(auth_type, Bucket).
+
+sasl_password(Bucket) ->
+    proplists:get_value(sasl_password, Bucket).
+
+moxi_port(Bucket) ->
+    proplists:get_value(moxi_port, Bucket).
 
 json_map(BucketId, LocalAddr) ->
     Config = ns_config:get(),

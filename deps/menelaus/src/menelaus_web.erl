@@ -112,6 +112,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth_any_bucket, fun handle_pool_info_streaming/2, [Id]};
                              ["pools", PoolId, "buckets"] ->
                                  {auth_any_bucket, fun menelaus_web_buckets:handle_bucket_list/2, [PoolId]};
+                             ["pools", PoolId, "saslBucketsStreaming"] ->
+                                 {auth, fun menelaus_web_buckets:handle_sasl_buckets_streaming/2, [PoolId]};
                              ["pools", PoolId, "buckets", Id] ->
                                  {auth_bucket_with_info, fun menelaus_web_buckets:handle_bucket_info/5,
                                   [PoolId, Id]};
