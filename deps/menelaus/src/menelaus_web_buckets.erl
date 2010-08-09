@@ -285,7 +285,7 @@ handle_bucket_create(PoolId, Req) ->
                             end,
             case ErrorsOrProps of
                 {ok, Props} ->
-                    case ns_bucket:create_bucket(BucketType, Name, Props) of
+                    case ns_orchestrator:create_bucket(BucketType, Name, Props) of
                         ok ->
                             ?MENELAUS_WEB_LOG(?BUCKET_CREATED, "Created bucket \"~s\" of type: ~s~n", [Name, BucketType]),
                             redirect_to_bucket(Req, PoolId, Name);
