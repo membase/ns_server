@@ -221,7 +221,7 @@ of representations, since they are similar for different parts of the hierarchy.
 }
 </pre>
 
-As of now, only one pool per group of systems will be known and it will likely
+Only one pool per group of systems will be known and it will likely
 be defaulted to a name.  POSTing back a changed pool will return a 403.
 
 As can be seen, the "build" number of the implementation is apparent in the
