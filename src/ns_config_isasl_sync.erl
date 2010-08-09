@@ -53,7 +53,7 @@ init([Path, AU, AP] = Args) ->
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
 
-handle_event({pools, V}, State) ->
+handle_event({buckets, V}, State) ->
     Prev = State#state.buckets,
     case extract_creds(V) of
         Prev ->
@@ -79,30 +79,30 @@ handle_info(_Info, State) ->
 %
 
 -spec extract_creds(list()) -> list().
-extract_creds(PoolConfigList) ->
+extract_creds(ConfigList) ->
+    Configs = proplists:get_value(configs, ConfigList),
     lists:sort(
-      dict:to_list(
-        lists:foldl(fun examine_pool/2, dict:new(), PoolConfigList))).
+      lists:foldl(
+        fun ({"default", _}, Acc) ->
+                Acc;
+            ({BucketName, BucketConfig}, Acc) ->
+                case proplists:get_value(auth_type, BucketConfig) of
+                    sasl ->
+                        case proplists:get_value(sasl_password, BucketConfig) of
+                            undefined ->
+                                Acc;
+                            Password ->
+                                [{BucketName, Password}|Acc]
+                        end;
+                    _ ->
+                        Acc
+                end
+        end, [], Configs)).
 
-examine_pool({_PoolName, PoolProps}, D) ->
-    lists:foldl(fun examine_bucket/2, D,
-                proplists:get_value(buckets, PoolProps, [])).
 
-
-examine_bucket({BucketName, BucketProps}, D) ->
-    case proplists:get_value(auth_plain, BucketProps) of
-        undefined -> D;
-        {BucketName, ""} ->
-            error_logger:info_msg("Rejecting user with empty password: ~p: ~p~n",
-                                  [BucketName, BucketProps]),
-            D;
-        {BucketName, _Passwd} ->
-            dict:store(BucketName, BucketProps, D)
-    end.
-
-%
-% Update the isasl stuff.
-%
+%%
+%% sasl the isasl stuff.
+%%
 
 writeSASLConf(Path, Buckets, AU, AP) ->
     writeSASLConf(Path, Buckets, AU, AP, 5, 101).
@@ -115,8 +115,7 @@ writeSASLConf(Path, Buckets, AU, AP, Tries, SleepTime) ->
     {ok, F} = file:open(TmpPath, [write]),
     io:format(F, "~s ~s~n", [AU, AP]),
     lists:foreach(
-      fun({_BucketName, BucketProps}) ->
-              {User, Pass} = proplists:get_value(auth_plain, BucketProps),
+      fun({User, Pass}) ->
               io:format(F, "~s ~s~n", [User, Pass])
       end,
       Buckets),
