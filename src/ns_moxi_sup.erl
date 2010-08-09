@@ -1,0 +1,105 @@
+%% @author Northscale <info@northscale.com>
+%% @copyright 2010 NorthScale, Inc.
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%%
+%%      http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
+%%
+-module(ns_moxi_sup).
+
+-behaviour(supervisor).
+
+-include("ns_common.hrl").
+
+-export([start_link/0]).
+
+-export([init/1]).
+
+%%
+%% API
+%%
+
+start_link() ->
+    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+
+
+%%
+%% Supervisor callbacks
+%%
+
+init([]) ->
+    ns_pubsub:subscribe(ns_config_events, fun notify/2, undefined),
+    {ok, {{one_for_one,
+           misc:get_env_default(max_r, 3),
+           misc:get_env_default(max_t, 10)},
+          child_specs()}}.
+
+
+%%
+%% Internal functions
+%%
+
+child_specs() ->
+    Config = ns_config:get(),
+    BucketConfigs = ns_bucket:get_buckets(Config),
+    RestPort = ns_config:search_node_prop(Config, rest, port),
+    Command = "./bin/moxi/moxi",
+    lists:foldl(
+      fun ({"default", _}, Acc) ->
+              Acc;
+          ({BucketName, BucketConfig}, Acc) ->
+              case proplists:get_value(moxi_port, BucketConfig) of
+                  undefined ->
+                      Acc;
+                  Port ->
+                      LittleZ =
+                          lists:flatten(
+                            io_lib:format(
+                              "url=http://127.0.0.1:~B/pools/default/"
+                              "bucketsStreamingConfig/~s",
+                              [RestPort, BucketName])),
+                      BigZ =
+                          lists:flatten(
+                            io_lib:format("port_listen=~B,downstream_max=1",
+                                          [Port])),
+                      Args = ["-B", "auto", "-z", LittleZ, "-Z", BigZ],
+                      [{{BucketName, Port, RestPort},
+                       {ns_port_server, start_link,
+                        [moxi, Command, Args, [use_stdio, stderr_to_stdout]]},
+                       permanent, 10, worker, [ns_port_server]}|Acc]
+              end
+      end, [], BucketConfigs).
+
+
+%% @doc Notify this supervisor of changes to the config that might be
+%% relevant to it.
+notify(_Event, _State) ->
+    ChildSpecs = child_specs(),
+    RunningChildren = supervisor:which_children(?MODULE),
+    lists:foreach(fun ({Id, _, _, _}) ->
+                          case lists:keymember(Id, 1, ChildSpecs) of
+                              false ->
+                                  ?log_info("Killing unwanted moxi: ~p", [Id]),
+                                  supervisor:terminate_child(?MODULE, Id),
+                                  ok = supervisor:delete_child(?MODULE, Id);
+                              true ->
+                                  ok
+                          end
+                  end, RunningChildren),
+    lists:foreach(fun ({Id, _, _, _, _, _} = Child) ->
+                          case lists:keymember(Id, 1, RunningChildren) of
+                              false ->
+                                  ?log_info("Starting moxi: ~p", [Id]),
+                                  supervisor:start_child(?MODULE, Child);
+                              true ->
+                                  ok
+                          end
+                  end, ChildSpecs).

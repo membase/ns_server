@@ -93,6 +93,10 @@ bad_children() ->
       permanent, 10, worker,
       [ns_port_sup]},
 
+     {ns_moxi_sup, {ns_moxi_sup, start_link, []},
+      permanent, infinity, supervisor,
+      [ns_moxi_sup]},
+
      {ns_vbm_sup, {ns_vbm_sup, start_link, []},
       permanent, infinity, supervisor, [ns_vbm_sup]},
 
