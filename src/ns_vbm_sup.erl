@@ -198,5 +198,5 @@ start_child(Node, Bucket, VBuckets, DstNode) ->
               [Node, Bucket, VBuckets, DstNode, PortServerArgs]),
     ChildSpec = {#child_id{bucket=Bucket, vbuckets=VBuckets, dest_node=DstNode},
                  {ns_port_server, start_link, PortServerArgs},
-                 permanent, 10, worker, [ns_vbm]},
+                 permanent, 10, worker, [ns_port_server]},
     supervisor:start_child({?MODULE, Node}, ChildSpec).
