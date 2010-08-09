@@ -1058,20 +1058,21 @@ handle_node_resources_post(Node, Req) ->
     Params = Req:parse_post(),
     Path = proplists:get_value("path", Params),
     Quota = case proplists:get_value("quota", Params) of
+	      undefined -> none;
               "none" -> none;
               X      -> list_to_integer(X)
             end,
     Kind = case proplists:get_value("kind", Params) of
               "ssd" -> ssd;
-              "hhd" -> hdd;
-              _     -> undefined
+              "hdd" -> hdd;
+              _     -> hdd
            end,
     case lists:member(undefined, [Path, Quota, Kind]) of
-        true -> Req:respond({400, add_header(), "Invalid input while adding storage resource to node"});
+        true -> Req:respond({400, add_header(), "Invalid input while adding storage resource to node."});
         false ->
             case ns_storage_conf:add_storage(Node, Path, Kind, Quota) of
-                ok -> Req:respond({200, add_header(), "Added storage location to node"});
-                {error, _} -> Req:respond({400, add_header(), "Error while adding storage resource to node"})
+                ok -> Req:respond({200, add_header(), "Added storage location to node."});
+                {error, _} -> Req:respond({400, add_header(), "Error while adding storage resource to node."})
             end
     end.
 
