@@ -170,8 +170,6 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_add_node_request/1};
                              ["node", "controller", "doJoinCluster"] ->
                                  {auth, fun handle_join/1};
-                             ["node", "controller", "initStatus"] ->
-                                 {auth, fun handle_init_status_post/1};
                              ["nodes", NodeId, "controller", "settings"] ->
                                  {auth, fun handle_node_settings_post/2,
                                   [NodeId]};
@@ -212,7 +210,8 @@ loop(Req, AppRoot, DocRoot) ->
                                                             User = menelaus_auth:extract_auth(username, R),
                                                             ns_log:log(?MODULE, ?UI_SIDE_ERROR_REPORT, "Client-side error-report for user ~p on node ~p: ~p~n",
                                                                        [User, node(), binary_to_list(R:recv_body())]),
-                                                            R:ok({"text/plain", add_header(), <<"">>})
+                                                            R:ok({"text/plain", add_header(), <<
+"">>})
                                                     end};
                              ["erlwsh" | _] ->
                                  {done, erlwsh_web:loop(Req, erlwsh_deps:local_path(["priv", "www"]))};
@@ -346,8 +345,7 @@ build_pools() ->
               {streamingUri, list_to_binary(concat_url_path(["poolsStreaming", "default"]))}
              ]}],
     Config = ns_config:get(),
-    {struct, [{pools, Pools},
-              {initStatus, list_to_binary(ns_config:search_prop(Config, init_status, value, ""))} |
+    {struct, [{pools, Pools} |
               build_versions()]}.
 
 handle_versions(Req) ->
@@ -588,24 +586,6 @@ handle_streaming(F, Req, HTTPRes, LastRes) ->
     end,
     handle_streaming(F, Req, HTTPRes, Res).
 
-handle_init_status_post(Req) ->
-    %% parameter example: value=done, value=welcome, value=someOpaqueValueFromJavaScript
-    %%
-    Params = Req:parse_post(),
-    case change_init_status(proplists:get_value("value", Params)) of
-        false -> Req:respond({400, add_header(), "Attempt to initStatus but missing value parameter.\n"});
-        true  -> Req:respond({200, add_header(), []})
-    end.
-
-change_init_status(undefined) ->
-    ns_log:log(?MODULE, ?INIT_STATUS_BAD_PARAM, "Received request to initStatus but missing value parameter.", []),
-    false;
-
-change_init_status(InitStatus) ->
-    ns_log:log(?MODULE, ?INIT_STATUS_UPDATED, "initStatus updated to ~p.", [InitStatus]),
-    ns_config:set(init_status, [{value, InitStatus}]),
-    true.
-
 handle_join(Req) ->
     %% paths:
     %%  cluster secured, admin logged in:
@@ -759,12 +739,13 @@ validate_settings(Port, U, P) ->
                           Candidates)
     end.
 
+%% These represent settings for a cluster.  Node settings should go
+%% through the /node URIs
 handle_settings_web_post(Req) ->
     PostArgs = Req:parse_post(),
     Port = proplists:get_value("port", PostArgs),
     U = proplists:get_value("username", PostArgs),
     P = proplists:get_value("password", PostArgs),
-    InitStatus = proplists:get_value("initStatus", PostArgs),
     case validate_settings(Port, U, P) of
         [_Head | _] = Errors ->
             reply_json(Req, Errors, 400);
@@ -789,7 +770,6 @@ handle_settings_web_post(Req) ->
                     % No need to restart right here, as our ns_config
                     % event watcher will do it later if necessary.
             end,
-            change_init_status(InitStatus),
             Host = Req:get_header_value("host"),
             PureHostName = case string:tokens(Host, ":") of
                                [Host] -> Host;
@@ -913,11 +893,7 @@ ns_log_cat(?START_FAIL) ->
 ns_log_cat(?NODE_EJECTED) ->
     info;
 ns_log_cat(?UI_SIDE_ERROR_REPORT) ->
-    warn;
-ns_log_cat(?INIT_STATUS_BAD_PARAM) ->
-    warn;
-ns_log_cat(?INIT_STATUS_UPDATED) ->
-    info.
+    warn.
 
 ns_log_code_string(0013) ->
     "node join failure";
@@ -928,11 +904,7 @@ ns_log_code_string(?START_FAIL) ->
 ns_log_code_string(?NODE_EJECTED) ->
     "node was ejected";
 ns_log_code_string(?UI_SIDE_ERROR_REPORT) ->
-    "client-side error report";
-ns_log_code_string(?INIT_STATUS_BAD_PARAM) ->
-    "init status bad parameter";
-ns_log_code_string(?INIT_STATUS_UPDATED) ->
-    "init status".
+    "client-side error report".
 
 alert_key(?BUCKET_CREATED)  -> bucket_created;
 alert_key(?BUCKET_DELETED)  -> bucket_deleted;
