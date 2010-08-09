@@ -148,11 +148,9 @@ handle_call(Request, State) ->
 
 handle_info({'DOWN', MonitorRef, _, _, _},
             #state{watchers = Watchers} = State) ->
-    error_logger:info_msg("menelaus_event watcher down."),
     Watchers2 = case lists:keytake(MonitorRef, 2, Watchers) of
                     false -> Watchers;
-                    {value, {Pid, MonitorRef}, WatchersRest} ->
-                        error_logger:info_msg("menelaus_event watcher down: ~p on node ~p~n", [Pid, node()]),
+                    {value, {_Pid, MonitorRef}, WatchersRest} ->
                         erlang:demonitor(MonitorRef, [flush]),
                         WatchersRest
                 end,
@@ -164,7 +162,6 @@ handle_info(_Info, State) ->
 % ------------------------------------------------------------
 
 notify_watchers(Msg, #state{watchers = Watchers}) ->
-    error_logger:info_msg("menelaus_event: notify_watchers: ~p~n", [Msg]),
     lists:foreach(fun({Pid, _}) ->
                           Pid ! {notify_watcher, Msg}
                   end,

@@ -49,7 +49,5 @@ handle_call(Request, State) ->
     error_logger:info_msg("handle_call(~p, ~p, ~p)~n", [?MODULE, Request, State]),
     {ok, ok, State, hibernate}.
 
-handle_info(Info, State) ->
-    error_logger:info_msg("handle_info(~p, ~p, ~p)~n", [?MODULE, Info, State]),
+handle_info(_Info, State) ->
     {ok, State, hibernate}.
-
