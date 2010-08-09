@@ -180,8 +180,9 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_settings_web_post/1};
                              ["settings", "advanced"] ->
                                  {auth, fun handle_settings_advanced_post/1};
-                             ["pools", _PoolId] ->
-                                 {done, Req:respond({405, add_header(), ""})};
+                             ["pools", PoolId] ->
+                                 {auth, fun handle_pool_settings/2,
+                                  [PoolId]};
                              ["pools", _PoolId, "controller", "testWorkload"] ->
                                  {auth, fun handle_traffic_generator_control_post/1};
                              ["controller", "ejectNode"] ->
@@ -697,6 +698,50 @@ handle_eject_post(Req) ->
             end
     end.
 
+handle_pool_settings(_PoolId, Req) ->
+    Params = Req:parse_post(),
+    Node = node(),
+    Results = [case proplists:get_value("memoryQuota", Params) of
+                   undefined -> ok;
+                   X ->
+                       case length(ns_node_disco:nodes_wanted()) of
+                           1 -> ok;
+                           _ -> exit('Changing the memory quota of a cluster is not yet supported.')
+                       end,
+                       {MaxMemoryBytes0, _, _} = memsup:get_memory_data(),
+                       MinMemoryMB = MaxMemoryBytes0 div (10 * 1048576),
+                       MaxMemoryMB = (MaxMemoryBytes0 * 4) div (5 * 1048576),
+                       case parse_validate_number(X, MinMemoryMB, MaxMemoryMB) of
+                           {ok, Number} ->
+                               {ok, fun () ->
+                                            ok = ns_storage_conf:change_memory_quota(Node, Number)
+                                            %% TODO: that should
+                                            %% really be a cluster setting
+                                    end};
+                           invalid -> <<"The RAM Quota value must be a number.">>;
+                           too_small ->
+                               list_to_binary(io_lib:format("The RAM Quota value is too small."
+                                                            ++ " Quota must be between 10% (~w MB) and 80% (~w MB) of memory size.", [MinMemoryMB, MaxMemoryMB]));
+                           too_large ->
+                               list_to_binary(io_lib:format("The RAM Quota value is too large."
+                                                            ++ " Quota must be between 10% (~w MB) and 80% (~w MB) of memory size.", [MinMemoryMB, MaxMemoryMB]))
+
+                       end
+               end],
+    case lists:filter(fun(ok) -> false;
+                         ({ok, _}) -> false;
+                         (_) -> true
+                      end, Results) of
+        [] ->
+            lists:foreach(fun ({ok, CommitF}) ->
+                                  CommitF();
+                              (_) -> ok
+                          end, Results),
+            Req:respond({200, add_header(), []});
+        Errs -> reply_json(Req, Errs, 400)
+    end.
+
+
 handle_settings_web(Req) ->
     reply_json(Req, build_settings_web()).
 
@@ -1063,31 +1108,6 @@ handle_node_settings_post(Node, Req) ->
                                    ok -> ok;
                                    error -> <<"Could not set the storage path. It must be a new directory and the 'northscale' user must have permissions to create it.">>
                                end
-                       end
-               end,
-               case proplists:get_value("memoryQuota", Params) of
-                   undefined -> ok;
-                   X ->
-                       case Node =/= node() of
-                           true -> exit('setting quota for other nodes is not yet supported');
-                           _ -> ok
-                       end,
-                       {MaxMemoryBytes0, _, _} = memsup:get_memory_data(),
-                       MinMemoryMB = MaxMemoryBytes0 div (10 * 1048576),
-                       MaxMemoryMB = (MaxMemoryBytes0 * 4) div (5 * 1048576),
-                       case menelaus_util:parse_validate_number(X, MinMemoryMB, MaxMemoryMB) of
-                           {ok, Number} ->
-                               {ok, fun () ->
-                                            ok = ns_storage_conf:change_memory_quota(Node, Number)
-                                    end};
-                           invalid -> <<"The RAM Quota value must be a number.">>;
-                           too_small ->
-                               list_to_binary(io_lib:format("The RAM Quota value is too small."
-                                                            ++ " Quota must be between 10% (~w MB) and 80% (~w MB) of memory size.", [MinMemoryMB, MaxMemoryMB]));
-                           too_large ->
-                               list_to_binary(io_lib:format("The RAM Quota value is too large."
-                                                            ++ " Quota must be between 10% (~w MB) and 80% (~w MB) of memory size.", [MinMemoryMB, MaxMemoryMB]))
-
                        end
                end
               ],
