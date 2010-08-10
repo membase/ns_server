@@ -185,13 +185,17 @@ default() ->
     {port_servers,
      [{moxi, "./bin/moxi/moxi",
        ["-Z", {"port_listen=~B,downstream_max=1", [port]},
-        "-z", {"auth=,url=http://127.0.0.1:~B/pools/default/bucketsStreamingConfig", [{rest, port}]},
+        "-z", {"url=http://127.0.0.1:~B/pools/default/saslBucketsStreaming",
+               [{rest, port}]},
         "-p", "0",
         "-Y", "y",
         "-O", "stderr",
         {"~s", [verbosity]}
        ],
-       [{env, [{"EVENT_NOSELECT", "1"}]},
+       [{env, [{"EVENT_NOSELECT", "1"},
+               {"MOXI_SASL_PLAIN_USR", {"~s", [{ns_moxi_sup, rest_user, []}]}},
+               {"MOXI_SASL_PLAIN_PWD", {"~s", [{ns_moxi_sup, rest_pass, []}]}}
+              ]},
         use_stdio,
         stderr_to_stdout,
         stream]

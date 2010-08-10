@@ -19,13 +19,33 @@
 
 -include("ns_common.hrl").
 
--export([start_link/0]).
+-export([start_link/0, rest_creds/0, rest_user/0, rest_pass/0]).
 
 -export([init/1]).
 
 %%
 %% API
 %%
+
+rest_creds() ->
+    case ns_config:search_prop(ns_config:get(), rest_creds, creds, []) of
+        [] ->
+            {"", ""};
+        [{User, Creds}|_] ->
+            {User, proplists:get_value(password, Creds, "")}
+    end.
+
+
+rest_pass() ->
+    {_, Pass} = rest_creds(),
+    Pass.
+
+
+rest_user() ->
+    {User, _} = rest_creds(),
+    User.
+
+
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
@@ -70,10 +90,16 @@ child_specs() ->
                           lists:flatten(
                             io_lib:format("port_listen=~B,downstream_max=1",
                                           [Port])),
-                      Args = ["-B", "auto", "-z", LittleZ, "-Z", BigZ],
-                      [{{BucketName, Port, RestPort},
+                      Args = ["-B", "auto", "-z", LittleZ, "-Z", BigZ,
+                              "-p", "0", "-Y", "y", "-O", "stderr"],
+                      Passwd = proplists:get_value(sasl_password, BucketConfig,
+                                                   ""),
+                      Opts = [use_stdio, stderr_to_stdout,
+                              {env, [{"MOXI_SASL_PLAIN_USR", BucketName},
+                                     {"MOXI_SASL_PLAIN_PWD", Passwd}]}],
+                      [{{BucketName, Passwd, Port, RestPort},
                        {ns_port_server, start_link,
-                        [moxi, Command, Args, [use_stdio, stderr_to_stdout]]},
+                        [moxi, Command, Args, Opts]},
                        permanent, 10, worker, [ns_port_server]}|Acc]
               end
       end, [], BucketConfigs).

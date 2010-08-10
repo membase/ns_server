@@ -81,23 +81,9 @@ handle_info(_Info, State) ->
 -spec extract_creds(list()) -> list().
 extract_creds(ConfigList) ->
     Configs = proplists:get_value(configs, ConfigList),
-    lists:sort(
-      lists:foldl(
-        fun ({"default", _}, Acc) ->
-                Acc;
-            ({BucketName, BucketConfig}, Acc) ->
-                case proplists:get_value(auth_type, BucketConfig) of
-                    sasl ->
-                        case proplists:get_value(sasl_password, BucketConfig) of
-                            undefined ->
-                                Acc;
-                            Password ->
-                                [{BucketName, Password}|Acc]
-                        end;
-                    _ ->
-                        Acc
-                end
-        end, [], Configs)).
+    lists:sort([{BucketName,
+                 proplists:get_value(sasl_password, BucketConfig, "")}
+                || {BucketName, BucketConfig} <- Configs]).
 
 
 %%
