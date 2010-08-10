@@ -181,9 +181,8 @@ cluster_storage_info() ->
              end,
     {RAMQuotaUsed, HDDQuotaUsed} =
         lists:foldl(fun ({_, Config}, {RAMQuota, HDDQuota}) ->
-                            RepN = ns_bucket:num_replicas(Config),
-                            {ns_bucket:ram_quota(Config) * RepN + RAMQuota,
-                             ns_bucket:hdd_quota(Config) * RepN + HDDQuota}
+                            {ns_bucket:ram_quota(Config) + RAMQuota,
+                             ns_bucket:hdd_quota(Config) + HDDQuota}
                     end, {0, 0}, ns_bucket:get_buckets()),
     lists:map(fun ({ram, Props}) ->
                       {ram, [{quotaUsed, RAMQuotaUsed} | Props]};

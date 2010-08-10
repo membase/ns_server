@@ -312,7 +312,10 @@ config_string(Node, BucketName) ->
     DBName = filename:join(DBDir, BucketName),
     BucketConfigs = ns_config:search_prop(Config, buckets, configs),
     BucketConfig = proplists:get_value(BucketName, BucketConfigs),
+    %% MemQuota is our total limit for cluster
     MemQuota = proplists:get_value(ram_quota, BucketConfig),
+    %% LocalQuota is our limit for this node
+    LocalQuota = MemQuota div (num_replicas(BucketConfig)+1),
     Engine = ns_config:search_node_prop(ns_config:get(), memcached, engine),
     ok = filelib:ensure_dir(DBName),
     lists:flatten(
@@ -321,4 +324,4 @@ config_string(Node, BucketName) ->
         [Engine,
          proplists:get_value(ht_size, BucketConfig),
          proplists:get_value(ht_locks, BucketConfig),
-         MemQuota, DBName])).
+         LocalQuota, DBName])).
