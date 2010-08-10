@@ -68,6 +68,10 @@ good_children() ->
       permanent, infinity, supervisor,
       [menelaus_app]},
 
+     {ns_port_sup, {ns_port_sup, start_link, []},
+      permanent, 10, worker,
+      [ns_port_sup]},
+
      {ns_tick_event, {gen_event, start_link, [{local, ns_tick_event}]},
       permanent, 10, worker, dynamic},
 
@@ -89,11 +93,7 @@ good_children() ->
 %% Children that get restarted if we pull the plug. These can depend
 %% on Mnesia.
 bad_children() ->
-    [{ns_port_sup, {ns_port_sup, start_link, []},
-      permanent, 10, worker,
-      [ns_port_sup]},
-
-     {ns_moxi_sup, {ns_moxi_sup, start_link, []},
+    [{ns_moxi_sup, {ns_moxi_sup, start_link, []},
       permanent, infinity, supervisor,
       [ns_moxi_sup]},
 
