@@ -1015,17 +1015,19 @@
         </tr></table>
       </div>
       <div class="overcommit size-gauge for-hdd">
-        <div class="t">CLUSTER QUOTA (<span class="total">192 GB</span>)</div>
+        <div class="other-data-block">OTHER DATA (<span class="other-data">15 GB</span>)</div>
+        <div class="t">TOTAL CLUSTER SPACE (<span class="total">192 GB</span>)</div>
         <div class="gauge">
-          <div>
-            <div class="green"></div>
+          <div class="gauge-total">
+            <div class="green"><i></i></div>
             <div class="blue"></div>
+            <div class="yellow"></div>
           </div>
         </div>
         <table class="b"><tr>
           <td class="blue">OTHER BUCKETS (<span class="other">15 GB</span>)</td>
           <td class="green">THIS BUCKET (<span class="this">5 GB</span>)</td>
-          <td>FREE (<span class="free">12 GB</span>)</td>
+          <td class="extra">OVERCOMMIT (<span class="overcommitted">12 GB</span>)</td>
         </tr></table>
       </div>
       <label class="for-hdd-quota"><span>Disk Quota:</span><input name="hddQuotaGB"><abbr>GB</abbr></label>

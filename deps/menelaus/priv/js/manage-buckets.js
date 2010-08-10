@@ -276,7 +276,30 @@ var BucketDetailsDialog = mkClass({
     jq.find('.gauge .blue').css('width', calculatePercent(used, total) + '%');
   },
 
+  renderOvercommitDiskGauge: function (jq, total, thisBucket, otherBuckets, otherData) {
+    jq.filter('.normal').hide();
+    jq = jq.filter('.overcommit').show();
+
+    var formattedBucket = ViewHelpers.formatQuantity(thisBucket, null, null, ' ');
+
+    var realTotal = thisBucket + otherBuckets + otherData;
+
+    jq.find('.total').text(ViewHelpers.formatQuantity(total, null, null, ' '));
+    var overcommited = realTotal - total;
+    jq.find('.overcommited').text(ViewHelpers.formatQuantity(overcommited, null, null, ' '));
+    jq.find('.other').text(ViewHelpers.formatQuantity(otherBuckets, null, null, ' '));
+    jq.find('.other-data').text(ViewHelpers.formatQuantity(otherData, null, null,' '));
+    jq.find('.this').text(formattedBucket);
+
+    jq.find('.gauge .green').css('width', calculatePercent(total, realTotal) + '%');
+    jq.find('.gauge .blue').css('width', calculatePercent(otherData + otherBuckets, realTotal) + '%');
+    jq.find('.gauge .yellow').css('width', calculatePercent(otherData, realTotal) + '%');
+  },
+
   renderDiskGauge: function (jq, total, thisBucket, otherBuckets, otherData) {
+    if (thisBucket + otherBuckets + otherData > total)
+      return this.renderOvercommitDiskGauge(jq, total, thisBucket, otherBuckets, otherData);
+
     jq.filter('.overcommit').hide();
     jq = jq.filter('.normal').show();
 

@@ -179,6 +179,27 @@
     }
   }
 
+  .size-gauge.overcommit {
+    .t { color: red; }
+    .gauge {
+       .gauge-total {background-position: 0px -45px;}
+       .green i {
+         background:none repeat scroll 0 0 #E43A1B;
+         display:block;
+         font-size:0;
+         height:25px;
+         line-height:0;
+         position:absolute;
+         right:0;
+         top:-5px;
+         width:1px;
+       }
+    }
+    .extra {
+      color: red;
+    }
+  }
+
   label.for-enable-persistence {
     padding-left: 20px;
     span {
