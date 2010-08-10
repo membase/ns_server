@@ -19,6 +19,7 @@
 
 %% API
 -export([config/1,
+         credentials/1,
          ensure_bucket/2,
          get_bucket/1,
          get_buckets/0,
@@ -46,13 +47,6 @@
 %%% API
 %%%===================================================================
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
-%%--------------------------------------------------------------------
 config(Bucket) ->
     {ok, CurrentConfig} = get_bucket(Bucket),
     config_from_info(CurrentConfig).
@@ -66,6 +60,14 @@ config_from_info(CurrentConfig) ->
           end,
     Servers = proplists:get_value(servers, CurrentConfig),
     {NumReplicas, NumVBuckets, Map, Servers}.
+
+
+%% @doc Return {Username, Password} for a bucket.
+-spec credentials(nonempty_string()) ->
+                         {nonempty_string(), string()}.
+credentials(Bucket) ->
+    {ok, BucketConfig} = get_bucket(Bucket),
+    {Bucket, proplists:get_value(sasl_password, BucketConfig, "")}.
 
 
 %% @doc Make sure the given bucket exists. Returns a list of nodes it
