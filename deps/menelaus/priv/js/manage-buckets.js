@@ -276,6 +276,30 @@ var BucketDetailsDialog = mkClass({
     jq.find('.gauge .blue').css('width', calculatePercent(used, total) + '%');
   },
 
+  renderDiskGauge: function (jq, total, thisBucket, otherBuckets, otherData) {
+    jq.filter('.overcommit').hide();
+    jq = jq.filter('.normal').show();
+
+    var thisValue = thisBucket
+    var formattedBucket = ViewHelpers.formatQuantity(thisBucket, null, null, ' ');
+
+    if (_.isString(thisValue)) {
+      formattedBucket = thisValue;
+      thisValue = 0;
+    }
+
+    jq.find('.total').text(ViewHelpers.formatQuantity(total, null, null, ' '));
+    var free = total - otherData - thisBucket - otherBuckets;
+    jq.find('.free').text(ViewHelpers.formatQuantity(free, null, null, ' '));
+    jq.find('.other').text(ViewHelpers.formatQuantity(otherBuckets, null, null, ' '));
+    jq.find('.other-data').text(ViewHelpers.formatQuantity(otherData, null, null,' '));
+    jq.find('.this').text(formattedBucket);
+
+    jq.find('.gauge .green').css('width', calculatePercent(otherData + otherBuckets + thisBucket, total) + '%');
+    jq.find('.gauge .blue').css('width', calculatePercent(otherData + otherBuckets, total) + '%');
+    jq.find('.gauge .yellow').css('width', calculatePercent(otherData, total) + '%');
+  },
+
   renderError: function (field, error) {
     this.dialog.find('.error-container.err-' + field).text(error || '')[error ? 'addClass' : 'removeClass']('active');
     this.dialog.find('[name=' + field + ']')[error ? 'addClass' : 'removeClass']('invalid');
@@ -300,10 +324,11 @@ var BucketDetailsDialog = mkClass({
                        ramSummary.otherBuckets);
 
     if (hddSummary)
-      self.renderGauge(self.dialog.find('.size-gauge.for-hdd'),
-                       hddSummary.total,
-                       hddSummary.thisAlloc,
-                       hddSummary.otherBuckets);
+      self.renderDiskGauge(self.dialog.find('.size-gauge.for-hdd'),
+                           hddSummary.total,
+                           hddSummary.thisAlloc,
+                           hddSummary.otherBuckets,
+                           hddSummary.otherData);
 
     var knownFields = ('name ramQuotaMB hddQuotaGB replicaNumber proxyPort').split(' ');
     var errors = result.errors || {};

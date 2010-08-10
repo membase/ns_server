@@ -440,19 +440,22 @@ interpret_hdd_quota(CurrentBucket, ParsedProps, ClusterStorageTotals, UsageGette
     ParsedQuota = proplists:get_value(hdd_quota, ParsedProps),
     ClusterTotals = proplists:get_value(hdd, ClusterStorageTotals),
     UsedByUs = UsageGetter(hdd, all),
-    OtherData = proplists:get_value(used, ClusterTotals) - UsedByUs,
-    OtherBuckets = proplists:get_value(quotaUsed, ClusterTotals)
-        - case CurrentBucket of
-              [_|_] ->
-                  ns_bucket:ram_quota(CurrentBucket);
-              _ ->
-                  0
-          end,
     ThisUsed = case CurrentBucket of
                    [_|_] ->
                        UsageGetter(hdd, proplists:get_value(name, ParsedProps));
                    _ -> 0
                end,
+    OtherData = proplists:get_value(used, ClusterTotals) - UsedByUs,
+    OtherBuckets = proplists:get_value(quotaUsed, ClusterTotals)
+        - case CurrentBucket of
+              [_|_] ->
+                  case ns_bucket:hdd_quota(CurrentBucket) of
+                      undefined -> 0;
+                      X -> X
+                  end;
+              _ ->
+                  0
+          end,
     Total = proplists:get_value(total, ClusterTotals),
     #hdd_summary{total = Total,
                  other_data = OtherData,
