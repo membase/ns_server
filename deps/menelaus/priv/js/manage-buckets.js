@@ -303,13 +303,7 @@ var BucketDetailsDialog = mkClass({
     jq.filter('.overcommit').hide();
     jq = jq.filter('.normal').show();
 
-    var thisValue = thisBucket
     var formattedBucket = ViewHelpers.formatQuantity(thisBucket, null, null, ' ');
-
-    if (_.isString(thisValue)) {
-      formattedBucket = thisValue;
-      thisValue = 0;
-    }
 
     jq.find('.total').text(ViewHelpers.formatQuantity(total, null, null, ' '));
     var free = total - otherData - thisBucket - otherBuckets;
@@ -340,18 +334,22 @@ var BucketDetailsDialog = mkClass({
     var ramSummary = summaries.ramSummary;
     var hddSummary = summaries.hddSummary;
 
+    var ramGauge = self.dialog.find(".size-gauge.for-ram");
     if (ramSummary)
-      self.renderGauge(self.dialog.find(".size-gauge.for-ram"),
+      self.renderGauge(ramGauge,
                        ramSummary.total,
                        ramSummary.thisAlloc,
                        ramSummary.otherBuckets);
+    ramGauge.css('visibility', ramSummary ? 'visible' : 'hidden');
 
+    var hddGauge = self.dialog.find('.size-gauge.for-hdd');
     if (hddSummary)
-      self.renderDiskGauge(self.dialog.find('.size-gauge.for-hdd'),
+      self.renderDiskGauge(hddGauge,
                            hddSummary.total,
                            hddSummary.thisAlloc,
                            hddSummary.otherBuckets,
                            hddSummary.otherData);
+    hddGauge.css('visibility', hddSummary ? 'visible' : 'hidden');
 
     var knownFields = ('name ramQuotaMB hddQuotaGB replicaNumber proxyPort').split(' ');
     var errors = result.errors || {};
