@@ -76,10 +76,11 @@
         <div id="notice_container"></div>
 	<div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
 
-	<div class="hdr">Clusters</div>
+	<div class="hdr">Cluster</div>
 	<div class="section" id="overview_clusters_block">
 		<div class="item ram-item">
-                        <div class="usage_total">TOTAL CLUSTER (<span class="cluster-total"></span>)</div>
+                        <div class="usage_total">Total in Cluster (<span class="cluster-total"></span>)</div>
+                        <div class="total_alloc">Total Allocated (<span class="buckets-quota"></span>)</div>
 			<div class="label">
 				<strong>RAM Overview</strong>
 			</div>
@@ -88,12 +89,11 @@
 					<div class="used" style="width:40%;"></div>
 					<div class="free" style="width:20%;"><i></i></div>
 				</div>
-				<ul>
-					<li>In use by all buckets (<span class="used-quota"></span>)</li>
-					<li>Unused (<span class="unused-quota"></span>)</li>
-					<li>Total allocated (<span class="buckets-quota"></span>)</li>
-					<li>Free (<span class="quota-free"></span>)</li>
-				</ul>
+                                <table><tr>
+                                  <td>In use (<span class="used-quota"></span>)</td>
+                                  <td>Unused (<span class="unused-quota"></span>)</td>
+                                  <td>Unallocated (<span class="quota-free"></span>)</td>
+				</tr></table>
 			</div>
 		</div>
 		<div class="item" style="display:none;">
@@ -121,7 +121,7 @@
 	<!-- END shadow box -->
 
 	<div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
-	<div class="hdr">Buckets <span>(<span class="buckets-number">??</span> buckets active)</span></div>
+	<div class="hdr">Buckets <span>(<span class="buckets-number">??</span> active)</span></div>
 	<div class="section">
 		<div class="item">
 			<div class="graph_main">
@@ -169,15 +169,18 @@
 			</div>
 			<ul>
 				<li class="fail">
-					Failed over: <a href="#visitServersTab=pending">Pending removal</a>
+					<a href="#visitServersTab=pending">Failed Over</a>
 					<span class="alert_num"><span class="failed-over-count">??</span></span>
 				</li>
-				<li>Pending Add
-                                   <span class="alert_num"><span class="pending-add-count">??</span></span>
+				<li class="fail-none">None Failed Over</li>
+				<li class="down"><a href="#visitServersTab=active">Down</a>
+                                   <span class="alert_num"><span class="down-count">??</span></span>
                                 </li>
-				<li><a href="#visitServersTab=pending">Pending removal</a>
-                                   <span class="alert_num"><span class="pending-eject-count">??</span></span>
+				<li class="down-none">None Down</li>
+				<li class="pending"><a href="#visitServersTab=pending">Pending Changes</a>
+                                   <span class="alert_num"><span class="pending-count">??</span></span>
                                 </li>
+				<li class="pending-none">No Pending Changes</li>
 			</ul>
 		</div>
 	</div>
@@ -488,38 +491,14 @@
             <!-- to display sort arrow correctly you need to switch between "sort_desc" and "sort_asc" classes in span -->
             <th><span>Bucket Name</span></th>
             <th>Bucket Type</th>
-            <th># of Servers</th>
             <th>Bucket Resides On</th>
             <th>RAM Size/Quota</th>
             <th>Flash & Disk Size/Quota</th>
           </tr>
           <!-- {% $.each(rows, function () { %} -->
-          <!--<tr>
-              <td>
-              <a class="bucket_properties_link float_right text_11"
-                href="{%= jsLink('BucketsSection.showBucket', this.uri)%}">Properties</a>
-              <a class="gray_link bucket_name" href="#visitBucket={%=h(this.name)%}">{%= h(this.name) %}</a>
-              </td>
-              <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
-              <td>{%= h(truncateTo3Digits(this.basicStats.evictionsPerSec)) %}</td>
-              <td>
-                <div class="usage_smallest_info">
-                    <div class="usage_smallest">
-                        <div class="side_shadow">
-                            <div class="unused">
-                                <div class="used" style="width:1%;"></div>
-                            </div>
-                        </div>
-                    </div>{%= V.setPercentBar(this.basicStats.cachePercentUsed*100) %}
-                    {%= h(truncateTo3Digits(this.basicStats.cachePercentUsed*100)) %}%
-                </div>
-              </td>
-              <td>{%= h(this.basicStats.cacheSize) %}MB</td>
-            </tr>-->
             <tr>
               <td><a class="gray_link bucket_name" href="#visitBucket={%=h(this.name)%}">{%= h(this.name) %}</a></td>
               <td>{%= h(this.bucketTypeName) %} </td>
-              <td>stretch to all</td>
               <td>{%= h(this.serversCount) %}</td>
               <td>{%= V.formatQuantity(this.basicStats.memUsed) %}/{%= V.formatQuantity(this.quota.ram) %}</td>
               <td>{%= V.formatQuantity(this.basicStats.diskUsed) %}/{%= V.formatQuantity(this.quota.hdd) %}</td>
@@ -546,12 +525,11 @@
               <td>
                 Bucket Name: <span>{%= h(name) %}</span><br />
                 Bucket Type: <span>{%= h(bucketTypeName) %}</span><br />
-                Number of Servers: <span> stretch to all</span><br />
-                Access Control: <span>{%= (authType == 'none') ? 'port' : 'password' %}</span>
+                Access Control: <span>{%= (authType == 'none') ? 'Port' : 'Password' %}{%= (authType == 'none') ? (': ' + proxyPort) : '' %}</span>
               </td>
               <td>
               {% if (replicaNumber != 0) { %}
-                Replication: <span>{%= V.count(replicaNumber, 'replica (backup) copy') %}</span><br />
+                Replication: <span>{%= V.count(replicaNumber, 'replica copy') %}</span><br />
                 Blocking Behavior: <span>do not wait for replication to complete; send {%= V.count(replicaNumber, 'copy') %} asynchronously</span>
               {% } else { %}
                 Replication: <span>disabled</span><br />
@@ -967,10 +945,10 @@
     <h2>Bucket Settings</h2>
     <div class="bucket-icon"></div>
     <label class="for-name"><span>Bucket Name:</span><input disabled name="name" value="Bucket Name"><span class="error-container err-name"></span></label>
-    <label class="for-bucket-type"><span>Bucket Type:</span><select name="bucketType">
-                       <option value="memcache">memcache</option>
-                       <option value="membase">membase</option>
-                     </select></label>
+    <div class="for-bucket-type"><span>Bucket Type:</span>
+     <label><input type="radio" name="bucketType" value="memcache"> Memcached</label>
+     <label><input type="radio" name="bucketType" value="membase"> Membase</label>
+    </div>
     <h2>Access Control</h2>
     <label class="for-sasl-password"><input id="bucket_details_sasl_selected" type="radio" name="authType" value="sasl" checked>
       <span>Standard port (TCP port 11211. Needs SASL auth.)</span>
@@ -997,10 +975,10 @@
     <div class="error-container err-ramQuotaMB"></div>
     <div class="persistent-only">
       <h2>Storage Size</h2>
-      <label class="for-enable-persistence"><input type="checkbox" disabled checked><span>Enable Persistence</span></label>
+      <!-- <label class="for-enable-persistence"><input type="checkbox" disabled checked><span>Enable Persistence</span></label> -->
       <div class="normal size-gauge for-hdd">
         <div class="other-data-block">OTHER DATA (<span class="other-data">15 GB</span>)</div>
-        <div class="t">TOTAL CLUSTER SPACE (<span class="total">192 GB</span>)</div>
+        <div class="t">TOTAL CLUSTER STORAGE (<span class="total">192 GB</span>)</div>
         <div class="gauge">
           <div>
             <div class="green"></div>
@@ -1605,7 +1583,8 @@
     <h1>Congratulations</h1>
     <form id="init_welcome_form">
       <p>
-        You have successfully installed the NorthScale Server.
+        You have successfully installed the NorthScale Server.<br>This wizard will help you configure
+        your cluster.
       </p>
       <div class="pat_10">
         <input type="image" name="setup" value="Setup" class="submit next" src="../images/welcome-setup-button.png" style="width:145px; height:55px; margin-left:-7px; color:#fff;" />
@@ -2078,7 +2057,7 @@
 <!-- END edit_server_license_dialog -->
 <div id="notice_template" class="template">
   <div class="shadow_box notice"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
-    <h2 class="header_2">NorthScale Message</h2>
+    <h2 class="header_2">NorthScale Server Message<span style="float: right; color: black; font-size: 13px;">click to dismiss</span></h2>
     <div class="pad_10 success_msg">
       <p class="info_text">{%= h(text) %}</p>
     </div>
@@ -2086,7 +2065,7 @@
 </div>
 <div id="noticeErr_template" class="template">
   <div class="shadow_box notice"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
-    <h2 class="header_2">NorthScale Message</h2>
+    <h2 class="header_2">NorthScale Server Alert<span style="float: right; color: black; font-size: 13px;">click to dismiss</span></h2>
     <div class="pad_10 error_msg">
       <p class="info_text">{%= h(text) %}</p>
     </div>

@@ -74,6 +74,10 @@
     }
   }
 
+  .for-bucket-type label {
+    display: inline;
+  }
+
   /*
    * label.for-bucket-type {
    *   margin-bottom: 18px;
@@ -99,14 +103,20 @@
   @input_width: 174px;
   @text_input_width: @input_width - 3px * 2 - 1px * 2; /* minus padding & border */
 
-  label.for-name, label.for-bucket-type {
+  .for-name, .for-bucket-type {
     span {
+      display: inline-block;
+      text-align: right;
       width: @main_label_width - @bucket_icon_size - 6px;
     }
     input {
       width: @text_input_width;
       text-align: left;
     }
+  }
+
+  .for-bucket-type {
+    input[value=membase] { margin-left: 6px; }
   }
 
   label.for-sasl-password-input {
@@ -134,7 +144,7 @@
     position: relative;
     top: -6px;
     float: right;
-    font-size: 11px;
+    font-size: 10px;
     width: 364px;
     .other-data-block {
       color: #C19710;
@@ -149,6 +159,9 @@
        position: relative;
        height:15px;
        background:url(/images/ram_diagr_bg.png) 100% 0 no-repeat;
+       table {
+         white-space: nowrap;
+       }
        div {
          width: 362px;
          height: 15px;

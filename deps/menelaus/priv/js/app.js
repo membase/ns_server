@@ -55,7 +55,7 @@ var LogoutTimer = {
 var OverviewSection = {
   initLater: function () {
     BucketsSection.cells.detailedBuckets.subscribeValue(function (buckets) {
-      $('#overview .buckets-number').text(buckets ? buckets.length : '??');
+      $('#overview .buckets-number').text(buckets ? ViewHelpers.count(buckets.length, 'bucket') : '??');
     });
 
     DAO.cells.serversCell.subscribeValue(function (servers) {
@@ -66,12 +66,12 @@ var OverviewSection = {
         block.find('.alert_num').hide();
         return;
       }
-      var pendingEject = servers.pendingEject;
+      var pending = servers.pending;
       var failedOver = _.select(servers.allNodes, function (node) {
         return node.clusterMembership == 'inactiveFailed';
       });
-      var pendingAdd = _.select(servers.allNodes, function (node) {
-        return node.clusterMembership == 'inactiveAdded';
+      var down = _.select(servers.allNodes, function (node) {
+        return node.status != 'healthy';
       });
 
       function updateCount(selector, count) {
@@ -80,8 +80,14 @@ var OverviewSection = {
       }
 
       updateCount('.failed-over-count', failedOver.length);
-      updateCount('.pending-add-count', pendingAdd.length);
-      updateCount('.pending-eject-count', pendingEject.length);
+      block.find('.fail')[failedOver.length ? 'show' : 'hide']();
+      block.find('.fail-none')[failedOver.length ? 'hide' : 'show']();
+      updateCount('.down-count', down.length);
+      block.find('.down')[down.length ? 'show' : 'hide']();
+      block.find('.down-none')[down.length ? 'hide' : 'show']();
+      updateCount('.pending-count', pending.length);
+      block.find('.pending')[pending.length ? 'show' : 'hide']();
+      block.find('.pending-none')[pending.length ? 'hide' : 'show']();
     });
 
     var spinner;

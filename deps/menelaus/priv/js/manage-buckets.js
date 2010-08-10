@@ -150,7 +150,12 @@ var BucketDetailsDialog = mkClass({
 
     setBoolAttribute(dialog.find('[name=name]'), 'disabled', !isNew);
 
-    dialog.find('[name=bucketType]').observeInput(function (newType) {
+    var oldBucketType;
+    dialog.observePotentialChanges(function () {
+      var newType = dialog.find('[name=bucketType]:checked').attr('value');
+      if (newType == oldBucketType)
+        return;
+      oldBucketType = newType;
       var isPersistent = (newType == 'membase');
       dialog.find('.persistent-only')[isPersistent ? 'slideDown' : 'slideUp']('fast');
     });
@@ -401,7 +406,7 @@ var BucketsSection = {
       self.buckets = values;
       _.each(values, function (bucket) {
         if (bucket.bucketType == 'memcache') {
-          bucket.bucketTypeName = 'Memcache';
+          bucket.bucketTypeName = 'Memcached';
         } else if (bucket.bucketType == 'membase') {
           bucket.bucketTypeName = 'Membase';
         } else {
