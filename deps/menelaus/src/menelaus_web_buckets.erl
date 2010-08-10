@@ -108,14 +108,10 @@ handle_sasl_buckets_streaming(_PoolId, Req) ->
                 SASLBuckets = lists:filter(fun ({_, BucketInfo}) ->
                                                    ns_bucket:auth_type(BucketInfo) =:= sasl
                                            end, ns_bucket:get_buckets()),
-                List = lists:map(fun ({Name, BucketInfo}) ->
-                                         {struct, MapProps} = ns_bucket:json_map(Name, LocalAddr),
-                                         BinName = list_to_binary(Name),
-                                         Props = [{user, BinName},
-                                                  {password, list_to_binary(ns_bucket:sasl_password(BucketInfo))}
-                                                  | MapProps],
-                                         {struct, [{name, BinName},
-                                                   {vBucketServerMap, {struct, Props}}]}
+                List = lists:map(fun ({Name, _BucketInfo}) ->
+                                         MapStruct = ns_bucket:json_map(Name, LocalAddr),
+                                         {struct, [{name, list_to_binary(Name)},
+                                                   {vBucketServerMap, MapStruct}]}
                                  end, SASLBuckets),
                 {struct, [{buckets, List}]}
         end,

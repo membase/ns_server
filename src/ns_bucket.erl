@@ -55,6 +55,9 @@
 %%--------------------------------------------------------------------
 config(Bucket) ->
     {ok, CurrentConfig} = get_bucket(Bucket),
+    config_from_info(CurrentConfig).
+
+config_from_info(CurrentConfig) ->
     NumReplicas = proplists:get_value(num_replicas, CurrentConfig),
     NumVBuckets = proplists:get_value(num_vbuckets, CurrentConfig),
     Map = case proplists:get_value(map, CurrentConfig) of
@@ -134,14 +137,16 @@ auth_type(Bucket) ->
     proplists:get_value(auth_type, Bucket).
 
 sasl_password(Bucket) ->
-    proplists:get_value(sasl_password, Bucket).
+    proplists:get_value(sasl_password, Bucket, "").
 
 moxi_port(Bucket) ->
     proplists:get_value(moxi_port, Bucket).
 
 json_map(BucketId, LocalAddr) ->
+    {ok, BucketConfig} = get_bucket(BucketId),
+    NumReplicas = num_replicas(BucketConfig),
     Config = ns_config:get(),
-    {NumReplicas, _, EMap, BucketNodes} = config(BucketId),
+    {NumReplicas, _, EMap, BucketNodes} = config_from_info(BucketConfig),
     ENodes = lists:delete(undefined, lists:usort(lists:append([BucketNodes |
                                                                EMap]))),
     Servers = lists:map(
@@ -159,7 +164,9 @@ json_map(BucketId, LocalAddr) ->
                                           (N) -> misc:position(N, ENodes) - 1
                                       end, Chain)
                     end, EMap),
-    {struct, [{hashAlgorithm, <<"CRC">>},
+    {struct, [{user, list_to_binary(BucketId)},
+              {password, list_to_binary(sasl_password(BucketConfig))},
+              {hashAlgorithm, <<"CRC">>},
               {numReplicas, NumReplicas},
               {serverList, Servers},
               {vBucketMap, Map}]}.
