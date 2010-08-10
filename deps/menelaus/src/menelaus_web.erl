@@ -41,7 +41,8 @@
          concat_url_path/1,
          reply_json/2,
          reply_json/3,
-         get_option/2]).
+         get_option/2,
+	 parse_validate_number/3]).
 
 %% External API
 
@@ -345,7 +346,6 @@ build_pools() ->
               {uri, list_to_binary(concat_url_path(["pools", "default"]))},
               {streamingUri, list_to_binary(concat_url_path(["poolsStreaming", "default"]))}
              ]}],
-    Config = ns_config:get(),
     {struct, [{pools, Pools} |
               build_versions()]}.
 
