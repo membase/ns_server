@@ -436,10 +436,6 @@ $(function () {
     $('#auth_inactivity_message').show();
   }
 
-  if ($.cookie('cluster_join_flash')) {
-    $.cookie('cluster_join_flash', null);
-    displayNotice('You have successfully joined the cluster');
-  }
   if ($.cookie('rf')) {
     displayNotice('An error was encountered when requesting data from the server.  ' +
                   'The console has been reloaded to attempt to recover.  There ' +
@@ -591,10 +587,10 @@ var NodeDialog = {
       }
 
       DAO.setAuthCookie(data.user, data.password);
-      $.cookie('cluster_join_flash', 1);
       _.delay(function () {
         DAO.tryNoAuthLogin();
         overlay.remove();
+        displayNotice('You have successfully joined the cluster');
       }, 5000);
     }, {
       timeout: 8000
