@@ -84,7 +84,7 @@ child_specs() ->
                           lists:flatten(
                             io_lib:format(
                               "url=http://127.0.0.1:~B/pools/default/"
-                              "bucketsStreamingConfig/~s",
+                              "bucketsStreaming/~s",
                               [RestPort, BucketName])),
                       BigZ =
                           lists:flatten(
