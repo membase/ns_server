@@ -174,18 +174,21 @@ init([]) ->
 args(Node, Bucket, VBuckets, DstNode, TakeOver) ->
     "default" = Bucket, % vbucketmigrator doesn't support multi-tenancy yet
     Command = "./bin/port_adaptor/port_adaptor",
-    BucketArgs = lists:append([["-b", integer_to_list(B)] || B <- VBuckets]),
+    VBucketArgs = lists:append([["-b", integer_to_list(B)] || B <- VBuckets]),
     TakeOverArg = case TakeOver of
                       true -> ["-t",
                                "-T", "10" %% Timeout iff no message in 10s during xfer
                               ];
                       false -> []
                   end,
+    {User, Pass} = ns_bucket:credentials(Bucket),
     OtherArgs = ["1", "./bin/vbucketmigrator/vbucketmigrator",
+                 "-a", User,
+                 "-p", Pass,
                  "-h", ns_memcached:host_port_str(Node),
                  "-d", ns_memcached:host_port_str(DstNode),
                  "-v"],
-    Args = lists:append([OtherArgs, TakeOverArg, BucketArgs]),
+    Args = lists:append([OtherArgs, TakeOverArg, VBucketArgs]),
     [vbucketmigrator, Command, Args, [use_stdio, stderr_to_stdout]].
 
 -spec children(atom()) -> [#child_id{}].
