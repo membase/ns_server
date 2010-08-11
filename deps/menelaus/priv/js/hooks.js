@@ -285,7 +285,6 @@ var MockedRequest = mkClass({
     }
 
     var authType = params['authType'];
-    debugger
     if (authType == 'none') {
       if (!(/^\d+$/.exec(params['proxyPort']))) {
         errors.proxyPort = 'bad'
