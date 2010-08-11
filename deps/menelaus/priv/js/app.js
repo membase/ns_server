@@ -558,20 +558,8 @@ function showInitDialog(page, opt) {
 }
 
 var NodeDialog = {
-  submitClusterForm: function (e) {
-    if (e)
-      e.preventDefault();
-
+  doClusterJoin: function () {
     var form = $('#init_cluster_form');
-
-    if ($('#no-join-cluster')[0].checked) {
-      return showInitDialog('secure'); // not quite, need to get it
-                                       //from server state
-      var m = $(parentName).find('[name=quota]').val() || "";
-      if (m == "") {
-        m = "none";
-      }
-    }
 
     var errorsContainer = form.parent().find('.join_cluster_dialog_errors_container');
     errorsContainer.hide();
@@ -903,7 +891,7 @@ var NodeDialog = {
       }
     }
 
-    $(parentName + ' button.submit').click(function (e) {
+    $('#step-2-next').click(function (e) {
         e.preventDefault();
 
         errorContainer = $(parentName + ' .init_cluster_dialog_errors_container');
@@ -919,20 +907,28 @@ var NodeDialog = {
         $.ajax({
           type:'POST', url:'/nodes/' + node + '/controller/settings',
           data: 'path=' + p,
-          async:false, success:diskPost, error:diskPost
+          async:true, success:diskPost, error:diskPost
         });
 
         function diskPost(data, status) {
           if (status == 'success') {
-            $.ajax({
-              type:'POST', url:'/pools/default',
-                  data: 'memoryQuota=' + m,
-                  async:false, success:memPost, error:memPost
-                  });
+            continueAfterDisk();
           } else {
             errorContainer.html('failed disk validation');
             errorContainer.show();
           }
+        }
+
+        function continueAfterDisk() {
+          if (!$('#no-join-cluster')[0].checked) {
+            return NodeDialog.doClusterJoin();
+          }
+
+          $.ajax({
+            type:'POST', url:'/pools/default',
+            data: 'memoryQuota=' + m,
+            async:true, success:memPost, error:memPost
+          });
         }
 
         function memPost(data, status) {
