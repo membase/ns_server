@@ -212,8 +212,7 @@ loop(Req, AppRoot, DocRoot) ->
                                                             User = menelaus_auth:extract_auth(username, R),
                                                             ns_log:log(?MODULE, ?UI_SIDE_ERROR_REPORT, "Client-side error-report for user ~p on node ~p: ~p~n",
                                                                        [User, node(), binary_to_list(R:recv_body())]),
-                                                            R:ok({"text/plain", add_header(), <<
-"">>})
+                                                            R:ok({"text/plain", add_header(), <<"">>})
                                                     end};
                              ["erlwsh" | _] ->
                                  {done, erlwsh_web:loop(Req, erlwsh_deps:local_path(["priv", "www"]))};
