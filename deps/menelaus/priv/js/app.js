@@ -824,13 +824,12 @@ var NodeDialog = {
     });
   },
   startPage_cluster: function (node, pagePrefix, opt) {
-    var parentName = '#init_cluster_dialog';
+    var dialog = $('#init_cluster_dialog');
 
-    $(parentName + ' .quota_error_message').hide();
+    dialog.find('.quota_error_message').hide();
 
-    $.ajax({
-      type:'GET', url:'/nodes/self', dataType: 'json', async: false,
-          success: cb, error: cb});
+    $.ajax({type:'GET', url:'/nodes/self', dataType: 'json', async: false,
+            success: cb, error: cb});
 
     function cb(data, status) {
       if (status == 'success') {
@@ -839,12 +838,11 @@ var NodeDialog = {
           m = "";
         }
 
-        $(parentName).find('[name=quota]').val(m);
+        dialog.find('[name=quota]').val(m);
 
         data['node'] = data['node'] || node;
         NodeDialog.resourceNode = data;
 
-        var dialog = $('#init_cluster_dialog');
         var totalRAMMegs = Math.floor(data.memoryTotal/1024/1024);
 
         dialog.find('[name=dynamic-ram-quota]').val(ViewHelpers.ifNull(data.memoryQuota, Math.floor(totalRAMMegs * 0.80)));
@@ -854,12 +852,12 @@ var NodeDialog = {
         var diskTotalGigs = Math.floor(firstResource.diskStats.sizeKBytes * (100 - firstResource.diskStats.usagePercent) / 100 / (1024 * 1024));
         var diskPath, diskTotal;
 
-        diskTotal = dialog.find('.resource-row .total-size');
+        diskTotal = dialog.find('.total-size');
         function updateDiskTotal() {
           diskTotal.text(escapeHTML(diskTotalGigs) + ' GB');
         }
         updateDiskTotal();
-        (diskPath = dialog.find('.resource-row [name=path]')).val(escapeHTML(firstResource.path));
+        (diskPath = dialog.find('[name=path]')).val(escapeHTML(firstResource.path));
 
         var prevPathValue;
 
@@ -894,12 +892,12 @@ var NodeDialog = {
     $('#step-2-next').click(function (e) {
         e.preventDefault();
 
-        errorContainer = $(parentName + ' .init_cluster_dialog_errors_container');
+        errorContainer = dialog.find('.init_cluster_dialog_errors_container');
         errorContainer.hide();
 
-        var p = $(parentName).find('[name=path]').val() || "";
+        var p = dialog.find('[name=path]').val() || "";
 
-        var m = $(parentName).find('[name=dynamic-ram-quota]').val() || "";
+        var m = dialog.find('[name=dynamic-ram-quota]').val() || "";
         if (m == "") {
           m = "none";
         }
@@ -914,7 +912,7 @@ var NodeDialog = {
           if (status == 'success') {
             continueAfterDisk();
           } else {
-            errorContainer.html('failed disk validation');
+            errorContainer.html('Your path is invalid. It must be a directory writable by northscale user');
             errorContainer.show();
           }
         }

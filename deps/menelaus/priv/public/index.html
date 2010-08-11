@@ -1447,6 +1447,19 @@
         Could not join the cluster due to incorrect parameters.
       </div>
     </div>
+    <h2 class="question">Configure Disk Storage</h2>
+    <div class="disk_setup_block">
+      <div><label>Size:</label>
+        <span style="color:#7e7e80; font-size:10pt; margin-left:5px; line-height: 25px;" class="total-size">---</span>
+        <br style="clear:both;" />
+      </div>
+      <div>
+        <label for="setup_path_input">Path:</label>
+        <input type="text" name="path" id="setup_path_input" class="path-box" />
+        <br style="clear:both;" />
+      </div>
+      <div class="warning pat_10 init_cluster_dialog_errors_container" style="display:none;"></div>
+    </div>
     <h2 class="question">Would you like to join an existing Membase Cluster?</h2>
     <p class="pad_10">
     If this new server will be added to an existing membase cluster
@@ -1454,59 +1467,45 @@
     can join a cluster later, but should do so before storing important data
     on this server.
     </p>
-    <div class="warning pat_10 init_cluster_dialog_errors_container" style="display:none;"></div>
     <form id="init_cluster_form" class="form block"><input type="submit" style="display:none;" />
-      <div>Disk Storage</div>
-        <div class="hdd_resource_container">
-          <div class="resource-row">
-          <div><label>Size:</label>
-            <span style="color:#7e7e80; font-size:10pt; margin-left:5px; line-height: 25px;" class="total-size">---</span>
-            <br style="clear:both;" />
+      <div class="pat_10"><label>
+        <input type="radio" name="join_cluster" id="no-join-cluster" checked />
+        Do NOT join a cluster now, maybe later.
+      </label></div>
+      <div class="memory-quota">
+        Dynamic RAM Quota:
+        <input type="text" name="dynamic-ram-quota" value=""
+          style="border:1px solid #ccd3d7; color:#7e7e80; font-size:10pt; height:25px; margin-left:5px; padding-left:5px; width:95px;" />
+        <span style="color:#7e7e80; font-size:10pt;">MB</span>
+        <span style="color:#7e7e80; font-size:10pt; margin-left:50px;">
+          Total: <span class="ram-total-size">0GB</span>
+        </span>
+      </div>
+      <div class="pat_10">
+        <label>
+          <input type="radio" name="join_cluster" id="join-cluster" />
+          Join a cluster now.
+        </label>
+        <div class="login-credentials">
+          <div style="padding-bottom:80px;">When joining a cluster, the joining server will drop all of the data it currently holds in any membase and memcache buckets.</div>
+          <div>
+            <label for="clusterMemberHostIp">IP Address:</label>
+            <input type="text" class="inp" name="hostname" id="clusterMemberHostIp" value="" />
+            <br class="clear" />
           </div>
           <div>
-            <label>Path:</label>
-            <input type="text" name="path" class="path-box" />
-            <br style="clear:both;" />
+            <label for="user_inp">Username:</label>
+            <input type="text" class="inp" name="user" id="user_inp" value="Administrator" />
+            <br class="clear" />
           </div>
+          <div>
+            <label for="password_inp">Password:</label>
+            <input type="password" class="inp" name="password" id="password_inp" />
+            <br class="clear" />
+          </div>
+       </div>
+    <!-- </label> -->
       </div>
-  </div>
-  <div class="pat_10"><label>
-    <input type="radio" name="join_cluster" id="no-join-cluster" checked />
-    Do NOT join a cluster now, maybe later.
-    </label></div>
-    <div class="memory-quota">
-      Dynamic RAM Quota:
-      <input type="text" name="dynamic-ram-quota" value=""
-      style="border:1px solid #ccd3d7; color:#7e7e80; font-size:10pt; height:25px; margin-left:5px; padding-left:5px; width:95px;" />
-      <span style="color:#7e7e80; font-size:10pt;">MB</span>
-      <span style="color:#7e7e80; font-size:10pt; margin-left:50px;">
-      Total: <span class="ram-total-size">0GB</span>
-      </span>
-    </div>
-    <div class="pat_10">
-      <label>
-      <input type="radio" name="join_cluster" id="join-cluster" />
-      Join a cluster now.
-    <div class="login-credentials">
-    <div style="padding-bottom:80px;">When joining a cluster, the joining server will drop all of the data it currently holds in any membase and memcache buckets.</div>
-    <div>
-      <label for="clusterMemberHostIp">IP Address:</label>
-      <input type="text" class="inp" name="hostname" id="clusterMemberHostIp" value="" />
-      <br class="clear" />
-    </div>
-    <div>
-      <label for="user_inp">Username:</label>
-      <input type="text" class="inp" name="user" id="user_inp" value="Administrator" />
-      <br class="clear" />
-    </div>
-    <div>
-      <label for="password_inp">Password:</label>
-      <input type="password" class="inp" name="password" id="password_inp" />
-      <br class="clear" />
-    </div>
-    </div>
-    </label>
-    </div>
     </form>
     <div class="config-bottom">
       <button name="next" value="Next" class="submit next direction-button" id="step-2-next" type="submit">Next</button>

@@ -1059,3 +1059,19 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
   z-index: 9999;
   padding: 3px;
 }
+
+.disk_setup_block {
+  margin-left: 84px;
+  margin-top: 6px;
+  line-height: 25px;
+}
+
+.disk_setup_block label {
+  margin-right: 6px;
+}
+
+.disk_setup_block input {
+  border: 1px solid #ccd3d7;
+  width: 232px;
+  padding: 3px;
+}
