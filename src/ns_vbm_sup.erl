@@ -172,7 +172,6 @@ init([]) ->
 -spec args(atom(), nonempty_string(), [non_neg_integer(),...], atom(), boolean()) ->
                   [any(), ...].
 args(Node, Bucket, VBuckets, DstNode, TakeOver) ->
-    "default" = Bucket, % vbucketmigrator doesn't support multi-tenancy yet
     Command = "./bin/port_adaptor/port_adaptor",
     VBucketArgs = lists:append([["-b", integer_to_list(B)] || B <- VBuckets]),
     TakeOverArg = case TakeOver of
