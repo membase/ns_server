@@ -165,7 +165,6 @@ handle_bucket_update_inner(BucketId, Req, Params, Limit) ->
                               ns_bucket:get_buckets(),
                               ns_storage_conf:cluster_storage_info())} of
         {_, {errors, Errors, JSONSummaries}} ->
-            io:format("Errors: ~p~n", [Errors]),
             RV = {struct, [{errors, {struct, Errors}},
                            {summaries, {struct, JSONSummaries}}]},
             reply_json(Req, RV, 400);
