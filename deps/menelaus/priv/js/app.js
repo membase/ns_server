@@ -600,183 +600,6 @@ var NodeDialog = {
       timeout: 8000
     });
   },
-  startMemoryDialog: function (node) {
-    var parentName = '#edit_server_memory_dialog';
-
-    $(parentName + ' .quota_error_message').hide();
-
-    $.ajax({
-      type:'GET', url:'/nodes/' + node, dataType: 'json', async: false,
-      success: cb, error: cb});
-
-    function cb(data, status) {
-      if (status == 'success') {
-        var m = data['memoryQuota'];
-        if (m == null || m == "none") {
-          m = "";
-        }
-
-        $(parentName).find('[name=quota]').val(m);
-      }
-    }
-
-    $(parentName + ' button.save_button').click(function (e) {
-        e.preventDefault();
-
-        $(parentName + ' .quota_error_message').hide();
-
-        var m = $(parentName).find('[name=quota]').val() || "";
-        if (m == "") {
-          m = "none";
-        }
-
-        $.ajax({
-          type:'POST', url:'/nodes/' + node + '/controller/settings',
-          data: 'memoryQuota=' + m,
-          async:false, success:cbPost, error:cbPost
-        });
-
-        function cbPost(data, status) {
-          if (status == 'success') {
-            $(parentName).jqmHide();
-
-            showInitDialog("resources"); // Same screen used in init-config wizard.
-          } else {
-            $(parentName + ' .quota_error_message').show();
-          }
-        }
-      });
-
-    showDialog('edit_server_memory_dialog');
-  },
-
-  startAddLocationDialog : function (node, storageKind) {
-    var parentName = '#add_storage_location_dialog';
-
-    $(parentName + ' .storage_location_error_message').hide();
-
-    $(parentName).find('input[type=text]').val();
-
-    $(parentName + ' button.save_button').click(function (e) {
-        e.preventDefault();
-
-        $(parentName + ' .storage_location_error_message').hide();
-
-        var p = $(parentName).find('[name=path]').val() || "";
-        var q = $(parentName).find('[name=quota]').val() || "none";
-
-        $.ajax({
-          type:'POST', url:'/nodes/' + node + '/controller/resources',
-          data: 'path=' + p + '&quota=' + q + '&kind=' + storageKind,
-          async:false, success:cbPost, error:cbPost
-        });
-
-        function cbPost(data, status) {
-          if (status == 'success') {
-            $(parentName).jqmHide();
-
-            showInitDialog("resources");
-          } else {
-            $(parentName + ' .storage_location_error_message').show();
-          }
-        }
-      });
-
-    $(parentName + ' .add_storage_location_title').text("Add " + storageKind.toUpperCase() + " Storage Location");
-
-    showDialog('add_storage_location_dialog');
-  },
-
-  startRemoveLocationDialog : function (node, path) {
-    if (confirm("Are you sure you want to remove the storage location: " + path + "?  " +
-                "Click OK to Remove.")) {
-      $.ajax({
-        type:'DELETE',
-        url:'/nodes/' + node + '/resources/' + encodeURIComponent(path),
-        async:false
-      });
-
-      showInitDialog("resources"); // Same screen used in init-config wizard.
-    }
-  },
-
-  // The pagePrefix looks like 'init_license', and allows reusability.
-  startPage_license: function(node, pagePrefix, opt) {
-    var parentName = '#' + pagePrefix + '_dialog';
-
-    opt = opt || {};
-
-    $(parentName + ' .license_failed_message').hide();
-
-    $.ajax({
-      type:'GET', url:'/nodes/' + node, dataType: 'json', async: false,
-      success: cb, error: cb});
-
-    function cb(data, status) {
-      if (status == 'success') {
-        var lic = data.license;
-        if (lic == null || lic == "") {
-          lic = "2372AA-F32F1G-M3SA01"; // Hardcoded BETA license.
-        }
-
-        $(parentName).find('[name=license]').val(lic);
-      }
-    }
-
-    var submitSelector = opt['submitSelector'] || 'input.next';
-
-    $(parentName + ' ' + submitSelector).click(function (e) {
-        e.preventDefault();
-
-        showInitDialog("cluster");
-        //$(parentName + ' .license_failed_message').hide();
-
-        //var license = $(parentName).find('[name=license]').val() || "";
-
-        //$.ajax({
-        //  type:'POST', url:'/nodes/' + node + '/controller/settings',
-        //  data: 'license=' + license,
-        //  async:false, success:cbPost, error:cbPost
-        //});
-
-        //function cbPost(data, status) {
-          //if (status == 'success') {
-            //if (opt['successFunc'] != null) {
-              //opt['successFunc'](node, pagePrefix);
-              //} else {
-              //showInitDialog(opt["successNext"] || "resources");
-              //}
-            //} else {
-            //$(parentName + ' .license_failed_message').show();
-            //}
-          //}
-      });
-  },
-  submitResources: function () {
-    if (this.resourcesObserver) {
-      this.resourcesObserver.stopObserving();
-      this.resourcesObserver = null;
-    }
-
-    var quota = $('#init_resources_form input[name=dynamic-ram-quota]').val();
-    var diskPath = $('#init_resources_form input[name=path]').val();
-
-    $('#init_resources_errors_container').html('');
-
-    postWithValidationErrors('/nodes/self/controller/settings',
-                             $.param({memoryQuota: quota, path: diskPath}),
-                             continuation,
-                             {async: false});
-
-    function continuation(data, textStatus) {
-      if (textStatus == 'error') {
-        renderTemplate('init_resources_errors', data);
-        $('#init_resources_form input[name=dynamic-ram-quota]')[0].focus();
-        return;
-      }
-      showInitDialog('cluster');
-    }
-  },
   startPage_secure: function(node, pagePrefix, opt) {
     var parentName = '#' + pagePrefix + '_dialog';
 
@@ -823,6 +646,14 @@ var NodeDialog = {
       });
     });
   },
+  startPage_license: function(node, pagePrefix, opt) {
+    $('#init_welcome_dialog input.next').click(function (e) {
+      e.preventDefault();
+
+      showInitDialog("cluster");
+    });
+  },
+
   startPage_cluster: function (node, pagePrefix, opt) {
     var dialog = $('#init_cluster_dialog');
 
