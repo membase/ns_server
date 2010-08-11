@@ -28,7 +28,10 @@
 
 bucket_disk_usage(BucketName) ->
     {Res, _} = rpc:multicall(ns_node_disco:nodes_actual_proper(), ns_storage_conf, local_bucket_disk_usage, [BucketName], 2000),
-    lists:sum([X || X <- Res]).
+    lists:sum([case is_number(X) of
+                   true -> X;
+                   _ -> 0
+               end || X <- Res]).
 
 bucket_ram_usage(BucketName) ->
     proplists:get_value(memUsed, basic_stats([], BucketName)).
