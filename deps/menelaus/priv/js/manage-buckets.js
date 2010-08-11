@@ -193,7 +193,7 @@ var BucketDetailsDialog = mkClass({
     self.needBucketsRefresh = true;
 
     var nonPersistent = null;
-    if (self.dialog.find('[name=bucketType]').val() != 'membase') {
+    if (self.dialog.find('[name=bucketType]:checked').val() != 'membase') {
       nonPersistent = self.dialog.find('.persistent-only').find('input').filter(':not([disabled])');
       setBoolAttribute(nonPersistent, 'disabled', true);
     }
