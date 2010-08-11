@@ -517,35 +517,6 @@ var BucketsSection = {
   onLeave: function () {
     this.settingsWidget.reset();
   },
-  checkFormChanges: function () {
-    var parent = $('#add_new_bucket_dialog');
-
-    var cache = parent.find('[name=cacheSize]').val();
-    if (cache != this.lastCacheValue) {
-      this.lastCacheValue = cache;
-
-      var cacheValue;
-      if (/^\s*\d+\s*$/.exec(cache)) {
-        cacheValue = parseInt(cache, 10);
-      }
-
-      var detailsText;
-      if (cacheValue != undefined) {
-        var nodesCnt = this.getPoolNodesCount();
-        detailsText = [" MB x ",
-                       nodesCnt,
-                       " server nodes = ",
-                       ViewHelpers.formatQuantity(cacheValue * nodesCnt * 1024 *1024),
-                       " Total Cache Size/",
-                       // TODO: will probably die
-                       ViewHelpers.formatQuantity(OverviewSection.clusterMemoryAvailable),
-                       " Cluster Memory Available"].join('')
-      } else {
-        detailsText = "";
-      }
-      parent.find('.cache-details').html(escapeHTML(detailsText));
-    }
-  },
   startCreate: function () {
     var totals = DAO.cells.currentPoolDetails.value.storageTotals;
     if (totals.ram.quotaTotal == totals.ram.quotaUsed || totals.hdd.quotaTotal == totals.hdd.quotaUsed) {
