@@ -21,9 +21,9 @@
 
 -include("mc_entry.hrl").
 
--export([auth/2, auth/4, create_bucket/3, delete_bucket/2, delete_vbucket/2,
-         list_buckets/1, noop/1, select_bucket/2, set_vbucket_state/3,
-         stats/1, stats/2]).
+-export([auth/2, create_bucket/3, delete_bucket/2, delete_vbucket/2,
+         list_buckets/1, noop/1, select_bucket/2, set_flush_param/3,
+         set_vbucket_state/3, stats/1, stats/2]).
 
 %% A memcached client that speaks binary protocol.
 
@@ -87,36 +87,21 @@ auth(Sock, {<<"PLAIN">>, {ForName, AuthName, undefined}}) ->
     auth(Sock, {<<"PLAIN">>, {ForName, AuthName, <<>>}});
 
 auth(Sock, {<<"PLAIN">>, {ForName, AuthName, AuthPswd}}) ->
-    case auth(Sock, {<<"PLAIN">>, {ForName, AuthName, AuthPswd}},
-              undefined, undefined) of
-        {ok, _, _, _} -> ok;
-        Error         -> Error
-    end;
-
-auth(_Sock, _UnknownMech) ->
-    {error, emech_unsupported}.
-
-auth(Sock, {<<"PLAIN">>, {ForName, AuthName, AuthPswd}}, CBFun, CBData) ->
     BinForName  = mc_binary:bin(ForName),
     BinAuthName = mc_binary:bin(AuthName),
     BinAuthPswd = mc_binary:bin(AuthPswd),
-    case cmd(?CMD_SASL_AUTH, Sock, CBFun, CBData,
+    case cmd(?CMD_SASL_AUTH, Sock, undefined, undefined,
              {#mc_header{},
               #mc_entry{key = <<"PLAIN">>,
                         data = <<BinForName/binary, 0:8,
                                  BinAuthName/binary, 0:8,
                                  BinAuthPswd/binary>>
                        }}) of
-
-        {ok, H, E, NCBData} ->
-            case H#mc_header.status == ?SUCCESS of
-                true  -> {ok, H, E, NCBData};
-                false -> {error, eauth_status, H#mc_header.status, NCBData}
-            end;
+        {ok, #mc_header{status=?SUCCESS}, _, _} ->
+            ok;
         _Error -> {error, eauth_cmd}
     end;
-
-auth(_Sock, _UnknownMech, _CBFun, _CBData) ->
+auth(_Sock, _UnknownMech) ->
     {error, emech_unsupported}.
 
 % -------------------------------------------------
@@ -174,6 +159,17 @@ select_bucket(Sock, BucketName) ->
         {ok, #mc_header{status=?SUCCESS}, _ME, _NCB} ->
             ok;
         Response -> process_error_response(Response)
+    end.
+
+set_flush_param(Sock, Key, Value) ->
+    case cmd(?CMD_SET_FLUSH_PARAM, Sock, undefined, undefined,
+             {#mc_header{},
+              #mc_entry{key = list_to_binary(Key),
+                        data=list_to_binary(Value)}}) of
+        {ok, #mc_header{status=?SUCCESS}, _ME, _NCB} ->
+            ok;
+        Response ->
+            process_error_response(Response)
     end.
 
 set_vbucket_state(Sock, VBucket, VBucketState) ->

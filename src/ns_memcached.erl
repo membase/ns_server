@@ -81,6 +81,14 @@ handle_call({delete_vbucket, Bucket, VBucket}, _From,
 handle_call(list_buckets, _From, State) ->
     Reply = mc_client_binary:list_buckets(State#state.sock),
     {reply, Reply, State};
+handle_call({set_flush_param, Bucket, Key, Value}, _From, #state{sock=Sock} =
+                State) ->
+    Reply = do_in_bucket(Sock, Bucket,
+                        fun () ->
+                                mc_client_binary:set_flush_param(Sock, Key,
+                                                                 Value)
+                        end),
+    {reply, Reply, State};
 handle_call({set_vbucket_state, Bucket, VBucket, VBState}, _From,
             #state{sock=Sock} = State) ->
     Reply = do_in_bucket(Sock, Bucket,
