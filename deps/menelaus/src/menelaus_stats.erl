@@ -285,7 +285,6 @@ is_safe_key_name(Name) ->
               end, Name).
 
 build_buckets_stats_hks_response(_PoolId, [BucketName]) ->
-    %% TODO: use real bucket name
     BucketsTopKeys = case hot_keys_keeper:bucket_hot_keys(BucketName) of
                          undefined -> [];
                          X -> X
