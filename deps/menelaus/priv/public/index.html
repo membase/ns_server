@@ -162,22 +162,27 @@
 				<!-- <p>CPU Load Max: <b>98%</b></p> -->
 				<!-- <p>CPU Load Avg: <b>98%</b></p> -->
 				<!-- <p>CPU Load Min: <b>98%</b></p> -->
-				<a href="#">Monitor All Servers</a>
+				<!-- <a href="#">Monitor All Servers</a> -->
 			</div>
 			<ul>
-				<li class="fail">
-					<a href="#visitServersTab=pending">Failed Over
-						<span class="when-zero">(<span class="failed-over-count">??</span>)</span></a>
+				<li class="fail"><span class="when-non-zero">
+				   <a href="#visitServersTab=pending">Failed Over Servers: <span class="failed-over-count">??</span></a>
 					<span class="alert_num"><span class="failed-over-count">??</span></span>
-				</li>
-				<li class="down"><a href="#visitServersTab=active">Down
-                                		<span class="when-zero">(<span class="down-count">??</span>)</span></a>
+				</span><span class="when-zero">
+				   Failed Over Servers: 0
+                                </span></li>
+				<li class="down"><span class="when-non-zero">
+                                   <a href="#visitServersTab=active">Down Servers: <span class="down-count">??</span></a>
                                    <span class="alert_num"><span class="down-count">??</span></span>
-                                </li>
-				<li class="pending"><a href="#visitServersTab=pending">Pending Changes
-						<span class="when-zero">(<span class="pending-count">??</span>)</span></a>
+                                </span><span class="when-zero">
+                                   Down Servers: 0
+                                </span></li>
+				<li class="pending"><span class="when-non-zero">
+                                  <a href="#visitServersTab=pending">Pending Changes Servers: <span class="pending-count">??</span></a>
                                    <span class="alert_num"><span class="pending-count">??</span></span>
-                                </li>
+                                </span><span class="when-zero">
+                                   Pending Changes Servers: 0
+                                </span></li>
 			</ul>
 		</div>
 	</div>

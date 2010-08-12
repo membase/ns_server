@@ -1082,4 +1082,8 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 }
 #overview_servers_block .is-zero .when-zero {
   display: inline;
+  color: black;
+}
+#overview_servers_block .is-zero .when-non-zero {
+  display: none;
 }
