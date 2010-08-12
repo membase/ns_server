@@ -1423,7 +1423,7 @@
     If this new server will be added to an existing membase cluster
     you may join that cluster now. To do so select "Join a cluster now". You
     can join a cluster later, but should do so before storing important data
-    on this server.
+    on the server, as the joining server will drop all the data it currently holds.
     </p>
     <form id="init_cluster_form" class="form block"><input type="submit" style="display:none;" />
       <div class="pat_10"><label>
@@ -1445,7 +1445,6 @@
           Join a cluster now.
         </label>
         <div class="login-credentials">
-          <div style="padding-bottom:80px;">When joining a cluster, the joining server will drop all of the data it currently holds in any membase and memcache buckets.</div>
           <div>
             <label for="clusterMemberHostIp">IP Address:</label>
             <input type="text" class="inp" name="hostname" id="clusterMemberHostIp" value="" />
