@@ -27,9 +27,9 @@
          kill_children/3,
          kill_all_children/1,
          kill_dst_children/3,
-         move/4,
          replicators/2,
-         set_replicas/3]).
+         set_replicas/3,
+         spawn_mover/4]).
 
 -export([init/1]).
 
@@ -99,15 +99,9 @@ set_replicas(Node, Bucket, Replicas) ->
             {error, nodedown}
     end.
 
-move(Bucket, VBucket, SrcNode, DstNode) ->
+spawn_mover(Bucket, VBucket, SrcNode, DstNode) ->
     Args = args(SrcNode, Bucket, [VBucket], DstNode, true),
-    %% Delete any data from the target node. This has the added
-    %% advantage of crashing us if the target node is not ready
-    %% to receive data, or at least delaying us until it is.
-    kill_vbuckets(DstNode, Bucket, [VBucket]),
-    {ok, Pid} = rpc:call(SrcNode, ns_port_server, start_link, Args),
-    ok = misc:wait_for_process(Pid, infinity),
-    kill_children(SrcNode, Bucket, [VBucket]).
+    rpc:call(SrcNode, ns_port_server, start_link, Args).
 
 kill_all_children(Node) ->
     lists:foreach(fun (Child) ->

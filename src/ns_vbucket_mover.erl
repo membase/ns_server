@@ -153,10 +153,15 @@ spawn_workers(#state{bucket=Bucket, moves=Moves, movers=Movers,
                                   when Node /= NewNode ->
                                     %% Will crash (on purpose) if we
                                     %% have no-op moves.
-                                    spawn_link(fun () ->
-                                                       ns_vbm_sup:move(Bucket, V, Node, NewNode),
-                                                       Parent ! {move_done, Node}
-                                               end)
+                                    spawn_link(
+                                      fun () ->
+                                              run_mover(
+                                                fun () ->
+                                                        ns_vbm_sup:spawn_mover(
+                                                          Bucket, V, Node,
+                                                          NewNode)
+                                                end, Parent, Node, 2)
+                                      end)
                             end, NewMovers),
                           M1 = dict:store(Node, length(NewMovers) + NumWorkers,
                                           M),
@@ -174,4 +179,29 @@ spawn_workers(#state{bucket=Bucket, moves=Moves, movers=Movers,
             {noreply, State1};
         false ->
             {stop, normal, State1}
+    end.
+
+
+run_mover(Fun, Parent, Node, Tries) ->
+    process_flag(trap_exit, true),
+    {ok, Pid} = Fun(),
+    wait_for_mover(Pid, Fun, Parent, Node, Tries).
+
+wait_for_mover(Pid, Fun, Parent, Node, Tries) ->
+    receive
+        {'EXIT', Pid, normal} ->
+            Parent ! {move_done, Node};
+        {'EXIT', Pid, Reason} ->
+            case Tries of
+                0 ->
+                    exit({mover_failed, Reason});
+                _ ->
+                    ?log_warning("Got unexpected exit reason from mover:~n~p",
+                                 [Reason]),
+                    run_mover(Fun, Parent, Node, Tries-1)
+            end;
+        Msg ->
+            ?log_warning("Mover parent got unexpected message:~n"
+                         "~p", [Msg]),
+            wait_for_mover(Pid, Fun, Parent, Node, Tries)
     end.
