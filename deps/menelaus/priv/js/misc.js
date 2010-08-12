@@ -765,3 +765,45 @@ function integerToString(number, base) {
   rv.reverse();
   return rv.join('');
 }
+
+// Does simple down sampling of samples by a factor of decimation.  To
+// avoid sampling artifacts we actually filter our samples to cut
+// frequencies higher than new sampling frequency. The filter we use
+// is very simple first-order filter as described here:
+// http://en.wikipedia.org/wiki/Low-pass_filter
+//
+// Implementing something more fancy (higher-order) is possible in
+// future.
+function decimateSamples(decimation, samples) {
+  // the math is as follows:
+  // α = δt / (RC + δt)
+  // Assuming ω = 2π and δt = 1 (original samples freq. is 1hz)
+  // RC = 1/ω₀ where ω₀ is angular speed of cut-off freq
+  // ω₀ = ω d where d is decimation factor
+  // RC = 1/(ω d)
+  //            1                 ω d            2πd
+  // α = ————————————————— = —————————————— = —————————
+  //      1/(ω d) + 1          1 + ω d         1 + 2πd
+  var two_pi_d = 2 * Math.PI * decimation;
+  var alpha = two_pi_d / (1 + two_pi_d);
+  var beta = 1 - alpha;
+
+  var filteredSamples = new Array(samples.length);
+  var i;
+  filteredSamples[0] = samples[0];
+  for (i = 1; i < samples.length; i++)
+    filteredSamples[i] = samples[i] * alpha + filteredSamples[i-1] * beta;
+
+  // now we just decimate
+  return decimateNoFilter(decimation, filteredSamples);
+}
+
+function decimateNoFilter(decimation, samples) {
+  var outputSamples = new Array((samples.length / decimation) >> 0);
+  // we want last filtered sample to be held, not first
+  var j = samples.length-1;
+  for (i = outputSamples.length-1; i >= 0; i--, j -= decimation)
+    outputSamples[i] = samples[j];
+
+  return outputSamples;
+}
