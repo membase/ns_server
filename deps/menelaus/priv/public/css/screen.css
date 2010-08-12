@@ -596,12 +596,9 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 .actservers + ul {float:left;width:377px;margin:-27px 0 0;position:relative;top:14px;left:13px;}
 .actservers + ul li {font-size:16px;height:63px;line-height:63px;padding:0 0 0 66px;position:relative;text-transform:none; border-left:1px solid #ced5d9;border-bottom:1px solid #ced5d9;background:url(../images/server_icon.png) 15px 12px no-repeat;}
 .actservers + ul li.fail {color:#e43a1b;}
-.actservers + ul li.fail-none {display:none;}
 .actservers + ul li.fail a {color:#e43a1b;}
 .actservers + ul li.down {color:#e43a1b;}
-.actservers + ul li.down-none {display:none;}
 .actservers + ul li.down a {color:#e43a1b;}
-.actservers + ul li.pending-none {display:none;}
 .actservers + ul .alert_num {top:-1px;right:303px;}
 
 #get_started {display:none;}
@@ -1074,4 +1071,15 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
   border: 1px solid #ccd3d7;
   width: 232px;
   padding: 3px;
+}
+
+#overview_servers_block .actservers + ul li.is-zero a {
+  color: #0095D6;
+}
+
+#overview_servers_block .when-zero {
+  display: none;
+}
+#overview_servers_block .is-zero .when-zero {
+  display: inline;
 }

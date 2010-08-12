@@ -77,17 +77,12 @@ var OverviewSection = {
       function updateCount(selector, count) {
         var span = block.find(selector).text(count);
         span.parents('.alert_num')[count ? 'show' : 'hide']();
+        span.parents('.alert_num').parents('li')[count ? 'removeClass' : 'addClass']('is-zero');
       }
 
       updateCount('.failed-over-count', failedOver.length);
-      block.find('.fail')[failedOver.length ? 'show' : 'hide']();
-      block.find('.fail-none')[failedOver.length ? 'hide' : 'show']();
       updateCount('.down-count', down.length);
-      block.find('.down')[down.length ? 'show' : 'hide']();
-      block.find('.down-none')[down.length ? 'hide' : 'show']();
       updateCount('.pending-count', pending.length);
-      block.find('.pending')[pending.length ? 'show' : 'hide']();
-      block.find('.pending-none')[pending.length ? 'hide' : 'show']();
     });
 
     var spinner;
