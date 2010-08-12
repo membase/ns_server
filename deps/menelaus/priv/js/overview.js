@@ -66,10 +66,17 @@ var OverviewSection = {
   init: function () {
     _.defer($m(this, 'initLater'));
 
-    this.statsCell = new Cell(function (poolDetails) {
-      return future.get({url: '/pools/default/overviewStats'});
+    // this fake cell makes sure our stats cell is not recomputed when pool details change
+    this.statsCellArg = new Cell(function (poolDetails) {
+      return 1;
     }, {
       poolDetails: DAO.cells.currentPoolDetailsCell
+    });
+
+    this.statsCell = new Cell(function (arg) {
+      return future.get({url: '/pools/default/overviewStats'});
+    }, {
+      arg: this.statsCellArg
     });
     this.statsCell.subscribeValue($m(this, 'onStatsValue'));
   },
