@@ -74,10 +74,6 @@
     }
   }
 
-  .for-bucket-type label {
-    display: inline;
-  }
-
   /*
    * label.for-bucket-type {
    *   margin-bottom: 18px;
@@ -105,9 +101,10 @@
 
   .for-name, .for-bucket-type {
     span {
-      display: inline-block;
-      text-align: right;
+      display: block; float: left; text-align: right;
+      margin-right: 6px;
       width: @main_label_width - @bucket_icon_size - 6px;
+      line-height: @line_height;
     }
     input {
       width: @text_input_width;
@@ -116,7 +113,12 @@
   }
 
   .for-bucket-type {
-    input[value=membase] { margin-left: 6px; }
+    span {
+      height: @line_height * 2;
+    }
+    input {
+      margin-right: 3px;
+    }
   }
 
   label.for-sasl-password-input {
