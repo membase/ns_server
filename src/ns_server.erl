@@ -22,12 +22,13 @@
 start(_Type, _Args) ->
     supervisor:start_link({local, ns_server_cluster_sup},
                           gen_sup, {{one_for_one, 10, 1},
-                                     [
-                                      {dist_manager, {dist_manager, start_link, []},
-                                       permanent, 10, worker, [dist_manager]},
-                                      {ns_cluster, {ns_cluster, start_link, []},
-                                       permanent, 5000, worker, [ns_cluster]}
-                                      ]}).
+                                    [{ns_log_mf_h, {ns_log_mf_h, start_link, []},
+                                      transient, 10, worker, [ns_log_mf_h]},
+                                     {dist_manager, {dist_manager, start_link, []},
+                                      permanent, 10, worker, [dist_manager]},
+                                     {ns_cluster, {ns_cluster, start_link, []},
+                                      permanent, 5000, worker, [ns_cluster]}
+                                    ]}).
 
 stop(_State) ->
     ok.

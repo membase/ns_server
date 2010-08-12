@@ -81,10 +81,9 @@ start_node() {
         -setcookie nocookie \\
         -run ns_bootstrap \\
         -kernel inet_dist_listen_min 21100 inet_dist_listen_max 21199 \\
-        -sasl sasl_error_logger false \\
-        -sasl error_logger_mf_dir '"logs/'$1'"' \\
-        -sasl error_logger_mf_maxbytes 10485760 \\
-        -sasl error_logger_mf_maxfiles 10 \\
+        -ns_server error_logger_mf_dir '"logs/'$1'"' \\
+        -ns_server error_logger_mf_maxbytes 10485760 \\
+        -ns_server error_logger_mf_maxfiles 10 \\
         -- \\
         -no-input \\
         -name $1@127.0.0.1 -noshell \\
