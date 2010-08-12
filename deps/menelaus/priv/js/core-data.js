@@ -13,7 +13,7 @@ function onNoncriticalXHRError(xhr) {
   // everything except timeout & service unavailable
   if (status != 503 && status != 504 && status > 0) {
     onUnexpectedXHRError(xhr);
-    throw new Error("xhr error is critical");
+    throw new Error("xhr error is critical: " + status);
   }
 
   // TODO: implement some UI for that and maybe some request repeating
@@ -52,22 +52,12 @@ function onUnexpectedXHRError(xhr) {
           if (_.isString(key) || _.isNumber(key))
             s[key] = value;
         });
-        json = JSON.stringify({
-          s: s,
-          statusCode: status,
-          responseText: responseText
-        });
+        json = JSON.stringify(s);
       } catch (e) {
-        try {
-          json = JSON.stringify({
-            statusCode: status,
-            responseText: responseText
-          });
-        } catch (e2) {
-          return;
-        }
+        json = ""
       }
-      sessionStorage.reloadCause = json;
+      sessionStorage.reloadCause = "s: " + json + ",\nstatusCode: " + status + ",\nresponseText:\n" + responseText;
+      sessionStorage.reloadTStamp = (new Date()).valueOf();
     })();
   }
 

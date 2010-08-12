@@ -207,8 +207,10 @@ loop(Req, AppRoot, DocRoot) ->
                              ["logClientError"] -> {auth_any_bucket,
                                                     fun (R) ->
                                                             User = menelaus_auth:extract_auth(username, R),
-                                                            ns_log:log(?MODULE, ?UI_SIDE_ERROR_REPORT, "Client-side error-report for user ~p on node ~p: ~p~n",
-                                                                       [User, node(), binary_to_list(R:recv_body())]),
+                                                            ns_log:log(?MODULE, ?UI_SIDE_ERROR_REPORT,
+                                                                       "Client-side error-report for user ~p on node ~p:~nUser-Agent:~s~n~s~n",
+                                                                       [User, node(),
+                                                                        Req:get_header_value("user-agent"), binary_to_list(R:recv_body())]),
                                                             R:ok({"text/plain", add_header(), <<"">>})
                                                     end};
                              ["erlwsh" | _] ->
