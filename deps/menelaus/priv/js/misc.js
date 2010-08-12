@@ -747,3 +747,21 @@ function parseValidateInteger(number, min, max) {
 
   return number;
 }
+
+var basedigits = "0123456789ABCDEF";
+function integerToString(number, base) {
+  var rv = [];
+  var sign = '';
+  if (number < 0) {
+    sign = '-';
+    number = -number;
+  }
+  do {
+    var r = number % base;
+    number = (number / base) >> 0;
+    rv.push(basedigits.charAt(r));
+  } while (number != 0);
+  rv.push(sign);
+  rv.reverse();
+  return rv.join('');
+}
