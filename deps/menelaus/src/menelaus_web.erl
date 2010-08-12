@@ -109,6 +109,8 @@ loop(Req, AppRoot, DocRoot) ->
                              ["pools", Id, "stats"] ->
                                  {auth_any_bucket, fun menelaus_stats:handle_bucket_stats/3,
                                   [Id, all]};
+                             ["pools", Id, "overviewStats"] ->
+                                 {auth, fun menelaus_stats:handle_overview_stats/2, [Id]};
                              ["poolsStreaming", Id] ->
                                  {auth_any_bucket, fun handle_pool_info_streaming/2, [Id]};
                              ["pools", PoolId, "buckets"] ->

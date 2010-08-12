@@ -22,7 +22,11 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--export([handle_bucket_stats/3, basic_stats/2, bucket_disk_usage/1, bucket_ram_usage/1]).
+-export([handle_bucket_stats/3,
+         handle_overview_stats/2,
+         basic_stats/2,
+         bucket_disk_usage/1,
+         bucket_ram_usage/1]).
 
 %% External API
 
@@ -62,6 +66,34 @@ basic_stats(_PoolId, BucketName) ->
      {memUsed, MemUsed},
      {itemCount, ItemCount}].
 
+handle_overview_stats(PoolId, Req) ->
+    Names = lists:sort(menelaus_web_buckets:all_accessible_bucket_names(PoolId, Req)),
+    AllSamples = lists:map(fun (Name) ->
+                                   Samples = element(1, grab_op_stats(Name, [{"zoom", "hour"}])),
+                                   case Samples of
+                                       [#stat_entry{bytes_read = undefined} | T] -> T;
+                                       _ -> Samples
+                                   end
+                           end, Names),
+    [FirstBucketSamples | RestSamples] = AllSamples,
+    MergedSamples = lists:foldl(fun (Samples, Acc) ->
+                                        merge_samples_normally(Acc, Samples)
+                                end, FirstBucketSamples, RestSamples),
+    TStamps = [X#stat_entry.timestamp || X <- MergedSamples],
+    Ops = [X#stat_entry.cmd_get +
+           X#stat_entry.cmd_set +
+           X#stat_entry.incr_misses +
+           X#stat_entry.incr_hits +
+           X#stat_entry.decr_misses +
+           X#stat_entry.decr_hits +
+           X#stat_entry.delete_misses +
+           X#stat_entry.delete_hits
+           || X <- MergedSamples],
+    DiskReads = [X#stat_entry.ep_io_num_read || X <- MergedSamples],
+    menelaus_util:reply_json(Req, {struct, [{timestamp, TStamps},
+                                            {ops, Ops},
+                                            {ep_io_num_read, DiskReads}]}).
+
 %% GET /pools/default/stats
 %% Supported query params:
 %%  resampleForUI - pass 1 if you need 60 samples
@@ -80,7 +112,7 @@ basic_stats(_PoolId, BucketName) ->
 %%        }}
 
 handle_bucket_stats(PoolId, all, Req) ->
-    BucketNames = menelaus_web:all_accessible_bucket_names(PoolId, Req),
+    BucketNames = menelaus_web_buckets:all_accessible_bucket_names(PoolId, Req),
     handle_buckets_stats(PoolId, BucketNames, Req);
 
 handle_bucket_stats(PoolId, Id, Req) ->
@@ -128,6 +160,13 @@ merge_samples(MainSamples, OtherSamples, MergerFun, MergerState) ->
                                              {[NewSample | Acc], NextState}
                                      end, {[], MergerState}, MainSamples),
     lists:reverse(MergedSamples).
+
+merge_samples_normally(MainSamples, OtherSamples) ->
+    merge_samples(MainSamples, OtherSamples,
+                  fun (A, B, _) ->
+                          {aggregate_stat_entries([A, B]), []}
+                  end, []).
+
 
 grab_op_stats(Bucket, Params) ->
     ClientTStamp = case proplists:get_value("haveTStamp", Params) of
@@ -222,10 +261,7 @@ grab_op_stats_body(Bucket, ClientTStamp, Ref, PeriodParams) ->
                     %% merge samples from other nodes
                     MergedSamples = lists:foldl(fun ({Node, _}, AccSamples) when Node =:= node() -> AccSamples;
                                                     ({_Node, RemoteSamples}, AccSamples) ->
-                                                        merge_samples(AccSamples, RemoteSamples,
-                                                                      fun (A, B, _) ->
-                                                                              {aggregate_stat_entries([A, B]), []}
-                                                                      end, [])
+                                                        merge_samples_normally(AccSamples, RemoteSamples)
                                                 end, MainSamples, Replies),
                     lists:reverse(MergedSamples)
             end
