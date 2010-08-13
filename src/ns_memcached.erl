@@ -84,7 +84,9 @@ handle_call({delete_vbucket, VBucket, Sync}, From, State) ->
             ok = mc_client_binary:set_vbucket(State#state.sock, VBucket,
                                               dead),
             timer:send_after(?VBUCKET_POLL_INTERVAL, {reap, VBucket, From}),
-            {noreply, State}
+            {noreply, State};
+        {{memcached_error, einval, _} = R, false} ->
+            {reply, R, State}
     end;
 handle_call({get_vbucket, VBucket}, _From, State) ->
     Reply = mc_client_binary:get_vbucket(State#state.sock, VBucket),
