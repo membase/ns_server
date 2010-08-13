@@ -1019,7 +1019,7 @@ ul.tabs .alert_num_display .alert_num {display:block;}
 .additional_server_info {display:block;}
 .additional_server_info h3 {font-size:14px; color:#444245; padding:5px 0 10px 0; border-bottom:1px solid #bbbdbf; font-weight:normal; margin:0 0 10px 0;}
 .additional_server_info .info_block {display:block; overflow:hidden;}
-.additional_server_info .info_block .path {display:block; padding:2px 0 0 0; font-size:11px; color:#828284;}
+.additional_server_info .info_block .path {display:block; padding:2px 0 0 0; font-size:11px; /*color:#828284;*/}
 .additional_server_info .info_block.last {padding:10px 0 10px 0;}
 .dynamic_ram {display:block; height:40px; padding:0 0 0 77px; background:url(../images/icons.png) -6px -190px no-repeat; float:left;}
 .total_ram {display:block; height:14px; text-align:right;}
@@ -1030,7 +1030,7 @@ ul.tabs .alert_num_display .alert_num {display:block;}
 .diagr_ram span.blue {z-index:5; background-position:0 -15px;}
 .diagr_ram span.yellow {z-index:4; background-position:0 -30px;}
 .diagr_ram span.green {z-index:3; background-position:0 -45px;}
-.RAM_diagramm td {color:#808080;padding-left:0 !important;padding-right:0 !important;display:table-cell;white-space:nowrap;}
+.RAM_diagramm td {/*color:#808080;*/padding-left:0 !important;padding-right:0 !important;display:table-cell;white-space:nowrap;}
 .RAM_diagramm td.blue {color:#1878a2;}
 .RAM_diagramm td.yellow {color:#c19710;}
 .RAM_diagramm td.green {color:#6cc74c;}
@@ -1046,7 +1046,7 @@ ul.tabs .alert_num_display .alert_num {display:block;}
 .add_back_btn {display:block; width:148px; height:31px; background:url(../images/add_back_btn.png) 0 0 no-repeat; float:right; margin-right:-10px;}
 
 #buckets .settings-placeholder { display: none; }
-body table.buckets_tab td {background:none #eee; border-bottom:1px solid #ced5d9; padding:0 10px; color:#7e7e80; border-right:0px; text-align:center;}
+body table.buckets_tab td {background:none #eee; border-bottom:1px solid #ced5d9; padding:0 10px; /*color:#7e7e80;*/ border-right:0px; text-align:center;}
 body table.buckets_tab tr td:first-child {text-align:left;}
 body table.buckets_tab tr th {background:none #f6f6f7; border-right:0px; border-bottom:1px solid #fff; color:#4d4d4d; font-weight:normal; text-align:center;}
 body table.buckets_tab tr th:first-child span {display:block; white-space:nowrap; padding:0 0 0 56px; text-align:left;}
@@ -1061,9 +1061,9 @@ body table.buckets_tab tr th:first-child span {display:block; white-space:nowrap
 
 .bucket_properties_table {width:550px;}
 .bucket_properties_table td {text-align:left !important; vertical-align:top !important; color:#444245; line-height:16px; background:none !important; border:0px !important;}
-.bucket_properties_table td span {color:#949597;}
+.bucket_properties_table td span {/*color:#949597;*/}
 .buckets_tab table.label {float:left;margin:2px 0 0;}
-.buckets_tab table.label td {color:#7e7e80;}
+.buckets_tab table.label td {/*color:#7e7e80;*/}
 .buckets_tab table.label td:first-child {width:175px;color:#444245; text-align:right;}
 
 .tabs switcher {}
@@ -1089,7 +1089,7 @@ ul.tabs .tab_left a.current, ul.tabs .tab_right a.current, ul.tabs .tab_left a:h
 ul.tabs .tab_left a.current:hover, ul.tabs .tab_right a.current:hover {text-shadow:#bbbfc2 1px 1px;}
 
 .server_details_tab td {color:#434446; padding:0 0 5px 0;}
-.server_details_tab td span {color:#87888a;}
+.server_details_tab td span {/*color:#87888a;*/}
 
 .servers_list .settings-placeholder {background-color:#e7e7e9; padding-top:5px !important;padding-bottom:15px !important;}
  .servers_list li.settings-placeholder, .servers_list .settings-placeholder > td {padding-left:76px !important;}

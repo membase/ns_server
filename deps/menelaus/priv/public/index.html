@@ -356,7 +356,7 @@
                 <h3>Memory Cache</h3>
                 <span class="info_block">
                   <span class="dynamic_ram">Dynamic RAM:</span>
-                  <span class="total_ram" style="color: #808080;">Total {%= V.formatQuantity(memoryTotal, 'b', 1024) %}</span>
+                  <span class="total_ram">Total {%= V.formatQuantity(memoryTotal, 'b', 1024) %}</span>
                   <table class="RAM_diagramm">
                   <col width="" />
                   <col width="" />
@@ -383,7 +383,7 @@
                     Disk One:
                     <span class="path">{%= h(storage.hdd[0].path) %}</span>
                   </span>
-                  <span class="total_ram" style="color: #808080;">Total {%= h(V.formatQuantity(storage.hdd[0].memoryTotal, 'b', 1024)) %}</span>
+                  <span class="total_ram">Total {%= h(V.formatQuantity(storage.hdd[0].memoryTotal, 'b', 1024)) %}</span>
                   <table class="RAM_diagramm">
                   <col width="" />
                   <col width="" />
@@ -634,7 +634,7 @@
                 </td>
               </tr>
               <tr class="diagr_labels">
-                <td class="green">This bucket ({%= h(V.formatQuantity(totalRAMUsed)) %})</td>
+                <td class="green">This Bucket ({%= h(V.formatQuantity(totalRAMUsed)) %})</td>
                 <td class="yellow">Other Data ({%= h(V.formatQuantity(otherRAMSize)) %})</td>
                 <td class="right">Free ({%= h(V.formatQuantity(totalRAMFree)) %})</td>
               </tr>
@@ -673,7 +673,7 @@
                 </td>
               </tr>
               <tr class="diagr_labels">
-                <td class="green">This bucket ({%= h(V.formatQuantity(totalDiskUsed)) %})</td>
+                <td class="green">This Bucket ({%= h(V.formatQuantity(totalDiskUsed)) %})</td>
                 <td class="yellow">Other Data ({%= h(V.formatQuantity(otherDiskSize)) %})</td>
                 <td class="right">Free ({%= h(V.formatQuantity(totalDiskFree)) %})</td>
               </tr>
@@ -1030,8 +1030,8 @@
         </div>
       </div>
       <table class="b"><tr>
-        <td class="blue">Other buckets <span class="other">15 Gb</span>)</td>
-        <td class="green">This bucket (<span class="this">5 Gb</span>)</td>
+        <td class="blue">Other Buckets <span class="other">15 Gb</span>)</td>
+        <td class="green">This Bucket (<span class="this">5 Gb</span>)</td>
         <td>Free (<span class="free">12 Gb</span>)</td>
       </tr></table>
     </div>
@@ -1051,9 +1051,9 @@
           </div>
         </div>
         <table class="b"><tr>
-          <td class="blue">Other buckets (<span class="other">15 Gb</span>)</td>
-          <td class="green">This bucket (<span class="this">5 Gb</span>)</td>
-          <td>FREE (<span class="free">12 Gb</span>)</td>
+          <td class="blue">Other Buckets (<span class="other">15 Gb</span>)</td>
+          <td class="green">This Bucket (<span class="this">5 Gb</span>)</td>
+          <td>Free (<span class="free">12 Gb</span>)</td>
         </tr></table>
       </div>
       <div class="overcommit size-gauge for-hdd">
@@ -1067,8 +1067,8 @@
           </div>
         </div>
         <table class="b"><tr>
-          <td class="blue">Other buckets (<span class="other">15 Gb</span>)</td>
-          <td class="green">This bucket (<span class="this">5 Gb</span>)</td>
+          <td class="blue">Other Buckets (<span class="other">15 Gb</span>)</td>
+          <td class="green">This Bucket (<span class="this">5 Gb</span>)</td>
           <td class="extra">Overcommit (<span class="overcommitted">12 Gb</span>)</td>
         </tr></table>
       </div>
@@ -1526,8 +1526,9 @@
     </div>
     <h2 class="question">Configure Disk Storage</h2>
     <div class="disk_setup_block">
-      <div><label>Size:</label>
-        <span style="color:#7e7e80; font-size:10pt; margin-left:5px; line-height: 25px;" class="total-size">---</span>
+      <div>
+	  	<label>Size:</label>
+        <span style="font-size:10pt; margin-left:5px; line-height: 25px;" class="total-size">---</span>
         <br style="clear:both;" />
       </div>
       <div>
