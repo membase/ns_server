@@ -856,18 +856,18 @@ body.init_welcome #container { display: none; }
 body.init_welcome #init_welcome_dialog h1 {color:#fff; font-family:Verdana, Helvetica, sans-serif; font-size:18pt; font-weight:100; margin-bottom:-25px; margin-left:25px; padding-left:25px;}
 body.init_welcome #init_welcome_dialog p {color:#acbbc4; font-family:Verdana, Helvetica, sans-serif; font-size:14pt; font-weight:100;}
 body.init_welcome #init_welcome_dialog .pad-header .tagline,
-body.init_welcome #init_welcome_dialog .pad-header .version {float:left; margin-top:73px;}
+body.init_welcome #init_welcome_dialog .pad-header .version {float:left; margin-top:71px;}
 body.init_welcome #init_welcome_dialog .pad-header div.tagline {color:#00a6de; font-size:12pt; margin-left:225px; margin-right:25px;}
 body.init_welcome #init_welcome_dialog .pad-header div.version {color:#ec5223; font-size:11pt;}
-body.init_welcome #init_welcome_dialog .pad-header div.elastro-cling {background:url(../images/elastro_cling_v22.png) no-repeat; float:right; height:239px; margin-right:-169px; width:189px;}
+body.init_welcome #init_welcome_dialog .pad-header div.elastro-cling {background:url(../images/elastro_cling_v22.png) no-repeat; float:right; height:239px; margin-right:-167px; width:189px;}
 
-body.init_welcome form#init_welcome_form {width:600px;margin:25px 0 228px 50px;/*margin-bottom:162px;*/}
+body.init_welcome form#init_welcome_form {width:600px;margin:25px 0 162px 50px;/*margin-bottom:162px;*/}
 body.init_welcome form#init_welcome_form p {color:#bdccd4; font-family:Verdana,Helvetica,sans-serif; font-size:12pt; line-height:20px; margin-bottom:20px;}
 body.init_welcome form#init_welcome_form input.license-input {border:1px solid #b6bdc1; color:#7e7e80; font:14px Verdana, Helvetica, sans-serif; margin:0px; padding:5px 6px;width:190px;}
 body.init_welcome form#init_welcome_form input[disabled="disabled"].license-input {background:#ddd;}
 body.init_welcome form#init_welcome_form input[type="image"] {width:145px; height:55px; margin-left:-7px; color:#fff;}
 
-body.init_welcome #init_welcome_dialog .welcome-footer {color:#9aa3a8; font:11px/15px Verdana, Helvetica, sans-serif;margin-top:85px; text-align:center; width:724px;line-height:=1.5;}
+body.init_welcome #init_welcome_dialog .welcome-footer {color:#9aa3a8; font:11px/15px Verdana, Helvetica, sans-serif;position:relative;top:10px;text-align:center; width:724px;}
 body.init_welcome #init_welcome_dialog .welcome-footer a {color:#a7e4ff; margin-left:15px; margin-right:15px;}
 
 /* config */
@@ -916,8 +916,8 @@ body.init_secure #container { display: none; }
 
 .init_block {min-height:737px; height:100%; position:relative;}
 .init_block h1 {color:#2f3536; text-transform:uppercase; font-size:28px; padding:28px 0 30px 0; position:relative; top:13px;}
-.init_block .pad {background:url(../images/welcome-background.png) no-repeat; width:724px; margin-left:auto; margin-right:auto; margin-top:55px;}
-.init_block .pad .pad-header {height:115px; width:703px;}
+.init_block .pad {background:url(../images/welcome-background.png) 0 100% no-repeat; width:724px; margin-left:auto; margin-right:auto; margin-top:55px;}
+.init_block .pad .pad-header {height:115px; width:705px; background:url(../images/welcome-background.png) 0 0 no-repeat;}
 .init_block .form {display:block; width:580px; 0 0 no-repeat;}
 .init_block .form table {margin:25px 0 0 25px;}
 .init_block .form table td {vertical-align:middle; padding:10px 0;}
