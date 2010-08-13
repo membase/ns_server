@@ -74,22 +74,61 @@ var OverviewSection = {
     });
 
     this.statsCell = new Cell(function (arg) {
-      return future.get({url: '/pools/default/overviewStats'});
+      return future.get({url: '/pools/default/overviewStats', ignoreErrors: true});
     }, {
       arg: this.statsCellArg
     });
-    this.statsCell.subscribeValue($m(this, 'onStatsValue'));
+    this.statsCell.keepValueDuringAsync = true;
+
+    this.statsCell.subscribe(function (cell) {
+      var ts = cell.value.timestamp;
+      var interval = ts[ts.length-1] - ts[0];
+      console.log("interval: ", interval);
+      if (isNaN(interval) || interval < 15000)
+        cell.recalculateAfterDelay(2000);
+      else if (interval < 300000)
+        cell.recalculateAfterDelay(10000);
+      else
+        cell.recalculateAfterDelay(30000);
+    });
+
+    this.statsToRenderCell = new Cell(function (stats, mode) {
+      if (mode == 'overview')
+        return stats;
+    }, {
+      mode: DAO.cells.mode,
+      stats: this.statsCell
+    })
+    this.statsToRenderCell.subscribeValue($m(this, 'onStatsValue'));
   },
   plotGraph: function (graphJQ, stats, attr) {
     var data = stats[attr];
+    var tstamps = stats.timestamp;
+
+    // not enough data
+    if (tstamps.length < 2)
+      return;
 
     var minX, minY = 1/0;
     var maxX, maxY = -1/0;
     var minInf = minY;
     var maxInf = maxY;
 
+    var decimation = 1;
+
+    while (data.length / decimation >= 120) {
+      decimation <<= 1;
+    }
+
+    console.log("decimation: ", decimation);
+
+    if (decimation != 1) {
+      tstamps = decimateNoFilter(decimation, tstamps);
+      data = decimateSamples(decimation, data);
+    }
+
     var plotData = _.map(data, function (e, i) {
-      var x = stats.timestamp[i];
+      var x = tstamps[i];
       if (e <= minY) {
         minX = x;
         minY = e;
@@ -101,186 +140,206 @@ var OverviewSection = {
       return [x, e];
     });
 
-    plotData = _.filter(plotData, function (e, i) {
-      return (i % 5) == 0;
-    });
-
     var chosenTicks = [];
     var prevTick = 0;
     var prevMins = -1;
 
-    var tstamps = stats.timestamp;
-    for (var i = 0; i < tstamps.length; i++) {
-      var val = tstamps[i];
-      if (prevTick + (14 * 60 * 1000) > val)
-        continue;
+    var fivemins = 5 * 60 * 1000;
 
-      var date = new Date(tstamps[i]);
-      var minutes = date.getMinutes();
+    var mins14 = 14 * 60 * 1000;
 
-      var minMod = minutes % 15;
+     for (var i = 0; i < tstamps.length; i++) {
+       var val = tstamps[i];
+       if (prevTick + mins14 > val)
+         continue;
 
-      if (prevMins > minMod) {
-        // force tick if we for some reason passed 15 minutes mark
-        prevMins = minMod;
-      } else {
-        prevMins = minMod;
-        // not 15 minutes mark, skip
-        if (minMod != 0)
-          continue;
-      }
+       var date = new Date(tstamps[i]);
+       var minutes = date.getMinutes();
 
-      prevTick = val;
-      chosenTicks.push(val);
-    }
+       var minMod = minutes % 15;
 
-    minY = 0;
+       if (prevMins > minMod) {
+         // force tick if we for some reason passed 15 minutes mark
+         prevMins = minMod;
+       } else {
+         prevMins = minMod;
+         // not 15 minutes mark, skip
+         if (minMod != 0)
+           continue;
+       }
 
-    if (minY == maxY)
-      maxY = 1;
+       prevTick = val;
+       chosenTicks.push(val);
+     }
 
-    var graphMax = maxY + (maxY - minY) * 0.1;
+     if (chosenTicks.length < 2) {
+       var leftBound = plotData[0][0];
+       var rightBound = plotData[plotData.length-1][0];
+       var otherPoint = chosenTicks[0];
+       if (chosenTicks.length &&  leftBound + fivemins < otherPoint && otherPoint + fivemins < rightBound)
+         chosenTicks = [leftBound, otherPoint, rightBound];
+       else
+         chosenTicks = [leftBound, rightBound];
+     } else if (plotData[plotData.length-1][0] - fivemins > chosenTicks[chosenTicks.length-1]){
+       chosenTicks.push(plotData[plotData.length-1][0]);
+     }
 
-    // this is ripped out of jquery.flot which is MIT licensed
-    // Tweaks are mine. Bugs too.
-    var yTicks = (function () {
-      var delta = (maxY - minY) / 5;
+     minY = 0;
 
-      if (delta == 0.0)
-        return [0, 1];
+     if (minY == maxY)
+       maxY = 1;
 
-      var size, magn, norm;
+     var graphMax = maxY + (maxY - minY) * 0.15;
 
-      function floorInBase(n, base) {
-        return base * Math.floor(n / base);
-      }
+     // this is ripped out of jquery.flot which is MIT licensed
+     // Tweaks are mine. Bugs too.
+     var yTicks = (function () {
+       var delta = (maxY - minY) / 5;
 
-      // pretty rounding of base-10 numbers
-      var dec = -Math.floor(Math.log(delta) / Math.LN10);
+       if (delta == 0.0)
+         return [0, 1];
 
-      magn = Math.pow(10, -dec);
-      norm = delta / magn; // norm is between 1.0 and 10.0
+       var size, magn, norm;
 
-      if (norm < 1.5)
-        size = 1;
-      else if (norm < 3) {
-        size = 2;
-        // special case for 2.5, requires an extra decimal
-        if (norm > 2.25) {
-          size = 2.5;
-          ++dec;
-        }
-      }
-      else if (norm < 7.5)
-        size = 5;
-      else
-        size = 10;
+       function floorInBase(n, base) {
+         return base * Math.floor(n / base);
+       }
 
-      size *= magn;
+       // pretty rounding of base-10 numbers
+       var dec = -Math.floor(Math.log(delta) / Math.LN10);
 
-      function tickFormatter(v) {
-        return ViewHelpers.formatQuantity(v, '', 1000);
-      }
+       magn = Math.pow(10, -dec);
+       norm = delta / magn; // norm is between 1.0 and 10.0
 
-      var ticks = [];
+       if (norm < 1.5)
+         size = 1;
+       else if (norm < 3) {
+         size = 2;
+         // special case for 2.5, requires an extra decimal
+         if (norm > 2.25) {
+           size = 2.5;
+           ++dec;
+         }
+       }
+       else if (norm < 7.5)
+         size = 5;
+       else
+         size = 10;
 
-      // spew out all possible ticks
-      var start = floorInBase(minY, size),
-      i = 0, v = Number.NaN, prev;
-      do {
-        prev = v;
-        v = start + i * size;
-        ticks.push(v);
-        ++i;
-      } while (v < maxY && v != prev);
+       size *= magn;
 
-      return ticks;
-    })();
+       var ticks = [];
 
-    $.plot(graphJQ,
-           [{color: '#1d88ad',
-             data: plotData}],
-           {xaxis: {
-             ticks: chosenTicks,
-             tickFormatter: function (val, axis) {
-               var date = new Date(val);
-               var hours = date.getHours();
-               var mins = date.getMinutes();
-               var am = (hours > 1 && hours < 13);
-               if (!am) {
-                 if (hours == 0)
-                   hours = 12;
-                 else
-                   hours -= 12;
-               }
-               if (hours == 12)
-                 am = !am;
-               var formattedHours = String(hours + 100).slice(1);
-               var formattedMins = String(mins + 100).slice(1);
-               return formattedHours + ":" + formattedMins + (am ? 'am' : 'pm');
-             }
-           },
-            yaxis: {
+       // spew out all possible ticks
+       var start = floorInBase(minY, size),
+       i = 0, v = Number.NaN, prev;
+       do {
+         prev = v;
+         v = start + i * size;
+         ticks.push(v);
+         ++i;
+       } while (v < maxY && v != prev);
+
+       return ticks;
+     })();
+
+     var preparedQ = ViewHelpers.prepareQuantity(yTicks[yTicks.length-1], 1000);
+
+     $.plot(graphJQ,
+            [{color: '#1d88ad',
+              data: plotData}],
+            {xaxis: {
+              ticks: chosenTicks,
               tickFormatter: function (val, axis) {
-                return ViewHelpers.formatQuantity(val, '', 1000);
-              },
-              min: minY,
-              max: graphMax,
-              ticks: yTicks
-            },
-            grid: {
-              borderWidth: 0,
-              markings: function (opts) {
-                // { xmin: , xmax: , ymin: , ymax: , xaxis: , yaxis: , x2axis: , y2axis:  };
-                return [
-                  {xaxis: {from: opts.xmin, to: opts.xmax},
-                   yaxis: {from: opts.ymin, to: opts.ymin},
-                   color: 'black'},
-                  {xaxis: {from: opts.xmin, to: opts.xmin},
-                   yaxis: {from: opts.ymin, to: opts.ymax},
-                   color: 'black'}
-                ]
+                var date = new Date(val);
+                var hours = date.getHours();
+                var mins = date.getMinutes();
+                var am = (hours > 1 && hours < 13);
+                if (!am) {
+                  if (hours == 0)
+                    hours = 12;
+                  else
+                    hours -= 12;
+                }
+                if (hours == 12)
+                  am = !am;
+                var formattedHours = String(hours + 100).slice(1);
+                var formattedMins = String(mins + 100).slice(1);
+                return formattedHours + ":" + formattedMins + (am ? 'am' : 'pm');
               }
-            }});
+            },
+             yaxis: {
+               tickFormatter: function (val, axis) {
+                 if (val == 0)
+                   return '0';
+                 return [truncateTo3Digits(val/preparedQ[0]), preparedQ[1]].join('');
+               },
+               min: minY,
+               max: graphMax,
+               ticks: yTicks
+             },
+             grid: {
+               borderWidth: 0,
+               markings: function (opts) {
+                 // { xmin: , xmax: , ymin: , ymax: , xaxis: , yaxis: , x2axis: , y2axis:  };
+                 return [
+                   {xaxis: {from: opts.xmin, to: opts.xmax},
+                    yaxis: {from: opts.ymin, to: opts.ymin},
+                    color: 'black'},
+                   {xaxis: {from: opts.xmin, to: opts.xmin},
+                    yaxis: {from: opts.ymin, to: opts.ymax},
+                    color: 'black'}
+                 ]
+               }
+             }});
 
-    function singleMarker(center, value) {
-      var text;
-      value = ViewHelpers.formatQuantity(value, '', 1000);
+     function singleMarker(center, value) {
+       var text;
+       value = ViewHelpers.formatQuantity(value, '', 1000);
 
-      text = String(value);
-      var marker = $('<span class="marker"><span class="l"></span><span class="r"></span></span>');
-      marker.find('.l').text(text);
-      graphJQ.append(marker);
-      marker.css({
-        position: 'absolute',
-        top: center.top - 16 + 'px',
-        left: center.left - 10 + 'px'
-      });
-      return marker;
-    }
+       text = String(value);
+       var marker = $('<span class="marker"><span class="l"></span><span class="r"></span></span>');
+       marker.find('.l').text(text);
+       graphJQ.append(marker);
+       marker.css({
+         position: 'absolute',
+         top: center.top - 16 + 'px',
+         left: center.left - 10 + 'px'
+       });
+       return marker;
+     }
 
-    function drawMarkers(plot) {
-      graphJQ.find('.marker').remove();
+     function drawMarkers(plot) {
+       graphJQ.find('.marker').remove();
 
-      if (minY != minInf && minY != 0) {
-        var offset = plot.pointOffset({x: minX, y: minY});
-        singleMarker(offset, minY).addClass('marker-min');
-      }
+       if (minY != minInf && minY != 0) {
+         var offset = plot.pointOffset({x: minX, y: minY});
+         singleMarker(offset, minY).addClass('marker-min');
+       }
 
-      if (maxY != maxInf) {
-        var offset = plot.pointOffset({x: maxX, y: maxY});
-        singleMarker(offset, maxY).addClass('marker-max');
-      }
-    }
+       if (maxY != maxInf) {
+         var offset = plot.pointOffset({x: maxX, y: maxY});
+         singleMarker(offset, maxY).addClass('marker-max');
+       }
+     }
 
-  },
-  onStatsValue: function (stats) {
-    if (!stats)
-      return;
-    this.plotGraph($('#overview_ops_graph'), stats, 'ops');
-    this.plotGraph($('#overview_reads_graph'), stats, 'ep_io_num_read');
-    this.statsCell.recalculateAfterDelay(30000);
-  },
+   },
+   onStatsValue: function (stats) {
+     var haveStats = true;
+     if (!stats || DAO.cells.mode.value != 'overview')
+       haveStats = false;
+     else if (stats.timestamp.length < 2)
+       haveStats = false;
+
+     var item = $('#overview_ops_graph').parent().parent();
+     if (haveStats) {
+       item.removeClass('no-samples-yet');
+       this.plotGraph($('#overview_ops_graph'), stats, 'ops');
+       this.plotGraph($('#overview_reads_graph'), stats, 'ep_io_num_read');
+     } else {
+       item.addClass('no-samples-yet');
+     }
+   },
   onEnter: function () {
   }
 };
