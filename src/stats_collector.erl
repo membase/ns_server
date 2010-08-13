@@ -79,9 +79,11 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal functions
 
 parse_stats(TS, Stats, LastCounters) ->
-    Dict = dict:from_list([{list_to_atom(K), V} || {K, V} <- Stats]),
-    Gauges = [list_to_integer(dict:fetch(K, Dict)) || K <- [?STAT_GAUGES]],
-    Counters = [list_to_integer(dict:fetch(K, Dict)) || K <- [?STAT_COUNTERS]],
+    Dict = dict:from_list([{binary_to_atom(K, latin1), V} || {K, V} <- Stats]),
+    Gauges = [list_to_integer(binary_to_list(dict:fetch(K, Dict)))
+              || K <- [?STAT_GAUGES]],
+    Counters = [list_to_integer(binary_to_list(dict:fetch(K, Dict)))
+                || K <- [?STAT_COUNTERS]],
     Deltas = case LastCounters of
                  undefined ->
                      lists:duplicate(length([?STAT_COUNTERS]), undefined);

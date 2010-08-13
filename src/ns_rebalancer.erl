@@ -23,7 +23,8 @@
 
 -include("ns_common.hrl").
 
--export([failover/2, rebalance/2, rebalance/4, unbalanced/2]).
+-export([failover/2, generate_initial_map/3, rebalance/2, rebalance/4,
+         unbalanced/2]).
 
 
 %%
@@ -42,6 +43,20 @@ failover(Bucket, Node) ->
     lists:foreach(fun (N) ->
                           ns_vbm_sup:kill_dst_children(N, Bucket, Node)
                   end, lists:delete(Node, Servers)).
+
+
+generate_initial_map(NumReplicas, NumVBuckets, Servers) ->
+    generate_initial_map(NumReplicas, NumVBuckets, Servers, []).
+
+
+generate_initial_map(_, 0, _, Map) ->
+    Map;
+generate_initial_map(NumReplicas, NumVBuckets, Servers, Map) ->
+    U = lists:duplicate(erlang:max(0, NumReplicas + 1 - length(Servers)),
+                        undefined),
+    Chain = lists:sublist(Servers, NumReplicas + 1) ++ U,
+    [H|T] = Servers,
+    generate_initial_map(NumReplicas, NumVBuckets - 1, T ++ [H], [Chain|Map]).
 
 
 rebalance(KeepNodes, EjectNodes) ->
@@ -282,8 +297,7 @@ perform_moves(Bucket, Map, Moves, ProgressFun) ->
             [[case dict:find(V, MoveDict) of error -> M; {ok, N} -> N end |
               lists:duplicate(length(C), undefined)]
              || {V, [M|C]} <- misc:enumerate(Map, 0)];
-        stopped -> throw(stopped);
-        X -> exit({mover_failed, X})
+        stopped -> throw(stopped)
     end.
 
 
@@ -306,14 +320,14 @@ promote_replica(Bucket, Chain, RemapNodes, V) ->
             NewChainExtended;
         [NewMaster|_] ->
             %% The janitor will catch it if this fails.
-            catch ns_memcached:set_vbucket_state(NewMaster, V, active),
+            catch ns_memcached:set_vbucket(NewMaster, V, active),
             NewChainExtended
     end.
 
 
 %% @doc Wait until either all memcacheds are up or stop is pressed.
 wait_for_memcached(Nodes, Bucket) ->
-    case ns_bucket:ensure_bucket(Bucket, Nodes) of
+    case [Node || Node <- Nodes, not ns_memcached:connected(Node, Bucket)] of
         [] ->
             ok;
         Down ->

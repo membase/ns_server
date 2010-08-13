@@ -78,10 +78,6 @@ good_children() ->
      {ns_stats_event, {gen_event, start_link, [{local, ns_stats_event}]},
       permanent, 10, worker, dynamic},
 
-     {ns_memcached,
-      {ns_memcached, start_link, []},
-      permanent, 10, worker, [ns_memcached]},
-
      {ns_heart, {ns_heart, start_link, []},
       permanent, 10, worker, [ns_heart]},
 

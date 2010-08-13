@@ -65,8 +65,8 @@ kill_vbuckets(Node, Bucket, VBuckets) ->
             lists:foreach(fun ({V, dead}) ->
                                   ns_memcached:delete_vbucket(Node, Bucket, V);
                               ({V, _}) ->
-                                  ns_memcached:set_vbucket_state(Node, Bucket,
-                                                                 V, dead),
+                                  ns_memcached:set_vbucket(Node, Bucket,
+                                                           V, dead),
                                   ns_memcached:delete_vbucket(Node, Bucket, V)
                               end, RemainingVBuckets),
             timer:sleep(100),
@@ -91,7 +91,8 @@ set_replicas(Node, Bucket, Replicas) ->
                       kill_vbuckets(Dst, Bucket, VBuckets),
                       lists:foreach(
                         fun (V) ->
-                                ns_memcached:set_vbucket_state(Dst, Bucket, V, replica)
+                                ns_memcached:set_vbucket(Dst, Bucket, V,
+                                                         replica)
                         end, VBuckets),
                       {ok, _Pid} = start_child(Node, Bucket, VBuckets, Dst)
               end, Grouped);
@@ -101,7 +102,7 @@ set_replicas(Node, Bucket, Replicas) ->
 
 spawn_mover(Bucket, VBucket, SrcNode, DstNode) ->
     Args = args(SrcNode, Bucket, [VBucket], DstNode, true),
-    rpc:call(SrcNode, ns_port_server, start_link, Args).
+    apply(ns_port_server, start_link, Args).
 
 kill_all_children(Node) ->
     lists:foreach(fun (Child) ->

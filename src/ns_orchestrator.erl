@@ -141,13 +141,8 @@ handle_info(janitor, idle, #idle_state{remaining_buckets=[]} = State) ->
 handle_info(janitor, idle, #idle_state{remaining_buckets=[Bucket|Buckets]} =
                 State) ->
     misc:flush(janitor),
-    case ns_janitor:cleanup(Bucket) of
-        ok ->
-            {next_state, idle, State#idle_state{remaining_buckets=Buckets}};
-        repeat ->
-            {next_state, idle,
-             State#idle_state{remaining_buckets=[Bucket|Buckets]}}
-    end;
+    ns_janitor:cleanup(Bucket),
+    {next_state, idle, State#idle_state{remaining_buckets=Buckets}};
 handle_info(janitor, StateName, StateData) ->
     misc:flush(janitor),
     {next_state, StateName, StateData};

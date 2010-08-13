@@ -80,7 +80,9 @@ update_childs() ->
                   end, ToStop).
 
 child_spec(Bucket) ->
-    [{{stats_collector, Bucket}, {stats_collector, start_link, [Bucket]},
+    [{{ns_memcached, Bucket}, {ns_memcached, start_link, [Bucket]},
+      permanent, 10, worker, [ns_memcached]},
+     {{stats_collector, Bucket}, {stats_collector, start_link, [Bucket]},
       permanent, 10, worker, [stats_collector]},
      {{stats_archiver, Bucket}, {stats_archiver, start_link, [Bucket]},
       permanent, 10, worker, [stats_archiver]}].

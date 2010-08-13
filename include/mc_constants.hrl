@@ -42,8 +42,8 @@
 -define(CMD_SELECT_BUCKET, 16#29).
 
 -define(CMD_SET_FLUSH_PARAM, 16#82).
--define(CMD_SET_VBUCKET_STATE, 16#83).
--define(CMD_GET_VBUCKET_STATE, 16#84).
+-define(CMD_SET_VBUCKET, 16#83).
+-define(CMD_GET_VBUCKET, 16#84).
 -define(CMD_DELETE_VBUCKET, 16#85).
 
 -define(RGET,        16#30).
@@ -68,6 +68,7 @@
 -define(EINVAL,           16#04).
 -define(NOT_STORED,       16#05).
 -define(DELTA_BADVAL,     16#06).
+-define(NOT_MY_VBUCKET,   16#07).
 -define(UNKNOWN_COMMAND,  16#81).
 -define(ENOMEM,           16#82).
 -define(NOT_SUPPORTED,    16#83).

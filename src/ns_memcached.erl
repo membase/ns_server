@@ -26,83 +26,109 @@
 
 -include("ns_common.hrl").
 
+-define(VBUCKET_POLL_INTERVAL, 100).
+
 %% gen_server API
--export([start_link/0]).
+-export([start_link/1]).
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
--record(state, {sock::port()}).
+-record(state, {bucket::nonempty_string(), sock::port()}).
 
 %% external API
--export([connected/0, connected/1,
-         create_bucket/2, create_bucket/3,
-         delete_bucket/1, delete_bucket/2,
+-export([connected/1, connected/2,
          delete_vbucket/2, delete_vbucket/3,
+         delete_vbucket_sync/3,
+         get_vbucket/3,
          host_port_str/0, host_port_str/1,
-         list_buckets/0, list_buckets/1,
          list_vbuckets/1, list_vbuckets/2,
          list_vbuckets_multi/2,
-         set_vbucket_state/3, set_vbucket_state/4,
-         stats/1, stats/2, stats/3,
-         stats_multi/2, stats_multi/3,
-         topkeys/1, topkeys/2]).
+         set_vbucket/3, set_vbucket/4,
+         server/1,
+         stats/1, stats/2,
+         topkeys/1]).
 
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
 
+%%
 %% gen_server API implementation
+%%
 
-start_link() ->
+start_link(Bucket) ->
     %% Use proc_lib so that start_link doesn't fail if we can't
     %% connect.
-    proc_lib:start_link(?MODULE, init, [[]]).
+    proc_lib:start_link(?MODULE, init, [Bucket]).
 
 
+%%
 %% gen_server callback implementation
+%%
 
-init([]) ->
+init(Bucket) ->
     proc_lib:init_ack({ok, self()}),
-    connect().
+    Sock = connect(),
+    ensure_bucket(Sock, Bucket),
+    wait_for_warmup(Sock),
+    register(server(Bucket), self()),
+    gen_server:enter_loop(?MODULE, [], #state{sock=Sock, bucket=Bucket}).
 
-handle_call({create_bucket, Bucket, Config}, _From, State) ->
-    Reply = mc_client_binary:create_bucket(State#state.sock, Bucket, Config),
-    {reply, Reply, State};
-handle_call({delete_bucket, Bucket}, _From, State) ->
-    Reply = mc_client_binary:delete_bucket(State#state.sock, Bucket),
-    {reply, Reply, State};
-handle_call({delete_vbucket, Bucket, VBucket}, _From,
-            #state{sock=Sock} = State) ->
-    Reply = do_in_bucket(Sock, Bucket,
-                        fun() ->
-                                mc_client_binary:delete_vbucket(
-                                  Sock, VBucket)
-                        end),
+
+handle_call({delete_vbucket, VBucket, Sync}, From, State) ->
+    case {mc_client_binary:delete_vbucket(State#state.sock, VBucket), Sync} of
+        {ok, _} ->
+            {reply, ok, State};
+        {{memcached_error, einval, _}, true} ->
+            ok = mc_client_binary:set_vbucket(State#state.sock, VBucket,
+                                              dead),
+            timer:send_after(?VBUCKET_POLL_INTERVAL, {reap, VBucket, From}),
+            {noreply, State}
+    end;
+handle_call({get_vbucket, VBucket}, _From, State) ->
+    Reply = mc_client_binary:get_vbucket(State#state.sock, VBucket),
     {reply, Reply, State};
 handle_call(list_buckets, _From, State) ->
     Reply = mc_client_binary:list_buckets(State#state.sock),
     {reply, Reply, State};
-handle_call({set_flush_param, Bucket, Key, Value}, _From, #state{sock=Sock} =
-                State) ->
-    Reply = do_in_bucket(Sock, Bucket,
-                        fun () ->
-                                mc_client_binary:set_flush_param(Sock, Key,
-                                                                 Value)
-                        end),
+handle_call(list_vbuckets, _From, State) ->
+    Reply = mc_client_binary:stats(
+              State#state.sock, <<"vbucket">>,
+              fun (<<"vb_", K/binary>>, V, Acc) ->
+                      [{list_to_integer(binary_to_list(K)),
+                        binary_to_existing_atom(V, latin1)} | Acc]
+              end, []),
     {reply, Reply, State};
-handle_call({set_vbucket_state, Bucket, VBucket, VBState}, _From,
+handle_call({set_flush_param, Key, Value}, _From, State) ->
+    Reply = mc_client_binary:set_flush_param(State#state.sock, Key, Value),
+    {reply, Reply, State};
+handle_call({set_vbucket, VBucket, VBState}, _From,
             #state{sock=Sock} = State) ->
-    Reply = do_in_bucket(Sock, Bucket,
-                         fun() ->
-                                 mc_client_binary:set_vbucket_state(
-                                   Sock, VBucket,
-                                   atom_to_list(VBState))
-                         end),
+    %% This happens asynchronously, so there's no guarantee the
+    %% vbucket will be in the requested state when it returns.
+    Reply = mc_client_binary:set_vbucket(Sock, VBucket, VBState),
     {reply, Reply, State};
-handle_call({stats, Bucket, Key}, _From, #state{sock=Sock} = State) ->
-    Reply = do_in_bucket(Sock, Bucket,
-                         fun () ->
-                                 mc_client_binary:stats(Sock, Key)
-                         end),
+handle_call({stats, Key}, _From, State) ->
+    Reply = mc_client_binary:stats(
+              State#state.sock, Key,
+              fun (K, V, Acc) ->
+                      [{K, V} | Acc]
+              end, []),
+    {reply, Reply, State};
+handle_call(topkeys, _From, State) ->
+    Reply = mc_client_binary:stats(
+              State#state.sock, <<"topkeys">>,
+              fun (K, V, Acc) ->
+                      VString = binary_to_list(V),
+                      Tokens = string:tokens(VString, ","),
+                      [{binary_to_list(K),
+                        lists:map(fun (S) ->
+                                          [Key, Value] = string:tokens(S, "="),
+                                          {list_to_atom(Key),
+                                           list_to_integer(Value)}
+                                  end,
+                                  Tokens)} | Acc]
+              end,
+              []),
     {reply, Reply, State}.
 
 
@@ -110,6 +136,18 @@ handle_cast(unhandled, unhandled) ->
     unhandled.
 
 
+handle_info({wait_for_vbucket, VBucket, VBState, Callback},
+            #state{sock=Sock} = State) ->
+    wait_for_vbucket(Sock, VBucket, VBState, Callback),
+    {noreply, State};
+handle_info({reap, VBucket, From}, State) ->
+    case mc_client_binary:delete_vbucket(State#state.sock, VBucket) of
+        ok ->
+            gen_server:reply(From, ok);
+        {memcached_error, einval, _} ->
+            timer:send_after(?VBUCKET_POLL_INTERVAL, {reap, VBucket, From})
+    end,
+    {noreply, State};
 handle_info(Msg, State) ->
     ?log_info("handle_info(~p, ~p)", [Msg, State]),
     {noreply, State}.
@@ -123,33 +161,40 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 
-%% External API
-connected() ->
-    misc:running(?MODULE).
+%%
+%% API
+%%
 
-connected(Node) ->
-    misc:running(Node, ?MODULE).
+connected(Bucket) ->
+    misc:running(server(Bucket)).
 
-create_bucket(Bucket, Config) ->
-    create_bucket(node(), Bucket, Config).
 
-create_bucket(Node, Bucket, Config) ->
-    call(Node, {create_bucket, Bucket, Config}).
+connected(Node, Bucket) ->
+    misc:running(Node, server(Bucket)).
 
-delete_bucket(Bucket) ->
-    delete_bucket(node(), Bucket).
 
-delete_bucket(Node, Bucket) ->
-    call(Node, {delete_bucket, Bucket}).
-
+%% @doc Delete a vbucket. Will set the vbucket to dead state if it
+%% isn't already, blocking until it successfully does so.
 delete_vbucket(Bucket, VBucket) ->
-    delete_vbucket(node(), Bucket, VBucket).
+    gen_server:call(server(Bucket), {delete_vbucket, VBucket, false}).
+
 
 delete_vbucket(Node, Bucket, VBucket) ->
-    call(Node, {delete_vbucket, Bucket, VBucket}).
+    gen_server:call({server(Bucket), Node}, {delete_vbucket, VBucket, false}).
+
+
+delete_vbucket_sync(Node, Bucket, VBucket) ->
+    gen_server:call({server(Bucket), Node}, {delete_vbucket, VBucket, true},
+                    infinity).
+
+
+get_vbucket(Node, Bucket, VBucket) ->
+    gen_server:call({server(Bucket), Node}, {get_vbucket, VBucket}).
+
 
 host_port_str() ->
     host_port_str(node()).
+
 
 host_port_str(Node) ->
     Config = ns_config:get(),
@@ -157,65 +202,43 @@ host_port_str(Node) ->
     {_Name, Host} = misc:node_name_host(Node),
     Host ++ ":" ++ integer_to_list(Port).
 
-list_buckets() ->
-    list_buckets(node()).
-
-list_buckets(Node) ->
-    call(Node, list_buckets).
 
 list_vbuckets(Bucket) ->
     list_vbuckets(node(), Bucket).
 
+
 list_vbuckets(Node, Bucket) ->
-    case stats(Node, Bucket, "vbucket") of
-        {ok, Stats} ->
-            parse_vbuckets(Stats);
-        Response -> Response
-    end.
+    gen_server:call({server(Bucket), Node}, list_vbuckets).
+
 
 list_vbuckets_multi(Nodes, Bucket) ->
-    process_multi(fun parse_vbuckets/1, stats_multi(Nodes, Bucket, "vbucket")).
+    gen_server:multi_call(Nodes, server(Bucket), list_vbuckets).
 
-set_vbucket_state(Bucket, VBucket, VBState) ->
-    set_vbucket_state(node(), Bucket, VBucket, VBState).
 
-set_vbucket_state(Node, Bucket, VBucket, VBState) ->
-    call(Node, {set_vbucket_state, Bucket, VBucket, VBState}).
+set_vbucket(Bucket, VBucket, VBState) ->
+    gen_server:call(server(Bucket), {set_vbucket, VBucket, VBState}).
+
+
+set_vbucket(Node, Bucket, VBucket, VBState) ->
+    gen_server:call({server(Bucket), Node}, {set_vbucket, VBucket, VBState}).
+
 
 stats(Bucket) ->
-    stats(node(), Bucket).
+    stats(Bucket, <<>>).
 
-stats(Bucket, Key) when is_list(Bucket) ->
-    stats(node(), Bucket, Key);
-stats(Node, Bucket) ->
-    call(Node, {stats, Bucket, ""}).
 
-stats(Node, Bucket, Key) ->
-    call(Node, {stats, Bucket, Key}).
+stats(Bucket, Key) ->
+    gen_server:call(server(Bucket), {stats, Key}).
 
-stats_multi(Nodes, Bucket) ->
-    gen_server:multi_call(Nodes, ?MODULE, {stats, Bucket, ""}).
-
-stats_multi(Nodes, Bucket, Key) ->
-    gen_server:multi_call(Nodes, ?MODULE, {stats, Bucket, Key}).
 
 topkeys(Bucket) ->
-    topkeys(node(), Bucket).
-
-topkeys(Node, Bucket) ->
-    case stats(Node, Bucket, "topkeys") of
-        {ok, Stats} ->
-            {ok, parse_topkeys(Stats)};
-        Response -> Response
-    end.
+    gen_server:call(server(Bucket), topkeys).
 
 
+%%
 %% Internal functions
-call(Node, Call) ->
-    gen_server:call({?MODULE, Node}, Call).
+%%
 
-%% @doc Connect to memcached, then register the process and convert it
-%% to a gen_server.
 connect() ->
     Config = ns_config:get(),
     Port = ns_config:search_node_prop(Config, memcached, port),
@@ -228,12 +251,7 @@ connect() ->
                                        {list_to_binary(User),
                                         list_to_binary(Pass)}}),
         S of
-        Sock ->
-            %% Register AFTER we connect so we can just use whether
-            %% the name is registered to see if we have a healthy
-            %% memcached.
-            register(?MODULE, self()),
-            gen_server:enter_loop(?MODULE, [], #state{sock=Sock})
+        Sock -> Sock
     catch
         E:R ->
             ?log_warning("Unable to connect: ~p, retrying.", [{E, R}]),
@@ -241,40 +259,65 @@ connect() ->
             connect()
     end.
 
-do_in_bucket(Sock, Bucket, Fun) ->
+
+ensure_bucket(Sock, Bucket) ->
+    {Engine, ConfigString, MaxSize} = ns_bucket:config_string(Bucket),
     case mc_client_binary:select_bucket(Sock, Bucket) of
         ok ->
-            Fun();
-        R ->
-            R
+            ensure_bucket_config(Sock, Bucket, MaxSize);
+        {memcached_error, key_enoent, _} ->
+            ok = mc_client_binary:create_bucket(Sock, Bucket, Engine,
+                                                ConfigString);
+        Error ->
+            exit({bucket_select_error, Error})
     end.
 
-map_vbucket_state("active") -> active;
-map_vbucket_state("replica") -> replica;
-map_vbucket_state("pending") -> pending;
-map_vbucket_state("dead") -> dead.
 
-parse_topkey_value(Value) ->
-    Tokens = string:tokens(Value, ","),
-    lists:map(fun (S) ->
-                      [K, V] = string:tokens(S, "="),
-                      {list_to_atom(K), list_to_integer(V)}
-              end,
-              Tokens).
+ensure_bucket_config(Sock, Bucket, MaxSize) ->
+    MaxSizeBin = list_to_binary(integer_to_list(MaxSize)),
+    case mc_client_binary:stats(
+                Sock, <<>>,
+                fun (<<"ep_max_data_size">>, V, _) ->
+                        V;
+                    (_, _, CD) ->
+                        CD
+                end, missing_max_size) of
+        {ok, MaxSizeBin} ->
+            ok;
+        {ok, X} when is_binary(X) ->
+            ?log_info("Changing max_size of ~p from ~s to ~s", [Bucket, X,
+                                                                MaxSizeBin]),
+            mc_client_binary:set_flush_param(Sock, <<"max_size">>, MaxSizeBin)
+    end.
 
-parse_topkeys(Topkeys) ->
-    lists:map(fun ({Key, ValueString}) ->
-                      {Key, parse_topkey_value(ValueString)}
-              end, Topkeys).
 
-parse_vbuckets(Stats) ->
-    {ok, [{list_to_integer(V), map_vbucket_state(Value)} ||
-             {"vb_" ++ V, Value} <- Stats]}.
+server(Bucket) ->
+    list_to_atom(?MODULE_STRING ++ "-" ++ Bucket).
 
-process_multi(Fun, {Replies, BadNodes}) ->
-    ProcessedReplies = lists:map(fun ({Node, {ok, Reply}}) ->
-                                         {Node, Fun(Reply)};
-                                     ({Node, Response}) ->
-                                         {Node, Response}
-                                 end, Replies),
-    {ProcessedReplies, BadNodes}.
+
+wait_for_vbucket(Sock, VBucket, State, Callback) ->
+    case mc_client_binary:get_vbucket(Sock, VBucket) of
+        {ok, State} ->
+            Callback(),
+            true;
+        {ok, _} ->
+            timer:send_after(?VBUCKET_POLL_INTERVAL,
+                             {wait_for_vbucket, VBucket, State, Callback}),
+            false
+    end.
+
+
+wait_for_warmup(Sock) ->
+    case mc_client_binary:stats(
+           Sock, <<>>,
+           fun (<<"ep_warmup_thread">>, V, _) ->
+                   V;
+               (_, _, CD) ->
+                   CD
+           end, missing_stat) of
+        {ok, <<"complete">>} ->
+            ok;
+        {ok, _} ->
+            timer:sleep(1000),
+            wait_for_warmup(Sock)
+    end.

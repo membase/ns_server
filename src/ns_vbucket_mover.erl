@@ -154,13 +154,12 @@ spawn_workers(#state{bucket=Bucket, moves=Moves, movers=Movers,
                                     %% Will crash (on purpose) if we
                                     %% have no-op moves.
                                     spawn_link(
+                                      Node,
                                       fun () ->
-                                              run_mover(
-                                                fun () ->
-                                                        ns_vbm_sup:spawn_mover(
-                                                          Bucket, V, Node,
-                                                          NewNode)
-                                                end, Parent, Node, 2)
+                                              process_flag(trap_exit, true),
+                                              run_mover(Bucket, V, Node,
+                                                        NewNode, 2),
+                                              Parent ! {move_done, Node}
                                       end)
                             end, NewMovers),
                           M1 = dict:store(Node, length(NewMovers) + NumWorkers,
@@ -182,26 +181,39 @@ spawn_workers(#state{bucket=Bucket, moves=Moves, movers=Movers,
     end.
 
 
-run_mover(Fun, Parent, Node, Tries) ->
-    process_flag(trap_exit, true),
-    {ok, Pid} = Fun(),
-    wait_for_mover(Pid, Fun, Parent, Node, Tries).
+run_mover(Bucket, V, N1, N2, Tries) ->
+    case {ns_memcached:get_vbucket(N1, Bucket, V),
+          ns_memcached:get_vbucket(N2, Bucket, V)} of
+        {{ok, dead}, {ok, active}} ->
+            ok;
+        {{memcached_error, not_my_vbucket, _}, {ok, active}} ->
+            ok;
+        {{ok, active}, {ok, S}} when S /= active ->
+            ns_memcached:delete_vbucket_sync(N2, Bucket, V),
+            {ok, _Pid} = ns_vbm_sup:spawn_mover(Bucket, V, N1, N2),
+            wait_for_mover(Bucket, V, N1, N2, Tries);
+        {{ok, active}, {memcached_error, not_my_vbucket, _}} ->
+            {ok, _Pid} = ns_vbm_sup:spawn_mover(Bucket, V, N1, N2),
+            wait_for_mover(Bucket, V, N1, N2, Tries)
+    end.
 
-wait_for_mover(Pid, Fun, Parent, Node, Tries) ->
+wait_for_mover(Bucket, V, N1, N2, Tries) ->
     receive
-        {'EXIT', Pid, normal} ->
-            Parent ! {move_done, Node};
-        {'EXIT', Pid, Reason} ->
+        {'EXIT', _Pid, normal} ->
+            ok;
+        {'EXIT', _Pid, stopped} ->
+            exit(stopped);
+        {'EXIT', _Pid, Reason} ->
             case Tries of
                 0 ->
                     exit({mover_failed, Reason});
                 _ ->
                     ?log_warning("Got unexpected exit reason from mover:~n~p",
                                  [Reason]),
-                    run_mover(Fun, Parent, Node, Tries-1)
+                    run_mover(Bucket, V, N1, N2, Tries-1)
             end;
         Msg ->
             ?log_warning("Mover parent got unexpected message:~n"
                          "~p", [Msg]),
-            wait_for_mover(Pid, Fun, Parent, Node, Tries)
+            wait_for_mover(Bucket, V, N1, N2, Tries)
     end.

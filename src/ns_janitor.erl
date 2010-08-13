@@ -22,36 +22,37 @@
 -export([cleanup/1, current_states/2, graphviz/1]).
 
 
--spec cleanup(string()) -> ok | repeat.
+-spec cleanup(string()) -> ok.
 cleanup(Bucket) ->
-    case ns_bucket:config(Bucket) of
-        {_, _, _, []} ->
-            ns_rebalancer:rebalance([Bucket], 1,
-                                    ns_cluster_membership:active_nodes(),
-                                    []),
-            repeat;
-        {_, _, Map, Servers} ->
-            case ns_bucket:ensure_bucket(Bucket, Servers) of
-                [] ->
-                    case sanify(Bucket, Map, Servers) of
-                        Map -> ok;
-                        Map1 ->
-                            ns_bucket:set_map(Bucket, Map1)
-                    end,
-                    Replicas = lists:keysort(1, map_to_replicas(Map)),
-                    ReplicaGroups = lists:ukeymerge(1, misc:keygroup(1, Replicas),
-                                                    [{N, []} || N <- lists:sort(Servers)]),
-                    NodesReplicas = lists:map(fun ({Src, R}) -> % R is the replicas for this node
-                                                      {Src, [{V, Dst} || {_, Dst, V} <- R]}
-                                              end, ReplicaGroups),
-                    lists:foreach(fun ({Src, R}) ->
-                                          catch ns_vbm_sup:set_replicas(Src, Bucket, R)
-                                  end, NodesReplicas),
-                    ok;
-                _ ->
-                    %% Couldn't talk to all nodes
-                    repeat
-            end
+    {Map, Servers} =
+        case ns_bucket:config(Bucket) of
+            {NumReplicas, NumVBuckets, _, []} ->
+                S = ns_cluster_membership:active_nodes(),
+                M = ns_rebalancer:generate_initial_map(NumReplicas, NumVBuckets,
+                                                       S),
+                ns_bucket:set_servers(Bucket, S),
+                ns_bucket:set_map(Bucket, M),
+                {M, S};
+            {_, _, M, S} ->
+                {M, S}
+        end,
+    case Servers of
+        [] -> ok;
+        _ ->
+            case sanify(Bucket, Map, Servers) of
+                Map -> ok;
+                Map1 ->
+                    ns_bucket:set_map(Bucket, Map1)
+            end,
+            Replicas = lists:keysort(1, map_to_replicas(Map)),
+            ReplicaGroups = lists:ukeymerge(1, misc:keygroup(1, Replicas),
+                                            [{N, []} || N <- lists:sort(Servers)]),
+            NodesReplicas = lists:map(fun ({Src, R}) -> % R is the replicas for this node
+                                              {Src, [{V, Dst} || {_, Dst, V} <- R]}
+                                      end, ReplicaGroups),
+            lists:foreach(fun ({Src, R}) ->
+                                  catch ns_vbm_sup:set_replicas(Src, Bucket, R)
+                          end, NodesReplicas)
     end.
 
 
@@ -135,7 +136,7 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                     %% We'll let the next pass catch the replicas.
                     ?log_info("Setting vbucket ~p on ~p to active.",
                               [VBucket, Master]),
-                    ns_memcached:set_vbucket_state(Master, Bucket, VBucket, active),
+                    ns_memcached:set_vbucket(Master, Bucket, VBucket, active),
                     Chain;
                 [Node] ->
                     %% One active node, but it's not the master
@@ -164,7 +165,7 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                                  "This should never happen, but we have an "
                                  "active master, so I'm deleting it.",
                                  [N]),
-                      ns_memcached:set_vbucket_state(N, Bucket, VBucket, dead),
+                      ns_memcached:set_vbucket(N, Bucket, VBucket, dead),
                       ns_vbm_sup:kill_children(N, Bucket, [VBucket]);
                   ({_, {_, replica}})-> % This is what we expect
                       ok;
@@ -192,7 +193,7 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                           {_, S} when S /= dead ->
                               ?log_info("Setting vbucket ~p on ~p from ~p to"
                                         " dead.", [VBucket, N, S]),
-                              ns_memcached:set_vbucket_state(
+                              ns_memcached:set_vbucket(
                                 N, Bucket, VBucket, dead);
                           {true, dead} ->
                               ?log_info("Deleting vbucket ~p on ~p",
@@ -209,7 +210,7 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                 [] ->
                     ?log_info("Setting vbucket ~p on master ~p to active",
                               [VBucket, Master]),
-                    ns_memcached:set_vbucket_state(Master, Bucket, VBucket,
+                    ns_memcached:set_vbucket(Master, Bucket, VBucket,
                                                    active),
                     Chain;
                 X ->

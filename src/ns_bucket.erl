@@ -19,8 +19,8 @@
 
 %% API
 -export([config/1,
+         config_string/1,
          credentials/1,
-         ensure_bucket/2,
          get_bucket/1,
          get_buckets/0,
          get_buckets/1,
@@ -62,37 +62,34 @@ config_from_info(CurrentConfig) ->
     {NumReplicas, NumVBuckets, Map, Servers}.
 
 
+%% @doc Configuration parameters to start up the bucket on a node.
+config_string(BucketName) ->
+    Config = ns_config:get(),
+    DBDir = ns_config:search_node_prop(Config, memcached, dbdir),
+    DBName = filename:join(DBDir, BucketName),
+    BucketConfigs = ns_config:search_prop(Config, buckets, configs),
+    BucketConfig = proplists:get_value(BucketName, BucketConfigs),
+    %% MemQuota is our total limit for cluster
+    MemQuota = proplists:get_value(ram_quota, BucketConfig),
+    %% LocalQuota is our limit for this node
+    LocalQuota = MemQuota div (num_replicas(BucketConfig)+1),
+    Engine = ns_config:search_node_prop(ns_config:get(), memcached, engine),
+    ok = filelib:ensure_dir(DBName),
+    ConfigString = lists:flatten(
+                     io_lib:format("vb0=false;waitforwarmup=false;ht_size=~p;"
+                                   "ht_locks=~p;max_size=~p;dbname=~s",
+                                   [proplists:get_value(ht_size, BucketConfig),
+                                    proplists:get_value(ht_locks, BucketConfig),
+                                    LocalQuota, DBName])),
+    {Engine, ConfigString, LocalQuota}.
+
+
 %% @doc Return {Username, Password} for a bucket.
 -spec credentials(nonempty_string()) ->
                          {nonempty_string(), string()}.
 credentials(Bucket) ->
     {ok, BucketConfig} = get_bucket(Bucket),
     {Bucket, proplists:get_value(sasl_password, BucketConfig, "")}.
-
-
-%% @doc Make sure the given bucket exists. Returns a list of nodes it
-%% wasn't able to check.
-ensure_bucket(Bucket, Nodes) ->
-    {Replies, BadNodes} = ns_memcached:stats_multi(Nodes, Bucket),
-    {MissingNodes, BadReplyNodes} =
-        lists:foldl(fun ({_, {ok, _}}, Acc) ->
-                            Acc;
-                        ({Node, {memcached_error, mc_status_key_enoent, _}},
-                         {M, B}) ->
-                            {[Node|M], B};
-                        ({Node, Error}, {M, B}) ->
-                            ?log_warning("Bad reply from ~p checking bucket "
-                                         "~p:~n~p", [Node, Bucket, Error]),
-                            {M, [Node|B]}
-                    end, {[], []}, Replies),
-    lists:foreach(
-      fun (Node) ->
-              ConfigString = config_string(Node, Bucket),
-              ?log_info("Creating bucket ~p on node ~p with config '~s'.",
-                        [Bucket, Node, ConfigString]),
-              ns_memcached:create_bucket(Node, Bucket, ConfigString)
-      end, MissingNodes),
-    BadNodes ++ BadReplyNodes.
 
 
 get_bucket(Bucket) ->
@@ -301,29 +298,3 @@ update_bucket_config(Bucket, Fun) ->
                    NewBuckets = lists:keyreplace(Bucket, 1, Buckets, {Bucket, NewConfig}),
                    lists:keyreplace(configs, 1, List, {configs, NewBuckets})
            end).
-
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
-
-%% Check the current config against the list of buckets on this server.
-config_string(Node, BucketName) ->
-    Config = ns_config:get(),
-    DBDir = ns_config:search_node_prop(Node, Config, memcached, dbdir),
-    DBName = filename:join(DBDir, BucketName),
-    BucketConfigs = ns_config:search_prop(Config, buckets, configs),
-    BucketConfig = proplists:get_value(BucketName, BucketConfigs),
-    %% MemQuota is our total limit for cluster
-    MemQuota = proplists:get_value(ram_quota, BucketConfig),
-    %% LocalQuota is our limit for this node
-    LocalQuota = MemQuota div (num_replicas(BucketConfig)+1),
-    Engine = ns_config:search_node_prop(ns_config:get(), memcached, engine),
-    ok = filelib:ensure_dir(DBName),
-    lists:flatten(
-      io_lib:format(
-        "~s" ++ [0] ++ "vb0=false;ht_size=~p;ht_locks=~p;max_size=~p;dbname=~s",
-        [Engine,
-         proplists:get_value(ht_size, BucketConfig),
-         proplists:get_value(ht_locks, BucketConfig),
-         LocalQuota, DBName])).

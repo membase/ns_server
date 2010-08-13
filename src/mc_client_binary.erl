@@ -21,9 +21,18 @@
 
 -include("mc_entry.hrl").
 
--export([auth/2, create_bucket/3, delete_bucket/2, delete_vbucket/2,
-         list_buckets/1, noop/1, select_bucket/2, set_flush_param/3,
-         set_vbucket_state/3, stats/1, stats/2]).
+-export([auth/2,
+         create_bucket/4,
+         delete_bucket/2,
+         delete_vbucket/2,
+         get_vbucket/2,
+         list_buckets/1,
+         noop/1,
+         select_bucket/2,
+         set_flush_param/3,
+         set_vbucket/3,
+         stats/1,
+         stats/4]).
 
 %% A memcached client that speaks binary protocol.
 
@@ -106,10 +115,11 @@ auth(_Sock, _UnknownMech) ->
 
 % -------------------------------------------------
 
-create_bucket(Sock, BucketName, Config) ->
+create_bucket(Sock, BucketName, Engine, Config) ->
     case cmd(?CMD_CREATE_BUCKET, Sock, undefined, undefined,
              {#mc_header{},
-              #mc_entry{key = BucketName, data = Config}}) of
+              #mc_entry{key = BucketName,
+                        data = list_to_binary([Engine, 0, Config])}}) of
         {ok, #mc_header{status=?SUCCESS}, _ME, _NCB} ->
             ok;
         Response -> process_error_response(Response)
@@ -130,6 +140,15 @@ delete_vbucket(Sock, VBucket) ->
               #mc_entry{key = list_to_binary(integer_to_list(VBucket))}}) of
         {ok, #mc_header{status=?SUCCESS}, _ME, _NCB} ->
             ok;
+        Response -> process_error_response(Response)
+    end.
+
+get_vbucket(Sock, VBucket) ->
+    case cmd(?CMD_GET_VBUCKET, Sock, undefined, undefined,
+            {#mc_header{},
+             #mc_entry{key = list_to_binary(integer_to_list(VBucket))}}) of
+        {ok, #mc_header{status=?SUCCESS}, #mc_entry{key=StateBin}, _NCB} ->
+            {ok, binary_to_atom(StateBin, latin1)};
         Response -> process_error_response(Response)
     end.
 
@@ -164,35 +183,34 @@ select_bucket(Sock, BucketName) ->
 set_flush_param(Sock, Key, Value) ->
     case cmd(?CMD_SET_FLUSH_PARAM, Sock, undefined, undefined,
              {#mc_header{},
-              #mc_entry{key = list_to_binary(Key),
-                        data=list_to_binary(Value)}}) of
+              #mc_entry{key  = Key,
+                        data = Value}}) of
         {ok, #mc_header{status=?SUCCESS}, _ME, _NCB} ->
             ok;
         Response ->
             process_error_response(Response)
     end.
 
-set_vbucket_state(Sock, VBucket, VBucketState) ->
-    case cmd(?CMD_SET_VBUCKET_STATE, Sock, undefined, undefined,
+set_vbucket(Sock, VBucket, VBucketState) ->
+    case cmd(?CMD_SET_VBUCKET, Sock, undefined, undefined,
              {#mc_header{},
               #mc_entry{key = list_to_binary(integer_to_list(VBucket)),
-                        data = list_to_binary(VBucketState)}}) of
+                        data = atom_to_binary(VBucketState, latin1)}}) of
         {ok, #mc_header{status=?SUCCESS}, _ME, _NCB} ->
             ok;
         Response -> process_error_response(Response)
     end.
 
 stats(Sock) ->
-    stats(Sock, "").
+    stats(Sock, <<>>, fun (K, V, Acc) -> [{K, V}|Acc] end, []).
 
-stats(Sock, Key) ->
+stats(Sock, Key, CB, CBData) ->
     case cmd(?STAT, Sock,
              fun (_MH, ME, CD) ->
-                     [{binary_to_list(ME#mc_entry.key),
-                       binary_to_list(ME#mc_entry.data)} | CD]
+                     CB(ME#mc_entry.key, ME#mc_entry.data, CD)
              end,
-             [],
-             {#mc_header{}, #mc_entry{key=list_to_binary(Key)}}) of
+             CBData,
+             {#mc_header{}, #mc_entry{key=Key}}) of
         {ok, #mc_header{status=?SUCCESS}, _E, Stats} ->
             {ok, Stats};
         Response -> process_error_response(Response)
@@ -252,29 +270,31 @@ ext_arith(#mc_entry{ext = Ext, data = Data, expire = Expire} = Entry) ->
     end.
 
 map_status(?SUCCESS) ->
-    mc_status_success;
+    success;
 map_status(?KEY_ENOENT) ->
-    mc_status_key_enoent;
+    key_enoent;
 map_status(?KEY_EEXISTS) ->
-    mc_status_key_eexists;
+    key_eexists;
 map_status(?E2BIG) ->
-    mc_status_e2big;
+    e2big;
 map_status(?EINVAL) ->
-    mc_status_einval;
+    einval;
 map_status(?NOT_STORED) ->
-    mc_status_not_stored;
+    not_stored;
 map_status(?DELTA_BADVAL) ->
-    mc_status_delta_badval;
+    delta_badval;
+map_status(?NOT_MY_VBUCKET) ->
+    not_my_vbucket;
 map_status(?UNKNOWN_COMMAND) ->
-    mc_status_unknown_command;
+    unknown_command;
 map_status(?ENOMEM) ->
-    mc_status_enomem;
+    enomem;
 map_status(?NOT_SUPPORTED) ->
-    mc_status_not_supported;
+    not_supported;
 map_status(?EINTERNAL) ->
-    mc_status_internal;
+    internal;
 map_status(?EBUSY) ->
-    mc_status_ebusy.
+    ebusy.
 
 process_error_response({ok, #mc_header{status=Status}, #mc_entry{data=Data}, _NCB}) ->
     {memcached_error, map_status(Status), binary_to_list(Data)};
