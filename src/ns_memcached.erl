@@ -26,6 +26,7 @@
 
 -include("ns_common.hrl").
 
+-define(CHECK_INTERVAL, 10000).
 -define(VBUCKET_POLL_INTERVAL, 100).
 
 %% gen_server API
@@ -71,6 +72,7 @@ init(Bucket) ->
     ensure_bucket(Sock, Bucket),
     wait_for_warmup(Sock),
     register(server(Bucket), self()),
+    timer:send_interval(?CHECK_INTERVAL, check_config),
     gen_server:enter_loop(?MODULE, [], #state{sock=Sock, bucket=Bucket}).
 
 
@@ -136,9 +138,9 @@ handle_cast(unhandled, unhandled) ->
     unhandled.
 
 
-handle_info({wait_for_vbucket, VBucket, VBState, Callback},
-            #state{sock=Sock} = State) ->
-    wait_for_vbucket(Sock, VBucket, VBState, Callback),
+handle_info(check_config, State) ->
+    misc:flush(check_config),
+    ensure_bucket(State#state.sock, State#state.bucket),
     {noreply, State};
 handle_info({reap, VBucket, From}, State) ->
     case mc_client_binary:delete_vbucket(State#state.sock, VBucket) of
@@ -147,6 +149,10 @@ handle_info({reap, VBucket, From}, State) ->
         {memcached_error, einval, _} ->
             timer:send_after(?VBUCKET_POLL_INTERVAL, {reap, VBucket, From})
     end,
+    {noreply, State};
+handle_info({wait_for_vbucket, VBucket, VBState, Callback},
+            #state{sock=Sock} = State) ->
+    wait_for_vbucket(Sock, VBucket, VBState, Callback),
     {noreply, State};
 handle_info(Msg, State) ->
     ?log_info("handle_info(~p, ~p)", [Msg, State]),
