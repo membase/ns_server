@@ -202,7 +202,7 @@
 				<ul>
 					<li>In use by all buckets (580 Gb)</li>
 					<li>Free (340 Gb)</li>
-					<li>Total allocated (890 gb)</li>
+					<li>Total allocated (890 Gb)</li>
 					<li>Unused (330 Gb)</li>
 				</ul>
 			</div>
@@ -308,14 +308,14 @@
       <!-- {% if (s.clusterMembership == 'inactiveAdded') { %}-->
       <li class="server_row pending_add {%= s.nodeClass %}">{%= V.setData('server', s) %}
         <a class="serverName" href="#openServer={%= s.otpNode %}">{%= V.stripPort(s.hostname) %}</a>
-        <a href="#" class="btn_cancel eject_server">CANCEL</a>
-        <span class="pending_add_message">PENDING ADD</span>
+        <a href="#" class="btn_cancel eject_server">Cancel</a>
+        <span class="pending_add_message">Pending Add</span>
       </li>
       <!-- {% } else if (s.pendingEject) { %} -->
       <li class="server_row pending_removal {%= s.nodeClass %}">{%= V.setData('server', s) %}
         <a class="serverName" href="#openServer={%= s.otpNode %}">{%= V.stripPort(s.hostname) %}</a>
-        <a href="#" class="btn_cancel remove_from_list">CANCEL</a>
-        <span class="pending_removal_message">PENDING REMOVAL</span>
+        <a href="#" class="btn_cancel remove_from_list">Cancel</a>
+        <span class="pending_removal_message">Pending Removal</span>
       </li>
       <!-- {% } else { %} -->
         <!-- {% if (s.reAddPossible) { %} -->
@@ -325,7 +325,7 @@
         </li>
         <!-- {% } %} -->
       <li class="server_row {%= s.nodeClass %}">{%= V.setData('server', s) %}
-        <a href="#openServer={%= h(s.otpNode) %}" class="serverName">{%= V.stripPort(s.hostname) %}</a><a class="list_button btn_width_2 eject_server"><span>Remove Server</span></a><a class="list_button btn_width_1 failover_server"><span>Fail Over</span></a><span class="failed_over_message">FAILED OVER: PENDING REMOVAL</span>
+        <a href="#openServer={%= h(s.otpNode) %}" class="serverName">{%= V.stripPort(s.hostname) %}</a><a class="list_button btn_width_2 eject_server"><span>Remove Server</span></a><a class="list_button btn_width_1 failover_server"><span>Fail Over</span></a><span class="failed_over_message">Failed Over: Pending Removal</span>
       </li>
       <!-- {% } %} -->
       <li id="{%= h(s.detailsRowID) %}" class="settings-placeholder"></li>
@@ -587,7 +587,7 @@
     <div class="pad">
       <div class="gong_rb">
         <div class="pad">
-          <a class="edit_btn" href="#editBucket={%= uri %}">EDIT</a>
+          <a class="edit_btn" href="#editBucket={%= uri %}">Edit</a>
           <table class="bucket_properties_table">
           <col width="50%" />
           <col width="50%" />
@@ -634,7 +634,7 @@
                 </td>
               </tr>
               <tr class="diagr_labels">
-                <td class="green">THIS BUCKET ({%= h(V.formatQuantity(totalRAMUsed)) %})</td>
+                <td class="green">This bucket ({%= h(V.formatQuantity(totalRAMUsed)) %})</td>
                 <td class="yellow">Other Data ({%= h(V.formatQuantity(otherRAMSize)) %})</td>
                 <td class="right">Free ({%= h(V.formatQuantity(totalRAMFree)) %})</td>
               </tr>
@@ -673,7 +673,7 @@
                 </td>
               </tr>
               <tr class="diagr_labels">
-                <td class="green">THIS BUCKET ({%= h(V.formatQuantity(totalDiskUsed)) %})</td>
+                <td class="green">This bucket ({%= h(V.formatQuantity(totalDiskUsed)) %})</td>
                 <td class="yellow">Other Data ({%= h(V.formatQuantity(otherDiskSize)) %})</td>
                 <td class="right">Free ({%= h(V.formatQuantity(totalDiskFree)) %})</td>
               </tr>
@@ -816,8 +816,8 @@
             <div class="darker_block">
               <div class="pad_10">
                 <div class="right save_cancel">
-                  <button type="submit" class="save_button float_right">SAVE</button>
-                  <a href="#" class="cancel_button float_right">CANCEL</a>
+                  <button type="submit" class="save_button float_right">Save</button>
+                  <a href="#" class="cancel_button float_right">Cancel</a>
                 </div>
               </div>
             </div>
@@ -973,8 +973,8 @@
             <div class="darker_block">
               <div class="pad_10">
                 <div class="right save_cancel">
-                  <button type="submit" class="save_button float_right">SAVE</button>
-                  <a href="#" class="cancel_button float_right">CANCEL</a>
+                  <button type="submit" class="save_button float_right">Save</button>
+                  <a href="#" class="cancel_button float_right">Cancel</a>
                 </div>
               </div>
             </div>
@@ -1004,7 +1004,7 @@
 <!-- dialogs -->
 </div> <!-- #container -->
 <div class="jqmWindow" id="bucket_details_dialog">
-  <h1><span class="when-editing">CONFIGURE BUCKET</span><span class="when-creating">CREATE BUCKET</span></h1>
+  <h1><span class="when-editing">Configuru Bucket</span><span class="when-creating">Create Bucket</span></h1>
   <form><div class="clearfix">
     <h2>Bucket Settings</h2>
     <div class="bucket-icon"></div>
@@ -1022,7 +1022,7 @@
     <label class="for-proxy-port"><span>Protocol Port:</span><input name="proxyPort"><span class="error-container err-proxyPort"></span></label>
     <h2>Memory Size</h2>
     <div class="size-gauge for-ram">
-      <div class="t">CLUSTER QUOTA (<span class="total">192 GB</span>)</div>
+      <div class="t">Cluster quota (<span class="total">192 Gb</span>)</div>
       <div class="gauge">
         <div>
           <div style="width: 68%;" class="green"></div>
@@ -1030,19 +1030,19 @@
         </div>
       </div>
       <table class="b"><tr>
-        <td class="blue">OTHER BUCKETS (<span class="other">15 GB</span>)</td>
-        <td class="green">THIS BUCKET (<span class="this">5 GB</span>)</td>
-        <td>FREE (<span class="free">12 GB</span>)</td>
+        <td class="blue">Other buckets <span class="other">15 Gb</span>)</td>
+        <td class="green">This bucket (<span class="this">5 Gb</span>)</td>
+        <td>Free (<span class="free">12 Gb</span>)</td>
       </tr></table>
     </div>
-    <label class="for-ram-quota"><span>Dynamic RAM Allocated:</span><input name="ramQuotaMB" value="30"><abbr>MB</abbr></label>
+    <label class="for-ram-quota"><span>Dynamic RAM Allocated:</span><input name="ramQuotaMB" value="30"><abbr>Mb</abbr></label>
     <div class="error-container err-ramQuotaMB"></div>
     <div class="persistent-only">
       <h2>Storage Size</h2>
       <!-- <label class="for-enable-persistence"><input type="checkbox" disabled checked><span>Enable Persistence</span></label> -->
       <div class="normal size-gauge for-hdd">
-        <div class="other-data-block">OTHER DATA (<span class="other-data">15 GB</span>)</div>
-        <div class="t">TOTAL CLUSTER STORAGE (<span class="total">192 GB</span>)</div>
+        <div class="other-data-block">Other data (<span class="other-data">15 Gb</span>)</div>
+        <div class="t">Total cluster starage (<span class="total">192 Gb</span>)</div>
         <div class="gauge">
           <div>
             <div class="green"></div>
@@ -1051,14 +1051,14 @@
           </div>
         </div>
         <table class="b"><tr>
-          <td class="blue">OTHER BUCKETS (<span class="other">15 GB</span>)</td>
-          <td class="green">THIS BUCKET (<span class="this">5 GB</span>)</td>
-          <td>FREE (<span class="free">12 GB</span>)</td>
+          <td class="blue">Other buckets (<span class="other">15 Gb</span>)</td>
+          <td class="green">This bucket (<span class="this">5 Gb</span>)</td>
+          <td>FREE (<span class="free">12 Gb</span>)</td>
         </tr></table>
       </div>
       <div class="overcommit size-gauge for-hdd">
-        <div class="other-data-block">OTHER DATA (<span class="other-data">15 GB</span>)</div>
-        <div class="t">TOTAL CLUSTER SPACE (<span class="total">192 GB</span>)</div>
+        <div class="other-data-block">Other data (<span class="other-data">15 Gb</span>)</div>
+        <div class="t">Total cluster space (<span class="total">192 Gb</span>)</div>
         <div class="gauge">
           <div class="gauge-total">
             <div class="green"><i></i></div>
@@ -1067,12 +1067,12 @@
           </div>
         </div>
         <table class="b"><tr>
-          <td class="blue">OTHER BUCKETS (<span class="other">15 GB</span>)</td>
-          <td class="green">THIS BUCKET (<span class="this">5 GB</span>)</td>
-          <td class="extra">OVERCOMMIT (<span class="overcommitted">12 GB</span>)</td>
+          <td class="blue">Other buckets (<span class="other">15 Gb</span>)</td>
+          <td class="green">This bucket (<span class="this">5 Gb</span>)</td>
+          <td class="extra">Overcommit (<span class="overcommitted">12 Gb</span>)</td>
         </tr></table>
       </div>
-      <label class="for-hdd-quota"><span>Disk Quota:</span><input name="hddQuotaGB"><abbr>GB</abbr></label>
+      <label class="for-hdd-quota"><span>Disk Quota:</span><input name="hddQuotaGB"><abbr>Gb</abbr></label>
       <div class="error-container err-hddQuotaGB"></div>
       <h2>Replication</h2>
       <label class="for-enable-replication"><input type="checkbox" checked><span>Enable Replication</span></label>
@@ -1082,9 +1082,9 @@
       </label>
     </div> <!-- .persistent-only -->
   </div><div class="save_cancel clearfix">
-    <span class="when-editing"><button class="save_button float_right" type="submit">SAVE</button><button class="delete_button float_right">DELETE</button></span>
-    <span class="when-creating"><button class="save_button float_right" type="submit">CREATE</button></span>
-    <a href="#" class="jqmClose">CANCEL</a>
+    <span class="when-editing"><button class="save_button float_right" type="submit">Save</button><button class="delete_button float_right">Delete</button></span>
+    <span class="when-creating"><button class="save_button float_right" type="submit">Create</button></span>
+    <a href="#" class="jqmClose">Cancel</a>
   </div></form>
 </div>
 
@@ -1098,9 +1098,9 @@
 			</div>
 		</div>
 		<div class="save_cancel clearfix">
-			<button class="save_button float_right" type="submit">SAVE</button>
-			<button class="delete_button float_right">DELETE</button>
-			<a class="jqmClose" href="#">CANCEL</a>
+			<button class="save_button float_right" type="submit">Save</button>
+			<button class="delete_button float_right">Delete</button>
+			<a class="jqmClose" href="#">Cancel</a>
 		</div>
 	</form>
   <div class="lbox" style="display:none;">
@@ -1120,8 +1120,8 @@
         </div>
         <div class="pas_20">
           <div class="right save_cancel">
-            <a class="save_button float_right" href="javascript:BucketsSection.removeCurrentBucket();">REMOVE</a>
-            <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
+            <a class="save_button float_right" href="javascript:BucketsSection.removeCurrentBucket();">Remove</a>
+            <a href="#" class="jqmClose cancel_button float_right">Cancel</a>
           </div>
         </div>
       </div>
@@ -1134,7 +1134,7 @@
   <div class="lbox join_cluster type_2 shadow_box">
     <div class="content">
       <div class="pad">
-        <p class="lbox_header header_2">ADD SERVER</p>
+        <p class="lbox_header header_2">Add Server</p>
         <p class="warning pat_10" id="join_cluster_dialog_errors_container"></p>
         <p id="join_cluster_dialog_errors_template" class="template">
         <!-- {% _.each(rows, function (e) { %} -->
@@ -1183,8 +1183,8 @@
             </table>
           </div>
           <div class="right save_cancel footer_bg pas_20">
-            <button type="submit" class="save_button button_3 float_right">ADD SERVER</button>
-            <a class="jqmClose cancel_button float_right" href="#">CANCEL</a>
+            <button type="submit" class="save_button button_3 float_right">Add Server</button>
+            <a class="jqmClose cancel_button float_right" href="#">Cancel</a>
           </div>
         </form>
       </div>
@@ -1208,8 +1208,8 @@
         </div>
       </div>
       <div class="right save_cancel pas_20 footer_bg">
-        <a class="save_button float_right" href="#">REMOVE</a>
-        <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
+        <a class="save_button float_right" href="#">Remove</a>
+        <a href="#" class="jqmClose cancel_button float_right">Cancel</a>
       </div>
     </div>
   </div>
@@ -1230,8 +1230,8 @@
         </div>
       </div>
         <div class="right save_cancel pas_20 footer_bg">
-          <a class="save_button float_right" href="#">ADD NODE</a>
-            <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
+          <a class="save_button float_right" href="#">Add Node</a>
+            <a href="#" class="jqmClose cancel_button float_right">Cancel</a>
         </div>
     </div>
   </div>
@@ -1253,8 +1253,8 @@
       </div>
       <div class="pas_20 footer_bg">
         <div class="right save_cancel">
-          <a class="save_button float_right" href="#">FAIL OVER</a>
-            <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
+          <a class="save_button float_right" href="#">Fail Over</a>
+            <a href="#" class="jqmClose cancel_button float_right">Cancel</a>
         </div>
       </div>
     </div>
@@ -1290,7 +1290,7 @@
             </div>
             <form>
               <div class="right save_cancel">
-                <a class="jqmClose save_button float_right" href="#">CLOSE</a>
+                <a class="jqmClose save_button float_right" href="#">Close</a>
               </div>
             </form>
           </div>
@@ -1324,7 +1324,7 @@
           <div class="right save_cancel">
             <div class="float_right">
               <button type="button" class="save_button button_3 float_right">OK</button>
-              <a class="jqmClose cancel_button float_right" href="#">CANCEL</a>
+              <a class="jqmClose cancel_button float_right" href="#">Cancel</a>
             </div>
           </div>
         </div>
@@ -1554,9 +1554,9 @@
 		  	<div>
 		        <label>Dynamic RAM Quota:</label>
 		        <input type="text" name="dynamic-ram-quota" value="" style="width:95px;" />
-		        <span>MB</span>
+		        <span>Mb</span>
 		        <span>
-		          Total: <span class="ram-total-size">0GB</span>
+		          Total: <span class="ram-total-size">0 Gb</span>
 		        </span>
 			</div>
 	      </div>
@@ -1669,10 +1669,10 @@
     <div class="cnt">
       <div class="content">
         <div class="top_save_cancel right save_cancel float_right">
-          <button type="submit" class="save_button float_right">SAVE</button>
-          <a class="jqmClose cancel_button float_right" href="#">CANCEL</a>
+          <button type="submit" class="save_button float_right">Save</button>
+          <a class="jqmClose cancel_button float_right" href="#">Cancel</a>
         </div>
-        <p class="lbox_header header_2">EDIT SERVER</p>
+        <p class="lbox_header header_2">Edit Server</p>
         <form class="lbox_form">
           <h3>Server configuration<h3>
           <table>
@@ -1718,7 +1718,7 @@
           <col width="300" />
             <tr>
               <td class="label"><label>Dynamic RAM Allocated:</label></td>
-              <td><input type="text" name="ramQuota" class="inp inp_size_1"> GB</td>
+              <td><input type="text" name="ramQuota" class="inp inp_size_1"> Gb</td>
             </tr>
           </table>
 
@@ -1731,7 +1731,7 @@
           <col width="300" />
             <tr>
               <td class="label"><label>Flash One - Memory Allocated:</label></td>
-              <td><input type="text" name="fl_one" class="inp inp_size_1"> GB</td>
+              <td><input type="text" name="fl_one" class="inp inp_size_1"> Gb</td>
             </tr>
             <tr>
               <td class="label"><label>Path:</label></td>
@@ -1753,7 +1753,7 @@
               <td class="label"><label>Disk One Quota:</label></td>
               <td>
                 <span class="float_right">Total: 300Gb</span>
-                <input type="text" name="fl_one" class="inp inp_size_1"> GB
+                <input type="text" name="fl_one" class="inp inp_size_1"> Gb
               </td>
             </tr>
             <tr>
@@ -1767,7 +1767,7 @@
               <td class="label"><label>Disk Two Quota:</label></td>
               <td>
                 <span class="float_right">Total: 300Gb</span>
-                <input type="text" name="fl_one" class="inp inp_size_1"> GB
+                <input type="text" name="fl_one" class="inp inp_size_1"> Gb
               </td>
             </tr>
             <tr>
@@ -1781,8 +1781,8 @@
 
           <div class="pas_20">
             <div class="right save_cancel">
-              <button class="save_button float_right" type="submit">SAVE</button>
-              <a href="#" class="jqmClose cancel_button float_right">CANCEL</a>
+              <button class="save_button float_right" type="submit">Save</button>
+              <a href="#" class="jqmClose cancel_button float_right">Cancel</a>
             </div>
           </div>
         </form>
