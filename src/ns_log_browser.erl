@@ -61,8 +61,14 @@ get_logs_as_file(Types, NumReports, RegExp) ->
     catch rb:stop(),
     TempFile = tempfile("nslogs", ".log"),
     filelib:ensure_dir(TempFile),
-    Options = [{start_log, TempFile}, {type, Types}, {max, NumReports}],
-    case rb:start(Options) of
+    Options = [{start_log, TempFile}, {type, Types}, {max, NumReports}, {report_dir}],
+    Options1 = case application:get_env(error_logger_mf_dir) of
+                   undefined ->
+                       Options;
+                   {ok, LogDir} ->
+                       [{report_dir, LogDir}|Options]
+               end,
+    case rb:start(Options1) of
     {ok, _Pid} -> ok;
     {error, already_present} ->
         % Can sometimes get wedged
