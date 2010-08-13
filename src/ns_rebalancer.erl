@@ -272,20 +272,22 @@ new_replicas(Bucket, EjectNodes, [Chain|MapTail], Histograms, V,
     %% Split off the masters - we don't want to move them!
     {[Master|Replicas], [MHist|RHists]} = {Chain, Histograms},
     ChainHist = lists:zip(Replicas, RHists),
-    {Replicas1, RHists1} =
-        lists:unzip(
-          lists:map(fun ({undefined, Histogram}) ->
-                            assign(Histogram, [Master|EjectNodes]);
-                        (X = {OldNode, Histogram}) ->
-                            case lists:member(OldNode, EjectNodes) of
+    {Replicas1, RHists1} = % These will be reversed
+        lists:foldl(fun ({undefined, Histogram}, {C, H}) ->
+                            {N1, H1} = assign(Histogram, C ++ [Master|EjectNodes]),
+                            {[N1|C], [H1|H]};
+                        ({OldNode, Histogram}, {C, H}) ->
+                            case lists:member(OldNode, C ++ EjectNodes) of
                                 true ->
-                                    assign(Histogram, Chain ++ EjectNodes);
+                                    {N1, H1} = assign(Histogram, C ++ Chain ++
+                                                          EjectNodes),
+                                    {[N1|C], [H1|H]};
                                 false ->
-                                    X
+                                    {[OldNode|C], [Histogram|H]}
                             end
-                        end, ChainHist)),
-    new_replicas(Bucket, EjectNodes, MapTail, [MHist|RHists1], V + 1,
-                  [[Master|Replicas1]|NewMapReversed]).
+                  end, {[], []}, ChainHist),
+    new_replicas(Bucket, EjectNodes, MapTail, [MHist|lists:reverse(RHists1)],
+                 V + 1, [[Master|lists:reverse(Replicas1)]|NewMapReversed]).
 
 
 -spec perform_moves(string(), map(), moves(), fun((dict()) -> any())) ->
