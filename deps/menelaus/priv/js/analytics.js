@@ -84,6 +84,7 @@ var SamplesRestorer = mkClass({
   var statsCell = new Cell(function (samplesRestorer) {
     return future.get({
       url: samplesRestorer.url,
+      ignoreErrors: true,
       data: samplesRestorer.getRequestData()
     }, samplesRestorer.valueTransformer);
   }).setSources({samplesRestorer: samplesRestorerCell,
