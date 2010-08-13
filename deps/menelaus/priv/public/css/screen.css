@@ -13,7 +13,7 @@ table, caption, tbody, tfoot, thead, tr, th, td {
 	padding: 0;
 	border: 0;
 	outline: 0;
-	font-size: 100.01%;
+	/*font-size: 100.01%;*/
 	vertical-align: baseline;
 	background: transparent;
 }
@@ -161,11 +161,18 @@ h1 .nav a {font-size:11px; font-weight:bolder; cursor:pointer;}
 
 .gong_rb {background:none #e2e3e3; position:relative;margin:5px 0 10px;}
 .gong_rb .pad {padding:10px !important; background:none !important;}
-.gong_rb .side {width:9px; height:9px; position:absolute; background:url(../images/gong_rb.gif) 0 0 no-repeat; overflow:hidden;}
+.gong_rb .side {display:block;width:9px; height:9px; position:absolute; background:url(../images/gong_rb.gif) 0 0 no-repeat; overflow:hidden;}
 .gong_rb .side_1 {background-position:0 0px; left:0px; top:0px;}
 .gong_rb .side_2 {background-position:0 -9px; right:0px; top:0px;}
 .gong_rb .side_3 {background-position:0 -18px; right:0px; bottom:0px;}
 .gong_rb .side_4 {background-position:0 -27px; left:0px; bottom:0px;}
+
+.err {width:100%;margin:0 0 15px;padding:7px 0 0;overflow:hidden;position:relative;background:#eee;}
+.err > i {display:block;width:3px; height:3px; position:absolute;left:0px; top:0px; font-size:0;background:url(../images/crn_hdr_err.gif) 0 0 no-repeat;}
+.err > i+i {background-position:100% 0; right:0px; top:0px; left:auto;bottom:auto;}
+.err > i+i+i {background-position:0 100%; left:0px; bottom:0px; right:auto;top:auto;}
+.err > i+i+i+i  {background-position:100% 100%; right:0px; bottom:0px; left:auto;top:auto;}
+.err p {min-height:20px;margin:0 10px 5px;padding:3px 0 0 29px;color:#dd3b2c;font-size:12px;line-height:1.3;background:url(../images/warning_bg_2.png) 0 0 no-repeat;}
 
 .gray_rb {height:71px; overflow:hidden; background:url(../images/gray_box_bg.gif) 0 -142px repeat-x;}
 .gray_rb .left {background:url(../images/gray_box_bg.gif) 0 0 no-repeat;}
@@ -413,9 +420,6 @@ background:url(../images/mini_graph_bg.gif) 0 0 no-repeat; margin:0 12px 7px 12p
 
 #server_list_container > table { width: 100%; }
 
-
-
-
 /* jqModal base Styling courtesy of;
   Brice Burgess <bhb@iceburg.net> */
 
@@ -513,9 +517,7 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 .shadow_box .cnt .pad {background:url(../images/shadow_box_side_bg.gif) 100% 0 repeat-y; padding:0 9px;}
 .shadow_box .content {background:none #eeeeef;}
 .shadow_box .section {border:0px;}
-
 .shadow_box pre {white-space:normal; display:block; overflow:auto; padding:5px 0;}
-
 .shadow_box .darker_block {background-color:#d4d4d5;}
 .with_devider {background-image:url(../images/devider_line_1.gif); background-position:0 100%; background-repeat:repeat-x;}
 
@@ -563,9 +565,9 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 #server_list_container .details table td span {color:#7e7e80;}
 
 /* cluster overview */
+.cnt .hdr {min-height:39px;padding:0 18px;line-height:39px;font-size:21px;background:url(../images/bg_h2.gif) 0 100% repeat-x #e3e3e4;overflow:hidden;}
+.cnt .hdr span {font-size:18px;}
 #overview .shadow_box {margin:0 0 5px;}
-#overview .cnt .hdr {height:39px;padding:0 18px;line-height:39px;font-size:21px;background:url(../images/bg_h2.gif) 0 100% repeat-x #e3e3e4;}
-#overview .cnt .hdr span {font-size:18px;}
 #overview .section {border:2px solid #d4d4d5;border-width:0 2px;}
 #overview .section .item {padding:13px 13px 13px 16px;border-bottom:1px solid #ced5d9;}
 #overview .section .item .label {float:left;clear:right;width:128px;color:#9b9b9b;line-height:1.4;}
@@ -604,6 +606,15 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 .actservers + ul li.down {color:#e43a1b;}
 .actservers + ul li.down a {color:#e43a1b;}
 .actservers + ul .alert_num {top:-1px;right:303px;}
+
+p.info {padding:5px 24px 15px;font-weight:bold;}
+#monitor_servers .shadow_box {margin:0 0 5px;}
+#monitor_servers .aservers .servers_list li {padding-right:0;*margin:-2px 0 0;}
+#monitor_servers .aservers .servers_list .serverName {width:200px;}
+#monitor_servers .aservers .servers_list .serverName + div {float:left;width:187px;height:100%;padding:0 14px 0 10px;text-align:right;line-height:1.5;}
+#monitor_servers .aservers .servers_list .fdp {float:left;width:190px;height:100%;padding:0 15px 0 13px;background:#fafbfd;border-left:1px solid #d2d3d5; text-align:right;line-height:1.5;}
+#monitor_servers .aservers .servers_list li span {position:relative;}
+#monitor_servers .aservers .servers_list li .usage_small {margin-top:17px;}
 
 #get_started {display:none;}
 
@@ -876,45 +887,57 @@ body.init_secure #container { display: none; }
 
 
 
-#servers .list_button, #servers .add_button,
-#servers .rebalance_button, #servers .stop_rebalance_button
+#servers .list_button, #servers .add_button, #servers .rebalance_button, #servers .stop_rebalance_button
 {display: block; float: right; *float:right !important; margin-left: 5px; text-decoration:none !important;}
-
-
 li.server_row .btn_cancel {display:block; height:15px; color:#7a7a7a; padding:0 18px 0 0; background:url(../images/btn_cancel_bg.png) 100% 0 no-repeat; line-height:15px; margin-top:23px;}
-#servers .add_button {width:124px;}
-#servers .btn_width_2 {width:125px;}
-#servers .rebalance_button {width:115px;}
-#servers .btn_width_1 {width:116px;}
 #servers .list_button {height:31px; padding:0 3px 0 0; background:url(../images/btn_2_bg.png) 100% -31px no-repeat; color:#000; margin-top:14px; font-size:14px; text-decoration:none !important; position:relative; }
 #servers .list_button span {display:block; text-align:center; height:31px; line-height:31px; padding:0 6px 0 10px; background:url(../images/btn_2_bg.png) 0 0 no-repeat; float:right;}
 #servers .list_button.disabled {background-position:100% -93px; color:#cacbce !important; opacity:1 !important;}
 #servers .list_button.disabled span {background-position:0 -62px; color:#9E9FA3 !important;}
+#servers .add_button {width:124px;}
+#servers .rebalance_button {width:115px;}
+#servers .btn_width_1 {width:116px;}
+#servers .btn_width_2 {width:125px;}
 
 #servers h2 { height: 25px;}
-#servers .servers_list li { list-style: none; height: min-25px; /*margin-top: 3px; */ display:block; padding:0 10px;}
+/*#servers .servers_list li { list-style: none; height: min-25px; display:block; padding:0 10px;}
 #servers .servers_list li.server_row {height:60px; line-height:60px; border-bottom:1px solid #d1d5d8; overflow:hidden; background:url(../images/server_status_icons.png) 10px 20px no-repeat; padding:0 10px 0 85px;}
 #servers .servers_list li.server_row.server_down {background:url(../images/server_status_icons.png) 10px -157px no-repeat; background-color:#61696c;}
 #servers .servers_list li.server_row.failed_over {background:url(../images/server_status_icons.png) 10px -309px no-repeat; background-color:#c9cccc;}
 #servers .servers_list li.server_row.failed_over .list_button {display:none;}
-#servers .servers_list li.server_row.failed_over .serverName {/*color:#9c9e9e;*/ color:#333; opacity:0.3;}
-
+#servers .servers_list li.server_row.failed_over .serverName {color:#333; opacity:0.3;}
 #servers .servers_list li.server_row.rebalance_empty {padding:0 15px; background:none; color:#656565;}
 #servers .servers_list li.server_row.rebalance_empty * {display:none;}
 #servers .servers_list li.server_row.rebalance_empty .rebalance_empty_message {display:block;}
-
 #servers .servers_list li.server_row.pending_add {background:url(../images/server_status_icons.png) 10px -309px no-repeat;}
+*/
+.servers_list li { list-style: none; height-min:25px;display:block; padding:0 10px;}
+.servers_list li.server_row {height:60px; line-height:60px; border:1px solid #d1d5d8;border-top:none;overflow:hidden; background:url(../images/server_status_icons.png) 10px 20px no-repeat; padding:0 10px 0 85px;}
+.servers_list li.server_row.server_down {background:url(../images/server_status_icons.png) 10px -157px no-repeat; background-color:#61696c;border-color:#61696c;}
+.servers_list li.server_row.failed_over {background:url(../images/server_status_icons.png) 10px -309px no-repeat; background-color:#c9cccc;}
+.servers_list li.server_row.failed_over .list_button {display:none;}
+.servers_list li.server_row.failed_over .serverName {color:#333; opacity:0.3;}
+.servers_list li.server_row.rebalance_empty {padding:0 15px; background:none; color:#656565;}
+.servers_list li.server_row.rebalance_empty * {display:none;}
+.servers_list li.server_row.rebalance_empty .rebalance_empty_message {display:block;}
+.servers_list li.server_row.pending_add {background:url(../images/server_status_icons.png) 10px -309px no-repeat;}
+
 li.server_row.pending_add .btn_cancel {float:right;}
 li.server_row.pending_add .pending_add_message {float:right; margin:0 10px 0 0; color:#e54c2a;}
 
-#servers .servers_list li.server_row.pending_removal {background:url(../images/server_status_icons.png) 10px -309px no-repeat;}
+/*#servers .servers_list li.server_row.pending_removal {background:url(../images/server_status_icons.png) 10px -309px no-repeat;}*/
 li.server_row.pending_removal .btn_cancel {float:right;}
 li.server_row.pending_removal .pending_removal_message {float:right; margin:0 10px 0 0; color:#e54c2a;}
 li.server_row.status_up {background-position:10px 20px !important;}
 li.server_row.status_down {background-position:10px -157px !important; background-color:#61696c;}
 
-.warning_message {min-height:20px; padding:5px 0 0 25px; color:#dd3b2c; margin:0 0 5px 0; background:url(../images/warning_bg_2.png) 0 0 no-repeat;}
-.failover_warning { display: none; }
+.servers_list li.th {height:31px;line-height:31px;background:url(../images/bg_li_th.gif) repeat-x;border:1px solid #d1d5d8;border-width:0 1px;}
+.servers_list li.th div {float:left;width:320px;}
+.servers_list li.th div+div {width:320px;padding:0 0 0 10px;width:200px;border-left:1px solid #d2d3d5;}
+.servers_list li.th p {float:left;width:208px;padding:0 0 0 10px;background:url(../images/bg_li_th.gif) 0 -31px repeat-x;border-left:1px solid #d2d3d5;}
+
+.warning_message {min-height:20px;margin:0 0 5px 0;padding:5px 0 0 25px;color:#dd3b2c;font-size:12px;line-height:1.3;background:url(../images/warning_bg_2.png) 0 0 no-repeat;}
+.failover_warning {display: none;}
 
 .alert_num {display:block; position:absolute; right:-25px; top:-16px; background:url(../images/alert_num_bg.png) 0 0 no-repeat; z-index:10; width:44px; height:44px;}
 .alert_num span {display:block; width:16px; position:relative; top:0px; left:11px; text-align:center; color:#fff; font-size:11px; line-height:38px;}
@@ -932,7 +955,8 @@ ul.tabs .alert_num_display .alert_num {display:block;}
 .failed_over_message {float:right; color:#9c9e9e; display:none;}
 .failed_over .failed_over_message {display:block;}
 
-#servers .servers_list .serverName {display:inline-block; height:60px; padding:0 0 0 45px; background:url(../images/server_icon.png) 0 10px no-repeat; font-size:12px; font-weight:bolder; float:left;}
+/*#servers .servers_list .serverName {display:inline-block; height:60px; padding:0 0 0 45px; background:url(../images/server_icon.png) 0 10px no-repeat; font-size:12px; font-weight:bolder; float:left;}*/
+.servers_list .serverName {display:inline-block; height:60px; padding:0 0 0 45px; background:url(../images/server_icon.png) 0 10px no-repeat; font-size:12px; font-weight:bolder; float:left;}
 
 #servers .gong_rb { margin-top: 10px; margin-bottom: 10px; padding-left:67px; background-image:url(../images/icons.png); background-position:-6px 1px; background-repeat:no-repeat;}
 
@@ -956,7 +980,7 @@ ul.tabs .alert_num_display .alert_num {display:block;}
 .diagr_ram span.blue {z-index:5; background-position:0 -15px;}
 .diagr_ram span.yellow {z-index:4; background-position:0 -30px;}
 .diagr_ram span.green {z-index:3; background-position:0 -45px;}
-.diagr_labels td {padding:3px 0 0 0;}
+.diagr_labels td {padding:3px 0 0 !important;}
 .RAM_diagramm td {color:#808080;}
 .RAM_diagramm td.blue {color:#1878a2;}
 .RAM_diagramm td.yellow {color:#c19710;}
