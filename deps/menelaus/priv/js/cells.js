@@ -47,9 +47,11 @@ Future.prototype = {
 };
 
 future.get = function (ajaxOptions, valueTransformer, nowValue, futureWrapper) {
+  var aborted = false;
   var options = {
     valueTransformer: valueTransformer,
     cancel: function () {
+      aborted = true;
       Abortarium.abortRequest(xhr);
     },
     nowValue: nowValue
@@ -57,12 +59,25 @@ future.get = function (ajaxOptions, valueTransformer, nowValue, futureWrapper) {
   var xhr;
   if (ajaxOptions.url === undefined)
     throw new Error("url is undefined");
-  return (futureWrapper || future)(function (dataCallback) {
-    xhr = $.ajax(_.extend({type: 'GET',
-                           dataType: 'json',
-                           success: dataCallback},
-                          ajaxOptions));
-  }, options);
+
+  function initiateXHR(dataCallback) {
+    var opts = {type: 'GET',
+                dataType: 'json',
+                success: dataCallback};
+    if (ajaxOptions.ignoreErrors) {
+      opts.error = function () {
+        if (aborted)
+          return;
+        setTimeout(function () {
+          if (aborted)
+            return;
+          initiateXHR(dataCallback);
+        }, 5000);
+      }
+    }
+    xhr = $.ajax(_.extend(opts, ajaxOptions));
+  }
+  return (futureWrapper || future)(initiateXHR, options);
 }
 
 future.pollingGET = function (ajaxOptions, valueTransformer, nowValue, futureWrapper) {
