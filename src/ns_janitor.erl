@@ -114,8 +114,13 @@ sanify(Bucket, Map, Servers) ->
 
 sanify_chain(Bucket, State, Chain, VBucket, Zombies) ->
     NewChain = do_sanify_chain(Bucket, State, Chain, VBucket, Zombies),
-    true = length(NewChain) == length(Chain),
-    NewChain.
+    case length(NewChain) /= length(Chain) of
+        false ->
+            NewChain;
+        true ->
+            exit({length_changed, Bucket, State, Chain, NewChain, VBucket,
+                  Zombies})
+    end.
 
 do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
     NodeStates = [{N, S} || {N, V, S} <- States, V == VBucket],
