@@ -1087,13 +1087,23 @@
     <a href="#" class="jqmClose">CANCEL</a>
   </div></form>
 </div>
-<div class="jqmWindow" id="bucket_remove_dialog">
-  <div class="lbox">
-    <div class="top">
-      <div class="top_left"></div>
-      <div class="top_right"></div>
-      <div class="top_center"></div>
-    </div>
+
+<div class="jqmWindow popup" id="bucket_remove_dialog">
+	<h1>Bucket Properties</h1>
+	<form>
+		<div class="clearfix">
+			<h2>Removing</h2>
+			<div class="err">
+				<p>Removing this bucket will result in complete data loss for this bucket. <br/>Are you sure you want to remove it?</p>
+			</div>
+		</div>
+		<div class="save_cancel clearfix">
+			<button class="save_button float_right" type="submit">SAVE</button>
+			<button class="delete_button float_right">DELETE</button>
+			<a class="jqmClose" href="#">CANCEL</a>
+		</div>
+	</form>
+  <div class="lbox" style="display:none;">
     <div class="center">
       <div class="pad">
         <p class="lbox_header">
@@ -1116,13 +1126,9 @@
         </div>
       </div>
     </div>
-    <div class="bottom">
-      <div class="bottom_left"></div>
-      <div class="bottom_right"></div>
-      <div class="bottom_center"></div>
-    </div>
   </div>
 </div>
+
 <div class="jqmWindow always-fixed" id="join_cluster_dialog">
   <!-- Join cluster -->
   <div class="lbox join_cluster type_2 shadow_box">
