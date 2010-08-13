@@ -459,7 +459,10 @@ function showAbout() {
 }
 
 function showInitDialog(page, opt) {
-  $('.page-header').hide();
+  $('.page-header')[page == 'done' ? 'show' : 'hide']();
+
+  if (page == 'done')
+    DAO.enableSections();
 
   opt = opt || {};
 
@@ -467,9 +470,6 @@ function showInitDialog(page, opt) {
 
   if (page == "")
     page = "welcome";
-
-  if (DAO.login)        // If the cluster appears to be configured
-    page = "done";      // by being secured then don't let user go back through init dialog.
 
   for (var i = 0; i < pages.length; i++) {
     if (page == pages[i]) {
@@ -486,28 +486,19 @@ function showInitDialog(page, opt) {
     }
   }
 
-  if (page == "done")
-    $('.page-header').show();
+  if (page == 'done')
+    return;
 
-  //  if (DAO.initStatus != page) {
-  //  DAO.initStatus = page;
-  //   $.ajax({
-  //    type:'POST', url:'/node/controller/initStatus', data: 'value=' + page
-  //  });
-  //}
-
-  if (page != 'done') {
-    var notices = [];
-    $('#notice_container > *').each(function () {
-        var text = $.data(this, 'notice-text');
-        if (!text)
-          return;
-        notices.push(text);
-      });
-    if (notices.length) {
-      $('#notice_container').html('');
-      alert(notices.join("\n\n"));
-    }
+  var notices = [];
+  $('#notice_container > *').each(function () {
+    var text = $.data(this, 'notice-text');
+    if (!text)
+      return;
+    notices.push(text);
+  });
+  if (notices.length) {
+    $('#notice_container').html('');
+    alert(notices.join("\n\n"));
   }
 }
 

@@ -145,11 +145,19 @@ var DAO = {
       }
     }
 
-    DAO.initStatus = data.initStatus || "";
+    // If the cluster appears to be configured
+    // by being secured then don't let user go back through init dialog.
+    DAO.initStatus = DAO.login ? 'done' : '';
     showInitDialog(DAO.initStatus);
   },
   switchSection: function (section) {
-    DAO.cells.mode.setValue(section);
+    DAO.switchedSection = section;
+    if (DAO.sectionsEnabled)
+      DAO.cells.mode.setValue(section);
+  },
+  enableSections: function () {
+    DAO.sectionsEnabled = true;
+    DAO.cells.mode.setValue(DAO.switchedSection);
   },
   tryNoAuthLogin: function () {
     $.ajax({
