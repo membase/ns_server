@@ -270,35 +270,35 @@ var MockedRequest = mkClass({
   doHandleBucketsPost: function (params) {
     var errors = {};
 
-    if (isBlank(params['name'])) {
-      errors.name = 'name cannot be blank';
-    } else if (params['name'] != 'new-name') {
-      errors.name = 'name has already been taken';
-    }
+    // if (isBlank(params['name'])) {
+    //   errors.name = 'name cannot be blank';
+    // } else if (params['name'] != 'new-name') {
+    //   errors.name = 'name has already been taken';
+    // }
 
-    if (!(/^\d+$/.exec(params['ramQuotaMB']))) {
-      errors.ramQuotaMB = "RAM quota size must be an integer";
-    }
+    // if (!(/^\d+$/.exec(params['ramQuotaMB']))) {
+    //   errors.ramQuotaMB = "RAM quota size must be an integer";
+    // }
 
-    if (!(/^\d+$/.exec(params['hddQuotaGB']))) {
-      errors.hddQuotaGB = "Disk quota size must be an integer";
-    }
+    // if (!(/^\d+$/.exec(params['hddQuotaGB']))) {
+    //   errors.hddQuotaGB = "Disk quota size must be an integer";
+    // }
 
-    var authType = params['authType'];
-    if (authType == 'none') {
-      if (!(/^\d+$/.exec(params['proxyPort']))) {
-        errors.proxyPort = 'bad'
-      }
-    } else if (authType == 'sasl') {
-    } else {
-      errors.authType = 'unknown auth type'
-    }
+    // var authType = params['authType'];
+    // if (authType == 'none') {
+    //   if (!(/^\d+$/.exec(params['proxyPort']))) {
+    //     errors.proxyPort = 'bad'
+    //   }
+    // } else if (authType == 'sasl') {
+    // } else {
+    //   errors.authType = 'unknown auth type'
+    // }
 
-    if (_.keys(errors).length) {
-      return this.errorResponse(errors);
-    }
+    // if (_.keys(errors).length) {
+    //   return this.errorResponse(errors);
+    // }
 
-    this.fakeResponse('');
+    this.fakeResponse({"errors":{},"summaries":{"ramSummary":{"total":1625292800,"otherBuckets":0,"thisAlloc":1625292800,"thisUsed":12933780,"free":0},"hddSummary":{"total":239315349504.0,"otherData":222563264798.0,"otherBuckets":0,"thisAlloc":16106127360.0,"thisUsed":10240,"free":645957346}}});
   },
 
   handlePoolsDefaultPost: function () {
