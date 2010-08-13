@@ -890,10 +890,16 @@ body.init_cluster #init_cluster_dialog h2.question {border-bottom:1px solid #d5d
 body.init_cluster #init_cluster_dialog p.pad_10 {color:#444245; font-family:Verdana, Helvetica, Sans-Serif; font-size:10pt; font-weight:lighter; line-height:20px; margin-left:75px; width:500px;}
 body.init_cluster #init_cluster_dialog div.join_cluster_dialog_errors_container {color:#ff0000; display:none; margin-left:85px; width:500px;}
 body.init_cluster form#init_cluster_form div {color:#444245; font-family:Verdana, Helvetica, Sans-Serif; font-size:12pt; font-weight:lighter; margin-left:85px;}
-body.init_cluster form#init_cluster_form > div div.login-credentials {display:none; margin-left:25px; margin-top:10px;}
-body.init_cluster form#init_cluster_form > div div.login-credentials div {height:30px; line-height:30px; margin-bottom:5px; margin-left:0px;}
-body.init_cluster form#init_cluster_form > div div.login-credentials div label {color:#8b8b8e; display:block; float:left; font-size:10pt; text-align:right; padding-right:5px; width:100px;}
-body.init_cluster form#init_cluster_form > div div.login-credentials div input {border:1px solid #ccd3d7; font-family:Verdana,Helvetica,Sans-Serif; font-size:10pt; height:25px; padding-left:5px;}
+body.init_cluster form#init_cluster_form > div div.login-credentials {display:none;margin:10px 0 0 25px;}
+body.init_cluster form#init_cluster_form > div div.memory-quota {margin:10px 0 0 25px;}
+body.init_cluster form#init_cluster_form > div div.login-credentials div,
+body.init_cluster form#init_cluster_form > div div.memory-quota div {height:30px; line-height:26px; margin-bottom:5px; margin-left:0px;}
+body.init_cluster form#init_cluster_form > div div.login-credentials div label, 
+body.init_cluster form#init_cluster_form > div div.memory-quota label {/*color:#8b8b8e;*/ display:block; float:left; font-size:10pt; text-align:right; padding-right:5px; width:140px;}
+body.init_cluster form#init_cluster_form > div div.login-credentials div input,
+body.init_cluster form#init_cluster_form > div div.memory-quota input {border:1px solid #ccd3d7; font-family:Verdana,Helvetica,Sans-Serif; font-size:10pt;  padding:3px 3px 4px 5px;}
+body.init_cluster form#init_cluster_form > div div.memory-quota span {font-size:10pt;}
+body.init_cluster form#init_cluster_form > div div.memory-quota span+span {margin:0 0 0 50px;}
 body.init_cluster #container { display: none; }
 
 body.init_secure #init_block { display: block; }
