@@ -334,13 +334,9 @@
   </script>
   <div id="server_details_template" class="template">
                 <div class="first gong_rb">
-                  <div class="side side_1"></div>
-                  <div class="side side_2"></div>
-                  <div class="side side_3"></div>
-                  <div class="side side_4"></div>
                   <div class="pad">
-                    <!-- disabled for beta1 a class="edit_btn float_right" href="javascript:ServersSection.editServerSettings('{%= h(escapeJS(obj.otpNode)) %}');"></a -->
-                    <a class="edit_btn float_right disabled">Edit</a>
+<!-- disabled for beta1 a class="edit_btn float_right" href="javascript:ServersSection.editServerSettings('{%= h(escapeJS(obj.otpNode)) %}');"></a -->
+					<a class="edit_btn float_right disabled">Edit</a>
                     <table class="server_details_tab">
                       <col width="230" />
                       <col width="" />
@@ -354,6 +350,7 @@
                       </tr>
                     </table>
                   </div>
+                  <div class="side side_1"></div><div class="side side_2"></div><div class="side side_3"></div><div class="side side_4"></div>
                 </div>
                <span class="additional_server_info">
                 <h3>Memory Cache</h3>
@@ -376,7 +373,7 @@
                     <tr class="diagr_labels">
                       <td class="blue">Membase Quota ({%= V.formatQuantity(memoryReserved, 'b', 1024) %})</td>
                       <td class="yellow">Other ({%= V.formatQuantity(memoryOther, 'b', 1024) %})</td>
-                      <td class="right" colspan=2>Free ({%= V.formatQuantity(memoryFree, 'b', 1024) %})</td>
+                      <td class="right" colspan="2">Free ({%= V.formatQuantity(memoryFree, 'b', 1024) %})</td>
                     </tr>
                   </table>
                 </span>
@@ -589,10 +586,6 @@
   <div id="bucket_settings_template">
     <div class="pad">
       <div class="gong_rb">
-        <div class="side side_1"></div>
-        <div class="side side_2"></div>
-        <div class="side side_3"></div>
-        <div class="side side_4"></div>
         <div class="pad">
           <a class="edit_btn" href="#editBucket={%= uri %}">EDIT</a>
           <table class="bucket_properties_table">
@@ -615,6 +608,10 @@
             </tr>
           </table>
         </div>
+        <div class="side side_1"></div>
+        <div class="side side_2"></div>
+        <div class="side side_3"></div>
+        <div class="side side_4"></div>
       </div>
       <span class="additional_server_info">
         <h3>Cache Size</h3>
@@ -622,20 +619,14 @@
           <div class="ovf">
             <span class="total_ram">Total RAM {%= h(V.formatQuantity(totalRAMSize)) %}</span>
             <table class="label">
-            <col width="245" />
-            <col width="" />
               <tr>
                 <td>Dynamic RAM Quota:</td>
                 <td>{%= h(V.formatQuantity(ramQuota)) %}</td>
               </tr>
             </table>
             <table class="RAM_diagramm">
-            <col width="">
-            <col width="">
-            <col width="">
-            <col width="">
               <tr>
-                <td colspan="4">
+                <td colspan="3">
                   <span class="diagr_ram">
                     <span style="width: 0%;" class="yellow">{%= V.thisElement(function (e) {$(e).css('width', RAMOtherPercent + '%')}) %}</span>
                     <span style="width: 100%;" class="green">{%= V.thisElement(function (e) {$(e).css('width', RAMUsedPercent + '%')}) %}</span>
@@ -643,9 +634,9 @@
                 </td>
               </tr>
               <tr class="diagr_labels">
-                <td colspan=2 class="green">THIS BUCKET ({%= h(V.formatQuantity(totalRAMUsed)) %})</td>
-                <td colspan=1 class="yellow">Other Data ({%= h(V.formatQuantity(otherRAMSize)) %})</td>
-                <td colspan=1 class="right">Free ({%= h(V.formatQuantity(totalRAMFree)) %})</td>
+                <td class="green">THIS BUCKET ({%= h(V.formatQuantity(totalRAMUsed)) %})</td>
+                <td class="yellow">Other Data ({%= h(V.formatQuantity(otherRAMSize)) %})</td>
+                <td class="right">Free ({%= h(V.formatQuantity(totalRAMFree)) %})</td>
               </tr>
             </table>
           </div>
@@ -654,8 +645,8 @@
         <span class="info_block">
           <div class="ovf">
             <table class="label">
-            <col width="245" />
-            <col width="" />
+            <!--col width="175" />
+            <col width="" /-->
               <tr>
                 <td>Persistance Enabled:</td>
                 <td>yes</td>
@@ -665,20 +656,16 @@
           <div class="ovf">
             <span class="total_ram">Total Storage {%= h(V.formatQuantity(totalDiskSize)) %}</span>
             <table class="label">
-            <col width="245" />
-            <col width="" />
+            <!--col width="175" />
+            <col width="" /-->
               <tr>
                 <td>Disk Quota:</td>
                 <td>{%= h(V.formatQuantity(quota.hdd)) %}</td>
               </tr>
             </table>
             <table class="RAM_diagramm">
-            <col width="">
-            <col width="">
-            <col width="">
-            <col width="">
               <tr>
-                <td colspan="4">
+                <td colspan="3">
                   <span class="diagr_ram">
                     <span style="width: 100%;" class="yellow">{%= V.thisElement(function (e) {$(e).css('width', diskOtherPercent + '%')}) %}</span>
                     <span style="width: 100%;" class="green">{%= V.thisElement(function (e) {$(e).css('width', diskUsedPercent + '%')}) %}</span>
@@ -686,9 +673,9 @@
                 </td>
               </tr>
               <tr class="diagr_labels">
-                <td colspan=2 class="green">THIS BUCKET ({%= h(V.formatQuantity(totalDiskUsed)) %})</td>
-                <td colspan=1 class="yellow">Other Data ({%= h(V.formatQuantity(otherDiskSize)) %})</td>
-                <td colspan=1 class="right">Free ({%= h(V.formatQuantity(totalDiskFree)) %})</td>
+                <td class="green">THIS BUCKET ({%= h(V.formatQuantity(totalDiskUsed)) %})</td>
+                <td class="yellow">Other Data ({%= h(V.formatQuantity(otherDiskSize)) %})</td>
+                <td class="right">Free ({%= h(V.formatQuantity(totalDiskFree)) %})</td>
               </tr>
             </table>
           </div>
