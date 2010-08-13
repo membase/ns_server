@@ -63,7 +63,10 @@ rebalance(KeepNodes, EjectNodes) ->
     AllNodes = KeepNodes ++ EjectNodes,
     [] = AllNodes -- ns_node_disco:nodes_actual_proper(),
     Buckets = ns_bucket:get_bucket_names(),
-    lists:foreach(fun (Bucket) -> wait_for_memcached(AllNodes, Bucket) end,
+    lists:foreach(fun (Bucket) ->
+                          wait_for_memcached(AllNodes, Bucket),
+                          ns_janitor:cleanup(Bucket)
+                  end,
                   Buckets),
     rebalance(Buckets, length(Buckets), KeepNodes, EjectNodes),
     %% Leave myself last
