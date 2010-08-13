@@ -67,10 +67,13 @@ var OverviewSection = {
     _.defer($m(this, 'initLater'));
 
     // this fake cell makes sure our stats cell is not recomputed when pool details change
-    this.statsCellArg = new Cell(function (poolDetails) {
+    this.statsCellArg = new Cell(function (poolDetails, mode) {
+      if (mode != 'overview')
+        return;
       return 1;
     }, {
-      poolDetails: DAO.cells.currentPoolDetailsCell
+      poolDetails: DAO.cells.currentPoolDetailsCell,
+      mode: DAO.cells.mode
     });
 
     this.statsCell = new Cell(function (arg) {
@@ -83,7 +86,6 @@ var OverviewSection = {
     this.statsCell.subscribe(function (cell) {
       var ts = cell.value.timestamp;
       var interval = ts[ts.length-1] - ts[0];
-      console.log("interval: ", interval);
       if (isNaN(interval) || interval < 15000)
         cell.recalculateAfterDelay(2000);
       else if (interval < 300000)
@@ -119,8 +121,6 @@ var OverviewSection = {
     while (data.length / decimation >= 120) {
       decimation <<= 1;
     }
-
-    console.log("decimation: ", decimation);
 
     if (decimation != 1) {
       tstamps = decimateNoFilter(decimation, tstamps);
