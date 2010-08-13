@@ -38,15 +38,26 @@ ip_config_path() ->
     Path = filename:dirname(CfgPath),
     filename:join(Path, "ip").
 
+strip_full(String) ->
+    String2 = string:strip(String),
+    String3 = string:strip(String2, both, $\n),
+    String4 = string:strip(String3, both, $\r),
+    case String4 =:= String of
+        true ->
+            String4;
+        _ ->
+            strip_full(String4)
+    end.
+
 read_address_config() ->
     Path = ip_config_path(),
     error_logger:info_msg("reading ip config from ~p~n", [Path]),
     case file:read_file(Path) of
         {ok, BinaryContents} ->
-            AddrString = string:strip(binary_to_list(BinaryContents)),
+            AddrString = strip_full(binary_to_list(BinaryContents)),
             case inet:getaddr(AddrString, inet) of
                 {error, Errno1} ->
-                    error_logger:error_msg("Got error:~p. Ignoring bad address:~s~n", [Errno1, AddrString]),
+                    error_logger:error_msg("Got error:~p. Ignoring bad address:~p~n", [Errno1, AddrString]),
                     undefined;
                 {ok, IpAddr} ->
                     case gen_tcp:listen(0, [inet, {ip, IpAddr}]) of
