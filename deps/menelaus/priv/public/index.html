@@ -1098,35 +1098,10 @@
 			</div>
 		</div>
 		<div class="save_cancel clearfix">
-			<button class="save_button float_right" type="submit">Save</button>
-			<button class="delete_button float_right">Delete</button>
+			<button onclick="BucketsSection.removeCurrentBucket();" class="delete_button float_right">Delete</button>
 			<a class="jqmClose" href="#">Cancel</a>
 		</div>
 	</form>
-  <div class="lbox" style="display:none;">
-    <div class="center">
-      <div class="pad">
-        <p class="lbox_header">
-          Bucket Properties
-        </p>
-        <div class="pas_20">
-          <p class="u_line text_14">
-            <span class="norm_14">Removing</span>
-            <strong class="bucket_name">&nbsp;</strong>
-          </p>
-          <div class="warning pat_20">
-                <strong>Warning</strong> - Removing this bucket will result in complete data loss for this bucket. Are you sure you want to remove it?
-          </div>
-        </div>
-        <div class="pas_20">
-          <div class="right save_cancel">
-            <a class="save_button float_right" href="javascript:BucketsSection.removeCurrentBucket();">Remove</a>
-            <a href="#" class="jqmClose cancel_button float_right">Cancel</a>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
 </div>
 
 <div class="jqmWindow always-fixed" id="join_cluster_dialog">
