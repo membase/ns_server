@@ -31,7 +31,7 @@
 -endif.
 
 -export([start_link/0, start_link/1, stop/0, loop/3, webconfig/0, restart/0,
-         build_nodes_info/4, handle_streaming/3]).
+         build_nodes_info/4, handle_streaming/3, is_system_provisioned/0]).
 
 -export([ns_log_cat/1, ns_log_code_string/1, alert_key/1]).
 
@@ -188,7 +188,7 @@ loop(Req, AppRoot, DocRoot) ->
                              ["controller", "ejectNode"] ->
                                  {auth, fun handle_eject_post/1};
                              ["controller", "addNode"] ->
-                                 {auth, fun handle_add_node/1};
+                                 {auth, fun handle_add_node_if_possible/1};
                              ["controller", "failOver"] ->
                                  {auth, fun handle_failover/1};
                              ["controller", "rebalance"] ->
@@ -761,6 +761,16 @@ build_settings_web(Port, U, P) ->
               {username, list_to_binary(U)},
               {password, list_to_binary(P)}]}.
 
+%% true iff system is correctly provisioned
+is_system_provisioned() ->
+    {struct, PList} = build_settings_web(),
+    Username = proplists:get_value(username, PList),
+    Password = proplists:get_value(password, PList),
+    case {binary_to_list(Username), binary_to_list(Password)} of
+        {[_|_], [_|_]} -> true;
+        _ -> false
+    end.
+
 is_valid_port_number("SAME") -> true;
 is_valid_port_number(String) ->
     PortNumber = (catch list_to_integer(String)),
@@ -1141,6 +1151,14 @@ validate_add_node_params(Hostname, Port, User, Password) ->
                            end]
                  end,
     lists:filter(fun (E) -> E =/= true end, Candidates).
+
+handle_add_node_if_possible(Req) ->
+    case is_system_provisioned() of
+        false ->
+            reply_json(Req, [<<"Cannot add nodes to not yet provisioned cluster">>], 400);
+        _ ->
+            handle_add_node(Req)
+    end.
 
 handle_add_node(Req) ->
     %% parameter example: hostname=epsilon.local, user=Administrator, password=asd!23
