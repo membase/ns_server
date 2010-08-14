@@ -148,6 +148,10 @@ var BucketDetailsDialog = mkClass({
     dialog.removeClass('editing').removeClass('creating');
     dialog.addClass(isNew ? 'creating' : 'editing');
 
+    if (!isNew) {
+      dialog[(initValues['name'] == 'default') ? 'addClass' : 'removeClass']('cannot-delete');
+    }
+
     setBoolAttribute(dialog.find('[name=name]'), 'disabled', !isNew);
 
     var oldBucketType;

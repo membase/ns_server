@@ -132,12 +132,17 @@ handle_bucket_info_streaming(PoolId, Id, Req, Pool, _Bucket, ForceInfoLevel) ->
     menelaus_web:handle_streaming(F, Req, undefined).
 
 handle_bucket_delete(_PoolId, BucketId, Req) ->
-    case ns_bucket:delete_bucket(BucketId) of
-        ok ->
-            ?MENELAUS_WEB_LOG(?BUCKET_DELETED, "Deleted bucket \"~s\"~n", [BucketId]),
+    case BucketId of
+        %% just ignore that for now
+        "default" ->
             Req:respond({200, server_header(), []});
-        {exit, {not_found, _}, _} ->
-            Req:respond({404, server_header(), "The bucket to be deleted was not found.\r\n"})
+        _ -> case ns_bucket:delete_bucket(BucketId) of
+                 ok ->
+                     ?MENELAUS_WEB_LOG(?BUCKET_DELETED, "Deleted bucket \"~s\"~n", [BucketId]),
+                     Req:respond({200, server_header(), []});
+                 {exit, {not_found, _}, _} ->
+                     Req:respond({404, server_header(), "The bucket to be deleted was not found.\r\n"})
+             end
     end.
 
 redirect_to_bucket(Req, PoolId, BucketId) ->
