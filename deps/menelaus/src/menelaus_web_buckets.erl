@@ -377,6 +377,7 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, AllBuckets, AuthTy
                          case proplists:get_value("bucketType", Params) of
                              "memcache" -> memcache;
                              "membase" -> membase;
+                             undefined -> membase;
                              _ -> invalid
                          end
                  end,
