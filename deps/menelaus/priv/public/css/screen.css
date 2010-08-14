@@ -625,22 +625,22 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 
 /* lightbox styles */
 .lbox {width:711px; position:relative;}
-.lbox .top {height:13px; overflow:hidden;}
+.lbox .top {height:13px; overflow:hidden; display:none;}
 .lbox .top div {height:13px; overflow:hidden;}
 .lbox .top .top_left {width:12px; float:left; background:url(../images/lbox_lt.png) 0 0 no-repeat;}
 .lbox .top .top_right {width:12px; float:right; background:url(../images/lbox_rt.png) 0 0 no-repeat;}
 .lbox .top .top_center {background:url(../images/lbox_t.png) 0 0 repeat-x; *width:687px;}
 
-.lbox .center {background:url(../images/lbox_cent.png) 0 0 repeat-y;}
-.lbox .center .pad {padding:0 7px;}
+.lbox .center {background:#eee;/*url(../images/lbox_cent.png) 0 0 repeat-y;*/}
+.lbox .center .pad {/*padding:0 7px;*/}
 
-.lbox .bottom {height:17px; position:relative;}
+.lbox .bottom {height:17px; position:relative;  display:none;}
 .lbox .bottom div {height:17px; overflow:hidden;}
 .lbox .bottom .bottom_left {width:12px;float:left; background:url(../images/lbox_lb.png) 0 0 no-repeat;}
 .lbox .bottom .bottom_right {width:12px; float:right; background:url(../images/lbox_rb.png) 0 0 no-repeat;}
 .lbox .bottom .bottom_center {/*margin:0 12px;*/ background:url(../images/lbox_b.png) 0 0 repeat-x; *float:left; *width:687px;}
 
-.lbox .lbox_header {color:#4e5557; font-size:18px; padding:0 20px 5px 20px; border-bottom:1px solid #afdcef;}
+.lbox .lbox_header {padding:16px 20px;font-size:20px;background: #dfdfe0;border-bottom: 1px solid #bdbec2;/*color:#4e5557; font-size:18px; padding:0 20px 5px 20px; border-bottom:1px solid #afdcef;*/}
 .lbox .u_line {padding:20px 0 5px 0; font-size:12px; font-weight:bolder; color:#4e5557; border-bottom:1px solid #ccd3d7;}
 .lbox .u_line .label {font-weight:normal; display:block; min-width:85px; text-align:right; float:left; margin:0 5px 0 0; white-space:nowrap;}
 .lbox .u_line a.float_right {font-size:11px; cursor:pointer;}
@@ -648,6 +648,9 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 .lbox .u_line_sm {padding:0 0 10px 0; font-size:12px;}
 .lbox .u_line_sm .label {display:block; float:left; width:110px; padding-top:7px; text-align:right; margin:0 5px 0 0;}
 .lbox .u_line_sm .inp {margin:0 4px 0 1px;padding:4px 3px; border:1px solid #ccd2d6;}
+.lbox .pat_10 p.dialog-text {padding:20px;}
+.lbox .save_cancel {padding:18px;background:#cccfd2;border-top:1px solid #eee;}
+.lbox .pas_20 .save_cancel {margin:0 0 0 -40px;position:relative;left:20px;}
 .warning {font-size:12px; color:#ec5223; padding-left:20px;}
 .warning ul {list-style-type:disc; margin:5px 0 0 15px;}
 
@@ -673,13 +676,7 @@ select.inp_size_2 {width:193px !important;}
 .content_cell label {margin:0 0 5px 0; display:inline-block;}
 
 .popup { background:#eee;  font-size: 13px;}
-.popup h1 {
-    background: #dfdfe0;
-    padding-left: 20px;          /* TODO */
-    padding-top: 16px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid #BDBEC2;
-  }
+.popup h1 {padding:16px 20px;background: #dfdfe0;border-bottom: 1px solid #bdbec2;}
 .popup form {border-top: 1px solid #dfdfe0;  }
 .popup form > div { padding:0 50px 30px;    border-bottom: 1px solid #cccfd2;    border-top: 1px solid #f8f8f8;  }
 .popup h2 {
@@ -692,7 +689,7 @@ select.inp_size_2 {width:193px !important;}
     border-bottom: 1px solid #d4d9dc;
   }
 .popup .save_cancel {
-    border-top: 1px solid #eeeeee;
+    border-top: 1px solid #eee;
     border-bottom-width: 0px;
     padding: 18px;
     clear: both;
