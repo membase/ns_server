@@ -647,13 +647,13 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 .lbox .pat_10 p textarea {width:100%; background:none #fff; border:1px solid #ccd3d7; overflow:auto;}
 .lbox .u_line_sm {padding:0 0 10px 0; font-size:12px;}
 .lbox .u_line_sm .label {display:block; float:left; width:110px; padding-top:7px; text-align:right; margin:0 5px 0 0;}
-.lbox .u_line_sm .inp {padding:4px 3px; border:1px solid #ccd2d6;}
+.lbox .u_line_sm .inp {margin:0 4px 0 1px;padding:4px 3px; border:1px solid #ccd2d6;}
 .warning {font-size:12px; color:#ec5223; padding-left:20px;}
 .warning ul {list-style-type:disc; margin:5px 0 0 15px;}
 
-.lbox .spinner {background:none #e9f3f9 !important;}
-.lbox .spinner span {display:block;position:relative;margin:0 auto 0 auto; top:50%; width:150px !important;height:20px !important; line-height:14px !important; padding:50px 0 0 0 !important; margin-top:-30px; background:url(../images/spinner/spinner_lightbox.gif) 55px 5px no-repeat; color:#6da2c2; font-size:12px; text-align:center;}
-.lbox .info_text {font-size:12px; padding-bottom:10px; line-height:15px;}
+.lbox .spinner {background:none/*#e9f3f9 !important*/;}
+.lbox .spinner span {display:block;position:relative;top:50%; width:150px !important;height:20px !important; margin:-40px auto 0;padding:50px 0 0 0 !important; background:url(../images/spinner/spinner_lightbox.gif) 55px 5px no-repeat; color:#6da2c2; font-size:12px;line-height:14px !important;text-align:center;}
+.lbox .info_text {padding-bottom:10px;font-size:12px;line-height:15px;  }
 
 .lbox_form {display:block; padding:10px;}
 .lbox_form h3 {font-size:18px; padding:5px 0 10px 0; border-bottom:1px solid #d8d9db; margin:0 0 10px 0; color:#444245; font-weight:normal;}
@@ -986,6 +986,7 @@ li.server_row.status_down {background-position:10px -157px !important; backgroun
 .servers_list li.th div+div {width:320px;padding:0 0 0 10px;width:200px;border-left:1px solid #d2d3d5;}
 .servers_list li.th p {float:left;width:208px;padding:0 0 0 10px;background:url(../images/bg_li_th.gif) 0 -31px repeat-x;border-left:1px solid #d2d3d5;}
 
+.servers_list .spinner span {position:relative;top:15px;}
 .warning_message {min-height:20px;margin:0 0 5px 0;padding:5px 0 0 25px;color:#dd3b2c;font-size:12px;line-height:1.3;background:url(../images/warning_bg_2.png) 0 0 no-repeat;}
 .failover_warning {display: none;}
 
