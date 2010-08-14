@@ -327,7 +327,6 @@ var MockedRequest = mkClass({
     });
 
     if (ok) {
-      MockedRequest.globalData.initValue = 'done'
       this.fakeResponse('');
     } else
       this.errorResponse(['error1', 'error2']);
@@ -996,7 +995,6 @@ var MockedRequest = mkClass({
 });
 
 MockedRequest.prototype.globalData = MockedRequest.globalData = {
-  initValue: "",
   findResponseFor: function (method, path) {
     return MockedRequest.prototype.findResponseFor(method, path);
   },
@@ -1032,11 +1030,8 @@ var __hookParams = {};
   }
 
   if (params['nowiz']) {
-    params['initValue'] = 'done';
-  }
-
-  if (params['initValue']) {
-    MockedRequest.globalData.initValue = params['initValue'];
+    DAO.login = 'Administrator'
+    DAO.password = 'asdasd';
   }
 
   if (params['single']) {
