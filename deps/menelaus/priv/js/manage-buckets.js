@@ -148,9 +148,13 @@ var BucketDetailsDialog = mkClass({
     dialog.removeClass('editing').removeClass('creating');
     dialog.addClass(isNew ? 'creating' : 'editing');
 
+    var bucketIsDefault = (initValues['name'] == 'default');
     if (!isNew) {
-      dialog[(initValues['name'] == 'default') ? 'addClass' : 'removeClass']('cannot-delete');
+      dialog[(bucketIsDefault) ? 'addClass' : 'removeClass']('cannot-delete');
     }
+
+    setBoolAttribute(dialog.find('[name=authType][value=none]'), 'disabled', bucketIsDefault);
+    setBoolAttribute(dialog.find('[name=saslPassword]'), 'disabled', bucketIsDefault);
 
     setBoolAttribute(dialog.find('[name=name]'), 'disabled', !isNew);
 

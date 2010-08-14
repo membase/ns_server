@@ -175,7 +175,11 @@ handle_bucket_update_inner(BucketId, Req, Params, Limit) ->
             reply_json(Req, RV, 400);
         {false, {ok, ParsedProps, _}} ->
             BucketType = proplists:get_value(bucketType, ParsedProps),
-            UpdatedProps = extract_bucket_props(ParsedProps),
+            UpdatedProps0 = extract_bucket_props(ParsedProps),
+            UpdatedProps = case BucketId of
+                               "default" -> lists:keyreplace(sasl_password, 1, UpdatedProps0, {sasl_password, ""});
+                               _ -> UpdatedProps0
+                           end,
             case ns_bucket:update_bucket_props(BucketType, BucketId, UpdatedProps) of
                 ok ->
                     Req:respond({200, server_header(), []});
