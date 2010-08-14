@@ -59,11 +59,18 @@
     }
 
     input {
-      border: 1px solid #ccd3d7;
       font-size: 13px;
       text-align: right;
+      border: 1px solid #ccd3d7;
     }
 
+	input[type="checkbox"], input[type="radio"] {
+      width: auto;
+	  position:relative;
+	  top:2px;
+	  border:none;
+	}
+	
     abbr {
       margin-left: 6px;
     }
@@ -110,6 +117,12 @@
       width: @text_input_width;
       text-align: left;
     }
+    input[type="radio"], input[type="checkbox"] {
+      width: auto;
+	  position:relative;
+	  top:2px;
+	  border:none;
+    }
   }
 
   .for-bucket-type {
@@ -146,7 +159,7 @@
     position: relative;
     top: -6px;
     float: right;
-    font-size: 10px;
+    font-size: 11px;
     width: 364px;
     .other-data-block {
       color: #C19710;
