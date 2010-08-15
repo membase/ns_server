@@ -707,6 +707,7 @@ var NodeDialog = {
 
         function memPost(data, status) {
           if (status == 'success') {
+            BucketsSection.refreshBuckets();
             showInitDialog("secure");
           } else {
             errorContainer.html('failed memory quota validation');
