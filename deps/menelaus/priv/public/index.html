@@ -178,8 +178,9 @@
 				<div class="usage_total">Total in Cluster (<span class="cluster-total"></span>)</div>
 				<div class="total_alloc">Total Allocated (<span class="buckets-quota"></span>)</div>
 				<div class="usage_biggest">
+                                        <div class="whole"></div>
+					<div class="free" style="width:60%;"><i></i></div>
 					<div class="used" style="width:40%;"></div>
-					<div class="free" style="width:20%;"><i></i></div>
 				</div>
 				<table><tr>
 					<td>In use (<span class="used-quota"></span>)</td>
@@ -188,23 +189,25 @@
 				</tr></table>
 			</div>
 		</div>
-		<div class="item" style="display:none;">
+		<div class="item disk-item">
 			<div class="label">
-				<strong>Disk Usage</strong>
-				<span>Total Cluster</span>
-				1000 Gb (all buckets)
+				<strong>Disk Overview</strong>
 			</div>
 			<div class="line_cnt">
+				<div class="usage_total">Total Cluster Storage (<span class="cluster-total"></span>)</div>
+				<div class="total_alloc">Other + Total Allocated (<span class="buckets-quota"></span>)</div>
 				<div class="usage_biggest">
-					<div class="used" style="width:32%;"></div>
-					<div class="free" style="width:27%;"><i></i></div>
+                                        <div class="whole"><b></b></div>
+					<div class="free" style="width:60%;"><i></i></div>
+					<div class="used" style="width:40%;"></div>
+                                        <div class="other" style="width:20%;"></div>
 				</div>
-				<ul>
-					<li>In use by all buckets (580 Gb)</li>
-					<li>Free (340 Gb)</li>
-					<li>Total allocated (890 Gb)</li>
-					<li>Unused (330 Gb)</li>
-				</ul>
+				<table><tr>
+                                        <td>Other data (<span class="other-data"></span>)</td>
+					<td>In use (<span class="used-quota"></span>)</td>
+					<td><span class="when-normal">Unused</span><span class="when-overcommit">Unused and available</span> (<span class="unused-quota"></span>)</td>
+					<td><span class="when-normal">Unallocated</span><span class="when-overcommit">Overcommitted</span> (<span class="quota-free"></span>)</td>
+				</tr></table>
 			</div>
 		</div>
 	</div>

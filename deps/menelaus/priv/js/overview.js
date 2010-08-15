@@ -44,23 +44,60 @@ var OverviewSection = {
         spinner = null;
       }
 
-      var item = $('#overview_clusters_block .ram-item');
+      ;(function () {
+        var item = $('#overview_clusters_block .ram-item');
 
-      var usedQuota = _.reduce(buckets, 0, function (acc, info) {
-        return acc + info.basicStats.memUsed;
-      });
-      var bucketsQuota = _.reduce(buckets, 0, function (acc, info) {
-        return acc + info.quota.ram;
-      });
-      var quotaTotal = poolDetails.storageTotals.ram.quotaTotal;
-      item.find('.cluster-total').text(ViewHelpers.formatQuantity(quotaTotal, null, null, ' '));
-      item.find('.used-quota').text(ViewHelpers.formatQuantity(usedQuota, null, null, ' '));
-      item.find('.buckets-quota').text(ViewHelpers.formatQuantity(bucketsQuota, null, null, ' '));
-      item.find('.unused-quota').text(ViewHelpers.formatQuantity(bucketsQuota - usedQuota, null, null, ' '));
-      item.find('.quota-free').text(ViewHelpers.formatQuantity(quotaTotal - bucketsQuota, null, null, ' '));
+        var usedQuota = _.reduce(buckets, 0, function (acc, info) {
+          return acc + info.basicStats.memUsed;
+        });
+        var bucketsQuota = _.reduce(buckets, 0, function (acc, info) {
+          return acc + info.quota.ram;
+        });
+        var quotaTotal = poolDetails.storageTotals.ram.quotaTotal;
+        item.find('.cluster-total').text(ViewHelpers.formatQuantity(quotaTotal, null, null, ' '));
+        item.find('.used-quota').text(ViewHelpers.formatQuantity(usedQuota, null, null, ' '));
+        item.find('.buckets-quota').text(ViewHelpers.formatQuantity(bucketsQuota, null, null, ' '));
+        item.find('.unused-quota').text(ViewHelpers.formatQuantity(bucketsQuota - usedQuota, null, null, ' '));
+        item.find('.quota-free').text(ViewHelpers.formatQuantity(quotaTotal - bucketsQuota, null, null, ' '));
 
-      item.find('.used').css('width', calculatePercent(usedQuota, quotaTotal) + '%');
-      item.find('.free').css('width', calculatePercent(bucketsQuota - usedQuota, quotaTotal) + '%');
+        item.find('.used').css('width', calculatePercent(usedQuota, quotaTotal) + '%');
+        item.find('.free').css('width', calculatePercent(bucketsQuota, quotaTotal) + '%');
+      })();
+
+      ;(function () {
+        var item = $('#overview_clusters_block .disk-item');
+
+        var usedQuota = _.reduce(buckets, 0, function (acc, info) {
+          return acc + info.basicStats.diskUsed;
+        });
+        var bucketsQuota = _.reduce(buckets, 0, function (acc, info) {
+          return acc + info.quota.hdd;
+        });
+        var total = poolDetails.storageTotals.hdd.total;
+        var other = poolDetails.storageTotals.hdd.used - usedQuota;
+
+        var committed = bucketsQuota + other;
+
+        item.find('.cluster-total').text(ViewHelpers.formatQuantity(total, null, null, ' '));
+        item.find('.used-quota').text(ViewHelpers.formatQuantity(usedQuota, null, null, ' '));
+        item.find('.buckets-quota').text(ViewHelpers.formatQuantity(committed, null, null, ' '));
+        item.find('.unused-quota').text(ViewHelpers.formatQuantity(bucketsQuota - usedQuota, null, null, ' '));
+        item.find('.other-data').text(ViewHelpers.formatQuantity(other, null, null, ' '));
+        item.find('.quota-free').text(ViewHelpers.formatQuantity(Math.abs(total - committed), null, null, ' '));
+
+        var overcommitted = (committed > total);
+        item[overcommitted ? 'addClass' : 'removeClass']('overcommitted');
+        if (!overcommitted) {
+          item.find('.other').css('width', calculatePercent(other, total) + '%');
+          item.find('.used').css('width', calculatePercent(usedQuota + other, total) + '%');
+          item.find('.free').css('width', calculatePercent(committed, total) + '%');
+        } else {
+          item.find('.unused-quota').text(ViewHelpers.formatQuantity(total - other, null, null, ' '));
+          item.find('.other').css('width', calculatePercent(other, committed) + '%');
+          item.find('.used').css('width', calculatePercent(usedQuota + other, committed) + '%');
+          item.find('.free').css('width', calculatePercent(total, committed) + '%');
+        }
+      })();
     });
   },
   init: function () {
