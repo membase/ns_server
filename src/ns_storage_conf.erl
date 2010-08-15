@@ -34,7 +34,8 @@ memory_quota(_Node) ->
 
 change_memory_quota(_Node, NewMemQuotaMB) when is_integer(NewMemQuotaMB) ->
     ns_config:set(memory_quota, NewMemQuotaMB),
-    ns_bucket:update_bucket_props("default", [{ram_quota, NewMemQuotaMB * 1048576}]).
+    ns_bucket:update_bucket_props("default", [{ram_quota, NewMemQuotaMB * 1048576},
+                                              {hdd_quota, NewMemQuotaMB * 1048576 * 2}]).
 
 prepare_setup_disk_storage_conf(Node, Path) when Node =:= node() ->
     {value, PropList} = ns_config:search_node(Node, ns_config:get(), memcached),
