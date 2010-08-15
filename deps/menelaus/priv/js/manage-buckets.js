@@ -305,8 +305,8 @@ var BucketDetailsDialog = mkClass({
     var realTotal = thisBucket + otherBuckets + otherData;
 
     jq.find('.total').text(ViewHelpers.formatQuantity(total, null, null, ' '));
-    var overcommited = realTotal - total;
-    jq.find('.overcommited').text(ViewHelpers.formatQuantity(overcommited, null, null, ' '));
+    var overcommitted = realTotal - total;
+    jq.find('.overcommitted').text(ViewHelpers.formatQuantity(overcommitted, null, null, ' '));
     jq.find('.other').text(ViewHelpers.formatQuantity(otherBuckets, null, null, ' '));
     jq.find('.other-data').text(ViewHelpers.formatQuantity(otherData, null, null,' '));
     jq.find('.this').text(formattedBucket);
