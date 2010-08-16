@@ -29,7 +29,7 @@
 -define(NODE_EJECTED, 4).
 
 %% States
--export([running/2, joining/2, leaving/2]).
+-export([running/2, running/3, joining/2, joining/3, leaving/2, leaving/3]).
 
 %% API
 -export([add_node/1, join/2, leave/0, leave/1, shun/1, log_joined/0]).
@@ -107,6 +107,44 @@ running({leave, Data}, State) ->
 running(leave, State) ->
     running({leave, #leaving_state{}}, State).
 
+
+running({change_address, NewAddr}, _From, State) ->
+    MyNode = node(),
+    case misc:node_name_host(MyNode) of
+        {_, NewAddr} ->
+            %% Don't do anything if we already have the right address.
+            {reply, ok, running, State};
+        {_, _} ->
+            CookieBefore = erlang:get_cookie(),
+            ns_server_sup:pull_plug(
+              fun() ->
+                      case ns_mnesia:prepare_rename() of
+                          ok ->
+                              case dist_manager:adjust_my_address(NewAddr) of
+                                  nothing ->
+                                      ns_mnesia:backout_rename();
+                                  net_restarted ->
+                                      case erlang:get_cookie() of
+                                          CookieBefore ->
+                                              ok;
+                                          CookieAfter ->
+                                              error_logger:error_msg(
+                                                "critical: Cookie has changed from ~p "
+                                                "to ~p~n", [CookieBefore, CookieAfter]),
+                                              exit(bad_cookie)
+                                      end,
+                                      ns_mnesia:rename_node(MyNode, node()),
+                                      rename_node(MyNode, node()),
+                                      ok
+                              end;
+                          E ->
+                              ?log_error("Not attempting to rename node: ~p", [E])
+                      end
+              end),
+            {reply, ok, running, State}
+    end.
+
+
 joining({exit, _Pid}, #joining_state{remote=RemoteNode, cookie=NewCookie}) ->
     error_logger:info_msg("ns_cluster: joining cluster. Child has exited.~n"),
     ns_mnesia:delete_schema(),
@@ -126,6 +164,11 @@ joining({exit, _Pid}, #joining_state{remote=RemoteNode, cookie=NewCookie}) ->
     timer:apply_after(1000, ?MODULE, log_joined, []),
     {next_state, running, State}.
 
+
+joining(_Event, _From, State) ->
+    {reply, unhandled, joining, State}.
+
+
 leaving({exit, _Pid}, LeaveData) ->
     error_logger:info_msg("ns_cluster: leaving cluster~n"),
     timer:sleep(1000),
@@ -143,6 +186,11 @@ leaving(leave, LeaveData) ->
 leaving({leave, _}, LeaveData) ->
     %% If we are told to leave in the leaving state, continue leaving.
     {next_state, leaving, LeaveData}.
+
+
+leaving(_Event, _From, State) ->
+    {reply, unhandled, leaving, State}.
+
 
 %%
 %% Internal functions
@@ -273,30 +321,4 @@ rename_node(Old, New) ->
                      end, erlang:make_ref()).
 
 change_my_address(MyAddr) ->
-    MyNode = node(),
-    CookieBefore = erlang:get_cookie(),
-    ns_server_sup:pull_plug(
-      fun() ->
-              case ns_mnesia:prepare_rename() of
-                  ok ->
-                      case dist_manager:adjust_my_address(MyAddr) of
-                          nothing ->
-                              ns_mnesia:backout_rename();
-                          net_restarted ->
-                              case erlang:get_cookie() of
-                                  CookieBefore ->
-                                      ok;
-                                  CookieAfter ->
-                                      error_logger:error_msg(
-                                        "critical: Cookie has changed from ~p "
-                                        "to ~p~n", [CookieBefore, CookieAfter]),
-                                      exit(bad_cookie)
-                              end,
-                              ns_mnesia:rename_node(MyNode, node()),
-                              rename_node(MyNode, node()),
-                              ok
-                      end;
-                  E ->
-                      ?log_error("Not attempting to rename node: ~p", [E])
-              end
-      end).
+    gen_fsm:sync_send_event(?MODULE, {change_address, MyAddr}).
