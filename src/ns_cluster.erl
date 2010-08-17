@@ -162,6 +162,9 @@ joining({exit, _Pid}, #joining_state{remote=RemoteNode, cookie=NewCookie}) ->
     {ok, running, State} = bringup(),
 
     timer:apply_after(1000, ?MODULE, log_joined, []),
+    {next_state, running, State};
+joining(Event, State) ->
+    ?log_warning("Got unexpected event ~p in state joining: ~p", [Event, State]),
     {next_state, running, State}.
 
 
