@@ -167,7 +167,7 @@ init([]) ->
 -spec args(atom(), nonempty_string(), [non_neg_integer(),...], atom(), boolean()) ->
                   [any(), ...].
 args(Node, Bucket, VBuckets, DstNode, TakeOver) ->
-    Command = "./bin/port_adaptor/port_adaptor",
+    Command = "./bin/vbucketmigrator/vbucketmigrator",
     VBucketArgs = lists:append([["-b", integer_to_list(B)] || B <- VBuckets]),
     TakeOverArg = case TakeOver of
                       true -> ["-t",
@@ -176,8 +176,7 @@ args(Node, Bucket, VBuckets, DstNode, TakeOver) ->
                       false -> []
                   end,
     {User, Pass} = ns_bucket:credentials(Bucket),
-    OtherArgs = ["1", "./bin/vbucketmigrator/vbucketmigrator",
-                 "-a", User,
+    OtherArgs = ["-a", User,
                  "-p", Pass,
                  "-h", ns_memcached:host_port_str(Node),
                  "-d", ns_memcached:host_port_str(DstNode),
