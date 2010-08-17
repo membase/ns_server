@@ -200,8 +200,8 @@ default() ->
         stderr_to_stdout,
         stream]
       },
-      {memcached, "./bin/port_adaptor/port_adaptor",
-       ["7200", "./bin/memcached/memcached",
+      {memcached, "./bin/memcached/memcached",
+       ["-X", "./bin/memcached/stdin_term_handler.so",
         "-p", {"~B", [port]},
         "-E", "./bin/bucket_engine/bucket_engine.so",
         "-B", "binary",
