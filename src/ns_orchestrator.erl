@@ -187,7 +187,7 @@ idle({create_bucket, BucketType, BucketName, NewConfig}, _From, State) ->
     {reply, Reply, idle, State};
 idle({failover, Node}, _From, State) ->
     ?log_info("Failing over ~p", [Node]),
-    Result = ns_rebalancer:failover("default", Node),
+    Result = ns_rebalancer:failover(Node),
     {reply, Result, idle, State};
 idle(rebalance_progress, _From, State) ->
     {reply, not_running, idle, State};

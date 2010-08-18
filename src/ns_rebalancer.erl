@@ -23,7 +23,7 @@
 
 -include("ns_common.hrl").
 
--export([failover/2, generate_initial_map/3, rebalance/2, rebalance/4,
+-export([failover/1, generate_initial_map/3, rebalance/2, rebalance/4,
          unbalanced/2]).
 
 
@@ -33,6 +33,10 @@
 
 %% @doc Fail a node. Doesn't eject the node from the cluster. Takes
 %% effect immediately.
+failover(Node) ->
+    lists:foreach(fun (Bucket) -> failover(Bucket, Node) end,
+                  ns_bucket:get_bucket_names()).
+
 -spec failover(string(), atom()) -> ok.
 failover(Bucket, Node) ->
     {_, _, Map, Servers} = ns_bucket:config(Bucket),
