@@ -70,12 +70,12 @@ start_link() ->
 
 create_bucket(BucketType, BucketName, NewConfig) ->
     gen_fsm:sync_send_event(?SERVER, {create_bucket, BucketType, BucketName,
-                                      NewConfig}).
+                                      NewConfig}, 20000).
 
 
 -spec failover(atom()) -> ok.
 failover(Node) ->
-    gen_fsm:sync_send_event(?SERVER, {failover, Node}).
+    gen_fsm:sync_send_event(?SERVER, {failover, Node}, 20000).
 
 
 -spec needs_rebalance() -> boolean().
