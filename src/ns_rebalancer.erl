@@ -61,21 +61,22 @@ generate_initial_map(NumReplicas, NumVBuckets, Servers, Map) ->
 
 rebalance(KeepNodes, EjectNodes) ->
     AllNodes = KeepNodes ++ EjectNodes,
-    [] = AllNodes -- ns_node_disco:nodes_actual_proper(),
+    FailedNodes = AllNodes -- ns_node_disco:nodes_actual_proper(),
     Buckets = ns_bucket:get_bucket_names(),
     lists:foreach(fun (Bucket) ->
                           wait_for_memcached(AllNodes, Bucket),
                           ns_janitor:cleanup(Bucket)
                   end,
                   Buckets),
-    rebalance(Buckets, length(Buckets), KeepNodes, EjectNodes),
+    DeactivateNodes = EjectNodes ++ FailedNodes,
+    rebalance(Buckets, length(Buckets), KeepNodes, DeactivateNodes),
     %% Leave myself last
-    LeaveNodes = lists:delete(node(), EjectNodes),
+    LeaveNodes = lists:delete(node(), DeactivateNodes),
     lists:foreach(fun (N) ->
                           ns_cluster_membership:deactivate([N]),
                           ns_cluster:leave(N)
                   end, LeaveNodes),
-    case lists:member(node(), EjectNodes) of
+    case lists:member(node(), DeactivateNodes) of
         true ->
             ns_cluster_membership:deactivate([node()]),
             ns_cluster:leave();
