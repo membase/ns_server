@@ -71,8 +71,13 @@ config_string(BucketName) ->
     BucketConfig = proplists:get_value(BucketName, BucketConfigs),
     %% MemQuota is our total limit for cluster
     MemQuota = proplists:get_value(ram_quota, BucketConfig),
+    NodesCount = case length(proplists:get_value(servers, BucketConfig)) of
+                     0 -> 1;
+                     X -> X
+                 end,
     %% LocalQuota is our limit for this node
-    LocalQuota = MemQuota div (num_replicas(BucketConfig)+1),
+    %% We stretch our quota on all nodes we have for this bucket
+    LocalQuota = MemQuota div NodesCount,
     Engine = ns_config:search_node_prop(ns_config:get(), memcached, engine),
     ok = filelib:ensure_dir(DBName),
     ConfigString = lists:flatten(
