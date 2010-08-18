@@ -239,17 +239,21 @@ rebalancing(Event, _From, State) ->
 
 needs_rebalance(Nodes, Bucket) ->
     {_NumReplicas, _NumVBuckets, Map, Servers} = ns_bucket:config(Bucket),
-    NumServers = length(Servers),
-    lists:sort(Nodes) /= lists:sort(Servers) orelse
-        lists:any(
-          fun (Chain) ->
-                  lists:member(
-                    undefined,
-                    %% Don't warn about missing replicas when you have
-                    %% fewer servers than your copy count!
-                    lists:sublist(Chain, NumServers))
-          end, Map) orelse
-        ns_rebalancer:unbalanced(Map, Servers).
+    case Servers of
+        [] -> false;
+        _ ->
+            NumServers = length(Servers),
+            lists:sort(Nodes) /= lists:sort(Servers) orelse
+                lists:any(
+                  fun (Chain) ->
+                          lists:member(
+                            undefined,
+                            %% Don't warn about missing replicas when you have
+                            %% fewer servers than your copy count!
+                            lists:sublist(Chain, NumServers))
+                  end, Map) orelse
+                ns_rebalancer:unbalanced(Map, Servers)
+    end.
 
 
 -spec update_progress(dict()) -> ok.
