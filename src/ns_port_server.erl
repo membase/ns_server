@@ -78,8 +78,17 @@ code_change(_OldVsn, State, _Extra) ->
 
 open_port({_Name, Cmd, Args, OptsIn}) ->
     %% Incoming options override existing ones (specified in proplists docs)
-    Opts = OptsIn ++ [{args, Args}, exit_status],
-    open_port({spawn_executable, Cmd}, Opts).
+    Opts0 = OptsIn ++ [{args, Args}, exit_status],
+    WriteDataArg = proplists:get_value(write_data, Opts0),
+    Opts = lists:keydelete(write_data, 1, Opts0),
+    Port = open_port({spawn_executable, Cmd}, Opts),
+    case WriteDataArg of
+        undefined ->
+            ok;
+        Data ->
+            Port ! {self(), {command, Data}}
+    end,
+    Port.
 
 log_messages(Name, L) ->
     receive

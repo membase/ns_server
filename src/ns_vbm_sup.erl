@@ -177,12 +177,13 @@ args(Node, Bucket, VBuckets, DstNode, TakeOver) ->
                   end,
     {User, Pass} = ns_bucket:credentials(Bucket),
     OtherArgs = ["-a", User,
-                 "-p", Pass,
                  "-h", ns_memcached:host_port_str(Node),
                  "-d", ns_memcached:host_port_str(DstNode),
                  "-v"],
     Args = lists:append([OtherArgs, TakeOverArg, VBucketArgs]),
-    [vbucketmigrator, Command, Args, [use_stdio, stderr_to_stdout]].
+    [vbucketmigrator, Command, Args,
+     [use_stdio, stderr_to_stdout,
+      {write_data, [Pass, "\n"]}]].
 
 -spec children(atom()) -> [#child_id{}].
 children(Node) ->
