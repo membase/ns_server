@@ -68,7 +68,7 @@ rebalance(KeepNodes, EjectNodes) ->
     FailedNodes = AllNodes -- ns_node_disco:nodes_actual_proper(),
     Buckets = ns_bucket:get_bucket_names(),
     lists:foreach(fun (Bucket) ->
-                          wait_for_memcached(AllNodes, Bucket),
+                          wait_for_memcached(AllNodes -- FailedNodes, Bucket),
                           ns_janitor:cleanup(Bucket)
                   end,
                   Buckets),
@@ -329,8 +329,18 @@ promote_replica(Bucket, Chain, RemapNodes, V) ->
             error_logger:error_msg("~p:promote_replicas(~p, ~p, ~p, ~p): No master~n", [?MODULE, Bucket, V, RemapNodes, Chain]),
             NewChainExtended;
         [NewMaster|_] ->
-            %% The janitor will catch it if this fails.
-            catch ns_memcached:set_vbucket(NewMaster, V, active),
+            spawn(
+              fun () ->
+                      ok = ns_memcached:set_vbucket(NewMaster, Bucket, V, pending),
+                      try
+                          ok = ns_memcached:set_vbucket(OldMaster, Bucket, V, dead)
+                      catch
+                          E:R ->
+                              ?log_warning("Could not set vbucket ~p in bucket ~p on ~p"
+                                           " to dead:~n~p", [V, Bucket, OldMaster, {E, R}])
+                      end,
+                      ok = ns_memcached:set_vbucket(NewMaster, Bucket, V, active)
+              end),
             NewChainExtended
     end.
 
