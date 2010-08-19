@@ -237,7 +237,8 @@ var ServersSection = {
     }
   },
   onEnter: function () {
-    this.poolDetails.invalidate();
+    // we need this 'cause switchSection clears rebalancing class
+    this.refreshEverything();
   },
   navClick: function () {
     this.onLeave();
