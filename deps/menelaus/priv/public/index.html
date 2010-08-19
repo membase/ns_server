@@ -1516,26 +1516,31 @@
       </div>
       <div class="warning pat_10 init_cluster_dialog_errors_container" style="display:none;"></div>
     </div>
-    <h2 class="question">Would you like to join an existing Membase Cluster?</h2>
+    <h2 class="question">Join Cluster / Start new Cluster</h2>
     <p class="pad_10">
-    If this new server will be added to an existing membase cluster
-    you may join that cluster now. To do so select "Join a cluster now". You
-    can join a cluster later, but should do so before storing important data
-    on the server, as the joining server will drop all the data it currently holds.
+    If you want to add this server to an existing membase cluster select "Join a
+    cluster now".
+    Alternatively, you may create a new membase cluster by selecting "Start a new
+    cluster".
+    </p><p class="pad_10" style="padding-top: 5px;">
+    If you start a new cluster the "Per Server RAM Quota" you set below will define
+    the amount of RAM each server provides to the membase cluster. This value will
+    be inherited by all servers subsequently joining the cluster and it cannot be
+    modified in an existing cluster, so please set appropriately.
     </p>
     <form id="init_cluster_form" class="form block"><input type="submit" style="display:none;" />
       <div class="pat_10">
 		  <label>
 	        <input type="radio" name="join_cluster" id="no-join-cluster" checked />
-	        Do NOT join a cluster now, maybe later.
+	        Start a new cluster.
 	      </label>
 	      <div class="memory-quota">
 		  	<div>
-		        <label>Dynamic RAM Quota:</label>
+		        <label style="width: auto;">Per Server RAM Quota:</label>
 		        <input type="text" name="dynamic-ram-quota" value="" style="width:95px;" />
 		        <span>MB</span>
 		        <span>
-		          Total: <span class="ram-total-size">0 Gb</span>
+		          Ram: <span class="ram-total-size">0 Gb</span>
 		        </span>
 			</div>
 	      </div>
