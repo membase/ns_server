@@ -576,7 +576,7 @@
             <tr>
               <td><a class="gray_link bucket_name" href="#visitBucket={%=h(this.name)%}">{%= h(this.name) %}</a></td>
               <td>{%= h(this.bucketTypeName) %} </td>
-              <td>{%= h(this.serversCount) %}</td>
+              <td>{%= V.count(this.serversCount, 'server') %}</td>
               <td>{%= V.formatQuantity(this.basicStats.memUsed) %}/{%= V.formatQuantity(this.quota.ram) %}</td>
               <td>{%= V.formatQuantity(this.basicStats.diskUsed) %}/{%= V.formatQuantity(this.quota.hdd) %}</td>
             </tr>
