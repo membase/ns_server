@@ -162,7 +162,9 @@ extract_node_storage_info(NodeInfo, Node) ->
     end.
 
 cluster_storage_info() ->
-    Nodes = dict:to_list(ns_doctor:get_nodes()),
+    Nodes = lists:filter(fun ({Node, _}) ->
+                             ns_cluster_membership:get_cluster_membership(Node) =:= active
+                         end, dict:to_list(ns_doctor:get_nodes())),
     PList1 = case Nodes of
                  [] -> [];
                  [{FirstNode, FirstInfo} | Rest] ->
