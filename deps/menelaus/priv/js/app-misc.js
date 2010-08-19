@@ -748,7 +748,7 @@ var MountPointsStd = mkClass({
     this.infos = infos;
   },
   preprocessPath: function (p) {
-    if (p[p.length-1] != '/')
+    if (p.charAt(p.length-1) != '/')
       p += '/';
     return p;
   },
