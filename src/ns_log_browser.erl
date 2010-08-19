@@ -1,5 +1,7 @@
 -module(ns_log_browser).
 
+-define(report_types, [crash_report, supervisor_report, error, progress]).
+
 -export([start/0]).
 -export([get_logs/3, get_logs_as_file/3]).
 
@@ -10,16 +12,18 @@ usage(Fmt, Args) ->
 
 -spec usage() -> no_return().
 usage() ->
-    io:format("Usage: <progname> [-n <max_reports>] [-e <regexp>] [-t <type>...]~n"),
+    io:format("Usage: <progname> [-n <max_reports>] [-e <regexp>] [-t <type>...]~n"
+              "  where <type> is one of: ~w~n"
+              "  You may specify more than one type; default is everything.~n",
+              [?report_types]),
     halt(1).
 
 
 map_types(TypeStrings) ->
-    ReportTypes = [crash_report, supervisor_report, error, progress],
     Types = lists:map(fun list_to_atom/1, TypeStrings),
-    case lists:all(fun (T) -> lists:member(T, ReportTypes) end, Types) of
+    case lists:all(fun (T) -> lists:member(T, ?report_types) end, Types) of
     true -> Types;
-    false -> usage("argument to -t must be one or more of ~p~n", ReportTypes)
+    false -> usage("argument to -t must be one or more of ~w~n", ?report_types)
     end.
 
 start() ->
