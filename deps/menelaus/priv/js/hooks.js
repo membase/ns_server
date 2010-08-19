@@ -124,7 +124,7 @@ var MockedRequest = mkClass({
 
     this.url = url;
 
-    var path = url.split("/")
+    var path = url.split('?')[0].split("/")
     this.path = path;
 
     // we modify that list in place in few actions
@@ -859,7 +859,7 @@ var MockedRequest = mkClass({
         console.log("params: ", params);
         params['name'] = 'new-name';
         return this.doHandleBucketsPost(params);
-      }, 'ramQuotaMB', 'hddQuotaGB', 'replicaNumber', 'authType', opt('saslPassword'), opt('proxyPort'))],
+      }, 'ramQuotaMB', 'hddQuotaGB', opt('replicaNumber'), 'authType', opt('saslPassword'), opt('proxyPort'))],
       [post("pools", "default", "buckets", x, "controller", "doFlush"), method('doNothingPOST')], //unused
       [del("pools", "default", "buckets", x), method('handleBucketRemoval')],
 
