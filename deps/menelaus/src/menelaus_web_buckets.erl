@@ -396,7 +396,10 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, AllBuckets, AuthTy
                           | Candidates0];
                      membase ->
                          [{ok, bucketType, membase},
-                          parse_validate_replicas_number(proplists:get_value("replicaNumber", Params)),
+                          case IsNew of
+                              true -> parse_validate_replicas_number(proplists:get_value("replicaNumber", Params));
+                              _ -> undefined
+                          end,
                           parse_validate_hdd_quota(proplists:get_value("hddQuotaGB", Params))
                           | Candidates0];
                      _ ->
