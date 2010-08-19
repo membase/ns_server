@@ -239,6 +239,7 @@ var ServersSection = {
   onEnter: function () {
     // we need this 'cause switchSection clears rebalancing class
     this.refreshEverything();
+    this.detailsWidget.reDrawElements();
   },
   navClick: function () {
     this.onLeave();
