@@ -229,15 +229,23 @@ var DAO = {
   this.mode = new Cell();
   this.poolList = new Cell();
 
-  this.currentPoolDetailsCell = new Cell(function (poolList) {
+  var currentPoolURL = new Cell(function (poolList, mode) {
+    return poolList[0].uri;
+  }, {
+    poolList: this.poolList,
+    mode: this.mode
+  });
+
+  this.currentPoolDetailsCell = new Cell(function (url) {
     function poolDetailsValueTransformer(data) {
       // we clear pool's name to display empty name in analytics
       data.name = '';
       return data;
     }
-    var uri = poolList[0].uri;
-    return future.getPush({url: uri}, poolDetailsValueTransformer);
-  }).setSources({poolList: this.poolList});
+    return future.getPush({url: url}, poolDetailsValueTransformer);
+  }).setSources({
+    url: currentPoolURL
+  });
   this.currentPoolDetailsCell.equality = _.isEqual;
 
 }).call(DAO.cells);

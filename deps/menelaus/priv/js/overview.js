@@ -31,18 +31,13 @@ var OverviewSection = {
       updateCount('.pending-count', pending.length);
     });
 
-    var spinner;
     BucketsSection.cells.detailedBuckets.subscribeValue(function (buckets) {
       var poolDetails = DAO.cells.currentPoolDetailsCell.value;
       if (!poolDetails || !buckets) {
-        if (!spinner)
-          spinner = overlayWithSpinner('#overview_clusters_block');
+        $('#overview_clusters_block').hide();
         return;
       }
-      if (spinner) {
-        spinner.remove();
-        spinner = null;
-      }
+      $('#overview_clusters_block').show();
 
       ;(function () {
         var item = $('#overview_clusters_block .ram-item');
