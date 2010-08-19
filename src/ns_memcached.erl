@@ -275,7 +275,8 @@ ensure_bucket(Sock, Bucket) ->
             ensure_bucket_config(Sock, Bucket, MaxSize);
         {memcached_error, key_enoent, _} ->
             ok = mc_client_binary:create_bucket(Sock, Bucket, Engine,
-                                                ConfigString);
+                                                ConfigString),
+            ok = mc_client_binary:select_bucket(Sock, Bucket);
         Error ->
             exit({bucket_select_error, Error})
     end.
