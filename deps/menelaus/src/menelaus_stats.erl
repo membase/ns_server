@@ -31,7 +31,7 @@
 %% External API
 
 bucket_disk_usage(BucketName) ->
-    {Res, _} = rpc:multicall(ns_node_disco:nodes_actual_proper(), ns_storage_conf, local_bucket_disk_usage, [BucketName], 2000),
+    {Res, _} = rpc:multicall(ns_node_disco:nodes_actual_proper(), ns_storage_conf, local_bucket_disk_usage, [BucketName], 1000),
     lists:sum([case is_number(X) of
                    true -> X;
                    _ -> 0
