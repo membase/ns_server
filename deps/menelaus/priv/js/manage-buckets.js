@@ -268,8 +268,10 @@ var BucketDetailsDialog = mkClass({
     showDialog(this.dialogID, {
       onHide: function () {
         self.cleanup();
-        if (self.needBucketsRefresh)
-          BucketsSection.refreshBuckets();
+        if (self.needBucketsRefresh) {
+          DAO.cells.currentPoolDetails.setValue(undefined);
+          DAO.cells.currentPoolDetails.invalidate();
+        }
       }
     });
   },
