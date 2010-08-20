@@ -32,7 +32,7 @@
 -export([running/2, running/3, joining/2, joining/3, leaving/2, leaving/3]).
 
 %% API
--export([add_node/1, join/2, leave/0, leave/1, shun/1, log_joined/0]).
+-export([join/2, leave/0, leave/1, shun/1, log_joined/0]).
 
 -export([alert_key/1]).
 
@@ -70,6 +70,8 @@ bringup() ->
 running({join, RemoteNode, NewCookie}, State) ->
     ns_log:log(?MODULE, 0002, "Node ~p is joining cluster via node ~p.",
                [node(), RemoteNode]),
+    mnesia:stop(),
+    mnesia:delete_schema([node()]),
     BlackSpot = make_ref(),
     MyNode = node(),
     ns_config:update(fun ({directory,_} = X) -> X;
@@ -108,6 +110,15 @@ running(leave, State) ->
     running({leave, #leaving_state{}}, State).
 
 
+running({add_node, Node}, _From, State) ->
+    Fun = fun(X) ->
+                  lists:usort([Node | X])
+          end,
+    ns_config:update_key(nodes_wanted, Fun),
+    ns_config:set({node, Node, membership}, inactiveAdded),
+    ns_mnesia:add_node(Node),
+    ?log_info("Successfully added ~p to cluster.", [Node]),
+    {reply, ok, running, State};
 running({change_address, NewAddr}, _From, State) ->
     MyNode = node(),
     case misc:node_name_host(MyNode) of
@@ -147,7 +158,6 @@ running({change_address, NewAddr}, _From, State) ->
 
 joining({exit, _Pid}, #joining_state{remote=RemoteNode, cookie=NewCookie}) ->
     error_logger:info_msg("ns_cluster: joining cluster. Child has exited.~n"),
-    ns_mnesia:delete_schema(),
     timer:sleep(1000), % Sleep for a second to let things settle
     true = erlang:set_cookie(node(), NewCookie),
     %% Let's verify connectivity.
@@ -156,7 +166,8 @@ joining({exit, _Pid}, #joining_state{remote=RemoteNode, cookie=NewCookie}) ->
               [node(), RemoteNode, Connected]),
     %% Add ourselves to nodes_wanted on the remote node after shutting
     %% down our own config server.
-    ok = rpc:call(RemoteNode, ns_cluster, add_node, [node()]),
+    mnesia:start(),
+    ok = gen_fsm:sync_send_event({?MODULE, RemoteNode}, {add_node, node()}),
     error_logger:info_msg("Remote config updated to add ~p to ~p~n",
                           [node(), RemoteNode]),
     {ok, running, State} = bringup(),
@@ -231,18 +242,6 @@ terminate(_Reason, _StateName, _StateData) -> ok.
 %%
 
 %% Called on a node in the cluster to add us to its nodes_wanted
-add_node(Node) ->
-    Fun = fun(X) ->
-                  lists:usort([Node | X])
-          end,
-    ns_config:update_key(nodes_wanted, Fun),
-    ns_config:set({node, Node, membership}, inactiveAdded),
-    ns_mnesia:add_node(Node),
-    error_logger:info_msg("~p:add_node: successfully added ~p to cluster.~n",
-                          [?MODULE, Node]),
-    ok.
-
-
 join(RemoteNode, NewCookie) ->
     ns_log:log(?MODULE, ?NODE_JOIN_REQUEST, "Node join request on ~s to ~s",
                [node(), RemoteNode]),
