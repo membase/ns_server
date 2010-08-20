@@ -665,56 +665,59 @@ var NodeDialog = {
       }
     }
 
-    $('#step-2-next').click(function (e) {
-        e.preventDefault();
+    function onSubmit(e) {
+      e.preventDefault();
 
-        errorContainer = dialog.find('.init_cluster_dialog_errors_container');
-        errorContainer.hide();
+      errorContainer = dialog.find('.init_cluster_dialog_errors_container');
+      errorContainer.hide();
 
-        var p = dialog.find('[name=path]').val() || "";
+      var p = dialog.find('[name=path]').val() || "";
 
-        var m = dialog.find('[name=dynamic-ram-quota]').val() || "";
-        if (m == "") {
-          m = "none";
+      var m = dialog.find('[name=dynamic-ram-quota]').val() || "";
+      if (m == "") {
+        m = "none";
+      }
+
+      $.ajax({
+        type:'POST', url:'/nodes/' + node + '/controller/settings',
+        data: 'path=' + p,
+        async:true, success:diskPost, error:diskPost
+      });
+
+      function diskPost(data, status) {
+        if (status == 'success') {
+          continueAfterDisk();
+        } else {
+          errorContainer.html('Your path is invalid. It must be a directory writable by northscale user');
+          errorContainer.show();
+        }
+      }
+
+      function continueAfterDisk() {
+        if (!$('#no-join-cluster')[0].checked) {
+          return NodeDialog.doClusterJoin();
         }
 
         $.ajax({
-          type:'POST', url:'/nodes/' + node + '/controller/settings',
-          data: 'path=' + p,
-          async:true, success:diskPost, error:diskPost
+          type:'POST', url:'/pools/default',
+          data: 'memoryQuota=' + m,
+          async:true, success:memPost, error:memPost
         });
+      }
 
-        function diskPost(data, status) {
-          if (status == 'success') {
-            continueAfterDisk();
-          } else {
-            errorContainer.html('Your path is invalid. It must be a directory writable by northscale user');
-            errorContainer.show();
-          }
+      function memPost(data, status) {
+        if (status == 'success') {
+          BucketsSection.refreshBuckets();
+          showInitDialog("secure");
+        } else {
+          errorContainer.html('failed memory quota validation');
+          errorContainer.show();
         }
+      }
+    }
 
-        function continueAfterDisk() {
-          if (!$('#no-join-cluster')[0].checked) {
-            return NodeDialog.doClusterJoin();
-          }
-
-          $.ajax({
-            type:'POST', url:'/pools/default',
-            data: 'memoryQuota=' + m,
-            async:true, success:memPost, error:memPost
-          });
-        }
-
-        function memPost(data, status) {
-          if (status == 'success') {
-            BucketsSection.refreshBuckets();
-            showInitDialog("secure");
-          } else {
-            errorContainer.html('failed memory quota validation');
-            errorContainer.show();
-          }
-        }
-      });
+    $('#step-2-next').click(onSubmit);
+    $('#init_cluster_form').submit(onSubmit);
 
     _.defer(function () {
       if ($('#join-cluster')[0].checked)
