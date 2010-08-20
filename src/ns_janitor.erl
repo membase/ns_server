@@ -114,13 +114,15 @@ sanify(Bucket, Map, Servers) ->
 
 sanify_chain(Bucket, State, Chain, VBucket, Zombies) ->
     NewChain = do_sanify_chain(Bucket, State, Chain, VBucket, Zombies),
-    case length(NewChain) /= length(Chain) of
+    %% Fill in any missing replicas
+    case length(NewChain) < length(Chain) of
         false ->
             NewChain;
         true ->
-            exit({length_changed, Bucket, State, Chain, NewChain, VBucket,
-                  Zombies})
+            NewChain ++ lists:duplicate(length(Chain) - length(NewChain),
+                                        undefined, NewChain)
     end.
+
 
 do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
     NodeStates = [{N, S} || {N, V, S} <- States, V == VBucket],
@@ -151,11 +153,9 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                             ?log_warning(
                                "Master for vbucket ~p is not active, but ~p is, so making that the master.",
                               [VBucket, Node]),
-                            [Node|lists:duplicate(length(Chain) - 1,
-                                                  undefined)];
+                            [Node];
                         Pos ->
-                            [Node|lists:nthtail(Pos, Chain)] ++
-                                lists:duplicate(length(Chain) - Pos, undefined)
+                            [Node|lists:nthtail(Pos, Chain)]
                     end;
                 Nodes ->
                     ?log_error(
