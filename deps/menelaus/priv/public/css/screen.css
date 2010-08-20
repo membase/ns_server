@@ -732,7 +732,7 @@ select.inp_size_2 {width:193px !important;}
 .popup .err p {font-size:14px;background-position:0 2px;}
 	
 
-#bucket_details_dialog {width:765px; margin-left:-383px;}
+#bucket_details_dialog {width:765px; margin-left:-383px;background:#eee;}
 #bucket_details_dialog .lbox {width:765px;}
 
 #add_new_bucket_form h2 {padding:0 0 15px 20px; font-size:12px; line-height:15px;}
@@ -1182,3 +1182,83 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 #overview_servers_block .is-zero .when-non-zero {
   display: none;
 }
+
+/* from less */
+.bucket_details {font-size:13px;}
+.bucket_details h1 {background:#dfdfe0;padding-left:20px;padding-top:16px;padding-bottom:16px;border-bottom:1px solid #BDBEC2;}
+.bucket_details form {border-top:1px solid #dfdfe0;}
+.bucket_details form > div {padding:0px 56px 48px;border-bottom:1px solid #cccfd2;border-top:1px solid #f8f8f8;}
+.bucket_details h2 {clear:both;font-size:20px;font-weight:normal;padding-bottom:6px;margin-top:18px;margin-bottom:15px;border-bottom:1px solid #d4d9dc;}
+ .additional_server_info.bucket_details h2 {margin:0 0 10px;padding:5px 0 10px;font-size:14px;border-bottom:1px solid #bbbdbf;}
+.bucket_details .bucket-icon {display:block;float:left;width:64px;height:64px;margin-top:10px;background:url(/images/icons.png) 50% -100px;}
+
+.bucket_details label {display:block;margin:6px 0;line-height:24px;  overflow:hidden;}
+ .additional_server_info.bucket_details label {font-size:12px;}
+ .additional_server_info.bucket_details h2 + label {width:auto;clear:both;}
+ .additional_server_info.bucket_details .clear + .size-gauge + label {margin:0;}
+.bucket_details label input {padding:3px 3px;font-size:13px; text-align:right;border:1px solid #ccd3d7;}
+.bucket_details label input[type="checkbox"], .bucket_details label input[type="radio"] {width:auto;position:relative;top:2px;border:none;}
+.bucket_details label abbr {margin-left:6px;}
+.bucket_details label span {display:block;float:left;text-align:right;margin-right:6px;}
+.bucket_details label span + span {width:60px !important;}
+
+.bucket_details .for-sasl-password, .bucket_details .for-key-prefix, .bucket_details .for-ascii, .bucket_details .for-source-ip {padding-left:170px;}
+.bucket_details .for-sasl-password span, .bucket_details .for-key-prefix span, 
+.bucket_details .for-ascii span, .bucket_details .for-source-ip span {float:none;display:inline;margin-left:6px;}
+.bucket_details .for-sasl-password, .bucket_details .for-ascii {padding-left:20px;}
+.bucket_details .for-name span, .bucket_details .for-bucket-type span {display:block;float:left;text-align:right;margin-right:6px;width:100px; line-height:24px;}
+.bucket_details .for-name input, .bucket_details .for-bucket-type input {width:166px;text-align:left;}
+.bucket_details .for-name input[type="radio"], .bucket_details .for-name input[type="checkbox"],
+.bucket_details .for-bucket-type input[type="radio"], .bucket_details .for-bucket-type input[type="checkbox"] {width:auto;position:relative;top:2px;border:none;}
+.bucket_details .for-bucket-type span {height:48px;}
+.bucket_details .for-bucket-type input {margin-right:3px;}
+.bucket_details label.for-sasl-password-input span {width:164px;}
+.bucket_details label.for-sasl-password-input input {width:166px;text-align:left;}
+.bucket_details label.for-proxy-port span {width:164px;}
+.bucket_details label.for-proxy-port input {width:58px;}
+
+.bucket_details .size-gauge {line-height:24px;position:relative;top:-6px;float:right;font-size:11px;width:364px;}
+.bucket_details .size-gauge .other-data-block {color:#C19710;float:left;}
+.bucket_details .size-gauge .t {float:right;}
+ .additional_server_info.bucket_details .size-gauge .t {font-size:12px;}
+.bucket_details .size-gauge .gauge {clear:both;position:relative;height:15px;background:url(/images/ram_diagr_bg.png) 100% 0 no-repeat;}
+.bucket_details .size-gauge .gauge table {white-space:nowrap;}
+.bucket_details .size-gauge .gauge div {width:362px;height:15px;position:absolute;left:0px;top:0px;background:url(/images/ram_diagr_bg.png) 0 0 no-repeat;}
+.bucket_details .size-gauge .gauge .blue {background-position:0px -15px;}
+ .additional_server_info.bucket_details .size-gauge .gauge .blue {width:0;}
+.bucket_details .size-gauge .gauge .yellow {background-position:0px -30px;}
+.bucket_details .size-gauge .gauge .green {background-position:0px -45px;}
+.bucket_details .size-gauge .b {text-align:justify;width:100%;}
+.bucket_details .size-gauge .b .blue {color:blue;text-align:left;}
+.bucket_details .size-gauge .b .green {color:green;text-align:center;}
+.bucket_details .size-gauge .b td {padding:0;text-align:right;}
+.bucket_details .size-gauge.overcommit .t {color:red;}
+.bucket_details .size-gauge.overcommit .gauge .gauge-total {background-position:0px -45px;}
+.bucket_details .size-gauge.overcommit .gauge .green i {background:none repeat scroll 0 0 #E43A1B;display:block;font-size:0;height:25px;line-height:0;
+position:absolute;right:0;top:-5px;width:1px;}
+.bucket_details .size-gauge.overcommit .extra {color:red;}
+
+.bucket_details label.for-enable-persistence {padding-left:20px;}
+.bucket_details label.for-enable-persistence span {float:none;display:inline;margin-left:6px;}
+.bucket_details label.for-ram-quota, .bucket_details label.for-hdd-quota {width:275px;display:block;padding-top:13px;}
+.bucket_details label.for-ram-quota span, .bucket_details label.for-hdd-quota span {width:164px;}
+.bucket_details label.for-ram-quota input, .bucket_details label.for-hdd-quota input {width:58px;}
+.bucket_details .invalid {border-color:red;}
+.bucket_details .error-container {color:red;float:left;font-size:66%;padding-left:170px;visibility:hidden;}
+.bucket_details .error-container.err-name, .bucket_details .error-container.err-proxyPort {display:inline;float:none;padding-left:6px;}
+.bucket_details .for-replica-number .error-container {float:none;padding-left:0;}
+.bucket_details .error-container.active {visibility:visible;}
+.bucket_details label.for-enable-replication {padding-left:20px;width:150px;float:left;}
+.bucket_details label.for-enable-replication span {display:inline;float:none;margin-left:6px;}
+.bucket_details label.for-replica-number {display:block;float:left;}
+.bucket_details label.for-replica-number span {display:inline;float:none;margin-left:6px;}
+.bucket_details label.for-replica-number input {width:29px;}
+.bucket_details .save_cancel {border-top:1px solid #eeeeee;border-bottom-width:0px;padding:18px;clear:both;background:#cccfd2;}
+.bucket_details .save_cancel .delete_button {margin-right:16px;}
+.bucket_details .save_cancel .jqmClose {float:right;font-size:14px;height:31px;line-height:31px;color:#8b8b8e;text-align:right;font-weight:bolder;
+text-decoration:none;margin-right:16px;}
+
+.bucket_details.creating .when-editing {display:none;}
+.bucket_details.editing .when-creating {display:none;}
+.bucket_details.cannot-delete .when-editing .delete_button {display:none;}
+
