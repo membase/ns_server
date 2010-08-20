@@ -251,8 +251,9 @@ parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals)
     UsageGetter = fun (ram, Name) ->
                           menelaus_stats:bucket_ram_usage(Name);
                       (hdd, all) ->
-                          lists:sum([menelaus_stats:bucket_disk_usage(X)
-                                     || {X, _} <- AllBuckets]);
+                          {hdd, HDDStats} = lists:keyfind(hdd, 1, ClusterStorageTotals),
+                          {usedByData, V} = lists:keyfind(usedByData, 1, HDDStats),
+                          V;
                       (hdd, Name) ->
                           menelaus_stats:bucket_disk_usage(Name)
                   end,

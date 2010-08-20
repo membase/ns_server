@@ -647,23 +647,38 @@
       </label>
 
       <div class="normal size-gauge for-hdd">
-        <div class="other-data-block"></div>
-        <div class="t">Total Storage {%= h(V.formatQuantity(totalDiskSize)) %}</div>
-
+        <div class="other-data-block">Other data (<span class="other-data">15 Gb</span>)</div>
+        <div class="t">Total cluster storage (<span class="total">192 Gb</span>)</div>
         <div class="gauge">
           <div>
-            <div class="green">{%= V.thisElement(function (e) {$(e).css('width', diskUsedPercent + '%')}) %}</div>
+            <div class="green"></div>
             <div class="blue"></div>
-            <div class="yellow">{%= V.thisElement(function (e) {$(e).css('width', diskOtherPercent + '%')}) %}</div>
+            <div class="yellow"></div>
           </div>
         </div>
-
         <table class="b"><tr>
-          <td class="blue">Other Data ({%= h(V.formatQuantity(otherDiskSize)) %})</td>
-          <td class="green">This Bucket ({%= h(V.formatQuantity(totalDiskUsed)) %})</td>
-          <td>Free ({%= h(V.formatQuantity(totalDiskFree)) %})</td>
+          <td class="blue">Other Buckets (<span class="other">15 Gb</span>)</td>
+          <td class="green">This Bucket (<span class="this">5 Gb</span>)</td>
+          <td>Free (<span class="free">12 Gb</span>)</td>
         </tr></table>
       </div>
+      <div class="overcommit size-gauge for-hdd">
+        <div class="other-data-block">Other data (<span class="other-data">15 Gb</span>)</div>
+        <div class="t">Total cluster storage (<span class="total">192 Gb</span>)</div>
+        <div class="gauge">
+          <div class="gauge-total">
+            <div class="green"><i></i></div>
+            <div class="blue"></div>
+            <div class="yellow"></div>
+          </div>
+        </div>
+        <table class="b"><tr>
+          <td class="blue">Other Buckets (<span class="other">15 Gb</span>)</td>
+          <td class="green">This Bucket (<span class="this">5 Gb</span>)</td>
+          <td class="extra">Overcommit (<span class="overcommitted">12 Gb</span>)</td>
+        </tr></table>
+      </div>{%= V.thisElement(function (e) {BucketsSection.renderHDDDetailsGauge(e, obj)}) %}
+
       <label class="for-hdd-quota">
 	  	<span>Disk Quota:</span>
 		<span>{%= h(V.formatQuantity(quota.hdd)) %}</span>

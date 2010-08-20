@@ -389,6 +389,16 @@ var BucketsSection = {
                                               details.quota.ram,
                                               poolDetails.storageTotals.ram.quotaUsed - details.quota.ram);
   },
+  renderHDDDetailsGauge: function (e, details) {
+    var jq = $(e).parent().find('.size-gauge.for-hdd');
+    var poolDetails = DAO.cells.currentPoolDetails.value;
+    var hdd = poolDetails.storageTotals.hdd;
+    BucketDetailsDialog.prototype.renderDiskGauge(jq,
+                                                  hdd.total,
+                                                  details.quota.hdd,
+                                                  hdd.quotaUsed - details.quota.hdd,
+                                                  hdd.used - hdd.usedByData);
+  },
   cells: {},
   init: function () {
     var self = this;

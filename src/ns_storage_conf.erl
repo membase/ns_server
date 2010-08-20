@@ -182,15 +182,21 @@ cluster_storage_info() ->
                                                        end, Acc, ThisInfo)
                                  end, extract_node_storage_info(FirstInfo, FirstNode), Rest)
              end,
+    AllBuckets = ns_bucket:get_buckets(),
     {RAMQuotaUsed, HDDQuotaUsed} =
         lists:foldl(fun ({_, Config}, {RAMQuota, HDDQuota}) ->
                             {ns_bucket:ram_quota(Config) + RAMQuota,
                              ns_bucket:hdd_quota(Config) + HDDQuota}
-                    end, {0, 0}, ns_bucket:get_buckets()),
+                    end, {0, 0}, AllBuckets),
+    %% TODO: be careful with remote systems access here
+    BucketsHDDUsage = lists:sum([menelaus_stats:bucket_disk_usage(X)
+                                 || {X, _} <- AllBuckets]),
     lists:map(fun ({ram, Props}) ->
                       {ram, [{quotaUsed, RAMQuotaUsed} | Props]};
                   ({hdd, Props}) ->
-                      {hdd, [{quotaUsed, HDDQuotaUsed} | Props]}
+                      {hdd, [{quotaUsed, HDDQuotaUsed},
+                             {usedByData, BucketsHDDUsage}
+                             | Props]}
               end, PList1).
 
 extract_disk_stats_for_path_rec([], _Path) ->
