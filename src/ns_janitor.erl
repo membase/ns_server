@@ -120,7 +120,7 @@ sanify_chain(Bucket, State, Chain, VBucket, Zombies) ->
             NewChain;
         true ->
             NewChain ++ lists:duplicate(length(Chain) - length(NewChain),
-                                        undefined, NewChain)
+                                        undefined)
     end.
 
 
