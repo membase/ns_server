@@ -31,8 +31,29 @@ var OverviewSection = {
       updateCount('.pending-count', pending.length);
     });
 
-    BucketsSection.cells.detailedBuckets.subscribeValue(function (buckets) {
-      var poolDetails = DAO.cells.currentPoolDetailsCell.value;
+    var bucketsCell = BucketsSection.cells.detailedBuckets;
+    var barsSourceCell = new Cell(function (poolDetails, mode) {
+      if (mode != 'overview') {
+        return this.self.value;
+      }
+      return future(function (dataCallback) {
+        BucketsSection.refreshBuckets(function () {
+          dataCallback({
+            poolDetails: poolDetails,
+            buckets: bucketsCell.value
+          });
+        });
+      });
+    }, {
+      poolDetails: DAO.cells.currentPoolDetailsCell,
+      mode: DAO.cells.mode
+    });
+    barsSourceCell.keepValueDuringAsync = true;
+
+    barsSourceCell.subscribeValue(function (src) {
+      src = src || {};
+      var buckets = src.buckets;
+      var poolDetails = src.poolDetails;
       if (!poolDetails || !buckets) {
         $('#overview_clusters_block').hide();
         return;

@@ -229,22 +229,28 @@ var DAO = {
   this.mode = new Cell();
   this.poolList = new Cell();
 
-  var currentPoolURL = new Cell(function (poolList, mode) {
-    return poolList[0].uri;
+  // this cell lowers comet/push timeout for overview sections _and_ makes
+  // sure we don't fetch pool details if mode is not set (we're in
+  // wizard)
+  var poolDetailsPushTimeoutCell = new Cell(function (mode) {
+    if (mode == 'overview')
+      return 3000;
+    return 20000;
   }, {
-    poolList: this.poolList,
     mode: this.mode
   });
 
-  this.currentPoolDetailsCell = new Cell(function (url) {
+  this.currentPoolDetailsCell = new Cell(function (poolList, pushTimeout) {
+    var url = poolList[0].uri;
     function poolDetailsValueTransformer(data) {
       // we clear pool's name to display empty name in analytics
       data.name = '';
       return data;
     }
-    return future.getPush({url: url}, poolDetailsValueTransformer);
+    return future.getPush({url: url}, poolDetailsValueTransformer, this.self.value, pushTimeout);
   }).setSources({
-    url: currentPoolURL
+    poolList: this.poolList,
+    pushTimeout: poolDetailsPushTimeoutCell
   });
   this.currentPoolDetailsCell.equality = _.isEqual;
 

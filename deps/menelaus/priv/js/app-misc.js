@@ -185,7 +185,7 @@ function runFormDialog(uriOrPoster, dialogID, options) {
   });
 }
 
-future.getPush = function (ajaxOptions, valueTransformer, nowValue) {
+future.getPush = function (ajaxOptions, valueTransformer, nowValue, waitChange) {
   var options = {
     valueTransformer: valueTransformer,
     cancel: function () {
@@ -197,6 +197,9 @@ future.getPush = function (ajaxOptions, valueTransformer, nowValue) {
   var etag;
   var recovingFromError;
 
+  if (!waitChange)
+    waitChange = 20000;
+
   if (ajaxOptions.url == undefined)
     throw new Error("url is undefined");
 
@@ -207,9 +210,10 @@ future.getPush = function (ajaxOptions, valueTransformer, nowValue) {
                             success: continuation},
                            ajaxOptions);
     if (options.url.indexOf("?") < 0)
-      options.url += '?waitChange=20000'
+      options.url += '?waitChange='
     else
-      options.url += '&waitChange=20000'
+      options.url += '&waitChange='
+    options.url += waitChange;
     if (etag && !recovingFromError) {
       options.url += "&etag=" + encodeURIComponent(etag)
       options.timeout = 30000;
