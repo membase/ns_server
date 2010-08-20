@@ -382,6 +382,13 @@ var BucketDetailsDialog = mkClass({
 });
 
 var BucketsSection = {
+  renderRAMDetailsGauge: function (e, details) {
+    var poolDetails = DAO.cells.currentPoolDetails.value;
+    BucketDetailsDialog.prototype.renderGauge($(e),
+                                              poolDetails.storageTotals.ram.quotaTotal,
+                                              details.quota.ram,
+                                              poolDetails.storageTotals.ram.quotaUsed - details.quota.ram);
+  },
   cells: {},
   init: function () {
     var self = this;

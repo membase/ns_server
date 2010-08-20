@@ -618,95 +618,27 @@
       </div>
       <span class="additional_server_info bucket_details">
 
-        <!--h3>Cache Size</h3>
-        <span class="info_block">
-          <div class="ovf">
-            <span class="total_ram">Total RAM {%= h(V.formatQuantity(totalRAMSize)) %}</span>
-            <table class="label">
-              <tr>
-                <td>Dynamic RAM Quota:</td>
-                <td>{%= h(V.formatQuantity(ramQuota)) %}</td>
-              </tr>
-            </table>
-            <table class="RAM_diagramm">
-              <tr>
-                <td colspan="3">
-                  <span class="diagr_ram">
-                    <span style="width: 0%;" class="yellow">{%= V.thisElement(function (e) {$(e).css('width', RAMOtherPercent + '%')}) %}</span>
-                    <span style="width: 100%;" class="green">{%= V.thisElement(function (e) {$(e).css('width', RAMUsedPercent + '%')}) %}</span>
-                  </span>
-                </td>
-              </tr>
-              <tr class="diagr_labels">
-                <td class="green">This Bucket ({%= h(V.formatQuantity(totalRAMUsed)) %})</td>
-                <td class="yellow">Other Data ({%= h(V.formatQuantity(otherRAMSize)) %})</td>
-                <td class="right">Free ({%= h(V.formatQuantity(totalRAMFree)) %})</td>
-              </tr>
-            </table>
-          </div>
-        </span-->
-
       <h2>Cache Size</h2>
-      <div class="normal size-gauge for-hdd">
-        <div class="other-data-block"></div>
-        <div class="t">Total Storage {%= h(V.formatQuantity(totalRAMSize)) %}</div>
-
+      <div class="size-gauge for-ram">
+        <div class="t">Cluster quota (<span class="total">?</span>)</div>
         <div class="gauge">
           <div>
-            <div class="green">{%= V.thisElement(function (e) {$(e).css('width', RAMUsedPercent + '%')}) %}</div>
-            <div class="blue"></div>
-            <div class="yellow">{%= V.thisElement(function (e) {$(e).css('width', RAMOtherPercent + '%')}) %}</div>
+            <div style="width: 1%;" class="green"></div>
+            <div style="width: 4%;" class="blue"></div>
           </div>
         </div>
-		
         <table class="b"><tr>
-          <td class="blue">Other Data ({%= h(V.formatQuantity(otherRAMSize)) %})</td>
-          <td class="green">This Bucket ({%= h(V.formatQuantity(totalRAMUsed)) %})</td>
-          <td>Free ({%= h(V.formatQuantity(totalRAMFree)) %})</td>
+          <td class="blue">Other Buckets (<span class="other">?</span>)</td>
+          <td class="green">This Bucket (<span class="this">?</span>)</td>
+          <td>Free (<span class="free">?</span>)</td>
         </tr></table>
-      </div>
+      </div>{%= V.thisElement(function (e) {BucketsSection.renderRAMDetailsGauge(e, obj);}) %}
       <label class="for-hdd-quota">
 	  	<span>Dynamic RAM Quota:</span>
 		<span>{%= h(V.formatQuantity(ramQuota)) %}</span>
 		<abbr></abbr>
       </label>
 
-        <!--h3>Storage Size</h3>
-        <span class="info_block">
-          <div class="ovf">
-            <table class="label">
-              <tr>
-                <td>Persistance Enabled:</td>
-                <td>yes</td>
-              </tr>
-            </table>
-          </div>
-          <div class="ovf">
-            <span class="total_ram">Total Storage {%= h(V.formatQuantity(totalDiskSize)) %}</span>
-            <table class="label">
-              <tr>
-                <td>Disk Quota:</td>
-                <td>{%= h(V.formatQuantity(quota.hdd)) %}</td>
-              </tr>
-            </table>
-            <table class="RAM_diagramm">
-              <tr>
-                <td colspan="3">
-                  <span class="diagr_ram">
-                    <span style="width: 100%;" class="yellow">{%= V.thisElement(function (e) {$(e).css('width', diskOtherPercent + '%')}) %}</span>
-                    <span style="width: 100%;" class="green">{%= V.thisElement(function (e) {$(e).css('width', diskUsedPercent + '%')}) %}</span>
-                  </span>
-                </td>
-              </tr>
-              <tr class="diagr_labels">
-                <td class="green">This Bucket ({%= h(V.formatQuantity(totalDiskUsed)) %})</td>
-                <td class="yellow">Other Data ({%= h(V.formatQuantity(otherDiskSize)) %})</td>
-                <td class="right">Free ({%= h(V.formatQuantity(totalDiskFree)) %})</td>
-              </tr>
-            </table>
-          </div>
-        </span-->
-		
       <h2>Storage Size</h2>
       <label class="for-hdd-quota">
 	  	<span>Persistence Enabled:</span>
@@ -725,7 +657,7 @@
             <div class="yellow">{%= V.thisElement(function (e) {$(e).css('width', diskOtherPercent + '%')}) %}</div>
           </div>
         </div>
-		
+
         <table class="b"><tr>
           <td class="blue">Other Data ({%= h(V.formatQuantity(otherDiskSize)) %})</td>
           <td class="green">This Bucket ({%= h(V.formatQuantity(totalDiskUsed)) %})</td>
