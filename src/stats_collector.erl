@@ -52,10 +52,10 @@ handle_cast(unhandled, unhandled) ->
     unhandled.
 
 handle_info({tick, TS}, #state{bucket=Bucket, counters=Counters} = State) ->
-    misc:flush_head(tick),
     case catch ns_memcached:stats(Bucket) of
         {ok, Stats} ->
-            {Entry, NewCounters} = parse_stats(TS, Stats, Counters),
+            TS1 = latest_tick(TS),
+            {Entry, NewCounters} = parse_stats(TS1, Stats, Counters),
             case Counters of % Don't send event with undefined values
                 undefined ->
                     ok;
@@ -77,6 +77,13 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 %% Internal functions
+latest_tick(TS) ->
+    receive
+        {tick, TS1} ->
+            latest_tick(TS1)
+    after 0 ->
+            TS
+    end.
 
 parse_stats(TS, Stats, LastCounters) ->
     Dict = dict:from_list([{binary_to_atom(K, latin1), V} || {K, V} <- Stats]),
