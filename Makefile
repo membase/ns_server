@@ -4,6 +4,8 @@ SHELL=/bin/sh
 
 EFLAGS=-pa ./ebin ./deps/*/ebin ./deps/*/deps/*/ebin
 
+NS_SERVER_PLT=ns_server.plt
+
 TMP_DIR=./tmp
 
 TMP_VER=$(TMP_DIR)/version_num.tmp
@@ -73,11 +75,11 @@ test_menelaus: deps/menelaus
 TAGS:
 	ctags -eR .
 
-ns_server.plt:
+$(NS_SERVER_PLT):
 	dialyzer --output_plt $@ --build_plt -pa ebin --apps compiler crypto erts inets kernel mnesia os_mon sasl ssl stdlib xmerl -c deps/gen_smtp/ebin deps/menelaus/deps/mochiweb/ebin deps/menelaus/deps/erlwsh/ebin
 
-dialyzer: all ns_server.plt
-	dialyzer --plt ns_server.plt -Wunderspecs -pa ebin -c ebin -c deps/menelaus/ebin
+dialyzer: all $(NS_SERVER_PLT)
+	dialyzer --plt $(NS_SERVER_PLT) -Wunderspecs -pa ebin -c ebin -c deps/menelaus/ebin
 
 Features/Makefile:
 	(cd features && ../test/parallellize_features.rb) >features/Makefile
