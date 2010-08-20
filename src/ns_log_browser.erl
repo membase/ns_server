@@ -23,7 +23,8 @@ map_types(TypeStrings) ->
     Types = lists:map(fun list_to_atom/1, TypeStrings),
     case lists:all(fun (T) -> lists:member(T, ?report_types) end, Types) of
     true -> Types;
-    false -> usage("argument to -t must be one or more of ~w~n", ?report_types)
+    false -> usage("argument to -t must be one or more of ~w~n",
+                   [?report_types])
     end.
 
 start() ->
