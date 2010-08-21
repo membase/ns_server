@@ -121,8 +121,6 @@ start() ->
 
 %% Shamelessly stolen from Mnesia docs.
 change_node_name(Mod, From, To, Source, Target) ->
-    FromString = atom_to_list(From),
-    ToString = atom_to_list(To),
     Switch =
         fun(Node) when Node == From -> To;
            (Node) when Node == To -> throw({error, already_exists});
@@ -144,25 +142,13 @@ change_node_name(Mod, From, To, Source, Target) ->
                                 false-> {Key, Val}
                             end
                     end,
-                Tab1 = change_table_name(Tab, FromString, ToString),
-                {[{schema, Tab1, lists:map(OptSwitch, CreateList)}], Acc};
+                {[{schema, Tab, lists:map(OptSwitch, CreateList)}], Acc};
            (Tuple, Acc) ->
-                Tab = element(1, Tuple),
-                Tab1 = change_table_name(Tab, FromString, ToString),
-                {[setelement(1, Tuple, Tab1)], Acc}
+                {[Tuple], Acc}
         end,
     {ok, switched} = mnesia:traverse_backup(Source, Mod, Target, Mod, Convert,
                                             switched),
     ok.
-
-
-%% @doc Alter node-specific table names if necessary.
-change_table_name(Tab, FromString, ToString) ->
-    L1 = string:tokens(atom_to_list(Tab), "-"),
-    L2 = lists:map(fun (S) when S == FromString -> ToString;
-                       (S) -> S
-                   end, L1),
-    list_to_atom(string:join(L2, "-")).
 
 
 %% @doc Start mnesia and monitor it
