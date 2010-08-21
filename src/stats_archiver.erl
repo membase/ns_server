@@ -49,47 +49,26 @@ start_link(Bucket) ->
 
 %% @doc Get the latest samples for a given interval from the archive
 latest(Period, Node, Bucket) when is_atom(Node) ->
-    try mnesia:transaction(
-          fun () ->
-                  Tab = table(Node, Bucket, Period),
-                  Key = mnesia:last(Tab),
-                  hd(mnesia:read(Tab, Key))
-          end) of
-        {atomic, Result} ->
-            {ok, Result};
-        Err ->
-            {error, Err}
-    catch
-        Type:Err -> {error, {Type, Err}}
-    end;
+    gen_server:call({server(Bucket), Node}, {latest, Period, Bucket});
 latest(Period, Nodes, Bucket) when is_list(Nodes), is_list(Bucket) ->
-    misc:pmap(fun (Node) ->
-                      {Node, latest(Period, Node, Bucket)}
-              end, Nodes, length(Nodes)).
-
+    {Replies, _} = gen_server:multi_call(Nodes, server(Bucket),
+                                         {latest, Period, Bucket}),
+    Replies.
 
 latest(Period, Node, Bucket, N) when is_atom(Node), is_list(Bucket) ->
-    try walk(table(Node, Bucket, Period), N) of
-        Result -> {ok, Result}
-    catch
-        Type:Err -> {error, {Type, Err}}
-    end;
+    gen_server:call({server(Bucket), Node}, {latest, Period, Bucket, N});
 latest(Period, Nodes, Bucket, N) when is_list(Nodes), is_list(Bucket) ->
-    misc:pmap(fun (Node) ->
-                      {Node, latest(Period, Node, Bucket, N)}
-              end, Nodes, length(Nodes)).
+    {Replies, _} = gen_server:multi_call(Nodes, server(Bucket),
+                                         {latest, Period, Bucket, N}),
+    Replies.
 
 
-latest(Period, Nodes, Bucket, Step, N) when is_list(Nodes) ->
-    misc:pmap(fun (Node) ->
-                      {Node, latest(Period, Node, Bucket, Step, N)}
-              end, Nodes, length(Nodes));
 latest(Period, Node, Bucket, Step, N) when is_atom(Node) ->
-    try resample(table(Node, Bucket, Period), Step, N) of
-        Result -> {ok, Result}
-    catch
-        Type:Err -> {error, {Type, Err}}
-    end.
+    gen_server:call({server(Bucket), Node}, {latest, Period, Bucket, Step, N});
+latest(Period, Nodes, Bucket, Step, N) when is_list(Nodes) ->
+    {Replies, _} = gen_server:multi_call(Nodes, server(Bucket),
+                                         {latest, Period, Bucket, Step, N}),
+    Replies.
 
 
 latest_all(Period, Bucket) ->
@@ -119,8 +98,35 @@ init(Bucket) ->
     {ok, #state{bucket=Bucket}}.
 
 
-handle_call(unhandled, unhandled, unhandled) ->
-    unhandled.
+handle_call({latest, Period, Bucket}, _From, State) ->
+    Reply = try mnesia:transaction(
+                  fun () ->
+                          Tab = table(Bucket, Period),
+                          Key = mnesia:last(Tab),
+                          hd(mnesia:read(Tab, Key))
+                  end) of
+                {atomic, Result} ->
+                    {ok, Result};
+                Err ->
+                    {error, Err}
+            catch
+                Type:Err -> {error, {Type, Err}}
+            end,
+    {reply, Reply, State};
+handle_call({latest, Period, Bucket, N}, _From, State) ->
+    Reply = try walk(table(Bucket, Period), N) of
+                Result -> {ok, Result}
+            catch
+                Type:Err -> {error, {Type, Err}}
+            end,
+    {reply, Reply, State};
+handle_call({latest, Period, Bucket, Step, N}, _From, State) ->
+    Reply = try resample(table(Bucket, Period), Step, N) of
+                Result -> {ok, Result}
+            catch
+                Type:Err -> {error, {Type, Err}}
+            end,
+    {reply, Reply, State}.
 
 
 handle_cast(unhandled, unhandled) ->
@@ -128,14 +134,14 @@ handle_cast(unhandled, unhandled) ->
 
 
 handle_info({stats, Bucket, Sample}, State = #state{bucket=Bucket}) ->
-    Tab = table(node(), Bucket, minute),
+    Tab = table(Bucket, minute),
     {atomic, ok} = mnesia:transaction(fun () -> mnesia:write(Tab, Sample, write) end),
     gen_event:notify(ns_stats_event, {sample_archived, Bucket, Sample}),
     {noreply, State};
 handle_info({sample_archived, _, _}, State) ->
     {noreply, State};
 handle_info({truncate, Period, N}, #state{bucket=Bucket} = State) ->
-    Tab = table(node(), Bucket, Period),
+    Tab = table(Bucket, Period),
     truncate(Tab, N),
     {noreply, State};
 handle_info({cascade, Prev, Period, Step}, #state{bucket=Bucket} = State) ->
@@ -177,9 +183,8 @@ avg(TS, Samples) ->
 
 
 cascade(Bucket, Prev, Period, Step) ->
-    Node = node(),
-    PrevTab = table(Node, Bucket, Prev),
-    NextTab = table(Node, Bucket, Period),
+    PrevTab = table(Bucket, Prev),
+    NextTab = table(Bucket, Period),
     {atomic, ok} = mnesia:transaction(
                      fun () ->
                              case last_chunk(PrevTab, Step) of
@@ -191,20 +196,31 @@ cascade(Bucket, Prev, Period, Step) ->
 
 
 create_tables(Bucket) ->
-    Node = node(),
     lists:foreach(
       fun ({Period, _, _}) ->
-              TableName = table(Node, Bucket, Period),
-              case mnesia:create_table(TableName,
-                                       [{disc_copies, [Node]},
-                                        {record_name, stat_entry},
-                                        {type, ordered_set},
-                                        {attributes,
-                                         record_info(fields, stat_entry)}]) of
-                  {atomic, ok} ->
-                      ?log_info("Created table ~p", [TableName]);
-                  {aborted, {already_exists, _}} ->
-                      ok
+              TableName = table(Bucket, Period),
+              try mnesia:table_info(TableName, disc_copies) of
+                  Nodes when is_list(Nodes) ->
+                      case lists:member(node(), Nodes) of
+                          true ->
+                              ok;
+                          false ->
+                              ?log_info("Creating local copy of ~p",
+                                        [TableName]),
+                              {atomic, ok} = mnesia:add_table_copy(
+                                               TableName, node(), disc_copies)
+                      end
+              catch exit:{aborted, {no_exists, _, _}} ->
+                      {atomic, ok} =
+                          mnesia:create_table(
+                            TableName,
+                            [{disc_copies, [node()]},
+                             {record_name, stat_entry},
+                             {type, ordered_set},
+                             {local_content, true},
+                             {attributes,
+                              record_info(fields, stat_entry)}]),
+                      ?log_info("Created table ~p", [TableName])
               end
       end, archives()).
 
@@ -299,10 +315,10 @@ start_timers() ->
 
 
 %% @doc Generate a suitable name for the Mnesia table.
-table(Node, Bucket, Period) ->
-    list_to_atom(lists:flatten(io_lib:format("~s-~s-~s-~s",
+table(Bucket, Period) ->
+    list_to_atom(lists:flatten(io_lib:format("~s-~s-~s",
                                              [?MODULE_STRING,
-                                              Node, Bucket, Period]))).
+                                              Bucket, Period]))).
 
 
 %% @doc Truncate a timestamp to the nearest multiple of N seconds.
