@@ -335,7 +335,7 @@ basic_bucket_params_screening(IsNew, BucketNames, Params, AllBuckets) ->
                    _ -> {crap, <<"invalid authType">>} % this is not for end users
                end,
     case AuthType of
-        {crap, Crap} = Crap -> {[], [{authType, Crap}]};
+        {crap, Crap} -> {[], [{authType, Crap}]};
         _ -> basic_bucket_params_screening_tail(IsNew, BucketNames, Params, AllBuckets, AuthType)
     end.
 
