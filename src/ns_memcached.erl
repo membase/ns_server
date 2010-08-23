@@ -161,7 +161,8 @@ handle_info(Msg, State) ->
     {noreply, State}.
 
 
-terminate(_Reason, _State) ->
+terminate(_Reason, State) ->
+    catch gen_tcp:close(State#state.sock),
     ok.
 
 
