@@ -555,20 +555,23 @@ var BucketsSection = {
   },
   startCreate: function () {
     var totals = DAO.cells.currentPoolDetails.value.storageTotals;
-    if (totals.ram.quotaTotal == totals.ram.quotaUsed || totals.hdd.quotaTotal == totals.hdd.quotaUsed) {
-      alert('TODO: No free quota left!')
+    if (totals.ram.quotaTotal == totals.ram.quotaUsed) {
+      genericDialog({
+        buttons: {ok: true},
+        header: 'No free quota left',
+        text: 'All ram quota of cluster is already allocated'
+      });
       return;
     }
     var initValues = {uri: '/pools/default/buckets',
                       bucketType: 'membase',
-                      authType: 'sasl', //TODO: what's best default ?
+                      authType: 'sasl',
                       quota: {ram: totals.ram.quotaTotal - totals.ram.quotaUsed,
-                              hdd: totals.hdd.quotaTotal - totals.hdd.quotaUsed},
+                              hdd: totals.hdd.total - totals.hdd.quotaUsed},
                       replicaNumber: 1}
     var dialog = new BucketDetailsDialog(initValues, true);
     dialog.startDialog();
   },
-  // TODO: currently inaccessible from UI
   startRemovingBucket: function () {
     if (!this.currentlyShownBucket)
       return;
@@ -581,7 +584,6 @@ var BucketsSection = {
       }
     });
   },
-  // TODO: currently inaccessible from UI
   removeCurrentBucket: function () {
     var self = this;
 
