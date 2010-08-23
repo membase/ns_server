@@ -165,7 +165,7 @@ joining({exit, _Pid}, #joining_state{remote=RemoteNode, cookie=NewCookie}) ->
     {next_state, running, State};
 joining(Event, State) ->
     ?log_warning("Got unexpected event ~p in state joining: ~p", [Event, State]),
-    {next_state, running, State}.
+    {next_state, joining, State}.
 
 
 joining(_Event, _From, State) ->
