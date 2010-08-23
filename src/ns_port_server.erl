@@ -51,7 +51,6 @@ init({Name, _Cmd, _Args, _Opts} = Params) ->
     {ok, #state{port = Port, name = Name}}.
 
 handle_info({_Port, {data, Msg}}, State) ->
-    timer:sleep(100), % Let messages build up in our queue
     log_messages(State#state.name, [Msg]),
     {noreply, State};
 handle_info({_Port, {exit_status, 0}}, State) ->
@@ -95,10 +94,17 @@ log_messages(Name, L) ->
         {_Port, {data, Msg}} ->
             log_messages(Name, [Msg|L])
     after 0 ->
-            ?log_info("Message from ~p:~n~s",
-                      [Name, lists:append(lists:reverse(L))])
+            split_log(Name, L, [])
     end.
 
+split_log(Name, L, M) ->
+    case L == [] orelse lists:flatlength(L) + length(hd(L)) > 65000 of
+        true ->
+            ?log_info("Message from ~p:~n~s",
+                      [Name, lists:append(M)]);
+        false ->
+            split_log(Name, tl(L), [hd(L)|M])
+    end.
 
 %% ns_log stuff
 
