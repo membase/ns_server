@@ -462,10 +462,7 @@ interpret_hdd_quota(CurrentBucket, ParsedProps, ClusterStorageTotals, UsageGette
     OtherBuckets = proplists:get_value(quotaUsed, ClusterTotals)
         - case CurrentBucket of
               [_|_] ->
-                  case ns_bucket:hdd_quota(CurrentBucket) of
-                      undefined -> 0;
-                      X -> X
-                  end;
+                  ns_bucket:hdd_quota(CurrentBucket);
               _ ->
                   0
           end,

@@ -116,18 +116,21 @@ get_buckets() ->
 get_buckets(Config) ->
      ns_config:search_prop(Config, buckets, configs, []).
 
+-spec ram_quota([{_,_}]) -> integer().
 ram_quota(Bucket) ->
     case proplists:get_value(ram_quota, Bucket) of
         X when is_integer(X) ->
             X
     end.
 
+-spec hdd_quota([{_,_}]) -> integer().
 hdd_quota(Bucket) ->
     case proplists:get_value(hdd_quota, Bucket, 0) of
         X when is_integer(X) ->
             X
     end.
 
+-spec num_replicas([{_,_}]) -> integer().
 num_replicas(Bucket) ->
     case proplists:get_value(num_replicas, Bucket) of
         X when is_integer(X) ->
