@@ -206,6 +206,7 @@ default() ->
         "-E", "./bin/bucket_engine/bucket_engine.so",
         "-B", "binary",
         "-r",
+        "-c", "10000",
         "-e", {"admin=~s;default_bucket_name=default;auto_create=false",
                [admin_user]},
         {"~s", [verbosity]}
