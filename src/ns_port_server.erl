@@ -15,6 +15,8 @@
 %%
 -module(ns_port_server).
 
+-define(ABNORMAL, 0).
+
 -behavior(gen_server).
 -behavior(ns_log_categorizing).
 
@@ -56,7 +58,9 @@ handle_info({_Port, {data, Msg}}, State) ->
 handle_info({_Port, {exit_status, 0}}, State) ->
     {stop, normal, State};
 handle_info({_Port, {exit_status, Status}}, State) ->
-    ?log_error("~p exited with status ~p", [State#state.name, Status]),
+    ns_log:log(?MODULE, ?ABNORMAL,
+               "Port server ~p exited with status ~p. Restarting.~n",
+               [State#state.name, Status]),
     {stop, {abnormal, Status}, State}.
 
 handle_call(unhandled, unhandled, unhandled) ->
