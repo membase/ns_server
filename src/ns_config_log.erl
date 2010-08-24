@@ -58,10 +58,6 @@ handle_event({K, V}, State) ->
     {ok, State, hibernate};
 
 handle_event(KVList, State) when is_list(KVList) ->
-    case KVList =/= State of
-        true  -> ns_log:log(?MODULE, 0001, "Config changed on node ~p", [node()]);
-        false -> ok
-    end,
     {ok, State#state{last = KVList}, hibernate};
 
 handle_event(_, State) ->
