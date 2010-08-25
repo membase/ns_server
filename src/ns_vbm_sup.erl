@@ -171,7 +171,7 @@ args(Node, Bucket, VBuckets, DstNode, TakeOver) ->
     VBucketArgs = lists:append([["-b", integer_to_list(B)] || B <- VBuckets]),
     TakeOverArg = case TakeOver of
                       true -> ["-t",
-                               "-T", "60" %% Timeout iff no message in 10s during xfer
+                               "-T", "10" %% Timeout iff no message in 10s during xfer
                               ];
                       false -> []
                   end,
