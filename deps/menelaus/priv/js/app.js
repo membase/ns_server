@@ -539,7 +539,7 @@ var NodeDialog = {
       _.delay(function () {
         DAO.tryNoAuthLogin();
         overlay.remove();
-        displayNotice('You have successfully joined the cluster');
+        displayNotice('This server has been associated with the cluster and will join on the next rebalance operation.');
       }, 5000);
     }, {
       timeout: 8000
