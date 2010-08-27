@@ -207,7 +207,13 @@ run_mover(Bucket, V, N1, N2, Tries) ->
 wait_for_mover(Bucket, V, N1, N2, Tries) ->
     receive
         {'EXIT', _Pid, normal} ->
-            ok;
+            case {ns_memcached:get_vbucket(N1, Bucket, V),
+                  ns_memcached:get_vbucket(N2, Bucket, V)} of
+                {{ok, dead}, {ok, active}} ->
+                    ok;
+                {S1, S2} ->
+                    exit({mover_lied, S1, S2})
+            end;
         {'EXIT', _Pid, stopped} ->
             exit(stopped);
         {'EXIT', _Pid, Reason} ->
