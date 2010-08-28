@@ -202,7 +202,7 @@ var KnownStats = [
   ["cmd_get", "Gets per second\nGet operations per second"],
   ["bytes_written", "Bytes sent per second\nNetwork bytes sent by all servers, per second"],
   ["bytes_read", "Bytes received per second\nNetwork bytes received by all servers, per second"],
-  ["disk_writes", "Disk writes"],
+  ["disk_writes", "Persistence write queue size"],
   ["get_hits", "Get hits per second"],
   ["delete_hits", "Delete hits per second"],
   ["incr_hits", "Incr hits per second"],
