@@ -176,7 +176,7 @@ args(Node, Bucket, VBuckets, DstNode, TakeOver) ->
                       false -> []
                   end,
     {User, Pass} = ns_bucket:credentials(Bucket),
-    OtherArgs = ["-a", User,
+    OtherArgs = ["-e", "-a", User,
                  "-h", ns_memcached:host_port_str(Node),
                  "-d", ns_memcached:host_port_str(DstNode),
                  "-v"],
