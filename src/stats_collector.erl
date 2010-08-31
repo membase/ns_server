@@ -86,11 +86,16 @@ latest_tick(TS) ->
     end.
 
 parse_stats(TS, Stats, LastCounters) ->
+    GetStat = fun (K, Dict) ->
+                      case dict:find(K, Dict) of
+                          {ok, V} -> list_to_integer(binary_to_list(V));
+                          %% Some stats don't exist in some bucket types
+                          error -> 0
+                      end
+              end,
     Dict = dict:from_list([{binary_to_atom(K, latin1), V} || {K, V} <- Stats]),
-    Gauges = [list_to_integer(binary_to_list(dict:fetch(K, Dict)))
-              || K <- [?STAT_GAUGES]],
-    Counters = [list_to_integer(binary_to_list(dict:fetch(K, Dict)))
-                || K <- [?STAT_COUNTERS]],
+    Gauges = [GetStat(K, Dict) || K <- [?STAT_GAUGES]],
+    Counters = [GetStat(K, Dict) || K <- [?STAT_COUNTERS]],
     Deltas = case LastCounters of
                  undefined ->
                      lists:duplicate(length([?STAT_COUNTERS]), undefined);
