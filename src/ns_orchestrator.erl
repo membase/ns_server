@@ -136,8 +136,12 @@ handle_sync_event(unhandled, unhandled, unhandled, unhandled) ->
 
 handle_info(janitor, idle, #idle_state{remaining_buckets=[]} = State) ->
     misc:flush(janitor),
-    Buckets = ns_bucket:get_bucket_names(),
-    handle_info(janitor, idle, State#idle_state{remaining_buckets=Buckets});
+    case ns_bucket:get_bucket_names() of
+        [] -> {next_state, idle, State#idle_state{remaining_buckets=[]}};
+        Buckets ->
+            handle_info(janitor, idle,
+                        State#idle_state{remaining_buckets=Buckets})
+    end;
 handle_info(janitor, idle, #idle_state{remaining_buckets=[Bucket|Buckets]} =
                 State) ->
     misc:flush(janitor),
