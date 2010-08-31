@@ -292,6 +292,8 @@ ensure_bucket_config(Sock, Bucket, MaxSize) ->
                     (_, _, CD) ->
                         CD
                 end, missing_max_size) of
+        {ok, missing_max_size} ->
+            ok; % TODO: change max size of memcached bucket also
         {ok, MaxSizeBin} ->
             ok;
         {ok, X} when is_binary(X) ->
@@ -326,6 +328,8 @@ wait_for_warmup(Sock) ->
                    CD
            end, missing_stat) of
         {ok, <<"complete">>} ->
+            ok;
+        {ok, missing_stat} -> % non-membase bucket
             ok;
         {ok, _} ->
             timer:sleep(1000),
