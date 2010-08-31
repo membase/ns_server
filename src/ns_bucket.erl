@@ -47,6 +47,7 @@
 %%% API
 %%%===================================================================
 
+
 config(Bucket) ->
     {ok, CurrentConfig} = get_bucket(Bucket),
     config_from_info(CurrentConfig).
@@ -137,8 +138,8 @@ num_replicas(Bucket) ->
             X
     end.
 
-bucket_type(_Bucket) ->
-    membase.
+bucket_type(Bucket) ->
+    proplists:get_value(type, Bucket).
 
 auth_type(Bucket) ->
     proplists:get_value(auth_type, Bucket).

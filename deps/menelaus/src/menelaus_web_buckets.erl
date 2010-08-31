@@ -382,7 +382,7 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, AllBuckets, AuthTy
                    parse_validate_ram_quota(proplists:get_value("ramQuotaMB", Params))],
     BucketType = if
                      (not IsNew) andalso BucketConfig =/= false ->
-                         ns_bucket:bucket_type(BucketConfig);
+                         ns_bucket:bucket_type(element(2, BucketConfig));
                      true ->
                          case proplists:get_value("bucketType", Params) of
                              "memcache" -> memcache;
