@@ -32,6 +32,7 @@
          sasl_password/1,
          moxi_port/1,
          get_bucket_names/0,
+         get_bucket_names/1,
          json_map/2,
          set_bucket_config/2,
          is_valid_bucket_name/1,
@@ -115,9 +116,12 @@ get_bucket(Bucket) ->
     end.
 
 get_bucket_names() ->
-    % The config just has the list of bucket names right now.
     BucketConfigs = get_buckets(),
     proplists:get_keys(BucketConfigs).
+
+get_bucket_names(Type) ->
+    [Name || {Name, Config} <- get_buckets(),
+             proplists:get_value(type, Config) == Type].
 
 get_buckets() ->
     get_buckets(ns_config:get()).
