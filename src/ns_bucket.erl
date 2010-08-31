@@ -66,29 +66,37 @@ config_from_info(CurrentConfig) ->
 %% @doc Configuration parameters to start up the bucket on a node.
 config_string(BucketName) ->
     Config = ns_config:get(),
-    DBDir = ns_config:search_node_prop(Config, memcached, dbdir),
-    DBName = filename:join(DBDir, BucketName),
     BucketConfigs = ns_config:search_prop(Config, buckets, configs),
     BucketConfig = proplists:get_value(BucketName, BucketConfigs),
-    %% MemQuota is our total limit for cluster
+    Engines = ns_config:search_node_prop(Config, memcached, engines),
     MemQuota = proplists:get_value(ram_quota, BucketConfig),
     NodesCount = case length(proplists:get_value(servers, BucketConfig)) of
                      0 -> 1;
                      X -> X
                  end,
-    %% LocalQuota is our limit for this node
-    %% We stretch our quota on all nodes we have for this bucket
     LocalQuota = MemQuota div NodesCount,
-    Engine = ns_config:search_node_prop(ns_config:get(), memcached, engine),
-    ok = filelib:ensure_dir(DBName),
-    ConfigString = lists:flatten(
-                     io_lib:format("vb0=false;waitforwarmup=false;ht_size=~p;"
-                                   "ht_locks=~p;max_size=~p;dbname=~s",
-                                   [proplists:get_value(ht_size, BucketConfig),
-                                    proplists:get_value(ht_locks, BucketConfig),
-                                    LocalQuota, DBName])),
+    BucketType =  proplists:get_value(type, BucketConfig),
+    Engine = proplists:get_value(BucketType, Engines),
+    ConfigString =
+        case BucketType of
+            membase ->
+                DBDir = ns_config:search_node_prop(Config, memcached, dbdir),
+                DBName = filename:join(DBDir, BucketName),
+                %% MemQuota is our total limit for cluster
+                %% LocalQuota is our limit for this node
+                %% We stretch our quota on all nodes we have for this bucket
+                ok = filelib:ensure_dir(DBName),
+                lists:flatten(
+                  io_lib:format("vb0=false;waitforwarmup=false;ht_size=~B;"
+                                "ht_locks=~B;max_size=~B;dbname=~s",
+                                [proplists:get_value(ht_size, BucketConfig),
+                                 proplists:get_value(ht_locks, BucketConfig),
+                                 LocalQuota, DBName]));
+            memcached ->
+                lists:flatten(
+                  io_lib:format("cache_size=~B", [LocalQuota]))
+        end,
     {Engine, ConfigString, LocalQuota}.
-
 
 %% @doc Return {Username, Password} for a bucket.
 -spec credentials(nonempty_string()) ->

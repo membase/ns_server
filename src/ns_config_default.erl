@@ -140,22 +140,26 @@ default() ->
     {isasl, [{path, "./priv/isasl.pw"}]}, % Relative to startup directory.
 
     % Memcached config
-    {{node, node(), memcached}, [{port, 11210},
-                                 {dbdir, DbDir},
-                                 {admin_user, "_admin"},
-                                 {admin_pass, "_admin"},
-                                 {bucket_engine,
-                                  "./bin/bucket_engine/bucket_engine.so"},
-                                 {engine, "./bin/ep_engine/ep.so"},
-                                 {verbosity, ""}]},
+    {{node, node(), memcached},
+     [{port, 11210},
+      {dbdir, DbDir},
+      {admin_user, "_admin"},
+      {admin_pass, "_admin"},
+      {bucket_engine,
+       "./bin/bucket_engine/bucket_engine.so"},
+      {engines, [{membase, "./bin/ep_engine/ep.so"},
+                 {memcached, "./bin/memcached/default_engine.so"}]},
+      {verbosity, ""}]},
 
     {memory_quota, InitQuota},
 
     {buckets, [{configs, [{"default",
-                           [{num_vbuckets, case (catch list_to_integer(os:getenv("VBUCKETS_NUM"))) of
-                                               EnvBuckets when is_integer(EnvBuckets) -> EnvBuckets;
-                                               _ -> 1024
-                                           end},
+                           [{type, membase},
+                            {num_vbuckets,
+                             case (catch list_to_integer(os:getenv("VBUCKETS_NUM"))) of
+                                 EnvBuckets when is_integer(EnvBuckets) -> EnvBuckets;
+                                 _ -> 1024
+                             end},
                             {num_replicas, 1},
                             %% default quotas will be defined when resources
                             %% stage of wizard will post data
