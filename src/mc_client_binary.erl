@@ -253,8 +253,7 @@ ext(_, Entry) -> Entry.
 
 ext_flag_expire(#mc_entry{ext = Ext, flag = Flag, expire = Expire} = Entry) ->
     case Ext of
-        undefined -> Entry#mc_entry{ext = <<Flag:32, Expire:32>>};
-        _         -> Entry
+        undefined -> Entry#mc_entry{ext = <<Flag:32, Expire:32>>}
     end.
 
 ext_arith(#mc_entry{ext = Ext, data = Data, expire = Expire} = Entry) ->
@@ -265,12 +264,11 @@ ext_arith(#mc_entry{ext = Ext, data = Data, expire = Expire} = Entry) ->
                        undefined -> <<1:64, 0:64, Expire:32>>;
                        _         -> <<Data:64, 0:64, Expire:32>>
                    end,
-            Entry#mc_entry{ext = Ext2, data = undefined};
-        _ -> Entry
+            Entry#mc_entry{ext = Ext2, data = undefined}
     end.
 
-map_status(?SUCCESS) ->
-    success;
+%%map_status(?SUCCESS) ->
+%%    success;
 map_status(?KEY_ENOENT) ->
     key_enoent;
 map_status(?KEY_EEXISTS) ->

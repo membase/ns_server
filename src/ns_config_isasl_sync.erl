@@ -17,7 +17,7 @@
 
 -behaviour(gen_event).
 
--export([start_link/0, start_link/3, setup_handler/3]).
+-export([start_link/0, start_link/3, setup_handler/3, writeSASLConf/6]).
 
 %% gen_event callbacks
 -export([init/1, handle_event/2, handle_call/2,
@@ -78,7 +78,7 @@ handle_info(_Info, State) ->
 % Extract the credentials from the config to a list of tuples of {User, Pass}
 %
 
--spec extract_creds(list()) -> list().
+-spec extract_creds(list()) -> [{_,_}].
 extract_creds(ConfigList) ->
     Configs = proplists:get_value(configs, ConfigList),
     lists:sort([{BucketName,
@@ -93,6 +93,9 @@ extract_creds(ConfigList) ->
 writeSASLConf(Path, Buckets, AU, AP) ->
     writeSASLConf(Path, Buckets, AU, AP, 5, 101).
 
+-spec writeSASLConf(nonempty_string(), list(), string(), string(),
+                     non_neg_integer(), non_neg_integer()) ->
+    any().
 writeSASLConf(Path, Buckets, AU, AP, Tries, SleepTime) ->
     {ok, Pwd} = file:get_cwd(),
     TmpPath = filename:join(filename:dirname(Path), "isasl.tmp"),

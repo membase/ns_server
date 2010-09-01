@@ -373,21 +373,11 @@ increment_vclock(NewValue, OldValue) ->
 
 %% Set the vclock in NewValue to one that descends from both
 merge_vclocks(NewValue, OldValue) ->
-    case is_list(NewValue) of
-        true ->
-            NewValueVClock = proplists:get_value(?METADATA_VCLOCK, NewValue, []),
-            OldValueVClock =
-                case is_list(OldValue) of
-                    true ->
-                        proplists:get_value(?METADATA_VCLOCK, NewValue, []);
-                    false -> []
-                end,
-            NewVClock = lists:sort(vclock:merge([OldValueVClock, NewValueVClock])),
-            [{?METADATA_VCLOCK, NewVClock} | lists:keydelete(?METADATA_VCLOCK,
-                                                             1, NewValue)];
-        false ->
-            NewValue
-    end.
+    NewValueVClock = proplists:get_value(?METADATA_VCLOCK, NewValue, []),
+    OldValueVClock = proplists:get_value(?METADATA_VCLOCK, OldValue, []),
+    NewVClock = lists:sort(vclock:merge([OldValueVClock, NewValueVClock])),
+    [{?METADATA_VCLOCK, NewVClock} | lists:keydelete(?METADATA_VCLOCK,
+                                                     1, NewValue)].
 
 %% gen_server callbacks
 
