@@ -948,7 +948,7 @@ cluster.
 
 The following are required:
 * clusterMemberNodeHostIp - Hostname or IP address to a member of the cluster the node receiving this POST will be joining
-* clusterMemberHostPort - The port number for the RESTful interface to the system
+* clusterMemberPort - The port number for the RESTful interface to the system
 
 If the server has been "secured" via the console, the following are also required
 * user - The user which has administrative privileges to access the server
@@ -961,7 +961,7 @@ If the server has been "secured" via the console, the following are also require
 403 Forbidden bad credentials - invalid credentials
 
 For example to make this request from curl:
-`curl --data-urlencode clusterMemberHostIp=192.168.0.1 --data-urlencode clusterMemberHostPort=8080 --data-urlencode user=admin --data-urlencode password=admin123 http://localhost:8080/node/controller/doJoinCluster`
+`curl --data-urlencode clusterMemberHostIp=192.168.0.1 --data-urlencode clusterMemberPort=8080 --data-urlencode user=admin --data-urlencode password=admin123 http://localhost:8080/node/controller/doJoinCluster`
 
 #### Ejecting a node from a cluster
 
