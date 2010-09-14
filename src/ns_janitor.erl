@@ -128,7 +128,10 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
     NodeStates = [{N, S} || {N, V, S} <- States, V == VBucket],
     ChainStates = lists:map(fun (N) ->
                                     case lists:keyfind(N, 1, NodeStates) of
-                                        false -> {N, missing};
+                                        false -> {N, case lists:member(N, Zombies) of
+                                                         true -> zombie;
+                                                         _ -> missing
+                                                     end};
                                         X -> X
                                     end
                             end, Chain),
@@ -137,7 +140,7 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
     case ChainStates of
         [{undefined, _}|_] ->
             Chain;
-        [{Master, State}|ReplicaStates] when State /= active ->
+        [{Master, State}|ReplicaStates] when State /= active andalso State /= zombie ->
             case [N || {N, active} <- ReplicaStates ++ ExtraStates] of
                 [] ->
                     %% We'll let the next pass catch the replicas.
@@ -163,7 +166,7 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                       [Nodes, VBucket]),
                     Chain
             end;
-        C = [{_, active}|ReplicaStates] ->
+        C = [{_, MasterState}|ReplicaStates] when MasterState =:= active orelse MasterState =:= zombie ->
             lists:foreach(
               fun ({_, {N, active}}) ->
                       ?log_error("Active replica ~p for vbucket ~p. "
@@ -176,16 +179,12 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                       ok;
                   ({_, {undefined, missing}}) -> % Probably fewer nodes than copies
                       ok;
-                  ({{M, _}, {N, _}}) ->
-                      %% Only do anything if the replica's not a zombie
-                      case lists:member(N, Zombies) of
-                          true->
-                              ok;
-                          false ->
-                              ?log_info("Killing replicators for vbucket ~p on"
-                                        " master ~p", [VBucket, M]),
-                              ns_vbm_sup:kill_children(M, Bucket, [VBucket])
-                      end
+                  ({{_, zombie}, _}) -> ok;
+                  ({_, {_, zombie}}) -> ok;
+                  ({{M, _}, _} = Pair) ->
+                      ?log_info("Killing replicators for vbucket ~p on"
+                                " master ~p because of ~p", [VBucket, M, Pair]),
+                      ns_vbm_sup:kill_children(M, Bucket, [VBucket])
               end, misc:pairs(C)),
             HaveAllCopies = lists:all(
                               fun ({undefined, _}) -> false;
