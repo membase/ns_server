@@ -163,6 +163,8 @@ unbalanced(Map, Servers) ->
 %% Internal functions
 %%
 
+%% applies given list of moves to given turn of given map. Returns
+%% produced map. Does not move data, only computes final map.
 -spec apply_moves(non_neg_integer(), moves(), map()) -> map() | no_return().
 apply_moves(_, [], Map) ->
     Map;
@@ -171,6 +173,8 @@ apply_moves(I, [{V, _, New}|Tail], Map) ->
     NewChain = misc:nthreplace(I, New, Chain),
     apply_moves(I, Tail, misc:nthreplace(V+1, NewChain, Map)).
 
+%% picks least utilized node from given Histogram thats not in list of
+%% AvoidNodes
 assign(Histogram, AvoidNodes) ->
     Histogram1 = lists:keysort(2, Histogram),
     case lists:splitwith(fun ({N, _}) -> lists:member(N, AvoidNodes) end,
@@ -181,6 +185,7 @@ assign(Histogram, AvoidNodes) ->
             {undefined, Histogram1}
     end.
 
+%% calculates list of moves to balance turn I of Map.
 balance_nodes(Bucket, Map, Histograms, I) when is_integer(I) ->
     VNF = [{V, lists:nth(I, Chain), lists:sublist(Chain, I-1)} ||
               {V, Chain} <- misc:enumerate(Map, 0)],
@@ -222,6 +227,10 @@ fixup_replicas(Bucket, KeepNodes, EjectNodes) ->
     ns_bucket:set_map(Bucket, Map1).
 
 
+%% for each replication turn in Map returns list of pairs {node(),
+%% integer()} representing histogram of occurences of nodes in this
+%% replication turn. Missing Servers are represented with counts of 0.
+%% Nodes that are not present in Servers are ignored.
 histograms(Map, Servers) ->
     Histograms = [lists:keydelete(
                     undefined, 1,
@@ -241,6 +250,10 @@ histograms(Map, Servers) ->
 master_moves(Bucket, EvacuateNodes, Map, Histograms) ->
     master_moves(Bucket, EvacuateNodes, Map, Histograms, 0, []).
 
+%% calculates list of moves necessary to replaces missing or
+%% to-be-evacuated masters. Utililizes first item of Histograms (that
+%% represents utilization of turn 0 i.e. masters) to pick least
+%% utilized nodes for new masters.
 -spec master_moves(string(), [atom()], map(), [histogram()], non_neg_integer(),
                    moves()) -> moves().
 master_moves(_, _, [], _, _, Moves) ->
@@ -266,7 +279,10 @@ maybe_stop() ->
             ok
     end.
 
-
+%% assigns new nodes to replicas in given map so that chains don't
+%% have multiple appearances of any node and no chain contains node
+%% from EjectNodes. When it has to change some node it picks least
+%% utilized from Histograms.
 new_replicas(Bucket, EjectNodes, Map, Histograms) ->
     new_replicas(Bucket, EjectNodes, Map, Histograms, 0, []).
 
@@ -295,6 +311,9 @@ new_replicas(Bucket, EjectNodes, [Chain|MapTail], Histograms, V,
                  V + 1, [[Master|lists:reverse(Replicas1)]|NewMapReversed]).
 
 
+%% performs given list of moves of master replicas. Actually moves
+%% data. Returns new vbuckets map with new values of master replicas
+%% and undefined for all other replicas.
 -spec perform_moves(string(), map(), moves(), fun((dict()) -> any())) ->
                            map() | no_return().
 perform_moves(Bucket, Map, Moves, ProgressFun) ->
@@ -311,10 +330,14 @@ perform_moves(Bucket, Map, Moves, ProgressFun) ->
     end.
 
 
+%% removes RemapNodes from head of vbucket map Map. Returns new map
 promote_replicas(Bucket, Map, RemapNodes) ->
     [promote_replica(Bucket, Chain, RemapNodes, V) ||
         {V, Chain} <- misc:enumerate(Map, 0)].
 
+%% removes RemapNodes from head of vbucket map Chain for vbucket
+%% V. Actually switches master if head of Chain is in
+%% RemapNodes. Returns new chain.
 promote_replica(Bucket, Chain, RemapNodes, V) ->
     [OldMaster|_] = Chain,
     Bad = fun (Node) -> lists:member(Node, RemapNodes) end,
