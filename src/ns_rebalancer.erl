@@ -352,18 +352,15 @@ promote_replica(Bucket, Chain, RemapNodes, V) ->
             error_logger:error_msg("~p:promote_replicas(~p, ~p, ~p, ~p): No master~n", [?MODULE, Bucket, V, RemapNodes, Chain]),
             NewChainExtended;
         [NewMaster|_] ->
-            spawn(
-              fun () ->
-                      ok = ns_memcached:set_vbucket(NewMaster, Bucket, V, pending),
-                      try
-                          ok = ns_memcached:set_vbucket(OldMaster, Bucket, V, dead)
-                      catch
-                          E:R ->
-                              ?log_warning("Could not set vbucket ~p in bucket ~p on ~p"
-                                           " to dead:~n~p", [V, Bucket, OldMaster, {E, R}])
-                      end,
-                      ok = ns_memcached:set_vbucket(NewMaster, Bucket, V, active)
-              end),
+            ok = ns_memcached:set_vbucket(NewMaster, Bucket, V, pending),
+            try
+                ok = ns_memcached:set_vbucket(OldMaster, Bucket, V, dead)
+            catch
+                E:R ->
+                    ?log_warning("Could not set vbucket ~p in bucket ~p on ~p"
+                                 " to dead:~n~p", [V, Bucket, OldMaster, {E, R}])
+            end,
+            ok = ns_memcached:set_vbucket(NewMaster, Bucket, V, active),
             NewChainExtended
     end.
 
