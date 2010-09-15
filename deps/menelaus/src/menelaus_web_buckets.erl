@@ -349,7 +349,7 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, AllBuckets, AuthTy
                                false ->
                                    case ns_bucket:is_valid_bucket_name(BucketName) of
                                        false ->
-                                           {errors, name, <<"Bucket name can only contain characters in range A-Z, a-z, 0-9 as well as underscore, period, dash & percent. Consult the documentation.">>};
+                                           {error, name, <<"Bucket name can only contain characters in range A-Z, a-z, 0-9 as well as underscore, period, dash & percent. Consult the documentation.">>};
                                        _ ->
                                            undefined
                                    end;
