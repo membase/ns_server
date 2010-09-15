@@ -28,6 +28,7 @@
 
 -define(CHECK_INTERVAL, 10000).
 -define(VBUCKET_POLL_INTERVAL, 100).
+-define(TIMEOUT, 30000).
 
 %% gen_server API
 -export([start_link/1]).
@@ -185,11 +186,12 @@ connected(Node, Bucket) ->
 %% @doc Delete a vbucket. Will set the vbucket to dead state if it
 %% isn't already, blocking until it successfully does so.
 delete_vbucket(Bucket, VBucket) ->
-    gen_server:call(server(Bucket), {delete_vbucket, VBucket, false}).
+    gen_server:call(server(Bucket), {delete_vbucket, VBucket, false}, ?TIMEOUT).
 
 
 delete_vbucket(Node, Bucket, VBucket) ->
-    gen_server:call({server(Bucket), Node}, {delete_vbucket, VBucket, false}).
+    gen_server:call({server(Bucket), Node}, {delete_vbucket, VBucket, false},
+                    ?TIMEOUT).
 
 
 delete_vbucket_sync(Node, Bucket, VBucket) ->
@@ -198,7 +200,7 @@ delete_vbucket_sync(Node, Bucket, VBucket) ->
 
 
 get_vbucket(Node, Bucket, VBucket) ->
-    gen_server:call({server(Bucket), Node}, {get_vbucket, VBucket}).
+    gen_server:call({server(Bucket), Node}, {get_vbucket, VBucket}, ?TIMEOUT).
 
 
 host_port_str() ->
@@ -217,19 +219,20 @@ list_vbuckets(Bucket) ->
 
 
 list_vbuckets(Node, Bucket) ->
-    gen_server:call({server(Bucket), Node}, list_vbuckets).
+    gen_server:call({server(Bucket), Node}, list_vbuckets, ?TIMEOUT).
 
 
 list_vbuckets_multi(Nodes, Bucket) ->
-    gen_server:multi_call(Nodes, server(Bucket), list_vbuckets).
+    gen_server:multi_call(Nodes, server(Bucket), list_vbuckets, ?TIMEOUT).
 
 
 set_vbucket(Bucket, VBucket, VBState) ->
-    gen_server:call(server(Bucket), {set_vbucket, VBucket, VBState}).
+    gen_server:call(server(Bucket), {set_vbucket, VBucket, VBState}, ?TIMEOUT).
 
 
 set_vbucket(Node, Bucket, VBucket, VBState) ->
-    gen_server:call({server(Bucket), Node}, {set_vbucket, VBucket, VBState}).
+    gen_server:call({server(Bucket), Node}, {set_vbucket, VBucket, VBState},
+                    ?TIMEOUT).
 
 
 stats(Bucket) ->
@@ -237,11 +240,11 @@ stats(Bucket) ->
 
 
 stats(Bucket, Key) ->
-    gen_server:call(server(Bucket), {stats, Key}).
+    gen_server:call(server(Bucket), {stats, Key}, ?TIMEOUT).
 
 
 topkeys(Bucket) ->
-    gen_server:call(server(Bucket), topkeys).
+    gen_server:call(server(Bucket), topkeys, ?TIMEOUT).
 
 
 %%
