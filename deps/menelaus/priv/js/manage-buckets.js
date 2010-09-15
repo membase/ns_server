@@ -251,14 +251,7 @@ var BucketDetailsDialog = mkClass({
 
     setFormValues(form, self.initValues);
 
-    var bucketTypeDisabled = !self.isNew;
-    // this disabled memcached bucket type, 'cause backend is not
-    // quite ready at this point
-    if (!bucketTypeDisabled) {
-      if (!(/(\?|&)enableMemcached=1/.exec(window.location.href)))
-        bucketTypeDisabled = true;
-    }
-    setBoolAttribute(form.find('[name=bucketType]'), 'disabled', bucketTypeDisabled);
+    setBoolAttribute(form.find('[name=bucketType]'), 'disabled', !self.isNew);
 
     self.cleanups.push(self.bindWithCleanup(form, 'submit', function (e) {
       e.preventDefault();
