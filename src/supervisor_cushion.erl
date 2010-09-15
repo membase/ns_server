@@ -77,8 +77,8 @@ die_slowly(Reason, State) ->
     case Lifetime < MinDelay of
         true ->
             ns_log:log(?MODULE, ?FAST_CRASH,
-                       "Service ~p crashed in ~.2fs~n",
-                       [State#state.name, Lifetime / 1000000]),
+                       "Service ~p crashed on node ~p in ~.2fs~n",
+                       [State#state.name, node(), Lifetime / 1000000]),
             timer:send_after(State#state.delay, {die, Reason});
         _ -> self() ! {die, Reason}
     end,

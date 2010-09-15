@@ -51,8 +51,8 @@ init([]) ->
 child_specs() ->
     Configs = ns_bucket:get_buckets(),
     ChildSpecs = child_specs(Configs),
-    ?log_info("~p:child_specs(): ChildSpecs = ~p~n",
-              [?MODULE, ChildSpecs]),
+    ?log_info("child_specs(): ChildSpecs =~n~p~n",
+              [ChildSpecs]),
     ChildSpecs.
 
 child_specs(Configs) ->
