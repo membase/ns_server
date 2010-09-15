@@ -222,27 +222,36 @@ is_valid_bucket_name([Char | Rest]) ->
         _ -> false
     end.
 
-create_bucket(membase, BucketName, NewConfig) ->
+new_bucket_default_params(membase) ->
+    [{type, membase},
+     {num_vbuckets,
+      case (catch list_to_integer(os:getenv("VBUCKETS_NUM"))) of
+          EnvBuckets when is_integer(EnvBuckets) -> EnvBuckets;
+          _ -> 1024
+      end},
+     {num_replicas, 1},
+     {ram_quota, 0},
+     {hdd_quota, 0},
+     {ht_size, 3079},
+     {ht_locks, 5},
+     {servers, []},
+     {map, undefined}];
+new_bucket_default_params(memcached) ->
+    [{type, memcached},
+     {num_vbuckets, 1},
+     {num_replicas, 0},
+     {servers, []},
+     {map, undefined},
+     {ram_quota, 0}].
+
+create_bucket(BucketType, BucketName, NewConfig) ->
     case is_valid_bucket_name(BucketName) of
         false ->
             {error, {invalid_name, BucketName}};
         _ ->
-            %% TODO: handle bucketType of memcache || membase
             MergedConfig =
-                misc:update_proplist(
-                  [{num_vbuckets,
-                    case (catch list_to_integer(os:getenv("VBUCKETS_NUM"))) of
-                        EnvBuckets when is_integer(EnvBuckets) -> EnvBuckets;
-                        _ -> 1024
-                    end},
-                   {num_replicas, 1},
-                   {ram_quota, 0},
-                   {hdd_quota, 0},
-                   {ht_size, 3079},
-                   {ht_locks, 5},
-                   {servers, []},
-                   {map, undefined}],
-                  NewConfig),
+                misc:update_proplist(new_bucket_default_params(BucketType),
+                                     NewConfig),
             ns_config:update_sub_key(
               buckets, configs,
               fun (List) ->
@@ -254,9 +263,7 @@ create_bucket(membase, BucketName, NewConfig) ->
                       [{BucketName, MergedConfig} | List]
               end)
             %% The janitor will handle creating the map.
-    end;
-create_bucket(memcache, _BucketName, _NewConfig) ->
-    error.
+    end.
 
 delete_bucket(BucketName) ->
     ns_config:update_sub_key(buckets, configs,

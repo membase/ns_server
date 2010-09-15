@@ -385,15 +385,15 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, AllBuckets, AuthTy
                          ns_bucket:bucket_type(element(2, BucketConfig));
                      true ->
                          case proplists:get_value("bucketType", Params) of
-                             "memcache" -> memcache;
+                             "memcached" -> memcached;
                              "membase" -> membase;
                              undefined -> membase;
                              _ -> invalid
                          end
                  end,
     Candidates = case BucketType of
-                     memcache ->
-                         [{ok, bucketType, memcache}
+                     memcached ->
+                         [{ok, bucketType, memcached}
                           | Candidates0];
                      membase ->
                          [{ok, bucketType, membase},

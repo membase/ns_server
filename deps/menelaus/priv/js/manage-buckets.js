@@ -441,7 +441,7 @@ var BucketsSection = {
     var bucketsListTransformer = function (values) {
       self.buckets = values;
       _.each(values, function (bucket) {
-        if (bucket.bucketType == 'memcache') {
+        if (bucket.bucketType == 'memcached') {
           bucket.bucketTypeName = 'Memcached';
         } else if (bucket.bucketType == 'membase') {
           bucket.bucketTypeName = 'Membase';
