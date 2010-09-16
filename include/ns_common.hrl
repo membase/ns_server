@@ -22,7 +22,7 @@
 
 
 -define(LOG(Fun, Format, Args),
-        error_logger:Fun("~p:~p:~p: " Format "~n",
+        error_logger:Fun("~s:~s:~B: " Format "~n",
                          [node(), ?MODULE, ?LINE] ++ Args)).
 
 -define(log_info(Format, Args), ?LOG(info_msg, Format, Args)).
