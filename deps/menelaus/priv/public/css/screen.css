@@ -613,7 +613,7 @@ table.lined_tab .hovered td {background:none #f5f5f7;}
 #overview .graph_main {display:inline-block;width:355px;margin:0 0 0 15px; *zoom:1;*display:inline;position:relative;}
 #overview .graph_main:first-child {margin:0;}
 #overview .graph_main .graph {width:355px;height:140px;position:relative;}
-#overview .graph_main .graph_info_label {display:block;padding:11px 0 0;font-size:13px;}
+#overview .graph_main .graph_info_label {display:block;padding:5px 0 0 30px;font-size:13px;left:0;top:0;}
 #overview .no_stats_marker { display: none; }
 
 #overview .no-samples-yet .no_stats_marker { display: block;}
