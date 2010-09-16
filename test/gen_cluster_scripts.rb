@@ -45,7 +45,8 @@ num_nodes.times do |x|
                  {admin_user, "_admin"},
                  {admin_pass, "_admin"},
                  {bucket_engine, "./bin/bucket_engine/bucket_engine.so"},
-                 {engine, "./bin/ep_engine/ep.so"},
+                 {engines, [{membase, "./bin/ep_engine/ep.so"},
+                            {memcached, "./bin/memcached/default_engine.so"}]},
                  {verbosity, ""}
                  ]}.
 
