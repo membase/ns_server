@@ -12,7 +12,7 @@ function onNoncriticalXHRError(xhr) {
 
   // everything except timeout & service unavailable
   if (status != 503 && status != 504 && status > 0) {
-    onUnexpectedXHRError(xhr);
+    onUnexpectedXHRError.apply(null, arguments);
     throw new Error("xhr error is critical: " + status);
   }
 
@@ -21,7 +21,7 @@ function onNoncriticalXHRError(xhr) {
   console.log("failed non-critical request");
 }
 
-function onUnexpectedXHRError(xhr) {
+function onUnexpectedXHRError(xhr, xhrStatus, errMsg) {
   window.onUnexpectedXHRError = function () {}
 
   if (Abortarium.isAborted(xhr))
@@ -29,7 +29,7 @@ function onUnexpectedXHRError(xhr) {
 
   // for manual interception
   if ('debuggerHook' in onUnexpectedXHRError) {
-    onUnexpectedXHRError['debuggerHook'](xhr);
+    onUnexpectedXHRError['debuggerHook'](xhr, xhrStatus, errMsg);
   }
 
   var status;
@@ -56,7 +56,9 @@ function onUnexpectedXHRError(xhr) {
       } catch (e) {
         json = ""
       }
-      sessionStorage.reloadCause = "s: " + json + ",\nstatusCode: " + status + ",\nresponseText:\n" + responseText;
+      sessionStorage.reloadCause = "s: " + json
+        + "\nxhrStatus: " + xhrStatus + ",\nerrMsg: " + errMsg
+        + ",\nstatusCode: " + status + ",\nresponseText:\n" + responseText;
       sessionStorage.reloadTStamp = (new Date()).valueOf();
     })();
   }

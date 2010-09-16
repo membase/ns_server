@@ -109,7 +109,7 @@ function postWithValidationErrors(url, data, callback, ajaxOptions) {
       }
 
       if (status != 400 || textStatus != 'error') {
-        return onUnexpectedXHRError(data);
+        return onUnexpectedXHRError.apply(null, arguments);
       }
 
       var errorsData = $.httpData(data, null, this);
@@ -237,7 +237,7 @@ future.getPush = function (ajaxOptions, valueTransformer, nowValue, waitChange) 
         return;
 
       if (!etag)
-        return onUnexpectedXHRError(xhr);
+        return onUnexpectedXHRError.apply(null, arguments);
 
       onNoncriticalXHRError(xhr);
       recovingFromError = true;
