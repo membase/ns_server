@@ -514,7 +514,7 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 .shadow_box .bottom {height:8px; overflow:hidden; background:url(../images/shadow_box_bg.gif) 0 -64px repeat-x;}
 .shadow_box .bottom div {height:12px; background:url(../images/shadow_box_bg.gif) 0 -24px no-repeat;}
 .shadow_box .bottom div div {background:url(../images/shadow_box_bg.gif) 100% -36px no-repeat;}
-.shadow_box .cnt {background:url(../images/shadow_box_side_bg.gif) 0 0 repeat-y;}
+.shadow_box .cnt {background:url(../images/shadow_box_side_bg.gif) 0 0 repeat-y !important;height:auto !important;}
 .shadow_box .cnt .pad {background:url(../images/shadow_box_side_bg.gif) 100% 0 repeat-y; padding:0 9px;}
 .shadow_box .content {background:none #eeeeef;}
 .shadow_box .section {border:0px;}
@@ -1075,7 +1075,6 @@ body table.buckets_tab tr th:first-child span {display:block; white-space:nowrap
 .edit_btn {display:block; width:65px; height:21px; background:url(../images/edit-button.png) 0 0 no-repeat; float:right; text-align:center; font-size:13px; color:#000; line-height:20px; text-decoration:none !important; cursor:pointer;}
 .edit_btn.disabled {opacity:1 !important; background-position:0 -21px !important; color:#9E9FA3; cursor:default;}
 .buckets_tab .ovf {padding:10px 0;}
-
 
 .bucket_properties_table {width:550px;}
 .bucket_properties_table td {text-align:left !important; vertical-align:top !important; color:#444245; line-height:16px; background:none !important; border:0px !important;}
