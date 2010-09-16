@@ -95,7 +95,7 @@ config_string(BucketName) ->
                                  LocalQuota, DBName]));
             memcached ->
                 lists:flatten(
-                  io_lib:format("cache_size=~B", [LocalQuota]))
+                  io_lib:format("vb0=false;cache_size=~B", [LocalQuota]))
         end,
     {Engine, ConfigString, LocalQuota}.
 
