@@ -858,7 +858,7 @@ var MockedRequest = mkClass({
         console.log("params: ", params);
         params['name'] = 'new-name';
         return this.doHandleBucketsPost(params);
-      }, 'ramQuotaMB', 'hddQuotaGB', opt('replicaNumber'), 'authType', opt('saslPassword'), opt('proxyPort'))],
+      }, 'ramQuotaMB', opt('replicaNumber'), 'authType', opt('saslPassword'), opt('proxyPort'))],
       [post("pools", "default", "buckets", x, "controller", "doFlush"), method('doNothingPOST')], //unused
       [del("pools", "default", "buckets", x), method('handleBucketRemoval')],
 
