@@ -18,7 +18,6 @@
 -define(ABNORMAL, 0).
 
 -behavior(gen_server).
--behavior(ns_log_categorizing).
 
 -include("ns_common.hrl").
 
@@ -33,13 +32,14 @@
          code_change/3,
          terminate/2]).
 
+-define(NUM_MESSAGES, 3). % Number of the most recent messages to log on crash
+
 -define(UNEXPECTED, 1).
--export([ns_log_cat/1, ns_log_code_string/1]).
 
 -include_lib("eunit/include/eunit.hrl").
 
 %% Server state
--record(state, {port, name}).
+-record(state, {port, name, messages}).
 
 
 %% API
@@ -50,17 +50,20 @@ start_link(Name, Cmd, Args, Opts) ->
 
 init({Name, _Cmd, _Args, _Opts} = Params) ->
     Port = open_port(Params),
-    {ok, #state{port = Port, name = Name}}.
+    {ok, #state{port = Port, name = Name,
+                messages = ringbuffer:new(?NUM_MESSAGES)}}.
 
 handle_info({_Port, {data, Msg}}, State) ->
-    log_messages(State#state.name, [Msg]),
-    {noreply, State};
+    State1 = log_messages([Msg], State),
+    {noreply, State1};
 handle_info({_Port, {exit_status, 0}}, State) ->
     {stop, normal, State};
 handle_info({_Port, {exit_status, Status}}, State) ->
     ns_log:log(?MODULE, ?ABNORMAL,
-               "Port server ~p exited with status ~p. Restarting.~n",
-               [State#state.name, Status]),
+               "Port server ~p on node ~p exited with status ~p. Restarting. "
+               "Messages: ~s",
+               [State#state.name, nodes(), Status,
+                lists:append(ringbuffer:to_list(State#state.messages))]),
     {stop, {abnormal, Status}, State}.
 
 handle_call(unhandled, unhandled, unhandled) ->
@@ -93,12 +96,14 @@ open_port({_Name, Cmd, Args, OptsIn}) ->
     end,
     Port.
 
-log_messages(Name, L) ->
+log_messages(L, State) ->
+    State1 = State#state{messages=ringbuffer:add(hd(L), State#state.messages)},
     receive
         {_Port, {data, Msg}} ->
-            log_messages(Name, [Msg|L])
+            log_messages([Msg|L], State1)
     after 0 ->
-            split_log(Name, L, [])
+            split_log(State1#state.name, L, []),
+            State1
     end.
 
 split_log(Name, L, M) ->
@@ -109,9 +114,3 @@ split_log(Name, L, M) ->
         false ->
             split_log(Name, tl(L), [hd(L)|M])
     end.
-
-%% ns_log stuff
-
-ns_log_cat(?UNEXPECTED) -> warn.
-
-ns_log_code_string(?UNEXPECTED) -> "unexpected message monitoring port".
