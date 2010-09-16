@@ -47,7 +47,8 @@
          set_vbucket/3, set_vbucket/4,
          server/1,
          stats/1, stats/2,
-         topkeys/1]).
+         topkeys/1,
+         sync_bucket_config/1]).
 
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
@@ -133,7 +134,10 @@ handle_call(topkeys, _From, State) ->
                                   Tokens)} | Acc]
               end,
               []),
-    {reply, Reply, State}.
+    {reply, Reply, State};
+handle_call(sync_bucket_config, _From, State) ->
+    handle_info(check_config, State),
+    {reply, ok, State}.
 
 
 handle_cast(unhandled, unhandled) ->
@@ -253,6 +257,9 @@ stats(Bucket, Key) ->
 topkeys(Bucket) ->
     gen_server:call(server(Bucket), topkeys, ?TIMEOUT).
 
+sync_bucket_config(Bucket) ->
+    gen_server:call(server(Bucket), sync_bucket_config, ?TIMEOUT).
+
 
 %%
 %% Internal functions
@@ -280,10 +287,11 @@ connect() ->
 
 
 ensure_bucket(Sock, Bucket) ->
-    {Engine, ConfigString, MaxSize} = ns_bucket:config_string(Bucket),
+    {Engine, ConfigString,
+     BucketType, ExtraParams} = ns_bucket:config_string(Bucket),
     case mc_client_binary:select_bucket(Sock, Bucket) of
         ok ->
-            ensure_bucket_config(Sock, Bucket, MaxSize);
+            ensure_bucket_config(Sock, Bucket, BucketType, ExtraParams);
         {memcached_error, key_enoent, _} ->
             ok = mc_client_binary:create_bucket(Sock, Bucket, Engine,
                                                 ConfigString),
@@ -293,25 +301,40 @@ ensure_bucket(Sock, Bucket) ->
     end.
 
 
-ensure_bucket_config(Sock, Bucket, MaxSize) ->
+ensure_bucket_config(Sock, Bucket, membase, {MaxSize, DBDir}) ->
     MaxSizeBin = list_to_binary(integer_to_list(MaxSize)),
-    case mc_client_binary:stats(
-                Sock, <<>>,
-                fun (<<"ep_max_data_size">>, V, _) ->
-                        V;
-                    (_, _, CD) ->
-                        CD
-                end, missing_max_size) of
-        {ok, missing_max_size} ->
-            ok; % TODO: change max size of memcached bucket also
-        {ok, MaxSizeBin} ->
+    DBDirBin = list_to_binary(DBDir),
+    {ok, {ActualMaxSizeBin,
+          ActualDBDirBin}} = mc_client_binary:stats(
+                               Sock, <<>>,
+                               fun (<<"ep_max_data_size">>, V, {_, Path}) ->
+                                       {V, Path};
+                                   (<<"ep_dbname">>, V, {S, _}) ->
+                                       {S, V};
+                                   (_, _, CD) ->
+                                       CD
+                               end, {missing_max_size, missing_path}),
+    case ActualMaxSizeBin of
+        MaxSizeBin ->
             ok;
-        {ok, X} when is_binary(X) ->
-            ?log_info("Changing max_size of ~p from ~s to ~s", [Bucket, X,
+        X1 when is_binary(X1) ->
+            ?log_info("Changing max_size of ~p from ~s to ~s", [Bucket, X1,
                                                                 MaxSizeBin]),
             mc_client_binary:set_flush_param(Sock, <<"max_size">>, MaxSizeBin)
-    end.
-
+    end,
+    case ActualDBDirBin of
+        DBDirBin ->
+            ok;
+        X2 when is_binary(X2) ->
+            ?log_info("Changing dbname of ~p from ~s to ~s", [Bucket, X2,
+                                                              DBDirBin]),
+            mc_client_binary:delete_bucket(Sock,
+                                           Bucket),
+            ensure_bucket(Sock, Bucket)
+    end;
+ensure_bucket_config(_Sock, _Bucket, memcached, _MaxSize) ->
+    %% TODO: change max size of memcached bucket also
+    todo.
 
 server(Bucket) ->
     list_to_atom(?MODULE_STRING ++ "-" ++ Bucket).

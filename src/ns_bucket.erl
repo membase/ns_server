@@ -77,7 +77,7 @@ config_string(BucketName) ->
     LocalQuota = MemQuota div NodesCount,
     BucketType =  proplists:get_value(type, BucketConfig),
     Engine = proplists:get_value(BucketType, Engines),
-    ConfigString =
+    {ConfigString, ExtraParams} =
         case BucketType of
             membase ->
                 DBDir = ns_config:search_node_prop(Config, memcached, dbdir),
@@ -86,17 +86,19 @@ config_string(BucketName) ->
                 %% LocalQuota is our limit for this node
                 %% We stretch our quota on all nodes we have for this bucket
                 ok = filelib:ensure_dir(DBName),
-                lists:flatten(
-                  io_lib:format("vb0=false;waitforwarmup=false;ht_size=~B;"
-                                "ht_locks=~B;max_size=~B;dbname=~s",
-                                [proplists:get_value(ht_size, BucketConfig),
-                                 proplists:get_value(ht_locks, BucketConfig),
-                                 LocalQuota, DBName]));
+                CFG = lists:flatten(
+                        io_lib:format("vb0=false;waitforwarmup=false;ht_size=~B;"
+                                      "ht_locks=~B;max_size=~B;dbname=~s",
+                                      [proplists:get_value(ht_size, BucketConfig),
+                                       proplists:get_value(ht_locks, BucketConfig),
+                                       LocalQuota, DBName])),
+                {CFG, {LocalQuota, DBName}};
             memcached ->
-                lists:flatten(
-                  io_lib:format("vb0=false;cache_size=~B", [LocalQuota]))
+                {lists:flatten(
+                   io_lib:format("vb0=false;cache_size=~B", [LocalQuota])),
+                 LocalQuota}
         end,
-    {Engine, ConfigString, LocalQuota}.
+    {Engine, ConfigString, BucketType, ExtraParams}.
 
 %% @doc Return {Username, Password} for a bucket.
 -spec credentials(nonempty_string()) ->

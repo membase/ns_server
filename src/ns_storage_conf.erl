@@ -70,7 +70,9 @@ prepare_setup_disk_storage_conf(Node, Path) when Node =:= node() ->
                                         {hdd_quota, FreeMB}
                                         | lists:keydelete(dbdir, 1, PropList)]),
 
-                         ns_bucket:update_bucket_props("default", [{hdd_quota, FreeMB * 1048576}])
+                         ns_bucket:update_bucket_props("default", [{hdd_quota, FreeMB * 1048576}]),
+
+                         ns_memcached:sync_bucket_config("default")
                  end};
         X -> X
     end.
