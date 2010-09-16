@@ -1105,7 +1105,6 @@ handle_node_settings_post(Node, Req) ->
     Results = [case proplists:get_value("path", Params) of
                    undefined -> ok;
                    [] -> <<"The database path cannot be empty.">>;
-                   %% TODO: windows pathes
                    Path ->
                        case misc:is_absolute_path(Path) of
                            false -> <<"An absolute path is required.">>;
