@@ -715,7 +715,7 @@
               </tr>
               <!-- {% _.each(rows, function (logRow) { %} -->
               <tr>
-                <td>{%= h(logRow.text) %}</td>
+                <td>{%= h(logRow.text).replace(/\n/g, "<br />") %}</td>
                 <td>{%= h(logRow.module) + (new String(1000 + parseInt(logRow.code))).slice(-3)%}</td>
                 <td class="text_11 nobr">{%=V.formatLogTStamp(logRow.tstamp)%}
               </tr>
