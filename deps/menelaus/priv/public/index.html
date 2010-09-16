@@ -552,10 +552,8 @@
     <h1>Data Buckets</h1>
     <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
     <div class="darker_block">
-        <div class="pad_10">
-            <div class="pat_10 right buckets_action_bar">
+        <div class="pad_10 right buckets_action_bar">
                 <button class="button_200 create-bucket-button">Create New Data Bucket</button>
-            </div>
         </div>
     </div>
     <div id="bucket_list_container">
@@ -564,35 +562,37 @@
         <!-- END shadow box -->
     <script id="bucket_list_template" type="text/html">
         <table class="lined_tab buckets_tab">
-          <col width="" />
-          <col width="" />
-          <col width="" />
-          <col width="135" />
-          <col width="" />
+          <col width="">
+          <col width="">
+          <col width="">
+          <col width="135">
+          <col width="">
           <tr>
-            <!-- to display sort arrow correctly you need to switch between "sort_desc" and "sort_asc" classes in span -->
             <th><span>Bucket Name</span></th>
-            <th>Bucket Type</th>
+            <th><i>Bucket Type</i></th>
             <th>Bucket Resides On</th>
             <th>RAM Usage/Quota</th>
-            <th>Disk Usage/Quota</th>
+            <th class="last">Disk Usage/Quota</th>
           </tr>
           <!-- {% $.each(rows, function () { %} -->
             <tr>
-              <td><a class="gray_link bucket_name" href="#visitBucket={%=h(this.name)%}">{%= h(this.name) %}</a></td>
-              <td>{%= h(this.bucketTypeName) %} </td>
-              <td>{%= V.count(this.serversCount, 'server') %}</td>
-              <td>{%= V.formatQuantity(this.basicStats.memUsed) %}/{%= V.formatQuantity(this.quota.ram) %}</td>
-              <td>{%= V.formatQuantity(this.basicStats.diskUsed) %}/{%= V.formatQuantity(this.quota.hdd) %}</td>
+				<td colspan="6" class="bucket_info">
+				  <table><tr>
+					  <td><a class="gray_link bucket_name" href="#visitBucket={%=h(this.name)%}">{%= h(this.name) %}</a></td>
+		              <td>{%= h(this.bucketTypeName) %} </td>
+		              <td>{%= V.count(this.serversCount, 'server') %}</td>
+		              <td>{%= V.formatQuantity(this.basicStats.memUsed) %}/{%= V.formatQuantity(this.quota.ram) %}</td>
+		              <td>{%= V.formatQuantity(this.basicStats.diskUsed) %}/{%= V.formatQuantity(this.quota.hdd) %}</td>
+			  	  </tr></table>
+				  <div id="{%= h(this.settingsRowID) %}" class="settings-placeholder"></div>
+			    </td>
             </tr>
-            <tr id="{%= h(this.settingsRowID) %}" class="settings-placeholder"><td colspan="6"></td></tr>
           <!-- {% }); %} -->
         </table>
     </script>
   </div>
 
   <div id="bucket_settings_template">
-    <div class="pad">
       <div class="gong_rb">
         <div class="pad">
           <a class="edit_btn" href="#editBucket={%= uri %}">Edit</a>
@@ -691,7 +691,6 @@
       </label>
 
       </div><!-- additional_server_info -->
-    </div>
   </div>
 
   <div id="alerts" style="display:none">
