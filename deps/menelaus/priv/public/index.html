@@ -10,7 +10,7 @@
 <!--[if IE 6]>
 <link rel="stylesheet" type="text/css" href="/css/ie6.css" />
 <![endif]-->
-<script src="/js/all.js"></script>
+<script src="/js/all.js" type="text/javascript"></script>
 </head>
 <body class="nojs">
   <div id="validation_notice">Validating...</div>
@@ -353,7 +353,7 @@
                   </div>
                   <div class="side side_1"></div><div class="side side_2"></div><div class="side side_3"></div><div class="side side_4"></div>
                 </div>
-               <span class="additional_server_info">
+               <div class="additional_server_info">
                 <h3>Memory Cache</h3>
                 <span class="info_block">
                   <span class="dynamic_ram">Dynamic RAM:</span>
@@ -405,7 +405,7 @@
                     </tr>
                   </table>
                 </span>
-              </span>
+              </div><!-- additional_server_info -->
   </div>
   <script type="text/html" id="rebalancing_list_template">
     <ul class="servers_list rebalancing">
@@ -490,13 +490,22 @@
   <div id="monitor_buckets" style="display:none;">
     <!-- shadow box -->
     <h1>Data Buckets</h1>
-    <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
-    <div class="darker_block">
-        <div class="pad_10">
-        </div>
-    </div>
-    <div id="monitor_buckets_list_container"></div>
-    </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
+    <div class="shadow_box">
+		<div class="top"><div><div>&nbsp;</div></div></div>
+		<div class="cnt">
+			<div class="pad">
+				<div class="content">
+				    <div class="darker_block">
+				        <div class="pad_10">
+				        </div>
+				    </div>
+				    <div id="monitor_buckets_list_container"></div>
+		    	</div>
+			</div>
+		</div>
+		<div class="bottom"><div><div>&nbsp;</div></div></div>
+	</div>
+  </div>
     <script id="monitor_buckets_list_template" type="text/html">
         <!-- className 'buckets_tab' goesWith '_' to desable thisStyle forNow -->
         <table class="lined_tab buckets_tab_">
@@ -614,7 +623,7 @@
         <div class="side side_3"></div>
         <div class="side side_4"></div>
       </div>
-      <span class="additional_server_info bucket_details">
+      <div class="additional_server_info bucket_details" style="display:none;">
 
       <h2>Cache Size</h2>
       <div class="size-gauge for-ram">
@@ -683,7 +692,7 @@
 		<abbr></abbr>
       </label>
 
-      </span>
+      </div><!-- additional_server_info -->
     </div>
   </div>
 
@@ -992,20 +1001,18 @@
     <h1>Coming in Beta 2</h1>
   </div>
 
+</td>
 </tr>
 </table>
-
 </div> <!-- mainContainer -->
 
-<div class="page-footer">
-  <div class="main_holder">
-  <h1>Copyright 2010 <a href="http://northscale.com" target="_blank">NorthScale, Inc.</a> All rights reserved.</h1>
-</div>
-
-</div> <!-- container -->
-
+	<div class="page-footer">
+	  <div class="main_holder">
+	  <h1>Copyright 2010 <a href="http://northscale.com" target="_blank">NorthScale, Inc.</a> All rights reserved.</h1>
+	  </div>
+	</div>
+</div><!-- #container -->
 <!-- dialogs -->
-</div> <!-- #container -->
 <div class="jqmWindow bucket_details" id="bucket_details_dialog">
   <h1><span class="when-editing">Configure Bucket</span><span class="when-creating">Create Bucket</span></h1>
   <form><div class="clearfix">
@@ -1655,7 +1662,7 @@
         </div>
         <p class="lbox_header header_2">Edit Server</p>
         <form class="lbox_form">
-          <h3>Server configuration<h3>
+          <h3>Server configuration</h3>
           <table>
           <col width="230" />
           <col width="300" />

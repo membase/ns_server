@@ -1033,7 +1033,7 @@ ul.tabs .alert_num_display .alert_num {display:block;}
 #servers.rebalancing .servers-not-rebalancing { display: none; }
 #servers.rebalancing .servers-rebalancing { display: block; }
 
-.additional_server_info {display:block;}
+.additional_server_info {display:block;overflow:hidden;}
 .additional_server_info h3 {font-size:14px; color:#444245; padding:5px 0 10px 0; border-bottom:1px solid #bbbdbf; font-weight:normal; margin:0 0 10px 0;}
 .additional_server_info .info_block {display:block; overflow:hidden;}
 .additional_server_info .info_block .path {display:block; padding:2px 0 0 0; font-size:11px; /*color:#828284;*/}
@@ -1069,6 +1069,7 @@ body table.buckets_tab tr th {background:none #f6f6f7; border-right:0px; border-
 body table.buckets_tab tr th:first-child span {display:block; white-space:nowrap; padding:0 0 0 56px; text-align:left;}
 .bucket_name {display:block; float:left; height:68px; line-height:69px; font-size:12px; font-weight:bolder; padding:0 0 0 56px; background:url(../images/icons.png) -12px -93px no-repeat;}
 .buckets_tab .settings-placeholder td .pad {padding:10px 0 10px 56px; background:none;}
+.buckets_tab .settings-placeholder td > .pad {width:685px;overflow:hidden;}
 .buckets_tab .settings-placeholder td .pad .pad {padding:10px 10px 10px 4px !important;min-height:52px;}
 .buckets_tab .settings-placeholder .edit_btn {display:block; width:65px; height:21px; background:url(../images/edit-button.png) 0 0 no-repeat; float:right;}
 .edit_btn {display:block; width:65px; height:21px; background:url(../images/edit-button.png) 0 0 no-repeat; float:right; text-align:center; font-size:13px; color:#000; line-height:20px; text-decoration:none !important; cursor:pointer;}
