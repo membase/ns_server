@@ -62,7 +62,7 @@ handle_info({_Port, {exit_status, Status}}, State) ->
     ns_log:log(?MODULE, ?ABNORMAL,
                "Port server ~p on node ~p exited with status ~p. Restarting. "
                "Messages: ~s",
-               [State#state.name, nodes(), Status,
+               [State#state.name, node(), Status,
                 lists:append(ringbuffer:to_list(State#state.messages))]),
     {stop, {abnormal, Status}, State}.
 
