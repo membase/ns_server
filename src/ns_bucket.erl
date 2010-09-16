@@ -238,7 +238,7 @@ new_bucket_default_params(membase) ->
      {map, undefined}];
 new_bucket_default_params(memcached) ->
     [{type, memcached},
-     {num_vbuckets, 1},
+     {num_vbuckets, 1024},
      {num_replicas, 0},
      {servers, []},
      {map, undefined},
@@ -280,24 +280,32 @@ delete_bucket(BucketName) ->
 %%
 %% If bucket with given name exists, but with different type, we
 %% should return {exit, {not_found, _}, _}
-update_bucket_props(membase, BucketName, Props) ->
-    update_bucket_props(BucketName, Props).
+update_bucket_props(Type, BucketName, Props) ->
+    case lists:member(BucketName, get_bucket_names(Type)) of
+        true ->
+            update_bucket_props(BucketName, Props);
+        false ->
+            {exit, {not_found, BucketName}, []}
+    end.
 
 update_bucket_props(BucketName, Props) ->
-    ns_config:update_sub_key(buckets, configs,
-                             fun (List) ->
-                                     RV = misc:key_update(BucketName, List,
-                                                          fun (OldProps) ->
-                                                                  lists:foldl(fun ({K, _V} = Tuple, Acc) ->
-                                                                                      [Tuple | lists:keydelete(K, 1, Acc)]
-                                                                              end, OldProps, Props)
-                                                          end),
-                                     case RV of
-                                         false -> exit({not_found, BucketName});
-                                         _ -> ok
-                                     end,
-                                     RV
-                             end).
+    ns_config:update_sub_key(
+      buckets, configs,
+      fun (List) ->
+              RV = misc:key_update(
+                     BucketName, List,
+                     fun (OldProps) ->
+                             lists:foldl(
+                               fun ({K, _V} = Tuple, Acc) ->
+                                       [Tuple | lists:keydelete(K, 1, Acc)]
+                               end, OldProps, Props)
+                     end),
+              case RV of
+                  false -> exit({not_found, BucketName});
+                  _ -> ok
+              end,
+              RV
+      end).
 
 set_map(Bucket, Map) ->
     ChainLengths = [length(Chain) || Chain <- Map],
