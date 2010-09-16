@@ -193,8 +193,8 @@ children(Node) ->
                          {ok, pid()}.
 start_child(Node, Bucket, VBuckets, DstNode) ->
     PortServerArgs = args(Node, Bucket, VBuckets, DstNode, false),
-    ?log_info("start_child(~p, ~p, ~p, ~p):~nArgs = ~p",
-              [Node, Bucket, VBuckets, DstNode, PortServerArgs]),
+    ?log_info("Args =~n~p",
+              [PortServerArgs]),
     ChildSpec = {#child_id{bucket=Bucket, vbuckets=VBuckets, dest_node=DstNode},
                  {ns_port_server, start_link, PortServerArgs},
                  permanent, 10, worker, [ns_port_server]},
