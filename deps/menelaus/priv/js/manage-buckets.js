@@ -139,7 +139,6 @@ var BucketDetailsDialog = mkClass({
     this.isNew = isNew;
     this.initValues = initValues;
     initValues['ramQuotaMB'] = Math.floor(initValues.quota.ram / 1048576);
-    initValues['hddQuotaGB'] = Math.floor(initValues.quota.hdd / (1048576 * 1024));
 
     this.dialogID = 'bucket_details_dialog'
 
@@ -293,47 +292,6 @@ var BucketDetailsDialog = mkClass({
     jq.find('.gauge .blue').css('width', calculatePercent(used, total) + '%');
   },
 
-  renderOvercommitDiskGauge: function (jq, total, thisBucket, otherBuckets, otherData) {
-    jq.filter('.normal').hide();
-    jq = jq.filter('.overcommit').show();
-
-    var formattedBucket = ViewHelpers.formatQuantity(thisBucket, null, null, ' ');
-
-    var realTotal = thisBucket + otherBuckets + otherData;
-
-    jq.find('.total').text(ViewHelpers.formatQuantity(total, null, null, ' '));
-    var overcommitted = realTotal - total;
-    jq.find('.overcommitted').text(ViewHelpers.formatQuantity(overcommitted, null, null, ' '));
-    jq.find('.other').text(ViewHelpers.formatQuantity(otherBuckets, null, null, ' '));
-    jq.find('.other-data').text(ViewHelpers.formatQuantity(otherData, null, null,' '));
-    jq.find('.this').text(formattedBucket);
-
-    jq.find('.gauge .green').css('width', calculatePercent(total, realTotal) + '%');
-    jq.find('.gauge .blue').css('width', calculatePercent(otherData + otherBuckets, realTotal) + '%');
-    jq.find('.gauge .yellow').css('width', calculatePercent(otherData, realTotal) + '%');
-  },
-
-  renderDiskGauge: function (jq, total, thisBucket, otherBuckets, otherData) {
-    if (thisBucket + otherBuckets + otherData > total)
-      return this.renderOvercommitDiskGauge(jq, total, thisBucket, otherBuckets, otherData);
-
-    jq.filter('.overcommit').hide();
-    jq = jq.filter('.normal').show();
-
-    var formattedBucket = ViewHelpers.formatQuantity(thisBucket, null, null, ' ');
-
-    jq.find('.total').text(ViewHelpers.formatQuantity(total, null, null, ' '));
-    var free = total - otherData - thisBucket - otherBuckets;
-    jq.find('.free').text(ViewHelpers.formatQuantity(free, null, null, ' '));
-    jq.find('.other').text(ViewHelpers.formatQuantity(otherBuckets, null, null, ' '));
-    jq.find('.other-data').text(ViewHelpers.formatQuantity(otherData, null, null,' '));
-    jq.find('.this').text(formattedBucket);
-
-    jq.find('.gauge .green').css('width', calculatePercent(otherData + otherBuckets + thisBucket, total) + '%');
-    jq.find('.gauge .blue').css('width', calculatePercent(otherData + otherBuckets, total) + '%');
-    jq.find('.gauge .yellow').css('width', calculatePercent(otherData, total) + '%');
-  },
-
   renderError: function (field, error) {
     this.dialog.find('.error-container.err-' + field).text(error || '')[error ? 'addClass' : 'removeClass']('active');
     this.dialog.find('[name=' + field + ']')[error ? 'addClass' : 'removeClass']('invalid');
@@ -349,7 +307,6 @@ var BucketDetailsDialog = mkClass({
 
     var summaries = result.summaries || {};
     var ramSummary = summaries.ramSummary;
-    var hddSummary = summaries.hddSummary;
 
     var ramGauge = self.dialog.find(".size-gauge.for-ram");
     if (ramSummary)
@@ -359,16 +316,7 @@ var BucketDetailsDialog = mkClass({
                        ramSummary.otherBuckets);
     ramGauge.css('visibility', ramSummary ? 'visible' : 'hidden');
 
-    var hddGauge = self.dialog.find('.size-gauge.for-hdd');
-    if (hddSummary)
-      self.renderDiskGauge(hddGauge,
-                           hddSummary.total,
-                           hddSummary.thisAlloc,
-                           hddSummary.otherBuckets,
-                           hddSummary.otherData);
-    hddGauge.css('visibility', hddSummary ? 'visible' : 'hidden');
-
-    var knownFields = ('name ramQuotaMB hddQuotaGB replicaNumber proxyPort').split(' ');
+    var knownFields = ('name ramQuotaMB replicaNumber proxyPort').split(' ');
     var errors = result.errors || {};
     _.each(knownFields, function (name) {
       self.renderError(name, errors[name]);
@@ -384,15 +332,31 @@ var BucketsSection = {
                                               details.quota.ram,
                                               poolDetails.storageTotals.ram.quotaUsed - details.quota.ram);
   },
+
+  renderDiskGauge: function (jq, total, thisBucket, otherBuckets, otherData) {
+    var formattedBucket = ViewHelpers.formatQuantity(thisBucket, null, null, ' ');
+
+    jq.find('.total').text(ViewHelpers.formatQuantity(total, null, null, ' '));
+    var free = total - otherData - thisBucket - otherBuckets;
+    jq.find('.free').text(ViewHelpers.formatQuantity(free, null, null, ' '));
+    jq.find('.other').text(ViewHelpers.formatQuantity(otherBuckets, null, null, ' '));
+    jq.find('.other-data').text(ViewHelpers.formatQuantity(otherData, null, null,' '));
+    jq.find('.this').text(formattedBucket);
+
+    jq.find('.gauge .green').css('width', calculatePercent(otherData + otherBuckets + thisBucket, total) + '%');
+    jq.find('.gauge .blue').css('width', calculatePercent(otherData + otherBuckets, total) + '%');
+    jq.find('.gauge .yellow').css('width', calculatePercent(otherData, total) + '%');
+  },
+
   renderHDDDetailsGauge: function (e, details) {
     var jq = $(e).parent().find('.size-gauge.for-hdd');
     var poolDetails = DAO.cells.currentPoolDetails.value;
     var hdd = poolDetails.storageTotals.hdd;
-    BucketDetailsDialog.prototype.renderDiskGauge(jq,
-                                                  hdd.total,
-                                                  details.quota.hdd,
-                                                  hdd.quotaUsed - details.quota.hdd,
-                                                  hdd.used - hdd.usedByData);
+    BucketsSection.renderDiskGauge(jq,
+                                   hdd.total,
+                                   details.basicStats.diskUsed,
+                                   hdd.usedByData - details.basicStats.diskUsed,
+                                   hdd.used - hdd.usedByData);
   },
   cells: {},
   init: function () {
@@ -561,8 +525,7 @@ var BucketsSection = {
     var initValues = {uri: '/pools/default/buckets',
                       bucketType: 'membase',
                       authType: 'sasl',
-                      quota: {ram: totals.ram.quotaTotal - totals.ram.quotaUsed,
-                              hdd: totals.hdd.total - totals.hdd.quotaUsed},
+                      quota: {ram: totals.ram.quotaTotal - totals.ram.quotaUsed},
                       replicaNumber: 1}
     var dialog = new BucketDetailsDialog(initValues, true);
     dialog.startDialog();

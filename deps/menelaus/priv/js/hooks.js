@@ -633,9 +633,7 @@ var MockedRequest = mkClass({
                            },
                            "hdd": {
                              "total": 239315349504.0,
-                             "quotaTotal": 239315349504.0,
                              "used": 229742735523.0,
-                             "quotaUsed": 229742735523.0,
                              usedByData: 129742735523.0
                            }
                          },

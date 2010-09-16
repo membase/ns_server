@@ -34,11 +34,7 @@ memory_quota(_Node) ->
 
 change_memory_quota(_Node, NewMemQuotaMB) when is_integer(NewMemQuotaMB) ->
     ns_config:set(memory_quota, NewMemQuotaMB),
-    RawHDDQuota = NewMemQuotaMB * 1048576 * 2,
-    Gi = 1024 * 1024 * 1024,
-    HDDQuota = ((RawHDDQuota + Gi - 1) div Gi) * Gi,
-    ns_bucket:update_bucket_props("default", [{ram_quota, NewMemQuotaMB * 1048576},
-                                              {hdd_quota, HDDQuota}]).
+    ns_bucket:update_bucket_props("default", [{ram_quota, NewMemQuotaMB * 1048576}]).
 
 prepare_setup_disk_storage_conf(Node, Path) when Node =:= node() ->
     {value, PropList} = ns_config:search_node(Node, ns_config:get(), memcached),
@@ -186,19 +182,17 @@ cluster_storage_info() ->
                                  end, extract_node_storage_info(FirstInfo, FirstNode), Rest)
              end,
     AllBuckets = ns_bucket:get_buckets(),
-    {RAMQuotaUsed, HDDQuotaUsed} =
-        lists:foldl(fun ({_, Config}, {RAMQuota, HDDQuota}) ->
-                            {ns_bucket:ram_quota(Config) + RAMQuota,
-                             ns_bucket:hdd_quota(Config) + HDDQuota}
-                    end, {0, 0}, AllBuckets),
+    RAMQuotaUsed =
+        lists:foldl(fun ({_, Config}, RAMQuota) ->
+                            ns_bucket:ram_quota(Config) + RAMQuota
+                    end, 0, AllBuckets),
     %% TODO: be careful with remote systems access here
     BucketsHDDUsage = lists:sum([menelaus_stats:bucket_disk_usage(X)
                                  || {X, _} <- AllBuckets]),
     lists:map(fun ({ram, Props}) ->
                       {ram, [{quotaUsed, RAMQuotaUsed} | Props]};
                   ({hdd, Props}) ->
-                      {hdd, [{quotaUsed, HDDQuotaUsed},
-                             {usedByData, BucketsHDDUsage}
+                      {hdd, [{usedByData, BucketsHDDUsage}
                              | Props]}
               end, PList1).
 

@@ -572,7 +572,7 @@
             <th><i>Bucket Type</i></th>
             <th>Bucket Resides On</th>
             <th>RAM Usage/Quota</th>
-            <th class="last">Disk Usage/Quota</th>
+            <th class="last">Disk Usage</th>
           </tr>
           <!-- {% $.each(rows, function () { %} -->
             <tr>
@@ -582,7 +582,7 @@
 		              <td>{%= h(this.bucketTypeName) %} </td>
 		              <td>{%= V.count(this.serversCount, 'server') %}</td>
 		              <td>{%= V.formatQuantity(this.basicStats.memUsed) %}/{%= V.formatQuantity(this.quota.ram) %}</td>
-		              <td>{%= V.formatQuantity(this.basicStats.diskUsed) %}/{%= V.formatQuantity(this.quota.hdd) %}</td>
+		              <td>{%= V.formatQuantity(this.basicStats.diskUsed) %}</td>
 			  	  </tr></table>
 				  <div id="{%= h(this.settingsRowID) %}" class="settings-placeholder"></div>
 			    </td>
@@ -652,7 +652,7 @@
 		<abbr></abbr>
       </label>
 
-      <div class="normal size-gauge for-hdd">
+      <div class="size-gauge for-hdd">
         <div class="other-data-block">Other data (<span class="other-data">15 Gb</span>)</div>
         <div class="t">Total cluster storage (<span class="total">192 Gb</span>)</div>
         <div class="gauge">
@@ -667,27 +667,11 @@
           <td class="green">This Bucket (<span class="this">5 Gb</span>)</td>
           <td>Free (<span class="free">12 Gb</span>)</td>
         </tr></table>
-      </div>
-      <div class="overcommit size-gauge for-hdd">
-        <div class="other-data-block">Other data (<span class="other-data">15 Gb</span>)</div>
-        <div class="t">Total cluster storage (<span class="total">192 Gb</span>)</div>
-        <div class="gauge">
-          <div class="gauge-total">
-            <div class="green"><i></i></div>
-            <div class="blue"></div>
-            <div class="yellow"></div>
-          </div>
-        </div>
-        <table class="b"><tr>
-          <td class="blue">Other Buckets (<span class="other">15 Gb</span>)</td>
-          <td class="green">This Bucket (<span class="this">5 Gb</span>)</td>
-          <td class="extra">Overcommit (<span class="overcommitted">12 Gb</span>)</td>
-        </tr></table>
       </div>{%= V.thisElement(function (e) {BucketsSection.renderHDDDetailsGauge(e, obj)}) %}
 
       <label class="for-hdd-quota">
-	  	<span>Disk Quota:</span>
-		<span>{%= h(V.formatQuantity(quota.hdd)) %}</span>
+	  	<span>Disk Usage:</span>
+		<span>{%= h(V.formatQuantity(basicStats.diskUsed)) %}</span>
 		<abbr></abbr>
       </label>
 
@@ -1048,42 +1032,6 @@
     <label class="for-ram-quota"><span>Dynamic RAM Quota:</span><input name="ramQuotaMB" value="30"><abbr>MB</abbr></label>
     <div class="error-container err-ramQuotaMB"></div>
     <div class="persistent-only">
-      <h2>Storage Size</h2>
-      <!-- <label class="for-enable-persistence"><input type="checkbox" disabled checked><span>Enable Persistence</span></label> -->
-      <div class="normal size-gauge for-hdd">
-        <div class="other-data-block">Other data (<span class="other-data">15 Gb</span>)</div>
-        <div class="t">Total cluster storage (<span class="total">192 Gb</span>)</div>
-        <div class="gauge">
-          <div>
-            <div class="green"></div>
-            <div class="blue"></div>
-            <div class="yellow"></div>
-          </div>
-        </div>
-        <table class="b"><tr>
-          <td class="blue">Other Buckets (<span class="other">15 Gb</span>)</td>
-          <td class="green">This Bucket (<span class="this">5 Gb</span>)</td>
-          <td>Free (<span class="free">12 Gb</span>)</td>
-        </tr></table>
-      </div>
-      <div class="overcommit size-gauge for-hdd">
-        <div class="other-data-block">Other data (<span class="other-data">15 Gb</span>)</div>
-        <div class="t">Total cluster storage (<span class="total">192 Gb</span>)</div>
-        <div class="gauge">
-          <div class="gauge-total">
-            <div class="green"><i></i></div>
-            <div class="blue"></div>
-            <div class="yellow"></div>
-          </div>
-        </div>
-        <table class="b"><tr>
-          <td class="blue">Other Buckets (<span class="other">15 Gb</span>)</td>
-          <td class="green">This Bucket (<span class="this">5 Gb</span>)</td>
-          <td class="extra">Overcommit (<span class="overcommitted">12 Gb</span>)</td>
-        </tr></table>
-      </div>
-      <label class="for-hdd-quota"><span>Disk Quota:</span><input name="hddQuotaGB"><abbr>GB</abbr></label>
-      <div class="error-container err-hddQuotaGB"></div>
       <h2>Replication</h2>
       <label class="for-enable-replication"><input type="checkbox" checked disabled><span>Enable Replication</span></label>
       <label class="for-replica-number"><input value="1" name="replicaNumber">

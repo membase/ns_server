@@ -25,7 +25,6 @@
          get_buckets/0,
          get_buckets/1,
          ram_quota/1,
-         hdd_quota/1,
          num_replicas/1,
          bucket_type/1,
          auth_type/1,
@@ -136,13 +135,6 @@ ram_quota(Bucket) ->
             X
     end.
 
--spec hdd_quota([{_,_}]) -> integer().
-hdd_quota(Bucket) ->
-    case proplists:get_value(hdd_quota, Bucket, 0) of
-        X when is_integer(X) ->
-            X
-    end.
-
 -spec num_replicas([{_,_}]) -> integer().
 num_replicas(Bucket) ->
     case proplists:get_value(num_replicas, Bucket) of
@@ -231,7 +223,6 @@ new_bucket_default_params(membase) ->
       end},
      {num_replicas, 1},
      {ram_quota, 0},
-     {hdd_quota, 0},
      {ht_size, 3079},
      {ht_locks, 5},
      {servers, []},

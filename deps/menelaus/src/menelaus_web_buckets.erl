@@ -84,8 +84,7 @@ build_bucket_info(PoolId, Id, Pool, InfoLevel, LocalAddr) ->
                  stable -> [];
                  normal ->
                      [{replicaNumber, ns_bucket:num_replicas(BucketConfig)},
-                      {quota, {struct, [{ram, ns_bucket:ram_quota(BucketConfig)},
-                                        {hdd, ns_bucket:hdd_quota(BucketConfig)}]}},
+                      {quota, {struct, [{ram, ns_bucket:ram_quota(BucketConfig)}]}},
                       {basicStats, {struct, menelaus_stats:basic_stats(PoolId, Id)}}]
              end,
     {struct, [{name, list_to_binary(Id)},
@@ -152,7 +151,7 @@ redirect_to_bucket(Req, PoolId, BucketId) ->
 
 %% returns pprop list with only props useful for ns_bucket
 extract_bucket_props(Props) ->
-    [X || X <- [lists:keyfind(Y, 1, Props) || Y <- [num_replicas, ram_quota, hdd_quota, auth_type, sasl_password, moxi_port]],
+    [X || X <- [lists:keyfind(Y, 1, Props) || Y <- [num_replicas, ram_quota, auth_type, sasl_password, moxi_port]],
           X =/= false].
 
 handle_bucket_update(_PoolId, BucketId, Req) ->
@@ -240,8 +239,7 @@ handle_bucket_flush(PoolId, Id, Req) ->
 -record(hdd_summary, {
           total,                                % total cluster disk space
           other_data,                           % disk space used by something other than our data
-          other_buckets,                        % space allocated for other buckets
-          this_alloc,                           % space allocated for this bucket
+          other_buckets,                        % space used for other buckets
           this_used,                            % space already used by this bucket
           free}).                               % total - other_data - other_buckets - this_alloc
                                                 % So it's kind of: Amount of cluster disk space available of allocation,
@@ -270,20 +268,12 @@ parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals,
                      true ->
                          undefined
                  end,
-    HasHDDQuota = lists:keyfind(hdd_quota, 1, OKs) =/= false,
-    HDDSummary = if
-                     HasHDDQuota ->
-                         interpret_hdd_quota(CurrentBucket, OKs, ClusterStorageTotals, UsageGetter);
-                     true -> undefined
-                 end,
+    HDDSummary = interpret_hdd_quota(CurrentBucket, OKs, ClusterStorageTotals, UsageGetter),
     JSONSummaries = [X || X <- [case RAMSummary of
                                     undefined -> undefined;
                                     _ -> {ramSummary, {struct, ram_summary_to_proplist(RAMSummary)}}
                                 end,
-                                case HDDSummary of
-                                    undefined -> undefined;
-                                    _ -> {hddSummary, {struct, hdd_summary_to_proplist(HDDSummary)}}
-                                end],
+                                {hddSummary, {struct, hdd_summary_to_proplist(HDDSummary)}}],
                           X =/= undefined],
     Errors2 = case {CurrentBucket, IsNew} of
                   {undefined, _} -> Errors;
@@ -309,18 +299,7 @@ parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals,
             true ->
                 []
         end,
-    HDDErrors =
-        if
-            HDDSummary =:= undefined ->
-                [];
-            HDDSummary#hdd_summary.this_alloc < HDDSummary#hdd_summary.this_used ->
-                [{hddQuotaGB, <<"Cannot decrease below usage">>}];
-            RAMSummary =/= undefined andalso HDDSummary#hdd_summary.this_alloc < RAMSummary#ram_summary.this_alloc ->
-                [{hddQuotaGB, <<"Disk quota less that RAM quota doesn't make sense">>}];
-            true ->
-                []
-        end,
-    TotalErrors = RAMErrors ++ HDDErrors ++ Errors2,
+    TotalErrors = RAMErrors ++ Errors2,
     if
         TotalErrors =:= [] ->
             {ok, OKs, JSONSummaries};
@@ -400,8 +379,7 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, AllBuckets, AuthTy
                           case IsNew of
                               true -> parse_validate_replicas_number(proplists:get_value("replicaNumber", Params));
                               _ -> undefined
-                          end,
-                          parse_validate_hdd_quota(proplists:get_value("hddQuotaGB", Params))
+                          end
                           | Candidates0];
                      _ ->
                          [{error, bucketType, <<"invalid bucket type">>}
@@ -445,12 +423,10 @@ hdd_summary_to_proplist(V) ->
     [?PHDD(total, total),
      ?PHDD(other_data, otherData),
      ?PHDD(other_buckets, otherBuckets),
-     ?PHDD(this_alloc, thisAlloc),
      ?PHDD(this_used, thisUsed),
      ?PHDD(free, free)].
 
 interpret_hdd_quota(CurrentBucket, ParsedProps, ClusterStorageTotals, UsageGetter) ->
-    ParsedQuota = proplists:get_value(hdd_quota, ParsedProps),
     ClusterTotals = proplists:get_value(hdd, ClusterStorageTotals),
     UsedByUs = UsageGetter(hdd, all),
     ThisUsed = case CurrentBucket of
@@ -459,20 +435,13 @@ interpret_hdd_quota(CurrentBucket, ParsedProps, ClusterStorageTotals, UsageGette
                    _ -> 0
                end,
     OtherData = proplists:get_value(used, ClusterTotals) - UsedByUs,
-    OtherBuckets = proplists:get_value(quotaUsed, ClusterTotals)
-        - case CurrentBucket of
-              [_|_] ->
-                  ns_bucket:hdd_quota(CurrentBucket);
-              _ ->
-                  0
-          end,
+    OtherBuckets = UsedByUs - ThisUsed,
     Total = proplists:get_value(total, ClusterTotals),
     #hdd_summary{total = Total,
                  other_data = OtherData,
                  other_buckets = OtherBuckets,
-                 this_alloc = ParsedQuota,
                  this_used = ThisUsed,
-                 free = Total - OtherData - OtherBuckets - ParsedQuota}.
+                 free = Total - OtherData - OtherBuckets}.
 
 parse_validate_replicas_number(NumReplicas) ->
     case menelaus_util:parse_validate_number(NumReplicas, 0, undefined) of
@@ -490,13 +459,4 @@ parse_validate_ram_quota(Value) ->
         too_small ->
             {error, ramQuotaMB, <<"RAM quota cannot be negative">>};
         {ok, X} -> {ok, ram_quota, X * 1048576}
-    end.
-
-parse_validate_hdd_quota(Value) ->
-    case menelaus_util:parse_validate_number(Value, 0, undefined) of
-        invalid ->
-            {error, hddQuotaGB, <<"Disk quota must be a number">>};
-        too_small ->
-            {error, hddQuotaGB, <<"Disk quota cannot be negative">>};
-        {ok, X} -> {ok, hdd_quota, X * 1048576 * 1024}
     end.
