@@ -579,7 +579,7 @@ merge_lists(Field, Acc, RV, LV) ->
           vclock:descends(LClock, RClock)} of
         {X, X} ->
             NewValue =
-                case RV =:= LV of
+                case strip_metadata(RV) =:= strip_metadata(LV) of
                     true ->
                         RV;
                     false ->
