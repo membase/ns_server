@@ -420,6 +420,7 @@ var BucketsSection = {
       valueTransformer: function (bucketInfo, bucketSettings) {
         var rv = _.extend({}, bucketInfo, bucketSettings);
         delete rv.settingsCell;
+        rv.storageInfoRelevant = (rv.bucketType == 'membase');
         return rv;
       }
     });

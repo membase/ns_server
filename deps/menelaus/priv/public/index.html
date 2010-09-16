@@ -644,6 +644,7 @@
 		<abbr></abbr>
       </label>
 
+      {% if (storageInfoRelevant) { %}
       <h2>Storage Size</h2>
       <label class="for-hdd-quota">
 	  	<span>Persistence Enabled:</span>
@@ -689,6 +690,8 @@
 		<span>{%= h(V.formatQuantity(quota.hdd)) %}</span>
 		<abbr></abbr>
       </label>
+
+      {% } %} <!-- storageInfoRelevant -->
 
       </div><!-- additional_server_info -->
   </div>
