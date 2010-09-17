@@ -113,6 +113,8 @@ var MockedRequest = mkClass({
       }
     }
 
+    this.backtrace = getBacktrace();
+
     var url = options.url;
     var hostPrefix = document.location.protocol + ":/" + document.location.host;
     if (url.indexOf(hostPrefix) == 0)
@@ -925,6 +927,9 @@ var MockedRequest = mkClass({
                                                                  "clusterMemberHostIp", "clusterMemberPort",
                                                                  "user", "password")],
       [post("pools", "default", "controller", "testWorkload"), method('handleWorkloadControlPost')],
+      [post("controller", "setupDefaultBucket"),  expectParams(method('handleBucketsPost'),
+                                                               "ramQuotaMB", "replicaNumber", "bucketType",
+                                                               opt("saslPassword"), opt("authType"))],
       [post("controller", "ejectNode"), expectParams(method('doNothingPOST'),
                                                      "otpNode")],
 

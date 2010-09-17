@@ -466,7 +466,7 @@ function showInitDialog(page, opt) {
 
   opt = opt || {};
 
-  var pages = [ "welcome", "cluster", "secure" ];
+  var pages = [ "welcome", "cluster", "secure", "bucket_dialog" ];
 
   if (page == "")
     page = "welcome";
@@ -544,6 +544,38 @@ var NodeDialog = {
     }, {
       timeout: 8000
     });
+  },
+  startPage_bucket_dialog: function () {
+    var spinner;
+    var timeout = setTimeout(function () {
+      spinner = overlayWithSpinner('#init_bucket_dialog');
+    }, 50);
+    $.get('/pools/default/buckets/default',
+          continuation,
+          'json');
+    function continuation(data) {
+      if (spinner)
+        spinner.remove();
+      clearTimeout(timeout);
+      var initValue = _.extend(data, {
+        uri: '/controller/setupDefaultBucket'
+      });
+      var dialog = new BucketDetailsDialog(initValue, true,
+                                           {id: 'init_bucket_dialog',
+                                            refreshBuckets: function (b) {b()},
+                                            onSuccess: function () {
+                                              dialog.cleanup();
+                                              showInitDialog('secure');
+                                            }});
+      var cleanupBack = dialog.bindWithCleanup($('#step-init-bucket-back'),
+                                               'click',
+                                               function () {
+                                                 dialog.cleanup();
+                                                 showInitDialog('cluster');
+                                               });
+      dialog.cleanups.push(cleanupBack);
+      dialog.startForm();
+    }
   },
   startPage_secure: function(node, pagePrefix, opt) {
     var parentName = '#' + pagePrefix + '_dialog';
@@ -708,7 +740,7 @@ var NodeDialog = {
       function memPost(data, status) {
         if (status == 'success') {
           BucketsSection.refreshBuckets();
-          showInitDialog("secure");
+          showInitDialog("bucket_dialog");
         } else {
           errorContainer.html('failed memory quota validation');
           errorContainer.show();

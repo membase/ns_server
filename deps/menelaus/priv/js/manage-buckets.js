@@ -135,12 +135,20 @@ function setupFormValidation(form, url, callback) {
 }
 
 var BucketDetailsDialog = mkClass({
-  initialize: function (initValues, isNew) {
+  initialize: function (initValues, isNew, options) {
     this.isNew = isNew;
     this.initValues = initValues;
     initValues['ramQuotaMB'] = Math.floor(initValues.quota.ram / 1048576);
 
-    this.dialogID = 'bucket_details_dialog'
+    options = options || {};
+
+    this.dialogID = options.id || 'bucket_details_dialog';
+
+    this.onSuccess = options.onSuccess || function () {
+      hideDialog(this.dialogID);
+    }
+
+    this.refreshBuckets = options.refreshBuckets || $m(BucketsSection, 'refreshBuckets');
 
     var dialog = this.dialog = $('#' + this.dialogID);
 
@@ -211,10 +219,10 @@ var BucketDetailsDialog = mkClass({
 
     postWithValidationErrors(self.initValues.uri, self.dialog.find('form'), function (data, status) {
       if (status == 'success') {
-        BucketsSection.refreshBuckets(function () {
+        self.refreshBuckets(function () {
           self.needBucketsRefresh = false;
           enableForm();
-          hideDialog(self.dialogID);
+          self.onSuccess();
         });
         return;
       }
@@ -223,6 +231,10 @@ var BucketDetailsDialog = mkClass({
 
       var errors = data[0]; // we expect errors as a hash in this case
       self.errorsCell.setValue(errors);
+      if (errors._)
+        genericDialog({buttons: {ok: true},
+                       header: "failed to create bucket",
+                       text: errors._});
     });
 
     if (nonPersistent) {
@@ -244,7 +256,7 @@ var BucketDetailsDialog = mkClass({
       toDisable.add(self.dialog).css('cursor', 'auto');
     }
   },
-  startDialog: function () {
+  startForm: function () {
     var self = this;
     var form = this.dialog.find('form');
 
@@ -256,6 +268,11 @@ var BucketDetailsDialog = mkClass({
       e.preventDefault();
       self.submit();
     }));
+  },
+  startDialog: function () {
+    var self = this;
+
+    self.startForm();
 
     showDialog(this.dialogID, {
       onHide: function () {

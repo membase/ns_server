@@ -20,6 +20,7 @@
 -author('NorthScale <info@northscale.com>').
 
 -include("menelaus_web.hrl").
+-include("ns_common.hrl").
 
 -export([all_accessible_bucket_names/2,
          checking_bucket_access/4,
@@ -34,8 +35,8 @@
          handle_bucket_update/3,
          handle_bucket_create/2,
          handle_bucket_flush/3,
-         parse_bucket_params/5,
-         redirect_to_bucket/3]).
+         handle_setup_default_bucket_post/1,
+         parse_bucket_params/5]).
 
 -import(menelaus_util,
         [server_header/0,
@@ -144,8 +145,8 @@ handle_bucket_delete(_PoolId, BucketId, Req) ->
              end
     end.
 
-redirect_to_bucket(Req, PoolId, BucketId) ->
-    Req:respond({302, [{"Location", concat_url_path(["pools", PoolId, "buckets", BucketId])}
+respond_bucket_created(Req, PoolId, BucketId) ->
+    Req:respond({201, [{"Location", concat_url_path(["pools", PoolId, "buckets", BucketId])}
                        | server_header()],
                  ""}).
 
@@ -191,6 +192,19 @@ handle_bucket_update_inner(BucketId, Req, Params, Limit) ->
                                       {summaries, {struct, JSONSummaries}}]}, 200)
     end.
 
+do_bucket_create(Name, ParsedProps) ->
+    BucketType = proplists:get_value(bucketType, ParsedProps),
+    BucketProps = extract_bucket_props(ParsedProps),
+    case ns_orchestrator:create_bucket(BucketType, Name, BucketProps) of
+        ok ->
+            ?MENELAUS_WEB_LOG(?BUCKET_CREATED, "Created bucket \"~s\" of type: ~s~n", [Name, BucketType]),
+            ok;
+        {exit, {already_exists, _}, _} ->
+                   {errors, [{name, <<"Bucket with given name already exists">>}]};
+        rebalance_running ->
+            {errors, [{'_', <<"Cannot create buckets during rebalance">>}]}
+    end.
+
 handle_bucket_create(PoolId, Req) ->
     Params = Req:parse_post(),
     Name = proplists:get_value("name", Params),
@@ -205,18 +219,11 @@ handle_bucket_create(PoolId, Req) ->
             reply_json(Req, {struct, [{errors, {struct, Errors}},
                                       {summaries, {struct, JSONSummaries}}]}, 400);
         {false, {ok, ParsedProps, _}} ->
-            BucketType = proplists:get_value(bucketType, ParsedProps),
-            BucketProps = extract_bucket_props(ParsedProps),
-            case ns_orchestrator:create_bucket(BucketType, Name, BucketProps) of
+            case do_bucket_create(Name, ParsedProps) of
                 ok ->
-                    ?MENELAUS_WEB_LOG(?BUCKET_CREATED, "Created bucket \"~s\" of type: ~s~n", [Name, BucketType]),
-                    redirect_to_bucket(Req, PoolId, Name);
-                %% TODO: check that!
-                {exit, {already_exists, _}, _} ->
-                    reply_json(Req, {struct, [{name, <<"Bucket with given name already exists">>}]}, 400);
-                rebalance_running ->
-                    %% TODO: fix that
-                    reply_json(Req, [], 200)
+                    respond_bucket_created(Req, PoolId, Name);
+                {errors, Errors} ->
+                    reply_json(Req, {struct, Errors}, 400)
             end;
         {true, {ok, _, JSONSummaries}} ->
             reply_json(Req, {struct, [{errors, {struct, []}},
@@ -227,6 +234,30 @@ handle_bucket_flush(PoolId, Id, Req) ->
     ns_log:log(?MODULE, 0005, "Flushing pool ~p bucket ~p from node ~p",
                [PoolId, Id, erlang:node()]),
     Req:respond({400, server_header(), "Flushing is not currently implemented."}).
+
+handle_setup_default_bucket_post(Req) ->
+    Params = Req:parse_post(),
+    ValidateOnly = (proplists:get_value("just_validate", Req:parse_qs()) =:= "1"),
+    case {ValidateOnly,
+          parse_bucket_params_for_setup_default_bucket(Params,
+                                                       ns_storage_conf:cluster_storage_info())} of
+        {_, {errors, Errors, JSONSummaries}} ->
+            reply_json(Req, {struct, [{errors, {struct, Errors}},
+                                      {summaries, {struct, JSONSummaries}}]}, 400);
+        {false, {ok, ParsedProps, _}} ->
+            ns_orchestrator:delete_bucket("default"),
+            case do_bucket_create("default", ParsedProps) of
+                ok ->
+                    respond_bucket_created(Req, "default", "default");
+                {errors, Errors} ->
+                    reply_json(Req, {struct, Errors}, 400)
+            end;
+        {true, {ok, _, JSONSummaries}} ->
+            reply_json(Req, {struct, [{errors, {struct, []}},
+                                      {summaries, {struct, JSONSummaries}}]}, 200);
+        _ ->
+            Req:respond({200, server_header(), []})
+    end.
 
 -record(ram_summary, {
           total,                                % total cluster quota
@@ -244,6 +275,18 @@ handle_bucket_flush(PoolId, Id, Req) ->
           free}).                               % total - other_data - other_buckets - this_alloc
                                                 % So it's kind of: Amount of cluster disk space available of allocation,
                                                 % but with a number of 'but's.
+
+parse_bucket_params_for_setup_default_bucket(Params, ClusterStorageTotals) ->
+    UsageGetter = fun (_, _) ->
+                          0
+                  end,
+    RamTotals = proplists:get_value(ram, ClusterStorageTotals),
+    parse_bucket_params(true,
+                        "default",
+                        [{"authType", "sasl"}, {"saslPassword", ""} | Params],
+                        [],
+                        [{ram, [{quotaUsed, 0} | RamTotals]} | ClusterStorageTotals],
+                        UsageGetter).
 
 parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals) ->
     UsageGetter = fun (ram, Name) ->
