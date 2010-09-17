@@ -39,7 +39,6 @@ change_memory_quota(_Node, NewMemQuotaMB) when is_integer(NewMemQuotaMB) ->
 prepare_setup_disk_storage_conf(Node, Path) when Node =:= node() ->
     {value, PropList} = ns_config:search_node(Node, ns_config:get(), memcached),
     DBDir = filename:absname(proplists:get_value(dbdir, PropList)),
-    {ok, NodeInfo} = dict:find(Node, ns_doctor:get_nodes()),
     NewDBDir = filename:absname(Path),
     PathOK = case DBDir of
                  NewDBDir -> ok;
@@ -55,22 +54,9 @@ prepare_setup_disk_storage_conf(Node, Path) when Node =:= node() ->
     case PathOK of
         ok ->
             {ok, fun () ->
-                         %% we need to setup disk quota for node & default bucket
-                         DiskStats = proplists:get_value(disk_data, NodeInfo),
-                         %% TODO: this will not work if they put it
-                         %% directly in a mount point
-                         {ok, {_MPoint, KBytesTotal, Cap}} =
-                             extract_disk_stats_for_path(DiskStats, NewDBDir),
-                         Total = KBytesTotal * 1024,
-                         Used = (Total * Cap) div 100,
-                         FreeMB = (Total - Used) div 1048576,
-
                          ns_config:set({node, node(), memcached},
-                                       [{dbdir, Path},
-                                        {hdd_quota, FreeMB}
+                                       [{dbdir, Path}
                                         | lists:keydelete(dbdir, 1, PropList)]),
-
-                         ns_bucket:update_bucket_props("default", [{hdd_quota, FreeMB * 1048576}]),
 
                          ns_memcached:sync_bucket_config("default")
                  end};
