@@ -30,6 +30,7 @@
 
 %% API
 -export([create_bucket/3,
+         delete_bucket/1,
          failover/1,
          needs_rebalance/0,
          rebalance_progress/0,
@@ -71,6 +72,10 @@ start_link() ->
 create_bucket(BucketType, BucketName, NewConfig) ->
     gen_fsm:sync_send_event(?SERVER, {create_bucket, BucketType, BucketName,
                                       NewConfig}, 20000).
+
+%% deletes bucket. Makes sure that once it returns it's already dead.
+delete_bucket(BucketName) ->
+    gen_fsm:sync_send_event(?SERVER, {delete_bucket, BucketName}, 20000).
 
 
 -spec failover(atom()) -> ok.
@@ -189,6 +194,12 @@ idle(_Event, State) ->
 idle({create_bucket, BucketType, BucketName, NewConfig}, _From, State) ->
     Reply = ns_bucket:create_bucket(BucketType, BucketName, NewConfig),
     {reply, Reply, idle, State};
+idle({delete_bucket, BucketName}, _From, State) ->
+    ns_bucket:delete_bucket(BucketName),
+    %% ns_bucket_sup:update_childs(),
+    %% wait for ns_bucket_sup:update_childs() to be called by timer
+    timer:sleep(500),
+    {reply, ok, idle, State};
 idle({failover, Node}, _From, State) ->
     ?log_info("Failing over ~p", [Node]),
     Result = ns_rebalancer:failover(Node),

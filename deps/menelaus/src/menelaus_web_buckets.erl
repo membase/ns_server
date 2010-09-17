@@ -136,7 +136,7 @@ handle_bucket_delete(_PoolId, BucketId, Req) ->
         %% just ignore that for now
         "default" ->
             Req:respond({200, server_header(), []});
-        _ -> case ns_bucket:delete_bucket(BucketId) of
+        _ -> case ns_orchestrator:delete_bucket(BucketId) of
                  ok ->
                      ?MENELAUS_WEB_LOG(?BUCKET_DELETED, "Deleted bucket \"~s\"~n", [BucketId]),
                      Req:respond({200, server_header(), []});
