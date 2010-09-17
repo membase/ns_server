@@ -20,6 +20,7 @@
 -export([start_link/0]).
 
 -export([init/1, launch_port/1, terminate_port/1,
+         restart_port/1, restart_port_by_name/1,
          expand_args/1,
          current_ports/0,
          port_servers_config/0]).
@@ -80,10 +81,22 @@ create_child_spec({Name, Cmd, Args, Opts}) ->
      permanent, 10, worker,
      [ns_port_server]}.
 
-terminate_port(Name) ->
-    error_logger:info_msg("unsupervising port: ~p~n", [Name]),
-    ok = supervisor:terminate_child(?MODULE, Name),
-    ok = supervisor:delete_child(?MODULE, Name).
+terminate_port(Id) ->
+    error_logger:info_msg("unsupervising port: ~p~n", [Id]),
+    ok = supervisor:terminate_child(?MODULE, Id),
+    ok = supervisor:delete_child(?MODULE, Id).
+
+restart_port(Id) ->
+    error_logger:info_msg("restarting port: ~p~n", [Id]),
+    ok = supervisor:terminate_child(?MODULE, Id),
+    {ok, _} = supervisor:restart_child(?MODULE, Id).
+
+restart_port_by_name(Name) ->
+    Id = lists:keyfind(Name, 1, current_ports()),
+    case Id of
+        _ when Id =/= false ->
+            restart_port(Id)
+    end.
 
 current_ports() ->
     % Children will look like...
