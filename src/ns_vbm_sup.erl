@@ -70,9 +70,7 @@ kill_vbuckets(Node, Bucket, VBuckets) ->
                                   ns_memcached:set_vbucket(Node, Bucket,
                                                            V, dead),
                                   ns_memcached:delete_vbucket(Node, Bucket, V)
-                              end, RemainingVBuckets),
-            timer:sleep(100),
-            kill_vbuckets(Node, Bucket, VBuckets)
+                              end, RemainingVBuckets)
     end.
 
 set_replicas(Node, Bucket, Replicas) ->

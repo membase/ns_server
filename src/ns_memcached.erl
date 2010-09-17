@@ -40,7 +40,6 @@
 %% external API
 -export([connected/1, connected/2,
          delete_vbucket/2, delete_vbucket/3,
-         delete_vbucket_sync/3,
          get_vbucket/3,
          host_port_str/0, host_port_str/1,
          list_vbuckets/1, list_vbuckets/2,
@@ -77,17 +76,15 @@ init(Bucket) ->
     gen_server:enter_loop(?MODULE, [], #state{sock=Sock, bucket=Bucket}).
 
 
-handle_call({delete_vbucket, VBucket, Sync}, From, State) ->
-    case {mc_client_binary:delete_vbucket(State#state.sock, VBucket), Sync} of
-        {ok, _} ->
+handle_call({delete_vbucket, VBucket}, _From, #state{sock=Sock} = State) ->
+    case mc_client_binary:delete_vbucket(Sock, VBucket) of
+        ok ->
             {reply, ok, State};
-        {{memcached_error, einval, _}, true} ->
-            ok = mc_client_binary:set_vbucket(State#state.sock, VBucket,
+        {memcached_error, einval, _} ->
+            ok = mc_client_binary:set_vbucket(Sock, VBucket,
                                               dead),
-            timer:send_after(?VBUCKET_POLL_INTERVAL, {reap, VBucket, From}),
-            {noreply, State};
-        {{memcached_error, einval, _} = R, false} ->
-            {reply, R, State}
+            Reply = mc_client_binary:delete_vbucket(Sock, VBucket),
+            {reply, Reply, State}
     end;
 handle_call({get_vbucket, VBucket}, _From, State) ->
     Reply = mc_client_binary:get_vbucket(State#state.sock, VBucket),
@@ -186,17 +183,12 @@ connected(Node, Bucket) ->
 %% @doc Delete a vbucket. Will set the vbucket to dead state if it
 %% isn't already, blocking until it successfully does so.
 delete_vbucket(Bucket, VBucket) ->
-    gen_server:call(server(Bucket), {delete_vbucket, VBucket, false}, ?TIMEOUT).
+    gen_server:call(server(Bucket), {delete_vbucket, VBucket}, ?TIMEOUT).
 
 
 delete_vbucket(Node, Bucket, VBucket) ->
-    gen_server:call({server(Bucket), Node}, {delete_vbucket, VBucket, false},
+    gen_server:call({server(Bucket), Node}, {delete_vbucket, VBucket},
                     ?TIMEOUT).
-
-
-delete_vbucket_sync(Node, Bucket, VBucket) ->
-    gen_server:call({server(Bucket), Node}, {delete_vbucket, VBucket, true},
-                    infinity).
 
 
 get_vbucket(Node, Bucket, VBucket) ->

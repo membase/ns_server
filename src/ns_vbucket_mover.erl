@@ -189,7 +189,7 @@ run_mover(Bucket, V, N1, N2, Tries) ->
         {{memcached_error, not_my_vbucket, _}, {ok, active}} ->
             ok;
         {{ok, active}, {ok, S}} when S /= active ->
-            ok = ns_memcached:delete_vbucket_sync(N2, Bucket, V),
+            ok = ns_memcached:delete_vbucket(N2, Bucket, V),
             {ok, _Pid} = ns_vbm_sup:spawn_mover(Bucket, V, N1, N2),
             wait_for_mover(Bucket, V, N1, N2, Tries);
         {{ok, active}, {memcached_error, not_my_vbucket, _}} ->
@@ -197,12 +197,11 @@ run_mover(Bucket, V, N1, N2, Tries) ->
             wait_for_mover(Bucket, V, N1, N2, Tries);
         {{ok, dead}, {ok, pending}} ->
             ok = ns_memcached:set_vbucket(N1, Bucket, V, active),
-            %% Should be active right away, but make sure.
-            {ok, active} = ns_memcached:get_vbucket(N1, Bucket, V),
-            ok = ns_memcached:delete_vbucket_sync(N2, Bucket, V),
+            ok = ns_memcached:delete_vbucket(N2, Bucket, V),
             {ok, _Pid} = ns_vbm_sup:spawn_mover(Bucket, V, N1, N2),
             wait_for_mover(Bucket, V, N1, N2, Tries)
     end.
+
 
 wait_for_mover(Bucket, V, N1, N2, Tries) ->
     receive
