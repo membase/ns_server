@@ -17,6 +17,8 @@
 
 -define(STALE_TIME, 5000000). % 5 seconds in microseconds
 
+-include("ns_common.hrl").
+
 -behaviour(gen_server).
 -export([start_link/0]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
@@ -42,19 +44,24 @@ init([]) ->
     {ok, #state{nodes=dict:new()}}.
 
 handle_call(get_nodes, _From, State) ->
+    %% In case the doctor gets slow, collect any heartbeats from the queue so we
+    %% don't think the status is stale
+    Nodes = collect_status(State#state.nodes),
     Now = erlang:now(),
-    Nodes = dict:map(fun (_, Node) ->
-                             LastHeard = proplists:get_value(last_heard, Node),
-                             case timer:now_diff(Now, LastHeard) > ?STALE_TIME of
-                                     true -> [ stale | Node];
-                                 false -> Node
-                             end
-                      end, State#state.nodes),
-    {reply, Nodes, State}.
+    Nodes1 = dict:map(fun (_, Node) ->
+                              LastHeard = proplists:get_value(last_heard, Node),
+                              case timer:now_diff(Now, LastHeard) > ?STALE_TIME of
+                                  true -> [ stale | Node];
+                                  false -> Node
+                              end
+                      end, Nodes),
+    {reply, Nodes1, State#state{nodes=Nodes}}.
 
-handle_cast({heartbeat, Name, Status}, State) ->
-    Nodes = update_status(Name, Status, State#state.nodes),
-    {noreply, State#state{nodes=Nodes}}.
+
+handle_cast(Msg, State) ->
+    ?log_info("Unexpected cast: ~p", [Msg]),
+    {noreply, State}.
+
 
 handle_info(acquire_initial_status, #state{nodes=NodeDict} = State) ->
     {Replies, BadNodes} = gen_server:multi_call(ns_heart, status),
@@ -72,6 +79,11 @@ handle_info(acquire_initial_status, #state{nodes=NodeDict} = State) ->
                         end, NodeDict, Replies),
     error_logger:info_msg("~p got initial status ~p~n", [?MODULE, Nodes]),
     {noreply, State#state{nodes=Nodes}};
+
+handle_info({heartbeat, Name, Status}, State) ->
+    Nodes = update_status(Name, Status, State#state.nodes),
+    {noreply, State#state{nodes=Nodes}};
+
 handle_info(Info, State) ->
     error_logger:info_msg("ns_doctor: got unexpected message ~p in state ~p.~n",
                           [Info, State]),
@@ -87,7 +99,7 @@ heartbeat(Status) ->
     heartbeat(node(), Status).
 
 heartbeat(Node, Status) ->
-    gen_server:cast({global, ?MODULE}, {heartbeat, Node, Status}).
+    global:send(?MODULE, {heartbeat, Node, Status}).
 
 get_nodes() ->
     try gen_server:call({global, ?MODULE}, get_nodes) of
@@ -98,6 +110,16 @@ get_nodes() ->
 
 
 %% Internal functions
+
+collect_status(Nodes) ->
+    receive
+        {heartbeat, Name, Status} ->
+            Nodes1 = update_status(Name, Status, Nodes),
+            collect_status(Nodes1)
+    after 0 ->
+            Nodes
+    end.
+
 
 update_status(Name, Status, Dict) ->
     Node = [{last_heard, erlang:now()} | Status],
