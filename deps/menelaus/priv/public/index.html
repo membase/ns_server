@@ -1438,7 +1438,7 @@
   <div class="pad" id="init_cluster_dialog">
     <div class="config-top">
       <h1>Configure Server</h1>
-      <h2>Step <span class="current-step">1</span> of 2</h2>
+      <h2>Step <span class="current-step">1</span> of 3</h2>
     </div>
     <div class="alert_red" id="init_cluster_failed_message" style="display:none;">
       <div class="al_text">
@@ -1531,7 +1531,7 @@
   <div class="pad" id="init_secure_dialog">
    <div class="config-top">
       <h1>Configure Server</h1>
-      <h2>Step <span class="current-step">2</span> of 2</h2>
+      <h2>Step <span class="current-step">2</span> of 3</h2>
     </div>
     <div class="alert_red" id="init_secure_failed_message" style="display:none;">
       <div class="al_text">
@@ -1565,7 +1565,7 @@
       <button type="submit" style="display:none;"></button>
     </form>
     <div class="config-bottom">
-      <button name="finish" value="Finish" class="submit finish direction-button" id="step-3-finish" type="submit">Finish</button>
+      <button name="finish" value="Finish" class="submit finish direction-button" id="step-3-finish" type="submit">Next</button>
       <button name="back" value="Back" class="submit back direction-button" id="step-3-back" type="button">Back</button>
     </div>
     <script type="text/javascript">
@@ -1582,6 +1582,96 @@
     </script>
   </div>
   <!-- END init_secure_block -->
+
+	<div class="pad bucket_details" id="init_bucket_dialog">
+		<div class="config-top">
+		  <h1>Create Default Bucket</h1>
+		  <h2>Step <span class="current-step">3</span> of 3</h2>
+		</div>
+	  <form><div class="clearfix">
+	    <h2>Bucket Settings</h2>
+	    <div class="bucket-icon"></div>
+	    <label class="for-name"><span>Bucket Name:</span> default</label>
+	    <div class="for-bucket-type"><span>Bucket Type:</span>
+	     <label><input type="radio" name="bucketType" value="memcache"> Memcached</label>
+	     <label><input type="radio" name="bucketType" value="membase"> Membase</label>
+	    </div>
+	    <h2>Access Control</h2>
+	    <label class="for-sasl-password"><input id="bucket_details_sasl_selected" type="radio" name="authType" value="sasl" checked>
+	      <span>Standard port (TCP port 11211. Needs SASL auth.)</span>
+	   </label>
+	    <label class="for-sasl-password-input"><span>Enter password: </span><input type="password" name="saslPassword" disabled value=""></label>
+	    <label class="for-ascii"><input type="radio" name="authType" value="none"><span>Dedicated port (supports ASCII protocol and is auth-less)</span></label>
+	    <label class="for-proxy-port"><span>Protocol Port:</span><input name="proxyPort"><span class="error-container err-proxyPort"></span></label>
+	    <h2>Memory Size</h2>
+	    <div class="size-gauge for-ram">
+	      <div class="t">Cluster quota (<span class="total">192 Gb</span>)</div>
+	      <div class="gauge">
+	        <div>
+	          <div style="width: 68%;" class="green"></div>
+	          <div style="width: 33%;" class="blue"></div>
+	        </div>
+	      </div>
+	      <table class="b"><tr>
+	        <td class="blue">Other Buckets (<span class="other">15 Gb</span>)</td>
+	        <td class="green">This Bucket (<span class="this">5 Gb</span>)</td>
+	        <td>Free (<span class="free">12 Gb</span>)</td>
+	      </tr></table>
+	    </div>
+	    <label class="for-ram-quota"><span>Dynamic RAM Quota:</span><input name="ramQuotaMB" value="30"><abbr>MB</abbr></label>
+	    <div class="error-container err-ramQuotaMB"></div>
+	    <div class="persistent-only">
+	      <h2>Storage Size</h2>
+	      <!-- <label class="for-enable-persistence"><input type="checkbox" disabled checked><span>Enable Persistence</span></label> -->
+	      <div class="normal size-gauge for-hdd">
+	        <div class="other-data-block">Other data (<span class="other-data">15 Gb</span>)</div>
+	        <div class="t">Total cluster storage (<span class="total">192 Gb</span>)</div>
+	        <div class="gauge">
+	          <div>
+	            <div class="green"></div>
+	            <div class="blue"></div>
+	            <div class="yellow"></div>
+	          </div>
+	        </div>
+	        <table class="b"><tr>
+	          <td class="blue">Other Buckets (<span class="other">15 Gb</span>)</td>
+	          <td class="green">This Bucket (<span class="this">5 Gb</span>)</td>
+	          <td>Free (<span class="free">12 Gb</span>)</td>
+	        </tr></table>
+	      </div>
+	      <div class="overcommit size-gauge for-hdd">
+	        <div class="other-data-block">Other data (<span class="other-data">15 Gb</span>)</div>
+	        <div class="t">Total cluster storage (<span class="total">192 Gb</span>)</div>
+	        <div class="gauge">
+	          <div class="gauge-total">
+	            <div class="green"><i></i></div>
+	            <div class="blue"></div>
+	            <div class="yellow"></div>
+	          </div>
+	        </div>
+	        <table class="b"><tr>
+	          <td class="blue">Other Buckets (<span class="other">15 Gb</span>)</td>
+	          <td class="green">This Bucket (<span class="this">5 Gb</span>)</td>
+	          <td class="extra">Overcommit (<span class="overcommitted">12 Gb</span>)</td>
+	        </tr></table>
+	      </div>
+	      <label class="for-hdd-quota"><span>Disk Quota:</span><input name="hddQuotaGB"><abbr>GB</abbr></label>
+	      <div class="error-container err-hddQuotaGB"></div>
+	      <h2>Replication</h2>
+	      <label class="for-enable-replication"><input type="checkbox" checked disabled><span>Enable Replication</span></label>
+	      <label class="for-replica-number"><input value="1" name="replicaNumber">
+	        <span>Number of replica (backup) copies</span>
+	        <span class="error-container err-replicaNumber"></span>
+	      </label>
+	    </div><!-- .persistent-only -->
+	  </div><div class="save_cancel clearfix">
+	    <!--span class="when-creating"><button class="save_button float_right" type="submit">Create</button></span-->
+		<button name="finish" value="Create" class="submit finish direction-button" id="step-4-finish" type="submit">Create</button>
+		<button name="back" value="Back" class="submit back direction-button" id="step-4-back" type="button">Back</button>
+	  </div></form>
+	</div>
+  <!-- END init_bucket_block -->
+
   <div class="page-footer">
     <div class="main_holder">
       <h1>Copyright 2010 <a href="http://northscale.com">NorthScale, Inc.</a> All rights reserved.</h1>

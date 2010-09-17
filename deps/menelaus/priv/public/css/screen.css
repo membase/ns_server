@@ -859,7 +859,7 @@ button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
 #init_block .pad { display: none; }
 
 body.init_welcome #init_block { display: block; }
-body.init_welcome #init_welcome_dialog { display: block; }
+body.init_welcome #init_welcome_dialog { display: block;  display=:none !important;}
 body.init_welcome #container { display: none; }
 body.init_welcome #init_welcome_dialog h1 {color:#fff; font-family:Verdana, Helvetica, sans-serif; font-size:18pt; font-weight:100; margin-bottom:-25px; margin-left:25px; padding-left:25px;}
 body.init_welcome #init_welcome_dialog p {color:#acbbc4; font-family:Verdana, Helvetica, sans-serif; font-size:14pt; font-weight:100;}
@@ -869,7 +869,7 @@ body.init_welcome #init_welcome_dialog .pad-header div.tagline {color:#00a6de; f
 body.init_welcome #init_welcome_dialog .pad-header div.version {color:#ec5223; font-size:11pt;}
 body.init_welcome #init_welcome_dialog .pad-header div.elastro-cling {background:url(../images/elastro_cling_v22.png) no-repeat; float:right; height:239px; margin-right:-167px; width:189px;}
 
-body.init_welcome form#init_welcome_form {width:600px;margin:25px 0 14px 50px;/*margin-bottom:162px;*/}
+body.init_welcome form#init_welcome_form {width:600px;margin:25px 0 14px 50px;}
 body.init_welcome form#init_welcome_form p {color:#bdccd4; font-family:Verdana,Helvetica,sans-serif; font-size:12pt; line-height:20px; margin-bottom:20px;}
 body.init_welcome form#init_welcome_form input.license-input {border:1px solid #b6bdc1; color:#7e7e80; font:14px Verdana, Helvetica, sans-serif; margin:0px; padding:5px 6px;width:190px;}
 body.init_welcome form#init_welcome_form input[disabled="disabled"].license-input {background:#ddd;}
@@ -882,9 +882,9 @@ body.init_welcome #init_welcome_dialog .welcome-footer a {color:#a7e4ff; margin-
 button.direction-button {background:url(../images/blue-button.png) no-repeat; border:none; color:#fff; cursor:pointer; float:right; font-family:Arial, Helvetica, Sans-Serif; font-size:12pt; margin-right:20px; margin-top:20px; width:121px; height:31px; line-height:31px !important;}
 
 div.config-top {background:url(../images/config-top.png) repeat-x; height:60px; line-height:60px; margin:0px 0px 0px -8px;}
-div.config-top h1, div.config-top h2 {font-family:Verdana, Helvetica, Sans-Serif; text-shadow: 0px 1px 2px #fff;}
-div.config-top h1 {color:#444245; float:left; font-size:16pt; margin:-15px 0px 0px 20px; padding:0px;}
-div.config-top h2 {color:#8b8b8e; float:right; font-size:10pt; margin-right:20px;}
+div.config-top h1, div.config-top h2 {background:none;border:none;font-family:Verdana, Helvetica, Sans-Serif; text-shadow: 0px 1px 2px #fff;}
+div.config-top h1 {color:#444245; float:left; font-size:16pt; margin:-15px 0 0 20px; padding:0;}
+div.config-top h2 {color:#8b8b8e; float:right; font-size:10pt; margin:0 20px 0 0; padding:0;font-weight:bold;clear:none;border:none;}
 div.config-bottom {background:url(../images/config-bottom.png) repeat-x; height:74px; line-height:84px; margin:0px 0px 0px -8px;}
 div.config-bottom a.cancel {color:#8b8b8e; float:right; font-family:Arial, Helvetica, Sans-Serif; font-size:12pt; margin-right:25px; margin-top:-5px; text-decoration:none;}
 
@@ -892,7 +892,7 @@ body.init_resources #init_block { display: block; }
 body.init_resources #init_resources_dialog {background:none; background-color:#eee; display: block; padding-bottom:-50px;}
 body.init_resources #container { display: none; }
 
-body.init_cluster #init_block { display: block; }
+body.init_cluster #init_block { display:block;}
 body.init_cluster #init_cluster_dialog {background:none; background-color:#eee; display: block; padding-bottom:-50px;}
 body.init_cluster #init_cluster_dialog h2.question {border-bottom:1px solid #d5dadd; color:#444245; font-size:14pt; font-family:Verdana, Helvetica, Sans-Serif; font-weight:lighter; margin:25px 0px 0px 50px; padding-bottom:5px; width:85%;}
 body.init_cluster #init_cluster_dialog p.pad_10 {color:#444245; font-family:Verdana, Helvetica, Sans-Serif; font-size:10pt; font-weight:lighter; line-height:20px; margin-left:75px; width:500px;}
@@ -911,7 +911,7 @@ body.init_cluster form#init_cluster_form > div div.memory-quota span+span {margi
 body.init_cluster #container { display: none; }
 
 body.init_secure #init_block { display: block; }
-body.init_secure #init_secure_dialog {background:none; background-color:#eee; display: block; padding-bottom:-50px;}
+body.init_secure #init_secure_dialog {background:none #eee;display:block; padding-bottom:-50px;}
 body.init_secure #init_secure_dialog h2.title {border-bottom:1px solid #d5dadd; color:#444245; font-size:14pt; font-family:Verdana, Helvetica, Sans-Serif; font-weight:lighter; margin:25px 0px 0px 50px; padding-bottom:5px; width:85%;}
 body.init_secure #init_secure_dialog p.pad_10 {width:500px;margin-left:65px;font:lighter 10pt/20px Verdana, Helvetica, Sans-Serif;}
 body.init_secure #init_secure_dialog form {width:100%;padding:0 0 25px;}
@@ -920,8 +920,12 @@ body.init_secure #init_secure_dialog form > div label {display:inline-block;widt
 body.init_secure #init_secure_dialog form > div input {width:183px; padding:3px 3px 4px 5px;font-size:12pt; border:1px solid #e5e7e9;}
 body.init_secure #container { display: none; }
 
-/* init_block */
+.init_block #init_bucket_dialog {width:748px;padding-bottom:-50px;background:none #eee;}
+.init_block #init_bucket_dialog form {border:none;font-family:Verdana,Helvetica,sans-serif;}
+.init_block #init_bucket_dialog form > .clearfix:first-child {padding:0 50px 20px;}
+.init_block #init_bucket_dialog .save_cancel button {margin:2px 0 0 20px;}
 
+/* init_block */
 .init_block {min-height:700px; padding:55px 0 0; position:relative;}
 .init_block h1 {color:#2f3536; text-transform:uppercase; font-size:28px; padding:28px 0 30px 0; position:relative; top:13px;}
 .init_block .pad { width:724px; margin:0 auto;background:url(../images/welcome-background.png) 0 100% no-repeat;}
@@ -936,7 +940,6 @@ body.init_secure #container { display: none; }
 .init_block .pad .spinner {width:582px !important; height:245px !important; position:absolute !important; left:0px !important; top:90px !important; /*background:url(../images/login_screen.png) 100% -72px no-repeat !important;*/ background:none #747e7c !important; line-height:14px !important;}
 .init_block .pad .spinner span {display:block; width: 150px; height:20px; padding:50px 0 0 0; text-align:center; font-size:12px; color:#a6b1b3; background:url(../images/spinner/spinner_1.gif) 55px 5px no-repeat; position:relative; margin:auto; top:122px;}
 .init_block .page-footer {display: none;}
-
 
 
 #servers .list_button, #servers .add_button, #servers .rebalance_button, #servers .stop_rebalance_button
@@ -1214,7 +1217,7 @@ position:absolute;right:0;top:-5px;width:1px;}
 
 .bucket_details label.for-enable-persistence {padding-left:20px;}
 .bucket_details label.for-enable-persistence span {float:none;display:inline;margin-left:6px;}
-.bucket_details label.for-ram-quota, .bucket_details label.for-hdd-quota {width:275px;display:block;padding-top:13px;}
+.bucket_details label.for-ram-quota, .bucket_details label.for-hdd-quota {width:275px;padding-top:13px;}
 .bucket_details label.for-ram-quota span, .bucket_details label.for-hdd-quota span {width:164px;}
 .bucket_details label.for-ram-quota input, .bucket_details label.for-hdd-quota input {width:58px;}
 .bucket_details .invalid {border-color:red;}
@@ -1223,7 +1226,7 @@ position:absolute;right:0;top:-5px;width:1px;}
 .bucket_details .for-replica-number .error-container {float:none;padding-left:0;}
 .bucket_details .error-container.active {visibility:visible;}
 .bucket_details label.for-enable-replication {padding-left:20px;width:150px;float:left;}
-.bucket_details label.for-enable-replication span {display:inline;float:none;margin-left:6px;}
+.bucket_details label.for-enable-replication span {display:inline;float:none;margin-left:5px;}
 .bucket_details label.for-replica-number {display:block;float:left;}
 .bucket_details label.for-replica-number span {display:inline;float:none;margin-left:6px;}
 .bucket_details label.for-replica-number input {width:29px;}
