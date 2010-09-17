@@ -81,7 +81,8 @@ update_childs() ->
 
 child_spec(Bucket) ->
     [{{ns_memcached, Bucket}, {ns_memcached, start_link, [Bucket]},
-      permanent, 10, worker, [ns_memcached]},
+      %% ns_memcached waits for the bucket to sync to disk before exiting
+      permanent, 86400000, worker, [ns_memcached]},
      {{stats_collector, Bucket}, {stats_collector, start_link, [Bucket]},
       permanent, 10, worker, [stats_collector]},
      {{stats_archiver, Bucket}, {stats_archiver, start_link, [Bucket]},

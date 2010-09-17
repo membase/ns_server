@@ -73,6 +73,8 @@ init(Bucket) ->
     wait_for_warmup(Sock),
     register(server(Bucket), self()),
     timer:send_interval(?CHECK_INTERVAL, check_config),
+    %% this trap_exit is necessary for terminate callback to work
+    process_flag(trap_exit, true),
     gen_server:enter_loop(?MODULE, [], #state{sock=Sock, bucket=Bucket}).
 
 
@@ -159,7 +161,20 @@ handle_info(Msg, State) ->
     {noreply, State}.
 
 
-terminate(_Reason, State) ->
+terminate(Reason, State) ->
+    if
+        Reason == normal; Reason == shutdown ->
+            ?log_info("Deleting bucket ~p", [State#state.bucket]),
+            try
+                mc_client_binary:delete_bucket(State#state.sock,
+                                               State#state.bucket)
+            catch
+                E:R ->
+                    ?log_error("Failed to delete bucket ~p: ~p",
+                               [State#state.bucket, {E, R}])
+            end;
+        true -> ok
+    end,
     catch gen_tcp:close(State#state.sock),
     ok.
 
