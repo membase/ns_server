@@ -196,9 +196,7 @@ idle({create_bucket, BucketType, BucketName, NewConfig}, _From, State) ->
     {reply, Reply, idle, State};
 idle({delete_bucket, BucketName}, _From, State) ->
     ns_bucket:delete_bucket(BucketName),
-    %% ns_bucket_sup:update_childs(),
-    %% wait for ns_bucket_sup:update_childs() to be called by timer
-    timer:sleep(500),
+    ns_config:sync_announcements(),
     {reply, ok, idle, State};
 idle({failover, Node}, _From, State) ->
     ?log_info("Failing over ~p", [Node]),
