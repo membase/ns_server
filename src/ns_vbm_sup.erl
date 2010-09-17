@@ -19,6 +19,8 @@
 
 -include("ns_common.hrl").
 
+-define(MAX_VBUCKETS, 512). %% Maximum # of vbuckets for a vbucketmigrator
+
 -record(child_id, {bucket::nonempty_string(),
                    vbuckets::[non_neg_integer(), ...],
                    dest_node::atom()}).
@@ -94,7 +96,11 @@ set_replicas(Node, Bucket, Replicas) ->
                                 ns_memcached:set_vbucket(Dst, Bucket, V,
                                                          replica)
                         end, VBuckets),
-                      {ok, _Pid} = start_child(Node, Bucket, VBuckets, Dst)
+                      %% Make sure the command line doesn't get too long
+                      lists:foreach(
+                        fun (VB) ->
+                                {ok, _Pid} = start_child(Node, Bucket, VB, Dst)
+                        end, split_vbuckets(VBuckets))
               end, Grouped);
         false ->
             {error, nodedown}
@@ -103,6 +109,18 @@ set_replicas(Node, Bucket, Replicas) ->
 spawn_mover(Bucket, VBucket, SrcNode, DstNode) ->
     Args = args(SrcNode, Bucket, [VBucket], DstNode, true),
     apply(ns_port_server, start_link, Args).
+
+split_vbuckets(VBuckets) ->
+    split_vbuckets(VBuckets, []).
+
+split_vbuckets(VBuckets, L) ->
+    if
+        length(VBuckets) =< ?MAX_VBUCKETS ->
+            [VBuckets|L];
+        true ->
+            {H, T} = lists:split(?MAX_VBUCKETS, VBuckets),
+            split_vbuckets(T, [H|L])
+    end.
 
 kill_all_children(Node) ->
     lists:foreach(fun (Child) ->
