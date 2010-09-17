@@ -15,102 +15,42 @@
 %%
 -module(ns_cluster).
 
--behaviour(gen_fsm).
+-behaviour(gen_server).
 
 -include("ns_common.hrl").
-
-%% General FSMness
--export([start_link/0, init/1, handle_info/3,
-         handle_event/3, handle_sync_event/4,
-         code_change/4, terminate/3, prepare_join_to/1, change_my_address/1]).
 
 -define(NODE_JOIN_REQUEST, 2).
 -define(NODE_JOINED, 3).
 -define(NODE_EJECTED, 4).
 
-%% States
--export([running/2, running/3, joining/2, joining/3, leaving/2, leaving/3]).
+%% gen_server callbacks
+-export([code_change/3, handle_call/3, handle_cast/2, handle_info/2, init/1,
+         terminate/2]).
 
 %% API
--export([join/2, leave/0, leave/1, shun/1, log_joined/0]).
+-export([change_my_address/1, join/2, leave/0, leave/1, log_joined/0,
+         prepare_join_to/1, shun/1, start_link/0]).
 
 -export([alert_key/1]).
+-record(state, {}).
 
--record(running_state, {child}).
--record(joining_state, {remote, cookie, my_ip}).
--record(leaving_state, {callback}).
+%%
+%% API
+%%
 
-%% gen_server handlers
 start_link() ->
-    gen_fsm:start_link({local, ?MODULE}, ?MODULE, [], []).
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
-init([]) ->
-    process_flag(trap_exit, true),
-    ok = net_kernel:monitor_nodes(true,
-                                  [{node_type, all}, nodedown_reason]),
-    ns_mnesia:start(),
-    bringup().
-
-%% Bringup services.
-bringup() ->
-    case ns_server_sup:start_link() of
-        {ok, Pid} ->
-            {ok, running, #running_state{child=Pid}};
-        E ->
-            %% Sleep a second and a half to give the global singleton
-            %% watchdog time to realize it's not registered
-            timer:sleep(1500),
-            {error, E}
-    end.
 
 %%
-%% State Transitions
+%% gen_server handlers
 %%
 
-running({join, RemoteNode, NewCookie}, State) ->
-    ns_log:log(?MODULE, 0002, "Node ~p is joining cluster via node ~p.",
-               [node(), RemoteNode]),
-    mnesia:stop(),
-    mnesia:delete_schema([node()]),
-    BlackSpot = make_ref(),
-    MyNode = node(),
-    ns_config:update(fun ({directory,_} = X) -> X;
-                         ({otp, _}) -> {otp, [{cookie, NewCookie}]};
-                         ({nodes_wanted, _} = X) -> X;
-                         ({{node, _, membership}, _}) -> BlackSpot;
-                         ({{node, Node, _}, _} = X) when Node =:= MyNode -> X;
-                         (_) -> BlackSpot
-                     end, BlackSpot),
-    %% cannot force low timestamp with ns_config update, so we set it separately
-    ns_config:set_initial(nodes_wanted, [node(), RemoteNode]),
-    error_logger:info_msg("pre-join cleaned config is:~n~p~n",
-                          [ns_config:get()]),
-    true = exit(State#running_state.child, shutdown), % Pull the rug out from
-                                                      % under the app
-    {next_state, joining, #joining_state{remote=RemoteNode, cookie=NewCookie}};
-
-running({leave, Data}, State) ->
-    ns_log:log(?MODULE, 0001, "Node ~p is leaving cluster.", [node()]),
-    NewCookie = ns_node_disco:cookie_gen(),
-    erlang:set_cookie(node(), NewCookie),
-    lists:foreach(fun erlang:disconnect_node/1, nodes()),
-    WebPort = ns_config:search_node_prop(ns_config:get(), rest, port, false),
-    ns_config:clear([directory]),
-    case WebPort of
-        false -> false;
-        _ -> ns_config:set(rest, [{port, WebPort}])
-    end,
-    ns_config:set_initial(nodes_wanted, [node()]),
-    ns_config:set_initial(otp, [{cookie, NewCookie}]),
-    ns_mnesia:delete_schema_and_stop(),
-    true = exit(State#running_state.child, shutdown),
-    {next_state, leaving, Data};
-
-running(leave, State) ->
-    running({leave, #leaving_state{}}, State).
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
 
 
-running({add_node, Node}, _From, State) ->
+handle_call({add_node, Node}, _From, State) ->
     Fun = fun(X) ->
                   lists:usort([Node | X])
           end,
@@ -118,13 +58,14 @@ running({add_node, Node}, _From, State) ->
     ns_config:set({node, Node, membership}, inactiveAdded),
     ns_mnesia:add_node(Node),
     ?log_info("Successfully added ~p to cluster.", [Node]),
-    {reply, ok, running, State};
-running({change_address, NewAddr}, _From, State) ->
+    {reply, ok, State};
+
+handle_call({change_address, NewAddr}, _From, State) ->
     MyNode = node(),
     case misc:node_name_host(MyNode) of
         {_, NewAddr} ->
             %% Don't do anything if we already have the right address.
-            {reply, ok, running, State};
+            {reply, ok, State};
         {_, _} ->
             CookieBefore = erlang:get_cookie(),
             ns_server_sup:pull_plug(
@@ -152,58 +93,86 @@ running({change_address, NewAddr}, _From, State) ->
                               ?log_error("Not attempting to rename node: ~p", [E])
                       end
               end),
-            {reply, ok, running, State}
+            {reply, ok, State}
     end.
 
 
-joining({exit, _Pid}, #joining_state{remote=RemoteNode, cookie=NewCookie}) ->
-    error_logger:info_msg("ns_cluster: joining cluster. Child has exited.~n"),
-    timer:sleep(1000), % Sleep for a second to let things settle
-    true = erlang:set_cookie(node(), NewCookie),
-    %% Let's verify connectivity.
-    Connected = net_kernel:connect_node(RemoteNode),
-    ?log_info("Connection from ~p to ~p:  ~p",
-              [node(), RemoteNode, Connected]),
-    %% Add ourselves to nodes_wanted on the remote node after shutting
-    %% down our own config server.
-    mnesia:start(),
-    ok = gen_fsm:sync_send_event({?MODULE, RemoteNode}, {add_node, node()}),
-    error_logger:info_msg("Remote config updated to add ~p to ~p~n",
-                          [node(), RemoteNode]),
-    {ok, running, State} = bringup(),
-
+handle_cast({join, RemoteNode, NewCookie}, State) ->
+    ns_log:log(?MODULE, 0002, "Node ~p is joining cluster via node ~p.",
+               [node(), RemoteNode]),
+    BlackSpot = make_ref(),
+    MyNode = node(),
+    ns_config:update(fun ({directory,_} = X) -> X;
+                         ({otp, _}) -> {otp, [{cookie, NewCookie}]};
+                         ({nodes_wanted, _} = X) -> X;
+                         ({{node, _, membership}, _}) -> BlackSpot;
+                         ({{node, Node, _}, _} = X) when Node =:= MyNode -> X;
+                         (_) -> BlackSpot
+                     end, BlackSpot),
+    %% cannot force low timestamp with ns_config update, so we set it separately
+    ns_config:set_initial(nodes_wanted, [node(), RemoteNode]),
+    error_logger:info_msg("pre-join cleaned config is:~n~p~n",
+                          [ns_config:get()]),
+    %% Pull the rug out from under the app
+    ok = ns_server_cluster_sup:stop_cluster(),
+    ns_mnesia:delete_schema_and_stop(),
+    try
+        error_logger:info_msg("ns_cluster: joining cluster. Child has exited.~n"),
+        timer:sleep(1000), % Sleep for a second to let things settle
+        true = erlang:set_cookie(node(), NewCookie),
+        %% Let's verify connectivity.
+        Connected = net_kernel:connect_node(RemoteNode),
+        ?log_info("Connection from ~p to ~p:  ~p",
+                  [node(), RemoteNode, Connected]),
+        %% Add ourselves to nodes_wanted on the remote node after shutting
+        %% down our own config server.
+        ok = gen_server:call({?MODULE, RemoteNode}, {add_node, node()}, 20000),
+        ?log_info("Remote config updated to add ~p to ~p",
+                  [node(), RemoteNode])
+    catch
+        Type:Error ->
+            ?log_error("Error during join: ~p", [{Type, Error}])
+    end,
+    ns_mnesia:start(),
+    ns_server_cluster_sup:start_cluster(),
     timer:apply_after(1000, ?MODULE, log_joined, []),
-    {next_state, running, State};
-joining(Event, State) ->
-    ?log_warning("Got unexpected event ~p in state joining: ~p", [Event, State]),
-    {next_state, joining, State}.
+    {noreply, State};
 
-
-joining(_Event, _From, State) ->
-    {reply, unhandled, joining, State}.
-
-
-leaving({exit, _Pid}, LeaveData) ->
+handle_cast(leave, State) ->
+    ns_log:log(?MODULE, 0001, "Node ~p is leaving cluster.", [node()]),
+    NewCookie = ns_node_disco:cookie_gen(),
+    erlang:set_cookie(node(), NewCookie),
+    lists:foreach(fun erlang:disconnect_node/1, nodes()),
+    WebPort = ns_config:search_node_prop(ns_config:get(), rest, port, false),
+    ns_config:clear([directory]),
+    case WebPort of
+        false -> false;
+        _ -> ns_config:set(rest, [{port, WebPort}])
+    end,
+    ns_config:set_initial(nodes_wanted, [node()]),
+    ns_config:set_initial(otp, [{cookie, NewCookie}]),
+    ns_mnesia:delete_schema_and_stop(),
+    ok = ns_server_cluster_sup:stop_cluster(),
     error_logger:info_msg("ns_cluster: leaving cluster~n"),
     timer:sleep(1000),
     ns_mnesia:start(),
-    {ok, running, State} = bringup(),
-    case LeaveData#leaving_state.callback of
-        F when is_function(F) -> F();
-        _ -> ok
-    end,
-    {next_state, running, State};
-
-leaving(leave, LeaveData) ->
-    %% If we are told to leave in the leaving state, continue leaving.
-    {next_state, leaving, LeaveData};
-leaving({leave, _}, LeaveData) ->
-    %% If we are told to leave in the leaving state, continue leaving.
-    {next_state, leaving, LeaveData}.
+    ns_server_cluster_sup:start_cluster(),
+    {noreply, State}.
 
 
-leaving(_Event, _From, State) ->
-    {reply, unhandled, leaving, State}.
+
+handle_info(Msg, State) ->
+    ?log_info("Unexpected message ~p", [Msg]),
+    {noreply, State}.
+
+
+init([]) ->
+    catch ns_mnesia:start(),
+    {ok, #state{}}.
+
+
+terminate(_Reason, _State) ->
+    ok.
 
 
 %%
@@ -215,27 +184,20 @@ log_joined() ->
                [node()]).
 
 
-%%
-%% Miscellaneous gen_fsm callbacks.
-%%
-
-handle_info({'EXIT', Pid, shutdown}, CurrentState, CurrentData) ->
-    ?MODULE:CurrentState({exit, Pid}, CurrentData);
-handle_info(Other, CurrentState, CurrentData) ->
-    error_logger:info_msg("ns_cluster saw ~p in state ~p~n",
-                          [Other, CurrentState]),
-    {next_state, CurrentState, CurrentData}.
-
-handle_event(Event, State, _StateData) ->
-    exit({unhandled_event, Event, State}).
-
-handle_sync_event(Event, _From, State, _StateData) ->
-    exit({unhandled_event, Event, State}).
-
-code_change(_OldVsn, State, StateData, _Extra) ->
-    {ok, State, StateData}.
-
-terminate(_Reason, _StateName, _StateData) -> ok.
+rename_node(Old, New) ->
+    ns_config:update(fun ({K, V} = Pair) ->
+                             NewK = misc:rewrite_value(Old, New, K),
+                             NewV = misc:rewrite_value(Old, New, V),
+                             if
+                                 NewK =/= K orelse NewV =/= V ->
+                                     error_logger:info_msg(
+                                       "renaming node conf ~p -> ~p:~n  ~p ->~n  ~p~n",
+                                       [K, NewK, V, NewV]),
+                                     {NewK, NewV};
+                                 true ->
+                                     Pair
+                             end
+                     end, erlang:make_ref()).
 
 %%
 %% API
@@ -248,7 +210,7 @@ join(RemoteNode, NewCookie) ->
 
     case lists:member(RemoteNode, ns_node_disco:nodes_wanted()) of
         true -> {error, already_joined};
-        false-> gen_fsm:send_event(?MODULE, {join, RemoteNode, NewCookie})
+        false-> gen_server:cast(?MODULE, {join, RemoteNode, NewCookie})
     end.
 
 leave() ->
@@ -262,7 +224,7 @@ leave() ->
     %% Tell the remote server to tell everyone to shun me.
     rpc:cast(RemoteNode, ?MODULE, shun, [node()]),
     %% Then drop ourselves into a leaving state.
-    gen_fsm:send_event(?MODULE, leave).
+    gen_server:cast(?MODULE, leave).
 
 %% Cause another node to leave the cluster if it's up
 leave(Node) ->
@@ -270,7 +232,8 @@ leave(Node) ->
         true ->
             leave();
         false ->
-            catch gen_fsm:send_event({?MODULE, Node}, leave),
+            %% Will never fail, but may not reach the destination
+            gen_server:cast({?MODULE, Node}, leave),
             shun(Node)
     end.
 
@@ -307,20 +270,5 @@ prepare_join_to(OtherHost) ->
         {error, _} = X -> X
     end.
 
-rename_node(Old, New) ->
-    ns_config:update(fun ({K, V} = Pair) ->
-                             NewK = misc:rewrite_value(Old, New, K),
-                             NewV = misc:rewrite_value(Old, New, V),
-                             if
-                                 NewK =/= K orelse NewV =/= V ->
-                                     error_logger:info_msg(
-                                       "renaming node conf ~p -> ~p:~n  ~p ->~n  ~p~n",
-                                       [K, NewK, V, NewV]),
-                                     {NewK, NewV};
-                                 true ->
-                                     Pair
-                             end
-                     end, erlang:make_ref()).
-
 change_my_address(MyAddr) ->
-    gen_fsm:sync_send_event(?MODULE, {change_address, MyAddr}).
+    gen_server:call(?MODULE, {change_address, MyAddr}, 20000).
