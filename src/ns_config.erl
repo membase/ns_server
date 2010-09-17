@@ -60,7 +60,8 @@
          search_prop_tuple/3, search_prop_tuple/4,
          search_raw/2,
          clear/0, clear/1,
-         proplist_get_value/3]).
+         proplist_get_value/3,
+         sync_announcements/0]).
 
 % Exported for tests only
 -export([merge_configs/3, save_file/3, load_config/3,
@@ -605,6 +606,12 @@ read_includes([{include, Path} | Terms], Acc) ->
   end;
 read_includes([X | Rest], Acc) -> read_includes(Rest, [X | Acc]);
 read_includes([], Result)      -> {ok, lists:reverse(Result)}.
+
+%% waits till all config change notifications are processed by
+%% ns_config_events
+sync_announcements() ->
+    gen_event:sync_notify(ns_config_events,
+                          barrier).
 
 -ifdef(EUNIT).
 
