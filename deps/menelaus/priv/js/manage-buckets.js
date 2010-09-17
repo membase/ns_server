@@ -380,7 +380,7 @@ var BucketsSection = {
       actionLinkCallback: function () {
         ThePage.ensureSection('buckets');
       },
-	  placeholderContainerChildCSS: null,
+      placeholderContainerChildCSS: null,
       valueTransformer: function (bucketInfo, bucketSettings) {
         var rv = _.extend({}, bucketInfo, bucketSettings);
         delete rv.settingsCell;
