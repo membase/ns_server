@@ -142,7 +142,7 @@ handle_info({sample_archived, _, _}, State) ->
     {noreply, State};
 handle_info({truncate, Period, N}, #state{bucket=Bucket} = State) ->
     Tab = table(Bucket, Period),
-    truncate(Tab, N),
+    ns_mnesia:truncate(Tab, N),
     {noreply, State};
 handle_info({cascade, Prev, Period, Step}, #state{bucket=Bucket} = State) ->
     cascade(Bucket, Prev, Period, Step),
@@ -198,30 +198,12 @@ cascade(Bucket, Prev, Period, Step) ->
 create_tables(Bucket) ->
     lists:foreach(
       fun ({Period, _, _}) ->
-              TableName = table(Bucket, Period),
-              try mnesia:table_info(TableName, disc_copies) of
-                  Nodes when is_list(Nodes) ->
-                      case lists:member(node(), Nodes) of
-                          true ->
-                              ok;
-                          false ->
-                              ?log_info("Creating local copy of ~p",
-                                        [TableName]),
-                              {atomic, ok} = mnesia:add_table_copy(
-                                               TableName, node(), disc_copies)
-                      end
-              catch exit:{aborted, {no_exists, _, _}} ->
-                      {atomic, ok} =
-                          mnesia:create_table(
-                            TableName,
-                            [{disc_copies, [node()]},
-                             {record_name, stat_entry},
-                             {type, ordered_set},
-                             {local_content, true},
-                             {attributes,
-                              record_info(fields, stat_entry)}]),
-                      ?log_info("Created table ~p", [TableName])
-              end
+              ns_mnesia:ensure_table(table(Bucket, Period),
+                                     [{record_name, stat_entry},
+                                      {type, ordered_set},
+                                      {local_content, true},
+                                      {attributes,
+                                       record_info(fields, stat_entry)}])
       end, archives()).
 
 
@@ -324,26 +306,6 @@ table(Bucket, Period) ->
 %% @doc Truncate a timestamp to the nearest multiple of N seconds.
 trunc_ts(TS, N) ->
     TS - (TS rem (N*1000)).
-
-
-%% @doc Truncate the given table to the last N records.
-truncate(Tab, N) ->
-    {atomic, _M} = mnesia:transaction(
-                     fun () -> truncate(Tab, mnesia:last(Tab), N, 0) end).
-
-
-
-truncate(_Tab, '$end_of_table', N, M) ->
-    case N of
-        0 -> M;
-        _ -> -N
-    end;
-truncate(Tab, Key, 0, M) ->
-    NextKey = mnesia:prev(Tab, Key),
-    ok = mnesia:delete({Tab, Key}),
-    truncate(Tab, NextKey, 0, M + 1);
-truncate(Tab, Key, N, 0) ->
-    truncate(Tab, mnesia:prev(Tab, Key), N - 1, 0).
 
 
 %% @doc Return the last N records starting with the given key from Tab.

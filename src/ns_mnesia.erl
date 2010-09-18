@@ -25,8 +25,10 @@
 
 %% API
 -export([delete_node/1, delete_schema/0,
+         ensure_table/2,
          prepare_rename/0, rename_node/2,
-         start_link/0]).
+         start_link/0,
+         truncate/2]).
 
 %% gen_server callbacks
 -export([code_change/3, handle_call/3, handle_cast/2,
@@ -53,6 +55,12 @@ delete_schema() ->
     ok = mnesia:delete_schema([node()]),
     ?log_info("Deleted schema.~nCurrent config: ~p",
               [mnesia:system_info(all)]).
+
+
+%% @doc Make sure table exists and has a copy on this node, creating it or
+%% adding a copy if it does not.
+ensure_table(TableName, Opts) ->
+    gen_server:call(?MODULE, {ensure_table, TableName, Opts}).
 
 
 %% @doc Back up the database in preparation for a node rename.
@@ -82,6 +90,12 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 
+%% @doc Truncate the given table to the last N records.
+truncate(Tab, N) ->
+    {atomic, _M} = mnesia:transaction(
+                     fun () -> truncate(Tab, mnesia:last(Tab), N, 0) end).
+
+
 %%
 %% gen_server callbacks
 %%
@@ -102,6 +116,27 @@ handle_call({add_node, Node}, _From, State) ->
             ?log_warning("Node ~p was already in cluster.", [Node])
     end,
     ?log_info("Mnesia config:~n~p", [mnesia:system_info(all)]),
+    {reply, ok, State};
+
+handle_call({ensure_table, TableName, Opts}, _From, State) ->
+    try mnesia:table_info(TableName, disc_copies) of
+        Nodes when is_list(Nodes) ->
+            case lists:member(node(), Nodes) of
+                true ->
+                    ok;
+                false ->
+                    ?log_info("Creating local copy of ~p",
+                              [TableName]),
+                    {atomic, ok} = mnesia:add_table_copy(
+                                     TableName, node(), disc_copies)
+            end
+    catch exit:{aborted, {no_exists, _, _}} ->
+            {atomic, ok} =
+                mnesia:create_table(
+                  TableName,
+                  Opts ++ [{disc_copies, [node()]}]),
+            ?log_info("Created table ~p", [TableName])
+    end,
     {reply, ok, State};
 
 handle_call(prepare_rename, _From, State) ->
@@ -237,3 +272,16 @@ tmpdir() ->
 
 tmpdir(Filename) ->
     filename:join(tmpdir(), Filename).
+
+
+truncate(_Tab, '$end_of_table', N, M) ->
+    case N of
+        0 -> M;
+        _ -> -N
+    end;
+truncate(Tab, Key, 0, M) ->
+    NextKey = mnesia:prev(Tab, Key),
+    ok = mnesia:delete({Tab, Key}),
+    truncate(Tab, NextKey, 0, M + 1);
+truncate(Tab, Key, N, 0) ->
+    truncate(Tab, mnesia:prev(Tab, Key), N - 1, 0).
