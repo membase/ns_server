@@ -257,7 +257,10 @@ grab_op_stats_body(Bucket, ClientTStamp, Ref, PeriodParams) ->
                                       [] -> Samples;
                                       _ -> lists:reverse(CutSamples)
                                   end,
-                    Replies = invoke_archiver(Bucket, ns_node_disco:nodes_wanted(), PeriodParams),
+                    Replies = invoke_archiver(
+                                Bucket,
+                                ns_node_disco:nodes_actual_proper(),
+                                PeriodParams),
                     %% merge samples from other nodes
                     MergedSamples = lists:foldl(fun ({Node, _}, AccSamples) when Node =:= node() -> AccSamples;
                                                     ({_Node, RemoteSamples}, AccSamples) ->
