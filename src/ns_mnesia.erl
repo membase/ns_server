@@ -156,6 +156,9 @@ handle_info(Msg, State) ->
 init([]) ->
     process_flag(trap_exit, true),
     mnesia:set_debug_level(verbose),
+    %% Don't hang forever if a node goes down when a transaction is in
+    %% an unclear state
+    application:set_env(mnesia, max_wait_for_decision, 10000),
     ok = mnesia:start(), % Will work even if it's already started
     {ok, _} = mnesia:subscribe(system),
     {ok, _} = mnesia:subscribe({table, schema, detailed}),
