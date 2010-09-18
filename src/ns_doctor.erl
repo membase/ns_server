@@ -99,7 +99,7 @@ heartbeat(Status) ->
     heartbeat(node(), Status).
 
 heartbeat(Node, Status) ->
-    global:send(?MODULE, {heartbeat, Node, Status}).
+    catch global:send(?MODULE, {heartbeat, Node, Status}).
 
 get_nodes() ->
     try gen_server:call({global, ?MODULE}, get_nodes) of
