@@ -56,7 +56,6 @@ handle_call({add_node, Node}, _From, State) ->
           end,
     ns_config:update_key(nodes_wanted, Fun),
     ns_config:set({node, Node, membership}, inactiveAdded),
-    ns_mnesia:add_node(Node),
     ?log_info("Successfully added ~p to cluster.", [Node]),
     {reply, ok, State};
 
@@ -68,29 +67,18 @@ handle_call({change_address, NewAddr}, _From, State) ->
             {reply, ok, State};
         {_, _} ->
             CookieBefore = erlang:get_cookie(),
+            ok = ns_mnesia:prepare_rename(),
             ns_server_sup:pull_plug(
               fun() ->
-                      case ns_mnesia:prepare_rename() of
-                          ok ->
-                              case dist_manager:adjust_my_address(NewAddr) of
-                                  nothing ->
-                                      ns_mnesia:backout_rename();
-                                  net_restarted ->
-                                      case erlang:get_cookie() of
-                                          CookieBefore ->
-                                              ok;
-                                          CookieAfter ->
-                                              error_logger:error_msg(
-                                                "critical: Cookie has changed from ~p "
-                                                "to ~p~n", [CookieBefore, CookieAfter]),
-                                              exit(bad_cookie)
-                                      end,
-                                      ns_mnesia:rename_node(MyNode, node()),
-                                      rename_node(MyNode, node()),
-                                      ok
-                              end;
-                          E ->
-                              ?log_error("Not attempting to rename node: ~p", [E])
+                      case dist_manager:adjust_my_address(NewAddr) of
+                          nothing ->
+                              ok;
+                          net_restarted ->
+                              %% Make sure the cookie's still the same
+                              CookieBefore = erlang:get_cookie(),
+                              ok = ns_mnesia:rename_node(MyNode, node()),
+                              rename_node(MyNode, node()),
+                              ok
                       end
               end),
             {reply, ok, State}
@@ -115,7 +103,7 @@ handle_cast({join, RemoteNode, NewCookie}, State) ->
                           [ns_config:get()]),
     %% Pull the rug out from under the app
     ok = ns_server_cluster_sup:stop_cluster(),
-    ns_mnesia:delete_schema_and_stop(),
+    ns_mnesia:delete_schema(),
     try
         error_logger:info_msg("ns_cluster: joining cluster. Child has exited.~n"),
         timer:sleep(1000), % Sleep for a second to let things settle
@@ -133,7 +121,6 @@ handle_cast({join, RemoteNode, NewCookie}, State) ->
         Type:Error ->
             ?log_error("Error during join: ~p", [{Type, Error}])
     end,
-    ns_mnesia:start(),
     ns_server_cluster_sup:start_cluster(),
     timer:apply_after(1000, ?MODULE, log_joined, []),
     {noreply, State};
@@ -151,11 +138,10 @@ handle_cast(leave, State) ->
     end,
     ns_config:set_initial(nodes_wanted, [node()]),
     ns_config:set_initial(otp, [{cookie, NewCookie}]),
-    ns_mnesia:delete_schema_and_stop(),
     ok = ns_server_cluster_sup:stop_cluster(),
+    ns_mnesia:delete_schema(),
     error_logger:info_msg("ns_cluster: leaving cluster~n"),
     timer:sleep(1000),
-    ns_mnesia:start(),
     ns_server_cluster_sup:start_cluster(),
     {noreply, State}.
 
@@ -167,7 +153,6 @@ handle_info(Msg, State) ->
 
 
 init([]) ->
-    catch ns_mnesia:start(),
     {ok, #state{}}.
 
 

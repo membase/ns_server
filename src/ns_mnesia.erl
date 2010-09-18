@@ -19,30 +19,22 @@
 
 -include("ns_common.hrl").
 
--export([add_node/1, backout_rename/0, delete_node/1, delete_schema/0,
-         delete_schema_and_stop/0, prepare_rename/0, rename_node/2,
-         start/0]).
+-behaviour(gen_server).
 
+-record(state, {}).
+
+%% API
+-export([delete_node/1, delete_schema/0,
+         prepare_rename/0, rename_node/2,
+         start_link/0]).
+
+%% gen_server callbacks
+-export([code_change/3, handle_call/3, handle_cast/2,
+         handle_info/2, init/1, terminate/2]).
 
 %%
 %% API
 %%
-
-%% @doc Add an mnesia node. The other node had better have called
-%% delete_schema().
-add_node(Node) ->
-    {ok, [Node]} = mnesia:change_config(extra_db_nodes, [Node]),
-    {atomic, ok} = mnesia:change_table_copy_type(schema, Node, disc_copies),
-    ?log_info("Added node ~p to cluster.~nCurrent config: ~p",
-              [Node, mnesia:system_info(all)]).
-
-
-%% @doc Call this if you decide you don't need to rename after all.
-backout_rename() ->
-    ?log_info("Starting Mnesia from backup.", []),
-    ok = mnesia:install_fallback(tmpdir("pre_rename")),
-    do_start().
-
 
 %% @doc Remove an mnesia node.
 delete_node(Node) ->
@@ -57,34 +49,15 @@ delete_node(Node) ->
 
 %% @doc Delete the current mnesia schema for joining/renaming purposes.
 delete_schema() ->
-    stopped = mnesia:stop(),
+    false = misc:running(?MODULE),
     ok = mnesia:delete_schema([node()]),
-    do_start(),
     ?log_info("Deleted schema.~nCurrent config: ~p",
               [mnesia:system_info(all)]).
 
 
-%% @doc Delete the schema, but stay stopped.
-delete_schema_and_stop() ->
-    ?log_info("Deleting schema and stopping Mnesia.", []),
-    stopped = mnesia:stop(),
-    ok = mnesia:delete_schema([node()]).
-
-
 %% @doc Back up the database in preparation for a node rename.
 prepare_rename() ->
-    Pre = tmpdir("pre_rename"),
-    case mnesia:backup(Pre) of
-        ok ->
-            ?log_info("Backed up database to ~p.", [Pre]),
-            stopped = mnesia:stop(),
-            ?log_info("Deleting old schema.", []),
-            ok = mnesia:delete_schema([node()]),
-            ok;
-        E ->
-            ?log_error("Could not back up database for rename: ~p", [E]),
-            {backup_error, E}
-    end.
+    gen_server:call(?MODULE, prepare_rename).
 
 
 %% @doc Rename a node. Assumes there is only one node. Leaves Mnesia
@@ -93,26 +66,129 @@ prepare_rename() ->
 %% your data back. If for some reason you need to go back, you could
 %% install the pre_rename backup as fallback and start Mnesia.
 rename_node(From, To) ->
+    false = misc:running(?MODULE),
     ?log_info("Renaming node from ~p to ~p.", [From, To]),
     Pre = tmpdir("pre_rename"),
     Post = tmpdir("post_rename"),
     change_node_name(mnesia_backup, From, To, Pre, Post),
+    ?log_info("Deleting old schema.", []),
+    ok = mnesia:delete_schema([node()]),
     ?log_info("Installing new backup as fallback.", []),
-    ok = mnesia:install_fallback(Post),
-    do_start().
+    ok = mnesia:install_fallback(Post).
 
 
-%% @doc Start Mnesia, creating a new schema if we don't already have one.
-start() ->
-    %% Create a new on-disk schema if one doesn't already exist
-    case mnesia:create_schema([node()]) of
-        ok ->
-            ?log_info("Creating new disk schema.", []);
-        {error, {_, {already_exists, _}}} ->
-            ?log_info("Using existing disk schema.", [])
+%% @doc Start the gen_server
+start_link() ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+
+%%
+%% gen_server callbacks
+%%
+
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
+
+
+handle_call({add_node, Node}, _From, State) ->
+    ?log_info("Adding node ~p. Connected nodes: ~p Mnesia config: ~n~p",
+              [Node, nodes(), mnesia:system_info(all)]),
+    {ok, [Node]} = mnesia:change_config(extra_db_nodes, [Node]),
+    case mnesia:change_table_copy_type(schema, Node, disc_copies) of
+        {atomic, ok} ->
+            ?log_info("Added node ~p to cluster.",
+                      [Node]);
+        {aborted, {already_exists, _, _, _}} ->
+            ?log_warning("Node ~p was already in cluster.", [Node])
     end,
-    do_start(),
-    ?log_info("Current config: ~p", [mnesia:system_info(all)]).
+    ?log_info("Mnesia config:~n~p", [mnesia:system_info(all)]),
+    {reply, ok, State};
+
+handle_call(prepare_rename, _From, State) ->
+    Pre = tmpdir("pre_rename"),
+    Reply = mnesia:backup(Pre),
+    {reply, Reply, State};
+
+handle_call(Request, From, State) ->
+    ?log_warning("Unexpected call from ~p: ~p", [From, Request]),
+    {reply, unhandled, State}.
+
+
+handle_cast(Msg, State) ->
+    ?log_warning("Unexpected cast: ~p", [Msg]),
+    {noreply, State}.
+
+
+handle_info({mnesia_system_event, Event}, State) ->
+    case Event of
+        {mnesia_error, Format, Args} ->
+            ?log_error("Error from Mnesia:~n" ++ Format, Args);
+        {mnesia_fatal, Format, Args, _} ->
+            ?log_error("Fatal Mnesia error, exiting:~n" ++ Format, Args),
+            timer:sleep(3000),
+            exit(mnesia_fatal);
+        {mnesia_info, Format, Args} ->
+            ?log_info("Info from Mnesia:~n" ++ Format, Args);
+        {mnesia_down, Node} ->
+            ?log_info("Saw Mnesia go down on ~p", [Node]);
+        {mnesia_up, Node} ->
+            ?log_info("Saw Mnesia come up on ~p", [Node]);
+        {mnesia_overload, {What, Why}} ->
+            ?log_warning("Mnesia detected overload during ~p because of ~p",
+                         [What, Why]);
+        {inconsistent_database, Context, Node} ->
+            ?log_warning("Mnesia database may be inconsistent with node ~p: ~p",
+                         [Node, Context]);
+        _ ->
+            ?log_info("Mnesia system event: ~p", Event)
+    end,
+    {noreply, State};
+
+handle_info({mnesia_table_event, Event}, State) ->
+    ?log_info("Mnesia table event:~n~p", [Event]),
+    {noreply, State};
+
+handle_info(Msg, State) ->
+    ?log_warning("Unepected message: ~p", [Msg]),
+    {noreply, State}.
+
+
+init([]) ->
+    process_flag(trap_exit, true),
+    mnesia:set_debug_level(verbose),
+    ok = mnesia:start(), % Will work even if it's already started
+    {ok, _} = mnesia:subscribe(system),
+    {ok, _} = mnesia:subscribe({table, schema, detailed}),
+    %% Create a new on-disk schema if one doesn't already exist
+    Nodes = mnesia:table_info(schema, disc_copies),
+    case lists:member(node(), Nodes) of
+        false ->
+            case ns_node_disco:nodes_actual_other() -- Nodes of
+                [] ->
+                    ok;
+                ExtraNodes ->
+                    case mnesia:change_config(extra_db_nodes, ExtraNodes) of
+                        {ok, []} ->
+                            exit(mnesia_connect_failed);
+                        {ok, ConnectedNodes} ->
+                            ?log_info("Mnesia connected to ~p",
+                                      [ConnectedNodes])
+                    end
+            end,
+            ?log_info("Committing schema to disk.", []),
+            {atomic, ok} =
+                   mnesia:change_table_copy_type(schema, node(), disc_copies);
+        true ->
+            ?log_info("Using existing disk schema on ~p.", [Nodes])
+    end,
+    ?log_info("Current config: ~p", [mnesia:system_info(all)]),
+    {ok, #state{}}.
+
+
+terminate(_Reason, _State) ->
+    stopped = mnesia:stop(),
+    ?log_info("Shut Mnesia down. Exiting.", []),
+    ok.
 
 
 %%
@@ -149,14 +225,6 @@ change_node_name(Mod, From, To, Source, Target) ->
     {ok, switched} = mnesia:traverse_backup(Source, Mod, Target, Mod, Convert,
                                             switched),
     ok.
-
-
-%% @doc Start mnesia and monitor it
-do_start() ->
-    mnesia:set_debug_level(verbose),
-    ok = mnesia:start(),
-    {ok, _} = mnesia:subscribe(system),
-    {ok, _} = mnesia:subscribe({table, schema, detailed}).
 
 
 %% @doc Hack.
