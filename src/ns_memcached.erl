@@ -234,7 +234,15 @@ list_vbuckets(Node, Bucket) ->
 
 
 list_vbuckets_multi(Nodes, Bucket) ->
-    gen_server:multi_call(Nodes, server(Bucket), list_vbuckets, ?TIMEOUT).
+    UpNodes = [node()|nodes()],
+    {LiveNodes, DeadNodes} = lists:partition(
+                               fun (Node) ->
+                                       lists:member(Node, UpNodes)
+                               end, Nodes),
+    {Replies, Zombies} =
+        gen_server:multi_call(LiveNodes, server(Bucket), list_vbuckets,
+                              ?TIMEOUT),
+    {Replies, Zombies ++ DeadNodes}.
 
 
 set_vbucket(Bucket, VBucket, VBState) ->
