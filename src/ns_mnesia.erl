@@ -157,34 +157,52 @@ handle_cast(Msg, State) ->
 handle_info({mnesia_system_event, Event}, State) ->
     case Event of
         {mnesia_error, Format, Args} ->
-            ?log_error("Error from Mnesia:~n" ++ Format, Args);
+            ?log_error("Error from Mnesia:~n" ++ Format, Args),
+            {noreply, State};
         {mnesia_fatal, Format, Args, _} ->
             ?log_error("Fatal Mnesia error, exiting:~n" ++ Format, Args),
             timer:sleep(3000),
-            exit(mnesia_fatal);
+            {stop, mnesia_fatal, State};
         {mnesia_info, Format, Args} ->
-            ?log_info("Info from Mnesia:~n" ++ Format, Args);
+            ?log_info("Info from Mnesia:~n" ++ Format, Args),
+            {noreply, State};
         {mnesia_down, Node} ->
-            ?log_info("Saw Mnesia go down on ~p", [Node]);
+            ?log_info("Saw Mnesia go down on ~p", [Node]),
+            {noreply, State};
         {mnesia_up, Node} ->
-            ?log_info("Saw Mnesia come up on ~p", [Node]);
+            ?log_info("Saw Mnesia come up on ~p", [Node]),
+            {noreply, State};
         {mnesia_overload, {What, Why}} ->
             ?log_warning("Mnesia detected overload during ~p because of ~p",
-                         [What, Why]);
-        {inconsistent_database, Context, Node} ->
-            ?log_warning("Mnesia database may be inconsistent with node ~p: ~p",
-                         [Node, Context]);
+                         [What, Why]),
+            {noreply, State};
+        {inconsistent_database, running_partitioned_network, Node} ->
+            ?log_warning("Network partition detected with ~p. Restarting.",
+                         [Node]),
+            {stop, partitioned, State};
+        {inconsistent_database, starting_partitioned_network, Node} ->
+            %% TODO do we need to do something in this case?
+            ?log_warning("Starting partitioned network with ~p.", [Node]),
+            {noreply, State};
         _ ->
-            ?log_info("Mnesia system event: ~p", Event)
-    end,
-    {noreply, State};
+            ?log_info("Mnesia system event: ~p", [Event]),
+            {noreply, State}
+    end;
 
 handle_info({mnesia_table_event, Event}, State) ->
     ?log_info("Mnesia table event:~n~p", [Event]),
     {noreply, State};
 
+handle_info({'EXIT', _Pid, Reason}, State) ->
+    case Reason of
+        normal ->
+            {noreply, State};
+        _ ->
+            {stop, Reason, State}
+    end;
+
 handle_info(Msg, State) ->
-    ?log_warning("Unepected message: ~p", [Msg]),
+    ?log_warning("Unexpected message: ~p", [Msg]),
     {noreply, State}.
 
 
