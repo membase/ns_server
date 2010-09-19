@@ -37,6 +37,7 @@ handle_call(Request, _From, State) ->
 handle_cast(_Msg, State) -> {noreply, State}.
 
 handle_info(beat, State) ->
+    misc:flush(beat),
     ns_doctor:heartbeat(current_status()),
     {noreply, State}.
 

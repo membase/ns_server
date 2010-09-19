@@ -107,6 +107,7 @@ handle_cast({sync, Compressed}, State = #state{recent=Recent}) ->
 
 % Nothing special.
 handle_info(garbage_collect, State) ->
+    misc:flush(garbage_collect),
     {noreply, gc(State)};
 handle_info(sync, State = #state{recent=Recent}) ->
     timer:send_after(5000 + random:uniform(55000), sync),

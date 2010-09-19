@@ -150,10 +150,12 @@ handle_info({nodedown, Node}, State) ->
     {noreply, State};
 
 handle_info(notify_clients, State) ->
+    misc:flush(notify_clients),
     State2 = do_notify(State),
     {noreply, State2};
 
 handle_info(ping_all, State) ->
+    misc:flush(ping_all),
     spawn_link(fun ping_all/0),
     {noreply, State};
 
