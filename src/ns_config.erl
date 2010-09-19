@@ -237,9 +237,9 @@ clear(Keep) -> gen_server:call(?MODULE, {clear, Keep}).
 % The Config object can be passed to the search*() related set
 % of functions.
 
-get()              -> gen_server:call(?MODULE, get).
+get()              -> gen_server:call(ns_config_replica, get).
 get(Node)          -> ?MODULE:get(Node, ?DEFAULT_TIMEOUT).
-get(Node, Timeout) -> gen_server:call({?MODULE, Node}, get, Timeout).
+get(Node, Timeout) -> gen_server:call({ns_config_replica, Node}, get, Timeout).
 
 % ----------------------------------------
 
@@ -385,7 +385,14 @@ merge_vclocks(NewValue, OldValue) ->
 init({full, ConfigPath, DirPath, PolicyMod} = Init) ->
     case load_config(ConfigPath, DirPath, PolicyMod) of
         {ok, Config} ->
-            {ok, Config#config{init = Init}};
+            State = Config#config{init = Init},
+            Replica = proc_lib:spawn_link(fun () ->
+                                                  (catch erlang:register(ns_config_replica, self())),
+                                                  gen_server:enter_loop(?MODULE, [], State, {local, ns_config_replica})
+                                          end),
+            (catch erlang:register(ns_config_replica, Replica)),
+            Replica = erlang:whereis(ns_config_replica),
+            {ok, State};
         Error ->
             {stop, Error}
     end;
@@ -398,7 +405,49 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 handle_cast(stop, State)            -> {stop, shutdown, State}.
 handle_info(_Info, State)           -> {noreply, State}.
 
-handle_call(reload, _From, State) ->
+gen_server_reply_next_state(Reply) ->
+    case Reply of
+        {reply,_,NewState} -> NewState;
+        {reply,_,NewState,_} -> NewState;
+        {noreply,NewState} -> NewState;
+        {noreply,NewState,_} -> NewState;
+        {stop,_,_,NewState} -> NewState;
+        {stop,_,NewState} -> NewState
+    end.
+
+%% ns_config is implemented as a pair of gen_servers. One is real
+%% ns_config and the other is it's read-only replica. Replica handles all
+%% ns_config:get requests, while real ns_config makes sure that all
+%% state changes are synchronously delivered to replica.
+%%
+%% Because main ns_config mutation operations can be arbitrarily
+%% expensive, handling ns_config:get requests on main process may
+%% cause serious delays and even timeouts handling them.
+%%
+%% Replica process makes sure ns_config:get, which is the most often
+%% used service of ns_config, is always responsive.
+handle_call(get, _From, State) ->
+    {reply, State, State};
+handle_call({replica_set, NextState}, _From, _State) ->
+    {reply, ok, NextState};
+handle_call(Msg, From, State) ->
+    Reply = do_handle_call(Msg, From, State),
+    NextState = gen_server_reply_next_state(Reply),
+    if
+        NextState =/= State ->
+            try gen_server:call(ns_config_replica, {replica_set, NextState})
+            catch
+                Type:What ->
+                    error_logger:error_msg("failed replica_set! type:~p,what:~p~ntrace:~n~p~n",
+                                           [Type, What, erlang:get_stacktrace()]),
+                    erlang:Type(What)
+            end;
+        true ->
+            ok
+    end,
+    Reply.
+
+do_handle_call(reload, _From, State) ->
     case init(State#config.init) of
         {ok, State2}  -> {reply, ok, State2};
         {stop, Error} -> ns_log:log(?MODULE, ?RELOAD_FAILED, "reload failed: ~p",
@@ -406,35 +455,33 @@ handle_call(reload, _From, State) ->
                          {reply, {error, Error}, State}
     end;
 
-handle_call(resave, _From, State) ->
+do_handle_call(resave, _From, State) ->
     {reply, save_config(State), State};
 
-handle_call(reannounce, _From, State) ->
+do_handle_call(reannounce, _From, State) ->
     announce_changes(config_dynamic(State)),
     {reply, ok, State};
 
-handle_call(get, _From, State) -> {reply, State, State};
-
-handle_call({replace, KVList}, _From, State) ->
+do_handle_call({replace, KVList}, _From, State) ->
     {reply, ok, State#config{dynamic = [KVList]}};
 
-handle_call({update_with_changes, Fun}, From, State) ->
+do_handle_call({update_with_changes, Fun}, From, State) ->
     OldList = config_dynamic(State),
     try Fun(OldList) of
         {NewPairs, NewConfig} ->
             announce_changes(NewPairs),
-            handle_call(resave, From, State#config{dynamic=[NewConfig]})
+            do_handle_call(resave, From, State#config{dynamic=[NewConfig]})
     catch
         X:Error ->
             {reply, {X, Error, erlang:get_stacktrace()}, State}
     end;
 
-handle_call({clear, Keep}, From, State) ->
+do_handle_call({clear, Keep}, From, State) ->
     NewList = lists:filter(fun({K,_V}) -> lists:member(K, Keep) end,
                            config_dynamic(State)),
-    handle_call(resave, From, State#config{dynamic=[NewList]});
+    do_handle_call(resave, From, State#config{dynamic=[NewList]});
 
-handle_call({merge, KVList}, From, State) ->
+do_handle_call({merge, KVList}, From, State) ->
     PolicyMod = State#config.policy_mod,
     State2 = merge_configs(PolicyMod:mergable([State#config.dynamic,
                                                State#config.static,
@@ -443,7 +490,7 @@ handle_call({merge, KVList}, From, State) ->
                            State),
     case State2 =/= State of
         true ->
-            case handle_call(resave, From, State2) of
+            case do_handle_call(resave, From, State2) of
                 {reply, ok, State3} = Result ->
                     DynOld = lists:map(fun strip_metadata/1, config_dynamic(State)),
                     DynNew = lists:map(fun strip_metadata/1, config_dynamic(State3)),
