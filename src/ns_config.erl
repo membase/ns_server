@@ -61,7 +61,7 @@
          search_raw/2,
          clear/0, clear/1,
          proplist_get_value/3,
-         sync_announcements/0]).
+         sync_announcements/0, get_diag/0]).
 
 % Exported for tests only
 -export([merge_configs/3, save_file/3, load_config/3,
@@ -240,6 +240,8 @@ clear(Keep) -> gen_server:call(?MODULE, {clear, Keep}).
 get()              -> gen_server:call(ns_config_replica, get).
 get(Node)          -> ?MODULE:get(Node, ?DEFAULT_TIMEOUT).
 get(Node, Timeout) -> gen_server:call({ns_config_replica, Node}, get, Timeout).
+
+get_diag() -> config_dynamic(ns_config:get()).
 
 % ----------------------------------------
 

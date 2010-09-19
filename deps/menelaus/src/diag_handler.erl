@@ -79,8 +79,24 @@ manifest() ->
 do_diag_per_node() ->
     [{version, ns_info:version()},
      {manifest, manifest()},
-     {config, diag_filter_out_config_password(ns_config:get())},
+     {config, diag_filter_out_config_password(ns_config:get_diag())},
      {basic_info, element(2, ns_info:basic_info())},
+     {processes, lists:map(fun (Pid) ->
+                                   erlang:process_info(Pid,
+                                                       [registered_name,
+                                                        status,
+                                                        initial_call,
+                                                        backtrace,
+                                                        error_handler,
+                                                        garbage_collection,
+                                                        heap_size,
+                                                        total_heap_size,
+                                                        links,
+                                                        memory,
+                                                        message_queue_len,
+                                                        reductions,
+                                                        trap_exit])
+                           end, erlang:processes())},
      {memory, memsup:get_memory_data()},
      {disk, disksup:get_disk_data()}].
 
@@ -105,7 +121,6 @@ generate_diag_filename() ->
     {{YYYY, MM, DD}, {Hour, Min, Sec}} = calendar:now_to_local_time(now()),
     io_lib:format("ns-diag-~4.4.0w~2.2.0w~2.2.0w~2.2.0w~2.2.0w~2.2.0w.txt",
                   [YYYY, MM, DD, Hour, Min, Sec]).
-    
 
 diag_format_log_entry(Entry) ->
     [Type, Code, Module,
@@ -169,5 +184,3 @@ handle_sasl_logs(Req) ->
             menelaus_util:server_header(),
             chunked}),
     handle_logs(Resp).
-    
-
