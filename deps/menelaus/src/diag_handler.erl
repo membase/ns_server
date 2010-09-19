@@ -65,11 +65,16 @@ manifest() ->
     % The cwd should look like /opt/NorthScale with a /opt/NorthScale/bin symlink
     % to the right /opt/NorthScale/VERSION/bin directory.
     %
-    lists:filter(fun ({ok, _}) -> true;
-                     ({error, _}) -> false
-                 end,
-                 lists:map(fun file:read_file/1,
-                           ["./bin/../manifest.txt", "./bin/../src/manifest.txt"])).
+    RV = lists:filter(fun ({ok, _}) -> true;
+                          ({error, _}) -> false
+                      end,
+                      lists:map(fun file:read_file/1,
+                                ["./bin/../manifest.txt", "./bin/../src/manifest.txt"])),
+    case RV of
+        [{ok, C}|_] ->
+            lists:sort(string:tokens(binary_to_list(C), "\n"));
+        [] -> []
+    end.
 
 do_diag_per_node() ->
     [{version, ns_info:version()},
