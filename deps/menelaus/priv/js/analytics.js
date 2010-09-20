@@ -198,7 +198,7 @@ var KnownStats = [
   ["ep_io_num_read", "Disk fetches\nNumber of disk reads per second"],
   ["mem_used", "Memory bytes used"],
   ["curr_items", "Items count"],
-  ["ep_num_value_ejects", "RAM ejections per second"],
+  ["evictions", "RAM ejections per second"],
   ["cmd_set", "Sets per second\nSet operations per second"],
   ["cmd_get", "Gets per second\nGet operations per second"],
   ["bytes_written", "Bytes sent per second\nNetwork bytes sent by all servers, per second"],

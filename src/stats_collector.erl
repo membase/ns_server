@@ -85,6 +85,13 @@ latest_tick(TS) ->
             TS
     end.
 
+translate_stat(bytes) -> % memcached calls it bytes
+    mem_used;
+translate_stat(ep_num_value_ejects) ->
+    evictions;
+translate_stat(Stat) ->
+    Stat.
+
 parse_stats(TS, Stats, LastCounters) ->
     GetStat = fun (K, Dict) ->
                       case dict:find(K, Dict) of
@@ -93,7 +100,8 @@ parse_stats(TS, Stats, LastCounters) ->
                           error -> 0
                       end
               end,
-    Dict = dict:from_list([{binary_to_atom(K, latin1), V} || {K, V} <- Stats]),
+    Dict = dict:from_list([{translate_stat(binary_to_atom(K, latin1)), V}
+                           || {K, V} <- Stats]),
     Gauges = [GetStat(K, Dict) || K <- [?STAT_GAUGES]],
     Counters = [GetStat(K, Dict) || K <- [?STAT_COUNTERS]],
     Deltas = case LastCounters of
