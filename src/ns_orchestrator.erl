@@ -25,6 +25,7 @@
 %% Constants and definitions
 
 -record(idle_state, {remaining_buckets=[]}).
+-record(janitor_state, {remaining_buckets, pid}).
 -record(rebalancing_state, {rebalancer, progress}).
 
 
@@ -58,6 +59,7 @@
 
 %% States
 -export([idle/2, idle/3,
+         janitor_running/2, janitor_running/3,
          rebalancing/2, rebalancing/3]).
 
 
@@ -138,23 +140,40 @@ handle_event(unhandled, unhandled, unhandled) ->
 handle_sync_event(unhandled, unhandled, unhandled, unhandled) ->
     unhandled.
 
-
 handle_info(janitor, idle, #idle_state{remaining_buckets=[]} = State) ->
-    misc:flush(janitor),
     case ns_bucket:get_bucket_names() of
         [] -> {next_state, idle, State#idle_state{remaining_buckets=[]}};
         Buckets ->
             handle_info(janitor, idle,
                         State#idle_state{remaining_buckets=Buckets})
     end;
-handle_info(janitor, idle, #idle_state{remaining_buckets=[Bucket|Buckets]} =
-                State) ->
-    misc:flush(janitor),
-    ns_janitor:cleanup(Bucket),
-    {next_state, idle, State#idle_state{remaining_buckets=Buckets}};
+handle_info(janitor, idle, #idle_state{remaining_buckets=Buckets}) ->
+    Bucket = hd(Buckets),
+    Pid = proc_lib:spawn_link(ns_janitor, cleanup, [Bucket]),
+    {next_state, janitor_running, #janitor_state{remaining_buckets=Buckets,
+                                                 pid = Pid}};
 handle_info(janitor, StateName, StateData) ->
     misc:flush(janitor),
     {next_state, StateName, StateData};
+handle_info({'EXIT', Pid, Reason}, janitor_running,
+            #janitor_state{pid = Pid,
+                           remaining_buckets = Buckets}) ->
+    NextBuckets =
+        case Reason of
+            normal ->
+                tl(Buckets);
+            _ ->
+                ?log_info("Janitor run completed for bucket ~p with reason ~p~n",
+                          [hd(Buckets), Reason]),
+                Buckets
+        end,
+    case NextBuckets of
+        [] ->
+            ok;
+        _ ->
+            self() ! janitor
+    end,
+    {next_state, idle, #idle_state{remaining_buckets = NextBuckets}};
 handle_info({'EXIT', Pid, Reason}, rebalancing,
             #rebalancing_state{rebalancer=Pid}) ->
     Status = case Reason of
@@ -188,7 +207,8 @@ terminate(_Reason, _StateName, _StateData) ->
 idle(_Event, State) ->
     %% This will catch stray progress messages
     {next_state, idle, State}.
-
+janitor_running(_Event, State) ->
+    {next_state, janitor_running, State}.
 
 %% Synchronous idle events
 idle({create_bucket, BucketType, BucketName, NewConfig}, _From, State) ->
@@ -218,6 +238,16 @@ idle({start_rebalance, KeepNodes, EjectNodes}, _From,
 idle(stop_rebalance, _From, State) ->
     {reply, not_rebalancing, idle, State}.
 
+
+janitor_running(rebalance_progress, _From, State) ->
+    {reply, not_running, janitor_running, State};
+janitor_running(Msg, From, #janitor_state{pid=Pid} = State) ->
+    exit(Pid, shutdown),
+    NextState = receive
+                    {'EXIT', Pid, _} = DeathMsg ->
+                        handle_info(DeathMsg, janitor_running, State)
+                end,
+    idle(Msg, From, NextState).
 
 %% Asynchronous rebalancing events
 rebalancing({update_progress, Progress},
