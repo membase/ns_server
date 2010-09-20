@@ -216,9 +216,9 @@ grab_op_stats(Bucket, Params) ->
 invoke_archiver(Bucket, NodeS, {Step, Period, Window}) ->
     RV = case Step of
              1 ->
-                 stats_archiver:latest(Period, NodeS, Bucket, Window);
+                 catch stats_archiver:latest(Period, NodeS, Bucket, Window);
              _ ->
-                 stats_archiver:latest(Period, NodeS, Bucket, Step, Window)
+                 catch stats_archiver:latest(Period, NodeS, Bucket, Step, Window)
          end,
     case is_list(NodeS) of
         true -> [{K, V} || {K, {ok, V}} <- RV];
