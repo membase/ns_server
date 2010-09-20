@@ -168,7 +168,7 @@ handle_bucket_update_inner(BucketId, Req, Params, Limit) ->
                               BucketId,
                               Params,
                               ns_bucket:get_buckets(),
-                              ns_storage_conf:cluster_storage_info())} of
+                              extended_cluster_storage_info())} of
         {_, {errors, Errors, JSONSummaries}} ->
             RV = {struct, [{errors, {struct, Errors}},
                            {summaries, {struct, JSONSummaries}}]},
@@ -214,7 +214,7 @@ handle_bucket_create(PoolId, Req) ->
                               Name,
                               Params,
                               ns_bucket:get_buckets(),
-                              ns_storage_conf:cluster_storage_info())} of
+                              extended_cluster_storage_info())} of
         {_, {errors, Errors, JSONSummaries}} ->
             reply_json(Req, {struct, [{errors, {struct, Errors}},
                                       {summaries, {struct, JSONSummaries}}]}, 400);
@@ -240,7 +240,7 @@ handle_setup_default_bucket_post(Req) ->
     ValidateOnly = (proplists:get_value("just_validate", Req:parse_qs()) =:= "1"),
     case {ValidateOnly,
           parse_bucket_params_for_setup_default_bucket(Params,
-                                                       ns_storage_conf:cluster_storage_info())} of
+                                                       extended_cluster_storage_info())} of
         {_, {errors, Errors, JSONSummaries}} ->
             reply_json(Req, {struct, [{errors, {struct, Errors}},
                                       {summaries, {struct, JSONSummaries}}]}, 400);
@@ -262,6 +262,8 @@ handle_setup_default_bucket_post(Req) ->
 -record(ram_summary, {
           total,                                % total cluster quota
           other_buckets,
+          per_node,                             % memcached bucket type specific
+          nodes_count,                          % memcached bucket type specific
           this_alloc,
           this_used,                            % part of this bucket which is used already
           free}).                               % total - other_buckets - this_alloc.
@@ -435,12 +437,23 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, AllBuckets, AuthTy
 ram_summary_to_proplist(V) ->
     [?PRAM(total, total),
      ?PRAM(other_buckets, otherBuckets),
+     ?PRAM(nodes_count, nodesCount),
+     ?PRAM(per_node, perNodeMegs),
      ?PRAM(this_alloc, thisAlloc),
      ?PRAM(this_used, thisUsed),
      ?PRAM(free, free)].
 
 interpret_ram_quota(CurrentBucket, ParsedProps, ClusterStorageTotals, UsageGetter) ->
-    ParsedQuota = proplists:get_value(ram_quota, ParsedProps),
+    RAMQuota = proplists:get_value(ram_quota, ParsedProps),
+    NodesCount = proplists:get_value(nodesCount, ClusterStorageTotals),
+    {ParsedQuota, PerNode} =
+        case proplists:get_value(bucketType, ParsedProps) of
+            memcached ->
+               {RAMQuota * NodesCount,
+                RAMQuota div 1048576};
+            _ ->
+                {RAMQuota, 0}
+        end,
     ClusterTotals = proplists:get_value(ram, ClusterStorageTotals),
     OtherBuckets = proplists:get_value(quotaUsed, ClusterTotals)
         - case CurrentBucket of
@@ -457,6 +470,8 @@ interpret_ram_quota(CurrentBucket, ParsedProps, ClusterStorageTotals, UsageGette
     Total = proplists:get_value(quotaTotal, ClusterTotals),
     #ram_summary{total = Total,
                  other_buckets = OtherBuckets,
+                 nodes_count = NodesCount,
+                 per_node = PerNode,
                  this_alloc = ParsedQuota,
                  this_used = ThisUsed,
                  free = Total - OtherBuckets - ParsedQuota}.
@@ -503,3 +518,7 @@ parse_validate_ram_quota(Value) ->
             {error, ramQuotaMB, <<"RAM quota cannot be negative">>};
         {ok, X} -> {ok, ram_quota, X * 1048576}
     end.
+
+extended_cluster_storage_info() ->
+    [{nodesCount, length(ns_cluster_membership:active_nodes())}
+     | ns_storage_conf:cluster_storage_info()].

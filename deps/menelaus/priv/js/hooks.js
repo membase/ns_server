@@ -300,7 +300,12 @@ var MockedRequest = mkClass({
     //   return this.errorResponse(errors);
     // }
 
-    this.fakeResponse({"errors":{},"summaries":{"ramSummary":{"total":1625292800,"otherBuckets":0,"thisAlloc":1625292800,"thisUsed":12933780,"free":0},"hddSummary":{"total":239315349504.0,"otherData":222563264798.0,"otherBuckets":0,"thisAlloc":16106127360.0,"thisUsed":10240,"free":645957346}}});
+    var rv = {"errors":{},"summaries":{"ramSummary":{"perNodeMegs":1024,"nodesCount":8,"total":1625292800,"otherBuckets":0,"thisAlloc":1625292800,"thisUsed":12933780,"free":0},"hddSummary":{"total":239315349504.0,"otherData":222563264798.0,"otherBuckets":0,"thisAlloc":16106127360.0,"thisUsed":10240,"free":645957346}}};
+
+    if (params.bucketType != 'memcached')
+      delete rv.summaries.ramSummary.perNodeMegs;
+
+    this.fakeResponse(rv);
   },
 
   handlePoolsDefaultPost: function () {

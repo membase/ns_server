@@ -1198,7 +1198,15 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details label.for-proxy-port span {width:164px;}
 .bucket_details label.for-proxy-port input {width:58px;}
 
+.bucket_details.bucket-is-persistent .when-non-persistent { display: none; }
+.bucket_details.bucket-is-non-persistent .when-persistent { display: none; }
+
+.bucket_details .for-ram-quota em { font-style: normal; }
+
+.bucket_details .memcached-summary {font-style:normal;line-height:24px;clear:both;}
+
 .bucket_details .size-gauge {line-height:24px;position:relative;top:-6px;float:right;/*font-size:11px;*/width:364px;}
+.bucket_details.bucket-is-non-persistent .size-gauge.for-ram { top: 0px; }
 .bucket_details .size-gauge .other-data-block {float:left;color:#C19710;font-size:12px;}
 .bucket_details .size-gauge .t {float:right;}
  .additional_server_info.bucket_details .size-gauge .t {font-size:12px;}

@@ -175,6 +175,11 @@ var BucketDetailsDialog = mkClass({
       oldBucketType = newType;
       var isPersistent = (newType == 'membase');
       dialog.find('.persistent-only')[isPersistent ? 'slideDown' : 'slideUp']('fast');
+      dialog[isPersistent ? 'removeClass' : 'addClass']('bucket-is-non-persistent');
+      dialog[isPersistent ? 'addClass' : 'removeClass']('bucket-is-persistent');
+
+      if (errorsCell.value && errorsCell.value.summaries)
+        errorsCell.setValueAttr(null, 'summaries', 'ramSummary');
     });
 
     this.cleanups = [];
@@ -332,6 +337,17 @@ var BucketDetailsDialog = mkClass({
                        ramSummary.thisAlloc,
                        ramSummary.otherBuckets);
     ramGauge.css('visibility', ramSummary ? 'visible' : 'hidden');
+
+    var memcachedSummary = summaries.memcachedSummary;
+    var memcachedSummaryJQ = self.dialog.find('.memcached-summary');
+    var memcachedSummaryVisible = ramSummary && ramSummary.perNodeMegs;
+    if (memcachedSummaryVisible)
+      memcachedSummaryJQ.text('Total bucket size = '
+                              + Math.floor(ramSummary.thisAlloc / 1048576)
+                              + ' MB ('
+                              + ramSummary.perNodeMegs
+                              + ' MB x ' + ViewHelpers.count(ramSummary.nodesCount, 'node') +')');
+    memcachedSummaryJQ.css('display', memcachedSummaryVisible ? 'block' : 'none');
 
     var knownFields = ('name ramQuotaMB replicaNumber proxyPort').split(' ');
     var errors = result.errors || {};
