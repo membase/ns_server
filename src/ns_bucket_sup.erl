@@ -55,7 +55,7 @@ child_specs(ChildFun) ->
 update_childs(Name, ChildFun) ->
     NewSpecs = child_specs(ChildFun),
     NewIds = [element(1, X) || X <- NewSpecs],
-    OldSpecs = supervisor:which_children(?MODULE),
+    OldSpecs = supervisor:which_children(Name),
     RunningIds = [element(1, X) || X <- OldSpecs],
     ToStart = NewIds -- RunningIds,
     ToStop = RunningIds -- NewIds,
