@@ -21,20 +21,20 @@
 
 -include("ns_common.hrl").
 
--export([start_link/0]).
+-export([start_link/2]).
 
--export([init/1, update_childs/0]).
+-export([init/1, update_childs/2]).
 
 
 %% API
 
-start_link() ->
-    RV = supervisor:start_link({local, ?MODULE}, ?MODULE, []),
+start_link(Name, ChildFun) ->
+    RV = supervisor:start_link({local, Name}, ?MODULE, ChildFun),
     ns_pubsub:subscribe(ns_config_events,
                         fun (Event, State) ->
                                 case Event of
                                     {buckets, _} ->
-                                        update_childs();
+                                        update_childs(Name, ChildFun);
                                     _ -> ok
                                 end,
                                 State
@@ -43,23 +43,17 @@ start_link() ->
 
 %% supervisor callbacks
 
-init([]) ->
+init(ChildFun) ->
     {ok, {{one_for_one, 3, 10},
-          child_specs()}}.
+          child_specs(ChildFun)}}.
 
 %% Internal functions
-child_specs() ->
+child_specs(ChildFun) ->
     Configs = ns_bucket:get_buckets(),
-    ChildSpecs = child_specs(Configs),
-    ?log_info("child_specs(): ChildSpecs =~n~p~n",
-              [ChildSpecs]),
-    ChildSpecs.
+    lists:append([ChildFun(B) || {B, _} <- Configs]).
 
-child_specs(Configs) ->
-    lists:append([child_spec(B) || {B, _} <- Configs]).
-
-update_childs() ->
-    NewSpecs = child_specs(),
+update_childs(Name, ChildFun) ->
+    NewSpecs = child_specs(ChildFun),
     NewIds = [element(1, X) || X <- NewSpecs],
     OldSpecs = supervisor:which_children(?MODULE),
     RunningIds = [element(1, X) || X <- OldSpecs],
@@ -68,22 +62,15 @@ update_childs() ->
     lists:foreach(fun (StartId) ->
                           Tuple = lists:keyfind(StartId, 1, NewSpecs),
                           true = is_tuple(Tuple),
-                          ?log_info("Starting new ns_bucket_sup child: ~p~n", [Tuple]),
-                          supervisor:start_child(?MODULE, Tuple)
+                          ?log_info("~s: Starting new child: ~p~n",
+                                    [Name, Tuple]),
+                          supervisor:start_child(Name, Tuple)
                   end, ToStart),
     lists:foreach(fun (StopId) ->
                           Tuple = lists:keyfind(StopId, 1, OldSpecs),
                           true = is_tuple(Tuple),
-                          ?log_info("Stopping ns_bucket_sup child for dead bucket: ~p~n", [Tuple]),
-                          supervisor:terminate_child(?MODULE, StopId),
-                          supervisor:delete_child(?MODULE, StopId)
+                          ?log_info("~s: Stopping child for dead bucket: ~p~n",
+                                    [Name, Tuple]),
+                          supervisor:terminate_child(Name, StopId),
+                          supervisor:delete_child(Name, StopId)
                   end, ToStop).
-
-child_spec(Bucket) ->
-    [{{ns_memcached, Bucket}, {ns_memcached, start_link, [Bucket]},
-      %% ns_memcached waits for the bucket to sync to disk before exiting
-      permanent, 86400000, worker, [ns_memcached]},
-     {{stats_collector, Bucket}, {stats_collector, start_link, [Bucket]},
-      permanent, 10, worker, [stats_collector]},
-     {{stats_archiver, Bucket}, {stats_archiver, start_link, [Bucket]},
-      permanent, 10, worker, [stats_archiver]}].

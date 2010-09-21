@@ -81,7 +81,8 @@ good_children() ->
      {ns_heart, {ns_heart, start_link, []},
       permanent, 10, worker, [ns_heart]},
 
-     {ns_bucket_sup, {ns_bucket_sup, start_link, []},
+     {ns_good_bucket_sup, {ns_bucket_sup, start_link,
+                      [ns_good_bucket_sup, fun good_bucket_children/1]},
       permanent, infinity, supervisor, [ns_bucket_sup]},
 
      {ns_orchestrator, {ns_orchestrator, start_link, []},
@@ -94,6 +95,10 @@ good_children() ->
 bad_children() ->
     [{ns_mnesia, {ns_mnesia, start_link, []},
       permanent, 5000, worker, [ns_mnesia]},
+
+     {ns_bad_bucket_sup, {ns_bucket_sup, start_link,
+      [ns_bad_bucket_sup, fun bad_bucket_children/1]},
+      permanent, infinity, supervisor, [ns_bucket_sup]},
 
      {ns_moxi_sup, {ns_moxi_sup, start_link, []},
       permanent, infinity, supervisor,
@@ -124,3 +129,14 @@ pull_plug(Fun) ->
                           error_logger:info_msg("Restarting ~p: ~p~n", [C, R])
                   end,
                   BadChildren).
+
+bad_bucket_children(Bucket) ->
+    [{{stats_collector, Bucket}, {stats_collector, start_link, [Bucket]},
+      permanent, 10, worker, [stats_collector]},
+     {{stats_archiver, Bucket}, {stats_archiver, start_link, [Bucket]},
+      permanent, 10, worker, [stats_archiver]}].
+
+good_bucket_children(Bucket) ->
+    [{{ns_memcached, Bucket}, {ns_memcached, start_link, [Bucket]},
+      %% ns_memcached waits for the bucket to sync to disk before exiting
+      permanent, 86400000, worker, [ns_memcached]}].
