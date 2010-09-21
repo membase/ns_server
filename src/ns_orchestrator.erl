@@ -111,7 +111,7 @@ rebalance_progress() ->
                              ok | in_progress | already_balanced.
 start_rebalance(KeepNodes, EjectNodes) ->
     gen_fsm:sync_send_event(?SERVER, {start_rebalance, KeepNodes,
-                                      EjectNodes}).
+                                      lists:usort(EjectNodes)}).
 
 
 -spec stop_rebalance() -> ok | not_rebalancing.
