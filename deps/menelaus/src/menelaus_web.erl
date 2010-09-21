@@ -975,7 +975,7 @@ handle_dot(Bucket, Req) ->
 
 handle_dotsvg(Bucket, Req) ->
     Dot = ns_janitor:graphviz(Bucket),
-    Req:ok({"image/svg+xml", [{"refresh", 1}  | server_header()],
+    Req:ok({"image/svg+xml", server_header(),
            iolist_to_binary(menelaus_util:insecure_pipe_through_command("dot -Tsvg", Dot))}).
 
 ymd_to_string({Y, M, D}) ->
