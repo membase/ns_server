@@ -50,6 +50,8 @@ init([]) ->
     {ok, {{one_for_one, 10, 1},
           [{ns_log_mf_h, {ns_log_mf_h, start_link, []},
             transient, 10, worker, [ns_log_mf_h]},
+           {log_os_info, {log_os_info, start_link, []},
+            transient, 10, worker, [log_os_info]},
            {dist_manager, {dist_manager, start_link, []},
             permanent, 10, worker, [dist_manager]},
            {ns_cluster, {ns_cluster, start_link, []},

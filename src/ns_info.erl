@@ -35,7 +35,6 @@ runtime() ->
      {applications, application:loaded_applications()},
      {pre_loaded, erlang:pre_loaded()},
      {process_count, erlang:system_info(process_count)},
-     {process_info, erlang:system_info(procs)},
      {node, erlang:node()},
      {nodes, erlang:nodes()},
      {registered, erlang:registered()},
