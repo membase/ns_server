@@ -240,14 +240,21 @@ new_bucket_default_params(memcached) ->
      {map, undefined},
      {ram_quota, 0}].
 
+cleanup_bucket_props(Props) ->
+    case proplists:get_value(auth_type, Props) of
+        sasl -> lists:keydelete(moxi_port, 1, Props);
+        none -> lists:keydelete(sasl_password, 1, Props)
+    end.
+
 create_bucket(BucketType, BucketName, NewConfig) ->
     case is_valid_bucket_name(BucketName) of
         false ->
             {error, {invalid_name, BucketName}};
         _ ->
-            MergedConfig =
+            MergedConfig0 =
                 misc:update_proplist(new_bucket_default_params(BucketType),
                                      NewConfig),
+            MergedConfig = cleanup_bucket_props(MergedConfig0),
             ns_config:update_sub_key(
               buckets, configs,
               fun (List) ->
@@ -291,10 +298,11 @@ update_bucket_props(BucketName, Props) ->
               RV = misc:key_update(
                      BucketName, List,
                      fun (OldProps) ->
-                             lists:foldl(
-                               fun ({K, _V} = Tuple, Acc) ->
-                                       [Tuple | lists:keydelete(K, 1, Acc)]
-                               end, OldProps, Props)
+                             NewProps = lists:foldl(
+                                          fun ({K, _V} = Tuple, Acc) ->
+                                                  [Tuple | lists:keydelete(K, 1, Acc)]
+                                          end, OldProps, Props),
+                             cleanup_bucket_props(NewProps)
                      end),
               case RV of
                   false -> exit({not_found, BucketName});
