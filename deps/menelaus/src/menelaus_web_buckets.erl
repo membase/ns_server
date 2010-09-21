@@ -146,9 +146,16 @@ respond_bucket_created(Req, PoolId, BucketId) ->
                  ""}).
 
 %% returns pprop list with only props useful for ns_bucket
-extract_bucket_props(Props) ->
-    [X || X <- [lists:keyfind(Y, 1, Props) || Y <- [num_replicas, ram_quota, auth_type, sasl_password, moxi_port]],
-          X =/= false].
+extract_bucket_props(BucketId, Props) ->
+    ImportantProps = [X || X <- [lists:keyfind(Y, 1, Props) || Y <- [num_replicas, ram_quota, auth_type, sasl_password, moxi_port]],
+                           X =/= false],
+    case BucketId of
+        "default" -> lists:keyreplace(auth_type, 1,
+                                      lists:keyreplace(sasl_password, 1,
+                                                       ImportantProps, {sasl_password, ""}),
+                                      {auth_type, sasl});
+        _ -> ImportantProps
+    end.
 
 handle_bucket_update(_PoolId, BucketId, Req) ->
     Params = Req:parse_post(),
@@ -170,11 +177,7 @@ handle_bucket_update_inner(BucketId, Req, Params, Limit) ->
             reply_json(Req, RV, 400);
         {false, {ok, ParsedProps, _}} ->
             BucketType = proplists:get_value(bucketType, ParsedProps),
-            UpdatedProps0 = extract_bucket_props(ParsedProps),
-            UpdatedProps = case BucketId of
-                               "default" -> lists:keyreplace(sasl_password, 1, UpdatedProps0, {sasl_password, ""});
-                               _ -> UpdatedProps0
-                           end,
+            UpdatedProps = extract_bucket_props(BucketId, ParsedProps),
             case ns_bucket:update_bucket_props(BucketType, BucketId, UpdatedProps) of
                 ok ->
                     Req:respond({200, server_header(), []});
@@ -189,7 +192,7 @@ handle_bucket_update_inner(BucketId, Req, Params, Limit) ->
 
 do_bucket_create(Name, ParsedProps) ->
     BucketType = proplists:get_value(bucketType, ParsedProps),
-    BucketProps = extract_bucket_props(ParsedProps),
+    BucketProps = extract_bucket_props(Name, ParsedProps),
     case ns_orchestrator:create_bucket(BucketType, Name, BucketProps) of
         ok ->
             ?MENELAUS_WEB_LOG(?BUCKET_CREATED, "Created bucket \"~s\" of type: ~s~n", [Name, BucketType]),

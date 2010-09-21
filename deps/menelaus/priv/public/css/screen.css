@@ -1203,6 +1203,12 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 
 .bucket_details .for-ram-quota em { font-style: normal; }
 
+.bucket_details .for-sasl-password em { font-style: normal; }
+.bucket_details.bucket-is-default em.when-default { display:inline; }
+.bucket_details .when-default { display:none; }
+.bucket_details.bucket-is-default .when-not-default { display: none; }
+.bucket_details.bucket-is-default .for-sasl-password-input { display: none; }
+
 .bucket_details .memcached-summary {font-style:normal;line-height:24px;clear:both;}
 
 .bucket_details .size-gauge {line-height:24px;position:relative;top:-6px;float:right;/*font-size:11px;*/width:364px;}

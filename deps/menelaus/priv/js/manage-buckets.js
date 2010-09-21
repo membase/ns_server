@@ -155,11 +155,6 @@ var BucketDetailsDialog = mkClass({
     dialog.removeClass('editing').removeClass('creating');
     dialog.addClass(isNew ? 'creating' : 'editing');
 
-    var bucketIsDefault = (initValues['name'] == 'default');
-
-    setBoolAttribute(dialog.find('[name=authType][value=none]'), 'disabled', bucketIsDefault);
-    setBoolAttribute(dialog.find('[name=saslPassword]'), 'disabled', bucketIsDefault);
-
     setBoolAttribute(dialog.find('[name=name]'), 'disabled', !isNew);
 
     setBoolAttribute(dialog.find('[name=replicaNumber]'), 'disabled', !isNew);
@@ -178,6 +173,30 @@ var BucketDetailsDialog = mkClass({
       if (errorsCell.value && errorsCell.value.summaries)
         errorsCell.setValueAttr(null, 'summaries', 'ramSummary');
     });
+
+    var preDefaultAuthType;
+    function nameObserver(value) {
+      var isDefault = (value == "default");
+      dialog[isDefault ? 'addClass' : 'removeClass']('bucket-is-default');
+      var forAsciiRadio = dialog.find('.for-ascii input');
+      var forSASLRadio = dialog.find('.for-sasl-password input');
+      if (isDefault) {
+        preDefaultAuthType = (forAsciiRadio.filter(':checked').length) ? '.for-ascii' : '.for-sasl-password';
+        setBoolAttribute(forAsciiRadio, 'disabled', true);
+        setBoolAttribute(forAsciiRadio, 'checked', false);
+        setBoolAttribute(forSASLRadio, 'checked', true);
+      } else {
+        setBoolAttribute(forAsciiRadio, 'disabled', false);
+        if (preDefaultAuthType) {
+          var isAscii = (preDefaultAuthType == '.for-ascii');
+          setBoolAttribute(forAsciiRadio, 'checked', isAscii);
+          setBoolAttribute(forSASLRadio, 'checked', !isAscii);
+        }
+      }
+    }
+
+    dialog.find('[name=name]').observeInput(nameObserver);
+    nameObserver(dialog.find('[name=name]').val());
 
     this.cleanups = [];
 

@@ -999,8 +999,8 @@
     </div>
     <h2>Access Control</h2>
     <label class="for-sasl-password"><input id="bucket_details_sasl_selected" type="radio" name="authType" value="sasl" checked>
-      <span>Standard port (TCP port 11211. Needs SASL auth.)</span>
-   </label>
+      <span><em class="when-default">Standard port (TCP port 11211. ASCII protocol or Binary auth-less)</em><em class="when-not-default">Standard port (TCP port 11211. Needs SASL auth.)</em></span>
+    </label>
     <label class="for-sasl-password-input"><span>Enter password: </span><input type="password" name="saslPassword" disabled value=""></label>
     <label class="for-ascii"><input type="radio" name="authType" value="none"><span>Dedicated port (supports ASCII protocol and is auth-less)</span></label>
     <label class="for-proxy-port"><span>Protocol Port:</span><input name="proxyPort"><span class="error-container err-proxyPort"></span></label>
@@ -1601,13 +1601,6 @@
 	     <label><input type="radio" name="bucketType" value="memcached"> Memcached</label>
 	     <label><input type="radio" name="bucketType" value="membase"> Membase</label>
 	    </div>
-	    <!-- <h2>Access Control</h2> -->
-	    <!-- <label class="for-sasl-password"><input id="bucket_details_sasl_selected" type="radio" name="authType" value="sasl" checked> -->
-	      <!-- <span>Standard port (TCP port 11211. Needs SASL auth.)</span> -->
-	   <!-- </label> -->
-	    <!-- <label class="for-sasl-password-input"><span>Enter password: </span><input type="password" name="saslPassword" disabled value=""></label> -->
-	    <!-- <label class="for-ascii"><input type="radio" name="authType" value="none"><span>Dedicated port (supports ASCII protocol and is auth-less)</span></label> -->
-	    <!-- <label class="for-proxy-port"><span>Protocol Port:</span><input name="proxyPort"><span class="error-container err-proxyPort"></span></label> -->
 	    <h2>Memory Size</h2>
             <strong class="when-non-persistent clearfix" style="font-weight:normal;">Please note: Memcached bucket are configured with a per-node amount of
             memory. Total bucket memory will change as nodes are added/removed.</strong>
