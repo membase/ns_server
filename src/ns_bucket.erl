@@ -86,12 +86,15 @@ config_string(BucketName) ->
                 %% LocalQuota is our limit for this node
                 %% We stretch our quota on all nodes we have for this bucket
                 ok = filelib:ensure_dir(DBName),
-                CFG = lists:flatten(
-                        io_lib:format("vb0=false;waitforwarmup=false;ht_size=~B;"
-                                      "ht_locks=~B;max_size=~B;dbname=~s",
-                                      [proplists:get_value(ht_size, BucketConfig),
-                                       proplists:get_value(ht_locks, BucketConfig),
-                                       LocalQuota, DBName])),
+                CFG =
+                    lists:flatten(
+                      io_lib:format(
+                        "vb0=false;waitforwarmup=false;ht_size=~B;"
+                        "failpartialwarmup=false;"
+                        "ht_locks=~B;max_size=~B;dbname=~s",
+                        [proplists:get_value(ht_size, BucketConfig),
+                         proplists:get_value(ht_locks, BucketConfig),
+                         LocalQuota, DBName])),
                 {CFG, {LocalQuota, DBName}};
             memcached ->
                 {lists:flatten(
