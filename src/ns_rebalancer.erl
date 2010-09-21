@@ -118,8 +118,6 @@ rebalance([Bucket|Buckets], NumBuckets, KeepNodes, EjectNodes) ->
         Histograms2 = histograms(Map2, KeepNodes),
         Moves2 = balance_nodes(Bucket, Map2, Histograms2, 1),
         Map3 = perform_moves(Bucket, Map2, Moves2, ProgressFun),
-        ns_orchestrator:update_progress(
-          dict:from_list([{N, 1.0} || N <- KeepNodes])),
         maybe_stop(),
         Histograms3 = histograms(Map3, KeepNodes),
         Map4 = new_replicas(Bucket, EjectNodes, Map3, Histograms3),
@@ -127,11 +125,16 @@ rebalance([Bucket|Buckets], NumBuckets, KeepNodes, EjectNodes) ->
         maybe_stop(),
         Histograms4 = histograms(Map4, KeepNodes),
         ChainLength = length(lists:nth(1, Map4)),
-        Map5 = lists:foldl(
-                 fun (I, M) ->
-                         Moves = balance_nodes(Bucket, M, Histograms4, I),
-                         apply_moves(I, Moves, M)
-                 end, Map4, lists:seq(2, ChainLength)),
+        {Map5, _} =
+            lists:foldl(
+              fun (I, {M, H}) ->
+                      Moves = balance_nodes(Bucket, M, H, I),
+                      M1 = apply_moves(I, Moves, M),
+                      H1 = histograms(M1, KeepNodes),
+                      M2 = new_replicas(Bucket, EjectNodes, M1, H1),
+                      H2 = histograms(M2, KeepNodes),
+                      {M2, H2}
+              end, {Map4, Histograms4}, lists:seq(2, ChainLength)),
         ns_bucket:set_servers(Bucket, KeepNodes),
         ns_bucket:set_map(Bucket, Map5),
         %% Push out the config with the new map in case this node is
@@ -170,7 +173,7 @@ apply_moves(_, [], Map) ->
     Map;
 apply_moves(I, [{V, _, New}|Tail], Map) ->
     Chain = lists:nth(V+1, Map),
-    NewChain = misc:nthreplace(I, New, Chain),
+    NewChain = lists:sublist(Chain, I-1) ++ [New] ++ lists:duplicate(length(Chain) - I, undefined),
     apply_moves(I, Tail, misc:nthreplace(V+1, NewChain, Map)).
 
 %% picks least utilized node from given Histogram thats not in list of
