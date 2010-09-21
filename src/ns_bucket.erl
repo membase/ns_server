@@ -304,8 +304,15 @@ update_bucket_props(BucketName, Props) ->
       end).
 
 set_map(Bucket, Map) ->
+    %% Make sure all lengths are the same
     ChainLengths = [length(Chain) || Chain <- Map],
     true = lists:max(ChainLengths) == lists:min(ChainLengths),
+    %% Make sure there are no repeated nodes
+    true = lists:all(
+             fun (Chain) ->
+                     Chain1 = [N || N <- Chain, N /= undefined],
+                     length(lists:usort(Chain1)) == length(Chain1)
+             end, Map),
     update_bucket_config(
       Bucket,
       fun (OldConfig) ->
