@@ -409,12 +409,7 @@ handle_info(_Info, State)           -> {noreply, State}.
 
 gen_server_reply_next_state(Reply) ->
     case Reply of
-        {reply,_,NewState} -> NewState;
-        {reply,_,NewState,_} -> NewState;
-        {noreply,NewState} -> NewState;
-        {noreply,NewState,_} -> NewState;
-        {stop,_,_,NewState} -> NewState;
-        {stop,_,NewState} -> NewState
+        {reply,_,NewState} -> NewState
     end.
 
 %% ns_config is implemented as a pair of gen_servers. One is real
