@@ -81,6 +81,9 @@ good_children() ->
      {ns_heart, {ns_heart, start_link, []},
       permanent, 10, worker, [ns_heart]},
 
+     {ns_bucket_sup, {ns_bucket_sup, start_link, []},
+      permanent, infinity, supervisor, [ns_bucket_sup]},
+
      {ns_orchestrator, {ns_orchestrator, start_link, []},
       permanent, 20, worker, [ns_orchestrator]}
     ].
@@ -101,9 +104,6 @@ bad_children() ->
 
      {ns_tick, {ns_tick, start_link, []},
       permanent, 10, worker, [ns_tick]},
-
-     {ns_bucket_sup, {ns_bucket_sup, start_link, []},
-      permanent, infinity, supervisor, [ns_bucket_sup]},
 
      {ns_doctor, {ns_doctor, start_link, []},
       permanent, 10, worker, [ns_doctor]}].
