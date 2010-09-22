@@ -38,15 +38,12 @@
 %% API
 %%
 
-%% @doc Remove an mnesia node.
+%% @doc Remove an mnesia node. Mnesia should be down on the remote node.
 delete_node(Node) ->
-    lists:foreach(fun (Table) ->
-                          Result = mnesia:del_table_copy(Table, Node),
-                          ?log_info("Result of attempt to delete ~p from ~p: ~p",
-                                    [Table, Node, Result])
-                  end, mnesia:system_info(tables)),
-    ?log_info("Removed node ~p from cluster.~nCurrent config: ~p",
-              [Node, mnesia:system_info(all)]).
+    Result = mnesia:del_table_copy(schema, Node),
+    ?log_info("Result of attempt to delete schema from ~p: ~p"
+              "~nMnesia system info: ~p",
+              [Node, Result, mnesia:system_info(all)]).
 
 
 %% @doc Delete the current mnesia schema for joining/renaming purposes.
