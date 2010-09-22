@@ -189,15 +189,24 @@ run_mover(Bucket, V, N1, N2, Tries) ->
         {{memcached_error, not_my_vbucket, _}, {ok, active}} ->
             ok;
         {{ok, active}, {ok, S}} when S /= active ->
+            if S /= dead ->
+                    ok = ns_memcached:set_vbucket(N2, Bucket, V, dead);
+               true ->
+                    ok
+            end,
             ok = ns_memcached:delete_vbucket(N2, Bucket, V),
+            ok = ns_memcached:set_vbucket(N2, Bucket, V, pending),
             {ok, _Pid} = ns_vbm_sup:spawn_mover(Bucket, V, N1, N2),
             wait_for_mover(Bucket, V, N1, N2, Tries);
         {{ok, active}, {memcached_error, not_my_vbucket, _}} ->
+            ok = ns_memcached:set_vbucket(N2, Bucket, V, pending),
             {ok, _Pid} = ns_vbm_sup:spawn_mover(Bucket, V, N1, N2),
             wait_for_mover(Bucket, V, N1, N2, Tries);
         {{ok, dead}, {ok, pending}} ->
             ok = ns_memcached:set_vbucket(N1, Bucket, V, active),
+            ok = ns_memcached:set_vbucket(N2, Bucket, V, dead),
             ok = ns_memcached:delete_vbucket(N2, Bucket, V),
+            ok = ns_memcached:set_vbucket(N2, Bucket, V, pending),
             {ok, _Pid} = ns_vbm_sup:spawn_mover(Bucket, V, N1, N2),
             wait_for_mover(Bucket, V, N1, N2, Tries)
     end.
@@ -206,7 +215,13 @@ run_mover(Bucket, V, N1, N2, Tries) ->
 wait_for_mover(Bucket, V, N1, N2, Tries) ->
     receive
         {'EXIT', _Pid, normal} ->
-            ok;
+            case {ns_memcached:get_vbucket(N1, Bucket, V),
+                  ns_memcached:get_vbucket(N2, Bucket, V)} of
+                {{ok, dead}, {ok, active}} ->
+                    ok;
+                E ->
+                    exit({wrong_state_after_transfer, E})
+            end;
         {'EXIT', _Pid, stopped} ->
             exit(stopped);
         {'EXIT', _Pid, Reason} ->
