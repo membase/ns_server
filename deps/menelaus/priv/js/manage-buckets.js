@@ -447,7 +447,36 @@ var BucketsSection = {
     });
 
     var bucketsListTransformer = function (values) {
+      var storageTotals = poolDetailsValue.storageTotals
+
+      if (!storageTotals || !storageTotals.ram) {
+        // this might happen if ns_doctor is down, which often happens
+        // after failover
+        return future(function (callback) {
+          var cell = DAO.cells.currentPoolDetails;
+          var haveNewValue = false;
+          // wait till pool details will change and try transformation again
+          cell.changedSlot.subscribeOnce(function (newPoolDetails) {
+            haveNewValue = true;
+            console.log("have new pools to resolve empty storageTotals");
+            // we have new pool details. store it,
+            poolDetailsValue = DAO.cells.currentPoolDetails.value;
+            // and then 'return' transformed value
+            callback(bucketsListTransformer(values));
+          });
+          // and force re-fetching of pool details in not too distant
+          // future
+          setTimeout(function () {
+            if (haveNewValue)
+              return;
+            cell.recalculate();
+          }, 1000);
+          console.log("delayed bucketsListTransformer due to empty storageTotals");
+        }, {nowValue: self.buckets});
+      }
+
       self.buckets = values;
+
       _.each(values, function (bucket) {
         if (bucket.bucketType == 'memcached') {
           bucket.bucketTypeName = 'Memcached';
@@ -459,7 +488,6 @@ var BucketsSection = {
 
         bucket.serversCount = poolDetailsValue.nodes.length;
         bucket.ramQuota = bucket.quota.ram;
-        var storageTotals = poolDetailsValue.storageTotals
         bucket.totalRAMSize = storageTotals.ram.total;
         bucket.totalRAMUsed = bucket.basicStats.memUsed;
         bucket.otherRAMSize = storageTotals.ram.used - bucket.totalRAMUsed;
