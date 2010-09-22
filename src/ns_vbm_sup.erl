@@ -186,8 +186,9 @@ args(Node, Bucket, VBuckets, DstNode, TakeOver) ->
     Command = "./bin/vbucketmigrator/vbucketmigrator",
     VBucketArgs = lists:append([["-b", integer_to_list(B)] || B <- VBuckets]),
     TakeOverArg = case TakeOver of
-                      true -> ["-t",
-                               "-T", "60"
+                      true -> ["-t", % transfer the vbucket
+                               "-T", "60", % Timeout in seconds
+                               "-V" % Verify that transfer actually happened
                               ];
                       false -> []
                   end,
