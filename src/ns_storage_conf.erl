@@ -63,21 +63,27 @@ prepare_setup_disk_storage_conf(Node, Path) when Node =:= node() ->
         X -> X
     end.
 
-local_bucket_disk_usage("default" = _Bucket) ->
+local_bucket_disk_usage(BucketName) ->
     {value, PropList} = ns_config:search_node(node(), ns_config:get(), memcached),
     DBDir = proplists:get_value(dbdir, PropList),
     {ok, Filenames} = file:list_dir(DBDir),
+    OKFilenames = lists:filter(fun (Name) ->
+                                       lists:prefix(BucketName, Name)
+                               end, Filenames),
     %% this doesn't include filesystem slack
-    lists:sum([filelib:file_size(filename:join([DBDir, Name])) || Name <- Filenames]);
-local_bucket_disk_usage(_) ->
-    %% TODO
-    local_bucket_disk_usage("default").
+    lists:sum([filelib:file_size(filename:join([DBDir, Name])) || Name <- OKFilenames]).
 
 bucket_disk_usage(Node, Bucket) ->
-    case rpc:call(Node, ns_storage_conf, local_bucket_disk_usage, [Bucket]) of
-        {badrpc, _} ->
-            0;
-        X -> X
+    {ok, Config} = ns_bucket:get_bucket(Bucket),
+    case ns_bucket:bucket_type(Config) of
+        membase ->
+            case rpc:call(Node, ns_storage_conf, local_bucket_disk_usage, [Bucket]) of
+                {badrpc, _} ->
+                    0;
+                X -> X
+            end;
+        _ ->
+            0
     end.
 
 % Returns a proplist of lists of proplists.
