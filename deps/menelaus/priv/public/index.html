@@ -594,11 +594,13 @@
                 Access Control: <span>{%= (authType == 'none') ? 'Port' : 'Password' %}{%= (authType == 'none') ? (': ' + proxyPort) : '' %}</span>
               </td>
               <td>
-              {% if (replicaNumber != 0) { %}
-                Replication: <span>{%= V.count(replicaNumber, 'replica copy') %}</span><br />
-                Blocking Behavior: <span>do not wait for replication to complete; send {%= V.count(replicaNumber, 'copy') %} asynchronously</span>
-              {% } else { %}
-                Replication: <span>disabled</span><br />
+              {% if (bucketType == 'membase') { %}
+                {% if (replicaNumber != 0) { %}
+                  Replication: <span>{%= V.count(replicaNumber, 'replica copy') %}</span><br />
+                  Blocking Behavior: <span>do not wait for replication to complete; send {%= V.count(replicaNumber, 'copy') %} asynchronously</span>
+                {% } else { %}
+                  Replication: <span>disabled</span><br />
+                {% } %}
               {% } %}
               </td>
             </tr>
