@@ -85,7 +85,8 @@ build_bucket_info(PoolId, Id, Pool, InfoLevel, LocalAddr) ->
                  stable -> [];
                  normal ->
                      [{replicaNumber, ns_bucket:num_replicas(BucketConfig)},
-                      {quota, {struct, [{ram, ns_bucket:ram_quota(BucketConfig)}]}},
+                      {quota, {struct, [{ram, ns_bucket:ram_quota(BucketConfig)},
+                                        {rawRAM, ns_bucket:raw_ram_quota(BucketConfig)}]}},
                       {basicStats, {struct, menelaus_stats:basic_stats(PoolId, Id)}}]
              end,
     {struct, [{name, list_to_binary(Id)},

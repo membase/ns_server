@@ -25,6 +25,7 @@
          get_buckets/0,
          get_buckets/1,
          ram_quota/1,
+         raw_ram_quota/1,
          num_replicas/1,
          bucket_type/1,
          auth_type/1,
@@ -133,8 +134,23 @@ get_buckets() ->
 get_buckets(Config) ->
      ns_config:search_prop(Config, buckets, configs, []).
 
+%% returns cluster-wide ram_quota. For memcached buckets it's
+%% ram_quota field times number of servers
 -spec ram_quota([{_,_}]) -> integer().
 ram_quota(Bucket) ->
+    case proplists:get_value(ram_quota, Bucket) of
+        X when is_integer(X) ->
+            case proplists:get_value(type, Bucket) of
+                memcached ->
+                    X * length(ns_cluster_membership:active_nodes());
+                _ -> X
+            end
+    end.
+
+%% returns cluster-wide ram_quota. For memcached buckets it's
+%% ram_quota field times number of servers
+-spec raw_ram_quota([{_,_}]) -> integer().
+raw_ram_quota(Bucket) ->
     case proplists:get_value(ram_quota, Bucket) of
         X when is_integer(X) ->
             X

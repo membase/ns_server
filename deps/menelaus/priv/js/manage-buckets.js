@@ -138,7 +138,7 @@ var BucketDetailsDialog = mkClass({
   initialize: function (initValues, isNew, options) {
     this.isNew = isNew;
     this.initValues = initValues;
-    initValues['ramQuotaMB'] = Math.floor(initValues.quota.ram / 1048576);
+    initValues['ramQuotaMB'] = Math.floor(initValues.quota.rawRAM / 1048576);
 
     options = options || {};
 
@@ -602,7 +602,7 @@ var BucketsSection = {
     var initValues = {uri: '/pools/default/buckets',
                       bucketType: 'membase',
                       authType: 'sasl',
-                      quota: {ram: totals.ram.quotaTotal - totals.ram.quotaUsed},
+                      quota: {rawRAM: totals.ram.quotaTotal - totals.ram.quotaUsed},
                       replicaNumber: 1}
     var dialog = new BucketDetailsDialog(initValues, true);
     dialog.startDialog();
