@@ -75,7 +75,7 @@ apply_auth_with_auth_data(Req, F, Args, UserPassword) ->
     case check_auth(UserPassword) of
         true -> apply(F, Args ++ [Req]);
         _ -> require_auth(Req)
-    end.    
+    end.
 
 apply_auth_cookie(Req, F, Args) ->
     UserPassword = case extract_auth(Req) of
