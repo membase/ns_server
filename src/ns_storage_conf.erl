@@ -18,6 +18,8 @@
 %
 -module(ns_storage_conf).
 
+-include_lib("eunit/include/eunit.hrl").
+
 -include("ns_common.hrl").
 
 -export([memory_quota/1, change_memory_quota/2, prepare_setup_disk_storage_conf/2,
@@ -210,7 +212,12 @@ extract_disk_stats_for_path(StatsList, Path0) ->
                "/" -> "/";
                X -> X ++ "/"
            end,
-    extract_disk_stats_for_path_rec(StatsList, Path).
+    %% we sort by decreasing length so that first match is 'deepest'
+    LessEqFn = fun (A,B) ->
+                       length(element(1, A)) >= length(element(1, B))
+               end,
+    SortedList = lists:sort(LessEqFn, StatsList),
+    extract_disk_stats_for_path_rec(SortedList, Path).
 
 disk_stats_for_path(Node, Path) ->
     case rpc:call(Node, disksup, get_disk_data, [], 2000) of
@@ -220,3 +227,16 @@ disk_stats_for_path(Node, Path) ->
                     {ok, {_MPoint, KBytes, Cap}} -> {ok, KBytes, Cap}
                 end
     end.
+
+-ifdef(EUNIT).
+extract_disk_stats_for_path_test() ->
+    DiskSupStats = [{"/",297994252,97},
+             {"/lib/init/rw",1921120,1},
+             {"/dev",10240,2},
+             {"/dev/shm",1921120,0},
+             {"/var/separate",1921120,0},
+             {"/media/p2",9669472,81}],
+    ?assertEqual({ok, {"/media/p2",9669472,81}},
+                 extract_disk_stats_for_path(DiskSupStats,
+                                             "/media/p2/mbdata")).
+-endif.
