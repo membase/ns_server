@@ -47,6 +47,13 @@ require_auth(Req) ->
                          []})
     end.
 
+%% Returns list of accessible buckets for current credentials. Admin
+%% credentials grant access to all buckets. Bucket credentials grant
+%% access to that bucket only. No credentials cause this function to
+%% return empty list.
+%%
+%% NOTE: this means that listing buckets always requires non-empty
+%% credentials
 filter_accessible_buckets(BucketsAll, Req) ->
     UserPassword = menelaus_auth:extract_auth(Req),
     IsSuper = menelaus_auth:check_auth(UserPassword),
@@ -63,9 +70,13 @@ filter_accessible_buckets(BucketsAll, Req) ->
               BucketsAll)
     end.
 
-is_bucket_accessible(_Bucket, _Req) ->
-    %% TODO this should probably do something, or be ripped out.
-    true.
+%% returns true if given bucket is accessible with current
+%% credentials. No auth buckets are always accessible. SASL auth
+%% buckets are accessible only with admin or bucket credentials.
+is_bucket_accessible(Bucket, Req) ->
+    UserPassword = menelaus_auth:extract_auth(Req),
+    IsSuper = menelaus_auth:check_auth(UserPassword),
+    IsSuper orelse apply(menelaus_auth:bucket_auth_fun(UserPassword), [Bucket]).
 
 apply_auth(Req, F, Args) ->
     UserPassword = extract_auth(Req),
@@ -93,6 +104,10 @@ apply_auth_cookie(Req, F, Args) ->
                    end,
     apply_auth_with_auth_data(Req, F, Args, UserPassword).
 
+%% applies given function F if current credentials allow access to at
+%% least single SASL-auth bucket. So admin credentials and bucket
+%% credentials works. Other credentials do not allow access. Empty
+%% credentials are not allowed too.
 apply_auth_bucket(Req, F, Args) ->
     UserPassword = extract_auth(Req),
     case check_auth_bucket(UserPassword) of
@@ -104,18 +119,16 @@ apply_auth_bucket(Req, F, Args) ->
 %                        {"admin", [{password, "admin"}]}]}
 %              ]}. % An empty list means no login/password auth check.
 
+%% Checks if given credentials allow access to any SASL-auth
+%% bucket. Empty credentials are not allowed.
 check_auth_bucket(undefined) ->
-    false; %% no password -- false check, otherwise password-less buckets will allow access
+    false; %% no password -- false check, otherwise no password buckets will allow access
 check_auth_bucket(UserPassword) ->
-    % Default pool only for 1.0.
-    case ns_config:search_prop(ns_config:get(), pools, "default", empty) of
-        empty -> false;
-        Pool ->
-            Buckets = proplists:get_value(buckets, Pool),
-            lists:any(bucket_auth_fun(UserPassword),
-                      Buckets)
-    end.
+    Buckets = ns_bucket:get_buckets(),
+    lists:any(bucket_auth_fun(UserPassword),
+              Buckets).
 
+%% checks if given credentials are admin credentials
 check_auth(UserPassword) ->
     case ns_config:search_prop(ns_config:get(), rest_creds, creds, empty) of
         []    -> true; % An empty list means no login/password auth check.
@@ -158,11 +171,17 @@ parse_user(UserPasswordStr) ->
         [User, _Password] -> User
     end.
 
+%% returns function that when applied to bucket <name, config> tuple
+%% returns if UserPassword credentials allow access to that bucket.
+%%
+%% NOTE: that no-auth buckets are always accessible even without
+%% password at all
 bucket_auth_fun(UserPassword) ->
     fun({BucketName, BucketProps}) ->
-            case proplists:get_value(auth_plain, BucketProps) of
-                undefined -> false;
-                {BucketName, BucketPassword} ->
+            case {proplists:get_value(auth_type, BucketProps),
+                  proplists:get_value(sasl_password, BucketProps)} of
+                {none, _} -> true;
+                {sasl, BucketPassword} ->
                     case UserPassword of
                         undefined -> false;
                         {User, Password} ->

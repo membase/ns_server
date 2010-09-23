@@ -44,15 +44,22 @@
          concat_url_path/1,
          reply_json/3]).
 
-all_accessible_bucket_names(_PoolId, Req) ->
-    BucketsAll = ns_bucket:get_bucket_names(),
+all_accessible_buckets(_PoolId, Req) ->
+    BucketsAll = ns_bucket:get_buckets(),
     menelaus_auth:filter_accessible_buckets(BucketsAll, Req).
+
+all_accessible_bucket_names(PoolId, Req) ->
+    [Name || {Name, _Config} <- all_accessible_buckets(PoolId, Req)].
 
 checking_bucket_access(_PoolId, Id, Req, Body) ->
     E404 = make_ref(),
     try
-        case menelaus_auth:is_bucket_accessible({Id, fakebucket}, Req) of
-            true -> apply(Body, [fakepool, fakebucket]);
+        BucketTuple = case lists:keyfind(Id, 1, ns_bucket:get_buckets()) of
+                          false -> exit(E404);
+                          X -> X
+                      end,
+        case menelaus_auth:is_bucket_accessible(BucketTuple, Req) of
+            true -> apply(Body, [fakepool, element(2, BucketTuple)]);
             _ -> menelaus_auth:require_auth(Req)
         end
     catch
@@ -69,10 +76,8 @@ handle_bucket_list(Id, Req) ->
     reply_json(Req, BucketsInfo).
 
 handle_bucket_info(PoolId, Id, Req, Pool, _Bucket) ->
-    case ns_bucket:get_bucket(Id) of
-        not_present -> Req:respond({404, server_header(), "The bucket was not found.\r\n"});
-        _ -> reply_json(Req, build_bucket_info(PoolId, Id, Pool, menelaus_util:local_addr(Req)))
-    end.
+    reply_json(Req, build_bucket_info(PoolId, Id, Pool,
+                                      menelaus_util:local_addr(Req))).
 
 build_bucket_info(PoolId, Id, Pool, LocalAddr) ->
     build_bucket_info(PoolId, Id, Pool, normal, LocalAddr).
@@ -119,8 +124,8 @@ handle_sasl_buckets_streaming(_PoolId, Req) ->
         end,
     menelaus_web:handle_streaming(F, Req, undefined).
 
-handle_bucket_info_streaming(PoolId, Id, Req, Pool, _Bucket) ->
-    handle_bucket_info_streaming(PoolId, Id, Req, Pool, _Bucket, stable).
+handle_bucket_info_streaming(PoolId, Id, Req, Pool, Bucket) ->
+    handle_bucket_info_streaming(PoolId, Id, Req, Pool, Bucket, stable).
 
 handle_bucket_info_streaming(PoolId, Id, Req, Pool, _Bucket, ForceInfoLevel) ->
     LocalAddr = menelaus_util:local_addr(Req),
