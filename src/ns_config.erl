@@ -384,16 +384,19 @@ merge_vclocks(NewValue, OldValue) ->
 
 %% gen_server callbacks
 
+launch_replica(State) ->
+    Replica = proc_lib:spawn_link(fun () ->
+                                          (catch erlang:register(ns_config_replica, self())),
+                                          gen_server:enter_loop(?MODULE, [], State, {local, ns_config_replica})
+                                  end),
+    (catch erlang:register(ns_config_replica, Replica)),
+    Replica = erlang:whereis(ns_config_replica).
+
 init({full, ConfigPath, DirPath, PolicyMod} = Init) ->
     case load_config(ConfigPath, DirPath, PolicyMod) of
         {ok, Config} ->
             State = Config#config{init = Init},
-            Replica = proc_lib:spawn_link(fun () ->
-                                                  (catch erlang:register(ns_config_replica, self())),
-                                                  gen_server:enter_loop(?MODULE, [], State, {local, ns_config_replica})
-                                          end),
-            (catch erlang:register(ns_config_replica, Replica)),
-            Replica = erlang:whereis(ns_config_replica),
+            launch_replica(State),
             {ok, State};
         Error ->
             {stop, Error}
@@ -661,16 +664,27 @@ sync_announcements() ->
 
 do_setup() ->
     mock_gen_server:start_link({local, ?MODULE}),
+    InitialState = #config{init=[],
+                           policy_mod=ns_config_default},
+    launch_replica(InitialState),
     ok.
 
-do_teardown(_V) ->
-    Pid = whereis(?MODULE),
+shutdown_process(Name) ->
     OldWaitFlag = erlang:process_flag(trap_exit, true),
-    mock_gen_server:stop(?MODULE),
-    receive
-        {'EXIT', Pid, _} -> ok
+    try
+        Pid = whereis(Name),
+        exit(Pid, shutdown),
+        receive
+            {'EXIT', Pid, _} -> ok
+        end
+    catch Kind:What ->
+            io:format("Ignoring ~p:~p while shutting down ~p~n", [Kind, What, Name])
     end,
-    erlang:process_flag(trap_exit, OldWaitFlag),
+    erlang:process_flag(trap_exit, OldWaitFlag).
+
+do_teardown(_V) ->
+    shutdown_process(?MODULE),
+    shutdown_process(ns_config_replica),
     ok.
 
 all_test_() ->
