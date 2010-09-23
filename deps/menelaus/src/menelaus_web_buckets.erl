@@ -26,8 +26,6 @@
          checking_bucket_access/4,
          handle_bucket_list/2,
          handle_bucket_info/5,
-         build_bucket_info/5,
-         build_bucket_info/4,
          handle_sasl_buckets_streaming/2,
          handle_bucket_info_streaming/5,
          handle_bucket_info_streaming/6,
@@ -71,21 +69,23 @@ handle_bucket_list(Id, Req) ->
     BucketNames = lists:sort(fun (A,B) -> A =< B end,
                              all_accessible_bucket_names(fakepool, Req)),
     LocalAddr = menelaus_util:local_addr(Req),
-    BucketsInfo = [build_bucket_info(Id, Name, fakepool, LocalAddr)
+    BucketsInfo = [build_bucket_info(Id, Name, fakepool, undefined, LocalAddr)
                    || Name <- BucketNames],
     reply_json(Req, BucketsInfo).
 
-handle_bucket_info(PoolId, Id, Req, Pool, _Bucket) ->
-    reply_json(Req, build_bucket_info(PoolId, Id, Pool,
+handle_bucket_info(PoolId, Id, Req, Pool, Bucket) ->
+    reply_json(Req, build_bucket_info(PoolId, Id, Pool, Bucket,
                                       menelaus_util:local_addr(Req))).
 
-build_bucket_info(PoolId, Id, Pool, LocalAddr) ->
-    build_bucket_info(PoolId, Id, Pool, normal, LocalAddr).
+build_bucket_info(PoolId, Id, Pool, Bucket, LocalAddr) ->
+    build_bucket_info(PoolId, Id, Pool, Bucket, normal, LocalAddr).
 
-build_bucket_info(PoolId, Id, Pool, InfoLevel, LocalAddr) ->
+build_bucket_info(PoolId, Id, Pool, undefined, InfoLevel, LocalAddr) ->
+    {ok, BucketConfig} = ns_bucket:get_bucket(Id),
+    build_bucket_info(PoolId, Id, Pool, BucketConfig, InfoLevel, LocalAddr);
+build_bucket_info(PoolId, Id, Pool, BucketConfig, InfoLevel, LocalAddr) ->
     StatsUri = list_to_binary(concat_url_path(["pools", PoolId, "buckets", Id, "stats"])),
     Nodes = menelaus_web:build_nodes_info(Pool, false, InfoLevel, LocalAddr),
-    {ok, BucketConfig} = ns_bucket:get_bucket(Id),
     Suffix = case InfoLevel of
                  stable -> [];
                  normal ->
@@ -127,12 +127,12 @@ handle_sasl_buckets_streaming(_PoolId, Req) ->
 handle_bucket_info_streaming(PoolId, Id, Req, Pool, Bucket) ->
     handle_bucket_info_streaming(PoolId, Id, Req, Pool, Bucket, stable).
 
-handle_bucket_info_streaming(PoolId, Id, Req, Pool, _Bucket, ForceInfoLevel) ->
+handle_bucket_info_streaming(PoolId, Id, Req, Pool, Bucket, ForceInfoLevel) ->
     LocalAddr = menelaus_util:local_addr(Req),
     F = fun(InfoLevel) ->
                 case ForceInfoLevel of
-                    undefined -> build_bucket_info(PoolId, Id, Pool, InfoLevel, LocalAddr);
-                    _         -> build_bucket_info(PoolId, Id, Pool, ForceInfoLevel, LocalAddr)
+                    undefined -> build_bucket_info(PoolId, Id, Pool, Bucket, InfoLevel, LocalAddr);
+                    _         -> build_bucket_info(PoolId, Id, Pool, Bucket, ForceInfoLevel, LocalAddr)
                 end
         end,
     menelaus_web:handle_streaming(F, Req, undefined).
