@@ -17,6 +17,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-include("ns_common.hrl").
 -include("ns_stats.hrl").
 
 -behaviour(gen_server).
@@ -78,10 +79,19 @@ code_change(_OldVsn, State, _Extra) ->
 
 %% Internal functions
 latest_tick(TS) ->
+    latest_tick(TS, 0).
+
+
+latest_tick(TS, NumDropped) ->
     receive
         {tick, TS1} ->
-            latest_tick(TS1)
+            latest_tick(TS1, NumDropped + 1)
     after 0 ->
+            if NumDropped > 0 ->
+                    ?log_warning("Dropped ~b ticks", [NumDropped]);
+               true ->
+                    ok
+            end,
             TS
     end.
 
