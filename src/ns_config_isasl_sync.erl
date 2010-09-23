@@ -99,6 +99,7 @@ writeSASLConf(Path, Buckets, AU, AP) ->
 writeSASLConf(Path, Buckets, AU, AP, Tries, SleepTime) ->
     {ok, Pwd} = file:get_cwd(),
     TmpPath = filename:join(filename:dirname(Path), "isasl.tmp"),
+    ok = filelib:ensure_dir(TmpPath),
     error_logger:info_msg("Writing isasl passwd file: ~p~n",
                           [filename:join(Pwd, Path)]),
     {ok, F} = file:open(TmpPath, [write]),

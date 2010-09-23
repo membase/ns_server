@@ -137,7 +137,7 @@ default() ->
     %              ]}, % An empty list means no login/password auth check.
 
     % This is also a parameter to memcached ports below.
-    {isasl, [{path, "./priv/isasl.pw"}]}, % Relative to startup directory.
+    {{node, node(), isasl}, [{path, filename:join(DbDir, "isasl.pw")}]},
 
     % Memcached config
     {{node, node(), memcached},
