@@ -27,7 +27,6 @@
 
 -export([start_link/0,
          kill_children/3,
-         kill_all_children/1,
          kill_dst_children/3,
          replicators/2,
          set_replicas/3,
@@ -119,11 +118,6 @@ split_vbuckets(VBuckets, L) ->
             {H, T} = lists:split(?MAX_VBUCKETS, VBuckets),
             split_vbuckets(T, [H|L])
     end.
-
-kill_all_children(Node) ->
-    lists:foreach(fun (Child) ->
-                          kill_child(Node, Child)
-                  end, children(Node)).
 
 kill_child(Node, Child) ->
     case supervisor:terminate_child({?MODULE, Node}, Child) of
