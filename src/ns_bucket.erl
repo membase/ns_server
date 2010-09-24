@@ -76,7 +76,8 @@ config_string(BucketName) ->
                      X -> X
                  end,
     BucketType =  proplists:get_value(type, BucketConfig),
-    Engine = proplists:get_value(BucketType, Engines),
+    EngineConfig = proplists:get_value(BucketType, Engines),
+    Engine = proplists:get_value(engine, EngineConfig),
     {ConfigString, ExtraParams} =
         case BucketType of
             membase ->
@@ -91,11 +92,13 @@ config_string(BucketName) ->
                     lists:flatten(
                       io_lib:format(
                         "vb0=false;waitforwarmup=false;ht_size=~B;"
-                        "failpartialwarmup=false;"
-                        "ht_locks=~B;max_size=~B;dbname=~s",
+                        "ht_locks=~B;failpartialwarmup=false;"
+                        "max_size=~B;initfile=~s;dbname=~s",
                         [proplists:get_value(ht_size, BucketConfig),
                          proplists:get_value(ht_locks, BucketConfig),
-                         LocalQuota, DBName])),
+                         LocalQuota,
+                         proplists:get_value(initfile, EngineConfig),
+                         DBName])),
                 {CFG, {LocalQuota, DBName}};
             memcached ->
                 {lists:flatten(

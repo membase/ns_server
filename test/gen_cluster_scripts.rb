@@ -45,8 +45,11 @@ num_nodes.times do |x|
                  {admin_user, "_admin"},
                  {admin_pass, "_admin"},
                  {bucket_engine, "./bin/bucket_engine/bucket_engine.so"},
-                 {engines, [{membase, "./bin/ep_engine/ep.so"},
-                            {memcached, "./bin/memcached/default_engine.so"}]},
+                 {engines, [{membase,
+                            [{engine, "bin/ep_engine/ep.so"},
+                             {initfile, "priv/init.sql"}]},
+                            {memcached,
+                             [{engine, "bin/memcached/default_engine.so"}]}]},
                  {verbosity, ""}
                  ]}.
 
