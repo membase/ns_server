@@ -53,7 +53,7 @@ init({Name, _Cmd, _Args, _Opts} = Params) ->
     {ok, #state{port = Port, name = Name,
                 messages = ringbuffer:new(?NUM_MESSAGES)}}.
 
-handle_info({_Port, {data, Msg}}, State) ->
+handle_info({_Port, {data, {_, Msg}}}, State) ->
     State1 = log_messages([Msg], State),
     {noreply, State1};
 handle_info({_Port, {exit_status, 0}}, State) ->
@@ -82,9 +82,25 @@ code_change(_OldVsn, State, _Extra) ->
 
 %% Internal functions
 
+format_lines(Name, Lines) ->
+    Prefix = io_lib:format("~p~p: ", [Name, self()]),
+    [[Prefix, Line, $\n] || Line <- Lines].
+
+log_messages(L, State) ->
+    State1 = State#state{messages=ringbuffer:add(hd(L), State#state.messages)},
+    receive
+        {_Port, {data, {_, Msg}}} ->
+            log_messages([Msg|L], State1)
+    after 0 ->
+            %% split_log will reverse the lines
+            split_log(format_lines(State#state.name, L)),
+            State1
+    end.
+
 open_port({_Name, Cmd, Args, OptsIn}) ->
     %% Incoming options override existing ones (specified in proplists docs)
-    Opts0 = OptsIn ++ [{args, Args}, exit_status],
+    Opts0 = OptsIn ++ [{args, Args}, exit_status, {line, 8192},
+                       stderr_to_stdout],
     WriteDataArg = proplists:get_value(write_data, Opts0),
     Opts = lists:keydelete(write_data, 1, Opts0),
     Port = open_port({spawn_executable, Cmd}, Opts),
@@ -96,21 +112,17 @@ open_port({_Name, Cmd, Args, OptsIn}) ->
     end,
     Port.
 
-log_messages(L, State) ->
-    State1 = State#state{messages=ringbuffer:add(hd(L), State#state.messages)},
-    receive
-        {_Port, {data, Msg}} ->
-            log_messages([Msg|L], State1)
-    after 0 ->
-            split_log(State1#state.name, L, []),
-            State1
-    end.
+%% @doc Split the log into <64k chunks. The lines are fed in backwards.
+split_log(L) ->
+    split_log(L, [], 0).
 
-split_log(Name, L, M) ->
-    case L == [] orelse lists:flatlength(L) + length(hd(L)) > 65000 of
-        true ->
-            ?log_info("Message from ~p:~n~s",
-                      [Name, lists:append(M)]);
-        false ->
-            split_log(Name, tl(L), [hd(L)|M])
-    end.
+split_log([H|T] = L, M, N) ->
+    NewLength = N + lists:flatlength(H),
+    if NewLength > 65000 ->
+            error_logger:info_msg(lists:flatten(M)),
+            split_log(L);
+       true ->
+            split_log(T, [H|M], NewLength)
+    end;
+split_log([], M, _) ->
+    error_logger:info_msg(lists:flatten(M)).
