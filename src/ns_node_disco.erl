@@ -18,6 +18,8 @@
 -behaviour(gen_server).
 -behavior(ns_log_categorizing).
 
+-include("ns_common.hrl").
+
 -define(PING_FREQ, 60000).
 -define(NODE_CHANGE_DELAY, 5000).
 -define(SYNC_TIMEOUT, 5000).
@@ -185,6 +187,15 @@ do_nodes_wanted_updated_fun(NodeListIn) ->
                             NodeList),
     error_logger:info_msg("ns_node_disco: nodes_wanted pong: ~p, with cookie: ~p~n",
                           [PongList, erlang:get_cookie()]),
+    case lists:member(node(), NodeList) of
+        true ->
+            ok;
+        false ->
+            %% Must have been shunned while we were down. Leave the cluster.
+            ?log_info("We've been shunned (nodes_wanted = ~p). "
+                      "Leaving cluster.", [NodeList]),
+            ns_cluster:leave_async()
+    end,
     ok.
 
 %% Run do_nodes_wanted_updated_fun in a process, return the Pid.
