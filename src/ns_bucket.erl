@@ -169,7 +169,7 @@ min_live_copies() ->
         [] ->
             undefined;
         BucketConfigs ->
-            LiveNodes = ns_node_disco:nodes_actual_proper(),
+            LiveNodes = [node()|nodes()],
             CopyCounts = [min_live_copies(LiveNodes, BucketConfig)
                           || BucketConfig <- BucketConfigs],
             lists:min(CopyCounts)
@@ -179,7 +179,7 @@ min_live_copies() ->
 min_live_copies(Bucket) ->
     case get_bucket(Bucket) of
         {ok, Config} ->
-            min_live_copies(ns_node_disco:nodes_actual_proper(), Config);
+            min_live_copies([node()|nodes()], Config);
         _ ->
             undefined
     end.
