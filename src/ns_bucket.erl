@@ -16,6 +16,7 @@
 -module(ns_bucket).
 
 -include("ns_common.hrl").
+-include_lib("eunit/include/eunit.hrl").
 
 %% API
 -export([config/1,
@@ -24,6 +25,7 @@
          get_bucket/1,
          get_buckets/0,
          get_buckets/1,
+         min_live_copies/1,
          ram_quota/1,
          raw_ram_quota/1,
          num_replicas/1,
@@ -47,7 +49,6 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-
 
 config(Bucket) ->
     {ok, CurrentConfig} = get_bucket(Bucket),
@@ -157,6 +158,35 @@ raw_ram_quota(Bucket) ->
     case proplists:get_value(ram_quota, Bucket) of
         X when is_integer(X) ->
             X
+    end.
+
+-spec min_live_copies(string()) -> non_neg_integer() | undefined.
+min_live_copies(Bucket) ->
+    case get_bucket(Bucket) of
+        {ok, Config} ->
+            min_live_copies(ns_node_disco:nodes_actual_proper(), Config);
+        _ ->
+            undefined
+    end.
+
+%% @doc Separate out the guts of can_fail_over to make it testable.
+-spec min_live_copies([node()], list()) -> non_neg_integer() | undefined.
+min_live_copies(LiveNodes, Config) ->
+    case proplists:get_value(map, Config) of
+        undefined -> undefined;
+        Map ->
+            lists:foldl(
+              fun (Chain, Min) ->
+                      NumLiveCopies =
+                          lists:foldl(
+                            fun (Node, Acc) ->
+                                    case lists:member(Node, LiveNodes) of
+                                        true -> Acc + 1;
+                                        false -> Acc
+                                    end
+                            end, 0, Chain),
+                      erlang:min(Min, NumLiveCopies)
+              end, length(hd(Map)), Map)
     end.
 
 -spec num_replicas([{_,_}]) -> integer().
@@ -364,3 +394,23 @@ update_bucket_config(Bucket, Fun) ->
                    NewBuckets = lists:keyreplace(Bucket, 1, Buckets, {Bucket, NewConfig}),
                    lists:keyreplace(configs, 1, List, {configs, NewBuckets})
            end).
+
+
+%%
+%% Internal functions
+%%
+
+%%
+%% Tests
+%%
+
+min_live_copies_test() ->
+    ?assertEqual(min_live_copies([node1], []), undefined),
+    ?assertEqual(min_live_copies([node1], [{map, undefined}]), undefined),
+    Map1 = [[node1, node2], [node2, node1]],
+    ?assertEqual(2, min_live_copies([node1, node2], [{map, Map1}])),
+    ?assertEqual(1, min_live_copies([node1], [{map, Map1}])),
+    ?assertEqual(0, min_live_copies([node3], [{map, Map1}])),
+    Map2 = [[undefined, node2], [node2, node1]],
+    ?assertEqual(1, min_live_copies([node1, node2], [{map, Map2}])),
+    ?assertEqual(0, min_live_copies([node1, node3], [{map, Map2}])).
