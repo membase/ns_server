@@ -28,8 +28,15 @@
          terminate/2]).
 
 %% API
--export([change_my_address/1, join/2, leave/0, leave/1, log_joined/0,
-         prepare_join_to/1, shun/1, start_link/0]).
+-export([change_my_address/1,
+         join/2,
+         leave/0,
+         leave/1,
+         leave_async/0,
+         log_joined/0,
+         prepare_join_to/1,
+         shun/1,
+         start_link/0]).
 
 -export([alert_key/1]).
 -record(state, {}).
@@ -209,7 +216,7 @@ leave() ->
     %% Tell the remote server to tell everyone to shun me.
     rpc:cast(RemoteNode, ?MODULE, shun, [node()]),
     %% Then drop ourselves into a leaving state.
-    gen_server:cast(?MODULE, leave).
+    leave_async().
 
 %% Cause another node to leave the cluster if it's up
 leave(Node) ->
@@ -221,6 +228,10 @@ leave(Node) ->
             gen_server:cast({?MODULE, Node}, leave),
             shun(Node)
     end.
+
+%% @doc Just trigger the leave code; don't get another node to shun us.
+leave_async() ->
+    gen_server:cast(?MODULE, leave).
 
 %% Note that shun does *not* cause the other node to reset its config!
 shun(RemoteNode) ->
