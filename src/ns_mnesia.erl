@@ -212,28 +212,7 @@ init([]) ->
     ok = mnesia:start(), % Will work even if it's already started
     {ok, _} = mnesia:subscribe(system),
     {ok, _} = mnesia:subscribe({table, schema, detailed}),
-    %% Create a new on-disk schema if one doesn't already exist
-    Nodes = mnesia:table_info(schema, disc_copies),
-    case lists:member(node(), Nodes) of
-        false ->
-            case ns_node_disco:nodes_actual_other() -- Nodes of
-                [] ->
-                    ok;
-                ExtraNodes ->
-                    case mnesia:change_config(extra_db_nodes, ExtraNodes) of
-                        {ok, []} ->
-                            exit(mnesia_connect_failed);
-                        {ok, ConnectedNodes} ->
-                            ?log_info("Mnesia connected to ~p",
-                                      [ConnectedNodes])
-                    end
-            end,
-            ?log_info("Committing schema to disk.", []),
-            {atomic, ok} =
-                   mnesia:change_table_copy_type(schema, node(), disc_copies);
-        true ->
-            ?log_info("Using existing disk schema on ~p.", [Nodes])
-    end,
+    ensure_schema(),
     ?log_info("Current config: ~p", [mnesia:system_info(all)]),
     {ok, #state{}}.
 
@@ -278,6 +257,37 @@ change_node_name(Mod, From, To, Source, Target) ->
     {ok, switched} = mnesia:traverse_backup(Source, Mod, Target, Mod, Convert,
                                             switched),
     ok.
+
+%% @doc Make sure we have a disk copy of the schema.
+ensure_schema() ->
+    %% Create a new on-disk schema if one doesn't already exist
+    Nodes = mnesia:table_info(schema, disc_copies),
+    case lists:member(node(), Nodes) of
+        false ->
+            case ns_node_disco:nodes_actual_other() -- Nodes of
+                [] ->
+                    ok;
+                ExtraNodes ->
+                    case mnesia:change_config(extra_db_nodes, ExtraNodes) of
+                        {ok, []} ->
+                            exit(mnesia_connect_failed);
+                        {ok, ConnectedNodes} ->
+                            ?log_info("Mnesia connected to ~p",
+                                      [ConnectedNodes])
+                    end
+            end,
+            case mnesia:change_table_copy_type(schema, node(), disc_copies) of
+                {atomic, ok} ->
+                    ?log_info("Committed schema to disk.", []);
+                {aborted, {already_exists, _, _, _}} ->
+                    ?log_warning("Failed to write schema. Retrying.~n"
+                                 "Config = ~p", [mnesia:system_info(all)]),
+                    timer:sleep(500),
+                    ensure_schema()
+            end;
+        true ->
+            ?log_info("Using existing disk schema on ~p.", [Nodes])
+    end.
 
 
 %% @doc Hack.
