@@ -23,7 +23,7 @@
 
 -include("ns_common.hrl").
 
--export([failover/1, generate_initial_map/3, rebalance/2, rebalance/4,
+-export([failover/1, generate_initial_map/3, rebalance/3, rebalance/4,
          unbalanced/2]).
 
 
@@ -61,9 +61,8 @@ generate_initial_map(NumReplicas, NumVBuckets, Servers, Map) ->
     generate_initial_map(NumReplicas, NumVBuckets - 1, T ++ [H], [Chain|Map]).
 
 
-rebalance(KeepNodes, EjectNodes) ->
-    AllNodes = KeepNodes ++ EjectNodes,
-    FailedNodes = AllNodes -- ns_node_disco:nodes_actual_proper(),
+rebalance(KeepNodes, EjectNodes, FailedNodes) ->
+    AllNodes = KeepNodes ++ EjectNodes ++ FailedNodes,
     Buckets = ns_bucket:get_bucket_names(),
     lists:foreach(fun (Bucket) ->
                           wait_for_memcached(AllNodes -- FailedNodes, Bucket),

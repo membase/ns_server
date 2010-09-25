@@ -36,7 +36,7 @@
          needs_rebalance/0,
          rebalance_progress/0,
          start_link/0,
-         start_rebalance/2,
+         start_rebalance/3,
          stop_rebalance/0,
          update_progress/1
         ]).
@@ -107,11 +107,11 @@ rebalance_progress() ->
     end.
 
 
--spec start_rebalance([atom()], [atom()]) ->
+-spec start_rebalance([node()], [node()], [node()]) ->
                              ok | in_progress | already_balanced.
-start_rebalance(KeepNodes, EjectNodes) ->
+start_rebalance(KeepNodes, EjectNodes, FailedNodes) ->
     gen_fsm:sync_send_event(?SERVER, {start_rebalance, KeepNodes,
-                                      lists:usort(EjectNodes)}).
+                                      EjectNodes, FailedNodes}).
 
 
 -spec stop_rebalance() -> ok | not_rebalancing.
@@ -224,15 +224,16 @@ idle({failover, Node}, _From, State) ->
     {reply, Result, idle, State};
 idle(rebalance_progress, _From, State) ->
     {reply, not_running, idle, State};
-idle({start_rebalance, KeepNodes, EjectNodes}, _From,
+idle({start_rebalance, KeepNodes, EjectNodes, FailedNodes}, _From,
             _State) ->
     ns_log:log(?MODULE, ?REBALANCE_STARTED,
                "Starting rebalance, KeepNodes = ~p, EjectNodes = ~p~n",
                [KeepNodes, EjectNodes]),
     ns_config:set(rebalance_status, running),
-    Pid = spawn_link(fun () ->
-                             ns_rebalancer:rebalance(KeepNodes, EjectNodes)
-                     end),
+    Pid = spawn_link(
+            fun () ->
+                    ns_rebalancer:rebalance(KeepNodes, EjectNodes, FailedNodes)
+            end),
     {reply, ok, rebalancing, #rebalancing_state{rebalancer=Pid,
                                                 progress=dict:new()}};
 idle(stop_rebalance, _From, State) ->

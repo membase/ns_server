@@ -254,8 +254,8 @@ start_rebalance(KnownNodes, EjectedNodes) ->
                       State == inactiveFailed],
             KeepNodes = MaybeKeepNodes -- FailedNodes,
             activate(KeepNodes),
-            ns_orchestrator:start_rebalance(KeepNodes, EjectedNodes ++
-                                                FailedNodes);
+            ns_orchestrator:start_rebalance(KeepNodes, EjectedNodes,
+                                            FailedNodes);
         _ -> nodes_mismatch
     end.
 
