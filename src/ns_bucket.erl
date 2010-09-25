@@ -25,6 +25,7 @@
          get_bucket/1,
          get_buckets/0,
          get_buckets/1,
+         min_live_copies/0,
          min_live_copies/1,
          ram_quota/1,
          raw_ram_quota/1,
@@ -158,6 +159,20 @@ raw_ram_quota(Bucket) ->
     case proplists:get_value(ram_quota, Bucket) of
         X when is_integer(X) ->
             X
+    end.
+
+%% @doc Return the minimum number of live copies for all membase buckets.
+-spec min_live_copies() -> non_neg_integer() | undefined.
+min_live_copies() ->
+    case [Config || {_BucketName, Config} <- get_buckets(),
+                    proplists:get_value(type, Config) == membase] of
+        [] ->
+            undefined;
+        BucketConfigs ->
+            LiveNodes = ns_node_disco:nodes_actual_proper(),
+            CopyCounts = [min_live_copies(LiveNodes, BucketConfig)
+                          || BucketConfig <- BucketConfigs],
+            lists:min(CopyCounts)
     end.
 
 -spec min_live_copies(string()) -> non_neg_integer() | undefined.
