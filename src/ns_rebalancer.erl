@@ -41,12 +41,10 @@ failover(Node) ->
 failover(Bucket, Node) ->
     {_, _, Map, Servers} = ns_bucket:config(Bucket),
     %% Promote replicas of vbuckets on this node
-    Map1 = promote_replicas(Bucket, Map, [Node]),
+    Map1 = promote_replicas(Map, [Node]),
     ns_bucket:set_map(Bucket, Map1),
     ns_bucket:set_servers(Bucket, lists:delete(Node, Servers)),
-    lists:foreach(fun (N) ->
-                          ns_vbm_sup:kill_dst_children(N, Bucket, Node)
-                  end, lists:delete(Node, Servers)).
+    ns_janitor:cleanup(Bucket).
 
 
 generate_initial_map(NumReplicas, NumVBuckets, Servers) ->
@@ -334,38 +332,17 @@ perform_moves(Bucket, Map, Moves, ProgressFun) ->
 
 
 %% removes RemapNodes from head of vbucket map Map. Returns new map
-promote_replicas(Bucket, Map, RemapNodes) ->
-    [promote_replica(Bucket, Chain, RemapNodes, V) ||
-        {V, Chain} <- misc:enumerate(Map, 0)].
+promote_replicas(Map, RemapNodes) ->
+    [promote_replica(Chain, RemapNodes) || Chain <- Map].
 
 %% removes RemapNodes from head of vbucket map Chain for vbucket
 %% V. Actually switches master if head of Chain is in
 %% RemapNodes. Returns new chain.
-promote_replica(Bucket, Chain, RemapNodes, V) ->
-    [OldMaster|_] = Chain,
+promote_replica(Chain, RemapNodes) ->
     Bad = fun (Node) -> lists:member(Node, RemapNodes) end,
     NotBad = fun (Node) -> not lists:member(Node, RemapNodes) end,
     NewChain = lists:takewhile(NotBad, lists:dropwhile(Bad, Chain)),
-    NewChainExtended = NewChain ++ lists:duplicate(length(Chain) - length(NewChain), undefined),
-    case NewChainExtended of
-        [OldMaster|_] ->
-            %% No need to promote
-            NewChainExtended;
-        [undefined|_] ->
-            error_logger:error_msg("~p:promote_replicas(~p, ~p, ~p, ~p): No master~n", [?MODULE, Bucket, V, RemapNodes, Chain]),
-            NewChainExtended;
-        [NewMaster|_] ->
-            ok = ns_memcached:set_vbucket(NewMaster, Bucket, V, pending),
-            try
-                ok = ns_memcached:set_vbucket(OldMaster, Bucket, V, dead)
-            catch
-                E:R ->
-                    ?log_warning("Could not set vbucket ~p in bucket ~p on ~p"
-                                 " to dead:~n~p", [V, Bucket, OldMaster, {E, R}])
-            end,
-            ok = ns_memcached:set_vbucket(NewMaster, Bucket, V, active),
-            NewChainExtended
-    end.
+    NewChain ++ lists:duplicate(length(Chain) - length(NewChain), undefined).
 
 
 %% @doc Wait until either all memcacheds are up or stop is pressed.
