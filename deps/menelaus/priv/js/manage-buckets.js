@@ -289,7 +289,7 @@ var BucketDetailsDialog = mkClass({
     });
   },
 
-  renderGauge: function (jq, total, thisBucket, used) {
+  renderGauge: function (jq, total, thisBucket, otherBuckets) {
     var thisValue = thisBucket
     var formattedBucket = ViewHelpers.formatQuantity(thisBucket, null, null, ' ');
 
@@ -298,14 +298,42 @@ var BucketDetailsDialog = mkClass({
       thisValue = 0;
     }
 
-    jq.find('.total').text(ViewHelpers.formatQuantity(total, null, null, ' '));
-    var free = total - used - thisValue;
-    jq.find('.free').text(ViewHelpers.formatQuantity(free, null, null, ' '));
-    jq.find('.other').text(ViewHelpers.formatQuantity(used, null, null, ' '));
-    jq.find('.this').text(formattedBucket);
+    var options = {
+      topAttrs: {'class': 'size-gauge for-ram'},
+      topRight: 'Cluster quota (' + ViewHelpers.formatMemSize(total) + ')',
+      items: [
+        {name: 'Other Buckets',
+         value: otherBuckets,
+         attrs: {style: 'background-position: 0 -15px;'},
+         tdAttrs: {style: 'color:blue;'}},
+        {name: 'This Bucket',
+         value: thisValue,
+         attrs: {style: 'background-position: 0 -45px;'},
+         tdAttrs: {style: 'color:green;'}},
+        {name: 'Free',
+         value: total - otherBuckets - thisValue,
+         tdAttrs: {style: 'color:#444245;'}}
+      ],
+      markers: []
+    };
 
-    jq.find('.gauge .green').css('width', calculatePercent(used + thisValue, total) + '%');
-    jq.find('.gauge .blue').css('width', calculatePercent(used, total) + '%');
+    if (options.items[2].value < 0) {
+      options.items[1].value = total - otherBuckets;
+      options.items[2] = {
+        name: 'Overcommitted',
+        value: otherBuckets + thisValue - total,
+        attrs: {style: 'background-position: 0 -60px;'},
+        tdAttrs: {style: 'color:#e43a1b;'}
+      }
+      options.markers.push({value: total,
+                            attrs: {style: 'background-color:#444245;'}});
+      options.markers.push({value: otherBuckets + thisValue,
+                            attrs: {style: 'background-color:red;'}});
+      options.topLeft = 'Total Allocated (' + ViewHelpers.formatMemSize(otherBuckets + thisValue) + ')';
+      options.topLeftAttrs = {style: 'color:#e43a1b;'};
+    }
+
+    jq.replaceWith(memorySizesGaugeHTML(options));
   },
 
   renderError: function (field, error) {
@@ -354,7 +382,7 @@ var BucketDetailsDialog = mkClass({
 var BucketsSection = {
   renderRAMDetailsGauge: function (e, details) {
     var poolDetails = DAO.cells.currentPoolDetails.value;
-    BucketDetailsDialog.prototype.renderGauge($(e),
+    BucketDetailsDialog.prototype.renderGauge($(e).find('.for-ram'),
                                               poolDetails.storageTotals.ram.quotaTotal,
                                               details.quota.ram,
                                               poolDetails.storageTotals.ram.quotaUsed - details.quota.ram);
@@ -363,16 +391,31 @@ var BucketsSection = {
   renderDiskGauge: function (jq, total, thisBucket, otherBuckets, otherData) {
     var formattedBucket = ViewHelpers.formatQuantity(thisBucket, null, null, ' ');
 
-    jq.find('.total').text(ViewHelpers.formatQuantity(total, null, null, ' '));
     var free = total - otherData - thisBucket - otherBuckets;
-    jq.find('.free').text(ViewHelpers.formatQuantity(free, null, null, ' '));
-    jq.find('.other').text(ViewHelpers.formatQuantity(otherBuckets, null, null, ' '));
-    jq.find('.other-data').text(ViewHelpers.formatQuantity(otherData, null, null,' '));
-    jq.find('.this').text(formattedBucket);
 
-    jq.find('.gauge .green').css('width', calculatePercent(otherData + otherBuckets + thisBucket, total) + '%');
-    jq.find('.gauge .blue').css('width', calculatePercent(otherData + otherBuckets, total) + '%');
-    jq.find('.gauge .yellow').css('width', calculatePercent(otherData, total) + '%');
+    var options = {
+      topAttrs: {'class': 'size-gauge for-hdd'},
+      topLeft: 'Other Data (' + ViewHelpers.formatMemSize(otherData) + ')',
+      topRight: 'Total Cluster Storage (' + ViewHelpers.formatMemSize(total) + ')',
+      items: [
+        {name: null,
+         value: otherData,
+         attrs: {style: 'background-position: 0 -30px;'}},
+        {name: 'Other Buckets',
+         value: otherBuckets,
+         attrs: {style: 'background-position: 0 -15px;'},
+         tdAttrs: {style: 'color:blue;'}},
+        {name: 'This Bucket',
+         value: thisBucket,
+         attrs: {style: 'background-position: 0 -45px;'},
+         tdAttrs: {style: 'color:green;'}},
+        {name: 'Free',
+         value: free,
+         tdAttrs: {style: 'color:#444245;'}}
+      ]
+    };
+
+    jq.replaceWith(memorySizesGaugeHTML(options));
   },
 
   renderHDDDetailsGauge: function (e, details) {

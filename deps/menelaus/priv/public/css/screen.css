@@ -1195,26 +1195,14 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 
 .bucket_details .size-gauge {line-height:24px;position:relative;top:-6px;float:right;/*font-size:11px;*/width:364px;}
 .bucket_details.bucket-is-non-persistent .size-gauge.for-ram { top: 0px; }
-.bucket_details .size-gauge .other-data-block {float:left;color:#C19710;font-size:12px;}
-.bucket_details .size-gauge .t {float:right;}
- .additional_server_info.bucket_details .size-gauge .t {font-size:12px;}
-.bucket_details .size-gauge .gauge {clear:both;position:relative;height:15px;background:url(/images/ram_diagr_bg.png) 100% 0 no-repeat;}
-.bucket_details .size-gauge .gauge table {white-space:nowrap;}
-.bucket_details .size-gauge .gauge div {width:362px;height:15px;position:absolute;left:0px;top:0px;background:url(/images/ram_diagr_bg.png) 0 0 no-repeat;}
-.bucket_details .size-gauge .gauge .blue {background-position:0px -15px;}
- .additional_server_info.bucket_details .size-gauge .gauge .blue {width:0;}
-.bucket_details .size-gauge .gauge .yellow {background-position:0px -30px;}
-.bucket_details .size-gauge .gauge .green {background-position:0px -45px;}
-.bucket_details .size-gauge .b {width:100%;text-align:justify;line-height:1.3;}
-.bucket_details .size-gauge .b td {padding:4px 0 0;text-align:right;}
-.bucket_details .size-gauge .b .blue {color:blue;text-align:left;}
-.bucket_details .size-gauge .b .green {color:green;text-align:center;}
-#init_bucket_dialog.bucket_details .size-gauge .b .green {color:green;text-align:left;}
-.bucket_details .size-gauge.overcommit .t {color:red;}
-.bucket_details .size-gauge.overcommit .gauge .gauge-total {background-position:0px -45px;}
-.bucket_details .size-gauge.overcommit .gauge .green i {background:none repeat scroll 0 0 #E43A1B;display:block;font-size:0;height:25px;line-height:0;
-position:absolute;right:0;top:-5px;width:1px;}
-.bucket_details .size-gauge.overcommit .extra {color:red;}
+.bucket_details .size-gauge .top-left {float:left;color:#C19710;font-size:12px;}
+.bucket_details .size-gauge .top-right {float:right;font-size:12px;}
+.bucket_details .size-gauge .usage {clear:both;position:relative;height:15px;background:url(/images/ram_diagr_bg.png) 100% 0 no-repeat;}
+.bucket_details .size-gauge .usage div {width:362px;height:15px;position:absolute;left:0px;top:0px;background:url(/images/ram_diagr_bg.png) 0 0 no-repeat;}
+.bucket_details .size-gauge table {width:100%;text-align:justify;line-height:1.3;}
+.bucket_details .size-gauge table td {padding:4px 0 0;text-align:right;font-size:10px;}
+.bucket_details .size-gauge .usage i {background:none repeat scroll 0 0;display:block;font-size:0;height:25px;line-height:0;position:absolute;;top:-5px;width:1px;}
+
 
 .bucket_details label.for-enable-persistence {padding-left:20px;}
 .bucket_details label.for-enable-persistence span {float:none;display:inline;margin-left:6px;}

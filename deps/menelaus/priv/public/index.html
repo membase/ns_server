@@ -592,18 +592,6 @@
 
       <h2>Cache Size</h2>
       <div class="size-gauge for-ram">
-        <div class="t">Cluster quota (<span class="total">?</span>)</div>
-        <div class="gauge">
-          <div>
-            <div style="width: 1%;" class="green"></div>
-            <div style="width: 4%;" class="blue"></div>
-          </div>
-        </div>
-        <table class="b"><tr>
-          <td class="blue">Other Buckets (<span class="other">?</span>)</td>
-          <td class="green">This Bucket (<span class="this">?</span>)</td>
-          <td>Free (<span class="free">?</span>)</td>
-        </tr></table>
       </div>{%= V.thisElement(function (e) {BucketsSection.renderRAMDetailsGauge(e, obj);}) %}
       <label class="for-hdd-quota">
 	  	<span>Dynamic RAM Quota:</span>
@@ -620,20 +608,6 @@
       </label>
 
       <div class="size-gauge for-hdd">
-        <div class="other-data-block">Other data (<span class="other-data">15 Gb</span>)</div>
-        <div class="t">Total cluster storage (<span class="total">192 Gb</span>)</div>
-        <div class="gauge">
-          <div>
-            <div class="green"></div>
-            <div class="blue"></div>
-            <div class="yellow"></div>
-          </div>
-        </div>
-        <table class="b"><tr>
-          <td class="blue">Other Buckets (<span class="other">15 Gb</span>)</td>
-          <td class="green">This Bucket (<span class="this">5 Gb</span>)</td>
-          <td>Free (<span class="free">12 Gb</span>)</td>
-        </tr></table>
       </div>{%= V.thisElement(function (e) {BucketsSection.renderHDDDetailsGauge(e, obj)}) %}
 
       <label class="for-hdd-quota">
