@@ -549,6 +549,9 @@ _.extend(ViewHelpers, {
     var t = ViewHelpers.prepareQuantity(value, K);
     return [truncateTo3Digits(value/t[0]), spacing, t[1], kind].join('');
   },
+  formatMemSize: function (value) {
+    return this.formatQuantity(value, 'B', 1024, ' ');
+  },
 
   renderPendingStatus: function (node) {
     if (node.clusterMembership == 'inactiveFailed') {
