@@ -1,24 +1,9 @@
-var validationMsgCounter = 0;
-
 function setupFormValidation(form, url, callback) {
   var idleTime = 250;
 
   var oldValue;
   var inFlightXHR;
   var timeoutId;
-
-  function showValidation() {
-    if (!validationMsgCounter) {
-      $('#validation_notice').show();
-    }
-    validationMsgCounter++;
-  }
-
-  function hideValidation() {
-    validationMsgCounter--;
-    if (!validationMsgCounter)
-      $('#validation_notice').hide();
-  }
 
   function timerFunction() {
     console.log("timerFunction!");
@@ -35,7 +20,6 @@ function setupFormValidation(form, url, callback) {
   }
 
   function xhrCallback(data, textStatus) {
-    hideValidation();
     console.log("xhr done: ", data, textStatus);
 
     if (textStatus == 'success') {
@@ -84,9 +68,7 @@ function setupFormValidation(form, url, callback) {
     var wasFirstTime = firstTime;
     firstTime = false;
 
-    showValidation();
     if (timeoutId) {
-      hideValidation();         // because we already had in-progress validation
       console.log("aborting next validation");
       clearTimeout(timeoutId);
     }
@@ -94,7 +76,6 @@ function setupFormValidation(form, url, callback) {
     cancelXHR();
 
     if (wasFirstTime) {
-      showValidation();
       cancelTimeout();
       timerFunction();
     }
@@ -102,7 +83,6 @@ function setupFormValidation(form, url, callback) {
 
   function cancelTimeout() {
     if (timeoutId) {
-      hideValidation();
       clearTimeout(timeoutId);
       timeoutId = null;
     }
@@ -122,13 +102,11 @@ function setupFormValidation(form, url, callback) {
       if (paused)
         return;
       paused = true;
-      showValidation();
       cancelXHR();
       cancelTimeout();
     },
     unpause: function () {
       paused = false;
-      hideValidation();
       onPotentialChanges();
     }
   }

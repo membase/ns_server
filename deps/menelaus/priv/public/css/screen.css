@@ -1143,16 +1143,6 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 	zoom: 1;
 }
 
-#validation_notice {
-  display: none;
-  position: fixed;
-  top: 0px;
-  left: 0px;
-  background-color: yellow;
-  z-index: 9999;
-  padding: 3px;
-}
-
 .disk_setup_block {margin:6px 0 0 84px;line-height: 25px;overflow:hidden;}
 .disk_setup_block > div {float:left;width:310px;}
 .disk_setup_block > div + div + div {float:none;width:auto;clear:both;}
