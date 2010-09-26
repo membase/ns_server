@@ -31,30 +31,8 @@ var OverviewSection = {
       updateCount('.pending-count', pending.length);
     });
 
-    var bucketsCell = BucketsSection.cells.detailedBuckets;
-    var barsSourceCell = new Cell(function (poolDetails, mode) {
-      if (mode != 'overview') {
-        return this.self.value;
-      }
-      return future(function (dataCallback) {
-        BucketsSection.refreshBuckets(function () {
-          dataCallback({
-            poolDetails: poolDetails,
-            buckets: bucketsCell.value
-          });
-        });
-      });
-    }, {
-      poolDetails: DAO.cells.currentPoolDetailsCell,
-      mode: DAO.cells.mode
-    });
-    barsSourceCell.keepValueDuringAsync = true;
-
-    barsSourceCell.subscribeValue(function (src) {
-      src = src || {};
-      var buckets = src.buckets;
-      var poolDetails = src.poolDetails;
-      if (!poolDetails || !buckets) {
+    DAO.cells.currentPoolDetailsCell.subscribeValue(function (poolDetails) {
+      if (!poolDetails) {
         $('#overview_clusters_block').hide();
         return;
       }
@@ -63,39 +41,81 @@ var OverviewSection = {
       ;(function () {
         var item = $('#overview_clusters_block .ram-item');
 
-        var usedQuota = _.reduce(buckets, 0, function (acc, info) {
-          return acc + info.basicStats.memUsed;
-        });
-        var bucketsQuota = _.reduce(buckets, 0, function (acc, info) {
-          return acc + info.quota.ram;
-        });
-        var quotaTotal = poolDetails.storageTotals.ram.quotaTotal;
-        item.find('.cluster-total').text(ViewHelpers.formatQuantity(quotaTotal, null, null, ' '));
-        item.find('.used-quota').text(ViewHelpers.formatQuantity(usedQuota, null, null, ' '));
-        item.find('.buckets-quota').text(ViewHelpers.formatQuantity(bucketsQuota, null, null, ' '));
-        item.find('.unused-quota').text(ViewHelpers.formatQuantity(bucketsQuota - usedQuota, null, null, ' '));
-        item.find('.quota-free').text(ViewHelpers.formatQuantity(quotaTotal - bucketsQuota, null, null, ' '));
+        var ram = poolDetails.storageTotals.ram;
+        var usedQuota = ram.usedByData;
+        var bucketsQuota = ram.quotaUsed;
+        var quotaTotal = ram.quotaTotal;
+        var gaugeOptions = {
+          topAttrs: {'class': 'line_cnt'},
+          usageAttrs: {'class': 'usage_biggest'},
+          topLeft: 'Total Allocated (' + ViewHelpers.formatMemSize(bucketsQuota) + ')',
+          topRight: 'Total in Cluster (' + ViewHelpers.formatMemSize(quotaTotal) + ')',
+          items: [
+            {name: 'In Use',
+             value: usedQuota,
+             attrs: {style: 'background-position: 0 -31px;'},
+             tdAttrs: {style: 'color:#1878a2;'}},
+            {name: 'Unused',
+             value: bucketsQuota - usedQuota,
+             attrs: {style: 'background-position: 0 -62px;'},
+             tdAttrs: {style: 'color:#409f05;'}},
+            {name: 'Unallocated',
+             value: quotaTotal - bucketsQuota,
+             tdAttrs: {style: 'color:#444245;'}}
+          ],
+          markers: [{value: bucketsQuota,
+                     attrs: {style: 'background-color:#e43a1b'}}]
+        };
+        if (gaugeOptions.items[1].value < 0) {
+          gaugeOptions.items[0].value = bucketsQuota;
+          gaugeOptions.items[1] = {
+            name: 'Overused',
+            value: usedQuota - bucketsQuota,
+            attrs: {style: 'background-position: 0 -93px;'},
+            tdAttrs: {style: 'color:#e43a1b;'}
+          };
+          if (usedQuota < quotaTotal) {
+            _.extend(gaugeOptions.items[2], {
+              name: 'Available',
+              value: quotaTotal - usedQuota
+            });
+          } else {
+            gaugeOptions.items.length = 2;
+            gaugeOptions.markers << {value: quotaTotal,
+                                     attrs: {style: 'color:#444245;'}}
+          }
+        }
 
-        item.find('.used').css('width', calculatePercent(usedQuota, quotaTotal) + '%');
-        item.find('.free').css('width', calculatePercent(bucketsQuota, quotaTotal) + '%');
+        item.find('.line_cnt').replaceWith(memorySizesGaugeHTML(gaugeOptions));
       })();
 
       ;(function () {
         var item = $('#overview_clusters_block .disk-item');
 
-        var usedSpace = _.reduce(buckets, 0, function (acc, info) {
-          return acc + info.basicStats.diskUsed;
-        });
-        var total = poolDetails.storageTotals.hdd.total;
-        var other = poolDetails.storageTotals.hdd.used - usedSpace;
+        var hdd = poolDetails.storageTotals.hdd;
 
-        item.find('.cluster-total').text(ViewHelpers.formatQuantity(total, null, null, ' '));
-        item.find('.used-space').text(ViewHelpers.formatQuantity(usedSpace, null, null, ' '));
-        item.find('.other-data').text(ViewHelpers.formatQuantity(other, null, null, ' '));
-        item.find('.space-free').text(ViewHelpers.formatQuantity(Math.abs(total - other - usedSpace), null, null, ' '));
+        var usedSpace = hdd.usedByData;
+        var total = hdd.total;
+        var other = hdd.used - usedSpace;
 
-        item.find('.other').css('width', calculatePercent(other, total) + '%');
-        item.find('.used').css('width', calculatePercent(usedSpace + other, total) + '%');
+        item.find('.line_cnt').replaceWith(memorySizesGaugeHTML({
+          topAttrs: {'class': 'line_cnt'},
+          usageAttrs: {'class': 'usage_biggest'},
+          topRight: 'Total Cluster Storage (' + ViewHelpers.formatMemSize(total) + ')',
+          items: [
+            {name: 'In use',
+             value: usedSpace,
+             attrs: {style: "background-position: 0 -31px;"},
+             tdAttrs: {style: "color:#1878A2;"}},
+            {name: 'Other data',
+             value: other,
+             attrs: {style:"background-position: 0 -124px;"},
+             tdAttrs: {style:"color:#C19710;"}},
+            {name: "Free",
+             value: total - other - usedSpace,
+             tdAttrs: {style:"color:#444245;"}}
+          ]
+        }));
       })();
     });
   },

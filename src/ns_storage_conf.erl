@@ -182,11 +182,16 @@ cluster_storage_info() ->
         lists:foldl(fun ({_, Config}, RAMQuota) ->
                             ns_bucket:ram_quota(Config) + RAMQuota
                     end, 0, AllBuckets),
-    %% TODO: be careful with remote systems access here
-    BucketsHDDUsage = lists:sum([menelaus_stats:bucket_disk_usage(X)
-                                 || {X, _} <- AllBuckets]),
+    {BucketsRAMUsage, BucketsHDDUsage}
+        = lists:foldl(fun ({Name, _}, {RAM, HDD}) ->
+                              BasicStats = menelaus_stats:basic_stats(fakepool, Name),
+                              {RAM + proplists:get_value(memUsed, BasicStats),
+                               HDD + proplists:get_value(diskUsed, BasicStats)}
+                      end, {0, 0}, AllBuckets),
     lists:map(fun ({ram, Props}) ->
-                      {ram, [{quotaUsed, RAMQuotaUsed} | Props]};
+                      {ram, [{quotaUsed, RAMQuotaUsed},
+                             {usedByData, BucketsRAMUsage}
+                             | Props]};
                   ({hdd, Props}) ->
                       {hdd, [{usedByData, BucketsHDDUsage}
                              | Props]}
