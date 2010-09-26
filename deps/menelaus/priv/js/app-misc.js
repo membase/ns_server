@@ -789,3 +789,140 @@ function MountPoints(nodeInfo, paths) {
   else
     return new MountPointsStd(paths);
 }
+
+function mkTag(name, attrs, contents) {
+  if (contents == null)
+    contents = '';
+  var prefix = ["<", name];
+  prefix = prefix.concat(_.map(attrs || {}, function (v,k) {
+    return [" ", k, "='", escapeHTML(v), "'"].join('');
+  }));
+  prefix.push(">");
+  prefix = prefix.join('');
+  var suffix = ["</",name,">"].join('');
+  if (contents instanceof Array)
+    contents = _.flatten(contents).join('');
+  return prefix + contents + suffix;
+}
+
+// proportionaly rescales values so that their sum is equal to given
+// number. Output values need to be integers. This particular
+// algorithm tries to minimize total rounding error. The basic approach
+// is same as in Brasenham line/circle drawing algorithm.
+function rescaleForSum(newSum, values, oldSum) {
+  if (oldSum == null)
+    oldSum = _.inject(values, 0, function (a,v) {return a+v});
+  // every value needs to be multiplied by newSum / oldSum
+  var error = 0;
+  var outputValues = new Array(values.length);
+  for (var i = 0; i < outputValues.length; i++) {
+    var v = values[i];
+    v *= newSum;
+    v += error;
+    error = v % oldSum;
+    outputValues[i] = Math.floor(v / oldSum);
+  }
+  return outputValues;
+}
+
+function extendHTMLAttrs(attrs1, attrs2) {
+  if (!attrs2)
+    return attrs1;
+  for (var k in attrs2) {
+    var v = attrs2[k];
+    if (k in attrs1) {
+      if (k == 'class') {
+        v = _.uniq(v.split(/\s+/).concat(attrs1[k].split(/\s+/))).join(' ');
+      } else if (k == 'style') {
+        v = attrs1[k] + v;
+      }
+    }
+    attrs1[k] = v;
+  }
+  return attrs1;
+}
+
+function usageGaugeHTML(options) {
+  var items = options.items;
+  var values = _.map(options.items, function (item) {
+    return item.value;
+  });
+  var total = _.inject(values, 0, function (a,v) {return a+v});
+  values = rescaleForSum(100, values, total);
+  var sum = 0;
+  // now put cumulative values into array
+  for (var i = 0; i < values.length; i++) {
+    var v = values[i];
+    values[i] += sum;
+    sum += v;
+  }
+  var bars = [];
+  for (var i = values.length-1; i >= 0; i--) {
+    var style = [
+      "width:", values[i], "%;",
+      items[i].style
+    ].join('');
+    bars.push(mkTag("div", extendHTMLAttrs({style: style}, items[i].attrs)));
+  }
+
+  var markers = _.map(options.markers || [], function (marker) {
+    var percent = calculatePercent(marker.value, total);
+    var i;
+    if (_.indexOf(values, percent) < 0 && (i = _.indexOf(values, percent+1)) >= 0) {
+      // if we're very close to some value, stick to it, so that
+      // rounding error is not visible
+      if (items[i].value - marker.value < sum*0.01)
+        percent++;
+    }
+    var style="left:" + percent + '%;'
+    return mkTag("i", extendHTMLAttrs({style: style}, marker.attrs));
+  });
+
+  var tdItems = _.select(options.items, function (item) {
+    return item.name != null;
+  });
+
+  var childs = [
+    options.topLeft &&
+      mkTag("div",
+            extendHTMLAttrs({'class': 'top-left'}, options.topLeftAttrs),
+            options.topLeft),
+    options.topRight &&
+      mkTag("div",
+            extendHTMLAttrs({'class': 'top-right'}, options.topRightAttrs),
+            options.topRight),
+    mkTag("div", extendHTMLAttrs({
+      'class': 'usage'
+    }, options.usageAttrs), bars.concat(markers)),
+    "<table><tr>",
+    _.map(tdItems, function (item, idx) {
+      var extraStyle;
+      if (idx == 0)
+        extraStyle = 'text-align:left;';
+      else if (idx == tdItems.length - 1)
+        extraStyle = 'text-align:right;';
+      else
+        extraStyle = 'text-align:center;';
+      return mkTag("td", extendHTMLAttrs({style: extraStyle}, item.tdAttrs),
+                   escapeHTML(item.name)
+                   + ' ('
+                   + escapeHTML(item.renderedValue || item.value) + ')');
+    }),
+    "</tr></table>"
+  ];
+
+  return mkTag("div", options.topAttrs, childs);
+}
+
+function memorySizesGaugeHTML(options) {
+  var newOptions = _.clone(options);
+  newOptions.items = _.clone(newOptions.items);
+  for (var i = 0; i < newOptions.items.length; i++) {
+    var item = newOptions.items[i];
+    if (item.renderedValue)
+      continue;
+    newOptions.items[i] = item = _.clone(item);
+    item.renderedValue = ViewHelpers.formatQuantity(item.value, null, null, ' ');
+  }
+  return usageGaugeHTML(newOptions);
+}
