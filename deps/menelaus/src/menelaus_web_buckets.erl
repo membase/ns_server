@@ -315,7 +315,10 @@ parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals,
                      HasRAMQuota ->
                          interpret_ram_quota(CurrentBucket, OKs, ClusterStorageTotals, UsageGetter);
                      true ->
-                         undefined
+                         interpret_ram_quota(CurrentBucket,
+                                             [{ram_quota, 0} | OKs],
+                                             ClusterStorageTotals,
+                                             UsageGetter)
                  end,
     HDDSummary = interpret_hdd_quota(CurrentBucket, OKs, ClusterStorageTotals, UsageGetter),
     JSONSummaries = [X || X <- [case RAMSummary of
