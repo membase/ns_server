@@ -181,61 +181,6 @@ var DummySection = {
   onEnter: function () {}
 };
 
-var BreadCrumbs = {
-  update: function () {
-    var sec = DAO.cells.mode.value;
-    var path = [];
-
-    function pushSection(name) {
-      var el = $('#switch_' + name);
-      path.push([el.text(), el.attr('href')]);
-    }
-
-    var container = $('.bread_crumbs > ul');
-    container.html('');
-
-    $('.currentNav').removeClass('currentNav');
-    $('#switch_' + sec).addClass('currentNav');
-
-    // TODO: Revisit bread-crumbs for server-specific or bucket-specific drill-down screens.
-    //
-    return;
-
-    if (sec == 'analytics' && DAO.cells.statsBucketURL.value) {
-      pushSection('buckets')
-      var bucketInfo = DAO.cells.currentStatTargetCell.value;
-      if (bucketInfo) {
-        path.push([bucketInfo.name, '#visitBucket='+bucketInfo.uri]);
-      }
-    } else
-      pushSection(sec);
-
-    _.each(path.reverse(), function (pair) {
-      var name = pair[0];
-      var href = pair[1];
-
-      var li = $('<li></li>');
-      var a = $('<a></a>');
-      a.attr('href', href);
-      a.text(name);
-
-      li.prepend(a);
-
-      container.prepend(li);
-    });
-
-    container.find(':first-child').addClass('nobg');
-  },
-  init: function () {
-    var cells = DAO.cells;
-    var update = $m(this, 'update');
-
-    cells.mode.subscribe(update);
-    cells.statsBucketURL.subscribe(update);
-    cells.currentStatTargetCell.subscribe(update);
-  }
-};
-
 var ThePage = {
   sections: {overview: OverviewSection,
              servers: ServersSection,
@@ -276,7 +221,11 @@ var ThePage = {
       if (sec.init)
         sec.init();
     });
-    BreadCrumbs.init();
+
+    DAO.cells.mode.subscribeValue(function (sec) {
+      $('.currentNav').removeClass('currentNav');
+      $('#switch_' + sec).addClass('currentNav');
+    });
 
     DAO.onReady(function () {
       if (DAO.login) {
