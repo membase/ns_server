@@ -73,6 +73,7 @@ var ServersSection = {
       .find('.failover_server').addClass('disabled');
 
     $('.server_down .eject_server').addClass('disabled');
+    $('.failed_over .eject_server, .failed_over .failover_server').hide();
   },
   renderRebalance: function (details) {
     var progress = this.rebalanceProgress.value;
