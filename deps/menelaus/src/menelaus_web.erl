@@ -574,8 +574,6 @@ handle_streaming(F, Req, HTTPRes, LastRes) ->
         false ->
             ResNormal = F(normal),
             HTTPRes:write_chunk(mochijson2:encode(ResNormal)),
-            %% TODO: resolve why mochiweb doesn't support zero chunk... this
-            %%       indicates the end of a response for now
             HTTPRes:write_chunk("\n\n\n\n")
     end,
     receive
@@ -1069,7 +1067,7 @@ handle_node_resources_post(Node, Req) ->
     Params = Req:parse_post(),
     Path = proplists:get_value("path", Params),
     Quota = case proplists:get_value("quota", Params) of
-	      undefined -> none;
+              undefined -> none;
               "none" -> none;
               X      -> list_to_integer(X)
             end,
