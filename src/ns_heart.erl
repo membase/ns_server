@@ -49,6 +49,4 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
 %% Internal fuctions
 current_status() ->
-    NodeInfo = element(2, ns_info:basic_info()),
-    lists:append([[proplists:property(memcached_running, true)],
-                  NodeInfo]).
+    element(2, ns_info:basic_info()).
