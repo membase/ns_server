@@ -1,6 +1,6 @@
 Feature: Test Application Bucket Propagation
   In order to have efficient use of resources
-  As a user of northscale software
+  As a user of membase software
   I want to bucket configuration, including the Test Server bucket, to propagate uniformly across a cluster
 
   Scenario: test_application Bucket Propagation

@@ -29,20 +29,20 @@ default_path(Name) ->
 % Returns the directory that best represents the product 'root'
 % install directory.  In development, that might be the ns_server
 % directory.  On windows, at install, that might be the
-% C:/Program Files/NorthScale/Server.
-% On linux, /opt/NorthScale/<ver>/
+% C:/Program Files/Membase/Server.
+% On linux, /opt/membase/<ver>/
 
 default_root_path() ->
     % When installed, we live in something that looks like...
     %
-    %   C:/Program Files/NorthScale/Server/
+    %   C:/Program Files/Membase/Server/
     %     bin/
     %       ns_server/ebin/ns_config_default.beam
     %     priv/
     %       config
     %     data/ (installer created)
     %
-    %   /opt/NorthScale/<ver>/
+    %   /opt/membase/<ver>/
     %     bin/
     %       ns_server/ebin/ns_config_default.beam
     %     data/ (installer created)

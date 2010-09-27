@@ -1,6 +1,6 @@
 Feature: Config Propagation
   In order to have efficient use of resources
-  As a user of northscale software
+  As a user of membase software
   I want to configuration to propagate uniformly across a cluster
 
   Scenario: Bucket Propagation

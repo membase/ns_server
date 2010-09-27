@@ -1,5 +1,5 @@
 Feature: Accurate Cache Usage Stats
-  As a user of northscale software
+  As a user of membase software
   I want accurate cache usage statistics
 
   Scenario: Fill bucket

@@ -1,4 +1,4 @@
-# The NorthScale Server
+# The Membase Server
 
 This application represents the top of the hierarchy of all memcached
 smart services.  It is an application in the Erlang OTP sense.
@@ -92,7 +92,7 @@ To kill your test memcached:
 
 ### Windows:
 
-To make life easy, use the appropriate binary from the Northscale
+To make life easy, use the appropriate binary from the Membase
 website.  Copy the installed memcached.exe and default_engine.so into
 the ./priv and ./priv/engines directories.
 

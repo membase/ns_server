@@ -54,7 +54,7 @@ handle_event({ns_log, _Category, Module, Code, Fmt, Args}, State) ->
             AlertKey = menelaus_alert:alert_key(Module, Code),
             Alerts = proplists:get_value(alerts, AlertConfig, []),
             case lists:member(AlertKey, Alerts) of
-                true -> send_email(proplists:get_value(sender, AlertConfig, "northscale"),
+                true -> send_email(proplists:get_value(sender, AlertConfig, "membase"),
                                    proplists:get_value(email, AlertConfig),
                                    AlertKey,
                                    lists:flatten(io_lib:format(Fmt, Args)),
@@ -103,5 +103,5 @@ config_to_options(ServerConfig) ->
 
 send_email(Sender, Rcpt, AlertKey, Message, ServerConfig) ->
     Options = config_to_options(ServerConfig),
-    Subject = "NorthScale alert: " ++ atom_to_list(AlertKey),
+    Subject = "Membase alert: " ++ atom_to_list(AlertKey),
     ns_mail:send(Sender, [Rcpt], Subject, Message, Options).

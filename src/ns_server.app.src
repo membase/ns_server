@@ -14,7 +14,7 @@
 %% limitations under the License.
 %%
 {application, ns_server,
- [{description, "NorthScale server"},
+ [{description, "Membase server"},
   {vsn, "0.0.0"},
   {modules, [misc,
              ns_config,

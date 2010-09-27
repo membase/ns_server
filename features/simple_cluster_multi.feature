@@ -1,6 +1,6 @@
 Feature: Simple Clustering With > 2 Nodes
   In order to have efficient use of resources
-  As a user of northscale software
+  As a user of membase software
   I want to be able to join and eject nodes from a cluster
 
   Scenario Outline: Join 3 nodes, A, B, C

@@ -52,7 +52,7 @@
 server_header() ->
     Versions = ns_info:version(),
     ServerHeader = lists:concat([
-                       "NorthScale Server ", proplists:get_value(ns_server, Versions)]),
+                       "Membase Server ", proplists:get_value(ns_server, Versions)]),
     [{"Pragma", "no-cache"},
      {"Cache-Control", "no-cache no-store max-age=0"},
      {"Server", ServerHeader}].

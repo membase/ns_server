@@ -1,6 +1,6 @@
 Feature: Node Removal
   In order to have efficient use of resources
-  As a user of northscale software
+  As a user of membase software
   I want to be able to remove nodes from a cluster
 
   Scenario: Remove self from cluster

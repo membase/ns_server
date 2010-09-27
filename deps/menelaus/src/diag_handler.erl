@@ -62,8 +62,8 @@ diag_filter_out_config_password(Config) ->
 % Read the manifest.txt file, wherever it might exist across different versions and O/S'es.
 %
 manifest() ->
-    % The cwd should look like /opt/NorthScale with a /opt/NorthScale/bin symlink
-    % to the right /opt/NorthScale/VERSION/bin directory.
+    % The cwd should look like /opt/membase with a /opt/membase/bin symlink
+    % to the right /opt/membase/VERSION/bin directory.
     %
     RV = lists:filter(fun ({ok, _}) -> true;
                           ({error, _}) -> false

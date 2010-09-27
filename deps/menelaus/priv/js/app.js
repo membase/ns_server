@@ -669,7 +669,7 @@ var NodeDialog = {
         if (status == 'success') {
           continueAfterDisk();
         } else {
-          errorContainer.html('Your path is invalid. It must be a directory writable by northscale user');
+          errorContainer.html('Your path is invalid. It must be a directory writable by membase user');
           errorContainer.show();
         }
       }

@@ -1,5 +1,5 @@
 {application, menelaus,
- [{description, "NorthScale menelaus"},
+ [{description, "Membase menelaus"},
   {vsn, "0.0.0"},
   {modules, [
     menelaus,

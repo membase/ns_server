@@ -1118,7 +1118,7 @@ handle_node_settings_post(Node, Req) ->
                                case ns_storage_conf:prepare_setup_disk_storage_conf(node(), Path) of
                                    {ok, _} = R -> R;
                                    ok -> ok;
-                                   error -> <<"Could not set the storage path. It must be a new directory and the 'membase' user must have permissions to create it.">>
+                                   error -> <<"Could not set the storage path. It must be a directory writable by 'membase' user.">>
                                end
                        end
                end

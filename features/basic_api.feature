@@ -1,5 +1,5 @@
 Feature: Basic API
-  As a user of northscale software
+  As a user of membase software
   I want meaningful behavior of REST API
 
   Scenario: Requesting unknown bucket details

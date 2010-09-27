@@ -1,6 +1,6 @@
 Feature: Node Up/Down
   In order to have efficient use of resources
-  As a user of northscale software
+  As a user of membase software
   I want to be able to have nodes detect node health
 
   Scenario: Node goes down

@@ -125,7 +125,7 @@ in the following table, under the conditions listed in the description.
 
 # Resources and Operations
 
-A typical cluster of NorthScale server systems have certain resources
+A typical cluster of Membase server systems have certain resources
 and those resources can optionally have one or more controllers, which have
 RESTful endpoints in the representation of the item one would control.
 
@@ -168,12 +168,12 @@ To behave correctly a few things must be bootstrapped.  Clients can bootstrap
 themselves by looking for pools in a given system.  This is done via the initial
 request/response outlined below.
 
-The URI space, in NorthScale's implementation may appear to have very specific
+The URI space, in Membase's implementation may appear to have very specific
 URI and in some ways may even appear as RPC or some other architectural style
 using HTTP operations and semantics.  That is only an artifact of the
-URIs NorthScale chose.
+URIs Membase chose.
 
-Clients are advised to be (and NorthScale clients *should*
+Clients are advised to be (and Membase clients *should*
 be) properly RESTful and will not expect to receive any handling instructions
 resource descriptions or presume any conventions on URI structure for resources
 represented.
@@ -187,7 +187,7 @@ of representations, since they are similar for different parts of the hierarchy.
  GET /pools
  Host: node.in.your.pool.com
  Authorization: Basic xxxxxxxxxxxxxxxxxxx
- Accept: application/com.northscale.store+json
+ Accept: application/com.membase.store+json
  X-memcachekv-Store-Client-Specification-Version: 0.1
 </pre>
 
@@ -195,7 +195,7 @@ of representations, since they are similar for different parts of the hierarchy.
 
 <pre class="json">
  HTTP/1.1 200 OK
- Content-Type: application/com.northscale.store+json
+ Content-Type: application/com.membase.store+json
  Content-Length: nnn
 
 {
@@ -206,7 +206,7 @@ of representations, since they are similar for different parts of the hierarchy.
       "uri": "/pools/default",
     },
     {
-      "name": "NorthScale kvcaching pool name",
+      "name": "Membase kvcaching pool name",
       "uri": "/pools/anotherpool",
     },
     {
@@ -285,7 +285,7 @@ path=/var/tmp/test
 
 <pre class="json">
  HTTP/1.1 200 OK
- Content-Type: application/com.northscale.store+json
+ Content-Type: application/com.membase.store+json
  Content-Length: 0
  </pre>
 
@@ -309,7 +309,7 @@ memoryQuota=400
 
 <pre class="json">
  HTTP/1.1 200 OK
- Content-Type: application/com.northscale.store+json
+ Content-Type: application/com.membase.store+json
  Content-Length: 0
  </pre>
 
@@ -342,8 +342,8 @@ username=Administrator&password=letmein&port=8080
 
 <pre class="json">
  HTTP/1.1 200 OK
- Content-Type: application/com.northscale.store+json
- Server: NorthScale Server 1.6.0beta3a_124_g0fa5bd9
+ Content-Type: application/com.membase.store+json
+ Server: Membase Server 1.6.0beta3a_124_g0fa5bd9
  Pragma: no-cache
  Date: Mon, 09 Aug 2010 18:50:00 GMT
  Content-Type: application/json
@@ -365,7 +365,7 @@ Note that even if it is not to be changed
  GET /pools/default
  Host: node.in.your.pool.com
  Authorization: Basic xxxxxxxxxxxxxxxxxxx
- Accept: application/com.northscale.store+json
+ Accept: application/com.membase.store+json
  X-memcachekv-Store-Client-Specification-Version: 0.1
 </pre>
 
@@ -374,7 +374,7 @@ Note that even if it is not to be changed
 
 <pre class="json">
  HTTP/1.1 200 OK
- Content-Type: application/com.northscale.store+json
+ Content-Type: application/com.membase.store+json
  Content-Length: nnn
  
  {
@@ -509,7 +509,7 @@ by all buckets on this node.</td></tr>
  GET /pools/default/buckets
  Host: node.in.your.pool.com
  Authorization: Basic xxxxxxxxxxxxxxxxxxx
- Accept: application/com.northscale.store+json
+ Accept: application/com.membase.store+json
  X-memcachekv-Store-Client-Specification-Version: 0.1
 </pre>
 
@@ -517,7 +517,7 @@ by all buckets on this node.</td></tr>
 
 <pre class="json">
  HTTP/1.1 200 OK
- Content-Type: application/com.northscale.store+json
+ Content-Type: application/com.membase.store+json
  Content-Length: nnn
 
  [
@@ -591,7 +591,7 @@ when nodes are added, removed, or may fall into an unhealthy state.
  GET /pools/default/buckets/default
  Host: node.in.your.pool.com
  Authorization: Basic xxxxxxxxxxxxxxxxxxx
- Accept: application/com.northscale.store+json
+ Accept: application/com.membase.store+json
  X-memcachekv-Store-Client-Specification-Version: 0.1
 </pre>
 
@@ -599,7 +599,7 @@ when nodes are added, removed, or may fall into an unhealthy state.
 
 <pre class="json">
  HTTP/1.1 200 OK
- Content-Type: application/com.northscale.store+json
+ Content-Type: application/com.membase.store+json
  Content-Length: nnn
 
  {
@@ -693,7 +693,7 @@ bucket or pool.
  GET /pools/default/stats?stat=opsbysecond&period=5m
  Host: node.in.your.pool.com
  Authorization: Basic xxxxxxxxxxxxxxxxxxx
- Accept: application/com.northscale.store+json
+ Accept: application/com.membase.store+json
  X-memcachekv-Store-Client-Specification-Version: 0.1
 </pre>
 
@@ -701,7 +701,7 @@ bucket or pool.
 
 <pre class="json">
  HTTP/1.1 200 OK
- Content-Type: application/com.northscale.store+json
+ Content-Type: application/com.membase.store+json
  Content-Length: nnn
 
 {
@@ -755,7 +755,7 @@ resource is the same to aid code reuse.
  GET /pools/default/stats?stat=hot_keys&number=10
  Host: node.in.your.pool.com
  Authorization: Basic xxxxxxxxxxxxxxxxxxx
- Accept: application/com.northscale.store+json
+ Accept: application/com.membase.store+json
  X-memcachekv-Store-Client-Specification-Version: 0.1
 </pre>
 
@@ -766,7 +766,7 @@ to generate the same kind of response.
 
 <pre class="json">
  HTTP/1.1 200 OK
- Content-Type: application/com.northscale.store+json
+ Content-Type: application/com.membase.store+json
  Content-Length: nnn
 
 {
@@ -821,7 +821,7 @@ GET /pools/default/buckets/Another bucket
 
 <pre class="restcalls">
 HTTP/1.1 200 OK
-Content-Type: application/com.northscale.store+json
+Content-Type: application/com.membase.store+json
 Content-Length: nnn
 
 {
@@ -873,7 +873,7 @@ The system will then issue a redirect indicating success.
  POST /pools/My New Pool/buckets/Another bucket
  Host: node.in.your.pool.com
  Authorization: Basic xxxxxxxxxxxxxxxxxxx
- Accept: application/com.northscale.store+json
+ Accept: application/com.membase.store+json
  X-memcachekv-Store-Client-Specification-Version: 0.1
 
 {
@@ -1002,7 +1002,7 @@ for a particular category are available.  A GET without specifying a category re
 GET /pools/default/logs?cat=crit
 Host: node.in.your.pool.com
 Authorization: Basic xxxxxxxxxxxxxxxxxxx
-Accept: application/com.northscale.store+json
+Accept: application/com.membase.store+json
 X-memcachekv-Store-Client-Specification-Version: 0.1
 </pre>
 
@@ -1010,7 +1010,7 @@ response 201: bucket was created and valid URIs returned
 
 <pre class="restcalls">
 HTTP/1.1 200 OK
-Content-Type: application/com.northscale.store+json
+Content-Type: application/com.membase.store+json
 Content-Length: nnn
 
 [{"cat":"info", "date": "", "code": "302", "message": "Some information for you."},
@@ -1028,7 +1028,7 @@ the system is secured.
 POST /logClientError
 Host: node.in.your.pool.com
 Authorization: Basic xxxxxxxxxxxxxxxxxxx
-Accept: application/com.northscale.store+json
+Accept: application/com.membase.store+json
 X-memcachekv-Store-Client-Specification-Version: 0.1
 </pre>
 
