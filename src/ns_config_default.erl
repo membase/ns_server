@@ -101,7 +101,11 @@ keys([KVList | Rest], Accum) ->
     keys(Rest, lists:map(fun({Key, _Val}) -> Key end, KVList) ++ Accum).
 
 default() ->
-    DbDir = filename:join(default_path("data"), misc:node_name_short()),
+    RawDbDir = filename:join(default_path("data"), misc:node_name_short()),
+    DbDir = case file:read_link(RawDbDir) of
+                {ok, X} -> X;
+                _ -> RawDbDir
+            end,
     InitQuota = case memsup:get_memory_data() of
                     {Total, _, _} -> (Total * 4) div (1048576 * 5);
                     _ -> undefined
