@@ -51,23 +51,26 @@ start_link(Bucket) ->
 latest(Period, Node, Bucket) when is_atom(Node) ->
     gen_server:call({server(Bucket), Node}, {latest, Period, Bucket});
 latest(Period, Nodes, Bucket) when is_list(Nodes), is_list(Bucket) ->
-    {Replies, _} = gen_server:multi_call(Nodes, server(Bucket),
-                                         {latest, Period, Bucket}),
+    R = {Replies, _} = gen_server:multi_call(Nodes, server(Bucket),
+                                             {latest, Period, Bucket}),
+    log_bad_responses(R),
     Replies.
 
 latest(Period, Node, Bucket, N) when is_atom(Node), is_list(Bucket) ->
     gen_server:call({server(Bucket), Node}, {latest, Period, Bucket, N});
 latest(Period, Nodes, Bucket, N) when is_list(Nodes), is_list(Bucket) ->
-    {Replies, _} = gen_server:multi_call(Nodes, server(Bucket),
-                                         {latest, Period, Bucket, N}),
+    R = {Replies, _} = gen_server:multi_call(Nodes, server(Bucket),
+                                             {latest, Period, Bucket, N}),
+    log_bad_responses(R),
     Replies.
 
 
 latest(Period, Node, Bucket, Step, N) when is_atom(Node) ->
     gen_server:call({server(Bucket), Node}, {latest, Period, Bucket, Step, N});
 latest(Period, Nodes, Bucket, Step, N) when is_list(Nodes) ->
-    {Replies, _} = gen_server:multi_call(Nodes, server(Bucket),
-                                         {latest, Period, Bucket, Step, N}),
+    R = {Replies, _} = gen_server:multi_call(Nodes, server(Bucket),
+                                             {latest, Period, Bucket, Step, N}),
+    log_bad_responses(R),
     Replies.
 
 
@@ -231,6 +234,21 @@ last_chunk(Tab, TS, Step, Samples) ->
 %% @doc Convert a list of values from stat_to_list back to a stat entry.
 list_to_stat(TS, List) ->
     list_to_tuple([stat_entry, TS | List]).
+
+
+log_bad_responses({Replies, Zombies}) ->
+    case lists:filter(fun ({_, {ok, _}}) -> false; (_) -> true end, Replies) of
+        [] ->
+            ok;
+        BadReplies ->
+            ?log_error("Bad replies: ~p", [BadReplies])
+    end,
+    case Zombies of
+        [] ->
+            ok;
+        _ ->
+            ?log_error("Some nodes didn't respond: ~p", [Zombies])
+    end.
 
 
 %% @doc Resample the stats in a table. Only reads the necessary number of rows.
