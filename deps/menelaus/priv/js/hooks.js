@@ -302,7 +302,10 @@ var MockedRequest = mkClass({
 
     var rv = {"errors":{},"summaries":{"ramSummary":{"perNodeMegs":1024,"nodesCount":8,"total":1625292800,"otherBuckets":0,"thisAlloc":1625292800,"thisUsed":12933780,"free":0},"hddSummary":{"total":239315349504.0,"otherData":222563264798.0,"otherBuckets":0,"thisAlloc":16106127360.0,"thisUsed":10240,"free":645957346}}};
 
-    if (params.bucketType != 'memcached')
+    // the last condition is be bit dirty. Thats because bucket type
+    // is not posted for edit bucket details case and fetching bucket
+    // info is harder that just hardcoding ids of memcached buckets
+    if (params.bucketType != 'memcached' && !_.include(["5", "6"], this.path[this.path.length-1]))
       delete rv.summaries.ramSummary.perNodeMegs;
 
     this.fakeResponse(rv);
@@ -633,6 +636,7 @@ var MockedRequest = mkClass({
                                   otpCookie: "SADFDFGDFG"}],
                          "storageTotals": {
                            "ram": {
+                             "usedByData":648,
                              "total": 2032558080,
                              "quotaTotal": 2032558080,
                              "used": 1641816064,
@@ -668,6 +672,7 @@ var MockedRequest = mkClass({
                                              stats: {uri: "/pools/default/buckets/4/stats"},
                                              quota: {
                                                ram: 12322423,
+                                               rawRAM: 12322423,
                                                hdd: 12322423
                                              },
                                              authType: 'sasl',
@@ -683,13 +688,14 @@ var MockedRequest = mkClass({
                                                "itemCount": 1234
                                              }},
                                             {name: "Excerciser Application",
-                                             bucketType: 'memcache',
+                                             bucketType: 'memcached',
                                              uri: "/pools/default/buckets/5",
                                              testAppBucket: true,
                                              status: false,
                                              stats: {uri: "/pools/default/buckets/5/stats"},
                                              quota: {
                                                ram: 123224230,
+                                               rawRAM: 12322423/4,
                                                hdd: 12322423000
                                              },
                                              authType: 'none',
@@ -705,11 +711,12 @@ var MockedRequest = mkClass({
                                                "itemCount": 12324
                                              }},
                                             {name: "new-year-site",
-                                             bucketType: 'memcache',
+                                             bucketType: 'memcached',
                                              uri: "/pools/default/buckets/6",
                                              stats: {uri: "/pools/default/buckets/6/stats"},
                                              quota: {
                                                ram: 12322423,
+                                               rawRAM: 12322423/4,
                                                hdd: 12322423
                                              },
                                              authType: 'none',
@@ -730,6 +737,7 @@ var MockedRequest = mkClass({
                                              stats: {uri: "/pools/default/buckets/7/stats"},
                                              quota: {
                                                ram: 12322423,
+                                               rawRAM: 12322423,
                                                hdd: 12322423
                                              },
                                              authType: 'sasl',
@@ -747,6 +755,8 @@ var MockedRequest = mkClass({
       [get("pools", "default", "buckets", x), function (x) {
         var allBuckets = MockedRequest.prototype.findResponseFor("GET", ["pools", "default", "buckets"]);
         x = parseInt(x, 10);
+        if (isNaN(x))
+          x = 0;
         var rv = _.clone(allBuckets[x % allBuckets.length]);
         rv.nodes = [];  // not used for now
         return rv;
