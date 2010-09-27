@@ -16,7 +16,7 @@
 -module(ns_heart).
 
 -behaviour(gen_server).
--export([start_link/0]).
+-export([start_link/0, status_all/0]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
          code_change/3]).
 
@@ -46,6 +46,9 @@ terminate(_Reason, _State) -> ok.
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
 %% API
+status_all() ->
+    {Replies, _} = gen_server:multi_call(?MODULE, status),
+    Replies.
 
 %% Internal fuctions
 current_status() ->
