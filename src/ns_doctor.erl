@@ -48,13 +48,22 @@ handle_call(get_nodes, _From, State) ->
     %% don't think the status is stale
     Nodes = collect_status(State#state.nodes),
     Now = erlang:now(),
-    Nodes1 = dict:map(fun (_, Node) ->
-                              LastHeard = proplists:get_value(last_heard, Node),
-                              case timer:now_diff(Now, LastHeard) > ?STALE_TIME of
-                                  true -> [ stale | Node];
-                                  false -> Node
-                              end
-                      end, Nodes),
+    LiveNodes = [node()|nodes()],
+    Nodes1 = dict:map(
+               fun (Node, Status) ->
+                       LastHeard = proplists:get_value(last_heard, Status),
+                       Stale = case timer:now_diff(Now, LastHeard) of
+                                   T when T > ?STALE_TIME ->
+                                       [ stale | Status];
+                                   _ -> Status
+                               end,
+                       case lists:member(Node, LiveNodes) of
+                           true ->
+                               Stale;
+                           false ->
+                               [ down | Stale ]
+                       end
+               end, Nodes),
     {reply, Nodes1, State#state{nodes=Nodes}}.
 
 
