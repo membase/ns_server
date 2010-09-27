@@ -321,9 +321,9 @@ handle_add_node_request(Req) ->
                                                                           list_to_atom(OtpCookie)) of
                            ok -> {ok, {struct, [{otpNode, atom_to_binary(node(), latin1)}]}};
                            {error, already_joined} ->
-                               {errors, [<<"The node is already joined to this cluster">>]};
+                               {errors, [<<"The server is already part of this cluster.">>]};
                            {error, system_not_addable} ->
-                               {errors, [<<"The node is already joined to another cluster">>]};
+                               {errors, [<<"The server is already part of another cluster.  To be added, it cannot be part of an existing cluster.">>]};
                            {error_msg, Msg} -> {errors, [list_to_binary(Msg)]}
                        end
                end,
@@ -693,9 +693,9 @@ handle_eject_post(Req) ->
                             Req:respond({200, add_header(), []});
                         false ->
                             % Node doesn't exist.
-                            ns_log:log(?MODULE, 0018, "Request to eject nonexistant node failed.  Requested node: ~p",
+                            ns_log:log(?MODULE, 0018, "Request to eject nonexistant server failed.  Requested node: ~p",
                                        [OtpNode]),
-                            Req:respond({400, add_header(), "Node does not exist.\n"})
+                            Req:respond({400, add_header(), "Server does not exist.\n"})
                     end
             end
     end.
@@ -1080,11 +1080,11 @@ handle_node_resources_post(Node, Req) ->
               _     -> hdd
            end,
     case lists:member(undefined, [Path, Quota, Kind]) of
-        true -> Req:respond({400, add_header(), "Invalid input while adding storage resource to node."});
+        true -> Req:respond({400, add_header(), "Insufficient parameters to add storage resources to server."});
         false ->
             case ns_storage_conf:add_storage(Node, Path, Kind, Quota) of
-                ok -> Req:respond({200, add_header(), "Added storage location to node."});
-                {error, _} -> Req:respond({400, add_header(), "Error while adding storage resource to node."})
+                ok -> Req:respond({200, add_header(), "Added storage location to server."});
+                {error, _} -> Req:respond({400, add_header(), "Error while adding storage resource to server."})
             end
     end.
 
@@ -1112,13 +1112,13 @@ handle_node_settings_post(Node, Req) ->
                            false -> <<"An absolute path is required.">>;
                            _ ->
                                case Node =/= node() of
-                                   true -> exit('setting disk storage path for other nodes is not yet supported');
+                                   true -> exit('Setting the disk storage path for other servers is not yet supported.');
                                    _ -> ok
                                end,
                                case ns_storage_conf:prepare_setup_disk_storage_conf(node(), Path) of
                                    {ok, _} = R -> R;
                                    ok -> ok;
-                                   error -> <<"Could not set the storage path. It must be a new directory and the 'northscale' user must have permissions to create it.">>
+                                   error -> <<"Could not set the storage path. It must be a new directory and the 'membase' user must have permissions to create it.">>
                                end
                        end
                end
@@ -1156,7 +1156,7 @@ validate_add_node_params(Hostname, Port, User, Password) ->
 handle_add_node_if_possible(Req) ->
     case is_system_provisioned() of
         false ->
-            reply_json(Req, [<<"Cannot add nodes to not yet provisioned cluster">>], 400);
+            reply_json(Req, [<<"Cannot add servers to a cluster which has not been fully configured.">>], 400);
         _ ->
             handle_add_node(Req)
     end.
@@ -1200,7 +1200,7 @@ handle_failover(Req) ->
     Node = list_to_atom(proplists:get_value("otpNode", Params, "undefined")),
     case Node of
         undefined ->
-            Req:respond({400, add_header(), "No node specified"});
+            Req:respond({400, add_header(), "No server specified."});
         _ ->
             ns_cluster_membership:failover(Node),
             Req:respond({200, [], []})
