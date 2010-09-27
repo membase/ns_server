@@ -101,149 +101,149 @@ keys([KVList | Rest], Accum) ->
     keys(Rest, lists:map(fun({Key, _Val}) -> Key end, KVList) ++ Accum).
 
 default() ->
-   DbDir = filename:join(default_path("data"), misc:node_name_short()),
-   InitQuota = case memsup:get_memory_data() of
-                   {Total, _, _} -> (Total * 4) div (1048576 * 5);
-                   _ -> undefined
-               end,
-   [{directory, default_path("config")},
-    {nodes_wanted, [node()]},
-    {{node, node(), membership}, active},
-    % In general, the value in these key-value pairs are property lists,
-    % like [{prop_atom1, value1}, {prop_atom2, value2}].
-    %
-    % See the proplists erlang module.
-    %
-    % A change to any of these rest properties probably means a restart of
-    % mochiweb is needed.
-    %
-    % Modifiers: menelaus REST API
-    % Listeners: some menelaus module that configures/reconfigures mochiweb
-    {rest, [{port, 8080} % Port number of the REST admin API and UI.
+    DbDir = filename:join(default_path("data"), misc:node_name_short()),
+    InitQuota = case memsup:get_memory_data() of
+                    {Total, _, _} -> (Total * 4) div (1048576 * 5);
+                    _ -> undefined
+                end,
+    [{directory, default_path("config")},
+     {nodes_wanted, [node()]},
+     {{node, node(), membership}, active},
+                                                % In general, the value in these key-value pairs are property lists,
+                                                % like [{prop_atom1, value1}, {prop_atom2, value2}].
+                                                %
+                                                % See the proplists erlang module.
+                                                %
+                                                % A change to any of these rest properties probably means a restart of
+                                                % mochiweb is needed.
+                                                %
+                                                % Modifiers: menelaus REST API
+                                                % Listeners: some menelaus module that configures/reconfigures mochiweb
+     {rest, [{port, 8080} % Port number of the REST admin API and UI.
             ]},
 
-    % In 1.0, only the first entry in the creds list is displayed in the UI
-    % and accessible through the UI.
-    %
-    % Modifiers: menelaus REST API
-    % Listeners: some menelaus module that configures/reconfigures mochiweb??
-    {rest_creds, [{creds, []}
-                 ]}, % An empty list means no login/password auth check.
+                                                % In 1.0, only the first entry in the creds list is displayed in the UI
+                                                % and accessible through the UI.
+                                                %
+                                                % Modifiers: menelaus REST API
+                                                % Listeners: some menelaus module that configures/reconfigures mochiweb??
+     {rest_creds, [{creds, []}
+                  ]}, % An empty list means no login/password auth check.
 
-    % Example rest_cred when a login/password is setup.
-    %
-    % {rest_creds, [{creds, [{"user", [{password, "password"}]},
-    %                        {"admin", [{password, "admin"}]}]}
-    %              ]}, % An empty list means no login/password auth check.
+                                                % Example rest_cred when a login/password is setup.
+                                                %
+                                                % {rest_creds, [{creds, [{"user", [{password, "password"}]},
+                                                %                        {"admin", [{password, "admin"}]}]}
+                                                %              ]}, % An empty list means no login/password auth check.
 
-    % This is also a parameter to memcached ports below.
-    {{node, node(), isasl}, [{path, filename:join(DbDir, "isasl.pw")}]},
+                                                % This is also a parameter to memcached ports below.
+     {{node, node(), isasl}, [{path, filename:join(DbDir, "isasl.pw")}]},
 
-    % Memcached config
-    {{node, node(), memcached},
-     [{port, 11210},
-      {dbdir, DbDir},
-      {admin_user, "_admin"},
-      {admin_pass, "_admin"},
-      {bucket_engine,
-       "./bin/bucket_engine/bucket_engine.so"},
-      {engines, [{membase, [{engine, "bin/ep_engine/ep.so"},
-                            {initfile, "priv/init.sql"}]},
-                 {memcached, [{engine, "bin/memcached/default_engine.so"}]}]},
-      {verbosity, ""}]},
+                                                % Memcached config
+     {{node, node(), memcached},
+      [{port, 11210},
+       {dbdir, DbDir},
+       {admin_user, "_admin"},
+       {admin_pass, "_admin"},
+       {bucket_engine,
+        "./bin/bucket_engine/bucket_engine.so"},
+       {engines, [{membase, [{engine, "bin/ep_engine/ep.so"},
+                             {initfile, "priv/init.sql"}]},
+                  {memcached, [{engine, "bin/memcached/default_engine.so"}]}]},
+       {verbosity, ""}]},
 
-    {memory_quota, InitQuota},
+     {memory_quota, InitQuota},
 
-    {buckets, [{configs, [{"default",
-                           [{type, membase},
-                            {num_vbuckets,
-                             case (catch list_to_integer(os:getenv("VBUCKETS_NUM"))) of
-                                 EnvBuckets when is_integer(EnvBuckets) -> EnvBuckets;
-                                 _ -> 1024
-                             end},
-                            {num_replicas, 1},
-                            %% default quotas will be defined when resources
-                            %% stage of wizard will post data
-                            {ram_quota, case is_integer(InitQuota) of
-                                            true -> InitQuota * 1048576;
-                                            _ -> InitQuota
-                                        end},
-                            {auth_type, sasl},  % none | sasl
-                            {sasl_password, ""},
-                            {ht_size, 3079},
-                            {ht_locks, 5},
-                            {servers, []},
-                            {map, undefined}]
-                          }]
-               }]},
+     {buckets, [{configs, [{"default",
+                            [{type, membase},
+                             {num_vbuckets,
+                              case (catch list_to_integer(os:getenv("VBUCKETS_NUM"))) of
+                                  EnvBuckets when is_integer(EnvBuckets) -> EnvBuckets;
+                                  _ -> 1024
+                              end},
+                             {num_replicas, 1},
+                             %% default quotas will be defined when resources
+                             %% stage of wizard will post data
+                             {ram_quota, case is_integer(InitQuota) of
+                                             true -> InitQuota * 1048576;
+                                             _ -> InitQuota
+                                         end},
+                             {auth_type, sasl},  % none | sasl
+                             {sasl_password, ""},
+                             {ht_size, 3079},
+                             {ht_locks, 5},
+                             {servers, []},
+                             {map, undefined}]
+                           }]
+                }]},
 
-    % Moxi config
-    {moxi, [{port, 11211},
-            {verbosity, ""}
-           ]},
+                                                % Moxi config
+     {moxi, [{port, 11211},
+             {verbosity, ""}
+            ]},
 
-    % Note that we currently assume the ports are available
-    % across all servers in the cluster.
-    %
-    % This is a classic "should" key, where ns_port_sup needs
-    % to try to start child processes.  If it fails, it should ns_log errors.
-    {port_servers,
-     [{moxi, "./bin/moxi/moxi",
-       ["-Z", {"port_listen=~B,downstream_max=4,downstream_conn_max=8", [port]},
-        "-z", {"url=http://127.0.0.1:~B/pools/default/saslBucketsStreaming",
-               [{rest, port}]},
-        "-p", "0",
-        "-Y", "y",
-        "-O", "stderr",
-        {"~s", [verbosity]}
-       ],
-       [{env, [{"EVENT_NOSELECT", "1"},
-               {"MOXI_SASL_PLAIN_USR", {"~s", [{ns_moxi_sup, rest_user, []}]}},
-               {"MOXI_SASL_PLAIN_PWD", {"~s", [{ns_moxi_sup, rest_pass, []}]}}
-              ]},
-        use_stdio,
-        stderr_to_stdout,
-        stream]
-      },
-      {memcached, "./bin/memcached/memcached",
-       ["-X", "./bin/memcached/stdin_term_handler.so",
-        "-p", {"~B", [port]},
-        "-E", "./bin/bucket_engine/bucket_engine.so",
-        "-B", "binary",
-        "-r",
-        "-c", "10000",
-        "-e", {"admin=~s;default_bucket_name=default;auto_create=false",
-               [admin_user]},
-        {"~s", [verbosity]}
-       ],
-       [{env, [{"EVENT_NOSELECT", "1"},
-               {"MEMCACHED_TOP_KEYS", "100"},
-               {"ISASL_PWFILE", {"~s", [{isasl, path}]}},
-               {"ISASL_DB_CHECK_TIME", "1"}]},
-        use_stdio,
-        stderr_to_stdout,
-        stream]
-      }]
-    },
+                                                % Note that we currently assume the ports are available
+                                                % across all servers in the cluster.
+                                                %
+                                                % This is a classic "should" key, where ns_port_sup needs
+                                                % to try to start child processes.  If it fails, it should ns_log errors.
+     {port_servers,
+      [{moxi, "./bin/moxi/moxi",
+        ["-Z", {"port_listen=~B,downstream_max=4,downstream_conn_max=8", [port]},
+         "-z", {"url=http://127.0.0.1:~B/pools/default/saslBucketsStreaming",
+                [{rest, port}]},
+         "-p", "0",
+         "-Y", "y",
+         "-O", "stderr",
+         {"~s", [verbosity]}
+        ],
+        [{env, [{"EVENT_NOSELECT", "1"},
+                {"MOXI_SASL_PLAIN_USR", {"~s", [{ns_moxi_sup, rest_user, []}]}},
+                {"MOXI_SASL_PLAIN_PWD", {"~s", [{ns_moxi_sup, rest_pass, []}]}}
+               ]},
+         use_stdio,
+         stderr_to_stdout,
+         stream]
+       },
+       {memcached, "./bin/memcached/memcached",
+        ["-X", "./bin/memcached/stdin_term_handler.so",
+         "-p", {"~B", [port]},
+         "-E", "./bin/bucket_engine/bucket_engine.so",
+         "-B", "binary",
+         "-r",
+         "-c", "10000",
+         "-e", {"admin=~s;default_bucket_name=default;auto_create=false",
+                [admin_user]},
+         {"~s", [verbosity]}
+        ],
+        [{env, [{"EVENT_NOSELECT", "1"},
+                {"MEMCACHED_TOP_KEYS", "100"},
+                {"ISASL_PWFILE", {"~s", [{isasl, path}]}},
+                {"ISASL_DB_CHECK_TIME", "1"}]},
+         use_stdio,
+         stderr_to_stdout,
+         stream]
+       }]
+     },
 
-    {{node, node(), ns_log}, [{filename, filename:join(DbDir, "ns_log")}]},
+     {{node, node(), ns_log}, [{filename, filename:join(DbDir, "ns_log")}]},
 
-    % Modifiers: menelaus
-    % Listeners: ? possibly ns_log
-    {alerts, [{email, ""},
-            {email_alerts, false},
-            {email_server, [{user, undefined},
-                    {pass, undefined},
-                    {addr, undefined},
-                    {port, undefined},
-                    {encrypt, false}]},
-            {alerts, [server_down,
-                    server_unresponsive,
-                    server_up,
-                    server_joined,
-                    server_left,
-                    bucket_created,
-                    bucket_deleted,
-                    bucket_auth_failed]}
-            ]}
-  ].
+                                                % Modifiers: menelaus
+                                                % Listeners: ? possibly ns_log
+     {alerts, [{email, ""},
+               {email_alerts, false},
+               {email_server, [{user, undefined},
+                               {pass, undefined},
+                               {addr, undefined},
+                               {port, undefined},
+                               {encrypt, false}]},
+               {alerts, [server_down,
+                         server_unresponsive,
+                         server_up,
+                         server_joined,
+                         server_left,
+                         bucket_created,
+                         bucket_deleted,
+                         bucket_auth_failed]}
+              ]}
+    ].
