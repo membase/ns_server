@@ -73,15 +73,7 @@ handle_cast(Msg, State) ->
 
 
 handle_info(acquire_initial_status, #state{nodes=NodeDict} = State) ->
-    {Replies, BadNodes} = gen_server:multi_call(ns_heart, status),
-    case BadNodes of
-        [] ->
-            ok;
-        _ ->
-            error_logger:error_msg(
-              "~p couldn't contact the following nodes on startup: ~p~n",
-              [?MODULE, BadNodes])
-    end,
+    Replies = ns_heart:status_all(),
     %% Get an initial status so we don't start up thinking everything's down
     Nodes = lists:foldl(fun ({Node, Status}, Dict) ->
                                 update_status(Node, Status, Dict)
