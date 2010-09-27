@@ -71,6 +71,8 @@ var ServersSection = {
 
     $('#active_server_list_container .last-active').find('.eject_server').addClass('disabled').end()
       .find('.failover_server').addClass('disabled');
+
+    $('.server_down .eject_server').addClass('disabled');
   },
   renderRebalance: function (details) {
     var progress = this.rebalanceProgress.value;
