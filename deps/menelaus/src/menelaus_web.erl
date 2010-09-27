@@ -415,7 +415,7 @@ handle_pool_info_wait_tail(Req, Id, UserPassword, LocalAddr, ETag) ->
     reply_json(Req, Info).
 
 is_healthy(InfoNode) ->
-    not proplists:get_bool(stale, InfoNode) and
+    not proplists:get_bool(down, InfoNode) and
         proplists:get_bool(memcached_running, InfoNode).
 
 build_pool_info(Id, _UserPassword, InfoLevel, LocalAddr) ->
@@ -466,7 +466,7 @@ build_nodes_info(MyPool, IncludeOtp, InfoLevel, LocalAddr) ->
           fun(WantENode) ->
                   InfoNode = case dict:find(WantENode, NodeStatuses) of
                                  {ok, Info} -> Info;
-                                 error -> [stale]
+                                 error -> [down]
                              end,
                   KV = build_node_info(MyPool, WantENode, InfoNode, LocalAddr),
                   Status = case is_healthy(InfoNode) of
