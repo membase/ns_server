@@ -137,14 +137,14 @@ handle_join_rest_failure(ReturnValue, OtherHost, OtherPort) ->
         {error, prepare_failed, Reason} ->
             ns_log:log(?MODULE, ?PREPARE_JOIN_FAILED,
                        "During node join, could not connect to port mapper at ~p with reason ~p", [OtherHost, Reason]),
-            {error, [list_to_binary(io_lib:format("Could not connect port mapper at ~p (tcp port 4369). With error Reason ~p. "
-                                                  "This could be due to "
-                                                  "firewall configured between the two nodes.", [OtherHost, Reason]))]};
+            {error, [list_to_binary(io_lib:format("Could not connect port mapper at ~p (tcp port 4369). With error \"~p\". "
+                                                  "This could be due to a"
+                                                  "firewall in place between the servers.", [OtherHost, Reason]))]};
         {error, econnrefused} ->
             ns_log:log(?MODULE, ?CONNREFUSED, "During node join, could not connect to ~p on port ~p from node ~p.", [OtherHost, OtherPort, node()]),
             {error, [list_to_binary(io_lib:format("Could not connect to ~p on port ~p.  "
                                                   "This could be due to an incorrect host/port combination or a "
-                                                  "firewall configured between the two nodes.", [OtherHost, OtherPort]))]};
+                                                  "firewall in place between the servers.", [OtherHost, OtherPort]))]};
         {error, nxdomain} ->
             ns_log:log(?MODULE, ?NXDOMAIN, "During node join, failed to resolve host ~p on port ~p from node ~p.", [OtherHost, OtherPort, node()]),
             Msg = io_lib:format("Failed to resolve address for ~p.  The hostname may be incorrect or not resolvable.", [OtherHost]),
@@ -153,7 +153,7 @@ handle_join_rest_failure(ReturnValue, OtherHost, OtherPort) ->
             ns_log:log(?MODULE, ?TIMEDOUT, "During node join, timeout connecting to ~p on port ~p from node ~p.", [OtherHost, OtherPort, node()]),
             {error, [list_to_binary(io_lib:format("Timeout connecting to ~p on port ~p.  "
                                                   "This could be due to an incorrect host/port combination or a "
-                                                  "firewall configured between the two nodes.", [OtherHost, OtherPort]))]};
+                                                  "firewall in place between the servers.", [OtherHost, OtherPort]))]};
         {error, {{_, 401, _}, _, _}} ->
             ns_log:log(?MODULE, ?AUTH_FAILED, "During node join, failed to authenticate to ~p on port ~p from node ~p.", [OtherHost, OtherPort, node()]),
             {error, <<"Authentication failed. Verify username and password.">>};
