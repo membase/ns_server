@@ -845,7 +845,7 @@ function extendHTMLAttrs(attrs1, attrs2) {
 function usageGaugeHTML(options) {
   var items = options.items;
   var values = _.map(options.items, function (item) {
-    return item.value;
+    return Math.max(item.value, 0);
   });
   var total = _.inject(values, 0, function (a,v) {return a+v});
   values = rescaleForSum(100, values, total);
