@@ -32,7 +32,8 @@ var OverviewSection = {
     });
 
     DAO.cells.currentPoolDetailsCell.subscribeValue(function (poolDetails) {
-      if (!poolDetails) {
+      if (!poolDetails || !poolDetails.storageTotals
+          || !poolDetails.storageTotals.ram || !poolDetails.storageTotals.hdd) {
         $('#overview_clusters_block').hide();
         return;
       }
