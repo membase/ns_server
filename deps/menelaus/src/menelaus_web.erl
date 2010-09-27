@@ -415,8 +415,7 @@ handle_pool_info_wait_tail(Req, Id, UserPassword, LocalAddr, ETag) ->
     reply_json(Req, Info).
 
 is_healthy(InfoNode) ->
-    not proplists:get_bool(down, InfoNode) and
-        proplists:get_bool(memcached_running, InfoNode).
+    not proplists:get_bool(down, InfoNode).
 
 build_pool_info(Id, _UserPassword, InfoLevel, LocalAddr) ->
     MyPool = fakepool,
