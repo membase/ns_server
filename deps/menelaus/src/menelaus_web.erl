@@ -417,9 +417,9 @@ handle_pool_info_wait_tail(Req, Id, UserPassword, LocalAddr, ETag) ->
 is_healthy(InfoNode) ->
     not proplists:get_bool(down, InfoNode).
 
-build_pool_info(Id, _UserPassword, InfoLevel, LocalAddr) ->
+build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
     MyPool = fakepool,
-    Nodes = build_nodes_info(MyPool, true, InfoLevel, LocalAddr),
+    Nodes = build_nodes_info(MyPool, menelaus_auth:check_auth(UserPassword), InfoLevel, LocalAddr),
     BucketsInfo = {struct, [{uri,
                              list_to_binary(concat_url_path(["pools", Id, "buckets"]))}]},
     RebalanceStatus = case ns_cluster_membership:get_rebalance_status() of
