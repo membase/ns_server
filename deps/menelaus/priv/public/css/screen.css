@@ -301,9 +301,9 @@ a:link {
 .page-header span {
 	position: absolute;
 	background: url('../images/ns_console_logov2.png') no-repeat;
-	width: 331px;
-	height: 57px;
-	top: 25px;
+	width: 361px;
+	height: 49px;
+	top: 35px;
 	left:0;
 }
 
@@ -816,9 +816,9 @@ button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
 #about_server_dialog {background-color:#fff; box-shadow: 0px 5px 25px #222; height:250px; margin-left:-195px !important; width:390px; -moz-box-shadow: 0px 5px 25px #222; -webkit-box-shadow: 0px 5px 25px #222;}
 #about_server_dialog .lbox {background:none; width:100%;}
 #about_server_dialog .lbox .config-top {width:390px; margin:-6px 0px 0px -9px; padding-right:9px;}
-#about_server_dialog .lbox .config-top img {float:left; margin-top:6px; margin-left:15px;}
-#about_server_dialog .lbox .config-top h1 {float:right; font-family:Verdana,Helvetica,Sans-Serif; font-size:12pt; font-weight:normal; margin-right:15px; margin-top:14px;}
-#about_server_dialog .lbox .config-bottom {margin-top:21px;}
+#about_server_dialog .lbox .config-top img {float:left; margin:8px 0 0 11px;}
+#about_server_dialog .lbox .config-top h1 {float:right; font-family:Verdana,Helvetica,Sans-Serif; font-size:11pt; font-weight:normal; margin:5px 0 0;}
+#about_server_dialog .lbox .config-bottom {margin-top:0;}
 #about_server_dialog .lbox .center {background:none; padding: 10px;}
 #about_server_dialog .lbox .top .top_center {*width:356px;}
 #about_server_dialog .lbox .bottom .bottom_center {*width:356px;}
@@ -850,7 +850,7 @@ body.init_welcome #init_welcome_dialog h1 {color:#fff; font-family:Verdana, Helv
 body.init_welcome #init_welcome_dialog p {color:#acbbc4; font-family:Verdana, Helvetica, sans-serif; font-size:14pt; font-weight:100;}
 body.init_welcome #init_welcome_dialog .pad-header .tagline,
 body.init_welcome #init_welcome_dialog .pad-header .version {float:left; margin-top:71px;}
-body.init_welcome #init_welcome_dialog .pad-header div.tagline {color:#00a6de; font-size:12pt; margin-left:225px; margin-right:25px;}
+body.init_welcome #init_welcome_dialog .pad-header div.tagline {color:#00a6de; font-size:11pt; margin-left:257px; margin-right:18px;}
 body.init_welcome #init_welcome_dialog .pad-header div.version {color:#ec5223; font-size:11pt;}
 body.init_welcome #init_welcome_dialog .pad-header div.elastro-cling {background:url(../images/elastro_cling_v22.png) no-repeat; float:right; height:239px; margin-right:-167px; width:189px;}
 
@@ -870,7 +870,7 @@ div.config-top {background:url(../images/config-top.png) repeat-x; height:60px; 
 div.config-top h1, div.config-top h2 {background:none;border:none;font-family:Verdana, Helvetica, Sans-Serif; text-shadow: 0px 1px 2px #fff;}
 div.config-top h1 {color:#444245; float:left; font-size:16pt; margin:-15px 0 0 20px; padding:0;}
 div.config-top h2 {color:#8b8b8e; float:right; font-size:10pt; margin:0 20px 0 0; padding:0;font-weight:bold;clear:none;border:none;}
-div.config-bottom {background:url(../images/config-bottom.png) repeat-x; height:74px; line-height:84px; margin:0px 0px 0px -8px;}
+div.config-bottom {background:url(../images/config-bottom.png) repeat-x; height:74px; line-height:84px; margin:0 0 0 -9px;}
 div.config-bottom a.cancel {color:#8b8b8e; float:right; font-family:Arial, Helvetica, Sans-Serif; font-size:12pt; margin-right:25px; margin-top:-5px; text-decoration:none;}
 
 body.init_resources #init_block { display: block; }
