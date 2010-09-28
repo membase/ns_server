@@ -31,22 +31,13 @@
 %% gen_server handlers
 
 start_link() ->
-    %% If it's already running elsewhere in the cluster, just monitor
-    %% the existing process.
-    case gen_server:start_link({global, ?MODULE}, ?MODULE, [], []) of
-        {error, {already_started, Pid}} ->
-            {ok, spawn_link(fun () -> misc:wait_for_process(Pid, infinity) end)};
-        X -> X
-    end.
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
     self() ! acquire_initial_status,
     {ok, #state{nodes=dict:new()}}.
 
-handle_call(get_nodes, _From, State) ->
-    %% In case the doctor gets slow, collect any heartbeats from the queue so we
-    %% don't think the status is stale
-    Nodes = collect_status(State#state.nodes),
+handle_call(get_nodes, _From, #state{nodes=Nodes} = State) ->
     Now = erlang:now(),
     LiveNodes = [node()|nodes()],
     Nodes1 = dict:map(
@@ -64,11 +55,15 @@ handle_call(get_nodes, _From, State) ->
                                [ down | Stale ]
                        end
                end, Nodes),
-    {reply, Nodes1, State#state{nodes=Nodes}}.
+    {reply, Nodes1, State}.
 
+
+handle_cast({heartbeat, Name, Status}, State) ->
+    Nodes = update_status(Name, Status, State#state.nodes),
+    {noreply, State#state{nodes=Nodes}};
 
 handle_cast(Msg, State) ->
-    ?log_info("Unexpected cast: ~p", [Msg]),
+    ?log_warning("Unexpected cast: ~p", [Msg]),
     {noreply, State}.
 
 
@@ -78,16 +73,12 @@ handle_info(acquire_initial_status, #state{nodes=NodeDict} = State) ->
     Nodes = lists:foldl(fun ({Node, Status}, Dict) ->
                                 update_status(Node, Status, Dict)
                         end, NodeDict, Replies),
-    error_logger:info_msg("~p got initial status ~p~n", [?MODULE, Nodes]),
-    {noreply, State#state{nodes=Nodes}};
-
-handle_info({heartbeat, Name, Status}, State) ->
-    Nodes = update_status(Name, Status, State#state.nodes),
+    ?log_info("Got initial status ~p~n", [Nodes]),
     {noreply, State#state{nodes=Nodes}};
 
 handle_info(Info, State) ->
-    error_logger:info_msg("ns_doctor: got unexpected message ~p in state ~p.~n",
-                          [Info, State]),
+    ?log_warning("Unexpected message ~p in state",
+                 [Info]),
     {noreply, State}.
 
 terminate(_Reason, _State) -> ok.
@@ -97,30 +88,19 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 %% API
 
 heartbeat(Status) ->
-    heartbeat(node(), Status).
-
-heartbeat(Node, Status) ->
-    catch global:send(?MODULE, {heartbeat, Node, Status}).
+    gen_server:abcast(?MODULE, {heartbeat, node(), Status}).
 
 get_nodes() ->
-    try gen_server:call({global, ?MODULE}, get_nodes) of
+    try gen_server:call(?MODULE, get_nodes) of
         Nodes -> Nodes
     catch
-        _:_ -> dict:new()
+        E:R ->
+            ?log_error("Error attempting to get nodes: ~p", [{E, R}]),
+            dict:new()
     end.
 
 
 %% Internal functions
-
-collect_status(Nodes) ->
-    receive
-        {heartbeat, Name, Status} ->
-            Nodes1 = update_status(Name, Status, Nodes),
-            collect_status(Nodes1)
-    after 0 ->
-            Nodes
-    end.
-
 
 update_status(Name, Status, Dict) ->
     Node = [{last_heard, erlang:now()} | Status],
