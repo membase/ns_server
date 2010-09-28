@@ -47,7 +47,7 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
 %% API
 status_all() ->
-    {Replies, _} = gen_server:multi_call(?MODULE, status),
+    {Replies, _} = gen_server:multi_call([node() | nodes()], ?MODULE, status, 5000),
     Replies.
 
 %% Internal fuctions
