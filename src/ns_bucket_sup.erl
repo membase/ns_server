@@ -23,37 +23,37 @@
 
 -export([start_link/2]).
 
--export([init/1, update_childs/2]).
+-export([init/1]).
 
 
 %% API
 
 start_link(Name, ChildFun) ->
-    RV = supervisor:start_link({local, Name}, ?MODULE, ChildFun),
-    ns_pubsub:subscribe(ns_config_events,
-                        fun (Event, State) ->
-                                case Event of
-                                    {buckets, _} ->
-                                        update_childs(Name, ChildFun);
-                                    _ -> ok
-                                end,
-                                State
-                        end, undefined),
-    RV.
+    supervisor:start_link({local, Name}, ?MODULE, {Name, ChildFun}).
+
 
 %% supervisor callbacks
 
-init(ChildFun) ->
+init({Name, ChildFun}) ->
+    ns_pubsub:subscribe(
+      ns_config_events,
+      fun (Event, State) ->
+              case Event of
+                  {buckets, L} ->
+                      Buckets = [B || {B, _} <-
+                                          proplists:get_value(configs, L)],
+                      update_childs(Name, ChildFun, Buckets);
+                  _ -> ok
+              end,
+              State
+      end, undefined),
     {ok, {{one_for_one, 3, 10},
-          child_specs(ChildFun)}}.
+          lists:flatmap(ChildFun, ns_bucket:get_bucket_names())}}.
 
 %% Internal functions
-child_specs(ChildFun) ->
-    Configs = ns_bucket:get_buckets(),
-    lists:append([ChildFun(B) || {B, _} <- Configs]).
 
-update_childs(Name, ChildFun) ->
-    NewSpecs = child_specs(ChildFun),
+update_childs(Name, ChildFun, Buckets) ->
+    NewSpecs = lists:flatmap(ChildFun, Buckets),
     NewIds = [element(1, X) || X <- NewSpecs],
     OldSpecs = supervisor:which_children(Name),
     RunningIds = [element(1, X) || X <- OldSpecs],
