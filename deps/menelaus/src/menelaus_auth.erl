@@ -56,27 +56,16 @@ require_auth(Req) ->
 %% credentials
 filter_accessible_buckets(BucketsAll, Req) ->
     UserPassword = menelaus_auth:extract_auth(Req),
-    IsSuper = menelaus_auth:check_auth(UserPassword),
-    %% We got this far, so we assume we're authorized.
-    %% Only emit the buckets that match our UserPassword;
-    %% or, emit all buckets if our UserPassword matches the rest_creds
-    %% or, emit all buckets if we're not secure.
-    case {IsSuper, UserPassword} of
-        {true, _}      -> BucketsAll;
-        {_, undefined} -> []; %% we're secured and no password is given
-        {_, {_User, _Password} = UserPassword} ->
-            lists:filter(
-              menelaus_auth:bucket_auth_fun(UserPassword),
-              BucketsAll)
-    end.
+    F = bucket_auth_fun(UserPassword),
+    [Bucket || Bucket <- BucketsAll, F(Bucket)].
 
 %% returns true if given bucket is accessible with current
 %% credentials. No auth buckets are always accessible. SASL auth
 %% buckets are accessible only with admin or bucket credentials.
 is_bucket_accessible(Bucket, Req) ->
     UserPassword = menelaus_auth:extract_auth(Req),
-    IsSuper = menelaus_auth:check_auth(UserPassword),
-    IsSuper orelse apply(menelaus_auth:bucket_auth_fun(UserPassword), [Bucket]).
+    F = bucket_auth_fun(UserPassword),
+    F(Bucket).
 
 apply_auth(Req, F, Args) ->
     UserPassword = extract_auth(Req),
@@ -177,16 +166,24 @@ parse_user(UserPasswordStr) ->
 %% NOTE: that no-auth buckets are always accessible even without
 %% password at all
 bucket_auth_fun(UserPassword) ->
-    fun({BucketName, BucketProps}) ->
-            case {proplists:get_value(auth_type, BucketProps),
-                  proplists:get_value(sasl_password, BucketProps)} of
-                {none, _} -> true;
-                {sasl, BucketPassword} ->
-                    case UserPassword of
-                        undefined -> false;
-                        {User, Password} ->
-                            (BucketName =:= User andalso
-                             BucketPassword =:= Password)
+    case check_auth(UserPassword) of
+        true ->
+            fun (_) -> true end;
+        false ->
+            fun({BucketName, BucketProps}) ->
+                    case {proplists:get_value(auth_type, BucketProps),
+                          proplists:get_value(sasl_password, BucketProps),
+                          UserPassword} of
+                        {none, _, undefined} ->
+                            true;
+                        {none, _, {BucketName, ""}} ->
+                            true;
+                        {sasl, "", undefined} ->
+                            true;
+                        {sasl, BucketPassword, {BucketName, BucketPassword}} ->
+                            true;
+                        _ ->
+                            false
                     end
             end
     end.
