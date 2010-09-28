@@ -781,13 +781,12 @@ validate_settings(Port, U, P) ->
         _ -> Candidates = [is_valid_port_number(Port)
                            orelse <<"Port must be a positive integer less than 65536">>,
                            case {U, P} of
-                               {[], []} -> true;
+                               {[], _} -> <<"Username and password are required.">>;
                                {[_Head | _], P} ->
                                    case length(P) =< 5 of
                                        true -> <<"The password must be at least six characters.">>;
                                        _ -> true
-                                   end;
-                               _ -> <<"Username must not be blank if Password is provided">>
+                                   end
                            end],
              lists:filter(fun (E) -> E =/= true end,
                           Candidates)
