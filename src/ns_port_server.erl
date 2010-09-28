@@ -49,6 +49,7 @@ start_link(Name, Cmd, Args, Opts) ->
                           {Name, Cmd, Args, Opts}, []).
 
 init({Name, _Cmd, _Args, _Opts} = Params) ->
+    process_flag(trap_exit, true), % Make sure terminate gets called
     Port = open_port(Params),
     {ok, #state{port = Port, name = Name,
                 messages = ringbuffer:new(?NUM_MESSAGES)}}.
@@ -72,8 +73,10 @@ handle_call(unhandled, unhandled, unhandled) ->
 handle_cast(unhandled, unhandled) ->
     unhandled.
 
-terminate(_Reason, #state{port=Port}) ->
-    (catch port_close(Port)),
+terminate(Reason, #state{name=Name, port=Port}) ->
+    Result = (catch port_close(Port)),
+    ?log_info("Result of closing port for ~p (exit reason ~p): ~p",
+              [Name, Reason, Result]),
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
