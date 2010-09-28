@@ -273,7 +273,7 @@ cluster or configuring the node into an existing cluster.
 
 <pre class="restcalls">
 POST /nodes/self/controller/settings HTTP/1.1
-Host: node.in.your.cluster:8080
+Host: node.in.your.cluster:8091
 Content-Type: application/x-www-form-urlencoded; charset=UTF-8
 Authorization: Basic YWRtaW46YWRtaW4=
 Content-Length: xx
@@ -289,7 +289,7 @@ path=/var/tmp/test
  Content-Length: 0
  </pre>
 
-<pre>curl -i -d path=/var/tmp/test http://localhost:8080/nodes/self/controller/settings</pre>
+<pre>curl -i -d path=/var/tmp/test http://localhost:8091/nodes/self/controller/settings</pre>
 
 #####Configuring a cluster's memory quota.
 
@@ -297,7 +297,7 @@ path=/var/tmp/test
 
 <pre class="restcalls">
 POST /pools/default HTTP/1.1
-Host: node.in.your.cluster:8080
+Host: node.in.your.cluster:8091
 Content-Type: application/x-www-form-urlencoded; charset=UTF-8
 Authorization: Basic YWRtaW46YWRtaW4=
 Content-Length: xx
@@ -315,7 +315,7 @@ memoryQuota=400
 
  This, for example could have been carried out with curl.
 
-<pre>curl -i -d memoryQuota=400 http://localhost:8080/pools/default</pre>
+<pre>curl -i -d memoryQuota=400 http://localhost:8091/pools/default</pre>
 
 #####Setting a node's username and password
 
@@ -330,12 +330,12 @@ this response.
 
 <pre class="restcalls">
 POST /settings/web HTTP/1.1
-Host: node.in.your.cluster:8080
+Host: node.in.your.cluster:8091
 Content-Type: application/x-www-form-urlencoded; charset=UTF-8
 Authorization: Basic YWRtaW46YWRtaW4=
 Content-Length: xx
 
-username=Administrator&password=letmein&port=8080
+username=Administrator&password=letmein&port=8091
 </pre>
 
 *Response*
@@ -350,10 +350,10 @@ username=Administrator&password=letmein&port=8080
  Content-Length: 39
  Cache-Control: no-cache no-store max-age=0
 
-{"newBaseUri":"http://localhost:8080/"}
+{"newBaseUri":"http://localhost:8091/"}
 </pre>
 
-<pre>curl -i -d username=Administrator -d password=letmein -d port=8080 http://localhost:8080/settings/web</pre>
+<pre>curl -i -d username=Administrator -d password=letmein -d port=8091 http://localhost:8091/settings/web</pre>
 
 Note that even if it is not to be changed
 
@@ -399,7 +399,7 @@ Note that even if it is not to be changed
 	    }],
             "storageTotals":{
                 "ram":{
-                    "total":2032558080,
+                    "total":2032558091,
                     "used":1641816064
                 },
                 "hdd":{
@@ -788,7 +788,7 @@ the pool.
 
 <pre class="restcalls">
 POST /pools/default/buckets HTTP/1.1
-Host: node.in.your.cluster:8080
+Host: node.in.your.cluster:8091
 Content-Type: application/x-www-form-urlencoded; charset=UTF-8
 Authorization: Basic YWRtaW46YWRtaW4=
 Content-Length: xx
@@ -937,13 +937,13 @@ cluster.
 
 <pre class="restcalls">
  POST /node/controller/doJoinCluster
- Host: target.node.to.do.join.from:8080
+ Host: target.node.to.do.join.from:8091
  Authorization: Basic xxxxxxxxxxxx
  Accept: */*
  Content-Length: xxxxxxxxxx
  Content-Type: application/x-www-form-urlencoded
 
- clusterMemberHostIp=192%2E168%2E0%2E1&clusterMemberPort=8080&user=admin&password=admin123
+ clusterMemberHostIp=192%2E168%2E0%2E1&clusterMemberPort=8091&user=admin&password=admin123
 </pre>
 
 The following are required:
@@ -961,7 +961,7 @@ If the server has been "secured" via the console, the following are also require
 403 Forbidden bad credentials - invalid credentials
 
 For example to make this request from curl:
-`curl --data-urlencode clusterMemberHostIp=192.168.0.1 --data-urlencode clusterMemberPort=8080 --data-urlencode user=admin --data-urlencode password=admin123 http://localhost:8080/node/controller/doJoinCluster`
+`curl --data-urlencode clusterMemberHostIp=192.168.0.1 --data-urlencode clusterMemberPort=8091 --data-urlencode user=admin --data-urlencode password=admin123 http://localhost:8091/node/controller/doJoinCluster`
 
 #### Ejecting a node from a cluster
 
@@ -973,7 +973,7 @@ to eject a node from another node participating in the same cluster.
 
 <pre class="restcalls">
 POST /controller/ejectNode
-Host: altnernate.node.in.cluster:8080
+Host: altnernate.node.in.cluster:8091
 Authorization: Basic xxxxxxxxxxxx
 Accept: */*
 Content-Length: xxxxxxxxxx
@@ -989,7 +989,7 @@ otpNode=ns_1@192%2E168%2E0%2E1
 400 Error, the node to be ejected doesn't exist
 
 For example, to make this request from curl:
-`$ curl --user admin -i --data otpNode=ns_1@192.168.0.107 http://192.168.0.106:8080/controller/ejectNode`
+`$ curl --user admin -i --data otpNode=ns_1@192.168.0.107 http://192.168.0.106:8091/controller/ejectNode`
 
 
 #### System Logs

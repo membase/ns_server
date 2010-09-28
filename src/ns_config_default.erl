@@ -123,7 +123,7 @@ default() ->
                                                 %
                                                 % Modifiers: menelaus REST API
                                                 % Listeners: some menelaus module that configures/reconfigures mochiweb
-     {rest, [{port, 8080} % Port number of the REST admin API and UI.
+     {rest, [{port, 8091} % Port number of the REST admin API and UI.
             ]},
 
                                                 % In 1.0, only the first entry in the creds list is displayed in the UI

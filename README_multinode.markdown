@@ -68,13 +68,13 @@ You'll need to edit everywhere you see a port number, and add extra
 In your priv/config2 file, if you see...
 
     {rest, [{'_ver', {0, 0, 0}},
-            {port, 8080}
+            {port, 8091}
            ]}.
 
 Add an additional "per-node" entry right below it, so it looks like...
 
     {rest, [{'_ver', {0, 0, 0}},
-            {port, 8080}
+            {port, 8091}
            ]}.
     {{node, 'ns_2@stevenmb.gateway.2wire.net', rest},
          [{'_ver', {0, 0, 0}},
@@ -82,7 +82,7 @@ Add an additional "per-node" entry right below it, so it looks like...
          ]}.
 
 With the above change, the priv/config2 file is saying that by default
-the rest key has a port value of 8080.  And, on node
+the rest key has a port value of 8091.  And, on node
 ns_2@stevenmb.gateway.2wire.net, the value of the rest key will have a
 port number of 8081.  So, when ns_1 and ns_2 run on the same machine,
 they won't have a REST admin api port conflict.
@@ -94,7 +94,7 @@ when I'm not connected.  So, my per-node overrides in my priv/config2
 file look like...
 
     {rest, [{'_ver', {0, 0, 0}},
-            {port, 8080}
+            {port, 8091}
            ]}.
     {{node, 'ns_2@stevenmb.gateway.2wire.net', rest},
          [{'_ver', {0, 0, 0}},

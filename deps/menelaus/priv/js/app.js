@@ -467,7 +467,7 @@ var NodeDialog = {
 
     var hostname = data.hostname;
     data.clusterMemberHostIp = hostname;
-    data.clusterMemberPort = '8080';
+    data.clusterMemberPort = '8091';
     if (hostname.indexOf(':') >= 0) {
       var arr = hostname.split(':');
       data.clusterMemberHostIp = arr[0];

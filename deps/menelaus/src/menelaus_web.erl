@@ -78,7 +78,7 @@ webconfig() ->
          end,
     Port = case os:getenv("MOCHIWEB_PORT") of
                false -> Config = ns_config:get(),
-                        ns_config:search_node_prop(Config, rest, port, 8080);
+                        ns_config:search_node_prop(Config, rest, port, 8091);
                P -> list_to_integer(P)
            end,
     WebConfig = [{ip, Ip},
@@ -542,7 +542,7 @@ build_node_info(_MyPool, WantENode, InfoNode, LocalAddr) ->
     OS = proplists:get_value(system_arch, InfoNode, "unknown"),
     HostName = Host ++ ":" ++
                integer_to_list(ns_config:search_node_prop(WantENode, Config,
-                                                          rest, port, 8080)),
+                                                          rest, port, 8091)),
     V = [{hostname, list_to_binary(HostName)},
          {version, list_to_binary(Version)},
          {os, list_to_binary(OS)},
@@ -600,7 +600,7 @@ handle_join(Req) ->
     %%           a 400 if a required parameter is missing
     %%
     %% parameter example: clusterMemberHostIp=192%2E168%2E0%2E1&
-    %%                    clusterMemberPort=8080&
+    %%                    clusterMemberPort=8091&
     %%                    user=admin&password=admin123
     %%
     Params = Req:parse_post(),
@@ -1163,7 +1163,7 @@ handle_add_node(Req) ->
     {Hostname, StringPort} = case proplists:get_value("hostname", Params, "") of
                                  [_ | _] = V ->
                                      case string:tokens(V, ":") of
-                                         [N] -> {N, "8080"};
+                                         [N] -> {N, "8091"};
                                          [N, P] -> {N, P}
                                      end;
                                  _ -> {"", ""}

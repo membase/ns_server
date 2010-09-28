@@ -546,7 +546,7 @@ var MockedRequest = mkClass({
                                text: "Server node is no longer available"}]}],
 
 
-      [get("settings", "web"), {port:8080,
+      [get("settings", "web"), {port:8091,
                                 username:"admin",
                                 password:""}],
       [get("settings", "advanced"), {alerts: {email:"alk@tut.by",
@@ -578,7 +578,7 @@ var MockedRequest = mkClass({
                   {name: 'default',
                    uri: "/pools/default"}]}
       }],
-      [get("pools", x), {nodes: [{hostname: "mickey-mouse.disney.com:8080",
+      [get("pools", x), {nodes: [{hostname: "mickey-mouse.disney.com:8091",
                                   status: "healthy",
                                   clusterMembership: "inactiveAdded",
                                   os: 'Linux',
@@ -592,7 +592,7 @@ var MockedRequest = mkClass({
                                   mcdMemoryAllocated: 89864960,
                                   otpNode: "ns1@mickey-mouse.disney.com",
                                   otpCookie: "SADFDFGDFG"},
-                                 {hostname: "donald-duck.disney.com:8080",
+                                 {hostname: "donald-duck.disney.com:8091",
                                   os: 'Linux',
                                   uptime: 86420,
                                   version: 'only-web.rb',
@@ -606,7 +606,7 @@ var MockedRequest = mkClass({
                                   mcdMemoryReserved: 256,
                                   otpNode: "ns1@donald-duck.disney.com",
                                   otpCookie: "SADFDFGDFG"},
-                                 {hostname: "scrooge-mcduck.disney.com:8080",
+                                 {hostname: "scrooge-mcduck.disney.com:8091",
                                   uptime: 865000,
                                   version: "only-web.rb-2",
                                   status: "healthy",
@@ -619,7 +619,7 @@ var MockedRequest = mkClass({
                                   mcdMemoryReserved: 256,
                                   otpNode: "ns1@scrooge-mcduck.disney.com",
                                   otpCookie: "SADFDFGDFG"},
-                                 {hostname: "goofy.disney.com:8080",
+                                 {hostname: "goofy.disney.com:8091",
                                   uptime: 86430,
                                   os: 'Linux',
                                   version: 'only-web.rb',
@@ -637,8 +637,8 @@ var MockedRequest = mkClass({
                          "storageTotals": {
                            "ram": {
                              "usedByData":648,
-                             "total": 2032558080,
-                             "quotaTotal": 2032558080,
+                             "total": 2032558091,
+                             "quotaTotal": 2032558091,
                              "used": 1641816064,
                              "quotaUsed": 1641816064
                            },
@@ -764,7 +764,7 @@ var MockedRequest = mkClass({
       [get("pools", "default", "buckets", x, "stats"), method('handleStats')],
       [get("pools", "default", "overviewStats"), {
         "timestamp":[1281667776000.0,1281667780000.0,1281667784000.0,1281667788000.0,1281667792000.0,
-                     1281667796000.0,1281667800000.0,1281667804000.0,1281667808000.0,1281667812000.0,
+                     1281667796000.0,1281667800000.0,1281667804000.0,1281667809100.0,1281667812000.0,
                      1281667816000.0,1281667820000.0,1281667824000.0,1281667828000.0,1281667832000.0,
                      1281667836000.0,1281667840000.0,1281667844000.0,1281667848000.0,1281667852000.0,
                      1281667856000.0,1281667860000.0,1281667864000.0,1281667868000.0,1281667872000.0,
@@ -778,7 +778,7 @@ var MockedRequest = mkClass({
                      1281668016000.0,1281668020000.0,1281668024000.0,1281668028000.0,1281668032000.0,
                      1281668036000.0,1281668040000.0,1281668044000.0,1281668048000.0,1281668052000.0,
                      1281668056000.0,1281668060000.0,1281668064000.0,1281668068000.0,1281668072000.0,
-                     1281668076000.0,1281668080000.0,1281668084000.0,1281668088000.0,1281668092000.0,
+                     1281668076000.0,1281668091000.0,1281668084000.0,1281668088000.0,1281668092000.0,
                      1281668096000.0,1281668100000.0,1281668104000.0,1281668108000.0,1281668112000.0,
                      1281668116000.0,1281668120000.0,1281668124000.0,1281668128000.0,1281668132000.0,
                      1281668136000.0,1281668140000.0,1281668144000.0,1281668148000.0,1281668152000.0,
@@ -814,7 +814,7 @@ var MockedRequest = mkClass({
                      1281668736000.0,1281668740000.0,1281668744000.0,1281668748000.0,1281668752000.0,
                      1281668756000.0,1281668760000.0,1281668764000.0,1281668768000.0,1281668772000.0,
                      1281668776000.0,1281668780000.0,1281668784000.0,1281668788000.0,1281668792000.0,
-                     1281668796000.0,1281668800000.0,1281668804000.0,1281668808000.0,1281668812000.0,
+                     1281668796000.0,1281668800000.0,1281668804000.0,1281668809100.0,1281668812000.0,
                      1281668816000.0,1281668820000.0,1281668824000.0,1281668828000.0,1281668832000.0,
                      1281668836000.0,1281668840000.0,1281668844000.0,1281668848000.0,1281668852000.0,
                      1281668856000.0,1281668860000.0,1281668864000.0,1281668868000.0,1281668872000.0,
@@ -892,7 +892,7 @@ var MockedRequest = mkClass({
                              "usagePercent": 96}}]},
         "storageTotals": {
           "ram": {
-            "total": 2032558080,
+            "total": 2032558091,
             "used": 1689321472
           },
           "hdd": {
@@ -923,7 +923,7 @@ var MockedRequest = mkClass({
             usagePercent: 90
           }
         ]},
-        "hostname":"127.0.0.1:8080",
+        "hostname":"127.0.0.1:8091",
         "version":"1.0.3_98_g5d1f7a2",
         "os":"i386-apple-darwin10.3.0",
         uptime: 86400,

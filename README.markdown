@@ -28,7 +28,7 @@ Building...
 Before you start the server, you may need to do the following
   * Below, <REPO_ROOT> is where you checked out and built ns_server above.
   * Make sure the needed ports are not being used (these include
-    8080, 11211, 11212, etc).
+    8091, 11211, 11212, etc).
 
 ### UNIX
 
