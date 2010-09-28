@@ -27,6 +27,8 @@
 
 -define(INIT_TIMEOUT, 5000).
 -define(TRUNC_FREQ, 10).
+-define(RETRIES, 10).
+-define(TIMEOUT, 5000).
 
 -record(state, {bucket}).
 
@@ -52,7 +54,8 @@ latest(Period, Node, Bucket) when is_atom(Node) ->
     gen_server:call({server(Bucket), Node}, {latest, Period, Bucket});
 latest(Period, Nodes, Bucket) when is_list(Nodes), is_list(Bucket) ->
     R = {Replies, _} = gen_server:multi_call(Nodes, server(Bucket),
-                                             {latest, Period, Bucket}),
+                                             {latest, Period, Bucket},
+                                             ?TIMEOUT),
     log_bad_responses(R),
     Replies.
 
@@ -60,7 +63,8 @@ latest(Period, Node, Bucket, N) when is_atom(Node), is_list(Bucket) ->
     gen_server:call({server(Bucket), Node}, {latest, Period, Bucket, N});
 latest(Period, Nodes, Bucket, N) when is_list(Nodes), is_list(Bucket) ->
     R = {Replies, _} = gen_server:multi_call(Nodes, server(Bucket),
-                                             {latest, Period, Bucket, N}),
+                                             {latest, Period, Bucket, N},
+                                             ?TIMEOUT),
     log_bad_responses(R),
     Replies.
 
@@ -69,7 +73,8 @@ latest(Period, Node, Bucket, Step, N) when is_atom(Node) ->
     gen_server:call({server(Bucket), Node}, {latest, Period, Bucket, Step, N});
 latest(Period, Nodes, Bucket, Step, N) when is_list(Nodes) ->
     R = {Replies, _} = gen_server:multi_call(Nodes, server(Bucket),
-                                             {latest, Period, Bucket, Step, N}),
+                                             {latest, Period, Bucket, Step, N},
+                                             ?TIMEOUT),
     log_bad_responses(R),
     Replies.
 
@@ -107,7 +112,7 @@ handle_call({latest, Period, Bucket}, _From, State) ->
                           Tab = table(Bucket, Period),
                           Key = mnesia:last(Tab),
                           hd(mnesia:read(Tab, Key))
-                  end) of
+                  end, ?RETRIES) of
                 {atomic, Result} ->
                     {ok, Result};
                 Err ->
@@ -138,7 +143,9 @@ handle_cast(unhandled, unhandled) ->
 
 handle_info({stats, Bucket, Sample}, State = #state{bucket=Bucket}) ->
     Tab = table(Bucket, minute),
-    {atomic, ok} = mnesia:transaction(fun () -> mnesia:write(Tab, Sample, write) end),
+    {atomic, ok} = mnesia:transaction(fun () ->
+                                              mnesia:write(Tab, Sample, write)
+                                      end, ?RETRIES),
     gen_event:notify(ns_stats_event, {sample_archived, Bucket, Sample}),
     {noreply, State};
 handle_info({sample_archived, _, _}, State) ->
@@ -195,7 +202,7 @@ cascade(Bucket, Prev, Period, Step) ->
                                  Avg ->
                                      mnesia:write(NextTab, Avg, write)
                              end
-                     end).
+                     end, ?RETRIES).
 
 
 create_tables(Bucket) ->
@@ -261,7 +268,7 @@ resample(Tab, Step, N) ->
                                          _ -> trunc_ts(TS, Step)
                                      end,
                                  resample(Tab, Step, TS, T, [], [], N)
-                         end),
+                         end, ?RETRIES),
     Result.
 
 
@@ -329,7 +336,8 @@ trunc_ts(TS, N) ->
 %% @doc Return the last N records starting with the given key from Tab.
 walk(Tab, N) ->
     {atomic, Results} = mnesia:transaction(
-                          fun () -> walk(Tab, mnesia:last(Tab), N, []) end),
+                          fun () -> walk(Tab, mnesia:last(Tab), N, []) end,
+                          ?RETRIES),
     Results.
 
 
