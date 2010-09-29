@@ -70,8 +70,11 @@ start_link(Bucket) ->
 init(Bucket) ->
     proc_lib:init_ack({ok, self()}),
     Sock = connect(),
+    StartTime = now(),
     ensure_bucket(Sock, Bucket),
     wait_for_warmup(Sock),
+    ns_log:log(?MODULE, 1, "Bucket ~p loaded on node ~p in ~p seconds.",
+               [Bucket, node(), timer:now_diff(now(), StartTime) div 1000000]),
     register(server(Bucket), self()),
     timer:send_interval(?CHECK_INTERVAL, check_config),
     %% this trap_exit is necessary for terminate callback to work
