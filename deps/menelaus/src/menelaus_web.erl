@@ -708,8 +708,17 @@ handle_pool_settings(_PoolId, Req) ->
                            _ -> exit('Changing the memory quota of a cluster is not yet supported.')
                        end,
                        {MaxMemoryBytes0, _, _} = memsup:get_memory_data(),
-                       MinMemoryMB = MaxMemoryBytes0 div (10 * 1048576),
-                       MaxMemoryMB = (MaxMemoryBytes0 * 4) div (5 * 1048576),
+                       MiB = 1048576,
+                       MinMemoryMB = 256,
+                       MaxMemoryMBPercent = (MaxMemoryBytes0 * 4) div (5 * MiB),
+                       MaxMemoryMB = lists:max([(MaxMemoryBytes0 div MiB) - 512,
+                                                MaxMemoryMBPercent]),
+                       MemoryMaxString = case MaxMemoryMB of
+                                             MaxMemoryMBPercent ->
+                                                 " Quota must be between 256 MB and ~w MB (80% of memory size).";
+                                             _ ->
+                                                 " Quota must be between 256 MB and ~w MB (memory size minus 512 MB)."
+                                         end,
                        case parse_validate_number(X, MinMemoryMB, MaxMemoryMB) of
                            {ok, Number} ->
                                {ok, fun () ->
@@ -720,10 +729,10 @@ handle_pool_settings(_PoolId, Req) ->
                            invalid -> <<"The RAM Quota value must be a number.">>;
                            too_small ->
                                list_to_binary(io_lib:format("The RAM Quota value is too small."
-                                                            ++ " Quota must be between 10% (~w MB) and 80% (~w MB) of memory size.", [MinMemoryMB, MaxMemoryMB]));
+                                                            ++ MemoryMaxString, [MaxMemoryMB]));
                            too_large ->
                                list_to_binary(io_lib:format("The RAM Quota value is too large."
-                                                            ++ " Quota must be between 10% (~w MB) and 80% (~w MB) of memory size.", [MinMemoryMB, MaxMemoryMB]))
+                                                            ++ MemoryMaxString, [MaxMemoryMB]))
 
                        end
                end],

@@ -1310,22 +1310,17 @@
       <h1>Configure Server</h1>
       <h2>Step <span class="current-step">1</span> of 3</h2>
     </div>
-    <div class="alert_red" id="init_cluster_failed_message" style="display:none;">
-      <div class="al_text">
-        Could not join the cluster due to incorrect parameters.
-      </div>
-    </div>
     <h2 class="question">Configure Disk Storage</h2>
     <div class="disk_setup_block">
-      <div>
+      <div><form><input type="submit" style="display:none;">
         <label for="setup_path_input">Path:</label>
         <input type="text" name="path" id="setup_path_input" class="path-box" />
-      </div>
+      </form></div>
       <div>
 	  	<label>Free:</label>
         <span style="font-size:10pt; margin-left:5px; line-height: 25px;" class="total-size">---</span>
       </div>
-      <div class="warning pat_10 init_cluster_dialog_errors_container" style="display:none;"></div>
+      <span class="warning pat_10 init_cluster_dialog_errors_container" style="display:none;"></span>
     </div>
     <h2 class="question">Join Cluster / Start new Cluster</h2>
     <p class="pad_10">
@@ -1341,21 +1336,22 @@
     </p>
     <form id="init_cluster_form" class="form block"><input type="submit" style="display:none;" />
       <div class="pat_10">
-		  <label>
-	        <input type="radio" name="join_cluster" id="no-join-cluster" checked />
-	        Start a new cluster.
-	      </label>
-	      <div class="memory-quota">
-		  	<div>
-		        <label style="width: auto;">Per Server RAM Quota:</label>
-		        <input type="text" name="dynamic-ram-quota" value="" style="width:95px;" />
-		        <span>MB</span>
-		        <span>
-		          Ram: <span class="ram-total-size">0 Gb</span>
-		        </span>
-			</div>
-	      </div>
-	  </div>
+         <label>
+           <input type="radio" name="join_cluster" id="no-join-cluster" checked />
+           Start a new cluster.
+         </label>
+         <div class="memory-quota">
+           <div>
+             <label style="width: auto;">Per Server RAM Quota:</label>
+             <input type="text" name="dynamic-ram-quota" value="" style="width:95px;" />
+             <span>MB</span>
+             <span>
+               Ram: <span class="ram-total-size">0 Gb</span>
+             </span>
+           </div>
+         </div>
+         <span class="warning pat_10 init_cluster_dialog_memory_errors_container" style="display:none;"></span>
+      </div>
       <div class="pat_10">
         <label>
           <input type="radio" name="join_cluster" id="join-cluster" />

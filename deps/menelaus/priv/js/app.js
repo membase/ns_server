@@ -651,8 +651,7 @@ var NodeDialog = {
     function onSubmit(e) {
       e.preventDefault();
 
-      errorContainer = dialog.find('.init_cluster_dialog_errors_container');
-      errorContainer.hide();
+      dialog.find('.warning').hide();
 
       var p = dialog.find('[name=path]').val() || "";
 
@@ -661,18 +660,17 @@ var NodeDialog = {
         m = "none";
       }
 
-      $.ajax({
-        type:'POST', url:'/nodes/' + node + '/controller/settings',
-        data: 'path=' + p,
-        async:true, success:diskPost, error:diskPost
-      });
+      postWithValidationErrors('/nodes/' + node + '/controller/settings',
+                               $.param({path: p}),
+                               diskPost);
 
       function diskPost(data, status) {
         if (status == 'success') {
           continueAfterDisk();
         } else {
-          errorContainer.html('Your path is invalid. It must be a directory writable by membase user');
-          errorContainer.show();
+          var errorContainer = dialog.find('.init_cluster_dialog_errors_container');
+          errorContainer.text(data.join(' and '));
+          errorContainer.css('display', 'block');
         }
       }
 
@@ -681,26 +679,27 @@ var NodeDialog = {
           return NodeDialog.doClusterJoin();
         }
 
-        $.ajax({
-          type:'POST', url:'/pools/default',
-          data: 'memoryQuota=' + m,
-          async:true, success:memPost, error:memPost
-        });
+        postWithValidationErrors('/pools/default',
+                                 $.param({memoryQuota: m}),
+                                 memPost);
       }
 
       function memPost(data, status) {
         if (status == 'success') {
           BucketsSection.refreshBuckets();
           showInitDialog("bucket_dialog");
+          $('#step-2-next').unbind();
+          $('#init_cluster_dialog form').unbind();
         } else {
-          errorContainer.html('failed memory quota validation');
-          errorContainer.show();
+          var errorContainer = dialog.find('.init_cluster_dialog_memory_errors_container');
+          errorContainer.text(data.join(' and '));
+          errorContainer.css('display', 'block');
         }
       }
     }
 
     $('#step-2-next').click(onSubmit);
-    $('#init_cluster_form').submit(onSubmit);
+    $('#init_cluster_dialog form').submit(onSubmit);
 
     _.defer(function () {
       if ($('#join-cluster')[0].checked)
