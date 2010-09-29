@@ -892,7 +892,6 @@ form#init_cluster_form > div div.login-credentials div label,
 form#init_cluster_form > div div.login-credentials div input,
  form#init_cluster_form > div div.memory-quota input {border:1px solid #ccd3d7; font-family:Verdana,Helvetica,Sans-Serif; font-size:10pt;  padding:3px 3px 4px 5px;}
 form#init_cluster_form > div div.memory-quota span {font-size:10pt;}
-form#init_cluster_form > div div.memory-quota span+span {margin:0 0 0 47px;}
 body.init_cluster #container { display: none; }
 
 #init_cluster_dialog .warning { clear:both; display:block; }

@@ -605,7 +605,9 @@ var NodeDialog = {
         var totalRAMMegs = Math.floor(storageTotals.ram.total/Math.Mi);
 
         dialog.find('[name=dynamic-ram-quota]').val(Math.floor(storageTotals.ram.quotaTotal / Math.Mi));
-        dialog.find('.ram-total-size').text(escapeHTML(totalRAMMegs) + ' MB');
+        dialog.find('.ram-total-size').text(totalRAMMegs + ' MB');
+        var ramMaxMegs = Math.max(totalRAMMegs - 512, Math.floor(totalRAMMegs * 0.8));
+        dialog.find('.ram-max-size').text(ramMaxMegs);
 
         var firstResource = data.storage.hdd[0];
         var diskTotalGigs = Math.floor((storageTotals.hdd.total - storageTotals.hdd.used) / Math.Gi);
