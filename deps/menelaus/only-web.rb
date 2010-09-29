@@ -95,8 +95,8 @@ get "/test_auth" do
 end
 
 if ARGV.size == 0
-  name = "ruby #{File.basename($0)} -p 8091"
+  name = "ruby #{File.basename($0)} -p 8080"
   puts name
-  system name#, "-p", "8091" #, "-s", "webrick"
+  system name
   exit 0
 end
