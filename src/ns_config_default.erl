@@ -107,7 +107,8 @@ default() ->
                 _ -> RawDbDir
             end,
     InitQuota = case memsup:get_memory_data() of
-                    {Total, _, _} -> (Total * 4) div (1048576 * 5);
+                    {Total, _, _} -> lists:max([(Total * 4) div (1048576 * 5),
+                                                (Total div 1048576) - 512]);
                     _ -> undefined
                 end,
     [{directory, default_path("config")},
