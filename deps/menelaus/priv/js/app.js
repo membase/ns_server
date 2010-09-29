@@ -664,34 +664,43 @@ var NodeDialog = {
 
       postWithValidationErrors('/nodes/' + node + '/controller/settings',
                                $.param({path: p}),
-                               diskPost);
+                               afterDisk);
 
-      function diskPost(data, status) {
-        if (status == 'success') {
-          continueAfterDisk();
-        } else {
+      var diskArguments;
+
+      function afterDisk() {
+        diskArguments = arguments;
+        if ($('#no-join-cluster')[0].checked) {
+          postWithValidationErrors('/pools/default',
+                                   $.param({memoryQuota: m}),
+                                   memPost);
+          return;
+        }
+
+        if (handleDiskStatus.apply(null, diskArguments))
+          NodeDialog.doClusterJoin();
+      }
+
+      function handleDiskStatus(data, status) {
+        var ok = (status == 'success')
+        if (!ok) {
           var errorContainer = dialog.find('.init_cluster_dialog_errors_container');
           errorContainer.text(data.join(' and '));
           errorContainer.css('display', 'block');
         }
-      }
-
-      function continueAfterDisk() {
-        if (!$('#no-join-cluster')[0].checked) {
-          return NodeDialog.doClusterJoin();
-        }
-
-        postWithValidationErrors('/pools/default',
-                                 $.param({memoryQuota: m}),
-                                 memPost);
+        return ok;
       }
 
       function memPost(data, status) {
+        var ok = handleDiskStatus.apply(null, diskArguments);
+
         if (status == 'success') {
-          BucketsSection.refreshBuckets();
-          showInitDialog("bucket_dialog");
-          $('#step-2-next').unbind();
-          $('#init_cluster_dialog form').unbind();
+          if (ok) {
+            BucketsSection.refreshBuckets();
+            showInitDialog("bucket_dialog");
+            $('#step-2-next').unbind();
+            $('#init_cluster_dialog form').unbind();
+          }
         } else {
           var errorContainer = dialog.find('.init_cluster_dialog_memory_errors_container');
           errorContainer.text(data.join(' and '));
