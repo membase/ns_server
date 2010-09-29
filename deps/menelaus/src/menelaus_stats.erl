@@ -99,10 +99,13 @@ handle_overview_stats(PoolId, Req) ->
                                        _ -> Samples
                                    end
                            end, Names),
-    [FirstBucketSamples | RestSamples] = AllSamples,
-    MergedSamples = lists:foldl(fun (Samples, Acc) ->
+    MergedSamples = case AllSamples of
+                        [FirstBucketSamples | RestSamples] ->
+                            lists:foldl(fun (Samples, Acc) ->
                                         merge_samples_normally(Acc, Samples)
-                                end, FirstBucketSamples, RestSamples),
+                                end, FirstBucketSamples, RestSamples);
+                        [] -> []
+                    end,
     TStamps = [X#stat_entry.timestamp || X <- MergedSamples],
     Ops = [aggregate_ops(X) || X <- MergedSamples],
     DiskReads = [X#stat_entry.ep_io_num_read || X <- MergedSamples],
