@@ -19,6 +19,7 @@
          get_nodes_cluster_membership/0,
          get_nodes_cluster_membership/1,
          get_cluster_membership/1,
+         get_cluster_membership/2,
          activate/1,
          add_node/4,
          deactivate/1,
@@ -54,17 +55,22 @@
 -define(JOINED_CLUSTER, 224).
 
 active_nodes() ->
+    Config = ns_config:get(),
     [Node || Node <- ns_node_disco:nodes_wanted(),
-             get_cluster_membership(Node) == active].
+             get_cluster_membership(Node, Config) == active].
 
 get_nodes_cluster_membership() ->
     get_nodes_cluster_membership(ns_node_disco:nodes_wanted()).
 
 get_nodes_cluster_membership(Nodes) ->
-    [{Node, get_cluster_membership(Node)} || Node <- Nodes].
+    Config = ns_config:get(),
+    [{Node, get_cluster_membership(Node, Config)} || Node <- Nodes].
 
 get_cluster_membership(Node) ->
-    case ns_config:search({node, Node, membership}) of
+    get_cluster_membership(Node, ns_config:get()).
+
+get_cluster_membership(Node, Config) ->
+    case ns_config:search(Config, {node, Node, membership}) of
         {value, Value} ->
              Value;
         _ ->
