@@ -989,27 +989,7 @@ handle_node(_PoolId, Node, Req) ->
                            undefined -> <<"">>;
                            Y    -> Y
                        end,
-            StorageConf0 = ns_storage_conf:storage_conf(Node),
-            HDDStorageConf = case proplists:get_value(hdd, StorageConf0) of
-                                 [Props0] ->                % only single storage storage resource is supported now
-                                     %% TODO: multi-tenancy
-                                     Props = [{usedByData, ns_storage_conf:bucket_disk_usage(Node, "default")}
-                                              | Props0],
-                                     Path = proplists:get_value(path, Props),
-                                     case ns_storage_conf:disk_stats_for_path(Node, Path) of
-                                         {ok, KBytes, Capacity} ->
-                                             [[{diskStats, {struct, [{sizeKBytes, KBytes},
-                                                                     {usagePercent, Capacity}]}}
-                                               | Props]];
-                                         Error ->
-                                             error_logger:error_msg("Failed to grab disksup stats from ~p due to ~p~n", [Node, Error]),
-                                             [Props]
-                                     end;
-                                 _ -> undefined
-                             end,
-            StorageConf = lists:map(fun ({hdd, _}) -> {hdd, HDDStorageConf};
-                                        (X) -> X
-                                    end, StorageConf0),
+            StorageConf = ns_storage_conf:storage_conf(Node),
             R = {struct, storage_conf_to_json(StorageConf)},
             Fields = [{availableStorage, {struct, [{hdd, [{struct, [{path, list_to_binary(Path)},
                                                                     {sizeKBytes, SizeKBytes},
