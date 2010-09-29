@@ -572,7 +572,7 @@ var NodeDialog = {
       });
     });
   },
-  startPage_license: function(node, pagePrefix, opt) {
+  startPage_welcome: function(node, pagePrefix, opt) {
     $('#init_welcome_dialog input.next').click(function (e) {
       e.preventDefault();
 
@@ -706,8 +706,6 @@ var NodeDialog = {
     });
   }
 };
-
-NodeDialog.startPage_welcome = NodeDialog.startPage_license;
 
 function displayNotice(text, isError) {
   var div = $('<div></div>');

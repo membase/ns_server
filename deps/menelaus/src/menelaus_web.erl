@@ -974,14 +974,6 @@ handle_dotsvg(Bucket, Req) ->
     Req:ok({"image/svg+xml", server_header(),
            iolist_to_binary(menelaus_util:insecure_pipe_through_command("dot -Tsvg", Dot))}).
 
-ymd_to_string({Y, M, D}) ->
-    integer_to_list(Y) ++ "/" ++
-    integer_to_list(M) ++ "/" ++
-    integer_to_list(D);
-
-ymd_to_string(invalid) -> "invalid";
-ymd_to_string(forever) -> "forever".
-
 handle_node("self", Req)            -> handle_node("default", node(), Req);
 handle_node(S, Req) when is_list(S) -> handle_node("default", list_to_atom(S), Req).
 
@@ -993,10 +985,6 @@ handle_node(_PoolId, Node, Req) ->
             InfoNode = get_node_info(Node),
             KV = build_extra_node_info(Node, InfoNode, ns_bucket:get_buckets(),
                                        build_node_info(MyPool, Node, InfoNode, LocalAddr)),
-            {License, Valid, ValidUntil} = case ns_license:license(Node) of
-                                               {undefined, V, VU} -> {"", V, ymd_to_string(VU)};
-                                               {X, V, VU}         -> {X, V, ymd_to_string(VU)}
-                                           end,
             MemQuota = case ns_storage_conf:memory_quota(Node) of
                            undefined -> <<"">>;
                            Y    -> Y
@@ -1023,10 +1011,7 @@ handle_node(_PoolId, Node, Req) ->
                                         (X) -> X
                                     end, StorageConf0),
             R = {struct, storage_conf_to_json(StorageConf)},
-            Fields = [{license, list_to_binary(License)},
-                      {licenseValid, Valid},
-                      {licenseValidUntil, list_to_binary(ValidUntil)},
-                      {availableStorage, {struct, [{hdd, [{struct, [{path, list_to_binary(Path)},
+            Fields = [{availableStorage, {struct, [{hdd, [{struct, [{path, list_to_binary(Path)},
                                                                     {sizeKBytes, SizeKBytes},
                                                                     {usagePercent, UsagePercent}]}
                                                           || {Path, SizeKBytes, UsagePercent} <- disksup:get_disk_data()]}]}},

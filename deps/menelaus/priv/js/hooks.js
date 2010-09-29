@@ -880,7 +880,6 @@ var MockedRequest = mkClass({
       [del("pools", "default", "buckets", x), method('handleBucketRemoval')],
 
       [get("nodes", x), {
-        "license":"","licenseValue":false,"licenseValidUntil":"invalid",
         "memoryQuota":"",
         "storage":{"ssd":[],
                    "hdd":[{"path":"/srv/test",
@@ -936,7 +935,7 @@ var MockedRequest = mkClass({
         if ($data.memoryQuota && $data.memoryQuota != 'unlimited' && !(/^[0-9]+$/.exec($data.memoryQuota))) {
           this.errorResponse(["invalid memory quota", "second message"]);
         }
-      }, opt("memoryQuota"), opt('path'), opt("license"))], //missing
+      }, opt("memoryQuota"), opt('path'))], //missing
 
       [post("node", "controller", "doJoinCluster"), expectParams(method('handleJoinCluster'),
                                                                  "clusterMemberHostIp", "clusterMemberPort",
