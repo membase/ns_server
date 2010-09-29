@@ -140,33 +140,6 @@ var ServersSection = {
       },
       valueTransformer: function (nodeInfo, nodeSettings) {
         var rv = _.extend({}, nodeInfo, nodeSettings);
-
-        var memReserved = rv.memoryReserved = rv.mcdMemoryReserved * 1048576;
-        var memoryTotal = rv.memoryTotal;
-        var memoryFree = rv.memoryFree;
-        rv.percentReserved = (memReserved * 100 / memoryTotal) << 0;
-        rv.memoryOther = memoryTotal - memoryFree - memReserved;
-
-        if (rv.memoryOther < 0) {
-          rv.memoryOther = 0;
-          rv.memoryFree = memoryFree = memoryTotal - memReserved;
-        }
-
-        var percentFree = (memoryFree * 100 / memoryTotal) << 0;
-        // this is actually reserved + other as required by CSS
-        rv.percentOther = ((memReserved + rv.memoryOther) * 100 / memoryTotal) << 0;
-
-        _.each(rv.storage.hdd, function (r) {
-          var diskStats = r.diskStats || {};
-          r.memoryTotal = diskStats.sizeKBytes * 1024;
-
-          r.memoryUsed = r.memoryTotal * diskStats.usagePercent / 100;
-          r.memoryUsedPercent = diskStats.usagePercent;
-          r.memoryFree = r.memoryTotal - r.memoryUsed;
-
-          r.usedByDataPercent = calculatePercent(r.usedByData, r.memoryTotal);
-        });
-
         delete rv.detailsCell;
         return rv;
       }

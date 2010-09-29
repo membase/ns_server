@@ -600,13 +600,15 @@ var NodeDialog = {
         data['node'] = data['node'] || node;
         NodeDialog.resourceNode = data;
 
-        var totalRAMMegs = Math.floor(data.memoryTotal/1024/1024);
+        var storageTotals = data.storageTotals;
 
-        dialog.find('[name=dynamic-ram-quota]').val(ViewHelpers.ifNull(data.memoryQuota, Math.floor(totalRAMMegs * 0.80)));
+        var totalRAMMegs = Math.floor(storageTotals.ram.total/Math.Mi);
+
+        dialog.find('[name=dynamic-ram-quota]').val(Math.floor(storageTotals.ram.quotaTotal / Math.Mi));
         dialog.find('.ram-total-size').text(escapeHTML(totalRAMMegs) + ' MB');
 
         var firstResource = data.storage.hdd[0];
-        var diskTotalGigs = Math.floor(firstResource.diskStats.sizeKBytes * (100 - firstResource.diskStats.usagePercent) / 100 / (1024 * 1024));
+        var diskTotalGigs = Math.floor((storageTotals.hdd.total - storageTotals.hdd.used) / Math.Gi);
         var diskPath, diskTotal;
 
         diskTotal = dialog.find('.total-size');
@@ -640,7 +642,7 @@ var NodeDialog = {
             if (!pathResource)
               pathResource = {path:"/", sizeKBytes: 0, usagePercent: 0};
 
-            diskTotalGigs = Math.floor(pathResource.sizeKBytes * (100 - pathResource.usagePercent) / 100 / (1024 * 1024));
+            diskTotalGigs = Math.floor(pathResource.sizeKBytes * (100 - pathResource.usagePercent) / 100 / Math.Mi);
             updateDiskTotal();
           });
       }

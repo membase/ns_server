@@ -884,11 +884,7 @@ var MockedRequest = mkClass({
         "storage":{"ssd":[],
                    "hdd":[{"path":"/srv/test",
                            "quotaMb":"none",
-                           "state":"ok",
-                           "usedByData": 25935,
-                           "diskStats": {
-                             "sizeKBytes": 233706396,
-                             "usagePercent": 96}}]},
+                           "state":"ok"}]},
         "storageTotals": {
           "ram": {
             "usedByData": 259350,
