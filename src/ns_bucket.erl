@@ -23,6 +23,7 @@
          config_string/1,
          credentials/1,
          get_bucket/1,
+         maybe_get_bucket/2,
          get_buckets/0,
          get_buckets/1,
          min_live_copies/0,
@@ -34,6 +35,7 @@
          auth_type/1,
          sasl_password/1,
          moxi_port/1,
+         bucket_nodes/1,
          get_bucket_names/0,
          get_bucket_names/1,
          json_map/2,
@@ -124,6 +126,11 @@ get_bucket(Bucket) ->
             {ok, Config};
         false -> not_present
     end.
+
+maybe_get_bucket(BucketName, undefined) ->
+    get_bucket(BucketName);
+maybe_get_bucket(_, BucketConfig) ->
+    {ok, BucketConfig}.
 
 get_bucket_names() ->
     BucketConfigs = get_buckets(),
@@ -222,6 +229,9 @@ sasl_password(Bucket) ->
 
 moxi_port(Bucket) ->
     proplists:get_value(moxi_port, Bucket).
+
+bucket_nodes(Bucket) ->
+    proplists:get_value(servers, Bucket).
 
 json_map(BucketId, LocalAddr) ->
     {ok, BucketConfig} = get_bucket(BucketId),

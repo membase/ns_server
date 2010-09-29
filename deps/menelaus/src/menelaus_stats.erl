@@ -25,46 +25,70 @@
 -export([handle_bucket_stats/3,
          handle_overview_stats/2,
          basic_stats/1,
+         basic_stats/2, basic_stats/3,
          bucket_disk_usage/1,
          bucket_ram_usage/1]).
 
 %% External API
 
 bucket_disk_usage(BucketName) ->
-    {Res, _} = rpc:multicall(ns_node_disco:nodes_actual_proper(), ns_storage_conf, local_bucket_disk_usage, [BucketName], 1000),
+    bucket_disk_usage(BucketName, ns_cluster_membership:active_nodes()).
+
+bucket_disk_usage(BucketName, Nodes) ->
+    {Res, _} = rpc:multicall(Nodes, ns_storage_conf, local_bucket_disk_usage, [BucketName], 1000),
     lists:sum([case is_number(X) of
                    true -> X;
                    _ -> 0
                end || X <- Res]).
 
 bucket_ram_usage(BucketName) ->
-    proplists:get_value(memUsed, basic_stats(BucketName)).
+    element(1, last_membase_sample(BucketName, ns_cluster_membership:active_nodes())).
 
-basic_stats(BucketName) ->
-    {Samples, _, _, _} = grab_op_stats(BucketName, [{"zoom", "minute"}]),
-    LastSample = case Samples of
-                     [] -> [];
-                     _ -> samples_to_proplists([lists:last(Samples)])
-                 end,
-    GetValue = fun (Name) ->
-                       hd(proplists:get_value(Name, LastSample, [0]))
-               end,
-    Ops = GetValue(ops),
-    Fetches = GetValue(ep_io_num_read),
-    MemUsed = GetValue(mem_used),
-    {ok, BucketConfig} = ns_bucket:get_bucket(BucketName),
-    QuotaBytes = ns_bucket:ram_quota(BucketConfig),
-    ItemCount = GetValue(curr_items),
+last_membase_sample(BucketName, Nodes) ->
+    lists:foldl(fun ({_Node, []}, Acc) -> Acc;
+                    ({_Node, [Sample]}, {AccMem, AccItems, AccOps, AccFetches}) ->
+                        {Sample#stat_entry.mem_used + AccMem,
+                         Sample#stat_entry.curr_items + AccItems,
+                         aggregate_ops(Sample) + AccOps,
+                         Sample#stat_entry.ep_io_num_read + AccFetches}
+                end, {0, 0, 0, 0}, invoke_archiver(BucketName, Nodes, {1, minute, 1})).
+
+last_membase_stats(BucketName, Nodes) ->
+    {MemUsed, ItemsCount, Ops, Fetches} = last_membase_sample(BucketName, Nodes),
     [{opsPerSec, Ops},
      {diskFetches, Fetches},
-     {quotaPercentUsed, try (MemUsed * 100.0 / QuotaBytes) of
-                            X -> X
-                        catch
-                            error:badarith -> 0
-                        end},
-     {diskUsed, bucket_disk_usage(BucketName)},
-     {memUsed, MemUsed},
-     {itemCount, ItemCount}].
+     {itemCount, ItemsCount},
+     {diskUsed, bucket_disk_usage(BucketName, Nodes)},
+     {memUsed, MemUsed}].
+
+basic_stats(BucketName, Nodes) ->
+    basic_stats(BucketName, Nodes, undefined).
+
+basic_stats(BucketName, Nodes, MaybeBucketConfig) ->
+    {ok, BucketConfig} = ns_bucket:maybe_get_bucket(BucketName, MaybeBucketConfig),
+    QuotaBytes = ns_bucket:ram_quota(BucketConfig),
+    Stats = last_membase_stats(BucketName, Nodes),
+    MemUsed = proplists:get_value(memUsed, Stats),
+    QuotaPercent = try (MemUsed * 100.0 / QuotaBytes) of
+                       X -> X
+                   catch
+                       error:badarith -> 0
+                   end,
+    [{quotaPercentUsed, lists:min([QuotaPercent, 100])}
+     | Stats].
+
+basic_stats(BucketName) ->
+    basic_stats(BucketName, ns_cluster_membership:active_nodes()).
+
+aggregate_ops(X) ->
+    X#stat_entry.cmd_get +
+        X#stat_entry.cmd_set +
+        X#stat_entry.incr_misses +
+        X#stat_entry.incr_hits +
+        X#stat_entry.decr_misses +
+        X#stat_entry.decr_hits +
+        X#stat_entry.delete_misses +
+        X#stat_entry.delete_hits.
 
 handle_overview_stats(PoolId, Req) ->
     Names = lists:sort(menelaus_web_buckets:all_accessible_bucket_names(PoolId, Req)),
@@ -80,15 +104,7 @@ handle_overview_stats(PoolId, Req) ->
                                         merge_samples_normally(Acc, Samples)
                                 end, FirstBucketSamples, RestSamples),
     TStamps = [X#stat_entry.timestamp || X <- MergedSamples],
-    Ops = [X#stat_entry.cmd_get +
-           X#stat_entry.cmd_set +
-           X#stat_entry.incr_misses +
-           X#stat_entry.incr_hits +
-           X#stat_entry.decr_misses +
-           X#stat_entry.decr_hits +
-           X#stat_entry.delete_misses +
-           X#stat_entry.delete_hits
-           || X <- MergedSamples],
+    Ops = [aggregate_ops(X) || X <- MergedSamples],
     DiskReads = [X#stat_entry.ep_io_num_read || X <- MergedSamples],
     menelaus_util:reply_json(Req, {struct, [{timestamp, TStamps},
                                             {ops, Ops},
