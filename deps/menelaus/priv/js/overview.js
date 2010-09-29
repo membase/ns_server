@@ -5,7 +5,10 @@ var OverviewSection = {
     });
 
     DAO.cells.serversCell.subscribeValue(function (servers) {
-      $('.active-servers-count').text(servers ? servers.active.length : '??');
+      var reallyActiveNodes = _.select(servers ? servers.active : [], function (n) {
+        return n.clusterMembership == 'active';
+      });
+      $('.active-servers-count').text(servers ? reallyActiveNodes.length : '??');
 
       var block = $('#overview_servers_block');
       if (!servers) {
