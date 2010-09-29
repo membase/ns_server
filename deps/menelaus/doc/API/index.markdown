@@ -71,7 +71,7 @@ to any URI.
 
 ####Standard HTTP Status Codes
 
-Enterprise Storage APIs will return standard HTTP response codes as described
+The Membase REST interface will return standard HTTP response codes as described
 in the following table, under the conditions listed in the description.
 
 <div style="overflow-x: auto;"><div style="margin: 0px 2px 0px 2px;">
@@ -782,7 +782,31 @@ to generate the same kind of response.
 ####Bucket resources
 
 A new bucket may be created with a POST command to the URI to the buckets defined URI for
-the pool.
+the pool.  This can be used to create either a membase or a memcache
+type bucket.
+
+The bucket name cannot have a leading underscore.
+
+When creating a bucket, an authType parameter must be specified.  If
+the authType is "none" then a proxyPort number MUST be specified.  If
+the authType is "sasl" then a "saslPassword" parameter MAY be
+optionally specified.  In release 1.6, any SASL auth based access
+must go through the proxy which is fixed to port 11211.
+
+The ramQuotaMB attribute allows the user to specify how much memory
+(in megabytes) will be allocated on each node for the bucket.  In the
+case of memcache buckets, going beyond the ramQuotaMB will cause an
+item to be evicted on a mostly-LRU basis.  The type of item evicted
+may not be the exact LRU due to object size, whether or not it is
+currently being referenced or other situations.
+
+In the case of membase buckets, the system may return temporary
+failures if the ramQuotaMB is reached.  The system will try to keep
+25% of the available ramQuotaMB free for new items by *ejecting*
+old items from occupying memory.  In the event these items are later
+requested, they will be retrieved from disk.
+
+######Creating a memcache Bucket
 
 *Request*
 
@@ -793,21 +817,51 @@ Content-Type: application/x-www-form-urlencoded; charset=UTF-8
 Authorization: Basic YWRtaW46YWRtaW4=
 Content-Length: xx
 
-name=newbucket&cacheSize=10
+name=newcachebucket&ramQuotaMB=128&authType=none&proxyPort=11216&bucketType=memcached
 </pre>
 
 *Response*
 
-response 200: bucket was created
+response 202: bucket will be created asynchronously with the location
+header returned.  No URI to check for the completion task is
+available, but most bucket creations complete within a few seconds.
 
-The bucket name cannot have a leading underscore.
 
-With the current behavior of creating a bucket, there is a side effect of creating a user and password,
-each of which have the same name as the bucket.  This side effect should be considered an unstable
-interface and will change in updates.
+*Example*
+`curl -i -d name=newcachebucket -d ramQuotaMB=128 -d authType=none -d proxyPort=11216 -d bucketType=memcached http://localhost:8080/pools/default/buckets
+`
+HTTP/1.1 201 Created
+Server: Membase Server 1.6.
+Pragma: no-cache
+Location: /pools/default/buckets/newcachebucket
+Date: Wed, 29 Sep 2010 18:52:39 GMT
+Content-Length: 0
+Cache-Control: no-cache no-store max-age=0
 
-The sizePerNode attribute allows the user to specify how large (in megabytes) a bucket will be on each
-node in the bucket.
+
+
+######Creating a Membase Bucket
+
+In addition to the aforementioned parameters, a replicaNumber parame
+
+*Request*
+
+<pre class="restcalls">
+POST /pools/default/buckets HTTP/1.1
+Host: node.in.your.cluster:8080
+Content-Type: application/x-www-form-urlencoded; charset=UTF-8
+Authorization: Basic YWRtaW46YWRtaW4=
+Content-Length: xx
+
+name=newbucket&ramQuotaMB=20&authType=none&replicaNumber=2&proxyPort=11215
+</pre>
+
+*Response*
+
+Response 202: bucket will be created.
+
+*Example*
+<pre>curl -i -u Administrator:letmein -d name=newbucket -d ramQuotaMB=20 -d authType=none -d replicaNumber=2 -d proxyPort=11215 http://localhost:8080/pools/default/buckets</pre>
 
 
 #####Getting a Bucket
@@ -861,44 +915,51 @@ Content-Length: nnn
 Clients MUST use the nodes list from the bucket, not the pool to indicate which
 are the appropriate nodes to connect to.
 
-###Renaming a Bucket
+###Modifying Bucket Properties
 
-Assuming the response above on getting a bucket, renaming the bucket is a
-just a question of modifying the response and posting it back to the system.
-The system will then issue a redirect indicating success.
+Buckets may be modified by POSTing the same kind of parameters used to
+create the bucket to the bucket's URI.  Since an omitted parameter can
+be equivalent to not setting it in some cases, it is recommended that
+clients get existing parameters, make modifications where necessary,
+and then POST to the URI.
+
+The name of a bucket cannot be changed.
+
+####Example: Increasing the Memory Quota for a Bucket
+
+Increasing a bucket's ramQuotaMB from the current level.  Note, the
+system will not let you decrease the ramQuotaMB for a membase bucket
+type and memcached bucket types will be flushed when the ramQuotaMB is
+changed.
+
+*Note*: as of 1.6.0, there are some known issues with changing the
+ ramQuotaMB for memcached bucket types.
 
 *Request*
 
-<pre class="restcalls">
- POST /pools/My New Pool/buckets/Another bucket
- Host: node.in.your.pool.com
- Authorization: Basic xxxxxxxxxxxxxxxxxxx
- Accept: application/com.membase.store+json
- X-memcachekv-Store-Client-Specification-Version: 0.1
 
-{
-   "name" : "New Name for Another Bucket"
-   "bucketRules" : {
-     "cacheRange" :
-       {
-         "min" : 1,
-         "max" : 599
-       },
-     "replicationFactor" : 2
-   }
-}
-
-</pre>
+For example, with curl:
+`$ curl -i -u Administrator:QuotaMB=25 -d authType=none -d proxyPort=11215 http://localhost:8080/pools/default/buckets/newbucket`
 
 *Response*
 
-response 200: Bucket was renamed.  A location header for the new location
-is given.  Requests to the old location will receive 301 (moved permanently).
- - or -
-response 403: user is not authorized (or no users are authorized because it
-is administratively disabled to all users)
+The response will be a 202, indicating the quota will be changed
+asynchronously throughout the servers in the cluster.
 
-At release of 1.0, this will always return a 403.
+`HTTP/1.1 202 OK
+Server: Membase Server 1.6.0
+Pragma: no-cache
+Date: Wed, 29 Sep 2010 20:01:37 GMT
+Content-Length: 0
+Cache-Control: no-cache no-store max-age=0`
+
+
+####Example: Changing Bucket Autentication
+
+Changing a bucket from port based authentication to SASL
+authentication can be done with:
+
+$ curl -u Administrator:letmein -i -d ramQuotaMB=130 -d authType=sasl -d saslPassword=letmein  http://localhost:8080/pools/default/buckets/acache
 
 
 #### Cluster and Pool Operations
@@ -1088,3 +1149,5 @@ have been referenced.
   legacy things
 * 20100803 Various updates for 1.6, mostly to pool resource
 * 20100809 Added section on provisioning and provisioning calls
+* 20101029 Updated bucket creation and modification to reflect
+  memcached/membase buckets
