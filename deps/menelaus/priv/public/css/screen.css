@@ -1017,20 +1017,16 @@ ul.tabs .alert_num_display .alert_num {display:block;}
 .additional_server_info .info_block {display:block; overflow:hidden;}
 .additional_server_info .info_block .path {display:block;width:185px;padding:2px 0 0 0; font-size:11px;word-wrap:break-word;}
 .additional_server_info .info_block.last {padding:10px 0 10px 0;}
-.dynamic_ram {display:block; height:40px; padding:0 0 0 77px; background:url(../images/icons.png) -6px -190px no-repeat; float:left;}
+.additional_server_info .dynamic_ram {display:block; height:40px; padding:0 0 0 77px; background:url(../images/icons.png) -6px -190px no-repeat; float:left;}
 .total_ram {display:block; height:14px; text-align:right;}
 
-.RAM_diagramm {float:right;width:420px;margin:1px 0 0;}
-.diagr_ram {display:block; width:420px; height:15px; position:relative; background:url(../images/ram_diagr_bg.png) 0 0 no-repeat;}
-.diagr_ram span {display:block; width:420px; height:15px; position:absolute; left:0px; top:0px; background:url(../images/ram_diagr_bg.png) -2px 0 no-repeat;}
-.diagr_ram span.blue {z-index:5; background-position:0 -15px;}
-.diagr_ram span.yellow {z-index:4; background-position:0 -30px;}
-.diagr_ram span.green {z-index:3; background-position:0 -45px;}
-.RAM_diagramm td {padding-left:0 !important;padding-right:0 !important;display:table-cell;white-space:nowrap;}
-.RAM_diagramm td.blue {color:#1878a2;}
-.RAM_diagramm td.yellow {color:#c19710;}
-.RAM_diagramm td.green {color:#6cc74c;}
-.RAM_diagramm .diagr_labels td {padding:3px 0 0 !important;float:none;}
+.additional_server_info .usage-block { width:420px; float:right; }
+.additional_server_info .usage-block .top-left { display:block; height:14px; float:left; color:#e43a1b;}
+.additional_server_info .usage-block .top-right { display:block; height:14px; float:right; }
+.additional_server_info .usage-block .usage { clear:both; width:420px; height:15px; position:relative; background:url(../images/ram_diagr_bg.png) 0 0 no-repeat; }
+.additional_server_info .usage-block .usage div { height:15px; position:absolute; left:0px; top:0px; background:url(../images/ram_diagr_bg.png) 0 0 no-repeat; }
+.additional_server_info .usage-block td {padding:3px 0 0 !important;float:none;}
+.additional_server_info .usage-block i {position:absolute;top:-4px;right:0;display:block;width:1px;height:24px;font-size:0;line-height:0;}
 
 .solid_state, .disk_storage {float:left;/*width:262px;*/width:190px;height:40px;padding:0 0 0 77px;background:url(../images/icons.png) -6px -289px no-repeat;}
  .disk_storage {background-position:-6px -390px;}

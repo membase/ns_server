@@ -891,10 +891,13 @@ var MockedRequest = mkClass({
                              "usagePercent": 96}}]},
         "storageTotals": {
           "ram": {
+            "usedByData": 259350,
+            "quotaTotal": 1832558091,
             "total": 2032558091,
             "used": 1689321472
           },
           "hdd": {
+            "usedByData": 25935000,
             "total": 239315349504.0,
             "used": 229742735523.0
           }

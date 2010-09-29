@@ -311,56 +311,18 @@
                 </div>
                <div class="additional_server_info">
                 <h3>Memory Cache</h3>
-                <span class="info_block">
+                <div class="info_block">
                   <span class="dynamic_ram">Dynamic RAM:</span>
-                  <span class="total_ram">Total {%= V.formatQuantity(memoryTotal, 'b', 1024) %}</span>
-                  <table class="RAM_diagramm">
-                  <col width="" />
-                  <col width="" />
-                  <col width="" />
-                  <col width="" />
-                    <tr>
-                      <td colspan="4">
-                        <span class="diagr_ram">
-                          <span class="blue" style="width:1%;">{%= V.thisElement(function (e) {e.css('width', percentReserved + '%')}) %}</span>
-                          <span class="yellow" style="width:2%;">{%= V.thisElement(function (e) {e.css('width', percentOther + '%')}) %}</span>
-                        </span>
-                      </td>
-                    </tr>
-                    <tr class="diagr_labels">
-                      <td class="blue">Membase Quota ({%= V.formatQuantity(memoryReserved, 'b', 1024) %})</td>
-                      <td class="yellow">Other ({%= V.formatQuantity(memoryOther, 'b', 1024) %})</td>
-                      <td class="right" colspan="2">Free ({%= V.formatQuantity(memoryFree, 'b', 1024) %})</td>
-                    </tr>
-                  </table>
-                </span>
+                  <div class="usage-block">{%= V.thisElement(function (e) {ServersSection.renderUsage(e, obj.storageTotals.ram, true)}) %}</div>
+                </div>
                 <h3>Disk Storage</h3>
-                <span class="info_block">
+                <div class="info_block">
                   <span class="disk_storage">
                     Disk One:
                     <span class="path">{%= h(storage.hdd[0].path) %}</span>
                   </span>
-                  <span class="total_ram">Total {%= h(V.formatQuantity(storage.hdd[0].memoryTotal, 'b', 1024)) %}</span>
-                  <table class="RAM_diagramm">
-                  <col width="" />
-                  <col width="" />
-                  <col width="" />
-                  <col width="" />
-                    <tr>
-                      <td colspan="4">
-                        <span class="diagr_ram">
-                          <span class="blue" style="width:1%;">{%= V.thisElement(function (e) {e.css('width', storage.hdd[0].usedByDataPercent + '%')}) %}</span>
-                          <span class="yellow" style="width:2%;">{%= V.thisElement(function (e) {e.css('width', storage.hdd[0].memoryUsedPercent + '%')}) %}</span>
-                        </span>
-                      </td>
-                    </tr>
-                    <tr class="diagr_labels">
-                      <td class="blue">Membase Data ({%= h(V.formatQuantity(storage.hdd[0].usedByData)) %})</td>
-                      <td class="yellow">Other ({%= V.formatQuantity(storage.hdd[0].memoryUsed, 'b', 1024) %})</td>
-                      <td class="right" colspan="2">Free ({%= V.formatQuantity(storage.hdd[0].memoryFree, 'b', 1024) %})</td>
-                    </tr>
-                  </table>
-                </span>
+                  <div class="usage-block">{%= V.thisElement(function (e) {ServersSection.renderUsage(e, obj.storageTotals.hdd)}) %}</div>
+                </div>
               </div><!-- additional_server_info -->
   </div>
   <script type="text/html" id="rebalancing_list_template">

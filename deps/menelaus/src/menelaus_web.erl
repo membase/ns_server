@@ -1017,7 +1017,7 @@ handle_node(_PoolId, Node, Req) ->
                                                           || {Path, SizeKBytes, UsagePercent} <- disksup:get_disk_data()]}]}},
                       {memoryQuota, MemQuota},
                       {storageTotals, {struct, [{Type, {struct, PropList}}
-                                                || {Type, PropList} <- ns_storage_conf:node_storage_info(Node)]}},
+                                                || {Type, PropList} <- ns_storage_conf:nodes_storage_info([Node])]}},
                       {storage, R}] ++ KV,
             reply_json(Req,
                        {struct, lists:filter(fun (X) -> X =/= undefined end,

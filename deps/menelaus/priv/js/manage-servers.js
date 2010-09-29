@@ -239,6 +239,32 @@ var ServersSection = {
       return handler.call(this, e);
     }
   },
+  renderUsage: function (e, totals, withQuotaTotal) {
+    var options = {
+      topAttrs: {class: "usage-block"},
+      topRight: ['Total', ViewHelpers.formatMemSize(totals.total)],
+      items: [
+        {name: 'In Use',
+         value: totals.usedByData,
+         attrs: {style: "background-position:0 -15px;"},
+         tdAttrs: {style: "color:#1878A2;"}
+        },
+        {name: 'Other Data',
+         value: totals.used - totals.usedByData,
+         attrs: {style: "background-position:0 -30px;"},
+         tdAttrs: {style: "color:#C19710;"}},
+        {name: 'Free',
+         value: totals.total - totals.used}
+      ],
+      markers: []
+    };
+    if (withQuotaTotal) {
+      options.topLeft = ['Membase Quota', ViewHelpers.formatMemSize(totals.quotaTotal)];
+      options.markers.push({value: totals.quotaTotal,
+                            attrs: {style: "background-color:#E43A1B;"}});
+    }
+    $(e).replaceWith(memorySizesGaugeHTML(options));
+  },
   onEnter: function () {
     // we need this 'cause switchSection clears rebalancing class
     this.refreshEverything();
