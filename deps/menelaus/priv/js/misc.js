@@ -807,3 +807,7 @@ function decimateNoFilter(decimation, samples) {
 
   return outputSamples;
 }
+
+Math.Ki = 1024;
+Math.Mi = 1048576;
+Math.Gi = 1073741824;
