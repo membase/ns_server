@@ -49,8 +49,8 @@ var OverviewSection = {
         var gaugeOptions = {
           topAttrs: {'class': 'line_cnt'},
           usageAttrs: {'class': 'usage_biggest'},
-          topLeft: 'Total Allocated (' + ViewHelpers.formatMemSize(bucketsQuota) + ')',
-          topRight: 'Total in Cluster (' + ViewHelpers.formatMemSize(quotaTotal) + ')',
+          topLeft: ['Total Allocated', ViewHelpers.formatMemSize(bucketsQuota)],
+          topRight: ['Total in Cluster', ViewHelpers.formatMemSize(quotaTotal)],
           items: [
             {name: 'In Use',
              value: usedQuota,
@@ -102,7 +102,7 @@ var OverviewSection = {
         item.find('.line_cnt').replaceWith(memorySizesGaugeHTML({
           topAttrs: {'class': 'line_cnt'},
           usageAttrs: {'class': 'usage_biggest'},
-          topRight: 'Total Cluster Storage (' + ViewHelpers.formatMemSize(total) + ')',
+          topRight: ['Total Cluster Storage', ViewHelpers.formatMemSize(total)],
           items: [
             {name: 'In use',
              value: usedSpace,

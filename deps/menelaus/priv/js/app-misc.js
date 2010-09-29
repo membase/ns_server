@@ -882,19 +882,26 @@ function usageGaugeHTML(options) {
     return item.name != null;
   });
 
+  function formatPair(text) {
+    if (text instanceof Array) {
+      return [text[0],' (',text[1],')'].join('')
+    }
+    return text;
+  }
+
   var childs = [
     options.topLeft &&
       mkTag("div",
             extendHTMLAttrs({'class': 'top-left'}, options.topLeftAttrs),
-            options.topLeft),
+            formatPair(options.topLeft)),
     options.topRight &&
       mkTag("div",
             extendHTMLAttrs({'class': 'top-right'}, options.topRightAttrs),
-            options.topRight),
+            formatPair(options.topRight)),
     mkTag("div", extendHTMLAttrs({
       'class': 'usage'
     }, options.usageAttrs), bars.concat(markers)),
-    "<table><tr>",
+    "<table style='width:100%;'><tr>",
     _.map(tdItems, function (item, idx) {
       var extraStyle;
       if (idx == 0)

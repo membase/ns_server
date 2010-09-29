@@ -300,7 +300,7 @@ var BucketDetailsDialog = mkClass({
 
     var options = {
       topAttrs: {'class': 'size-gauge for-ram'},
-      topRight: 'Cluster quota (' + ViewHelpers.formatMemSize(total) + ')',
+      topRight: ['Cluster quota', ViewHelpers.formatMemSize(total)],
       items: [
         {name: 'Other Buckets',
          value: otherBuckets,
@@ -329,7 +329,7 @@ var BucketDetailsDialog = mkClass({
                             attrs: {style: 'background-color:#444245;'}});
       options.markers.push({value: otherBuckets + thisValue,
                             attrs: {style: 'background-color:red;'}});
-      options.topLeft = 'Total Allocated (' + ViewHelpers.formatMemSize(otherBuckets + thisValue) + ')';
+      options.topLeft = ['Total Allocated', ViewHelpers.formatMemSize(otherBuckets + thisValue)];
       options.topLeftAttrs = {style: 'color:#e43a1b;'};
     }
 
@@ -395,8 +395,8 @@ var BucketsSection = {
 
     var options = {
       topAttrs: {'class': 'size-gauge for-hdd'},
-      topLeft: 'Other Data (' + ViewHelpers.formatMemSize(otherData) + ')',
-      topRight: 'Total Cluster Storage (' + ViewHelpers.formatMemSize(total) + ')',
+      topLeft: ['Other Data', ViewHelpers.formatMemSize(otherData)],
+      topRight: ['Total Cluster Storage', ViewHelpers.formatMemSize(total)],
       items: [
         {name: null,
          value: otherData,
