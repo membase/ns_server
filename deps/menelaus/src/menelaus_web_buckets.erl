@@ -362,16 +362,16 @@ parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals,
                           {undefined, _} -> Errors;
                           {NewType, NewType} -> Errors;
                           {_NewType, _OldType} ->
-                              [{bucketType, <<"Cannot change bucket type">>}
+                              [{bucketType, <<"Cannot change bucket type.">>}
                                | Errors]
                       end
               end,
     RAMErrors =
         if
             RAMSummary#ram_summary.free < 0 ->
-                [{ramQuotaMB, <<"This bucket doesn't fit cluster RAM quota">>}];
+                [{ramQuotaMB, <<"RAM quota specified is too large to be provisioned into this cluster.">>}];
             RAMSummary#ram_summary.this_alloc < RAMSummary#ram_summary.this_used ->
-                [{ramQuotaMB, <<"Cannot decrease below usage">>}];
+                [{ramQuotaMB, <<"RAM quota cannot be set below current usage.">>}];
             true ->
                 []
         end,
@@ -582,9 +582,9 @@ interpret_hdd_quota(CurrentBucket, ParsedProps, ClusterStorageTotals, UsageGette
 parse_validate_replicas_number(NumReplicas) ->
     case menelaus_util:parse_validate_number(NumReplicas, 0, undefined) of
         invalid ->
-            {error, replicaNumber, <<"Replicas number must be a number">>};
+            {error, replicaNumber, <<"The replica number must be specified and must be an integer between 1 and 3.">>};
         too_small ->
-            {error, replicaNumber, <<"Replicas number cannot be negative">>};
+            {error, replicaNumber, <<"The replica number cannot be negative.">>};
         {ok, X} -> {ok, num_replicas, X}
     end.
 
@@ -593,9 +593,9 @@ parse_validate_ram_quota(undefined, BucketConfig) when BucketConfig =/= false ->
 parse_validate_ram_quota(Value, _BucketConfig) ->
     case menelaus_util:parse_validate_number(Value, 0, undefined) of
         invalid ->
-            {error, ramQuotaMB, <<"RAM quota must be a number">>};
+            {error, ramQuotaMB, <<"The RAM Quota must be specifed and must be a positive integer.">>};
         too_small ->
-            {error, ramQuotaMB, <<"RAM quota cannot be negative">>};
+            {error, ramQuotaMB, <<"The RAM Quota cannot be negative.">>};
         {ok, X} -> {ok, ram_quota, X * 1048576}
     end.
 
