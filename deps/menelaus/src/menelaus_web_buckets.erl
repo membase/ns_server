@@ -178,7 +178,7 @@ handle_bucket_delete(_PoolId, BucketId, Req) ->
     end.
 
 respond_bucket_created(Req, PoolId, BucketId) ->
-    Req:respond({201, [{"Location", concat_url_path(["pools", PoolId, "buckets", BucketId])}
+    Req:respond({202, [{"Location", concat_url_path(["pools", PoolId, "buckets", BucketId])}
                        | server_header()],
                  ""}).
 
@@ -224,7 +224,7 @@ handle_bucket_update_inner(BucketId, Req, Params, Limit) ->
             end;
         {true, {ok, _, JSONSummaries}} ->
             reply_json(Req, {struct, [{errors, {struct, []}},
-                                      {summaries, {struct, JSONSummaries}}]}, 200)
+                                      {summaries, {struct, JSONSummaries}}]}, 202)
     end.
 
 do_bucket_create(Name, ParsedProps) ->
