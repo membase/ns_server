@@ -26,7 +26,7 @@
          storage_conf/1, add_storage/4, remove_storage/2,
          local_bucket_disk_usage/1, bucket_disk_usage/2]).
 
--export([node_storage_info/1, cluster_storage_info/0]).
+-export([node_storage_info/1, cluster_storage_info/0, nodes_storage_info/1]).
 
 -export([extract_disk_stats_for_path/2, disk_stats_for_path/2]).
 
@@ -156,41 +156,57 @@ extract_node_storage_info(NodeInfo, Node) ->
         _ -> []
     end.
 
+nodes_storage_info(NodeNames) ->
+    NodesDict = ns_doctor:get_nodes(),
+    NodesInfos = lists:foldl(fun (N, A) ->
+                                     case dict:find(N, NodesDict) of
+                                         {ok, V} -> [{N, V} | A];
+                                         _ -> A
+                                     end
+                             end, [], NodeNames),
+    do_cluster_storage_info(NodesInfos).
+
 cluster_storage_info() ->
+    Config = ns_config:get(),
     Nodes = lists:filter(fun ({Node, _}) ->
-                             ns_cluster_membership:get_cluster_membership(Node) =:= active
+                             ns_cluster_membership:get_cluster_membership(Node, Config) =:= active
                          end, dict:to_list(ns_doctor:get_nodes())),
-    PList1 = case Nodes of
-                 [] -> [];
-                 [{FirstNode, FirstInfo} | Rest] ->
-                     lists:foldl(fun ({Node, Info}, Acc) ->
-                                         ThisInfo = extract_node_storage_info(Info, Node),
-                                         lists:zipwith(fun ({StatName, [{total, TotalA},
-                                                                        {quotaTotal, QTotalA},
-                                                                        {used, UsedA}]},
-                                                            {StatName, [{total, TotalB},
-                                                                        {quotaTotal, QTotalB},
-                                                                        {used, UsedB}]}) ->
-                                                               {StatName, [{total, TotalA + TotalB},
-                                                                           {quotaTotal, QTotalA + QTotalB},
-                                                                           {used, UsedA + UsedB}]}
-                                                       end, Acc, ThisInfo)
-                                 end, extract_node_storage_info(FirstInfo, FirstNode), Rest)
-             end,
+    PList1 = do_cluster_storage_info(Nodes),
     AllBuckets = ns_bucket:get_buckets(),
-    RAMQuotaUsed =
-        lists:foldl(fun ({_, Config}, RAMQuota) ->
-                            ns_bucket:ram_quota(Config) + RAMQuota
-                    end, 0, AllBuckets),
+    RAMQuotaUsed = lists:foldl(fun ({_, BucketConfig}, RAMQuota) ->
+                                       ns_bucket:ram_quota(BucketConfig) + RAMQuota
+                               end, 0, AllBuckets),
+    lists:map(fun ({ram, RAMList}) ->
+                      {ram, [{quotaUsed, RAMQuotaUsed}
+                             | RAMList]};
+                  (X) -> X
+              end, PList1).
+
+do_cluster_storage_info([]) -> [];
+do_cluster_storage_info([{FirstNode, FirstInfo} | Rest] = NodeInfos) ->
+    PList1 = lists:foldl(fun ({Node, Info}, Acc) ->
+                                 ThisInfo = extract_node_storage_info(Info, Node),
+                                 lists:zipwith(fun ({StatName, [{total, TotalA},
+                                                                {quotaTotal, QTotalA},
+                                                                {used, UsedA}]},
+                                                    {StatName, [{total, TotalB},
+                                                                {quotaTotal, QTotalB},
+                                                                {used, UsedB}]}) ->
+                                                       {StatName, [{total, TotalA + TotalB},
+                                                                   {quotaTotal, QTotalA + QTotalB},
+                                                                   {used, UsedA + UsedB}]}
+                                               end, Acc, ThisInfo)
+                         end, extract_node_storage_info(FirstInfo, FirstNode), Rest),
+    AllNodes = proplists:get_keys(NodeInfos),
+    AllBuckets = ns_bucket:get_buckets(),
     {BucketsRAMUsage, BucketsHDDUsage}
         = lists:foldl(fun ({Name, _}, {RAM, HDD}) ->
-                              BasicStats = menelaus_stats:basic_stats(Name),
+                              BasicStats = menelaus_stats:basic_stats(Name, AllNodes),
                               {RAM + proplists:get_value(memUsed, BasicStats),
                                HDD + proplists:get_value(diskUsed, BasicStats)}
                       end, {0, 0}, AllBuckets),
     lists:map(fun ({ram, Props}) ->
-                      {ram, [{quotaUsed, RAMQuotaUsed},
-                             {usedByData, BucketsRAMUsage}
+                      {ram, [{usedByData, BucketsRAMUsage}
                              | Props]};
                   ({hdd, Props}) ->
                       {hdd, [{usedByData, BucketsHDDUsage}
