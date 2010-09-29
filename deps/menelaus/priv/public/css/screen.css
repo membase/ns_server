@@ -902,7 +902,7 @@ body.init_secure #init_secure_dialog p.pad_10 {width:500px;margin-left:65px;font
 body.init_secure #init_secure_dialog form {width:100%;padding:0 0 25px;}
 body.init_secure #init_secure_dialog form > div {overflow:hidden;width:500px;margin:8px auto 0;}
 body.init_secure #init_secure_dialog form > div label {display:inline-block;width:138px;font:12pt Verdana, Helvetica, sans-serif;*zoom:1;*padding:0 0 3px;}
-body.init_secure #init_secure_dialog form > div input {width:183px; padding:3px 3px 4px 5px;font-size:12pt; border:1px solid #e5e7e9;}
+body.init_secure #init_secure_dialog form > div input {width:183px; padding:3px 3px 4px 5px;font-size:12pt; border:1px solid #ccd3d7;}
 body.init_secure #container { display: none; }
 
 .init_block #init_bucket_dialog {width:748px;padding-bottom:-50px;background:none #eee;}
