@@ -422,20 +422,36 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, AllBuckets, AuthTy
                              _ -> invalid
                          end
                  end,
+    QuotaSizeError = case lists:keyfind(ram_quota, 2, Candidates0) of
+                         {ok, ram_quota, RAMQuotaMB} ->
+                             {MinQuota, Msg}
+                                 = case BucketType of
+                                       membase -> {256, <<"RAM quota cannot be less than 256 MB">>};
+                                       memcached -> {64, <<"RAM quota cannot be less than 64 MB">>};
+                                       _ -> {0, <<"">>}
+                                   end,
+                             if
+                                 RAMQuotaMB < MinQuota * 1048576 ->
+                                     {error, ramQuotaMB, Msg};
+                                 true -> ok
+                             end;
+                         _ -> ok
+                     end,
+    Candidates1 = [QuotaSizeError | Candidates0],
     Candidates = case BucketType of
                      memcached ->
                          [{ok, bucketType, memcached}
-                          | Candidates0];
+                          | Candidates1];
                      membase ->
                          [{ok, bucketType, membase},
                           case IsNew of
                               true -> parse_validate_replicas_number(proplists:get_value("replicaNumber", Params));
                               _ -> undefined
                           end
-                          | Candidates0];
+                          | Candidates1];
                      _ ->
                          [{error, bucketType, <<"invalid bucket type">>}
-                          | Candidates0]
+                          | Candidates1]
                  end,
     {[{K,V} || {ok, K, V} <- Candidates],
      [{K,V} || {error, K, V} <- Candidates]}.
