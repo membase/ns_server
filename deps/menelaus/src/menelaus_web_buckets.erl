@@ -92,7 +92,7 @@ build_bucket_info(PoolId, Id, Pool, BucketConfig, InfoLevel, LocalAddr) ->
                      [{replicaNumber, ns_bucket:num_replicas(BucketConfig)},
                       {quota, {struct, [{ram, ns_bucket:ram_quota(BucketConfig)},
                                         {rawRAM, ns_bucket:raw_ram_quota(BucketConfig)}]}},
-                      {basicStats, {struct, menelaus_stats:basic_stats(PoolId, Id)}}]
+                      {basicStats, {struct, menelaus_stats:basic_stats(Id)}}]
              end,
     {struct, [{name, list_to_binary(Id)},
               {bucketType, ns_bucket:bucket_type(BucketConfig)},

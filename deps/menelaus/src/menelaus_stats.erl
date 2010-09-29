@@ -24,7 +24,7 @@
 
 -export([handle_bucket_stats/3,
          handle_overview_stats/2,
-         basic_stats/2,
+         basic_stats/1,
          bucket_disk_usage/1,
          bucket_ram_usage/1]).
 
@@ -38,9 +38,9 @@ bucket_disk_usage(BucketName) ->
                end || X <- Res]).
 
 bucket_ram_usage(BucketName) ->
-    proplists:get_value(memUsed, basic_stats([], BucketName)).
+    proplists:get_value(memUsed, basic_stats(BucketName)).
 
-basic_stats(_PoolId, BucketName) ->
+basic_stats(BucketName) ->
     {Samples, _, _, _} = grab_op_stats(BucketName, [{"zoom", "minute"}]),
     LastSample = case Samples of
                      [] -> [];

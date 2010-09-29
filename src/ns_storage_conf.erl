@@ -184,7 +184,7 @@ cluster_storage_info() ->
                     end, 0, AllBuckets),
     {BucketsRAMUsage, BucketsHDDUsage}
         = lists:foldl(fun ({Name, _}, {RAM, HDD}) ->
-                              BasicStats = menelaus_stats:basic_stats(fakepool, Name),
+                              BasicStats = menelaus_stats:basic_stats(Name),
                               {RAM + proplists:get_value(memUsed, BasicStats),
                                HDD + proplists:get_value(diskUsed, BasicStats)}
                       end, {0, 0}, AllBuckets),
