@@ -28,6 +28,7 @@
          get_buckets/1,
          min_live_copies/0,
          min_live_copies/1,
+         node_locator/1,
          ram_quota/1,
          raw_ram_quota/1,
          num_replicas/1,
@@ -209,6 +210,14 @@ min_live_copies(LiveNodes, Config) ->
                             end, 0, Chain),
                       erlang:min(Min, NumLiveCopies)
               end, length(hd(Map)), Map)
+    end.
+
+node_locator(BucketConfig) ->
+    case proplists:get_value(type, BucketConfig) of
+        membase ->
+            vbucket;
+        memcached ->
+            ketama
     end.
 
 -spec num_replicas([{_,_}]) -> integer().
