@@ -116,80 +116,24 @@ var maybeReloadAppDueToLeak = (function () {
   };
 })();
 
-function renderLargeGraph(main, data) {
-  maybeReloadAppDueToLeak();
-
-  var minX, minY = 1/0;
-  var maxX, maxY = -1/0;
-  var minInf = minY;
-  var maxInf = maxY;
-
+function renderSmallGraph(jq, stats, statName, isSelected) {
+  var data = stats[statName] || [];
+  var tstamps = stats.timestamp;
+  var maxY = -1/0;
   var plotData = _.map(data, function (e, i) {
-    var x = -data.length + i+1
-    if (e <= minY) {
-      minX = x;
-      minY = e;
-    }
-    if (e >= maxY) {
-      maxX = x;
+    if (e > maxY)
       maxY = e;
-    }
-    return [x, e];
+    return [tstamps[i], e];
   });
 
-  $.plot(main,
-         [{color: '#1d88ad',
-           data: plotData}],
-         {xaxis: {ticks:0, autoscaleMargin: 0.04},
-          yaxis: {tickFormatter: function (val, axis) {return ViewHelpers.formatQuantity(val, '', 1000);}},
-          grid: {borderWidth: 0},
-          hooks: {draw: [drawMarkers]}});
-
-  function singleMarker(center, value) {
-    var text;
-    value = ViewHelpers.formatQuantity(value, '', 1000);
-
-    text = String(value);
-    var marker = $('<span class="marker"><span class="l"></span><span class="r"></span></span>');
-    marker.find('.l').text(text);
-    main.append(marker);
-    marker.css({
-      position: 'absolute',
-      top: center.top - 16 + 'px',
-      left: center.left - 10 + 'px'
-    });
-    return marker;
-  }
-
-  function drawMarkers(plot) {
-    main.find('.marker').remove();
-
-    if (minY != minInf && minY != 0) {
-      var offset = plot.pointOffset({x: minX, y: minY});
-      singleMarker(offset, minY).addClass('marker-min');
-    }
-
-    if (maxY != maxInf) {
-      var offset = plot.pointOffset({x: maxX, y: maxY});
-      singleMarker(offset, maxY).addClass('marker-max');
-    }
-  }
-}
-
-function renderSmallGraph(jq, data, isSelected) {
-  var average = _.foldl(data, 0, function (s,v) {return s+v}) / data.length;
-  var avgString = isNaN(average) ? '?' : ViewHelpers.formatQuantity(average, '', 1000);
-  jq.find('.small_graph_label > .value').text(avgString);
-
-  var plotData = _.map(data, function (e, i) {
-    return [i+1, e];
-  });
+  var maxString = isNaN(maxY) ? '?' : ViewHelpers.formatQuantity(maxY, '', 1000);
+  jq.find('.small_graph_label > .value').text(maxString);
 
   $.plot(jq.find('.small_graph_block'),
          [{color: isSelected ? '#e2f1f9' : '#d95e28',
            data: plotData}],
          {xaxis: {ticks:0, autoscaleMargin: 0.04},
-          yaxis: {ticks:0, autoscaleMargin: 0.04},
+          yaxis: {min:0, ticks:0, autoscaleMargin: 0.04},
           grid: {show:false}});
 }
 
@@ -297,7 +241,11 @@ var StatGraphs = {
 
     var selected = self.selected.value;
     if (stats[selected]) {
-      renderLargeGraph(main, stats[selected]);
+      maybeReloadAppDueToLeak();
+      plotStatGraph(main, stats, selected, {
+        color: '#1d88ad',
+        verticalMargin: 1.02
+      });
       $('.stats-period-container').toggleClass('missing-samples', !stats[selected].length);
       var visibleSeconds = Math.ceil(stats[selected].length * op.interval / 1000);
       $('.stats_visible_period').text(formatUptime(visibleSeconds));
@@ -307,7 +255,7 @@ var StatGraphs = {
     _.each(self.visibleStats, function (statName) {
       var ops = stats[statName] || [];
       var area = self.findGraphArea(statName);
-      renderSmallGraph(area, ops, selected == statName);
+      renderSmallGraph(area, stats, statName, selected == statName);
     });
   },
   update: function () {
