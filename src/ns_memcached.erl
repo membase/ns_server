@@ -355,9 +355,17 @@ ensure_bucket_config(Sock, Bucket, membase, {MaxSize, DBDir}) ->
                                            Bucket),
             ensure_bucket(Sock, Bucket)
     end;
-ensure_bucket_config(_Sock, _Bucket, memcached, _MaxSize) ->
+ensure_bucket_config(Sock, _Bucket, memcached, _MaxSize) ->
     %% TODO: change max size of memcached bucket also
-    todo.
+    %% Make sure it's a memcached bucket
+    {ok, present} = mc_client_binary:stats(
+                      Sock, <<>>,
+                      fun (<<"evictions">>, _, _) ->
+                              present;
+                          (_, _, CD) ->
+                              CD
+                      end, not_present).
+
 
 server(Bucket) ->
     list_to_atom(?MODULE_STRING ++ "-" ++ Bucket).
