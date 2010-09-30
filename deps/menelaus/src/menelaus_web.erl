@@ -30,8 +30,16 @@
 -export([test/0]).
 -endif.
 
--export([start_link/0, start_link/1, stop/0, loop/3, webconfig/0, restart/0,
-         build_nodes_info/4, handle_streaming/3, is_system_provisioned/0]).
+-export([start_link/0,
+         start_link/1,
+         stop/0,
+         loop/3,
+         webconfig/0,
+         restart/0,
+         build_nodes_info/4,
+         build_nodes_info/5,
+         handle_streaming/3,
+         is_system_provisioned/0]).
 
 -export([ns_log_cat/1, ns_log_code_string/1, alert_key/1]).
 
@@ -456,8 +464,11 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
     {struct, PropList}.
 
 build_nodes_info(MyPool, IncludeOtp, InfoLevel, LocalAddr) ->
+    build_nodes_info(MyPool, IncludeOtp, InfoLevel, LocalAddr,
+                     ns_node_disco:nodes_wanted()).
+
+build_nodes_info(MyPool, IncludeOtp, InfoLevel, LocalAddr, WantENodes) ->
     OtpCookie = list_to_binary(atom_to_list(ns_node_disco:cookie_get())),
-    WantENodes = ns_node_disco:nodes_wanted(),
     NodeStatuses = ns_doctor:get_nodes(),
     BucketsAll = ns_bucket:get_buckets(),
     Nodes =
