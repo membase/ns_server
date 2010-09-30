@@ -119,14 +119,13 @@ var maybeReloadAppDueToLeak = (function () {
 function renderSmallGraph(jq, stats, statName, isSelected) {
   var data = stats[statName] || [];
   var tstamps = stats.timestamp;
-  var maxY = -1/0;
   var plotData = _.map(data, function (e, i) {
-    if (e > maxY)
-      maxY = e;
     return [tstamps[i], e];
   });
 
-  var maxString = isNaN(maxY) ? '?' : ViewHelpers.formatQuantity(maxY, '', 1000);
+  var lastY = data[data.length-1];
+
+  var maxString = isNaN(lastY) ? '?' : ViewHelpers.formatQuantity(lastY, '', 1000);
   jq.find('.small_graph_label > .value').text(maxString);
 
   $.plot(jq.find('.small_graph_block'),
