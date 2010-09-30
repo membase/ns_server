@@ -52,4 +52,5 @@ status_all() ->
 
 %% Internal fuctions
 current_status() ->
-    element(2, ns_info:basic_info()).
+    [{active_buckets, ns_memcached:active_buckets()} |
+     element(2, ns_info:basic_info())].

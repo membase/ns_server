@@ -38,7 +38,7 @@
 -record(state, {bucket::nonempty_string(), sock::port()}).
 
 %% external API
--export([connected/1, connected/2,
+-export([active_buckets/0, connected/1, connected/2,
          delete_vbucket/2, delete_vbucket/3,
          get_vbucket/3,
          host_port_str/0, host_port_str/1,
@@ -193,6 +193,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%
 %% API
 %%
+
+active_buckets() ->
+    [Bucket || ?MODULE_STRING "-" ++ Bucket <-
+                   [atom_to_list(Name) || Name <- registered()]].
 
 connected(Bucket) ->
     misc:running(server(Bucket)).
