@@ -84,8 +84,11 @@ build_bucket_info(PoolId, Id, Pool, undefined, InfoLevel, LocalAddr) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(Id),
     build_bucket_info(PoolId, Id, Pool, BucketConfig, InfoLevel, LocalAddr);
 build_bucket_info(PoolId, Id, Pool, BucketConfig, InfoLevel, LocalAddr) ->
+    %% Only list nodes this bucket is mapped to
+    Nodes = menelaus_web:build_nodes_info(
+              Pool, false, InfoLevel, LocalAddr,
+              proplists:get_value(servers, BucketConfig, [])),
     StatsUri = list_to_binary(concat_url_path(["pools", PoolId, "buckets", Id, "stats"])),
-    Nodes = menelaus_web:build_nodes_info(Pool, false, InfoLevel, LocalAddr),
     Suffix = case InfoLevel of
                  stable -> [];
                  normal ->
@@ -94,8 +97,19 @@ build_bucket_info(PoolId, Id, Pool, BucketConfig, InfoLevel, LocalAddr) ->
                                         {rawRAM, ns_bucket:raw_ram_quota(BucketConfig)}]}},
                       {basicStats, {struct, menelaus_stats:basic_stats(Id)}}]
              end,
+    BucketType = ns_bucket:bucket_type(BucketConfig),
+    %% Only list nodes this bucket is mapped to
+    %% Leave vBucketServerMap key out for memcached buckets; this is
+    %% how Enyim decides to use ketama
+    Suffix1 = case BucketType of
+                  membase ->
+                      [{vBucketServerMap, ns_bucket:json_map(Id, LocalAddr)} |
+                       Suffix];
+                  memcached ->
+                      Suffix
+              end,
     {struct, [{name, list_to_binary(Id)},
-              {bucketType, ns_bucket:bucket_type(BucketConfig)},
+              {bucketType, BucketType},
               {authType, misc:expect_prop_value(auth_type, BucketConfig)},
               {saslPassword, list_to_binary(proplists:get_value(sasl_password, BucketConfig, ""))},
               {proxyPort, proplists:get_value(moxi_port, BucketConfig, 0)},
@@ -106,8 +120,13 @@ build_bucket_info(PoolId, Id, Pool, BucketConfig, InfoLevel, LocalAddr) ->
                                                               "buckets", Id, "controller", "doFlush"]))},
               {nodes, Nodes},
               {stats, {struct, [{uri, StatsUri}]}},
-              {vBucketServerMap, ns_bucket:json_map(Id, LocalAddr)}
-              | Suffix]}.
+              {nodeLocator, case BucketType of
+                                membase ->
+                                    vbucket;
+                                memcached ->
+                                    ketama
+                            end}
+              | Suffix1]}.
 
 handle_sasl_buckets_streaming(_PoolId, Req) ->
     LocalAddr = menelaus_util:local_addr(Req),
