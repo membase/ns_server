@@ -45,7 +45,8 @@
 -define(RESAVE_FAILED, 2).
 -define(CONFIG_CONFLICT, 3).
 
--export([start_link/2, start_link/1,
+-export([eval/1,
+         start_link/2, start_link/1,
          get_remote/1,
          merge/1,
          merge_remote/2, merge_remote/3,
@@ -85,6 +86,9 @@
 -export([stop/0, reload/0, resave/0, reannounce/0, replace/1]).
 
 %% API
+
+eval(Fun) ->
+    gen_server:call(?MODULE, {eval, Fun}).
 
 start_link(Full) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, Full, []).
@@ -407,6 +411,10 @@ terminate(_Reason, _State)          -> ok.
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 handle_cast(stop, State)            -> {stop, shutdown, State}.
 handle_info(_Info, State)           -> {noreply, State}.
+
+
+handle_call({eval, Fun}, _From, State) ->
+    {reply, catch Fun(State), State};
 
 handle_call(reload, _From, State) ->
     case init(State#config.init) of
