@@ -27,8 +27,7 @@
          handle_bucket_list/2,
          handle_bucket_info/5,
          handle_sasl_buckets_streaming/2,
-         handle_bucket_info_streaming/5,
-         handle_bucket_info_streaming/6,
+         handle_bucket_info_streaming/3,
          handle_bucket_delete/3,
          handle_bucket_update/3,
          handle_bucket_create/2,
@@ -143,15 +142,15 @@ handle_sasl_buckets_streaming(_PoolId, Req) ->
         end,
     menelaus_web:handle_streaming(F, Req, undefined).
 
-handle_bucket_info_streaming(PoolId, Id, Req, Pool, Bucket) ->
-    handle_bucket_info_streaming(PoolId, Id, Req, Pool, Bucket, stable).
+handle_bucket_info_streaming(PoolId, Id, Req) ->
+    handle_bucket_info_streaming(PoolId, Id, Req, stable).
 
-handle_bucket_info_streaming(PoolId, Id, Req, Pool, Bucket, ForceInfoLevel) ->
+handle_bucket_info_streaming(PoolId, Id, Req, ForceInfoLevel) ->
     LocalAddr = menelaus_util:local_addr(Req),
     F = fun(InfoLevel) ->
                 case ForceInfoLevel of
-                    undefined -> build_bucket_info(PoolId, Id, Pool, Bucket, InfoLevel, LocalAddr);
-                    _         -> build_bucket_info(PoolId, Id, Pool, Bucket, ForceInfoLevel, LocalAddr)
+                    undefined -> build_bucket_info(PoolId, Id, fakepool, undefined, InfoLevel, LocalAddr);
+                    _         -> build_bucket_info(PoolId, Id, fakepool, undefined, ForceInfoLevel, LocalAddr)
                 end
         end,
     menelaus_web:handle_streaming(F, Req, undefined).
