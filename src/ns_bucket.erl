@@ -106,7 +106,7 @@ config_string(BucketName) ->
                 {CFG, {LocalQuota, DBName}};
             memcached ->
                 {lists:flatten(
-                   io_lib:format("vb0=false;cache_size=~B", [MemQuota])),
+                   io_lib:format("vb0=true;cache_size=~B", [MemQuota])),
                  MemQuota}
         end,
     {Engine, ConfigString, BucketType, ExtraParams}.
@@ -308,10 +308,10 @@ new_bucket_default_params(membase) ->
      {map, undefined}];
 new_bucket_default_params(memcached) ->
     [{type, memcached},
-     {num_vbuckets, 1024},
+     {num_vbuckets, 0},
      {num_replicas, 0},
-     {servers, []},
-     {map, undefined},
+     {servers, ns_cluster_membership:active_nodes()},
+     {map, []},
      {ram_quota, 0}].
 
 cleanup_bucket_props(Props) ->

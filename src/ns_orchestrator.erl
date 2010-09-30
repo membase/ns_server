@@ -92,8 +92,8 @@ needs_rebalance() ->
 
 -spec needs_rebalance([atom(), ...]) -> boolean().
 needs_rebalance(Nodes) ->
-    lists:any(fun (Bucket) -> needs_rebalance(Nodes, Bucket) end,
-              ns_bucket:get_bucket_names()).
+    lists:any(fun ({_, BucketConfig}) -> needs_rebalance(Nodes, BucketConfig) end,
+              ns_bucket:get_buckets()).
 
 
 -spec rebalance_progress() -> {running, [{atom(), float()}]} | not_running.
@@ -141,7 +141,7 @@ handle_sync_event(unhandled, unhandled, unhandled, unhandled) ->
     unhandled.
 
 handle_info(janitor, idle, #idle_state{remaining_buckets=[]} = State) ->
-    case ns_bucket:get_bucket_names() of
+    case ns_bucket:get_bucket_names(membase) of
         [] -> {next_state, idle, State#idle_state{remaining_buckets=[]}};
         Buckets ->
             handle_info(janitor, idle,
@@ -281,22 +281,28 @@ rebalancing(Event, _From, State) ->
 %% Internal functions
 %%
 
-needs_rebalance(Nodes, Bucket) ->
-    {_NumReplicas, _NumVBuckets, Map, Servers} = ns_bucket:config(Bucket),
-    case Servers of
-        [] -> false;
-        _ ->
-            NumServers = length(Servers),
-            lists:sort(Nodes) /= lists:sort(Servers) orelse
-                lists:any(
-                  fun (Chain) ->
-                          lists:member(
-                            undefined,
-                            %% Don't warn about missing replicas when you have
-                            %% fewer servers than your copy count!
-                            lists:sublist(Chain, NumServers))
-                  end, Map) orelse
-                ns_rebalancer:unbalanced(Map, Servers)
+needs_rebalance(Nodes, BucketConfig) ->
+    Servers = proplists:get_value(servers, BucketConfig, []),
+    case proplists:get_value(type, BucketConfig) of
+        membase ->
+            case Servers of
+                [] -> false;
+                _ ->
+                    Map = proplists:get_value(map, BucketConfig),
+                    NumServers = length(Servers),
+                    lists:sort(Nodes) /= lists:sort(Servers) orelse
+                        lists:any(
+                          fun (Chain) ->
+                                  lists:member(
+                                    undefined,
+                                    %% Don't warn about missing replicas when you have
+                                    %% fewer servers than your copy count!
+                                    lists:sublist(Chain, NumServers))
+                          end, Map) orelse
+                        ns_rebalancer:unbalanced(Map, Servers)
+            end;
+        memcached ->
+            lists:sort(Nodes) /= lists:sort(Servers)
     end.
 
 

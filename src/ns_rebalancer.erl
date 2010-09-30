@@ -35,7 +35,7 @@
 %% effect immediately.
 failover(Node) ->
     lists:foreach(fun (Bucket) -> failover(Bucket, Node) end,
-                  ns_bucket:get_bucket_names()).
+                  ns_bucket:get_bucket_names(membase)).
 
 -spec failover(string(), atom()) -> ok.
 failover(Bucket, Node) ->
@@ -63,14 +63,22 @@ generate_initial_map(NumReplicas, NumVBuckets, Servers, Map) ->
 
 rebalance(KeepNodes, EjectNodes, FailedNodes) ->
     AllNodes = KeepNodes ++ EjectNodes ++ FailedNodes,
-    Buckets = ns_bucket:get_bucket_names(),
+    BucketConfigs = ns_bucket:get_buckets(),
+    MembaseBuckets = [Name || {Name, Config} <- BucketConfigs,
+                              proplists:get_value(type, Config) == membase],
+    MemcachedBuckets = [Name || {Name, Config} <- BucketConfigs,
+                                proplists:get_value(type, Config) == memcached],
+    lists:foreach(fun (Bucket) ->
+                          ns_bucket:set_servers(Bucket, KeepNodes)
+                  end, MemcachedBuckets),
     lists:foreach(fun (Bucket) ->
                           wait_for_memcached(AllNodes -- FailedNodes, Bucket),
                           ns_janitor:cleanup(Bucket)
                   end,
-                  Buckets),
+                  MembaseBuckets),
     DeactivateNodes = EjectNodes ++ FailedNodes,
-    rebalance(Buckets, length(Buckets), KeepNodes, DeactivateNodes),
+    rebalance(MembaseBuckets, length(MembaseBuckets), KeepNodes,
+              DeactivateNodes),
     %% Leave myself last
     LeaveNodes = lists:delete(node(), DeactivateNodes),
     lists:foreach(fun (N) ->
