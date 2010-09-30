@@ -163,6 +163,19 @@ var OverviewSection = {
     })
     this.statsToRenderCell.subscribeValue($m(this, 'onStatsValue'));
   },
+  plotGraph: function (graphJQ, stats, attr) {
+    plotStatGraph(graphJQ, stats, attr, {
+      processPlotOptions: function (plotOptions, plotData) {
+        var t0 = plotData[0][0];
+        var t1 = plotData[plotData.length-1][0];
+        if (t1 - t0 < 300000) {
+          plotOptions.xaxis.ticks = [t0, t1];
+          plotOptions.xaxis.tickSize = [null, "minute"];
+        }
+        return plotOptions;
+      }
+    });
+  },
   onStatsValue: function (stats) {
     var haveStats = true;
     if (!stats || DAO.cells.mode.value != 'overview')
@@ -173,8 +186,8 @@ var OverviewSection = {
     var item = $('#overview_ops_graph').parent().parent();
     if (haveStats) {
       item.removeClass('no-samples-yet');
-      plotStatGraph($('#overview_ops_graph'), stats, 'ops');
-      plotStatGraph($('#overview_reads_graph'), stats, 'ep_io_num_read');
+      this.plotGraph($('#overview_ops_graph'), stats, 'ops');
+      this.plotGraph($('#overview_reads_graph'), stats, 'ep_io_num_read');
     } else {
       item.addClass('no-samples-yet');
     }

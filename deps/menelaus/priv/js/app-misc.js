@@ -945,10 +945,13 @@ function plotStatGraph(graphJQ, stats, attr, options) {
   var tstamps = stats.timestamp;
 
   // not enough data
-  if (tstamps.length < 2)
-    return;
+  if (tstamps.length < 2) {
+    tstamps = [];
+    data = [];
+  }
 
-  var maxY = -1/0;
+  var plusInf = -1/0;
+  var maxY = plusInf;
 
   var decimation = 1;
 
@@ -968,7 +971,7 @@ function plotStatGraph(graphJQ, stats, attr, options) {
     return [x, e];
   });
 
-  if (maxY == 0)
+  if (maxY == 0 || maxY == plusInf)
     maxY = 1;
 
   // this is ripped out of jquery.flot which is MIT licensed
@@ -1109,6 +1112,10 @@ function plotStatGraph(graphJQ, stats, attr, options) {
         ]
       }
     }
+  }
+
+  if (options.processPlotOptions) {
+    plotOptions = options.processPlotOptions(plotOptions, plotData);
   }
 
   $.plot(graphJQ,

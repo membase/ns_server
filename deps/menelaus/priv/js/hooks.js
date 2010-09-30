@@ -383,10 +383,12 @@ var MockedRequest = mkClass({
     var samplesInterval = 1000;
 
     switch (zoom) {
+    case 'minute':
+      break;
     case 'hour':
       samplesInterval = 60000;
       break;
-    case 'day':
+    default:
       samplesInterval = 1440000;
     }
 
@@ -422,6 +424,12 @@ var MockedRequest = mkClass({
         for (var statName in samples) {
           samples[statName] = samples[statName].slice(index+1);
         }
+      }
+    }
+
+    if (zoom == 'month') {
+      for (var key in samples) {
+        samples[key] = [];
       }
     }
 
