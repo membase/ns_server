@@ -214,7 +214,7 @@ var ServersSection = {
   },
   renderUsage: function (e, totals, withQuotaTotal) {
     var options = {
-      topAttrs: {class: "usage-block"},
+      topAttrs: {'class': "usage-block"},
       topRight: ['Total', ViewHelpers.formatMemSize(totals.total)],
       items: [
         {name: 'In Use',
