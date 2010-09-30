@@ -470,7 +470,11 @@ build_nodes_info(MyPool, IncludeOtp, InfoLevel, LocalAddr) ->
 build_nodes_info(MyPool, IncludeOtp, InfoLevel, LocalAddr, WantENodes) ->
     OtpCookie = list_to_binary(atom_to_list(ns_node_disco:cookie_get())),
     NodeStatuses = ns_doctor:get_nodes(),
-    BucketsAll = ns_bucket:get_buckets(),
+    %% Don't hit the config server unnecessarily
+    BucketsAll = case InfoLevel of
+                     stable -> undefined;
+                     normal -> ns_bucket:get_buckets()
+                 end,
     Nodes =
         lists:map(
           fun(WantENode) ->
