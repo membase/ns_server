@@ -36,8 +36,8 @@
          loop/3,
          webconfig/0,
          restart/0,
-         build_nodes_info/4,
-         build_nodes_info/5,
+         build_nodes_info/0,
+         build_nodes_info_fun/3,
          handle_streaming/3,
          is_system_provisioned/0]).
 
@@ -426,8 +426,8 @@ is_healthy(InfoNode) ->
     not proplists:get_bool(down, InfoNode).
 
 build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
-    MyPool = fakepool,
-    Nodes = build_nodes_info(MyPool, menelaus_auth:check_auth(UserPassword), InfoLevel, LocalAddr),
+    F = build_nodes_info_fun(menelaus_auth:check_auth(UserPassword), InfoLevel, LocalAddr),
+    Nodes = [F(N, undefined) || N <- ns_node_disco:nodes_wanted()],
     BucketsInfo = {struct, [{uri,
                              list_to_binary(concat_url_path(["pools", Id, "buckets"]))}]},
     RebalanceStatus = case ns_cluster_membership:get_rebalance_status() of
@@ -463,11 +463,11 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
         end,
     {struct, PropList}.
 
-build_nodes_info(MyPool, IncludeOtp, InfoLevel, LocalAddr) ->
-    build_nodes_info(MyPool, IncludeOtp, InfoLevel, LocalAddr,
-                     ns_node_disco:nodes_wanted()).
+build_nodes_info() ->
+    F = build_nodes_info_fun(true, normal, "127.0.0.1"),
+    [F(N, undefined) || N <- ns_node_disco:nodes_wanted()].
 
-build_nodes_info(MyPool, IncludeOtp, InfoLevel, LocalAddr, WantENodes) ->
+build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr) ->
     OtpCookie = list_to_binary(atom_to_list(ns_node_disco:cookie_get())),
     NodeStatuses = ns_doctor:get_nodes(),
     %% Don't hit the config server unnecessarily
@@ -475,39 +475,56 @@ build_nodes_info(MyPool, IncludeOtp, InfoLevel, LocalAddr, WantENodes) ->
                      stable -> undefined;
                      normal -> ns_bucket:get_buckets()
                  end,
-    Nodes =
-        lists:map(
-          fun(WantENode) ->
-                  InfoNode = case dict:find(WantENode, NodeStatuses) of
-                                 {ok, Info} -> Info;
-                                 error -> [down]
-                             end,
-                  KV = build_node_info(MyPool, WantENode, InfoNode, LocalAddr),
-                  Status = case is_healthy(InfoNode) of
-                               true -> <<"healthy">>;
-                               false -> <<"unhealthy">>
-                           end,
-                  KV1 = [{clusterMembership, atom_to_binary(ns_cluster_membership:get_cluster_membership(WantENode),
-                                                            latin1)},
-                         {status, Status}] ++ KV,
-                  KV2 = case IncludeOtp of
-                               true ->
-                                   KV1 ++ [{otpNode,
-                                            list_to_binary(
-                                              atom_to_list(WantENode))},
-                                           {otpCookie, OtpCookie}];
-                               false -> KV1
-                        end,
-                  KV3 = case InfoLevel of
-                            stable -> KV2;
-                            normal -> build_extra_node_info(WantENode, InfoNode, BucketsAll, KV2)
-                        end,
-                  {struct, KV3}
-          end,
-          WantENodes),
-    Nodes.
+    Config = ns_config:get(),
+    fun(WantENode, Bucket) ->
+            InfoNode = case dict:find(WantENode, NodeStatuses) of
+                           {ok, Info} -> Info;
+                           error -> [down]
+                       end,
+            KV = build_node_info(Config, WantENode, InfoNode, LocalAddr),
+            Status = case is_healthy(InfoNode) of
+                         true ->
+                             case Bucket of
+                                 undefined ->
+                                     <<"healthy">>;
+                                 _ ->
+                                     case lists:member(
+                                            Bucket,
+                                            proplists:get_value(
+                                              active_buckets, InfoNode)) of
+                                         true ->
+                                             <<"healthy">>;
+                                         false ->
+                                             <<"unhealthy">>
+                                     end
+                             end;
+                         false ->
+                             <<"unhealthy">>
+                     end,
+            KV1 = [{clusterMembership,
+                    atom_to_binary(
+                      ns_cluster_membership:get_cluster_membership(
+                        WantENode, Config),
+                      latin1)},
+                   {status, Status}] ++ KV,
+            KV2 = case IncludeOtp of
+                      true ->
+                          KV1 ++ [{otpNode,
+                                   list_to_binary(
+                                     atom_to_list(WantENode))},
+                                  {otpCookie, OtpCookie}];
+                      false -> KV1
+                  end,
+            KV3 = case InfoLevel of
+                      stable -> KV2;
+                      normal -> build_extra_node_info(Config, WantENode,
+                                                      InfoNode, BucketsAll,
+                                                      KV2)
+                  end,
+            {struct, KV3}
+    end.
 
-build_extra_node_info(Node, InfoNode, _BucketsAll, Append) ->
+build_extra_node_info(Config, Node, InfoNode, _BucketsAll, Append) ->
     {UpSecs, {MemoryTotal, MemoryAlloced, _}} =
         {proplists:get_value(wall_clock, InfoNode, 0),
          proplists:get_value(memory_data, InfoNode,
@@ -523,7 +540,7 @@ build_extra_node_info(Node, InfoNode, _BucketsAll, Append) ->
     %%                 0,
     %%                 BucketsAll),
     NodesBucketMemoryTotal = case ns_config:search_node_prop(Node,
-                                                             ns_config:get(),
+                                                             Config,
                                                              memcached,
                                                              max_size) of
                                  X when is_integer(X) -> X;
@@ -544,12 +561,12 @@ get_node_info(WantENode) ->
         error -> [stale]
     end.
 
-build_node_info(_MyPool, WantENode, InfoNode, LocalAddr) ->
+
+build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
     Host = case misc:node_name_host(WantENode) of
                {_, "127.0.0.1"} -> LocalAddr;
                {_Name, H} -> H
            end,
-    Config = ns_config:get(),
     DirectPort = ns_config:search_node_prop(WantENode, Config, memcached, port),
     ProxyPort = ns_config:search_node_prop(WantENode, Config, moxi, port),
     Versions = proplists:get_value(version, InfoNode, []),
@@ -558,12 +575,11 @@ build_node_info(_MyPool, WantENode, InfoNode, LocalAddr) ->
     HostName = Host ++ ":" ++
                integer_to_list(ns_config:search_node_prop(WantENode, Config,
                                                           rest, port, 8091)),
-    V = [{hostname, list_to_binary(HostName)},
-         {version, list_to_binary(Version)},
-         {os, list_to_binary(OS)},
-         {ports, {struct, [{proxy, ProxyPort},
-                           {direct, DirectPort}]}}],
-    V.
+    [{hostname, list_to_binary(HostName)},
+     {version, list_to_binary(Version)},
+     {os, list_to_binary(OS)},
+     {ports, {struct, [{proxy, ProxyPort},
+                       {direct, DirectPort}]}}].
 
 handle_pool_info_streaming(Id, Req) ->
     UserPassword = menelaus_auth:extract_auth(Req),
@@ -863,7 +879,7 @@ handle_settings_advanced(Req) ->
                        {struct, menelaus_alert:build_alerts_settings()}},
                       {ports,
                        {struct, build_port_settings("default")}}
-                      ]}).
+                     ]}).
 
 handle_settings_advanced_post(Req) ->
     PostArgs = Req:parse_post(),
@@ -1002,13 +1018,14 @@ handle_node("self", Req)            -> handle_node("default", node(), Req);
 handle_node(S, Req) when is_list(S) -> handle_node("default", list_to_atom(S), Req).
 
 handle_node(_PoolId, Node, Req) ->
-    MyPool = fakepool,
     LocalAddr = menelaus_util:local_addr(Req),
     case lists:member(Node, ns_node_disco:nodes_wanted()) of
         true ->
             InfoNode = get_node_info(Node),
-            KV = build_extra_node_info(Node, InfoNode, ns_bucket:get_buckets(),
-                                       build_node_info(MyPool, Node, InfoNode, LocalAddr)),
+            Config = ns_config:get(),
+            BucketConfigs = ns_bucket:get_buckets(Config),
+            KV = build_extra_node_info(Config, Node, InfoNode, BucketConfigs,
+                                       build_node_info(Config, Node, InfoNode, LocalAddr)),
             MemQuota = case ns_storage_conf:memory_quota(Node) of
                            undefined -> <<"">>;
                            Y    -> Y

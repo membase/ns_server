@@ -146,7 +146,7 @@ handle_diag(Req) ->
     Logs = lists:flatmap(fun ({struct, Entry}) -> diag_format_log_entry(Entry) end,
                          menelaus_alert:build_logs([{"limit", "1000000"}])),
     Infos = [["per_node_diag = ~p", diag_multicall(?MODULE, do_diag_per_node, [])],
-             ["nodes_info = ~p", menelaus_web:build_nodes_info(fakepool, true, normal, "127.0.0.1")],
+             ["nodes_info = ~p", menelaus_web:build_nodes_info()],
              ["buckets = ~p", Buckets],
              ["logs:~n-------------------------------~n~s", Logs],
              ["logs_node:~n-------------------------------~n"]],

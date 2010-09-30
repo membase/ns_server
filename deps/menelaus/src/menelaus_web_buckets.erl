@@ -68,25 +68,24 @@ handle_bucket_list(Id, Req) ->
     BucketNames = lists:sort(fun (A,B) -> A =< B end,
                              all_accessible_bucket_names(fakepool, Req)),
     LocalAddr = menelaus_util:local_addr(Req),
-    BucketsInfo = [build_bucket_info(Id, Name, fakepool, undefined, LocalAddr)
+    BucketsInfo = [build_bucket_info(Id, Name, undefined, LocalAddr)
                    || Name <- BucketNames],
     reply_json(Req, BucketsInfo).
 
-handle_bucket_info(PoolId, Id, Req, Pool, Bucket) ->
-    reply_json(Req, build_bucket_info(PoolId, Id, Pool, Bucket,
+handle_bucket_info(PoolId, Id, Req, _Pool, Bucket) ->
+    reply_json(Req, build_bucket_info(PoolId, Id, Bucket,
                                       menelaus_util:local_addr(Req))).
 
-build_bucket_info(PoolId, Id, Pool, Bucket, LocalAddr) ->
-    build_bucket_info(PoolId, Id, Pool, Bucket, normal, LocalAddr).
+build_bucket_info(PoolId, Id, Bucket, LocalAddr) ->
+    build_bucket_info(PoolId, Id, Bucket, normal, LocalAddr).
 
-build_bucket_info(PoolId, Id, Pool, undefined, InfoLevel, LocalAddr) ->
+build_bucket_info(PoolId, Id, undefined, InfoLevel, LocalAddr) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(Id),
-    build_bucket_info(PoolId, Id, Pool, BucketConfig, InfoLevel, LocalAddr);
-build_bucket_info(PoolId, Id, Pool, BucketConfig, InfoLevel, LocalAddr) ->
+    build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr);
+build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
     %% Only list nodes this bucket is mapped to
-    Nodes = menelaus_web:build_nodes_info(
-              Pool, false, InfoLevel, LocalAddr,
-              proplists:get_value(servers, BucketConfig, [])),
+    F = menelaus_web:build_nodes_info_fun(false, InfoLevel, LocalAddr),
+    Nodes = [F(N, Id) || N <- proplists:get_value(servers, BucketConfig, [])],
     StatsUri = list_to_binary(concat_url_path(["pools", PoolId, "buckets", Id, "stats"])),
     Suffix = case InfoLevel of
                  stable -> [];
@@ -125,17 +124,29 @@ build_bucket_info(PoolId, Id, Pool, BucketConfig, InfoLevel, LocalAddr) ->
 handle_sasl_buckets_streaming(_PoolId, Req) ->
     LocalAddr = menelaus_util:local_addr(Req),
     F = fun (_) ->
+                NF = menelaus_web:build_nodes_info_fun(false, stable,
+                                                       LocalAddr),
                 SASLBuckets = lists:filter(
                                 fun ({_, BucketInfo}) ->
                                         ns_bucket:auth_type(BucketInfo) =:= sasl
                                 end, ns_bucket:get_buckets()),
                 List = lists:map(
                          fun ({Name, BucketInfo}) ->
-                                 MapStruct = ns_bucket:json_map(Name,
-                                                                LocalAddr),
+                                 MapStruct = ns_bucket:json_map_from_config(
+                                               Name, LocalAddr, BucketInfo),
+                                 BucketNodes =
+                                     [NF(Node, Name)
+                                      || Node <- ns_bucket:bucket_nodes(
+                                                   BucketInfo)],
                                  {struct, [{name, list_to_binary(Name)},
                                            {nodeLocator,
                                             ns_bucket:node_locator(BucketInfo)},
+                                           {saslPassword,
+                                            list_to_binary(
+                                              proplists:get_value(
+                                                sasl_password, BucketInfo,
+                                                ""))},
+                                           {nodes, BucketNodes},
                                            {vBucketServerMap, MapStruct}]}
                                  end, SASLBuckets),
                 {struct, [{buckets, List}]}
@@ -143,15 +154,9 @@ handle_sasl_buckets_streaming(_PoolId, Req) ->
     menelaus_web:handle_streaming(F, Req, undefined).
 
 handle_bucket_info_streaming(PoolId, Id, Req) ->
-    handle_bucket_info_streaming(PoolId, Id, Req, stable).
-
-handle_bucket_info_streaming(PoolId, Id, Req, ForceInfoLevel) ->
     LocalAddr = menelaus_util:local_addr(Req),
-    F = fun(InfoLevel) ->
-                case ForceInfoLevel of
-                    undefined -> build_bucket_info(PoolId, Id, fakepool, undefined, InfoLevel, LocalAddr);
-                    _         -> build_bucket_info(PoolId, Id, fakepool, undefined, ForceInfoLevel, LocalAddr)
-                end
+    F = fun(_InfoLevel) ->
+                build_bucket_info(PoolId, Id, undefined, stable, LocalAddr)
         end,
     menelaus_web:handle_streaming(F, Req, undefined).
 
@@ -276,9 +281,7 @@ handle_setup_default_bucket_post(Req) ->
             end;
         {true, {ok, _, JSONSummaries}} ->
             reply_json(Req, {struct, [{errors, {struct, []}},
-                                      {summaries, {struct, JSONSummaries}}]}, 200);
-        _ ->
-            Req:respond({200, server_header(), []})
+                                      {summaries, {struct, JSONSummaries}}]}, 200)
     end.
 
 -record(ram_summary, {
@@ -339,10 +342,7 @@ parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals,
                                              UsageGetter)
                  end,
     HDDSummary = interpret_hdd_quota(CurrentBucket, OKs, ClusterStorageTotals, UsageGetter),
-    JSONSummaries = [X || X <- [case RAMSummary of
-                                    undefined -> undefined;
-                                    _ -> {ramSummary, {struct, ram_summary_to_proplist(RAMSummary)}}
-                                end,
+    JSONSummaries = [X || X <- [{ramSummary, {struct, ram_summary_to_proplist(RAMSummary)}},
                                 {hddSummary, {struct, hdd_summary_to_proplist(HDDSummary)}}],
                           X =/= undefined],
     Errors2 = case {CurrentBucket, IsNew} of
@@ -360,8 +360,6 @@ parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals,
               end,
     RAMErrors =
         if
-            RAMSummary =:= undefined ->
-                [];
             RAMSummary#ram_summary.free < 0 ->
                 [{ramQuotaMB, <<"This bucket doesn't fit cluster RAM quota">>}];
             RAMSummary#ram_summary.this_alloc < RAMSummary#ram_summary.this_used ->
