@@ -933,3 +933,186 @@ function memorySizesGaugeHTML(options) {
   }
   return usageGaugeHTML(newOptions);
 }
+
+
+function plotStatGraph(graphJQ, stats, attr, options) {
+  options = _.extend({
+    color: '#1d88ad',
+    verticalMargin: 1.15,
+    targetPointsCount: 120
+  }, options || {});
+  var data = stats[attr];
+  var tstamps = stats.timestamp;
+
+  // not enough data
+  if (tstamps.length < 2)
+    return;
+
+  var maxY = -1/0;
+
+  var decimation = 1;
+
+  while (data.length / decimation >= options.targetPointsCount) {
+    decimation <<= 1;
+  }
+
+  if (decimation != 1) {
+    tstamps = decimateNoFilter(decimation, tstamps);
+    data = decimateSamples(decimation, data);
+  }
+
+  var plotData = _.map(data, function (e, i) {
+    var x = tstamps[i];
+    if (e >= maxY)
+      maxY = e;
+    return [x, e];
+  });
+
+  if (maxY == 0)
+    maxY = 1;
+
+  // this is ripped out of jquery.flot which is MIT licensed
+  // Tweaks are mine. Bugs too.
+  var yTicks = (function () {
+    var delta = maxY / 5;
+
+    if (delta == 0.0)
+      return [0, 1];
+
+    var size, magn, norm;
+
+    // pretty rounding of base-10 numbers
+    var dec = -Math.floor(Math.log(delta) / Math.LN10);
+
+    magn = Math.pow(10, -dec);
+    norm = delta / magn; // norm is between 1.0 and 10.0
+
+    if (norm < 1.5)
+      size = 1;
+    else if (norm < 3) {
+      size = 2;
+      // special case for 2.5, requires an extra decimal
+      if (norm > 2.25) {
+        size = 2.5;
+      }
+    }
+    else if (norm < 7.5)
+      size = 5;
+    else
+      size = 10;
+
+    size *= magn;
+
+    var ticks = [];
+
+    // spew out all possible ticks
+    var start = 0,
+    i = 0, v = Number.NaN, prev;
+    do {
+      prev = v;
+      v = start + i * size;
+      ticks.push(v);
+      if (v >= maxY || v == prev)
+        break;
+      ++i;
+    } while (true);
+
+    return ticks;
+  })();
+
+  if (options.verticalMargin == null)
+    var graphMax = maxY;
+  else
+    var graphMax = yTicks[yTicks.length-1] * options.verticalMargin;
+
+  var preparedQ = ViewHelpers.prepareQuantity(yTicks[yTicks.length-1], 1000);
+
+  function xTickFormatter(val, axis) {
+    var unit = axis.tickSize[1];
+
+    var date = new Date(val);
+
+    function fd(value, base) {
+      return String(value + base).slice(1);
+    }
+
+    function formatWithMinutes() {
+      var hours = date.getHours();
+      var mins = date.getMinutes();
+      var am = (hours > 1 && hours < 13);
+      if (!am) {
+        if (hours == 0)
+          hours = 12;
+        else
+          hours -= 12;
+      }
+      if (hours == 12)
+        am = !am;
+      var formattedHours = fd(hours, 100);
+      var formattedMins = fd(mins, 100);
+
+      return formattedHours + ":" + formattedMins + (am ? 'am' : 'pm');
+    }
+
+    function formatDate() {
+      var monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return [monthNames[date.getMonth()], String(fd(date.getDate(), 100))].join(' ')
+    }
+
+    var rv;
+    switch (unit) {
+    case 'minute':
+    case 'second':
+      rv = formatWithMinutes();
+      if (unit == 'second')
+        rv = rv.slice(0, -2) + ':' + fd(date.getSeconds(), 100) + rv.slice(-2)
+      break;
+    case 'hour':
+      rv = [formatDate(), formatWithMinutes()].join(' ');
+      break;
+    case 'day':
+      rv = formatDate();
+      break;
+    default:
+      rv = fd(date.getFullYear(), 1000);
+    }
+
+    return rv;
+  }
+
+  var plotOptions = {
+    xaxis: {
+      tickFormatter: xTickFormatter,
+      mode: 'time',
+      ticks: 4
+    }, yaxis: {
+      tickFormatter: function (val, axis) {
+        if (val == 0)
+          return '0';
+        return [truncateTo3Digits(val/preparedQ[0]), preparedQ[1]].join('');
+      },
+      min: 0,
+      max: graphMax,
+      ticks: yTicks
+    },
+    grid: {
+      borderWidth: 0,
+      markings: function (opts) {
+        // { xmin: , xmax: , ymin: , ymax: , xaxis: , yaxis: , x2axis: , y2axis:  };
+        return [
+          {xaxis: {from: opts.xmin, to: opts.xmax},
+           yaxis: {from: opts.ymin, to: opts.ymin},
+           color: 'black'},
+          {xaxis: {from: opts.xmin, to: opts.xmin},
+           yaxis: {from: opts.ymin, to: opts.ymax},
+           color: 'black'}
+        ]
+      }
+    }
+  }
+
+  $.plot(graphJQ,
+         [{color: options.color,
+           data: plotData}],
+         plotOptions);
+}
