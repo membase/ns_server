@@ -120,24 +120,24 @@ build_bucket_info(PoolId, Id, Pool, BucketConfig, InfoLevel, LocalAddr) ->
                                                               "buckets", Id, "controller", "doFlush"]))},
               {nodes, Nodes},
               {stats, {struct, [{uri, StatsUri}]}},
-              {nodeLocator, case BucketType of
-                                membase ->
-                                    vbucket;
-                                memcached ->
-                                    ketama
-                            end}
+              {nodeLocator, ns_bucket:node_locator(BucketConfig)}
               | Suffix1]}.
 
 handle_sasl_buckets_streaming(_PoolId, Req) ->
     LocalAddr = menelaus_util:local_addr(Req),
     F = fun (_) ->
-                SASLBuckets = lists:filter(fun ({_, BucketInfo}) ->
-                                                   ns_bucket:auth_type(BucketInfo) =:= sasl
-                                           end, ns_bucket:get_buckets()),
-                List = lists:map(fun ({Name, _BucketInfo}) ->
-                                         MapStruct = ns_bucket:json_map(Name, LocalAddr),
-                                         {struct, [{name, list_to_binary(Name)},
-                                                   {vBucketServerMap, MapStruct}]}
+                SASLBuckets = lists:filter(
+                                fun ({_, BucketInfo}) ->
+                                        ns_bucket:auth_type(BucketInfo) =:= sasl
+                                end, ns_bucket:get_buckets()),
+                List = lists:map(
+                         fun ({Name, BucketInfo}) ->
+                                 MapStruct = ns_bucket:json_map(Name,
+                                                                LocalAddr),
+                                 {struct, [{name, list_to_binary(Name)},
+                                           {nodeLocator,
+                                            ns_bucket:node_locator(BucketInfo)},
+                                           {vBucketServerMap, MapStruct}]}
                                  end, SASLBuckets),
                 {struct, [{buckets, List}]}
         end,
