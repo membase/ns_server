@@ -797,9 +797,9 @@
                 // the allowed tick sizes, after 1 year we use
                 // an integer algorithm
                 var spec = [
-                    [1, "second"], [2, "second"], [5, "second"], [10, "second"],
+                  [1, "second"], [2, "second"], [5, "second"], [10, "second"], [15, "second"],
                     [30, "second"], 
-                    [1, "minute"], [2, "minute"], [5, "minute"], [10, "minute"],
+                  [1, "minute"], [2, "minute"], [5, "minute"], [10, "minute"], [15, "minute"],
                     [30, "minute"], 
                     [1, "hour"], [2, "hour"], [4, "hour"],
                     [8, "hour"], [12, "hour"],
