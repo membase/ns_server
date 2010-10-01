@@ -1040,7 +1040,7 @@ ul.tabs .alert_num_display .alert_num {display:block;}
 /*body table*/.buckets_tab td {background:none #eee;border-bottom:1px solid #ced5d9; padding:0 10px;border-right:0px; text-align:center;}
 /*body table*/.buckets_tab tr td:first-child {text-align:left;}
  .buckets_tab td > table td {padding:0 5px;width:150px;}
- .buckets_tab td > table td:first-child {width:188px;}
+ .buckets_tab td > table td:first-child {width:132px;padding:0 5px 0 61px;background:url(../images/icons.png) -7px -93px no-repeat #eee;}
  .buckets_tab td > table td:first-child+td {width:97px;}
  .buckets_tab td > table td:first-child+td+td+td {width:126px;}
 
@@ -1048,7 +1048,7 @@ ul.tabs .alert_num_display .alert_num {display:block;}
 .buckets_tab tr:first-child th:first-child span {display:block; white-space:nowrap; padding:0 0 0 56px;*padding-right:25px; text-align:left;}
 .buckets_tab tr:first-child th i {font-style:normal;position:relative;}
 .buckets_tab tr:first-child th.last {border-right:1px solid #d9dce0;*border-right-width:2px;}
-.bucket_name {display:block; float:left; height:68px; line-height:69px; font-size:12px; font-weight:bolder; padding:0 0 0 56px; background:url(../images/icons.png) -12px -93px no-repeat;}
+.bucket_name {/*display:block;margin:0 0 0 56px;*/font-weight:bolder;}
 .buckets_tab .settings-placeholder td .pad {padding:10px 0 10px 56px; background:none;}
 .buckets_tab .settings-placeholder td > .pad {width:685px;overflow:hidden;}
 .buckets_tab .settings-placeholder td .pad .pad {padding:10px 10px 10px 4px !important;min-height:52px;}
@@ -1059,7 +1059,7 @@ ul.tabs .alert_num_display .alert_num {display:block;}
 .buckets_tab .gong_rb .side {background-image:url(../images/gong_rb_2.gif);}
 
 .buckets_tab .bucket_info {padding:0;}
-.buckets_tab .bucket_info > table .highlight td {background:#eee;}
+.buckets_tab .bucket_info > table .highlight td {height:68px;background-color:#eee;}
 .bucket_properties_table {width:550px;}
 .bucket_properties_table tr td {padding:0 0 2px 5px;text-align:left !important; vertical-align:top !important; color:#444245; line-height:16px; background:none !important; border:0px !important;}
 .buckets_tab table.label {float:left;margin:2px 0 0;}

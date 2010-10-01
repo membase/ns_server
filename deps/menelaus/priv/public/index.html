@@ -443,7 +443,7 @@
           <!-- {% $.each(rows, function () { %} -->
           <tr>
               <td>
-              <a class="gray_link bucket_name_" href="#visitStats={%=h(this.uri)%}">{%= h(this.name) %}</a>
+              <a class="bucket_name_" href="#visitStats={%=h(this.uri)%}">{%= h(this.name) %}</a>
               <!-- className 'bucket_name' goesWith '_' to desable thisStyle forNow -->
               </td>
               <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
@@ -498,7 +498,7 @@
             <tr>
 				<td colspan="6" class="bucket_info">
 				  <table><tr>
-					  <td><a class="gray_link bucket_name" href="#visitBucket={%=h(this.name)%}">{%= h(this.name) %}</a></td>
+					  <td><a class="bucket_name" href="#visitBucket={%=h(this.name)%}">{%= h(this.name) %}</a></td>
 		              <td>{%= h(this.bucketTypeName) %} </td>
 		              <td>{%= V.count(this.serversCount, 'server') %}</td>
 		              <td>{%= V.formatQuantity(this.basicStats.memUsed) %}/{%= V.formatQuantity(this.quota.ram) %}</td>
