@@ -130,25 +130,31 @@ handle_sasl_buckets_streaming(_PoolId, Req) ->
                                 fun ({_, BucketInfo}) ->
                                         ns_bucket:auth_type(BucketInfo) =:= sasl
                                 end, ns_bucket:get_buckets()),
-                List = lists:map(
-                         fun ({Name, BucketInfo}) ->
-                                 MapStruct = ns_bucket:json_map_from_config(
-                                               LocalAddr, BucketInfo),
-                                 BucketNodes =
-                                     [NF(Node, Name)
-                                      || Node <- ns_bucket:bucket_nodes(
-                                                   BucketInfo)],
-                                 {struct, [{name, list_to_binary(Name)},
-                                           {nodeLocator,
-                                            ns_bucket:node_locator(BucketInfo)},
-                                           {saslPassword,
-                                            list_to_binary(
-                                              proplists:get_value(
-                                                sasl_password, BucketInfo,
-                                                ""))},
-                                           {nodes, BucketNodes},
-                                           {vBucketServerMap, MapStruct}]}
-                                 end, SASLBuckets),
+                List =
+                    lists:map(
+                      fun ({Name, BucketInfo}) ->
+                              BucketNodes =
+                                  [NF(Node, Name)
+                                   || Node <- ns_bucket:bucket_nodes(
+                                                BucketInfo)],
+                              VBM = case ns_bucket:bucket_type(BucketInfo) of
+                                        membase ->
+                                            [{vBucketServerMap,
+                                             ns_bucket:json_map_from_config(
+                                               LocalAddr, BucketInfo)}];
+                                        memcached ->
+                                            []
+                                    end,
+                              {struct, [{name, list_to_binary(Name)},
+                                        {nodeLocator,
+                                         ns_bucket:node_locator(BucketInfo)},
+                                        {saslPassword,
+                                         list_to_binary(
+                                           proplists:get_value(
+                                             sasl_password, BucketInfo,
+                                             ""))},
+                                        {nodes, BucketNodes} | VBM]}
+                      end, SASLBuckets),
                 {struct, [{buckets, List}]}
         end,
     menelaus_web:handle_streaming(F, Req, undefined).
