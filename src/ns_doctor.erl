@@ -16,6 +16,7 @@
 -module(ns_doctor).
 
 -define(STALE_TIME, 5000000). % 5 seconds in microseconds
+-define(LOG_INTERVAL, 60000). % How often to dump current status to the logs
 
 -include("ns_common.hrl").
 
@@ -35,6 +36,7 @@ start_link() ->
 
 init([]) ->
     self() ! acquire_initial_status,
+    timer:send_interval(?LOG_INTERVAL, log),
     {ok, #state{nodes=dict:new()}}.
 
 handle_call(get_nodes, _From, #state{nodes=Nodes} = State) ->
@@ -73,8 +75,13 @@ handle_info(acquire_initial_status, #state{nodes=NodeDict} = State) ->
     Nodes = lists:foldl(fun ({Node, Status}, Dict) ->
                                 update_status(Node, Status, Dict)
                         end, NodeDict, Replies),
-    ?log_info("Got initial status ~p~n", [Nodes]),
+    ?log_info("Got initial status ~p~n", [lists:sort(dict:to_list(Nodes))]),
     {noreply, State#state{nodes=Nodes}};
+
+handle_info(log, #state{nodes=NodeDict} = State) ->
+    ?log_info("Current node statuses:~n~p",
+              [lists:sort(dict:to_list(NodeDict))]),
+    {noreply, State};
 
 handle_info(Info, State) ->
     ?log_warning("Unexpected message ~p in state",
