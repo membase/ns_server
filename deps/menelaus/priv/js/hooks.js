@@ -131,6 +131,8 @@ var MockedRequest = mkClass({
 
     // we modify that list in place in few actions
     this.bucketsList = this.findResponseFor('GET', ['pools', 'default', 'buckets']);
+    if (__hookParams['singleBucket'])
+      this.bucketsList.splice(1, 100);
   },
   fakeResponse: function (data) {
     if (data instanceof Function) {
