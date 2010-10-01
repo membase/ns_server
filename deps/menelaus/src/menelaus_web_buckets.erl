@@ -22,6 +22,8 @@
 -include("menelaus_web.hrl").
 -include("ns_common.hrl").
 
+-include_lib("eunit/include/eunit.hrl").
+
 -export([all_accessible_bucket_names/2,
          checking_bucket_access/4,
          handle_bucket_list/2,
@@ -381,19 +383,28 @@ parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals,
             {errors, TotalErrors, JSONSummaries}
     end.
 
-basic_bucket_params_screening(IsNew, BucketNames, Params, AllBuckets) ->
+basic_bucket_params_screening(IsNew, BucketName, Params, AllBuckets) ->
+    BucketConfig = case lists:keyfind(BucketName, 1, AllBuckets) of
+                       false -> false;
+                       {_, V} -> V
+                   end,
     AuthType = case proplists:get_value("authType", Params) of
                    "none" -> none;
                    "sasl" -> sasl;
+                   undefined when BucketConfig =/= false ->
+                       ns_bucket:auth_type(BucketConfig);
                    _ -> {crap, <<"invalid authType">>} % this is not for end users
                end,
-    case AuthType of
-        {crap, Crap} -> {[], [{authType, Crap}]};
-        _ -> basic_bucket_params_screening_tail(IsNew, BucketNames, Params, AllBuckets, AuthType)
+    case {IsNew, BucketConfig, AuthType} of
+        {false, false, _} ->
+            {[], [{name, <<"Bucket with given name doesn't exist">>}]};
+        {_, _, {crap, Crap}} ->
+            {[], [{authType, Crap}]};
+        _ -> basic_bucket_params_screening_tail(IsNew, BucketName, Params,
+                                                BucketConfig, AuthType)
     end.
 
-basic_bucket_params_screening_tail(IsNew, BucketName, Params, AllBuckets, AuthType) ->
-    BucketConfig = lists:keyfind(BucketName, 1, AllBuckets),
+basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, AuthType) ->
     Candidates0 = [{ok, name, BucketName},
                    {ok, auth_type, AuthType},
                    case IsNew of
@@ -410,12 +421,8 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, AllBuckets, AuthTy
                                    {error, name, <<"Bucket with given name already exists">>}
                            end;
                        _ ->
-                           case BucketConfig of
-                               false ->
-                                   {error, name, <<"Bucket with given name doesn't exist">>};
-                               {_, X} ->
-                                   {ok, currentBucket, X}
-                           end
+                           true = (BucketConfig =/= false),
+                           {ok, currentBucket, BucketConfig}
                    end,
                    case BucketName of
                        [] ->
@@ -424,18 +431,37 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, AllBuckets, AuthTy
                    end,
                    case AuthType of
                        none ->
-                           case menelaus_util:parse_validate_number(proplists:get_value("proxyPort", Params),
-                                                                    1025, 65535) of
-                               {ok, PP} -> {ok, moxi_port, PP};
-                               _ -> {error, proxyPort, <<"proxy port is invalid">>}
+                           ProxyPort = proplists:get_value("proxyPort", Params),
+                           case ProxyPort of
+                               undefined when BucketConfig =/= false ->
+                                   case ns_bucket:auth_type(BucketConfig) of
+                                       AuthType -> nothing;
+                                       _ ->
+                                           {error, proxyPort, <<"proxy port is missing">>}
+                                   end;
+                               _ ->
+                                   case menelaus_util:parse_validate_number(ProxyPort,
+                                                                            1025, 65535) of
+                                       {ok, PP} -> {ok, moxi_port, PP};
+                                       _ -> {error, proxyPort, <<"proxy port is invalid">>}
+                                   end
                            end;
                        sasl ->
-                           {ok, sasl_password, proplists:get_value("saslPassword", Params, "")}
+                           SaslPassword = proplists:get_value("saslPassword", Params, ""),
+                           case SaslPassword of
+                               undefined when BucketConfig =/= false ->
+                                   case ns_bucket:auth_type(BucketConfig) of
+                                       AuthType -> nothing;
+                                       _ -> {error, saslPassword, <<"sasl password is missing">>}
+                                   end;
+                               _ ->
+                                   {ok, sasl_password, SaslPassword}
+                           end
                    end,
-                   parse_validate_ram_quota(proplists:get_value("ramQuotaMB", Params))],
+                   parse_validate_ram_quota(proplists:get_value("ramQuotaMB", Params), BucketConfig)],
     BucketType = if
                      (not IsNew) andalso BucketConfig =/= false ->
-                         ns_bucket:bucket_type(element(2, BucketConfig));
+                         ns_bucket:bucket_type(BucketConfig);
                      true ->
                          case proplists:get_value("bucketType", Params) of
                              "memcached" -> memcached;
@@ -555,7 +581,9 @@ parse_validate_replicas_number(NumReplicas) ->
         {ok, X} -> {ok, num_replicas, X}
     end.
 
-parse_validate_ram_quota(Value) ->
+parse_validate_ram_quota(undefined, BucketConfig) when BucketConfig =/= false ->
+    ns_bucket:raw_ram_quota(BucketConfig);
+parse_validate_ram_quota(Value, _BucketConfig) ->
     case menelaus_util:parse_validate_number(Value, 0, undefined) of
         invalid ->
             {error, ramQuotaMB, <<"RAM quota must be a number">>};
@@ -567,3 +595,76 @@ parse_validate_ram_quota(Value) ->
 extended_cluster_storage_info() ->
     [{nodesCount, length(ns_cluster_membership:active_nodes())}
      | ns_storage_conf:cluster_storage_info()].
+
+-ifdef(EUNIT).
+basic_bucket_params_screening_test() ->
+    AllBuckets = [{"mcd",
+                   [{type, memcached},
+                    {num_vbuckets, 16},
+                    {num_replicas, 1},
+                    {ram_quota, 76 * 1048576},
+                    {auth_type, none},
+                    {moxi_port, 33333}]},
+                  {"default",
+                   [{type, membase},
+                    {num_vbuckets, 16},
+                    {num_replicas, 1},
+                    {ram_quota, 512 * 1048576},
+                    {auth_type, sasl},
+                    {sasl_password, ""}]},
+                  {"third",
+                   [{type, membase},
+                    {num_vbuckets, 16},
+                    {num_replicas, 1},
+                    {ram_quota, 768 * 1048576},
+                    {auth_type, sasl},
+                    {sasl_password, "asdasd"}]}],
+    %% it is possible to create bucket with ok params
+    {_OK1, E1} = basic_bucket_params_screening(true, "mcd",
+                                               [{"bucketType", "membase"},
+                                                {"authType", "sasl"}, {"saslPassword", ""},
+                                                {"ramQuotaMB", "400"}, {"replicaNumber", "2"}],
+                                               tl(AllBuckets)),
+    [] = E1,
+
+    %% it is not possible to create bucket with duplicate name
+    {_OK2, E2} = basic_bucket_params_screening(true, "mcd",
+                                              [{"bucketType", "membase"},
+                                               {"authType", "sasl"}, {"saslPassword", ""},
+                                               {"ramQuotaMB", "400"}, {"replicaNumber", "2"}],
+                                              AllBuckets),
+    true = lists:member(name, proplists:get_keys(E2)), % mcd is already present
+
+    %% it is not possible to update missing bucket. And specific format of errors
+    {OK3, E3} = basic_bucket_params_screening(false, "missing",
+                                              [{"bucketType", "membase"},
+                                               {"authType", "sasl"}, {"saslPassword", ""},
+                                               {"ramQuotaMB", "400"}, {"replicaNumber", "2"}],
+                                              AllBuckets),
+    [] = OK3,
+    [name] = proplists:get_keys(E3),
+
+    %% it is not possible to update missing bucket. And specific format of errors
+    {OK4, E4} = basic_bucket_params_screening(false, "missing",
+                                              [],
+                                              AllBuckets),
+    [] = OK4,
+    [name] = proplists:get_keys(E4),
+
+    %% it is not possible to update missing bucket. And specific format of errors
+    {OK5, E5} = basic_bucket_params_screening(false, "missing",
+                                              [{"authType", "some"}],
+                                              AllBuckets),
+    [] = OK5,
+    [name] = proplists:get_keys(E5),
+
+    %% it is possible to update only some fields
+    {OK6, E7} = basic_bucket_params_screening(false, "third",
+                                              [{"bucketType", "membase"},
+                                               {"saslPassword", "password"}],
+                                              AllBuckets),
+    {sasl_password, "password"} = lists:keyfind(sasl_password, 1, OK6),
+    {auth_type, sasl} = lists:keyfind(auth_type, 1, OK6),
+    [] = E7.
+
+-endif.
