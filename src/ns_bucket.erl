@@ -40,7 +40,7 @@
          get_bucket_names/0,
          get_bucket_names/1,
          json_map/2,
-         json_map_from_config/3,
+         json_map_from_config/2,
          set_bucket_config/2,
          is_valid_bucket_name/1,
          create_bucket/3,
@@ -245,9 +245,9 @@ bucket_nodes(Bucket) ->
 
 json_map(BucketId, LocalAddr) ->
     {ok, BucketConfig} = get_bucket(BucketId),
-    json_map_from_config(BucketId, LocalAddr, BucketConfig).
+    json_map_from_config(LocalAddr, BucketConfig).
 
-json_map_from_config(BucketId, LocalAddr, BucketConfig) ->
+json_map_from_config(LocalAddr, BucketConfig) ->
     NumReplicas = num_replicas(BucketConfig),
     Config = ns_config:get(),
     {NumReplicas, _, EMap, BucketNodes} = config_from_info(BucketConfig),
@@ -268,9 +268,7 @@ json_map_from_config(BucketId, LocalAddr, BucketConfig) ->
                                           (N) -> misc:position(N, ENodes) - 1
                                       end, Chain)
                     end, EMap),
-    {struct, [{user, list_to_binary(BucketId)},
-              {password, list_to_binary(sasl_password(BucketConfig))},
-              {hashAlgorithm, <<"CRC">>},
+    {struct, [{hashAlgorithm, <<"CRC">>},
               {numReplicas, NumReplicas},
               {serverList, Servers},
               {vBucketMap, Map}]}.

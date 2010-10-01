@@ -133,7 +133,7 @@ handle_sasl_buckets_streaming(_PoolId, Req) ->
                 List = lists:map(
                          fun ({Name, BucketInfo}) ->
                                  MapStruct = ns_bucket:json_map_from_config(
-                                               Name, LocalAddr, BucketInfo),
+                                               LocalAddr, BucketInfo),
                                  BucketNodes =
                                      [NF(Node, Name)
                                       || Node <- ns_bucket:bucket_nodes(
