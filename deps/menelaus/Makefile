@@ -44,7 +44,7 @@ clean:
 	rm -f TAGS
 
 test: all
-	erl -noshell -pa ./ebin ./deps/*/ebin -boot start_sasl -s menelaus_web test -s menelaus_util test -s menelaus_stats test -s init stop
+	erl -pa ../../ebin ./ebin ./deps/*/ebin -noshell -s t start -s init stop -kernel error_logger silent
 
 bdist: clean all
 	test -d $(DIST_DIR)/deps/menelaus/priv || mkdir -p $(DIST_DIR)/deps/menelaus/priv
