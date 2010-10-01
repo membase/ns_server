@@ -1039,10 +1039,10 @@ ul.tabs .alert_num_display .alert_num {display:block;}
 #buckets .settings-placeholder {display:none; padding:9px 12px 8px 90px;border-top:2px solid #ced5d9;background:#e6e7e8;}
 /*body table*/.buckets_tab td {background:none #eee;border-bottom:1px solid #ced5d9; padding:0 10px;border-right:0px; text-align:center;}
 /*body table*/.buckets_tab tr td:first-child {text-align:left;}
- .buckets_tab td > table td {padding:0 5px;width:150px;}
- .buckets_tab td > table td:first-child {width:132px;padding:0 5px 0 61px;background:url(../images/icons.png) -7px -93px no-repeat #eee;}
- .buckets_tab td > table td:first-child+td {width:97px;}
- .buckets_tab td > table td:first-child+td+td+td {width:126px;}
+ .buckets_tab td > table td {padding:0 5px;width:110px;}
+ .buckets_tab td > table td:first-child {width:155px;padding:0 5px 0 61px;background:url(../images/icons.png) -7px -93px no-repeat #eee;}
+ .buckets_tab td > table td:first-child+td+td {width:155px;}
+ .buckets_tab td > table td:first-child+td+td+td {width:125px;}
 
 .buckets_tab tr:first-child th {background:none #f6f6f7; border-right:0px; border-bottom:1px solid #fff; color:#4d4d4d; font-weight:normal; text-align:center;}
 .buckets_tab tr:first-child th:first-child span {display:block; white-space:nowrap; padding:0 0 0 56px;*padding-right:25px; text-align:left;}
