@@ -22,7 +22,9 @@
 
 -behaviour(gen_server).
 
--define(STATS_TIMER, 1000).
+-define(STATS_TIMER, 1000). % How often in ms we collect stats
+-define(LOG_FREQ, 100).     % Dump every n collections to the log
+-define(WIDTH, 30).         % Width of the key part of the formatted logs
 
 -define(l2r(KeyName),
         l2r(KeyName, V, Rec) ->
@@ -33,7 +35,7 @@
 %% API
 -export([start_link/1]).
 
--record(state, {bucket, counters}).
+-record(state, {bucket, counters, count=?LOG_FREQ}).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2,
@@ -63,7 +65,15 @@ handle_info({tick, TS}, #state{bucket=Bucket, counters=Counters} = State) ->
                 _ ->
                     gen_event:notify(ns_stats_event, {stats, Bucket, Entry})
             end,
-            {noreply, State#state{counters=NewCounters}};
+            Count = case State#state.count of
+                        ?LOG_FREQ ->
+                            ?log_info("Stats for bucket ~p:~n~s",
+                                      [Bucket, format_stats(Stats)]),
+                            1;
+                        C ->
+                            C + 1
+                    end,
+            {noreply, State#state{counters=NewCounters, count=Count}};
         _ ->
             {noreply, State}
     end;
@@ -78,6 +88,12 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 %% Internal functions
+format_stats(Stats) ->
+    erlang:list_to_binary(
+      [[K, lists:duplicate(?WIDTH - byte_size(K), $\s), V, $\n]
+       || {K, V} <- lists:sort(Stats)]).
+
+
 latest_tick(TS) ->
     latest_tick(TS, 0).
 
