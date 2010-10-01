@@ -107,11 +107,11 @@ var OverviewSection = {
           usageAttrs: {'class': 'usage_biggest'},
           topRight: ['Total Cluster Storage', ViewHelpers.formatMemSize(total)],
           items: [
-            {name: 'In use',
+            {name: 'In Use',
              value: usedSpace,
              attrs: {style: "background-position: 0 -31px;"},
              tdAttrs: {style: "color:#1878A2;"}},
-            {name: 'Other data',
+            {name: 'Other Data',
              value: other,
              attrs: {style:"background-position: 0 -124px;"},
              tdAttrs: {style:"color:#C19710;"}},
