@@ -1057,7 +1057,8 @@ ul.tabs .alert_num_display .alert_num {display:block;}
 .buckets_tab .gong_rb .side {background-image:url(../images/gong_rb_2.gif);}
 
 .buckets_tab .bucket_info {padding:0;}
-.buckets_tab .bucket_info > table .highlight td {height:68px;background-color:#eee;}
+.buckets_tab .bucket_info > table {height:68px;}
+.buckets_tab .bucket_info > table .highlight td {background-color:#eee !important;}
 .bucket_properties_table {width:550px;}
 .bucket_properties_table tr td {padding:0 0 2px 5px;text-align:left !important; vertical-align:top !important; color:#444245; line-height:16px; background:none !important; border:0px !important;}
 .buckets_tab table.label {float:left;margin:2px 0 0;}
