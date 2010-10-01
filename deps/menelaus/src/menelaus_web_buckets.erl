@@ -481,7 +481,14 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, Auth
                              if
                                  RAMQuotaMB < MinQuota * 1048576 ->
                                      {error, ramQuotaMB, Msg};
-                                 true -> ok
+                                 IsNew =/= true andalso BucketConfig =/= false andalso BucketType =:= memcached ->
+                                     case ns_bucket:raw_ram_quota(BucketConfig) of
+                                         RAMQuotaMB -> ok;
+                                         _ ->
+                                             {error, ramQuotaMB, <<"cannot change quota of memcached buckets">>}
+                                     end;
+                                 true ->
+                                     ok
                              end;
                          _ -> ok
                      end,
@@ -659,12 +666,20 @@ basic_bucket_params_screening_test() ->
     [name] = proplists:get_keys(E5),
 
     %% it is possible to update only some fields
-    {OK6, E7} = basic_bucket_params_screening(false, "third",
+    {OK6, E6} = basic_bucket_params_screening(false, "third",
                                               [{"bucketType", "membase"},
                                                {"saslPassword", "password"}],
                                               AllBuckets),
     {sasl_password, "password"} = lists:keyfind(sasl_password, 1, OK6),
     {auth_type, sasl} = lists:keyfind(auth_type, 1, OK6),
-    [] = E7.
+    [] = E6,
+
+    %% its not possible to update memcached bucket ram quota
+    {_OK7, E7} = basic_bucket_params_screening(false, "mcd",
+                                               [{"bucketType", "membase"},
+                                                {"authType", "sasl"}, {"saslPassword", ""},
+                                                {"ramQuotaMB", "1024"}, {"replicaNumber", "2"}],
+                                               AllBuckets),
+    ?assertEqual(true, lists:member(ramQuotaMB, proplists:get_keys(E7))).
 
 -endif.

@@ -137,6 +137,8 @@ var BucketDetailsDialog = mkClass({
 
     setBoolAttribute(dialog.find('[name=replicaNumber]'), 'disabled', !isNew);
 
+    setBoolAttribute(dialog.find('[name=ramQuotaMB]'), 'disabled', !isNew && (initValues.bucketType == 'memcached'));
+
     var oldBucketType;
     dialog.observePotentialChanges(function () {
       var newType = dialog.find('[name=bucketType]:checked').attr('value');
