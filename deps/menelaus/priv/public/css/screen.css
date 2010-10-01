@@ -882,21 +882,19 @@ body.init_cluster #init_cluster_dialog {background:none; background-color:#eee; 
 body.init_cluster #init_cluster_dialog h2.question {border-bottom:1px solid #d5dadd; color:#444245; font-size:14pt; font-family:Verdana, Helvetica, Sans-Serif; font-weight:lighter; margin:25px 0px 0px 50px; padding-bottom:5px; width:85%;}
 body.init_cluster #init_cluster_dialog p.pad_10 {color:#444245; font-family:Verdana, Helvetica, Sans-Serif; font-size:10pt; font-weight:lighter; line-height:20px; margin-left:75px; width:500px;}
 body.init_cluster #init_cluster_dialog div.join_cluster_dialog_errors_container {color:#ff0000; display:none; margin-left:85px; width:500px;}
-form#init_cluster_form div {color:#444245; font-family:Verdana, Helvetica, Sans-Serif; font-size:12pt; font-weight:lighter; margin-left:85px;}
-form#init_cluster_form > div div.login-credentials {display:none;margin:10px 0 0 25px;}
-form#init_cluster_form > div div.memory-quota {margin:10px 0 0 25px;}
-form#init_cluster_form > div div.login-credentials div,
- form#init_cluster_form > div div.memory-quota div {height:30px; line-height:26px; margin-bottom:5px; margin-left:0px;}
-form#init_cluster_form > div div.login-credentials div label,
- form#init_cluster_form > div div.memory-quota label {/*color:#8b8b8e;*/ display:block; float:left; font-size:10pt; text-align:right; padding-right:5px; width:140px;}
-form#init_cluster_form > div div.login-credentials div input,
- form#init_cluster_form > div div.memory-quota input {border:1px solid #ccd3d7; font-family:Verdana,Helvetica,Sans-Serif; font-size:10pt;  padding:3px 3px 4px 5px;}
-form#init_cluster_form > div div.memory-quota span {font-size:10pt;}
-body.init_cluster #container { display: none; }
 
-#init_cluster_dialog .warning { clear:both; display:block; }
+#init_cluster_form div {font:lighter 12pt Verdana, Helvetica, Sans-Serif;margin-left:85px;}
+#init_cluster_form .pat_10 div div {height:30px; font-size:10pt;line-height:26px; margin:0 0 5px;}
+#init_cluster_form .pat_10 div label {float:left;padding-right:5px; width:140px;white-space:nowrap;text-align:right;}
+#init_cluster_form .pat_10 div input {font:10pt Verdana,Helvetica,Sans-Serif;border:1px solid #ccd3d7;padding:3px 3px 4px 5px;}
+#init_cluster_form .memory-quota {height:62px;margin:10px 0 0 25px;overflow:hidden;}
+#init_cluster_form .memory-quota input {width:60px;*vertical-align:middle;}
+#init_cluster_form .login-credentials {display:none;margin:10px 0 0 25px;}
+body.init_cluster #container {display:none;}
 
-body.init_secure #init_block { display: block; }
+#init_cluster_dialog .warning {clear:both;display:block;}
+
+body.init_secure #init_block {display:block;}
 body.init_secure #init_secure_dialog {background:none #eee;display:block; padding-bottom:-50px;}
 body.init_secure #init_secure_dialog h2.title {border-bottom:1px solid #d5dadd; color:#444245; font-size:14pt; font-family:Verdana, Helvetica, Sans-Serif; font-weight:lighter; margin:25px 0px 0px 50px; padding-bottom:5px; width:85%;}
 body.init_secure #init_secure_dialog p.pad_10 {width:500px;margin-left:65px;font:lighter 10pt/20px Verdana, Helvetica, Sans-Serif;}

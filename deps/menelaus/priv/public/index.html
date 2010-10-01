@@ -1338,12 +1338,13 @@
          </label>
          <div class="memory-quota">
            <div>
-             <label style="width:auto;display:block;float:none;text-align:left;">RAM Available: <span class="ram-total-size"></span></label>
+             <label>RAM Available: <span class="ram-total-size"></span></label>
+		   </div>
+		   <div>
              <label style="width:auto;" for="init_dynamic_ram_quota">Per Server RAM Quota:</label>
-             <input type="text" id="init_dynamic_ram_quota" name="dynamic-ram-quota" value="" style="width:60px;" />
-             <span>MB</span>
+             <input type="text" id="init_dynamic_ram_quota" name="dynamic-ram-quota" value="" />
              <span>
-               (256 MB — <span class="ram-max-size"></span> MB)
+			 	MB (256 MB &mdash; <span class="ram-max-size"></span> MB)
              </span>
            </div>
          </div>
