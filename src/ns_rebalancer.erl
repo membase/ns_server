@@ -42,6 +42,13 @@ failover(Bucket, Node) ->
     {_, _, Map, Servers} = ns_bucket:config(Bucket),
     %% Promote replicas of vbuckets on this node
     Map1 = promote_replicas(Map, [Node]),
+    case [I || {I, [undefined|_]} <- misc:enumerate(Map1, 0)] of
+        [] -> ok; % Phew!
+        MissingVBuckets ->
+            ns_log:log(?MODULE, 1,
+                       "Data has been lost for the following vbuckets in "
+                       "bucket ~p:~n~80w", [Bucket, MissingVBuckets])
+    end,
     ns_bucket:set_map(Bucket, Map1),
     ns_bucket:set_servers(Bucket, lists:delete(Node, Servers)),
     ns_janitor:cleanup(Bucket).
