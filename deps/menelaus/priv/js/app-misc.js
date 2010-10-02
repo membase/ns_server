@@ -1114,6 +1114,16 @@ function plotStatGraph(graphJQ, stats, attr, options) {
     }
   }
 
+  if (options.fixedTimeWidth && tstamps.length) {
+    var lastSampleTime = tstamps[tstamps.length-1];
+    plotOptions.xaxis.max = lastSampleTime;
+    plotOptions.xaxis.min = lastSampleTime - options.fixedTimeWidth;
+  }
+
+  if (!tstamps.length) {
+    plotOptions.xaxis.ticks = [];
+  }
+
   if (options.processPlotOptions) {
     plotOptions = options.processPlotOptions(plotOptions, plotData);
   }

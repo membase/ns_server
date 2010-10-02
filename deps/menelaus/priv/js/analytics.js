@@ -116,7 +116,7 @@ var maybeReloadAppDueToLeak = (function () {
   };
 })();
 
-function renderSmallGraph(jq, stats, statName, isSelected) {
+function renderSmallGraph(jq, stats, statName, isSelected, zoomMillis) {
   var data = stats[statName] || [];
   var tstamps = stats.timestamp;
   var plotData = _.map(data, function (e, i) {
@@ -124,6 +124,7 @@ function renderSmallGraph(jq, stats, statName, isSelected) {
   });
 
   var lastY = data[data.length-1];
+  var lastX = tstamps[tstamps.length-1];
 
   var maxString = isNaN(lastY) ? '?' : ViewHelpers.formatQuantity(lastY, '', 1000);
   jq.find('.small_graph_label > .value').text(maxString);
@@ -131,7 +132,9 @@ function renderSmallGraph(jq, stats, statName, isSelected) {
   $.plot(jq.find('.small_graph_block'),
          [{color: isSelected ? '#e2f1f9' : '#d95e28',
            data: plotData}],
-         {xaxis: {ticks:0, autoscaleMargin: 0.04},
+         {xaxis: {ticks:0,
+                  autoscaleMargin: 0.04,
+                  min: lastX - zoomMillis},
           yaxis: {min:0, ticks:0, autoscaleMargin: 0.04},
           grid: {show:false}});
 }
@@ -204,6 +207,14 @@ var StatGraphs = {
 
     $('.stats_visible_period').text('?');
   },
+  zoomToSeconds: {
+    minute: 60,
+    hour: 3600,
+    day: 86400,
+    week: 691200,
+    month: 2678400,
+    year: 31622400
+  },
   doUpdate: function () {
     var self = this;
 
@@ -238,12 +249,14 @@ var StatGraphs = {
       self.visibleStatsIsDirty = false;
     }
 
+    var zoomMillis = (self.zoomToSeconds[DAO.cells.zoomLevel.value] || 60) * 1000 - 1000;
     var selected = self.selected.value;
     if (stats[selected]) {
       maybeReloadAppDueToLeak();
       plotStatGraph(main, stats, selected, {
         color: '#1d88ad',
-        verticalMargin: 1.02
+        verticalMargin: 1.02,
+        fixedTimeWidth: zoomMillis
       });
       $('.stats-period-container').toggleClass('missing-samples', !stats[selected].length);
       var visibleSeconds = Math.ceil(stats[selected].length * op.interval / 1000);
@@ -254,7 +267,7 @@ var StatGraphs = {
     _.each(self.visibleStats, function (statName) {
       var ops = stats[statName] || [];
       var area = self.findGraphArea(statName);
-      renderSmallGraph(area, stats, statName, selected == statName);
+      renderSmallGraph(area, stats, statName, selected == statName, zoomMillis);
     });
   },
   update: function () {
