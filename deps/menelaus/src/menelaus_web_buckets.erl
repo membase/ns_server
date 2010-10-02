@@ -321,7 +321,7 @@ parse_bucket_params_for_setup_default_bucket(Params, ClusterStorageTotals) ->
                         [{"authType", "sasl"}, {"saslPassword", ""} | Params],
                         [],
                         [{ram, [{quotaUsed, 0} | RamTotals]} | ClusterStorageTotals],
-                        UsageGetter).
+                        UsageGetter, fun (_, _, _) -> false end).
 
 parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals) ->
     UsageGetter = fun (ram, Name) ->
@@ -333,9 +333,12 @@ parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals)
                       (hdd, Name) ->
                           menelaus_stats:bucket_disk_usage(Name)
                   end,
-    parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals, UsageGetter).
+    parse_bucket_params(IsNew, BucketName, Params,
+                        AllBuckets, ClusterStorageTotals, UsageGetter,
+                        fun ns_bucket:is_bucket_port_busy/3).
 
-parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals, UsageGetter) ->
+parse_bucket_params(IsNew, BucketName, Params, AllBuckets,
+                    ClusterStorageTotals, UsageGetter, PortBusyness) ->
     {OKs, Errors} = basic_bucket_params_screening(IsNew, BucketName,
                                                   Params, AllBuckets),
     CurrentBucket = proplists:get_value(currentBucket, OKs),
@@ -366,6 +369,12 @@ parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals,
                                | Errors]
                       end
               end,
+    Errors3 = case PortBusyness(proplists:get_value(moxi_port, OKs), IsNew, CurrentBucket) of
+                  false ->
+                      Errors2;
+                  _ ->
+                      [{proxyPort, <<"proxy port is in use">>} | Errors2]
+              end,
     RAMErrors =
         if
             RAMSummary#ram_summary.free < 0 ->
@@ -375,7 +384,7 @@ parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals,
             true ->
                 []
         end,
-    TotalErrors = RAMErrors ++ Errors2,
+    TotalErrors = RAMErrors ++ Errors3,
     if
         TotalErrors =:= [] ->
             {ok, OKs, JSONSummaries};
@@ -442,7 +451,8 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, Auth
                                _ ->
                                    case menelaus_util:parse_validate_number(ProxyPort,
                                                                             1025, 65535) of
-                                       {ok, PP} -> {ok, moxi_port, PP};
+                                       {ok, PP} ->
+                                           {ok, moxi_port, PP};
                                        _ -> {error, proxyPort, <<"proxy port is invalid">>}
                                    end
                            end;

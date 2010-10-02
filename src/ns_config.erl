@@ -53,6 +53,7 @@
          get/2, get/1, get/0, set/2, set/1,
          set_initial/2, update/2, update_key/2,
          update_sub_key/3,
+         update_sub_key_with_config/3,
          search_node/3, search_node/2, search_node/1,
          search_node_prop/3, search_node_prop/4,
          search_node_prop/5,
@@ -208,12 +209,12 @@ update(Fun, Sentinel) ->
                         end).
 
 %% Applies given Fun to value of given Key. The Key must exist.
-update_key(Key, Fun) ->
+update_key_with_config(Key, Fun) ->
     update_with_changes(fun (Config) ->
                                 case lists:keyfind(Key, 1, Config) of
                                     {_, OldValue} ->
                                         StrippedValue = strip_metadata(OldValue),
-                                        case Fun(StrippedValue) of
+                                        case Fun(StrippedValue, Config) of
                                             StrippedValue ->
                                                 {[], Config};
                                             NewValue ->
@@ -223,6 +224,11 @@ update_key(Key, Fun) ->
                                 end
                         end).
 
+update_key(Key, Fun) ->
+    update_key_with_config(Key, fun (Value, _Config) ->
+                                        Fun(Value)
+                                end).
+
 update_sub_key(Key, SubKey, Fun) ->
     update_key(Key, fun (PList) ->
                             RV = misc:key_update(SubKey, PList, Fun),
@@ -231,6 +237,18 @@ update_sub_key(Key, SubKey, Fun) ->
                                 _ -> RV
                             end
                     end).
+
+update_sub_key_with_config(Key, SubKey, Fun) ->
+    update_key_with_config(Key,
+                           fun (PList, Config) ->
+                                   RV = misc:key_update(SubKey, PList, fun (Arg) ->
+                                                                               Fun(Arg, Config)
+                                                                       end),
+                                   case RV of
+                                       false -> PList;
+                                       _ -> RV
+                                   end
+                           end).
 
 clear() -> clear([]).
 clear(Keep) -> gen_server:call(?MODULE, {clear, Keep}).

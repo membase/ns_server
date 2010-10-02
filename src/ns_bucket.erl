@@ -46,6 +46,8 @@
          create_bucket/3,
          update_bucket_props/2,
          update_bucket_props/3,
+         is_bucket_port_busy/3,
+         is_bucket_port_busy/4,
          delete_bucket/1,
          set_map/2,
          set_servers/2]).
@@ -340,13 +342,19 @@ create_bucket(BucketType, BucketName, NewConfig) ->
                 misc:update_proplist(new_bucket_default_params(BucketType),
                                      NewConfig),
             MergedConfig = cleanup_bucket_props(MergedConfig0),
-            ns_config:update_sub_key(
+            ns_config:update_sub_key_with_config(
               buckets, configs,
-              fun (List) ->
+              fun (List, Config) ->
                       case lists:keyfind(BucketName, 1, List) of
                           false -> ok;
                           Tuple ->
                               exit({already_exists, Tuple})
+                      end,
+                      case is_bucket_port_busy(proplists:get_value(moxi_port, MergedConfig),
+                                               true, undefined, Config) of
+                          false -> ok;
+                          _ ->
+                              exit({bucket_port_busy, BucketName})
                       end,
                       [{BucketName, MergedConfig} | List]
               end)
@@ -377,17 +385,25 @@ update_bucket_props(Type, BucketName, Props) ->
     end.
 
 update_bucket_props(BucketName, Props) ->
-    ns_config:update_sub_key(
+    ns_config:update_sub_key_with_config(
       buckets, configs,
-      fun (List) ->
+      fun (List, Config) ->
               RV = misc:key_update(
                      BucketName, List,
                      fun (OldProps) ->
-                             NewProps = lists:foldl(
-                                          fun ({K, _V} = Tuple, Acc) ->
-                                                  [Tuple | lists:keydelete(K, 1, Acc)]
-                                          end, OldProps, Props),
-                             cleanup_bucket_props(NewProps)
+                             NewProps0 = lists:foldl(
+                                           fun ({K, _V} = Tuple, Acc) ->
+                                                   [Tuple | lists:keydelete(K, 1, Acc)]
+                                           end, OldProps, Props),
+                             NewProps = cleanup_bucket_props(NewProps0),
+                             case is_bucket_port_busy(proplists:get_value(moxi_port, NewProps),
+                                                      false, OldProps, Config) of
+                                 false ->
+                                     ok;
+                                 _->
+                                     exit({bucket_port_busy, BucketName})
+                             end,
+                             NewProps
                      end),
               case RV of
                   false -> exit({not_found, BucketName});
@@ -395,6 +411,38 @@ update_bucket_props(BucketName, Props) ->
               end,
               RV
       end).
+
+is_bucket_port_busy(Port, IsNew, OldBucketConfig) ->
+    is_bucket_port_busy(Port, IsNew, OldBucketConfig, ns_config:get()).
+
+is_bucket_port_busy(undefined = _Port, _IsNew, _OldBucketConfig, _Config) -> false;
+is_bucket_port_busy(Port, IsNew, OldBucketConfig, Config) ->
+    OldPort = if
+                  IsNew =:= false andalso is_list(OldBucketConfig) ->
+                      proplists:get_value(moxi_port, OldBucketConfig);
+                  true ->
+                      undefined
+              end,
+    if
+        OldPort =:= Port ->
+            false;
+        true ->
+            is_port_occupied(Port, Config)
+    end.
+
+is_port_occupied(Port, Config) ->
+    AllBuckets = get_buckets(Config),
+    WebPort = proplists:get_value(port, menelaus_web:webconfig(Config)),
+    MCDPort = 11210,
+    MoxiMain = 11211,
+    EPMDPort = 4369,
+    Port =:= WebPort orelse
+        Port =:= MCDPort orelse
+        Port =:= MoxiMain orelse
+        Port =:= EPMDPort orelse
+        lists:any(fun ({_, BucketConfig}) ->
+                          proplists:get_value(moxi_port, BucketConfig) =:= Port
+                  end, AllBuckets).
 
 set_map(Bucket, Map) ->
     %% Make sure all lengths are the same
