@@ -181,6 +181,7 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                       ok;
                   ({{_, zombie}, _}) -> ok;
                   ({_, {_, zombie}}) -> ok;
+                  ({{undefined, _}, _}) -> ok;
                   ({{M, _}, _} = Pair) ->
                       ?log_info("Killing replicators for vbucket ~p on"
                                 " master ~p because of ~p", [VBucket, M, Pair]),
