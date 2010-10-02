@@ -154,19 +154,12 @@ handle_cast(leave, State) ->
 
 
 
-handle_info({monitor, Pid, Type, Info}, State) ->
-    ?log_warning("Got system monitoring event: ~p", [{Pid, Type, Info}]),
-    {noreply, State};
-
 handle_info(Msg, State) ->
     ?log_info("Unexpected message ~p", [Msg]),
     {noreply, State}.
 
 
 init([]) ->
-    %% Get messages about problems with the system so we can log them
-    erlang:system_monitor(self(), [{long_gc, 1000}, {large_heap, 10485760},
-                                   busy_port, busy_dist_port]),
     {ok, #state{}}.
 
 
