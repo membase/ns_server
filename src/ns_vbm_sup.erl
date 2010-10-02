@@ -65,7 +65,7 @@ kill_vbuckets(Node, Bucket, VBuckets) ->
         RemainingVBuckets ->
             lists:foreach(fun ({V, dead}) ->
                                   ns_memcached:delete_vbucket(Node, Bucket, V);
-                              ({V, _}) ->
+                              ({V, S}) when S /= replica ->
                                   ns_memcached:set_vbucket(Node, Bucket,
                                                            V, dead),
                                   ns_memcached:delete_vbucket(Node, Bucket, V)
