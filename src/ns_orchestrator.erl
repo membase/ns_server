@@ -71,6 +71,11 @@ start_link() ->
     misc:start_singleton(gen_fsm, ?MODULE, [], []).
 
 
+-spec create_bucket(memcached|membase, nonempty_string(), list()) ->
+                           ok | {exit, {already_exists, nonempty_string()}, any()} |
+                           {error, {port_conflict, integer()}} |
+                           {error, {invalid_name, nonempty_string()}} |
+                           rebalance_running.
 create_bucket(BucketType, BucketName, NewConfig) ->
     gen_fsm:sync_send_event(?SERVER, {create_bucket, BucketType, BucketName,
                                       NewConfig}, 20000).

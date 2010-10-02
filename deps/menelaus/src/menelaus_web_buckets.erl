@@ -235,7 +235,11 @@ do_bucket_create(Name, ParsedProps) ->
             ?MENELAUS_WEB_LOG(?BUCKET_CREATED, "Created bucket \"~s\" of type: ~s~n", [Name, BucketType]),
             ok;
         {exit, {already_exists, _}, _} ->
-                   {errors, [{name, <<"Bucket with given name already exists">>}]};
+            {errors, [{name, <<"Bucket with given name already exists">>}]};
+        {error, {port_conflict, _}} ->
+            {errors, [{proxyPort, <<"A bucket is already using this port">>}]};
+        {error, {invalid_name, _}} ->
+            {errors, [{name, <<"Name is invalid.">>}]};
         rebalance_running ->
             {errors, [{'_', <<"Cannot create buckets during rebalance">>}]}
     end.
@@ -437,13 +441,23 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, Auth
                                    case ns_bucket:auth_type(BucketConfig) of
                                        AuthType -> nothing;
                                        _ ->
-                                           {error, proxyPort, <<"proxy port is missing">>}
+                                           {error, proxyPort,
+                                            <<"port is missing">>}
                                    end;
                                _ ->
                                    case menelaus_util:parse_validate_number(ProxyPort,
                                                                             1025, 65535) of
-                                       {ok, PP} -> {ok, moxi_port, PP};
-                                       _ -> {error, proxyPort, <<"proxy port is invalid">>}
+                                       {ok, PP} ->
+                                           case ns_bucket:is_open_proxy_port(
+                                                  BucketName, PP) of
+                                               true ->
+                                                   {ok, moxi_port, PP};
+                                               false ->
+                                                   {error, proxyPort,
+                                                    <<"port is already in use">>}
+                                           end;
+                                       _ -> {error, proxyPort,
+                                             <<"port is invalid">>}
                                    end
                            end;
                        sasl ->
@@ -458,7 +472,8 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, Auth
                                    {ok, sasl_password, SaslPassword}
                            end
                    end,
-                   parse_validate_ram_quota(proplists:get_value("ramQuotaMB", Params), BucketConfig)],
+                   parse_validate_ram_quota(proplists:get_value("ramQuotaMB", Params),
+                                            BucketConfig)],
     BucketType = if
                      (not IsNew) andalso BucketConfig =/= false ->
                          ns_bucket:bucket_type(BucketConfig);

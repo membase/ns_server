@@ -43,6 +43,7 @@
          json_map_from_config/2,
          set_bucket_config/2,
          is_valid_bucket_name/1,
+         is_open_proxy_port/2,
          create_bucket/3,
          update_bucket_props/2,
          update_bucket_props/3,
@@ -304,6 +305,30 @@ is_valid_bucket_name([Char | Rest]) ->
         _ -> false
     end.
 
+is_open_proxy_port(BucketName, Port) ->
+    UsedPorts = lists:filter(fun (undefined) -> false;
+                                 (0) -> false; % Do we need this?
+                                 (_) -> true
+                             end,
+                             [proplists:get_value(moxi_port, Config)
+                              || {Name, Config} <- get_buckets(),
+                                 Name /= BucketName]),
+    not lists:member(Port, UsedPorts).
+
+validate_bucket_config(BucketName, NewConfig) ->
+    case is_valid_bucket_name(BucketName) of
+        true ->
+            Port = proplists:get_value(moxi_port, NewConfig),
+            case is_open_proxy_port(BucketName, Port) of
+                false ->
+                    {error, {port_conflict, Port}};
+                true ->
+                    ok
+            end;
+        false ->
+            {error, {invalid_bucket_name, BucketName}}
+    end.
+
 new_bucket_default_params(membase) ->
     [{type, membase},
      {num_vbuckets,
@@ -332,10 +357,8 @@ cleanup_bucket_props(Props) ->
     end.
 
 create_bucket(BucketType, BucketName, NewConfig) ->
-    case is_valid_bucket_name(BucketName) of
-        false ->
-            {error, {invalid_name, BucketName}};
-        _ ->
+    case validate_bucket_config(BucketName, NewConfig) of
+        ok ->
             MergedConfig0 =
                 misc:update_proplist(new_bucket_default_params(BucketType),
                                      NewConfig),
@@ -349,8 +372,10 @@ create_bucket(BucketType, BucketName, NewConfig) ->
                               exit({already_exists, Tuple})
                       end,
                       [{BucketName, MergedConfig} | List]
-              end)
+              end),
             %% The janitor will handle creating the map.
+            ok;
+        E -> E
     end.
 
 delete_bucket(BucketName) ->
