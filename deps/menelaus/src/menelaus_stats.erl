@@ -46,7 +46,7 @@ bucket_ram_usage(BucketName) ->
 
 last_membase_sample(BucketName, Nodes) ->
     lists:foldl(fun ({_Node, []}, Acc) -> Acc;
-                    ({_Node, [Sample]}, {AccMem, AccItems, AccOps, AccFetches}) ->
+                    ({_Node, [Sample|_]}, {AccMem, AccItems, AccOps, AccFetches}) ->
                         {Sample#stat_entry.mem_used + AccMem,
                          Sample#stat_entry.curr_items + AccItems,
                          aggregate_ops(Sample) + AccOps,
