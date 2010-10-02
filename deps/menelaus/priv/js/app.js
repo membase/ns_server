@@ -407,12 +407,7 @@ function showAbout() {
   showDialog('about_server_dialog');
 }
 
-function showInitDialog(page, opt) {
-  $('.page-header')[page == 'done' ? 'show' : 'hide']();
-
-  if (page == 'done')
-    DAO.enableSections();
-
+function showInitDialog(page, opt, isContinuation) {
   opt = opt || {};
 
   var pages = [ "welcome", "cluster", "secure", "bucket_dialog" ];
@@ -422,12 +417,31 @@ function showInitDialog(page, opt) {
 
   for (var i = 0; i < pages.length; i++) {
     if (page == pages[i]) {
-      if (NodeDialog["startPage_" + page]) {
-        NodeDialog["startPage_" + page]('self', 'init_' + page, opt);
+      var rv;
+      if (!isContinuation && NodeDialog["startPage_" + page]) {
+        rv = NodeDialog["startPage_" + page]('self', 'init_' + page, opt);
+      }
+      // if startPage is in continuation passing style, call it
+      // passing continuation and return.  This allows startPage to do
+      // async computation and then resume dialog page switching
+      if (rv instanceof Function) {
+        $('body, html').css('cursor', 'wait');
+
+        return rv(function () {
+          $('body, html').css('cursor', null);
+
+          // we don't pass real contination, we just call ourselves again
+          showInitDialog(page, opt, true);
+        });
       }
       $(document.body).addClass('init_' + page);
     }
   }
+
+  $('.page-header')[page == 'done' ? 'show' : 'hide']();
+
+  if (page == 'done')
+    DAO.enableSections();
 
   for (var i = 0; i < pages.length; i++) { // Hide in a 2nd loop for more UI stability.
     if (page != pages[i]) {
@@ -581,12 +595,30 @@ var NodeDialog = {
   },
 
   startPage_cluster: function (node, pagePrefix, opt) {
-    var dialog = $('#init_cluster_dialog');
+    var dialog;
 
-    dialog.find('.quota_error_message').hide();
+    return function (continuation) {
+      dialog = $('#init_cluster_dialog');
 
-    $.ajax({type:'GET', url:'/nodes/self', dataType: 'json', async: false,
-            success: cb, error: cb});
+      dialog.find('.quota_error_message').hide();
+
+      $.ajax({type:'GET', url:'/nodes/self', dataType: 'json',
+              success: trampoline, error: trampoline});
+
+      function trampoline() {
+        continuation();
+
+        $('#step-2-next').click(onSubmit);
+        $('#init_cluster_dialog form').submit(onSubmit);
+
+        _.defer(function () {
+          if ($('#join-cluster')[0].checked)
+            $('.login-credentials').show();
+        });
+
+        cb.apply(this, arguments);
+      }
+    }
 
     function cb(data, status) {
       if (status == 'success') {
@@ -709,14 +741,6 @@ var NodeDialog = {
         }
       }
     }
-
-    $('#step-2-next').click(onSubmit);
-    $('#init_cluster_dialog form').submit(onSubmit);
-
-    _.defer(function () {
-      if ($('#join-cluster')[0].checked)
-        $('.login-credentials').show();
-    });
   }
 };
 
