@@ -353,10 +353,16 @@ promote_replicas(Map, RemapNodes) ->
 %% V. Actually switches master if head of Chain is in
 %% RemapNodes. Returns new chain.
 promote_replica(Chain, RemapNodes) ->
-    Bad = fun (Node) -> lists:member(Node, RemapNodes) end,
-    NotBad = fun (Node) -> not lists:member(Node, RemapNodes) end,
-    NewChain = lists:takewhile(NotBad, lists:dropwhile(Bad, Chain)),
-    NewChain ++ lists:duplicate(length(Chain) - length(NewChain), undefined).
+    Chain1 = [case lists:member(Node, RemapNodes) of
+                  true -> undefined;
+                  false -> Node
+              end || Node <- Chain],
+    %% Chain now might begin with undefined - put all the undefineds
+    %% at the end
+    {Undefineds, Rest} = lists:splitwith(fun (undefined) -> true;
+                                             (_) -> false
+                                         end, Chain1),
+    Rest ++ Undefineds.
 
 
 %% @doc Wait until either all memcacheds are up or stop is pressed.
