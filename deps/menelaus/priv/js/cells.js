@@ -104,6 +104,8 @@ var Cell = mkClass({
       cell.dependenciesSlot.subscribeWithSlave(recalculate);
     });
 
+    self.boundRecalculate = recalculate;
+
     var argumentSourceNames = this.argumentSourceNames = functionArgumentNames(this.formula);
     _.each(this.argumentSourceNames, function (a) {
       if (!(a in context))
@@ -346,6 +348,15 @@ var Cell = mkClass({
     }
     currentValue[arguments[arguments.length-1]] = attrValue;
     this.setValue(topValue);
+  },
+  // detaches this cell from it's sources making it garbage
+  // collectable. If JS would have weak-pointers we could get away
+  // without explicit detaching, but it doesn't yet.
+  detach: function () {
+    var recalculate = this.boundRecalculate;
+    _.each(this.sources, function (cell) {
+      cell.dependenciesSlot.unsubscribeCallback(recalculate);
+    });
   }
 });
 

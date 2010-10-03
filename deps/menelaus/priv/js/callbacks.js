@@ -46,6 +46,14 @@ var CallbackSlot = mkClass({
         newSlaves.push(slave);
     });
   },
+  unsubscribeCallback: function (thunk) {
+    var slave = _.detect(this.slaves, function (candidate) {
+      return candidate.thunk == thunk;
+    });
+    if (slave)
+      this.unsubscribe(slave);
+    return slave;
+  },
   unsubscribe: function (slave) {
     slave.die();
     var index = $.inArray(slave, this.slaves);
