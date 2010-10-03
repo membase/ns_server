@@ -21,31 +21,12 @@
 
 -include("mc_entry.hrl").
 
--export([bin/1, recv/2, send/4, send_recv/3, send_recv/4]).
+-export([bin/1, recv/2, recv/3, send/4]).
 
 -define(FLUSH_TIMEOUT, 5000).
 -define(RECV_TIMEOUT, 5000).
 
 %% Functions to work with memcached binary protocol packets.
-
--spec send_recv(port(), #mc_header{}, #mc_entry{}, any()) ->
-                       {ok, any()} | {error, #mc_header{}, #mc_entry{}}.
-send_recv(Sock, Header, Entry, Success) ->
-    {ok, RecvHeader, RecvEntry} =
-        send_recv(Sock, Header, Entry),
-    V1 = RecvHeader#mc_header.opcode,
-    V1 = Header#mc_header.opcode,
-    SR = RecvHeader#mc_header.status,
-    case SR =:= ?SUCCESS of
-        true  -> {ok, Success};
-        false -> {error, RecvHeader, RecvEntry}
-    end.
-
--spec send_recv(port(), #mc_header{}, #mc_entry{}) ->
-                       {ok, #mc_header{}, #mc_entry{}} | {error, any()}.
-send_recv(Sock, Header, Entry) ->
-    ok = send(Sock, req, Header, Entry),
-    recv(Sock, res).
 
 send({OutPid, CmdNum}, Kind, Header, Entry) ->
     OutPid ! {send, CmdNum, encode(Kind, Header, Entry)},
@@ -55,22 +36,30 @@ send(Sock, Kind, Header, Entry) ->
     send(Sock, encode(Kind, Header, Entry)).
 
 recv(Sock, HeaderKind) ->
-    case recv_data(Sock, ?HEADER_LEN) of
+    recv(Sock, HeaderKind, undefined).
+
+recv(Sock, HeaderKind, undefined) ->
+    recv(Sock, HeaderKind, ?RECV_TIMEOUT);
+
+recv(Sock, HeaderKind, Timeout) ->
+    case recv_data(Sock, ?HEADER_LEN, Timeout) of
         {ok, HeaderBin} ->
             {Header, Entry} = decode_header(HeaderKind, HeaderBin),
-            recv_body(Sock, Header, Entry);
+            recv_body(Sock, Header, Entry, Timeout);
         Err -> Err
     end.
 
 recv_body(Sock, #mc_header{extlen = ExtLen,
                            keylen = KeyLen,
-                           bodylen = BodyLen} = Header, Entry) ->
+                           bodylen = BodyLen} = Header, Entry, Timeout) ->
     case BodyLen > 0 of
         true ->
             true = BodyLen >= (ExtLen + KeyLen),
-            {ok, Ext} = recv_data(Sock, ExtLen),
-            {ok, Key} = recv_data(Sock, KeyLen),
-            {ok, Data} = recv_data(Sock, erlang:max(0, BodyLen - (ExtLen + KeyLen))),
+            {ok, Ext} = recv_data(Sock, ExtLen, Timeout),
+            {ok, Key} = recv_data(Sock, KeyLen, Timeout),
+            {ok, Data} = recv_data(Sock,
+                                   erlang:max(0, BodyLen - (ExtLen + KeyLen)),
+                                   Timeout),
             {ok, Header, Entry#mc_entry{ext = Ext, key = Key, data = Data}};
         false ->
             {ok, Header, Entry}
@@ -121,24 +110,5 @@ send(Sock, List) when is_list(List) -> send(Sock, iolist_to_binary(List));
 send(Sock, Data)                    -> gen_tcp:send(Sock, Data).
 
 %% @doc Receive binary data of specified number of bytes length.
-recv_data(_, 0)           -> {ok, <<>>};
-recv_data(Sock, NumBytes) -> gen_tcp:recv(Sock, NumBytes, ?RECV_TIMEOUT).
-
-% -------------------------------------------------
-
-noop_test()->
-    {ok, Sock} = gen_tcp:connect("localhost", 11211,
-                                 [binary, {packet, 0}, {active, false}]),
-    {ok, works} = send_recv(Sock,
-                            #mc_header{opcode = ?NOOP}, #mc_entry{}, works),
-    ok = gen_tcp:close(Sock).
-
-flush_test() ->
-    {ok, Sock} = gen_tcp:connect("localhost", 11211,
-                                 [binary, {packet, 0}, {active, false}]),
-    test_flush(Sock),
-    ok = gen_tcp:close(Sock).
-
-test_flush(Sock) ->
-    {ok, works} = send_recv(Sock,
-                            #mc_header{opcode = ?FLUSH}, #mc_entry{}, works).
+recv_data(_, 0, _)                 -> {ok, <<>>};
+recv_data(Sock, NumBytes, Timeout) -> gen_tcp:recv(Sock, NumBytes, Timeout).
