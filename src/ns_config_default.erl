@@ -194,7 +194,7 @@ default() ->
                                                 % to try to start child processes.  If it fails, it should ns_log errors.
      {port_servers,
       [{moxi, "./bin/moxi/moxi",
-        ["-Z", {"port_listen=~B,default_bucket_name=default,downstream_max=4,downstream_conn_max=8", [port]},
+        ["-Z", {"port_listen=~B,default_bucket_name=default,downstream_max=4,downstream_conn_max=0", [port]},
          "-z", {"url=http://127.0.0.1:~B/pools/default/saslBucketsStreaming",
                 [{rest, port}]},
          "-p", "0",
