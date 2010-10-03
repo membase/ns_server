@@ -35,7 +35,6 @@
          stop/0,
          loop/3,
          webconfig/0,
-         webconfig/1,
          restart/0,
          build_nodes_info/0,
          build_nodes_info_fun/3,
@@ -81,16 +80,13 @@ restart() ->
     stop().
 
 webconfig() ->
-    Config = ns_config:get(),
-    webconfig(Config).
-
-webconfig(Config) ->
     Ip = case os:getenv("MOCHIWEB_IP") of
              false -> "0.0.0.0";
              Any -> Any
          end,
     Port = case os:getenv("MOCHIWEB_PORT") of
-               false -> ns_config:search_node_prop(Config, rest, port, 8091);
+               false -> Config = ns_config:get(),
+                        ns_config:search_node_prop(Config, rest, port, 8091);
                P -> list_to_integer(P)
            end,
     WebConfig = [{ip, Ip},
