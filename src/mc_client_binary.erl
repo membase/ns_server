@@ -35,11 +35,14 @@
          stats/4]).
 
 %% A memcached client that speaks binary protocol.
-
 cmd(Opcode, Sock, RecvCallback, CBData, HE) ->
+    cmd(Opcode, Sock, RecvCallback, CBData, HE, undefined).
+
+cmd(Opcode, Sock, RecvCallback, CBData, HE, Timeout) ->
     case is_quiet(Opcode) of
         true  -> cmd_binary_quiet(Opcode, Sock, RecvCallback, CBData, HE);
-        false -> cmd_binary_vocal(Opcode, Sock, RecvCallback, CBData, HE)
+        false -> cmd_binary_vocal(Opcode, Sock, RecvCallback, CBData, HE,
+                                  Timeout)
     end.
 
 cmd_binary_quiet(Opcode, Sock, _RecvCallback, _CBData, {Header, Entry}) ->
@@ -48,38 +51,40 @@ cmd_binary_quiet(Opcode, Sock, _RecvCallback, _CBData, {Header, Entry}) ->
     {ok, quiet}.
 
 cmd_binary_vocal(?STAT = Opcode, Sock, RecvCallback, CBData,
-                 {Header, Entry}) ->
+                 {Header, Entry}, Timeout) ->
     ok = mc_binary:send(Sock, req, Header#mc_header{opcode = Opcode}, Entry),
-    stats_recv(Sock, RecvCallback, CBData);
+    stats_recv(Sock, RecvCallback, CBData, Timeout);
 
-cmd_binary_vocal(Opcode, Sock, RecvCallback, CBData, {Header, Entry}) ->
+cmd_binary_vocal(Opcode, Sock, RecvCallback, CBData, {Header, Entry},
+                 Timeout) ->
     ok = mc_binary:send(Sock, req,
               Header#mc_header{opcode = Opcode}, ext(Opcode, Entry)),
-    cmd_binary_vocal_recv(Opcode, Sock, RecvCallback, CBData).
+    cmd_binary_vocal_recv(Opcode, Sock, RecvCallback, CBData, Timeout).
 
-cmd_binary_vocal_recv(Opcode, Sock, RecvCallback, CBData) ->
-    {ok, RecvHeader, RecvEntry} = mc_binary:recv(Sock, res),
+cmd_binary_vocal_recv(Opcode, Sock, RecvCallback, CBData, Timeout) ->
+    {ok, RecvHeader, RecvEntry} = mc_binary:recv(Sock, res, Timeout),
     NCB = case is_function(RecvCallback) of
               true  -> RecvCallback(RecvHeader, RecvEntry, CBData);
               false -> CBData
           end,
     case Opcode =:= RecvHeader#mc_header.opcode of
         true  -> {ok, RecvHeader, RecvEntry, NCB};
-        false -> cmd_binary_vocal_recv(Opcode, Sock, RecvCallback, NCB)
+        false -> cmd_binary_vocal_recv(Opcode, Sock, RecvCallback, NCB, Timeout)
     end.
 
 % -------------------------------------------------
 
-stats_recv(Sock, RecvCallback, State) ->
+stats_recv(Sock, RecvCallback, State, Timeout) ->
     {ok, #mc_header{opcode = ROpcode,
-                    keylen = RKeyLen} = RecvHeader, RecvEntry} = mc_binary:recv(Sock, res),
+                    keylen = RKeyLen} = RecvHeader, RecvEntry} =
+        mc_binary:recv(Sock, res, Timeout),
     case ?STAT =:= ROpcode andalso 0 =:= RKeyLen of
         true  -> {ok, RecvHeader, RecvEntry, State};
         false -> NCB = case is_function(RecvCallback) of
                            true  -> RecvCallback(RecvHeader, RecvEntry, State);
                            false -> State
                        end,
-                 stats_recv(Sock, RecvCallback, NCB)
+                 stats_recv(Sock, RecvCallback, NCB, Timeout)
     end.
 
 % -------------------------------------------------
@@ -125,10 +130,11 @@ create_bucket(Sock, BucketName, Engine, Config) ->
         Response -> process_error_response(Response)
     end.
 
+%% This can take an arbitrary period of time.
 delete_bucket(Sock, BucketName) ->
     case cmd(?CMD_DELETE_BUCKET, Sock, undefined, undefined,
              {#mc_header{},
-              #mc_entry{key = BucketName}}) of
+              #mc_entry{key = BucketName}}, infinity) of
         {ok, #mc_header{status=?SUCCESS}, _ME, _NCB} ->
             ok;
         Response -> process_error_response(Response)
