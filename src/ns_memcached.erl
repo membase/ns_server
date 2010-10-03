@@ -312,7 +312,7 @@ ensure_bucket(Sock, Bucket) ->
                                                 ConfigString) of
                 ok ->
                     ok = mc_client_binary:select_bucket(Sock, Bucket);
-                {memcached_error, key_eexists, "Bucket exists: stopping"} ->
+                {memcached_error, key_eexists, <<"Bucket exists: stopping">>} ->
                     %% Waiting for an old bucket with this name to shut down
                     timer:sleep(1000),
                     ensure_bucket(Sock, Bucket);

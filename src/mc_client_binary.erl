@@ -294,8 +294,8 @@ map_status(?EINTERNAL) ->
 map_status(?EBUSY) ->
     ebusy.
 
-process_error_response({ok, #mc_header{status=Status}, #mc_entry{data=Data}, _NCB}) ->
-    {memcached_error, map_status(Status), binary_to_list(Data)};
+process_error_response({ok, #mc_header{status=Status}, #mc_entry{key=Msg}, _NCB}) ->
+    {memcached_error, map_status(Status), Msg};
 process_error_response(Error) ->
     {client_error, Error}.
 
