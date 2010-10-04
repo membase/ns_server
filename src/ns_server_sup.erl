@@ -64,6 +64,12 @@ good_children() ->
       permanent, infinity, supervisor,
       [ns_node_disco_sup]},
 
+     {ns_heart, {ns_heart, start_link, []},
+      permanent, 10, worker, [ns_heart]},
+
+     {ns_doctor, {ns_doctor, start_link, []},
+      permanent, 10, worker, [ns_doctor]},
+
      {menelaus, {menelaus_app, start_subapp, []},
       permanent, infinity, supervisor,
       [menelaus_app]},
@@ -78,11 +84,8 @@ good_children() ->
      {ns_stats_event, {gen_event, start_link, [{local, ns_stats_event}]},
       permanent, 10, worker, dynamic},
 
-     {ns_heart, {ns_heart, start_link, []},
-      permanent, 10, worker, [ns_heart]},
-
      {ns_good_bucket_sup, {ns_bucket_sup, start_link,
-                      [ns_good_bucket_sup, fun good_bucket_children/1]},
+                           [ns_good_bucket_sup, fun good_bucket_children/1]},
       permanent, infinity, supervisor, [ns_bucket_sup]},
 
      {ns_orchestrator, {ns_orchestrator, start_link, []},
@@ -108,10 +111,7 @@ bad_children() ->
       permanent, infinity, supervisor, [ns_vbm_sup]},
 
      {ns_tick, {ns_tick, start_link, []},
-      permanent, 10, worker, [ns_tick]},
-
-     {ns_doctor, {ns_doctor, start_link, []},
-      permanent, 10, worker, [ns_doctor]}].
+      permanent, 10, worker, [ns_tick]}].
 
 
 %% beware that if it's called from one of restarted childs it won't
