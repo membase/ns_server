@@ -35,7 +35,7 @@
 %% API
 -export([start_link/1]).
 
--record(state, {bucket, counters, count=?LOG_FREQ}).
+-record(state, {bucket, counters, count=?LOG_FREQ, last_ts}).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2,
@@ -54,11 +54,12 @@ handle_call(unhandled, unhandled, unhandled) ->
 handle_cast(unhandled, unhandled) ->
     unhandled.
 
-handle_info({tick, TS}, #state{bucket=Bucket, counters=Counters} = State) ->
+handle_info({tick, TS}, #state{bucket=Bucket, counters=Counters, last_ts=LastTS}
+            = State) ->
     case catch ns_memcached:stats(Bucket) of
         {ok, Stats} ->
             TS1 = latest_tick(TS),
-            {Entry, NewCounters} = parse_stats(TS1, Stats, Counters),
+            {Entry, NewCounters} = parse_stats(TS1, Stats, Counters, LastTS),
             case Counters of % Don't send event with undefined values
                 undefined ->
                     ok;
@@ -73,7 +74,8 @@ handle_info({tick, TS}, #state{bucket=Bucket, counters=Counters} = State) ->
                         C ->
                             C + 1
                     end,
-            {noreply, State#state{counters=NewCounters, count=Count}};
+            {noreply, State#state{counters=NewCounters, count=Count,
+                                  last_ts=TS1}};
         _ ->
             {noreply, State}
     end;
@@ -118,7 +120,7 @@ translate_stat(ep_num_value_ejects) ->
 translate_stat(Stat) ->
     Stat.
 
-parse_stats(TS, Stats, LastCounters) ->
+parse_stats(TS, Stats, LastCounters, LastTS) ->
     GetStat = fun (K, Dict) ->
                       case dict:find(K, Dict) of
                           {ok, V} -> list_to_integer(binary_to_list(V));
@@ -134,12 +136,19 @@ parse_stats(TS, Stats, LastCounters) ->
                  undefined ->
                      lists:duplicate(length([?STAT_COUNTERS]), undefined);
                  _ ->
-                     lists:zipwith(fun (A, B) ->
-                                           Res = A - B,
-                                           if Res < 0 -> 0;
-                                              true -> Res
-                                           end
-                                   end, Counters, LastCounters)
+                     Delta = TS - LastTS,
+                     if Delta > 0 ->
+                             lists:zipwith(
+                               fun (A, B) ->
+                                       Res = (A - B) * 1000 div Delta,
+                                       if Res < 0 -> 0;
+                                          true -> Res
+                                       end
+                               end, Counters, LastCounters);
+                        true ->
+                             lists:duplicate(length([?STAT_COUNTERS]),
+                                             undefined)
+                     end
              end,
     {list_to_tuple([stat_entry, TS] ++ Gauges ++ Deltas), Counters}.
 
@@ -147,7 +156,7 @@ parse_stats(TS, Stats, LastCounters) ->
 %% Tests
 
 parse_stats_test() ->
-    Now = now(),
+    Now = misc:time_to_epoch_ms_int(now()),
     Input =
         [{<<"conn_yields">>,<<"0">>},
          {<<"threads">>,<<"4">>},
@@ -277,4 +286,5 @@ parse_stats_test() ->
                       [37610,823281,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5]},
                          parse_stats(
                            Now, Input,
-                           lists:duplicate(length([?STAT_COUNTERS]), 0))).
+                           lists:duplicate(length([?STAT_COUNTERS]), 0),
+                           Now - 1000)).
