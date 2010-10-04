@@ -19,6 +19,7 @@
 -module(stats_archiver).
 
 -include_lib("eunit/include/eunit.hrl").
+-include_lib("stdlib/include/qlc.hrl").
 
 -include("ns_common.hrl").
 -include("ns_stats.hrl").
@@ -105,33 +106,24 @@ init(Bucket) ->
 
 
 handle_call({latest, Period, Bucket}, _From, State) ->
-    Reply = try mnesia:transaction(
+    Reply = try mnesia:activity(
+                  async_dirty,
                   fun () ->
                           Tab = table(Bucket, Period),
                           Key = mnesia:last(Tab),
                           hd(mnesia:read(Tab, Key))
-                  end, ?RETRIES) of
-                {atomic, Result} ->
-                    {ok, Result};
-                Err ->
-                    {error, Err}
+                  end, []) of
+                Result ->
+                    {ok, Result}
             catch
                 Type:Err -> {error, {Type, Err}}
             end,
     {reply, Reply, State};
 handle_call({latest, Period, Bucket, N}, _From, State) ->
-    Reply = try walk(table(Bucket, Period), N) of
-                Result -> {ok, Result}
-            catch
-                Type:Err -> {error, {Type, Err}}
-            end,
+    Reply = fetch_latest(Bucket, Period, N),
     {reply, Reply, State};
 handle_call({latest, Period, Bucket, Step, N}, _From, State) ->
-    Reply = try resample(table(Bucket, Period), Step, N) of
-                Result -> {ok, Result}
-            catch
-                Type:Err -> {error, {Type, Err}}
-            end,
+    Reply = resample(Bucket, Period, Step, N),
     {reply, Reply, State}.
 
 
@@ -215,6 +207,31 @@ create_tables(Bucket) ->
       end, archives()).
 
 
+%% @doc Return the last N records starting with the given key from Tab.
+fetch_latest(Bucket, Period, N) ->
+    case lists:keyfind(Period, 1, archives()) of
+        false ->
+            {error, bad_period, Period};
+        {_, Interval, _} ->
+            Seconds = N * Interval,
+            Tab = table(Bucket, Period),
+            case mnesia:dirty_last(Tab) of
+                '$end_of_table' ->
+                    {ok, []};
+                Key ->
+                    Oldest = Key - Seconds * 1000 + 500,
+                    Handle = qlc:q([Sample || #stat_entry{timestamp=TS} = Sample
+                                                  <- mnesia:table(Tab), TS > Oldest]),
+                    case mnesia:activity(async_dirty, fun qlc:eval/1, [Handle]) of
+                        {error, _, _} = Error ->
+                            Error;
+                        Results ->
+                            {ok, Results}
+                    end
+            end
+    end.
+
+
 last_chunk(Tab, Step) ->
     case mnesia:last(Tab) of
         '$end_of_table' ->
@@ -257,34 +274,37 @@ log_bad_responses({Replies, Zombies}) ->
 
 
 %% @doc Resample the stats in a table. Only reads the necessary number of rows.
-resample(Tab, Step, N) ->
-    {atomic, Result} = mnesia:transaction(
-                         fun () ->
-                                 TS = mnesia:last(Tab),
-                                 T = case TS of
-                                         '$end_of_table' -> '$end_of_table';
-                                         _ -> trunc_ts(TS, Step)
-                                     end,
-                                 resample(Tab, Step, TS, T, [], [], N)
-                         end, ?RETRIES),
-    Result.
-
-
-resample(_, _, TS, _, Acc, [], N) when TS == '$end_of_table'; N == 0 ->
-    Acc;
-resample(_, _, _, _, Acc, _, 0)  ->
-    Acc;
-resample(_, _, '$end_of_table', T, Acc, Chunk, _) ->
-    [avg(T, Chunk)|Acc];
-resample(Tab, Step, TS, T, Acc, Chunk, N) ->
-    T1 = trunc_ts(TS, Step),
-    [Rec] = mnesia:read(Tab, TS),
-    Prev = mnesia:prev(Tab, TS),
-    case T of
-        T1 ->
-            resample(Tab, Step, Prev, T1, Acc, [Rec|Chunk], N);
-        _ ->
-            resample(Tab, Step, Prev, T1, [avg(T, Chunk)|Acc], [], N-1)
+resample(Bucket, Period, Step, N) ->
+    Seconds = N * Step,
+    Tab = table(Bucket, Period),
+    case mnesia:dirty_last(Tab) of
+        '$end_of_table' ->
+            {ok, []};
+        Key ->
+            Oldest = Key - Seconds * 1000 - 500,
+            Handle = qlc:q([Sample || #stat_entry{timestamp=TS} = Sample
+                                          <- mnesia:table(Tab), TS > Oldest]),
+            F = fun (#stat_entry{timestamp = T} = Sample,
+                     {T1, Acc, Chunk}) ->
+                        case trunc_ts(T, Step) of
+                            T1 ->
+                                {T1, Acc, [Sample|Chunk]};
+                            T2 when T1 == undefined ->
+                                {T2, Acc, [Sample]};
+                            T2 ->
+                                {T2, [avg(T1, Chunk)|Acc], [Sample]}
+                        end
+                end,
+            case mnesia:activity(async_dirty, fun qlc:fold/3,
+                                 [F, {undefined, [], []},
+                                  Handle]) of
+                {error, _, _} = Error ->
+                    Error;
+                {undefined, [], []} ->
+                    {ok, []};
+                {T, Acc, LastChunk} ->
+                    {ok, lists:reverse([avg(T, LastChunk)|Acc])}
+            end
     end.
 
 
@@ -329,19 +349,3 @@ table(Bucket, Period) ->
 %% @doc Truncate a timestamp to the nearest multiple of N seconds.
 trunc_ts(TS, N) ->
     TS - (TS rem (N*1000)).
-
-
-%% @doc Return the last N records starting with the given key from Tab.
-walk(Tab, N) ->
-    {atomic, Results} = mnesia:transaction(
-                          fun () -> walk(Tab, mnesia:last(Tab), N, []) end,
-                          ?RETRIES),
-    Results.
-
-
-walk(_Tab, Key, N, Records) when N == 0; Key == '$end_of_table' ->
-    Records;
-walk(Tab, Key, N, Records) ->
-    [Record] = mnesia:read(Tab, Key),
-    NextKey = mnesia:prev(Tab, Key),
-    walk(Tab, NextKey, N - 1, [Record | Records]).
