@@ -93,10 +93,7 @@ var HashFragmentCell = mkClass(Cell, {
   }
 });
 
-// this cell type associates a set of HTML links with a set of values
-// (any type) and persists selected value in window.location hash
-// fragment
-var LinkSwitchCell = mkClass(HashFragmentCell, {
+var BaseClickSwitchCell = mkClass(HashFragmentCell, {
   initialize: function ($super, paramName, options) {
     options = _.extend({
       selectedClass: 'selected',
@@ -115,7 +112,10 @@ var LinkSwitchCell = mkClass(HashFragmentCell, {
     })
   },
   updateSelected: function () {
-    $(_(this.idToItems).chain().keys().map($i).value()).removeClass(this.options.selectedClass);
+    var findLinkById = this.findLinkById;
+    $(_(this.idToItems).chain().keys()
+      .inject($([]), function (a,b) {return a.add(findLinkById(b));})
+      .value()).removeClass(this.options.selectedClass);
 
     var value = this.value;
     if (value == undefined)
@@ -126,16 +126,28 @@ var LinkSwitchCell = mkClass(HashFragmentCell, {
       throw new Error('invalid value!');
 
     var id = this.items[index].id;
-    $($i(id)).addClass(this.options.selectedClass);
+    this.findLinkById(id).addClass(this.options.selectedClass);
   },
   eventHandler: function (element, event) {
-    var id = element.id;
+    var id = this.extractElementID(element);
     var item = this.idToItems[id];
     if (!item)
       return;
 
     this.pushState(id);
     event.preventDefault();
+  }
+});
+
+// this cell type associates a set of HTML links with a set of values
+// (any type) and persists selected value in window.location hash
+// fragment
+var LinkSwitchCell = mkClass(BaseClickSwitchCell, {
+  findLinkById: function (id) {
+    return $($i(id));
+  },
+  extractElementID: function (element) {
+    return element.id;
   },
   addLink: function (link, value, isDefault) {
     if (link.size() == 0)
@@ -143,6 +155,26 @@ var LinkSwitchCell = mkClass(HashFragmentCell, {
     var id = ensureElementId(link).attr('id');
     this.addItem(id, value, isDefault);
     return this;
+  }
+});
+
+// This cell type associates a set of CSS classes with a set of
+// values and persists selected value in window.location hash
+// fragment. Clicking on any element with on of configured classes
+// switches this cell to value associated with that class.
+//
+// All CSS classes in set must have prefix paramName
+var LinkClassSwitchCell = mkClass(BaseClickSwitchCell, {
+  findLinkById: function (id) {
+    return $('.' + id);
+  },
+  extractElementID: function (element) {
+    var classNames = element.className.split(' ');
+    for (var i = classNames.length-1; i >= 0; i--) {
+      var v = classNames[i];
+      if (this.idToItems[v])
+        return v;
+    }
   }
 });
 
