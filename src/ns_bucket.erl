@@ -44,6 +44,7 @@
          set_bucket_config/2,
          is_valid_bucket_name/1,
          is_open_proxy_port/2,
+         is_port_free/2,
          create_bucket/3,
          update_bucket_props/2,
          update_bucket_props/3,
@@ -307,7 +308,6 @@ is_valid_bucket_name([Char | Rest]) ->
 
 is_open_proxy_port(BucketName, Port) ->
     UsedPorts = lists:filter(fun (undefined) -> false;
-                                 (0) -> false; % Do we need this?
                                  (_) -> true
                              end,
                              [proplists:get_value(moxi_port, Config)
@@ -315,11 +315,20 @@ is_open_proxy_port(BucketName, Port) ->
                                  Name /= BucketName]),
     not lists:member(Port, UsedPorts).
 
+is_port_free(BucketName, Port) ->
+    is_port_free(BucketName, Port, ns_config:get()).
+
+is_port_free(BucketName, Port, Config) ->
+    Port =/= ns_config:search_node_prop(Config, memcached, port)
+        andalso Port =/= ns_config:search_node_prop(Config, moxi, port)
+        andalso Port =/= proplists:get_value(port, menelaus_web:webconfig(Config))
+        andalso is_open_proxy_port(BucketName, Port).
+
 validate_bucket_config(BucketName, NewConfig) ->
     case is_valid_bucket_name(BucketName) of
         true ->
             Port = proplists:get_value(moxi_port, NewConfig),
-            case is_open_proxy_port(BucketName, Port) of
+            case is_port_free(BucketName, Port) of
                 false ->
                     {error, {port_conflict, Port}};
                 true ->

@@ -448,8 +448,7 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, Auth
                                    case menelaus_util:parse_validate_number(ProxyPort,
                                                                             1025, 65535) of
                                        {ok, PP} ->
-                                           case ns_bucket:is_open_proxy_port(
-                                                  BucketName, PP) of
+                                           case ns_bucket:is_port_free(BucketName, PP) of
                                                true ->
                                                    {ok, moxi_port, PP};
                                                false ->

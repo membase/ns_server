@@ -35,6 +35,7 @@
          stop/0,
          loop/3,
          webconfig/0,
+         webconfig/1,
          restart/0,
          build_nodes_info/0,
          build_nodes_info_fun/3,
@@ -79,14 +80,14 @@ restart() ->
     % Depend on our supervision tree to restart us right away.
     stop().
 
-webconfig() ->
+webconfig(Config) ->
     Ip = case os:getenv("MOCHIWEB_IP") of
              false -> "0.0.0.0";
              Any -> Any
          end,
     Port = case os:getenv("MOCHIWEB_PORT") of
-               false -> Config = ns_config:get(),
-                        ns_config:search_node_prop(Config, rest, port, 8091);
+               false ->
+                   ns_config:search_node_prop(Config, rest, port, 8091);
                P -> list_to_integer(P)
            end,
     WebConfig = [{ip, Ip},
@@ -95,6 +96,9 @@ webconfig() ->
                                                     ?MODULE)},
                  {docroot, menelaus_deps:doc_path()}],
     WebConfig.
+
+webconfig() ->
+    webconfig(ns_config:get()).
 
 loop(Req, AppRoot, DocRoot) ->
     try
