@@ -25,7 +25,6 @@
 
 -behaviour(gen_server).
 
--define(INIT_TIMEOUT, 5000).
 -define(TRUNC_FREQ, 10).
 -define(RETRIES, 10).
 -define(TIMEOUT, 5000).
@@ -45,8 +44,7 @@
 %%
 
 start_link(Bucket) ->
-    gen_server:start_link({local, server(Bucket)}, ?MODULE, Bucket,
-                          [{timeout, ?INIT_TIMEOUT}]).
+    gen_server:start_link({local, server(Bucket)}, ?MODULE, Bucket, []).
 
 
 %% @doc Get the latest samples for a given interval from the archive
