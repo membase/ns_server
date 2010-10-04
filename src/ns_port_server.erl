@@ -64,7 +64,7 @@ handle_info({_Port, {exit_status, Status}}, State) ->
                "Port server ~p on node ~p exited with status ~p. Restarting. "
                "Messages: ~s",
                [State#state.name, node(), Status,
-                lists:append(ringbuffer:to_list(State#state.messages))]),
+                string:join(ringbuffer:to_list(State#state.messages), "\n")]),
     {stop, {abnormal, Status}, State}.
 
 handle_call(unhandled, unhandled, unhandled) ->
