@@ -71,7 +71,7 @@ init(Bucket) ->
     proc_lib:init_ack({ok, self()}),
     Sock = connect(),
     StartTime = now(),
-    ensure_bucket(Sock, Bucket),
+    ok = ensure_bucket(Sock, Bucket),
     wait_for_warmup(Sock),
     ns_log:log(?MODULE, 1, "Bucket ~p loaded on node ~p in ~p seconds.",
                [Bucket, node(), timer:now_diff(now(), StartTime) div 1000000]),
@@ -163,26 +163,35 @@ handle_info({wait_for_vbucket, VBucket, VBState, Callback},
             #state{sock=Sock} = State) ->
     wait_for_vbucket(Sock, VBucket, VBState, Callback),
     {noreply, State};
+handle_info({'EXIT', _, Reason} = Msg, State) ->
+    ?log_info("Got ~p. Exiting.", [Msg]),
+    {stop, Reason, State};
 handle_info(Msg, State) ->
     ?log_info("handle_info(~p, ~p)", [Msg, State]),
     {noreply, State}.
 
 
-terminate(Reason, State) ->
+terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
     if
         Reason == normal; Reason == shutdown ->
-            ?log_info("Deleting bucket ~p", [State#state.bucket]),
+            case ns_bucket:get_bucket(Bucket) of
+                not_present ->
+                    ?log_info("Flushing data for deleted bucket ~p", [Bucket]),
+                    mc_client_binary:flush(Sock);
+                _ ->
+                    ok
+            end,
+            ?log_info("Shutting down bucket ~p", [Bucket]),
             try
-                mc_client_binary:delete_bucket(State#state.sock,
-                                               State#state.bucket)
+                mc_client_binary:delete_bucket(Sock, Bucket)
             catch
                 E:R ->
                     ?log_error("Failed to delete bucket ~p: ~p",
-                               [State#state.bucket, {E, R}])
+                               [Bucket, {E, R}])
             end;
         true -> ok
     end,
-    catch gen_tcp:close(State#state.sock),
+    ok = gen_tcp:close(Sock),
     ok.
 
 
@@ -302,25 +311,31 @@ connect() ->
 
 
 ensure_bucket(Sock, Bucket) ->
-    {Engine, ConfigString,
-     BucketType, ExtraParams} = ns_bucket:config_string(Bucket),
-    case mc_client_binary:select_bucket(Sock, Bucket) of
-        ok ->
-            ensure_bucket_config(Sock, Bucket, BucketType, ExtraParams);
-        {memcached_error, key_enoent, _} ->
-            case mc_client_binary:create_bucket(Sock, Bucket, Engine,
-                                                ConfigString) of
+    try ns_bucket:config_string(Bucket) of
+        {Engine, ConfigString, BucketType, ExtraParams} ->
+            case mc_client_binary:select_bucket(Sock, Bucket) of
                 ok ->
-                    ok = mc_client_binary:select_bucket(Sock, Bucket);
-                {memcached_error, key_eexists, <<"Bucket exists: stopping">>} ->
-                    %% Waiting for an old bucket with this name to shut down
-                    timer:sleep(1000),
-                    ensure_bucket(Sock, Bucket);
+                    ensure_bucket_config(Sock, Bucket, BucketType, ExtraParams);
+                {memcached_error, key_enoent, _} ->
+                    case mc_client_binary:create_bucket(Sock, Bucket, Engine,
+                                                        ConfigString) of
+                        ok ->
+                            ok = mc_client_binary:select_bucket(Sock, Bucket);
+                        {memcached_error, key_eexists, <<"Bucket exists: stopping">>} ->
+                            %% Waiting for an old bucket with this name to shut down
+                            timer:sleep(1000),
+                            ensure_bucket(Sock, Bucket);
+                        Error ->
+                            {error, {bucket_create_error, Error}}
+                    end;
                 Error ->
-                    exit({bucket_create_error, Error})
-            end;
-        Error ->
-            exit({bucket_select_error, Error})
+                    {error, {bucket_select_error, Error}}
+            end
+    catch
+        E:R ->
+            ?log_error("Unable to get config for bucket ~p: ~p",
+                       [Bucket, {E, R}]),
+            {E, R}
     end.
 
 
@@ -351,9 +366,8 @@ ensure_bucket_config(Sock, Bucket, membase, {MaxSize, DBDir}) ->
         X2 when is_binary(X2) ->
             ?log_info("Changing dbname of ~p from ~s to ~s", [Bucket, X2,
                                                               DBDirBin]),
-            mc_client_binary:delete_bucket(Sock,
-                                           Bucket),
-            ensure_bucket(Sock, Bucket)
+            %% Just exit; this will delete and recreate the bucket
+            exit(normal)
     end;
 ensure_bucket_config(Sock, _Bucket, memcached, _MaxSize) ->
     %% TODO: change max size of memcached bucket also
