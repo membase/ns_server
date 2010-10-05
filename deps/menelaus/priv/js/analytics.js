@@ -161,7 +161,11 @@ var KnownPersistentStats = [
   ["curr_connections", "Connections count"],
   ["cas_hits", "CAS hits per second"],
   ["cas_badval", "CAS badval per second"],
-  ["cas_misses", "CAS misses per second"]
+  ["cas_misses", "CAS misses per second"],
+  ["ep_num_not_my_vbuckets", "VBucket errors per second\nNumber of times clients went to wrong server per second"],
+  ["ep_oom_errors", "OOM errors per second\nNumber of times sets were rejected due to lack of memory"],
+  ["ep_tmp_oom_errors", "Temporary OOM errors per second\nNumber of set rejections due to temporary lack of space per second"]
+
   // ["ep_flusher_todo", "EP-flusher todo"],
   // ["ep_queue_size", "EP queue size"],
   // ["updates", "Updates per second\nSum of set, increment, decrement, cas and delete operations per second"], 

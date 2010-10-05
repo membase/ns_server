@@ -37,7 +37,10 @@
         incr_hits,
         incr_misses,
         ep_io_num_read,
-        evictions).
+        evictions,
+        ep_num_not_my_vbuckets,
+        ep_oom_errors,
+        ep_tmp_oom_errors).
 
 -record(stat_entry, {timestamp, ?STAT_GAUGES, ?STAT_COUNTERS}).
 -define(STAT_FIELD_START, 2).
