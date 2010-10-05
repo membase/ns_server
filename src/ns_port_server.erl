@@ -73,11 +73,13 @@ handle_call(unhandled, unhandled, unhandled) ->
 handle_cast(unhandled, unhandled) ->
     unhandled.
 
-terminate(Reason, #state{name=Name, port=Port}) ->
-    Result = (catch port_close(Port)),
-    ?log_info("Result of closing port for ~p (exit reason ~p): ~p",
-              [Name, Reason, Result]),
-    ok.
+terminate(_Reason, #state{port=Port}) ->
+    try port_close(Port) of
+        true ->
+            ok
+    catch exit:{badarg, _} ->
+            ok
+    end.
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
