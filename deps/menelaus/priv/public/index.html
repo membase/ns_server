@@ -433,7 +433,7 @@
                     <a href="#visitStats={%=h(this.uri)%}">{%= h(this.name) %}</a>
                     </td>
                     <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
-                    <td>N/A</td>
+                    <td>{%= h(truncateTo3Digits(this.basicStats.hitRatio * 100)) %}%</td>
                     <td>
                       <div class="usage_smallest_info">
                           <div class="usage_smallest">

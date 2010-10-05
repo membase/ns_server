@@ -53,10 +53,38 @@ last_membase_sample(BucketName, Nodes) ->
                          Sample#stat_entry.ep_io_num_read + AccFetches}
                 end, {0, 0, 0, 0}, invoke_archiver(BucketName, Nodes, {1, minute, 1})).
 
-last_membase_stats(BucketName, Nodes) ->
+last_memcached_sample(BucketName, Nodes) ->
+    {MemUsed,
+     CurrItems,
+     Ops,
+     CmdGet,
+     GetHits} = lists:foldl(fun ({_Node, []}, Acc) -> Acc;
+                                ({_Node, [Sample|_]}, {AccMem, AccItems, AccOps, AccGet, AccGetHits}) ->
+                                    {Sample#stat_entry.mem_used + AccMem,
+                                     Sample#stat_entry.curr_items + AccItems,
+                                     aggregate_ops(Sample) + AccOps,
+                                     Sample#stat_entry.cmd_get + AccGet,
+                                     Sample#stat_entry.get_hits + AccGetHits}
+                            end, {0, 0, 0, 0, 0}, invoke_archiver(BucketName, Nodes, {1, minute, 1})),
+    {MemUsed,
+     CurrItems,
+     Ops,
+     case CmdGet of
+         0 -> 0;
+         _ -> GetHits / CmdGet
+     end}.
+
+last_bucket_stats(membase, BucketName, Nodes) ->
     {MemUsed, ItemsCount, Ops, Fetches} = last_membase_sample(BucketName, Nodes),
     [{opsPerSec, Ops},
      {diskFetches, Fetches},
+     {itemCount, ItemsCount},
+     {diskUsed, bucket_disk_usage(BucketName, Nodes)},
+     {memUsed, MemUsed}];
+last_bucket_stats(memcached, BucketName, Nodes) ->
+    {MemUsed, ItemsCount, Ops, HitRatio} = last_memcached_sample(BucketName, Nodes),
+    [{opsPerSec, Ops},
+     {hitRatio, HitRatio},
      {itemCount, ItemsCount},
      {diskUsed, bucket_disk_usage(BucketName, Nodes)},
      {memUsed, MemUsed}].
@@ -67,7 +95,7 @@ basic_stats(BucketName, Nodes) ->
 basic_stats(BucketName, Nodes, MaybeBucketConfig) ->
     {ok, BucketConfig} = ns_bucket:maybe_get_bucket(BucketName, MaybeBucketConfig),
     QuotaBytes = ns_bucket:ram_quota(BucketConfig),
-    Stats = last_membase_stats(BucketName, Nodes),
+    Stats = last_bucket_stats(ns_bucket:bucket_type(BucketConfig), BucketName, Nodes),
     MemUsed = proplists:get_value(memUsed, Stats),
     QuotaPercent = try (MemUsed * 100.0 / QuotaBytes) of
                        X -> X
@@ -300,6 +328,11 @@ add_stat_sums(Samples) ->
                               incr_misses, incr_hits,
                               decr_misses, decr_hits,
                               delete_misses, delete_hits], Samples)},
+     {hit_ratio, [case Gets of
+                      0 -> 0;
+                      _ -> Hits/Gets
+                  end || {Gets, Hits} <- lists:zip(proplists:get_value(cmd_get, Samples),
+                                                   proplists:get_value(get_hits, Samples))]},
      {misses, produce_sum_stats([get_misses, delete_misses, incr_misses, decr_misses,
                                  cas_misses], Samples)},
      {disk_writes, produce_sum_stats([ep_flusher_todo, ep_queue_size], Samples)},

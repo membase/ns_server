@@ -169,6 +169,7 @@ var KnownPersistentStats = [
 
 var KnownCacheStats =  [
   ["ops", "Operations per second\nSum of set, get, increment, decrement, cas and delete operations per second"],
+  ["hit_ratio", "Hit ratio\nHit ratio of get commands"],
   ["mem_used", "Memory bytes used"],
   ["curr_items", "Items count"],
   ["evictions", "RAM evictions per second"],
