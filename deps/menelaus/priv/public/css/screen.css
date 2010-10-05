@@ -758,11 +758,6 @@ body.nojs #nojs_alert { display: block; width:960px; margin:40px auto 0 auto;}
 .noform input, .noform label, .noform a {dispalay:none;}
 .auth_block .page-footer {display: none;}
 
-/* sort tool */
-.sort_desc .sort_up {display:none;}
-.sort_asc .sort_down {display:none;}
-.sort_desc img, .sort_asc img {position:relative; top:-2px;}
-
 button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
 
 #join_leave_switch.join-possible #cluster_leave_button { display:none; }

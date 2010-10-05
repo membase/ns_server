@@ -406,65 +406,106 @@
   </div>
 
   <div id="monitor_buckets" style="display:none;">
-    <!-- shadow box -->
-    <h1>Data Buckets</h1>
+    <h1>Memcached Buckets</h1>
     <div class="shadow_box">
-		<div class="top"><div><div>&nbsp;</div></div></div>
-		<div class="cnt">
-			<div class="pad">
-				<div class="content">
-				    <div class="darker_block">
-				        <div class="pad_10">
-				        </div>
-				    </div>
-				    <div id="monitor_buckets_list_container"></div>
-		    	</div>
-			</div>
-		</div>
-		<div class="bottom"><div><div>&nbsp;</div></div></div>
-	</div>
-  </div>
-    <script id="monitor_buckets_list_template" type="text/html">
-        <!-- className 'buckets_tab' goesWith '_' to desable thisStyle forNow -->
-        <table class="lined_tab buckets_tab_">
-          <col width="">
-          <col width="">
-          <col width="">
-          <col width="135">
-          <col width="">
-          <tr>
-            <!-- to display sort arrow correctly you need to switch between "sort_desc" and "sort_asc" classes in span -->
-            <th><span>Bucket Name</span></th>
-            <th>Ops/sec</th>
-            <th>Disk Fetches/sec</th>
-            <th>RAM Used</th>
-            <th>Item Count</th>
-          </tr>
-          <!-- {% $.each(rows, function () { %} -->
-          <tr>
-              <td>
-              <a class="bucket_name_" href="#visitStats={%=h(this.uri)%}">{%= h(this.name) %}</a>
-              <!-- className 'bucket_name' goesWith '_' to desable thisStyle forNow -->
-              </td>
-              <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
-              <td>{%= h(truncateTo3Digits(this.basicStats.diskFetches)) %}</td>
-              <td>
-                <div class="usage_smallest_info">
-                    <div class="usage_smallest">
-                        <div class="side_shadow">
-                            <div class="unused">
-                                <div class="used" style="width:1%;"></div>
-                            </div>
-                        </div>
-                    </div>{%= V.setPercentBar(this.basicStats.quotaPercentUsed) %}
-                    {%= h(truncateTo3Digits(Math.floor(this.basicStats.quotaPercentUsed * 100) / 100)) %}%
-                </div>
-              </td>
-              <td>{%= h(this.basicStats.itemCount) %}</td>
-            </tr>
-          <!-- {% }); %} -->
-        </table>
-    </script>
+      <div class="top"><div><div>&nbsp;</div></div></div>
+      <div class="cnt">
+        <div class="pad">
+          <div class="content">
+            <div id="monitor_cache_buckets_list_container"></div>
+            <script id="monitor_cache_buckets_list_template" type="text/html">
+              <table class="lined_tab" style="width:761px;">
+                <col width="221">
+                <col width="135">
+                <col width="135">
+                <col width="135">
+                <col width="135">
+                <tr>
+                  <th>Bucket Name</th>
+                  <th>Ops/sec</th>
+                  <th>Hit ratio</th>
+                  <th>RAM Used</th>
+                  <th>Item Count</th>
+                </tr>
+                <!-- {% $.each(rows, function () { %} -->
+                <tr>
+                    <td>
+                    <a href="#visitStats={%=h(this.uri)%}">{%= h(this.name) %}</a>
+                    </td>
+                    <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
+                    <td>N/A</td>
+                    <td>
+                      <div class="usage_smallest_info">
+                          <div class="usage_smallest">
+                              <div class="side_shadow">
+                                  <div class="unused">
+                                      <div class="used" style="width:1%;"></div>
+                                  </div>
+                              </div>
+                          </div>{%= V.setPercentBar(this.basicStats.quotaPercentUsed) %}
+                          {%= h(truncateTo3Digits(Math.floor(this.basicStats.quotaPercentUsed * 100) / 100)) %}%
+                      </div>
+                    </td>
+                    <td>{%= h(this.basicStats.itemCount) %}</td>
+                  </tr>
+                <!-- {% }); %} -->
+              </table>
+            </script>
+          </div>
+        </div>
+      </div>
+      <div class="bottom"><div><div>&nbsp;</div></div></div>
+    </div>
+    <h1>Membase Buckets</h1>
+    <div class="shadow_box">
+      <div class="top"><div><div>&nbsp;</div></div></div>
+      <div class="cnt">
+        <div class="pad">
+          <div class="content">
+            <div id="monitor_persistent_buckets_list_container"></div>
+            <script id="monitor_persistent_buckets_list_template" type="text/html">
+              <table class="lined_tab" style="width:761px;">
+                <col width="221">
+                <col width="135">
+                <col width="135">
+                <col width="135">
+                <col width="135">
+                <tr>
+                  <th>Bucket Name</th>
+                  <th>Ops/sec</th>
+                  <th>Disk Fetches/sec</th>
+                  <th>RAM Used</th>
+                  <th>Item Count</th>
+                </tr>
+                <!-- {% $.each(rows, function () { %} -->
+                <tr>
+                    <td>
+                    <a href="#visitStats={%=h(this.uri)%}">{%= h(this.name) %}</a>
+                    </td>
+                    <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
+                    <td>{%= h(truncateTo3Digits(this.basicStats.diskFetches)) %}</td>
+                    <td>
+                      <div class="usage_smallest_info">
+                          <div class="usage_smallest">
+                              <div class="side_shadow">
+                                  <div class="unused">
+                                      <div class="used" style="width:1%;"></div>
+                                  </div>
+                              </div>
+                          </div>{%= V.setPercentBar(this.basicStats.quotaPercentUsed) %}
+                          {%= h(truncateTo3Digits(Math.floor(this.basicStats.quotaPercentUsed * 100) / 100)) %}%
+                      </div>
+                    </td>
+                    <td>{%= h(this.basicStats.itemCount) %}</td>
+                  </tr>
+                <!-- {% }); %} -->
+              </table>
+            </script>
+          </div>
+        </div>
+      </div>
+      <div class="bottom"><div><div>&nbsp;</div></div></div>
+    </div>
   </div>
 
   <div id="buckets" style="display:none">

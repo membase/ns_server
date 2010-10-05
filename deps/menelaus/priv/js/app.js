@@ -354,7 +354,9 @@ $(function () {
 });
 
 $(window).bind('template:rendered', function () {
-  $('table.lined_tab tr:has(td):odd').addClass('highlight');
+  $('table.lined_tab').each(function () {
+    $(this).find('tr:has(td):odd').addClass('highlight');
+  });
 });
 
 $('.remove_bucket').live('click', function() {
