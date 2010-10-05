@@ -153,7 +153,7 @@ get_vbucket(Sock, VBucket) ->
     case cmd(?CMD_GET_VBUCKET, Sock, undefined, undefined,
             {#mc_header{},
              #mc_entry{key = list_to_binary(integer_to_list(VBucket))}}) of
-        {ok, #mc_header{status=?SUCCESS}, #mc_entry{key=StateBin}, _NCB} ->
+        {ok, #mc_header{status=?SUCCESS}, #mc_entry{data=StateBin}, _NCB} ->
             {ok, binary_to_atom(StateBin, latin1)};
         Response -> process_error_response(Response)
     end.
@@ -300,7 +300,8 @@ map_status(?EINTERNAL) ->
 map_status(?EBUSY) ->
     ebusy.
 
-process_error_response({ok, #mc_header{status=Status}, #mc_entry{key=Msg}, _NCB}) ->
+process_error_response({ok, #mc_header{status=Status}, #mc_entry{data=Msg},
+                        _NCB}) ->
     {memcached_error, map_status(Status), Msg};
 process_error_response(Error) ->
     {client_error, Error}.
