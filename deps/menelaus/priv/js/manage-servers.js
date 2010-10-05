@@ -327,8 +327,6 @@ var ServersSection = {
             } else {
               hideDialog('join_cluster_dialog');
             }
-          }, {
-            timeout: 15000
           })
         }]],
         onHide: function () {

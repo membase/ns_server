@@ -93,7 +93,7 @@ function onUnexpectedXHRError(xhr, xhrStatus, errMsg) {
 
 $.ajaxSetup({
   error: onUnexpectedXHRError,
-  timeout: 5000,
+  timeout: 30000,
   beforeSend: function (xhr) {
     if (DAO.login) {
       addBasicAuth(xhr, DAO.login, DAO.password);
