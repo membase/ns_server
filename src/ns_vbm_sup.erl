@@ -59,13 +59,13 @@ actions(Children) ->
 
 kill_vbuckets(Node, Bucket, VBuckets) ->
     {ok, States} = ns_memcached:list_vbuckets(Node, Bucket),
-    case [X || X = {V, _} <- States, lists:member(V, VBuckets)] of
+    case [X || X = {V, S} <- States, lists:member(V, VBuckets), S /= replica] of
         [] ->
             ok;
         RemainingVBuckets ->
             lists:foreach(fun ({V, dead}) ->
                                   ns_memcached:delete_vbucket(Node, Bucket, V);
-                              ({V, S}) when S /= replica ->
+                              ({V, _}) ->
                                   ns_memcached:set_vbucket(Node, Bucket,
                                                            V, dead),
                                   ns_memcached:delete_vbucket(Node, Bucket, V)
@@ -73,35 +73,30 @@ kill_vbuckets(Node, Bucket, VBuckets) ->
     end.
 
 set_replicas(Node, Bucket, Replicas) ->
-    case lists:member(Node, ns_node_disco:nodes_actual_proper()) of
-        true ->
-            GoodChildren = kill_runaway_children(Node, Bucket, Replicas),
-            %% Now filter out the replicas that still have children
-            Actions = actions(GoodChildren),
-            NeededReplicas = Replicas -- Actions,
-            Sorted = lists:keysort(2, NeededReplicas),
-            Grouped = misc:keygroup(2, Sorted),
-            lists:foreach(
-              fun ({Dst, R}) ->
-                      VBuckets = [V || {V, _} <- R],
-                      ?log_info(
-                         "Starting replica for vbuckets ~w on node ~p",
-                         [VBuckets, Dst]),
-                      kill_vbuckets(Dst, Bucket, VBuckets),
-                      lists:foreach(
-                        fun (V) ->
-                                ns_memcached:set_vbucket(Dst, Bucket, V,
-                                                         replica)
-                        end, VBuckets),
-                      %% Make sure the command line doesn't get too long
-                      lists:foreach(
-                        fun (VB) ->
-                                {ok, _Pid} = start_child(Node, Bucket, VB, Dst)
-                        end, split_vbuckets(VBuckets))
-              end, Grouped);
-        false ->
-            {error, nodedown}
-    end.
+    GoodChildren = kill_runaway_children(Node, Bucket, Replicas),
+    %% Now filter out the replicas that still have children
+    Actions = actions(GoodChildren),
+    NeededReplicas = Replicas -- Actions,
+    Sorted = lists:keysort(2, NeededReplicas),
+    Grouped = misc:keygroup(2, Sorted),
+    lists:foreach(
+      fun ({Dst, R}) ->
+              VBuckets = [V || {V, _} <- R],
+              ?log_info(
+                 "Starting replica for vbuckets ~w on node ~p",
+                 [VBuckets, Dst]),
+              kill_vbuckets(Dst, Bucket, VBuckets),
+              lists:foreach(
+                fun (V) ->
+                        ns_memcached:set_vbucket(Dst, Bucket, V,
+                                                 replica)
+                end, VBuckets),
+              %% Make sure the command line doesn't get too long
+              lists:foreach(
+                fun (VB) ->
+                        {ok, _Pid} = start_child(Node, Bucket, VB, Dst)
+                end, split_vbuckets(VBuckets))
+      end, Grouped).
 
 spawn_mover(Bucket, VBucket, SrcNode, DstNode) ->
     Args = args(SrcNode, Bucket, [VBucket], DstNode, true),
