@@ -17,6 +17,13 @@ var MonitorBucketsSection = {
       detailedBuckets: BucketsSection.cells.detailedBuckets
     });
     renderCellTemplate(memcachedBuckets, 'monitor_cache_buckets_list');
+
+    memcachedBuckets.subscribeValue(function (list) {
+      $('#monitor_buckets .memcached-buckets-subsection')[!list || list.length ? 'show' : 'hide']();
+    });
+    membaseBuckets.subscribeValue(function (list) {
+      $('#monitor_buckets .membase-buckets-subsection')[!list || list.length ? 'show' : 'hide']();
+    });
   },
   onEnter: function () {
     BucketsSection.refreshBuckets();
