@@ -50,9 +50,22 @@ cleanup(Bucket) ->
             NodesReplicas = lists:map(fun ({Src, R}) -> % R is the replicas for this node
                                               {Src, [{V, Dst} || {_, Dst, V} <- R]}
                                       end, ReplicaGroups),
-            lists:foreach(fun ({Src, R}) ->
-                                  catch ns_vbm_sup:set_replicas(Src, Bucket, R)
-                          end, NodesReplicas)
+            LiveNodes = [node()|nodes()],
+            lists:foreach(
+              fun ({Src, R}) ->
+                      case lists:member(Src, LiveNodes) of
+                          true ->
+                              try ns_vbm_sup:set_replicas(
+                                    Src, Bucket, R)
+                              catch
+                                  E:R ->
+                                      ?log_error("Unable to start replicators on ~p: ~p",
+                                                 [Src, {E, R}])
+                              end;
+                          false ->
+                              ok
+                      end
+              end, NodesReplicas)
     end.
 
 
