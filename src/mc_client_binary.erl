@@ -25,6 +25,7 @@
          create_bucket/4,
          delete_bucket/2,
          delete_vbucket/2,
+         flush/1,
          get_vbucket/2,
          list_buckets/1,
          noop/1,
@@ -144,6 +145,15 @@ delete_vbucket(Sock, VBucket) ->
     case cmd(?CMD_DELETE_VBUCKET, Sock, undefined, undefined,
              {#mc_header{},
               #mc_entry{key = list_to_binary(integer_to_list(VBucket))}}) of
+        {ok, #mc_header{status=?SUCCESS}, _ME, _NCB} ->
+            ok;
+        Response -> process_error_response(Response)
+    end.
+
+flush(Sock) ->
+    case cmd(?FLUSH, Sock, undefined, undefined,
+             {#mc_header{},
+              #mc_entry{}}) of
         {ok, #mc_header{status=?SUCCESS}, _ME, _NCB} ->
             ok;
         Response -> process_error_response(Response)
