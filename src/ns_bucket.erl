@@ -50,7 +50,8 @@
          update_bucket_props/3,
          delete_bucket/1,
          set_map/2,
-         set_servers/2]).
+         set_servers/2,
+         is_persistent/1]).
 
 
 %%%===================================================================
@@ -465,6 +466,10 @@ update_bucket_config(Bucket, Fun) ->
                    lists:keyreplace(configs, 1, List, {configs, NewBuckets})
            end).
 
+%% returns true iff bucket with given names is membase bucket.
+is_persistent(BucketName) ->
+    {ok, BucketConfig} = get_bucket(BucketName),
+    bucket_type(BucketConfig) =:= membase.
 
 %%
 %% Internal functions

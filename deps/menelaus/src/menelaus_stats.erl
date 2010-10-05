@@ -325,6 +325,7 @@ build_buckets_stats_ops_response(_PoolId, [BucketName], Params) ->
     PropList2 = samples_to_proplists(Samples),
     OpPropList0 = [{samples, {struct, PropList2}},
                    {samplesCount, TotalNumber},
+                   {isPersistent, ns_bucket:is_persistent(BucketName)},
                    {lastTStamp, case proplists:get_value(timestamp, PropList2) of
                                     [] -> 0;
                                     L -> lists:last(L)

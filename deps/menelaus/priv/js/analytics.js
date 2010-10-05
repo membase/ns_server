@@ -139,7 +139,7 @@ function renderSmallGraph(jq, stats, statName, isSelected, zoomMillis) {
           grid: {show:false}});
 }
 
-var KnownStats = [
+var KnownPersistentStats = [
   ["ops", "Operations per second\nSum of set, get, increment, decrement, cas and delete operations per second"],
   ["ep_io_num_read", "Disk fetches\nNumber of disk reads per second"],
   ["mem_used", "Memory bytes used"],
@@ -167,12 +167,36 @@ var KnownStats = [
   // ["updates", "Updates per second\nSum of set, increment, decrement, cas and delete operations per second"], 
 ];
 
+var KnownCacheStats =  [
+  ["ops", "Operations per second\nSum of set, get, increment, decrement, cas and delete operations per second"],
+  ["mem_used", "Memory bytes used"],
+  ["curr_items", "Items count"],
+  ["evictions", "RAM evictions per second"],
+  ["cmd_set", "Sets per second\nSet operations per second"],
+  ["cmd_get", "Gets per second\nGet operations per second"],
+  ["bytes_written", "Bytes sent per second\nNetwork bytes sent by all servers, per second"],
+  ["bytes_read", "Bytes received per second\nNetwork bytes received by all servers, per second"],
+  ["get_hits", "Get hits per second"],
+  ["delete_hits", "Delete hits per second"],
+  ["incr_hits", "Incr hits per second"],
+  ["decr_hits", "Decr hits per second"],
+  ["delete_misses", "Delete misses per second"],
+  ["decr_misses", "Decr misses per second"],
+  ["get_misses", "Get Misses per second"],
+  ["incr_misses", "Incr misses per second"],
+  ["curr_connections", "Connections count"],
+  ["cas_hits", "CAS hits per second"],
+  ["cas_badval", "CAS badval per second"],
+  ["cas_misses", "CAS misses per second"]
+];
+
 var StatGraphs = {
   selected: null,
-  recognizedStats: _.pluck(KnownStats, 0),
+  recognizedStatsPersistent: _.pluck(KnownPersistentStats, 0),
+  recognizedStatsCache: _.pluck(KnownCacheStats, 0),
+  recognizedStats: null,
   visibleStats: [],
   visibleStatsIsDirty: true,
-  statNames: {},
   spinners: [],
   preventUpdatesCounter: 0,
   freeze: function () {
@@ -189,7 +213,15 @@ var StatGraphs = {
     return _.bind(this.thaw, this);
   },
   findGraphArea: function (statName) {
-    return $('#analytics_graph_' + statName)
+    var father;
+    if (this.nowIsPersistent == null) {
+      father = $([]);
+    } else if (this.nowIsPersistent) {
+      father = $('#stats_nav_persistent_container');
+    } else {
+      father = $('#stats_nav_cache_container');
+    }
+    return father.find('.analytics_graph_' + statName);
   },
   renderNothing: function () {
     var self = this;
@@ -200,12 +232,23 @@ var StatGraphs = {
     self.spinners.push(overlayWithSpinner(main));
     main.find('.marker').remove();
 
-    _.each(self.visibleStats, function (statName) {
+    _.each(self.effectivelyVisibleStats || [], function (statName) {
       var area = self.findGraphArea(statName);
       self.spinners.push(overlayWithSpinner(area));
     });
 
     $('.stats_visible_period').text('?');
+  },
+  updateVisibleStats: function () {
+    var self = this;
+
+    self.recognizedStats = (self.nowIsPersistent) ? self.recognizedStatsPersistent : self.recognizedStatsCache;
+    $('#stats_nav_cache_container, #configure_cache_stats_items_container')[self.nowIsPersistent ? 'hide' : 'show']();
+    $('#stats_nav_persistent_container, #configure_persistent_stats_items_container')[self.nowIsPersistent ? 'show' : 'hide']();
+
+    self.effectivelyVisibleStats = _.select(self.visibleStats, function (name) {
+      return _.include(self.recognizedStats, name);
+    });
   },
   zoomToSeconds: {
     minute: 60,
@@ -235,16 +278,20 @@ var StatGraphs = {
     });
     self.spinners = [];
 
-    var main = $('#analytics_main_graph')
+    var main = $('#analytics_main_graph');
+
+    if (!self.recognizedStats || self.nowIsPersistent != op.isPersistent) {
+      self.visibleStatsIsDirty = true;
+      self.nowIsPersistent = op.isPersistent;
+    }
 
     if (self.visibleStatsIsDirty) {
+      self.updateVisibleStats();
+
       _.each(self.recognizedStats, function (name) {
-        var op = _.include(self.visibleStats, name) ? 'show' : 'hide';
+        var op = _.include(self.effectivelyVisibleStats, name) ? 'show' : 'hide';
         var area = self.findGraphArea(name);
         area[op]();
-
-        var description = self.statNames[name] || name;
-        area.find('.small_graph_label .label-text').text(' ' + description)
       });
       self.visibleStatsIsDirty = false;
     }
@@ -264,7 +311,7 @@ var StatGraphs = {
     }
 
 
-    _.each(self.visibleStats, function (statName) {
+    _.each(self.effectivelyVisibleStats, function (statName) {
       var ops = stats[statName] || [];
       var area = self.findGraphArea(statName);
       renderSmallGraph(area, stats, statName, selected == statName, zoomMillis);
@@ -283,25 +330,36 @@ var StatGraphs = {
   configureStats: function () {
     var self = this;
 
+    self.prepareConfigureDialog();
+
     var dialog = $('#analytics_settings_dialog');
     var values = {};
 
+    if (!self.recognizedStats)
+      return;
+
     _.each(self.recognizedStats, function (name) {
-      values[name] = _.include(self.visibleStats, name);
+      values[name] = _.include(self.effectivelyVisibleStats, name);
     });
     setFormValues(dialog, values);
 
     var observer = dialog.observePotentialChanges(watcher);
 
+    var hiddenVisibleStats = _.reject(self.visibleStats, function (name) {
+      return _.include(self.effectivelyVisibleStats, name);
+    });
+
+    var oldChecked;
     function watcher(e) {
       var checked = $.map(dialog.find('input:checked'), function (el, idx) {
         return el.getAttribute('name');
       }).sort();
 
-      if (_.isEqual(checked, self.visibleStats))
+      if (_.isEqual(checked, oldChecked))
         return;
+      oldChecked = checked;
 
-      self.visibleStats = checked;
+      self.visibleStats = checked = hiddenVisibleStats.concat(checked).sort();
       $.cookie('vs', checked.join(','));
       self.visibleStatsIsDirty = true;
       self.update();
@@ -315,36 +373,43 @@ var StatGraphs = {
       }
     });
   },
+  prepareConfigureDialog: function () {
+    var knownStats;
+    if (this.nowIsPersistent) {
+      knownStats = KnownPersistentStats;
+    } else {
+      knownStats = KnownCacheStats;
+    }
+
+    var leftCount = (knownStats.length + 1) >> 1;
+    var shuffledPairs = new Array(knownStats.length);
+    var i,k;
+    for (i = 0, k = 0; i < knownStats.length; i += 2, k++) {
+      shuffledPairs[i] = knownStats[k];
+      shuffledPairs[i+1] = knownStats[leftCount + k];
+    }
+    shuffledPairs.length = knownStats.length;
+
+    renderTemplate('configure_stats_items',
+                   _.map(shuffledPairs, function (pair) {
+                     var name = pair[0];
+                     var ar = pair[1].split("\n", 2);
+                     if (ar.length == 1)
+                       ar[1] = ar[0];
+                     return {
+                       name: name,
+                       'short': ar[0],
+                       full: ar[1]
+                     };
+                   }));
+  },
   init: function () {
-    renderTemplate('stats_nav', this.recognizedStats);
-
-    ;(function () {
-      var leftCount = (KnownStats.length + 1) >> 1;
-      var shuffledPairs = new Array(KnownStats.length);
-      var i,k;
-      for (i = 0, k = 0; i < KnownStats.length; i += 2, k++) {
-        shuffledPairs[i] = KnownStats[k];
-        shuffledPairs[i+1] = KnownStats[leftCount + k];
-      }
-      shuffledPairs.length = KnownStats.length;
-
-      renderTemplate('configure_stats_items',
-                     _.map(shuffledPairs, function (pair) {
-                       var name = pair[0];
-                       var ar = pair[1].split("\n", 2);
-                       if (ar.length == 1)
-                         ar[1] = ar[0];
-                       return {
-                         name: name,
-                         'short': ar[0],
-                         full: ar[1]
-                       };
-                     }));
-    })();
+    renderTemplate('stats_nav', KnownCacheStats, $i('stats_nav_cache_container'));
+    renderTemplate('stats_nav', KnownPersistentStats, $i('stats_nav_persistent_container'));
 
     var self = this;
 
-    self.selected = new LinkSwitchCell('graph', {
+    self.selected = new LinkClassSwitchCell('graph', {
       bindMethod: 'bind',
       linkSelector: '.analytics-small-graph',
       firstItemIsDefault: true}),
@@ -354,8 +419,8 @@ var StatGraphs = {
     var selected = self.selected;
 
     var t;
-    _.each(self.recognizedStats, function (statName) {
-      var area = self.findGraphArea(statName);
+    _.each(_.uniq(self.recognizedStatsCache.concat(self.recognizedStatsPersistent)), function (statName) {
+      var area = $('.analytics_graph_' + statName);
       if (!area.length) {
         debugger
       }
@@ -364,7 +429,7 @@ var StatGraphs = {
         t = area;
       else
         t = t.add(area);
-      selected.addLink(area, statName);
+      selected.addItem('analytics_graph_' + statName, statName);
     });
 
     selected.subscribe($m(self, 'update'));
@@ -382,16 +447,9 @@ var StatGraphs = {
       }
     }
 
-    var visibleStatsCookie = $.cookie('vs') || self.recognizedStats.slice(0,4).join(',');
+    var visibleStatsCookie = $.cookie('vs') || _.uniq(self.recognizedStatsPersistent.slice(0,4)
+                                                      .concat(self.recognizedStatsCache.slice(0,4))).join(',');
     self.visibleStats = visibleStatsCookie.split(',').sort();
-
-    // init stat names
-    $('#analytics_settings_dialog input[type=checkbox]').each(function () {
-      var name = this.getAttribute('name');
-      var text = $.trim($(this).siblings('.cnt').children('span').text());
-      if (text && text.length)
-        self.statNames[name] = text;
-    });
   }
 }
 

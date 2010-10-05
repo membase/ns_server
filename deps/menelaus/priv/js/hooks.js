@@ -454,6 +454,7 @@ var MockedRequest = mkClass({
                         evictions: 13,
                         bucket: "Excerciser application"}],
             op: {
+              isPersistent: false,
               lastTStamp: samples.timestamp.slice(-1)[0],
               tstampParam: lastSampleT,
               interval: samplesInterval,
