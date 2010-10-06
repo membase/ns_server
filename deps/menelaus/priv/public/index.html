@@ -564,7 +564,7 @@
               <td>
                 Bucket Name: <span>{%= h(name) %}</span><br />
                 Bucket Type: <span>{%= h(bucketTypeName) %}</span><br />
-                Access Control: <span>{%= (authType == 'none') ? 'Port' : 'Password' %}{%= (authType == 'none') ? (': ' + proxyPort) : '' %}</span>
+                Access Control: <span>{%= (authType == 'none') ? 'Port' : ((name == 'default') ? 'None' : 'Authentication') %}{%= (authType == 'none') ? (': ' + proxyPort) : '' %}</span>
               </td>
               <td>
               {% if (bucketType == 'membase') { %}
