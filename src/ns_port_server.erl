@@ -77,7 +77,7 @@ terminate(_Reason, #state{port=Port}) ->
     try port_close(Port) of
         true ->
             ok
-    catch exit:{badarg, _} ->
+    catch error:badarg ->
             ok
     end.
 
