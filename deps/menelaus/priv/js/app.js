@@ -513,10 +513,23 @@ var NodeDialog = {
     var timeout = setTimeout(function () {
       spinner = overlayWithSpinner('#init_bucket_dialog');
     }, 50);
-    $.get('/pools/default/buckets/default',
-          continuation,
-          'json');
-    function continuation(data) {
+    $.ajax({url: '/pools/default/buckets/default',
+            success: continuation,
+            error: continuation,
+            dataType: 'json'});
+    function continuation(data, status) {
+      if (status != 'success') {
+        $.ajax({type:'GET', url:'/nodes/self', dataType: 'json',
+                success: function (nodeData) {
+                  data = {uri: '/pools/default/buckets',
+                          bucketType: 'membase',
+                          authType: 'sasl',
+                          quota: { rawRAM: nodeData.storageTotals.ram.quotaTotal },
+                          replicaNumber: 1};
+                  continuation(data, 'success');
+                }});
+        return;
+      }
       if (spinner)
         spinner.remove();
       clearTimeout(timeout);
