@@ -813,3 +813,8 @@ retry_test() ->
     self() ! {testval, c},
     self() ! {testval, d},
     b = retry(fun () -> b = receive {testval, X} -> X end end).
+
+
+%% @doc Truncate a timestamp to the nearest multiple of N seconds.
+trunc_ts(TS, N) ->
+    TS - (TS rem (N*1000)).
