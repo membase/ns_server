@@ -59,8 +59,8 @@ cleanup(Bucket) ->
                                     Src, Bucket, R)
                               catch
                                   E:R ->
-                                      ?log_error("Unable to start replicators on ~p: ~p",
-                                                 [Src, {E, R}])
+                                      ?log_error("Unable to start replicators on ~p for bucket ~p: ~p",
+                                                 [Src, Bucket, {E, R}])
                               end;
                           false ->
                               ok
@@ -157,8 +157,8 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
             case [N || {N, active} <- ReplicaStates ++ ExtraStates] of
                 [] ->
                     %% We'll let the next pass catch the replicas.
-                    ?log_info("Setting vbucket ~p on ~p to active.",
-                              [VBucket, Master]),
+                    ?log_info("Setting vbucket ~p in ~p on ~p to active.",
+                              [VBucket, Bucket, Master]),
                     ns_memcached:set_vbucket(Master, Bucket, VBucket, active),
                     Chain;
                 [Node] ->
@@ -167,25 +167,25 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                         false ->
                             %% It's an extra node
                             ?log_warning(
-                               "Master for vbucket ~p is not active, but ~p is, so making that the master.",
-                              [VBucket, Node]),
+                               "Master for vbucket ~p in ~p is not active, but ~p is, so making that the master.",
+                              [VBucket, Bucket, Node]),
                             [Node];
                         Pos ->
                             [Node|lists:nthtail(Pos, Chain)]
                     end;
                 Nodes ->
                     ?log_error(
-                      "Extra active nodes ~p for vbucket ~p. This should never happen!",
-                      [Nodes, VBucket]),
+                      "Extra active nodes ~p for vbucket ~p in ~p. This should never happen!",
+                      [Nodes, Bucket, VBucket]),
                     Chain
             end;
         C = [{_, MasterState}|ReplicaStates] when MasterState =:= active orelse MasterState =:= zombie ->
             lists:foreach(
               fun ({_, {N, active}}) ->
-                      ?log_error("Active replica ~p for vbucket ~p. "
+                      ?log_error("Active replica ~p for vbucket ~p in ~p. "
                                  "This should never happen, but we have an "
                                  "active master, so I'm deleting it.",
-                                 [N]),
+                                 [N, Bucket]),
                       ns_memcached:set_vbucket(N, Bucket, VBucket, dead),
                       ns_vbm_sup:kill_children(N, Bucket, [VBucket]);
                   ({_, {_, replica}})-> % This is what we expect
@@ -209,13 +209,13 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
               fun ({N, State}) ->
                       case {HaveAllCopies, State} of
                           {_, S} when S /= dead ->
-                              ?log_info("Setting vbucket ~p on ~p from ~p to"
-                                        " dead.", [VBucket, N, S]),
+                              ?log_info("Setting vbucket ~p in ~p on ~p from ~p to"
+                                        " dead.", [VBucket, Bucket, N, S]),
                               ns_memcached:set_vbucket(
                                 N, Bucket, VBucket, dead);
                           {true, dead} ->
-                              ?log_info("Deleting vbucket ~p on ~p",
-                                        [VBucket, N]),
+                              ?log_info("Deleting vbucket ~p in ~p on ~p",
+                                        [VBucket, Bucket, N]),
                               ns_memcached:delete_vbucket(N, Bucket, VBucket);
                           {false, dead} ->
                               ok
@@ -226,8 +226,8 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
             case [N||{N, RState} <- ReplicaStates ++ ExtraStates,
                      lists:member(RState, [active, pending, replica])] of
                 [] ->
-                    ?log_info("Setting vbucket ~p on master ~p to active",
-                              [VBucket, Master]),
+                    ?log_info("Setting vbucket ~p in ~p on master ~p to active",
+                              [VBucket, Bucket, Master]),
                     ns_memcached:set_vbucket(Master, Bucket, VBucket,
                                                    active),
                     Chain;
@@ -235,8 +235,8 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                     case lists:member(Master, Zombies) of
                         true -> ok;
                         false ->
-                            ?log_error("Master ~p in state ~p for vbucket ~p but we have extra nodes ~p!",
-                                       [Master, State, VBucket, X])
+                            ?log_error("Master ~p in state ~p for vbucket ~p in ~p but we have extra nodes ~p!",
+                                       [Master, State, VBucket, Bucket, X])
                     end,
                     Chain
             end
