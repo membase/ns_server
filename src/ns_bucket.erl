@@ -26,8 +26,7 @@
          maybe_get_bucket/2,
          get_buckets/0,
          get_buckets/1,
-         min_live_copies/0,
-         min_live_copies/1,
+         failover_warnings/0,
          node_locator/1,
          ram_quota/1,
          raw_ram_quota/1,
@@ -173,30 +172,99 @@ raw_ram_quota(Bucket) ->
             X
     end.
 
-%% @doc Return the minimum number of live copies for all membase buckets.
--spec min_live_copies() -> non_neg_integer() | undefined.
-min_live_copies() ->
-    case [Config || {_BucketName, Config} <- get_buckets(),
-                    proplists:get_value(type, Config) == membase] of
-        [] ->
-            undefined;
-        BucketConfigs ->
-            LiveNodes = [node()|nodes()],
-            CopyCounts = [min_live_copies(LiveNodes, BucketConfig)
-                          || BucketConfig <- BucketConfigs],
-            lists:min(CopyCounts)
-    end.
+-define(FS_HARD_NODES_NEEDED, 4).
+-define(FS_FAILOVER_NEEDED, 3).
+-define(FS_REBALANCE_NEEDED, 2).
+-define(FS_SOFT_REBALANCE_NEEDED, 1).
+-define(FS_OK, 0).
 
--spec min_live_copies(string()) -> non_neg_integer() | undefined.
-min_live_copies(Bucket) ->
-    case get_bucket(Bucket) of
-        {ok, Config} ->
-            min_live_copies([node()|nodes()], Config);
+bucket_failover_safety(BucketConfig, LiveNodes) ->
+    ReplicaNum = ns_bucket:num_replicas(BucketConfig),
+    case ReplicaNum of
+        %% if replica count for bucket is 0 we cannot failover at all
+        0 -> {?FS_OK, ok};
         _ ->
-            undefined
+            MinLiveCopies = min_live_copies(LiveNodes, BucketConfig),
+            BucketNodes = proplists:get_value(servers, BucketConfig),
+            BaseSafety =
+                if
+                    MinLiveCopies =:= undefined -> % janitor run pending
+                        case LiveNodes of
+                            [_,_|_] -> ?FS_OK;
+                            _ -> ?FS_HARD_NODES_NEEDED
+                        end;
+                    MinLiveCopies =:= undefined orelse MinLiveCopies =< 1 ->
+                        %% we cannot failover without losing data
+                        %% is some of chain nodes are down ?
+                        DownBucketNodes = lists:any(fun (N) -> not lists:member(N, LiveNodes) end,
+                                                    BucketNodes),
+                        if
+                            DownBucketNodes ->
+                                %% yes. User should bring them back or failover/replace them (and possibly add more)
+                                ?FS_FAILOVER_NEEDED;
+                            %% Can we replace missing chain nodes with other live nodes ?
+                            LiveNodes =/= [] andalso tl(LiveNodes) =/= [] -> % length(LiveNodes) > 1, but more efficent
+                                %% we're generally fault tolerant, just not balanced enough
+                                ?FS_REBALANCE_NEEDED;
+                            true ->
+                                %% we have one (or 0) of live nodes, need at least one more to be fault tolerant
+                                ?FS_HARD_NODES_NEEDED
+                        end;
+                    true ->
+                        case ns_rebalancer:unbalanced(proplists:get_value(map, BucketConfig),
+                                                      proplists:get_value(servers, BucketConfig)) of
+                            true ->
+                                ?FS_SOFT_REBALANCE_NEEDED;
+                            _ ->
+                                ?FS_OK
+                        end
+                end,
+            ExtraSafety =
+                if
+                    length(LiveNodes) =< ReplicaNum andalso BaseSafety =/= ?FS_HARD_NODES_NEEDED ->
+                        %% if we don't have enough nodes to put all replicas on
+                        softNodesNeeded;
+                    true ->
+                        ok
+                end,
+            {BaseSafety, ExtraSafety}
     end.
 
-%% @doc Separate out the guts of can_fail_over to make it testable.
+failover_safety_rec(?FS_HARD_NODES_NEEDED, _ExtraSafety, _, _LiveNodes) -> {?FS_HARD_NODES_NEEDED, ok};
+failover_safety_rec(BaseSafety, ExtraSafety, [], _LiveNodes) -> {BaseSafety, ExtraSafety};
+failover_safety_rec(BaseSafety, ExtraSafety, [BucketConfig | RestConfigs], LiveNodes) ->
+    {ThisBaseSafety, ThisExtraSafety} = bucket_failover_safety(BucketConfig, LiveNodes),
+    NewBaseSafety = case BaseSafety < ThisBaseSafety of
+                        true -> ThisBaseSafety;
+                        _ -> BaseSafety
+                    end,
+    NewExtraSafety = if ThisExtraSafety =:= softNodesNeeded
+                        orelse ExtraSafety =:= softNodesNeeded ->
+                             softNodesNeeded;
+                        true ->
+                             ok
+                     end,
+    failover_safety_rec(NewBaseSafety, NewExtraSafety,
+                        RestConfigs, LiveNodes).
+
+-spec failover_warnings() -> [failoverNeeded | rebalanceNeeded | hardNodesNeeded | softNodesNeeded].
+failover_warnings() ->
+    LiveNodes = ns_cluster_membership:actual_active_nodes(),
+    {BaseSafety0, ExtraSafety}
+        = failover_safety_rec(?FS_OK, ok,
+                              [C || {_, C} <- get_buckets(),
+                                    membase =:= bucket_type(C)],
+                              LiveNodes),
+    BaseSafety = case BaseSafety0 of
+                     ?FS_HARD_NODES_NEEDED -> hardNodesNeeded;
+                     ?FS_FAILOVER_NEEDED -> failoverNeeded;
+                     ?FS_REBALANCE_NEEDED -> rebalanceNeeded;
+                     ?FS_SOFT_REBALANCE_NEEDED -> softRebalanceNeeded;
+                     ?FS_OK -> ok
+                 end,
+    [S || S <- [BaseSafety, ExtraSafety], S =/= ok].
+
+%% @doc Return the minimum number of live copies for all vbuckets.
 -spec min_live_copies([node()], list()) -> non_neg_integer() | undefined.
 min_live_copies(LiveNodes, Config) ->
     case proplists:get_value(map, Config) of
