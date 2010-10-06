@@ -13,7 +13,7 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
-%% @doc Store and aggregate statistics collected from memcached.
+%% @doc Store statistics collected from memcached.
 %%
 
 -module(stats_archiver).
@@ -28,13 +28,12 @@
 
 -define(TRUNC_FREQ, 10).
 -define(RETRIES, 10).
--define(TIMEOUT, 5000).
 
 -record(state, {bucket}).
 
--export([start_link/1,
-         latest/3, latest/4, latest/5,
-         latest_all/2, latest_all/3, latest_all/4]).
+-export([archives/0,
+         start_link/1,
+         table/2]).
 
 -export([code_change/3, init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2]).
@@ -46,48 +45,6 @@
 
 start_link(Bucket) ->
     gen_server:start_link({local, server(Bucket)}, ?MODULE, Bucket, []).
-
-
-%% @doc Get the latest samples for a given interval from the archive
-latest(Period, Node, Bucket) when is_atom(Node) ->
-    gen_server:call({server(Bucket), Node}, {latest, Period, Bucket});
-latest(Period, Nodes, Bucket) when is_list(Nodes), is_list(Bucket) ->
-    R = {Replies, _} = gen_server:multi_call(Nodes, server(Bucket),
-                                             {latest, Period, Bucket},
-                                             ?TIMEOUT),
-    log_bad_responses(R),
-    Replies.
-
-latest(Period, Node, Bucket, N) when is_atom(Node), is_list(Bucket) ->
-    gen_server:call({server(Bucket), Node}, {latest, Period, Bucket, N});
-latest(Period, Nodes, Bucket, N) when is_list(Nodes), is_list(Bucket) ->
-    R = {Replies, _} = gen_server:multi_call(Nodes, server(Bucket),
-                                             {latest, Period, Bucket, N},
-                                             ?TIMEOUT),
-    log_bad_responses(R),
-    Replies.
-
-
-latest(Period, Node, Bucket, Step, N) when is_atom(Node) ->
-    gen_server:call({server(Bucket), Node}, {latest, Period, Bucket, Step, N});
-latest(Period, Nodes, Bucket, Step, N) when is_list(Nodes) ->
-    R = {Replies, _} = gen_server:multi_call(Nodes, server(Bucket),
-                                             {latest, Period, Bucket, Step, N},
-                                             ?TIMEOUT),
-    log_bad_responses(R),
-    Replies.
-
-
-latest_all(Period, Bucket) ->
-    latest(Period, ns_node_disco:nodes_wanted(), Bucket).
-
-
-latest_all(Period, Bucket, N) ->
-    latest(Period, ns_node_disco:nodes_wanted(), Bucket, N).
-
-
-latest_all(Period, Bucket, Step, N) ->
-    latest(Period, ns_node_disco:nodes_wanted(), Bucket, Step, N).
 
 
 %%
@@ -105,30 +62,12 @@ init(Bucket) ->
     {ok, #state{bucket=Bucket}}.
 
 
-handle_call({latest, Period, Bucket}, _From, State) ->
-    Reply = try mnesia:activity(
-                  async_dirty,
-                  fun () ->
-                          Tab = table(Bucket, Period),
-                          Key = mnesia:last(Tab),
-                          hd(mnesia:read(Tab, Key))
-                  end, []) of
-                Result ->
-                    {ok, Result}
-            catch
-                Type:Err -> {error, {Type, Err}}
-            end,
-    {reply, Reply, State};
-handle_call({latest, Period, Bucket, N}, _From, State) ->
-    Reply = fetch_latest(Bucket, Period, N),
-    {reply, Reply, State};
-handle_call({latest, Period, Bucket, Step, N}, _From, State) ->
-    Reply = resample(Bucket, Period, Step, N),
-    {reply, Reply, State}.
+handle_call(Request, _From, State) ->
+    {reply, {unhandled, Request}, State}.
 
 
-handle_cast(unhandled, unhandled) ->
-    unhandled.
+handle_cast(_Msg, State) ->
+    {noreply, State}.
 
 
 handle_info({stats, Bucket, Sample}, State = #state{bucket=Bucket}) ->
@@ -207,31 +146,6 @@ create_tables(Bucket) ->
       end, archives()).
 
 
-%% @doc Return the last N records starting with the given key from Tab.
-fetch_latest(Bucket, Period, N) ->
-    case lists:keyfind(Period, 1, archives()) of
-        false ->
-            {error, bad_period, Period};
-        {_, Interval, _} ->
-            Seconds = N * Interval,
-            Tab = table(Bucket, Period),
-            case mnesia:dirty_last(Tab) of
-                '$end_of_table' ->
-                    {ok, []};
-                Key ->
-                    Oldest = Key - Seconds * 1000 + 500,
-                    Handle = qlc:q([Sample || #stat_entry{timestamp=TS} = Sample
-                                                  <- mnesia:table(Tab), TS > Oldest]),
-                    case mnesia:activity(async_dirty, fun qlc:eval/1, [Handle]) of
-                        {error, _, _} = Error ->
-                            Error;
-                        Results ->
-                            {ok, Results}
-                    end
-            end
-    end.
-
-
 last_chunk(Tab, Step) ->
     case mnesia:last(Tab) of
         '$end_of_table' ->
@@ -244,8 +158,8 @@ last_chunk(Tab, Step) ->
 last_chunk(Tab, TS, Step, Samples) ->
     Samples1 = [hd(mnesia:read(Tab, TS))|Samples],
     TS1 = mnesia:prev(Tab, TS),
-    T = trunc_ts(TS, Step),
-    case TS1 == '$end_of_table' orelse trunc_ts(TS1, Step) /= T of
+    T = misc:trunc_ts(TS, Step),
+    case TS1 == '$end_of_table' orelse misc:trunc_ts(TS1, Step) /= T of
         false ->
             last_chunk(Tab, TS1, Step, Samples1);
         true ->
@@ -256,56 +170,6 @@ last_chunk(Tab, TS, Step, Samples) ->
 %% @doc Convert a list of values from stat_to_list back to a stat entry.
 list_to_stat(TS, List) ->
     list_to_tuple([stat_entry, TS | List]).
-
-
-log_bad_responses({Replies, Zombies}) ->
-    case lists:filter(fun ({_, {ok, _}}) -> false; (_) -> true end, Replies) of
-        [] ->
-            ok;
-        BadReplies ->
-            ?log_error("Bad replies: ~p", [BadReplies])
-    end,
-    case Zombies of
-        [] ->
-            ok;
-        _ ->
-            ?log_error("Some nodes didn't respond: ~p", [Zombies])
-    end.
-
-
-%% @doc Resample the stats in a table. Only reads the necessary number of rows.
-resample(Bucket, Period, Step, N) ->
-    Seconds = N * Step,
-    Tab = table(Bucket, Period),
-    case mnesia:dirty_last(Tab) of
-        '$end_of_table' ->
-            {ok, []};
-        Key ->
-            Oldest = Key - Seconds * 1000 - 500,
-            Handle = qlc:q([Sample || #stat_entry{timestamp=TS} = Sample
-                                          <- mnesia:table(Tab), TS > Oldest]),
-            F = fun (#stat_entry{timestamp = T} = Sample,
-                     {T1, Acc, Chunk}) ->
-                        case trunc_ts(T, Step) of
-                            T1 ->
-                                {T1, Acc, [Sample|Chunk]};
-                            T2 when T1 == undefined ->
-                                {T2, Acc, [Sample]};
-                            T2 ->
-                                {T2, [avg(T1, Chunk)|Acc], [Sample]}
-                        end
-                end,
-            case mnesia:activity(async_dirty, fun qlc:fold/3,
-                                 [F, {undefined, [], []},
-                                  Handle]) of
-                {error, _, _} = Error ->
-                    Error;
-                {undefined, [], []} ->
-                    {ok, []};
-                {T, Acc, LastChunk} ->
-                    {ok, lists:reverse([avg(T, LastChunk)|Acc])}
-            end
-    end.
 
 
 %% @doc Generate a suitable name for the per-bucket gen_server.
@@ -344,8 +208,3 @@ table(Bucket, Period) ->
     list_to_atom(lists:flatten(io_lib:format("~s-~s-~s",
                                              [?MODULE_STRING,
                                               Bucket, Period]))).
-
-
-%% @doc Truncate a timestamp to the nearest multiple of N seconds.
-trunc_ts(TS, N) ->
-    TS - (TS rem (N*1000)).
