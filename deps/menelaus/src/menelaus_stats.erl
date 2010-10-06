@@ -329,7 +329,7 @@ add_stat_sums(Samples) ->
                               decr_misses, decr_hits,
                               delete_misses, delete_hits], Samples)},
      {hit_ratio, [case Gets of
-                      0 -> 0;
+                      X when X == 0 -> 0;       % this handles int and float 0
                       _ -> Hits/Gets
                   end || {Gets, Hits} <- lists:zip(proplists:get_value(cmd_get, Samples),
                                                    proplists:get_value(get_hits, Samples))]},
