@@ -237,13 +237,14 @@ leave_async() ->
 shun(RemoteNode) ->
     case RemoteNode == node() of
         false ->
+            ?log_info("Shunning ~p", [RemoteNode]),
             ns_config:update_key(nodes_wanted,
                                  fun (X) ->
                                          X -- [RemoteNode]
                                  end),
-            ns_config_rep:push(),
-            ns_mnesia:delete_node(RemoteNode);
+            ns_config_rep:push();
         true ->
+            ?log_info("Asked to shun myself. Leaving cluster.", []),
             leave()
     end.
 

@@ -24,7 +24,7 @@
 -record(state, {}).
 
 %% API
--export([delete_node/1, delete_schema/0,
+-export([delete_schema/0,
          ensure_table/2,
          prepare_rename/0, rename_node/2,
          start_link/0,
@@ -37,14 +37,6 @@
 %%
 %% API
 %%
-
-%% @doc Remove an mnesia node. Mnesia should be down on the remote node.
-delete_node(Node) ->
-    Result = mnesia:del_table_copy(schema, Node),
-    ?log_info("Result of attempt to delete schema from ~p: ~p"
-              "~nMnesia system info: ~p",
-              [Node, Result, mnesia:system_info(all)]).
-
 
 %% @doc Delete the current mnesia schema for joining/renaming purposes.
 delete_schema() ->
@@ -213,9 +205,9 @@ init([]) ->
     {ok, #state{}}.
 
 
-terminate(_Reason, _State) ->
+terminate(Reason, _State) ->
     stopped = mnesia:stop(),
-    ?log_info("Shut Mnesia down. Exiting.", []),
+    ?log_info("Shut Mnesia down: ~p. Exiting.", [Reason]),
     ok.
 
 
@@ -253,6 +245,7 @@ change_node_name(Mod, From, To, Source, Target) ->
     {ok, switched} = mnesia:traverse_backup(Source, Mod, Target, Mod, Convert,
                                             switched),
     ok.
+
 
 %% @doc Make sure we have a disk copy of the schema.
 ensure_schema() ->
