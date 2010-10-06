@@ -149,10 +149,40 @@ var ServersSection = {
     });
 
     self.poolDetails.subscribeValue(function (poolDetails) {
-      var hasFailover;
-      if (poolDetails)
-        hasFailover = !poolDetails.balanced && poolDetails.rebalanceStatus == 'none';
-      $('#servers .failover_warning').toggle(!!hasFailover);
+      $($.makeArray($('#servers .failover_warning')).slice(1)).remove();
+      var warning = $('#servers .failover_warning');
+
+      if (!poolDetails || poolDetails.rebalanceStatus != 'none') {
+        return;
+      }
+
+      function showWarning(text) {
+        warning.after(warning.clone().show().find('.warning-text').text(text).end());
+      }
+
+      var rebalanceWarningIssued;
+
+      _.each(poolDetails.failoverWarnings, function (failoverWarning) {
+        switch (failoverWarning) {
+        case 'failoverNeeded':
+          break;
+        case 'rebalanceNeeded':
+          showWarning('You should perform rebalance to reach fault-tolerant data distribution');
+          rebalanceWarningIssued = true;
+          break;
+        case 'hardNodesNeeded':
+          showWarning('You should have at least two servers for basic fault-tolerance');
+          break;
+        case 'softNodesNeeded':
+          showWarning('You should have more active servers to take full advantage of configured replicas number');
+          break;
+        case 'softRebalanceNeeded':
+          showWarning('You should perform rebalance to take full advantage of configured replicas number');
+          break;
+        default:
+          console.log('Got unknown failover warning: ' + failoverSafety);
+        }
+      });
     });
 
     self.serversCell.subscribeAny($m(self, "refreshEverything"));

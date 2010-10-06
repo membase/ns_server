@@ -451,6 +451,7 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
                                                  [{uri,
                                                    list_to_binary(concat_url_path(["pools", Id, "controller", "testWorkload"]))}]}}]}},
                  {balanced, ns_cluster_membership:is_balanced()},
+                 {failoverWarnings, ns_bucket:failover_warnings()},
                  {rebalanceStatus, RebalanceStatus},
                  {rebalanceProgressUri, list_to_binary(concat_url_path(["pools", Id, "rebalanceProgress"]))},
                  {stopRebalanceUri, <<"/controller/stopRebalance">>},
