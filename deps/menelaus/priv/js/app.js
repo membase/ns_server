@@ -786,7 +786,10 @@ function displayNotice(text, isError) {
 }
 
 $('.notice').live('click', function () {
-  $(this).fadeOut('fast');
+  var self = this;
+  $(self).fadeOut('fast', function () {
+    $(self).remove();
+  });
 });
 
 $('.tooltip').live('click', function (e) {
