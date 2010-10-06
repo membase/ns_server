@@ -134,7 +134,9 @@ bad_bucket_children(Bucket) ->
     [{{stats_collector, Bucket}, {stats_collector, start_link, [Bucket]},
       permanent, 10, worker, [stats_collector]},
      {{stats_archiver, Bucket}, {stats_archiver, start_link, [Bucket]},
-      permanent, 10, worker, [stats_archiver]}].
+      permanent, 10, worker, [stats_archiver]},
+     {{stats_reader, Bucket}, {stats_reader, start_link, [Bucket]},
+      permanent, 10, worker, [stats_reader]}].
 
 good_bucket_children(Bucket) ->
     [{{ns_memcached, Bucket}, {ns_memcached, start_link, [Bucket]},
