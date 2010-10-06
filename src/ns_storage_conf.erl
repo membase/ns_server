@@ -165,11 +165,15 @@ nodes_storage_info(NodeNames) ->
 
 cluster_storage_info() ->
     Config = ns_config:get(),
-    Nodes = lists:filter(fun ({Node, _}) ->
-                             ns_cluster_membership:get_cluster_membership(Node, Config) =:= active
-                         end, dict:to_list(ns_doctor:get_nodes())),
+    DoctorNodes = ns_doctor:get_nodes(),
+    Nodes = lists:foldl(fun (Node, Acc) ->
+                              case dict:find(Node, DoctorNodes) of
+                                  {ok, Info} -> [{Node, Info} | Acc];
+                                  _ -> Acc
+                              end
+                      end, [], ns_cluster_membership:active_nodes()),
     PList1 = do_cluster_storage_info(Nodes),
-    AllBuckets = ns_bucket:get_buckets(),
+    AllBuckets = ns_bucket:get_buckets(Config),
     RAMQuotaUsed = lists:foldl(fun ({_, BucketConfig}, RAMQuota) ->
                                        ns_bucket:ram_quota(BucketConfig) + RAMQuota
                                end, 0, AllBuckets),
