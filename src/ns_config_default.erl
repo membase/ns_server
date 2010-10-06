@@ -159,28 +159,7 @@ default() ->
 
      {memory_quota, InitQuota},
 
-     {buckets, [{configs, [{"default",
-                            [{type, membase},
-                             {num_vbuckets,
-                              case (catch list_to_integer(os:getenv("VBUCKETS_NUM"))) of
-                                  EnvBuckets when is_integer(EnvBuckets) -> EnvBuckets;
-                                  _ -> 1024
-                              end},
-                             {num_replicas, 1},
-                             %% default quotas will be defined when resources
-                             %% stage of wizard will post data
-                             {ram_quota, case is_integer(InitQuota) of
-                                             true -> InitQuota * 1048576;
-                                             _ -> InitQuota
-                                         end},
-                             {auth_type, sasl},  % none | sasl
-                             {sasl_password, ""},
-                             {ht_size, 3079},
-                             {ht_locks, 5},
-                             {servers, []},
-                             {map, undefined}]
-                           }]
-                }]},
+     {buckets, [{configs, []}]},
 
                                                 % Moxi config
      {moxi, [{port, 11211},
