@@ -65,12 +65,10 @@ prepare_setup_disk_storage_conf(Node, Path) when Node =:= node() ->
 local_bucket_disk_usage(BucketName) ->
     {value, PropList} = ns_config:search_node(node(), ns_config:get(), memcached),
     DBDir = proplists:get_value(dbdir, PropList),
-    {ok, Filenames} = file:list_dir(DBDir),
-    OKFilenames = lists:filter(fun (Name) ->
-                                       lists:prefix(BucketName, Name)
-                               end, Filenames),
     %% this doesn't include filesystem slack
-    lists:sum([filelib:file_size(filename:join([DBDir, Name])) || Name <- OKFilenames]).
+    lists:sum([try filelib:file_size(filename:join([DBDir, Name]))
+               catch _:_ -> 0
+               end || Name <- db_files(DBDir, BucketName)]).
 
 bucket_disk_usage(Node, Bucket) ->
     {ok, Config} = ns_bucket:get_bucket(Bucket),
