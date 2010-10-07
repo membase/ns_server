@@ -24,7 +24,8 @@
 
 -export([memory_quota/1, change_memory_quota/2, prepare_setup_disk_storage_conf/2,
          storage_conf/1, add_storage/4, remove_storage/2,
-         local_bucket_disk_usage/1, bucket_disk_usage/2]).
+         local_bucket_disk_usage/1, bucket_disk_usage/2,
+         delete_all_db_files/1, delete_db_files/1]).
 
 -export([node_storage_info/1, cluster_storage_info/0, nodes_storage_info/1]).
 
@@ -252,6 +253,24 @@ disk_stats_for_path(Node, Path) ->
 db_files(Dir, Bucket) ->
     [filename:join([Dir, lists:append(Bucket, Suffix)])
      || Suffix <- ["", "-1.sqlite", "-2.sqlite", "-3.sqlite"]].
+
+
+delete_all_db_files(DBDir) ->
+    {ok, Files} = file:list_dir(DBDir),
+    lists:foreach(fun (File) ->
+                          File1 = filename:join([DBDir, File]),
+                          Result = file:delete(File1),
+                          ?log_info("Result of deleting file ~p: ~p",
+                                    [File1, Result])
+                  end, Files).
+
+delete_db_files(Bucket) ->
+    DBDir = ns_config:search_node_prop(ns_config:get(), memcached, dbdir),
+    lists:foreach(fun (File) ->
+                          Result = file:delete(File),
+                          ?log_info("Result of deleting file ~p: ~p",
+                                    [File, Result])
+                  end, db_files(DBDir, Bucket)).
 
 
 -ifdef(EUNIT).
