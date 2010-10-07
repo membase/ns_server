@@ -35,6 +35,8 @@
 -export([code_change/3, init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2]).
 
+-import(stats_archiver, [avg/2]).
+
 %%
 %% API
 %%
@@ -135,19 +137,6 @@ terminate(_Reason, _State) ->
 %% Internal functions
 %%
 
-%% @doc Compute the average of a list of entries.
-avg(TS, Samples) when Samples /= [] ->
-    [First|Rest] = Samples,
-    {_, FirstList} = stat_to_list(First),
-    Sums = lists:foldl(fun (E, Acc) ->
-                               {_, L} = stat_to_list(E),
-                               lists:zipwith(fun (A, B) -> A + B end, L, Acc)
-                       end, FirstList, Rest),
-    Count = length(Samples),
-    Avgs = [X / Count || X <- Sums],
-    list_to_stat(TS, Avgs).
-
-
 %% @doc Return the last N records starting with the given key from Tab.
 fetch_latest(Bucket, Period, N) ->
     case lists:keyfind(Period, 1, stats_archiver:archives()) of
@@ -171,11 +160,6 @@ fetch_latest(Bucket, Period, N) ->
                     end
             end
     end.
-
-
-%% @doc Convert a list of values from stat_to_list back to a stat entry.
-list_to_stat(TS, List) ->
-    list_to_tuple([stat_entry, TS | List]).
 
 
 log_bad_responses({Replies, Zombies}) ->
@@ -231,9 +215,3 @@ resample(Bucket, Period, Step, N) ->
 %% @doc Generate a suitable name for the per-bucket gen_server.
 server(Bucket) ->
     list_to_atom(?MODULE_STRING ++ "-" ++ Bucket).
-
-
-%% @doc Convert a stat entry to a list of values.
-stat_to_list(Entry) ->
-    [stat_entry, TS | L] = tuple_to_list(Entry),
-    {TS, L}.

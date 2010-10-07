@@ -33,7 +33,7 @@
 
 -export([archives/0,
          start_link/1,
-         table/2]).
+         table/2, avg/2]).
 
 -export([code_change/3, init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2]).
@@ -167,15 +167,15 @@ last_chunk(Tab, TS, Step, Samples) ->
     end.
 
 
-%% @doc Convert a list of values from stat_to_list back to a stat entry.
-list_to_stat(TS, List) ->
-    list_to_tuple([stat_entry, TS | List]).
-
 
 %% @doc Generate a suitable name for the per-bucket gen_server.
 server(Bucket) ->
     list_to_atom(?MODULE_STRING ++ "-" ++ Bucket).
 
+
+%% @doc Convert a list of values from stat_to_list back to a stat entry.
+list_to_stat(TS, List) ->
+    list_to_tuple([stat_entry, TS | List]).
 
 %% @doc Convert a stat entry to a list of values.
 stat_to_list(Entry) ->
