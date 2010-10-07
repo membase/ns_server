@@ -625,7 +625,7 @@ var NodeDialog = {
       function dataCallback(data, status) {
         if (status != 'success') {
           alert('Failed to get initial setup data from server. Cannot continue.' +
-                ' Pressing OK will attempt reloading of web console which might fail if server is completely down.');
+                ' Would you like to attempt to reload the web console?  This may fail if the server is not running.');
           reloadApp();
           return;
         }
