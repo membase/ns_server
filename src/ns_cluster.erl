@@ -137,7 +137,9 @@ handle_cast(leave, State) ->
     NewCookie = ns_node_disco:cookie_gen(),
     erlang:set_cookie(node(), NewCookie),
     lists:foreach(fun erlang:disconnect_node/1, nodes()),
-    WebPort = ns_config:search_node_prop(ns_config:get(), rest, port, false),
+    Config = ns_config:get(),
+    WebPort = ns_config:search_node_prop(Config, rest, port, false),
+    DBDir = ns_config:search_node_prop(Config, memcached, dbdir),
     ns_config:clear([directory]),
     case WebPort of
         false -> false;
@@ -147,7 +149,8 @@ handle_cast(leave, State) ->
     ns_config:set_initial(otp, [{cookie, NewCookie}]),
     ok = ns_server_cluster_sup:stop_cluster(),
     ns_mnesia:delete_schema(),
-    error_logger:info_msg("ns_cluster: leaving cluster~n"),
+    ns_storage_conf:delete_all_db_files(DBDir),
+    ?log_info("Leaving cluster", []),
     timer:sleep(1000),
     ns_server_cluster_sup:start_cluster(),
     {noreply, State}.
