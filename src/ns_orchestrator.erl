@@ -218,7 +218,7 @@ janitor_running(_Event, State) ->
 %% Synchronous idle events
 idle({create_bucket, BucketType, BucketName, NewConfig}, _From, State) ->
     Reply = case ns_bucket:get_bucket(BucketName) of
-                false ->
+                not_present ->
                     %% Delete any leftover files.
                     rpc:multicall(ns_node_disco:nodes_actual_proper(),
                                   ns_storage_conf,
