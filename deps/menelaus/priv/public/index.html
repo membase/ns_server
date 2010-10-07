@@ -1422,14 +1422,15 @@
     </div>
     <script type="text/javascript">
     $(function(){
-    $('input#join-cluster').click(function (e) {
-    $('.login-credentials').slideDown();
-    $('.memory-quota').slideUp();
-    });
-    $('input#no-join-cluster').click(function (e) {
-    $('.memory-quota').slideDown();
-    $('.login-credentials').slideUp();
-    });
+      $('input#join-cluster').click(function (e) {
+        $('.login-credentials').slideDown();
+        $('.memory-quota').slideUp();
+        $('.init_cluster_dialog_memory_errors_container').slideUp();
+      });
+      $('input#no-join-cluster').click(function (e) {
+        $('.memory-quota').slideDown();
+        $('.login-credentials').slideUp();
+      });
     });
     </script>
     </div>
