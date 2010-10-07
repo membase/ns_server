@@ -64,10 +64,8 @@ stats() ->
 %% Internal fuctions
 current_status(Expensive) ->
     [{active_buckets, ns_memcached:active_buckets()},
-     {memory, erlang:memory()},
-     {memory_data, memsup:get_memory_data()},
-     {disk_data, disksup:get_disk_data()}|
-     Expensive].
+     {memory, erlang:memory()}
+     | element(2, ns_info:basic_info())] ++ Expensive.
 
 expensive_checks() ->
     [{system_memory_data, memsup:get_system_memory_data()},
