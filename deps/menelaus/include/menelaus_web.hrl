@@ -5,5 +5,6 @@
 -define(START_FAIL, 100).
 -define(NODE_EJECTED, 101).
 -define(UI_SIDE_ERROR_REPORT, 102).
+-define(REQUEST_TIMEOUT, 103).
 
 -define(MENELAUS_WEB_LOG(Code, Msg, Args), ns_log:log(menelaus_web, Code, Msg, Args)).
