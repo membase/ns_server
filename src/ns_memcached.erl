@@ -38,7 +38,7 @@
 -record(state, {bucket::nonempty_string(), sock::port()}).
 
 %% external API
--export([active_buckets/0, connected/1, connected/2,
+-export([active_buckets/0, connected/2,
          delete_vbucket/2, delete_vbucket/3,
          get_vbucket/3,
          host_port_str/0, host_port_str/1,
@@ -106,6 +106,8 @@ handle_call(list_vbuckets, _From, State) ->
                         binary_to_existing_atom(V, latin1)} | Acc]
               end, []),
     {reply, Reply, State};
+handle_call(noop, _From, State) ->
+    {reply, ok, State};
 handle_call({set_flush_param, Key, Value}, _From, State) ->
     Reply = mc_client_binary:set_flush_param(State#state.sock, Key, Value),
     {reply, Reply, State};
@@ -172,6 +174,8 @@ handle_info(Msg, State) ->
 
 
 terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
+    %% Unregister so nothing else tries to talk to us
+    unregister(server(Bucket)),
     if
         Reason == normal; Reason == shutdown ->
             case ns_bucket:get_bucket(Bucket) of
@@ -207,12 +211,14 @@ active_buckets() ->
     [Bucket || ?MODULE_STRING "-" ++ Bucket <-
                    [atom_to_list(Name) || Name <- registered()]].
 
-connected(Bucket) ->
-    misc:running(server(Bucket)).
-
-
 connected(Node, Bucket) ->
-    misc:running(Node, server(Bucket)).
+    try gen_server:call({server(Bucket), Node}, noop) of
+        ok ->
+            true
+    catch
+        _:_ ->
+            false
+    end.
 
 
 %% @doc Delete a vbucket. Will set the vbucket to dead state if it
