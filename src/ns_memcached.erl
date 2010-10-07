@@ -326,6 +326,8 @@ ensure_bucket(Sock, Bucket) ->
                     case mc_client_binary:create_bucket(Sock, Bucket, Engine,
                                                         ConfigString) of
                         ok ->
+                            ?log_info("Created bucket ~p with config string ~p",
+                                      [Bucket, ConfigString]),
                             ok = mc_client_binary:select_bucket(Sock, Bucket);
                         {memcached_error, key_eexists, <<"Bucket exists: stopping">>} ->
                             %% Waiting for an old bucket with this name to shut down
