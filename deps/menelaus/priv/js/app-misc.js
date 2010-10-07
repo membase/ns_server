@@ -237,9 +237,9 @@ future.getPush = function (ajaxOptions, valueTransformer, nowValue, waitChange) 
         return;
 
       if (!etag)
-        return onUnexpectedXHRError.apply(null, arguments);
+        return onUnexpectedXHRError.apply(this, arguments);
 
-      onNoncriticalXHRError(xhr);
+      onNoncriticalXHRError.apply(this, arguments);
       recovingFromError = true;
 
       // make us weak so that cell invalidations will force new

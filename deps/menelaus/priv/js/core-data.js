@@ -12,7 +12,7 @@ function onNoncriticalXHRError(xhr) {
 
   // everything except timeout & service unavailable
   if (status != 503 && status != 504 && status > 0) {
-    onUnexpectedXHRError.apply(null, arguments);
+    onUnexpectedXHRError.apply(this, arguments);
     throw new Error("xhr error is critical: " + status);
   }
 
