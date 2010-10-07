@@ -45,9 +45,10 @@ failover(Bucket, Node) ->
     case [I || {I, [undefined|_]} <- misc:enumerate(Map1, 0)] of
         [] -> ok; % Phew!
         MissingVBuckets ->
+            ?log_error("Lost data in ~p for ~w", [Bucket, MissingVBuckets]),
             ns_log:log(?MODULE, 1,
-                       "Data has been lost for the following vbuckets in "
-                       "bucket ~p:~n~80w", [Bucket, MissingVBuckets])
+                       "Data has been lost for ~B% of vbuckets in bucket ~p.",
+                       [length(MissingVBuckets) * 100 div length(Map), Bucket])
     end,
     ns_bucket:set_map(Bucket, Map1),
     ns_bucket:set_servers(Bucket, lists:delete(Node, Servers)),
