@@ -217,7 +217,17 @@ janitor_running(_Event, State) ->
 
 %% Synchronous idle events
 idle({create_bucket, BucketType, BucketName, NewConfig}, _From, State) ->
-    Reply = ns_bucket:create_bucket(BucketType, BucketName, NewConfig),
+    Reply = case ns_bucket:get_bucket(BucketName) of
+                false ->
+                    %% Delete any leftover files.
+                    rpc:multicall(ns_node_disco:nodes_actual_proper(),
+                                  ns_storage_conf,
+                                  delete_db_files,
+                                  [BucketName]),
+                    ns_bucket:create_bucket(BucketType, BucketName, NewConfig);
+                _ ->
+                    {already_exists, BucketName}
+            end,
     {reply, Reply, idle, State};
 idle({delete_bucket, BucketName}, _From, State) ->
     ns_bucket:delete_bucket(BucketName),
