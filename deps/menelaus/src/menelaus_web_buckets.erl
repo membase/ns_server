@@ -316,9 +316,14 @@ handle_setup_default_bucket_post(Req) ->
                 {errors, Errors} ->
                     reply_json(Req, {struct, Errors}, 400)
             end;
-        {true, {ok, _, JSONSummaries}} ->
-            reply_json(Req, {struct, [{errors, {struct, []}},
-                                      {summaries, {struct, JSONSummaries}}]}, 200)
+        {true, {ok, ParsedProps, JSONSummaries}} ->
+            FinalErrors = perform_warnings_validation(ParsedProps, []),
+            reply_json(Req, {struct, [{errors, {struct, FinalErrors}},
+                                      {summaries, {struct, JSONSummaries}}]},
+                       case FinalErrors of
+                           [] -> 200;
+                           _ -> 400
+                       end)
     end.
 
 -record(ram_summary, {
