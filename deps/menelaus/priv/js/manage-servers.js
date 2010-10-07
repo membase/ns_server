@@ -160,15 +160,12 @@ var ServersSection = {
         warning.after(warning.clone().show().find('.warning-text').text(text).end());
       }
 
-      var rebalanceWarningIssued;
-
       _.each(poolDetails.failoverWarnings, function (failoverWarning) {
         switch (failoverWarning) {
         case 'failoverNeeded':
           break;
         case 'rebalanceNeeded':
           showWarning('You should perform rebalance to reach fault-tolerant data distribution');
-          rebalanceWarningIssued = true;
           break;
         case 'hardNodesNeeded':
           showWarning('You should have at least two servers for basic fault-tolerance');
