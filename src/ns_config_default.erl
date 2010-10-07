@@ -101,6 +101,8 @@ keys([KVList | Rest], Accum) ->
     keys(Rest, lists:map(fun({Key, _Val}) -> Key end, KVList) ++ Accum).
 
 default() ->
+    {ok, ConfigFile} = application:get_env(ns_server_config),
+    ConfigDir = filename:dirname(ConfigFile),
     RawDbDir = filename:join(default_path("data"), misc:node_name_short()),
     DbDir = case file:read_link(RawDbDir) of
                 {ok, X} -> X;
@@ -153,7 +155,8 @@ default() ->
        {bucket_engine,
         "./bin/bucket_engine/bucket_engine.so"},
        {engines, [{membase, [{engine, "bin/ep_engine/ep.so"},
-                             {initfile, "priv/init.sql"}]},
+                             {initfile,
+                              filename:join([ConfigDir, "init.sql"])}]},
                   {memcached, [{engine, "bin/memcached/default_engine.so"}]}]},
        {verbosity, ""}]},
 
