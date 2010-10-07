@@ -222,9 +222,14 @@ handle_bucket_update_inner(BucketId, Req, Params, Limit) ->
                     %% if this happens then our validation raced, so repeat everything
                     handle_bucket_update_inner(BucketId, Req, Params, Limit-1)
             end;
-        {true, {ok, _, JSONSummaries}} ->
-            reply_json(Req, {struct, [{errors, {struct, []}},
-                                      {summaries, {struct, JSONSummaries}}]}, 202)
+        {true, {ok, ParsedProps, JSONSummaries}} ->
+            FinalErrors = perform_warnings_validation(ParsedProps, []),
+            reply_json(Req, {struct, [{errors, {struct, FinalErrors}},
+                                      {summaries, {struct, JSONSummaries}}]},
+                       case FinalErrors of
+                           [] -> 202;
+                           _ -> 400
+                       end)
     end.
 
 do_bucket_create(Name, ParsedProps) ->
@@ -264,9 +269,29 @@ handle_bucket_create(PoolId, Req) ->
                 {errors, Errors} ->
                     reply_json(Req, {struct, Errors}, 400)
             end;
-        {true, {ok, _, JSONSummaries}} ->
-            reply_json(Req, {struct, [{errors, {struct, []}},
-                                      {summaries, {struct, JSONSummaries}}]}, 200)
+        {true, {ok, ParsedProps, JSONSummaries}} ->
+            FinalErrors = perform_warnings_validation(ParsedProps, []),
+            reply_json(Req, {struct, [{errors, {struct, FinalErrors}},
+                                      {summaries, {struct, JSONSummaries}}]},
+                       case FinalErrors of
+                           [] -> 200;
+                           _ -> 400
+                       end)
+    end.
+
+perform_warnings_validation(ParsedProps, Errors) ->
+    Errors ++ case proplists:get_value(num_replicas, ParsedProps) of
+        undefined ->
+            [];
+        X ->
+            ActiveCount = length(ns_cluster_membership:active_nodes()),
+            if
+                ActiveCount =< X ->
+                    Msg = <<"Warning, you do not have enough servers to support this number of replicas. If you continue, a warning message will be displayed until you add enough servers to support this number of replicas.">>,
+                    [{replicaNumber, Msg}];
+                true ->
+                    []
+            end
     end.
 
 handle_bucket_flush(PoolId, Id, Req) ->
@@ -384,7 +409,7 @@ parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals,
         TotalErrors =:= [] ->
             {ok, OKs, JSONSummaries};
         true ->
-            {errors, TotalErrors, JSONSummaries}
+            {errors, perform_warnings_validation(OKs, TotalErrors), JSONSummaries}
     end.
 
 basic_bucket_params_screening(IsNew, BucketName, Params, AllBuckets) ->
@@ -596,7 +621,7 @@ interpret_hdd_quota(CurrentBucket, ParsedProps, ClusterStorageTotals, UsageGette
 parse_validate_replicas_number(NumReplicas) ->
     case menelaus_util:parse_validate_number(NumReplicas, 0, undefined) of
         invalid ->
-            {error, replicaNumber, <<"The replica number must be specified and must be an integer between 1 and 3.">>};
+            {error, replicaNumber, <<"The replica number must be specified and must be a non-negative integer.">>};
         too_small ->
             {error, replicaNumber, <<"The replica number cannot be negative.">>};
         {ok, X} -> {ok, num_replicas, X}
