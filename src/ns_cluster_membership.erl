@@ -145,12 +145,17 @@ handle_add_node_request(OtpNode, OtpCookie) ->
     end.
 
 handle_join_rest_failure(ReturnValue, OtherHost, OtherPort) ->
-    case ReturnValue of
+    MassagedReturnValue = case ReturnValue of
+                              {error, prepare_failed, nxdomain} ->
+                                  {error, nxdomain};
+                              _ -> ReturnValue
+                          end,
+    case MassagedReturnValue of
         {error, prepare_failed, Reason} ->
             ns_log:log(?MODULE, ?PREPARE_JOIN_FAILED,
                        "During node join, could not connect to port mapper at ~p with reason ~p", [OtherHost, Reason]),
-            {error, [list_to_binary(io_lib:format("Could not connect port mapper at ~p (tcp port 4369). With error \"~p\". "
-                                                  "This could be due to a"
+            {error, [list_to_binary(io_lib:format("Could not connect to port mapper at ~p (tcp port 4369). With error \"~p\". "
+                                                  "This could be due to a "
                                                   "firewall in place between the servers.", [OtherHost, Reason]))]};
         {error, econnrefused} ->
             ns_log:log(?MODULE, ?CONNREFUSED, "During node join, could not connect to ~p on port ~p from node ~p.", [OtherHost, OtherPort, node()]),
