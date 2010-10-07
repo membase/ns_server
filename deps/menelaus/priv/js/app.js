@@ -608,18 +608,31 @@ var NodeDialog = {
   },
 
   startPage_cluster: function (node, pagePrefix, opt) {
-    var dialog;
+    var dialog = $('#init_cluster_dialog');
+    var resourcesObserver;
 
-    return function (continuation) {
-      dialog = $('#init_cluster_dialog');
-
+    // we return function signaling that we're not yet ready to show
+    // our page of wizard (no data to display in the form), but will
+    // be at one point. showInitDialog will call us immediately
+    // passing us it's continuation. This is partial continuation to
+    // be more precise
+    return function (continueShowDialog) {
       dialog.find('.quota_error_message').hide();
 
       $.ajax({type:'GET', url:'/nodes/self', dataType: 'json',
-              success: trampoline, error: trampoline});
+              success: dataCallback, error: dataCallback});
 
-      function trampoline() {
-        continuation();
+      function dataCallback(data, status) {
+        if (status != 'success') {
+          alert('Failed to get initial setup data from server. Cannot continue.' +
+                ' Pressing OK will attempt reloading of web console which might fail if server is completely down.');
+          reloadApp();
+          return;
+        }
+
+        // we have node data and can finally display our wizard page
+        // and pre-fill the form
+        continueShowDialog();
 
         $('#step-2-next').click(onSubmit);
         $('#init_cluster_dialog form').submit(onSubmit);
@@ -629,12 +642,6 @@ var NodeDialog = {
             $('.login-credentials').show();
         });
 
-        cb.apply(this, arguments);
-      }
-    }
-
-    function cb(data, status) {
-      if (status == 'success') {
         var m = data['memoryQuota'];
         if (m == null || m == "none") {
           m = "";
@@ -643,7 +650,6 @@ var NodeDialog = {
         dialog.find('[name=quota]').val(m);
 
         data['node'] = data['node'] || node;
-        NodeDialog.resourceNode = data;
 
         var storageTotals = data.storageTotals;
 
@@ -671,29 +677,37 @@ var NodeDialog = {
         var hddResources = data.availableStorage.hdd;
         var mountPoints = new MountPoints(data, _.pluck(hddResources, 'path'));
 
-        self.resourcesObserver = dialog.observePotentialChanges(function () {
-            var pathValue = diskPath.val();
+        resourcesObserver = dialog.observePotentialChanges(function () {
+          var pathValue = diskPath.val();
 
-            if (pathValue == prevPathValue)
-              return;
+          if (pathValue == prevPathValue)
+            return;
 
-            prevPathValue = pathValue;
-            if (pathValue == "") {
-              diskTotalGigs = 0;
-              updateDiskTotal();
-              return;
-            }
-
-            var rv = mountPoints.lookup(pathValue);
-            var pathResource = ((rv != null) && hddResources[rv]);
-
-            if (!pathResource)
-              pathResource = {path:"/", sizeKBytes: 0, usagePercent: 0};
-
-            diskTotalGigs = Math.floor(pathResource.sizeKBytes * (100 - pathResource.usagePercent) / 100 / Math.Mi);
+          prevPathValue = pathValue;
+          if (pathValue == "") {
+            diskTotalGigs = 0;
             updateDiskTotal();
-          });
+            return;
+          }
+
+          var rv = mountPoints.lookup(pathValue);
+          var pathResource = ((rv != null) && hddResources[rv]);
+
+          if (!pathResource)
+            pathResource = {path:"/", sizeKBytes: 0, usagePercent: 0};
+
+          diskTotalGigs = Math.floor(pathResource.sizeKBytes * (100 - pathResource.usagePercent) / 100 / Math.Mi);
+          updateDiskTotal();
+        });
       }
+    }
+
+    // cleans up all event handles
+    function onLeave() {
+      $('#step-2-next').unbind();
+      $('#init_cluster_dialog form').unbind();
+      if (resourcesObserver)
+        resourcesObserver.stopObserving();
     }
 
     function onSubmit(e) {
@@ -715,6 +729,9 @@ var NodeDialog = {
       var diskArguments;
 
       function afterDisk() {
+        // remember our arguments so that we can display validation
+        // errors later. We're doing that to display validation errors
+        // from memory quota and disk path posts simultaneously
         diskArguments = arguments;
         if ($('#no-join-cluster')[0].checked) {
           postWithValidationErrors('/pools/default',
@@ -744,8 +761,7 @@ var NodeDialog = {
           if (ok) {
             BucketsSection.refreshBuckets();
             showInitDialog("bucket_dialog");
-            $('#step-2-next').unbind();
-            $('#init_cluster_dialog form').unbind();
+            onLeave();
           }
         } else {
           var errorContainer = dialog.find('.init_cluster_dialog_memory_errors_container');
