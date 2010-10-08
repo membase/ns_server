@@ -953,13 +953,9 @@ function plotStatGraph(graphJQ, stats, attr, options) {
   var plusInf = -1/0;
   var maxY = plusInf;
 
-  var decimation = 1;
+  var decimation = Math.ceil(data.length / options.targetPointsCount);
 
-  while (data.length / decimation >= options.targetPointsCount) {
-    decimation <<= 1;
-  }
-
-  if (decimation != 1) {
+  if (decimation > 1) {
     tstamps = decimateNoFilter(decimation, tstamps);
     data = decimateSamples(decimation, data);
   }
