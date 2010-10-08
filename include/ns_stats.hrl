@@ -42,5 +42,7 @@
         ep_oom_errors,
         ep_tmp_oom_errors).
 
--record(stat_entry, {timestamp, ?STAT_GAUGES, ?STAT_COUNTERS}).
--define(STAT_FIELD_START, 2).
+%% atom() timestamps and values are used by archiver for internal mnesia-related
+%% things
+-record(stat_entry, {timestamp :: integer() | atom(),
+                     values :: [{atom(), number()}] | '_'}).

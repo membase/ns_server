@@ -120,21 +120,27 @@ translate_stat(ep_num_value_ejects) ->
 translate_stat(Stat) ->
     Stat.
 
+sum_stat_values(Dict, [FirstName | RestNames]) ->
+    lists:foldl(fun (_Name, null) -> null;
+                    (Name, Acc) ->
+                        orddict:fetch(Name, Dict) + Acc
+                end, orddict:fetch(FirstName, Dict), RestNames).
+
 parse_stats(TS, Stats, LastCounters, LastTS) ->
     GetStat = fun (K, Dict) ->
-                      case dict:find(K, Dict) of
+                      case orddict:find(K, Dict) of
                           {ok, V} -> list_to_integer(binary_to_list(V));
                           %% Some stats don't exist in some bucket types
                           error -> 0
                       end
               end,
-    Dict = dict:from_list([{translate_stat(binary_to_atom(K, latin1)), V}
-                           || {K, V} <- Stats]),
+    Dict = orddict:from_list([{translate_stat(binary_to_atom(K, latin1)), V}
+                              || {K, V} <- Stats]),
     Gauges = [GetStat(K, Dict) || K <- [?STAT_GAUGES]],
     Counters = [GetStat(K, Dict) || K <- [?STAT_COUNTERS]],
     Deltas = case LastCounters of
                  undefined ->
-                     lists:duplicate(length([?STAT_COUNTERS]), undefined);
+                     lists:duplicate(length([?STAT_COUNTERS]), null);
                  _ ->
                      Delta = TS - LastTS,
                      if Delta > 0 ->
@@ -147,10 +153,26 @@ parse_stats(TS, Stats, LastCounters, LastTS) ->
                                end, Counters, LastCounters);
                         true ->
                              lists:duplicate(length([?STAT_COUNTERS]),
-                                             undefined)
+                                             null)
                      end
              end,
-    {list_to_tuple([stat_entry, TS] ++ Gauges ++ Deltas), Counters}.
+    Values0 = orddict:merge(fun (_, _, _) -> erlang:error(cannot_happen) end,
+                            orddict:from_list(lists:zip([?STAT_GAUGES], Gauges)),
+                            orddict:from_list(lists:zip([?STAT_COUNTERS], Deltas))),
+    AggregateValues = [{ops, sum_stat_values(Values0, [cmd_get, cmd_set,
+                                                       incr_misses, incr_hits,
+                                                       decr_misses, decr_hits,
+                                                       delete_misses, delete_hits])},
+                       {misses, sum_stat_values(Values0, [get_misses, delete_misses,
+                                                          incr_misses, decr_misses,
+                                                          cas_misses])},
+                       {disk_writes, sum_stat_values(Values0, [ep_flusher_todo, ep_queue_size])},
+                       {updates, sum_stat_values(Values0, [cmd_set, incr_hits, decr_hits, cas_hits])}],
+    Values = orddict:merge(fun (_K, V1, _V2) -> V1 end,
+                           Values0, orddict:from_list(AggregateValues)),
+    {#stat_entry{timestamp = TS,
+                 values = Values},
+     Counters}.
 
 
 %% Tests
@@ -258,33 +280,48 @@ parse_stats_test() ->
          {<<"ep_min_data_age">>,<<"0">>},
          {<<"ep_storage_age_highwat">>,<<"0">>},
          {<<"ep_storage_age">>,<<"0">>},
+         {<<"ep_num_not_my_vbuckets">>,<<"0">>},
+         {<<"ep_oom_errors">>,<<"0">>},
+         {<<"ep_tmp_oom_errors">>,<<"0">>},
          {<<"ep_version">>,<<"1.6.0beta3a_166_g24a1637">>}],
 
-        ?assertEqual({#stat_entry{timestamp=Now,
-                                  bytes_read=37610,
-                                  bytes_written=823281,
-                                  cas_badval=0,
-                                  cas_hits=0,
-                                  cas_misses=0,
-                                  cmd_get=0,
-                                  cmd_set=0,
-                                  curr_connections=11,
-                                  curr_items=0,
-                                  decr_hits=0,
-                                  decr_misses=0,
-                                  delete_hits=0,
-                                  delete_misses=0,
-                                  ep_flusher_todo=0,
-                                  ep_queue_size=0,
-                                  get_hits=0,
-                                  get_misses=0,
-                                  incr_hits=0,
-                                  incr_misses=0,
-                                  mem_used=25937168,
-                                  ep_io_num_read=0,
-                                  evictions=5},
-                      [37610,823281,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5]},
-                         parse_stats(
-                           Now, Input,
-                           lists:duplicate(length([?STAT_COUNTERS]), 0),
-                           Now - 1000)).
+    ExpectedPropList = [{bytes_read,37610},
+                        {bytes_written,823281},
+                        {cas_badval,0},
+                        {cas_hits,0},
+                        {cas_misses,0},
+                        {cmd_get,0},
+                        {cmd_set,0},
+                        {curr_connections,11},
+                        {curr_items,0},
+                        {decr_hits,0},
+                        {decr_misses,0},
+                        {delete_hits,0},
+                        {delete_misses,0},
+                        {ep_flusher_todo,0},
+                        {ep_queue_size,0},
+                        {get_hits,0},
+                        {get_misses,0},
+                        {incr_hits,0},
+                        {incr_misses,0},
+                        {mem_used,25937168},
+                        {ep_io_num_read,0},
+                        {ep_num_not_my_vbuckets,0},
+                        {ep_oom_errors,0},
+                        {ep_tmp_oom_errors,0},
+                        {disk_writes,0},
+                        {misses,0},
+                        {ops,0},
+                        {updates,0},
+                        {evictions,5}],
+    {#stat_entry{timestamp = ActualTS,
+                values = ActualValues},
+     ActualCounters}
+        = parse_stats(Now, Input,
+                      lists:duplicate(length([?STAT_COUNTERS]), 0),
+                      Now - 1000),
+    ?assertEqual([37610,823281,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0],
+                 ActualCounters),
+    ?assertEqual(Now, ActualTS),
+    ?assertEqual(lists:keysort(1, ExpectedPropList),
+                 lists:keysort(1, orddict:to_list(ActualValues))).

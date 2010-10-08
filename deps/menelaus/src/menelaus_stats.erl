@@ -44,13 +44,19 @@ bucket_disk_usage(BucketName, Nodes) ->
 bucket_ram_usage(BucketName) ->
     element(1, last_membase_sample(BucketName, ns_cluster_membership:active_nodes())).
 
+extract_stat(StatName, Sample) ->
+    case orddict:find(StatName, Sample#stat_entry.values) of
+        error -> 0;
+        {ok, V} -> V
+    end.
+
 last_membase_sample(BucketName, Nodes) ->
     lists:foldl(fun ({_Node, []}, Acc) -> Acc;
                     ({_Node, [Sample|_]}, {AccMem, AccItems, AccOps, AccFetches}) ->
-                        {Sample#stat_entry.mem_used + AccMem,
-                         Sample#stat_entry.curr_items + AccItems,
-                         aggregate_ops(Sample) + AccOps,
-                         Sample#stat_entry.ep_io_num_read + AccFetches}
+                        {extract_stat(mem_used, Sample) + AccMem,
+                         extract_stat(curr_items, Sample) + AccItems,
+                         extract_stat(ops, Sample) + AccOps,
+                         extract_stat(ep_io_num_read, Sample) + AccFetches}
                 end, {0, 0, 0, 0}, invoke_archiver(BucketName, Nodes, {1, minute, 1})).
 
 last_memcached_sample(BucketName, Nodes) ->
@@ -60,11 +66,11 @@ last_memcached_sample(BucketName, Nodes) ->
      CmdGet,
      GetHits} = lists:foldl(fun ({_Node, []}, Acc) -> Acc;
                                 ({_Node, [Sample|_]}, {AccMem, AccItems, AccOps, AccGet, AccGetHits}) ->
-                                    {Sample#stat_entry.mem_used + AccMem,
-                                     Sample#stat_entry.curr_items + AccItems,
-                                     aggregate_ops(Sample) + AccOps,
-                                     Sample#stat_entry.cmd_get + AccGet,
-                                     Sample#stat_entry.get_hits + AccGetHits}
+                                    {extract_stat(mem_used, Sample) + AccMem,
+                                     extract_stat(curr_items, Sample) + AccItems,
+                                     extract_stat(ops, Sample) + AccOps,
+                                     extract_stat(cmd_get, Sample) + AccGet,
+                                     extract_stat(get_hits, Sample) + AccGetHits}
                             end, {0, 0, 0, 0, 0}, invoke_archiver(BucketName, Nodes, {1, minute, 1})),
     {MemUsed,
      CurrItems,
@@ -108,24 +114,10 @@ basic_stats(BucketName, Nodes, MaybeBucketConfig) ->
 basic_stats(BucketName) ->
     basic_stats(BucketName, ns_cluster_membership:active_nodes()).
 
-aggregate_ops(X) ->
-    X#stat_entry.cmd_get +
-        X#stat_entry.cmd_set +
-        X#stat_entry.incr_misses +
-        X#stat_entry.incr_hits +
-        X#stat_entry.decr_misses +
-        X#stat_entry.decr_hits +
-        X#stat_entry.delete_misses +
-        X#stat_entry.delete_hits.
-
 handle_overview_stats(PoolId, Req) ->
     Names = lists:sort(menelaus_web_buckets:all_accessible_bucket_names(PoolId, Req)),
     AllSamples = lists:map(fun (Name) ->
-                                   Samples = element(1, grab_op_stats(Name, [{"zoom", "hour"}])),
-                                   case Samples of
-                                       [#stat_entry{bytes_read = undefined} | T] -> T;
-                                       _ -> Samples
-                                   end
+                                   element(1, grab_op_stats(Name, [{"zoom", "hour"}]))
                            end, Names),
     MergedSamples = case AllSamples of
                         [FirstBucketSamples | RestSamples] ->
@@ -135,8 +127,8 @@ handle_overview_stats(PoolId, Req) ->
                         [] -> []
                     end,
     TStamps = [X#stat_entry.timestamp || X <- MergedSamples],
-    Ops = [aggregate_ops(X) || X <- MergedSamples],
-    DiskReads = [X#stat_entry.ep_io_num_read || X <- MergedSamples],
+    Ops = [extract_stat(ops, X) || X <- MergedSamples],
+    DiskReads = [extract_stat(ep_io_num_read, X) || X <- MergedSamples],
     menelaus_util:reply_json(Req, {struct, [{timestamp, TStamps},
                                             {ops, Ops},
                                             {ep_io_num_read, DiskReads}]}).
@@ -194,12 +186,12 @@ handle_buckets_stats(PoolId, BucketIds, Req) ->
 %% Implementation
 
 merge_samples(MainSamples, OtherSamples, MergerFun, MergerState) ->
-    OtherSamplesDict = dict:from_list([{Sample#stat_entry.timestamp, Sample} ||
-                                          Sample <- OtherSamples]),
+    OtherSamplesDict = orddict:from_list([{Sample#stat_entry.timestamp, Sample} ||
+                                             Sample <- OtherSamples]),
     {MergedSamples, _} = lists:foldl(fun (Sample, {Acc, MergerState2}) ->
                                              TStamp = Sample#stat_entry.timestamp,
                                              {NewSample, NextState} =
-                                                 case dict:find(TStamp, OtherSamplesDict) of
+                                                 case orddict:find(TStamp, OtherSamplesDict) of
                                                      {ok, AnotherSample} ->
                                                          MergerFun(Sample, AnotherSample, MergerState2);
                                                      _ -> {Sample, MergerState2}
@@ -211,7 +203,7 @@ merge_samples(MainSamples, OtherSamples, MergerFun, MergerState) ->
 merge_samples_normally(MainSamples, OtherSamples) ->
     merge_samples(MainSamples, OtherSamples,
                   fun (A, B, _) ->
-                          {aggregate_stat_entries([A, B]), []}
+                          {aggregate_stat_entries(A, B), []}
                   end, []).
 
 
@@ -317,44 +309,35 @@ grab_op_stats_body(Bucket, ClientTStamp, Ref, PeriodParams) ->
             end
     end.
 
-produce_sum_stats([FirstStat | RestStats], Samples) ->
-    lists:foldl(fun (StatName, XSamples) ->
-                        YSamples = proplists:get_value(StatName, Samples),
-                        [X+Y || {X,Y} <- lists:zip(XSamples, YSamples)]
-                end, proplists:get_value(FirstStat, Samples), RestStats).
-
-add_stat_sums(Samples) ->
-    [{ops, produce_sum_stats([cmd_get, cmd_set,
-                              incr_misses, incr_hits,
-                              decr_misses, decr_hits,
-                              delete_misses, delete_hits], Samples)},
-     {hit_ratio, [case Gets of
-                      X when X == 0 -> 0;       % this handles int and float 0
-                      _ -> Hits/Gets
-                  end || {Gets, Hits} <- lists:zip(proplists:get_value(cmd_get, Samples),
-                                                   proplists:get_value(get_hits, Samples))]},
-     {misses, produce_sum_stats([get_misses, delete_misses, incr_misses, decr_misses,
-                                 cas_misses], Samples)},
-     {disk_writes, produce_sum_stats([ep_flusher_todo, ep_queue_size], Samples)},
-     {updates, produce_sum_stats([cmd_set, incr_hits, decr_hits, cas_hits], Samples)}
-     | Samples].
-
+%% converts list of samples to proplist of stat values
+-spec samples_to_proplists([#stat_entry{}]) -> [{atom(), [null | number()]}].
+samples_to_proplists([]) -> [{timestamp, []}];
 samples_to_proplists(Samples) ->
-    StatsList = tuple_to_list({timestamp, ?STAT_GAUGES, ?STAT_COUNTERS}),
-    EmptyLists = [[] || _ <- StatsList],
-    PropList0 = lists:zip(StatsList,
-                         lists:foldl(fun (Sample, Acc) ->
-                                             [[X | Y] || {X,Y} <- lists:zip(tl(tuple_to_list(Sample)), Acc)]
-                                     end, EmptyLists, Samples)),
-    PropList1 = [{K, lists:reverse(V)} || {K,V} <- PropList0],
-    add_stat_sums(PropList1).
+    %% we're assuming that last sample has currently supported stats,
+    %% that's why we are folding from backward and why we're ignoring
+    %% other keys of other samples
+    [LastSample | ReversedRest] = lists:reverse(Samples),
+    InitialAcc0 = orddict:map(fun (_, V) -> [V] end, LastSample#stat_entry.values),
+    InitialAcc = orddict:store(timestamp, [LastSample#stat_entry.timestamp], InitialAcc0),
+    Dict = lists:foldl(fun (Sample, Acc) ->
+                               orddict:map(fun (timestamp, AccValues) ->
+                                                [Sample#stat_entry.timestamp | AccValues];
+                                            (K, AccValues) ->
+                                                case orddict:find(K, Sample#stat_entry.values) of
+                                                    {ok, ThisValue} -> [ThisValue | AccValues];
+                                                    _ -> [null | AccValues]
+                                                end
+                                        end, Acc)
+                       end, InitialAcc, ReversedRest),
+    HitRatio = lists:zipwith(fun (null, _Hits) -> 0;
+                                 (_Gets, null) -> 0;
+                                 (Gets, _Hits) when Gets == 0 -> 0; % this handles int and float 0
+                                 (Gets, Hits) -> Gets/Hits
+                             end, orddict:fetch(cmd_get, Dict), orddict:fetch(get_hits, Dict)),
+    [{hit_ratio, HitRatio} | orddict:to_list(Dict)].
 
 build_buckets_stats_ops_response(_PoolId, [BucketName], Params) ->
-    {Samples0, ClientTStamp, Step, TotalNumber} = grab_op_stats(BucketName, Params),
-    Samples = case Samples0 of
-                  [#stat_entry{bytes_read = undefined} | T] -> T;
-                  _ -> Samples0
-              end,
+    {Samples, ClientTStamp, Step, TotalNumber} = grab_op_stats(BucketName, Params),
     PropList2 = samples_to_proplists(Samples),
     OpPropList0 = [{samples, {struct, PropList2}},
                    {samplesCount, TotalNumber},
@@ -391,21 +374,17 @@ build_buckets_stats_hks_response(_PoolId, [BucketName]) ->
                               end, BucketsTopKeys),
     {struct, [{hot_keys, HotKeyStructs}]}.
 
-aggregate_stat_entries([Entry | Rest]) ->
-    aggregate_stat_entries_rec(Rest, tuple_to_list(Entry)).
-
-aggregate_stat_entries_rec([], Acc) ->
-    list_to_tuple(Acc);
-aggregate_stat_entries_rec([Entry | Rest], Acc) ->
-    [{stat_entry, stat_entry}, {TStamp1, TStamp2} | Meat] = lists:zip(tuple_to_list(Entry), Acc),
-    TStamp1 = TStamp2,
-    NewAcc = lists:map(fun ({X,Y}) ->
-                               case X of
-                                   undefined -> 0;
-                                   _ -> X
-                               end + case Y of
-                                         undefined -> 0;
-                                         _ -> Y
-                                     end
-                       end, Meat),
-    aggregate_stat_entries_rec(Rest, [stat_entry, TStamp1 | NewAcc]).
+aggregate_stat_entries(A, B) ->
+    true = (B#stat_entry.timestamp =:= A#stat_entry.timestamp),
+    BValues = B#stat_entry.values,
+    NewValues = orddict:map(fun (K, X0) ->
+                                    X = case X0 of
+                                            undefined -> 0;
+                                            _ -> X0
+                                        end,
+                                    case orddict:find(K, BValues) of
+                                        {ok, Y} when Y =/= undefined -> X + Y;
+                                        _ -> X
+                                    end
+                            end, A#stat_entry.values),
+    A#stat_entry{values = NewValues}.

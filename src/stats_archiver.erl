@@ -109,17 +109,20 @@ archives() ->
 
 
 %% @doc Compute the average of a list of entries.
-avg(TS, Samples) ->
-    [First|Rest] = Samples,
-    {_, FirstList} = stat_to_list(First),
+avg(TS, [First|Rest]) ->
     Sums = lists:foldl(fun (E, Acc) ->
-                               {_, L} = stat_to_list(E),
-                               lists:zipwith(fun (A, B) -> A + B end, L, Acc)
-                       end, FirstList, Rest),
-    Count = length(Samples),
-    Avgs = [X / Count || X <- Sums],
-    list_to_stat(TS, Avgs).
-
+                               Values = E#stat_entry.values,
+                               orddict:merge(fun (_K, null, B) -> B;
+                                                 (_K, A, null) -> A;
+                                                 (_K, A, B) -> A + B end,
+                                             Acc, Values)
+                       end, First#stat_entry.values, Rest),
+    Count = 1 + length(Rest),
+    #stat_entry{timestamp = TS,
+                values = orddict:map(fun (_Key, null) -> null;
+                                         (_Key, Value) ->
+                                             Value / Count
+                                     end, Sums)}.
 
 cascade(Bucket, Prev, Period, Step) ->
     PrevTab = table(Bucket, Prev),
@@ -171,17 +174,6 @@ last_chunk(Tab, TS, Step, Samples) ->
 %% @doc Generate a suitable name for the per-bucket gen_server.
 server(Bucket) ->
     list_to_atom(?MODULE_STRING ++ "-" ++ Bucket).
-
-
-%% @doc Convert a list of values from stat_to_list back to a stat entry.
-list_to_stat(TS, List) ->
-    list_to_tuple([stat_entry, TS | List]).
-
-%% @doc Convert a stat entry to a list of values.
-stat_to_list(Entry) ->
-    [stat_entry, TS | L] = tuple_to_list(Entry),
-    {TS, L}.
-
 
 %% @doc Start the timers to cascade samples to the next resolution.
 start_cascade_timers([{Prev, _, _} | [{Next, Step, _} | _] = Rest]) ->
