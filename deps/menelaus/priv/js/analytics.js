@@ -209,6 +209,9 @@ var StatGraphs = {
   },
   thaw: function () {
     this.preventUpdatesCounter--;
+    if (!this.preventUpdatesCounter) {
+      this.update();
+    }
   },
   freezeIfIE: function () {
     if (!window.G_vmlCanvasManager)
