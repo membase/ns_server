@@ -941,7 +941,7 @@ function plotStatGraph(graphJQ, stats, attr, options) {
     verticalMargin: 1.15,
     targetPointsCount: 120
   }, options || {});
-  var data = stats[attr];
+  var data = stats[attr] || [];
   var tstamps = stats.timestamp;
 
   // not enough data
@@ -960,12 +960,18 @@ function plotStatGraph(graphJQ, stats, attr, options) {
     data = decimateSamples(decimation, data);
   }
 
-  var plotData = _.map(data, function (e, i) {
-    var x = tstamps[i];
+  var dataLength = data.length;
+  var plotData = new Array(dataLength);
+  var usedPlotData = 0;
+  for (var i = 0; i < dataLength; i++) {
+    var e = data[i];
+    if (e == null)
+      continue;
     if (e >= maxY)
       maxY = e;
-    return [x, e];
-  });
+    plotData[usedPlotData++] = [tstamps[i], e];
+  }
+  plotData.length = usedPlotData;
 
   if (maxY == 0 || maxY == plusInf)
     maxY = 1;
