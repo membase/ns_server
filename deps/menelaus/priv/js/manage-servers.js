@@ -165,16 +165,16 @@ var ServersSection = {
         case 'failoverNeeded':
           break;
         case 'rebalanceNeeded':
-          showWarning('You should perform rebalance to reach fault-tolerant data distribution');
+          showWarning('Rebalance required, some data is not currently replicated!');
           break;
         case 'hardNodesNeeded':
-          showWarning('You should have at least two servers for basic fault-tolerance');
+          showWarning('At least two servers are required to provide replication!');
           break;
         case 'softNodesNeeded':
-          showWarning('You should have more active servers to take full advantage of configured replicas number');
+          showWarning('Additional active servers required to provide the desired number of replicas!');
           break;
         case 'softRebalanceNeeded':
-          showWarning('You should perform rebalance to take full advantage of configured replicas number');
+          showWarning('Rebalance recommended, some data does not have the desired number of replicas!');
           break;
         default:
           console.log('Got unknown failover warning: ' + failoverSafety);
