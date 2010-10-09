@@ -818,3 +818,24 @@ retry_test() ->
 %% @doc Truncate a timestamp to the nearest multiple of N seconds.
 trunc_ts(TS, N) ->
     TS - (TS rem (N*1000)).
+
+%% alternative of file:read_file/1 that reads file until EOF is
+%% reached instead of relying on file length. See
+%% http://groups.google.com/group/erlang-programming/browse_thread/thread/fd1ec67ff690d8eb
+%% for more information. This piece of code was borrowed from above mentioned URL.
+raw_read_file(Path) ->
+    case file:open(Path, [read, binary]) of
+        {ok, File} -> raw_read_loop(File, []);
+        Crap -> Crap
+    end.
+raw_read_loop(File, Acc) ->
+    case file:read(File, 10) of
+        {ok, Bytes} ->
+            raw_read_loop(File, [Acc | Bytes]);
+        eof ->
+            file:close(File),
+            {ok, iolist_to_binary(Acc)};
+        {error, Reason} ->
+            file:close(File),
+            erlang:error(Reason)
+    end.
