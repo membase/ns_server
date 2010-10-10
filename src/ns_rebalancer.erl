@@ -23,7 +23,9 @@
 
 -include("ns_common.hrl").
 
--export([failover/1, generate_initial_map/3, rebalance/3, rebalance/4,
+-export([failover/1,
+         generate_initial_map/3,
+         rebalance/3,
          unbalanced/2]).
 
 
@@ -70,23 +72,30 @@ generate_initial_map(NumReplicas, NumVBuckets, Servers, Map) ->
 
 
 rebalance(KeepNodes, EjectNodes, FailedNodes) ->
-    AllNodes = KeepNodes ++ EjectNodes ++ FailedNodes,
-    BucketConfigs = ns_bucket:get_buckets(),
-    MembaseBuckets = [Name || {Name, Config} <- BucketConfigs,
-                              proplists:get_value(type, Config) == membase],
-    MemcachedBuckets = [Name || {Name, Config} <- BucketConfigs,
-                                proplists:get_value(type, Config) == memcached],
-    lists:foreach(fun (Bucket) ->
-                          ns_bucket:set_servers(Bucket, KeepNodes)
-                  end, MemcachedBuckets),
-    lists:foreach(fun (Bucket) ->
-                          wait_for_memcached(AllNodes -- FailedNodes, Bucket),
-                          ns_janitor:cleanup(Bucket)
-                  end,
-                  MembaseBuckets),
+    LiveNodes = KeepNodes ++ EjectNodes,
+    AllNodes = LiveNodes ++ FailedNodes,
     DeactivateNodes = EjectNodes ++ FailedNodes,
-    rebalance(MembaseBuckets, length(MembaseBuckets), KeepNodes,
-              DeactivateNodes),
+    BucketConfigs = ns_bucket:get_buckets(),
+    NumBuckets = length(BucketConfigs),
+    lists:foreach(fun ({I, {BucketName, BucketConfig}}) ->
+                          BucketCompletion = I / NumBuckets,
+                          ns_orchestrator:update_progress(
+                            dict:from_list([{N, BucketCompletion}
+                                            || N <- AllNodes])),
+                          case proplists:get_value(type, BucketConfig) of
+                              memcached ->
+                                  ns_bucket:set_servers(BucketName, KeepNodes);
+                              membase ->
+                                  %% Only start one bucket at a time to avoid
+                                  %% overloading things
+                                  ns_bucket:set_servers(BucketName, LiveNodes),
+                                  wait_for_memcached(LiveNodes, BucketName),
+                                  ns_janitor:cleanup(BucketName),
+                                  rebalance(BucketName, KeepNodes,
+                                            DeactivateNodes, BucketCompletion,
+                                            NumBuckets)
+                          end
+                  end, misc:enumerate(BucketConfigs, 0)),
     %% Leave myself last
     LeaveNodes = lists:delete(node(), DeactivateNodes),
     lists:foreach(fun (N) ->
@@ -106,15 +115,8 @@ rebalance(KeepNodes, EjectNodes, FailedNodes) ->
 %% @doc Rebalance the cluster. Operates on a single bucket. Will
 %% either return ok or exit with reason 'stopped' or whatever reason
 %% was given by whatever failed.
-rebalance([], _, _, _) ->
-    ok;
-rebalance([Bucket|Buckets], NumBuckets, KeepNodes, EjectNodes) ->
-    BucketCompletion = 1.0 - (length(Buckets)+1) / NumBuckets,
-    AllNodes = KeepNodes ++ EjectNodes,
-    ns_orchestrator:update_progress(
-      dict:from_list([{N, BucketCompletion} || N <- AllNodes])),
+rebalance(Bucket, KeepNodes, EjectNodes, BucketCompletion, NumBuckets) ->
     {_, _, Map, _} = ns_bucket:config(Bucket),
-    ns_bucket:set_servers(Bucket, KeepNodes ++ EjectNodes),
     Histograms1 = histograms(Map, KeepNodes),
     Moves1 = master_moves(Bucket, EjectNodes, Map, Histograms1),
     ProgressFun =
@@ -158,8 +160,7 @@ rebalance([Bucket|Buckets], NumBuckets, KeepNodes, EjectNodes) ->
         throw:stopped ->
             fixup_replicas(Bucket, KeepNodes, EjectNodes),
             exit(stopped)
-    end,
-    rebalance(Buckets, NumBuckets, KeepNodes, EjectNodes).
+    end.
 
 
 %% @doc Determine if a particular bucket is unbalanced. Returns true
