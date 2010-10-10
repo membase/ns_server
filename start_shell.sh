@@ -9,7 +9,9 @@ if [ -z "$DONT_START_EPMD" ]; then
   erl -noshell -setcookie nocookie -sname init -run init stop 2>&1 > /dev/null
 fi
 
-exec erl -pa `find . -type d -name ebin` \
+exec erl \
+    +A 16 \
+    -pa `find . -type d -name ebin` \
     -setcookie nocookie \
     -run ns_bootstrap \
     -ns_server error_logger_mf_dir '"logs"' \
