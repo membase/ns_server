@@ -79,17 +79,12 @@ config_string(BucketName) ->
     BucketConfig = proplists:get_value(BucketName, BucketConfigs),
     Engines = ns_config:search_node_prop(Config, memcached, engines),
     MemQuota = proplists:get_value(ram_quota, BucketConfig),
-    NodesCount = case length(proplists:get_value(servers, BucketConfig)) of
-                     0 -> 1;
-                     X -> X
-                 end,
     BucketType =  proplists:get_value(type, BucketConfig),
     EngineConfig = proplists:get_value(BucketType, Engines),
     Engine = proplists:get_value(engine, EngineConfig),
     {ConfigString, ExtraParams} =
         case BucketType of
             membase ->
-                LocalQuota = MemQuota div NodesCount,
                 DBDir = ns_config:search_node_prop(Config, memcached, dbdir),
                 DBName = filename:join(DBDir, BucketName),
                 %% MemQuota is our total limit for cluster
@@ -104,10 +99,10 @@ config_string(BucketName) ->
                         "max_size=~B;initfile=~s;dbname=~s",
                         [proplists:get_value(ht_size, BucketConfig),
                          proplists:get_value(ht_locks, BucketConfig),
-                         LocalQuota,
+                         MemQuota,
                          proplists:get_value(initfile, EngineConfig),
                          DBName])),
-                {CFG, {LocalQuota, DBName}};
+                {CFG, {MemQuota, DBName}};
             memcached ->
                 {lists:flatten(
                    io_lib:format("vb0=true;cache_size=~B", [MemQuota])),
