@@ -110,20 +110,6 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 
-handle_call({add_node, Node}, _From, State) ->
-    ?log_info("Adding node ~p. Connected nodes: ~p Mnesia config: ~n~p",
-              [Node, nodes(), mnesia:system_info(all)]),
-    {ok, [Node]} = mnesia:change_config(extra_db_nodes, [Node]),
-    case mnesia:change_table_copy_type(schema, Node, disc_copies) of
-        {atomic, ok} ->
-            ?log_info("Added node ~p to cluster.",
-                      [Node]);
-        {aborted, {already_exists, _, _, _}} ->
-            ?log_warning("Node ~p was already in cluster.", [Node])
-    end,
-    ?log_info("Mnesia config:~n~p", [mnesia:system_info(all)]),
-    {reply, ok, State};
-
 handle_call(prepare_rename, _From, State) ->
     Pre = tmpdir("pre_rename"),
     Reply = mnesia:backup(Pre),
@@ -253,18 +239,6 @@ ensure_schema() ->
     Nodes = mnesia:table_info(schema, disc_copies),
     case lists:member(node(), Nodes) of
         false ->
-            case ns_node_disco:nodes_actual_other() -- Nodes of
-                [] ->
-                    ok;
-                ExtraNodes ->
-                    case mnesia:change_config(extra_db_nodes, ExtraNodes) of
-                        {ok, []} ->
-                            exit(mnesia_connect_failed);
-                        {ok, ConnectedNodes} ->
-                            ?log_info("Mnesia connected to ~p",
-                                      [ConnectedNodes])
-                    end
-            end,
             case mnesia:change_table_copy_type(schema, node(), disc_copies) of
                 {atomic, ok} ->
                     ?log_info("Committed schema to disk.", []);
