@@ -39,33 +39,38 @@ cleanup(Bucket) ->
     case Servers of
         [] -> ok;
         _ ->
-            case sanify(Bucket, Map, Servers) of
-                Map -> ok;
-                Map1 ->
-                    ns_bucket:set_map(Bucket, Map1)
-            end,
-            Replicas = lists:keysort(1, map_to_replicas(Map)),
-            ReplicaGroups = lists:ukeymerge(1, misc:keygroup(1, Replicas),
-                                            [{N, []} || N <- lists:sort(Servers)]),
-            NodesReplicas = lists:map(fun ({Src, R}) -> % R is the replicas for this node
-                                              {Src, [{V, Dst} || {_, Dst, V} <- R]}
-                                      end, ReplicaGroups),
-            LiveNodes = [node()|nodes()],
-            lists:foreach(
-              fun ({Src, R}) ->
-                      case lists:member(Src, LiveNodes) of
-                          true ->
-                              try ns_vbm_sup:set_replicas(
-                                    Src, Bucket, R)
-                              catch
-                                  E:R ->
-                                      ?log_error("Unable to start replicators on ~p for bucket ~p: ~p",
-                                                 [Src, Bucket, {E, R}])
-                              end;
-                          false ->
-                              ok
-                      end
-              end, NodesReplicas)
+            case wait_for_memcached(Servers, Bucket, 5) of
+                [] ->
+                    case sanify(Bucket, Map, Servers) of
+                        Map -> ok;
+                        Map1 ->
+                            ns_bucket:set_map(Bucket, Map1)
+                    end,
+                    Replicas = lists:keysort(1, map_to_replicas(Map)),
+                    ReplicaGroups = lists:ukeymerge(1, misc:keygroup(1, Replicas),
+                                                    [{N, []} || N <- lists:sort(Servers)]),
+                    NodesReplicas = lists:map(fun ({Src, R}) -> % R is the replicas for this node
+                                                      {Src, [{V, Dst} || {_, Dst, V} <- R]}
+                                              end, ReplicaGroups),
+                    LiveNodes = [node()|nodes()],
+                    lists:foreach(
+                      fun ({Src, R}) ->
+                              case lists:member(Src, LiveNodes) of
+                                  true ->
+                                      try ns_vbm_sup:set_replicas(
+                                            Src, Bucket, R)
+                                      catch
+                                          E:R ->
+                                              ?log_error("Unable to start replicators on ~p for bucket ~p: ~p",
+                                                         [Src, Bucket, {E, R}])
+                                      end;
+                                  false ->
+                                      ok
+                              end
+                      end, NodesReplicas);
+                Down ->
+                    ?log_error("Bucket ~p not yet ready on ~p", [Bucket, Down])
+            end
     end.
 
 
@@ -264,3 +269,20 @@ map_to_replicas([Chain|Rest], V, Replicas) ->
     Pairs = [{Src, Dst, V}||{Src, Dst} <- misc:pairs(Chain),
                             Src /= undefined andalso Dst /= undefined],
     map_to_replicas(Rest, V+1, [Pairs|Replicas]).
+
+
+%%
+%% Internal functions
+%%
+
+wait_for_memcached(Nodes, _Bucket, 0) ->
+    Nodes;
+wait_for_memcached(Nodes, Bucket, Tries) ->
+    case [Node || Node <- Nodes, not ns_memcached:connected(Node, Bucket)] of
+        [] ->
+            [];
+        Down ->
+            timer:sleep(1000),
+            ?log_info("Waiting for ~p on ~p", [Bucket, Down]),
+            wait_for_memcached(Down, Bucket, Tries-1)
+    end.
