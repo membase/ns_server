@@ -107,9 +107,6 @@ bad_children() ->
       permanent, infinity, supervisor,
       [ns_moxi_sup]},
 
-     {ns_vbm_sup, {ns_vbm_sup, start_link, []},
-      permanent, infinity, supervisor, [ns_vbm_sup]},
-
      {ns_tick, {ns_tick, start_link, []},
       permanent, 10, worker, [ns_tick]}].
 
@@ -139,6 +136,9 @@ bad_bucket_children(Bucket) ->
       permanent, 10, worker, [stats_reader]}].
 
 good_bucket_children(Bucket) ->
-    [{{ns_memcached, Bucket}, {ns_memcached, start_link, [Bucket]},
+    %% Start ns_memcached last so we know the bucket's good once it's available
+    [{{ns_vbm_sup, Bucket}, {ns_vbm_sup, start_link, [Bucket]},
+      permanent, 1000, worker, [ns_vbm_sup]},
+     {{ns_memcached, Bucket}, {ns_memcached, start_link, [Bucket]},
       %% ns_memcached waits for the bucket to sync to disk before exiting
       permanent, 86400000, worker, [ns_memcached]}].
