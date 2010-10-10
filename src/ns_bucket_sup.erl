@@ -40,8 +40,11 @@ init({Name, ChildFun}) ->
       fun (Event, State) ->
               case Event of
                   {buckets, L} ->
-                      Buckets = [B || {B, _} <-
-                                          proplists:get_value(configs, L)],
+                      Node = node(),
+                      Buckets =
+                          [B || {B, C} <- proplists:get_value(configs, L),
+                                lists:member(Node, proplists:get_value(
+                                                     servers, C, []))],
                       update_childs(Name, ChildFun, Buckets);
                   _ -> ok
               end,
