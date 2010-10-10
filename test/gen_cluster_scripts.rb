@@ -81,7 +81,9 @@ File.open(prefix + "_run.sh", File::CREAT|File::TRUNC|File::WRONLY, 0755) do |f|
 start_node() {
     echo "Starting $1"
     mkdir -p logs/"$1" > /dev/null
-    ./test/orphaner.rb erl -pa \`find . -type d -name ebin\` \\
+    ./test/orphaner.rb erl \\
+        +A 16 \\
+        -pa \`find . -type d -name ebin\` \\
         -setcookie nocookie \\
         -run ns_bootstrap \\
         -kernel inet_dist_listen_min 21100 inet_dist_listen_max 21199 \\
