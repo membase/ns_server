@@ -324,8 +324,8 @@ handle_setup_default_bucket_post(Req) ->
 -record(ram_summary, {
           total,                                % total cluster quota
           other_buckets,
-          per_node,                             % memcached bucket type specific
-          nodes_count,                          % memcached bucket type specific
+          per_node,                             % per node quota of this bucket
+          nodes_count,                          % node count of this bucket
           this_alloc,
           this_used,                            % part of this bucket which is used already
           free}).                               % total - other_buckets - this_alloc.
@@ -563,14 +563,8 @@ ram_summary_to_proplist(V) ->
 interpret_ram_quota(CurrentBucket, ParsedProps, ClusterStorageTotals, UsageGetter) ->
     RAMQuota = proplists:get_value(ram_quota, ParsedProps),
     NodesCount = proplists:get_value(nodesCount, ClusterStorageTotals),
-    {ParsedQuota, PerNode} =
-        case proplists:get_value(bucketType, ParsedProps) of
-            memcached ->
-               {RAMQuota * NodesCount,
-                RAMQuota div 1048576};
-            _ ->
-                {RAMQuota, 0}
-        end,
+    ParsedQuota = RAMQuota * NodesCount,
+    PerNode = RAMQuota div 1048576,
     ClusterTotals = proplists:get_value(ram, ClusterStorageTotals),
     OtherBuckets = proplists:get_value(quotaUsed, ClusterTotals)
         - case CurrentBucket of

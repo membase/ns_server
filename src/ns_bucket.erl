@@ -158,11 +158,7 @@ live_bucket_nodes(Bucket) ->
 ram_quota(Bucket) ->
     case proplists:get_value(ram_quota, Bucket) of
         X when is_integer(X) ->
-            case proplists:get_value(type, Bucket) of
-                memcached ->
-                    X * length(ns_cluster_membership:active_nodes());
-                _ -> X
-            end
+            X * length(proplists:get_value(servers, Bucket, []))
     end.
 
 %% returns cluster-wide ram_quota. For memcached buckets it's

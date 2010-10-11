@@ -362,7 +362,6 @@ var BucketDetailsDialog = mkClass({
                        ramSummary.otherBuckets);
     ramGauge.css('visibility', ramSummary ? 'visible' : 'hidden');
 
-    var memcachedSummary = summaries.memcachedSummary;
     var memcachedSummaryJQ = self.dialog.find('.memcached-summary');
     var memcachedSummaryVisible = ramSummary && ramSummary.perNodeMegs;
     if (memcachedSummaryVisible)
@@ -613,7 +612,8 @@ var BucketsSection = {
     this.settingsWidget.reset();
   },
   startCreate: function () {
-    var totals = DAO.cells.currentPoolDetails.value.storageTotals;
+    var poolDetails = DAO.cells.currentPoolDetails.value;
+    var totals = poolDetails.storageTotals;
     if (totals.ram.quotaTotal == totals.ram.quotaUsed) {
       genericDialog({
         buttons: {ok: true},
@@ -625,7 +625,7 @@ var BucketsSection = {
     var initValues = {uri: '/pools/default/buckets',
                       bucketType: 'membase',
                       authType: 'sasl',
-                      quota: {rawRAM: totals.ram.quotaTotal - totals.ram.quotaUsed},
+                      quota: {rawRAM: Math.floor((totals.ram.quotaTotal - totals.ram.quotaUsed) / poolDetails.nodes.length)},
                       replicaNumber: 1}
     var dialog = new BucketDetailsDialog(initValues, true);
     dialog.startDialog();
