@@ -21,20 +21,19 @@
 
 -include("ns_common.hrl").
 
--export([start_link/2]).
+-export([start_link/3]).
 
 -export([init/1]).
 
 
 %% API
-
-start_link(Name, ChildFun) ->
-    supervisor:start_link({local, Name}, ?MODULE, {Name, ChildFun}).
+start_link(Name, ChildFun, WorkQueue) ->
+    supervisor:start_link({local, Name}, ?MODULE, {Name, ChildFun, WorkQueue}).
 
 
 %% supervisor callbacks
 
-init({Name, ChildFun}) ->
+init({Name, ChildFun, WorkQueue}) ->
     ns_pubsub:subscribe(
       ns_config_events,
       fun (Event, State) ->
@@ -45,7 +44,10 @@ init({Name, ChildFun}) ->
                           [B || {B, C} <- proplists:get_value(configs, L),
                                 lists:member(Node, proplists:get_value(
                                                      servers, C, []))],
-                      update_childs(Name, ChildFun, Buckets);
+                      work_queue:submit_work(WorkQueue,
+                                             fun () ->
+                                                     update_childs(Name, ChildFun, Buckets)
+                                             end);
                   _ -> ok
               end,
               State

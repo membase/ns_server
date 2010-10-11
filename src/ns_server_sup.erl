@@ -84,8 +84,11 @@ good_children() ->
      {ns_stats_event, {gen_event, start_link, [{local, ns_stats_event}]},
       permanent, 10, worker, dynamic},
 
+     {ns_good_bucket_worker, {work_queue, start_link, [ns_good_bucket_worker]},
+      permanent, 10, worker, [work_queue]},
+
      {ns_good_bucket_sup, {ns_bucket_sup, start_link,
-                           [ns_good_bucket_sup, fun good_bucket_children/1]},
+                           [ns_good_bucket_sup, fun good_bucket_children/1, ns_good_bucket_worker]},
       permanent, infinity, supervisor, [ns_bucket_sup]},
 
      {ns_orchestrator, {ns_orchestrator, start_link, []},
@@ -99,8 +102,11 @@ bad_children() ->
     [{ns_mnesia, {ns_mnesia, start_link, []},
       permanent, 5000, worker, [ns_mnesia]},
 
+     {ns_bad_bucket_worker, {work_queue, start_link, [ns_bad_bucket_worker]},
+      permanent, 10, worker, [work_queue]},
+
      {ns_bad_bucket_sup, {ns_bucket_sup, start_link,
-      [ns_bad_bucket_sup, fun bad_bucket_children/1]},
+      [ns_bad_bucket_sup, fun bad_bucket_children/1, ns_bad_bucket_worker]},
       permanent, infinity, supervisor, [ns_bucket_sup]},
 
      {ns_moxi_sup, {ns_moxi_sup, start_link, []},
