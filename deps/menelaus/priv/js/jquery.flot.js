@@ -130,7 +130,7 @@
         overlay = null,     // canvas for interactive stuff on top of plot
         eventHolder = null, // jQuery object that events should be bound to
         ctx = null, octx = null,
-        axes = { xaxis: {}, yaxis: {}, x2axis: {}, y2axis: {} },
+        axes = { xaxis: {}, yaxis: {}},
         plotOffset = { left: 0, right: 0, top: 0, bottom: 0},
         canvasWidth = 0, canvasHeight = 0,
         plotWidth = 0, plotHeight = 0,
@@ -714,10 +714,10 @@
                     plotOffset.bottom = Math.max(maxOutset, axes.xaxis.labelHeight + margin);
                 if (axes.yaxis.labelWidth > 0)
                     plotOffset.left = Math.max(maxOutset, axes.yaxis.labelWidth + margin);
-                if (axes.x2axis.labelHeight > 0)
-                    plotOffset.top = Math.max(maxOutset, axes.x2axis.labelHeight + margin);
-                if (axes.y2axis.labelWidth > 0)
-                    plotOffset.right = Math.max(maxOutset, axes.y2axis.labelWidth + margin);
+                // if (axes.x2axis.labelHeight > 0)
+                //     plotOffset.top = Math.max(maxOutset, axes.x2axis.labelHeight + margin);
+                // if (axes.y2axis.labelWidth > 0)
+                //     plotOffset.right = Math.max(maxOutset, axes.y2axis.labelWidth + margin);
             
                 plotWidth = canvasWidth - plotOffset.left - plotOffset.right;
                 plotHeight = canvasHeight - plotOffset.bottom - plotOffset.top;
@@ -1222,27 +1222,27 @@
                 ctx.lineTo(plotWidth, Math.floor(axis.p2c(v)) + ctx.lineWidth/2);
             }
 
-            axis = axes.x2axis;
-            for (i = 0; i < axis.ticks.length; ++i) {
-                v = axis.ticks[i].v;
-                if (v < axis.min || v > axis.max ||
-                    (bw > 0 && (v == axis.min || v == axis.max)))
-                    continue;
+            // axis = axes.x2axis;
+            // for (i = 0; i < axis.ticks.length; ++i) {
+            //     v = axis.ticks[i].v;
+            //     if (v < axis.min || v > axis.max ||
+            //         (bw > 0 && (v == axis.min || v == axis.max)))
+            //         continue;
     
-                ctx.moveTo(Math.floor(axis.p2c(v)) + ctx.lineWidth/2, -5);
-                ctx.lineTo(Math.floor(axis.p2c(v)) + ctx.lineWidth/2, 5);
-            }
+            //     ctx.moveTo(Math.floor(axis.p2c(v)) + ctx.lineWidth/2, -5);
+            //     ctx.lineTo(Math.floor(axis.p2c(v)) + ctx.lineWidth/2, 5);
+            // }
 
-            axis = axes.y2axis;
-            for (i = 0; i < axis.ticks.length; ++i) {
-                v = axis.ticks[i].v;
-                if (v < axis.min || v > axis.max ||
-                    (bw > 0 && (v == axis.min || v == axis.max)))
-                    continue;
+            // axis = axes.y2axis;
+            // for (i = 0; i < axis.ticks.length; ++i) {
+            //     v = axis.ticks[i].v;
+            //     if (v < axis.min || v > axis.max ||
+            //         (bw > 0 && (v == axis.min || v == axis.max)))
+            //         continue;
 
-                ctx.moveTo(plotWidth-5, Math.floor(axis.p2c(v)) + ctx.lineWidth/2);
-                ctx.lineTo(plotWidth+5, Math.floor(axis.p2c(v)) + ctx.lineWidth/2);
-            }
+            //     ctx.moveTo(plotWidth-5, Math.floor(axis.p2c(v)) + ctx.lineWidth/2);
+            //     ctx.lineTo(plotWidth+5, Math.floor(axis.p2c(v)) + ctx.lineWidth/2);
+            // }
             
             ctx.stroke();
             
@@ -1281,13 +1281,13 @@
                 return '<div style="position:absolute;top:' + Math.round(plotOffset.top + axis.p2c(tick.v) - axis.labelHeight/2) + 'px;right:' + (plotOffset.right + plotWidth + margin) + 'px;width:' + axis.labelWidth + 'px;text-align:right" class="tickLabel">' + tick.label + "</div>";
             });
             
-            addLabels(axes.x2axis, function (tick, axis) {
-                return '<div style="position:absolute;bottom:' + (plotOffset.bottom + plotHeight + margin) + 'px;left:' + Math.round(plotOffset.left + axis.p2c(tick.v) - axis.labelWidth/2) + 'px;width:' + axis.labelWidth + 'px;text-align:center" class="tickLabel">' + tick.label + "</div>";
-            });
+            // addLabels(axes.x2axis, function (tick, axis) {
+            //     return '<div style="position:absolute;bottom:' + (plotOffset.bottom + plotHeight + margin) + 'px;left:' + Math.round(plotOffset.left + axis.p2c(tick.v) - axis.labelWidth/2) + 'px;width:' + axis.labelWidth + 'px;text-align:center" class="tickLabel">' + tick.label + "</div>";
+            // });
             
-            addLabels(axes.y2axis, function (tick, axis) {
-                return '<div style="position:absolute;top:' + Math.round(plotOffset.top + axis.p2c(tick.v) - axis.labelHeight/2) + 'px;left:' + (plotOffset.left + plotWidth + margin) +'px;width:' + axis.labelWidth + 'px;text-align:left" class="tickLabel">' + tick.label + "</div>";
-            });
+            // addLabels(axes.y2axis, function (tick, axis) {
+            //     return '<div style="position:absolute;top:' + Math.round(plotOffset.top + axis.p2c(tick.v) - axis.labelHeight/2) + 'px;left:' + (plotOffset.left + plotWidth + margin) +'px;width:' + axis.labelWidth + 'px;text-align:left" class="tickLabel">' + tick.label + "</div>";
+            // });
 
             html.push('</div>');
             
@@ -1929,10 +1929,10 @@
                 pos.x = axes.xaxis.c2p(canvasX);
             if (axes.yaxis.used)
                 pos.y = axes.yaxis.c2p(canvasY);
-            if (axes.x2axis.used)
-                pos.x2 = axes.x2axis.c2p(canvasX);
-            if (axes.y2axis.used)
-                pos.y2 = axes.y2axis.c2p(canvasY);
+            // if (axes.x2axis.used)
+            //     pos.x2 = axes.x2axis.c2p(canvasX);
+            // if (axes.y2axis.used)
+            //     pos.y2 = axes.y2axis.c2p(canvasY);
 
             var item = findNearbyItem(canvasX, canvasY, seriesFilter);
 
