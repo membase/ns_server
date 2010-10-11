@@ -345,14 +345,26 @@ parse_bucket_params_for_setup_default_bucket(Params, ClusterStorageTotals) ->
                           0
                   end,
     RamTotals = proplists:get_value(ram, ClusterStorageTotals),
-    parse_bucket_params(true,
-                        "default",
-                        [{"authType", "sasl"}, {"saslPassword", ""} | Params],
-                        [],
-                        [{ram, [{quotaUsed, 0} | RamTotals]} | ClusterStorageTotals],
-                        UsageGetter).
+    RV = parse_bucket_params_without_warnings(true,
+                                              "default",
+                                              [{"authType", "sasl"}, {"saslPassword", ""} | Params],
+                                              [],
+                                              [{ram, [{quotaUsed, 0} | RamTotals]} | ClusterStorageTotals],
+                                              UsageGetter),
+    case RV of
+        {ok, _, _} = X -> X;
+        {errors, Errors, Summaries, _} -> {errors, Errors, Summaries}
+    end.
 
 parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals) ->
+    RV = parse_bucket_params_without_warnings(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals),
+    case RV of
+        {ok, _, _} = X -> X;
+        {errors, Errors, Summaries, OKs} ->
+            {errors, perform_warnings_validation(OKs, Errors), Summaries}
+    end.
+
+parse_bucket_params_without_warnings(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals) ->
     UsageGetter = fun (ram, Name) ->
                           menelaus_stats:bucket_ram_usage(Name);
                       (hdd, all) ->
@@ -362,9 +374,9 @@ parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals)
                       (hdd, Name) ->
                           menelaus_stats:bucket_disk_usage(Name)
                   end,
-    parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals, UsageGetter).
+    parse_bucket_params_without_warnings(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals, UsageGetter).
 
-parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals, UsageGetter) ->
+parse_bucket_params_without_warnings(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals, UsageGetter) ->
     {OKs, Errors} = basic_bucket_params_screening(IsNew, BucketName,
                                                   Params, AllBuckets),
     CurrentBucket = proplists:get_value(currentBucket, OKs),
@@ -409,7 +421,7 @@ parse_bucket_params(IsNew, BucketName, Params, AllBuckets, ClusterStorageTotals,
         TotalErrors =:= [] ->
             {ok, OKs, JSONSummaries};
         true ->
-            {errors, perform_warnings_validation(OKs, TotalErrors), JSONSummaries}
+            {errors, TotalErrors, JSONSummaries, OKs}
     end.
 
 basic_bucket_params_screening(IsNew, BucketName, Params, AllBuckets) ->
