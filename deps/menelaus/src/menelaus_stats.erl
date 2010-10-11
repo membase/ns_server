@@ -32,7 +32,7 @@
 %% External API
 
 bucket_disk_usage(BucketName) ->
-    bucket_disk_usage(BucketName, ns_cluster_membership:active_nodes()).
+    bucket_disk_usage(BucketName, ns_bucket:live_bucket_nodes(BucketName)).
 
 bucket_disk_usage(BucketName, Nodes) ->
     {Res, _} = rpc:multicall(Nodes, ns_storage_conf, local_bucket_disk_usage, [BucketName], 1000),
@@ -42,7 +42,7 @@ bucket_disk_usage(BucketName, Nodes) ->
                end || X <- Res]).
 
 bucket_ram_usage(BucketName) ->
-    element(1, last_membase_sample(BucketName, ns_cluster_membership:active_nodes())).
+    element(1, last_membase_sample(BucketName, ns_bucket:live_bucket_nodes(BucketName))).
 
 extract_stat(StatName, Sample) ->
     case orddict:find(StatName, Sample#stat_entry.values) of
@@ -112,7 +112,7 @@ basic_stats(BucketName, Nodes, MaybeBucketConfig) ->
      | Stats].
 
 basic_stats(BucketName) ->
-    basic_stats(BucketName, ns_cluster_membership:active_nodes()).
+    basic_stats(BucketName, ns_bucket:live_bucket_nodes(BucketName)).
 
 handle_overview_stats(PoolId, Req) ->
     Names = lists:sort(menelaus_web_buckets:all_accessible_bucket_names(PoolId, Req)),
@@ -298,7 +298,7 @@ grab_op_stats_body(Bucket, ClientTStamp, Ref, PeriodParams) ->
                                   end,
                     Replies = invoke_archiver(
                                 Bucket,
-                                ns_node_disco:nodes_actual_proper(),
+                                ns_bucket:live_bucket_nodes(Bucket),
                                 PeriodParams),
                     %% merge samples from other nodes
                     MergedSamples = lists:foldl(fun ({Node, _}, AccSamples) when Node =:= node() -> AccSamples;
