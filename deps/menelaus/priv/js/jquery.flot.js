@@ -365,7 +365,7 @@
 
             for (i = 0; i < series.length; ++i) {
                 s = series[i];
-                s.datapoints = { points: [] };
+                s.datapoints = { points: new Array(s.data.length*2) };
                 
                 executeHooks(hooks.processRawData, [ s, s.data, s.datapoints ]);
             }
