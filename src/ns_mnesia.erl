@@ -49,24 +49,7 @@ delete_schema() ->
 %% @doc Make sure table exists and has a copy on this node, creating it or
 %% adding a copy if it does not.
 ensure_table(TableName, Opts) ->
-    try mnesia:table_info(TableName, disc_copies) of
-        Nodes when is_list(Nodes) ->
-            case lists:member(node(), Nodes) of
-                true ->
-                    ok;
-                false ->
-                    ?log_info("Creating local copy of ~p",
-                              [TableName]),
-                    {atomic, ok} = mnesia:add_table_copy(
-                                     TableName, node(), disc_copies)
-            end
-    catch exit:{aborted, {no_exists, _, _}} ->
-            {atomic, ok} =
-                mnesia:create_table(
-                  TableName,
-                  Opts ++ [{disc_copies, [node()]}]),
-            ?log_info("Created table ~p", [TableName])
-    end.
+    gen_server:call(?MODULE, {ensure_table, TableName, Opts}).
 
 
 %% @doc Back up the database in preparation for a node rename.
@@ -114,6 +97,27 @@ handle_call(prepare_rename, _From, State) ->
     Pre = tmpdir("pre_rename"),
     Reply = mnesia:backup(Pre),
     {reply, Reply, State};
+
+handle_call({ensure_table, TableName, Opts}, _From, State) ->
+    try mnesia:table_info(TableName, disc_copies) of
+        Nodes when is_list(Nodes) ->
+            case lists:member(node(), Nodes) of
+                true ->
+                    ok;
+                false ->
+                    ?log_info("Creating local copy of ~p",
+                              [TableName]),
+                    {atomic, ok} = mnesia:add_table_copy(
+                                     TableName, node(), disc_copies)
+            end
+    catch exit:{aborted, {no_exists, _, _}} ->
+            {atomic, ok} =
+                mnesia:create_table(
+                  TableName,
+                  Opts ++ [{disc_copies, [node()]}]),
+            ?log_info("Created table ~p", [TableName])
+    end,
+    {reply, ok, State};
 
 handle_call(Request, From, State) ->
     ?log_warning("Unexpected call from ~p: ~p", [From, Request]),
