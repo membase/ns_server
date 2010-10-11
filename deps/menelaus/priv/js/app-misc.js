@@ -347,6 +347,8 @@ var MultiDrawersWidget = mkClass({
       configureActionHashParam(options.actionLink, $m(this, 'onActionLinkClick'));
     }
 
+    this.knownKeys = {};
+
     this.subscriptions = [];
     this.reDrawElements = $m(this, 'reDrawElements');
     this.hookRedrawToCell(this.openedNames);
@@ -374,20 +376,28 @@ var MultiDrawersWidget = mkClass({
     _.each(elements, function (e) {
       e[idPrefix] = _.uniqueId(idPrefix);
 
-      var uriCell = new Cell(function (openedNames) {
-        if (this.self.value || !_.include(openedNames, e[key]))
-          return this.self.value;
+      var cell = self.knownKeys[e[key]];
 
-        return self.options.uriExtractor(e);
-      }, {openedNames: self.openedNames});
+      if (!cell) {
+        var uriCell = new Cell(function (openedNames) {
+          if (this.self.value || !_.include(openedNames, e[key]))
+            return this.self.value;
 
-      var cell = e[drawerCellName] = new Cell(function (uri) {
-        return future.get({url: uri}, function (childItem) {
-          if (self.options.valueTransformer)
-            childItem = self.options.valueTransformer(e, childItem);
-          return childItem;
-        });
-      }, {uri: uriCell});
+          return self.options.uriExtractor(e);
+        }, {openedNames: self.openedNames});
+
+        cell = new Cell(function (uri) {
+          return future.get({url: uri}, function (childItem) {
+            if (self.options.valueTransformer)
+              childItem = self.options.valueTransformer(e, childItem);
+            return childItem;
+          });
+        }, {uri: uriCell});
+
+        self.knownKeys[e[key]] = cell;
+      }
+
+      e[drawerCellName] = cell;
 
       var oldE = oldElementsByName[e[key]];
       var oldCell = oldE && oldE[drawerCellName];
