@@ -37,24 +37,31 @@
 %% effect immediately.
 failover(Node) ->
     lists:foreach(fun (Bucket) -> failover(Bucket, Node) end,
-                  ns_bucket:get_bucket_names(membase)).
+                  ns_bucket:get_bucket_names()).
 
 -spec failover(string(), atom()) -> ok.
 failover(Bucket, Node) ->
-    {_, _, Map, Servers} = ns_bucket:config(Bucket),
-    %% Promote replicas of vbuckets on this node
-    Map1 = promote_replicas(Map, [Node]),
-    case [I || {I, [undefined|_]} <- misc:enumerate(Map1, 0)] of
-        [] -> ok; % Phew!
-        MissingVBuckets ->
-            ?log_error("Lost data in ~p for ~w", [Bucket, MissingVBuckets]),
-            ns_log:log(?MODULE, 1,
-                       "Data has been lost for ~B% of vbuckets in bucket ~p.",
-                       [length(MissingVBuckets) * 100 div length(Map), Bucket])
-    end,
-    ns_bucket:set_map(Bucket, Map1),
-    ns_bucket:set_servers(Bucket, lists:delete(Node, Servers)),
-    ns_janitor:cleanup(Bucket).
+    {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
+    Servers = proplists:get_value(servers, BucketConfig),
+    case proplists:get_value(type, BucketConfig) of
+        membase ->
+            %% Promote replicas of vbuckets on this node
+            Map = proplists:get_value(map, BucketConfig),
+            Map1 = promote_replicas(Map, [Node]),
+            case [I || {I, [undefined|_]} <- misc:enumerate(Map1, 0)] of
+                [] -> ok; % Phew!
+                MissingVBuckets ->
+                    ?log_error("Lost data in ~p for ~w", [Bucket, MissingVBuckets]),
+                    ns_log:log(?MODULE, 1,
+                               "Data has been lost for ~B% of vbuckets in bucket ~p.",
+                               [length(MissingVBuckets) * 100 div length(Map), Bucket])
+            end,
+            ns_bucket:set_map(Bucket, Map1),
+            ns_bucket:set_servers(Bucket, lists:delete(Node, Servers)),
+            ns_janitor:cleanup(Bucket);
+        memcached ->
+            ns_bucket:set_servers(Bucket, lists:delete(Node, Servers))
+    end.
 
 
 generate_initial_map(NumReplicas, NumVBuckets, Servers) ->
