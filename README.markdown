@@ -4,7 +4,7 @@ This application represents the top of the hierarchy of all memcached
 smart services.  It is an application in the Erlang OTP sense.
 
 <div>
-    <img src="https://github.com/northscale/ns_server/raw/master/doc/images/ns_server.png"
+    <img src="https://github.com/membase/ns_server/raw/master/doc/images/ns_server.png"
          alt="[ns server]" style="float: right"/>
 </div>
 
@@ -19,7 +19,7 @@ Build dependencies include...
 
 Building...
 
-    git clone git@github.com:northscale/ns_server.git
+    git clone git@github.com:membase/ns_server.git
     cd ns_server
     make
 
@@ -37,7 +37,7 @@ For 1.0/Reveal memcached...
 Build the "for_release" branch of northscale memcached that
 has isasl enabled...
 
-  git clone git@github.com:northscale/memcached.git &&
+  git clone git@github.com:membase/memcached.git &&
   cd memcached &&
   git checkout --track origin/for_release &&
   ./config/autorun.sh &&
@@ -52,9 +52,9 @@ engine branch...
   git checkout --track origin/engine
 
 Build the bucket_engine library from the
-git@github.com:northscale/bucket_engine.git repository.
+git@github.com:membase/bucket_engine.git repository.
 
-  git clone git@github.com:northscale/bucket_engine.git &&
+  git clone git@github.com:membase/bucket_engine.git &&
   cd bucket_engine &&
   ./configure --with-memcached=/path/to/your/above/dir/for/memcached/ &&
   make &&
@@ -75,7 +75,7 @@ For membase, also symlink...
 
 Also, for membase, build the ep engine and symlink it the .libs/ep.so the priv/engines...
 
-  git clone git@github.com:northscale/ep-engine.git &&
+  git clone git@github.com:membase/ep-engine.git &&
   cd ep-engine &&
   ./configure --with-memcached=/path/to/your/above/dir/for/memcached/ &&
   make &&
