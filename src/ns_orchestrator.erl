@@ -155,6 +155,8 @@ handle_info(janitor, idle, #idle_state{remaining_buckets=[]} = State) ->
 handle_info(janitor, idle, #idle_state{remaining_buckets=Buckets}) ->
     Bucket = hd(Buckets),
     Pid = proc_lib:spawn_link(ns_janitor, cleanup, [Bucket]),
+    %% NOTE: Bucket will be popped from Buckets when janitor run will
+    %% complete successfully
     {next_state, janitor_running, #janitor_state{remaining_buckets=Buckets,
                                                  pid = Pid}};
 handle_info(janitor, StateName, StateData) ->
@@ -258,11 +260,15 @@ idle(stop_rebalance, _From, State) ->
 janitor_running(rebalance_progress, _From, State) ->
     {reply, not_running, janitor_running, State};
 janitor_running(Msg, From, #janitor_state{pid=Pid} = State) ->
+    %% when handling some call while janitor is running we kill janitor
     exit(Pid, shutdown),
-    NextState = receive
-                    {'EXIT', Pid, _} = DeathMsg ->
-                        handle_info(DeathMsg, janitor_running, State)
-                end,
+    %% than await that it's dead and handle it's death message
+    {next_state, idle, NextState}
+        = receive
+              {'EXIT', Pid, _} = DeathMsg ->
+                  handle_info(DeathMsg, janitor_running, State)
+          end,
+    %% and than handle original call in idle state
     idle(Msg, From, NextState).
 
 %% Asynchronous rebalancing events
