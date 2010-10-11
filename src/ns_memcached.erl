@@ -153,14 +153,6 @@ handle_info(check_config, State) ->
     misc:flush(check_config),
     ensure_bucket(State#state.sock, State#state.bucket),
     {noreply, State};
-handle_info({reap, VBucket, From}, State) ->
-    case mc_client_binary:delete_vbucket(State#state.sock, VBucket) of
-        ok ->
-            gen_server:reply(From, ok);
-        {memcached_error, einval, _} ->
-            timer:send_after(?VBUCKET_POLL_INTERVAL, {reap, VBucket, From})
-    end,
-    {noreply, State};
 handle_info({wait_for_vbucket, VBucket, VBState, Callback},
             #state{sock=Sock} = State) ->
     wait_for_vbucket(Sock, VBucket, VBState, Callback),
@@ -178,27 +170,8 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
     unregister(server(Bucket)),
     if
         Reason == normal; Reason == shutdown ->
-            case ns_bucket:get_bucket(Bucket) of
-                not_present ->
-                    ns_log:log(?MODULE, 2,
-                               "Deleting data on ~p for deleted bucket ~p",
-                               [node(), Bucket]),
-                    mc_client_binary:flush(Sock);
-                {ok, BucketConfig} ->
-                    case lists:member(node(), proplists:get_value(
-                                                servers, BucketConfig)) of
-                        true ->
-                            ok;
-                        false ->
-                            ns_log:log(
-                              ?MODULE, 3,
-                              "Deleting data for bucket ~p on ~p since bucket "
-                              "is no longer mapped to node.",
-                              [Bucket, node()]),
-                            mc_client_binary:flush(Sock)
-                    end
-            end,
-            ?log_info("Shutting down bucket ~p", [Bucket]),
+            ns_log:log(?MODULE, 2, "Shutting down bucket ~p on ~p",
+                       [Bucket, node()]),
             try
                 mc_client_binary:delete_bucket(Sock, Bucket)
             catch
