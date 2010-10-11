@@ -513,7 +513,7 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, Auth
                          {ok, ram_quota, RAMQuotaMB} ->
                              {MinQuota, Msg}
                                  = case BucketType of
-                                       membase -> {256, <<"RAM quota cannot be less than 256 MB">>};
+                                       membase -> {100, <<"RAM quota cannot be less than 100 MB">>};
                                        memcached -> {64, <<"RAM quota cannot be less than 64 MB">>};
                                        _ -> {0, <<"">>}
                                    end,
