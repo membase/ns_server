@@ -19,6 +19,8 @@
 -type histogram() :: [{atom(), non_neg_integer()}].
 -type map() :: [[atom(), ...], ...].
 -type moves() :: [{non_neg_integer(), atom(), atom()}].
+-type bucket_name() :: nonempty_string().
+-type bucket_type() :: memcached | membase.
 
 
 -define(LOG(Fun, Format, Args),
