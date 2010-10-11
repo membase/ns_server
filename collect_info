@@ -1,0 +1,202 @@
+#!/usr/bin/python
+# -*- python -*-
+import os
+import sys
+import time
+
+class Task(object):
+    privileged = False
+    num_samples = 0
+    interval = 0
+    def __init__(self, *args, **kwargs):
+        positional_args = ['description', 'command']
+        self.__dict__.update(kwargs)
+        for name, value in zip(positional_args, args):
+            self.__dict__[name] = value
+
+    def execute(self, fp):
+        """Run the task"""
+        import subprocess
+        p = subprocess.Popen(self.command, bufsize=-1, stdout=fp, stderr=fp,
+                             shell=True)
+        return p.wait()
+
+    def will_run(self):
+        """Determine if this task will run on this platform."""
+        return sys.platform in self.platforms
+
+
+class TaskRunner(object):
+    default_name = "membase.log"
+    def __init__(self, verbosity=0):
+        self.files = {}
+        self.tasks = {}
+        self.verbosity = verbosity
+
+    def get_file(self, filename):
+        if filename in self.files:
+            fp = self.files[filename]
+        else:
+            import tempfile
+            fp = tempfile.NamedTemporaryFile(mode='w+')
+            self.files[filename] = fp
+
+        return fp
+
+    def header(self, fp, title, subtitle):
+        separator = '=' * 78
+        print >> fp, separator
+        print >> fp, title
+        print >> fp, subtitle
+        print >> fp, separator
+        fp.flush()
+
+    def log_result(self, result):
+        if result == 0:
+            print >> sys.stderr, "OK"
+        else:
+            print >> sys.stderr, "Exit code %d" % result
+
+    def run(self, task):
+        """Run a task with a file descriptor corresponding to its log file"""
+        if task.will_run():
+            print >> sys.stderr, "%s (%s) - " % (task.description, task.command),
+            if task.privileged and os.getuid() != 0:
+                print >> sys.stderr, "skipped (needs root privs)"
+                return
+            filename = task.log_file if hasattr(task, 'log_file') else \
+                self.default_name
+            fp = self.get_file(filename)
+            self.header(fp, task.description, task.command)
+            result = task.execute(fp)
+            fp.flush()
+            self.log_result(result)
+            for i in xrange(2, task.num_samples + 2):
+                print >> sys.stderr, "Taking sample %d after %f seconds - " % \
+                    (i, task.interval)
+                time.sleep(task.interval)
+                result = task.execute(fp)
+                self.log_result(result)
+        elif self.verbosity >= 2:
+            print >> sys.stderr, 'Skipping "%s" (%s): not for platform %s' \
+                % (task.description, task.command, sys.platform)
+
+    def zip(self, filename):
+        """Write all our logs to a zipfile"""
+        from zipfile import ZipFile, ZIP_DEFLATED
+        zf = ZipFile(filename, mode='w', compression=ZIP_DEFLATED)
+        for name, fp in self.files.iteritems():
+            zf.write(fp.name, name)
+
+
+class SolarisTask(Task):
+    platforms = ['sunos5', 'solaris']
+
+
+class LinuxTask(Task):
+    platforms = ['linux2']
+
+
+class WindowsTask(Task):
+    platforms = ['win32', 'cygwin']
+
+
+class MacOSXTask(Task):
+    platforms = ['darwin']
+
+
+class UnixTask(SolarisTask, LinuxTask, MacOSXTask):
+    platforms = SolarisTask.platforms + LinuxTask.platforms + MacOSXTask.platforms
+
+
+class AllOsTask(UnixTask, WindowsTask):
+    platforms = UnixTask.platforms + WindowsTask.platforms
+
+
+_tasks = [
+    UnixTask("uname", "uname -a"),
+    WindowsTask("System information", "systeminfo"),
+    WindowsTask("Computer system", "wmic computersystem"),
+    WindowsTask("Computer OS", "wmic os"),
+    UnixTask("Directory structure",
+         "ls -lR /opt/membase /var/opt/membase /etc/opt/membase"),
+    SolarisTask("Process list snapshot", "prstat -a -c -n 100 -t -v -L 1 10"),
+    SolarisTask("Process list", "ps -ef"),
+    SolarisTask("Service configuration", "svcs -a"),
+    SolarisTask("Swap configuration", "swap -l"),
+    SolarisTask("Disk activity", "zpool iostat 1 10"),
+    SolarisTask("Disk activity", "iostat -E 1 10"),
+    LinuxTask("Process list snapshot", "top -H -n 1"),
+    LinuxTask("Process list ", "ps -AwwL -o user,pid,lwp,ppid,nlwp,pcpu,pri,nice,vsize,rss,tty,stat,wchan:12,start,bsdtime,command"),
+    LinuxTask("Swap configuration", "free -t"),
+    LinuxTask("Swap configuration", "swapon -s"),
+    LinuxTask("Kernel modules", "lsmod"),
+    LinuxTask("Installed software", "rpm -qa"),
+    MacOSXTask("Process list snapshot", "top -l 1"),
+    MacOSXTask("Disk activity", "iostat 1 10"),
+    MacOSXTask("Process list ",
+         "ps -Aww -o user,pid,lwp,ppid,nlwp,pcpu,pri,nice,vsize,rss,tty,"
+         "stat,wchan:12,start,bsdtime,command"),
+    WindowsTask("Service list", "wmic service where state=\"running\" GET caption, name, state"),
+    WindowsTask("Process list", "wmic process"),
+    WindowsTask("Swap settings", "wmic pagefile"),
+    WindowsTask("Disk partition", "wmic partition"),
+    WindowsTask("Disk volumes", "wmic volume"),
+    UnixTask("Network configuration", "ifconfig -a", interval=10,
+         num_samples=1),
+    WindowsTask("Network configuration", "ipconfig /all", interval=10,
+         num_samples=1),
+    UnixTask("Network status", "netstat -an"),
+    WindowsTask("Network status", "netstat -an"),
+    AllOsTask("Network routing table", "netstat -rn"),
+    UnixTask("Arp cache", "arp -na"),
+    WindowsTask("Arp cache", "arp -a"),
+    WindowsTask("Network Interface Controller", "wmic nic"),
+    WindowsTask("Network Adapter", "wmic nicconfig"),
+    WindowsTask("Active network connection", "wmic netuse"),
+    WindowsTask("Protocols", "wmic netprotocol"),
+    WindowsTask("Cache memory", "wmic memcache"),
+    WindowsTask("Physical memory", "wmic memphysical"),
+    WindowsTask("Physical memory chip info", "wmic memorychip"),
+    WindowsTask("Local storage devices", "wmic logicaldisk"),
+    WindowsTask("Physical memory", "wmic memphysical"),
+    UnixTask("Filesystem", "df -ha"),
+    UnixTask("System activity reporter", "sar 1 10"),
+    UnixTask("System paging activity", "vmstat 1 10"),
+    UnixTask("System uptime", "uptime"),
+    UnixTask("northscale user definition", "getent passwd northscale"),
+    UnixTask("northscale user limits", "su northscale -c \"ulimit -a\"",
+         privileged=True),
+    UnixTask("Interrupt status", "intrstat 1 10"),
+    UnixTask("Processor status", "mpstat 1 10"),
+    UnixTask("System log", "/var/adm/messages"),
+    UnixTask("Kernel log buffer", "dmesg"),
+    AllOsTask("membase logs", "browse_logs", log_file="ns_server.log"),
+    ]
+
+
+def main():
+    from optparse import OptionParser
+    parser = OptionParser("usage: %prog [options] output_file")
+    parser.add_option("-v", dest="verbosity", help="increase verbosity level",
+                      action="count", default=0)
+    options, args = parser.parse_args()
+
+    if len(args) != 1:
+        parser.error("incorrect number of arguments")
+
+    if os.name == 'posix':
+        os.environ['PATH'] = '/bin:/usr/bin:/sbin:/usr/sbin:/opt/membase/bin:%s:%s' % \
+            (os.environ['PATH'], os.path.dirname(sys.argv[0]))
+    elif os.name == 'nt':
+        os.environ['PATH'] = '%s;%s' % (os.environ['PATH'], os.path.dirname(sys.argv[0]))
+
+    runner = TaskRunner(verbosity=options.verbosity)
+    for task in _tasks:
+        runner.run(task)
+
+    runner.zip(args[0])
+
+
+if __name__ == '__main__':
+    main()
