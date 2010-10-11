@@ -71,7 +71,7 @@ init(Bucket) ->
     proc_lib:init_ack({ok, self()}),
     Sock = connect(),
     StartTime = now(),
-    ok = ensure_bucket(Sock, Bucket),
+    ensure_bucket(Sock, Bucket),
     wait_for_warmup(Sock),
     ns_log:log(?MODULE, 1, "Bucket ~p loaded on node ~p in ~p seconds.",
                [Bucket, node(), timer:now_diff(now(), StartTime) div 1000000]),
@@ -357,6 +357,9 @@ ensure_bucket(Sock, Bucket) ->
     end.
 
 
+-spec ensure_bucket_config(port(), bucket_name(), bucket_type(),
+                           {pos_integer(), nonempty_string()}) ->
+                                  ok | no_return().
 ensure_bucket_config(Sock, Bucket, membase, {MaxSize, DBDir}) ->
     MaxSizeBin = list_to_binary(integer_to_list(MaxSize)),
     DBDirBin = list_to_binary(DBDir),
@@ -396,7 +399,8 @@ ensure_bucket_config(Sock, _Bucket, memcached, _MaxSize) ->
                               present;
                           (_, _, CD) ->
                               CD
-                      end, not_present).
+                      end, not_present),
+    ok.
 
 
 server(Bucket) ->
