@@ -158,7 +158,7 @@ handle_info(janitor, idle, #idle_state{remaining_buckets=Buckets}) ->
     {next_state, janitor_running, #janitor_state{remaining_buckets=Buckets,
                                                  pid = Pid}};
 handle_info(janitor, StateName, StateData) ->
-    misc:flush(janitor),
+    ?log_info("Skipping janitor in state ~p: ~p", [StateName, StateData]),
     {next_state, StateName, StateData};
 handle_info({'EXIT', Pid, Reason}, janitor_running,
             #janitor_state{pid = Pid,
