@@ -180,7 +180,9 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
         Reason == normal; Reason == shutdown ->
             case ns_bucket:get_bucket(Bucket) of
                 not_present ->
-                    ?log_info("Flushing data for deleted bucket ~p", [Bucket]),
+                    ns_log:log(?MODULE, 2,
+                               "Deleting data on ~p for deleted bucket ~p",
+                               [node(), Bucket]),
                     mc_client_binary:flush(Sock);
                 {ok, BucketConfig} ->
                     case lists:member(node(), proplists:get_value(
@@ -188,8 +190,11 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
                         true ->
                             ok;
                         false ->
-                            ?log_info("Flushing data for bucket ~p since we no longer own it.",
-                                      [Bucket]),
+                            ns_log:log(
+                              ?MODULE, 3,
+                              "Deleting data for bucket ~p on ~p since bucket "
+                              "is no longer mapped to node.",
+                              [Bucket, node()]),
                             mc_client_binary:flush(Sock)
                     end
             end,
@@ -201,7 +206,10 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
                     ?log_error("Failed to delete bucket ~p: ~p",
                                [Bucket, {E, R}])
             end;
-        true -> ok
+        true ->
+            ns_log:log(?MODULE, 4,
+                       "Control connection to memcached on ~p disconnected: ~p",
+                       [node(), Reason])
     end,
     ok = gen_tcp:close(Sock),
     ok.
