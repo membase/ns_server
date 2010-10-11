@@ -150,7 +150,7 @@ live_bucket_nodes(Bucket) ->
     {ok, BucketConfig} = get_bucket(Bucket),
     Servers = proplists:get_value(servers, BucketConfig),
     LiveNodes = [node()|nodes()],
-    [lists:member(Node, LiveNodes) || Node <- Servers].
+    [Node || Node <- Servers, lists:member(Node, LiveNodes) ].
 
 %% returns cluster-wide ram_quota. For memcached buckets it's
 %% ram_quota field times number of servers
