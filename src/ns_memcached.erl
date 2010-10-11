@@ -182,8 +182,16 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
                 not_present ->
                     ?log_info("Flushing data for deleted bucket ~p", [Bucket]),
                     mc_client_binary:flush(Sock);
-                _ ->
-                    ok
+                {ok, BucketConfig} ->
+                    case lists:member(node(), proplists:get_value(
+                                                servers, BucketConfig)) of
+                        true ->
+                            ok;
+                        false ->
+                            ?log_info("Flushing data for bucket ~p since we no longer own it.",
+                                      [Bucket]),
+                            mc_client_binary:flush(Sock)
+                    end
             end,
             ?log_info("Shutting down bucket ~p", [Bucket]),
             try
@@ -331,6 +339,8 @@ ensure_bucket(Sock, Bucket) ->
                             ok = mc_client_binary:select_bucket(Sock, Bucket);
                         {memcached_error, key_eexists, <<"Bucket exists: stopping">>} ->
                             %% Waiting for an old bucket with this name to shut down
+                            ?log_info("Waiting for ~p to finish shutting down before we start it.",
+                                      [Bucket]),
                             timer:sleep(1000),
                             ensure_bucket(Sock, Bucket);
                         Error ->
