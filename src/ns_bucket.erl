@@ -19,38 +19,39 @@
 -include_lib("eunit/include/eunit.hrl").
 
 %% API
--export([config/1,
-         config_string/1,
-         credentials/1,
-         get_bucket/1,
-         maybe_get_bucket/2,
-         get_buckets/0,
-         get_buckets/1,
-         failover_warnings/0,
-         node_locator/1,
-         ram_quota/1,
-         raw_ram_quota/1,
-         num_replicas/1,
-         bucket_type/1,
-         auth_type/1,
-         sasl_password/1,
-         moxi_port/1,
+-export([auth_type/1,
          bucket_nodes/1,
+         bucket_type/1,
+         config_string/1,
+         create_bucket/3,
+         credentials/1,
+         delete_bucket/1,
+         failover_warnings/0,
+         get_bucket/1,
          get_bucket_names/0,
          get_bucket_names/1,
+         get_buckets/0,
+         get_buckets/1,
+         is_open_proxy_port/2,
+         is_persistent/1,
+         is_port_free/2,
+         is_valid_bucket_name/1,
          json_map/2,
          json_map_from_config/2,
+         live_bucket_nodes/1,
+         maybe_get_bucket/2,
+         moxi_port/1,
+         node_locator/1,
+         num_replicas/1,
+         ram_quota/1,
+         raw_ram_quota/1,
+         sasl_password/1,
          set_bucket_config/2,
-         is_valid_bucket_name/1,
-         is_open_proxy_port/2,
-         is_port_free/2,
-         create_bucket/3,
-         update_bucket_props/2,
-         update_bucket_props/3,
-         delete_bucket/1,
          set_map/2,
          set_servers/2,
-         is_persistent/1]).
+         update_bucket_props/2,
+         update_bucket_props/3,
+         config/1]).
 
 
 %%%===================================================================
@@ -143,7 +144,13 @@ get_buckets() ->
     get_buckets(ns_config:get()).
 
 get_buckets(Config) ->
-     ns_config:search_prop(Config, buckets, configs, []).
+    ns_config:search_prop(Config, buckets, configs, []).
+
+live_bucket_nodes(Bucket) ->
+    {ok, BucketConfig} = get_bucket(Bucket),
+    Servers = proplists:get_value(servers, BucketConfig),
+    LiveNodes = [node()|nodes()],
+    [lists:member(Node, LiveNodes) || Node <- Servers].
 
 %% returns cluster-wide ram_quota. For memcached buckets it's
 %% ram_quota field times number of servers
