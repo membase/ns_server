@@ -287,7 +287,7 @@ perform_warnings_validation(ParsedProps, Errors) ->
             ActiveCount = length(ns_cluster_membership:active_nodes()),
             if
                 ActiveCount =< X ->
-                    Msg = <<"Warning, you do not have enough servers to support this number of replicas. If you continue, a warning message will be displayed until you add enough servers to support this number of replicas.">>,
+                    Msg = <<"Warning, you do not have enough servers to support this number of replicas.">>,
                     [{replicaNumber, Msg}];
                 true ->
                     []
