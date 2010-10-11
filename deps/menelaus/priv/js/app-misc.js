@@ -380,34 +380,25 @@ var MultiDrawersWidget = mkClass({
 
       if (!cell) {
         var uriCell = new Cell(function (openedNames) {
-          if (this.self.value || !_.include(openedNames, e[key]))
-            return this.self.value;
-
+          if (!_.include(openedNames, e[key]))
+            return undefined;
           return self.options.uriExtractor(e);
         }, {openedNames: self.openedNames});
 
         cell = new Cell(function (uri) {
-          return future.get({url: uri}, function (childItem) {
-            if (self.options.valueTransformer)
-              childItem = self.options.valueTransformer(e, childItem);
-            return childItem;
-          });
+          return future.get({url: uri});
         }, {uri: uriCell});
 
         self.knownKeys[e[key]] = cell;
+      } else {
+        cell.keepValueDuringAsync = true;
+        cell.invalidate();
       }
 
       e[drawerCellName] = cell;
 
       var oldE = oldElementsByName[e[key]];
       var oldCell = oldE && oldE[drawerCellName];
-
-      // use previous value if possible, but refresh it
-      if (oldCell && oldCell.value) {
-        cell.setValue(oldCell.value);
-        cell.keepValueDuringAsync = true;
-        cell.invalidate();
-      }
 
       self.elementsByName[e[key]] = e;
     });
@@ -456,7 +447,12 @@ var MultiDrawersWidget = mkClass({
         throw new Error("MultiDrawersWidget: bad markup!");
       }
 
-      var s = renderCellTemplate(element[self.options.drawerCellName], [container, self.options.template]);
+      var s = renderCellTemplate(element[self.options.drawerCellName], [container, self.options.template],
+                                 function (value) {
+                                   if (!self.options.valueTransformer)
+                                     return value;
+                                   return self.options.valueTransformer(element, value);
+                                 });
       subscriptions.push(s);
 
       q.show();
