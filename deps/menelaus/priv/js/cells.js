@@ -236,7 +236,7 @@ var Cell = mkClass({
   // request, which is almost always bad thing.
   //
   // If in-progress future is marked as weak then we force
-  // recalculation. Weak futures are can be handy in same cases, in
+  // recalculation. Weak futures can be handy in same cases, in
   // particular during network error recovery, where invalidate() call
   // should force new network request.
   invalidate: function (callback) {
