@@ -10,6 +10,7 @@
 //= require <mkclass.js>
 //= require <callbacks.js>
 //= require <cells.js>
+//= require <cells-io.js>
 //= require <hash-fragment-cells.js>
 //= require <right-form-observer.js>
 //= require <app-misc.js>
