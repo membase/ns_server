@@ -39,6 +39,7 @@ version:
 
 bdist: clean ebins deps_all
 	(cd .. && tar cf -  \
+                          ns_server/collect_info \
                           ns_server/ebin \
                           ns_server/deps/*/ebin \
                           ns_server/deps/*/deps/*/ebin \
