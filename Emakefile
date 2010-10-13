@@ -2,7 +2,6 @@
            {outdir, "ebin"},
            {i, "include"},
            %% warnings_as_errors,
-           nowarn_bif_clash,
            warn_export_all,
            warn_unused_import
           ]}.
