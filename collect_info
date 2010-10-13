@@ -63,8 +63,12 @@ class TaskRunner(object):
             if task.privileged and os.getuid() != 0:
                 print >> sys.stderr, "skipped (needs root privs)"
                 return
-            filename = task.log_file if hasattr(task, 'log_file') else \
-                self.default_name
+
+            if hasattr(task, 'log_file'):
+                filename = task.log_file
+            else:
+                filename = self.default_name
+
             fp = self.get_file(filename)
             self.header(fp, task.description, task.command)
             result = task.execute(fp)
