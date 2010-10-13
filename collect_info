@@ -8,11 +8,10 @@ class Task(object):
     privileged = False
     num_samples = 0
     interval = 0
-    def __init__(self, *args, **kwargs):
-        positional_args = ['description', 'command']
+    def __init__(self, description, command, **kwargs):
+        self.description = description
+        self.command = command
         self.__dict__.update(kwargs)
-        for name, value in zip(positional_args, args):
-            self.__dict__[name] = value
 
     def execute(self, fp):
         """Run the task"""
@@ -171,6 +170,21 @@ _tasks = [
     UnixTask("Processor status", "mpstat 1 10"),
     UnixTask("System log", "/var/adm/messages"),
     UnixTask("Kernel log buffer", "dmesg"),
+    AllOsTask("memcached stats all",
+              "stats localhost:11210 all _admin _admin",
+              log_file="stats.log"),
+    AllOsTask("memcached stats dispatcher",
+              "stats localhost:11210 dispatcher _admin _admin",
+              log_file="stats.log"),
+    AllOsTask("memcached stats hash",
+              "stats localhost:11210 hash _admin _admin",
+              log_file="stats.log"),
+    AllOsTask("memcached stats tap",
+              "stats localhost:11210 tap _admin _admin",
+              log_file="stats.log"),
+    AllOsTask("memcached stats timings",
+              "stats localhost:11210 timings _admin _admin",
+              log_file="stats.log"),
     AllOsTask("membase logs", "browse_logs", log_file="ns_server.log"),
     ]
 
@@ -185,11 +199,20 @@ def main():
     if len(args) != 1:
         parser.error("incorrect number of arguments")
 
+    mydir = os.path.dirname(sys.argv[0])
+    management_dir = os.path.join(mydir, '..', 'ep_engine', 'management')
     if os.name == 'posix':
-        os.environ['PATH'] = '/bin:/usr/bin:/sbin:/usr/sbin:/opt/membase/bin:%s:%s' % \
-            (os.environ['PATH'], os.path.dirname(sys.argv[0]))
+        path = [mydir,
+                management_dir,
+                '/bin',
+                '/usr/bin',
+                '/usr/sbin',
+                '/opt/membase/bin',
+                os.environ['PATH']]
+        os.environ['PATH'] = ':'.join(path)
     elif os.name == 'nt':
-        os.environ['PATH'] = '%s;%s' % (os.environ['PATH'], os.path.dirname(sys.argv[0]))
+        path = [mydir, management_dir, os.environ['PATH']]
+        os.environ['PATH'] = ';'.join(path)
 
     runner = TaskRunner(verbosity=options.verbosity)
     for task in _tasks:
