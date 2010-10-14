@@ -1,26 +1,38 @@
 /* Mombasa Menelaus Web Console */
 /* begin ultimate reset */
-html, body, div, span, applet, object, iframe,
-h1, h2, h3, h4, h5, h6, p, blockquote, pre,
-a, abbr, acronym, address, big, cite, code,
-del, dfn, em, font, img, ins, kbd, q, s, samp,
-small, strike, strong, sub, sup, tt, var,
-b, u, i, center,
-dl, dt, dd, ol, ul, li,
-fieldset, form, label, legend,
-table, caption, tbody, tfoot, thead, tr, th, td {
-	margin: 0;
-	padding: 0;
-	border: 0;
-	outline: 0;
-	/*font-size: 100.01%;*/
-	vertical-align: baseline;
-	background: transparent;
-}
+html, body, div, span, applet, object, iframe, h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code, del, dfn, em, font, img, ins, kbd, q, s, samp, small, strike, strong, sub, sup, tt, var, b, u, i, center,
+dl, dt, dd, ol, ul, li, fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td {margin:0;padding:0;border:0;outline:0;vertical-align:baseline;background:transparent;}
 b {font-weight:normal;}
+ol, ul {list-style:none;}
+:focus {outline:0;}
+ins {text-decoration:none;}
+del {text-decoration:line-through;}
+/* tables still need 'cellspacing="0"' in the markup */
+table {border-collapse:collapse;border-spacing:0;}
+blockquote, q {quotes:none;}
+/* Safari doesn't support the quotes attribute, so we do this instead. */
+blockquote:before, blockquote:after, q:before, q:after {
+	/* CSS 2; used to remove quotes in case "none" fails below.	*/
+	content:"";
+	/* CSS 2.1; will remove quotes if supported, and override the above. User-agents that don't understand "none" should ignore it, and
+	keep the above value. This is here for future compatibility, though I'm not 100% convinced that it's a good idea... */
+	content:none;
+}
+textarea {overflow:auto;}
+input {border:0px solid white;margin:0;padding:0;}
+
+a {color:#0095d6; cursor:pointer; text-decoration:none; outline:none;}
+a:link {/*color: #00A6DE;*/color:#0095d6;}
+a:hover {text-decoration:underline;}
+.link {color:#0095d6; cursor:pointer; text-decoration:none;}
+.link:hover {text-decoration:underline;}
+.link:active {outline:1px dotted gray;}
+
+body {height:100%;color:#444245;font-family:Helvetica, Verdana;line-height:1;background:url(../images/background.png) repeat-x;}
 
 /* universal styles */
-body { background: url(../images/background.png) repeat-x; }
 .nobr {white-space:nowrap;}
 .tdn {text-decoration:none;}
 .tdn * {text-decoration:none;}
@@ -72,8 +84,20 @@ body { background: url(../images/background.png) repeat-x; }
 .full_width {width:100%;}
 
 .main_holder {width:960px; position:relative; margin:auto; left:0px !important;}
+.cnt_holder {width:960px; position:relative; left:12%;}
 
-.save_cancel {height:31px; padding:5px 0;}
+.form {padding:10px 0 15px 0;}
+.form a {text-decoration:none;}
+.form_section_title {font-size:12px; font-weight:bolder; color:#626b6c; padding:5px 0;}
+.form label .check {float:left; margin:0 5px 0 0;}
+
+.topper_nav {float:right; font-size:11px; padding:15px 0 0 0;}
+.topper_nav a {color:#e3e8ea !important; text-decoration:none;}
+.topper_nav b {margin:0 2px; color:#848f96; font-weight:bolder;}
+.topper_nav i {font-style:normal;}
+
+/* buttons */
+.save_cancel {height:31px;padding:5px 0;}
 .save_cancel button {position:relative;top:-1px;display:block;width:121px;height:31px;color:#fff;font-size:14px;font-weight:bolder;line-height:31px;text-align:center;   text-decoration:none;border:0px;cursor:pointer;}
 .save_cancel button:hover, .save_cancel button:focus {background-position:0 -31px;}
 .save_cancel button:active {background-position:0 -62px;}
@@ -82,20 +106,6 @@ body { background: url(../images/background.png) repeat-x; }
 .save_cancel .button_3 {width:146px;background:url(../images/button_blue_3.gif) 0 0 no-repeat;}
 .save_cancel .cancel_button {display:block;width:80px;height:31px;line-height:31px;color:#8b8b8e;text-align:center;font-weight:bolder;text-decoration:none; margin-right:30px;}
 
-.form {padding:10px 0 15px 0;}
-.form a {text-decoration:none;}
-.form_section_title {font-size:12px; font-weight:bolder; color:#626b6c; padding:5px 0;}
-
-.form label .check {float:left; margin:0 5px 0 0;}
-
-.cnt_holder {width:960px; position:relative; left:12%;}
-
-.topper_nav {float:right; font-size:11px; padding:15px 0 0 0;}
-.topper_nav a {color:#e3e8ea !important; text-decoration:none;}
-.topper_nav b {margin:0 2px; color:#848f96; font-weight:bolder;}
-.topper_nav i {font-style:normal;}
-
-/* buttons */
 a.button_medium {display:block; color:#444245 !important; text-decoration:none !important}
 .button_medium {width:154px; height:32px; font-size:14px; border:0px; overflow:visible; background:url(../images/button_gray_medium.gif) 0 0 no-repeat; line-height:32px; cursor:pointer; color:#444245; text-align:center; text-decoration:none;}
 .button_medium:hover, .button_medium:focus {background-position:0 -32px; color:#f8eeed !important;}
@@ -112,20 +122,16 @@ a.button_200 {display:block; color:#444245 !important; text-decoration:none !imp
 
 .header_2, #servers .header_2 {height:40px; line-height:40px; padding:5px 10px 0 11px; font-size:18px; font-family:Helvetica, Verdana; background:url(../images/devider_line_1.gif) 0 100% repeat-x #dfe0e0; font-weight:normal;}
 .header_2 span {color:#f2692d;}
-.header_2 span a {/*color:#f2692d;*/}
 .header_2 .nav {color:#b6b6ba; font-size:11px; padding:0 11px 0 0;}
 .header_2 .nav a {font-weight:bolder; color:#0095d6; margin:0 3px; cursor:pointer;}
 .header_2 .nav .current {color:#444245; cursor:default;}
-
 .header_2 .nav .stats-period-container .with_samples { display: inline; }
 .header_2 .nav .stats-period-container .without_samples { display: none; }
-
 .header_2 .nav .missing-samples span.with_samples { display: none; }
 .header_2 .nav .missing-samples span.without_samples { display: inline; }
 
 .header_2 .expander_2 {margin:0 5px 0 0; position:relative; top:14px;}
 .expander_2 {width:11px; height:11px; float:left; background:url(../images/expander_2_bg.gif) 0 0 no-repeat; overflow:hidden;}
-/*.expanded_2 {background-position:0 -11px;}*/
 .expanded .expander_2 {background-position:0 -11px;}
 
 h1 {font-size:20px; font-weight:normal;}
@@ -203,181 +209,40 @@ h1 .nav a {font-size:11px; font-weight:bolder; cursor:pointer;}
 .usage_smallest_info {width:135px; font-size:11px; color:#8a8a8d; line-height:15px;}
 .usage_smallest_info .usage_smallest {float:left; margin:0 5px 0 0;}
 
-a {color:#0095d6; cursor:pointer; text-decoration:none; outline:none;}
-a:hover {text-decoration:underline;}
-.link {color:#0095d6; cursor:pointer; text-decoration:none;}
-.link:hover {text-decoration:underline;}
-.link:active {outline:1px dotted gray;}
+#container {background-color:#fff;position:absolute;width:100%;min-width:960px;min-height:100%;}
 
-body {
-	line-height: 1;
-  color:#444245;
-  height:100%;
-}
-ol, ul {
-	list-style: none;
-}
-blockquote, q {
-	quotes: none;
-}
+.page-header {background:url('../images/ns_console_headerbg.png') repeat-x;height:100px;}
+.page-header span {position:absolute;background:url('../images/ns_console_logov2.png') no-repeat;width:361px;height:49px;top:35px;left:0;}
 
-/* remember to define focus styles! */
-:focus {
-	outline: 0;
-}
+#mainContainer {position:relative;width:960px;left:12%;margin-top:55px;padding:0 0 220px 0;}
+#mainContainer #nojs_alert {display:block;font-size:16px;padding:20px 0;display:none;}
 
-/* remember to highlight inserts somehow! */
-ins {
-	text-decoration: none;
-}
-del {
-	text-decoration: line-through;
-}
+.page-footer {position:absolute;background:url('../images/ns_console_footer.png') repeat-x;width:100%;height:208px;bottom:0;}
+.page-footer h1 {text-transform:none;padding-top:32px;font:normal 11pt Verdana;color:#97979A;;}
+.page-footer a {color:#00A6DE;text-decoration:none;}
 
-/* tables still need 'cellspacing="0"' in the markup */
-table {
-	border-collapse: collapse;
-	border-spacing: 0;
-}
-
-blockquote, q
-{
-	quotes: none;
-}
-
-/*
-Safari doesn't support the quotes attribute, so we do this instead.
-*/
-blockquote:before, blockquote:after, q:before, q:after
-{
-	/*
-	CSS 2; used to remove quotes in case "none" fails below.
-	*/
-	content: "";
-	/*
-	CSS 2.1; will remove quotes if supported, and override the above.
-	User-agents that don't understand "none" should ignore it, and
-	keep the above value. This is here for future compatibility,
-	though I'm not 100% convinced that it's a good idea...
-	*/
-	content: none;
-}
-
-textarea { overflow: auto; }
-input { border: 0px solid white; margin: 0;  padding: 0; }
-
-/* end reset */
-
-/* all links */
-a:link {
-/*	color: #00A6DE;*/
-  color:#0095d6;
-/*	text-decoration: none;*/
-}
-
-#container {
-  background-color: #fff;
-  position: absolute;
-    width: 100%;
-  min-width:960px;
-	min-height: 100%;
-}
-
-.page-header {
-	background: url('../images/ns_console_headerbg.png') repeat-x;
-	height: 100px;
-/*	left: 12%;*/
-}
-
-.page-header span {
-	position: absolute;
-	background: url('../images/ns_console_logov2.png') no-repeat;
-	width: 361px;
-	height: 49px;
-	top: 35px;
-	left:0;
-}
-
-#mainContainer {
-	position: relative;
-	width: 960px;
-	left: 12%;
-	margin-top: 55px;
-  padding:0 0 220px 0;
-}
-
-#mainContainer #nojs_alert {display:block; font-size:16px; padding:20px 0; display:none;}
-
-.page-footer {
-	position: absolute;
-	background: url('../images/ns_console_footer.png') repeat-x;
-	width: 100%;
-	height: 208px;
-	bottom: 0;
-}
-
-.page-footer h1 {
-  text-transform: none;
-	padding-top: 32px;
-/*	margin-left: 12%;*/
-	font-family: Verdana;
-	font-weight: normal;
-	font-size: 11pt;
-	color: 	#97979A;;
-}
-
-.page-footer a {
-	color: #00A6DE;
-	text-decoration: none;
-}
-
-td.notify {
-}
-
-td.leftNav {width:180px; vertical-align:top;}
-td.leftNav ul {display:block; width:160px; border-top:1px solid #e4e9eb; margin:0 0 20px 0;}
+td.leftNav {width:180px;vertical-align:top;}
+td.leftNav ul {display:block;width:160px;border-top:1px solid #e4e9eb;margin:0 0 20px 0;}
 td.leftNav ul ul {margin:0 0 -1px 0;}
-td.leftNav h1 {padding:0 0 15px 5px; color:#444245; text-transform:uppercase;}
-td.leftNav li {
-  display:block;
-  min-height:29px;
-  width:160px;
-  vertical-align:middle;
-  text-align:left;
-  line-height:29px;
-  font-size:12px;
-  border-bottom:1px solid #e4e9eb;
-}
+td.leftNav h1 {padding:0 0 15px 5px;color:#444245;text-transform:uppercase;}
+td.leftNav li {display:block;min-height:29px;width:160px;vertical-align:middle;text-align:left;line-height:29px;font-size:12px;border-bottom:1px solid #e4e9eb;}
 td.leftNav li a {display:block; height:29px; text-decoration:none;padding:0 0 0 12px}
 td.leftNav li a:hover {background:none #eaf4f9;}
-td.leftNav li.line {
-	background-position: bottom left;
-}
+td.leftNav li.line {background-position: bottom left;}
 td.leftNav li.disabled {padding:0 0 0 12px;}
-
-td.leftNav li.indent {
-	margin-left: 20px;
-}
-
+td.leftNav li.indent {margin-left: 20px;}
 td.leftNav li a.currentNav {background:none #dae4e9;}
-
 td.leftNavDisabled {color:#ff0000;}
 
-#mainPanel {
-	font-family: Helvetica;
-	font-weight: normal;
-	font-size: 12px;
-}
-
-body { font-family: Helvetica, Verdana;}
+#mainPanel{font:normal 12px Helvetica;} 
 
 /* analytics graph */
 #analytics_main_graph { position: relative; width:742px; height:269px;}
-#analytics_main_graph_grid {position:relative; margin:0 auto 10px auto; width:742px; height:269px;}
+#analytics_main_graph_grid {position:relative; width:742px; height:269px;margin:0 auto 10px; }
 
 .analytics-small-graph {display:block; width:166px !important; height:61px !important; float:left; overflow:hidden; background:url(../images/mini_graph_bg.gif) 0 0 no-repeat; margin:0 12px 7px 12px; cursor:pointer; position:relative; text-decoration:none;}
 
-.analytics_graph_main {/*height:300px; background:url(../images/devider_line_2.gif) 0 100% repeat-x #eeeeef;*/ /*border-left:1px solid #dbdbdb; border-right:1px solid #dbdbdb;*/ padding:0 10px;}
+.analytics_graph_main {/*height:300px; background:url(../images/devider_line_2.gif) 0 100% repeat-x #eeeeef;border-left:1px solid #dbdbdb; border-right:1px solid #dbdbdb;*/ padding:0 10px;}
 .graph_info_label {padding:3px; font-size:11px;position:absolute;top:-6px;left:30px;}
 .graph_nav {padding:10px 0 10px 2px;}
 .graph_nav .analytics-small-graph {display:block; width:166px !important; height:61px !important; float:left; overflow:hidden;
@@ -937,7 +802,8 @@ li.server_row .btn_cancel {display:block; height:15px; color:#7a7a7a; padding:0 
 #servers .servers_list li.server_row.rebalance_empty .rebalance_empty_message {display:block;}
 #servers .servers_list li.server_row.pending_add {background:url(../images/server_status_icons.png) 10px -309px no-repeat;}
 */
-.servers_list li { list-style: none; height-min:25px;display:block; padding:0 10px; *zoom:1;*margin:-2px 0 0;}
+.servers_list ul {*margin:-1px 0 0;*position:relative;*top:1px;}
+.servers_list li {height-min:25px;display:block;padding:0 10px; *zoom:1;*margin:-2px 0 0;}
 .servers_list li.server_row {height:60px; line-height:60px; border:1px solid #d1d5d8;border-top:none;overflow:hidden; background:url(../images/server_status_icons.png) 10px 20px no-repeat; padding:0 10px 0 85px;}
 .servers_list li.server_row.server_down {background:url(../images/server_status_icons.png) 10px -157px no-repeat; background-color:#61696c;border-color:#61696c;}
 .servers_list li.server_row.failed_over {background:url(../images/server_status_icons.png) 10px -309px no-repeat; background-color:#c9cccc;}
@@ -982,7 +848,6 @@ ul.tabs .alert_num_display .alert_num {display:block;}
 .failed_over_message {float:right; color:#9c9e9e; display:none;}
 .failed_over .failed_over_message {display:block;}
 
-/*#servers .servers_list .serverName {display:inline-block; height:60px; padding:0 0 0 45px; background:url(../images/server_icon.png) 0 10px no-repeat; font-size:12px; font-weight:bolder; float:left;}*/
 .servers_list .serverName {display:inline-block; height:60px; padding:0 0 0 45px; background:url(../images/server_icon.png) 0 10px no-repeat; font-size:12px; font-weight:bolder; float:left;}
 .servers_list .server_down .serverName {color:#26BBFF;}
 
@@ -1015,7 +880,7 @@ ul.tabs .alert_num_display .alert_num {display:block;}
 .additional_server_info .add_btn {display:block; width:61px; height:21px; background:url(../images/add_btn.png) 0 0 no-repeat; float:right;}
 .additional_server_info .info_message {font-size:16px;}
 
-.add_back_row {height:31px; display:block; background:url(../images/add_back_bg.png) 0 0 repeat-x;}
+.add_back_row {height:31px; display:block; background:url(../images/add_back_bg.png) 0 0 repeat-x;*margin:0 !important;}
 .add_b_message {line-height:31px; color:#fff;}
 .add_back_btn {display:block; width:148px; height:31px; background:url(../images/add_back_btn.png) 0 0 no-repeat; float:right; margin-right:-10px;}
 
@@ -1073,7 +938,6 @@ ul.tabs .tab_left a.current, ul.tabs .tab_right a.current, ul.tabs .tab_left a:h
 ul.tabs .tab_left a.current:hover, ul.tabs .tab_right a.current:hover {text-shadow:#bbbfc2 1px 1px;}
 
 .server_details_tab td {color:#434446; padding:0 0 5px 0;}
-.server_details_tab td span {/*color:#87888a;*/}
 
 .servers_list .settings-placeholder {background-color:#e7e7e9; padding-top:5px !important;padding-bottom:15px !important;}
  .servers_list li.settings-placeholder, .servers_list .settings-placeholder > td {padding-left:76px !important;}
@@ -1090,23 +954,11 @@ html body .overlayed {z-index:999 !important;}
 
 .failover_server {position:relative !important; display:block;}
 
-html>/**/body #servers .list_button, x:-moz-any-link, x:default {position:relative; /*top:-60px;*/} /* Only FireFox 3 */
+html>/**/body #servers .list_button, x:-moz-any-link, x:default {position:relative;} /* Only FireFox 3 */
 html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none !important;}
 
-/* stolen from 960.gs */
-.clearfix:after {
-	clear: both;
-	content: ' ';
-	display: block;
-	font-size: 0;
-	height: 0;
-	line-height: 0;
-	visibility: hidden;
-	width: 0;
-}
-* html .clearfix, *:first-child+html .clearfix {
-	zoom: 1;
-}
+.clearfix:after {clear:both;content:' ';display:block;font-size:0;height:0;line-height:0;visibility:hidden;width:0;}
+* html .clearfix, *+html .clearfix {zoom: 1;}
 
 .disk_setup_block {margin:6px 0 0 84px;line-height: 25px;overflow:hidden;}
 .disk_setup_block > div {float:left;width:310px;}
@@ -1153,20 +1005,19 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details label.for-proxy-port span {width:164px;}
 .bucket_details label.for-proxy-port input {width:58px;}
 
-.bucket_details.bucket-is-persistent .when-non-persistent { display: none; }
-.bucket_details.bucket-is-non-persistent .when-persistent { display: none; }
+.bucket_details.bucket-is-persistent .when-non-persistent,
+.bucket_details.bucket-is-non-persistent .when-persistent {display:none;}
 
-.bucket_details .for-ram-quota em { font-style: normal; }
-
-.bucket_details .for-sasl-password em { font-style: normal; }
-.bucket_details.bucket-is-default em.when-default { display:inline; }
-.bucket_details .when-default { display:none; }
-.bucket_details.bucket-is-default .when-not-default { display: none; }
-.bucket_details.bucket-is-default .for-sasl-password-input { display: none; }
+.bucket_details .for-ram-quota em,
+.bucket_details .for-sasl-password em {font-style:normal;}
+.bucket_details.bucket-is-default em.when-default {display:inline;}
+.bucket_details .when-default,
+.bucket_details.bucket-is-default .when-not-default,
+.bucket_details.bucket-is-default .for-sasl-password-input {display:none;}
 
 .bucket_details .memcached-summary {font-style:normal;line-height:24px;clear:both;}
 
-.bucket_details .size-gauge {line-height:24px;position:relative;top:-6px;float:right;/*font-size:11px;*/width:364px;}
+.bucket_details .size-gauge {float:right;width:364px;position:relative;top:-6px;line-height:24px;}
 .bucket_details.bucket-is-non-persistent .size-gauge.for-ram { top: 0px; }
 .bucket_details .size-gauge .top-left {float:left;color:#C19710;font-size:12px;}
 .bucket_details .size-gauge .top-right {float:right;font-size:12px;}
@@ -1196,7 +1047,7 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details .save_cancel .jqmClose {float:right;font-size:14px;height:31px;line-height:31px;color:#8b8b8e;text-align:right;font-weight:bolder;
 text-decoration:none;margin-right:16px;}
 
-.bucket_details.creating .when-editing {display:none;}
-.bucket_details.editing .when-creating {display:none;}
+.bucket_details.creating .when-editing,
+.bucket_details.editing .when-creating,
 .bucket_details.cannot-delete .when-editing .delete_button {display:none;}
 
