@@ -1,4 +1,4 @@
-/* Membase Menelaus Web Console */
+/* Mombasa Menelaus Web Console */
 /* begin ultimate reset */
 html, body, div, span, applet, object, iframe,
 h1, h2, h3, h4, h5, h6, p, blockquote, pre,
@@ -74,19 +74,13 @@ body { background: url(../images/background.png) repeat-x; }
 .main_holder {width:960px; position:relative; margin:auto; left:0px !important;}
 
 .save_cancel {height:31px; padding:5px 0;}
-.save_cancel button {position:relative; top:-1px; cursor:pointer;}
-.save_cancel .save_button {display:block; width:121px; height:31px; font-weight:bolder; color:#fff; text-align:center; line-height:31px; font-size:14px; text-decoration:none; background:url(../images/button_blue.gif) 0 0 no-repeat; border:0px;}
-.save_cancel .save_button:hover {background-position:0 -31px;}
-.save_cancel .save_button:active {background-position:0 -62px;}
-
-.save_cancel .delete_button {display:block; width:121px; height:31px; font-weight:bolder; color:#fff; text-align:center; line-height:31px; font-size:14px; text-decoration:none; background:url(../images/button_red.gif) 0 0 no-repeat; border:0px; margin-right:10px;}
-.save_cancel .delete_button:hover {background-position:0 -31px;}
-.save_cancel .delete_button:active {background-position:0 -62px;}
-
-.save_cancel .button_3 {width:146px; height:31px; background:url(../images/button_blue_3.gif) 0 0 no-repeat;}
-.save_cancel .cancel_button {display:block; width:80px; height:31px; line-height:31px; color:#8b8b8e; text-align:center; font-weight:bolder; text-decoration:none; margin-right:30px;}
-.save_cancel .button_3:hover {background-position:0 -31px;}
-.save_cancel .button_3:active {background-position:0 -62px;}
+.save_cancel button {position:relative;top:-1px;display:block;width:121px;height:31px;color:#fff;font-size:14px;font-weight:bolder;line-height:31px;text-align:center;   text-decoration:none;border:0px;cursor:pointer;}
+.save_cancel button:hover, .save_cancel button:focus {background-position:0 -31px;}
+.save_cancel button:active {background-position:0 -62px;}
+.save_cancel .save_button {background:url(../images/button_blue.gif) 0 0 no-repeat;}
+.save_cancel .delete_button {background:url(../images/button_red.gif) 0 0 no-repeat;margin-right:10px;}
+.save_cancel .button_3 {width:146px;background:url(../images/button_blue_3.gif) 0 0 no-repeat;}
+.save_cancel .cancel_button {display:block;width:80px;height:31px;line-height:31px;color:#8b8b8e;text-align:center;font-weight:bolder;text-decoration:none; margin-right:30px;}
 
 .form {padding:10px 0 15px 0;}
 .form a {text-decoration:none;}
@@ -103,7 +97,7 @@ body { background: url(../images/background.png) repeat-x; }
 /* buttons */
 a.button_medium {display:block; color:#444245 !important; text-decoration:none !important}
 .button_medium {width:154px; height:32px; font-size:14px; border:0px; overflow:visible; background:url(../images/button_gray_medium.gif) 0 0 no-repeat; line-height:32px; cursor:pointer; color:#444245; text-align:center; text-decoration:none;}
-.button_medium:hover {background-position:0 -32px; color:#f8eeed !important;}
+.button_medium:hover, .button_medium:focus {background-position:0 -32px; color:#f8eeed !important;}
 .button_medium:active {background-position:0 -64px; color:#e0eff7 !important;}
 
 a.button_200 {display:block; color:#444245 !important; text-decoration:none !important}
@@ -179,9 +173,9 @@ h1 .nav a {font-size:11px; font-weight:bolder; cursor:pointer;}
 .button_big span {display:block; background:url(../images/button_gray_big.gif) 0 0 no-repeat; overflow:hidden;}
 .button_big span span {height:47px; background:url(../images/button_gray_big.gif) 100% -47px no-repeat;}
 
-.button_big:hover {background-position:0 -47px; color:#f9efed !important;}
-.button_big:hover span {background-position:0 -141px;}
-.button_big:hover span span {background-position:100% -188px;}
+.button_big:hover, .button_big:focus {background-position:0 -47px; color:#f9efed !important;}
+.button_big:hover span, .button_big:focus span {background-position:0 -141px;}
+.button_big:hover span span, .button_big:focus span span {background-position:100% -188px;}
 
 .button_big:active {background-position:0 -94px; color:#e1f0f8 !important;}
 .button_big:active span {background-position:0 -282px;}
@@ -498,11 +492,11 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 .test_cluster .content {padding:3px 19px;}
 .test_cluster .label {font-size:12px; color:#444245; margin:0 0 5px 0; display:block;}
 .test_cluster .start {display:block; width:121px; height:31px; background:url(../images/button_blue.gif) 0 0 no-repeat; font-size:14px; font-weight:bolder; line-height:31px; color:#fff; text-decoration:none; text-align:center; margin:0 0 5px 0;}
-.test_cluster .start:hover {background-position:0 -31px;}
+.test_cluster .start:hover, .test_cluster .start:focus {background-position:0 -31px;}
 .test_cluster .start:active {background-position:0 -62px;}
 
-#test_cluster_start_stop.start-active #test_cluster_stop { display:none; }
-#test_cluster_start_stop.stop-active #test_cluster_start { display:none; }
+#test_cluster_start_stop.start-active #test_cluster_stop,
+#test_cluster_start_stop.stop-active #test_cluster_start {display:none;}
 
 /* shadow block */
 .shadow_box {padding:0; margin:0 0 20px 0; width:780px;}
@@ -646,6 +640,7 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 .lbox .pat_10 p.dialog-text {padding:20px;}
 .lbox .save_cancel {padding:18px;background:#cccfd2;border-top:1px solid #eee;}
 .lbox .pas_20 .save_cancel {margin:0 0 0 -40px;position:relative;left:20px;}
+.lbox .pas_20 + .save_cancel {margin:0;position:static;}
 .warning {font-size:12px; color:#ec5223; padding-left:20px;}
 .warning ul {list-style-type:disc; margin:5px 0 0 15px;}
 
@@ -741,7 +736,7 @@ body.nojs #nojs_alert { display: block; width:960px; margin:40px auto 0 auto;}
 .auth_block .form table .label {text-align:right; font-size:18px; color:#e6f5ff; padding:0 7px 0 0;}
 .auth_block .form table .inp {border:1px solid #60696b; background:none #fff; padding:12px 5px; width:390px; font-size:16px;}
 .auth_block .form table .submit {width:210px; height:45px; overflow:visible; border:0px; background:url(../images/sign_in_button.gif) 0 0 no-repeat; font-size:22px; color:#fff;}
-.auth_block .form table .submit:hover {background-position:0 -45px;}
+.auth_block .form table .submit:hover, .auth_block .form table .submit:focus {background-position:0 -45px;}
 .auth_block .form table .submit:active {background-position:0 -90px;}
 .auth_block .alert_red {width:588px; height:71px; position:absolute; left:-8px; top:60px; line-height:65px; font-size:14px; color:#fff; background:url(../images/alert_red.png) 0 0 no-repeat; z-index:1000;}
 .auth_block .alert_red .al_text {padding:0 0 0 30px;}
@@ -790,8 +785,8 @@ button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
 .secure_enabled .disabled {display:none;}
 .secure_disabled .button_big {display:none;}
 .secure_disabled .disabled {display:block !important; margin:0px;}
-.secure_disabled .disabled:hover {background:url(../images/large_buttons_bg.gif) repeat-x scroll 0 0 !important; color:#444245 !important;}
-.secure_disabled .disabled:active {background:url(../images/large_buttons_bg.gif) repeat-x scroll 0 0 !important; color:#444245 !important;}
+.secure_disabled .disabled:hover,
+.secure_disabled .disabled:active {background:url(../images/large_buttons_bg.gif) repeat-x 0 0 !important; color:#444245 !important;}
 
 .active_tooltip {z-index: 2;}
 .active_tooltip span.tooltip_msg {display:block;}

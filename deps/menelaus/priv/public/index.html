@@ -1032,10 +1032,8 @@
                 <td class="th">
                   Security <a class="text_11 tooltip"><span>What's this?</span>
                     <span class="tooltip_msg"><span>
-                      If you are adding a server node which has
-                      already been configured, you must enter a username
-                      and password.  This is the username and password
-                      of the node you are adding, not of the existing cluster.
+                      If you are adding a server node which has already been configured, you must enter a username
+                      and password.  This is the username and password of the node you are adding, not of the existing cluster.
                     </span></span>
                   </a>
                 </td>
@@ -1054,7 +1052,7 @@
               </tr>
             </table>
           </div>
-          <div class="right save_cancel footer_bg pas_20">
+          <div class="save_cancel right footer_bg">
             <button type="submit" class="save_button button_3 float_right">Add Server</button>
             <a class="jqmClose cancel_button float_right" href="#">Cancel</a>
           </div>
@@ -1075,12 +1073,11 @@
       </div>
       <div class="pas_20">
         <div class="warning pat_20">
-          <strong>Warning</strong> - Removing this server from the cluster will reduce cache capacity across all data buckets.
-                                       Are you sure you want to remove this server?
+          <strong>Warning</strong> &ndash; Removing this server from the cluster will reduce cache capacity across all data buckets. Are you sure you want to remove this server?
         </div>
       </div>
       <div class="right save_cancel pas_20 footer_bg">
-        <a class="save_button float_right" href="#">Remove</a>
+        <button type="submit" class="save_button float_right">Remove</a>
         <a href="#" class="jqmClose cancel_button float_right">Cancel</a>
       </div>
     </div>
@@ -1098,12 +1095,11 @@
       </div>
       <div class="pas_20">
         <div class="warning pat_20">
-          <strong>Warning</strong> - Adding a server to this cluster
-          means all data on that server will be removed.
+          <strong>Warning</strong> &ndash; Adding a server to this cluster means all data on that server will be removed.
         </div>
       </div>
         <div class="right save_cancel pas_20 footer_bg">
-          <a class="save_button float_right" href="#">Add Server</a>
+          <button type="submit" class="save_button float_right">Add Server</button>
             <a href="#" class="jqmClose cancel_button float_right">Cancel</a>
         </div>
     </div>
@@ -1121,11 +1117,11 @@
       </div>
       <div class="pas_20">
         <div class="warning pat_20">
-          <strong>Warning</strong> - Failing over node will push it out of cluster. Please, confirm.
+          <strong>Warning</strong> &ndash; Failing over node will push it out of cluster. Please, confirm.
         </div>
       </div>
         <div class="right save_cancel">
-          <a class="save_button float_right" href="#">Fail Over</a>
+          <button type="submit" class="save_button float_right">Fail Over</button>
             <a href="#" class="jqmClose cancel_button float_right">Cancel</a>
         </div>
     </div>
@@ -1160,7 +1156,7 @@
             </div>
             <form>
               <div class="right save_cancel">
-                <a class="jqmClose save_button float_right" href="#">Close</a>
+                <button type="submit" class="jqmClose save_button float_right">Close</button>
               </div>
             </form>
         </div>
@@ -1623,8 +1619,8 @@
             Disk Storage
           </h3>
           <table>
-          <col width="230" />
-          <col width="300" />
+          <col width="230">
+          <col width="300">
             <tr>
               <td class="label"><label>Disk One Quota:</label></td>
               <td>
