@@ -1192,7 +1192,7 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details label.for-replica-number span {display:inline;float:none;margin-left:6px;}
 .bucket_details label.for-replica-number input {width:29px;}
 .bucket_details .save_cancel {border-top:1px solid #eeeeee;border-bottom-width:0px;padding:18px;clear:both;background:#cccfd2;}
-.bucket_details .save_cancel .delete_button {margin-right:16px;}
+.bucket_details .save_cancel .delete_button {float:left;margin-right:16px;}
 .bucket_details .save_cancel .jqmClose {float:right;font-size:14px;height:31px;line-height:31px;color:#8b8b8e;text-align:right;font-weight:bolder;
 text-decoration:none;margin-right:16px;}
 
