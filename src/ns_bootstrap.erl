@@ -18,8 +18,13 @@
 -export([start/0, override_resolver/0]).
 
 start() ->
-    ok = application:start(sasl),
-    ok = application:start(ns_server).
+    try
+        ok = application:start(sasl),
+        ok = application:start(ns_server)
+    catch T:E ->
+            timer:sleep(500),
+            erlang:T(E)
+    end.
 
 override_resolver() ->
     inet_db:set_lookup([file, dns]),
