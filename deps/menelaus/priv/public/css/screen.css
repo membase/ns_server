@@ -93,6 +93,7 @@ body { background: url(../images/background.png) repeat-x; }
 .topper_nav {float:right; font-size:11px; padding:15px 0 0 0;}
 .topper_nav a {color:#e3e8ea !important; text-decoration:none;}
 .topper_nav b {margin:0 2px; color:#848f96; font-weight:bolder;}
+.topper_nav i {font-style:normal;}
 
 /* buttons */
 a.button_medium {display:block; color:#444245 !important; text-decoration:none !important}
