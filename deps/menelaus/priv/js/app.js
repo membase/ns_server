@@ -843,3 +843,38 @@ watchHashParamLinks('sec', function (e, href) {
   ThePage.gotoSection(href);
 });
 
+$(function () {
+  var container = $('.io-error-notice');
+  var timeoutId;
+  function renderStatus() {
+    if (timeoutId != null)
+      clearTimeout(timeoutId);
+
+    var status = IOCenter.status.value;
+
+    if (status.healthy) {
+      container.hide();
+      return;
+    }
+
+    container.show();
+
+    if (status.repeating) {
+      container.text('Repeating failed XHR request...');
+      return
+    }
+
+    var now = (new Date()).getTime();
+    var repeatIn = Math.max(0, Math.floor((status.repeatAt - now)/1000));
+    container.html('Lost connection to server at ' + window.location.host + '. Repeating in ' + repeatIn + ' seconds. <a href="#">Retry now</a>');
+    var delay = Math.max(200, status.repeatAt - repeatIn*1000 - now);
+    timeoutId = setTimeout(renderStatus, delay);
+  }
+
+  container.find('a').live('click', function (e) {
+    e.preventDefault();
+    IOCenter.forceRepeat();
+  });
+
+  IOCenter.status.subscribeValue(renderStatus);
+});
