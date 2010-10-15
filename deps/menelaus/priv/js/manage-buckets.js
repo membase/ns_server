@@ -617,8 +617,8 @@ var BucketsSection = {
     if (totals.ram.quotaTotal == totals.ram.quotaUsed) {
       genericDialog({
         buttons: {ok: true},
-        header: 'No free quota left',
-        text: 'All ram quota of cluster is already allocated'
+        header: 'Cluster Memory Fully Allocated',
+        text: 'All the RAM in the cluster is already allocated to existing buckets.\n\nDelete some buckets or change bucket sizes to make RAM available for additional buckets.'
       });
       return;
     }
