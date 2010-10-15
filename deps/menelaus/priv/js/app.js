@@ -469,6 +469,11 @@ function showInitDialog(page, opt, isContinuation) {
 }
 
 var NodeDialog = {
+  panicAndReload: function() {
+    alert('Failed to get initial setup data from server. Cannot continue.' +
+          ' Would you like to attempt to reload the web console?  This may fail if the server is not running.');
+    reloadApp();
+  },
   doClusterJoin: function () {
     var form = $('#init_cluster_form');
 
@@ -521,6 +526,9 @@ var NodeDialog = {
     function continuation(data, status) {
       if (status != 'success') {
         $.ajax({type:'GET', url:'/nodes/self', dataType: 'json',
+                error: function () {
+                  NodeDialog.panicAndReload();
+                },
                 success: function (nodeData) {
                   data = {uri: '/pools/default/buckets',
                           bucketType: 'membase',
@@ -625,10 +633,7 @@ var NodeDialog = {
 
       function dataCallback(data, status) {
         if (status != 'success') {
-          alert('Failed to get initial setup data from server. Cannot continue.' +
-                ' Would you like to attempt to reload the web console?  This may fail if the server is not running.');
-          reloadApp();
-          return;
+          return NodeDialog.panicAndReload();
         }
 
         // we have node data and can finally display our wizard page
