@@ -3,24 +3,6 @@ function addBasicAuth(xhr, login, password) {
   xhr.setRequestHeader('Authorization', auth);
 }
 
-function onNoncriticalXHRError(xhr) {
-  if (Abortarium.isAborted(xhr))
-    return;
-
-  var status;
-  try {status = xhr.status} catch (e) {};
-
-  // everything except timeout & service unavailable
-  if (status != 503 && status != 504 && status > 0) {
-    onUnexpectedXHRError.apply(this, arguments);
-    throw new Error("xhr error is critical: " + status);
-  }
-
-  // TODO: implement some UI for that and maybe some request repeating
-  // policy too
-  console.log("failed non-critical request");
-}
-
 function onUnexpectedXHRError(xhr, xhrStatus, errMsg) {
   window.onUnexpectedXHRError = function () {}
 
