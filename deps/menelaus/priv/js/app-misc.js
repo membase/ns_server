@@ -97,32 +97,39 @@ function postWithValidationErrors(url, data, callback, ajaxOptions) {
 
   function continuation(data, textStatus) {
     action.finish();
-    if (textStatus != 'success') {
-      var status = 0;
-      try {
-        status = data.status // can raise exception on IE sometimes
-      } catch (e) {
-        // ignore
-      }
-      if (status >= 200 && status < 300 && data.responseText == '') {
-        return callback.call(this, '', 'success');
-      }
-
-      if (status != 400 || textStatus != 'error') {
-        return onUnexpectedXHRError.apply(null, arguments);
-      }
-
-      var errorsData = $.httpData(data, null, this);
-      if (!_.isArray(errorsData)) {
-        if (errorsData == null)
-          errorsData = "unknown reason";
-        errorsData = [errorsData];
-      }
-      callback.call(this, errorsData, 'error');
-      return;
+    if (textStatus == 'success') {
+      return callback.call(this, data, textStatus);
     }
 
-    callback.call(this, data, textStatus);
+    var status = 0;
+    try {
+      status = data.status // can raise exception on IE sometimes
+    } catch (e) {
+      // ignore
+    }
+
+    if (status >= 200 && status < 300 && data.responseText == '') {
+      return callback.call(this, '', 'success');
+    }
+
+    var errorsData;
+
+    if (textStatus == 'timeout') {
+      errorsData = "Save request failed because of timeout.";
+    } else if (status == 0) {
+      errorsData = "Got no response from save request.";
+    } else if (status != 400 || textStatus != 'error') {
+      errorsData = "Save request returned error.";
+    } else {
+      errorsData = $.httpData(data, null, this);
+    }
+
+    if (!_.isArray(errorsData)) {
+      if (errorsData == null)
+        errorsData = "unknown reason";
+      errorsData = [errorsData];
+    }
+    callback.call(this, errorsData, 'error');
   }
 }
 

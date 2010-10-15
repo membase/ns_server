@@ -234,7 +234,7 @@ var BucketDetailsDialog = mkClass({
       self.errorsCell.setValue(errors);
       if (errors._)
         genericDialog({buttons: {ok: true},
-                       header: "failed to create bucket",
+                       header: "Failed To Create Bucket",
                        text: errors._});
     });
 
