@@ -585,19 +585,6 @@ var BucketsSection = {
       });
     });
   },
-  startFlushCache: function (uri) {
-    hideDialog('bucket_details_dialog_container');
-    this.withBucket(uri, function (bucket) {
-      renderTemplate('flush_cache_dialog', {bucket: bucket});
-      showDialog('flush_cache_dialog_container');
-    });
-  },
-  completeFlushCache: function (uri) {
-    hideDialog('flush_cache_dialog_container');
-    this.withBucket(uri, function (bucket) {
-      $.post(bucket.flushCacheUri);
-    });
-  },
   getPoolNodesCount: function () {
     return DAO.cells.currentPoolDetails.value.nodes.length;
   },
