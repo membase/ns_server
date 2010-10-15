@@ -62,20 +62,7 @@ start_link(Options) ->
     {AppRoot, Options1} = get_option(approot, Options),
     {DocRoot, Options2} = get_option(docroot, Options1),
     Loop = fun (Req) ->
-                   StartTime = menelaus_util:java_date(),
-                   RawPath = Req:get(raw_path),
-                   try
-                       ?MODULE:loop(Req, AppRoot, DocRoot)
-                   after
-                       Duration = menelaus_util:java_date() - StartTime,
-                       case Duration > 25000 of
-                           false -> ok;
-                           _ ->
-                               ?MENELAUS_WEB_LOG(?REQUEST_TIMEOUT,
-                                                 "Request with path ~s took too long to execute: ~p ms.~n",
-                                                 [RawPath, Duration])
-                       end
-                   end
+                   ?MODULE:loop(Req, AppRoot, DocRoot)
            end,
     case mochiweb_http:start([{name, ?MODULE}, {loop, Loop} | Options2]) of
         {ok, Pid} -> {ok, Pid};
