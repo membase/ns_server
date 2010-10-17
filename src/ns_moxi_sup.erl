@@ -88,7 +88,7 @@ child_specs() ->
                               [RestPort, BucketName])),
                       BigZ =
                           lists:flatten(
-                            io_lib:format("port_listen=~B,downstream_max=1",
+                            io_lib:format("port_listen=~B,downstream_max=4",
                                           [Port])),
                       Args = ["-B", "auto", "-z", LittleZ, "-Z", BigZ,
                               "-p", "0", "-Y", "y", "-O", "stderr"],
