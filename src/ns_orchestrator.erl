@@ -232,9 +232,9 @@ idle({create_bucket, BucketType, BucketName, NewConfig}, _From, State) ->
             end,
     {reply, Reply, idle, State};
 idle({delete_bucket, BucketName}, _From, State) ->
-    ns_bucket:delete_bucket(BucketName),
+    RV = ns_bucket:delete_bucket(BucketName),
     ns_config:sync_announcements(),
-    {reply, ok, idle, State};
+    {reply, RV, idle, State};
 idle({failover, Node}, _From, State) ->
     ?log_info("Failing over ~p", [Node]),
     Result = ns_rebalancer:failover(Node),
