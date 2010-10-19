@@ -150,6 +150,7 @@ var KnownPersistentStats = [
   ["bytes_written", "Network bytes TX per sec.\nNetwork bytes sent by all servers, per second"],
   ["bytes_read", "Network bytes RX per sec.\nNetwork bytes received by all servers, per second"],
   ["disk_writes", "Disk write queue size"],
+  ["ep_total_persisted", "Items persisted per sec\nItems persisted per second"],
   ["get_hits", "Get hits per sec.\nGet hits per second"],
   ["delete_hits", "Delete hits per sec.\nDelete hits per second"],
   ["incr_hits", "Incr hits per sec.\nIncr hits per second"],

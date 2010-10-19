@@ -37,6 +37,7 @@
         incr_hits,
         incr_misses,
         ep_io_num_read,
+        ep_total_persisted,
         evictions,
         ep_num_not_my_vbuckets,
         ep_oom_errors,
