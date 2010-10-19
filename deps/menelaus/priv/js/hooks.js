@@ -96,6 +96,10 @@ function deserializeQueryString(dataString) {
 
 var MockedRequest = mkClass({
   initialize: function (options) {
+    if (options.type == null) {
+      options = _.clone(options);
+      options.type = 'GET';
+    }
     if (options.type != 'GET' && options.type != 'POST' && options.type != 'DELETE') {
       throw new Error("unknown method: " + options.type);
     }
@@ -374,9 +378,10 @@ var MockedRequest = mkClass({
                             [42,65,42,63,81,87,74,84,56,44,71,64,49,48,55,46,37,46,64,33,18,52,45,25,23,22,50,67,59,55,65,42,63,81,87,74,84,56,44,71,64,49,48,55,46,37,46,64,33,18,52,45,25,23,22,50,67,59,55],
                             [61,65,64,75,77,57,68,76,64,61,66,63,68,37,32,60,72,54,43,41,55,52,45,25,23,22,50,67,59,55,65,64,75,77,57,68,76,64,61,66,63,68,37,32,60,72,54,43,41,55,52,45,25,23,22,50,67,59,55]];
     var samples = {};
-    for (var idx in StatGraphs.recognizedStats) {
+    var recognizedStats = StatGraphs.recognizedStatsPersistent;
+    for (var idx in recognizedStats) {
       var data = samplesSelection[(idx + zoom.charCodeAt(0))%4];
-      samples[StatGraphs.recognizedStats[idx]] = _.map(data, function (i) {return i*10E9});
+      samples[recognizedStats[idx]] = _.map(data, function (i) {return i*10E9});
     }
     var samplesSize = samplesSelection[0].length;
 
@@ -454,7 +459,7 @@ var MockedRequest = mkClass({
                         evictions: 13,
                         bucket: "Excerciser application"}],
             op: {
-              isPersistent: false,
+              isPersistent: true,
               lastTStamp: samples.timestamp.slice(-1)[0],
               tstampParam: lastSampleT,
               interval: samplesInterval,
@@ -659,6 +664,7 @@ var MockedRequest = mkClass({
                              usedByData: 129742735523.0
                            }
                          },
+                         failoverWarnings: [],
                          buckets: {
                            // GET returns first page of bucket details with link to next page
                            uri: "/pools/default/buckets"
