@@ -14,18 +14,18 @@ future.get = function (ajaxOptions, valueTransformer, nowValue, futureWrapper) {
 
   function initiateXHR(dataCallback) {
     var opts = {dataType: 'json',
+                prepareReGet: function (ops) {
+                  if (options.errorMarker) {
+                    // if we have error marker pass it to data
+                    // callback now to mark error
+                    if (!dataCallback.continuing(options.errorMarker)) {
+                      // if we were cancelled, cancel IOCenter
+                      // operation
+                      operation.cancel();
+                    }
+                  }
+                },
                 success: dataCallback};
-    // if (ajaxOptions.ignoreErrors) {
-    //   opts.error = function () {
-    //     if (aborted)
-    //       return;
-    //     setTimeout(function () {
-    //       if (aborted)
-    //         return;
-    //       initiateXHR(dataCallback);
-    //     }, 5000);
-    //   }
-    // }
     operation = IOCenter.performGet(_.extend(opts, ajaxOptions));
   }
   return (futureWrapper || future)(initiateXHR, options);
@@ -99,6 +99,15 @@ future.getPush = function (ajaxOptions, valueTransformer, nowValue, waitChange) 
       options.timeout = 30000;
     }
     options.prepareReGet = function (opt) {
+      if (options.errorMarker) {
+        // if we have error marker pass it to data callback now to
+        // mark error
+        if (!dataCallback.continuing(options.errorMarker)) {
+          // if we were cancelled, cancel IOCenter operation
+          operation.cancel();
+          return;
+        }
+      }
       // make us weak so that cell invalidations will force new
       // network request
       dataCallback.async.weak = true;
@@ -246,6 +255,8 @@ var IOCenter = (function () {
           if (op.done)
             return;
 
+          op.cancelled = true;
+
           // we're not done yet and we're not in-flight, so we must
           // be on error queue
           errorQueue.cancel(sendXHR);
@@ -270,9 +281,14 @@ var IOCenter = (function () {
 
         // our first time 'continuation' is if we've got error then we
         // submit us to repeat queue and maybe update options
-        if (options.prepareReGet)
-          usedOptions = options.prepareReGet(usedOptions)
-        errorQueue.submit(sendXHR);
+        if (options.prepareReGet) {
+          var newOptions = options.prepareReGet(usedOptions)
+          if (newOptions != null)
+            usedOptions = newOptions;
+        }
+
+        if (!op.cancelled)
+          errorQueue.submit(sendXHR);
       });
       return op;
 
