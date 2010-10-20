@@ -195,7 +195,7 @@ var ErrorQueue = mkClass({
     });
   },
   cancel: function (action) {
-    this.queue = _.without(action, this.queue);
+    this.queue = _.without(this.queue, action);
     if (this.queue.length || this.status.value.repeating)
       return;
 
