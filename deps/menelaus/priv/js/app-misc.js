@@ -938,3 +938,9 @@ function plotStatGraph(graphJQ, stats, attr, options) {
            data: plotData}],
          plotOptions);
 }
+
+$.plotSafe = function (placeholder/*, rest...*/) {
+  if (placeholder.width() == 0 || placeholder.height() == 0)
+    return;
+  return $.plot.apply($, arguments);
+}
