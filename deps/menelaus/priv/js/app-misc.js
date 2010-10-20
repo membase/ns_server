@@ -933,10 +933,10 @@ function plotStatGraph(graphJQ, stats, attr, options) {
     plotOptions = options.processPlotOptions(plotOptions, plotData);
   }
 
-  $.plot(graphJQ,
-         [{color: options.color,
-           data: plotData}],
-         plotOptions);
+  $.plotSafe(graphJQ,
+             [{color: options.color,
+               data: plotData}],
+             plotOptions);
 }
 
 $.plotSafe = function (placeholder/*, rest...*/) {

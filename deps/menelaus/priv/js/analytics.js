@@ -129,14 +129,14 @@ function renderSmallGraph(jq, stats, statName, isSelected, zoomMillis) {
   var maxString = isNaN(lastY) ? '?' : ViewHelpers.formatQuantity(lastY, '', 1000);
   jq.find('.small_graph_label > .value').text(maxString);
 
-  $.plot(jq.find('.small_graph_block'),
-         [{color: isSelected ? '#e2f1f9' : '#d95e28',
-           data: plotData}],
-         {xaxis: {ticks:0,
-                  autoscaleMargin: 0.04,
-                  min: lastX - zoomMillis},
-          yaxis: {min:0, ticks:0, autoscaleMargin: 0.04},
-          grid: {show:false}});
+  $.plotSafe(jq.find('.small_graph_block'),
+             [{color: isSelected ? '#e2f1f9' : '#d95e28',
+               data: plotData}],
+             {xaxis: {ticks:0,
+                      autoscaleMargin: 0.04,
+                      min: lastX - zoomMillis},
+              yaxis: {min:0, ticks:0, autoscaleMargin: 0.04},
+              grid: {show:false}});
 }
 
 var KnownPersistentStats = [
