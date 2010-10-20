@@ -609,17 +609,16 @@ body.nojs #nojs_alert { display: block; width:960px; margin:40px auto 0;}
 .tooltip .tooltip_msg {display:none; position:absolute; width:150px; padding:6px 0 0 0; right:0px; top:14px; background:url(../images/tooltip_bg.gif) 100% 0 no-repeat; z-index:10;}
 .tooltip .tooltip_msg span {display:block; padding:5px; background:none #555557; font-size:11px; text-decoration:none !important; color:#fff !important;}
 
-#about_server_dialog {background-color:#fff; box-shadow: 0px 5px 25px #222; height:250px; margin-left:-195px !important; width:390px; -moz-box-shadow: 0px 5px 25px #222; -webkit-box-shadow: 0px 5px 25px #222;}
-#about_server_dialog .lbox {background:none; width:100%;}
-#about_server_dialog .lbox .config-top {width:390px; margin:-6px 0 0 -9px; padding-right:9px;}
-#about_server_dialog .lbox .config-top img {float:left; margin:8px 0 0 11px;}
-#about_server_dialog .lbox .config-top h1 {float:right; font-family:Verdana,Helvetica,Sans-Serif; font-size:11pt; font-weight:normal; margin:5px 0 0;}
-#about_server_dialog .lbox .config-bottom {margin-top:0;}
-#about_server_dialog .lbox .center {background:none; padding: 10px;}
-#about_server_dialog .lbox .top .top_center {*width:356px;}
-#about_server_dialog .lbox .bottom .bottom_center {*width:356px;}
+#about_server_dialog {background-color:#fff;width:420px;/*height:250px;*/margin-left:-210px !important; box-shadow:0 5px 25px #222;-moz-box-shadow:0 5px 25px #222;-webkit-box-shadow:0 5px 25px #222;}
+#about_server_dialog .lbox {background:none;width:100%;overflow:hidden;}
+#about_server_dialog .lbox .config-top {height:50px;margin:0;padding:11px 11px 10px;background-position:-8px 100%;background-color:#e7e7e8;}
+#about_server_dialog .lbox .config-top img {float:left;}
+#about_server_dialog .lbox .config-top h1 {float:right;margin:16px 2px 0 0;font:normal 11pt Verdana,Helvetica,Sans-Serif;}
+#about_server_dialog .lbox .top .top_center {*width:=356px;}
+#about_server_dialog .lbox .center {background:none; padding:16px 17px 14px;}
 #about_server_dialog .lbox .center p#about_versions {margin-bottom: 25px; white-space:nowrap;}
 #about_server_dialog .lbox .center ul li {margin:5px;}
+#about_server_dialog .lbox .bottom .bottom_center {*width:=356px;}
 
 .configure_view {display:inline-block; padding:0 10px 0 0;}
 .configure_view a {position:relative; top:5px; text-decoration:underline;}
