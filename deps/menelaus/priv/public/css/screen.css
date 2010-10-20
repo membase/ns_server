@@ -124,13 +124,17 @@ td.leftNavDisabled {color:#f00;}
 
 /* buttons */
 .save_cancel {height:31px;padding:5px 0;}
-.save_cancel button {position:relative;top:-1px;display:block;width:121px;height:31px;color:#fff;font-size:14px;font-weight:bolder;line-height:31px;text-align:center;   text-decoration:none;border:0px;cursor:pointer;}
-.save_cancel button:hover, .save_cancel button:focus {background-position:0 -31px;}
-.save_cancel button:active {background-position:0 -62px;}
-.save_cancel .save_button {background:url(../images/button_blue.gif) 0 0 no-repeat;}
+.save_cancel button, .config-bottom button {position:relative;top:-1px;display:block;width:121px;height:31px;color:#fff;font-size:14px;font-weight:bolder;line-height:31px;text-align:center;   text-decoration:none;border:0px;cursor:pointer;}
+.save_cancel button:hover, .save_cancel button:focus, 
+.config-bottom button:hover, .config-bottom button:focus {background-position:0 -31px;}
+.save_cancel button:active, .config-bottom button:active {background-position:0 -62px;}
+.save_cancel .save_button, .config-bottom .direction-button {background:url(../images/button_blue.gif) 0 0 no-repeat;}
 .save_cancel .delete_button {background:url(../images/button_red.gif) 0 0 no-repeat;margin-right:10px;}
-.save_cancel .button_3 {width:146px;background:url(../images/button_blue_3.gif) 0 0 no-repeat;}
+/*.save_cancel .button_3 {width:146px;background:url(../images/button_blue_3.gif) 0 0 no-repeat;}*/
 .save_cancel .cancel_button {display:block;width:80px;height:31px;line-height:31px;color:#8b8b8e;text-align:center;font-weight:bolder;text-decoration:none; margin-right:30px;}
+.direction-button {float:right;margin-left:17px;}
+/*button.direction-button {background:url(../images/blue-button.png) no-repeat; border:none; color:#fff; cursor:pointer; float:right; font-family:Arial, Helvetica, Sans-Serif; font-size:12pt; margin-right:20px; margin-top:20px; width:121px; height:31px; line-height:31px !important;}*/
+button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
 
 a.button_medium {display:block; color:#444245 !important; text-decoration:none !important}
 .button_medium {width:154px; height:32px; font-size:14px; border:0px; overflow:visible; background:url(../images/button_gray_medium.gif) 0 0 no-repeat; line-height:32px; cursor:pointer; color:#444245; text-align:center; text-decoration:none;}
@@ -444,7 +448,6 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 #monitor_servers .aservers .servers_list li span {position:relative;}
 #monitor_servers .aservers .servers_list li .usage_small {margin-top:17px;}
 
-
 #bucket_list_container {border-left:1px solid #c8ccce; border-bottom:1px solid #c8ccce;}
 #get_started,
 .monitor_buckets .buckets_action_bar {display:none;}
@@ -562,8 +565,6 @@ body.nojs #nojs_alert { display: block; width:960px; margin:40px auto 0;}
 .noform input, .noform label, .noform a {dispalay:none;}
 .auth_block .page-footer {display: none;}
 
-button:disabled {opacity:0.5 !important; background-position:0 0 !important;}
-
 #join_leave_switch.join-possible #cluster_leave_button { display:none; }
 #join_leave_switch.leave-possible #cluster_join_button { display:none; }
 
@@ -658,14 +659,12 @@ body.init_welcome #init_welcome_dialog .welcome-footer {color:#9aa3a8; font:11px
 body.init_welcome #init_welcome_dialog .welcome-footer a {color:#a7e4ff; margin-left:15px;}
 
 /* config */
-button.direction-button {background:url(../images/blue-button.png) no-repeat; border:none; color:#fff; cursor:pointer; float:right; font-family:Arial, Helvetica, Sans-Serif; font-size:12pt; margin-right:20px; margin-top:20px; width:121px; height:31px; line-height:31px !important;}
-
-div.config-top {background:url(../images/config-top.png) repeat-x; height:60px; line-height:60px; margin:0px 0px 0px -8px;}
-div.config-top h1, div.config-top h2 {background:none;border:none;font-family:Verdana, Helvetica, Sans-Serif; text-shadow: 0px 1px 2px #fff;}
+.config-top {background:url(../images/config-top.png) repeat-x; height:60px; line-height:60px; margin:0px 0px 0px -8px;}
+.config-top h1, div.config-top h2 {background:none;border:none;font-family:Verdana, Helvetica, Sans-Serif; text-shadow: 0px 1px 2px #fff;}
 div.config-top h1 {color:#444245; float:left; font-size:16pt; margin:-15px 0 0 20px; padding:0;}
 div.config-top h2 {color:#8b8b8e; float:right; font-size:10pt; margin:0 20px 0 0; padding:0;font-weight:bold;clear:none;border:none;}
-div.config-bottom {background:url(../images/config-bottom.png) repeat-x; height:74px; line-height:84px; margin:0 0 0 -9px;}
-div.config-bottom a.cancel {color:#8b8b8e; float:right; font-family:Arial, Helvetica, Sans-Serif; font-size:12pt; margin-right:25px; margin-top:-5px; text-decoration:none;}
+.config-bottom {background:url(../images/config-bottom.png) repeat-x; height:74px; line-height:84px; margin:0 0 0 -9px;  height:31px;padding:18px 18px 17px;}
+.config-bottom a.cancel {color:#8b8b8e; float:right; font-family:Arial, Helvetica, Sans-Serif; font-size:12pt; margin-right:25px; margin-top:-5px; text-decoration:none;}
 
 body.init_resources #init_block { display: block; }
 body.init_resources #init_resources_dialog {background:none; background-color:#eee; display: block; padding-bottom:-50px;}
@@ -908,8 +907,11 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 /* from less */
 .bucket_details {font-size:13px;}
 .bucket_details h1 {background:#dfdfe0;padding-left:20px;padding-top:16px;padding-bottom:16px;border-bottom:1px solid #BDBEC2;}
+ .init_block .bucket_details h1 {background:none;border:none;}
 .bucket_details form {border-top:1px solid #dfdfe0;}
-.bucket_details form > div {padding:0px 56px 48px;border-bottom:1px solid #cccfd2;border-top:1px solid #f8f8f8;}
+.bucket_details form > div {padding:0 56px 48px;border-bottom:1px solid #cccfd2;border-top:1px solid #f8f8f8;}
+ .init_block .bucket_details form > div {border-bottom:none;}
+ .init_block .bucket_details .config-bottom {padding:18px 18px 17px;border:none;}
 .bucket_details h2 {clear:both;font-size:20px;font-weight:normal;padding-bottom:6px;margin-top:18px;margin-bottom:15px;border-bottom:1px solid #d4d9dc;}
  .additional_server_info.bucket_details h2 {margin:0 0 10px;padding:5px 0 7px;font-size:14px;border-bottom:1px solid #bbbdbf;}
 .bucket_details .bucket-icon {display:block;float:left;width:64px;height:64px;margin-top:10px;background:url(/images/icons.png) 50% -100px;}
