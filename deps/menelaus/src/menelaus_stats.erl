@@ -332,7 +332,7 @@ samples_to_proplists(Samples) ->
     HitRatio = lists:zipwith(fun (null, _Hits) -> 0;
                                  (_Gets, null) -> 0;
                                  (Gets, _Hits) when Gets == 0 -> 0; % this handles int and float 0
-                                 (Gets, Hits) -> Gets/Hits
+                                 (Gets, Hits) -> Hits/Gets
                              end, orddict:fetch(cmd_get, Dict), orddict:fetch(get_hits, Dict)),
     [{hit_ratio, HitRatio} | orddict:to_list(Dict)].
 
