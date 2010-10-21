@@ -286,7 +286,7 @@ var Cell = mkClass({
 
     this.pendingFuture = null;
 
-    if (future.valueTransformer)
+    if (future.valueTransformer && !(value instanceof Future))
       value = (future.valueTransformer)(value);
 
     this.setValue(value);
