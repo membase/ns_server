@@ -21,6 +21,8 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-define(MAX_MOVES_PER_NODE, 1).
+
 %% API
 -export([start_link/3, stop/1]).
 
@@ -76,7 +78,7 @@ init({Bucket, Moves, ProgressCallback}) ->
     self() ! spawn_initial,
     {ok, #state{bucket=Bucket,
                 initial_counts=count_moves(MoveDict),
-                max_per_node=8,
+                max_per_node=?MAX_MOVES_PER_NODE,
                 moves=MoveDict, movers=Movers,
                 progress_callback=ProgressCallback}}.
 
