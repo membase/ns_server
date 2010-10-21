@@ -77,7 +77,7 @@ die_slowly(Reason, State) ->
     case Lifetime < MinDelay of
         true ->
             ns_log:log(?MODULE, ?FAST_CRASH,
-                       "Service ~p crashed on node ~p in ~.2fs~n",
+                       "Service ~p exited on node ~p in ~.2fs~n",
                        [State#state.name, node(), Lifetime / 1000000]),
             timer:send_after(State#state.delay, {die, Reason});
         _ -> self() ! {die, Reason}
@@ -92,7 +92,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 ns_log_cat(?FAST_CRASH) -> warn.
 
-ns_log_code_string(?FAST_CRASH) -> "port crashed too soon after restart".
+ns_log_code_string(?FAST_CRASH) -> "port exited too soon after restart".
 
 %% API
 child_pid(Pid) ->
