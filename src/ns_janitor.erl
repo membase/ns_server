@@ -213,17 +213,23 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
             lists:foreach(
               fun ({N, State}) ->
                       case {HaveAllCopies, State} of
-                          {_, S} when S /= dead ->
-                              ?log_info("Setting vbucket ~p in ~p on ~p from ~p to"
-                                        " dead.", [VBucket, Bucket, N, S]),
-                              ns_memcached:set_vbucket(
-                                N, Bucket, VBucket, dead);
                           {true, dead} ->
-                              ?log_info("Deleting vbucket ~p in ~p on ~p",
+                              ?log_info("Deleting dead vbucket ~p in ~p on ~p",
                                         [VBucket, Bucket, N]),
                               ns_memcached:delete_vbucket(N, Bucket, VBucket);
+                          {true, _} ->
+                              ?log_info("Deleting vbucket ~p in ~p on ~p",
+                                        [VBucket, Bucket, N]),
+                              ns_memcached:set_vbucket(
+                                N, Bucket, VBucket, dead),
+                              ns_memcached:delete_vbucket(N, Bucket, VBucket);
                           {false, dead} ->
-                              ok
+                              ok;
+                          {false, _} ->
+                              ?log_info("Setting vbucket ~p in ~p on ~p from ~p"
+                                        " to dead because we don't have all "
+                                        "copies", [N, Bucket, VBucket, State]),
+                              ns_memcached:set_vbucket(N, Bucket, VBucket, dead)
                       end
               end, ExtraStates),
             Chain;
