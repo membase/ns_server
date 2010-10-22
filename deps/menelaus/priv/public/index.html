@@ -285,7 +285,7 @@
         <a href="#openServer={%= h(s.otpNode) %}" class="serverName">{%= V.stripPort(s.hostname) %}</a><a class="list_button btn_width_2 eject_server"><span>Remove Server</span></a><a class="list_button btn_width_1 failover_server"><span>Fail Over</span></a><span class="failed_over_message">Failed Over: Pending Removal</span>
       </li>
       <!-- {% } %} -->
-      <li id="{%= h(s.detailsRowID) %}" class="settings-placeholder"></li>
+      <li class="settings-placeholder">{%= ServersSection.renderServerDetails(s) %}</li>
     <!-- {% }); %} -->
     </ul>
   </script>
@@ -544,7 +544,7 @@
 		              <td>{%= V.formatQuantity(this.basicStats.memUsed) %}/{%= V.formatQuantity(this.quota.ram) %}</td>
 		              <td>{%= V.formatQuantity(this.basicStats.diskUsed) %}</td>
 			  	  </tr></table>
-				  <div id="{%= h(this.settingsRowID) %}" class="settings-placeholder"></div>
+				  <div class="settings-placeholder">{%= BucketsSection.renderBucketDetails(this) %}</div>
 			    </td>
             </tr>
           <!-- {% }); %} -->

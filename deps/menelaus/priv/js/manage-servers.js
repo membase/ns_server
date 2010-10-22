@@ -14,13 +14,15 @@ var ServersSection = {
   },
   updateData: function () {
     var self = this;
-    var serversValue = DAO.cells.serversCell.value || {};
+    var serversValue = self.serversCell.value || {};
 
     _.each("pendingEject pending active allNodes".split(' '), function (attr) {
       self[attr] = serversValue[attr] || [];
     });
   },
   renderEverything: function () {
+    this.detailsWidget.prepareDrawing();
+
     var details = this.poolDetails.value;
     var rebalancing = details && details.rebalanceStatus != 'none';
 
@@ -75,6 +77,9 @@ var ServersSection = {
     $('#active_server_list_container .server_down .eject_server').addClass('disabled');
     $('.failed_over .eject_server, .failed_over .failover_server').hide();
   },
+  renderServerDetails: function (item) {
+    return this.detailsWidget.renderItemDetails(item);
+  },
   renderRebalance: function (details) {
     var progress = this.rebalanceProgress.value;
     if (!progress) {
@@ -116,7 +121,6 @@ var ServersSection = {
     var self = this;
 
     self.poolDetails = DAO.cells.currentPoolDetailsCell;
-    self.serversCell = DAO.cells.serversCell;
 
     self.tabs = new TabsCell("serversTab",
                              "#servers .tabs",
@@ -126,11 +130,8 @@ var ServersSection = {
     var detailsWidget = self.detailsWidget = new MultiDrawersWidget({
       hashFragmentParam: 'openedServers',
       template: 'server_details',
-      elementsKey: 'otpNode',
-      drawerCellName: 'detailsCell',
-      idPrefix: 'detailsRowID',
+      elementKey: 'otpNode',
       placeholderCSS: '#servers .settings-placeholder',
-      placeholderContainerChildCSS: null,
       actionLink: 'openServer',
       actionLinkCallback: function () {
         ThePage.ensureSection('servers');
@@ -139,14 +140,12 @@ var ServersSection = {
         return "/nodes/" + encodeURIComponent(nodeInfo.otpNode);
       },
       valueTransformer: function (nodeInfo, nodeSettings) {
-        var rv = _.extend({}, nodeInfo, nodeSettings);
-        delete rv.detailsCell;
-        return rv;
-      }
+        return _.extend({}, nodeInfo, nodeSettings);
+      },
+      listCell: Cell.compute(function (v) {return v.need(DAO.cells.serversCell).active})
     });
-    self.poolDetails.subscribe(function (cell) {
-      detailsWidget.valuesTransformer(cell.value.nodes);
-    });
+
+    self.serversCell = DAO.cells.serversCell;
 
     self.poolDetails.subscribeValue(function (poolDetails) {
       $($.makeArray($('#servers .failover_warning')).slice(1)).remove();
@@ -227,8 +226,6 @@ var ServersSection = {
         poolDetails: self.poolDetails});
     self.rebalanceProgress.keepValueDuringAsync = true;
     self.rebalanceProgress.subscribe($m(self, 'onRebalanceProgress'));
-
-    detailsWidget.hookRedrawToCell(self.serversCell);
   },
   accountForDisabled: function (handler) {
     return function (e) {
@@ -268,7 +265,6 @@ var ServersSection = {
   onEnter: function () {
     // we need this 'cause switchSection clears rebalancing class
     this.refreshEverything();
-    this.detailsWidget.reDrawElements();
   },
   navClick: function () {
     this.onLeave();

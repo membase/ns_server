@@ -440,26 +440,6 @@ var BucketsSection = {
       return poolDetails.buckets.uri;
     }).setSources({poolDetails: DAO.cells.currentPoolDetails});
 
-    self.settingsWidget = new MultiDrawersWidget({
-      hashFragmentParam: "buckets",
-      template: "bucket_settings",
-      placeholderCSS: '#buckets .settings-placeholder',
-      elementsKey: 'name',
-      drawerCellName: 'settingsCell',
-      idPrefix: 'settingsRowID',
-      actionLink: 'visitBucket',
-      actionLinkCallback: function () {
-        ThePage.ensureSection('buckets');
-      },
-      placeholderContainerChildCSS: null,
-      valueTransformer: function (bucketInfo, bucketSettings) {
-        var rv = _.extend({}, bucketInfo, bucketSettings);
-        delete rv.settingsCell;
-        rv.storageInfoRelevant = (rv.bucketType == 'membase');
-        return rv;
-      }
-    });
-
     var poolDetailsValue;
     DAO.cells.currentPoolDetails.subscribeValue(function (v) {
       if (!v)
@@ -526,16 +506,39 @@ var BucketsSection = {
         bucket.diskUsedPercent = calculatePercent(bucket.totalDiskUsed, bucket.totalDiskSize);
         bucket.diskOtherPercent = calculatePercent(bucket.otherDiskSize + bucket.totalDiskUsed, bucket.totalDiskSize);
       });
-      values = self.settingsWidget.valuesTransformer(values);
       return values;
     }
     cells.detailedBuckets = new Cell(function (pageURI) {
       return future.get({url: pageURI}, bucketsListTransformer, this.self.value);
     }).setSources({pageURI: cells.detailsPageURI});
 
-    renderCellTemplate(cells.detailedBuckets, 'bucket_list');
+    self.settingsWidget = new MultiDrawersWidget({
+      hashFragmentParam: "buckets",
+      template: "bucket_settings",
+      placeholderCSS: '#buckets .settings-placeholder',
+      elementKey: 'name',
+      actionLink: 'visitBucket',
+      actionLinkCallback: function () {
+        ThePage.ensureSection('buckets');
+      },
+      uriExtractor: function (item) {return item.uri;},
+      valueTransformer: function (bucketInfo, bucketSettings) {
+        var rv = _.extend({}, bucketInfo, bucketSettings);
+        rv.storageInfoRelevant = (rv.bucketType == 'membase');
+        return rv;
+      },
+      listCell: cells.detailedBuckets
+    });
 
-    self.settingsWidget.hookRedrawToCell(cells.detailedBuckets);
+    self.settingsWidget.detailsMap.subscribeValue(function (value) {
+      console.log("settingsWidget.modelCell.value = ", value);
+    });
+
+    renderCellTemplate(cells.detailedBuckets, 'bucket_list', {
+      beforeRendering: function () {
+        self.settingsWidget.prepareDrawing();
+      }
+    });
 
     $('.create-bucket-button').live('click', function (e) {
       e.preventDefault();
@@ -546,6 +549,9 @@ var BucketsSection = {
       e.preventDefault();
       BucketsSection.startRemovingBucket();
     });
+  },
+  renderBucketDetails: function (item) {
+    return this.settingsWidget.renderItemDetails(item);
   },
   buckets: null,
   refreshBuckets: function (callback) {

@@ -1,10 +1,66 @@
+var KeyedMap = mkClass({
+  initialize: function (itemKeyFunction) {
+    if (!(itemKeyFunction instanceof Function)) {
+      var keyAttr = itemKeyFunction;
+      itemKeyFunction = function (item) {return item[keyAttr]};
+    }
+    this.keyOf = itemKeyFunction;
+    this.map = {};
+  },
+  put: function (item, target) {
+    this.map[this.keyOf(item)] = target;
+  },
+  clear: function () {
+    this.map = {}
+  },
+  remove: function (item) {
+    if (item == null)
+      return;
+    var key = this.keyOf(item);
+    var rv = this.map[key];
+    delete this.map[key];
+    return rv;
+  },
+  get: function (item) {
+    if (item == null)
+      return;
+    return this.map[this.keyOf(item)];
+  }
+});
+
+// applies function to all items and forms KeyedMap with items ->
+// values association. Takes care of reusing old values when recomputing
+Cell.mapAllKeys = function (itemsCell, itemKeyFunction, valueFunction) {
+  return Cell.compute(function (v) {
+    var items = v.need(itemsCell);
+    var newMap = new KeyedMap(itemKeyFunction);
+    var oldMap = this.self.value || newMap;
+
+    _.each(items, function (item) {
+      var value = oldMap.get(item) || valueFunction(item);
+      newMap.put(item, value);
+    });
+
+    return newMap;
+  });
+}
+
+// TODO
+Cell.computeListDetails = function (itemsCell, detailsAttr, detailsFunction) {
+  return Cell.compute(function (v) {
+    return _.map(v.need(itemsCell), function (item) {
+      item = _.clone(item);
+      item[detailsAttr] = detailsFunction(item);
+      return item;
+    });
+  });
+}
+
 var MultiDrawersWidget = mkClass({
-  mandatoryOptions: "hashFragmentParam template elementsKey drawerCellName idPrefix".split(" "),
+  mandatoryOptions: "hashFragmentParam template elementKey listCell".split(" "),
   initialize: function (options) {
     options = this.options = _.extend({
-      placeholderCSS: '.settings-placeholder',
-      placeholderContainerChildCSS: 'td',
-      uriExtractor: function (e) {return e.uri;}
+      placeholderCSS: '.settings-placeholder'
     }, options);
 
     var missingOptions = _.reject(this.mandatoryOptions, function (n) {
@@ -14,20 +70,69 @@ var MultiDrawersWidget = mkClass({
     if (missingOptions.length)
       throw new Error("Missing mandatory option(s): " + missingOptions.join(','));
 
-    this.openedNames = new StringSetHashFragmentCell(options.hashFragmentParam);
-
     if (options.actionLink) {
       configureActionHashParam(options.actionLink, $m(this, 'onActionLinkClick'));
     }
 
     this.knownKeys = {};
 
+    this.elementKey = this.options.elementKey;
+    if (!(this.elementKey instanceof Function)) {
+      this.elementKey = (function (itemAttr) {
+        return function (item) {return item[itemAttr]};
+      })(this.elementKey);
+    }
+
     this.subscriptions = [];
-    this.reDrawElements = $m(this, 'reDrawElements');
-    this.hookRedrawToCell(this.openedNames);
-  },
-  hookRedrawToCell: function (cell) {
-    cell.subscribe(this.reDrawElements);
+
+    var openedNamesCell = this.openedNames = new StringSetHashFragmentCell(options.hashFragmentParam);
+
+    var detailsCellProducer = (function (self) {
+      return function (item, key) {
+        console.log("producing details cell for key: ", key, ", item: ", item);
+        var detailsCell = Cell.compute(function (v) {
+          var url;
+
+          if (self.options.uriExtractor)
+            url = self.options.uriExtractor(item);
+          else
+            url = key;
+
+          return future.get({url: url});
+        });
+
+        var interested = Cell.compute(function (v) {
+          return _.include(v(openedNamesCell) || [], key);
+        });
+
+        var rv = Cell.compute(function (v) {
+          if (!v(interested))
+            return;
+          return v(detailsCell);
+        });
+
+        rv.interested = interested;
+        detailsCell.keepValueDuringAsync = true;
+        rv.invalidate = $m(detailsCell, 'invalidate');
+
+        return rv;
+      }
+    })(this);
+
+    this.detailsMap = Cell.compute(function (v) {
+      var map = new KeyedMap(options.elementKey);
+      var oldMap = this.self.value || map;
+      _.each(v.need(options.listCell), function (item) {
+        var value = oldMap.get(item);
+        if (value) {
+          value.invalidate();
+        } else {
+          value = detailsCellProducer(item, map.keyOf(item));
+        }
+        map.put(item, value);
+      });
+      return map;
+    });
   },
   onActionLinkClick: function (uri, isMiddleClick) {
     this.options.actionLinkCallback(uri);
@@ -36,99 +141,72 @@ var MultiDrawersWidget = mkClass({
     } else
       this.toggleElement(uri);
   },
-  valuesTransformer: function (elements) {
-    var self = this;
-    var idPrefix = self.options.idPrefix;
-    var key = self.options.elementsKey;
-    var drawerCellName = self.options.drawerCellName;
-
-    var oldElementsByName = self.elementsByName || {};
-
-    self.elementsByName = {};
-
-    _.each(elements, function (e) {
-      e[idPrefix] = _.uniqueId(idPrefix);
-
-      var cell = self.knownKeys[e[key]];
-
-      if (!cell) {
-        var uriCell = new Cell(function (openedNames) {
-          if (!_.include(openedNames, e[key]))
-            return undefined;
-          return self.options.uriExtractor(e);
-        }, {openedNames: self.openedNames});
-
-        cell = new Cell(function (uri) {
-          return future.get({url: uri});
-        }, {uri: uriCell});
-
-        self.knownKeys[e[key]] = cell;
-      } else {
-        cell.keepValueDuringAsync = true;
-        cell.invalidate();
-      }
-
-      e[drawerCellName] = cell;
-
-      var oldE = oldElementsByName[e[key]];
-      var oldCell = oldE && oldE[drawerCellName];
-
-      self.elementsByName[e[key]] = e;
-    });
-    return elements;
-  },
-  reDrawElements: function () {
-    var self = this;
-
-    var subscriptions = self.subscriptions;
+  prepareDrawing: function () {
+    var subscriptions = this.subscriptions;
     _.each(subscriptions, function (s) {
       s.cancel();
     });
     subscriptions.length = 0;
 
-    $(self.options.placeholderCSS).hide();
+    $(this.options.placeholderCSS).hide();
+  },
+  subscribeDetailsRendering: function (parentNode, item) {
+    var self = this;
+    var options = self.options;
+    var subscriptions = self.subscriptions;
 
-    var elementsByName = self.elementsByName;
-    if (!elementsByName)
-      return;
+    var q = $(parentNode);
 
-    _.each(self.openedNames.value, function (name) {
-      var element = elementsByName[name];
-      if (!element) {
-        console.log("element: ", name, "not found");
+    var container = q[0];
+    if (!container) {
+      throw new Error("MultiDrawersWidget: bad markup!");
+    }
+
+    var detailsCell;
+    var valueSubscription = self.detailsMap.subscribeValue(function (detailsMap) {
+      if (detailsCell)
         return;
-      }
-
-      var parentNode = $i(element[self.options.idPrefix]);
-      if (!parentNode) {
-        console.log("should not happen");
+      if (!detailsMap)
         return;
+      detailsCell = detailsMap.get(item);
+      if (!detailsCell)
+        return;
+
+      // we subscribe to detailsCell only once, which is first time we
+      // get it
+
+      var valueTransformer;
+      if (self.options.valueTransformer) {
+        valueTransformer = (function (transformer) {
+          return function (value) {
+            return transformer(item, value);
+          }
+        })(self.options.valueTransformer);
       }
 
-      var cell = element[self.options.drawerCellName];
+      var renderer = mkCellRenderer([container, self.options.template], {
+        hideIf: function (cell) {
+          return !cell.interested.value;
+        },
+        valueTransformer: valueTransformer
+      });
 
-      var q = $(parentNode);
+      // this makes sure we render when any of interesting cells change
+      var s = Cell.compute(function (v) {
+        return [v(detailsCell), v(detailsCell.interested)];
+      }).subscribeValue(function (array) {
+        renderer(detailsCell);
+      });
 
-      var container;
-      var childCSS = self.options.placeholderContainerChildCSS;
-      if (childCSS)
-        container = q.find(childCSS)[0];
-      else
-        container = q[0];
-
-      if (!container) {
-        throw new Error("MultiDrawersWidget: bad markup!");
-      }
-
-      var s = renderCellTemplate(element[self.options.drawerCellName], [container, self.options.template],
-                                 function (value) {
-                                   if (!self.options.valueTransformer)
-                                     return value;
-                                   return self.options.valueTransformer(element, value);
-                                 });
       subscriptions.push(s);
+    });
 
-      q.show();
+    subscriptions.push(valueSubscription);
+  },
+  renderItemDetails: function (item) {
+    var self = this;
+    return ViewHelpers.thisElement(function (element) {
+      self.subscribeDetailsRendering(element, item);
     });
   },
   toggleElement: function (name) {
