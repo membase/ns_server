@@ -8,6 +8,7 @@ Cell.identity = (function () {
 })();
 
 Cell.FlexiFormulaCell = mkClass(Cell, {
+  emptyFormula: function () {},
   initialize: function ($super, flexiFormula) {
     $super();
 
@@ -15,7 +16,7 @@ Cell.FlexiFormulaCell = mkClass(Cell, {
 
     var currentSources = this.currentSources = {};
 
-    this.effectiveFormula = function () {
+    this.formula = function () {
       var rvPair = flexiFormula.call(this);
       var newValue = rvPair[0];
       var dependencies = rvPair[1];
@@ -39,15 +40,41 @@ Cell.FlexiFormulaCell = mkClass(Cell, {
       return newValue;
     }
 
+    this.effectiveFormula = this.emptyFormula;
     this.formulaContext = {self: this};
-    this.recalculate();
+    this.setupDemandObserving();
+  },
+  setupDemandObserving: function () {
+    var demand = {};
+    var self = this;
+    _.each({
+      changed: self.changedSlot,
+      'undefined': self.undefinedSlot,
+      dependencies: self.dependenciesSlot
+    }, function (slot, name) {
+      slot.__demandChanged = function (newDemand) {
+        demand[name] = newDemand;
+        react();
+      }
+    });
+    function react() {
+      var haveDemand = demand.dependencies || demand.changed || demand['undefined'];
+
+      if (!haveDemand) {
+        self.detach();
+      } else if (self.effectiveFormula !== self.formula) {
+        self.effectiveFormula = self.formula;
+        self.recalculate();
+      }
+    }
   },
   detach: function () {
     for (var id in this.currentSources) {
       var pair = currentSources[id];
       pair[0].dependenciesSlot.unsubscribe(pair[1]);
+      delete this.currentSources[id];
     }
-    this.effectiveFormula = function () {}
+    this.effectiveFormula = this.emptyFormula;
   },
   setSources: function () {
     throw new Error("unsupported!");
@@ -78,7 +105,7 @@ Cell.FlexiFormulaCell.makeComputeFormula = function (formula) {
 
   function need(cell) {
     var v = getValue(cell);
-    if (!v)
+    if (v === undefined)
       throw noValue;
     return v;
   }

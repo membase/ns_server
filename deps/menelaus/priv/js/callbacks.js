@@ -26,7 +26,10 @@ var CallbackSlot = mkClass({
       slave = thunkOrSlave;
     else
       slave = new Slave(thunkOrSlave);
+    var wasEmpty = (this.slaves.length == 0);
     this.slaves.push(slave);
+    if (wasEmpty)
+      this.__demandChanged(true);
     return slave;
   },
   subscribeOnce: function (thunk) {
@@ -45,6 +48,8 @@ var CallbackSlot = mkClass({
       if (!slave.dead)
         newSlaves.push(slave);
     });
+    if (oldSlaves.length && !newSlaves.length)
+      this.__demandChanged(false);
   },
   unsubscribeCallback: function (thunk) {
     var slave = _.detect(this.slaves, function (candidate) {
@@ -57,7 +62,12 @@ var CallbackSlot = mkClass({
   unsubscribe: function (slave) {
     slave.die();
     var index = $.inArray(slave, this.slaves);
-    if (index >= 0)
+    if (index >= 0) {
       this.slaves.splice(index, 1);
+      if (!this.slaves.length)
+        this.__demandChanged(false);
+    }
+  },
+  __demandChanged: function (haveDemand) {
   }
 });

@@ -368,6 +368,15 @@ CellsTest.prototype.testCompute = function () {
 
   Clock.tickFarAway();
 
+  //no demand no value
+  assertSame(undefined, switchedCell.value);
+  assertEquals(0, computations);
+
+  var demand = function () {}
+  switchedCell.subscribeValue(demand);
+
+  Clock.tickFarAway();
+
   assertEquals(1, switchedCell.value);
   assertEquals(1, computations);
 
