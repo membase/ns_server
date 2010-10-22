@@ -15,6 +15,7 @@
 //= require <hash-fragment-cells.js>
 //= require <right-form-observer.js>
 //= require <app-misc.js>
+//= require <multi-drawers-widget.js>
 //= require <core-data.js>
 //= require <analytics.js>
 //= require <manage-servers.js>
