@@ -1,4 +1,14 @@
-Cell.identity = (function () {
+// This is new-style computed cells. Those have dynamic set of
+// dependencies and have more lightweight, functional style. They are
+// also lazy, which means that cell value is not (re)computed if
+// nothing demands that value. Which happens when nothing is
+// subscribed to this cell and it doesn't have dependent cells.
+//
+// Main guy here is Cell.compute. See it's comments. See also
+// testCompute test in cells-test.js.
+
+
+Cell.id = (function () {
   var counter = 1;
   return function (cell) {
     if (cell.__identity)
@@ -69,12 +79,15 @@ Cell.FlexiFormulaCell = mkClass(Cell, {
     }
   },
   detach: function () {
-    for (var id in this.currentSources) {
+    var currentSources = this.currentSources;
+    for (var id in currentSources) {
       var pair = currentSources[id];
       pair[0].dependenciesSlot.unsubscribe(pair[1]);
-      delete this.currentSources[id];
+      delete currentSources[id];
     }
     this.effectiveFormula = this.emptyFormula;
+    this.setValue(this.value);  // this cancels any in-progress
+                                // futures
   },
   setSources: function () {
     throw new Error("unsupported!");
@@ -97,7 +110,7 @@ Cell.FlexiFormulaCell.makeComputeFormula = function (formula) {
   var noValue = Cell.FlexiFormulaCell.noValueMarker;
 
   function getValue(cell) {
-    var id = Cell.identity(cell);
+    var id = Cell.id(cell);
     if (!dependencies[id])
       dependencies[id] = cell;
     return cell.value;
@@ -129,8 +142,19 @@ Cell.FlexiFormulaCell.makeComputeFormula = function (formula) {
   }
 }
 
-Cell.compute = function (formula, FlexiFormulaCell) {
-  FlexiFormulaCell = FlexiFormulaCell || Cell.FlexiFormulaCell
+// Creates cell that is computed by running formula. This function is
+// passed V argument. Which is a function that gets values of other
+// cells. It is necessary to obtain dependent cell values via that
+// function, so that all dependencies are recorded. Then if any of
+// (dynamic) dependencies change formula is recomputed. Which may
+// produce (apart from new value) new set of dependencies.
+//
+// V also has a useful helper: V.need which is just as V extracts
+// values from cells. But it differs from V in that undefined values
+// are never returned. Special exception is raised instead to signal
+// that formula value is undefined.
+Cell.compute = function (formula) {
+  var FlexiFormulaCell = arguments[1] || Cell.FlexiFormulaCell
   var f = Cell.FlexiFormulaCell.makeComputeFormula(formula);
   return new FlexiFormulaCell(f);
 }

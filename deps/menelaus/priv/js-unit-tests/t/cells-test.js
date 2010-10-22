@@ -372,8 +372,7 @@ CellsTest.prototype.testCompute = function () {
   assertSame(undefined, switchedCell.value);
   assertEquals(0, computations);
 
-  var demand = function () {}
-  switchedCell.subscribeValue(demand);
+  var demand = switchedCell.subscribeValue(function () {});
 
   Clock.tickFarAway();
 
@@ -408,5 +407,17 @@ CellsTest.prototype.testCompute = function () {
   Clock.tickFarAway();
 
   assertEquals('newCell2', switchedCell.value);
+  assertEquals(4, computations);
+
+  // nothing happens after we cancel demand
+  demand.cancel();
+  Clock.tickFarAway();
+
+  assertEquals(4, computations);
+
+  cell2.setValue('anotherValue');
+  cell3.setValue('anotherValue');
+  Clock.tickFarAway();
+
   assertEquals(4, computations);
 }
