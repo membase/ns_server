@@ -217,10 +217,17 @@ var Cell = mkClass({
   // passing it to cb.
   subscribeValue: function (cb) {
     var cell = this;
-    this.subscribeAny(function () {
+    var slave = this.subscribeAny(function () {
       cb(cell.value);
     });
     cb(cell.value);
+
+    return {
+      cancel: function () {
+        cell.undefinedSlot.unsubscribe(slave);
+        cell.changedSlot.unsubscribe(slave);
+      }
+    }
   },
   // schedules cell value recalculation
   recalculate: function () {
