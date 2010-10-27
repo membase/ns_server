@@ -7,6 +7,7 @@
 /features/Makefile
 /ns_server.plt
 TAGS
+bin
 config
 coverage
 data
