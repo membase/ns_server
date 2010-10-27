@@ -176,7 +176,7 @@ clean-shallow:
 	rm -rf *.stamp
 
 commit-msg:
-	wget http://review.membase.org/tools/hooks/commit-msg
+	curl http://review.membase.org/tools/hooks/commit-msg > commit-msg
 	chmod +x commit-msg
 
 %.stamp: %.stamp_test
