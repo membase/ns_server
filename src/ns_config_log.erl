@@ -54,7 +54,9 @@ handle_event({alerts = K, V}, State) ->
     error_logger:info_msg("config change:~n~p ->~n~p~n", [K, V2]),
     {ok, State, hibernate};
 handle_event({K, V}, State) ->
-    error_logger:info_msg("config change:~n~p ->~n~p~n", [K, V]),
+    %% These can get pretty big, so pre-format them for the logger.
+    VB = list_to_binary(io_lib:print(V, 0, 80, 100)),
+    error_logger:info_msg("config change:~n~p ->~n~s~n", [K, VB]),
     {ok, State, hibernate};
 
 handle_event(KVList, State) when is_list(KVList) ->
