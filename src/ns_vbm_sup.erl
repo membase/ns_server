@@ -55,6 +55,21 @@ actions(Children) ->
     [{VBucket, Dst} || #child_id{vbuckets=VBuckets, dest_node=Dst} <- Children,
                        VBucket <- VBuckets].
 
+kill_vbuckets(Node, Bucket, VBuckets) ->
+    {ok, States} = ns_memcached:list_vbuckets(Node, Bucket),
+    case [X || X = {V, S} <- States, lists:member(V, VBuckets), S /= replica] of
+        [] ->
+            ok;
+        RemainingVBuckets ->
+            lists:foreach(fun ({V, dead}) ->
+                                  ns_memcached:delete_vbucket(Node, Bucket, V);
+                              ({V, _}) ->
+                                  ns_memcached:set_vbucket(Node, Bucket,
+                                                           V, dead),
+                                  ns_memcached:delete_vbucket(Node, Bucket, V)
+                              end, RemainingVBuckets)
+    end.
+
 set_replicas(Node, Bucket, Replicas) ->
     GoodChildren = kill_runaway_children(Node, Bucket, Replicas),
     %% Now filter out the replicas that still have children
@@ -68,6 +83,7 @@ set_replicas(Node, Bucket, Replicas) ->
               ?log_info(
                  "Starting replica for vbuckets ~w on node ~p",
                  [VBuckets, Dst]),
+              kill_vbuckets(Dst, Bucket, VBuckets),
               lists:foreach(
                 fun (V) ->
                         ns_memcached:set_vbucket(Dst, Bucket, V,
