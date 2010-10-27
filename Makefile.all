@@ -109,10 +109,10 @@ MOXI_CONFIGURE_FLAGS=$(CONFIGURE_FLAGS)
 VBUCKETMIGRATOR_CONFIGURE_FLAGS=$(CONFIGURE_FLAGS)
 
 win32:
-	$(MAKE) EXE=.exe BUILDPREFIX=$(BUILDPREFIX)32
+	$(MAKE) EXE=.exe BUILDPREFIX=$(BUILDPREFIX)32 GITBASE=$(GITBASE)
 
 win64:
-	$(MAKE) EXE=.exe BUILDPREFIX=$(BUILDPREFIX)64 \
+	$(MAKE) EXE=.exe BUILDPREFIX=$(BUILDPREFIX)64 GITBASE=$(GITBASE) \
                          CC="x86_64-w64-mingw32-gcc -std=gnu99" \
                          CXX=x86_64-w64-mingw32-g++ \
                          CONFIGURE_FLAGS="--host=x86_64-w64-mingw32 \
@@ -120,7 +120,7 @@ win64:
                          MARCH=
 
 solaris:
-	$(MAKE) BUILDPREFIX=$(BUILDPREFIX)64 \
+	$(MAKE) BUILDPREFIX=$(BUILDPREFIX)64 GITBASE=$(GITBASE) \
             CONFIGURE_FLAGS="--with-debug" \
             EP_ENGINE_CONFIGURE_FLAGS="--with-debug \
                                        --enable-system-libsqlite3 \
@@ -287,7 +287,7 @@ libmemcached/libmemcached/libmemcached.la: libmemcached/Makefile
 
 $(BUILDPREFIX)/lib/bucket_engine.so: bucket_engine.stamp \
                                      $(BUILDPREFIX)/bin/memcached${EXE}
-	$(MAKE) EXE=$(EXE) BUILDPREFIX=$(BUILDPREFIX) \
+	$(MAKE) EXE=$(EXE) BUILDPREFIX=$(BUILDPREFIX) GITBASE=$(GITBASE) \
          COMPONENT=bucket_engine \
          COMPONENT_OUT=bucket_engine.la \
          COMPONENT_AUTOGEN=./autogen.sh \
@@ -304,7 +304,7 @@ $(BUILDPREFIX)/lib/bucket_engine.so: bucket_engine.stamp \
 
 $(BUILDPREFIX)/lib/ep.so: ep-engine.stamp \
                           $(BUILDPREFIX)/bin/memcached${EXE}
-	$(MAKE) EXE=$(EXE) BUILDPREFIX=$(BUILDPREFIX) \
+	$(MAKE) EXE=$(EXE) BUILDPREFIX=$(BUILDPREFIX) GITBASE=$(GITBASE) \
          COMPONENT=ep-engine \
          COMPONENT_OUT=ep.la \
          COMPONENT_CONFIGURE_FLAGS="--with-memcached=../memcached \
@@ -321,7 +321,7 @@ $(BUILDPREFIX)/lib/ep.so: ep-engine.stamp \
         fi
 
 $(BUILDPREFIX)/include/libconflate: libconflate.stamp
-	$(MAKE) EXE=$(EXE) BUILDPREFIX=$(BUILDPREFIX) \
+	$(MAKE) EXE=$(EXE) BUILDPREFIX=$(BUILDPREFIX) GITBASE=$(GITBASE) \
          COMPONENT=libconflate \
          COMPONENT_OUT=libconflate.la \
          COMPONENT_CONFIGURE_FLAGS="--disable-shared \
@@ -337,7 +337,7 @@ $(BUILDPREFIX)/include/libmemcached: libmemcached/libmemcached/libmemcached.la
 
 $(BUILDPREFIX)/include/libvbucket: libvbucket.stamp \
                                    $(BUILDPREFIX)/include/libmemcached
-	$(MAKE) EXE=$(EXE) BUILDPREFIX=$(BUILDPREFIX) \
+	$(MAKE) EXE=$(EXE) BUILDPREFIX=$(BUILDPREFIX) GITBASE=$(GITBASE) \
          COMPONENT=libvbucket \
          COMPONENT_OUT=libvbucket.la \
          COMPONENT_CONFIGURE_FLAGS="--disable-shared \
@@ -350,14 +350,14 @@ $(BUILDPREFIX)/include/libvbucket: libvbucket.stamp \
 	(cd libvbucket && $(MAKE) install)
 
 $(BUILDPREFIX)/bin/membase: membase-cli.stamp
-	$(MAKE) EXE=$(EXE) BUILDPREFIX=$(BUILDPREFIX) \
+	$(MAKE) EXE=$(EXE) BUILDPREFIX=$(BUILDPREFIX) GITBASE=$(GITBASE) \
          COMPONENT=membase-cli \
          membase-cli/.git/hooks/commit-msg
 	rm -f $(BUILDPREFIX)/bin/membase
 	(cd membase-cli && $(MAKE) install PREFIX=${BUILDPREFIX}/bin)
 
 $(BUILDPREFIX)/bin/memcached$(EXE): memcached.stamp
-	$(MAKE) EXE=$(EXE) BUILDPREFIX=$(BUILDPREFIX) \
+	$(MAKE) EXE=$(EXE) BUILDPREFIX=$(BUILDPREFIX) GITBASE=$(GITBASE) \
          COMPONENT=memcached \
          COMPONENT_OUT=memcached$(EXE) \
          COMPONENT_GIT_CHECKOUT=engine \
@@ -372,7 +372,7 @@ $(BUILDPREFIX)/bin/memcached$(EXE): memcached.stamp
         fi
 
 $(BUILDPREFIX)/bin/memcachetest$(EXE): memcachetest.stamp
-	$(MAKE) EXE=$(EXE) BUILDPREFIX=$(BUILDPREFIX) \
+	$(MAKE) EXE=$(EXE) BUILDPREFIX=$(BUILDPREFIX) GITBASE=$(GITBASE) \
          COMPONENT=memcachetest \
          COMPONENT_OUT=memcachetest${EXE} \
          COMPONENT_CONFIGURE_FLAGS="$(MEMCACHETEST_CONFIGURE_FLAGS)" \
@@ -383,7 +383,7 @@ $(BUILDPREFIX)/bin/moxi${EXE}: moxi.stamp \
                                $(BUILDPREFIX)/include/libvbucket \
                                $(BUILDPREFIX)/include/libmemcached \
                                $(BUILDPREFIX)/include/libconflate
-	$(MAKE) EXE=$(EXE) BUILDPREFIX=$(BUILDPREFIX) \
+	$(MAKE) EXE=$(EXE) BUILDPREFIX=$(BUILDPREFIX) GITBASE=$(GITBASE) \
          COMPONENT=moxi \
          COMPONENT_OUT=moxi${EXE} \
          COMPONENT_CONFIGURE_FLAGS="--enable-moxi-libvbucket \
@@ -394,14 +394,14 @@ $(BUILDPREFIX)/bin/moxi${EXE}: moxi.stamp \
 	(cd moxi && $(MAKE) install)
 
 $(BUILDPREFIX)/lib/ns_server/ebin: ns_server.stamp
-	$(MAKE) EXE=$(EXE) BUILDPREFIX=$(BUILDPREFIX) \
+	$(MAKE) EXE=$(EXE) BUILDPREFIX=$(BUILDPREFIX) GITBASE=$(GITBASE) \
          COMPONENT=ns_server \
          ns_server/.git/hooks/commit-msg dev-symlink
 	(cd ns_server && $(MAKE))
 
 $(BUILDPREFIX)/bin/vbucketmigrator${EXE}: vbucketmigrator.stamp \
                                           $(BUILDPREFIX)/bin/memcached${EXE}
-	$(MAKE) EXE=$(EXE) BUILDPREFIX=$(BUILDPREFIX) \
+	$(MAKE) EXE=$(EXE) BUILDPREFIX=$(BUILDPREFIX) GITBASE=$(GITBASE) \
          COMPONENT=vbucketmigrator \
          COMPONENT_OUT=vbucketmigrator${EXE} \
          COMPONENT_CONFIGURE_FLAGS="--without-docs \
