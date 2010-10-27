@@ -157,7 +157,6 @@ CLEANFILES=bucket_engine \
            memcached \
            memcachetest \
            moxi \
-           ns_server \
            vbucketmigrator \
            $(BUILDPREFIX) $(DISTPREFIX) $(DISTFILE) \
            commit-msg \
@@ -165,6 +164,7 @@ CLEANFILES=bucket_engine \
 
 clean-deep:
 	rm -rf $(CLEANFILES) *.stamp
+	(cd ns_server && $(MAKE) clean)
 
 clean-shallow:
 	@if test -n "${EXE}"; then \
@@ -197,14 +197,14 @@ COMPONENT_AUTOGEN=./config/autorun.sh
 
 $(COMPONENT)/.git:
 	git clone $(GITBASE)/$(COMPONENT_GIT).git
-	(cd $(COMPONENT) && \
-         git checkout $(COMPONENT_GIT_CHECKOUT) && \
-         git remote add gerrit \
-             ssh://review.membase.org:29418/$(COMPONENT).git && \
-         git config alias.for-review 'push gerrit HEAD:refs/for/master')
+	(cd $(COMPONENT) && git checkout $(COMPONENT_GIT_CHECKOUT))
 
 $(COMPONENT)/.git/hooks/commit-msg: $(COMPONENT)/.git commit-msg
 	cp commit-msg $(COMPONENT)/.git/hooks
+	(cd $(COMPONENT) && \
+         git remote add gerrit \
+             ssh://review.membase.org:29418/$(COMPONENT).git && \
+         git config alias.for-review 'push gerrit HEAD:refs/for/master')
 
 $(COMPONENT)/configure.ac: $(COMPONENT)/.git/hooks/commit-msg
 
