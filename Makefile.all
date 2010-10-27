@@ -14,7 +14,7 @@
 #
 # To use this Makefile.all:
 #
-#   git clone git@github.com:membase/ns_server.git
+#   git clone git://github.com/membase/ns_server.git
 #   ln -s ns_server/Makefile.all Makefile
 #   make
 #
@@ -24,7 +24,7 @@
 #
 #   ./ns_server/start_shell.sh
 #
-GITBASE=git@github.com:membase
+GITBASE=git://github.com/membase
 
 BUILDPREFIX=/tmp/membase-build
 DISTPREFIX=/tmp/membase-dist
