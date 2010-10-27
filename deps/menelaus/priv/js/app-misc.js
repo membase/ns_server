@@ -210,7 +210,7 @@ function prepareTemplateForCell(templateName, cell) {
     prepareRenderTemplate(templateName);
 }
 
-function mkCellRenderer(to, valueTransformer) {
+function mkCellRenderer(to, options) {
   var template;
 
   if (_.isArray(to)) {
@@ -232,22 +232,35 @@ function mkCellRenderer(to, valueTransformer) {
     }
   }
 
+  options = options || {};
+
   return function (cell) {
+    if (options.hideIf) {
+      if (options.hideIf(cell)) {
+        $(toGetter()).hide();
+        return;
+      }
+      $(toGetter()).show();
+    }
+
     var value = cell.value;
     if (value == undefined) {
       return prepareAreaUpdate($(toGetter()));
     }
 
-    if (valueTransformer)
-      value = valueTransformer(value);
+    if (options.valueTransformer)
+      value = (options.valueTransformer)(value);
+
+    if (options.beforeRendering)
+      (options.beforeRendering)(cell);
     renderRawTemplate(toGetter(), template, value);
   }
 }
 
 // renderCellTemplate(cell, "something");
 // renderCellTemplate(cell, ["something_container", "foorbar"]);
-function renderCellTemplate(cell, to, valueTransformer) {
-  var slave = new Slave(mkCellRenderer(to, valueTransformer));
+function renderCellTemplate(cell, to, options) {
+  var slave = new Slave(mkCellRenderer(to, options));
   cell.changedSlot.subscribeWithSlave(slave);
   cell.undefinedSlot.subscribeWithSlave(slave);
   slave.thunk(cell);
