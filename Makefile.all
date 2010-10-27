@@ -193,6 +193,7 @@ $(BUILDPREFIX) $(BUILDPREFIX)/lib $(BUILDPREFIX)/bin:
 COMPONENT=unknown
 COMPONENT_GIT=$(COMPONENT)
 COMPONENT_GIT_CHECKOUT=master
+COMPONENT_GERRIT=$(COMPONENT)
 COMPONENT_AUTOGEN=./config/autorun.sh
 
 $(COMPONENT)/.git:
@@ -203,8 +204,8 @@ $(COMPONENT)/.git/hooks/commit-msg: $(COMPONENT)/.git commit-msg
 	cp commit-msg $(COMPONENT)/.git/hooks
 	(cd $(COMPONENT) && \
          git remote add gerrit \
-             ssh://review.membase.org:29418/$(COMPONENT).git && \
-         git config alias.for-review 'push gerrit HEAD:refs/for/master')
+             ssh://review.membase.org:29418/$(COMPONENT_GERRIT).git && \
+         git config alias.for-review 'push gerrit HEAD:refs/for/$(COMPONENT_GIT_CHECKOUT)')
 
 $(COMPONENT)/configure.ac: $(COMPONENT)/.git/hooks/commit-msg
 
@@ -309,6 +310,7 @@ $(BUILDPREFIX)/lib/ep.so: ep-engine.stamp \
          COMPONENT_CONFIGURE_FLAGS="--with-memcached=../memcached \
                                     --with-debug \
                                     $(EP_ENGINE_CONFIGURE_FLAGS)" \
+         COMPONENT_GERRIT=membase \
          ep-engine/ep.la
 	@if test -n "${EXE}"; then \
            cp ep-engine/.libs/ep.so $(BUILDPREFIX)/lib; \
