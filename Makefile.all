@@ -387,7 +387,7 @@ $(BUILDPREFIX)/bin/moxi${EXE}: moxi.stamp \
          COMPONENT_CONFIGURE_FLAGS="--enable-moxi-libvbucket \
                                     --enable-moxi-libmemcached \
                                     --without-check \
-                                    $(MEMCACHETEST_CONFIGURE_FLAGS)" \
+                                    $(MOXI_CONFIGURE_FLAGS)" \
          moxi/moxi${EXE}
 	(cd moxi && $(MAKE) install)
 
