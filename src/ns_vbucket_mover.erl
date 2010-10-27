@@ -191,11 +191,13 @@ run_mover(Bucket, V, N1, N2, Tries) ->
         {{memcached_error, not_my_vbucket, _}, {ok, active}} ->
             ok;
         {{ok, active}, {ok, S}} when S /= active ->
-            if S /= pending ->
-                    ok = ns_memcached:set_vbucket(N2, Bucket, V, pending);
+            if S /= dead ->
+                    ok = ns_memcached:set_vbucket(N2, Bucket, V, dead);
                true ->
                     ok
             end,
+            ok = ns_memcached:delete_vbucket(N2, Bucket, V),
+            ok = ns_memcached:set_vbucket(N2, Bucket, V, pending),
             {ok, _Pid} = ns_vbm_sup:spawn_mover(Bucket, V, N1, N2),
             wait_for_mover(Bucket, V, N1, N2, Tries);
         {{ok, active}, {memcached_error, not_my_vbucket, _}} ->
@@ -203,8 +205,10 @@ run_mover(Bucket, V, N1, N2, Tries) ->
             {ok, _Pid} = ns_vbm_sup:spawn_mover(Bucket, V, N1, N2),
             wait_for_mover(Bucket, V, N1, N2, Tries);
         {{ok, dead}, {ok, pending}} ->
-            %% Retry the move
             ok = ns_memcached:set_vbucket(N1, Bucket, V, active),
+            ok = ns_memcached:set_vbucket(N2, Bucket, V, dead),
+            ok = ns_memcached:delete_vbucket(N2, Bucket, V),
+            ok = ns_memcached:set_vbucket(N2, Bucket, V, pending),
             {ok, _Pid} = ns_vbm_sup:spawn_mover(Bucket, V, N1, N2),
             wait_for_mover(Bucket, V, N1, N2, Tries)
     end.
