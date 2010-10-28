@@ -75,13 +75,31 @@ Cell.FlexiFormulaCell = mkClass(Cell, {
     function react() {
       var haveDemand = demand.dependencies || demand.changed || demand['undefined'];
 
-      if (!haveDemand) {
+      if (!haveDemand)
         self.detach();
-      } else if (self.effectiveFormula !== self.formula) {
-        self.effectiveFormula = self.formula;
-        self.recalculate();
-      }
+      else
+        self.attachBack();
     }
+  },
+  needsRefresh: function (newValue) {
+    if (this.value === undefined)
+      return true;
+    if (newValue instanceof Future)
+      return false;
+    return this.isValuesDiffer(this.value, newValue);
+  },
+  attachBack: function () {
+    if (this.effectiveFormula === this.formula)
+      return;
+
+    this.effectiveFormula = this.formula;
+
+    // NOTE: this has side-effect of updating formula dependencies and
+    // subscribing to them back
+    var newValue = this.effectiveFormula.call(this.mkFormulaContext());
+    // we don't want to recalculate values that involve futures
+    if (this.needsRefresh(newValue))
+      this.recalculate();
   },
   detach: function () {
     var currentSources = this.currentSources;

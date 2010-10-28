@@ -377,47 +377,47 @@ CellsTest.prototype.testCompute = function () {
   Clock.tickFarAway();
 
   assertEquals(1, switchedCell.value);
-  assertEquals(1, computations);
+  assertEquals(2, computations);
 
   cell1.setValue('newCell1');
   Clock.tickFarAway()
+  computations = 0;
 
   assertEquals('newCell1', switchedCell.value);
-  assertEquals(2, computations);
 
   cell2.setValue('newCell2');
   Clock.tickFarAway();
 
   assertEquals('newCell1', switchedCell.value);
-  assertEquals(2, computations);
+  assertEquals(0, computations);
 
   cell3.setValue('unknown');
   Clock.tickFarAway();
 
   assertEquals(undefined, switchedCell.value);
-  assertEquals(3, computations);
+  assertEquals(1, computations);
 
   cell1.setValue('newerCell1');
   Clock.tickFarAway();
 
   assertEquals(undefined, switchedCell.value);
-  assertEquals(3, computations);
+  assertEquals(1, computations);
 
   cell3.setValue('cell2');
   Clock.tickFarAway();
 
   assertEquals('newCell2', switchedCell.value);
-  assertEquals(4, computations);
+  assertEquals(2, computations);
 
   // nothing happens after we cancel demand
   demand.cancel();
   Clock.tickFarAway();
 
-  assertEquals(4, computations);
+  assertEquals(2, computations);
 
   cell2.setValue('anotherValue');
   cell3.setValue('anotherValue');
   Clock.tickFarAway();
 
-  assertEquals(4, computations);
+  assertEquals(2, computations);
 }
