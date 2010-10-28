@@ -336,7 +336,11 @@ var IOCenter = (function () {
 })();
 
 ;(function () {
-  IOCenter.status.subscribeValue(function (status) {
-    console.log("IOCenter.status: ", status);
+  new Cell(function (status) {
+    return status.healthy;
+  }, {
+    status: IOCenter.status
+  }).subscribeValue(function (healthy) {
+    console.log("IOCenter.status.healthy: ", healthy);
   });
 })();
