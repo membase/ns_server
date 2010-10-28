@@ -94,9 +94,6 @@ log-head:
 
 # --------------------------------------------------------------
 
-PATH := /usr/lib/ccache:$(PATH)
-export PATH
-
 CONFIGURE_FLAGS=
 BUCKET_ENGINE_CONFIGURE_FLAGS=$(CONFIGURE_FLAGS)
 EP_ENGINE_CONFIGURE_FLAGS=$(CONFIGURE_FLAGS)
