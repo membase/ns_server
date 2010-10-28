@@ -151,6 +151,17 @@ var Cell = mkClass({
       Cell.updatedCells.push(this);
     }
   },
+  isValuesDiffer: function (oldValue, newValue) {
+    if (newValue === undefined) {
+      if (oldValue == undefined)
+        return false;
+    } else {
+      if (oldValue !== undefined && this.equality(oldValue, newValue))
+        return false;
+    }
+
+    return true;
+  },
   setValue: function (newValue) {
     this.cancelAsyncSet();
     this.resetRecalculateAt();
@@ -171,13 +182,8 @@ var Cell = mkClass({
       newValue = this.beforeChangeHook(newValue);
     this.value = newValue;
 
-    if (newValue === undefined) {
-      if (oldValue == undefined)
-        return
-    } else { // newValue !== undefined
-      if (this.equality(oldValue, newValue))
-        return;
-    }
+    if (!this.isValuesDiffer(oldValue, newValue))
+      return;
 
     this.dependenciesSlot.broadcast(this);
 
