@@ -17,8 +17,8 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-include("ns_common.hrl").
 -include("mc_constants.hrl").
-
 -include("mc_entry.hrl").
 
 -export([auth/2,
@@ -310,6 +310,8 @@ map_status(?EINTERNAL) ->
 map_status(?EBUSY) ->
     ebusy.
 
+-spec process_error_response(any()) ->
+                                    mc_error().
 process_error_response({ok, #mc_header{status=Status}, #mc_entry{data=Msg},
                         _NCB}) ->
     {memcached_error, map_status(Status), Msg};
