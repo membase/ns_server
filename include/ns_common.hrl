@@ -16,11 +16,15 @@
 %% @doc Macros used all over the place.
 %%
 
--type histogram() :: [{atom(), non_neg_integer()}].
--type map() :: [[atom(), ...], ...].
--type moves() :: [{non_neg_integer(), atom(), atom()}].
 -type bucket_name() :: nonempty_string().
 -type bucket_type() :: memcached | membase.
+-type histogram() :: [{atom(), non_neg_integer()}].
+-type map() :: [[atom(), ...], ...].
+-type mc_error() :: {memcached_error, atom(), binary()} |
+                    {client_error, any()}.
+-type moves() :: [{non_neg_integer(), atom(), atom()}].
+-type vbucket_id() :: non_neg_integer().
+-type vbucket_state() :: active | dead | replica | pending.
 
 
 -define(LOG(Fun, Format, Args),
