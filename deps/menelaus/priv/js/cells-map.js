@@ -19,7 +19,7 @@ Cell.id = (function () {
 
 Cell.FlexiFormulaCell = mkClass(Cell, {
   emptyFormula: function () {},
-  initialize: function ($super, flexiFormula) {
+  initialize: function ($super, flexiFormula, isEager) {
     $super();
 
     var recalculate = $m(this, 'recalculate');
@@ -50,9 +50,14 @@ Cell.FlexiFormulaCell = mkClass(Cell, {
       return newValue;
     }
 
-    this.effectiveFormula = this.emptyFormula;
     this.formulaContext = {self: this};
-    this.setupDemandObserving();
+    if (isEager) {
+      this.effectiveFormula = this.formula;
+      this.recalculate();
+    } else {
+      this.effectiveFormula = this.emptyFormula;
+      this.setupDemandObserving();
+    }
   },
   setupDemandObserving: function () {
     var demand = {};
@@ -157,4 +162,10 @@ Cell.compute = function (formula) {
   var FlexiFormulaCell = arguments[1] || Cell.FlexiFormulaCell
   var f = Cell.FlexiFormulaCell.makeComputeFormula(formula);
   return new FlexiFormulaCell(f);
+}
+
+Cell.computeEager = function (formula) {
+  var FlexiFormulaCell = arguments[1] || Cell.FlexiFormulaCell
+  var f = Cell.FlexiFormulaCell.makeComputeFormula(formula);
+  return new FlexiFormulaCell(f, true);
 }
