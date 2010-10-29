@@ -273,6 +273,12 @@ var IOCenter = (function () {
 
         status.setValueAttr(status.value.inFlightCount + 1, 'inFlightCount');
 
+        if (S.simulateDisconnect) {
+          setTimeout(function () {
+            usedOptions.error.call(usedOptions, {status: 500}, 'error');
+          }, 200);
+          return;
+        }
         op.xhr = $.ajax(usedOptions);
       }
       sendXHR(function (isOk) {
