@@ -210,9 +210,7 @@ function prepareTemplateForCell(templateName, cell) {
     prepareRenderTemplate(templateName);
 }
 
-// renderCellTemplate(cell, "something");
-// renderCellTemplate(cell, ["something_container", "foorbar"]);
-function renderCellTemplate(cell, to, valueTransformer) {
+function mkCellRenderer(to, valueTransformer) {
   var template;
 
   if (_.isArray(to)) {
@@ -234,27 +232,30 @@ function renderCellTemplate(cell, to, valueTransformer) {
     }
   }
 
-  var clearSlave = new Slave(function () {
-    prepareAreaUpdate($(toGetter()));
-  });
-  cell.undefinedSlot.subscribeWithSlave(clearSlave);
-  if (cell.value === undefined)
-    clearSlave.thunk(cell);
-
-  var renderSlave = new Slave(function (cell) {
+  return function (cell) {
     var value = cell.value;
+    if (value == undefined) {
+      return prepareAreaUpdate($(toGetter()));
+    }
+
     if (valueTransformer)
       value = valueTransformer(value);
     renderRawTemplate(toGetter(), template, value);
-  });
-  cell.changedSlot.subscribeWithSlave(renderSlave);
-  if (cell.value !== undefined)
-    renderSlave.thunk(cell);
+  }
+}
+
+// renderCellTemplate(cell, "something");
+// renderCellTemplate(cell, ["something_container", "foorbar"]);
+function renderCellTemplate(cell, to, valueTransformer) {
+  var slave = new Slave(mkCellRenderer(to, valueTransformer));
+  cell.changedSlot.subscribeWithSlave(slave);
+  cell.undefinedSlot.subscribeWithSlave(slave);
+  slave.thunk(cell);
 
   return {
     cancel: function () {
-      cell.changedSlot.unsubscribe(renderSlave);
-      cell.undefinedSlot.unsubscribe(clearSlave);
+      cell.changedSlot.unsubscribe(slave);
+      cell.undefinedSlot.unsubscribe(slave);
     }
   }
 }
