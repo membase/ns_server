@@ -196,10 +196,14 @@ code_change(_OldVsn, State, _Extra) ->
 %% API
 %%
 
+-spec active_buckets() ->
+                            [bucket_name()].
 active_buckets() ->
     [Bucket || ?MODULE_STRING "-" ++ Bucket <-
                    [atom_to_list(Name) || Name <- registered()]].
 
+-spec connected(node(), bucket_name()) ->
+                       boolean().
 connected(Node, Bucket) ->
     try gen_server:call({server(Bucket), Node}, noop) of
         ok ->
@@ -212,23 +216,33 @@ connected(Node, Bucket) ->
 
 %% @doc Delete a vbucket. Will set the vbucket to dead state if it
 %% isn't already, blocking until it successfully does so.
+-spec delete_vbucket(bucket_name(), vbucket_id()) ->
+                            ok | mc_error().
 delete_vbucket(Bucket, VBucket) ->
     gen_server:call(server(Bucket), {delete_vbucket, VBucket}, ?TIMEOUT).
 
 
+-spec delete_vbucket(node(), bucket_name(), vbucket_id()) ->
+                            ok | mc_error().
 delete_vbucket(Node, Bucket, VBucket) ->
     gen_server:call({server(Bucket), Node}, {delete_vbucket, VBucket},
                     ?TIMEOUT).
 
 
+-spec get_vbucket(node(), bucket_name(), vbucket_id()) ->
+                         {ok, vbucket_state()} | mc_error().
 get_vbucket(Node, Bucket, VBucket) ->
     gen_server:call({server(Bucket), Node}, {get_vbucket, VBucket}, ?TIMEOUT).
 
 
+-spec host_port_str() ->
+                           nonempty_string().
 host_port_str() ->
     host_port_str(node()).
 
 
+-spec host_port_str(node()) ->
+                           nonempty_string().
 host_port_str(Node) ->
     Config = ns_config:get(),
     Port = ns_config:search_node_prop(Node, Config, memcached, port),
@@ -236,14 +250,22 @@ host_port_str(Node) ->
     Host ++ ":" ++ integer_to_list(Port).
 
 
+-spec list_vbuckets(bucket_name()) ->
+                           {ok, [{vbucket_id(), vbucket_state()}]} | mc_error().
 list_vbuckets(Bucket) ->
     list_vbuckets(node(), Bucket).
 
 
+-spec list_vbuckets(node(), bucket_name()) ->
+                          {ok, [{vbucket_id(), vbucket_state()}]} | mc_error().
 list_vbuckets(Node, Bucket) ->
     gen_server:call({server(Bucket), Node}, list_vbuckets, ?TIMEOUT).
 
 
+-spec list_vbuckets_multi([node()], bucket_name()) ->
+                                 {[{node(), {ok, [{vbucket_id(),
+                                                   vbucket_state()}]}}],
+                                  [node()]}.
 list_vbuckets_multi(Nodes, Bucket) ->
     UpNodes = [node()|nodes()],
     {LiveNodes, DeadNodes} = lists:partition(
@@ -256,28 +278,41 @@ list_vbuckets_multi(Nodes, Bucket) ->
     {Replies, Zombies ++ DeadNodes}.
 
 
+-spec set_vbucket(bucket_name(), vbucket_id(), vbucket_state()) ->
+                         ok | mc_error().
 set_vbucket(Bucket, VBucket, VBState) ->
     gen_server:call(server(Bucket), {set_vbucket, VBucket, VBState}, ?TIMEOUT).
 
 
+-spec set_vbucket(node(), bucket_name(), vbucket_id(), vbucket_state()) ->
+                         ok | mc_error().
 set_vbucket(Node, Bucket, VBucket, VBState) ->
     gen_server:call({server(Bucket), Node}, {set_vbucket, VBucket, VBState},
                     ?TIMEOUT).
 
 
+-spec stats(bucket_name()) ->
+                   {ok, [{binary(), binary()}]} | mc_error().
 stats(Bucket) ->
     stats(Bucket, <<>>).
 
 
+-spec stats(bucket_name(), binary()) ->
+                   {ok, [{binary(), binary()}]} | mc_error().
 stats(Bucket, Key) ->
     gen_server:call(server(Bucket), {stats, Key}, ?TIMEOUT).
 
 
+sync_bucket_config(Bucket) ->
+    gen_server:call(server(Bucket), sync_bucket_config, ?TIMEOUT).
+
+
+-spec topkeys(bucket_name()) ->
+                     {ok, [{nonempty_string(), [{atom(), integer()}]}]} |
+                     mc_error().
 topkeys(Bucket) ->
     gen_server:call(server(Bucket), topkeys, ?TIMEOUT).
 
-sync_bucket_config(Bucket) ->
-    gen_server:call(server(Bucket), sync_bucket_config, ?TIMEOUT).
 
 
 %%
