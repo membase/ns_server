@@ -28,7 +28,7 @@
          kill_children/3,
          kill_dst_children/3,
          replicators/2,
-         set_replicas/3,
+         set_replicas/2,
          spawn_mover/4]).
 
 -export([init/1]).
@@ -70,31 +70,28 @@ kill_vbuckets(Node, Bucket, VBuckets) ->
                               end, RemainingVBuckets)
     end.
 
-set_replicas(Node, Bucket, Replicas) ->
-    GoodChildren = kill_runaway_children(Node, Bucket, Replicas),
-    %% Now filter out the replicas that still have children
-    Actions = actions(GoodChildren),
-    NeededReplicas = Replicas -- Actions,
-    Sorted = lists:keysort(2, NeededReplicas),
-    Grouped = misc:keygroup(2, Sorted),
-    lists:foreach(
-      fun ({Dst, R}) ->
-              VBuckets = [V || {V, _} <- R],
-              ?log_info(
-                 "Starting replica for vbuckets ~w on node ~p",
-                 [VBuckets, Dst]),
-              kill_vbuckets(Dst, Bucket, VBuckets),
-              lists:foreach(
-                fun (V) ->
-                        ns_memcached:set_vbucket(Dst, Bucket, V,
-                                                 replica)
-                end, VBuckets),
-              %% Make sure the command line doesn't get too long
-              lists:foreach(
-                fun (VB) ->
-                        {ok, _Pid} = start_child(Node, Bucket, VB, Dst)
-                end, split_vbuckets(VBuckets))
-      end, Grouped).
+
+set_replicas(Bucket, NodesReplicas) ->
+    LiveNodes = [node()|nodes()],
+    lists:foldl(
+      fun ({Src, R}, true) ->
+              ?log_info("Not starting replicas ~p for bucket ~p because we already started some.",
+                        [{Src, R}, Bucket]),
+              true;
+          ({Src, R}, false) ->
+              case lists:member(Src, LiveNodes) of
+                  true ->
+                      try set_replicas(Src, Bucket, R)
+                      catch
+                          E:R ->
+                              ?log_error("Unable to start replicators on ~p for bucket ~p: ~p",
+                                         [Src, Bucket, {E, R}])
+                      end;
+                  false ->
+                      false
+              end
+      end, false, NodesReplicas).
+
 
 spawn_mover(Bucket, VBucket, SrcNode, DstNode) ->
     Args = args(SrcNode, Bucket, [VBucket], DstNode, true),
@@ -206,6 +203,50 @@ server(Bucket) ->
     list_to_atom(?MODULE_STRING "-" ++ Bucket).
 
 
+%% @doc Set up replication from the given source node to a list of
+%% {VBucket, DstNode} pairs. Will silently refuse to start a new
+%% replica if backfill is still starting on a source or destination
+%% node. Returns true if it started any.
+set_replicas(SrcNode, Bucket, Replicas) ->
+    GoodChildren = kill_runaway_children(SrcNode, Bucket, Replicas),
+    %% Now filter out the replicas that still have children
+    Actions = actions(GoodChildren),
+    NeededReplicas = Replicas -- Actions,
+    case NeededReplicas of
+        [] ->
+            false;
+        _ ->
+            case ns_memcached:backfilling(SrcNode, Bucket) of
+                true ->
+                    %% Only run one backfill at a time per bucket on
+                    %% any given source node.
+                    ?log_info("Not starting replicators on node ~p for bucket ~p because backfill is still running.",
+                              [SrcNode, Bucket]),
+                    false;
+                false ->
+                    Sorted = lists:keysort(2, NeededReplicas),
+                    Grouped = misc:keygroup(2, Sorted),
+                    lists:foldl(
+                      fun ({DstNode, R}, Acc) ->
+                              VBuckets = [V || {V, _} <- R],
+                              case ns_memcached:backfilling(DstNode, Bucket) of
+                                  true ->
+                                      %% Don't start any more until
+                                      %% backfill is complete
+                                      ?log_info("Not starting replica ~p for ~p because backfill is still running.",
+                                                [{SrcNode, DstNode, VBuckets},
+                                                 Bucket]),
+                                      Acc;
+                                  false ->
+                                      start_replicas(SrcNode, Bucket, VBuckets,
+                                                     DstNode),
+                                      true
+                              end
+                      end, false, Grouped)
+            end
+    end.
+
+
 -spec start_child(atom(), nonempty_string(), [non_neg_integer(),...], atom()) ->
                          {ok, pid()}.
 start_child(Node, Bucket, VBuckets, DstNode) ->
@@ -216,3 +257,18 @@ start_child(Node, Bucket, VBuckets, DstNode) ->
                  {ns_port_server, start_link, PortServerArgs},
                  permanent, 10, worker, [ns_port_server]},
     supervisor:start_child({server(Bucket), Node}, ChildSpec).
+
+
+start_replicas(SrcNode, Bucket, VBuckets, DstNode) ->
+    ?log_info("Starting replicator for vbuckets ~w in bucket ~p from node ~p to node ~p",
+              [VBuckets, Bucket, SrcNode, DstNode]),
+    kill_vbuckets(DstNode, Bucket, VBuckets),
+    lists:foreach(
+      fun (V) ->
+              ns_memcached:set_vbucket(DstNode, Bucket, V, replica)
+      end, VBuckets),
+    %% Make sure the command line doesn't get too long
+    lists:foreach(
+      fun (VB) ->
+              {ok, _Pid} = start_child(SrcNode, Bucket, VB, DstNode)
+      end, split_vbuckets(VBuckets)).

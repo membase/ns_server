@@ -52,22 +52,7 @@ cleanup(Bucket) ->
                     NodesReplicas = lists:map(fun ({Src, R}) -> % R is the replicas for this node
                                                       {Src, [{V, Dst} || {_, Dst, V} <- R]}
                                               end, ReplicaGroups),
-                    LiveNodes = [node()|nodes()],
-                    lists:foreach(
-                      fun ({Src, R}) ->
-                              case lists:member(Src, LiveNodes) of
-                                  true ->
-                                      try ns_vbm_sup:set_replicas(
-                                            Src, Bucket, R)
-                                      catch
-                                          E:R ->
-                                              ?log_error("Unable to start replicators on ~p for bucket ~p: ~p",
-                                                         [Src, Bucket, {E, R}])
-                                      end;
-                                  false ->
-                                      ok
-                              end
-                      end, NodesReplicas);
+                    ns_vbm_sup:set_replicas(Bucket, NodesReplicas);
                 Down ->
                     ?log_error("Bucket ~p not yet ready on ~p", [Bucket, Down])
             end
@@ -84,8 +69,9 @@ state_color(dead) ->
     "color=red".
 
 
--spec node_vbuckets(non_neg_integer(), atom(), [{atom(), non_neg_integer(),
-                                                 atom()}], map()) -> iolist().
+-spec node_vbuckets(non_neg_integer(), node(), [{node(), vbucket_id(),
+                                                 vbucket_state()}], map()) ->
+                           iolist().
 node_vbuckets(I, Node, States, Map) ->
     GState = lists:keysort(1,
                [{VBucket, state_color(State)} || {N, VBucket, State} <- States,
@@ -195,7 +181,9 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                       ns_vbm_sup:kill_children(N, Bucket, [VBucket]);
                   ({_, {_, replica}})-> % This is what we expect
                       ok;
-                  ({_, {undefined, missing}}) -> % Probably fewer nodes than copies
+                  ({_, {_, missing}}) ->
+                      %% Either fewer nodes than copies or replicator
+                      %% hasn't started yet
                       ok;
                   ({{_, zombie}, _}) -> ok;
                   ({_, {_, zombie}}) -> ok;
