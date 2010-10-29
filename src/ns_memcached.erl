@@ -38,7 +38,9 @@
 -record(state, {bucket::nonempty_string(), sock::port()}).
 
 %% external API
--export([active_buckets/0, connected/2,
+-export([active_buckets/0,
+         backfilling/2,
+         connected/2,
          delete_vbucket/2, delete_vbucket/3,
          get_vbucket/3,
          host_port_str/0, host_port_str/1,
@@ -82,6 +84,23 @@ init(Bucket) ->
     gen_server:enter_loop(?MODULE, [], #state{sock=Sock, bucket=Bucket}).
 
 
+handle_call(backfilling, _From, State) ->
+    End = <<":pending_backfill">>,
+    ES = byte_size(End),
+    {ok, Reply} = mc_client_binary:stats(
+                    State#state.sock, <<"tap">>,
+                    fun (<<"eq_tapq:", K/binary>>, <<"true">>, Acc) ->
+                            S = byte_size(K) - ES,
+                            case K of
+                                <<_:S/binary, End/binary>> ->
+                                    true;
+                                _ ->
+                                    Acc
+                            end;
+                        (_, _, Acc) ->
+                            Acc
+                    end, false),
+    {reply, Reply, State};
 handle_call({delete_vbucket, VBucket}, _From, #state{sock=Sock} = State) ->
     case mc_client_binary:delete_vbucket(Sock, VBucket) of
         ok ->
@@ -212,6 +231,13 @@ connected(Node, Bucket) ->
         _:_ ->
             false
     end.
+
+
+%% @doc Returns true if backfill is running on any of the nodes for this bucket.
+-spec backfilling(node(), bucket_name()) ->
+                         boolean().
+backfilling(Node, Bucket) ->
+    gen_server:call({server(Bucket), Node}, backfilling).
 
 
 %% @doc Delete a vbucket. Will set the vbucket to dead state if it
