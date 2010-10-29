@@ -170,6 +170,8 @@
       var predicateValue;
       if (stopPredicate && (predicateValue = stopPredicate()))
         return predicateValue;
+      if (!stopPredicate && this.events.isEmpty())
+        return;
       i++;
     }
   }
