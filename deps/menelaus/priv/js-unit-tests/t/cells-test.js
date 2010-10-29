@@ -339,3 +339,65 @@ CellsTest.prototype.testDoubleFutureStartBug = function () {
   assertEquals(3, cell.value);
   assertEquals(4, dependentCell.value);
 }
+
+
+CellsTest.prototype.testCompute = function () {
+  var cell1 = new Cell();
+  cell1.setValue(1);
+  var cell2 = new Cell()
+  cell2.setValue(2);
+
+  var cell3 = new Cell();
+  cell3.setValue('cell1');
+
+  cell1.name = 'cell1';
+  cell2.name = 'cell2';
+  cell3.name = 'cell3';
+
+  var computations = 0;
+
+  var switchedCell = Cell.compute(function (v) {
+    computations++;
+    switch (v(cell3)) {
+    case 'cell1':
+      return v(cell1);
+    case 'cell2':
+      return v(cell2);
+    }
+  });
+
+  Clock.tickFarAway();
+
+  assertEquals(1, switchedCell.value);
+  assertEquals(1, computations);
+
+  cell1.setValue('newCell1');
+  Clock.tickFarAway()
+
+  assertEquals('newCell1', switchedCell.value);
+  assertEquals(2, computations);
+
+  cell2.setValue('newCell2');
+  Clock.tickFarAway();
+
+  assertEquals('newCell1', switchedCell.value);
+  assertEquals(2, computations);
+
+  cell3.setValue('unknown');
+  Clock.tickFarAway();
+
+  assertEquals(undefined, switchedCell.value);
+  assertEquals(3, computations);
+
+  cell1.setValue('newerCell1');
+  Clock.tickFarAway();
+
+  assertEquals(undefined, switchedCell.value);
+  assertEquals(3, computations);
+
+  cell3.setValue('cell2');
+  Clock.tickFarAway();
+
+  assertEquals('newCell2', switchedCell.value);
+  assertEquals(4, computations);
+}
