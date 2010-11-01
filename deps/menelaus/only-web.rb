@@ -2,7 +2,7 @@
 
 require 'rubygems'
 require 'sinatra'
-require 'active_support'
+require 'active_support/core_ext'
 require 'pp'
 
 Dir.chdir(File.dirname($0))
