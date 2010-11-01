@@ -123,12 +123,11 @@ var AlertsSection = {
       return (mode == "alerts" || mode == "log") ? true : undefined;
     }).setSources({mode: DAO.cells.mode});
 
-    this.alerts = new Cell(function (active) {
+    this.alerts = Cell.mkCaching(function (active) {
       var value = this.self.value;
-      var params = {url: "/alerts"};
-      return future.get(params);
-    }).setSources({active: this.active});
-    this.alerts.keepValueDuringAsync = true;
+      return future.get({url: "/alerts", stdErrorMarker: true});
+    }, {active: this.active});
+
     prepareTemplateForCell("alert_list", this.alerts);
     this.alerts.subscribe($m(this, 'renderAlertsList'));
     this.alerts.subscribe(function (cell) {
@@ -145,9 +144,10 @@ var AlertsSection = {
       SettingsSection.advancedSettings.subscribe($m(AlertsSection, 'updateAlertsDestination'));
     });
 
-    this.logs = new Cell(function (active) {
-      return future.get({url: "/logs"}, undefined, this.self.value);
-    }).setSources({active: this.active});
+    this.logs = Cell.mkCaching(function (active) {
+      return future.get({url: "/logs", stdErrorMarker: true},
+                        undefined, this.self.value);
+    }, {active: this.active});
     this.logs.subscribe(function (cell) {
       cell.recalculateAt((new Date()).valueOf() + 30000);
     });

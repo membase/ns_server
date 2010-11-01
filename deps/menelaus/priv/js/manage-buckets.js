@@ -449,6 +449,11 @@ var BucketsSection = {
     });
 
     var bucketsListTransformer = function (values) {
+      console.log("bucketsListTransformer is called");
+      if (values === Cell.STANDARD_ERROR_MARK) {
+        return values;
+      }
+
       var storageTotals = poolDetailsValue.storageTotals
 
       if (!storageTotals || !storageTotals.ram) {
@@ -508,9 +513,11 @@ var BucketsSection = {
       });
       return values;
     }
-    cells.detailedBuckets = new Cell(function (pageURI) {
-      return future.get({url: pageURI}, bucketsListTransformer, this.self.value);
-    }).setSources({pageURI: cells.detailsPageURI});
+    cells.detailedBuckets = Cell.mkCaching(function (pageURI) {
+      console.log("loading detailed buckets")
+      return future.get({url: pageURI, stdErrorMarker: true},
+                        bucketsListTransformer);
+    }, {pageURI: cells.detailsPageURI});
 
     self.settingsWidget = new MultiDrawersWidget({
       hashFragmentParam: "buckets",

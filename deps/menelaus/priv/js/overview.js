@@ -136,12 +136,12 @@ var OverviewSection = {
       mode: DAO.cells.mode
     });
 
-    this.statsCell = new Cell(function (arg) {
-      return future.get({url: '/pools/default/overviewStats', ignoreErrors: true});
+    this.statsCell = Cell.mkCaching(function (arg) {
+      return future.get({url: '/pools/default/overviewStats',
+                         stdErrorMarker: true});
     }, {
       arg: this.statsCellArg
     });
-    this.statsCell.keepValueDuringAsync = true;
 
     this.statsCell.subscribe(function (cell) {
       var ts = cell.value.timestamp;

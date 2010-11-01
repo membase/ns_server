@@ -224,15 +224,16 @@ var DAO = {
     mode: this.mode
   });
 
-  this.currentPoolDetailsCell = new Cell(function (poolList, pushTimeout) {
+  this.currentPoolDetailsCell = Cell.mkCaching(function (poolList, pushTimeout) {
     var url = poolList[0].uri;
     function poolDetailsValueTransformer(data) {
       // we clear pool's name to display empty name in analytics
       data.name = '';
       return data;
     }
-    return future.getPush({url: url}, poolDetailsValueTransformer, this.self.value, pushTimeout);
-  }).setSources({
+    return future.getPush({url: url, stdErrorMarker: true},
+                          poolDetailsValueTransformer, this.self.value, pushTimeout);
+  }, {
     poolList: this.poolList,
     pushTimeout: poolDetailsPushTimeoutCell
   });

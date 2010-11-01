@@ -218,6 +218,7 @@ var ServersSection = {
         self.rebalanceProgressIsInteresting.setValue(true);
     });
 
+    // TODO: should we ignore errors here ?
     this.rebalanceProgress = new Cell(function (interesting, poolDetails) {
       if (!interesting)
         return;

@@ -59,14 +59,14 @@ var SamplesRestorer = mkClass({
     var bucket = BucketsSection.findBucket(this.bucketURL);
     if (bucket)
       return bucket;
-    return future.get({url: this.bucketURL});
-  }).setSources({bucketURL: statsBucketURL,
-                 poolDetails: this.currentPoolDetailsCell,
-                 mode: this.mode});
+    return future.get({url: this.bucketURL, stdErrorMarker: true});
+  }, {bucketURL: statsBucketURL,
+      poolDetails: this.currentPoolDetailsCell,
+      mode: this.mode});
 
   var StatsArgsCell = new Cell(function (target) {
     return {url: target.stats.uri};
-  }).setSources({target: targetCell});
+  }, {target: targetCell});
 
   var statsOptionsCell = new Cell();
   statsOptionsCell.setValue({nonQ: ['keysInterval', 'nonQ'], resampleForUI: '1'});
@@ -79,23 +79,23 @@ var SamplesRestorer = mkClass({
 
   var samplesRestorerCell = new Cell(function (target, options) {
     return new SamplesRestorer(target.stats.uri, options);
-  }).setSources({target: targetCell, options: statsOptionsCell});
+  }, {target: targetCell, options: statsOptionsCell});
 
-  var statsCell = new Cell(function (samplesRestorer) {
+  var statsCell = Cell.mkCaching(function (samplesRestorer) {
     return future.get({
       url: samplesRestorer.url,
-      ignoreErrors: true,
+      stdErrorMarker: true,
       data: samplesRestorer.getRequestData()
     }, samplesRestorer.valueTransformer);
-  }).setSources({samplesRestorer: samplesRestorerCell,
-                 options: statsOptionsCell,
-                 target: targetCell});
-  statsCell.keepValueDuringAsync = true;
+  },{samplesRestorer: samplesRestorerCell,
+     options: statsOptionsCell,
+     target: targetCell});
 
-  statsCell.setRecalculateTime = function () {
+  statsCell.target.setRecalculateTime = function () {
     var at = this.context.samplesRestorer.value.nextSampleTime();
     this.recalculateAt(at);
   }
+  statsCell.setRecalculateTime = $m(statsCell.target, 'setRecalculateTime');
 
   _.extend(DAO.cells, {
     stats: statsCell,
