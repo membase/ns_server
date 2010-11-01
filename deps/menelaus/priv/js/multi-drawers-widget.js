@@ -102,6 +102,8 @@ var MultiDrawersWidget = mkClass({
         });
 
         var interested = Cell.compute(function (v) {
+          if (v.need(options.listCell.ensureMetaCell()).stale)
+            return false;
           return _.include(v(openedNamesCell) || [], key);
         });
 
