@@ -117,6 +117,9 @@ var Cell = mkClass({
     this.recalculate();
     return this;
   },
+  getSourceCells: function () {
+    return this.sources;
+  },
   mkEffectiveFormula: function () {
     var argumentSourceNames = this.argumentSourceNames;
     var formula = this.formula;

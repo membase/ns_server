@@ -117,6 +117,14 @@ Cell.FlexiFormulaCell = mkClass(Cell, {
   },
   mkFormulaContext: function () {
     return this.formulaContext;
+  },
+  getSourceCells: function () {
+    var rv = [];
+    var sources = this.currentSources;
+    for (var id in sources) {
+      rv.push(sources[id][0]);
+    }
+    return rv;
   }
 });
 
