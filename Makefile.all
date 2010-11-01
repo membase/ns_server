@@ -287,7 +287,6 @@ $(BUILDPREFIX)/lib/bucket_engine.so: bucket_engine.stamp \
 	$(MAKE) EXE=$(EXE) BUILDPREFIX=$(BUILDPREFIX) GITBASE=$(GITBASE) \
          COMPONENT=bucket_engine \
          COMPONENT_OUT=bucket_engine.la \
-         COMPONENT_AUTOGEN=./autogen.sh \
          COMPONENT_CONFIGURE_FLAGS="--with-memcached=../memcached \
                                     $(BUCKET_ENGINE_CONFIGURE_FLAGS)" \
          bucket_engine/bucket_engine.la
