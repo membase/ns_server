@@ -19,6 +19,7 @@ var Slave = mkClass({
 var CallbackSlot = mkClass({
   initialize: function () {
     this.slaves = [];
+    this.broadcasting = 0;
   },
   subscribeWithSlave: function (thunkOrSlave) {
     var slave;
@@ -36,20 +37,25 @@ var CallbackSlot = mkClass({
     return this.subscribeWithSlave(thunk).nMoreTimes(1);
   },
   broadcast: function (data) {
-    var oldSlaves = this.slaves;
-    var newSlaves = this.slaves = [];
-    _.each(oldSlaves, function (slave) {
+    this.broadcasting++;
+    _.each(this.slaves, function (slave) {
+      if (slave.dead)
+        return;
       try {
         slave.thunk(data);
       } catch (e) {
         console.log("got exception in CallbackSlot#broadcast", e, "for slave thunk", slave.thunk);
+        slave.die();
         _.defer(function () {throw e;});
       }
-      if (!slave.dead)
-        newSlaves.push(slave);
     });
-    if (oldSlaves.length && !newSlaves.length)
-      this.__demandChanged(false);
+    this.broadcasting--;
+    if (!this.broadcasting) {
+      var oldLength = this.slaves.length;
+      this.slaves = _.reject(this.slaves, function (slave) {return slave.dead;});
+      if (oldLength && !this.slaves.length)
+        this.__demandChanged(false);
+    }
   },
   unsubscribeCallback: function (thunk) {
     var slave = _.detect(this.slaves, function (candidate) {
@@ -61,6 +67,8 @@ var CallbackSlot = mkClass({
   },
   unsubscribe: function (slave) {
     slave.die();
+    if (this.broadcasting)
+      return;
     var index = $.inArray(slave, this.slaves);
     if (index >= 0) {
       this.slaves.splice(index, 1);
