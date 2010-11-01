@@ -189,13 +189,13 @@ var MultiDrawersWidget = mkClass({
           return !cell.interested.value;
         },
         valueTransformer: valueTransformer
-      });
+      }, detailsCell);
 
       // this makes sure we render when any of interesting cells change
       var s = Cell.compute(function (v) {
         return [v(detailsCell), v(detailsCell.interested)];
       }).subscribeValue(function (array) {
-        renderer(detailsCell);
+        renderer();
       });
 
       subscriptions.push(s);

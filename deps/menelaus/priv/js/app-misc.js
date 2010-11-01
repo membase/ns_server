@@ -210,7 +210,7 @@ function prepareTemplateForCell(templateName, cell) {
     prepareRenderTemplate(templateName);
 }
 
-function mkCellRenderer(to, options) {
+function mkCellRenderer(to, options, cell) {
   var template;
 
   if (_.isArray(to)) {
@@ -234,7 +234,7 @@ function mkCellRenderer(to, options) {
 
   options = options || {};
 
-  return function (cell) {
+  return function () {
     if (options.hideIf) {
       if (options.hideIf(cell)) {
         $(toGetter()).hide();
@@ -265,15 +265,27 @@ function mkCellRenderer(to, options) {
 // renderCellTemplate(cell, "something");
 // renderCellTemplate(cell, ["something_container", "foorbar"]);
 function renderCellTemplate(cell, to, options) {
-  var slave = new Slave(mkCellRenderer(to, options));
+  var slave = new Slave(mkCellRenderer(to, options, cell));
   cell.changedSlot.subscribeWithSlave(slave);
   cell.undefinedSlot.subscribeWithSlave(slave);
   slave.thunk(cell);
+
+  var extraCells = (options || {}).extraCells || [];
+
+  _.each(extraCells, function (cell) {
+    cell.changedSlot.subscribeWithSlave(slave);
+    cell.undefinedSlot.subscribeWithSlave(slave);
+  });
 
   return {
     cancel: function () {
       cell.changedSlot.unsubscribe(slave);
       cell.undefinedSlot.unsubscribe(slave);
+
+      _.each(extraCells, function (cell) {
+        cell.changedSlot.unsubscribe(slave);
+        cell.undefinedSlot.unsubscribe(slave);
+      });
     }
   }
 }
