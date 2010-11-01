@@ -71,11 +71,11 @@ future.get = function (ajaxOptions, valueTransformer, nowValue, futureWrapper) {
 
   function initiateXHR(dataCallback) {
     var opts = {dataType: 'json',
-                prepareReGet: function (ops) {
-                  if (options.errorMarker) {
+                prepareReGet: function (opts) {
+                  if (opts.errorMarker) {
                     // if we have error marker pass it to data
                     // callback now to mark error
-                    if (!dataCallback.continuing(options.errorMarker)) {
+                    if (!dataCallback.continuing(opts.errorMarker)) {
                       // if we were cancelled, cancel IOCenter
                       // operation
                       operation.cancel();
@@ -156,10 +156,10 @@ future.getPush = function (ajaxOptions, valueTransformer, nowValue, waitChange) 
       options.timeout = 30000;
     }
     options.prepareReGet = function (opt) {
-      if (options.errorMarker) {
+      if (opt.errorMarker) {
         // if we have error marker pass it to data callback now to
         // mark error
-        if (!dataCallback.continuing(options.errorMarker)) {
+        if (!dataCallback.continuing(opt.errorMarker)) {
           // if we were cancelled, cancel IOCenter operation
           operation.cancel();
           return;
@@ -300,6 +300,10 @@ var IOCenter = (function () {
     },
     performGet: function (options) {
       var usedOptions = _.clone(options);
+
+      if (usedOptions.stdErrorMarker) {
+        usedOptions.errorMarker = Cell.STANDARD_ERROR_MARK;
+      }
 
       usedOptions.error = gotResponse;
       usedOptions.success = gotResponse;
