@@ -251,6 +251,11 @@ function mkCellRenderer(to, options) {
     if (options.valueTransformer)
       value = (options.valueTransformer)(value);
 
+    if (value === cell.value) {
+      value = _.clone(value);
+    }
+    value.__meta = cell.getMetaValue();
+
     if (options.beforeRendering)
       (options.beforeRendering)(cell);
     renderRawTemplate(toGetter(), template, value);
