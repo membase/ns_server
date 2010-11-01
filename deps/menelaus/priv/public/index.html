@@ -509,11 +509,11 @@
 
   <div id="buckets" style="display:none">
     <!-- shadow box -->
-    <h1>Data Buckets</h1>
+    <h1>Data Buckets</h1><span class="staleness-notice">WARNING: this data is stale because of communication problem</span>
     <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
-    <div class="darker_block">
-        <div class="pad_10 right buckets_action_bar">
-                <button class="button_200 create-bucket-button">Create New Data Bucket</button>
+    <div class="darker_block" id="manage_buckets_top_bar">
+        <div class="pad_10 right buckets_action_bar clearfix">
+            <button class="button_200 create-bucket-button">Create New Data Bucket</button>
         </div>
     </div>
     <div id="bucket_list_container">
@@ -538,7 +538,7 @@
             <tr>
 				<td colspan="6" class="bucket_info">
 				  <table><tr>
-					  <td><a class="bucket_name" href="#visitBucket={%=h(this.name)%}">{%= h(this.name) %}</a></td>
+					  <td class="bucket_name">{% if (rows.__meta.stale) { %}{%= h(this.name) %}{% } else { %}<a href="#visitBucket={%=h(this.name)%}">{%= h(this.name) %}</a>{% } %}</td>
 		              <td>{%= h(this.bucketTypeName) %}</td>
 		              <td>{%= V.count(this.serversCount, 'server') %}</td>
 		              <td>{%= V.formatQuantity(this.basicStats.memUsed) %}/{%= V.formatQuantity(this.quota.ram) %}</td>

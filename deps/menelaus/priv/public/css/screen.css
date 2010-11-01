@@ -828,7 +828,7 @@ ul.tabs .alert_num_display .alert_num {display:block;}
 .buckets_tab tr:first-child th:first-child {/*padding:0 0 0 56px;*padding-right:25px;display:block;*/text-align:left;text-indent:56px;white-space:nowrap;}
 .buckets_tab tr:first-child th i {font-style:normal;position:relative;}
 .buckets_tab tr:first-child th.last {border-right:1px solid #d9dce0;}
-.bucket_name {font-weight:bolder;}
+.bucket_name {font-weight:bolder;color:#0095D6;}
 .buckets_tab .settings-placeholder td .pad {padding:10px 0 10px 56px; background:none;}
 .buckets_tab .settings-placeholder td > .pad {width:685px;overflow:hidden;}
 .buckets_tab .settings-placeholder td .pad .pad {padding:10px 10px 10px 4px !important;min-height:52px;}
@@ -987,3 +987,7 @@ text-decoration:none;margin-right:16px;}
 
 .io-error-notice-wrapper {position: fixed; top: 0px; width: 100%; text-align: center; z-index: 9999; padding: 3px 0;}
 .io-error-notice { background-color: #FFF1A8; font-size: 14px; padding: 3px 10px;}
+
+.staleness-notice { display: none; color: red; }
+#buckets .staleness-notice { margin-left: 6px; }
+#buckets > h1 { display: inline-block; }

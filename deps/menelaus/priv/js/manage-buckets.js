@@ -537,14 +537,22 @@ var BucketsSection = {
       listCell: cells.detailedBuckets
     });
 
-    self.settingsWidget.detailsMap.subscribeValue(function (value) {
-      console.log("settingsWidget.modelCell.value = ", value);
+    var stalenessCell = Cell.compute(function (v) {
+      return v.need(cells.detailedBuckets.ensureMetaCell()).stale;
     });
 
     renderCellTemplate(cells.detailedBuckets, 'bucket_list', {
       beforeRendering: function () {
         self.settingsWidget.prepareDrawing();
-      }
+      }, extraCells: [stalenessCell]
+    });
+
+    stalenessCell.subscribeValue(function (staleness) {
+      if (staleness === undefined)
+        return;
+      var notice = $('#buckets .staleness-notice');
+      notice[staleness ? 'show' : 'hide']();
+      setBoolAttribute($('#manage_buckets_top_bar .create-bucket-button'), 'disabled', staleness);
     });
 
     $('.create-bucket-button').live('click', function (e) {
@@ -592,7 +600,8 @@ var BucketsSection = {
     DAO.cells.currentPoolDetailsCell.getValue(function () {
       BucketsSection.withBucket(uri, function (bucketDetails) {
         BucketsSection.currentlyShownBucket = bucketDetails;
-        var initValues = _.extend({}, bucketDetails, bucketDetails.settingsCell.value);
+        var fullDetails = BucketsSection.settingsWidget.detailsMap.value.get(bucketDetails);
+        var initValues = _.extend({}, bucketDetails, fullDetails && fullDetails.value);
         var dialog = new BucketDetailsDialog(initValues, false);
         dialog.startDialog();
       });
