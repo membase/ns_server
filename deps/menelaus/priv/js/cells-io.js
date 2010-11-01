@@ -1,3 +1,60 @@
+Cell.prototype.propagateMeta = function (context, value) {
+  var stale = false;
+  var sourceCells = this.getSourceCells();
+  for (var i = sourceCells.length - 1; i >= 0; i--) {
+    var cell = sourceCells[i];
+    var metaValue = cell.getMetaValue();
+    if (metaValue.stale) {
+      stale = true;
+      break;
+    }
+  }
+  this.setMetaAttr('stale', stale);
+}
+
+Cell.STANDARD_ERROR_MARK = {"this is error marker":true};
+
+Cell.cacheResponse = function (cell) {
+  var cachingCell = new Cell(function () {
+    var newValue = cell.value;
+    var self = this.self;
+    var oldValue = self.value;
+    if (newValue === undefined) {
+      if (oldValue === undefined)
+        return oldValue;
+      newValue = oldValue;
+      self.setMetaAttr('loading', true);
+      return newValue;
+    }
+    self.setMetaAttr('loading', false);
+    if (newValue === Cell.STANDARD_ERROR_MARK) {
+      newValue = (oldValue == null) ? oldValue : _.clone(oldValue);
+      console.log("Making cell stale");
+      self.setMetaAttr('stale', true);
+    } else {
+      self.setMetaAttr('stale', false);
+    }
+    return newValue;
+  }, {
+    src: cell
+  });
+
+  cachingCell.target = cell;
+  cachingCell.metaCell = cell.ensureMetaCell();
+  cachingCell.propagateMeta = null;
+  // delegate this methods
+  _.each(("recalculate recalculateAt recalculateAfterDelay invalidate").split(' '), function (methodName) {
+    cachingCell[methodName] = $m(cell, methodName);
+  });
+
+  return cachingCell;
+}
+
+Cell.mkCaching = function (formula, sources) {
+  var cell = new Cell(formula, sources);
+  return Cell.cacheResponse(cell);
+}
+
 future.get = function (ajaxOptions, valueTransformer, nowValue, futureWrapper) {
   // var aborted = false;
   var options = {
