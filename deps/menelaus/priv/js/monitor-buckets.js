@@ -24,6 +24,11 @@ var MonitorBucketsSection = {
     membaseBuckets.subscribeValue(function (list) {
       $('#monitor_buckets .membase-buckets-subsection')[!list || list.length ? 'show' : 'hide']();
     });
+
+    BucketsSection.cells.detailedBuckets.subscribeValue(function (list) {
+      var empty = list && list.length == 0;
+      $('#monitor_buckets .no-buckets-subsection')[empty ? 'show' : 'hide']();
+    });
   },
   onEnter: function () {
     BucketsSection.refreshBuckets();
