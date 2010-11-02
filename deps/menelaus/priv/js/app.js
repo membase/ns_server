@@ -191,7 +191,7 @@ var ThePage = {
              buckets: BucketsSection,
              alerts: AlertsSection,
              log: AlertsSection,
-             settings: SettingsSection,
+             // settings: SettingsSection,
              monitor_buckets: MonitorBucketsSection,
              monitor_servers: OverviewSection},
 
