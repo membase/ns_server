@@ -50,12 +50,7 @@ var CallbackSlot = mkClass({
       }
     });
     this.broadcasting--;
-    if (!this.broadcasting) {
-      var oldLength = this.slaves.length;
-      this.slaves = _.reject(this.slaves, function (slave) {return slave.dead;});
-      if (oldLength && !this.slaves.length)
-        this.__demandChanged(false);
-    }
+    this.cleanup();
   },
   unsubscribeCallback: function (thunk) {
     var slave = _.detect(this.slaves, function (candidate) {
@@ -75,6 +70,14 @@ var CallbackSlot = mkClass({
       if (!this.slaves.length)
         this.__demandChanged(false);
     }
+  },
+  cleanup: function () {
+    if (this.broadcasting)
+      return;
+    var oldLength = this.slaves.length;
+    this.slaves = _.reject(this.slaves, function (slave) {return slave.dead;});
+    if (oldLength && !this.slaves.length)
+      this.__demandChanged(false);
   },
   __demandChanged: function (haveDemand) {
   }
