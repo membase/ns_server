@@ -780,6 +780,7 @@ ul.tabs .alert_num_display .alert_num {display:block;}
 .failed_over .failed_over_message {display:block;}
 
 .servers_list .serverName {display:inline-block; height:60px; padding:0 0 0 45px; background:url(../images/server_icon.png) 0 10px no-repeat; font-size:12px; font-weight:bolder; float:left;}
+.servers_list .serverName { color: #0095D6; }
 .servers_list .server_down .serverName {color:#26BBFF;}
 
 #servers .gong_rb {margin-top:10px 0 10px; padding-left:3px;}

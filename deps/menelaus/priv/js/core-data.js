@@ -249,8 +249,13 @@ var DAO = {
   var allNodes = []; // all known nodes
 
   var cell = DAO.cells.serversCell = new Cell(formula, {
-    details: DAO.cells.currentPoolDetailsCell
+    details: DAO.cells.currentPoolDetailsCell,
+    detailsAreStale: (function (metaCell) {
+      return Cell.compute(function (v) {return v.need(metaCell).stale;});
+    })(DAO.cells.currentPoolDetailsCell.ensureMetaCell())
   });
+  cell.propagateMeta = null;
+  cell.metaCell = DAO.cells.currentPoolDetailsCell.ensureMetaCell();
 
   cell.cancelPendingEject = cancelPendingEject;
 
@@ -260,7 +265,7 @@ var DAO = {
     cell.invalidate();
   }
 
-  function formula(details) {
+  function formula(details, detailsAreStale) {
     var self = this;
 
     var pending = [];
@@ -308,9 +313,9 @@ var DAO = {
     }
 
     _.each(allNodes, function (n) {
-      n.ejectPossible = !n.pendingEject;
-      n.failoverPossible = (n.clusterMembership != 'inactiveFailed');
-      n.reAddPossible = (n.clusterMembership == 'inactiveFailed' && n.status == 'healthy');
+      n.ejectPossible = !detailsAreStale && !n.pendingEject;
+      n.failoverPossible = !detailsAreStale && (n.clusterMembership != 'inactiveFailed');
+      n.reAddPossible = !detailsAreStale && (n.clusterMembership == 'inactiveFailed' && n.status == 'healthy');
 
       var nodeClass = ''
       if (n.clusterMembership == 'inactiveFailed') {

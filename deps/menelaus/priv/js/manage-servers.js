@@ -62,13 +62,28 @@ var ServersSection = {
       return;
 
     if (rebalancing) {
-      renderTemplate('manage_server_list', [], $i('pending_server_list_container'));
+      renderTemplate('manage_server_list', {rows:[], expandingAllowed: false}, $i('pending_server_list_container'));
       return this.renderRebalance(details);
     }
 
     if (active.length) {
-      renderTemplate('manage_server_list', active, $i('active_server_list_container'));
-      renderTemplate('manage_server_list', pending, $i('pending_server_list_container'));
+      renderTemplate('manage_server_list', {
+        rows: active,
+        expandingAllowed: !this.serversCell.getMetaValue().stale
+      }, $i('active_server_list_container'));
+      renderTemplate('manage_server_list', {
+        rows: pending,
+        expandingAllowed: false
+      }, $i('pending_server_list_container'));
+    }
+
+    if (this.serversCell.getMetaValue().stale) {
+      $('#servers .staleness-notice').show();
+      $('#servers').find('.add_button, .rebalance_button').hide();
+      $('#active_server_list_container, #pending_server_list_container').find('.re_add_button, .eject_server, .failover_server, .remove_from_list').addClass('disabled');
+    } else {
+      $('#servers .staleness-notice').hide();
+      $('#servers').find('.add_button, .rebalance_button').show();
     }
 
     $('#active_server_list_container .last-active').find('.eject_server').addClass('disabled').end()
@@ -182,6 +197,8 @@ var ServersSection = {
     });
 
     self.serversCell.subscribeAny($m(self, "refreshEverything"));
+    self.serversCell.ensureMetaCell().subscribeAny($m(self, "refreshEverything"));
+
     prepareTemplateForCell('active_server_list', self.serversCell);
     prepareTemplateForCell('pending_server_list', self.serversCell);
 

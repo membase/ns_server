@@ -231,6 +231,7 @@
         <div class="content">
           <!-- shadow box -->
             <div class="header_2 servers_header">
+            <span class="staleness-notice">WARNING: this data is stale because of communication problem</span>
             <a class="add_button btn_1"><span>Add Server</span></a>
             <a class="rebalance_button btn_1"><span>Rebalance</span></a>
             <a class="stop_rebalance_button btn_1"><span>Stop Rebalance</span></a>
@@ -264,13 +265,15 @@
     <!-- {% _.each(rows, function (s) { %} -->
       <!-- {% if (s.clusterMembership == 'inactiveAdded') { %}-->
       <li class="server_row pending_add {%= s.nodeClass %}">{%= V.setData('server', s) %}
-        <a class="serverName" href="#openServer={%= s.otpNode %}">{%= V.stripPort(s.hostname) %}</a>
+        {% if (expandingAllowed) { %}<a class="serverName" href="#openServer={%= h(s.otpNode) %}">{%= V.stripPort(s.hostname) %}</a>
+        {% } else { %}<span class="serverName">{%= V.stripPort(s.hostname) %}</span>{% } %}
         <a href="#" class="btn_cancel eject_server">Cancel</a>
         <span class="pending_add_message">Pending Add</span>
       </li>
       <!-- {% } else if (s.pendingEject) { %} -->
       <li class="server_row pending_removal {%= s.nodeClass %}">{%= V.setData('server', s) %}
-        <a class="serverName" href="#openServer={%= s.otpNode %}">{%= V.stripPort(s.hostname) %}</a>
+        {% if (expandingAllowed) { %}<a class="serverName" href="#openServer={%= h(s.otpNode) %}">{%= V.stripPort(s.hostname) %}</a>
+        {% } else { %}<span class="serverName">{%= V.stripPort(s.hostname) %}</span>{% } %}
         <a href="#" class="btn_cancel remove_from_list">Cancel</a>
         <span class="pending_removal_message">Pending Removal</span>
       </li>
@@ -282,10 +285,13 @@
         </li>
         <!-- {% } %} -->
       <li class="server_row {%= s.nodeClass %}">{%= V.setData('server', s) %}
-        <a href="#openServer={%= h(s.otpNode) %}" class="serverName">{%= V.stripPort(s.hostname) %}</a><a class="list_button btn_width_2 eject_server"><span>Remove Server</span></a><a class="list_button btn_width_1 failover_server"><span>Fail Over</span></a><span class="failed_over_message">Failed Over: Pending Removal</span>
+        {% if (expandingAllowed) { %}<a href="#openServer={%= h(s.otpNode) %}" class="serverName">{%= V.stripPort(s.hostname) %}</a>{%
+        } else { %}<span class="serverName">{%= V.stripPort(s.hostname) %}</span>{% } %}<a class="list_button btn_width_2 eject_server"><span>Remove Server</span></a><a class="list_button btn_width_1 failover_server"><span>Fail Over</span></a><span class="failed_over_message">Failed Over: Pending Removal</span>
       </li>
       <!-- {% } %} -->
+      <!-- {% if (expandingAllowed) { %} -->
       <li class="settings-placeholder" style="display:none;">{%= ServersSection.renderServerDetails(s) %}</li>
+      <!-- {% } %} -->
     <!-- {% }); %} -->
     </ul>
   </script>
