@@ -1,15 +1,48 @@
-Cell.prototype.propagateMeta = function (context, value) {
-  var stale = false;
+Cell.prototype.propagateMeta = function () {
+  var metaCell = this.ensureMetaCell();
+
+  if (metaCell.cancelRefresh) {
+    metaCell.cancelRefresh();
+  }
+
+  var staleMetaCell;
   var sourceCells = this.getSourceCells();
+
   for (var i = sourceCells.length - 1; i >= 0; i--) {
-    var cell = sourceCells[i];
-    var metaValue = cell.getMetaValue();
+    var cell = sourceCells[i].metaCell;
+    if (!cell)
+      continue;
+    var metaValue = cell.value;
     if (metaValue.stale) {
-      stale = true;
+      staleMetaCell = cell;
       break;
     }
   }
-  this.setMetaAttr('stale', stale);
+
+  metaCell.setValueAttr(!!staleMetaCell, 'stale');
+
+  var refreshSlave = new Slave($m(this, 'propagateMeta'));
+
+  if (staleMetaCell) {
+    staleMetaCell.changedSlot.subscribeWithSlave(refreshSlave);
+  } else {
+    for (var i = sourceCells.length - 1; i >= 0; i--) {
+      var cell = sourceCells[i].metaCell;
+      if (!cell)
+        continue;
+      cell.changedSlot.subscribeWithSlave(refreshSlave);
+    }
+  }
+
+  metaCell.cancelRefresh = function () {
+    refreshSlave.die();
+    for (var i = sourceCells.length - 1; i >= 0; i--) {
+      var cell = sourceCells[i].metaCell;
+      if (!cell)
+        continue;
+      cell.changedSlot.cleanup();
+    }
+  }
 }
 
 Cell.STANDARD_ERROR_MARK = {"this is error marker":true};
@@ -28,8 +61,7 @@ Cell.cacheResponse = function (cell) {
     }
     self.setMetaAttr('loading', false);
     if (newValue === Cell.STANDARD_ERROR_MARK) {
-      newValue = (oldValue == null) ? oldValue : _.clone(oldValue);
-      console.log("Making cell stale");
+      newValue = oldValue;
       self.setMetaAttr('stale', true);
     } else {
       self.setMetaAttr('stale', false);
@@ -40,7 +72,7 @@ Cell.cacheResponse = function (cell) {
   });
 
   cachingCell.target = cell;
-  cachingCell.metaCell = cell.ensureMetaCell();
+  cachingCell.ensureMetaCell();
   cachingCell.propagateMeta = null;
   // delegate this methods
   _.each(("recalculate recalculateAt recalculateAfterDelay invalidate").split(' '), function (methodName) {
