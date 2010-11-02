@@ -348,9 +348,9 @@ $(BUILDPREFIX)/include/libvbucket: libvbucket.stamp \
 $(BUILDPREFIX)/bin/membase: membase-cli.stamp
 	$(MAKE) EXE=$(EXE) BUILDPREFIX=$(BUILDPREFIX) GITBASE=$(GITBASE) \
          COMPONENT=membase-cli \
-         membase-cli/.git/hooks/commit-msg
+         membase-cli/Makefile
 	rm -f $(BUILDPREFIX)/bin/membase
-	(cd membase-cli && $(MAKE) install PREFIX=${BUILDPREFIX}/bin)
+	(cd membase-cli && $(MAKE) install)
 
 $(BUILDPREFIX)/bin/memcached$(EXE): memcached.stamp
 	$(MAKE) EXE=$(EXE) BUILDPREFIX=$(BUILDPREFIX) GITBASE=$(GITBASE) \
