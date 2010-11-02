@@ -625,17 +625,10 @@
 
   <div id="alerts" style="display:none">
     <!-- Shadow box -->
-    <span class="block nav float_right configure_view"><a href="/diag" target="_blank">Generate Diagnostic Report</a></span>
-    <h1><!-- Alerts / -->Log</h1>
+    <span class="block nav float_right configure_view generate_diag_link"><a class="generate_diag_link" href="/diag" target="_blank">Generate Diagnostic Report</a></span>
+    <span class="staleness-notice">WARNING: this data is stale because of communication problem</span>
+    <h1>Log</h1>
     <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
-        <div class="darker_block with_devider" style="display:none;">
-            <div class="pat_10">
-                <ul class="tabs">
-                  <li><a href="#">Log</a></li>
-                  <li><a href="#">Current Alerts</a></li>
-                </ul>
-            </div>
-        </div>
         <div class="panes">
           <div class="tab_holder">
             <div id="alert_logs_container"></div>
@@ -657,29 +650,6 @@
               </tr>
               <!-- {% }); %} -->
             </table>
-            </div>
-          </div>
-          <div class="pad_10" style="display:none;">
-            <div id="alerts_list" class="alerts_list">
-              <p class="pab_10">Alerts are being sent to: <span id="alerts_email_setting" class="bolder"></span>
-                &nbsp;
-                <a href='javascript:AlertsSection.changeEmail();' class="text_11">Change</a>
-              </p>
-              <ol id="alert_list_container">
-              </ol>
-              <ol id="alert_list_template" class="template">
-                <!-- {% _.each(rows, function (alert) { %} -->
-                <li class="alert_{%= h(alert.type) %}">
-                  <div class="block pad_10">
-                    <h3><strong>{%= formatAlertType(alert.type) %}</strong> - {%= h(alert.shortText) %}</h3>
-                    <span class="time">{%= h(formatAlertTStamp(alert.tstamp)) %}</span>
-                    <p>
-                      {%= h(alert.text) %}
-                    </p>
-                  </div>
-                </li>
-                <!-- {% }); %} -->
-              </ol>
             </div>
           </div>
         </div>

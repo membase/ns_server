@@ -120,61 +120,50 @@ var AlertsSection = {
   },
   init: function () {
     this.active = new Cell(function (mode) {
-      return (mode == "alerts" || mode == "log") ? true : undefined;
-    }).setSources({mode: DAO.cells.mode});
+      return (mode == "log") ? true : undefined;
+    }, {mode: DAO.cells.mode});
 
-    this.alerts = Cell.mkCaching(function (active) {
-      var value = this.self.value;
-      return future.get({url: "/alerts", stdErrorMarker: true});
+    var logs = Cell.mkCaching(function (active) {
+      return future.get({url: "/logs", stdErrorMarker: true});
     }, {active: this.active});
-
-    prepareTemplateForCell("alert_list", this.alerts);
-    this.alerts.subscribe($m(this, 'renderAlertsList'));
-    this.alerts.subscribe(function (cell) {
-      // refresh every 30 seconds
-      cell.recalculateAt((new Date()).valueOf() + 30000);
+    logs.keepValueDuringAsync = true;
+    logs.subscribe(function (cell) {
+      cell.recalculateAfterDelay(30000);
     });
 
-    this.alertTab = new TabsCell("alertsTab",
-                                 "#alerts .tabs",
-                                 "#alerts .panes > div",
-                                 ["log", "list"]);
+    this.logs = logs;
 
-    _.defer(function () {
-      SettingsSection.advancedSettings.subscribe($m(AlertsSection, 'updateAlertsDestination'));
+    var massagedLogs = Cell.compute(function (v) {
+      var logsValue = v(logs);
+      var stale = v.need(logs.ensureMetaCell()).stale;
+      if (logsValue === undefined) {
+        if (!stale)
+          return;
+        logsValue = {list: []};
+      }
+      return _.extend({}, logsValue, {stale: stale});
     });
 
-    this.logs = Cell.mkCaching(function (active) {
-      return future.get({url: "/logs", stdErrorMarker: true},
-                        undefined, this.self.value);
-    }, {active: this.active});
-    this.logs.subscribe(function (cell) {
-      cell.recalculateAt((new Date()).valueOf() + 30000);
+    renderCellTemplate(massagedLogs, 'alert_logs', {
+      valueTransformer: function (value) {
+        var list = value.list || [];
+        return _.clone(list).reverse();
+      }
     });
-    this.logs.subscribe($m(this, 'renderLogsList'));
-    prepareTemplateForCell('alert_logs', this.logs);
-  },
-  renderLogsList: function () {
-    renderTemplate('alert_logs', _.clone(this.logs.value.list).reverse());
-  },
-  updateAlertsDestination: function () {
-    var cell = SettingsSection.advancedSettings.value;
-    var who = ''
-    if (cell && ('email' in cell)) {
-      who = cell.email || 'nobody'
-    }
-    $('#alerts_email_setting').text(who);
+
+    massagedLogs.subscribeValue(function (massagedLogs) {
+      if (massagedLogs === undefined)
+        return;
+      var stale = massagedLogs.stale;
+      $('#alerts .generate_diag_link')[stale ? 'hide' : 'show']();
+      $('#alerts .staleness-notice')[stale ? 'show' : 'hide']();
+    });
   },
   onEnter: function () {
   },
   navClick: function () {
-    if (DAO.cells.mode.value == 'alerts' ||
-        DAO.cells.mode.value == 'log') {
-      this.alerts.setValue(undefined);
-      this.logs.setValue(undefined);
-      this.alerts.recalculate();
+    if (DAO.cells.mode.value == 'log')
       this.logs.recalculate();
-    }
   },
   domId: function (sec) {
     return 'alerts';

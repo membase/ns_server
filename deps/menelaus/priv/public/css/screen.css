@@ -995,3 +995,4 @@ span.staleness-notice, .staleness-notice { display: none; color: red; }
 #buckets .buckets_action_bar { height: 32px; }
 #overview .staleness-notice { font-size: 12px; float: right; }
 #servers .staleness-notice { font-size: 12px; float: right; }
+#alerts .staleness-notice { font-size: 12px; float: right; padding-top: 5px; padding-right: 10px;}
