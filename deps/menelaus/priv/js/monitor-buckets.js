@@ -1,11 +1,13 @@
 var MonitorBucketsSection = {
   init: function () {
+    var detailedBuckets = BucketsSection.cells.detailedBuckets;
+
     var membaseBuckets = new Cell(function (detailedBuckets) {
       return _.select(detailedBuckets, function (bucketInfo) {
         return bucketInfo.bucketType == 'membase';
       });
     }, {
-      detailedBuckets: BucketsSection.cells.detailedBuckets
+      detailedBuckets: detailedBuckets
     });
     renderCellTemplate(membaseBuckets, 'monitor_persistent_buckets_list');
 
@@ -14,7 +16,7 @@ var MonitorBucketsSection = {
         return bucketInfo.bucketType != 'membase';
       });
     }, {
-      detailedBuckets: BucketsSection.cells.detailedBuckets
+      detailedBuckets: detailedBuckets
     });
     renderCellTemplate(memcachedBuckets, 'monitor_cache_buckets_list');
 
@@ -25,9 +27,17 @@ var MonitorBucketsSection = {
       $('#monitor_buckets .membase-buckets-subsection')[!list || list.length ? 'show' : 'hide']();
     });
 
-    BucketsSection.cells.detailedBuckets.subscribeValue(function (list) {
+    detailedBuckets.subscribeValue(function (list) {
       var empty = list && list.length == 0;
       $('#monitor_buckets .no-buckets-subsection')[empty ? 'show' : 'hide']();
+    });
+
+    var stalenessCell = Cell.compute(function (v) {return v.need(detailedBuckets.ensureMetaCell()).stale});
+
+    stalenessCell.subscribeValue(function (stale) {
+      if (stale === undefined)
+        return;
+      $('#monitor_buckets .staleness-notice')[stale ? 'show' : 'hide']();
     });
   },
   onEnter: function () {

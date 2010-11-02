@@ -996,3 +996,5 @@ span.staleness-notice, .staleness-notice { display: none; color: red; }
 #overview .staleness-notice { font-size: 12px; float: right; }
 #servers .staleness-notice { font-size: 12px; float: right; }
 #alerts .staleness-notice { font-size: 12px; float: right; padding-top: 5px; padding-right: 10px;}
+#monitor_buckets .staleness-notice { font-size: 12px; float: right; line-height: 32px; padding-right: 10px; text-transform: none;}
+#monitor_buckets .no-buckets-subsection .staleness-notice { float:none; padding-right: 0px; }
