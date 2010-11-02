@@ -552,7 +552,7 @@ var BucketsSection = {
         return;
       var notice = $('#buckets .staleness-notice');
       notice[staleness ? 'show' : 'hide']();
-      setBoolAttribute($('#manage_buckets_top_bar .create-bucket-button'), 'disabled', staleness);
+      $('#manage_buckets_top_bar .create-bucket-button')[staleness ? 'hide' : 'show']();
     });
 
     $('.create-bucket-button').live('click', function (e) {

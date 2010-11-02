@@ -991,7 +991,7 @@ text-decoration:none;margin-right:16px;}
 
 /* extra element is needed to increase 'specifity' of this selector */
 span.staleness-notice, .staleness-notice { display: none; color: red; }
-#buckets .staleness-notice { margin-left: 6px; }
-#buckets > h1 { display: inline-block; }
+#buckets .staleness-notice { font-size: 12px; float: right; line-height: 32px;}
+#buckets .buckets_action_bar { height: 32px; }
 #overview .staleness-notice { font-size: 12px; float: right; }
 #servers .staleness-notice { font-size: 12px; float: right; }
