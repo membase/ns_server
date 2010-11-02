@@ -285,7 +285,7 @@ grab_op_stats_body(Bucket, ClientTStamp, Ref, PeriodParams) ->
                         Ref ->
                             grab_op_stats_body(Bucket, ClientTStamp, [], PeriodParams)
                     after 2000 ->
-                            grab_op_stats_body(Bucket, undefined, [], PeriodParams)
+                            []
                     end;
                 _ ->
                     %% cut samples up-to and including ClientTStamp

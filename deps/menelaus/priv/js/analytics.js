@@ -18,10 +18,13 @@ var SamplesRestorer = mkClass({
     var op = value.op;
     var samples = op.samples;
     this.samplesInterval = op.interval;
-    this.prevTimestamp = op.lastTStamp;
+    this.prevTimestamp = op.lastTStamp || this.prevTimestamp;
 
     if (!op.tstampParam) {
-      this.prevSamples = samples;
+      if (samples.timestamp.length > 0)
+        this.prevSamples = samples;
+      else
+        op.samples = this.prevSamples;
       return value;
     }
 
