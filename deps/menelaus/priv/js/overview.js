@@ -34,6 +34,12 @@ var OverviewSection = {
       updateCount('.pending-count', pending.length);
     });
 
+    DAO.cells.currentPoolDetailsCell.ensureMetaCell().subscribeValue(function (meta) {
+      if (!meta || meta.stale === undefined)
+        return;
+      $('#overview .staleness-notice')[meta.stale ? 'show' : 'hide']();
+    });
+
     DAO.cells.currentPoolDetailsCell.subscribeValue(function (poolDetails) {
       if (!poolDetails || !poolDetails.storageTotals
           || !poolDetails.storageTotals.ram || !poolDetails.storageTotals.hdd) {
