@@ -186,6 +186,7 @@ args(Node, Bucket, VBuckets, DstNode, TakeOver) ->
     OtherArgs = ["-e", "-a", User,
                  "-h", ns_memcached:host_port_str(Node),
                  "-d", ns_memcached:host_port_str(DstNode),
+                 "-A", %% Enable tap ack
                  "-v"],
     Args = lists:append([OtherArgs, TakeOverArg, VBucketArgs]),
     [vbucketmigrator, Command, Args,
