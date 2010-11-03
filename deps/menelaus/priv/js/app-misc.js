@@ -399,10 +399,33 @@ _.extend(ViewHelpers, {
     return value;
   },
 
-  stripPort: function(value) {
-    return value.split(":",1);
-  }
-
+  stripPort: (function () {
+    var cachedAllServers;
+    var cachedHostnamesCount;
+    return function(value, allServers) {
+      var counts;
+      if (allServers === undefined || cachedAllServers === allServers) {
+        counts = cachedHostnamesCount;
+      } else {
+        var hostnames = _.map(allServers, function (s) {return s.hostname});
+        counts = {};
+        var len = hostnames.length;
+        for (var i = 0; i < len; i++) {
+          var h = hostnames[i].split(":",1)[0];
+          if (counts[h] === undefined)
+            counts[h] = 1;
+          else
+            counts[h]++;
+        }
+        cachedAllServers = allServers;
+        cachedHostnamesCount = counts;
+      }
+      var strippedValue = value.split(":",1)[0];
+      if (counts[strippedValue] < 2)
+        value = strippedValue;
+      return escapeHTML(value)
+    }
+  })()
 });
 
 function genericDialog(options) {
