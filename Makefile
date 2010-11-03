@@ -67,7 +67,7 @@ test_: test_unit test_menelaus
 test_Windows_NT: test_unit test_menelaus
 
 test_unit: ebins
-	erl $(EFLAGS) -noshell -s t start -s init stop -kernel error_logger silent
+	erl $(EFLAGS) -noshell -kernel error_logger silent -shutdown_time 10000 -eval 'case t:start() of ok -> init:stop(); _ -> init:stop(1) end.'
 
 test_menelaus: deps/menelaus
 	(cd deps/menelaus; $(MAKE) test)
