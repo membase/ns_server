@@ -76,14 +76,15 @@ function onUnexpectedXHRError(xhr, xhrStatus, errMsg) {
 $.ajaxSetup({
   error: onUnexpectedXHRError,
   timeout: 30000,
-  beforeSend: function (xhr) {
+  beforeSend: function (xhr, options) {
     if (DAO.login) {
       addBasicAuth(xhr, DAO.login, DAO.password);
     }
     xhr.setRequestHeader('invalid-auth-response', 'on');
     xhr.setRequestHeader('Cache-Control', 'no-cache');
     xhr.setRequestHeader('Pragma', 'no-cache');
-    LogoutTimer.reset();
+    if (!options || !options.pushRequest)
+      LogoutTimer.reset();
   },
   dataFilter: function (data, type) {
     if (type == "json" && data == "")

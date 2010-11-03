@@ -185,6 +185,7 @@ future.getPush = function (ajaxOptions, valueTransformer, nowValue, waitChange) 
     var originalUrl = options.url;
     if (etag) {
       options.url += "&etag=" + encodeURIComponent(etag)
+      options.pushRequest = true;
       options.timeout = 30000;
     }
     options.prepareReGet = function (opt) {
