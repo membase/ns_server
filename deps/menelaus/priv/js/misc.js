@@ -400,6 +400,8 @@ function mkReloadWithDelay(millis) {
     this.finish = function () {
       modalLevel--;
       delete this.finish;
+      if (!modalLevel)
+        $(window).trigger('modal-action:complete');
     }
   }
 

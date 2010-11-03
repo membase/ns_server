@@ -50,12 +50,39 @@ var LogoutTimer = {
     this.timeoutId = setTimeout($m(this, 'onTimeout'), 300000);
   },
   onTimeout: function () {
-    $.cookie('inactivity_reload', '1');
-    DAO.setAuthCookie(null);
-    reloadApp();
+    performSignOut();
   }
 };
 
+function performSignOut(isVoluntary) {
+  if (ModalAction.isActive()) {
+    $(window).one('modal-action:complete', function () {performSignOut()});
+    return;
+  }
+
+  $(window).trigger('hashchange'); // this will close all dialogs
+
+  DAO.setAuthCookie(null);
+  DAO.cells.mode.setValue(undefined);
+  DAO.cells.currentPoolDetailsCell.setValue(undefined);
+  DAO.cells.poolList.setValue(undefined);
+  DAO.ready = false;
+
+  $(document.body).addClass('auth');
+  if (!isVoluntary)
+    $('#auth_inactivity_message').show();
+
+  $('.sign-out-link').hide();
+  DAO.onReady(function () {
+    if (DAO.login)
+      $('.sign-out-link').show();
+  });
+
+  _.defer(function () {
+    var e = $('#auth_dialog [name=password]').get(0);
+    try {e.focus();} catch (ex) {}
+  });
+}
 
 ;(function () {
   var weekDays = "Sun Mon Tue Wed Thu Fri Sat".split(' ');
@@ -189,8 +216,7 @@ var ThePage = {
   currentSection: null,
   currentSectionName: null,
   signOut: function () {
-    $.cookie('auth', null);
-    reloadApp();
+    performSignOut(true);
   },
   ensureSection: function (section) {
     if (this.currentSectionName != section)
@@ -280,6 +306,8 @@ function loginFormSubmit() {
 
     if (status == 'success') {
       hideAuthForm();
+      // don't keep credentials in DOM tree
+      $('#login_form [name=password]').val('');
       return;
     }
 
@@ -296,11 +324,6 @@ $(function () {
     var e = $('#auth_dialog [name=login]').get(0);
     try {e.focus();} catch (ex) {}
   });
-
-  if ($.cookie('inactivity_reload')) {
-    $.cookie('inactivity_reload', null);
-    $('#auth_inactivity_message').show();
-  }
 
   if ($.cookie('rf')) {
     displayNotice('An error was encountered when requesting data from the server.  ' +
