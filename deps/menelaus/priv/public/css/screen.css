@@ -573,12 +573,6 @@ body.nojs #nojs_alert { display: block; width:960px; margin:40px auto 0;}
 .float_50 .item .cnt {margin:0 10px 0 20px; font-size:11px; color:#777a81; display:block;}
 .float_50 .item .cnt span {font-size:12px; font-weight:bolder; color:#368dba; display:block; cursor:pointer;}
 
-/*on/off button */
-.on_off_button {display:block; position:relative; width:120px; height:23px; background:url(../images/on_off_bg.png) 0 0 no-repeat; margin:3px 0;}
-.on_off_button span {display:block; position:absolute; width:64px; height:23px; background:url(../images/on_off_slider.png) 0 0 no-repeat; top:0px;}
-/*.button_on span {right:0px !important;}*/
-.stop-active .on_off_button span {right:0px !important;}
-
 .stat_target_name {text-transform:none !important;}
 
 #join_cluster_dialog label {width:150px !important;}
