@@ -6,7 +6,7 @@ TEST_LOC=
 endif
 
 test:
-	java -jar lib/JsTestDriver-1.2.1.jar --tests all --captureConsole $(TEST_LOC)
+	java -jar lib/JsTestDriver-1.2.2.jar --tests all --captureConsole $(TEST_LOC) --verbose
 
 run_server:
-	java -jar lib/JsTestDriver-1.2.1.jar --port 11981 $(SERVER_EXTRA)
+	java -jar lib/JsTestDriver-1.2.2.jar --port 11981 $(SERVER_EXTRA)
