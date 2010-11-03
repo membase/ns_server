@@ -20,3 +20,24 @@ DecimationTest.prototype.testCutoff = function () {
   assertTrue(Math.abs(avg - min) < 0.01);
   assertTrue(Math.abs(avg - max) < 0.01);
 }
+
+var ParseHTTPDateTest = TestCase("ParseHTTPDateTest");
+ParseHTTPDateTest.prototype.testBasic = function () {
+  assertEquals(Date.UTC(2010, 10, 3, 14, 41, 29),
+               parseHTTPDate("Wed, 03 Nov 2010 14:41:29 GMT").valueOf())
+
+  // Sun, 06 Nov 1994 08:49:37 GMT  ; RFC 822, updated by RFC 1123
+  assertEquals(Date.UTC(1994, 10, 6, 8, 49, 37),
+               parseHTTPDate(" Sun, 06 Nov 1994 08:49:37 GMT").valueOf())
+
+  // Sunday, 06-Nov-94 08:49:37 GMT ; RFC 850, obsoleted by RFC 1036
+  assertEquals(Date.UTC(1994, 10, 6, 8, 49, 37),
+               parseHTTPDate("Sunday, 06-Nov-94 08:49:37 GMT ").valueOf())
+
+  // // Sun Nov  6 08:49:37 1994       ; ANSI C's asctime() format
+  assertEquals(Date.UTC(1994, 10, 6, 8, 49, 37),
+               parseHTTPDate("Sun Nov  6 08:49:37 1994", "badvalue").valueOf())
+
+  assertEquals("badvalue",
+               parseHTTPDate("Asdasdsd asd asd asd", "badvalue").valueOf())
+}
