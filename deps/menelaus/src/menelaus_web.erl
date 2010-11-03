@@ -170,9 +170,12 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth_cookie, fun diag_handler:handle_sasl_logs/1};
                              ["erlwsh" | _] ->
                                  {auth_cookie, fun (R) -> erlwsh_web:loop(R, erlwsh_deps:local_path(["priv", "www"])) end};
+                             ["images" | _] ->
+                                 {done, Req:serve_file(Path, AppRoot,
+                                                       [{"Cache-Control", "max-age=30000000"}])};
                              _ ->
                                  {done, Req:serve_file(Path, AppRoot,
-                                  [{"Cache-Control", "max-age=30"}])}
+                                  [{"Cache-Control", "max-age=10"}])}
                         end;
                      'POST' ->
                          case PathTokens of
