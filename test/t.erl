@@ -39,14 +39,17 @@
 start() ->
     cover:compile_beam_directory(config(ebin_dir)),
     Modules = cover:modules(),
-    eunit:test(Modules, [verbose]),
+    Result = eunit:test(Modules, [verbose]),
     CovDir = config(cov_dir),
     misc:rm_rf(CovDir),
     file:make_dir(CovDir),
-    lists:foreach(fun (M) ->
-        cover:analyse_to_file(M, filename:join([CovDir, atom_to_list(M) ++
-                                                ".COVERAGE.html"]), [html])
-        end, Modules).
+    lists:foreach(
+      fun (M) ->
+              cover:analyse_to_file(M, filename:join([CovDir, atom_to_list(M) ++
+                                                          ".COVERAGE.html"]),
+                                    [html])
+      end, Modules),
+    Result.
 
 config(cov_dir) ->
     filename:absname(filename:join([config(root_dir), "coverage"]));
