@@ -242,7 +242,6 @@ var StatGraphs = {
 
     var main = $('#analytics_main_graph')
     self.spinners.push(overlayWithSpinner(main));
-    main.find('.marker').remove();
 
     _.each(self.effectivelyVisibleStats || [], function (statName) {
       var area = self.findGraphArea(statName);

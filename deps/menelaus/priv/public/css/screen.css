@@ -581,15 +581,6 @@ body.nojs #nojs_alert { display: block; width:960px; margin:40px auto 0;}
 
 .stat_target_name {text-transform:none !important;}
 
-.marker { display: block; height: 23px; font-size: 13px; font-weight: bolder; color: white; margin: 5px 0px; width: 100px; overflow: visible; z-index: 1001; }
-.marker span { display: block; float: left; height: 23px; background: url(../images/markers.png) no-repeat; vertical-align: middle; line-height: 23px;}
-.marker span.l { padding-left: 26px;}
-.marker span.r { padding-right: 13px;}
-.marker-min span.l { background-position: left top;}
-.marker-min span.r { background-position: right top;}
-.marker-max span.l { background-position: left bottom;}
-.marker-max span.r { background-position: right bottom;}
-
 #join_cluster_dialog label {width:150px !important;}
 #join_cluster_dialog_errors_container {padding-left: 40px;}
 
