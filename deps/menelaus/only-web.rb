@@ -49,6 +49,7 @@ class Middleware
       replacement = "/js/t-all.js\""
       if $DEVMODE
         files = IO.readlines('priv/js/app.js').grep(%r|//= require <(.*)>$|) {|_d| $1}
+        files.delete("all-images.js")
         files << "app.js" << "hooks.js"
         files = files.map {|f| "/js/#{f}"}
         replacement = files.join("\"></script><script src=\"") << "\""

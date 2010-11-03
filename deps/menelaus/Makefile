@@ -21,11 +21,14 @@ version:
 	test -d $(TMP_DIR) || mkdir $(TMP_DIR)
 	git describe | sed s/-/_/g > $(TMP_VER)
 
-priv/public/js/all.js: priv/js/*.js
+priv/js/all-images.js: priv/public/images priv/public/images/spinner
+	(cd priv/public && ruby -e 'print "var AllImages = ["; print(Dir["images/**/*"].select {|p| File.file? p}.map {|p| p.inspect}.join(", ")); print "];\n"') >$@
+
+priv/public/js/all.js: priv/js/*.js priv/js/all-images.js
 	mkdir -p `dirname $@`
 	$(SPROCKETIZE) -I priv/js priv/js/app.js >$@
 
-priv/public/js/t-all.js: priv/js/*.js
+priv/public/js/t-all.js: priv/js/*.js priv/js/all-images.js
 	mkdir -p `dirname $@`
 	$(SPROCKETIZE) -I priv/js priv/js/app.js priv/js/hooks.js >$@
 

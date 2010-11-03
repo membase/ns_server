@@ -23,6 +23,7 @@
 //= require <manage-buckets.js>
 //= require <monitor-buckets.js>
 //= require <overview.js>
+//= require <all-images.js>
 
 // TODO: doesn't work due to apparent bug in jqModal. Consider switching to another modal windows implementation
 // $(function () {
@@ -896,4 +897,18 @@ $(function () {
   });
 
   IOCenter.status.subscribeValue(renderStatus);
+});
+
+$(function () {
+  if (!('AllImages' in window))
+    return;
+  var images = window['AllImages']
+
+  var body = $(document.body);
+  _.each(images, function (path) {
+    var j = $(new Image());
+    j[0].src = path;
+    j.css('display', 'none');
+    j.appendTo(body);
+  });
 });

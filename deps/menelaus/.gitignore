@@ -2,6 +2,7 @@
 *.beam
 /TAGS
 /erlang-out
+/priv/js/all-images.js
 /priv/public/js/all.js
 /priv/public/js/t-all.js
 deps/mochiweb/ebin/*
