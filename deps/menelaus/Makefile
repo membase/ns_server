@@ -21,8 +21,8 @@ version:
 	test -d $(TMP_DIR) || mkdir $(TMP_DIR)
 	git describe | sed s/-/_/g > $(TMP_VER)
 
-priv/js/all-images.js: priv/public/images priv/public/images/spinner
-	(cd priv/public && ruby -e 'print "var AllImages = ["; print(Dir["images/**/*"].select {|p| File.file? p}.map {|p| p.inspect}.join(", ")); print "];\n"') >$@
+priv/js/all-images.js: priv/public/images priv/public/images/spinner build-all-images.rb
+	ruby build-all-images.rb >$@
 
 priv/public/js/all.js: priv/js/*.js priv/js/all-images.js
 	mkdir -p `dirname $@`
