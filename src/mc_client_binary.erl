@@ -22,6 +22,7 @@
 -include("mc_entry.hrl").
 
 -export([auth/2,
+         cmd/5,
          create_bucket/4,
          delete_bucket/2,
          delete_vbucket/2,
@@ -35,10 +36,32 @@
          stats/1,
          stats/4]).
 
+-type recv_callback() :: fun((_, _, _) -> any()) | undefined.
+-type mc_timeout() :: undefined | infinity | non_neg_integer().
+-type mc_opcode() :: ?GET | ?SET | ?ADD | ?REPLACE | ?DELETE | ?INCREMENT |
+                     ?DECREMENT | ?QUIT | ?FLUSH | ?GETQ | ?NOOP | ?VERSION |
+                     ?GETK | ?GETKQ | ?APPEND | ?PREPEND | ?STAT | ?SETQ |
+                     ?ADDQ | ?REPLACEQ | ?DELETEQ | ?INCREMENTQ | ?DECREMENTQ |
+                     ?QUITQ | ?FLUSHQ | ?APPENDQ | ?PREPENDQ |
+                     ?CMD_SASL_LIST_MECHS | ?CMD_SASL_AUTH | ?CMD_SASL_STEP |
+                     ?CMD_CREATE_BUCKET | ?CMD_DELETE_BUCKET |
+                     ?CMD_LIST_BUCKETS | ?CMD_EXPAND_BUCKET |
+                     ?CMD_SELECT_BUCKET | ?CMD_SET_FLUSH_PARAM |
+                     ?CMD_SET_VBUCKET | ?CMD_GET_VBUCKET | ?CMD_DELETE_VBUCKET |
+                     ?RGET | ?RSET | ?RSETQ | ?RAPPEND | ?RAPPENDQ | ?RPREPEND |
+                     ?RPREPENDQ | ?RDELETE | ?RDELETEQ | ?RINCR | ?RINCRQ |
+                     ?RDECR | ?RDECRQ.
+
 %% A memcached client that speaks binary protocol.
+-spec cmd(mc_opcode(), port(), recv_callback(), any(),
+          {#mc_header{}, #mc_entry{}}) ->
+                 {ok, #mc_header{}, #mc_entry{}, any()}.
 cmd(Opcode, Sock, RecvCallback, CBData, HE) ->
     cmd(Opcode, Sock, RecvCallback, CBData, HE, undefined).
 
+-spec cmd(mc_opcode(), port(), recv_callback(), any(),
+          {#mc_header{}, #mc_entry{}}, mc_timeout()) ->
+                 {ok, #mc_header{}, #mc_entry{}, any()}.
 cmd(Opcode, Sock, RecvCallback, CBData, HE, Timeout) ->
     case is_quiet(Opcode) of
         true  -> cmd_binary_quiet(Opcode, Sock, RecvCallback, CBData, HE);
@@ -283,8 +306,6 @@ ext_arith(#mc_entry{ext = Ext, data = Data, expire = Expire} = Entry) ->
             Entry#mc_entry{ext = Ext2, data = undefined}
     end.
 
-%%map_status(?SUCCESS) ->
-%%    success;
 map_status(?KEY_ENOENT) ->
     key_enoent;
 map_status(?KEY_EEXISTS) ->
@@ -314,11 +335,12 @@ map_status(?EBUSY) ->
                                     mc_error().
 process_error_response({ok, #mc_header{status=Status}, #mc_entry{data=Msg},
                         _NCB}) ->
-    {memcached_error, map_status(Status), Msg};
-process_error_response(Error) ->
-    {client_error, Error}.
+    {memcached_error, map_status(Status), Msg}.
 
 % -------------------------------------------------
+
+%% TODO make these work with simulator
+-ifdef(nothing).
 
 blank_he() ->
     {#mc_header{}, #mc_entry{}}.
@@ -468,3 +490,5 @@ stats_subcommand_test() ->
                               {#mc_header{}, #mc_entry{key = <<"settings">>}}),
     ?assert(dict:size(Stats) > 0),
     ok = gen_tcp:close(Sock).
+
+-endif.
