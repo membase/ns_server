@@ -20,6 +20,9 @@
 
 -behaviour(gen_server).
 
+-define(PULL_TIMEOUT, 10000).
+-define(SELF_PULL_TIMEOUT, 30000).
+
 % How to launch the thing.
 -export([start_link/0]).
 
@@ -110,7 +113,7 @@ schedule_config_sync() ->
     timer:send_after(Frequency, self(), sync_random).
 
 do_push() ->
-    do_push(ns_config:get_remote(node())).
+    do_push(ns_config:get_remote(node(), ?SELF_PULL_TIMEOUT)).
 
 do_push(RawKVList) ->
     do_push(RawKVList, ns_node_disco:nodes_actual_other()).
@@ -126,7 +129,7 @@ do_pull([], _N)    -> ok;
 do_pull(_Nodes, 0) -> error;
 do_pull([Node | Rest], N) ->
     error_logger:info_msg("Pulling config from: ~p~n", [Node]),
-    case (catch ns_config:get_remote(Node)) of
+    case (catch ns_config:get_remote(Node, ?PULL_TIMEOUT)) of
         {'EXIT', _, _} -> do_pull(Rest, N - 1);
         {'EXIT', _}    -> do_pull(Rest, N - 1);
         RemoteKVList   -> ns_config:merge(RemoteKVList),
