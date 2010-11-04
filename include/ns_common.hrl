@@ -20,8 +20,11 @@
 -type bucket_type() :: memcached | membase.
 -type histogram() :: [{atom(), non_neg_integer()}].
 -type map() :: [[atom(), ...], ...].
--type mc_error() :: {memcached_error, atom(), binary()} |
-                    {client_error, any()}.
+-type mc_error_atom() :: key_enoent | key_eexists | e2big | einval |
+                         not_stored | delta_badval | not_my_vbucket |
+                         unknown_command | enomem | not_supported | internal |
+                         ebusy.
+-type mc_error() :: {memcached_error, mc_error_atom(), binary()}.
 -type moves() :: [{non_neg_integer(), atom(), atom()}].
 -type vbucket_id() :: non_neg_integer().
 -type vbucket_state() :: active | dead | replica | pending.
