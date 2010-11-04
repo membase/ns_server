@@ -88,8 +88,10 @@ child_specs() ->
                               [RestPort, BucketName])),
                       BigZ =
                           lists:flatten(
-                            io_lib:format("port_listen=~B,downstream_max=4",
-                                          [Port])),
+                            io_lib:format(
+                              "port_listen=~B,downstream_max=16,"
+                              "downstream_timeout=5000,wait_queue_timeout=5000",
+                              [Port])),
                       Args = ["-B", "auto", "-z", LittleZ, "-Z", BigZ,
                               "-p", "0", "-Y", "y", "-O", "stderr"],
                       Passwd = proplists:get_value(sasl_password, BucketConfig,
