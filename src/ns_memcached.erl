@@ -48,7 +48,7 @@
          list_vbuckets_multi/2,
          set_vbucket/3, set_vbucket/4,
          server/1,
-         stats/1, stats/2,
+         stats/1, stats/2, stats/3,
          topkeys/1,
          sync_bucket_config/1]).
 
@@ -84,23 +84,6 @@ init(Bucket) ->
     gen_server:enter_loop(?MODULE, [], #state{sock=Sock, bucket=Bucket}).
 
 
-handle_call(backfilling, _From, State) ->
-    End = <<":pending_backfill">>,
-    ES = byte_size(End),
-    {ok, Reply} = mc_client_binary:stats(
-                    State#state.sock, <<"tap">>,
-                    fun (<<"eq_tapq:", K/binary>>, <<"true">>, Acc) ->
-                            S = byte_size(K) - ES,
-                            case K of
-                                <<_:S/binary, End/binary>> ->
-                                    true;
-                                _ ->
-                                    Acc
-                            end;
-                        (_, _, Acc) ->
-                            Acc
-                    end, false),
-    {reply, Reply, State};
 handle_call({delete_vbucket, VBucket}, _From, #state{sock=Sock} = State) ->
     case mc_client_binary:delete_vbucket(Sock, VBucket) of
         ok ->
@@ -161,11 +144,13 @@ handle_call(topkeys, _From, State) ->
     {reply, Reply, State};
 handle_call(sync_bucket_config, _From, State) ->
     handle_info(check_config, State),
-    {reply, ok, State}.
+    {reply, ok, State};
+handle_call(_, _From, State) ->
+    {reply, unhandled, State}.
 
 
-handle_cast(unhandled, unhandled) ->
-    unhandled.
+handle_cast(_, State) ->
+    {noreply, State}.
 
 
 handle_info(check_config, State) ->
@@ -237,7 +222,20 @@ connected(Node, Bucket) ->
 -spec backfilling(node(), bucket_name()) ->
                          boolean().
 backfilling(Node, Bucket) ->
-    gen_server:call({server(Bucket), Node}, backfilling).
+    End = <<":pending_backfill">>,
+    ES = byte_size(End),
+    {ok, Stats} = stats(Node, Bucket, <<"tap">>),
+    lists:foldl(fun ({<<"eq_tapq:", K/binary>>, <<"true">>}, Acc) ->
+                        S = byte_size(K) - ES,
+                        case K of
+                            <<_:S/binary, End/binary>> ->
+                                true;
+                            _ ->
+                                Acc
+                        end;
+                    (_, Acc) ->
+                        Acc
+                end, false, Stats).
 
 
 %% @doc Delete a vbucket. Will set the vbucket to dead state if it
@@ -327,6 +325,12 @@ stats(Bucket) ->
                    {ok, [{binary(), binary()}]} | mc_error().
 stats(Bucket, Key) ->
     gen_server:call(server(Bucket), {stats, Key}, ?TIMEOUT).
+
+
+-spec stats(node(), bucket_name(), binary()) ->
+                   {ok, [{binary(), binary()}]} | mc_error().
+stats(Node, Bucket, Key) ->
+    gen_server:call({server(Bucket), Node}, {stats, Key}, ?TIMEOUT).
 
 
 sync_bucket_config(Bucket) ->
