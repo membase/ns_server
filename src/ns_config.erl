@@ -47,7 +47,7 @@
 
 -export([eval/1,
          start_link/2, start_link/1,
-         get_remote/1,
+         get_remote/1, get_remote/2,
          merge/1,
          merge_remote/2, merge_remote/3,
          get/2, get/1, get/0, set/2, set/1,
@@ -111,7 +111,8 @@ merge_remote(Node, KVList) ->
 merge_remote(Node, KVList, Timeout) ->
     gen_server:call({?MODULE, Node}, {merge, KVList}, Timeout).
 
-get_remote(Node) -> config_dynamic(?MODULE:get(Node)).
+get_remote(Node, Timeout) -> config_dynamic(?MODULE:get(Node, Timeout)).
+get_remote(Node) -> get_remote(Node, ?DEFAULT_TIMEOUT).
 
 % ----------------------------------------
 
