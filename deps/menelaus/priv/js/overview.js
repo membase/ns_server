@@ -170,12 +170,18 @@ var OverviewSection = {
     this.statsToRenderCell.subscribeValue($m(this, 'onStatsValue'));
   },
   plotGraph: function (graphJQ, stats, attr) {
+    var now = (new Date()).valueOf();
+    var tstamps = stats.timestamp || [];
+    var breakInterval;
+    if (tstamps.length > 1)
+      breakInterval = (tstamps[tstamps.length-1] - tstamps[0])/30;
     plotStatGraph(graphJQ, stats, attr, {
+      lastSampleTime: now,
+      breakInterval: breakInterval,
       processPlotOptions: function (plotOptions, plotDatas) {
         var firstData = plotDatas[0];
-        var lastData = plotDatas[plotDatas.length-1];
         var t0 = firstData[0][0];
-        var t1 = lastData[lastData.length-1][0];
+        var t1 = now;
         if (t1 - t0 < 300000) {
           plotOptions.xaxis.ticks = [t0, t1];
           plotOptions.xaxis.tickSize = [null, "minute"];

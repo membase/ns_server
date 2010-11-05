@@ -1005,6 +1005,8 @@ function plotStatGraph(graphJQ, stats, attr, options) {
     var lastSampleTime = options.lastSampleTime || tstamps[tstamps.length-1];
     plotOptions.xaxis.max = lastSampleTime;
     plotOptions.xaxis.min = lastSampleTime - options.fixedTimeWidth;
+  } else if (options.lastSampleTime) {
+    plotOptions.xaxis.max = lastSampleTime;
   }
 
   if (!tstamps.length) {
