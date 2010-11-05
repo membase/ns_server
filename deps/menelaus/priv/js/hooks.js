@@ -94,6 +94,18 @@ function deserializeQueryString(dataString) {
   })
 }
 
+function dateToFakeRFC1123(date) {
+  function twoDigits(n) {
+    return String(100 + n).slice(1);
+  }
+  var monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return ['XXX, ', twoDigits(date.getUTCDate()), ' ',
+          monthNames[date.getUTCMonth()], ' ', date.getUTCFullYear(), ' ',
+          twoDigits(date.getHours()),':',twoDigits(date.getMinutes()),':', twoDigits(date.getSeconds()),
+         ' GMT'].join('');
+}
+
 var MockedRequest = mkClass({
   initialize: function (options) {
     if (options.type == null) {
@@ -110,6 +122,13 @@ var MockedRequest = mkClass({
       requestHeaders: [],
       setRequestHeader: function () {
         this.requestHeaders.push(_.toArray(arguments));
+      },
+      getResponseHeader: function (header) {
+        header = header.toLowerCase();
+        switch (header) {
+        case 'date':
+          return dateToFakeRFC1123(new Date())
+        }
       },
       fakeAddBasicAuth: function (login, password) {
         this.login = login;
@@ -146,7 +165,7 @@ var MockedRequest = mkClass({
     console.log("responded with: ", data);
     this.responded = true;
     if (this.options.success)
-      this.options.success(data, 'success');
+      this.options.success(data, 'success', this.fakeXHR);
   },
   authError: (function () {
     try {
