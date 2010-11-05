@@ -115,6 +115,11 @@ future.get = function (ajaxOptions, valueTransformer, nowValue, futureWrapper) {
                   }
                 },
                 success: dataCallback};
+    if (ajaxOptions.onError) {
+      opts.error = function () {
+        ajaxOptions.onError.apply(this, [dataCallback].concat(_.toArray(arguments)));
+      }
+    }
     operation = IOCenter.performGet(_.extend(opts, ajaxOptions));
   }
   return (futureWrapper || future)(initiateXHR, options);
@@ -395,6 +400,8 @@ var IOCenter = (function () {
       function gotResponse(data, xhrStatus) {
         op.xhr = null;
         status.setValueAttr(status.value.inFlightCount - 1, 'inFlightCount');
+        var args = arguments;
+        var context = this;
 
         if (xhrStatus == 'success') {
           op.done = true;
@@ -414,7 +421,7 @@ var IOCenter = (function () {
 
           // if our caller has it's own error handling strategy let him do it
           if (options.error) {
-            options.error.apply(this, arguments);
+            options.error.apply(context, args);
             return;
           }
 
