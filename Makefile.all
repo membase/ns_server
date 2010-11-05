@@ -230,7 +230,7 @@ $(COMPONENT)/$(COMPONENT_OUT): $(COMPONENT)/Makefile $(COMPONENT).stamp
 $(COMPONENT).stamp_test:
 	@if test -d $(COMPONENT)/.git; then \
         if test -f $(COMPONENT).stamp; then \
-                if (cd $(COMPONENT) && git describe | diff ../$(COMPONENT).stamp -); then \
+                if ! (cd $(COMPONENT) && (git describe | diff ../$(COMPONENT).stamp -)); then \
                    (cd $(COMPONENT) && (git describe > ../$(COMPONENT).stamp)); \
                    fi; \
            else \
