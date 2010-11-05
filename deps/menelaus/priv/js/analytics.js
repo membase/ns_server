@@ -85,11 +85,30 @@ var SamplesRestorer = mkClass({
   }, {target: targetCell, options: statsOptionsCell});
 
   var statsCell = Cell.mkCaching(function (samplesRestorer) {
+    function futureWrapper(body, options) {
+      function wrappedBody(dataCallback) {
+        function wrappedDataCallback(value, status, xhr) {
+          if (value !== Cell.STANDARD_ERROR_MARK) {
+            var date = xhr.getResponseHeader('date');
+            value = samplesRestorer.valueTransformer(value);
+            value.serverDate = parseHTTPDate(date).valueOf();
+            value.clientDate = (new Date()).valueOf();
+          }
+          dataCallback(value);
+        }
+
+        body(wrappedDataCallback);
+      }
+      return future(wrappedBody, options);
+    }
+
     return future.get({
       url: samplesRestorer.url,
-      stdErrorMarker: true,
-      data: samplesRestorer.getRequestData()
-    }, samplesRestorer.valueTransformer);
+      data: samplesRestorer.getRequestData(),
+      onError: function (dataCallback) {
+        dataCallback(Cell.STANDARD_ERROR_MARK);
+      }
+    }, undefined, undefined, futureWrapper);
   },{samplesRestorer: samplesRestorerCell,
      options: statsOptionsCell,
      target: targetCell});
@@ -119,25 +138,30 @@ var maybeReloadAppDueToLeak = (function () {
   };
 })();
 
-function renderSmallGraph(jq, stats, statName, isSelected, zoomMillis) {
-  var data = stats[statName] || [];
-  var tstamps = stats.timestamp;
-  var plotData = _.map(data, function (e, i) {
-    return [tstamps[i], e];
-  });
+function renderSmallGraph(jq, ops, statName, isSelected, zoomMillis, timeOffset) {
+  var data = ops.samples[statName] || [];
+  var plotSeries = buildPlotSeries(data,
+                                   ops.samples.timestamp,
+                                   ops.interval * 2.5,
+                                   timeOffset).plotSeries;
 
   var lastY = data[data.length-1];
-  var lastX = tstamps[tstamps.length-1];
+  var now = (new Date()).valueOf();
 
   var maxString = isNaN(lastY) ? '?' : ViewHelpers.formatQuantity(lastY, '', 1000);
   jq.find('.small_graph_label > .value').text(maxString);
 
+  var color = isSelected ? '#e2f1f9' : '#d95e28';
+
   $.plotSafe(jq.find('.small_graph_block'),
-             [{color: isSelected ? '#e2f1f9' : '#d95e28',
-               data: plotData}],
+             _.map(plotSeries, function (plotData) {
+               return {color: color,
+                       data: plotData};
+             }),
              {xaxis: {ticks:0,
                       autoscaleMargin: 0.04,
-                      min: lastX - zoomMillis},
+                      min: now - zoomMillis,
+                      max: now},
               yaxis: {min:0, ticks:0, autoscaleMargin: 0.04},
               grid: {show:false}});
 }
@@ -284,6 +308,8 @@ var StatGraphs = {
       return self.renderNothing();
     stats = stats.samples;
 
+    var timeOffset = (cell.value.clientDate - cell.value.serverDate);
+
     _.each(self.spinners, function (s) {
       s.remove();
     });
@@ -307,25 +333,36 @@ var StatGraphs = {
       self.visibleStatsIsDirty = false;
     }
 
-    var zoomMillis = (self.zoomToSeconds[DAO.cells.zoomLevel.value] || 60) * 1000 - 1000;
-    var selected = self.selected.value;
-    if (stats[selected]) {
-      maybeReloadAppDueToLeak();
-      plotStatGraph(main, stats, selected, {
-        color: '#1d88ad',
-        verticalMargin: 1.02,
-        fixedTimeWidth: zoomMillis
-      });
-      $('.stats-period-container').toggleClass('missing-samples', !stats[selected].length);
-      var visibleSeconds = Math.ceil(stats[selected].length * op.interval / 1000);
-      $('.stats_visible_period').text(formatUptime(visibleSeconds));
+    if (!stats) {
+      stats = {timestamp: []};
+      (function (stats) {
+        _.each(self.recognizedStats, function (name) {
+          stats[name] = [];
+        });
+      })(stats);
+      op.samples = stats;
     }
 
+    var zoomMillis = (self.zoomToSeconds[DAO.cells.zoomLevel.value] || 60) * 1000;
+    var selected = self.selected.value;
+    var now = (new Date()).valueOf();
+
+    maybeReloadAppDueToLeak();
+    plotStatGraph(main, stats, selected, {
+      color: '#1d88ad',
+      verticalMargin: 1.02,
+      fixedTimeWidth: zoomMillis,
+      timeOffset: timeOffset,
+      lastSampleTime: now,
+      breakInterval: op.interval * 2.5
+    });
+    $('.stats-period-container').toggleClass('missing-samples', !stats[selected] || !stats[selected].length);
+    var visibleSeconds = Math.ceil(Math.min(zoomMillis, now - stats.timestamp[0]) / 1000);
+    $('.stats_visible_period').text(isNaN(visibleSeconds) ? '?' : formatUptime(visibleSeconds));
 
     _.each(self.effectivelyVisibleStats, function (statName) {
-      var ops = stats[statName] || [];
       var area = self.findGraphArea(statName);
-      renderSmallGraph(area, stats, statName, selected == statName, zoomMillis);
+      renderSmallGraph(area, op, statName, selected == statName, zoomMillis, timeOffset);
     });
   },
   update: function () {
@@ -337,6 +374,18 @@ var StatGraphs = {
     // that if we're slow we'll safely skip samples
     if (stats && stats.op)
       cell.setRecalculateTime();
+
+    // this makes sure that we're refreshing graph even when no data arrives
+    if (this.refreshTimeoutId) {
+      clearTimeout(this.refreshTimeoutId);
+      this.refreshTimeoutId = undefined;
+    }
+
+    if (!stats || !stats.op || stats.op.interval < 2000) {
+      this.refreshTimeoutId = setTimeout($m(this, 'update'), 1500);
+    } else {
+      this.refreshTimeoutId = setTimeout($m(this, 'update'), Math.min(stats.op.interval/2, 60000) + 10000);
+    }
   },
   configureStats: function () {
     var self = this;
