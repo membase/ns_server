@@ -777,6 +777,58 @@ function memorySizesGaugeHTML(options) {
   return usageGaugeHTML(newOptions);
 }
 
+function buildPlotSeries(data, tstamps, breakInterval, timeOffset) {
+  var plusInf = -1/0;
+  var maxY = plusInf;
+
+  var dataLength = data.length;
+  var plotSeries = [];
+  var plotData = new Array(dataLength);
+  var usedPlotData = 0;
+  var prevTStamp;
+
+  plotSeries.push(plotData);
+
+  for (var i = 0; i < dataLength; i++)
+    if (data[i] != null)
+      break;
+
+  if (i == dataLength)
+    return {maxY: 1,
+            plotSeries: []};
+
+  var e = data[i];
+  if (e >= maxY)
+    maxY = e;
+  var tstamp = tstamps[i] + timeOffset;
+  prevTStamp = tstamp;
+  plotData[usedPlotData++] = [tstamp, e];
+
+  for (i++; i < dataLength; i++) {
+    e = data[i];
+    if (e == null)
+      continue;
+    if (e >= maxY)
+      maxY = e;
+    var tstamp = tstamps[i] + timeOffset;
+    if (prevTStamp + breakInterval < tstamp) {
+      plotData.length = usedPlotData;
+      plotData = new Array(dataLength);
+      plotSeries.push(plotData);
+      usedPlotData = 0;
+    }
+    prevTStamp = tstamp;
+    plotData[usedPlotData++] = [tstamp, e];
+  }
+  plotData.length = usedPlotData;
+
+  if (maxY == 0 || maxY == plusInf)
+    maxY = 1;
+
+  return {maxY: maxY,
+          plotSeries: plotSeries};
+}
+
 
 function plotStatGraph(graphJQ, stats, attr, options) {
   options = _.extend({
@@ -786,15 +838,14 @@ function plotStatGraph(graphJQ, stats, attr, options) {
   }, options || {});
   var data = stats[attr] || [];
   var tstamps = stats.timestamp;
+  var timeOffset = options.timeOffset || 0;
+  var breakInterval = options.breakInterval || 3.1557e+10;
 
   // not enough data
   if (tstamps.length < 2) {
     tstamps = [];
     data = [];
   }
-
-  var plusInf = -1/0;
-  var maxY = plusInf;
 
   var decimation = Math.ceil(data.length / options.targetPointsCount);
 
@@ -803,21 +854,12 @@ function plotStatGraph(graphJQ, stats, attr, options) {
     data = decimateSamples(decimation, data);
   }
 
-  var dataLength = data.length;
-  var plotData = new Array(dataLength);
-  var usedPlotData = 0;
-  for (var i = 0; i < dataLength; i++) {
-    var e = data[i];
-    if (e == null)
-      continue;
-    if (e >= maxY)
-      maxY = e;
-    plotData[usedPlotData++] = [tstamps[i], e];
-  }
-  plotData.length = usedPlotData;
-
-  if (maxY == 0 || maxY == plusInf)
-    maxY = 1;
+  var plotSeries, maxY;
+  (function () {
+    var rv = buildPlotSeries(data, tstamps, breakInterval, timeOffset);
+    plotSeries = rv.plotSeries;
+    maxY = rv.maxY;
+  })();
 
   // this is ripped out of jquery.flot which is MIT licensed
   // Tweaks are mine. Bugs too.
@@ -960,7 +1002,7 @@ function plotStatGraph(graphJQ, stats, attr, options) {
   }
 
   if (options.fixedTimeWidth && tstamps.length) {
-    var lastSampleTime = tstamps[tstamps.length-1];
+    var lastSampleTime = options.lastSampleTime || tstamps[tstamps.length-1];
     plotOptions.xaxis.max = lastSampleTime;
     plotOptions.xaxis.min = lastSampleTime - options.fixedTimeWidth;
   }
@@ -970,12 +1012,14 @@ function plotStatGraph(graphJQ, stats, attr, options) {
   }
 
   if (options.processPlotOptions) {
-    plotOptions = options.processPlotOptions(plotOptions, plotData);
+    plotOptions = options.processPlotOptions(plotOptions, plotSeries);
   }
 
   $.plotSafe(graphJQ,
-             [{color: options.color,
-               data: plotData}],
+             _.map(plotSeries, function (plotData) {
+               return {color: options.color,
+                       data: plotData};
+             }),
              plotOptions);
 }
 

@@ -171,9 +171,11 @@ var OverviewSection = {
   },
   plotGraph: function (graphJQ, stats, attr) {
     plotStatGraph(graphJQ, stats, attr, {
-      processPlotOptions: function (plotOptions, plotData) {
-        var t0 = plotData[0][0];
-        var t1 = plotData[plotData.length-1][0];
+      processPlotOptions: function (plotOptions, plotDatas) {
+        var firstData = plotDatas[0];
+        var lastData = plotDatas[plotDatas.length-1];
+        var t0 = firstData[0][0];
+        var t1 = lastData[lastData.length-1][0];
         if (t1 - t0 < 300000) {
           plotOptions.xaxis.ticks = [t0, t1];
           plotOptions.xaxis.tickSize = [null, "minute"];
