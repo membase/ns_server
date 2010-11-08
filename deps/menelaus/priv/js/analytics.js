@@ -114,7 +114,10 @@ var SamplesRestorer = mkClass({
      target: targetCell});
 
   statsCell.target.setRecalculateTime = function () {
-    var at = this.context.samplesRestorer.value.nextSampleTime();
+    var samplesRestorer = this.context.samplesRestorer.value;
+    if (!samplesRestorer)
+      return;
+    var at = samplesRestorer.nextSampleTime();
     this.recalculateAt(at);
   }
   statsCell.setRecalculateTime = $m(statsCell.target, 'setRecalculateTime');
