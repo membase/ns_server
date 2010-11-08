@@ -746,18 +746,8 @@ handle_pool_settings(_PoolId, Req) ->
                            1 -> ok;
                            _ -> exit('Changing the memory quota of a cluster is not yet supported.')
                        end,
-                       {MaxMemoryBytes0, _, _} = memsup:get_memory_data(),
-                       MiB = 1048576,
-                       MinMemoryMB = 256,
-                       MaxMemoryMBPercent = (MaxMemoryBytes0 * 4) div (5 * MiB),
-                       MaxMemoryMB = lists:max([(MaxMemoryBytes0 div MiB) - 512,
-                                                MaxMemoryMBPercent]),
-                       MemoryMaxString = case MaxMemoryMB of
-                                             MaxMemoryMBPercent ->
-                                                 " Quota must be between 256 MB and ~w MB (80% of memory size).";
-                                             _ ->
-                                                 " Quota must be between 256 MB and ~w MB (memory size minus 512 MB)."
-                                         end,
+                       {MinMemoryMB, MaxMemoryMB, QuotaErrorDetailsFun} =
+                           ns_storage_conf:allowed_node_quota_range(memsup:get_memory_data()),
                        case parse_validate_number(X, MinMemoryMB, MaxMemoryMB) of
                            {ok, Number} ->
                                {ok, fun () ->
@@ -767,12 +757,9 @@ handle_pool_settings(_PoolId, Req) ->
                                     end};
                            invalid -> <<"The RAM Quota value must be a number.">>;
                            too_small ->
-                               list_to_binary(io_lib:format("The RAM Quota value is too small."
-                                                            ++ MemoryMaxString, [MaxMemoryMB]));
+                               list_to_binary("The RAM Quota value is too small." ++ QuotaErrorDetailsFun());
                            too_large ->
-                               list_to_binary(io_lib:format("The RAM Quota value is too large."
-                                                            ++ MemoryMaxString, [MaxMemoryMB]))
-
+                               list_to_binary("The RAM Quota value is too large." ++ QuotaErrorDetailsFun())
                        end
                end],
     case lists:filter(fun(ok) -> false;

@@ -31,6 +31,8 @@
 
 -export([extract_disk_stats_for_path/2, disk_stats_for_path/2]).
 
+-export([allowed_node_quota_range/1]).
+
 memory_quota(_Node) ->
     {value, RV} = ns_config:search(ns_config:get(), memory_quota),
     RV.
@@ -272,3 +274,21 @@ extract_disk_stats_for_path_test() ->
                  extract_disk_stats_for_path(DiskSupStats,
                                              "/media/p2/mbdata")).
 -endif.
+
+allowed_node_quota_range(MemSupData) ->
+    {MaxMemoryBytes0, _, _} = MemSupData,
+    MiB = 1048576,
+    MinMemoryMB = 256,
+    MaxMemoryMBPercent = (MaxMemoryBytes0 * 4) div (5 * MiB),
+    MaxMemoryMB = lists:max([(MaxMemoryBytes0 div MiB) - 512,
+                             MaxMemoryMBPercent]),
+    QuotaErrorDetailsFun = fun () ->
+                                   Format = case MaxMemoryMB of
+                                       MaxMemoryMBPercent ->
+                                           " Quota must be between 256 MB and ~w MB (80% of memory size).";
+                                       _ ->
+                                           " Quota must be between 256 MB and ~w MB (memory size minus 512 MB)."
+                                   end,
+                                   io_lib:format(Format, [MaxMemoryMB])
+                           end,
+    {MinMemoryMB, MaxMemoryMB, QuotaErrorDetailsFun}.
