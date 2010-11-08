@@ -24,7 +24,7 @@
 
 -export([memory_quota/1, change_memory_quota/2, prepare_setup_disk_storage_conf/2,
          storage_conf/1, add_storage/4, remove_storage/2,
-         local_bucket_disk_usage/1, bucket_disk_usage/2,
+         local_bucket_disk_usage/1,
          delete_all_db_files/1, delete_db_files/1]).
 
 -export([node_storage_info/1, cluster_storage_info/0, nodes_storage_info/1]).
@@ -70,19 +70,6 @@ local_bucket_disk_usage(BucketName) ->
     lists:sum([try filelib:file_size(filename:join([DBDir, Name]))
                catch _:_ -> 0
                end || Name <- db_files(DBDir, BucketName)]).
-
-bucket_disk_usage(Node, Bucket) ->
-    {ok, Config} = ns_bucket:get_bucket(Bucket),
-    case ns_bucket:bucket_type(Config) of
-        membase ->
-            case rpc:call(Node, ns_storage_conf, local_bucket_disk_usage, [Bucket]) of
-                {badrpc, _} ->
-                    0;
-                X -> X
-            end;
-        _ ->
-            0
-    end.
 
 % Returns a proplist of lists of proplists.
 %
