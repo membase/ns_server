@@ -549,9 +549,17 @@ var AnalyticsSection = {
       var value = cell.value.name;
       var names = $('.stat_target_name');
       names.text(value);
-      if (value == '') {
-        names.filter('.live_view_of').text('Cluster');
-      }
+    });
+
+    var statsStaleness = (function (meta) {
+      return Cell.compute(function (v) {
+        return !!(v.need(meta).stale);
+      });
+    })(DAO.cells.stats.ensureMetaCell());
+
+    statsStaleness.subscribeValue(function (stale) {
+      $('.stats-period-container')[stale ? 'hide' : 'show']();
+      $('#analytics .staleness-notice')[stale ? 'show' : 'hide']();
     });
   },
   visitBucket: function (bucketURL) {
