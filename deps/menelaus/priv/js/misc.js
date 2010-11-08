@@ -224,7 +224,7 @@ function getRealBackgroundColor(jq) {
     if (!jq.length)
       return 'transparent';
     var rv = jq.css('background-color');
-    if (rv != 'transparent' && rv != 'inherit')
+    if (rv != 'transparent' && rv != 'inherit' && rv != 'rgba(0, 0, 0, 0)')
       return rv;
     jq = jq.parent();
   }
