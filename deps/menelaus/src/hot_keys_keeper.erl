@@ -150,7 +150,7 @@ keys_updater_body() ->
     LocalUpdatedKeys = lists:sublist(lists:sort(fun ops_desc_comparator/2,
                                                 [{Name, grab_bucket_topkeys(Name)} || Name <- ns_bucket:get_bucket_names()]),
                                      ?TOP_KEYS_NUMBER),
-    {Replies, _} = gen_server:multi_call(ns_node_disco:nodes_wanted() -- [node()],
+    {Replies, _} = gen_server:multi_call(ns_node_disco:nodes_actual_other(),
                                          ?MODULE, all_local_hot_keys, 2000),
     MergedKeys = lists:map(fun ({BucketName, LocalKeys}) ->
                                    %% assuming no hot keys are duplicated across cluster
