@@ -74,12 +74,17 @@ Cell.cacheResponse = function (cell) {
   cachingCell.target = cell;
   cachingCell.ensureMetaCell();
   cachingCell.propagateMeta = null;
-  // delegate this methods
-  _.each(("recalculate recalculateAt recalculateAfterDelay invalidate").split(' '), function (methodName) {
-    cachingCell[methodName] = $m(cell, methodName);
-  });
+
+  cachingCell.delegateInvalidationMethods(cell);
 
   return cachingCell;
+}
+
+Cell.prototype.delegateInvalidationMethods = function (target) {
+  var self = this;
+  _.each(("recalculate recalculateAt recalculateAfterDelay invalidate").split(' '), function (methodName) {
+    self[methodName] = $m(target, methodName);
+  });
 }
 
 Cell.mkCaching = function (formula, sources) {
