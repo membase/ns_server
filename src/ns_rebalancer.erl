@@ -84,38 +84,41 @@ rebalance(KeepNodes, EjectNodes, FailedNodes) ->
     DeactivateNodes = EjectNodes ++ FailedNodes,
     BucketConfigs = ns_bucket:get_buckets(),
     NumBuckets = length(BucketConfigs),
-    lists:foreach(fun ({I, {BucketName, BucketConfig}}) ->
-                          BucketCompletion = I / NumBuckets,
-                          ns_orchestrator:update_progress(
-                            dict:from_list([{N, BucketCompletion}
-                                            || N <- AllNodes])),
-                          case proplists:get_value(type, BucketConfig) of
-                              memcached ->
-                                  ns_bucket:set_servers(BucketName, KeepNodes);
-                              membase ->
-                                  %% Only start one bucket at a time to avoid
-                                  %% overloading things
-                                  ns_bucket:set_servers(BucketName, LiveNodes),
-                                  wait_for_memcached(LiveNodes, BucketName),
-                                  ns_janitor:cleanup(BucketName),
-                                  rebalance(BucketName, KeepNodes,
-                                            DeactivateNodes, BucketCompletion,
-                                            NumBuckets)
-                          end
-                  end, misc:enumerate(BucketConfigs, 0)),
-    %% Leave myself last
-    LeaveNodes = lists:delete(node(), DeactivateNodes),
-    lists:foreach(fun (N) ->
-                          ns_cluster_membership:deactivate([N]),
-                          ns_cluster:leave(N)
-                  end, LeaveNodes),
-    case lists:member(node(), DeactivateNodes) of
-        true ->
-            ns_cluster_membership:deactivate([node()]),
-            ns_cluster:leave();
-        false ->
-            ok
-    end.
+    try
+        %% Eject failed nodes first so they don't cause trouble
+        eject_nodes(FailedNodes -- [node()]),
+        lists:foreach(fun ({I, {BucketName, BucketConfig}}) ->
+                              BucketCompletion = I / NumBuckets,
+                              ns_orchestrator:update_progress(
+                                dict:from_list([{N, BucketCompletion}
+                                                || N <- AllNodes])),
+                              case proplists:get_value(type, BucketConfig) of
+                                  memcached ->
+                                      ns_bucket:set_servers(BucketName, KeepNodes);
+                                  membase ->
+                                      %% Only start one bucket at a time to avoid
+                                      %% overloading things
+                                      ns_bucket:set_servers(BucketName, LiveNodes),
+                                      wait_for_memcached(LiveNodes, BucketName),
+                                      ns_janitor:cleanup(BucketName),
+                                      rebalance(BucketName, KeepNodes,
+                                                DeactivateNodes, BucketCompletion,
+                                                NumBuckets)
+                              end
+                      end, misc:enumerate(BucketConfigs, 0))
+    catch
+        E:R ->
+            %% Eject this node since the orchestrator can still be running on a
+            %% failed node (should be fixed)
+            case lists:member(node(), FailedNodes) of
+                true ->
+                    eject_nodes([node()]);
+                false ->
+                    ok
+            end,
+            erlang:E(R)
+    end,
+    eject_nodes(DeactivateNodes).
 
 
 
@@ -166,7 +169,10 @@ rebalance(Bucket, KeepNodes, EjectNodes, BucketCompletion, NumBuckets) ->
     catch
         throw:stopped ->
             fixup_replicas(Bucket, KeepNodes, EjectNodes),
-            exit(stopped)
+            exit(stopped);
+        E:R ->
+            fixup_replicas(Bucket, KeepNodes, EjectNodes),
+            erlang:E(R)
     end.
 
 
@@ -240,6 +246,21 @@ balance_nodes(Bucket, VNF, Hist, Moves) ->
         false ->
             Moves
     end.
+
+
+%% @doc Eject a list of nodes from the cluster, making sure this node is last.
+eject_nodes(Nodes) ->
+    %% Leave myself last
+    LeaveNodes = case lists:member(node(), Nodes) of
+                     true ->
+                         Nodes -- [node()] ++ [node()];
+                     false ->
+                         Nodes
+                 end,
+    lists:foreach(fun (N) ->
+                          ns_cluster_membership:deactivate([N]),
+                          ns_cluster:leave(N)
+                  end, LeaveNodes).
 
 
 %% @doc Ensure there are replicas for any unreplicated buckets if we stop.
