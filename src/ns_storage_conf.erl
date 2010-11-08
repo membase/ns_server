@@ -170,7 +170,7 @@ cluster_storage_info() ->
               end, PList1).
 
 do_cluster_storage_info([]) -> [];
-do_cluster_storage_info([{FirstNode, FirstInfo} | Rest] = NodeInfos) ->
+do_cluster_storage_info([{FirstNode, FirstInfo} | Rest]) ->
     PList1 = lists:foldl(fun ({Node, Info}, Acc) ->
                                  ThisInfo = extract_node_storage_info(Info, Node),
                                  lists:zipwith(fun ({StatName, [{total, TotalA},
@@ -184,7 +184,7 @@ do_cluster_storage_info([{FirstNode, FirstInfo} | Rest] = NodeInfos) ->
                                                                    {used, UsedA + UsedB}]}
                                                end, Acc, ThisInfo)
                          end, extract_node_storage_info(FirstInfo, FirstNode), Rest),
-    AllNodes = proplists:get_keys(NodeInfos),
+    AllNodes = ns_node_disco:nodes_actual_proper(),
     AllBuckets = ns_bucket:get_buckets(),
     {BucketsRAMUsage, BucketsHDDUsage}
         = lists:foldl(fun ({Name, _}, {RAM, HDD}) ->
