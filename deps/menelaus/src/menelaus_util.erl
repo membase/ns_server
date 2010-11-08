@@ -193,7 +193,7 @@ concat_url_path(Segments) ->
 -spec parse_validate_number(string(), (integer() | undefined), (integer() | undefined)) ->
                                    invalid | too_small | too_large | {ok, integer()}.
 parse_validate_number(String, Min, Max) ->
-    Parsed = (catch list_to_integer(String)),
+    Parsed = (catch list_to_integer(string:strip(String))),
     if
         is_integer(Parsed) ->
             if
