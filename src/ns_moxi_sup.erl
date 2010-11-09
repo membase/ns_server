@@ -89,7 +89,7 @@ child_specs() ->
                       BigZ =
                           lists:flatten(
                             io_lib:format(
-                              "port_listen=~B,downstream_max=16,"
+                              "port_listen=~B,downstream_max=1024,downstream_conn_max=16,"
                               "downstream_timeout=5000,wait_queue_timeout=5000",
                               [Port])),
                       Args = ["-B", "auto", "-z", LittleZ, "-Z", BigZ,
