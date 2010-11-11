@@ -670,7 +670,9 @@ handle_join(Req) ->
             Msgs = lists:filter(fun (X) -> X =/= undefined end,
                    PossMsg),
             case Msgs of
-                [] -> case ns_cluster_membership:join_cluster(OtherHost, OtherPort, OtherUser, OtherPswd) of
+                [] ->
+                    process_flag(trap_exit, true),
+                    case ns_cluster_membership:join_cluster(OtherHost, OtherPort, OtherUser, OtherPswd) of
                           ok ->
                               Req:respond({200, add_header(), []});
                           {error, Errors} ->
