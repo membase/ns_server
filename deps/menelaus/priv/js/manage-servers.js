@@ -323,6 +323,7 @@ var ServersSection = {
   },
   onAdd: function () {
     var self = this;
+    var uri = self.poolDetails.value.controllers.addNode.uri;
 
     var dialog = $('#join_cluster_dialog');
     var form = dialog.find('form');
@@ -357,7 +358,6 @@ var ServersSection = {
           $('#join_cluster_dialog_errors_container').html('');
           var overlay = overlayWithSpinner(form);
 
-          var uri = self.poolDetails.value.controllers.addNode.uri;
           self.poolDetails.setValue(undefined);
 
           postWithValidationErrors(uri, form, function (data, status) {
