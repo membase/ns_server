@@ -33,7 +33,6 @@
          leave/0,
          leave/1,
          leave_async/0,
-         log_joined/0,
          prepare_join_to/1,
          shun/1,
          start_link/0]).
@@ -89,10 +88,8 @@ handle_call({change_address, NewAddr}, _From, State) ->
                       end
               end),
             {reply, ok, State}
-    end.
-
-
-handle_cast({join, RemoteNode, NewCookie}, State) ->
+    end;
+handle_call({join, RemoteNode, NewCookie}, _From, State) ->
     ns_log:log(?MODULE, 0002, "Node ~p is joining cluster via node ~p.",
                [node(), RemoteNode]),
     BlackSpot = make_ref(),
@@ -104,33 +101,47 @@ handle_cast({join, RemoteNode, NewCookie}, State) ->
                          ({{node, Node, _}, _} = X) when Node =:= MyNode -> X;
                          (_) -> BlackSpot
                      end, BlackSpot),
-    %% cannot force low timestamp with ns_config update, so we set it separately
     ns_config:set_initial(nodes_wanted, [node(), RemoteNode]),
     error_logger:info_msg("pre-join cleaned config is:~n~p~n",
                           [ns_config:get()]),
     %% Pull the rug out from under the app
     ok = ns_server_cluster_sup:stop_cluster(),
     ns_mnesia:delete_schema(),
-    try
+    Status = try
         error_logger:info_msg("ns_cluster: joining cluster. Child has exited.~n"),
-        timer:sleep(1000), % Sleep for a second to let things settle
         true = erlang:set_cookie(node(), NewCookie),
         %% Let's verify connectivity.
         Connected = net_kernel:connect_node(RemoteNode),
         ?log_info("Connection from ~p to ~p:  ~p",
                   [node(), RemoteNode, Connected]),
-        %% Add ourselves to nodes_wanted on the remote node after shutting
-        %% down our own config server.
-        ok = gen_server:call({?MODULE, RemoteNode}, {add_node, node()}, 20000),
-        ?log_info("Remote config updated to add ~p to ~p",
-                  [node(), RemoteNode])
+        %% TODO: check exception handling here
+        case verify_memory_limits(RemoteNode) of
+            ok ->
+                %% Add ourselves to nodes_wanted on the remote node after shutting
+                %% down our own config server.
+                ok = gen_server:call({?MODULE, RemoteNode}, {add_node, node()}, 20000),
+                ?log_info("Remote config updated to add ~p to ~p",
+                          [node(), RemoteNode]);
+            X ->
+                X
+        end
     catch
         Type:Error ->
-            ?log_error("Error during join: ~p", [{Type, Error}])
+            ?log_error("Error during join: ~p", [{Type, Error, erlang:get_stacktrace()}]),
+            ns_server_cluster_sup:start_cluster(),
+            erlang:Type(Error)
     end,
+    ?log_info("Join status: ~p, starting ns_server_cluster back~n", [Status]),
     ns_server_cluster_sup:start_cluster(),
-    timer:apply_after(1000, ?MODULE, log_joined, []),
-    {noreply, State};
+    if
+        Status =:= ok ->
+            ns_log:log(?MODULE, ?NODE_JOINED, "Node ~s joined cluster",
+                       [node()]);
+        true ->
+            ?log_error("Failed to join cluster because of: ~p~n", [Status]),
+            ok %% ns_config:set_initial(nodes_wanted, [node()])
+    end,
+    {reply, Status, State}.
 
 handle_cast(leave, State) ->
     ns_log:log(?MODULE, 0001, "Node ~p is leaving cluster.", [node()]),
@@ -174,10 +185,16 @@ terminate(_Reason, _State) ->
 %% Internal functions
 %%
 
-log_joined() ->
-    ns_log:log(?MODULE, ?NODE_JOINED, "Node ~s joined cluster",
-               [node()]).
-
+%% checks if this node can join to RemoteNode
+verify_memory_limits(RemoteNode) ->
+    {value, Quota} = ns_config:search(ns_config:get(RemoteNode, 5000), memory_quota),
+    {_MinMemoryMB, MaxMemoryMB, _} = ns_storage_conf:allowed_node_quota_range(),
+    if
+        Quota =< MaxMemoryMB ->
+            ok;
+        true ->
+            {error, bad_memory_size}
+    end.
 
 rename_node(Old, New) ->
     ns_config:update(fun ({K, V} = Pair) ->
@@ -199,13 +216,16 @@ rename_node(Old, New) ->
 %%
 
 %% Called on a node in the cluster to add us to its nodes_wanted
+-spec join(atom(), atom()) -> ok |
+                              {error, already_joined} |
+                              {error, bad_memory_size}.
 join(RemoteNode, NewCookie) ->
     ns_log:log(?MODULE, ?NODE_JOIN_REQUEST, "Node join request on ~s to ~s",
                [node(), RemoteNode]),
 
     case lists:member(RemoteNode, ns_node_disco:nodes_wanted()) of
         true -> {error, already_joined};
-        false-> gen_server:cast(?MODULE, {join, RemoteNode, NewCookie})
+        false-> gen_server:call(?MODULE, {join, RemoteNode, NewCookie})
     end.
 
 leave() ->

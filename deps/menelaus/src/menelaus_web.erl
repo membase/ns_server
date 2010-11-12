@@ -337,6 +337,8 @@ handle_add_node_request(Req) ->
                            ok -> {ok, {struct, [{otpNode, atom_to_binary(node(), latin1)}]}};
                            {error, already_joined} ->
                                {errors, [<<"The server is already part of this cluster.">>]};
+                           {error, bad_memory_size} ->
+                               {errors, [<<"This server does not have enough memory to support cluster quota.">>]};
                            {error, system_not_addable} ->
                                {errors, [<<"The server is already part of another cluster.  To be added, it cannot be part of an existing cluster.">>]};
                            {error_msg, Msg} -> {errors, [list_to_binary(Msg)]}
@@ -1178,17 +1180,8 @@ handle_add_node(Req) ->
             Port = list_to_integer(StringPort),
             process_flag(trap_exit, true),
             case ns_cluster_membership:add_node(Hostname, Port, User, Password) of
-                {ok, OtpNode} ->
-                    case misc:poll_for_condition(fun () ->
-                                                         lists:member(OtpNode, [node() | nodes()])
-                                                 end,
-                                                 2000, 100) of
-                        ok ->
-                            timer:sleep(2000), %% and wait a bit more for things to settle
-                            Req:respond({200, [], []});
-                        timeout ->
-                            reply_json(Req, [<<"Wait for join completion has timed out">>], 400)
-                    end;
+                {ok, _OtpNode} ->
+                    Req:respond({200, [], []});
                 {error, Error} -> reply_json(Req, Error, 400)
             end;
         ErrorList -> reply_json(Req, ErrorList, 400)

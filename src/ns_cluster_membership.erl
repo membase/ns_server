@@ -91,6 +91,8 @@ engage_cluster(RemoteIP) ->
 %% If cluster is single node cluster, then it might need to change
 %% erlang node name, before other node joins it. This function
 %% implements it. It also checks that other node ip is indeed reachable.
+-spec engage_cluster(string(), [atom()]) -> ok | {error, prepare_failed, any()}
+                                                | {error_msg, binary()}.
 engage_cluster(RemoteIP, Options) ->
     case ns_cluster:prepare_join_to(RemoteIP) of
         {ok, MyAddr} ->
@@ -132,6 +134,12 @@ add_node(OtherHost, OtherPort, OtherUser, OtherPswd) ->
         Error -> handle_join_rest_failure(Error, OtherHost, OtherPort)
     end.
 
+-spec handle_add_node_request(atom(), atom()) -> ok |
+                                                 {error, system_not_addable} |
+                                                 {error_msg, binary()} | % from engage_cluster
+                                                 {error, prepare_failed} |
+                                                 {error, already_joined} | % from ns_cluster:join
+                                                 {error, bad_memory_size}.
 handle_add_node_request(OtpNode, OtpCookie) ->
     case system_joinable() of
         true -> % When a user wants to add a node to an existing cluster, this
@@ -250,9 +258,10 @@ handle_join(OtpNode, OtpCookie, MyIP) ->
     case ns_cluster:join(OtpNode, OtpCookie) of
         ok -> ns_log:log(?MODULE, ?JOINED_CLUSTER, "Joined cluster at node: ~p with cookie: ~p from node: ~p",
                          [OtpNode, OtpCookie, erlang:node()]),
-                                                % No need to restart here, as our ns_config event watcher
-                                                % will do it if our rest config changes.
               ok;
+        {error, bad_memory_size} ->
+            ns_log:log(?MODULE, ?OTHER_ERROR, "This server does not have enough memory to support cluster quota.", []),
+            {error, [<<"This server does not have enough memory to support cluster quota.">>]};
         Any -> ns_log:log(?MODULE, ?OTHER_ERROR, "Unexpected error encountered during cluster join ~p", [Any]),
                {internal_error, [list_to_binary("Unexpected error encountered during cluster join.")]}
     end.
