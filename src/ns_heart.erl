@@ -17,7 +17,7 @@
 
 -behaviour(gen_server).
 
--define(EXPENSIVE_CHECK_INTERVAL, 60000). % In ms
+-define(EXPENSIVE_CHECK_INTERVAL, 10000). % In ms
 
 -export([start_link/0, status_all/0, expensive_checks/0]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
@@ -68,10 +68,44 @@ current_status(Expensive) ->
      | element(2, ns_info:basic_info())] ++ Expensive.
 
 expensive_checks() ->
-    BasicData= [{system_memory_data, memsup:get_system_memory_data()},
-                {statistics, stats()}],
+    BucketConfigs = ns_bucket:get_buckets(),
+    ReplicationStatus = [{Bucket, replication_status(Bucket, BucketConfig)} ||
+                            {Bucket, BucketConfig} <- BucketConfigs],
+    BasicData = [{replication, ReplicationStatus},
+                 {system_memory_data, memsup:get_system_memory_data()},
+                 {statistics, stats()}],
     case misc:raw_read_file("/proc/meminfo") of
         {ok, Contents} ->
             [{meminfo, Contents} | BasicData];
         _ -> BasicData
+    end.
+
+replication_status(Bucket, BucketConfig) ->
+    %% First, check that replication is running
+    case proplists:get_value(map, BucketConfig) of
+        undefined ->
+            1.0;
+        Map ->
+            case [R || {N, _, _} = R <- ns_bucket:map_to_replicas(Map),
+                            N == node()] of
+                [] ->
+                    %% No replicas for this node
+                    1.0;
+                Replicas ->
+                    Replicators = ns_vbm_sup:replicators([node()],
+                                                         Bucket),
+                    case Replicas -- Replicators of
+                        [] ->
+                            %% Ok, running
+                                    case ns_memcached:backfilling(Bucket) of
+                                        true ->
+                                            0.5;
+                                        false ->
+                                            1.0
+                                    end;
+                        _ ->
+                            %% Replication isn't even running
+                            0.0
+                    end
+            end
     end.
