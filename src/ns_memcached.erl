@@ -39,6 +39,7 @@
 
 %% external API
 -export([active_buckets/0,
+         backfilling/1,
          backfilling/2,
          connected/2,
          delete_vbucket/2, delete_vbucket/3,
@@ -218,7 +219,14 @@ connected(Node, Bucket) ->
     end.
 
 
-%% @doc Returns true if backfill is running on any of the nodes for this bucket.
+%% @doc Returns true if backfill is running on this node for the given bucket.
+-spec backfilling(bucket_name()) ->
+                         boolean().
+backfilling(Bucket) ->
+    backfilling(node(), Bucket).
+
+%% @doc Returns true if backfill is running on the given node for the given
+%% bucket.
 -spec backfilling(node(), bucket_name()) ->
                          boolean().
 backfilling(Node, Bucket) ->
