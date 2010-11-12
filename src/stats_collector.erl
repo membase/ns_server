@@ -71,8 +71,12 @@ handle_info({tick, TS}, #state{bucket=Bucket, counters=Counters, last_ts=LastTS}
             end,
             Count = case State#state.count of
                         ?LOG_FREQ ->
-                            ?log_info("Stats for bucket ~p:~n~s",
-                                      [Bucket, format_stats(Stats)]),
+                            case misc:get_env_default(dont_log_stats, false) of
+                                false ->
+                                    ?log_info("Stats for bucket ~p:~n~s",
+                                              [Bucket, format_stats(Stats)]);
+                                _ -> ok
+                            end,
                             1;
                         C ->
                             C + 1

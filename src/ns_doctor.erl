@@ -36,7 +36,11 @@ start_link() ->
 
 init([]) ->
     self() ! acquire_initial_status,
-    timer:send_interval(?LOG_INTERVAL, log),
+    case misc:get_env_default(dont_log_stats, false) of
+        false ->
+            timer:send_interval(?LOG_INTERVAL, log);
+        _ -> ok
+    end,
     {ok, #state{nodes=dict:new()}}.
 
 handle_call(get_nodes, _From, #state{nodes=Nodes} = State) ->
