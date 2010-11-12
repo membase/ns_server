@@ -46,7 +46,7 @@ cleanup(Bucket) ->
                         Map1 ->
                             ns_bucket:set_map(Bucket, Map1)
                     end,
-                    Replicas = lists:keysort(1, map_to_replicas(Map)),
+                    Replicas = lists:keysort(1, ns_bucket:map_to_replicas(Map)),
                     ReplicaGroups = lists:ukeymerge(1, misc:keygroup(1, Replicas),
                                                     [{N, []} || N <- lists:sort(Servers)]),
                     NodesReplicas = lists:map(fun ({Src, R}) -> % R is the replicas for this node
@@ -95,7 +95,7 @@ graphviz(Bucket) ->
     SubGraphs = [io_lib:format("subgraph cluster_n~B {~ncolor=~s;~nlabel=\"~s\";~n~s}~n",
                               [I, Color, Node, node_vbuckets(I, Node, States, Map)]) ||
                     {I, {Node, Color}} <- misc:enumerate(NodeColors)],
-    Replicants = lists:sort(map_to_replicas(Map)),
+    Replicants = lists:sort(ns_bucket:map_to_replicas(Map)),
     Replicators = lists:sort(ns_vbm_sup:replicators(Nodes, Bucket)),
     AllRep = lists:umerge(Replicants, Replicators),
     Edges = [io_lib:format("n~pv~B -> n~pv~B [color=~s];~n",
@@ -253,17 +253,6 @@ current_states(Nodes, Bucket) ->
     States = [{Node, VBucket, State} || {Node, {ok, Reply}} <- GoodReplies,
                                         {VBucket, State} <- Reply],
     {ok, States, ErrorNodes ++ DownNodes}.
-
-map_to_replicas(Map) ->
-    map_to_replicas(Map, 0, []).
-
-map_to_replicas([], _, Replicas) ->
-    lists:append(Replicas);
-map_to_replicas([Chain|Rest], V, Replicas) ->
-    Pairs = [{Src, Dst, V}||{Src, Dst} <- misc:pairs(Chain),
-                            Src /= undefined andalso Dst /= undefined],
-    map_to_replicas(Rest, V+1, [Pairs|Replicas]).
-
 
 %%
 %% Internal functions

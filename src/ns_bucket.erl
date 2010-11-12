@@ -22,6 +22,7 @@
 -export([auth_type/1,
          bucket_nodes/1,
          bucket_type/1,
+         config/1,
          config_string/1,
          create_bucket/3,
          credentials/1,
@@ -39,6 +40,7 @@
          json_map/2,
          json_map_from_config/2,
          live_bucket_nodes/1,
+         map_to_replicas/1,
          maybe_get_bucket/2,
          moxi_port/1,
          node_locator/1,
@@ -50,8 +52,7 @@
          set_map/2,
          set_servers/2,
          update_bucket_props/2,
-         update_bucket_props/3,
-         config/1]).
+         update_bucket_props/3]).
 
 
 %%%===================================================================
@@ -261,6 +262,18 @@ failover_warnings() ->
                      ?FS_OK -> ok
                  end,
     [S || S <- [BaseSafety, ExtraSafety], S =/= ok].
+
+
+map_to_replicas(Map) ->
+    map_to_replicas(Map, 0, []).
+
+map_to_replicas([], _, Replicas) ->
+    lists:append(Replicas);
+map_to_replicas([Chain|Rest], V, Replicas) ->
+    Pairs = [{Src, Dst, V}||{Src, Dst} <- misc:pairs(Chain),
+                            Src /= undefined andalso Dst /= undefined],
+    map_to_replicas(Rest, V+1, [Pairs|Replicas]).
+
 
 %% @doc Return the minimum number of live copies for all vbuckets.
 -spec min_live_copies([node()], list()) -> non_neg_integer() | undefined.
