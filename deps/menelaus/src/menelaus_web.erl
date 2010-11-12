@@ -749,7 +749,7 @@ handle_pool_settings(_PoolId, Req) ->
                            _ -> exit('Changing the memory quota of a cluster is not yet supported.')
                        end,
                        {MinMemoryMB, MaxMemoryMB, QuotaErrorDetailsFun} =
-                           ns_storage_conf:allowed_node_quota_range(memsup:get_memory_data()),
+                           ns_storage_conf:allowed_node_quota_range(),
                        case parse_validate_number(X, MinMemoryMB, MaxMemoryMB) of
                            {ok, Number} ->
                                {ok, fun () ->

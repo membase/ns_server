@@ -31,7 +31,7 @@
 
 -export([extract_disk_stats_for_path/2, disk_stats_for_path/2]).
 
--export([allowed_node_quota_range/1]).
+-export([allowed_node_quota_range/1, allowed_node_quota_range/0]).
 
 memory_quota(_Node) ->
     {value, RV} = ns_config:search(ns_config:get(), memory_quota),
@@ -274,6 +274,15 @@ extract_disk_stats_for_path_test() ->
                  extract_disk_stats_for_path(DiskSupStats,
                                              "/media/p2/mbdata")).
 -endif.
+
+allowed_node_quota_range() ->
+    MemoryData = case os:getenv("MEMBASE_RAM_MEGS") of
+                     false -> memsup:get_memory_data();
+                     X ->
+                         IntegerMegs = list_to_integer(X),
+                         {IntegerMegs, 0, 0}
+                 end,
+    allowed_node_quota_range(MemoryData).
 
 allowed_node_quota_range(MemSupData) ->
     {MaxMemoryBytes0, _, _} = MemSupData,
