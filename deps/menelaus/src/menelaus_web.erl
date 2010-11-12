@@ -519,19 +519,28 @@ build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr) ->
                    {status, Status}] ++ KV,
             KV2 = case IncludeOtp of
                       true ->
-                          KV1 ++ [{otpNode,
-                                   list_to_binary(
-                                     atom_to_list(WantENode))},
-                                  {otpCookie, OtpCookie}];
+                          [{otpNode,
+                            list_to_binary(
+                              atom_to_list(WantENode))},
+                           {otpCookie, OtpCookie}|KV1];
                       false -> KV1
                   end,
-            KV3 = case InfoLevel of
-                      stable -> KV2;
+            KV3 = case Bucket of
+                      undefined ->
+                          KV2;
+                      _ ->
+                          Replication = proplists:get_value(replication,
+                                                            InfoNode, []),
+                          [{replication, proplists:get_value(Bucket,
+                                                             Replication)}|KV2]
+                  end,
+            KV4 = case InfoLevel of
+                      stable -> KV3;
                       normal -> build_extra_node_info(Config, WantENode,
                                                       InfoNode, BucketsAll,
-                                                      KV2)
+                                                      KV3)
                   end,
-            {struct, KV3}
+            {struct, KV4}
     end.
 
 build_extra_node_info(Config, Node, InfoNode, _BucketsAll, Append) ->
