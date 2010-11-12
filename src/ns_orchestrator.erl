@@ -311,7 +311,8 @@ needs_rebalance(Nodes, BucketConfig) ->
                 _ ->
                     Map = proplists:get_value(map, BucketConfig),
                     NumServers = length(Servers),
-                    lists:sort(Nodes) /= lists:sort(Servers) orelse
+                    Map =:= undefined orelse
+                        lists:sort(Nodes) /= lists:sort(Servers) orelse
                         lists:any(
                           fun (Chain) ->
                                   lists:member(
