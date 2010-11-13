@@ -148,8 +148,8 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
             case [N || {N, active} <- ReplicaStates ++ ExtraStates] of
                 [] ->
                     %% We'll let the next pass catch the replicas.
-                    ?log_info("Setting vbucket ~p in ~p on ~p to active.",
-                              [VBucket, Bucket, Master]),
+                    ?log_info("Setting vbucket ~p in ~p on ~p from ~p to active.",
+                              [VBucket, Bucket, State, Master]),
                     ns_memcached:set_vbucket(Master, Bucket, VBucket, active),
                     Chain;
                 [Node] ->
