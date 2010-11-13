@@ -312,7 +312,7 @@ handle_engage_cluster(Req) ->
                  case ns_cluster_membership:engage_cluster(IP) of
                      ok -> ok;
                      {error_msg, ErrorMsg} ->
-                         reply_json(Req, [list_to_binary(ErrorMsg)] , 400),
+                         reply_json(Req, [ErrorMsg], 400),
                          failed
                  end
          end,
@@ -341,7 +341,7 @@ handle_add_node_request(Req) ->
                                {errors, [<<"This server does not have enough memory to support cluster quota.">>]};
                            {error, system_not_addable} ->
                                {errors, [<<"The server is already part of another cluster.  To be added, it cannot be part of an existing cluster.">>]};
-                           {error_msg, Msg} -> {errors, [list_to_binary(Msg)]}
+                           {error_msg, Msg} -> {errors, [Msg]}
                        end
                end,
     case Reaction of
@@ -1103,7 +1103,7 @@ handle_resource_delete(S, Path, Req) when is_list(S) -> handle_resource_delete(l
 
 handle_resource_delete(Node, Path, Req) ->
     case ns_storage_conf:remove_storage(Node, Path) of
-        ok -> Req:respond({204, add_header(), []});
+%%        ok -> Req:respond({204, add_header(), []}); % Commented out to avoid dialyzer warning
         {error, _} -> Req:respond({404, add_header(), "The storage location could not be removed.\r\n"})
     end.
 
@@ -1127,7 +1127,6 @@ handle_node_settings_post(Node, Req) ->
                                end,
                                case ns_storage_conf:prepare_setup_disk_storage_conf(node(), Path) of
                                    {ok, _} = R -> R;
-                                   ok -> ok;
                                    error -> <<"Could not set the storage path. It must be a directory writable by 'membase' user.">>
                                end
                        end
