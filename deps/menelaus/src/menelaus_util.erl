@@ -135,11 +135,8 @@ low_pass_filter(Alpha, List) ->
 
 -ifdef(EUNIT).
 
-string_hash_test_() ->
-    [
-     ?_assert(string_hash("hello1") /= string_hash("hi")),
-     ?_assert(string_hash("hi") == ($h*31+$i))
-    ].
+string_hash_test() ->
+    ?assertEqual(string_hash("hi"), $h*31+$i).
 
 debugger_apply(Fun, Args) ->
     i:im(),

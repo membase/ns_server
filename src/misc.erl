@@ -801,8 +801,8 @@ retry_test() ->
     {ok, 1827841} = retry(fun() -> {ok, 1827841} end),
 
     %% Error cases.
-    case (catch retry(fun () -> x = y end)) of
-        {'EXIT', {{badmatch, y}, _Stack}} ->
+    case (catch retry(fun () -> exit(foo) end)) of
+        {'EXIT', foo} ->
             ok
     end,
 

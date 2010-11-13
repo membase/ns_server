@@ -52,44 +52,13 @@ zero_split_test() ->
   ?assertEqual({<<"abcdefg">>, <<0>>}, misc:zero_split(<<"abcdefg",0>>)),
   ?assertEqual(<<"abcdefg">>, misc:zero_split(<<"abcdefg">>)).
 
-% hash_throughput_test_() ->
-%   {timeout, 120, [{?LINE, fun() ->
-%     Keys = lists:map(fun(N) ->
-%         lists:duplicate(1000, random:uniform(255))
-%       end, lists:seq(1,1000)),
-%     FNVStart = now_float(),
-%     lists:foreach(fun(Key) ->
-%         fnv(Key)
-%       end, Keys),
-%     FNVEnd = now_float(),
-%     ?debugFmt("fnv took ~ps~n", [FNVEnd - FNVStart]),
-%     MStart = now_float(),
-%     lists:foreach(fun(Key) ->
-%         hash(Key)
-%       end, Keys),
-%     MEnd = now_float(),
-%     ?debugFmt("murmur took ~ps~n", [MEnd - MStart]),
-%     FNVNStart = now_float(),
-%     lists:foreach(fun(Key) ->
-%         fnv:hash(Key)
-%       end, Keys),
-%     FNVNEnd = now_float(),
-%     ?debugFmt("fnv native took ~ps~n", [FNVNEnd - FNVNStart])
-%   end}]}.
-%
-% fnv_native_compat_test() ->
-%   ?assertEqual(fnv("blah"), fnv:hash("blah")),
-%   ?assertEqual(fnv(<<"blah">>), fnv:hash(<<"blah">>)),
-%   ?assertEqual(fnv([<<"blah">>, "bleg"]), fnv:hash([<<"blah">>, "bleg"])).
-
 shuffle_test() ->
   % we can really only test that they aren't equals,
   % which won't even always work, weak
   A = [a, b, c, d, e, f, g],
   B = misc:shuffle(A),
   % ?debugFmt("shuffled: ~p", [B]),
-  ?assertEqual(7, length(B)),
-  ?assert(A =/= B).
+  ?assertEqual(7, length(B)).
 
 rm_rf_test() ->
   lists:foldl(fun(N, Dir) ->
@@ -117,4 +86,3 @@ pmap_test() ->
 pmap_1_test() ->
   L = [0],
   ?assertEqual([0], misc:pmap(fun(N) -> N end, L, 1)).
-
