@@ -161,6 +161,8 @@ var DAO = {
       DAO.login = arr[0];
       DAO.password = arr[1];
 
+      $('#auth_dialog [name=login]').val(arr[0]);
+
       $.ajax({
         type: 'GET',
         url: "/pools",
