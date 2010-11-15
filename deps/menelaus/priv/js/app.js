@@ -678,7 +678,7 @@ var NodeDialog = {
 
         dialog.find('[name=dynamic-ram-quota]').val(Math.floor(storageTotals.ram.quotaTotal / Math.Mi));
         dialog.find('.ram-total-size').text(totalRAMMegs + ' MB');
-        var ramMaxMegs = Math.max(totalRAMMegs - 512,
+        var ramMaxMegs = Math.max(totalRAMMegs - 1024,
                                   Math.floor(storageTotals.ram.total * 4 / (5 * Math.Mi)));
         dialog.find('.ram-max-size').text(ramMaxMegs);
 

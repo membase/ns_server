@@ -289,14 +289,14 @@ allowed_node_quota_range(MemSupData) ->
     MiB = 1048576,
     MinMemoryMB = 256,
     MaxMemoryMBPercent = (MaxMemoryBytes0 * 4) div (5 * MiB),
-    MaxMemoryMB = lists:max([(MaxMemoryBytes0 div MiB) - 512,
+    MaxMemoryMB = lists:max([(MaxMemoryBytes0 div MiB) - 1024,
                              MaxMemoryMBPercent]),
     QuotaErrorDetailsFun = fun () ->
                                    Format = case MaxMemoryMB of
                                        MaxMemoryMBPercent ->
                                            " Quota must be between 256 MB and ~w MB (80% of memory size).";
                                        _ ->
-                                           " Quota must be between 256 MB and ~w MB (memory size minus 512 MB)."
+                                           " Quota must be between 256 MB and ~w MB (memory size minus 1024 MB)."
                                    end,
                                    io_lib:format(Format, [MaxMemoryMB])
                            end,
