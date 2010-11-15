@@ -93,6 +93,7 @@ child_specs() ->
                               "connect_max_errors=3,connect_retry_interval=30000,"
                               "connect_timeout=400,"
                               "auth_timeout=100,cycle=200,"
+                              "downstream_conn_queue_timeout=200,"
                               "downstream_timeout=5000,wait_queue_timeout=5000",
                               [Port])),
                       Args = ["-B", "auto", "-z", LittleZ, "-Z", BigZ,
