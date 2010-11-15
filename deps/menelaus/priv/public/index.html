@@ -951,9 +951,11 @@
     <em class="memcached-summary when-non-persistent"></em>
     <div class="persistent-only">
       <h2>Replication</h2>
+      <label class="for-enable-replication"><input type="checkbox" checked><span>Enable Replication</span></label>
+      <input class="hidden-replica-number" type="hidden" name="replicaNumber" value="0" disabled>
       <label class="for-replica-number">
-        <span>Number of replica (backup) copies:</span>
-        <input value="1" name="replicaNumber">        
+        <select name="replicaNumber"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select>
+        <span>Number of replica (backup) copies</span>
         <span class="error-container err-replicaNumber"></span>
       </label>
     </div> <!-- .persistent-only -->
@@ -1495,9 +1497,10 @@ required to add it back into the cluster. Please confirm.
             <em class="memcached-summary when-non-persistent"></em>
 	    <div class="persistent-only">
 	      <h2>Replication</h2>
+              <label class="for-enable-replication"><input type="checkbox" checked disabled><span>Enable Replication</span></label>
 	      <label class="for-replica-number">
-	        <span>Number of replica (backup) copies:</span>
-                <input value="" name="replicaNumber">
+                <select name="replicaNumber"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select>
+	        <span>Number of replica (backup) copies</span>
 	        <span class="error-container err-replicaNumber"></span>
 	      </label>
 	    </div><!-- .persistent-only -->

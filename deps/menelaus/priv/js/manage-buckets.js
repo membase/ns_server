@@ -136,6 +136,7 @@ var BucketDetailsDialog = mkClass({
     setBoolAttribute(dialog.find('[name=name]'), 'disabled', !isNew);
 
     setBoolAttribute(dialog.find('[name=replicaNumber]'), 'disabled', !isNew);
+    setBoolAttribute(dialog.find('.for-enable-replication input'), 'disabled', !isNew);
 
     setBoolAttribute(dialog.find('[name=ramQuotaMB]'), 'disabled', !isNew && (initValues.bucketType == 'memcached'));
 
@@ -152,6 +153,18 @@ var BucketDetailsDialog = mkClass({
 
       if (errorsCell.value && errorsCell.value.summaries)
         errorsCell.setValueAttr(null, 'summaries', 'ramSummary');
+    });
+
+    var oldReplicationEnabled;
+    dialog.observePotentialChanges(function () {
+      var replicationEnabled = !!(dialog.find('.for-enable-replication input').attr('checked'));
+      if (replicationEnabled === oldReplicationEnabled)
+        return;
+      oldReplicationEnabled = replicationEnabled;
+      dialog.find('.for-replica-number')[replicationEnabled ? 'show' : 'hide']();
+      setBoolAttribute(dialog.find('.hidden-replica-number').need(1), 'disabled', replicationEnabled);
+      if (isNew)
+        setBoolAttribute(dialog.find('.for-replica-number select').need(1), 'disabled', !replicationEnabled);
     });
 
     var preDefaultAuthType;
@@ -264,6 +277,7 @@ var BucketDetailsDialog = mkClass({
     setFormValues(form, self.initValues);
 
     setBoolAttribute(form.find('[name=bucketType]'), 'disabled', !self.isNew);
+    setBoolAttribute(form.find('.for-enable-replication input'), 'checked', self.initValues.replicaNumber != 0);
 
     self.cleanups.push(self.bindWithCleanup(form, 'submit', function (e) {
       e.preventDefault();

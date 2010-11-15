@@ -952,10 +952,10 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details label.for-ram-quota, .bucket_details label.for-hdd-quota {width:275px;padding-top:13px;}
 .bucket_details label.for-ram-quota span, .bucket_details label.for-hdd-quota span {width:164px;}
 .bucket_details label.for-ram-quota input, .bucket_details label.for-hdd-quota input {width:58px;}
-.bucket_details .invalid {border-color:red;}
+.bucket_details input.invalid {border-color:red;}
 .bucket_details .error-container {color:red;float:left;font-size:66%;padding-left:170px;visibility:hidden;}
 .bucket_details .error-container.err-name, .bucket_details .error-container.err-proxyPort {display:inline;float:none;padding-left:6px;}
-.bucket_details .for-replica-number .error-container {float:none;padding-left:0;}
+.bucket_details .for-replica-number .error-container {float:none;padding-left:0;margin-left:0;text-align:left;display:block;width:auto !important;}
 .bucket_details .error-container.active {visibility:visible;}
 .bucket_details label.for-enable-replication {padding-left:20px;width:150px;float:left;}
 .bucket_details label.for-enable-replication span {display:inline;float:none;margin-left:5px;}
