@@ -9,6 +9,7 @@ NS_SERVER_PLT=ns_server.plt
 TMP_DIR=./tmp
 
 TMP_VER=$(TMP_DIR)/version_num.tmp
+TEST_TARGET=start
 
 .PHONY: ebins ebin_app version
 
@@ -67,7 +68,7 @@ test_: test_unit test_menelaus
 test_Windows_NT: test_unit test_menelaus
 
 test_unit: ebins
-	erl $(EFLAGS) -noshell -kernel error_logger silent -shutdown_time 10000 -eval 'case t:start() of ok -> init:stop(); _ -> init:stop(1) end.'
+	erl $(EFLAGS) -noshell -kernel error_logger silent -shutdown_time 10000 -eval "case t:$(TEST_TARGET)() of ok -> init:stop(); _ -> init:stop(1) end."
 
 test_menelaus: deps/menelaus
 	(cd deps/menelaus; $(MAKE) test)

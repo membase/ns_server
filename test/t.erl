@@ -34,9 +34,12 @@
 
 -module(t).
 
--export([start/0, config/1]).
+-export([start/0, start_without_coverage/0, config/1]).
 
 start() ->
+    start_with_coverage().
+
+start_with_coverage() ->
     cover:compile_beam_directory(config(ebin_dir)),
     Modules = cover:modules(),
     Result = eunit:test(Modules, [verbose]),
@@ -50,6 +53,28 @@ start() ->
                                     [html])
       end, Modules),
     Result.
+
+start_without_coverage() ->
+    io:format("Running tests without coverage~n", []),
+    Ext = code:objfile_extension(),
+    Dir = config(ebin_dir),
+    case file:list_dir(Dir) of
+        {ok, Files} ->
+            BeamFileNames =
+                lists:filter(fun (File) ->
+                                     case filename:extension(File) of
+                                         Ext -> true;
+                                         _ -> false
+                                     end
+                             end,
+                             Files),
+            Modules = lists:map(fun(BFN) ->
+                                        list_to_atom(filename:basename(BFN, Ext))
+                                end,
+                                BeamFileNames),
+            eunit:test(Modules, [verbose]);
+        Error -> Error
+    end.
 
 config(cov_dir) ->
     filename:absname(filename:join([config(root_dir), "coverage"]));
