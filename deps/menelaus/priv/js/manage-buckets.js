@@ -245,10 +245,17 @@ var BucketDetailsDialog = mkClass({
 
       var errors = data[0]; // we expect errors as a hash in this case
       self.errorsCell.setValue(errors);
-      if (errors._)
+      if (errors._) {
+        self.dialog.addClass("overlayed");
         genericDialog({buttons: {ok: true},
                        header: "Failed To Create Bucket",
-                       text: errors._});
+                       text: errors._,
+                       callback: function (e, btn, dialog) {
+                         dialog.close();
+                         self.dialog.removeClass("overlayed");
+                       }
+                      });
+      }
     });
 
     if (nonPersistent) {
