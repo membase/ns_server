@@ -72,7 +72,18 @@ kill_vbuckets(Node, Bucket, VBuckets) ->
 
 
 set_replicas(Bucket, NodesReplicas) ->
-    LiveNodes = [node()|nodes()],
+    %% Replace with the empty list if replication is disabled
+    NR = case ns_config:search_node_prop(node(), ns_config:get(), replication,
+                                    enabled, true) of
+             true ->
+                 NodesReplicas;
+             false -> []
+         end,
+    LiveNodes = ns_node_disco:nodes_actual_proper(),
+    %% Kill all replicators on nodes not in NR
+    NodesWithoutReplicas = LiveNodes -- [N || {N, _} <- NR],
+    lists:foreach(fun (Node) -> kill_all_children(Node, Bucket) end,
+                  NodesWithoutReplicas),
     lists:foldl(
       fun ({Src, R}, true) ->
               ?log_info("Not starting replicas ~p for bucket ~p because we already started some.",
@@ -90,7 +101,7 @@ set_replicas(Bucket, NodesReplicas) ->
                   false ->
                       false
               end
-      end, false, NodesReplicas).
+      end, false, NR).
 
 
 spawn_mover(Bucket, VBucket, SrcNode, DstNode) ->
@@ -108,6 +119,13 @@ split_vbuckets(VBuckets, L) ->
             {H, T} = lists:split(?MAX_VBUCKETS, VBuckets),
             split_vbuckets(T, [H|L])
     end.
+
+-spec kill_all_children(node(), bucket_name()) ->
+                               ok.
+kill_all_children(Node, Bucket) ->
+    lists:foreach(fun (Child) -> kill_child(Node, Bucket, Child) end,
+                  children(Node, Bucket)).
+
 
 -spec kill_child(node(), nonempty_string(), #child_id{}) ->
                         ok.

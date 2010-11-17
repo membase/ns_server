@@ -238,5 +238,6 @@ default() ->
                          bucket_created,
                          bucket_deleted,
                          bucket_auth_failed]}
-              ]}
+              ]},
+     {replication, [{enabled, true}]}
     ].
