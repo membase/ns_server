@@ -123,8 +123,16 @@ split_vbuckets(VBuckets, L) ->
 -spec kill_all_children(node(), bucket_name()) ->
                                ok.
 kill_all_children(Node, Bucket) ->
-    lists:foreach(fun (Child) -> kill_child(Node, Bucket, Child) end,
-                  children(Node, Bucket)).
+    try children(Node, Bucket) of
+        Children ->
+            lists:foreach(fun (Child) -> kill_child(Node, Bucket, Child) end,
+                          Children)
+    catch exit:{noproc, _} ->
+            %% If the supervisor isn't running, obviously there's no
+            %% replication.
+            ok
+    end.
+
 
 
 -spec kill_child(node(), nonempty_string(), #child_id{}) ->
