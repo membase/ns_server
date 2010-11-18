@@ -983,3 +983,7 @@ span.staleness-notice, .staleness-notice { display: none; color: red; }
 #alerts .staleness-notice { font-size: 12px; float: right; padding-top: 5px; padding-right: 10px;}
 #monitor_buckets .staleness-notice { font-size: 12px; float: right; line-height: 32px; padding-right: 10px; text-transform: none;}
 #monitor_buckets .no-buckets-subsection .staleness-notice { float:none; padding-right: 0px; }
+
+.warning_down_backfill, .warning_up_backfill, .warning_down_no_backfill, .warning_down_backfill { display: none; }
+.warning_down_backfill label, .warning_up_backfill label { display: block; margin-top: 15px; }
+.warning_down_backfill label input, .warning_up_backfill label input { margin-right: 3px; }

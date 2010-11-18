@@ -412,10 +412,46 @@ var ServersSection = {
   },
   failoverNode: function (hostname) {
     var self = this;
-    var node = self.mustFindNode(hostname);
+    var node;
     showDialogHijackingSave("failover_confirmation_dialog", ".save_button", function () {
+      if (!node)
+        throw new Error("must not happen!");
       self.postAndReload(self.poolDetails.value.controllers.failOver.uri,
                          {otpNode: node.otpNode});
+    });
+    var dialog = $('#failover_confirmation_dialog');
+    var overlay = overlayWithSpinner(dialog.find('.content').need(1));
+    var statusesCell = DAO.cells.nodeStatusesCell;
+    statusesCell.setValue(undefined);
+    statusesCell.invalidate();
+    statusesCell.changedSlot.subscribeOnce(function () {
+      overlay.remove();
+      dialog.find('.warning').hide();
+      var statuses = statusesCell.value;
+      node = statuses[hostname];
+      if (!node) {
+        hideDialog("failover_confirmation_dialog");
+        return;
+      }
+
+      var backfill = node.replication < 1;
+      var down = node.status != 'healthy';
+      var visibleWarning = dialog.find(['.warning', down ? 'down' : 'up', backfill ? 'backfill' : 'no_backfill'].join('_')).show();
+      dialog.find('.backfill_percent').text(truncateTo3Digits(node.replication * 100));
+      var confirmation = visibleWarning.find('[name=confirmation]')
+      if (confirmation.length) {
+        setBoolAttribute(confirmation, 'checked', false);
+        function onChange() {
+          var checked = !!confirmation.attr('checked');
+          setBoolAttribute(dialog.find('.save_button'), 'disabled', !checked);
+        }
+        function onHide() {
+          confirmation.unbind('change', onChange);
+          dialog.unbind('dialog:hide', onHide);
+        }
+        confirmation.bind('change', onChange);
+        dialog.bind('dialog:hide', onHide);
+      }
     });
   },
   reAddNode: function (hostname) {

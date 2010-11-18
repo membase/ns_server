@@ -585,6 +585,7 @@ function hideDialog(id) {
   if (_.isString(id))
     id = $($i(id));
   id.jqm().jqmHide();
+  id.trigger('dialog:hide');
   ModalAction.leavingNow();
 }
 

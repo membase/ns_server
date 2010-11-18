@@ -242,6 +242,11 @@ var DAO = {
   });
   this.currentPoolDetailsCell.equality = _.isEqual;
 
+  this.nodeStatusesCell = Cell.compute(function (v) {
+    var details = v.need(DAO.cells.currentPoolDetailsCell);
+    return future.get({url: details.nodeStatusesUri});
+  });
+
 }).call(DAO.cells);
 
 ;(function () {
