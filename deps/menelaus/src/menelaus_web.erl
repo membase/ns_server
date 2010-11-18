@@ -480,12 +480,11 @@ build_nodes_info() ->
 build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr) ->
     OtpCookie = list_to_binary(atom_to_list(ns_node_disco:cookie_get())),
     NodeStatuses = ns_doctor:get_nodes(),
-    %% Don't hit the config server unnecessarily
+    Config = ns_config:get(),
     BucketsAll = case InfoLevel of
                      stable -> undefined;
-                     normal -> ns_bucket:get_buckets()
+                     normal -> ns_bucket:get_buckets(Config)
                  end,
-    Config = ns_config:get(),
     fun(WantENode, Bucket) ->
             InfoNode = case dict:find(WantENode, NodeStatuses) of
                            {ok, Info} -> Info;
