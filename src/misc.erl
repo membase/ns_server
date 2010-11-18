@@ -839,3 +839,16 @@ raw_read_loop(File, Acc) ->
             file:close(File),
             erlang:error(Reason)
     end.
+
+multicall_result_to_plist_rec([], _ResL, _BadNodes, Acc) ->
+    Acc;
+multicall_result_to_plist_rec([N | Nodes], ResL, BadNodes, Acc) ->
+    case lists:member(N, BadNodes) of
+        true -> multicall_result_to_plist_rec(Nodes, ResL, BadNodes, Acc);
+        _ ->
+            NewAcc = [{N, hd(ResL)} | Acc],
+            multicall_result_to_plist_rec(Nodes, tl(ResL), BadNodes, NewAcc)
+    end.
+
+multicall_result_to_plist(Nodes, {ResL, BadNodes}) ->
+    multicall_result_to_plist_rec(Nodes, ResL, BadNodes, []).

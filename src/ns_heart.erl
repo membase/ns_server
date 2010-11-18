@@ -19,7 +19,8 @@
 
 -define(EXPENSIVE_CHECK_INTERVAL, 10000). % In ms
 
--export([start_link/0, status_all/0, expensive_checks/0]).
+-export([start_link/0, status_all/0, expensive_checks/0,
+         buckets_replication_statuses/0]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
          code_change/3]).
 
@@ -68,9 +69,7 @@ current_status(Expensive) ->
      | element(2, ns_info:basic_info())] ++ Expensive.
 
 expensive_checks() ->
-    BucketConfigs = ns_bucket:get_buckets(),
-    ReplicationStatus = [{Bucket, replication_status(Bucket, BucketConfig)} ||
-                            {Bucket, BucketConfig} <- BucketConfigs],
+    ReplicationStatus = buckets_replication_statuses(),
     BasicData = [{replication, ReplicationStatus},
                  {system_memory_data, memsup:get_system_memory_data()},
                  {statistics, stats()}],
@@ -79,6 +78,11 @@ expensive_checks() ->
             [{meminfo, Contents} | BasicData];
         _ -> BasicData
     end.
+
+buckets_replication_statuses() ->
+    BucketConfigs = ns_bucket:get_buckets(),
+    [{Bucket, replication_status(Bucket, BucketConfig)} ||
+        {Bucket, BucketConfig} <- BucketConfigs].
 
 replication_status(Bucket, BucketConfig) ->
     %% First, check that replication is running

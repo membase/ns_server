@@ -138,6 +138,8 @@ loop(Req, AppRoot, DocRoot) ->
                              ["pools", PoolId, "buckets", Id, "stats"] ->
                                  {auth_bucket, fun menelaus_stats:handle_bucket_stats/3,
                                   [PoolId, Id]};
+                             ["nodeStatuses"] ->
+                                 {auth, fun handle_node_statuses/1};
                              ["logs"] ->
                                  {auth, fun menelaus_alert:handle_logs/1};
                              ["alerts"] ->
@@ -460,6 +462,7 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
                  {rebalanceStatus, RebalanceStatus},
                  {rebalanceProgressUri, list_to_binary(concat_url_path(["pools", Id, "rebalanceProgress"]))},
                  {stopRebalanceUri, <<"/controller/stopRebalance">>},
+                 {nodeStatusesUri, <<"/nodeStatuses">>},
                  {stats, {struct,
                           [{uri,
                             list_to_binary(concat_url_path(["pools", Id, "stats"]))}]}}],
@@ -542,7 +545,7 @@ build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr) ->
             {struct, KV4}
     end.
 
-build_extra_node_info(Config, Node, InfoNode, _BucketsAll, Append) ->
+build_extra_node_info(Config, Node, InfoNode, BucketsAll, Append) ->
     {UpSecs, {MemoryTotal, MemoryAlloced, _}} =
         {proplists:get_value(wall_clock, InfoNode, 0),
          proplists:get_value(memory_data, InfoNode,
@@ -1247,3 +1250,50 @@ handle_re_add_node(Req) ->
     Node = list_to_atom(proplists:get_value("otpNode", Params, "undefined")),
     ok = ns_cluster_membership:re_add_node(Node),
     Req:respond({200, [], []}).
+
+calculate_replication(Node, BucketsAll, BucketsReplications) ->
+    ReplicationList = lists:foldl(fun ({BucketName, BucketConfig}, A) ->
+                                      case lists:member(Node, ns_bucket:bucket_nodes(BucketConfig)) of
+                                          true ->
+                                              case proplists:get_value(BucketName, BucketsReplications) of
+                                                  undefined -> A;
+                                                  Value -> [Value | A]
+                                              end;
+                                          _ -> A
+                                      end
+                              end, [], BucketsAll),
+    case ReplicationList of
+        [] -> 1.0;
+        _ -> lists:sum(ReplicationList) / length(ReplicationList)
+    end.
+
+%% this serves fresh nodes replication and health status
+handle_node_statuses(Req) ->
+    LocalAddr = menelaus_util:local_addr(Req),
+    OldNodeStatuses = ns_doctor:get_nodes(),
+    Nodes = ns_node_disco:nodes_wanted(),
+    Config = ns_config:get(),
+    BucketsAll = ns_bucket:get_buckets(Config),
+    NodeResp = misc:multicall_result_to_plist(Nodes,
+                                              rpc:multicall(Nodes, ns_heart, buckets_replication_statuses, [], 2000)),
+    NodeStatuses = lists:map(
+                     fun (N) ->
+                             InfoNode = case dict:find(N, OldNodeStatuses) of
+                                            {ok, Info} -> Info;
+                                            _ -> []
+                                        end,
+                             Hostname = proplists:get_value(hostname,
+                                                            build_node_info(Config, N, InfoNode, LocalAddr)),
+                             V = case lists:keyfind(N, 1, NodeResp) of
+                                     false ->
+                                         {struct, [{status, unhealthy},
+                                                   {replication, calculate_replication(N, BucketsAll,
+                                                                                       proplists:get_value(replication,
+                                                                                                           InfoNode, []))}]};
+                                     {_, BucketReplications} ->
+                                         {struct, [{status, healthy},
+                                                   {replication, calculate_replication(N, BucketsAll, BucketReplications)}]}
+                                 end,
+                             {Hostname, V}
+                     end, Nodes),
+    reply_json(Req, {struct, NodeStatuses}, 200).
