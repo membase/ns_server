@@ -190,7 +190,7 @@ verify_memory_limits(RemoteNode) ->
     {value, Quota} = ns_config:search(ns_config:get(RemoteNode, 5000), memory_quota),
     MemoryFuzzyness = case (catch list_to_integer(os:getenv("MEMBASE_RAM_FUZZYNESS"))) of
                           X when is_integer(X) -> X;
-                          _ -> 5
+                          _ -> 50
                       end,
     {_MinMemoryMB, MaxMemoryMB, _} = ns_storage_conf:allowed_node_quota_range(),
     if
