@@ -188,9 +188,13 @@ terminate(_Reason, _State) ->
 %% checks if this node can join to RemoteNode
 verify_memory_limits(RemoteNode) ->
     {value, Quota} = ns_config:search(ns_config:get(RemoteNode, 5000), memory_quota),
+    MemoryFuzzyness = case (catch list_to_integer(os:getenv("MEMBASE_RAM_FUZZYNESS"))) of
+                          X when is_integer(X) -> X;
+                          _ -> 5
+                      end,
     {_MinMemoryMB, MaxMemoryMB, _} = ns_storage_conf:allowed_node_quota_range(),
     if
-        Quota =< MaxMemoryMB ->
+        Quota =< MaxMemoryMB + MemoryFuzzyness ->
             ok;
         true ->
             {error, bad_memory_size}
