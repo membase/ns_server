@@ -545,7 +545,7 @@ build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr) ->
             {struct, KV4}
     end.
 
-build_extra_node_info(Config, Node, InfoNode, BucketsAll, Append) ->
+build_extra_node_info(Config, Node, InfoNode, _BucketsAll, Append) ->
     {UpSecs, {MemoryTotal, MemoryAlloced, _}} =
         {proplists:get_value(wall_clock, InfoNode, 0),
          proplists:get_value(memory_data, InfoNode,
