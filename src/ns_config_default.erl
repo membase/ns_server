@@ -181,7 +181,7 @@ default() ->
                 "connect_timeout=400,"
                 "auth_timeout=100,cycle=200,"
                 "downstream_conn_queue_timeout=200,"
-                "downstream_timeout=5000,wait_queue_timeout=5000",
+                "downstream_timeout=5000,wait_queue_timeout=200",
                 [port]},
          "-z", {"url=http://127.0.0.1:~B/pools/default/saslBucketsStreaming",
                 [{rest, port}]},
