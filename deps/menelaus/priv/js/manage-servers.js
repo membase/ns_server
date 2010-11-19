@@ -451,6 +451,9 @@ var ServersSection = {
         }
         confirmation.bind('change', onChange);
         dialog.bind('dialog:hide', onHide);
+        onChange();
+      } else {
+        dialog.find(".save_button").removeAttr("disabled");
       }
     });
   },
