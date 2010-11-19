@@ -700,8 +700,19 @@ var MockedRequest = mkClass({
                          rebalanceStatus: 'none',
                          rebalanceProgressUri: '/pools/default/rebalanceProgress',
                          stopRebalanceUri: '/controller/stopRebalance',
+                         nodeStatusesUri: "/nodeStatuses",
                          stats: {uri: "/pools/default/buckets/4/stats"}, // really for pool
                          name: "Default Pool"}],
+      [get("nodeStatuses"), {
+        "mickey-mouse.disney.com:8091": {status: "healthy",
+                                         replication: 0.5},
+        "donald-duck.disney.com:8091": {status: "healthy",
+                                        replication: 0},
+        "scrooge-mcduck.disney.com:8091": {status: "healthy",
+                                           replication: 1.0},
+        "goofy.disney.com:8091": {status: "unhealthy",
+                                  replication: 0.5}
+      }],
       [get("pools", "default", "buckets"), [{name: "default",
                                              bucketType: 'membase',
                                              uri: "/pools/default/buckets/4",
