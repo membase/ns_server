@@ -279,8 +279,8 @@ allowed_node_quota_range() ->
     MemoryData = case os:getenv("MEMBASE_RAM_MEGS") of
                      false -> memsup:get_memory_data();
                      X ->
-                         IntegerMegs = list_to_integer(X) * 1048576,
-                         {IntegerMegs, 0, 0}
+                         RAMBytes = list_to_integer(X) * 1048576,
+                         {RAMBytes, 0, 0}
                  end,
     allowed_node_quota_range(MemoryData).
 
