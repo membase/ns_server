@@ -58,7 +58,13 @@ failover(Bucket, Node) ->
             end,
             ns_bucket:set_map(Bucket, Map1),
             ns_bucket:set_servers(Bucket, lists:delete(Node, Servers)),
-            ns_janitor:cleanup(Bucket);
+            try
+                ns_janitor:cleanup(Bucket)
+            catch
+                E:R ->
+                    ?log_error("Janitor cleanup of ~p failed after failover of ~p: ~p",
+                               [Bucket, Node, {E, R}])
+            end;
         memcached ->
             ns_bucket:set_servers(Bucket, lists:delete(Node, Servers))
     end.
