@@ -149,7 +149,7 @@ do_sanify_chain(Bucket, States, Chain, VBucket, Zombies) ->
                 [] ->
                     %% We'll let the next pass catch the replicas.
                     ?log_info("Setting vbucket ~p in ~p on ~p from ~p to active.",
-                              [VBucket, Bucket, State, Master]),
+                              [VBucket, Bucket, Master, State]),
                     ns_memcached:set_vbucket(Master, Bucket, VBucket, active),
                     Chain;
                 [Node] ->
