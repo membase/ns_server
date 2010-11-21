@@ -1287,11 +1287,13 @@ handle_node_statuses(Req) ->
                              V = case lists:keyfind(N, 1, NodeResp) of
                                      false ->
                                          {struct, [{status, unhealthy},
+                                                   {otpNode, N},
                                                    {replication, calculate_replication(N, BucketsAll,
                                                                                        proplists:get_value(replication,
                                                                                                            InfoNode, []))}]};
                                      {_, BucketReplications} ->
                                          {struct, [{status, healthy},
+                                                   {otpNode, N},
                                                    {replication, calculate_replication(N, BucketsAll, BucketReplications)}]}
                                  end,
                              {Hostname, V}
