@@ -100,7 +100,7 @@ good_children() ->
 %% on Mnesia.
 bad_children() ->
     [{ns_mnesia, {ns_mnesia, start_link, []},
-      permanent, 5000, worker, [ns_mnesia]},
+      permanent, 10000, worker, [ns_mnesia]},
 
      {ns_bad_bucket_worker, {work_queue, start_link, [ns_bad_bucket_worker]},
       permanent, 10, worker, [work_queue]},

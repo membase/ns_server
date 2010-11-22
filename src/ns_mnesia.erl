@@ -41,6 +41,8 @@
 %% @doc Delete the current mnesia schema for joining/renaming purposes.
 delete_schema() ->
     false = misc:running(?MODULE),
+    %% Shut down mnesia in case something else started it.
+    stopped = mnesia:stop(),
     ok = mnesia:delete_schema([node()]),
     ?log_info("Deleted schema.~nCurrent config: ~p",
               [mnesia:system_info(all)]).
