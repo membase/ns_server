@@ -1,8 +1,9 @@
 var SamplesRestorer = mkClass({
-  initialize: function (url, options) {
+  initialize: function (url, options, keepSamplesCount) {
     this.birthTime = (new Date()).valueOf();
     this.url = url;
     this.options = options;
+    this.keepSamplesCount = keepSamplesCount;
     this.valueTransformer = $m(this, 'transformData');
     this.grabToken = mkTokenBucket(2, 10, 4);
   },
@@ -33,7 +34,7 @@ var SamplesRestorer = mkClass({
     var newSamples = {};
 
     for (var keyName in samples) {
-      newSamples[keyName] = prevSamples[keyName].concat(samples[keyName].slice(1)).slice(-60);
+      newSamples[keyName] = prevSamples[keyName].concat(samples[keyName].slice(1)).slice(-this.keepSamplesCount);
     }
 
     this.prevSamples = op.samples = newSamples;
@@ -81,9 +82,20 @@ var SamplesRestorer = mkClass({
     equality: _.isEqual
   });
 
-  var samplesRestorerCell = new Cell(function (target, options) {
-    return new SamplesRestorer(target.stats.uri, options);
-  }, {target: targetCell, options: statsOptionsCell});
+  var samplesBufferDepthRAW = new StringHashFragmentCell("statsBufferDepth");
+  var samplesBufferDepth = Cell.compute(function (v) {
+    return v(samplesBufferDepthRAW) || 1;
+  });
+
+  var samplesRestorerCell = Cell.computeEager(function (v) {
+    var target = v.need(targetCell);
+    var options = v.need(statsOptionsCell);
+    var keepCount = 60;
+    if (options.zoom == "minute") {
+      keepCount = v.need(samplesBufferDepth) + 60;
+    }
+    return new SamplesRestorer(target.stats.uri, options, keepCount);
+  });
 
   var statsCell = Cell.mkCaching(function (samplesRestorer) {
     var self = this.self;
@@ -137,7 +149,8 @@ var SamplesRestorer = mkClass({
   _.extend(DAO.cells, {
     stats: statsCell,
     statsOptions: statsOptionsCell,
-    currentPoolDetails: DAO.cells.currentPoolDetailsCell
+    currentPoolDetails: DAO.cells.currentPoolDetailsCell,
+    samplesBufferDepth: samplesBufferDepth
   });
 }).call(DAO.cells);
 
@@ -162,6 +175,8 @@ function renderSmallGraph(jq, ops, statName, isSelected, zoomMillis, timeOffset)
 
   var lastY = data[data.length-1];
   var now = (new Date()).valueOf();
+  if (ops.interval < 2000)
+    now -= DAO.cells.samplesBufferDepth.value * 1000;
 
   var maxString = isNaN(lastY) ? '?' : ViewHelpers.formatQuantity(lastY, '', 1000);
   jq.find('.small_graph_label > .value').text(maxString);
@@ -361,6 +376,8 @@ var StatGraphs = {
     var zoomMillis = (self.zoomToSeconds[DAO.cells.zoomLevel.value] || 60) * 1000;
     var selected = self.selected.value;
     var now = (new Date()).valueOf();
+    if (op.interval < 2000)
+      now -= DAO.cells.samplesBufferDepth.value * 1000;
 
     maybeReloadAppDueToLeak();
     plotStatGraph(main, stats, selected, {
@@ -380,27 +397,41 @@ var StatGraphs = {
       renderSmallGraph(area, op, statName, selected == statName, zoomMillis, timeOffset);
     });
   },
-  update: function () {
-    this.doUpdate();
+  updateRealtime: function () {
+    if (this.refreshTimeoutId && this.renderingRealtime)
+      return;
 
-    var cell = DAO.cells.stats;
-    var stats = cell.value;
-    // it is important to calculate refresh time _after_ we render, so
-    // that if we're slow we'll safely skip samples
-    if (stats && stats.op)
-      cell.setRecalculateTime();
-
-    // this makes sure that we're refreshing graph even when no data arrives
     if (this.refreshTimeoutId) {
-      clearTimeout(this.refreshTimeoutId);
+      clearInterval(this.refreshTimeoutId);
       this.refreshTimeoutId = undefined;
     }
 
-    if (!stats || !stats.op || stats.op.interval < 2000) {
-      this.refreshTimeoutId = setTimeout($m(this, 'update'), 1500);
-    } else {
-      this.refreshTimeoutId = setTimeout($m(this, 'update'), Math.min(stats.op.interval/2, 60000) + 10000);
+    this.renderingRealtime = true;
+
+    this.refreshTimeoutId = setInterval($m(this, 'doUpdate'), 1000);
+
+    this.doUpdate();
+  },
+  update: function () {
+    var cell = DAO.cells.stats;
+    var stats = cell.value;
+
+    cell.setRecalculateTime();
+
+    if (stats && stats.op && stats.op.interval < 2000)
+      return this.updateRealtime();
+
+    this.renderingRealtime = false;
+
+    this.doUpdate();
+
+    // this makes sure that we're refreshing graph even when no data arrives
+    if (this.refreshTimeoutId) {
+      clearInterval(this.refreshTimeoutId);
+      this.refreshTimeoutId = undefined;
     }
+
+    this.refreshTimeoutId = setInterval($m(this, 'update'), 60000);
   },
   configureStats: function () {
     var self = this;
