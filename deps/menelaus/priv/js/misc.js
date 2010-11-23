@@ -901,3 +901,20 @@ $.fn.need = function (howmany) {
   }
   return this;
 }
+
+function mkTokenBucket(rate, burst, initial) {
+  var available = (initial !== undefined) ? initial : burst;
+  var whenAvailable = (new Date()).valueOf();
+  return function () {
+    var now = (new Date()).valueOf();
+    var seconds = Math.floor((now - whenAvailable) / 1000);
+    if (seconds > 0) {
+      available = Math.min(burst, available + seconds * rate);
+      whenAvailable += seconds * 1000;
+    }
+    if (!available)
+      return false;
+    available--;
+    return true;
+  }
+}
