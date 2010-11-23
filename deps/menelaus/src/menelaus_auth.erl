@@ -109,9 +109,7 @@ apply_auth_bucket(Req, F, Args) ->
 %              ]}. % An empty list means no login/password auth check.
 
 %% Checks if given credentials allow access to any SASL-auth
-%% bucket. Empty credentials are not allowed.
-check_auth_bucket(undefined) ->
-    false; %% no password -- false check, otherwise no password buckets will allow access
+%% bucket.
 check_auth_bucket(UserPassword) ->
     Buckets = ns_bucket:get_buckets(),
     lists:any(bucket_auth_fun(UserPassword),
