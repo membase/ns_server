@@ -4,6 +4,7 @@ var SamplesRestorer = mkClass({
     this.url = url;
     this.options = options;
     this.valueTransformer = $m(this, 'transformData');
+    this.grabToken = mkTokenBucket(2, 10, 4);
   },
   getRequestData: function () {
     var data = _.extend({}, this.options);
@@ -85,6 +86,14 @@ var SamplesRestorer = mkClass({
   }, {target: targetCell, options: statsOptionsCell});
 
   var statsCell = Cell.mkCaching(function (samplesRestorer) {
+    var self = this.self;
+
+    if (!samplesRestorer.grabToken()) {
+      console.log("stats request prevented by token bucket filter");
+      _.defer(function () {self.recalculateAfterDelay(2000)});
+      return Cell.STANDARD_ERROR_MARK;
+    }
+
     function futureWrapper(body, options) {
       function wrappedBody(dataCallback) {
         function wrappedDataCallback(value, status, xhr) {
@@ -95,6 +104,9 @@ var SamplesRestorer = mkClass({
             value.clientDate = (new Date()).valueOf();
           }
           dataCallback(value);
+          if (value === Cell.STANDARD_ERROR_MARK) {
+            self.recalculateAt(samplesRestorer.nextSampleTime());
+          }
         }
 
         body(wrappedDataCallback);
