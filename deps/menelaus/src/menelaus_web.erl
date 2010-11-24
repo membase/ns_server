@@ -350,8 +350,13 @@ handle_add_node_request(Req) ->
                            ok -> {ok, {struct, [{otpNode, atom_to_binary(node(), latin1)}]}};
                            {error, already_joined} ->
                                {errors, [<<"The server is already part of this cluster.">>]};
-                           {error, bad_memory_size} ->
-                               {errors, [<<"This server does not have enough memory to support cluster quota.">>]};
+                           {error, bad_memory_size, Props} ->
+                               Msg = io_lib:format("This server does not have sufficient memory to"
+                                                   ++ " support the cluster quota (Cluster Quota is"
+                                                   ++ " ~wMB per node, this server only has ~wMB)!",
+                                                   [proplists:get_value(quota, Props),
+                                                    proplists:get_value(this, Props)]),
+                               {errors, [list_to_binary(Msg)]};
                            {error, system_not_addable} ->
                                {errors, [<<"The server is already part of another cluster.  To be added, it cannot be part of an existing cluster.">>]};
                            {error_msg, Msg} -> {errors, [Msg]}

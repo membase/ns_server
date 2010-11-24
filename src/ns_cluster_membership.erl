@@ -139,7 +139,7 @@ add_node(OtherHost, OtherPort, OtherUser, OtherPswd) ->
                                                  {error_msg, binary()} | % from engage_cluster
                                                  {error, prepare_failed} |
                                                  {error, already_joined} | % from ns_cluster:join
-                                                 {error, bad_memory_size}.
+                                                 {error, bad_memory_size, [{atom, any()}]}.
 handle_add_node_request(OtpNode, OtpCookie) ->
     case system_joinable() of
         true -> % When a user wants to add a node to an existing cluster, this
@@ -259,9 +259,14 @@ handle_join(OtpNode, OtpCookie, MyIP) ->
         ok -> ns_log:log(?MODULE, ?JOINED_CLUSTER, "Joined cluster at node: ~p with cookie: ~p from node: ~p",
                          [OtpNode, OtpCookie, erlang:node()]),
               ok;
-        {error, bad_memory_size} ->
-            ns_log:log(?MODULE, ?OTHER_ERROR, "This server does not have enough memory to support cluster quota.", []),
-            {error, [<<"This server does not have enough memory to support cluster quota.">>]};
+        {error, bad_memory_size, Props} ->
+            Msg = io_lib:format("This server does not have sufficient memory to"
+                                                   ++ " support the cluster quota (Cluster Quota is"
+                                                   ++ " ~wMB per node, this server only has ~wMB)!",
+                                                   [proplists:get_value(quota, Props),
+                                                    proplists:get_value(this, Props)]),
+            ns_log:log(?MODULE, ?OTHER_ERROR, "~s", [Msg]),
+            {error, [list_to_binary(Msg)]};
         Any -> ns_log:log(?MODULE, ?OTHER_ERROR, "Unexpected error encountered during cluster join ~p", [Any]),
                {internal_error, [list_to_binary("Unexpected error encountered during cluster join.")]}
     end.

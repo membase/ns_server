@@ -197,7 +197,8 @@ verify_memory_limits(RemoteNode) ->
         Quota =< MaxMemoryMB + MemoryFuzzyness ->
             ok;
         true ->
-            {error, bad_memory_size}
+            {error, bad_memory_size, [{this, element(1, ns_storage_conf:this_node_memory_data()) div 1048576},
+                                      {quota, Quota}]}
     end.
 
 rename_node(Old, New) ->
@@ -222,7 +223,7 @@ rename_node(Old, New) ->
 %% Called on a node in the cluster to add us to its nodes_wanted
 -spec join(atom(), atom()) -> ok |
                               {error, already_joined} |
-                              {error, bad_memory_size}.
+                              {error, bad_memory_size, [{atom, any()}]}.
 join(RemoteNode, NewCookie) ->
     ns_log:log(?MODULE, ?NODE_JOIN_REQUEST, "Node join request on ~s to ~s",
                [node(), RemoteNode]),
