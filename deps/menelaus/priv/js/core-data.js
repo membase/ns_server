@@ -129,6 +129,10 @@ var DAO = {
     if (provisioned && !authenticated)
       return false;
 
+    if (provisioned && authenticated && !DAO.login) {
+      alert("WARNING: Your browser has cached administrator Basic HTTP authentication credentials. You need to close and re-open it to clear that cache.");
+    }
+
     DAO.ready = true;
     $(window).trigger('dao:ready');
 
