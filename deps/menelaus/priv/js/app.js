@@ -610,16 +610,15 @@ var NodeDialog = {
       }
 
       SettingsSection.processSave(this, function (dialog) {
-        DAO.login = user;
-        DAO.password = pw;
-        DAO.setAuthCookie(user, pw);
-        showInitDialog('done');
+        DAO.performLogin(user, pw, function () {
+          showInitDialog('done');
 
-        if (user != null && user != "") {
-          $('.sign-out-link').show();
-        }
+          if (user != null && user != "") {
+            $('.sign-out-link').show();
+          }
 
-        dialog.close();
+          dialog.close();
+        });
       });
     });
   },
