@@ -705,12 +705,16 @@ var MockedRequest = mkClass({
                          name: "Default Pool"}],
       [get("nodeStatuses"), {
         "mickey-mouse.disney.com:8091": {status: "healthy",
+                                         otpNode: "ns1@mickey-mouse.disney.com",
                                          replication: 0.5},
         "donald-duck.disney.com:8091": {status: "healthy",
+                                        otpNode: "ns1@donald-duck.disney.com",
                                         replication: 0},
         "scrooge-mcduck.disney.com:8091": {status: "healthy",
+                                           otpNode: "ns1@scrooge-mcduck.disney.com",
                                            replication: 1.0},
         "goofy.disney.com:8091": {status: "unhealthy",
+                                  otpNode: "ns1@goofy.disney.com",
                                   replication: 0.5}
       }],
       [get("pools", "default", "buckets"), [{name: "default",
