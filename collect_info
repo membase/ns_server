@@ -178,7 +178,7 @@ _tasks = [
               "stats -a 127.0.0.1:11210 all _admin _admin",
               log_file="stats.log"),
     AllOsTask("memcached stats dispatcher",
-              "stats -a 127.0.0.1:11210 dispatcher _admin _admin",
+              "stats -a 127.0.0.1:11210 dispatcher logs _admin _admin",
               log_file="stats.log"),
     AllOsTask("memcached stats hash",
               "stats -a 127.0.0.1:11210 hash _admin _admin",
