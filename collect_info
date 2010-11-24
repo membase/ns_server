@@ -135,6 +135,7 @@ _tasks = [
     LinuxTask("Swap configuration", "swapon -s"),
     LinuxTask("Kernel modules", "lsmod"),
     LinuxTask("Installed software", "rpm -qa"),
+    LinuxTask("Installed software", "COLUMNS=300 dpkg -l"),
     MacOSXTask("Process list snapshot", "top -l 1"),
     MacOSXTask("Disk activity", "iostat 1 10"),
     MacOSXTask("Process list ",
