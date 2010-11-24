@@ -299,7 +299,18 @@ implementation_version() ->
     list_to_binary(proplists:get_value(menelaus, ns_info:version(), "unknown")).
 
 handle_pools(Req) ->
-    reply_json(Req, build_pools()).
+    Pools = [{struct,
+              [{name, <<"default">>},
+               {uri, list_to_binary(concat_url_path(["pools", "default"]))},
+               {streamingUri, list_to_binary(concat_url_path(["poolsStreaming", "default"]))}]}],
+    EffectivePools =
+        case is_system_provisioned() of
+            true -> Pools;
+            _ -> []
+        end,
+    reply_json(Req,{struct, [{pools, EffectivePools},
+                             {isAdminCreds, menelaus_auth:is_under_admin(Req)}
+                             | build_versions()]}).
 
 handle_engage_cluster(Req) ->
     Params = Req:parse_post(),
@@ -360,15 +371,6 @@ build_versions() ->
                                             {K, list_to_binary(V)}
                                     end,
                                     ns_info:version())}}].
-
-build_pools() ->
-    Pools = [{struct,
-             [{name, <<"default">>},
-              {uri, list_to_binary(concat_url_path(["pools", "default"]))},
-              {streamingUri, list_to_binary(concat_url_path(["poolsStreaming", "default"]))}
-             ]}],
-    {struct, [{pools, Pools} |
-              build_versions()]}.
 
 handle_versions(Req) ->
     reply_json(Req, {struct, build_versions()}).

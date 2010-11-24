@@ -29,7 +29,8 @@
          check_auth/1,
          check_auth_bucket/1,
          bucket_auth_fun/1,
-         parse_user_password/1]).
+         parse_user_password/1,
+         is_under_admin/1]).
 
 %% External API
 
@@ -189,3 +190,6 @@ bucket_auth_fun(UserPassword) ->
 % too much typing to add this, and I'd rather not hide the response too much
 add_header() ->
     menelaus_util:server_header().
+
+is_under_admin(Req) ->
+    check_auth(extract_auth(Req)).

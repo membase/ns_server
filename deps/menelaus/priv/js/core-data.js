@@ -113,13 +113,7 @@ var DAO = {
   },
   appendedVersion: false,
   loginSuccess: function (data) {
-    DAO.ready = true;
-    $(window).trigger('dao:ready');
     var rows = data.pools;
-    DAO.cells.poolList.setValue(rows);
-    DAO.setAuthCookie(DAO.login, DAO.password);
-
-    $('#secure_server_buttons').attr('class', DAO.login ? 'secure_disabled' : 'secure_enabled');
 
     if (data.implementationVersion) {
       DAO.version = data.implementationVersion;
@@ -130,10 +124,25 @@ var DAO = {
       }
     }
 
-    // If the cluster appears to be configured
-    // by being secured then don't let user go back through init dialog.
-    DAO.initStatus = DAO.login ? 'done' : '';
-    showInitDialog(DAO.initStatus);
+    var provisioned = !!rows.length;
+    var authenticated = data.isAdminCreds;
+    if (provisioned && !authenticated)
+      return false;
+
+    DAO.ready = true;
+    $(window).trigger('dao:ready');
+
+    DAO.cells.poolList.setValue(rows);
+    DAO.setAuthCookie(DAO.login, DAO.password);
+
+    $('#secure_server_buttons').attr('class', DAO.login ? 'secure_disabled' : 'secure_enabled');
+
+
+    // If the cluster appears to be configured, then don't let user go
+    // back through init dialog.
+    showInitDialog(provisioned ? 'done' : '');
+
+    return true;
   },
   switchSection: function (section) {
     DAO.switchedSection = section;
@@ -176,8 +185,7 @@ var DAO = {
 
     function cb(data, status) {
       if (status == 'success') {
-        DAO.loginSuccess(data);
-        rv = true;
+        rv = DAO.loginSuccess(data);
       }
     }
   },
@@ -187,7 +195,8 @@ var DAO = {
 
     function cb(data, status) {
       if (status == 'success') {
-        DAO.loginSuccess(data);
+        if (!DAO.loginSuccess(data))
+          status = 'error';
       }
       if (callback)
         callback(status);
@@ -228,6 +237,9 @@ var DAO = {
   });
 
   this.currentPoolDetailsCell = Cell.mkCaching(function (poolList, pushTimeout) {
+    if (!poolList[0])
+      return;
+
     var url = poolList[0].uri;
     function poolDetailsValueTransformer(data) {
       // we clear pool's name to display empty name in analytics
