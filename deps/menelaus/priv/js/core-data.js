@@ -212,15 +212,6 @@ var DAO = {
       dataType: 'json',
       success: cb,
       error: cb});
-  },
-  getBucketNodesCount: function (_dummy) {
-    return DAO.cells.currentPoolDetailsCell.value.nodes.length;
-  },
-  isInCluster: function () {
-    var details = DAO.cells.currentPoolDetails.value
-    if (!details)
-      return undefined;
-    return details.nodes.length > 1;
   }
 };
 
