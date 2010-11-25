@@ -629,7 +629,7 @@ body.init_welcome #init_welcome_dialog p {color:#acbbc4; font-family:Verdana, He
 body.init_welcome #init_welcome_dialog .pad-header .tagline,
 body.init_welcome #init_welcome_dialog .pad-header .version {float:left; margin-top:71px;}
 body.init_welcome #init_welcome_dialog .pad-header div.tagline {color:#00a6de; font-size:11pt; margin-left:257px; margin-right:18px;}
-body.init_welcome #init_welcome_dialog .pad-header div.version {color:#ec5223; font-size:11pt;}
+body.init_welcome #init_welcome_dialog .pad-header div.version {color:#ec5223; font-size:11pt; white-space: pre; width: 200px; overflow: visible;}
 body.init_welcome #init_welcome_dialog .pad-header div.elastro-cling {background:url(../images/elastro_cling_v22.png) no-repeat; float:right; height:239px; margin-right:-167px; width:189px;}
 
 body.init_welcome form#init_welcome_form {width:600px;margin:25px 0 14px 50px;}

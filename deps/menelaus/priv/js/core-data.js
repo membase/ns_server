@@ -120,6 +120,7 @@ var DAO = {
       DAO.componentsVersion = data.componentsVersion;
       if (!DAO.appendedVersion) {
         document.title = document.title + " (" + data.implementationVersion + ")"
+        $('.version > .membase-version').text(String(data.implementationVersion)).parent().show();
         DAO.appendedVersion = true
       }
     }
