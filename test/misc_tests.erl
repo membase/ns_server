@@ -86,3 +86,68 @@ pmap_test() ->
 pmap_1_test() ->
   L = [0],
   ?assertEqual([0], misc:pmap(fun(N) -> N end, L, 1)).
+
+
+realpath_test_() ->
+    Tests = [{"test_symlink_loop",
+              ?_test(test_symlink_loop())},
+             {"test_simple_symlink",
+              ?_test(test_simple_symlink())},
+             {"test_no_symlink",
+              ?_test(test_no_symlink())}],
+    EffectiveTests = case erlang:system_info(system_architecture) of
+                         "win32" -> [];
+                         _ -> Tests
+                     end,
+    {foreach,
+     fun () -> realpath_setup() end,
+     fun (V) -> realpath_teardown(V) end,
+     EffectiveTests}.
+
+realpath_setup() ->
+    process_flag(trap_exit, true),
+    misc:rm_rf(test_dir()),
+    ok.
+
+realpath_teardown(_) ->
+    misc:rm_rf(test_dir()),
+    ok.
+
+test_dir() ->
+    Dir = filename:join([t:config(priv_dir), "data", "misc"]),
+    ok = filelib:ensure_dir(filename:join(Dir, "asdasd")),
+    Dir.
+
+test_symlink_loop() ->
+    Dir = test_dir(),
+    Cycle = filename:join(Dir, "cycle"),
+    file:make_symlink(Cycle, Cycle),
+    ?assertEqual({error, symlinks_limit_reached},
+                 misc:realpath(Cycle, "/")),
+    ?assertEqual({error, symlinks_limit_reached},
+                 misc:realpath(Cycle, "/bin")),
+    ok.
+
+test_simple_symlink() ->
+    Dir = test_dir(),
+    Var = filename:join([Dir, "var", "opt", "membase", "data"]),
+    Opt = filename:join([Dir, "opt", "membase", "xxx", "data"]),
+    ok = filelib:ensure_dir(filename:join(Var, "asdasd")),
+    ok = filelib:ensure_dir(Opt),
+    ok = file:make_symlink(Var, Opt),
+    ok = filelib:ensure_dir(filename:join([Opt, "ns_1", "asdasd"])),
+    ?assertEqual({ok, filename:join([Var, "ns_1"])},
+                 misc:realpath(filename:join(Opt, "ns_1"), "/")),
+    ?assertEqual({ok, filename:join([Var, "ns_1"])},
+                 misc:realpath(filename:join(Opt, "ns_1"), "/bin")),
+    ok.
+
+test_no_symlink() ->
+    Dir = test_dir(),
+    Var = filename:join([Dir, "var", "opt", "membase", "data"]),
+    ok = filelib:ensure_dir(filename:join(Var, "asdasd")),
+    ?assertEqual({ok, Var},
+                 misc:realpath(Var, "/")),
+    ?assertEqual({ok, Var},
+                 misc:realpath(Var, "/bin")),
+    ok.
