@@ -35,6 +35,7 @@
 -module(misc).
 
 -include("ns_common.hrl").
+-include_lib("kernel/include/file.hrl").
 
 -define(FNV_OFFSET_BASIS, 2166136261).
 -define(FNV_PRIME,        16777619).
@@ -852,3 +853,54 @@ multicall_result_to_plist_rec([N | Nodes], ResL, BadNodes, Acc) ->
 
 multicall_result_to_plist(Nodes, {ResL, BadNodes}) ->
     multicall_result_to_plist_rec(Nodes, ResL, BadNodes, []).
+
+realpath(Path, BaseDir) ->
+    case erlang:system_info(system_architecture) of
+        "win32" ->
+            filename:absname(Path, BaseDir);
+        _ -> case realpath_full(Path, BaseDir, 32) of
+                 {ok, X, _} -> {ok, X};
+                 X -> X
+             end
+    end.
+
+realpath_full(Path, BaseDir, SymlinksLimit) ->
+    NormalizedPath = filename:join([Path]),
+    Tokens = string:tokens(NormalizedPath, "/"),
+    case Path of
+        [$/ | _] ->
+            realpath_rec_check("/", Tokens, SymlinksLimit);
+        _ ->
+            realpath_rec_info(#file_info{type = not_symlink}, BaseDir, Tokens, SymlinksLimit)
+    end.
+
+realpath_rec_check(Current, Tokens, SymlinksLimit) ->
+    case file:read_link_info(Current) of
+        {ok, Info} ->
+            realpath_rec_info(Info, Current, Tokens, SymlinksLimit);
+        Crap -> {error, read_file_info, Current, Crap}
+    end.
+
+realpath_rec_info(Info, Current, Tokens, SymlinksLimit) when Info#file_info.type =:= symlink ->
+    case file:read_link(Current) of
+        {error, _} = Crap -> {error, read_link, Current, Crap};
+        {ok, LinkDestination} ->
+            case SymlinksLimit of
+                0 -> {error, symlinks_limit_reached};
+                _ ->
+                    case realpath_full(LinkDestination, filename:dirname(Current), SymlinksLimit-1) of
+                        {ok, Expanded, NewSymlinksLimit} ->
+                            realpath_rec_check(Expanded, Tokens, NewSymlinksLimit);
+                        Error -> Error
+                    end
+            end
+    end;
+realpath_rec_info(_, Current, [], SymlinksLimit) ->
+    {ok, Current, SymlinksLimit};
+realpath_rec_info(Info, Current, ["." | Tokens], SymlinksLimit) ->
+    realpath_rec_info(Info, Current, Tokens, SymlinksLimit);
+realpath_rec_info(_Info, Current, [".." | Tokens], SymlinksLimit) ->
+    realpath_rec_check(filename:dirname(Current), Tokens, SymlinksLimit);
+realpath_rec_info(_Info, Current, [FirstToken | Tokens], SymlinksLimit) ->
+    NewCurrent = filename:absname(FirstToken, Current),
+    realpath_rec_check(NewCurrent, Tokens, SymlinksLimit).

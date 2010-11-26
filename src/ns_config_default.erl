@@ -104,7 +104,9 @@ default() ->
     {ok, ConfigFile} = application:get_env(ns_server_config),
     ConfigDir = filename:dirname(ConfigFile),
     RawDbDir = filename:join(default_path("data"), misc:node_name_short()),
-    DbDir = case file:read_link(RawDbDir) of
+    filelib:ensure_dir(RawDbDir),
+    file:make_dir(RawDbDir),
+    DbDir = case misc:realpath(RawDbDir, "/") of
                 {ok, X} -> X;
                 _ -> RawDbDir
             end,
