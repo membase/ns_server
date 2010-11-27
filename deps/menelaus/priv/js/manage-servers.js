@@ -171,7 +171,7 @@ var ServersSection = {
       }
 
       function showWarning(text) {
-        warning.after(warning.clone().show().find('.warning-text').text(text).end());
+        warning.after(warning.clone().find('.warning-text').text(text).end().css('display', 'block'));
       }
 
       _.each(poolDetails.failoverWarnings, function (failoverWarning) {
