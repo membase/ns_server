@@ -84,12 +84,8 @@ set_replicas(Bucket, NodesReplicas) ->
     NodesWithoutReplicas = LiveNodes -- [N || {N, _} <- NR],
     lists:foreach(fun (Node) -> kill_all_children(Node, Bucket) end,
                   NodesWithoutReplicas),
-    lists:foldl(
-      fun ({Src, R}, true) ->
-              ?log_info("Not starting replicas ~p for bucket ~p because we already started some.",
-                        [{Src, R}, Bucket]),
-              true;
-          ({Src, R}, false) ->
+    lists:foreach(
+      fun ({Src, R}) ->
               case lists:member(Src, LiveNodes) of
                   true ->
                       try set_replicas(Src, Bucket, R)
@@ -99,9 +95,9 @@ set_replicas(Bucket, NodesReplicas) ->
                                          [Src, Bucket, {E, R}])
                       end;
                   false ->
-                      false
+                      ok
               end
-      end, false, NR).
+      end, NR).
 
 
 spawn_mover(Bucket, VBucket, SrcNode, DstNode) ->
@@ -238,40 +234,14 @@ set_replicas(SrcNode, Bucket, Replicas) ->
     GoodChildren = kill_runaway_children(SrcNode, Bucket, Replicas),
     %% Now filter out the replicas that still have children
     Actions = actions(GoodChildren),
-    NeededReplicas = Replicas -- Actions,
-    case NeededReplicas of
-        [] ->
-            false;
-        _ ->
-            case ns_memcached:backfilling(SrcNode, Bucket) of
-                true ->
-                    %% Only run one backfill at a time per bucket on
-                    %% any given source node.
-                    ?log_info("Not starting replicators on node ~p for bucket ~p because backfill is still running.",
-                              [SrcNode, Bucket]),
-                    false;
-                false ->
-                    Sorted = lists:keysort(2, NeededReplicas),
-                    Grouped = misc:keygroup(2, Sorted),
-                    lists:foldl(
-                      fun ({DstNode, R}, Acc) ->
-                              VBuckets = [V || {V, _} <- R],
-                              case ns_memcached:backfilling(DstNode, Bucket) of
-                                  true ->
-                                      %% Don't start any more until
-                                      %% backfill is complete
-                                      ?log_info("Not starting replica ~p for ~p because backfill is still running.",
-                                                [{SrcNode, DstNode, VBuckets},
-                                                 Bucket]),
-                                      Acc;
-                                  false ->
-                                      start_replicas(SrcNode, Bucket, VBuckets,
-                                                     DstNode),
-                                      true
-                              end
-                      end, false, Grouped)
-            end
-    end.
+    Sorted = lists:keysort(2, Replicas -- Actions),
+    Grouped = misc:keygroup(2, Sorted),
+    lists:foreach(
+      fun ({DstNode, R}) ->
+              VBuckets = [V || {V, _} <- R],
+              start_replicas(SrcNode, Bucket, VBuckets,
+                             DstNode)
+      end, Grouped).
 
 
 -spec start_child(atom(), nonempty_string(), [non_neg_integer(),...], atom()) ->
