@@ -31,7 +31,7 @@
          terminate/2, code_change/3]).
 
 % API
--export([push/0, push/1, pull/1, pull/0]).
+-export([push/0, push/1, pull/1, pull/0, synchronize/0]).
 
 -record(state, {}).
 
@@ -57,6 +57,8 @@ handle_call({push, List}, _From, State) ->
     error_logger:info_msg("Pushing config~n"),
     do_push(List),
     error_logger:info_msg("Pushing config done~n"),
+    {reply, ok, State};
+handle_call(synchronize, _From, State) ->
     {reply, ok, State};
 handle_call(Msg, _From, State) ->
     error_logger:info_msg("Unhandled ~p call: ~p~n", [?MODULE, Msg]),
@@ -103,6 +105,10 @@ pull() ->
 
 pull(Nodes) ->
     gen_server:cast(?MODULE, {pull, Nodes}).
+
+% awaits completion of all previous requests
+synchronize() ->
+    gen_server:call(?MODULE, synchronize).
 
 %
 % Privates
