@@ -253,13 +253,13 @@ var ErrorQueue = mkClass({
         self.repeatInterval = undefined;
     });
   },
-  repeatIntervalBase: 10000,
+  repeatIntervalBase: 5000,
   repeatInterval: undefined,
   planRepeat: function () {
     var interval = this.repeatInterval;
     if (interval == null)
       return this.repeatIntervalBase;
-    return Math.min(interval * 2, 300000);
+    return Math.min(interval * 1.618, 300000);
   },
   submit: function (action) {
     this.queue.push(action);
