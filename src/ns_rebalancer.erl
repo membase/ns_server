@@ -124,6 +124,7 @@ rebalance(KeepNodes, EjectNodes, FailedNodes) ->
             end,
             erlang:E(R)
     end,
+    ns_config_rep:synchronize(),
     eject_nodes(DeactivateNodes).
 
 
@@ -259,7 +260,7 @@ eject_nodes(Nodes) ->
     %% Leave myself last
     LeaveNodes = case lists:member(node(), Nodes) of
                      true ->
-                         Nodes -- [node()] ++ [node()];
+                         (Nodes -- [node()]) ++ [node()];
                      false ->
                          Nodes
                  end,
