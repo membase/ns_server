@@ -117,7 +117,7 @@ loop(Req, AppRoot, DocRoot) ->
                              ["pools"] ->
                                  {auth_any_bucket, fun handle_pools/1};
                              ["pools", Id] ->
-                                 {auth_any_bucket, fun handle_pool_info/2, [Id]};
+                                 {auth_any_bucket, fun check_and_handle_pool_info/2, [Id]};
                              ["pools", Id, "stats"] ->
                                  {auth_any_bucket, fun menelaus_stats:handle_bucket_stats/3,
                                   [Id, all]};
@@ -390,6 +390,14 @@ handle_versions(Req) ->
 %     ]}
 %   ]}
 % ]}
+
+check_and_handle_pool_info(Id, Req) ->
+    case is_system_provisioned() of
+        true ->
+            handle_pool_info(Id, Req);
+        _ ->
+            reply_json(Req, <<"unknown pool">>, 404)
+    end.
 
 handle_pool_info(Id, Req) ->
     UserPassword = menelaus_auth:extract_auth(Req),

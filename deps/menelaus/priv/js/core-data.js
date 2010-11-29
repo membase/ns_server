@@ -242,13 +242,19 @@ var DAO = {
       data.name = '';
       return data;
     }
-    return future.getPush({url: url, stdErrorMarker: true},
+    return future.getPush({url: url, stdErrorMarker: true, missingValue: {nodes: [], thisIs404: true, buckets: []}},
                           poolDetailsValueTransformer, this.self.value, pushTimeout);
   }, {
     poolList: this.poolList,
     pushTimeout: poolDetailsPushTimeoutCell
   });
   this.currentPoolDetailsCell.equality = _.isEqual;
+
+  this.currentPoolDetailsCell.subscribeValue(function (value) {
+    if (value && value.thisIs404) {
+      reloadApp();
+    }
+  });
 
   this.nodeStatusesCell = Cell.compute(function (v) {
     var details = v.need(DAO.cells.currentPoolDetailsCell);
