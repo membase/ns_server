@@ -871,7 +871,7 @@ realpath_full(Path, BaseDir, SymlinksLimit) ->
         [$/ | _] ->
             realpath_rec_check("/", Tokens, SymlinksLimit);
         _ ->
-            realpath_rec_info(#file_info{type = not_symlink}, BaseDir, Tokens, SymlinksLimit)
+            realpath_rec_info(#file_info{type = other}, BaseDir, Tokens, SymlinksLimit)
     end.
 
 realpath_rec_check(Current, Tokens, SymlinksLimit) ->
