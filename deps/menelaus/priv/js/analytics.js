@@ -197,17 +197,35 @@ function renderSmallGraph(jq, ops, statName, isSelected, zoomMillis, timeOffset)
 }
 
 var KnownPersistentStats = [
-  ["ops", "Operations per sec.\nSum of set, get, increment, decrement, cas and delete operations per second"],
-  ["ep_io_num_read", "Disk fetches per sec.\nNumber of disk reads per second"],
-  ["mem_used", "Memory bytes used"],
-  ["curr_items", "Items count"],
-  ["evictions", "RAM ejections per sec.\nRAM ejections per second"],
-  ["cmd_set", "Sets per sec.\nSet operations per second"],
-  ["cmd_get", "Gets per sec.\nGet operations per second"],
+  ["ops", "Operations per sec.\nSum of set, get, increment, decrement, cas and delete operations per second", {
+    isDefault: true
+  }],
+  ["ep_io_num_read", "Disk fetches per sec.\nNumber of disk reads per second", {
+    isDefault: true
+  }],
+  ["mem_used", "Memory bytes used", {
+    isDefault: true
+  }],
+  ["curr_items", "Items count", {
+    isDefault: true
+  }],
+  ["evictions", "RAM ejections per sec.\nRAM ejections per second", {
+    isDefault: true
+  }],
+  ["cmd_set", "Sets per sec.\nSet operations per second", {
+    isDefault: true
+  }],
+  ["cmd_get", "Gets per sec.\nGet operations per second", {
+    isDefault: true
+  }],
   ["bytes_written", "Network bytes TX per sec.\nNetwork bytes sent by all servers, per second"],
   ["bytes_read", "Network bytes RX per sec.\nNetwork bytes received by all servers, per second"],
-  ["disk_writes", "Disk write queue size"],
-  ["ep_total_persisted", "Items persisted per sec\nItems persisted per second"],
+  ["disk_writes", "Disk write queue size", {
+    isDefault: true
+  }],
+  ["ep_total_persisted", "Items persisted per sec\nItems persisted per second", {
+    isDefault: true
+  }],
   ["get_hits", "Get hits per sec.\nGet hits per second"],
   ["delete_hits", "Delete hits per sec.\nDelete hits per second"],
   ["incr_hits", "Incr hits per sec.\nIncr hits per second"],
@@ -220,9 +238,15 @@ var KnownPersistentStats = [
   ["cas_hits", "CAS hits per sec.\nCAS hits per second"],
   ["cas_badval", "CAS badval per sec.\nCAS badval per second"],
   ["cas_misses", "CAS misses per sec.\nCAS misses per second"],
-  ["ep_num_not_my_vbuckets", "VBucket errors per sec.\nNumber of times clients went to wrong server per second"],
-  ["ep_oom_errors", "OOM errors per sec.\nNumber of times sets were rejected due to lack of memory"],
-  ["ep_tmp_oom_errors", "Temp OOM errors per sec.\nNumber of set rejections due to temporary lack of space per second"]
+  ["ep_num_not_my_vbuckets", "VBucket errors per sec.\nNumber of times clients went to wrong server per second", {
+    isDefault: true
+  }],
+  ["ep_oom_errors", "OOM errors per sec.\nNumber of times sets were rejected due to lack of memory", {
+    isDefault: true
+  }],
+  ["ep_tmp_oom_errors", "Temp OOM errors per sec.\nNumber of set rejections due to temporary lack of space per second", {
+    isDefault: true
+  }]
 
   // ["ep_flusher_todo", "EP-flusher todo"],
   // ["ep_queue_size", "EP queue size"],
@@ -553,8 +577,13 @@ var StatGraphs = {
       }
     }
 
-    var visibleStatsCookie = $.cookie('vs') || _.uniq(self.recognizedStatsPersistent.slice(0,4)
-                                                      .concat(self.recognizedStatsCache.slice(0,4))).join(',');
+    var visibleStatsCookie = $.cookie('vs');
+    if (visibleStatsCookie == null) {
+      visibleStatsCookie = _.uniq(_.pluck(_.select(KnownPersistentStats, function (tuple) {
+        return (tuple[2] || {}).isDefault;
+      }), 0).concat(self.recognizedStatsCache.slice(0,4))).join(',');
+    }
+
     self.visibleStats = visibleStatsCookie.split(',').sort();
   }
 }
