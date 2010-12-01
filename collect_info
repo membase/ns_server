@@ -2,7 +2,27 @@
 # -*- python -*-
 import os
 import sys
+import tempfile
 import time
+
+
+class TempFile(object):
+    unlink = os.unlink
+    def __init__(self):
+        fd, self.name = tempfile.mkstemp(text=True)
+        self.fp = os.fdopen(fd, 'w+')
+
+    def __getattr__(self, name):
+        return getattr(self.__dict__['fp'], name)
+
+    def __delete__(self):
+        try:
+            self.fp.close()
+        except:
+            pass
+
+        self.unlink(self.name)
+
 
 class Task(object):
     privileged = False
@@ -36,8 +56,7 @@ class TaskRunner(object):
         if filename in self.files:
             fp = self.files[filename]
         else:
-            import tempfile
-            fp = tempfile.NamedTemporaryFile(mode='w+')
+            fp = TempFile()
             self.files[filename] = fp
 
         return fp
@@ -88,8 +107,12 @@ class TaskRunner(object):
         """Write all our logs to a zipfile"""
         from zipfile import ZipFile, ZIP_DEFLATED
         zf = ZipFile(filename, mode='w', compression=ZIP_DEFLATED)
-        for name, fp in self.files.iteritems():
-            zf.write(fp.name, name)
+        try:
+            for name, fp in self.files.iteritems():
+                fp.close()
+                zf.write(fp.name, name)
+        finally:
+            zf.close()
 
 
 class SolarisTask(Task):
