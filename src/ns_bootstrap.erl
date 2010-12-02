@@ -20,6 +20,7 @@
 start() ->
     try
         ok = application:start(sasl),
+        application:start(os_mon),
         ok = application:start(ns_server)
     catch T:E ->
             timer:sleep(500),
