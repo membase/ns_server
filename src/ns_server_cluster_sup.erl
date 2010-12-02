@@ -56,6 +56,9 @@ init([]) ->
             permanent, 10, worker, [dist_manager]},
            {ns_cluster, {ns_cluster, start_link, []},
             permanent, 5000, worker, [ns_cluster]},
+           {ns_config_sup, {ns_config_sup, start_link, []},
+            permanent, infinity, supervisor,
+            [ns_config_sup]},
            {ns_server_sup, {ns_server_sup, start_link, []},
             permanent, infinity, supervisor, [ns_server_sup]}
           ]}}.

@@ -92,29 +92,30 @@ handle_call({change_address, NewAddr}, _From, State) ->
 handle_call({join, RemoteNode, NewCookie}, _From, State) ->
     ns_log:log(?MODULE, 0002, "Node ~p is joining cluster via node ~p.",
                [node(), RemoteNode]),
-    BlackSpot = make_ref(),
-    MyNode = node(),
-    ns_config:update(fun ({directory,_} = X) -> X;
-                         ({otp, _}) -> {otp, [{cookie, NewCookie}]};
-                         ({nodes_wanted, _} = X) -> X;
-                         ({{node, _, membership}, _}) -> BlackSpot;
-                         ({{node, Node, _}, _} = X) when Node =:= MyNode -> X;
-                         (_) -> BlackSpot
-                     end, BlackSpot),
-    ns_config:set_initial(nodes_wanted, [node(), RemoteNode]),
-    error_logger:info_msg("pre-join cleaned config is:~n~p~n",
-                          [ns_config:get()]),
     %% Pull the rug out from under the app
     ok = ns_server_cluster_sup:stop_cluster(),
     ns_mnesia:delete_schema(),
     Status = try
         error_logger:info_msg("ns_cluster: joining cluster. Child has exited.~n"),
+
+        BlackSpot = make_ref(),
+        MyNode = node(),
+        ns_config:update(fun ({directory,_} = X) -> X;
+                             ({otp, _}) -> {otp, [{cookie, NewCookie}]};
+                             ({nodes_wanted, _} = X) -> X;
+                             ({{node, _, membership}, _}) -> BlackSpot;
+                             ({{node, Node, _}, _} = X) when Node =:= MyNode -> X;
+                             (_) -> BlackSpot
+                         end, BlackSpot),
+        ns_config:set_initial(nodes_wanted, [node(), RemoteNode]),
+        error_logger:info_msg("pre-join cleaned config is:~n~p~n",
+                              [ns_config:get()]),
+
         true = erlang:set_cookie(node(), NewCookie),
         %% Let's verify connectivity.
         Connected = net_kernel:connect_node(RemoteNode),
         ?log_info("Connection from ~p to ~p:  ~p",
                   [node(), RemoteNode, Connected]),
-        %% TODO: check exception handling here
         case verify_memory_limits(RemoteNode) of
             ok ->
                 %% Add ourselves to nodes_wanted on the remote node after shutting
