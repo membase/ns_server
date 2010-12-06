@@ -146,6 +146,7 @@ handle_call({join, RemoteNode, NewCookie}, _From, State) ->
 
 handle_cast(leave, State) ->
     ns_log:log(?MODULE, 0001, "Node ~p is leaving cluster.", [node()]),
+    ok = ns_server_cluster_sup:stop_cluster(),
     NewCookie = ns_node_disco:cookie_gen(),
     erlang:set_cookie(node(), NewCookie),
     lists:foreach(fun erlang:disconnect_node/1, nodes()),
@@ -159,7 +160,6 @@ handle_cast(leave, State) ->
     end,
     ns_config:set_initial(nodes_wanted, [node()]),
     ns_config:set_initial(otp, [{cookie, NewCookie}]),
-    ok = ns_server_cluster_sup:stop_cluster(),
     ns_mnesia:delete_schema(),
     ns_storage_conf:delete_all_db_files(DBDir),
     ?log_info("Leaving cluster", []),
