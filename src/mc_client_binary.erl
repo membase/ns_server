@@ -166,8 +166,7 @@ delete_bucket(Sock, BucketName) ->
 
 delete_vbucket(Sock, VBucket) ->
     case cmd(?CMD_DELETE_VBUCKET, Sock, undefined, undefined,
-             {#mc_header{},
-              #mc_entry{key = list_to_binary(integer_to_list(VBucket))}}) of
+             {#mc_header{vbucket = VBucket}, #mc_entry{}}) of
         {ok, #mc_header{status=?SUCCESS}, _ME, _NCB} ->
             ok;
         Response -> process_error_response(Response)
@@ -182,12 +181,17 @@ flush(Sock) ->
         Response -> process_error_response(Response)
     end.
 
+decode_vb_state(<<?VB_STATE_ACTIVE:32>>)  -> active;
+decode_vb_state(<<?VB_STATE_REPLICA:32>>) -> replica;
+decode_vb_state(<<?VB_STATE_PENDING:32>>) -> pending;
+decode_vb_state(<<?VB_STATE_DEAD:32>>)    -> dead.
+
 get_vbucket(Sock, VBucket) ->
     case cmd(?CMD_GET_VBUCKET, Sock, undefined, undefined,
-            {#mc_header{},
-             #mc_entry{key = list_to_binary(integer_to_list(VBucket))}}) of
+            {#mc_header{vbucket = VBucket},
+             #mc_entry{}}) of
         {ok, #mc_header{status=?SUCCESS}, #mc_entry{data=StateBin}, _NCB} ->
-            {ok, binary_to_atom(StateBin, latin1)};
+            {ok, decode_vb_state(StateBin)};
         Response -> process_error_response(Response)
     end.
 
@@ -231,10 +235,15 @@ set_flush_param(Sock, Key, Value) ->
     end.
 
 set_vbucket(Sock, VBucket, VBucketState) ->
+    State = case VBucketState of
+                active  -> ?VB_STATE_ACTIVE;
+                replica -> ?VB_STATE_REPLICA;
+                pending -> ?VB_STATE_PENDING;
+                dead    -> ?VB_STATE_DEAD
+            end,
     case cmd(?CMD_SET_VBUCKET, Sock, undefined, undefined,
-             {#mc_header{},
-              #mc_entry{key = list_to_binary(integer_to_list(VBucket)),
-                        data = atom_to_binary(VBucketState, latin1)}}) of
+             {#mc_header{vbucket = VBucket},
+              #mc_entry{data = <<State:32>>}}) of
         {ok, #mc_header{status=?SUCCESS}, _ME, _NCB} ->
             ok;
         Response -> process_error_response(Response)

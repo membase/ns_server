@@ -10,6 +10,7 @@
 
 -record(mc_header, {opcode = 0,
                     status = 0, % Used for both status & reserved field.
+                    vbucket = 0,
                     keylen = undefined,
                     extlen = undefined,
                     bodylen = undefined,

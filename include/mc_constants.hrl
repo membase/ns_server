@@ -42,9 +42,9 @@
 -define(CMD_SELECT_BUCKET, 16#29).
 
 -define(CMD_SET_FLUSH_PARAM, 16#82).
--define(CMD_SET_VBUCKET, 16#83).
--define(CMD_GET_VBUCKET, 16#84).
--define(CMD_DELETE_VBUCKET, 16#85).
+-define(CMD_SET_VBUCKET,     16#3d).
+-define(CMD_GET_VBUCKET,     16#3e).
+-define(CMD_DELETE_VBUCKET,  16#3f).
 
 -define(RGET,        16#30).
 -define(RSET,        16#31).
@@ -74,3 +74,9 @@
 -define(NOT_SUPPORTED,    16#83).
 -define(EINTERNAL,        16#84).
 -define(EBUSY,            16#85).
+
+% Vbucket States
+-define(VB_STATE_ACTIVE, 1).
+-define(VB_STATE_REPLICA, 2).
+-define(VB_STATE_PENDING, 3).
+-define(VB_STATE_DEAD, 4).

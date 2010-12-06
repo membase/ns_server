@@ -71,14 +71,14 @@ encode(res, Header, Entry) ->
     encode(?RES_MAGIC, Header, Entry);
 encode(Magic,
        #mc_header{opcode = Opcode, opaque = Opaque,
-                  status = StatusOrReserved},
+                  vbucket = VBucket},
        #mc_entry{ext = Ext, key = Key, cas = CAS,
                  data = Data, datatype = DataType}) ->
     ExtLen = bin_size(Ext),
     KeyLen = bin_size(Key),
     BodyLen = ExtLen + KeyLen + bin_size(Data),
     [<<Magic:8, Opcode:8, KeyLen:16, ExtLen:8, DataType:8,
-       StatusOrReserved:16, BodyLen:32, Opaque:32, CAS:64>>,
+       VBucket:16, BodyLen:32, Opaque:32, CAS:64>>,
      bin(Ext), bin(Key), bin(Data)].
 
 decode_header(req, <<?REQ_MAGIC:8, Opcode:8, KeyLen:16, ExtLen:8,
