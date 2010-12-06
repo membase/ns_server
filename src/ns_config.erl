@@ -451,7 +451,8 @@ handle_call({update_with_changes, Fun}, From, State) ->
 handle_call({clear, Keep}, From, State) ->
     NewList = lists:filter(fun({K,_V}) -> lists:member(K, Keep) end,
                            config_dynamic(State)),
-    handle_call(resave, From, State#config{dynamic=[NewList]});
+    handle_call(resave, From, State#config{dynamic=[NewList]}),
+    handle_call(reload, From, State);
 
 handle_call({merge, KVList}, From, State) ->
     PolicyMod = State#config.policy_mod,
