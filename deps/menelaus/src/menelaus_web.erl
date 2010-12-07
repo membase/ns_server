@@ -182,10 +182,10 @@ loop(Req, AppRoot, DocRoot) ->
                         end;
                      'POST' ->
                          case PathTokens of
-                             ["engageCluster"] ->
-                                 {auth, fun handle_engage_cluster/1};
-                             ["addNodeRequest"] ->
-                                 {auth, fun handle_add_node_request/1};
+                             ["engageCluster2"] ->
+                                 {auth, fun handle_engage_cluster2/1};
+                             ["completeJoin"] ->
+                                 {auth, fun handle_complete_join/1};
                              ["node", "controller", "doJoinCluster"] ->
                                  {auth, fun handle_join/1};
                              ["nodes", NodeId, "controller", "settings"] ->
@@ -208,7 +208,7 @@ loop(Req, AppRoot, DocRoot) ->
                              ["controller", "ejectNode"] ->
                                  {auth, fun handle_eject_post/1};
                              ["controller", "addNode"] ->
-                                 {auth, fun handle_add_node_if_possible/1};
+                                 {auth, fun handle_add_node/1};
                              ["controller", "failOver"] ->
                                  {auth, fun handle_failover/1};
                              ["controller", "rebalance"] ->
@@ -313,61 +313,27 @@ handle_pools(Req) ->
                              {isAdminCreds, menelaus_auth:is_under_admin(Req)}
                              | build_versions()]}).
 
-handle_engage_cluster(Req) ->
-    Params = Req:parse_post(),
+handle_engage_cluster2(Req) ->
+    Body = Req:recv_body(),
+    {struct, NodeKVList} = mochijson2:decode(Body),
     %% a bit kludgy, but 100% correct way to protect ourselves when
     %% everything will restart.
     process_flag(trap_exit, true),
-    Ok = case proplists:get_value("MyIP", Params, undefined) of
-             undefined ->
-                 reply_json(Req, [<<"Missing MyIP parameter">>], 400),
-                 failed;
-             IP ->
-                 case ns_cluster_membership:engage_cluster(IP) of
-                     ok -> ok;
-                     {error_msg, ErrorMsg} ->
-                         reply_json(Req, [ErrorMsg], 400),
-                         failed
-                 end
-         end,
-    case Ok of
-        ok -> handle_pool_info("default", Req);
-        _ -> nothing
+    case ns_cluster:engage_cluster(NodeKVList) of
+        {ok, _} ->
+            handle_node("self", Req);
+        {error, _What, Message, _Nested} ->
+            reply_json(Req, [Message], 400)
     end.
 
-handle_add_node_request(Req) ->
-    Params = Req:parse_post(),
-    OtpNode = proplists:get_value("otpNode", Params, undefined),
-    OtpCookie = proplists:get_value("otpCookie", Params, undefined),
-    Reaction = case {OtpNode, OtpCookie} of
-                   {undefined, _} ->
-                       {errors, [<<"Missing parameter(s)">>]};
-                   {_, undefined} ->
-                       {errors, [<<"Missing parameter(s)">>]};
-                   _ ->
-                       erlang:process_flag(trap_exit, true),
-                       case ns_cluster_membership:handle_add_node_request(list_to_atom(OtpNode),
-                                                                          list_to_atom(OtpCookie)) of
-                           ok -> {ok, {struct, [{otpNode, atom_to_binary(node(), latin1)}]}};
-                           {error, already_joined} ->
-                               {errors, [<<"The server is already part of this cluster.">>]};
-                           {error, bad_memory_size, Props} ->
-                               Msg = io_lib:format("This server does not have sufficient memory to"
-                                                   ++ " support the cluster quota (Cluster Quota is"
-                                                   ++ " ~wMB per node, this server only has ~wMB)!",
-                                                   [proplists:get_value(quota, Props),
-                                                    proplists:get_value(this, Props)]),
-                               {errors, [list_to_binary(Msg)]};
-                           {error, system_not_addable} ->
-                               {errors, [<<"The server is already part of another cluster.  To be added, it cannot be part of an existing cluster.">>]};
-                           {error_msg, Msg} -> {errors, [Msg]}
-                       end
-               end,
-    case Reaction of
-        {ok, Data} ->
-            reply_json(Req, Data, 200);
-        {errors, Array} ->
-            reply_json(Req, Array, 400)
+handle_complete_join(Req) ->
+    {struct, NodeKVList} = mochijson2:decode(Req:recv_body()),
+    erlang:process_flag(trap_exit, true),
+    case ns_cluster:complete_join(NodeKVList) of
+        {ok, _} ->
+            reply_json(Req, [], 200);
+        {error, _What, Message, _Nested} ->
+            reply_json(Req, [Message], 400)
     end.
 
 build_versions() ->
@@ -661,12 +627,11 @@ handle_join(Req) ->
     %%           after creds work and node join happens,
     %%           200 returned with Location header pointing
     %%           to new /pool/default
-    %%  cluster secured, bucket creds and logged in: 403 Forbidden
     %%  cluster not secured, after node join happens,
     %%           a 200 returned with Location header to new /pool/default,
     %%           401 if request had
     %%  cluster either secured or not:
-    %%           a 400 if a required parameter is missing
+    %%           a 400 with json error message when join fails for whatever reason
     %%
     %% parameter example: clusterMemberHostIp=192%2E168%2E0%2E1&
     %%                    clusterMemberPort=8091&
@@ -701,17 +666,39 @@ handle_join(Req) ->
                    PossMsg),
             case Msgs of
                 [] ->
-                    process_flag(trap_exit, true),
-                    case ns_cluster_membership:join_cluster(OtherHost, OtherPort, OtherUser, OtherPswd) of
-                          ok ->
-                              Req:respond({200, add_header(), []});
-                          {error, Errors} ->
-                              reply_json(Req, Errors, 400);
-                          {internal_error, Errors} ->
-                              reply_json(Req, Errors, 500)
-                      end;
+                    handle_join_tail(Req, OtherHost, OtherPort, OtherUser, OtherPswd);
                 _ -> reply_json(Req, Msgs, 400)
             end
+    end.
+
+handle_join_tail(Req, OtherHost, OtherPort, OtherUser, OtherPswd) ->
+    process_flag(trap_exit, true),
+    {Username, Password} = case ns_config:search_prop(ns_config:get(), rest_creds, creds, []) of
+                               [] -> {[], []};
+                               [{U, PList} | _] ->
+                                   {U, proplists:get_value(password, PList)}
+                           end,
+    RV = case ns_cluster:check_host_connectivity(OtherHost) of
+             {ok, MyIP} ->
+                 {struct, MyPList} = build_full_node_info(node(), MyIP),
+                 Hostname = misc:expect_prop_value(hostname, MyPList),
+
+                 menelaus_rest:json_request_hilevel(post,
+                                                    {OtherHost, OtherPort, "/controller/addNode",
+                                                     "application/x-www-form-urlencoded",
+                                                     mochiweb_util:urlencode([{<<"hostname">>, Hostname},
+                                                                              {<<"user">>, Username},
+                                                                              {<<"password">>, Password}])},
+                                                    {OtherUser, OtherPswd});
+             X -> X
+         end,
+
+    case RV of
+        {ok, _} -> Req:respond({200, add_header(), []});
+        {client_error, JSON} ->
+            reply_json(Req, JSON, 400);
+        {error, _What, Message, _Nested} ->
+            reply_json(Req, [Message], 400)
     end.
 
 %% waits till only one node is left in cluster
@@ -1180,14 +1167,6 @@ validate_add_node_params(Hostname, Port, User, Password) ->
                  end,
     lists:filter(fun (E) -> E =/= true end, Candidates).
 
-handle_add_node_if_possible(Req) ->
-    case is_system_provisioned() of
-        false ->
-            reply_json(Req, [<<"Cannot add servers to a cluster which has not been fully configured.">>], 400);
-        _ ->
-            handle_add_node(Req)
-    end.
-
 handle_add_node(Req) ->
     %% parameter example: hostname=epsilon.local, user=Administrator, password=asd!23
     Params = Req:parse_post(),
@@ -1204,11 +1183,11 @@ handle_add_node(Req) ->
     case validate_add_node_params(Hostname, StringPort, User, Password) of
         [] ->
             Port = list_to_integer(StringPort),
-            process_flag(trap_exit, true),
-            case ns_cluster_membership:add_node(Hostname, Port, User, Password) of
-                {ok, _OtpNode} ->
-                    Req:respond({200, [], []});
-                {error, Error} -> reply_json(Req, Error, 400)
+            case ns_cluster:add_node(Hostname, Port, {User, Password}) of
+                {ok, OtpNode} ->
+                    reply_json(Req, {struct, [{otpNode, OtpNode}]}, 200);
+                {error, _What, Message, _Nested} ->
+                    reply_json(Req, [Message], 400)
             end;
         ErrorList -> reply_json(Req, ErrorList, 400)
     end.

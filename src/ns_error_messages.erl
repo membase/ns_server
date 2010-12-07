@@ -16,7 +16,12 @@
 -module(ns_error_messages).
 
 -export([decode_json_response_error/3,
-         connection_error_message/3]).
+         connection_error_message/3,
+         engage_cluster_json_error/1,
+         bad_memory_size_error/2,
+         incompatible_cluster_version_error/3,
+         verify_otp_connectivity_port_error/2,
+         verify_otp_connectivity_connection_error/4]).
 
 -spec connection_error_message(term(), string(), string() | integer()) -> binary() | undefined.
 connection_error_message(nxdomain, Host, _Port) ->
@@ -77,3 +82,32 @@ decode_json_response_error({error, Reason} = E, Method, {Host, Port, Path, _Mime
             X -> X
         end,
     {error, rest_error, M, E}.
+
+engage_cluster_json_error(undefined) ->
+    <<"Cluster join prepare call returned invalid json.">>;
+engage_cluster_json_error({unexpected_json, _Where, Field} = _Exc) ->
+    list_to_binary(io_lib:format("Cluster join prepare call returned invalid json. "
+                                 "Invalid field is ~s.", [Field])).
+
+bad_memory_size_error(ThisMegs, Quota) ->
+    list_to_binary(io_lib:format("This server does not have sufficient memory to"
+                                 ++ " support the cluster quota (Cluster Quota is"
+                                 ++ " ~wMB per node, this server only has ~wMB)!",
+                                 [Quota, ThisMegs])).
+
+incompatible_cluster_version_error(MyVersion, OtherVersion, OtherNode) ->
+    list_to_binary(io_lib:format("This node cannot add another node (~p)"
+                                 " because of cluster version compatibility mismatch (~p =/= ~p).",
+                                 [OtherNode, MyVersion, OtherVersion])).
+
+verify_otp_connectivity_port_error(OtpNode, _Port) ->
+    list_to_binary(io_lib:format("Failed to obtain otp port from erlang port mapper for node ~p."
+                                 " This can be network name resolution or firewall problem.", [OtpNode])).
+
+verify_otp_connectivity_connection_error(Reason, OtpNode, Host, Port) ->
+    Detail = case connection_error_message(Reason, Host, integer_to_list(Port)) of
+                 undefined -> [];
+                 X -> [" ", X]
+             end,
+    list_to_binary(io_lib:format("Failed to reach otp port ~p for node ~p.~s"
+                                 " This can be firewall problem.", [Port, Detail, OtpNode])).

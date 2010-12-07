@@ -28,14 +28,16 @@
          terminate/2]).
 
 %% API
--export([change_my_address/1,
-         join/2,
-         leave/0,
+-export([leave/0,
          leave/1,
          leave_async/0,
-         prepare_join_to/1,
          shun/1,
          start_link/0]).
+
+-export([add_node/3, engage_cluster/1, complete_join/1, check_host_connectivity/1]).
+
+%% debugging & diagnostic export
+-export([do_change_address/1]).
 
 -export([alert_key/1]).
 -record(state, {}).
@@ -47,6 +49,14 @@
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
+add_node(RemoteAddr, RestPort, Auth) ->
+    gen_server:call(?MODULE, {add_node, RemoteAddr, RestPort, Auth}).
+
+engage_cluster(NodeKVList) ->
+    gen_server:call(?MODULE, {engage_cluster, NodeKVList}).
+
+complete_join(NodeKVList) ->
+    gen_server:call(?MODULE, {complete_join, NodeKVList}).
 
 %%
 %% gen_server handlers
@@ -56,93 +66,23 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 
-handle_call({add_node, Node}, _From, State) ->
-    Fun = fun(X) ->
-                  lists:usort([Node | X])
-          end,
-    ns_config:update_key(nodes_wanted, Fun),
-    ns_config:set({node, Node, membership}, inactiveAdded),
-    ?log_info("Successfully added ~p to cluster.", [Node]),
-    {reply, ok, State};
+handle_call({add_node, RemoteAddr, RestPort, Auth}, _From, State) ->
+    ?log_info("handling add_node(~p, ~p, ..)~n", [RemoteAddr, RestPort]),
+    RV = do_add_node(RemoteAddr, RestPort, Auth),
+    ?log_info("add_node(~p, ~p, ..) -> ~p~n", [RemoteAddr, RestPort, RV]),
+    {reply, RV, State};
 
-handle_call({change_address, NewAddr}, _From, State) ->
-    MyNode = node(),
-    case misc:node_name_host(MyNode) of
-        {_, NewAddr} ->
-            %% Don't do anything if we already have the right address.
-            {reply, ok, State};
-        {_, _} ->
-            CookieBefore = erlang:get_cookie(),
-            ok = ns_mnesia:prepare_rename(),
-            ns_server_sup:pull_plug(
-              fun() ->
-                      case dist_manager:adjust_my_address(NewAddr) of
-                          nothing ->
-                              ok;
-                          net_restarted ->
-                              %% Make sure the cookie's still the same
-                              CookieBefore = erlang:get_cookie(),
-                              ok = ns_mnesia:rename_node(MyNode, node()),
-                              rename_node(MyNode, node()),
-                              ok
-                      end
-              end),
-            {reply, ok, State}
-    end;
-handle_call({join, RemoteNode, NewCookie}, _From, State) ->
-    ns_log:log(?MODULE, 0002, "Node ~p is joining cluster via node ~p.",
-               [node(), RemoteNode]),
-    %% Pull the rug out from under the app
-    ok = ns_server_cluster_sup:stop_cluster(),
-    ns_mnesia:delete_schema(),
-    Status = try
-        error_logger:info_msg("ns_cluster: joining cluster. Child has exited.~n"),
+handle_call({engage_cluster, NodeKVList}, _From, State) ->
+    ?log_info("handling engage_cluster(..)~n", [NodeKVList]),
+    RV = do_engage_cluster(NodeKVList),
+    ?log_info("engage_cluster(..) -> ~p~n", [NodeKVList, RV]),
+    {reply, RV, State};
 
-        BlackSpot = make_ref(),
-        MyNode = node(),
-        ns_config:update(fun ({directory,_} = X) -> X;
-                             ({otp, _}) -> {otp, [{cookie, NewCookie}]};
-                             ({nodes_wanted, _} = X) -> X;
-                             ({{node, _, membership}, _}) -> BlackSpot;
-                             ({{node, Node, _}, _} = X) when Node =:= MyNode -> X;
-                             (_) -> BlackSpot
-                         end, BlackSpot),
-        ns_config:set_initial(nodes_wanted, [node(), RemoteNode]),
-        error_logger:info_msg("pre-join cleaned config is:~n~p~n",
-                              [ns_config:get()]),
-
-        true = erlang:set_cookie(node(), NewCookie),
-        %% Let's verify connectivity.
-        Connected = net_kernel:connect_node(RemoteNode),
-        ?log_info("Connection from ~p to ~p:  ~p",
-                  [node(), RemoteNode, Connected]),
-        case verify_memory_limits(RemoteNode) of
-            ok ->
-                %% Add ourselves to nodes_wanted on the remote node after shutting
-                %% down our own config server.
-                ok = gen_server:call({?MODULE, RemoteNode}, {add_node, node()}, 20000),
-                ?log_info("Remote config updated to add ~p to ~p",
-                          [node(), RemoteNode]);
-            X ->
-                X
-        end
-    catch
-        Type:Error ->
-            ?log_error("Error during join: ~p", [{Type, Error, erlang:get_stacktrace()}]),
-            ns_server_cluster_sup:start_cluster(),
-            erlang:Type(Error)
-    end,
-    ?log_info("Join status: ~p, starting ns_server_cluster back~n", [Status]),
-    ns_server_cluster_sup:start_cluster(),
-    if
-        Status =:= ok ->
-            ns_log:log(?MODULE, ?NODE_JOINED, "Node ~s joined cluster",
-                       [node()]);
-        true ->
-            ?log_error("Failed to join cluster because of: ~p~n", [Status]),
-            ok %% ns_config:set_initial(nodes_wanted, [node()])
-    end,
-    {reply, Status, State}.
+handle_call({complete_join, NodeKVList}, _From, State) ->
+    ?log_info("handling complete_join(~p)~n", [NodeKVList]),
+    RV = do_complete_join(NodeKVList),
+    ?log_info("complete_join(~p) -> ~p~n", [NodeKVList, RV]),
+    {reply, RV, State}.
 
 handle_cast(leave, State) ->
     ns_log:log(?MODULE, 0001, "Node ~p is leaving cluster.", [node()]),
@@ -186,22 +126,6 @@ terminate(_Reason, _State) ->
 %% Internal functions
 %%
 
-%% checks if this node can join to RemoteNode
-verify_memory_limits(RemoteNode) ->
-    {value, Quota} = ns_config:search(ns_config:get(RemoteNode, 5000), memory_quota),
-    MemoryFuzzyness = case (catch list_to_integer(os:getenv("MEMBASE_RAM_FUZZYNESS"))) of
-                          X when is_integer(X) -> X;
-                          _ -> 50
-                      end,
-    {_MinMemoryMB, MaxMemoryMB, _} = ns_storage_conf:allowed_node_quota_range(),
-    if
-        Quota =< MaxMemoryMB + MemoryFuzzyness ->
-            ok;
-        true ->
-            {error, bad_memory_size, [{this, element(1, ns_storage_conf:this_node_memory_data()) div 1048576},
-                                      {quota, Quota}]}
-    end.
-
 rename_node(Old, New) ->
     ns_config:update(fun ({K, V} = Pair) ->
                              NewK = misc:rewrite_value(Old, New, K),
@@ -220,19 +144,6 @@ rename_node(Old, New) ->
 %%
 %% API
 %%
-
-%% Called on a node in the cluster to add us to its nodes_wanted
--spec join(atom(), atom()) -> ok |
-                              {error, already_joined} |
-                              {error, bad_memory_size, [{atom, any()}]}.
-join(RemoteNode, NewCookie) ->
-    ns_log:log(?MODULE, ?NODE_JOIN_REQUEST, "Node join request on ~s to ~s",
-               [node(), RemoteNode]),
-
-    case lists:member(RemoteNode, ns_node_disco:nodes_wanted()) of
-        true -> {error, already_joined};
-        false-> gen_server:call(?MODULE, {join, RemoteNode, NewCookie})
-    end.
 
 leave() ->
     RemoteNode = ns_node_disco:random_node(),
@@ -281,7 +192,7 @@ alert_key(?NODE_JOINED) -> server_joined;
 alert_key(?NODE_EJECTED) -> server_left;
 alert_key(_) -> all.
 
-prepare_join_to(OtherHost) ->
+check_host_connectivity(OtherHost) ->
     %% connect to epmd at other side
     case gen_tcp:connect(OtherHost, 4369,
                          [binary, {packet, 0}, {active, false}],
@@ -293,8 +204,383 @@ prepare_join_to(OtherHost) ->
             RV = string:join(lists:map(fun erlang:integer_to_list/1,
                                        tuple_to_list(IpAddr)), "."),
             {ok, RV};
-        {error, _} = X -> X
+        {error, Reason} = X ->
+            M = case ns_error_messages:connection_error_message(Reason, OtherHost, "4369") of
+                    undefined ->
+                        list_to_binary(io_lib:format("Failed to reach erlang port mapper "
+                                                     "at node ~p. Error: ~p", [OtherHost, Reason]));
+                    Msg ->
+                        iolist_to_binary([<<"Failed to reach erlang port mapper. ">>, Msg])
+                end,
+            {error, host_connectivity, M, X}
     end.
 
-change_my_address(MyAddr) ->
-    gen_server:call(?MODULE, {change_address, MyAddr}, 20000).
+do_change_address(NewAddr) ->
+    MyNode = node(),
+    case misc:node_name_host(MyNode) of
+        {_, NewAddr} ->
+            %% Don't do anything if we already have the right address.
+            ok;
+        {_, _} ->
+            CookieBefore = erlang:get_cookie(),
+            ?log_info("Decided to change address to ~p~n", [NewAddr]),
+            ok = ns_mnesia:prepare_rename(),
+            ?log_info("prepared mnesia.~n", []),
+            ns_server_sup:pull_plug(
+              fun() ->
+                      case dist_manager:adjust_my_address(NewAddr) of
+                          nothing ->
+                              ok;
+                          net_restarted ->
+                              %% Make sure the cookie's still the same
+                              CookieBefore = erlang:get_cookie(),
+                              ok = ns_mnesia:rename_node(MyNode, node()),
+                              rename_node(MyNode, node()),
+                              ?log_info("Renamed node. New name is ~p.~n", [node()]),
+                              ok
+                      end
+              end),
+            ?log_info("Started ns_server_sup childs back.~n", []),
+            ok
+    end.
+
+check_add_possible(Body) ->
+    case menelaus_web:is_system_provisioned() of
+        false -> {error, system_not_provisioned,
+                  <<"Adding nodes to not provisioned nodes is not allowed.">>,
+                  system_not_provisioned};
+        true ->
+            Body()
+    end.
+
+do_add_node(RemoteAddr, RestPort, Auth) ->
+    check_add_possible(fun () ->
+                               do_add_node_allowed(RemoteAddr, RestPort, Auth)
+                       end).
+
+should_change_address() ->
+    %% adjust our name if we're alone
+    ns_node_disco:nodes_wanted() =:= [node()].
+
+do_add_node_allowed(RemoteAddr, RestPort, Auth) ->
+    case check_host_connectivity(RemoteAddr) of
+        {ok, MyIP} ->
+            case should_change_address() of
+                true -> do_change_address(MyIP);
+                _ -> ok
+            end,
+            do_add_node_with_connectivity(RemoteAddr, RestPort, Auth);
+        X -> X
+    end.
+
+do_add_node_with_connectivity(RemoteAddr, RestPort, Auth) ->
+    Struct = menelaus_web:build_full_node_info(node(), "127.0.0.1"),
+
+    ?log_info("Posting node info to engage_cluster on ~p:~n~p~n", [{RemoteAddr, RestPort}, Struct]),
+    RV = menelaus_rest:json_request_hilevel(post,
+                                            {RemoteAddr, RestPort, "/engageCluster2",
+                                             "application/json",
+                                             mochijson2:encode(Struct)},
+                                            Auth),
+    ?log_info("Reply from engage_cluster on ~p:~n~p~n", [{RemoteAddr, RestPort}, RV]),
+
+    ExtendedRV = case RV of
+                     {client_error, [Message]} = JSONErr when is_binary(Message) ->
+                         {error, rest_error, Message, JSONErr};
+                     {client_error, _} = JSONErr ->
+                         {error, rest_error,
+                          ns_error_messages:engage_cluster_json_error(undefined), JSONErr};
+                     X -> X
+                 end,
+
+    case ExtendedRV of
+        {ok, {struct, NodeKVList}} ->
+            try
+                do_add_node_engaged(NodeKVList, Auth)
+            catch
+                exit:{unexpected_json, _Where, _Field} = Exc ->
+                    JsonMsg = ns_error_messages:engage_cluster_json_error(Exc),
+                    {error, engage_cluster_bad_json, JsonMsg, Exc}
+            end;
+        {ok, JSON} ->
+            {error, engage_cluster_bad_json,
+             ns_error_messages:engage_cluster_json_error(undefined),
+             {struct_expected, JSON}};
+        {error, _What, Msg, _Nested} = E ->
+            M = iolist_to_binary([<<"Prepare join failed. ">>, Msg]),
+            {error, engage_cluster, M, E}
+    end.
+
+expect_json_property_base(PropName, KVList) ->
+    case lists:keyfind(PropName, 1, KVList) of
+        false ->
+            erlang:exit({unexpected_json, missing_property, PropName});
+        Tuple -> element(2, Tuple)
+    end.
+
+expect_json_property_binary(PropName, KVList) ->
+    RV = expect_json_property_base(PropName, KVList),
+    case is_binary(RV) of
+        true -> RV;
+        _ -> erlang:exit({unexpected_json, not_binary, PropName})
+    end.
+
+expect_json_property_list(PropName, KVList) ->
+    binary_to_list(expect_json_property_binary(PropName, KVList)).
+
+expect_json_property_atom(PropName, KVList) ->
+    binary_to_atom(expect_json_property_binary(PropName, KVList), latin1).
+
+expect_json_property_integer(PropName, KVList) ->
+    RV = expect_json_property_base(PropName, KVList),
+    case is_integer(RV) of
+        true -> RV;
+        _ -> erlang:exit({unexpected_json, not_integer, PropName})
+    end.
+
+call_port_please(Name, Host) ->
+    case erl_epmd:port_please(Name, Host, 5000) of
+        {port, Port, _Version} -> Port;
+        X -> X
+    end.
+
+verify_otp_connectivity(OtpNode) ->
+    {Name, Host} = misc:node_name_host(OtpNode),
+    Port = call_port_please(Name, Host),
+    ?log_info("port_please(~p, ~p) = ~p~n", [Name, Host, Port]),
+    case is_integer(Port) of
+        false ->
+            {error, connect_node,
+             ns_error_messages:verify_otp_connectivity_port_error(OtpNode, Port),
+             {connect_node, OtpNode, Port}};
+        true ->
+            case gen_tcp:connect(Host, Port,
+                                 [binary, {packet, 0}, {active, false}],
+                                 5000) of
+                {ok, Socket} ->
+                    inet:close(Socket),
+                    ok;
+                {error, Reason} = X ->
+                    {error, connect_node,
+                     ns_error_messages:verify_otp_connectivity_connection_error(Reason, OtpNode, Host, Port),
+                     X}
+            end
+    end.
+
+do_add_node_engaged(NodeKVList, Auth) ->
+    OtpNode = expect_json_property_atom(<<"otpNode">>, NodeKVList),
+    RV = verify_otp_connectivity(OtpNode),
+    case RV of
+        ok ->
+            case check_can_add_node(NodeKVList) of
+                ok ->
+                    node_add_transaction(OtpNode,
+                                         fun () ->
+                                                 do_add_node_engaged_inner(NodeKVList, OtpNode, Auth)
+                                         end);
+                Error -> Error
+            end;
+        X -> X
+    end.
+
+check_can_add_node(NodeKVList) ->
+    JoineeClusterCompatVersion = expect_json_property_integer(<<"clusterCompatibility">>, NodeKVList),
+    MyCompatVersion = misc:expect_prop_value(cluster_compatibility_version, dict:fetch(node(), ns_doctor:get_nodes())),
+    case JoineeClusterCompatVersion =:= MyCompatVersion of
+        true -> ok;
+        false -> {error, incompatible_cluster_version,
+                  ns_error_messages:incompatible_cluster_version_error(MyCompatVersion,
+                                                                       JoineeClusterCompatVersion,
+                                                                       expect_json_property_atom(<<"otpNode">>, NodeKVList)),
+                  {incompatible_cluster_version, MyCompatVersion, JoineeClusterCompatVersion}}
+    end.
+
+do_add_node_engaged_inner(NodeKVList, OtpNode, Auth) ->
+    HostnameRaw = expect_json_property_list(<<"hostname">>, NodeKVList),
+    [Hostname, Port] = case string:tokens(HostnameRaw, ":") of
+                           [_, _] = Pair -> Pair;
+                           [H] -> [H, "8091"];
+                           _ -> erlang:exit({unexpected_json, malformed_hostname, HostnameRaw})
+                       end,
+
+    {struct, MyNodeKVList} = menelaus_web:build_full_node_info(node(), "127.0.0.1"),
+    Struct = {struct, [{<<"targetNode">>, OtpNode}
+                       | MyNodeKVList]},
+
+    ?log_info("Posting the following to complete_join on ~p:~n~p~n", [HostnameRaw, Struct]),
+    RV = menelaus_rest:json_request_hilevel(post,
+                                            {Hostname, Port, "/completeJoin",
+                                             "application/json",
+                                             mochijson2:encode(Struct)},
+                                            Auth),
+    ?log_info("Reply from complete_join on ~p:~n~p~n", [HostnameRaw, RV]),
+
+    ExtendedRV = case RV of
+                     {client_error, [Message]} = JSONErr when is_binary(Message) ->
+                         {error, rest_error, Message, JSONErr};
+                     {client_error, _} = JSONErr ->
+                         {error, rest_error,
+                          <<"REST call returned invalid json.">>, JSONErr};
+                     X -> X
+                 end,
+
+    case ExtendedRV of
+        {ok, _} -> {ok, OtpNode};
+        {error, _Where, Msg, _Nested} = E ->
+            M = iolist_to_binary([<<"Join completion call failed. ">>, Msg]),
+            {error, complete_join, M, E}
+    end.
+
+node_add_transaction(Node, Body) ->
+    Fun = fun(X) ->
+                  lists:usort([Node | X])
+          end,
+    ns_config:update_key(nodes_wanted, Fun),
+    ns_config:set({node, Node, membership}, inactiveAdded),
+    ?log_info("Started node add transaction by adding node ~p to nodes_wanted~n", [Node]),
+    try Body() of
+        {ok, _} = X -> X;
+        Crap ->
+            ?log_info("Add transaction of ~p failed because of ~p~n", [Node, Crap]),
+            shun(Node),
+            Crap
+    catch
+        Type:What ->
+            ?log_info("Add transaction of ~p failed because of exception ~p~n",
+                      [Node, {Type, What, erlang:get_stacktrace()}]),
+            shun(Node),
+            erlang:Type(What),
+            erlang:error(cannot_happen)
+    end.
+
+do_engage_cluster(NodeKVList) ->
+    try
+        case ns_cluster_membership:system_joinable() of
+            false ->
+                {error, system_not_joinable,
+                 <<"Node is already part of cluster.">>, system_not_joinable};
+            true ->
+                do_engage_cluster_inner(NodeKVList)
+        end
+    catch
+        exit:{unexpected_json, _, _} = Exc ->
+            {error_logger, unexpected_json,
+             ns_error_messages:engage_cluster_json_error(Exc),
+             Exc}
+    end.
+
+
+do_engage_cluster_inner(NodeKVList) ->
+    OtpNode = expect_json_property_atom(<<"otpNode">>, NodeKVList),
+    {_, Host} = misc:node_name_host(OtpNode),
+    case check_host_connectivity(Host) of
+        {ok, MyIP} ->
+            case should_change_address() of
+                true -> do_change_address(MyIP);
+                _ -> ok
+            end,
+            check_can_join_to(NodeKVList);
+        X -> X
+    end.
+
+check_memory_size(NodeKVList) ->
+    Quota = expect_json_property_integer(<<"memoryQuota">>, NodeKVList),
+    MemoryFuzzyness = case (catch list_to_integer(os:getenv("MEMBASE_RAM_FUZZYNESS"))) of
+                          X when is_integer(X) -> X;
+                          _ -> 50
+                      end,
+    {_MinMemoryMB, MaxMemoryMB, _} = ns_storage_conf:allowed_node_quota_range(),
+    if
+        Quota =< MaxMemoryMB + MemoryFuzzyness ->
+            ok;
+        true ->
+            ThisMegs = element(1, ns_storage_conf:this_node_memory_data()) div 1048576,
+            Error = {error, bad_memory_size, [{this, ThisMegs},
+                                              {quota, Quota}]},
+            {error, bad_memory_size,
+             ns_error_messages:bad_memory_size_error(ThisMegs, Quota), Error}
+    end.
+
+check_can_join_to(NodeKVList) ->
+    case check_memory_size(NodeKVList) of
+        ok -> {ok, ok};
+        Error -> Error
+    end.
+
+-spec do_complete_join([{binary(), term()}]) -> ok | {error, atom(), binary(), term()}.
+do_complete_join(NodeKVList) ->
+    try
+        OtpNode = expect_json_property_atom(<<"otpNode">>, NodeKVList),
+        OtpCookie = expect_json_property_atom(<<"otpCookie">>, NodeKVList),
+        MyNode = expect_json_property_atom(<<"targetNode">>, NodeKVList),
+        case check_can_join_to(NodeKVList) of
+            {ok, _} ->
+                case ns_cluster_membership:system_joinable() andalso MyNode =:= node() of
+                    false ->
+                        {error, join_race_detected,
+                         <<"Node is already part of cluster.">>, system_not_joinable};
+                    true ->
+                        perform_actual_join(OtpNode, OtpCookie)
+                end;
+            Error -> Error
+        end
+    catch exit:{unexpected_json, _Where, _Field} = Exc ->
+            {error, engage_cluster_bad_json,
+             ns_error_messages:engage_cluster_json_error(undefined),
+             Exc}
+    end.
+
+
+perform_actual_join(RemoteNode, NewCookie) ->
+    ns_log:log(?MODULE, 0002, "Node ~p is joining cluster via node ~p.",
+               [node(), RemoteNode]),
+    %% Pull the rug out from under the app
+    ok = ns_server_cluster_sup:stop_cluster(),
+    ns_mnesia:delete_schema(),
+    Status = try
+        error_logger:info_msg("ns_cluster: joining cluster. Child has exited.~n"),
+
+        BlackSpot = make_ref(),
+        MyNode = node(),
+        ns_config:update(fun ({directory,_} = X) -> X;
+                             ({otp, _}) -> {otp, [{cookie, NewCookie}]};
+                             ({nodes_wanted, _} = X) -> X;
+                             ({{node, _, membership}, _}) -> BlackSpot;
+                             ({{node, Node, _}, _} = X) when Node =:= MyNode -> X;
+                             (_) -> BlackSpot
+                         end, BlackSpot),
+        ns_config:set_initial(nodes_wanted, [node(), RemoteNode]),
+        error_logger:info_msg("pre-join cleaned config is:~n~p~n",
+                              [ns_config:get()]),
+
+        true = erlang:set_cookie(node(), NewCookie),
+        %% Let's verify connectivity.
+        Connected = net_kernel:connect_node(RemoteNode),
+        ?log_info("Connection from ~p to ~p:  ~p",
+                  [node(), RemoteNode, Connected]),
+        case Connected of
+            true -> {ok, ok};
+            false -> {error, connect_failed, <<"Final connect_node call failed.">>, connect_failed}
+        end
+    catch
+        Type:Error ->
+            ?log_error("Error during join: ~p", [{Type, Error, erlang:get_stacktrace()}]),
+            ns_server_cluster_sup:start_cluster(),
+            erlang:Type(Error)
+    end,
+    ?log_info("Join status: ~p, starting ns_server_cluster back~n", [Status]),
+    Status2 = case ns_server_cluster_sup:start_cluster() of
+                  {error, _} = E ->
+                      {error, start_cluster_failed,
+                       <<"Failed to start ns_server cluster processes back. Logs might have more details.">>,
+                       E};
+                  _ -> Status
+              end,
+    case Status2 of
+        {ok, _} ->
+            ns_log:log(?MODULE, ?NODE_JOINED, "Node ~s joined cluster",
+                       [node()]);
+        _ ->
+            ?log_error("Failed to join cluster because of: ~p~n", [Status2])
+    end,
+    Status2.
