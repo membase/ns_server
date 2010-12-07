@@ -1046,11 +1046,7 @@ handle_node(_PoolId, Node, Req) ->
     LocalAddr = menelaus_util:local_addr(Req),
     case lists:member(Node, ns_node_disco:nodes_wanted()) of
         true ->
-            InfoNode = get_node_info(Node),
-            Config = ns_config:get(),
-            BucketConfigs = ns_bucket:get_buckets(Config),
-            KV = build_extra_node_info(Config, Node, InfoNode, BucketConfigs,
-                                       build_node_info(Config, Node, InfoNode, LocalAddr)),
+            {struct, KV} = (build_nodes_info_fun(true, normal, LocalAddr))(Node, undefined),
             MemQuota = case ns_storage_conf:memory_quota(Node) of
                            undefined -> <<"">>;
                            Y    -> Y
