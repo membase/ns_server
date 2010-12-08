@@ -98,6 +98,7 @@ config_string(BucketName) ->
                       io_lib:format(
                         "vb0=false;waitforwarmup=false;ht_size=~B;"
                         "ht_locks=~B;failpartialwarmup=false;"
+                        "shardpattern=%d/%b-%i.mb;"
                         "max_size=~B;initfile=~s;dbname=~s",
                         [proplists:get_value(ht_size, BucketConfig),
                          proplists:get_value(ht_locks, BucketConfig),
