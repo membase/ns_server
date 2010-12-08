@@ -243,7 +243,7 @@ disk_stats_for_path(Node, Path) ->
 
 db_files(Dir, Bucket) ->
     [filename:join([Dir, lists:append(Bucket, Suffix)])
-     || Suffix <- ["", "-0.sqlite", "-1.sqlite", "-2.sqlite", "-3.sqlite"]].
+     || Suffix <- ["", "-0.mb", "-1.mb", "-2.mb", "-3.mb"]].
 
 
 delete_all_db_files(DBDir) ->
