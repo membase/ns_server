@@ -179,7 +179,7 @@ default() ->
      {port_servers,
       [{moxi, "./bin/moxi/moxi",
         ["-Z", {"port_listen=~B,default_bucket_name=default,downstream_max=1024,downstream_conn_max=16,"
-                "connect_max_errors=3,connect_retry_interval=30000,"
+                "connect_max_errors=17,connect_retry_interval=30000,"
                 "connect_timeout=400,"
                 "auth_timeout=100,cycle=200,"
                 "downstream_conn_queue_timeout=200,"
