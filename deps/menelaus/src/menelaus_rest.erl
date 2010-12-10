@@ -38,7 +38,7 @@ rest_add_auth(Request, undefined) ->
 rest_request(Method, Request, Auth) ->
     inets:start(),
     http:request(Method, rest_add_auth(Request, Auth),
-                 [{timeout, 7500}, {connect_timeout, 2500}], []).
+                 [{timeout, 30000}, {connect_timeout, 30000}], []).
 
 decode_json_response({ok, Result}) ->
     {StatusLine, _Headers, Body} = Result,
