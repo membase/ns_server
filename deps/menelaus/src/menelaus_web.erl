@@ -557,14 +557,6 @@ build_extra_node_info(Config, Node, InfoNode, _BucketsAll, Append) ->
      {mcdMemoryAllocated, erlang:trunc(NodesBucketMemoryAllocated)}
      | Append].
 
-get_node_info(WantENode) ->
-    NodeStatuses = ns_doctor:get_nodes(),
-    case dict:find(WantENode, NodeStatuses) of
-        {ok, Info} -> Info;
-        error -> [stale]
-    end.
-
-
 build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
     Host = case misc:node_name_host(WantENode) of
                {_, "127.0.0.1"} -> LocalAddr;
