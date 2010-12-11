@@ -100,10 +100,12 @@ config_string(BucketName) ->
                         "ht_locks=~B;failpartialwarmup=false;"
                         "shardpattern=%d/%b-%i.mb;"
                         "tap_keepalive=~B;"
+                        "tap_noop_interval=~B;"
                         "max_size=~B;initfile=~s;dbname=~s",
                         [proplists:get_value(ht_size, BucketConfig),
                          proplists:get_value(ht_locks, BucketConfig),
-                         proplists:get_value(tap_keepalive, BucketConfig, 60),
+                         proplists:get_value(tap_keepalive, BucketConfig, 0),
+                         proplists:get_value(tap_noop_interval, BucketConfig, 20),
                          MemQuota,
                          proplists:get_value(initfile, EngineConfig),
                          DBName])),
@@ -431,7 +433,8 @@ new_bucket_default_params(membase) ->
      {num_replicas, 1},
      {ram_quota, 0},
      {ht_size, 3079},
-     {tap_keepalive, 60},
+     {tap_keepalive, 0},
+     {tap_noop_interval, 20},
      {ht_locks, 5},
      {servers, []},
      {map, undefined}];
