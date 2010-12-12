@@ -53,7 +53,15 @@ add_node(RemoteAddr, RestPort, Auth) ->
     gen_server:call(?MODULE, {add_node, RemoteAddr, RestPort, Auth}).
 
 engage_cluster(NodeKVList) ->
-    gen_server:call(?MODULE, {engage_cluster, NodeKVList}).
+    MyNode = node(),
+    RawOtpNode = proplists:get_value(<<"otpNode">>, NodeKVList, <<"undefined">>),
+    case binary_to_atom(RawOtpNode, latin1) of
+        MyNode ->
+            {error, self_join,
+             <<"Joining node to itself is not allowed.">>, {self_join, MyNode}};
+        _ ->
+            gen_server:call(?MODULE, {engage_cluster, NodeKVList})
+    end.
 
 complete_join(NodeKVList) ->
     gen_server:call(?MODULE, {complete_join, NodeKVList}).
