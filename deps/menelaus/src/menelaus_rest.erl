@@ -20,8 +20,8 @@
 
 %% API
 
--export([rest_url/3, json_request/3, rest_get_json/2,
-         rest_engage_cluster/4, json_request_hilevel/3]).
+-export([rest_url/3,
+         json_request_hilevel/3]).
 
 -spec rest_url(string(), string() | integer(), string()) -> string().
 rest_url(Host, Port, Path) when is_integer(Port) ->
@@ -42,18 +42,6 @@ rest_request(Method, Request, Auth) ->
     inets:start(),
     http:request(Method, rest_add_auth(Request, Auth),
                  [{timeout, 30000}, {connect_timeout, 30000}], []).
-
-decode_json_response({ok, Result}) ->
-    {StatusLine, _Headers, Body} = Result,
-    {_HttpVersion, StatusCode, _ReasonPhrase} = StatusLine,
-    case StatusCode of
-        200 -> {ok, mochijson2:decode(Body)};
-        _   -> {error, Result}
-    end;
-decode_json_response({error, _} = Other) -> Other.
-
-json_request(Method, Request, Auth) ->
-    decode_json_response(rest_request(Method, Request, Auth)).
 
 decode_json_response_ext({ok, {{_HttpVersion, 200 = _StatusCode, _ReasonPhrase} = _StatusLine,
                                _Headers, Body} = _Result},
@@ -93,34 +81,3 @@ json_request_hilevel(Method, {Host, Port, Path, MimeType, Payload} = R, Auth) ->
     URL = rest_url(Host, Port, Path),
     RV = rest_request(Method, {URL, [], MimeType, RealPayload}, Auth),
     decode_json_response_ext(RV, Method, setelement(5, R, RealPayload)).
-
-rest_get_json(Url, Auth) ->
-    json_request(get, {Url, []}, Auth).
-
-% Returns the otpNode & otpCookie for a remote node.
-% This is part of joining a node to an otp cluster.
-
-rest_engage_cluster(Host, Port, Auth, MyIP) ->
-    RV = json_request(post, {rest_url(Host, Port, "/engageCluster"),
-                            [], "application/x-www-form-urlencoded",
-                            "MyIP=" ++ MyIP}, Auth),
-    case RV of
-        {ok, {struct, KVList}} ->
-            case proplists:get_value(<<"nodes">>, KVList) of
-                undefined ->
-                    ns_log:log(?MODULE, 001, "During attempted node join (from ~p), the remote node at ~p (port ~p) returned a response with no nodes.",
-                               [node(), Host, Port]),
-                    undefined;
-                [Node | _] ->
-                    {struct, NodeKVList} = Node,
-                    OtpNode = proplists:get_value(<<"otpNode">>, NodeKVList),
-                    OtpCookie = proplists:get_value(<<"otpCookie">>, NodeKVList),
-                    {ok, OtpNode, OtpCookie}
-            end;
-        {error, Err} ->
-            ns_log:log(?MODULE, 002, "During attempted node join (from ~p), the remote node at ~p (port ~p) returned an error response (~p). " ++
-                           "Perhaps the wrong host/port was used, or there's a firewall in-between? " ++
-                           "Or, perhaps authorization credentials were incorrect?",
-                       [node(), Host, Port, Err]),
-            {error, Err}
-    end.
