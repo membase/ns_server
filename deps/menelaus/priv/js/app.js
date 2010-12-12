@@ -522,11 +522,9 @@ var NodeDialog = {
       }
 
       DAO.setAuthCookie(data.user, data.password);
-      _.delay(function () {
-        DAO.tryNoAuthLogin();
-        overlay.remove();
-        displayNotice('This server has been associated with the cluster and will join on the next rebalance operation.');
-      }, 5000);
+      DAO.tryNoAuthLogin();
+      overlay.remove();
+      displayNotice('This server has been associated with the cluster and will join on the next rebalance operation.');
     });
   },
   startPage_bucket_dialog: function () {
