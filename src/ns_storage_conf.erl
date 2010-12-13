@@ -32,6 +32,7 @@
 -export([extract_disk_stats_for_path/2, disk_stats_for_path/2]).
 
 -export([allowed_node_quota_range/1, allowed_node_quota_range/0,
+         allowed_node_quota_range_for_joined_nodes/0,
          this_node_memory_data/0]).
 
 memory_quota(_Node) ->
@@ -287,22 +288,31 @@ this_node_memory_data() ->
 
 allowed_node_quota_range() ->
     MemoryData = this_node_memory_data(),
-    allowed_node_quota_range(MemoryData).
+    allowed_node_quota_range(MemoryData, 1024).
 
-allowed_node_quota_range(MemSupData) ->
+allowed_node_quota_range(MemoryData) ->
+    allowed_node_quota_range(MemoryData, 1024).
+
+%% when validating memory size versus cluster quota we use less strict
+%% rules so that clusters upgraded from 1.6.0 are able to join
+%% homogeneous nodes. See MB-2762
+allowed_node_quota_range_for_joined_nodes() ->
+    MemoryData = this_node_memory_data(),
+    allowed_node_quota_range(MemoryData, 512).
+
+allowed_node_quota_range(MemSupData, MinusMegs) ->
     {MaxMemoryBytes0, _, _} = MemSupData,
     MiB = 1048576,
     MinMemoryMB = 256,
     MaxMemoryMBPercent = (MaxMemoryBytes0 * 4) div (5 * MiB),
-    MaxMemoryMB = lists:max([(MaxMemoryBytes0 div MiB) - 1024,
+    MaxMemoryMB = lists:max([(MaxMemoryBytes0 div MiB) - MinusMegs,
                              MaxMemoryMBPercent]),
     QuotaErrorDetailsFun = fun () ->
-                                   Format = case MaxMemoryMB of
+                                   case MaxMemoryMB of
                                        MaxMemoryMBPercent ->
-                                           " Quota must be between 256 MB and ~w MB (80% of memory size).";
+                                           io_lib:format(" Quota must be between 256 MB and ~w MB (80% of memory size).", [MaxMemoryMB]);
                                        _ ->
-                                           " Quota must be between 256 MB and ~w MB (memory size minus 1024 MB)."
-                                   end,
-                                   io_lib:format(Format, [MaxMemoryMB])
+                                           io_lib:format(" Quota must be between 256 MB and ~w MB (memory size minus ~w MB).", [MaxMemoryMB, MinusMegs])
+                                   end
                            end,
     {MinMemoryMB, MaxMemoryMB, QuotaErrorDetailsFun}.
