@@ -64,8 +64,13 @@ stats() ->
 
 %% Internal fuctions
 current_status(Expensive) ->
+    ClusterCompatVersion = case (catch list_to_integer(os:getenv("MEMBASE_CLUSTER_COMPAT_VERSION"))) of
+                               X when is_integer(X) -> X;
+                               _ -> 1
+                           end,
     [{active_buckets, ns_memcached:active_buckets()},
-     {memory, erlang:memory()}
+     {memory, erlang:memory()},
+     {cluster_compatibility_version, ClusterCompatVersion}
      | element(2, ns_info:basic_info())] ++ Expensive.
 
 expensive_checks() ->
