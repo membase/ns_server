@@ -105,7 +105,7 @@ rebalance(KeepNodes, EjectNodes, FailedNodes) ->
                                       %% Only start one bucket at a time to avoid
                                       %% overloading things
                                       ns_bucket:set_servers(BucketName, LiveNodes),
-                                      wait_for_memcached(LiveNodes, BucketName),
+                                      wait_for_memcached(LiveNodes, BucketName, 5),
                                       ns_janitor:cleanup(BucketName),
                                       rebalance(BucketName, KeepNodes,
                                                 DeactivateNodes, BucketCompletion,
@@ -403,7 +403,9 @@ promote_replica(Chain, RemapNodes) ->
 
 
 %% @doc Wait until either all memcacheds are up or stop is pressed.
-wait_for_memcached(Nodes, Bucket) ->
+wait_for_memcached(_Nodes, _Bucket, -1) ->
+    exit(wait_for_memcached_failed);
+wait_for_memcached(Nodes, Bucket, Tries) ->
     case [Node || Node <- Nodes, not ns_memcached:connected(Node, Bucket)] of
         [] ->
             ok;
@@ -413,7 +415,7 @@ wait_for_memcached(Nodes, Bucket) ->
                     exit(stopped)
             after 1000 ->
                     ?log_info("Waiting for ~p", [Down]),
-                    wait_for_memcached(Down, Bucket)
+                    wait_for_memcached(Down, Bucket, Tries-1)
             end
     end.
 
