@@ -173,6 +173,19 @@ cluster_storage_info() ->
                   (X) -> X
               end, PList1).
 
+add_used_by_data_prop(UsedByData, Props) ->
+    %% because of disk usage update lags and because disksup provides
+    %% disk usage information in (rounded down) percentage we can have
+    %% UsedByData > Used.
+    Used = misc:expect_prop_value(used, Props),
+    Props2 = case Used < UsedByData of
+                 true ->
+                     lists:keyreplace(used, 1, Props, {used, UsedByData});
+                 _ ->
+                     Props
+             end,
+    [{usedByData, UsedByData} | Props2].
+
 do_cluster_storage_info([]) -> [];
 do_cluster_storage_info([{FirstNode, FirstInfo} | Rest] = NodeInfos) ->
     PList1 = lists:foldl(fun ({Node, Info}, Acc) ->
@@ -198,11 +211,9 @@ do_cluster_storage_info([{FirstNode, FirstInfo} | Rest] = NodeInfos) ->
                                HDD + proplists:get_value(diskUsed, BasicStats)}
                       end, {0, 0}, AllBuckets),
     lists:map(fun ({ram, Props}) ->
-                      {ram, [{usedByData, BucketsRAMUsage}
-                             | Props]};
+                      {ram, add_used_by_data_prop(BucketsRAMUsage, Props)};
                   ({hdd, Props}) ->
-                      {hdd, [{usedByData, BucketsHDDUsage}
-                             | Props]}
+                      {hdd, add_used_by_data_prop(BucketsHDDUsage, Props)}
               end, PList1).
 
 extract_disk_stats_for_path_rec([], _Path) ->
