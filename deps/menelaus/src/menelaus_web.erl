@@ -39,6 +39,7 @@
          restart/0,
          build_nodes_info/0,
          build_nodes_info_fun/3,
+         build_full_node_info/2,
          handle_streaming/3,
          is_system_provisioned/0]).
 
@@ -1047,27 +1048,30 @@ handle_node(_PoolId, Node, Req) ->
     LocalAddr = menelaus_util:local_addr(Req),
     case lists:member(Node, ns_node_disco:nodes_wanted()) of
         true ->
-            {struct, KV} = (build_nodes_info_fun(true, normal, LocalAddr))(Node, undefined),
-            MemQuota = case ns_storage_conf:memory_quota(Node) of
-                           undefined -> <<"">>;
-                           Y    -> Y
-                       end,
-            StorageConf = ns_storage_conf:storage_conf(Node),
-            R = {struct, storage_conf_to_json(StorageConf)},
-            Fields = [{availableStorage, {struct, [{hdd, [{struct, [{path, list_to_binary(Path)},
-                                                                    {sizeKBytes, SizeKBytes},
-                                                                    {usagePercent, UsagePercent}]}
-                                                          || {Path, SizeKBytes, UsagePercent} <- disksup:get_disk_data()]}]}},
-                      {memoryQuota, MemQuota},
-                      {storageTotals, {struct, [{Type, {struct, PropList}}
-                                                || {Type, PropList} <- ns_storage_conf:nodes_storage_info([Node])]}},
-                      {storage, R}] ++ KV,
-            reply_json(Req,
-                       {struct, lists:filter(fun (X) -> X =/= undefined end,
-                                             Fields)});
+            Result = build_full_node_info(Node, LocalAddr),
+            reply_json(Req, Result);
         false ->
             reply_json(Req, <<"Node is unknown to this cluster.">>, 404)
     end.
+
+build_full_node_info(Node, LocalAddr) ->
+    {struct, KV} = (build_nodes_info_fun(true, normal, LocalAddr))(Node, undefined),
+    MemQuota = case ns_storage_conf:memory_quota(Node) of
+                   undefined -> <<"">>;
+                   Y    -> Y
+               end,
+    StorageConf = ns_storage_conf:storage_conf(Node),
+    R = {struct, storage_conf_to_json(StorageConf)},
+    Fields = [{availableStorage, {struct, [{hdd, [{struct, [{path, list_to_binary(Path)},
+                                                            {sizeKBytes, SizeKBytes},
+                                                            {usagePercent, UsagePercent}]}
+                                                  || {Path, SizeKBytes, UsagePercent} <- disksup:get_disk_data()]}]}},
+              {memoryQuota, MemQuota},
+              {storageTotals, {struct, [{Type, {struct, PropList}}
+                                        || {Type, PropList} <- ns_storage_conf:nodes_storage_info([Node])]}},
+              {storage, R}] ++ KV,
+    {struct, lists:filter(fun (X) -> X =/= undefined end,
+                                   Fields)}.
 
 % S = [{ssd, []},
 %      {hdd, [[{path, /some/nice/disk/path}, {quotaMb, 1234}, {state, ok}],
