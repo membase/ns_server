@@ -4,7 +4,7 @@ SHELL=/bin/sh
 
 EFLAGS=-pa ./ebin ./deps/*/ebin ./deps/*/deps/*/ebin
 
-NS_SERVER_PLT=ns_server.plt
+NS_SERVER_PLT ?= ns_server.plt
 
 TMP_DIR=./tmp
 
