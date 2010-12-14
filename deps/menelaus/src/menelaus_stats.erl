@@ -329,12 +329,29 @@ samples_to_proplists(Samples) ->
                                                 end
                                         end, Acc)
                        end, InitialAcc, ReversedRest),
+    CmdGets = orddict:fetch(cmd_get, Dict),
     HitRatio = lists:zipwith(fun (null, _Hits) -> 0;
                                  (_Gets, null) -> 0;
                                  (Gets, _Hits) when Gets == 0 -> 0; % this handles int and float 0
                                  (Gets, Hits) -> Hits/Gets
-                             end, orddict:fetch(cmd_get, Dict), orddict:fetch(get_hits, Dict)),
-    [{hit_ratio, HitRatio} | orddict:to_list(Dict)].
+                             end, CmdGets, orddict:fetch(get_hits, Dict)),
+    EPCacheHitRatio = lists:zipwith(fun (BGFetches, Gets) ->
+                                            try (Gets - BGFetches) / Gets
+                                            catch error:badarith -> 0
+                                            end
+                                    end,
+                                    orddict:fetch(ep_bg_fetched, Dict),
+                                    CmdGets),
+    ResidentItemsRatio = lists:zipwith(fun (NonResident, ItemsTotal) ->
+                                               try (ItemsTotal - NonResident) / ItemsTotal
+                                               catch error:badarith -> 0
+                                               end
+                                       end,
+                                       orddict:fetch(ep_num_non_resident, Dict),
+                                       orddict:fetch(curr_items_tot, Dict)),
+    [{hit_ratio, HitRatio},
+     {ep_cache_hit_ratio, EPCacheHitRatio},
+     {ep_resident_items_ratio, ResidentItemsRatio} | orddict:to_list(Dict)].
 
 build_buckets_stats_ops_response(_PoolId, [BucketName], Params) ->
     {Samples, ClientTStamp, Step, TotalNumber} = grab_op_stats(BucketName, Params),

@@ -253,6 +253,39 @@ var KnownPersistentStats = [
   // ["updates", "Updates per sec.\nSum of set, increment, decrement, cas and delete operations per second"], 
 ];
 
+function __enableNewStats() {
+  __enableNewStats = function () {}
+
+  var newStats = [
+    ["curr_items_tot", "Total items count"],
+    ["ep_num_non_resident", "ep_num_non_resident"],
+    ["ep_keys_size", "Memory used (keys)"],
+    ["ep_values_size", "Memory used (values)"],
+    ["ep_overhead", "Memory used (write queue)"],
+    ["ep_bg_fetched", "App disk fetches per sec"],
+    ["ep_tap_bg_fetched", "TAP disk fetches per sec"],
+    ["ep_num_eject_replicas", "RAM ejections (Replicas)"],
+    ["ep_num_value_ejects", "RAM ejections (Active)"],
+    ["resident_items_tot", "Resident items"],
+    ["ep_cache_hit_ratio", "Cache hit ratio"],
+    ["ep_resident_items_ratio", "Resident items ratio"]
+  ];
+
+  for (var i = newStats.length-1; i >= 0; i--)
+    newStats[i].push({isDefault: true});
+
+  KnownPersistentStats = KnownPersistentStats.concat(newStats);
+}
+
+;(function () {
+  var href = window.location.href;
+  var match = /\?(.*?)(?:$|#)/.exec(href);
+  if (!match)
+    return;
+  if (/(&|^)enableWorkingSizeStats=1(&|$)/.exec(match[1]))
+    __enableNewStats();
+})();
+
 var KnownCacheStats =  [
   ["ops", "Operations per sec.\nSum of set, get, increment, decrement, cas and delete operations per second"],
   ["hit_ratio", "Hit ratio\nHit ratio of get commands"],

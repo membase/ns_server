@@ -18,7 +18,12 @@
         curr_items,
         ep_flusher_todo,
         ep_queue_size,
-        mem_used).
+        mem_used,
+        curr_items_tot,
+        ep_num_non_resident,
+        ep_keys_size,
+        ep_values_size,
+        ep_overhead).
 
 -define(STAT_COUNTERS,
         bytes_read,
@@ -41,7 +46,11 @@
         evictions,
         ep_num_not_my_vbuckets,
         ep_oom_errors,
-        ep_tmp_oom_errors).
+        ep_tmp_oom_errors,
+        ep_bg_fetched,
+        ep_tap_bg_fetched,
+        ep_num_eject_replicas,
+        ep_num_value_ejects).
 
 %% atom() timestamps and values are used by archiver for internal mnesia-related
 %% things
