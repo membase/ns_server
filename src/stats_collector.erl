@@ -325,8 +325,14 @@ parse_stats_test() ->
         = parse_stats(Now, Input,
                       lists:duplicate(length([?STAT_COUNTERS]), 0),
                       Now - 1000),
-    ?assertEqual([37610,823281,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0],
+    ?assertEqual([37610,823281,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0,0,0,0,0],
                  ActualCounters),
+    InterestingActualValues = lists:filter(fun ({K, _}) ->
+                                                   case lists:keyfind(K, 1, ExpectedPropList) of
+                                                       false -> false;
+                                                       _ -> true
+                                                   end
+                                           end, orddict:to_list(ActualValues)),
     ?assertEqual(Now, ActualTS),
     ?assertEqual(lists:keysort(1, ExpectedPropList),
-                 lists:keysort(1, orddict:to_list(ActualValues))).
+                 lists:keysort(1, InterestingActualValues)).
