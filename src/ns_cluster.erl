@@ -575,10 +575,7 @@ perform_actual_join(RemoteNode, NewCookie) ->
         Connected = net_kernel:connect_node(RemoteNode),
         ?log_info("Connection from ~p to ~p:  ~p",
                   [node(), RemoteNode, Connected]),
-        case Connected of
-            true -> {ok, ok};
-            false -> {error, connect_failed, <<"Final connect_node call failed.">>, connect_failed}
-        end
+        {ok, ok}
     catch
         Type:Error ->
             ?log_error("Error during join: ~p", [{Type, Error, erlang:get_stacktrace()}]),
