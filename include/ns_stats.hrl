@@ -21,6 +21,7 @@
         mem_used,
         curr_items_tot,
         ep_num_non_resident,
+        ep_num_active_non_resident,
         ep_keys_size,
         ep_values_size,
         ep_overhead).

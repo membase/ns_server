@@ -916,3 +916,20 @@ realpath_rec_info(_Info, Current, [".." | Tokens], SymlinksLimit) ->
 realpath_rec_info(_Info, Current, [FirstToken | Tokens], SymlinksLimit) ->
     NewCurrent = filename:absname(FirstToken, Current),
     realpath_rec_check(NewCurrent, Tokens, SymlinksLimit).
+
+zipwith4(_Combine, [], [], [], []) -> [];
+zipwith4(Combine, List1, List2, List3, List4) ->
+    [Combine(hd(List1), hd(List2), hd(List3), hd(List4))
+     | zipwith4(Combine, tl(List1), tl(List2), tl(List3), tl(List4))].
+
+zipwith4_test() ->
+    F = fun (A1, A2, A3, A4) -> {A1, A2, A3, A4} end,
+
+    Actual1 = zipwith4(F, [1, 1, 1], [2,2,2], [3,3,3], [4,4,4]),
+    Actual1 = lists:duplicate(3, {1,2,3,4}),
+
+    case (catch {ok, zipwith4(F, [1,1,1], [2,2,2], [3,3,3], [4,4,4,4])}) of
+        {ok, _} ->
+            exit(bad_error_handling);
+        _ -> ok
+    end.

@@ -258,17 +258,22 @@ function __enableNewStats() {
 
   var newStats = [
     ["curr_items_tot", "Total items count"],
-    ["ep_num_non_resident", "ep_num_non_resident"],
+    // ["ep_num_non_resident", "ep_num_non_resident"],
     ["ep_keys_size", "Memory used (keys)"],
     ["ep_values_size", "Memory used (values)"],
-    ["ep_overhead", "Memory used (write queue)"],
+    ["ep_overhead", "Memory used (overhead)"],
     ["ep_bg_fetched", "App disk fetches per sec"],
     ["ep_tap_bg_fetched", "TAP disk fetches per sec"],
     ["ep_num_eject_replicas", "RAM ejections (Replicas)"],
     ["ep_num_value_ejects", "RAM ejections (Active)"],
-    ["resident_items_tot", "Resident items"],
-    ["ep_cache_hit_ratio", "Cache hit ratio"],
-    ["ep_resident_items_ratio", "Resident items ratio"]
+    // those are added in stats_collector
+    ["replica_resident_items_tot", "Replica resident items"], // curr_items_tot - ep_num_non_resident
+    ["resident_items_tot", "Resident items"], // curr_items - ep_num_active_non_resident
+    // those are calculated in menelaus_stats
+    ["ep_cache_miss_rate", "Cache miss ratio (%)"], // (cmd_get - ep_bg_fetched) / cmd_get * 100
+    ["ep_resident_items_rate", "Resident items rate (%)"], // (curr_items - ep_num_active_non_resident) / curr_items * 100
+    // ((curr_items_tot - curr_items) - (ep_num_non_resident - ep_num_active_non_resident)) / (curr_items_tot - curr_items)
+    ["ep_replica_resident_items_rate", "Replica resident item rate (%)"]
   ];
 
   for (var i = newStats.length-1; i >= 0; i--)

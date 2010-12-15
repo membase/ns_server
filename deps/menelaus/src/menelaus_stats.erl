@@ -335,23 +335,35 @@ samples_to_proplists(Samples) ->
                                  (Gets, _Hits) when Gets == 0 -> 0; % this handles int and float 0
                                  (Gets, Hits) -> Hits/Gets
                              end, CmdGets, orddict:fetch(get_hits, Dict)),
-    EPCacheHitRatio = lists:zipwith(fun (BGFetches, Gets) ->
-                                            try (Gets - BGFetches) / Gets
+    EPCacheMissRatio = lists:zipwith(fun (BGFetches, Gets) ->
+                                            try 100 - ((Gets - BGFetches) * 100 / Gets)
                                             catch error:badarith -> 0
                                             end
                                     end,
                                     orddict:fetch(ep_bg_fetched, Dict),
                                     CmdGets),
-    ResidentItemsRatio = lists:zipwith(fun (NonResident, ItemsTotal) ->
-                                               try (ItemsTotal - NonResident) / ItemsTotal
+    ResidentItemsRatio = lists:zipwith(fun (NonResident, CurrItems) ->
+                                               try (CurrItems - NonResident) * 100 / CurrItems
                                                catch error:badarith -> 0
                                                end
                                        end,
-                                       orddict:fetch(ep_num_non_resident, Dict),
-                                       orddict:fetch(curr_items_tot, Dict)),
+                                       orddict:fetch(ep_num_active_non_resident, Dict),
+                                       orddict:fetch(curr_items, Dict)),
+    ReplicaResidentItemRate = misc:zipwith4(
+                                fun (ItemsTotal, CurrItems, NonResident, ActiveNonResident) ->
+                                        try ((ItemsTotal - CurrItems)
+                                             - (NonResident - ActiveNonResident)) * 100 / (ItemsTotal - CurrItems)
+                                        catch error:badarith -> 0
+                                        end
+                                end,
+                                orddict:fetch(curr_items_tot, Dict),
+                                orddict:fetch(curr_items, Dict),
+                                orddict:fetch(ep_num_non_resident, Dict),
+                                orddict:fetch(ep_num_active_non_resident, Dict)),
     [{hit_ratio, HitRatio},
-     {ep_cache_hit_ratio, EPCacheHitRatio},
-     {ep_resident_items_ratio, ResidentItemsRatio} | orddict:to_list(Dict)].
+     {ep_cache_miss_rate, EPCacheMissRatio},
+     {ep_resident_items_rate, ResidentItemsRatio},
+     {ep_replica_resident_items_rate, ReplicaResidentItemRate} | orddict:to_list(Dict)].
 
 build_buckets_stats_ops_response(_PoolId, [BucketName], Params) ->
     {Samples, ClientTStamp, Step, TotalNumber} = grab_op_stats(BucketName, Params),
