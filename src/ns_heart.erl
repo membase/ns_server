@@ -32,7 +32,8 @@ start_link() ->
 init([]) ->
     timer:send_interval(1000, beat),
     timer:send_interval(?EXPENSIVE_CHECK_INTERVAL, do_expensive_checks),
-    {ok, expensive_checks()}.
+    self() ! do_expensive_checks,
+    {ok, undefined}.
 
 handle_call(status, _From, State) ->
     {reply, current_status(State), State};
@@ -63,6 +64,11 @@ stats() ->
     [{Stat, statistics(Stat)} || Stat <- Stats].
 
 %% Internal fuctions
+buckets_replication_statuses() ->
+    BucketConfigs = ns_bucket:get_buckets(),
+    [{Bucket, replication_status(Bucket, BucketConfig)} ||
+        {Bucket, BucketConfig} <- BucketConfigs].
+
 current_status(Expensive) ->
     ClusterCompatVersion = case (catch list_to_integer(os:getenv("MEMBASE_CLUSTER_COMPAT_VERSION"))) of
                                X when is_integer(X) -> X;
@@ -84,11 +90,6 @@ expensive_checks() ->
         _ -> BasicData
     end.
 
-buckets_replication_statuses() ->
-    BucketConfigs = ns_bucket:get_buckets(),
-    [{Bucket, replication_status(Bucket, BucketConfig)} ||
-        {Bucket, BucketConfig} <- BucketConfigs].
-
 replication_status(Bucket, BucketConfig) ->
     %% First, check that replication is running
     case proplists:get_value(map, BucketConfig) of
@@ -101,19 +102,24 @@ replication_status(Bucket, BucketConfig) ->
                     %% No replicas for this node
                     1.0;
                 Replicas ->
-                    Replicators = ns_vbm_sup:replicators([node()],
-                                                         Bucket),
-                    case Replicas -- Replicators of
-                        [] ->
-                            %% Ok, running
-                                    case ns_memcached:backfilling(Bucket) of
-                                        true ->
-                                            0.5;
-                                        false ->
-                                            1.0
-                                    end;
-                        _ ->
-                            %% Replication isn't even running
+                    try
+                        Replicators = ns_vbm_sup:replicators([node()],
+                                                             Bucket),
+                        case Replicas -- Replicators of
+                            [] ->
+                                %% Ok, running
+                                case ns_memcached:backfilling(Bucket) of
+                                    true ->
+                                        0.5;
+                                    false ->
+                                        1.0
+                                end;
+                            _ ->
+                                %% Replication isn't even running
+                                0.0
+                        end
+                    catch
+                        _:_ ->
                             0.0
                     end
             end
