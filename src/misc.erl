@@ -729,8 +729,6 @@ start_singleton(Module, Name, Args, Opts) ->
     end.
 
 
-start_singleton_gen_server(Name, Args, Opts) ->
-    start_singleton(gen_server, Name, Args, Opts).
 %% Verify that a given global name belongs to the local pid, exiting
 %% if it doesn't.
 -spec verify_name(atom()) ->
