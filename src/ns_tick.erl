@@ -35,7 +35,7 @@
 %%
 
 start_link() ->
-    misc:start_singleton_gen_server(?MODULE, [], []).
+    misc:start_singleton(gen_server, ?MODULE, [], []).
 
 
 time() ->
