@@ -85,6 +85,23 @@ init(Bucket) ->
     gen_server:enter_loop(?MODULE, [], #state{sock=Sock, bucket=Bucket}).
 
 
+handle_call(backfilling, _From, State) ->
+    End = <<":pending_backfill">>,
+    ES = byte_size(End),
+    {ok, Reply} = mc_client_binary:stats(
+                    State#state.sock, <<"tap">>,
+                    fun (<<"eq_tapq:", K/binary>>, <<"true">>, Acc) ->
+                            S = byte_size(K) - ES,
+                            case K of
+                                <<_:S/binary, End/binary>> ->
+                                    true;
+                                _ ->
+                                    Acc
+                            end;
+                        (_, _, Acc) ->
+                            Acc
+                    end, false),
+    {reply, Reply, State};
 handle_call({delete_vbucket, VBucket}, _From, #state{sock=Sock} = State) ->
     case mc_client_binary:delete_vbucket(Sock, VBucket) of
         ok ->
@@ -210,7 +227,7 @@ active_buckets() ->
 -spec connected(node(), bucket_name()) ->
                        boolean().
 connected(Node, Bucket) ->
-    try gen_server:call({server(Bucket), Node}, noop) of
+    try gen_server:call({server(Bucket), Node}, noop, ?TIMEOUT) of
         ok ->
             true
     catch
@@ -230,21 +247,7 @@ backfilling(Bucket) ->
 -spec backfilling(node(), bucket_name()) ->
                          boolean().
 backfilling(Node, Bucket) ->
-    End = <<":pending_backfill">>,
-    ES = byte_size(End),
-    {ok, Stats} = stats(Node, Bucket, <<"tap">>),
-    lists:foldl(fun ({<<"eq_tapq:", K/binary>>, <<"true">>}, Acc) ->
-                        S = byte_size(K) - ES,
-                        case K of
-                            <<_:S/binary, End/binary>> ->
-                                true;
-                            _ ->
-                                Acc
-                        end;
-                    (_, Acc) ->
-                        Acc
-                end, false, Stats).
-
+    gen_server:call({server(Bucket), Node}, backfilling, ?TIMEOUT).
 
 %% @doc Delete a vbucket. Will set the vbucket to dead state if it
 %% isn't already, blocking until it successfully does so.
