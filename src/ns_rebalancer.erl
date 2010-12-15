@@ -133,6 +133,9 @@ rebalance(KeepNodes, EjectNodes, FailedNodes) ->
 %% either return ok or exit with reason 'stopped' or whatever reason
 %% was given by whatever failed.
 rebalance(Bucket, KeepNodes, EjectNodes, BucketCompletion, NumBuckets) ->
+    %% MB-3195: Shut down replication to avoid competing with
+    %% rebalance and causing spurious errors.
+    ns_vbm_sup:set_replicas(Bucket, []),
     {_, _, Map, _} = ns_bucket:config(Bucket),
     Histograms1 = histograms(Map, KeepNodes),
     Moves1 = master_moves(Bucket, EjectNodes, Map, Histograms1),
