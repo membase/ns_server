@@ -731,6 +731,20 @@ start_singleton(Module, Name, Args, Opts) ->
 
 start_singleton_gen_server(Name, Args, Opts) ->
     start_singleton(gen_server, Name, Args, Opts).
+%% Verify that a given global name belongs to the local pid, exiting
+%% if it doesn't.
+-spec verify_name(atom()) ->
+                         ok | no_return().
+verify_name(Name) ->
+    case global:whereis_name(Name) of
+        Pid when Pid == self() ->
+            ok;
+        Pid ->
+            ?log_error("~p is registered to ~p. Killing ~p.",
+                       [Name, Pid, self()]),
+            exit(kill)
+    end.
+
 
 key_update_rec(Key, List, Fun, Acc) ->
     case List of
