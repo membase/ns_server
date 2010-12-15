@@ -24,6 +24,8 @@
 -define(NODE_EJECTED, 4).
 -define(NODE_JOIN_FAILED, 5).
 
+-define(ADD_NODE_TIMEOUT, 30000).
+
 %% gen_server callbacks
 -export([code_change/3, handle_call/3, handle_cast/2, handle_info/2, init/1,
          terminate/2]).
@@ -51,7 +53,7 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 add_node(RemoteAddr, RestPort, Auth) ->
-    RV = gen_server:call(?MODULE, {add_node, RemoteAddr, RestPort, Auth}),
+    RV = gen_server:call(?MODULE, {add_node, RemoteAddr, RestPort, Auth}, ?ADD_NODE_TIMEOUT),
     case RV of
         {error, _What, Message, _Nested} ->
             ns_log:log(?MODULE, ?NODE_JOIN_FAILED, "Failed to add node ~s:~w to cluster. ~s",
