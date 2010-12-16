@@ -178,8 +178,8 @@ default() ->
                                                 % to try to start child processes.  If it fails, it should ns_log errors.
      {port_servers,
       [{moxi, "./bin/moxi/moxi",
-        ["-Z", {"port_listen=~B,default_bucket_name=default,downstream_max=1024,downstream_conn_max=16,"
-                "connect_max_errors=17,connect_retry_interval=30000,"
+        ["-Z", {"port_listen=~B,default_bucket_name=default,downstream_max=1024,downstream_conn_max=4,"
+                "connect_max_errors=5,connect_retry_interval=30000,"
                 "connect_timeout=400,"
                 "auth_timeout=100,cycle=200,"
                 "downstream_conn_queue_timeout=200,"

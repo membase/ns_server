@@ -89,8 +89,8 @@ child_specs() ->
                       BigZ =
                           lists:flatten(
                             io_lib:format(
-                              "port_listen=~B,downstream_max=1024,downstream_conn_max=16,"
-                              "connect_max_errors=17,connect_retry_interval=30000,"
+                              "port_listen=~B,downstream_max=1024,downstream_conn_max=4,"
+                              "connect_max_errors=5,connect_retry_interval=30000,"
                               "connect_timeout=400,"
                               "auth_timeout=100,cycle=200,"
                               "downstream_conn_queue_timeout=200,"
