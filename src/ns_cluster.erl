@@ -25,6 +25,8 @@
 -define(NODE_JOIN_FAILED, 5).
 
 -define(ADD_NODE_TIMEOUT, 30000).
+-define(ENGAGE_TIMEOUT, 30000).
+-define(COMPLETE_TIMEOUT, 30000).
 
 %% gen_server callbacks
 -export([code_change/3, handle_call/3, handle_cast/2, handle_info/2, init/1,
@@ -70,11 +72,11 @@ engage_cluster(NodeKVList) ->
             {error, self_join,
              <<"Joining node to itself is not allowed.">>, {self_join, MyNode}};
         _ ->
-            gen_server:call(?MODULE, {engage_cluster, NodeKVList})
+            gen_server:call(?MODULE, {engage_cluster, NodeKVList}, ?ENGAGE_TIMEOUT)
     end.
 
 complete_join(NodeKVList) ->
-    gen_server:call(?MODULE, {complete_join, NodeKVList}).
+    gen_server:call(?MODULE, {complete_join, NodeKVList}, ?COMPLETE_TIMEOUT).
 
 %%
 %% gen_server handlers
