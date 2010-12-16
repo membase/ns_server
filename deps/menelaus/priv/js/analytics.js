@@ -200,32 +200,48 @@ var KnownPersistentStats = [
   ["ops", "Operations per sec.\nSum of set, get, increment, decrement, cas and delete operations per second", {
     isDefault: true
   }],
-  ["ep_io_num_read", "Disk fetches per sec.\nNumber of disk reads per second", {
-    isDefault: true
-  }],
-  ["mem_used", "Memory bytes used", {
-    isDefault: true
-  }],
-  ["curr_items", "Items count", {
-    isDefault: true
-  }],
-  ["evictions", "RAM ejections per sec.\nRAM ejections per second", {
-    isDefault: true
-  }],
   ["cmd_set", "Sets per sec.\nSet operations per second", {
     isDefault: true
   }],
   ["cmd_get", "Gets per sec.\nGet operations per second", {
     isDefault: true
   }],
-  ["bytes_written", "Network bytes TX per sec.\nNetwork bytes sent by all servers, per second"],
-  ["bytes_read", "Network bytes RX per sec.\nNetwork bytes received by all servers, per second"],
+  ["ep_cache_miss_rate", "Cache miss ratio (%)", {
+    isDefault: true
+  }], // (cmd_get - ep_bg_fetched) / cmd_get * 100
+  ["mem_used", "Memory bytes used", {
+    isDefault: true
+  }],
+  ["curr_items", "Unique items count", {
+    isDefault: true
+  }],
+  ["curr_items_tot", "Total items count", {
+    isDefault: true
+  }],
+  ["ep_resident_items_rate", "Resident items rate (%)", {
+    isDefault: true
+  }], // (curr_items - ep_num_active_non_resident) / curr_items * 100
+  ["ep_replica_resident_items_rate", "Replica resident item rate (%)", {
+    isDefault: true
+  }],
   ["disk_writes", "Disk write queue size", {
     isDefault: true
   }],
-  ["ep_total_persisted", "Items persisted per sec\nItems persisted per second", {
+  ["ep_io_num_read", "Disk fetches per sec.\nNumber of disk reads per second", {
     isDefault: true
   }],
+  ["evictions", "RAM ejections per sec.\nRAM ejections per second", {
+    isDefault: true
+  }],
+  ["ep_oom_errors", "OOM errors per sec.\nNumber of times sets were rejected due to lack of memory", {
+    isDefault: true
+  }],
+  ["ep_tmp_oom_errors", "Temp OOM errors per sec.\nNumber of set rejections due to temporary lack of space per second", {
+    isDefault: true
+  }],
+  ["bytes_written", "Network bytes TX per sec.\nNetwork bytes sent by all servers, per second"],
+  ["bytes_read", "Network bytes RX per sec.\nNetwork bytes received by all servers, per second"],
+  ["ep_total_persisted", "Items persisted per sec.\nItems persisted per second",],
   ["get_hits", "Get hits per sec.\nGet hits per second"],
   ["delete_hits", "Delete hits per sec.\nDelete hits per second"],
   ["incr_hits", "Incr hits per sec.\nIncr hits per second"],
@@ -240,25 +256,13 @@ var KnownPersistentStats = [
   ["cas_misses", "CAS misses per sec.\nCAS misses per second"],
   ["ep_num_not_my_vbuckets", "VBucket errors per sec.\nNumber of times clients went to wrong server per second", {
     isDefault: true
-  }],
-  ["ep_oom_errors", "OOM errors per sec.\nNumber of times sets were rejected due to lack of memory", {
-    isDefault: true
-  }],
-  ["ep_tmp_oom_errors", "Temp OOM errors per sec.\nNumber of set rejections due to temporary lack of space per second", {
-    isDefault: true
   }]
-
-  // ["ep_flusher_todo", "EP-flusher todo"],
-  // ["ep_queue_size", "EP queue size"],
-  // ["updates", "Updates per sec.\nSum of set, increment, decrement, cas and delete operations per second"], 
 ];
 
 function __enableNewStats() {
   __enableNewStats = function () {}
 
   var newStats = [
-    ["curr_items_tot", "Total items count"],
-    // ["ep_num_non_resident", "ep_num_non_resident"],
     ["ep_keys_size", "Memory used (keys)"],
     ["ep_values_size", "Memory used (values)"],
     ["ep_overhead", "Memory used (overhead)"],
@@ -268,12 +272,7 @@ function __enableNewStats() {
     ["ep_num_value_ejects", "RAM ejections (Active)"],
     // those are added in stats_collector
     ["replica_resident_items_tot", "Replica resident items"], // curr_items_tot - ep_num_non_resident
-    ["resident_items_tot", "Resident items"], // curr_items - ep_num_active_non_resident
-    // those are calculated in menelaus_stats
-    ["ep_cache_miss_rate", "Cache miss ratio (%)"], // (cmd_get - ep_bg_fetched) / cmd_get * 100
-    ["ep_resident_items_rate", "Resident items rate (%)"], // (curr_items - ep_num_active_non_resident) / curr_items * 100
-    // ((curr_items_tot - curr_items) - (ep_num_non_resident - ep_num_active_non_resident)) / (curr_items_tot - curr_items)
-    ["ep_replica_resident_items_rate", "Replica resident item rate (%)"]
+    ["resident_items_tot", "Resident items"] // curr_items - ep_num_active_non_resident
   ];
 
   for (var i = newStats.length-1; i >= 0; i--)
