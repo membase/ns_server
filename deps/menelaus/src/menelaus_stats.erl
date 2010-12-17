@@ -333,7 +333,7 @@ samples_to_proplists(Samples) ->
     HitRatio = lists:zipwith(fun (null, _Hits) -> 0;
                                  (_Gets, null) -> 0;
                                  (Gets, _Hits) when Gets == 0 -> 0; % this handles int and float 0
-                                 (Gets, Hits) -> Hits/Gets
+                                 (Gets, Hits) -> Hits * 100/Gets
                              end, CmdGets, orddict:fetch(get_hits, Dict)),
     EPCacheMissRatio = lists:zipwith(fun (BGFetches, Gets) ->
                                             try 100 - ((Gets - BGFetches) * 100 / Gets)

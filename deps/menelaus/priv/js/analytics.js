@@ -299,7 +299,7 @@ function __enableNewStats() {
 
 var KnownCacheStats =  [
   ["ops", "Operations per sec.\nSum of set, get, increment, decrement, cas and delete operations per second"],
-  ["hit_ratio", "Hit ratio\nHit ratio of get commands", {rate:true}],
+  ["hit_ratio", "Hit ratio (%)\nHit ratio of get commands", {rate:true}],
   ["mem_used", "Memory bytes used"],
   ["curr_items", "Items count"],
   ["evictions", "RAM evictions per sec.\nRAM evictions per second"],
