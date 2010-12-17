@@ -210,7 +210,7 @@ do_cluster_storage_info(NodeInfos) ->
                                                     HddTotals, HddUsed))
                       * length(HddUsed)} % Minimum amount free on any node * number of nodes
                     ]}],
-    AllNodes = ordsets:intersection(lists:sort([node()|nodes()]),
+    AllNodes = ordsets:intersection(lists:sort(ns_node_disco:nodes_actual_proper()),
                                     lists:sort(proplists:get_keys(NodeInfos))),
     AllBuckets = ns_bucket:get_buckets(),
     {BucketsRAMUsage, BucketsHDDUsage}
