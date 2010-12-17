@@ -19,6 +19,8 @@
 
 start() ->
     try
+        %% Check disk space every minute instead of every 30
+        application:set_env(os_mon, disk_space_check_interval, 1),
         ok = application:start(sasl),
         application:start(os_mon),
         ok = application:start(ns_server)
