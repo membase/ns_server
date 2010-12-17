@@ -134,10 +134,14 @@ extract_node_storage_info(NodeInfo, Node) ->
                             end, {0, 0}, DiskPaths),
             [{ram, [{total, RAMTotal},
                     {quotaTotal, MemQuotaMB * 1048576},
-                    {used, RAMUsed}]},
+                    {used, RAMUsed},
+                    {free, 0} % not used
+                   ]},
              {hdd, [{total, DiskTotal},
                     {quotaTotal, DiskTotal},
-                    {used, DiskUsed}]}];
+                    {used, DiskUsed},
+                    {free, DiskTotal - DiskUsed}
+                   ]}];
         _ -> []
     end.
 
@@ -184,22 +188,29 @@ add_used_by_data_prop(UsedByData, Props) ->
              end,
     [{usedByData, UsedByData} | Props2].
 
+extract_subprop(NodeInfos, Key, SubKey) ->
+    [proplists:get_value(SubKey, proplists:get_value(Key, NodeInfo, [])) ||
+     NodeInfo <- NodeInfos].
+
 do_cluster_storage_info([]) -> [];
-do_cluster_storage_info([{FirstNode, FirstInfo} | Rest] = NodeInfos) ->
-    PList1 = lists:foldl(fun ({Node, Info}, Acc) ->
-                                 ThisInfo = extract_node_storage_info(Info, Node),
-                                 lists:zipwith(fun ({StatName, [{total, TotalA},
-                                                                {quotaTotal, QTotalA},
-                                                                {used, UsedA}]},
-                                                    {StatName, [{total, TotalB},
-                                                                {quotaTotal, QTotalB},
-                                                                {used, UsedB}]}) ->
-                                                       {StatName, [{total, TotalA + TotalB},
-                                                                   {quotaTotal, QTotalA + QTotalB},
-                                                                   {used, UsedA + UsedB}]}
-                                               end, Acc, ThisInfo)
-                         end, extract_node_storage_info(FirstInfo, FirstNode), Rest),
-    AllNodes = ordsets:intersection(lists:sort(ns_node_disco:nodes_actual_proper()),
+do_cluster_storage_info(NodeInfos) ->
+    StorageInfos = [extract_node_storage_info(NodeInfo, Node)
+                    || {Node, NodeInfo} <- NodeInfos],
+    HddTotals = extract_subprop(StorageInfos, hdd, total),
+    HddUsed = extract_subprop(StorageInfos, hdd, used),
+    PList1 = [{ram, [{total, lists:sum(extract_subprop(StorageInfos, ram, total))},
+                     {quotaTotal, lists:sum(extract_subprop(StorageInfos, ram,
+                                                            quotaTotal))},
+                     {used, lists:sum(extract_subprop(StorageInfos, ram, used))}
+                    ]},
+              {hdd, [{total, lists:sum(HddTotals)},
+                     {quotaTotal, lists:sum(HddTotals)},
+                     {used, lists:sum(HddUsed)},
+                     {free, lists:min(lists:zipwith(fun (A, B) -> A - B end,
+                                                    HddTotals, HddUsed))
+                      * length(HddUsed)} % Minimum amount free on any node * number of nodes
+                    ]}],
+    AllNodes = ordsets:intersection(lists:sort([node()|nodes()]),
                                     lists:sort(proplists:get_keys(NodeInfos))),
     AllBuckets = ns_bucket:get_buckets(),
     {BucketsRAMUsage, BucketsHDDUsage}
