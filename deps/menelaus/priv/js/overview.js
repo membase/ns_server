@@ -107,10 +107,12 @@ var OverviewSection = {
         var usedSpace = hdd.usedByData;
         var total = hdd.total;
         var other = hdd.used - usedSpace;
+        var free = hdd.free;
 
         item.find('.line_cnt').replaceWith(memorySizesGaugeHTML({
           topAttrs: {'class': 'line_cnt'},
           usageAttrs: {'class': 'usage_biggest'},
+          topLeft: ['Usable Free Space', ViewHelpers.formatMemSize(free)],
           topRight: ['Total Cluster Storage', ViewHelpers.formatMemSize(total)],
           items: [
             {name: 'In Use',
@@ -124,6 +126,10 @@ var OverviewSection = {
             {name: "Free",
              value: total - other - usedSpace,
              tdAttrs: {style:"color:#444245;"}}
+          ],
+          markers: [
+            {value: other + usedSpace + free,
+             attrs: {style: "background-color:#E43A1B;"}}
           ]
         }));
       })();
