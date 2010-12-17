@@ -861,6 +861,9 @@ function plotStatGraph(graphJQ, stats, attr, options) {
     maxY = rv.maxY;
   })();
 
+  if (options.rate)
+    maxY = 100;
+
   // this is ripped out of jquery.flot which is MIT licensed
   // Tweaks are mine. Bugs too.
   var yTicks = (function () {

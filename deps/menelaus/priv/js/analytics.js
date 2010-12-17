@@ -166,7 +166,7 @@ var maybeReloadAppDueToLeak = (function () {
   };
 })();
 
-function renderSmallGraph(jq, ops, statName, isSelected, zoomMillis, timeOffset) {
+function renderSmallGraph(jq, ops, statName, isSelected, zoomMillis, timeOffset, options) {
   var data = ops.samples[statName] || [];
   var plotSeries = buildPlotSeries(data,
                                    ops.samples.timestamp,
@@ -183,6 +183,11 @@ function renderSmallGraph(jq, ops, statName, isSelected, zoomMillis, timeOffset)
 
   var color = isSelected ? '#e2f1f9' : '#d95e28';
 
+  var yaxis = {min:0, ticks:0, autoscaleMargin: 0.04}
+
+  if (options.rate)
+    yaxis.max = 100;
+
   $.plotSafe(jq.find('.small_graph_block'),
              _.map(plotSeries, function (plotData) {
                return {color: color,
@@ -192,7 +197,7 @@ function renderSmallGraph(jq, ops, statName, isSelected, zoomMillis, timeOffset)
                       autoscaleMargin: 0.04,
                       min: now - zoomMillis,
                       max: now},
-              yaxis: {min:0, ticks:0, autoscaleMargin: 0.04},
+              yaxis: yaxis,
               grid: {show:false}});
 }
 
@@ -207,7 +212,7 @@ var KnownPersistentStats = [
     isDefault: true
   }],
   ["ep_cache_miss_rate", "Cache miss ratio (%)", {
-    isDefault: true
+    isDefault: true, rate: true
   }], // (cmd_get - ep_bg_fetched) / cmd_get * 100
   ["mem_used", "Memory bytes used", {
     isDefault: true
@@ -219,15 +224,18 @@ var KnownPersistentStats = [
     isDefault: true
   }],
   ["ep_resident_items_rate", "Resident items rate (%)", {
-    isDefault: true
+    isDefault: true, rate: true
   }], // (curr_items - ep_num_active_non_resident) / curr_items * 100
   ["ep_replica_resident_items_rate", "Replica resident item rate (%)", {
-    isDefault: true
+    isDefault: true, rate: true
   }],
   ["disk_writes", "Disk write queue size", {
     isDefault: true
   }],
   ["ep_io_num_read", "Disk fetches per sec.\nNumber of disk reads per second", {
+    isDefault: true
+  }],
+  ["ep_total_persisted", "Items persisted per sec.\nItems persisted per second", {
     isDefault: true
   }],
   ["evictions", "RAM ejections per sec.\nRAM ejections per second", {
@@ -239,9 +247,11 @@ var KnownPersistentStats = [
   ["ep_tmp_oom_errors", "Temp OOM errors per sec.\nNumber of set rejections due to temporary lack of space per second", {
     isDefault: true
   }],
+  ["curr_connections", "Connections count", {
+    isDefault: true
+  }],
   ["bytes_written", "Network bytes TX per sec.\nNetwork bytes sent by all servers, per second"],
   ["bytes_read", "Network bytes RX per sec.\nNetwork bytes received by all servers, per second"],
-  ["ep_total_persisted", "Items persisted per sec.\nItems persisted per second",],
   ["get_hits", "Get hits per sec.\nGet hits per second"],
   ["delete_hits", "Delete hits per sec.\nDelete hits per second"],
   ["incr_hits", "Incr hits per sec.\nIncr hits per second"],
@@ -250,13 +260,10 @@ var KnownPersistentStats = [
   ["decr_misses", "Decr misses per sec.\nDecr misses per second"],
   ["get_misses", "Get Misses per sec.\nGet Misses per second"],
   ["incr_misses", "Incr misses per sec.\nIncr misses per second"],
-  ["curr_connections", "Connections count"],
   ["cas_hits", "CAS hits per sec.\nCAS hits per second"],
   ["cas_badval", "CAS badval per sec.\nCAS badval per second"],
   ["cas_misses", "CAS misses per sec.\nCAS misses per second"],
-  ["ep_num_not_my_vbuckets", "VBucket errors per sec.\nNumber of times clients went to wrong server per second", {
-    isDefault: true
-  }]
+  ["ep_num_not_my_vbuckets", "VBucket errors per sec.\nNumber of times clients went to wrong server per second"]
 ];
 
 function __enableNewStats() {
@@ -292,7 +299,7 @@ function __enableNewStats() {
 
 var KnownCacheStats =  [
   ["ops", "Operations per sec.\nSum of set, get, increment, decrement, cas and delete operations per second"],
-  ["hit_ratio", "Hit ratio\nHit ratio of get commands"],
+  ["hit_ratio", "Hit ratio\nHit ratio of get commands", {rate:true}],
   ["mem_used", "Memory bytes used"],
   ["curr_items", "Items count"],
   ["evictions", "RAM evictions per sec.\nRAM evictions per second"],
@@ -384,6 +391,12 @@ var StatGraphs = {
     month: 2678400,
     year: 31622400
   },
+  findGraphOptions: function (name) {
+    var infos = KnownCacheStats;
+    if (this.nowIsPersistent)
+      infos = KnownPersistentStats;
+    return _.detect(infos, function (i) {return i[0] == name;})[2] || {};
+  },
   doUpdate: function () {
     var self = this;
 
@@ -447,7 +460,8 @@ var StatGraphs = {
       fixedTimeWidth: zoomMillis,
       timeOffset: timeOffset,
       lastSampleTime: now,
-      breakInterval: op.interval * 2.5
+      breakInterval: op.interval * 2.5,
+      rate: self.findGraphOptions(selected).rate
     });
     $('.stats-period-container').toggleClass('missing-samples', !stats[selected] || !stats[selected].length);
     var visibleSeconds = Math.ceil(Math.min(zoomMillis, now - stats.timestamp[0]) / 1000);
@@ -455,7 +469,8 @@ var StatGraphs = {
 
     _.each(self.effectivelyVisibleStats, function (statName) {
       var area = self.findGraphArea(statName);
-      renderSmallGraph(area, op, statName, selected == statName, zoomMillis, timeOffset);
+      var options = self.findGraphOptions(statName);
+      renderSmallGraph(area, op, statName, selected == statName, zoomMillis, timeOffset, options);
     });
   },
   updateRealtime: function () {
