@@ -29,8 +29,6 @@
 
 -export([node_storage_info/1, cluster_storage_info/0, nodes_storage_info/1]).
 
--export([extract_disk_stats_for_path/2, disk_stats_for_path/2]).
-
 -export([allowed_node_quota_range/1, allowed_node_quota_range/0,
          allowed_node_quota_range_for_joined_nodes/0,
          this_node_memory_data/0]).
@@ -242,16 +240,6 @@ extract_disk_stats_for_path(StatsList, Path0) ->
                end,
     SortedList = lists:sort(LessEqFn, StatsList),
     extract_disk_stats_for_path_rec(SortedList, Path).
-
-disk_stats_for_path(Node, Path) ->
-    case rpc:call(Node, disksup, get_disk_data, [], 2000) of
-        {badrpc, _} = Crap -> Crap;
-        List -> case extract_disk_stats_for_path(List, Path) of
-                    none -> none;
-                    {ok, {_MPoint, KBytes, Cap}} -> {ok, KBytes, Cap}
-                end
-    end.
-
 
 db_files(Dir, Bucket) ->
     [filename:join([Dir, lists:append(Bucket, Suffix)])
