@@ -753,10 +753,6 @@ handle_pool_settings(_PoolId, Req) ->
     Results = [case proplists:get_value("memoryQuota", Params) of
                    undefined -> ok;
                    X ->
-                       case length(ns_node_disco:nodes_wanted()) of
-                           1 -> ok;
-                           _ -> exit('Changing the memory quota of a cluster is not yet supported.')
-                       end,
                        {MinMemoryMB, MaxMemoryMB, QuotaErrorDetailsFun} =
                            ns_storage_conf:allowed_node_quota_range(),
                        case parse_validate_number(X, MinMemoryMB, MaxMemoryMB) of
