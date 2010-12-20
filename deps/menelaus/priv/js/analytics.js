@@ -217,16 +217,16 @@ var KnownPersistentStats = [
   ["mem_used", "Memory bytes used", {
     isDefault: true
   }],
-  ["curr_items", "Unique items count", {
+  ["curr_items", "Unique items", {
     isDefault: true
   }],
-  ["curr_items_tot", "Total items count", {
+  ["curr_items_tot", "Total items", {
     isDefault: true
   }],
-  ["ep_resident_items_rate", "Resident items rate (%)", {
+  ["ep_resident_items_rate", "Resident item ratio (%)", {
     isDefault: true, rate: true
   }], // (curr_items - ep_num_active_non_resident) / curr_items * 100
-  ["ep_replica_resident_items_rate", "Replica resident item rate (%)", {
+  ["ep_replica_resident_items_rate", "Replica resident item ratio (%)", {
     isDefault: true, rate: true
   }],
   ["disk_writes", "Disk write queue size", {
