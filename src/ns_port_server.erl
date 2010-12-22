@@ -33,13 +33,15 @@
          terminate/2]).
 
 -define(NUM_MESSAGES, 3). % Number of the most recent messages to log on crash
+-define(MAX_MESSAGES, 10). % Max messages per interval
+-define(INTERVAL, 1000). % Interval over which to throttle
 
 -define(UNEXPECTED, 1).
 
 -include_lib("eunit/include/eunit.hrl").
 
 %% Server state
--record(state, {port, name, messages}).
+-record(state, {port, name, messages, log_tref, log_buffer=[], dropped=0}).
 
 
 %% API
@@ -55,18 +57,25 @@ init({Name, _Cmd, _Args, _Opts} = Params) ->
                 messages = ringbuffer:new(?NUM_MESSAGES)}}.
 
 handle_info({_Port, {data, {_, Msg}}}, State) ->
-    {Msgs, Dropped} = fetch_messages(99, 1000),
-    L = [Msg|Msgs],
     %% Store the last messages in case of a crash
-    Messages = lists:foldl(fun ringbuffer:add/2, State#state.messages, L),
-    error_logger:info_msg(format_lines(State#state.name, L)),
-    if Dropped > 0 ->
-            ?log_warning("Dropped ~p log lines from ~p",
-                         [Dropped, State#state.name]);
-       true ->
-            ok
-    end,
-    {noreply, State#state{messages=Messages}};
+    Messages = ringbuffer:add(Msg, State#state.messages),
+    {Buf, Dropped} = case {State#state.log_buffer, State#state.dropped} of
+                         {B, D} when length(B) < ?MAX_MESSAGES ->
+                             {[Msg|B], D};
+                         {B, D} ->
+                             {B, D + 1}
+                     end,
+    TRef = case State#state.log_tref of
+               undefined ->
+                   timer:send_after(?INTERVAL, log);
+               T ->
+                   T
+           end,
+    {noreply, State#state{messages=Messages, log_buffer=Buf, log_tref=TRef,
+                          dropped=Dropped}};
+handle_info(log, State) ->
+    State1 = log(State),
+    {noreply, State1};
 handle_info({_Port, {exit_status, 0}}, State) ->
     {stop, normal, State};
 handle_info({_Port, {exit_status, Status}}, State) ->
@@ -83,8 +92,9 @@ handle_call(unhandled, unhandled, unhandled) ->
 handle_cast(unhandled, unhandled) ->
     unhandled.
 
-terminate(_Reason, #state{port=Port}) ->
-    try port_close(Port) of
+terminate(_Reason, State) ->
+    log(State), % Log any remaining messages
+    try port_close(State#state.port) of
         true ->
             ok
     catch error:badarg ->
@@ -101,26 +111,28 @@ code_change(_OldVsn, State, _Extra) ->
 %% received up to Timeout. The goal is to remove messages from the
 %% queue as fast as possible if the port is spamming, avoiding
 %% spamming the log server.
-fetch_messages(Max, Timeout) ->
-    fetch_messages(Max, Timeout, now(), [], 0).
-
-fetch_messages(Max, Timeout, Now, L, Dropped) ->
-    receive
-        {_Port, {data, {_, Msg}}} ->
-            {L1, D1} = if length(L) < Max ->
-                               {[Msg|L], Dropped};
-                          true ->
-                               %% Drop the message
-                               {L, Dropped + 1}
-                 end,
-            fetch_messages(Max, Timeout, Now, L1, D1)
-    after erlang:max(Timeout - timer:now_diff(now(), Now), 0) ->
-            {lists:reverse(L), Dropped}
-    end.
-
 format_lines(Name, Lines) ->
     Prefix = io_lib:format("~p~p: ", [Name, self()]),
     [[Prefix, Line, $\n] || Line <- Lines].
+
+
+log(State) ->
+    case State#state.log_buffer of
+        [] ->
+            ok;
+        Buf ->
+            error_logger:info_msg(format_lines(State#state.name,
+                                               lists:reverse(Buf))),
+            case State#state.dropped of
+                0 ->
+                    ok;
+                Dropped ->
+                    ?log_warning("Dropped ~p log lines from ~p",
+                                 [Dropped, State#state.name])
+            end
+    end,
+    State#state{log_tref=undefined, log_buffer=[], dropped=0}.
+
 
 open_port({_Name, Cmd, Args, OptsIn}) ->
     %% Incoming options override existing ones (specified in proplists docs)
