@@ -609,6 +609,7 @@ var MockedRequest = mkClass({
                 componentsVersion: {
                   "ns_server": "asdasd"
                 },
+                isAdminCreds: !!this.fakeXHR.login,
                 pools: [
                   {name: 'default',
                    uri: "/pools/default"}]}
