@@ -165,23 +165,21 @@ handle_info(janitor, StateName, StateData) ->
     {next_state, StateName, StateData};
 handle_info({'EXIT', Pid, Reason}, janitor_running,
             #janitor_state{pid = Pid,
-                           remaining_buckets = Buckets}) ->
-    NextBuckets =
-        case Reason of
-            normal ->
-                tl(Buckets);
-            _ ->
-                ?log_info("Janitor run completed for bucket ~p with reason ~p~n",
-                          [hd(Buckets), Reason]),
-                Buckets
-        end,
-    case NextBuckets of
+                           remaining_buckets = [Bucket|Buckets]}) ->
+    case Reason of
+        normal ->
+            ok;
+        _ ->
+            ?log_info("Janitor run exited for bucket ~p with reason ~p~n",
+                      [Bucket, Reason])
+    end,
+    case Buckets of
         [] ->
             ok;
         _ ->
             self() ! janitor
     end,
-    {next_state, idle, #idle_state{remaining_buckets = NextBuckets}};
+    {next_state, idle, #idle_state{remaining_buckets = Buckets}};
 handle_info({'EXIT', Pid, Reason}, rebalancing,
             #rebalancing_state{rebalancer=Pid}) ->
     Status = case Reason of
