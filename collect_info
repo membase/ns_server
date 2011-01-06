@@ -36,7 +36,12 @@ class Task(object):
     def execute(self, fp):
         """Run the task"""
         import subprocess
-        p = subprocess.Popen(self.command, bufsize=-1, stdout=fp, stderr=fp,
+        if hasattr(self, 'reformat') and self.reformat:
+            p = subprocess.Popen(self.command, stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE, shell=True)
+            print >> fp, p.stdout.read()
+        else:
+            p = subprocess.Popen(self.command, bufsize=-1, stdout=fp, stderr=fp,
                              shell=True)
         return p.wait()
 
@@ -47,6 +52,7 @@ class Task(object):
 
 class TaskRunner(object):
     default_name = "membase.log"
+
     def __init__(self, verbosity=0):
         self.files = {}
         self.tasks = {}
@@ -114,7 +120,6 @@ class TaskRunner(object):
         finally:
             zf.close()
 
-
 class SolarisTask(Task):
     platforms = ['sunos5', 'solaris']
 
@@ -142,8 +147,8 @@ class AllOsTask(UnixTask, WindowsTask):
 _tasks = [
     UnixTask("uname", "uname -a"),
     WindowsTask("System information", "systeminfo"),
-    WindowsTask("Computer system", "wmic computersystem"),
-    WindowsTask("Computer OS", "wmic os"),
+    WindowsTask("Computer system", "wmic computersystem", reformat=True),
+    WindowsTask("Computer OS", "wmic os", reformat=True),
     UnixTask("Directory structure",
          "ls -lR /opt/membase /var/opt/membase /etc/opt/membase"),
     SolarisTask("Process list snapshot", "prstat -a -c -n 100 -t -v -L 1 10"),
@@ -166,11 +171,11 @@ _tasks = [
     MacOSXTask("Process list ",
          "ps -Aww -o user,pid,lwp,ppid,nlwp,pcpu,pri,nice,vsize,rss,tty,"
          "stat,wchan:12,start,bsdtime,command"),
-    WindowsTask("Service list", "wmic service where state=\"running\" GET caption, name, state"),
-    WindowsTask("Process list", "wmic process"),
-    WindowsTask("Swap settings", "wmic pagefile"),
-    WindowsTask("Disk partition", "wmic partition"),
-    WindowsTask("Disk volumes", "wmic volume"),
+    WindowsTask("Service list", "wmic service where state=\"running\" GET caption, name, state", reformat=True),
+    WindowsTask("Process list", "wmic process", reformat=True),
+    WindowsTask("Swap settings", "wmic pagefile", reformat=True),
+    WindowsTask("Disk partition", "wmic partition", reformat=True),
+    WindowsTask("Disk volumes", "wmic volume", reformat=True),
     UnixTask("Network configuration", "ifconfig -a", interval=10,
          num_samples=1),
     WindowsTask("Network configuration", "ipconfig /all", interval=10,
@@ -180,15 +185,15 @@ _tasks = [
     AllOsTask("Network routing table", "netstat -rn"),
     UnixTask("Arp cache", "arp -na"),
     WindowsTask("Arp cache", "arp -a"),
-    WindowsTask("Network Interface Controller", "wmic nic"),
-    WindowsTask("Network Adapter", "wmic nicconfig"),
-    WindowsTask("Active network connection", "wmic netuse"),
-    WindowsTask("Protocols", "wmic netprotocol"),
-    WindowsTask("Cache memory", "wmic memcache"),
-    WindowsTask("Physical memory", "wmic memphysical"),
-    WindowsTask("Physical memory chip info", "wmic memorychip"),
-    WindowsTask("Local storage devices", "wmic logicaldisk"),
-    WindowsTask("Physical memory", "wmic memphysical"),
+    WindowsTask("Network Interface Controller", "wmic nic", reformat=True),
+    WindowsTask("Network Adapter", "wmic nicconfig", reformat=True),
+    WindowsTask("Active network connection", "wmic netuse", reformat=True),
+    WindowsTask("Protocols", "wmic netprotocol", reformat=True),
+    WindowsTask("Cache memory", "wmic memcache", reformat=True),
+    WindowsTask("Physical memory", "wmic memphysical", reformat=True),
+    WindowsTask("Physical memory chip info", "wmic memorychip", reformat=True),
+    WindowsTask("Local storage devices", "wmic logicaldisk", reformat=True),
+    WindowsTask("Physical memory", "wmic memphysical", reformat=True),
     UnixTask("Filesystem", "df -ha"),
     UnixTask("System activity reporter", "sar 1 10"),
     UnixTask("System paging activity", "vmstat 1 10"),
@@ -231,6 +236,7 @@ def main():
 
     mydir = os.path.dirname(sys.argv[0])
     management_dir = os.path.join(mydir, '..', 'ep_engine', 'management')
+    bin_dir = os.path.join(mydir, '..')
     if os.name == 'posix':
         path = [mydir,
                 management_dir,
@@ -241,7 +247,7 @@ def main():
                 os.environ['PATH']]
         os.environ['PATH'] = ':'.join(path)
     elif os.name == 'nt':
-        path = [mydir, management_dir, os.environ['PATH']]
+        path = [mydir, bin_dir, management_dir, os.environ['PATH']]
         os.environ['PATH'] = ';'.join(path)
 
     runner = TaskRunner(verbosity=options.verbosity)
