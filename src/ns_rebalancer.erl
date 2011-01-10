@@ -105,7 +105,7 @@ rebalance(KeepNodes, EjectNodes, FailedNodes) ->
                                       %% Only start one bucket at a time to avoid
                                       %% overloading things
                                       ns_bucket:set_servers(BucketName, LiveNodes),
-                                      wait_for_memcached(LiveNodes, BucketName, 5),
+                                      wait_for_memcached(LiveNodes, BucketName, 10),
                                       ns_janitor:cleanup(BucketName),
                                       rebalance(BucketName, KeepNodes,
                                                 DeactivateNodes, BucketCompletion,
