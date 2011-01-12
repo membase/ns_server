@@ -99,7 +99,7 @@ config_string(BucketName) ->
                         "vb0=false;waitforwarmup=false;ht_size=~B;"
                         "ht_locks=~B;failpartialwarmup=false;"
                         "shardpattern=%d/%b-%i.mb;"
-                        "db_strategy=multiMTDB;"
+                        "db_strategy=multiMTVBDB;"
                         "tap_keepalive=~B;"
                         "tap_noop_interval=~B;"
                         "max_txn_size=~B;"
