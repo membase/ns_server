@@ -25,6 +25,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -include("menelaus_web.hrl").
+-include("ns_common.hrl").
 
 -ifdef(EUNIT).
 -export([test/0]).
@@ -1267,7 +1268,14 @@ handle_node_statuses(Req) ->
                                         end,
                              Hostname = proplists:get_value(hostname,
                                                             build_node_info(Config, N, InfoNode, LocalAddr)),
-                             V = case lists:keyfind(N, 1, NodeResp) of
+                             KF = case lists:keyfind(N, 1, NodeResp) of
+                                      %% if reply is not list it is error report
+                                      {_, Reply} when not is_list(Reply) ->
+                                          ?log_info("Got error reply from ~p:~n~p", [N, Reply]),
+                                          false;
+                                      X -> X
+                                  end,
+                             V = case KF of
                                      false ->
                                          {struct, [{status, unhealthy},
                                                    {otpNode, N},
