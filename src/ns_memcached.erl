@@ -175,10 +175,6 @@ handle_info(check_config, State) ->
     misc:flush(check_config),
     ensure_bucket(State#state.sock, State#state.bucket),
     {noreply, State};
-handle_info({wait_for_vbucket, VBucket, VBState, Callback},
-            #state{sock=Sock} = State) ->
-    wait_for_vbucket(Sock, VBucket, VBState, Callback),
-    {noreply, State};
 handle_info({'EXIT', _, Reason} = Msg, State) ->
     ?log_info("Got ~p. Exiting.", [Msg]),
     {stop, Reason, State};
@@ -462,18 +458,6 @@ ensure_bucket_config(Sock, _Bucket, memcached, _MaxSize) ->
 
 server(Bucket) ->
     list_to_atom(?MODULE_STRING ++ "-" ++ Bucket).
-
-
-wait_for_vbucket(Sock, VBucket, State, Callback) ->
-    case mc_client_binary:get_vbucket(Sock, VBucket) of
-        {ok, State} ->
-            Callback(),
-            true;
-        {ok, _} ->
-            timer:send_after(?VBUCKET_POLL_INTERVAL,
-                             {wait_for_vbucket, VBucket, State, Callback}),
-            false
-    end.
 
 
 wait_for_warmup(Sock) ->
