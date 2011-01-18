@@ -17,7 +17,7 @@
 -module(diag_handler).
 -author('NorthScale <info@northscale.com>').
 
--export([do_diag_per_node/0, handle_diag/1, handle_sasl_logs/1]).
+-export([do_diag_per_node/0, handle_diag/1, handle_sasl_logs/1, arm_timeout/2, arm_timeout/1, disarm_timeout/1]).
 
 
 %% I'm trying to avoid consing here, but, probably, too much
@@ -76,25 +76,31 @@ manifest() ->
         [] -> []
     end.
 
+grab_process_info(Pid) ->
+    PureInfo = erlang:process_info(Pid,
+                                   [registered_name,
+                                    status,
+                                    initial_call,
+                                    backtrace,
+                                    error_handler,
+                                    garbage_collection,
+                                    heap_size,
+                                    total_heap_size,
+                                    links,
+                                    memory,
+                                    message_queue_len,
+                                    reductions,
+                                    trap_exit]),
+    Backtrace = proplists:get_value(backtrace, PureInfo),
+    NewBacktrace = string:tokens(binary_to_list(Backtrace), "\n"),
+    lists:keyreplace(backtrace, 1, PureInfo, {backtrace, NewBacktrace}).
+
 do_diag_per_node() ->
     [{version, ns_info:version()},
      {manifest, manifest()},
      {config, diag_filter_out_config_password(ns_config:get_diag())},
      {basic_info, element(2, ns_info:basic_info())},
-     {processes, [{Pid, erlang:process_info(Pid,
-                                            [registered_name,
-                                             status,
-                                             initial_call,
-                                             backtrace,
-                                             error_handler,
-                                             garbage_collection,
-                                             heap_size,
-                                             total_heap_size,
-                                             links,
-                                             memory,
-                                             message_queue_len,
-                                             reductions,
-                                             trap_exit])}
+     {processes, [{Pid, grab_process_info(Pid)}
                   || Pid <- erlang:processes()]},
      {memory, memsup:get_memory_data()},
      {disk, disksup:get_disk_data()}].
@@ -183,3 +189,23 @@ handle_sasl_logs(Req) ->
             menelaus_util:server_header(),
             chunked}),
     handle_logs(Resp).
+
+arm_timeout(Millis) ->
+    arm_timeout(Millis,
+                fun (Pid) ->
+                        Info = grab_process_info(Pid),
+                        io:format("slow process info:~n~p~n", [Info])
+                end).
+
+arm_timeout(Millis, Callback) ->
+    Pid = self(),
+    spawn_link(fun () ->
+                       receive
+                           done -> ok
+                       after Millis ->
+                                 Callback(Pid)
+                       end
+               end).
+
+disarm_timeout(Pid) ->
+    Pid ! done.

@@ -362,7 +362,12 @@ handle_versions(Req) ->
 check_and_handle_pool_info(Id, Req) ->
     case is_system_provisioned() of
         true ->
-            handle_pool_info(Id, Req);
+            Timeout = diag_handler:arm_timeout(23000),
+            try
+                handle_pool_info(Id, Req)
+            after
+                diag_handler:disarm_timeout(Timeout)
+            end;
         _ ->
             reply_json(Req, <<"unknown pool">>, 404)
     end.
