@@ -242,7 +242,10 @@ clear(Keep) -> gen_server:call(?MODULE, {clear, Keep}).
 % The Config object can be passed to the search*() related set
 % of functions.
 
-get()              -> gen_server:call(?MODULE, get).
+get()              -> diag_handler:diagnosing_timeouts(
+                        fun () ->
+                                gen_server:call(?MODULE, get)
+                        end).
 get(Node)          -> ?MODULE:get(Node, ?DEFAULT_TIMEOUT).
 get(Node, Timeout) -> gen_server:call({?MODULE, Node}, get, Timeout).
 

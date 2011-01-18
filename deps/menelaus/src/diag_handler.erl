@@ -17,10 +17,12 @@
 -module(diag_handler).
 -author('NorthScale <info@northscale.com>').
 
--export([do_diag_per_node/0, handle_diag/1, handle_sasl_logs/1, arm_timeout/2, arm_timeout/1, disarm_timeout/1]).
+-include("ns_common.hrl").
 
+-export([do_diag_per_node/0, handle_diag/1, handle_sasl_logs/1,
+         arm_timeout/2, arm_timeout/1, disarm_timeout/1,
+         diagnosing_timeouts/1]).
 
-%% I'm trying to avoid consing here, but, probably, too much
 diag_filter_out_config_password_list([], UnchangedMarker) ->
     UnchangedMarker;
 diag_filter_out_config_password_list([X | Rest], UnchangedMarker) ->
@@ -209,3 +211,12 @@ arm_timeout(Millis, Callback) ->
 
 disarm_timeout(Pid) ->
     Pid ! done.
+
+diagnosing_timeouts(Body) ->
+    try Body()
+    catch exit:{timeout, _} = X ->
+            Processes = [{Pid, grab_process_info(Pid)}
+                         || Pid <- erlang:processes()],
+            ?log_error("Got timeout ~p~nProcesses snapshot is:~p~n", [X, Processes]),
+            exit(X)
+    end.
