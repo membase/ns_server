@@ -674,11 +674,12 @@ body.init_secure #init_block {display:block;}
 body.init_secure #init_secure_dialog {background:none #eee;display:block; padding-bottom:-50px;}
 body.init_secure #init_secure_dialog h2.title {border-bottom:1px solid #d5dadd; color:#444245; font-size:14pt; font-family:Verdana, Helvetica, Sans-Serif; font-weight:lighter; margin:25px 0px 0px 50px; padding-bottom:5px; width:85%;}
 body.init_secure #init_secure_dialog p.pad_10 {width:500px;margin-left:65px;font:lighter 10pt/20px Verdana, Helvetica, Sans-Serif;}
-body.init_secure #init_secure_dialog form {width:100%;padding:0 0 25px;}
+body.init_secure #init_secure_dialog form {width:100%;/*padding:0 0 25px;*/padding:0;}
 body.init_secure #init_secure_dialog form > div {overflow:hidden;width:500px;margin:8px auto 0;}
 body.init_secure #init_secure_dialog form > div label {display:inline-block;width:138px;font:12pt Verdana, Helvetica, sans-serif;*zoom:1;*padding:0 0 3px;}
 body.init_secure #init_secure_dialog form > div input {width:183px; padding:3px 3px 4px 5px;font-size:12pt; border:1px solid #ccd3d7;}
-body.init_secure #container { display: none; }
+body.init_secure #init_secure_dialog form > .config-bottom {overflow:hidden;width:696px;margin:25px auto 0 -8px;}
+body.init_secure #container {display:none;}
 
 .init_block #init_bucket_dialog {width:748px;padding-bottom:-50px;background:none #eee;}
 .init_block #init_bucket_dialog form {border:none;font-family:Verdana,Helvetica,sans-serif;}

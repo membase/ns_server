@@ -1308,8 +1308,8 @@
     <div class="cnt_holder main_holder">
       <div class="topper_nav">
         <a href="javascript:showAbout();">About</a>
-        <b>•</b>
-        <a target="MCWebHelp" href="http://wiki.membase.org/display/membase/Membase+Administration?showChildren=true">Help</a>      
+        <b>&bull;</b>
+        <a target="MCWebHelp" href="http://wiki.membase.org/display/membase/Membase+Administration?showChildren=true">Help</a>
         <a style="display: none;" class="sign-out-link" href="javascript:ThePage.signOut();">Sign Out</a>
       </div>
     </div>
@@ -1330,7 +1330,7 @@
         You have successfully installed the Membase Server.<br>This wizard will help you configure your cluster.
       </p>
       <div class="pat_10">
-        <input type="image" name="setup" value="Setup" class="submit next" src="../images/welcome-setup-button.png" style="width:145px; height:55px; margin-left:-7px; color:#fff;" />
+        <input type="image" name="setup" value="Setup" class="submit next focusme" src="../images/welcome-setup-button.png" />
       </div>
     </form>
     <div class="welcome-footer">
@@ -1346,7 +1346,7 @@
     </div>
     <h2 class="question">Configure Disk Storage</h2>
     <div class="disk_setup_block">
-      <div><form><input type="submit" style="display:none;">
+      <div><form><input type="submit" style="width:0px; height: 0px; visibility: hidden;">
         <label for="setup_path_input">Path:</label>
         <input type="text" name="path" id="setup_path_input" class="path-box" />
       </form></div>
@@ -1368,7 +1368,7 @@
     be inherited by all servers subsequently joining the cluster and it cannot be
     modified in an existing cluster, so please set appropriately.
     </p>
-    <form id="init_cluster_form" class="form block"><input type="submit" style="display:none;" />
+    <form id="init_cluster_form" class="form block"><input type="submit" style="width:0px; height: 0px; visibility: hidden;">
       <div class="pat_10">
          <label>
            <input type="radio" name="join_cluster" id="no-join-cluster" checked />
@@ -1380,7 +1380,7 @@
 		   </div>
 		   <div>
              <label style="width:auto;" for="init_dynamic_ram_quota">Per Server RAM Quota:</label>
-             <input type="text" id="init_dynamic_ram_quota" name="dynamic-ram-quota" value="" />
+             <input type="text" class="focusme" id="init_dynamic_ram_quota" name="dynamic-ram-quota" value="" />
              <span>
 			 	MB (256 MB &mdash; <span class="ram-max-size"></span> MB)
              </span>
@@ -1400,18 +1400,17 @@
             <br class="clear" />
           </div>
           <div>
-            <label for="user_inp">Username:</label>
-            <input type="text" class="inp" name="user" id="user_inp" value="Administrator" />
+            <label for="join_user_input">Username:</label>
+            <input type="text" class="inp" name="user" id="join_user_input" value="Administrator" />
             <br class="clear" />
           </div>
           <div>
-            <label for="password_inp">Password:</label>
-            <input type="password" class="inp" name="password" id="password_inp" />
+            <label for="join_password_input">Password:</label>
+            <input type="password" class="inp" name="password" id="join_password_input" />
             <br class="clear" />
           </div>
           <p class="warning pat_10 join_cluster_dialog_errors_container"></p>
        </div>
-    <!-- </label> -->
       </div>
     </form>
     <div class="config-bottom">
@@ -1460,18 +1459,18 @@
       </div>
       <div class="password-input">
         <label for="secure-password">Password:</label>
-        <input type="password" name="password" class="inp" id="secure-password" maxlength="24" />
+        <input type="password" name="password" class="inp focusme" id="secure-password" maxlength="24" />
       </div>
       <div class="password-input-verify">
         <label for="secure-password">Verify Password:</label>
         <input type="password" name="password" class="inp" id="secure-password-verify" maxlength="24" />
       </div>
-      <button type="submit" style="display:none;"></button>
-    </form>
+      <!--button type="submit" style="display:none;"></button-->
     <div class="config-bottom">
       <button name="finish" value="Finish" class="submit finish direction-button" id="step-3-finish" type="submit">Next</button>
       <button name="back" value="Back" class="submit back direction-button" id="step-3-back" type="button">Back</button>
     </div>
+    </form>
     <script type="text/javascript">
       $(function(){
         $('div.config-bottom button#step-3-finish').click(function (e) {
@@ -1515,7 +1514,7 @@
 	        <td>Free (<span class="free">12 Gb</span>)</td>
 	      </tr></table>
 	    </div>
-            <label class="for-ram-quota"><span><em class="when-non-persistent">Per Node RAM Quota:</em><em class="when-persistent">Per Node RAM Quota:</em></span><input name="ramQuotaMB" value="30"><abbr>MB</abbr></label>
+            <label class="for-ram-quota"><span><em class="when-non-persistent">Per Node RAM Quota:</em><em class="when-persistent">Per Node RAM Quota:</em></span><input name="ramQuotaMB" class="focusme" value="30"><abbr>MB</abbr></label>
 	    <div class="error-container err-ramQuotaMB"></div>
             <em class="memcached-summary when-non-persistent"></em>
 	    <div class="persistent-only">

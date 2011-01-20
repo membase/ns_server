@@ -453,6 +453,13 @@ function showInitDialog(page, opt, isContinuation) {
         });
       }
       $(document.body).addClass('init_' + page);
+      _.defer(function () {
+        var element = $('.focusme:visible').get(0)
+        if (!element) {
+          return;
+        }
+        try {element.focus();} catch (e) {}
+      });
     }
   }
 
