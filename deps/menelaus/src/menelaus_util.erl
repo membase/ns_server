@@ -62,7 +62,11 @@ redirect_permanently(Path, Req) -> redirect_permanently(Path, Req, []).
 %% mostly extracted from mochiweb_request:maybe_redirect/3
 redirect_permanently(Path, Req, ExtraHeaders) ->
     %% TODO: support https transparently
-    Location = "http://" ++ Req:get_header_value("host") ++ Path,
+    Location =
+        case Req:get_header_value("host") of
+            undefined -> Path;
+            X -> "http://" ++ X ++ Path
+        end,
     LocationBin = list_to_binary(Location),
     Top = <<"<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">"
            "<html><head>"
