@@ -94,7 +94,7 @@ grab_process_info(Pid) ->
                                     reductions,
                                     trap_exit]),
     Backtrace = proplists:get_value(backtrace, PureInfo),
-    NewBacktrace = string:tokens(binary_to_list(Backtrace), "\n"),
+    NewBacktrace = [string:substr(X, 1, 90) || X <- string:tokens(binary_to_list(Backtrace), "\n")],
     lists:keyreplace(backtrace, 1, PureInfo, {backtrace, NewBacktrace}).
 
 do_diag_per_node() ->
@@ -215,8 +215,13 @@ disarm_timeout(Pid) ->
 diagnosing_timeouts(Body) ->
     try Body()
     catch exit:{timeout, _} = X ->
-            Processes = [{Pid, grab_process_info(Pid)}
-                         || Pid <- erlang:processes()],
-            ?log_error("Got timeout ~p~nProcesses snapshot is:~p~n", [X, Processes]),
+            Processes = lists:foldl(fun (Pid, Acc) ->
+                                            [{Pid, grab_process_info(Pid)} | Acc]
+                                    end, [], erlang:processes()),
+            ?log_error("Got timeout ~p~nProcesses snapshot is: [~n", [X]),
+            lists:foreach(fun (Item) ->
+                                  error_logger:error_msg("~p,~n", [Item])
+                          end, Processes),
+            ?log_error("]~n~n", []),
             exit(X)
     end.
