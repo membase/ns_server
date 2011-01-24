@@ -31,8 +31,8 @@
 
 
 -define(LOG(Fun, Format, Args),
-        error_logger:Fun("~s:~s:~B: " ++ Format ++ "~n",
-                         [node(), ?MODULE, ?LINE] ++ Args)).
+        error_logger:Fun("~s:~p:~s:~B: " ++ Format ++ "~n",
+                         [node(), self(), ?MODULE, ?LINE] ++ Args)).
 
 -define(log_info(Format, Args), ?LOG(info_msg, Format, Args)).
 -define(log_warning(Format, Args), ?LOG(warning_msg, Format, Args)).
