@@ -29,7 +29,7 @@
 -author('Andy Gross <andy@basho.com>').
 
 -export([fresh/0,descends/2,merge/1,get_counter/2,get_timestamp/2,
-         increment/2,all_nodes/1]).
+         increment/2,all_nodes/1, likely_newer/2]).
 -export([example_test/0]).
 
 % @type vclock() = [vc_entry].
@@ -85,6 +85,17 @@ example_test() ->
     true = vclock:descends(C1, B1),
     false = vclock:descends(B1, C1),
     false = vclock:descends(B1, A1),
+    BadClock1 = [{node1, {1, 10}}, {node2, {1, 20}}],
+    BadClock2 = [{node1, {1, 12}}, {node2, {1, 20}}],
+    true = vclock:descends(BadClock1, BadClock2),
+    true = vclock:descends(BadClock2, BadClock1),
+    false = vclock:likely_newer(BadClock1, BadClock2),
+    true = vclock:likely_newer(BadClock2, BadClock1),
+    BadClock3 = [{node1, {1, 12}}, {node2, {1, 21}}],
+    true = vclock:descends(BadClock1, BadClock3),
+    true = vclock:descends(BadClock3, BadClock1),
+    false = vclock:likely_newer(BadClock1, BadClock3),
+    true = vclock:likely_newer(BadClock3, BadClock1),
     ok.
 
 % @doc Return true if Va is a direct descendant of Vb, else false -- remember, a vclock is its own descendant!
@@ -110,6 +121,18 @@ descends(Va, Vb) ->
                     descends(Va,RestB)
             end
     end.
+
+%% @doc Applies to case where descends(Va, Vb) is true and
+%% descends(Vb, Va) is true. Returns true iff Va has later timestamp
+%% then Vb for one of the nodes.
+likely_newer(Va, Vb) ->
+    lists:any(fun ({Node, {_Counter, TStampA}}) ->
+                      case lists:keyfind(Node, 1, Vb) of
+                          false -> false;
+                          {_, {_CounterB, TStampB}} ->
+                              TStampA > TStampB
+                      end
+              end, Va).
 
 % @doc Combine all VClocks in the input list into their least possible
 %      common descendant.

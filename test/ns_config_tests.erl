@@ -56,6 +56,8 @@ all_test_() ->
      ?_test(test_merge_config_dynamic())},
     {"test_merge_config_ver",
      ?_test(test_merge_config_ver())},
+    {"test_merge_config_timestamps",
+     ?_test(test_merge_config_timestamps())},
     {"test_bin_persist",
      ?_test(test_bin_persist())},
     {"test_load_config_improper",
@@ -266,6 +268,17 @@ test_merge_config_dynamic() ->
          #config{dynamic = [[{y,2}]],
                  static = [[{x,1},{foo,9}]]})),
     ok.
+
+test_merge_config_timestamps() ->
+    Mergable = [x],
+    X0 = #config{dynamic = [[{x, [{'_vclock', [{node(), {1, 10}}]}, {data, 1}]}]],
+                 static = [[{x, [{data, 1}]}]]},
+    X1 = #config{dynamic = [[{x, [{'_vclock', [{node(), {1, 11}}]}, {data, 2}]}]],
+                 static = [[{x, [{data, 2}]}]]},
+    MergedLeft = ns_config:merge_configs(Mergable, X0, X1),
+    ?assertEqual({value, [{data, 2}]}, ns_config:search(MergedLeft, x)),
+    MergedRight = ns_config:merge_configs(Mergable, X1, X0),
+    ?assertEqual({value, [{data, 2}]}, ns_config:search(MergedRight, x)).
 
 test_merge_config_ver() ->
     Mergable = [x, y, z],

@@ -607,12 +607,22 @@ merge_lists(Field, Acc, RV, LV) ->
                     true ->
                         RV;
                     false ->
-                        ns_log:log(?MODULE, ?CONFIG_CONFLICT,
-                                   "Conflicting configuration changes to field "
-                                   "~p:~n~p and~n~p, choosing the former.~n",
-                                   [Field, RV, LV]),
-                        %% Increment the merged vclock so we don't pingpong
-                        increment_vclock(RV, merge_vclocks(RV, LV))
+                        case vclock:likely_newer(LClock, RClock) of
+                            true ->
+                                ns_log:log(?MODULE, ?CONFIG_CONFLICT,
+                                           "Conflicting configuration changes to field "
+                                           "~p:~n~p and~n~p, choosing the former, which looks newer.~n",
+                                           [Field, LV, RV]),
+                                %% Increment the merged vclock so we don't pingpong
+                                increment_vclock(LV, merge_vclocks(LV, RV));
+                            false ->
+                                ns_log:log(?MODULE, ?CONFIG_CONFLICT,
+                                           "Conflicting configuration changes to field "
+                                           "~p:~n~p and~n~p, choosing the former.~n",
+                                           [Field, RV, LV]),
+                                %% Increment the merged vclock so we don't pingpong
+                                increment_vclock(RV, merge_vclocks(RV, LV))
+                        end
                 end,
             [{Field, NewValue} | Acc];
         {true, false} -> [{Field, RV} | Acc];
