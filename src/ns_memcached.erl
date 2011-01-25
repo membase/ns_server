@@ -44,7 +44,8 @@
          connected/2,
          delete_vbucket/2, delete_vbucket/3,
          get_vbucket/3,
-         host_port_str/0, host_port_str/1,
+         host_port/1,
+         host_port_str/1,
          list_vbuckets/1, list_vbuckets/2,
          list_vbuckets_multi/2,
          set_vbucket/3, set_vbucket/4,
@@ -266,18 +267,18 @@ get_vbucket(Node, Bucket, VBucket) ->
     gen_server:call({server(Bucket), Node}, {get_vbucket, VBucket}, ?TIMEOUT).
 
 
--spec host_port_str() ->
-                           nonempty_string().
-host_port_str() ->
-    host_port_str(node()).
-
+-spec host_port(node()) ->
+                           {nonempty_string(), pos_integer()}.
+host_port(Node) ->
+    Config = ns_config:get(),
+    Port = ns_config:search_node_prop(Node, Config, memcached, port),
+    {_Name, Host} = misc:node_name_host(Node),
+    {Host, Port}.
 
 -spec host_port_str(node()) ->
                            nonempty_string().
 host_port_str(Node) ->
-    Config = ns_config:get(),
-    Port = ns_config:search_node_prop(Node, Config, memcached, port),
-    {_Name, Host} = misc:node_name_host(Node),
+    {Host, Port} = host_port(Node),
     Host ++ ":" ++ integer_to_list(Port).
 
 
