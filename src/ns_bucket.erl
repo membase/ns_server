@@ -98,6 +98,7 @@ config_string(BucketName) ->
                       io_lib:format(
                         "vb0=false;waitforwarmup=false;ht_size=~B;"
                         "ht_locks=~B;failpartialwarmup=false;"
+                        "db_shards=~B;"
                         "shardpattern=%d/%b-%i.mb;"
                         "db_strategy=multiMTVBDB;"
                         "tap_keepalive=~B;"
@@ -106,6 +107,7 @@ config_string(BucketName) ->
                         "max_size=~B;initfile=~s;dbname=~s",
                         [proplists:get_value(ht_size, BucketConfig),
                          proplists:get_value(ht_locks, BucketConfig),
+                         proplists:get_value(db_shards, BucketConfig),
                          proplists:get_value(tap_keepalive, BucketConfig, 0),
                          proplists:get_value(tap_noop_interval, BucketConfig, 20),
                          proplists:get_value(max_txn_size, BucketConfig, 1000),
@@ -426,20 +428,23 @@ validate_bucket_config(BucketName, NewConfig) ->
             {error, {invalid_bucket_name, BucketName}}
     end.
 
+getenv_int(VariableName, DefaultValue) ->
+    case (catch list_to_integer(os:getenv(VariableName))) of
+        EnvBuckets when is_integer(EnvBuckets) -> EnvBuckets;
+        _ -> DefaultValue
+    end.
+
 new_bucket_default_params(membase) ->
     [{type, membase},
-     {num_vbuckets,
-      case (catch list_to_integer(os:getenv("VBUCKETS_NUM"))) of
-          EnvBuckets when is_integer(EnvBuckets) -> EnvBuckets;
-          _ -> 1024
-      end},
+     {num_vbuckets, getenv_int("MEMBASE_NUM_VBUCKETS", 1024)},
      {num_replicas, 1},
      {ram_quota, 0},
-     {ht_size, 3079},
-     {tap_keepalive, 0},
-     {tap_noop_interval, 20},
-     {max_txn_size, 1000},
-     {ht_locks, 5},
+     {db_shards, getenv_int("MEMBASE_DB_SHARDS", 4)},
+     {ht_size, getenv_int("MEMBASE_HT_SIZE", 3079)},
+     {tap_keepalive, getenv_int("MEMBASE_TAP_KEEPALIVE", 0)},
+     {tap_noop_interval, getenv_int("MEMBASE_TAP_NOOP_INTERVAL", 20)},
+     {max_txn_size, getenv_int("MEMBASE_MAX_TXN_SIZE", 1000)},
+     {ht_locks, getenv_int("MEMBASE_HT_LOCKS", 5)},
      {servers, []},
      {map, undefined}];
 new_bucket_default_params(memcached) ->
