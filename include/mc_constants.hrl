@@ -60,6 +60,13 @@
 -define(RDECR,       16#3b).
 -define(RDECRQ,      16#3c).
 
+-define(TAP_CONNECT,  16#40).
+-define(TAP_MUTATION, 16#41).
+-define(TAP_DELETE,   16#42).
+-define(TAP_FLUSH,    16#43).
+-define(TAP_OPAQUE,   16#44).
+-define(TAP_VBUCKET,  16#45).
+
 % Response status codes.
 -define(SUCCESS,          16#00).
 -define(KEY_ENOENT,       16#01).
@@ -80,3 +87,11 @@
 -define(VB_STATE_REPLICA, 2).
 -define(VB_STATE_PENDING, 3).
 -define(VB_STATE_DEAD, 4).
+
+% TAP flags
+-define(BACKFILL,          2#000001).
+-define(DUMP,              2#000010).
+-define(LIST_VBUCKETS,     2#000100).
+-define(TAKEOVER_VBUCKETS, 2#001000).
+-define(SUPPORT_ACK,       2#010000).
+-define(KEYS_ONLY,         2#100000).
