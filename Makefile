@@ -1,4 +1,4 @@
-# Copyright (c) 2010, NorthScale, Inc.
+# Copyright (c) 2011, Membase, Inc.
 # All rights reserved.
 SHELL=/bin/sh
 

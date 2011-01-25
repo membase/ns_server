@@ -181,5 +181,5 @@ inside the value.
     ]}.
 
 * * * * *
-Copyright (c) 2010, NorthScale, Inc.
+Copyright (c) 2011, Membase, Inc.
 

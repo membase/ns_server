@@ -146,4 +146,4 @@ Then you will have to add backslashes around the path double-quotes --
 like \"priv/config\"
 
 * * * * *
-Copyright (c) 2010, NorthScale, Inc.
+Copyright (c) 2011, Membase, Inc.
