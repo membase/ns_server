@@ -28,3 +28,4 @@ priv/vbucketmigrator
 test/log
 tmp
 version_num.tmp
+.DS_Store
