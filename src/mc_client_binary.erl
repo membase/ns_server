@@ -34,7 +34,8 @@
          set_flush_param/3,
          set_vbucket/3,
          stats/1,
-         stats/4]).
+         stats/4,
+         tap_connect/2]).
 
 -type recv_callback() :: fun((_, _, _) -> any()) | undefined.
 -type mc_timeout() :: undefined | infinity | non_neg_integer().
@@ -264,6 +265,33 @@ stats(Sock, Key, CB, CBData) ->
         Response -> process_error_response(Response)
     end.
 
+%% @doc Start TAP on an existing connection. At the moment, the caller
+%% is responsible for processing the TAP messages that come over the
+%% socket.
+%%
+%% @spec tap_connect(Sock::port(), Opts::[{vbuckets, [integer()]} | takeover]) -> ok.
+tap_connect(Sock, Opts) ->
+    Flags = ?BACKFILL bor ?SUPPORT_ACK bor
+        case proplists:get_value(vbuckets, Opts) of
+            undefined -> 0;
+            _         -> ?LIST_VBUCKETS
+        end bor
+        case proplists:get_bool(takeover, Opts) of
+            true  -> ?TAKEOVER_VBUCKETS;
+            false -> 0
+        end,
+    Timestamp = 0,
+    Extra = case proplists:get_value(vbuckets, Opts) of
+                undefined ->
+                    [];
+                VBuckets ->
+                    NumVBuckets = length(VBuckets),
+                    [<<NumVBuckets:16>> | [<<VBucket:16>> || VBucket <-
+                                                                 VBuckets]]
+            end,
+    Data = list_to_binary([<<Timestamp:64>> | Extra]),
+    cmd(?TAP_CONNECT, Sock, undefined, undefined,
+        {#mc_header{}, #mc_entry{ext = <<Flags:32>>, data = Data}}).
 
 %% -------------------------------------------------
 
@@ -285,6 +313,7 @@ is_quiet(?RPREPENDQ)  -> true;
 is_quiet(?RDELETEQ)   -> true;
 is_quiet(?RINCRQ)     -> true;
 is_quiet(?RDECRQ)     -> true;
+is_quiet(?TAP_CONNECT) -> true;
 is_quiet(_)           -> false.
 
 ext(?SET,        Entry) -> ext_flag_expire(Entry);
