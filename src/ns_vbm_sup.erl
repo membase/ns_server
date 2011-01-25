@@ -102,7 +102,7 @@ set_replicas(Bucket, NodesReplicas) ->
 
 spawn_mover(Bucket, VBucket, SrcNode, DstNode) ->
     Args = args(SrcNode, Bucket, [VBucket], DstNode, true),
-    apply(ns_port_server, start_link, Args).
+    apply(ebucketmigrator, start_link, Args).
 
 split_vbuckets(VBuckets) ->
     split_vbuckets(VBuckets, []).
@@ -195,25 +195,12 @@ init([]) ->
 -spec args(atom(), nonempty_string(), [non_neg_integer(),...], atom(), boolean()) ->
                   [any(), ...].
 args(Node, Bucket, VBuckets, DstNode, TakeOver) ->
-    Command = "./bin/vbucketmigrator/vbucketmigrator",
-    VBucketArgs = lists:append([["-b", integer_to_list(B)] || B <- VBuckets]),
-    TakeOverArg = case TakeOver of
-                      true -> ["-t", % transfer the vbucket
-                               "-T", "60", % Timeout in seconds
-                               "-V" % Verify that transfer actually happened
-                              ];
-                      false -> []
-                  end,
     {User, Pass} = ns_bucket:credentials(Bucket),
-    OtherArgs = ["-e", "-a", User,
-                 "-h", ns_memcached:host_port_str(Node),
-                 "-d", ns_memcached:host_port_str(DstNode),
-                 "-A", %% Enable tap ack
-                 "-v"],
-    Args = lists:append([OtherArgs, TakeOverArg, VBucketArgs]),
-    [vbucketmigrator, Command, Args,
-     [use_stdio, stderr_to_stdout,
-      {write_data, [Pass, "\n"]}]].
+    [ns_memcached:host_port(Node), ns_memcached:host_port(DstNode),
+     [{username, User},
+      {password, Pass},
+      {vbuckets, VBuckets},
+      {takeover, TakeOver}]].
 
 -spec children(node(), nonempty_string()) -> [#child_id{}].
 children(Node, Bucket) ->
@@ -251,8 +238,8 @@ start_child(Node, Bucket, VBuckets, DstNode) ->
     ?log_info("Args =~n~p",
               [PortServerArgs]),
     ChildSpec = {#child_id{vbuckets=VBuckets, dest_node=DstNode},
-                 {ns_port_server, start_link, PortServerArgs},
-                 permanent, 10, worker, [ns_port_server]},
+                 {ebucketmigrator, start_link, PortServerArgs},
+                 permanent, 10, worker, [ebucketmigrator]},
     supervisor:start_child({server(Bucket), Node}, ChildSpec).
 
 
