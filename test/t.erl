@@ -34,10 +34,10 @@
 
 -module(t).
 
--export([start/0, start_without_coverage/0, config/1]).
+-export([start/0, start_with_coverage/0, config/1]).
 
 start() ->
-    start_with_coverage().
+    start_without_coverage().
 
 start_with_coverage() ->
     cover:compile_beam_directory(config(ebin_dir)),
