@@ -150,7 +150,7 @@ _tasks = [
     WindowsTask("Computer system", "wmic computersystem", reformat=True),
     WindowsTask("Computer OS", "wmic os", reformat=True),
     UnixTask("Directory structure",
-         "ls -lR /opt/membase /var/opt/membase /etc/opt/membase"),
+         "ls -lR /opt/membase /var/membase /etc/opt/membase"),
     SolarisTask("Process list snapshot", "prstat -a -c -n 100 -t -v -L 1 10"),
     SolarisTask("Process list", "ps -ef"),
     SolarisTask("Service configuration", "svcs -a"),
