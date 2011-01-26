@@ -614,9 +614,14 @@ load_file(bin, ConfigPath) ->
     end.
 
 save_file(bin, ConfigPath, X) ->
-    {ok, F} = file:open(ConfigPath, [write, raw]),
+    TempFile = ns_config_default:tempfile(filename:dirname(ConfigPath),
+                                          filename:basename(ConfigPath),
+                                          ".tmp"),
+    {ok, F} = file:open(TempFile, [write, raw]),
     ok = file:write(F, term_to_binary(X)),
-    ok = file:close(F).
+    ok = file:sync(F),
+    ok = file:close(F),
+    file:rename(TempFile, ConfigPath).
 
 merge_configs(Mergable, Remote, Local) ->
     merge_configs(Mergable, Remote, Local, []).

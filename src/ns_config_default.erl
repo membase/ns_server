@@ -19,7 +19,7 @@
          default_path/1,
          default_root_path/0,
          find_root/1, is_root/1,
-         tempfile/2]).
+         tempfile/2, tempfile/3]).
 
 default_path(Name) ->
     RootPath = default_root_path(),
@@ -81,13 +81,16 @@ find_root(DirPath) ->
                  end
     end.
 
-tempfile(Prefix, Suffix) ->
-    Dir = ns_config_default:default_path("tmp"),
+tempfile(Dir, Prefix, Suffix) ->
     {_, _, MicroSecs} = erlang:now(),
     Pid = os:getpid(),
     Filename = Prefix ++ integer_to_list(MicroSecs) ++ "_" ++
                Pid ++ Suffix,
     filename:join(Dir, Filename).
+
+tempfile(Prefix, Suffix) ->
+    Dir = ns_config_default:default_path("tmp"),
+    tempfile(Dir, Prefix, Suffix).
 
 % Is a development root dir?
 
