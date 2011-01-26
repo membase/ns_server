@@ -18,7 +18,8 @@
 -export([default/0, mergable/1,
          default_path/1,
          default_root_path/0,
-         find_root/1, is_root/1]).
+         find_root/1, is_root/1,
+         tempfile/2]).
 
 default_path(Name) ->
     RootPath = default_root_path(),
@@ -79,6 +80,14 @@ find_root(DirPath) ->
                      false -> false
                  end
     end.
+
+tempfile(Prefix, Suffix) ->
+    Dir = ns_config_default:default_path("tmp"),
+    {_, _, MicroSecs} = erlang:now(),
+    Pid = os:getpid(),
+    Filename = Prefix ++ integer_to_list(MicroSecs) ++ "_" ++
+               Pid ++ Suffix,
+    filename:join(Dir, Filename).
 
 % Is a development root dir?
 

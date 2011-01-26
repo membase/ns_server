@@ -54,17 +54,9 @@ start() ->
     E -> io:format("grepping for ~p~n", [E]), rb:grep(E)
     end.
 
-tempfile(Prefix, Suffix) ->
-    Dir = ns_config_default:default_path("tmp"),
-    {_, _, MicroSecs} = erlang:now(),
-    Pid = os:getpid(),
-    Filename = Prefix ++ integer_to_list(MicroSecs) ++ "_" ++
-               Pid ++ Suffix,
-    filename:join(Dir, Filename).
-
 get_logs_as_file(Types, NumReports, RegExp) ->
     catch rb:stop(),
-    TempFile = tempfile("nslogs", ".log"),
+    TempFile = ns_config_default:tempfile("nslogs", ".log"),
     filelib:ensure_dir(TempFile),
     Options = [{start_log, TempFile}, {type, Types}, {max, NumReports}, {report_dir}],
     Options1 = case application:get_env(error_logger_mf_dir) of
