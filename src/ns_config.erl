@@ -39,11 +39,13 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -define(DEFAULT_TIMEOUT, 500).
+-define(TERMINATE_SAVE_TIMEOUT, 10000).
 
 %% log codes
 -define(RELOAD_FAILED, 1).
 -define(RESAVE_FAILED, 2).
 -define(CONFIG_CONFLICT, 3).
+-define(GOT_TERMINATE_SAVE_TIMEOUT, 4).
 
 -export([eval/1,
          start_link/2, start_link/1,
@@ -64,9 +66,11 @@
          proplist_get_value/3,
          sync_announcements/0, get_diag/0]).
 
+-export([save_config_sync/1]).
+
 % Exported for tests only
 -export([merge_configs/3, save_file/3, load_config/3,
-         load_file/2, save_config/2]).
+         load_file/2, save_config_sync/2, send_config/2]).
 
 % A static config file is often hand edited.
 % potentially with in-line manual comments.
@@ -392,10 +396,17 @@ merge_vclocks(NewValue, OldValue) ->
 
 %% gen_server callbacks
 
+do_init(Config) ->
+    erlang:process_flag(trap_exit, true),
+    {ok, Config}.
+
+init({with_state, LoadedConfig} = Init) ->
+    do_init(LoadedConfig#config{init = Init});
 init({full, ConfigPath, DirPath, PolicyMod} = Init) ->
     case load_config(ConfigPath, DirPath, PolicyMod) of
         {ok, Config} ->
-            {ok, Config#config{init = Init}};
+            do_init(Config#config{init = Init,
+                                  saver_mfa = {?MODULE, save_config_sync, []}});
         Error ->
             {stop, Error}
     end;
@@ -403,11 +414,45 @@ init({full, ConfigPath, DirPath, PolicyMod} = Init) ->
 init([ConfigPath, PolicyMod]) ->
     init({full, ConfigPath, undefined, PolicyMod}).
 
-terminate(_Reason, _State)          -> ok.
-code_change(_OldVsn, State, _Extra) -> {ok, State}.
-handle_cast(stop, State)            -> {stop, shutdown, State}.
-handle_info(_Info, State)           -> {noreply, State}.
+-spec wait_saver(#config{}, infinity | non_neg_integer()) -> {ok, #config{}} | timeout.
+wait_saver(State, Timeout) ->
+    case State#config.saver_pid of
+        undefined -> {ok, State};
+        Pid ->
+            receive
+                {'EXIT', Pid, _Reason} = X ->
+                    {noreply, NewState} = handle_info(X, State),
+                    wait_saver(NewState, Timeout)
+            after Timeout ->
+                    timeout
+            end
+    end.
 
+terminate(_Reason, State) ->
+    case wait_saver(State, ?TERMINATE_SAVE_TIMEOUT) of
+        timeout ->
+            ns_log:log(?MODULE, ?GOT_TERMINATE_SAVE_TIMEOUT,
+                       "Termination wait for ns_config saver process timed out.~n");
+        _ -> ok
+    end.
+
+code_change(_OldVsn, State, _Extra) -> {ok, State}.
+handle_cast(stop, State) ->
+    {stop, shutdown, State}.
+
+handle_info({'EXIT', Pid, _},
+            #config{saver_pid = MyPid,
+                    pending_more_save = NeedMore} = State) when MyPid =:= Pid ->
+    NewState = State#config{saver_pid = undefined},
+    S = case NeedMore of
+            true ->
+                initiate_save_config(NewState);
+            false ->
+                NewState
+        end,
+    {noreply, S};
+handle_info(_Info, State) ->
+    {noreply, State}.
 
 handle_call({eval, Fun}, _From, State) ->
     {reply, catch Fun(State), State};
@@ -421,7 +466,7 @@ handle_call(reload, _From, State) ->
     end;
 
 handle_call(resave, _From, State) ->
-    {reply, save_config(State), State};
+    {reply, ok, initiate_save_config(State)};
 
 handle_call(reannounce, _From, State) ->
     announce_changes(config_dynamic(State)),
@@ -446,7 +491,9 @@ handle_call({update_with_changes, Fun}, From, State) ->
 handle_call({clear, Keep}, From, State) ->
     NewList = lists:filter(fun({K,_V}) -> lists:member(K, Keep) end,
                            config_dynamic(State)),
-    handle_call(resave, From, State#config{dynamic=[NewList]}),
+    {reply, _, NewState} = handle_call(resave, From, State#config{dynamic=[NewList]}),
+    %% we ignore state from saver, 'cause we're going to reload it anyway
+    wait_saver(NewState, infinity),
     handle_call(reload, From, State);
 
 handle_call({merge, KVList}, From, State) ->
@@ -525,18 +572,26 @@ load_config(ConfigPath, DirPath, PolicyMod) ->
         E -> E
     end.
 
-validate_config(Config) ->
-    lists:foreach(fun ({_, V}) when V /= false -> ok end, hd(Config)).
-
-save_config(Config) ->
-    {value, DirPath} = search(Config, directory),
-    save_config(Config, DirPath).
-
-save_config(#config{dynamic = D}, DirPath) ->
+save_config_sync(#config{dynamic = D}, DirPath) ->
     C = dynamic_config_path(DirPath),
-    % Only saving the dynamic config parts.
-    validate_config(D),
-    ok = save_file(bin, C, D).
+    ok = save_file(bin, C, D),
+    ok.
+
+save_config_sync(Config) ->
+    {value, DirPath} = search(Config, directory),
+    save_config_sync(Config, DirPath).
+
+initiate_save_config(Config) ->
+    case Config#config.saver_pid of
+        undefined ->
+            {M, F, ASuffix} = Config#config.saver_mfa,
+            A = [Config | ASuffix],
+            Pid = spawn_link(M, F, A),
+            Config#config{saver_pid = Pid,
+                          pending_more_save = false};
+        _ ->
+            Config#config{pending_more_save = true}
+    end.
 
 announce_changes([]) -> ok;
 announce_changes(KVList) ->
@@ -662,12 +717,17 @@ do_teardown(_V) ->
     ok.
 
 all_test_() ->
-    {spawn, {foreach, fun do_setup/0, fun do_teardown/1,
-             [fun test_setup/0,
-              fun test_set/0,
-              fun test_update_config/0,
-              fun test_set_kvlist/0,
-              fun test_update/0]}}.
+    [{spawn, {foreach, fun do_setup/0, fun do_teardown/1,
+              [fun test_setup/0,
+               fun test_set/0,
+               fun test_update_config/0,
+               fun test_set_kvlist/0,
+               fun test_update/0]}},
+     {spawn, {foreach, fun setup_with_saver/0, fun teardown_with_saver/1,
+              [fun test_with_saver_stop/0,
+               fun test_clear/0,
+               fun test_with_saver_set_and_stop/0,
+               fun test_clear_with_concurrent_save/0]}}].
 
 test_setup() ->
     F = fun () -> ok end,
@@ -788,5 +848,246 @@ test_update() ->
 
     ?assertConfigEquals([{a, 10} | lists:keydelete(a, 1, OldConfig)], NewConfig2),
     ok.
+
+send_config(Config, Pid) ->
+    Ref = erlang:make_ref(),
+    Pid ! {saving, Ref, Config, self()},
+    receive
+        {Ref, Reply} ->
+            Reply
+    end.
+
+setup_with_saver() ->
+    {ok, _} = gen_event:start_link({local, ns_config_events}),
+    Parent = self(),
+    %% we don't want to kill this process when ns_config server dies,
+    %% but we wan't to kill ns_config process when this process dies
+    spawn(fun () ->
+                  Cfg = #config{dynamic = [[{a, [{b, 1}, {c, 2}]},
+                                            {d, 3}]],
+                                policy_mod = ns_config_default,
+                                saver_mfa = {?MODULE, send_config, [save_config_target]}},
+                  {ok, _} = ns_config:start_link({with_state,
+                                                  Cfg}),
+                  MRef = erlang:monitor(process, Parent),
+                  receive
+                      {'DOWN', MRef, _, _, _} ->
+                          ?debugFmt("Commiting suicide~n", []),
+                          exit(death)
+                  end
+          end).
+
+kill_and_wait(undefined) -> ok;
+kill_and_wait(Pid) ->
+    (catch erlang:unlink(Pid)),
+    exit(Pid, kill),
+    MRef = erlang:monitor(process, Pid),
+    receive
+        {'DOWN', MRef, _, _, _} -> ok
+    end.
+
+teardown_with_saver(_) ->
+    kill_and_wait(whereis(ns_config)),
+    kill_and_wait(whereis(ns_config_events)),
+    ok.
+
+fail_on_incoming_message() ->
+    receive
+        X ->
+            exit({i_dont_expect_anything, X})
+    after
+        0 -> ok
+    end.
+
+test_with_saver_stop() ->
+    do_test_with_saver(fun (_Pid) ->
+                               gen_server:cast(?MODULE, stop)
+                       end,
+                       fun () ->
+                               ok
+                       end).
+
+test_with_saver_set_and_stop() ->
+    do_test_with_saver(fun (_Pid) ->
+                               %% check that pending_more_save is false
+                               Cfg1 = ns_config:get(),
+                               ?assertEqual(false, Cfg1#config.pending_more_save),
+
+                               %% send last mutation
+                               ns_config:set(d, 10),
+
+                               %% check that pending_more_save is false
+                               Cfg2 = ns_config:get(),
+                               ?assertEqual(true, Cfg2#config.pending_more_save),
+
+                               %% and kill ns_config
+                               gen_server:cast(?MODULE, stop)
+                       end,
+                       fun () ->
+                               %% wait for last save request and confirm it
+                               receive
+                                   {saving, Ref, _Conf, Pid} ->
+                                       Pid ! {Ref, ok};
+                                   X ->
+                                       exit({unexpected_message, X})
+                               end,
+                               ok
+                       end).
+
+do_test_with_saver(KillerFn, PostKillerFn) ->
+    erlang:process_flag(trap_exit, true),
+    true = erlang:register(save_config_target, self()),
+
+    ?assertEqual({value, 3}, ns_config:search(d)),
+    ?assertEqual(2, ns_config:search_prop(ns_config:get(), a, c)),
+
+    ns_config:set(d, 4),
+
+    {NewConfig1, Ref1, Pid1} = receive
+                                   {saving, R, C, P} -> {C, R, P}
+                               end,
+
+    fail_on_incoming_message(),
+
+    ?assertEqual({value, 4}, ns_config:search(NewConfig1, d)),
+
+    ns_config:set(d, 5),
+
+    %% ensure that save request is not sent while first is not yet
+    %% complete
+    fail_on_incoming_message(),
+
+    %% and actually check that pending_more_save is true
+    Cfg1 = ns_config:get(),
+    ?assertEqual(true, Cfg1#config.pending_more_save),
+
+    %% now signal save completed
+    Pid1 ! {Ref1, ok},
+
+    %% expect second save request immediately
+    {_, Ref2, Pid2} = receive
+                          {saving, R1, C1, P1} -> {C1, R1, P1}
+                      end,
+
+    Cfg2 = ns_config:get(),
+    ?assertEqual(false, Cfg2#config.pending_more_save),
+
+    Pid = whereis(ns_config),
+    erlang:monitor(process, Pid),
+
+    %% send termination request, but before completing second save
+    %% request
+    KillerFn(Pid),
+
+    fail_on_incoming_message(),
+
+    %% now confirm second save
+    Pid2 ! {Ref2, ok},
+
+    PostKillerFn(),
+
+    %% await ns_config death
+    receive
+        {'DOWN', _MRef, process, Pid, Reason} ->
+            ?assertEqual(shutdown, Reason)
+    end,
+
+    %% make sure there are no unhandled messages
+    fail_on_incoming_message(),
+
+    ok.
+
+test_clear() ->
+    erlang:process_flag(trap_exit, true),
+    true = erlang:register(save_config_target, self()),
+
+    ?assertEqual({value, 3}, ns_config:search(d)),
+    ?assertEqual(2, ns_config:search_prop(ns_config:get(), a, c)),
+
+    ns_config:set(d, 4),
+
+    NewConfig1 = receive
+                     {saving, Ref1, C, Pid1} ->
+                         Pid1 ! {Ref1, ok},
+                         C
+                 end,
+
+    fail_on_incoming_message(),
+
+    ?assertEqual({value, 4}, ns_config:search(NewConfig1, d)),
+
+    %% ns_config:clear blocks on saver, so we need concurrency here
+    Clearer = spawn_link(fun () ->
+                                 ns_config:clear([])
+                         end),
+
+    %% make sure we're saving correctly cleared config
+    receive
+        {saving, Ref2, NewConfig2, Pid2} ->
+            Pid2 ! {Ref2, ok},
+            ?assertEqual([], config_dynamic(NewConfig2))
+    end,
+
+    receive
+        {'EXIT', Clearer, normal} -> ok
+    end,
+
+    fail_on_incoming_message(),
+
+    %% now verify that ns_config was re-inited. In our case this means
+    %% returning to original config
+    ?assertEqual({value, 3}, ns_config:search(d)),
+    ?assertEqual(2, ns_config:search_prop(ns_config:get(), a, c)).
+
+test_clear_with_concurrent_save() ->
+    erlang:process_flag(trap_exit, true),
+    true = erlang:register(save_config_target, self()),
+
+    ?assertEqual({value, 3}, ns_config:search(d)),
+    ?assertEqual(2, ns_config:search_prop(ns_config:get(), a, c)),
+
+    ns_config:set(d, 4),
+
+    %% don't reply right now
+    {NewConfig1, Pid1, Ref1} = receive
+                                   {saving, R1, C, P1} ->
+                                       {C, P1, R1}
+                               end,
+
+    fail_on_incoming_message(),
+
+    ?assertEqual({value, 4}, ns_config:search(NewConfig1, d)),
+
+    %% ns_config:clear blocks on saver, so we need concurrency here
+    Clearer = spawn_link(fun () ->
+                                 ns_config:clear([])
+                         end),
+
+    %% this is racy, but don't know how to test other process waiting
+    %% on reply from us
+    timer:sleep(300),
+
+    %% now assuming ns_config is waiting on us already, reply on first
+    %% save request
+    fail_on_incoming_message(),
+    Pid1 ! {Ref1, ok},
+
+    %% make sure we're saving correctly cleared config
+    receive
+        {saving, Ref2, NewConfig2, Pid2} ->
+            Pid2 ! {Ref2, ok},
+            ?assertEqual([], config_dynamic(NewConfig2))
+    end,
+
+    receive
+        {'EXIT', Clearer, normal} -> ok
+    end,
+
+    fail_on_incoming_message(),
+
+    %% now verify that ns_config was re-inited. In our case this means
+    %% returning to original config
+    ?assertEqual({value, 3}, ns_config:search(d)),
+    ?assertEqual(2, ns_config:search_prop(ns_config:get(), a, c)).
 
 -endif.

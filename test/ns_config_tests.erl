@@ -352,7 +352,7 @@ test_save_config() ->
     E = #config{static = [[{x,1}], []], dynamic = [[{x,1}]], policy_mod = ?MODULE},
     ?assertMatch({ok, E}, R),
     X = E#config{dynamic = [[{x,2},{y,3}]], policy_mod = ?MODULE},
-    ?assertEqual(ok, ns_config:save_config(X, test_dir())),
+    ?assertEqual(ok, ns_config:save_config_sync(X, test_dir())),
     R2 = ns_config:load_config(CP, test_dir(), ?MODULE),
     ?assertMatch({ok, X}, R2),
     ok.
