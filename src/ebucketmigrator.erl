@@ -110,11 +110,12 @@ init({Src, Dst, Opts}) ->
     proc_lib:init_ack({ok, self()}),
     Downstream = connect(Dst, Username, Password, Bucket),
     Upstream = connect(Src, Username, Password, Bucket),
-    mc_client_binary:tap_connect(Upstream, [{vbuckets, VBuckets},
-                                            {takeover, TakeOver}]),
-    inet:setopts(Upstream, [{active, once}]),
-    inet:setopts(Downstream, [{active, once}]),
-    timer:send_interval(?TIMEOUT_CHECK_INTERVAL, check_for_timeout),
+    {ok, quiet} = mc_client_binary:tap_connect(Upstream, [{vbuckets, VBuckets},
+                                                          {takeover, TakeOver}]),
+    ok = inet:setopts(Upstream, [{active, once}]),
+    ok = inet:setopts(Downstream, [{active, once}]),
+    {ok, _TRef} = timer:send_interval(?TIMEOUT_CHECK_INTERVAL,
+                                      check_for_timeout),
     State = #state{upstream=Upstream, downstream=Downstream,
                    vbuckets=sets:from_list(
                               case VBuckets of
@@ -200,7 +201,7 @@ process_data(Data, Elem, CB, State) ->
                                 #state{}.
 process_downstream(<<?RES_MAGIC:8, _/binary>> = Packet,
                    State) ->
-    gen_tcp:send(State#state.upstream, Packet),
+    ok = gen_tcp:send(State#state.upstream, Packet),
     State.
 
 
@@ -235,7 +236,7 @@ process_upstream(<<?REQ_MAGIC:8, Opcode:8, KeyLen:16, ExtLen:8, _DataType:8,
                 validate_vbucket(VBucket, VBuckets),
                 State
         end,
-    gen_tcp:send(Downstream, Packet),
+    ok = gen_tcp:send(Downstream, Packet),
     State1.
 
 
