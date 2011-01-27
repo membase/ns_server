@@ -81,7 +81,7 @@ $(NS_SERVER_PLT):
 	dialyzer --output_plt $@ --build_plt -pa ebin --apps compiler crypto erts inets kernel mnesia os_mon sasl ssl stdlib xmerl -c deps/gen_smtp/ebin deps/menelaus/deps/mochiweb/ebin deps/menelaus/deps/erlwsh/ebin
 
 dialyzer: all $(NS_SERVER_PLT)
-	dialyzer --plt $(NS_SERVER_PLT) -Wunderspecs -pa ebin -c ebin -c deps/menelaus/ebin
+	dialyzer --plt $(NS_SERVER_PLT) -pa ebin -c ebin -c deps/menelaus/ebin
 
 Features/Makefile:
 	(cd features && ../test/parallellize_features.rb) >features/Makefile
