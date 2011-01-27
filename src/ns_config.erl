@@ -529,10 +529,7 @@ config_dynamic(X)                          -> X.
 %%--------------------------------------------------------------------
 
 dynamic_config_path(DirPath) ->
-    % The extra node() in the path ensures uniqueness even if
-    % developers are running more than 1 named node per box.
-    X = filename:join(DirPath, misc:node_name_short()),
-    C = filename:join(X, "config.dat"),
+    C = filename:join(DirPath, "config.dat"),
     ok = filelib:ensure_dir(C),
     C.
 

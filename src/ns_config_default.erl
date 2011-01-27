@@ -24,8 +24,14 @@
 default_path(Name) ->
     RootPath = default_root_path(),
     NamePath = filename:join(RootPath, Name),
-    filelib:ensure_dir(NamePath),
-    NamePath.
+    Path = case application:get_env(path_prefix) of
+               undefined ->
+                   NamePath;
+               {ok, Prefix} ->
+                   filename:join(NamePath, Prefix)
+           end,
+    ok = filelib:ensure_dir(Path),
+    Path.
 
 % Returns the directory that best represents the product 'root'
 % install directory.  In development, that might be the ns_server
@@ -115,7 +121,7 @@ keys([KVList | Rest], Accum) ->
 default() ->
     {ok, ConfigFile} = application:get_env(ns_server_config),
     ConfigDir = filename:dirname(ConfigFile),
-    RawDbDir = filename:join(default_path("data"), misc:node_name_short()),
+    RawDbDir = default_path("data"),
     filelib:ensure_dir(RawDbDir),
     file:make_dir(RawDbDir),
     DbDir = case misc:realpath(RawDbDir, "/") of

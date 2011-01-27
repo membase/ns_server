@@ -32,16 +32,15 @@ base_api_port = (ENV['BASE_API_PORT'] || "9000").to_i
 nodes = ""
 
 num_nodes.times do |x|
-  node_id = "'n_#{x + base_api_port - 9000}@127.0.0.1'"
-  node_data = "./data/n_#{x + base_api_port - 9000}"
-  FileUtils.mkdir_p node_data
+  node_short_name = "n_#{x + base_api_port - 9000}"
+  node_id = "'#{node_short_name}@127.0.0.1'"
   nodes = nodes + <<-END
     {{node, #{node_id}, rest},
       [{port, #{x + base_api_port}}]}.
 
     {{node, #{node_id}, memcached}, [
                  {port, #{(x * 2) + base_direct_port}},
-                 {dbdir, "#{node_data}"},
+                 {dbdir, "./data/#{node_short_name}"},
                  {admin_user, "_admin"},
                  {admin_pass, "_admin"},
                  {bucket_engine, "./bin/bucket_engine/bucket_engine.so"},
@@ -52,8 +51,6 @@ num_nodes.times do |x|
                              [{engine, "bin/memcached/default_engine.so"}]}]},
                  {verbosity, ""}
                  ]}.
-
-    {{node, #{node_id}, ns_log}, [{filename, "#{node_data}/logs.bin"}]}.
 
     {{node, #{node_id}, moxi}, [
             {port, #{(x * 2) + base_direct_port + 1}},
@@ -90,6 +87,7 @@ start_node() {
         -ns_server error_logger_mf_dir '"logs/'$1'"' \\
         -ns_server error_logger_mf_maxbytes 10485760 \\
         -ns_server error_logger_mf_maxfiles 10 \\
+        -ns_server path_prefix \\"$1\\" \\
         -- \\
         -no-input \\
         -name $1@127.0.0.1 -noshell \\
