@@ -146,7 +146,8 @@ default() ->
                                                 %
                                                 % Modifiers: menelaus REST API
                                                 % Listeners: some menelaus module that configures/reconfigures mochiweb
-     {rest, [{port, 8091} % Port number of the REST admin API and UI.
+     {{node, node(), rest},
+      [{port, misc:get_env_default(rest_port, 8091)} % Port number of the REST admin API and UI.
             ]},
 
                                                 % In 1.0, only the first entry in the creds list is displayed in the UI
@@ -168,7 +169,7 @@ default() ->
 
                                                 % Memcached config
      {{node, node(), memcached},
-      [{port, 11210},
+      [{port, misc:get_env_default(memcached_port, 11210)},
        {dbdir, DbDir},
        {admin_user, "_admin"},
        {admin_pass, "_admin"},
@@ -185,7 +186,7 @@ default() ->
      {buckets, [{configs, []}]},
 
                                                 % Moxi config
-     {moxi, [{port, 11211},
+     {moxi, [{port, misc:get_env_default(moxi_port, 11211)},
              {verbosity, ""}
             ]},
 
