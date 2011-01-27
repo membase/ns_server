@@ -1,0 +1,55 @@
+#!/usr/bin/env python
+import os, subprocess, sys
+
+def start_cluster(num_nodes):
+    path_str = subprocess.Popen(["find", ".", "-name", "ebin", "-type", "d"],
+                                stdout=subprocess.PIPE).communicate()[0]
+    path = path_str.split()
+    base_direct_port = 12000
+    base_api_port = 9000
+    def start_node(i):
+        logdir = "logs/n_{0}".format(i)
+        try:
+            os.makedirs(logdir)
+        except:
+            pass
+        
+        args = ["erl", "+A", "16", "-pa"] + path + \
+            ["-setcookie", "nocookie",
+             "-run", "ns_bootstrap",
+             "-kernel", "inet_dist_listen_min", "21100",
+             "inet_dist_listen_max", "21199",
+             "-ns_server", "error_logger_mf_dir", '"{0}"'.format(logdir),
+             "error_logger_mf_maxbytes", "10485760",
+             "error_logger_mf_maxfiles", "10",
+             "path_prefix", '"n_{0}"'.format(i),
+             "rest_port", str(base_api_port + i),
+             "memcached_port", str(base_direct_port + i * 2),
+             "moxi_port", str(base_direct_port + i * 2 + 1),
+             "--", "-no-input",
+             "-name", "n_{0}@127.0.0.1".format(i),
+             "-noshell"]
+        return subprocess.Popen(args)
+
+    return [start_node(i) for i in xrange(num_nodes)]
+
+def usage():
+    sys.exit("Usage: {0} num_nodes")
+
+
+def main():
+    if len(sys.argv) != 2:
+        usage()
+
+    try:
+        num_nodes = int(sys.argv[1])
+    except:
+        usage()
+
+    nodes = start_cluster(num_nodes)
+    for node in nodes:
+        node.wait()
+
+
+if __name__ == '__main__':
+    main()
