@@ -40,8 +40,8 @@ rest_add_auth(Request, undefined) ->
 
 rest_request(Method, Request, Auth) ->
     inets:start(),
-    http:request(Method, rest_add_auth(Request, Auth),
-                 [{timeout, 30000}, {connect_timeout, 30000}], []).
+    httpc:request(Method, rest_add_auth(Request, Auth),
+                  [{timeout, 30000}, {connect_timeout, 30000}], []).
 
 decode_json_response_ext({ok, {{_HttpVersion, 200 = _StatusCode, _ReasonPhrase} = _StatusLine,
                                _Headers, Body} = _Result},
