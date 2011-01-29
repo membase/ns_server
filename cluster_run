@@ -21,7 +21,7 @@ def start_cluster(num_nodes):
         except:
             pass
 
-        if i == 0:
+        if (i == 0) and os.isatty(sys.stdin.fileno()):
             args = ["erl", "+A", "16", "-pa"] + path + \
                 ["-setcookie", "nocookie",
                  "-run", "ns_bootstrap",
@@ -82,14 +82,19 @@ def main():
 
     testament_child_death()
 
-    terminal_attrs = termios.tcgetattr(sys.stdin)
+    terminal_attrs = None
+    try:
+        terminal_attrs = termios.tcgetattr(sys.stdin)
+    except:
+        pass
 
     nodes = start_cluster(num_nodes)
 
     for node in nodes:
         node.wait()
 
-    termios.tcsetattr(sys.stdin, termios.TCSANOW, terminal_attrs)
+    if terminal_attrs != None:
+        termios.tcsetattr(sys.stdin, termios.TCSANOW, terminal_attrs)
 
 
 if __name__ == '__main__':
