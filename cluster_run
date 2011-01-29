@@ -1,6 +1,13 @@
 #!/usr/bin/env python
 import os, subprocess, sys, signal, termios
 
+def testament_child_death():
+    rv = os.fork()
+    if rv == 0:
+        os.kill(os.getpid(), signal.SIGSTOP)
+        os._exit(0)
+    os.waitpid(rv, os.WUNTRACED)
+
 def start_cluster(num_nodes):
     path_str = subprocess.Popen(["find", ".", "-name", "ebin", "-type", "d"],
                                 stdout=subprocess.PIPE).communicate()[0]
@@ -72,6 +79,8 @@ def main():
     signal.signal(signal.SIGHUP, kill_nodes)
     signal.signal(signal.SIGTERM, kill_nodes)
     signal.signal(signal.SIGINT, kill_nodes)
+
+    testament_child_death()
 
     terminal_attrs = termios.tcgetattr(sys.stdin)
 
