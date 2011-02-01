@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import os, subprocess, sys, signal, termios
+import os, subprocess, sys, signal, termios, atexit
 
 def testament_child_death():
     rv = os.fork()
@@ -76,9 +76,7 @@ def main():
             except OSError:
                 pass
 
-    signal.signal(signal.SIGHUP, kill_nodes)
-    signal.signal(signal.SIGTERM, kill_nodes)
-    signal.signal(signal.SIGINT, kill_nodes)
+    atexit.register(kill_nodes)
 
     testament_child_death()
 
