@@ -103,6 +103,7 @@ adjust_my_address(MyIP) ->
 %% Bring up distributed erlang.
 bringup(MyIP) ->
     MyNodeName = list_to_atom("ns_1@" ++ MyIP),
+    net_kernel:set_net_ticktime(misc:get_env_default(set_net_ticktime, 10)),
     Rv = decode_status(net_kernel:start([MyNodeName, longnames])),
     #state{self_started = Rv, my_ip = MyIP}.
 
