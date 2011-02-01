@@ -269,7 +269,8 @@ stats(Sock, Key, CB, CBData) ->
 %% is responsible for processing the TAP messages that come over the
 %% socket.
 %%
-%% @spec tap_connect(Sock::port(), Opts::[{vbuckets, [integer()]} | takeover]) -> ok.
+%% @spec tap_connect(Sock::port(), Opts::[{vbuckets, [integer()]} |
+%%                                        takeover | {name, string()}]) -> ok.
 tap_connect(Sock, Opts) ->
     Flags = ?BACKFILL bor ?SUPPORT_ACK bor
         case proplists:get_value(vbuckets, Opts) of
@@ -291,7 +292,9 @@ tap_connect(Sock, Opts) ->
             end,
     Data = list_to_binary([<<Timestamp:64>> | Extra]),
     cmd(?TAP_CONNECT, Sock, undefined, undefined,
-        {#mc_header{}, #mc_entry{ext = <<Flags:32>>, data = Data}}).
+        {#mc_header{}, #mc_entry{key = proplists:get_value(name, Opts),
+                                 ext = <<Flags:32>>,
+                                 data = Data}}).
 
 %% -------------------------------------------------
 

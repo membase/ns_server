@@ -111,7 +111,16 @@ init({Src, Dst, Opts}) ->
     proc_lib:init_ack({ok, self()}),
     Downstream = connect(Dst, Username, Password, Bucket),
     Upstream = connect(Src, Username, Password, Bucket),
+    TapSuffix = binary_to_list(iolist_to_binary(
+                                 re:replace(re:replace(io_lib:format("~p", [self()]),
+                                                       "<|>", "", [global]),
+                                            "\\.", "_", [global]))),
+    Name = case TakeOver of
+               true -> "rebalance_" ++ TapSuffix;
+               _ -> "replication_" ++ TapSuffix
+           end,
     {ok, quiet} = mc_client_binary:tap_connect(Upstream, [{vbuckets, VBuckets},
+                                                          {name, Name},
                                                           {takeover, TakeOver}]),
     ok = inet:setopts(Upstream, [{active, once}]),
     ok = inet:setopts(Downstream, [{active, once}]),
