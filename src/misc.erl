@@ -933,3 +933,16 @@ zipwith4_test() ->
             exit(bad_error_handling);
         _ -> ok
     end.
+
+%% the intention is to re-implement that efficiently later for R14 which has
+%% binary:match & friends
+split_binary_at_char(Binary, Chr) ->
+    case re:run(Binary, <<Chr:8>>) of
+        {match, [{Pos, 1}]} ->
+            case erlang:split_binary(Binary, Pos) of
+                {Part1, Part2} ->
+                    {Part1, element(2, erlang:split_binary(Part2, 1))}
+            end;
+        _ ->
+            Binary
+    end.

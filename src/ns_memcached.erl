@@ -41,6 +41,8 @@
 -export([active_buckets/0,
          backfilling/1,
          backfilling/2,
+         tap_stats/1,
+         tap_stats/2,
          connected/2,
          delete_vbucket/2, delete_vbucket/3,
          get_vbucket/3,
@@ -103,6 +105,26 @@ handle_call(backfilling, _From, State) ->
                             Acc
                     end, false),
     {reply, Reply, State};
+handle_call(tap_stats, _From, State) ->
+    Reply =
+        case mc_client_binary:stats(
+               State#state.sock, <<"tap">>,
+               fun (<<"eq_tapq:", K/binary>>, Value, Acc) ->
+                       case misc:split_binary_at_char(K, $:) of
+                           {StreamName, Key} ->
+                               dict:update(StreamName, fun (List) ->
+                                                               [{Key, Value} | List]
+                                                       end, [{Key, Value}], Acc);
+                           _ ->
+                               Acc
+                       end;
+                   (_, _, Acc) ->
+                       Acc
+               end, dict:new()) of
+            {ok, X} -> X;
+            {memcached_error, key_enoent, _} -> dict:new()
+        end,
+    {reply, dict:to_list(Reply), State};
 handle_call({delete_vbucket, VBucket}, _From, #state{sock=Sock} = State) ->
     case mc_client_binary:delete_vbucket(Sock, VBucket) of
         ok ->
@@ -246,6 +268,12 @@ backfilling(Bucket) ->
 backfilling(Node, Bucket) ->
     gen_server:call({server(Bucket), Node}, backfilling, ?TIMEOUT).
 
+tap_stats(Bucket) ->
+    tap_stats(node(), Bucket).
+
+tap_stats(Node, Bucket) ->
+    gen_server:call({server(Bucket), Node}, tap_stats, ?TIMEOUT).
+
 %% @doc Delete a vbucket. Will set the vbucket to dead state if it
 %% isn't already, blocking until it successfully does so.
 -spec delete_vbucket(bucket_name(), vbucket_id()) ->
@@ -339,7 +367,6 @@ stats(Bucket, Key) ->
                    {ok, [{binary(), binary()}]} | mc_error().
 stats(Node, Bucket, Key) ->
     gen_server:call({server(Bucket), Node}, {stats, Key}, ?TIMEOUT).
-
 
 sync_bucket_config(Bucket) ->
     gen_server:call(server(Bucket), sync_bucket_config, ?TIMEOUT).
