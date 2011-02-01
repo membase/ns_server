@@ -35,6 +35,7 @@
                 vbuckets,
                 takeover :: boolean(),
                 takeover_msgs_seen = 0 :: non_neg_integer(),
+                opcode_counts :: dict(),
                 last_seen}).
 
 %% external API
@@ -123,11 +124,15 @@ init({Src, Dst, Opts}) ->
                                   _ -> VBuckets
                               end),
                    last_seen=now(),
+                   opcode_counts=dict:new(),
                    takeover=TakeOver},
+    %% Trap exits so we can log
+    process_flag(trap_exit, true),
     gen_server:enter_loop(?MODULE, [], State).
 
 
-terminate(_Reason, _State) ->
+terminate(_Reason, State) ->
+    ?log_info("Opcode counts: ~p", [dict:to_list(State#state.opcode_counts)]),
     ok.
 
 
@@ -188,6 +193,8 @@ process_data(Buffer, _CB, State) ->
     {Buffer, State}.
 
 
+%% @doc Append Data to the appropriate buffer, calling the given
+%% callback for each packet.
 -spec process_data(binary(), non_neg_integer(),
                    fun((binary(), #state{}) -> #state{}), #state{}) -> #state{}.
 process_data(Data, Elem, CB, State) ->
@@ -237,7 +244,9 @@ process_upstream(<<?REQ_MAGIC:8, Opcode:8, KeyLen:16, ExtLen:8, _DataType:8,
                 State
         end,
     ok = gen_tcp:send(Downstream, Packet),
-    State1.
+    %% Keep track of the number of messages we've seen with each opcode
+    State1#state{opcode_counts=dict:update_counter(
+                                 Opcode, 1, State1#state.opcode_counts)}.
 
 
 validate_vbucket(VBucket, VBuckets) ->
