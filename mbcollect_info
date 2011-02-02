@@ -220,7 +220,7 @@ _tasks = [
     AllOsTask("memcached stats timings",
               "stats -a 127.0.0.1:11210 timings _admin _admin",
               log_file="stats.log"),
-    AllOsTask("membase logs", "browse_logs", log_file="ns_server.log"),
+    AllOsTask("membase logs", "mbbrowse_logs", log_file="ns_server.log"),
     ]
 
 
