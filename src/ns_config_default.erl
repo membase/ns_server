@@ -185,10 +185,13 @@ default() ->
 
      {buckets, [{configs, []}]},
 
-                                                % Moxi config
-     {moxi, [{port, misc:get_env_default(moxi_port, 11211)},
-             {verbosity, ""}
-            ]},
+                                                % Moxi config. This is
+                                                % per-node so command
+                                                % line override
+                                                % doesn't propagate
+     {{node, node(), moxi}, [{port, misc:get_env_default(moxi_port, 11211)},
+                             {verbosity, ""}
+                            ]},
 
                                                 % Note that we currently assume the ports are available
                                                 % across all servers in the cluster.
