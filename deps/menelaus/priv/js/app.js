@@ -19,6 +19,7 @@
 //= require <core-data.js>
 //= require <analytics.js>
 //= require <manage-servers.js>
+//= require <monitor-servers.js>
 //= require <settings.js>
 //= require <manage-buckets.js>
 //= require <monitor-buckets.js>
@@ -210,9 +211,9 @@ var ThePage = {
              log: AlertsSection,
              // settings: SettingsSection,
              monitor_buckets: MonitorBucketsSection,
-             monitor_servers: OverviewSection},
+             monitor_servers: MonitorServersSection},
 
-  coming: {monitor_servers:true, settings:true},
+  coming: {settings:true},
 
   currentSection: null,
   currentSectionName: null,
