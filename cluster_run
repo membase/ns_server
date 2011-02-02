@@ -21,23 +21,6 @@ def start_cluster(num_nodes):
         except:
             pass
 
-        if (i == 0) and os.isatty(sys.stdin.fileno()):
-            args = ["erl", "+A", "16", "-pa"] + path + \
-                ["-setcookie", "nocookie",
-                 "-run", "ns_bootstrap",
-                 "-kernel", "inet_dist_listen_min", "21100",
-                 "inet_dist_listen_max", "21199",
-                 "-ns_server", "error_logger_mf_dir", '"{0}"'.format(logdir),
-                 "error_logger_mf_maxbytes", "10485760",
-                 "error_logger_mf_maxfiles", "10",
-                 "path_prefix", '"n_{0}"'.format(i),
-                 "rest_port", str(base_api_port + i),
-                 "memcached_port", str(base_direct_port + i * 2),
-                 "moxi_port", str(base_direct_port + i * 2 + 1),
-                 "--",
-                 "-name", "n_{0}@127.0.0.1".format(i)]
-            return subprocess.Popen(args)
-
         args = ["erl", "+A", "16", "-pa"] + path + \
             ["-setcookie", "nocookie",
              "-run", "ns_bootstrap",
@@ -48,12 +31,14 @@ def start_cluster(num_nodes):
              "error_logger_mf_maxfiles", "10",
              "path_prefix", '"n_{0}"'.format(i),
              "rest_port", str(base_api_port + i),
-             "memcached_port", str(base_direct_port + i * 2),
+                 "memcached_port", str(base_direct_port + i * 2),
              "moxi_port", str(base_direct_port + i * 2 + 1),
-             "--", "-no-input",
-             "-name", "n_{0}@127.0.0.1".format(i),
-             "-noshell"]
-        return subprocess.Popen(args, stdin = subprocess.PIPE)
+             "--",
+             "-name", "n_{0}@127.0.0.1".format(i)]
+        if i == 0:
+            return subprocess.Popen(args)
+        else:
+            return subprocess.Popen(args + ["-noshell"], stdin=subprocess.PIPE)
 
     return [start_node(i) for i in xrange(num_nodes)]
 
