@@ -56,13 +56,13 @@
 %% A memcached client that speaks binary protocol.
 -spec cmd(mc_opcode(), port(), recv_callback(), any(),
           {#mc_header{}, #mc_entry{}}) ->
-                 {ok, #mc_header{}, #mc_entry{}, any()}.
+                 {ok, #mc_header{}, #mc_entry{}, any()} | {ok, quiet}.
 cmd(Opcode, Sock, RecvCallback, CBData, HE) ->
     cmd(Opcode, Sock, RecvCallback, CBData, HE, undefined).
 
 -spec cmd(mc_opcode(), port(), recv_callback(), any(),
           {#mc_header{}, #mc_entry{}}, mc_timeout()) ->
-                 {ok, #mc_header{}, #mc_entry{}, any()}.
+                 {ok, #mc_header{}, #mc_entry{}, any()} | {ok, quiet}.
 cmd(Opcode, Sock, RecvCallback, CBData, HE, Timeout) ->
     case is_quiet(Opcode) of
         true  -> cmd_binary_quiet(Opcode, Sock, RecvCallback, CBData, HE);
