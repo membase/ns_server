@@ -343,70 +343,112 @@
 
   <div id="analytics" style="display:none">
   <span class="block nav float_right configure_view"><a href="javascript:StatGraphs.configureStats();">Configure View</a></span>
-        <h1>
-                DATA BUCKETS: <span class="stat_target_name">&nbsp;</span>
-        </h1>
-        <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
-    <div class="section">
-      <h2 class="header_2">
-        <span class="block nav float_right">
-          <span class="stats-period-container">
-            <span class="with_samples current">Last <b class="stats_visible_period">?</b></span><span class="without_samples current">No samples, yet</span>
-          </span>
-          <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
-        </span>
-      <a id="zoom_minute">Minute</a> <a id="zoom_hour">Hour</a>
-      <a id="zoom_day">Day</a> <a id="zoom_week">Week</a>
-      <a id="zoom_month">Month</a> <a id="zoom_year">Year</a>
+    <h1>
+      DATA BUCKETS: <span class="stat_target_name">&nbsp;</span>
+    </h1>
+    <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div>
+      <div class="cnt"><div class="pad"><div class="content">
+        <div class="section">
+          <h2 class="header_2">
+            <span class="block nav float_right">
+              <span class="stats-period-container">
+                <span class="with_samples current">Last <b class="stats_visible_period">?</b></span><span class="without_samples current">No samples, yet</span>
+              </span>
+              <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+            </span>
+            <a id="zoom_minute">Minute</a> <a id="zoom_hour">Hour</a>
+            <a id="zoom_day">Day</a> <a id="zoom_week">Week</a>
+            <a id="zoom_month">Month</a> <a id="zoom_year">Year</a>
           </h2>
-      <div class="analytics_graph_main">
-        <span class="graph_info_label block right active_node_count"><!-- 3 active nodes --></span>
-        <div id="analytics_main_graph_grid">
-          <div id="analytics_main_graph"></div>
+          <div class="analytics_graph_main">
+            <span class="graph_info_label block right active_node_count"><!-- 3 active nodes --></span>
+            <div id="analytics_main_graph_grid">
+              <div id="analytics_main_graph"></div>
+            </div>
+          </div>
+          <div class="template" id="new_stats_block_template">
+            {% _.each(blocks, function (blockInfo) {var withtotal = blockInfo.withtotal; %}
+            <div class="darker_block graph_nav {%= (withtotal ? 'withtotal' : '') %}">
+              <h3><ins></ins>{%= h(blockInfo.blockName) %}</h3>
+              {% _.each(blockInfo.stats, function (statInfo) {var name = statInfo.name; var desc = statInfo.desc; %}
+              <div class="analytics-small-graph analytics_graph_{%= h(name) %} {%= (statInfo.missing ? 'dim' : '') %}">
+                <div class="small_graph_block" style="width: 168px; height: 36px;"></div>
+                <span class="small_graph_label">
+                  <span class="value">0</span><span class="label-text"> {%= desc %}</span>
+                </span>
+                <!-- <input type="checkbox" > -->
+                <!-- <ins> -->
+                  <!-- <ul> -->
+                    <!-- <li>dim</li> -->
+                    <!-- <li>tresholds&hellip;</li> -->
+                    <!-- <li>alerts&hellip;</li> -->
+                    <!-- <li>show by server</li> -->
+                    <!-- <li>reset alarms</li> -->
+                  <!-- </ul> -->
+                <!-- </ins> -->
+              </div>
+              {% }); %}
+              <div class="clear"></div>
+              {% if (blockInfo.isPerf) { /* temporary inline height 'cause we don't have moxi stats yet */ %}
+              <div class="vlabels" style="height: 186px;">Moxi Write Read Total</div>
+              {% } %}
+            </div>
+            {% }); %}
+          </div>
+          <div class="darker_block graph_nav" id="stats_nav_cache_container" style="display:none;"></div>
+          <div id="stats_nav_persistent_container" style="display:none;"></div>
+          <div class="template" id="stats_nav_template">
+            <h3><ins></ins>Performance</h3>
+            {% _.each(rows, function (pair) {var name = pair[0]; var desc = pair[1].split("\n",1)[0]; %}
+            <div class="analytics-small-graph analytics_graph_{%= h(name) %}">
+              <div class="small_graph_block"></div>
+              <span class="small_graph_label">
+                <span class="value">0</span><span class="label-text"> {%= desc %}</span>
+              </span>
+              <input type="checkbox" style="display:none" />
+              <ins>
+                <ul>
+                  <li>dim</li>
+                  <li>tresholds&hellip;</li>
+                  <li>alerts&hellip;</li>
+                  <li>show by server</li>
+                  <li>reset alarms</li>
+                </ul>
+              </ins>
+            </div>
+            {% }); %}
+            <div class="clear"></div>
+            <div class="vlabels">Moxi Write Read Total</div>
+          </div>
         </div>
-      </div>
-      <div class="darker_block graph_nav" id="stats_nav_cache_container" style="display:none;"></div>
-      <div class="darker_block graph_nav" id="stats_nav_persistent_container" style="display:none;"></div>
-      <div class="template" id="stats_nav_template">
-      {% _.each(rows, function (pair) {var name = pair[0]; var desc = pair[1].split("\n",1)[0]; %}
-      <div class="analytics-small-graph analytics_graph_{%= h(name) %}">
-        <div class="small_graph_block"></div>
-        <span class="small_graph_label"><span class="value">0</span><span class="label-text"> {%= desc %}</span></span>
-      </div>
-      {% }); %}
-      <b class="clear">&nbsp;</b>
-      </div>
-    </div>
-        </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div><!-- shadow_box -->
-        
-        <!--h1>Top Keys: <span class="stat_target_name">&nbsp;</span></h1-->
-        <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
-    <div class="section">
-      <h2 class="header_2">
-        <span class="block nav float_right">
-          <!-- <span class="current">Recent</span> -->
-        </span>
-        TOP KEYS
-      </h2>
-      <p id="top_keys_container">
-      </p>
-      <div id="top_keys_template" class="template">
-        <table class="lined_tab">
-          <tr>
-            <th>Key</th>
-            <th>Ops/Sec</th>
-          </tr>
-          <!-- {% $.each(rows, function () { %} -->
-            <tr>
-              <td>{%= h(this.name) %}</td>
-              <td>{%= h(Math.round(this.ops * 100.0) / 100.0) %}</td>
-            </tr>
-          <!-- {% }); %} -->
-        </table>
-      </div>
-    </div>
-        </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
-        <!-- END shadow box -->
+      </div></div></div>
+      <div class="bottom"><div><div>&nbsp;</div></div></div>
+    </div><!-- shadow_box -->
+    <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div>
+      <div class="cnt"><div class="pad"><div class="content">
+        <div class="section">
+          <h2 class="header_2">
+            TOP KEYS
+          </h2>
+          <p id="top_keys_container"></p>
+          <div id="top_keys_template" class="template">
+            <table class="lined_tab">
+              <tr>
+                <th>Key</th>
+                <th>Ops/Sec</th>
+              </tr>
+              <!-- {% $.each(rows, function () { %} -->
+              <tr>
+                <td>{%= h(this.name) %}</td>
+                <td>{%= h(Math.round(this.ops * 100.0) / 100.0) %}</td>
+              </tr>
+              <!-- {% }); %} -->
+            </table>
+          </div>
+        </div> <!-- section -->
+      </div></div></div>
+      <div class="bottom"><div><div>&nbsp;</div></div></div>
+    </div> <!-- END shadow box -->
   </div>
 
   <div id="monitor_buckets" style="display:none;">

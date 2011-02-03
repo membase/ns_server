@@ -18,7 +18,6 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -include("ns_common.hrl").
--include("ns_stats.hrl").
 
 -behaviour(gen_server).
 
@@ -26,20 +25,19 @@
 -define(LOG_FREQ, 100).     % Dump every n collections to the log
 -define(WIDTH, 30).         % Width of the key part of the formatted logs
 
--define(l2r(KeyName),
-        l2r(KeyName, V, Rec) ->
-               Rec#stat_entry{KeyName=list_to_integer(V)}).
-
-
-
 %% API
 -export([start_link/1]).
 
--record(state, {bucket, counters, count=?LOG_FREQ, last_ts}).
+-export([format_stats/1]).
+
+-record(state, {bucket, counters=undefined, count=?LOG_FREQ, last_ts}).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
+
+-define(NEED_TAP_STREAM_STATS_CODE, 1).
+-include("ns_stats.hrl").
 
 start_link(Bucket) ->
     gen_server:start_link(?MODULE, Bucket, []).
@@ -54,12 +52,17 @@ handle_call(unhandled, unhandled, unhandled) ->
 handle_cast(unhandled, unhandled) ->
     unhandled.
 
+stats_with_tap_stats(Bucket) ->
+    {ok, Stats} = ns_memcached:stats(Bucket),
+    TapStats = ns_memcached:tap_stats(Bucket),
+    {Stats, TapStats}.
+
 handle_info({tick, TS}, #state{bucket=Bucket, counters=Counters, last_ts=LastTS}
             = State) ->
-    case catch ns_memcached:stats(Bucket) of
-        {ok, Stats} ->
+    try stats_with_tap_stats(Bucket) of
+        {Stats, TapStats} ->
             TS1 = latest_tick(TS),
-            {Entry, NewCounters} = parse_stats(TS1, Stats, Counters, LastTS),
+            {Entry, NewCounters} = parse_stats(TS1, Stats, TapStats, Counters, LastTS),
             case Counters of % Don't send event with undefined values
                 undefined ->
                     ok;
@@ -75,8 +78,8 @@ handle_info({tick, TS}, #state{bucket=Bucket, counters=Counters, last_ts=LastTS}
                             C + 1
                     end,
             {noreply, State#state{counters=NewCounters, count=Count,
-                                  last_ts=TS1}};
-        _ ->
+                                  last_ts=TS1}}
+    catch _:_ ->
             {noreply, State}
     end;
 handle_info(_Msg, State) -> % Don't crash on delayed responses to calls
@@ -113,6 +116,7 @@ latest_tick(TS, NumDropped) ->
             TS
     end.
 
+%% TODO: upgrade this too
 translate_stat(bytes) -> % memcached calls it bytes
     mem_used;
 translate_stat(ep_num_value_ejects) ->
@@ -126,7 +130,44 @@ sum_stat_values(Dict, [FirstName | RestNames]) ->
                         orddict:fetch(Name, Dict) + Acc
                 end, orddict:fetch(FirstName, Dict), RestNames).
 
-parse_stats(TS, Stats, LastCounters, LastTS) ->
+
+extract_tap_stream_stats(KVs) ->
+    lists:foldl(fun ({K, V}, Acc) -> extact_tap_stat(K, V, Acc) end,
+                #tap_stream_stats{}, KVs).
+
+pre_aggregate_single_tap_inner(KVs, Acc, Index) ->
+    case lists:keyfind(<<"type">>, 1, KVs) of
+        {_, <<"producer">>} ->
+            Total = element(4, Acc),
+            Mine = element(Index, Acc),
+            ThisStats = extract_tap_stream_stats(KVs),
+            NewTotal = add_tap_stream_stats(ThisStats, Total),
+            NewMine = add_tap_stream_stats(ThisStats, Mine),
+            setelement(4, setelement(Index, Acc, NewMine), NewTotal);
+        _ -> Acc
+    end.
+
+pre_aggregate_single_tap(<<"rebalance_", _/binary>>, KVs, A) ->
+    pre_aggregate_single_tap_inner(KVs, A, 1);
+pre_aggregate_single_tap(<<"replication_", _/binary>>, KVs, A) ->
+    pre_aggregate_single_tap_inner(KVs, A, 2);
+pre_aggregate_single_tap(_, KVs, A) ->
+    pre_aggregate_single_tap_inner(KVs, A, 3).
+
+pre_aggregate_tap_stats(TapStats) ->
+    {RebalanceStats,
+     ReplicationStats,
+     UserStats,
+     TotalStats} = lists:foldl(fun ({Name, KVs}, Acc) ->
+                                       pre_aggregate_single_tap(Name, KVs, Acc)
+                               end,
+                               list_to_tuple(lists:duplicate(4, #tap_stream_stats{})), TapStats),
+    lists:append([tap_stream_stats_to_kvlist(<<"ep_tap_rebalance_">>, RebalanceStats),
+                  tap_stream_stats_to_kvlist(<<"ep_tap_replica_">>, ReplicationStats),
+                  tap_stream_stats_to_kvlist(<<"ep_tap_user_">>, UserStats),
+                  tap_stream_stats_to_kvlist(<<"ep_tap_total_">>, TotalStats)]).
+
+parse_stats_raw(TS, Stats, LastCounters, LastTS, KnownGauges, KnownCounters) ->
     GetStat = fun (K, Dict) ->
                       case orddict:find(K, Dict) of
                           {ok, V} -> list_to_integer(binary_to_list(V));
@@ -136,11 +177,14 @@ parse_stats(TS, Stats, LastCounters, LastTS) ->
               end,
     Dict = orddict:from_list([{translate_stat(binary_to_atom(K, latin1)), V}
                               || {K, V} <- Stats]),
-    Gauges = [GetStat(K, Dict) || K <- [?STAT_GAUGES]],
-    Counters = [GetStat(K, Dict) || K <- [?STAT_COUNTERS]],
+    parse_stats_raw2(TS, LastCounters, LastTS, KnownGauges, KnownCounters, GetStat, Dict).
+
+parse_stats_raw2(TS, LastCounters, LastTS, KnownGauges, KnownCounters, GetStat, Dict) ->
+    Gauges = [GetStat(K, Dict) || K <- KnownGauges],
+    Counters = [GetStat(K, Dict) || K <- KnownCounters],
     Deltas = case LastCounters of
                  undefined ->
-                     lists:duplicate(length([?STAT_COUNTERS]), null);
+                     lists:duplicate(length(KnownCounters), null);
                  _ ->
                      Delta = TS - LastTS,
                      if Delta > 0 ->
@@ -152,13 +196,24 @@ parse_stats(TS, Stats, LastCounters, LastTS) ->
                                        end
                                end, Counters, LastCounters);
                         true ->
-                             lists:duplicate(length([?STAT_COUNTERS]),
+                             lists:duplicate(length(KnownCounters),
                                              null)
                      end
              end,
     Values0 = orddict:merge(fun (_, _, _) -> erlang:error(cannot_happen) end,
-                            orddict:from_list(lists:zip([?STAT_GAUGES], Gauges)),
-                            orddict:from_list(lists:zip([?STAT_COUNTERS], Deltas))),
+                            orddict:from_list(lists:zip(KnownGauges, Gauges)),
+                            orddict:from_list(lists:zip(KnownCounters, Deltas))),
+    {Values0, Counters}.
+
+parse_stats(TS, Stats, TapStats, undefined, LastTS) ->
+    parse_stats(TS, Stats, TapStats, {undefined, undefined}, LastTS);
+parse_stats(TS, Stats, TapStats, {LastCounters, LastTapCounters}, LastTS) ->
+    {StatsValues0, Counters} = parse_stats_raw(TS, Stats, LastCounters, LastTS,
+                                               [?STAT_GAUGES], [?STAT_COUNTERS]),
+    {TapValues0, TapCounters} = parse_stats_raw(TS, pre_aggregate_tap_stats(TapStats),
+                                                LastTapCounters, LastTS,
+                                                [?TAP_STAT_GAUGES], [?TAP_STAT_COUNTERS]),
+    Values0 = lists:merge(TapValues0, StatsValues0),
     AggregateValues = [{ops, sum_stat_values(Values0, [cmd_get, cmd_set,
                                                        incr_misses, incr_hits,
                                                        decr_misses, decr_hits,
@@ -166,21 +221,45 @@ parse_stats(TS, Stats, LastCounters, LastTS) ->
                        {misses, sum_stat_values(Values0, [get_misses, delete_misses,
                                                           incr_misses, decr_misses,
                                                           cas_misses])},
+                       %% TODO: consider dead vbuckets or not?
+                       {ep_vb_total, sum_stat_values(Values0, [vb_active_num,
+                                                               vb_replica_num,
+                                                               vb_pending_num])},
+                       {ep_ht_memory, sum_stat_values(Values0, [vb_active_ht_memory,
+                                                                vb_replica_ht_memory,
+                                                                vb_pending_ht_memory])},
                        {disk_writes, sum_stat_values(Values0, [ep_flusher_todo, ep_queue_size])},
-                       {updates, sum_stat_values(Values0, [cmd_set, incr_hits, decr_hits, cas_hits])},
-                       {replica_resident_items_tot,
-                        orddict:fetch(curr_items_tot,
-                                      Values0) - orddict:fetch(ep_num_non_resident,
-                                                               Values0)},
-                       {resident_items_tot,
-                        orddict:fetch(curr_items,
-                                      Values0) - orddict:fetch(ep_num_active_non_resident,
-                                                               Values0)}],
-    Values = orddict:merge(fun (_K, V1, _V2) -> V1 end,
+                       {vb_total_queue_memory, sum_stat_values(Values0,
+                                                               [vb_active_queue_memory,
+                                                                vb_replica_queue_memory,
+                                                                vb_pending_queue_memory])},
+                       {ep_ops_create, sum_stat_values(Values0, [vb_active_ops_create,
+                                                                 vb_replica_ops_create,
+                                                                 vb_pending_ops_create])},
+                       {vb_total_queue_fill, sum_stat_values(Values0, [vb_active_queue_fill,
+                                                                       vb_replica_queue_fill,
+                                                                       vb_pending_queue_fill])},
+                       {vb_total_queue_drain, sum_stat_values(Values0, [vb_active_queue_drain,
+                                                                        vb_replica_queue_drain,
+                                                                        vb_pending_queue_drain])},
+                       {vb_total_queue_age, sum_stat_values(Values0, [vb_active_queue_age,
+                                                                      vb_replica_queue_age,
+                                                                      vb_pending_queue_age])}
+                       %% {updates, sum_stat_values(Values0, [cmd_set, incr_hits, decr_hits, cas_hits])},
+                       %% {replica_resident_items_tot,
+                       %%  orddict:fetch(curr_items_tot,
+                       %%                Values0) - orddict:fetch(ep_num_non_resident,
+                       %%                                         Values0)},
+                       %% {resident_items_tot,
+                       %%  orddict:fetch(curr_items,
+                       %%                Values0) - orddict:fetch(ep_num_active_non_resident,
+                       %% Values0)}
+                      ],
+    Values = orddict:merge(fun (_K, _V1, _V2) -> erlang:error(cannot_happen) end,
                            Values0, orddict:from_list(AggregateValues)),
     {#stat_entry{timestamp = TS,
                  values = Values},
-     Counters}.
+     {Counters, TapCounters}}.
 
 
 %% Tests
@@ -293,6 +372,34 @@ parse_stats_test() ->
          {<<"ep_tmp_oom_errors">>,<<"0">>},
          {<<"ep_version">>,<<"1.6.0beta3a_166_g24a1637">>}],
 
+    TestGauges = [curr_connections,
+                  curr_items,
+                  ep_flusher_todo,
+                  ep_queue_size,
+                  mem_used],
+
+    TestCounters = [bytes_read,
+                    bytes_written,
+                    cas_badval,
+                    cas_hits,
+                    cas_misses,
+                    cmd_get,
+                    cmd_set,
+                    decr_hits,
+                    decr_misses,
+                    delete_hits,
+                    delete_misses,
+                    get_hits,
+                    get_misses,
+                    incr_hits,
+                    incr_misses,
+                    ep_io_num_read,
+                    ep_total_persisted,
+                    evictions,
+                    ep_num_not_my_vbuckets,
+                    ep_oom_errors,
+                    ep_tmp_oom_errors],
+
     ExpectedPropList = [{bytes_read,37610},
                         {bytes_written,823281},
                         {cas_badval,0},
@@ -306,9 +413,8 @@ parse_stats_test() ->
                         {decr_misses,0},
                         {delete_hits,0},
                         {delete_misses,0},
-                        {disk_writes,0},
-                        {ep_io_num_read,0},
                         {ep_flusher_todo,0},
+                        {ep_io_num_read,0},
                         {ep_num_not_my_vbuckets,0},
                         {ep_oom_errors,0},
                         {ep_queue_size,0},
@@ -319,24 +425,17 @@ parse_stats_test() ->
                         {get_misses,0},
                         {incr_hits,0},
                         {incr_misses,0},
-                        {mem_used,25937168},
-                        {misses,0},
-                        {ops,0},
-                        {updates,0}],
-    {#stat_entry{timestamp = ActualTS,
-                values = ActualValues},
-     ActualCounters}
-        = parse_stats(Now, Input,
-                      lists:duplicate(length([?STAT_COUNTERS]), 0),
-                      Now - 1000),
-    ?assertEqual([37610,823281,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0,0,0,0,0],
+                        {mem_used,25937168}],
+
+    {ActualValues,
+     ActualCounters} = parse_stats_raw(
+                         Now, Input,
+                         lists:duplicate(length(TestCounters), 0),
+                         Now - 1000,
+                         TestGauges, TestCounters),
+
+    ?assertEqual([37610,823281,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0],
                  ActualCounters),
-    InterestingActualValues = lists:filter(fun ({K, _}) ->
-                                                   case lists:keyfind(K, 1, ExpectedPropList) of
-                                                       false -> false;
-                                                       _ -> true
-                                                   end
-                                           end, orddict:to_list(ActualValues)),
-    ?assertEqual(Now, ActualTS),
+
     ?assertEqual(lists:keysort(1, ExpectedPropList),
-                 lists:keysort(1, InterestingActualValues)).
+                 lists:keysort(1, ActualValues)).

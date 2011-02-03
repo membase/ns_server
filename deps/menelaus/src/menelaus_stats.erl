@@ -335,35 +335,72 @@ samples_to_proplists(Samples) ->
                                  (Gets, _Hits) when Gets == 0 -> 0; % this handles int and float 0
                                  (Gets, Hits) -> Hits * 100/Gets
                              end, CmdGets, orddict:fetch(get_hits, Dict)),
-    EPCacheMissRatio = lists:zipwith(fun (BGFetches, Gets) ->
-                                            try 100 - ((Gets - BGFetches) * 100 / Gets)
+    Z2 = fun (StatNameA, StatNameB, Combiner) ->
+                 lists:zipwith(Combiner,
+                               orddict:fetch(StatNameA, Dict),
+                               orddict:fetch(StatNameB, Dict))
+         end,
+    EPCacheHitRatio = lists:zipwith(fun (BGFetches, Gets) ->
+                                            try (Gets - BGFetches) * 100 / Gets
                                             catch error:badarith -> 0
                                             end
                                     end,
                                     orddict:fetch(ep_bg_fetched, Dict),
                                     CmdGets),
-    ResidentItemsRatio = lists:zipwith(fun (NonResident, CurrItems) ->
-                                               try (CurrItems - NonResident) * 100 / CurrItems
-                                               catch error:badarith -> 0
-                                               end
-                                       end,
-                                       orddict:fetch(ep_num_active_non_resident, Dict),
-                                       orddict:fetch(curr_items, Dict)),
-    ReplicaResidentItemRate = misc:zipwith4(
-                                fun (ItemsTotal, CurrItems, NonResident, ActiveNonResident) ->
-                                        try ((ItemsTotal - CurrItems)
-                                             - (NonResident - ActiveNonResident)) * 100 / (ItemsTotal - CurrItems)
-                                        catch error:badarith -> 0
-                                        end
-                                end,
-                                orddict:fetch(curr_items_tot, Dict),
-                                orddict:fetch(curr_items, Dict),
-                                orddict:fetch(ep_num_non_resident, Dict),
-                                orddict:fetch(ep_num_active_non_resident, Dict)),
+    ResidentItemsRatio = Z2(ep_num_non_resident, curr_items_tot,
+                            fun (NonResident, CurrItems) ->
+                                    try (CurrItems - NonResident) * 100 / CurrItems
+                                    catch error:badarith -> 100
+                                    end
+                            end),
+    AvgActiveQueueAge = Z2(vb_active_queue_age, curr_items,
+                           fun (ActiveAge, ActiveCount) ->
+                                   try ActiveAge / ActiveCount / 1000
+                                   catch error:badarith -> 0
+                                   end
+                           end),
+    AvgReplicaQueueAge = Z2(vb_replica_queue_age, vb_replica_curr_items,
+                            fun (ReplicaAge, ReplicaCount) ->
+                                    try ReplicaAge / ReplicaCount / 1000
+                                    catch error:badarith -> 0
+                                    end
+                            end),
+    AvgPendingQueueAge = Z2(vb_pending_queue_age, vb_pending_curr_items,
+                            fun (PendingAge, PendingCount) ->
+                                    try PendingAge / PendingCount / 1000
+                                    catch error:badarith -> 0
+                                    end
+                            end),
+    AvgTotalQueueAge = Z2(vb_total_queue_age, curr_items_tot,
+                          fun (TotalAge, TotalCount) ->
+                                  try TotalAge / TotalCount / 1000
+                                  catch error:badarith -> 0
+                                  end
+                          end),
+    ResidenceCalculator = fun (NonResident, Total) ->
+                                  try (Total - NonResident) * 100 / Total
+                                  catch error:badarith -> 100
+                                  end
+                          end,
+    ActiveResRate = Z2(ep_num_active_non_resident, curr_items,
+                       ResidenceCalculator),
+    ReplicaResRate = Z2(ep_num_replica_non_resident, vb_replica_curr_items,
+                        ResidenceCalculator),
+    PendingResRate = Z2(ep_num_pending_non_resident, vb_pending_curr_items,
+                        ResidenceCalculator),
+    %% TotalResRate = Z2(ep_num_non_resident, curr_items_tot,
+    %%                   ResidenceCalculator),
     [{hit_ratio, HitRatio},
-     {ep_cache_miss_rate, EPCacheMissRatio},
+     {ep_cache_hit_rate, EPCacheHitRatio},
      {ep_resident_items_rate, ResidentItemsRatio},
-     {ep_replica_resident_items_rate, ReplicaResidentItemRate} | orddict:to_list(Dict)].
+     {vb_avg_active_queue_age, AvgActiveQueueAge},
+     {vb_avg_replica_queue_age, AvgReplicaQueueAge},
+     {vb_avg_pending_queue_age, AvgPendingQueueAge},
+     {vb_avg_total_queue_age, AvgTotalQueueAge},
+     {vb_active_resident_items_ratio, ActiveResRate},
+     {vb_replica_resident_items_ratio, ReplicaResRate},
+     {vb_pending_resident_items_ratio, PendingResRate}
+     | orddict:to_list(Dict)].
 
 build_buckets_stats_ops_response(_PoolId, [BucketName], Params) ->
     {Samples, ClientTStamp, Step, TotalNumber} = grab_op_stats(BucketName, Params),

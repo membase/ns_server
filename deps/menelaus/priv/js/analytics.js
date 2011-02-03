@@ -201,130 +201,13 @@ function renderSmallGraph(jq, ops, statName, isSelected, zoomMillis, timeOffset,
               grid: {show:false}});
 }
 
-var KnownPersistentStats = [
-  ["ops", "Operations per sec.\nSum of set, get, increment, decrement, cas and delete operations per second", {
-    isDefault: true
-  }],
-  ["cmd_set", "Sets per sec.\nSet operations per second", {
-    isDefault: true
-  }],
-  ["cmd_get", "Gets per sec.\nGet operations per second", {
-    isDefault: true
-  }],
-  ["ep_cache_miss_rate", "Cache miss ratio (%)", {
-    isDefault: true, rate: true
-  }], // (cmd_get - ep_bg_fetched) / cmd_get * 100
-  ["mem_used", "Memory bytes used", {
-    isDefault: true
-  }],
-  ["curr_items", "Unique items", {
-    isDefault: true
-  }],
-  ["curr_items_tot", "Total items", {
-    isDefault: true
-  }],
-  ["ep_resident_items_rate", "Resident item ratio (%)", {
-    isDefault: true, rate: true
-  }], // (curr_items - ep_num_active_non_resident) / curr_items * 100
-  ["ep_replica_resident_items_rate", "Replica resident item ratio (%)", {
-    isDefault: true, rate: true
-  }],
-  ["disk_writes", "Disk write queue size", {
-    isDefault: true
-  }],
-  ["ep_io_num_read", "Disk fetches per sec.\nNumber of disk reads per second", {
-    isDefault: true
-  }],
-  ["ep_total_persisted", "Items persisted per sec.\nItems persisted per second", {
-    isDefault: true
-  }],
-  ["evictions", "RAM ejections per sec.\nRAM ejections per second", {
-    isDefault: true
-  }],
-  ["ep_oom_errors", "OOM errors per sec.\nNumber of times sets were rejected due to lack of memory", {
-    isDefault: true
-  }],
-  ["ep_tmp_oom_errors", "Temp OOM errors per sec.\nNumber of set rejections due to temporary lack of space per second", {
-    isDefault: true
-  }],
-  ["curr_connections", "Connections count", {
-    isDefault: true
-  }],
-  ["bytes_written", "Network bytes TX per sec.\nNetwork bytes sent by all servers, per second"],
-  ["bytes_read", "Network bytes RX per sec.\nNetwork bytes received by all servers, per second"],
-  ["get_hits", "Get hits per sec.\nGet hits per second"],
-  ["delete_hits", "Delete hits per sec.\nDelete hits per second"],
-  ["incr_hits", "Incr hits per sec.\nIncr hits per second"],
-  ["decr_hits", "Decr hits per sec.\nDecr hits per second"],
-  ["delete_misses", "Delete misses per sec.\nDelete misses per second"],
-  ["decr_misses", "Decr misses per sec.\nDecr misses per second"],
-  ["get_misses", "Get Misses per sec.\nGet Misses per second"],
-  ["incr_misses", "Incr misses per sec.\nIncr misses per second"],
-  ["cas_hits", "CAS hits per sec.\nCAS hits per second"],
-  ["cas_badval", "CAS badval per sec.\nCAS badval per second"],
-  ["cas_misses", "CAS misses per sec.\nCAS misses per second"],
-  ["ep_num_not_my_vbuckets", "VBucket errors per sec.\nNumber of times clients went to wrong server per second"]
-];
-
-function __enableNewStats() {
-  __enableNewStats = function () {}
-
-  var newStats = [
-    ["ep_keys_size", "Memory used (keys)"],
-    ["ep_values_size", "Memory used (values)"],
-    ["ep_overhead", "Memory used (overhead)"],
-    ["ep_bg_fetched", "App disk fetches per sec"],
-    ["ep_tap_bg_fetched", "TAP disk fetches per sec"],
-    ["ep_num_eject_replicas", "RAM ejections (Replicas)"],
-    ["ep_num_value_ejects", "RAM ejections (Active)"],
-    // those are added in stats_collector
-    ["replica_resident_items_tot", "Replica resident items"], // curr_items_tot - ep_num_non_resident
-    ["resident_items_tot", "Resident items"] // curr_items - ep_num_active_non_resident
-  ];
-
-  for (var i = newStats.length-1; i >= 0; i--)
-    newStats[i].push({isDefault: true});
-
-  KnownPersistentStats = KnownPersistentStats.concat(newStats);
-}
-
-;(function () {
-  var href = window.location.href;
-  var match = /\?(.*?)(?:$|#)/.exec(href);
-  if (!match)
-    return;
-  if (/(&|^)enableWorkingSizeStats=1(&|$)/.exec(match[1]))
-    __enableNewStats();
-})();
-
-var KnownCacheStats =  [
-  ["ops", "Operations per sec.\nSum of set, get, increment, decrement, cas and delete operations per second"],
-  ["hit_ratio", "Hit ratio (%)\nHit ratio of get commands", {rate:true}],
-  ["mem_used", "Memory bytes used"],
-  ["curr_items", "Items count"],
-  ["evictions", "RAM evictions per sec.\nRAM evictions per second"],
-  ["cmd_set", "Sets per sec.\nSet operations per second"],
-  ["cmd_get", "Gets per sec.\nGet operations per second"],
-  ["bytes_written", "Network bytes TX per sec.\nNetwork bytes sent by all servers, per second"],
-  ["bytes_read", "Network bytes RX per sec.\nNetwork bytes received by all servers, per second"],
-  ["get_hits", "Get hits per sec.\nGet hits per second"],
-  ["delete_hits", "Delete hits per sec.\nDelete hits per second"],
-  ["incr_hits", "Incr hits per sec.\nIncr hits per second"],
-  ["decr_hits", "Decr hits per sec.\nDecr hits per second"],
-  ["delete_misses", "Delete misses per sec.\nDelete misses per second"],
-  ["decr_misses", "Decr misses per sec.\nDecr misses per second"],
-  ["get_misses", "Get Misses per sec.\nGet Misses per second"],
-  ["incr_misses", "Incr misses per sec.\nIncr misses per second"],
-  ["curr_connections", "Connections co.\nConnections count"],
-  ["cas_hits", "CAS hits per sec.\nCAS hits per second"],
-  ["cas_badval", "CAS badval per sec.\nCAS badval per second"],
-  ["cas_misses", "CAS misses per sec.\nCAS misses per second"]
-];
+var KnownPersistentStats = [];
+var KnownCacheStats =  [];
 
 var StatGraphs = {
   selected: null,
-  recognizedStatsPersistent: _.pluck(KnownPersistentStats, 0),
-  recognizedStatsCache: _.pluck(KnownCacheStats, 0),
+  recognizedStatsPersistent: null,
+  recognizedStatsCache:  null,
   recognizedStats: null,
   visibleStats: [],
   visibleStatsIsDirty: true,
@@ -379,9 +262,7 @@ var StatGraphs = {
     $('#stats_nav_cache_container, #configure_cache_stats_items_container')[self.nowIsPersistent ? 'hide' : 'show']();
     $('#stats_nav_persistent_container, #configure_persistent_stats_items_container')[self.nowIsPersistent ? 'show' : 'hide']();
 
-    self.effectivelyVisibleStats = _.select(self.visibleStats, function (name) {
-      return _.include(self.recognizedStats, name);
-    });
+    self.effectivelyVisibleStats = _.clone(self.recognizedStats);
   },
   zoomToSeconds: {
     minute: 60,
@@ -429,11 +310,11 @@ var StatGraphs = {
     if (self.visibleStatsIsDirty) {
       self.updateVisibleStats();
 
-      _.each(self.recognizedStats, function (name) {
-        var op = _.include(self.effectivelyVisibleStats, name) ? 'show' : 'hide';
-        var area = self.findGraphArea(name);
-        area[op]();
-      });
+      // _.each(self.recognizedStats, function (name) {
+      //   var op = _.include(self.effectivelyVisibleStats, name) ? 'show' : 'hide';
+      //   var area = self.findGraphArea(name);
+      //   area[op]();
+      // });
       self.visibleStatsIsDirty = false;
     }
 
@@ -586,8 +467,211 @@ var StatGraphs = {
                    }));
   },
   init: function () {
-    renderTemplate('stats_nav', KnownCacheStats, $i('stats_nav_cache_container'));
-    renderTemplate('stats_nav', KnownPersistentStats, $i('stats_nav_persistent_container'));
+    ;(function () {
+      var data =
+        {blocks: [
+          {blockName: "MEMCACHED",
+           stats: [
+             {name: "ops", desc: "Operations per sec."},
+             {name: "hit_ratio", desc: "Hit ratio (%)"},
+             {name: "mem_used", desc: "Memory bytes used"},
+             {name: "curr_items", desc: "Items count"},
+             {name: "evictions", desc: "RAM evictions per sec."},
+             {name: "cmd_set", desc: "Sets per sec."},
+             {name: "cmd_get", desc: "Gets per sec."},
+             {name: "bytes_written", desc: "Network bytes TX per sec."},
+             {name: "bytes_read", desc: "Network bytes RX per sec."},
+             {name: "get_hits", desc: "Get hits per sec."},
+             {name: "delete_hits", desc: "Delete hits per sec."},
+             {name: "incr_hits", desc: "Incr hits per sec."},
+             {name: "decr_hits", desc: "Decr hits per sec."},
+             {name: "delete_misses", desc: "Delete misses per sec."},
+             {name: "decr_misses", desc: "Decr misses per sec."},
+             {name: "get_misses", desc: "Get Misses per sec."},
+             {name: "incr_misses", desc: "Incr misses per sec."},
+             {name: "curr_connections", desc: "Connections co."},
+             {name: "cas_hits", desc: "CAS hits per sec."},
+             {name: "cas_badval", desc: "CAS badval per sec."},
+             {name: "cas_misses", desc: "CAS misses per sec."}]}]};
+      var statItems = _.reduce(_.pluck(data.blocks, 'stats'), [], function (acc, stats) {
+        return acc.concat(stats);
+      });
+      _.each(statItems, function (item) {
+        if (!item.name)
+          return;
+        KnownCacheStats.push([item.name, item.desc]);
+      });
+      StatGraphs.recognizedStatsCache = _.pluck(KnownCacheStats, 0);
+      renderTemplate('new_stats_block', data, $i('stats_nav_cache_container'));
+    })();
+    // renderTemplate('stats_nav', KnownCacheStats, $i('stats_nav_cache_container'));
+    ;(function () {
+      var data = {
+        blocks: [
+          {
+            blockName: "PERFORMANCE",
+            isPerf: true,
+            stats: [
+              // Total
+              {desc: "ops per second", name: "ops"},
+              {desc: "direct per second", name: "ops_direct", missing: true},
+              {desc: "moxi per second", name: "ops_moxi", missing: true},
+              {desc: "average object size", name: "avg_item_size", missing: true}, // need total size _including_ size on disk
+              // Read
+              {desc: "cache hit %", name: "ep_cache_hit_rate"}, //?
+              {desc: "hit latency", name: "hit_latency", missing: true}, //?
+              {desc: "cache miss %", name: "ep_cache_miss_rate"}, //?
+              {desc: "miss latency", name: "miss_latency", missing: true}, //?
+              // Write
+              {desc: "creates per second", name: "ep_ops_create"}, // TODO: aggregate it in ns_server
+              {desc: "updates per second", name: "ep_ops_update"}, // ?
+              {desc: "write latency", name: "ep_write_latency", missing: true}, // ?
+              {desc: "back-offs per second", name: "ep_tap_total_queue_backoff"} //,
+              // Moxi
+              // {desc: "local %", name: "", missing: true},
+              // {desc: "local latency", name: "", missing: true},
+              // {desc: "proxy %", name: "", missing: true},
+              // {desc: "proxy latency", name: "", missing: true}
+            ]
+          }, {
+            blockName: "vBUCKET RESOURCES",
+            withtotal: true,
+            stats: [
+              {desc: "active vBuckets (count)", name: "vb_active_num"},
+              {desc: "replica vBuckets (count)", name: "vb_replica_num"},
+              {desc: "pending vBuckets (count)", name: "vb_pending_num"},
+              {desc: "total vBuckets (count)", name: "ep_vb_total"},
+              // --
+              {desc: "# objects", name: "curr_items"},
+              {desc: "# objects", name: "vb_replica_curr_items"},
+              {desc: "# objects", name: "vb_pending_curr_items"},
+              {desc: "# objects", name: "curr_items_tot"},
+              // --
+              {desc: "% memory resident", name: "vb_active_resident_items_ratio"},
+              {desc: "% memory resident", name: "vb_replica_resident_items_ratio"},
+              {desc: "% memory resident", name: "vb_pending_resident_items_ratio"},
+              {desc: "% memory resident", name: "ep_resident_items_rate"},
+              // --
+              {desc: "new per second", name: "vb_active_ops_create"},
+              {desc: "new per second", name: "vb_replica_ops_create"},
+              {desc: "new per second", name: "vb_pending_ops_create"},
+              {desc: "new per second", name: "ep_ops_create"},
+              // --
+              // TODO: this is missing in current ep-engine
+              {desc: "eject per second", name: "", missing: true},
+              {desc: "eject per second", name: "", missing: true},
+              {desc: "eject per second", name: "", missing: true},
+              {desc: "eject per second", name: "evictions"},
+              // --
+              {desc: "K-V memory", name: "vb_active_itm_memory"},
+              {desc: "K-V memory", name: "vb_replica_itm_memory"},
+              {desc: "K-V memory", name: "vb_pending_itm_memory"},
+              {desc: "K-V memory", name: "ep_kv_size"},
+              // --
+              {desc: "metadata memory", name: "vb_active_ht_memory"},
+              {desc: "metadata memory", name: "vb_replica_ht_memory"},
+              {desc: "metadata memory", name: "vb_pending_ht_memory"},
+              {desc: "metadata memory", name: "ep_ht_memory"} //,
+              // --
+              // TODO: this is missing in current ep-engine
+              // {desc: "disk used", name: "", missing: true},
+              // {desc: "disk used", name: "", missing: true},
+              // {desc: "disk used", name: "", missing: true},
+              // {desc: "disk used", name: "", missing: true}
+            ]
+          }, {
+            blockName: "DISK QUEUES",
+            withtotal: true,
+            stats: [
+              // {desc: "Active", name: ""},
+              // {desc: "Replica", name: ""},
+              // {desc: "Pending", name: ""},
+              // {desc: "Total", name: ""},
+
+              {desc: "active items", name: "vb_active_queue_pending"},
+              {desc: "replica items", name: "vb_replica_queue_pending"},
+              {desc: "pending items", name: "vb_pending_queue_pending"},
+              {desc: "total items", name: "curr_items_tot"},
+              // --
+              {desc: "queue memory", name: "vb_active_queue_memory"},
+              {desc: "queue memory", name: "vb_replica_queue_memory"},
+              {desc: "queue memory", name: "vb_pending_queue_memory"},
+              {desc: "queue memory", name: "vb_total_queue_memory"},
+              // --
+              {desc: "fill rate", name: "vb_active_queue_fill"},
+              {desc: "fill rate", name: "vb_replica_queue_fill"},
+              {desc: "fill rate", name: "vb_pending_queue_fill"},
+              {desc: "fill rate", name: "vb_total_queue_fill"},
+              // --
+              {desc: "drain rate", name: "vb_active_queue_drain"},
+              {desc: "drain rate", name: "vb_replica_queue_drain"},
+              {desc: "drain rate", name: "vb_pending_queue_drain"},
+              {desc: "drain rate", name: "vb_total_queue_drain"},
+              // --
+              {desc: "average age", name: "vb_avg_active_queue_age"},
+              {desc: "average age", name: "vb_avg_replica_queue_age"},
+              {desc: "average age", name: "vb_avg_pending_queue_age"},
+              {desc: "average age", name: "vb_avg_total_queue_age"}
+            ]
+          }, {
+            blockName: "TAP QUEUES",
+            withtotal: true,
+            stats: [
+              // {desc: "Replica", name: ""},
+              // {desc: "Rebalance", name: ""},
+              // {desc: "User", name: ""},
+              // {desc: "Total", name: ""},
+
+              {desc: "# replica tap senders", name: "ep_tap_replica_count"},
+              {desc: "# rebalance tap senders", name: "ep_tap_rebalance_count"},
+              {desc: "# user tap senders", name: "ep_tap_user_count"},
+              {desc: "# total tap senders", name: "ep_tap_total_count"},
+              // --
+              {desc: "# items", name: "ep_tap_replica_qlen"},
+              {desc: "# items", name: "ep_tap_rebalance_qlen"},
+              {desc: "# items", name: "ep_tap_user_qlen"},
+              {desc: "# items", name: "ep_tap_total_qlen"},
+              // --
+              {desc: "fill rate", name: "ep_tap_replica_queue_fill"},
+              {desc: "fill rate", name: "ep_tap_rebalance_queue_fill"},
+              {desc: "fill rate", name: "ep_tap_user_queue_fill"},
+              {desc: "fill rate", name: "ep_tap_total_queue_fill"},
+              // --
+              {desc: "drain rate", name: "ep_tap_replica_queue_drain"},
+              {desc: "drain rate", name: "ep_tap_rebalance_queue_drain"},
+              {desc: "drain rate", name: "ep_tap_user_queue_drain"},
+              {desc: "drain rate", name: "ep_tap_total_queue_drain"},
+              // --
+              {desc: "back-off rate", name: "ep_tap_replica_queue_backoff"},
+              {desc: "back-off rate", name: "ep_tap_rebalance_queue_backoff"},
+              {desc: "back-off rate", name: "ep_tap_user_queue_backoff"},
+              {desc: "back-off rate", name: "ep_tap_total_queue_backoff"},
+              // --
+              {desc: "# backfill remaining", name: "ep_tap_replica_queue_backfillremaining"},
+              {desc: "# backfill remaining", name: "ep_tap_rebalance_queue_backfillremaining"},
+              {desc: "# backfill remaining", name: "ep_tap_user_queue_backfillremaining"},
+              {desc: "# backfill remaining", name: "ep_tap_total_queue_backfillremaining"},
+              // --
+              {desc: "# remaining on disk", name: "ep_tap_replica_queue_itemondisk"},
+              {desc: "# remaining on disk", name: "ep_tap_rebalance_queue_itemondisk"},
+              {desc: "# remaining on disk", name: "ep_tap_user_queue_itemondisk"},
+              {desc: "# remaining on disk", name: "ep_tap_total_queue_itemondisk"}
+              // --
+            ]
+          }
+        ]
+      };
+      var statItems = _.reduce(_.pluck(data.blocks, 'stats'), [], function (acc, stats) {
+        return acc.concat(stats);
+      });
+      _.each(statItems, function (item) {
+        if (!item.name)
+          return;
+        KnownPersistentStats.push([item.name, item.desc]);
+      });
+      StatGraphs.recognizedStatsPersistent = _.pluck(KnownPersistentStats, 0);
+      renderTemplate('new_stats_block', data, $i('stats_nav_persistent_container'));
+    })();
 
     var self = this;
 
@@ -604,9 +688,9 @@ var StatGraphs = {
     _.each(_.uniq(self.recognizedStatsCache.concat(self.recognizedStatsPersistent)), function (statName) {
       var area = $('.analytics_graph_' + statName);
       if (!area.length) {
-        debugger
+        return;
       }
-      area.hide();
+      // area.hide();
       if (!t)
         t = area;
       else
