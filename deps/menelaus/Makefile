@@ -3,7 +3,7 @@
 TMP_DIR=./tmp
 TMP_VER=$(TMP_DIR)/version_num.tmp
 DIST_DIR=$(TMP_DIR)/menelaus
-SPROCKETIZE=`which sprocketize`
+SPROCKETIZE=sprocketize
 
 .PHONY: ebins ebin_app version
 
@@ -26,11 +26,11 @@ priv/js/all-images.js: priv/public/images priv/public/images/spinner build-all-i
 
 priv/public/js/all.js: priv/js/*.js priv/js/all-images.js
 	mkdir -p `dirname $@`
-	$(SPROCKETIZE) -I priv/js priv/js/app.js >$@
+	$(SPROCKETIZE) -I priv/js priv/js/app.js >$@ || (rm $@ && false)
 
 priv/public/js/t-all.js: priv/js/*.js priv/js/all-images.js
 	mkdir -p `dirname $@`
-	$(SPROCKETIZE) -I priv/js priv/js/app.js priv/js/hooks.js >$@
+	$(SPROCKETIZE) -I priv/js priv/js/app.js priv/js/hooks.js >$@ || (rm $@ && false)
 
 deps:
 	test -d deps/mochiweb/ebin || mkdir deps/mochiweb/ebin
