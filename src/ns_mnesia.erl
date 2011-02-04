@@ -19,13 +19,19 @@
 
 -include("ns_common.hrl").
 
+-include_lib("eunit/include/eunit.hrl").
+
 -behaviour(gen_server).
 
 -record(state, {}).
 
 %% API
--export([delete_schema/0,
+-export([promote/1,
+         promote_self/1,
+         delete_schema/0,
+         demote/1,
          ensure_table/2,
+         peers/0,
          prepare_rename/0, rename_node/2,
          start_link/0,
          truncate/2]).
@@ -37,6 +43,27 @@
 %%
 %% API
 %%
+
+%% @doc Promote a node that's already in the cluster to a peer.
+promote(Node) ->
+    gen_server:call({?MODULE, Node}, {promote_self, node()}, 30000).
+
+
+%% @doc Promote *this* node by joining another node.
+promote_self(OtherNode) ->
+    gen_server:call(?MODULE, {promote_self, OtherNode}, 30000).
+
+
+%% @doc Demote a peer to a worker. If the node is down, you need to
+%% eject it.
+demote(Node) ->
+    try gen_server:call({?MODULE, Node}, demote_self, 30000)
+    catch E:R ->
+            ?log_info("Failed to tell the remote node to demote itself: ~p",
+                      [{E, R}])
+    end,
+    gen_server:call(?MODULE, {demote, Node}).
+
 
 %% @doc Delete the current mnesia schema for joining/renaming purposes.
 delete_schema() ->
@@ -54,6 +81,15 @@ ensure_table(TableName, Opts) ->
     gen_server:call(?MODULE, {ensure_table, TableName, Opts}).
 
 
+%% @doc Get the list of peer nodes. Returns empty if we're not one;
+%% someone else is responsible for remembering who to talk to in that
+%% case.
+peers() ->
+    %% We run this in the server process to make sure mnesia is
+    %% actually up.
+    gen_server:call(?MODULE, peers).
+
+
 %% @doc Back up the database in preparation for a node rename.
 prepare_rename() ->
     gen_server:call(?MODULE, prepare_rename).
@@ -67,7 +103,7 @@ prepare_rename() ->
 rename_node(From, To) ->
     false = misc:running(?MODULE),
     ?log_info("Renaming node from ~p to ~p.", [From, To]),
-    Pre = tmpdir("pre_rename"),
+    Pre = backup_file(),
     Post = tmpdir("post_rename"),
     change_node_name(mnesia_backup, From, To, Pre, Post),
     ?log_info("Deleting old schema.", []),
@@ -95,10 +131,70 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 
-handle_call(prepare_rename, _From, State) ->
-    Pre = tmpdir("pre_rename"),
-    Reply = mnesia:backup(Pre),
+handle_call({demote, Node}, _From, State) ->
+    %% Remove a node from the mnesia cluster after it's been disconnected.
+    {atomic, ok} = mnesia:del_table_copy(schema, Node),
+    {reply, ok, State};
+
+handle_call(demote_self, _From, State) ->
+    %% Back up, remove the schema from disk, then restart. The
+    %% initialization routines will handle declustering.
+    case mnesia:system_info(db_nodes) == [node()]
+        andalso non_local_tables() == [] of
+        true ->
+            %% No-op if it's not a peer
+            {reply, ok, State};
+        false ->
+            backup(),
+            stopped = mnesia:stop(),
+            ok = mnesia:delete_schema([node()]),
+            ?log_info("Demoting. Deleted local schema. Mnesia info:~n~p",
+                      [mnesia:system_info(all)]),
+            {ok, State1} = init([]),
+            {reply, ok, State1}
+    end;
+
+handle_call({promote_self, Node}, _From, State) ->
+    case mnesia:system_info(db_nodes) of
+        [N] when N == node() ->
+            %% Even though we use local_content tables, it's impossible to
+            %% merge them, so instead we backup and restore.
+            ?log_info("Promoting this node to a peer.", []),
+            Tables = backup(),
+            stopped = mnesia:stop(),
+            ok = mnesia:delete_schema([node()]),
+            start_mnesia(),
+            %% Connect to an existing peer
+            {ok, [Node]} = mnesia:change_config(extra_db_nodes, [Node]),
+            %% Write the schema to disk
+            ensure_schema(),
+            ?log_info("Restoring tables. Mnesia config:~n~p",
+                      [mnesia:system_info(all)]),
+            KeepTables = mnesia:system_info(tables),
+            CreateTables = Tables -- KeepTables,
+            %% Restore our old data to the new tables
+            {atomic, _} = mnesia:restore(
+                            backup_file(),
+                            [{keep_tables, KeepTables},
+                             {recreate_tables, CreateTables}]),
+            ok = file:delete(backup_file());
+        _ ->
+            %% Only promote if we're not already a peer
+            ?log_error("Attempt to promote even though we're already a peer.",
+                       []),
+            ok
+    end,
+    {reply, ok, State};
+
+handle_call(peers, _From, State) ->
+    Reply = try mnesia:table_info(config, disc_copies)
+            catch exit:{aborted, {no_exists, _, _}} -> []
+            end,
     {reply, Reply, State};
+
+handle_call(prepare_rename, _From, State) ->
+    backup(),
+    {reply, ok, State};
 
 handle_call({ensure_table, TableName, Opts}, _From, State) ->
     try mnesia:table_info(TableName, disc_copies) of
@@ -110,7 +206,8 @@ handle_call({ensure_table, TableName, Opts}, _From, State) ->
                     ?log_info("Creating local copy of ~p",
                               [TableName]),
                     {atomic, ok} = mnesia:add_table_copy(
-                                     TableName, node(), disc_copies)
+                                     TableName, node(), disc_copies),
+                    ok
             end
     catch exit:{aborted, {no_exists, _, _}} ->
             {atomic, ok} =
@@ -189,10 +286,46 @@ init([]) ->
     %% Don't hang forever if a node goes down when a transaction is in
     %% an unclear state
     application:set_env(mnesia, max_wait_for_decision, 10000),
-    ok = mnesia:start(), % Will work even if it's already started
-    {ok, _} = mnesia:subscribe(system),
-    {ok, _} = mnesia:subscribe({table, schema, detailed}),
-    ensure_schema(),
+    case is_mnesia_running() of
+        yes ->
+            ok;
+        no ->
+            case mnesia:system_info(db_nodes) of
+                [Node] when Node == node() ->
+                    %% Check for a backup, but only if we're the only
+                    %% node
+                    BackupFile = backup_file(),
+                    case file:read_file_info(BackupFile) of
+                        {ok, _} ->
+                            ?log_info("Found backup. Restoring Mnesia database.", []),
+                            %% Restore from backup, declustering first
+                            %% to ensure we don't reconnect.
+                            decluster(BackupFile),
+                            ok = mnesia:install_fallback(BackupFile),
+                            start_mnesia(),
+                            %% Remove all tables that aren't local; we
+                            %% should only have non-local tables if
+                            %% we're a peer, which we can't be if
+                            %% we're restoring from backup.
+                            NonLocalTables = non_local_tables(),
+                           ?log_info("Removing non-local tables ~p",
+                                      [NonLocalTables]),
+                            ok = mnesia:wait_for_tables(NonLocalTables, 5000),
+                            lists:foreach(
+                              fun (Table) ->
+                                      {atomic, ok} = mnesia:delete_table(Table)
+                              end, NonLocalTables),
+                            ok = file:delete(BackupFile);
+                        {error, enoent} ->
+                            %% Crash if it's not one of these
+                            start_mnesia(),
+                            ensure_schema()
+                    end;
+                _ ->
+                    start_mnesia(),
+                    ensure_schema()
+            end
+    end,
     ?log_info("Current config: ~p", [mnesia:system_info(all)]),
     {ok, #state{}}.
 
@@ -206,6 +339,22 @@ terminate(Reason, _State) ->
 %%
 %% Internal functions
 %%
+
+%% @doc Back up the database to a standard location.
+backup() ->
+    Tables = [Table || Table <- mnesia:system_info(local_tables),
+                       mnesia:table_info(Table, local_content)],
+    {ok, Name, _} = mnesia:activate_checkpoint([{min, [schema|Tables]}]),
+    ok = mnesia:backup_checkpoint(Name, backup_file()),
+    ok = mnesia:deactivate_checkpoint(Name),
+    ?log_info("Backed up tables ~p", [Tables]),
+    Tables.
+
+
+%% @doc The backup location.
+backup_file() ->
+    tmpdir("mnesia_backup").
+
 
 %% Shamelessly stolen from Mnesia docs.
 change_node_name(Mod, From, To, Source, Target) ->
@@ -239,7 +388,42 @@ change_node_name(Mod, From, To, Source, Target) ->
     ok.
 
 
-%% @doc Make sure we have a disk copy of the schema.
+%% @doc Traverse the backup, removing all nodes except this one.
+decluster(Source) ->
+    Node = node(),
+    Convert =
+        fun({schema, db_nodes, _}, Acc) ->
+                {[{schema, db_nodes, [Node]}], Acc};
+           ({schema, version, Version}, Acc) ->
+                {[{schema, version, Version}], Acc};
+           ({schema, cookie, Cookie}, Acc) ->
+                {[{schema, cookie, Cookie}], Acc};
+           ({schema, Tab, CreateList}, Acc) ->
+                Keys = [ram_copies, disc_copies, disc_only_copies],
+                OptSwitch =
+                    fun({Key, Val}) ->
+                            case lists:member(Key, Keys) of
+                                true ->
+                                    {Key, case lists:member(Node, Val) of
+                                              true -> [Node];
+                                              false -> []
+                                          end};
+                                false->
+                                    {Key, Val}
+                            end
+                    end,
+                {[{schema, Tab, lists:map(OptSwitch, CreateList)}], Acc};
+           (Tuple, Acc) ->
+                {[Tuple], Acc}
+        end,
+    Target = tmpdir("mnesia_declustered"),
+    {ok, switched} = mnesia:traverse_backup(Source, mnesia_backup, Target,
+                                            mnesia_backup, Convert, switched),
+    ok = file:rename(Target, Source),
+    ok.
+
+
+%% @doc Make sure we have a disk copy of the schema and all disc tables.
 ensure_schema() ->
     %% Create a new on-disk schema if one doesn't already exist
     Nodes = mnesia:table_info(schema, disc_copies),
@@ -256,7 +440,47 @@ ensure_schema() ->
             end;
         true ->
             ?log_info("Using existing disk schema on ~p.", [Nodes])
+    end,
+    %% Lay down copies of all the tables.
+    Tables = mnesia:system_info(tables) -- [schema],
+    ?log_info("Creating local copy of ~p", [Tables]),
+    lists:foreach(
+      fun (Table) ->
+              try mnesia:add_table_copy(Table, node(), disc_copies) of
+                  {atomic, ok} -> ok
+              catch E:R ->
+                      ?log_info("Error creating local copy of ~p: ~p",
+                                [Table, {E, R}])
+              end
+      end, Tables),
+    ok = mnesia:wait_for_tables(Tables, 2500).
+
+
+%% @doc List of tables that aren't local_content.
+non_local_tables() ->
+    [Table || Table <- mnesia:system_info(tables),
+              Table /= schema,
+              not mnesia:table_info(Table, local_content)].
+
+
+%% @doc Return yes or no depending on if mnesia is running, or {error,
+%% Reason} if something is wrong.
+is_mnesia_running() ->
+    case mnesia:wait_for_tables([schema], 2500) of
+        ok ->
+            yes;
+        {error, {node_not_running, _}} ->
+            no;
+        E -> E
     end.
+
+
+%% @doc Start mnesia and wait for it to come up.
+start_mnesia() ->
+    ok = mnesia:start(),
+    {ok, _} = mnesia:subscribe(system),
+    {ok, _} = mnesia:subscribe({table, schema, detailed}),
+    ok = mnesia:wait_for_tables([schema], 30000).
 
 
 %% @doc Hack.
@@ -265,7 +489,9 @@ tmpdir() ->
 
 
 tmpdir(Filename) ->
-    filename:join(tmpdir(), Filename).
+    Path = filename:join(tmpdir(), Filename),
+    ok = filelib:ensure_dir(Path),
+    Path.
 
 
 truncate(_Tab, '$end_of_table', N, M) ->
@@ -279,3 +505,52 @@ truncate(Tab, Key, 0, M) ->
     truncate(Tab, NextKey, 0, M + 1);
 truncate(Tab, Key, N, 0) ->
     truncate(Tab, mnesia:prev(Tab, Key), N - 1, 0).
+
+
+%%
+%% Tests
+%%
+
+shutdown_child(Pid) ->
+    exit(Pid, shutdown),
+    receive
+        {'EXIT', Pid, shutdown} ->
+            ok;
+        {'EXIT', Pid, Reason} ->
+            exit({shutdown_failed, Reason})
+    after 5000 ->
+            ?log_error("Mnesia shutdown timed out", []),
+            exit(Pid, kill),
+            exit(shutdown_timeout)
+    end.
+
+
+startup_test() ->
+    file:delete(backup_file()),
+    process_flag(trap_exit, true),
+    Node = node(),
+    ok = mnesia:delete_schema([Node]),
+    {ok, Pid} = start_link(),
+    yes = mnesia:system_info(is_running),
+    [Node] = mnesia:table_info(schema, disc_copies),
+    receive
+        {'EXIT', Pid, Reason} ->
+            exit({child_exited, Reason})
+    after 0 -> ok
+    end,
+    shutdown_child(Pid).
+
+
+decluster_test() ->
+    file:delete(backup_file()),
+    process_flag(trap_exit, true),
+    Node = node(),
+    ok = mnesia:delete_schema([Node]),
+    {ok, Pid} = start_link(),
+    %% Create a disk-based table to make sure it gets removed
+    ensure_table(test_disc, []),
+    ensure_table(test_local, [{local_content, true}]),
+    gen_server:call(?MODULE, demote_self),
+    ?assertEqual([schema, test_local],
+                 lists:sort(mnesia:system_info(local_tables))),
+    shutdown_child(Pid).
