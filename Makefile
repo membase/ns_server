@@ -11,6 +11,8 @@ TMP_DIR=./tmp
 TMP_VER=$(TMP_DIR)/version_num.tmp
 TEST_TARGET=start
 
+DOC_DIR?=./docs/erldocs
+
 .PHONY: ebins ebin_app version
 
 all: ebins deps_all
@@ -24,7 +26,7 @@ deps_smtp:
 deps_all: deps_menelaus deps_smtp
 
 docs:
-	erl -noshell -run edoc_run application "'ns_server'" '"."' '[]'
+	priv/erldocs $(DOC_DIR)
 
 ebins: ebin_app
 	test -d ebin || mkdir ebin
@@ -60,6 +62,7 @@ clean clean_all:
 	rm -f src/ns_server.app
 	rm -rf test/log
 	rm -rf ebin
+	rm -rf docs
 
 test: test_$(OS)
 
