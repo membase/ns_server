@@ -166,40 +166,61 @@ var maybeReloadAppDueToLeak = (function () {
   };
 })();
 
-function renderSmallGraph(jq, ops, statName, isSelected, zoomMillis, timeOffset, options) {
-  var data = ops.samples[statName] || [];
-  var plotSeries = buildPlotSeries(data,
-                                   ops.samples.timestamp,
-                                   ops.interval * 2.5,
-                                   timeOffset).plotSeries;
 
-  var lastY = data[data.length-1];
-  var now = (new Date()).valueOf();
-  if (ops.interval < 2000)
-    now -= DAO.cells.samplesBufferDepth.value * 1000;
+;(function (global) {
 
-  var maxString = isNaN(lastY) ? '?' : ViewHelpers.formatQuantity(lastY, '', 1000);
-  jq.find('.small_graph_label > .value').text(maxString);
+  var queuedUpdates = [];
 
-  var color = isSelected ? '#e2f1f9' : '#d95e28';
+  function flushQueuedUpdate() {
+    var i = queuedUpdates.length;
+    while (--i >= 0) {
+      queuedUpdates[i]();
+    }
+    queuedUpdates.length = 0;
+  }
 
-  var yaxis = {min:0, ticks:0, autoscaleMargin: 0.04}
+  function renderSmallGraph(jq, ops, statName, isSelected, zoomMillis, timeOffset, options) {
+    var data = ops.samples[statName] || [];
+    var plotSeries = buildPlotSeries(data,
+                                     ops.samples.timestamp,
+                                     ops.interval * 2.5,
+                                     timeOffset).plotSeries;
 
-  if (options.rate)
-    yaxis.max = 100;
+    var lastY = data[data.length-1];
+    var now = (new Date()).valueOf();
+    if (ops.interval < 2000)
+      now -= DAO.cells.samplesBufferDepth.value * 1000;
 
-  $.plotSafe(jq.find('.small_graph_block'),
-             _.map(plotSeries, function (plotData) {
-               return {color: color,
-                       data: plotData};
-             }),
-             {xaxis: {ticks:0,
-                      autoscaleMargin: 0.04,
-                      min: now - zoomMillis,
-                      max: now},
-              yaxis: yaxis,
-              grid: {show:false}});
-}
+    var maxString = isNaN(lastY) ? '?' : ViewHelpers.formatQuantity(lastY, '', 1000);
+    queuedUpdates.push(function () {
+      jq.find('.small_graph_label > .value').text(maxString);
+    });
+    if (queuedUpdates.length == 1) {
+      setTimeout(flushQueuedUpdate, 0);
+    }
+
+    var color = isSelected ? '#e2f1f9' : '#d95e28';
+
+    var yaxis = {min:0, ticks:0, autoscaleMargin: 0.04}
+
+    if (options.rate)
+      yaxis.max = 100;
+
+    $.plotSafe(jq.find('.small_graph_block'),
+               _.map(plotSeries, function (plotData) {
+                 return {color: color,
+                         data: plotData};
+               }),
+               {xaxis: {ticks:0,
+                        autoscaleMargin: 0.04,
+                        min: now - zoomMillis,
+                        max: now},
+                yaxis: yaxis,
+                grid: {show:false}});
+  }
+
+  global.renderSmallGraph = renderSmallGraph;
+})(this);
 
 var KnownPersistentStats = [];
 var KnownCacheStats =  [];
