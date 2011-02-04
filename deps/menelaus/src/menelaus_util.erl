@@ -54,7 +54,7 @@ server_header() ->
     ServerHeader = lists:concat([
                        "Membase Server ", proplists:get_value(ns_server, Versions)]),
     [{"Pragma", "no-cache"},
-     {"Cache-Control", "no-cache no-store max-age=0"},
+     {"Cache-Control", "no-cache"},
      {"Server", ServerHeader}].
 
 redirect_permanently(Path, Req) -> redirect_permanently(Path, Req, []).
