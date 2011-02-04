@@ -79,7 +79,8 @@ handle_info({tick, TS}, #state{bucket=Bucket, counters=Counters, last_ts=LastTS}
                     end,
             {noreply, State#state{counters=NewCounters, count=Count,
                                   last_ts=TS1}}
-    catch _:_ ->
+    catch T:E ->
+            ?log_error("Exception in stats collector: ~p~n", [{T,E, erlang:get_stacktrace()}]),
             {noreply, State}
     end;
 handle_info(_Msg, State) -> % Don't crash on delayed responses to calls
