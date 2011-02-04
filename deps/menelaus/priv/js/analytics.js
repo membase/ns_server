@@ -467,6 +467,9 @@ var StatGraphs = {
                    }));
   },
   init: function () {
+    $('.stats-block-expander').live('click', function () {
+      $(this).parents('.graph_nav').first().toggleClass('closed');
+    });
     ;(function () {
       var data =
         {blocks: [

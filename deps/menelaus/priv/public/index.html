@@ -369,7 +369,7 @@
           <div class="template" id="new_stats_block_template">
             {% _.each(blocks, function (blockInfo) {var withtotal = blockInfo.withtotal; %}
             <div class="darker_block graph_nav {%= (withtotal ? 'withtotal' : '') %}">
-              <h3><ins></ins>{%= h(blockInfo.blockName) %}</h3>
+              <h3><ins class="stats-block-expander"></ins>{%= h(blockInfo.blockName) %}</h3>
               {% _.each(blockInfo.stats, function (statInfo) {var name = statInfo.name; var desc = statInfo.desc; %}
               <div class="analytics-small-graph analytics_graph_{%= h(name) %} {%= (statInfo.missing ? 'dim' : '') %}">
                 <div class="small_graph_block" style="width: 168px; height: 36px;"></div>
@@ -395,7 +395,7 @@
             </div>
             {% }); %}
           </div>
-          <div class="darker_block graph_nav" id="stats_nav_cache_container" style="display:none;"></div>
+          <div id="stats_nav_cache_container" style="display:none;"></div>
           <div id="stats_nav_persistent_container" style="display:none;"></div>
           <div class="template" id="stats_nav_template">
             <h3><ins></ins>Performance</h3>
