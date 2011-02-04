@@ -38,5 +38,5 @@ start() ->
 %% @doc Stop the menelaus server.
 stop() ->
     Res = application:stop(menelaus),
-    application:stop(crypto),
+    _ = application:stop(crypto),
     Res.

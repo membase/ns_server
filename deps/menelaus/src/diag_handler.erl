@@ -174,7 +174,7 @@ handle_logs(Resp) ->
     TempFile = get_logs(),
     {ok, IO} = file:open(TempFile, [raw, binary]),
     stream_logs(Resp, IO),
-    file:close(IO),
+    ok = file:close(IO),
     file:delete(TempFile).
 
 stream_logs(Resp, IO) ->

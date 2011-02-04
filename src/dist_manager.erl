@@ -132,14 +132,14 @@ handle_call({adjust_my_address, MyIP}, _From,
 handle_call({adjust_my_address, _}, _From,
             #state{self_started = false} = State) ->
     {reply, nothing, State};
-handle_call(_Request, _From, _State) ->
-    exit(unhandled).
+handle_call(_Request, _From, State) ->
+    {reply, unhandled, State}.
 
-handle_cast(_, _State) ->
-    exit(unhandled).
+handle_cast(_, State) ->
+    {noreply, State}.
 
-handle_info(_Info, _State) ->
-    exit(unhandled).
+handle_info(_Info, State) ->
+    {noreply, State}.
 
 terminate(_Reason, _State) ->
     ok.
