@@ -390,82 +390,6 @@ var StatGraphs = {
 
     this.refreshTimeoutId = setInterval($m(this, 'update'), 60000);
   },
-  configureStats: function () {
-    var self = this;
-
-    self.prepareConfigureDialog();
-
-    var dialog = $('#analytics_settings_dialog');
-    var values = {};
-
-    if (!self.recognizedStats)
-      return;
-
-    _.each(self.recognizedStats, function (name) {
-      values[name] = _.include(self.effectivelyVisibleStats, name);
-    });
-    setFormValues(dialog, values);
-
-    var observer = dialog.observePotentialChanges(watcher);
-
-    var hiddenVisibleStats = _.reject(self.visibleStats, function (name) {
-      return _.include(self.effectivelyVisibleStats, name);
-    });
-
-    var oldChecked;
-    function watcher(e) {
-      var checked = $.map(dialog.find('input:checked'), function (el, idx) {
-        return el.getAttribute('name');
-      }).sort();
-
-      if (_.isEqual(checked, oldChecked))
-        return;
-      oldChecked = checked;
-
-      self.visibleStats = checked = hiddenVisibleStats.concat(checked).sort();
-      $.cookie('vs', checked.join(','));
-      self.visibleStatsIsDirty = true;
-      self.update();
-    }
-
-    var thaw = StatGraphs.freezeIfIE();
-    showDialog('analytics_settings_dialog', {
-      onHide: function () {
-        thaw();
-        observer.stopObserving();
-      }
-    });
-  },
-  prepareConfigureDialog: function () {
-    var knownStats;
-    if (this.nowIsPersistent) {
-      knownStats = KnownPersistentStats;
-    } else {
-      knownStats = KnownCacheStats;
-    }
-
-    var leftCount = (knownStats.length + 1) >> 1;
-    var shuffledPairs = new Array(knownStats.length);
-    var i,k;
-    for (i = 0, k = 0; i < knownStats.length; i += 2, k++) {
-      shuffledPairs[i] = knownStats[k];
-      shuffledPairs[i+1] = knownStats[leftCount + k];
-    }
-    shuffledPairs.length = knownStats.length;
-
-    renderTemplate('configure_stats_items',
-                   _.map(shuffledPairs, function (pair) {
-                     var name = pair[0];
-                     var ar = pair[1].split("\n", 2);
-                     if (ar.length == 1)
-                       ar[1] = ar[0];
-                     return {
-                       name: name,
-                       'short': ar[0],
-                       full: ar[1]
-                     };
-                   }));
-  },
   init: function () {
     $('.stats-block-expander').live('click', function () {
       $(this).parents('.graph_nav').first().toggleClass('closed');
@@ -482,8 +406,8 @@ var StatGraphs = {
              {name: "evictions", desc: "RAM evictions per sec."},
              {name: "cmd_set", desc: "Sets per sec."},
              {name: "cmd_get", desc: "Gets per sec."},
-             {name: "bytes_written", desc: "Network bytes TX per sec."},
-             {name: "bytes_read", desc: "Network bytes RX per sec."},
+             {name: "bytes_written", desc: "Net. bytes TX per sec."},
+             {name: "bytes_read", desc: "Net. bytes RX per sec."},
              {name: "get_hits", desc: "Get hits per sec."},
              {name: "delete_hits", desc: "Delete hits per sec."},
              {name: "incr_hits", desc: "Incr hits per sec."},
@@ -492,7 +416,7 @@ var StatGraphs = {
              {name: "decr_misses", desc: "Decr misses per sec."},
              {name: "get_misses", desc: "Get Misses per sec."},
              {name: "incr_misses", desc: "Incr misses per sec."},
-             {name: "curr_connections", desc: "Connections co."},
+             {name: "curr_connections", desc: "Connections count."},
              {name: "cas_hits", desc: "CAS hits per sec."},
              {name: "cas_badval", desc: "CAS badval per sec."},
              {name: "cas_misses", desc: "CAS misses per sec."}]}]};
@@ -507,7 +431,6 @@ var StatGraphs = {
       StatGraphs.recognizedStatsCache = _.pluck(KnownCacheStats, 0);
       renderTemplate('new_stats_block', data, $i('stats_nav_cache_container'));
     })();
-    // renderTemplate('stats_nav', KnownCacheStats, $i('stats_nav_cache_container'));
     ;(function () {
       var data = {
         blocks: [

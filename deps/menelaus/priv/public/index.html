@@ -342,7 +342,7 @@
   </script>
 
   <div id="analytics" style="display:none">
-  <span class="block nav float_right configure_view"><a href="javascript:StatGraphs.configureStats();">Configure View</a></span>
+  <span class="block nav float_right configure_view"></span>
     <h1>
       DATA BUCKETS: <span class="stat_target_name">&nbsp;</span>
     </h1>
@@ -1177,49 +1177,6 @@
   </div>
 </div>
 <!-- END add confirmation dialog -->
-<!-- configure view -->
-<div class="jqmWindow" id="analytics_settings_dialog">
-  <div class="lbox join_cluster">
-    <div class="top">
-      <div class="top_left"></div>
-      <div class="top_right"></div>
-      <div class="top_center"></div>
-    </div>
-    <div class="center">
-      <div class="pad">
-        <p class="lbox_header">Configure View</p>
-        <div class="pas_20">
-            <div class="float_50" id="configure_stats_items_container">
-            </div>
-            <div class="template" id="configure_stats_items_template">
-              {% _.each(rows, function (item) { %}
-              <label class="item">
-                <input type="checkbox" name="{%= h(item.name) %}" />
-                <span class="cnt">
-                  <span>{%= h(item.short) %}</span>
-                  {%= h(item.full) %}
-                </span>
-              </label>
-              {% }); %}
-              <div class="clear"></div>
-            </div>
-            <form>
-              <div class="right save_cancel">
-                <button type="submit" class="jqmClose save_button float_right">Close</button>
-              </div>
-            </form>
-        </div>
-      </div>
-    </div>
-    <div class="bottom">
-      <div class="bottom_left"></div>
-      <div class="bottom_right"></div>
-      <div class="bottom_center"></div>
-    </div>
-  </div>
-  <!-- #analytics_settings_dialog -->
-</div>
-<!-- END configure analytics -->
 <!-- Leave cluster -->
 <div class="jqmWindow" id="generic_dialog">
   <div class="lbox">
