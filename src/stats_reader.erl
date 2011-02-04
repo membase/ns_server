@@ -114,10 +114,18 @@ handle_call({latest, Period}, _From, #state{bucket=Bucket} = State) ->
             end,
     {reply, Reply, State};
 handle_call({latest, Period, N}, _From, #state{bucket=Bucket} = State) ->
-    Reply = fetch_latest(Bucket, Period, N),
+    Reply = try fetch_latest(Bucket, Period, N) of
+                Result -> Result
+            catch Type:Err ->
+                    {error, {Type, Err}}
+            end,
     {reply, Reply, State};
 handle_call({latest, Period, Step, N}, _From, #state{bucket=Bucket} = State) ->
-    Reply = resample(Bucket, Period, Step, N),
+    Reply = try resample(Bucket, Period, Step, N) of
+                Result -> Result
+            catch Type:Err ->
+                    {error, {Type, Err}}
+            end,
     {reply, Reply, State}.
 
 
