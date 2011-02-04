@@ -19,9 +19,19 @@
 
 -include("ns_common.hrl").
 
--export([start_link/0]).
+-export([node_name_changed/0,
+         start_link/0]).
 
--export([init/1, pull_plug/1]).
+-export([init/1]).
+
+
+%% @doc Notify the supervisor that the node's name has changed so it
+%% can restart children that care.
+node_name_changed() ->
+    ok = supervisor:terminate_child(?MODULE, ns_doctor),
+    {ok, _} = supervisor:restart_child(?MODULE, ns_doctor),
+    ok.
+
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
@@ -113,33 +123,6 @@ bad_children() ->
      {ns_tick, {ns_tick, start_link, []},
       permanent, 10, worker, [ns_tick]}].
 
-
-%% beware that if it's called from one of restarted childs it won't
-%% work. This can be allowed with further work here.
-pull_plug(Fun) ->
-    FullGoodChildren = good_children(),
-    GoodChildren = [Id || {Id, _, _, _, _, _} <- FullGoodChildren],
-    BadChildren = [Id || {Id, _, _, _, _, _} <- bad_children()],
-    error_logger:info_msg("~p plug pulled.  Killing ~p, keeping ~p~n",
-                          [?MODULE, BadChildren, GoodChildren]),
-    lists:foreach(fun(C) -> ok = supervisor:terminate_child(?MODULE, C) end,
-                  lists:reverse(BadChildren)),
-    Fun(),
-    lists:foreach(fun(C) ->
-                          R = supervisor:restart_child(?MODULE, C),
-                          error_logger:info_msg("Restarting ~p: ~p~n", [C, R])
-                  end,
-                  BadChildren),
-    %% grey childrens don't need to be down during node renaming, but
-    %% need to be restarted to acquire or re-acquire correct state.
-    GreyChildrenIDs = [ns_doctor               % ns doctor needs to grab & store health info of new node
-                       ],
-    lists:foreach(fun (Id) ->
-                          {Id, ok} = {Id, supervisor:terminate_child(?MODULE, Id)},
-                          R = supervisor:restart_child(?MODULE, Id),
-                          ?log_info("Restarted grey child ~p: ~p~n", [Id, R])
-                  end,
-                  GreyChildrenIDs).
 
 bad_bucket_children(Bucket) ->
     [{{stats_collector, Bucket}, {stats_collector, start_link, [Bucket]},

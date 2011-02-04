@@ -32,7 +32,8 @@
          demote/1,
          ensure_table/2,
          peers/0,
-         prepare_rename/0, rename_node/2,
+         prepare_rename/0,
+         rename_node/2,
          start_link/0,
          truncate/2]).
 
@@ -43,16 +44,6 @@
 %%
 %% API
 %%
-
-%% @doc Promote a node that's already in the cluster to a peer.
-promote(Node) ->
-    gen_server:call({?MODULE, Node}, {promote_self, node()}, 30000).
-
-
-%% @doc Promote *this* node by joining another node.
-promote_self(OtherNode) ->
-    gen_server:call(?MODULE, {promote_self, OtherNode}, 30000).
-
 
 %% @doc Demote a peer to a worker. If the node is down, you need to
 %% eject it.
@@ -95,21 +86,23 @@ prepare_rename() ->
     gen_server:call(?MODULE, prepare_rename).
 
 
+%% @doc Promote a node that's already in the cluster to a peer.
+promote(Node) ->
+    gen_server:call({?MODULE, Node}, {promote_self, node()}, 30000).
+
+
+%% @doc Promote *this* node by joining another node.
+promote_self(OtherNode) ->
+    gen_server:call(?MODULE, {promote_self, OtherNode}, 30000).
+
+
 %% @doc Rename a node. Assumes there is only one node. Leaves Mnesia
 %% stopped with no schema and a backup installed as a fallback. Finish
 %% renaming the node and start Mnesia back up and you should have all
 %% your data back. If for some reason you need to go back, you could
 %% install the pre_rename backup as fallback and start Mnesia.
 rename_node(From, To) ->
-    false = misc:running(?MODULE),
-    ?log_info("Renaming node from ~p to ~p.", [From, To]),
-    Pre = backup_file(),
-    Post = tmpdir("post_rename"),
-    change_node_name(mnesia_backup, From, To, Pre, Post),
-    ?log_info("Deleting old schema.", []),
-    ok = mnesia:delete_schema([node()]),
-    ?log_info("Installing new backup as fallback.", []),
-    ok = mnesia:install_fallback(Post).
+    gen_server:call(?MODULE, {rename_node, From, To}).
 
 
 %% @doc Start the gen_server
@@ -154,6 +147,40 @@ handle_call(demote_self, _From, State) ->
             {reply, ok, State1}
     end;
 
+handle_call({ensure_table, TableName, Opts}, _From, State) ->
+    try mnesia:table_info(TableName, disc_copies) of
+        Nodes when is_list(Nodes) ->
+            case lists:member(node(), Nodes) of
+                true ->
+                    ok;
+                false ->
+                    ?log_info("Creating local copy of ~p",
+                              [TableName]),
+                    {atomic, ok} = mnesia:add_table_copy(
+                                     TableName, node(), disc_copies),
+                    ok
+            end
+    catch exit:{aborted, {no_exists, _, _}} ->
+            {atomic, ok} =
+                mnesia:create_table(
+                  TableName,
+                  Opts ++ [{disc_copies, [node()]}]),
+            ?log_info("Created table ~p", [TableName])
+    end,
+    {reply, ok, State};
+
+handle_call(peers, _From, State) ->
+    Reply = try mnesia:table_info(config, disc_copies)
+            catch exit:{aborted, {no_exists, _, _}} -> []
+            end,
+    {reply, Reply, State};
+
+handle_call(prepare_rename, _From, State) ->
+    %% We need to back up the db before changing the node name,
+    %% because it will fail if the node name doesn't match the schema.
+    backup(),
+    {reply, ok, State};
+
 handle_call({promote_self, Node}, _From, State) ->
     case mnesia:system_info(db_nodes) of
         [N] when N == node() ->
@@ -186,37 +213,13 @@ handle_call({promote_self, Node}, _From, State) ->
     end,
     {reply, ok, State};
 
-handle_call(peers, _From, State) ->
-    Reply = try mnesia:table_info(config, disc_copies)
-            catch exit:{aborted, {no_exists, _, _}} -> []
-            end,
-    {reply, Reply, State};
-
-handle_call(prepare_rename, _From, State) ->
-    backup(),
-    {reply, ok, State};
-
-handle_call({ensure_table, TableName, Opts}, _From, State) ->
-    try mnesia:table_info(TableName, disc_copies) of
-        Nodes when is_list(Nodes) ->
-            case lists:member(node(), Nodes) of
-                true ->
-                    ok;
-                false ->
-                    ?log_info("Creating local copy of ~p",
-                              [TableName]),
-                    {atomic, ok} = mnesia:add_table_copy(
-                                     TableName, node(), disc_copies),
-                    ok
-            end
-    catch exit:{aborted, {no_exists, _, _}} ->
-            {atomic, ok} =
-                mnesia:create_table(
-                  TableName,
-                  Opts ++ [{disc_copies, [node()]}]),
-            ?log_info("Created table ~p", [TableName])
-    end,
-    {reply, ok, State};
+handle_call({rename_node, From, To}, _From, _State) ->
+    ?log_info("Renaming node from ~p to ~p.", [From, To]),
+    stopped = mnesia:stop(),
+    change_node_name(From, To),
+    ok = mnesia:delete_schema([node()]),
+    {ok, State1} = init([]),
+    {reply, ok, State1};
 
 handle_call(Request, From, State) ->
     ?log_warning("Unexpected call from ~p: ~p", [From, Request]),
@@ -342,13 +345,20 @@ terminate(Reason, _State) ->
 
 %% @doc Back up the database to a standard location.
 backup() ->
-    Tables = [Table || Table <- mnesia:system_info(local_tables),
-                       mnesia:table_info(Table, local_content)],
-    {ok, Name, _} = mnesia:activate_checkpoint([{min, [schema|Tables]}]),
-    ok = mnesia:backup_checkpoint(Name, backup_file()),
-    ok = mnesia:deactivate_checkpoint(Name),
-    ?log_info("Backed up tables ~p", [Tables]),
-    Tables.
+    %% Only back up if there is a disc copy of the schema somewhere
+    case mnesia:table_info(schema, disc_copies) of
+        [] ->
+            ?log_info("No local copy of the schema. Skipping backup.", []),
+            [];
+        _ ->
+            Tables = [Table || Table <- mnesia:system_info(local_tables),
+                               mnesia:table_info(Table, local_content)],
+            {ok, Name, _} = mnesia:activate_checkpoint([{min, [schema|Tables]}]),
+            ok = mnesia:backup_checkpoint(Name, backup_file()),
+            ok = mnesia:deactivate_checkpoint(Name),
+            ?log_info("Backed up tables ~p", [Tables]),
+            Tables
+    end.
 
 
 %% @doc The backup location.
@@ -357,7 +367,7 @@ backup_file() ->
 
 
 %% Shamelessly stolen from Mnesia docs.
-change_node_name(Mod, From, To, Source, Target) ->
+change_node_name(From, To) ->
     Switch =
         fun(Node) when Node == From -> To;
            (Node) when Node == To -> throw({error, already_exists});
@@ -383,8 +393,11 @@ change_node_name(Mod, From, To, Source, Target) ->
            (Tuple, Acc) ->
                 {[Tuple], Acc}
         end,
-    {ok, switched} = mnesia:traverse_backup(Source, Mod, Target, Mod, Convert,
-                                            switched),
+    Source = backup_file(),
+    Target = tmpdir("post_rename"),
+    {ok, switched} = mnesia:traverse_backup(Source, mnesia_backup, Target,
+                                            mnesia_backup, Convert, switched),
+    ok = file:rename(Target, Source),
     ok.
 
 

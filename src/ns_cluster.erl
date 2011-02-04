@@ -124,7 +124,7 @@ handle_cast(leave, State) ->
     ns_storage_conf:delete_all_db_files(DBDir),
     ?log_info("Leaving cluster", []),
     timer:sleep(1000),
-    ns_server_cluster_sup:start_cluster(),
+    {ok, _} = ns_server_cluster_sup:start_cluster(),
     {noreply, State}.
 
 
@@ -199,6 +199,10 @@ shun(RemoteNode) ->
     case RemoteNode == node() of
         false ->
             ?log_info("Shunning ~p", [RemoteNode]),
+            try ns_mnesia:demote(RemoteNode)
+            catch E:R ->
+                    ?log_info("Failed to demote ~p: ~p", [RemoteNode, {E, R}])
+            end,
             ns_config:update_key(nodes_wanted,
                                  fun (X) ->
                                          X -- [RemoteNode]
@@ -245,23 +249,19 @@ do_change_address(NewAddr) ->
         {_, _} ->
             CookieBefore = erlang:get_cookie(),
             ?log_info("Decided to change address to ~p~n", [NewAddr]),
-            ok = ns_mnesia:prepare_rename(),
-            ?log_info("prepared mnesia.~n", []),
-            ns_server_sup:pull_plug(
-              fun() ->
-                      case dist_manager:adjust_my_address(NewAddr) of
-                          nothing ->
-                              ok;
-                          net_restarted ->
-                              %% Make sure the cookie's still the same
-                              CookieBefore = erlang:get_cookie(),
-                              ok = ns_mnesia:rename_node(MyNode, node()),
-                              rename_node(MyNode, node()),
-                              ?log_info("Renamed node. New name is ~p.~n", [node()]),
-                              ok
-                      end
-              end),
-            ?log_info("Started ns_server_sup childs back.~n", []),
+            ns_mnesia:prepare_rename(),
+            case dist_manager:adjust_my_address(NewAddr) of
+                nothing ->
+                    ok;
+                net_restarted ->
+                    %% Make sure the cookie's still the same
+                    CookieBefore = erlang:get_cookie(),
+                    ns_mnesia:rename_node(MyNode, node()),
+                    rename_node(MyNode, node()),
+                    ns_server_sup:node_name_changed(),
+                    ?log_info("Renamed node. New name is ~p.~n", [node()]),
+                    ok
+            end,
             ok
     end.
 
@@ -583,7 +583,7 @@ perform_actual_join(RemoteNode, NewCookie) ->
     catch
         Type:Error ->
             ?log_error("Error during join: ~p", [{Type, Error, erlang:get_stacktrace()}]),
-            ns_server_cluster_sup:start_cluster(),
+            {ok, _} = ns_server_cluster_sup:start_cluster(),
             erlang:Type(Error)
     end,
     ?log_info("Join status: ~p, starting ns_server_cluster back~n", [Status]),
@@ -596,9 +596,19 @@ perform_actual_join(RemoteNode, NewCookie) ->
               end,
     case Status2 of
         {ok, _} ->
-            ns_log:log(?MODULE, ?NODE_JOINED, "Node ~s joined cluster",
-                       [node()]);
+            %% Cluster mnesia. TODO: this should be managed elsewhere and not
+            %% include all nodes.
+            try ns_mnesia:promote_self(RemoteNode) of
+                ok ->
+                    ns_log:log(?MODULE, ?NODE_JOINED, "Node ~s joined cluster",
+                               [node()]),
+                    Status2
+            catch Type1:Error1 ->
+                    ?log_error("Mnesia clustering failed: ~p", [{Type1, Error1}]),
+                    {error, mnesia_clustering_failed,
+                    <<"Failed to cluster Mnesia.">>, {Type1, Error1}}
+            end;
         _ ->
-            ?log_error("Failed to join cluster because of: ~p~n", [Status2])
-    end,
-    Status2.
+            ?log_error("Failed to join cluster because of: ~p~n", [Status2]),
+            Status2
+    end.
