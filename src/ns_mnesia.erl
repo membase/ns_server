@@ -178,17 +178,7 @@ handle_call({promote_self, Node}, _From, State) ->
             %% Connect to an existing peer
             {ok, [Node]} = mnesia:change_config(extra_db_nodes, [Node]),
             %% Write the schema to disk
-            ensure_schema(),
-            ?log_info("Restoring tables. Mnesia config:~n~p",
-                      [mnesia:system_info(all)]),
-            KeepTables = mnesia:system_info(tables),
-            CreateTables = Tables -- KeepTables,
-            %% Restore our old data to the new tables
-            {atomic, _} = mnesia:restore(
-                            backup_file(),
-                            [{keep_tables, KeepTables},
-                             {recreate_tables, CreateTables}]),
-            ok = file:delete(backup_file());
+            restore(Tables, 10);
         _ ->
             %% Only promote if we're not already a peer
             ?log_error("Attempt to promote even though we're already a peer.",
@@ -440,14 +430,13 @@ ensure_schema() ->
     end,
     %% Lay down copies of all the tables.
     Tables = mnesia:system_info(tables) -- [schema],
-    ?log_info("Creating local copy of ~p", [Tables]),
     lists:foreach(
       fun (Table) ->
-              try mnesia:add_table_copy(Table, node(), disc_copies) of
-                  {atomic, ok} -> ok
-              catch E:R ->
-                      ?log_info("Error creating local copy of ~p: ~p",
-                                [Table, {E, R}])
+              case mnesia:add_table_copy(Table, node(), disc_copies) of
+                  {atomic, ok} ->
+                      ?log_info("Created local copy of ~p", [Table]);
+                  {aborted, {already_exists, _, _}} ->
+                      ?log_info("Have local copy of ~p", [Table])
               end
       end, Tables),
     ok = mnesia:wait_for_tables(Tables, 2500).
@@ -469,6 +458,31 @@ is_mnesia_running() ->
         {error, {node_not_running, _}} ->
             no;
         E -> E
+    end.
+
+
+restore(_Tables, 0) ->
+    exit(restore_failed);
+restore(Tables, Tries) ->
+    ensure_schema(), % Lay down copies of any new tables
+    KeepTables = mnesia:system_info(tables),
+    CreateTables = Tables -- KeepTables,
+    %% Restore our old data to the new tables
+    case mnesia:restore(
+           backup_file(),
+           [{keep_tables, KeepTables},
+            {recreate_tables, CreateTables}]) of
+        {atomic, _} ->
+            ?log_info("Successfully restored from backup. KeepTables = ~p, "
+                      "CreateTables = ~p", [KeepTables, CreateTables]),
+            ok = file:delete(backup_file()),
+            ok;
+        {aborted, {no_exists, T}} ->
+            %% We're probably restoring precisely when another node
+            %% created a table. Sleep and try again. MB-3415
+            ?log_info("Probable collision restoring ~p. Retrying.", [T]),
+            timer:sleep(500),
+            restore(Tables, Tries-1)
     end.
 
 
