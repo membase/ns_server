@@ -237,6 +237,9 @@ parse_stats(TS, Stats, TapStats, {LastCounters, LastTapCounters}, LastTS) ->
                        {ep_ops_create, sum_stat_values(Values0, [vb_active_ops_create,
                                                                  vb_replica_ops_create,
                                                                  vb_pending_ops_create])},
+                       {ep_ops_update, sum_stat_values(Values0, [vb_active_ops_update,
+                                                                 vb_replica_ops_update,
+                                                                 vb_pending_ops_update])},
                        {vb_total_queue_fill, sum_stat_values(Values0, [vb_active_queue_fill,
                                                                        vb_replica_queue_fill,
                                                                        vb_pending_queue_fill])},
@@ -246,7 +249,6 @@ parse_stats(TS, Stats, TapStats, {LastCounters, LastTapCounters}, LastTS) ->
                        {vb_total_queue_age, sum_stat_values(Values0, [vb_active_queue_age,
                                                                       vb_replica_queue_age,
                                                                       vb_pending_queue_age])}
-                       %% {updates, sum_stat_values(Values0, [cmd_set, incr_hits, decr_hits, cas_hits])},
                        %% {replica_resident_items_tot,
                        %%  orddict:fetch(curr_items_tot,
                        %%                Values0) - orddict:fetch(ep_num_non_resident,

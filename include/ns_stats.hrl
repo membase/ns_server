@@ -115,6 +115,11 @@
         vb_pending_ops_create,
         %% ep_ops_create: aggregated by stats_collector
 
+        vb_active_ops_update,
+        vb_replica_ops_update,
+        vb_pending_ops_update,
+        %% ep_ops_update: aggregated by stats_collector
+
         vb_active_queue_fill,
         vb_replica_queue_fill,
         vb_pending_queue_fill,
