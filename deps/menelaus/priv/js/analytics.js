@@ -470,8 +470,8 @@ var StatGraphs = {
               // Read
               {desc: "cache hit %", name: "ep_cache_hit_rate"}, //?
               {desc: "hit latency", name: "hit_latency", missing: true}, //?
-              {desc: "cache miss %", name: "ep_cache_miss_rate"}, //?
               {desc: "miss latency", name: "miss_latency", missing: true}, //?
+              {desc: "disk reads", name: "ep_bg_fetched"},
               // Write
               {desc: "creates per second", name: "ep_ops_create"}, // TODO: aggregate it in ns_server
               {desc: "updates per second", name: "ep_ops_update"}, // ?
