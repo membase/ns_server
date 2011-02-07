@@ -68,7 +68,7 @@ delete_schema() ->
 %% @doc Make sure table exists and has a copy on this node, creating it or
 %% adding a copy if it does not.
 ensure_table(TableName, Opts) ->
-    gen_server:call(?MODULE, {ensure_table, TableName, Opts}).
+    gen_server:call(?MODULE, {ensure_table, TableName, Opts}, 30000).
 
 
 %% @doc Back up the database in preparation for a node rename.

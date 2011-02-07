@@ -106,10 +106,7 @@ good_children() ->
 %% Children that get restarted if we pull the plug. These can depend
 %% on Mnesia.
 bad_children() ->
-    [{ns_mnesia, {ns_mnesia, start_link, []},
-      permanent, 10000, worker, [ns_mnesia]},
-
-     {ns_bad_bucket_worker, {work_queue, start_link, [ns_bad_bucket_worker]},
+    [{ns_bad_bucket_worker, {work_queue, start_link, [ns_bad_bucket_worker]},
       permanent, 10, worker, [work_queue]},
 
      {ns_bad_bucket_sup, {ns_bucket_sup, start_link,
