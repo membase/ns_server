@@ -433,7 +433,7 @@ ensure_bucket(Sock, Bucket) ->
     catch
         E:R ->
             ?log_error("Unable to get config for bucket ~p: ~p",
-                       [Bucket, {E, R}]),
+                       [Bucket, {E, R, erlang:get_stacktrace()}]),
             {E, R}
     end.
 
