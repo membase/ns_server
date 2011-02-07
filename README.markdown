@@ -145,5 +145,5 @@ Tip: if you see error message like...
 Then you will have to add backslashes around the path double-quotes --
 like \"priv/config\"
 
-* * * * *
+* * * * * *
 Copyright (c) 2011, Membase, Inc.
