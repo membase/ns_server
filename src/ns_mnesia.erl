@@ -138,7 +138,7 @@ handle_call(demote_self, _From, State) ->
             %% No-op if it's not a peer
             {reply, ok, State};
         false ->
-            backup(),
+            _ = backup(),
             stopped = mnesia:stop(),
             ok = mnesia:delete_schema([node()]),
             ?log_info("Demoting. Deleted local schema. Mnesia info:~n~p",
@@ -178,7 +178,7 @@ handle_call(peers, _From, State) ->
 handle_call(prepare_rename, _From, State) ->
     %% We need to back up the db before changing the node name,
     %% because it will fail if the node name doesn't match the schema.
-    backup(),
+    _ = backup(),
     {reply, ok, State};
 
 handle_call({promote_self, Node}, _From, State) ->
@@ -539,7 +539,7 @@ shutdown_child(Pid) ->
 
 
 startup_test() ->
-    file:delete(backup_file()),
+    _ = file:delete(backup_file()),
     process_flag(trap_exit, true),
     Node = node(),
     ok = mnesia:delete_schema([Node]),
@@ -555,7 +555,7 @@ startup_test() ->
 
 
 decluster_test() ->
-    file:delete(backup_file()),
+    _ = file:delete(backup_file()),
     process_flag(trap_exit, true),
     Node = node(),
     ok = mnesia:delete_schema([Node]),
