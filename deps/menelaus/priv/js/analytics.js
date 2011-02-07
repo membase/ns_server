@@ -180,6 +180,9 @@ var maybeReloadAppDueToLeak = (function () {
   }
 
   function renderSmallGraph(jq, ops, statName, isSelected, zoomMillis, timeOffset, options) {
+    if (!jq.is(':visible')) {
+      return;
+    }
     var data = ops.samples[statName] || [];
     var plotSeries = buildPlotSeries(data,
                                      ops.samples.timestamp,
