@@ -120,7 +120,6 @@ handle_cast(leave, State) ->
     end,
     ns_config:set_initial(nodes_wanted, [node()]),
     ns_config:set_initial(otp, [{cookie, NewCookie}]),
-    ns_mnesia:delete_schema(),
     ns_storage_conf:delete_all_db_files(DBDir),
     ?log_info("Leaving cluster", []),
     timer:sleep(1000),
@@ -557,7 +556,6 @@ perform_actual_join(RemoteNode, NewCookie) ->
                [node(), RemoteNode]),
     %% Pull the rug out from under the app
     ok = ns_server_cluster_sup:stop_cluster(),
-    ns_mnesia:delete_schema(),
     Status = try
         error_logger:info_msg("ns_cluster: joining cluster. Child has exited.~n"),
 
