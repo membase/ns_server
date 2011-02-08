@@ -727,29 +727,40 @@ handle_eject_post(Req) ->
     %               403 if creds were supplied and are incorrect
     %               400 if the node to be ejected doesn't exist
     %
-    case proplists:get_value("otpNode", PostArgs) of
+    OtpNodeStr = case proplists:get_value("otpNode", PostArgs) of
+                     undefined -> undefined;
+                     "Self" -> atom_to_list(node());
+                     X -> X
+                 end,
+    case OtpNodeStr of
         undefined -> Req:respond({400, add_header(), "Bad Request\n"});
-        "Self" -> do_eject_myself(),
-                  Req:respond({200, [], []});
-        OtpNodeStr ->
+        _ ->
             OtpNode = list_to_atom(OtpNodeStr),
-            case OtpNode =:= node() of
+            case ns_cluster_membership:get_cluster_membership(OtpNode) of
+                active ->
+                    Req:respond({400, add_header(), "Cannot remove active server.\n"});
+                _ ->
+                    do_handle_eject_post(Req, OtpNode)
+            end
+    end.
+
+do_handle_eject_post(Req, OtpNode) ->
+    case OtpNode =:= node() of
+        true ->
+            do_eject_myself(),
+            Req:respond({200, [], []});
+        false ->
+            case lists:member(OtpNode, ns_node_disco:nodes_wanted()) of
                 true ->
-                    do_eject_myself(),
-                    Req:respond({200, [], []});
+                    ns_cluster:leave(OtpNode),
+                    ns_log:log(?MODULE, ?NODE_EJECTED, "Node ejected: ~p from node: ~p",
+                               [OtpNode, erlang:node()]),
+                    Req:respond({200, add_header(), []});
                 false ->
-                    case lists:member(OtpNode, ns_node_disco:nodes_wanted()) of
-                        true ->
-                            ns_cluster:leave(OtpNode),
-                            ns_log:log(?MODULE, ?NODE_EJECTED, "Node ejected: ~p from node: ~p",
-                                       [OtpNode, erlang:node()]),
-                            Req:respond({200, add_header(), []});
-                        false ->
-                            % Node doesn't exist.
-                            ns_log:log(?MODULE, 0018, "Request to eject nonexistant server failed.  Requested node: ~p",
-                                       [OtpNode]),
-                            Req:respond({400, add_header(), "Server does not exist.\n"})
-                    end
+                                                % Node doesn't exist.
+                    ns_log:log(?MODULE, 0018, "Request to eject nonexistant server failed.  Requested node: ~p",
+                               [OtpNode]),
+                    Req:respond({400, add_header(), "Server does not exist.\n"})
             end
     end.
 
