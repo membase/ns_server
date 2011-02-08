@@ -13,9 +13,11 @@ TEST_TARGET=start
 
 DOC_DIR?=./docs/erldocs
 
+REBAR=./rebar
+
 .PHONY: ebins ebin_app version
 
-all: ebins deps_all
+all: ebins ebin_app deps_all
 
 deps_menelaus:
 	(cd deps/menelaus && $(MAKE) all)
@@ -28,13 +30,11 @@ deps_all: deps_menelaus deps_smtp
 docs:
 	priv/erldocs $(DOC_DIR)
 
-ebins: ebin_app
-	test -d ebin || mkdir ebin
-	erl -noinput +B $(EFLAGS) -eval 'case make:all() of up_to_date -> halt(0); error -> halt(1) end.'
+ebins:
+	$(REBAR) compile
 
 ebin_app: version
-	test -d ebin || mkdir ebin
-	sed s/0.0.0/`cat $(TMP_VER)`/g src/ns_server.app.src > ebin/ns_server.app
+	sed -i "" s/0.0.0/`cat $(TMP_VER)`/g ebin/ns_server.app
 
 version:
 	test -d $(TMP_DIR) || mkdir $(TMP_DIR)

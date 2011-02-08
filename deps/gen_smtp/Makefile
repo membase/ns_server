@@ -1,12 +1,12 @@
 SHELL=/bin/sh
+REBAR=../../rebar
 
 .PHONY: ebins
 
 all: ebins
 
 ebins:
-	test -d ebin || mkdir ebin
-	erl -noinput +B $(EFLAGS) -eval 'case make:all() of up_to_date -> halt(0); error -> halt(1) end.'
+	$(REBAR) compile
 
 clean:
 	rm -rf ebin

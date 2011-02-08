@@ -4,6 +4,7 @@ TMP_DIR=./tmp
 TMP_VER=$(TMP_DIR)/version_num.tmp
 DIST_DIR=$(TMP_DIR)/menelaus
 SPROCKETIZE=sprocketize
+REBAR=../../rebar
 
 .PHONY: ebins ebin_app version
 
@@ -11,7 +12,8 @@ all: deps priv/public/js/all.js ebins
 
 ebins: ebin_app
 	test -d ebin || mkdir ebin
-	erl -noinput +B $(EFLAGS) -eval 'case make:all() of up_to_date -> halt(0); error -> halt(1) end.'
+	$(REBAR) compile
+#erl -noinput +B $(EFLAGS) -eval 'case make:all() of up_to_date -> halt(0); error -> halt(1) end.'
 
 ebin_app: version
 	test -d ebin || mkdir ebin
