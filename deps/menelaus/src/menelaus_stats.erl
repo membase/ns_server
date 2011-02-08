@@ -23,6 +23,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -export([handle_bucket_stats/3,
+         handle_bucket_node_stats/4,
          handle_overview_stats/2,
          basic_stats/1,
          basic_stats/2, basic_stats/3,
@@ -154,6 +155,7 @@ handle_bucket_stats(PoolId, all, Req) ->
     BucketNames = menelaus_web_buckets:all_accessible_bucket_names(PoolId, Req),
     handle_buckets_stats(PoolId, BucketNames, Req);
 
+%% GET /pools/{PoolID}/buckets/{Id}/stats
 handle_bucket_stats(PoolId, Id, Req) ->
     handle_buckets_stats(PoolId, [Id], Req).
 
@@ -162,6 +164,13 @@ handle_buckets_stats(PoolId, BucketIds, Req) ->
     {struct, PropList1} = build_buckets_stats_ops_response(PoolId, BucketIds, Params),
     {struct, PropList2} = build_buckets_stats_hks_response(PoolId, BucketIds),
     menelaus_util:reply_json(Req, {struct, PropList1 ++ PropList2}).
+
+%% Per-Server Stats
+%% GET /pools/{PoolID}/buckets/{Id}/nodes/{NodeId}/stats
+handle_bucket_node_stats(PoolId, Id, NodeId, Req) ->
+    %% TODO: implement real stats, server look up, etc.
+    %% TODO: drop 501 status code once this does something
+    menelaus_util:reply_json(Req, {struct, [{server, list_to_binary(NodeId)}]}, 501).
 
 %% ops SUM(cmd_get, cmd_set,
 %%         incr_misses, incr_hits,
