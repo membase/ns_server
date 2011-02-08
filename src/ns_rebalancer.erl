@@ -406,8 +406,8 @@ promote_replica(Chain, RemapNodes) ->
 
 
 %% @doc Wait until either all memcacheds are up or stop is pressed.
-wait_for_memcached(_Nodes, _Bucket, -1) ->
-    exit(wait_for_memcached_failed);
+wait_for_memcached(Nodes, Bucket, -1) ->
+    exit({wait_for_memcached_failed, Bucket, Nodes});
 wait_for_memcached(Nodes, Bucket, Tries) ->
     case [Node || Node <- Nodes, not ns_memcached:connected(Node, Bucket)] of
         [] ->
