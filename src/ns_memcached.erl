@@ -209,16 +209,27 @@ handle_info(Msg, State) ->
 terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
     %% Unregister so nothing else tries to talk to us
     unregister(server(Bucket)),
+    Deleting = try ns_bucket:get_bucket(Bucket) of
+                   not_present -> true;
+                   {ok, _} -> false
+               catch T:E ->
+                       ?log_error("Failed to reach ns_bucket:get_bucket(~p). ~p:~p~n~p~n",
+                                  [Bucket,T,E,erlang:get_stacktrace()]),
+                       false
+               end,
     if
         Reason == normal; Reason == shutdown ->
-            ns_log:log(?MODULE, 2, "Shutting down bucket ~p on ~p",
-                       [Bucket, node()]),
+            ns_log:log(?MODULE, 2, "Shutting down bucket ~p on ~p for ~s",
+                       [Bucket, node(), case Deleting of
+                                            true -> "deletion";
+                                            false -> "server shutdown"
+                                        end]),
             try
-                mc_client_binary:delete_bucket(Sock, Bucket)
+                mc_client_binary:delete_bucket(Sock, Bucket, [{force, Deleting}])
             catch
-                E:R ->
+                E2:R2 ->
                     ?log_error("Failed to delete bucket ~p: ~p",
-                               [Bucket, {E, R}])
+                               [Bucket, {E2, R2}])
             end;
         true ->
             ns_log:log(?MODULE, 4,

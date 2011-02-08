@@ -24,7 +24,7 @@
 -export([auth/2,
          cmd/5,
          create_bucket/4,
-         delete_bucket/2,
+         delete_bucket/3,
          delete_vbucket/2,
          flush/1,
          get_vbucket/2,
@@ -156,10 +156,13 @@ create_bucket(Sock, BucketName, Engine, Config) ->
     end.
 
 %% This can take an arbitrary period of time.
-delete_bucket(Sock, BucketName) ->
+delete_bucket(Sock, BucketName, Options) ->
+    Force = proplists:get_bool(force, Options),
+    Config = io_lib:format("force=~s", [Force]),
     case cmd(?CMD_DELETE_BUCKET, Sock, undefined, undefined,
              {#mc_header{},
-              #mc_entry{key = BucketName}}, infinity) of
+              #mc_entry{key = BucketName,
+                        data = iolist_to_binary(Config)}}, infinity) of
         {ok, #mc_header{status=?SUCCESS}, _ME, _NCB} ->
             ok;
         Response -> process_error_response(Response)
