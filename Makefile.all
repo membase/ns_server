@@ -357,8 +357,7 @@ $(BUILDPREFIX)/bin/memcached$(EXE): memcached.stamp
          COMPONENT=memcached \
          COMPONENT_OUT=memcached$(EXE) \
          COMPONENT_GIT_CHECKOUT=engine \
-         COMPONENT_CONFIGURE_FLAGS="--without-sasl \
-                                    --enable-isasl \
+         COMPONENT_CONFIGURE_FLAGS="--enable-isasl \
                                     $(MEMCACHED_CONFIGURE_FLAGS)" \
          memcached/memcached$(EXE)
 	@if test -n "${EXE}"; then \
@@ -371,7 +370,7 @@ $(BUILDPREFIX)/bin/memcachetest$(EXE): memcachetest.stamp
 	$(MAKE) EXE=$(EXE) BUILDPREFIX=$(BUILDPREFIX) GITBASE=$(GITBASE) \
          COMPONENT=memcachetest \
          COMPONENT_OUT=memcachetest${EXE} \
-         COMPONENT_CONFIGURE_FLAGS="$(MEMCACHETEST_CONFIGURE_FLAGS)" \
+         COMPONENT_CONFIGURE_FLAGS="--with-memcached=$(BUILDPREFIX)/bin/memcached$(EXE) $(MEMCACHETEST_CONFIGURE_FLAGS)" \
          memcachetest/memcachetest$(EXE)
 	(cd memcachetest && $(MAKE) install)
 
@@ -385,6 +384,7 @@ $(BUILDPREFIX)/bin/moxi${EXE}: moxi.stamp \
          COMPONENT_CONFIGURE_FLAGS="--enable-moxi-libvbucket \
                                     --enable-moxi-libmemcached \
                                     --without-check \
+                                    --with-memcached=$(BUILDPREFIX)/bin/memcached$(EXE) \
                                     $(MOXI_CONFIGURE_FLAGS)" \
          moxi/moxi${EXE}
 	(cd moxi && $(MAKE) install)
