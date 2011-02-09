@@ -107,6 +107,7 @@ handle_call({complete_join, NodeKVList}, _From, State) ->
 handle_cast(leave, State) ->
     ns_log:log(?MODULE, 0001, "Node ~p is leaving cluster.", [node()]),
     ok = ns_server_cluster_sup:stop_cluster(),
+    ns_mnesia:demote_self(), % In case we didn't get notified on ejection.
     NewCookie = ns_node_disco:cookie_gen(),
     erlang:set_cookie(node(), NewCookie),
     lists:foreach(fun erlang:disconnect_node/1, nodes()),
