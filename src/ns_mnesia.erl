@@ -31,7 +31,6 @@
          delete_schema/0,
          demote/1,
          ensure_table/2,
-         peers/0,
          prepare_rename/0,
          rename_node/2,
          start_link/0,
@@ -70,15 +69,6 @@ delete_schema() ->
 %% adding a copy if it does not.
 ensure_table(TableName, Opts) ->
     gen_server:call(?MODULE, {ensure_table, TableName, Opts}).
-
-
-%% @doc Get the list of peer nodes. Returns empty if we're not one;
-%% someone else is responsible for remembering who to talk to in that
-%% case.
-peers() ->
-    %% We run this in the server process to make sure mnesia is
-    %% actually up.
-    gen_server:call(?MODULE, peers).
 
 
 %% @doc Back up the database in preparation for a node rename.
@@ -168,12 +158,6 @@ handle_call({ensure_table, TableName, Opts}, _From, State) ->
             ?log_info("Created table ~p", [TableName])
     end,
     {reply, ok, State};
-
-handle_call(peers, _From, State) ->
-    Reply = try mnesia:table_info(config, disc_copies)
-            catch exit:{aborted, {no_exists, _, _}} -> []
-            end,
-    {reply, Reply, State};
 
 handle_call(prepare_rename, _From, State) ->
     %% We need to back up the db before changing the node name,
