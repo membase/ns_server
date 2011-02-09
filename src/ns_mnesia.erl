@@ -26,12 +26,13 @@
 -record(state, {}).
 
 %% API
--export([promote/1,
-         promote_self/1,
-         delete_schema/0,
+-export([delete_schema/0,
          demote/1,
+         demote_self/0,
          ensure_table/2,
          prepare_rename/0,
+         promote/1,
+         promote_self/1,
          rename_node/2,
          start_link/0,
          truncate/2]).
@@ -53,6 +54,11 @@ demote(Node) ->
                       [{E, R}])
     end,
     gen_server:call(?MODULE, {demote, Node}).
+
+
+%% @doc Demote this node.
+demote_self() ->
+    gen_server:call(?MODULE, demote_self, 30000).
 
 
 %% @doc Delete the current mnesia schema for joining/renaming purposes.
