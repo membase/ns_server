@@ -64,6 +64,14 @@ clean clean_all:
 	rm -rf ebin
 	rm -rf docs
 
+distclean: clean
+	rm -rf $(TMP_DIR)
+	rm -rf Mnesia*
+	rm -rf config
+	rm -rf data
+	rm -rf logs
+	rm -rf coverage
+
 test: test_$(OS)
 
 test_: test_unit test_menelaus
