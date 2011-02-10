@@ -19,6 +19,8 @@
 
 -behaviour(gen_server).
 
+-include("ns_common.hrl").
+
 -export([start_link/0]).
 
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -102,7 +104,9 @@ adjust_my_address(MyIP) ->
 
 %% Bring up distributed erlang.
 bringup(MyIP) ->
-    MyNodeName = list_to_atom("ns_1@" ++ MyIP),
+    ShortName = misc:get_env_default(short_name, "ns_1"),
+    MyNodeName = list_to_atom(ShortName ++ "@" ++ MyIP),
+    ?log_info("Attempting to bring up net_kernel with name ~p", [MyNodeName]),
     net_kernel:set_net_ticktime(misc:get_env_default(set_net_ticktime, 10)),
     Rv = decode_status(net_kernel:start([MyNodeName, longnames])),
     #state{self_started = Rv, my_ip = MyIP}.
@@ -112,7 +116,7 @@ teardown() ->
     ok = net_kernel:stop().
 
 handle_call({adjust_my_address, MyIP}, _From,
-            #state{self_started = true, my_ip = MyOldIP} = State) ->
+            #state{my_ip = MyOldIP} = State) ->
     case MyIP =:= MyOldIP of
         true -> {reply, nothing, State};
         false -> Cookie = erlang:get_cookie(),
@@ -130,9 +134,6 @@ handle_call({adjust_my_address, MyIP}, _From,
                  error_logger:info_msg("save_address_config: ~p~n", [RV]),
                  {reply, net_restarted, NewState}
     end;
-handle_call({adjust_my_address, _}, _From,
-            #state{self_started = false} = State) ->
-    {reply, nothing, State};
 handle_call(_Request, _From, State) ->
     {reply, unhandled, State}.
 

@@ -8,7 +8,7 @@ def testament_child_death():
         os._exit(0)
     os.waitpid(rv, os.WUNTRACED)
 
-def start_cluster(num_nodes):
+def start_cluster(num_nodes, extra_args):
     path_str = subprocess.Popen(["find", ".", "-name", "ebin", "-type", "d"],
                                 stdout=subprocess.PIPE).communicate()[0]
     path = path_str.split()
@@ -21,20 +21,20 @@ def start_cluster(num_nodes):
         except:
             pass
 
-        args = ["erl", "+A", "16", "-pa"] + path + \
-            ["-setcookie", "nocookie",
-             "-run", "ns_bootstrap",
-             "-kernel", "inet_dist_listen_min", "21100",
-             "inet_dist_listen_max", "21199",
-             "-ns_server", "error_logger_mf_dir", '"{0}"'.format(logdir),
-             "error_logger_mf_maxbytes", "10485760",
-             "error_logger_mf_maxfiles", "10",
-             "path_prefix", '"n_{0}"'.format(i),
-             "rest_port", str(base_api_port + i),
-                 "memcached_port", str(base_direct_port + i * 2),
-             "moxi_port", str(base_direct_port + i * 2 + 1),
-             "--",
-             "-name", "n_{0}@127.0.0.1".format(i)]
+        args = ["erl", "+A", "16", "-pa"] + path + [
+            "-setcookie", "nocookie",
+            "-run", "ns_bootstrap",
+            "-kernel", "inet_dist_listen_min", "21100",
+            "inet_dist_listen_max", "21199",
+            "-ns_server", "error_logger_mf_dir", '"{0}"'.format(logdir),
+            "error_logger_mf_maxbytes", "10485760",
+            "error_logger_mf_maxfiles", "10",
+            "path_prefix", '"n_{0}"'.format(i),
+            "rest_port", str(base_api_port + i),
+            "memcached_port", str(base_direct_port + i * 2),
+            "moxi_port", str(base_direct_port + i * 2 + 1),
+            "short_name", '"n_{0}"'.format(i)
+            ] + extra_args
         if i == 0:
             return subprocess.Popen(args)
         else:
@@ -71,7 +71,7 @@ def main():
     except:
         pass
 
-    nodes = start_cluster(num_nodes)
+    nodes = start_cluster(num_nodes, sys.argv[1:])
 
     for node in nodes:
         node.wait()

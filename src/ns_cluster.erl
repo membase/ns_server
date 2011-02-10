@@ -242,15 +242,16 @@ check_host_connectivity(OtherHost) ->
 
 do_change_address(NewAddr) ->
     MyNode = node(),
+    NewAddr1 = misc:get_env_default(rename_ip, NewAddr),
     case misc:node_name_host(MyNode) of
-        {_, NewAddr} ->
+        {_, NewAddr1} ->
             %% Don't do anything if we already have the right address.
             ok;
         {_, _} ->
             CookieBefore = erlang:get_cookie(),
-            ?log_info("Decided to change address to ~p~n", [NewAddr]),
+            ?log_info("Decided to change address to ~p~n", [NewAddr1]),
             ns_mnesia:prepare_rename(),
-            case dist_manager:adjust_my_address(NewAddr) of
+            case dist_manager:adjust_my_address(NewAddr1) of
                 nothing ->
                     ok;
                 net_restarted ->
