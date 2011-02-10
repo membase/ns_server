@@ -74,7 +74,7 @@ delete_schema() ->
 %% @doc Make sure table exists and has a copy on this node, creating it or
 %% adding a copy if it does not.
 ensure_table(TableName, Opts) ->
-    gen_server:call(?MODULE, {ensure_table, TableName, Opts}, 30000).
+    gen_server:call(?MODULE, {ensure_table, TableName, Opts}).
 
 
 %% @doc Back up the database in preparation for a node rename.
@@ -152,16 +152,21 @@ handle_call({ensure_table, TableName, Opts}, _From, State) ->
                 false ->
                     ?log_info("Creating local copy of ~p",
                               [TableName]),
-                    {atomic, ok} = mnesia:add_table_copy(
-                                     TableName, node(), disc_copies),
-                    ok
+                    {atomic, ok} =
+                        do_with_timeout(
+                          fun () ->
+                                  mnesia:add_table_copy(TableName, node(),
+                                                        disc_copies)
+                          end, 5000)
             end
     catch exit:{aborted, {no_exists, _, _}} ->
+            ?log_info("Creating table ~p", [TableName]),
             {atomic, ok} =
-                mnesia:create_table(
-                  TableName,
-                  Opts ++ [{disc_copies, [node()]}]),
-            ?log_info("Created table ~p", [TableName])
+                do_with_timeout(
+                  fun () ->
+                          mnesia:create_table(
+                            TableName, Opts ++ [{disc_copies, [node()]}])
+                  end, 5000)
     end,
     {reply, ok, State};
 
@@ -313,9 +318,13 @@ init([]) ->
     {ok, #state{}}.
 
 
-terminate(Reason, _State) ->
+terminate(Reason, _State) when Reason == normal; Reason == shutdown ->
     stopped = mnesia:stop(),
     ?log_info("Shut Mnesia down: ~p. Exiting.", [Reason]),
+    ok;
+
+terminate(_Reason, _State) ->
+    %% Don't shut down on crash
     ok.
 
 
@@ -414,6 +423,15 @@ decluster(Source) ->
                                             mnesia_backup, Convert, switched),
     ok = file:rename(Target, Source),
     ok.
+
+
+%% Exit if Fun hasn't returned within the specified timeout.
+%% @hidden
+do_with_timeout(Fun, Timeout) ->
+    {ok, TRef} = timer:exit_after(Timeout, timeout),
+    Result = Fun(),
+    timer:cancel(TRef),
+    Result.
 
 
 %% @doc Make sure we have a disk copy of the schema and all disc tables.
