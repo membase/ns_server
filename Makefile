@@ -34,7 +34,7 @@ ebins:
 	$(REBAR) compile
 
 ebin_app: version
-	sed -i "" s/0.0.0/`cat $(TMP_VER)`/g ebin/ns_server.app
+	sed -e s/0.0.0/`cat $(TMP_VER)`/g ebin/ns_server.app > ebin/ns_server.app~ && mv ebin/ns_server.app~ ebin/ns_server.app
 
 version:
 	test -d $(TMP_DIR) || mkdir $(TMP_DIR)
