@@ -15,9 +15,13 @@ DOC_DIR?=./docs/erldocs
 
 REBAR=./rebar
 
-.PHONY: ebins ebin_app version
+.PHONY: ebins
 
-all: ebins ebin_app deps_all
+# always rebuild TMP_VER just in case someone depends on it be
+# up-to-date
+.PHONY: $(TMP_VER)
+
+all: ebins deps_all
 
 deps_menelaus:
 	(cd deps/menelaus && $(MAKE) all)
@@ -30,13 +34,13 @@ deps_all: deps_menelaus deps_smtp
 docs:
 	priv/erldocs $(DOC_DIR)
 
-ebins:
+ebins: src/ns_server.app.src
 	$(REBAR) compile
 
-ebin_app: version
-	sed -e s/0.0.0/`cat $(TMP_VER)`/g ebin/ns_server.app > ebin/ns_server.app~ && mv ebin/ns_server.app~ ebin/ns_server.app
+src/ns_server.app.src: src/ns_server.app.src.in $(TMP_VER)
+	(sed s/0.0.0/`cat $(TMP_VER)`/g $< > $@) || (rm $@ && false)
 
-version:
+$(TMP_VER):
 	test -d $(TMP_DIR) || mkdir $(TMP_DIR)
 	git describe | sed s/-/_/g > $(TMP_VER)
 

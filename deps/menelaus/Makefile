@@ -6,22 +6,24 @@ DIST_DIR=$(TMP_DIR)/menelaus
 SPROCKETIZE=sprocketize
 REBAR=../../rebar
 
-.PHONY: ebins ebin_app version
+.PHONY: ebins version
+
+# always rebuild TMP_VER just in case someone depends on it be
+# up-to-date
+.PHONY: $(TMP_VER)
 
 all: deps priv/public/js/all.js ebins
 
-ebins: ebin_app
+ebins: src/menelaus.app.src
 	test -d ebin || mkdir ebin
 	$(REBAR) compile
-#erl -noinput +B $(EFLAGS) -eval 'case make:all() of up_to_date -> halt(0); error -> halt(1) end.'
 
-ebin_app: version
-	test -d ebin || mkdir ebin
-	sed s/0.0.0/`cat $(TMP_VER)`/g src/menelaus.app.src > ebin/menelaus.app
+src/menelaus.app.src: src/menelaus.app.src.in $(TMP_VER)
+	(sed s/0.0.0/`cat $(TMP_VER)`/g $< > $@) || (rm $@ && false)
 
-version:
+$(TMP_VER):
 	test -d $(TMP_DIR) || mkdir $(TMP_DIR)
-	git describe | sed s/-/_/g > $(TMP_VER)
+	(git describe | sed s/-/_/g > $(TMP_VER)) || (rm $@ && false)
 
 priv/js/all-images.js: priv/public/images priv/public/images/spinner build-all-images.rb
 	ruby build-all-images.rb >$@

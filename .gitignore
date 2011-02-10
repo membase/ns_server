@@ -1,4 +1,5 @@
 *~
+.DS_Store
 .project
 .settings
 /*luster_config
@@ -6,6 +7,7 @@
 /Mnesia.*
 /features/Makefile
 /ns_server.plt
+/src/ns_server.app.src
 TAGS
 bin
 config
@@ -28,4 +30,3 @@ priv/vbucketmigrator
 test/log
 tmp
 version_num.tmp
-.DS_Store
