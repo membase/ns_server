@@ -56,9 +56,9 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 init(Bucket) ->
-    create_tables(Bucket),
     start_timers(),
     ns_pubsub:subscribe(ns_stats_event),
+    self() ! init,
     {ok, #state{bucket=Bucket}}.
 
 
@@ -70,6 +70,9 @@ handle_cast(_Msg, State) ->
     {noreply, State}.
 
 
+handle_info(init, State) ->
+    create_tables(State#state.bucket),
+    {noreply, State};
 handle_info({stats, Bucket, Sample}, State = #state{bucket=Bucket}) ->
     Tab = table(Bucket, minute),
     {atomic, ok} = mnesia:transaction(fun () ->
