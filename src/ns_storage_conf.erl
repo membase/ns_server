@@ -255,9 +255,8 @@ extract_disk_stats_for_path(StatsList, Path0) ->
 db_files(Dir, Bucket) ->
     BucketSubDir = Bucket ++ "-data",
     S = fun (X) -> [X, X ++ "-shm", X ++ "-wal"] end,
-    S(filename:join(Dir, Bucket)) ++
-      [filename:join([Dir, BucketSubDir, lists:append(Bucket, Suffix)])
-       || Suffix <- lists:flatmap(S, ["-0.mb", "-1.mb", "-2.mb", "-3.mb"])].
+    [filename:join([Dir, BucketSubDir, lists:append(Bucket, Suffix)])
+       || Suffix <- lists:flatmap(S, ["", "-0.mb", "-1.mb", "-2.mb", "-3.mb"])].
 
 delete_all_db_files(DBDir) ->
     {ok, Files} = file:list_dir(DBDir),
@@ -290,9 +289,9 @@ extract_disk_stats_for_path_test() ->
                                              "/media/p2/mbdata")).
 
 db_files_test() ->
-  ?assertEqual(["hello/world",
-                "hello/world-shm",
-                "hello/world-wal",
+  ?assertEqual(["hello/world-data/world",
+                "hello/world-data/world-shm",
+                "hello/world-data/world-wal",
                 "hello/world-data/world-0.mb",
                 "hello/world-data/world-0.mb-shm",
                 "hello/world-data/world-0.mb-wal",

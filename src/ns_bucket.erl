@@ -88,10 +88,9 @@ config_string(BucketName) ->
         case BucketType of
             membase ->
                 DBDir = ns_config:search_node_prop(Config, memcached, dbdir),
-                DBName = filename:join(DBDir, BucketName),
+                DBSubDir = filename:join(DBDir, BucketName ++ "-data"),
+                DBName = filename:join(DBSubDir, BucketName),
                 ok = filelib:ensure_dir(DBName),
-                DBSubDirName = filename:join(DBDir, BucketName ++ "-data"),
-                ok = filelib:ensure_dir(filename:join(DBSubDirName, "file")),
                 %% MemQuota is our total limit for cluster
                 %% LocalQuota is our limit for this node
                 %% We stretch our quota on all nodes we have for this bucket
@@ -101,7 +100,7 @@ config_string(BucketName) ->
                         "vb0=false;waitforwarmup=false;ht_size=~B;"
                         "ht_locks=~B;failpartialwarmup=false;"
                         "db_shards=~B;"
-                        "shardpattern=%d/%b-data/%b-%i.mb;"
+                        "shardpattern=%d/%b-%i.mb;"
                         "db_strategy=multiMTVBDB;"
                         "tap_keepalive=~B;"
                         "tap_noop_interval=~B;"
