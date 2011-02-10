@@ -30,10 +30,9 @@
          demote/1,
          demote_self/0,
          ensure_table/2,
-         prepare_rename/0,
+         maybe_rename/1,
          promote/1,
          promote_self/1,
-         rename_node/2,
          start_link/0,
          truncate/2]).
 
@@ -77,9 +76,10 @@ ensure_table(TableName, Opts) ->
     gen_server:call(?MODULE, {ensure_table, TableName, Opts}).
 
 
-%% @doc Back up the database in preparation for a node rename.
-prepare_rename() ->
-    gen_server:call(?MODULE, prepare_rename).
+%% @doc Possibly rename the node, if it's not clustered. Returns true
+%% if it renamed the node, false otherwise.
+maybe_rename(NewAddr) ->
+    gen_server:call(?MODULE, {maybe_rename, NewAddr}, 30000).
 
 
 %% @doc Promote a node that's already in the cluster to a peer.
@@ -90,15 +90,6 @@ promote(Node) ->
 %% @doc Promote *this* node by joining another node.
 promote_self(OtherNode) ->
     gen_server:call(?MODULE, {promote_self, OtherNode}, 30000).
-
-
-%% @doc Rename a node. Assumes there is only one node. Leaves Mnesia
-%% stopped with no schema and a backup installed as a fallback. Finish
-%% renaming the node and start Mnesia back up and you should have all
-%% your data back. If for some reason you need to go back, you could
-%% install the pre_rename backup as fallback and start Mnesia.
-rename_node(From, To) ->
-    gen_server:call(?MODULE, {rename_node, From, To}).
 
 
 %% @doc Start the gen_server
@@ -148,34 +139,43 @@ handle_call({ensure_table, TableName, Opts}, _From, State) ->
         Nodes when is_list(Nodes) ->
             case lists:member(node(), Nodes) of
                 true ->
-                    ok;
+                    {reply, ok, State};
                 false ->
                     ?log_info("Creating local copy of ~p",
                               [TableName]),
                     {atomic, ok} =
-                        do_with_timeout(
-                          fun () ->
-                                  mnesia:add_table_copy(TableName, node(),
-                                                        disc_copies)
-                          end, 5000)
+                        mnesia:add_table_copy(TableName, node(),
+                                              disc_copies),
+                    {reply, ok, State}
             end
     catch exit:{aborted, {no_exists, _, _}} ->
             ?log_info("Creating table ~p", [TableName]),
             {atomic, ok} =
-                do_with_timeout(
-                  fun () ->
-                          mnesia:create_table(
-                            TableName, Opts ++ [{disc_copies, [node()]}])
-                  end, 5000)
-    end,
-    {reply, ok, State};
+                mnesia:create_table(
+                  TableName, Opts ++ [{disc_copies, [node()]}]),
+            {reply, ok, State}
+    end;
 
-handle_call(prepare_rename, _From, State) ->
+handle_call({maybe_rename, NewAddr}, _From, State) ->
     %% We need to back up the db before changing the node name,
     %% because it will fail if the node name doesn't match the schema.
-    _ = backup(),
-    {reply, ok, State};
-
+    _Tables = backup(),
+    OldName = node(),
+    case dist_manager:adjust_my_address(NewAddr) of
+        nothing ->
+            ?log_info("Not renaming node. Deleting backup.", []),
+            ok = file:delete(backup_file()),
+            {reply, false, State};
+        net_restarted ->
+            %% Make sure the cookie's still the same
+            NewName = node(),
+            ?log_info("Renaming node from ~p to ~p.", [OldName, NewName]),
+            stopped = mnesia:stop(),
+            change_node_name(OldName, NewName),
+            ok = mnesia:delete_schema([NewName]),
+            {ok, State1} = init([]),
+            {reply, true, State1}
+    end;
 handle_call({promote_self, Node}, _From, State) ->
     case mnesia:system_info(db_nodes) of
         [N] when N == node() ->
@@ -197,14 +197,6 @@ handle_call({promote_self, Node}, _From, State) ->
             ok
     end,
     {reply, ok, State};
-
-handle_call({rename_node, From, To}, _From, _State) ->
-    ?log_info("Renaming node from ~p to ~p.", [From, To]),
-    stopped = mnesia:stop(),
-    change_node_name(From, To),
-    ok = mnesia:delete_schema([node()]),
-    {ok, State1} = init([]),
-    {reply, ok, State1};
 
 handle_call(Request, From, State) ->
     ?log_warning("Unexpected call from ~p: ~p", [From, Request]),
@@ -334,6 +326,9 @@ terminate(_Reason, _State) ->
 
 %% @doc Back up the database to a standard location.
 backup() ->
+    backup(5).
+
+backup(Tries) ->
     %% Only back up if there is a disc copy of the schema somewhere
     case mnesia:table_info(schema, disc_copies) of
         [] ->
@@ -342,11 +337,23 @@ backup() ->
         _ ->
             Tables = [Table || Table <- mnesia:system_info(local_tables),
                                mnesia:table_info(Table, local_content)],
-            {ok, Name, _} = mnesia:activate_checkpoint([{min, [schema|Tables]}]),
-            ok = mnesia:backup_checkpoint(Name, backup_file()),
-            ok = mnesia:deactivate_checkpoint(Name),
-            ?log_info("Backed up tables ~p", [Tables]),
-            Tables
+
+            case mnesia:activate_checkpoint([{min, [schema|Tables]}]) of
+                {ok, Name, _} ->
+                    ok = mnesia:backup_checkpoint(Name, backup_file()),
+                    ok = mnesia:deactivate_checkpoint(Name),
+                    ?log_info("Backed up tables ~p", [Tables]),
+                    Tables;
+                {error, Err} ->
+                    ?log_error("Error backing up: ~p (~B tries remaining)",
+                               [Err, Tries]),
+                    case Tries of
+                        0 ->
+                            exit({backup_error, Err});
+                        _ ->
+                            backup(Tries-1)
+                    end
+            end
     end.
 
 
@@ -425,13 +432,16 @@ decluster(Source) ->
     ok.
 
 
-%% Exit if Fun hasn't returned within the specified timeout.
-%% @hidden
-do_with_timeout(Fun, Timeout) ->
-    {ok, TRef} = timer:exit_after(Timeout, timeout),
-    Result = Fun(),
-    timer:cancel(TRef),
-    Result.
+%% @private
+%% @doc Exit if Fun hasn't returned within the specified timeout.
+do_async(Fun, Client, Timeout) ->
+    spawn(
+      fun () ->
+              {ok, TRef} = timer:kill_after(Timeout),
+              Reply = Fun(),
+              timer:cancel(TRef),
+              gen_server:reply(Client, Reply)
+      end).
 
 
 %% @doc Make sure we have a disk copy of the schema and all disc tables.

@@ -248,16 +248,11 @@ do_change_address(NewAddr) ->
             %% Don't do anything if we already have the right address.
             ok;
         {_, _} ->
-            CookieBefore = erlang:get_cookie(),
             ?log_info("Decided to change address to ~p~n", [NewAddr1]),
-            ns_mnesia:prepare_rename(),
-            case dist_manager:adjust_my_address(NewAddr1) of
-                nothing ->
+            case ns_mnesia:maybe_rename(NewAddr1) of
+                false ->
                     ok;
-                net_restarted ->
-                    %% Make sure the cookie's still the same
-                    CookieBefore = erlang:get_cookie(),
-                    ns_mnesia:rename_node(MyNode, node()),
+                true ->
                     rename_node(MyNode, node()),
                     ns_server_sup:node_name_changed(),
                     ?log_info("Renamed node. New name is ~p.~n", [node()]),
