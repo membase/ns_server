@@ -814,13 +814,27 @@ var MockedRequest = mkClass({
         return rv;
       }],
       [get("pools", "default", "buckets", x, "stats"), method('handleStats')],
-      [get("pools", "default", "buckets", x, "nodes", x, "stats"), {
-        "name":"ops",
-        description:"ops per seconds",
-        timestamps: [1281667776000.0,1281667780000.0,1281667784000.0,1281667788000.0,1281667792000.0,
-                     1281667796000.0,1281667800000.0,1281667804000.0,1281667809100.0],
-        servers: {"ns_1@127.0.0.1": [1,2,3,4,5,6,7], "ns_2@127.0.0.1": [1,2,3,4,5,6,7]}
+      [get("pools", "default", "buckets", x, "nodes", x), {
+        hostname:"ns_1@127.0.0.1",
+        stats: {uri: '/pools/default/buckets/4/nodes/ns_1@127.0.0.1/stats'}
       }],
+      [get("pools", "default", "buckets", x, "nodes", x, "stats"), {
+          server: "ns_1@127.0.0.1",
+          op: {
+            samples: {
+              timestamp: [1281667776000.0,1281667780000.0,1281667784000.0,1281667788000.0,
+                           1281667796000.0,1281667800000.0,1281667804000.0,1281667809100.0],
+              "hit_ratio":[0,0,0,0,0,0,100.0,100.0],
+              "ep_cache_hit_rate":[0,0,0,0,0,0,100.0,100.0],
+              "ep_resident_items_rate":[12.283674058456635,12.283674058456635,12.283674058456635,12.283674058456635,12.283674058456635,12.283674058456635,12.283674058456635]
+            },
+            samplesCount: 60,
+            isPersistent: true,
+            lastTStamp: 0,
+            interval: 1000,
+          }
+        }
+      ],
       [get("pools", "default", "overviewStats"), {
         "timestamp":[1281667776000.0,1281667780000.0,1281667784000.0,1281667788000.0,1281667792000.0,
                      1281667796000.0,1281667800000.0,1281667804000.0,1281667809100.0,1281667812000.0,
