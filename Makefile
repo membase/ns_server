@@ -68,13 +68,16 @@ clean clean_all:
 	rm -rf ebin
 	rm -rf docs
 
-distclean: clean
+dataclean:
 	rm -rf $(TMP_DIR)
 	rm -rf Mnesia*
 	rm -rf config
 	rm -rf data
 	rm -rf logs
 	rm -rf coverage
+	rm -f priv/ip
+
+distclean: clean dataclean
 
 test: test_$(OS)
 
