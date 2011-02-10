@@ -345,8 +345,12 @@ json_map_from_config(LocalAddr, BucketConfig) ->
     NumReplicas = num_replicas(BucketConfig),
     Config = ns_config:get(),
     {NumReplicas, _, EMap, BucketNodes} = config_from_info(BucketConfig),
-    ENodes = lists:delete(undefined, lists:usort(lists:append([BucketNodes |
-                                                               EMap]))),
+    ENodes0 = lists:delete(undefined, lists:usort(lists:append([BucketNodes |
+                                                                EMap]))),
+    ENodes = case lists:member(node(), ENodes0) of
+                 true -> [node() | lists:delete(node(), ENodes0)];
+                 false -> ENodes0
+             end,
     Servers = lists:map(
                 fun (ENode) ->
                         Port = ns_config:search_node_prop(ENode, Config,
