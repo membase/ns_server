@@ -487,10 +487,10 @@ var StatGraphs = {
             blockName: "vBUCKET RESOURCES",
             withtotal: true,
             stats: [
-              {desc: "active vBuckets (count)", name: "vb_active_num"},
-              {desc: "replica vBuckets (count)", name: "vb_replica_num"},
-              {desc: "pending vBuckets (count)", name: "vb_pending_num"},
-              {desc: "total vBuckets (count)", name: "ep_vb_total"},
+              {desc: "vBuckets (count)", name: "vb_active_num"},
+              {desc: "vBuckets (count)", name: "vb_replica_num"},
+              {desc: "vBuckets (count)", name: "vb_pending_num"},
+              {desc: "vBuckets (count)", name: "ep_vb_total"},
               // --
               {desc: "# objects", name: "curr_items"},
               {desc: "# objects", name: "vb_replica_curr_items"},
@@ -538,10 +538,10 @@ var StatGraphs = {
               // {desc: "Pending", name: ""},
               // {desc: "Total", name: ""},
 
-              {desc: "active items", name: "vb_active_queue_pending"},
-              {desc: "replica items", name: "vb_replica_queue_pending"},
-              {desc: "pending items", name: "vb_pending_queue_pending"},
-              {desc: "total items", name: "curr_items_tot"},
+              {desc: "items", name: "vb_active_queue_pending"},
+              {desc: "items", name: "vb_replica_queue_pending"},
+              {desc: "items", name: "vb_pending_queue_pending"},
+              {desc: "items", name: "curr_items_tot"},
               // --
               {desc: "queue memory", name: "vb_active_queue_memory"},
               {desc: "queue memory", name: "vb_replica_queue_memory"},
@@ -572,10 +572,10 @@ var StatGraphs = {
               // {desc: "User", name: ""},
               // {desc: "Total", name: ""},
 
-              {desc: "# replica tap senders", name: "ep_tap_replica_count"},
-              {desc: "# rebalance tap senders", name: "ep_tap_rebalance_count"},
-              {desc: "# user tap senders", name: "ep_tap_user_count"},
-              {desc: "# total tap senders", name: "ep_tap_total_count"},
+              {desc: "# tap senders", name: "ep_tap_replica_count"},
+              {desc: "# tap senders", name: "ep_tap_rebalance_count"},
+              {desc: "# tap senders", name: "ep_tap_user_count"},
+              {desc: "# tap senders", name: "ep_tap_total_count"},
               // --
               {desc: "# items", name: "ep_tap_replica_qlen"},
               {desc: "# items", name: "ep_tap_rebalance_qlen"},

@@ -251,6 +251,11 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 .graph_nav.withtotal {background:url(../images/bg_total.gif) 100% 0 repeat-y;}
 .graph_nav h3 {position:relative;top:-11px;left:0;width:97.4%;margin:-14px 1% 0;font-size:14px;text-align:right;text-transform:uppercase;z-index:99;*zoom:1;}
 .graph_nav h3 ins {float:left;width:0;height:0;margin:2px 0 0;border-style:solid;border-width:10px 10px 0 10px;border-color:#01b0ff transparent transparent transparent;cursor:pointer;cursor:hand;}
+
+.graph_nav ul.col_headers {overflow:hidden;margin-right:5px;color:#999;font-weight:bold}
+.graph_nav ul.col_headers li{width:25%;display:block;float:left;text-align:center;text-transform:uppercase}
+.graph_nav ul.col_headers li:last-child{color:#808080}
+
 .graph_nav.closed {height:0;padding:0;border-bottom:12px solid #eeeeef;*border:none;}
 .graph_nav.closed > div {display:none !important;}
 .graph_nav.closed h3 ins {margin:-3px 0 0 4px;border-width:10px 0 10px 10px;border-color:transparent transparent transparent #01b0ff;}
