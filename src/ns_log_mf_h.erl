@@ -80,8 +80,12 @@ start_link() ->
 	    io:write({Dir, MaxB, MaxF, Pred}),
 	    ok = gen_event:add_handler(error_logger, ?MODULE, {Dir, MaxB, MaxF,
 							       Pred}),
-	    error_logger:delete_report_handler(sasl_report_tty_h),
-	    error_logger:delete_report_handler(error_logger_tty_h),
+            case misc:get_env_default(dont_suppress_stderr_logger, false) of
+                false ->
+                    error_logger:delete_report_handler(sasl_report_tty_h),
+                    error_logger:delete_report_handler(error_logger_tty_h);
+                _ -> ok
+            end,
 	    ignore;
 	true ->
 	    ignore
