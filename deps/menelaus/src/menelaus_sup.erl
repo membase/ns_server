@@ -57,6 +57,10 @@ init([]) ->
            {menelaus_web, start_link, []},
            permanent, 5000, worker, dynamic},
 
+    Alerts = {menelaus_web_alerts_srv,
+              {menelaus_web_alerts_srv, start_link, []},
+              permanent, 5000, worker, dynamic},
+
     WebEvent = {menelaus_event,
                 {menelaus_event, start_link, []},
                 transient, 5000, worker, dynamic},
@@ -65,6 +69,5 @@ init([]) ->
                      {hot_keys_keeper, start_link, []},
                      permanent, 5000, worker, dynamic},
 
-    Processes = [Web, WebEvent, HotKeysKeeper],
+    Processes = [Web, WebEvent, HotKeysKeeper, Alerts],
     {ok, {{one_for_one, 10, 10}, Processes}}.
-

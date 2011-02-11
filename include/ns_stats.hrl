@@ -29,6 +29,8 @@
         %% ep_values_size,
         %% ep_overhead
 
+        ep_oom_errors,
+
         vb_active_num,
         vb_replica_num,
         vb_pending_num,

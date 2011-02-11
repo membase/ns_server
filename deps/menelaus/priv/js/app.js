@@ -242,6 +242,8 @@ var ThePage = {
         sec.init();
     });
 
+    initAlertsSubscriber();
+
     DAO.cells.mode.subscribeValue(function (sec) {
       $('.currentNav').removeClass('currentNav');
       $('#switch_' + sec).addClass('currentNav');
@@ -930,3 +932,67 @@ $(function () {
     j.appendTo(body);
   });
 });
+
+
+// uses /pools/default to piggyback any user alerts we want to show
+function initAlertsSubscriber() {
+
+  var alertsShown = false,
+      dialog = null,
+      alerts = [];
+
+  function expireAlerts(msg) {
+    for (var i = 0; i < alerts.length; i++) {
+      alerts[i].viewed = true;
+      alerts[i].lastShown = new Date().getTime();
+    }
+  };
+
+  function addAlert(msg) {
+    for (var i = 0; i < alerts.length; i++) {
+      if (alerts[i].msg === msg) {
+        alerts[i].viewed = false;
+        return;
+      }
+    }
+    alerts.push({msg: msg, lastShown: false, viewed: false});
+  };
+
+  function createAlertMsg() {
+    for (var i = 0, msg =  ""; i < alerts.length; i++) {
+        msg += alerts[i].msg + "\n";
+    }
+    return (msg === "" && false) || msg;
+  };
+
+  DAO.cells.currentPoolDetails.subscribeValue(function (sec) {
+
+    if (sec && sec.alerts && sec.alerts.length > 0) {
+
+      if (alertsShown) {
+        dialog.close();
+      }
+
+      for (var i = 0; i < sec.alerts.length; i++) {
+        addAlert(sec.alerts[i]);
+      }
+
+      alertsShown = true;
+      var alertMsg = createAlertMsg();
+
+      if (alertMsg) {
+        dialog = genericDialog({
+          buttons: {ok: true},
+          modal: false, // TODO: ModalAction is broken
+          header: "Alert",
+          text: alertMsg,
+          callback: function (e, btn, dialog) {
+            expireAlerts();
+            alertsShown = false;
+            dialog.close();
+          }
+        });
+      }
+    }
+  });
+};

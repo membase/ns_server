@@ -13,7 +13,8 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
-%% @doc Store statistics collected from memcached.
+%% @doc Store and aggregate statistics collected from stats_collector into
+%% mnesia, emitting 'sample_archived' events when aggregates are created.
 %%
 
 -module(stats_archiver).
@@ -31,9 +32,11 @@
 
 -record(state, {bucket}).
 
--export([archives/0,
-         start_link/1,
-         table/2, avg/2]).
+-export([ start_link/1,
+          archives/0,
+          table/2,
+          avg/2,
+          latest/3 ]).
 
 -export([code_change/3, init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2]).
@@ -46,6 +49,43 @@
 start_link(Bucket) ->
     gen_server:start_link({local, server(Bucket)}, ?MODULE, Bucket, []).
 
+
+%% @doc the type of statistics collected
+%% {Period, Seconds, Samples}
+archives() ->
+    [{minute, 1,     60},
+     {hour,   4,     900},
+     {day,    60,    1440}, % 24 hours
+     {week,   600,   1152}, % eight days (computer weeks)
+     {month,  1800,  1488}, % 31 days
+     {year,   21600, 1464}]. % 366 days
+
+
+%% @doc Generate a suitable name for the Mnesia table.
+table(Bucket, Period) ->
+    list_to_atom(fmt("~s-~s-~s", [?MODULE_STRING, Bucket, Period])).
+
+
+%% @doc Compute the average of a list of entries.
+-spec avg(list(), list()) -> #stat_entry{}.
+avg(TS, [First|Rest]) ->
+    Sum = fun(_K, null, B) -> B;
+             (_K, A, null) -> A;
+             (_K, A, B)    -> A + B
+          end,
+    Merge = fun(E, Acc) -> orddict:merge(Sum, Acc, E#stat_entry.values) end,
+    Sums = lists:foldl(Merge, First#stat_entry.values, Rest),
+    Count = 1 + length(Rest),
+    #stat_entry{timestamp = TS,
+                values = orddict:map(fun (_Key, null) -> null;
+                                         (_Key, Value) -> Value / Count
+                                     end, Sums)}.
+
+
+%% @doc the last entry to be collected
+-spec latest(atom(), atom(), atom()) -> tuple().
+latest(Bucket, Type, Key) ->
+    lists:keyfind(Key, 1, latest(Bucket, Type)).
 
 %%
 %% gen_server callbacks
@@ -101,32 +141,6 @@ terminate(_Reason, _State) ->
 %% Internal functions
 %%
 
-%% {Period, Seconds, Samples}
-archives() ->
-    [{minute, 1, 60},
-     {hour, 4, 900},
-     {day, 60, 1440}, % 24 hours
-     {week, 600, 1152}, % eight days (computer weeks)
-     {month, 1800, 1488}, % 31 days
-     {year, 21600, 1464}]. % 366 days
-
-
-%% @doc Compute the average of a list of entries.
-avg(TS, [First|Rest]) ->
-    Sums = lists:foldl(fun (E, Acc) ->
-                               Values = E#stat_entry.values,
-                               orddict:merge(fun (_K, null, B) -> B;
-                                                 (_K, A, null) -> A;
-                                                 (_K, A, B) -> A + B end,
-                                             Acc, Values)
-                       end, First#stat_entry.values, Rest),
-    Count = 1 + length(Rest),
-    #stat_entry{timestamp = TS,
-                values = orddict:map(fun (_Key, null) -> null;
-                                         (_Key, Value) ->
-                                             Value / Count
-                                     end, Sums)}.
-
 cascade(Bucket, Prev, Period, Step) ->
     PrevTab = table(Bucket, Prev),
     NextTab = table(Bucket, Period),
@@ -139,17 +153,13 @@ cascade(Bucket, Prev, Period, Step) ->
                              end
                      end, ?RETRIES).
 
-
 create_tables(Bucket) ->
-    lists:foreach(
-      fun ({Period, _, _}) ->
-              ns_mnesia:ensure_table(table(Bucket, Period),
-                                     [{record_name, stat_entry},
-                                      {type, ordered_set},
-                                      {local_content, true},
-                                      {attributes,
-                                       record_info(fields, stat_entry)}])
-      end, archives()).
+    Table = [{record_name, stat_entry},
+             {type, ordered_set},
+             {local_content, true},
+             {attributes, record_info(fields, stat_entry)}],
+    [ ns_mnesia:ensure_table(table(Bucket, Period), Table)
+      || {Period, _, _} <- archives() ].
 
 
 last_chunk(Tab, Step) ->
@@ -159,7 +169,6 @@ last_chunk(Tab, Step) ->
         TS ->
             last_chunk(Tab, TS, Step, [])
     end.
-
 
 last_chunk(Tab, TS, Step, Samples) ->
     Samples1 = [hd(mnesia:read(Tab, TS))|Samples],
@@ -173,15 +182,16 @@ last_chunk(Tab, TS, Step, Samples) ->
     end.
 
 
-
 %% @doc Generate a suitable name for the per-bucket gen_server.
 server(Bucket) ->
     list_to_atom(?MODULE_STRING ++ "-" ++ Bucket).
+
 
 %% @doc Start the timers to cascade samples to the next resolution.
 start_cascade_timers([{Prev, _, _} | [{Next, Step, _} | _] = Rest]) ->
     timer:send_interval(200 * Step, {cascade, Prev, Next, Step}),
     start_cascade_timers(Rest);
+
 start_cascade_timers([_]) ->
     ok.
 
@@ -198,8 +208,21 @@ start_timers() ->
     start_cascade_timers(Archives).
 
 
-%% @doc Generate a suitable name for the Mnesia table.
-table(Bucket, Period) ->
-    list_to_atom(lists:flatten(io_lib:format("~s-~s-~s",
-                                             [?MODULE_STRING,
-                                              Bucket, Period]))).
+%% @doc read the latest set of stat_entry values on a bucket
+latest(Bucket, Type) ->
+    Table = table(Bucket, Type),
+    Stats = mnesia:activity(transaction, fun read_latest/1, [Table]),
+    Stats#stat_entry.values.
+
+
+%% @doc read the latest item from a table, expected to be run inside a
+%% transaction context
+-spec read_latest(atom()) -> any().
+read_latest(Table) ->
+    [Last] = mnesia:read(Table, mnesia:last(Table)),
+    Last.
+
+
+-spec fmt(string(), list()) -> list().
+fmt(Str, Args)  ->
+    lists:flatten(io_lib:format(Str, Args)).

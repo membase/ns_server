@@ -449,35 +449,40 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
                           {running, _ProgressList} -> <<"running">>;
                           _ -> <<"none">>
                       end,
+
+    Uri = bin_concat_path(["pools", Id, "controller", "testWorkload"]),
+    Alerts = menelaus_web_alerts_srv:fetch_alerts(),
+
+    Controllers = {struct, [
+        {addNode, {struct, [{uri, <<"/controller/addNod">>}]}},
+        {rebalance, {struct, [{uri, <<"/controller/rebalanc">>}]}},
+        {failOver, {struct, [{uri, <<"/controller/failOver">>}]}},
+        {reAddNode, {struct, [{uri, <<"/controller/reAddNode">>}]}},
+        {ejectNode, {struct, [{uri, <<"/controller/ejectNode">>}]}},
+        {testWorkload, {struct, [{uri, Uri}]}}]},
+
     PropList0 = [{name, list_to_binary(Id)},
+                 {alerts, Alerts},
                  {nodes, Nodes},
                  {buckets, BucketsInfo},
-                 {controllers, {struct,
-                                [{addNode, {struct, [{uri, <<"/controller/addNode">>}]}},
-                                 {rebalance, {struct, [{uri, <<"/controller/rebalance">>}]}},
-                                 {failOver, {struct, [{uri, <<"/controller/failOver">>}]}},
-                                 {reAddNode, {struct, [{uri, <<"/controller/reAddNode">>}]}},
-                                 {ejectNode, {struct, [{uri, <<"/controller/ejectNode">>}]}},
-                                 {testWorkload, {struct,
-                                                 [{uri,
-                                                   list_to_binary(concat_url_path(["pools", Id, "controller", "testWorkload"]))}]}}]}},
+                 {controllers, Controllers},
                  {balanced, ns_cluster_membership:is_balanced()},
                  {failoverWarnings, ns_bucket:failover_warnings()},
                  {rebalanceStatus, RebalanceStatus},
-                 {rebalanceProgressUri, list_to_binary(concat_url_path(["pools", Id, "rebalanceProgress"]))},
+                 {rebalanceProgressUri, bin_concat_path(["pools", Id, "rebalanceProgress"])},
                  {stopRebalanceUri, <<"/controller/stopRebalance">>},
                  {nodeStatusesUri, <<"/nodeStatuses">>},
                  {stats, {struct,
-                          [{uri,
-                            list_to_binary(concat_url_path(["pools", Id, "stats"]))}]}}],
+                          [{uri, bin_concat_path(["pools", Id, "stats"])}]}}],
     PropList =
         case InfoLevel of
             normal ->
-                [{storageTotals, {struct, [{Key, {struct, StoragePList}}
-                                           || {Key, StoragePList} <- ns_storage_conf:cluster_storage_info()]}}
-                 | PropList0];
+                StorageTotals = [ {Key, {struct, StoragePList}}
+                  || {Key, StoragePList} <- ns_storage_conf:cluster_storage_info()],
+                [{storageTotals, {struct, StorageTotals}} | PropList0];
             _ -> PropList0
         end,
+
     {struct, PropList}.
 
 build_nodes_info() ->
@@ -1322,3 +1327,6 @@ handle_node_statuses(Req) ->
                              {Hostname, V}
                      end, Nodes),
     reply_json(Req, {struct, NodeStatuses}, 200).
+
+bin_concat_path(Path) ->
+    list_to_binary(concat_url_path(Path)).
