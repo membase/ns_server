@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import os, subprocess, sys, signal, termios, atexit, socket
+import os, subprocess, sys, signal, termios, atexit, socket, getopt
 
 def testament_child_death():
     rv = os.fork()
@@ -43,7 +43,7 @@ def start_cluster(num_nodes, extra_args):
     return [start_node(i) for i in xrange(num_nodes)]
 
 def usage():
-    sys.exit("Usage: {0} num_nodes")
+    sys.exit("Usage: {0} [--dont-rename] num_nodes [ns_server args]".format(sys.argv[0]))
 
 def maybe_spawn_epmd():
     try:
@@ -53,11 +53,41 @@ def maybe_spawn_epmd():
         subprocess.Popen("erl -noshell -setcookie nocookie -sname init -run init stop 2>&1 > /dev/null",
                          shell = True).communicate()
 
+def find_primary_addr():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("8.8.8.8", 56))
+        addr, port = s.getsockname()
+        return addr
+    except socket.error:
+        return None
+    finally:
+        s.close()
 
 def main():
     try:
-        num_nodes = int(sys.argv[1])
+        optlist, args = getopt.gnu_getopt(sys.argv[1:], "h", ["help", "dont-rename"])
+    except getopt.GetoptError, err:
+        # print help information and exit:
+        print str(err) # will print something like "option -a not recognized"
+        usage()
+        sys.exit(2)
+
+    dont_rename = False
+
+    for o, a in optlist:
+        if o == '--dont-rename':
+            dont_rename = True
+        elif o in ("--help", "-h"):
+            usage()
+            exit(0)
+        else:
+            assert False, "unhandled options"
+
+    try:
+        num_nodes = int(args[0])
     except:
+        print("Failed to parse number of nodes: " + args[0])
         usage()
 
     nodes = []
@@ -83,7 +113,17 @@ def main():
 
     maybe_spawn_epmd()
 
-    nodes = start_cluster(num_nodes, sys.argv[1:])
+    extra_args = []
+    if not dont_rename:
+        primary_addr = find_primary_addr()
+        if primary_addr == None:
+            print("was unable to detect 'internet' address of this machine."
+                  + " node rename will be disabled")
+        else:
+            extra_args += ["rename_ip", '"' + primary_addr + '"']
+    extra_args += args[1:]
+
+    nodes = start_cluster(num_nodes, extra_args)
 
     for node in nodes:
         node.wait()
