@@ -53,6 +53,7 @@ def main():
         usage()
 
     nodes = []
+    terminal_attrs = None
 
     def kill_nodes(*args):
         for n in nodes:
@@ -60,12 +61,13 @@ def main():
                 n.kill()
             except OSError:
                 pass
+        if terminal_attrs != None:
+            termios.tcsetattr(sys.stdin, termios.TCSANOW, terminal_attrs)
 
     atexit.register(kill_nodes)
 
     testament_child_death()
 
-    terminal_attrs = None
     try:
         terminal_attrs = termios.tcgetattr(sys.stdin)
     except:
@@ -75,9 +77,6 @@ def main():
 
     for node in nodes:
         node.wait()
-
-    if terminal_attrs != None:
-        termios.tcsetattr(sys.stdin, termios.TCSANOW, terminal_attrs)
 
 
 if __name__ == '__main__':
