@@ -116,7 +116,7 @@ teardown() ->
     ok = net_kernel:stop().
 
 handle_call({adjust_my_address, MyIP}, _From,
-            #state{my_ip = MyOldIP} = State) ->
+            #state{self_started = true, my_ip = MyOldIP} = State) ->
     case MyIP =:= MyOldIP of
         true -> {reply, nothing, State};
         false -> Cookie = erlang:get_cookie(),
@@ -134,6 +134,9 @@ handle_call({adjust_my_address, MyIP}, _From,
                  error_logger:info_msg("save_address_config: ~p~n", [RV]),
                  {reply, net_restarted, NewState}
     end;
+handle_call({adjust_my_address, _}, _From,
+            #state{self_started = false} = State) ->
+    {reply, nothing, State};
 handle_call(_Request, _From, State) ->
     {reply, unhandled, State}.
 
