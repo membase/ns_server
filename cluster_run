@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import os, subprocess, sys, signal, termios, atexit
+import os, subprocess, sys, signal, termios, atexit, socket
 
 def testament_child_death():
     rv = os.fork()
@@ -45,6 +45,14 @@ def start_cluster(num_nodes, extra_args):
 def usage():
     sys.exit("Usage: {0} num_nodes")
 
+def maybe_spawn_epmd():
+    try:
+        socket.create_connection(("127.0.0.1", 4369)).close()
+    except socket.error:
+        print("Spawning epmd...\n")
+        subprocess.Popen("erl -noshell -setcookie nocookie -sname init -run init stop 2>&1 > /dev/null",
+                         shell = True).communicate()
+
 
 def main():
     try:
@@ -72,6 +80,8 @@ def main():
         terminal_attrs = termios.tcgetattr(sys.stdin)
     except:
         pass
+
+    maybe_spawn_epmd()
 
     nodes = start_cluster(num_nodes, sys.argv[1:])
 
