@@ -162,6 +162,8 @@ _tasks = [
     LinuxTask("Swap configuration", "free -t"),
     LinuxTask("Swap configuration", "swapon -s"),
     LinuxTask("Kernel modules", "lsmod"),
+    LinuxTask("Distro version", "cat /etc/redhat-release"),
+    LinuxTask("Distro version", "lsb_release -a"),
     LinuxTask("Installed software", "rpm -qa"),
     LinuxTask("Installed software", "COLUMNS=300 dpkg -l"),
     LinuxTask("Extended iostat", "iostat -x -p ALL 1 10 || iostat -x 1 10"),
