@@ -26,7 +26,7 @@ $(TMP_VER):
 	(git describe | sed s/-/_/g > $(TMP_VER)) || (rm $@ && false)
 
 priv/js/all-images.js: priv/public/images priv/public/images/spinner build-all-images.rb
-	ruby build-all-images.rb >$@
+	ruby build-all-images.rb >$@ || (rm $@ && false)
 
 priv/public/js/all.js: priv/js/*.js priv/js/all-images.js
 	mkdir -p `dirname $@`
