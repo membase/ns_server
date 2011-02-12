@@ -168,6 +168,7 @@ _tasks = [
     LinuxTask("Installed software", "COLUMNS=300 dpkg -l"),
     LinuxTask("Extended iostat", "iostat -x -p ALL 1 10 || iostat -x 1 10"),
     LinuxTask("Process usage", "export TERM=linux; top -b -n1 | egrep 'moxi|memcached|vbucketmigrator|CPU|load|Mem:|Swap:|Cpu(s)'"),
+    LinuxTask("Core dump settings", "find /proc/sys/kernel -type f -name '*core*' -print -exec cat '{}' ';'"),
     MacOSXTask("Process list snapshot", "top -l 1"),
     MacOSXTask("Disk activity", "iostat 1 10"),
     MacOSXTask("Process list ",
