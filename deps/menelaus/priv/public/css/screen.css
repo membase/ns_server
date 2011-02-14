@@ -257,9 +257,8 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 .graph_nav ul.col_headers li:last-child{color:#808080}
 
 .graph_nav.closed {height:0;padding:0;border-bottom:12px solid #eeeeef;*border:none;}
-.graph_nav.closed > div {display:none !important;}
+.graph_nav.closed > div, .graph_nav.closed ul.col_headers {display:none !important;}
 .graph_nav.closed h3 ins {margin:-3px 0 0 4px;border-width:10px 0 10px 10px;border-color:transparent transparent transparent #01b0ff;}
-
 .graph_nav .analytics-small-graph {overflow:visible;width:174px !important;height:60px !important; margin:4px 7px 5px;}
 .graph_nav .analytics-small-graph:hover {background-position:0 -122px;z-index:90;}
 .graph_nav .analytics-small-graph.selected {background-position:0 -61px;}
