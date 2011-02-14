@@ -23,6 +23,8 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -export([handle_bucket_stats/3,
+         handle_bucket_node_list/3,
+         handle_bucket_node_info/4,
          handle_bucket_node_stats/4,
          handle_overview_stats/2,
          basic_stats/1,
@@ -165,12 +167,50 @@ handle_buckets_stats(PoolId, BucketIds, Req) ->
     {struct, PropList2} = build_buckets_stats_hks_response(PoolId, BucketIds),
     menelaus_util:reply_json(Req, {struct, PropList1 ++ PropList2}).
 
-%% Per-Server Stats
+%% Node list
+%% GET /pools/{PoolID}/buckets/{Id}/nodes
+%%
+%% Provides a list of nodes for a specific bucket (generally all nodes) with
+%% links to stats for the default bucket
+%%
+%% TODO: consider the value of this vs. storing links elsewhere
+handle_bucket_node_list(PoolId, Id, Req) ->
+    Req:ok({"application/json",
+            menelaus_util:server_header(),
+            <<"{
+                \"servers\": [
+                  {\"hostname\":\"ns_1@127.0.0.1:9001\",
+                   \"stats\": {\"uri\": \"/pools/default/buckets/default/nodes/ns_1@127.0.0.1:9001/stats\"}
+                  },
+                  {\"hostname\":\"ns_1@127.0.0.1:9000\",
+                   \"stats\": {\"uri\": \"/pools/default/buckets/default/nodes/ns_1@127.0.0.1:9000/stats\"}
+                  }]
+            }">>}).
+
+%% Per-Node Stats URL information
+%% GET /pools/{PoolID}/buckets/{Id}/nodes/{NodeId}
+%%
+%% Provides node hostname and links to the default bucket and node-specific
+%% stats for the default bucket
+%%
+%% TODO: consider what else might be of value here
+handle_bucket_node_info(PoolId, Id, NodeId, Req) ->
+    Req:ok({"application/json",
+            menelaus_util:server_header(),
+            <<"{
+        \"hostname\":\"ns_1@127.0.0.1\",
+        \"bucket\": {\"uri\": \"/pools/default/buckets/default\"},
+        \"stats\": {\"uri\": \"/pools/default/buckets/default/nodes/ns_1@127.0.0.1/stats\"}
+      }">>}).
+
+%% Per-Node Stats
 %% GET /pools/{PoolID}/buckets/{Id}/nodes/{NodeId}/stats
+%%
+%% Per-node stats match bucket stats with the addition of a 'node' key,
+%% stats specific to the node (obviously), and removal of any cross-node stats
 handle_bucket_node_stats(PoolId, Id, NodeId, Req) ->
     %% TODO: implement real stats, server look up, etc.
-    %% TODO: drop 501 status code once this does something
-    menelaus_util:reply_json(Req, {struct, [{server, list_to_binary(NodeId)}]}, 501).
+    handle_buckets_stats(PoolId, [Id], Req).
 
 %% ops SUM(cmd_get, cmd_set,
 %%         incr_misses, incr_hits,

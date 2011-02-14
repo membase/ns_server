@@ -140,7 +140,15 @@ loop(Req, AppRoot, DocRoot) ->
                              ["pools", PoolId, "buckets", Id, "stats"] ->
                                  {auth_bucket, fun menelaus_stats:handle_bucket_stats/3,
                                   [PoolId, Id]};
-                             %% GET /pools/{PoolId}/buckets/{Id}/nodes/{NodeId}stats
+                             %% GET /pools/{PoolId}/buckets/{Id}/nodes
+                             ["pools", PoolId, "buckets", Id, "nodes"] ->
+                                 {auth_bucket, fun menelaus_stats:handle_bucket_node_list/3,
+                                  [PoolId, Id]};
+                             %% GET /pools/{PoolId}/buckets/{Id}/nodes/{NodeId}
+                             ["pools", PoolId, "buckets", Id, "nodes", NodeId] ->
+                                 {auth_bucket, fun menelaus_stats:handle_bucket_node_info/4,
+                                  [PoolId, Id, NodeId]};
+                             %% GET /pools/{PoolId}/buckets/{Id}/nodes/{NodeId}/stats
                              ["pools", PoolId, "buckets", Id, "nodes", NodeId, "stats"] ->
                                   {auth_bucket, fun menelaus_stats:handle_bucket_node_stats/4,
                                    [PoolId, Id, NodeId]};
