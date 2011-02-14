@@ -33,14 +33,14 @@
         <!--<li class="line"></li>-->
         <li class="line"><a id="switch_overview" href="#sec=overview">Cluster Overview</a></li>
         <li class="line"><a id="switch_monitor_buckets" href="#sec=monitor_buckets">Data Buckets</a></li>
-        <li class="line"><a id="switch_monitor_servers" href="#sec=monitor_servers">Servers</a></li>
+        <li class="line"><a id="switch_monitor_servers" href="#sec=monitor_servers">Server Nodes</a></li>
         <li class="line"><a id="switch_log" href="#sec=log">Log</a></li>
       </ul>
 
       <h1>MANAGE</h1>
       <ul>
         <li class="line"><a id="switch_buckets" href="#sec=buckets">Data Buckets</a></li>
-        <li class="line"><a id="switch_servers" href="#sec=servers">Servers</a></li>
+        <li class="line"><a id="switch_servers" href="#sec=servers">Server Nodes</a></li>
       </ul>
 
       <h1>SUPPORT</h1>
@@ -63,12 +63,14 @@
               <table class="lined_tab">
                 <col width="">
                 <tr>
-                  <th>Server</th>
+                  <th>Server Node Name</th>
                 </tr>
-                <!-- {% _.each(rows, function (s) { %} -->
+                <!-- {% $.each(rows, function () { %} -->
                 <tr>
-                  <td>{%= h(s.hostname).replace(/\:[0-9]*/g, "") %}</td>
-                </tr>
+                    <td>
+                    <a href="#visitStats=/pools/default/buckets/default/nodes/{%= h(this.hostname) %}">{%= h(this.hostname) %}</a>
+                    </td>
+                  </tr>
                 <!-- {% }); %} -->
               </table>
               </script>
@@ -308,9 +310,9 @@
               <h3><ins class="stats-block-expander"></ins>{%= h(blockInfo.blockName) %}</h3>
               <ul class="col_headers">
               {% if (blockInfo.blockName == 'TAP QUEUES') { %}
-                <li>Replica</li>
+                <li>Replication</li>
                 <li>Rebalance</li>
-                <li>User</li>
+                <li>Clients</li>
                 <li>Total</li>
               {% } else if (blockInfo.blockName != 'PERFORMANCE') { %}
                 <li>Active</li>
