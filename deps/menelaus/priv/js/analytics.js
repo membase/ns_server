@@ -464,8 +464,8 @@ var StatGraphs = {
             stats: [
               // Total
               {desc: "ops per second", name: "ops"},
-              {desc: "direct per second", name: "ops_direct", missing: true},
-              {desc: "moxi per second", name: "ops_moxi", missing: true},
+              {desc: "direct per second", name: "direct_ops"},
+              {desc: "moxi per second", name: "proxy_cmd_count"},
               {desc: "average object size", name: "avg_item_size", missing: true}, // need total size _including_ size on disk
               // Read
               {desc: "cache hit %", name: "ep_cache_hit_rate"}, //?
@@ -476,12 +476,12 @@ var StatGraphs = {
               {desc: "creates per second", name: "ep_ops_create"}, // TODO: aggregate it in ns_server
               {desc: "updates per second", name: "ep_ops_update"}, // ?
               {desc: "write latency", name: "ep_write_latency", missing: true}, // ?
-              {desc: "back-offs per second", name: "ep_tap_total_queue_backoff"} //,
+              {desc: "back-offs per second", name: "ep_tap_total_queue_backoff"}, //,
               // Moxi
-              // {desc: "local %", name: "", missing: true},
-              // {desc: "local latency", name: "", missing: true},
-              // {desc: "proxy %", name: "", missing: true},
-              // {desc: "proxy latency", name: "", missing: true}
+              {desc: "local %", name: "proxy_local_ratio"},
+              {desc: "local latency", name: "proxy_local_latency"},
+              {desc: "proxy %", name: "proxy_ratio"},
+              {desc: "proxy latency", name: "proxy_latency"}
             ]
           }, {
             blockName: "vBUCKET RESOURCES",
