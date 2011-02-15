@@ -146,30 +146,25 @@ grab_bucket_topkeys(BucketName) ->
 ops_desc_comparator({_, ValsA}, {_, ValsB}) ->
     proplists:get_value(ops, ValsA) > proplists:get_value(ops, ValsB).
 
+%% @private
+%% @doc Merge proplists containing lists.
+merge_list_proplists(PL1, PL2) ->
+    RL1 = case PL1 of undefined -> []; _ -> PL1 end,
+    RL2 = case PL2 of undefined -> []; _ -> PL2 end,
+    misc:ukeymergewith(fun ({K, V1}, {_, V2}) -> {K, lists:append(V1,V2)} end, 1, RL1, RL2).
+
 keys_updater_body() ->
     LocalUpdatedKeys = lists:sublist(lists:sort(fun ops_desc_comparator/2,
                                                 [{Name, grab_bucket_topkeys(Name)} || Name <- ns_bucket:get_bucket_names()]),
                                      ?TOP_KEYS_NUMBER),
-    {Replies, _} = gen_server:multi_call(ns_node_disco:nodes_actual_other(),
-                                         ?MODULE, all_local_hot_keys, 2000),
+    {RemoteKeys, _BadNodes} = mb_grid:aggregate_call(ns_node_disco:nodes_actual_other(),
+                                                     ?MODULE, all_local_hot_keys, fun merge_list_proplists/2, 2000),
     MergedKeys = lists:map(fun ({BucketName, LocalKeys}) ->
-                                   %% assuming no hot keys are duplicated across cluster
-                                   ToAppend = lists:foldl(fun ({_Node, Reply}, ListOfLists) ->
-                                                                  case Reply of
-                                                                      undefined -> ListOfLists;
-                                                                      _ ->
-                                                                          case proplists:get_value(BucketName, Reply) of
-                                                                              undefined -> ListOfLists;
-                                                                              X -> [X | ListOfLists]
-                                                                          end
-                                                                  end
-                                                          end, [LocalKeys], Replies),
-                                   AllKeys = lists:append(ToAppend),
+                                   AllKeys = lists:append(LocalKeys, proplists:get_value(BucketName, RemoteKeys, [])),
                                    FinalKeys = lists:sublist(lists:sort(fun ops_desc_comparator/2, AllKeys),
                                                              ?TOP_KEYS_NUMBER),
                                    {BucketName, FinalKeys}
                            end, LocalUpdatedKeys),
-    %% ?log_info("Updating keeped hot keys: ~p", [LocalUpdatedKeys]),
     gen_server:cast(?MODULE, {set_keys, MergedKeys, LocalUpdatedKeys}).
 
 %%--------------------------------------------------------------------
