@@ -212,6 +212,20 @@ handle_bucket_node_stats(PoolId, Id, NodeId, Req) ->
     %% TODO: implement real stats, server look up, etc.
     handle_buckets_stats(PoolId, [Id], Req).
 
+%% Specific Stat URL for all buckets
+%% GET /pools/{PoolID}/buckets/{Id}/stats/{StatName}
+handle_specific_stat_for_buckets(PoolId, Id, StatName, Req) ->
+    %% TODO: implement real stats, server look up, etc.
+    %% TODO: drop 501 status code once this does something
+    menelaus_util:reply_json(Req, {struct, [{server, list_to_binary(NodeId)}]}, 501).
+
+%% Specific Stat URL for specific server
+%% GET /pools/{PoolID}/buckets/{Id}/stats/{StatName}?per_node=true
+handle_specific_stat_for_buckets_split_per_node(PoolId, Id, Stat, PerNode, Req) ->
+    %% TODO: implement real stats, server look up, etc.
+    %% TODO: drop 501 status code once this does something
+    menelaus_util:reply_json(Req, {struct, [{server, list_to_binary(NodeId)}]}, 501).
+
 %% ops SUM(cmd_get, cmd_set,
 %%         incr_misses, incr_hits,
 %%         decr_misses, decr_hits,
