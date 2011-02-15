@@ -134,7 +134,7 @@ handle_call(demote_self, _From, State) ->
             {reply, ok, State1}
     end;
 
-handle_call({ensure_table, TableName, Opts}, _From, State) ->
+handle_call({ensure_table, TableName, Opts}, From, State) ->
     try mnesia:table_info(TableName, disc_copies) of
         Nodes when is_list(Nodes) ->
             case lists:member(node(), Nodes) of
@@ -143,17 +143,23 @@ handle_call({ensure_table, TableName, Opts}, _From, State) ->
                 false ->
                     ?log_info("Creating local copy of ~p",
                               [TableName]),
-                    {atomic, ok} =
-                        mnesia:add_table_copy(TableName, node(),
-                                              disc_copies),
-                    {reply, ok, State}
+                    do_with_timeout(
+                      fun () ->
+                              {atomic, ok} =
+                                  mnesia:add_table_copy(TableName, node(),
+                                                        disc_copies)
+                      end, From, 5000),
+                    {noreply, State}
             end
     catch exit:{aborted, {no_exists, _, _}} ->
             ?log_info("Creating table ~p", [TableName]),
-            {atomic, ok} =
-                mnesia:create_table(
-                  TableName, Opts ++ [{disc_copies, [node()]}]),
-            {reply, ok, State}
+            do_with_timeout(
+              fun () ->
+                      {atomic, ok} =
+                          mnesia:create_table(
+                            TableName, Opts ++ [{disc_copies, [node()]}])
+              end, From, 5000),
+            {noreply, State}
     end;
 
 handle_call({maybe_rename, NewAddr}, _From, State) ->
@@ -434,14 +440,34 @@ decluster(Source) ->
 
 %% @private
 %% @doc Exit if Fun hasn't returned within the specified timeout.
-do_async(Fun, Client, Timeout) ->
-    spawn(
-      fun () ->
-              {ok, TRef} = timer:kill_after(Timeout),
-              Reply = Fun(),
-              timer:cancel(TRef),
-              gen_server:reply(Client, Reply)
-      end).
+-spec do_with_timeout(fun(), {pid(), any()}, non_neg_integer()) ->
+                             ok.
+do_with_timeout(Fun, Client, Timeout) ->
+    {Pid, Ref} =
+        spawn_monitor(
+          fun () ->
+                  Reply = Fun(),
+                  gen_server:reply(Client, Reply)
+          end),
+    receive
+        {'DOWN', Ref, _, _, Reason} ->
+            case Reason of
+                normal ->
+                    ok;
+                _ ->
+                    %% We'll just let the caller time out, since we
+                    %% have no idea if the worker actually tried to
+                    %% send a reply.
+                    ?log_error("Worker process exited with reason ~p",
+                               [Reason]),
+                    ok
+            end
+    after Timeout ->
+            ?log_error("Worker process timed out. Killing it.", []),
+            erlang:demonitor(Ref, [flush]),
+            exit(Pid, kill),
+            ok
+    end.
 
 
 %% @doc Make sure we have a disk copy of the schema and all disc tables.
