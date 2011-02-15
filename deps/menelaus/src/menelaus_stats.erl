@@ -345,9 +345,13 @@ samples_to_proplists(Samples) ->
                                  (Gets, Hits) -> Hits * 100/Gets
                              end, CmdGets, orddict:fetch(get_hits, Dict)),
     Z2 = fun (StatNameA, StatNameB, Combiner) ->
-                 lists:zipwith(Combiner,
-                               orddict:fetch(StatNameA, Dict),
-                               orddict:fetch(StatNameB, Dict))
+                 ResA = orddict:find(StatNameA, Dict),
+                 ResB = orddict:find(StatNameB, Dict),
+                 case {ResA, ResB} of
+                     {{ok, ValA}, {ok, ValB}} ->
+                         lists:zipwith(Combiner, ValA, ValB);
+                     _ -> undefined
+                 end
          end,
     EPCacheHitRatio = lists:zipwith(fun (BGFetches, Gets) ->
                                             try (Gets - BGFetches) * 100 / Gets
@@ -399,17 +403,49 @@ samples_to_proplists(Samples) ->
                         ResidenceCalculator),
     %% TotalResRate = Z2(ep_num_non_resident, curr_items_tot,
     %%                   ResidenceCalculator),
-    [{hit_ratio, HitRatio},
-     {ep_cache_hit_rate, EPCacheHitRatio},
-     {ep_resident_items_rate, ResidentItemsRatio},
-     {vb_avg_active_queue_age, AvgActiveQueueAge},
-     {vb_avg_replica_queue_age, AvgReplicaQueueAge},
-     {vb_avg_pending_queue_age, AvgPendingQueueAge},
-     {vb_avg_total_queue_age, AvgTotalQueueAge},
-     {vb_active_resident_items_ratio, ActiveResRate},
-     {vb_replica_resident_items_ratio, ReplicaResRate},
-     {vb_pending_resident_items_ratio, PendingResRate}
-     | orddict:to_list(Dict)].
+    ProxyRatio = Z2(proxy_cmd_count, ops,
+                    fun (ProxyOps, Ops) ->
+                            try ProxyOps / Ops * 100
+                            catch error:badarith -> 0
+                            end
+                    end),
+    LocalRatio = Z2(proxy_local_cmd_count, proxy_cmd_count,
+                    fun (LocalCount, TotalCount) ->
+                            try LocalCount / TotalCount * 100
+                            catch error:badarith -> 0
+                            end
+                    end),
+    ProxyLocalLatencyMillis = Z2(proxy_local_cmd_time, proxy_local_cmd_count,
+                                 fun (LocalTime, LocalCount) ->
+                                         try LocalTime / LocalCount / 1000
+                                         catch error:badarith -> 0
+                                         end
+                                 end),
+    ProxyTotalLatencyMillis = Z2(proxy_cmd_time, proxy_cmd_count,
+                                 fun (Time, Count) ->
+                                         try Time / Count / 1000
+                                         catch error:badarith -> 0
+                                         end
+                                 end),
+    ExtraStats = [{hit_ratio, HitRatio},
+                  {ep_cache_hit_rate, EPCacheHitRatio},
+                  {ep_resident_items_rate, ResidentItemsRatio},
+                  {vb_avg_active_queue_age, AvgActiveQueueAge},
+                  {vb_avg_replica_queue_age, AvgReplicaQueueAge},
+                  {vb_avg_pending_queue_age, AvgPendingQueueAge},
+                  {vb_avg_total_queue_age, AvgTotalQueueAge},
+                  {vb_active_resident_items_ratio, ActiveResRate},
+                  {vb_replica_resident_items_ratio, ReplicaResRate},
+                  {vb_pending_resident_items_ratio, PendingResRate},
+                  {proxy_local_ratio, LocalRatio},
+                  {proxy_local_latency, ProxyLocalLatencyMillis},
+                  {proxy_ratio, ProxyRatio},
+                  {proxy_latency, ProxyTotalLatencyMillis}],
+
+    lists:filter(fun ({_, undefined}) -> false;
+                     ({_, _}) -> true
+                 end, ExtraStats)
+        ++ orddict:to_list(Dict).
 
 build_buckets_stats_ops_response(_PoolId, [BucketName], Params) ->
     {Samples, ClientTStamp, Step, TotalNumber} = grab_op_stats(BucketName, Params),

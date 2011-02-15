@@ -52,14 +52,15 @@ handle_call(unhandled, unhandled, unhandled) ->
 handle_cast(unhandled, unhandled) ->
     unhandled.
 
-stats_with_tap_stats(Bucket) ->
+grab_all_stats(Bucket) ->
     {ok, Stats} = ns_memcached:stats(Bucket),
     TapStats = ns_memcached:tap_stats(Bucket),
-    {Stats, TapStats}.
+    ProxyStats = moxi_stats_collector:fetch_stats(Bucket),
+    {ProxyStats ++ Stats, TapStats}.
 
 handle_info({tick, TS}, #state{bucket=Bucket, counters=Counters, last_ts=LastTS}
             = State) ->
-    try stats_with_tap_stats(Bucket) of
+    try grab_all_stats(Bucket) of
         {Stats, TapStats} ->
             TS1 = latest_tick(TS),
             {Entry, NewCounters} = parse_stats(TS1, Stats, TapStats, Counters, LastTS),
@@ -262,8 +263,16 @@ parse_stats(TS, Stats, TapStats, {LastCounters, LastTapCounters}, LastTS) ->
                        %%                Values0) - orddict:fetch(ep_num_active_non_resident,
                        %% Values0)}
                       ],
+    %% assuming ops is first kv pair
+    Ops = orddict:fetch(ops, [hd(AggregateValues)]),
+    ProxyOps = orddict:fetch(proxy_cmd_count, Values0),
+    DirectOps = case Ops of
+                    null -> null;
+                    _ -> Ops - ProxyOps
+                end,
     Values = orddict:merge(fun (_K, _V1, _V2) -> erlang:error(cannot_happen) end,
-                           Values0, orddict:from_list(AggregateValues)),
+                           Values0,
+                           orddict:from_list([{direct_ops, DirectOps} | AggregateValues])),
     {#stat_entry{timestamp = TS,
                  values = Values},
      {Counters, TapCounters}}.

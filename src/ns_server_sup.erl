@@ -117,6 +117,10 @@ bad_children() ->
       permanent, infinity, supervisor,
       [ns_moxi_sup]},
 
+     {moxi_stats_collector, {supervisor_cushion, start_link,
+                             [moxi_stats_collector, 5000, moxi_stats_collector, start_link, []]},
+      permanent, 10, worker, [moxi_stats_collector, supervisor_cushion]},
+
      {ns_tick, {ns_tick, start_link, []},
       permanent, 10, worker, [ns_tick]}].
 

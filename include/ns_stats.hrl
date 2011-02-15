@@ -69,6 +69,12 @@
 ).
 
 -define(STAT_COUNTERS,
+        proxy_local_cmd_count,
+        proxy_local_cmd_time,
+
+        proxy_cmd_count,
+        proxy_cmd_time,
+
         %% those are used be memcached buckets
         bytes_read,
         bytes_written,
