@@ -26,6 +26,8 @@
          handle_bucket_node_list/3,
          handle_bucket_node_info/4,
          handle_bucket_node_stats/4,
+         handle_specific_stat_for_buckets/4,
+         handle_specific_stat_for_buckets_group_per_node/4,
          handle_overview_stats/2,
          basic_stats/1,
          basic_stats/2, basic_stats/3,
@@ -216,15 +218,37 @@ handle_bucket_node_stats(PoolId, Id, NodeId, Req) ->
 %% GET /pools/{PoolID}/buckets/{Id}/stats/{StatName}
 handle_specific_stat_for_buckets(PoolId, Id, StatName, Req) ->
     %% TODO: implement real stats, server look up, etc.
-    %% TODO: drop 501 status code once this does something
-    menelaus_util:reply_json(Req, {struct, [{server, list_to_binary(NodeId)}]}, 501).
+    Params = Req:parse_qs(),
+    case proplists:get_value("per_node", Params) of
+        %% TODO: "false" needs to trigger this...me needs to learn more erlang
+        undefined ->
+            Req:ok({"application/json",
+                menelaus_util:server_header(),
+                <<"{
+                    \"timestamp\": [1,2,3,4,5],
+                    \"stat\": [1,2,3,4,5],
+                    \"bucket\": {\"uri\": \"/pools/default/buckets/default\"}
+                }">>});
+        "true" ->
+            handle_specific_stat_for_buckets_group_per_node(PoolId, Id, StatName, Req)
+    end.
 
-%% Specific Stat URL for specific server
+%% Specific Stat URL grouped by nodes
 %% GET /pools/{PoolID}/buckets/{Id}/stats/{StatName}?per_node=true
-handle_specific_stat_for_buckets_split_per_node(PoolId, Id, Stat, PerNode, Req) ->
+%%
+%% Same as above, but broken up per_node--think of it as CouchDB's reduce=false
+%% TODO: consider dropping this and putting the same data in the URL above
+%%       --what would the cost/time savings be at generation time? minimal?
+handle_specific_stat_for_buckets_group_per_node(PoolId, Id, StatName, Req) ->
     %% TODO: implement real stats, server look up, etc.
-    %% TODO: drop 501 status code once this does something
-    menelaus_util:reply_json(Req, {struct, [{server, list_to_binary(NodeId)}]}, 501).
+    Req:ok({"application/json",
+            menelaus_util:server_header(),
+            <<"{
+        \"timestamp\": [1,2,3,4,5],
+        \"nodes\": [{\"hostname\": \"ns_1@127.0.0.1\", \"stat\": [1,2,3,4,5]},
+                    {\"hostname\": \"ns_1@127.0.0.2\", \"stat\": [1,2,3,4,5]}],
+        \"bucket\": {\"uri\": \"/pools/default/buckets/default\"}
+      }">>}).
 
 %% ops SUM(cmd_get, cmd_set,
 %%         incr_misses, incr_hits,
