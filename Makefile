@@ -104,6 +104,9 @@ dialyzer: all $(NS_SERVER_PLT)
 dialyzer_obsessive: all $(NS_SERVER_PLT)
 	dialyzer --plt $(NS_SERVER_PLT) -Wunmatched_returns -Werror_handling -Wrace_conditions -Wbehaviours -Wunderspecs -pa ebin -c ebin -c deps/menelaus/ebin
 
+dialyzer_rebar: all
+	$(REBAR) analyze
+
 Features/Makefile:
 	(cd features && ../test/parallellize_features.rb) >features/Makefile
 
