@@ -17,5 +17,6 @@ exec erl \
     -ns_server error_logger_mf_dir '"logs"' \
     -ns_server error_logger_mf_maxbytes 10485760 \
     -ns_server error_logger_mf_maxfiles 10 \
+    -ns_server dont_suppress_stderr_logger true \
     -kernel inet_dist_listen_min 21100 inet_dist_listen_max 21199 \
     -- "$@"
