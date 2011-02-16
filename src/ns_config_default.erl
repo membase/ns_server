@@ -178,7 +178,7 @@ default() ->
        {engines, [{membase, [{engine, "bin/ep_engine/ep.so"},
                              {initfile,
                               filename:join([ConfigDir, "init.sql"])}]},
-                  {memcached, [{engine, "bin/memcached/default_engine.so"}]}]},
+                  {memcached, [{engine, "lib/memcached/default_engine.so"}]}]},
        {verbosity, ""}]},
 
      {memory_quota, InitQuota},
@@ -222,8 +222,8 @@ default() ->
          stderr_to_stdout,
          stream]
        },
-       {memcached, "./bin/memcached/memcached",
-        ["-X", "./bin/memcached/stdin_term_handler.so",
+       {memcached, "./bin/memcached",
+        ["-X", "./lib/memcached/stdin_term_handler.so",
          "-p", {"~B", [port]},
          "-E", "./bin/bucket_engine/bucket_engine.so",
          "-B", "binary",
