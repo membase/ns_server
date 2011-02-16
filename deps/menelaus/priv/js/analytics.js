@@ -507,10 +507,9 @@ var StatGraphs = {
               {desc: "new per second", name: "vb_pending_ops_create"},
               {desc: "new per second", name: "ep_ops_create"},
               // --
-              // TODO: this is missing in current ep-engine
-              {desc: "eject per second", name: "", missing: true},
-              {desc: "eject per second", name: "", missing: true},
-              {desc: "eject per second", name: "", missing: true},
+              {desc: "eject per second", name: "vb_active_eject"},
+              {desc: "eject per second", name: "vb_replica_eject"},
+              {desc: "eject per second", name: "vb_pending_eject"},
               {desc: "eject per second", name: "evictions"},
               // --
               {desc: "K-V memory", name: "vb_active_itm_memory"},

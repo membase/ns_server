@@ -131,6 +131,10 @@
         vb_pending_queue_fill,
         %% vb_total_queue_fill: aggregated by stats_collector
 
+        vb_active_eject,
+        vb_replica_eject,
+        vb_pending_eject,
+
         vb_active_queue_drain,
         vb_replica_queue_drain,
         vb_pending_queue_drain
