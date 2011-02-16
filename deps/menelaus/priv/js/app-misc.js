@@ -554,16 +554,14 @@ var originalOnError;
 // We use this function to preserve other state that may be in url
 // hash string in normal case, while still supporting middle-clicking.
 function watchHashParamLinks(param, body) {
-  param = '#' + param + '=';
-  $('a').live('click', function (e) {
+  $('a').live('click', function(e) {
     var href = $(this).attr('href');
     if (href == null)
       return;
-    var pos = href.indexOf(param)
-    if (pos < 0)
+    if (!$.deparam.fragment(href)[param])
       return;
     e.preventDefault();
-    body.call(this, e, href.slice(pos + param.length));
+    body.call(this, e, $.deparam.fragment(href)[param]);
   });
 }
 
