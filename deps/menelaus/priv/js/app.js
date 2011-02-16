@@ -881,10 +881,6 @@ $('.tooltip').live('click', function (e) {
   })
 });
 
-watchHashParamLinks('sec', function (e, href) {
-  ThePage.gotoSection(href);
-});
-
 $(function () {
   var container = $('.io-error-notice');
   var timeoutId;
