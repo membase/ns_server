@@ -16,11 +16,6 @@
 -define(STAT_GAUGES,
         %% Num items in active vbuckets.
         curr_items,
-        %% used for disk_writes aggregation
-        %% Number of items remaining to be written.
-        ep_flusher_todo,
-        %% Number of items queued for storage.
-        ep_queue_size,
 
         mem_used,                               % used by memcached
         curr_connections,                       % used by memcached

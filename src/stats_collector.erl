@@ -231,7 +231,6 @@ parse_stats(TS, Stats, TapStats, {LastCounters, LastTapCounters}, LastTS) ->
                        {ep_ht_memory, sum_stat_values(Values0, [vb_active_ht_memory,
                                                                 vb_replica_ht_memory,
                                                                 vb_pending_ht_memory])},
-                       {disk_writes, sum_stat_values(Values0, [ep_flusher_todo, ep_queue_size])},
                        {vb_total_queue_memory, sum_stat_values(Values0,
                                                                [vb_active_queue_memory,
                                                                 vb_replica_queue_memory,
