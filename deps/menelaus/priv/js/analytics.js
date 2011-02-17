@@ -465,20 +465,25 @@ var StatGraphs = {
             isPerf: true,
             stats: [
               // Total
+              // aggregated from gets, sets, incr, decr, delete
+              // ops. Likely doesn't include other types of commands
               {desc: "ops per second", name: "ops"},
+              // ops - proxy_cmd_count
               {desc: "direct per second", name: "direct_ops"},
+              // total ops through server-side moxi
               {desc: "moxi per second", name: "proxy_cmd_count"},
               {desc: "average object size", name: "avg_item_size", missing: true}, // need total size _including_ size on disk
               // Read
-              {desc: "cache hit %", name: "ep_cache_hit_rate"}, //?
+              // (cmd_get - ep_bg_fetched) / cmd_get * 100
+              {desc: "cache hit %", name: "ep_cache_hit_rate"},
               {desc: "hit latency", name: "hit_latency", missing: true}, //?
               {desc: "miss latency", name: "miss_latency", missing: true}, //?
               {desc: "disk reads", name: "ep_bg_fetched"},
               // Write
-              {desc: "creates per second", name: "ep_ops_create"}, // TODO: aggregate it in ns_server
-              {desc: "updates per second", name: "ep_ops_update"}, // ?
+              {desc: "creates per second", name: "ep_ops_create"},
+              {desc: "updates per second", name: "ep_ops_update"},
               {desc: "write latency", name: "ep_write_latency", missing: true}, // ?
-              {desc: "back-offs per second", name: "ep_tap_total_queue_backoff"}, //,
+              {desc: "back-offs per second", name: "ep_tap_total_queue_backoff"},
               // Moxi
               {desc: "local %", name: "proxy_local_ratio"},
               {desc: "local latency", name: "proxy_local_latency"},
@@ -512,7 +517,7 @@ var StatGraphs = {
               {desc: "eject per second", name: "vb_active_eject"},
               {desc: "eject per second", name: "vb_replica_eject"},
               {desc: "eject per second", name: "vb_pending_eject"},
-              {desc: "eject per second", name: "evictions"},
+              {desc: "eject per second", name: "ep_num_value_ejects"},
               // --
               {desc: "K-V memory", name: "vb_active_itm_memory"},
               {desc: "K-V memory", name: "vb_replica_itm_memory"},

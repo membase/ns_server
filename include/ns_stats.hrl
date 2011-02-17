@@ -14,67 +14,111 @@
 %% limitations under the License.
 
 -define(STAT_GAUGES,
+        %% Num items in active vbuckets.
         curr_items,
         %% used for disk_writes aggregation
+        %% Number of items remaining to be written.
         ep_flusher_todo,
+        %% Number of items queued for storage.
         ep_queue_size,
 
         mem_used,                               % used by memcached
         curr_connections,                       % used by memcached
 
+        %% Num current items including those not active (replica, dead
+        %% and pending states)
         curr_items_tot,
-        %% ep_num_non_resident,
-        ep_num_active_non_resident,             % needed by ep_resident_items_rate
-        %% ep_keys_size,
-        %% ep_values_size,
+
+        %% Extra memory used by rep queues, etc..
         %% ep_overhead
 
+        %% number of oom errors since boot. _not_ used by GUI, but
+        %% used for oom alerts
         ep_oom_errors,
 
+        %% Number of active vBuckets
         vb_active_num,
+        %% Number of replica vBuckets
         vb_replica_num,
+        %% Number of pending vBuckets
         vb_pending_num,
+
         %% aggregated by collector: ep_vb_total
 
+        %% Number of in memory items for replica vBuckets
         vb_replica_curr_items,
+        %% Number of in memory items for pending vBuckets
         vb_pending_curr_items,
 
+        %% Total item memory (K-V memory on UI)
         vb_active_itm_memory,
+        %% Total item memory (K-V memory on UI)
         vb_replica_itm_memory,
+        %% Total item memory (K-V memory on UI)
         vb_pending_itm_memory,
+
+        %% Memory used to store keys and values. (K-V memory for total
+        %% column) (includes dead vbuckets, apparently)
         ep_kv_size,
 
+        %% Number of non-resident items in active vbuckets.
         ep_num_active_non_resident,
+        %% Number of non-resident items in active vbuckets
+        %% ep_num_active_non_resident, defined higher
+        %% Number of non-resident items in replica vbuckets
         ep_num_replica_non_resident,
+        %% Number of non-resident items in pending vbuckets
         ep_num_pending_non_resident,
+        %% The number of non-resident items (does not include dead
+        %% vbuckets)
         ep_num_non_resident,
 
+        %% Memory used to store keys and values (hashtable memory)
         vb_active_ht_memory,
+        %% Memory used to store keys and values
         vb_replica_ht_memory,
+        %% Memory used to store keys and values
         vb_pending_ht_memory,
+
         %% aggregated by collector: ep_ht_memory
 
+        %% Active items in disk queue (incremented when item is
+        %% dirtied and decremented when it's cleaned)
         vb_active_queue_size,
+        %% Replica items in disk queue
         vb_replica_queue_size,
+        %% Pending items in disk queue
         vb_pending_queue_size,
         %% aggregated by collector: vb_total_queue_size
 
+        %% Memory used for disk queue (sizes of QueuedItem-s)
         vb_active_queue_memory,
+        %% Memory used for disk queue
         vb_replica_queue_memory,
+        %% Memory used for disk queue
         vb_pending_queue_memory,
         %% aggregated by collector: vb_total_queue_memory
 
+        %% Sum of disk queue item age in milliseconds
         vb_active_queue_age,
+        %% Sum of disk queue item age in milliseconds
         vb_replica_queue_age,
+        %% Sum of disk queue item age in milliseconds
         vb_pending_queue_age
         %% aggregated by collector: vb_total_queue_age
 ).
 
 -define(STAT_COUNTERS,
+        %% moxi: count of requests against local memcached
         proxy_local_cmd_count,
+        %% moxi: total execution time for requests against local
+        %% memcached
         proxy_local_cmd_time,
 
+        %% moxi: count of requests against any memcached
         proxy_cmd_count,
+        %% moxi: total execution time for requests against any
+        %% memcached
         proxy_cmd_time,
 
         %% those are used be memcached buckets
@@ -83,8 +127,9 @@
         cas_badval,
         cas_hits,
 
-        cas_misses,                             % TODO: check! Used by misses aggregation
+        cas_misses,                             % Used by misses aggregation
 
+        %% this is memcached-level stats
         % used by ops aggregation. Misses are used by misses aggregation
         cmd_get,
         cmd_set,
@@ -95,50 +140,78 @@
         incr_hits,
         incr_misses,
 
-        %% TODO: used cache hit ratio ?
+        %% this is memcached protocol hits & misses for get requests
         get_hits,
         get_misses,
 
+        %% Number of io read operations
         %% ep_io_num_read,
+        %% Total number of items persisted.
         %% ep_total_persisted,
 
+        %% this is default bucket type evictions
         evictions,
 
+        %% Number of times Not My VBucket exception happened during
+        %% runtime
         %% ep_num_not_my_vbuckets,
+
+        %% Number of times unrecoverable OOMs happened while
+        %% processing operations
         %% ep_oom_errors,
+
+        %% Number of times temporary OOMs happened while processing
+        %% operations
         %% ep_tmp_oom_errors,
 
+        %% Number of items fetched from disk.
         ep_bg_fetched,                          % needed by ep_cache_miss_rate
+        %% Number of tap disk fetches
         %% ep_tap_bg_fetched,
 
+        %% Number of times replica item values got ejected from memory
+        %% to disk
         %% ep_num_eject_replicas,
-        %% ep_num_value_ejects
 
-        %% ep_ops_create: aggregated by stats_collector
-        %% TODO aggregate: ep_ops_update
-        ep_tap_queue_backoff,
+        %% Number of times item values got ejected from memory to disk
+        ep_num_value_ejects,
 
+        %% Number of create operations
         vb_active_ops_create,
+        %% Number of create operations
         vb_replica_ops_create,
+        %% Number of create operations
         vb_pending_ops_create,
         %% ep_ops_create: aggregated by stats_collector
 
+        %% Number of update operations
         vb_active_ops_update,
+        %% Number of update operations
         vb_replica_ops_update,
+        %% Number of update operations
         vb_pending_ops_update,
         %% ep_ops_update: aggregated by stats_collector
 
+        %% Total enqueued items
         vb_active_queue_fill,
+        %% Total enqueued items
         vb_replica_queue_fill,
+        %% Total enqueued items
         vb_pending_queue_fill,
         %% vb_total_queue_fill: aggregated by stats_collector
 
+        %% Number of times item values got ejected
         vb_active_eject,
+        %% Number of times item values got ejected
         vb_replica_eject,
+        %% Number of times item values got ejected
         vb_pending_eject,
 
+        %% Total drained items
         vb_active_queue_drain,
+        %% Total drained items
         vb_replica_queue_drain,
+        %% Total drained items
         vb_pending_queue_drain
         %% vb_total_queue_drain: aggregated by stats_collector
 ).

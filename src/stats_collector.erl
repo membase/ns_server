@@ -122,11 +122,8 @@ latest_tick(TS, NumDropped) ->
             TS
     end.
 
-%% TODO: upgrade this too
 translate_stat(bytes) -> % memcached calls it bytes
     mem_used;
-translate_stat(ep_num_value_ejects) ->
-    evictions;
 translate_stat(Stat) ->
     Stat.
 
