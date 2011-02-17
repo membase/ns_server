@@ -1,9 +1,8 @@
 function setupFormValidation(form, url, callback) {
-  var idleTime = 250;
-
-  var oldValue;
-  var inFlightXHR;
-  var timeoutId;
+  var idleTime = 250,
+      oldValue,
+      inFlightXHR,
+      timeoutId;
 
   function timerFunction() {
     console.log("timerFunction!");
@@ -29,17 +28,17 @@ function setupFormValidation(form, url, callback) {
 
     var status = 0;
     try {
-      status = data.status // can raise exception on IE sometimes
+      status = data.status; // can raise exception on IE sometimes
     } catch (e) {
       // ignore
     }
-    if (status >= 200 && status < 300 && data.responseText == '') {
+    if (status >= 200 && status < 300 && data.responseText === '') {
       console.log("inplain success");
       return callback('success');
     }
 
     if (status != 400 || textStatus != 'error') {
-      return // onUnexpectedXHRError(data);
+      return; // onUnexpectedXHRError(data);
     }
 
     console.log("plain error");
@@ -57,12 +56,14 @@ function setupFormValidation(form, url, callback) {
   var firstTime = true;
 
   function onPotentialChanges() {
-    if (paused)
+    if (paused) {
       return;
+    }
 
     var newValue = serializeForm(form);
-    if (newValue == oldValue)
+    if (newValue == oldValue) {
       return;
+    }
     oldValue = newValue;
 
     var wasFirstTime = firstTime;
@@ -88,9 +89,8 @@ function setupFormValidation(form, url, callback) {
     }
   }
 
-  var observer = form.observePotentialChanges(onPotentialChanges);
-
-  var paused = false;
+  var observer = form.observePotentialChanges(onPotentialChanges),
+      paused = false;
 
   return {
     abort: function () {
@@ -99,8 +99,9 @@ function setupFormValidation(form, url, callback) {
       observer.stopObserving();
     },
     pause: function () {
-      if (paused)
+      if (paused) {
         return;
+      }
       paused = true;
       cancelXHR();
       cancelTimeout();
@@ -109,14 +110,14 @@ function setupFormValidation(form, url, callback) {
       paused = false;
       onPotentialChanges();
     }
-  }
+  };
 }
 
 var BucketDetailsDialog = mkClass({
   initialize: function (initValues, isNew, options) {
     this.isNew = isNew;
     this.initValues = initValues;
-    initValues['ramQuotaMB'] = Math.floor(initValues.quota.rawRAM / 1048576);
+    initValues.ramQuotaMB = Math.floor(initValues.quota.rawRAM / 1048576);
 
     options = options || {};
 
@@ -124,7 +125,7 @@ var BucketDetailsDialog = mkClass({
 
     this.onSuccess = options.onSuccess || function () {
       hideDialog(this.dialogID);
-    }
+    };
 
     this.refreshBuckets = options.refreshBuckets || $m(BucketsSection, 'refreshBuckets');
 
@@ -143,36 +144,41 @@ var BucketDetailsDialog = mkClass({
     var oldBucketType;
     dialog.observePotentialChanges(function () {
       var newType = dialog.find('[name=bucketType]:checked').attr('value');
-      if (newType == oldBucketType)
+      if (newType == oldBucketType) {
         return;
+      }
       oldBucketType = newType;
       var isPersistent = (newType == 'membase');
       dialog.find('.persistent-only')[isPersistent ? 'slideDown' : 'slideUp']('fast');
       dialog[isPersistent ? 'removeClass' : 'addClass']('bucket-is-non-persistent');
       dialog[isPersistent ? 'addClass' : 'removeClass']('bucket-is-persistent');
 
-      if (errorsCell.value && errorsCell.value.summaries)
+      if (errorsCell.value && errorsCell.value.summaries) {
         errorsCell.setValueAttr(null, 'summaries', 'ramSummary');
+      }
     });
 
     var oldReplicationEnabled;
     dialog.observePotentialChanges(function () {
       var replicationEnabled = !!(dialog.find('.for-enable-replication input').attr('checked'));
-      if (replicationEnabled === oldReplicationEnabled)
+      if (replicationEnabled === oldReplicationEnabled) {
         return;
+      }
       oldReplicationEnabled = replicationEnabled;
       dialog.find('.for-replica-number')[replicationEnabled ? 'show' : 'hide']();
       setBoolAttribute(dialog.find('.hidden-replica-number').need(1), 'disabled', replicationEnabled);
-      if (isNew)
+      if (isNew) {
         setBoolAttribute(dialog.find('.for-replica-number select').need(1), 'disabled', !replicationEnabled);
+      }
     });
 
     var preDefaultAuthType;
     function nameObserver(value) {
-      var isDefault = (value == "default");
+      var forAsciiRadio = dialog.find('.for-ascii input'),
+          forSASLRadio = dialog.find('.for-sasl-password input'),
+          isDefault = (value == "default");
+
       dialog[isDefault ? 'addClass' : 'removeClass']('bucket-is-default');
-      var forAsciiRadio = dialog.find('.for-ascii input');
-      var forSASLRadio = dialog.find('.for-sasl-password input');
       if (isDefault) {
         preDefaultAuthType = (forAsciiRadio.filter(':checked').length) ? '.for-ascii' : '.for-sasl-password';
         setBoolAttribute(forAsciiRadio, 'disabled', true);
@@ -213,9 +219,8 @@ var BucketDetailsDialog = mkClass({
   },
 
   submit: function () {
-    var self = this;
-
-    var closeCleanup = self.bindWithCleanup(self.dialog.find('.jqmClose'),
+    var self = this,
+        closeCleanup = self.bindWithCleanup(self.dialog.find('.jqmClose'),
                                             'click',
                                             function (e) {
                                               e.preventDefault();
@@ -278,13 +283,13 @@ var BucketDetailsDialog = mkClass({
     }
   },
   startForm: function () {
-    var self = this;
-    var form = this.dialog.find('form');
+    var self = this,
+        form = this.dialog.find('form');
 
     setFormValues(form, self.initValues);
 
     setBoolAttribute(form.find('[name=bucketType]'), 'disabled', !self.isNew);
-    setBoolAttribute(form.find('.for-enable-replication input'), 'checked', self.initValues.replicaNumber != 0);
+    setBoolAttribute(form.find('.for-enable-replication input'), 'checked', self.initValues.replicaNumber !== 0);
 
     self.cleanups.push(self.bindWithCleanup(form, 'submit', function (e) {
       e.preventDefault();
@@ -313,8 +318,8 @@ var BucketDetailsDialog = mkClass({
   },
 
   renderGauge: function (jq, total, thisBucket, otherBuckets) {
-    var thisValue = thisBucket
-    var formattedBucket = ViewHelpers.formatQuantity(thisBucket, null, null, ' ');
+    var thisValue = thisBucket,
+        formattedBucket = ViewHelpers.formatQuantity(thisBucket, null, null, ' ');
 
     if (_.isString(thisValue)) {
       formattedBucket = thisValue;
@@ -347,7 +352,7 @@ var BucketDetailsDialog = mkClass({
         value: otherBuckets + thisValue - total,
         attrs: {style: 'background-position: 0 -60px;'},
         tdAttrs: {style: 'color:#e43a1b;'}
-      }
+      };
       options.markers.push({value: total,
                             attrs: {style: 'background-color:#444245;'}});
       options.markers.push({value: otherBuckets + thisValue,
@@ -367,34 +372,35 @@ var BucketDetailsDialog = mkClass({
   // this updates our gauges and errors
   // we don't use it to set input values, 'cause for the later we need to do it once
   onValidationResult: function (result) {
-    var self = this;
     result = result || {};
     // if (!result)                // TODO: handle it
     //   return;
+    var self = this,
+        summaries = result.summaries || {},
+        ramSummary = summaries.ramSummary,
+        ramGauge = self.dialog.find(".size-gauge.for-ram"),
+        memcachedSummaryJQ = self.dialog.find('.memcached-summary'),
+        memcachedSummaryVisible = ramSummary && ramSummary.perNodeMegs,
+        knownFields = ('name ramQuotaMB replicaNumber proxyPort').split(' '),
+        errors = result.errors || {};
 
-    var summaries = result.summaries || {};
-    var ramSummary = summaries.ramSummary;
-
-    var ramGauge = self.dialog.find(".size-gauge.for-ram");
-    if (ramSummary)
+    if (ramSummary) {
       self.renderGauge(ramGauge,
                        ramSummary.total,
                        ramSummary.thisAlloc,
                        ramSummary.otherBuckets);
+    }
     ramGauge.css('visibility', ramSummary ? 'visible' : 'hidden');
 
-    var memcachedSummaryJQ = self.dialog.find('.memcached-summary');
-    var memcachedSummaryVisible = ramSummary && ramSummary.perNodeMegs;
-    if (memcachedSummaryVisible)
+    if (memcachedSummaryVisible) {
       memcachedSummaryJQ.text('Total bucket size = '
                               + Math.floor(ramSummary.thisAlloc / 1048576)
                               + ' MB ('
                               + ramSummary.perNodeMegs
                               + ' MB x ' + ViewHelpers.count(ramSummary.nodesCount, 'node') +')');
+    }
     memcachedSummaryJQ.css('display', memcachedSummaryVisible ? 'block' : 'none');
 
-    var knownFields = ('name ramQuotaMB replicaNumber proxyPort').split(' ');
-    var errors = result.errors || {};
     _.each(knownFields, function (name) {
       self.renderError(name, errors[name]);
     });
@@ -411,39 +417,37 @@ var BucketsSection = {
   },
 
   renderDiskGauge: function (jq, total, thisBucket, otherBuckets, otherData) {
-    var formattedBucket = ViewHelpers.formatQuantity(thisBucket, null, null, ' ');
-
-    var free = total - otherData - thisBucket - otherBuckets;
-
-    var options = {
-      topAttrs: {'class': 'size-gauge for-hdd'},
-      topLeft: ['Other Data', ViewHelpers.formatMemSize(otherData)],
-      topRight: ['Total Cluster Storage', ViewHelpers.formatMemSize(total)],
-      items: [
-        {name: null,
-         value: otherData,
-         attrs: {style: 'background-position: 0 -30px;'}},
-        {name: 'Other Buckets',
-         value: otherBuckets,
-         attrs: {style: 'background-position: 0 -15px;'},
-         tdAttrs: {style: 'color:blue;'}},
-        {name: 'This Bucket',
-         value: thisBucket,
-         attrs: {style: 'background-position: 0 -45px;'},
-         tdAttrs: {style: 'color:green;'}},
-        {name: 'Free',
-         value: free,
-         tdAttrs: {style: 'color:#444245;'}}
-      ]
-    };
+    var formattedBucket = ViewHelpers.formatQuantity(thisBucket, null, null, ' '),
+        free = total - otherData - thisBucket - otherBuckets,
+        options = {
+                    topAttrs: {'class': 'size-gauge for-hdd'},
+                    topLeft: ['Other Data', ViewHelpers.formatMemSize(otherData)],
+                    topRight: ['Total Cluster Storage', ViewHelpers.formatMemSize(total)],
+                    items: [
+                      {name: null,
+                       value: otherData,
+                       attrs: {style: 'background-position: 0 -30px;'}},
+                      {name: 'Other Buckets',
+                       value: otherBuckets,
+                       attrs: {style: 'background-position: 0 -15px;'},
+                       tdAttrs: {style: 'color:blue;'}},
+                      {name: 'This Bucket',
+                       value: thisBucket,
+                       attrs: {style: 'background-position: 0 -45px;'},
+                       tdAttrs: {style: 'color:green;'}},
+                      {name: 'Free',
+                       value: free,
+                       tdAttrs: {style: 'color:#444245;'}}
+                    ]
+                  };
 
     jq.replaceWith(memorySizesGaugeHTML(options));
   },
 
   renderHDDDetailsGauge: function (e, details) {
-    var jq = $(e).parent().find('.size-gauge.for-hdd');
-    var poolDetails = DAO.cells.currentPoolDetails.value;
-    var hdd = poolDetails.storageTotals.hdd;
+    var jq = $(e).parent().find('.size-gauge.for-hdd'),
+        poolDetails = DAO.cells.currentPoolDetails.value,
+        hdd = poolDetails.storageTotals.hdd;
     BucketsSection.renderDiskGauge(jq,
                                    hdd.total,
                                    details.basicStats.diskUsed,
@@ -452,15 +456,16 @@ var BucketsSection = {
   },
   cells: {},
   init: function () {
-    var self = this;
-    var cells = self.cells;
+    var self = this,
+        cells = self.cells,
+        poolDetailsValue;
 
     cells.mode = DAO.cells.mode;
 
-    var poolDetailsValue;
     DAO.cells.currentPoolDetails.subscribeValue(function (v) {
-      if (!v)
+      if (!v) {
         return;
+      }
 
       poolDetailsValue = v;
     });
@@ -471,14 +476,14 @@ var BucketsSection = {
         return values;
       }
 
-      var storageTotals = poolDetailsValue.storageTotals
+      var storageTotals = poolDetailsValue.storageTotals;
 
       if (!storageTotals || !storageTotals.ram) {
         // this might happen if ns_doctor is down, which often happens
         // after failover
         return future(function (callback) {
-          var cell = DAO.cells.currentPoolDetails;
-          var haveNewValue = false;
+          var cell = DAO.cells.currentPoolDetails,
+              haveNewValue = false;
           // wait till pool details will change and try transformation again
           cell.changedSlot.subscribeOnce(function (newPoolDetails) {
             haveNewValue = true;
@@ -491,8 +496,9 @@ var BucketsSection = {
           // and force re-fetching of pool details in not too distant
           // future
           setTimeout(function () {
-            if (haveNewValue)
+            if (haveNewValue) {
               return;
+            }
             cell.recalculate();
           }, 1000);
           console.log("delayed bucketsListTransformer due to empty storageTotals");
@@ -536,7 +542,7 @@ var BucketsSection = {
     }, {poolDetails: DAO.cells.currentPoolDetails});
 
     cells.detailedBuckets = Cell.mkCaching(function (pageURI) {
-      console.log("loading detailed buckets")
+      console.log("loading detailed buckets");
       return future.get({url: pageURI, stdErrorMarker: true},
                         bucketsListTransformer);
     }, {pageURI: cells.detailsPageURI});
@@ -570,8 +576,9 @@ var BucketsSection = {
     });
 
     stalenessCell.subscribeValue(function (staleness) {
-      if (staleness === undefined)
+      if (staleness === undefined) {
         return;
+      }
       var notice = $('#buckets .staleness-notice');
       notice[staleness ? 'show' : 'hide']();
       $('#manage_buckets_top_bar .create-bucket-button')[staleness ? 'hide' : 'show']();
@@ -599,10 +606,10 @@ var BucketsSection = {
     cell.invalidate();
   },
   withBucket: function (uri, body) {
-    if (!this.buckets)
+    if (!this.buckets) {
       return;
-    var buckets = this.buckets || [];
-    var bucketInfo = _.detect(buckets, function (info) {
+    }
+    var bucketInfo = _.detect(this.buckets, function (info) {
       return info.uri == uri;
     });
 
@@ -614,17 +621,18 @@ var BucketsSection = {
     return body.call(this, bucketInfo);
   },
   findBucket: function (uri) {
-    return this.withBucket(uri, function (r) {return r});
+    return this.withBucket(uri, function (r) {return r;});
   },
   showBucket: function (uri) {
     ThePage.ensureSection('buckets');
     // we don't care about value, but we care if it's defined
     DAO.cells.currentPoolDetailsCell.getValue(function () {
       BucketsSection.withBucket(uri, function (bucketDetails) {
+        var fullDetails = BucketsSection.settingsWidget.detailsMap.value.get(bucketDetails),
+          initValues = _.extend({}, bucketDetails, fullDetails && fullDetails.value),
+          dialog = new BucketDetailsDialog(initValues, false);
+
         BucketsSection.currentlyShownBucket = bucketDetails;
-        var fullDetails = BucketsSection.settingsWidget.detailsMap.value.get(bucketDetails);
-        var initValues = _.extend({}, bucketDetails, fullDetails && fullDetails.value);
-        var dialog = new BucketDetailsDialog(initValues, false);
         dialog.startDialog();
       });
     });
@@ -643,8 +651,9 @@ var BucketsSection = {
     this.settingsWidget.reset();
   },
   startCreate: function () {
-    var poolDetails = DAO.cells.currentPoolDetails.value;
-    var totals = poolDetails.storageTotals;
+    var poolDetails = DAO.cells.currentPoolDetails.value,
+        totals = poolDetails.storageTotals;
+
     if (totals.ram.quotaTotal == totals.ram.quotaUsed) {
       genericDialog({
         buttons: {ok: true},
@@ -657,13 +666,15 @@ var BucketsSection = {
                       bucketType: 'membase',
                       authType: 'sasl',
                       quota: {rawRAM: Math.floor((totals.ram.quotaTotal - totals.ram.quotaUsed) / poolDetails.nodes.length)},
-                      replicaNumber: 1}
-    var dialog = new BucketDetailsDialog(initValues, true);
+                      replicaNumber: 1},
+      dialog = new BucketDetailsDialog(initValues, true);
+
     dialog.startDialog();
   },
   startRemovingBucket: function () {
-    if (!this.currentlyShownBucket)
+    if (!this.currentlyShownBucket) {
       return;
+    }
 
     $('#bucket_details_dialog').addClass('overlayed');
     $('#bucket_remove_dialog .bucket_name').text(this.currentlyShownBucket.name);
@@ -674,47 +685,51 @@ var BucketsSection = {
     });
   },
   removeCurrentBucket: function () {
-    var self = this;
+    // inner functions
+    function ajaxCallback() {
+      self.refreshBuckets(function() {
+        spinner.remove();
+        modal.finish();
+        hideDialog('bucket_details_dialog');
+        hideDialog('bucket_remove_dialog');
+      });
+    }
 
-    var bucket = self.currentlyShownBucket;
-    if (!bucket)
+    var self = this,
+        bucket = self.currentlyShownBucket;
+
+    if (!bucket) {
       return;
+    }
 
-    var spinner = overlayWithSpinner('#bucket_remove_dialog');
-    var modal = new ModalAction();
+    var spinner = overlayWithSpinner('#bucket_remove_dialog'),
+        modal = new ModalAction();
+
     $.ajax({
       type: 'DELETE',
       url: self.currentlyShownBucket.uri,
-      success: continuation,
-      errors: continuation
+      success: ajaxCallback,
+      errors: ajaxCallback
     });
     return;
-
-    function continuation() {
-      self.refreshBuckets(continuation2);
-    }
-
-    function continuation2() {
-      spinner.remove();
-      modal.finish();
-      hideDialog('bucket_details_dialog');
-      hideDialog('bucket_remove_dialog');
-    }
   }
 };
 
 configureActionHashParam("editBucket", $m(BucketsSection, 'showBucket'));
 
 $(function () {
-  var oldIsSasl;
-  var dialog = $('#bucket_details_dialog')
+  var oldIsSasl,
+      dialog = $('#bucket_details_dialog');
+
   dialog.observePotentialChanges(function () {
     var saslSelected = $('#bucket_details_sasl_selected')[0];
-    if (!saslSelected) // might happen just before page unload
+    if (!saslSelected) { // might happen just before page unload
       return;
+    }
     var isSasl = saslSelected.checked;
-    if (oldIsSasl != null && isSasl == oldIsSasl)
+    if (oldIsSasl !== null && isSasl == oldIsSasl) {
       return;
+    }
     oldIsSasl = isSasl;
 
     setBoolAttribute(dialog.find('.for-sasl-password-input input'), 'disabled', !isSasl);
