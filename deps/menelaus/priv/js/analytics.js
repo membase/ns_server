@@ -547,22 +547,22 @@ var StatGraphs = {
               {desc: "items", name: "vb_active_queue_size"},
               {desc: "items", name: "vb_replica_queue_size"},
               {desc: "items", name: "vb_pending_queue_size"},
-              {desc: "items", name: "vb_total_queue_size"},
+              {desc: "items", name: "ep_diskqueue_items"},
               // --
               {desc: "queue memory", name: "vb_active_queue_memory"},
               {desc: "queue memory", name: "vb_replica_queue_memory"},
               {desc: "queue memory", name: "vb_pending_queue_memory"},
-              {desc: "queue memory", name: "vb_total_queue_memory"},
+              {desc: "queue memory", name: "ep_diskqueue_memory"},
               // --
               {desc: "fill rate", name: "vb_active_queue_fill"},
               {desc: "fill rate", name: "vb_replica_queue_fill"},
               {desc: "fill rate", name: "vb_pending_queue_fill"},
-              {desc: "fill rate", name: "vb_total_queue_fill"},
+              {desc: "fill rate", name: "ep_diskqueue_fill"},
               // --
               {desc: "drain rate", name: "vb_active_queue_drain"},
               {desc: "drain rate", name: "vb_replica_queue_drain"},
               {desc: "drain rate", name: "vb_pending_queue_drain"},
-              {desc: "drain rate", name: "vb_total_queue_drain"},
+              {desc: "drain rate", name: "ep_diskqueue_drain"},
               // --
               {desc: "average age", name: "vb_avg_active_queue_age"},
               {desc: "average age", name: "vb_avg_replica_queue_age"},

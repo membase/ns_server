@@ -20,8 +20,8 @@
         mem_used,                               % used by memcached
         curr_connections,                       % used by memcached
 
-        %% Num current items including those not active (replica, dead
-        %% and pending states)
+        %% Num current items including those not active (replica, (NOT
+        %% including dead) and pending states)
         curr_items_tot,
 
         %% Extra memory used by rep queues, etc..
@@ -37,8 +37,7 @@
         vb_replica_num,
         %% Number of pending vBuckets
         vb_pending_num,
-
-        %% aggregated by collector: ep_vb_total
+        ep_vb_total,
 
         %% Number of in memory items for replica vBuckets
         vb_replica_curr_items,
@@ -85,6 +84,7 @@
         %% Pending items in disk queue
         vb_pending_queue_size,
         %% aggregated by collector: vb_total_queue_size
+        ep_diskqueue_items,
 
         %% Memory used for disk queue (sizes of QueuedItem-s)
         vb_active_queue_memory,
@@ -93,6 +93,7 @@
         %% Memory used for disk queue
         vb_pending_queue_memory,
         %% aggregated by collector: vb_total_queue_memory
+        ep_diskqueue_memory,
 
         %% Sum of disk queue item age in milliseconds
         vb_active_queue_age,
@@ -194,6 +195,7 @@
         %% Total enqueued items
         vb_pending_queue_fill,
         %% vb_total_queue_fill: aggregated by stats_collector
+        ep_diskqueue_fill,
 
         %% Number of times item values got ejected
         vb_active_eject,
@@ -201,14 +203,17 @@
         vb_replica_eject,
         %% Number of times item values got ejected
         vb_pending_eject,
+        %% Number of times item values got ejected from memory to disk
+        ep_num_value_ejects,
 
         %% Total drained items
         vb_active_queue_drain,
         %% Total drained items
         vb_replica_queue_drain,
         %% Total drained items
-        vb_pending_queue_drain
+        vb_pending_queue_drain,
         %% vb_total_queue_drain: aggregated by stats_collector
+        ep_diskqueue_drain
 ).
 
 %% atom() timestamps and values are used by archiver for internal mnesia-related
