@@ -457,10 +457,6 @@ var BucketsSection = {
 
     cells.mode = DAO.cells.mode;
 
-    cells.detailsPageURI = new Cell(function (poolDetails) {
-      return poolDetails.buckets.uri;
-    }).setSources({poolDetails: DAO.cells.currentPoolDetails});
-
     var poolDetailsValue;
     DAO.cells.currentPoolDetails.subscribeValue(function (v) {
       if (!v)
@@ -533,7 +529,12 @@ var BucketsSection = {
         bucket.diskOtherPercent = calculatePercent(bucket.otherDiskSize + bucket.totalDiskUsed, bucket.totalDiskSize);
       });
       return values;
-    }
+    };
+
+    cells.detailsPageURI = new Cell(function (poolDetails) {
+      return poolDetails.buckets.uri;
+    }, {poolDetails: DAO.cells.currentPoolDetails});
+
     cells.detailedBuckets = Cell.mkCaching(function (pageURI) {
       console.log("loading detailed buckets")
       return future.get({url: pageURI, stdErrorMarker: true},
