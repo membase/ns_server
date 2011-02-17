@@ -209,17 +209,19 @@ var maybeReloadAppDueToLeak = (function () {
     if (options.rate)
       yaxis.max = 100;
 
-    $.plotSafe(jq.find('.small_graph_block'),
-               _.map(plotSeries, function (plotData) {
-                 return {color: color,
-                         data: plotData};
-               }),
-               {xaxis: {ticks:0,
-                        autoscaleMargin: 0.04,
-                        min: now - zoomMillis,
-                        max: now},
-                yaxis: yaxis,
-                grid: {show:false}});
+    _.each(jq.find('.small_graph_block'), function (item) {
+      $.plotSafe($(item),
+                 _.map(plotSeries, function (plotData) {
+                   return {color: color,
+                           data: plotData};
+                 }),
+                 {xaxis: {ticks:0,
+                          autoscaleMargin: 0.04,
+                          min: now - zoomMillis,
+                          max: now},
+                  yaxis: yaxis,
+                  grid: {show:false}});
+    });
   }
 
   global.renderSmallGraph = renderSmallGraph;
