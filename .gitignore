@@ -7,6 +7,7 @@
 /*luster_run.sh
 /Mnesia.*
 /features/Makefile
+/lib
 /ns_server.plt
 /src/ns_server.app.src
 TAGS
