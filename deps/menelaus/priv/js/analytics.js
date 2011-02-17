@@ -539,10 +539,10 @@ var StatGraphs = {
               // {desc: "Pending", name: ""},
               // {desc: "Total", name: ""},
 
-              {desc: "items", name: "vb_active_queue_pending"},
-              {desc: "items", name: "vb_replica_queue_pending"},
-              {desc: "items", name: "vb_pending_queue_pending"},
-              {desc: "items", name: "vb_total_queue_pending"},
+              {desc: "items", name: "vb_active_queue_size"},
+              {desc: "items", name: "vb_replica_queue_size"},
+              {desc: "items", name: "vb_pending_queue_size"},
+              {desc: "items", name: "vb_total_queue_size"},
               // --
               {desc: "queue memory", name: "vb_active_queue_memory"},
               {desc: "queue memory", name: "vb_replica_queue_memory"},

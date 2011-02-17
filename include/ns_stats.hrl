@@ -54,10 +54,10 @@
         vb_pending_ht_memory,
         %% aggregated by collector: ep_ht_memory
 
-        vb_active_queue_pending,
-        vb_replica_queue_pending,
-        vb_pending_queue_pending,
-        %% aggregated by collector: disk_writes
+        vb_active_queue_size,
+        vb_replica_queue_size,
+        vb_pending_queue_size,
+        %% aggregated by collector: vb_total_queue_size
 
         vb_active_queue_memory,
         vb_replica_queue_memory,
