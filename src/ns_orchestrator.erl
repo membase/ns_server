@@ -229,7 +229,20 @@ idle({create_bucket, BucketType, BucketName, NewConfig}, _From, State) ->
                 _ ->
                     {already_exists, BucketName}
             end,
-    {reply, Reply, idle, State};
+    case Reply of
+        ok ->
+            case BucketType of
+                membase ->
+                    self() ! janitor,
+                    {reply, Reply, idle,
+                     State#idle_state{
+                       remaining_buckets=[BucketName|State#idle_state.remaining_buckets]}};
+                _ ->
+                    {reply, Reply, idle, State}
+            end;
+        _ ->
+            {reply, Reply, idle, State}
+    end;
 idle({delete_bucket, BucketName}, _From, State) ->
     RV = ns_bucket:delete_bucket(BucketName),
     ns_config:sync_announcements(),
