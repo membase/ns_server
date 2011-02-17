@@ -253,7 +253,10 @@ parse_stats(TS, Stats, TapStats, {LastCounters, LastTapCounters}, LastTS) ->
                                                                         vb_pending_queue_drain])},
                        {vb_total_queue_age, sum_stat_values(Values0, [vb_active_queue_age,
                                                                       vb_replica_queue_age,
-                                                                      vb_pending_queue_age])}
+                                                                      vb_pending_queue_age])},
+                       {vb_total_queue_pending, sum_stat_values(Values0, [vb_active_queue_pending,
+                                                                          vb_replica_queue_pending,
+                                                                          vb_pending_queue_pending])}
                        %% {replica_resident_items_tot,
                        %%  orddict:fetch(curr_items_tot,
                        %%                Values0) - orddict:fetch(ep_num_non_resident,
