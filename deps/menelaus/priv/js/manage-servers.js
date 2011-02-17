@@ -440,10 +440,10 @@ var ServersSection = {
       dialog.find('.backfill_percent').text(truncateTo3Digits(node.replication * 100));
       var confirmation = visibleWarning.find('[name=confirmation]')
       if (confirmation.length) {
-        setBoolAttribute(confirmation, 'checked', false);
+        confirmation.boolAttr('checked', false);
         function onChange() {
           var checked = !!confirmation.attr('checked');
-          setBoolAttribute(dialog.find('.save_button'), 'disabled', !checked);
+          dialog.find('.save_button').boolAttr('disabled', !checked);
         }
         function onHide() {
           confirmation.unbind('change', onChange);

@@ -1,10 +1,14 @@
-function setBoolAttribute(jq, attr, value) {
-  if (value) {
-    jq.attr(attr, attr);
-  } else {
-    jq.removeAttr(attr);
-  }
-}
+(function($){
+  $.fn.boolAttr = function(attr, value) {
+    var $this = $(this);
+    if (value) {
+      $this.attr(attr, attr);
+    } else {
+      $this.removeAttr(attr);
+    }
+    return $this;
+  };
+})(jQuery);
 
 function normalizeNaN(possNaN) {
   return possNaN << 0;
@@ -29,7 +33,7 @@ function setFormValues(form, values) {
       boolValue = (boolValue != "0");
     }
 
-    setBoolAttribute(box, 'checked', boolValue);
+    box.boolAttr('checked', boolValue);
   });
 
   form.find('input[type=radio]').each(function () {
@@ -39,7 +43,7 @@ function setFormValues(form, values) {
       return;
 
     var boolValue = (values[name] == box.attr('value'));
-    setBoolAttribute(box, 'checked', boolValue);
+    box.boolAttr('checked', boolValue);
   });
 
   form.find("select").each(function () {
@@ -52,7 +56,7 @@ function setFormValues(form, values) {
 
     select.find('option').each(function () {
       var option = $(this);
-      setBoolAttribute($(this), 'selected', option.val() == value);
+      option.boolAttr('selected', option.val() == value);
     });
   });
 }

@@ -894,13 +894,16 @@ Math.Gi = 1073741824;
   this.parseHTTPDate = parseHTTPDate;
 })();
 
-$.fn.need = function (howmany) {
-  if (this.length != howmany) {
-    console.log("Expected jquery of length ", howmany, ", got: ", this);
-    throw new Error("Expected jquery of length " + howmany + ", got " + this.length);
-  }
-  return this;
-}
+(function($){
+  $.fn.need = function (howmany) {
+    var $this = $(this);
+    if ($this.length != howmany) {
+      console.log("Expected jquery of length ", howmany, ", got: ", $this);
+      throw new Error("Expected jquery of length " + howmany + ", got " + $this.length);
+    }
+    return $this;
+  };
+})(jQuery);
 
 function mkTokenBucket(rate, burst, initial) {
   var available = (initial !== undefined) ? initial : burst;

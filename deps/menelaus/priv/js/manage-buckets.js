@@ -134,12 +134,12 @@ var BucketDetailsDialog = mkClass({
     dialog.removeClass('editing').removeClass('creating');
     dialog.addClass(isNew ? 'creating' : 'editing');
 
-    setBoolAttribute(dialog.find('[name=name]'), 'disabled', !isNew);
+    dialog.find('[name=name]').boolAttr('disabled', !isNew);
 
-    setBoolAttribute(dialog.find('[name=replicaNumber]'), 'disabled', !isNew);
-    setBoolAttribute(dialog.find('.for-enable-replication input'), 'disabled', !isNew);
+    dialog.find('[name=replicaNumber]').boolAttr('disabled', !isNew);
+    dialog.find('.for-enable-replication input').boolAttr('disabled', !isNew);
 
-    setBoolAttribute(dialog.find('[name=ramQuotaMB]'), 'disabled', !isNew && (initValues.bucketType == 'memcached'));
+    dialog.find('[name=ramQuotaMB]').boolAttr('disabled', !isNew && (initValues.bucketType == 'memcached'));
 
     var oldBucketType;
     dialog.observePotentialChanges(function () {
@@ -166,9 +166,9 @@ var BucketDetailsDialog = mkClass({
       }
       oldReplicationEnabled = replicationEnabled;
       dialog.find('.for-replica-number')[replicationEnabled ? 'show' : 'hide']();
-      setBoolAttribute(dialog.find('.hidden-replica-number').need(1), 'disabled', replicationEnabled);
+      dialog.find('.hidden-replica-number').need(1).boolAttr('disabled', replicationEnabled);
       if (isNew) {
-        setBoolAttribute(dialog.find('.for-replica-number select').need(1), 'disabled', !replicationEnabled);
+        dialog.find('.for-replica-number select').need(1).boolAttr('disabled', !replicationEnabled);
       }
     });
 
@@ -181,15 +181,15 @@ var BucketDetailsDialog = mkClass({
       dialog[isDefault ? 'addClass' : 'removeClass']('bucket-is-default');
       if (isDefault) {
         preDefaultAuthType = (forAsciiRadio.filter(':checked').length) ? '.for-ascii' : '.for-sasl-password';
-        setBoolAttribute(forAsciiRadio, 'disabled', true);
-        setBoolAttribute(forAsciiRadio, 'checked', false);
-        setBoolAttribute(forSASLRadio, 'checked', true);
+        forAsciiRadio.boolAttr('disabled', true);
+        forAsciiRadio.boolAttr('checked', false);
+        forSASLRadio.boolAttr('checked', true);
       } else {
-        setBoolAttribute(forAsciiRadio, 'disabled', false);
+        forAsciiRadio.boolAttr('disabled', false);
         if (preDefaultAuthType) {
           var isAscii = (preDefaultAuthType == '.for-ascii');
-          setBoolAttribute(forAsciiRadio, 'checked', isAscii);
-          setBoolAttribute(forSASLRadio, 'checked', !isAscii);
+          forAsciiRadio.boolAttr('checked', isAscii);
+          forSASLRadio.boolAttr('checked', !isAscii);
         }
       }
     }
@@ -230,8 +230,9 @@ var BucketDetailsDialog = mkClass({
 
     var nonPersistent = null;
     if (self.dialog.find('[name=bucketType]:checked').val() != 'membase') {
-      nonPersistent = self.dialog.find('.persistent-only').find('input').filter(':not([disabled])');
-      setBoolAttribute(nonPersistent, 'disabled', true);
+      self.dialog.find('.persistent-only input')
+        .filter(':not([disabled])')
+        .boolAttr('disabled', true);
     }
 
     self.formValidator.pause();
@@ -264,7 +265,7 @@ var BucketDetailsDialog = mkClass({
     });
 
     if (nonPersistent) {
-      setBoolAttribute(nonPersistent, 'disabled', false);
+      nonPersistent.boolAttr('disabled', false);
     }
 
     var toDisable = self.dialog.find('input[type=text], input:not([type]), input[type=checkbox]')
@@ -272,14 +273,13 @@ var BucketDetailsDialog = mkClass({
       .add(self.dialog.find('button'));
 
     // we need to disable after post is sent, 'cause disabled inputs are not sent
-    toDisable.add(self.dialog).css('cursor', 'wait');
-    setBoolAttribute(toDisable, 'disabled', true);
+    toDisable.add(self.dialog).css('cursor', 'wait').boolAttr('disabled', true);
 
     function enableForm() {
       self.formValidator.unpause();
       closeCleanup();
-      setBoolAttribute(toDisable, 'disabled', false);
-      toDisable.add(self.dialog).css('cursor', 'auto');
+      toDisable.boolAttr('disabled', false)
+        .add(self.dialog).css('cursor', 'auto');
     }
   },
   startForm: function () {
@@ -288,8 +288,8 @@ var BucketDetailsDialog = mkClass({
 
     setFormValues(form, self.initValues);
 
-    setBoolAttribute(form.find('[name=bucketType]'), 'disabled', !self.isNew);
-    setBoolAttribute(form.find('.for-enable-replication input'), 'checked', self.initValues.replicaNumber !== 0);
+    form.find('[name=bucketType]').boolAttr('disabled', !self.isNew);
+    form.find('.for-enable-replication input').boolAttr('checked', self.initValues.replicaNumber !== 0);
 
     self.cleanups.push(self.bindWithCleanup(form, 'submit', function (e) {
       e.preventDefault();
@@ -732,7 +732,7 @@ $(function () {
     }
     oldIsSasl = isSasl;
 
-    setBoolAttribute(dialog.find('.for-sasl-password-input input'), 'disabled', !isSasl);
-    setBoolAttribute(dialog.find('.for-proxy-port input'), 'disabled', isSasl);
+    dialog.find('.for-sasl-password-input input').boolAttr('disabled', !isSasl);
+    dialog.find('.for-proxy-port input').boolAttr('disabled', isSasl);
   });
 });

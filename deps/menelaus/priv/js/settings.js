@@ -4,7 +4,7 @@ function handlePasswordMatch(parent) {
   var show = (passwd != passwd2);
   parent.find('.dont-match')[show ? 'show' : 'hide']();
   parent.find('[type=submit]').each(function () {
-    setBoolAttribute($(this), 'disabled', show);
+    $(this).boolAttr('disabled', show);
   });
   return !show;
 }
@@ -80,7 +80,7 @@ var SettingsSection = {
     var isVisible = (secureServ.get(0).checked);
     method = isVisible ? 'addClass' : 'removeClass';
     $('#server_secure')[method]('block');
-    setBoolAttribute($('#server_secure input:not([type=hidden])'), 'disabled', !isVisible)
+    $('#server_secure input:not([type=hidden])').boolAttr('disabled', !isVisible)
   },
   init: function () {
     var self = this;
@@ -133,7 +133,7 @@ var SettingsSection = {
       if (basicSettingsForm.find('#secure_serv').is(':checked')) {
         handlePasswordMatch(basicSettingsForm);
       } else {
-        setBoolAttribute(basicSettingsForm.find('[type=submit]'), 'disabled', false)
+        basicSettingsForm.find('[type=submit]').boolAttr('disabled', false);
       }
     });
 
@@ -150,7 +150,7 @@ var SettingsSection = {
     function switchAlertsOn() {
       if (self.advancedSettings.value && ('email_alerts' in self.advancedSettings.value)) {
         _.defer(function () { // make sure we do it after form is filled
-          setBoolAttribute($('#advanced_settings_form [name=email_alerts]'), 'checked', true);
+          $('#advanced_settings_form [name=email_alerts]').boolAttr('checked', true);
           self.handleHideShowCheckboxes();
         });
         return
@@ -171,7 +171,7 @@ var SettingsSection = {
     function switchSecureOn() {
       if (self.webSettings.value && ('port' in self.webSettings.value)) {
         _.defer(function () {
-          setBoolAttribute($('#secure_serv'), 'checked', true);
+          $('#secure_serv').boolAttr('checked', true);
           self.handleHideShowCheckboxes();
           $('#basic_settings_form input[name=username]').get(0).focus();
         });
@@ -186,7 +186,7 @@ var SettingsSection = {
     var form = $('#basic_settings_form');
     setFormValues(form, this.webSettings.value);
     form.find('[name=verifyPassword]').val(this.webSettings.value['password']);
-    setBoolAttribute($('#secure_serv'), 'checked', !!(this.webSettings.value['username']));
+    $('#secure_serv').boolAttr('checked', !!(this.webSettings.value['username']));
     this.handleHideShowCheckboxes();
   },
   fillAdvancedForm: function () {
