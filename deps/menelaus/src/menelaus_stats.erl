@@ -176,7 +176,7 @@ handle_buckets_stats(PoolId, BucketIds, Req) ->
 %% links to stats for the default bucket
 %%
 %% TODO: consider the value of this vs. storing links elsewhere
-handle_bucket_node_list(PoolId, Id, Req) ->
+handle_bucket_node_list(_PoolId, _Id, Req) ->
     Req:ok({"application/json",
             menelaus_util:server_header(),
             <<"{
@@ -196,7 +196,7 @@ handle_bucket_node_list(PoolId, Id, Req) ->
 %% stats for the default bucket
 %%
 %% TODO: consider what else might be of value here
-handle_bucket_node_info(PoolId, Id, NodeId, Req) ->
+handle_bucket_node_info(_PoolId, _Id, _NodeId, Req) ->
     Req:ok({"application/json",
             menelaus_util:server_header(),
             <<"{
@@ -210,7 +210,7 @@ handle_bucket_node_info(PoolId, Id, NodeId, Req) ->
 %%
 %% Per-node stats match bucket stats with the addition of a 'node' key,
 %% stats specific to the node (obviously), and removal of any cross-node stats
-handle_bucket_node_stats(PoolId, Id, NodeId, Req) ->
+handle_bucket_node_stats(PoolId, Id, _NodeId, Req) ->
     %% TODO: implement real stats, server look up, etc.
     handle_buckets_stats(PoolId, [Id], Req).
 
@@ -239,7 +239,7 @@ handle_specific_stat_for_buckets(PoolId, Id, StatName, Req) ->
 %% Same as above, but broken up per_node--think of it as CouchDB's reduce=false
 %% TODO: consider dropping this and putting the same data in the URL above
 %%       --what would the cost/time savings be at generation time? minimal?
-handle_specific_stat_for_buckets_group_per_node(PoolId, Id, StatName, Req) ->
+handle_specific_stat_for_buckets_group_per_node(_PoolId, _Id, _StatName, Req) ->
     %% TODO: implement real stats, server look up, etc.
     Req:ok({"application/json",
             menelaus_util:server_header(),
