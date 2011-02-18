@@ -900,8 +900,8 @@ handle_settings_web_post(Req) ->
                                           [{creds,
                                             [{U, [{password, P}]}]}])
                     end
-                    % No need to restart right here, as our ns_config
-                    % event watcher will do it later if necessary.
+                    %% No need to restart right here, as our ns_config
+                    %% event watcher will do it later if necessary.
             end,
             Host = Req:get_header_value("host"),
             PureHostName = case string:tokens(Host, ":") of

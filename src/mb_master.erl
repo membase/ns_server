@@ -1,0 +1,295 @@
+%% @author Northscale <info@northscale.com>
+%% @copyright 2010 NorthScale, Inc.
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%%
+%%      http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
+%%
+%% Monitor and maintain the vbucket layout of each bucket.
+%% There is one of these per bucket.
+%%
+-module(mb_master).
+
+-behaviour(gen_fsm).
+
+-include("ns_common.hrl").
+
+%% Constants and definitions
+-define(HEARTBEAT_INTERVAL, 2000).
+-define(TIMEOUT, ?HEARTBEAT_INTERVAL * 5000). % in microseconds
+
+-record(state, {child :: pid(), master :: node(), peers :: [node()],
+                last_heard :: {integer(), integer(), integer()}}).
+
+
+%% API
+-export([start_link/0,
+         master_node/0]).
+
+
+%% gen_fsm callbacks
+-export([code_change/4,
+         init/1,
+         handle_event/3,
+         handle_info/3,
+         handle_sync_event/4,
+         terminate/3]).
+
+%% States
+-export([candidate/2,
+         master/2,
+         worker/2]).
+
+
+%%
+%% API
+%%
+
+start_link() ->
+    gen_fsm:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+
+%% @doc Returns the master node for the cluster, or undefined if it's
+%% not known yet.
+master_node() ->
+    gen_fsm:sync_send_all_state_event(?MODULE, master_node).
+
+
+%%
+%% gen_fsm handlers
+%%
+
+init([]) ->
+    ns_pubsub:subscribe(mb_mnesia_events),
+    {ok, _} = timer:send_interval(?HEARTBEAT_INTERVAL, send_heartbeat),
+    case mb_mnesia:peers() of
+        [N] = P when N == node() ->
+            ?log_info("I'm the only node, so I'm the master.", []),
+            {ok, master, start_master(#state{last_heard=now(), peers=P})};
+        Peers when is_list(Peers) ->
+            case lists:member(node(), Peers) of
+                false ->
+                    %% We're a worker, but don't know who the master is yet
+                    ?log_info("Starting as worker. Peers: ~p", [Peers]),
+                    {ok, worker, #state{last_heard=now()}};
+                true ->
+                    %% We're a candidate
+                    ?log_info("Starting as candidate. Peers: ~p", [Peers]),
+                    {ok, _} = timer:send_interval(?HEARTBEAT_INTERVAL,
+                                                  send_heartbeat),
+                    {ok, candidate, #state{last_heard=now(), peers=Peers}}
+            end
+    end.
+
+
+handle_event(Event, StateName, StateData) ->
+    ?log_info("Got unexpected event ~p in state ~p with data ~p",
+              [Event, StateName, StateData]),
+    {next_state, StateName, StateData}.
+
+
+handle_info(send_heartbeat, candidate, #state{peers=Peers} = StateData) ->
+    send_heartbeat(Peers, candidate, StateData),
+    case timer:now_diff(now(), StateData#state.last_heard) >= ?TIMEOUT of
+        true ->
+            %% Take over
+            ?log_info("Haven't heard from a higher priority node or "
+                      "a master, so I'm taking over.", []),
+            {ok, Pid} = mb_master_sup:start_link(),
+            {next_state, master, StateData#state{child=Pid, master=node()}};
+        false ->
+            {next_state, candidate, StateData}
+    end;
+
+handle_info(send_heartbeat, master, StateData) ->
+    send_heartbeat(ns_node_disco:nodes_wanted(), master, StateData),
+    {next_state, master, StateData};
+
+handle_info(send_heartbeat, worker, StateData) ->
+    %% Workers don't send heartbeats, but it's simpler to just ignore
+    %% the timer than to turn it off.
+    {next_state, worker, StateData};
+
+handle_info({peers, Peers}, master, StateData) ->
+    S = update_peers(StateData, Peers),
+    case lists:member(node(), Peers) of
+        true ->
+            {next_state, master, S};
+        false ->
+            ?log_info("Master has been demoted. Peers = ~p", [Peers]),
+            exit(StateData#state.child, shutdown),
+            {next_state, worker, S#state{child=undefined}}
+    end;
+
+handle_info({peers, Peers}, StateName, StateData) when
+      StateName == candidate; StateName == worker ->
+    S = update_peers(StateData, Peers),
+    case Peers of
+        [N] when N == node() ->
+            ?log_info("I'm now the only node, so I'm the master.", []),
+            {next_state, master, start_master(S)};
+        _ ->
+            case lists:member(node(), Peers) of
+                true ->
+                    {next_state, candidate, S};
+                false ->
+                    {next_state, worker, S}
+            end
+    end;
+
+handle_info(Info, StateName, StateData) ->
+    ?log_info("handle_info(~p, ~p, ~p)", [Info, StateName, StateData]),
+    {next_state, StateName, StateData}.
+
+
+handle_sync_event(master_node, _From, StateName, StateData) ->
+    {reply, StateData#state.master, StateName, StateData};
+
+handle_sync_event(_, _, StateName, StateData) ->
+    {reply, unhandled, StateName, StateData}.
+
+
+code_change(_OldVsn, StateName, StateData, _Extra) ->
+    {ok, StateName, StateData}.
+
+
+terminate(_Reason, _StateName, _StateData) ->
+    ok.
+
+
+%%
+%% States
+%%
+
+candidate({heartbeat, Node, master, _H}, #state{peers=Peers} = State) ->
+    case State#state.master of
+        Node ->
+            {next_state, candidate, State#state{last_heard=now()}};
+        N ->
+            case lists:member(Node, Peers) of
+                true ->
+                    ?log_info("Changing master from ~p to ~p", [N, Node]),
+                    {next_state, candidate, State#state{last_heard=now(),
+                                                        master=Node}};
+                false ->
+                    ?log_warning("Master got master heartbeat from node ~p "
+                                 "which is not in peers ~p", [Node, Peers]),
+                    {next_state, master, State}
+            end
+    end;
+
+candidate({heartbeat, Node, candidate, _H}, #state{peers=Peers} = State) ->
+    case lists:member(Node, Peers) of
+        true ->
+            case Node < node() of
+                true ->
+                    %% Higher priority node
+                    {next_state, candidate, State#state{last_heard=now()}};
+                false ->
+                    %% Lower priority, so ignore it
+                    {next_state, candidate, State}
+            end;
+        false ->
+            ?log_warning("Candiate got candidate heartbeat from node ~p which "
+                         "is not in peers ~p", [Node, Peers])
+    end;
+
+candidate(Event, State) ->
+    ?log_info("Got event ~p as candidate with state ~p", [Event, State]),
+    {next_state, candidate, State}.
+
+
+master({heartbeat, Node, master, _H}, #state{peers=Peers} = State) ->
+    case lists:member(Node, Peers) of
+        true ->
+            case Node < node() of
+                true ->
+                    ?log_info("Surrendering mastership to ~p", [Node]),
+                    exit(State#state.child, shutdown),
+                    {next_state, candidate, State#state{child=undefined,
+                                                        last_heard=now()}};
+                false ->
+                    ?log_info("Got master heartbeat from ~p when I'm master",
+                              [Node]),
+                    {next_state, master, State#state{last_heard=now()}}
+            end;
+        false ->
+            ?log_warning("Master got master heartbeat from node ~p which is "
+                         "not in peers ~p", [Node, Peers]),
+            {next_state, master, State}
+    end;
+
+master({heartbeat, Node, candidate, _H}, #state{peers=Peers} = State) ->
+    case lists:member(Node, Peers) of
+        true ->
+            ok;
+        false ->
+            ?log_info("Master got candidate heartbeat from node ~p which is "
+                      "not in peers ~p", [Node, Peers])
+    end,
+    {next_state, master, State#state{last_heard=now()}};
+
+master(Event, State) ->
+    ?log_info("Got event ~p as master with state ~p", [Event, State]),
+    {next_state, master, State}.
+
+
+worker({heartbeat, Node, master, _H}, State) ->
+    case State#state.master of
+        Node ->
+            {next_state, worker, State#state{last_heard=now()}};
+        N ->
+            ?log_info("Saw master change from ~p to ~p", [N, Node]),
+            {next_state, worker, State#state{last_heard=now(), master=Node}}
+    end;
+
+worker(Event, State) ->
+    ?log_info("Got event ~p as worker with state ~p", [Event, State]),
+    {next_state, worker, State}.
+
+
+%%
+%% Internal functions
+%%
+
+%% @private
+%% @doc Send an heartbeat to a list of nodes, except this one.
+send_heartbeat(Nodes, StateName, StateData) ->
+    lists:foreach(
+      fun (Node) when Node /= node() ->
+              gen_fsm:send_event({?MODULE, Node},
+                                 {heartbeat, node(), StateName,
+                                  [{peers, StateData#state.peers}]});
+          (_) -> ok
+      end, Nodes).
+
+
+%% @private
+%% @doc Go into master state. Returns new state data.
+start_master(StateData) ->
+    {ok, Pid} = mb_master_sup:start_link(),
+    StateData#state{child=Pid, master=node()}.
+
+
+%% @private
+%% @doc Update the list of peers in the state. Also logs when it
+%% changes.
+update_peers(StateData, Peers) ->
+    O = lists:sort(StateData#state.peers),
+    P = lists:sort(Peers),
+    case O == P of
+        true ->
+            %% No change
+            StateData;
+        false ->
+            ?log_info("List of peers has changed from ~p to ~p", [O, P]),
+            StateData#state{peers=P}
+    end.

@@ -107,7 +107,7 @@ handle_call({complete_join, NodeKVList}, _From, State) ->
 handle_cast(leave, State) ->
     ns_log:log(?MODULE, 0001, "Node ~p is leaving cluster.", [node()]),
     ok = ns_server_cluster_sup:stop_cluster(),
-    ns_mnesia:demote_self(), % In case we didn't get notified on ejection.
+    mb_mnesia:wipe(),
     NewCookie = ns_node_disco:cookie_gen(),
     erlang:set_cookie(node(), NewCookie),
     lists:foreach(fun erlang:disconnect_node/1, nodes()),
@@ -199,7 +199,7 @@ shun(RemoteNode) ->
     case RemoteNode == node() of
         false ->
             ?log_info("Shunning ~p", [RemoteNode]),
-            try ns_mnesia:demote(RemoteNode)
+            try mb_mnesia:demote(RemoteNode)
             catch E:R ->
                     ?log_info("Failed to demote ~p: ~p", [RemoteNode, {E, R}])
             end,
@@ -249,7 +249,7 @@ do_change_address(NewAddr) ->
             ok;
         {_, _} ->
             ?log_info("Decided to change address to ~p~n", [NewAddr1]),
-            case ns_mnesia:maybe_rename(NewAddr1) of
+            case mb_mnesia:maybe_rename(NewAddr1) of
                 false ->
                     ok;
                 true ->
@@ -568,7 +568,7 @@ perform_actual_join(RemoteNode, NewCookie) ->
         ns_config:set_initial(nodes_wanted, [node(), RemoteNode]),
         error_logger:info_msg("pre-join cleaned config is:~n~p~n",
                               [ns_config:get()]),
-
+        mb_mnesia:prepare_join(),
         true = erlang:set_cookie(node(), NewCookie),
         %% Let's verify connectivity.
         Connected = net_kernel:connect_node(RemoteNode),
@@ -593,7 +593,7 @@ perform_actual_join(RemoteNode, NewCookie) ->
         {ok, _} ->
             %% Cluster mnesia. TODO: this should be managed elsewhere and not
             %% include all nodes.
-            try ns_mnesia:promote_self(RemoteNode) of
+            try mb_mnesia:promote_self(RemoteNode) of
                 ok ->
                     ns_log:log(?MODULE, ?NODE_JOINED, "Node ~s joined cluster",
                                [node()]),

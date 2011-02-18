@@ -56,7 +56,12 @@ get_child_specs() ->
 %% for proper operation unless they will cause other good children to
 %% crash without it.
 good_children() ->
-    [%% ns_log starts after ns_config because it needs the config to
+    [%% Starts mb_master_sup, which has all processes that start on the master
+     %% node.
+     {mb_master, {mb_master, start_link, []},
+      permanent, infinity, supervisor, [mb_master]},
+
+     %% ns_log starts after ns_config because it needs the config to
      %% find where to persist the logs
      {ns_log, {ns_log, start_link, []},
       permanent, 10, worker, [ns_log]},

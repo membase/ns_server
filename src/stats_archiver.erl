@@ -67,7 +67,7 @@ table(Bucket, Period) ->
 
 
 %% @doc Compute the average of a list of entries.
--spec avg(list(), list()) -> #stat_entry{}.
+-spec avg(atom() | integer(), list()) -> #stat_entry{}.
 avg(TS, [First|Rest]) ->
     Sum = fun(_K, null, B) -> B;
              (_K, A, null) -> A;
@@ -124,7 +124,7 @@ handle_info({sample_archived, _, _}, State) ->
     {noreply, State};
 handle_info({truncate, Period, N}, #state{bucket=Bucket} = State) ->
     Tab = table(Bucket, Period),
-    ns_mnesia:truncate(Tab, N),
+    mb_mnesia:truncate(Tab, N),
     {noreply, State};
 handle_info({cascade, Prev, Period, Step}, #state{bucket=Bucket} = State) ->
     cascade(Bucket, Prev, Period, Step),
@@ -158,7 +158,7 @@ create_tables(Bucket) ->
              {type, ordered_set},
              {local_content, true},
              {attributes, record_info(fields, stat_entry)}],
-    [ ns_mnesia:ensure_table(table(Bucket, Period), Table)
+    [ mb_mnesia:ensure_table(table(Bucket, Period), Table)
       || {Period, _, _} <- archives() ].
 
 
