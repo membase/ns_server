@@ -14,7 +14,14 @@ function normalizeNaN(possNaN) {
   return possNaN << 0;
 }
 
+/**
+ * Map JSON object to a form
+ *
+ * @param form jQuery jQuery object of the specific form to map values onto.
+ * @param values JSON JSON object of values to map to the form.
+ */
 function setFormValues(form, values) {
+  // TODO: loop through all input's and set values conditionally based on type
   form.find('input[type=text], input[type=password], input:not([type])').each(function () {
     var text = $(this);
     var name = text.attr('name');
@@ -25,8 +32,10 @@ function setFormValues(form, values) {
   form.find('input[type=checkbox]').each(function () {
     var box = $(this);
     var name = box.attr('name');
-    if (!(name in values))
+
+    if (!(name in values)) {
       return;
+    }
 
     var boolValue = values[name];
     if (_.isString(boolValue)) {
@@ -39,8 +48,10 @@ function setFormValues(form, values) {
   form.find('input[type=radio]').each(function () {
     var box = $(this);
     var name = box.attr('name');
-    if (!(name in values))
+
+    if (!(name in values)) {
       return;
+    }
 
     var boolValue = (values[name] == box.attr('value'));
     box.boolAttr('checked', boolValue);
@@ -49,8 +60,10 @@ function setFormValues(form, values) {
   form.find("select").each(function () {
     var select = $(this);
     var name = select.attr('name');
-    if (!(name in values))
+
+    if (!(name in values)) {
       return;
+    }
 
     var value = values[name];
 
@@ -75,8 +88,9 @@ function formatUptime(seconds, precision) {
     var period = this[0];
     var value = (seconds / period) >> 0;
     seconds -= value * period;
-    if (value)
+    if (value) {
       rv.push(String(value) + ' ' + (value > 1 ? this[1] : this[2]));
+    }
     return !!--precision;
   });
 
@@ -84,30 +98,18 @@ function formatUptime(seconds, precision) {
 }
 
 function postWithValidationErrors(url, data, callback, ajaxOptions) {
-  if (!_.isString(data))
-    data = serializeForm(data);
-  var finalAjaxOptions = {
-    type:'POST',
-    url: url,
-    data: data,
-    success: continuation,
-    error: continuation,
-    dataType: 'json'
-  };
-  _.extend(finalAjaxOptions, ajaxOptions || {});
-  var action = new ModalAction();
-  $.ajax(finalAjaxOptions);
-  return
 
-  function continuation(data, textStatus) {
+  function ajaxCallback(data, textStatus) {
+    var errorsData;
+    var status = 0;
+
     action.finish();
     if (textStatus == 'success') {
       return callback.call(this, data, textStatus);
     }
 
-    var status = 0;
     try {
-      status = data.status // can raise exception on IE sometimes
+      status = data.status; // can raise exception on IE sometimes
     } catch (e) {
       // ignore
     }
@@ -115,8 +117,6 @@ function postWithValidationErrors(url, data, callback, ajaxOptions) {
     if (status >= 200 && status < 300 && data.responseText == '') {
       return callback.call(this, '', 'success');
     }
-
-    var errorsData;
 
     if (textStatus == 'timeout') {
       errorsData = "Save request failed because of timeout.";
@@ -129,12 +129,29 @@ function postWithValidationErrors(url, data, callback, ajaxOptions) {
     }
 
     if (!_.isArray(errorsData)) {
-      if (errorsData == null)
+      if (errorsData == null) {
         errorsData = "unknown reason";
+      }
       errorsData = [errorsData];
     }
     callback.call(this, errorsData, 'error');
   }
+
+  if (!_.isString(data)) {
+    data = serializeForm(data);
+  }
+  var finalAjaxOptions = {
+    type:'POST',
+    url: url,
+    data: data,
+    success: ajaxCallback,
+    error: ajaxCallback,
+    dataType: 'json'
+  };
+  _.extend(finalAjaxOptions, ajaxOptions || {});
+  var action = new ModalAction();
+  $.ajax(finalAjaxOptions);
+  return;
 }
 
 function runFormDialog(uriOrPoster, dialogID, options) {
@@ -142,15 +159,16 @@ function runFormDialog(uriOrPoster, dialogID, options) {
   var dialogQ = $('#' + dialogID);
   var form = dialogQ.find('form');
   var response = false;
-
   var errors = dialogQ.find('.errors');
+  var poster;
+
   errors.hide();
 
-  var poster;
-  if (_.isString(uriOrPoster))
+  if (_.isString(uriOrPoster)) {
     poster = _.bind(postWithValidationErrors, null, uriOrPoster);
-  else
+  } else {
     poster = uriOrPoster;
+  }
 
   function callback(data, status) {
     if (status == 'success') {
@@ -200,8 +218,9 @@ function runFormDialog(uriOrPoster, dialogID, options) {
 // small numbers
 function truncateTo3Digits(value, leastScale) {
   var scale = _.detect([100, 10, 1, 0.1, 0.01, 0.001], function (v) {return value >= v;}) || 0.0001;
-  if (leastScale != undefined && leastScale > scale)
+  if (leastScale != undefined && leastScale > scale) {
     scale = leastScale;
+  }
   scale = 100 / scale;
   return Math.floor(value*scale)/scale;
 }
@@ -210,30 +229,31 @@ function prepareTemplateForCell(templateName, cell) {
   cell.undefinedSlot.subscribeWithSlave(function () {
     prepareRenderTemplate(templateName);
   });
-  if (cell.value === undefined)
+  if (cell.value === undefined) {
     prepareRenderTemplate(templateName);
+  }
 }
 
 function mkCellRenderer(to, options, cell) {
   var template;
+  var toGetter;
 
   if (_.isArray(to)) {
     template = to[1] + '_template';
     to = to[0];
   } else {
     template = to + "_template";
-    to += '_container'
+    to += '_container';
   }
 
-  var toGetter;
   if (_.isString(to)) {
     toGetter = function () {
       return $i(to);
-    }
+    };
   } else {
     toGetter = function () {
       return to;
-    }
+    };
   }
 
   options = options || {};
@@ -252,18 +272,20 @@ function mkCellRenderer(to, options, cell) {
       return prepareAreaUpdate($(toGetter()));
     }
 
-    if (options.valueTransformer)
+    if (options.valueTransformer) {
       value = (options.valueTransformer)(value);
+    }
 
     if (value === cell.value) {
       value = _.clone(value);
     }
     value.__meta = cell.getMetaValue();
 
-    if (options.beforeRendering)
+    if (options.beforeRendering) {
       (options.beforeRendering)(cell);
+    }
     renderRawTemplate(toGetter(), template, value);
-  }
+  };
 }
 
 // renderCellTemplate(cell, "something");
@@ -291,7 +313,7 @@ function renderCellTemplate(cell, to, options) {
         cell.undefinedSlot.unsubscribe(slave);
       });
     }
-  }
+  };
 }
 
 _.extend(ViewHelpers, {
@@ -320,7 +342,7 @@ _.extend(ViewHelpers, {
   setPercentBar: function (percents) {
     return this.thisElement(function (q) {
       percents = (percents << 0); // coerces NaN and infinities to 0
-      q.find('.used').css('width', String(percents)+'%')
+      q.find('.used').css('width', String(percents)+'%');
     });
   },
   setAttribute: function (name, value) {
@@ -332,24 +354,27 @@ _.extend(ViewHelpers, {
     'copy': 'copies'
   },
   count: function (count, text) {
-    if (count == null)
+    if (count == null) {
       return '?' + text + '(s)';
+    }
     count = Number(count);
     if (count > 1) {
       var lastWord = text.split(/\s+/).slice(-1)[0];
       var specialCase = ViewHelpers.specialPluralizations[lastWord];
-      if (specialCase)
+      if (specialCase) {
         text = specialCase;
-      else
+      } else {
         text += 's';
+      }
     }
-    return [String(count), ' ', text].join('')
+    return [String(count), ' ', text].join('');
   },
   renderHealthClass: function (status) {
-    if (status == "healthy")
+    if (status == "healthy") {
       return "up";
-    else
+    } else {
       return "down";
+    }
   },
   formatLogTStamp: function (ts) {
     return window.formatLogTStamp(ts);
@@ -360,15 +385,17 @@ _.extend(ViewHelpers, {
     var G = M*K;
     var T = G*K;
 
-    var t = _.detect([[T,'T'],[G,'G'],[M,'M'],[K,'K']], function (t) {return value > 1.1*t[0]});
+    var t = _.detect([[T,'T'],[G,'G'],[M,'M'],[K,'K']], function (t) {return value > 1.1*t[0];});
     t = t || [1, ''];
     return t;
   },
   formatQuantity: function (value, kind, K, spacing) {
-    if (spacing == null)
+    if (spacing == null) {
       spacing = '';
-    if (kind == null)
+    }
+    if (kind == null) {
       kind = 'B'; //bytes is default
+    }
 
     var t = ViewHelpers.prepareQuantity(value, K);
     return [truncateTo3Digits(value/t[0]), spacing, t[1], kind].join('');
@@ -380,7 +407,7 @@ _.extend(ViewHelpers, {
   renderPendingStatus: function (node) {
     if (node.clusterMembership == 'inactiveFailed') {
       if (node.pendingEject) {
-        return "PENDING EJECT FAILED OVER"
+        return "PENDING EJECT FAILED OVER";
       } else {
         return "FAILED OVER";
       }
@@ -388,18 +415,19 @@ _.extend(ViewHelpers, {
     if (node.pendingEject) {
       return "PENDING EJECT";
     }
-    if (node.clusterMembership == 'active')
+    if (node.clusterMembership == 'active') {
       return '';
+    }
     if (node.clusterMembership == 'inactiveAdded') {
       return 'PENDING ADD';
     }
-    debugger
     throw new Error('cannot reach');
   },
 
   ifNull: function (value, replacement) {
-    if (value == null || value == '')
+    if (value == null || value == '') {
       return replacement;
+    }
     return value;
   },
 
@@ -411,24 +439,26 @@ _.extend(ViewHelpers, {
       if (allServers === undefined || cachedAllServers === allServers) {
         counts = cachedHostnamesCount;
       } else {
-        var hostnames = _.map(allServers, function (s) {return s.hostname});
+        var hostnames = _.map(allServers, function (s) {return s.hostname;});
         counts = {};
         var len = hostnames.length;
         for (var i = 0; i < len; i++) {
           var h = hostnames[i].split(":",1)[0];
-          if (counts[h] === undefined)
+          if (counts[h] === undefined) {
             counts[h] = 1;
-          else
+          } else {
             counts[h]++;
+          }
         }
         cachedAllServers = allServers;
         cachedHostnamesCount = counts;
       }
       var strippedValue = value.split(":",1)[0];
-      if (counts[strippedValue] < 2)
+      if (counts[strippedValue] < 2) {
         value = strippedValue;
-      return escapeHTML(value)
-    }
+      }
+      return escapeHTML(value);
+    };
   })()
 });
 
@@ -467,11 +497,14 @@ function genericDialog(options) {
     var ok = b.ok;
     var cancel = b.cancel;
 
-    if (ok === true)
+    if (ok === true) {
       ok = 'OK';
-    if (cancel === true)
-      cancel == 'CANCEL';
+    }
+    if (cancel === true) {
+      cancel = 'CANCEL';
+    }
 
+    // TODO: redundent and unused code here...simplify
     function bind(jq, on, name) {
       jq[on ? 'show' : 'hide']();
       if (on) {
@@ -499,8 +532,9 @@ function genericDialog(options) {
   var instance = {
     dialog: dialog,
     close: function () {
-      if (modal)
+      if (modal) {
         modal.finish();
+      }
       hideDialog(dialog);
     }
   };
@@ -532,7 +566,7 @@ var originalOnError;
         report.push("Backtrace:\n", bt);
       }
       if (sentReports == ErrorReportsLimit - 1) {
-        report.push("Further reports will be suppressed\n")
+        report.push("Further reports will be suppressed\n");
       }
     }
 
@@ -542,8 +576,9 @@ var originalOnError;
       postClientErrorReport(report.join(''));
     }, 500);
 
-    if (originalOnError)
+    if (originalOnError) {
       originalOnError.call(window, message, fileName, lineNo);
+    }
   }
   window.onerror = appOnError;
 })();
@@ -560,10 +595,12 @@ var originalOnError;
 function watchHashParamLinks(param, body) {
   $('a').live('click', function(e) {
     var href = $(this).attr('href');
-    if (href == null)
+    if (href == null) {
       return;
-    if (!$.deparam.fragment(href)[param])
+    }
+    if (!$.deparam.fragment(href)[param]) {
       return;
+    }
     e.preventDefault();
     body.call(this, e, $.deparam.fragment(href)[param]);
   });
@@ -596,19 +633,21 @@ var MountPointsStd = mkClass({
       p = self.preprocessPath(p);
       return {p: p, i: i};
     });
-    infos.sort(function (a,b) {return b.p.length - a.p.length});
+    infos.sort(function (a,b) {return b.p.length - a.p.length;});
     this.infos = infos;
   },
   preprocessPath: function (p) {
-    if (p.charAt(p.length-1) != '/')
+    if (p.charAt(p.length-1) != '/') {
       p += '/';
+    }
     return p;
   },
   lookup: function (path) {
     path = this.preprocessPath(path);
     var info = _.detect(this.infos, function (info) {
-      if (path.substring(0, info.p.length) == info.p)
+      if (path.substring(0, info.p.length) == info.p) {
         return true;
+      }
     });
     return info && info.i;
   }
@@ -616,28 +655,31 @@ var MountPointsStd = mkClass({
 
 var MountPointsWnd = mkClass(MountPointsStd, {
   preprocessPath: (function () {
-    var re = /^[A-Z]:\//
+    var re = /^[A-Z]:\//;
     var overriden = MountPointsStd.prototype.preprocessPath;
     return function (p) {
-      p = p.replace('\\', '/')
+      p = p.replace('\\', '/');
       if (re.exec(p)) { // if we're using uppercase drive letter downcase it
         p = String.fromCharCode(p.charCodeAt(0) + 0x20) + p.slice(1);
       }
       return overriden.call(this, p);
-    }
+    };
   }())
 });
 
 function MountPoints(nodeInfo, paths) {
-  if (nodeInfo['os'] == 'windows' || nodeInfo['os'] == 'win32')
+  if (nodeInfo.os == 'windows' || nodeInfo.os == 'win32') {
     return new MountPointsWnd(paths);
-  else
+  } else {
     return new MountPointsStd(paths);
+  }
 }
 
+// TODO: deprecate in favor of jQuery?
 function mkTag(name, attrs, contents) {
-  if (contents == null)
+  if (contents == null) {
     contents = '';
+  }
   var prefix = ["<", name];
   prefix = prefix.concat(_.map(attrs || {}, function (v,k) {
     return [" ", k, "='", escapeHTML(v), "'"].join('');
@@ -645,8 +687,9 @@ function mkTag(name, attrs, contents) {
   prefix.push(">");
   prefix = prefix.join('');
   var suffix = ["</",name,">"].join('');
-  if (contents instanceof Array)
+  if (contents instanceof Array) {
     contents = _.flatten(contents).join('');
+  }
   return prefix + contents + suffix;
 }
 
@@ -655,8 +698,9 @@ function mkTag(name, attrs, contents) {
 // algorithm tries to minimize total rounding error. The basic approach
 // is same as in Brasenham line/circle drawing algorithm.
 function rescaleForSum(newSum, values, oldSum) {
-  if (oldSum == null)
-    oldSum = _.inject(values, 0, function (a,v) {return a+v});
+  if (oldSum == null) {
+    oldSum = _.inject(values, 0, function (a,v) {return a+v;});
+  }
   // every value needs to be multiplied by newSum / oldSum
   var error = 0;
   var outputValues = new Array(values.length);
@@ -671,8 +715,10 @@ function rescaleForSum(newSum, values, oldSum) {
 }
 
 function extendHTMLAttrs(attrs1, attrs2) {
-  if (!attrs2)
+  if (!attrs2) {
     return attrs1;
+  }
+
   for (var k in attrs2) {
     var v = attrs2[k];
     if (k in attrs1) {
@@ -692,7 +738,7 @@ function usageGaugeHTML(options) {
   var values = _.map(options.items, function (item) {
     return Math.max(item.value, 0);
   });
-  var total = _.inject(values, 0, function (a,v) {return a+v});
+  var total = _.inject(values, 0, function (a,v) {return a+v;});
   values = rescaleForSum(100, values, total);
   var sum = 0;
   // now put cumulative values into array
@@ -702,12 +748,12 @@ function usageGaugeHTML(options) {
     sum += v;
   }
   var bars = [];
-  for (var i = values.length-1; i >= 0; i--) {
+  for (var j = values.length-1; j >= 0; j--) {
     var style = [
-      "width:", values[i], "%;",
-      items[i].style
+      "width:", values[j], "%;",
+      items[j].style
     ].join('');
-    bars.push(mkTag("div", extendHTMLAttrs({style: style}, items[i].attrs)));
+    bars.push(mkTag("div", extendHTMLAttrs({style: style}, items[j].attrs)));
   }
 
   var markers = _.map(options.markers || [], function (marker) {
@@ -716,20 +762,21 @@ function usageGaugeHTML(options) {
     if (_.indexOf(values, percent) < 0 && (i = _.indexOf(values, percent+1)) >= 0) {
       // if we're very close to some value, stick to it, so that
       // rounding error is not visible
-      if (items[i].value - marker.value < sum*0.01)
+      if (items[i].value - marker.value < sum*0.01) {
         percent++;
+      }
     }
-    var style="left:" + percent + '%;'
+    var style="left:" + percent + '%;';
     return mkTag("i", extendHTMLAttrs({style: style}, marker.attrs));
   });
 
   var tdItems = _.select(options.items, function (item) {
-    return item.name != null;
+    return item.name !== null;
   });
 
   function formatPair(text) {
     if (text instanceof Array) {
-      return [text[0],' (',text[1],')'].join('')
+      return [text[0],' (',text[1],')'].join('');
     }
     return text;
   }
@@ -749,16 +796,17 @@ function usageGaugeHTML(options) {
     "<table style='width:100%;'><tr>",
     _.map(tdItems, function (item, idx) {
       var extraStyle;
-      if (idx == 0)
+      if (idx == 0) {
         extraStyle = 'text-align:left;';
-      else if (idx == tdItems.length - 1)
+      } else if (idx == tdItems.length - 1) {
         extraStyle = 'text-align:right;';
-      else
+      } else {
         extraStyle = 'text-align:center;';
+      }
       return mkTag("td", extendHTMLAttrs({style: extraStyle}, item.tdAttrs),
-                   escapeHTML(item.name)
-                   + ' ('
-                   + escapeHTML(item.renderedValue || item.value) + ')');
+                   escapeHTML(item.name) +
+                   ' (' +
+                   escapeHTML(item.renderedValue || item.value) + ')');
     }),
     "</tr></table>"
   ];
@@ -771,8 +819,9 @@ function memorySizesGaugeHTML(options) {
   newOptions.items = _.clone(newOptions.items);
   for (var i = 0; i < newOptions.items.length; i++) {
     var item = newOptions.items[i];
-    if (item.renderedValue)
+    if (item.renderedValue) {
       continue;
+    }
     newOptions.items[i] = item = _.clone(item);
     item.renderedValue = ViewHelpers.formatQuantity(item.value, null, null, ' ');
   }
@@ -782,37 +831,44 @@ function memorySizesGaugeHTML(options) {
 function buildPlotSeries(data, tstamps, breakInterval, timeOffset) {
   var plusInf = -1/0;
   var maxY = plusInf;
-
   var dataLength = data.length;
   var plotSeries = [];
   var plotData = new Array(dataLength);
   var usedPlotData = 0;
   var prevTStamp;
+  var i;
 
   plotSeries.push(plotData);
 
-  for (var i = 0; i < dataLength; i++)
-    if (data[i] != null)
+  // incrementing i to first occurance of (not-null) data
+  for (i = 0; i < dataLength; i++) {
+    if (data[i] != null) {
       break;
+    }
+  }
 
-  if (i == dataLength)
+  if (i == dataLength) {
     return {maxY: 1,
             plotSeries: []};
+  }
 
   var e = data[i];
-  if (e >= maxY)
+  if (e >= maxY) {
     maxY = e;
+  }
   var tstamp = tstamps[i] + timeOffset;
   prevTStamp = tstamp;
   plotData[usedPlotData++] = [tstamp, e];
 
   for (i++; i < dataLength; i++) {
     e = data[i];
-    if (e == null)
+    if (e == null) {
       continue;
-    if (e >= maxY)
+    }
+    if (e >= maxY) {
       maxY = e;
-    var tstamp = tstamps[i] + timeOffset;
+    }
+    tstamp = tstamps[i] + timeOffset;
     if (prevTStamp + breakInterval < tstamp) {
       plotData.length = usedPlotData;
       plotData = new Array(dataLength);
@@ -824,8 +880,9 @@ function buildPlotSeries(data, tstamps, breakInterval, timeOffset) {
   }
   plotData.length = usedPlotData;
 
-  if (maxY == 0 || maxY == plusInf)
+  if (maxY == 0 || maxY == plusInf) {
     maxY = 1;
+  }
 
   return {maxY: maxY,
           plotSeries: plotSeries};
@@ -842,6 +899,7 @@ function plotStatGraph(graphJQ, stats, attr, options) {
   var tstamps = stats.timestamp;
   var timeOffset = options.timeOffset || 0;
   var breakInterval = options.breakInterval || 3.1557e+10;
+  var lastSampleTime;
 
   // not enough data
   if (tstamps.length < 2) {
@@ -863,16 +921,18 @@ function plotStatGraph(graphJQ, stats, attr, options) {
     maxY = rv.maxY;
   })();
 
-  if (options.rate)
+  if (options.rate) {
     maxY = 100;
+  }
 
   // this is ripped out of jquery.flot which is MIT licensed
   // Tweaks are mine. Bugs too.
   var yTicks = (function () {
     var delta = maxY / 5;
 
-    if (delta == 0.0)
+    if (delta == 0.0) {
       return [0, 1];
+    }
 
     var size, magn, norm;
 
@@ -882,43 +942,48 @@ function plotStatGraph(graphJQ, stats, attr, options) {
     magn = Math.pow(10, -dec);
     norm = delta / magn; // norm is between 1.0 and 10.0
 
-    if (norm < 1.5)
+    if (norm < 1.5) {
       size = 1;
-    else if (norm < 3) {
+    } else if (norm < 3) {
       size = 2;
       // special case for 2.5, requires an extra decimal
       if (norm > 2.25) {
         size = 2.5;
       }
-    }
-    else if (norm < 7.5)
+    } else if (norm < 7.5) {
       size = 5;
-    else
+    } else {
       size = 10;
+    }
 
     size *= magn;
 
     var ticks = [];
 
     // spew out all possible ticks
-    var start = 0,
-    i = 0, v = Number.NaN, prev;
+    var start = 0;
+    var i = 0;
+    var v;
+    var prev;
     do {
       prev = v;
       v = start + i * size;
       ticks.push(v);
-      if (v >= maxY || v == prev)
+      if (v >= maxY || v == prev) {
         break;
+      }
       ++i;
     } while (true);
 
     return ticks;
   })();
 
-  if (options.verticalMargin == null)
-    var graphMax = maxY;
-  else
-    var graphMax = yTicks[yTicks.length-1] * options.verticalMargin;
+  var graphMax;
+  if (options.verticalMargin == null) {
+    graphMax = maxY;
+  } else {
+    graphMax = yTicks[yTicks.length-1] * options.verticalMargin;
+  }
 
   var preparedQ = ViewHelpers.prepareQuantity(yTicks[yTicks.length-1], 1000);
 
@@ -936,13 +1001,15 @@ function plotStatGraph(graphJQ, stats, attr, options) {
       var mins = date.getMinutes();
       var am = (hours > 1 && hours < 13);
       if (!am) {
-        if (hours == 0)
+        if (hours == 0) {
           hours = 12;
-        else
+        } else {
           hours -= 12;
+        }
       }
-      if (hours == 12)
+      if (hours == 12) {
         am = !am;
+      }
       var formattedHours = fd(hours, 100);
       var formattedMins = fd(mins, 100);
 
@@ -951,7 +1018,7 @@ function plotStatGraph(graphJQ, stats, attr, options) {
 
     function formatDate() {
       var monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      return [monthNames[date.getMonth()], String(fd(date.getDate(), 100))].join(' ')
+      return [monthNames[date.getMonth()], String(fd(date.getDate(), 100))].join(' ');
     }
 
     var rv;
@@ -959,8 +1026,9 @@ function plotStatGraph(graphJQ, stats, attr, options) {
     case 'minute':
     case 'second':
       rv = formatWithMinutes();
-      if (unit == 'second')
-        rv = rv.slice(0, -2) + ':' + fd(date.getSeconds(), 100) + rv.slice(-2)
+      if (unit == 'second') {
+        rv = rv.slice(0, -2) + ':' + fd(date.getSeconds(), 100) + rv.slice(-2);
+      }
       break;
     case 'hour':
       rv = [formatDate(), formatWithMinutes()].join(' ');
@@ -982,8 +1050,9 @@ function plotStatGraph(graphJQ, stats, attr, options) {
       ticks: 4
     }, yaxis: {
       tickFormatter: function (val, axis) {
-        if (val == 0)
-          return '0';
+        if (val == 0) {
+          return '0'; // TODO: does this need to change type to string?
+        }
         return [truncateTo3Digits(val/preparedQ[0]), preparedQ[1]].join('');
       },
       min: 0,
@@ -1001,13 +1070,14 @@ function plotStatGraph(graphJQ, stats, attr, options) {
           {xaxis: {from: opts.xmin, to: opts.xmin},
            yaxis: {from: opts.ymin, to: opts.ymax},
            color: 'black'}
-        ]
+        ];
       }
     }
-  }
+  };
 
+  // TODO: fix the lastSampleTime issue introduced in the "else if" below
   if (options.fixedTimeWidth && tstamps.length) {
-    var lastSampleTime = options.lastSampleTime || tstamps[tstamps.length-1];
+    lastSampleTime = options.lastSampleTime || tstamps[tstamps.length-1];
     plotOptions.xaxis.max = lastSampleTime;
     plotOptions.xaxis.min = lastSampleTime - options.fixedTimeWidth;
   } else if (options.lastSampleTime) {
@@ -1031,7 +1101,8 @@ function plotStatGraph(graphJQ, stats, attr, options) {
 }
 
 $.plotSafe = function (placeholder/*, rest...*/) {
-  if (placeholder.width() == 0 || placeholder.height() == 0)
+  if (placeholder.width() == 0 || placeholder.height() == 0) {
     return;
+  }
   return $.plot.apply($, arguments);
-}
+};
