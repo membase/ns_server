@@ -21,19 +21,19 @@
 
 -include("ns_common.hrl").
 
--export([start_link/3]).
+-export([start_link/0]).
 
 -export([init/1]).
 
 
 %% API
-start_link(Name, ChildFun, WorkQueue) ->
-    supervisor:start_link({local, Name}, ?MODULE, {Name, ChildFun, WorkQueue}).
+start_link() ->
+    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 
 %% supervisor callbacks
 
-init({Name, ChildFun, WorkQueue}) ->
+init([]) ->
     ns_pubsub:subscribe(
       ns_config_events,
       fun (Event, State) ->
@@ -44,38 +44,55 @@ init({Name, ChildFun, WorkQueue}) ->
                           [B || {B, C} <- proplists:get_value(configs, L),
                                 lists:member(Node, proplists:get_value(
                                                      servers, C, []))],
-                      work_queue:submit_work(WorkQueue,
+                      work_queue:submit_work(ns_bucket_worker,
                                              fun () ->
-                                                     update_childs(Name, ChildFun, Buckets)
+                                                     update_childs(Buckets)
                                              end);
                   _ -> ok
               end,
               State
       end, undefined),
     {ok, {{one_for_one, 3, 10},
-          lists:flatmap(ChildFun, ns_bucket:get_bucket_names())}}.
+          lists:flatmap(fun child_specs/1, ns_bucket:get_bucket_names())}}.
 
 %% Internal functions
 
-update_childs(Name, ChildFun, Buckets) ->
-    NewSpecs = lists:flatmap(ChildFun, Buckets),
+%% @private
+%% @doc The child specs for each bucket.
+child_specs(Bucket) ->
+    [{{ns_vbm_sup, Bucket}, {ns_vbm_sup, start_link, [Bucket]},
+      permanent, 1000, worker, [ns_vbm_sup]},
+     {{ns_memcached, Bucket}, {ns_memcached, start_link, [Bucket]},
+      %% ns_memcached waits for the bucket to sync to disk before exiting
+      permanent, 86400000, worker, [ns_memcached]},
+     {{stats_collector, Bucket}, {stats_collector, start_link, [Bucket]},
+      permanent, 10, worker, [stats_collector]},
+     {{stats_archiver, Bucket}, {stats_archiver, start_link, [Bucket]},
+      permanent, 10, worker, [stats_archiver]},
+     {{stats_reader, Bucket}, {stats_reader, start_link, [Bucket]},
+      permanent, 10, worker, [stats_reader]}].
+
+
+
+update_childs(Buckets) ->
+    NewSpecs = lists:flatmap(fun child_specs/1, Buckets),
     NewIds = [element(1, X) || X <- NewSpecs],
-    OldSpecs = supervisor:which_children(Name),
+    OldSpecs = supervisor:which_children(?MODULE),
     RunningIds = [element(1, X) || X <- OldSpecs],
     ToStart = NewIds -- RunningIds,
     ToStop = RunningIds -- NewIds,
     lists:foreach(fun (StartId) ->
                           Tuple = lists:keyfind(StartId, 1, NewSpecs),
                           true = is_tuple(Tuple),
-                          ?log_info("~s: Starting new child: ~p~n",
-                                    [Name, Tuple]),
-                          supervisor:start_child(Name, Tuple)
+                          ?log_info("Starting new child: ~p~n",
+                                    [Tuple]),
+                          supervisor:start_child(?MODULE, Tuple)
                   end, ToStart),
     lists:foreach(fun (StopId) ->
                           Tuple = lists:keyfind(StopId, 1, OldSpecs),
                           true = is_tuple(Tuple),
-                          ?log_info("~s: Stopping child for dead bucket: ~p~n",
-                                    [Name, Tuple]),
-                          supervisor:terminate_child(Name, StopId),
-                          supervisor:delete_child(Name, StopId)
+                          ?log_info("Stopping child for dead bucket: ~p~n",
+                                    [Tuple]),
+                          supervisor:terminate_child(?MODULE, StopId),
+                          supervisor:delete_child(?MODULE, StopId)
                   end, ToStop).

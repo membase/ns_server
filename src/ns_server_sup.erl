@@ -88,47 +88,23 @@ child_specs() ->
      {ns_stats_event, {gen_event, start_link, [{local, ns_stats_event}]},
       permanent, 10, worker, dynamic},
 
-     {ns_good_bucket_worker, {work_queue, start_link, [ns_good_bucket_worker]},
+     {ns_bucket_worker, {work_queue, start_link, [ns_bucket_worker]},
       permanent, 10, worker, [work_queue]},
 
-     {ns_good_bucket_sup, {ns_bucket_sup, start_link,
-                           [ns_good_bucket_sup, fun good_bucket_children/1, ns_good_bucket_worker]},
+     {ns_bucket_sup, {ns_bucket_sup, start_link, []},
       permanent, infinity, supervisor, [ns_bucket_sup]},
 
      {ns_orchestrator, {ns_orchestrator, start_link, []},
       permanent, 20, worker, [ns_orchestrator]},
-
-     {ns_bad_bucket_worker, {work_queue, start_link, [ns_bad_bucket_worker]},
-      permanent, 10, worker, [work_queue]},
-
-     {ns_bad_bucket_sup, {ns_bucket_sup, start_link,
-      [ns_bad_bucket_sup, fun bad_bucket_children/1, ns_bad_bucket_worker]},
-      permanent, infinity, supervisor, [ns_bucket_sup]},
 
      {ns_moxi_sup, {ns_moxi_sup, start_link, []},
       permanent, infinity, supervisor,
       [ns_moxi_sup]},
 
      {moxi_stats_collector, {supervisor_cushion, start_link,
-                             [moxi_stats_collector, 5000, moxi_stats_collector, start_link, []]},
+                             [moxi_stats_collector, 5000, moxi_stats_collector,
+                              start_link, []]},
       permanent, 10, worker, [moxi_stats_collector, supervisor_cushion]},
 
      {ns_tick, {ns_tick, start_link, []},
       permanent, 10, worker, [ns_tick]}].
-
-
-bad_bucket_children(Bucket) ->
-    [{{stats_collector, Bucket}, {stats_collector, start_link, [Bucket]},
-      permanent, 10, worker, [stats_collector]},
-     {{stats_archiver, Bucket}, {stats_archiver, start_link, [Bucket]},
-      permanent, 10, worker, [stats_archiver]},
-     {{stats_reader, Bucket}, {stats_reader, start_link, [Bucket]},
-      permanent, 10, worker, [stats_reader]}].
-
-good_bucket_children(Bucket) ->
-    %% Start ns_memcached last so we know the bucket's good once it's available
-    [{{ns_vbm_sup, Bucket}, {ns_vbm_sup, start_link, [Bucket]},
-      permanent, 1000, worker, [ns_vbm_sup]},
-     {{ns_memcached, Bucket}, {ns_memcached, start_link, [Bucket]},
-      %% ns_memcached waits for the bucket to sync to disk before exiting
-      permanent, 86400000, worker, [ns_memcached]}].
