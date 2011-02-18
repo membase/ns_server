@@ -94,9 +94,6 @@ child_specs() ->
      {ns_bucket_sup, {ns_bucket_sup, start_link, []},
       permanent, infinity, supervisor, [ns_bucket_sup]},
 
-     {ns_orchestrator, {ns_orchestrator, start_link, []},
-      permanent, 20, worker, [ns_orchestrator]},
-
      {ns_moxi_sup, {ns_moxi_sup, start_link, []},
       permanent, infinity, supervisor,
       [ns_moxi_sup]},
@@ -104,7 +101,4 @@ child_specs() ->
      {moxi_stats_collector, {supervisor_cushion, start_link,
                              [moxi_stats_collector, 5000, moxi_stats_collector,
                               start_link, []]},
-      permanent, 10, worker, [moxi_stats_collector, supervisor_cushion]},
-
-     {ns_tick, {ns_tick, start_link, []},
-      permanent, 10, worker, [ns_tick]}].
+      permanent, 10, worker, [moxi_stats_collector, supervisor_cushion]}].
