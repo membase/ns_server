@@ -41,21 +41,13 @@ init([]) ->
     {ok, {{one_for_one,
            misc:get_env_default(max_r, 3),
            misc:get_env_default(max_t, 10)},
-          get_child_specs()}}.
+          child_specs()}}.
 
 pre_start() ->
     misc:make_pidfile(),
     misc:ping_jointo().
 
-get_child_specs() ->
-    good_children() ++ bad_children().
-
-
-%% Children that needn't be restarted when we pull the plug. These
-%% cannot crash or hang if Mnesia is down, but they can depend on it
-%% for proper operation unless they will cause other good children to
-%% crash without it.
-good_children() ->
+child_specs() ->
     [%% Starts mb_master_sup, which has all processes that start on the master
      %% node.
      {mb_master, {mb_master, start_link, []},
@@ -104,14 +96,9 @@ good_children() ->
       permanent, infinity, supervisor, [ns_bucket_sup]},
 
      {ns_orchestrator, {ns_orchestrator, start_link, []},
-      permanent, 20, worker, [ns_orchestrator]}
-    ].
+      permanent, 20, worker, [ns_orchestrator]},
 
-
-%% Children that get restarted if we pull the plug. These can depend
-%% on Mnesia.
-bad_children() ->
-    [{ns_bad_bucket_worker, {work_queue, start_link, [ns_bad_bucket_worker]},
+     {ns_bad_bucket_worker, {work_queue, start_link, [ns_bad_bucket_worker]},
       permanent, 10, worker, [work_queue]},
 
      {ns_bad_bucket_sup, {ns_bucket_sup, start_link,
