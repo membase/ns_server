@@ -455,7 +455,7 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
 
     Controllers = {struct, [
         {addNode, {struct, [{uri, <<"/controller/addNod">>}]}},
-        {rebalance, {struct, [{uri, <<"/controller/rebalanc">>}]}},
+        {rebalance, {struct, [{uri, <<"/controller/rebalance">>}]}},
         {failOver, {struct, [{uri, <<"/controller/failOver">>}]}},
         {reAddNode, {struct, [{uri, <<"/controller/reAddNode">>}]}},
         {ejectNode, {struct, [{uri, <<"/controller/ejectNode">>}]}},
