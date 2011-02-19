@@ -41,7 +41,7 @@
          update_progress/1
         ]).
 
--define(SERVER, {global, ?MODULE}).
+-define(SERVER, {?MODULE, mb_master:master_node()}).
 
 -define(REBALANCE_SUCCESSFUL, 1).
 -define(REBALANCE_FAILED, 2).
@@ -68,7 +68,7 @@
 %%
 
 start_link() ->
-    misc:start_singleton(gen_fsm, ?MODULE, [], []).
+    gen_fsm:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 
 -spec create_bucket(memcached|membase, nonempty_string(), list()) ->
