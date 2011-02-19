@@ -1,4 +1,4 @@
-(function($){
+;(function($){
   $.fn.boolAttr = function(attr, value) {
     var $this = $(this);
     if (value) {
