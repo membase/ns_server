@@ -941,21 +941,13 @@ function initAlertsSubscriber() {
       dialog = null,
       alerts = [];
 
-  function expireAlerts(msg) {
-    for (var i = 0; i < alerts.length; i++) {
-      alerts[i].viewed = true;
-      alerts[i].lastShown = new Date().getTime();
-    }
-  };
-
   function addAlert(msg) {
     for (var i = 0; i < alerts.length; i++) {
       if (alerts[i].msg === msg) {
-        alerts[i].viewed = false;
         return;
       }
     }
-    alerts.push({msg: msg, lastShown: false, viewed: false});
+    alerts.push({msg: msg});
   };
 
   function createAlertMsg() {
@@ -983,11 +975,11 @@ function initAlertsSubscriber() {
       if (alertMsg) {
         dialog = genericDialog({
           buttons: {ok: true},
-          modal: false, // TODO: ModalAction is broken
+          modal: false,
           header: "Alert",
           text: alertMsg,
           callback: function (e, btn, dialog) {
-            expireAlerts();
+            alerts = [];
             alertsShown = false;
             dialog.close();
           }

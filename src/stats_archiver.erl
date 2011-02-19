@@ -83,9 +83,14 @@ avg(TS, [First|Rest]) ->
 
 
 %% @doc the last entry to be collected
--spec latest(atom(), atom(), atom()) -> tuple().
+-spec latest(string(), atom(), atom()) -> tuple().
 latest(Bucket, Type, Key) ->
-    lists:keyfind(Key, 1, latest(Bucket, Type)).
+    case latest(Bucket, Type) of
+        List when is_list(List) ->
+            lists:keyfind(Key, 1, List);
+        false ->
+            false
+    end.
 
 %%
 %% gen_server callbacks
@@ -211,16 +216,22 @@ start_timers() ->
 %% @doc read the latest set of stat_entry values on a bucket
 latest(Bucket, Type) ->
     Table = table(Bucket, Type),
-    Stats = mnesia:activity(transaction, fun read_latest/1, [Table]),
-    Stats#stat_entry.values.
+    case mnesia:activity(transaction, fun read_latest/1, [Table]) of
+        Stats when is_record(Stats, stat_entry) ->
+            Stats#stat_entry.values;
+        false ->
+            false
+    end.
 
 
 %% @doc read the latest item from a table, expected to be run inside a
 %% transaction context
 -spec read_latest(atom()) -> any().
 read_latest(Table) ->
-    [Last] = mnesia:read(Table, mnesia:last(Table)),
-    Last.
+    case mnesia:read(Table, mnesia:last(Table)) of
+        [Last] -> Last;
+        []     -> false
+    end.
 
 
 -spec fmt(string(), list()) -> list().

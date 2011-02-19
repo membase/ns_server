@@ -10,7 +10,11 @@
 %% until a long polling transport is used, will be single user
 %% until then, many checks for alerts every ?SAMPLE_RATE milliseconds
 
--record(state, {messages, history, opaque}).
+-record(state, {
+          queue = [],
+          history = [],
+          opaque = dict:new()
+         }).
 
 %% Amount of time to wait between state checks (ms)
 -define(SAMPLE_RATE, 3000).
@@ -18,7 +22,10 @@
 %% Amount of time between sending users the same alert (s)
 -define(ALERT_TIMEOUT, 60 * 2).
 
--export([start_link/0, stop/0, add_alert/2, fetch_alerts/0]).
+-define(IP_ERR, "Cannot listen on hostname: ~p").
+-define(OOM_ERR, "Node ~p is out of Memory").
+
+-export([start_link/0, stop/0, local_alert/2, global_alert/2, fetch_alerts/0]).
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -28,9 +35,16 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 
-%% @doc Add an alert to be shown in the browser
--spec add_alert(atom(), binary()) -> ok.
-add_alert(Key, Val) ->
+%% @doc Send alert to all connected nodes
+global_alert(Type, Msg) ->
+    [rpc:cast(Node, ?MODULE, local_alert, [Type, Msg])
+     || Node <- [node() | nodes()]],
+    ok.
+
+
+%% @doc Show to user on running node only
+-spec local_alert(atom(), binary()) -> ok | ignored.
+local_alert(Key, Val) ->
     gen_server:call(?MODULE, {add_alert, Key, Val}).
 
 
@@ -50,16 +64,21 @@ stop() ->
 
 init([]) ->
     start_timer(),
-    %start_subscriptions(),
-    {ok, #state{messages=[], history=[], opaque=dict:new()}}.
+    {ok, #state{}}.
 
 
-handle_call(fetch_alert, _From, #state{history=Hist, messages=Msgs} = State) ->
+handle_call(fetch_alert, _From, #state{history=Hist, queue=Msgs} = State) ->
     Alerts = [Msg || {_Key, Msg, _Time} <- Msgs],
-    {reply, Alerts, State#state{history = Hist ++ Msgs, messages = []}};
+    {reply, Alerts, State#state{history = Hist ++ Msgs, queue = []}};
 
-handle_call({add_alert, Key, Val}, _From, #state{messages=Msgs} = State) ->
-    {reply, ok, State#state{messages=[{Key, Val, misc:now_int()} | Msgs]}};
+handle_call({add_alert, Key, Val}, _, #state{queue=Msgs, history=Hist} = State) ->
+    case not alert_exists(Key, Hist, Msgs)  of
+        true ->
+            error_logger:info_msg(Val),
+            {reply, ok, State#state{queue=[{Key, Val, misc:now_int()} | Msgs]}};
+        false ->
+            {reply, ignored, State}
+    end;
 
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
@@ -72,13 +91,10 @@ handle_cast(_Msg, State) ->
     {noreply, State}.
 
 
-handle_info(check_alerts, State) ->
-    #state{messages=Msgs, history=Hist, opaque=Opaque} = State,
-    {NewDict, NewAlerts} = check_alerts(Opaque, Hist),
+handle_info(check_alerts, #state{history=Hist, opaque=Opaque} = State) ->
     {noreply, State#state{
-                opaque = NewDict,
-                history = expire_history(Hist),
-                messages = Msgs ++ NewAlerts
+                opaque = check_alerts(Opaque, Hist),
+                history = expire_history(Hist)
                }};
 
 handle_info(_Info, State) ->
@@ -101,47 +117,73 @@ start_timer() ->
     timer:send_interval(?SAMPLE_RATE, check_alerts).
 
 
-%% @doc Accumulate various alerts, maintain a state dictionary
-check_alerts(Opaque, Hist) ->
-    Fun = fun(X, {Dict, Alerts}) ->
-                  case check(X, Dict, Hist) of
-                      {NDict, ok} ->
-                          {NDict, Alerts};
-                      {NDict, Alert} ->
-                          {NDict, [{X, Alert, misc:now_int()} | Alerts]}
-                  end
-          end,
-    lists:foldl(Fun, {Opaque, []}, [oom, ip]).
+%% @doc Check to see if an alert (by key) is currently in either
+%% the message queue or history of recent items sent
+alert_exists(Key, History, MsgQueue) ->
+    lists:keyfind(Key, 1, History) =/= false
+        orelse lists:keyfind(Key, 1, MsgQueue) =/= false.
 
-%% TODO:
--spec check(atom(), any(), list(tuple())) ->
-    {any(), ok | binary()}.
+%% @doc global checks for any server specific problems locally then
+%% broadcast alerts to clients connected to any particular node
+global_checks() ->
+    [oom, ip].
+
+%% @doc fires off various checks
+check_alerts(Opaque, Hist) ->
+    Fun = fun(X, Dict) -> check(X, Dict, Hist) end,
+    lists:foldl(Fun, Opaque, global_checks()).
+
+%% @doc if listening on a non localhost ip, detect differences between
+%% external listening host and current node host
+-spec check(atom(), dict(), list()) -> dict().
 check(ip, Opaque, _History) ->
-    {Opaque, ok};
+    {_Name, Host} = misc:node_name_host(node()),
+    case can_listen(Host) of
+        false ->
+            global_alert({ip, node()}, fmt_to_bin(?IP_ERR, [node()]));
+        true ->
+            ok
+    end,
+    Opaque;
 
 %% @doc check for any oom errors an any bucket
-check(oom, Opaque, History) ->
+check(oom, Opaque, _History) ->
     New = sum_oom_errors(),
     case dict:is_key(oom, Opaque) of
         false ->
-            {dict:store(oom, New, Opaque), ok};
+            dict:store(oom, New, Opaque);
         true ->
             Old = dict:fetch(oom, Opaque),
-            Alert = case New > Old andalso not sent(oom, History) of
-                        true ->
-                            <<"Out of Memory">>;
-                        false ->
-                            ok
-                    end,
-            {dict:store(oom, New, Opaque), Alert}
+            case New > Old of
+                true ->
+                    global_alert({oom, node()}, fmt_to_bin(?OOM_ERR, [node()]));
+                false ->
+                    ok
+            end,
+            dict:store(oom, New, Opaque)
     end.
 
 
-%% @doc Check against server history to see if a message was sent
-%% recently
--spec sent(atom(), list()) -> true | false.
-sent(Key, Hist) ->
-    is_tuple(lists:keyfind(Key, 1, Hist)).
+%% @doc check that I can listen on the current host
+-spec can_listen(string()) -> boolean().
+can_listen(Host) ->
+    case inet:getaddr(Host, inet) of
+        {error, _Err} ->
+            false;
+        {ok, IpAddr} ->
+            case gen_tcp:listen(0, [inet, {ip, IpAddr}]) of
+                {error, _ListErr} ->
+                    false;
+                {ok, Socket} ->
+                    gen_tcp:close(Socket),
+                    true
+            end
+    end.
+
+
+%% Format the error message into a binary
+fmt_to_bin(Str, Args) ->
+    list_to_binary(lists:flatten(io_lib:format(Str, Args))).
 
 
 %% @doc Sum of all oom errors on all buckets
@@ -152,10 +194,12 @@ sum_oom_errors() ->
 
 
 %% @doc Total count of oom errors on a bucket
--spec bucket_oom_errors(atom()) -> integer().
+-spec bucket_oom_errors(string()) -> integer().
 bucket_oom_errors(Bucket) ->
-    {ep_oom_errors, X} = stats_archiver:latest(Bucket, minute, ep_oom_errors),
-    X.
+    case stats_archiver:latest(Bucket, minute, ep_oom_errors) of
+        {ep_oom_errors, X} -> X;
+        _ -> 0
+    end.
 
 
 %% @doc Server keeps a list of messages to check against sending
@@ -171,14 +215,29 @@ expire_history(Hist) ->
 %% calls to the archiver
 -include_lib("eunit/include/eunit.hrl").
 
+%% Need to split these into seperate tests, but eunit dies on them for now
 basic_test_() ->
     {setup,
      fun() -> ?MODULE:start_link() end,
      fun(_) -> ?MODULE:stop() end,
      fun() -> {inorder,
-               [ ?assertEqual(ok, ?MODULE:add_alert(foo, <<"bar">>)),
-                 ?assertEqual([<<"bar">>], ?MODULE:fetch_alerts()),
-                 ?assertEqual([], ?MODULE:fetch_alerts())
-                ]
+               [
+                ?assertEqual(ok, ?MODULE:local_alert(foo, <<"bar">>)),
+                ?assertEqual([<<"bar">>], ?MODULE:fetch_alerts()),
+                ?assertEqual([], ?MODULE:fetch_alerts()),
+
+                ?assertEqual(ok, ?MODULE:local_alert(bar, <<"bar">>)),
+                ?assertEqual(ignored, ?MODULE:local_alert(bar, <<"bar">>)),
+                ?assertEqual([<<"bar">>], ?MODULE:fetch_alerts()),
+                ?assertEqual([], ?MODULE:fetch_alerts()),
+
+                ?assertEqual(ok, ?MODULE:global_alert(fu, <<"bar">>)),
+                ?assertEqual(ok, ?MODULE:global_alert(fu, <<"bar">>)),
+
+                timer:sleep(50),
+
+                ?assertEqual([<<"bar">>], ?MODULE:fetch_alerts()),
+                ?assertEqual([], ?MODULE:fetch_alerts())
+               ]
               }
      end}.
