@@ -454,7 +454,7 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
     Alerts = menelaus_web_alerts_srv:fetch_alerts(),
 
     Controllers = {struct, [
-        {addNode, {struct, [{uri, <<"/controller/addNod">>}]}},
+        {addNode, {struct, [{uri, <<"/controller/addNode">>}]}},
         {rebalance, {struct, [{uri, <<"/controller/rebalance">>}]}},
         {failOver, {struct, [{uri, <<"/controller/failOver">>}]}},
         {reAddNode, {struct, [{uri, <<"/controller/reAddNode">>}]}},
