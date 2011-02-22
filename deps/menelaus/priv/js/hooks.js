@@ -39,7 +39,7 @@ var TestingSupervisor = {
     });
   },
   activeStatsTarget: function () {
-    var cell = DAO.cells.currentStatTargetCell;
+    var cell = DAL.cells.currentStatTargetCell;
     if (!cell)
       return null;
     var value = cell.value;
@@ -1120,8 +1120,8 @@ var __hookParams = {};
   }
 
   if (params['nowiz']) {
-    DAO.login = 'Administrator'
-    DAO.password = 'asdasd';
+    DAL.login = 'Administrator'
+    DAL.password = 'asdasd';
   }
 
   if (params['single']) {

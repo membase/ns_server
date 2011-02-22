@@ -4,7 +4,7 @@ var OverviewSection = {
       $('#overview .buckets-number').text(buckets ? ViewHelpers.count(buckets.length, 'bucket') : '??');
     });
 
-    DAO.cells.serversCell.subscribeValue(function (servers) {
+    DAL.cells.serversCell.subscribeValue(function (servers) {
       var reallyActiveNodes = _.select(servers ? servers.active : [], function (n) {
         return n.clusterMembership == 'active';
       });
@@ -34,13 +34,13 @@ var OverviewSection = {
       updateCount('.pending-count', pending.length);
     });
 
-    DAO.cells.currentPoolDetailsCell.ensureMetaCell().subscribeValue(function (meta) {
+    DAL.cells.currentPoolDetailsCell.ensureMetaCell().subscribeValue(function (meta) {
       if (!meta || meta.stale === undefined)
         return;
       $('#overview .staleness-notice')[meta.stale ? 'show' : 'hide']();
     });
 
-    DAO.cells.currentPoolDetailsCell.subscribeValue(function (poolDetails) {
+    DAL.cells.currentPoolDetailsCell.subscribeValue(function (poolDetails) {
       if (!poolDetails || !poolDetails.storageTotals
           || !poolDetails.storageTotals.ram || !poolDetails.storageTotals.hdd) {
         $('#overview_clusters_block').hide();
@@ -144,8 +144,8 @@ var OverviewSection = {
         return;
       return 1;
     }, {
-      poolDetails: DAO.cells.currentPoolDetailsCell,
-      mode: DAO.cells.mode
+      poolDetails: DAL.cells.currentPoolDetailsCell,
+      mode: DAL.cells.mode
     });
 
     this.statsCell = Cell.mkCaching(function (arg) {
@@ -170,7 +170,7 @@ var OverviewSection = {
       if (mode == 'overview')
         return stats;
     }, {
-      mode: DAO.cells.mode,
+      mode: DAL.cells.mode,
       stats: this.statsCell
     })
     this.statsToRenderCell.subscribeValue($m(this, 'onStatsValue'));
@@ -198,7 +198,7 @@ var OverviewSection = {
   },
   onStatsValue: function (stats) {
     var haveStats = true;
-    if (!stats || DAO.cells.mode.value != 'overview')
+    if (!stats || DAL.cells.mode.value != 'overview')
       haveStats = false;
     else if (stats.timestamp.length < 2)
       haveStats = false;

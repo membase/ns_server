@@ -135,7 +135,7 @@ var ServersSection = {
   init: function () {
     var self = this;
 
-    self.poolDetails = DAO.cells.currentPoolDetailsCell;
+    self.poolDetails = DAL.cells.currentPoolDetailsCell;
 
     self.tabs = new TabsCell("serversTab",
                              "#servers .tabs",
@@ -157,10 +157,10 @@ var ServersSection = {
       valueTransformer: function (nodeInfo, nodeSettings) {
         return _.extend({}, nodeInfo, nodeSettings);
       },
-      listCell: Cell.compute(function (v) {return v.need(DAO.cells.serversCell).active})
+      listCell: Cell.compute(function (v) {return v.need(DAL.cells.serversCell).active})
     });
 
-    self.serversCell = DAO.cells.serversCell;
+    self.serversCell = DAL.cells.serversCell;
 
     self.poolDetails.subscribeValue(function (poolDetails) {
       $($.makeArray($('#servers .failover_warning')).slice(1)).remove();
@@ -421,7 +421,7 @@ var ServersSection = {
     });
     var dialog = $('#failover_confirmation_dialog');
     var overlay = overlayWithSpinner(dialog.find('.content').need(1));
-    var statusesCell = DAO.cells.nodeStatusesCell;
+    var statusesCell = DAL.cells.nodeStatusesCell;
     statusesCell.setValue(undefined);
     statusesCell.invalidate();
     statusesCell.changedSlot.subscribeOnce(function () {

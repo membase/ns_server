@@ -146,13 +146,13 @@ var SamplesRestorer = mkClass({
   }
   statsCell.setRecalculateTime = $m(statsCell.target, 'setRecalculateTime');
 
-  _.extend(DAO.cells, {
+  _.extend(DAL.cells, {
     stats: statsCell,
     statsOptions: statsOptionsCell,
-    currentPoolDetails: DAO.cells.currentPoolDetailsCell,
+    currentPoolDetails: DAL.cells.currentPoolDetailsCell,
     samplesBufferDepth: samplesBufferDepth
   });
-}).call(DAO.cells);
+}).call(DAL.cells);
 
 var maybeReloadAppDueToLeak = (function () {
   var counter = 300;
@@ -192,7 +192,7 @@ var maybeReloadAppDueToLeak = (function () {
     var lastY = data[data.length-1];
     var now = (new Date()).valueOf();
     if (ops.interval < 2000)
-      now -= DAO.cells.samplesBufferDepth.value * 1000;
+      now -= DAL.cells.samplesBufferDepth.value * 1000;
 
     var maxString = isNaN(lastY) ? '?' : ViewHelpers.formatQuantity(lastY, '', 1000);
     queuedUpdates.push(function () {
@@ -310,7 +310,7 @@ var StatGraphs = {
     if (self.preventUpdatesCounter)
       return;
 
-    var cell = DAO.cells.stats;
+    var cell = DAL.cells.stats;
     var stats = cell.value;
     if (!stats)
       return self.renderNothing();
@@ -354,11 +354,11 @@ var StatGraphs = {
       op.samples = stats;
     }
 
-    var zoomMillis = (self.zoomToSeconds[DAO.cells.zoomLevel.value] || 60) * 1000;
+    var zoomMillis = (self.zoomToSeconds[DAL.cells.zoomLevel.value] || 60) * 1000;
     var selected = self.selected.value;
     var now = (new Date()).valueOf();
     if (op.interval < 2000)
-      now -= DAO.cells.samplesBufferDepth.value * 1000;
+      now -= DAL.cells.samplesBufferDepth.value * 1000;
 
     maybeReloadAppDueToLeak();
     plotStatGraph(main, stats, selected, {
@@ -396,7 +396,7 @@ var StatGraphs = {
     this.doUpdate();
   },
   update: function () {
-    var cell = DAO.cells.stats;
+    var cell = DAL.cells.stats;
     var stats = cell.value;
 
     cell.setRecalculateTime();
@@ -636,7 +636,7 @@ var StatGraphs = {
       linkSelector: '.analytics-small-graph',
       firstItemIsDefault: true}),
 
-    DAO.cells.stats.subscribeAny($m(this, 'update'));
+    DAL.cells.stats.subscribeAny($m(this, 'update'));
 
     var selected = self.selected;
 
@@ -688,28 +688,28 @@ var AnalyticsSection = {
     $('#top_keys_container table tr:has(td):odd').addClass('even');
   },
   init: function () {
-    DAO.cells.zoomLevel = new LinkSwitchCell('zoom', {
+    DAL.cells.zoomLevel = new LinkSwitchCell('zoom', {
       firstItemIsDefault: true
     });
 
     _.each('minute hour day week month year'.split(' '), function (name) {
-      DAO.cells.zoomLevel.addItem('zoom_' + name, name)
+      DAL.cells.zoomLevel.addItem('zoom_' + name, name)
     });
 
-    DAO.cells.zoomLevel.finalizeBuilding();
+    DAL.cells.zoomLevel.finalizeBuilding();
 
-    DAO.cells.zoomLevel.subscribeValue(function (zoomLevel) {
-      DAO.cells.statsOptions.update({
+    DAL.cells.zoomLevel.subscribeValue(function (zoomLevel) {
+      DAL.cells.statsOptions.update({
         zoom: zoomLevel
       });
     });
 
-    DAO.cells.stats.subscribe($m(this, 'onKeyStats'));
-    prepareTemplateForCell('top_keys', DAO.cells.currentStatTargetCell);
+    DAL.cells.stats.subscribe($m(this, 'onKeyStats'));
+    prepareTemplateForCell('top_keys', DAL.cells.currentStatTargetCell);
 
     StatGraphs.init();
 
-    DAO.cells.currentStatTargetCell.subscribe(function (cell) {
+    DAL.cells.currentStatTargetCell.subscribe(function (cell) {
       var value = cell.value.name;
       var names = $('.stat_target_name');
       names.text(value);
@@ -719,7 +719,7 @@ var AnalyticsSection = {
       return Cell.compute(function (v) {
         return !!(v.need(meta).stale);
       });
-    })(DAO.cells.stats.ensureMetaCell());
+    })(DAL.cells.stats.ensureMetaCell());
 
     statsStaleness.subscribeValue(function (stale) {
       $('.stats-period-container')[stale ? 'hide' : 'show']();
@@ -727,13 +727,13 @@ var AnalyticsSection = {
     });
   },
   visitBucket: function (bucketURL) {
-    if (DAO.cells.mode.value != 'analytics')
+    if (DAL.cells.mode.value != 'analytics')
       ThePage.gotoSection('analytics');
-    DAO.cells.statsBucketURL.setValue(bucketURL);
+    DAL.cells.statsBucketURL.setValue(bucketURL);
   },
   onLeave: function () {
     setHashFragmentParam('graph', undefined);
-    DAO.cells.statsBucketURL.setValue(undefined);
+    DAL.cells.statsBucketURL.setValue(undefined);
   },
   onEnter: function () {
     StatGraphs.update();

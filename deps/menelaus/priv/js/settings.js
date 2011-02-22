@@ -95,14 +95,14 @@ var SettingsSection = {
       if (mode != 'settings')
         return;
       return future.get({url: '/settings/web'});
-    }).setSources({mode: DAO.cells.mode});
+    }).setSources({mode: DAL.cells.mode});
 
     self.advancedSettings = new Cell(function (mode) {
       // alerts section depend on this too
       if (mode != 'settings' && mode != 'alerts')
         return;
       return future.get({url: '/settings/advanced'}, $m(self, 'flattenAdvancedSettings'));
-    }).setSources({mode: DAO.cells.mode});
+    }).setSources({mode: DAL.cells.mode});
 
     self.webSettingsOverlay = null;
     self.advancedSettingsOverlay = null;

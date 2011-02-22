@@ -1,17 +1,17 @@
 Cell.prototype.propagateMeta = function () {
   var metaCell = this.ensureMetaCell();
+  var staleMetaCell;
+  var sourceCells = this.getSourceCells();
 
   if (metaCell.cancelRefresh) {
     metaCell.cancelRefresh();
   }
 
-  var staleMetaCell;
-  var sourceCells = this.getSourceCells();
-
   for (var i = sourceCells.length - 1; i >= 0; i--) {
     var cell = sourceCells[i].metaCell;
-    if (!cell)
+    if (!cell) {
       continue;
+    }
     var metaValue = cell.value;
     if (metaValue.stale) {
       staleMetaCell = cell;
@@ -26,10 +26,11 @@ Cell.prototype.propagateMeta = function () {
   if (staleMetaCell) {
     staleMetaCell.changedSlot.subscribeWithSlave(refreshSlave);
   } else {
-    for (var i = sourceCells.length - 1; i >= 0; i--) {
-      var cell = sourceCells[i].metaCell;
-      if (!cell)
+    for (var j = sourceCells.length - 1; j >= 0; j--) {
+      var cell = sourceCells[j].metaCell;
+      if (!cell) {
         continue;
+      }
       cell.changedSlot.subscribeWithSlave(refreshSlave);
     }
   }
@@ -38,12 +39,13 @@ Cell.prototype.propagateMeta = function () {
     refreshSlave.die();
     for (var i = sourceCells.length - 1; i >= 0; i--) {
       var cell = sourceCells[i].metaCell;
-      if (!cell)
+      if (!cell) {
         continue;
+      }
       cell.changedSlot.cleanup();
     }
-  }
-}
+  };
+};
 
 Cell.STANDARD_ERROR_MARK = {"this is error marker":true};
 
@@ -53,8 +55,9 @@ Cell.cacheResponse = function (cell) {
     var self = this.self;
     var oldValue = self.value;
     if (newValue === undefined) {
-      if (oldValue === undefined)
+      if (oldValue === undefined) {
         return oldValue;
+      }
       newValue = oldValue;
       self.setMetaAttr('loading', true);
       return newValue;
@@ -78,19 +81,19 @@ Cell.cacheResponse = function (cell) {
   cachingCell.delegateInvalidationMethods(cell);
 
   return cachingCell;
-}
+};
 
 Cell.prototype.delegateInvalidationMethods = function (target) {
   var self = this;
   _.each(("recalculate recalculateAt recalculateAfterDelay invalidate").split(' '), function (methodName) {
     self[methodName] = $m(target, methodName);
   });
-}
+};
 
 Cell.mkCaching = function (formula, sources) {
   var cell = new Cell(formula, sources);
   return Cell.cacheResponse(cell);
-}
+};
 
 future.get = function (ajaxOptions, valueTransformer, nowValue, futureWrapper) {
   // var aborted = false;
@@ -101,10 +104,11 @@ future.get = function (ajaxOptions, valueTransformer, nowValue, futureWrapper) {
       operation.cancel();
     },
     nowValue: nowValue
-  }
+  };
   var operation;
-  if (ajaxOptions.url === undefined)
+  if (ajaxOptions.url === undefined) {
     throw new Error("url is undefined");
+  }
 
   function initiateXHR(dataCallback) {
     var opts = {dataType: 'json',
@@ -123,12 +127,12 @@ future.get = function (ajaxOptions, valueTransformer, nowValue, futureWrapper) {
     if (ajaxOptions.onError) {
       opts.error = function () {
         ajaxOptions.onError.apply(this, [dataCallback].concat(_.toArray(arguments)));
-      }
+      };
     }
     operation = IOCenter.performGet(_.extend(opts, ajaxOptions));
   }
   return (futureWrapper || future)(initiateXHR, options);
-}
+};
 
 future.pollingGET = function (ajaxOptions, valueTransformer, nowValue, futureWrapper) {
   var initiator = futureWrapper || future;
@@ -141,27 +145,29 @@ future.pollingGET = function (ajaxOptions, valueTransformer, nowValue, futureWra
     return initiator(function (dataCallback) {
       var context = this;
       function dataCallbackWrapper(data) {
-        if (!dataCallback.continuing(data))
+        if (!dataCallback.continuing(data)) {
           return;
+        }
         setTimeout(function () {
-          if (dataCallback.continuing(data))
+          if (dataCallback.continuing(data)) {
             body.call(context, dataCallbackWrapper);
+          }
         }, interval);
       }
       body.call(context, dataCallbackWrapper);
     }, options);
   });
-}
+};
 
 future.infinite = function () {
   var rv = future(function () {
     rv.active = true;
     rv.cancel = function () {
       rv.active = false;
-    }
+    };
   });
   return rv;
-}
+};
 
 future.getPush = function (ajaxOptions, valueTransformer, nowValue, waitChange) {
   var options = {
@@ -170,31 +176,45 @@ future.getPush = function (ajaxOptions, valueTransformer, nowValue, waitChange) 
       operation.cancel();
     },
     nowValue: nowValue
-  }
+  };
   var operation;
   var etag;
-  var recovingFromError;
 
-  if (!waitChange)
+  if (!waitChange) {
     waitChange = 20000;
+  }
 
-  if (ajaxOptions.url == undefined)
+  if (ajaxOptions.url === undefined) {
     throw new Error("url is undefined");
+  }
 
   function sendRequest(dataCallback) {
+
+    function gotData(data) {
+      dataCallback.async.weak = false;
+
+      etag = data.etag;
+      // pass our data to cell
+      if (dataCallback.continuing(data)) {
+        // and submit new request if we are not cancelled
+        _.defer(_.bind(sendRequest, null, dataCallback));
+      }
+    }
+
     var options = _.extend({dataType: 'json',
                             success: gotData},
                            ajaxOptions);
 
-    if (options.url.indexOf("?") < 0)
-      options.url += '?waitChange='
-    else
-      options.url += '&waitChange='
+    if (options.url.indexOf("?") < 0) {
+      options.url += '?waitChange=';
+    } else {
+      options.url += '&waitChange=';
+    }
     options.url += waitChange + '&rnd=' + Math.floor(Math.random() * 1000);
 
     var originalUrl = options.url;
     if (etag) {
-      options.url += "&etag=" + encodeURIComponent(etag)
+      options.url += "&etag=" + encodeURIComponent(etag);
       options.pushRequest = true;
       options.timeout = 30000;
     }
@@ -216,23 +236,13 @@ future.getPush = function (ajaxOptions, valueTransformer, nowValue, waitChange) 
       // response, which we need in this case
       opt.url = originalUrl;
       return opt;
-    }
+    };
 
     operation = IOCenter.performGet(options);
-
-    function gotData(data) {
-      dataCallback.async.weak = false;
-
-      etag = data.etag;
-      // pass our data to cell
-      if (dataCallback.continuing(data))
-        // and submit new request if we are not cancelled
-        _.defer(_.bind(sendRequest, null, dataCallback));
-    }
   }
 
   return future(sendRequest, options);
-}
+};
 
 // this guy holds queue of failed actions and tries to repeat one of
 // them every 5 seconds. Once it succeeds it changes status to healthy
@@ -249,23 +259,26 @@ var ErrorQueue = mkClass({
     self.repeatTimeout = null;
     self.queue = [];
     self.status.subscribeValue(function (s) {
-      if (s.healthy)
+      if (s.healthy) {
         self.repeatInterval = undefined;
+      }
     });
   },
   repeatIntervalBase: 5000,
   repeatInterval: undefined,
   planRepeat: function () {
     var interval = this.repeatInterval;
-    if (interval == null)
+    if (interval == null) {
       return this.repeatIntervalBase;
+    }
     return Math.min(interval * 1.618, 300000);
   },
   submit: function (action) {
     this.queue.push(action);
     this.status.setValueAttr(false, 'healthy');
-    if (this.repeatTimeout || this.status.value.repeating)
+    if (this.repeatTimeout || this.status.value.repeating) {
       return;
+    }
 
     var interval = this.repeatInterval = this.planRepeat();
     var at = (new Date()).getTime() + interval;
@@ -294,19 +307,22 @@ var ErrorQueue = mkClass({
     forcedAction(function (isOk) {
       self.status.setValueAttr(false, 'repeating');
 
-      if (isOk == false)
+      if (isOk == false) {
         return self.submit(forcedAction);
+      }
 
       // if result is undefined or true, we issue next action
-      if (isOk)
+      if (isOk) {
         self.status.setValueAttr(true, 'healthy');
+      }
       self.onTimeout();
     });
   },
   cancel: function (action) {
     this.queue = _.without(this.queue, action);
-    if (this.queue.length || this.status.value.repeating)
+    if (this.queue.length || this.status.value.repeating) {
       return;
+    }
 
     this.status.setValueAttr(true, 'healthy');
     if (this.repeatTimeout) {
@@ -335,8 +351,7 @@ var IOCenter = (function () {
   });
 
   // S is short for self
-  var S;
-  return S = {
+  var S = {
     status: status,
     forceRepeat: function () {
       errorQueue.forceAction();
@@ -353,11 +368,13 @@ var IOCenter = (function () {
 
       var op = {
         cancel: function () {
-          if (op.xhr)
+          if (op.xhr) {
             return Abortarium.abortRequest(op.xhr);
+          }
 
-          if (op.done)
+          if (op.done) {
             return;
+          }
 
           op.cancelled = true;
 
@@ -365,7 +382,7 @@ var IOCenter = (function () {
           // be on error queue
           errorQueue.cancel(sendXHR);
         }
-      }
+      };
 
       var extraCallback;
 
@@ -386,19 +403,21 @@ var IOCenter = (function () {
         op.xhr = $.ajax(usedOptions);
       }
       sendXHR(function (isOk) {
-        if (isOk != false)
+        if (isOk != false) {
           return;
+        }
 
         // our first time 'continuation' is if we've got error then we
         // submit us to repeat queue and maybe update options
         if (options.prepareReGet) {
-          var newOptions = options.prepareReGet(usedOptions)
+          var newOptions = options.prepareReGet(usedOptions);
           if (newOptions != null)
             usedOptions = newOptions;
         }
 
-        if (!op.cancelled)
+        if (!op.cancelled) {
           errorQueue.submit(sendXHR);
+        }
       });
       return op;
 
@@ -415,8 +434,9 @@ var IOCenter = (function () {
         }
 
         var isOk = (function (xhr) {
-          if (Abortarium.isAborted(xhr))
+          if (Abortarium.isAborted(xhr)) {
             return;
+          }
           if (S.isNotFound(xhr)) {
             options.success.call(this,
                                  options.missingValue || undefined,
@@ -433,8 +453,9 @@ var IOCenter = (function () {
           return false;
         })(data);
 
-        if (isOk != false)
+        if (isOk != false) {
           op.done = true;
+        }
 
         extraCallback(isOk);
       }
@@ -444,8 +465,9 @@ var IOCenter = (function () {
       try {
         status = xhr.status
       } catch (e) {
-        if (!xhr)
+        if (!xhr) {
           throw e;
+        }
       }
       return status;
     },
@@ -461,9 +483,10 @@ var IOCenter = (function () {
       return (400 <= status && status < 500);
     }
   };
+  return S;
 })();
 
-;(function () {
+(function () {
   new Cell(function (status) {
     return status.healthy;
   }, {

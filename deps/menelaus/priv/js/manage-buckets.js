@@ -305,8 +305,8 @@ var BucketDetailsDialog = mkClass({
       onHide: function () {
         self.cleanup();
         if (self.needBucketsRefresh) {
-          DAO.cells.currentPoolDetails.setValue(undefined);
-          DAO.cells.currentPoolDetails.invalidate();
+          DAL.cells.currentPoolDetails.setValue(undefined);
+          DAL.cells.currentPoolDetails.invalidate();
         }
       }
     });
@@ -409,7 +409,7 @@ var BucketDetailsDialog = mkClass({
 
 var BucketsSection = {
   renderRAMDetailsGauge: function (e, details) {
-    var poolDetails = DAO.cells.currentPoolDetails.value;
+    var poolDetails = DAL.cells.currentPoolDetails.value;
     BucketDetailsDialog.prototype.renderGauge($(e).find('.for-ram'),
                                               poolDetails.storageTotals.ram.quotaTotal,
                                               details.quota.ram,
@@ -446,7 +446,7 @@ var BucketsSection = {
 
   renderHDDDetailsGauge: function (e, details) {
     var jq = $(e).parent().find('.size-gauge.for-hdd'),
-        poolDetails = DAO.cells.currentPoolDetails.value,
+        poolDetails = DAL.cells.currentPoolDetails.value,
         hdd = poolDetails.storageTotals.hdd;
     BucketsSection.renderDiskGauge(jq,
                                    hdd.total,
@@ -460,9 +460,9 @@ var BucketsSection = {
         cells = self.cells,
         poolDetailsValue;
 
-    cells.mode = DAO.cells.mode;
+    cells.mode = DAL.cells.mode;
 
-    DAO.cells.currentPoolDetails.subscribeValue(function (v) {
+    DAL.cells.currentPoolDetails.subscribeValue(function (v) {
       if (!v) {
         return;
       }
@@ -482,14 +482,14 @@ var BucketsSection = {
         // this might happen if ns_doctor is down, which often happens
         // after failover
         return future(function (callback) {
-          var cell = DAO.cells.currentPoolDetails,
+          var cell = DAL.cells.currentPoolDetails,
               haveNewValue = false;
           // wait till pool details will change and try transformation again
           cell.changedSlot.subscribeOnce(function (newPoolDetails) {
             haveNewValue = true;
             console.log("have new pools to resolve empty storageTotals");
             // we have new pool details. store it,
-            poolDetailsValue = DAO.cells.currentPoolDetails.value;
+            poolDetailsValue = DAL.cells.currentPoolDetails.value;
             // and then 'return' transformed value
             callback(bucketsListTransformer(values));
           });
@@ -539,7 +539,7 @@ var BucketsSection = {
 
     cells.detailsPageURI = new Cell(function (poolDetails) {
       return poolDetails.buckets.uri;
-    }, {poolDetails: DAO.cells.currentPoolDetails});
+    }, {poolDetails: DAL.cells.currentPoolDetails});
 
     cells.detailedBuckets = Cell.mkCaching(function (pageURI) {
       console.log("loading detailed buckets");
@@ -626,7 +626,7 @@ var BucketsSection = {
   showBucket: function (uri) {
     ThePage.ensureSection('buckets');
     // we don't care about value, but we care if it's defined
-    DAO.cells.currentPoolDetailsCell.getValue(function () {
+    DAL.cells.currentPoolDetailsCell.getValue(function () {
       BucketsSection.withBucket(uri, function (bucketDetails) {
         var fullDetails = BucketsSection.settingsWidget.detailsMap.value.get(bucketDetails),
           initValues = _.extend({}, bucketDetails, fullDetails && fullDetails.value),
@@ -638,7 +638,7 @@ var BucketsSection = {
     });
   },
   getPoolNodesCount: function () {
-    return DAO.cells.currentPoolDetails.value.nodes.length;
+    return DAL.cells.currentPoolDetails.value.nodes.length;
   },
   onEnter: function () {
     this.refreshBuckets();
@@ -651,7 +651,7 @@ var BucketsSection = {
     this.settingsWidget.reset();
   },
   startCreate: function () {
-    var poolDetails = DAO.cells.currentPoolDetails.value,
+    var poolDetails = DAL.cells.currentPoolDetails.value,
         totals = poolDetails.storageTotals;
 
     if (totals.ram.quotaTotal == totals.ram.quotaUsed) {

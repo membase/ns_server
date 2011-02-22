@@ -47,7 +47,7 @@ var LogoutTimer = {
     if (this.timeoutId) {
       clearTimeout(this.timeoutId);
     }
-    if (!DAO.login)
+    if (!DAL.login)
       return;
     this.timeoutId = setTimeout($m(this, 'onTimeout'), 300000);
   },
@@ -64,19 +64,19 @@ function performSignOut(isVoluntary) {
 
   $(window).trigger('hashchange'); // this will close all dialogs
 
-  DAO.setAuthCookie(null);
-  DAO.cells.mode.setValue(undefined);
-  DAO.cells.currentPoolDetailsCell.setValue(undefined);
-  DAO.cells.poolList.setValue(undefined);
-  DAO.ready = false;
+  DAL.setAuthCookie(null);
+  DAL.cells.mode.setValue(undefined);
+  DAL.cells.currentPoolDetailsCell.setValue(undefined);
+  DAL.cells.poolList.setValue(undefined);
+  DAL.ready = false;
 
   $(document.body).addClass('auth');
   if (!isVoluntary)
     $('#auth_inactivity_message').show();
 
   $('.sign-out-link').hide();
-  DAO.onReady(function () {
-    if (DAO.login)
+  DAL.onReady(function () {
+    if (DAL.login)
       $('.sign-out-link').show();
   });
 
@@ -150,7 +150,7 @@ var AlertsSection = {
   init: function () {
     this.active = new Cell(function (mode) {
       return (mode == "log") ? true : undefined;
-    }, {mode: DAO.cells.mode});
+    }, {mode: DAL.cells.mode});
 
     var logs = Cell.mkCaching(function (active) {
       return future.get({url: "/logs", stdErrorMarker: true});
@@ -191,7 +191,7 @@ var AlertsSection = {
   onEnter: function () {
   },
   navClick: function () {
-    if (DAO.cells.mode.value == 'log')
+    if (DAL.cells.mode.value == 'log')
       this.logs.recalculate();
   },
   domId: function (sec) {
@@ -244,13 +244,13 @@ var ThePage = {
 
     initAlertsSubscriber();
 
-    DAO.cells.mode.subscribeValue(function (sec) {
+    DAL.cells.mode.subscribeValue(function (sec) {
       $('.currentNav').removeClass('currentNav');
       $('#switch_' + sec).addClass('currentNav');
     });
 
-    DAO.onReady(function () {
-      if (DAO.login) {
+    DAL.onReady(function () {
+      if (DAL.login) {
         $('.sign-out-link').show();
       }
     });
@@ -266,7 +266,7 @@ var ThePage = {
       self.currentSectionName = sec;
       self.currentSection = currentSection;
 
-      DAO.switchSection(sec);
+      DAL.switchSection(sec);
 
       var secId = sec;
       if (currentSection.domId != null) {
@@ -304,7 +304,7 @@ function loginFormSubmit() {
   var spinner = overlayWithSpinner('#login_form', false);
   $('#auth_dialog .alert_red').hide();
   $('#login_form').addClass('noform');
-  DAO.performLogin(login, password, function (status) {
+  DAL.performLogin(login, password, function (status) {
     spinner.remove();
     $('#login_form').removeClass('noform');
 
@@ -333,7 +333,7 @@ $(function () {
     displayNotice('An error was encountered when requesting data from the server.  ' +
                   'The console has been reloaded to attempt to recover.  There ' +
                   'may be additional information about the error in the log.');
-    DAO.onReady(function () {
+    DAL.onReady(function () {
       $.cookie('rf', null);
       if ('sessionStorage' in window && window.sessionStorage.reloadCause) {
         var text = "Browser client XHR failure encountered. (age: "
@@ -347,7 +347,7 @@ $(function () {
 
   ThePage.initialize();
 
-  DAO.onReady(function () {
+  DAL.onReady(function () {
     $(window).trigger('hashchange');
   });
 
@@ -362,7 +362,7 @@ $(function () {
 
   var spinner = overlayWithSpinner('#login_form', false);
   try {
-    if (DAO.tryNoAuthLogin()) {
+    if (DAL.tryNoAuthLogin()) {
       hideAuthForm();
     }
   } finally {
@@ -371,7 +371,7 @@ $(function () {
     } catch (__ignore) {}
   }
 
-  if (!DAO.login && $('#login_form:visible').length) {
+  if (!DAL.login && $('#login_form:visible').length) {
     var backdoor =
       (function () {
         var href = window.location.href;
@@ -401,17 +401,17 @@ $('.remove_bucket').live('click', function() {
 
 function showAbout() {
   function updateVersion() {
-    var components = DAO.componentsVersion;
+    var components = DAL.componentsVersion;
     if (components)
       $('#about_versions').text("Version: " + components['ns_server']);
     else {
       $.get('/versions', function (data) {
-        DAO.componentsVersion = data.componentsVersion;
+        DAL.componentsVersion = data.componentsVersion;
         updateVersion();
       }, 'json')
     }
 
-    var poolDetails = DAO.cells.currentPoolDetailsCell.value || {nodes:[]};
+    var poolDetails = DAL.cells.currentPoolDetailsCell.value || {nodes:[]};
     var nodesCount = poolDetails.nodes.length;
     if (nodesCount >= 0x100)
       nodesCount = 0xff;
@@ -486,7 +486,7 @@ function showInitDialog(page, opt, isContinuation) {
   $('.page-header')[page == 'done' ? 'show' : 'hide']();
 
   if (page == 'done')
-    DAO.enableSections();
+    DAL.enableSections();
 
   for (var i = 0; i < pages.length; i++) { // Hide in a 2nd loop for more UI stability.
     if (page != pages[i]) {
@@ -548,8 +548,8 @@ var NodeDialog = {
         return;
       }
 
-      DAO.setAuthCookie(data.user, data.password);
-      DAO.tryNoAuthLogin();
+      DAL.setAuthCookie(data.user, data.password);
+      DAL.tryNoAuthLogin();
       overlay.remove();
       displayNotice('This server has been associated with the cluster and will join on the next rebalance operation.');
     });
@@ -635,7 +635,7 @@ var NodeDialog = {
       }
 
       SettingsSection.processSave(this, function (dialog) {
-        DAO.performLogin(user, pw, function () {
+        DAL.performLogin(user, pw, function () {
           showInitDialog('done');
 
           if (user != null && user != "") {
@@ -965,7 +965,7 @@ function initAlertsSubscriber() {
     return (msg === "" && false) || msg;
   };
 
-  DAO.cells.currentPoolDetails.subscribeValue(function (sec) {
+  DAL.cells.currentPoolDetails.subscribeValue(function (sec) {
 
     if (sec && sec.alerts && sec.alerts.length > 0) {
 

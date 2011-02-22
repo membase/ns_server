@@ -617,7 +617,7 @@ function configureActionHashParam(param, body) {
   });
   // this handles middle clicks. In such case the only hash fragment
   // of our url will be 'param'. We delete that param and call body
-  DAO.onReady(function () {
+  DAL.onReady(function () {
     var value = getHashFragmentParam(param);
     if (value) {
       setHashFragmentParam(param, null);
