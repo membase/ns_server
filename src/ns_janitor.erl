@@ -41,12 +41,13 @@ cleanup(Bucket) ->
         _ ->
             case wait_for_memcached(Servers, Bucket, 5) of
                 [] ->
-                    case sanify(Bucket, Map, Servers) of
-                        Map -> ok;
-                        Map1 ->
-                            ns_bucket:set_map(Bucket, Map1)
-                    end,
-                    Replicas = lists:keysort(1, ns_bucket:map_to_replicas(Map)),
+                    Map1 = case sanify(Bucket, Map, Servers) of
+                               Map -> Map;
+                               MapNew ->
+                                   ns_bucket:set_map(Bucket, MapNew),
+                                   MapNew
+                           end,
+                    Replicas = lists:keysort(1, ns_bucket:map_to_replicas(Map1)),
                     ReplicaGroups = lists:ukeymerge(1, misc:keygroup(1, Replicas),
                                                     [{N, []} || N <- lists:sort(Servers)]),
                     NodesReplicas = lists:map(fun ({Src, R}) -> % R is the replicas for this node
