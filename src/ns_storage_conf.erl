@@ -47,11 +47,17 @@ prepare_setup_disk_storage_conf(Node, Path) when Node =:= node() ->
     PathOK = case DBDir of
                  NewDBDir -> ok;
                  _ ->
-                     %% TODO: check permission to write
                      filelib:ensure_dir(Path),
                      case file:make_dir(Path) of
                          ok -> ok;
-                         {error, eexist} -> ok;
+                         {error, eexist} ->
+                             TouchPath = filename:join(Path, ".touch"),
+                             case file:write_file(TouchPath, <<"">>) of
+                                 ok ->
+                                     file:delete(TouchPath),
+                                     ok;
+                                 _ -> error
+                             end;
                          _ -> error
                      end
              end,
