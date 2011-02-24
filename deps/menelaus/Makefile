@@ -25,16 +25,16 @@ $(TMP_VER):
 	test -d $(TMP_DIR) || mkdir $(TMP_DIR)
 	(git describe | sed s/-/_/g > $(TMP_VER)) || (rm $@ && false)
 
-priv/js/all-images.js: priv/public/images priv/public/images/spinner build-all-images.rb
+priv/public/js/dev/all-images.js: priv/public/images priv/public/images/spinner build-all-images.rb
 	ruby build-all-images.rb >$@ || (rm $@ && false)
 
-priv/public/js/all.js: priv/js/*.js priv/js/all-images.js
+priv/public/js/all.js: priv/public/js/dev/*.js priv/public/js/dev/all-images.js
 	mkdir -p `dirname $@`
-	$(SPROCKETIZE) -I priv/js priv/js/app.js >$@ || (rm $@ && false)
+	$(SPROCKETIZE) -I priv/public/js/dev priv/public/js/dev/app.js >$@ || (rm $@ && false)
 
-priv/public/js/t-all.js: priv/js/*.js priv/js/all-images.js
+priv/public/js/t-all.js: priv/public/js/dev/*.js priv/public/js/dev/all-images.js
 	mkdir -p `dirname $@`
-	$(SPROCKETIZE) -I priv/js priv/js/app.js priv/js/hooks.js >$@ || (rm $@ && false)
+	$(SPROCKETIZE) -I priv/public/js/dev priv/public/js/dev/app.js priv/public/js/dev/hooks.js >$@ || (rm $@ && false)
 
 deps:
 	test -d deps/mochiweb/ebin || mkdir deps/mochiweb/ebin
