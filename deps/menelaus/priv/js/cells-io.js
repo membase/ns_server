@@ -190,7 +190,7 @@ future.getPush = function (ajaxOptions, valueTransformer, nowValue, waitChange) 
       options.url += '?waitChange='
     else
       options.url += '&waitChange='
-    options.url += waitChange;
+    options.url += waitChange + '&rnd=' + Math.floor(Math.random() * 1000);
 
     var originalUrl = options.url;
     if (etag) {
