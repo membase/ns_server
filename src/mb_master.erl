@@ -118,8 +118,17 @@ handle_info(send_heartbeat, candidate, #state{peers=Peers} = StateData) ->
     end;
 
 handle_info(send_heartbeat, master, StateData) ->
-    send_heartbeat(ns_node_disco:nodes_wanted(), master, StateData),
-    {next_state, master, StateData};
+    %% Make sure our name hasn't changed
+    StateData1 = case StateData#state.master of
+                     N when N == node() ->
+                         StateData;
+                     N1 ->
+                         ?log_info("Node changed name from ~p to ~p. "
+                                   "Updating state.", [N1, node()]),
+                         StateData#state{master=node()}
+                 end,
+    send_heartbeat(ns_node_disco:nodes_wanted(), master, StateData1),
+    {next_state, master, StateData1};
 
 handle_info(send_heartbeat, worker, StateData) ->
     %% Workers don't send heartbeats, but it's simpler to just ignore
