@@ -308,7 +308,7 @@ var ErrorQueue = mkClass({
     if (this.queue.length || this.status.value.repeating)
       return;
 
-    this.healthy.setValue(true);
+    this.status.setValueAttr(true, 'healthy');
     if (this.repeatTimeout) {
       cancelTimeout(this.repeatTimeout);
       this.repeatTimeout = null;
