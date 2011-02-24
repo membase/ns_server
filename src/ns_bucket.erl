@@ -51,6 +51,7 @@
          set_bucket_config/2,
          set_map/2,
          set_servers/2,
+         filter_ready_buckets/1,
          update_bucket_props/2,
          update_bucket_props/3]).
 
@@ -497,6 +498,18 @@ delete_bucket(BucketName) ->
                                              lists:delete(Tuple, List)
                                      end
                              end).
+
+filter_ready_buckets(BucketInfos) ->
+    lists:filter(fun ({_Name, PList}) ->
+                         case bucket_type(PList) of
+                             memcached -> true;
+                             membase ->
+                                 case proplists:get_value(map, PList, []) of
+                                     [_|_] -> true;
+                                     _ -> false
+                                 end
+                         end
+                 end, BucketInfos).
 
 %% Updates properties of bucket of given name and type.  Check of type
 %% protects us from type change races in certain cases.
