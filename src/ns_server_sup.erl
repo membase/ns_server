@@ -61,9 +61,6 @@ child_specs() ->
      {ns_log_events, {gen_event, start_link, [{local, ns_log_events}]},
       permanent, 10, worker, dynamic},
 
-     {ns_mail_sup, {ns_mail_sup, start_link, []},
-      permanent, infinity, supervisor, [ns_mail_sup]},
-
      {ns_node_disco_sup, {ns_node_disco_sup, start_link, []},
       permanent, infinity, supervisor,
       [ns_node_disco_sup]},
