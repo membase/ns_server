@@ -170,11 +170,21 @@ handle_buckets_stats(PoolId, BucketIds, Req) ->
 %% Per-Node Stats
 %% GET /pools/{PoolID}/buckets/{Id}/nodes/{NodeId}/stats
 %%
-%% Per-node stats match bucket stats with the addition of a 'node' key,
+%% Per-node stats match bucket stats with the addition of a 'hostname' key,
 %% stats specific to the node (obviously), and removal of any cross-node stats
-handle_bucket_node_stats(PoolId, Id, _NodeId, Req) ->
-    %% TODO: implement real stats, server look up, etc.
-    handle_buckets_stats(PoolId, [Id], Req).
+handle_bucket_node_stats(PoolId, BucketName, HostName, Req) ->
+    menelaus_web:checking_bucket_hostname_access(
+      PoolId, BucketName, HostName, Req,
+      fun (_Req, _BucketInfo, HostInfo) ->
+              Node = binary_to_atom(proplists:get_value(otpNode, HostInfo), latin1),
+              Params = Req:parse_qs(),
+              {struct, Ops} = build_buckets_stats_ops_response(PoolId, [Node], [BucketName], Params),
+              menelaus_util:reply_json(
+                Req,
+                {struct, [{hostname, list_to_binary(HostName)},
+                          {hot_keys, []}       % TODO: implement this
+                          | Ops]})
+      end).
 
 %% Specific Stat URL for all buckets
 %% GET /pools/{PoolID}/buckets/{Id}/stats/{StatName}
