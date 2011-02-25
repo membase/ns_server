@@ -23,8 +23,6 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -export([handle_bucket_stats/3,
-         handle_bucket_node_list/3,
-         handle_bucket_node_info/4,
          handle_bucket_node_stats/4,
          handle_specific_stat_for_buckets/4,
          handle_specific_stat_for_buckets_group_per_node/4,
@@ -168,42 +166,6 @@ handle_buckets_stats(PoolId, BucketIds, Req) ->
     {struct, PropList1} = build_buckets_stats_ops_response(PoolId, BucketIds, Params),
     {struct, PropList2} = build_buckets_stats_hks_response(PoolId, BucketIds),
     menelaus_util:reply_json(Req, {struct, PropList1 ++ PropList2}).
-
-%% Node list
-%% GET /pools/{PoolID}/buckets/{Id}/nodes
-%%
-%% Provides a list of nodes for a specific bucket (generally all nodes) with
-%% links to stats for the default bucket
-%%
-%% TODO: consider the value of this vs. storing links elsewhere
-handle_bucket_node_list(_PoolId, _Id, Req) ->
-    Req:ok({"application/json",
-            menelaus_util:server_header(),
-            <<"{
-                \"servers\": [
-                  {\"hostname\":\"ns_1@127.0.0.1:9001\",
-                   \"stats\": {\"uri\": \"/pools/default/buckets/default/nodes/ns_1@127.0.0.1:9001/stats\"}
-                  },
-                  {\"hostname\":\"ns_1@127.0.0.1:9000\",
-                   \"stats\": {\"uri\": \"/pools/default/buckets/default/nodes/ns_1@127.0.0.1:9000/stats\"}
-                  }]
-            }">>}).
-
-%% Per-Node Stats URL information
-%% GET /pools/{PoolID}/buckets/{Id}/nodes/{NodeId}
-%%
-%% Provides node hostname and links to the default bucket and node-specific
-%% stats for the default bucket
-%%
-%% TODO: consider what else might be of value here
-handle_bucket_node_info(_PoolId, _Id, _NodeId, Req) ->
-    Req:ok({"application/json",
-            menelaus_util:server_header(),
-            <<"{
-        \"hostname\":\"ns_1@127.0.0.1\",
-        \"bucket\": {\"uri\": \"/pools/default/buckets/default\"},
-        \"stats\": {\"uri\": \"/pools/default/buckets/default/nodes/ns_1@127.0.0.1/stats\"}
-      }">>}).
 
 %% Per-Node Stats
 %% GET /pools/{PoolID}/buckets/{Id}/nodes/{NodeId}/stats
