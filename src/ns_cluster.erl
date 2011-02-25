@@ -199,10 +199,6 @@ shun(RemoteNode) ->
     case RemoteNode == node() of
         false ->
             ?log_info("Shunning ~p", [RemoteNode]),
-            try mb_mnesia:demote(RemoteNode)
-            catch E:R ->
-                    ?log_info("Failed to demote ~p: ~p", [RemoteNode, {E, R}])
-            end,
             ns_config:update_key(nodes_wanted,
                                  fun (X) ->
                                          X -- [RemoteNode]
@@ -568,7 +564,6 @@ perform_actual_join(RemoteNode, NewCookie) ->
         ns_config:set_initial(nodes_wanted, [node(), RemoteNode]),
         error_logger:info_msg("pre-join cleaned config is:~n~p~n",
                               [ns_config:get()]),
-        mb_mnesia:prepare_join(),
         true = erlang:set_cookie(node(), NewCookie),
         %% Let's verify connectivity.
         Connected = net_kernel:connect_node(RemoteNode),
@@ -591,18 +586,9 @@ perform_actual_join(RemoteNode, NewCookie) ->
               end,
     case Status2 of
         {ok, _} ->
-            %% Cluster mnesia. TODO: this should be managed elsewhere and not
-            %% include all nodes.
-            try mb_mnesia:promote_self(RemoteNode) of
-                ok ->
-                    ns_log:log(?MODULE, ?NODE_JOINED, "Node ~s joined cluster",
-                               [node()]),
-                    Status2
-            catch Type1:Error1 ->
-                    ?log_error("Mnesia clustering failed: ~p", [{Type1, Error1}]),
-                    {error, mnesia_clustering_failed,
-                    <<"Failed to cluster Mnesia.">>, {Type1, Error1}}
-            end;
+            ns_log:log(?MODULE, ?NODE_JOINED, "Node ~s joined cluster",
+                       [node()]),
+            Status2;
         _ ->
             ?log_error("Failed to join cluster because of: ~p~n", [Status2]),
             Status2
