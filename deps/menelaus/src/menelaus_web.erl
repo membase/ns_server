@@ -42,7 +42,8 @@
          build_nodes_info_fun/3,
          build_full_node_info/2,
          handle_streaming/3,
-         is_system_provisioned/0]).
+         is_system_provisioned/0,
+         checking_bucket_hostname_access/5]).
 
 -export([ns_log_cat/1, ns_log_code_string/1, alert_key/1]).
 
@@ -1311,6 +1312,23 @@ handle_bucket_node_list(PoolId, BucketName, Req) ->
               reply_json(Req, {struct, [{servers, Servers}]})
       end).
 
+checking_bucket_hostname_access(PoolId, BucketName, Hostname, Req, Body) ->
+    menelaus_web_buckets:checking_bucket_access(
+      PoolId, BucketName, Req,
+      fun (_Pool, BucketPList) ->
+              Nodes = menelaus_web_buckets:build_bucket_node_infos(BucketName, BucketPList,
+                                                                   stable, menelaus_util:local_addr(Req), true),
+              BinHostname = list_to_binary(Hostname),
+              case lists:filter(fun ({struct, PList}) ->
+                                        proplists:get_value(hostname, PList) =:= BinHostname
+                                end, Nodes) of
+                  [{struct, NodeInfo}] ->
+                      Body(Req, BucketPList, NodeInfo);
+                  [] ->
+                      Req:respond({404, server_header(), "Requested resource not found.\r\n"})
+              end
+      end).
+
 %% Per-Node Stats URL information
 %% GET /pools/{PoolID}/buckets/{Id}/nodes/{NodeId}
 %%
@@ -1319,25 +1337,15 @@ handle_bucket_node_list(PoolId, BucketName, Req) ->
 %%
 %% TODO: consider what else might be of value here
 handle_bucket_node_info(PoolId, BucketName, Hostname, Req) ->
-    menelaus_web_buckets:checking_bucket_access(
-      PoolId, BucketName, Req,
-      fun (_Pool, BucketPList) ->
-              Nodes = menelaus_web_buckets:build_bucket_node_infos(BucketName, BucketPList,
-                                                                   stable, menelaus_util:local_addr(Req)),
-              BinHostname = list_to_binary(Hostname),
-              case lists:filter(fun ({struct, PList}) ->
-                                        proplists:get_value(hostname, PList) =:= BinHostname
-                                end, Nodes) of
-                  [{struct, _}] ->
-                      BucketURI = bin_concat_path(["pools", "default", "buckets", BucketName]),
-                      NodeStatsURI = bin_concat_path(["pools", "default", "buckets", BucketName, "nodes", BinHostname, "stats"]),
-                      reply_json(Req,
-                                 {struct, [{hostname, BinHostname},
-                                           {bucket, {struct, [{uri, BucketURI}]}},
-                                           {stats, {struct, [{uri, NodeStatsURI}]}}]});
-                  [] ->
-                      Req:respond({404, server_header(), "Requested resource not found.\r\n"})
-              end
+    checking_bucket_hostname_access(
+      PoolId, BucketName, Hostname, Req,
+      fun (_Req, _BucketPList, _NodeInfo) ->
+              BucketURI = bin_concat_path(["pools", "default", "buckets", BucketName]),
+              NodeStatsURI = bin_concat_path(["pools", "default", "buckets", BucketName, "nodes", Hostname, "stats"]),
+              reply_json(Req,
+                         {struct, [{hostname, list_to_binary(Hostname)},
+                                   {bucket, {struct, [{uri, BucketURI}]}},
+                                   {stats, {struct, [{uri, NodeStatsURI}]}}]})
       end).
 
 %% this serves fresh nodes replication and health status
