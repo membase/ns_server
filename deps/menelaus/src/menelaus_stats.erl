@@ -297,8 +297,8 @@ grab_op_stats(Bucket, Params) ->
                  _ -> {V, undefined, Step, Window}
              end
     after
-        misc:flush(Ref),
-        ns_pubsub:unsubscribe(ns_stats_event, Subscription)
+        ns_pubsub:unsubscribe(ns_stats_event, Subscription),
+        misc:flush(Ref)
     end.
 
 invoke_archiver(Bucket, NodeS, {Step, Period, Window}) ->
