@@ -22,7 +22,9 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, bucket_hot_keys/1, all_local_hot_keys/0]).
+-export([start_link/0,
+         bucket_hot_keys/1, bucket_hot_keys/2,
+         all_local_hot_keys/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -41,6 +43,9 @@ bucket_hot_keys(Bucket) ->
 
 all_local_hot_keys() ->
     gen_server:call(?MODULE, all_local_hot_keys).
+
+bucket_hot_keys(Bucket, Node) ->
+    gen_server:call({?MODULE, Node}, {get_local_keys, Bucket}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -89,7 +94,10 @@ handle_call({get_keys, BucketName}, _From, State) ->
     Reply = proplists:get_value(BucketName, State#state.bucket_hot_keys),
     {reply, Reply, State};
 handle_call(all_local_hot_keys, _From, State) ->
-    {reply, State#state.local_hot_keys, State}.
+    {reply, State#state.local_hot_keys, State};
+handle_call({get_local_keys, BucketName}, _From, State) ->
+    Reply = proplists:get_value(BucketName, State#state.local_hot_keys),
+    {reply, Reply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
