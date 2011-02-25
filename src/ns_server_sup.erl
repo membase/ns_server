@@ -48,12 +48,7 @@ pre_start() ->
     misc:ping_jointo().
 
 child_specs() ->
-    [%% Starts mb_master_sup, which has all processes that start on the master
-     %% node.
-     {mb_master, {mb_master, start_link, []},
-      permanent, infinity, supervisor, [mb_master]},
-
-     %% ns_log starts after ns_config because it needs the config to
+    [%% ns_log starts after ns_config because it needs the config to
      %% find where to persist the logs
      {ns_log, {ns_log, start_link, []},
       permanent, 10, worker, [ns_log]},
@@ -64,6 +59,11 @@ child_specs() ->
      {ns_node_disco_sup, {ns_node_disco_sup, start_link, []},
       permanent, infinity, supervisor,
       [ns_node_disco_sup]},
+
+     %% Starts mb_master_sup, which has all processes that start on the master
+     %% node.
+     {mb_master, {mb_master, start_link, []},
+      permanent, infinity, supervisor, [mb_master]},
 
      {ns_heart, {ns_heart, start_link, []},
       permanent, 10, worker, [ns_heart]},
