@@ -28,6 +28,8 @@
          checking_bucket_access/4,
          handle_bucket_list/2,
          handle_bucket_info/5,
+         build_bucket_node_infos/4,
+         build_bucket_node_infos/5,
          handle_sasl_buckets_streaming/2,
          handle_bucket_info_streaming/3,
          handle_bucket_delete/3,
@@ -80,6 +82,14 @@ handle_bucket_info(PoolId, Id, Req, _Pool, Bucket) ->
     reply_json(Req, build_bucket_info(PoolId, Id, Bucket,
                                       menelaus_util:local_addr(Req))).
 
+build_bucket_node_infos(BucketName, BucketConfig, InfoLevel, LocalAddr) ->
+    build_bucket_node_infos(BucketName, BucketConfig, InfoLevel, LocalAddr, false).
+
+build_bucket_node_infos(BucketName, BucketConfig, InfoLevel, LocalAddr, IncludeOtp) ->
+    %% Only list nodes this bucket is mapped to
+    F = menelaus_web:build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr),
+    [F(N, BucketName) || N <- proplists:get_value(servers, BucketConfig, [])].
+
 build_bucket_info(PoolId, Id, Bucket, LocalAddr) ->
     build_bucket_info(PoolId, Id, Bucket, normal, LocalAddr).
 
@@ -87,9 +97,7 @@ build_bucket_info(PoolId, Id, undefined, InfoLevel, LocalAddr) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(Id),
     build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr);
 build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
-    %% Only list nodes this bucket is mapped to
-    F = menelaus_web:build_nodes_info_fun(false, InfoLevel, LocalAddr),
-    Nodes = [F(N, Id) || N <- proplists:get_value(servers, BucketConfig, [])],
+    Nodes = build_bucket_node_infos(Id, BucketConfig, InfoLevel, LocalAddr),
     StatsUri = list_to_binary(concat_url_path(["pools", PoolId, "buckets", Id, "stats"])),
     Suffix = case InfoLevel of
                  stable -> [];
