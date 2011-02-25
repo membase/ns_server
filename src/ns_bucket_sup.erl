@@ -60,18 +60,8 @@ init([]) ->
 %% @private
 %% @doc The child specs for each bucket.
 child_specs(Bucket) ->
-    [{{ns_vbm_sup, Bucket}, {ns_vbm_sup, start_link, [Bucket]},
-      permanent, 1000, worker, [ns_vbm_sup]},
-     {{ns_memcached, Bucket}, {ns_memcached, start_link, [Bucket]},
-      %% ns_memcached waits for the bucket to sync to disk before exiting
-      permanent, 86400000, worker, [ns_memcached]},
-     {{stats_collector, Bucket}, {stats_collector, start_link, [Bucket]},
-      permanent, 10, worker, [stats_collector]},
-     {{stats_archiver, Bucket}, {stats_archiver, start_link, [Bucket]},
-      permanent, 10, worker, [stats_archiver]},
-     {{stats_reader, Bucket}, {stats_reader, start_link, [Bucket]},
-      permanent, 10, worker, [stats_reader]}].
-
+    [{{per_bucket_sup, Bucket}, {single_bucket_sup, start_link, [Bucket]},
+      permanent, infinity, supervisor, [single_bucket_sup]}].
 
 
 update_childs(Buckets) ->

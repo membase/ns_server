@@ -66,7 +66,7 @@
 start_link(Bucket) ->
     %% Use proc_lib so that start_link doesn't fail if we can't
     %% connect.
-    proc_lib:start_link(?MODULE, init, [Bucket]).
+    gen_server:start_link(?MODULE, Bucket, []).
 
 
 %%
@@ -74,7 +74,6 @@ start_link(Bucket) ->
 %%
 
 init(Bucket) ->
-    proc_lib:init_ack({ok, self()}),
     Sock = connect(),
     StartTime = now(),
     ensure_bucket(Sock, Bucket),
@@ -85,7 +84,7 @@ init(Bucket) ->
     timer:send_interval(?CHECK_INTERVAL, check_config),
     %% this trap_exit is necessary for terminate callback to work
     process_flag(trap_exit, true),
-    gen_server:enter_loop(?MODULE, [], #state{sock=Sock, bucket=Bucket}).
+    {ok, #state{sock=Sock, bucket=Bucket}}.
 
 
 handle_call(backfilling, _From, State) ->
