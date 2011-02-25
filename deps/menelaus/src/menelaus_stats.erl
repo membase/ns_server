@@ -189,18 +189,10 @@ handle_bucket_node_stats(PoolId, BucketName, HostName, Req) ->
 %% Specific Stat URL for all buckets
 %% GET /pools/{PoolID}/buckets/{Id}/stats/{StatName}
 handle_specific_stat_for_buckets(PoolId, Id, StatName, Req) ->
-    %% TODO: implement real stats, server look up, etc.
     Params = Req:parse_qs(),
-    case proplists:get_value("per_node", Params) of
-        %% TODO: "false" needs to trigger this...me needs to learn more erlang
+    case proplists:get_value("per_node", Params, "true") of
         undefined ->
-            Req:ok({"application/json",
-                menelaus_util:server_header(),
-                <<"{
-                    \"timestamp\": [1,2,3,4,5],
-                    \"stat\": [1,2,3,4,5],
-                    \"bucket\": {\"uri\": \"/pools/default/buckets/default\"}
-                }">>});
+            Req:respond({501, [], []});
         "true" ->
             handle_specific_stat_for_buckets_group_per_node(PoolId, Id, StatName, Req)
     end.
@@ -211,16 +203,101 @@ handle_specific_stat_for_buckets(PoolId, Id, StatName, Req) ->
 %% Same as above, but broken up per_node--think of it as CouchDB's reduce=false
 %% TODO: consider dropping this and putting the same data in the URL above
 %%       --what would the cost/time savings be at generation time? minimal?
-handle_specific_stat_for_buckets_group_per_node(_PoolId, _Id, _StatName, Req) ->
-    %% TODO: implement real stats, server look up, etc.
-    Req:ok({"application/json",
-            menelaus_util:server_header(),
-            <<"{
-        \"timestamp\": [1,2,3,4,5],
-        \"nodes\": [{\"hostname\": \"ns_1@127.0.0.1\", \"stat\": [1,2,3,4,5]},
-                    {\"hostname\": \"ns_1@127.0.0.2\", \"stat\": [1,2,3,4,5]}],
-        \"bucket\": {\"uri\": \"/pools/default/buckets/default\"}
-      }">>}).
+%% Req:ok({"application/json",
+%%         menelaus_util:server_header(),
+%%         <<"{
+%%     \"timestamp\": [1,2,3,4,5],
+%%     \"nodes\": [{\"hostname\": \"127.0.0.1:9000\", \"stat\": [1,2,3,4,5]},
+%%                 {\"hostname\": \"127.0.0.1:9001\", \"stat\": [1,2,3,4,5]}]
+%%   }">>}).
+handle_specific_stat_for_buckets_group_per_node(PoolId, BucketName, StatName, Req) ->
+    menelaus_web_buckets:checking_bucket_access(
+      PoolId, BucketName, Req,
+      fun (_Pool, _BucketConfig) ->
+              Params = Req:parse_qs(),
+              try
+                  menelaus_util:reply_json(
+                    Req,
+                    build_per_node_stats(BucketName, StatName, Params, menelaus_util:local_addr(Req)))
+              catch throw:bad_stat_name ->
+                      menelaus_util:reply_json(Req, <<"unknown stat">>, 404)
+              end
+      end).
+
+build_simple_stat_extractor(StatAtom) ->
+    fun (#stat_entry{timestamp = TS, values = VS}) ->
+            {TS, dict_safe_fetch(StatAtom, VS, undefined)}
+    end.
+
+build_stat_extractor(StatName) ->
+    ExtraStats = computed_stats_lazy_proplist(),
+    StatAtom = try list_to_existing_atom(StatName)
+               catch error:badarg ->
+                       erlang:throw(bad_stat_name)
+               end,
+    case lists:keyfind(StatAtom, 1, ExtraStats) of
+        {_K, {F, Meta}} ->
+            fun (#stat_entry{timestamp = TS, values = VS}) ->
+                    Args = [dict_safe_fetch(Name, VS, undefined) || Name <- Meta],
+                    case lists:member(undefined, Args) of
+                        true -> {TS, undefined};
+                        _ -> {TS, erlang:apply(F, Args)}
+                    end
+            end;
+        false ->
+            build_simple_stat_extractor(StatAtom)
+    end.
+
+dict_safe_fetch(K, Dict, Default) ->
+    case orddict:find(K, Dict) of
+        error -> Default;
+        {ok, V} -> V
+    end.
+
+build_per_node_stats(BucketName, StatName, Params, LocalAddr) ->
+    {MainSamples, Replies, ClientTStamp, {Step, _, Window}}
+        = gather_op_stats(BucketName, all, Params),
+
+    StatExtractor = build_stat_extractor(StatName),
+
+    RestSamplesRaw = lists:keydelete(node(), 1, Replies),
+    Nodes = [node() | [N || {N, _} <- RestSamplesRaw]],
+    AllNodesSamples = [{node(), MainSamples} | RestSamplesRaw],
+    AllNodesSamples = [{node(), lists:reverse(MainSamples)} | RestSamplesRaw],
+
+    NodesSamples = [lists:map(StatExtractor, NodeSamples) || {_, NodeSamples} <- AllNodesSamples],
+
+    Config = ns_config:get(),
+    Hostnames = [list_to_binary(menelaus_web:build_node_hostname(Config, N, LocalAddr)) || N <- Nodes],
+
+    Timestamps = [TS || {TS, _} <- hd(NodesSamples)],
+    MainValues = [VS || {_, VS} <- hd(NodesSamples)],
+
+    AllignedRestValues
+        = lists:map(fun (undefined) -> [undefined || _ <- Timestamps];
+                        (Samples) ->
+                            Dict = orddict:from_list(Samples),
+                            [dict_safe_fetch(T, Dict, 0) || T <- Timestamps]
+                    end, tl(NodesSamples)),
+    OpPropList0 = [{samplesCount, Window},
+                   {isPersistent, ns_bucket:is_persistent(BucketName)},
+                   {lastTStamp, case Timestamps of
+                                    [] -> 0;
+                                    L -> lists:last(L)
+                                end},
+                   {interval, Step * 1000},
+                   {timestamp, Timestamps},
+                   {nodes, lists:zipwith(fun (H, VS) ->
+                                                 {struct, [{hostname, H},
+                                                           {stat, VS}]}
+                                         end,
+                                         Hostnames, [MainValues | AllignedRestValues])}],
+    OpPropList = case ClientTStamp of
+                     undefined -> OpPropList0;
+                     _ -> [{tstampParam, ClientTStamp}
+                           | OpPropList0]
+                 end,
+    {struct, OpPropList}.
 
 %% ops SUM(cmd_get, cmd_set,
 %%         incr_misses, incr_hits,
