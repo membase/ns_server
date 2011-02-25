@@ -120,7 +120,7 @@ basic_stats(BucketName) ->
 handle_overview_stats(PoolId, Req) ->
     Names = lists:sort(menelaus_web_buckets:all_accessible_bucket_names(PoolId, Req)),
     AllSamples = lists:map(fun (Name) ->
-                                   element(1, grab_op_stats(Name, [{"zoom", "hour"}]))
+                                   element(1, grab_op_stats(Name, all, [{"zoom", "hour"}]))
                            end, Names),
     MergedSamples = case AllSamples of
                         [FirstBucketSamples | RestSamples] ->
@@ -163,7 +163,7 @@ handle_bucket_stats(PoolId, Id, Req) ->
 
 handle_buckets_stats(PoolId, BucketIds, Req) ->
     Params = Req:parse_qs(),
-    {struct, PropList1} = build_buckets_stats_ops_response(PoolId, BucketIds, Params),
+    {struct, PropList1} = build_buckets_stats_ops_response(PoolId, all, BucketIds, Params),
     {struct, PropList2} = build_buckets_stats_hks_response(PoolId, BucketIds),
     menelaus_util:reply_json(Req, {struct, PropList1 ++ PropList2}).
 
@@ -256,7 +256,7 @@ merge_samples_normally(MainSamples, OtherSamples) ->
                   end, []).
 
 
-grab_op_stats(Bucket, Params) ->
+grab_op_stats(Bucket, Nodes, Params) ->
     ClientTStamp = case proplists:get_value("haveTStamp", Params) of
                        undefined -> undefined;
                        X -> try list_to_integer(X) of
@@ -291,7 +291,7 @@ grab_op_stats(Bucket, Params) ->
                     minute -> Ref;
                     _ -> []
                 end,
-    try grab_op_stats_body(Bucket, ClientTStamp, RefToPass, {Step, Period, Window}) of
+    try grab_op_stats_body(Bucket, Nodes, ClientTStamp, RefToPass, {Step, Period, Window}) of
         V -> case V =/= [] andalso (hd(V))#stat_entry.timestamp of
                  ClientTStamp -> {V, ClientTStamp, Step, Window};
                  _ -> {V, undefined, Step, Window}
@@ -317,8 +317,12 @@ invoke_archiver(Bucket, NodeS, {Step, Period, Window}) ->
             end
     end.
 
-grab_op_stats_body(Bucket, ClientTStamp, Ref, PeriodParams) ->
-    RV = invoke_archiver(Bucket, node(), PeriodParams),
+grab_op_stats_body(Bucket, Nodes, ClientTStamp, Ref, PeriodParams) ->
+    FirstNode = case Nodes of
+                    all -> node();
+                    [X] -> X
+                end,
+    RV = invoke_archiver(Bucket, FirstNode, PeriodParams),
     case RV of
         [] -> [];
         [_] -> [];
@@ -332,7 +336,7 @@ grab_op_stats_body(Bucket, ClientTStamp, Ref, PeriodParams) ->
                 ClientTStamp when Ref =/= [] ->
                     receive
                         Ref ->
-                            grab_op_stats_body(Bucket, ClientTStamp, [], PeriodParams)
+                            grab_op_stats_body(Bucket, Nodes, ClientTStamp, [], PeriodParams)
                     after 2000 ->
                             []
                     end;
@@ -345,9 +349,13 @@ grab_op_stats_body(Bucket, ClientTStamp, Ref, PeriodParams) ->
                                       [] -> Samples;
                                       _ -> lists:reverse(CutSamples)
                                   end,
+                    OtherNodes = case Nodes of
+                                     all -> ns_bucket:live_bucket_nodes(Bucket);
+                                     [_] -> []
+                                 end,
                     Replies = invoke_archiver(
                                 Bucket,
-                                ns_bucket:live_bucket_nodes(Bucket),
+                                OtherNodes,
                                 PeriodParams),
                     %% merge samples from other nodes
                     MergedSamples = lists:foldl(fun ({Node, _}, AccSamples) when Node =:= node() -> AccSamples;
@@ -487,8 +495,8 @@ samples_to_proplists(Samples) ->
                  end, ExtraStats)
         ++ orddict:to_list(Dict).
 
-build_buckets_stats_ops_response(_PoolId, [BucketName], Params) ->
-    {Samples, ClientTStamp, Step, TotalNumber} = grab_op_stats(BucketName, Params),
+build_buckets_stats_ops_response(_PoolId, Nodes, [BucketName], Params) ->
+    {Samples, ClientTStamp, Step, TotalNumber} = grab_op_stats(BucketName, Nodes, Params),
     PropList2 = samples_to_proplists(Samples),
     OpPropList0 = [{samples, {struct, PropList2}},
                    {samplesCount, TotalNumber},
