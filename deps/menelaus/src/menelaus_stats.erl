@@ -179,11 +179,11 @@ handle_bucket_node_stats(PoolId, BucketName, HostName, Req) ->
               Node = binary_to_atom(proplists:get_value(otpNode, HostInfo), latin1),
               Params = Req:parse_qs(),
               {struct, Ops} = build_buckets_stats_ops_response(PoolId, [Node], [BucketName], Params),
+              {struct, HKS} = jsonify_hks(hot_keys_keeper:bucket_hot_keys(BucketName, Node)),
               menelaus_util:reply_json(
                 Req,
-                {struct, [{hostname, list_to_binary(HostName)},
-                          {hot_keys, []}       % TODO: implement this
-                          | Ops]})
+                {struct, [{hostname, list_to_binary(HostName)}
+                          | HKS ++ Ops]})
       end).
 
 %% Specific Stat URL for all buckets
@@ -533,6 +533,9 @@ build_buckets_stats_hks_response(_PoolId, [BucketName]) ->
                          undefined -> [];
                          X -> X
                      end,
+    jsonify_hks(BucketsTopKeys).
+
+jsonify_hks(BucketsTopKeys) ->
     HotKeyStructs = lists:map(fun ({Key, PList}) ->
                                       EscapedKey = case is_safe_key_name(Key) of
                                                        true -> Key;
