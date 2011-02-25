@@ -68,9 +68,17 @@ master_node() ->
 %%
 
 init([]) ->
-    ns_pubsub:subscribe(mb_mnesia_events),
+    Self = self(),
+    ns_pubsub:subscribe(
+      ns_config_events,
+      fun ({nodes_wanted, Nodes}, State) ->
+              Self ! {peers, Nodes},
+              State;
+          (_, State) ->
+              State
+      end, empty),
     {ok, _} = timer:send_interval(?HEARTBEAT_INTERVAL, send_heartbeat),
-    case mb_mnesia:peers() of
+    case ns_node_disco:nodes_wanted() of
         [N] = P when N == node() ->
             ?log_info("I'm the only node, so I'm the master.", []),
             {ok, master, start_master(#state{last_heard=now(), peers=P})};
