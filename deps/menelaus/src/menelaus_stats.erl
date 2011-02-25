@@ -376,48 +376,22 @@ grab_op_stats_body(Bucket, Nodes, ClientTStamp, Ref, PeriodParams) ->
             end
     end.
 
-%% converts list of samples to proplist of stat values
--spec samples_to_proplists([#stat_entry{}]) -> [{atom(), [null | number()]}].
-samples_to_proplists([]) -> [{timestamp, []}];
-samples_to_proplists(Samples) ->
-    %% we're assuming that last sample has currently supported stats,
-    %% that's why we are folding from backward and why we're ignoring
-    %% other keys of other samples
-    [LastSample | ReversedRest] = lists:reverse(Samples),
-    InitialAcc0 = orddict:map(fun (_, V) -> [V] end, LastSample#stat_entry.values),
-    InitialAcc = orddict:store(timestamp, [LastSample#stat_entry.timestamp], InitialAcc0),
-    Dict = lists:foldl(fun (Sample, Acc) ->
-                               orddict:map(fun (timestamp, AccValues) ->
-                                                [Sample#stat_entry.timestamp | AccValues];
-                                            (K, AccValues) ->
-                                                case orddict:find(K, Sample#stat_entry.values) of
-                                                    {ok, ThisValue} -> [ThisValue | AccValues];
-                                                    _ -> [null | AccValues]
-                                                end
-                                        end, Acc)
-                       end, InitialAcc, ReversedRest),
-    CmdGets = orddict:fetch(cmd_get, Dict),
-    HitRatio = lists:zipwith(fun (null, _Hits) -> 0;
-                                 (_Gets, null) -> 0;
-                                 (Gets, _Hits) when Gets == 0 -> 0; % this handles int and float 0
-                                 (Gets, Hits) -> Hits * 100/Gets
-                             end, CmdGets, orddict:fetch(get_hits, Dict)),
+computed_stats_lazy_proplist() ->
     Z2 = fun (StatNameA, StatNameB, Combiner) ->
-                 ResA = orddict:find(StatNameA, Dict),
-                 ResB = orddict:find(StatNameB, Dict),
-                 case {ResA, ResB} of
-                     {{ok, ValA}, {ok, ValB}} ->
-                         lists:zipwith(Combiner, ValA, ValB);
-                     _ -> undefined
-                 end
+                 {Combiner, lists:sort([StatNameA, StatNameB])}
          end,
-    EPCacheHitRatio = lists:zipwith(fun (BGFetches, Gets) ->
-                                            try (Gets - BGFetches) * 100 / Gets
-                                            catch error:badarith -> 0
-                                            end
-                                    end,
-                                    orddict:fetch(ep_bg_fetched, Dict),
-                                    CmdGets),
+    HitRatio = Z2(cmd_get, get_hits,
+                  fun (null, _Hits) -> 0;
+                      (_Gets, null) -> 0;
+                      (Gets, _Hits) when Gets == 0 -> 0; % this handles int and float 0
+                      (Gets, Hits) -> Hits * 100/Gets
+                  end),
+    EPCacheHitRatio = Z2(ep_bg_fetched, cmd_get,
+                         fun (BGFetches, Gets) ->
+                                 try (Gets - BGFetches) * 100 / Gets
+                                 catch error:badarith -> 0
+                                 end
+                         end),
     ResidentItemsRatio = Z2(ep_num_non_resident, curr_items_tot,
                             fun (NonResident, CurrItems) ->
                                     try (CurrItems - NonResident) * 100 / CurrItems
@@ -459,8 +433,6 @@ samples_to_proplists(Samples) ->
                         ResidenceCalculator),
     PendingResRate = Z2(ep_num_pending_non_resident, vb_pending_curr_items,
                         ResidenceCalculator),
-    %% TotalResRate = Z2(ep_num_non_resident, curr_items_tot,
-    %%                   ResidenceCalculator),
     ProxyRatio = Z2(proxy_cmd_count, ops,
                     fun (ProxyOps, Ops) ->
                             try ProxyOps / Ops * 100
@@ -485,20 +457,52 @@ samples_to_proplists(Samples) ->
                                          catch error:badarith -> 0
                                          end
                                  end),
-    ExtraStats = [{hit_ratio, HitRatio},
-                  {ep_cache_hit_rate, EPCacheHitRatio},
-                  {ep_resident_items_rate, ResidentItemsRatio},
-                  {vb_avg_active_queue_age, AvgActiveQueueAge},
-                  {vb_avg_replica_queue_age, AvgReplicaQueueAge},
-                  {vb_avg_pending_queue_age, AvgPendingQueueAge},
-                  {vb_avg_total_queue_age, AvgTotalQueueAge},
-                  {vb_active_resident_items_ratio, ActiveResRate},
-                  {vb_replica_resident_items_ratio, ReplicaResRate},
-                  {vb_pending_resident_items_ratio, PendingResRate},
-                  {proxy_local_ratio, LocalRatio},
-                  {proxy_local_latency, ProxyLocalLatencyMillis},
-                  {proxy_ratio, ProxyRatio},
-                  {proxy_latency, ProxyTotalLatencyMillis}],
+    [{hit_ratio, HitRatio},
+     {ep_cache_hit_rate, EPCacheHitRatio},
+     {ep_resident_items_rate, ResidentItemsRatio},
+     {vb_avg_active_queue_age, AvgActiveQueueAge},
+     {vb_avg_replica_queue_age, AvgReplicaQueueAge},
+     {vb_avg_pending_queue_age, AvgPendingQueueAge},
+     {vb_avg_total_queue_age, AvgTotalQueueAge},
+     {vb_active_resident_items_ratio, ActiveResRate},
+     {vb_replica_resident_items_ratio, ReplicaResRate},
+     {vb_pending_resident_items_ratio, PendingResRate},
+     {proxy_local_ratio, LocalRatio},
+     {proxy_local_latency, ProxyLocalLatencyMillis},
+     {proxy_ratio, ProxyRatio},
+     {proxy_latency, ProxyTotalLatencyMillis}].
+
+%% converts list of samples to proplist of stat values
+-spec samples_to_proplists([#stat_entry{}]) -> [{atom(), [null | number()]}].
+samples_to_proplists([]) -> [{timestamp, []}];
+samples_to_proplists(Samples) ->
+    %% we're assuming that last sample has currently supported stats,
+    %% that's why we are folding from backward and why we're ignoring
+    %% other keys of other samples
+    [LastSample | ReversedRest] = lists:reverse(Samples),
+    InitialAcc0 = orddict:map(fun (_, V) -> [V] end, LastSample#stat_entry.values),
+    InitialAcc = orddict:store(timestamp, [LastSample#stat_entry.timestamp], InitialAcc0),
+    Dict = lists:foldl(fun (Sample, Acc) ->
+                               orddict:map(fun (timestamp, AccValues) ->
+                                                [Sample#stat_entry.timestamp | AccValues];
+                                            (K, AccValues) ->
+                                                case orddict:find(K, Sample#stat_entry.values) of
+                                                    {ok, ThisValue} -> [ThisValue | AccValues];
+                                                    _ -> [null | AccValues]
+                                                end
+                                        end, Acc)
+                       end, InitialAcc, ReversedRest),
+
+    ExtraStats = lists:map(fun ({K, {F, [StatNameA, StatNameB]}}) ->
+                                   ResA = orddict:find(StatNameA, Dict),
+                                   ResB = orddict:find(StatNameB, Dict),
+                                   ValR = case {ResA, ResB} of
+                                              {{ok, ValA}, {ok, ValB}} ->
+                                                  lists:zipwith(F, ValA, ValB);
+                                              _ -> undefined
+                                          end,
+                                   {K, ValR}
+                           end, computed_stats_lazy_proplist()),
 
     lists:filter(fun ({_, undefined}) -> false;
                      ({_, _}) -> true
