@@ -205,7 +205,7 @@ args(Node, Bucket, VBuckets, DstNode, TakeOver) ->
                       false -> []
                   end,
     {User, Pass} = ns_bucket:credentials(Bucket),
-    Name = unique_name(case TakeOver of true -> "t-"; false -> "r-" end),
+    Name = unique_name(case TakeOver of true -> "t"; false -> "r" end, DstNode),
     OtherArgs = ["-e", "-a", User,
                  "-h", ns_memcached:host_port_str(Node),
                  "-d", ns_memcached:host_port_str(DstNode),
@@ -276,8 +276,8 @@ start_replicas(SrcNode, Bucket, VBuckets, DstNode) ->
 
 
 %% @doc Generate a unique name with a given prefix that's valid for a TAP queue.
-unique_name(Prefix) ->
+unique_name(Prefix, DstNode) ->
     {MegaSecs, Secs, MicroSecs} = now(),
-    lists:flatten(io_lib:format("~s~s-~B.~6.10.0B",
-                                [Prefix, node(), MegaSecs * 1000000 + Secs,
-                                 MicroSecs])).
+    lists:flatten(io_lib:format("~s-~s-~s-~B.~6.10.0B",
+                                [Prefix, DstNode, node(),
+                                 MegaSecs * 1000000 + Secs, MicroSecs])).
