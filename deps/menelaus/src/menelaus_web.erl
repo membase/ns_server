@@ -38,6 +38,7 @@
          webconfig/0,
          webconfig/1,
          restart/0,
+         build_node_hostname/3,
          build_nodes_info/0,
          build_nodes_info_fun/3,
          build_full_node_info/2,
@@ -585,19 +586,22 @@ build_extra_node_info(Config, Node, InfoNode, _BucketsAll, Append) ->
      {mcdMemoryAllocated, erlang:trunc(NodesBucketMemoryAllocated)}
      | Append].
 
-build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
-    Host = case misc:node_name_host(WantENode) of
+build_node_hostname(Config, Node, LocalAddr) ->
+    Host = case misc:node_name_host(Node) of
                {_, "127.0.0.1"} -> LocalAddr;
                {_Name, H} -> H
            end,
+    Host ++ ":"
+        ++ integer_to_list(ns_config:search_node_prop(Node, Config,
+                                                      rest, port, 8091)).
+
+build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
     DirectPort = ns_config:search_node_prop(WantENode, Config, memcached, port),
     ProxyPort = ns_config:search_node_prop(WantENode, Config, moxi, port),
     Versions = proplists:get_value(version, InfoNode, []),
     Version = proplists:get_value(ns_server, Versions, "unknown"),
     OS = proplists:get_value(system_arch, InfoNode, "unknown"),
-    HostName = Host ++ ":" ++
-               integer_to_list(ns_config:search_node_prop(WantENode, Config,
-                                                          rest, port, 8091)),
+    HostName = build_node_hostname(Config, WantENode, LocalAddr),
     [{hostname, list_to_binary(HostName)},
      {clusterCompatibility, proplists:get_value(cluster_compatibility_version, InfoNode, 0)},
      {version, list_to_binary(Version)},
