@@ -120,7 +120,7 @@ basic_stats(BucketName) ->
 handle_overview_stats(PoolId, Req) ->
     Names = lists:sort(menelaus_web_buckets:all_accessible_bucket_names(PoolId, Req)),
     AllSamples = lists:map(fun (Name) ->
-                                   element(1, grab_op_stats(Name, all, [{"zoom", "hour"}]))
+                                   element(1, grab_aggregate_op_stats(Name, all, [{"zoom", "hour"}]))
                            end, Names),
     MergedSamples = case AllSamples of
                         [FirstBucketSamples | RestSamples] ->
@@ -266,7 +266,19 @@ merge_samples_normally(MainSamples, OtherSamples) ->
                   end, []).
 
 
-grab_op_stats(Bucket, Nodes, Params) ->
+grab_aggregate_op_stats(Bucket, Nodes, Params) ->
+    {MainSamples, Replies, ClientTStamp, {Step, _, Window}} = gather_op_stats(Bucket, Nodes, Params),
+    RV = lists:foldl(fun ({Node, _}, AccSamples) when Node =:= node() -> AccSamples;
+                         ({_Node, RemoteSamples}, AccSamples) ->
+                             merge_samples_normally(AccSamples, RemoteSamples)
+                     end, MainSamples, Replies),
+    V = lists:reverse(RV),
+    case V =/= [] andalso (hd(V))#stat_entry.timestamp of
+        ClientTStamp -> {V, ClientTStamp, Step, Window};
+        _ -> {V, undefined, Step, Window}
+    end.
+
+gather_op_stats(Bucket, Nodes, Params) ->
     ClientTStamp = case proplists:get_value("haveTStamp", Params) of
                        undefined -> undefined;
                        X -> try list_to_integer(X) of
@@ -301,11 +313,9 @@ grab_op_stats(Bucket, Nodes, Params) ->
                     minute -> Ref;
                     _ -> []
                 end,
-    try grab_op_stats_body(Bucket, Nodes, ClientTStamp, RefToPass, {Step, Period, Window}) of
-        V -> case V =/= [] andalso (hd(V))#stat_entry.timestamp of
-                 ClientTStamp -> {V, ClientTStamp, Step, Window};
-                 _ -> {V, undefined, Step, Window}
-             end
+    try gather_op_stats_body(Bucket, Nodes, ClientTStamp, RefToPass,
+                             {Step, Period, Window}) of
+        Something -> Something
     after
         ns_pubsub:unsubscribe(ns_stats_event, Subscription),
         misc:flush(Ref)
@@ -327,15 +337,16 @@ invoke_archiver(Bucket, NodeS, {Step, Period, Window}) ->
             end
     end.
 
-grab_op_stats_body(Bucket, Nodes, ClientTStamp, Ref, PeriodParams) ->
+gather_op_stats_body(Bucket, Nodes, ClientTStamp,
+                   Ref, PeriodParams) ->
     FirstNode = case Nodes of
                     all -> node();
                     [X] -> X
                 end,
     RV = invoke_archiver(Bucket, FirstNode, PeriodParams),
     case RV of
-        [] -> [];
-        [_] -> [];
+        [] -> {[], [], ClientTStamp, PeriodParams};
+        [_] -> {[], [], ClientTStamp, PeriodParams};
         _ ->
             %% we throw out last sample 'cause it might be missing on other nodes yet
             %% previous samples should be ok on all live nodes
@@ -346,9 +357,9 @@ grab_op_stats_body(Bucket, Nodes, ClientTStamp, Ref, PeriodParams) ->
                 ClientTStamp when Ref =/= [] ->
                     receive
                         Ref ->
-                            grab_op_stats_body(Bucket, Nodes, ClientTStamp, [], PeriodParams)
+                            gather_op_stats_body(Bucket, Nodes, ClientTStamp, [], PeriodParams)
                     after 2000 ->
-                            []
+                            {[], [], ClientTStamp, PeriodParams}
                     end;
                 _ ->
                     %% cut samples up-to and including ClientTStamp
@@ -363,16 +374,8 @@ grab_op_stats_body(Bucket, Nodes, ClientTStamp, Ref, PeriodParams) ->
                                      all -> ns_bucket:live_bucket_nodes(Bucket);
                                      [_] -> []
                                  end,
-                    Replies = invoke_archiver(
-                                Bucket,
-                                OtherNodes,
-                                PeriodParams),
-                    %% merge samples from other nodes
-                    MergedSamples = lists:foldl(fun ({Node, _}, AccSamples) when Node =:= node() -> AccSamples;
-                                                    ({_Node, RemoteSamples}, AccSamples) ->
-                                                        merge_samples_normally(AccSamples, RemoteSamples)
-                                                end, MainSamples, Replies),
-                    lists:reverse(MergedSamples)
+                    Replies = invoke_archiver(Bucket, OtherNodes, PeriodParams),
+                    {MainSamples, Replies, ClientTStamp, PeriodParams}
             end
     end.
 
@@ -510,7 +513,7 @@ samples_to_proplists(Samples) ->
         ++ orddict:to_list(Dict).
 
 build_buckets_stats_ops_response(_PoolId, Nodes, [BucketName], Params) ->
-    {Samples, ClientTStamp, Step, TotalNumber} = grab_op_stats(BucketName, Nodes, Params),
+    {Samples, ClientTStamp, Step, TotalNumber} = grab_aggregate_op_stats(BucketName, Nodes, Params),
     PropList2 = samples_to_proplists(Samples),
     OpPropList0 = [{samples, {struct, PropList2}},
                    {samplesCount, TotalNumber},
