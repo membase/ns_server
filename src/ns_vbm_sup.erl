@@ -199,16 +199,20 @@ args(Node, Bucket, VBuckets, DstNode, TakeOver) ->
     VBucketArgs = lists:append([["-b", integer_to_list(B)] || B <- VBuckets]),
     TakeOverArg = case TakeOver of
                       true -> ["-t", % transfer the vbucket
-                               "-T", "60", % Timeout in seconds
+                               "-T", "300", % Timeout in seconds
                                "-V" % Verify that transfer actually happened
                               ];
                       false -> []
                   end,
     {User, Pass} = ns_bucket:credentials(Bucket),
+    Name = unique_name(case TakeOver of true -> "t-"; false -> "r-" end),
     OtherArgs = ["-e", "-a", User,
                  "-h", ns_memcached:host_port_str(Node),
                  "-d", ns_memcached:host_port_str(DstNode),
                  "-A", %% Enable tap ack
+                 %% Set a unique name so we can restart across a
+                 %% vbucketmigrator exit.
+                 "-N", Name,
                  "-v"],
     Args = lists:append([OtherArgs, TakeOverArg, VBucketArgs]),
     [vbucketmigrator, Command, Args,
@@ -269,3 +273,11 @@ start_replicas(SrcNode, Bucket, VBuckets, DstNode) ->
       fun (VB) ->
               {ok, _Pid} = start_child(SrcNode, Bucket, VB, DstNode)
       end, split_vbuckets(VBuckets)).
+
+
+%% @doc Generate a unique name with a given prefix that's valid for a TAP queue.
+unique_name(Prefix) ->
+    {MegaSecs, Secs, MicroSecs} = now(),
+    lists:flatten(io_lib:format("~s~s-~B.~6.10.0B",
+                                [Prefix, node(), MegaSecs * 1000000 + Secs,
+                                 MicroSecs])).
