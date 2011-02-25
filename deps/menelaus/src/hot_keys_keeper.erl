@@ -153,10 +153,16 @@ merge_list_proplists(PL1, PL2) ->
     RL2 = case PL2 of undefined -> []; _ -> PL2 end,
     misc:ukeymergewith(fun ({K, V1}, {_, V2}) -> {K, lists:append(V1,V2)} end, 1, RL1, RL2).
 
+%% primitive, but working. We don't expect many items.
+sort_with_limit(Comparator, Limit, Items) ->
+    lists:sublist(lists:sort(Comparator, Items),
+                  Limit).
+
 keys_updater_body() ->
-    LocalUpdatedKeys = lists:sublist(lists:sort(fun ops_desc_comparator/2,
-                                                [{Name, grab_bucket_topkeys(Name)} || Name <- ns_bucket:get_bucket_names()]),
-                                     ?TOP_KEYS_NUMBER),
+    LocalUpdatedKeys = [{Name, sort_with_limit(fun ops_desc_comparator/2,
+                                               ?TOP_KEYS_NUMBER,
+                                               grab_bucket_topkeys(Name))}
+                        || {Name, _} <- ns_bucket:filter_ready_buckets(ns_bucket:get_buckets())],
     {RemoteKeys, _BadNodes} = mb_grid:aggregate_call(ns_node_disco:nodes_actual_other(),
                                                      ?MODULE, all_local_hot_keys, fun merge_list_proplists/2, 2000),
     MergedKeys = lists:map(fun ({BucketName, LocalKeys}) ->
