@@ -102,7 +102,6 @@ config_string(BucketName) ->
                         "db_shards=~B;"
                         "shardpattern=%d/%b-%i.mb;"
                         "db_strategy=multiMTVBDB;"
-                        "tap_keepalive=~B;"
                         "tap_noop_interval=~B;"
                         "max_txn_size=~B;"
                         "max_size=~B;"
@@ -112,7 +111,6 @@ config_string(BucketName) ->
                         [proplists:get_value(ht_size, BucketConfig),
                          proplists:get_value(ht_locks, BucketConfig),
                          proplists:get_value(db_shards, BucketConfig, 4),
-                         proplists:get_value(tap_keepalive, BucketConfig, 0),
                          proplists:get_value(tap_noop_interval, BucketConfig, 20),
                          proplists:get_value(max_txn_size, BucketConfig, 1000),
                          MemQuota,
@@ -448,7 +446,6 @@ new_bucket_default_params(membase) ->
      {ram_quota, 0},
      {db_shards, getenv_int("MEMBASE_DB_SHARDS", 4)},
      {ht_size, getenv_int("MEMBASE_HT_SIZE", 3079)},
-     {tap_keepalive, getenv_int("MEMBASE_TAP_KEEPALIVE", 0)},
      {tap_noop_interval, getenv_int("MEMBASE_TAP_NOOP_INTERVAL", 20)},
      {max_txn_size, getenv_int("MEMBASE_MAX_TXN_SIZE", 1000)},
      {ht_locks, getenv_int("MEMBASE_HT_LOCKS", 5)},
