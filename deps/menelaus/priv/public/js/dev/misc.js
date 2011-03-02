@@ -495,18 +495,9 @@ function watchHashParamChange(param, defaultValue, callback) {
   });
 }
 
-// separate function so that it's closure is minimal, 'cause it is
-// being retained forever by jqModal
-function __jqmShow(jq) {
-  jq.jqm({modal:true,
-          onHide: function (h) {
-            jq.data('real-hide')(h);
-          }}).jqmShow();
-}
-
 function showDialog(idOrJQ, options) {
   var jq = _.isString(idOrJQ) ? $($i(idOrJQ)) : idOrJQ;
-  options = options || {};
+  options = _.extend({width: jq.css('width')}, options || {});
   var onHashChange;
 
   $(window).bind('hashchange', onHashChange = function () {
@@ -515,15 +506,8 @@ function showDialog(idOrJQ, options) {
 
   var eventBindings = options.eventBindings || [];
 
-  function onHide(h) {
+  function onHide() {
     $(window).unbind('hashchange', onHashChange);
-
-    // copied from jqmodal itself
-    // this hides our dialog
-    h.w.hide() && h.o && h.o.remove();
-
-    // this removes us as onHide value
-    jq.removeData('real-hide');
 
     // unbind events that we bound
     iterateBindings(function (e, eventType, callback) {
@@ -536,23 +520,25 @@ function showDialog(idOrJQ, options) {
       return showDialog(idOrJQ, options);
     }
 
-    if (options.onHide)
+    if (options.onHide) {
       options.onHide(idOrJQ);
+    }
   }
 
-  jq.data('real-hide', onHide);
+  options = _.extend({modal: true, close: onHide, resizable: false,
+    draggable: false}, options);
 
-  var fixed = options.fixed;
+  jq.dialog(options);
 
-  if (fixed == null && jq.hasClass('always-fixed'))
-      fixed = true;
+  if (jq.height() > $(window).height()) {
+    jq.parent('.ui-dialog').css({'position': 'absolute', 'top':'15px'});
+    $('html, body').animate({scrollTop: jq.parent('.ui-dialog').offset().top}, 250);
+  }
 
-  jq.toggleClass('fixed', !!fixed);
-
-  __jqmShow(jq);
-
-  if (!fixed)
-    $('html, body').animate({scrollTop: jq.offset().top - 100}, 250);
+  jq.find('.close').click(function(ev) {
+    ev.preventDefault();
+    jq.dialog('close');
+  });
 
   function iterateBindings(body) {
     _.each(eventBindings, function (arr) {
@@ -584,8 +570,7 @@ function showDialogHijackingSave(dialogID, saveCSS, onSave) {
 function hideDialog(id) {
   if (_.isString(id))
     id = $($i(id));
-  id.jqm().jqmHide();
-  id.trigger('dialog:hide');
+  id.dialog('close');
   ModalAction.leavingNow();
 }
 

@@ -589,18 +589,17 @@ function genericDialog(options) {
   options = _.extend({buttons: {ok: true,
                                 cancel: true},
                       modal: true,
-                      fixed: true,
+                      width: 711,
                       callback: function () {
                         instance.close();
                       }},
                      options);
   var text = options.text || 'No text.';
-  var header = options.header || 'No Header';
+  options.title = options.header || '';
   var dialogTemplate = $('#generic_dialog');
   var dialog = $('<div></div>');
   dialog.attr('class', dialogTemplate.attr('class'));
   dialog.attr('id', _.uniqueId('generic_dialog_'));
-  dialogTemplate.after(dialog);
   dialog.html(dialogTemplate.html());
 
   dialogTemplate = null;
@@ -609,48 +608,31 @@ function genericDialog(options) {
     return _.map(text.split("\n"), escapeHTML).join("<br>");
   }
 
-  dialog.find('.lbox_header').html(options.headerHTML || brIfy(header));
+  function button_callback(e) {
+    e.preventDefault();
+    options.callback.call(this, e, name, instance);
+  }
+
   dialog.find('.dialog-text').html(options.textHTML || brIfy(text));
 
-  var b = options.buttons;
-  if (!b.ok && !b.cancel) {
-    dialog.find('.save_cancel').hide();
-  } else {
-    dialog.find('.save_cancel').show();
-    var ok = b.ok;
-    var cancel = b.cancel;
-
-    if (ok === true) {
-      ok = 'OK';
-    }
-    if (cancel === true) {
-      cancel = 'CANCEL';
-    }
-
-    // TODO: redundent and unused code here...simplify
-    function bind(jq, on, name) {
-      jq[on ? 'show' : 'hide']();
-      if (on) {
-        jq.bind('click', function (e) {
-          e.preventDefault();
-          options.callback.call(this, e, name, instance);
-        });
-      }
-    }
-    bind(dialog.find(".save_button"), ok, 'ok');
-    bind(dialog.find('.cancel_button'), cancel, 'cancel');
+  var b = [];
+  if (options.buttons.ok) {
+    b.push({text: "OK", click: button_callback, 'class':'save'});
   }
+  if (options.buttons.cancel) {
+    b.push({text: "Cancel", click: button_callback, 'class':'cancel'});
+  }
+  options.buttons = b;
 
   var modal = options.modal ? new ModalAction() : null;
 
-  showDialog(dialog, {
-    onHide: function () {
-      _.defer(function () {
-        dialog.remove();
-      });
-    },
-    fixed: options.fixed
-  });
+  options.close = options.onHide = function () {
+    _.defer(function () {
+      dialog.remove();
+    });
+  };
+
+  showDialog(dialog, options);
 
   var instance = {
     dialog: dialog,

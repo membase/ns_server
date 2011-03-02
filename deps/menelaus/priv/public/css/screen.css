@@ -132,6 +132,7 @@ td.leftNavDisabled {color:#f00;}
 .save_cancel .delete_button {background:url(../images/button_red.gif) 0 0 no-repeat;margin-right:10px;}
 /*.save_cancel .button_3 {width:146px;background:url(../images/button_blue_3.gif) 0 0 no-repeat;}*/
 .save_cancel .cancel_button {display:block;width:80px;height:31px;line-height:31px;color:#8b8b8e;text-align:center;font-weight:bolder;text-decoration:none; margin-right:30px;}
+.save_cancel .close {float:right;height:31px;line-height:31px;color:#8b8b8e;text-align:right;font-size:14px;font-weight:bolder;text-decoration:none;margin-right:16px;}
 .direction-button {float:right;margin-left:17px;}
 /*button.direction-button {background:url(../images/blue-button.png) no-repeat; border:none; color:#fff; cursor:pointer; float:right; font-family:Arial, Helvetica, Sans-Serif; font-size:12pt; margin-right:20px; margin-top:20px; width:121px; height:31px; line-height:31px !important;}*/
 button[disabled] {-ms-filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=50)";filter:alpha(opacity=50);opacity:0.5 !important; background-position:0 0 !important;}
@@ -323,18 +324,9 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 
 #server_list_container > table { width: 100%; }
 
-/* jqModal base Styling courtesy of Brice Burgess <bhb@iceburg.net> */
-
-/* The Window's CSS z-index value is respected (takes priority). If none is supplied,
-  the Window's z-index value will be set to 3000 by default (in jqModal.js). You can change this value by either;
-    a) supplying one via CSS
-    b) passing the "zIndex" parameter. E.g.  (window).jqm({zIndex: 500}); */
-
-.jqmWindow {display:none;position:fixed;top:17%;left:50%;width:715px;margin-left:-357px;color:#333;z-index:3100 !important;}   
-.jqmOverlay {background-color:#000;z-index:2000 !important;position:fixed;}
-/* Fixed posistioning emulation for IE6 */
-* html .jqmWindow {position: absolute;top: expression((document.documentElement.scrollTop || document.body.scrollTop) + Math.round(17 * (document.documentElement.offsetHeight || document.body.clientHeight) / 100) + 'px');z-index:3100 !important;}
 .spinner { vertical-align: middle; text-align: center; background:url(../images/spinner/spinner_3.gif) center 43% no-repeat;}
+
+.dialog{display:none}
 
 a.selected {text-decoration:underline;}
 .header_2 a {display:inline-block;margin:0 5px 0 0;}
@@ -516,13 +508,13 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 .lbox .bottom .bottom_center {/*margin:0 12px;*/ background:url(../images/lbox_b.png) 0 0 repeat-x; *float:left; *width:687px;}
 
 .lbox .lbox_header {padding:16px 20px;font-size:20px;background:#dfdfe0;border-bottom:1px solid #bdbec2;}
-.lbox .u_line {padding:20px 0 5px; font-size:12px; font-weight:bolder; color:#4e5557; border-bottom:1px solid #ccd3d7;}
-.lbox .u_line .label {font-weight:normal; display:block; min-width:85px; text-align:right; float:left; margin:0 5px 0 0; white-space:nowrap;}
-.lbox .u_line a.float_right {font-size:11px; cursor:pointer;}
-.lbox .pat_10 p textarea {width:100%; background:none #fff; border:1px solid #ccd3d7; overflow:auto;}
-.lbox .u_line_sm {padding:0 0 10px; font-size:12px;}
-.lbox .u_line_sm .label {display:block; float:left; width:110px; padding-top:7px; text-align:right; margin:0 5px 0 0;}
-.lbox .u_line_sm .inp {margin:0 4px 0 1px;padding:4px 3px;border:1px solid #ccd2d6;}
+.u_line {padding:20px 0 5px; font-size:12px; font-weight:bolder; color:#4e5557; border-bottom:1px solid #ccd3d7;}
+.u_line .label {font-weight:normal; display:block; min-width:85px; text-align:right; float:left; margin:0 5px 0 0; white-space:nowrap;}
+.u_line a.float_right {font-size:11px; cursor:pointer;}
+.pat_10 p textarea {width:100%; background:none #fff; border:1px solid #ccd3d7; overflow:auto;}
+.u_line_sm {padding:0 0 10px; font-size:12px;}
+.u_line_sm .label {display:block; float:left; width:110px; padding-top:7px; text-align:right; margin:0 5px 0 0;}
+.u_line_sm .inp {margin:0 4px 0 1px;padding:4px 3px;border:1px solid #ccd2d6;}
 .lbox .pat_10 p.dialog-text {padding:20px;}
 .lbox .save_cancel {padding:18px;background:#cccfd2;border-top:1px solid #eee;}
 .lbox .pas_20 .save_cancel {margin:0 0 0 -40px;position:relative;left:20px;}
@@ -533,6 +525,10 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 .lbox .spinner {background:none/*#e9f3f9 !important*/;}
 .lbox .spinner span {display:block;position:relative;top:50%; width:150px !important;height:20px !important; margin:-40px auto 0;padding:50px 0 0 !important; background:url(../images/spinner/spinner_lightbox.gif) 55px 5px no-repeat; color:#6da2c2; font-size:12px;line-height:14px !important;text-align:center;}
 .lbox .info_text {padding-bottom:10px;font-size:12px;line-height:15px;}
+
+/** TODO: temporary specificity; apply to all content boxes during loading **/
+#join_cluster_dialog .spinner {background:none/*#e9f3f9 !important*/;}
+#join_cluster_dialog .spinner span {display:block;position:relative;top:50%; width:150px !important;height:20px !important; margin:0 auto 0;padding:50px 0 0 !important; background:url(../images/spinner/spinner_lightbox.gif) 55px 5px no-repeat; color:#6da2c2; font-size:12px;line-height:14px !important;text-align:center;}
 
 .lbox_form {display:block; padding:10px;}
 .lbox_form h3 {font-size:18px; padding:5px 0 10px; border-bottom:1px solid #d8d9db; margin:0 0 10px; color:#444245; font-weight:normal;}
@@ -558,12 +554,9 @@ select.inp_size_2 {width:193px !important;}
 .popup h2 {clear:both;font-size:20px;font-weight:normal;padding-bottom:6px;margin-top:18px;margin-bottom:15px;border-bottom:1px solid #d4d9dc;}
 .popup .save_cancel {border-top:1px solid #eee;border-bottom:0px;padding:18px;clear:both;background:#cccfd2;}
 .popup .save_cancel .delete_button {margin-right:16px;}
-.popup .jqmClose {float:right;font-size:14px;height:31px;line-height:31px;color:#8b8b8e;text-align:right;font-weight:bolder;text-decoration:none;margin-right:16px;}
+.popup .close {float:right;font-size:14px;height:31px;line-height:31px;color:#8b8b8e;text-align:right;font-weight:bolder;text-decoration:none;margin-right:16px;}
 .popup .err {margin:0;}
 .popup .err p {font-size:14px;background-position:0 2px;}
-
-#bucket_details_dialog {width:765px; margin-left:-383px;background:#eee;}
-#bucket_details_dialog .lbox {width:765px;}
 
 #add_new_bucket_form h2 {padding:0 0 15px 20px; font-size:12px; line-height:15px;}
 #add_new_bucket_form table p {padding:0 0 15px 20px; font-size:12px; line-height:15px;}
@@ -622,6 +615,7 @@ body.nojs #nojs_alert { display: block; width:960px; margin:40px auto 0;}
 
 #analytics > h1 { text-transform: none !important; }
 
+#join_cluster_dialog{width:450px !important;}
 #join_cluster_dialog label {width:150px !important;}
 #join_cluster_dialog_errors_container {padding-left: 40px;}
 
@@ -640,11 +634,12 @@ body.nojs #nojs_alert { display: block; width:960px; margin:40px auto 0;}
 .tooltip .tooltip_msg {display:none; position:absolute; width:150px; padding:6px 0 0 0; right:0px; top:14px; background:url(../images/tooltip_bg.gif) 100% 0 no-repeat; z-index:10;}
 .tooltip .tooltip_msg span {display:block; padding:5px; background:none #555557; font-size:11px; text-decoration:none !important; color:#fff !important;}
 
-#about_server_dialog {background-color:#fff;width:420px;/*height:250px;*/margin-left:-210px !important; box-shadow:0 5px 25px #222;-moz-box-shadow:0 5px 25px #222;-webkit-box-shadow:0 5px 25px #222;}
-#about_server_dialog .lbox {background:none;width:100%;overflow:hidden;}
+#about_server_dialog {display:none;background-color:#fff;width:475px !important;height:250px;/*margin-left:-210px !important; */}
+#about_server_dialog .lbox {background:none;overflow:hidden;width:auto}
 #about_server_dialog .lbox .config-top {height:50px;margin:0;padding:11px 11px 10px;background-position:-8px 100%;background-color:#e7e7e8;}
-#about_server_dialog .lbox .config-top img {float:left;}
-#about_server_dialog .lbox .config-top h1 {float:right;margin:16px 2px 0 0;font:normal 11pt Verdana,Helvetica,Sans-Serif;}
+#ui-dialog-title-about_server_dialog {width:90%}
+#ui-dialog-title-about_server_dialog img {float:left;}
+#ui-dialog-title-about_server_dialog h1 {float:right;margin:16px 2px 0 0;font:normal 11pt Verdana,Helvetica,Sans-Serif;}
 #about_server_dialog .lbox .top .top_center {*width:=356px;}
 #about_server_dialog .lbox .center {background:none; padding:16px 17px 14px;}
 #about_server_dialog .lbox .center p#about_versions {margin-bottom: 25px; white-space:nowrap;}
@@ -691,7 +686,7 @@ body.init_welcome #init_welcome_dialog .welcome-footer a {color:#a7e4ff; margin-
 .config-top h1, div.config-top h2 {background:none;border:none;font-family:Verdana, Helvetica, Sans-Serif; text-shadow: 0px 1px 2px #fff;}
 div.config-top h1 {color:#444245; float:left; font-size:16pt; margin:-15px 0 0 20px; padding:0;}
 div.config-top h2 {color:#8b8b8e; float:right; font-size:10pt; margin:0 20px 0 0; padding:0;font-weight:bold;clear:none;border:none;}
-.config-bottom {background:url(../images/config-bottom.png) repeat-x; height:74px; line-height:84px; margin:0 0 0 -9px;  height:31px;padding:18px 18px 17px;}
+.config-bottom {background:url(../images/config-bottom.png) repeat-x; height:74px; line-height:84px; margin:0 0 0 -9px;  height:31px;padding:0.9em;}
 .config-bottom a.cancel {color:#8b8b8e; float:right; font-family:Arial, Helvetica, Sans-Serif; font-size:12pt; margin-right:25px; margin-top:-5px; text-decoration:none;}
 
 body.init_resources #init_block { display: block; }
@@ -893,9 +888,6 @@ ul.tabs.switcher {height:32px; overflow:visible;}
 
 .panes.pad {background:none !important;}
 
-/* temporary styles */
-.jqmWindow {position:absolute;}
-
 ul.tabs .tab_left a, ul.tabs .tab_right a {text-shadow:#bbbfc2 1px 1px;}
 ul.tabs .tab_left a.current, ul.tabs .tab_right a.current, ul.tabs .tab_left a:hover, ul.tabs .tab_right a:hover {text-shadow:none;}
 ul.tabs .tab_left a.current:hover, ul.tabs .tab_right a.current:hover {text-shadow:#bbbfc2 1px 1px;}
@@ -910,10 +902,6 @@ ul.tabs .tab_left a.current:hover, ul.tabs .tab_right a.current:hover {text-shad
 .footer_bg {background-color:#cbcfd2; padding-top:10px; padding-bottom:10px;}
 
 .fixed {position:fixed !important;}
-
-html body .overlayed {z-index:999 !important;}
-
-#about-close {line-height:31px !important;}
 
 .failover_server {position:relative !important; display:block;}
 
@@ -935,6 +923,7 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 #overview_servers_block .is-zero .when-non-zero {display:none;}
 
 /* from less */
+#bucket_details_dialog{width:715px !important}
 .bucket_details {font-size:13px;}
 .bucket_details h1 {background:#dfdfe0;padding-left:20px;padding-top:16px;padding-bottom:16px;border-bottom:1px solid #BDBEC2;}
  .init_block .bucket_details h1 {background:none;border:none;}
@@ -1010,8 +999,6 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details label.for-replica-number input {width:29px;}
 .bucket_details .save_cancel {border-top:1px solid #eee;border-bottom-width:0px;padding:18px;clear:both;background:#cccfd2;}
 .bucket_details .save_cancel .delete_button {float:left;margin-right:16px;}
-.bucket_details .save_cancel .jqmClose {float:right;height:31px;line-height:31px;color:#8b8b8e;text-align:right;font-size:14px;font-weight:bolder;
-text-decoration:none;margin-right:16px;}
 
 .bucket_details.creating .when-editing,
 .bucket_details.editing .when-creating,

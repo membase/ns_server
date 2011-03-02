@@ -10,7 +10,6 @@
 <!--[if IE]><script language="javascript" type="text/javascript" src="/js/excanvas.min.js"></script><![endif]-->
 <script src="/js/dev/jquery.js"></script>
 <script src="/js/dev/jquery-ui-1.8.10.custom.js"></script>
-<script src="/js/dev/jqModal.js"></script>
 <script src="/js/dev/jquery.flot.js"></script>
 <script src="/js/dev/jquery.ba-bbq.js"></script>
 <script src="/js/dev/underscore.js"></script>
@@ -909,7 +908,7 @@
 	</div>
 </div><!-- #container -->
 <!-- dialogs -->
-<div class="jqmWindow bucket_details" id="bucket_details_dialog">
+<div class="dialog bucket_details" id="bucket_details_dialog">
   <h1><span class="when-editing">Configure Bucket</span><span class="when-creating">Create Bucket</span></h1>
   <form><div class="clearfix">
     <h2>Bucket Settings</h2>
@@ -958,32 +957,29 @@
   </div><div class="save_cancel clearfix">
     <span class="when-editing"><button class="save_button float_right" type="submit">Save</button><button class="delete_button">Delete</button></span>
     <span class="when-creating"><button class="save_button float_right" type="submit">Create</button></span>
-    <a href="#" class="jqmClose">Cancel</a>
+    <a class="close">Cancel</a>
   </div></form>
 </div>
 
-<div class="jqmWindow popup" id="bucket_remove_dialog">
-	<h1>Bucket Properties</h1>
+<div class="dialog" id="bucket_remove_dialog" title="Removing">
 	<form>
 		<div class="clearfix">
-			<h2>Removing</h2>
 			<div class="err">
 				<p>Removing this bucket will result in complete data loss for this bucket. <br/>Are you sure you want to remove it?</p>
 			</div>
 		</div>
 		<div class="save_cancel clearfix">
 			<button onclick="BucketsSection.removeCurrentBucket();" type="button" class="delete_button float_right">Delete</button>
-			<a class="jqmClose" href="#">Cancel</a>
+			<a class="close">Cancel</a>
 		</div>
 	</form>
 </div>
 
-<div class="jqmWindow always-fixed" id="join_cluster_dialog">
+<div class="dialog" id="join_cluster_dialog" title="Add Server">
   <!-- Join cluster -->
-  <div class="lbox join_cluster type_2 shadow_box">
+  <div class="join_cluster">
     <div class="content">
       <div class="pad">
-        <p class="lbox_header header_2">Add Server</p>
         <p class="warning pat_10" id="join_cluster_dialog_errors_container"></p>
         <p id="join_cluster_dialog_errors_template" class="template">
         <!-- {% _.each(rows, function (e) { %} -->
@@ -1029,10 +1025,6 @@
               </tr>
             </table>
           </div>
-          <div class="save_cancel right footer_bg">
-            <button type="submit" class="save_button float_right">Add Server</button>
-            <a class="jqmClose cancel_button float_right" href="#">Cancel</a>
-          </div>
         </form>
       </div>
     </div>
@@ -1040,14 +1032,9 @@
   <!-- END join cluster -->
 </div>
 <!--  eject confirmation dialog -->
-<div class="jqmWindow always-fixed" id="eject_confirmation_dialog">
-  <div class="lbox type_2 shadow_box">
+<div class="dialog" id="eject_confirmation_dialog" title="Confirm Server Removal">
+  <div class="lbox type_2">
     <div class="content">
-      <div class="pad">
-        <p class="lbox_header header_2">
-        Confirm Server Removal
-        </p>
-      </div>
       <div class="pas_20">
         <div class="warning pat_20">
           <strong>Warning</strong> &ndash; Removing this server from the cluster will reduce cache capacity across all data buckets. Are you sure you want to remove this server?
@@ -1055,43 +1042,27 @@
       </div>
       <div class="right save_cancel pas_20 footer_bg">
         <button type="submit" class="save_button float_right">Remove</button>
-        <a href="#" class="jqmClose cancel_button float_right">Cancel</a>
+        <a class="close float_right">Cancel</a>
       </div>
     </div>
   </div>
 </div>
 <!-- END eject confirmation dialog -->
 <!--  add confirmation dialog -->
-<div class="jqmWindow always-fixed" id="add_confirmation_dialog">
-  <div class="lbox type_2 shadow_box">
+<div class="dialog" id="add_confirmation_dialog" title="Confirm Server Addition">
     <div class="content">
-      <div class="pad">
-        <p class="lbox_header header_2">
-        Confirm Server Addition
-        </p>
-      </div>
       <div class="pas_20">
         <div class="warning pat_20">
           <strong>Warning</strong> &ndash; Adding a server to this cluster means all data on that server will be removed.
         </div>
       </div>
-        <div class="right save_cancel pas_20 footer_bg">
-          <button type="submit" class="save_button float_right">Add Server</button>
-            <a href="#" class="jqmClose cancel_button float_right">Cancel</a>
-        </div>
     </div>
-  </div>
 </div>
 <!-- END add confirmation dialog -->
 <!--  add confirmation dialog -->
-<div class="jqmWindow always-fixed" id="failover_confirmation_dialog">
-  <div class="lbox type_2 shadow_box">
+<div class="dialog" id="failover_confirmation_dialog" title="Confirm Node Fail Over">
+  <div class="lbox type_2">
     <div class="content">
-      <div class="pad">
-        <p class="lbox_header header_2">
-        Confirm Node Fail Over
-        </p>
-      </div>
       <div class="pas_20">
         <div class="warning pat_20 warning_up_backfill">
           <strong>Attention</strong> – A significant amount of data stored on this node
@@ -1125,46 +1096,29 @@
       </div>
         <div class="right save_cancel">
           <button type="submit" class="save_button float_right">Fail Over</button>
-            <a href="#" class="jqmClose cancel_button float_right">Cancel</a>
+            <a class="close cancel_button float_right">Cancel</a>
         </div>
     </div>
   </div>
 </div>
 <!-- END add confirmation dialog -->
 <!-- Leave cluster -->
-<div class="jqmWindow" id="generic_dialog">
+<div class="dialog" id="generic_dialog">
   <div class="lbox">
-    <div class="top">
-      <div class="top_left"></div>
-      <div class="top_right"></div>
-      <div class="top_center"></div>
-    </div>
     <div class="center">
       <div class="pad">
-        <p class="lbox_header">Leave Cluster</p>
         <div class="pas_20">
           <div class="pat_10">
             <p class="dialog-text">Really eject this node from cluster?</p>
           </div>
         </div>
-          <div class="right save_cancel">
-            <!--div class="float_right"-->
-              <button type="button" class="save_button float_right">OK</button>
-              <a class="jqmClose cancel_button float_right" href="#">Cancel</a>
-            <!--/div-->
-          </div>
       </div>
-    </div>
-    <div class="bottom">
-      <div class="bottom_left"></div>
-      <div class="bottom_right"></div>
-      <div class="bottom_center"></div>
     </div>
   </div>
 </div>
 <!-- </div> --> <!-- #container -->
 <!-- About -->
-<div class="jqmWindow" id="about_server_dialog">
+<div class="dialog" id="about_server_dialog">
   <div class="lbox">
     <div class="config-top">
       <img src="images/membase-logo.png" alt="Membase Logo" />
@@ -1180,14 +1134,6 @@
     </div>
     <div class="config-bottom">
       <button name="close" value="Close" class="submit close direction-button" id="about-close" type="submit">Close</button>
-      <script type="text/javascript">
-        $(function(){
-          $('.config-bottom button#about-close').click(function (e) {
-            e.preventDefault();
-            hideDialog('about_server_dialog');
-          });
-        });
-      </script>
     </div>
   </div>
 </div>
@@ -1494,15 +1440,10 @@
   </div>
 </div>
 <!-- END init_block -->
-<div class="jqmWindow" id="edit_server_settings_dialog">
-  <div class="lbox type_2 shadow_box">
+<div class="dialog" id="edit_server_settings_dialog" title="Edit Server">
+  <div class="lbox type_2">
     <div class="cnt">
       <div class="content">
-        <div class="top_save_cancel right save_cancel float_right">
-          <button type="submit" class="save_button float_right">Save</button>
-          <a class="jqmClose cancel_button float_right" href="#">Cancel</a>
-        </div>
-        <p class="lbox_header header_2">Edit Server</p>
         <form class="lbox_form">
           <h3>Server configuration</h3>
           <table>
@@ -1608,14 +1549,11 @@
               </td>
             </tr>
           </table>
-
-          <div class="pas_20">
-            <div class="right save_cancel">
-              <button class="save_button float_right" type="submit">Save</button>
-              <a href="#" class="jqmClose cancel_button float_right">Cancel</a>
-            </div>
-          </div>
         </form>
+        <div class="right save_cancel">
+          <button class="save_button float_right" type="submit">Save</button>
+          <a class="close cancel_button float_right">Cancel</a>
+        </div>
       </div>
     </div>
   </div>

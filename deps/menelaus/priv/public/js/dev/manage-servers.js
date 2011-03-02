@@ -328,51 +328,65 @@ var ServersSection = {
     dialog.find("input:not([type]), input[type=text], input[type=password]").val('');
     dialog.find('[name=user]').val('Administrator');
 
-    $('#join_cluster_dialog_errors_container').empty();
-    showDialog('join_cluster_dialog', {
-      onHide: function () {
-        form.unbind('submit');
-      }});
-    form.bind('submit', function (e) {
-      e.preventDefault();
+    showDialog(dialog, {
+      buttons: [
+        { text:"Add Server",
+          click: function(e) {
+              e.preventDefault();
+              var main_dialog = $(this),
+                  confirmed,
+                  errors = self.validateJoinClusterParams(form);
 
-      var errors = self.validateJoinClusterParams(form);
-      if (errors.length) {
-        renderTemplate('join_cluster_dialog_errors', errors);
-        return;
-      }
+              if (errors.length) {
+                renderTemplate('join_cluster_dialog_errors', errors);
+                return;
+              }
 
-      var confirmed;
+              showDialog('add_confirmation_dialog', {
+                buttons: [
+                  { text:"Add Server",
+                    click: function(e) {
+                      e.preventDefault();
+                      confirmed = true;
+                      $(this).dialog('close');
 
-      $('#join_cluster_dialog').addClass('overlayed');
-      showDialog('add_confirmation_dialog', {
-        eventBindings: [['.save_button', 'click', function (e) {
-          e.preventDefault();
-          confirmed = true;
-          hideDialog('add_confirmation_dialog');
+                      $('#join_cluster_dialog_errors_container').html('');
+                      main_dialog.find('.content').before(SpinnerHTML).hide()
+                        .parent('.ui-dialog').find('.ui-dialog-buttonpane').hide();
 
-          $('#join_cluster_dialog_errors_container').html('');
-          var overlay = overlayWithSpinner(form);
+                      self.poolDetails.setValue(undefined);
 
-          self.poolDetails.setValue(undefined);
+                      postWithValidationErrors(uri, form, function (data, status) {
+                        self.poolDetails.invalidate();
+                        main_dialog.find('.spinner').remove();
+                        main_dialog.find('.content').show();
 
-          postWithValidationErrors(uri, form, function (data, status) {
-            self.poolDetails.invalidate();
-            overlay.remove();
-            if (status != 'success') {
-              renderTemplate('join_cluster_dialog_errors', data)
-            } else {
-              hideDialog('join_cluster_dialog');
-            }
-          })
-        }]],
-        onHide: function () {
-          $('#join_cluster_dialog').removeClass('overlayed');
-          if (!confirmed)
-            hideDialog('join_cluster_dialog'); // cancel pressed on confirmation dialog
+                        if (status != 'success') {
+                          renderTemplate('join_cluster_dialog_errors', data);
+                        } else {
+                          main_dialog.dialog('close');
+                        }
+                      });
+                    },
+                    'class':'save'
+                  },
+                  { text:"Cancel",
+                    click: function() {
+                      $(this).dialog('close');
+                    },
+                    'class':'cancel'
+                  }]
+                });
+          },
+          'class':'save'
+        },
+        { text:"Cancel",
+          click: function() {
+            $(this).dialog('close');
+          },
+          'class':'cancel'
         }
-      });
-    });
+      ]});
   },
   findNode: function (hostname) {
     return _.detect(this.allNodes, function (n) {

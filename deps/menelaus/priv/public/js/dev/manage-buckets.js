@@ -139,7 +139,8 @@ var BucketDetailsDialog = mkClass({
     dialog.find('[name=replicaNumber]').boolAttr('disabled', !isNew);
     dialog.find('.for-enable-replication input').boolAttr('disabled', !isNew);
 
-    dialog.find('[name=ramQuotaMB]').boolAttr('disabled', !isNew && (initValues.bucketType == 'memcached'));
+    dialog.find('[name=ramQuotaMB]')
+      .boolAttr('disabled', !isNew && (initValues.bucketType == 'memcached'));
 
     var oldBucketType;
     dialog.observePotentialChanges(function () {
@@ -220,7 +221,7 @@ var BucketDetailsDialog = mkClass({
 
   submit: function () {
     var self = this,
-        closeCleanup = self.bindWithCleanup(self.dialog.find('.jqmClose'),
+        closeCleanup = self.bindWithCleanup(self.dialog.find('.close'),
                                             'click',
                                             function (e) {
                                               e.preventDefault();
@@ -252,13 +253,11 @@ var BucketDetailsDialog = mkClass({
       var errors = data[0]; // we expect errors as a hash in this case
       self.errorsCell.setValue(errors);
       if (errors._) {
-        self.dialog.addClass("overlayed");
-        genericDialog({buttons: {ok: true},
+        genericDialog({buttons: {ok: true, cancel: false},
                        header: "Failed To Create Bucket",
                        text: errors._,
                        callback: function (e, btn, dialog) {
                          dialog.close();
-                         self.dialog.removeClass("overlayed");
                        }
                       });
       }
@@ -297,11 +296,16 @@ var BucketDetailsDialog = mkClass({
     }));
   },
   startDialog: function () {
-    var self = this;
+    var self = this,
+        dialog = $($i(this.dialogID));
 
     self.startForm();
 
-    showDialog(this.dialogID, {
+    dialog.find('> h1').hide();
+    showDialog(dialog, {
+      title: dialog.find('> h1 span.when-' +
+              (dialog.hasClass('creating') ? 'creating' : 'editing'))
+              .html(),
       onHide: function () {
         self.cleanup();
         if (self.needBucketsRefresh) {
@@ -568,8 +572,9 @@ var BucketsSection = {
         totals = poolDetails.storageTotals;
 
     if (totals.ram.quotaTotal == totals.ram.quotaUsed) {
+      console.log('full');
       genericDialog({
-        buttons: {ok: true},
+        buttons: {ok: true, cancel: false},
         header: 'Cluster Memory Fully Allocated',
         text: 'All the RAM in the cluster is already allocated to existing buckets.\n\nDelete some buckets or change bucket sizes to make RAM available for additional buckets.'
       });
@@ -589,13 +594,8 @@ var BucketsSection = {
       return;
     }
 
-    $('#bucket_details_dialog').addClass('overlayed');
     $('#bucket_remove_dialog .bucket_name').text(this.currentlyShownBucket.name);
-    showDialog('bucket_remove_dialog', {
-      onHide: function () {
-        $('#bucket_details_dialog').removeClass('overlayed');
-      }
-    });
+    showDialog('bucket_remove_dialog');
   },
   removeCurrentBucket: function () {
     // inner functions

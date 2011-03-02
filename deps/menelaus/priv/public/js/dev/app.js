@@ -1,19 +1,3 @@
-// TODO: doesn't work due to apparent bug in jqModal. Consider switching to another modal windows implementation
-// $(function () {
-//   $(window).keydown(function (ev) {
-//     if (ev.keyCode != 0x1b) // escape
-//       return;
-//     console.log("got escape!");
-//     // escape is pressed, now check if any jqModal window is active and hide it
-//     _.each(_.values($.jqm.hash), function (modal) {
-//       if (!modal.a)
-//         return;
-//       $(modal.w).jqmHide();
-//     });
-//   });
-// });
-
-
 var LogoutTimer = {
   reset: function () {
     if (this.timeoutId) {
@@ -414,7 +398,8 @@ function showAbout() {
     $('#cluster_state_id').text('Cluster State ID: ' + magicString.join('-'));
   }
   updateVersion();
-  showDialog('about_server_dialog');
+  showDialog('about_server_dialog',
+      {title: $('#about_server_dialog .config-top').hide().html()});
 }
 
 function showInitDialog(page, opt, isContinuation) {
