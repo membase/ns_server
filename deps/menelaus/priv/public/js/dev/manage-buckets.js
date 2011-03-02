@@ -626,14 +626,24 @@ var BucketsSection = {
   showBucket: function (uri) {
     ThePage.ensureSection('buckets');
     // we don't care about value, but we care if it's defined
-    DAL.cells.currentPoolDetailsCell.getValue(function () {
-      BucketsSection.withBucket(uri, function (bucketDetails) {
-        var fullDetails = BucketsSection.settingsWidget.detailsMap.value.get(bucketDetails),
-          initValues = _.extend({}, bucketDetails, fullDetails && fullDetails.value),
-          dialog = new BucketDetailsDialog(initValues, false);
+    BucketsSection.cells.detailedBuckets.getValue(function (buckets) {
+      var bucketDetails = _.detect(buckets, function (info) {return info.uri === uri;});
+      if (!bucketDetails) {
+        return;
+      }
+      BucketsSection.settingsWidget.detailsMap.getValue(function (mapValue) {
+        var fullDetails = mapValue.get(bucketDetails);
+        if (!fullDetails) {
+          return;
+        }
+        BucketsSection.settingsWidget.openElement(bucketDetails.name);
+        fullDetails.getValue(function (fullDetailsValue) {
+          var initValues = _.extend({}, bucketDetails, fullDetailsValue);
+          var dialog = new BucketDetailsDialog(initValues, false);
 
-        BucketsSection.currentlyShownBucket = bucketDetails;
-        dialog.startDialog();
+          BucketsSection.currentlyShownBucket = bucketDetails;
+          dialog.startDialog();
+        });
       });
     });
   },
