@@ -308,6 +308,7 @@
             {% _.each(blocks, function (blockInfo) {var withtotal = blockInfo.withtotal; %}
             <div class="darker_block graph_nav {%= (withtotal ? 'withtotal' : '') %}">
               <h3><ins class="stats-block-expander"></ins>{%= h(blockInfo.blockName) %}</h3>
+              {% if (blockInfo.blockName != 'MEMCACHED') { %}
               <ul class="col_headers">
               {% if (blockInfo.blockName == 'TAP QUEUES') { %}
                 <li>Replication</li>
@@ -321,6 +322,7 @@
                 <li>Total</li>
               {% } %}
               </ul>
+              {% } %}
               {% _.each(blockInfo.stats, function (statInfo) {var name = statInfo.name; var desc = statInfo.desc; %}
               <div class="analytics-small-graph analytics_graph_{%= h(name) %} {%= (statInfo.missing ? 'dim' : '') %}">
                 <div class="small_graph_block" style="width: 168px; height: 36px;"></div>
