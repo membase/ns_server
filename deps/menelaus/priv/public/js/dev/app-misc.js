@@ -610,11 +610,6 @@ function watchHashParamLinks(param, body) {
 // dialog, ...). This function adds support for middle clicking on
 // such action links.
 function configureActionHashParam(param, body) {
-  // this handles normal clicks (NOTE: no change to url/history is
-  // done in that case)
-  watchHashParamLinks(param, function (e, hash) {
-    body(hash);
-  });
   // this handles middle clicks. In such case the only hash fragment
   // of our url will be 'param'. We delete that param and call body
   DAL.onReady(function () {
@@ -623,6 +618,11 @@ function configureActionHashParam(param, body) {
       setHashFragmentParam(param, null);
       body(value, true);
     }
+    // this handles normal clicks (NOTE: no change to url/history is
+    // done in that case)
+    watchHashParamLinks(param, function (e, hash) {
+      body(hash);
+    });
   });
 }
 
