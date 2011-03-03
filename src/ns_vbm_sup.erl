@@ -102,7 +102,7 @@ set_replicas(Bucket, NodesReplicas) ->
 
 spawn_mover(Bucket, VBucket, SrcNode, DstNode) ->
     Args = args(SrcNode, Bucket, [VBucket], DstNode, true),
-    apply(ebucketmigrator, start_link, Args).
+    apply(ebucketmigrator_srv, start_link, Args).
 
 split_vbuckets(VBuckets) ->
     split_vbuckets(VBuckets, []).
@@ -238,8 +238,8 @@ start_child(Node, Bucket, VBuckets, DstNode) ->
     ?log_info("Args =~n~p",
               [PortServerArgs]),
     ChildSpec = {#child_id{vbuckets=VBuckets, dest_node=DstNode},
-                 {ebucketmigrator, start_link, PortServerArgs},
-                 permanent, 10, worker, [ebucketmigrator]},
+                 {ebucketmigrator_srv, start_link, PortServerArgs},
+                 permanent, 10, worker, [ebucketmigrator_srv]},
     supervisor:start_child({server(Bucket), Node}, ChildSpec).
 
 
