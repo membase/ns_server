@@ -1,31 +1,3 @@
-//= require <jquery.js>
-//= require <jqModal.js>
-//= require <jquery.flot.js>
-//= require <jquery.ba-bbq.js>
-//= require <underscore.js>
-//= require <tools.tabs.js>
-//= require <jquery.cookie.js>
-//= require <misc.js>
-//= require <base64.js>
-//= require <mkclass.js>
-//= require <callbacks.js>
-//= require <cells.js>
-//= require <cells-io.js>
-//= require <cells-map.js>
-//= require <hash-fragment-cells.js>
-//= require <right-form-observer.js>
-//= require <app-misc.js>
-//= require <multi-drawers-widget.js>
-//= require <core-data.js>
-//= require <analytics.js>
-//= require <manage-servers.js>
-//= require <monitor-servers.js>
-//= require <settings.js>
-//= require <manage-buckets.js>
-//= require <monitor-buckets.js>
-//= require <overview.js>
-//= require <all-images.js>
-
 // TODO: doesn't work due to apparent bug in jqModal. Consider switching to another modal windows implementation
 // $(function () {
 //   $(window).keydown(function (ev) {

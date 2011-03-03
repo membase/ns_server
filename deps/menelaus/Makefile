@@ -12,7 +12,7 @@ REBAR=../../rebar
 # up-to-date
 .PHONY: $(TMP_VER)
 
-all: deps priv/public/js/all.js ebins
+all: deps ebins
 
 ebins: src/menelaus.app.src
 	test -d ebin || mkdir ebin
@@ -28,14 +28,6 @@ $(TMP_VER):
 priv/public/js/dev/all-images.js: priv/public/images priv/public/images/spinner build-all-images.rb
 	ruby build-all-images.rb >$@ || (rm $@ && false)
 
-priv/public/js/all.js: priv/public/js/dev/*.js priv/public/js/dev/all-images.js
-	mkdir -p `dirname $@`
-	$(SPROCKETIZE) -I priv/public/js/dev priv/public/js/dev/app.js >$@ || (rm $@ && false)
-
-priv/public/js/t-all.js: priv/public/js/dev/*.js priv/public/js/dev/all-images.js
-	mkdir -p `dirname $@`
-	$(SPROCKETIZE) -I priv/public/js/dev priv/public/js/dev/app.js priv/public/js/dev/hooks.js >$@ || (rm $@ && false)
-
 deps:
 	test -d deps/mochiweb/ebin || mkdir deps/mochiweb/ebin
 	(cd deps/mochiweb; $(MAKE))
@@ -44,7 +36,7 @@ deps:
 clean:
 	-rm -f ebin/*
 	@(cd deps/mochiweb; $(MAKE) clean)
-	rm -f menelaus_*.tar.gz priv/public/js/t-all.js priv/public/js/all.js
+	rm -f menelaus_*.tar.gz
 	@(cd deps/erlwsh; $(MAKE) clean)
 	rm -f $(TMP_VER)
 	rm -rf $(DIST_DIR)

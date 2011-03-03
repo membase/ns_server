@@ -3,9 +3,7 @@
 *~
 /TAGS
 /doc/API/_site
-/priv/public/js/all.js
 /priv/public/js/dev/all-images.js
-/priv/public/js/t-all.js
 /src/menelaus.app.src
 deps/mochiweb/ebin/*
 doc/*.html

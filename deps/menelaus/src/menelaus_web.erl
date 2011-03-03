@@ -174,8 +174,6 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth_cookie, fun diag_handler:handle_diag/1};
                              ["pools", PoolId, "rebalanceProgress"] ->
                                  {auth, fun handle_rebalance_progress/2, [PoolId]};
-                             ["t", "index.html"] ->
-                                 {done, serve_index_html_for_tests(Req, AppRoot)};
                              ["index.html"] ->
                                  {done, serve_static_file(Req, {AppRoot, Path},
                                                          "text/html; charset=utf8",
@@ -1004,15 +1002,6 @@ serve_static_file(Req, File, ContentType, ExtraHeaders) ->
             end;
         {error, _} ->
             Req:not_found(ExtraHeaders)
-    end.
-
-serve_index_html_for_tests(Req, DocRoot) ->
-    case file:read_file(DocRoot ++ "/index.html") of
-        {ok, Data} ->
-            StringData = re:replace(binary_to_list(Data),
-                                    "js/all.js\"", "js/t-all.js\""),
-            Req:ok({"text/html", list_to_binary(StringData)});
-        _ -> {Req:not_found()}
     end.
 
 % too much typing to add this, and I'd rather not hide the response too much
