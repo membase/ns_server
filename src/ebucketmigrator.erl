@@ -124,17 +124,22 @@ init({Src, Dst, Opts}) ->
                                                           {takeover, TakeOver}]),
     ok = inet:setopts(Upstream, [{active, once}]),
     ok = inet:setopts(Downstream, [{active, once}]),
-    {ok, _TRef} = timer:send_interval(?TIMEOUT_CHECK_INTERVAL,
-                                      check_for_timeout),
-    State = #state{upstream=Upstream, downstream=Downstream,
-                   vbuckets=sets:from_list(
-                              case VBuckets of
-                                  undefined -> [0];
-                                  _ -> VBuckets
-                              end),
-                   last_seen=now(),
-                   opcode_counts=dict:new(),
-                   takeover=TakeOver},
+
+    Timeout = proplists:get_value(timeout, Opts, ?TIMEOUT_CHECK_INTERVAL),
+    {ok, _TRef} = timer:send_interval(Timeout, check_for_timeout),
+
+    State = #state{
+      upstream=Upstream,
+      downstream=Downstream,
+      vbuckets=sets:from_list(
+                 case VBuckets of
+                     undefined -> [0];
+                     _ -> VBuckets
+                 end),
+      last_seen=now(),
+      opcode_counts=dict:new(),
+      takeover=TakeOver
+     },
     %% Trap exits so we can log
     process_flag(trap_exit, true),
     gen_server:enter_loop(?MODULE, [], State).
