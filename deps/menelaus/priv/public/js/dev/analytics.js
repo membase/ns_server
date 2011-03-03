@@ -337,7 +337,8 @@ var StatGraphs = {
 
     _.each(self.effectivelyVisibleStats || [], function (statName) {
       var area = self.findGraphArea(statName);
-      self.spinners.push(overlayWithSpinner(area));
+      area.find('.small_graph_block').html('');
+      area.find('.small_graph_label .value').html('?')
     });
 
     $('.stats_visible_period').text('?');
