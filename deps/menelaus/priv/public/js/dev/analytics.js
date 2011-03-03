@@ -1,57 +1,149 @@
-var SamplesRestorer = mkClass({
-  initialize: function (url, options, keepSamplesCount) {
-    this.birthTime = (new Date()).valueOf();
-    this.url = url;
-    this.options = options;
-    this.keepSamplesCount = keepSamplesCount;
-    this.valueTransformer = $m(this, 'transformData');
-    this.grabToken = mkTokenBucket(2, 10, 4);
-  },
-  getRequestData: function () {
-    var data = _.extend({}, this.options);
-    _.each(data.nonQ, function (n) {
-      delete data[n];
+(function (global) {
+  var withStatsTransformer = future.withEarlyTransformer(function (value, status, xhr) {
+    var date = xhr.getResponseHeader('date');
+    value.serverDate = parseHTTPDate(date).valueOf();
+    value.clientDate = (new Date()).valueOf();
+  });
+
+  global.createSamplesRestorer = createSamplesRestorer;
+  return;
+
+  function createSamplesRestorer(statsURL, statsData) {
+    var dataCallback;
+    var interval;
+    var bufferDepth;
+
+    var rawStatsCell = Cell.compute(function (v) {
+      return withStatsTransformer.get({url: statsURL, data: statsData});
     });
-    if (this.prevTimestamp !== undefined)
-      data['haveTStamp'] = this.prevTimestamp;
-    return data;
-  },
-  transformData: function (value) {
-    var op = value.op;
-    var samples = op.samples;
-    this.samplesInterval = op.interval;
-    this.prevTimestamp = op.lastTStamp || this.prevTimestamp;
 
-    if (!op.tstampParam) {
-      if (samples.timestamp.length > 0)
-        this.prevSamples = samples;
-      else
-        op.samples = this.prevSamples;
-      return value;
+    return (function () {
+      var rv = Cell.compute(function (v) {
+        bufferDepth = v.need(DAL.cells.samplesBufferDepth);
+        return future(function (cb) {
+          dataCallback = cb;
+          rawStatsCell.getValue(stage1);
+        });
+      });
+      rv.detach = (function (orig) {
+        return function () {
+          console.log("detaching stats fetcher for:", statsURL, $.param(statsData));
+          orig.apply(this, arguments)
+        };
+      })(rv.detach);
+      rv.metaCell = rawStatsCell.ensureMetaCell();
+      return rv;
+    })();
+
+    function stage1(rawStats) {
+      interval = rawStats.op.interval;
+
+      if (interval < 2000) {
+        startRealTimeRestorer(rawStats, interval, dataCallback, bufferDepth, statsURL, statsData);
+      } else {
+        startStats();
+        handleStaticStats(rawStats);
+      }
     }
 
-    var prevSamples = this.prevSamples;
-    var newSamples = {};
-
-    for (var keyName in samples) {
-      newSamples[keyName] = prevSamples[keyName].concat(samples[keyName].slice(1)).slice(-this.keepSamplesCount);
+    function startStats() {
+      rawStatsCell.subscribe(function () {
+        handleStaticStats(rawStatsCell.value);
+      });
+      dataCallback.async.cancel = function () {
+        rawStatsCell.detach();
+      }
     }
 
-    this.prevSamples = op.samples = newSamples;
-
-    return value;
-  },
-  nextSampleTime: function () {
-    var now = (new Date()).valueOf();
-    if (this.samplesInterval === undefined)
-      return now;
-    if (this.samplesInterval < 2000)
-      return now;
-    return now + Math.min(this.samplesInterval/2, 60000);
+    function handleStaticStats(rawStats) {
+      dataCallback.continuing(rawStats);
+      rawStatsCell.recalculateAfterDelay(Math.min(interval/2, 60000));
+    }
   }
-});
+
+  function startRealTimeRestorer(rawStats, interval, dataCallback, bufferDepth,
+                                 statsURL, statsData) {
+    var prevSamples;
+    var lastRaw;
+    var prevTimestamp;
+    var keepCount;
+    var intervalId;
+    var cancelled;
+
+    // TODO: this is not 'pure' function, so we're breaking rules
+    // slightly, but directly going through future is not best option
+    // with current state of code
+    var rawStatsCell = Cell.compute(function (v) {
+      var data = _.extend({}, statsData);
+      if (prevTimestamp !== undefined) {
+        data['haveTStamp'] = prevTimestamp;
+      }
+      return withStatsTransformer.get({url: statsURL, data: data});
+    });
+
+    dataCallback.async.cancel = function () {
+      cancelled = true;
+      rawStatsCell.setValue(undefined);
+      if (intervalId !== undefined) {
+        cancelInterval(intervalId);
+      }
+    };
+
+    keepCount = rawStats.op.samplesCount + bufferDepth;
+
+    restoringSamples(rawStats);
+    restoringSamplesTail();
+    dataCallback.continuing(lastRaw);
+
+    intervalId = setInterval(function () {
+      dataCallback.continuing(_.clone(lastRaw));
+    }, interval);
+
+    return;
+
+    function restoringSamples(rawStats) {
+      var op = rawStats.op;
+      var samples = op.samples;
+      prevTimestamp = op.lastTStamp || prevTimestamp;
+
+      if (!op.tstampParam) {
+        if (samples.timestamp.length > 0) {
+          prevSamples = samples;
+        }
+      } else {
+        var newSamples = {};
+        for (var keyName in samples) {
+          newSamples[keyName] = prevSamples[keyName].concat(samples[keyName].slice(1)).slice(-keepCount);
+        }
+        prevSamples = newSamples;
+      }
+
+      lastRaw = _.clone(rawStats);
+      lastRaw.op = _.clone(op);
+      lastRaw.op.samples = prevSamples;
+    }
+
+    function restoringSamplesTail() {
+      if (cancelled) {
+        return;
+      }
+      rawStatsCell.invalidate(function () {
+        restoringSamples(rawStatsCell.value);
+        restoringSamplesTail();
+      });
+    }
+  }
+})(window);
 
 ;(function () {
+  function diagCell(cell, name) {
+    if (false) {
+      cell.subscribeAny(function () {
+        console.log("cell("+name+"):", cell.value);
+      });
+    }
+  }
+
   var statsBucketURL = this.statsBucketURL = new StringHashFragmentCell("statsBucket");
 
   var targetCell = this.currentStatTargetCell = new Cell(function (poolDetails, mode) {
@@ -69,9 +161,7 @@ var SamplesRestorer = mkClass({
       poolDetails: this.currentPoolDetailsCell,
       mode: this.mode});
 
-  var StatsArgsCell = new Cell(function (target) {
-    return {url: target.stats.uri};
-  }, {target: targetCell});
+  diagCell(targetCell, "targetCell");
 
   var statsOptionsCell = new Cell();
   statsOptionsCell.setValue({nonQ: ['keysInterval', 'nonQ'], resampleForUI: '1'});
@@ -82,69 +172,40 @@ var SamplesRestorer = mkClass({
     equality: _.isEqual
   });
 
+  diagCell(statsOptionsCell, "statsOptionsCell");
+
+  var statsURLCell = Cell.compute(function (v) {
+    return v.need(targetCell).stats.uri;
+  });
+
+  var statsCellCell = Cell.compute(function (v) {
+    var options = v.need(statsOptionsCell);
+    var url = v.need(statsURLCell);
+
+    var data = _.extend({}, options);
+    _.each(data.nonQ, function (n) {
+      delete data[n];
+    });
+
+    return createSamplesRestorer(url, data);
+  });
+
+  diagCell(statsURLCell, "statsURLCell");
+  diagCell(statsCellCell, "statsCellCell");
+
+  var statsCell = Cell.compute(function (v) {
+    if (v.need(DAL.cells.mode) != 'analytics') {
+      return;
+    }
+    return v.need(v.need(statsCellCell));
+  });
+
+  diagCell(statsCell, "statsCell");
+
   var samplesBufferDepthRAW = new StringHashFragmentCell("statsBufferDepth");
-  var samplesBufferDepth = Cell.compute(function (v) {
+  var samplesBufferDepth = Cell.computeEager(function (v) {
     return v(samplesBufferDepthRAW) || 1;
   });
-
-  var samplesRestorerCell = Cell.computeEager(function (v) {
-    var target = v.need(targetCell);
-    var options = v.need(statsOptionsCell);
-    var keepCount = 60;
-    if (options.zoom == "minute") {
-      keepCount = v.need(samplesBufferDepth) + 60;
-    }
-    return new SamplesRestorer(target.stats.uri, options, keepCount);
-  });
-
-  var statsCell = Cell.mkCaching(function (samplesRestorer) {
-    var self = this.self;
-
-    if (!samplesRestorer.grabToken()) {
-      console.log("stats request prevented by token bucket filter");
-      _.defer(function () {self.recalculateAfterDelay(2000)});
-      return Cell.STANDARD_ERROR_MARK;
-    }
-
-    function futureWrapper(body, options) {
-      function wrappedBody(dataCallback) {
-        function wrappedDataCallback(value, status, xhr) {
-          if (value !== Cell.STANDARD_ERROR_MARK) {
-            var date = xhr.getResponseHeader('date');
-            value = samplesRestorer.valueTransformer(value);
-            value.serverDate = parseHTTPDate(date).valueOf();
-            value.clientDate = (new Date()).valueOf();
-          }
-          dataCallback(value);
-          if (value === Cell.STANDARD_ERROR_MARK) {
-            self.recalculateAt(samplesRestorer.nextSampleTime());
-          }
-        }
-
-        body(wrappedDataCallback);
-      }
-      return future(wrappedBody, options);
-    }
-
-    return future.get({
-      url: samplesRestorer.url,
-      data: samplesRestorer.getRequestData(),
-      onError: function (dataCallback) {
-        dataCallback(Cell.STANDARD_ERROR_MARK);
-      }
-    }, undefined, undefined, futureWrapper);
-  },{samplesRestorer: samplesRestorerCell,
-     options: statsOptionsCell,
-     target: targetCell});
-
-  statsCell.target.setRecalculateTime = function () {
-    var samplesRestorer = this.context.samplesRestorer.value;
-    if (!samplesRestorer)
-      return;
-    var at = samplesRestorer.nextSampleTime();
-    this.recalculateAt(at);
-  }
-  statsCell.setRecalculateTime = $m(statsCell.target, 'setRecalculateTime');
 
   _.extend(DAL.cells, {
     stats: statsCell,
@@ -304,7 +365,7 @@ var StatGraphs = {
       infos = KnownPersistentStats;
     return _.detect(infos, function (i) {return i[0] == name;})[2] || {};
   },
-  doUpdate: function () {
+  update: function () {
     var self = this;
 
     if (self.preventUpdatesCounter)
@@ -379,42 +440,6 @@ var StatGraphs = {
       var options = self.findGraphOptions(statName);
       renderSmallGraph(area, op, statName, selected == statName, zoomMillis, timeOffset, options);
     });
-  },
-  updateRealtime: function () {
-    if (this.refreshTimeoutId && this.renderingRealtime)
-      return;
-
-    if (this.refreshTimeoutId) {
-      clearInterval(this.refreshTimeoutId);
-      this.refreshTimeoutId = undefined;
-    }
-
-    this.renderingRealtime = true;
-
-    this.refreshTimeoutId = setInterval($m(this, 'doUpdate'), 1000);
-
-    this.doUpdate();
-  },
-  update: function () {
-    var cell = DAL.cells.stats;
-    var stats = cell.value;
-
-    cell.setRecalculateTime();
-
-    if (stats && stats.op && stats.op.interval < 2000)
-      return this.updateRealtime();
-
-    this.renderingRealtime = false;
-
-    this.doUpdate();
-
-    // this makes sure that we're refreshing graph even when no data arrives
-    if (this.refreshTimeoutId) {
-      clearInterval(this.refreshTimeoutId);
-      this.refreshTimeoutId = undefined;
-    }
-
-    this.refreshTimeoutId = setInterval($m(this, 'update'), 60000);
   },
   init: function () {
     $('.stats-block-expander').live('click', function () {
