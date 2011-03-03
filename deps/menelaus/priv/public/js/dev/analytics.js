@@ -817,7 +817,8 @@ var AnalyticsSection = {
           select.append(option);
         });
 
-        select.bind('change', onChange);
+        select.bind('change', onChange).combobox();
+        select.find('+input').val(select.find(':selected').text());
       });
     })();
 
@@ -860,7 +861,7 @@ var AnalyticsSection = {
 
         var selectedName = args.selected ? args.selected.hostname : undefined;
 
-        select.append("<option value=''>All Server Nodes</option>");
+        select.append("<option value='all'>All Server Nodes</option>");
 
         _.each(args.list, function (node) {
           var escapedHostname = escapeHTML(node.hostname);
@@ -869,7 +870,8 @@ var AnalyticsSection = {
           select.append(option);
         });
 
-        select.bind('change', onChange);
+        select.bind('change', onChange).combobox();
+        select.find('+input').val(select.find(':selected').text());
       });
     })();
   },
