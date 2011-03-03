@@ -126,6 +126,8 @@ FlexiFormulaCell = mkClass(Cell, {
     this.effectiveFormula = this.emptyFormula;
     this.setValue(this.value);  // this cancels any in-progress
                                 // futures
+    clearTimeout(this.recalculateAtTimeout);
+    this.recalculateAtTimeout = undefined;
   },
   setSources: function () {
     throw new Error("unsupported!");

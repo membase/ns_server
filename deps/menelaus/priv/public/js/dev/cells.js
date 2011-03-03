@@ -344,6 +344,7 @@ var Cell = mkClass({
       if (this.recalculateAtTime < time)
         return;
       clearTimeout(this.recalculateAtTimeout);
+      this.recalculateAtTimeout = undefined;
     }
     this.recalculateAtTime = time;
 
@@ -383,6 +384,8 @@ var Cell = mkClass({
     _.each(this.sources, function (cell) {
       cell.dependenciesSlot.unsubscribeCallback(recalculate);
     });
+    clearTimeout(this.recalculateAtTimeout);
+    this.recalculateAtTimeout = undefined;
   }
 });
 
