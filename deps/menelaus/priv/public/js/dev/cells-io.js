@@ -9,7 +9,7 @@ Cell.prototype.propagateMeta = function () {
 
   for (var i = sourceCells.length - 1; i >= 0; i--) {
     var cell = sourceCells[i].metaCell;
-    if (!cell) {
+    if (!cell || !cell.value) {
       continue;
     }
     var metaValue = cell.value;
