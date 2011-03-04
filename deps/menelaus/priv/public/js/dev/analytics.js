@@ -167,21 +167,38 @@
   }
 
   var statsBucketURL = this.statsBucketURL = new StringHashFragmentCell("statsBucket");
+  var statsHostname = this.statsHostname = new StringHashFragmentCell("statsHostname");
 
-  var targetCell = this.currentStatTargetCell = new Cell(function (poolDetails, mode) {
-    if (mode != 'analytics')
+  var statsBucketDetails = Cell.compute(function (v) {
+    var uri = v.need(statsBucketURL);
+    var buckets = v.need(DAL.cells.bucketsListCell);
+    return _.detect(buckets, function (info) {return info.uri === uri});
+  });
+
+  var statsNodesCell = Cell.compute(function (v) {
+    // TODO: introduce direct attr for that
+    return future.get({url: v.need(statsBucketDetails).uri + "/nodes"});
+  });
+
+  var targetCell = this.currentStatTargetCell = Cell.compute(function (v) {
+    var mode = v.need(DAL.cells.mode);
+    if (mode !== 'analytics') {
       return;
+    }
 
-    if (!this.bucketURL)
-      return poolDetails;
+    var hostname = v(statsHostname);
+    if (!hostname) {
+      return v.need(statsBucketDetails);
+    }
 
-    var bucket = BucketsSection.findBucket(this.bucketURL);
-    if (bucket)
-      return bucket;
-    return future.get({url: this.bucketURL, stdErrorMarker: true});
-  }, {bucketURL: statsBucketURL,
-      poolDetails: this.currentPoolDetailsCell,
-      mode: this.mode});
+    var nodes = v.need(statsNodesCell);
+    var nodeInfo = _.detect(nodes.servers, function (info) {return info.hostname === hostname});
+    if (!nodeInfo) {
+      return v.need(statsBucketDetails);
+    }
+
+    return nodeInfo;
+  });
 
   diagCell(targetCell, "targetCell");
 
