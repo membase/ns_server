@@ -369,7 +369,7 @@ var DAL = {
       allNodes: allNodes
     };
   }
-  
+
   cell = DAL.cells.serversCell = new Cell(formula, {
     details: DAL.cells.currentPoolDetailsCell,
     detailsAreStale: (function (metaCell) {
