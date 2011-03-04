@@ -134,6 +134,34 @@ future.get = function (ajaxOptions, valueTransformer, nowValue, futureWrapper) {
   return (futureWrapper || future)(initiateXHR, options);
 };
 
+future.withEarlyTransformer = function (earlyTransformer) {
+  return {
+    // we return a function
+    get: function (ajaxOptions, valueTransformer, newValue, futureWrapper) {
+      // that will delegate to future.get, but...
+      return future.get(ajaxOptions, valueTransformer, newValue, futureReplacement);
+      // will pass our function instead of future
+      function futureReplacement(initXHR) {
+        // that function will delegate to real future
+        return (future || futureWrapper)(function (dataCallback) {
+          // and once future is started
+          // will call original future start function replacing dataCallback
+          dataCallbackReplacement.cell = dataCallback.cell;
+          dataCallbackReplacement.async = dataCallback.async;
+          dataCallbackReplacement.continuing = dataCallback.continuing;
+          initXHR(dataCallbackReplacement);
+          function dataCallbackReplacement(value, status, xhr) {
+            // replaced dataCallback will invoke earlyTransformer
+            earlyTransformer(value, status, xhr);
+            // and will finally pass data to real dataCallback
+            dataCallback(value);
+          }
+        });
+      }
+    }
+  };
+}
+
 future.pollingGET = function (ajaxOptions, valueTransformer, nowValue, futureWrapper) {
   var initiator = futureWrapper || future;
   var interval = 2000;
