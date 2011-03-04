@@ -23,7 +23,8 @@ start() ->
         application:set_env(os_mon, disk_space_check_interval, 1),
         ok = application:start(sasl),
         application:start(os_mon),
-        ok = application:start(ns_server)
+        ok = application:start(ns_server),
+        ok = application:start(couch)
     catch T:E ->
             timer:sleep(500),
             erlang:T(E)

@@ -76,6 +76,7 @@ dataclean:
 	rm -rf logs
 	rm -rf coverage
 	rm -f priv/ip
+	rm -rf couch
 
 distclean: clean dataclean
 
