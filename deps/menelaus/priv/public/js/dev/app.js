@@ -388,7 +388,7 @@ function showAbout() {
     if (nodesCount >= 0x100)
       nodesCount = 0xff;
 
-    var buckets = BucketsSection.cells.detailedBuckets.value || [];
+    var buckets = DAL.cells.bucketsListCell.value || [];
     var bucketsCount = buckets.length;
     if (bucketsCount >= 100)
       bucketsCount = 99;

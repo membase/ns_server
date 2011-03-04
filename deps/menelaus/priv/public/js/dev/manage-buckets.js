@@ -454,98 +454,9 @@ var BucketsSection = {
                                    hdd.usedByData - details.basicStats.diskUsed,
                                    hdd.used - hdd.usedByData);
   },
-  cells: {},
   init: function () {
-    var self = this,
-        cells = self.cells,
-        poolDetailsValue;
-
-    cells.mode = DAL.cells.mode;
-
-    DAL.cells.currentPoolDetails.subscribeValue(function (v) {
-      if (!v) {
-        return;
-      }
-
-      poolDetailsValue = v;
-    });
-
-    var bucketsListTransformer = function (values) {
-      console.log("bucketsListTransformer is called");
-      if (values === Cell.STANDARD_ERROR_MARK) {
-        return values;
-      }
-
-      var storageTotals = poolDetailsValue.storageTotals;
-
-      if (!storageTotals || !storageTotals.ram) {
-        // this might happen if ns_doctor is down, which often happens
-        // after failover
-        return future(function (callback) {
-          var cell = DAL.cells.currentPoolDetails,
-              haveNewValue = false;
-          // wait till pool details will change and try transformation again
-          cell.changedSlot.subscribeOnce(function (newPoolDetails) {
-            haveNewValue = true;
-            console.log("have new pools to resolve empty storageTotals");
-            // we have new pool details. store it,
-            poolDetailsValue = DAL.cells.currentPoolDetails.value;
-            // and then 'return' transformed value
-            callback(bucketsListTransformer(values));
-          });
-          // and force re-fetching of pool details in not too distant
-          // future
-          setTimeout(function () {
-            if (haveNewValue) {
-              return;
-            }
-            cell.recalculate();
-          }, 1000);
-          console.log("delayed bucketsListTransformer due to empty storageTotals");
-        }, {nowValue: self.buckets});
-      }
-
-      self.buckets = values;
-
-      _.each(values, function (bucket) {
-        if (bucket.bucketType == 'memcached') {
-          bucket.bucketTypeName = 'Memcached';
-        } else if (bucket.bucketType == 'membase') {
-          bucket.bucketTypeName = 'Membase';
-        } else {
-          bucket.bucketTypeName = bucket.bucketType;
-        }
-
-        bucket.serversCount = poolDetailsValue.nodes.length;
-        bucket.ramQuota = bucket.quota.ram;
-        bucket.totalRAMSize = storageTotals.ram.total;
-        bucket.totalRAMUsed = bucket.basicStats.memUsed;
-        bucket.otherRAMSize = storageTotals.ram.used - bucket.totalRAMUsed;
-        bucket.totalRAMFree = storageTotals.ram.total - storageTotals.ram.used;
-
-        bucket.RAMUsedPercent = calculatePercent(bucket.totalRAMUsed, bucket.totalRAMSize);
-        bucket.RAMOtherPercent = calculatePercent(bucket.totalRAMUsed + bucket.otherRAMSize, bucket.totalRAMSize);
-
-        bucket.totalDiskSize = storageTotals.hdd.total;
-        bucket.totalDiskUsed = bucket.basicStats.diskUsed;
-        bucket.otherDiskSize = storageTotals.hdd.used - bucket.totalDiskUsed;
-        bucket.totalDiskFree = storageTotals.hdd.total - storageTotals.hdd.used;
-
-        bucket.diskUsedPercent = calculatePercent(bucket.totalDiskUsed, bucket.totalDiskSize);
-        bucket.diskOtherPercent = calculatePercent(bucket.otherDiskSize + bucket.totalDiskUsed, bucket.totalDiskSize);
-      });
-      return values;
-    };
-
-    cells.detailsPageURI = new Cell(function (poolDetails) {
-      return poolDetails.buckets.uri;
-    }, {poolDetails: DAL.cells.currentPoolDetails});
-
-    cells.detailedBuckets = Cell.mkCaching(function (pageURI) {
-      console.log("loading detailed buckets");
-      return future.get({url: pageURI, stdErrorMarker: true},
-                        bucketsListTransformer);
-    }, {pageURI: cells.detailsPageURI});
+    var self = this;
+    var bucketsListCell = DAL.cells.bucketsListCell;
 
     self.settingsWidget = new MultiDrawersWidget({
       hashFragmentParam: "buckets",
@@ -562,14 +473,14 @@ var BucketsSection = {
         rv.storageInfoRelevant = (rv.bucketType == 'membase');
         return rv;
       },
-      listCell: cells.detailedBuckets
+      listCell: bucketsListCell
     });
 
     var stalenessCell = Cell.compute(function (v) {
-      return v.need(cells.detailedBuckets.ensureMetaCell()).stale;
+      return v.need(bucketsListCell.ensureMetaCell()).stale;
     });
 
-    renderCellTemplate(cells.detailedBuckets, 'bucket_list', {
+    renderCellTemplate(bucketsListCell, 'bucket_list', {
       beforeRendering: function () {
         self.settingsWidget.prepareDrawing();
       }, extraCells: [stalenessCell]
@@ -597,19 +508,15 @@ var BucketsSection = {
   renderBucketDetails: function (item) {
     return this.settingsWidget.renderItemDetails(item);
   },
-  buckets: null,
   refreshBuckets: function (callback) {
-    var cell = this.cells.detailedBuckets;
-    if (callback) {
-      cell.changedSlot.subscribeOnce(callback);
-    }
-    cell.invalidate();
+    return DAL.cells.bucketsListCell.refresh(callback);
   },
   withBucket: function (uri, body) {
-    if (!this.buckets) {
+    var value = DAL.cells.bucketsListCell.value;
+    if (!value) {
       return;
     }
-    var bucketInfo = _.detect(this.buckets, function (info) {
+    var bucketInfo = _.detect(value, function (info) {
       return info.uri == uri;
     });
 
@@ -626,7 +533,7 @@ var BucketsSection = {
   showBucket: function (uri) {
     ThePage.ensureSection('buckets');
     // we don't care about value, but we care if it's defined
-    BucketsSection.cells.detailedBuckets.getValue(function (buckets) {
+    DAL.cells.bucketsListCell.getValue(function (buckets) {
       var bucketDetails = _.detect(buckets, function (info) {return info.uri === uri;});
       if (!bucketDetails) {
         return;

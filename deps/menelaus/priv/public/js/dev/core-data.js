@@ -385,3 +385,105 @@ var DAL = {
     cell.invalidate();
   };
 }());
+
+// detailedBuckets
+(function (cells) {
+  var currentPoolDetailsCell = cells.currentPoolDetailsCell;
+
+  // we're using separate 'intermediate' cell to isolate all updates
+  // of currentPoolDetailsCell from updates of buckets uri (which
+  // basically never happens)
+  var bucketsURI = Cell.compute(function (v) {
+    return v.need(currentPoolDetailsCell).buckets.uri;
+  });
+
+  var rawDetailedBuckets = Cell.compute(function (v) {
+    return future.get({url: v.need(bucketsURI), stdErrorMarker: true});
+  });
+
+  // we use few attrs of pool details for massaging buckets list,
+  // extract them so that we don't re-massage buckets list when
+  // irrelevant poolDetails attributes change value.
+  //
+  // 'null' indicates invalid pool details
+  var massageUsedPoolDetails = Cell.compute(function (v) {
+    var poolDetails = v.need(currentPoolDetailsCell);
+    var storageTotals = poolDetails.storageTotals;
+    if (!storageTotals || !storageTotals.ram) {
+      // this might happen if ns_doctor is down, which often happens
+      // after failover
+      return null;
+    }
+    return {storageTotals: storageTotals,
+            serversCount: poolDetails.nodes.length};
+  });
+  massageUsedPoolDetails.equality = _.isEqual;
+
+  // force refetch of pool details if there is still no storageTotals for 2 seconds
+  (function () {
+    var timeoutId;
+    massageUsedPoolDetails.subscribeValue(function (val) {
+      if (val === null && timeoutId === undefined) {
+        timeoutId = setTimeout(function () {
+          timeoutId = undefined;
+          currentPoolDetailsCell.recalculate();
+        }, 2000);
+      }
+    });
+  })();
+
+  cells.rawBucketsListCell = Cell.compute(function (v) {
+    var values = v.need(rawDetailedBuckets);
+    var massageDetails = v.need(massageUsedPoolDetails);
+
+    if (values === Cell.STANDARD_ERROR_MARK) {
+      return values;
+    }
+
+    values = _.clone(values);
+
+    var storageTotals = massageDetails.storageTotals;
+
+    _.each(values, function (bucket) {
+      if (bucket.bucketType == 'memcached') {
+        bucket.bucketTypeName = 'Memcached';
+      } else if (bucket.bucketType == 'membase') {
+        bucket.bucketTypeName = 'Membase';
+      } else {
+        bucket.bucketTypeName = bucket.bucketType;
+      }
+
+      bucket.serversCount = massageDetails.serversCount;
+      bucket.ramQuota = bucket.quota.ram;
+      bucket.totalRAMSize = storageTotals.ram.total;
+      bucket.totalRAMUsed = bucket.basicStats.memUsed;
+      bucket.otherRAMSize = storageTotals.ram.used - bucket.totalRAMUsed;
+      bucket.totalRAMFree = storageTotals.ram.total - storageTotals.ram.used;
+
+      bucket.RAMUsedPercent = calculatePercent(bucket.totalRAMUsed, bucket.totalRAMSize);
+      bucket.RAMOtherPercent = calculatePercent(bucket.totalRAMUsed + bucket.otherRAMSize, bucket.totalRAMSize);
+
+      bucket.totalDiskSize = storageTotals.hdd.total;
+      bucket.totalDiskUsed = bucket.basicStats.diskUsed;
+      bucket.otherDiskSize = storageTotals.hdd.used - bucket.totalDiskUsed;
+      bucket.totalDiskFree = storageTotals.hdd.total - storageTotals.hdd.used;
+
+      bucket.diskUsedPercent = calculatePercent(bucket.totalDiskUsed, bucket.totalDiskSize);
+      bucket.diskOtherPercent = calculatePercent(bucket.otherDiskSize + bucket.totalDiskUsed, bucket.totalDiskSize);
+    });
+
+    return values;
+  });
+
+  cells.rawBucketsListCell.delegateInvalidationMethods(rawDetailedBuckets);
+
+  cells.bucketsListCell = Cell.cacheResponse(cells.rawBucketsListCell);
+
+  cells.bucketsListCell.refresh = function (callback) {
+    var cell = cells.bucketsListCell;
+    if (callback) {
+      cell.changedSlot.subscribeOnce(callback);
+    }
+    cell.invalidate();
+  };
+})(DAL.cells);

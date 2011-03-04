@@ -1,22 +1,22 @@
 var MonitorBucketsSection = {
   init: function () {
-    var detailedBuckets = BucketsSection.cells.detailedBuckets;
+    var bucketsListCell = DAL.cells.bucketsListCell;
 
-    var membaseBuckets = new Cell(function (detailedBuckets) {
-      return _.select(detailedBuckets, function (bucketInfo) {
+    var membaseBuckets = new Cell(function (bucketsList) {
+      return _.select(bucketsList, function (bucketInfo) {
         return bucketInfo.bucketType == 'membase';
       });
     }, {
-      detailedBuckets: detailedBuckets
+      bucketsList: bucketsListCell
     });
     renderCellTemplate(membaseBuckets, 'monitor_persistent_buckets_list');
 
-    var memcachedBuckets = new Cell(function (detailedBuckets) {
-      return _.select(detailedBuckets, function (bucketInfo) {
+    var memcachedBuckets = new Cell(function (bucketsList) {
+      return _.select(bucketsList, function (bucketInfo) {
         return bucketInfo.bucketType != 'membase';
       });
     }, {
-      detailedBuckets: detailedBuckets
+      bucketsList: bucketsListCell
     });
     renderCellTemplate(memcachedBuckets, 'monitor_cache_buckets_list');
 
@@ -27,12 +27,12 @@ var MonitorBucketsSection = {
       $('#monitor_buckets .membase-buckets-subsection')[!list || list.length ? 'show' : 'hide']();
     });
 
-    detailedBuckets.subscribeValue(function (list) {
+    bucketsListCell.subscribeValue(function (list) {
       var empty = list && list.length == 0;
       $('#monitor_buckets .no-buckets-subsection')[empty ? 'show' : 'hide']();
     });
 
-    var stalenessCell = Cell.compute(function (v) {return v.need(detailedBuckets.ensureMetaCell()).stale});
+    var stalenessCell = Cell.compute(function (v) {return v.need(bucketsListCell.ensureMetaCell()).stale});
 
     stalenessCell.subscribeValue(function (stale) {
       if (stale === undefined)

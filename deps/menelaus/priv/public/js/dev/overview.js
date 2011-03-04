@@ -1,6 +1,6 @@
 var OverviewSection = {
   initLater: function () {
-    BucketsSection.cells.detailedBuckets.subscribeValue(function (buckets) {
+    DAL.cells.bucketsListCell.subscribeValue(function (buckets) {
       $('#overview .buckets-number').text(buckets ? ViewHelpers.count(buckets.length, 'bucket') : '??');
     });
 
