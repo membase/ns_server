@@ -661,7 +661,7 @@ var StatGraphs = {
       linkSelector: '.analytics-small-graph',
       firstItemIsDefault: true}),
 
-    DAL.cells.stats.subscribeAny($m(this, 'update'));
+    DAL.cells.stats.subscribeAny($m(self, 'update'));
 
     var selected = self.selected;
 
