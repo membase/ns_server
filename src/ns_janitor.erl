@@ -24,17 +24,16 @@
 
 -spec cleanup(string()) -> ok.
 cleanup(Bucket) ->
-    {Map, Servers} =
+    {Map, Servers, Initial} =
         case ns_bucket:config(Bucket) of
             {NumReplicas, NumVBuckets, _, []} ->
                 S = ns_cluster_membership:active_nodes(),
                 M = ns_rebalancer:generate_initial_map(NumReplicas, NumVBuckets,
                                                        S),
                 ns_bucket:set_servers(Bucket, S),
-                ns_bucket:set_map(Bucket, M),
-                {M, S};
+                {M, S, true};
             {_, _, M, S} ->
-                {M, S}
+                {M, S, false}
         end,
     case Servers of
         [] -> ok;
@@ -42,7 +41,11 @@ cleanup(Bucket) ->
             case wait_for_memcached(Servers, Bucket, 5) of
                 [] ->
                     Map1 = case sanify(Bucket, Map, Servers) of
-                               Map -> Map;
+                               Map -> case Initial of
+                                          true -> ns_bucket:set_map(Bucket, Map);
+                                          _ -> ok
+                                      end,
+                                      Map;
                                MapNew ->
                                    ns_bucket:set_map(Bucket, MapNew),
                                    MapNew
