@@ -547,6 +547,8 @@ do_complete_join(NodeKVList) ->
 perform_actual_join(RemoteNode, NewCookie) ->
     ns_log:log(?MODULE, 0002, "Node ~p is joining cluster via node ~p.",
                [node(), RemoteNode]),
+    %% let ns_memcached know that we don't need to preserve data at all
+    ns_config:set(i_am_a_dead_man, true),
     %% Pull the rug out from under the app
     ok = ns_server_cluster_sup:stop_cluster(),
     Status = try

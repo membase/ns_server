@@ -216,7 +216,16 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
                                   [Bucket,T,E,erlang:get_stacktrace()]),
                        false
                end,
+    DieFast = try ns_config:search(i_am_a_dead_man) of
+                    X -> X
+                catch T1:E1 ->
+                        ?log_error("Failed to reach ns_config. ~p:~p~n~p~n",
+                                   [T1,E1,erlang:get_stacktrace()]),
+                        false
+                end,
     if
+        DieFast ->
+            ok;
         Reason == normal; Reason == shutdown ->
             ns_log:log(?MODULE, 2, "Shutting down bucket ~p on ~p for ~s",
                        [Bucket, node(), case Deleting of
