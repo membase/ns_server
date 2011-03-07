@@ -24,7 +24,11 @@ start() ->
         ok = application:start(sasl),
         application:start(os_mon),
         ok = application:start(ns_server),
-        ok = application:start(couch)
+        case os:getenv("DONT_START_COUCH") of
+            false ->
+                ok = application:start(couch);
+            _ -> ok
+        end
     catch T:E ->
             timer:sleep(500),
             erlang:T(E)
