@@ -8,10 +8,12 @@ def testament_child_death():
         os._exit(0)
     os.waitpid(rv, os.WUNTRACED)
 
+COUCH_PATH = "lib/couchdb"
+
 def start_cluster(num_nodes, extra_args):
     path_str = subprocess.Popen(["find", ".", "-name", "ebin", "-type", "d"],
                                 stdout=subprocess.PIPE).communicate()[0]
-    couchpath_str = subprocess.Popen(["find", "../couchdb/build/lib/couchdb/erlang/lib", "-name", "ebin", "-type", "d"],
+    couchpath_str = subprocess.Popen(["find", "{0}/lib/couchdb/erlang/lib".format(COUCH_PATH), "-name", "ebin", "-type", "d"],
                                 stdout=subprocess.PIPE).communicate()[0]
     path = (couchpath_str + path_str).split()
     base_direct_port = 12000
@@ -28,7 +30,7 @@ def start_cluster(num_nodes, extra_args):
             "-run", "ns_bootstrap",
             "-kernel", "inet_dist_listen_min", "21100",
             "inet_dist_listen_max", "21199",
-            "-couch_ini", "../couchdb/build/etc/couchdb/default.ini", "couch/n_{0}_conf.ini".format(i),
+            "-couch_ini", "{0}/etc/couchdb/default.ini".format(COUCH_PATH), "couch/n_{0}_conf.ini".format(i),
             "-ns_server", "error_logger_mf_dir", '"{0}"'.format(logdir),
             "error_logger_mf_maxbytes", "10485760",
             "error_logger_mf_maxfiles", "10",

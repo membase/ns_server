@@ -6,6 +6,7 @@
 /*luster_config
 /*luster_run.sh
 /Mnesia.*
+/couch
 /features/Makefile
 /lib
 /ns_server.plt
