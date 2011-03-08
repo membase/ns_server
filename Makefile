@@ -44,6 +44,34 @@ $(TMP_VER):
 	test -d $(TMP_DIR) || mkdir $(TMP_DIR)
 	git describe | sed s/-/_/g > $(TMP_VER)
 
+ifdef PREFIX
+
+REST_PREFIX := $(PREFIX)
+NS_SERVER := $(PREFIX)/ns_server
+
+install:
+	mkdir -p $(NS_SERVER)
+	tar c cluster_connect cluster_run mkcouch.sh mbcollect_info \
+		ebin \
+		deps/*/ebin \
+		deps/*/deps/*/ebin \
+		deps/menelaus/priv/public \
+		deps/menelaus/deps/erlwsh/priv | (cd $(PREFIX)/ns_server && tar x)
+	mkdir -p ns_server/bin ns_server/lib/memcached
+	ln -f -s $(REST_PREFIX)/bin/memcached $(NS_SERVER)/bin/memcached || true
+	ln -f -s $(REST_PREFIX)/lib/memcached/default_engine.so $(NS_SERVER)/lib/memcached/default_engine.so || true
+	ln -f -s $(REST_PREFIX)/lib/memcached/stdin_term_handler.so $(NS_SERVER)/lib/memcached/stdin_term_handler.so || true
+	mkdir -p $(NS_SERVER)/bin/bucket_engine
+	ln -f -s $(REST_PREFIX)/lib/bucket_engine.so $(NS_SERVER)/bin/bucket_engine/bucket_engine.so || true
+	mkdir -p $(NS_SERVER)/bin/ep_engine
+	ln -f -s $(REST_PREFIX)/lib/ep.so $(NS_SERVER)/bin/ep_engine/ep.so || true
+	mkdir -p $(NS_SERVER)/bin/moxi
+	ln -f -s $(REST_PREFIX)/bin/moxi $(NS_SERVER)/bin/moxi/moxi || true
+	mkdir -p $(NS_SERVER)/bin/vbucketmigrator
+	ln -f -s $(REST_PREFIX)/bin/vbucketmigrator $(NS_SERVER)/bin/vbucketmigrator/vbucketmigrator || true
+
+endif
+
 bdist: clean ebins deps_all
 	(cd .. && tar cf -  \
                           ns_server/mbcollect_info \
