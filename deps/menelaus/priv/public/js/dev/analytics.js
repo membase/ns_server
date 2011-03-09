@@ -169,13 +169,13 @@
   var statsBucketURL = this.statsBucketURL = new StringHashFragmentCell("statsBucket");
   var statsHostname = this.statsHostname = new StringHashFragmentCell("statsHostname");
 
-  var statsBucketDetails = Cell.compute(function (v) {
+  var statsBucketDetails = this.statsBucketDetails = Cell.compute(function (v) {
     var uri = v.need(statsBucketURL);
     var buckets = v.need(DAL.cells.bucketsListCell);
     return _.detect(buckets, function (info) {return info.uri === uri});
   });
 
-  var statsNodesCell = Cell.compute(function (v) {
+  var statsNodesCell = this.statsNodesCell = Cell.compute(function (v) {
     // TODO: introduce direct attr for that
     return future.get({url: v.need(statsBucketDetails).uri + "/nodes"});
   });
@@ -774,12 +774,6 @@ var AnalyticsSection = {
 
     StatGraphs.init();
 
-    DAL.cells.currentStatTargetCell.subscribe(function (cell) {
-      var value = cell.value.name;
-      var names = $('.stat_target_name');
-      names.text(value);
-    });
-
     var statsStaleness = (function (meta) {
       return Cell.compute(function (v) {
         return !!(v.need(meta).stale);
@@ -790,6 +784,95 @@ var AnalyticsSection = {
       $('.stats-period-container')[stale ? 'hide' : 'show']();
       $('#analytics .staleness-notice')[stale ? 'show' : 'hide']();
     });
+
+    (function () {
+      function onChange() {
+        var newValue = $(this).val();
+        DAL.cells.statsBucketURL.setValue(newValue);
+      }
+
+      var bucketsSelectArgs = Cell.compute(function (v) {
+        var mode = v.need(DAL.cells.mode);
+        if (mode != 'analytics') {
+          return;
+        }
+
+        var allBuckets = v.need(DAL.cells.bucketsListCell);
+        var selectedBucket = v.need(DAL.cells.statsBucketDetails);
+        return {list: allBuckets,
+                selected: selectedBucket};
+      });
+
+      bucketsSelectArgs.subscribeValue(function (args) {
+        var select = $('#analytics_buckets_select').need(1);
+        select.unbind('change', onChange);
+        select.html('');
+
+        if (!args) {
+          return;
+        }
+
+        _.each(args.list, function (bucket) {
+          var option = $("<option value='" + escapeHTML(bucket.uri) + "'>" + escapeHTML(bucket.name) + "</option>");
+          option.boolAttr('selected', bucket.uri === args.selected.uri);
+          select.append(option);
+        });
+
+        select.bind('change', onChange);
+      });
+    })();
+
+    (function () {
+      function onChange() {
+        var newValue = $(this).val();
+        if (!newValue) {
+          newValue = undefined;
+        }
+        DAL.cells.statsHostname.setValue(newValue);
+      }
+
+      var serversSelectArgs = Cell.compute(function (v) {
+        var mode = v.need(DAL.cells.mode);
+        if (mode != 'analytics') {
+          return;
+        }
+
+        var allNodes = v.need(DAL.cells.statsNodesCell);
+        var selectedNode;
+        var statsHostname = v(DAL.cells.statsHostname);
+
+        if (statsHostname) {
+          selectedNode = v.need(DAL.cells.currentStatTargetCell);
+        }
+
+        return {list: allNodes.servers,
+                selected: selectedNode};
+      });
+
+      serversSelectArgs.subscribeValue(function (args) {
+        var select = $('#analytics_servers_select').need(1);
+
+        select.unbind('change', onChange);
+        select.html('');
+
+        if (!args) {
+          return;
+        }
+
+        var selectedName = args.selected ? args.selected.hostname : undefined;
+
+        select.append("<option value=''>All Server Nodes</option>");
+
+        _.each(args.list, function (node) {
+          var escapedHostname = escapeHTML(node.hostname);
+          var option = $("<option value='" + escapedHostname + "'>" + escapedHostname + "</option>");
+          option.boolAttr('selected', node.hostname === selectedName);
+          select.append(option);
+        });
+
+        select.bind('change', onChange);
+      });
+    })();
   },
   visitBucket: function (bucketURL) {
     if (DAL.cells.mode.value != 'analytics')

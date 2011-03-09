@@ -618,7 +618,7 @@ body.nojs #nojs_alert { display: block; width:960px; margin:40px auto 0;}
 .float_50 .item .cnt {margin:0 10px 0 20px; font-size:11px; color:#777a81; display:block;}
 .float_50 .item .cnt span {font-size:12px; font-weight:bolder; color:#368dba; display:block; cursor:pointer;}
 
-.stat_target_name {text-transform:none !important;}
+#analytics > h1 { text-transform: none !important; }
 
 #join_cluster_dialog label {width:150px !important;}
 #join_cluster_dialog_errors_container {padding-left: 40px;}
