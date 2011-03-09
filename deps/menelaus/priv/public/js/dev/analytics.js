@@ -170,9 +170,15 @@
   var statsHostname = this.statsHostname = new StringHashFragmentCell("statsHostname");
 
   var statsBucketDetails = this.statsBucketDetails = Cell.compute(function (v) {
-    var uri = v.need(statsBucketURL);
+    var uri = v(statsBucketURL);
     var buckets = v.need(DAL.cells.bucketsListCell);
-    return _.detect(buckets, function (info) {return info.uri === uri});
+    var rv;
+    if (uri !== undefined) {
+      rv = _.detect(buckets, function (info) {return info.uri === uri});
+    } else {
+      rv = _.detect(buckets, function (info) {return info.name === "default"}) || buckets[0];
+    }
+    return rv;
   });
 
   var statsNodesCell = this.statsNodesCell = Cell.compute(function (v) {
