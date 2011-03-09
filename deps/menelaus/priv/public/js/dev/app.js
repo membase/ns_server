@@ -929,7 +929,7 @@ function initAlertsSubscriber() {
     return (msg === "" && false) || msg;
   };
 
-  DAL.cells.currentPoolDetails.subscribeValue(function (sec) {
+  DAL.cells.currentPoolDetailsCell.subscribeValue(function (sec) {
 
     if (sec && sec.alerts && sec.alerts.length > 0) {
 

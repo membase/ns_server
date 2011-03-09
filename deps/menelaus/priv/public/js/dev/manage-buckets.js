@@ -305,8 +305,8 @@ var BucketDetailsDialog = mkClass({
       onHide: function () {
         self.cleanup();
         if (self.needBucketsRefresh) {
-          DAL.cells.currentPoolDetails.setValue(undefined);
-          DAL.cells.currentPoolDetails.invalidate();
+          DAL.cells.currentPoolDetailsCell.setValue(undefined);
+          DAL.cells.currentPoolDetailsCell.invalidate();
         }
       }
     });
@@ -409,7 +409,7 @@ var BucketDetailsDialog = mkClass({
 
 var BucketsSection = {
   renderRAMDetailsGauge: function (e, details) {
-    var poolDetails = DAL.cells.currentPoolDetails.value;
+    var poolDetails = DAL.cells.currentPoolDetailsCell.value;
     BucketDetailsDialog.prototype.renderGauge($(e).find('.for-ram'),
                                               poolDetails.storageTotals.ram.quotaTotal,
                                               details.quota.ram,
@@ -446,7 +446,7 @@ var BucketsSection = {
 
   renderHDDDetailsGauge: function (e, details) {
     var jq = $(e).parent().find('.size-gauge.for-hdd'),
-        poolDetails = DAL.cells.currentPoolDetails.value,
+        poolDetails = DAL.cells.currentPoolDetailsCell.value,
         hdd = poolDetails.storageTotals.hdd;
     BucketsSection.renderDiskGauge(jq,
                                    hdd.total,
@@ -555,7 +555,7 @@ var BucketsSection = {
     });
   },
   getPoolNodesCount: function () {
-    return DAL.cells.currentPoolDetails.value.nodes.length;
+    return DAL.cells.currentPoolDetailsCell.value.nodes.length;
   },
   onEnter: function () {
     this.refreshBuckets();
@@ -568,7 +568,7 @@ var BucketsSection = {
     this.settingsWidget.reset();
   },
   startCreate: function () {
-    var poolDetails = DAL.cells.currentPoolDetails.value,
+    var poolDetails = DAL.cells.currentPoolDetailsCell.value,
         totals = poolDetails.storageTotals;
 
     if (totals.ram.quotaTotal == totals.ram.quotaUsed) {

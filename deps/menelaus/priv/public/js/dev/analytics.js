@@ -255,7 +255,6 @@
   _.extend(DAL.cells, {
     stats: statsCell,
     statsOptions: statsOptionsCell,
-    currentPoolDetails: DAL.cells.currentPoolDetailsCell,
     samplesBufferDepth: samplesBufferDepth
   });
 }).call(DAL.cells);
