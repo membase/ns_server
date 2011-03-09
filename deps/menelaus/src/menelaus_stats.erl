@@ -457,7 +457,7 @@ gather_op_stats_body(Bucket, Nodes, ClientTStamp,
 
 computed_stats_lazy_proplist() ->
     Z2 = fun (StatNameA, StatNameB, Combiner) ->
-                 {Combiner, lists:sort([StatNameA, StatNameB])}
+                 {Combiner, [StatNameA, StatNameB]}
          end,
     HitRatio = Z2(cmd_get, get_hits,
                   fun (null, _Hits) -> 0;
