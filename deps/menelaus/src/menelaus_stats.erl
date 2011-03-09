@@ -262,7 +262,6 @@ build_per_node_stats(BucketName, StatName, Params, LocalAddr) ->
 
     RestSamplesRaw = lists:keydelete(node(), 1, Replies),
     Nodes = [node() | [N || {N, _} <- RestSamplesRaw]],
-    AllNodesSamples = [{node(), MainSamples} | RestSamplesRaw],
     AllNodesSamples = [{node(), lists:reverse(MainSamples)} | RestSamplesRaw],
 
     NodesSamples = [lists:map(StatExtractor, NodeSamples) || {_, NodeSamples} <- AllNodesSamples],
