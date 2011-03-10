@@ -387,17 +387,8 @@ var StatGraphs = {
     month: 2678400,
     year: 31622400
   },
-  findGraphOptions: function (name) {
-    var infos = KnownCacheStats;
-    if (this.nowIsPersistent)
-      infos = KnownPersistentStats;
-    return _.detect(infos, function (i) {return i[0] == name;})[2] || {};
-  },
   update: function () {
     var self = this;
-
-    if (self.preventUpdatesCounter)
-      return;
 
     var cell = DAL.cells.stats;
     var stats = cell.value;
@@ -456,8 +447,7 @@ var StatGraphs = {
       fixedTimeWidth: zoomMillis,
       timeOffset: timeOffset,
       lastSampleTime: now,
-      breakInterval: op.interval * 2.5,
-      rate: self.findGraphOptions(selected).rate
+      breakInterval: op.interval * 2.5
     });
     $('.stats-period-container').toggleClass('missing-samples', !stats[selected] || !stats[selected].length);
     var visibleSeconds = Math.ceil(Math.min(zoomMillis, now - stats.timestamp[0]) / 1000);
@@ -465,8 +455,7 @@ var StatGraphs = {
 
     _.each(self.effectivelyVisibleStats, function (statName) {
       var area = self.findGraphArea(statName);
-      var options = self.findGraphOptions(statName);
-      renderSmallGraph(area, op, statName, selected == statName, zoomMillis, timeOffset, options);
+      renderSmallGraph(area, op, statName, selected == statName, zoomMillis, timeOffset, {});
     });
   },
   init: function () {
