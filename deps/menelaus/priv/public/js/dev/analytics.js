@@ -332,22 +332,27 @@ var maybeReloadAppDueToLeak = (function () {
   global.renderSmallGraph = renderSmallGraph;
 })(this);
 
-var KnownPersistentStats = [];
-var KnownCacheStats =  [];
+var PersistentStatInfos = {};
+var AllPersistentStatInfos = []
+AllPersistentStatInfos.byName = PersistentStatInfos;
+
+var AllCacheStatInfos = [];
+var CacheStatInfos = {};
+AllCacheStatInfos.byName = CacheStatInfos;
 
 var StatGraphs = {
   selected: null,
-  recognizedStatsPersistent: null,
-  recognizedStatsCache:  null,
-  recognizedStats: null,
-  visibleStats: [],
-  visibleStatsIsDirty: true,
   spinners: [],
   findGraphArea: function (statName) {
     var father;
-    if (this.nowIsPersistent == null) {
-      father = $([]);
-    } else if (this.nowIsPersistent) {
+    var configuration = this.graphsConfigurationCell.value;
+    var op;
+
+    if (!configuration || !configuration.stats || !(op = configuration.stats.op)) {
+      return $([]);
+    }
+
+    if (op.isPersistent) {
       father = $('#stats_nav_persistent_container');
     } else {
       father = $('#stats_nav_cache_container');
@@ -362,22 +367,11 @@ var StatGraphs = {
     var main = $('#analytics_main_graph')
     self.spinners.push(overlayWithSpinner(main));
 
-    _.each(self.effectivelyVisibleStats || [], function (statName) {
-      var area = self.findGraphArea(statName);
-      area.find('.small_graph_block').html('');
-      area.find('.small_graph_label .value').html('?')
-    });
+    var section = $('#analytics');
+    section.find('.small_graph_block').empty();
+    section.find('.small_graph_label .value').html('?');
 
     $('.stats_visible_period').text('?');
-  },
-  updateVisibleStats: function () {
-    var self = this;
-
-    self.recognizedStats = (self.nowIsPersistent) ? self.recognizedStatsPersistent : self.recognizedStatsCache;
-    $('#stats_nav_cache_container, #configure_cache_stats_items_container')[self.nowIsPersistent ? 'hide' : 'show']();
-    $('#stats_nav_persistent_container, #configure_persistent_stats_items_container')[self.nowIsPersistent ? 'show' : 'hide']();
-
-    self.effectivelyVisibleStats = _.clone(self.recognizedStats);
   },
   zoomToSeconds: {
     minute: 60,
@@ -390,16 +384,15 @@ var StatGraphs = {
   update: function () {
     var self = this;
 
-    var cell = DAL.cells.stats;
-    var stats = cell.value;
-    if (!stats)
+    var configuration = self.graphsConfigurationCell.value;
+    if (!configuration) {
       return self.renderNothing();
-    var op = stats = stats.op;
-    if (!stats)
-      return self.renderNothing();
-    stats = stats.samples;
+    }
 
-    var timeOffset = (cell.value.clientDate - cell.value.serverDate);
+    var op = configuration.stats.op;
+    var stats = op.samples;
+
+    var timeOffset = configuration.stats.clientDate - configuration.stats.serverDate;
 
     _.each(self.spinners, function (s) {
       s.remove();
@@ -407,40 +400,29 @@ var StatGraphs = {
     self.spinners = [];
 
     var main = $('#analytics_main_graph');
+    var isPersistent = op.isPersistent;
 
-    if (!self.recognizedStats || self.nowIsPersistent != op.isPersistent) {
-      self.visibleStatsIsDirty = true;
-      self.nowIsPersistent = op.isPersistent;
-    }
-
-    if (self.visibleStatsIsDirty) {
-      self.updateVisibleStats();
-
-      // _.each(self.recognizedStats, function (name) {
-      //   var op = _.include(self.effectivelyVisibleStats, name) ? 'show' : 'hide';
-      //   var area = self.findGraphArea(name);
-      //   area[op]();
-      // });
-      self.visibleStatsIsDirty = false;
-    }
+    $('#stats_nav_cache_container, #configure_cache_stats_items_container')[isPersistent ? 'hide' : 'show']();
+    $('#stats_nav_persistent_container, #configure_persistent_stats_items_container')[isPersistent ? 'show' : 'hide']();
 
     if (!stats) {
       stats = {timestamp: []};
-      (function (stats) {
-        _.each(self.recognizedStats, function (name) {
-          stats[name] = [];
-        });
-      })(stats);
+      _.each(_.keys(configuration.infos), function (name) {
+        stats[name] = [];
+      });
+      op = _.clone(op);
       op.samples = stats;
     }
 
     var zoomMillis = (self.zoomToSeconds[DAL.cells.zoomLevel.value] || 60) * 1000;
-    var selected = self.selected.value;
+    var selected = configuration.selected;
     var now = (new Date()).valueOf();
-    if (op.interval < 2000)
+    if (op.interval < 2000) {
       now -= DAL.cells.samplesBufferDepth.value * 1000;
+    }
 
     maybeReloadAppDueToLeak();
+
     plotStatGraph(main, stats, selected, {
       color: '#1d88ad',
       verticalMargin: 1.02,
@@ -449,12 +431,15 @@ var StatGraphs = {
       lastSampleTime: now,
       breakInterval: op.interval * 2.5
     });
+
     $('.stats-period-container').toggleClass('missing-samples', !stats[selected] || !stats[selected].length);
     var visibleSeconds = Math.ceil(Math.min(zoomMillis, now - stats.timestamp[0]) / 1000);
     $('.stats_visible_period').text(isNaN(visibleSeconds) ? '?' : formatUptime(visibleSeconds));
 
-    _.each(self.effectivelyVisibleStats, function (statName) {
+    _.each(configuration.infos, function (statInfo) {
+      var statName = statInfo.name;
       var area = self.findGraphArea(statName);
+      // TODO: send options to renderSmallGraph
       renderSmallGraph(area, op, statName, selected == statName, zoomMillis, timeOffset, {});
     });
   },
@@ -492,11 +477,9 @@ var StatGraphs = {
         return acc.concat(stats);
       });
       _.each(statItems, function (item) {
-        if (!item.name)
-          return;
-        KnownCacheStats.push([item.name, item.desc]);
+        AllCacheStatInfos.push(item);
+        CacheStatInfos[item.name] = item;
       });
-      StatGraphs.recognizedStatsCache = _.pluck(KnownCacheStats, 0);
       renderTemplate('new_stats_block', data, $i('stats_nav_cache_container'));
     })();
     ;(function () {
@@ -663,11 +646,9 @@ var StatGraphs = {
         return acc.concat(stats);
       });
       _.each(statItems, function (item) {
-        if (!item.name)
-          return;
-        KnownPersistentStats.push([item.name, item.desc]);
+        AllPersistentStatInfos.push(item);
+        PersistentStatInfos[item.name] = item;
       });
-      StatGraphs.recognizedStatsPersistent = _.pluck(KnownPersistentStats, 0);
       renderTemplate('new_stats_block', data, $i('stats_nav_persistent_container'));
     })();
 
@@ -676,28 +657,49 @@ var StatGraphs = {
     self.selected = new LinkClassSwitchCell('graph', {
       bindMethod: 'bind',
       linkSelector: '.analytics-small-graph',
-      firstItemIsDefault: true}),
-
-    DAL.cells.stats.subscribeAny($m(self, 'update'));
+      firstItemIsDefault: true});
 
     var selected = self.selected;
 
     var t;
-    _.each(_.uniq(self.recognizedStatsCache.concat(self.recognizedStatsPersistent)), function (statName) {
+    _.each(_.uniq(_.keys(PersistentStatInfos).concat(_.keys(CacheStatInfos))), function (statName) {
       var area = $('.analytics_graph_' + statName);
       if (!area.length) {
         return;
       }
-      // area.hide();
-      if (!t)
+      if (!t) {
         t = area;
-      else
+      } else {
         t = t.add(area);
+      }
       selected.addItem('analytics_graph_' + statName, statName);
     });
 
-    selected.subscribe($m(self, 'update'));
     selected.finalizeBuilding();
+
+    self.graphsConfigurationCell = Cell.compute(function (v) {
+      var selected = v.need(self.selected);
+      var stats = v.need(DAL.cells.stats);
+      var op = stats.op;
+      if (!op) {
+        return;
+      }
+      var infos = AllPersistentStatInfos;
+      if (!op.isPersistent) {
+        infos = AllCacheStatInfos;
+      }
+      if (!(selected in infos.byName)) {
+        selected = infos[0].name;
+      }
+
+      return {
+        selected: selected,
+        stats: stats,
+        infos: infos
+      };
+    });
+
+    self.graphsConfigurationCell.subscribeAny($m(self, 'update'));
 
     t.bind('mouseenter', mkHoverHandler('show'));
     t.bind('mouseleave', mkHoverHandler('hide'));
@@ -710,15 +712,6 @@ var StatGraphs = {
         hoverRect[method]();
       }
     }
-
-    var visibleStatsCookie = $.cookie('vs');
-    if (visibleStatsCookie == null) {
-      visibleStatsCookie = _.uniq(_.pluck(_.select(KnownPersistentStats, function (tuple) {
-        return (tuple[2] || {}).isDefault;
-      }), 0).concat(self.recognizedStatsCache.slice(0,4))).join(',');
-    }
-
-    self.visibleStats = visibleStatsCookie.split(',').sort();
   }
 }
 
