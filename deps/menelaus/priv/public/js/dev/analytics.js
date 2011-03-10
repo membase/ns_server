@@ -343,23 +343,6 @@ var StatGraphs = {
   visibleStats: [],
   visibleStatsIsDirty: true,
   spinners: [],
-  preventUpdatesCounter: 0,
-  freeze: function () {
-    this.preventUpdatesCounter++;
-  },
-  thaw: function () {
-    this.preventUpdatesCounter--;
-    if (!this.preventUpdatesCounter) {
-      this.update();
-    }
-  },
-  freezeIfIE: function () {
-    if (!window.G_vmlCanvasManager)
-      return _.identity;
-
-    this.freeze();
-    return _.bind(this.thaw, this);
-  },
   findGraphArea: function (statName) {
     var father;
     if (this.nowIsPersistent == null) {
