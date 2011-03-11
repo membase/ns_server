@@ -86,7 +86,7 @@ def find_primary_addr():
 
 def main():
     try:
-        optlist, args = getopt.gnu_getopt(sys.argv[1:], "h", ["help", "dont-rename"])
+        optlist, args = getopt.gnu_getopt(sys.argv[1:], "h", ["help", "dont-rename", "static-cookie"])
     except getopt.GetoptError, err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
@@ -94,6 +94,7 @@ def main():
         sys.exit(2)
 
     dont_rename = False
+    static_cookie = False
 
     for o, a in optlist:
         if o == '--dont-rename':
@@ -101,6 +102,8 @@ def main():
         elif o in ("--help", "-h"):
             usage()
             exit(0)
+        elif o in("--static-cookie"):
+            static_cookie = True
         else:
             assert False, "unhandled options"
 
@@ -142,6 +145,9 @@ def main():
         else:
             extra_args += ["rename_ip", '"' + primary_addr + '"']
     extra_args += args[1:]
+
+    if static_cookie:
+        extra_args += ["-ns_server", "dont_reset_cookie", "true"]
 
     nodes = start_cluster(num_nodes, extra_args)
 

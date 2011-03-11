@@ -229,9 +229,14 @@ ping_all() ->
 % -----------------------------------------------------------
 
 cookie_gen() ->
-    {A1, A2, A3} = erlang:now(),
-    random:seed(A1, A2, A3),
-    list_to_atom(misc:rand_str(16)).
+    case misc:get_env_default(dont_reset_cookie, false) of
+        false ->
+            {A1, A2, A3} = erlang:now(),
+            random:seed(A1, A2, A3),
+            list_to_atom(misc:rand_str(16));
+        true ->
+            erlang:get_cookie()
+    end.
 
 cookie_init() ->
     NewCookie = cookie_gen(),
