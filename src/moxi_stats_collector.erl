@@ -13,7 +13,7 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
-%% @doc keeps recent hot keys for easy access
+%% @doc grabs proxy stats from local server-side moxi
 %%
 -module(moxi_stats_collector).
 
