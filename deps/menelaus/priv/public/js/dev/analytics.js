@@ -311,8 +311,8 @@ var maybeReloadAppDueToLeak = (function () {
 
     var yaxis = {min:0, ticks:0, autoscaleMargin: 0.04}
 
-    if (options.rate)
-      yaxis.max = 100;
+    if (options.maxY)
+      yaxis.max = options.maxY;
 
     _.each(jq.find('.small_graph_block'), function (item) {
       $.plotSafe($(item),
@@ -429,7 +429,8 @@ var StatGraphs = {
       fixedTimeWidth: zoomMillis,
       timeOffset: timeOffset,
       lastSampleTime: now,
-      breakInterval: op.interval * 2.5
+      breakInterval: op.interval * 2.5,
+      maxY: configuration.infos.byName[selected].maxY
     });
 
     $('.stats-period-container').toggleClass('missing-samples', !stats[selected] || !stats[selected].length);
@@ -439,8 +440,11 @@ var StatGraphs = {
     _.each(configuration.infos, function (statInfo) {
       var statName = statInfo.name;
       var area = self.findGraphArea(statName);
-      // TODO: send options to renderSmallGraph
-      renderSmallGraph(area, op, statName, selected == statName, zoomMillis, timeOffset, {});
+      var options = {
+        maxY: configuration.infos.byName[statName].maxY
+      };
+      renderSmallGraph(area, op, statName, selected == statName,
+                       zoomMillis, timeOffset, options);
     });
   },
   init: function () {
@@ -453,7 +457,7 @@ var StatGraphs = {
           {blockName: "MEMCACHED",
            stats: [
              {name: "ops", desc: "Operations per sec."},
-             {name: "hit_ratio", desc: "Hit ratio (%)"},
+             {name: "hit_ratio", desc: "Hit ratio (%)", maxY: 100},
              {name: "mem_used", desc: "Memory bytes used"},
              {name: "curr_items", desc: "Items count"},
              {name: "evictions", desc: "RAM evictions per sec."},
@@ -500,7 +504,7 @@ var StatGraphs = {
               {desc: "average object size", name: "avg_item_size", missing: true}, // need total size _including_ size on disk
               // Read
               // (cmd_get - ep_bg_fetched) / cmd_get * 100
-              {desc: "cache hit %", name: "ep_cache_hit_rate"},
+              {desc: "cache hit %", name: "ep_cache_hit_rate", maxY: 100},
               {desc: "hit latency", name: "hit_latency", missing: true}, //?
               {desc: "miss latency", name: "miss_latency", missing: true}, //?
               {desc: "disk reads", name: "ep_bg_fetched"},
@@ -512,7 +516,7 @@ var StatGraphs = {
               // Moxi
               {desc: "local %", name: "proxy_local_ratio"},
               {desc: "local latency", name: "proxy_local_latency"},
-              {desc: "proxy %", name: "proxy_ratio"},
+              {desc: "proxy %", name: "proxy_ratio", maxY: 100},
               {desc: "proxy latency", name: "proxy_latency"}
             ]
           }, {
@@ -529,10 +533,10 @@ var StatGraphs = {
               {desc: "# objects", name: "vb_pending_curr_items"},
               {desc: "# objects", name: "curr_items_tot"},
               // --
-              {desc: "% memory resident", name: "vb_active_resident_items_ratio"},
-              {desc: "% memory resident", name: "vb_replica_resident_items_ratio"},
-              {desc: "% memory resident", name: "vb_pending_resident_items_ratio"},
-              {desc: "% memory resident", name: "ep_resident_items_rate"},
+              {desc: "% memory resident", name: "vb_active_resident_items_ratio", maxY: 100},
+              {desc: "% memory resident", name: "vb_replica_resident_items_ratio", maxY: 100},
+              {desc: "% memory resident", name: "vb_pending_resident_items_ratio", maxY: 100},
+              {desc: "% memory resident", name: "ep_resident_items_rate", maxY: 100},
               // --
               {desc: "new per second", name: "vb_active_ops_create"},
               {desc: "new per second", name: "vb_replica_ops_create"},

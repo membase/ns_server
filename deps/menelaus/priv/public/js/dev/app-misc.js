@@ -921,8 +921,8 @@ function plotStatGraph(graphJQ, stats, attr, options) {
     maxY = rv.maxY;
   })();
 
-  if (options.rate) {
-    maxY = 100;
+  if (options.maxY) {
+    maxY = options.maxY;
   }
 
   // this is ripped out of jquery.flot which is MIT licensed
