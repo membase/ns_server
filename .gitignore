@@ -6,6 +6,7 @@
 /*luster_config
 /*luster_run.sh
 /Mnesia.*
+/common_tests/*.beam
 /couch
 /features/Makefile
 /lib
