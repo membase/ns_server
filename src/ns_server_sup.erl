@@ -91,6 +91,12 @@ child_specs() ->
      {ns_bucket_sup, {ns_bucket_sup, start_link, []},
       permanent, infinity, supervisor, [ns_bucket_sup]},
 
+     {system_stats_collector, {system_stats_collector, start_link, []},
+      permanent, 10, worker, [system_stats_collector]},
+
+     {{stats_archiver, "@system"}, {stats_archiver, start_link, ["@system"]},
+      permanent, 10, worker, [stats_archiver]},
+
      {ns_moxi_sup, {ns_moxi_sup, start_link, []},
       permanent, infinity, supervisor,
       [ns_moxi_sup]},
