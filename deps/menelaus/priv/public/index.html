@@ -376,29 +376,6 @@
           </div>
           <div id="stats_nav_cache_container" style="display:none;"></div>
           <div id="stats_nav_persistent_container" style="display:none;"></div>
-          <div class="template" id="stats_nav_template">
-            <h3><ins></ins>Performance</h3>
-            {% _.each(rows, function (pair) {var name = pair[0]; var desc = pair[1].split("\n",1)[0]; %}
-            <div class="analytics-small-graph analytics_graph_{%= h(name) %}">
-              <div class="small_graph_block"></div>
-              <span class="small_graph_label">
-                <span class="value">0</span><span class="label-text"> {%= desc %}</span>
-              </span>
-              <input type="checkbox" style="display:none" />
-              <ins>
-                <ul>
-                  <li>dim</li>
-                  <li>tresholds&hellip;</li>
-                  <li>alerts&hellip;</li>
-                  <li>show by server</li>
-                  <li>reset alarms</li>
-                </ul>
-              </ins>
-            </div>
-            {% }); %}
-            <div class="clear"></div>
-            <div class="vlabels">Moxi Write Read Total</div>
-          </div>
         </div>
       </div></div></div>
       <div class="bottom"><div><div>&nbsp;</div></div></div>
