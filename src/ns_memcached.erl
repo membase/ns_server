@@ -217,7 +217,8 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
                        false
                end,
     DieFast = try ns_config:search(i_am_a_dead_man) of
-                    X -> X
+                  {value, true} -> true;
+                  _ -> false
                 catch T1:E1 ->
                         ?log_error("Failed to reach ns_config. ~p:~p~n~p~n",
                                    [T1,E1,erlang:get_stacktrace()]),
