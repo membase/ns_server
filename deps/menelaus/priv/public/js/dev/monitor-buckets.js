@@ -42,11 +42,5 @@ var MonitorBucketsSection = {
   },
   onEnter: function () {
     BucketsSection.refreshBuckets();
-  },
-  navClick: function () {
-    this.onLeave();
-    this.onEnter();
-  },
-  onLeave: function () {
   }
 };
