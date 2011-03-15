@@ -855,6 +855,10 @@ $('.tooltip').live('click', function (e) {
   })
 });
 
+configureActionHashParam('visitSec', function (sec) {
+  ThePage.gotoSection(sec);
+});
+
 $(function () {
   var container = $('.io-error-notice');
   var timeoutId;
