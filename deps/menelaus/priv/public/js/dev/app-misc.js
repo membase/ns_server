@@ -598,11 +598,12 @@ function watchHashParamLinks(param, body) {
     if (href == null) {
       return;
     }
-    if (!$.deparam.fragment(href)[param]) {
+    var params = $.deparam.fragment(href);
+    if (!params[param]) {
       return;
     }
     e.preventDefault();
-    body.call(this, e, $.deparam.fragment(href)[param]);
+    body.call(this, e, params[param]);
   });
 }
 
