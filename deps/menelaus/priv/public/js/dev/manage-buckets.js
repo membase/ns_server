@@ -560,10 +560,6 @@ var BucketsSection = {
   onEnter: function () {
     this.refreshBuckets();
   },
-  navClick: function () {
-    this.onLeave();
-    this.onEnter();
-  },
   onLeave: function () {
     this.settingsWidget.reset();
   },
