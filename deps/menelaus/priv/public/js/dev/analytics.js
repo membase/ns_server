@@ -332,13 +332,11 @@ var maybeReloadAppDueToLeak = (function () {
   global.renderSmallGraph = renderSmallGraph;
 })(this);
 
-var PersistentStatInfos = {};
-var AllPersistentStatInfos = []
-AllPersistentStatInfos.byName = PersistentStatInfos;
+var PersistentStatInfos = []
+PersistentStatInfos.byName = {};
 
-var AllCacheStatInfos = [];
-var CacheStatInfos = {};
-AllCacheStatInfos.byName = CacheStatInfos;
+var CacheStatInfos = [];
+CacheStatInfos.byName = {};
 
 var StatGraphs = {
   selected: null,
@@ -481,8 +479,8 @@ var StatGraphs = {
         return acc.concat(stats);
       });
       _.each(statItems, function (item) {
-        AllCacheStatInfos.push(item);
-        CacheStatInfos[item.name] = item;
+        CacheStatInfos.push(item);
+        CacheStatInfos.byName[item.name] = item;
       });
       renderTemplate('new_stats_block', data, $i('stats_nav_cache_container'));
     })();
@@ -650,8 +648,8 @@ var StatGraphs = {
         return acc.concat(stats);
       });
       _.each(statItems, function (item) {
-        AllPersistentStatInfos.push(item);
-        PersistentStatInfos[item.name] = item;
+        PersistentStatInfos.push(item);
+        PersistentStatInfos.byName[item.name] = item;
       });
       renderTemplate('new_stats_block', data, $i('stats_nav_persistent_container'));
     })();
@@ -666,7 +664,7 @@ var StatGraphs = {
     var selected = self.selected;
 
     var t;
-    _.each(_.uniq(_.keys(PersistentStatInfos).concat(_.keys(CacheStatInfos))), function (statName) {
+    _.each(_.uniq(_.keys(PersistentStatInfos.byName).concat(_.keys(CacheStatInfos.byName))), function (statName) {
       var area = $('.analytics_graph_' + statName);
       if (!area.length) {
         return;
@@ -688,9 +686,9 @@ var StatGraphs = {
       if (!op) {
         return;
       }
-      var infos = AllPersistentStatInfos;
+      var infos = PersistentStatInfos;
       if (!op.isPersistent) {
-        infos = AllCacheStatInfos;
+        infos = CacheStatInfos;
       }
       if (!(selected in infos.byName)) {
         selected = infos[0].name;
