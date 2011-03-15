@@ -197,9 +197,9 @@
             <a class="rebalance_button btn_1"><span>Rebalance</span></a>
             <a class="stop_rebalance_button btn_1"><span>Stop Rebalance</span></a>
             <ul class="tabs switcher">
-              <li class="tab_left"><a href="#">Active Servers</a></li>
+              <li class="tab_left"><a href="#sec=servers&serversTab=0">Active Servers</a></li>
               <li class="tab_right" id="rebalance_tab">
-                <a href="#">Pending Rebalance</a>
+                <a href="#sec=servers&serversTab=1">Pending Rebalance</a>
                 <span class="alert_num"><span>1</span></span>
               </li>
             </ul>
@@ -459,7 +459,7 @@
                 <!-- {% $.each(rows, function () { %} -->
                 <tr>
                     <td>
-                    <a href="#visitStats={%=h(this.uri)%}">{%= h(this.name) %}</a>
+                    <a href="#sec=analytics&statsBucket={%=h(this.uri)%}">{%= h(this.name) %}</a>
                     </td>
                     <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
                     <td>{%= h(truncateTo3Digits(this.basicStats.diskFetches)) %}</td>
@@ -509,7 +509,7 @@
                 <!-- {% $.each(rows, function () { %} -->
                 <tr>
                     <td>
-                    <a href="#visitStats={%=h(this.uri)%}">{%= h(this.name) %}</a>
+                    <a href="#sec=analytics&statsBucket={%=h(this.uri)%}">{%= h(this.name) %}</a>
                     </td>
                     <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
                     <td>{%= h(truncateTo3Digits(this.basicStats.hitRatio * 100)) %}%</td>

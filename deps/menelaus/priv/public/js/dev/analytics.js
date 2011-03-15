@@ -846,11 +846,6 @@ var AnalyticsSection = {
       });
     })();
   },
-  visitBucket: function (bucketURL) {
-    if (DAL.cells.mode.value != 'analytics')
-      ThePage.gotoSection('analytics');
-    DAL.cells.statsBucketURL.setValue(bucketURL);
-  },
   onLeave: function () {
     setHashFragmentParam('graph', undefined);
     DAL.cells.statsBucketURL.setValue(undefined);

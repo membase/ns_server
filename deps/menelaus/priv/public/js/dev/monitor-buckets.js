@@ -50,4 +50,3 @@ var MonitorBucketsSection = {
   onLeave: function () {
   }
 };
-configureActionHashParam('visitStats', $m(AnalyticsSection, 'visitBucket'));
