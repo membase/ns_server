@@ -848,6 +848,7 @@ var AnalyticsSection = {
   },
   onLeave: function () {
     setHashFragmentParam('graph', undefined);
+    DAL.cells.statsHostname.setValue(undefined);
     DAL.cells.statsBucketURL.setValue(undefined);
   },
   onEnter: function () {
