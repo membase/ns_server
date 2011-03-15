@@ -47,9 +47,7 @@
 
 all_accessible_buckets(_PoolId, Req) ->
     BucketsAll = ns_bucket:get_buckets(),
-    menelaus_auth:filter_accessible_buckets(
-      ns_bucket:filter_ready_buckets(BucketsAll),
-      Req).
+    menelaus_auth:filter_accessible_buckets(BucketsAll, Req).
 
 all_accessible_bucket_names(PoolId, Req) ->
     [Name || {Name, _Config} <- all_accessible_buckets(PoolId, Req)].
