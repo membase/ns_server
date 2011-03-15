@@ -408,6 +408,7 @@ var StatGraphs = {
 
     var zoomMillis = (self.zoomToSeconds[DAL.cells.zoomLevel.value] || 60) * 1000;
     var selected = configuration.selected;
+    $('.analytics_graph_main h2').html(selected.desc);
     var now = (new Date()).valueOf();
     if (op.interval < 2000) {
       now -= DAL.cells.samplesBufferDepth.value * 1000;
@@ -415,17 +416,17 @@ var StatGraphs = {
 
     maybeReloadAppDueToLeak();
 
-    plotStatGraph(main, stats, selected, {
+    plotStatGraph(main, stats, selected.name, {
       color: '#1d88ad',
       verticalMargin: 1.02,
       fixedTimeWidth: zoomMillis,
       timeOffset: timeOffset,
       lastSampleTime: now,
       breakInterval: op.interval * 2.5,
-      maxY: configuration.infos.byName[selected].maxY
+      maxY: configuration.infos.byName[selected.name].maxY
     });
 
-    $('.stats-period-container').toggleClass('missing-samples', !stats[selected] || !stats[selected].length);
+    $('.stats-period-container').toggleClass('missing-samples', !stats[selected.name] || !stats[selected.name].length);
     var visibleSeconds = Math.ceil(Math.min(zoomMillis, now - stats.timestamp[0]) / 1000);
     $('.stats_visible_period').text(isNaN(visibleSeconds) ? '?' : formatUptime(visibleSeconds));
 
@@ -443,7 +444,7 @@ var StatGraphs = {
       var options = {
         maxY: configuration.infos.byName[statName].maxY
       };
-      renderSmallGraph(area, op, statName, selected == statName,
+      renderSmallGraph(area, op, statName, selected.name == statName,
                        zoomMillis, timeOffset, options);
     });
 
@@ -719,7 +720,7 @@ var StatGraphs = {
     selected.finalizeBuilding();
 
     self.graphsConfigurationCell = Cell.compute(function (v) {
-      var selected = v.need(self.selected);
+      var selectedStatName = v.need(self.selected);
       var stats = v.need(DAL.cells.stats);
       var op = stats.op;
       if (!op) {
@@ -729,8 +730,10 @@ var StatGraphs = {
       if (!op.isPersistent) {
         infos = CacheStatInfos;
       }
-      if (!(selected in infos.byName) || !(selected in op.samples)) {
-        selected = infos[0].name;
+      if (!(selectedStatName in infos.byName) || !(selectedStatName in op.samples)) {
+        selected = infos[0];
+      } else {
+        selected = infos.byName[selectedStatName];
       }
 
       return {

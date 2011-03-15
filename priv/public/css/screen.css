@@ -251,6 +251,7 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 .analytics-small-graph {position:relative;overflow:hidden;float:left; width:166px !important; height:61px !important;margin:0 12px 7px 12px;background:url(../images/mini_graph_bg.gif) no-repeat; cursor:pointer;text-decoration:none;}
 
 .analytics_graph_main {/*height:300px; background:url(../images/devider_line_2.gif) 0 100% repeat-x #eeeeef;border-left:1px solid #dbdbdb; border-right:1px solid #dbdbdb;*/ padding:0 10px;}
+.analytics_graph_main h2{color:#777;padding-top:10px;text-align:center}
 .graph_info_label {padding:3px; font-size:11px;position:absolute;top:-6px;left:30px;}
 .graph_nav {position:relative;*zoom:1;}
 .graph_nav.withtotal {background:url(../images/bg_total.gif) 100% 0 repeat-y;}
