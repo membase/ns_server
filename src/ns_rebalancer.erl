@@ -71,17 +71,9 @@ failover(Bucket, Node) ->
 
 
 generate_initial_map(NumReplicas, NumVBuckets, Servers) ->
-    generate_initial_map(NumReplicas, NumVBuckets, Servers, []).
-
-
-generate_initial_map(_, 0, _, Map) ->
-    Map;
-generate_initial_map(NumReplicas, NumVBuckets, Servers, Map) ->
-    U = lists:duplicate(erlang:max(0, NumReplicas + 1 - length(Servers)),
-                        undefined),
-    Chain = lists:sublist(Servers, NumReplicas + 1) ++ U,
-    [H|T] = Servers,
-    generate_initial_map(NumReplicas, NumVBuckets - 1, T ++ [H], [Chain|Map]).
+    Chain = lists:duplicate(NumReplicas + 1, undefined),
+    Map = lists:duplicate(NumVBuckets, Chain),
+    mb_map:balance(Map, Servers, [{max_slaves, 10}]).
 
 
 rebalance(KeepNodes, EjectNodes, FailedNodes) ->
@@ -108,7 +100,7 @@ rebalance(KeepNodes, EjectNodes, FailedNodes) ->
                                       wait_for_memcached(LiveNodes, BucketName, 10),
                                       ns_janitor:cleanup(BucketName),
                                       rebalance(BucketName, KeepNodes,
-                                                DeactivateNodes, BucketCompletion,
+                                                BucketCompletion,
                                                 NumBuckets)
                               end
                       end, misc:enumerate(BucketConfigs, 0))
@@ -118,6 +110,9 @@ rebalance(KeepNodes, EjectNodes, FailedNodes) ->
             %% failed node (should be fixed)
             case lists:member(node(), FailedNodes) of
                 true ->
+                    %% Push out the config before we shoot ourselves
+                    %% in the head.
+                    ns_config_rep:push(),
                     eject_nodes([node()]);
                 false ->
                     ok
@@ -132,13 +127,14 @@ rebalance(KeepNodes, EjectNodes, FailedNodes) ->
 %% @doc Rebalance the cluster. Operates on a single bucket. Will
 %% either return ok or exit with reason 'stopped' or whatever reason
 %% was given by whatever failed.
-rebalance(Bucket, KeepNodes, EjectNodes, BucketCompletion, NumBuckets) ->
+rebalance(Bucket, KeepNodes, BucketCompletion, NumBuckets) ->
     %% MB-3195: Shut down replication to avoid competing with
     %% rebalance and causing spurious errors.
     ns_vbm_sup:set_replicas(Bucket, []),
     {_, _, Map, _} = ns_bucket:config(Bucket),
-    Histograms1 = histograms(Map, KeepNodes),
-    Moves1 = master_moves(Bucket, EjectNodes, Map, Histograms1),
+    FastForwardMap = mb_map:balance(Map, KeepNodes, [{max_slaves, 10}]),
+    ?log_info("Target map: ~p", [FastForwardMap]),
+    ns_bucket:set_fast_forward_map(Bucket, FastForwardMap),
     ProgressFun =
         fun (P) ->
                 Progress = dict:map(fun (_, N) ->
@@ -146,43 +142,14 @@ rebalance(Bucket, KeepNodes, EjectNodes, BucketCompletion, NumBuckets) ->
                                     end, P),
                 ns_orchestrator:update_progress(Progress)
         end,
-    try
-        %% 'stopped' can be thrown past this point.
-        Map2 = perform_moves(Bucket, Map, Moves1, ProgressFun),
-        maybe_stop(),
-        Histograms2 = histograms(Map2, KeepNodes),
-        Moves2 = balance_nodes(Bucket, Map2, Histograms2, 1),
-        Map3 = perform_moves(Bucket, Map2, Moves2, ProgressFun),
-        maybe_stop(),
-        Histograms3 = histograms(Map3, KeepNodes),
-        Map4 = new_replicas(Bucket, EjectNodes, Map3, Histograms3),
-        ns_bucket:set_map(Bucket, Map4),
-        maybe_stop(),
-        Histograms4 = histograms(Map4, KeepNodes),
-        ChainLength = length(lists:nth(1, Map4)),
-        {Map5, _} =
-            lists:foldl(
-              fun (I, {M, H}) ->
-                      Moves = balance_nodes(Bucket, M, H, I),
-                      M1 = apply_moves(I, Moves, M),
-                      H1 = histograms(M1, KeepNodes),
-                      M2 = new_replicas(Bucket, EjectNodes, M1, H1),
-                      H2 = histograms(M2, KeepNodes),
-                      {M2, H2}
-              end, {Map4, Histograms4}, lists:seq(2, ChainLength)),
-        ns_bucket:set_servers(Bucket, KeepNodes),
-        ns_bucket:set_map(Bucket, Map5),
-        %% Push out the config with the new map in case this node is
-        %% being removed
-        ns_config_rep:push(),
-        maybe_stop()
-    catch
-        throw:stopped ->
-            fixup_replicas(Bucket, KeepNodes, EjectNodes),
-            exit(stopped);
-        E:R ->
-            fixup_replicas(Bucket, KeepNodes, EjectNodes),
-            erlang:E(R)
+    {ok, Pid} =
+        ns_vbucket_mover:start_link(Bucket, Map, FastForwardMap, ProgressFun),
+    case wait_for_mover(Pid) of
+        ok ->
+            ns_bucket:set_fast_forward_map(Bucket, undefined),
+            ns_bucket:set_servers(Bucket, KeepNodes);
+        stopped ->
+            exit(stopped)
     end.
 
 
@@ -203,61 +170,6 @@ unbalanced(Map, Servers) ->
 %% Internal functions
 %%
 
-%% applies given list of moves to given turn of given map. Returns
-%% produced map. Does not move data, only computes final map.
--spec apply_moves(non_neg_integer(), moves(), map()) -> map() | no_return().
-apply_moves(_, [], Map) ->
-    Map;
-apply_moves(I, [{V, _, New}|Tail], Map) ->
-    Chain = lists:nth(V+1, Map),
-    NewChain = lists:sublist(Chain, I-1) ++ [New] ++ lists:duplicate(length(Chain) - I, undefined),
-    apply_moves(I, Tail, misc:nthreplace(V+1, NewChain, Map)).
-
-%% picks least utilized node from given Histogram thats not in list of
-%% AvoidNodes
-assign(Histogram, AvoidNodes) ->
-    Histogram1 = lists:keysort(2, Histogram),
-    case lists:splitwith(fun ({N, _}) -> lists:member(N, AvoidNodes) end,
-                         Histogram1) of
-        {Head, [{Node, N}|Rest]} ->
-            {Node, Head ++ [{Node, N+1}|Rest]};
-        {_, []} ->
-            {undefined, Histogram1}
-    end.
-
-%% calculates list of moves to balance turn I of Map.
-balance_nodes(Bucket, Map, Histograms, I) when is_integer(I) ->
-    VNF = [{V, lists:nth(I, Chain), lists:sublist(Chain, I-1)} ||
-              {V, Chain} <- misc:enumerate(Map, 0)],
-    Hist = lists:nth(I, Histograms),
-    balance_nodes(Bucket, VNF, Hist, []);
-balance_nodes(Bucket, VNF, Hist, Moves) ->
-    {MinNode, MinCount} = misc:keymin(2, Hist),
-    {MaxNode, MaxCount} = misc:keymax(2, Hist),
-    case MaxCount - MinCount > 1 of
-        true ->
-            %% Get the first vbucket that is on MaxNode and for which MinNode is not forbidden
-            case lists:splitwith(
-                   fun ({_, N, F}) ->
-                           N /= MaxNode orelse
-                               lists:member(MinNode, F)
-                   end, VNF) of
-                {Prefix, [{V, N, F}|Tail]} ->
-                    N = MaxNode,
-                    VNF1 = Prefix ++ [{V, MinNode, F}|Tail],
-                    Hist1 = lists:keyreplace(MinNode, 1, Hist, {MinNode, MinCount + 1}),
-                    Hist2 = lists:keyreplace(MaxNode, 1, Hist1, {MaxNode, MaxCount - 1}),
-                    balance_nodes(Bucket, VNF1, Hist2, [{V, MaxNode, MinNode}|Moves]);
-                X ->
-                    error_logger:info_msg("~p:balance_nodes(~p, ~p, ~p): No further moves (~p)~n",
-                                          [?MODULE, VNF, Hist, Moves, X]),
-                    Moves
-            end;
-        false ->
-            Moves
-    end.
-
-
 %% @doc Eject a list of nodes from the cluster, making sure this node is last.
 eject_nodes(Nodes) ->
     %% Leave myself last
@@ -271,15 +183,6 @@ eject_nodes(Nodes) ->
                           ns_cluster_membership:deactivate([N]),
                           ns_cluster:leave(N)
                   end, LeaveNodes).
-
-
-%% @doc Ensure there are replicas for any unreplicated buckets if we stop.
-fixup_replicas(Bucket, KeepNodes, EjectNodes) ->
-    {_, _, Map, _} = ns_bucket:config(Bucket),
-    Histograms = histograms(Map, KeepNodes),
-    Map1 = new_replicas(Bucket, EjectNodes, Map, Histograms),
-    ns_bucket:set_servers(Bucket, KeepNodes ++ EjectNodes),
-    ns_bucket:set_map(Bucket, Map1).
 
 
 %% for each replication turn in Map returns list of pairs {node(),
@@ -299,90 +202,6 @@ histograms(Map, Servers) ->
                                            not lists:keymember(N, 1, H)],
                       Missing ++ H
               end, Histograms).
-
-
--spec master_moves(string(), [atom()], map(), [histogram()]) -> moves().
-master_moves(Bucket, EvacuateNodes, Map, Histograms) ->
-    master_moves(Bucket, EvacuateNodes, Map, Histograms, 0, []).
-
-%% calculates list of moves necessary to replaces missing or
-%% to-be-evacuated masters. Utililizes first item of Histograms (that
-%% represents utilization of turn 0 i.e. masters) to pick least
-%% utilized nodes for new masters.
--spec master_moves(string(), [atom()], map(), [histogram()], non_neg_integer(),
-                   moves()) -> moves().
-master_moves(_, _, [], _, _, Moves) ->
-    Moves;
-master_moves(Bucket, EvacuateNodes, [[OldMaster|_]|MapTail], Histograms, V,
-                 Moves) ->
-    [MHist|RHists] = Histograms,
-    case (OldMaster == undefined) orelse lists:member(OldMaster, EvacuateNodes) of
-        true ->
-            {NewMaster, MHist1} = assign(MHist, []),
-            master_moves(Bucket, EvacuateNodes, MapTail, [MHist1|RHists],
-                             V+1, [{V, OldMaster, NewMaster}|Moves]);
-        false ->
-            master_moves(Bucket, EvacuateNodes, MapTail, Histograms, V+1,
-                             Moves)
-    end.
-
-
-maybe_stop() ->
-    receive stop ->
-            throw(stopped)
-    after 0 ->
-            ok
-    end.
-
-%% assigns new nodes to replicas in given map so that chains don't
-%% have multiple appearances of any node and no chain contains node
-%% from EjectNodes. When it has to change some node it picks least
-%% utilized from Histograms.
-new_replicas(Bucket, EjectNodes, Map, Histograms) ->
-    new_replicas(Bucket, EjectNodes, Map, Histograms, 0, []).
-
-new_replicas(_, _, [], _, _, NewMapReversed) ->
-    lists:reverse(NewMapReversed);
-new_replicas(Bucket, EjectNodes, [Chain|MapTail], Histograms, V,
-              NewMapReversed) ->
-    %% Split off the masters - we don't want to move them!
-    {[Master|Replicas], [MHist|RHists]} = {Chain, Histograms},
-    ChainHist = lists:zip(Replicas, RHists),
-    {Replicas1, RHists1} = % These will be reversed
-        lists:foldl(fun ({undefined, Histogram}, {C, H}) ->
-                            {N1, H1} = assign(Histogram, C ++ [Master|EjectNodes]),
-                            {[N1|C], [H1|H]};
-                        ({OldNode, Histogram}, {C, H}) ->
-                            case lists:member(OldNode, C ++ EjectNodes) of
-                                true ->
-                                    {N1, H1} = assign(Histogram, C ++ Chain ++
-                                                          EjectNodes),
-                                    {[N1|C], [H1|H]};
-                                false ->
-                                    {[OldNode|C], [Histogram|H]}
-                            end
-                  end, {[], []}, ChainHist),
-    new_replicas(Bucket, EjectNodes, MapTail, [MHist|lists:reverse(RHists1)],
-                 V + 1, [[Master|lists:reverse(Replicas1)]|NewMapReversed]).
-
-
-%% performs given list of moves of master replicas. Actually moves
-%% data. Returns new vbuckets map with new values of master replicas
-%% and undefined for all other replicas.
--spec perform_moves(string(), map(), moves(), fun((dict()) -> any())) ->
-                           map() | no_return().
-perform_moves(Bucket, Map, Moves, ProgressFun) ->
-    process_flag(trap_exit, true),
-    {ok, Pid} =
-        ns_vbucket_mover:start_link(Bucket, Moves, ProgressFun),
-    case wait_for_mover(Pid) of
-        ok ->
-            MoveDict = dict:from_list([{V, N} || {V, _, N} <- Moves]),
-            [[case dict:find(V, MoveDict) of error -> M; {ok, N} -> N end |
-              lists:duplicate(length(C), undefined)]
-             || {V, [M|C]} <- misc:enumerate(Map, 0)];
-        stopped -> throw(stopped)
-    end.
 
 
 %% removes RemapNodes from head of vbucket map Map. Returns new map
@@ -425,14 +244,13 @@ wait_for_memcached(Nodes, Bucket, Tries) ->
 
 -spec wait_for_mover(pid()) -> ok | stopped.
 wait_for_mover(Pid) ->
+    Ref = erlang:monitor(process, Pid),
     receive
         stop ->
-            exit(Pid, stopped),
-            wait_for_mover(Pid);
-        {'EXIT', Pid, stopped} ->
+            ns_vbucket_mover:stop(Pid),
             stopped;
-        {'EXIT', Pid, normal} ->
+        {'DOWN', Ref, _, _, normal} ->
             ok;
-        {'EXIT', Pid, Reason} ->
-            exit(Reason)
+        {'DOWN', Ref, _, _, Reason} ->
+            exit({mover_crashed, Reason})
     end.

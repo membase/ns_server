@@ -24,7 +24,7 @@
 -define(MAX_MOVES_PER_NODE, 1).
 
 %% API
--export([start_link/3, stop/1]).
+-export([start_link/4, stop/1]).
 
 %% gen_server callbacks
 -export([code_change/3, init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -35,6 +35,7 @@
 -record(state, {bucket::nonempty_string(),
                 initial_counts::dict(),
                 max_per_node::pos_integer(),
+                map::array(), target_map::array(),
                 moves::dict(), movers::dict(),
                 progress_callback::progress_callback()}).
 
@@ -43,16 +44,20 @@
 %%
 
 %% @doc Start the mover.
--spec start_link(string(), moves(), progress_callback()) ->
+-spec start_link(string(), map(), map(), progress_callback()) ->
                         {ok, pid()} | {error, any()}.
-start_link(Bucket, Moves, ProgressCallback) ->
-    gen_server:start_link(?MODULE, {Bucket, Moves, ProgressCallback}, []).
+start_link(Bucket, OldMap, NewMap, ProgressCallback) ->
+    gen_server:start_link(?MODULE, {Bucket, OldMap, NewMap, ProgressCallback},
+                          []).
 
 
 %% @doc Stop the in-progress moves.
 -spec stop(pid()) -> ok.
 stop(Pid) ->
     gen_server:call(Pid, stop).
+
+
+
 
 
 %%
@@ -63,29 +68,32 @@ code_change(_OldVsn, _Extra, State) ->
     {ok, State}.
 
 
-init({Bucket, Moves, ProgressCallback}) ->
+init({Bucket, OldMap, NewMap, ProgressCallback}) ->
     %% Dictionary mapping old node to vbucket and new node
-    MoveDict = lists:foldl(fun ({_, undefined, _}, D) -> D;
-                               ({V, O, N}, D) ->
-                                   NewValue =
-                                       case dict:find(O, D) of
-                                           {ok, L} -> [{V, N}|L];
-                                           error -> [{V, N}]
-                                       end,
-                                   dict:store(O, NewValue, D)
-                           end, dict:new(), Moves),
+    MoveDict = lists:foldl(fun ({_, [M1|_], [M1|_]}, D) -> D;
+                               ({V, [M1|_], [M2|_]}, D) ->
+                                   dict:append(M1, {V, M2}, D)
+                           end, dict:new(),
+                           lists:zip3(lists:seq(0, length(OldMap) - 1), OldMap,
+                                      NewMap)),
+    %% Update any replicas where the master hasn't been moved
+    Map = [if hd(C1) == hd(C2) -> C2; true -> C1 end
+           || {C1, C2} <- lists:zip(OldMap, NewMap)],
     Movers = dict:map(fun (_, _) -> 0 end, MoveDict),
     self() ! spawn_initial,
+    process_flag(trap_exit, true),
     {ok, #state{bucket=Bucket,
                 initial_counts=count_moves(MoveDict),
                 max_per_node=?MAX_MOVES_PER_NODE,
+                map = map_to_array(Map),
+                target_map = map_to_array(NewMap),
                 moves=MoveDict, movers=Movers,
                 progress_callback=ProgressCallback}}.
 
 
 handle_call(stop, _From, State) ->
     %% All the linked processes should exit when we do.
-    {stop, stopped, State}.
+    {stop, normal, ok, State}.
 
 
 handle_cast(unhandled, unhandled) ->
@@ -96,18 +104,44 @@ handle_cast(unhandled, unhandled) ->
 %% the movers fails.
 handle_info(spawn_initial, State) ->
     spawn_workers(State);
-handle_info({move_done, Node}, #state{movers=Movers} = State) ->
+handle_info({move_done, {Node, VBucket}},
+            #state{movers=Movers, map=Map, target_map=TargetMap} = State) ->
+    %% Free up a mover for this node
     Movers1 = dict:update(Node, fun (N) -> N - 1 end, Movers),
-    spawn_workers(State#state{movers=Movers1}).
+    %% Pull the new chain from the target map
+    NewChain = array:get(VBucket, TargetMap),
+    %% Update the current map
+    Map1 = array:set(VBucket, NewChain, Map),
+    spawn_workers(State#state{movers=Movers1, map=Map1});
+handle_info({'EXIT', _, normal}, State) ->
+    {noreply, State};
+handle_info({'EXIT', Pid, Reason}, State) ->
+    ?log_error("~p exited with ~p", [Pid, Reason]),
+    {stop, Reason, State};
+handle_info(Info, State) ->
+    ?log_info("Unhandled message ~p", [Info]),
+    {noreply, State}.
 
 
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{bucket=Bucket, map=MapArray}) ->
+    %% Save the current state of the map
+    Map = array_to_map(MapArray),
+    ?log_info("Setting final map to ~p", [Map]),
+    ns_bucket:set_map(Bucket, Map),
     ok.
 
 
 %%
 %% Internal functions
 %%
+
+%% @private
+%% @doc Convert a map array back to a map list.
+-spec array_to_map(array()) ->
+                          map().
+array_to_map(Array) ->
+    array:to_list(Array).
+
 
 %% @doc Count of remaining moves per node.
 -spec count_moves(dict()) -> dict().
@@ -121,6 +155,15 @@ count_moves(Moves) ->
                                 dict:update_counter(N, 1, E)
                         end, D, M)
               end, FromCount, Moves).
+
+
+%% @private
+%% @doc Convert a map, which is normally a list, into an array so that
+%% we can randomly access the replication chains.
+-spec map_to_array(map()) ->
+                          array().
+map_to_array(Map) ->
+    array:fix(array:from_list(Map)).
 
 
 %% @doc Report progress using the supplied progress callback.
@@ -161,7 +204,7 @@ spawn_workers(#state{bucket=Bucket, moves=Moves, movers=Movers,
                                               process_flag(trap_exit, true),
                                               run_mover(Bucket, V, Node,
                                                         NewNode, 2),
-                                              Parent ! {move_done, Node}
+                                              Parent ! {move_done, {Node, V}}
                                       end)
                             end, NewMovers),
                           M1 = dict:store(Node, length(NewMovers) + NumWorkers,

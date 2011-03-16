@@ -49,6 +49,7 @@
          raw_ram_quota/1,
          sasl_password/1,
          set_bucket_config/2,
+         set_fast_forward_map/2,
          set_map/2,
          set_servers/2,
          filter_ready_buckets/1,
@@ -555,27 +556,27 @@ update_bucket_props(BucketName, Props) ->
               RV
       end).
 
-set_map(Bucket, Map) ->
-    %% Make sure all lengths are the same
-    ChainLengths = [length(Chain) || Chain <- Map],
-    true = lists:max(ChainLengths) == lists:min(ChainLengths),
-    %% Make sure there are no repeated nodes
-    true = lists:all(
-             fun (Chain) ->
-                     Chain1 = [N || N <- Chain, N /= undefined],
-                     length(lists:usort(Chain1)) == length(Chain1)
-             end, Map),
+set_fast_forward_map(Bucket, Map) ->
     update_bucket_config(
       Bucket,
       fun (OldConfig) ->
-              lists:keyreplace(map, 1, OldConfig, {map, Map})
+              lists:keystore(fastForwardMap, 1, OldConfig,
+                             {fastForwardMap, Map})
+      end).
+
+set_map(Bucket, Map) ->
+    true = mb_map:is_valid(Map),
+    update_bucket_config(
+      Bucket,
+      fun (OldConfig) ->
+              lists:keystore(map, 1, OldConfig, {map, Map})
       end).
 
 set_servers(Bucket, Servers) ->
     update_bucket_config(
       Bucket,
       fun (OldConfig) ->
-              lists:keyreplace(servers, 1, OldConfig, {servers, Servers})
+              lists:keystore(servers, 1, OldConfig, {servers, Servers})
       end).
 
 % Update the bucket config atomically.
