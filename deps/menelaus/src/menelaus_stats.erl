@@ -178,7 +178,18 @@ handle_bucket_node_stats(PoolId, BucketName, HostName, Req) ->
       fun (_Req, _BucketInfo, HostInfo) ->
               Node = binary_to_atom(proplists:get_value(otpNode, HostInfo), latin1),
               Params = Req:parse_qs(),
-              {struct, Ops} = build_buckets_stats_ops_response(PoolId, [Node], [BucketName], Params),
+              {struct, [{op, {struct, OpsPropList}}]} = build_buckets_stats_ops_response(PoolId, [Node], [BucketName], Params),
+
+              SystemStatsSamples =
+                  case grab_aggregate_op_stats("@system", [Node], Params) of
+                      {SystemRawSamples, _, _, _} ->
+                          samples_to_proplists(SystemRawSamples)
+                  end,
+              {samples, {struct, OpsSamples}} = lists:keyfind(samples, 1, OpsPropList),
+
+              ModifiedOpsPropList = lists:keyreplace(samples, 1, OpsPropList, {samples, {struct, SystemStatsSamples ++ OpsSamples}}),
+              Ops = [{op, {struct, ModifiedOpsPropList}}],
+
               {struct, HKS} = jsonify_hks(hot_keys_keeper:bucket_hot_keys(BucketName, Node)),
               menelaus_util:reply_json(
                 Req,

@@ -452,6 +452,13 @@ var StatGraphs = {
     ;(function () {
       var data =
         {blocks: [
+          {blockName: "SERVER RESOURCES",
+           extraCSSClasses: "server_resources",
+           stats: [
+             {name: "mem_actual_free", desc: "Mem actual free"},
+             {name: "mem_free", desc: "Mem free"},
+             {name: "cpu_utilization_rate", desc: "CPU %"},
+             {name: "swap_used", desc: "swap_used"}]},
           {blockName: "MEMCACHED",
            stats: [
              {name: "ops", desc: "Operations per sec."},
@@ -475,18 +482,26 @@ var StatGraphs = {
              {name: "cas_hits", desc: "CAS hits per sec."},
              {name: "cas_badval", desc: "CAS badval per sec."},
              {name: "cas_misses", desc: "CAS misses per sec."}]}]};
-      var statItems = _.reduce(_.pluck(data.blocks, 'stats'), [], function (acc, stats) {
+      var statItems = _.reduce(_.pluck(data.blocks.slice(1).concat(data.blocks[0]), 'stats'), [], function (acc, stats) {
         return acc.concat(stats);
       });
       _.each(statItems, function (item) {
         CacheStatInfos.push(item);
         CacheStatInfos.byName[item.name] = item;
       });
-      renderTemplate('new_stats_block', data, $i('stats_nav_cache_container'));
+      var containerEl = $i('stats_nav_cache_container')
+      renderTemplate('new_stats_block', data, containerEl);
     })();
     ;(function () {
       var data = {
         blocks: [
+          {blockName: "SERVER RESOURCES",
+           extraCSSClasses: "server_resources",
+           stats: [
+             {name: "mem_actual_free", desc: "free memory"},
+             // {name: "mem_free", desc: "Mem free"},
+             {name: "cpu_utilization_rate", desc: "CPU utilization %", maxY: 100},
+             {name: "swap_used", desc: "swap usage"}]},
           {
             blockName: "PERFORMANCE",
             isPerf: true,
@@ -647,7 +662,7 @@ var StatGraphs = {
           }
         ]
       };
-      var statItems = _.reduce(_.pluck(data.blocks, 'stats'), [], function (acc, stats) {
+      var statItems = _.reduce(_.pluck(data.blocks.slice(1).concat(data.blocks[0]), 'stats'), [], function (acc, stats) {
         return acc.concat(stats);
       });
       _.each(statItems, function (item) {
@@ -693,7 +708,7 @@ var StatGraphs = {
       if (!op.isPersistent) {
         infos = CacheStatInfos;
       }
-      if (!(selected in infos.byName)) {
+      if (!(selected in infos.byName) || !(selected in op.samples)) {
         selected = infos[0].name;
       }
 
@@ -705,6 +720,15 @@ var StatGraphs = {
     });
 
     self.graphsConfigurationCell.subscribeAny($m(self, 'update'));
+
+    Cell.compute(function (v) {
+      var stats = v.need(self.graphsConfigurationCell).stats;
+      var haveSystemStats = !!stats.op.samples.cpu_utilization_rate;
+      return haveSystemStats;
+    }).subscribeValue(function (haveSystemStats) {
+      var container = $('#stats_nav_persistent_container, #stats_nav_cache_container').need(2);
+      container[haveSystemStats ? 'addClass' : 'removeClass']('with_server_resources');
+    });
 
     t.bind('mouseenter', mkHoverHandler('show'));
     t.bind('mouseleave', mkHoverHandler('hide'));

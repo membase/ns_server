@@ -1031,3 +1031,6 @@ span.staleness-notice, .staleness-notice { display: none; color: red; }
 .warning_down_backfill, .warning_up_backfill, .warning_down_no_backfill, .warning_down_backfill { display: none; }
 .warning_down_backfill label, .warning_up_backfill label { display: block; margin-top: 15px; }
 .warning_down_backfill label input, .warning_up_backfill label input { margin-right: 3px; }
+
+.graph_nav.server_resources { display: none; }
+.with_server_resources .graph_nav.server_resources { display: block; }
