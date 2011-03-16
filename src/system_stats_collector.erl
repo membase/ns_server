@@ -114,7 +114,11 @@ unpack_data(Bin, PrevSample) ->
                           LocalDiff = CPULocalMS - OldCPULocal,
                           IdleDiff = CPUIdleMS - OldCPUIdle,
                           RV1 = lists:keyreplace(cpu_local_ms, 1, RawStats, {cpu_local_ms, LocalDiff}),
-                          lists:keyreplace(cpu_idle_ms, 1, RV1, {cpu_idle_ms, IdleDiff})
+                          RV2 = lists:keyreplace(cpu_idle_ms, 1, RV1, {cpu_idle_ms, IdleDiff}),
+                          [{mem_free, MemTotal - MemUsed},
+                           {cpu_utilization_rate, try 100 * (LocalDiff - IdleDiff) / LocalDiff
+                                                  catch error:badarith -> 0 end}
+                           | RV2]
                  end,
     {NowSamples, RawStats}.
 
