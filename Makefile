@@ -51,12 +51,12 @@ NS_SERVER := $(PREFIX)/ns_server
 
 install:
 	mkdir -p $(NS_SERVER)
-	tar c cluster_connect cluster_run mkcouch.sh mbcollect_info \
+	tar cf - cluster_connect cluster_run mkcouch.sh mbcollect_info \
 		ebin \
 		deps/*/ebin \
 		deps/*/deps/*/ebin \
 		deps/menelaus/priv/public \
-		deps/menelaus/deps/erlwsh/priv | (cd $(PREFIX)/ns_server && tar x)
+		deps/menelaus/deps/erlwsh/priv | (cd $(PREFIX)/ns_server && tar xf -)
 	mkdir -p ns_server/bin ns_server/lib/memcached
 	ln -f -s $(REST_PREFIX)/bin/memcached $(NS_SERVER)/bin/memcached || true
 	ln -f -s $(REST_PREFIX)/lib/memcached/default_engine.so $(NS_SERVER)/lib/memcached/default_engine.so || true
