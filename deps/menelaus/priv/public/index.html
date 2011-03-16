@@ -331,22 +331,14 @@
             </div>
           </div>
           <div class="template" id="new_stats_block_template">
-            {% _.each(blocks, function (blockInfo) {var withtotal = blockInfo.withtotal; %}
-            <div class="darker_block graph_nav {%= (withtotal ? 'withtotal' : '') %}">
+            {% _.each(blocks, function (blockInfo) { %}
+            <div class="darker_block graph_nav {%= blockInfo.extraCSSClasses %}">
               <h3><ins class="stats-block-expander"></ins>{%= h(blockInfo.blockName) %}</h3>
-              {% if (blockInfo.blockName != 'MEMCACHED') { %}
+              {% if (blockInfo.columns) { %}
               <ul class="col_headers">
-              {% if (blockInfo.blockName == 'TAP QUEUES') { %}
-                <li>Replication</li>
-                <li>Rebalance</li>
-                <li>Clients</li>
-                <li>Total</li>
-              {% } else if (blockInfo.blockName != 'PERFORMANCE') { %}
-                <li>Active</li>
-                <li>Replica</li>
-                <li>Pending</li>
-                <li>Total</li>
-              {% } %}
+              {% _.each(blockInfo.columns, function (columnName) { %}
+                <li>{%= h(columnName) %}</li>
+              {% }); %}
               </ul>
               {% } %}
               {% _.each(blockInfo.stats, function (statInfo) {var name = statInfo.name; var desc = statInfo.desc; %}
