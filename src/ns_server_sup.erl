@@ -97,6 +97,9 @@ child_specs() ->
      {{stats_archiver, "@system"}, {stats_archiver, start_link, ["@system"]},
       permanent, 10, worker, [stats_archiver]},
 
+     {{stats_reader, "@system"}, {stats_reader, start_link, ["@system"]},
+      permanent, 10, worker, [start_reader]},
+
      {ns_moxi_sup, {ns_moxi_sup, start_link, []},
       permanent, infinity, supervisor,
       [ns_moxi_sup]},
