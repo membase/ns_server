@@ -19,8 +19,8 @@ def setup_path():
     couchpath = ebin_search("{0}/lib/couchdb/erlang/lib".format(COUCH_PATH))
 
     if len(couchpath) == 0:
-        print("Couch libs wasn't found. Will disable couch support\n")
-        os.environ['DONT_START_COUCH'] = '1'
+       print("Couch libs wasn't found. Will disable couch support\n")
+       os.environ['DONT_START_COUCH'] = '1'
 
     return couchpath + path
 
@@ -41,7 +41,6 @@ def start_cluster(num_nodes, extra_args):
         subprocess.Popen(["./mkcouch.sh", "n_{0}".format(i), str(base_couch_port + i)]).communicate()
         args = ["erl", "+A", "16", "-pa"] + ebin_path + [
             "-setcookie", "nocookie",
-            "-run", "ns_bootstrap",
             "-kernel", "inet_dist_listen_min", "21100",
             "inet_dist_listen_max", "21199",
             "-couch_ini", "{0}/etc/couchdb/default.ini".format(COUCH_PATH), "couch/n_{0}_conf.ini".format(i),
@@ -86,7 +85,7 @@ def find_primary_addr():
 
 def main():
     try:
-        optlist, args = getopt.gnu_getopt(sys.argv[1:], "h", ["help", "dont-rename", "static-cookie"])
+        optlist, args = getopt.gnu_getopt(sys.argv[1:], "h", ["help", "dont-rename", "static-cookie", "dont-start"])
     except getopt.GetoptError, err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
@@ -94,10 +93,13 @@ def main():
         sys.exit(2)
 
     dont_rename = False
+    dont_start = False
     static_cookie = False
 
     for o, a in optlist:
-        if o == '--dont-rename':
+        if o == '--dont-start':
+            dont_start = True
+        elif o == '--dont-rename':
             dont_rename = True
         elif o in ("--help", "-h"):
             usage()
@@ -148,6 +150,9 @@ def main():
 
     if static_cookie:
         extra_args += ["-ns_server", "dont_reset_cookie", "true"]
+
+    if not dont_start:
+        extra_args += ["-run", "ns_bootstrap"]
 
     nodes = start_cluster(num_nodes, extra_args)
 
