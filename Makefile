@@ -2,6 +2,7 @@
 # All rights reserved.
 SHELL=/bin/sh
 
+EBIN_PATHS=`find "$(PWD)" -name ebin -type d`
 EFLAGS=-pa ./ebin ./deps/*/ebin ./deps/*/deps/*/ebin
 
 NS_SERVER_PLT ?= ns_server.plt
@@ -107,6 +108,10 @@ dataclean:
 	rm -rf couch
 
 distclean: clean dataclean
+
+common_tests: dataclean all
+	mkdir -p logs
+	erl -noshell -name ctrl@127.0.0.1 -setcookie nocookie -pa $(EBIN_PATHS) -eval "ct:run_test([{spec, \"./common_tests/common_tests.spec\"}]), init:stop()"
 
 test: test_$(OS)
 

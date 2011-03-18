@@ -26,14 +26,15 @@ all() ->
 %% Just run all the eunit tests defined in modules within ns_server.app
 eunit(_Config) ->
 
-    % Yup this is nasty, find the right way to get the path
+    % Yup this is nasty
     {ok, [{application, ns_server, Vals}]}
-        = file:consult("../../../ebin/ns_server.app"),
+        = file:consult("../../ebin/ns_server.app"),
 
     {modules, Mods} = lists:keyfind(modules, 1, Vals),
 
     [ begin
           io:format("Starting ~p:test()~n", [Mod]),
+          code:load_file(Mod),
           ok = eunit:test(Mod)
       end || Mod <- Mods],
     ok.
