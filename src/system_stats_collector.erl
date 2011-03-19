@@ -76,7 +76,7 @@ recv_data(Port, Acc, WantedLength) ->
                 Size =:= WantedLength ->
                     erlang:iolist_to_binary(lists:reverse([Data | Acc]));
                 Size > WantedLength ->
-                    error({too_big_recv, Size, WantedLength, Data, Acc})
+                    erlang:error({too_big_recv, Size, WantedLength, Data, Acc})
             end
     end.
 
