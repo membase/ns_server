@@ -63,6 +63,8 @@ handle_cast(Msg, State) ->
 
 handle_info({tcp, Socket, Data}, #state{downstream=Downstream,
                                         upstream=Upstream} = State) ->
+    %% Set up the socket to receive another message
+    ok = inet:setopts(Socket, [{active, once}]),
     State1 = case Socket of
                  Downstream ->
                      process_data(Data, #state.downbuf,
@@ -72,8 +74,6 @@ handle_info({tcp, Socket, Data}, #state{downstream=Downstream,
                                   fun process_upstream/2,
                                   State#state{last_seen=now()})
     end,
-    %% Set up the socket to receive another message
-    ok = inet:setopts(Socket, [{active, once}]),
     {noreply, State1};
 handle_info({tcp_closed, Socket}, #state{upstream=Socket} = State) ->
     case State#state.takeover of
@@ -161,7 +161,9 @@ start_link(Src, Dst, Opts) ->
 
 connect({Host, Port}, Username, Password, Bucket) ->
     {ok, Sock} = gen_tcp:connect(Host, Port,
-                                 [binary, {packet, raw}, {active, false}],
+                                 [binary, {packet, raw}, {active, false},
+                                  {recbuf, 10*1024*1024},
+                                  {sndbuf, 10*1024*1024}],
                                  ?CONNECT_TIMEOUT),
     case Username of
         undefined ->
@@ -209,8 +211,8 @@ process_data(Buffer, _CB, State) ->
 -spec process_data(binary(), non_neg_integer(),
                    fun((binary(), #state{}) -> #state{}), #state{}) -> #state{}.
 process_data(Data, Elem, CB, State) ->
-    Buffer = list_to_binary([element(Elem, State), Data]),
-    {NewBuf, NewState} = process_data(Buffer, CB, State),
+    Buffer = element(Elem, State),
+    {NewBuf, NewState} = process_data(<<Buffer/binary, Data/binary>>, CB, State),
     setelement(Elem, NewState, NewBuf).
 
 
