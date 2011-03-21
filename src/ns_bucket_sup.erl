@@ -21,7 +21,7 @@
 
 -include("ns_common.hrl").
 
--export([start_link/3]).
+-export([start_link/3, get_this_node_bucket_names/0]).
 
 -export([init/1]).
 
@@ -50,7 +50,10 @@ init({Name, ChildFun, WorkQueue}) ->
       end, undefined),
     {ok, {{one_for_one, 3, 10},
           lists:flatmap(ChildFun,
-                        get_this_node_bucket_names(ns_bucket:get_buckets()))}}.
+                        get_this_node_bucket_names())}}.
+
+get_this_node_bucket_names() ->
+    get_this_node_bucket_names(ns_bucket:get_buckets()).
 
 get_this_node_bucket_names(BucketsConfigs) ->
     Node = node(),
