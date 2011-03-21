@@ -505,7 +505,8 @@ filter_ready_buckets(BucketInfos) ->
                              memcached -> true;
                              membase ->
                                  case proplists:get_value(map, PList, []) of
-                                     [_|_] -> true;
+                                     [_|_] = List ->
+                                         lists:member(node(), List);
                                      _ -> false
                                  end
                          end
