@@ -39,11 +39,7 @@ init({Name, ChildFun, WorkQueue}) ->
       fun (Event, State) ->
               case Event of
                   {buckets, L} ->
-                      Node = node(),
-                      Buckets =
-                          [B || {B, C} <- proplists:get_value(configs, L),
-                                lists:member(Node, proplists:get_value(
-                                                     servers, C, []))],
+                      Buckets = get_this_node_bucket_names(proplists:get_value(configs, L, [])),
                       work_queue:submit_work(WorkQueue,
                                              fun () ->
                                                      update_childs(Name, ChildFun, Buckets)
@@ -53,7 +49,13 @@ init({Name, ChildFun, WorkQueue}) ->
               State
       end, undefined),
     {ok, {{one_for_one, 3, 10},
-          lists:flatmap(ChildFun, ns_bucket:get_bucket_names())}}.
+          lists:flatmap(ChildFun,
+                        get_this_node_bucket_names(ns_bucket:get_buckets()))}}.
+
+get_this_node_bucket_names(BucketsConfigs) ->
+    Node = node(),
+    [B || {B, C} <- BucketsConfigs,
+          lists:member(Node, proplists:get_value(servers, C, []))].
 
 %% Internal functions
 
