@@ -34,3 +34,4 @@ priv/vbucketmigrator
 test/log
 tmp
 version_num.tmp
+ebucketmigrator

@@ -90,6 +90,7 @@ clean clean_all:
 	rm -f $(TMP_VER)
 	rm -f $(TMP_DIR)/*.cov.html
 	rm -f cov.html
+	rm -f ebucketmigrator
 	rm -f erl_crash.dump
 	rm -f ns_server_*.tar.gz
 	rm -f src/ns_server.app
@@ -148,3 +149,6 @@ Features/Makefile:
 
 parallel_cucumber: features/Makefile
 	$(MAKE) -k -C features all_branches
+
+ebucketmigrator: all
+	erl -noshell -noinput -pa ebin -s misc build_ebucketmigrator -s init stop

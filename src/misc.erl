@@ -946,3 +946,37 @@ split_binary_at_char(Binary, Chr) ->
         _ ->
             Binary
     end.
+
+
+%% Quick function to build the ebucketmigrator escript, partially copied from
+%% https://bitbucket.org/basho/rebar/src/d4fcc10abc0b/src/rebar_escripter.erl
+build_ebucketmigrator() ->
+
+    Filename = "ebucketmigrator",
+    Modules = [ebucketmigrator, ebucketmigrator_srv, mc_client_binary, mc_binary],
+    Files = [read_beam(Mod, "ebin") || Mod <- Modules],
+
+    case zip:create("mem", Files, [memory]) of
+        {ok, {"mem", ZipBin}} ->
+            Script = <<"#!/usr/bin/env escript\n", ZipBin/binary>>,
+            case file:write_file(Filename, Script) of
+                ok ->
+                    ok;
+                {error, WriteError} ->
+                    throw({write_failed, WriteError})
+            end;
+        {error, ZipError} ->
+            throw({build_script_files, ZipError})
+    end,
+
+    {ok, #file_info{mode = Mode}} = file:read_file_info(Filename),
+    ok = file:change_mode(Filename, Mode bor 8#00100),
+    ok.
+
+read_beam(Module, Dir) ->
+    Filename = atom_to_list(Module) ++ ".beam",
+    {Filename, file_contents(filename:join(Dir, Filename))}.
+
+file_contents(Filename) ->
+    {ok, Bin} = file:read_file(Filename),
+    Bin.
