@@ -168,6 +168,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_settings_web/1};
                              ["settings", "advanced"] ->
                                  {auth, fun handle_settings_advanced/1};
+                             ["settings", "stats"] ->
+                                 {auth, fun handle_settings_stats/1};
                              ["nodes", NodeId] ->
                                  {auth, fun handle_node/2, [NodeId]};
                              ["diag"] ->
@@ -215,6 +217,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_settings_web_post/1};
                              ["settings", "advanced"] ->
                                  {auth, fun handle_settings_advanced_post/1};
+                             ["settings", "stats"] ->
+                                 {auth, fun handle_settings_stats_post/1};
                              ["pools", PoolId] ->
                                  {auth, fun handle_pool_settings/2,
                                   [PoolId]};
@@ -842,6 +846,36 @@ build_settings_web(Port, U, P) ->
     {struct, [{port, Port},
               {username, list_to_binary(U)},
               {password, list_to_binary(P)}]}.
+
+%% @doc Settings to en-/disable stats sending to some remote server
+handle_settings_stats(Req) ->
+    reply_json(Req, {struct, build_settings_stats()}).
+
+build_settings_stats() ->
+    Defaults = default_settings_stats_config(),
+    ns_config:search_prop(ns_config:get(), settings, stats, Defaults).
+
+default_settings_stats_config() ->
+    [{sendStats, false}].
+
+handle_settings_stats_post(Req) ->
+    PostArgs = Req:parse_post(),
+    SendStats = proplists:get_value("sendStats", PostArgs),
+    case validate_settings_stats(SendStats) of
+        error ->
+            Req:respond({400, add_header(),
+                         "The value of \"sendStats\" must be true or false."});
+        SendStats2 ->
+            ns_config:set(settings, [{stats, [{sendStats, SendStats2}]}]),
+            Req:respond({200, add_header(), []})
+    end.
+
+validate_settings_stats(SendStats) ->
+    case SendStats of
+        "true" -> true;
+        "false" -> false;
+        _ -> error
+    end.
 
 %% true iff system is correctly provisioned
 is_system_provisioned() ->

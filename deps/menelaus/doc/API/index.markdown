@@ -4,7 +4,7 @@ title: kvstore REST APIs
 ---
 # caching kvstore APIs
 
-Version 20100729
+Version 20110322
 
 This document specifies request and response for both the Management Console
 (management channel) and the cache itself (data channel) when talking to
@@ -356,6 +356,57 @@ username=Administrator&password=letmein&port=8091
 <pre>curl -i -d username=Administrator -d password=letmein -d port=8091 http://localhost:8091/settings/web</pre>
 
 Note that even if it is not to be changed
+
+###Global settings
+####Setting whether statistics should be sent to the outside or not
+
+It's a global setting for all clusters. You need to be authenticated to
+change this value.
+
+*Request*
+
+<pre class="restcalls">
+POST /settings/stats HTTP/1.1
+Host: node.in.your.cluster:8091
+Content-Type: application/x-www-form-urlencoded
+Authorization: Basic YWRtaW46YWRtaW4=
+Content-Length: 14
+
+sendStats=true
+</pre>
+
+*Response*
+
+200 OK
+400 Bad Reqeust, The value of "sendStats" must be true or false.
+401 Unauthorized
+
+<pre>curl -i -u Administrator:letmein -d sendStats=true http://localhost:8091/settings/stats</pre>
+
+####Getting whether statistics should be sent to the outside or not
+
+It's a global setting for all clusters. You need to be authenticated to
+read this value.
+
+*Request*
+
+<pre class="restcalls">
+GET /settings/stats HTTP/1.1
+Host: node.in.your.pool.com
+Authorization: Basic YWRtaW46YWRtaW4=
+Accept: */*
+</pre>
+
+*Response*
+
+<pre class="json">
+ HTTP/1.1 200 OK
+ Content-Type: application/json
+ Content-Length: nnn
+</pre>
+
+<pre>curl -u Administrator:letmein http://localhost:8091/settings/stats</pre>
+
 
 ###Pool Details
 
@@ -1151,3 +1202,4 @@ have been referenced.
 * 20100809 Added section on provisioning and provisioning calls
 * 20101029 Updated bucket creation and modification to reflect
   memcached/membase buckets
+* 20110322 Added info about sendStats setting
