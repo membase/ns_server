@@ -61,7 +61,7 @@ gen_ports(N) ->
     {12000 + (N * 2), 12001 + (N * 2), 9000 + N}.
 
 
-wait_for_pong(Node, 0) ->
+wait_for_pong(_Node, 0) ->
     {error, did_not_start};
 
 wait_for_pong(Node, N) ->
@@ -84,7 +84,3 @@ to_str(X) when is_atom(X) ->
 
 i2l(X) ->
     integer_to_list(X).
-
-l2i(X) ->
-    list_to_integer(X).
-
