@@ -87,6 +87,7 @@ function onUnexpectedXHRError(xhr, xhrStatus, errMsg) {
 $.ajaxSetup({
   error: onUnexpectedXHRError,
   timeout: 30000,
+  cache: false,
   beforeSend: function (xhr, options) {
     if (DAL.login) {
       addBasicAuth(xhr, DAL.login, DAL.password);
