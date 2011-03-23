@@ -1,7 +1,9 @@
 #!/bin/sh
 # Copyright (c) 2011, Membase, Inc.
 # All rights reserved.
-cd `dirname $0`
+basedir=${0##*/}
+cd "$basedir"
+
 mkdir logs > /dev/null 2>&1
 
 # Initialize distributed erlang on the system (i.e. epmd)
