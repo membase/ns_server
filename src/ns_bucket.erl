@@ -367,9 +367,13 @@ json_map_from_config(LocalAddr, BucketConfig) ->
                                end,
                         list_to_binary(Host ++ ":" ++ integer_to_list(Port))
                 end, ENodes),
+    {_, NodesToPositions}
+        = lists:foldl(fun (N, {Pos,Dict}) ->
+                              {Pos+1, dict:store(N, Pos, Dict)}
+                      end, {0, dict:new()}, ENodes),
     Map = lists:map(fun (Chain) ->
                             lists:map(fun (undefined) -> -1;
-                                          (N) -> misc:position(N, ENodes) - 1
+                                          (N) -> dict:fetch(N, NodesToPositions)
                                       end, Chain)
                     end, EMap),
     {struct, [{hashAlgorithm, <<"CRC">>},
