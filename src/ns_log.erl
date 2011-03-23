@@ -91,7 +91,7 @@ handle_cast({log, Module, Code, Fmt, Args}, State = #state{dedup=Dedup}) ->
             {noreply, State#state{dedup=Dedup2}}
     end;
 handle_cast({do_log, Entry}, State = #state{recent=Recent}) ->
-    {noreply, schedule_save(State#state{recent=lists:usort([Entry|Recent])})};
+    {noreply, schedule_save(State#state{recent=lists:umerge([Entry], Recent)})};
 handle_cast({sync, Compressed}, State = #state{recent=Recent}) ->
     case binary_to_term(zlib:uncompress(Compressed)) of
         Recent ->
