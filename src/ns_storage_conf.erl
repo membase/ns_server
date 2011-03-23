@@ -33,8 +33,11 @@
          allowed_node_quota_range_for_joined_nodes/0,
          this_node_memory_data/0]).
 
-memory_quota(_Node) ->
-    {value, RV} = ns_config:search(ns_config:get(), memory_quota),
+memory_quota(Node) ->
+    memory_quota(Node, ns_config:get()).
+
+memory_quota(_Node, Config) ->
+    {value, RV} = ns_config:search(Config, memory_quota),
     RV.
 
 change_memory_quota(_Node, NewMemQuotaMB) when is_integer(NewMemQuotaMB) ->
@@ -79,6 +82,9 @@ local_bucket_disk_usage(BucketName) ->
                catch _:_ -> 0
                end || Name <- db_files(DBDir, BucketName)]).
 
+storage_conf(Node) ->
+    storage_conf(Node, ns_config:get()).
+
 % Returns a proplist of lists of proplists.
 %
 % A quotaMb of -1 means no quota.
@@ -88,8 +94,8 @@ local_bucket_disk_usage(BucketName) ->
 %  {hdd, [[{path, /some/nice/disk/path}, {quotaMb, 1234}, {state, ok}],
 %         [{path", /another/good/disk/path}, {quotaMb, 5678}, {state, ok}]]}]
 %
-storage_conf(Node) ->
-    {value, PropList} = ns_config:search_node(Node, ns_config:get(), memcached),
+storage_conf(Node, Config) ->
+    {value, PropList} = ns_config:search_node(Node, Config, memcached),
     HDDInfo = case proplists:get_value(dbdir, PropList) of
                   undefined -> [];
                   DBDir -> [{path, filename:absname(DBDir)},
@@ -121,10 +127,13 @@ node_storage_info(Node) ->
     end.
 
 extract_node_storage_info(NodeInfo, Node) ->
+    extract_node_storage_info(NodeInfo, Node, ns_config:get()).
+
+extract_node_storage_info(NodeInfo, Node, Config) ->
     {RAMTotal, RAMUsed, _} = proplists:get_value(memory_data, NodeInfo),
     DiskStats = proplists:get_value(disk_data, NodeInfo),
-    DiskPaths = [proplists:get_value(path, X) || X <- proplists:get_value(hdd, ns_storage_conf:storage_conf(Node))],
-    case memory_quota(Node) of
+    DiskPaths = [proplists:get_value(path, X) || X <- proplists:get_value(hdd, storage_conf(Node, Config))],
+    case memory_quota(Node, Config) of
         MemQuotaMB when is_integer(MemQuotaMB) ->
             {DiskTotal, DiskUsed} =
                 lists:foldl(fun (Path, {ATotal, AUsed} = Tuple) ->
@@ -200,7 +209,8 @@ extract_subprop(NodeInfos, Key, SubKey) ->
 
 do_cluster_storage_info([]) -> [];
 do_cluster_storage_info(NodeInfos) ->
-    StorageInfos = [extract_node_storage_info(NodeInfo, Node)
+    Config = ns_config:get(),
+    StorageInfos = [extract_node_storage_info(NodeInfo, Node, Config)
                     || {Node, NodeInfo} <- NodeInfos],
     HddTotals = extract_subprop(StorageInfos, hdd, total),
     HddUsed = extract_subprop(StorageInfos, hdd, used),
@@ -218,7 +228,7 @@ do_cluster_storage_info(NodeInfos) ->
                     ]}],
     AllNodes = ordsets:intersection(lists:sort(ns_node_disco:nodes_actual_proper()),
                                     lists:sort(proplists:get_keys(NodeInfos))),
-    AllBuckets = ns_bucket:get_buckets(),
+    AllBuckets = ns_bucket:get_buckets(Config),
     {BucketsRAMUsage, BucketsHDDUsage}
         = lists:foldl(fun ({Name, _}, {RAM, HDD}) ->
                               BasicStats = menelaus_stats:basic_stats(Name, AllNodes),
