@@ -200,7 +200,8 @@ args(Node, Bucket, VBuckets, DstNode, TakeOver) ->
      [{username, User},
       {password, Pass},
       {vbuckets, VBuckets},
-      {takeover, TakeOver}]].
+      {takeover, TakeOver},
+      {suffix, unique_suffix(DstNode)}]].
 
 -spec children(node(), nonempty_string()) -> [#child_id{}].
 children(Node, Bucket) ->
@@ -256,3 +257,10 @@ start_replicas(SrcNode, Bucket, VBuckets, DstNode) ->
       fun (VB) ->
               {ok, _Pid} = start_child(SrcNode, Bucket, VB, DstNode)
       end, split_vbuckets(VBuckets)).
+
+%% @doc Generate a unique name suffix that's valid for a TAP queue.
+unique_suffix(DstNode) ->
+    {MegaSecs, Secs, MicroSecs} = now(),
+    lists:flatten(io_lib:format("~s-~s-~B.~6.10.0B",
+                                [DstNode, node(),
+                                 MegaSecs * 1000000 + Secs, MicroSecs])).

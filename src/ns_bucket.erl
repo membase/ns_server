@@ -110,7 +110,7 @@ config_string(BucketName) ->
                         [proplists:get_value(ht_size, BucketConfig),
                          proplists:get_value(ht_locks, BucketConfig),
                          proplists:get_value(db_shards, BucketConfig, 4),
-                         proplists:get_value(tap_keepalive, BucketConfig, 0),
+                         proplists:get_value(tap_keepalive, BucketConfig, 300),
                          proplists:get_value(tap_noop_interval, BucketConfig, 20),
                          proplists:get_value(max_txn_size, BucketConfig, 1000),
                          MemQuota,
