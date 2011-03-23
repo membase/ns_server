@@ -107,16 +107,12 @@ is_root(DirPath) ->
 % Allow all keys to be mergable.
 
 mergable(ListOfKVLists) ->
-    sets:to_list(sets:from_list(mergable(ListOfKVLists, []))).
+    lists:usort(lists:flatmap(fun keys/1, ListOfKVLists)).
 
-mergable([], Accum) ->
-    Accum;
-mergable([KVLists | Rest], Accum) ->
-    mergable(Rest, keys(KVLists, Accum)).
-
-keys([], Accum) -> Accum;
-keys([KVList | Rest], Accum) ->
-    keys(Rest, lists:map(fun({Key, _Val}) -> Key end, KVList) ++ Accum).
+keys(KVLists) ->
+    lists:flatmap(fun (KVList) ->
+                          [K || {K,_} <- KVList]
+                  end, KVLists).
 
 default() ->
     {ok, ConfigFile} = application:get_env(ns_server_config),
