@@ -980,3 +980,12 @@ read_beam(Module, Dir) ->
 file_contents(Filename) ->
     {ok, Bin} = file:read_file(Filename),
     Bin.
+
+absname(Name) ->
+    PathType = filename:pathtype(Name),
+    case PathType of
+        absolute ->
+            filename:absname(Name, "/");
+        _ ->
+            filename:absname(Name)
+    end.
