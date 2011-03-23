@@ -207,8 +207,8 @@ parse_stats_raw2(TS, LastCounters, LastTS, KnownGauges, KnownCounters, GetStat, 
                      end
              end,
     Values0 = orddict:merge(fun (_, _, _) -> erlang:error(cannot_happen) end,
-                            orddict:from_list(lists:zip(KnownGauges, Gauges)),
-                            orddict:from_list(lists:zip(KnownCounters, Deltas))),
+                            lists:sort(lists:zip(KnownGauges, Gauges)),
+                            lists:sort(lists:zip(KnownCounters, Deltas))),
     {Values0, Counters}.
 
 parse_stats(TS, Stats, TapStats, undefined, LastTS) ->
@@ -249,7 +249,7 @@ parse_stats(TS, Stats, TapStats, {LastCounters, LastTapCounters}, LastTS) ->
                 end,
     Values = orddict:merge(fun (_K, _V1, _V2) -> erlang:error(cannot_happen) end,
                            Values0,
-                           orddict:from_list([{direct_ops, DirectOps} | AggregateValues])),
+                           lists:sort([{direct_ops, DirectOps} | AggregateValues])),
     {#stat_entry{timestamp = TS,
                  values = Values},
      {Counters, TapCounters}}.
