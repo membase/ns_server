@@ -632,16 +632,19 @@
             <table class="lined_tab">
               <col width="">
               <col width="">
+              <col width="">
               <col width="160">
               <tr>
                 <th>Event</th>
                 <th>Module Code</th>
+                <th>Server Node</th>
                 <th>Time</th>
               </tr>
               <!-- {% _.each(rows, function (logRow) { %} -->
               <tr>
                 <td>{%= h(logRow.text).replace(/\n/g, "<br />") %}</td>
                 <td>{%= h(logRow.module) + (new String(1000 + parseInt(logRow.code))).slice(-3)%}</td>
+                <td>{%= h(logRow.node) %}</td>
                 <td class="text_11 nobr">{%=V.formatLogTStamp(logRow.tstamp)%}
               </tr>
               <!-- {% }); %} -->
