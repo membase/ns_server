@@ -26,7 +26,11 @@ start() ->
         ok = application:start(ns_server),
         case os:getenv("DONT_START_COUCH") of
             false ->
-                ok = application:start(couch);
+                case erlang:system_info(system_architecture) of
+                    "win32" -> ok;
+                    _ ->
+                        ok = application:start(couch)
+                end;
             _ -> ok
         end
     catch T:E ->
