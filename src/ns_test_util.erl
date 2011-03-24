@@ -1,12 +1,12 @@
 -module(ns_test_util).
--export([start_cluster/1, start_node/4, stop_node/1]).
+-export([start_cluster/1, start_node/5, stop_node/1]).
 
 start_cluster(NodeNames) ->
     {ok, Nodes} = start_cluster(NodeNames, 0, []),
 
     % Attempt to create a cluster out of started nodes, should redo with
     % erlang api
-    _Cmd = os:cmd(code:lib_dir(ns_server) ++ "//cluster_connect -n 2"),
+    _Cmd = os:cmd(code:lib_dir(ns_server) ++ "/cluster_connect -n 2"),
 
     {ok, Nodes}.
 
@@ -15,15 +15,15 @@ start_cluster([], _N, Acc) ->
 
 start_cluster([Node | Nodes], N, Acc) ->
 
-    {MemcPort, MoxiPort, RestPort} = gen_ports(N),
+    {MemcPort, MoxiPort, RestPort, CouchPort} = gen_ports(N),
 
-    ok = start_node(Node, MemcPort, MoxiPort, RestPort),
+    ok = start_node(Node, MemcPort, MoxiPort, RestPort, CouchPort),
     ok = rpc:call(Node, ns_bootstrap, start, []),
 
     start_cluster(Nodes, N + 1, [Node | Acc]).
 
 
-start_node(Name, MemcPort, MoxiPort, RestPort) ->
+start_node(Name, MemcPort, MoxiPort, RestPort, CouchPort) ->
 
     {ok, [Paths]} = init:get_argument(pa),
 
@@ -32,10 +32,16 @@ start_node(Name, MemcPort, MoxiPort, RestPort) ->
 
     filelib:ensure_dir("logs/" ++ SName ++ "/"),
 
+    MkCouch = os:cmd(string:join(["./mkcouch.sh", SName, i2l(CouchPort)], " ")),
+    io:format("mkcouch: ~p~n", [MkCouch]),
+
     Cmd = ["erl"
            , "-name", atom_to_list(Name)
            , "-setcookie", erlang:get_cookie()
            , "-detached "
+           , "-couch_ini"
+           , "lib/couchdb/etc/couchdb/default.ini"
+           , "couch/" ++ SName ++ "_conf.ini"
            , "-ns_server"
            , "error_logger_mf_dir", LogDir
            , "error_logger_mf_maxbytes", 10485760
@@ -58,7 +64,7 @@ stop_node(Node) ->
 
 
 gen_ports(N) ->
-    {12000 + (N * 2), 12001 + (N * 2), 9000 + N}.
+    {12000 + (N * 2), 12001 + (N * 2), 9000 + N, 9500 + N}.
 
 
 wait_for_pong(_Node, 0) ->

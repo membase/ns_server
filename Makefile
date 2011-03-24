@@ -2,7 +2,7 @@
 # All rights reserved.
 SHELL=/bin/sh
 
-EBIN_PATHS=`find "$(PWD)" -name ebin -type d`
+EBIN_PATHS=`find -L "$(PWD)" -name ebin -type d`
 EFLAGS=-pa ./ebin ./deps/*/ebin ./deps/*/deps/*/ebin
 
 NS_SERVER_PLT ?= ns_server.plt
