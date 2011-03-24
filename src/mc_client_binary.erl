@@ -21,6 +21,8 @@
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
 
+-define(VB_DELETE_TIMEOUT, 30000).
+
 -export([auth/2,
          cmd/5,
          create_bucket/4,
@@ -170,7 +172,8 @@ delete_bucket(Sock, BucketName, Options) ->
 
 delete_vbucket(Sock, VBucket) ->
     case cmd(?CMD_DELETE_VBUCKET, Sock, undefined, undefined,
-             {#mc_header{vbucket = VBucket}, #mc_entry{}}) of
+             {#mc_header{vbucket = VBucket}, #mc_entry{}},
+             ?VB_DELETE_TIMEOUT) of
         {ok, #mc_header{status=?SUCCESS}, _ME, _NCB} ->
             ok;
         Response -> process_error_response(Response)
