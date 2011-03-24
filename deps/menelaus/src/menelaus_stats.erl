@@ -390,7 +390,7 @@ gather_op_stats(Bucket, Nodes, Params) ->
     Self = self(),
     Ref = make_ref(),
     Subscription = ns_pubsub:subscribe(ns_stats_event, fun (_, done) -> done;
-                                                           ({sample_archived, _, _}, _) ->
+                                                           ({sample_archived, Name, _}, _) when Name =:= Bucket ->
                                                                Self ! Ref,
                                                                done;
                                                            (_, X) -> X
