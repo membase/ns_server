@@ -48,6 +48,7 @@
 -define(REBALANCE_NOT_STARTED, 3).
 -define(REBALANCE_STARTED, 4).
 -define(REBALANCE_PROGRESS, 5).
+-define(FAILOVER_NODE, 6).
 
 %% gen_fsm callbacks
 -export([code_change/4,
@@ -250,6 +251,7 @@ idle({delete_bucket, BucketName}, _From, State) ->
 idle({failover, Node}, _From, State) ->
     ?log_info("Failing over ~p", [Node]),
     Result = ns_rebalancer:failover(Node),
+    ns_log:log(?MODULE, ?FAILOVER_NODE, "Failed over ~p: ~p", [Node, Result]),
     {reply, Result, idle, State};
 idle(rebalance_progress, _From, State) ->
     {reply, not_running, idle, State};
