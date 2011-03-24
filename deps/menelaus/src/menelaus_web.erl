@@ -642,7 +642,7 @@ handle_streaming(F, Req, HTTPRes, LastRes) ->
         _ ->
             error_logger:info_msg("menelaus_web streaming socket closed by client~n"),
             exit(normal)
-    after 5000 ->
+    after 25000 ->
         ok
     end,
     handle_streaming(F, Req, HTTPRes, Res).
