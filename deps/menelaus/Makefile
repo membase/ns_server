@@ -12,7 +12,7 @@ REBAR=../../rebar
 # up-to-date
 .PHONY: $(TMP_VER)
 
-all: deps ebins
+all: deps ebins priv/public/js/dev/all-images.js
 
 ebins: src/menelaus.app.src
 	test -d ebin || mkdir ebin
