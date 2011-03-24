@@ -11,7 +11,7 @@ if [ -z "$DONT_START_EPMD" ]; then
   erl -noshell -setcookie nocookie -sname init -run init stop 2>&1 > /dev/null
 fi
 
-./mkcouch n_0 9500
+./mkcouch.sh n_0 9500
 
 exec erl \
     +A 16 \
