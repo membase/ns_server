@@ -534,7 +534,7 @@ var StatGraphs = {
             ]
           }, {
             blockName: "vBUCKET RESOURCES",
-            extraCSSClasses: 'withtotal',
+            extraCSSClasses: 'withtotal closed',
             columns: ['Active', 'Replica', 'Pending', 'Total'],
             stats: [
               {desc: "active vBuckets", name: "vb_active_num"},
@@ -580,7 +580,7 @@ var StatGraphs = {
             ]
           }, {
             blockName: "DISK QUEUES",
-            extraCSSClasses: 'withtotal',
+            extraCSSClasses: 'withtotal closed',
             columns: ['Active', 'Replica', 'Pending', 'Total'],
             stats: [
               // {desc: "Active", name: ""},
@@ -615,7 +615,7 @@ var StatGraphs = {
             ]
           }, {
             blockName: "TAP QUEUES",
-            extraCSSClasses: 'withtotal',
+            extraCSSClasses: 'withtotal closed',
             columns: ['Replication', 'Rebalance', 'Clients', 'Total'],
             stats: [
               // {desc: "Replica", name: ""},
