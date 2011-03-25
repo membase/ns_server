@@ -1,8 +1,9 @@
 #!/bin/sh
 # Copyright (c) 2011, Membase, Inc.
 # All rights reserved.
-basedir=${0##*/}
-cd "$basedir"
+basename=${0##*/}
+dirname=${0%"$basename"}
+cd "$dirname"
 
 mkdir logs > /dev/null 2>&1
 
