@@ -181,7 +181,7 @@ var OverviewSection = {
     var breakInterval;
     if (tstamps.length > 1)
       breakInterval = (tstamps[tstamps.length-1] - tstamps[0])/30;
-    plotStatGraph(graphJQ, stats, attr, {
+    plotStatGraph(graphJQ, stats[attr], tstamps, {
       lastSampleTime: now,
       breakInterval: breakInterval,
       processPlotOptions: function (plotOptions, plotDatas) {

@@ -855,14 +855,12 @@ function buildPlotSeries(data, tstamps, breakInterval, timeOffset) {
 }
 
 
-function plotStatGraph(graphJQ, stats, attr, options) {
+function plotStatGraph(graphJQ, data, tstamps, options) {
   options = _.extend({
     color: '#1d88ad',
     verticalMargin: 1.15,
     targetPointsCount: 120
   }, options || {});
-  var data = stats[attr] || [];
-  var tstamps = stats.timestamp;
   var timeOffset = options.timeOffset || 0;
   var breakInterval = options.breakInterval || 3.1557e+10;
   var lastSampleTime;

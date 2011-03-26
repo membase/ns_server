@@ -416,7 +416,7 @@ var StatGraphs = {
 
     maybeReloadAppDueToLeak();
 
-    plotStatGraph(main, stats, selected.name, {
+    plotStatGraph(main, stats[selected.name], stats.timestamp, {
       color: '#1d88ad',
       verticalMargin: 1.02,
       fixedTimeWidth: zoomMillis,
