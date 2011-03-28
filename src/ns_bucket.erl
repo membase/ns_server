@@ -368,19 +368,25 @@ json_map_from_config(LocalAddr, BucketConfig) ->
                                end,
                         list_to_binary(Host ++ ":" ++ integer_to_list(Port))
                 end, ENodes),
-    {_, NodesToPositions}
+    {_, NodesToPositions0}
         = lists:foldl(fun (N, {Pos,Dict}) ->
                               {Pos+1, dict:store(N, Pos, Dict)}
                       end, {0, dict:new()}, ENodes),
-    Map = lists:map(fun (Chain) ->
-                            lists:map(fun (undefined) -> -1;
-                                          (N) -> dict:fetch(N, NodesToPositions)
-                                      end, Chain)
-                    end, EMap),
+    NodesToPositions = dict:store(undefined, -1, NodesToPositions0),
+    Map = [[dict:fetch(N, NodesToPositions) || N <- Chain] || Chain <- EMap],
+    FastForwardMapList =
+        case proplists:get_value(fastForwardMap, BucketConfig) of
+            undefined -> [];
+            FFM ->
+                [{vBucketMapForward,
+                  [[dict:fetch(N, NodesToPositions) || N <- Chain]
+                   || Chain <- FFM]}]
+        end,
     {struct, [{hashAlgorithm, <<"CRC">>},
               {numReplicas, NumReplicas},
               {serverList, Servers},
-              {vBucketMap, Map}]}.
+              {vBucketMap, Map} |
+              FastForwardMapList]}.
 
 set_bucket_config(Bucket, NewConfig) ->
     update_bucket_config(Bucket, fun (_) -> NewConfig end).
