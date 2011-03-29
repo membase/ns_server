@@ -31,6 +31,7 @@
          flush/1,
          get_vbucket/2,
          list_buckets/1,
+         get_last_closed_checkpoint/2,
          noop/1,
          select_bucket/2,
          set_flush_param/3,
@@ -51,6 +52,7 @@
                      ?CMD_LIST_BUCKETS | ?CMD_EXPAND_BUCKET |
                      ?CMD_SELECT_BUCKET | ?CMD_SET_FLUSH_PARAM |
                      ?CMD_SET_VBUCKET | ?CMD_GET_VBUCKET | ?CMD_DELETE_VBUCKET |
+                     ?CMD_LAST_CLOSED_CHECKPOINT |
                      ?RGET | ?RSET | ?RSETQ | ?RAPPEND | ?RAPPENDQ | ?RPREPEND |
                      ?RPREPENDQ | ?RDELETE | ?RDELETEQ | ?RINCR | ?RINCRQ |
                      ?RDECR | ?RDECRQ.
@@ -214,6 +216,16 @@ list_buckets(Sock) ->
         Response -> process_error_response(Response)
     end.
 
+get_last_closed_checkpoint(Sock, VBucket) ->
+    case cmd(?CMD_LAST_CLOSED_CHECKPOINT, Sock, undefined, undefined,
+            {#mc_header{vbucket = VBucket},
+             #mc_entry{}}) of
+        {ok, #mc_header{status=?SUCCESS}, #mc_entry{data=CheckpointBin}, _NCB} ->
+            <<Checkpoint:64>> = CheckpointBin,
+            {ok, Checkpoint};
+        Response -> process_error_response(Response)
+    end.
+
 noop(Sock) ->
     case cmd(?NOOP, Sock, undefined, undefined, {#mc_header{}, #mc_entry{}}) of
         {ok, #mc_header{status=?SUCCESS}, #mc_entry{}, _NCB} ->
@@ -286,17 +298,27 @@ tap_connect(Sock, Opts) ->
         case proplists:get_bool(takeover, Opts) of
             true  -> ?TAKEOVER_VBUCKETS;
             false -> 0
+        end bor
+        case proplists:get_value(checkpoints, Opts) of
+            undefined -> 0;
+            _ -> ?CHECKPOINT
         end,
     Timestamp = 0,
     Extra = case proplists:get_value(vbuckets, Opts) of
                 undefined ->
-                    [];
+                    <<>>;
                 VBuckets ->
                     NumVBuckets = length(VBuckets),
-                    [<<NumVBuckets:16>> | [<<VBucket:16>> || VBucket <-
-                                                                 VBuckets]]
+                    <<NumVBuckets:16, << <<VBucket:16>> || VBucket <- VBuckets>>/binary >>
             end,
-    Data = list_to_binary([<<Timestamp:64>> | Extra]),
+    CheckpointMap = case proplists:get_value(checkpoints, Opts) of
+                    undefined ->
+                        <<>>;
+                    Pairs ->
+                        NumPairs = length(Pairs),
+                        <<NumPairs:16, << <<VBucket:16, Checkpoint:64>> || {VBucket, Checkpoint} <- Pairs>>/binary >>
+                    end,
+    Data = <<Timestamp:64, Extra/binary, CheckpointMap/binary>>,
     cmd(?TAP_CONNECT, Sock, undefined, undefined,
         {#mc_header{}, #mc_entry{key = proplists:get_value(name, Opts),
                                  ext = <<Flags:32>>,

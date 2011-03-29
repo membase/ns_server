@@ -121,7 +121,12 @@ init({Src, Dst, Opts}) ->
               ok = mc_client_binary:set_vbucket(Downstream, VBucket, replica)
       end, VBuckets),
     Upstream = connect(Src, Username, Password, Bucket),
+    Checkpoints = case [{V, C} || {V, {ok, C}} <- [{Vb, mc_client_binary:get_last_closed_checkpoint(Downstream, Vb)} || Vb <- VBuckets]] of
+                       [] -> undefined;
+                       CheckpointMap -> CheckpointMap
+                  end,
     {ok, quiet} = mc_client_binary:tap_connect(Upstream, [{vbuckets, VBuckets},
+                                                          {checkpoints, Checkpoints},
                                                           {name, Name},
                                                           {takeover, TakeOver}]),
     ok = inet:setopts(Upstream, [{active, once}]),

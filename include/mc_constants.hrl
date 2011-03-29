@@ -46,6 +46,8 @@
 -define(CMD_GET_VBUCKET,     16#3e).
 -define(CMD_DELETE_VBUCKET,  16#3f).
 
+-define(CMD_LAST_CLOSED_CHECKPOINT,  16#97).
+
 -define(RGET,        16#30).
 -define(RSET,        16#31).
 -define(RSETQ,       16#32).
@@ -89,9 +91,10 @@
 -define(VB_STATE_DEAD, 4).
 
 % TAP flags
--define(BACKFILL,          2#000001).
--define(DUMP,              2#000010).
--define(LIST_VBUCKETS,     2#000100).
--define(TAKEOVER_VBUCKETS, 2#001000).
--define(SUPPORT_ACK,       2#010000).
--define(KEYS_ONLY,         2#100000).
+-define(BACKFILL,          2#0000001).
+-define(DUMP,              2#0000010).
+-define(LIST_VBUCKETS,     2#0000100).
+-define(TAKEOVER_VBUCKETS, 2#0001000).
+-define(SUPPORT_ACK,       2#0010000).
+-define(KEYS_ONLY,         2#0100000).
+-define(CHECKPOINT,        2#1000000).
