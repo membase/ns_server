@@ -111,7 +111,8 @@ build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
     %% how Enyim decides to use ketama
     Suffix1 = case BucketType of
                   membase ->
-                      [{vBucketServerMap, ns_bucket:json_map(Id, LocalAddr)} |
+                      [{vBucketServerMap, ns_bucket:json_map_from_config(
+                                            LocalAddr, BucketConfig)} |
                        Suffix];
                   memcached ->
                       Suffix

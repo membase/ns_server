@@ -36,7 +36,6 @@
          is_persistent/1,
          is_port_free/2,
          is_valid_bucket_name/1,
-         json_map/2,
          json_map_from_config/2,
          live_bucket_nodes/1,
          map_to_replicas/1,
@@ -327,10 +326,6 @@ moxi_port(Bucket) ->
 
 bucket_nodes(Bucket) ->
     proplists:get_value(servers, Bucket).
-
-json_map(BucketId, LocalAddr) ->
-    {ok, BucketConfig} = get_bucket(BucketId),
-    json_map_from_config(LocalAddr, BucketConfig).
 
 json_map_from_config(LocalAddr, BucketConfig) ->
     NumReplicas = num_replicas(BucketConfig),
