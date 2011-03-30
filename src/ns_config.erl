@@ -338,6 +338,11 @@ search_raw([KVList | Rest], Key) ->
         {value, {Key, V}} -> {value, V};
         _                 -> search_raw(Rest, Key)
     end;
+search_raw({config, _Init, SL, DL, _PolicyMod}, Key) ->
+    case search_raw(DL, Key) of
+        {value, _} = R -> R;
+        false          -> search_raw(SL, Key)
+    end;
 search_raw(#config{dynamic = DL, static = SL}, Key) ->
     case search_raw(DL, Key) of
         {value, _} = R -> R;
@@ -472,7 +477,11 @@ handle_call(reannounce, _From, State) ->
     announce_changes(config_dynamic(State)),
     {reply, ok, State};
 
-handle_call(get, _From, State) -> {reply, State, State};
+handle_call(get, _From, State) ->
+    CompatibleState = {config, {}, State#config.static, State#config.dynamic, State#config.policy_mod},
+    {reply, CompatibleState, State};
+
+handle_call(get_raw, _From, State) -> {reply, State, State};
 
 handle_call({replace, KVList}, _From, State) ->
     {reply, ok, State#config{dynamic = [KVList]}};
@@ -524,7 +533,11 @@ handle_call({merge, KVList}, From, State) ->
 %       and should instead be smushing all the dynamic KVLists together?
 config_dynamic(#config{dynamic = [X | _]}) -> X;
 config_dynamic(#config{dynamic = []})      -> [];
-config_dynamic(X)                          -> X.
+config_dynamic({config, _Init, _Static, Dynamic, _PolicyMod}) ->
+    case Dynamic of
+        [] -> Dynamic;
+        [X | _] -> X
+    end.
 
 %%--------------------------------------------------------------------
 
@@ -915,14 +928,14 @@ test_with_saver_stop() ->
 test_with_saver_set_and_stop() ->
     do_test_with_saver(fun (_Pid) ->
                                %% check that pending_more_save is false
-                               Cfg1 = ns_config:get(),
+                               Cfg1 = gen_server:call(ns_config, get_raw),
                                ?assertEqual(false, Cfg1#config.pending_more_save),
 
                                %% send last mutation
                                ns_config:set(d, 10),
 
                                %% check that pending_more_save is false
-                               Cfg2 = ns_config:get(),
+                               Cfg2 = gen_server:call(ns_config, get_raw),
                                ?assertEqual(true, Cfg2#config.pending_more_save),
 
                                %% and kill ns_config
@@ -963,7 +976,7 @@ do_test_with_saver(KillerFn, PostKillerFn) ->
     fail_on_incoming_message(),
 
     %% and actually check that pending_more_save is true
-    Cfg1 = ns_config:get(),
+    Cfg1 = gen_server:call(ns_config, get_raw),
     ?assertEqual(true, Cfg1#config.pending_more_save),
 
     %% now signal save completed
@@ -974,7 +987,7 @@ do_test_with_saver(KillerFn, PostKillerFn) ->
                           {saving, R1, C1, P1} -> {C1, R1, P1}
                       end,
 
-    Cfg2 = ns_config:get(),
+    Cfg2 = gen_server:call(ns_config, get_raw),
     ?assertEqual(false, Cfg2#config.pending_more_save),
 
     Pid = whereis(ns_config),
