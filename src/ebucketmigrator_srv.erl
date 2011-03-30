@@ -28,7 +28,8 @@
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
--record(state, {upstream :: port(),
+-record(state, {bad_vbucket_count = 0 :: non_neg_integer(),
+                upstream :: port(),
                 downstream :: port(),
                 upbuf = <<>> :: binary(),
                 downbuf = <<>> :: binary(),
@@ -229,36 +230,36 @@ process_upstream(<<?REQ_MAGIC:8, Opcode:8, KeyLen:16, ExtLen:8, _DataType:8,
                      Packet,
                  #state{downstream=Downstream, vbuckets=VBuckets} = State)
   when ExtLen >= 8 ->
-    State1 =
-        case Opcode of
-            ?TAP_OPAQUE ->
-                State;
-            ?TAP_VBUCKET ->
-                validate_vbucket(VBucket, VBuckets),
-                0 = KeyLen,
-                8 = ExtLen,
-                <<VBState:32>> = Rest,
-                case VBState of
-                    ?VB_STATE_ACTIVE ->
-                        true = State#state.takeover,
-                        %% VBucket has been transferred, count it
-                        State#state{takeover_msgs_seen =
-                                        State#state.takeover_msgs_seen + 1};
+    case Opcode of
+        ?TAP_OPAQUE ->
+            ok = gen_tcp:send(Downstream, Packet),
+            State;
+        _ ->
+            State1 =
+                case Opcode of
+                    ?TAP_VBUCKET ->
+                        0 = KeyLen,
+                        8 = ExtLen,
+                        case Rest of
+                            <<?VB_STATE_ACTIVE:32>> ->
+                                true = State#state.takeover,
+                                %% VBucket has been transferred, count it
+                                State#state{takeover_msgs_seen =
+                                                State#state.takeover_msgs_seen
+                                            + 1};
+                            <<_:32>> -> % Make sure it's still a 32 bit value
+                                State
+                        end;
                     _ ->
                         State
-                end;
-            _ ->
-                validate_vbucket(VBucket, VBuckets),
-                State
-        end,
-    ok = gen_tcp:send(Downstream, Packet),
-    State1.
-
-
-validate_vbucket(VBucket, VBuckets) ->
-    case sets:is_element(VBucket, VBuckets) of
-        true ->
-            ok;
-        false ->
-            exit({bad_vbucket, VBucket})
+                end,
+            case sets:is_element(VBucket, VBuckets) of
+                true ->
+                    ok = gen_tcp:send(Downstream, Packet),
+                    State1;
+                false ->
+                    %% Filter it out and count it
+                    State1#state{bad_vbucket_count =
+                                     State1#state.bad_vbucket_count + 1}
+            end
     end.
