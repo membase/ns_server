@@ -86,7 +86,9 @@ node_vbuckets(I, Node, States, Map) ->
         {V, Style} <- lists:ukeymerge(1, GState, GMap)].
 
 graphviz(Bucket) ->
-    {_, _, Map, Servers} = ns_bucket:config(Bucket),
+    {ok, Config} = ns_bucket:get_bucket(Bucket),
+    Map = proplists:get_value(map, Config, []),
+    Servers = proplists:get_value(servers, Config, []),
     {ok, States, Zombies} = current_states(Servers, Bucket),
     Nodes = lists:sort(Servers),
     NodeColors = lists:map(fun (Node) ->

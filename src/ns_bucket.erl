@@ -22,7 +22,6 @@
 -export([auth_type/1,
          bucket_nodes/1,
          bucket_type/1,
-         config/1,
          config_string/1,
          create_bucket/3,
          credentials/1,
@@ -60,21 +59,6 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-
-config(Bucket) ->
-    {ok, CurrentConfig} = get_bucket(Bucket),
-    config_from_info(CurrentConfig).
-
-config_from_info(CurrentConfig) ->
-    NumReplicas = proplists:get_value(num_replicas, CurrentConfig),
-    NumVBuckets = proplists:get_value(num_vbuckets, CurrentConfig),
-    Map = case proplists:get_value(map, CurrentConfig) of
-              undefined -> lists:duplicate(NumVBuckets, lists:duplicate(NumReplicas+1, undefined));
-              M -> M
-          end,
-    Servers = proplists:get_value(servers, CurrentConfig),
-    {NumReplicas, NumVBuckets, Map, Servers}.
-
 
 %% @doc Configuration parameters to start up the bucket on a node.
 config_string(BucketName) ->
@@ -351,7 +335,9 @@ json_map(BucketId, LocalAddr) ->
 json_map_from_config(LocalAddr, BucketConfig) ->
     NumReplicas = num_replicas(BucketConfig),
     Config = ns_config:get(),
-    {NumReplicas, _, EMap, BucketNodes} = config_from_info(BucketConfig),
+    NumReplicas = proplists:get_value(num_replicas, BucketConfig),
+    EMap = proplists:get_value(map, BucketConfig, []),
+    BucketNodes = proplists:get_value(servers, BucketConfig, []),
     ENodes0 = lists:delete(undefined, lists:usort(lists:append([BucketNodes |
                                                                 EMap]))),
     ENodes = case lists:member(node(), ENodes0) of
