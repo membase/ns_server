@@ -24,29 +24,31 @@
 
 -spec cleanup(string()) -> ok.
 cleanup(Bucket) ->
+    {ok, Config} = ns_bucket:get_bucket(Bucket),
     {Map, Servers} =
-        case ns_bucket:config(Bucket) of
-            {NumReplicas, NumVBuckets, _, []} ->
+        case proplists:get_value(map, Config) of
+            X when X == undefined; X == [] ->
                 S = ns_cluster_membership:active_nodes(),
-                M = ns_rebalancer:generate_initial_map(NumReplicas, NumVBuckets,
-                                                       S),
-                ns_bucket:set_servers(Bucket, S),
-                ns_bucket:set_map(Bucket, M),
+                Config1 = lists:keystore(servers, 1, Config, {servers, S}),
+                M = ns_rebalancer:generate_initial_map(Config1),
+                Config2 = lists:keystore(map, 1, Config1, {map, M}),
+                ns_bucket:set_bucket_config(Bucket, Config2),
                 {M, S};
-            {_, _, M, S} ->
-                {M, S}
+            M ->
+                {M, proplists:get_value(servers, Config)}
         end,
     case Servers of
         [] -> ok;
         _ ->
             case wait_for_memcached(Servers, Bucket, 5) of
                 [] ->
-                    Map1 = case sanify(Bucket, Map, Servers) of
-                               Map -> Map;
-                               MapNew ->
-                                   ns_bucket:set_map(Bucket, MapNew),
-                                   MapNew
-                           end,
+                    Map1 =
+                        case sanify(Bucket, Map, Servers) of
+                            Map -> Map;
+                            MapNew ->
+                                ns_bucket:set_map(Bucket, MapNew),
+                                MapNew
+                        end,
                     Replicas = lists:keysort(1, ns_bucket:map_to_replicas(Map1)),
                     ReplicaGroups = lists:ukeymerge(1, misc:keygroup(1, Replicas),
                                                     [{N, []} || N <- lists:sort(Servers)]),

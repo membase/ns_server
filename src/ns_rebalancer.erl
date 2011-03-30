@@ -24,7 +24,7 @@
 -include("ns_common.hrl").
 
 -export([failover/1,
-         generate_initial_map/3,
+         generate_initial_map/1,
          rebalance/3,
          unbalanced/2]).
 
@@ -70,10 +70,13 @@ failover(Bucket, Node) ->
     end.
 
 
-generate_initial_map(NumReplicas, NumVBuckets, Servers) ->
-    Chain = lists:duplicate(NumReplicas + 1, undefined),
-    Map = lists:duplicate(NumVBuckets, Chain),
-    mb_map:balance(Map, Servers, [{max_slaves, 10}]).
+generate_initial_map(BucketConfig) ->
+    Chain = lists:duplicate(proplists:get_value(num_replicas, BucketConfig) + 1,
+                            undefined),
+    Map1 = lists:duplicate(proplists:get_value(num_vbuckets, BucketConfig),
+                          Chain),
+    Servers = proplists:get_value(servers, BucketConfig),
+    mb_map:balance(Map1, Servers, config_to_opts(BucketConfig)).
 
 
 rebalance(KeepNodes, EjectNodes, FailedNodes) ->
@@ -82,10 +85,13 @@ rebalance(KeepNodes, EjectNodes, FailedNodes) ->
     DeactivateNodes = EjectNodes ++ FailedNodes,
     BucketConfigs = ns_bucket:get_buckets(),
     NumBuckets = length(BucketConfigs),
+    ?log_info("BucketConfigs = ~p", [BucketConfigs]),
     try
         %% Eject failed nodes first so they don't cause trouble
         eject_nodes(FailedNodes -- [node()]),
         lists:foreach(fun ({I, {BucketName, BucketConfig}}) ->
+                              ?log_info("Rebalancing bucket ~p with config ~p",
+                                        [BucketName, BucketConfig]),
                               BucketCompletion = I / NumBuckets,
                               ns_orchestrator:update_progress(
                                 dict:from_list([{N, BucketCompletion}
@@ -99,8 +105,8 @@ rebalance(KeepNodes, EjectNodes, FailedNodes) ->
                                       ns_bucket:set_servers(BucketName, LiveNodes),
                                       wait_for_memcached(LiveNodes, BucketName, 10),
                                       ns_janitor:cleanup(BucketName),
-                                      rebalance(BucketName, KeepNodes,
-                                                BucketCompletion,
+                                      rebalance(BucketName, BucketConfig,
+                                                KeepNodes, BucketCompletion,
                                                 NumBuckets)
                               end
                       end, misc:enumerate(BucketConfigs, 0))
@@ -127,12 +133,13 @@ rebalance(KeepNodes, EjectNodes, FailedNodes) ->
 %% @doc Rebalance the cluster. Operates on a single bucket. Will
 %% either return ok or exit with reason 'stopped' or whatever reason
 %% was given by whatever failed.
-rebalance(Bucket, KeepNodes, BucketCompletion, NumBuckets) ->
+rebalance(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets) ->
     %% MB-3195: Shut down replication to avoid competing with
     %% rebalance and causing spurious errors.
     ns_vbm_sup:set_replicas(Bucket, []),
-    {_, _, Map, _} = ns_bucket:config(Bucket),
-    FastForwardMap = mb_map:balance(Map, KeepNodes, [{max_slaves, 10}]),
+    Map = proplists:get_value(map, Config),
+    Opts = config_to_opts(Config),
+    FastForwardMap = mb_map:balance(Map, KeepNodes, Opts),
     ?log_info("Target map: ~p", [FastForwardMap]),
     ns_bucket:set_fast_forward_map(Bucket, FastForwardMap),
     ProgressFun =
@@ -169,6 +176,13 @@ unbalanced(Map, Servers) ->
 %%
 %% Internal functions
 %%
+
+%% @private
+%% @doc Generate rebalance options from a bucket config. This allows
+%% us to manage defaults and add options in one place.
+config_to_opts(Config) ->
+    [{max_slaves, proplists:get_value(max_slaves, Config, 10)}].
+
 
 %% @doc Eject a list of nodes from the cluster, making sure this node is last.
 eject_nodes(Nodes) ->
