@@ -108,14 +108,14 @@ init({Src, Dst, Opts}) ->
     Bucket = proplists:get_value(bucket, Opts),
     VBuckets = proplists:get_value(vbuckets, Opts),
     TakeOver = proplists:get_bool(takeover, Opts),
-    proc_lib:init_ack({ok, self()}),
-    Downstream = connect(Dst, Username, Password, Bucket),
-    Upstream = connect(Src, Username, Password, Bucket),
     TapSuffix = proplists:get_value(suffix, Opts),
     Name = case TakeOver of
                true -> "rebalance_" ++ TapSuffix;
                _ -> "replication_" ++ TapSuffix
            end,
+    proc_lib:init_ack({ok, self()}),
+    Downstream = connect(Dst, Username, Password, Bucket),
+    Upstream = connect(Src, Username, Password, Bucket),
     {ok, quiet} = mc_client_binary:tap_connect(Upstream, [{vbuckets, VBuckets},
                                                           {name, Name},
                                                           {takeover, TakeOver}]),
