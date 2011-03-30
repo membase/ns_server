@@ -218,8 +218,8 @@ handle_specific_stat_for_buckets(PoolId, Id, StatName, Req) ->
 %%         menelaus_util:server_header(),
 %%         <<"{
 %%     \"timestamp\": [1,2,3,4,5],
-%%     \"nodes\": [{\"hostname\": \"127.0.0.1:9000\", \"stat\": [1,2,3,4,5]},
-%%                 {\"hostname\": \"127.0.0.1:9001\", \"stat\": [1,2,3,4,5]}]
+%%     \"nodes\": [{\"127.0.0.1:9000\": {\"stat\": [1,2,3,4,5]}},
+%%                 {\"127.0.0.1:9001\": {\"stat\": [1,2,3,4,5]}}]
 %%   }">>}).
 handle_specific_stat_for_buckets_group_per_node(PoolId, BucketName, StatName, Req) ->
     menelaus_web_buckets:checking_bucket_access(
@@ -297,11 +297,10 @@ build_per_node_stats(BucketName, StatName, Params, LocalAddr) ->
                                 end},
                    {interval, Step * 1000},
                    {timestamp, Timestamps},
-                   {nodes, lists:zipwith(fun (H, VS) ->
-                                                 {struct, [{hostname, H},
-                                                           {stat, VS}]}
+                   {nodes, {struct, lists:zipwith(fun (H, VS) ->
+                                                 {H, {struct, [{stat, VS}]}}
                                          end,
-                                         Hostnames, [MainValues | AllignedRestValues])}],
+                                         Hostnames, [MainValues | AllignedRestValues])}}],
     OpPropList = case ClientTStamp of
                      undefined -> OpPropList0;
                      _ -> [{tstampParam, ClientTStamp}
