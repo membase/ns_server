@@ -224,12 +224,11 @@ process_downstream(<<?RES_MAGIC:8, _/binary>> = Packet,
 %% @doc Process a packet from the upstream server.
 -spec process_upstream(<<_:64,_:_*8>>, #state{}) ->
                               #state{}.
-process_upstream(<<?REQ_MAGIC:8, Opcode:8, KeyLen:16, ExtLen:8, _DataType:8,
+process_upstream(<<?REQ_MAGIC:8, Opcode:8, _KeyLen:16, _ExtLen:8, _DataType:8,
                    VBucket:16, _BodyLen:32, _Opaque:32, _CAS:64, _EnginePriv:16,
                    _Flags:16, _TTL:8, _Res1:8, _Res2:8, _Res3:8, Rest/binary>> =
                      Packet,
-                 #state{downstream=Downstream, vbuckets=VBuckets} = State)
-  when ExtLen >= 8 ->
+                 #state{downstream=Downstream, vbuckets=VBuckets} = State) ->
     case Opcode of
         ?TAP_OPAQUE ->
             ok = gen_tcp:send(Downstream, Packet),
@@ -238,8 +237,6 @@ process_upstream(<<?REQ_MAGIC:8, Opcode:8, KeyLen:16, ExtLen:8, _DataType:8,
             State1 =
                 case Opcode of
                     ?TAP_VBUCKET ->
-                        0 = KeyLen,
-                        8 = ExtLen,
                         case Rest of
                             <<?VB_STATE_ACTIVE:32>> ->
                                 true = State#state.takeover,
