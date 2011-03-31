@@ -14,7 +14,7 @@
 /features/Makefile
 /lib
 /ns_server.plt
-/priv/public/js/dev/all-images.js
+/priv/public/js/all-images.js
 /src/ns_server.app.src
 TAGS
 bin

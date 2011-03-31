@@ -22,7 +22,7 @@ REBAR=./rebar
 # up-to-date
 .PHONY: $(TMP_VER)
 
-all: ebins deps_all priv/public/js/dev/all-images.js
+all: ebins deps_all priv/public/js/all-images.js
 
 deps_smtp:
 	(cd deps/gen_smtp && $(MAKE) ebins)
@@ -45,7 +45,7 @@ ebins: src/ns_server.app.src
 src/ns_server.app.src: src/ns_server.app.src.in $(TMP_VER)
 	(sed s/0.0.0/`cat $(TMP_VER)`/g $< > $@) || (rm $@ && false)
 
-priv/public/js/dev/all-images.js: priv/public/images priv/public/images/spinner build-all-images.rb
+priv/public/js/all-images.js: priv/public/images priv/public/images/spinner build-all-images.rb
 	ruby build-all-images.rb >$@ || (rm $@ && false)
 
 $(TMP_VER):
