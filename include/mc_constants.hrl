@@ -98,3 +98,8 @@
 -define(SUPPORT_ACK,       2#0010000).
 -define(KEYS_ONLY,         2#0100000).
 -define(CHECKPOINT,        2#1000000).
+
+%% EP engine flags
+-define(TAP_OPAQUE_ENABLE_AUTO_NACK, 16#00).
+-define(TAP_OPAQUE_INITIAL_VBUCKET_STREAM, 16#01).
+-define(TAP_OPAQUE_ENABLE_CHECKPOINT_SYNC, 16#02).

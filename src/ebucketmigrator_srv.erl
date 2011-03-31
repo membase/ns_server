@@ -238,6 +238,13 @@ process_upstream(<<?REQ_MAGIC:8, Opcode:8, _KeyLen:16, _ExtLen:8, _DataType:8,
     case Opcode of
         ?TAP_OPAQUE ->
             ok = gen_tcp:send(Downstream, Packet),
+            case Rest of
+                <<?TAP_OPAQUE_INITIAL_VBUCKET_STREAM:32>> ->
+                    ?log_info("Initial stream for vbucket ~p",
+                              [VBucket]);
+                _ ->
+                    ok
+            end,
             State;
         _ ->
             State1 =
