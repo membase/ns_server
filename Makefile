@@ -63,8 +63,8 @@ install:
 		ebin \
 		deps/*/ebin \
 		deps/*/deps/*/ebin \
-		deps/menelaus/priv/public \
-		deps/menelaus/deps/erlwsh/priv | (cd $(PREFIX)/ns_server && tar xf -)
+		priv/public \
+		deps/erlwsh/priv | (cd $(PREFIX)/ns_server && tar xf -)
 	mkdir -p ns_server/bin ns_server/lib/memcached
 	ln -f -s $(REST_PREFIX)/bin/memcached $(NS_SERVER)/bin/memcached || true
 	ln -f -s $(REST_PREFIX)/lib/memcached/default_engine.so $(NS_SERVER)/lib/memcached/default_engine.so || true
@@ -85,15 +85,15 @@ bdist: clean ebins deps_all
                           ns_server/mbcollect_info \
                           ns_server/ebin \
                           ns_server/deps/*/ebin \
-                          ns_server/deps/*/deps/*/ebin \
-                          ns_server/deps/menelaus/priv/public \
-                          ns_server/deps/menelaus/deps/erlwsh/priv | gzip -9 -c > \
+                          ns_server/priv/public \
+                          ns_server/deps/erlwsh/priv | gzip -9 -c > \
                           ns_server/ns_server_`cat ns_server/$(TMP_VER)`.tar.gz )
 	echo created ns_server_`cat $(TMP_VER)`.tar.gz
 
 clean clean_all:
-	@(cd deps/menelaus && $(MAKE) clean)
 	@(cd deps/gen_smtp && $(MAKE) clean)
+	@(cd deps/mochiweb && $(MAKE) clean)
+	@(cd deps/erlwsh && $(MAKE) clean)
 	rm -f $(TMP_VER)
 	rm -f $(TMP_DIR)/*.cov.html
 	rm -f cov.html
@@ -123,28 +123,25 @@ common_tests: dataclean all
 
 test: test_$(OS)
 
-test_: test_unit test_menelaus
+test_: test_unit
 
-test_Windows_NT: test_unit test_menelaus
+test_Windows_NT: test_unit
 
 test_unit: ebins
 	erl $(EFLAGS) -noshell -kernel error_logger silent -shutdown_time 10000 -eval 'application:start(sasl).' -eval "case t:$(TEST_TARGET)() of ok -> init:stop(); _ -> init:stop(1) end."
-
-test_menelaus: deps/menelaus
-	(cd deps/menelaus; $(MAKE) test)
 
 # assuming exuberant-ctags
 TAGS:
 	ctags -eR .
 
 $(NS_SERVER_PLT):
-	dialyzer --output_plt $@ --build_plt -pa ebin --apps compiler crypto erts inets kernel mnesia os_mon sasl ssl stdlib xmerl -c deps/menelaus/deps/mochiweb/ebin deps/menelaus/deps/erlwsh/ebin
+	dialyzer --output_plt $@ --build_plt -pa ebin --apps compiler crypto erts inets kernel mnesia os_mon sasl ssl stdlib xmerl -c deps/mochiweb/ebin deps/erlwsh/ebin
 
 dialyzer: all $(NS_SERVER_PLT)
-	dialyzer --plt $(NS_SERVER_PLT) -pa ebin -c ebin -c deps/menelaus/ebin
+	dialyzer --plt $(NS_SERVER_PLT) -pa ebin -c ebin
 
 dialyzer_obsessive: all $(NS_SERVER_PLT)
-	dialyzer --plt $(NS_SERVER_PLT) -Wunmatched_returns -Werror_handling -Wrace_conditions -Wbehaviours -Wunderspecs -pa ebin -c ebin -c deps/menelaus/ebin
+	dialyzer --plt $(NS_SERVER_PLT) -Wunmatched_returns -Werror_handling -Wrace_conditions -Wbehaviours -Wunderspecs -pa ebin -c ebin
 
 dialyzer_rebar: all
 	$(REBAR) analyze
