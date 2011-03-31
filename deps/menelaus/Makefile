@@ -12,21 +12,11 @@ REBAR=../../rebar
 # up-to-date
 .PHONY: $(TMP_VER)
 
-all: deps ebins priv/public/js/dev/all-images.js
-
-ebins: src/menelaus.app.src
-	test -d ebin || mkdir ebin
-	$(REBAR) compile
-
-src/menelaus.app.src: src/menelaus.app.src.in $(TMP_VER)
-	(sed s/0.0.0/`cat $(TMP_VER)`/g $< > $@) || (rm $@ && false)
+all: deps
 
 $(TMP_VER):
 	test -d $(TMP_DIR) || mkdir $(TMP_DIR)
 	(git describe | sed s/-/_/g > $(TMP_VER)) || (rm $@ && false)
-
-priv/public/js/dev/all-images.js: priv/public/images priv/public/images/spinner build-all-images.rb
-	ruby build-all-images.rb >$@ || (rm $@ && false)
 
 deps:
 	test -d deps/mochiweb/ebin || mkdir deps/mochiweb/ebin
@@ -47,7 +37,6 @@ test: all
 
 bdist: clean all
 	test -d $(DIST_DIR)/deps/menelaus/priv || mkdir -p $(DIST_DIR)/deps/menelaus/priv
-	cp -R ebin $(DIST_DIR)/deps/menelaus
 	cp -R priv/public $(DIST_DIR)/deps/menelaus/priv/public
 	cp -R deps/mochiweb $(DIST_DIR)/deps/mochiweb
 	cp -R deps/erlwsh $(DIST_DIR)/deps/erlwsh

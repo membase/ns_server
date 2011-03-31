@@ -22,7 +22,7 @@ REBAR=./rebar
 # up-to-date
 .PHONY: $(TMP_VER)
 
-all: ebins deps_all
+all: ebins deps_all priv/public/js/dev/all-images.js
 
 deps_menelaus:
 	(cd deps/menelaus && $(MAKE) all)
@@ -40,6 +40,9 @@ ebins: src/ns_server.app.src
 
 src/ns_server.app.src: src/ns_server.app.src.in $(TMP_VER)
 	(sed s/0.0.0/`cat $(TMP_VER)`/g $< > $@) || (rm $@ && false)
+
+priv/public/js/dev/all-images.js: priv/public/images priv/public/images/spinner build-all-images.rb
+	ruby build-all-images.rb >$@ || (rm $@ && false)
 
 $(TMP_VER):
 	test -d $(TMP_DIR) || mkdir $(TMP_DIR)
