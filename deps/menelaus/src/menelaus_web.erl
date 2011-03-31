@@ -318,7 +318,7 @@ loop(Req, AppRoot, DocRoot) ->
 %% Internal API
 
 implementation_version() ->
-    list_to_binary(proplists:get_value(menelaus, ns_info:version(), "unknown")).
+    list_to_binary(proplists:get_value(ns_server, ns_info:version(), "unknown")).
 
 handle_pools(Req) ->
     Pools = [{struct,
