@@ -24,13 +24,17 @@ REBAR=./rebar
 
 all: ebins deps_all priv/public/js/dev/all-images.js
 
-deps_menelaus:
-	(cd deps/menelaus && $(MAKE) all)
-
 deps_smtp:
 	(cd deps/gen_smtp && $(MAKE) ebins)
 
-deps_all: deps_menelaus deps_smtp
+deps_mochiweb:
+	test -d deps/mochiweb/ebin || mkdir deps/mochiweb/ebin
+	(cd deps/mochiweb; $(MAKE))
+
+deps_erlwsh:
+	(cd deps/erlwsh; $(MAKE))
+
+deps_all: deps_smtp deps_mochiweb deps_erlwsh
 
 docs:
 	priv/erldocs $(DOC_DIR)
