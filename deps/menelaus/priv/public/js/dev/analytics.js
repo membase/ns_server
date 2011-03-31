@@ -817,8 +817,8 @@ var AnalyticsSection = {
           select.append(option);
         });
 
-        select.bind('change', onChange).combobox();
-        select.find('+input').val(select.find(':selected').text());
+        select.bind('change', onChange).combobox()
+          .next('input').val(select.children(':selected').text());
       });
     })();
 
@@ -870,8 +870,8 @@ var AnalyticsSection = {
           select.append(option);
         });
 
-        select.bind('change', onChange).combobox();
-        select.find('+input').val(select.find(':selected').text());
+        select.bind('change', onChange).combobox()
+          .next('input').val(select.children(':selected').text());
       });
     })();
   },
