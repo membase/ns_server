@@ -71,9 +71,9 @@ child_specs() ->
      {ns_doctor, {ns_doctor, start_link, []},
       permanent, 10, worker, [ns_doctor]},
 
-     {menelaus, {menelaus_app, start_subapp, []},
+     {menelaus, {menelaus_sup, start_link, []},
       permanent, infinity, supervisor,
-      [menelaus_app]},
+      [menelaus_sup]},
 
      {ns_port_sup, {ns_port_sup, start_link, []},
       permanent, 10, worker,

@@ -20,16 +20,39 @@
 
 -behaviour(supervisor).
 
+-define(START_OK, 1).
+-define(START_FAIL, 2).
+
 %% External exports
 -export([start_link/0, upgrade/0]).
 
 %% supervisor callbacks
 -export([init/1]).
 
+-export([ns_log_cat/1, ns_log_code_string/1]).
+
 %% @spec start_link() -> ServerRet
 %% @doc API for starting the supervisor.
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    Result = supervisor:start_link({local, ?MODULE}, ?MODULE, []),
+    WConfig = menelaus_web:webconfig(),
+    Port = proplists:get_value(port, WConfig),
+    case Result of
+        {ok, _Pid} ->
+            ns_log:log(?MODULE, ?START_OK,
+                       "Membase Server has started on web port ~p on node ~p.",
+                       [Port, node()]);
+        _Err ->
+            %% The exact error message is not logged here since this
+            %% is a supervisor start, but a more helpful message
+            %% should've been logged before.
+            ns_log:log(?MODULE, ?START_FAIL,
+                       "Membase Server has failed to start on web port ~p on node ~p. " ++
+                       "Perhaps another process has taken port ~p already? " ++
+                       "If so, please stop that process first before trying again.",
+                       [Port, node(), Port])
+    end,
+    Result.
 
 %% @spec upgrade() -> ok
 %% @doc Add processes if necessary.
@@ -71,3 +94,13 @@ init([]) ->
 
     Processes = [Web, WebEvent, HotKeysKeeper, Alerts],
     {ok, {{one_for_one, 10, 10}, Processes}}.
+
+ns_log_cat(?START_OK) ->
+    info;
+ns_log_cat(?START_FAIL) ->
+    crit.
+
+ns_log_code_string(?START_OK) ->
+    "web start ok";
+ns_log_code_string(?START_FAIL) ->
+    "web start fail".
