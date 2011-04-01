@@ -45,8 +45,8 @@ ebins: src/ns_server.app.src
 src/ns_server.app.src: src/ns_server.app.src.in $(TMP_VER)
 	(sed s/0.0.0/`cat $(TMP_VER)`/g $< > $@) || (rm $@ && false)
 
-priv/public/js/all-images.js: priv/public/images priv/public/images/spinner build-all-images.rb
-	ruby build-all-images.rb >$@ || (rm $@ && false)
+priv/public/js/all-images.js: priv/public/images priv/public/images/spinner scripts/build-all-images.rb
+	ruby scripts/build-all-images.rb >$@ || (rm $@ && false)
 
 $(TMP_VER):
 	test -d $(TMP_DIR) || mkdir $(TMP_DIR)
@@ -59,7 +59,7 @@ NS_SERVER := $(PREFIX)/ns_server
 
 install:
 	mkdir -p $(NS_SERVER)
-	tar cf - cluster_connect cluster_run mkcouch.sh mbcollect_info \
+	tar cf - cluster_connect cluster_run scripts/mkcouch.sh mbcollect_info \
 		ebin \
 		deps/*/ebin \
 		deps/*/deps/*/ebin \

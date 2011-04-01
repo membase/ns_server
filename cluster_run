@@ -38,7 +38,7 @@ def start_cluster(num_nodes, extra_args):
             os.makedirs(logdir)
         except:
             pass
-        subprocess.Popen(["./mkcouch.sh", "n_{0}".format(i), str(base_couch_port + i)]).communicate()
+        subprocess.Popen(["./scripts/mkcouch.sh", "n_{0}".format(i), str(base_couch_port + i)]).communicate()
         args = ["erl", "+A", "16", "-pa"] + ebin_path + [
             "-setcookie", "nocookie",
             "-kernel", "inet_dist_listen_min", "21100",

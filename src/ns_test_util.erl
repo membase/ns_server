@@ -32,7 +32,7 @@ start_node(Name, MemcPort, MoxiPort, RestPort, CouchPort) ->
 
     filelib:ensure_dir("logs/" ++ SName ++ "/"),
 
-    MkCouch = os:cmd(string:join(["./mkcouch.sh", SName, i2l(CouchPort)], " ")),
+    MkCouch = os:cmd(string:join(["./scripts/mkcouch.sh", SName, i2l(CouchPort)], " ")),
     io:format("mkcouch: ~p~n", [MkCouch]),
 
     Cmd = ["erl"
