@@ -19,8 +19,6 @@
 
 -include("ns_common.hrl").
 
--define(MAX_VBUCKETS, 512). %% Maximum # of vbuckets for a vbucketmigrator
-
 -record(child_id, {vbuckets::[non_neg_integer(), ...],
                    dest_node::atom()}).
 
@@ -103,18 +101,6 @@ set_replicas(Bucket, NodesReplicas) ->
 spawn_mover(Bucket, VBucket, SrcNode, DstNode) ->
     Args = args(SrcNode, Bucket, [VBucket], DstNode, true),
     apply(ebucketmigrator_srv, start_link, Args).
-
-split_vbuckets(VBuckets) ->
-    split_vbuckets(VBuckets, []).
-
-split_vbuckets(VBuckets, L) ->
-    if
-        length(VBuckets) =< ?MAX_VBUCKETS ->
-            [VBuckets|L];
-        true ->
-            {H, T} = lists:split(?MAX_VBUCKETS, VBuckets),
-            split_vbuckets(T, [H|L])
-    end.
 
 -spec kill_all_children(node(), bucket_name()) ->
                                ok.
@@ -245,18 +231,16 @@ start_child(Node, Bucket, VBuckets, DstNode) ->
 
 
 start_replicas(SrcNode, Bucket, VBuckets, DstNode) ->
+    SortedVBuckets = lists:usort(VBuckets),
     ?log_info("Starting replicator for vbuckets ~w in bucket ~p from node ~p to node ~p",
-              [VBuckets, Bucket, SrcNode, DstNode]),
+              [SortedVBuckets, Bucket, SrcNode, DstNode]),
     kill_vbuckets(DstNode, Bucket, VBuckets),
     lists:foreach(
       fun (V) ->
               ns_memcached:set_vbucket(DstNode, Bucket, V, replica)
       end, VBuckets),
     %% Make sure the command line doesn't get too long
-    lists:foreach(
-      fun (VB) ->
-              {ok, _Pid} = start_child(SrcNode, Bucket, VB, DstNode)
-      end, split_vbuckets(VBuckets)).
+    {ok, _Pid} = start_child(SrcNode, Bucket, VBuckets, DstNode).
 
 %% @doc Generate a unique name suffix that's valid for a TAP queue.
 unique_suffix(DstNode) ->
