@@ -335,36 +335,38 @@
           <div class="template" id="new_stats_block_template">
             {% _.each(blocks, function (blockInfo) { %}
             <div class="darker_block graph_nav {%= blockInfo.extraCSSClasses %}">
-              <h3><ins class="stats-block-expander"></ins>{%= h(blockInfo.blockName) %}</h3>
-              {% if (blockInfo.columns) { %}
-              <ul class="col_headers">
-              {% _.each(blockInfo.columns, function (columnName) { %}
-                <li>{%= h(columnName) %}</li>
-              {% }); %}
-              </ul>
-              {% } %}
-              {% _.each(blockInfo.stats, function (statInfo) {var name = statInfo.name; var desc = statInfo.desc; %}
-              <div class="analytics-small-graph analytics_graph_{%= h(name) %} {%= (statInfo.missing ? 'dim' : '') %}">
-                <div class="small_graph_block" style="width: 168px; height: 36px;"></div>
-                <span class="small_graph_label">
-                  <span class="value">0</span><span class="label-text"> {%= desc %}</span>
-                </span>
-                <!-- <input type="checkbox" > -->
-                <!-- <ins> -->
-                  <!-- <ul> -->
-                    <!-- <li>dim</li> -->
-                    <!-- <li>tresholds&hellip;</li> -->
-                    <!-- <li>alerts&hellip;</li> -->
-                    <!-- <li>show by server</li> -->
-                    <!-- <li>reset alarms</li> -->
-                  <!-- </ul> -->
-                <!-- </ins> -->
+              <h3 class="stats-block-expander"><ins></ins>{%= h(blockInfo.blockName) %}</h3>
+              <div class="stats">
+                {% if (blockInfo.columns) { %}
+                <ul class="col_headers">
+                {% _.each(blockInfo.columns, function (columnName) { %}
+                  <li>{%= h(columnName) %}</li>
+                {% }); %}
+                </ul>
+                {% } %}
+                {% _.each(blockInfo.stats, function (statInfo) {var name = statInfo.name; var desc = statInfo.desc; %}
+                <div class="analytics-small-graph analytics_graph_{%= h(name) %} {%= (statInfo.missing ? 'dim' : '') %}">
+                  <div class="small_graph_block" style="width: 168px; height: 36px;"></div>
+                  <span class="small_graph_label">
+                    <span class="value">0</span><span class="label-text"> {%= desc %}</span>
+                  </span>
+                  <!-- <input type="checkbox" > -->
+                  <!-- <ins> -->
+                    <!-- <ul> -->
+                      <!-- <li>dim</li> -->
+                      <!-- <li>tresholds&hellip;</li> -->
+                      <!-- <li>alerts&hellip;</li> -->
+                      <!-- <li>show by server</li> -->
+                      <!-- <li>reset alarms</li> -->
+                    <!-- </ul> -->
+                  <!-- </ins> -->
+                </div>
+                {% }); %}
+                <div class="clear"></div>
+                {% if (blockInfo.isPerf) { %}
+                <div class="vlabels">Moxi Write Read Total</div>
+                {% } %}
               </div>
-              {% }); %}
-              <div class="clear"></div>
-              {% if (blockInfo.isPerf) { %}
-              <div class="vlabels">Moxi Write Read Total</div>
-              {% } %}
             </div>
             {% }); %}
           </div>

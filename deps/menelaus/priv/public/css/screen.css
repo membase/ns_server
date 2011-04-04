@@ -250,18 +250,22 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 
 .analytics_graph_main {/*height:300px; background:url(../images/devider_line_2.gif) 0 100% repeat-x #eeeeef;border-left:1px solid #dbdbdb; border-right:1px solid #dbdbdb;*/ padding:0 10px;}
 .graph_info_label {padding:3px; font-size:11px;position:absolute;top:-6px;left:30px;}
-.graph_nav {position:relative;padding:6px 0 6px 5px;margin:35px 0 0;*zoom:1;}
+.graph_nav {position:relative;*zoom:1;}
 .graph_nav.withtotal {background:url(../images/bg_total.gif) 100% 0 repeat-y;}
-.graph_nav h3 {position:relative;top:-11px;left:0;width:97.4%;margin:-14px 1% 0;font-size:14px;text-align:right;text-transform:uppercase;z-index:99;*zoom:1;}
-.graph_nav h3 ins {float:left;width:0;height:0;margin:2px 0 0;border-style:solid;border-width:10px 10px 0 10px;border-color:#01b0ff transparent transparent transparent;cursor:pointer;cursor:hand;}
+.graph_nav h3 {cursor:pointer;background:#EEEEEF;padding:5px 10px;font-size:14px;text-transform:uppercase;*zoom:1;}
+.graph_nav h3 ins {float:left;width:0;height:0;margin:2px 0.75em 0 0;border-style:solid;border-width:10px 10px 0 10px;border-color:#01b0ff transparent transparent transparent;cursor:pointer;}
+.graph_nav h3:hover ins{border-top-color:#339ACA;}
 
-.graph_nav ul.col_headers {overflow:hidden;margin-right:5px;color:#999;font-weight:bold}
+.graph_nav .stats{padding:6px 0 6px 5px;border-bottom:5px solid #EEEEEF}
+
+.graph_nav ul.col_headers {overflow:hidden;margin-right:5px;color:#999;font-weight:bold;padding-top:3px}
 .graph_nav ul.col_headers li{width:25%;display:block;float:left;text-align:center;text-transform:uppercase}
 .graph_nav ul.col_headers li:last-child{color:#808080}
 
-.graph_nav.closed {height:0;padding:0;border-bottom:12px solid #eeeeef;*border:none;}
+.graph_nav.closed {padding:0;border-bottom:5px solid #eeeeef;*border:none;}
 .graph_nav.closed > div, .graph_nav.closed ul.col_headers {display:none !important;}
-.graph_nav.closed h3 ins {margin:-3px 0 0 4px;border-width:10px 0 10px 10px;border-color:transparent transparent transparent #01b0ff;}
+.graph_nav.closed h3 ins {margin:-3px 1.2em 0 4px;border-width:10px 0 10px 10px;border-color:transparent transparent transparent #01b0ff;}
+.graph_nav.closed h3:hover ins{border-left-color:#339ACA;}
 .graph_nav .analytics-small-graph {overflow:visible;width:174px !important;height:60px !important; margin:4px 7px 5px;}
 .graph_nav .analytics-small-graph:hover {background-position:0 -122px;z-index:90;}
 .graph_nav .analytics-small-graph.selected {background-position:0 -61px;}
@@ -298,7 +302,7 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 .graph_nav > div > ins ul li:hover, .graph_nav > div > ins ul li:hover a {background:#01b0ff;color:#fff;}
 .graph_nav .spinner span {position:relative; width:150px !important; height:15px !important; padding:20px 0 0 0; font-size:11px; color:#839aa6; margin:0 0 0 8px; top:5px; background:url(../images/spinner/spinner_gr_nav.gif) 66px 0 no-repeat; text-align:center; line-height:12px !important;}
 .graph_nav .selected .spinner span {background:url(../images/spinner/spinner2_gr_nav.gif) 66px 0 no-repeat; color:#d8e0e5;}
-.graph_nav .vlabels {position:absolute;top:21px;left:-13px;width:10px;height:246px;background:url(../images/vlabels.gif) no-repeat;text-indent:-999;overflow:hidden;font:0/0 serif;
+.graph_nav .vlabels {position:absolute;top:42px;left:-13px;width:10px;height:246px;background:url(../images/vlabels.gif) no-repeat;text-indent:-999;overflow:hidden;font:0/0 serif;
 					/*bottom:138px;left:-133px;color:#707070;font-size:13px;font-weight:bold;text-transform:uppercase;word-spacing:28px;
 					-moz-transform:rotate(-90deg);-webkit-transform:rotate(-90deg);-ms-transform:rotate(-90deg);transform:rotate(-90deg);
 					*display:none;filter: progid:DXImageTransform.Microsoft.Matrix(sizingMethod='auto expand', M11=6.123233995736766e-17, M12=1, M21=-1, M22=6.123233995736766e-17);zoom:1;*/}
