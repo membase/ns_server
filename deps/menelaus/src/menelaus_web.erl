@@ -97,8 +97,7 @@ webconfig(Config) ->
     WebConfig = [{ip, Ip},
                  {port, Port},
                  {approot, menelaus_deps:local_path(["priv","public"],
-                                                    ?MODULE)},
-                 {docroot, menelaus_deps:doc_path()}],
+                                                    ?MODULE)}],
     WebConfig.
 
 webconfig() ->
