@@ -49,26 +49,6 @@ replicators(Nodes, Bucket) ->
               end
       end, Nodes).
 
-actions(Children) ->
-    [{VBucket, Dst} || #child_id{vbuckets=VBuckets, dest_node=Dst} <- Children,
-                       VBucket <- VBuckets].
-
-kill_vbuckets(Node, Bucket, VBuckets) ->
-    {ok, States} = ns_memcached:list_vbuckets(Node, Bucket),
-    case [X || X = {V, S} <- States, lists:member(V, VBuckets), S /= replica] of
-        [] ->
-            ok;
-        RemainingVBuckets ->
-            lists:foreach(fun ({V, dead}) ->
-                                  ns_memcached:delete_vbucket(Node, Bucket, V);
-                              ({V, _}) ->
-                                  ns_memcached:set_vbucket(Node, Bucket,
-                                                           V, dead),
-                                  ns_memcached:delete_vbucket(Node, Bucket, V)
-                              end, RemainingVBuckets)
-    end.
-
-
 set_replicas(Bucket, NodesReplicas) ->
     %% Replace with the empty list if replication is disabled
     NR = case ns_config:search_node_prop(node(), ns_config:get(), replication,
@@ -148,28 +128,6 @@ kill_dst_children(Node, Bucket, Dst) ->
                           kill_child(Node, Bucket, Child)
                   end, Children).
 
--spec kill_runaway_children(node(), nonempty_string(),
-                            [{non_neg_integer(), node()}]) ->
-                                   [#child_id{}].
-kill_runaway_children(Node, Bucket, Replicas) ->
-    %% Kill any children not in Replicas
-    {GoodChildren, Runaways} =
-        lists:partition(
-          fun (#child_id{vbuckets=VBuckets, dest_node=DstNode}) ->
-                  NodeReplicas = [{V, DstNode} || V <- VBuckets],
-                  lists:all(fun (NR) -> lists:member(NR, Replicas) end,
-                            NodeReplicas)
-          end, children(Node, Bucket)),
-    lists:foreach(
-      fun (Runaway) ->
-              ?log_info(
-                "Killing replicator ~p on node ~p",
-                 [Runaway, Node]),
-              kill_child(Node, Bucket, Runaway)
-      end, Runaways),
-    GoodChildren.
-
-
 %% supervisor callbacks
 init([]) ->
     {ok, {{one_for_one,
@@ -182,12 +140,20 @@ init([]) ->
                   [any(), ...].
 args(Node, Bucket, VBuckets, DstNode, TakeOver) ->
     {User, Pass} = ns_bucket:credentials(Bucket),
+    Suffix = case TakeOver of
+                 true ->
+                     [VBucket] = VBuckets,
+                     integer_to_list(VBucket);
+                 false ->
+                     %% We want to reuse names for replication.
+                     atom_to_list(DstNode)
+             end,
     [ns_memcached:host_port(Node), ns_memcached:host_port(DstNode),
      [{username, User},
       {password, Pass},
       {vbuckets, VBuckets},
       {takeover, TakeOver},
-      {suffix, unique_suffix(DstNode)}]].
+      {suffix, Suffix}]].
 
 -spec children(node(), nonempty_string()) -> [#child_id{}].
 children(Node, Bucket) ->
@@ -201,50 +167,46 @@ server(Bucket) ->
 
 
 %% @doc Set up replication from the given source node to a list of
-%% {VBucket, DstNode} pairs. Will silently refuse to start a new
-%% replica if backfill is still starting on a source or destination
-%% node. Returns true if it started any.
+%% {VBucket, DstNode} pairs.
 set_replicas(SrcNode, Bucket, Replicas) ->
-    GoodChildren = kill_runaway_children(SrcNode, Bucket, Replicas),
-    %% Now filter out the replicas that still have children
-    Actions = actions(GoodChildren),
-    Sorted = lists:keysort(2, Replicas -- Actions),
-    Grouped = misc:keygroup(2, Sorted),
+    %% A dictionary mapping destination node to a sorted list of
+    %% vbuckets to replicate there from SrcNode.
+    DesiredReplicaDict =
+        dict:map(
+          fun (_, V) -> lists:usort(V) end,
+          lists:foldl(
+            fun ({VBucket, DstNode}, D) ->
+                    dict:append(DstNode, VBucket, D)
+            end, dict:new(), Replicas)),
+    %% Remove any destination nodes from the dictionary that the
+    %% replication is already correct for.
+    NeededReplicas =
+        dict:to_list(
+          lists:foldl(
+            fun (#child_id{dest_node=DstNode, vbuckets=VBuckets} = Id, D) ->
+                    case dict:find(DstNode, DesiredReplicaDict) of
+                        {ok, VBuckets} ->
+                            %% Already running
+                            dict:erase(DstNode, D);
+                        _ ->
+                            %% Either wrong vbuckets or not wanted at all
+                            kill_child(SrcNode, Bucket, Id),
+                            D
+                    end
+            end, DesiredReplicaDict, children(SrcNode, Bucket))),
     lists:foreach(
-      fun ({DstNode, R}) ->
-              VBuckets = [V || {V, _} <- R],
-              start_replicas(SrcNode, Bucket, VBuckets,
-                             DstNode)
-      end, Grouped).
+      fun ({DstNode, VBuckets}) ->
+              start_child(SrcNode, Bucket, VBuckets, DstNode)
+      end, NeededReplicas).
 
 
 -spec start_child(atom(), nonempty_string(), [non_neg_integer(),...], atom()) ->
                          {ok, pid()}.
 start_child(Node, Bucket, VBuckets, DstNode) ->
-    PortServerArgs = args(Node, Bucket, VBuckets, DstNode, false),
-    ?log_info("Args =~n~p",
-              [PortServerArgs]),
+    Args = args(Node, Bucket, VBuckets, DstNode, false),
+    ?log_info("Starting replicator with args =~n~p",
+              [Args]),
     ChildSpec = {#child_id{vbuckets=VBuckets, dest_node=DstNode},
-                 {ebucketmigrator_srv, start_link, PortServerArgs},
+                 {ebucketmigrator_srv, start_link, Args},
                  permanent, 10, worker, [ebucketmigrator_srv]},
     supervisor:start_child({server(Bucket), Node}, ChildSpec).
-
-
-start_replicas(SrcNode, Bucket, VBuckets, DstNode) ->
-    SortedVBuckets = lists:usort(VBuckets),
-    ?log_info("Starting replicator for vbuckets ~w in bucket ~p from node ~p to node ~p",
-              [SortedVBuckets, Bucket, SrcNode, DstNode]),
-    kill_vbuckets(DstNode, Bucket, VBuckets),
-    lists:foreach(
-      fun (V) ->
-              ns_memcached:set_vbucket(DstNode, Bucket, V, replica)
-      end, VBuckets),
-    %% Make sure the command line doesn't get too long
-    {ok, _Pid} = start_child(SrcNode, Bucket, VBuckets, DstNode).
-
-%% @doc Generate a unique name suffix that's valid for a TAP queue.
-unique_suffix(DstNode) ->
-    {MegaSecs, Secs, MicroSecs} = now(),
-    lists:flatten(io_lib:format("~s-~s-~B.~6.10.0B",
-                                [DstNode, node(),
-                                 MegaSecs * 1000000 + Secs, MicroSecs])).
