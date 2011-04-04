@@ -96,7 +96,7 @@
                 <!-- {% $.each(rows, function () { %} -->
                 <tr>
                     <td>
-                    <a href="#sec=analytics&statsHostname={%= h(this.hostname) %}">{%= h(this.hostname) %}</a>
+                    <a href="#sec=analytics&statsHostname={%= h(this.hostname) %}">{%= V.stripPort(this.hostname, rows) %}</a>
                     </td>
                   </tr>
                 <!-- {% }); %} -->
