@@ -15,94 +15,7 @@
 %%
 -module(ns_config_default).
 
--export([default/0, mergable/1,
-         default_path/1,
-         default_root_path/0,
-         find_root/1, is_root/1,
-         tempfile/2, tempfile/3]).
-
-default_path(Name) ->
-    RootPath = default_root_path(),
-    NamePath = filename:join(RootPath, Name),
-    Path = case application:get_env(path_prefix) of
-               undefined ->
-                   NamePath;
-               {ok, Prefix} ->
-                   filename:join(NamePath, Prefix)
-           end,
-    ok = filelib:ensure_dir(Path),
-    Path.
-
-% Returns the directory that best represents the product 'root'
-% install directory.  In development, that might be the ns_server
-% directory.  On windows, at install, that might be the
-% C:/Program Files/Membase/Server.
-% On linux, /opt/membase/<ver>/
-
-default_root_path() ->
-    % When installed, we live in something that looks like...
-    %
-    %   C:/Program Files/Membase/Server/
-    %     bin/
-    %       ns_server/ebin/ns_config_default.beam
-    %     priv/
-    %       config
-    %     data/ (installer created)
-    %
-    %   /opt/membase/<ver>/
-    %     bin/
-    %       ns_server/ebin/ns_config_default.beam
-    %     data/ (installer created)
-    %
-    %   /some/dev/work/dir/ns_server/
-    %     .git/
-    %     bin/
-    %     ebin/ns_config_default.beam
-    %     priv/
-    %       config
-    %     data/ (dynamically created)
-    %
-    P1 = filename:absname(code:which(ns_config_default)), % Our beam path.
-    P2 = filename:dirname(P1), % "ebin"
-    P3 = filename:dirname(P2), % "ns_server" (possibly)
-    RootPath = case find_root(P3) of
-                   false -> filename:dirname(filename:dirname(P3));
-                   X     -> X
-               end,
-    RootPath.
-
-% Go up dir paths and find a development root dir.
-
-find_root("") -> false;
-find_root(".") -> false;
-find_root("/") -> false;
-find_root(DirPath) ->
-    case is_root(DirPath) of
-        true  -> DirPath;
-        false -> DirNext = filename:dirname(DirPath),
-                 % Case when "c:/" =:= "c:/" on windows.
-                 case DirNext =/= DirPath of
-                     true  -> find_root(DirNext);
-                     false -> false
-                 end
-    end.
-
-tempfile(Dir, Prefix, Suffix) ->
-    {_, _, MicroSecs} = erlang:now(),
-    Pid = os:getpid(),
-    Filename = Prefix ++ integer_to_list(MicroSecs) ++ "_" ++
-               Pid ++ Suffix,
-    filename:join(Dir, Filename).
-
-tempfile(Prefix, Suffix) ->
-    Dir = ns_config_default:default_path("tmp"),
-    tempfile(Dir, Prefix, Suffix).
-
-% Is a development root dir?
-
-is_root(DirPath) ->
-    filelib:is_dir(filename:join(DirPath, "bin")) andalso
-    filelib:is_dir(filename:join(DirPath, "priv")).
+-export([default/0, mergable/1]).
 
 % Allow all keys to be mergable.
 
@@ -115,9 +28,7 @@ keys(KVLists) ->
                   end, KVLists).
 
 default() ->
-    {ok, ConfigFile} = application:get_env(ns_server_config),
-    ConfigDir = filename:dirname(ConfigFile),
-    RawDbDir = default_path("data"),
+    RawDbDir = path_config:component_path(data),
     filelib:ensure_dir(RawDbDir),
     file:make_dir(RawDbDir),
     DbDir = case misc:realpath(RawDbDir, "/") of
@@ -129,7 +40,7 @@ default() ->
                         element(2, ns_storage_conf:allowed_node_quota_range(MemData));
                     _ -> undefined
                 end,
-    [{directory, default_path("config")},
+    [{directory, path_config:component_path(data, "config")},
      {nodes_wanted, [node()]},
      {{node, node(), membership}, active},
                                                 % In general, the value in these key-value pairs are property lists,
@@ -169,12 +80,11 @@ default() ->
        {dbdir, DbDir},
        {admin_user, "_admin"},
        {admin_pass, "_admin"},
-       {bucket_engine,
-        "./bin/bucket_engine/bucket_engine.so"},
-       {engines, [{membase, [{engine, "bin/ep_engine/ep.so"},
+       {bucket_engine, path_config:component_path(lib, "memcached/bucket_engine.so")},
+       {engines, [{membase, [{engine, path_config:component_path(lib, "memcached/ep.so")},
                              {initfile,
-                              filename:join([ConfigDir, "init.sql"])}]},
-                  {memcached, [{engine, "lib/memcached/default_engine.so"}]}]},
+                              path_config:component_path(etc, "init.sql")}]},
+                  {memcached, [{engine, path_config:component_path(lib, "memcached/default_engine.so")}]}]},
        {verbosity, ""}]},
 
      {memory_quota, InitQuota},
@@ -195,7 +105,7 @@ default() ->
                                                 % This is a classic "should" key, where ns_port_sup needs
                                                 % to try to start child processes.  If it fails, it should ns_log errors.
      {port_servers,
-      [{moxi, "./bin/moxi/moxi",
+      [{moxi, path_config:component_path(bin, "moxi"),
         ["-Z", {"port_listen=~B,default_bucket_name=default,downstream_max=1024,downstream_conn_max=4,"
                 "connect_max_errors=5,connect_retry_interval=30000,"
                 "connect_timeout=400,"
@@ -218,10 +128,10 @@ default() ->
          stderr_to_stdout,
          stream]
        },
-       {memcached, "./bin/memcached",
-        ["-X", "./lib/memcached/stdin_term_handler.so",
+       {memcached, path_config:component_path(bin, "memcached"),
+        ["-X", path_config:component_path(lib, "memcached/stdin_term_handler.so"),
          "-p", {"~B", [port]},
-         "-E", "./bin/bucket_engine/bucket_engine.so",
+         "-E", path_config:component_path(lib, "memcached/bucket_engine.so"),
          "-B", "binary",
          "-r",
          "-c", "10000",

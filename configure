@@ -1,0 +1,52 @@
+#!/bin/sh
+
+usage() {
+cat <<EOF
+\`$0' configures ns_server to adapt to many kinds of systems.
+
+Usage: $0 [OPTION]...
+
+Configuration:
+  -h, --help              display this help and exit
+
+Installation directories:
+  --prefix=PREFIX         install files in PREFIX (required)
+
+EOF
+}
+
+prefix=
+for config_arg do
+  case "$config_arg" in
+      --help|-h)
+          usage
+          exit 0
+          ;;
+      --prefix=/*)
+          prefix=${config_arg##--prefix=}
+          ;;
+      --prefix=*)
+          echo "--prefix needs to be absolute path"
+          exit 1
+          ;;
+      *)
+          echo "Unkown option: ${config_arg}"
+          exit 1
+          ;;
+  esac
+done
+
+if test -z "$prefix" ; then
+    usage
+    echo "Error: --prefix option is required"
+    exit 1
+fi
+
+cat <<EOF >${0%"${0##*/}"}/.configuration
+prefix=$prefix
+EOF
+
+echo
+echo "Membase management server is configured and is ready to be built!"
+echo "PREFIX: ${prefix}"
+echo

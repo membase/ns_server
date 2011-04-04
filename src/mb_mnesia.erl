@@ -446,6 +446,7 @@ is_mnesia_running() ->
 
 %% @doc Start mnesia and wait for it to come up.
 start_mnesia() ->
+    application:set_env(mnesia, dir, path_config:component_path(data, "mnesia")),
     ok = mnesia:start(),
     {ok, _} = mnesia:subscribe(system),
     {ok, _} = mnesia:subscribe({table, schema, simple}),
@@ -454,7 +455,7 @@ start_mnesia() ->
 
 %% @doc Hack.
 tmpdir() ->
-    ns_config_default:default_path("tmp").
+    path_config:component_path(tmp).
 
 
 tmpdir(Filename) ->

@@ -56,7 +56,7 @@ start() ->
 
 get_logs_as_file(Types, NumReports, RegExp) ->
     catch rb:stop(),
-    TempFile = ns_config_default:tempfile("nslogs", ".log"),
+    TempFile = path_config:tempfile("nslogs", ".log"),
     filelib:ensure_dir(TempFile),
     Options = [{start_log, TempFile}, {type, Types}, {max, NumReports}, {report_dir}],
     Options1 = case application:get_env(error_logger_mf_dir) of

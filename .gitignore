@@ -1,6 +1,7 @@
 *.beam
 *~
 .DS_Store
+.configuration
 .eunit
 .project
 .settings

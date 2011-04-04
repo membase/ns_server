@@ -48,6 +48,5 @@
   % processes and then itself.
 
   {env, [{max_r, 20},
-         {max_t, 10},
-         {ns_server_config, "priv/config"}]}
+         {max_t, 10}]}
  ]}.
