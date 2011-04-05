@@ -504,32 +504,42 @@ var StatGraphs = {
              {name: "swap_used", desc: "swap usage"}]},
           {
             blockName: "PERFORMANCE",
-            isPerf: true,
+            columns: ['Totals', 'Read', 'Write', 'Moxi'],
             stats: [
-              // Total
+              // column 1
               // aggregated from gets, sets, incr, decr, delete
-              // ops. Likely doesn't include other types of commands
+              // Total ops. Likely doesn't include other types of commands
               {desc: "ops per second", name: "ops"},
-              // ops - proxy_cmd_count
+              // Read (cmd_get - ep_bg_fetched) / cmd_get * 100
+              {desc: "cache hit %", name: "ep_cache_hit_rate", maxY: 100},
+              {desc: "creates per second", name: "ep_ops_create"},
+              {desc: "local %", name: "proxy_local_ratio"},
+              // column 2
+              // Total ops - proxy_cmd_count
               {desc: "direct per second", name: "direct_ops"},
-              // total ops through server-side moxi
+              // Read
+              {desc: "hit latency", name: "hit_latency", missing: true}, //?
+              // Write
+              {desc: "updates per second", name: "ep_ops_update"},
+              // Moxi
+              {desc: "local latency", name: "proxy_local_latency"},
+              // column 3
+              // Total ops through server-side moxi
               {desc: "moxi per second", name: "proxy_cmd_count"},
+              // Read
+              {desc: "miss latency", name: "miss_latency", missing: true}, //?
+              // Write
+              {desc: "write latency", name: "ep_write_latency", missing: true}, // ?
+              // Moxi
+              {desc: "proxy %", name: "proxy_ratio", maxY: 100},
+              // column 4
+              // (Total) average object size)
               {desc: "average object size", name: "avg_item_size", missing: true}, // need total size _including_ size on disk
               // Read
-              // (cmd_get - ep_bg_fetched) / cmd_get * 100
-              {desc: "cache hit %", name: "ep_cache_hit_rate", maxY: 100},
-              {desc: "hit latency", name: "hit_latency", missing: true}, //?
-              {desc: "miss latency", name: "miss_latency", missing: true}, //?
               {desc: "disk reads", name: "ep_bg_fetched"},
               // Write
-              {desc: "creates per second", name: "ep_ops_create"},
-              {desc: "updates per second", name: "ep_ops_update"},
-              {desc: "write latency", name: "ep_write_latency", missing: true}, // ?
               {desc: "back-offs per second", name: "ep_tap_total_queue_backoff"},
-              // Moxi
-              {desc: "local %", name: "proxy_local_ratio"},
-              {desc: "local latency", name: "proxy_local_latency"},
-              {desc: "proxy %", name: "proxy_ratio", maxY: 100},
+              // Moxie
               {desc: "proxy latency", name: "proxy_latency"}
             ]
           }, {
