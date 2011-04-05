@@ -28,7 +28,7 @@ var MonitorBucketsSection = {
     });
 
     bucketsListCell.subscribeValue(function (list) {
-      var empty = list && list.length == 0;
+      var empty = (list && list.length == 0);
       $('#monitor_buckets .no-buckets-subsection')[empty ? 'show' : 'hide']();
     });
 

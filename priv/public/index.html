@@ -83,12 +83,12 @@
     <div id="monitor_servers" style="display:none">
       <!-- Shadow box -->
       <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
-      <h1>Monitor Servers</h1>
-      <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
-          <div class="panes">
-            <div class="tab_holder">
-              <div id="monitor_servers_container"></div>
-              <script id="monitor_servers_template" type="text/html">
+      <div class="monitor-servers-subsection"><h1>Monitor Servers</h1>
+        <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
+            <div class="panes">
+              <div class="tab_holder">
+                <div id="monitor_servers_container"></div>
+                <script id="monitor_servers_template" type="text/html">
               <table class="lined_tab">
                 <col width="">
                 <tr>
@@ -97,15 +97,16 @@
                 <!-- {% $.each(rows, function () { %} -->
                 <tr>
                     <td>
-                    <a href="#sec=analytics&statsHostname={%= h(this.hostname) %}">{%= V.stripPort(this.hostname, rows) %}</a>
+                    <a class="node_name" href="#sec=analytics&statsHostname={%= h(this.hostname) %}">{%= V.stripPort(this.hostname, rows) %}</a>
                     </td>
                   </tr>
                 <!-- {% }); %} -->
               </table>
               </script>
+              </div>
             </div>
-          </div>
-      </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
+        </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
+      </div>
       <!-- END shadow box -->
     </div>
 
