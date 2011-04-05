@@ -189,8 +189,6 @@ spawn_workers(#state{bucket=Bucket, moves=Moves, movers=Movers,
           fun (Node, RemainingMoves, {M, R}) ->
                   NumWorkers = dict:fetch(Node, Movers),
                   if NumWorkers < MaxPerNode ->
-                          %% TODO: this will cause the scrollbars to sweep
-                          %% across multiple times.
                           NewMovers = lists:sublist(RemainingMoves,
                                                     MaxPerNode - NumWorkers),
                           lists:foreach(
@@ -229,29 +227,39 @@ spawn_workers(#state{bucket=Bucket, moves=Moves, movers=Movers,
 run_mover(Bucket, V, N1, N2, Tries) ->
     case {ns_memcached:get_vbucket(N1, Bucket, V),
           ns_memcached:get_vbucket(N2, Bucket, V)} of
+        {{ok, active}, {memcached_error, not_my_vbucket, _}} ->
+            %% Standard starting state
+            ok = ns_memcached:set_vbucket(N2, Bucket, V, replica),
+            {ok, _Pid} = ns_vbm_sup:spawn_mover(Bucket, V, N1, N2),
+            wait_for_mover(Bucket, V, N1, N2, Tries);
         {{ok, dead}, {ok, active}} ->
+            %% Standard ending state
             ok;
         {{memcached_error, not_my_vbucket, _}, {ok, active}} ->
+            %% This generally shouldn't happen, but it's an OK final state.
+            ?log_warning("Weird: vbucket ~p missing from source node ~p but "
+                         "active on destination node ~p.", [V, N1, N2]),
             ok;
         {{ok, active}, {ok, S}} when S /= active ->
-            if S /= dead ->
-                    ok = ns_memcached:set_vbucket(N2, Bucket, V, dead);
+            %% This better have been a replica, a failed previous
+            %% attempt to migrate, or loaded from a valid copy or this
+            %% will result in inconsistent data!
+            if S /= replica ->
+                    ok = ns_memcached:set_vbucket(N2, Bucket, V, replica);
                true ->
                     ok
             end,
-            ok = ns_memcached:delete_vbucket(N2, Bucket, V),
-            ok = ns_memcached:set_vbucket(N2, Bucket, V, pending),
-            {ok, _Pid} = ns_vbm_sup:spawn_mover(Bucket, V, N1, N2),
-            wait_for_mover(Bucket, V, N1, N2, Tries);
-        {{ok, active}, {memcached_error, not_my_vbucket, _}} ->
-            ok = ns_memcached:set_vbucket(N2, Bucket, V, pending),
             {ok, _Pid} = ns_vbm_sup:spawn_mover(Bucket, V, N1, N2),
             wait_for_mover(Bucket, V, N1, N2, Tries);
         {{ok, dead}, {ok, pending}} ->
+            %% This is a strange state to end up in - the source
+            %% shouldn't close until the destination has acknowledged
+            %% the last message, at which point the state should be
+            %% active.
+            ?log_warning("Weird: vbucket ~p in pending state on node ~p.",
+                         [V, N2]),
             ok = ns_memcached:set_vbucket(N1, Bucket, V, active),
-            ok = ns_memcached:set_vbucket(N2, Bucket, V, dead),
-            ok = ns_memcached:delete_vbucket(N2, Bucket, V),
-            ok = ns_memcached:set_vbucket(N2, Bucket, V, pending),
+            ok = ns_memcached:set_vbucket(N2, Bucket, V, replica),
             {ok, _Pid} = ns_vbm_sup:spawn_mover(Bucket, V, N1, N2),
             wait_for_mover(Bucket, V, N1, N2, Tries)
     end.
