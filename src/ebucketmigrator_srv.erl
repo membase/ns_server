@@ -115,6 +115,11 @@ init({Src, Dst, Opts}) ->
            end,
     proc_lib:init_ack({ok, self()}),
     Downstream = connect(Dst, Username, Password, Bucket),
+    %% Set all vbuckets to the replica state on the destination node.
+    lists:foreach(
+      fun (VBucket) ->
+              ok = mc_client_binary:set_vbucket(Downstream, VBucket, replica)
+      end, VBuckets),
     Upstream = connect(Src, Username, Password, Bucket),
     {ok, quiet} = mc_client_binary:tap_connect(Upstream, [{vbuckets, VBuckets},
                                                           {name, Name},
