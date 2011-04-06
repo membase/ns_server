@@ -259,7 +259,7 @@
     <!-- {% }); %} -->
     </ul>
   </script>
-  <div id="server_details_template" class="template">
+  <script id="server_details_template" type="text/html">
                 <div class="first gong_rb">
                   <div class="pad">
 <!-- disabled for beta1 a class="edit_btn float_right" href="javascript:ServersSection.editServerSettings('{%= h(escapeJS(obj.otpNode)) %}');"></a -->
@@ -294,8 +294,8 @@
                   <div class="usage-block">{%= V.thisElement(function (e) {ServersSection.renderUsage(e, obj.storageTotals.hdd)}) %}</div>
                 </div>
               </div><!-- additional_server_info -->
-  </div>
-  <script type="text/html" id="rebalancing_list_template">
+  </script>
+  <script id="rebalancing_list_template" type="text/html">
     <ul class="servers_list rebalancing">
       <!-- {% _.each(rows, function (server) { %} -->
       <li class="server_row">
@@ -333,7 +333,7 @@
               <div id="analytics_main_graph"></div>
             </div>
           </div>
-          <div class="template" id="new_stats_block_template">
+          <script id="new_stats_block_template" type="text/html">
             {% _.each(blocks, function (blockInfo) { %}
             <div class="darker_block graph_nav {%= blockInfo.extraCSSClasses %}">
               <h3 class="stats-block-expander"><ins></ins>{%= h(blockInfo.blockName) %}</h3>
@@ -367,7 +367,7 @@
               </div>
             </div>
             {% }); %}
-          </div>
+          </script>
           <div id="stats_nav_cache_container" style="display:none;"></div>
           <div id="stats_nav_persistent_container" style="display:none;"></div>
         </div>
@@ -381,7 +381,7 @@
             TOP KEYS
           </h2>
           <p id="top_keys_container"></p>
-          <div id="top_keys_template" class="template">
+          <script id="top_keys_template" type="text/html">
             <table class="lined_tab">
               <tr>
                 <th>Key</th>
@@ -394,7 +394,7 @@
               </tr>
               <!-- {% }); %} -->
             </table>
-          </div>
+          </script>
         </div> <!-- section -->
       </div></div></div>
       <div class="bottom"><div><div>&nbsp;</div></div></div>
@@ -554,7 +554,7 @@
     </script>
   </div>
 
-  <div id="bucket_settings_template">
+  <script id="bucket_settings_template" type="text/html">
       <div class="gong_rb">
         <div class="pad">
           <a class="edit_btn" href="#editBucket={%= uri %}">Edit</a>
@@ -616,7 +616,7 @@
       {% } %} <!-- storageInfoRelevant -->
 
       </div><!-- additional_server_info -->
-  </div>
+  </script>
 
   <div id="alerts" style="display:none">
     <!-- Shadow box -->
@@ -627,7 +627,7 @@
         <div class="panes">
           <div class="tab_holder">
             <div id="alert_logs_container"></div>
-            <div id="alert_logs_template" class="template">
+            <script id="alert_logs_template" type="text/html">
             <table class="lined_tab">
               <col width="">
               <col width="">
@@ -648,7 +648,7 @@
               </tr>
               <!-- {% }); %} -->
             </table>
-            </div>
+            </script>
           </div>
         </div>
     </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
@@ -981,11 +981,11 @@
     <div class="content">
       <div class="pad">
         <p class="warning pat_10" id="join_cluster_dialog_errors_container"></p>
-        <p id="join_cluster_dialog_errors_template" class="template">
+        <script id="join_cluster_dialog_errors_template" type="text/html">
         <!-- {% _.each(rows, function (e) { %} -->
         <strong>Attention</strong> - {%= h(e) %}<br>
         <!-- {% }); %} -->
-        </p>
+        </script>
         <form>
           <div class="pas_20">
             <table>
@@ -1558,22 +1558,22 @@
     </div>
   </div>
 </div>
-<div id="notice_template" class="template">
+<script id="notice_template" type="text/html">
   <div class="shadow_box notice"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
     <h2 class="header_2">Membase Server Message<span style="float: right; color: black; font-size: 13px;">click to dismiss</span></h2>
     <div class="pad_10 success_msg">
       <p class="info_text">{%= h(text) %}</p>
     </div>
   </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
-</div>
-<div id="noticeErr_template" class="template">
+</script>
+<script id="noticeErr_template" type="text/html">
   <div class="shadow_box notice"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
     <h2 class="header_2">Membase Server Alert<span style="float: right; color: black; font-size: 13px;">click to dismiss</span></h2>
     <div class="pad_10 error_msg">
       <p class="info_text">{%= h(text) %}</p>
     </div>
   </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
-</div>
+</script>
 <div class="popup_2">
 
 </div>
