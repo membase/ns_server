@@ -34,7 +34,7 @@ exec erl \
     -ns_server error_logger_mf_maxbytes 10485760 \
     -ns_server error_logger_mf_maxfiles 10 \
     -ns_server dont_suppress_stderr_logger true \
-    -ns_server config_path '"./etc/static_config.in"' \
+    -ns_server config_path '"/dev/null"' \
     -ns_server path_config_etcdir '"priv"' \
     -ns_server path_config_bindir "\"${prefix}/bin\"" \
     -ns_server path_config_libdir "\"${prefix}/lib\"" \
