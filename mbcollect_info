@@ -209,6 +209,8 @@ _tasks = [
     UnixTask("Interrupt status", "intrstat 1 10"),
     UnixTask("Processor status", "mpstat 1 10"),
     UnixTask("System log", "/var/adm/messages"),
+    LinuxTask("System log", "/var/log/syslog"),
+    LinuxTask("System log", "/var/log/messages"),
     UnixTask("Kernel log buffer", "dmesg"),
     AllOsTask("memcached stats all",
               "stats -a 127.0.0.1:11210 all _admin _admin",
