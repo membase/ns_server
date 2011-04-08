@@ -240,11 +240,8 @@ def main():
         parser.error("incorrect number of arguments")
 
     mydir = os.path.dirname(sys.argv[0])
-    management_dir = os.path.join(mydir, '..', 'ep_engine', 'management')
-    bin_dir = os.path.join(mydir, '..')
     if os.name == 'posix':
         path = [mydir,
-                management_dir,
                 '/bin',
                 '/usr/bin',
                 '/usr/sbin',
@@ -252,7 +249,7 @@ def main():
                 os.environ['PATH']]
         os.environ['PATH'] = ':'.join(path)
     elif os.name == 'nt':
-        path = [mydir, bin_dir, management_dir, os.environ['PATH']]
+        path = [mydir, os.environ['PATH']]
         os.environ['PATH'] = ';'.join(path)
 
     runner = TaskRunner(verbosity=options.verbosity)

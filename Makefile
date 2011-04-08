@@ -97,8 +97,11 @@ do-install:
 	mkdir -p $(PREFIX)/etc/membase
 	sed -e 's|@PREFIX@|$(PREFIX)|g' <etc/static_config.in >$(PREFIX)/etc/membase/static_config
 	touch $(PREFIX)/etc/membase/config
+	mkdir -p $(PREFIX)/bin/
 	sed -e 's|@PREFIX@|$(PREFIX)|g' <membase-server.sh.in >$(PREFIX)/bin/membase-server
-	chmod +x $(PREFIX)/bin/membase-server
+	sed -e 's|@PREFIX@|$(PREFIX)|g' <mbbrowse_logs.in >$(PREFIX)/bin/mbbrowse_logs
+	install mbcollect_info $(PREFIX)/bin/mbcollect_info
+	chmod +x $(PREFIX)/bin/membase-server $(PREFIX)/bin/mbbrowse_logs $(PREFIX)/bin/mbcollect_info
 	mkdir -p $(PREFIX)/var/lib/membase/mnesia
 	mkdir -p $(PREFIX)/var/lib/membase/logs
 	cp priv/init.sql $(PREFIX)/etc/membase/
