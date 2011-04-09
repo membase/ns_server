@@ -328,7 +328,7 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 
 #server_list_container > table { width: 100%; }
 
-.spinner { vertical-align: middle; text-align: center; background:url(../images/spinner/spinner_3.gif) center 43% no-repeat;}
+.spinner { vertical-align: middle; text-align: center; background:url(../images/spinner/spinner_3.gif) center 43% no-repeat; padding: 50px}
 
 .dialog{display:none}
 
@@ -638,7 +638,7 @@ body.nojs #nojs_alert { display: block; width:960px; margin:40px auto 0;}
 .tooltip .tooltip_msg {display:none; position:absolute; width:150px; padding:6px 0 0 0; right:0px; top:14px; background:url(../images/tooltip_bg.gif) 100% 0 no-repeat; z-index:10;}
 .tooltip .tooltip_msg span {display:block; padding:5px; background:none #555557; font-size:11px; text-decoration:none !important; color:#fff !important;}
 
-#about_server_dialog {display:none;background-color:#fff;width:475px !important;height:250px;/*margin-left:-210px !important; */}
+#about_server_dialog {display:none;background-color:#fff;width:475px;height:250px;/*margin-left:-210px !important; */}
 #about_server_dialog .lbox {background:none;overflow:hidden;width:auto}
 #about_server_dialog .lbox .config-top {height:50px;margin:0;padding:11px 11px 10px;background-position:-8px 100%;background-color:#e7e7e8;}
 #ui-dialog-title-about_server_dialog {width:90%}

@@ -351,8 +351,8 @@ var ServersSection = {
                       $(this).dialog('close');
 
                       $('#join_cluster_dialog_errors_container').html('');
-                      main_dialog.find('.content').before(SpinnerHTML).hide()
-                        .parent('.ui-dialog').find('.ui-dialog-buttonpane').hide();
+                      main_dialog.find('.content').hide().before(SpinnerHTML);
+                      main_dialog.dialog('widget').find('.ui-dialog-buttonpane').hide();
 
                       self.poolDetails.setValue(undefined);
 

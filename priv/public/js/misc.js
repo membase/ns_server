@@ -497,7 +497,8 @@ function watchHashParamChange(param, defaultValue, callback) {
 
 function showDialog(idOrJQ, options) {
   var jq = _.isString(idOrJQ) ? $($i(idOrJQ)) : idOrJQ;
-  options = _.extend({width: jq.css('width')}, options || {});
+  var w = jq.dialog('widget').hasClass('ui-dialog') ? jq.dialog('widget').width() : jq.width();
+  options = _.extend({width: w}, options || {});
   var onHashChange;
 
   $(window).bind('hashchange', onHashChange = function () {
@@ -531,8 +532,8 @@ function showDialog(idOrJQ, options) {
   jq.dialog(options);
 
   if (jq.height() > $(window).height()) {
-    jq.parent('.ui-dialog').css({'position': 'absolute', 'top':'15px'});
-    $('html, body').animate({scrollTop: jq.parent('.ui-dialog').offset().top}, 250);
+    jq.dialog('widget').css({'position': 'absolute', 'top':'15px'});
+    $('html, body').animate({scrollTop: jq.dialog('widget').offset().top}, 250);
   }
 
   jq.find('.close').click(function(ev) {

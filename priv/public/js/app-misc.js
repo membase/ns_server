@@ -489,8 +489,6 @@ function genericDialog(options) {
   }
   options.buttons = b;
 
-  var modal = options.modal ? new ModalAction() : null;
-
   options.close = options.onHide = function () {
     _.defer(function () {
       dialog.remove();
@@ -502,9 +500,6 @@ function genericDialog(options) {
   var instance = {
     dialog: dialog,
     close: function () {
-      if (modal) {
-        modal.finish();
-      }
       hideDialog(dialog);
     }
   };
