@@ -365,12 +365,20 @@ var StatGraphs = {
     month: 2678400,
     year: 31622400
   },
+  lastCompletedTimestamp: undefined,
   update: function () {
     var self = this;
 
     var configuration = self.graphsConfigurationCell.value;
     if (!configuration) {
+      self.lastCompletedTimestamp = undefined;
       return self.renderNothing();
+    }
+
+    var nowTStamp = (new Date()).valueOf();
+    if (self.lastCompletedTimestamp && nowTStamp - self.lastCompletedTimestamp < 200) {
+      // skip this sample as we're too slow
+      return;
     }
 
     var op = configuration.stats.op;
@@ -438,12 +446,15 @@ var StatGraphs = {
       renderSmallGraph(area, op, statName, selected == statName,
                        zoomMillis, timeOffset, options);
     });
+
+    self.lastCompletedTimestamp = (new Date()).valueOf();
   },
   init: function () {
     $('.stats-block-expander').live('click', function () {
       $(this).closest('.graph_nav').toggleClass('closed');
       // this forces configuration refresh and graphs redraw
       self.graphsConfigurationCell.invalidate();
+      self.lastCompletedTimestamp = undefined;
     });
 
     function initStatsCategory(infos, containerEl, data) {
