@@ -284,6 +284,12 @@ var maybeReloadAppDueToLeak = (function () {
     queuedUpdates.length = 0;
   }
 
+  var shadowSize = 3;
+
+  if (window.G_vmlCanvasManager) {
+    shadowSize = 0;
+  }
+
   function renderSmallGraph(jq, ops, statName, isSelected, zoomMillis, timeOffset, options) {
     if (!jq.is(':visible')) {
       return;
@@ -318,6 +324,7 @@ var maybeReloadAppDueToLeak = (function () {
       $.plotSafe($(item),
                  _.map(plotSeries, function (plotData) {
                    return {color: color,
+                           shadowSize: shadowSize,
                            data: plotData};
                  }),
                  {xaxis: {ticks:0,
