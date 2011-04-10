@@ -541,42 +541,50 @@
                 return c;
             }
 
-            canvasWidth = placeholder.width();
-            canvasHeight = placeholder.height();
             var checkCanvas = placeholder.children('canvas');
-            if (checkCanvas.length &&
-                (checkCanvas.get(0).width == canvasWidth) &&
-                (checkCanvas.get(0).height == canvasHeight)){
-                canvas = checkCanvas.get(0);
-                ctx = canvas.getContext('2d');
-                overlay = checkCanvas.get(1);
-                octx = overlay.getContext('2d');
 
+          if (checkCanvas.length) {
+            canvas = checkCanvas.get(0);
+            ctx = canvas.getContext('2d');
+            overlay = checkCanvas.get(1);
+            octx = overlay.getContext('2d');
+
+            canvasWidth = canvas.width;
+            canvasHeight = canvas.height;
+            if (true/*options_.reuseCanvas || (placeholder.width() === canvasWidth && placeholder.height() === canvasHeight)*/) {
                 //do whatever manual clearing is necessary here
                 ctx.clearRect(0,0,canvasWidth,canvasHeight);
                 octx.clearRect(0,0,canvasWidth,canvasHeight);
                 unbindEvents();
-            } else {
-                placeholder.get(0).innerHTML = ''; //this helps with leaky memory possibly
-                //placeholder.html(""); // clear placeholder
 
-            if (placeholder.css("position") == 'static')
+                return;
+            }
+          }
+
+            {
+              canvasWidth = placeholder.width();
+              canvasHeight = placeholder.height();
+
+              placeholder.get(0).innerHTML = ''; //this helps with leaky memory possibly
+              //placeholder.html(""); // clear placeholder
+
+              if (placeholder.css("position") == 'static')
                 placeholder.css("position", "relative"); // for positioning labels and overlay
 
-            if (canvasWidth <= 0 || canvasHeight <= 0)
+              if (canvasWidth <= 0 || canvasHeight <= 0)
                 throw "Invalid dimensions for plot, width = " + canvasWidth + ", height = " + canvasHeight;
 
-            if (window.G_vmlCanvasManager) // excanvas hack
+              if (window.G_vmlCanvasManager) // excanvas hack
                 window.G_vmlCanvasManager.init_(document); // make sure everything is setup
 
-            // the canvas
-            canvas = $(makeCanvas(canvasWidth, canvasHeight)).appendTo(placeholder).get(0);
-            ctx = canvas.getContext("2d");
+              // the canvas
+              canvas = $(makeCanvas(canvasWidth, canvasHeight)).appendTo(placeholder).get(0);
+              ctx = canvas.getContext("2d");
 
-            // overlay canvas for interactive features
-            overlay = $(makeCanvas(canvasWidth, canvasHeight)).css({ position: 'absolute', left: 0, top: 0 }).appendTo(placeholder).get(0);
-            octx = overlay.getContext("2d");
-            octx.stroke();
+              // overlay canvas for interactive features
+              overlay = $(makeCanvas(canvasWidth, canvasHeight)).css({ position: 'absolute', left: 0, top: 0 }).appendTo(placeholder).get(0);
+              octx = overlay.getContext("2d");
+              octx.stroke();
             }
         }
 
