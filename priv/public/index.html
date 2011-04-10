@@ -335,7 +335,7 @@
           </div>
           <script id="new_stats_block_template" type="text/html">
             {% _.each(blocks, function (blockInfo) { %}
-            <div class="darker_block graph_nav {%= blockInfo.extraCSSClasses %}">
+            <div id="{%= h(blockInfo.id) %}" class="darker_block graph_nav {%= blockInfo.extraCSSClasses %}">
               <h3 class="stats-block-expander"><ins></ins>{%= h(blockInfo.blockName) %}</h3>
               <div class="stats">
                 {% if (blockInfo.columns) { %}
@@ -346,7 +346,7 @@
                 </ul>
                 {% } %}
                 {% _.each(blockInfo.stats, function (statInfo) {var name = statInfo.name; var desc = statInfo.desc; %}
-                <div class="analytics-small-graph analytics_graph_{%= h(name) %} {%= (statInfo.missing ? 'dim' : '') %}">
+                <div id="{%= h(statInfo.id) %}" class="analytics-small-graph analytics_graph_{%= h(name) %} {%= (statInfo.missing ? 'dim' : '') %}">
                   <div class="small_graph_block" style="width: 168px; height: 36px;"></div>
                   <span class="small_graph_label">
                     <span class="value">0</span><span class="label-text"> {%= desc %}</span>

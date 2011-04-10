@@ -291,9 +291,6 @@ var maybeReloadAppDueToLeak = (function () {
   }
 
   function renderSmallGraph(jq, ops, statName, isSelected, zoomMillis, timeOffset, options) {
-    if (!jq.is(':visible')) {
-      return;
-    }
     var data = ops.samples[statName] || [];
     var plotSeries = buildPlotSeries(data,
                                      ops.samples.timestamp,
@@ -320,20 +317,18 @@ var maybeReloadAppDueToLeak = (function () {
     if (options.maxY)
       yaxis.max = options.maxY;
 
-    _.each(jq.find('.small_graph_block'), function (item) {
-      $.plotSafe($(item),
-                 _.map(plotSeries, function (plotData) {
-                   return {color: color,
-                           shadowSize: shadowSize,
-                           data: plotData};
-                 }),
-                 {xaxis: {ticks:0,
-                          autoscaleMargin: 0.04,
-                          min: now - zoomMillis,
-                          max: now},
-                  yaxis: yaxis,
-                  grid: {show:false}});
-    });
+    $.plot(jq.find('.small_graph_block'),
+           _.map(plotSeries, function (plotData) {
+             return {color: color,
+                     shadowSize: shadowSize,
+                     data: plotData};
+           }),
+           {xaxis: {ticks:0,
+                    autoscaleMargin: 0.04,
+                    min: now - zoomMillis,
+                    max: now},
+            yaxis: yaxis,
+            grid: {show:false}});
   }
 
   global.renderSmallGraph = renderSmallGraph;
@@ -348,22 +343,6 @@ CacheStatInfos.byName = {};
 var StatGraphs = {
   selected: null,
   spinners: [],
-  findGraphArea: function (statName) {
-    var father;
-    var configuration = this.graphsConfigurationCell.value;
-    var op;
-
-    if (!configuration || !configuration.stats || !(op = configuration.stats.op)) {
-      return $([]);
-    }
-
-    if (op.isPersistent) {
-      father = $('#stats_nav_persistent_container');
-    } else {
-      father = $('#stats_nav_cache_container');
-    }
-    return father.find('.analytics_graph_' + statName);
-  },
   renderNothing: function () {
     var self = this;
     if (self.spinners.length)
@@ -442,9 +421,17 @@ var StatGraphs = {
     var visibleSeconds = Math.ceil(Math.min(zoomMillis, now - stats.timestamp[0]) / 1000);
     $('.stats_visible_period').text(isNaN(visibleSeconds) ? '?' : formatUptime(visibleSeconds));
 
+    var visibleBlockIDs = {};
+    _.each($(_.map(configuration.infos.blockIDs, $i)).filter(":has(.stats:visible)"), function (e) {
+      visibleBlockIDs[e.id] = e;
+    });
+
     _.each(configuration.infos, function (statInfo) {
+      if (!visibleBlockIDs[statInfo.blockId]) {
+        return;
+      }
       var statName = statInfo.name;
-      var area = self.findGraphArea(statName);
+      var area = $($i(statInfo.id));
       var options = {
         maxY: configuration.infos.byName[statName].maxY
       };
@@ -455,261 +442,267 @@ var StatGraphs = {
   init: function () {
     $('.stats-block-expander').live('click', function () {
       $(this).closest('.graph_nav').toggleClass('closed');
+      // this forces configuration refresh and graphs redraw
+      self.graphsConfigurationCell.invalidate();
     });
-    ;(function () {
-      var data =
-        {blocks: [
-          {blockName: "SERVER RESOURCES",
-           extraCSSClasses: "server_resources",
-           stats: [
-             {name: "mem_actual_free", desc: "Mem actual free"},
-             {name: "mem_free", desc: "Mem free"},
-             {name: "cpu_utilization_rate", desc: "CPU %"},
-             {name: "swap_used", desc: "swap_used"}]},
-          {blockName: "MEMCACHED",
-           stats: [
-             {name: "ops", desc: "Operations per sec."},
-             {name: "hit_ratio", desc: "Hit ratio (%)", maxY: 100},
-             {name: "mem_used", desc: "Memory bytes used"},
-             {name: "curr_items", desc: "Items count"},
-             {name: "evictions", desc: "RAM evictions per sec."},
-             {name: "cmd_set", desc: "Sets per sec."},
-             {name: "cmd_get", desc: "Gets per sec."},
-             {name: "bytes_written", desc: "Net. bytes TX per sec."},
-             {name: "bytes_read", desc: "Net. bytes RX per sec."},
-             {name: "get_hits", desc: "Get hits per sec."},
-             {name: "delete_hits", desc: "Delete hits per sec."},
-             {name: "incr_hits", desc: "Incr hits per sec."},
-             {name: "decr_hits", desc: "Decr hits per sec."},
-             {name: "delete_misses", desc: "Delete misses per sec."},
-             {name: "decr_misses", desc: "Decr misses per sec."},
-             {name: "get_misses", desc: "Get Misses per sec."},
-             {name: "incr_misses", desc: "Incr misses per sec."},
-             {name: "curr_connections", desc: "Connections count."},
-             {name: "cas_hits", desc: "CAS hits per sec."},
-             {name: "cas_badval", desc: "CAS badval per sec."},
-             {name: "cas_misses", desc: "CAS misses per sec."}]}]};
-      var statItems = _.reduce(_.pluck(data.blocks.slice(1).concat(data.blocks[0]), 'stats'), [], function (acc, stats) {
-        return acc.concat(stats);
+
+    function initStatsCategory(infos, containerEl, data) {
+      var statItems = [];
+      var blockIDs = [];
+      _.each(data.blocks, function (aBlock) {
+        var blockName = aBlock.blockName;
+        aBlock.id = _.uniqueId("GB");
+        blockIDs.push(aBlock.id);
+        var stats = aBlock.stats;
+        statItems = statItems.concat(stats);
+        _.each(stats, function (statInfo) {
+          statInfo.id = _.uniqueId("G");
+          statInfo.blockId = aBlock.id;
+        });
       });
       _.each(statItems, function (item) {
-        CacheStatInfos.push(item);
-        CacheStatInfos.byName[item.name] = item;
+        infos.push(item);
+        infos.byName[item.name] = item;
       });
-      var containerEl = $i('stats_nav_cache_container')
+      infos.blockIDs = blockIDs;
       renderTemplate('new_stats_block', data, containerEl);
-    })();
-    ;(function () {
-      var data = {
-        blocks: [
-          {blockName: "SERVER RESOURCES",
-           extraCSSClasses: "server_resources",
-           stats: [
-             {name: "mem_actual_free", desc: "free memory"},
-             // {name: "mem_free", desc: "Mem free"},
-             {name: "cpu_utilization_rate", desc: "CPU utilization %", maxY: 100},
-             {name: "swap_used", desc: "swap usage"}]},
-          {
-            blockName: "PERFORMANCE",
-            columns: ['Totals', 'Read', 'Write', 'Moxi'],
-            stats: [
-              // column 1
-              // aggregated from gets, sets, incr, decr, delete
-              // Total ops. Likely doesn't include other types of commands
-              {desc: "ops per second", name: "ops"},
-              // Read (cmd_get - ep_bg_fetched) / cmd_get * 100
-              {desc: "cache hit %", name: "ep_cache_hit_rate", maxY: 100},
-              {desc: "creates per second", name: "ep_ops_create"},
-              {desc: "local %", name: "proxy_local_ratio"},
-              // column 2
-              // Total ops - proxy_cmd_count
-              {desc: "direct per second", name: "direct_ops"},
-              // Read
-              {desc: "hit latency", name: "hit_latency", missing: true}, //?
-              // Write
-              {desc: "updates per second", name: "ep_ops_update"},
-              // Moxi
-              {desc: "local latency", name: "proxy_local_latency"},
-              // column 3
-              // Total ops through server-side moxi
-              {desc: "moxi per second", name: "proxy_cmd_count"},
-              // Read
-              {desc: "miss latency", name: "miss_latency", missing: true}, //?
-              // Write
-              {desc: "write latency", name: "ep_write_latency", missing: true}, // ?
-              // Moxi
-              {desc: "proxy %", name: "proxy_ratio", maxY: 100},
-              // column 4
-              // (Total) average object size)
-              {desc: "average object size", name: "avg_item_size", missing: true}, // need total size _including_ size on disk
-              // Read
-              {desc: "disk reads", name: "ep_bg_fetched"},
-              // Write
-              {desc: "back-offs per second", name: "ep_tap_total_queue_backoff"},
-              // Moxie
-              {desc: "proxy latency", name: "proxy_latency"}
-            ]
-          }, {
-            blockName: "vBUCKET RESOURCES",
-            extraCSSClasses: 'withtotal closed',
-            columns: ['Active', 'Replica', 'Pending', 'Total'],
-            stats: [
-              {desc: "active vBuckets", name: "vb_active_num"},
-              {desc: "replica vBuckets", name: "vb_replica_num"},
-              {desc: "pending vBuckets", name: "vb_pending_num"},
-              {desc: "total vBuckets", name: "ep_vb_total"},
-              // --
-              {desc: "active items", name: "curr_items"},
-              {desc: "replica items", name: "vb_replica_curr_items"},
-              {desc: "pending items", name: "vb_pending_curr_items"},
-              {desc: "total items", name: "curr_items_tot"},
-              // --
-              {desc: "% resident items", name: "vb_active_resident_items_ratio", maxY: 100},
-              {desc: "% resident items", name: "vb_replica_resident_items_ratio", maxY: 100},
-              {desc: "% resident items", name: "vb_pending_resident_items_ratio", maxY: 100},
-              {desc: "% resident items", name: "ep_resident_items_rate", maxY: 100},
-              // --
-              {desc: "new items per sec", name: "vb_active_ops_create"},
-              {desc: "new items per sec", name: "vb_replica_ops_create"},
-              {desc: "new items per sec", name: "vb_pending_ops_create", missing: true},
-              {desc: "new items per sec", name: "ep_ops_create"},
-              // --
-              {desc: "ejections per sec", name: "vb_active_eject"},
-              {desc: "ejections per sec", name: "vb_replica_eject"},
-              {desc: "ejections per sec", name: "vb_pending_eject"},
-              {desc: "ejections per sec", name: "ep_num_value_ejects"},
-              // --
-              {desc: "user data in RAM", name: "vb_active_itm_memory"},
-              {desc: "user data in RAM", name: "vb_replica_itm_memory"},
-              {desc: "user data in RAM", name: "vb_pending_itm_memory"},
-              {desc: "user data in RAM", name: "ep_kv_size"},
-              // --
-              {desc: "metadata in RAM", name: "vb_active_ht_memory"},
-              {desc: "metadata in RAM", name: "vb_replica_ht_memory"},
-              {desc: "metadata in RAM", name: "vb_pending_ht_memory"},
-              {desc: "metadata in RAM", name: "ep_ht_memory"} //,
-              // --
-              // TODO: this is missing in current ep-engine
-              // {desc: "disk used", name: "", missing: true},
-              // {desc: "disk used", name: "", missing: true},
-              // {desc: "disk used", name: "", missing: true},
-              // {desc: "disk used", name: "", missing: true}
-            ]
-          }, {
-            blockName: "DISK QUEUES",
-            extraCSSClasses: 'withtotal closed',
-            columns: ['Active', 'Replica', 'Pending', 'Total'],
-            stats: [
-              // {desc: "Active", name: ""},
-              // {desc: "Replica", name: ""},
-              // {desc: "Pending", name: ""},
-              // {desc: "Total", name: ""},
+    }
 
-              {desc: "items", name: "vb_active_queue_size"},
-              {desc: "items", name: "vb_replica_queue_size"},
-              {desc: "items", name: "vb_pending_queue_size"},
-              {desc: "items", name: "ep_diskqueue_items"},
-              // --
-              {desc: "queue memory", name: "vb_active_queue_memory"},
-              {desc: "queue memory", name: "vb_replica_queue_memory"},
-              {desc: "queue memory", name: "vb_pending_queue_memory"},
-              {desc: "queue memory", name: "ep_diskqueue_memory"},
-              // --
-              {desc: "fill rate", name: "vb_active_queue_fill"},
-              {desc: "fill rate", name: "vb_replica_queue_fill"},
-              {desc: "fill rate", name: "vb_pending_queue_fill"},
-              {desc: "fill rate", name: "ep_diskqueue_fill"},
-              // --
-              {desc: "drain rate", name: "vb_active_queue_drain"},
-              {desc: "drain rate", name: "vb_replica_queue_drain"},
-              {desc: "drain rate", name: "vb_pending_queue_drain"},
-              {desc: "drain rate", name: "ep_diskqueue_drain"},
-              // --
-              {desc: "average age", name: "vb_avg_active_queue_age"},
-              {desc: "average age", name: "vb_avg_replica_queue_age"},
-              {desc: "average age", name: "vb_avg_pending_queue_age"},
-              {desc: "average age", name: "vb_avg_total_queue_age"}
-            ]
-          }, {
-            blockName: "TAP QUEUES",
-            extraCSSClasses: 'withtotal closed',
-            columns: ['Replication', 'Rebalance', 'Clients', 'Total'],
-            stats: [
-              // {desc: "Replica", name: ""},
-              // {desc: "Rebalance", name: ""},
-              // {desc: "User", name: ""},
-              // {desc: "Total", name: ""},
+    initStatsCategory(
+      CacheStatInfos, $i('stats_nav_cache_container'),
+      {blocks: [
+        {blockName: "SERVER RESOURCES",
+         extraCSSClasses: "server_resources",
+         stats: [
+           {name: "mem_actual_free", desc: "Mem actual free"},
+           {name: "mem_free", desc: "Mem free"},
+           {name: "cpu_utilization_rate", desc: "CPU %"},
+           {name: "swap_used", desc: "swap_used"}]},
+        {blockName: "MEMCACHED",
+         stats: [
+           {name: "ops", desc: "Operations per sec.", 'default': true},
+           {name: "hit_ratio", desc: "Hit ratio (%)", maxY: 100},
+           {name: "mem_used", desc: "Memory bytes used"},
+           {name: "curr_items", desc: "Items count"},
+           {name: "evictions", desc: "RAM evictions per sec."},
+           {name: "cmd_set", desc: "Sets per sec."},
+           {name: "cmd_get", desc: "Gets per sec."},
+           {name: "bytes_written", desc: "Net. bytes TX per sec."},
+           {name: "bytes_read", desc: "Net. bytes RX per sec."},
+           {name: "get_hits", desc: "Get hits per sec."},
+           {name: "delete_hits", desc: "Delete hits per sec."},
+           {name: "incr_hits", desc: "Incr hits per sec."},
+           {name: "decr_hits", desc: "Decr hits per sec."},
+           {name: "delete_misses", desc: "Delete misses per sec."},
+           {name: "decr_misses", desc: "Decr misses per sec."},
+           {name: "get_misses", desc: "Get Misses per sec."},
+           {name: "incr_misses", desc: "Incr misses per sec."},
+           {name: "curr_connections", desc: "Connections count."},
+           {name: "cas_hits", desc: "CAS hits per sec."},
+           {name: "cas_badval", desc: "CAS badval per sec."},
+           {name: "cas_misses", desc: "CAS misses per sec."}]}]});
 
-              {desc: "# tap senders", name: "ep_tap_replica_count"},
-              {desc: "# tap senders", name: "ep_tap_rebalance_count"},
-              {desc: "# tap senders", name: "ep_tap_user_count"},
-              {desc: "# tap senders", name: "ep_tap_total_count"},
-              // --
-              {desc: "# items", name: "ep_tap_replica_qlen"},
-              {desc: "# items", name: "ep_tap_rebalance_qlen"},
-              {desc: "# items", name: "ep_tap_user_qlen"},
-              {desc: "# items", name: "ep_tap_total_qlen"},
-              // --
-              {desc: "fill rate", name: "ep_tap_replica_queue_fill"},
-              {desc: "fill rate", name: "ep_tap_rebalance_queue_fill"},
-              {desc: "fill rate", name: "ep_tap_user_queue_fill"},
-              {desc: "fill rate", name: "ep_tap_total_queue_fill"},
-              // --
-              {desc: "drain rate", name: "ep_tap_replica_queue_drain"},
-              {desc: "drain rate", name: "ep_tap_rebalance_queue_drain"},
-              {desc: "drain rate", name: "ep_tap_user_queue_drain"},
-              {desc: "drain rate", name: "ep_tap_total_queue_drain"},
-              // --
-              {desc: "back-off rate", name: "ep_tap_replica_queue_backoff"},
-              {desc: "back-off rate", name: "ep_tap_rebalance_queue_backoff"},
-              {desc: "back-off rate", name: "ep_tap_user_queue_backoff"},
-              {desc: "back-off rate", name: "ep_tap_total_queue_backoff"},
-              // --
-              {desc: "# backfill remaining", name: "ep_tap_replica_queue_backfillremaining"},
-              {desc: "# backfill remaining", name: "ep_tap_rebalance_queue_backfillremaining"},
-              {desc: "# backfill remaining", name: "ep_tap_user_queue_backfillremaining"},
-              {desc: "# backfill remaining", name: "ep_tap_total_queue_backfillremaining"},
-              // --
-              {desc: "# remaining on disk", name: "ep_tap_replica_queue_itemondisk"},
-              {desc: "# remaining on disk", name: "ep_tap_rebalance_queue_itemondisk"},
-              {desc: "# remaining on disk", name: "ep_tap_user_queue_itemondisk"},
-              {desc: "# remaining on disk", name: "ep_tap_total_queue_itemondisk"}
-              // --
-            ]
-          }
-        ]
-      };
-      var statItems = _.reduce(_.pluck(data.blocks.slice(1).concat(data.blocks[0]), 'stats'), [], function (acc, stats) {
-        return acc.concat(stats);
-      });
-      _.each(statItems, function (item) {
-        PersistentStatInfos.push(item);
-        PersistentStatInfos.byName[item.name] = item;
-      });
-      renderTemplate('new_stats_block', data, $i('stats_nav_persistent_container'));
-    })();
+    initStatsCategory(
+      PersistentStatInfos, $i('stats_nav_persistent_container'),
+      {blocks: [
+        {blockName: "SERVER RESOURCES",
+         extraCSSClasses: "server_resources",
+         stats: [
+           {name: "mem_actual_free", desc: "free memory"},
+           // {name: "mem_free", desc: "Mem free"},
+           {name: "cpu_utilization_rate", desc: "CPU utilization %", maxY: 100},
+           {name: "swap_used", desc: "swap usage"}]},
+        {
+          blockName: "PERFORMANCE",
+          columns: ['Totals', 'Read', 'Write', 'Moxi'],
+          stats: [
+            // column 1
+            // aggregated from gets, sets, incr, decr, delete
+            // Total ops. Likely doesn't include other types of commands
+            {desc: "ops per second", name: "ops", 'default': true},
+            // Read (cmd_get - ep_bg_fetched) / cmd_get * 100
+            {desc: "cache hit %", name: "ep_cache_hit_rate", maxY: 100},
+            {desc: "creates per second", name: "ep_ops_create"},
+            {desc: "local %", name: "proxy_local_ratio"},
+            // column 2
+            // Total ops - proxy_cmd_count
+            {desc: "direct per second", name: "direct_ops"},
+            // Read
+            {desc: "hit latency", name: "hit_latency", missing: true}, //?
+            // Write
+            {desc: "updates per second", name: "ep_ops_update"},
+            // Moxi
+            {desc: "local latency", name: "proxy_local_latency"},
+            // column 3
+            // Total ops through server-side moxi
+            {desc: "moxi per second", name: "proxy_cmd_count"},
+            // Read
+            {desc: "miss latency", name: "miss_latency", missing: true}, //?
+            // Write
+            {desc: "write latency", name: "ep_write_latency", missing: true}, // ?
+            // Moxi
+            {desc: "proxy %", name: "proxy_ratio", maxY: 100},
+            // column 4
+            // (Total) average object size)
+            {desc: "average object size", name: "avg_item_size", missing: true}, // need total size _including_ size on disk
+            // Read
+            {desc: "disk reads", name: "ep_bg_fetched"},
+            // Write
+            {desc: "back-offs per second", name: "ep_tap_total_queue_backoff"},
+            // Moxie
+            {desc: "proxy latency", name: "proxy_latency"}
+          ]
+        }, {
+          blockName: "vBUCKET RESOURCES",
+          extraCSSClasses: 'withtotal closed',
+          columns: ['Active', 'Replica', 'Pending', 'Total'],
+          stats: [
+            {desc: "active vBuckets", name: "vb_active_num"},
+            {desc: "replica vBuckets", name: "vb_replica_num"},
+            {desc: "pending vBuckets", name: "vb_pending_num"},
+            {desc: "total vBuckets", name: "ep_vb_total"},
+            // --
+            {desc: "active items", name: "curr_items"},
+            {desc: "replica items", name: "vb_replica_curr_items"},
+            {desc: "pending items", name: "vb_pending_curr_items"},
+            {desc: "total items", name: "curr_items_tot"},
+            // --
+            {desc: "% resident items", name: "vb_active_resident_items_ratio", maxY: 100},
+            {desc: "% resident items", name: "vb_replica_resident_items_ratio", maxY: 100},
+            {desc: "% resident items", name: "vb_pending_resident_items_ratio", maxY: 100},
+            {desc: "% resident items", name: "ep_resident_items_rate", maxY: 100},
+            // --
+            {desc: "new items per sec", name: "vb_active_ops_create"},
+            {desc: "new items per sec", name: "vb_replica_ops_create"},
+            {desc: "new items per sec", name: "vb_pending_ops_create", missing: true},
+            {desc: "new items per sec", name: "ep_ops_create"},
+            // --
+            {desc: "ejections per sec", name: "vb_active_eject"},
+            {desc: "ejections per sec", name: "vb_replica_eject"},
+            {desc: "ejections per sec", name: "vb_pending_eject"},
+            {desc: "ejections per sec", name: "ep_num_value_ejects"},
+            // --
+            {desc: "user data in RAM", name: "vb_active_itm_memory"},
+            {desc: "user data in RAM", name: "vb_replica_itm_memory"},
+            {desc: "user data in RAM", name: "vb_pending_itm_memory"},
+            {desc: "user data in RAM", name: "ep_kv_size"},
+            // --
+            {desc: "metadata in RAM", name: "vb_active_ht_memory"},
+            {desc: "metadata in RAM", name: "vb_replica_ht_memory"},
+            {desc: "metadata in RAM", name: "vb_pending_ht_memory"},
+            {desc: "metadata in RAM", name: "ep_ht_memory"} //,
+            // --
+            // TODO: this is missing in current ep-engine
+            // {desc: "disk used", name: "", missing: true},
+            // {desc: "disk used", name: "", missing: true},
+            // {desc: "disk used", name: "", missing: true},
+            // {desc: "disk used", name: "", missing: true}
+          ]
+        }, {
+          blockName: "DISK QUEUES",
+          extraCSSClasses: 'withtotal closed',
+          columns: ['Active', 'Replica', 'Pending', 'Total'],
+          stats: [
+            // {desc: "Active", name: ""},
+            // {desc: "Replica", name: ""},
+            // {desc: "Pending", name: ""},
+            // {desc: "Total", name: ""},
+
+            {desc: "items", name: "vb_active_queue_size"},
+            {desc: "items", name: "vb_replica_queue_size"},
+            {desc: "items", name: "vb_pending_queue_size"},
+            {desc: "items", name: "ep_diskqueue_items"},
+            // --
+            {desc: "queue memory", name: "vb_active_queue_memory"},
+            {desc: "queue memory", name: "vb_replica_queue_memory"},
+            {desc: "queue memory", name: "vb_pending_queue_memory"},
+            {desc: "queue memory", name: "ep_diskqueue_memory"},
+            // --
+            {desc: "fill rate", name: "vb_active_queue_fill"},
+            {desc: "fill rate", name: "vb_replica_queue_fill"},
+            {desc: "fill rate", name: "vb_pending_queue_fill"},
+            {desc: "fill rate", name: "ep_diskqueue_fill"},
+            // --
+            {desc: "drain rate", name: "vb_active_queue_drain"},
+            {desc: "drain rate", name: "vb_replica_queue_drain"},
+            {desc: "drain rate", name: "vb_pending_queue_drain"},
+            {desc: "drain rate", name: "ep_diskqueue_drain"},
+            // --
+            {desc: "average age", name: "vb_avg_active_queue_age"},
+            {desc: "average age", name: "vb_avg_replica_queue_age"},
+            {desc: "average age", name: "vb_avg_pending_queue_age"},
+            {desc: "average age", name: "vb_avg_total_queue_age"}
+          ]
+        }, {
+          blockName: "TAP QUEUES",
+          extraCSSClasses: 'withtotal closed',
+          columns: ['Replication', 'Rebalance', 'Clients', 'Total'],
+          stats: [
+            // {desc: "Replica", name: ""},
+            // {desc: "Rebalance", name: ""},
+            // {desc: "User", name: ""},
+            // {desc: "Total", name: ""},
+
+            {desc: "# tap senders", name: "ep_tap_replica_count"},
+            {desc: "# tap senders", name: "ep_tap_rebalance_count"},
+            {desc: "# tap senders", name: "ep_tap_user_count"},
+            {desc: "# tap senders", name: "ep_tap_total_count"},
+            // --
+            {desc: "# items", name: "ep_tap_replica_qlen"},
+            {desc: "# items", name: "ep_tap_rebalance_qlen"},
+            {desc: "# items", name: "ep_tap_user_qlen"},
+            {desc: "# items", name: "ep_tap_total_qlen"},
+            // --
+            {desc: "fill rate", name: "ep_tap_replica_queue_fill"},
+            {desc: "fill rate", name: "ep_tap_rebalance_queue_fill"},
+            {desc: "fill rate", name: "ep_tap_user_queue_fill"},
+            {desc: "fill rate", name: "ep_tap_total_queue_fill"},
+            // --
+            {desc: "drain rate", name: "ep_tap_replica_queue_drain"},
+            {desc: "drain rate", name: "ep_tap_rebalance_queue_drain"},
+            {desc: "drain rate", name: "ep_tap_user_queue_drain"},
+            {desc: "drain rate", name: "ep_tap_total_queue_drain"},
+            // --
+            {desc: "back-off rate", name: "ep_tap_replica_queue_backoff"},
+            {desc: "back-off rate", name: "ep_tap_rebalance_queue_backoff"},
+            {desc: "back-off rate", name: "ep_tap_user_queue_backoff"},
+            {desc: "back-off rate", name: "ep_tap_total_queue_backoff"},
+            // --
+            {desc: "# backfill remaining", name: "ep_tap_replica_queue_backfillremaining"},
+            {desc: "# backfill remaining", name: "ep_tap_rebalance_queue_backfillremaining"},
+            {desc: "# backfill remaining", name: "ep_tap_user_queue_backfillremaining"},
+            {desc: "# backfill remaining", name: "ep_tap_total_queue_backfillremaining"},
+            // --
+            {desc: "# remaining on disk", name: "ep_tap_replica_queue_itemondisk"},
+            {desc: "# remaining on disk", name: "ep_tap_rebalance_queue_itemondisk"},
+            {desc: "# remaining on disk", name: "ep_tap_user_queue_itemondisk"},
+            {desc: "# remaining on disk", name: "ep_tap_total_queue_itemondisk"}
+            // --
+          ]
+        }
+      ]});
 
     var self = this;
 
     self.selected = new LinkClassSwitchCell('graph', {
       bindMethod: 'bind',
-      linkSelector: '.analytics-small-graph',
-      firstItemIsDefault: true});
+      linkSelector: '.analytics-small-graph'});
 
     var selected = self.selected;
 
     var t;
-    _.each(_.uniq(_.keys(PersistentStatInfos.byName).concat(_.keys(CacheStatInfos.byName))), function (statName) {
-      var area = $('.analytics_graph_' + statName);
+    _.each(PersistentStatInfos.concat(CacheStatInfos), function (statInfo) {
+      var statName = statInfo.name;
+      var area = $($i(statInfo.id));
       if (!area.length) {
-        return;
+        throw new Error("BUG");
       }
       if (!t) {
         t = area;
       } else {
         t = t.add(area);
       }
-      selected.addItem('analytics_graph_' + statName, statName);
+      selected.addItem('analytics_graph_' + statName, statName, statInfo['default']);
     });
 
     selected.finalizeBuilding();
