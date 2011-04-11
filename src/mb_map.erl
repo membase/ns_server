@@ -97,7 +97,7 @@ is_balanced(Map, Nodes, Options) ->
                                        lists:min(ChainHist) =< 2
                            end, lists:sublist(Histograms, NumCopies)) of
                         false ->
-                            io:fwrite("Histograms = ~p~n", [Histograms]),
+                            io:fwrite("Histograms = ~w~n", [Histograms]),
                             io:fwrite("Counts = ~p~n", [dict:to_list(counts(Map))]),
                             false;
                         true ->
@@ -114,7 +114,7 @@ is_balanced(Map, Nodes, Options) ->
                                       Acc andalso SlaveCount == NumSlaves
                                           andalso Min /= really_big
                                           andalso Max > 0
-                                          andalso Max - Min =< 1
+                                          andalso Max - Min =< 2
                               end, true, SlaveCounts)
                     end
             end
@@ -205,19 +205,12 @@ balance1(NumberedMap, SortedChains, Shift) ->
 %% beginning of a sorted list consisting of counts of vbuckets *at
 %% this turn for this master* followed by the node name. Also returns
 %% the remainder of the list to make it easy to update the count.
-best_node([{C, Node} = CN | Rest], Turn, Counts) ->
-    Total = dict:fetch({total, Node, Turn}, Counts),
-    case Rest of
-        [{C1, _}|_] when C1 == C->
-            {Total1, CN1, Rest1} = best_node(Rest, Turn, Counts),
-            if Total =< Total1 ->
-                    {Total, CN, Rest};
-               true ->
-                    {Total1, CN1, [CN|Rest1]}
-            end;
-        _ ->
-            {Total, CN, Rest}
-    end.
+best_node(NodeCounts, Turn, Counts, Blacklist) ->
+    NodeCounts1 = [{Count, dict:fetch({total, Node, Turn}, Counts), Node}
+                   || {Count, Node} <- NodeCounts,
+                      not lists:member(Node, Blacklist)],
+    {Count, _, Node} = lists:min(NodeCounts1),
+    {Count, Node}.
 
 
 %% @private
@@ -251,22 +244,23 @@ chains(Nodes, NumVBuckets, NumCopies, Slaves) ->
 chains1(_, 0, _) ->
     [];
 chains1(Counts, NumVBuckets, NumCopies) ->
-    {Chain, Counts1} = chains2(Counts, undefined, 1, NumCopies),
+    {Chain, Counts1} = chains2(Counts, undefined, 1, NumCopies, []),
     [Chain | chains1(Counts1, NumVBuckets - 1, NumCopies)].
 
 
-chains2(Counts, PrevNode, Turn, Turns) when Turn =< Turns ->
+chains2(Counts, PrevNode, Turn, Turns, ChainReversed) when Turn =< Turns ->
     Key = {PrevNode, Turn},
     %% The first node in the list for this master and turn is the node
     %% with the lowest count. We keep the list sorted by count.
-    {Total, {Count, Node}, Rest} =
-        best_node(dict:fetch({PrevNode, Turn}, Counts), Turn, Counts),
-    Counts1 = dict:store({total, Node, Turn}, Total+1, Counts),
-    Counts2 = dict:store(Key, sorted_insert({Count+1, Node}, Rest), Counts1),
-    {Chain, Counts3} = chains2(Counts2, Node, Turn+1, Turns),
-    {[Node|Chain], Counts3};
-chains2(Counts, _, _, _)  ->
-    {[], Counts}.
+    NodeCounts = dict:fetch({PrevNode, Turn}, Counts),
+    {Count, Node} =
+        best_node(NodeCounts, Turn, Counts, ChainReversed),
+    Counts1 = dict:update_counter({total, Node, Turn}, 1, Counts),
+    Counts2 = dict:store(Key, lists:keyreplace(Node, 2, NodeCounts,
+                                               {Count+1, Node}), Counts1),
+    chains2(Counts2, Node, Turn+1, Turns, [Node|ChainReversed]);
+chains2(Counts, _, _, _, ChainReversed)  ->
+    {lists:reverse(ChainReversed), Counts}.
 
 
 %% @private
@@ -376,16 +370,6 @@ slaves([], _, _, Set) ->
 
 
 %% @private
-%% @doc Insert an item in the proper place in an already-sorted list.
-sorted_insert(Element, [H|_] = List) when Element =< H ->
-    [Element|List];
-sorted_insert(Element, [H|T]) ->
-    [H|sorted_insert(Element, T)];
-sorted_insert(Element, []) ->
-    [Element].
-
-
-%% @private
 %% @doc Generate a list of nodes for testing.
 testnodes(NumNodes) ->
     [list_to_atom([$n | integer_to_list(N)]) || N <- lists:seq(1, NumNodes)].
@@ -398,7 +382,7 @@ testnodes(NumNodes) ->
 balance_test_() ->
     MapSizes = [1,2,1024,4096],
     NodeNums = [1,2,3,4,5,10,100],
-    CopySizes = [1,2,3,4],
+    CopySizes = [1,2,3],
     SlaveNums = [1,2,10],
     {inparallel,
      [balance_test_gen(MapSize, CopySize, NumNodes, NumSlaves)
