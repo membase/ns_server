@@ -546,8 +546,11 @@ flush_head(Head, N) ->
 enumerate(List) ->
     enumerate(List, 1).
 
-enumerate(List, Start) ->
-    lists:zip(lists:seq(Start, length(List) + Start - 1), List).
+enumerate([H|T], Start) ->
+    [{Start, H}|enumerate(T, Start + 1)];
+enumerate([], _) ->
+    [].
+
 
 %% Equivalent of sort|uniq -c
 uniqc(List) ->
@@ -635,13 +638,12 @@ rotate_test() ->
     [] = rotate([]).
 
 
-pairs(L) ->
-    pairs(L, []).
-
-pairs([H1,H2|T], P) ->
-    pairs([H2|T], [{H1, H2}|P]);
-pairs(_, P) ->
-    lists:reverse(P).
+pairs([H1|[H2|_] = T]) ->
+    [{H1, H2}|pairs(T)];
+pairs([_]) ->
+    [];
+pairs([]) ->
+    [].
 
 pairs_test() ->
     [{1,2}, {2,3}, {3,4}] = pairs([1,2,3,4]),
@@ -707,6 +709,31 @@ ukeymergewith_test() ->
     [{a, 3}] = ukeymergewith(Fun, 1, [{a, 1}], [{a, 2}]),
     [{a, 3}, {b, 1}] = ukeymergewith(Fun, 1, [{a, 1}], [{a, 2}, {b, 1}]),
     [{a, 1}, {b, 3}] = ukeymergewith(Fun, 1, [{b, 1}], [{a, 1}, {b, 2}]).
+
+
+%% Given two sorted lists, return a 3-tuple containing the elements
+%% that appear only in the first list, only in the second list, or are
+%% common to both lists, respectively.
+comm([H1|T1] = L1, [H2|T2] = L2) ->
+    if H1 == H2 ->
+            {R1, R2, R3} = comm(T1, T2),
+            {R1, R2, [H1|R3]};
+       H1 < H2 ->
+            {R1, R2, R3} = comm(T1, L2),
+            {[H1|R1], R2, R3};
+       true ->
+            {R1, R2, R3} = comm(L1, T2),
+            {R1, [H2|R2], R3}
+    end;
+comm(L1, L2) when L1 == []; L2 == [] ->
+    {L1, L2, []}.
+
+
+comm_test() ->
+    {[1], [2], [3]} = comm([1,3], [2,3]),
+    {[1,2,3], [], []} = comm([1,2,3], []),
+    {[], [], []} = comm([], []).
+
 
 
 start_singleton(Module, Name, Args, Opts) ->
