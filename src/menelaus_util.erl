@@ -233,7 +233,7 @@ pipe_through_command_rec(Port, Acc) ->
 %% this is NOT secure, because I cannot make erlang ports work as
 %% popen. We're missing ability to close write side of the port.
 insecure_pipe_through_command(Command, IOList) ->
-    TmpFile = filename:join(ns_config_default:default_path("tmp"),
+    TmpFile = filename:join(path_config:component_path(tmp),
                             "pipethrough." ++ integer_to_list(erlang:phash2([self(), os:getpid(), timestamp]))),
     filelib:ensure_dir(TmpFile),
     file:write_file(TmpFile, IOList),

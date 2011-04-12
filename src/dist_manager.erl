@@ -34,11 +34,7 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 ip_config_path() ->
-    %% this smells bad, but we live higher on supervisor/process
-    %% hierarchy than ns_config, so I see no other way
-    {ok, CfgPath} = application:get_env(ns_server, ns_server_config),
-    Path = filename:dirname(CfgPath),
-    filename:join(Path, "ip").
+    path_config:component_path(data, "ip").
 
 strip_full(String) ->
     String2 = string:strip(String),

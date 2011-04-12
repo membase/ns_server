@@ -22,15 +22,31 @@ REBAR=./rebar
 # up-to-date
 .PHONY: $(TMP_VER)
 
-all: ebins deps_all
+ifneq (,$(wildcard .configuration))
+all: ebins deps_all priv/public/js/all-images.js
 
-deps_menelaus:
-	(cd deps/menelaus && $(MAKE) all)
+fail-unless-configured:
+	@true
+
+else
+all fail-unless-configured:
+	@echo
+	@echo "you need to run ./configure with --prefix option to be able to run ns_server"
+	@echo
+	@false
+endif
 
 deps_smtp:
 	(cd deps/gen_smtp && $(MAKE) ebins)
 
-deps_all: deps_menelaus deps_smtp
+deps_mochiweb:
+	test -d deps/mochiweb/ebin || mkdir deps/mochiweb/ebin
+	(cd deps/mochiweb; $(MAKE))
+
+deps_erlwsh:
+	(cd deps/erlwsh; $(MAKE))
+
+deps_all: deps_smtp deps_mochiweb deps_erlwsh
 
 docs:
 	priv/erldocs $(DOC_DIR)
@@ -41,52 +57,61 @@ ebins: src/ns_server.app.src
 src/ns_server.app.src: src/ns_server.app.src.in $(TMP_VER)
 	(sed s/0.0.0/`cat $(TMP_VER)`/g $< > $@) || (rm $@ && false)
 
+priv/public/js/all-images.js: priv/public/images priv/public/images/spinner scripts/build-all-images.rb
+	ruby scripts/build-all-images.rb >$@ || (rm $@ && false)
+
 $(TMP_VER):
 	test -d $(TMP_DIR) || mkdir $(TMP_DIR)
 	git describe | sed s/-/_/g > $(TMP_VER)
 
-ifdef PREFIX
-
 REST_PREFIX := $(PREFIX)
 NS_SERVER := $(PREFIX)/ns_server
 
-install:
-	mkdir -p $(NS_SERVER)
-	tar cf - cluster_connect cluster_run mkcouch.sh mbcollect_info \
-		ebin \
-		deps/*/ebin \
-		deps/*/deps/*/ebin \
-		deps/menelaus/priv/public \
-		deps/menelaus/deps/erlwsh/priv | (cd $(PREFIX)/ns_server && tar xf -)
-	mkdir -p ns_server/bin ns_server/lib/memcached
-	ln -f -s $(REST_PREFIX)/bin/memcached $(NS_SERVER)/bin/memcached || true
-	ln -f -s $(REST_PREFIX)/lib/memcached/default_engine.so $(NS_SERVER)/lib/memcached/default_engine.so || true
-	ln -f -s $(REST_PREFIX)/lib/memcached/stdin_term_handler.so $(NS_SERVER)/lib/memcached/stdin_term_handler.so || true
-	mkdir -p $(NS_SERVER)/bin/bucket_engine
-	ln -f -s $(REST_PREFIX)/lib/bucket_engine.so $(NS_SERVER)/bin/bucket_engine/bucket_engine.so || true
-	mkdir -p $(NS_SERVER)/bin/ep_engine
-	ln -f -s $(REST_PREFIX)/lib/ep.so $(NS_SERVER)/bin/ep_engine/ep.so || true
-	mkdir -p $(NS_SERVER)/bin/moxi
-	ln -f -s $(REST_PREFIX)/bin/moxi $(NS_SERVER)/bin/moxi/moxi || true
-	mkdir -p $(NS_SERVER)/bin/vbucketmigrator
-	ln -f -s $(REST_PREFIX)/bin/vbucketmigrator $(NS_SERVER)/bin/vbucketmigrator/vbucketmigrator || true
+install: all $(TMP_VER) fail-unless-configured
+	$(MAKE) do-install "NS_SERVER_VER=$(strip $(shell cat $(TMP_VER)))" "PREFIX=$(strip $(shell . `pwd`/.configuration && echo $$prefix))"
+
+ifdef NS_SERVER_VER
+
+ifeq (,$(PREFIX))
+$(error "need PREFIX defined")
+endif
+
+NS_SERVER_LIBDIR := $(PREFIX)/lib/ns_server/erlang/lib/ns_server-$(NS_SERVER_VER)
+ERLWSH_LIBDIR := $(PREFIX)/lib/ns_server/erlang/lib/erlwsh
+GEN_SMTP_LIBDIR := $(PREFIX)/lib/ns_server/erlang/lib/gen_smtp
+MOCHIWEB_LIBDIR := $(PREFIX)/lib/ns_server/erlang/lib/mochiweb
+
+do-install:
+	echo $(PREFIX)
+	mkdir -p $(NS_SERVER_LIBDIR)
+	cp -r ebin $(NS_SERVER_LIBDIR)/
+	mkdir -p $(NS_SERVER_LIBDIR)/priv
+	cp -r priv/public $(NS_SERVER_LIBDIR)/priv/
+	mkdir -p $(ERLWSH_LIBDIR)
+	cp -r deps/erlwsh/ebin $(ERLWSH_LIBDIR)/
+	cp -r deps/erlwsh/priv $(ERLWSH_LIBDIR)/
+	@true mkdir -p $(GEN_SMTP_LIBDIR)
+	@true cp -r deps/gen_smtp/ebin $(GEN_SMTP_LIBDIR)/
+	mkdir -p $(MOCHIWEB_LIBDIR)
+	cp -r deps/mochiweb/ebin $(MOCHIWEB_LIBDIR)/
+	mkdir -p $(PREFIX)/etc/membase
+	sed -e 's|@PREFIX@|$(PREFIX)|g' <etc/static_config.in >$(PREFIX)/etc/membase/static_config
+	touch $(PREFIX)/etc/membase/config
+	mkdir -p $(PREFIX)/bin/
+	sed -e 's|@PREFIX@|$(PREFIX)|g' <membase-server.sh.in >$(PREFIX)/bin/membase-server
+	sed -e 's|@PREFIX@|$(PREFIX)|g' <mbbrowse_logs.in >$(PREFIX)/bin/mbbrowse_logs
+	install mbcollect_info $(PREFIX)/bin/mbcollect_info
+	chmod +x $(PREFIX)/bin/membase-server $(PREFIX)/bin/mbbrowse_logs $(PREFIX)/bin/mbcollect_info
+	mkdir -p $(PREFIX)/var/lib/membase/mnesia
+	mkdir -p $(PREFIX)/var/lib/membase/logs
+	cp priv/init.sql $(PREFIX)/etc/membase/
 
 endif
 
-bdist: clean ebins deps_all
-	(cd .. && tar cf -  \
-                          ns_server/mbcollect_info \
-                          ns_server/ebin \
-                          ns_server/deps/*/ebin \
-                          ns_server/deps/*/deps/*/ebin \
-                          ns_server/deps/menelaus/priv/public \
-                          ns_server/deps/menelaus/deps/erlwsh/priv | gzip -9 -c > \
-                          ns_server/ns_server_`cat ns_server/$(TMP_VER)`.tar.gz )
-	echo created ns_server_`cat $(TMP_VER)`.tar.gz
-
 clean clean_all:
-	@(cd deps/menelaus && $(MAKE) clean)
 	@(cd deps/gen_smtp && $(MAKE) clean)
+	@(cd deps/mochiweb && $(MAKE) clean)
+	@(cd deps/erlwsh && $(MAKE) clean)
 	rm -f $(TMP_VER)
 	rm -f $(TMP_DIR)/*.cov.html
 	rm -f cov.html
@@ -98,6 +123,7 @@ clean clean_all:
 	rm -rf ebin
 	rm -rf docs
 
+# TODO: adjust
 dataclean:
 	rm -rf $(TMP_DIR)
 	rm -rf Mnesia*
@@ -116,28 +142,25 @@ common_tests: dataclean all
 
 test: test_$(OS)
 
-test_: test_unit test_menelaus
+test_: test_unit
 
-test_Windows_NT: test_unit test_menelaus
+test_Windows_NT: test_unit
 
 test_unit: ebins
 	erl $(EFLAGS) -noshell -kernel error_logger silent -shutdown_time 10000 -eval 'application:start(sasl).' -eval "case t:$(TEST_TARGET)() of ok -> init:stop(); _ -> init:stop(1) end."
-
-test_menelaus: deps/menelaus
-	(cd deps/menelaus; $(MAKE) test)
 
 # assuming exuberant-ctags
 TAGS:
 	ctags -eR .
 
 $(NS_SERVER_PLT):
-	dialyzer --output_plt $@ --build_plt -pa ebin --apps compiler crypto erts inets kernel mnesia os_mon sasl ssl stdlib xmerl -c deps/menelaus/deps/mochiweb/ebin deps/menelaus/deps/erlwsh/ebin
+	dialyzer --output_plt $@ --build_plt -pa ebin --apps compiler crypto erts inets kernel mnesia os_mon sasl ssl stdlib xmerl -c deps/mochiweb/ebin deps/erlwsh/ebin
 
 dialyzer: all $(NS_SERVER_PLT)
-	dialyzer --plt $(NS_SERVER_PLT) -pa ebin -c ebin -c deps/menelaus/ebin
+	dialyzer --plt $(NS_SERVER_PLT) -pa ebin -c ebin
 
 dialyzer_obsessive: all $(NS_SERVER_PLT)
-	dialyzer --plt $(NS_SERVER_PLT) -Wunmatched_returns -Werror_handling -Wrace_conditions -Wbehaviours -Wunderspecs -pa ebin -c ebin -c deps/menelaus/ebin
+	dialyzer --plt $(NS_SERVER_PLT) -Wunmatched_returns -Werror_handling -Wrace_conditions -Wbehaviours -Wunderspecs -pa ebin -c ebin
 
 dialyzer_rebar: all
 	$(REBAR) analyze

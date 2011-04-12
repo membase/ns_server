@@ -23,7 +23,6 @@
 -export([ensure/0, ensure/1]).
 -export([get_base_dir/0, get_base_dir/1]).
 -export([local_path/1, local_path/2]).
--export([doc_path/0]).
 -export([deps_on_path/0, new_siblings/1]).
 
 %% @spec deps_on_path() -> [ProjNameAndVers]
@@ -94,7 +93,3 @@ local_path(Components, Module) ->
 %%      Equivalent to local_path(Components, ?MODULE).
 local_path(Components) ->
     local_path(Components, ?MODULE).
-
-%% @doc Return the documentation path for the web console.
-doc_path() ->
-    filename:join([ns_config_default:default_root_path() | ["docs"]]).

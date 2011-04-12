@@ -611,9 +611,9 @@ load_file(bin, ConfigPath) ->
     end.
 
 save_file(bin, ConfigPath, X) ->
-    TempFile = ns_config_default:tempfile(filename:dirname(ConfigPath),
-                                          filename:basename(ConfigPath),
-                                          ".tmp"),
+    TempFile = path_config:tempfile(filename:dirname(ConfigPath),
+                                    filename:basename(ConfigPath),
+                                    ".tmp"),
     {ok, F} = file:open(TempFile, [write, raw]),
     ok = file:write(F, term_to_binary(X)),
     ok = file:sync(F),

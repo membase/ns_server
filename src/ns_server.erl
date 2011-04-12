@@ -20,7 +20,32 @@
 -export([start/2, stop/1]).
 
 start(_Type, _Args) ->
+    setup_static_config(),
     ns_server_cluster_sup:start_link().
+
+get_config_path() ->
+    case application:get_env(ns_server, config_path) of
+        {ok, V} -> V;
+        _ -> error_logger:error_msg("config_path parameter for ns_server application is missing!\n"),
+             erlang:error("config_path parameter for ns_server application is missing!")
+    end.
+
+setup_static_config() ->
+    Terms = case file:consult(get_config_path()) of
+                {ok, T} when is_list(T) ->
+                    T;
+                _ ->
+                    erlang:error("failed to read static config: " ++ get_config_path() ++ ". It must be readable file with list of pairs~n")
+            end,
+    io:format("Terms = ~p~n", [Terms]),
+    lists:foreach(fun ({K,V}) ->
+                          case application:get_env(ns_server, K) of
+                              undefined ->
+                                  application:set_env(ns_server, K, V);
+                              _ ->
+                                  error_logger:warning_msg("not overriding parameter ~p, which is given from command line~n", [K])
+                          end
+                  end, Terms).
 
 stop(_State) ->
     ok.

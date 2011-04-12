@@ -8,7 +8,7 @@ def testament_child_death():
         os._exit(0)
     os.waitpid(rv, os.WUNTRACED)
 
-COUCH_PATH = "lib/couchdb"
+PREFIX = subprocess.Popen(". $(pwd)/.configuration && echo $prefix", shell = True, stdout=subprocess.PIPE).communicate()[0].rstrip()
 
 def setup_path():
     def ebin_search(path):
@@ -16,7 +16,7 @@ def setup_path():
                                 stdout=subprocess.PIPE).communicate()[0].split()
 
     path = ebin_search(".")
-    couchpath = ebin_search("{0}/lib/couchdb/erlang/lib".format(COUCH_PATH))
+    couchpath = ebin_search("{0}/lib/couchdb/erlang/lib".format(PREFIX))
 
     if len(couchpath) == 0:
        print("Couch libs wasn't found. Will disable couch support\n")
@@ -38,17 +38,26 @@ def start_cluster(num_nodes, extra_args):
             os.makedirs(logdir)
         except:
             pass
-        subprocess.Popen(["./mkcouch.sh", "n_{0}".format(i), str(base_couch_port + i)]).communicate()
+        try:
+            os.stat("data/n_{0}/mnesia".format(i))
+        except:
+            os.makedirs("data/n_{0}/mnesia".format(i))
+        subprocess.Popen(["./scripts/mkcouch.sh", "n_{0}".format(i), str(base_couch_port + i)]).communicate()
         args = ["erl", "+A", "16", "-pa"] + ebin_path + [
             "-setcookie", "nocookie",
             "-kernel", "inet_dist_listen_min", "21100",
             "inet_dist_listen_max", "21199",
-            "-couch_ini", "{0}/etc/couchdb/default.ini".format(COUCH_PATH), "couch/n_{0}_conf.ini".format(i),
-            "-ns_server", "error_logger_mf_dir", '"{0}"'.format(logdir),
+            "-couch_ini", "{0}/etc/couchdb/default.ini".format(PREFIX), "couch/n_{0}_conf.ini".format(i),
+            "-ns_server", "config_path", '"etc/static_config.in"',
+            "error_logger_mf_dir", '"{0}"'.format(logdir),
             "error_logger_mf_maxbytes", "10485760",
             "error_logger_mf_maxfiles", "10",
             "dont_suppress_stderr_logger", "true",
-            "path_prefix", '"n_{0}"'.format(i),
+            "path_config_etcdir", '"priv"',
+            "path_config_bindir", '"{0}"'.format(PREFIX+"/bin"),
+            "path_config_libdir", '"{0}"'.format(PREFIX+"/lib"),
+            "path_config_datadir", '"data/n_{0}"'.format(i),
+            "path_config_tmpdir", '"tmp/"',
             "rest_port", str(base_api_port + i),
             "memcached_port", str(base_direct_port + i * 2),
             "moxi_port", str(base_direct_port + i * 2 + 1),
@@ -122,6 +131,7 @@ def main():
         for n in nodes:
             try:
                 n.kill()
+                n.wait()
             except OSError:
                 pass
         if terminal_attrs != None:

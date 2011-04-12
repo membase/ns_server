@@ -97,8 +97,7 @@ webconfig(Config) ->
     WebConfig = [{ip, Ip},
                  {port, Port},
                  {approot, menelaus_deps:local_path(["priv","public"],
-                                                    ?MODULE)},
-                 {docroot, menelaus_deps:doc_path()}],
+                                                    ?MODULE)}],
     WebConfig.
 
 webconfig() ->
@@ -318,7 +317,7 @@ loop(Req, AppRoot, DocRoot) ->
 %% Internal API
 
 implementation_version() ->
-    list_to_binary(proplists:get_value(menelaus, ns_info:version(), "unknown")).
+    list_to_binary(proplists:get_value(ns_server, ns_info:version(), "unknown")).
 
 handle_pools(Req) ->
     Pools = [{struct,

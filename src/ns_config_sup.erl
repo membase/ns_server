@@ -25,8 +25,9 @@ start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 init([]) ->
-    {ok, CfgPath} = application:get_env(ns_server_config),
-    error_logger:info_msg("loading config from ~p~n", [CfgPath]),
+    CfgPath = path_config:component_path(etc, "config"),
+    % TODO: we'll likely kill that later, because static config is usually empty
+    error_logger:info_msg("loading static ns_config from ~p~n", [CfgPath]),
     {ok, {{rest_for_one, 3, 10},
           [
            %% gen_event for the config events.

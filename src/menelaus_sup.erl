@@ -13,26 +13,28 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
-%% @doc Callbacks for the menelaus application.
+%% @doc Supervisor for the menelaus application.
 
--module(menelaus_app).
+-module(menelaus_sup).
 -author('Northscale <info@northscale.com>').
 
--behaviour(application).
--export([start/2,stop/1,start_subapp/0]).
--export([ns_log_cat/1, ns_log_code_string/1]).
+-behaviour(supervisor).
 
 -define(START_OK, 1).
 -define(START_FAIL, 2).
 
-%% @spec start(_Type, _StartArgs) -> ServerRet
-%% @doc application start callback for menelaus.
-start(_Type, _StartArgs) ->
-    start_subapp().
+%% External exports
+-export([start_link/0, upgrade/0]).
 
-start_subapp() ->
-    menelaus_deps:ensure(),
-    Result = menelaus_sup:start_link(),
+%% supervisor callbacks
+-export([init/1]).
+
+-export([ns_log_cat/1, ns_log_code_string/1]).
+
+%% @spec start_link() -> ServerRet
+%% @doc API for starting the supervisor.
+start_link() ->
+    Result = supervisor:start_link({local, ?MODULE}, ?MODULE, []),
     WConfig = menelaus_web:webconfig(),
     Port = proplists:get_value(port, WConfig),
     case Result of
@@ -52,10 +54,46 @@ start_subapp() ->
     end,
     Result.
 
-%% @spec stop(_State) -> ServerRet
-%% @doc application stop callback for menelaus.
-stop(_State) ->
+%% @spec upgrade() -> ok
+%% @doc Add processes if necessary.
+upgrade() ->
+    {ok, {_, Specs}} = init([]),
+
+    Old = sets:from_list(
+            [Name || {Name, _, _, _} <- supervisor:which_children(?MODULE)]),
+    New = sets:from_list([Name || {Name, _, _, _, _, _} <- Specs]),
+    Kill = sets:subtract(Old, New),
+
+    sets:fold(fun (Id, ok) ->
+                      supervisor:terminate_child(?MODULE, Id),
+                      supervisor:delete_child(?MODULE, Id),
+                      ok
+              end, ok, Kill),
+
+    [supervisor:start_child(?MODULE, Spec) || Spec <- Specs],
     ok.
+
+%% @spec init([]) -> SupervisorTree
+%% @doc supervisor callback.
+init([]) ->
+    Web = {menelaus_web,
+           {menelaus_web, start_link, []},
+           permanent, 5000, worker, dynamic},
+
+    Alerts = {menelaus_web_alerts_srv,
+              {menelaus_web_alerts_srv, start_link, []},
+              permanent, 5000, worker, dynamic},
+
+    WebEvent = {menelaus_event,
+                {menelaus_event, start_link, []},
+                transient, 5000, worker, dynamic},
+
+    HotKeysKeeper = {hot_keys_keeper,
+                     {hot_keys_keeper, start_link, []},
+                     permanent, 5000, worker, dynamic},
+
+    Processes = [Web, WebEvent, HotKeysKeeper, Alerts],
+    {ok, {{one_for_one, 10, 10}, Processes}}.
 
 ns_log_cat(?START_OK) ->
     info;

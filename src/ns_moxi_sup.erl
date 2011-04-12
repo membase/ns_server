@@ -71,7 +71,7 @@ child_specs() ->
     Config = ns_config:get(),
     BucketConfigs = ns_bucket:get_buckets(Config),
     RestPort = ns_config:search_node_prop(Config, rest, port),
-    Command = "./bin/moxi/moxi",
+    Command = path_config:component_path(bin, "moxi"),
     lists:foldl(
       fun ({"default", _}, Acc) ->
               Acc;
