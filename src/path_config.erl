@@ -30,7 +30,7 @@ component_path(NameAtom) ->
     ok = filelib:ensure_dir(RV),
     RV.
 
--spec component_path(tmp | data | lib | bin, string()) -> string().
+-spec component_path(etc | tmp | data | lib | bin, string()) -> string().
 component_path(NameAtom, SubPath) ->
     filename:join(component_path(NameAtom), SubPath).
 
