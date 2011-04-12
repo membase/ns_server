@@ -481,31 +481,31 @@ truncate(Tab, Key, N, 0) ->
 %% Tests
 %%
 
-shutdown_child(Pid) ->
-    exit(Pid, shutdown),
-    receive
-        {'EXIT', Pid, shutdown} ->
-            ok;
-        {'EXIT', Pid, Reason} ->
-            exit({shutdown_failed, Reason})
-    after 5000 ->
-            ?log_error("Mnesia shutdown timed out", []),
-            exit(Pid, kill),
-            exit(shutdown_timeout)
-    end.
+%% shutdown_child(Pid) ->
+%%     exit(Pid, shutdown),
+%%     receive
+%%         {'EXIT', Pid, shutdown} ->
+%%             ok;
+%%         {'EXIT', Pid, Reason} ->
+%%             exit({shutdown_failed, Reason})
+%%     after 5000 ->
+%%             ?log_error("Mnesia shutdown timed out", []),
+%%             exit(Pid, kill),
+%%             exit(shutdown_timeout)
+%%     end.
 
 
-startup_test() ->
-    _ = file:delete(backup_file()),
-    process_flag(trap_exit, true),
-    Node = node(),
-    ok = mnesia:delete_schema([Node]),
-    {ok, Pid} = mb_mnesia_sup:start_link(),
-    yes = mnesia:system_info(is_running),
-    [Node] = mnesia:table_info(schema, disc_copies),
-    receive
-        {'EXIT', Pid, Reason} ->
-            exit({child_exited, Reason})
-    after 0 -> ok
-    end,
-    shutdown_child(Pid).
+%% startup_test() ->
+%%     _ = file:delete(backup_file()),
+%%     process_flag(trap_exit, true),
+%%     Node = node(),
+%%     ok = mnesia:delete_schema([Node]),
+%%     {ok, Pid} = mb_mnesia_sup:start_link(),
+%%     yes = mnesia:system_info(is_running),
+%%     [Node] = mnesia:table_info(schema, disc_copies),
+%%     receive
+%%         {'EXIT', Pid, Reason} ->
+%%             exit({child_exited, Reason})
+%%     after 0 -> ok
+%%     end,
+%%     shutdown_child(Pid).
