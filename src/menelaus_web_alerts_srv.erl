@@ -37,6 +37,7 @@ start_link() ->
 
 %% @doc Send alert to all connected nodes
 global_alert(Type, Msg) ->
+    ns_log:log(?MODULE, 1, Msg,[]),
     [rpc:cast(Node, ?MODULE, local_alert, [Type, Msg])
      || Node <- [node() | nodes()]],
     ok.
@@ -74,7 +75,6 @@ handle_call(fetch_alert, _From, #state{history=Hist, queue=Msgs} = State) ->
 handle_call({add_alert, Key, Val}, _, #state{queue=Msgs, history=Hist} = State) ->
     case not alert_exists(Key, Hist, Msgs)  of
         true ->
-            error_logger:info_msg(Val),
             {reply, ok, State#state{queue=[{Key, Val, misc:now_int()} | Msgs]}};
         false ->
             {reply, ignored, State}
