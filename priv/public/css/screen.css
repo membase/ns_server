@@ -107,6 +107,9 @@ td.leftNav li.indent {margin-left: 20px;}
 td.leftNav li a.currentNav {background:none #dae4e9;}
 td.leftNavDisabled {color:#f00;}
 
+/* to position the "updates available"-bubble correctly */
+td.leftNav a {position:relative;}
+
 #mainPanel {font-size:12px;/* Helvetica;*/}
 
 .page-footer {position:absolute;bottom:0;width:100%;height:208px;background:url('../images/ns_console_footer.png') repeat-x;}
@@ -496,6 +499,29 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 #bucket_list_container {border-left:1px solid #c8ccce; border-bottom:1px solid #c8ccce;}
 #get_started,
 .monitor_buckets .buckets_action_bar {display:none;}
+
+/* update notification styles */
+#notifications h2 {margin-bottom:12px}
+#notifications .section, #notifications_enabled .section {border:2px solid #d4d4d5;border-width:0 2px;border-bottom:1px solid #CED5D9;}
+.notifications-updates .item {padding:13px;}
+.notifications-updates .save_cancel {padding:5px;}
+.notifications-updates .save_button {float:right;}
+.notifications-updates p, .notifications-updates ul {line-height:1.4;margin:1em 0;padding:0 10px}
+.notifications-updates ul {list-style-type:disc; margin:5px 0 0 15px;padding:0 20px}
+.notifications-updates li {}
+.notifications-updates label {display:block;line-height:24px;margin-left:16px;margin-top:16px;}
+.notifications-updates label input {padding:3px 3px;font-size:13px;border:1px solid #ccd3d7}
+.notifications-updates label input[type="checkbox"] {position:relative;top:2px}
+.notifications-updates label span {margin:0 5px}
+.notifications-updates .warning {padding:0}
+.notifications-updates p.more_info {display:none}
+
+/* Should be detected automatically in the future */
+#updates_notifications_confirmation_dialog {width:700px !important;}
+
+/* Display a small green sqaure box if a new version is available. This
+could also be used in a more general context */
+.alert_notify {background-color:#409f05;color:#fff;display:block;height:16px;line-height:16px;position:absolute;right:18px;text-align:center;top:6px;width:16px;}
 
 /* lightbox styles */
 .lbox {width:711px; position:relative;}
@@ -1030,3 +1056,19 @@ span.staleness-notice, .staleness-notice { display: none; color: red; }
 
 .graph_nav.server_resources { display: none; }
 .with_server_resources .graph_nav.server_resources { display: block; }
+
+/* update notifications page in the startup wizard */
+body.init_update_notifications #init_block { display: block; }
+body.init_update_notifications #init_update_notifications_dialog {display:block}
+body.init_update_notifications #container {display:none;}
+.init_block #init_update_notifications_dialog {width:748px;padding-bottom:-50px;background:none #eee;}
+.init_block #init_update_notifications_dialog form {border:none;font-family:Verdana,Helvetica,sans-serif;}
+.init_block #init_update_notifications_dialog form > .clearfix:first-child {padding:0 50px 20px;}
+.init_block #init_update_notifications_dialog .save_cancel button {margin:2px 0 0 20px;}
+
+body.init_update_notifications #init_update_notifications_dialog {background:none; background-color:#eee; display: block; padding-bottom:-50px;}
+body.init_update_notifications #init_update_notifications_dialog h2.question {border-bottom:1px solid #d5dadd; color:#444245; font-size:14pt; font-family:Verdana, Helvetica, Sans-Serif; font-weight:lighter; margin:25px 0px 0px 50px; padding-bottom:5px; width:85%;}
+body.init_update_notifications #init_update_notifications_dialog p.pad_10 {color:#444245; font-family:Verdana, Helvetica, Sans-Serif; font-size:10pt; font-weight:lighter; line-height:20px; margin-left:75px; width:500px;}
+#init_update_notifications_dialog input {font:10pt Verdana,Helvetica,Sans-Serif;border:1px solid #ccd3d7;padding:3px 3px 4px 5px;}
+#init_update_notifications_dialog a.more_info {float:right}
+#init_update_notifications_dialog p.more_info {display:none}

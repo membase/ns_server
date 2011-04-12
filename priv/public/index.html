@@ -37,6 +37,7 @@
 <script src="/js/monitor-buckets.js"></script>
 <script src="/js/overview.js"></script>
 <script src="/js/all-images.js"></script>
+<script src="/js/updates-notifications.js"></script>
 <script src="/js/app.js"></script>
 </head>
 <body class="nojs">
@@ -78,6 +79,25 @@
         <li class="line"><a id="switch_support_docs" href="http://techzone.couchbase.com/wiki/display/membase/Getting+Started" target="MCWebHelp">Documentation</a></li>
         <li class="line"><a id="switch_support_forums" href="http://techzone.couchbase.com/forums/membase/membase-server-16x" target="nsforums">Support Forums</a></li>
       </ul>
+
+      <h1>UPDATES</h1>
+      <ul id="leftNav_updates_container">
+      </ul>
+      <script id="leftNav_updates_template" type="text/html">
+        <li class="line">
+          <a href="#visitSec=notifications">
+            Update Notifications
+            {% if (enabled && newVersion!==false && newVersion!==undefined) { %}
+            <span class="alert_notify"><strong>!</strong></span>
+<!--
+            <span class="alert_num">
+              <span class="down-count">1</span>
+            </span>
+-->
+            {% } %}
+          </a>
+        </li>
+      </script>
     </td>
     <td id="mainPanel">
 
@@ -923,6 +943,58 @@
     <!-- END shadow box -->
   </div>
 
+    <div id="notifications" style="display:none">
+      <!-- shadow box -->
+      <h1>Notifications</h1>
+        <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
+        <div class="hdr">Update Notifications</div>
+        <div class="section notifications-updates">
+          <div class="item" id="notifications_block_container">
+            Please wait...
+          </div>
+          <script id="notifications_block_template" type="text/html">
+            <p>You are running version {%= h(version) %}</p>
+            {% if (enabled===true) { %}
+              {% if (newVersion===false) { %}
+              <p>No updates available.</p>
+              {% } else if (newVersion===undefined) { %}
+              <p class="warning"><strong>Warning</strong> &ndash; There was a problem with retreiving the update information.</p>
+              {% } else { %}
+              <p>A new version ({%= h(newVersion) %}) is available:</p>
+              <ul>
+                <li>
+                  <a href="{%= h(links.release) %}">Release notes</a>
+                </li>
+                <li>
+                  <a href="{%= h(links.download) %}">Download</a> the new version
+                </li>
+              </ul>
+                {% if (info!='') { %}
+                <p>{%= info %}</p>
+                {% } %}
+              {% } %}
+            {% } %}
+            <label class="for-enable-replication" for="notifications-updates">
+              {% if (enabled===true) { %}
+              <input type="checkbox" id="notification-updates" checked="checked">
+              {% } else { %}
+              <input type="checkbox" id="notification-updates">
+              {% } %}
+              <span>Enable software update notifications.</span>
+              <a href="#" class="more_info">What's this?</a>
+            </label>
+            <p class="more_info">
+              Enabling software update notifications allows notification in the Membase web console when a new version of Membase Server is available. Configuration information transferred in the update check is anonymous and does not include any stored key-value data.
+            </p>
+          </script>
+          <div class="save_cancel">
+            <button class="save_button float_right" type="button">Save</button>
+          </div>
+        </div>
+        </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
+        <!-- END shadow box -->
+    </div>
+
   <div id="coming" style="display:none">
     <h1>UI error encountered.  This content does not exist yet.</h1>
   </div>
@@ -1282,7 +1354,7 @@
   <div class="pad" id="init_cluster_dialog">
     <div class="config-top">
       <h1>Configure Server</h1>
-      <h2>Step <span class="current-step">1</span> of 3</h2>
+      <h2>Step <span class="current-step">1</span> of 4</h2>
     </div>
     <h2 class="question">Configure Disk Storage</h2>
     <div class="disk_setup_block">
@@ -1371,10 +1443,41 @@
     </script>
     </div>
   <!-- END init_cluster_block -->
+  <div class="pad" id="init_update_notifications_dialog">
+    <div class="config-top">
+      <h1>Notifications</h1>
+      <h2>Step <span class="current-step">3</span> of 4</h2>
+    </div>
+    <h2 class="question">Update Notifications</h2>
+    <p class="pad_10">
+      <label for="init-notifications-updates-enabled">
+        <input type="checkbox" id="init-notifications-updates-enabled" checked="checked">
+        <span>Enable software update notifications</span>
+      </label>
+      <a href="#" class="more_info">What's this?</a>
+    </p>
+    <p class="more_info pad_10">
+      Enabling software update notifications allows notification in the Membase web console when a new version of Membase Server is available. Configuration information transferred in the update check is anonymous and does not include any stored key-value data.
+    </p>
+    <h2 class="question">Community Updates</h2>
+    <p class="pad_10">Please provide your email address to join the community and receive news on coming events.</p>
+    <p class="pad_10">
+      <label for="init-join-community-email">
+        <span>Email:</span>
+        <input id="init-join-community-email">
+        <span class="error-container err-name"></span>
+      </label>
+    </p>
+    <div class="config-bottom">
+      <button name="next" value="Next" class="submit next direction-button" id="step-3-next" type="submit">Next</button>
+      <button name="back" value="Back" class="submit back direction-button" id="step-3-back" type="button">Back</button>
+    </div>
+  </div>
+  <!-- END init_update_notifications_block-->
   <div class="pad" id="init_secure_dialog">
    <div class="config-top">
       <h1>Configure Server</h1>
-      <h2>Step <span class="current-step">3</span> of 3</h2>
+      <h2>Step <span class="current-step">4</span> of 4</h2>
     </div>
     <div class="alert_red" id="init_secure_failed_message" style="display:none;">
       <div class="al_text">
@@ -1407,19 +1510,19 @@
       </div>
       <!--button type="submit" style="display:none;"></button-->
     <div class="config-bottom">
-      <button name="finish" value="Finish" class="submit finish direction-button" id="step-3-finish" type="submit">Next</button>
-      <button name="back" value="Back" class="submit back direction-button" id="step-3-back" type="button">Back</button>
+      <button name="finish" value="Finish" class="submit finish direction-button" id="step-4-finish" type="submit">Next</button>
+      <button name="back" value="Back" class="submit back direction-button" id="step-4-back" type="button">Back</button>
     </div>
     </form>
     <script type="text/javascript">
       $(function(){
-        $('div.config-bottom button#step-3-finish').click(function (e) {
+        $('div.config-bottom button#step-4-finish').click(function (e) {
           e.preventDefault();
           $('#init_secure_form').submit();
         });
-        $('div.config-bottom button#step-3-back').click(function (e) {
+        $('div.config-bottom button#step-4-back').click(function (e) {
           e.preventDefault();
-          showInitDialog("bucket_dialog");
+          showInitDialog("update_notifications");
         });
       });
     </script>
@@ -1429,7 +1532,7 @@
 	<div class="pad bucket_details" id="init_bucket_dialog">
 		<div class="config-top">
 		  <h1>Create Default Bucket</h1>
-		  <h2>Step <span class="current-step">2</span> of 3</h2>
+		  <h2>Step <span class="current-step">2</span> of 4</h2>
 		</div>
 	  <form><div class="clearfix">
 	    <h2>Bucket Settings</h2>

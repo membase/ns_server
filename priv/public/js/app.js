@@ -167,7 +167,10 @@ var ThePage = {
              log: AlertsSection,
              // settings: SettingsSection,
              monitor_buckets: MonitorBucketsSection,
-             monitor_servers: MonitorServersSection},
+             monitor_servers: MonitorServersSection,
+             notifications: UpdatesNotificationsSection,
+             // that's right, use the same object as "notifications"
+             notifications_enabled: UpdatesNotificationsSection},
 
   coming: {settings:true},
 
@@ -405,7 +408,8 @@ function showAbout() {
 function showInitDialog(page, opt, isContinuation) {
   opt = opt || {};
 
-  var pages = [ "welcome", "cluster", "secure", "bucket_dialog" ];
+  var pages = [ "welcome", "update_notifications", "cluster", "secure",
+    "bucket_dialog" ];
 
   if (page == "")
     page = "welcome";
@@ -547,7 +551,7 @@ var NodeDialog = {
                                             refreshBuckets: function (b) {b()},
                                             onSuccess: function () {
                                               dialog.cleanup();
-                                              showInitDialog('secure');
+                                              showInitDialog('update_notifications');
                                             }});
       var cleanupBack = dialog.bindWithCleanup($('#step-init-bucket-back'),
                                                'click',
@@ -772,6 +776,39 @@ var NodeDialog = {
         }
       }
     }
+  },
+  startPage_update_notifications: function(node, pagePrefix, opt) {
+    $('#init_update_notifications_dialog a.more_info').click(function(e) {
+      e.preventDefault();
+      $('#init_update_notifications_dialog p.more_info').slideToggle();
+    });
+    $('#init_update_notifications_dialog button.back').click(function (e) {
+      e.preventDefault();
+      showInitDialog("bucket_dialog");
+    });
+    // Go to next page. Send off email address if given and apply settings
+    $('#init_update_notifications_dialog button.next').click(function (e) {
+      e.preventDefault();
+      var email = $.trim($('#init-join-community-email').val());
+      if (email!=='') {
+        // Send email address. We don't care if notifications were enabled
+        // or not.
+        $.ajax({
+          url: UpdatesNotificationsSection.remote.email,
+          dataType: 'jsonp',
+          data: {email: email}
+        });
+      }
+
+      var sendStatus = $('#init-notifications-updates-enabled').is(':checked');
+      postWithValidationErrors(
+        '/settings/stats',
+        $.param({sendStats: sendStatus}),
+        function() {
+          showInitDialog("secure");
+        }
+      );
+    });
   }
 };
 

@@ -162,6 +162,8 @@ var DAL = {
     // If the cluster appears to be configured, then don't let user go
     // back through init dialog.
     showInitDialog(provisioned ? 'done' : '');
+    // XXX vmx 2011-04-11: always show wizard for debugging/demo purpose
+    //showInitDialog('');
 
     return true;
   },
