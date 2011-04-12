@@ -26,7 +26,7 @@ component_path_key(etc) -> path_config_etcdir.
 
 -spec component_path(etc | tmp | data | lib | bin) -> string().
 component_path(NameAtom) ->
-    {ok, RV} = application:get_env(component_path_key(NameAtom)),
+    {ok, RV} = application:get_env(ns_server, component_path_key(NameAtom)),
     ok = filelib:ensure_dir(RV),
     RV.
 

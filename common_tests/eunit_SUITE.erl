@@ -36,5 +36,5 @@ eunit(_Config) ->
           io:format("Starting ~p:test()~n", [Mod]),
           code:load_file(Mod),
           ok = eunit:test(Mod)
-      end || Mod <- Mods],
+      end || Mod <- Mods, Mod =/= mb_mnesia],
     ok.
