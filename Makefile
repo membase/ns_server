@@ -138,7 +138,7 @@ distclean: clean dataclean
 
 common_tests: dataclean all
 	mkdir -p logs
-	erl -noshell -name ctrl@127.0.0.1 -setcookie nocookie -pa $(EBIN_PATHS) -eval "ct:run_test([{spec, \"./common_tests/common_tests.spec\"}]), init:stop()"
+	erl -noshell -name ctrl@127.0.0.1 -hidden -setcookie nocookie -pa $(EBIN_PATHS) -eval "ct:run_test([{spec, \"./common_tests/common_tests.spec\"}]), init:stop()"
 
 test: test_$(OS)
 
