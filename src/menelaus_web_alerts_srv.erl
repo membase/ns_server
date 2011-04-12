@@ -23,7 +23,7 @@
 -define(ALERT_TIMEOUT, 60 * 2).
 
 -define(IP_ERR, "Cannot listen on hostname: ~p").
--define(OOM_ERR, "Node ~p is out of Memory").
+-define(OOM_ERR, "Node ~s is out of memory").
 
 -export([start_link/0, stop/0, local_alert/2, global_alert/2, fetch_alerts/0]).
 
@@ -156,7 +156,8 @@ check(oom, Opaque, _History) ->
             Old = dict:fetch(oom, Opaque),
             case New > Old of
                 true ->
-                    global_alert({oom, node()}, fmt_to_bin(?OOM_ERR, [node()]));
+                    {_Sname, Host} = misc:node_name_host(node()),
+                    global_alert({oom, node()}, fmt_to_bin(?OOM_ERR, [Host]));
                 false ->
                     ok
             end,
