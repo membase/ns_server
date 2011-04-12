@@ -25,7 +25,7 @@ def setup_path():
     return couchpath + path
 
 
-def start_cluster(num_nodes, extra_args):
+def start_cluster(num_nodes, start_index, host, extra_args):
     ebin_path = setup_path()
 
     base_direct_port = 12000
@@ -45,6 +45,7 @@ def start_cluster(num_nodes, extra_args):
         subprocess.Popen(["./scripts/mkcouch.sh", "n_{0}".format(i), str(base_couch_port + i)]).communicate()
         args = ["erl", "+A", "16", "-pa"] + ebin_path + [
             "-setcookie", "nocookie",
+            "-name", "n_{0}@{1}".format(i, host),
             "-kernel", "inet_dist_listen_min", "21100",
             "inet_dist_listen_max", "21199",
             "-couch_ini", "{0}/etc/couchdb/default.ini".format(PREFIX), "couch/n_{0}_conf.ini".format(i),
@@ -68,10 +69,10 @@ def start_cluster(num_nodes, extra_args):
         else:
             return subprocess.Popen(args + ["-noshell"], stdin=subprocess.PIPE)
 
-    return [start_node(i) for i in xrange(num_nodes)]
+    return [start_node(i + start_index) for i in xrange(num_nodes)]
 
 def usage():
-    sys.exit("Usage: {0} [--dont-rename] [--static-cookie] num_nodes [ns_server args]".format(sys.argv[0]))
+    sys.exit("Usage: {0} [--nodes=N] [--dont-rename] [--dont-start] [--static-cookie] [ns_server args]".format(sys.argv[0]))
 
 def maybe_spawn_epmd():
     try:
@@ -94,7 +95,7 @@ def find_primary_addr():
 
 def main():
     try:
-        optlist, args = getopt.gnu_getopt(sys.argv[1:], "h", ["help", "dont-rename", "static-cookie", "dont-start"])
+        optlist, args = getopt.gnu_getopt(sys.argv[1:], "hn:", ["help", "start-index=", "nodes=", "dont-rename", "static-cookie", "dont-start", "host="])
     except getopt.GetoptError, err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
@@ -104,10 +105,19 @@ def main():
     dont_rename = False
     dont_start = False
     static_cookie = False
+    start_index = 0
+    num_nodes = 1
+    host = "127.0.0.1"
 
     for o, a in optlist:
-        if o == '--dont-start':
+        if o in ("--nodes", "-n"):
+            num_nodes = int(a)
+        elif o == '--dont-start':
             dont_start = True
+        elif o == '--host':
+            host = a
+        elif o == '--start-index':
+            start_index = int(a)
         elif o == '--dont-rename':
             dont_rename = True
         elif o in ("--help", "-h"):
@@ -117,12 +127,6 @@ def main():
             static_cookie = True
         else:
             assert False, "unhandled options"
-
-    try:
-        num_nodes = int(args[0])
-    except:
-        print("Failed to parse number of nodes: " + args[0])
-        usage()
 
     nodes = []
     terminal_attrs = None
@@ -164,7 +168,7 @@ def main():
     if not dont_start:
         extra_args += ["-run", "ns_bootstrap"]
 
-    nodes = start_cluster(num_nodes, extra_args)
+    nodes = start_cluster(num_nodes, start_index, host, extra_args)
 
     for node in nodes:
         node.wait()
