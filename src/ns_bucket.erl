@@ -455,8 +455,7 @@ new_bucket_default_params(membase) ->
      {num_vbuckets, getenv_int("MEMBASE_NUM_VBUCKETS", 1024)},
      {num_replicas, 1},
      {ram_quota, 0},
-     {servers, []},
-     {map, undefined}];
+     {servers, []}];
 new_bucket_default_params(memcached) ->
     [{type, memcached},
      {num_vbuckets, 0},
