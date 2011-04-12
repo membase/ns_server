@@ -106,7 +106,7 @@ init({Src, Dst, Opts}) ->
     Username = proplists:get_value(username, Opts),
     Password = proplists:get_value(password, Opts, ""),
     Bucket = proplists:get_value(bucket, Opts),
-    VBuckets = proplists:get_value(vbuckets, Opts),
+    VBuckets = proplists:get_value(vbuckets, Opts, [0]),
     TakeOver = proplists:get_bool(takeover, Opts),
     TapSuffix = proplists:get_value(suffix, Opts),
     Name = case TakeOver of
@@ -128,11 +128,7 @@ init({Src, Dst, Opts}) ->
     State = #state{
       upstream=Upstream,
       downstream=Downstream,
-      vbuckets=sets:from_list(
-                 case VBuckets of
-                     undefined -> [0];
-                     _ -> VBuckets
-                 end),
+      vbuckets=sets:from_list(VBuckets),
       last_seen=now(),
       takeover=TakeOver
      },
