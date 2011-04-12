@@ -1,0 +1,3 @@
+#!/bin/sh
+# Wraps cluster_run command to kill process group when stdin closes
+(cat && kill 0) | ./cluster_run $*
