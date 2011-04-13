@@ -1258,19 +1258,25 @@ handle_failover(Req) ->
 
 handle_rebalance(Req) ->
     Params = Req:parse_post(),
-    KnownNodesS = string:tokens(proplists:get_value("knownNodes", Params, ""),","),
-    EjectedNodesS = string:tokens(proplists:get_value("ejectedNodes", Params, ""), ","),
-    KnownNodes = [list_to_atom(N) || N <- KnownNodesS],
-    EjectedNodes = [list_to_atom(N) || N <- EjectedNodesS],
-    case ns_cluster_membership:start_rebalance(KnownNodes, EjectedNodes) of
-        already_balanced ->
-            Req:respond({200, [], []});
-        in_progress ->
-            Req:respond({200, [], []});
-        nodes_mismatch ->
-            reply_json(Req, {struct, [{mismatch, 1}]}, 400);
-        ok ->
-            Req:respond({200, [], []})
+    case string:tokens(proplists:get_value("knownNodes", Params, ""),",") of
+        [] ->
+            reply_json(Req, {struct, [{empty_known_nodes, 1}]}, 400);
+        KnownNodesS ->
+            EjectedNodesS = string:tokens(proplists:get_value("ejectedNodes",
+                                                              Params, ""), ","),
+            EjectedNodes = [list_to_existing_atom(N) || N <- EjectedNodesS],
+            KnownNodes = [list_to_existing_atom(N) || N <- KnownNodesS],
+            case ns_cluster_membership:start_rebalance(KnownNodes,
+                                                       EjectedNodes) of
+                already_balanced ->
+                    Req:respond({200, [], []});
+                in_progress ->
+                    Req:respond({200, [], []});
+                nodes_mismatch ->
+                    reply_json(Req, {struct, [{mismatch, 1}]}, 400);
+                ok ->
+                    Req:respond({200, [], []})
+            end
     end.
 
 handle_rebalance_progress(_PoolId, Req) ->
