@@ -73,7 +73,7 @@ start_link() ->
 
 
 -spec create_bucket(memcached|membase, nonempty_string(), list()) ->
-                           ok | {exit, {already_exists, nonempty_string()}, any()} |
+                           ok | {error, {already_exists, nonempty_string()}} |
                            {error, {port_conflict, integer()}} |
                            {error, {invalid_name, nonempty_string()}} |
                            rebalance_running.
@@ -219,16 +219,16 @@ janitor_running(_Event, State) ->
 
 %% Synchronous idle events
 idle({create_bucket, BucketType, BucketName, NewConfig}, _From, State) ->
-    Reply = case ns_bucket:get_bucket(BucketName) of
-                not_present ->
+    Reply = case ns_bucket:name_conflict(BucketName) of
+                false ->
                     %% Delete any leftover files.
                     rpc:multicall(ns_node_disco:nodes_actual_proper(),
                                   ns_storage_conf,
                                   delete_db_files,
                                   [BucketName]),
                     ns_bucket:create_bucket(BucketType, BucketName, NewConfig);
-                _ ->
-                    {already_exists, BucketName}
+                true ->
+                    {error, {already_exists, BucketName}}
             end,
     case Reply of
         ok ->

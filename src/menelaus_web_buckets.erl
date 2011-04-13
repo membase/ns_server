@@ -248,7 +248,7 @@ do_bucket_create(Name, ParsedProps) ->
         ok ->
             ?MENELAUS_WEB_LOG(?BUCKET_CREATED, "Created bucket \"~s\" of type: ~s~n", [Name, BucketType]),
             ok;
-        {exit, {already_exists, _}, _} ->
+        {error, {already_exists, _}} ->
             {errors, [{name, <<"Bucket with given name already exists">>}]};
         {error, {port_conflict, _}} ->
             {errors, [{proxyPort, <<"A bucket is already using this port">>}]};
