@@ -988,43 +988,49 @@
         <!-- {% }); %} -->
         </script>
         <form>
-          <div class="pas_20">
-            <table>
-              <tr>
-                <td>
-                  <div class="u_line_sm">
-                    <label class="label" for="add-server-hostname">Server IP Address*:</label>
-                    <input type="text" class="inp" name="hostname" id="add-server-hostname" />
-                    <a class="text_11 tooltip"><span>What's this?</span>
+          <div class="clearfix">
+            <div class="pas_20">
+              <table>
+                <tr>
+                  <td>
+                    <div class="u_line_sm">
+                      <label class="label" for="add-server-hostname">Server IP Address*:</label>
+                      <input type="text" class="inp" name="hostname" id="add-server-hostname" />
+                      <a class="text_11 tooltip"><span>What's this?</span>
+                        <span class="tooltip_msg"><span>
+                          This is the hostname or IP address of a server node that you wish to add.
+                        </span></span>
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="th">
+                    Security <a class="text_11 tooltip"><span>What's this?</span>
                       <span class="tooltip_msg"><span>
-                        This is the hostname or IP address of a server node that you wish to add.
+                        Enter the username and password for the node you want to add to this cluster.
                       </span></span>
                     </a>
-                  </div>
-                </td>
-              </tr>
-              <tr>
-                <td class="th">
-                  Security <a class="text_11 tooltip"><span>What's this?</span>
-                    <span class="tooltip_msg"><span>
-                      Enter the username and password for the node you want to add to this cluster.
-                    </span></span>
-                  </a>
-                </td>
-              </tr>
-              <tr>
-                <td>
-                  <div class="u_line_sm">
-                    <label class="label" for="user_inp">Username:</label>
-                    <input type="text" class="inp" name="user" id="user_inp" />
-                  </div>
-                  <div class="u_line_sm">
-                    <label class="label" for="password_inp">Password:</label>
-                    <input type="password" class="inp" name="password" id="password_inp" />
-                  </div>
-                </td>
-              </tr>
-            </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="u_line_sm">
+                      <label class="label" for="user_inp">Username:</label>
+                      <input type="text" class="inp" name="user" id="user_inp" />
+                    </div>
+                    <div class="u_line_sm">
+                      <label class="label" for="password_inp">Password:</label>
+                      <input type="password" class="inp" name="password" id="password_inp" />
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </div>
+          </div>
+          <div class="save_cancel clearfix">
+            <button type="submit" class="save_button float_right">Add Server</button>
+            <a class="close">Cancel</a>
           </div>
         </form>
       </div>
@@ -1056,6 +1062,10 @@
         <div class="warning pat_20">
           <strong>Warning</strong> &ndash; Adding a server to this cluster means all data on that server will be removed.
         </div>
+      </div>
+      <div class="right save_cancel pas_20 footer_bg">
+          <button type="submit" class="save_button float_right">Add Server</button>
+          <a class="close cancel_button float_right">Cancel</a>
       </div>
     </div>
 </div>

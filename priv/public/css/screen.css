@@ -125,7 +125,8 @@ td.leftNavDisabled {color:#f00;}
 
 /* buttons */
 .save_cancel {height:31px;padding:5px 0;}
-.save_cancel button, .config-bottom button {position:relative;top:-1px;display:block;width:121px;height:31px;color:#fff;font-size:14px;font-weight:bolder;line-height:31px;text-align:center;   text-decoration:none;border:0px;cursor:pointer;}
+.dialog .save_cancel {border-top:1px solid #eee;border-bottom-width:0px;padding:18px;clear:both;background:#cccfd2;}
+.save_cancel button, .config-bottom button {position:relative;top:-1px;display:block;width:121px;height:31px;color:#fff;font-size:14px;font-weight:bolder;line-height:31px;text-align:center;text-decoration:none;border:0px;cursor:pointer;white-space:nowrap}
 .save_cancel button:hover, .save_cancel button:focus, 
 .config-bottom button:hover, .config-bottom button:focus {background-position:0 -31px;}
 .save_cancel button:active, .config-bottom button:active {background-position:0 -62px;}
@@ -1002,7 +1003,6 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details label.for-replica-number {display:block;float:left;}
 .bucket_details label.for-replica-number span {display:inline;float:none;margin-left:6px;}
 .bucket_details label.for-replica-number input {width:29px;}
-.bucket_details .save_cancel {border-top:1px solid #eee;border-bottom-width:0px;padding:18px;clear:both;background:#cccfd2;}
 .bucket_details .save_cancel .delete_button {float:left;margin-right:16px;}
 
 .bucket_details.creating .when-editing,
