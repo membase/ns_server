@@ -30,8 +30,8 @@ a:hover {text-decoration:underline;}
 .link:hover {text-decoration:underline;}
 .link:active {outline:1px dotted gray;}
 
-html {height:100%;}
-body {height:100%;color:#444245;font-family:Helvetica, Verdana;line-height:1;background:url(../images/background.png) repeat-x; overflow-y:scroll; }
+html {height:100%;overflow-y:scroll}
+body {height:100%;color:#444245;font-family:Helvetica, Verdana;line-height:1;background:url(../images/background.png) repeat-x;}
 
 /* universal styles */
 .nobr {white-space:nowrap;}
