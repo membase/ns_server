@@ -70,7 +70,7 @@ connect_cluster(#node{host=MHost, rest_port=MPort, username=User, password=Pass}
 %% @doc Given a configuration start a node with that config
 -spec start_node(#node{}) -> ok.
 start_node(Conf) ->
-    Cmd = fmt("~s/cluster_run_wrapper --dont-start --dont-rename --static-cookie "
+    Cmd = fmt("~s/cluster_run_wrapper --dont-start --host=127.0.0.1 --static-cookie "
               "--start-index=~p", [code:lib_dir(ns_server), Conf#node.x]),
     io:format("Starting erlang with: ~p~n", [Cmd]),
     spawn_dev_null(Cmd),
