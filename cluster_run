@@ -95,19 +95,20 @@ def find_primary_addr():
 
 def main():
     try:
-        optlist, args = getopt.gnu_getopt(sys.argv[1:], "hn:", ["help", "start-index=", "nodes=", "dont-rename", "static-cookie", "dont-start", "host="])
+        optlist, args = getopt.gnu_getopt(sys.argv[1:], "hn:", ["help", "start-index=", "nodes=", "static-cookie", "dont-start", "host="])
     except getopt.GetoptError, err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
         usage()
         sys.exit(2)
 
-    dont_rename = False
+    primary_addr = find_primary_addr()
+
     dont_start = False
     static_cookie = False
     start_index = 0
     num_nodes = 1
-    host = "127.0.0.1"
+    host = "127.0.0.1" if primary_addr == None else primary_addr
 
     for o, a in optlist:
         if o in ("--nodes", "-n"):
@@ -118,8 +119,6 @@ def main():
             host = a
         elif o == '--start-index':
             start_index = int(a)
-        elif o == '--dont-rename':
-            dont_rename = True
         elif o in ("--help", "-h"):
             usage()
             exit(0)
@@ -152,15 +151,7 @@ def main():
 
     maybe_spawn_epmd()
 
-    extra_args = []
-    if not dont_rename:
-        primary_addr = find_primary_addr()
-        if primary_addr == None:
-            print("was unable to detect 'internet' address of this machine."
-                  + " node rename will be disabled")
-        else:
-            extra_args += ["rename_ip", '"' + primary_addr + '"']
-    extra_args += args[1:]
+    extra_args = args[1:]
 
     if static_cookie:
         extra_args += ["-ns_server", "dont_reset_cookie", "true"]
