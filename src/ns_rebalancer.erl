@@ -29,6 +29,10 @@
          unbalanced/2]).
 
 
+-define(DATA_LOST, 1).
+-define(BAD_REPLICATORS, 2).
+
+
 %%
 %% API
 %%
@@ -52,7 +56,7 @@ failover(Bucket, Node) ->
                 [] -> ok; % Phew!
                 MissingVBuckets ->
                     ?log_error("Lost data in ~p for ~w", [Bucket, MissingVBuckets]),
-                    ns_log:log(?MODULE, 1,
+                    ns_log:log(?MODULE, ?DATA_LOST,
                                "Data has been lost for ~B% of vbuckets in bucket ~p.",
                                [length(MissingVBuckets) * 100 div length(Map), Bucket])
             end,
@@ -105,9 +109,12 @@ rebalance(KeepNodes, EjectNodes, FailedNodes) ->
                                       ns_bucket:set_servers(BucketName, LiveNodes),
                                       wait_for_memcached(LiveNodes, BucketName, 10),
                                       ns_janitor:cleanup(BucketName),
-                                      rebalance(BucketName, BucketConfig,
-                                                KeepNodes, BucketCompletion,
-                                                NumBuckets)
+                                      NewMap =
+                                          rebalance(BucketName, BucketConfig,
+                                                    KeepNodes, BucketCompletion,
+                                                    NumBuckets),
+                                      verify_replication(BucketName, LiveNodes,
+                                                         NewMap)
                               end
                       end, misc:enumerate(BucketConfigs, 0))
     catch
@@ -154,7 +161,8 @@ rebalance(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets) ->
     case wait_for_mover(Pid) of
         ok ->
             ns_bucket:set_fast_forward_map(Bucket, undefined),
-            ns_bucket:set_servers(Bucket, KeepNodes);
+            ns_bucket:set_servers(Bucket, KeepNodes),
+            FastForwardMap;
         stopped ->
             exit(stopped)
     end.
@@ -236,6 +244,27 @@ promote_replica(Chain, RemapNodes) ->
                                              (_) -> false
                                          end, Chain1),
     Rest ++ Undefineds.
+
+
+verify_replication(Bucket, Nodes, Map) ->
+    ExpectedReplicators =
+        lists:sort(
+          lists:flatmap(
+            fun ({V, Chain}) ->
+                    [{Src, Dst, V} || {Src, Dst} <- misc:pairs(Chain)]
+            end, misc:enumerate(Map, 0))),
+    ActualReplicators =
+        lists:sort(ns_vbm_sup:replicators(Nodes, Bucket)),
+    case misc:comm(ExpectedReplicators, ActualReplicators) of
+        {[], [], _} ->
+            ok;
+        {Missing, Extra, _} ->
+            ns_log:log(
+              ?MODULE, ?BAD_REPLICATORS,
+              "Bad replicators after rebalance:~nMissing = ~p~nExtras = ~p",
+              [Missing, Extra]),
+            exit(bad_replicas)
+    end.
 
 
 %% @doc Wait until either all memcacheds are up or stop is pressed.

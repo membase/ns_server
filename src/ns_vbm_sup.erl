@@ -23,6 +23,8 @@
                    dest_node::atom()}).
 
 -export([start_link/1,
+         add_replica/4,
+         kill_replica/4,
          kill_children/3,
          kill_dst_children/3,
          replicators/2,
@@ -31,9 +33,39 @@
 
 -export([init/1]).
 
+%%
 %% API
+%%
 start_link(Bucket) ->
     supervisor:start_link({local, server(Bucket)}, ?MODULE, []).
+
+
+%% @doc Add a vbucket to the filter for a given source and destination
+%% node.
+add_replica(Bucket, SrcNode, DstNode, VBucket) ->
+    VBuckets =
+        case get_replicator(Bucket, SrcNode, DstNode) of
+            undefined ->
+                [VBucket];
+            #child_id{vbuckets=Vs} = Child ->
+                kill_child(SrcNode, Bucket, Child),
+                [VBucket|Vs]
+        end,
+    {ok, _} = start_child(SrcNode, Bucket, VBuckets, DstNode).
+
+
+%% @doc Kill any replication for a given destination node and vbucket.
+kill_replica(Bucket, SrcNode, DstNode, VBucket) ->
+    case get_replicator(Bucket, SrcNode, DstNode) of
+        undefined ->
+            ok;
+        #child_id{vbuckets=VBuckets} = Child ->
+            %% Kill the child and start it again without this vbucket.
+            kill_child(SrcNode, Bucket, Child),
+            {ok, _} = start_child(SrcNode, Bucket, VBuckets -- [VBucket],
+                                  DstNode)
+    end.
+
 
 replicators(Nodes, Bucket) ->
     lists:flatmap(
@@ -100,12 +132,9 @@ kill_all_children(Node, Bucket) ->
 -spec kill_child(node(), nonempty_string(), #child_id{}) ->
                         ok.
 kill_child(Node, Bucket, Child) ->
-    case supervisor:terminate_child({server(Bucket), Node}, Child) of
-        ok ->
-            supervisor:delete_child({server(Bucket), Node}, Child);
-        {error, not_found} ->
-            ok
-    end.
+    ok = supervisor:terminate_child({server(Bucket), Node}, Child),
+    ok = supervisor:delete_child({server(Bucket), Node}, Child).
+
 
 -spec kill_children(node(), nonempty_string(), [non_neg_integer()]) ->
                            [#child_id{}].
@@ -135,7 +164,10 @@ init([]) ->
            misc:get_env_default(max_t, 10)},
           []}}.
 
+%%
 %% Internal functions
+%%
+
 -spec args(atom(), nonempty_string(), [non_neg_integer(),...], atom(), boolean()) ->
                   [any(), ...].
 args(Node, Bucket, VBuckets, DstNode, TakeOver) ->
@@ -158,6 +190,22 @@ args(Node, Bucket, VBuckets, DstNode, TakeOver) ->
 -spec children(node(), nonempty_string()) -> [#child_id{}].
 children(Node, Bucket) ->
     [Id || {Id, _, _, _} <- supervisor:which_children({server(Bucket), Node})].
+
+
+%% @private
+%% @doc Get the replicator for a given source and destination node.
+-spec get_replicator(nonempty_string(), node(), node()) ->
+                            #child_id{} | undefined.
+get_replicator(Bucket, SrcNode, DstNode) ->
+    case [Id || {#child_id{dest_node=N} = Id, _, _, _}
+                    <- supervisor:which_children({server(Bucket), SrcNode}),
+                N == DstNode] of
+        [Child] ->
+            Child;
+        [] ->
+            undefined
+    end.
+
 
 
 -spec server(nonempty_string()) ->

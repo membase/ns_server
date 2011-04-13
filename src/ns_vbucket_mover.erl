@@ -35,7 +35,7 @@
 -record(state, {bucket::nonempty_string(),
                 initial_counts::dict(),
                 max_per_node::pos_integer(),
-                map::array(), target_map::array(),
+                map::array(),
                 moves::dict(), movers::dict(),
                 progress_callback::progress_callback()}).
 
@@ -69,24 +69,20 @@ code_change(_OldVsn, _Extra, State) ->
 
 
 init({Bucket, OldMap, NewMap, ProgressCallback}) ->
+    ?log_info("Starting movers with new map =~n~p", [NewMap]),
     %% Dictionary mapping old node to vbucket and new node
-    MoveDict = lists:foldl(fun ({_, [M1|_], [M1|_]}, D) -> D;
-                               ({V, [M1|_], [M2|_]}, D) ->
-                                   dict:append(M1, {V, M2}, D)
+    MoveDict = lists:foldl(fun ({V, [M1|_] = C1, C2}, D) ->
+                                   dict:append(M1, {V, C1, C2}, D)
                            end, dict:new(),
                            lists:zip3(lists:seq(0, length(OldMap) - 1), OldMap,
                                       NewMap)),
-    %% Update any replicas where the master hasn't been moved
-    Map = [if hd(C1) == hd(C2) -> C2; true -> C1 end
-           || {C1, C2} <- lists:zip(OldMap, NewMap)],
     Movers = dict:map(fun (_, _) -> 0 end, MoveDict),
     self() ! spawn_initial,
     process_flag(trap_exit, true),
     {ok, #state{bucket=Bucket,
                 initial_counts=count_moves(MoveDict),
                 max_per_node=?MAX_MOVES_PER_NODE,
-                map = map_to_array(Map),
-                target_map = map_to_array(NewMap),
+                map = map_to_array(OldMap),
                 moves=MoveDict, movers=Movers,
                 progress_callback=ProgressCallback}}.
 
@@ -104,12 +100,13 @@ handle_cast(unhandled, unhandled) ->
 %% the movers fails.
 handle_info(spawn_initial, State) ->
     spawn_workers(State);
-handle_info({move_done, {Node, VBucket}},
-            #state{movers=Movers, map=Map, target_map=TargetMap} = State) ->
+handle_info({move_done, {Node, VBucket, OldChain, NewChain}},
+            #state{bucket=Bucket, movers=Movers, map=Map} = State) ->
+    %% Update replication
+    update_replication_post_move(Bucket, VBucket, OldChain, NewChain),
     %% Free up a mover for this node
     Movers1 = dict:update(Node, fun (N) -> N - 1 end, Movers),
     %% Pull the new chain from the target map
-    NewChain = array:get(VBucket, TargetMap),
     %% Update the current map
     Map1 = array:set(VBucket, NewChain, Map),
     spawn_workers(State#state{movers=Movers1, map=Map1});
@@ -143,6 +140,7 @@ array_to_map(Array) ->
     array:to_list(Array).
 
 
+%% @private
 %% @doc Count of remaining moves per node.
 -spec count_moves(dict()) -> dict().
 count_moves(Moves) ->
@@ -151,7 +149,7 @@ count_moves(Moves) ->
     %% Add moves TO each node.
     dict:fold(fun (_, M, D) ->
                       lists:foldl(
-                        fun ({_, N}, E) ->
+                        fun ({_, _, [N|_]}, E) ->
                                 dict:update_counter(N, 1, E)
                         end, D, M)
               end, FromCount, Moves).
@@ -166,6 +164,14 @@ map_to_array(Map) ->
     array:fix(array:from_list(Map)).
 
 
+%% @private
+%% @doc {Src, Dst} pairs from a chain with unmapped nodes filtered out.
+pairs(Chain) ->
+    [Pair || {Src, Dst} = Pair <- misc:pairs(Chain), Src /= undefined,
+             Dst /= undefined].
+
+
+%% @private
 %% @doc Report progress using the supplied progress callback.
 -spec report_progress(#state{}) -> any().
 report_progress(#state{initial_counts=Counts, moves=Moves,
@@ -178,6 +184,7 @@ report_progress(#state{initial_counts=Counts, moves=Moves,
     Callback(Progress).
 
 
+%% @private
 %% @doc Spawn workers up to the per-node maximum.
 -spec spawn_workers(#state{}) -> {noreply, #state{}} | {stop, normal, #state{}}.
 spawn_workers(#state{bucket=Bucket, moves=Moves, movers=Movers,
@@ -192,17 +199,28 @@ spawn_workers(#state{bucket=Bucket, moves=Moves, movers=Movers,
                           NewMovers = lists:sublist(RemainingMoves,
                                                     MaxPerNode - NumWorkers),
                           lists:foreach(
-                            fun ({V, NewNode})
-                                  when Node /= NewNode ->
-                                    %% Will crash (on purpose) if we
-                                    %% have no-op moves.
+                            fun ({V, OldChain, [NewNode|_] = NewChain}) ->
+                                    update_replication_pre_move(
+                                      Bucket, V, OldChain, NewChain),
                                     spawn_link(
                                       Node,
                                       fun () ->
                                               process_flag(trap_exit, true),
-                                              run_mover(Bucket, V, Node,
-                                                        NewNode, 2),
-                                              Parent ! {move_done, {Node, V}}
+                                              %% We do a no-op here
+                                              %% rather than filtering
+                                              %% these out so that the
+                                              %% replication update
+                                              %% will still work
+                                              %% properly.
+                                              if Node /= NewNode ->
+                                                      run_mover(Bucket, V, Node,
+                                                                NewNode, 2);
+                                                 true ->
+                                                      ok
+                                              end,
+                                              Parent ! {move_done,
+                                                        {Node, V, OldChain,
+                                                         NewChain}}
                                       end)
                             end, NewMovers),
                           M1 = dict:store(Node, length(NewMovers) + NumWorkers,
@@ -265,6 +283,63 @@ run_mover(Bucket, V, N1, N2, Tries) ->
     end.
 
 
+%% @private
+%% @doc Perform pre-move replication fixup.
+update_replication_pre_move(Bucket, VBucket, OldChain, NewChain) ->
+    [NewMaster|_] = NewChain,
+    OldPairs = pairs(OldChain),
+    NewPairs = pairs(NewChain),
+    %% Stop replication to the new master
+    case lists:keyfind(NewMaster, 2, OldPairs) of
+        {SrcNode, _} ->
+            ns_vbm_sup:kill_replica(Bucket, SrcNode, NewMaster, VBucket);
+        false ->
+            ok
+    end,
+    %% Start replication to any new replicas that aren't already being
+    %% replicated to
+    lists:foreach(
+      fun ({SrcNode, DstNode}) ->
+              case lists:member(DstNode, OldChain) of
+                  false ->
+                      %% Not the old master or already being replicated to
+                      ns_vbm_sup:add_replica(Bucket, SrcNode, DstNode, VBucket);
+                  true ->
+                      %% Already being replicated to; swing it over after
+                      ok
+              end
+      end, NewPairs -- OldPairs).
+
+
+%% @private
+%% @doc Perform post-move replication fixup.
+update_replication_post_move(Bucket, VBucket, OldChain, NewChain) ->
+    OldPairs = pairs(OldChain),
+    NewPairs = pairs(NewChain),
+    %% Stop replication for any old pair that isn't needed any more.
+    lists:foreach(
+      fun ({SrcNode, DstNode}) ->
+              ns_vbm_sup:kill_replica(Bucket, SrcNode, DstNode, VBucket)
+      end, OldPairs -- NewPairs),
+    %% Start replication for any new pair that wouldn't have already
+    %% been started.
+    lists:foreach(
+      fun ({SrcNode, DstNode}) ->
+              case lists:member(DstNode, OldChain) of
+                  false ->
+                      %% Would have already been started
+                      ok;
+                  true ->
+                      %% Old one was stopped by the previous loop
+                      ns_vbm_sup:add_replica(Bucket, SrcNode, DstNode, VBucket)
+              end
+      end, NewPairs -- OldPairs),
+    %% TODO: wait for backfill to complete and remove obsolete
+    %% copies before continuing. Otherwise rebalance could use a lot
+    %% of space.
+    ok.
+
+
 wait_for_mover(Bucket, V, N1, N2, Tries) ->
     receive
         {'EXIT', _Pid, normal} ->
@@ -273,7 +348,7 @@ wait_for_mover(Bucket, V, N1, N2, Tries) ->
                 {{ok, dead}, {ok, active}} ->
                     ok;
                 E ->
-                    exit({wrong_state_after_transfer, E})
+                    exit({wrong_state_after_transfer, E, V})
             end;
         {'EXIT', _Pid, stopped} ->
             exit(stopped);
