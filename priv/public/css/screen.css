@@ -674,9 +674,10 @@ body.init_welcome #init_welcome_dialog { display: block;  display=:none !importa
 body.init_welcome #container { display: none; }
 body.init_welcome #init_welcome_dialog h1 {color:#fff; font-family:Verdana, Helvetica, sans-serif; font-size:18pt; font-weight:100; margin-bottom:-25px; margin-left:25px; padding-left:25px;}
 body.init_welcome #init_welcome_dialog p {color:#acbbc4; font-family:Verdana, Helvetica, sans-serif; font-size:14pt; font-weight:100;}
+body.init_welcome #init_welcome_dialog .pad-header {position:relative;}
 body.init_welcome #init_welcome_dialog .pad-header div.tagline {float:left; color:#00a6de; font-size:11pt; margin:38px 0 0 257px;}
 body.init_welcome #init_welcome_dialog .pad-header div.version {color:#ec5223; font-size:11pt; white-space: pre; overflow: visible; float:right; margin:10px;}
-body.init_welcome #init_welcome_dialog .pad-header div.elastro-cling {background:url(../images/elastro_cling_v22.png) no-repeat; float:right; height:239px; margin-right:-167px; margin-top:51px; width:189px;}
+body.init_welcome #init_welcome_dialog .pad-header div.elastro-cling {position:absolute;right:0;background:url(../images/elastro_cling_v22.png) no-repeat; float:right; height:239px; margin-right:-167px; margin-top:51px; width:189px;}
 
 body.init_welcome form#init_welcome_form {width:600px;margin:25px 0 14px 50px;}
 body.init_welcome form#init_welcome_form p {color:#bdccd4; font-family:Verdana,Helvetica,sans-serif; font-size:12pt; line-height:20px; margin-bottom:20px;}
