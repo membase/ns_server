@@ -40,7 +40,7 @@ cleanup(Bucket) ->
     case Servers of
         [] -> ok;
         _ ->
-            case wait_for_memcached(Servers, Bucket, 5) of
+            case wait_for_memcached(Servers, Bucket, 120) of
                 [] ->
                     Map1 =
                         case sanify(Bucket, Map, Servers) of
