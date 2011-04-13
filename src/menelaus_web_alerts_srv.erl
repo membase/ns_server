@@ -23,7 +23,7 @@
 -define(ALERT_TIMEOUT, 60 * 2).
 
 -define(IP_ERR, "Cannot listen on hostname: ~p").
--define(OOM_ERR, "Node ~s is out of memory").
+-define(OOM_ERR, "Bucket \"~s\" on node ~s is out of memory").
 
 -export([start_link/0, stop/0, local_alert/2, global_alert/2, fetch_alerts/0]).
 
@@ -36,8 +36,9 @@ start_link() ->
 
 
 %% @doc Send alert to all connected nodes
+-spec global_alert(any(), binary() | string()) -> ok.
 global_alert(Type, Msg) ->
-    ns_log:log(?MODULE, 1, Msg,[]),
+    ns_log:log(?MODULE, 1, Msg),
     [rpc:cast(Node, ?MODULE, local_alert, [Type, Msg])
      || Node <- [node() | nodes()]],
     ok.
@@ -68,11 +69,11 @@ init([]) ->
     {ok, #state{}}.
 
 
-handle_call(fetch_alert, _From, #state{history=Hist, queue=Msgs} = State) ->
+handle_call(fetch_alert, _From, #state{history=Hist, queue=Msgs}=State) ->
     Alerts = [Msg || {_Key, Msg, _Time} <- Msgs],
     {reply, Alerts, State#state{history = Hist ++ Msgs, queue = []}};
 
-handle_call({add_alert, Key, Val}, _, #state{queue=Msgs, history=Hist} = State) ->
+handle_call({add_alert, Key, Val}, _, #state{queue=Msgs, history=Hist}=State) ->
     case not alert_exists(Key, Hist, Msgs)  of
         true ->
             {reply, ok, State#state{queue=[{Key, Val, misc:now_int()} | Msgs]}};
@@ -148,21 +149,29 @@ check(ip, Opaque, _History) ->
 
 %% @doc check for any oom errors an any bucket
 check(oom, Opaque, _History) ->
-    New = sum_oom_errors(),
+    New = oom_errors(),
     case dict:is_key(oom, Opaque) of
         false ->
             dict:store(oom, New, Opaque);
         true ->
             Old = dict:fetch(oom, Opaque),
-            case New > Old of
-                true ->
+            case oom_increased(New, Old) of
+                [] ->
+                    ok;
+                Buckets ->
                     {_Sname, Host} = misc:node_name_host(node()),
-                    global_alert({oom, node()}, fmt_to_bin(?OOM_ERR, [Host]));
-                false ->
-                    ok
+                    Key = {oom, node()},
+                    [global_alert(Key, fmt_to_bin(?OOM_ERR, [Bucket, Host]))
+                     || Bucket <- Buckets]
             end,
             dict:store(oom, New, Opaque)
     end.
+
+
+%% @doc list of buckets thats number of oom errors have increased
+-spec oom_increased(dict(), dict()) -> list().
+oom_increased(New, Old) ->
+    [Bucket || {Bucket, Val} <- dict:to_list(New), increased(Bucket, Val, Old)].
 
 
 %% @doc check that I can listen on the current host
@@ -187,12 +196,13 @@ fmt_to_bin(Str, Args) ->
     list_to_binary(lists:flatten(io_lib:format(Str, Args))).
 
 
-%% @doc Sum of all oom errors on all buckets
--spec sum_oom_errors() -> integer().
-sum_oom_errors() ->
-    lists:sum([ bucket_oom_errors(Bucket)
-                || Bucket <- ns_memcached:active_buckets() ]).
-
+%% @doc List of oom errors for each bucket
+-spec oom_errors() -> dict().
+oom_errors() ->
+    dict:from_list(
+      [{Bucket, bucket_oom_errors(Bucket)}
+       || Bucket <- ns_memcached:active_buckets()]
+     ).
 
 %% @doc Total count of oom errors on a bucket
 -spec bucket_oom_errors(string()) -> integer().
@@ -210,6 +220,17 @@ expire_history(Hist) ->
     Now = misc:now_int(),
     [ {Key, Msg, Time} ||
         {Key, Msg, Time} <- Hist, Now - Time < ?ALERT_TIMEOUT ].
+
+
+%% @doc Lookup old value and test for increase
+-spec increased(string(), integer(), dict()) -> true | false.
+increased(Key, Val, Dict) ->
+    case dict:find(Key, Dict) of
+        error ->
+            false;
+        {ok, Prev} ->
+            Val > Prev
+    end.
 
 
 %% Cant currently test the alert timeouts as would need to mock
