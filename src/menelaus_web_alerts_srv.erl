@@ -23,7 +23,10 @@
 -define(ALERT_TIMEOUT, 60 * 2).
 
 %% Maximum percentage of overhead compared to max bucket size (%)
--define(MAX_OVERHEAD_PERC, 0.5).
+-define(MAX_OVERHEAD_PERC, 50).
+
+%% Maximum disk usage before warning (%)
+-define(MAX_DISK_USED, 90).
 
 -export([start_link/0, stop/0, local_alert/2, global_alert/2, fetch_alerts/0]).
 
@@ -36,7 +39,9 @@ errors(ep_oom_errors) ->
 errors(ep_item_commit_failed) ->
     "Bucket \"~s\" on node ~s failed to write an item";
 errors(overhead) ->
-    "Metadata on node \"~s\" is over ~p%".
+    "Metadata on node \"~s\" is over ~p%";
+errors(disk) ->
+    "Usage of disk \"~s\" on node \"~s\" is over ~p%".
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -138,12 +143,13 @@ alert_exists(Key, History, MsgQueue) ->
 %% @doc global checks for any server specific problems locally then
 %% broadcast alerts to clients connected to any particular node
 global_checks() ->
-    [oom, ip, write_fail, overhead].
+    [oom, ip, write_fail, overhead, disk].
 
 %% @doc fires off various checks
 check_alerts(Opaque, Hist) ->
     Fun = fun(X, Dict) -> check(X, Dict, Hist) end,
     lists:foldl(Fun, Opaque, global_checks()).
+
 
 %% @doc if listening on a non localhost ip, detect differences between
 %% external listening host and current node host
@@ -159,12 +165,24 @@ check(ip, Opaque, _History) ->
     Opaque;
 
 %% @doc check how much overhead there is compared to data
+check(disk, Opaque, _History) ->
+    [case Used > ?MAX_DISK_USED of
+         true ->
+             {_Sname, Host} = misc:node_name_host(node()),
+             Err = fmt_to_bin(errors(disk), [Disk, Host, Used]),
+             global_alert({disk, node()}, Err);
+         false ->
+             ok
+     end || {Disk, _Capacity, Used} <- disksup:get_disk_data()],
+    Opaque;
+
+%% @doc check how much overhead there is compared to data
 check(overhead, Opaque, _History) ->
-    [case fetch_bucket_stat(Bucket, ep_overhead) /
-         fetch_bucket_stat(Bucket, ep_max_data_size) of
+    [case (fetch_bucket_stat(Bucket, ep_overhead) /
+           fetch_bucket_stat(Bucket, ep_max_data_size)) * 100 of
          X when X > ?MAX_OVERHEAD_PERC ->
              {_Sname, Host} = misc:node_name_host(node()),
-             Err = fmt_to_bin(errors(overhead), [Host, erlang:round(X * 100)]),
+             Err = fmt_to_bin(errors(overhead), [Host, erlang:round(X)]),
              global_alert({overhead, node()}, Err);
          _  ->
              ok
