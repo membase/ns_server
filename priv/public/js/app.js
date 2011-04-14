@@ -423,8 +423,8 @@ function showInitDialog(page, opt, isContinuation) {
         $('body, html').css('cursor', 'wait');
 
         return rv(function () {
-          $('body, html').css('cursor', null);
 
+          $('body, html').css('cursor', '');
           // we don't pass real contination, we just call ourselves again
           showInitDialog(page, opt, true);
         });
