@@ -22,6 +22,9 @@
 %% Amount of time between sending users the same alert (s)
 -define(ALERT_TIMEOUT, 60 * 2).
 
+%% Maximum percentage of overhead compared to max bucket size (%)
+-define(MAX_OVERHEAD_PERC, 0.5).
+
 -export([start_link/0, stop/0, local_alert/2, global_alert/2, fetch_alerts/0]).
 
 
@@ -31,7 +34,9 @@ errors(ip) ->
 errors(ep_oom_errors) ->
     "Bucket \"~s\" on node ~s is out of memory";
 errors(ep_item_commit_failed) ->
-    "Bucket \"~s\" on node ~s failed to write an item".
+    "Bucket \"~s\" on node ~s failed to write an item";
+errors(overhead) ->
+    "Metadata on node \"~s\" is over ~p%".
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -133,7 +138,7 @@ alert_exists(Key, History, MsgQueue) ->
 %% @doc global checks for any server specific problems locally then
 %% broadcast alerts to clients connected to any particular node
 global_checks() ->
-    [oom, ip, write_fail].
+    [oom, ip, write_fail, overhead].
 
 %% @doc fires off various checks
 check_alerts(Opaque, Hist) ->
@@ -151,6 +156,19 @@ check(ip, Opaque, _History) ->
         true ->
             ok
     end,
+    Opaque;
+
+%% @doc check how much overhead there is compared to data
+check(overhead, Opaque, _History) ->
+    [case fetch_bucket_stat(Bucket, ep_overhead) /
+         fetch_bucket_stat(Bucket, ep_max_data_size) of
+         X when X > ?MAX_OVERHEAD_PERC ->
+             {_Sname, Host} = misc:node_name_host(node()),
+             Err = fmt_to_bin(errors(overhead), [Host, erlang:round(X * 100)]),
+             global_alert({overhead, node()}, Err);
+         _  ->
+             ok
+     end || Bucket <- ns_memcached:active_buckets()],
     Opaque;
 
 %% @doc check for write failures inside ep engine
