@@ -141,9 +141,6 @@ rebalance(KeepNodes, EjectNodes, FailedNodes) ->
 %% either return ok or exit with reason 'stopped' or whatever reason
 %% was given by whatever failed.
 rebalance(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets) ->
-    %% MB-3195: Shut down replication to avoid competing with
-    %% rebalance and causing spurious errors.
-    ns_vbm_sup:set_replicas(Bucket, []),
     Map = proplists:get_value(map, Config),
     Opts = config_to_opts(Config),
     FastForwardMap = mb_map:balance(Map, KeepNodes, Opts),
