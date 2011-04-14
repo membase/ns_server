@@ -112,21 +112,25 @@ var BaseClickSwitchCell = mkClass(HashFragmentCell, {
     })
   },
   updateSelected: function () {
-    var findLinkById = this.findLinkById;
-    $(_(this.idToItems).chain().keys()
-      .inject($([]), function (a,b) {return a.add(findLinkById(b));})
-      .value()).removeClass(this.options.selectedClass);
-
     var value = this.value;
-    if (value == undefined)
+    if (value == undefined) {
       return;
+    }
 
     var index = _.indexOf(_(this.items).pluck('value'), value);
-    if (index < 0)
+    if (index < 0) {
       throw new Error('invalid value!');
+    }
+
+    var getSelector = this.getSelector;
+    var selectors = _.map(this.idToItems,
+      function(value, key) {
+        return getSelector(key);
+      }).join(',');
+    $(selectors).removeClass(this.options.selectedClass);
 
     var id = this.items[index].id;
-    this.findLinkById(id).addClass(this.options.selectedClass);
+    $(getSelector(id)).addClass(this.options.selectedClass);
   },
   eventHandler: function (element, event) {
     var id = this.extractElementID(element);
@@ -143,8 +147,8 @@ var BaseClickSwitchCell = mkClass(HashFragmentCell, {
 // (any type) and persists selected value in window.location hash
 // fragment
 var LinkSwitchCell = mkClass(BaseClickSwitchCell, {
-  findLinkById: function (id) {
-    return $($i(id));
+  getSelector: function (id) {
+    return '#' + id;
   },
   extractElementID: function (element) {
     return element.id;
@@ -165,8 +169,8 @@ var LinkSwitchCell = mkClass(BaseClickSwitchCell, {
 //
 // All CSS classes in set must have prefix paramName
 var LinkClassSwitchCell = mkClass(BaseClickSwitchCell, {
-  findLinkById: function (id) {
-    return $('.' + id);
+  getSelector: function (id) {
+    return '.' + id;
   },
   extractElementID: function (element) {
     var classNames = element.className.split(' ');
