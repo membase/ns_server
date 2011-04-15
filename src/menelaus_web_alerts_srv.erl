@@ -20,7 +20,7 @@
 -define(SAMPLE_RATE, 3000).
 
 %% Amount of time between sending users the same alert (s)
--define(ALERT_TIMEOUT, 60 * 2).
+-define(ALERT_TIMEOUT, 60 * 10).
 
 %% Maximum percentage of overhead compared to max bucket size (%)
 -define(MAX_OVERHEAD_PERC, 50).
