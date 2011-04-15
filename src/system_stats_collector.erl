@@ -40,16 +40,17 @@ start_link() ->
 
 init([]) ->
     Path = path_config:component_path(bin, "sigar_port"),
-    Port = case filelib:is_regular(Path) of
-               true ->
-                   ns_pubsub:subscribe(ns_tick_event),
-                   open_port({spawn_executable, Path},
-                             [stream, use_stdio, exit_status,
-                              binary, eof, {arg0, lists:flatten(io_lib:format("portsigar for ~s", [node()]))}]);
-               _ ->
-                   ?log_warning("bin/sigar_port is missing. Will not collect system-level stats", []),
-                   undefined
-           end,
+    Port =
+        try open_port({spawn_executable, Path},
+                      [stream, use_stdio, exit_status,
+                       binary, eof, {arg0, lists:flatten(io_lib:format("portsigar for ~s", [node()]))}]) of
+            X ->
+                ns_pubsub:subscribe(ns_tick_event),
+                X
+        catch error:enoent ->
+                ?log_warning("~s is missing. Will not collect system-level stats", [Path]),
+                undefined
+        end,
     {ok, #state{port = Port}}.
 
 handle_call(_Request, _From, State) ->
