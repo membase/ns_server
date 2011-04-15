@@ -85,9 +85,7 @@ config_string(BucketName) ->
                 DBSubDir = filename:join(DBDir, BucketName ++ "-data"),
                 DBName = filename:join(DBSubDir, BucketName),
                 ok = filelib:ensure_dir(DBName),
-                %% MemQuota is our total limit for cluster
-                %% LocalQuota is our limit for this node
-                %% We stretch our quota on all nodes we have for this bucket
+                %% MemQuota is our per-node bucket memory limit
                 CFG =
                     io_lib:format(
                       "ht_size=~B;ht_locks=~B;db_shards=~B;"
