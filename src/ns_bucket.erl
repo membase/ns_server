@@ -70,7 +70,15 @@ config_string(BucketName) ->
     BucketType =  proplists:get_value(type, BucketConfig),
     EngineConfig = proplists:get_value(BucketType, Engines),
     Engine = proplists:get_value(engine, EngineConfig),
-    {ConfigString, ExtraParams} =
+    StaticConfigString =
+        proplists:get_value(
+          static_config_string, BucketConfig,
+          proplists:get_value(static_config_string, EngineConfig)),
+    ExtraConfigString =
+        proplists:get_value(
+          extra_config_string, BucketConfig,
+          proplists:get_value(extra_config_string, EngineConfig, "")),
+    {DynamicConfigString, ExtraParams} =
         case BucketType of
             membase ->
                 DBDir = ns_config:search_node_prop(Config, memcached, dbdir),
@@ -81,50 +89,43 @@ config_string(BucketName) ->
                 %% LocalQuota is our limit for this node
                 %% We stretch our quota on all nodes we have for this bucket
                 CFG =
-                    lists:flatten(
-                      io_lib:format(
-                        "vb0=false;waitforwarmup=false;ht_size=~B;"
-                        "ht_locks=~B;failpartialwarmup=false;"
-                        "db_shards=~B;"
-                        "shardpattern=%d/%b-%i.mb;"
-                        "db_strategy=multiMTVBDB;"
-                        "tap_noop_interval=~B;"
-                        "max_txn_size=~B;"
-                        "max_size=~B;"
-                        "initfile=~s;"
-                        "tap_keepalive=~B;"
-                        "dbname=~s;",
-                        [proplists:get_value(
-                           ht_size, BucketConfig,
-                           getenv_int("MEMBASE_HT_SIZE", 3079)),
-                         proplists:get_value(
-                           ht_locks, BucketConfig,
-                           getenv_int("MEMBASE_HT_LOCKS", 5)),
-                         proplists:get_value(
-                           db_shards, BucketConfig,
-                           getenv_int("MEMBASE_DB_SHARDS", 4)),
-                         proplists:get_value(
-                           tap_noop_interval, BucketConfig,
-                           getenv_int("MEMBASE_TAP_NOOP_INTERVAL", 20)),
-                         proplists:get_value(
-                           max_txn_size, BucketConfig,
-                           getenv_int("MEMBASE_MAX_TXN_SIZE", 1000)),
-                         MemQuota,
-                         proplists:get_value(
-                           initfile, BucketConfig,
-                           proplists:get_value(initfile, EngineConfig)),
-                         %% Five minutes, should be enough time for
-                         %% ebucketmigrator to restart.
-                         proplists:get_value(
-                           tap_keepalive, BucketConfig,
-                           getenv_int("MEMBASE_TAP_KEEPALIVE", 300)),
-                         DBName])),
+                    io_lib:format(
+                      "ht_size=~B;ht_locks=~B;db_shards=~B;"
+                      "tap_noop_interval=~B;max_txn_size=~B;"
+                      "max_size=~B;initfile=~s;"
+                      "tap_keepalive=~B;dbname=~s",
+                      [proplists:get_value(
+                         ht_size, BucketConfig,
+                         getenv_int("MEMBASE_HT_SIZE", 3079)),
+                       proplists:get_value(
+                         ht_locks, BucketConfig,
+                         getenv_int("MEMBASE_HT_LOCKS", 5)),
+                       proplists:get_value(
+                         db_shards, BucketConfig,
+                         getenv_int("MEMBASE_DB_SHARDS", 4)),
+                       proplists:get_value(
+                         tap_noop_interval, BucketConfig,
+                         getenv_int("MEMBASE_TAP_NOOP_INTERVAL", 20)),
+                       proplists:get_value(
+                         max_txn_size, BucketConfig,
+                         getenv_int("MEMBASE_MAX_TXN_SIZE", 1000)),
+                       MemQuota,
+                       proplists:get_value(
+                         initfile, BucketConfig,
+                         proplists:get_value(initfile, EngineConfig)),
+                       %% Five minutes, should be enough time for
+                       %% ebucketmigrator to restart.
+                       proplists:get_value(
+                         tap_keepalive, BucketConfig,
+                         getenv_int("MEMBASE_TAP_KEEPALIVE", 300)),
+                       DBName]),
                 {CFG, {MemQuota, DBName}};
             memcached ->
-                {lists:flatten(
-                   io_lib:format("vb0=true;cache_size=~B", [MemQuota])),
+                {io_lib:format("cache_size=~B", [MemQuota]),
                  MemQuota}
         end,
+    ConfigString = lists:flatten([DynamicConfigString, $;, StaticConfigString,
+                                  $;, ExtraConfigString]),
     {Engine, ConfigString, BucketType, ExtraParams}.
 
 %% @doc Return {Username, Password} for a bucket.
