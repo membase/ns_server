@@ -407,7 +407,7 @@ var DAL = {
   // irrelevant poolDetails attributes change value.
   //
   // 'null' indicates invalid pool details
-  var massageUsedPoolDetails = Cell.compute(function (v) {
+  var massagedUsedPoolDetails = Cell.compute(function (v) {
     var poolDetails = v.need(currentPoolDetailsCell);
     var storageTotals = poolDetails.storageTotals;
     if (!storageTotals || !storageTotals.ram) {
@@ -418,12 +418,12 @@ var DAL = {
     return {storageTotals: storageTotals,
             serversCount: poolDetails.nodes.length};
   });
-  massageUsedPoolDetails.equality = _.isEqual;
+  massagedUsedPoolDetails.equality = _.isEqual;
 
   // force refetch of pool details if there is still no storageTotals for 2 seconds
   (function () {
     var timeoutId;
-    massageUsedPoolDetails.subscribeValue(function (val) {
+    massagedUsedPoolDetails.subscribeValue(function (val) {
       if (val === null && timeoutId === undefined) {
         timeoutId = setTimeout(function () {
           timeoutId = undefined;
@@ -433,9 +433,16 @@ var DAL = {
     });
   })();
 
+  var nonNullMassagedDetails = Cell.compute(function (v) {
+    var rv = v(massagedUsedPoolDetails);
+    if (rv == null)
+      return;
+    return rv;
+  });
+
   cells.rawBucketsListCell = Cell.compute(function (v) {
     var values = v.need(rawDetailedBuckets);
-    var massageDetails = v.need(massageUsedPoolDetails);
+    var massagedDetails = v.need(nonNullMassagedDetails);
 
     if (values === Cell.STANDARD_ERROR_MARK) {
       return values;
@@ -443,7 +450,7 @@ var DAL = {
 
     values = _.clone(values);
 
-    var storageTotals = massageDetails.storageTotals;
+    var storageTotals = massagedDetails.storageTotals;
 
     _.each(values, function (bucket) {
       if (bucket.bucketType == 'memcached') {
@@ -454,7 +461,7 @@ var DAL = {
         bucket.bucketTypeName = bucket.bucketType;
       }
 
-      bucket.serversCount = massageDetails.serversCount;
+      bucket.serversCount = massagedDetails.serversCount;
       bucket.ramQuota = bucket.quota.ram;
       bucket.totalRAMSize = storageTotals.ram.total;
       bucket.totalRAMUsed = bucket.basicStats.memUsed;
