@@ -306,7 +306,15 @@ perform_warnings_validation(ParsedProps, Errors) ->
 handle_bucket_flush(PoolId, Id, Req) ->
     ns_log:log(?MODULE, 0005, "Flushing pool ~p bucket ~p from node ~p",
                [PoolId, Id, erlang:node()]),
-    Req:respond({400, server_header(), "Flushing is not currently implemented."}).
+    Nodes = ns_node_disco:nodes_wanted(),
+    {Results, []} = rpc:multicall(Nodes, ns_memcached, flush, [Id],
+                                  ?MULTICALL_DEFAULT_TIMEOUT),
+    case lists:all(fun(A) -> A =:= ok end, Results) of
+        true ->
+            Req:respond({200, server_header(), []});
+        false ->
+            Req:respond({503, server_header(), "Unexpected error flushing buckets"})
+    end.
 
 handle_setup_default_bucket_post(Req) ->
     Params = Req:parse_post(),

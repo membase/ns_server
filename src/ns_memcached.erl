@@ -54,7 +54,8 @@
          server/1,
          stats/1, stats/2, stats/3,
          topkeys/1,
-         sync_bucket_config/1]).
+         sync_bucket_config/1,
+         flush/1]).
 
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
@@ -150,6 +151,9 @@ handle_call(list_vbuckets, _From, State) ->
     {reply, Reply, State};
 handle_call(noop, _From, State) ->
     {reply, ok, State};
+handle_call(flush, _From, State) ->
+    Reply = mc_client_binary:flush(State#state.sock),
+    {reply, Reply, State};
 handle_call({set_flush_param, Key, Value}, _From, State) ->
     Reply = mc_client_binary:set_flush_param(State#state.sock, Key, Value),
     {reply, Reply, State};
@@ -274,6 +278,10 @@ connected(Node, Bucket) ->
             false
     end.
 
+%% @doc Send flush command to specified bucket
+-spec flush(bucket_name()) -> ok.
+flush(Bucket) ->
+    gen_server:call({server(Bucket), node()}, flush, ?TIMEOUT).
 
 %% @doc Returns true if backfill is running on this node for the given bucket.
 -spec backfilling(bucket_name()) ->
