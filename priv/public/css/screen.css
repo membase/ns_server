@@ -127,7 +127,7 @@ td.leftNavDisabled {color:#f00;}
 .save_cancel {height:31px;padding:5px 0;}
 .dialog .save_cancel {border-top:1px solid #eee;border-bottom-width:0px;padding:18px;clear:both;background:#cccfd2;}
 .save_cancel button, .config-bottom button {position:relative;top:-1px;display:block;width:121px;height:31px;color:#fff;font-size:14px;font-weight:bolder;line-height:31px;text-align:center;text-decoration:none;border:0px;cursor:pointer;white-space:nowrap}
-.save_cancel button:hover, .save_cancel button:focus, 
+.save_cancel button:hover, .save_cancel button:focus,
 .config-bottom button:hover, .config-bottom button:focus {background-position:0 -31px;}
 .save_cancel button:active, .config-bottom button:active {background-position:0 -62px;}
 .save_cancel .save_button, .config-bottom .direction-button {background:url(../images/button_blue.gif) 0 0 no-repeat;}
@@ -954,7 +954,7 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details label span + span {width:60px !important;}
 
 .bucket_details .for-sasl-password, .bucket_details .for-key-prefix, .bucket_details .for-ascii, .bucket_details .for-source-ip {padding-left:170px;}
-.bucket_details .for-sasl-password span, .bucket_details .for-key-prefix span, 
+.bucket_details .for-sasl-password span, .bucket_details .for-key-prefix span,
 .bucket_details .for-ascii span, .bucket_details .for-source-ip span {float:none;display:inline;margin-left:6px;}
 .bucket_details .for-sasl-password, .bucket_details .for-ascii {padding-left:20px;}
 .bucket_details .for-name span, .bucket_details .for-bucket-type span {display:block;float:left;text-align:right;margin-right:6px;width:100px; line-height:24px;}
