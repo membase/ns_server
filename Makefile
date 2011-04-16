@@ -55,7 +55,11 @@ ebins: src/ns_server.app.src
 	$(REBAR) compile
 
 src/ns_server.app.src: src/ns_server.app.src.in $(TMP_VER)
-	(sed s/0.0.0/`cat $(TMP_VER)`/g $< > $@) || (rm $@ && false)
+	(sed s/0.0.0/'$(if $(MEMBASE_VERSION),$(MEMBASE_VERSION),$(shell cat $(TMP_VER)))'/g $< > $@) || (rm $@ && false)
+
+ifdef MEMBASE_VERSION
+.PHONY: src/ns_server.app.src
+endif
 
 priv/public/js/all-images.js: priv/public/images priv/public/images/spinner scripts/build-all-images.rb
 	ruby scripts/build-all-images.rb >$@ || (rm $@ && false)
