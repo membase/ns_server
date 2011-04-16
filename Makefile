@@ -136,13 +136,7 @@ common_tests: dataclean all
 	mkdir -p logs
 	erl -noshell -name ctrl@127.0.0.1 -hidden -setcookie nocookie -pa $(EBIN_PATHS) -eval "ct:run_test([{spec, \"./common_tests/common_tests.spec\"}]), init:stop()"
 
-test: test_$(OS)
-
-test_: test_unit
-
-test_Windows_NT: test_unit
-
-test_unit: ebins
+test: ebins
 	erl $(EFLAGS) -noshell -kernel error_logger silent -shutdown_time 10000 -eval 'application:start(sasl).' -eval "case t:$(TEST_TARGET)() of ok -> init:stop(); _ -> init:stop(1) end."
 
 # assuming exuberant-ctags
