@@ -125,6 +125,11 @@ init({Src, Dst, Opts}) ->
                        [] -> undefined;
                        CheckpointMap -> CheckpointMap
                   end,
+    Args = [{vbuckets, VBuckets},
+            {checkpoints, Checkpoints},
+            {name, Name},
+            {takeover, TakeOver}],
+    ?log_info("Starting tap stream:~n~p~n", [Args]),
     {ok, quiet} = mc_client_binary:tap_connect(Upstream, [{vbuckets, VBuckets},
                                                           {checkpoints, Checkpoints},
                                                           {name, Name},
