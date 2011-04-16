@@ -18,9 +18,8 @@
 -export([version/0, runtime/0, basic_info/0]).
 
 version() ->
-    Loaded = lists:map(fun({App, _, Version}) -> {App, Version} end,
-              application:loaded_applications()),
-    proplists:delete([menelaus], Loaded).
+    lists:map(fun({App, _, Version}) -> {App, Version} end,
+              application:loaded_applications()).
 
 runtime() ->
     {WallClockMSecs, _} = erlang:statistics(wall_clock),
