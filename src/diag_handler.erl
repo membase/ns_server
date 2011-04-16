@@ -62,19 +62,10 @@ diag_filter_out_config_password(Config) ->
         NewConfig -> NewConfig
     end.
 
-% Read the manifest.txt file, wherever it might exist across different versions and O/S'es.
-%
+% Read the manifest.txt file
 manifest() ->
-    % The cwd should look like /opt/membase with a /opt/membase/bin symlink
-    % to the right /opt/membase/VERSION/bin directory.
-    %
-    RV = lists:filter(fun ({ok, _}) -> true;
-                          ({error, _}) -> false
-                      end,
-                      lists:map(fun file:read_file/1,
-                                ["./bin/../manifest.txt", "./bin/../src/manifest.txt"])),
-    case RV of
-        [{ok, C}|_] ->
+    case file:read_file(filename:join(path_config:component_path(lib, "ns_server"), "manifest.txt")) of
+        {ok, C} ->
             lists:sort(string:tokens(binary_to_list(C), "\n"));
         [] -> []
     end.
