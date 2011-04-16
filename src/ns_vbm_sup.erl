@@ -62,8 +62,15 @@ kill_replica(Bucket, SrcNode, DstNode, VBucket) ->
         #child_id{vbuckets=VBuckets} = Child ->
             %% Kill the child and start it again without this vbucket.
             kill_child(SrcNode, Bucket, Child),
-            {ok, _} = start_child(SrcNode, Bucket, VBuckets -- [VBucket],
-                                  DstNode)
+            case VBuckets of
+                [VBucket] ->
+                    %% just kill when it was last vbucket
+                    ?log_info("~p: killed last vbucket (~p) for destination ~p", [SrcNode, VBucket, DstNode]),
+                    ok;
+                _ ->
+                    {ok, _} = start_child(SrcNode, Bucket, VBuckets -- [VBucket],
+                                          DstNode)
+            end
     end.
 
 
