@@ -127,16 +127,8 @@ clean clean_all:
 	rm -rf ebin
 	rm -rf docs
 
-# TODO: adjust
 dataclean:
-	rm -rf $(TMP_DIR)
-	rm -rf Mnesia*
-	rm -rf config
-	rm -rf data
-	rm -rf logs
-	rm -rf coverage
-	rm -f priv/ip
-	rm -rf couch
+	rm -rf $(TMP_DIR) data coverage couch logs tmp
 
 distclean: clean dataclean
 
