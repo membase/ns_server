@@ -64,10 +64,10 @@ diag_filter_out_config_password(Config) ->
 
 % Read the manifest.txt file
 manifest() ->
-    case file:read_file(filename:join(path_config:component_path(lib, "ns_server"), "manifest.txt")) of
+    case file:read_file(filename:join(path_config:component_path(bin, ".."), "manifest.txt")) of
         {ok, C} ->
             lists:sort(string:tokens(binary_to_list(C), "\n"));
-        [] -> []
+        _ -> []
     end.
 
 grab_process_info(Pid) ->
