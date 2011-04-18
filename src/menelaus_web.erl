@@ -173,6 +173,7 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_node/2, [NodeId]};
                              ["diag"] ->
                                  {auth_cookie, fun diag_handler:handle_diag/1};
+                             ["diag", "vbuckets"] -> {auth, fun handle_diag_vbuckets/1};
                              ["pools", PoolId, "rebalanceProgress"] ->
                                  {auth, fun handle_rebalance_progress/2, [PoolId]};
                              ["index.html"] ->
@@ -255,6 +256,7 @@ loop(Req, AppRoot, DocRoot) ->
                                                                         Req:get_header_value("user-agent"), binary_to_list(R:recv_body())]),
                                                             R:ok({"text/plain", add_header(), <<"">>})
                                                     end};
+                             ["diag", "eval"] -> {auth, fun handle_diag_eval/1};
                              ["erlwsh" | _] ->
                                  {done, erlwsh_web:loop(Req, erlwsh_deps:local_path(["priv", "www"]))};
                              _ ->
@@ -1422,3 +1424,57 @@ handle_node_statuses(Req) ->
 
 bin_concat_path(Path) ->
     list_to_binary(concat_url_path(Path)).
+
+handle_diag_eval(Req) ->
+    {value, Value, _} = eshell:eval(binary_to_list(Req:recv_body()), erl_eval:add_binding("Req", Req, erl_eval:new_bindings())),
+    case Value of
+        done -> ok;
+        {json, V} -> reply_json(Req, V, 200);
+        _ -> Req:respond({200, [], io_lib:format("~p", [Value])})
+    end.
+
+diag_vbucket_accumulate_vbucket_stats(K, V, Dict) ->
+    case misc:split_binary_at_char(K, $:) of
+        {<<"vb_",VB/binary>>, AttrName} ->
+            SubDict = case dict:find(VB, Dict) of
+                          error ->
+                              dict:new();
+                          {ok, X} -> X
+                      end,
+            dict:store(VB, dict:store(AttrName, V, SubDict), Dict);
+        _ ->
+            Dict
+    end.
+
+diag_vbucket_per_node(BucketName, Node) ->
+    {ok, RV1} = ns_memcached:raw_stats(Node, BucketName, <<"hash">>, fun diag_vbucket_accumulate_vbucket_stats/3, dict:new()),
+    {ok, RV2} = ns_memcached:raw_stats(Node, BucketName, <<"checkpoint">>, fun diag_vbucket_accumulate_vbucket_stats/3, RV1),
+    RV2.
+
+handle_diag_vbuckets(Req) ->
+    Params = Req:parse_qs(),
+    BucketName = proplists:get_value("bucket", Params),
+    {ok, BucketConfig} = ns_bucket:get_bucket(BucketName),
+    Nodes = ns_node_disco:nodes_actual_proper(),
+    RawPerNode = misc:pmap(fun (Node) ->
+                                   diag_vbucket_per_node(BucketName, Node)
+                           end, Nodes, length(Nodes), 30000),
+    PerNodeStates = lists:zip(Nodes,
+                              [{struct, [{K, {struct, dict:to_list(V)}} || {K, V} <- dict:to_list(Dict)]}
+                               || Dict <- RawPerNode]),
+    JSON = {struct, [{name, list_to_binary(BucketName)},
+                     {bucketMap, proplists:get_value(map, BucketConfig, [])},
+                     %% {ffMap, proplists:get_value(fastForwardMap, BucketConfig, [])},
+                     {perNodeStates, {struct, PerNodeStates}}]},
+    Hash = integer_to_list(erlang:phash2(JSON)),
+    ExtraHeaders = [{"Cache-Control", "must-revalidate"},
+                    {"ETag", Hash},
+                    {"Server", proplists:get_value("Server", menelaus_util:server_header(), "")}],
+    case Req:get_header_value("if-none-match") of
+        Hash -> Req:respond({304, ExtraHeaders, []});
+        _ ->
+            Req:respond({200,
+                         [{"Content-Type", "application/json"}
+                          | ExtraHeaders],
+                         mochijson2:encode(JSON)})
+    end.
