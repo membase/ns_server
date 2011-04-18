@@ -23,6 +23,10 @@ start() ->
         application:set_env(os_mon, disk_space_check_interval, 1),
         ok = application:start(sasl),
         application:start(os_mon),
+        case erlang:system_info(system_architecture) of
+            "win32" -> win32dns:win32_dns_setup();
+            _ -> ok
+        end,
         ok = application:start(ns_server),
         case os:getenv("DONT_START_COUCH") of
             false ->
