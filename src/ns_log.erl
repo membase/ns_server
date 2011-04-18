@@ -191,11 +191,11 @@ code_string(Module, Code) ->
 
 % A Code is an number which is module-specific.
 %
--spec log(atom(), integer(), string() | binary()) -> ok.
+-spec log(atom(), integer(), string()) -> ok.
 log(Module, Code, Msg) ->
     log(Module, Code, Msg, []).
 
--spec log(atom(), integer(), string() | binary(), list()) -> ok.
+-spec log(atom(), integer(), string(), list()) -> ok.
 log(Module, Code, Fmt, Args) ->
     error_logger:info_msg("ns_log: logging ~p:~p:~s~n",
                           [Module, Code, lists:flatten(io_lib:format(Fmt, Args))]),

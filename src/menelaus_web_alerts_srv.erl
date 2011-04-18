@@ -54,7 +54,7 @@ start_link() ->
 %% @doc Send alert to all connected nodes
 -spec global_alert(any(), binary() | string()) -> ok.
 global_alert(Type, Msg) ->
-    ns_log:log(?MODULE, 1, Msg),
+    ns_log:log(?MODULE, 1, to_str(Msg)),
     [rpc:cast(Node, ?MODULE, local_alert, [Type, Msg])
      || Node <- [node() | nodes()]],
     ok.
@@ -282,6 +282,12 @@ increased(Key, Val, Dict) ->
 fmt_to_bin(Str, Args) ->
     list_to_binary(lists:flatten(io_lib:format(Str, Args))).
 
+
+-spec to_str(binary() | string()) -> string().
+to_str(Msg) when is_binary(Msg) ->
+    binary_to_list(Msg);
+to_str(Msg) ->
+    Msg.
 
 %% Cant currently test the alert timeouts as would need to mock
 %% calls to the archiver
