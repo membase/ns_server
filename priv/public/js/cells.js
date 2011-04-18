@@ -130,7 +130,6 @@ var Cell = mkClass({
         var rv = self[a];
         if (rv === undefined) {
           notOk = true;
-//          return _.breakLoop();
         }
         return rv;
       });

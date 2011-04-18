@@ -665,7 +665,7 @@ function mkTag(name, attrs, contents) {
 // is same as in Brasenham line/circle drawing algorithm.
 function rescaleForSum(newSum, values, oldSum) {
   if (oldSum == null) {
-    oldSum = _.inject(values, 0, function (a,v) {return a+v;});
+    oldSum = _.inject(values, function (a,v) {return a+v;}, 0);
   }
   // every value needs to be multiplied by newSum / oldSum
   var error = 0;
@@ -704,7 +704,7 @@ function usageGaugeHTML(options) {
   var values = _.map(options.items, function (item) {
     return Math.max(item.value, 0);
   });
-  var total = _.inject(values, 0, function (a,v) {return a+v;});
+  var total = _.inject(values, function (a,v) {return a+v;}, 0);
   values = rescaleForSum(100, values, total);
   var sum = 0;
   // now put cumulative values into array
