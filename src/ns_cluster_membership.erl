@@ -91,11 +91,11 @@ start_rebalance(KnownNodes, EjectedNodes) ->
             MaybeKeepNodes = KnownNodes -- EjectedNodes,
             FailedNodes =
                 [N || {N, State} <-
-                          get_nodes_cluster_membership(MaybeKeepNodes),
+                          get_nodes_cluster_membership(KnownNodes),
                       State == inactiveFailed],
             KeepNodes = MaybeKeepNodes -- FailedNodes,
             activate(KeepNodes),
-            ns_orchestrator:start_rebalance(KeepNodes, EjectedNodes,
+            ns_orchestrator:start_rebalance(KeepNodes, EjectedNodes -- FailedNodes,
                                             FailedNodes);
         _ -> nodes_mismatch
     end.
