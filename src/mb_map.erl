@@ -384,15 +384,16 @@ balance_test_() ->
     NodeNums = [1,2,3,4,5,10,100],
     CopySizes = [1,2,3],
     SlaveNums = [1,2,10],
-    {inparallel,
-     [balance_test_gen(MapSize, CopySize, NumNodes, NumSlaves)
-      || NumSlaves <- SlaveNums,
-         CopySize <- CopySizes,
-         NumNodes <- NodeNums,
-         MapSize <- MapSizes,
-         trunc(trunc(MapSize/NumNodes) /
-                   NumSlaves)
-             > 0]}.
+    {timeout, 120,
+     [{inparallel,
+       [balance_test_gen(MapSize, CopySize, NumNodes, NumSlaves)
+        || NumSlaves <- SlaveNums,
+           CopySize <- CopySizes,
+           NumNodes <- NodeNums,
+           MapSize <- MapSizes,
+           trunc(trunc(MapSize/NumNodes) /
+                     NumSlaves)
+               > 0]}]}.
 
 
 balance_test_gen(MapSize, CopySize, NumNodes, NumSlaves) ->
