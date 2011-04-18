@@ -54,6 +54,7 @@
          server/1,
          stats/1, stats/2, stats/3,
          topkeys/1,
+         raw_stats/5,
          sync_bucket_config/1,
          flush/1]).
 
@@ -88,6 +89,13 @@ init(Bucket) ->
     {ok, #state{sock=Sock, bucket=Bucket}}.
 
 
+handle_call({raw_stats, SubStat, StatsFun, StatsFunState}, _From, State) ->
+    try mc_client_binary:stats(State#state.sock, SubStat, StatsFun, StatsFunState) of
+        Reply ->
+            {reply, Reply, State}
+    catch T:E ->
+            {reply, {exception, {T, E}}, State}
+    end;
 handle_call(backfilling, _From, State) ->
     End = <<":pending_backfill">>,
     ES = byte_size(End),
@@ -406,6 +414,11 @@ sync_bucket_config(Bucket) ->
 topkeys(Bucket) ->
     gen_server:call(server(Bucket), topkeys, ?TIMEOUT).
 
+
+-spec raw_stats(node(), bucket_name(), binary(), fun(), any()) -> {ok, any()} | {exception, any()} | {error, any()}.
+raw_stats(Node, Bucket, SubStats, Fn, FnState) ->
+    gen_server:call({ns_memcached:server(Bucket), Node},
+                    {raw_stats, SubStats, Fn, FnState}).
 
 
 %%
