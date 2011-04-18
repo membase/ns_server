@@ -178,13 +178,13 @@ check(disk, Opaque, _History) ->
 
 %% @doc check how much overhead there is compared to data
 check(overhead, Opaque, _History) ->
-    [case (fetch_bucket_stat(Bucket, ep_overhead) /
-           fetch_bucket_stat(Bucket, ep_max_data_size)) * 100 of
-         X when X > ?MAX_OVERHEAD_PERC ->
+    [case over_threshold(fetch_bucket_stat(Bucket, ep_overhead),
+                         fetch_bucket_stat(Bucket, ep_max_data_size)) of
+         {true, X} ->
              {_Sname, Host} = misc:node_name_host(node()),
              Err = fmt_to_bin(errors(overhead), [Host, erlang:round(X)]),
              global_alert({overhead, node()}, Err);
-         _  ->
+         false  ->
              ok
      end || Bucket <- ns_memcached:active_buckets()],
     Opaque;
@@ -196,6 +196,19 @@ check(write_fail, Opaque, _History) ->
 %% @doc check for any oom errors an any bucket
 check(oom, Opaque, _History) ->
     check_stat_increased(ep_oom_errors, Opaque).
+
+
+%% @doc calculate percentage of overhead and if it is over threshold
+-spec over_threshold(integer(), integer()) -> false | {true, float()}.
+over_threshold(_Ep, 0) ->
+    false;
+over_threshold(EpErrs, Max) ->
+    Perc = (EpErrs / Max) * 100,
+    case Perc > ?MAX_OVERHEAD_PERC of
+        true -> {true, Perc};
+        false  -> false
+    end.
+
 
 %% @doc Check if the value of any statistic has increased since
 %% last check
