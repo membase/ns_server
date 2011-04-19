@@ -26,6 +26,7 @@ ebin
 ebucketmigrator**.tmp
 erl_crash.dump
 fprof.trace
+ns_server-*.tar.gz
 priv/ip
 priv/isasl.pw
 test/log

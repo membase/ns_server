@@ -36,6 +36,14 @@ all fail-unless-configured:
 	@false
 endif
 
+dist:
+	mkdir -p tmp/ns_server-`git describe`
+	rm -rf tmp/ns_server-`git describe`/*
+	cp -R LICENSE Makefile README* cluster* common* mb* membase* rebar* tmp/ns_server-`git describe`/
+	cp -R deps doc etc features include priv scripts src test tmp/ns_server-`git describe`/
+	find tmp/ns_server-`git describe` -name '*.beam' | xargs rm -f
+	tar -C tmp -czf ns_server-`git describe`.tar.gz ns_server-`git describe`
+
 deps_smtp:
 	(cd deps/gen_smtp && $(MAKE) ebins)
 
