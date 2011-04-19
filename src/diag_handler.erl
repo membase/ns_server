@@ -153,10 +153,15 @@ handle_diag(Req) ->
     Text = lists:flatmap(fun ([Fmt | Args]) ->
                                  io_lib:format(Fmt ++ "~n~n", Args)
                          end, Infos),
+    Params = Req:parse_qs(),
+    MaybeContDisp = case proplists:get_value("mode", Params) of
+                        "view" -> [];
+                        _ -> [{"Content-Disposition", "attachment; filename=" ++ generate_diag_filename()}]
+                    end,
     Resp = Req:ok({"text/plain; charset=utf-8",
-                   [{"Content-Disposition", "attachment; filename=" ++ generate_diag_filename()},
-                    {"Content-Type", "text/plain"}
-                    | menelaus_util:server_header()],
+                   MaybeContDisp ++
+                       [{"Content-Type", "text/plain"}
+                        | menelaus_util:server_header()],
                    chunked}),
     Resp:write_chunk(list_to_binary(Text)),
     handle_logs(Resp).
