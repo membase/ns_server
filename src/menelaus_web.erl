@@ -26,6 +26,7 @@
 
 -include("menelaus_web.hrl").
 -include("ns_common.hrl").
+-include("ns_stats.hrl").
 
 -ifdef(EUNIT).
 -export([test/0]).
@@ -612,6 +613,16 @@ build_node_hostname(Config, Node, LocalAddr) ->
                                                       rest, port, 8091)).
 
 build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
+
+    Stats = case catch stats_reader:latest("minute", WantENode, "@system") of
+                {ok, StatsRec} -> StatsRec#stat_entry.values;
+                _ -> []
+            end,
+
+    CPU = proplists:get_value(cpu_utilization_rate, Stats, 0),
+    Total = proplists:get_value(swap_total, Stats, 0),
+    Used = proplists:get_value(swap_used, Stats, 0),
+
     DirectPort = ns_config:search_node_prop(WantENode, Config, memcached, port),
     ProxyPort = ns_config:search_node_prop(WantENode, Config, moxi, port),
     Versions = proplists:get_value(version, InfoNode, []),
@@ -623,7 +634,11 @@ build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
      {version, list_to_binary(Version)},
      {os, list_to_binary(OS)},
      {ports, {struct, [{proxy, ProxyPort},
-                       {direct, DirectPort}]}}].
+                       {direct, DirectPort}]}},
+     {swap_total, Total},
+     {swap_used, Used},
+     {cpu_usage, CPU}
+    ].
 
 handle_pool_info_streaming(Id, Req) ->
     UserPassword = menelaus_auth:extract_auth(Req),

@@ -4,7 +4,7 @@ var MonitorServersSection = {
       renderTemplate('monitor_servers', {rows:ServersSection.active}, $i('monitor_servers_container'));
     });
     DAL.cells.bucketsListCell.subscribeValue(function (list) {
-      var empty = (list && list.length == 0);
+      var empty = (list && list.length === 0);
       $('#monitor_servers table a.node_name')
         [empty ? 'addClass' : 'removeClass']('disabled')
         .bind('click', !empty); // shut off clicking
