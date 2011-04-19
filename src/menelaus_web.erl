@@ -628,7 +628,7 @@ handle_streaming(F, Req, LastRes) ->
     inet:setopts(Sock, [{active, true}]),
     handle_streaming(F, Req, HTTPRes, LastRes).
 
-handle_streaming(F, Req, HTTPRes, LastRes) ->
+streaming_inner(F, HTTPRes, LastRes) ->
     Res = F(stable),
     case Res =:= LastRes of
         true ->
@@ -638,6 +638,16 @@ handle_streaming(F, Req, HTTPRes, LastRes) ->
             HTTPRes:write_chunk(mochijson2:encode(ResNormal)),
             HTTPRes:write_chunk("\n\n\n\n")
     end,
+    Res.
+
+handle_streaming(F, Req, HTTPRes, LastRes) ->
+    Res =
+        try streaming_inner(F, HTTPRes, LastRes)
+        catch exit:normal ->
+                ?log_info("closing streaming socket~n", []),
+                HTTPRes:write_chunk(""),
+                exit(normal)
+        end,
     receive
         {notify_watcher, _} -> ok;
         _ ->

@@ -173,7 +173,12 @@ handle_sasl_buckets_streaming(_PoolId, Req) ->
 handle_bucket_info_streaming(PoolId, Id, Req) ->
     LocalAddr = menelaus_util:local_addr(Req),
     F = fun(_InfoLevel) ->
-                build_bucket_info(PoolId, Id, undefined, stable, LocalAddr)
+                case ns_bucket:get_bucket(Id) of
+                    {ok, BucketConfig} ->
+                        build_bucket_info(PoolId, Id, BucketConfig, stable, LocalAddr);
+                    not_present ->
+                        exit(normal)
+                end
         end,
     menelaus_web:handle_streaming(F, Req, undefined).
 
