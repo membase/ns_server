@@ -1,7 +1,7 @@
 var MonitorServersSection = {
   init: function () {
     ServersSection.serversCell.subscribe(function() {
-      renderTemplate('monitor_servers', {rows:ServersSection.allNodes}, $i('monitor_servers_container'));
+      renderTemplate('monitor_servers', {rows:ServersSection.active}, $i('monitor_servers_container'));
     });
     DAL.cells.bucketsListCell.subscribeValue(function (list) {
       var empty = (list && list.length == 0);
