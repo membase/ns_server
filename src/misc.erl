@@ -961,17 +961,11 @@ zipwith4_test() ->
         _ -> ok
     end.
 
-%% the intention is to re-implement that efficiently later for R14 which has
-%% binary:match & friends
+-spec split_binary_at_char(binary(), char()) -> binary() | {binary(), binary()}.
 split_binary_at_char(Binary, Chr) ->
-    case re:run(Binary, <<Chr:8>>) of
-        {match, [{Pos, 1}]} ->
-            case erlang:split_binary(Binary, Pos) of
-                {Part1, Part2} ->
-                    {Part1, element(2, erlang:split_binary(Part2, 1))}
-            end;
-        _ ->
-            Binary
+    case binary:split(Binary, <<Chr:8>>) of
+        [_] -> Binary;
+        [Part1, Part2] -> {Part1, Part2}
     end.
 
 

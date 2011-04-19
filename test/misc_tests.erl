@@ -151,3 +151,8 @@ test_no_symlink() ->
     ?assertEqual({ok, Var},
                  misc:realpath(Var, "/bin")),
     ok.
+
+split_binary_at_char_test() ->
+    ?assertEqual(<<"asd">>, misc:split_binary_at_char(<<"asd">>, $:)),
+    ?assertEqual({<<"asd">>, <<"123">>}, misc:split_binary_at_char(<<"asd:123">>, $:)),
+    ?assertEqual({<<"asd">>, <<"123:567">>}, misc:split_binary_at_char(<<"asd:123:567">>, $:)).
