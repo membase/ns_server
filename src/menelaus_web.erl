@@ -1289,19 +1289,34 @@ handle_rebalance(Req) ->
         KnownNodesS ->
             EjectedNodesS = string:tokens(proplists:get_value("ejectedNodes",
                                                               Params, ""), ","),
-            EjectedNodes = [list_to_existing_atom(N) || N <- EjectedNodesS],
-            KnownNodes = [list_to_existing_atom(N) || N <- KnownNodesS],
-            case ns_cluster_membership:start_rebalance(KnownNodes,
-                                                       EjectedNodes) of
-                already_balanced ->
-                    Req:respond({200, [], []});
-                in_progress ->
-                    Req:respond({200, [], []});
-                nodes_mismatch ->
-                    reply_json(Req, {struct, [{mismatch, 1}]}, 400);
-                ok ->
-                    Req:respond({200, [], []})
+            UnknownNodes = [S || S <- EjectedNodesS ++ KnownNodesS,
+                                try list_to_existing_atom(S), false
+                                catch error:badarg -> true end],
+            case UnknownNodes of
+                [] ->
+                    do_handle_rebalance(Req, KnownNodesS, EjectedNodesS);
+                _ ->
+                    reply_json(Req,
+                               {struct, [{unknownNodes, lists:map(fun list_to_binary/1,
+                                                                  UnknownNodes)}]},
+                               400)
             end
+    end.
+
+-spec do_handle_rebalance(any(), [string()], [string()]) -> any().
+do_handle_rebalance(Req, KnownNodesS, EjectedNodesS) ->
+    EjectedNodes = [list_to_existing_atom(N) || N <- EjectedNodesS],
+    KnownNodes = [list_to_existing_atom(N) || N <- KnownNodesS],
+    case ns_cluster_membership:start_rebalance(KnownNodes,
+                                               EjectedNodes) of
+        already_balanced ->
+            Req:respond({200, [], []});
+        in_progress ->
+            Req:respond({200, [], []});
+        nodes_mismatch ->
+            reply_json(Req, {struct, [{mismatch, 1}]}, 400);
+        ok ->
+            Req:respond({200, [], []})
     end.
 
 handle_rebalance_progress(_PoolId, Req) ->
