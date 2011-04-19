@@ -122,14 +122,14 @@ generate_diag_filename() ->
                   [YYYY, MM, DD, Hour, Min, Sec]).
 
 diag_format_log_entry(Entry) ->
-    [Type, Code, Module,
+    [Type, Code, Module, Node,
      TStamp, ShortText, Text] = lists:map(fun (K) ->
                                                   proplists:get_value(K, Entry)
                                           end,
-                                          [type, code, module, tstamp, shortText, text]),
+                                          [type, code, module, node, tstamp, shortText, text]),
     FormattedTStamp = diag_format_timestamp(TStamp),
-    io_lib:format("~s ~s:~B:~s:~s - ~s~n",
-                  [FormattedTStamp, Module, Code, Type, ShortText, Text]).
+    io_lib:format("~s ~s:~B:~s:~s(~s) - ~s~n",
+                  [FormattedTStamp, Module, Code, Type, ShortText, Node, Text]).
 
 get_logs() ->
     try ns_log_browser:get_logs_as_file(all, all, []) of
