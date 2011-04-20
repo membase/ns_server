@@ -92,7 +92,7 @@ a.disabled{text-decoration:none;cursor:default;}
 .cnt_holder {width:960px; position:relative; left:12%;}
 
 .page-header {background:url('../images/ns_console_headerbg.png') repeat-x;height:100px;}
-.page-header span {position:absolute;background:url('../images/ns_console_logov2.png') no-repeat;width:361px;height:49px;top:35px;left:0;}
+.page-header span {position:absolute;background:url('../images/ns_console_logov2.png') no-repeat;width:361px;height:49px;top:25px;left:0;}
 
 td.leftNav {width:180px;vertical-align:top;}
 td.leftNav ul {display:block;width:160px;margin:0 0 20px;border-top:1px solid #e4e9eb;}
