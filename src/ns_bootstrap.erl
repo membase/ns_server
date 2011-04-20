@@ -24,7 +24,7 @@ start() ->
         ok = application:start(sasl),
         application:start(os_mon),
         case erlang:system_info(system_architecture) of
-            "win32" -> win32dns:win32_dns_setup();
+            "win32" -> inet_db:set_lookup([native, file]);
             _ -> ok
         end,
         ok = application:start(ns_server),
