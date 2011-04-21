@@ -332,9 +332,9 @@ handle_pools(Req) ->
             _ -> []
         end,
     reply_json(Req,{struct, [{pools, EffectivePools},
-                             {isAdminCreds, menelaus_auth:is_under_admin(Req)}
+                             {isAdminCreds, menelaus_auth:is_under_admin(Req)},
+                             {uuid, get_uuid()}
                              | build_versions()]}).
-
 handle_engage_cluster2(Req) ->
     Body = Req:recv_body(),
     {struct, NodeKVList} = mochijson2:decode(Body),
@@ -356,6 +356,19 @@ handle_complete_join(Req) ->
             reply_json(Req, [], 200);
         {error, _What, Message, _Nested} ->
             reply_json(Req, [Message], 400)
+    end.
+
+% Returns an UUID if it is already in the ns_config and generates
+% a new one otherwise.
+get_uuid() ->
+    case ns_config:search(uuid) of
+        false ->
+            Uuid = list_to_binary(
+                uuid:uuid_to_string(uuid:get_v1(uuid:new(self())))),
+            ns_config:set(uuid, Uuid),
+            Uuid;
+        {value, Uuid2} ->
+            Uuid2
     end.
 
 build_versions() ->
