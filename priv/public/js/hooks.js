@@ -205,7 +205,6 @@ var MockedRequest = mkClass({
       if (rt[2])
         foundResp = rt[2].apply(this, [foundResp].concat(args));
       routeArgs = args;
-      _.breakLoop();
     });
     if (body)
       return body.call(this, foundResp, routeArgs);
@@ -814,6 +813,17 @@ var MockedRequest = mkClass({
         return rv;
       }],
       [get("pools", "default", "buckets", x, "stats"), method('handleStats')],
+      [get("pools", "default", "buckets", x, "nodes"), {
+        servers: [
+                    {
+                        "hostname": "ns_1@127.0.0.1",
+                        "uri": "/pools/default/buckets/default/nodes/ns_1@127.0.0.1",
+                        "stats": {
+                            "uri": "/pools/default/buckets/default/nodes/ns_1%40127.0.0.1/stats"
+                        }
+                    }
+                 ]
+        }],
       [get("pools", "default", "buckets", x, "nodes", x), {
         hostname:"ns_1@127.0.0.1",
         stats: {uri: '/pools/default/buckets/4/nodes/ns_1@127.0.0.1/stats'}

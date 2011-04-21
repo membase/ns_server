@@ -5,9 +5,9 @@ require 'sinatra'
 require 'active_support/core_ext'
 require 'pp'
 
-Dir.chdir(File.join(File.dirname($0), '..'))
+#Dir.chdir(File.join(File.dirname($0), '..'))
 
-$DOCROOT = 'priv/public'
+$DOCROOT = '../priv/public'
 
 def sh(cmd)
   puts "# #{cmd}"
