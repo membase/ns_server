@@ -361,6 +361,7 @@ var DAL = {
     }
 
     _.each(allNodes, function (n) {
+
       n.ejectPossible = !detailsAreStale && !n.pendingEject;
       n.failoverPossible = !detailsAreStale && (n.clusterMembership !== 'inactiveFailed');
       n.reAddPossible = !detailsAreStale && (n.clusterMembership === 'inactiveFailed' && n.status === 'healthy');
@@ -368,10 +369,12 @@ var DAL = {
       var nodeClass = '';
       if (n.clusterMembership === 'inactiveFailed') {
         nodeClass = 'failed_over';
-      } else if (n.status !== 'healthy') {
+      } else if (n.status === 'healthy') {
+        nodeClass = 'server_up';
+      } else if (n.status === 'unhealthy') {
         nodeClass = 'server_down';
-      } else {
-        nodeClass = 'status_up';
+      } else if (n.status === 'warmup') {
+        nodeClass = 'server_warmup';
       }
       if (n.lastActive) {
         nodeClass += ' last-active';

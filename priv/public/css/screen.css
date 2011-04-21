@@ -799,6 +799,7 @@ li.server_row .btn_cancel {display:block; height:15px; color:#7a7a7a; padding:0 
 .servers_list li.server_row {height:60px; line-height:60px; border:1px solid #d1d5d8;border-top:none;overflow:hidden; background:url(../images/server_status_icons.png) 10px 20px no-repeat; padding:0 10px 0 85px;}
 .servers_list li.server_row.server_down {background:url(../images/server_status_icons.png) 10px -157px no-repeat; background-color:#61696c;border-color:#61696c;}
 .servers_list li.server_row.failed_over {background:url(../images/server_status_icons.png) 10px -309px no-repeat; background-color:#c9cccc;}
+.servers_list li.server_row.server_warmup {background:url(../images/server_status_icons.png) 10px -309px no-repeat;}
 .servers_list li.server_row.failed_over .list_button {display:none;}
 .servers_list li.server_row.failed_over .serverName {color:#333; opacity:0.3;}
 .servers_list li.server_row.rebalance_empty {padding:0 15px; background:none; color:#656565;}

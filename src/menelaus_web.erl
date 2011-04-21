@@ -512,6 +512,7 @@ build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr) ->
     OtpCookie = list_to_binary(atom_to_list(ns_node_disco:cookie_get())),
     NodeStatuses = ns_doctor:get_nodes(),
     Config = ns_config:get(),
+    BucketNames = ns_bucket:get_bucket_names(),
     BucketsAll = case InfoLevel of
                      stable -> undefined;
                      normal -> ns_bucket:get_buckets(Config)
@@ -526,21 +527,21 @@ build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr) ->
                          true ->
                              case Bucket of
                                  undefined ->
-                                     <<"healthy">>;
+                                     is_warming_up(BucketNames);
                                  _ ->
                                      case lists:member(
                                             Bucket,
                                             proplists:get_value(
                                               active_buckets, InfoNode)) of
                                          true ->
-                                             <<"healthy">>;
+                                             is_warming_up(BucketNames);
                                          false ->
                                              <<"unhealthy">>
-                                     end
+                                                 end
                              end;
                          false ->
                              <<"unhealthy">>
-                     end,
+                    end,
             KV1 = [{clusterMembership,
                     atom_to_binary(
                       ns_cluster_membership:get_cluster_membership(
@@ -572,6 +573,15 @@ build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr) ->
                   end,
             {struct, KV4}
     end.
+
+
+is_warming_up(Names) ->
+    Node = node(),
+    case lists:all(fun(X) -> ns_memcached:connected(Node, X) end, Names) of
+        true  -> <<"healthy">>;
+        false -> <<"warmup">>
+    end.
+
 
 build_extra_node_info(Config, Node, InfoNode, _BucketsAll, Append) ->
     {UpSecs, {MemoryTotal, MemoryAlloced, _}} =

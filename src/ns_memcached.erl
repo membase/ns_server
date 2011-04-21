@@ -27,6 +27,7 @@
 -include("ns_common.hrl").
 
 -define(CHECK_INTERVAL, 10000).
+-define(CHECK_ALIVE_INTERVAL, 500).
 -define(VBUCKET_POLL_INTERVAL, 100).
 -define(TIMEOUT, 30000).
 
@@ -35,7 +36,13 @@
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
--record(state, {bucket::nonempty_string(), sock::port()}).
+-record(state, {
+          timer::any(),
+          status::atom(),
+          start_time::tuple(),
+          bucket::nonempty_string(),
+          sock::port()
+         }).
 
 %% external API
 -export([active_buckets/0,
@@ -76,18 +83,22 @@ start_link(Bucket) ->
 %%
 
 init(Bucket) ->
-    Sock = connect(),
-    StartTime = now(),
-    ensure_bucket(Sock, Bucket),
-    wait_for_warmup(Sock),
-    ns_log:log(?MODULE, 1, "Bucket ~p loaded on node ~p in ~p seconds.",
-               [Bucket, node(), timer:now_diff(now(), StartTime) div 1000000]),
-    register(server(Bucket), self()),
-    timer:send_interval(?CHECK_INTERVAL, check_config),
-    %% this trap_exit is necessary for terminate callback to work
-    process_flag(trap_exit, true),
-    {ok, #state{sock=Sock, bucket=Bucket}}.
 
+    {ok, Timer} = timer:send_interval(?CHECK_ALIVE_INTERVAL, check_started),
+    Sock = connect(),
+    ensure_bucket(Sock, Bucket),
+    register(server(Bucket), self()),
+
+    % this trap_exit is necessary for terminate callback to work
+    process_flag(trap_exit, true),
+
+    {ok, #state{
+       timer=Timer,
+       status=init,
+       start_time=now(),
+       sock=Sock,
+       bucket=Bucket}
+    }.
 
 handle_call({raw_stats, SubStat, StatsFun, StatsFunState}, _From, State) ->
     try mc_client_binary:stats(State#state.sock, SubStat, StatsFun, StatsFunState) of
@@ -157,8 +168,8 @@ handle_call(list_vbuckets, _From, State) ->
                         binary_to_existing_atom(V, latin1)} | Acc]
               end, []),
     {reply, Reply, State};
-handle_call(noop, _From, State) ->
-    {reply, ok, State};
+handle_call(connected, _From, #state{status=Status} = State) ->
+    {reply, Status =:= connected, State};
 handle_call(flush, _From, State) ->
     Reply = mc_client_binary:flush(State#state.sock),
     {reply, Reply, State};
@@ -205,6 +216,18 @@ handle_cast(_, State) ->
     {noreply, State}.
 
 
+handle_info(check_started, #state{ timer=Timer, start_time=Start,
+                                   sock=Sock, bucket=Bucket} = State) ->
+    case has_started(Sock) of
+        true ->
+            {ok, cancel} = timer:cancel(Timer),
+            ns_log:log(?MODULE, 1, "Bucket ~p loaded on node ~p in ~p seconds.",
+                       [Bucket, node(), timer:now_diff(now(), Start) div 1000000]),
+            timer:send_interval(?CHECK_INTERVAL, check_config),
+            {noreply, State#state{status=connected}};
+        false ->
+            {noreply, State}
+    end;
 handle_info(check_config, State) ->
     misc:flush(check_config),
     ensure_bucket(State#state.sock, State#state.bucket),
@@ -269,20 +292,18 @@ code_change(_OldVsn, State, _Extra) ->
 %% API
 %%
 
--spec active_buckets() ->
-                            [bucket_name()].
+-spec active_buckets() -> [bucket_name()].
 active_buckets() ->
     [Bucket || ?MODULE_STRING "-" ++ Bucket <-
                    [atom_to_list(Name) || Name <- registered()]].
 
--spec connected(node(), bucket_name()) ->
-                       boolean().
+-spec connected(node(), bucket_name()) -> boolean().
 connected(Node, Bucket) ->
-    try gen_server:call({server(Bucket), Node}, noop, ?TIMEOUT) of
-        ok ->
-            true
+    try gen_server:call({server(Bucket), Node}, connected, ?TIMEOUT) of
+        Connected ->
+            Connected
     catch
-        _:_ ->
+        exit:{noproc, _Call} ->
             false
     end.
 
@@ -528,20 +549,17 @@ ensure_bucket_config(Sock, _Bucket, memcached, _MaxSize) ->
 server(Bucket) ->
     list_to_atom(?MODULE_STRING ++ "-" ++ Bucket).
 
-
-wait_for_warmup(Sock) ->
-    case mc_client_binary:stats(
-           Sock, <<>>,
-           fun (<<"ep_warmup_thread">>, V, _) ->
-                   V;
-               (_, _, CD) ->
-                   CD
-           end, missing_stat) of
+has_started(Sock) ->
+    Fun = fun (<<"ep_warmup_thread">>, V, _) -> V;
+              (_, _, CD) -> CD
+          end,
+    case mc_client_binary:stats(Sock, <<>>, Fun, missing_stat) of
         {ok, <<"complete">>} ->
-            ok;
-        {ok, missing_stat} -> % non-membase bucket
-            ok;
+            true;
+        {ok, missing_stat} ->
+            true;
+        {error, closed} ->
+            false;
         {ok, _} ->
-            timer:sleep(1000),
-            wait_for_warmup(Sock)
+            false
     end.
