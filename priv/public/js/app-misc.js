@@ -997,11 +997,8 @@ function plotStatGraph(graphJQ, data, tstamps, options) {
     case 'hour':
       rv = [formatDate(), formatWithMinutes()].join(' ');
       break;
-    case 'day':
-      rv = formatDate();
-      break;
     default:
-      rv = fd(date.getFullYear(), 1000);
+      rv = formatDate();
     }
 
     return rv;
