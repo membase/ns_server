@@ -483,19 +483,6 @@ var ServersSection = {
         });
       }
     });
-  },
-  editServerSettings: function (otpNode) {
-    var nodes = this.poolDetails.value.nodes;
-    var node = _.detect(nodes, function (e) {return e.otpNode == otpNode});
-    if (!node)
-      return;
-
-    var values = _.extend({}, node, node.detailsCell.value);
-    values['directPort'] = values.ports.direct;
-    values['proxyPort'] = values.ports.proxy;
-    runFormDialog("/nodes/" + otpNode + "/controller/settings", 'edit_server_settings_dialog', {
-      initialValues: values
-    });
   }
 };
 

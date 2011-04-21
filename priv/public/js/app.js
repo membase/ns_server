@@ -100,9 +100,6 @@ var AlertsSection = {
     var value = this.alerts.value;
     renderTemplate('alert_list', _.clone(value.list).reverse());
   },
-  changeEmail: function () {
-    SettingsSection.gotoSetupAlerts();
-  },
   init: function () {
     this.active = new Cell(function (mode) {
       return (mode == "log") ? true : undefined;
@@ -163,16 +160,14 @@ var ThePage = {
              servers: ServersSection,
              analytics: AnalyticsSection,
              buckets: BucketsSection,
-             alerts: AlertsSection,
              log: AlertsSection,
-             // settings: SettingsSection,
              monitor_buckets: MonitorBucketsSection,
              monitor_servers: MonitorServersSection,
              notifications: UpdatesNotificationsSection,
              // that's right, use the same object as "notifications"
              notifications_enabled: UpdatesNotificationsSection},
 
-  coming: {settings:true},
+  coming: {settings:true, alerts:true},
 
   currentSection: null,
   currentSectionName: null,
