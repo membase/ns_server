@@ -74,7 +74,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     timer:send_interval(5000, fetch_keys),
-    {ok, #state{bucket_hot_keys = []}}.
+    {ok, #state{bucket_hot_keys = [], local_hot_keys = []}}.
 
 %%--------------------------------------------------------------------
 %% @private
