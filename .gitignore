@@ -1,4 +1,5 @@
 *.beam
+*.tar.gz
 *~
 .DS_Store
 .configuration
@@ -23,6 +24,7 @@ bin
 deps/mochiweb/ebin/*
 doc/*
 ebin
+ebucketmigrator
 ebucketmigrator**.tmp
 erl_crash.dump
 fprof.trace

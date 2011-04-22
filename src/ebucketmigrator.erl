@@ -12,7 +12,7 @@ main(Args) ->
     run(Opts).
 
 usage() ->
-    "Usage: vbucketmigrator -h host:port -b # -d desthost:destport~n"
+    "Usage: ebucketmigrator -h host:port -b # -d desthost:destport~n"
         "\t-h host:port Connect to host:port~n"
         "\t-A           Use TAP acks~n"
         "\t-t           Move buckets from a server to another server~n"

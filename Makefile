@@ -23,7 +23,7 @@ REBAR=./rebar
 .PHONY: $(TMP_VER)
 
 ifneq (,$(wildcard .configuration))
-all: ebins deps_all priv/public/js/all-images.js
+all: ebins deps_all priv/public/js/all-images.js ebucketmigrator
 
 fail-unless-configured:
 	@true
@@ -117,6 +117,8 @@ do-install:
 	mkdir -p $(PREFIX)/var/lib/membase/mnesia
 	mkdir -p $(PREFIX)/var/lib/membase/logs
 	cp priv/init.sql $(PREFIX)/etc/membase/
+	cp ebucketmigrator $(PREFIX)/bin/ebucketmigrator
+	chmod +x $(PREFIX)/bin/ebucketmigrator
 
 endif
 
@@ -171,5 +173,5 @@ Features/Makefile:
 parallel_cucumber: features/Makefile
 	$(MAKE) -k -C features all_branches
 
-ebucketmigrator: all
+ebucketmigrator: ebins deps_all
 	erl -noshell -noinput -pa ebin -s misc build_ebucketmigrator -s init stop
