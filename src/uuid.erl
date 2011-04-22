@@ -83,15 +83,34 @@
 
 new(Pid) when is_pid(Pid) ->
     {ok, Ifs} = inet:getiflist(),
-    % at least one unique network interface must exist
-    If = [_ | _] = lists:last(lists:filter(fun(I) ->
-        not lists:prefix("lo", I)
-    end, Ifs)),
+    IfBadness = fun (If) ->
+                        HWRV = inet:ifget(If, [hwaddr]),
+                        InetRV = inet:ifget(If, [addr]),
+                        [element(1, HWRV) =:= error,
+                         lists:prefix("lo", If),
+                         element(1, InetRV) =:= error,
+                         If,
+                         InetRV]
+                end,
+    % Sort interfaces in increasing badness order, so that least bad is first
+    [{_, If} | _] = lists:sort([{<<"1">>, "filler"} | [{IfBadness(I), I} || I <- Ifs]]),
     % 48 bits for MAC address
-    {ok,[{hwaddr,[OUI1,OUI2,OUI3,NIC1,NIC2,NIC3]}]} = inet:ifget(If, [hwaddr]),
-    % reduce the MAC address to 16 bits
-    IfByte1 = ((OUI1 bxor OUI2) bxor OUI3) bxor NIC1,
-    IfByte2 = NIC2 bxor NIC3,
+    {IfByte1, IfByte2} =
+        case inet:ifget(If, [hwaddr]) of
+            {ok,[{hwaddr,[OUI1,OUI2,OUI3,NIC1,NIC2,NIC3]}]} ->
+                % reduce the MAC address to 16 bits
+                {((OUI1 bxor OUI2) bxor OUI3) bxor NIC1,
+                 NIC2 bxor NIC3};
+            _ ->
+                error_logger:error_msg("Failling back to hwaddr-less case~n"),
+                % if there's no mac address than do something sensible
+                % and 'unique'. Becase we prefer interfaces with
+                % ip-address this will likely depend on interface name
+                % and interface address.
+                IfHash = erlang:phash2(IfBadness(If), 16364),
+                {IfHash div 256,
+                 IfHash rem 256}
+        end,
     PidBin = erlang:term_to_binary(Pid),
     % 72 bits for the Erlang pid
     <<ID1:8, ID2:8, ID3:8, ID4:8, % ID (Node index)
