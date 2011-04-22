@@ -25,13 +25,18 @@
 -export([memory_quota/1, change_memory_quota/2, prepare_setup_disk_storage_conf/2,
          storage_conf/1, add_storage/4, remove_storage/2,
          local_bucket_disk_usage/1,
-         delete_all_db_files/1, delete_db_files/1]).
+         delete_all_db_files/1, delete_db_files/1,
+         dbdir/1, dbdir/2,
+         logdir/1, logdir/2]).
 
 -export([node_storage_info/1, cluster_storage_info/0, nodes_storage_info/1]).
 
 -export([allowed_node_quota_range/1, allowed_node_quota_range/0,
          allowed_node_quota_range_for_joined_nodes/0,
          this_node_memory_data/0]).
+
+-export([extract_disk_stats_for_path/2]).
+
 
 memory_quota(Node) ->
     memory_quota(Node, ns_config:get()).
@@ -40,12 +45,45 @@ memory_quota(_Node, Config) ->
     {value, RV} = ns_config:search(Config, memory_quota),
     RV.
 
+
+-spec dbdir(any()) -> {ok, string()} | {error, any()}.
+dbdir(Config) ->
+    dbdir(Config, node()).
+
+-spec dbdir(any(), atom()) -> string() | {error, any()}.
+dbdir(Config, Node) ->
+    read_path_from_conf(Config, Node, memcached, dbdir).
+
+
+-spec logdir(any()) -> string() | {error, any()}.
+logdir(Config) ->
+    logdir(Config, node()).
+
+-spec logdir(any(), atom()) -> string() | {error, any()}.
+logdir(Config, Node) ->
+    read_path_from_conf(Config, Node, ns_log, filename).
+
+
+%% @doc read a path from the configuration, following symlinks
+-spec read_path_from_conf(any(), atom(), atom(), atom()) ->
+    {ok, string()} | {error, any()}.
+read_path_from_conf(Config, Node, Key, SubKey) ->
+    {value, PropList} = ns_config:search_node(Node, Config, Key),
+    case proplists:get_value(SubKey, PropList) of
+        undefined ->
+            {error, undefined};
+        DBDir ->
+            {ok, Base} = file:get_cwd(),
+            misc:realpath(DBDir, Base)
+    end.
+
+
 change_memory_quota(_Node, NewMemQuotaMB) when is_integer(NewMemQuotaMB) ->
     ns_config:set(memory_quota, NewMemQuotaMB).
 
 prepare_setup_disk_storage_conf(Node, Path) when Node =:= node() ->
-    {value, PropList} = ns_config:search_node(Node, ns_config:get(), memcached),
-    DBDir = misc:absname(proplists:get_value(dbdir, PropList)),
+    Config = ns_config:get(),
+    {ok, DBDir} = dbdir(Config, Node),
     NewDBDir = misc:absname(Path),
     PathOK = case DBDir of
                  NewDBDir -> ok;
@@ -66,6 +104,8 @@ prepare_setup_disk_storage_conf(Node, Path) when Node =:= node() ->
              end,
     case PathOK of
         ok ->
+            {value, PropList} = ns_config:search_node(Node, Config,
+                                                      memcached),
             {ok, fun () ->
                          ns_config:set({node, node(), memcached},
                                        [{dbdir, Path}
@@ -75,8 +115,7 @@ prepare_setup_disk_storage_conf(Node, Path) when Node =:= node() ->
     end.
 
 local_bucket_disk_usage(BucketName) ->
-    {value, PropList} = ns_config:search_node(node(), ns_config:get(), memcached),
-    DBDir = proplists:get_value(dbdir, PropList),
+    {ok, DBDir} = dbdir(node()),
     %% this doesn't include filesystem slack
     lists:sum([try filelib:file_size(filename:join([DBDir, Name]))
                catch _:_ -> 0

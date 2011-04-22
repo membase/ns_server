@@ -164,16 +164,26 @@ check(ip, Opaque, _History) ->
     end,
     Opaque;
 
-%% @doc check how much overhead there is compared to data
+%% @doc check the capacity of the drives used for db and log files
 check(disk, Opaque, _History) ->
-    [case Used > ?MAX_DISK_USED of
-         true ->
-             {_Sname, Host} = misc:node_name_host(node()),
-             Err = fmt_to_bin(errors(disk), [Disk, Host, Used]),
-             global_alert({disk, node()}, Err);
-         false ->
-             ok
-     end || {Disk, _Capacity, Used} <- disksup:get_disk_data()],
+
+    Config = ns_config:get(),
+    Mounts = disksup:get_disk_data(),
+
+    UsedPre = [ns_storage_conf:dbdir(Config), ns_storage_conf:logdir(Config)],
+    UsedFiles = [X || {ok, X} <- UsedPre],
+
+    UsedMountsTmp =
+        [begin {ok, Mnt} = ns_storage_conf:extract_disk_stats_for_path(Mounts, File),
+               Mnt
+         end || File <- UsedFiles],
+    UsedMounts = sets:to_list(sets:from_list(UsedMountsTmp)),
+
+    [begin {_Sname, Host} = misc:node_name_host(node()),
+           Err = fmt_to_bin(errors(disk), [Disk, Host, Used]),
+           global_alert({disk, node()}, Err)
+     end || {Disk, _Capacity, Used} <- UsedMounts, Used > ?MAX_DISK_USED],
+
     Opaque;
 
 %% @doc check how much overhead there is compared to data
