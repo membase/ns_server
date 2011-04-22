@@ -17,12 +17,15 @@
 
 -behaviour(gen_server).
 
+-include("ns_stats.hrl").
+
 -define(EXPENSIVE_CHECK_INTERVAL, 10000). % In ms
 
 -export([start_link/0, status_all/0, expensive_checks/0,
          buckets_replication_statuses/0]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
          code_change/3]).
+
 
 %% gen_server handlers
 
@@ -74,8 +77,21 @@ current_status(Expensive) ->
                                X when is_integer(X) -> X;
                                _ -> 1
                            end,
+
+    Stats = case catch stats_reader:latest("minute", node(), "@system") of
+                {ok, StatsRec} -> StatsRec#stat_entry.values;
+                _ -> []
+            end,
+
+    CPU = proplists:get_value(cpu_utilization_rate, Stats, 0),
+    Total = proplists:get_value(swap_total, Stats, 0),
+    Used = proplists:get_value(swap_used, Stats, 0),
+
     [{active_buckets, ns_memcached:active_buckets()},
      {memory, erlang:memory()},
+     {cpu_utilization_rate, CPU},
+     {swap_total, Total},
+     {swap_used, Used},
      {cluster_compatibility_version, ClusterCompatVersion}
      | element(2, ns_info:basic_info())] ++ Expensive.
 

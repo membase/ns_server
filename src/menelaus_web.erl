@@ -614,21 +614,17 @@ build_node_hostname(Config, Node, LocalAddr) ->
 
 build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
 
-    Stats = case catch stats_reader:latest("minute", WantENode, "@system") of
-                {ok, StatsRec} -> StatsRec#stat_entry.values;
-                _ -> []
-            end,
-
-    CPU = proplists:get_value(cpu_utilization_rate, Stats, 0),
-    Total = proplists:get_value(swap_total, Stats, 0),
-    Used = proplists:get_value(swap_used, Stats, 0),
-
     DirectPort = ns_config:search_node_prop(WantENode, Config, memcached, port),
     ProxyPort = ns_config:search_node_prop(WantENode, Config, moxi, port),
     Versions = proplists:get_value(version, InfoNode, []),
     Version = proplists:get_value(ns_server, Versions, "unknown"),
     OS = proplists:get_value(system_arch, InfoNode, "unknown"),
     HostName = build_node_hostname(Config, WantENode, LocalAddr),
+
+    CPU = proplists:get_value(cpu_utilization_rate, InfoNode, 0),
+    Used = proplists:get_value(swap_used, InfoNode, 0),
+    Total = proplists:get_value(swap_total, InfoNode, 0),
+
     [{hostname, list_to_binary(HostName)},
      {clusterCompatibility, proplists:get_value(cluster_compatibility_version, InfoNode, 0)},
      {version, list_to_binary(Version)},
