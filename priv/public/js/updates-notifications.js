@@ -71,7 +71,7 @@ var UpdatesNotificationsSection = {
               error: function() {
                   self.renderTemplate(true, undefined);
               },
-              timeout: 2000,
+              timeout: 5000,
               success: function (data) {
                 self.renderTemplate(true, data);
               }
