@@ -779,6 +779,7 @@ var NodeDialog = {
     });
     $('#init_update_notifications_dialog button.back').click(function (e) {
       e.preventDefault();
+      onLeave();
       showInitDialog("bucket_dialog");
     });
     // Go to next page. Send off email address if given and apply settings
@@ -800,10 +801,18 @@ var NodeDialog = {
         '/settings/stats',
         $.param({sendStats: sendStatus}),
         function() {
+          onLeave();
           showInitDialog("secure");
         }
       );
     });
+
+    // cleans up all event handles
+    function onLeave() {
+      $('#init_update_notifications_dialog a.more_info').unbind();
+      $('#init_update_notifications_dialog button.back').unbind();
+      $('#init_update_notifications_dialog button.next').unbind();
+    }
   }
 };
 
