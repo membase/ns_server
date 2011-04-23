@@ -10,9 +10,14 @@ var UpdatesNotificationsSection = {
       };
     });
 
+    var modeDefined = Cell.compute(function (v) {
+      v.need(DAL.cells.mode);
+      return true;
+    });
+
     var phEnabled = Cell.compute(function(v) {
       // only make the GET request when we are logged in
-      v.need(DAL.cells.mode);
+      v.need(modeDefined);
       return future.get({url: "/settings/stats"});
     });
 
