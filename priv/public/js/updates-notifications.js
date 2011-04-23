@@ -28,7 +28,6 @@ var UpdatesNotificationsSection = {
         //  - false => no new version available
         //  - undefined => some error occured, no information available
         var newVersion = undefined;
-        console.log("sendState setting was changed!", val);
         // Sending off stats is enabled...
         if (val.sendStats) {
           var errorFun = function(arg1, arg2, arg3) {
@@ -36,7 +35,6 @@ var UpdatesNotificationsSection = {
           };
 
           statsInfo.getValue(function(s) {
-            console.log('server:', s);
             var numMembase = 0;
             for (var i in s.buckets) {
               if (s.buckets[i].bucketType == "membase")
@@ -99,7 +97,6 @@ var UpdatesNotificationsSection = {
       postWithValidationErrors('/settings/stats',
                                $.param({sendStats: sendStatus}),
                                function() {
-          console.log('new status posted. recalculate cells');
           phEnabled.recalculate();
       });
     });
