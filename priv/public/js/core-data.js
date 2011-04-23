@@ -133,6 +133,7 @@ var DAL = {
     if (data.implementationVersion) {
       DAL.version = data.implementationVersion;
       DAL.componentsVersion = data.componentsVersion;
+      DAL.uuid = data.uuid;
       if (!DAL.appendedVersion) {
         document.title = document.title + " (" + data.implementationVersion + ")";
         $('.version > .membase-version').text(String(data.implementationVersion)).parent().show();

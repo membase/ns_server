@@ -48,6 +48,7 @@ var UpdatesNotificationsSection = {
             var stats = {
               version: DAL.version,
               componentsVersion: DAL.componentsVersion,
+              uuid: DAL.uuid,
               numNodes: s.pool.nodes.length,
               ram: {
                 total: s.pool.storageTotals.ram.total,
