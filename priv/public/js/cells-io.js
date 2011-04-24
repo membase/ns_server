@@ -529,6 +529,12 @@ var IOCenter = (function () {
   return S;
 })();
 
+IOCenter.staleness = new Cell(function (status) {
+  return !status.healthy;
+}, {
+  status: IOCenter.status
+});
+
 (function () {
   new Cell(function (status) {
     return status.healthy;

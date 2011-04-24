@@ -812,13 +812,7 @@ var AnalyticsSection = {
 
     StatGraphs.init();
 
-    var statsStaleness = (function (meta) {
-      return Cell.compute(function (v) {
-        return !!(v.need(meta).stale);
-      });
-    })(DAL.cells.stats.ensureMetaCell());
-
-    statsStaleness.subscribeValue(function (stale) {
+    IOCenter.staleness.subscribeValue(function (stale) {
       $('.stats-period-container')[stale ? 'hide' : 'show']();
       $('#analytics .staleness-notice')[stale ? 'show' : 'hide']();
     });

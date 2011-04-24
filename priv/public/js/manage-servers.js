@@ -84,7 +84,7 @@ var ServersSection = {
     if (active.length) {
       renderTemplate('manage_server_list', {
         rows: active,
-        expandingAllowed: !this.serversCell.getMetaValue().stale
+        expandingAllowed: !IOCenter.staleness.value
       }, $i('active_server_list_container'));
       renderTemplate('manage_server_list', {
         rows: pending,
@@ -92,7 +92,7 @@ var ServersSection = {
       }, $i('pending_server_list_container'));
     }
 
-    if (this.serversCell.getMetaValue().stale) {
+    if (IOCenter.staleness.value) {
       $('#servers .staleness-notice').show();
       $('#servers').find('.add_button, .rebalance_button').hide();
       $('#active_server_list_container, #pending_server_list_container').find('.re_add_button, .eject_server, .failover_server, .remove_from_list').addClass('disabled');

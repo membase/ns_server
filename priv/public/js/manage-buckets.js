@@ -495,17 +495,13 @@ var BucketsSection = {
       listCell: bucketsListCell
     });
 
-    var stalenessCell = Cell.compute(function (v) {
-      return v.need(bucketsListCell.ensureMetaCell()).stale;
-    });
-
     renderCellTemplate(bucketsListCell, 'bucket_list', {
       beforeRendering: function () {
         self.settingsWidget.prepareDrawing();
-      }, extraCells: [stalenessCell]
+      }, extraCells: [IOCenter.staleness]
     });
 
-    stalenessCell.subscribeValue(function (staleness) {
+    IOCenter.staleness.subscribeValue(function (staleness) {
       if (staleness === undefined) {
         return;
       }

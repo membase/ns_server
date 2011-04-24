@@ -47,11 +47,7 @@ var MonitorBucketsSection = {
       $('#monitor_buckets .no-buckets-subsection')[empty ? 'show' : 'hide']();
     });
 
-    var stalenessCell = Cell.compute(function (v) {return v.need(bucketsListCell.ensureMetaCell()).stale});
-
-    stalenessCell.subscribeValue(function (stale) {
-      if (stale === undefined)
-        return;
+    IOCenter.staleness.subscribeValue(function (stale) {
       $('#monitor_buckets .staleness-notice')[stale ? 'show' : 'hide']();
     });
   },

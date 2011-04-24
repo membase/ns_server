@@ -143,7 +143,7 @@ var AlertsSection = {
 
     var massagedLogs = Cell.compute(function (v) {
       var logsValue = v(logs);
-      var stale = v.need(logs.ensureMetaCell()).stale;
+      var stale = v.need(IOCenter.staleness);
       if (logsValue === undefined) {
         if (!stale)
           return;

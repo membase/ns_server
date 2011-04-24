@@ -383,6 +383,7 @@ var DAL = {
     });
 
     return {
+      stale: detailsAreStale,
       pendingEject: pendingEject,
       pending: pending,
       active: active,
@@ -392,9 +393,7 @@ var DAL = {
 
   cell = DAL.cells.serversCell = new Cell(formula, {
     details: DAL.cells.currentPoolDetailsCell,
-    detailsAreStale: (function (metaCell) {
-      return Cell.compute(function (v) {return v.need(metaCell).stale;});
-    }(DAL.cells.currentPoolDetailsCell.ensureMetaCell()))
+    detailsAreStale: IOCenter.staleness
   });
   cell.propagateMeta = null;
   cell.metaCell = DAL.cells.currentPoolDetailsCell.ensureMetaCell();

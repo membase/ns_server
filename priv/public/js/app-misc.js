@@ -282,7 +282,8 @@ function mkCellRenderer(to, options, cell) {
     if (value === cell.value) {
       value = _.clone(value);
     }
-    value.__meta = cell.getMetaValue();
+    if (!('__meta' in value))
+      value.__meta = cell.getMetaValue();
 
     if (options.beforeRendering) {
       (options.beforeRendering)(cell);
