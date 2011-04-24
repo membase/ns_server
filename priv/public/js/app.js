@@ -1017,3 +1017,31 @@ function initAlertsSubscriber() {
     }
   });
 };
+
+// setup handling of .disable-if-stale class
+(function () {
+  function moveAttr(e, fromAttr, toAttr) {
+    if (e.hasAttribute(toAttr))
+      return;
+    if (!e.hasAttribute(fromAttr))
+      return;
+    var value = e.getAttribute(fromAttr);
+    e.removeAttribute(fromAttr);
+    e.setAttribute(toAttr, value);
+  }
+  function processLinks() {
+    var enable = !IOCenter.staleness.value;
+    $(document.body)[enable ? 'removeClass' : 'addClass']('staleness-active');
+    if (enable) {
+      $('a.disable-if-stale').each(function (i, e) {
+        moveAttr(e, 'disabled-href', 'href');
+      });
+    } else {
+      $('a.disable-if-stale').each(function (i, e) {
+        moveAttr(e, 'href', 'disabled-href');
+      });
+    }
+  }
+  IOCenter.staleness.subscribeValue(processLinks);
+  $(window).bind('template:rendered', processLinks);
+})();

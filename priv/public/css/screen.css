@@ -1072,3 +1072,6 @@ body.init_update_notifications #init_update_notifications_dialog p.pad_10 {color
 #init_update_notifications_dialog input {font:10pt Verdana,Helvetica,Sans-Serif;border:1px solid #ccd3d7;padding:3px 3px 4px 5px;}
 #init_update_notifications_dialog a.more_info {float:right}
 #init_update_notifications_dialog p.more_info {display:none}
+
+body.staleness-active a.disable-if-stale { text-decoration: none; }
+body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: default; }

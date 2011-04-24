@@ -111,7 +111,7 @@
                 <!-- {% $.each(rows, function () { %} -->
                 <tr>
                     <td>
-                      <a class="node_name" href="#sec=analytics&statsHostname={%= h(this.hostname) %}">
+                      <a class="node_name disable-if-stale" href="#sec=analytics&statsHostname={%= h(this.hostname) %}">
                         {%= V.stripPort(this.hostname, rows) %}
                       </a>
                     </td>
@@ -471,7 +471,7 @@
                 <!-- {% $.each(rows, function () { %} -->
                 <tr>
                     <td>
-                    <a href="#sec=analytics&statsBucket={%=h(this.uri)%}">{%= h(this.name) %}</a>
+                    <a class="disable-if-stale" href="#sec=analytics&statsBucket={%=h(this.uri)%}">{%= h(this.name) %}</a>
                     </td>
                     <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
                     <td>{%= h(truncateTo3Digits(this.basicStats.diskFetches)) %}</td>
@@ -521,7 +521,7 @@
                 <!-- {% $.each(rows, function () { %} -->
                 <tr>
                     <td>
-                    <a href="#sec=analytics&statsBucket={%=h(this.uri)%}">{%= h(this.name) %}</a>
+                    <a class="disable-if-stale" href="#sec=analytics&statsBucket={%=h(this.uri)%}">{%= h(this.name) %}</a>
                     </td>
                     <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
                     <td>{%= h(truncateTo3Digits(this.basicStats.hitRatio * 100)) %}%</td>
@@ -581,7 +581,7 @@
             <tr>
 				<td colspan="6" class="bucket_info">
 				  <table><tr>
-					  <td class="bucket_name">{% if (IOCenter.staleness.value) { %}{%= h(this.name) %}{% } else { %}<a href="#visitBucket={%=h(this.name)%}">{%= h(this.name) %}</a>{% } %}</td>
+					  <td class="bucket_name"><a class="disable-if-stale" href="#visitBucket={%=h(this.name)%}">{%= h(this.name) %}</a></td>
 		              <td>{%= h(this.bucketTypeName) %}</td>
 		              <td>{%= V.count(this.serversCount, 'server') %}</td>
 		              <td>{%= V.formatQuantity(this.basicStats.memUsed) %}/{%= V.formatQuantity(this.quota.ram) %}</td>
