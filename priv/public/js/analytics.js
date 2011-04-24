@@ -47,14 +47,6 @@
         };
       })(rv.detach);
       rv.propagateMeta = undefined;
-      rv.metaCell = (function () {
-        var dependencyCell = new Cell();
-        var cell = Cell.compute(function (v) {
-          return v.need(v.need(dependencyCell));
-        });
-        cell.dependencyCell = dependencyCell;
-        return cell;
-      })();
       return rv;
     })();
 
@@ -76,17 +68,11 @@
       dataCallback.async.cancel = function () {
         rawStatsCell.detach();
       }
-      dataCallback.cell.metaCell.dependencyCell.setValue(rawStatsCell.ensureMetaCell());
     }
 
     function handleStaticStats(rawStats) {
-      if (rawStats === Cell.STANDARD_ERROR_MARK) {
-        rawStatsCell.metaCell.setValueAttr(true, 'stale');
-      } else {
-        rawStatsCell.metaCell.setValueAttr(false, 'stale');
-        dataCallback.continuing(rawStats);
-        rawStatsCell.recalculateAfterDelay(Math.min(interval/2, 60000));
-      }
+      dataCallback.continuing(rawStats);
+      rawStatsCell.recalculateAfterDelay(Math.min(interval/2, 60000));
     }
   }
 
@@ -107,10 +93,8 @@
       if (prevTimestamp !== undefined) {
         data['haveTStamp'] = prevTimestamp;
       }
-      return withStatsTransformer.get({url: statsURL, data: data, stdErrorMarker: true});
+      return withStatsTransformer.get({url: statsURL, data: data});
     });
-
-    dataCallback.cell.metaCell.dependencyCell.setValue(rawStatsCell.ensureMetaCell());
 
     dataCallback.async.cancel = function () {
       cancelled = true;
@@ -133,12 +117,6 @@
     return;
 
     function restoringSamples(rawStats) {
-      if (rawStats === Cell.STANDARD_ERROR_MARK) {
-        rawStatsCell.metaCell.setValueAttr(true, 'stale');
-        return;
-      }
-      rawStatsCell.metaCell.setValueAttr(false, 'stale');
-
       var op = rawStats.op;
       var samples = op.samples;
       prevTimestamp = op.lastTStamp || prevTimestamp;

@@ -62,8 +62,6 @@ Cell.prototype.propagateMeta = function () {
   };
 };
 
-Cell.STANDARD_ERROR_MARK = {"this is error marker":true};
-
 Cell.prototype.delegateInvalidationMethods = function (target) {
   var self = this;
   _.each(("recalculate recalculateAt recalculateAfterDelay invalidate").split(' '), function (methodName) {
@@ -362,10 +360,6 @@ var IOCenter = (function () {
     },
     performGet: function (options) {
       var usedOptions = _.clone(options);
-
-      if (usedOptions.stdErrorMarker) {
-        usedOptions.errorMarker = Cell.STANDARD_ERROR_MARK;
-      }
 
       usedOptions.error = gotResponse;
       usedOptions.success = gotResponse;

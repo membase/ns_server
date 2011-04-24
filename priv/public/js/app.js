@@ -132,7 +132,7 @@ var AlertsSection = {
     });
 
     var logs = Cell.needing(active).compute(function (v, active) {
-      return future.get({url: "/logs", stdErrorMarker: true});
+      return future.get({url: "/logs"});
     });
     logs.keepValueDuringAsync = true;
     logs.subscribe(function (cell) {
