@@ -234,3 +234,37 @@ Cell.computeEager = function (formula) {
 
   return new _FlexiFormulaCell(f, true);
 };
+
+(function () {
+  var constructor = function (dependencies) {
+    this.dependencies = dependencies;
+  }
+
+  function def(delegateMethodName) {
+    function delegatedMethod(body) {
+      var dependencies = this.dependencies;
+
+      return Cell[delegateMethodName](function (v) {
+        var args = [v];
+        args.length = dependencies.length+1;
+        var i = dependencies.length;
+        while (i--) {
+          var value = v(dependencies[i]);
+          if (value === undefined) {
+            return;
+          }
+          args[i+1] = value;
+        }
+        return body.apply(this, args);
+      });
+    }
+    constructor.prototype[delegateMethodName] = delegatedMethod;
+  }
+
+  def('compute');
+  def('computeEager');
+
+  Cell.needing = function () {
+    return new constructor(arguments);
+  };
+})();

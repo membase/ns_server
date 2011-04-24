@@ -431,3 +431,83 @@ CellsTest.prototype.testCompute = function () {
 
   assertEquals(2, computations);
 }
+
+
+CellsTest.prototype.testNeeding = function () {
+  var cellA = new Cell();
+  var cellB = new Cell();
+
+  function mkGetter(cell) {return function () {return cell.value}}
+
+  function withValue(cellC, body) {
+    var subscription = cellC.subscribeValue(function () {});
+    try {
+      return body.call(null, mkGetter(cellC));
+    } finally {
+      subscription.cancel();
+    }
+  }
+
+  function checkBody(getValue) {
+    cellA.setValue();
+    cellB.setValue();
+    Clock.tickFarAway();
+    assertEquals(undefined, getValue());
+
+    cellA.setValue(1);
+    Clock.tickFarAway();
+    assertEquals(undefined, getValue());
+
+    cellB.setValue(2);
+    Clock.tickFarAway();
+    assertEquals(3, getValue());
+  }
+
+  function checkAddLazy(cellC) {
+    withValue(cellC,checkBody);
+  }
+
+  function checkAddEager(cellC) {
+    checkBody(mkGetter(cellC));
+  }
+
+  checkAddLazy(Cell.needing(cellA, cellB).compute(function (v, a, b) {
+    assertEquals(1, a);
+    assertEquals(2, b);
+    return a+b;
+  }));
+
+  checkAddLazy(Cell.needing(cellB, cellA).compute(function (v, b, a) {
+    assertEquals(1, a);
+    assertEquals(2, b);
+    return a+b;
+  }));
+
+  checkAddEager(Cell.needing(cellA, cellB).computeEager(function (v, a, b) {
+    assertEquals(1, a);
+    assertEquals(2, b);
+    return a+b;
+  }));
+
+  checkAddEager(Cell.needing(cellB, cellA).computeEager(function (v, b, a) {
+    assertEquals(1, a);
+    assertEquals(2, b);
+    return a+b;
+  }));
+
+  checkAddLazy(Cell.compute(function (v) {
+    var a = v.need(cellA);
+    var b = v.need(cellB);
+    assertEquals(1, a);
+    assertEquals(2, b);
+    return a+b;
+  }));
+
+  checkAddEager(Cell.computeEager(function (v) {
+    var a = v.need(cellA);
+    var b = v.need(cellB);
+    assertEquals(1, a);
+    assertEquals(2, b);
+    return a+b;
+  }));
+}
