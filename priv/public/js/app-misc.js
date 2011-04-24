@@ -279,10 +279,6 @@ function mkCellRenderer(to, options, cell) {
       value = (options.valueTransformer)(value);
     }
 
-    if (value === cell.value) {
-      value = _.clone(value);
-    }
-
     if (options.beforeRendering) {
       (options.beforeRendering)(cell);
     }
