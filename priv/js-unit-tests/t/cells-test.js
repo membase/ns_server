@@ -176,20 +176,10 @@ CellsTest.prototype.testFormulaCells = function () {
   assertSame(undefined, cCell.value);
 }
 
-CellsTest.prototype.testLongChainsAndQuiscentState = function () {
-  var oldPropagateMeta = Cell.prototype.propagateMeta;
-  Cell.prototype.propagateMeta = null;
-  try {
-    this.doTestLongChainsAndQuiscentState();
-  } finally {
-    Cell.prototype.propagateMeta = oldPropagateMeta;
-  }
-}
-
 // verifies that we don't overflow anything with long formula
 // dependency chains and that we fire callbacks and initiate futures
 // when everything is quiet
-CellsTest.prototype.doTestLongChainsAndQuiscentState = function () {
+CellsTest.prototype.testLongChainsAndQuiscentState = function () {
   var cells = [new Cell()];
   _.each(_.range(1000), function (i) {
     cells.push(new Cell(function (dep) {

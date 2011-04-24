@@ -13,55 +13,6 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  **/
-Cell.prototype.propagateMeta = function () {
-  var metaCell = this.ensureMetaCell();
-  var staleMetaCell;
-  var sourceCells = this.getSourceCells();
-
-  if (metaCell.cancelRefresh) {
-    metaCell.cancelRefresh();
-  }
-
-  for (var i = sourceCells.length - 1; i >= 0; i--) {
-    var cell = sourceCells[i].metaCell;
-    if (!cell || !cell.value) {
-      continue;
-    }
-    var metaValue = cell.value;
-    if (metaValue.stale) {
-      staleMetaCell = cell;
-      break;
-    }
-  }
-
-  metaCell.setValueAttr(!!staleMetaCell, 'stale');
-
-  var refreshSlave = new Slave($m(this, 'propagateMeta'));
-
-  if (staleMetaCell) {
-    staleMetaCell.changedSlot.subscribeWithSlave(refreshSlave);
-  } else {
-    for (var j = sourceCells.length - 1; j >= 0; j--) {
-      var cell = sourceCells[j].metaCell;
-      if (!cell) {
-        continue;
-      }
-      cell.changedSlot.subscribeWithSlave(refreshSlave);
-    }
-  }
-
-  metaCell.cancelRefresh = function () {
-    refreshSlave.die();
-    for (var i = sourceCells.length - 1; i >= 0; i--) {
-      var cell = sourceCells[i].metaCell;
-      if (!cell) {
-        continue;
-      }
-      cell.changedSlot.cleanup();
-    }
-  };
-};
-
 Cell.prototype.delegateInvalidationMethods = function (target) {
   var self = this;
   _.each(("recalculate recalculateAt recalculateAfterDelay invalidate").split(' '), function (methodName) {

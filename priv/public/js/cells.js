@@ -289,35 +289,12 @@ var Cell = mkClass({
     try {
       var context = this.mkFormulaContext();
       var value = this.effectiveFormula.call(context);
-      if (this.propagateMeta) {
-        this.ensureMetaCell();
-        this.propagateMeta(value);
-      }
       this.setValue(value);
     } finally {
       this.queuedValueUpdate = false;
       if (--Cell.recalcCount == 0)
         Cell.completeGeneration();
     }
-  },
-  ensureMetaCell: function () {
-    var metaCell = this.metaCell;
-    if (!metaCell) {
-      metaCell = this.metaCell = new Cell();
-      metaCell.setValue(Cell.EMPTY_OBJECT);
-    }
-    return metaCell;
-  },
-  getMetaValue: function () {
-    var metaCell = this.metaCell;
-    if (metaCell)
-      return metaCell.value;
-    else
-      return {};
-  },
-  setMetaAttr: function (attrName, value) {
-    var metaCell = this.ensureMetaCell();
-    metaCell.setValueAttr(value, attrName);
   },
   deliverFutureValue: function (future, value) {
     // detect cancellation

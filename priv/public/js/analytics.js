@@ -46,7 +46,6 @@
           orig.apply(this, arguments)
         };
       })(rv.detach);
-      rv.propagateMeta = undefined;
       return rv;
     })();
 

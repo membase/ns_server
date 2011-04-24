@@ -394,8 +394,6 @@ var DAL = {
     details: DAL.cells.currentPoolDetailsCell,
     detailsAreStale: IOCenter.staleness
   });
-  cell.propagateMeta = null;
-  cell.metaCell = DAL.cells.currentPoolDetailsCell.ensureMetaCell();
 
   cell.cancelPendingEject = function (node) {
     node.pendingEject = false;

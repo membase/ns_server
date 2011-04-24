@@ -212,7 +212,6 @@ var ServersSection = {
     });
 
     self.serversCell.subscribeAny($m(self, "refreshEverything"));
-    self.serversCell.ensureMetaCell().subscribeAny($m(self, "refreshEverything"));
 
     prepareTemplateForCell('active_server_list', self.serversCell);
     prepareTemplateForCell('pending_server_list', self.serversCell);
