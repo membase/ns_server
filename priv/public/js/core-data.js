@@ -269,25 +269,24 @@ var DAL = {
     mode: this.mode
   });
 
-  this.currentPoolDetailsCell = Cell.mkCaching(function (poolList, pushTimeout) {
-    var url;
+  this.currentPoolDetailsCell = Cell.needing(this.poolList,
+                                             poolDetailsPushTimeoutCell)
+    .computeEager(function (v, poolList, pushTimeout) {
+      var url;
 
-    if (!poolList[0]) {
-      return;
-    }
+      if (!poolList[0]) {
+        return;
+      }
 
-    url = poolList[0].uri;
-    function poolDetailsValueTransformer(data) {
-      // we clear pool's name to display empty name in analytics
-      data.name = '';
-      return data;
-    }
-    return future.getPush({url: url, stdErrorMarker: true, missingValue: {nodes: [], thisIs404: true, buckets: []}},
-                          poolDetailsValueTransformer, this.self.value, pushTimeout);
-  }, {
-    poolList: this.poolList,
-    pushTimeout: poolDetailsPushTimeoutCell
-  });
+      url = poolList[0].uri;
+      function poolDetailsValueTransformer(data) {
+        // we clear pool's name to display empty name in analytics
+        data.name = '';
+        return data;
+      }
+      return future.getPush({url: url, missingValue: {nodes: [], thisIs404: true, buckets: []}},
+                            poolDetailsValueTransformer, this.self.value, pushTimeout);
+    });
   this.currentPoolDetailsCell.equality = _.isEqual;
 
   this.currentPoolDetailsCell.subscribeValue(function (value) {

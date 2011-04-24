@@ -161,13 +161,11 @@ var OverviewSection = {
       mode: DAL.cells.mode
     });
 
-    this.statsCell = Cell.mkCaching(function (arg) {
-      return future.get({url: '/pools/default/overviewStats',
-                         stdErrorMarker: true});
-    }, {
-      arg: this.statsCellArg
+    this.statsCell = Cell.needing(this.statsCellArg).compute(function (v, arg) {
+      return future.get({url: '/pools/default/overviewStats'});
     });
 
+    this.statsCell.keepValueDuringAsync = true;
     this.statsCell.subscribe(function (cell) {
       var ts = cell.value.timestamp;
       var interval = ts[ts.length-1] - ts[0];

@@ -486,7 +486,6 @@ var ServersSection = {
   postAndReload: function (uri, data) {
     var self = this;
     // keep poolDetails undefined for now
-    self.poolDetails.target.setValue(undefined);
     self.poolDetails.setValue(undefined);
     postWithValidationErrors(uri, $.param(data), function (data, status) {
       // re-calc poolDetails according to it's formula

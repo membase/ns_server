@@ -105,11 +105,6 @@ Cell.prototype.delegateInvalidationMethods = function (target) {
   });
 };
 
-Cell.mkCaching = function (formula, sources) {
-  var cell = new Cell(formula, sources);
-  return Cell.cacheResponse(cell);
-};
-
 future.get = function (ajaxOptions, valueTransformer, nowValue, futureWrapper) {
   // var aborted = false;
   var options = {

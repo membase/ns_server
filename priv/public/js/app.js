@@ -127,13 +127,13 @@ var AlertsSection = {
     renderTemplate('alert_list', _.clone(value.list).reverse());
   },
   init: function () {
-    this.active = new Cell(function (mode) {
-      return (mode == "log") ? true : undefined;
-    }, {mode: DAL.cells.mode});
+    var active = Cell.needing(DAL.cells.mode).compute(function (v, mode) {
+      return (mode === "log") || undefined;
+    });
 
-    var logs = Cell.mkCaching(function (active) {
+    var logs = Cell.needing(active).compute(function (v, active) {
       return future.get({url: "/logs", stdErrorMarker: true});
-    }, {active: this.active});
+    });
     logs.keepValueDuringAsync = true;
     logs.subscribe(function (cell) {
       cell.recalculateAfterDelay(30000);
