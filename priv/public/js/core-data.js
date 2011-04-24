@@ -416,8 +416,9 @@ var DAL = {
   });
 
   var rawDetailedBuckets = Cell.compute(function (v) {
-    return future.get({url: v.need(bucketsURI), stdErrorMarker: true});
+    return future.get({url: v.need(bucketsURI)});
   });
+  rawDetailedBuckets.keepValueDuringAsync = true;
 
   // we use few attrs of pool details for massaging buckets list,
   // extract them so that we don't re-massage buckets list when
@@ -457,13 +458,9 @@ var DAL = {
     return rv;
   });
 
-  cells.rawBucketsListCell = Cell.compute(function (v) {
+  cells.bucketsListCell = Cell.compute(function (v) {
     var values = v.need(rawDetailedBuckets);
     var massagedDetails = v.need(nonNullMassagedDetails);
-
-    if (values === Cell.STANDARD_ERROR_MARK) {
-      return values;
-    }
 
     values = _.clone(values);
 
@@ -500,9 +497,7 @@ var DAL = {
     return values;
   });
 
-  cells.rawBucketsListCell.delegateInvalidationMethods(rawDetailedBuckets);
-
-  cells.bucketsListCell = Cell.cacheResponse(cells.rawBucketsListCell);
+  cells.bucketsListCell.delegateInvalidationMethods(rawDetailedBuckets);
 
   cells.bucketsListCell.refresh = function (callback) {
     var cell = cells.bucketsListCell;

@@ -64,40 +64,6 @@ Cell.prototype.propagateMeta = function () {
 
 Cell.STANDARD_ERROR_MARK = {"this is error marker":true};
 
-Cell.cacheResponse = function (cell) {
-  var cachingCell = new Cell(function () {
-    var newValue = cell.value;
-    var self = this.self;
-    var oldValue = self.value;
-    if (newValue === undefined) {
-      if (oldValue === undefined) {
-        return oldValue;
-      }
-      newValue = oldValue;
-      self.setMetaAttr('loading', true);
-      return newValue;
-    }
-    self.setMetaAttr('loading', false);
-    if (newValue === Cell.STANDARD_ERROR_MARK) {
-      newValue = oldValue;
-      self.setMetaAttr('stale', true);
-    } else {
-      self.setMetaAttr('stale', false);
-    }
-    return newValue;
-  }, {
-    src: cell
-  });
-
-  cachingCell.target = cell;
-  cachingCell.ensureMetaCell();
-  cachingCell.propagateMeta = null;
-
-  cachingCell.delegateInvalidationMethods(cell);
-
-  return cachingCell;
-};
-
 Cell.prototype.delegateInvalidationMethods = function (target) {
   var self = this;
   _.each(("recalculate recalculateAt recalculateAfterDelay invalidate").split(' '), function (methodName) {
