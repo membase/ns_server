@@ -346,7 +346,9 @@ var Cell = mkClass({
     if (async.started && async.cancel) {
       try {
         async.cancel();
-      } catch (e) {};
+      } catch (e) {
+        setTimeout(function () {throw e}, 0);
+      }
     }
   },
   resetRecalculateAt: function () {
