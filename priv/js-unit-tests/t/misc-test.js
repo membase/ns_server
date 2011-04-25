@@ -10,7 +10,7 @@ DecimationTest.prototype.testCutoff = function () {
 
   var outSamples = decimateSamples(2, samples);
 
-  var avg = _.reduce(outSamples, 0, function (acc, s) {return acc + s})/outSamples.length;
+  var avg = _.reduce(outSamples, function (acc, s) {return acc + s}, 0)/outSamples.length;
 
   var min = Math.min.apply(null, outSamples);
   var max = Math.max.apply(null, outSamples);
