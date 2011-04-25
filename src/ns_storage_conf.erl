@@ -135,12 +135,11 @@ storage_conf(Node) ->
 %         [{path", /another/good/disk/path}, {quotaMb, 5678}, {state, ok}]]}]
 %
 storage_conf(Node, Config) ->
-    {value, PropList} = ns_config:search_node(Node, Config, memcached),
-    HDDInfo = case proplists:get_value(dbdir, PropList) of
+    HDDInfo = case dbdir(Config, Node) of
                   undefined -> [];
-                  DBDir -> [{path, misc:absname(DBDir)},
-                             {quotaMb, none},
-                             {state, ok}]
+                  {ok, DBDir} -> [{path, misc:absname(DBDir)},
+                                  {quotaMb, none},
+                                  {state, ok}]
               end,
     [{ssd, []},
      {hdd, [HDDInfo]}].
@@ -311,8 +310,12 @@ extract_disk_stats_for_path(StatsList, Path0) ->
 db_files(Dir, Bucket) ->
     BucketSubDir = Bucket ++ "-data",
     S = fun (X) -> [X, X ++ "-shm", X ++ "-wal"] end,
-    [filename:join([Dir, BucketSubDir, lists:append(Bucket, Suffix)])
-       || Suffix <- lists:flatmap(S, ["", "-0.mb", "-1.mb", "-2.mb", "-3.mb"])].
+    {ok, Base} = file:get_cwd(),
+    [begin
+         Path = filename:join([Dir, BucketSubDir, lists:append(Bucket, Suffix)]),
+         {ok, RealPath} = misc:realpath(Path, Base),
+         RealPath
+     end || Suffix <- lists:flatmap(S, ["", "-0.mb", "-1.mb", "-2.mb", "-3.mb"])].
 
 delete_all_db_files(DBDir) ->
     {ok, Files} = file:list_dir(DBDir),
@@ -324,7 +327,7 @@ delete_all_db_files(DBDir) ->
                   end, Files).
 
 delete_db_files(Bucket) ->
-    DBDir = ns_config:search_node_prop(ns_config:get(), memcached, dbdir),
+    DBDir = dbdir(ns_config:get()),
     lists:foreach(fun (File) ->
                           Result = file:delete(File),
                           ?log_info("Result of deleting file ~p: ~p",

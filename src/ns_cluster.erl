@@ -113,7 +113,7 @@ handle_cast(leave, State) ->
     lists:foreach(fun erlang:disconnect_node/1, nodes()),
     Config = ns_config:get(),
     WebPort = ns_config:search_node_prop(Config, rest, port, false),
-    DBDir = ns_config:search_node_prop(Config, memcached, dbdir),
+    {ok, DBDir} = ns_storage_conf:dbdir(Config),
     ns_config:clear([directory]),
     case WebPort of
         false -> false;

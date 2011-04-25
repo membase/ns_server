@@ -81,7 +81,7 @@ config_string(BucketName) ->
     {DynamicConfigString, ExtraParams} =
         case BucketType of
             membase ->
-                DBDir = ns_config:search_node_prop(Config, memcached, dbdir),
+                {ok, DBDir} = ns_storage_conf:dbdir(Config),
                 DBSubDir = filename:join(DBDir, BucketName ++ "-data"),
                 DBName = filename:join(DBSubDir, BucketName),
                 ok = filelib:ensure_dir(DBName),

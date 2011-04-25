@@ -23,5 +23,5 @@ main([Path, NodeStr]) ->
     {ok, Data} = file:read_file(Path),
     [Config|_] = erlang:binary_to_term(Data),
     Node = list_to_atom(NodeStr),
-    DbDir = proplists:get_value(dbdir, proplists:get_value({node, Node, memcached}, Config, [])),
+    {ok, DbDir} = ns_storage_conf:dbdir(Config),
     io:fwrite("~s~n", [DbDir]).
