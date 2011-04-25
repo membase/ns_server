@@ -302,11 +302,15 @@ function loginFormSubmit() {
 
 $(function () {
   $(document.body).removeClass('nojs');
-  $(document.body).addClass('auth');
 
   _.defer(function () {
     var e = $('#auth_dialog [name=login]').get(0);
     try {e.focus();} catch (ex) {}
+  });
+
+  $('#login_form').bind('submit', function (e) {
+    e.preventDefault();
+    loginFormSubmit();
   });
 
   if ($.cookie('rf')) {
@@ -340,14 +344,13 @@ $(function () {
     mydetails.prev().find(".expander").toggleClass('expanded', !opened);
   });
 
-  var spinner = overlayWithSpinner('#login_form', false);
   try {
     if (DAL.tryNoAuthLogin()) {
       hideAuthForm();
     }
   } finally {
     try {
-      spinner.remove();
+      $('#auth_dialog .spinner').remove();
     } catch (__ignore) {}
   }
 
@@ -587,6 +590,15 @@ var NodeDialog = {
   startPage_secure: function(node, pagePrefix, opt) {
     var parentName = '#' + pagePrefix + '_dialog';
 
+    $(parentName + ' div.config-bottom button#step-4-finish').click(function (e) {
+      e.preventDefault();
+      $('#init_secure_form').submit();
+    });
+    $(parentName + ' div.config-bottom button#step-4-back').click(function (e) {
+      e.preventDefault();
+      showInitDialog("update_notifications");
+    });
+
     var form = $(parentName + ' form').unbind('submit');
     _.defer(function () {
       $(parentName).find('[name=password]')[0].focus();
@@ -640,6 +652,16 @@ var NodeDialog = {
   startPage_cluster: function (node, pagePrefix, opt) {
     var dialog = $('#init_cluster_dialog');
     var resourcesObserver;
+
+    dialog.find('input#join-cluster').click(function (e) {
+        $('.login-credentials').slideDown();
+        $('.memory-quota').slideUp();
+        $('.init_cluster_dialog_memory_errors_container').slideUp();
+      })
+      .find('input#no-join-cluster').click(function (e) {
+        $('.memory-quota').slideDown();
+        $('.login-credentials').slideUp();
+      });
 
     // we return function signaling that we're not yet ready to show
     // our page of wizard (no data to display in the form), but will

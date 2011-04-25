@@ -8,40 +8,9 @@
 <link rel="stylesheet" type="text/css" href="/css/jquery-ui.membase.css">
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta http-equiv="X-UA-Compatible" content="chrome=1">
-<!--[if IE]><script language="javascript" type="text/javascript" src="/js/excanvas.min.js"></script><![endif]-->
-<script src="/js/jquery.js"></script>
-<script src="/js/jquery-ui-1.8.10.custom.js"></script>
-<script src="/js/jquery.flot.js"></script>
-<script src="/js/jquery.ba-bbq.js"></script>
-<!--[if lt IE 9]><script src="/js/json2.js"></script><![endif]-->
-<script src="/js/underscore.js"></script>
-<script src="/js/tools.tabs.js"></script>
-<script src="/js/jquery.cookie.js"></script>
-<script src="/js/misc.js"></script>
-<script src="/js/base64.js"></script>
-<script src="/js/mkclass.js"></script>
-<script src="/js/callbacks.js"></script>
-<script src="/js/cells.js"></script>
-<script src="/js/cells-io.js"></script>
-<script src="/js/cells-map.js"></script>
-<script src="/js/hash-fragment-cells.js"></script>
-<script src="/js/right-form-observer.js"></script>
-<script src="/js/app-ui-misc.js"></script>
-<script src="/js/app-misc.js"></script>
-<script src="/js/multi-drawers-widget.js"></script>
-<script src="/js/core-data.js"></script>
-<script src="/js/analytics.js"></script>
-<script src="/js/manage-servers.js"></script>
-<script src="/js/monitor-servers.js"></script>
-<script src="/js/settings.js"></script>
-<script src="/js/manage-buckets.js"></script>
-<script src="/js/monitor-buckets.js"></script>
-<script src="/js/overview.js"></script>
-<script src="/js/all-images.js"></script>
-<script src="/js/updates-notifications.js"></script>
-<script src="/js/app.js"></script>
 </head>
-<body class="nojs">
+<body class="auth nojs">
+<script>document.body.className = "auth";</script>
   <div class="io-error-notice-wrapper"><span class="io-error-notice" style="display:none;"></span></div>
   <div id="container">
     <div class="page-header">
@@ -54,8 +23,6 @@
       </div>
     </div> <!-- header -->
 
-    <div id="nojs_alert">Your browser does not support javascript or it is currently disabled. This application requires browsers which meet a minimum standards level with javascript enabled.  See the documentation for details.</div>
-    <script type="text/javascript">document.getElementById('nojs_alert').style.display = 'none';</script>
     <div id="mainContainer" class="main_holder">
 <table width="100%">
   <tr>
@@ -1071,13 +1038,13 @@
           </td>
         </tr>
       </table>
+      <div class="spinner">
+        <noscript style="color:#1F292E;text-shadow: 0px 1px 0px #a6b1b3;line-height: 2em;padding:5% 10%;display:block;">
+        Your browser does not support JavaScript, or it is currently disabled. This application requires a browser with JavaScript enabled. Please, see the documentation for details.
+        </noscript>
+        <span>Loading...</span>
+      </div>
     </form>
-    <script type="text/javascript">
-      $('#login_form').bind('submit', function (e) {
-        e.preventDefault();
-        loginFormSubmit();
-      });
-    </script>
   </div>
   <div class="page-footer">
     <div class="main_holder">
@@ -1199,19 +1166,6 @@
     <div class="config-bottom">
       <button name="next" value="Next" class="submit next direction-button" id="step-2-next" type="submit">Next</button>
     </div>
-    <script type="text/javascript">
-    $(function(){
-      $('input#join-cluster').click(function (e) {
-        $('.login-credentials').slideDown();
-        $('.memory-quota').slideUp();
-        $('.init_cluster_dialog_memory_errors_container').slideUp();
-      });
-      $('input#no-join-cluster').click(function (e) {
-        $('.memory-quota').slideDown();
-        $('.login-credentials').slideUp();
-      });
-    });
-    </script>
     </div>
   <!-- END init_cluster_block -->
   <div class="pad" id="init_update_notifications_dialog">
@@ -1285,18 +1239,6 @@
       <button name="back" value="Back" class="submit back direction-button" id="step-4-back" type="button">Back</button>
     </div>
     </form>
-    <script type="text/javascript">
-      $(function(){
-        $('div.config-bottom button#step-4-finish').click(function (e) {
-          e.preventDefault();
-          $('#init_secure_form').submit();
-        });
-        $('div.config-bottom button#step-4-back').click(function (e) {
-          e.preventDefault();
-          showInitDialog("update_notifications");
-        });
-      });
-    </script>
   </div>
   <!-- END init_secure_block -->
 
@@ -1374,5 +1316,38 @@
 <div class="popup_2">
 
 </div>
+
+<!--[if IE]><script language="javascript" type="text/javascript" src="/js/excanvas.min.js"></script><![endif]-->
+<script src="/js/jquery.js"></script>
+<script src="/js/jquery-ui-1.8.10.custom.js"></script>
+<script src="/js/jquery.flot.js"></script>
+<script src="/js/jquery.ba-bbq.js"></script>
+<!--[if lt IE 9]><script src="/js/json2.js"></script><![endif]-->
+<script src="/js/underscore.js"></script>
+<script src="/js/tools.tabs.js"></script>
+<script src="/js/jquery.cookie.js"></script>
+<script src="/js/misc.js"></script>
+<script src="/js/base64.js"></script>
+<script src="/js/mkclass.js"></script>
+<script src="/js/callbacks.js"></script>
+<script src="/js/cells.js"></script>
+<script src="/js/cells-io.js"></script>
+<script src="/js/cells-map.js"></script>
+<script src="/js/hash-fragment-cells.js"></script>
+<script src="/js/right-form-observer.js"></script>
+<script src="/js/app-ui-misc.js"></script>
+<script src="/js/app-misc.js"></script>
+<script src="/js/multi-drawers-widget.js"></script>
+<script src="/js/core-data.js"></script>
+<script src="/js/analytics.js"></script>
+<script src="/js/manage-servers.js"></script>
+<script src="/js/monitor-servers.js"></script>
+<script src="/js/settings.js"></script>
+<script src="/js/manage-buckets.js"></script>
+<script src="/js/monitor-buckets.js"></script>
+<script src="/js/overview.js"></script>
+<script src="/js/all-images.js"></script>
+<script src="/js/updates-notifications.js"></script>
+<script src="/js/app.js"></script>
 </body>
 </html>
