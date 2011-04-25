@@ -78,7 +78,7 @@ expand_args({Name, Cmd, ArgsIn, OptsIn}) ->
 create_child_spec({Name, Cmd, Args, Opts}) ->
     {{Name, Cmd, Args},
      {supervisor_cushion, start_link,
-      [Name, 5000, ns_port_server, start_link, [Name, Cmd, Args, Opts]]},
+      [Name, 5000, ns_port_server, start_linkb, [Name, Cmd, Args, term_to_binary(Opts)]]},
      permanent, 10, worker,
      [ns_port_server]}.
 

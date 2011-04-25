@@ -104,8 +104,8 @@ child_specs() ->
                               {env, [{"MOXI_SASL_PLAIN_USR", BucketName},
                                      {"MOXI_SASL_PLAIN_PWD", Passwd}]}],
                       [{{BucketName, Passwd, Port, RestPort},
-                       {ns_port_server, start_link,
-                        [moxi, Command, Args, Opts]},
+                       {ns_port_server, start_linkb,
+                        [moxi, Command, Args, term_to_binary(Opts)]},
                        permanent, 10, worker, [ns_port_server]}|Acc]
               end
       end, [], BucketConfigs).
