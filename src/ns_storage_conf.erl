@@ -115,7 +115,8 @@ prepare_setup_disk_storage_conf(Node, Path) when Node =:= node() ->
     end.
 
 local_bucket_disk_usage(BucketName) ->
-    {ok, DBDir} = dbdir(node()),
+    {ok, DBDir} = dbdir(ns_config:get(), node()),
+
     %% this doesn't include filesystem slack
     lists:sum([try filelib:file_size(filename:join([DBDir, Name]))
                catch _:_ -> 0
