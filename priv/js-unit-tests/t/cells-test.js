@@ -592,3 +592,61 @@ CellsTest.prototype.testFuturesRestartingOnReattach = function () {
   assertEquals(1, cancelCount);
   assert(!cell.pendingFuture);
 }
+
+CellsTest.prototype.testFutureWrap = function () {
+  var events = [];
+  var wrapped1 = future.wrap(function (realCB, startInner) {
+    events.push("1startInner");
+    startInner(function (val) {
+      events.push("1delivery");
+      realCB(val + "+wrapped1");
+    });
+  });
+
+  var wrapped2 = future.wrap(function (realCB, startInner) {
+    events.push("2startInner");
+    startInner(function (val) {
+      events.push("2delivery");
+      realCB(val + "+wrapped2");
+    });
+  }, wrapped1);
+
+  var deliverValue;
+  var cell = Cell.computeEager(function (v) {
+    return wrapped2(function (cb) {
+      events.push("actualStart");
+      deliverValue = cb;
+    });
+  });
+
+  Clock.tickFarAway();
+  assert(!!deliverValue);
+
+  // we see that real future is wrapped by wrapped1 which is wrapped by wrapped2
+  // which actually starts real future body
+  assertEquals(["1startInner", "2startInner", "actualStart"],
+               events);
+
+  events = [];
+
+  deliverValue("value");
+
+  // we observe that all wrappers may tamper with delivered value
+  assertEquals("value+wrapped2+wrapped1", cell.value);
+
+  // and we observe order of that tampering
+  assertEquals(["2delivery", "1delivery"], events);
+
+  // now we see that usual future works as usual
+  events = [];
+  wrapped2 = future;
+  deliverValue = null;
+  cell.recalculate();
+  Clock.tickFarAway();
+  assert(!!deliverValue);
+  assertEquals(["actualStart"], events);
+
+  deliverValue("new-value");
+  assertEquals(["actualStart"], events);
+  assertEquals("new-value", cell.value);
+}

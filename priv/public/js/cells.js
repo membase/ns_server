@@ -61,6 +61,34 @@ Future.prototype = {
   }
 };
 
+// future.wrap allows creation of 'future wrappers' that allow you to
+// run your code before/after future is started and before/after
+// future value is delivered. It's even possible to block value delivery.
+//
+// wrapperBody argument is function that will be called instead of
+// real future body real future is started. It accepts dataCallback
+// from real future and startInner function. By calling startInner it
+// can execute real future body. dataCallback (real or wrapper) needs
+// to be passed to that function. By passing your wrapper it's
+// possible to execute arbitrary code around future value delivery.
+future.wrap = function (wrapperBody, maybeFuture) {
+  maybeFuture = maybeFuture || future;
+  return function (innerBody, futureOptions) {
+    return maybeFuture(function (realDataCallback) {
+      var context = this;
+      function startInner(innerDataCallbackArg, dontReplace) {
+        if (!dontReplace) {
+          innerDataCallbackArg.cell = realDataCallback.cell;
+          innerDataCallbackArg.async = realDataCallback.async;
+          innerDataCallbackArg.continuing = innerDataCallbackArg.continuing;
+        }
+        return innerBody.call(context, innerDataCallbackArg);
+      }
+      return wrapperBody.call(this, realDataCallback, startInner);
+    });
+  }
+};
+
 // inspired in part by http://common-lisp.net/project/cells/
 var Cell = mkClass({
   initialize: function (formula, sources) {
