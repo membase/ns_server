@@ -22,6 +22,9 @@
 %% Amount of time between sending users the same alert (s)
 -define(ALERT_TIMEOUT, 60 * 10).
 
+%% Amount of time to wait between checkout out of disk (s)
+-define(DISK_USAGE_TIMEOUT, 60 * 60 * 12).
+
 %% Maximum percentage of overhead compared to max bucket size (%)
 -define(MAX_OVERHEAD_PERC, 50).
 
@@ -178,13 +181,23 @@ check(disk, Opaque, _History) ->
                Mnt
          end || File <- UsedFiles],
     UsedMounts = sets:to_list(sets:from_list(UsedMountsTmp)),
+    OverDisks = [ {Disk, Used}
+                  || {Disk, _Cap, Used} <- UsedMounts, Used > ?MAX_DISK_USED],
 
-    [begin {_Sname, Host} = misc:node_name_host(node()),
-           Err = fmt_to_bin(errors(disk), [Disk, Host, Used]),
-           global_alert({disk, node()}, Err)
-     end || {Disk, _Capacity, Used} <- UsedMounts, Used > ?MAX_DISK_USED],
+    Fun = fun({Disk, Used}, Acc) ->
+                  Key = list_to_atom("disk_check_" ++ Disk),
+                  case hit_rate_limit(Key, Acc) of
+                      false ->
+                          {_Sname, Host} = misc:node_name_host(node()),
+                          Err = fmt_to_bin(errors(disk), [Disk, Host, Used]),
+                          global_alert({disk, node()}, Err),
+                          dict:store(Key, misc:now_int(), Acc);
+                      true ->
+                          Acc
+                  end
+          end,
 
-    Opaque;
+    lists:foldl(Fun, Opaque, OverDisks);
 
 %% @doc check how much overhead there is compared to data
 check(overhead, Opaque, _History) ->
@@ -206,6 +219,18 @@ check(write_fail, Opaque, _History) ->
 %% @doc check for any oom errors an any bucket
 check(oom, Opaque, _History) ->
     check_stat_increased(ep_oom_errors, Opaque).
+
+
+%% @doc only check for disk usage if there has been no previous
+%% errors or last error was over the timeout ago
+-spec hit_rate_limit(atom(), dict()) -> true | false.
+hit_rate_limit(Key, Dict) ->
+    case dict:find(Key, Dict) of
+        error ->
+            false;
+        {ok, Value} ->
+            Value + ?DISK_USAGE_TIMEOUT > misc:now_int()
+    end.
 
 
 %% @doc calculate percentage of overhead and if it is over threshold
