@@ -44,7 +44,7 @@
             var matcher = new RegExp( $.ui.autocomplete.escapeRegex(request.term), "i" );
             response( select.children( "option" ).map(function() {
               var text = $( this ).text();
-              if ( this.value && ( !request.term || matcher.test(text) ) )
+              if ( ( !request.term || matcher.test(text) ) )
                 return {
                   label: text.replace(
                     new RegExp(
