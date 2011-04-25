@@ -96,7 +96,18 @@ function performSignOut(isVoluntary) {
       date.getFullYear()];
 
     return rv.join('');
-  }
+  };
+
+  window.formatTime = function formatTime(mseconds) {
+    var date = new Date(mseconds);
+    var rv = [
+      _2digits(date.getHours()), ':',
+      _2digits(date.getMinutes()), ':',
+      _2digits(date.getSeconds())];
+    return rv.join('');
+  };
+
+
 })();
 
 function formatAlertType(type) {
@@ -968,8 +979,9 @@ function initAlertsSubscriber() {
   };
 
   function createAlertMsg() {
+    var tstamp = "<strong>["+window.formatTime(new Date().getTime())+"]</strong>";
     for (var i = 0, msg =  ""; i < alerts.length; i++) {
-        msg += alerts[i].msg + "\n";
+      msg += tstamp + " - " + alerts[i].msg + "<br />";
     }
     return (msg === "" && false) || msg;
   };
@@ -994,7 +1006,7 @@ function initAlertsSubscriber() {
           buttons: {ok: true},
           modal: false,
           header: "Alert",
-          text: alertMsg,
+          textHTML: alertMsg,
           callback: function (e, btn, dialog) {
             alerts = [];
             alertsShown = false;
