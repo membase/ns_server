@@ -137,7 +137,7 @@ var BaseClickSwitchCell = mkClass(HashFragmentCell, {
       throw new Error('invalid value!');
     }
 
-    var getSelector = this.getSelector;
+    var getSelector = _.bind(this.getSelector, this);
     var selectors = _.map(this.idToItems,
       function(value, key) {
         return getSelector(key);
