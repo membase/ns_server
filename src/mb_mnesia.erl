@@ -54,7 +54,7 @@ delete_schema() ->
 %% @doc Make sure table exists and has a copy on this node, creating it or
 %% adding a copy if it does not.
 ensure_table(TableName, Opts) ->
-    gen_server:call(?MODULE, {ensure_table, TableName, Opts}).
+    gen_server:call(?MODULE, {ensure_table, TableName, Opts}, 30000).
 
 
 %% @doc Possibly rename the node, if it's not clustered. Returns true
@@ -76,7 +76,7 @@ truncate(Tab, N) ->
 
 %% @doc Wipe all mnesia data.
 wipe() ->
-    gen_server:call(?MODULE, wipe).
+    gen_server:call(?MODULE, wipe, 30000).
 
 
 %%
