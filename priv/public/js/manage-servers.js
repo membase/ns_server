@@ -384,8 +384,6 @@ var ServersSection = {
         onHide: function () {
           $('#join_cluster_dialog').removeClass('overlayed')
             .dialog('option', 'closeOnEscape', true);
-          if (!confirmed)
-            hideDialog('join_cluster_dialog'); // cancel pressed on confirmation dialog
         }
       });
     });
