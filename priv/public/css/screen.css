@@ -560,7 +560,7 @@ could also be used in a more general context */
 
 /** TODO: temporary specificity; apply to all content boxes during loading **/
 #join_cluster_dialog .spinner {background:none/*#e9f3f9 !important*/;}
-#join_cluster_dialog .spinner span {display:block;position:relative;top:50%; width:150px !important;height:20px !important; margin:0 auto 0;padding:50px 0 0 !important; background:url(../images/spinner/spinner_lightbox.gif) 55px 5px no-repeat; color:#6da2c2; font-size:12px;line-height:14px !important;text-align:center;}
+#join_cluster_dialog .spinner span {display:block;position:relative;top:35%; width:150px !important;height:20px !important; margin:0 auto 0;padding:50px 0 0 !important; background:url(../images/spinner/spinner_lightbox.gif) 55px 5px no-repeat; color:#6da2c2; font-size:12px;line-height:14px !important;text-align:center;}
 
 .lbox_form {display:block; padding:10px;}
 .lbox_form h3 {font-size:18px; padding:5px 0 10px; border-bottom:1px solid #d8d9db; margin:0 0 10px; color:#444245; font-weight:normal;}
