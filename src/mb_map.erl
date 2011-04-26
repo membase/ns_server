@@ -408,7 +408,7 @@ balance_test_gen(MapSize, CopySize, NumNodes, NumSlaves) ->
                   Map2 = balance(Map1, Nodes, Opts),
                   ?assert(is_balanced(Map2, Nodes, Opts))
           end,
-    {timeout, 30, {Title, Fun}}.
+    {timeout, 300, {Title, Fun}}.
 
 
 validate_test() ->
