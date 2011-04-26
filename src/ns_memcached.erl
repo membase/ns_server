@@ -558,8 +558,6 @@ has_started(Sock) ->
             true;
         {ok, missing_stat} ->
             true;
-        {error, closed} ->
-            false;
         {ok, _} ->
             false
     end.

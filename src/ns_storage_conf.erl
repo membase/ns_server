@@ -50,16 +50,16 @@ memory_quota(_Node, Config) ->
 dbdir(Config) ->
     dbdir(Config, node()).
 
--spec dbdir(any(), atom()) -> string() | {error, any()}.
+-spec dbdir(any(), atom()) -> {ok, string()} | {error, any()}.
 dbdir(Config, Node) ->
     read_path_from_conf(Config, Node, memcached, dbdir).
 
 
--spec logdir(any()) -> string() | {error, any()}.
+-spec logdir(any()) -> {ok, string()} | {error, any()}.
 logdir(Config) ->
     logdir(Config, node()).
 
--spec logdir(any(), atom()) -> string() | {error, any()}.
+-spec logdir(any(), atom()) -> {ok, string()} | {error, any()}.
 logdir(Config, Node) ->
     read_path_from_conf(Config, Node, ns_log, filename).
 
@@ -136,10 +136,10 @@ storage_conf(Node) ->
 %
 storage_conf(Node, Config) ->
     HDDInfo = case dbdir(Config, Node) of
-                  undefined -> [];
                   {ok, DBDir} -> [{path, misc:absname(DBDir)},
                                   {quotaMb, none},
-                                  {state, ok}]
+                                  {state, ok}];
+                  _ -> []
               end,
     [{ssd, []},
      {hdd, [HDDInfo]}].
