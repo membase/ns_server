@@ -73,6 +73,15 @@
       <ul>
         <li class="line"><a id="switch_buckets" href="#visitSec=buckets">Data Buckets</a></li>
         <li class="line"><a id="switch_servers" href="#visitSec=servers">Server Nodes</a></li>
+        <li class="line" id="leftNav_updates_container"></li>
+        <script id="leftNav_updates_template" type="text/html">
+          <a href="#visitSec=notifications">
+            Update Notifications
+            {% if (enabled && newVersion!==false && newVersion!==undefined) { %}
+            <span class="alert_notify"><strong>!</strong></span>
+            {% } %}
+          </a>
+        </script>
       </ul>
 
       <h1>SUPPORT</h1>
@@ -80,25 +89,6 @@
         <li class="line"><a id="switch_support_docs" href="http://techzone.couchbase.com/wiki/display/membase/Getting+Started" target="MCWebHelp">Documentation</a></li>
         <li class="line"><a id="switch_support_forums" href="http://techzone.couchbase.com/forums/membase/membase-server-16x" target="nsforums">Support Forums</a></li>
       </ul>
-
-      <h1>UPDATES</h1>
-      <ul id="leftNav_updates_container">
-      </ul>
-      <script id="leftNav_updates_template" type="text/html">
-        <li class="line">
-          <a href="#visitSec=notifications">
-            Update Notifications
-            {% if (enabled && newVersion!==false && newVersion!==undefined) { %}
-            <span class="alert_notify"><strong>!</strong></span>
-<!--
-            <span class="alert_num">
-              <span class="down-count">1</span>
-            </span>
--->
-            {% } %}
-          </a>
-        </li>
-      </script>
     </td>
     <td id="mainPanel">
 
