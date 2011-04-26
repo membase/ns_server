@@ -513,7 +513,6 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 .notifications-updates label input {padding:3px 3px;font-size:13px;border:1px solid #ccd3d7}
 .notifications-updates label input[type="checkbox"] {position:relative;top:2px}
 .notifications-updates label span {margin:0 5px}
-.notifications-updates .warning {padding:0}
 .notifications-updates p.more_info {display:none}
 
 /* Should be detected automatically in the future */

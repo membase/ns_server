@@ -708,10 +708,10 @@
           <script id="notifications_block_template" type="text/html">
             <p>You are running version {%= h(version) %}</p>
             {% if (enabled===true) { %}
-              {% if (newVersion===false) { %}
-              <p>No updates available.</p>
-              {% } else if (newVersion===undefined) { %}
+              {% if (newVersion===undefined) { %}
               <p class="warning"><strong>Warning</strong> &ndash; There was a problem with retreiving the update information.</p>
+              {% } else if (newVersion===false) { %}
+              <p>No updates available.</p>
               {% } else { %}
               <p>A new version ({%= h(newVersion) %}) is available:</p>
               <ul>

@@ -35,6 +35,10 @@ var UpdatesNotificationsSection = {
           };
 
           statsInfo.getValue(function(s) {
+            // JSONP requests don't support error callbacks in
+            // jQuery 1.4, thus we need to hack around it
+            var sendStatsSuccess = false;
+
             var numMembase = 0;
             for (var i in s.buckets) {
               if (s.buckets[i].bucketType == "membase")
@@ -67,18 +71,27 @@ var UpdatesNotificationsSection = {
               browser: navigator.userAgent
             };
             // This is the request that actually sends the data
+
             $.ajax({
               url: self.remote.stats,
               dataType: 'jsonp',
               data: {stats: JSON.stringify(stats)},
-              error: function() {
-                  self.renderTemplate(true, undefined);
-              },
+              // jQuery 1.4 doesn't respond with error, 1.5 should.
+              ///error: function() {
+              //    self.renderTemplate(true, undefined);
+              //},
               timeout: 5000,
               success: function (data) {
+                sendStatsSuccess = true;
                 self.renderTemplate(true, data);
               }
             });
+            // manual error callback
+            setTimeout(function() {
+              if (!sendStatsSuccess) {
+                self.renderTemplate(true, undefined);
+              }
+            }, 5100);
           });
 
         } else {
@@ -117,6 +130,10 @@ var UpdatesNotificationsSection = {
     // data might be undefined.
     if (data) {
       newVersion = data.newVersion;
+    } else {
+      data = {
+        newVersion: undefined
+      };
     }
     renderTemplate('leftNav_updates',
                    {enabled: sendStats, newVersion: newVersion},
