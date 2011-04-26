@@ -310,12 +310,8 @@ extract_disk_stats_for_path(StatsList, Path0) ->
 db_files(Dir, Bucket) ->
     BucketSubDir = Bucket ++ "-data",
     S = fun (X) -> [X, X ++ "-shm", X ++ "-wal"] end,
-    {ok, Base} = file:get_cwd(),
-    [begin
-         Path = filename:join([Dir, BucketSubDir, lists:append(Bucket, Suffix)]),
-         {ok, RealPath} = misc:realpath(Path, Base),
-         RealPath
-     end || Suffix <- lists:flatmap(S, ["", "-0.mb", "-1.mb", "-2.mb", "-3.mb"])].
+    [filename:join([Dir, BucketSubDir, lists:append(Bucket, Suffix)])
+       || Suffix <- lists:flatmap(S, ["", "-0.mb", "-1.mb", "-2.mb", "-3.mb"])].
 
 delete_all_db_files(DBDir) ->
     {ok, Files} = file:list_dir(DBDir),
