@@ -357,8 +357,10 @@ var ServersSection = {
 
       var confirmed;
 
-      $('#join_cluster_dialog').addClass('overlayed');
+      $('#join_cluster_dialog').addClass('overlayed')
+        .dialog('option', 'closeOnEscape', false);
       showDialog('add_confirmation_dialog', {
+        closeOnEscape: false,
         eventBindings: [['.save_button', 'click', function (e) {
           e.preventDefault();
           confirmed = true;
@@ -380,7 +382,8 @@ var ServersSection = {
           })
         }]],
         onHide: function () {
-          $('#join_cluster_dialog').removeClass('overlayed');
+          $('#join_cluster_dialog').removeClass('overlayed')
+            .dialog('option', 'closeOnEscape', true);
           if (!confirmed)
             hideDialog('join_cluster_dialog'); // cancel pressed on confirmation dialog
         }

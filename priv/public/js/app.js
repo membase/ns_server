@@ -1004,7 +1004,6 @@ function initAlertsSubscriber() {
       if (alertMsg) {
         dialog = genericDialog({
           buttons: {ok: true},
-          modal: false,
           header: "Alert",
           textHTML: alertMsg,
           callback: function (e, btn, dialog) {

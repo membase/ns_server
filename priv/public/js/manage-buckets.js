@@ -517,6 +517,7 @@ var BucketsSection = {
 
     $('#bucket_details_dialog .delete_button').bind('click', function (e) {
       e.preventDefault();
+      $('#bucket_details_dialog').dialog('option', 'closeOnEscape', false);
       BucketsSection.startRemovingBucket();
     });
   },
@@ -606,7 +607,12 @@ var BucketsSection = {
     }
 
     $('#bucket_remove_dialog .bucket_name').text(this.currentlyShownBucket.name);
-    showDialog('bucket_remove_dialog');
+    showDialog('bucket_remove_dialog', {
+      closeOnEscape: false,
+      onHide: function(jq) {
+        $('#bucket_details_dialog').dialog('option', 'closeOnEscape', true);
+      }
+    });
   },
   removeCurrentBucket: function () {
     // inner functions

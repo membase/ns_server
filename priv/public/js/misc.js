@@ -518,6 +518,13 @@ function showDialog(idOrJQ, options) {
 
   $(window).bind('hashchange', onHashChange = function () {
     hideDialog(jq);
+  }).bind('keypress.cancelEscape', function(ev) {
+    // prevent escape from cancelling XHR requests
+    var key = ev.keyCode || ev.which;
+    if (key === 27) {
+      ev.preventDefault();
+      ev.stopPropagation();
+    }
   });
 
   var eventBindings = options.eventBindings || [];
@@ -539,6 +546,8 @@ function showDialog(idOrJQ, options) {
     if (options.onHide) {
       options.onHide(idOrJQ);
     }
+
+    $(window).unbind('keypress.cancelEscape');
   }
 
   options = _.extend({modal: true, close: onHide, resizable: false,
