@@ -289,3 +289,21 @@ Cell.computeEager = function (formula) {
     return new constructor(arguments);
   };
 })();
+
+// subscribes to multiple cells as a single subscription
+Cell.subscribeMultipleValues = function (body/*, cells... */) {
+  var args = _.rest(arguments);
+  var badArgs = _.reject(args, function (a) {return a instanceof Cell});
+  if (badArgs.length) {
+    console.log("has non cell args in subscribeMultipleValues: ", badArgs);
+    throw new Error("bad args to subscribeMultipleValues");
+  }
+  return Cell.compute(function (v) {
+    return _.map(args, v);
+  }).subscribeValue(function (arr) {
+    if (arr === undefined) {
+      return;
+    }
+    body.apply(null, arr);
+  });
+}

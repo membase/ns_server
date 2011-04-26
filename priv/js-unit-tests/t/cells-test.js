@@ -650,3 +650,52 @@ CellsTest.prototype.testFutureWrap = function () {
   assertEquals(["actualStart"], events);
   assertEquals("new-value", cell.value);
 }
+
+CellsTest.prototype.testCellSubscribeMV = function () {
+  var cellA = new Cell();
+  var cellB = new Cell();
+
+  var bodyRunCounter = 0;
+  var body = function (a, b) {
+    assertEquals(undefined, a);
+    assertEquals(undefined, b);
+    bodyRunCounter++;
+  }
+
+  Cell.subscribeMultipleValues(function (a, b) {
+    body(a,b);
+  }, cellA, cellB);
+
+  Clock.tickFarAway();
+  assertEquals(1, bodyRunCounter);
+
+  body = function (a, b) {
+    assertEquals("a", a);
+    assertEquals(undefined, b);
+    bodyRunCounter++;
+  }
+
+  cellA.setValue("a");
+  Clock.tickFarAway();
+  assertEquals(2, bodyRunCounter);
+
+  body = function (a,b) {
+    assertEquals("a", a);
+    assertEquals("b", b);
+    bodyRunCounter++;
+  }
+
+  cellB.setValue("b");
+  Clock.tickFarAway();
+  assertEquals(3, bodyRunCounter);
+
+  body =function (a,b) {
+    assertEquals(undefined, a);
+    assertEquals("b", b);
+    bodyRunCounter++;
+  }
+
+  cellA.setValue();
+  Clock.tickFarAway();
+  assertEquals(4, bodyRunCounter);
+}
