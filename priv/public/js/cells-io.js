@@ -330,7 +330,7 @@ var ErrorQueue = mkClass({
 
     this.status.setValueAttr(true, 'healthy');
     if (this.repeatTimeout) {
-      cancelTimeout(this.repeatTimeout);
+      clearTimeout(this.repeatTimeout);
       this.repeatTimeout = null;
     }
   },
