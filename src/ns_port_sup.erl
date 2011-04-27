@@ -49,8 +49,7 @@ dynamic_children() ->
     [create_child_spec(expand_args(NCAO)) || NCAO <- PortServers].
 
 launch_port(NCAO) ->
-    {Name, Cmd, Args, _Opts} = NCAO,
-    error_logger:info_msg("supervising port: ~p~n", [{Name, Cmd, Args}]),
+    error_logger:info_msg("supervising port: ~p~n", [NCAO]),
     {ok, C} = supervisor:start_child(?MODULE,
                                      create_child_spec(NCAO)),
     {ok, C}.
@@ -76,9 +75,9 @@ expand_args({Name, Cmd, ArgsIn, OptsIn}) ->
     {Name, Cmd, Args, Opts}.
 
 create_child_spec({Name, Cmd, Args, Opts}) ->
-    {{Name, Cmd, Args},
+    {{Name, Cmd, Args, Opts},
      {supervisor_cushion, start_link,
-      [Name, 5000, ns_port_server, start_linkb, [Name, Cmd, Args, term_to_binary(Opts)]]},
+      [Name, 5000, ns_port_server, start_link, [Name, Cmd, Args, Opts]]},
      permanent, 10, worker,
      [ns_port_server]}.
 

@@ -22,7 +22,7 @@
 -include("ns_common.hrl").
 
 %% API
--export([start_link/4, start_linkb/4]).
+-export([start_link/4]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -45,9 +45,6 @@
 
 
 %% API
-
-start_linkb(Name, Cmd, Args, BinaryOpts) ->
-    start_link(Name, Cmd, Args, binary_to_term(BinaryOpts)).
 
 start_link(Name, Cmd, Args, Opts) ->
     gen_server:start_link(?MODULE,
