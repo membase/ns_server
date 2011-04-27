@@ -120,6 +120,7 @@ do-install:
 	cp priv/init.sql $(PREFIX)/etc/membase/
 	cp ebucketmigrator $(PREFIX)/bin/ebucketmigrator
 	chmod +x $(PREFIX)/bin/ebucketmigrator
+	cp scripts/mbdumpconfig.escript $(PREFIX)/bin/
 
 endif
 
