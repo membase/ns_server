@@ -25,8 +25,37 @@
 %%    ./bin/mbdumpconfig.escript var/lib/membase/config/config.dat
 %%  windows:
 %%    bin\erlang\escript bin\mbdumpconfig.escript var\lib\membase\config\config.dat
+%%
+%% To just get a list of bucket names of a particular type:
+%%    mbdumpconfig.escript path/to/config.dat buckets BucketType
+%%  Example:
+%%    mbdumpconfig.escript path/to/config.dat buckets membase
 
-main([Path]) ->
+read(Path) ->
     {ok, Data} = file:read_file(Path),
     [Config|_] = erlang:binary_to_term(Data),
-    io:fwrite("~p~n", [Config]).
+    Config.
+
+main([Path]) ->
+    Config = read(Path),
+    io:fwrite("~p~n", [Config]);
+
+main([Path, "buckets", Type]) ->
+    Config = read(Path),
+    emit(buckets(Config, list_to_atom(Type))).
+
+emit([]) -> ok;
+emit([X | Rest]) ->
+    io:fwrite("~s~n", [X]),
+    emit(Rest).
+
+buckets(Config, Type) ->
+    keys(Type, proplists:get_value(configs, proplists:get_value(buckets, Config)), []).
+
+keys(_Type, [], Acc) ->
+    Acc;
+keys(Type, [{Key, Val} | Rest], Acc) ->
+    case proplists:get_value(type, Val) of
+        Type -> keys(Type, Rest, [Key | Acc]);
+        _    -> keys(Type, Rest, Acc)
+    end.
