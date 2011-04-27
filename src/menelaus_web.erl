@@ -584,6 +584,11 @@ is_warming_up(Names) ->
 
 
 build_extra_node_info(Config, Node, InfoNode, _BucketsAll, Append) ->
+
+    CPU = proplists:get_value(cpu_utilization_rate, InfoNode, 0),
+    Used = proplists:get_value(swap_used, InfoNode, 0),
+    Total = proplists:get_value(swap_total, InfoNode, 0),
+
     {UpSecs, {MemoryTotal, MemoryAlloced, _}} =
         {proplists:get_value(wall_clock, InfoNode, 0),
          proplists:get_value(memory_data, InfoNode,
@@ -606,7 +611,10 @@ build_extra_node_info(Config, Node, InfoNode, _BucketsAll, Append) ->
                                  undefined -> (MemoryTotal * 4) div (5 * 1048576)
                              end,
     NodesBucketMemoryAllocated = NodesBucketMemoryTotal,
-    [{uptime, list_to_binary(integer_to_list(UpSecs))},
+    [{swap_total, Total},
+     {swap_used, Used},
+     {cpu_usage, CPU},
+     {uptime, list_to_binary(integer_to_list(UpSecs))},
      {memoryTotal, erlang:trunc(MemoryTotal)},
      {memoryFree, erlang:trunc(MemoryTotal - MemoryAlloced)},
      {mcdMemoryReserved, erlang:trunc(NodesBucketMemoryTotal)},
@@ -631,19 +639,12 @@ build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
     OS = proplists:get_value(system_arch, InfoNode, "unknown"),
     HostName = build_node_hostname(Config, WantENode, LocalAddr),
 
-    CPU = proplists:get_value(cpu_utilization_rate, InfoNode, 0),
-    Used = proplists:get_value(swap_used, InfoNode, 0),
-    Total = proplists:get_value(swap_total, InfoNode, 0),
-
     [{hostname, list_to_binary(HostName)},
      {clusterCompatibility, proplists:get_value(cluster_compatibility_version, InfoNode, 0)},
      {version, list_to_binary(Version)},
      {os, list_to_binary(OS)},
      {ports, {struct, [{proxy, ProxyPort},
-                       {direct, DirectPort}]}},
-     {swap_total, Total},
-     {swap_used, Used},
-     {cpu_usage, CPU}
+                       {direct, DirectPort}]}}
     ].
 
 handle_pool_info_streaming(Id, Req) ->
