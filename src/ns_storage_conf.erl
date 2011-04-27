@@ -27,7 +27,8 @@
          local_bucket_disk_usage/1,
          delete_all_db_files/1, delete_db_files/1,
          dbdir/1, dbdir/2,
-         logdir/1, logdir/2]).
+         logdir/1, logdir/2,
+         bucket_dir/3]).
 
 -export([node_storage_info/1, cluster_storage_info/0, nodes_storage_info/1]).
 
