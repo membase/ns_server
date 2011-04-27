@@ -46,6 +46,11 @@ memory_quota(_Node, Config) ->
     RV.
 
 
+-spec bucket_dir(any(), atom(), string()) -> {ok, string()} | {error, any()}.
+bucket_dir(Config, Node, BucketName) ->
+    {ok, DBDir} = read_path_from_conf(Config, Node, memcached, dbdir),
+    misc:realpath(BucketName ++ "-data", DBDir).
+
 -spec dbdir(any()) -> {ok, string()} | {error, any()}.
 dbdir(Config) ->
     dbdir(Config, node()).
@@ -115,12 +120,10 @@ prepare_setup_disk_storage_conf(Node, Path) when Node =:= node() ->
     end.
 
 local_bucket_disk_usage(BucketName) ->
-    {ok, DBDir} = dbdir(ns_config:get(), node()),
-
+    {ok, BucketDir} = bucket_dir(ns_config:get(), node(), BucketName),
     %% this doesn't include filesystem slack
-    lists:sum([try filelib:file_size(filename:join([DBDir, Name]))
-               catch _:_ -> 0
-               end || Name <- db_files(DBDir, BucketName)]).
+    lists:sum([filelib:file_size(File)
+               || File <- filelib:wildcard(BucketDir ++ "/*")]).
 
 storage_conf(Node) ->
     storage_conf(Node, ns_config:get()).
