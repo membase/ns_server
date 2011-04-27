@@ -211,15 +211,12 @@ handle_specific_stat_for_buckets(PoolId, Id, StatName, Req) ->
 %% Specific Stat URL grouped by nodes
 %% GET /pools/{PoolID}/buckets/{Id}/stats/{StatName}?per_node=true
 %%
-%% Same as above, but broken up per_node--think of it as CouchDB's reduce=false
-%% TODO: consider dropping this and putting the same data in the URL above
-%%       --what would the cost/time savings be at generation time? minimal?
 %% Req:ok({"application/json",
 %%         menelaus_util:server_header(),
 %%         <<"{
 %%     \"timestamp\": [1,2,3,4,5],
-%%     \"nodes\": [{\"127.0.0.1:9000\": {\"stat\": [1,2,3,4,5]}},
-%%                 {\"127.0.0.1:9001\": {\"stat\": [1,2,3,4,5]}}]
+%%     \"nodeStats\": [{\"127.0.0.1:9000\": [1,2,3,4,5]},
+%%                     {\"127.0.0.1:9001\": [1,2,3,4,5]}]
 %%   }">>}).
 handle_specific_stat_for_buckets_group_per_node(PoolId, BucketName, StatName, Req) ->
     menelaus_web_buckets:checking_bucket_access(
@@ -297,10 +294,10 @@ build_per_node_stats(BucketName, StatName, Params, LocalAddr) ->
                                 end},
                    {interval, Step * 1000},
                    {timestamp, Timestamps},
-                   {nodes, {struct, lists:zipwith(fun (H, VS) ->
-                                                 {H, {struct, [{stat, VS}]}}
-                                         end,
-                                         Hostnames, [MainValues | AllignedRestValues])}}],
+                   {nodeStats, {struct, lists:zipwith(fun (H, VS) ->
+                                                              {H, VS}
+                                                      end,
+                                                      Hostnames, [MainValues | AllignedRestValues])}}],
     OpPropList = case ClientTStamp of
                      undefined -> OpPropList0;
                      _ -> [{tstampParam, ClientTStamp}
