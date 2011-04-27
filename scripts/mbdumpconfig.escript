@@ -20,36 +20,56 @@
 %%
 %% @doc Dump a config.dat file to stdout.
 %%
-%% Examples:
-%%  linux:
-%%    ./bin/mbdumpconfig.escript var/lib/membase/config/config.dat
-%%  windows:
-%%    bin\erlang\escript bin\mbdumpconfig.escript var\lib\membase\config\config.dat
+%%   mbdumpconfig.escript [options]
 %%
-%% To just get a list of bucket names of a particular type:
-%%    mbdumpconfig.escript path/to/config.dat buckets BucketType
-%%  Example:
-%%    mbdumpconfig.escript path/to/config.dat buckets membase
+%% The options can be used to filter the output.  These include:
+%%
+%%   node <Node>
+%%   buckets <BucketType>
+%%
+%% Examples:
+%%   linux:
+%%     ./bin/mbdumpconfig.escript var/lib/membase/config/config.dat
+%%   windows:
+%%     bin\erlang\escript bin\mbdumpconfig.escript var\lib\membase\config\config.dat
+%%
+%% Example of dumping info for a particular node...
+%%   mbdumpconfig.escript config.dat node ns_1@127.0.0.1
+%%
+%% Example of dumping buckets names of type membase...
+%%   mbdumpconfig.escript config.dat buckets membase
+
+main([Path]) ->
+    Config = read(Path),
+    io:fwrite("~p~n", [Config]);
+
+main([Path, "node", Node]) ->
+    Config = read(Path),
+    emit("~p.~n", node_only(Config, list_to_atom(Node), []));
+
+main([Path, "buckets", Type]) ->
+    Config = read(Path),
+    emit("~s~n", buckets_only(Config, list_to_atom(Type))).
+
+%% ----------------------------------------
 
 read(Path) ->
     {ok, Data} = file:read_file(Path),
     [Config|_] = erlang:binary_to_term(Data),
     Config.
 
-main([Path]) ->
-    Config = read(Path),
-    io:fwrite("~p~n", [Config]);
+emit(_Fmt, []) -> ok;
+emit(Fmt, [X | Rest]) ->
+    io:fwrite(Fmt, [X]),
+    emit(Fmt, Rest).
 
-main([Path, "buckets", Type]) ->
-    Config = read(Path),
-    emit(buckets(Config, list_to_atom(Type))).
+node_only([], _Node, Acc) -> Acc;
+node_only([{{node, Node, _Key}, _Val} = KeyVal | Rest], Node, Acc) ->
+    node_only(Rest, Node, [KeyVal | Acc]);
+node_only([_NonMatchingKeyVal | Rest], Node, Acc) ->
+    node_only(Rest, Node, Acc).
 
-emit([]) -> ok;
-emit([X | Rest]) ->
-    io:fwrite("~s~n", [X]),
-    emit(Rest).
-
-buckets(Config, Type) ->
+buckets_only(Config, Type) ->
     keys(Type, proplists:get_value(configs, proplists:get_value(buckets, Config)), []).
 
 keys(_Type, [], Acc) ->
@@ -59,3 +79,4 @@ keys(Type, [{Key, Val} | Rest], Acc) ->
         Type -> keys(Type, Rest, [Key | Acc]);
         _    -> keys(Type, Rest, Acc)
     end.
+
