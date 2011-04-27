@@ -107,8 +107,9 @@ td.leftNav li.indent {margin-left: 20px;}
 td.leftNav li a.currentNav {background:none #dae4e9;}
 td.leftNavDisabled {color:#f00;}
 
-/* to position the "updates available"-bubble correctly */
+/* to position the badges in the navigation correctly */
 td.leftNav a {position:relative;}
+td.leftNav .badge {right:0px;top:0px;}
 
 #mainPanel {font-size:12px;/* Helvetica;*/}
 
@@ -518,10 +519,6 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 /* Should be detected automatically in the future */
 #updates_notifications_confirmation_dialog {width:700px !important;}
 
-/* Display a small green sqaure box if a new version is available. This
-could also be used in a more general context */
-.alert_notify {background-color:#409f05;color:#fff;display:block;height:16px;line-height:16px;position:absolute;right:18px;text-align:center;top:6px;width:16px;}
-
 /* lightbox styles */
 .lbox {width:711px; position:relative;}
 .lbox .top {height:13px; overflow:hidden; display:none;}
@@ -824,6 +821,7 @@ li.server_row.status_down {background-position:10px -157px !important; backgroun
 .failover_warning {display: none;}
 
 .badge, .tabs .badge {background:#E43A1B;border: 2px solid white;-moz-border-radius:5em;-webkit-border-radius:5em;border-radius:5em;color: white;display: block;font-size: 11px;height: 2em;position: absolute;right: -20px;text-align: center;top: -16px;vertical-align: top;min-width: 2em;z-index: 10;-moz-box-shadow: 2px 2px 3px #999;-webkit-box-shadow: 2px 2px 3px #999;box-shadow: 2px 2px 3px #999; background-clip:padding-box;-moz-background-clip:padding; }
+.badge.notify, .tabs .badge.notify {background-color:#409f05;font-weight:bold}
 .badge span {position:relative; top:-5px;color:#fff;line-height:3em;padding:0 5px}
 ul.tabs .tab_right .badge {display:none;}
 ul.tabs .badge_display .badge {display:block;}
