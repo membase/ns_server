@@ -198,7 +198,9 @@ _tasks = [
     WindowsTask("Physical memory", "wmic memphysical", reformat=True),
     WindowsTask("Physical memory chip info", "wmic memorychip", reformat=True),
     WindowsTask("Local storage devices", "wmic logicaldisk", reformat=True),
-    WindowsTask("Physical memory", "wmic memphysical", reformat=True),
+    WindowsTask("membase config",
+         "escript.exe " + os.path.dirname(sys.argv[0]) + "/mbdumpconfig.escript " +
+         os.path.dirname(sys.argv[0]) + "/../var/lib/membase/config/config.dat"),
     UnixTask("Filesystem", "df -ha"),
     UnixTask("System activity reporter", "sar 1 10"),
     UnixTask("System paging activity", "vmstat 1 10"),
@@ -212,6 +214,8 @@ _tasks = [
     LinuxTask("System log", "/var/log/syslog"),
     LinuxTask("System log", "/var/log/messages"),
     UnixTask("Kernel log buffer", "dmesg"),
+    LinuxTask("membase config",
+        os.path.dirname(sys.argv[0]) + "/mbdumpconfig.escript /opt/membase/var/lib/membase/config/config.dat"),
     AllOsTask("memcached stats all",
               "mbstats -a 127.0.0.1:11210 all _admin _admin",
               log_file="stats.log"),
@@ -242,16 +246,18 @@ def main():
         parser.error("incorrect number of arguments")
 
     mydir = os.path.dirname(sys.argv[0])
+    erldir = os.path.join(mydir, 'erlang', 'bin')
     if os.name == 'posix':
         path = [mydir,
                 '/bin',
                 '/usr/bin',
                 '/usr/sbin',
                 '/opt/membase/bin',
+                erldir,
                 os.environ['PATH']]
         os.environ['PATH'] = ':'.join(path)
     elif os.name == 'nt':
-        path = [mydir, os.environ['PATH']]
+        path = [mydir, erldir, os.environ['PATH']]
         os.environ['PATH'] = ';'.join(path)
 
     runner = TaskRunner(verbosity=options.verbosity)
