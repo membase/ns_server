@@ -65,10 +65,10 @@ var ServersSection = {
     rebalanceButton.toggleClass('disabled', !mayRebalance);
 
     if (details && !rebalancing) {
-      $('#rebalance_tab .alert_num span').text(pending.length);
-      $('#rebalance_tab').toggleClass('alert_num_display', !!pending.length);
+      $('#rebalance_tab .badge span').text(pending.length);
+      $('#rebalance_tab').toggleClass('badge_display', !!pending.length);
     } else {
-      $('#rebalance_tab').toggleClass('alert_num_display', false);
+      $('#rebalance_tab').toggleClass('badge_display', false);
     }
 
     this.serversQ.toggleClass('rebalancing', !!rebalancing);

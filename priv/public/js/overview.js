@@ -27,7 +27,7 @@ var OverviewSection = {
 
       var block = $('#overview_servers_block');
       if (!servers) {
-        block.find('.alert_num').hide();
+        block.find('.badge').hide();
         return;
       }
       var pending = servers.pending;
@@ -40,8 +40,8 @@ var OverviewSection = {
 
       function updateCount(selector, count) {
         var span = block.find(selector).text(count);
-        span.parents('.alert_num')[count ? 'show' : 'hide']();
-        span.parents('.alert_num').parents('li')[count ? 'removeClass' : 'addClass']('is-zero');
+        span.parents('.badge')[count ? 'show' : 'hide']();
+        span.parents('.badge').parents('li')[count ? 'removeClass' : 'addClass']('is-zero');
       }
 
       updateCount('.failed-over-count', failedOver.length);
