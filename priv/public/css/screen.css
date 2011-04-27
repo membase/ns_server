@@ -957,7 +957,7 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 #overview_servers_block .is-zero .when-non-zero {display:none;}
 
 /* from less */
-#bucket_details_dialog{width:715px !important}
+#bucket_details_dialog{width:755px !important}
 .bucket_details {font-size:13px;}
 .bucket_details h1 {background:#dfdfe0;padding-left:20px;padding-top:16px;padding-bottom:16px;border-bottom:1px solid #BDBEC2;}
  .init_block .bucket_details h1 {background:none;border:none;}
