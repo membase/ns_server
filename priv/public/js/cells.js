@@ -260,7 +260,7 @@ var Cell = mkClass({
       return;
     this.resetRecalculateAt();
     Cell.recalcCount++;
-    _.defer($m(this, 'tryUpdatingValue'));
+    Cell.planUpdate(this);
     this.queuedValueUpdate = true;
   },
   // forces cell recalculation unless async set is in progress
@@ -385,10 +385,30 @@ _.extend(Cell, {
   updatedCells: [],
   recalcGeneration: {},
   recalcCount: 0,
+  pendingUpdates: [],
   forgetState: function () {
-    updatedCells = [];
-    recalcGeneration = {};
-    recalcCount = 0;
+    Cell.updatedCells = [];
+    Cell.pendingUpdates = [];
+    Cell.recalcGeneration = {};
+    Cell.recalcCount = 0;
+  },
+  planUpdate: function (cell) {
+    var pendingUpdates = Cell.pendingUpdates;
+    pendingUpdates.push(cell);
+    if (pendingUpdates.length === 1) {
+      setTimeout(Cell.invokeUpdates, 0);
+    }
+  },
+  invokeUpdates: function () {
+    var limit = 32;
+    var pendingUpdates = Cell.pendingUpdates;
+    while (pendingUpdates.length && limit--) {
+      var cell = pendingUpdates.shift();
+      cell.tryUpdatingValue();
+    }
+    if (pendingUpdates.length) {
+      setTimeout(Cell.invokeUpdates, 0);
+    }
   },
   // this thing is called when there are no pending cell
   // recomputations. We use delay future value computations (XHR gets,
