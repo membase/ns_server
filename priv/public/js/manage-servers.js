@@ -14,7 +14,7 @@
    limitations under the License.
  **/
 var ServersSection = {
-  hostnameComparator: mkComparatorByProp('hostname'),
+  hostnameComparator: mkComparatorByProp('hostname', naturalSort),
   pendingEject: [], // nodes to eject on next rebalance
   pending: [], // nodes for pending tab
   active: [], // nodes for active tab

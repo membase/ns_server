@@ -41,3 +41,22 @@ ParseHTTPDateTest.prototype.testBasic = function () {
   assertEquals("badvalue",
                parseHTTPDate("Asdasdsd asd asd asd", "badvalue").valueOf())
 }
+
+var NaturalSortTest = TestCase("NaturalSortTest");
+NaturalSortTest.prototype.testHostnameSorting = function() {
+  var ips = [{'hostname':'10.2.34.5'},
+             {'hostname':'1.2.3.4'},
+             {'hostname':'10.2.34.10'},
+             {'hostname':'cb.example.com:9002'},
+             {'hostname':'cb.example.com'},
+             {'hostname':'cb.example.com:9001'},
+             {'hostname':'cb.couchbase.com'}];
+  var sorted = [ {'hostname':'1.2.3.4'},
+                 {'hostname':'10.2.34.5'},
+                 {'hostname':'10.2.34.10'},
+                 {'hostname':'cb.couchbase.com'},
+                 {'hostname':'cb.example.com'},
+                 {'hostname':'cb.example.com:9001'},
+                 {'hostname':'cb.example.com:9002'}];
+  assertEquals(sorted, ips.sort(mkComparatorByProp('hostname', naturalSort)));
+};

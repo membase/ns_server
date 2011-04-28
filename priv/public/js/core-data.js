@@ -303,7 +303,7 @@ var DAL = {
 }).call(DAL.cells);
 
 (function () {
-  var hostnameComparator = mkComparatorByProp('hostname');
+  var hostnameComparator = mkComparatorByProp('hostname', naturalSort);
   var pendingEject = []; // nodes to eject on next rebalance
   var pending = []; // nodes for pending tab
   var active = []; // nodes for active tab
