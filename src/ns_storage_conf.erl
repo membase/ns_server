@@ -50,7 +50,10 @@ memory_quota(_Node, Config) ->
 -spec bucket_dir(any(), atom(), string()) -> {ok, string()} | {error, any()}.
 bucket_dir(Config, Node, BucketName) ->
     {ok, DBDir} = read_path_from_conf(Config, Node, memcached, dbdir),
-    misc:realpath(BucketName ++ "-data", DBDir).
+    case misc:realpath(BucketName ++ "-data", DBDir) of
+        {ok, _} = X -> X;
+        {error, X, _, _} -> {error, X}
+    end.
 
 -spec dbdir(any()) -> {ok, string()} | {error, any()}.
 dbdir(Config) ->
@@ -80,7 +83,10 @@ read_path_from_conf(Config, Node, Key, SubKey) ->
             {error, undefined};
         DBDir ->
             {ok, Base} = file:get_cwd(),
-            misc:realpath(DBDir, Base)
+            case misc:realpath(DBDir, Base) of
+                {error, Atom, _, _} -> {error, Atom};
+                {ok, _} = X -> X
+            end
     end.
 
 

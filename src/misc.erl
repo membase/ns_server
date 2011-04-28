@@ -893,26 +893,33 @@ multicall_result_to_plist_rec([N | Nodes], ResL, BadNodes, Acc) ->
 multicall_result_to_plist(Nodes, {ResL, BadNodes}) ->
     multicall_result_to_plist_rec(Nodes, ResL, BadNodes, []).
 
+-spec realpath(string(), string()) -> {ok, string()} | {error, atom(), string(), any()}.
 realpath(Path, BaseDir) ->
     case erlang:system_info(system_architecture) of
         "win32" ->
-            filename:absname(Path, BaseDir);
+            {ok, filename:absname(Path, BaseDir)};
         _ -> case realpath_full(Path, BaseDir, 32) of
                  {ok, X, _} -> {ok, X};
                  X -> X
              end
     end.
 
+-spec realpath_full(string(), string(), integer()) -> {ok, string(), integer()} | {error, atom(), string(), any()}.
 realpath_full(Path, BaseDir, SymlinksLimit) ->
     NormalizedPath = filename:join([Path]),
     Tokens = string:tokens(NormalizedPath, "/"),
     case Path of
         [$/ | _] ->
+            %% if we're absolute path then start with root
             realpath_rec_check("/", Tokens, SymlinksLimit);
         _ ->
+            %% otherwise start walking from BaseDir
             realpath_rec_info(#file_info{type = other}, BaseDir, Tokens, SymlinksLimit)
     end.
 
+%% this is called to check type of Current pathname and expand it if it's symlink
+-spec realpath_rec_check(string(), [string()], integer()) -> {ok, string(), integer()} |
+                                                             {error, atom(), string(), any()}.
 realpath_rec_check(Current, Tokens, SymlinksLimit) ->
     case file:read_link_info(Current) of
         {ok, Info} ->
@@ -920,12 +927,17 @@ realpath_rec_check(Current, Tokens, SymlinksLimit) ->
         Crap -> {error, read_file_info, Current, Crap}
     end.
 
+%% this implements 'meat' of path name lookup
+-spec realpath_rec_info(tuple(), string(), [string()], integer()) -> {ok, string(), integer()} |
+                                                                     {error, atom(), string(), any()}.
+%% this case handles Current being symlink. Symlink is recursively
+%% expanded and we continue path name walking from expanded place
 realpath_rec_info(Info, Current, Tokens, SymlinksLimit) when Info#file_info.type =:= symlink ->
     case file:read_link(Current) of
         {error, _} = Crap -> {error, read_link, Current, Crap};
         {ok, LinkDestination} ->
             case SymlinksLimit of
-                0 -> {error, symlinks_limit_reached};
+                0 -> {error, symlinks_limit_reached, Current, undefined};
                 _ ->
                     case realpath_full(LinkDestination, filename:dirname(Current), SymlinksLimit-1) of
                         {ok, Expanded, NewSymlinksLimit} ->
@@ -934,12 +946,16 @@ realpath_rec_info(Info, Current, Tokens, SymlinksLimit) when Info#file_info.type
                     end
             end
     end;
+%% this case handles end of path name walking
 realpath_rec_info(_, Current, [], SymlinksLimit) ->
     {ok, Current, SymlinksLimit};
+%% this case just removes single dot
 realpath_rec_info(Info, Current, ["." | Tokens], SymlinksLimit) ->
     realpath_rec_info(Info, Current, Tokens, SymlinksLimit);
+%% this case implements ".."
 realpath_rec_info(_Info, Current, [".." | Tokens], SymlinksLimit) ->
     realpath_rec_check(filename:dirname(Current), Tokens, SymlinksLimit);
+%% this handles most common case of walking single level of file tree
 realpath_rec_info(_Info, Current, [FirstToken | Tokens], SymlinksLimit) ->
     NewCurrent = filename:absname(FirstToken, Current),
     realpath_rec_check(NewCurrent, Tokens, SymlinksLimit).
