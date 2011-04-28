@@ -94,6 +94,8 @@ endif
 
 endif
 
+PREFIX_FOR_CONFIG ?= $(PREFIX)
+
 ERLWSH_LIBDIR := $(PREFIX)/lib/ns_server/erlang/lib/erlwsh
 GEN_SMTP_LIBDIR := $(PREFIX)/lib/ns_server/erlang/lib/gen_smtp
 MOCHIWEB_LIBDIR := $(PREFIX)/lib/ns_server/erlang/lib/mochiweb
@@ -113,7 +115,7 @@ do-install:
 	mkdir -p $(MOCHIWEB_LIBDIR)
 	cp -r deps/mochiweb/ebin $(MOCHIWEB_LIBDIR)/
 	mkdir -p $(PREFIX)/etc/membase
-	sed -e 's|@PREFIX@|$(PREFIX)|g' <etc/static_config.in >$(PREFIX)/etc/membase/static_config
+	sed -e 's|@PREFIX@|$(PREFIX_FOR_CONFIG)|g' <etc/static_config.in >$(PREFIX)/etc/membase/static_config
 	touch $(PREFIX)/etc/membase/config
 	mkdir -p $(PREFIX)/bin/
 	sed -e 's|@PREFIX@|$(PREFIX)|g' <membase-server.sh.in >$(PREFIX)/bin/membase-server
