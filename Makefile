@@ -8,8 +8,8 @@ EFLAGS=-pa ./ebin ./deps/*/ebin ./deps/*/deps/*/ebin
 NS_SERVER_PLT ?= ns_server.plt
 
 TMP_DIR=./tmp
-
 TMP_VER=$(TMP_DIR)/version_num.tmp
+
 TEST_TARGET=start
 
 DOC_DIR?=./docs/erldocs
@@ -83,13 +83,17 @@ NS_SERVER := $(PREFIX)/ns_server
 install: all $(TMP_VER) fail-unless-configured
 	$(MAKE) do-install "NS_SERVER_VER=$(strip $(shell cat $(TMP_VER)))" "PREFIX=$(strip $(shell . `pwd`/.configuration && echo $$prefix))"
 
+NS_SERVER_LIBDIR := $(PREFIX)/lib/ns_server/erlang/lib/ns_server
+
 ifdef NS_SERVER_VER
+NS_SERVER_LIBDIR := $(PREFIX)/lib/ns_server/erlang/lib/ns_server-$(NS_SERVER_VER)
 
 ifeq (,$(PREFIX))
 $(error "need PREFIX defined")
 endif
 
-NS_SERVER_LIBDIR := $(PREFIX)/lib/ns_server/erlang/lib/ns_server-$(NS_SERVER_VER)
+endif
+
 ERLWSH_LIBDIR := $(PREFIX)/lib/ns_server/erlang/lib/erlwsh
 GEN_SMTP_LIBDIR := $(PREFIX)/lib/ns_server/erlang/lib/gen_smtp
 MOCHIWEB_LIBDIR := $(PREFIX)/lib/ns_server/erlang/lib/mochiweb
@@ -121,8 +125,6 @@ do-install:
 	cp ebucketmigrator $(PREFIX)/bin/ebucketmigrator
 	chmod +x $(PREFIX)/bin/ebucketmigrator
 	cp scripts/mbdumpconfig.escript $(PREFIX)/bin/
-
-endif
 
 clean clean_all:
 	@(cd deps/gen_smtp && $(MAKE) clean)
