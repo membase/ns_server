@@ -160,7 +160,7 @@ test: ebins
 TAGS:
 	ctags -eR .
 
-$(NS_SERVER_PLT):
+$(NS_SERVER_PLT): | all
 	dialyzer --output_plt $@ --build_plt -pa ebin --apps compiler crypto erts inets kernel mnesia os_mon sasl ssl stdlib xmerl -c deps/mochiweb/ebin deps/erlwsh/ebin
 
 dialyzer: all $(NS_SERVER_PLT)
