@@ -110,6 +110,7 @@ FlexiFormulaCell = mkClass(Cell, {
       return true;
     }
     if (newValue instanceof Future) {
+      // we don't want to recalculate values that involve futures
       return false;
     }
     return this.isValuesDiffer(this.value, newValue);
@@ -121,12 +122,29 @@ FlexiFormulaCell = mkClass(Cell, {
 
     this.effectiveFormula = this.formula;
 
-    // NOTE: this has side-effect of updating formula dependencies and
-    // subscribing to them back
-    var newValue = this.effectiveFormula.call(this.mkFormulaContext());
-    // we don't want to recalculate values that involve futures
-    if (this.needsRefresh(newValue)) {
-      this.recalculate();
+    // This piece of code makes sure that we don't refetch things that
+    // are already fetched
+    var needRecalculation;
+    if (this.hadPendingFuture) {
+      // if we had future in progress then we will start it back
+      this.hadPendingFuture = false;
+      needRecalculation = true;
+    } else {
+      // NOTE: this has side-effect of updating formula dependencies and
+      // subscribing to them back
+      var newValue = this.effectiveFormula.call(this.mkFormulaContext());
+      needRecalculation = this.needsRefresh(newValue);
+    }
+
+    if (needRecalculation) {
+      // but in the end we call recalculate to correctly handle
+      // everything. Calling it directly might start futures which
+      // we don't want. And copying it's code here is even worse.
+      //
+      // Use of prototype is to avoid issue with overriden
+      // recalculate. See Cell#delegateInvalidationMethods. We want
+      // exact original recalculate behavior here.
+      Cell.prototype.recalculate.call(this);
     }
   },
   detach: function () {
@@ -137,6 +155,9 @@ FlexiFormulaCell = mkClass(Cell, {
         pair[0].dependenciesSlot.unsubscribe(pair[1]);
         delete currentSources[id];
       }
+    }
+    if (this.pendingFuture) {
+      this.hadPendingFuture = true;
     }
     this.effectiveFormula = this.emptyFormula;
     this.setValue(this.value);  // this cancels any in-progress

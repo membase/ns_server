@@ -501,3 +501,94 @@ CellsTest.prototype.testNeeding = function () {
     return a+b;
   }));
 }
+
+CellsTest.prototype.testFuturesRestartingOnReattach = function () {
+  var deliverValue;
+  var futuresCount = 0;
+  var cancelCount = 0;
+
+  var initialValue = {};
+
+  var cell = Cell.compute(function (v) {
+    return future(function (cb) {
+      cb.continuing(initialValue);
+
+      futuresCount++;
+      deliverValue = cb;
+      cb.async.cancel = function () {
+        cancelCount++;
+      }
+    });
+  });
+
+  Clock.tickFarAway();
+
+  // no demand – no nothing
+  assertEquals(undefined, cell.value);
+  assertEquals(0, futuresCount);
+  assertEquals(undefined, deliverValue);
+  assert(!cell.pendingFuture);
+
+  var demand;
+
+  function setDemand() {
+      demand = cell.subscribeValue(function () {});
+  }
+
+  // now add demand and observe that future has started
+  setDemand();
+  Clock.tickFarAway();
+
+  assertEquals(initialValue, cell.value);
+  assertEquals(1, futuresCount);
+  assert(!!deliverValue);
+  assert(!!cell.pendingFuture);
+  assertEquals(0, cancelCount);
+
+  // now cancel demand and observe that future is cancelled
+  demand.cancel();
+  Clock.tickFarAway();
+
+  assertEquals(initialValue, cell.value);
+  assertEquals(1, futuresCount);
+  assertEquals(1, cancelCount);
+  assert(!cell.pendingFuture);
+
+  // now add demand back and observe that future is restarted
+  setDemand();
+  initialValue = {};
+  deliverValue = null;
+  Clock.tickFarAway();
+
+  assertEquals(initialValue, cell.value);
+  assertEquals(2, futuresCount);
+  assertEquals(1, cancelCount);
+  assert(!!deliverValue);
+  assert(!!cell.pendingFuture);
+
+  // now complete future, cancel demand and observe old value
+  var newValue = {};
+  deliverValue(newValue);
+  assertEquals(newValue, cell.value);
+  assertEquals(2, futuresCount);
+  assertEquals(1, cancelCount);
+  assert(!cell.pendingFuture);
+
+  demand.cancel();
+  Clock.tickFarAway();
+
+  assertEquals(newValue, cell.value);
+  assertEquals(2, futuresCount);
+  assertEquals(1, cancelCount);
+  assert(!cell.pendingFuture);
+
+  // now add back demand and observe that future is _not_ started
+  // (because it was not running when demand was cancelled)
+
+  setDemand();
+  Clock.tickFarAway();
+  assertEquals(newValue, cell.value);
+  assertEquals(2, futuresCount);
+  assertEquals(1, cancelCount);
+  assert(!cell.pendingFuture);
+}
