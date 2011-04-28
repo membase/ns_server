@@ -97,6 +97,8 @@ build_bucket_info(PoolId, Id, undefined, InfoLevel, LocalAddr) ->
 build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
     Nodes = build_bucket_node_infos(Id, BucketConfig, InfoLevel, LocalAddr),
     StatsUri = list_to_binary(concat_url_path(["pools", PoolId, "buckets", Id, "stats"])),
+    StatsDirectoryUri = iolist_to_binary([StatsUri, <<"Directory">>]),
+    NodeStatsListURI = iolist_to_binary(concat_url_path(["pools", PoolId, "buckets", Id, "nodes"])),
     Suffix = case InfoLevel of
                  stable -> [];
                  normal ->
@@ -128,7 +130,9 @@ build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
               {flushCacheUri, list_to_binary(concat_url_path(["pools", PoolId,
                                                               "buckets", Id, "controller", "doFlush"]))},
               {nodes, Nodes},
-              {stats, {struct, [{uri, StatsUri}]}},
+              {stats, {struct, [{uri, StatsUri},
+                                {directoryURI, StatsDirectoryUri},
+                                {nodeStatsListURI, NodeStatsListURI}]}},
               {nodeLocator, ns_bucket:node_locator(BucketConfig)}
               | Suffix1]}.
 

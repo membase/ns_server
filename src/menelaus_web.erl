@@ -142,6 +142,9 @@ loop(Req, AppRoot, DocRoot) ->
                              ["pools", PoolId, "buckets", Id, "stats"] ->
                                  {auth_bucket, fun menelaus_stats:handle_bucket_stats/3,
                                   [PoolId, Id]};
+                             ["pools", PoolId, "buckets", Id, "statsDirectory"] ->
+                                 {auth_bucket, fun menelaus_stats:serve_stats_directory/3,
+                                  [PoolId, Id]};
                              %% GET /pools/{PoolId}/buckets/{Id}/nodes
                              ["pools", PoolId, "buckets", Id, "nodes"] ->
                                  {auth_bucket, fun handle_bucket_node_list/3,
