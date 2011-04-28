@@ -100,6 +100,7 @@ MOCHIWEB_LIBDIR := $(PREFIX)/lib/ns_server/erlang/lib/mochiweb
 
 do-install:
 	echo $(PREFIX)
+	rm -rf $(PREFIX)/lib/ns_server/erlang/lib/ns_server*
 	mkdir -p $(NS_SERVER_LIBDIR)
 	cp -r ebin $(NS_SERVER_LIBDIR)/
 	mkdir -p $(NS_SERVER_LIBDIR)/priv
