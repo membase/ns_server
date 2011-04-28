@@ -13,143 +13,210 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  **/
-(function (global) {
-  var withStatsTransformer = future.withEarlyTransformer(function (value, status, xhr) {
-    var date = xhr.getResponseHeader('date');
-    value.serverDate = parseHTTPDate(date).valueOf();
-    value.clientDate = (new Date()).valueOf();
-  });
+var StatsModel = {};
 
-  global.createSamplesRestorer = createSamplesRestorer;
-  return;
-
-  function createSamplesRestorer(statsURL, statsData) {
-    var dataCallback;
-    var interval;
-    var bufferDepth;
-
-    var rawStatsCell = Cell.compute(function (v) {
-      return withStatsTransformer.get({url: statsURL, data: statsData});
+(function (self) {
+  // starts future.get with given ajaxOptions and arranges invocation
+  // of 'body' with value or if future is cancelled invocation of body
+  // with 'cancelledValue'.
+  //
+  // NOTE: this is not normal future as normal futures deliver values
+  // to cell, but this one 'delivers' values to given function 'body'.
+  function getCPS(ajaxOptions, cancelledValue, body) {
+    // this wrapper calls 'body' instead of delivering value to it's
+    // cell
+    var futureWrapper = future.wrap(function (ignoredDataCallback, startGet) {
+      return startGet(body);
     });
+    var async = future.get(ajaxOptions, undefined, undefined, futureWrapper);
+    async.cancel = (function (realCancel) {
+      return function () {
+        realCancel.call(this);
+        body(cancelledValue);
+      }
+    })(async.cancel);
+    // we need any cell here to satisfy our not yet perfect API
+    async.start(new Cell());
+    return async;
+  }
 
-    return (function () {
-      var rv = Cell.compute(function (v) {
-        bufferDepth = v.need(DAL.cells.samplesBufferDepth);
-        return future(function (cb) {
-          dataCallback = cb;
-          rawStatsCell.getValue(stage1);
+  function createSamplesFuture(statsURL, statsData, bufferDepth, realTimeRestorer) {
+    var cancelMark = {};
+    var mark404 = {};
+
+    function doGet(data, body) {
+      if (mainAsync.cancelled) {
+        return body(cancelMark);
+      }
+
+      function onCancel() {
+        async.cancel();
+      }
+      function unbind() {
+        $(mainAsync).unbind('cancelled', onCancel);
+      }
+
+      var async;
+      return async = getCPS({url: statsURL, data: data, missingValue: mark404}, cancelMark, function (value, status, xhr) {
+        unbind();
+        if (value !== cancelMark && value !== mark404) {
+          var date = xhr.getResponseHeader('date');
+          value.serverDate = parseHTTPDate(date).valueOf();
+          value.clientDate = (new Date()).valueOf();
+        }
+        body(value, status, xhr);
+      });
+    }
+
+    var mainAsync = future(function (dataCallback) {
+      function deliverValue(value) {
+        return dataCallback.continuing(value);
+      }
+      nonRealtimeLoop(deliverValue);
+    });
+    mainAsync.cancel = function () {
+      $(this).trigger('cancelled');
+    }
+
+    return mainAsync;
+
+    function nonRealtimeLoop(deliverValue) {
+      doGet(statsData, function (value) {
+        if (value === cancelMark || value === mark404) {
+          return;
+        }
+
+        deliverValue(value);
+
+        // this is the only non-generic place in this function. We're
+        // able to extract interval from specific and from normal
+        // stats
+        var interval = value.interval || value.op.interval;
+        if (interval < 2000) {
+          startRealTimeLoop(deliverValue, value);
+        } else {
+          setTimeout(function () {
+            nonRealtimeLoop(deliverValue);
+          }, Math.min(interval/2, 60000));
+        }
+      });
+    }
+
+    function startRealTimeLoop(realDeliverValue, value) {
+      // we're going to actually deliver values each second and
+      // deliverValue we pass to loop just stores last value
+      function deliverValue(val) {
+        value = val;
+      }
+      var intervalId = setInterval(function () {
+        realDeliverValue(_.clone(value));
+      }, 1000);
+
+      function onCancel() {
+        clearInterval(intervalId);
+        unbind();
+      }
+      function unbind() {
+        $(mainAsync).unbind('cancelled', onCancel);
+      }
+      $(mainAsync).bind('cancelled', onCancel);
+
+      realTimeLoop(deliverValue, value, realTimeRestorer);
+    }
+
+    function realTimeLoop(deliverValue, lastValue, realTimeRestorer) {
+      realTimeRestorer(lastValue, statsData, bufferDepth, function (data, restorer) {
+        doGet(data, function (rawStats) {
+          if (rawStats === cancelMark || rawStats === mark404) {
+            return;
+          }
+
+          var restoredValue = restorer(rawStats);
+          deliverValue(restoredValue);
+          realTimeLoop(deliverValue, restoredValue, realTimeRestorer);
         });
       });
-      rv.detach = (function (orig) {
-        return function () {
-          console.log("detaching stats fetcher for:", statsURL, $.param(statsData));
-          orig.apply(this, arguments)
-        };
-      })(rv.detach);
-      return rv;
-    })();
-
-    function stage1(rawStats) {
-      interval = rawStats.op.interval;
-
-      if (interval < 2000) {
-        startRealTimeRestorer(rawStats, interval, dataCallback, bufferDepth, statsURL, statsData);
-      } else {
-        startStats();
-        handleStaticStats(rawStats);
-      }
-    }
-
-    function startStats() {
-      rawStatsCell.subscribe(function () {
-        handleStaticStats(rawStatsCell.value);
-      });
-      dataCallback.async.cancel = function () {
-        rawStatsCell.detach();
-      }
-    }
-
-    function handleStaticStats(rawStats) {
-      dataCallback.continuing(rawStats);
-      rawStatsCell.recalculateAfterDelay(Math.min(interval/2, 60000));
     }
   }
 
-  function startRealTimeRestorer(rawStats, interval, dataCallback, bufferDepth,
-                                 statsURL, statsData) {
-    var prevSamples;
-    var lastRaw;
-    var prevTimestamp;
-    var keepCount;
-    var intervalId;
-    var cancelled;
+  // Prepares data for stats request and returns it and stats
+  // restoring function. This code is calling continuation 'cont' with
+  // two arguments rather then returning array with two elements (and
+  // then having to unpack at call-site).
+  //
+  // Returned stats restoring function will then be called with result
+  // of get request and is responsible for building complete stats
+  // from old sample it has and new result.
+  function aggregateRealTimeRestorer(lastValue, statsData, bufferDepth, mvReturn) {
+    var keepCount = lastValue.op.samplesCount + bufferDepth;
+    var data = statsData;
 
-    // TODO: this is not 'pure' function, so we're breaking rules
-    // slightly, but directly going through future is not best option
-    // with current state of code
-    var rawStatsCell = Cell.compute(function (v) {
-      var data = _.extend({}, statsData);
-      if (prevTimestamp !== undefined) {
-        data['haveTStamp'] = prevTimestamp;
-      }
-      return withStatsTransformer.get({url: statsURL, data: data});
-    });
+    if (lastValue.op.lastTStamp) {
+      data = _.extend({haveTStamp: lastValue.op.lastTStamp}, data);
+    }
 
-    dataCallback.async.cancel = function () {
-      cancelled = true;
-      rawStatsCell.setValue(undefined);
-      if (intervalId !== undefined) {
-        cancelInterval(intervalId);
-      }
-    };
-
-    keepCount = rawStats.op.samplesCount + bufferDepth;
-
-    restoringSamples(rawStats);
-    restoringSamplesTail();
-    dataCallback.continuing(lastRaw);
-
-    intervalId = setInterval(function () {
-      dataCallback.continuing(_.clone(lastRaw));
-    }, interval);
-
-    return;
-
-    function restoringSamples(rawStats) {
+    return mvReturn(data, restorer);
+    function restorer(rawStats) {
       var op = rawStats.op;
-      var samples = op.samples;
-      prevTimestamp = op.lastTStamp || prevTimestamp;
 
       if (!op.tstampParam) {
-        if (samples.timestamp.length > 0) {
-          prevSamples = samples;
-        }
-      } else {
-        var newSamples = {};
-        for (var keyName in samples) {
-          newSamples[keyName] = prevSamples[keyName].concat(samples[keyName].slice(1)).slice(-keepCount);
-        }
-        prevSamples = newSamples;
+        return rawStats;
       }
 
-      lastRaw = _.clone(rawStats);
-      lastRaw.op = _.clone(op);
-      lastRaw.op.samples = prevSamples;
-    }
-
-    function restoringSamplesTail() {
-      if (cancelled) {
-        return;
+      var samples = op.samples;
+      if (samples.timestamp.length === 0) {
+        return lastValue;
       }
-      rawStatsCell.invalidate(function () {
-        restoringSamples(rawStatsCell.value);
-        restoringSamplesTail();
-      });
+
+      var newSamples = {};
+      var prevSamples = lastValue.op.samples;
+      for (var keyName in samples) {
+        newSamples[keyName] = prevSamples[keyName].concat(samples[keyName].slice(1)).slice(-keepCount);
+      }
+
+      var restored = _.clone(rawStats);
+      restored.op = _.clone(op);
+      restored.op.samples = newSamples;
+
+      return restored;
     }
   }
-})(window);
 
-;(function () {
+  function specificStatsRealTimeRestorer(lastValue, statsData, bufferDepth, mvReturn) {
+    var keepCount = lastValue.samplesCount + bufferDepth;
+    var data = statsData;
+
+    if (lastValue.lastTStamp) {
+      data = _.extend({haveTStamp: lastValue.lastTStamp}, data);
+    }
+
+    return mvReturn(data, restorer);
+    function restorer(rawStats) {
+      if (!rawStats.tstampParam) {
+        return rawStats;
+      }
+
+      var samples = rawStats.nodeStats;
+      if (rawStats.timestamp.length === 0) {
+        return lastValue;
+      }
+
+      var newSamples = {};
+      var prevSamples = lastValue.nodeStats;
+      for (var keyName in samples) {
+        newSamples[keyName] = prevSamples[keyName].concat(samples[keyName].slice(1)).slice(-keepCount);
+      }
+
+      var newTimestamp = lastValue.timestamp.concat(rawStats.timestamp.slice(1)).slice(-keepCount);
+
+      var restored = _.clone(rawStats);
+      restored.nodeStats = newSamples;
+      restored.timestamp = newTimestamp;
+
+      return restored;
+    }
+  }
+
   function diagCell(cell, name) {
     if (false) {
       cell.subscribeAny(function () {
@@ -158,10 +225,12 @@
     }
   }
 
-  var statsBucketURL = this.statsBucketURL = new StringHashFragmentCell("statsBucket");
-  var statsHostname = this.statsHostname = new StringHashFragmentCell("statsHostname");
+  var statsBucketURL = self.statsBucketURL = new StringHashFragmentCell("statsBucket");
+  var statsHostname = self.statsHostname = new StringHashFragmentCell("statsHostname");
+  var statsStatName = self.statsStatName = new StringHashFragmentCell("statsStatName");
 
-  var statsBucketDetails = this.statsBucketDetails = Cell.compute(function (v) {
+  // contains bucket details of statsBucketURL bucket (or default if there are no such bucket)
+  var statsBucketDetails = self.statsBucketDetails = Cell.compute(function (v) {
     var uri = v(statsBucketURL);
     var buckets = v.need(DAL.cells.bucketsListCell);
     var rv;
@@ -173,14 +242,78 @@
     return rv;
   });
 
-  var statsNodesCell = this.statsNodesCell = Cell.compute(function (v) {
-    // TODO: introduce direct attr for that
-    return future.get({url: v.need(statsBucketDetails).uri + "/nodes"});
+  // contains list of links to per-node stats for particular bucket
+  var statsNodesCell = self.statsNodesCell = Cell.compute(function (v) {
+    // TODO: get link from bucket details
+    return future.get({url: v.need(statsBucketDetails).stats.nodeStatsListURI});
   });
 
-  var targetCell = this.currentStatTargetCell = Cell.compute(function (v) {
-    var mode = v.need(DAL.cells.mode);
-    if (mode !== 'analytics') {
+  var statsOptionsCell = self.statsOptionsCell = new Cell();
+  statsOptionsCell.setValue({nonQ: ['keysInterval', 'nonQ'], resampleForUI: '1'});
+  _.extend(statsOptionsCell, {
+    update: function (options) {
+      this.modifyValue(_.bind($.extend, $, {}), options);
+    },
+    equality: _.isEqual
+  });
+
+  diagCell(statsOptionsCell, "statsOptionsCell");
+
+  var samplesBufferDepthRAW = new StringHashFragmentCell("statsBufferDepth");
+  self.samplesBufferDepth = Cell.computeEager(function (v) {
+    return v(samplesBufferDepthRAW) || 1;
+  });
+
+  var statsDirectoryURLCell = self.statsDirectoryURLCell = Cell.compute(function (v) {
+    return v.need(statsBucketDetails).stats.directoryURI;
+  });
+
+  var rawStatsDescCell = self.rawStatsDescCell = Cell.compute(function (v) {
+    return future.get({url: v.need(statsDirectoryURLCell)});
+  });
+
+  var nameToStatInfoCell = Cell.compute(function (v) {
+    var desc = v.need(rawStatsDescCell);
+    var allStatsInfos = [].concat.apply([], _.pluck(desc.blocks, 'stats'));
+    var rv = {};
+    _.each(allStatsInfos, function (info) {
+      rv[info.name] = info;
+    });
+    return rv;
+  });
+
+  var specificURLAndName = Cell.compute(function (v) {
+    var statName = v(statsStatName);
+    if (!statName) {
+      return {url: null, statName: null};
+    }
+    var mapping = v.need(nameToStatInfoCell);
+    if (!mapping[statName]) {
+      return {url: null, statName: null};
+    }
+    return {url: mapping[statName].specificStatsURL,
+            statName: statName};
+  });
+
+  var effectiveSpecificStatName = self.effectiveSpecificStatName = Cell.compute(function (v) {
+    return v.need(specificURLAndName).statName;
+  });
+  effectiveSpecificStatName.equality = function (a,b) {return a===b};
+
+  var specificStatsURLCell = self.specificStatsURLCell = Cell.compute(function (v) {
+    return v.need(specificURLAndName).url;
+  });
+  specificStatsURLCell.equality = function (a,b) {return a===b};
+
+  // true if we should be displaying specific stats and false if we should be displaying normal stats
+  var displayingSpecificStatsCell = self.displayingSpecificStatsCell = Cell.compute(function (v) {
+    return !!v.need(specificStatsURLCell);
+  });
+
+  // contains either bucket info or per-node stat info (as found in
+  // statsNodesCell response) for which (normal) stats are displayed
+  var targetCell = self.targetCell = Cell.compute(function (v) {
+    if (v.need(DAL.cells.mode) !== 'analytics' || v.need(displayingSpecificStatsCell)) {
       return;
     }
 
@@ -200,22 +333,37 @@
 
   diagCell(targetCell, "targetCell");
 
-  var statsOptionsCell = new Cell();
-  statsOptionsCell.setValue({nonQ: ['keysInterval', 'nonQ'], resampleForUI: '1'});
-  _.extend(statsOptionsCell, {
-    update: function (options) {
-      this.modifyValue(_.bind($.extend, $, {}), options);
-    },
-    equality: _.isEqual
-  });
-
-  diagCell(statsOptionsCell, "statsOptionsCell");
-
-  var statsURLCell = Cell.compute(function (v) {
+  var statsURLCell = self.statsURLCell = Cell.compute(function (v) {
     return v.need(targetCell).stats.uri;
   });
 
-  var statsCellCell = Cell.compute(function (v) {
+  diagCell(statsURLCell, "statsURLCell");
+
+  var zoomLevel;
+  (function () {
+    zoomLevel = new LinkSwitchCell('zoom', {
+      firstItemIsDefault: true
+    });
+
+    _.each('minute hour day week month year'.split(' '), function (name) {
+      zoomLevel.addItem('zoom_' + name, name)
+    });
+
+    zoomLevel.finalizeBuilding();
+
+    zoomLevel.subscribeValue(function (zoomLevel) {
+      self.statsOptionsCell.update({
+        zoom: zoomLevel
+      });
+    });
+  })();
+
+  self.zoomLevel = zoomLevel;
+
+  var statsCell = self.statsCell = Cell.compute(function (v) {
+    if (v.need(DAL.cells.mode) != 'analytics') {
+      return;
+    }
     var options = v.need(statsOptionsCell);
     var url = v.need(statsURLCell);
 
@@ -224,32 +372,265 @@
       delete data[n];
     });
 
-    return createSamplesRestorer(url, data);
-  });
+    var bufferDepth = v.need(self.samplesBufferDepth);
 
-  diagCell(statsURLCell, "statsURLCell");
-  diagCell(statsCellCell, "statsCellCell");
-
-  var statsCell = Cell.compute(function (v) {
-    if (v.need(DAL.cells.mode) != 'analytics') {
-      return;
-    }
-    return v.need(v.need(statsCellCell));
+    return createSamplesFuture(url, data, bufferDepth, aggregateRealTimeRestorer);
   });
 
   diagCell(statsCell, "statsCell");
 
-  var samplesBufferDepthRAW = new StringHashFragmentCell("statsBufferDepth");
-  var samplesBufferDepth = Cell.computeEager(function (v) {
-    return v(samplesBufferDepthRAW) || 1;
+  var specificStatsCell = self.specificStatsCell = Cell.compute(function (v) {
+    if (v.need(DAL.cells.mode) != 'analytics') {
+      return;
+    }
+
+    var url = v(specificStatsURLCell);
+    if (!url) { // we're 'expecting' null here too
+      return;
+    }
+    var options = v.need(statsOptionsCell);
+
+    var data = _.extend({}, options);
+    _.each(data.nonQ, function (n) {
+      delete data[n];
+    });
+
+    var bufferDepth = v.need(self.samplesBufferDepth);
+
+    return createSamplesFuture(url, data, bufferDepth, specificStatsRealTimeRestorer);
   });
 
-  _.extend(DAL.cells, {
-    stats: statsCell,
-    statsOptions: statsOptionsCell,
-    samplesBufferDepth: samplesBufferDepth
+  // containts list of hostnames for specific stats ordered in
+  // descending order of average stat values
+  //
+  // NOTE: we have requirement to do sorting only once. So that it's
+  // stable.  We're explicitly depending on specificStatsURLCell
+  // because we want this to be recomputed when stat name is changed
+  // and we're using getValue inside future to get only first value of
+  // specificStatsCell
+  var specificStatsNodesCell = Cell.compute(function (v) {
+    v.need(specificStatsURLCell);
+    return future(function (returnValue) {
+      specificStatsCell.getValue(function (specificStats) {
+        var nodes = specificStats.nodeStats;
+        var rv = _.sortBy(_.keys(nodes), function (hostname) {
+          var values = nodes[hostname];
+          var sum = 0;
+          var i = values.length;
+          while (i--) {
+            sum += values[i];
+          }
+          if (values.length) {
+            sum /= values.length;
+          }
+          return -sum;
+        });
+        returnValue(rv);
+      });
+    });
   });
-}).call(DAL.cells);
+
+  var visibleStatsDescCell = self.visibleStatsDescCell = Cell.compute(function (v) {
+    if (v.need(displayingSpecificStatsCell)) {
+      var nodes = v.need(specificStatsNodesCell);
+      return {thisISSpecificStats: true,
+              blocks: [{blockName: "SPECIFIC STATS", hideThis: true,
+                        stats: _.map(nodes, function (hostname) {return {desc: hostname, name: hostname}})}]};
+    } else {
+      return v.need(rawStatsDescCell);
+    }
+  });
+
+  self.infosCell = Cell.needing(visibleStatsDescCell).compute(function (v, desc) {
+    desc = JSON.parse(JSON.stringify(desc)); // this makes deep copy of desc
+
+    var infos = [];
+    infos.byName = {};
+
+    var statItems = [];
+    var blockIDs = [];
+
+    var hadServerResources = false;
+    if (desc.blocks[0].serverResources) {
+      // We want it last so that default stat name (which is first
+      // statItems entry) is not from ServerResourcesBlock
+      hadServerResources = true;
+      desc.blocks = desc.blocks.slice(1).concat([desc.blocks[0]]);
+    }
+    _.each(desc.blocks, function (aBlock) {
+      var blockName = aBlock.blockName;
+      aBlock.id = _.uniqueId("GB");
+      blockIDs.push(aBlock.id);
+      var stats = aBlock.stats;
+      statItems = statItems.concat(stats);
+      _.each(stats, function (statInfo) {
+        statInfo.id = _.uniqueId("G");
+        statInfo.blockId = aBlock.id;
+      });
+    });
+    // and now make ServerResourcesBlock first for rendering
+    if (hadServerResources) {
+      desc.blocks.unshift(desc.blocks.pop());
+    }
+    _.each(statItems, function (item) {
+      infos.push(item);
+      infos.byName[item.name] = item;
+    });
+    infos.blockIDs = blockIDs;
+
+    return {desc: desc, infos: infos};
+  });
+
+  self.statsDescCell = Cell.needing(self.infosCell).compute(function (v, infos) {
+    return infos.desc;
+  });
+
+  self.serverResourcesVisible = Cell.compute(function (v) {
+    // server resources are visible iff infos cell is not undefined
+    // and statsHostname is not blank
+    return !!v(self.infosCell) && !!v(self.statsHostname);
+  });
+
+  self.selectedGraphNameCell = new StringHashFragmentCell("graph");
+
+  self.configurationExtra = new Cell();
+
+  self.smallGraphSelectionCellCell = Cell.compute(function (v) {
+    return v.need(displayingSpecificStatsCell) ? self.statsHostname : self.selectedGraphNameCell;
+  });
+
+  self.aggregateGraphsConfigurationCell = Cell.compute(function (v) {
+    var selectedGraphName = v(self.selectedGraphNameCell);
+    var stats = v.need(self.statsCell);
+    var selected;
+
+    var infos = v.need(self.infosCell).infos;
+    if (!selectedGraphName || !(selectedGraphName in infos.byName)) {
+      selected = infos[0];
+    } else {
+      selected = infos.byName[selectedGraphName];
+    }
+
+    var op = stats.op;
+    if (!op) {
+      throw new Error("BUG");
+    }
+
+    if (!op.samples[selected.name]) {
+      selected = _.detect(infos, function (info) {return op.samples[info.name];}) || selected;
+    }
+
+    return {
+      interval: op.interval,
+      zoomLevel: v.need(zoomLevel),
+      selected: selected,
+      samples: op.samples,
+      timestamp: op.samples.timestamp,
+      serverDate: stats.serverDate,
+      clientDate: stats.clientDate,
+      infos: infos,
+      extra: v(self.configurationExtra)
+    };
+  });
+
+  self.specificGraphsConfigurationCell = Cell.compute(function (v) {
+    var infos = v.need(self.infosCell).infos;
+    var stats = v.need(specificStatsCell);
+    var selectedHostname = v(statsHostname);
+    var selected;
+
+    var infos = v.need(self.infosCell).infos;
+    if (!selectedHostname || !(selectedHostname in infos.byName)) {
+      selected = infos[0];
+    } else {
+      selected = infos.byName[selectedHostname];
+    }
+
+    if (!stats.nodeStats[selected.name]) {
+      selected = _.detect(infos, function (info) {return stats.nodeStats[info.name];}) || selected;
+    }
+
+    return {
+      interval: stats.interval,
+      zoomLevel: v.need(zoomLevel),
+      selected: selected,
+      samples: stats.nodeStats,
+      timestamp: stats.timestamp,
+      serverDate: stats.serverDate,
+      clientDate: stats.clientDate,
+      infos: infos,
+      extra: v(self.configurationExtra)
+    };
+  });
+
+  self.specificStatsNamesSetCell = Cell.compute(function (v) {
+    var rawDesc = v.need(rawStatsDescCell);
+    var knownDescTexts = {};
+    var allStatInfos = [].concat.apply([], _.pluck(rawDesc.blocks, 'stats'));
+
+    _.each(allStatInfos, function (statInfo) {
+      if (statInfo.missing) {
+        return;
+      }
+      knownDescTexts[statInfo.desc] = (knownDescTexts[statInfo.desc] || 0) + 1;
+    });
+
+    var markedNames = {};
+    var result = [];
+    _.each(rawDesc.blocks, function (blockInfo) {
+      _.each(blockInfo.stats, function (statInfo, idx) {
+        var desc = statInfo.desc;
+        if (!desc) {
+          throw new Error();
+        }
+        if (knownDescTexts[desc] > 1) {
+          // we have 'shared name'. So let's 'unshare' it be prepending column name
+          desc = blockInfo.columns[idx % 4] + ' ' + desc;
+        }
+        var name = statInfo.name;
+        if (markedNames[name]) {
+          return;
+        }
+        result.push([name, desc]);
+        markedNames[name] = true;
+      });
+    });
+
+    result = _.sortBy(result, function (r) {return r[1]});
+
+    var byName = result.byName = {};
+    _.each(result, function (pair) {
+      byName[pair[0]] = pair;
+    });
+
+    return result;
+  });
+
+  self.graphsConfigurationCellCell = Cell.compute(function (v) {
+    if (v.need(self.displayingSpecificStatsCell)) {
+      return self.specificGraphsConfigurationCell;
+    } else {
+      return self.aggregateGraphsConfigurationCell;
+    }
+  });
+
+  self.graphsConfigurationCell = Cell.compute(function (v) {
+    if (v.need(self.displayingSpecificStatsCell)) {
+      return v.need(self.specificGraphsConfigurationCell);
+    } else {
+      return v.need(self.aggregateGraphsConfigurationCell);
+    }
+  });
+
+  self.hotKeysCell = Cell.compute(function (v) {
+    if (v.need(displayingSpecificStatsCell)) {
+      return null;
+    }
+    return v.need(statsCell).hot_keys;
+  });
+  self.hotKeysCell.equality = function (a,b) {return a===b;};
+
+})(StatsModel);
 
 var maybeReloadAppDueToLeak = (function () {
   var counter = 300;
@@ -282,17 +663,21 @@ var maybeReloadAppDueToLeak = (function () {
     shadowSize = 0;
   }
 
-  function renderSmallGraph(jq, ops, statName, isSelected, zoomMillis, timeOffset, options) {
-    var data = ops.samples[statName] || [];
+  function renderSmallGraph(jq, options) {
+    function reqOpt(name) {
+      var rv = options[name];
+      if (rv === undefined)
+        throw new Error("missing option: " + name);
+      return rv;
+    }
+    var data = reqOpt('data');
+    var now = reqOpt('now');
     var plotSeries = buildPlotSeries(data,
-                                     ops.samples.timestamp,
-                                     ops.interval * 2.5,
-                                     timeOffset).plotSeries;
+                                     reqOpt('timestamp'),
+                                     reqOpt('breakInterval'),
+                                     reqOpt('timeOffset')).plotSeries;
 
     var lastY = data[data.length-1];
-    var now = (new Date()).valueOf();
-    if (ops.interval < 2000)
-      now -= DAL.cells.samplesBufferDepth.value * 1000;
 
     var maxString = isNaN(lastY) ? '?' : ViewHelpers.formatQuantity(lastY, '', 1000);
     queuedUpdates.push(function () {
@@ -302,7 +687,7 @@ var maybeReloadAppDueToLeak = (function () {
       setTimeout(flushQueuedUpdate, 0);
     }
 
-    var color = isSelected ? '#e2f1f9' : '#d95e28';
+    var color = reqOpt('isSelected') ? '#e2f1f9' : '#d95e28';
 
     var yaxis = {min:0, ticks:0, autoscaleMargin: 0.04}
 
@@ -317,7 +702,7 @@ var maybeReloadAppDueToLeak = (function () {
            }),
            {xaxis: {ticks:0,
                     autoscaleMargin: 0.04,
-                    min: now - zoomMillis,
+                    min: now - reqOpt('zoomMillis'),
                     max: now},
             yaxis: yaxis,
             grid: {show:false}});
@@ -326,28 +711,49 @@ var maybeReloadAppDueToLeak = (function () {
   global.renderSmallGraph = renderSmallGraph;
 })(this);
 
-var PersistentStatInfos = []
-PersistentStatInfos.byName = {};
+var GraphsWidget = mkClass({
+  initialize: function (largeGraphJQ, smallGraphsContainerJQ, descCell, configurationCell) {
+    this.largeGraphJQ = largeGraphJQ;
+    this.smallGraphsContainerJQ = smallGraphsContainerJQ;
 
-var CacheStatInfos = [];
-CacheStatInfos.byName = {};
-
-var StatGraphs = {
-  selected: null,
-  spinners: [],
+    this.drawnDesc = this.drawnConfiguration = {};
+    Cell.subscribeMultipleValues($m(this, 'renderAll'), descCell, configurationCell);
+  },
+  // renderAll (and subscribeMultipleValues) exist to strictly order renderStatsBlock w.r.t. updateGraphs
+  renderAll: function (desc, configuration) {
+    if (this.drawnDesc !== desc) {
+      this.renderStatsBlock(desc);
+      this.drawnDesc = desc;
+    }
+    if (this.drawnConfiguration !== configuration) {
+      this.updateGraphs(configuration);
+      this.drawnConfiguration = configuration;
+    }
+  },
+  unrenderNothing: function () {
+    if (this.spinners) {
+      _.each(this.spinners, function (s) {s.remove()});
+      this.spinners = null;
+    }
+  },
   renderNothing: function () {
-    var self = this;
-    if (self.spinners.length)
+    if (this.spinners) {
       return;
-
-    var main = $('#analytics_main_graph')
-    self.spinners.push(overlayWithSpinner(main));
-
-    var section = $('#analytics');
-    section.find('.small_graph_block').empty();
-    section.find('.small_graph_label .value').html('?');
-
-    $('.stats_visible_period').text('?');
+    }
+    this.spinners = [
+      overlayWithSpinner(this.largeGraphJQ)
+    ];
+    this.smallGraphsContainerJQ.find('.small_graph_label .value').text('?')
+  },
+  renderStatsBlock: function (descValue) {
+    if (!descValue) {
+      this.smallGraphsContainerJQ.html('');
+      this.renderNothing();
+      return;
+    }
+    this.unrenderNothing();
+    renderTemplate('new_stats_block', descValue, this.smallGraphsContainerJQ[0]);
+    $(this).trigger('menelaus.graphs-widget.rendered-stats-block');
   },
   zoomToSeconds: {
     minute: 60,
@@ -357,15 +763,18 @@ var StatGraphs = {
     month: 2678400,
     year: 31622400
   },
-  lastCompletedTimestamp: undefined,
-  update: function () {
+  forceNextRendering: function () {
+    this.lastCompletedTimestamp = undefined;
+  },
+  updateGraphs: function (configuration) {
     var self = this;
 
-    var configuration = self.graphsConfigurationCell.value;
     if (!configuration) {
       self.lastCompletedTimestamp = undefined;
       return self.renderNothing();
     }
+
+    self.unrenderNothing();
 
     var nowTStamp = (new Date()).valueOf();
     if (self.lastCompletedTimestamp && nowTStamp - self.lastCompletedTimestamp < 200) {
@@ -373,421 +782,155 @@ var StatGraphs = {
       return;
     }
 
-    var op = configuration.stats.op;
-    var stats = op.samples;
+    var stats = configuration.samples;
 
-    var timeOffset = configuration.stats.clientDate - configuration.stats.serverDate;
+    var timeOffset = configuration.clientDate - configuration.serverDate;
 
-    _.each(self.spinners, function (s) {
-      s.remove();
-    });
-    self.spinners = [];
-
-    var main = $('#analytics_main_graph');
-    var isPersistent = op.isPersistent;
-
-    $('#stats_nav_cache_container, #configure_cache_stats_items_container')[isPersistent ? 'hide' : 'show']();
-    $('#stats_nav_persistent_container, #configure_persistent_stats_items_container')[isPersistent ? 'show' : 'hide']();
-
+    // TODO: empty stats should be maybe handled elsewhere
     if (!stats) {
       stats = {timestamp: []};
       _.each(_.keys(configuration.infos), function (name) {
         stats[name] = [];
       });
-      op = _.clone(op);
-      op.samples = stats;
     }
 
-    var zoomMillis = (self.zoomToSeconds[DAL.cells.zoomLevel.value] || 60) * 1000;
+    var zoomMillis = (self.zoomToSeconds[configuration.zoomLevel] || 60) * 1000;
     var selected = configuration.selected;
-    $('.analytics_graph_main h2').html(selected.desc);
     var now = (new Date()).valueOf();
-    if (op.interval < 2000) {
-      now -= DAL.cells.samplesBufferDepth.value * 1000;
+    if (configuration.interval < 2000) {
+      now -= StatsModel.samplesBufferDepth.value * 1000;
     }
 
     maybeReloadAppDueToLeak();
 
-    plotStatGraph(main, stats[selected.name], stats.timestamp, {
+    plotStatGraph(self.largeGraphJQ, stats[selected.name], configuration.timestamp, {
       color: '#1d88ad',
       verticalMargin: 1.02,
       fixedTimeWidth: zoomMillis,
       timeOffset: timeOffset,
       lastSampleTime: now,
-      breakInterval: op.interval * 2.5,
+      breakInterval: configuration.interval * 2.5,
       maxY: configuration.infos.byName[selected.name].maxY
     });
 
-    $('.stats-period-container').toggleClass('missing-samples', !stats[selected.name] || !stats[selected.name].length);
-    var visibleSeconds = Math.ceil(Math.min(zoomMillis, now - stats.timestamp[0]) / 1000);
-    $('.stats_visible_period').text(isNaN(visibleSeconds) ? '?' : formatUptime(visibleSeconds));
-
-    var visibleBlockIDs = {};
-    _.each($(_.map(configuration.infos.blockIDs, $i)).filter(":has(.stats:visible)"), function (e) {
-      visibleBlockIDs[e.id] = e;
-    });
+    try {
+      var visibleBlockIDs = {};
+      _.each($(_.map(configuration.infos.blockIDs, $i)).filter(":has(.stats:visible)"), function (e) {
+        visibleBlockIDs[e.id] = e;
+      });
+    } catch (e) {
+      debugger
+      throw e;
+    }
 
     _.each(configuration.infos, function (statInfo) {
       if (!visibleBlockIDs[statInfo.blockId]) {
         return;
       }
       var statName = statInfo.name;
-      var area = $($i(statInfo.id));
-      var options = {
+      renderSmallGraph($($i(statInfo.id)), {
+        data: stats[statName] || [],
+        breakInterval: configuration.interval * 2.5,
+        timeOffset: timeOffset,
+        now: now,
+        zoomMillis: zoomMillis,
+        isSelected: selected.name == statName,
+        timestamp: configuration.timestamp,
         maxY: configuration.infos.byName[statName].maxY
-      };
-      renderSmallGraph(area, op, statName, selected.name == statName,
-                       zoomMillis, timeOffset, options);
+      });
     });
 
     self.lastCompletedTimestamp = (new Date()).valueOf();
-  },
-  init: function () {
-    $('.stats-block-expander').live('click', function () {
-      $(this).closest('.graph_nav').toggleClass('closed');
-      // this forces configuration refresh and graphs redraw
-      self.graphsConfigurationCell.invalidate();
-      self.lastCompletedTimestamp = undefined;
-    });
 
-    function initStatsCategory(infos, containerEl, data) {
-      var statItems = [];
-      var blockIDs = [];
-      _.each(data.blocks, function (aBlock) {
-        var blockName = aBlock.blockName;
-        aBlock.id = _.uniqueId("GB");
-        blockIDs.push(aBlock.id);
-        var stats = aBlock.stats;
-        statItems = statItems.concat(stats);
-        _.each(stats, function (statInfo) {
-          statInfo.id = _.uniqueId("G");
-          statInfo.blockId = aBlock.id;
-        });
-      });
-      _.each(statItems, function (item) {
-        infos.push(item);
-        infos.byName[item.name] = item;
-      });
-      infos.blockIDs = blockIDs;
-      renderTemplate('new_stats_block', data, containerEl);
-    }
-
-    initStatsCategory(
-      CacheStatInfos, $i('stats_nav_cache_container'),
-      {blocks: [
-        {blockName: "SERVER RESOURCES",
-         extraCSSClasses: "server_resources",
-         stats: [
-           {name: "mem_actual_free", desc: "Mem actual free"},
-           {name: "mem_free", desc: "Mem free"},
-           {name: "cpu_utilization_rate", desc: "CPU %"},
-           {name: "swap_used", desc: "swap_used"}]},
-        {blockName: "MEMCACHED",
-         stats: [
-           {name: "ops", desc: "Operations per sec.", 'default': true},
-           {name: "hit_ratio", desc: "Hit ratio (%)", maxY: 100},
-           {name: "mem_used", desc: "Memory bytes used"},
-           {name: "curr_items", desc: "Items count"},
-           {name: "evictions", desc: "RAM evictions per sec."},
-           {name: "cmd_set", desc: "Sets per sec."},
-           {name: "cmd_get", desc: "Gets per sec."},
-           {name: "bytes_written", desc: "Net. bytes TX per sec."},
-           {name: "bytes_read", desc: "Net. bytes RX per sec."},
-           {name: "get_hits", desc: "Get hits per sec."},
-           {name: "delete_hits", desc: "Delete hits per sec."},
-           {name: "incr_hits", desc: "Incr hits per sec."},
-           {name: "decr_hits", desc: "Decr hits per sec."},
-           {name: "delete_misses", desc: "Delete misses per sec."},
-           {name: "decr_misses", desc: "Decr misses per sec."},
-           {name: "get_misses", desc: "Get Misses per sec."},
-           {name: "incr_misses", desc: "Incr misses per sec."},
-           {name: "curr_connections", desc: "Connections count."},
-           {name: "cas_hits", desc: "CAS hits per sec."},
-           {name: "cas_badval", desc: "CAS badval per sec."},
-           {name: "cas_misses", desc: "CAS misses per sec."}]}]});
-
-    initStatsCategory(
-      PersistentStatInfos, $i('stats_nav_persistent_container'),
-      {blocks: [
-        {blockName: "SERVER RESOURCES",
-         extraCSSClasses: "server_resources",
-         stats: [
-           {name: "mem_actual_free", desc: "free memory"},
-           // {name: "mem_free", desc: "Mem free"},
-           {name: "cpu_utilization_rate", desc: "CPU utilization %", maxY: 100},
-           {name: "swap_used", desc: "swap usage"}]},
-        {
-          blockName: "PERFORMANCE",
-          columns: ['Totals', 'Read', 'Write', 'Moxi'],
-          stats: [
-            // column 1
-            // aggregated from gets, sets, incr, decr, delete
-            // Total ops. Likely doesn't include other types of commands
-            {desc: "ops per second", name: "ops", 'default': true},
-            // Read (cmd_get - ep_bg_fetched) / cmd_get * 100
-            {desc: "cache hit %", name: "ep_cache_hit_rate", maxY: 100},
-            {desc: "creates per second", name: "ep_ops_create"},
-            {desc: "local %", name: "proxy_local_ratio"},
-            // column 2
-            // Total ops - proxy_cmd_count
-            {desc: "direct per second", name: "direct_ops"},
-            // Read
-            {desc: "hit latency", name: "hit_latency", missing: true}, //?
-            // Write
-            {desc: "updates per second", name: "ep_ops_update"},
-            // Moxi
-            {desc: "local latency", name: "proxy_local_latency"},
-            // column 3
-            // Total ops through server-side moxi
-            {desc: "moxi per second", name: "proxy_cmd_count"},
-            // Read
-            {desc: "miss latency", name: "miss_latency", missing: true}, //?
-            // Write
-            {desc: "write latency", name: "ep_write_latency", missing: true}, // ?
-            // Moxi
-            {desc: "proxy %", name: "proxy_ratio", maxY: 100},
-            // column 4
-            // (Total) average object size)
-            {desc: "average object size", name: "avg_item_size", missing: true}, // need total size _including_ size on disk
-            // Read
-            {desc: "disk reads", name: "ep_bg_fetched"},
-            // Write
-            {desc: "back-offs per second", name: "ep_tap_total_queue_backoff"},
-            // Moxie
-            {desc: "proxy latency", name: "proxy_latency"}
-          ]
-        }, {
-          blockName: "vBUCKET RESOURCES",
-          extraCSSClasses: 'withtotal closed',
-          columns: ['Active', 'Replica', 'Pending', 'Total'],
-          stats: [
-            {desc: "active vBuckets", name: "vb_active_num"},
-            {desc: "replica vBuckets", name: "vb_replica_num"},
-            {desc: "pending vBuckets", name: "vb_pending_num"},
-            {desc: "total vBuckets", name: "ep_vb_total"},
-            // --
-            {desc: "active items", name: "curr_items"},
-            {desc: "replica items", name: "vb_replica_curr_items"},
-            {desc: "pending items", name: "vb_pending_curr_items"},
-            {desc: "total items", name: "curr_items_tot"},
-            // --
-            {desc: "% resident items", name: "vb_active_resident_items_ratio", maxY: 100},
-            {desc: "% resident items", name: "vb_replica_resident_items_ratio", maxY: 100},
-            {desc: "% resident items", name: "vb_pending_resident_items_ratio", maxY: 100},
-            {desc: "% resident items", name: "ep_resident_items_rate", maxY: 100},
-            // --
-            {desc: "new items per sec", name: "vb_active_ops_create"},
-            {desc: "new items per sec", name: "vb_replica_ops_create"},
-            {desc: "new items per sec", name: "vb_pending_ops_create", missing: true},
-            {desc: "new items per sec", name: "ep_ops_create"},
-            // --
-            {desc: "ejections per sec", name: "vb_active_eject"},
-            {desc: "ejections per sec", name: "vb_replica_eject"},
-            {desc: "ejections per sec", name: "vb_pending_eject"},
-            {desc: "ejections per sec", name: "ep_num_value_ejects"},
-            // --
-            {desc: "user data in RAM", name: "vb_active_itm_memory"},
-            {desc: "user data in RAM", name: "vb_replica_itm_memory"},
-            {desc: "user data in RAM", name: "vb_pending_itm_memory"},
-            {desc: "user data in RAM", name: "ep_kv_size"},
-            // --
-            {desc: "metadata in RAM", name: "vb_active_ht_memory"},
-            {desc: "metadata in RAM", name: "vb_replica_ht_memory"},
-            {desc: "metadata in RAM", name: "vb_pending_ht_memory"},
-            {desc: "metadata in RAM", name: "ep_ht_memory"} //,
-            // --
-            // TODO: this is missing in current ep-engine
-            // {desc: "disk used", name: "", missing: true},
-            // {desc: "disk used", name: "", missing: true},
-            // {desc: "disk used", name: "", missing: true},
-            // {desc: "disk used", name: "", missing: true}
-          ]
-        }, {
-          blockName: "DISK QUEUES",
-          extraCSSClasses: 'withtotal closed',
-          columns: ['Active', 'Replica', 'Pending', 'Total'],
-          stats: [
-            // {desc: "Active", name: ""},
-            // {desc: "Replica", name: ""},
-            // {desc: "Pending", name: ""},
-            // {desc: "Total", name: ""},
-
-            {desc: "items", name: "vb_active_queue_size"},
-            {desc: "items", name: "vb_replica_queue_size"},
-            {desc: "items", name: "vb_pending_queue_size"},
-            {desc: "items", name: "ep_diskqueue_items"},
-            // --
-            {desc: "queue memory", name: "vb_active_queue_memory"},
-            {desc: "queue memory", name: "vb_replica_queue_memory"},
-            {desc: "queue memory", name: "vb_pending_queue_memory"},
-            {desc: "queue memory", name: "ep_diskqueue_memory"},
-            // --
-            {desc: "fill rate", name: "vb_active_queue_fill"},
-            {desc: "fill rate", name: "vb_replica_queue_fill"},
-            {desc: "fill rate", name: "vb_pending_queue_fill"},
-            {desc: "fill rate", name: "ep_diskqueue_fill"},
-            // --
-            {desc: "drain rate", name: "vb_active_queue_drain"},
-            {desc: "drain rate", name: "vb_replica_queue_drain"},
-            {desc: "drain rate", name: "vb_pending_queue_drain"},
-            {desc: "drain rate", name: "ep_diskqueue_drain"},
-            // --
-            {desc: "average age", name: "vb_avg_active_queue_age"},
-            {desc: "average age", name: "vb_avg_replica_queue_age"},
-            {desc: "average age", name: "vb_avg_pending_queue_age"},
-            {desc: "average age", name: "vb_avg_total_queue_age"}
-          ]
-        }, {
-          blockName: "TAP QUEUES",
-          extraCSSClasses: 'withtotal closed',
-          columns: ['Replication', 'Rebalance', 'Clients', 'Total'],
-          stats: [
-            // {desc: "Replica", name: ""},
-            // {desc: "Rebalance", name: ""},
-            // {desc: "User", name: ""},
-            // {desc: "Total", name: ""},
-
-            {desc: "# tap senders", name: "ep_tap_replica_count"},
-            {desc: "# tap senders", name: "ep_tap_rebalance_count"},
-            {desc: "# tap senders", name: "ep_tap_user_count"},
-            {desc: "# tap senders", name: "ep_tap_total_count"},
-            // --
-            {desc: "# items", name: "ep_tap_replica_qlen"},
-            {desc: "# items", name: "ep_tap_rebalance_qlen"},
-            {desc: "# items", name: "ep_tap_user_qlen"},
-            {desc: "# items", name: "ep_tap_total_qlen"},
-            // --
-            {desc: "fill rate", name: "ep_tap_replica_queue_fill"},
-            {desc: "fill rate", name: "ep_tap_rebalance_queue_fill"},
-            {desc: "fill rate", name: "ep_tap_user_queue_fill"},
-            {desc: "fill rate", name: "ep_tap_total_queue_fill"},
-            // --
-            {desc: "drain rate", name: "ep_tap_replica_queue_drain"},
-            {desc: "drain rate", name: "ep_tap_rebalance_queue_drain"},
-            {desc: "drain rate", name: "ep_tap_user_queue_drain"},
-            {desc: "drain rate", name: "ep_tap_total_queue_drain"},
-            // --
-            {desc: "back-off rate", name: "ep_tap_replica_queue_backoff"},
-            {desc: "back-off rate", name: "ep_tap_rebalance_queue_backoff"},
-            {desc: "back-off rate", name: "ep_tap_user_queue_backoff"},
-            {desc: "back-off rate", name: "ep_tap_total_queue_backoff"},
-            // --
-            {desc: "# backfill remaining", name: "ep_tap_replica_queue_backfillremaining"},
-            {desc: "# backfill remaining", name: "ep_tap_rebalance_queue_backfillremaining"},
-            {desc: "# backfill remaining", name: "ep_tap_user_queue_backfillremaining"},
-            {desc: "# backfill remaining", name: "ep_tap_total_queue_backfillremaining"},
-            // --
-            {desc: "# remaining on disk", name: "ep_tap_replica_queue_itemondisk"},
-            {desc: "# remaining on disk", name: "ep_tap_rebalance_queue_itemondisk"},
-            {desc: "# remaining on disk", name: "ep_tap_user_queue_itemondisk"},
-            {desc: "# remaining on disk", name: "ep_tap_total_queue_itemondisk"}
-            // --
-          ]
-        }
-      ]});
-
-    var self = this;
-
-    self.selected = new LinkClassSwitchCell('graph', {
-      bindMethod: 'bind',
-      linkSelector: '.analytics-small-graph'});
-
-    var selected = self.selected;
-
-    var t;
-    _.each(PersistentStatInfos.concat(CacheStatInfos), function (statInfo) {
-      var statName = statInfo.name;
-      var area = $($i(statInfo.id));
-      if (!area.length) {
-        throw new Error("BUG");
-      }
-      if (!t) {
-        t = area;
-      } else {
-        t = t.add(area);
-      }
-      selected.addItem('analytics_graph_' + statName, statName, statInfo['default']);
-    });
-
-    selected.finalizeBuilding();
-
-    self.graphsConfigurationCell = Cell.compute(function (v) {
-      var selectedStatName = v.need(self.selected);
-      var stats = v.need(DAL.cells.stats);
-      var op = stats.op;
-      if (!op) {
-        return;
-      }
-      var infos = PersistentStatInfos;
-      if (!op.isPersistent) {
-        infos = CacheStatInfos;
-      }
-      if (!(selectedStatName in infos.byName) || !(selectedStatName in op.samples)) {
-        selected = infos[0];
-      } else {
-        selected = infos.byName[selectedStatName];
-      }
-
-      return {
-        selected: selected,
-        stats: stats,
-        infos: infos
-      };
-    });
-
-    self.graphsConfigurationCell.subscribeAny($m(self, 'update'));
-
-    Cell.compute(function (v) {
-      var stats = v.need(self.graphsConfigurationCell).stats;
-      var haveSystemStats = !!stats.op.samples.cpu_utilization_rate;
-      return haveSystemStats;
-    }).subscribeValue(function (haveSystemStats) {
-      var container = $('#stats_nav_persistent_container, #stats_nav_cache_container').need(2);
-      container[haveSystemStats ? 'addClass' : 'removeClass']('with_server_resources');
-    });
-
-    t.bind('mouseenter', mkHoverHandler('show'));
-    t.bind('mouseleave', mkHoverHandler('hide'));
-
-    function mkHoverHandler(method) {
-      return function (event) {
-        var hoverRect = $(event.currentTarget).data('hover-rect');
-        if (!hoverRect)
-          return;
-        hoverRect[method]();
-      }
-    }
+    $(self).trigger('menelaus.graphs-widget.rendered-graphs');
   }
+});
+
+$.fn.bindListCell = function (cell, options) {
+  var q = this;
+  q.need(1);
+  if (!q.is('select')) {
+    throw new Error('only select is supported');
+  }
+  if (q.data('listCellBinding')) {
+    throw new Error('already bound');
+  }
+  var onChange = options.onChange;
+  if (!onChange) {
+    throw new Error('I need onchange');
+  }
+
+  var latestOnChangeVal;
+  var latestOptionsList;
+
+  onChange = (function (onChange) {
+    return function (e) {
+      return onChange.call(this, e, (latestOnChangeVal = $(this).val()));
+    }
+  })(onChange);
+
+  var subscription = cell.subscribeValue(function (args) {
+    if (args && _.isEqual(latestOnChangeVal, args.list) && (args.selected || '') === latestOnChangeVal) {
+      // don't do anything if list of options and selected option is same
+      return;
+    }
+    q.unbind('change', onChange);
+    q.combobox('destroy');
+    q.html('');
+    if (!args) {
+      return;
+    }
+    var selected = args.selected || '';
+    latestOnChangeVal = undefined;
+    _.each(args.list, function (pair) {
+      var option = $("<option value='" + escapeHTML(pair[0]) + "'>" + escapeHTML(pair[1]) + "</option>");
+      option.boolAttr('selected', selected === pair[0]);
+      q.append(option);
+    });
+    q.bind('change', onChange).combobox()
+      .next('input').val(q.children(':selected').text());
+  });
+
+  q.data('listCellBinding', {
+    destroy: function () {
+      subscription.cancel();
+      q.combobox('destroy');
+      q.unbind('change', onChange);
+    }
+  });
+}
+$.fn.unbindListCell = function () {
+  var binding = this.data('listCellBinding');
+  if (binding) {
+    binding.destroy();
+  }
+  this.removeData('listCellBinding');
 }
 
+
 var AnalyticsSection = {
-  onKeyStats: function (cell) {
-    renderTemplate('top_keys', $.map(cell.value.hot_keys, function (e) {
+  onKeyStats: function (hotKeys) {
+    $('#top_keys_block').need(1).toggle(hotKeys !== null);
+    if (hotKeys == null) {
+      return;
+    }
+    renderTemplate('top_keys', _.map(hotKeys, function (e) {
       return $.extend({}, e, {total: 0 + e.gets + e.misses});
     }));
     $('#top_keys_container table tr:has(td):odd').addClass('even');
   },
   init: function () {
-    DAL.cells.zoomLevel = new LinkSwitchCell('zoom', {
-      firstItemIsDefault: true
+    var self = this;
+
+    StatsModel.hotKeysCell.subscribeValue($m(self, 'onKeyStats'));
+    prepareTemplateForCell('top_keys', StatsModel.hotKeysCell);
+
+    $('.stats-block-expander').live('click', function () {
+      $(this).closest('.graph_nav').toggleClass('closed');
+      //// this forces configuration refresh and graphs redraw
+      self.widget.forceNextRendering();
+      StatsModel.configurationExtra.setValue({});
     });
-
-    _.each('minute hour day week month year'.split(' '), function (name) {
-      DAL.cells.zoomLevel.addItem('zoom_' + name, name)
-    });
-
-    DAL.cells.zoomLevel.finalizeBuilding();
-
-    DAL.cells.zoomLevel.subscribeValue(function (zoomLevel) {
-      DAL.cells.statsOptions.update({
-        zoom: zoomLevel
-      });
-    });
-
-    DAL.cells.stats.subscribe($m(this, 'onKeyStats'));
-    prepareTemplateForCell('top_keys', DAL.cells.currentStatTargetCell);
-
-    StatGraphs.init();
 
     IOCenter.staleness.subscribeValue(function (stale) {
       $('.stats-period-container')[stale ? 'hide' : 'show']();
@@ -795,107 +938,176 @@ var AnalyticsSection = {
     });
 
     (function () {
-      function onChange() {
-        var newValue = $(this).val();
-        DAL.cells.statsBucketURL.setValue(newValue);
-      }
-
-      var bucketsSelectArgs = Cell.compute(function (v) {
+      var cell = Cell.compute(function (v) {
         var mode = v.need(DAL.cells.mode);
         if (mode != 'analytics') {
           return;
         }
 
         var allBuckets = v.need(DAL.cells.bucketsListCell);
-        var selectedBucket = v.need(DAL.cells.statsBucketDetails);
-        return {list: allBuckets,
-                selected: selectedBucket};
+        var selectedBucket = v.need(StatsModel.statsBucketDetails);
+        return {list: _.map(allBuckets, function (info) {return [info.uri, info.name]}),
+                selected: selectedBucket.uri};
       });
-
-      bucketsSelectArgs.subscribeValue(function (args) {
-        var select = $('#analytics_buckets_select').need(1);
-        select.unbind('change', onChange);
-        select.html('');
-
-        if (!args) {
-          return;
+      $('#analytics_buckets_select').bindListCell(cell, {
+        onChange: function (e, newValue) {
+          StatsModel.statsBucketURL.setValue(newValue);
         }
-
-        _.each(args.list, function (bucket) {
-          var option = $("<option value='" + escapeHTML(bucket.uri) + "'>" + escapeHTML(bucket.name) + "</option>");
-          option.boolAttr('selected', bucket.uri === args.selected.uri);
-          select.append(option);
-        });
-
-        select.bind('change', onChange).combobox()
-          .next('input').val(select.children(':selected').text());
       });
     })();
 
     (function () {
-      function onChange() {
-        var newValue = $(this).val();
-        if (!newValue) {
-          newValue = undefined;
-        }
-        DAL.cells.statsHostname.setValue(newValue);
-      }
-
-      var serversSelectArgs = Cell.compute(function (v) {
+      var cell = Cell.compute(function (v) {
         var mode = v.need(DAL.cells.mode);
         if (mode != 'analytics') {
           return;
         }
 
-        var allNodes = v.need(DAL.cells.statsNodesCell);
+        var allNodes = v.need(StatsModel.statsNodesCell);
         var selectedNode;
-        var statsHostname = v(DAL.cells.statsHostname);
+        var statsHostname = v(StatsModel.statsHostname);
 
         if (statsHostname) {
-          selectedNode = v.need(DAL.cells.currentStatTargetCell);
+          selectedNode = v.need(StatsModel.targetCell);
         }
 
-        return {list: allNodes.servers,
-                selected: selectedNode};
+        var list = _.map(allNodes.servers, function (srv) {return [srv.hostname, srv.hostname]});
+        list.unshift(['', 'All Server Nodes']);
+
+        return {list: list,
+                selected: selectedNode && selectedNode.hostname};
       });
-
-      serversSelectArgs.subscribeValue(function (args) {
-        var select = $('#analytics_servers_select').need(1);
-
-        select.unbind('change', onChange);
-        select.html('');
-
-        if (!args) {
-          return;
+      $('#analytics_servers_select').bindListCell(cell, {
+        onChange: function (e, newValue) {
+          StatsModel.statsHostname.setValue(newValue || undefined);
         }
-
-        var selectedName = args.selected ? args.selected.hostname : undefined;
-
-        select.append("<option value='all'>All Server Nodes</option>");
-
-        _.each(args.list, function (node) {
-          var escapedHostname = escapeHTML(node.hostname);
-          var option = $("<option value='" + escapedHostname + "'>" + escapedHostname + "</option>");
-          option.boolAttr('selected', node.hostname === selectedName);
-          select.append(option);
-        });
-
-        select.bind('change', onChange).combobox()
-          .next('input').val(select.children(':selected').text());
       });
     })();
+
+    self.widget = new GraphsWidget($('#analytics_main_graph'), $('#stats_container'), StatsModel.statsDescCell, StatsModel.graphsConfigurationCell);
+
+    Cell.needing(StatsModel.graphsConfigurationCell).compute(function (v, configuration) {
+      return configuration.timestamp.length == 0;
+    }).subscribeValue(function (missingSamples) {
+      $('.stats-period-container').toggleClass('missing-samples', !!missingSamples);
+    });
+    Cell.needing(StatsModel.graphsConfigurationCell).compute(function (v, configuration) {
+      var zoomMillis = GraphsWidget.prototype.zoomToSeconds[configuration.zoomLevel] * 1000;
+      return Math.ceil(Math.min(zoomMillis, configuration.serverDate - configuration.timestamp[0]) / 1000);
+    }).subscribeValue(function (visibleSeconds) {
+      $('.stats_visible_period').text(isNaN(visibleSeconds) ? '?' : formatUptime(visibleSeconds));
+    });
+
+    StatsModel.serverResourcesVisible.subscribeValue(function (visible) {
+      $('#analytics')[visible ? 'addClass' : 'removeClass']('with_server_resources');
+    });
+
+    (function () {
+      var selectionCell;
+      StatsModel.smallGraphSelectionCellCell.subscribeValue(function (cell) {
+        selectionCell = cell;
+      });
+
+      $(".analytics-small-graph").live("click", function (e) {
+        // don't intercept right arrow clicks
+        if ($(e.target).is(".right-arrow, .right-arrow *")) {
+          return;
+        }
+        e.preventDefault();
+        var graphParam = this.getAttribute('data-graph');
+        if (!graphParam) {
+          debugger
+          throw new Error("shouldn't happen");
+        }
+        if (!selectionCell) {
+          return;
+        }
+        selectionCell.setValue(graphParam);
+        self.widget.forceNextRendering();
+      });
+    })();
+
+    (function () {
+      function handler() {
+        var val = effectiveSelected.value;
+        val = val && val.name;
+        $('.analytics-small-graph.selected').removeClass('selected');
+        if (!val) {
+          return;
+        }
+        $(_.filter($('.analytics-small-graph[data-graph]'), function (el) {
+          return String(el.getAttribute('data-graph')) === val;
+        })).addClass('selected');
+      }
+      var effectiveSelected = Cell.compute(function (v) {return v.need(StatsModel.graphsConfigurationCell).selected});
+      effectiveSelected.subscribeValue(handler);
+      $(self.widget).bind('menelaus.graphs-widget.rendered-stats-block', handler);
+    })();
+
+    $(self.widget).bind('menelaus.graphs-widget.rendered-graphs', function () {
+      var desc = StatsModel.graphsConfigurationCell.value.selected.desc;
+      $('#analytics .current-graph-name').text(desc);
+
+
+    });
+
+    $(self.widget).bind('menelaus.graphs-widget.rendered-stats-block', function () {
+      $('#stats_container').hide();
+      _.each($('.analytics-small-graph:not(.dim)'), function (e) {
+        e = $(e);
+        var graphParam = e.attr('data-graph');
+        if (!graphParam) {
+          debugger
+          throw new Error("shouldn't happen");
+        }
+        var ul = e.find('.right-arrow ul').need(1);
+
+        var params = {sec: 'analytics', statsBucket: StatsModel.statsBucketDetails.value.uri};
+        var aInner;
+
+        if (!StatsModel.displayingSpecificStatsCell.value) {
+          params.statsStatName = graphParam;
+          aInner = "show by server";
+        } else {
+          params.graph = StatsModel.statsStatName.value;
+          params.statsHostname = graphParam;
+          aInner = "show this server";
+        }
+        var a = $('<a>' + aInner + '</a>')[0];
+        a.setAttribute('href', '#' + $.param(params));
+        var li = document.createElement('LI');
+        li.appendChild(a);
+        ul[0].appendChild(li);
+      });
+      $('#stats_container').show();
+    });
+
+    StatsModel.displayingSpecificStatsCell.subscribeValue(function (displayingSpecificStats) {
+      displayingSpecificStats = !!displayingSpecificStats;
+      $('#analytics .when-normal-stats').toggle(!displayingSpecificStats);
+      $('#analytics .when-specific-stats').toggle(displayingSpecificStats);
+    });
+
+    Cell.subscribeMultipleValues(function (specificStatsNamesSet, statsStatName) {
+      var text = '?';
+      if (specificStatsNamesSet && statsStatName) {
+        var pair = specificStatsNamesSet.byName[statsStatName];
+        if (pair) {
+          text = pair[1];
+        } else {
+          debugger
+        }
+      }
+      $('.specific-stat-description').text(text);
+    }, StatsModel.specificStatsNamesSetCell, StatsModel.effectiveSpecificStatName);
   },
   onLeave: function () {
-    setHashFragmentParam('graph', undefined);
-    DAL.cells.statsHostname.setValue(undefined);
-    DAL.cells.statsBucketURL.setValue(undefined);
+    setHashFragmentParam("zoom", undefined);
+    StatsModel.statsHostname.setValue(undefined);
+    StatsModel.statsBucketURL.setValue(undefined);
+    StatsModel.selectedGraphNameCell.setValue(undefined);
+    StatsModel.statsStatName.setValue(undefined);
   },
   onEnter: function () {
-    StatGraphs.update();
-  },
-  // called when we're already in this section and user tries to
-  // navigate to this section
-  navClick: function () {
-    this.onLeave(); // reset state
   }
 };

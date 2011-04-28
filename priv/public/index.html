@@ -391,7 +391,9 @@
           <div id="analytics" style="display:none">
             <span class="block nav float_right configure_view"></span>
             <h1>
-            DATA BUCKETS: <select id="analytics_buckets_select"></select> on <select id="analytics_servers_select"></select>
+              <span class="when-normal-stats">DATA BUCKETS: </span><span class="when-specific-stats"><em class="specific-stat-description"></em> for bucket: </span>
+              <select id="analytics_buckets_select"></select>
+              <span class="when-normal-stats"> on <select id="analytics_servers_select"></select></span>
             </h1>
             <div class="shadow_box">
               <div class="top"><div><div>&nbsp;</div></div></div>
@@ -411,7 +413,7 @@
                         <a id="zoom_month">Month</a> <a id="zoom_year">Year</a>
                       </h2>
                       <div class="analytics_graph_main">
-                        <h2></h2>
+                        <h2 class="current-graph-name"></h2>
                         <span class="graph_info_label block right active_node_count"><!-- 3 active nodes --></span>
                         <div id="analytics_main_graph_grid">
                           <div id="analytics_main_graph"></div>
@@ -420,7 +422,7 @@
                       <script id="new_stats_block_template" type="text/html">
                       {% _.each(blocks, function (blockInfo) { %}
                       <div id="{%= h(blockInfo.id) %}" class="darker_block graph_nav {%= blockInfo.extraCSSClasses %}">
-                        <h3 class="stats-block-expander"><ins></ins>{%= h(blockInfo.blockName) %}</h3>
+                        {% if (!blockInfo.hideThis) { %}<h3 class="stats-block-expander"><ins></ins>{%= h(blockInfo.blockName) %}</h3>{% } %}
                         <div class="stats">
                         {% if (blockInfo.columns) { %}
                           <ul class="col_headers">
@@ -430,21 +432,16 @@
                           </ul>
                         {% } %}
                         {% _.each(blockInfo.stats, function (statInfo) {var name = statInfo.name; var desc = statInfo.desc; %}
-                          <div id="{%= h(statInfo.id) %}" class="analytics-small-graph analytics_graph_{%= h(name) %} {%= (statInfo.missing ? 'dim' : '') %}">
+                          <div id="{%= h(statInfo.id) %}" class="analytics-small-graph {%= (statInfo.missing ? 'dim' : '') %}" data-graph="{%=h(name)%}">
                             <div class="small_graph_block" style="width: 168px; height: 36px;"></div>
                             <span class="small_graph_label">
-                              <span class="value">0</span><span class="label-text"> {%= desc %}</span>
+                              <span class="value">0</span><span class="label-text"> {%= h(desc) %}</span>
                             </span>
                             <!-- <input type="checkbox" > -->
-                            <!-- <ins> -->
-                              <!-- <ul> -->
-                                <!-- <li>dim</li> -->
-                                <!-- <li>tresholds&hellip;</li> -->
-                                <!-- <li>alerts&hellip;</li> -->
-                                <!-- <li>show by server</li> -->
-                                <!-- <li>reset alarms</li> -->
-                              <!-- </ul> -->
-                            <!-- </ins> -->
+                            <ins class="right-arrow">
+                              <ul>
+                              </ul>
+                            </ins>
                           </div>
                         {% }); %}
                           <div class="clear"></div>
@@ -452,8 +449,7 @@
                       </div>
                       {% }); %}
                       </script>
-                      <div id="stats_nav_cache_container" style="display:none;"></div>
-                      <div id="stats_nav_persistent_container" style="display:none;"></div>
+                      <div id="stats_container"></div>
                     </div>
                   </div>
                 </div>
@@ -465,7 +461,7 @@
               <div class="cnt">
                 <div class="pad">
                   <div class="content">
-                    <div class="section">
+                    <div class="section" id="top_keys_block">
                       <h2 class="header_2">
                       TOP KEYS
                       </h2>

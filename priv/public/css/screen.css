@@ -298,14 +298,17 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 
 .graph_nav .analytics-small-graph span {background:none;margin:0;}
 .graph_nav .dim {opacity:.25;filter:alpha(opacity=25);}
-.graph_nav > div > input[type="checkbox"] {position:absolute;top:6px;left:6px;}
-.graph_nav > div > ins {position:absolute;bottom:6px;right:0;z-index:98;display:block;width:0;height:0;border-style:solid;border-width:5px 5px 5px 10px;border-color:transparent transparent transparent #01b0ff;}
-.graph_nav > div > ins ul {position:absolute;top:-9px;left:2px;z-index:99;display:none;width:120px;font-size:11px;background:#fff;border:1px solid #aaa;
+
+div.analytics-small-graph > input[type="checkbox"] {position:absolute;top:6px;left:6px;}
+div.analytics-small-graph > .right-arrow {position:absolute;bottom:6px;right:0;z-index:98;display:block;width:0;height:0;border-style:solid;border-width:5px 5px 5px 10px;border-color:transparent transparent transparent #01b0ff;}
+div.analytics-small-graph > .right-arrow ul {position:absolute;top:-9px;left:2px;z-index:99;display:none;width:120px;font-size:11px;background:#fff;border:1px solid #aaa;
 							-moz-box-shadow:4px 4px 6px #aaa;-webkit-box-shadow:4px 4px 6px #aaa;box-shadow:4px 4px 6px #aaa;
 							filter:progid:DXImageTransform.Microsoft.shadow(direction=135, color=#aaaaaa, strength=5);}
-.graph_nav > div > ins:hover ul {display:block;}
-.graph_nav > div > ins ul li, .graph_nav > div > ins ul li a {padding:4px 6px 5px;color:#444245;}
-.graph_nav > div > ins ul li:hover, .graph_nav > div > ins ul li:hover a {background:#01b0ff;color:#fff;}
+div.analytics-small-graph > .right-arrow:hover ul {display:block;}
+div.analytics-small-graph > .right-arrow ul li, .graph_nav > div > ins ul li a {padding:4px 6px 5px;color:#444245;}
+div.analytics-small-graph > .right-arrow ul li:hover, .graph_nav > div > ins ul li:hover a {background:#01b0ff;color:#fff;}
+#analytics .right-arrow a:hover { text-decoration: none; }
+
 .graph_nav .spinner span {position:relative; width:150px !important; height:15px !important; padding:20px 0 0 0; font-size:11px; color:#839aa6; margin:0 0 0 8px; top:5px; background:url(../images/spinner/spinner_gr_nav.gif) 66px 0 no-repeat; text-align:center; line-height:12px !important;}
 .graph_nav .selected .spinner span {background:url(../images/spinner/spinner2_gr_nav.gif) 66px 0 no-repeat; color:#d8e0e5;}
 .graph_nav .vlabels {position:absolute;top:42px;left:-13px;width:10px;height:246px;background:url(../images/vlabels.gif) no-repeat;text-indent:-999;overflow:hidden;text-indent:-9000px;
