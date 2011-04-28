@@ -83,6 +83,23 @@ current_status(Expensive) ->
                 _ -> []
             end,
 
+    FetchStat = fun(Key, BStats, Dict) ->
+                        Val = b2i(proplists:get_value(Key, BStats)),
+                        dict:update_counter(Key, Val, Dict)
+                end,
+
+    Fun = fun(Bucket, Acc) ->
+                  case ns_memcached:connected(node(), Bucket) of
+                      true ->
+                          {ok, St} = ns_memcached:stats(Bucket),
+                          FetchStat(<<"curr_items">>, St, Acc);
+                      false ->
+                          Acc
+                  end
+          end,
+
+    BStats = lists:foldl(Fun, dict:new(), ns_bucket:get_bucket_names()),
+
     CPU = proplists:get_value(cpu_utilization_rate, Stats, 0),
     Total = proplists:get_value(swap_total, Stats, 0),
     Used = proplists:get_value(swap_used, Stats, 0),
@@ -91,9 +108,11 @@ current_status(Expensive) ->
      {memory, erlang:memory()},
      {cpu_utilization_rate, CPU},
      {swap_total, Total},
+     {total_items, dict_search(<<"curr_items">>, BStats, 0)},
      {swap_used, Used},
      {cluster_compatibility_version, ClusterCompatVersion}
      | element(2, ns_info:basic_info())] ++ Expensive.
+
 
 expensive_checks() ->
     ReplicationStatus = buckets_replication_statuses(),
@@ -139,4 +158,19 @@ replication_status(Bucket, BucketConfig) ->
                             0.0
                     end
             end
+    end.
+
+%% @doc utility to convert from binary to integer
+-spec b2i(binary()) -> integer().
+b2i(Bin) ->
+    list_to_integer(binary_to_list(Bin)).
+
+%% @doc search a dict for a key, if no key is present then return default
+-spec dict_search(any(), dict(), any()) -> any().
+dict_search(Key, Dict, Default) ->
+    case dict:find(Key, Dict) of
+        {ok, Value} ->
+            Value;
+        error ->
+            Default
     end.

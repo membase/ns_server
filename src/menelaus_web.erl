@@ -586,6 +586,7 @@ is_warming_up(Names) ->
 build_extra_node_info(Config, Node, InfoNode, _BucketsAll, Append) ->
 
     CPU = proplists:get_value(cpu_utilization_rate, InfoNode, 0),
+    Items = proplists:get_value(total_items, InfoNode, 0),
     Used = proplists:get_value(swap_used, InfoNode, 0),
     Total = proplists:get_value(swap_total, InfoNode, 0),
 
@@ -614,6 +615,7 @@ build_extra_node_info(Config, Node, InfoNode, _BucketsAll, Append) ->
     [{swap_total, Total},
      {swap_used, Used},
      {cpu_usage, CPU},
+     {total_items, Items},
      {uptime, list_to_binary(integer_to_list(UpSecs))},
      {memoryTotal, erlang:trunc(MemoryTotal)},
      {memoryFree, erlang:trunc(MemoryTotal - MemoryAlloced)},

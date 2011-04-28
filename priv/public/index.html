@@ -108,6 +108,7 @@
                   <th>Swap Usage</th>
                   <th>RAM Usage</th>
                   <th>CPU Usage</th>
+                  <th>Total Items</th>
                 </tr>
                 <!-- {% $.each(rows, function () { %} -->
                 <tr>
@@ -155,6 +156,8 @@
                         {%= h(truncateTo3Digits(Math.floor(this.cpu_usage * 100) / 100)) %}%
                       </div>
                     </td>
+
+                    <td>{%=this.total_items %}</td>
                   </tr>
                 <!-- {% }); %} -->
               </table>
