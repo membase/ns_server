@@ -975,13 +975,13 @@ function initAlertsSubscriber() {
         return;
       }
     }
-    alerts.push({msg: msg});
+    var tstamp = "<strong>["+window.formatTime(new Date().getTime())+"]</strong>";
+    alerts.push({msg: tstamp + " - " + msg});
   };
 
   function createAlertMsg() {
-    var tstamp = "<strong>["+window.formatTime(new Date().getTime())+"]</strong>";
     for (var i = 0, msg =  ""; i < alerts.length; i++) {
-      msg += tstamp + " - " + alerts[i].msg + "<br />";
+      msg += alerts[i].msg + "<br />";
     }
     return (msg === "" && false) || msg;
   };
