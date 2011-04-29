@@ -216,8 +216,10 @@ handle_cast(_, State) ->
     {noreply, State}.
 
 
-handle_info(check_started, #state{ timer=Timer, start_time=Start,
-                                   sock=Sock, bucket=Bucket} = State) ->
+handle_info(check_started, #state{status=connected} = State) ->
+    {noreply, State};
+handle_info(check_started, #state{timer=Timer, start_time=Start,
+                                  sock=Sock, bucket=Bucket} = State) ->
     case has_started(Sock) of
         true ->
             {ok, cancel} = timer:cancel(Timer),
