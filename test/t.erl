@@ -58,23 +58,24 @@ start_without_coverage() ->
     io:format("Running tests without coverage~n", []),
     Ext = code:objfile_extension(),
     Dir = config(ebin_dir),
-    case file:list_dir(Dir) of
-        {ok, Files} ->
-            BeamFileNames =
-                lists:filter(fun (File) ->
-                                     case filename:extension(File) of
-                                         Ext -> true;
-                                         _ -> false
-                                     end
-                             end,
-                             Files),
-            Modules = lists:map(fun(BFN) ->
-                                        list_to_atom(filename:basename(BFN, Ext))
-                                end,
-                                BeamFileNames),
-            eunit:test(Modules, [verbose]);
-        Error -> Error
-    end.
+    Wildcard = case os:getenv("T_WILDCARD") of
+                   false -> "*";
+                   X -> X
+               end,
+    Files = filelib:wildcard(Wildcard, Dir),
+    BeamFileNames =
+        lists:filter(fun (File) ->
+                             case filename:extension(File) of
+                                 Ext -> true;
+                                 _ -> false
+                             end
+                     end,
+                     Files),
+    Modules = lists:map(fun(BFN) ->
+                                list_to_atom(filename:basename(BFN, Ext))
+                        end,
+                        BeamFileNames),
+    eunit:test(Modules, [verbose]).
 
 config(cov_dir) ->
     filename:absname(filename:join([config(root_dir), "coverage"]));
