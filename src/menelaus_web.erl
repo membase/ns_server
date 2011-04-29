@@ -523,18 +523,19 @@ build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr) ->
                            error -> [down]
                        end,
             KV = build_node_info(Config, WantENode, InfoNode, LocalAddr),
+
             Status = case is_healthy(InfoNode) of
                          true ->
                              case Bucket of
                                  undefined ->
-                                     is_warming_up(BucketNames);
+                                     is_warming_up(WantENode, BucketNames);
                                  _ ->
                                      case lists:member(
                                             Bucket,
                                             proplists:get_value(
                                               active_buckets, InfoNode)) of
                                          true ->
-                                             is_warming_up(BucketNames);
+                                             is_warming_up(WantENode, BucketNames);
                                          false ->
                                              <<"unhealthy">>
                                                  end
@@ -575,8 +576,7 @@ build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr) ->
     end.
 
 
-is_warming_up(Names) ->
-    Node = node(),
+is_warming_up(Node, Names) ->
     case lists:all(fun(X) -> ns_memcached:connected(Node, X) end, Names) of
         true  -> <<"healthy">>;
         false -> <<"warmup">>
