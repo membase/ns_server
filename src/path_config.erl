@@ -26,9 +26,15 @@ component_path_key(etc) -> path_config_etcdir.
 
 -spec component_path(etc | tmp | data | lib | bin) -> string().
 component_path(NameAtom) ->
-    {ok, RV} = application:get_env(ns_server, component_path_key(NameAtom)),
-    ok = filelib:ensure_dir(RV),
-    RV.
+    try ets:lookup(path_config_override, component_path_key(NameAtom)) of
+        [{_,X}|_] -> X;
+        _ ->
+            erlang:error({empty_for, NameAtom})
+    catch error:badarg ->
+            {ok, RV} = application:get_env(ns_server, component_path_key(NameAtom)),
+            ok = filelib:ensure_dir(RV),
+            RV
+    end.
 
 -spec component_path(etc | tmp | data | lib | bin, string()) -> string().
 component_path(NameAtom, SubPath) ->
