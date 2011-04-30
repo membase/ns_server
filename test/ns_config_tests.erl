@@ -35,47 +35,50 @@
 -module(ns_config_tests).
 -include_lib("eunit/include/eunit.hrl").
 -include("ns_config.hrl").
--export([default/0]).
+-compile(export_all).
 
 all_test_() ->
-  {foreach,
-    fun() -> test_setup() end,
-    fun(V) -> test_teardown(V) end,
-  [
-    {"test_search_list",
-     ?_test(test_search_list())},
-    {"test_search_config",
-     ?_test(test_search_config())},
-    {"test_search_prop_config",
-     ?_test(test_search_prop_config())},
-    {"test_search_node",
-     ?_test(test_search_node())},
-    {"test_merge_config_static",
-     ?_test(test_merge_config_static())},
-    {"test_merge_config_dynamic",
-     ?_test(test_merge_config_dynamic())},
-    {"test_merge_config_ver",
-     ?_test(test_merge_config_ver())},
-    {"test_merge_config_timestamps",
-     ?_test(test_merge_config_timestamps())},
-    {"test_bin_persist",
-     ?_test(test_bin_persist())},
-    {"test_load_config_improper",
-     ?_test(test_load_config_improper())},
-    {"test_load_config",
-     ?_test(test_load_config())},
-    {"test_save_config",
-     ?_test(test_save_config())},
-    {"test_include_config",
-     ?_test(test_include_config())},
-    {"test_include_missing_config",
-     ?_test(test_include_missing_config())}
-   %% TODO: make this work
-   %%    {"test_svc",
-   %%     ?_test(test_svc())}
-  ]}.
+    {foreach,
+     fun() -> test_setup() end,
+     fun(V) -> test_teardown(V) end,
+     [
+      {"test_search_list",
+       ?_test(test_search_list())},
+      {"test_search_config",
+       ?_test(test_search_config())},
+      {"test_search_prop_config",
+       ?_test(test_search_prop_config())},
+      {"test_search_node",
+       ?_test(test_search_node())},
+      {"test_merge_config_static",
+       ?_test(test_merge_config_static())},
+      {"test_merge_config_dynamic",
+       ?_test(test_merge_config_dynamic())},
+      {"test_merge_config_ver",
+       ?_test(test_merge_config_ver())},
+      {"test_merge_config_timestamps",
+       ?_test(test_merge_config_timestamps())},
+      {"test_bin_persist",
+       ?_test(test_bin_persist())},
+      {"test_load_config_improper",
+       ?_test(test_load_config_improper())},
+      {"test_load_config",
+       ?_test(test_load_config())},
+      {"test_save_config",
+       ?_test(test_save_config())},
+      {"test_include_config",
+       ?_test(test_include_config())},
+      {"test_include_missing_config",
+       ?_test(test_include_missing_config())},
+      {spawn, {"test_svc",
+               ?_test(test_svc())}}
+     ]}.
 
 default() -> [].
+
+mergable(A) -> ns_config_default:mergable(A).
+
+upgrade_config(_) -> [].
 
 test_search_list() ->
     ?assertMatch(false, ns_config:search([], foo)),
@@ -358,14 +361,27 @@ test_save_config() ->
     ok.
 
 test_svc() ->
-    process_flag(trap_exit, true),
+    try
+        do_test_svc()
+    catch E:T ->
+            Stack = erlang:get_stacktrace(),
+            io:format("Details:~n~p~n~p~n", [{E,T}, Stack]),
+            erlang:E(T)
+    end.
+
+do_test_svc() ->
+    ets:new(path_config_override, [public, named_table, {read_concurrency, true}]),
+    [ets:insert(path_config_override, {K, "."}) || K <- [path_config_tmpdir, path_config_datadir,
+                                                         path_config_bindir, path_config_libdir,
+                                                         path_config_etcdir]],
+    OldFlag = process_flag(trap_exit, true),
     CP = data_file(),
     D = test_dir(),
     B = <<"{x,1}.">>,
     {ok, F} = file:open(CP, [write, raw]),
     ok = file:write(F, B),
     ok = file:close(F),
-    {ok, _ConfigPid} = ns_config:start_link({full, CP, D, ns_config_default}),
+    {ok, ConfigPid} = ns_config:start_link({full, CP, D, ns_config_tests}),
     (fun() ->
       C = ns_config:get(),
       R = ns_config:search(C, x),
@@ -382,7 +398,19 @@ test_svc() ->
       ?assertMatch(false, R),
       ok
      end)(),
-    ns_config:stop(),
+    erlang:exit(ConfigPid, shutdown),
+    receive
+        {'EXIT', ConfigPid, Reason} ->
+            ?assertEqual(shutdown, Reason)
+    after 5000 ->
+            io:format("timed out waiting for ns_config death. Killing~n"),
+            erlang:exit(ConfigPid, kill),
+            receive
+                {'EXIT', ConfigPid, _} -> ok
+            end,
+            erlang:error(ns_config_shutdown_timeout)
+    end,
+    erlang:process_flag(trap_exit, OldFlag),
     ok.
 
 test_include_config() ->

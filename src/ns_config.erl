@@ -38,6 +38,8 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-include("ns_common.hrl").
+
 -define(DEFAULT_TIMEOUT, 500).
 -define(TERMINATE_SAVE_TIMEOUT, 10000).
 
@@ -401,9 +403,54 @@ merge_vclocks(NewValue, OldValue) ->
 
 %% gen_server callbacks
 
+upgrade_config(Config) ->
+    Upgrader = fun (Cfg) ->
+                       (Cfg#config.policy_mod):upgrade_config(Cfg)
+               end,
+    do_upgrade_config(Config, Upgrader(Config), Upgrader).
+
+do_upgrade_config(Config, [], _Upgrader) -> Config;
+do_upgrade_config(Config, Changes, Upgrader) ->
+    ?log_info("Upgrading config by changes:~n~p~n", [Changes]),
+    ConfigList = config_dynamic(Config),
+    NewList =
+        lists:foldl(fun ({set, K,V}, Acc) ->
+                            case lists:keyfind(K, 1, Acc) of
+                                false ->
+                                    [{K,V} | Acc];
+                                {K, OldV} ->
+                                    NewV =
+                                        case is_list(OldV) of
+                                            true ->
+                                                case proplists:get_value(?METADATA_VCLOCK, OldV) of
+                                                    undefined ->
+                                                        %% no vclock on old value, don't set it
+                                                        V;
+                                                    _ ->
+                                                        increment_vclock(V, OldV)
+                                                end;
+                                            _ -> V
+                                        end,
+                                    lists:keyreplace(K, 1, Acc, {K, NewV})
+                            end
+                    end,
+                    ConfigList,
+                    Changes),
+    NewConfig = Config#config{dynamic=[NewList]},
+    do_upgrade_config(NewConfig, Upgrader(NewConfig), Upgrader).
+
 do_init(Config) ->
     erlang:process_flag(trap_exit, true),
-    {ok, Config}.
+    UpgradedConfig = upgrade_config(Config),
+    InitialState =
+        if
+            UpgradedConfig =/= Config ->
+                ?log_info("Upgraded initial config:~n~p~n", [UpgradedConfig]),
+                initiate_save_config(UpgradedConfig);
+            true ->
+                UpgradedConfig
+        end,
+    {ok, InitialState}.
 
 init({with_state, LoadedConfig} = Init) ->
     do_init(LoadedConfig#config{init = Init});
@@ -710,8 +757,18 @@ sync_announcements() ->
 
 -ifdef(EUNIT).
 
+setup_path_config() ->
+    ets:new(path_config_override, [public, named_table, {read_concurrency, true}]),
+    [ets:insert(path_config_override, {K, "."}) || K <- [path_config_tmpdir, path_config_datadir,
+                                                         path_config_bindir, path_config_libdir,
+                                                         path_config_etcdir]].
+
+teardown_path_config() ->
+    ets:delete(path_config_override).
+
 do_setup() ->
     mock_gen_server:start_link({local, ?MODULE}),
+    setup_path_config(),
     ok.
 
 shutdown_process(Name) ->
@@ -728,16 +785,17 @@ shutdown_process(Name) ->
     erlang:process_flag(trap_exit, OldWaitFlag).
 
 do_teardown(_V) ->
+    teardown_path_config(),
     shutdown_process(?MODULE),
     ok.
 
 all_test_() ->
     [{spawn, {foreach, fun do_setup/0, fun do_teardown/1,
-              [fun test_setup/0,
-               fun test_set/0,
-               fun test_update_config/0,
-               fun test_set_kvlist/0,
-               fun test_update/0]}},
+                   [fun test_setup/0,
+                    fun test_set/0,
+                    fun test_update_config/0,
+                    fun test_set_kvlist/0,
+                    fun test_update/0]}},
      {spawn, {foreach, fun setup_with_saver/0, fun teardown_with_saver/1,
               [fun test_with_saver_stop/0,
                fun test_clear/0,
@@ -875,10 +933,12 @@ send_config(Config, Pid) ->
 setup_with_saver() ->
     {ok, _} = gen_event:start_link({local, ns_config_events}),
     Parent = self(),
+    setup_path_config(),
     %% we don't want to kill this process when ns_config server dies,
     %% but we wan't to kill ns_config process when this process dies
     spawn(fun () ->
-                  Cfg = #config{dynamic = [[{a, [{b, 1}, {c, 2}]},
+                  Cfg = #config{dynamic = [[{config_version, {1,7}},
+                                            {a, [{b, 1}, {c, 2}]},
                                             {d, 3}]],
                                 policy_mod = ns_config_default,
                                 saver_mfa = {?MODULE, send_config, [save_config_target]}},
@@ -902,6 +962,7 @@ kill_and_wait(Pid) ->
     end.
 
 teardown_with_saver(_) ->
+    teardown_path_config(),
     kill_and_wait(whereis(ns_config)),
     kill_and_wait(whereis(ns_config_events)),
     ok.
@@ -1104,5 +1165,54 @@ test_clear_with_concurrent_save() ->
     %% returning to original config
     ?assertEqual({value, 3}, ns_config:search(d)),
     ?assertEqual(2, ns_config:search_prop(ns_config:get(), a, c)).
+
+upgrade_config_case(InitialList, Changes, ExpectedList) ->
+    Upgrader = fun (_) -> [] end,
+    upgrade_config_case(InitialList, Changes, ExpectedList, Upgrader).
+
+upgrade_config_case(InitialList, Changes, ExpectedList, Upgrader) ->
+    Config = #config{dynamic=[InitialList]},
+    UpgradedConfig = do_upgrade_config(Config,
+                                       Changes,
+                                       Upgrader),
+    ?assertEqual(lists:sort(ExpectedList),
+                 lists:sort(config_dynamic(UpgradedConfig))).
+
+upgrade_config_testgen(InitialList, Changes, ExpectedList) ->
+    Title = iolist_to_binary(io_lib:format("~p + ~p = ~p~n", [InitialList, Changes, ExpectedList])),
+    {Title,
+     fun () -> upgrade_config_case(InitialList, Changes, ExpectedList) end}.
+
+upgrade_config_test_() ->
+    T = [{[{a, 1}, {b, 2}], [{set, a, 2}, {set, c, 3}], [{a, 2}, {b, 2}, {c, 3}]},
+         {[{b, 2}, {a, 1}], [{set, a, 2}, {set, c, 3}], [{a, 2}, {b, 2}, {c, 3}]},
+         {[{b, 2}, {a, [{moxi, "asd"}, {memcached, "ffd"}]}, {c, 0}],
+          [{set, a, [{moxi, "new"}, {memcached, "newff"}]}, {set, c, 3}],
+          [{a, [{moxi, "new"}, {memcached, "newff"}]}, {b, 2}, {c, 3}]}
+        ],
+    [upgrade_config_testgen(I, C, E) || {I,C,E} <- T].
+
+
+upgrade_config_with_many_upgrades_test_() ->
+    {spawn, ?_test(test_upgrade_config_with_many_upgrades())}.
+
+test_upgrade_config_with_many_upgrades() ->
+    Initial = [{a, 1}],
+    Ref = make_ref(),
+    self() ! {Ref, [{set, a, 2}]},
+    self() ! {Ref, [{set, a, 3}]},
+    self() ! {Ref, []},
+    Upgrader = fun (_) ->
+                       receive
+                           {Ref, X} -> X
+                       end
+               end,
+    upgrade_config_case(Initial, Upgrader(any), [{a, 3}], Upgrader),
+    receive
+        X ->
+            erlang:error({unexpected_message, X})
+    after 0 ->
+            ok
+    end.
 
 -endif.
