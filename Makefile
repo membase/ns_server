@@ -177,8 +177,5 @@ Features/Makefile:
 
 .PHONY : features/Makefile
 
-parallel_cucumber: features/Makefile
-	$(MAKE) -k -C features all_branches
-
 ebucketmigrator: ebins deps_all
 	erl -noshell -noinput -pa ebin -s misc build_ebucketmigrator -s init stop
