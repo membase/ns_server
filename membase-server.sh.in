@@ -18,7 +18,6 @@ membase              hard    nofile                  <value>
 
 Where <value> is greater than 10240.
 EOF
-    exit 1
 fi
 
 datadir="@PREFIX@/var/lib/membase"
