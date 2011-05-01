@@ -37,7 +37,7 @@ setup_static_config() ->
                 _ ->
                     erlang:error("failed to read static config: " ++ get_config_path() ++ ". It must be readable file with list of pairs~n")
             end,
-    io:format("Terms = ~p~n", [Terms]),
+    error_logger:info_msg("Static config terms:~n~p~n", [Terms]),
     lists:foreach(fun ({K,V}) ->
                           case application:get_env(ns_server, K) of
                               undefined ->
