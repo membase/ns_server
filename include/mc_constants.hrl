@@ -35,11 +35,11 @@
 -define(CMD_SASL_AUTH,       16#21).
 -define(CMD_SASL_STEP,       16#22).
 
--define(CMD_CREATE_BUCKET, 16#25).
--define(CMD_DELETE_BUCKET, 16#26).
--define(CMD_LIST_BUCKETS , 16#27).
--define(CMD_EXPAND_BUCKET, 16#28).
--define(CMD_SELECT_BUCKET, 16#29).
+-define(CMD_CREATE_BUCKET, 16#85).
+-define(CMD_DELETE_BUCKET, 16#86).
+-define(CMD_LIST_BUCKETS , 16#87).
+-define(CMD_EXPAND_BUCKET, 16#88).
+-define(CMD_SELECT_BUCKET, 16#89).
 
 -define(CMD_SET_FLUSH_PARAM, 16#82).
 -define(CMD_SET_VBUCKET,     16#3d).
