@@ -292,8 +292,8 @@ var BucketDetailsDialog = mkClass({
     function enableForm() {
       self.formValidator.unpause();
       closeCleanup();
-      toDisable.boolAttr('disabled', false)
-        .add(self.dialog).css('cursor', 'auto');
+      toDisable.add(self.dialog)
+        .boolAttr('disabled', false).css('cursor', 'auto');
     }
   },
   startForm: function () {
