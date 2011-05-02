@@ -15,9 +15,13 @@
  **/
 var MonitorServersSection = {
   init: function () {
-    ServersSection.serversCell.subscribe(function() {
-      renderTemplate('monitor_servers', {rows:ServersSection.active}, $i('monitor_servers_container'));
+    ServersSection.serversCell.subscribeValue(function(servers) {
+      if (!servers) {
+        return;
+      }
+      renderTemplate('monitor_servers', {rows:servers.active}, $i('monitor_servers_container'));
     });
+    prepareTemplateForCell('monitor_servers', ServersSection.serversCell);
     DAL.cells.bucketsListCell.subscribeValue(function (list) {
       var empty = (list && list.length === 0);
       $('#monitor_servers table a.node_name')
