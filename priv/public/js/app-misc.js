@@ -1047,13 +1047,12 @@ function plotStatGraph(graphJQ, data, tstamps, options) {
     }
   };
 
-  // TODO: fix the lastSampleTime issue introduced in the "else if" below
   if (options.fixedTimeWidth && tstamps.length) {
     lastSampleTime = options.lastSampleTime || tstamps[tstamps.length-1];
     plotOptions.xaxis.max = lastSampleTime;
     plotOptions.xaxis.min = lastSampleTime - options.fixedTimeWidth;
   } else if (options.lastSampleTime) {
-    plotOptions.xaxis.max = lastSampleTime;
+    plotOptions.xaxis.max = options.lastSampleTime;
   }
 
   if (!tstamps.length) {
