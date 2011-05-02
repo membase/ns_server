@@ -65,12 +65,8 @@
             cluster; displaying cached information!</span>
             <div class="monitor-servers-subsection"><h1>Monitor Servers</h1>
               <div class="shadow_box">
-                <div class="top"><div><div>&nbsp;</div></div></div>
-                <div class="cnt">
-                  <div class="pad">
                     <div class="content">
                       <div class="panes">
-                        <div class="tab_holder">
                           <div id="monitor_servers_container"></div>
                           <script id="monitor_servers_template" type="text/html">
                           <table class="lined_tab">
@@ -136,12 +132,8 @@
                             <!-- {% }); %} -->
                           </table>
                           </script>
-                        </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-                <div class="bottom"><div><div>&nbsp;</div></div></div>
               </div>
             </div>
             <!-- END shadow box -->
@@ -152,9 +144,6 @@
             <h1>CLUSTER OVERVIEW</h1>
             <div id="notice_container"></div>
             <div class="shadow_box">
-              <div class="top"><div><div>&nbsp;</div></div></div>
-              <div class="cnt">
-                <div class="pad">
                   <div class="content">
                     <div class="hdr">
                       <span class="staleness-notice">Difficulties communicating
@@ -174,16 +163,10 @@
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
-              <div class="bottom"><div><div>&nbsp;</div></div></div>
             </div>
             <!-- END shadow box -->
 
             <div class="shadow_box">
-            <div class="top"><div><div>&nbsp;</div></div></div>
-            <div class="cnt">
-              <div class="pad">
                 <div class="content">
                   <div class="hdr">
                     <span class="staleness-notice">Difficulties communicating
@@ -204,14 +187,8 @@
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-            <div class="bottom"><div><div>&nbsp;</div></div></div>
           </div>
           <div class="shadow_box">
-            <div class="top"><div><div>&nbsp;</div></div></div>
-            <div class="cnt">
-              <div class="pad">
                 <div class="content">
                   <div class="hdr">
                     <span class="staleness-notice">Difficulties communicating with
@@ -251,9 +228,6 @@
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-            <div class="bottom"><div><div>&nbsp;</div></div></div>
           </div>
         </div>
 
@@ -263,7 +237,6 @@
               Fail Over Warning: <span class="warning-text"></span>
             </div>
             <div class="shadow_box">
-              <div class="cnt">
                 <div class="content">
                   <!-- shadow box -->
                   <div class="header_2 servers_header">
@@ -288,7 +261,6 @@
                     </div>
                   </div>
                 </div>
-              </div>
             </div>
           </div>
 
@@ -396,9 +368,6 @@
               <span class="when-normal-stats"> on <select id="analytics_servers_select"></select></span>
             </h1>
             <div class="shadow_box">
-              <div class="top"><div><div>&nbsp;</div></div></div>
-              <div class="cnt">
-                <div class="pad">
                   <div class="content">
                     <div class="section">
                       <h2 class="header_2">
@@ -452,14 +421,8 @@
                       <div id="stats_container"></div>
                     </div>
                   </div>
-                </div>
-              </div>
-              <div class="bottom"><div><div>&nbsp;</div></div></div>
             </div><!-- shadow_box -->
             <div class="shadow_box">
-              <div class="top"><div><div>&nbsp;</div></div></div>
-              <div class="cnt">
-                <div class="pad">
                   <div class="content">
                     <div class="section" id="top_keys_block">
                       <h2 class="header_2">
@@ -482,9 +445,6 @@
                       </script>
                     </div> <!-- section -->
                   </div>
-                </div>
-              </div>
-              <div class="bottom"><div><div>&nbsp;</div></div></div>
             </div> <!-- END shadow box -->
           </div>
 
@@ -495,9 +455,6 @@
             </div>
             <div class="membase-buckets-subsection"><h1>Membase Buckets<span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span></h1>
               <div class="shadow_box">
-                <div class="top"><div><div>&nbsp;</div></div></div>
-                <div class="cnt">
-                  <div class="pad">
                     <div class="content">
                       <div id="monitor_persistent_buckets_list_container"></div>
                       <script id="monitor_persistent_buckets_list_template" type="text/html">
@@ -539,17 +496,11 @@
                       </table>
                       </script>
                     </div>
-                  </div>
-                </div>
-                <div class="bottom"><div><div>&nbsp;</div></div></div>
               </div>
             </div>
             <div class="memcached-buckets-subsection">
               <h1>Memcached Buckets<span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span></h1>
               <div class="shadow_box">
-                <div class="top"><div><div>&nbsp;</div></div></div>
-                <div class="cnt">
-                  <div class="pad">
                     <div class="content">
                       <div id="monitor_cache_buckets_list_container"></div>
                       <script id="monitor_cache_buckets_list_template" type="text/html">
@@ -592,9 +543,6 @@
                       </table>
                       </script>
                     </div>
-                  </div>
-                </div>
-                <div class="bottom"><div><div>&nbsp;</div></div></div>
               </div>
             </div>
           </div>
@@ -602,9 +550,7 @@
           <div id="buckets" style="display:none">
             <!-- shadow box -->
             <h1>Data Buckets</h1>
-            <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div>
-              <div class="cnt">
-                <div class="pad">
+            <div class="shadow_box">
                   <div class="content">
                     <div class="darker_block" id="manage_buckets_top_bar">
                         <div class="pad_10 right buckets_action_bar clearfix">
@@ -614,9 +560,6 @@
                     </div>
                     <div id="bucket_list_container"></div>
                   </div>
-                </div>
-              </div>
-              <div class="bottom"><div><div>&nbsp;</div></div></div>
             </div>
             <!-- END shadow box -->
 
@@ -723,12 +666,8 @@
             </span>
             <h1>Log</h1>
             <div class="shadow_box">
-              <div class="top"><div><div>&nbsp;</div></div></div>
-              <div class="cnt">
-                <div class="pad">
                   <div class="content">
                     <div class="panes">
-                      <div class="tab_holder">
                         <div id="alert_logs_container"></div>
                         <script id="alert_logs_template" type="text/html">
                         <table class="lined_tab">
@@ -752,12 +691,8 @@
                           <!-- {% }); %} -->
                         </table>
                         </script>
-                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
-              <div class="bottom"><div><div>&nbsp;</div></div></div>
             </div>
             <!-- END shadow box -->
           </div>
@@ -766,9 +701,6 @@
             <!-- shadow box -->
             <h1>Notifications</h1>
             <div class="shadow_box">
-              <div class="top"><div><div>&nbsp;</div></div></div>
-              <div class="cnt">
-                <div class="pad">
                   <div class="content">
                     <div class="hdr">Update Notifications</div>
                     <div class="section notifications-updates">
@@ -820,9 +752,6 @@
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
-              <div class="bottom"><div><div>&nbsp;</div></div></div>
             </div>
             <!-- END shadow box -->
           </div>
@@ -1394,20 +1323,24 @@
 </div>
 <!-- END init_block -->
 <script id="notice_template" type="text/html">
-  <div class="shadow_box notice"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
+<div class="shadow_box notice">
+  <div class="content">
     <h2 class="header_2">Membase Server Message<span style="float: right; color: black; font-size: 13px;">click to dismiss</span></h2>
     <div class="pad_10 success_msg">
       <p class="info_text">{%= h(text) %}</p>
     </div>
-  </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
+  </div>
+</div>
 </script>
 <script id="noticeErr_template" type="text/html">
-  <div class="shadow_box notice"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
+<div class="shadow_box notice">
+  <div class="content">
     <h2 class="header_2">Membase Server Alert<span style="float: right; color: black; font-size: 13px;">click to dismiss</span></h2>
     <div class="pad_10 error_msg">
       <p class="info_text">{%= h(text) %}</p>
     </div>
-  </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
+  </div>
+</div>
 </script>
 
 <div class="popup_2"></div>
