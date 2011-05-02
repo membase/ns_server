@@ -10,7 +10,7 @@
 <meta http-equiv="X-UA-Compatible" content="chrome=1">
 </head>
 <body class="auth nojs">
-<script>document.body.className = "auth";</script>
+  <script>document.body.className = "auth";</script>
   <div class="io-error-notice-wrapper"><span class="io-error-notice" style="display:none;"></span></div>
   <div id="container">
     <div class="page-header">
@@ -24,17 +24,17 @@
     </div> <!-- header -->
 
     <div id="mainContainer" class="main_holder">
-<table width="100%">
-  <tr>
-    <td class="leftNav">
-      <h1>MONITOR</h1>
-      <ul>
-        <!--<li class="line"></li>-->
-        <li class="line"><a id="switch_overview" href="#visitSec=overview">Cluster Overview</a></li>
-        <li class="line"><a id="switch_monitor_buckets" href="#visitSec=monitor_buckets">Data Buckets</a></li>
-        <li class="line"><a id="switch_monitor_servers" href="#visitSec=monitor_servers">Server Nodes</a></li>
-        <li class="line"><a id="switch_log" href="#visitSec=log">Log</a></li>
-      </ul>
+      <table width="100%">
+        <tr>
+          <td class="leftNav">
+            <h1>MONITOR</h1>
+            <ul>
+              <!--<li class="line"></li>-->
+              <li class="line"><a id="switch_overview" href="#visitSec=overview">Cluster Overview</a></li>
+              <li class="line"><a id="switch_monitor_buckets" href="#visitSec=monitor_buckets">Data Buckets</a></li>
+              <li class="line"><a id="switch_monitor_servers" href="#visitSec=monitor_servers">Server Nodes</a></li>
+              <li class="line"><a id="switch_log" href="#visitSec=log">Log</a></li>
+            </ul>
 
       <h1>MANAGE</h1>
       <ul>
@@ -51,703 +51,804 @@
         </script>
       </ul>
 
-      <h1>SUPPORT</h1>
-      <ul>
-        <li class="line"><a id="switch_support_docs" href="http://techzone.couchbase.com/wiki/display/membase/Getting+Started" target="MCWebHelp">Documentation</a></li>
-        <li class="line"><a id="switch_support_forums" href="http://techzone.couchbase.com/forums/membase/membase-server-16x" target="nsforums">Support Forums</a></li>
-      </ul>
-    </td>
-    <td id="mainPanel">
+            <h1>SUPPORT</h1>
+            <ul>
+              <li class="line"><a id="switch_support_docs" href="http://techzone.couchbase.com/wiki/display/membase/Getting+Started" target="MCWebHelp">Documentation</a></li>
+              <li class="line"><a id="switch_support_forums" href="http://techzone.couchbase.com/forums/membase/membase-server-16x" target="nsforums">Support Forums</a></li>
+            </ul>
+          </td>
+          <td id="mainPanel">
 
-    <div id="monitor_servers" style="display:none">
-      <!-- Shadow box -->
-      <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
-      <div class="monitor-servers-subsection"><h1>Monitor Servers</h1>
-        <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
-            <div class="panes">
-              <div class="tab_holder">
-                <div id="monitor_servers_container"></div>
-                <script id="monitor_servers_template" type="text/html">
-              <table class="lined_tab">
+          <div id="monitor_servers" style="display:none">
+            <!-- Shadow box -->
+            <span class="staleness-notice">Difficulties communicating with the
+            cluster; displaying cached information!</span>
+            <div class="monitor-servers-subsection"><h1>Monitor Servers</h1>
+              <div class="shadow_box">
+                <div class="top"><div><div>&nbsp;</div></div></div>
+                <div class="cnt">
+                  <div class="pad">
+                    <div class="content">
+                      <div class="panes">
+                        <div class="tab_holder">
+                          <div id="monitor_servers_container"></div>
+                          <script id="monitor_servers_template" type="text/html">
+                          <table class="lined_tab">
+                            <col width="">
+                            <tr>
+                              <th>Server Node Name</th>
+                              <th>Swap Usage</th>
+                              <th>RAM Usage</th>
+                              <th>CPU Usage</th>
+                              <th>Total Items</th>
+                            </tr>
+                            <!-- {% $.each(rows, function () { %} -->
+                            <tr>
+                              <td>
+                                <a class="node_name disable-if-stale" href="#sec=analytics&statsHostname={%= h(this.hostname) %}">
+                                {%= V.stripPort(this.hostname, rows) %}
+                                </a>
+                              </td>
+                              <td>
+                                <div class="usage_smallest_info">
+                                  <div class="usage_smallest">
+                                    <div class="side_shadow">
+                                      <div class="unused">
+                                        <div class="used" style="width:1%;"></div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {%= V.setPercentBar(this.swap_used / this.swap_total) %}
+                                  {%= h(truncateTo3Digits(Math.floor(((this.swap_used / this.swap_total) || 0) * 100) / 100)) %}%
+                                </div>
+                              </td>
+
+                              <td>
+                                <div class="usage_smallest_info">
+                                  <div class="usage_smallest">
+                                    <div class="side_shadow">
+                                      <div class="unused">
+                                        <div class="used" style="width:1%;"></div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {%= V.setPercentBar((this.memoryTotal - this.memoryFree) / this.memoryTotal * 100) %}
+                                  {%= h(truncateTo3Digits((this.memoryTotal - this.memoryFree) / this.memoryTotal * 100)) %}%
+                                </div>
+                              </td>
+
+                              <td>
+                                <div class="usage_smallest_info">
+                                  <div class="usage_smallest">
+                                    <div class="side_shadow">
+                                      <div class="unused">
+                                        <div class="used" style="width:1%;"></div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {%= V.setPercentBar(this.cpu_usage)  %}
+                                  {%= h(truncateTo3Digits(Math.floor(this.cpu_usage * 100) / 100)) %}%
+                                </div>
+                              </td>
+
+                              <td>{%=this.total_items %}</td>
+                            </tr>
+                            <!-- {% }); %} -->
+                          </table>
+                          </script>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="bottom"><div><div>&nbsp;</div></div></div>
+              </div>
+            </div>
+            <!-- END shadow box -->
+          </div>
+
+          <div id="overview" style="display:none">
+            <!-- shadow box -->
+            <h1>CLUSTER OVERVIEW</h1>
+            <div id="notice_container"></div>
+            <div class="shadow_box">
+              <div class="top"><div><div>&nbsp;</div></div></div>
+              <div class="cnt">
+                <div class="pad">
+                  <div class="content">
+                    <div class="hdr">
+                      <span class="staleness-notice">Difficulties communicating
+                      with the cluster; displaying cached information!</span>Cluster</div>
+                    <div class="section" id="overview_clusters_block">
+                      <div class="item ram-item">
+                        <div class="label">
+                          <strong>RAM Overview</strong>
+                        </div>
+                        <div class="line_cnt"></div>
+                      </div>
+                      <div class="item disk-item">
+                        <div class="label">
+                          <strong>Disk Overview</strong>
+                        </div>
+                        <div class="line_cnt"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="bottom"><div><div>&nbsp;</div></div></div>
+            </div>
+            <!-- END shadow box -->
+
+            <div class="shadow_box">
+            <div class="top"><div><div>&nbsp;</div></div></div>
+            <div class="cnt">
+              <div class="pad">
+                <div class="content">
+                  <div class="hdr">
+                    <span class="staleness-notice">Difficulties communicating
+                    with the cluster; displaying cached information!</span>
+                    Buckets <span>(<span class="buckets-number">??</span> active)</span>
+                  </div>
+                  <div class="section">
+                    <div class="item">
+                      <div class="graph_main">
+                        <span class="graph_info_label">Operations per second</span>
+                        <div id="overview_ops_graph" class="graph"></div>
+                      </div>
+                      <div class="graph_main">
+                        <span class="graph_info_label">Disk fetches per second</span>
+                        <div id="overview_reads_graph" class="graph"></div>
+                      </div>
+                      <div class="no_stats_marker">Waiting for samples...</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="bottom"><div><div>&nbsp;</div></div></div>
+          </div>
+          <div class="shadow_box">
+            <div class="top"><div><div>&nbsp;</div></div></div>
+            <div class="cnt">
+              <div class="pad">
+                <div class="content">
+                  <div class="hdr">
+                    <span class="staleness-notice">Difficulties communicating with
+                    the cluster; displaying cached information!</span>Servers
+                  </div>
+                  <div class="section" id="overview_servers_block">
+                    <div class="item ovf">
+                      <div class="actservers">
+                        <h3>Active Servers: <span class="active-servers-count">??</span></h3>
+                        <!-- <p>CPU Load Max: <b>98%</b></p> -->
+                        <!-- <p>CPU Load Avg: <b>98%</b></p> -->
+                        <!-- <p>CPU Load Min: <b>98%</b></p> -->
+                        <!-- <a href="#">Monitor All Servers</a> -->
+                      </div>
+                      <ul>
+                        <li class="fail">
+                          <span class="when-non-zero">
+                            <a href="#visitServersTab=pending">Servers Failed Over: <span class="failed-over-count">??</span></a>
+                            <span class="badge"><span class="failed-over-count">??</span></span>
+                          </span>
+                          <span class="when-zero">Servers Failed Over: 0</span>
+                        </li>
+                        <li class="down">
+                          <span class="when-non-zero">
+                            <a href="#visitServersTab=active">Servers Down: <span class="down-count">??</span></a>
+                            <span class="badge"><span class="down-count">??</span></span>
+                          </span>
+                          <span class="when-zero">Servers Down: 0</span>
+                        </li>
+                        <li class="pending">
+                          <span class="when-non-zero">
+                            <a href="#visitServersTab=pending">Servers Pending Rebalance: <span class="pending-count">??</span></a>
+                            <span class="badge"><span class="pending-count">??</span></span>
+                          </span><span class="when-zero">Servers Pending Rebalance: 0</span>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="bottom"><div><div>&nbsp;</div></div></div>
+          </div>
+        </div>
+
+          <div id="servers" style="display:none">
+            <h1>SERVERS</h1>
+            <div class="warning_message failover_warning">
+              Fail Over Warning: <span class="warning-text"></span>
+            </div>
+            <div class="shadow_box">
+              <div class="cnt">
+                <div class="content">
+                  <!-- shadow box -->
+                  <div class="header_2 servers_header">
+                    <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+                    <a class="add_button btn_1"><span>Add Server</span></a>
+                    <a class="rebalance_button btn_1"><span>Rebalance</span></a>
+                    <a class="stop_rebalance_button btn_1"><span>Stop Rebalance</span></a>
+                    <ul class="tabs switcher">
+                      <li class="tab_left"><a href="#sec=servers&serversTab=0">Active Servers</a></li>
+                      <li class="tab_right" id="rebalance_tab">
+                        <a href="#sec=servers&serversTab=1">Pending Rebalance</a>
+                        <span class="badge"><span>1</span></span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="panes">
+                    <div>
+                      <div id="active_server_list_container" class="servers-not-rebalancing servers_list"></div>
+                      <div id="rebalancing_list_container" class="servers-rebalancing"></div>
+                    </div><div>
+                      <div id="pending_server_list_container" class="servers_list"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <script id="manage_server_list_template" type="text/html">
+          <ul>
+          <!-- {% if (!rows.length) { %} -->
+            <li class="server_row rebalance_empty">
+              <span class="rebalance_empty_message">There are no servers pending rebalance.</span>
+            </li>
+          <!-- {% } %} -->
+          <!-- {% _.each(rows, function (s) { %} -->
+            <!-- {% if (s.clusterMembership == 'inactiveAdded') { %}-->
+            <li class="server_row pending_add {%= s.nodeClass %}">{%= V.setData('server', s) %}
+              {% if (expandingAllowed) { %}<a class="serverName" href="#openServer={%= h(s.otpNode) %}">{%= V.stripPort(s.hostname, rows) %}</a>
+              {% } else { %}<span class="serverName">{%= V.stripPort(s.hostname, rows) %}</span>{% } %}
+              <a href="#" class="btn_cancel eject_server">Cancel</a>
+              <span class="pending_add_message">Pending Add</span>
+            </li>
+            <!-- {% } else if (s.pendingEject) { %} -->
+            <li class="server_row pending_removal {%= s.nodeClass %}">{%= V.setData('server', s) %}
+              {% if (expandingAllowed) { %}<a class="serverName" href="#openServer={%= h(s.otpNode) %}">{%= V.stripPort(s.hostname, rows) %}</a>
+              {% } else { %}<span class="serverName">{%= V.stripPort(s.hostname, rows) %}</span>{% } %}
+              <a href="#" class="btn_cancel remove_from_list">Cancel</a>
+              <span class="pending_removal_message">Pending Removal</span>
+            </li>
+            <!-- {% } else { %} -->
+              <!-- {% if (s.reAddPossible) { %} -->
+              <li class="add_back_row">{%= V.setData('server', s) %}
+                <a href="#" class="add_back_btn re_add_button"></a>
+                <span class="add_b_message">This server is now reachable. Do you
+                want to add it back to the cluster on the next rebalance?</span>
+              </li>
+              <!-- {% } %} -->
+            <li class="server_row {%= s.nodeClass %}">{%= V.setData('server', s) %}
+              {% if (expandingAllowed) { %}<a href="#openServer={%= h(s.otpNode) %}" class="serverName">{%= V.stripPort(s.hostname, rows) %}</a>{%
+              } else { %}<span class="serverName">{%= V.stripPort(s.hostname, rows) %}</span>{% } %}
+              <a class="list_button btn_width_2 eject_server"><span>Remove Server</span></a>
+              <a class="list_button btn_width_1 failover_server"><span>Fail Over</span></a>
+              <span class="failed_over_message">Failed Over: Pending Removal</span>
+            </li>
+            <!-- {% } %} -->
+            <!-- {% if (expandingAllowed) { %} -->
+              <li class="settings-placeholder" style="display:none;">{%= ServersSection.renderServerDetails(s) %}</li>
+            <!-- {% } %} -->
+          <!-- {% }); %} -->
+          </ul>
+          </script>
+
+          <script id="server_details_template" type="text/html">
+          <div class="first gong_rb">
+            <div class="pad">
+              <a class="edit_btn float_right disabled">Edit</a>
+              <table class="server_details_tab">
+                <col width="230">
                 <col width="">
                 <tr>
-                  <th>Server Node Name</th>
-                  <th>Swap Usage</th>
-                  <th>RAM Usage</th>
-                  <th>CPU Usage</th>
-                  <th>Total Items</th>
+                    <td>Server Name: <span>{%= h(hostname) %}</span></td>
+                    <td>Uptime: <span>{%= h(formatUptime(uptime)) %}</span></td>
                 </tr>
-                <!-- {% $.each(rows, function () { %} -->
                 <tr>
-                    <td>
-                      <a class="node_name disable-if-stale" href="#sec=analytics&statsHostname={%= h(this.hostname) %}">
-                        {%= V.stripPort(this.hostname, rows) %}
-                      </a>
-                    </td>
-                    <td>
-                      <div class="usage_smallest_info">
-                        <div class="usage_smallest">
-                          <div class="side_shadow">
-                            <div class="unused">
-                              <div class="used" style="width:1%;"></div>
-                            </div>
-                              </div>
-                        </div>{%= V.setPercentBar(this.swap_used / this.swap_total) %}
-                        {%= h(truncateTo3Digits(Math.floor(((this.swap_used / this.swap_total) || 0) * 100) / 100)) %}%
-                      </div>
-                    </td>
-
-                    <td>
-                      <div class="usage_smallest_info">
-                        <div class="usage_smallest">
-                          <div class="side_shadow">
-                            <div class="unused">
-                              <div class="used" style="width:1%;"></div>
-                            </div>
-                              </div>
-                        </div>
-                        {%= V.setPercentBar((this.memoryTotal - this.memoryFree) / this.memoryTotal * 100) %}
-                        {%= h(truncateTo3Digits((this.memoryTotal - this.memoryFree) / this.memoryTotal * 100)) %}%
-                      </div>
-                    </td>
-
-                    <td>
-                      <div class="usage_smallest_info">
-                        <div class="usage_smallest">
-                          <div class="side_shadow">
-                            <div class="unused">
-                              <div class="used" style="width:1%;"></div>
-                            </div>
-                          </div>
-                        </div>{%= V.setPercentBar(this.cpu_usage)  %}
-                        {%= h(truncateTo3Digits(Math.floor(this.cpu_usage * 100) / 100)) %}%
-                      </div>
-                    </td>
-
-                    <td>{%=this.total_items %}</td>
-                  </tr>
-                <!-- {% }); %} -->
+                    <td>OS: <span>{%= h(os) %}</span></td>
+                    <td>Version: <span>{%= h(version) %}</span></td>
+                </tr>
               </table>
-              </script>
-              </div>
             </div>
-        </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
-      </div>
-      <!-- END shadow box -->
-    </div>
-
-      <div id="overview" style="display:none">
-      <!-- shadow box -->
-      <h1>CLUSTER OVERVIEW</h1>
-        <div id="notice_container"></div>
-        <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
-	<div class="hdr"><span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>Cluster</div>
-	<div class="section" id="overview_clusters_block">
-		<div class="item ram-item">
-			<div class="label">
-				<strong>RAM Overview</strong>
-			</div>
-			<div class="line_cnt">
-			</div>
-		</div>
-		<div class="item disk-item">
-			<div class="label">
-				<strong>Disk Overview</strong>
-			</div>
-			<div class="line_cnt">
-			</div>
-		</div>
-	</div>
-
-        </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
-        <!-- END shadow box -->
-	<div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
-	<div class="hdr"><span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>Buckets <span>(<span class="buckets-number">??</span> active)</span></div>
-	<div class="section">
-		<div class="item">
-			<div class="graph_main">
-				<span class="graph_info_label">Operations per second</span>
-				<div id="overview_ops_graph" class="graph"></div>
-			</div>
-			<div class="graph_main">
-				<span class="graph_info_label">Disk fetches per second</span>
-				<div id="overview_reads_graph" class="graph"></div>
-			</div>
-                        <div class="no_stats_marker">Waiting for samples...</div>
-		</div>
-	</div>
-	</div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
-	<div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
-	<div class="hdr"><span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>Servers</div>
-	<div class="section" id="overview_servers_block">
-		<div class="item ovf">
-			<div class="actservers">
-				<h3>Active Servers: <span class="active-servers-count">??</span></h3>
-				<!-- <p>CPU Load Max: <b>98%</b></p> -->
-				<!-- <p>CPU Load Avg: <b>98%</b></p> -->
-				<!-- <p>CPU Load Min: <b>98%</b></p> -->
-				<!-- <a href="#">Monitor All Servers</a> -->
-			</div>
-			<ul>
-				<li class="fail"><span class="when-non-zero">
-				   <a href="#visitServersTab=pending">Servers Failed Over: <span class="failed-over-count">??</span></a>
-					<span class="badge"><span class="failed-over-count">??</span></span>
-				</span><span class="when-zero">
-				   Servers Failed Over: 0
-                                </span></li>
-				<li class="down"><span class="when-non-zero">
-                                   <a href="#visitServersTab=active">Servers Down: <span class="down-count">??</span></a>
-                                   <span class="badge"><span class="down-count">??</span></span>
-                                </span><span class="when-zero">
-                                   Servers Down: 0
-                                </span></li>
-				<li class="pending"><span class="when-non-zero">
-                                  <a href="#visitServersTab=pending">Servers Pending Rebalance: <span class="pending-count">??</span></a>
-                                   <span class="badge"><span class="pending-count">??</span></span>
-                                </span><span class="when-zero">
-                                   Servers Pending Rebalance: 0
-                                </span></li>
-			</ul>
-		</div>
-	</div>
-	</div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
-  </div>
-  <div id="servers" style="display:none">
-    <h1>SERVERS</h1>
-    <div class="warning_message failover_warning">
-      Fail Over Warning: <span class="warning-text"></span>
-    </div>
-    <div class="shadow_box">
-      <div class="cnt">
-        <div class="content">
-          <!-- shadow box -->
-            <div class="header_2 servers_header">
-            <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
-            <a class="add_button btn_1"><span>Add Server</span></a>
-            <a class="rebalance_button btn_1"><span>Rebalance</span></a>
-            <a class="stop_rebalance_button btn_1"><span>Stop Rebalance</span></a>
-            <ul class="tabs switcher">
-              <li class="tab_left"><a href="#sec=servers&serversTab=0">Active Servers</a></li>
-              <li class="tab_right" id="rebalance_tab">
-                <a href="#sec=servers&serversTab=1">Pending Rebalance</a>
-                <span class="badge"><span>1</span></span>
-              </li>
-            </ul>
+            <div class="side side_1"></div>
+            <div class="side side_2"></div>
+            <div class="side side_3"></div>
+            <div class="side side_4"></div>
           </div>
-          <div class="panes">
-            <div>
-              <div id="active_server_list_container" class="servers-not-rebalancing servers_list"></div>
-              <div id="rebalancing_list_container" class="servers-rebalancing"></div>
-            </div><div>
-              <div id="pending_server_list_container" class="servers_list"></div>
+          <div class="additional_server_info">
+            <h3>Memory Cache</h3>
+            <div class="info_block">
+              <span class="dynamic_ram">Dynamic RAM:</span>
+              <div class="usage-block">{%= V.thisElement(function (e) {ServersSection.renderUsage(e, obj.storageTotals.ram, true)}) %}</div>
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <script id="manage_server_list_template" type="text/html">
-    <ul>
-    <!-- {% if (!rows.length) { %} -->
-      <li class="server_row rebalance_empty">
-        <span class="rebalance_empty_message">There are no servers pending rebalance.</span>
-      </li>
-    <!-- {% } %} -->
-    <!-- {% _.each(rows, function (s) { %} -->
-      <!-- {% if (s.clusterMembership == 'inactiveAdded') { %}-->
-      <li class="server_row pending_add {%= s.nodeClass %}">{%= V.setData('server', s) %}
-        {% if (expandingAllowed) { %}<a class="serverName" href="#openServer={%= h(s.otpNode) %}">{%= V.stripPort(s.hostname, rows) %}</a>
-        {% } else { %}<span class="serverName">{%= V.stripPort(s.hostname, rows) %}</span>{% } %}
-        <a href="#" class="btn_cancel eject_server">Cancel</a>
-        <span class="pending_add_message">Pending Add</span>
-      </li>
-      <!-- {% } else if (s.pendingEject) { %} -->
-      <li class="server_row pending_removal {%= s.nodeClass %}">{%= V.setData('server', s) %}
-        {% if (expandingAllowed) { %}<a class="serverName" href="#openServer={%= h(s.otpNode) %}">{%= V.stripPort(s.hostname, rows) %}</a>
-        {% } else { %}<span class="serverName">{%= V.stripPort(s.hostname, rows) %}</span>{% } %}
-        <a href="#" class="btn_cancel remove_from_list">Cancel</a>
-        <span class="pending_removal_message">Pending Removal</span>
-      </li>
-      <!-- {% } else { %} -->
-        <!-- {% if (s.reAddPossible) { %} -->
-        <li class="add_back_row">{%= V.setData('server', s) %}
-          <a href="#" class="add_back_btn re_add_button"></a>
-          <span class="add_b_message">This server is now reachable. Do you want to add it back to the cluster on the next rebalance?</span>
-        </li>
-        <!-- {% } %} -->
-      <li class="server_row {%= s.nodeClass %}">{%= V.setData('server', s) %}
-        {% if (expandingAllowed) { %}<a href="#openServer={%= h(s.otpNode) %}" class="serverName">{%= V.stripPort(s.hostname, rows) %}</a>{%
-        } else { %}<span class="serverName">{%= V.stripPort(s.hostname, rows) %}</span>{% } %}<a class="list_button btn_width_2 eject_server"><span>Remove Server</span></a><a class="list_button btn_width_1 failover_server"><span>Fail Over</span></a><span class="failed_over_message">Failed Over: Pending Removal</span>
-      </li>
-      <!-- {% } %} -->
-      <!-- {% if (expandingAllowed) { %} -->
-      <li class="settings-placeholder" style="display:none;">{%= ServersSection.renderServerDetails(s) %}</li>
-      <!-- {% } %} -->
-    <!-- {% }); %} -->
-    </ul>
-  </script>
-  <script id="server_details_template" type="text/html">
-                <div class="first gong_rb">
-                  <div class="pad">
-                    <a class="edit_btn float_right disabled">Edit</a>
-                    <table class="server_details_tab">
-                      <col width="230">
-                      <col width="">
-                      <tr>
-                        <td>Server Name: <span>{%= h(hostname) %}</span></td>
-                        <td>Uptime: <span>{%= h(formatUptime(uptime)) %}</span></td>
-                      </tr>
-                      <tr>
-                        <td>OS: <span>{%= h(os) %}</span></td>
-                        <td>Version: <span>{%= h(version) %}</span></td>
-                      </tr>
-                    </table>
-                  </div>
-                  <div class="side side_1"></div><div class="side side_2"></div><div class="side side_3"></div><div class="side side_4"></div>
-                </div>
-               <div class="additional_server_info">
-                <h3>Memory Cache</h3>
-                <div class="info_block">
-                  <span class="dynamic_ram">Dynamic RAM:</span>
-                  <div class="usage-block">{%= V.thisElement(function (e) {ServersSection.renderUsage(e, obj.storageTotals.ram, true)}) %}</div>
-                </div>
-                <h3>Disk Storage</h3>
-                <div class="info_block">
-                  <span class="disk_storage">
-                    Disk One:
-                    <span class="path">{%= h(storage.hdd[0].path) %}</span>
-                  </span>
-                  <div class="usage-block">{%= V.thisElement(function (e) {ServersSection.renderUsage(e, obj.storageTotals.hdd)}) %}</div>
-                </div>
-              </div><!-- additional_server_info -->
-  </script>
-  <script id="rebalancing_list_template" type="text/html">
-    <ul class="servers_list rebalancing">
-      <!-- {% _.each(rows, function (server) { %} -->
-      <li class="server_row">
-        <span class="usage_info">{%= h(server.percent) %}% Complete</span>
-        <!-- width attribute of span that is set below is not working properly - needs to be fixed -->
-        <span class="server_usage"><span style="width: {%= h(server.percent) %}%;"></span></span>
-        <a href="javascript:;" class="serverName">{%= V.stripPort(server.hostname, rows) %}</a>
-      </li>
-      <!-- {% }); %}-->
-    </ul>
-  </script>
-
-  <div id="analytics" style="display:none">
-  <span class="block nav float_right configure_view"></span>
-    <h1>
-      DATA BUCKETS: <select id="analytics_buckets_select"></select> on <select id="analytics_servers_select"></select>
-    </h1>
-    <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div>
-      <div class="cnt"><div class="pad"><div class="content">
-        <div class="section">
-          <h2 class="header_2">
-            <span class="block nav float_right">
-              <span class="stats-period-container">
-                <span class="with_samples current">Last <b class="stats_visible_period">?</b></span><span class="without_samples current">No samples, yet</span>
+            <h3>Disk Storage</h3>
+            <div class="info_block">
+              <span class="disk_storage">Disk One:
+                <span class="path">{%= h(storage.hdd[0].path) %}</span>
               </span>
-              <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
-            </span>
-            <a id="zoom_minute">Minute</a> <a id="zoom_hour">Hour</a>
-            <a id="zoom_day">Day</a> <a id="zoom_week">Week</a>
-            <a id="zoom_month">Month</a> <a id="zoom_year">Year</a>
-          </h2>
-          <div class="analytics_graph_main">
-            <h2></h2>
-            <span class="graph_info_label block right active_node_count"><!-- 3 active nodes --></span>
-            <div id="analytics_main_graph_grid">
-              <div id="analytics_main_graph"></div>
+              <div class="usage-block">{%= V.thisElement(function (e) {ServersSection.renderUsage(e, obj.storageTotals.hdd)}) %}</div>
             </div>
-          </div>
-          <script id="new_stats_block_template" type="text/html">
-            {% _.each(blocks, function (blockInfo) { %}
-            <div id="{%= h(blockInfo.id) %}" class="darker_block graph_nav {%= blockInfo.extraCSSClasses %}">
-              <h3 class="stats-block-expander"><ins></ins>{%= h(blockInfo.blockName) %}</h3>
-              <div class="stats">
-                {% if (blockInfo.columns) { %}
-                <ul class="col_headers">
-                {% _.each(blockInfo.columns, function (columnName) { %}
-                  <li>{%= h(columnName) %}</li>
-                {% }); %}
-                </ul>
-                {% } %}
-                {% _.each(blockInfo.stats, function (statInfo) {var name = statInfo.name; var desc = statInfo.desc; %}
-                <div id="{%= h(statInfo.id) %}" class="analytics-small-graph analytics_graph_{%= h(name) %} {%= (statInfo.missing ? 'dim' : '') %}">
-                  <div class="small_graph_block" style="width: 168px; height: 36px;"></div>
-                  <span class="small_graph_label">
-                    <span class="value">0</span><span class="label-text"> {%= desc %}</span>
-                  </span>
-                  <!-- <input type="checkbox" > -->
-                  <!-- <ins> -->
-                    <!-- <ul> -->
-                      <!-- <li>dim</li> -->
-                      <!-- <li>tresholds&hellip;</li> -->
-                      <!-- <li>alerts&hellip;</li> -->
-                      <!-- <li>show by server</li> -->
-                      <!-- <li>reset alarms</li> -->
-                    <!-- </ul> -->
-                  <!-- </ins> -->
+          </div><!-- additional_server_info -->
+          </script>
+
+          <script id="rebalancing_list_template" type="text/html">
+          <ul class="servers_list rebalancing">
+          <!-- {% _.each(rows, function (server) { %} -->
+            <li class="server_row">
+              <span class="usage_info">{%= h(server.percent) %}% Complete</span>
+              <!-- width attribute of span that is set below is not working properly - needs to be fixed -->
+              <span class="server_usage"><span style="width: {%= h(server.percent) %}%;"></span></span>
+              <a href="javascript:;" class="serverName">{%= V.stripPort(server.hostname, rows) %}</a>
+            </li>
+          <!-- {% }); %}-->
+          </ul>
+          </script>
+
+          <div id="analytics" style="display:none">
+            <span class="block nav float_right configure_view"></span>
+            <h1>
+            DATA BUCKETS: <select id="analytics_buckets_select"></select> on <select id="analytics_servers_select"></select>
+            </h1>
+            <div class="shadow_box">
+              <div class="top"><div><div>&nbsp;</div></div></div>
+              <div class="cnt">
+                <div class="pad">
+                  <div class="content">
+                    <div class="section">
+                      <h2 class="header_2">
+                        <span class="block nav float_right">
+                          <span class="stats-period-container">
+                            <span class="with_samples current">Last <b class="stats_visible_period">?</b></span><span class="without_samples current">No samples, yet</span>
+                          </span>
+                          <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+                        </span>
+                        <a id="zoom_minute">Minute</a> <a id="zoom_hour">Hour</a>
+                        <a id="zoom_day">Day</a> <a id="zoom_week">Week</a>
+                        <a id="zoom_month">Month</a> <a id="zoom_year">Year</a>
+                      </h2>
+                      <div class="analytics_graph_main">
+                        <h2></h2>
+                        <span class="graph_info_label block right active_node_count"><!-- 3 active nodes --></span>
+                        <div id="analytics_main_graph_grid">
+                          <div id="analytics_main_graph"></div>
+                        </div>
+                      </div>
+                      <script id="new_stats_block_template" type="text/html">
+                      {% _.each(blocks, function (blockInfo) { %}
+                      <div id="{%= h(blockInfo.id) %}" class="darker_block graph_nav {%= blockInfo.extraCSSClasses %}">
+                        <h3 class="stats-block-expander"><ins></ins>{%= h(blockInfo.blockName) %}</h3>
+                        <div class="stats">
+                        {% if (blockInfo.columns) { %}
+                          <ul class="col_headers">
+                          {% _.each(blockInfo.columns, function (columnName) { %}
+                            <li>{%= h(columnName) %}</li>
+                          {% }); %}
+                          </ul>
+                        {% } %}
+                        {% _.each(blockInfo.stats, function (statInfo) {var name = statInfo.name; var desc = statInfo.desc; %}
+                          <div id="{%= h(statInfo.id) %}" class="analytics-small-graph analytics_graph_{%= h(name) %} {%= (statInfo.missing ? 'dim' : '') %}">
+                            <div class="small_graph_block" style="width: 168px; height: 36px;"></div>
+                            <span class="small_graph_label">
+                              <span class="value">0</span><span class="label-text"> {%= desc %}</span>
+                            </span>
+                            <!-- <input type="checkbox" > -->
+                            <!-- <ins> -->
+                              <!-- <ul> -->
+                                <!-- <li>dim</li> -->
+                                <!-- <li>tresholds&hellip;</li> -->
+                                <!-- <li>alerts&hellip;</li> -->
+                                <!-- <li>show by server</li> -->
+                                <!-- <li>reset alarms</li> -->
+                              <!-- </ul> -->
+                            <!-- </ins> -->
+                          </div>
+                        {% }); %}
+                          <div class="clear"></div>
+                        </div>
+                      </div>
+                      {% }); %}
+                      </script>
+                      <div id="stats_nav_cache_container" style="display:none;"></div>
+                      <div id="stats_nav_persistent_container" style="display:none;"></div>
+                    </div>
+                  </div>
                 </div>
-                {% }); %}
-                <div class="clear"></div>
+              </div>
+              <div class="bottom"><div><div>&nbsp;</div></div></div>
+            </div><!-- shadow_box -->
+            <div class="shadow_box">
+              <div class="top"><div><div>&nbsp;</div></div></div>
+              <div class="cnt">
+                <div class="pad">
+                  <div class="content">
+                    <div class="section">
+                      <h2 class="header_2">
+                      TOP KEYS
+                      </h2>
+                      <p id="top_keys_container"></p>
+                      <script id="top_keys_template" type="text/html">
+                      <table class="lined_tab">
+                        <tr>
+                          <th>Key</th>
+                          <th>Ops/Sec</th>
+                        </tr>
+                        <!-- {% $.each(rows, function () { %} -->
+                        <tr>
+                          <td>{%= h(this.name) %}</td>
+                          <td>{%= h(Math.round(this.ops * 100.0) / 100.0) %}</td>
+                        </tr>
+                        <!-- {% }); %} -->
+                      </table>
+                      </script>
+                    </div> <!-- section -->
+                  </div>
+                </div>
+              </div>
+              <div class="bottom"><div><div>&nbsp;</div></div></div>
+            </div> <!-- END shadow box -->
+          </div>
+
+          <div id="monitor_buckets" style="display:none;">
+            <div class="no-buckets-subsection" style="display:none;">
+              <div class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</div>
+              No buckets currently defined! Go to <a href="#sec=buckets">Manage Buckets</a> to create some.
+            </div>
+            <div class="membase-buckets-subsection"><h1>Membase Buckets<span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span></h1>
+              <div class="shadow_box">
+                <div class="top"><div><div>&nbsp;</div></div></div>
+                <div class="cnt">
+                  <div class="pad">
+                    <div class="content">
+                      <div id="monitor_persistent_buckets_list_container"></div>
+                      <script id="monitor_persistent_buckets_list_template" type="text/html">
+                      <table class="lined_tab">
+                        <col width="221">
+                        <col width="135">
+                        <col width="135">
+                        <col width="135">
+                        <col width="135">
+                        <tr>
+                          <th>Bucket Name</th>
+                          <th>Ops/sec</th>
+                          <th>Disk Fetches/sec</th>
+                          <th>RAM Used</th>
+                          <th>Item Count</th>
+                        </tr>
+                        <!-- {% $.each(rows, function () { %} -->
+                        <tr>
+                            <td>
+                              <a class="disable-if-stale" href="#sec=analytics&statsBucket={%=h(this.uri)%}">{%= h(this.name) %}</a>
+                            </td>
+                            <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
+                            <td>{%= h(truncateTo3Digits(this.basicStats.diskFetches)) %}</td>
+                            <td>
+                              <div class="usage_smallest_info">
+                                  <div class="usage_smallest">
+                                      <div class="side_shadow">
+                                          <div class="unused">
+                                              <div class="used" style="width:1%;"></div>
+                                          </div>
+                                      </div>
+                                  </div>{%= V.setPercentBar(this.basicStats.quotaPercentUsed) %}
+                                  {%= h(truncateTo3Digits(Math.floor(this.basicStats.quotaPercentUsed * 100) / 100)) %}%
+                              </div>
+                            </td>
+                            <td>{%= h(this.basicStats.itemCount) %}</td>
+                          </tr>
+                        <!-- {% }); %} -->
+                      </table>
+                      </script>
+                    </div>
+                  </div>
+                </div>
+                <div class="bottom"><div><div>&nbsp;</div></div></div>
               </div>
             </div>
-            {% }); %}
-          </script>
-          <div id="stats_nav_cache_container" style="display:none;"></div>
-          <div id="stats_nav_persistent_container" style="display:none;"></div>
-        </div>
-      </div></div></div>
-      <div class="bottom"><div><div>&nbsp;</div></div></div>
-    </div><!-- shadow_box -->
-    <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div>
-      <div class="cnt"><div class="pad"><div class="content">
-        <div class="section">
-          <h2 class="header_2">
-            TOP KEYS
-          </h2>
-          <p id="top_keys_container"></p>
-          <script id="top_keys_template" type="text/html">
-            <table class="lined_tab">
+            <div class="memcached-buckets-subsection">
+              <h1>Memcached Buckets<span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span></h1>
+              <div class="shadow_box">
+                <div class="top"><div><div>&nbsp;</div></div></div>
+                <div class="cnt">
+                  <div class="pad">
+                    <div class="content">
+                      <div id="monitor_cache_buckets_list_container"></div>
+                      <script id="monitor_cache_buckets_list_template" type="text/html">
+                      <table class="lined_tab">
+                        <col width="221">
+                        <col width="135">
+                        <col width="135">
+                        <col width="135">
+                        <col width="135">
+                        <tr>
+                          <th>Bucket Name</th>
+                          <th>Ops/sec</th>
+                          <th>Hit ratio</th>
+                          <th>RAM Used</th>
+                          <th>Item Count</th>
+                        </tr>
+                        <!-- {% $.each(rows, function () { %} -->
+                        <tr>
+                          <td>
+                            <a class="disable-if-stale" href="#sec=analytics&statsBucket={%=h(this.uri)%}">{%= h(this.name) %}</a>
+                          </td>
+                          <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
+                          <td>{%= h(truncateTo3Digits(this.basicStats.hitRatio * 100)) %}%</td>
+                          <td>
+                            <div class="usage_smallest_info">
+                              <div class="usage_smallest">
+                                <div class="side_shadow">
+                                  <div class="unused">
+                                    <div class="used" style="width:1%;"></div>
+                                  </div>
+                                </div>
+                              </div>
+                              {%= V.setPercentBar(this.basicStats.quotaPercentUsed) %}
+                              {%= h(truncateTo3Digits(Math.floor(this.basicStats.quotaPercentUsed * 100) / 100)) %}%
+                            </div>
+                          </td>
+                          <td>{%= h(this.basicStats.itemCount) %}</td>
+                        </tr>
+                        <!-- {% }); %} -->
+                      </table>
+                      </script>
+                    </div>
+                  </div>
+                </div>
+                <div class="bottom"><div><div>&nbsp;</div></div></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="buckets" style="display:none">
+            <!-- shadow box -->
+            <h1>Data Buckets</h1>
+            <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div>
+              <div class="cnt">
+                <div class="pad">
+                  <div class="content">
+                    <div class="darker_block" id="manage_buckets_top_bar">
+                        <div class="pad_10 right buckets_action_bar clearfix">
+                            <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+                            <button class="button_200 create-bucket-button">Create New Data Bucket</button>
+                        </div>
+                    </div>
+                    <div id="bucket_list_container"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="bottom"><div><div>&nbsp;</div></div></div>
+            </div>
+            <!-- END shadow box -->
+
+            <script id="bucket_list_template" type="text/html">
+            <table class="buckets_tab">
+              <col width="221">
+              <col width="120">
+              <col width="165">
+              <col width="135">
+              <col width="120">
               <tr>
-                <th>Key</th>
-                <th>Ops/Sec</th>
+                <th>Bucket Name</th>
+                <th>Bucket Type</th>
+                <th>Bucket Resides On</th>
+                <th>RAM Usage/Quota</th>
+                <th class="last">Disk Usage</th>
               </tr>
               <!-- {% $.each(rows, function () { %} -->
               <tr>
-                <td>{%= h(this.name) %}</td>
-                <td>{%= h(Math.round(this.ops * 100.0) / 100.0) %}</td>
+                <td colspan="6" class="bucket_info">
+                  <table>
+                  <tr>
+                    <td class="bucket_name"><a class="disable-if-stale" href="#visitBucket={%=h(this.name)%}">{%= h(this.name) %}</a></td>
+                    <td>{%= h(this.bucketTypeName) %}</td>
+                    <td>{%= V.count(this.serversCount, 'server') %}</td>
+                    <td>{%= V.formatQuantity(this.basicStats.memUsed) %}/{%= V.formatQuantity(this.quota.ram) %}</td>
+                    <td>{%= V.formatQuantity(this.basicStats.diskUsed) %}</td>
+                  </tr>
+                  </table>
+                  <div class="settings-placeholder">{%= BucketsSection.renderBucketDetails(this) %}</div>
+                </td>
               </tr>
               <!-- {% }); %} -->
             </table>
+            </script>
+          </div>
+
+          <script id="bucket_settings_template" type="text/html">
+            <div class="gong_rb">
+              <div class="pad">
+                <a class="edit_btn" href="#editBucket={%= uri %}">Edit</a>
+                <table class="bucket_properties_table">
+                <col width="50%" />
+                <col width="50%" />
+                  <tr>
+                    <td>
+                    Bucket Name: <span>{%= h(name) %}</span><br />
+                    Bucket Type: <span>{%= h(bucketTypeName) %}</span><br />
+                    Access Control: <span>{%= (authType == 'none') ? 'Port' : ((name == 'default') ? 'None' : 'Authentication') %}{%= (authType == 'none') ? (': ' + proxyPort) : '' %}</span>
+                    </td>
+                    <td>
+                  {% if (bucketType == 'membase') { %}
+                    {% if (replicaNumber != 0) { %}
+                      Replication: <span>{%= V.count(replicaNumber, 'replica copy') %}</span><br />
+                      Blocking Behavior: <span>do not wait for replication to complete; send {%= V.count(replicaNumber, 'copy') %} asynchronously</span>
+                    {% } else { %}
+                      Replication: <span>disabled</span><br />
+                    {% } %}
+                  {% } %}
+                    </td>
+                  </tr>
+                </table>
+              </div>
+              <div class="side side_1"></div>
+              <div class="side side_2"></div>
+              <div class="side side_3"></div>
+              <div class="side side_4"></div>
+            </div>
+
+            <div class="additional_server_info bucket_details">
+              <h2>Cache Size</h2>
+              <div class="size-gauge for-ram"></div>
+            {%= V.thisElement(function (e) {BucketsSection.renderRAMDetailsGauge(e, obj);}) %}
+              <label class="for-hdd-quota">
+                <span>Dynamic RAM Quota:</span>
+                <span>{%= h(V.formatQuantity(ramQuota)) %}</span>
+                <abbr></abbr>
+              </label>
+
+            {% if (storageInfoRelevant) { %}
+              <h2>Storage Size</h2>
+              <label class="for-hdd-quota">
+                <span>Persistence Enabled:</span>
+                <span>Yes</span>
+                <abbr></abbr>
+              </label>
+
+              <div class="size-gauge for-hdd"></div>
+            {%= V.thisElement(function (e) {BucketsSection.renderHDDDetailsGauge(e, obj)}) %}
+
+              <label class="for-hdd-quota">
+                <span>Disk Usage:</span>
+                <span>{%= h(V.formatQuantity(basicStats.diskUsed)) %}</span>
+                <abbr></abbr>
+              </label>
+            {% } %} <!-- storageInfoRelevant -->
+            </div><!-- additional_server_info -->
           </script>
-        </div> <!-- section -->
-      </div></div></div>
-      <div class="bottom"><div><div>&nbsp;</div></div></div>
-    </div> <!-- END shadow box -->
-  </div>
 
-  <div id="monitor_buckets" style="display:none;">
-    <div class="no-buckets-subsection" style="display:none;">
-      <div class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</div>
-      No buckets currently defined! Go to <a href="#sec=buckets">Manage Buckets</a> to create some.
-    </div>
-    <div class="membase-buckets-subsection"><h1>Membase Buckets<span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span></h1>
-    <div class="shadow_box">
-      <div class="top"><div><div>&nbsp;</div></div></div>
-      <div class="cnt">
-        <div class="pad">
-          <div class="content">
-            <div id="monitor_persistent_buckets_list_container"></div>
-            <script id="monitor_persistent_buckets_list_template" type="text/html">
-              <table class="lined_tab">
-                <col width="221">
-                <col width="135">
-                <col width="135">
-                <col width="135">
-                <col width="135">
-                <tr>
-                  <th>Bucket Name</th>
-                  <th>Ops/sec</th>
-                  <th>Disk Fetches/sec</th>
-                  <th>RAM Used</th>
-                  <th>Item Count</th>
-                </tr>
-                <!-- {% $.each(rows, function () { %} -->
-                <tr>
-                    <td>
-                    <a class="disable-if-stale" href="#sec=analytics&statsBucket={%=h(this.uri)%}">{%= h(this.name) %}</a>
-                    </td>
-                    <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
-                    <td>{%= h(truncateTo3Digits(this.basicStats.diskFetches)) %}</td>
-                    <td>
-                      <div class="usage_smallest_info">
-                          <div class="usage_smallest">
-                              <div class="side_shadow">
-                                  <div class="unused">
-                                      <div class="used" style="width:1%;"></div>
-                                  </div>
-                              </div>
-                          </div>{%= V.setPercentBar(this.basicStats.quotaPercentUsed) %}
-                          {%= h(truncateTo3Digits(Math.floor(this.basicStats.quotaPercentUsed * 100) / 100)) %}%
-                      </div>
-                    </td>
-                    <td>{%= h(this.basicStats.itemCount) %}</td>
-                  </tr>
-                <!-- {% }); %} -->
-              </table>
-            </script>
-          </div>
-        </div>
-      </div>
-      <div class="bottom"><div><div>&nbsp;</div></div></div>
-    </div></div>
-    <div class="memcached-buckets-subsection"><h1>Memcached Buckets<span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span></h1>
-    <div class="shadow_box">
-      <div class="top"><div><div>&nbsp;</div></div></div>
-      <div class="cnt">
-        <div class="pad">
-          <div class="content">
-            <div id="monitor_cache_buckets_list_container"></div>
-            <script id="monitor_cache_buckets_list_template" type="text/html">
-              <table class="lined_tab">
-                <col width="221">
-                <col width="135">
-                <col width="135">
-                <col width="135">
-                <col width="135">
-                <tr>
-                  <th>Bucket Name</th>
-                  <th>Ops/sec</th>
-                  <th>Hit ratio</th>
-                  <th>RAM Used</th>
-                  <th>Item Count</th>
-                </tr>
-                <!-- {% $.each(rows, function () { %} -->
-                <tr>
-                    <td>
-                    <a class="disable-if-stale" href="#sec=analytics&statsBucket={%=h(this.uri)%}">{%= h(this.name) %}</a>
-                    </td>
-                    <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
-                    <td>{%= h(truncateTo3Digits(this.basicStats.hitRatio * 100)) %}%</td>
-                    <td>
-                      <div class="usage_smallest_info">
-                          <div class="usage_smallest">
-                              <div class="side_shadow">
-                                  <div class="unused">
-                                      <div class="used" style="width:1%;"></div>
-                                  </div>
-                              </div>
-                          </div>{%= V.setPercentBar(this.basicStats.quotaPercentUsed) %}
-                          {%= h(truncateTo3Digits(Math.floor(this.basicStats.quotaPercentUsed * 100) / 100)) %}%
-                      </div>
-                    </td>
-                    <td>{%= h(this.basicStats.itemCount) %}</td>
-                  </tr>
-                <!-- {% }); %} -->
-              </table>
-            </script>
-          </div>
-        </div>
-      </div>
-      <div class="bottom"><div><div>&nbsp;</div></div></div>
-    </div></div>
-  </div>
-
-  <div id="buckets" style="display:none">
-    <!-- shadow box -->
-    <h1>Data Buckets</h1>
-    <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
-    <div class="darker_block" id="manage_buckets_top_bar">
-        <div class="pad_10 right buckets_action_bar clearfix">
+          <div id="alerts" style="display:none">
+            <!-- Shadow box -->
+            <span class="block nav float_right configure_view generate_diag_link">
+              <a class="generate_diag_link" href="/diag" target="_blank">Generate Diagnostic Report</a>
+            </span>
             <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
-            <button class="button_200 create-bucket-button">Create New Data Bucket</button>
-        </div>
-    </div>
-    <div id="bucket_list_container">
-    </div>
-    </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
-        <!-- END shadow box -->
-    <script id="bucket_list_template" type="text/html">
-        <table class="buckets_tab">
-          <col width="221">
-          <col width="120">
-          <col width="165">
-          <col width="135">
-          <col width="120">
-          <tr>
-            <th>Bucket Name</th>
-            <th>Bucket Type</th>
-            <th>Bucket Resides On</th>
-            <th>RAM Usage/Quota</th>
-            <th class="last">Disk Usage</th>
+            <h1>Log</h1>
+            <div class="shadow_box">
+              <div class="top"><div><div>&nbsp;</div></div></div>
+              <div class="cnt">
+                <div class="pad">
+                  <div class="content">
+                    <div class="panes">
+                      <div class="tab_holder">
+                        <div id="alert_logs_container"></div>
+                        <script id="alert_logs_template" type="text/html">
+                        <table class="lined_tab">
+                          <col width="">
+                          <col width="">
+                          <col width="">
+                          <col width="160">
+                          <tr>
+                            <th>Event</th>
+                            <th>Module Code</th>
+                            <th>Server Node</th>
+                            <th>Time</th>
+                          </tr>
+                          <!-- {% _.each(rows, function (logRow) { %} -->
+                          <tr>
+                            <td>{%= h(logRow.text).replace(/\n/g, "<br />") %}</td>
+                            <td>{%= h(logRow.module) + (new String(1000 + parseInt(logRow.code))).slice(-3)%}</td>
+                            <td>{%= h(logRow.node) %}</td>
+                            <td class="text_11 nobr">{%=V.formatLogTStamp(logRow.tstamp)%}
+                          </tr>
+                          <!-- {% }); %} -->
+                        </table>
+                        </script>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="bottom"><div><div>&nbsp;</div></div></div>
+            </div>
+            <!-- END shadow box -->
+          </div>
+
+          <div id="notifications" style="display:none">
+            <!-- shadow box -->
+            <h1>Notifications</h1>
+            <div class="shadow_box">
+              <div class="top"><div><div>&nbsp;</div></div></div>
+              <div class="cnt">
+                <div class="pad">
+                  <div class="content">
+                    <div class="hdr">Update Notifications</div>
+                    <div class="section notifications-updates">
+                      <div class="item" id="notifications_block_container">
+                      Please wait...
+                      </div>
+                      <script id="notifications_block_template" type="text/html">
+                      <p>You are running version {%= h(version) %}</p>
+                      {% if (enabled===true) { %}
+                        {% if (newVersion===undefined) { %}
+                          <p class="warning"><strong>Warning</strong> &ndash; There
+                        was a problem with retreiving the update information.</p>
+                        {% } else if (newVersion===false) { %}
+                          <p>No updates available.</p>
+                        {% } else { %}
+                          <p>A new version ({%= h(newVersion) %}) is available:</p>
+                          <ul>
+                            <li>
+                              <a href="{%= h(links.release) %}">Release notes</a>
+                            </li>
+                            <li>
+                              <a href="{%= h(links.download) %}">Download</a> the new version
+                            </li>
+                          </ul>
+                          {% if (info!='') { %}
+                            <p>{%= info %}</p>
+                          {% } %}
+                        {% } %}
+                      {% } %}
+                      <label class="for-enable-replication" for="notifications-updates">
+                        {% if (enabled===true) { %}
+                          <input type="checkbox" id="notification-updates" checked="checked">
+                        {% } else { %}
+                          <input type="checkbox" id="notification-updates">
+                        {% } %}
+                        <span>Enable software update notifications.</span>
+                        <a href="#" class="more_info">What's this?</a>
+                      </label>
+                      <p class="more_info">
+                      Enabling software update notifications allows notification in
+                      the Membase web console when a new version of Membase Server
+                      is available. Configuration information transferred in the
+                      update check is anonymous and does not include any stored
+                      key-value data.
+                      </p>
+                      </script>
+                      <div class="save_cancel">
+                        <button class="save_button float_right" type="button">Save</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="bottom"><div><div>&nbsp;</div></div></div>
+            </div>
+            <!-- END shadow box -->
+          </div>
+
+          <div id="coming" style="display:none">
+            <h1>UI error encountered.  This content does not exist yet.</h1>
+          </div>
+            </td>
           </tr>
-          <!-- {% $.each(rows, function () { %} -->
-            <tr>
-				<td colspan="6" class="bucket_info">
-				  <table><tr>
-					  <td class="bucket_name"><a class="disable-if-stale" href="#visitBucket={%=h(this.name)%}">{%= h(this.name) %}</a></td>
-		              <td>{%= h(this.bucketTypeName) %}</td>
-		              <td>{%= V.count(this.serversCount, 'server') %}</td>
-		              <td>{%= V.formatQuantity(this.basicStats.memUsed) %}/{%= V.formatQuantity(this.quota.ram) %}</td>
-		              <td>{%= V.formatQuantity(this.basicStats.diskUsed) %}</td>
-			  	  </tr></table>
-				  <div class="settings-placeholder">{%= BucketsSection.renderBucketDetails(this) %}</div>
-			    </td>
-            </tr>
-          <!-- {% }); %} -->
-        </table>
-    </script>
-  </div>
-
-  <script id="bucket_settings_template" type="text/html">
-      <div class="gong_rb">
-        <div class="pad">
-          <a class="edit_btn" href="#editBucket={%= uri %}">Edit</a>
-          <table class="bucket_properties_table">
-          <col width="50%" />
-          <col width="50%" />
-            <tr>
-              <td>
-                Bucket Name: <span>{%= h(name) %}</span><br />
-                Bucket Type: <span>{%= h(bucketTypeName) %}</span><br />
-                Access Control: <span>{%= (authType == 'none') ? 'Port' : ((name == 'default') ? 'None' : 'Authentication') %}{%= (authType == 'none') ? (': ' + proxyPort) : '' %}</span>
-              </td>
-              <td>
-              {% if (bucketType == 'membase') { %}
-                {% if (replicaNumber != 0) { %}
-                  Replication: <span>{%= V.count(replicaNumber, 'replica copy') %}</span><br />
-                  Blocking Behavior: <span>do not wait for replication to complete; send {%= V.count(replicaNumber, 'copy') %} asynchronously</span>
-                {% } else { %}
-                  Replication: <span>disabled</span><br />
-                {% } %}
-              {% } %}
-              </td>
-            </tr>
-          </table>
-        </div>
-        <div class="side side_1"></div>
-        <div class="side side_2"></div>
-        <div class="side side_3"></div>
-        <div class="side side_4"></div>
-      </div>
-      <div class="additional_server_info bucket_details">
-
-      <h2>Cache Size</h2>
-      <div class="size-gauge for-ram">
-      </div>{%= V.thisElement(function (e) {BucketsSection.renderRAMDetailsGauge(e, obj);}) %}
-      <label class="for-hdd-quota">
-	  	<span>Dynamic RAM Quota:</span>
-		<span>{%= h(V.formatQuantity(ramQuota)) %}</span>
-		<abbr></abbr>
-      </label>
-
-      {% if (storageInfoRelevant) { %}
-      <h2>Storage Size</h2>
-      <label class="for-hdd-quota">
-	  	<span>Persistence Enabled:</span>
-		<span>Yes</span>
-		<abbr></abbr>
-      </label>
-
-      <div class="size-gauge for-hdd">
-      </div>{%= V.thisElement(function (e) {BucketsSection.renderHDDDetailsGauge(e, obj)}) %}
-
-      <label class="for-hdd-quota">
-	  	<span>Disk Usage:</span>
-		<span>{%= h(V.formatQuantity(basicStats.diskUsed)) %}</span>
-		<abbr></abbr>
-      </label>
-
-      {% } %} <!-- storageInfoRelevant -->
-
-      </div><!-- additional_server_info -->
-  </script>
-
-  <div id="alerts" style="display:none">
-    <!-- Shadow box -->
-    <span class="block nav float_right configure_view generate_diag_link"><a class="generate_diag_link" href="/diag" target="_blank">Generate Diagnostic Report</a></span>
-    <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
-    <h1>Log</h1>
-    <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
-        <div class="panes">
-          <div class="tab_holder">
-            <div id="alert_logs_container"></div>
-            <script id="alert_logs_template" type="text/html">
-            <table class="lined_tab">
-              <col width="">
-              <col width="">
-              <col width="">
-              <col width="160">
-              <tr>
-                <th>Event</th>
-                <th>Module Code</th>
-                <th>Server Node</th>
-                <th>Time</th>
-              </tr>
-              <!-- {% _.each(rows, function (logRow) { %} -->
-              <tr>
-                <td>{%= h(logRow.text).replace(/\n/g, "<br />") %}</td>
-                <td>{%= h(logRow.module) + (new String(1000 + parseInt(logRow.code))).slice(-3)%}</td>
-                <td>{%= h(logRow.node) %}</td>
-                <td class="text_11 nobr">{%=V.formatLogTStamp(logRow.tstamp)%}
-              </tr>
-              <!-- {% }); %} -->
-            </table>
-            </script>
-          </div>
-        </div>
-    </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
-    <!-- END shadow box -->
-  </div>
-
-    <div id="notifications" style="display:none">
-      <!-- shadow box -->
-      <h1>Notifications</h1>
-        <div class="shadow_box"><div class="top"><div><div>&nbsp;</div></div></div><div class="cnt"><div class="pad"><div class="content">
-        <div class="hdr">Update Notifications</div>
-        <div class="section notifications-updates">
-          <div class="item" id="notifications_block_container">
-            Please wait...
-          </div>
-          <script id="notifications_block_template" type="text/html">
-            <p>You are running version {%= h(version) %}</p>
-            {% if (enabled===true) { %}
-              {% if (newVersion===undefined) { %}
-              <p class="warning"><strong>Warning</strong> &ndash; There was a problem with retreiving the update information.</p>
-              {% } else if (newVersion===false) { %}
-              <p>No updates available.</p>
-              {% } else { %}
-              <p>A new version ({%= h(newVersion) %}) is available:</p>
-              <ul>
-                <li>
-                  <a href="{%= h(links.release) %}">Release notes</a>
-                </li>
-                <li>
-                  <a href="{%= h(links.download) %}">Download</a> the new version
-                </li>
-              </ul>
-                {% if (info!='') { %}
-                <p>{%= info %}</p>
-                {% } %}
-              {% } %}
-            {% } %}
-            <label class="for-enable-replication" for="notifications-updates">
-              {% if (enabled===true) { %}
-              <input type="checkbox" id="notification-updates" checked="checked">
-              {% } else { %}
-              <input type="checkbox" id="notification-updates">
-              {% } %}
-              <span>Enable software update notifications.</span>
-              <a href="#" class="more_info">What's this?</a>
-            </label>
-            <p class="more_info">
-              Enabling software update notifications allows notification in the Membase web console when a new version of Membase Server is available. Configuration information transferred in the update check is anonymous and does not include any stored key-value data.
-            </p>
-          </script>
-          <div class="save_cancel">
-            <button class="save_button float_right" type="button">Save</button>
-          </div>
-        </div>
-        </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
-        <!-- END shadow box -->
+      </table>
     </div>
-  <div id="coming" style="display:none">
-    <h1>UI error encountered.  This content does not exist yet.</h1>
-  </div>
+    <!-- mainContainer -->
 
-</td>
-</tr>
-</table>
-</div> <!-- mainContainer -->
+    <div class="page-footer">
+      <div class="main_holder">
+      <h1>Copyright &copy; 2011 <a href="http://couchbase.com" target="_blank">Couchbase, Inc.</a> All rights reserved.</h1>
+      </div>
+    </div>
+    </div>
+    <!-- #container -->
 
-	<div class="page-footer">
-	  <div class="main_holder">
-	  <h1>Copyright &copy; 2011 <a href="http://couchbase.com" target="_blank">Couchbase, Inc.</a> All rights reserved.</h1>
-	  </div>
-	</div>
-</div><!-- #container -->
 <!-- dialogs -->
 <div class="dialog bucket_details" id="bucket_details_dialog">
   <h1><span class="when-editing">Configure Bucket</span><span class="when-creating">Create Bucket</span></h1>
@@ -803,17 +904,17 @@
 </div>
 
 <div class="dialog" id="bucket_remove_dialog" title="Removing">
-	<form>
-		<div class="clearfix">
-			<div class="err">
-				<p>Removing this bucket will result in complete data loss for this bucket. <br/>Are you sure you want to remove it?</p>
-			</div>
-		</div>
-		<div class="save_cancel clearfix">
-			<button onclick="BucketsSection.removeCurrentBucket();" type="button" class="delete_button float_right">Delete</button>
-			<a class="close">Cancel</a>
-		</div>
-	</form>
+  <form>
+    <div class="clearfix">
+      <div class="err">
+        <p>Removing this bucket will result in complete data loss for this bucket. <br/>Are you sure you want to remove it?</p>
+      </div>
+    </div>
+    <div class="save_cancel clearfix">
+      <button onclick="BucketsSection.removeCurrentBucket();" type="button" class="delete_button float_right">Delete</button>
+      <a class="close">Cancel</a>
+    </div>
+  </form>
 </div>
 
 <div class="dialog" id="join_cluster_dialog" title="Add Server">
@@ -1101,7 +1202,7 @@
         <input type="text" name="path" id="setup_path_input" class="path-box" />
       </form></div>
       <div>
-	  	<label>Free:</label>
+      <label>Free:</label>
         <span style="font-size:10pt; margin-left:5px; line-height: 25px;" class="total-size">---</span>
       </div>
       <span class="warning pat_10 init_cluster_dialog_errors_container" style="display:none;"></span>
@@ -1127,12 +1228,12 @@
          <div class="memory-quota">
            <div>
              <label>RAM Available: <span class="ram-total-size"></span></label>
-		   </div>
-		   <div>
+       </div>
+       <div>
              <label style="width:auto;" for="init_dynamic_ram_quota">Per Server RAM Quota:</label>
              <input type="text" class="focusme" id="init_dynamic_ram_quota" name="dynamic-ram-quota" value="" />
              <span>
-			 	MB (256 MB &mdash; <span class="ram-max-size"></span> MB)
+         MB (256 MB &mdash; <span class="ram-max-size"></span> MB)
              </span>
            </div>
          </div>
@@ -1242,52 +1343,52 @@
   </div>
   <!-- END init_secure_block -->
 
-	<div class="pad bucket_details" id="init_bucket_dialog">
-		<div class="config-top">
-		  <h1>Create Default Bucket</h1>
-		  <h2>Step <span class="current-step">2</span> of 4</h2>
-		</div>
-	  <form><div class="clearfix">
-	    <h2>Bucket Settings</h2>
-	    <div class="bucket-icon"></div>
-	    <label class="for-name"><span>Bucket Name:</span> default</label>
-	    <div class="for-bucket-type"><span>Bucket Type:</span>
-	     <label><input type="radio" name="bucketType" value="memcached"> Memcached</label>
-	     <label><input type="radio" name="bucketType" value="membase"> Membase</label>
-	    </div>
-	    <h2>Memory Size</h2>
-	    <div class="size-gauge for-ram">
-	      <div class="t">Cluster quota (<span class="total">192 Gb</span>)</div>
-	      <div class="gauge">
-	        <div>
-	          <div style="width: 68%;" class="green"></div>
-	          <div style="width: 33%;" class="blue"></div>
-	        </div>
-	      </div>
-	      <table class="b"><tr>
-	        <!-- <td class="blue" style="display:none;">Other Buckets (<span class="other">15 Gb</span>)</td> -->
-	        <td class="green">This Bucket (<span class="this">5 Gb</span>)</td>
-	        <td>Free (<span class="free">12 Gb</span>)</td>
-	      </tr></table>
-	    </div>
+  <div class="pad bucket_details" id="init_bucket_dialog">
+    <div class="config-top">
+      <h1>Create Default Bucket</h1>
+      <h2>Step <span class="current-step">2</span> of 4</h2>
+    </div>
+    <form><div class="clearfix">
+      <h2>Bucket Settings</h2>
+      <div class="bucket-icon"></div>
+      <label class="for-name"><span>Bucket Name:</span> default</label>
+      <div class="for-bucket-type"><span>Bucket Type:</span>
+       <label><input type="radio" name="bucketType" value="memcached"> Memcached</label>
+       <label><input type="radio" name="bucketType" value="membase"> Membase</label>
+      </div>
+      <h2>Memory Size</h2>
+      <div class="size-gauge for-ram">
+        <div class="t">Cluster quota (<span class="total">192 Gb</span>)</div>
+        <div class="gauge">
+          <div>
+            <div style="width: 68%;" class="green"></div>
+            <div style="width: 33%;" class="blue"></div>
+          </div>
+        </div>
+        <table class="b"><tr>
+          <!-- <td class="blue" style="display:none;">Other Buckets (<span class="other">15 Gb</span>)</td> -->
+          <td class="green">This Bucket (<span class="this">5 Gb</span>)</td>
+          <td>Free (<span class="free">12 Gb</span>)</td>
+        </tr></table>
+      </div>
             <label class="for-ram-quota"><span><em class="when-non-persistent">Per Node RAM Quota:</em><em class="when-persistent">Per Node RAM Quota:</em></span><input name="ramQuotaMB" class="focusme" value="30"><abbr>MB</abbr></label>
-	    <div class="error-container err-ramQuotaMB"></div>
+      <div class="error-container err-ramQuotaMB"></div>
             <em class="memcached-summary when-non-persistent"></em>
-	    <div class="persistent-only">
-	      <h2>Replication</h2>
+      <div class="persistent-only">
+        <h2>Replication</h2>
               <label class="for-enable-replication"><input type="checkbox" checked disabled><span>Enable Replication</span></label>
               <input class="hidden-replica-number" type="hidden" name="replicaNumber" value="0" disabled>
-	      <label class="for-replica-number">
+        <label class="for-replica-number">
                 <select name="replicaNumber"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select>
-	        <span>Number of replica (backup) copies</span>
-	        <span class="error-container err-replicaNumber"></span>
-	      </label>
-	    </div><!-- .persistent-only -->
-	  </div><div class="config-bottom clearfix">
-		<button name="finish" class="submit finish direction-button" type="submit">Next</button>
-		<button name="back" class="submit back direction-button" id="step-init-bucket-back" type="button">Back</button>
-	  </div></form>
-	</div>
+          <span>Number of replica (backup) copies</span>
+          <span class="error-container err-replicaNumber"></span>
+        </label>
+      </div><!-- .persistent-only -->
+    </div><div class="config-bottom clearfix">
+    <button name="finish" class="submit finish direction-button" type="submit">Next</button>
+    <button name="back" class="submit back direction-button" id="step-init-bucket-back" type="button">Back</button>
+    </div></form>
+  </div>
   <!-- END init_bucket_block -->
 
   <div class="page-footer">
@@ -1313,9 +1414,8 @@
     </div>
   </div></div></div><div class="bottom"><div><div>&nbsp;</div></div></div></div>
 </script>
-<div class="popup_2">
 
-</div>
+<div class="popup_2"></div>
 
 <!--[if IE]><script language="javascript" type="text/javascript" src="/js/excanvas.min.js"></script><![endif]-->
 <script src="/js/jquery.js"></script>
