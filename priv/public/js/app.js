@@ -1042,11 +1042,14 @@ function initAlertsSubscriber() {
 // setup handling of .disable-if-stale class
 (function () {
   function moveAttr(e, fromAttr, toAttr) {
-    if (e.hasAttribute(toAttr))
+    var toVal = e.getAttribute(toAttr);
+    if (!toVal) {
       return;
-    if (!e.hasAttribute(fromAttr))
-      return;
+    }
     var value = e.getAttribute(fromAttr);
+    if (!value) {
+      return;
+    }
     e.removeAttribute(fromAttr);
     e.setAttribute(toAttr, value);
   }
