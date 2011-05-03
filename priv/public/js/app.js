@@ -648,15 +648,15 @@ var NodeDialog = {
     var dialog = $('#init_cluster_dialog');
     var resourcesObserver;
 
-    dialog.find('input#join-cluster').click(function (e) {
-        $('.login-credentials').slideDown();
-        $('.memory-quota').slideUp();
-        $('.init_cluster_dialog_memory_errors_container').slideUp();
-      })
-      .find('input#no-join-cluster').click(function (e) {
-        $('.memory-quota').slideDown();
-        $('.login-credentials').slideUp();
-      });
+    $('#join-cluster').click(function (e) {
+      $('.login-credentials').slideDown();
+      $('.memory-quota').slideUp();
+      $('#init_cluster_dialog_memory_errors_container').slideUp();
+    });
+    $('#no-join-cluster').click(function (e) {
+      $('.memory-quota').slideDown();
+      $('.login-credentials').slideUp();
+    });
 
     // we return function signaling that we're not yet ready to show
     // our page of wizard (no data to display in the form), but will
@@ -679,7 +679,7 @@ var NodeDialog = {
         continueShowDialog();
 
         $('#step-2-next').click(onSubmit);
-        $('#init_cluster_dialog form').submit(onSubmit);
+        dialog.find('form').submit(onSubmit);
 
         _.defer(function () {
           if ($('#join-cluster')[0].checked)
@@ -749,7 +749,7 @@ var NodeDialog = {
     // cleans up all event handles
     function onLeave() {
       $('#step-2-next').unbind();
-      $('#init_cluster_dialog form').unbind();
+      dialog.find('form').unbind();
       if (resourcesObserver)
         resourcesObserver.stopObserving();
     }
@@ -808,7 +808,7 @@ var NodeDialog = {
             onLeave();
           }
         } else {
-          var errorContainer = dialog.find('.init_cluster_dialog_memory_errors_container');
+          var errorContainer = $('#init_cluster_dialog_memory_errors_container');
           errorContainer.text(data.join(' and '));
           errorContainer.css('display', 'block');
         }
