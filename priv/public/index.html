@@ -665,15 +665,14 @@
                     <td>
                     Bucket Name: <span>{%= h(name) %}</span><br />
                     Bucket Type: <span>{%= h(bucketTypeName) %}</span><br />
-                    Access Control: <span>{%= (authType == 'none') ? 'Port' : ((name == 'default') ? 'None' : 'Authentication') %}{%= (authType == 'none') ? (': ' + proxyPort) : '' %}</span>
                     </td>
                     <td>
+                    Access Control: <span>{%= (authType == 'none') ? 'Port' : ((name == 'default') ? 'None' : 'Authentication') %}{%= (authType == 'none') ? (': ' + proxyPort) : '' %}</span><br />
                   {% if (bucketType == 'membase') { %}
                     {% if (replicaNumber != 0) { %}
-                      Replication: <span>{%= V.count(replicaNumber, 'replica copy') %}</span><br />
-                      Blocking Behavior: <span>do not wait for replication to complete; send {%= V.count(replicaNumber, 'copy') %} asynchronously</span>
+                      Replication: <span>{%= V.count(replicaNumber, 'replica copy') %}</span>
                     {% } else { %}
-                      Replication: <span>disabled</span><br />
+                      Replication: <span>disabled</span>
                     {% } %}
                   {% } %}
                     </td>
