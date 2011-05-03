@@ -378,10 +378,6 @@ $(window).bind('template:rendered', function () {
   });
 });
 
-$('.remove_bucket').live('click', function() {
-  BucketsSection.startRemovingBucket();
-});
-
 function showAbout() {
   function updateVersion() {
     var components = DAL.componentsVersion;
