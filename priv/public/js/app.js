@@ -817,17 +817,18 @@ var NodeDialog = {
     }
   },
   startPage_update_notifications: function(node, pagePrefix, opt) {
-    $('#init_update_notifications_dialog a.more_info').click(function(e) {
+    var dialog = $('#init_update_notifications_dialog');
+    dialog.find('a.more_info').click(function(e) {
       e.preventDefault();
-      $('#init_update_notifications_dialog p.more_info').slideToggle();
+      dialog.find('p.more_info').slideToggle();
     });
-    $('#init_update_notifications_dialog button.back').click(function (e) {
+    dialog.find('button.back').click(function (e) {
       e.preventDefault();
       onLeave();
       showInitDialog("bucket_dialog");
     });
     // Go to next page. Send off email address if given and apply settings
-    $('#init_update_notifications_dialog button.next').click(function (e) {
+    dialog.find('button.next').click(function (e) {
       e.preventDefault();
       var email = $.trim($('#init-join-community-email').val());
       if (email!=='') {
@@ -853,9 +854,9 @@ var NodeDialog = {
 
     // cleans up all event handles
     function onLeave() {
-      $('#init_update_notifications_dialog a.more_info').unbind();
-      $('#init_update_notifications_dialog button.back').unbind();
-      $('#init_update_notifications_dialog button.next').unbind();
+      dialog.find('a.more_info').unbind();
+      dialog.find('button.back').unbind();
+      dialog.find('button.next').unbind();
     }
   }
 };
