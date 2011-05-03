@@ -306,7 +306,7 @@ div.analytics-small-graph > .right-arrow ul {position:absolute;top:-9px;left:2px
 							filter:progid:DXImageTransform.Microsoft.shadow(direction=135, color=#aaaaaa, strength=5);}
 div.analytics-small-graph > .right-arrow:hover ul {display:block;}
 div.analytics-small-graph > .right-arrow ul li, .graph_nav > div > ins ul li a {padding:4px 6px 5px;color:#444245;}
-div.analytics-small-graph > .right-arrow ul li:hover, .graph_nav > div > ins ul li:hover a {background:#01b0ff;color:#fff;}
+div.analytics-small-graph > .right-arrow ul li:hover, div.analytics-small-graph > .right-arrow ul li:hover a {background:#01b0ff;color:#fff;}
 #analytics .right-arrow a:hover { text-decoration: none; }
 
 .graph_nav .spinner span {position:relative; width:150px !important; height:15px !important; padding:20px 0 0 0; font-size:11px; color:#839aa6; margin:0 0 0 8px; top:5px; background:url(../images/spinner/spinner_gr_nav.gif) 66px 0 no-repeat; text-align:center; line-height:12px !important;}
