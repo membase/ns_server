@@ -15,6 +15,7 @@
  **/
 var OverviewSection = {
   initLater: function () {
+    var self = this;
     DAL.cells.bucketsListCell.subscribeValue(function (buckets) {
       $('#overview .buckets-number').text(buckets ? ViewHelpers.count(buckets.length, 'bucket') : '??');
     });
@@ -23,11 +24,10 @@ var OverviewSection = {
       var reallyActiveNodes = _.select(servers ? servers.active : [], function (n) {
         return n.clusterMembership == 'active';
       });
-      $('.active-servers-count').text(servers ? reallyActiveNodes.length : '??');
+      $('#active-servers-count').text(servers ? reallyActiveNodes.length : '??');
 
-      var block = $('#overview_servers_block');
       if (!servers) {
-        block.find('.badge').hide();
+        self.serversBlockJQ.find('.badge').hide();
         return;
       }
       var pending = servers.pending;
@@ -38,15 +38,15 @@ var OverviewSection = {
         return node.status != 'healthy';
       });
 
-      function updateCount(selector, count) {
-        var span = block.find(selector).text(count);
-        span.parents('.badge')[count ? 'show' : 'hide']();
-        span.parents('.badge').parents('li')[count ? 'removeClass' : 'addClass']('is-zero');
+      function updateCount(jq, count) {
+        jq.text(count)
+          .closest('.badge')[count ? 'show' : 'hide']()
+          .closest('li')[count ? 'removeClass' : 'addClass']('is-zero');
       }
 
-      updateCount('.failed-over-count', failedOver.length);
-      updateCount('.down-count', down.length);
-      updateCount('.pending-count', pending.length);
+      updateCount(self.failedOverCountJQ, failedOver.length);
+      updateCount(self.downCountJQ, down.length);
+      updateCount(self.pendingCountJQ, pending.length);
     });
 
     IOCenter.staleness.subscribeValue(function (stale) {
@@ -56,13 +56,13 @@ var OverviewSection = {
     DAL.cells.currentPoolDetailsCell.subscribeValue(function (poolDetails) {
       if (!poolDetails || !poolDetails.storageTotals
           || !poolDetails.storageTotals.ram || !poolDetails.storageTotals.hdd) {
-        $('#overview_clusters_block').hide();
+        self.clustersBlockJQ.hide();
         return;
       }
-      $('#overview_clusters_block').show();
+      self.clustersBlockJQ.show();
 
       ;(function () {
-        var item = $('#overview_clusters_block .ram-item');
+        var item = self.clustersBlockJQ.find('.ram-item');
 
         var ram = poolDetails.storageTotals.ram;
         var usedQuota = ram.usedByData;
@@ -113,7 +113,7 @@ var OverviewSection = {
       })();
 
       ;(function () {
-        var item = $('#overview_clusters_block .disk-item');
+        var item = self.clustersBlockJQ.find('.disk-item');
 
         var hdd = poolDetails.storageTotals.hdd;
 
@@ -150,6 +150,15 @@ var OverviewSection = {
   },
   init: function () {
     _.defer($m(this, 'initLater'));
+
+    this.opsGraphJQ = $('#overview_ops_graph');
+    this.readsGraphJQ = $('#overview_reads_graph');
+    this.graphAreaJQ = this.opsGraphJQ.closest('.item');
+    this.clustersBlockJQ = $('#overview_clusters_block');
+    this.serversBlockJQ = $('#overview_servers_block');
+    this.failedOverCountJQ = this.serversBlockJQ.find('.failed-over-count');
+    this.downCountJQ = this.serversBlockJQ.find('.down-count');
+    this.pendingCountJQ = this.serversBlockJQ.find('.pending-count');
 
     // this fake cell makes sure our stats cell is not recomputed when pool details change
     this.statsCellArg = new Cell(function (poolDetails, mode) {
@@ -214,13 +223,12 @@ var OverviewSection = {
     else if (stats.timestamp.length < 2)
       haveStats = false;
 
-    var item = $('#overview_ops_graph').parent().parent();
     if (haveStats) {
-      item.removeClass('no-samples-yet');
-      this.plotGraph($('#overview_ops_graph'), stats, 'ops');
-      this.plotGraph($('#overview_reads_graph'), stats, 'ep_io_num_read');
+      this.graphAreaJQ.removeClass('no-samples-yet');
+      this.plotGraph(this.opsGraphJQ, stats, 'ops');
+      this.plotGraph(this.readsGraphJQ, stats, 'ep_io_num_read');
     } else {
-      item.addClass('no-samples-yet');
+      this.graphAreaJQ.addClass('no-samples-yet');
     }
   },
   onEnter: function () {
