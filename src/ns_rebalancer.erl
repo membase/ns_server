@@ -60,6 +60,7 @@ failover(Bucket, Node) ->
                                "Data has been lost for ~B% of vbuckets in bucket ~p.",
                                [length(MissingVBuckets) * 100 div length(Map), Bucket])
             end,
+            ns_bucket:set_fast_forward_map(Bucket, undefined),
             ns_bucket:set_map(Bucket, Map1),
             ns_bucket:set_servers(Bucket, lists:delete(Node, Servers)),
             try
