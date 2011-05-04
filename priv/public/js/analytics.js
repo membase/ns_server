@@ -217,14 +217,6 @@ var StatsModel = {};
     }
   }
 
-  function diagCell(cell, name) {
-    if (false) {
-      cell.subscribeAny(function () {
-        console.log("cell("+name+"):", cell.value);
-      });
-    }
-  }
-
   var statsBucketURL = self.statsBucketURL = new StringHashFragmentCell("statsBucket");
   var statsHostname = self.statsHostname = new StringHashFragmentCell("statsHostname");
   var statsStatName = self.statsStatName = new StringHashFragmentCell("statsStatName");
@@ -240,15 +232,15 @@ var StatsModel = {};
       rv = _.detect(buckets, function (info) {return info.name === "default"}) || buckets[0];
     }
     return rv;
-  });
+  }).name("statsBucketDetails");
 
   // contains list of links to per-node stats for particular bucket
   var statsNodesCell = self.statsNodesCell = Cell.compute(function (v) {
     // TODO: get link from bucket details
     return future.get({url: v.need(statsBucketDetails).stats.nodeStatsListURI});
-  });
+  }).name("statsNodesCell");
 
-  var statsOptionsCell = self.statsOptionsCell = new Cell();
+  var statsOptionsCell = self.statsOptionsCell = (new Cell()).name("statsOptionsCell");
   statsOptionsCell.setValue({nonQ: ['keysInterval', 'nonQ'], resampleForUI: '1'});
   _.extend(statsOptionsCell, {
     update: function (options) {
@@ -257,8 +249,6 @@ var StatsModel = {};
     equality: _.isEqual
   });
 
-  diagCell(statsOptionsCell, "statsOptionsCell");
-
   var samplesBufferDepthRAW = new StringHashFragmentCell("statsBufferDepth");
   self.samplesBufferDepth = Cell.computeEager(function (v) {
     return v(samplesBufferDepthRAW) || 1;
@@ -266,11 +256,11 @@ var StatsModel = {};
 
   var statsDirectoryURLCell = self.statsDirectoryURLCell = Cell.compute(function (v) {
     return v.need(statsBucketDetails).stats.directoryURI;
-  });
+  }).name("statsDirectoryURLCell");
 
   var rawStatsDescCell = self.rawStatsDescCell = Cell.compute(function (v) {
     return future.get({url: v.need(statsDirectoryURLCell)});
-  });
+  }).name("rawStatsDescCell");
 
   var nameToStatInfoCell = Cell.compute(function (v) {
     var desc = v.need(rawStatsDescCell);
@@ -280,7 +270,7 @@ var StatsModel = {};
       rv[info.name] = info;
     });
     return rv;
-  });
+  }).name("nameToStatInfoCell");
 
   var specificURLAndName = Cell.compute(function (v) {
     var statName = v(statsStatName);
@@ -293,22 +283,22 @@ var StatsModel = {};
     }
     return {url: mapping[statName].specificStatsURL,
             statName: statName};
-  });
+  }).name("specificURLAndName");
 
   var effectiveSpecificStatName = self.effectiveSpecificStatName = Cell.compute(function (v) {
     return v.need(specificURLAndName).statName;
-  });
+  }).name("effectiveSpecificStatName");
   effectiveSpecificStatName.equality = function (a,b) {return a===b};
 
   var specificStatsURLCell = self.specificStatsURLCell = Cell.compute(function (v) {
     return v.need(specificURLAndName).url;
-  });
+  }).name("specificStatsURLCell");
   specificStatsURLCell.equality = function (a,b) {return a===b};
 
   // true if we should be displaying specific stats and false if we should be displaying normal stats
   var displayingSpecificStatsCell = self.displayingSpecificStatsCell = Cell.compute(function (v) {
     return !!v.need(specificStatsURLCell);
-  });
+  }).name("displayingSpecificStatsCell");
 
   // contains either bucket info or per-node stat info (as found in
   // statsNodesCell response) for which (normal) stats are displayed
@@ -329,21 +319,17 @@ var StatsModel = {};
     }
 
     return nodeInfo;
-  });
-
-  diagCell(targetCell, "targetCell");
+  }).name("targetCell");
 
   var statsURLCell = self.statsURLCell = Cell.compute(function (v) {
     return v.need(targetCell).stats.uri;
-  });
-
-  diagCell(statsURLCell, "statsURLCell");
+  }).name("statsURLCell");
 
   var zoomLevel;
   (function () {
-    zoomLevel = new LinkSwitchCell('zoom', {
+    zoomLevel = (new LinkSwitchCell('zoom', {
       firstItemIsDefault: true
-    });
+    })).name("zoomLevel");
 
     _.each('minute hour day week month year'.split(' '), function (name) {
       zoomLevel.addItem('zoom_' + name, name)
@@ -375,9 +361,7 @@ var StatsModel = {};
     var bufferDepth = v.need(self.samplesBufferDepth);
 
     return createSamplesFuture(url, data, bufferDepth, aggregateRealTimeRestorer);
-  });
-
-  diagCell(statsCell, "statsCell");
+  }).name("statsCell");
 
   var specificStatsCell = self.specificStatsCell = Cell.compute(function (v) {
     if (v.need(DAL.cells.mode) != 'analytics') {
@@ -398,7 +382,7 @@ var StatsModel = {};
     var bufferDepth = v.need(self.samplesBufferDepth);
 
     return createSamplesFuture(url, data, bufferDepth, specificStatsRealTimeRestorer);
-  });
+  }).name("specificStatsCell");
 
   // containts list of hostnames for specific stats ordered in
   // descending order of average stat values
@@ -428,7 +412,7 @@ var StatsModel = {};
         returnValue(rv);
       });
     });
-  });
+  }).name("specificStatsNodesCell");
 
   var visibleStatsDescCell = self.visibleStatsDescCell = Cell.compute(function (v) {
     if (v.need(displayingSpecificStatsCell)) {
@@ -439,7 +423,7 @@ var StatsModel = {};
     } else {
       return v.need(rawStatsDescCell);
     }
-  });
+  }).name("visibleStatsDescCell");
 
   self.infosCell = Cell.needing(visibleStatsDescCell).compute(function (v, desc) {
     desc = JSON.parse(JSON.stringify(desc)); // this makes deep copy of desc
@@ -479,25 +463,25 @@ var StatsModel = {};
     infos.blockIDs = blockIDs;
 
     return {desc: desc, infos: infos};
-  });
+  }).name("infosCell");
 
   self.statsDescCell = Cell.needing(self.infosCell).compute(function (v, infos) {
     return infos.desc;
-  });
+  }).name("statsDescCell");
 
   self.serverResourcesVisible = Cell.compute(function (v) {
     // server resources are visible iff infos cell is not undefined
     // and statsHostname is not blank
     return !!v(self.infosCell) && !!v(self.statsHostname);
-  });
+  }).name("serverResourcesVisible");
 
-  self.selectedGraphNameCell = new StringHashFragmentCell("graph");
+  self.selectedGraphNameCell = (new StringHashFragmentCell("graph")).name("selectedGraphNameCell");
 
-  self.configurationExtra = new Cell();
+  self.configurationExtra = (new Cell()).name("configurationExtra");
 
   self.smallGraphSelectionCellCell = Cell.compute(function (v) {
     return v.need(displayingSpecificStatsCell) ? self.statsHostname : self.selectedGraphNameCell;
-  });
+  }).name("smallGraphSelectionCellCell");
 
   self.aggregateGraphsConfigurationCell = Cell.compute(function (v) {
     var selectedGraphName = v(self.selectedGraphNameCell);
@@ -531,7 +515,7 @@ var StatsModel = {};
       infos: infos,
       extra: v(self.configurationExtra)
     };
-  });
+  }).name("aggregateGraphsConfigurationCell");
 
   self.specificGraphsConfigurationCell = Cell.compute(function (v) {
     var infos = v.need(self.infosCell).infos;
@@ -561,7 +545,7 @@ var StatsModel = {};
       infos: infos,
       extra: v(self.configurationExtra)
     };
-  });
+  }).name("specificGraphsConfigurationCell");
 
   self.specificStatsNamesSetCell = Cell.compute(function (v) {
     var rawDesc = v.need(rawStatsDescCell);
@@ -604,15 +588,7 @@ var StatsModel = {};
     });
 
     return result;
-  });
-
-  self.graphsConfigurationCellCell = Cell.compute(function (v) {
-    if (v.need(self.displayingSpecificStatsCell)) {
-      return self.specificGraphsConfigurationCell;
-    } else {
-      return self.aggregateGraphsConfigurationCell;
-    }
-  });
+  }).name("specificStatsNamesSetCell");
 
   self.graphsConfigurationCell = Cell.compute(function (v) {
     if (v.need(self.displayingSpecificStatsCell)) {
@@ -620,14 +596,14 @@ var StatsModel = {};
     } else {
       return v.need(self.aggregateGraphsConfigurationCell);
     }
-  });
+  }).name("graphsConfigurationCell");
 
   self.hotKeysCell = Cell.compute(function (v) {
     if (v.need(displayingSpecificStatsCell)) {
       return null;
     }
     return v.need(statsCell).hot_keys;
-  });
+  }).name("hotKeysCell");
   self.hotKeysCell.equality = function (a,b) {return a===b;};
 
 })(StatsModel);
