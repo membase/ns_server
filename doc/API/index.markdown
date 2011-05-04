@@ -408,6 +408,70 @@ Accept: */*
 <pre>curl -u Administrator:letmein http://localhost:8091/settings/stats</pre>
 
 
+####Setting whether auto-failover should be enabled or disabled
+
+It's a global setting for all clusters. You need to be authenticated to
+change this value.
+
+Possible parameters are:
+* enabled (true|false) (required): whether to enable or disable auto-failover
+* age (integer) (required; optional when enabled=false): The number of seconds a node must be down before it is automatically failovered
+* maxNodes (integer) (required; optional when enabled=false): The maximum number of nodes that can be automatically failovered
+
+*Request*
+
+<pre class="restcalls">
+POST /settings/autoFailover HTTP/1.1
+Host: node.in.your.cluster:8091
+Content-Type: application/x-www-form-urlencoded
+Authorization: Basic YWRtaW46YWRtaW4=
+Content-Length: 14
+
+enabled=true&age=60&maxNodes=2
+</pre>
+
+*Response*
+
+200 OK
+400 Bad Request, The value of "enabled" must be true or false.
+400 Bad Request, The value of "age" must be a positive integer.
+400 Bad Request, The value of "maxNodes" must be a positive integer.
+401 Unauthorized
+409 Conflict, Could not enable auto-failover. All nodes in the cluster need to be up and running.
+
+<pre>curl -i -u Administrator:letmein -d enabled=true&age=60&maxNodes=2 http://localhost:8091/settings/autoFailover</pre>
+
+####Getting information about the auto-failover settings
+
+It's a global setting for all clusters. You need to be authenticated to
+read this value.
+
+*Request*
+
+<pre class="restcalls">
+GET /settings/autoFailover HTTP/1.1
+Host: node.in.your.pool.com
+Authorization: Basic YWRtaW46YWRtaW4=
+Accept: */*
+</pre>
+
+*Response*
+
+<pre class="json">
+ HTTP/1.1 200 OK
+ Content-Type: application/json
+ Content-Length: nnn
+
+{
+    "enabled": true,
+    "age": 60,
+    "maxNodes": 2
+}
+</pre>
+
+<pre>curl -u Administrator:letmein http://localhost:8091/settings/autoFailover</pre>
+
+
 ###Pool Details
 
 *Request*

@@ -183,7 +183,14 @@ default() ->
                          bucket_deleted,
                          bucket_auth_failed]}
               ]},
-     {replication, [{enabled, true}]}
+     {replication, [{enabled, true}]},
+     {auto_failover, [{enabled, false},
+                      % age is the time (in seconds) a node needs to be down
+                      % before it is automatically faileovered
+                      {age, 60},
+                      % max_nodes is the maximum number of nodes that may be
+                      % automatically failovered
+                      {max_nodes, 1}]}
     ].
 
 %% returns list of changes to config to upgrade it to current version.

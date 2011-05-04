@@ -42,4 +42,6 @@ child_specs() ->
     [{ns_orchestrator, {ns_orchestrator, start_link, []},
       permanent, 20, worker, [ns_orchestrator]},
      {ns_tick, {ns_tick, start_link, []},
-      permanent, 10, worker, [ns_tick]}].
+      permanent, 10, worker, [ns_tick]},
+     {auto_failover, {auto_failover, start_link, []},
+      permanent, 10, worker, [auto_failover]}].

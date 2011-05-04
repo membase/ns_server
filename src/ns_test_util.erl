@@ -1,8 +1,8 @@
 -module(ns_test_util).
 -export([start_cluster/1, connect_cluster/2, stop_node/1, gen_cluster_conf/1,
          rebalance_node/1, rebalance_node_done/2, nodes_status/2, wait_for/3,
-         create_bucket/3,
-         clear_data/0]).
+         create_bucket/3, clear_data/0, stop_nodes/1, failover_node/2,
+         wait_for_failover/3]).
 
 -define(USERNAME, "Administrator").
 -define(PASSWORD, "asdasd").
@@ -50,15 +50,13 @@ gen_cluster_conf(NodeNames) ->
     {_N, Nodes} = lists:foldl(F, {0, []}, NodeNames),
     lists:reverse(Nodes).
 
-
 %% @doc Clear any existing data for a cluster before starting
 -spec clear_data() -> ok.
 clear_data() ->
     misc:rm_rf(filename:join([code:lib_dir(ns_server), "data"])),
     ok.
 
-
-%% @doc Start a set of nodes and initialise ns_server on them, ensure
+%% @doc Start a set of nodes and initialise ns_server on them
 -spec start_cluster([#node{}]) -> ok.
 start_cluster(Nodes) ->
     [ok = start_node(Node) || Node <- Nodes],
@@ -96,14 +94,22 @@ start_node(Conf) ->
 
 
 %% @doc Stop a node
--spec stop_node(#node{}) -> ok.
+-spec stop_node(Node::#node{}) -> ok|{error, timeout}.
 stop_node(Node) ->
     rpc:call(Node#node.nodename, init, stop, []),
-    wait_for_resp(Node#node.nodename, pang, 10).
+    wait_for_resp(Node#node.nodename, pang, 20).
+
+%% @doc Stop multiple nodes at the same time
+-spec stop_nodes(Nodes::[#node{}]) -> ok|{error, timeout}.
+stop_nodes(Nodes) ->
+    %lists:foreach(fun(#node{nodeNameNode) ->
+    NodeNames = [Node#node.nodename || Node <- Nodes],
+    [rpc:call(NodeName, init, stop, []) || NodeName <- NodeNames],
+    wait_for_resp_multi(NodeNames, pang, 20).
 
 %% @doc Returns the status of all nodes of a cluster.
 -spec nodes_status(Master::#node{}) ->
-                      [{healthy|unhealthy,
+                      [{healthy|unhealthy|warmup,
                         active|inactiveFailed|inactiveAdded}].
 nodes_status(Master) ->
     ServerList = server_list(Master),
@@ -185,6 +191,19 @@ rebalance_node_status(#node{host=Host, rest_port=Port, username=User,
     io:format(user, "~p~n~n~p~n", [Cmd, Status]),
     Status.
 
+%% @doc Failovers a node and returns when it is done
+%% `Master` is the master node of the cluster
+%% `Node` is the node that should be failovered
+-spec failover_node(Master::#node{}, Node::#node{}) -> ok.
+failover_node(#node{host=MHost, rest_port=MPort, username=User,
+                    password=Pass}=Master,
+              #node{host=CHost, rest_port=CPort, nodename=CName}) ->
+    Root = code:lib_dir(ns_server),
+    Cmd = fmt("~s/../install/bin/membase failover -c~s:~p "
+                  "--server-failover=~s:~p -u ~s -p ~s ",
+                  [Root, MHost, MPort, CHost, CPort, User, Pass]),
+    io:format(user, "~p~n~n~p~n", [Cmd, os:cmd(Cmd)]),
+    ok = wait_for_failover(Master, 5, CName).
 
 %% @doc Executes Fun until a certain criteria (Expected) is reached. Returns
 %% with an error if it happens within the give amount of Time (in seconds)
@@ -213,6 +232,15 @@ wait_for_resp(Node, Resp, Time) ->
     Fun = fun() -> net_adm:ping(Node) end,
     wait_for(Fun, Resp, Time).
 
+%% @doc Wait for multiple nodes to become alive/dead by pinging it in a poll
+-spec wait_for_resp_multi([atom()], any(), integer()) -> ok | {error, timeout}.
+wait_for_resp_multi(Nodes, Resp, Time) ->
+    Fun = fun() ->
+              Pings = [net_adm:ping(Node) || Node <- Nodes],
+              lists:all(fun(Elem) -> Elem =:= Resp end, Pings)
+          end,
+    wait_for(Fun, true, Time).
+
 %% @doc Wait for a cluster to be completely healthy (all nodes).
 %% `Time` is the number of seconds it should keep trying
 wait_for_health(Node, Time) ->
@@ -221,6 +249,18 @@ wait_for_health(Node, Time) ->
               lists:all(fun(Elem) -> Elem =:= healthy end, Health)
           end,
     wait_for(Fun, true, Time).
+
+%% @doc Wait for a node to complete the fail over.
+%% `Time` is the number of seconds it should keep trying
+%% `Node` is the node you want to check if it was failovered
+-spec wait_for_failover(Master::#node{}, Time::integer(), Node::atom()) ->
+                           ok|{error, timeout}.
+wait_for_failover(Master, Time, Node) ->
+    Fun = fun() ->
+              [Status] = nodes_status(Master, [Node]),
+              Status
+          end,
+    wait_for(Fun, {unhealthy, inactiveFailed}, Time).
 
 %% @doc run a shell command and flush all of its output
 spawn_dev_null(Cmd) ->
