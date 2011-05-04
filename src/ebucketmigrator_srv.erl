@@ -36,7 +36,9 @@
                 vbuckets,
                 takeover :: boolean(),
                 takeover_msgs_seen = 0 :: non_neg_integer(),
-                last_seen}).
+                last_seen,
+                dump_file :: file:io_device() | undefined
+               }).
 
 %% external API
 -export([start_link/3]).
@@ -130,10 +132,7 @@ init({Src, Dst, Opts}) ->
             {name, Name},
             {takeover, TakeOver}],
     ?log_info("Starting tap stream:~n~p~n", [Args]),
-    {ok, quiet} = mc_client_binary:tap_connect(Upstream, [{vbuckets, VBuckets},
-                                                          {checkpoints, Checkpoints},
-                                                          {name, Name},
-                                                          {takeover, TakeOver}]),
+    {ok, quiet} = mc_client_binary:tap_connect(Upstream, Args),
     ok = inet:setopts(Upstream, [{active, once}]),
     ok = inet:setopts(Downstream, [{active, once}]),
 
@@ -147,8 +146,29 @@ init({Src, Dst, Opts}) ->
       last_seen=now(),
       takeover=TakeOver
      },
-    gen_server:enter_loop(?MODULE, [], State).
+    gen_server:enter_loop(?MODULE, [], maybe_setup_dumping(State, Args)).
 
+-spec maybe_setup_dumping(#state{}, term()) -> #state{}.
+maybe_setup_dumping(State, Args) ->
+    case os:getenv("MEMBASE_DUMP_TAP_STREAMS") of
+        false ->
+            State;
+        _ ->
+            try
+                do_setup_dumping(State, Args)
+            catch E:T ->
+                    ?log_error("Tried to setup tap stream dumping and failed.~n~p~n", [{E,T,erlang:get_stacktrace()}]),
+                    State
+            end
+    end.
+
+do_setup_dumping(State, Args) ->
+    FileNamePrefix = lists:flatten(io_lib:format("tap_dump_~w_~w", [misc:time_to_epoch_ms_int(now()), erlang:phash2(self())])),
+    {ok, InfoIO} = file:open(path_config:component_path(data, FileNamePrefix ++ ".info"), [binary, write, delayed_write]),
+    io:format(InfoIO, "InitialState:~n~p~n~nTap Args:~n~p~n", [State, Args]),
+    ok = file:close(InfoIO),
+    {ok, DumpIO} = file:open(path_config:component_path(data, FileNamePrefix ++ ".data"), [binary, write, delayed_write]),
+    State#state{dump_file = DumpIO}.
 
 terminate(_Reason, _State) ->
     ok.
@@ -228,6 +248,10 @@ process_data(Data, Elem, CB, State) ->
                                 #state{}.
 process_downstream(<<?RES_MAGIC:8, _/binary>> = Packet,
                    State) ->
+    case State#state.dump_file of
+        undefined -> ok;
+        File -> file:write(File, Packet)
+    end,
     ok = gen_tcp:send(State#state.upstream, Packet),
     State.
 
