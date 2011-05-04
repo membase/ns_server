@@ -244,6 +244,8 @@ var Cell = mkClass({
       this._markForCompletion();
     }
 
+    return true;
+
     function notifyWatchers(newValue) {
       if (newValue === undefined) {
         if (oldValue !== undefined)
