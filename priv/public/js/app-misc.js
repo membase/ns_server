@@ -429,12 +429,15 @@ _.extend(ViewHelpers, {
     return value;
   },
 
-  stripPort: (function () {
+  maybeStripPort: (function () {
     var cachedAllServers;
     var cachedHostnamesCount;
     return function(value, allServers) {
       var counts;
-      if (allServers === undefined || cachedAllServers === allServers) {
+      if (allServers === undefined) {
+        throw new Error("second argument is required!");
+      }
+      if (cachedAllServers === allServers) {
         counts = cachedHostnamesCount;
       } else {
         var hostnames = _.map(allServers, function (s) {return s.hostname;});
@@ -455,9 +458,13 @@ _.extend(ViewHelpers, {
       if (counts[strippedValue] < 2) {
         value = strippedValue;
       }
-      return escapeHTML(value);
+      return value;
     };
-  })()
+  })(),
+
+  stripPortHTML: function () {
+    return escapeHTML(ViewHelpers.maybeStripPort.apply(this, arguments));
+  }
 });
 
 function genericDialog(options) {
