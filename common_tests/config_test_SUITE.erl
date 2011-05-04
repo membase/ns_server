@@ -7,7 +7,7 @@ suite() ->
     [].
 
 init_per_suite(Config) ->
-    file:set_cwd("../.."),
+    file:set_cwd(code:lib_dir(ns_server)),
     [Master | Rest] = Nodes =
         ns_test_util:gen_cluster_conf(['n_0@127.0.0.1', 'n_1@127.0.0.1']),
     ok = ns_test_util:start_cluster(Nodes),

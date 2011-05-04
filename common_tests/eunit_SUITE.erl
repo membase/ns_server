@@ -27,8 +27,9 @@ all() ->
 eunit(_Config) ->
 
     % Yup this is nasty
+    file:set_cwd(code:lib_dir(ns_server)),
     {ok, [{application, ns_server, Vals}]}
-        = file:consult("../../ebin/ns_server.app"),
+        = file:consult("./ebin/ns_server.app"),
 
     {modules, Mods} = lists:keyfind(modules, 1, Vals),
 
