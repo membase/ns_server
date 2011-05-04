@@ -255,7 +255,10 @@ start_child(Node, Bucket, VBuckets, DstNode) ->
     ?log_info("Args =~n~p",
               [PortServerArgs]),
     ChildSpec = {#child_id{vbuckets=VBuckets, dest_node=DstNode},
-                 {ns_port_server, start_link, PortServerArgs},
+                 {supervisor_cushion, start_link,
+                  [#child_id{vbuckets=VBuckets, dest_node=DstNode},
+                   5000,
+                   ns_port_server, start_link, PortServerArgs]},
                  permanent, 10, worker, [ns_port_server]},
     supervisor:start_child({server(Bucket), Node}, ChildSpec).
 
