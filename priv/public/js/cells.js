@@ -409,6 +409,57 @@ var Cell = mkClass({
     });
     clearTimeout(this.recalculateAtTimeout);
     this.recalculateAtTimeout = undefined;
+  },
+  name: function (name) {
+    if (name) {
+      this._name = name;
+      return this;
+    } else {
+      return this._name;
+    }
+  },
+  traceOn: function () {
+    this.traceCnt = (this.traceCnt || 0) + 1;
+    if (this.traceCnt != 1) {
+      return this;
+    }
+    this.doTraceOn();
+    return this;
+  },
+  traceOff: function () {
+    // NOTE: undefined is converted to NaN here
+    if (!((Number(this.traceCnt)) > 0)) {
+      debugger
+      throw new Error();
+    }
+    if (--this.traceCnt) {
+      return this;
+    }
+    this.doTraceOff();
+    return this;
+  },
+  effectiveName: function () {
+    return this.name() || String(Cell.id(this));
+  },
+  doTraceOn: function () {
+    var self = this;
+    var tryUpdatingValue = self.tryUpdatingValue;
+    var setValue = self.setValue;
+    this.tryUpdatingValue = function () {
+      console.log(self.effectiveName() + ": going to recompute");
+      return tryUpdatingValue.apply(this, arguments);
+    }
+    this.setValue = function (v) {
+      var rv = setValue.apply(this, arguments);
+      if (rv) {
+        console.log(self.effectiveName() + ": new value: ", self.value, self.pendingFuture)
+      }
+      return rv;
+    }
+  },
+  doTraceOff: function () {
+    delete this.tryUpdatingValue;
+    delete this.setValue;
   }
 });
 
