@@ -1,6 +1,6 @@
 -module(ns_test_util).
 -export([start_cluster/1, connect_cluster/2, stop_node/1, gen_cluster_conf/1,
-         rebalance_node/1, rebalance_node_done/1, nodes_status/2]).
+         rebalance_node/1, rebalance_node_done/2, nodes_status/2]).
 
 -define(USERNAME, "Administrator").
 -define(PASSWORD, "asdasd").
@@ -128,7 +128,7 @@ server_list(#node{host=Host, rest_port=Port, username=User, password=Pass}) ->
 
 
 %% @doc Rebalances the given node and returns immediately
--spec rebalance_node(#node{}) -> ok.
+-spec rebalance_node(Node::#node{}) -> ok.
 rebalance_node(#node{host=Host, rest_port=Port, username=User,
                      password=Pass}) ->
     Root = code:lib_dir(ns_server),
@@ -137,19 +137,15 @@ rebalance_node(#node{host=Host, rest_port=Port, username=User,
                   [Root, Host, Port, User, Pass]),
     io:format(user, "~p~n~n~p~n", [Cmd, os:cmd(Cmd)]).
 
-%% @doc Rebalances the given node and returns when the rebalancing is done
--spec rebalance_node_done(#node{}) -> ok.
-rebalance_node_done(#node{host=Host, rest_port=Port, username=User,
-                          password=Pass}=Node) ->
-    Root = code:lib_dir(ns_server),
-    Cmd = fmt("~s/../install/bin/membase rebalance -c~s:~p "
-                  "-u ~s -p ~s",
-                  [Root, Host, Port, User, Pass]),
-    io:format(user, "~p~n~n~p~n", [Cmd, os:cmd(Cmd)]),
-    ok = wait_for_balanced(Node, 3).
+%% @doc Rebalances the given node and returns when the rebalancing is done.
+%% `Time` is the number of seconds it should keep trying.
+-spec rebalance_node_done(Node::#node{}, Time::integer()) -> ok.
+rebalance_node_done(Node, Time) ->
+    rebalance_node(Node),
+    ok = wait_for_balanced(Node, Time).
 
-%% @doc Returns the rebalancing status the given node
--spec rebalance_node_status(#node{}) -> list().
+%% @doc Returns the rebalancing status of the given node
+-spec rebalance_node_status(Node::#node{}) -> string().
 rebalance_node_status(#node{host=Host, rest_port=Port, username=User,
                             password=Pass}) ->
     Root = code:lib_dir(ns_server),
