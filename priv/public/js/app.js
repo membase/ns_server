@@ -163,7 +163,6 @@ var AlertsSection = {
       if (massagedLogs === undefined)
         return;
       var stale = massagedLogs.stale;
-      $('#alerts .generate_diag_link')[stale ? 'hide' : 'show']();
       $('#alerts .staleness-notice')[stale ? 'show' : 'hide']();
     });
   },
