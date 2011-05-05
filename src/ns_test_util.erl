@@ -1,6 +1,6 @@
 -module(ns_test_util).
 -export([start_cluster/1, connect_cluster/2, stop_node/1, gen_cluster_conf/1,
-         rebalance_node/1, rebalance_node_done/1]).
+         rebalance_node/1, rebalance_node_done/1, nodes_status/2]).
 
 -define(USERNAME, "Administrator").
 -define(PASSWORD, "asdasd").
@@ -22,6 +22,14 @@
                          {ram_quota,268435456}]
          }).
 
+%% @doc Status of a server (node)
+-record(server_status, {
+          nodename :: atom(),
+          host :: string(),
+          port :: integer(),
+          status :: healthy|unhealthy,
+          membership :: active|inactiveFailed|inactiveAdded
+         }).
 
 %% @doc Helper function to generate a set of configuration for nodes in cluster
 -spec gen_cluster_conf([atom()]) -> [#node{}].
@@ -82,6 +90,41 @@ start_node(Conf) ->
 stop_node(Node) ->
     rpc:call(Node#node.nodename, init, stop, []),
     wait_for_resp(Node#node.nodename, pang, 20).
+
+%% @doc Returns the status of the given nodes. The result list has the same
+%% order as the input list.
+-spec nodes_status(Master::#node{}, Nodes::[atom()]) ->
+                      [{healthy|unhealthy,
+                        active|inactiveFailed|inactiveAdded}].
+nodes_status(Master, Nodes) ->
+    ServerList = server_list(Master),
+    lists:map(fun(Node) ->
+                  Status = lists:keyfind(Node, #server_status.nodename,
+                                         ServerList),
+                  {Status#server_status.status,
+                   Status#server_status.membership}
+              end, Nodes).
+
+%% @doc Returns the a list of servers as records with the information about
+%% the status of the node.
+-spec server_list(#node{}) -> [#server_status{}].
+server_list(#node{host=Host, rest_port=Port, username=User, password=Pass}) ->
+    Root = code:lib_dir(ns_server),
+    Cmd = fmt("~s/../install/bin/membase server-list -c~s:~p "
+                  "-u ~s -p ~s",
+                  [Root, Host, Port, User, Pass]),
+    ServerList = os:cmd(Cmd),
+    io:format(user, "~p~n~n~p~n", [Cmd, ServerList]),
+    lists:map(fun(Server) ->
+                  Tokens = string:tokens(Server, " :"),
+                  #server_status{
+                   nodename=list_to_atom(lists:nth(1, Tokens)),
+                   host=lists:nth(2, Tokens),
+                   port=list_to_integer(lists:nth(3, Tokens)),
+                   status=list_to_atom(lists:nth(4, Tokens)),
+                   membership=list_to_atom(lists:nth(5, Tokens))
+                  }
+              end, string:tokens(ServerList, "\n")).
 
 
 %% @doc Rebalances the given node and returns immediately
