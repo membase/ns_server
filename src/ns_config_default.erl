@@ -35,10 +35,11 @@ default() ->
     RawDbDir = path_config:component_path(data),
     filelib:ensure_dir(RawDbDir),
     file:make_dir(RawDbDir),
-    DbDir = case misc:realpath(RawDbDir, "/") of
-                {ok, X} -> X;
-                _ -> RawDbDir
-            end,
+    DbDir0 = case misc:realpath(RawDbDir, "/") of
+                 {ok, X} -> X;
+                 _ -> RawDbDir
+             end,
+    DbDir = filename:join(DbDir0, "data"),
     InitQuota = case memsup:get_memory_data() of
                     {_, _, _} = MemData ->
                         element(2, ns_storage_conf:allowed_node_quota_range(MemData));
