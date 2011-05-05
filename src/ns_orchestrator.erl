@@ -221,11 +221,6 @@ janitor_running(_Event, State) ->
 idle({create_bucket, BucketType, BucketName, NewConfig}, _From, State) ->
     Reply = case ns_bucket:name_conflict(BucketName) of
                 false ->
-                    %% Delete any leftover files.
-                    rpc:multicall(ns_node_disco:nodes_actual_proper(),
-                                  ns_storage_conf,
-                                  delete_db_files,
-                                  [BucketName]),
                     ns_bucket:create_bucket(BucketType, BucketName, NewConfig);
                 true ->
                     {error, {already_exists, BucketName}}

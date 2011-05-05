@@ -252,18 +252,15 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
                        ?log_error("Failed to reach ns_bucket:get_bucket(~p). ~p:~p~n~p~n",
                                   [Bucket,T,E,erlang:get_stacktrace()]),
                        false
-               end,
-    DieFast = try ns_config:search(i_am_a_dead_man) of
-                  {value, true} -> true;
-                  _ -> false
-                catch T1:E1 ->
-                        ?log_error("Failed to reach ns_config. ~p:~p~n~p~n",
-                                   [T1,E1,erlang:get_stacktrace()]),
-                        false
-                end,
+               end orelse try ns_config:search(i_am_a_dead_man) of
+                              {value, true} -> true;
+                              _ -> false
+                          catch T1:E1 ->
+                                  ?log_error("Failed to reach ns_config. ~p:~p~n~p~n",
+                                             [T1,E1,erlang:get_stacktrace()]),
+                                  false
+                          end,
     if
-        DieFast ->
-            ok;
         Reason == normal; Reason == shutdown ->
             ns_log:log(?MODULE, 2, "Shutting down bucket ~p on ~p for ~s",
                        [Bucket, node(), case Deleting of
@@ -271,7 +268,11 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
                                             false -> "server shutdown"
                                         end]),
             try
-                mc_client_binary:delete_bucket(Sock, Bucket, [{force, Deleting}])
+                ok = mc_client_binary:delete_bucket(Sock, Bucket, [{force, Deleting}]),
+                case Deleting of
+                    true -> ns_storage_conf:delete_db_files(Bucket);
+                    _ -> ok
+                end
             catch
                 E2:R2 ->
                     ?log_error("Failed to delete bucket ~p: ~p",
