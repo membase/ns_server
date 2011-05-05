@@ -351,7 +351,15 @@ extract_disk_stats_for_path_test() ->
              {"/media/p2",9669472,81}],
     ?assertEqual({ok, {"/media/p2",9669472,81}},
                  extract_disk_stats_for_path(DiskSupStats,
-                                             "/media/p2/mbdata")).
+                                             "/media/p2/mbdata")),
+    ?assertEqual({ok, {"/", 297994252, 97}},
+                 extract_disk_stats_for_path(DiskSupStats, "/")),
+    ?assertEqual({ok, {"/", 297994252, 97}},
+                 extract_disk_stats_for_path(DiskSupStats, "/lib/init")),
+    ?assertEqual({ok, {"/dev", 10240, 2}},
+                 extract_disk_stats_for_path(DiskSupStats, "/dev/sh")),
+    ?assertEqual({ok, {"/dev", 10240, 2}},
+                 extract_disk_stats_for_path(DiskSupStats, "/dev")).
 
 db_files_test() ->
   ?assertEqual(["hello/world-data/world",
