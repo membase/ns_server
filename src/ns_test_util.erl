@@ -1,5 +1,6 @@
 -module(ns_test_util).
--export([start_cluster/1, connect_cluster/2, stop_node/1, gen_cluster_conf/1]).
+-export([start_cluster/1, connect_cluster/2, stop_node/1, gen_cluster_conf/1,
+         rebalance_node/1, rebalance_node_done/1]).
 
 -define(USERNAME, "Administrator").
 -define(PASSWORD, "asdasd").
@@ -56,13 +57,13 @@ connect_cluster(#node{host=MHost, rest_port=MPort, username=User, password=Pass}
     InitCmd = fmt("~s/../install/bin/membase cluster-init -c~s:~p "
                   "--cluster-init-username=~s --cluster-init-password=~s",
                   [Root, MHost, MPort, User, Pass]),
-    io:format("~p~n~n~p~n", [InitCmd, os:cmd(InitCmd)]),
+    io:format(user, "~p~n~n~p~n", [InitCmd, os:cmd(InitCmd)]),
 
     [begin
          Cmd = fmt("~s/../install/bin/membase server-add -c~s:~p "
                    "--server-add=~s:~p -u ~s -p ~s",
                    [Root, MHost, MPort, CHost, CPort, User, Pass]),
-         io:format("~p~n~n~p~n", [Cmd, os:cmd(Cmd)])
+         io:format(user, "~p~n~n~p~n", [Cmd, os:cmd(Cmd)])
      end || #node{host=CHost, rest_port=CPort} <- Nodes],
     ok.
 
@@ -72,7 +73,7 @@ connect_cluster(#node{host=MHost, rest_port=MPort, username=User, password=Pass}
 start_node(Conf) ->
     Cmd = fmt("~s/scripts/cluster_run_wrapper --dont-start --host=127.0.0.1 --static-cookie "
               "--start-index=~p", [code:lib_dir(ns_server), Conf#node.x]),
-    io:format("Starting erlang with: ~p~n", [Cmd]),
+    io:format(user, "Starting erlang with: ~p~n", [Cmd]),
     spawn_dev_null(Cmd),
     wait_for_resp(Conf#node.nodename, pong, 10).
 
@@ -81,6 +82,55 @@ start_node(Conf) ->
 stop_node(Node) ->
     rpc:call(Node#node.nodename, init, stop, []),
     wait_for_resp(Node#node.nodename, pang, 20).
+
+
+%% @doc Rebalances the given node and returns immediately
+-spec rebalance_node(#node{}) -> ok.
+rebalance_node(#node{host=Host, rest_port=Port, username=User,
+                     password=Pass}) ->
+    Root = code:lib_dir(ns_server),
+    Cmd = fmt("~s/../install/bin/membase rebalance -c~s:~p "
+                  "-u ~s -p ~s",
+                  [Root, Host, Port, User, Pass]),
+    io:format(user, "~p~n~n~p~n", [Cmd, os:cmd(Cmd)]).
+
+%% @doc Rebalances the given node and returns when the rebalancing is done
+-spec rebalance_node_done(#node{}) -> ok.
+rebalance_node_done(#node{host=Host, rest_port=Port, username=User,
+                          password=Pass}=Node) ->
+    Root = code:lib_dir(ns_server),
+    Cmd = fmt("~s/../install/bin/membase rebalance -c~s:~p "
+                  "-u ~s -p ~s",
+                  [Root, Host, Port, User, Pass]),
+    io:format(user, "~p~n~n~p~n", [Cmd, os:cmd(Cmd)]),
+    ok = wait_for_balanced(Node, 3).
+
+%% @doc Returns the rebalancing status the given node
+-spec rebalance_node_status(#node{}) -> list().
+rebalance_node_status(#node{host=Host, rest_port=Port, username=User,
+                            password=Pass}) ->
+    Root = code:lib_dir(ns_server),
+    Cmd = fmt("~s/../install/bin/membase rebalance-status -c~s:~p "
+                  "-u ~s -p ~s",
+                  [Root, Host, Port, User, Pass]),
+    Status = os:cmd(Cmd),
+    io:format(user, "~p~n~n~p~n", [Cmd, Status]),
+    Status.
+
+%% @doc Wait for a cluster to finish rebalancing by pinging it in a poll
+%% `Time` is the number of seconds it should keep trying
+-spec wait_for_balanced(Node::#node{}, Time::integer()) ->
+                           ok | {error, still_rebalancing}.
+wait_for_balanced(_Node, 0) ->
+    {error, still_rebalancing};
+wait_for_balanced(Node, Time) ->
+    case rebalance_node_status(Node) of
+        "(u'none', None)\n" ->
+            ok;
+        _Else ->
+            timer:sleep(1000),
+            wait_for_balanced(Node, Time-1)
+    end.
 
 
 %% @doc Wait for a node to become alive by pinging it in a poll
