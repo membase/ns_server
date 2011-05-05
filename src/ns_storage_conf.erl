@@ -317,28 +317,30 @@ extract_disk_stats_for_path(StatsList, Path0) ->
     SortedList = lists:sort(LessEqFn, StatsList),
     extract_disk_stats_for_path_rec(SortedList, Path).
 
+db_files_dir(DBDir, Bucket) ->
+    filename:join(DBDir, Bucket ++ "-data").
+
 db_files(Dir, Bucket) ->
-    BucketSubDir = Bucket ++ "-data",
+    BucketSubDir = db_files_dir(Dir, Bucket),
     S = fun (X) -> [X, X ++ "-shm", X ++ "-wal"] end,
-    [filename:join([Dir, BucketSubDir, lists:append(Bucket, Suffix)])
+    [filename:join(BucketSubDir, lists:append(Bucket, Suffix))
        || Suffix <- lists:flatmap(S, ["", "-0.mb", "-1.mb", "-2.mb", "-3.mb"])].
 
 delete_all_db_files(DBDir) ->
-    {ok, Files} = file:list_dir(DBDir),
-    lists:foreach(fun (File) ->
-                          File1 = filename:join([DBDir, File]),
-                          Result = file:delete(File1),
-                          ?log_info("Result of deleting file ~p: ~p",
-                                    [File1, Result])
-                  end, Files).
+    lists:foreach(fun (F) ->
+                          delete_bucket_db_directory(filename:join(DBDir, F))
+                  end,
+                  filelib:wildcard("*-data", DBDir)).
+
+delete_bucket_db_directory(BucketDBDir) ->
+    Result = misc:rm_rf(BucketDBDir),
+    ?log_info("Result of deleting db directory: ~p: ~p", [BucketDBDir, Result]),
+    Result.
 
 delete_db_files(Bucket) ->
-    DBDir = dbdir(ns_config:get()),
-    lists:foreach(fun (File) ->
-                          Result = file:delete(File),
-                          ?log_info("Result of deleting file ~p: ~p",
-                                    [File, Result])
-                  end, db_files(DBDir, Bucket)).
+    {ok, DBDir} = dbdir(ns_config:get()),
+    BucketDBDir = db_files_dir(DBDir, Bucket),
+    delete_bucket_db_directory(BucketDBDir).
 
 
 -ifdef(EUNIT).
