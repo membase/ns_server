@@ -1277,7 +1277,7 @@ handle_add_node(Req) ->
     Params = Req:parse_post(),
     {Hostname, StringPort} = case proplists:get_value("hostname", Params, "") of
                                  [_ | _] = V ->
-                                     case string:tokens(V, ":") of
+                                     case string:tokens(string:strip(V), ":") of
                                          [N] -> {N, "8091"};
                                          [N, P] -> {N, P}
                                      end;
