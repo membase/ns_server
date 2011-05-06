@@ -34,7 +34,9 @@
                 upbuf = <<>> :: binary(),
                 downbuf = <<>> :: binary(),
                 vbuckets,
+                last_sent_seqno = -1 :: integer(),
                 takeover :: boolean(),
+                takeover_done :: boolean(),
                 takeover_msgs_seen = 0 :: non_neg_integer(),
                 last_seen,
                 dump_file :: file:io_device() | undefined
@@ -83,7 +85,7 @@ handle_info({tcp_closed, Socket}, #state{upstream=Socket} = State) ->
             N = sets:size(State#state.vbuckets),
             case State#state.takeover_msgs_seen of
                 N ->
-                    {stop, normal, State};
+                    {stop, normal, State#state{takeover_done = true}};
                 Msgs ->
                     {stop, {wrong_number_takeovers, Msgs, N}, State}
             end;
@@ -144,8 +146,10 @@ init({Src, Dst, Opts}) ->
       downstream=Downstream,
       vbuckets=sets:from_list(VBuckets),
       last_seen=now(),
-      takeover=TakeOver
+      takeover=TakeOver,
+      takeover_done=false
      },
+    erlang:process_flag(trap_exit, true),
     gen_server:enter_loop(?MODULE, [], maybe_setup_dumping(State, Args)).
 
 -spec maybe_setup_dumping(#state{}, term()) -> #state{}.
@@ -170,9 +174,65 @@ do_setup_dumping(State, Args) ->
     {ok, DumpIO} = file:open(path_config:component_path(data, FileNamePrefix ++ ".data"), [binary, write, delayed_write]),
     State#state{dump_file = DumpIO}.
 
-terminate(_Reason, _State) ->
-    ok.
+terminate(_Reason, State) ->
+    gen_tcp:close(State#state.upstream),
+    case State#state.takeover_done of
+        true ->
+            ?log_info("Skipping close ack for successfull takover~n", []),
+            ok;
+        _ ->
+            confirm_sent_messages(State)
+    end.
 
+read_tap_message(Sock) ->
+    case gen_tcp:recv(Sock, ?HEADER_LEN) of
+        {ok, <<_Magic:8, _Opcode:8, _KeyLen:16, _ExtLen:8, _DataType: 8,
+               _VBucket:16, BodyLen:32, _Opaque:32, _CAS:64>> = Packet} ->
+            case BodyLen of
+                0 ->
+                    {ok, Packet};
+                _ ->
+                    case gen_tcp:recv(Sock, BodyLen) of
+                        {ok, Extra} ->
+                            {ok, <<Packet/binary, Extra/binary>>};
+                        X1 ->
+                            X1
+                    end
+            end;
+        X2 ->
+            X2
+    end.
+
+do_config_sent_messages(Sock, Seqno) ->
+    case read_tap_message(Sock) of
+        {ok, Packet} ->
+            <<_Magic:8, _Opcode:8, _KeyLen:16, _ExtLen:8, _DataType: 8,
+              _VBucket:16, _BodyLen:32, Opaque:32, _CAS:64, _Rest/binary>> = Packet,
+            case Opaque of
+                Seqno ->
+                    ?log_info("Got close ack!~n", []),
+                    ok;
+                _ ->
+                    do_config_sent_messages(Sock, Seqno)
+            end;
+        {error, _} = Crap ->
+            ?log_info("Got error while trying to read close ack:~p~n",[Crap])
+    end.
+
+confirm_sent_messages(State) ->
+    Seqno = State#state.last_sent_seqno + 1,
+    Sock = State#state.downstream,
+    inet:setopts(Sock, [{active, false}]),
+    Msg = mc_binary:encode(req, #mc_header{opcode = ?TAP_OPAQUE, opaque = Seqno},
+                           #mc_entry{data = <<4:16, ?TAP_FLAG_ACK:16, 1:8, 0:8, 0:8, 0:8, ?TAP_OPAQUE_CLOSE_TAP_STREAM:32>>}),
+    case gen_tcp:send(Sock, Msg) of
+        ok ->
+            do_config_sent_messages(Sock, Seqno);
+        {error, closed} ->
+            ok;
+        X ->
+            ?log_error("Got error while trying to send close confirmation: ~p~n", [X])
+    end.
 
 %%
 %% API
@@ -260,7 +320,7 @@ process_downstream(<<?RES_MAGIC:8, _/binary>> = Packet,
 -spec process_upstream(<<_:64,_:_*8>>, #state{}) ->
                               #state{}.
 process_upstream(<<?REQ_MAGIC:8, Opcode:8, _KeyLen:16, _ExtLen:8, _DataType:8,
-                   VBucket:16, _BodyLen:32, _Opaque:32, _CAS:64, _EnginePriv:16,
+                   VBucket:16, _BodyLen:32, Opaque:32, _CAS:64, _EnginePriv:16,
                    _Flags:16, _TTL:8, _Res1:8, _Res2:8, _Res3:8, Rest/binary>> =
                      Packet,
                  #state{downstream=Downstream, vbuckets=VBuckets} = State) ->
@@ -295,7 +355,7 @@ process_upstream(<<?REQ_MAGIC:8, Opcode:8, _KeyLen:16, _ExtLen:8, _DataType:8,
             case sets:is_element(VBucket, VBuckets) of
                 true ->
                     ok = gen_tcp:send(Downstream, Packet),
-                    State1;
+                    State1#state{last_sent_seqno = Opaque};
                 false ->
                     %% Filter it out and count it
                     State1#state{bad_vbucket_count =

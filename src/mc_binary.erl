@@ -21,7 +21,7 @@
 
 -include("mc_entry.hrl").
 
--export([bin/1, recv/2, recv/3, send/4]).
+-export([bin/1, recv/2, recv/3, send/4, encode/3]).
 
 -define(FLUSH_TIMEOUT, 5000).
 -define(RECV_TIMEOUT, 5000).

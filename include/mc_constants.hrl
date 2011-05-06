@@ -90,7 +90,7 @@
 -define(VB_STATE_PENDING, 3).
 -define(VB_STATE_DEAD, 4).
 
-% TAP flags
+% TAP CONNECT flags
 -define(BACKFILL,          2#0000001).
 -define(DUMP,              2#0000010).
 -define(LIST_VBUCKETS,     2#0000100).
@@ -99,7 +99,11 @@
 -define(KEYS_ONLY,         2#0100000).
 -define(CHECKPOINT,        2#1000000).
 
-%% EP engine flags
+-define(TAP_FLAG_ACK,      2#0000001).
+-define(TAP_FLAG_NO_VALUE, 2#0000010).
+
+%% EP engine opaque flags
 -define(TAP_OPAQUE_ENABLE_AUTO_NACK, 16#00).
 -define(TAP_OPAQUE_INITIAL_VBUCKET_STREAM, 16#01).
 -define(TAP_OPAQUE_ENABLE_CHECKPOINT_SYNC, 16#02).
+-define(TAP_OPAQUE_CLOSE_TAP_STREAM, 16#07).
