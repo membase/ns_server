@@ -237,7 +237,7 @@ _tasks = [
 
 def main():
     from optparse import OptionParser
-    parser = OptionParser("usage: %prog [options] output_file")
+    parser = OptionParser("usage: %prog [options] output_file.zip")
     parser.add_option("-v", dest="verbosity", help="increase verbosity level",
                       action="count", default=0)
     options, args = parser.parse_args()
