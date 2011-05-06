@@ -50,7 +50,7 @@ init([]) ->
     ns_config:reannounce(),
     % Schedule some random config syncs.
     schedule_config_sync(),
-    ok = ns_node_disco_rep_events:add_handler(),
+    ok = ns_node_disco_rep_events:add_sup_handler(),
     {ok, #state{}}.
 
 handle_call({push, List}, _From, State) ->

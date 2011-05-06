@@ -43,11 +43,11 @@ get_child_specs() ->
      % logs node disco events for debugging.
      {ns_node_disco_log,
       {ns_node_disco_log, start_link, []},
-      transient, 10, worker, []},
+      permanent, 10, worker, []},
      % listens for ns_config events relevant to node_disco.
      {ns_node_disco_conf_events,
       {ns_node_disco_conf_events, start_link, []},
-      transient, 10, worker, []},
+      permanent, 10, worker, []},
      % replicate config across nodes.
      {ns_config_rep, {ns_config_rep, start_link, []},
       permanent, 10, worker,

@@ -31,5 +31,5 @@ init([]) ->
            [{ns_mail, {ns_mail, start_link, []},
              permanent, 10, worker, [ns_mail]},
             {ns_mail_log, {ns_mail_log, start_link, []},
-             transient, 10, worker, [ns_mail_log]}
+             permanent, 10, worker, [ns_mail_log]}
            ]}}.

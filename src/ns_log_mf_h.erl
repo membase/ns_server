@@ -71,25 +71,28 @@
 
 %% Replace the default event handler with ours
 start_link() ->
-    case lists:member(?MODULE, gen_event:which_handlers(error_logger)) of
-	false ->
-	    {ok, Dir} = application:get_env(error_logger_mf_dir),
-	    {ok, MaxB} = application:get_env(error_logger_mf_maxbytes),
-	    {ok, MaxF} = application:get_env(error_logger_mf_maxfiles),
-	    Pred = fun (_) -> true end,
-	    io:write({Dir, MaxB, MaxF, Pred}),
-	    ok = gen_event:add_handler(error_logger, ?MODULE, {Dir, MaxB, MaxF,
-							       Pred}),
-            case misc:get_env_default(dont_suppress_stderr_logger, false) of
-                false ->
-                    error_logger:delete_report_handler(sasl_report_tty_h),
-                    error_logger:delete_report_handler(error_logger_tty_h);
-                _ -> ok
-            end,
-	    ignore;
-	true ->
-	    ignore
-    end.
+    misc:start_event_link(
+      fun () ->
+              case lists:member(?MODULE, gen_event:which_handlers(error_logger)) of
+                  false ->
+                      {ok, Dir} = application:get_env(error_logger_mf_dir),
+                      {ok, MaxB} = application:get_env(error_logger_mf_maxbytes),
+                      {ok, MaxF} = application:get_env(error_logger_mf_maxfiles),
+                      Pred = fun (_) -> true end,
+                      io:write({Dir, MaxB, MaxF, Pred}),
+                      ok = gen_event:add_sup_handler(error_logger, ?MODULE, {Dir, MaxB, MaxF,
+                                                                             Pred}),
+                      case misc:get_env_default(dont_suppress_stderr_logger, false) of
+                          false ->
+                              error_logger:delete_report_handler(sasl_report_tty_h),
+                              error_logger:delete_report_handler(error_logger_tty_h);
+                          _ -> ok
+                      end,
+                      ignore;
+                  true ->
+                      ignore
+              end
+      end).
 
 -spec init(dir(), b(), f()) -> {dir(), b(), f(), pred()}.
 

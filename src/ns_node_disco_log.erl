@@ -27,8 +27,11 @@
 
 start_link() ->
     {ok, spawn_link(fun() ->
-                       gen_event:add_handler(ns_node_disco_events,
-                                             ?MODULE, ignored)
+                            gen_event:add_sup_handler(ns_node_disco_events,
+                                                      ?MODULE, ignored),
+                            receive
+                                _ -> ok
+                            end
                     end)}.
 
 init(ignored) ->

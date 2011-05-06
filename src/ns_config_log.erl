@@ -17,7 +17,7 @@
 
 -behaviour(gen_event).
 
--export([start_link/0, setup_handler/0]).
+-export([start_link/0]).
 
 %% gen_event callbacks
 -export([init/1, handle_event/2, handle_call/2,
@@ -26,10 +26,9 @@
 -record(state, {last}).
 
 start_link() ->
-    {ok, spawn_link(?MODULE, setup_handler, [])}.
-
-setup_handler() ->
-    gen_event:add_handler(ns_config_events, ?MODULE, ignored).
+    misc:start_event_link(fun () ->
+                                  gen_event:add_sup_handler(ns_config_events, ?MODULE, ignored)
+                          end).
 
 init(ignored) ->
     {ok, #state{last = undefined}, hibernate}.

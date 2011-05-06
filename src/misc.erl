@@ -1026,3 +1026,12 @@ absname(Name) ->
         _ ->
             filename:absname(Name)
     end.
+
+start_event_link(SubscriptionBody) ->
+    {ok,
+     spawn_link(fun () ->
+                        SubscriptionBody(),
+                        receive
+                            _ -> ok
+                        end
+                end)}.

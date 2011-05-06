@@ -31,11 +31,11 @@
 
 % Noop process to get initialized in the supervision tree.
 start_link() ->
-    {ok, spawn_link(fun() ->
-                       gen_event:add_handler(ns_log_events,
-                                             ?MODULE,
-                                             ns_log_events)
-                    end)}.
+    misc:start_event_link(fun () ->
+                                  gen_event:add_sup_handler(ns_log_events,
+                                                            ?MODULE,
+                                                            ns_log_events)
+                          end).
 
 init(_) ->
     {ok, #state{}, hibernate}.

@@ -17,7 +17,7 @@
 
 -behaviour(gen_event).
 
--export([start_link/0, start_link/3, setup_handler/3, writeSASLConf/6]).
+-export([start_link/0, start_link/3, writeSASLConf/6]).
 
 %% gen_event callbacks
 -export([init/1, handle_event/2, handle_call/2,
@@ -36,10 +36,9 @@ start_link() ->
     start_link(Path, AU, AP).
 
 start_link(Path, AU, AP) when is_list(Path); is_list(AU); is_list(AP) ->
-    {ok, spawn_link(?MODULE, setup_handler, [Path, AU, AP])}.
-
-setup_handler(Path, AU, AP) ->
-    gen_event:add_handler(ns_config_events, ?MODULE, [Path, AU, AP]).
+    misc:start_event_link(fun () ->
+                                  gen_event:add_sup_handler(ns_config_events, ?MODULE, [Path, AU, AP])
+                          end).
 
 init([Path, AU, AP] = Args) ->
     error_logger:info_msg("isasl_sync init: ~p~n", [Args]),

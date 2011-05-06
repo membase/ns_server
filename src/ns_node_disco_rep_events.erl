@@ -18,7 +18,7 @@
 -behaviour(gen_event).
 
 %% API
--export([start_link/0, add_handler/0]).
+-export([start_link/0, add_sup_handler/0]).
 
 %% gen_event callbacks
 -export([init/1, handle_event/2, handle_call/2,
@@ -29,8 +29,8 @@
 start_link() ->
     {error, invalid_usage}.
 
-add_handler() ->
-    gen_event:add_handler(ns_node_disco_events, ?MODULE, []).
+add_sup_handler() ->
+    gen_event:add_sup_handler(ns_node_disco_events, ?MODULE, []).
 
 init([]) ->
     {ok, #state{}}.

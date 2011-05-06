@@ -39,14 +39,14 @@
 % Noop process to get initialized in the supervision tree.
 
 start_link() ->
-    {ok, spawn_link(fun() ->
-                       gen_event:add_handler(ns_config_events,
-                                             {?MODULE, ns_config_events},
-                                             ns_config_events),
-                       gen_event:add_handler(ns_node_disco_events,
-                                             {?MODULE, ns_node_disco_events},
-                                             ns_node_disco_events)
-                    end)}.
+    misc:start_event_link(fun () ->
+                                  gen_event:add_sup_handler(ns_config_events,
+                                                            {?MODULE, ns_config_events},
+                                                            ns_config_events),
+                                  gen_event:add_sup_handler(ns_node_disco_events,
+                                                            {?MODULE, ns_node_disco_events},
+                                                            ns_node_disco_events)
+                          end).
 
 watchers() ->
     {gen_event:call(ns_config_events,

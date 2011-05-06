@@ -86,7 +86,7 @@ init([]) ->
 
     WebEvent = {menelaus_event,
                 {menelaus_event, start_link, []},
-                transient, 5000, worker, dynamic},
+                permanent, 5000, worker, dynamic},
 
     HotKeysKeeper = {hot_keys_keeper,
                      {hot_keys_keeper, start_link, []},
