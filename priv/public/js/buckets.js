@@ -504,7 +504,18 @@ var BucketsSection = {
     renderCellTemplate(bucketsListCell, 'bucket_list', {
       beforeRendering: function () {
         self.settingsWidget.prepareDrawing();
-      }, extraCells: [IOCenter.staleness]
+      },
+      afterRendering: function () {
+        _.each(bucketsListCell.value, function(bucketInfo) {
+          var name = bucketInfo.name;
+          $($i(name+'_health')).sparkline(bucketInfo.healthStats, {
+            type: 'pie',
+            sliceColors: ['#4A0', '#fac344', '#f00'],
+            height: (isCanvasSupported ? '1.5em' : 'auto')
+          });
+        });
+      },
+      extraCells: [IOCenter.staleness]
     });
 
     IOCenter.staleness.subscribeValue(function (staleness) {

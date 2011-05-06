@@ -412,7 +412,7 @@ var DAL = {
   // we're using separate 'intermediate' cell to isolate all updates
   // of currentPoolDetailsCell from updates of buckets uri (which
   // basically never happens)
-  var bucketsURI = Cell.compute(function (v) {
+  var bucketsURI = DAL.cells.bucketsURI = Cell.compute(function (v) {
     return v.need(currentPoolDetailsCell).buckets.uri;
   });
 
@@ -493,11 +493,19 @@ var DAL = {
 
       bucket.diskUsedPercent = calculatePercent(bucket.totalDiskUsed, bucket.totalDiskSize);
       bucket.diskOtherPercent = calculatePercent(bucket.otherDiskSize + bucket.totalDiskUsed, bucket.totalDiskSize);
+      var h = _.reduce(_.pluck(bucket.nodes, 'status'),
+                       function(counts, stat) {
+                         counts[stat] = (counts[stat] || 0) + 1;
+                         return counts;
+                       },
+                       {});
+      // order of these values is important to match pie chart colors
+      bucket.healthStats = [h.healthy || 0, h.warmup || 0, h.unhealthy || 0];
     });
 
     return values;
   });
-
+  cells.bucketsListCell.equality = _.isEqual;
   cells.bucketsListCell.delegateInvalidationMethods(rawDetailedBuckets);
 
   cells.bucketsListCell.refresh = function (callback) {

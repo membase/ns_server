@@ -962,6 +962,13 @@ function naturalSort (a, b) {
   return 0;
 }
 
+// TODO: consider using Modernizr
+// TODO: or at least de-globalize this under jQuery.support, maybe
+var isCanvasSupported = (function() {
+  var elem = document.createElement('canvas');
+  return !!(elem.getContext && elem.getContext('2d'));
+})();
+
 function mkMethodWrapper (method, superClass, methodName) {
   return function () {
     var args = $.makeArray(arguments);

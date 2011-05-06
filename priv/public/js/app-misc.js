@@ -283,6 +283,10 @@ function mkCellRenderer(to, options, cell) {
       (options.beforeRendering)(cell);
     }
     renderRawTemplate(toGetter(), template, value);
+
+    if (options.afterRendering) {
+      (options.afterRendering)(cell);
+    }
   };
 }
 

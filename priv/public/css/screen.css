@@ -843,6 +843,8 @@ ul.tabs .badge_display .badge {display:block;}
 .buckets_tab table.label {float:left;margin:2px 0 0;}
 .buckets_tab table.label td:first-child {width:175px;color:#444245; text-align:right;}
 
+.buckets_tab .health_graph {float:right;}
+
 .tabs switcher {}
 .switcher li {padding:0px !important; background:none !important;}
 .switcher li a {display:block; height:32px !important; font-size:14px !important; padding:0 10px !important; color:#182022;}

@@ -585,7 +585,10 @@
                 <td colspan="6" class="bucket_info">
                   <table>
                   <tr>
-                    <td class="bucket_name"><a class="disable-if-stale" href="#visitBucket={%=h(this.name)%}">{%= h(this.name) %}</a></td>
+                    <td class="bucket_name">
+                      <span id="{%= h(this.name) %}_health" class="health_graph"></span>
+                      <a class="disable-if-stale" href="#visitBucket={%=h(this.name)%}">{%= h(this.name) %}</a>
+                    </td>
                     <td>{%= h(this.bucketTypeName) %}</td>
                     <td>{%= V.count(this.serversCount, 'server') %}</td>
                     <td>{%= V.formatQuantity(this.basicStats.memUsed) %}/{%= V.formatQuantity(this.quota.ram) %}</td>
@@ -1370,6 +1373,7 @@
 <script src="/js/jquery.js"></script>
 <script src="/js/jquery-ui-1.8.10.custom.js"></script>
 <script src="/js/jquery.flot.js"></script>
+<script src="/js/jquery.sparkline.js"></script>
 <script src="/js/jquery.ba-bbq.js"></script>
 <!--[if lt IE 9]>
 <script src="/js/json2.js"></script>
