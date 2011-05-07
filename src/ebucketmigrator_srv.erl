@@ -136,7 +136,7 @@ init({Src, Dst, Opts}) ->
     ?log_info("Starting tap stream:~n~p~n", [Args]),
     {ok, quiet} = mc_client_binary:tap_connect(Upstream, Args),
     ok = inet:setopts(Upstream, [{active, once}]),
-    ok = inet:setopts(Downstream, [{active, once}]),
+    ok = inet:setopts(Downstream, [{active, once}, {nodelay, true}]),
 
     Timeout = proplists:get_value(timeout, Opts, ?TIMEOUT_CHECK_INTERVAL),
     {ok, _TRef} = timer:send_interval(Timeout, check_for_timeout),
