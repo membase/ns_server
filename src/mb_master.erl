@@ -284,13 +284,20 @@ worker(Event, State) ->
 %% @private
 %% @doc Send an heartbeat to a list of nodes, except this one.
 send_heartbeat(Nodes, StateName, StateData) ->
-    lists:foreach(
-      fun (Node) when Node /= node() ->
-              gen_fsm:send_event({?MODULE, Node},
-                                 {heartbeat, node(), StateName,
-                                  [{peers, StateData#state.peers}]});
-          (_) -> ok
-      end, Nodes).
+    misc:pmap(
+      fun (Node) ->
+              %% we try to avoid sending event to nodes that are
+              %% down. Because send call inside gen_fsm will try to
+              %% establish connection each time we try to send.
+              case lists:member(Node, nodes()) of
+                  true ->
+                      Address = {?MODULE, Node},
+                      Args = {heartbeat, node(), StateName,
+                              [{peers, StateData#state.peers}]},
+                      gen_fsm:send_event(Address, Args);
+                  _ -> ok
+              end
+      end, Nodes, length(Nodes), ?HEARTBEAT_INTERVAL).
 
 
 %% @private
