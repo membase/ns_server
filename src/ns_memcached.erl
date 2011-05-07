@@ -302,11 +302,11 @@ active_buckets() ->
 
 -spec connected(node(), bucket_name()) -> boolean().
 connected(Node, Bucket) ->
-    try gen_server:call({server(Bucket), Node}, connected, ?TIMEOUT) of
-        Connected ->
-            Connected
+    Address = {server(Bucket), Node},
+    try
+        gen_server:call(Address, connected, ?TIMEOUT)
     catch
-        exit:{noproc, _Call} ->
+        _:_ ->
             false
     end.
 
