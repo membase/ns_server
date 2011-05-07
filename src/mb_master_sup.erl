@@ -25,7 +25,7 @@
 
 
 start_link() ->
-    supervisor:start_link(?MODULE, []).
+    supervisor:start_link({local, mb_master_sup}, ?MODULE, []).
 
 
 init([]) ->

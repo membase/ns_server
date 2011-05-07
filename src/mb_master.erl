@@ -77,6 +77,7 @@ init([]) ->
           (_, State) ->
               State
       end, empty),
+    erlang:process_flag(trap_exit, true),
     {ok, _} = timer:send_interval(?HEARTBEAT_INTERVAL, send_heartbeat),
     case ns_node_disco:nodes_wanted() of
         [N] = P when N == node() ->
@@ -103,6 +104,10 @@ handle_event(Event, StateName, StateData) ->
               [Event, StateName, StateData]),
     {next_state, StateName, StateData}.
 
+
+handle_info({'EXIT', _From, Reason} = Msg, _, _) ->
+    ?log_info("Dying because of linked process exit: ~p~n", [Msg]),
+    exit(Reason);
 
 handle_info(send_heartbeat, candidate, #state{peers=Peers} = StateData) ->
     send_heartbeat(Peers, candidate, StateData),
@@ -142,8 +147,8 @@ handle_info({peers, Peers}, master, StateData) ->
             {next_state, master, S};
         false ->
             ?log_info("Master has been demoted. Peers = ~p", [Peers]),
-            exit(StateData#state.child, shutdown),
-            {next_state, worker, S#state{child=undefined}}
+            NewState = shutdown_master_sup(S),
+            {next_state, worker, NewState}
     end;
 
 handle_info({peers, Peers}, StateName, StateData) when
@@ -230,9 +235,8 @@ master({heartbeat, Node, master, _H}, #state{peers=Peers} = State) ->
             case Node < node() of
                 true ->
                     ?log_info("Surrendering mastership to ~p", [Node]),
-                    exit(State#state.child, shutdown),
-                    {next_state, candidate, State#state{child=undefined,
-                                                        last_heard=now()}};
+                    NewState = shutdown_master_sup(State),
+                    {next_state, candidate, NewState#state{last_heard=now()}};
                 false ->
                     ?log_info("Got master heartbeat from ~p when I'm master",
                               [Node]),
@@ -310,3 +314,19 @@ update_peers(StateData, Peers) ->
             ?log_info("List of peers has changed from ~p to ~p", [O, P]),
             StateData#state{peers=P}
     end.
+
+shutdown_master_sup(State) ->
+    Pid = State#state.child,
+    exit(Pid, shutdown),
+    receive
+        {'EXIT', Pid, _Reason} ->
+            ok
+    after 10000 ->
+            ?log_info("Killing runaway child supervisor: ~p~n", [Pid]),
+            exit(Pid, kill),
+            receive
+                {'EXIT', Pid, _Reason} ->
+                    ok
+            end
+    end,
+    State#state{child = undefined}.
