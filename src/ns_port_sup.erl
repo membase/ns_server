@@ -78,7 +78,7 @@ create_child_spec({Name, Cmd, Args, Opts}) ->
     {{Name, Cmd, Args, Opts},
      {supervisor_cushion, start_link,
       [Name, 5000, ns_port_server, start_link, [Name, Cmd, Args, Opts]]},
-     permanent, 10, worker,
+     permanent, 10000, worker,
      [ns_port_server]}.
 
 terminate_port(Id) ->

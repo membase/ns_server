@@ -16,6 +16,7 @@
 -module(ns_port_server).
 
 -define(ABNORMAL, 0).
+-define(LF_DEATH_TIMEOUT, 60000).
 
 -behavior(gen_server).
 
@@ -41,7 +42,13 @@
 -include_lib("eunit/include/eunit.hrl").
 
 %% Server state
--record(state, {port, name, messages, log_tref, log_buffer=[], dropped=0}).
+-record(state, {port :: port(),
+                name :: term(),
+                messages,
+                log_tref :: timer:tref(),
+                log_buffer = [],
+                dropped=0 :: non_neg_integer(),
+                send_eol :: boolean()}).
 
 
 %% API
@@ -50,10 +57,17 @@ start_link(Name, Cmd, Args, Opts) ->
     gen_server:start_link(?MODULE,
                           {Name, Cmd, Args, Opts}, []).
 
-init({Name, _Cmd, _Args, _Opts} = Params) ->
+init({Name, _Cmd, _Args, Opts} = Params) ->
     process_flag(trap_exit, true), % Make sure terminate gets called
-    Port = open_port(Params),
-    {ok, #state{port = Port, name = Name,
+    {SendEOL, Params2} =
+        case proplists:get_value(port_server_send_eol, Opts) of
+            undefined ->
+                {false, Params};
+            V ->
+                {V, setelement(4, Params, proplists:delete(port_server_send_eol, Opts))}
+        end,
+    Port = open_port(Params2),
+    {ok, #state{port = Port, name = Name, send_eol = SendEOL,
                 messages = ringbuffer:new(?NUM_MESSAGES)}}.
 
 handle_info({_Port, {data, {_, Msg}}}, State) ->
@@ -92,14 +106,31 @@ handle_call(unhandled, unhandled, unhandled) ->
 handle_cast(unhandled, unhandled) ->
     unhandled.
 
-terminate(_Reason, State) ->
-    log(State), % Log any remaining messages
-    try port_close(State#state.port) of
-        true ->
-            ok
-    catch error:badarg ->
-            ok
+wait_for_child_death(State) ->
+    receive
+        {Port, _} = Msg when Port =:= State#state.port ->
+            wait_for_child_death_process_info(Msg, State);
+        log = Msg ->
+            wait_for_child_death_process_info(Msg, State);
+        X ->
+            ?log_error("Ignoring unknown message while shutting down child: ~p~n", [X]),
+            wait_for_child_death(State)
     end.
+
+wait_for_child_death_process_info(Msg, State) ->
+    case handle_info(Msg, State) of
+        {noreply, State2} -> wait_for_child_death(State2);
+        {stop, _, State2} -> State2
+    end.
+
+terminate(shutdown, #state{send_eol = true, port = Port} = State) ->
+    port_command(Port, <<10:8>>),               % sending LF
+    timer:send_after(?LF_DEATH_TIMEOUT, {[], {exit_status, -1}}),
+    State2 = wait_for_child_death(State),
+    log(State2); % Log any remaining messages
+terminate(_Reason, State) ->
+    log(State). % Log any remaining messages
+
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.

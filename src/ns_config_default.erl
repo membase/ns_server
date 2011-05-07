@@ -136,7 +136,7 @@ default() ->
                 {"MOXI_SASL_PLAIN_USR", {"~s", [{ns_moxi_sup, rest_user, []}]}},
                 {"MOXI_SASL_PLAIN_PWD", {"~s", [{ns_moxi_sup, rest_pass, []}]}}
                ]},
-         use_stdio,
+         use_stdio, exit_status,
          stderr_to_stdout,
          stream]
        },
@@ -156,7 +156,8 @@ default() ->
                 {"ISASL_PWFILE", {"~s", [{isasl, path}]}},
                 {"ISASL_DB_CHECK_TIME", "1"}]},
          use_stdio,
-         stderr_to_stdout,
+         stderr_to_stdout, exit_status,
+         port_server_send_eol,
          stream]
        }]
      },

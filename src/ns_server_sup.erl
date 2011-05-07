@@ -76,7 +76,7 @@ child_specs() ->
       [menelaus_sup]},
 
      {ns_port_sup, {ns_port_sup, start_link, []},
-      permanent, 10, worker,
+      permanent, 60000, worker,
       [ns_port_sup]},
 
      {ns_tick_event, {gen_event, start_link, [{local, ns_tick_event}]},
