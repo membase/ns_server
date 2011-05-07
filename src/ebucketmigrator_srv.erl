@@ -136,7 +136,7 @@ init({Src, Dst, Opts}) ->
     ?log_info("Starting tap stream:~n~p~n", [Args]),
     {ok, quiet} = mc_client_binary:tap_connect(Upstream, Args),
     ok = inet:setopts(Upstream, [{active, once}]),
-    ok = inet:setopts(Downstream, [{active, once}, {nodelay, true}]),
+    ok = inet:setopts(Downstream, [{active, once}]),
 
     Timeout = proplists:get_value(timeout, Opts, ?TIMEOUT_CHECK_INTERVAL),
     {ok, _TRef} = timer:send_interval(Timeout, check_for_timeout),
@@ -222,7 +222,7 @@ do_config_sent_messages(Sock, Seqno) ->
 confirm_sent_messages(State) ->
     Seqno = State#state.last_sent_seqno + 1,
     Sock = State#state.downstream,
-    inet:setopts(Sock, [{active, false}]),
+    inet:setopts(Sock, [{active, false}, {nodelay, true}]),
     Msg = mc_binary:encode(req, #mc_header{opcode = ?TAP_OPAQUE, opaque = Seqno},
                            #mc_entry{data = <<4:16, ?TAP_FLAG_ACK:16, 1:8, 0:8, 0:8, 0:8, ?TAP_OPAQUE_CLOSE_TAP_STREAM:32>>}),
     case gen_tcp:send(Sock, Msg) of
