@@ -33,20 +33,20 @@ init([]) ->
            %% gen_event for the config events.
            {ns_config_events,
             {gen_event, start_link, [{local, ns_config_events}]},
-            permanent, 10, worker, []},
+            permanent, 1000, worker, []},
 
            %% current local state.
            {ns_config,
             {ns_config, start_link, [CfgPath, ns_config_default]},
-            permanent, 10, worker, [ns_config, ns_config_default]},
+            permanent, 1000, worker, [ns_config, ns_config_default]},
 
            %% Track bucket configs and ensure isasl is sync'd up
            {ns_config_isasl_sync,
             {ns_config_isasl_sync, start_link, []},
-            permanent, 10, worker, []},
+            permanent, 1000, worker, []},
 
            %% logs config changes for debugging.
            {ns_config_log,
             {ns_config_log, start_link, []},
-            permanent, 10, worker, []}
+            permanent, 1000, worker, []}
           ]}}.

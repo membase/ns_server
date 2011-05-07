@@ -106,7 +106,7 @@ child_specs() ->
                       [{{BucketName, Passwd, Port, RestPort},
                        {ns_port_server, start_link,
                         [moxi, Command, Args, Opts]},
-                       permanent, 10, worker, [ns_port_server]}|Acc]
+                       permanent, 1000, worker, [ns_port_server]}|Acc]
               end
       end, [], BucketConfigs).
 

@@ -40,11 +40,11 @@ child_specs(BucketName) ->
      {{ns_vbm_sup, BucketName}, {ns_vbm_sup, start_link, [BucketName]},
       permanent, 1000, worker, [ns_vbm_sup]},
      {{stats_collector, BucketName}, {stats_collector, start_link, [BucketName]},
-      permanent, 10, worker, [stats_collector]},
+      permanent, 1000, worker, [stats_collector]},
      {{stats_archiver, BucketName}, {stats_archiver, start_link, [BucketName]},
-      permanent, 10, worker, [stats_archiver]},
+      permanent, 1000, worker, [stats_archiver]},
      {{stats_reader, BucketName}, {stats_reader, start_link, [BucketName]},
-      permanent, 10, worker, [stats_reader]}].
+      permanent, 1000, worker, [stats_reader]}].
 
 init([BucketName]) ->
     {ok, {{rest_for_one,

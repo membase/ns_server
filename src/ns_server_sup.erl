@@ -51,10 +51,10 @@ child_specs() ->
     [%% ns_log starts after ns_config because it needs the config to
      %% find where to persist the logs
      {ns_log, {ns_log, start_link, []},
-      permanent, 10, worker, [ns_log]},
+      permanent, 1000, worker, [ns_log]},
 
      {ns_log_events, {gen_event, start_link, [{local, ns_log_events}]},
-      permanent, 10, worker, dynamic},
+      permanent, 1000, worker, dynamic},
 
      {ns_node_disco_sup, {ns_node_disco_sup, start_link, []},
       permanent, infinity, supervisor,
@@ -66,10 +66,10 @@ child_specs() ->
       permanent, infinity, supervisor, [mb_master]},
 
      {ns_heart, {ns_heart, start_link, []},
-      permanent, 10, worker, [ns_heart]},
+      permanent, 1000, worker, [ns_heart]},
 
      {ns_doctor, {ns_doctor, start_link, []},
-      permanent, 10, worker, [ns_doctor]},
+      permanent, 1000, worker, [ns_doctor]},
 
      {menelaus, {menelaus_sup, start_link, []},
       permanent, infinity, supervisor,
@@ -80,25 +80,25 @@ child_specs() ->
       [ns_port_sup]},
 
      {ns_tick_event, {gen_event, start_link, [{local, ns_tick_event}]},
-      permanent, 10, worker, dynamic},
+      permanent, 1000, worker, dynamic},
 
      {ns_stats_event, {gen_event, start_link, [{local, ns_stats_event}]},
-      permanent, 10, worker, dynamic},
+      permanent, 1000, worker, dynamic},
 
      {ns_bucket_worker, {work_queue, start_link, [ns_bucket_worker]},
-      permanent, 10, worker, [work_queue]},
+      permanent, 1000, worker, [work_queue]},
 
      {ns_bucket_sup, {ns_bucket_sup, start_link, []},
       permanent, infinity, supervisor, [ns_bucket_sup]},
 
      {system_stats_collector, {system_stats_collector, start_link, []},
-      permanent, 10, worker, [system_stats_collector]},
+      permanent, 1000, worker, [system_stats_collector]},
 
      {{stats_archiver, "@system"}, {stats_archiver, start_link, ["@system"]},
-      permanent, 10, worker, [stats_archiver]},
+      permanent, 1000, worker, [stats_archiver]},
 
      {{stats_reader, "@system"}, {stats_reader, start_link, ["@system"]},
-      permanent, 10, worker, [start_reader]},
+      permanent, 1000, worker, [start_reader]},
 
      {ns_moxi_sup, {ns_moxi_sup, start_link, []},
       permanent, infinity, supervisor,
@@ -107,4 +107,4 @@ child_specs() ->
      {moxi_stats_collector, {supervisor_cushion, start_link,
                              [moxi_stats_collector, 5000, moxi_stats_collector,
                               start_link, []]},
-      permanent, 10, worker, [moxi_stats_collector, supervisor_cushion]}].
+      permanent, 1000, worker, [moxi_stats_collector, supervisor_cushion]}].

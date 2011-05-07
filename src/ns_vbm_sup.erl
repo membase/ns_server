@@ -263,5 +263,5 @@ start_child(Node, Bucket, VBuckets, DstNode) ->
               [Args]),
     ChildSpec = {#child_id{vbuckets=VBuckets, dest_node=DstNode},
                  {ebucketmigrator_srv, start_link, Args},
-                 permanent, 60, worker, [ebucketmigrator_srv]},
+                 permanent, 60000, worker, [ebucketmigrator_srv]},
     supervisor:start_child({server(Bucket), Node}, ChildSpec).

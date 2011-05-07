@@ -29,7 +29,7 @@ init([]) ->
            misc:get_env_default(max_r, 3),
            misc:get_env_default(max_t, 10)},
            [{ns_mail, {ns_mail, start_link, []},
-             permanent, 10, worker, [ns_mail]},
+             permanent, 1000, worker, [ns_mail]},
             {ns_mail_log, {ns_mail_log, start_link, []},
-             permanent, 10, worker, [ns_mail_log]}
+             permanent, 1000, worker, [ns_mail_log]}
            ]}}.
