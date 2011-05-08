@@ -220,8 +220,9 @@ candidate({heartbeat, Node, candidate, _H}, #state{peers=Peers} = State) ->
                     {next_state, candidate, State}
             end;
         false ->
-            ?log_warning("Candiate got candidate heartbeat from node ~p which "
-                         "is not in peers ~p", [Node, Peers])
+            ?log_warning("Candidate got candidate heartbeat from node ~p which "
+                         "is not in peers ~p", [Node, Peers]),
+            {next_state, candidate, State}
     end;
 
 candidate(Event, State) ->
