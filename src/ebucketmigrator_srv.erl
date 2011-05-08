@@ -23,6 +23,7 @@
 -define(CONNECT_TIMEOUT, 5000).        % Milliseconds
 -define(UPSTREAM_TIMEOUT, 30000000).   % Microseconds because we use timer:now_diff
 -define(TIMEOUT_CHECK_INTERVAL, 5000). % Milliseconds
+-define(TERMINATE_TIMEOUT, 30000).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2,
@@ -175,6 +176,7 @@ do_setup_dumping(State, Args) ->
     State#state{dump_file = DumpIO}.
 
 terminate(_Reason, State) ->
+    timer:kill_after(?TERMINATE_TIMEOUT),
     gen_tcp:close(State#state.upstream),
     case State#state.takeover_done of
         true ->
