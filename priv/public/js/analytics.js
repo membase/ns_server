@@ -234,9 +234,18 @@ var StatsModel = {};
     return rv;
   }).name("statsBucketDetails");
 
+  self.knownHostnamesCell = Cell.compute(function (v) {
+    var allNames = _.pluck(v.need(DAL.cells.serversCell).allNodes, 'hostname').sort();
+    var activeNames = _.pluck(v.need(DAL.cells.serversCell).active, 'hostname').sort();
+    return {all: allNames, active: activeNames};
+  }).name("knownHostnamesCell");
+  self.knownHostnamesCell.equality = _.isEqual;
+
   // contains list of links to per-node stats for particular bucket
   var statsNodesCell = self.statsNodesCell = Cell.compute(function (v) {
-    // TODO: get link from bucket details
+    v.need(self.knownHostnamesCell); // this cell should be refreshed
+                                     // when list of known nodes
+                                     // changes
     return future.get({url: v.need(statsBucketDetails).stats.nodeStatsListURI});
   }).name("statsNodesCell");
 
