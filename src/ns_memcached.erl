@@ -30,6 +30,7 @@
 -define(CHECK_ALIVE_INTERVAL, 500).
 -define(VBUCKET_POLL_INTERVAL, 100).
 -define(TIMEOUT, 30000).
+-define(CONNECTED_TIMEOUT, 5000).
 
 %% gen_server API
 -export([start_link/1]).
@@ -51,6 +52,7 @@
          tap_stats/1,
          tap_stats/2,
          connected/2,
+         connected/3,
          delete_vbucket/2, delete_vbucket/3,
          get_vbucket/3,
          host_port/1,
@@ -300,15 +302,19 @@ active_buckets() ->
     [Bucket || ?MODULE_STRING "-" ++ Bucket <-
                    [atom_to_list(Name) || Name <- registered()]].
 
--spec connected(node(), bucket_name()) -> boolean().
-connected(Node, Bucket) ->
+-spec connected(node(), bucket_name(), integer() | infinity) -> boolean().
+connected(Node, Bucket, Timeout) ->
     Address = {server(Bucket), Node},
     try
-        gen_server:call(Address, connected, ?TIMEOUT)
+        gen_server:call(Address, connected, Timeout)
     catch
         _:_ ->
             false
     end.
+
+-spec connected(node(), bucket_name()) -> boolean().
+connected(Node, Bucket) ->
+    connected(Node, Bucket, ?CONNECTED_TIMEOUT).
 
 %% @doc Send flush command to specified bucket
 -spec flush(bucket_name()) -> ok.
