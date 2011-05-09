@@ -146,17 +146,6 @@ parallel_map_when_trap_exit_test() ->
     after 0 -> ok
     end.
 
-pmap_test() ->
-  L = [0, 1, 2],
-  ?assertEqual([0, 1],
-               misc:pmap(fun(N) -> timer:sleep(N),
-                                      N
-                            end, L, 2)).
-
-pmap_1_test() ->
-  L = [0],
-  ?assertEqual([0], misc:pmap(fun(N) -> N end, L, 1)).
-
 
 realpath_test_() ->
     Tests = [{"test_symlink_loop",

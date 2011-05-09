@@ -106,57 +106,6 @@ parallel_map_gather_loop(Ref, Acc, RepliesLeft) ->
             exit(harakiri)
     end.
 
-pmap(Fun, List, ReturnNum) ->
-    ?MODULE:pmap(Fun, List, ReturnNum, infinity).
-
-pmap(Fun, List, ReturnNum, Timeout) ->
-    C = length(List),
-    N = case ReturnNum > C of
-            true  -> C;
-            false -> ReturnNum
-        end,
-    SuperParent = self(),
-    SuperRef = erlang:make_ref(),
-    Ref = erlang:make_ref(),
-    %% Spawn an intermediary to collect the results this is so that
-    %% there will be no leaked messages sitting in our mailbox.
-    Parent = spawn(fun () ->
-                       L = gather(N, length(List), Ref, []),
-                       SuperParent ! {SuperRef, pmap_sort(List, L)}
-                   end),
-    Pids = [spawn(fun () ->
-                      Ret = (catch Fun(Elem)),
-                      Parent ! {Ref, {Elem, Ret}}
-                  end) || Elem <- List],
-    Ret2 = receive
-              {SuperRef, Ret} -> Ret
-           after Timeout ->
-              {error, timeout}
-           end,
-    % TODO: Need cleanup here?
-    lists:foreach(fun(P) -> exit(P, die) end, Pids),
-    Ret2.
-
-pmap_sort(Original, Results) ->
-    pmap_sort([], Original, lists:reverse(Results)).
-
-pmap_sort(Sorted, _, []) -> lists:reverse(Sorted);
-pmap_sort(Sorted, [E | Original], Results) ->
-    case lists:keytake(E, 1, Results) of
-        {value, {E, Val}, Rest} -> pmap_sort([Val | Sorted], Original, Rest);
-        false                   -> pmap_sort(Sorted, Original, Results)
-    end.
-
-gather(_, Max, _, L) when length(L) >= Max -> L;
-gather(0, _, _, L) -> L;
-gather(N, Max, Ref, L) ->
-    receive
-        {Ref, {_Elem, {'EXIT', _}} = ElemRet} ->
-            gather(N, Max, Ref, [ElemRet | L]);
-        {Ref, ElemRet} ->
-            gather(N - 1, Max, Ref, [ElemRet | L])
-    end.
-
 sys_info_collect_loop(FilePath) ->
     {ok, IO} = file:open(FilePath, [write]),
     sys_info(IO),

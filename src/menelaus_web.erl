@@ -1521,9 +1521,9 @@ handle_diag_vbuckets(Req) ->
     BucketName = proplists:get_value("bucket", Params),
     {ok, BucketConfig} = ns_bucket:get_bucket(BucketName),
     Nodes = ns_node_disco:nodes_actual_proper(),
-    RawPerNode = misc:pmap(fun (Node) ->
-                                   diag_vbucket_per_node(BucketName, Node)
-                           end, Nodes, length(Nodes), 30000),
+    RawPerNode = misc:parallel_map(fun (Node) ->
+                                           diag_vbucket_per_node(BucketName, Node)
+                                   end, Nodes, 30000),
     PerNodeStates = lists:zip(Nodes,
                               [{struct, [{K, {struct, dict:to_list(V)}} || {K, V} <- dict:to_list(Dict)]}
                                || Dict <- RawPerNode]),

@@ -125,8 +125,8 @@ do_push(RawKVList) ->
     do_push(RawKVList, ns_node_disco:nodes_actual_other()).
 
 do_push(RawKVList, OtherNodes) ->
-    misc:pmap(fun(Node) -> ns_config:merge_remote(Node, RawKVList) end,
-              OtherNodes, length(OtherNodes), 2000).
+    misc:parallel_map(fun(Node) -> ns_config:merge_remote(Node, RawKVList) end,
+                      OtherNodes, 2000).
 
 do_pull()  -> do_pull(5).
 do_pull(N) -> do_pull(misc:shuffle(ns_node_disco:nodes_actual_other()), N).

@@ -285,7 +285,7 @@ worker(Event, State) ->
 %% @private
 %% @doc Send an heartbeat to a list of nodes, except this one.
 send_heartbeat(Nodes, StateName, StateData) ->
-    misc:pmap(
+    misc:parallel_map(
       fun (Node) ->
               %% we try to avoid sending event to nodes that are
               %% down. Because send call inside gen_fsm will try to
@@ -298,7 +298,7 @@ send_heartbeat(Nodes, StateName, StateData) ->
                       gen_fsm:send_event(Address, Args);
                   _ -> ok
               end
-      end, Nodes, length(Nodes), ?HEARTBEAT_INTERVAL).
+      end, Nodes, ?HEARTBEAT_INTERVAL).
 
 
 %% @private
