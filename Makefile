@@ -77,32 +77,32 @@ $(TMP_VER):
 	test -d $(TMP_DIR) || mkdir $(TMP_DIR)
 	git describe | sed s/-/_/g > $(TMP_VER)
 
-REST_PREFIX := $(PREFIX)
-NS_SERVER := $(PREFIX)/ns_server
+REST_PREFIX := $(DESTDIR)$(PREFIX)
+NS_SERVER := $(DESTDIR)$(PREFIX)/ns_server
 
 install: all $(TMP_VER) fail-unless-configured
 	$(MAKE) do-install "NS_SERVER_VER=$(strip $(shell cat $(TMP_VER)))" "PREFIX=$(strip $(shell . `pwd`/.configuration && echo $$prefix))"
 
-NS_SERVER_LIBDIR := $(PREFIX)/lib/ns_server/erlang/lib/ns_server
+NS_SERVER_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/ns_server
 
 ifdef NS_SERVER_VER
-NS_SERVER_LIBDIR := $(PREFIX)/lib/ns_server/erlang/lib/ns_server-$(NS_SERVER_VER)
+NS_SERVER_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/ns_server-$(NS_SERVER_VER)
 
-ifeq (,$(PREFIX))
+ifeq (,$(DESTDIR)$(PREFIX))
 $(error "need PREFIX defined")
 endif
 
 endif
 
-PREFIX_FOR_CONFIG ?= $(PREFIX)
+PREFIX_FOR_CONFIG ?= $(DESTDIR)$(PREFIX)
 
-ERLWSH_LIBDIR := $(PREFIX)/lib/ns_server/erlang/lib/erlwsh
-GEN_SMTP_LIBDIR := $(PREFIX)/lib/ns_server/erlang/lib/gen_smtp
-MOCHIWEB_LIBDIR := $(PREFIX)/lib/ns_server/erlang/lib/mochiweb
+ERLWSH_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/erlwsh
+GEN_SMTP_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/gen_smtp
+MOCHIWEB_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/mochiweb
 
 do-install:
-	echo $(PREFIX)
-	rm -rf $(PREFIX)/lib/ns_server/erlang/lib/ns_server*
+	echo $(DESTDIR)$(PREFIX)
+	rm -rf $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/ns_server*
 	mkdir -p $(NS_SERVER_LIBDIR)
 	cp -r ebin $(NS_SERVER_LIBDIR)/
 	mkdir -p $(NS_SERVER_LIBDIR)/priv
@@ -114,20 +114,20 @@ do-install:
 	@true cp -r deps/gen_smtp/ebin $(GEN_SMTP_LIBDIR)/
 	mkdir -p $(MOCHIWEB_LIBDIR)
 	cp -r deps/mochiweb/ebin $(MOCHIWEB_LIBDIR)/
-	mkdir -p $(PREFIX)/etc/membase
-	sed -e 's|@PREFIX@|$(PREFIX_FOR_CONFIG)|g' <etc/static_config.in >$(PREFIX)/etc/membase/static_config
-	touch $(PREFIX)/etc/membase/config
-	mkdir -p $(PREFIX)/bin/
-	sed -e 's|@PREFIX@|$(PREFIX)|g' <membase-server.sh.in >$(PREFIX)/bin/membase-server
-	sed -e 's|@PREFIX@|$(PREFIX)|g' <mbbrowse_logs.in >$(PREFIX)/bin/mbbrowse_logs
-	cp mbcollect_info $(PREFIX)/bin/mbcollect_info
-	chmod +x $(PREFIX)/bin/membase-server $(PREFIX)/bin/mbbrowse_logs $(PREFIX)/bin/mbcollect_info
-	mkdir -p $(PREFIX)/var/lib/membase/mnesia
-	mkdir -p $(PREFIX)/var/lib/membase/logs
-	cp priv/init.sql $(PREFIX)/etc/membase/
-	cp ebucketmigrator $(PREFIX)/bin/ebucketmigrator
-	chmod +x $(PREFIX)/bin/ebucketmigrator
-	cp scripts/mbdumpconfig.escript $(PREFIX)/bin/
+	mkdir -p $(DESTDIR)$(PREFIX)/etc/membase
+	sed -e 's|@PREFIX@|$(PREFIX_FOR_CONFIG)|g' <etc/static_config.in >$(DESTDIR)$(PREFIX)/etc/membase/static_config
+	touch $(DESTDIR)$(PREFIX)/etc/membase/config
+	mkdir -p $(DESTDIR)$(PREFIX)/bin/
+	sed -e 's|@PREFIX@|$(DESTDIR)$(PREFIX)|g' <membase-server.sh.in >$(DESTDIR)$(PREFIX)/bin/membase-server
+	sed -e 's|@PREFIX@|$(DESTDIR)$(PREFIX)|g' <mbbrowse_logs.in >$(DESTDIR)$(PREFIX)/bin/mbbrowse_logs
+	cp mbcollect_info $(DESTDIR)$(PREFIX)/bin/mbcollect_info
+	chmod +x $(DESTDIR)$(PREFIX)/bin/membase-server $(DESTDIR)$(PREFIX)/bin/mbbrowse_logs $(DESTDIR)$(PREFIX)/bin/mbcollect_info
+	mkdir -p $(DESTDIR)$(PREFIX)/var/lib/membase/mnesia
+	mkdir -p $(DESTDIR)$(PREFIX)/var/lib/membase/logs
+	cp priv/init.sql $(DESTDIR)$(PREFIX)/etc/membase/
+	cp ebucketmigrator $(DESTDIR)$(PREFIX)/bin/ebucketmigrator
+	chmod +x $(DESTDIR)$(PREFIX)/bin/ebucketmigrator
+	cp scripts/mbdumpconfig.escript $(DESTDIR)$(PREFIX)/bin/
 
 clean clean_all:
 	@(cd deps/gen_smtp && $(MAKE) clean)
