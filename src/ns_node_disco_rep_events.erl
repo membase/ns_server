@@ -18,7 +18,7 @@
 -behaviour(gen_event).
 
 %% API
--export([start_link/0, add_sup_handler/0]).
+-export([add_sup_handler/0]).
 
 %% gen_event callbacks
 -export([init/1, handle_event/2, handle_call/2,
@@ -26,19 +26,23 @@
 
 -record(state, {}).
 
-start_link() ->
-    {error, invalid_usage}.
-
 add_sup_handler() ->
     gen_event:add_sup_handler(ns_node_disco_events, ?MODULE, []).
 
 init([]) ->
     {ok, #state{}}.
 
-handle_event({ns_node_disco_events, _O, _N}, State) ->
-    error_logger:info_msg("Detected a new node (from node ~p).  Moving config around.~n", [node()]),
-    ns_config_rep:pull(),
-    ns_config_rep:push(),
+handle_event({ns_node_disco_events, Old, New}, State) ->
+    case New -- Old of
+        [] ->
+            ok;
+        NewNodes ->
+            error_logger:info_msg("Detected a new nodes (~p).  Moving config around.~n", [NewNodes]),
+            %% we know that new node will also try to replicate config
+            %% to/from us. So we half our traffic by enforcing
+            %% 'initiative' from higher node to lower node
+            ns_config_rep:pull_and_push([N || N <- NewNodes, N < node()])
+    end,
     {ok, State}.
 
 handle_call(_Request, State) ->

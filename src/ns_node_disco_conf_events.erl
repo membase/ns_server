@@ -68,9 +68,7 @@ handle_event(Changed, State) when is_list(Changed) ->
                        (_, Acc) -> Acc
                     end,
                     [], Changed),
-    % Need a catch because in early init, ns_config might not
-    % be initialized yet.
-    catch(ns_config_rep:push(ChangedRaw)),
+    ns_config_rep:initiate_changes_push(ChangedRaw),
     {ok, State, hibernate};
 
 handle_event(_E, State) ->

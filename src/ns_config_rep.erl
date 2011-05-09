@@ -16,9 +16,17 @@
 %% ns_config_rep is a server responsible for all things configuration
 %% synch related.
 %%
+%% NOTE: that this code tries to merge similar replication requests
+%% before trying to perform them. That's beneficial because due to
+%% some nodes going down some replications might take very long
+%% time. Which will cause our mailbox to grow with easily mergable
+%% requests.
+%%
 -module(ns_config_rep).
 
 -behaviour(gen_server).
+
+-include_lib("eunit/include/eunit.hrl").
 
 -define(PULL_TIMEOUT, 10000).
 -define(SELF_PULL_TIMEOUT, 30000).
@@ -31,7 +39,7 @@
          terminate/2, code_change/3]).
 
 % API
--export([push/0, push/1, pull/1, pull/0, synchronize/0]).
+-export([push/0, initiate_changes_push/1, synchronize/0, pull_and_push/1]).
 
 -record(state, {}).
 
@@ -44,7 +52,7 @@ init([]) ->
     do_pull(),
     error_logger:info_msg("~p init pushing~n", [?MODULE]),
     do_push(),
-    % Have ns_config reannouce its config for any synchronization that
+    % Have ns_config reannounce its config for any synchronization that
     % may have occurred.
     error_logger:info_msg("~p init reannouncing~n", [?MODULE]),
     ns_config:reannounce(),
@@ -53,29 +61,111 @@ init([]) ->
     ok = ns_node_disco_rep_events:add_sup_handler(),
     {ok, #state{}}.
 
-handle_call({push, List}, _From, State) ->
-    error_logger:info_msg("Pushing config~n"),
-    do_push(List),
-    error_logger:info_msg("Pushing config done~n"),
-    {reply, ok, State};
 handle_call(synchronize, _From, State) ->
     {reply, ok, State};
 handle_call(Msg, _From, State) ->
     error_logger:info_msg("Unhandled ~p call: ~p~n", [?MODULE, Msg]),
     {reply, error, State}.
 
-handle_cast(push, State) ->
+handle_cast(_Msg, State)       -> {noreply, State}.
+
+stack_while(Body, Ref, Tail) ->
+    case Body(Ref) of
+        Ref ->
+            Tail;
+        V -> stack_while(Body, Ref, [V|Tail])
+    end.
+
+accumulate_kv_pushes(List) ->
+    ListOfLists =
+        stack_while(fun (Ref) ->
+                            receive
+                                {push, X} -> lists:sort(X)
+                            after 0 -> Ref
+                            end
+                    end, erlang:make_ref(), [lists:sort(List)]),
+    lists:foldl(fun (CurList, OrdDict) ->
+                        orddict:merge(fun (_K, _V1, V2) ->
+                                              V2
+                                      end,
+                                      CurList, OrdDict)
+                end, hd(ListOfLists), tl(ListOfLists)).
+
+accumulate_kv_pushes_test() ->
+    receive
+        {push, _} -> exit(bad)
+    after 0 -> ok
+    end,
+    KV1 = [{a, 1}, {b, 2}],
+    KV2 = [{a, 2}, {c, 3}],
+
+    self() ! {push, KV1},
+    self() ! {push, KV2},
+    ?assertEqual([{a,2},{b,2},{c,3}],
+                 accumulate_kv_pushes([])),
+    receive
+        {push, _} -> exit(bad)
+    after 0 -> ok
+    end,
+
+    self() ! {push, KV2},
+    self() ! {push, KV1},
+    ?assertEqual([{a,1},{b,2},{c,3}],
+                 accumulate_kv_pushes([])),
+    receive
+        {push, _} -> exit(bad)
+    after 0 -> ok
+    end,
+
+    self() ! {push, KV2},
+    ?assertEqual([{a,2},{b,2},{c,3}],
+                 accumulate_kv_pushes(KV1)).
+
+accumulate_pull_and_push(Nodes) ->
+    ListOfLists =
+        stack_while(fun (Ref) ->
+                            receive
+                                {pull_and_push, X} -> lists:sort(X)
+                            after 0 ->
+                                    Ref
+                            end
+                    end, erlang:make_ref(), [lists:sort(Nodes)]),
+    lists:umerge(ListOfLists).
+
+accumulate_pull_and_push_test() ->
+    receive
+        {pull_and_push, _} -> exit(bad)
+    after 0 -> ok
+    end,
+
+    L1 = [a,b],
+    L2 = [b,c,e],
+    L3 = [a,d],
+    self() ! {pull_and_push, L2},
+    self() ! {pull_and_push, L3},
+    ?assertEqual([a,b,c,d,e],
+                 accumulate_pull_and_push(L1)),
+    receive
+        {pull_and_push, _} -> exit(bad)
+    after 0 -> ok
+    end.
+
+handle_info({push, List}, State) ->
+    error_logger:info_msg("Pushing config~n"),
+    do_push(accumulate_kv_pushes(List)),
+    error_logger:info_msg("Pushing config done~n"),
+    {noreply, State};
+handle_info({pull_and_push, Nodes}, State) ->
+    error_logger:info_msg("Replicating config to/from: ~p", [Nodes]),
+    FinalNodes = accumulate_pull_and_push(Nodes),
+    do_pull(FinalNodes, length(FinalNodes)),
+    RawKVList = ns_config:get_remote(node(), ?SELF_PULL_TIMEOUT),
+    do_push(RawKVList, FinalNodes),
+    {noreply, State};
+handle_info(push, State) ->
+    misc:flush(push),
     do_push(),
     {noreply, State};
-handle_cast({pull, Nodes}, State) ->
-    error_logger:info_msg("Pulling config~n"),
-    do_pull(Nodes, 5),
-    error_logger:info_msg("Pulling config done~n"),
-    {noreply, State};
-handle_cast(Msg, State) ->
-    error_logger:info_msg("Unhandled ~p cast: ~p~n", [?MODULE, Msg]),
-    {noreply, State}.
-
 handle_info(sync_random, State) ->
     schedule_config_sync(),
     do_pull(1),
@@ -95,20 +185,18 @@ code_change(_OldVsn, State, _Extra) ->
 %
 
 push() ->
-    gen_server:cast(?MODULE, push).
+    ?MODULE ! push.
 
-push(List) ->
-    gen_server:call(?MODULE, {push, List}).
-
-pull() ->
-    pull(nodes()).
-
-pull(Nodes) ->
-    gen_server:cast(?MODULE, {pull, Nodes}).
+initiate_changes_push(List) ->
+    ?MODULE ! {push, List}.
 
 % awaits completion of all previous requests
 synchronize() ->
     gen_server:call(?MODULE, synchronize).
+
+pull_and_push([]) -> ok;
+pull_and_push(Nodes) ->
+    ?MODULE ! {pull_and_push, Nodes}.
 
 %
 % Privates
