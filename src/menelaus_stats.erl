@@ -625,7 +625,7 @@ aggregate_stat_entries(A, B) ->
     A#stat_entry{values = NewValues}.
 
 membase_stats_description() ->
-    [{struct,[{blockName,<<"PERFORMANCE">>},
+    [{struct,[{blockName,<<"SUMMARY">>},
               {stats,
                [{struct,[{desc,<<"ops per second">>},
                          {name,<<"ops">>},
