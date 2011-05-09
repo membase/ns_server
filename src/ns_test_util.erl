@@ -1,6 +1,6 @@
 -module(ns_test_util).
 -export([start_cluster/1, connect_cluster/2, stop_node/1, gen_cluster_conf/1,
-         rebalance_node/1, rebalance_node_done/2, nodes_status/2]).
+         rebalance_node/1, rebalance_node_done/2, nodes_status/2, wait_for/3]).
 
 -define(USERNAME, "Administrator").
 -define(PASSWORD, "asdasd").
