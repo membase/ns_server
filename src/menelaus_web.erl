@@ -1451,7 +1451,7 @@ handle_bucket_node_info(PoolId, BucketName, Hostname, Req) ->
 handle_node_statuses(Req) ->
     LocalAddr = menelaus_util:local_addr(Req),
     OldNodeStatuses = ns_doctor:get_nodes(),
-    Nodes = ns_node_disco:nodes_wanted(),
+    Nodes = ns_node_disco:nodes_actual_proper(),
     Config = ns_config:get(),
     BucketsAll = ns_bucket:get_buckets(Config),
     NodeResp = misc:multicall_result_to_plist(Nodes,
@@ -1484,7 +1484,7 @@ handle_node_statuses(Req) ->
                                                    {replication, calculate_replication(N, BucketsAll, BucketReplications)}]}
                                  end,
                              {Hostname, V}
-                     end, Nodes),
+                     end, ns_node_disco:nodes_wanted()),
     reply_json(Req, {struct, NodeStatuses}, 200).
 
 bin_concat_path(Path) ->
