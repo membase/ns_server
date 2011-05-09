@@ -16,7 +16,6 @@
 -module(ns_node_disco).
 
 -behaviour(gen_server).
--behavior(ns_log_categorizing).
 
 -include("ns_common.hrl").
 
@@ -48,7 +47,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {nodes, timer}).
+-record(state, {nodes}).
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -106,12 +105,12 @@ init([]) ->
     global:sync(),
     % Register for nodeup/down messages as handle_info callbacks.
     ok = net_kernel:monitor_nodes(true),
-    {ok, Timer} = timer:send_interval(?PING_FREQ, ping_all),
+    timer:send_interval(?PING_FREQ, ping_all),
+    self() ! notify_clients,
     % Track the last list of actual ndoes.
-    {ok, #state{nodes = false, timer = Timer}}.
+    {ok, #state{nodes = []}}.
 
-terminate(_Reason, State) ->
-    timer:cancel(State#state.timer),
+terminate(_Reason, _State) ->
     ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
 
@@ -137,18 +136,13 @@ handle_call(Msg, _From, State) ->
 handle_info({nodeup, Node}, State) ->
     ns_log:log(?MODULE, ?NODE_UP, "Node ~p saw that node ~p came up.",
                [node(), Node]),
-    % We might be tempted to proactively push/pull/sync
-    % our configs with the "new" Node.  Instead, it's
-    % cleaner to asynchronous do a gen_event:notify()
-    % Delay the notification for five seconds to give the
-    % config a chance to settle before notifying clients.
-    {ok, _Tref} = timer:send_after(?NODE_CHANGE_DELAY, notify_clients),
+    self() ! notify_clients,
     {noreply, State};
 
 handle_info({nodedown, Node}, State) ->
     ns_log:log(?MODULE, ?NODE_DOWN, "Node ~p saw that node ~p went down.",
                [node(), Node]),
-    {ok, _Tref} = timer:send_after(?NODE_CHANGE_DELAY, notify_clients),
+    self() ! notify_clients,
     {noreply, State};
 
 handle_info(notify_clients, State) ->
