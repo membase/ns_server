@@ -83,13 +83,13 @@ start_node(Conf) ->
               "--start-index=~p", [code:lib_dir(ns_server), Conf#node.x]),
     io:format(user, "Starting erlang with: ~p~n", [Cmd]),
     spawn_dev_null(Cmd),
-    wait_for_resp(Conf#node.nodename, pong, 10).
+    wait_for_resp(Conf#node.nodename, pong, 5).
 
 %% @doc Stop a node
 -spec stop_node(#node{}) -> ok.
 stop_node(Node) ->
     rpc:call(Node#node.nodename, init, stop, []),
-    wait_for_resp(Node#node.nodename, pang, 20).
+    wait_for_resp(Node#node.nodename, pang, 10).
 
 %% @doc Returns the status of the given nodes. The result list has the same
 %% order as the input list.
@@ -156,36 +156,33 @@ rebalance_node_status(#node{host=Host, rest_port=Port, username=User,
     io:format(user, "~p~n~n~p~n", [Cmd, Status]),
     Status.
 
-%% @doc Wait for a cluster to finish rebalancing by pinging it in a poll
-%% `Time` is the number of seconds it should keep trying
--spec wait_for_balanced(Node::#node{}, Time::integer()) ->
-                           ok | {error, still_rebalancing}.
-wait_for_balanced(_Node, 0) ->
-    {error, still_rebalancing};
-wait_for_balanced(Node, Time) ->
-    case rebalance_node_status(Node) of
-        "(u'none', None)\n" ->
+
+%% @doc Executes Fun until a certain criteria (Expected) is reached. Returns
+%% with an error if it happens within the give amount of Time (in seconds)
+wait_for(_Fun, _Expected, 0) ->
+    {error, timeout};
+wait_for(Fun, Expected, Time) ->
+    case Fun() of
+        Expected ->
             ok;
         _Else ->
             timer:sleep(1000),
-            wait_for_balanced(Node, Time-1)
+            wait_for(Fun, Expected, Time-1)
     end.
 
+%% @doc Wait for a cluster to finish rebalancing by pinging it in a poll
+%% `Time` is the number of seconds it should keep trying
+-spec wait_for_balanced(Node::#node{}, Time::integer()) ->
+                           ok | {error, timeout}.
+wait_for_balanced(Node, Time) ->
+    Fun = fun() -> rebalance_node_status(Node) end,
+    wait_for(Fun, "(u'none', None)\n", Time).
 
 %% @doc Wait for a node to become alive by pinging it in a poll
--spec wait_for_resp(atom(), any(), integer()) -> ok | {error, did_not_start}.
-wait_for_resp(_Node, _Resp, 0) ->
-    {error, did_not_start};
-
-wait_for_resp(Node, Resp, N) ->
-    case net_adm:ping(Node) of
-        Resp ->
-            ok;
-        _Else ->
-            timer:sleep(500),
-            wait_for_resp(Node, Resp, N-1)
-    end.
-
+-spec wait_for_resp(atom(), any(), integer()) -> ok | {error, timeout}.
+wait_for_resp(Node, Resp, Time) ->
+    Fun = fun() -> net_adm:ping(Node) end,
+    wait_for(Fun, Resp, Time).
 
 %% @doc run a shell command and flush all of its output
 spawn_dev_null(Cmd) ->
