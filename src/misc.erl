@@ -49,6 +49,63 @@
 shuffle(List) when is_list(List) ->
     [N || {_R, N} <- lists:keysort(1, [{random:uniform(), X} || X <- List])].
 
+%% applies (catch Fun(X)) for each element of list in parallel. If
+%% execution takes longer than given Timeout it'll exit with reason
+%% timeout (which is consistent with behavior of gen_XXX:call
+%% modules).  Care is taken to not leave any messages in calling
+%% process mailbox and to correctly shutdown any worker processes
+%% if/when calling process is killed.
+-spec parallel_map(fun((any()) -> any()), [any()], non_neg_integer() | infinity) -> [any()].
+parallel_map(Fun, List, Timeout) when is_list(List) andalso is_function(Fun) ->
+    MainParent = self(),
+    Ref = erlang:make_ref(),
+    IntermediatePid =
+        spawn(fun () ->
+                      Parent = self(),
+                      erlang:monitor(process, MainParent),
+                      {_Pids, RepliesLeft}
+                          = lists:foldl(
+                              fun (E, {Acc, I}) ->
+                                      Pid = spawn_link(
+                                              fun () ->
+                                                      Parent ! {I, (catch Fun(E))}
+                                              end),
+                                      {[Pid | Acc], I+1}
+                              end, {[], 0}, List),
+                      RV = parallel_map_gather_loop(Ref, [], RepliesLeft),
+                      MainParent ! {Ref, RV}
+              end),
+    MRef = erlang:monitor(process, IntermediatePid),
+    receive
+        {Ref, RV} ->
+            receive
+                {'DOWN', MRef, _, _, _} -> ok
+            end,
+            RV;
+        {'DOWN', MRef, _, _, Reason} ->
+            exit({child_died, Reason})
+    after Timeout ->
+            IntermediatePid ! {'DOWN', [], [], [], []},
+            receive
+                {'DOWN', MRef, _, _, _} -> ok
+            end,
+            receive
+                {Ref, _} -> ok
+            after 0 -> ok
+            end,
+            exit(timeout)
+    end.
+
+parallel_map_gather_loop(_Ref, Acc, 0) ->
+    [V || {_, V} <- lists:keysort(1, Acc)];
+parallel_map_gather_loop(Ref, Acc, RepliesLeft) ->
+    receive
+        {_I, _Res} = Pair ->
+            parallel_map_gather_loop(Ref, [Pair|Acc], RepliesLeft-1);
+        {'DOWN', _, _, _, _} ->
+            exit(harakiri)
+    end.
+
 pmap(Fun, List, ReturnNum) ->
     ?MODULE:pmap(Fun, List, ReturnNum, infinity).
 
