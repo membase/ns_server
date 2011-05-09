@@ -665,8 +665,6 @@ membase_stats_description() ->
                          {name,<<"ep_ops_create">>}]},
                 {struct,[{desc,<<"local %">>},
                          {name,<<"proxy_local_ratio">>}]},
-                {struct,[{desc,<<"direct per second">>},
-                         {name,<<"direct_ops">>}]},
                 {struct,[{desc,<<"hit latency">>},
                          {name,<<"hit_latency">>},
                          {missing,true}]},

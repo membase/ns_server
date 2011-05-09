@@ -243,13 +243,9 @@ parse_stats(TS, Stats, TapStats, {LastCounters, LastTapCounters}, LastTS) ->
     %% assuming ops is first kv pair
     Ops = orddict:fetch(ops, [hd(AggregateValues)]),
     ProxyOps = orddict:fetch(proxy_cmd_count, Values0),
-    DirectOps = case Ops of
-                    null -> null;
-                    _ -> Ops - ProxyOps
-                end,
     Values = orddict:merge(fun (_K, _V1, _V2) -> erlang:error(cannot_happen) end,
                            Values0,
-                           lists:sort([{direct_ops, DirectOps} | AggregateValues])),
+                           lists:sort(AggregateValues)),
     {#stat_entry{timestamp = TS,
                  values = Values},
      {Counters, TapCounters}}.
