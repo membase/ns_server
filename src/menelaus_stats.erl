@@ -473,9 +473,9 @@ computed_stats_lazy_proplist() ->
                       (Gets, _Hits) when Gets == 0 -> 0; % this handles int and float 0
                       (Gets, Hits) -> Hits * 100/Gets
                   end),
-    EPCacheHitRatio = Z2(ep_bg_fetched, cmd_get,
+    EPCacheMissRatio = Z2(ep_bg_fetched, cmd_get,
                          fun (BGFetches, Gets) ->
-                                 try (Gets - BGFetches) * 100 / Gets
+                                 try (100 - (Gets - BGFetches) * 100 / Gets)
                                  catch error:badarith -> 0
                                  end
                          end),
@@ -545,7 +545,7 @@ computed_stats_lazy_proplist() ->
                                          end
                                  end),
     [{hit_ratio, HitRatio},
-     {ep_cache_hit_rate, EPCacheHitRatio},
+     {ep_cache_miss_rate, EPCacheMissRatio},
      {ep_resident_items_rate, ResidentItemsRatio},
      {vb_avg_active_queue_age, AvgActiveQueueAge},
      {vb_avg_replica_queue_age, AvgReplicaQueueAge},
@@ -658,8 +658,8 @@ membase_stats_description() ->
                [{struct,[{desc,<<"ops per second">>},
                          {name,<<"ops">>},
                          {default,true}]},
-                {struct,[{desc,<<"cache hit %">>},
-                         {name,<<"ep_cache_hit_rate">>},
+                {struct,[{desc,<<"cache miss %">>},
+                         {name,<<"ep_cache_miss_rate">>},
                          {maxY,100}]},
                 {struct,[{desc,<<"creates per second">>},
                          {name,<<"ep_ops_create">>}]},
