@@ -91,6 +91,14 @@ stop_node(Node) ->
     rpc:call(Node#node.nodename, init, stop, []),
     wait_for_resp(Node#node.nodename, pang, 10).
 
+%% @doc Returns the status of all nodes of a cluster.
+-spec nodes_status(Master::#node{}) ->
+                      [{healthy|unhealthy,
+                        active|inactiveFailed|inactiveAdded}].
+nodes_status(Master) ->
+    ServerList = server_list(Master),
+    [{Server#server_status.status,
+      Server#server_status.membership} || Server <- ServerList].
 %% @doc Returns the status of the given nodes. The result list has the same
 %% order as the input list.
 -spec nodes_status(Master::#node{}, Nodes::[atom()]) ->
@@ -137,12 +145,15 @@ rebalance_node(#node{host=Host, rest_port=Port, username=User,
                   [Root, Host, Port, User, Pass]),
     io:format(user, "~p~n~n~p~n", [Cmd, os:cmd(Cmd)]).
 
-%% @doc Rebalances the given node and returns when the rebalancing is done.
-%% `Time` is the number of seconds it should keep trying.
+%% @doc Rebalances the given node and returns when the rebalancing is done
+%% and all nodes are healthy. `Time` is the number of seconds it should keep
+%% trying.
 -spec rebalance_node_done(Node::#node{}, Time::integer()) -> ok.
 rebalance_node_done(Node, Time) ->
     rebalance_node(Node),
-    ok = wait_for_balanced(Node, Time).
+    ok = wait_for_balanced(Node, Time),
+    % Getting to full health shouldn't take long
+    ok = wait_for_health(Node, 3).
 
 %% @doc Returns the rebalancing status of the given node
 -spec rebalance_node_status(Node::#node{}) -> string().
@@ -183,6 +194,15 @@ wait_for_balanced(Node, Time) ->
 wait_for_resp(Node, Resp, Time) ->
     Fun = fun() -> net_adm:ping(Node) end,
     wait_for(Fun, Resp, Time).
+
+%% @doc Wait for a cluster to be completely healthy (all nodes).
+%% `Time` is the number of seconds it should keep trying
+wait_for_health(Node, Time) ->
+    Fun = fun() ->
+              {Health, _Membership} = lists:unzip(nodes_status(Node)),
+              lists:all(fun(Elem) -> Elem =:= healthy end, Health)
+          end,
+    wait_for(Fun, true, Time).
 
 %% @doc run a shell command and flush all of its output
 spawn_dev_null(Cmd) ->
