@@ -105,18 +105,6 @@
 ).
 
 -define(STAT_COUNTERS,
-        %% moxi: count of requests against local memcached
-        proxy_local_cmd_count,
-        %% moxi: total execution time for requests against local
-        %% memcached
-        proxy_local_cmd_time,
-
-        %% moxi: count of requests against any memcached
-        proxy_cmd_count,
-        %% moxi: total execution time for requests against any
-        %% memcached
-        proxy_cmd_time,
-
         %% those are used be memcached buckets
         bytes_read,
         bytes_written,

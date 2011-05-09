@@ -520,30 +520,6 @@ computed_stats_lazy_proplist() ->
                         ResidenceCalculator),
     PendingResRate = Z2(ep_num_pending_non_resident, vb_pending_curr_items,
                         ResidenceCalculator),
-    ProxyRatio = Z2(proxy_cmd_count, ops,
-                    fun (ProxyOps, Ops) ->
-                            try ProxyOps / Ops * 100
-                            catch error:badarith -> 0
-                            end
-                    end),
-    LocalRatio = Z2(proxy_local_cmd_count, proxy_cmd_count,
-                    fun (LocalCount, TotalCount) ->
-                            try LocalCount / TotalCount * 100
-                            catch error:badarith -> 0
-                            end
-                    end),
-    ProxyLocalLatencyMillis = Z2(proxy_local_cmd_time, proxy_local_cmd_count,
-                                 fun (LocalTime, LocalCount) ->
-                                         try LocalTime / LocalCount / 1000
-                                         catch error:badarith -> 0
-                                         end
-                                 end),
-    ProxyTotalLatencyMillis = Z2(proxy_cmd_time, proxy_cmd_count,
-                                 fun (Time, Count) ->
-                                         try Time / Count / 1000
-                                         catch error:badarith -> 0
-                                         end
-                                 end),
     [{hit_ratio, HitRatio},
      {ep_cache_miss_rate, EPCacheMissRatio},
      {ep_resident_items_rate, ResidentItemsRatio},
@@ -553,11 +529,7 @@ computed_stats_lazy_proplist() ->
      {vb_avg_total_queue_age, AvgTotalQueueAge},
      {vb_active_resident_items_ratio, ActiveResRate},
      {vb_replica_resident_items_ratio, ReplicaResRate},
-     {vb_pending_resident_items_ratio, PendingResRate},
-     {proxy_local_ratio, LocalRatio},
-     {proxy_local_latency, ProxyLocalLatencyMillis},
-     {proxy_ratio, ProxyRatio},
-     {proxy_latency, ProxyTotalLatencyMillis}].
+     {vb_pending_resident_items_ratio, PendingResRate}].
 
 %% converts list of samples to proplist of stat values
 -spec samples_to_proplists([#stat_entry{}]) -> [{atom(), [null | number()]}].
@@ -663,23 +635,12 @@ membase_stats_description() ->
                          {maxY,100}]},
                 {struct,[{desc,<<"creates per second">>},
                          {name,<<"ep_ops_create">>}]},
-                {struct,[{desc,<<"local %">>},
-                         {name,<<"proxy_local_ratio">>}]},
                 {struct,[{desc,<<"updates per second">>},
                          {name,<<"ep_ops_update">>}]},
-                {struct,[{desc,<<"local latency">>},
-                         {name,<<"proxy_local_latency">>}]},
-                {struct,[{desc,<<"moxi per second">>},
-                         {name,<<"proxy_cmd_count">>}]},
-                {struct,[{desc,<<"proxy %">>},
-                         {name,<<"proxy_ratio">>},
-                         {maxY,100}]},
                 {struct,[{desc,<<"disk reads">>},
                          {name,<<"ep_bg_fetched">>}]},
                 {struct,[{desc,<<"back-offs per second">>},
-                         {name,<<"ep_tap_total_queue_backoff">>}]},
-                {struct,[{desc,<<"proxy latency">>},
-                         {name,<<"proxy_latency">>}]}]}]},
+                         {name,<<"ep_tap_total_queue_backoff">>}]}]}]},
      {struct,[{blockName,<<"vBUCKET RESOURCES">>},
               {extraCSSClasses,<<"withtotal closed">>},
               {columns,

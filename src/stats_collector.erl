@@ -55,11 +55,7 @@ handle_cast(unhandled, unhandled) ->
 grab_all_stats(Bucket) ->
     {ok, Stats} = ns_memcached:stats(Bucket),
     TapStats = ns_memcached:tap_stats(Bucket),
-    ProxyStats = try moxi_stats_collector:fetch_stats(Bucket)
-                 catch exit:{noproc, _} ->
-                         []
-                 end,
-    {ProxyStats ++ Stats, TapStats}.
+    {Stats, TapStats}.
 
 handle_info({tick, TS}, #state{bucket=Bucket, counters=Counters, last_ts=LastTS}
             = State) ->
