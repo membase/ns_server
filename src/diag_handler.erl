@@ -212,13 +212,6 @@ disarm_timeout(Pid) ->
 diagnosing_timeouts(Body) ->
     try Body()
     catch exit:{timeout, _} = X ->
-            Processes = lists:foldl(fun (Pid, Acc) ->
-                                            [{Pid, (catch grab_process_info(Pid))} | Acc]
-                                    end, [], erlang:processes()),
-            ?log_error("Got timeout ~p~nProcesses snapshot is: [~n", [X]),
-            lists:foreach(fun (Item) ->
-                                  error_logger:error_msg("~p,~n", [Item])
-                          end, Processes),
-            ?log_error("]~n~n", []),
+            timeout_diag_logger:log_diagnostics(X),
             exit(X)
     end.

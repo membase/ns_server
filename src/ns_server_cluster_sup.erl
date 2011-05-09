@@ -52,6 +52,8 @@ init([]) ->
             permanent, 1000, worker, [ns_log_mf_h]},
            {log_os_info, {log_os_info, start_link, []},
             transient, 1000, worker, [log_os_info]},
+           {timeout_diag_logger, {timeout_diag_logger, start_link, []},
+            permanent, 1000, worker, [timeout_diag_logger, diag_handler]},
            {dist_manager, {dist_manager, start_link, []},
             permanent, 1000, worker, [dist_manager]},
            {ns_cluster, {ns_cluster, start_link, []},
