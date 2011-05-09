@@ -53,7 +53,7 @@
          start_link/2, start_link/1,
          get_remote/1, get_remote/2,
          merge/1,
-         merge_remote/2, merge_remote/3,
+         merge_remote/2,
          get/2, get/1, get/0, set/2, set/1,
          set_initial/2, update/2, update_key/2,
          update_sub_key/3,
@@ -113,9 +113,7 @@ reannounce() -> gen_server:call(?MODULE, reannounce).
 % The get_remote() only returns dyanmic tuples as its KVList result.
 
 merge_remote(Node, KVList) ->
-    merge_remote(Node, KVList, ?DEFAULT_TIMEOUT).
-merge_remote(Node, KVList, Timeout) ->
-    gen_server:call({?MODULE, Node}, {merge, KVList}, Timeout).
+    gen_server:cast({?MODULE, Node}, {merge, KVList}).
 
 get_remote(Node, Timeout) -> config_dynamic(?MODULE:get(Node, Timeout)).
 get_remote(Node) -> get_remote(Node, ?DEFAULT_TIMEOUT).
@@ -489,6 +487,9 @@ terminate(_Reason, State) ->
     end.
 
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
+handle_cast({merge, _KVList} = Req, State) ->
+    {reply, ok, NewState} = handle_call(Req, [], State),
+    {noreply, NewState};
 handle_cast(stop, State) ->
     {stop, shutdown, State}.
 
