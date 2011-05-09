@@ -295,9 +295,12 @@ var DAL = {
     }
   });
 
+  this.nodeStatusesURICell = Cell.computeEager(function (v) {
+    return v.need(DAL.cells.currentPoolDetailsCell).nodeStatusesUri;
+  });
+
   this.nodeStatusesCell = Cell.compute(function (v) {
-    var details = v.need(DAL.cells.currentPoolDetailsCell);
-    return future.get({url: details.nodeStatusesUri});
+    return future.get({url: v.need(DAL.cells.nodeStatusesURICell)});
   });
 
 }).call(DAL.cells);
