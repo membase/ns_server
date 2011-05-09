@@ -654,8 +654,6 @@ aggregate_stat_entries(A, B) ->
 
 membase_stats_description() ->
     [{struct,[{blockName,<<"PERFORMANCE">>},
-              {columns,
-               [<<"Totals">>,<<"Read">>,<<"Write">>,<<"Moxi">>]},
               {stats,
                [{struct,[{desc,<<"ops per second">>},
                          {name,<<"ops">>},
