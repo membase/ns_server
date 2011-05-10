@@ -427,7 +427,7 @@ var StatsModel = {};
     if (v.need(displayingSpecificStatsCell)) {
       var nodes = v.need(specificStatsNodesCell);
       return {thisISSpecificStats: true,
-              blocks: [{blockName: "SPECIFIC STATS", hideThis: true,
+              blocks: [{blockName: "Specific Stats", hideThis: true,
                         stats: _.map(nodes, function (hostname) {return {desc: hostname, name: hostname}})}]};
     } else {
       return v.need(rawStatsDescCell);

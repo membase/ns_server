@@ -625,7 +625,7 @@ aggregate_stat_entries(A, B) ->
     A#stat_entry{values = NewValues}.
 
 membase_stats_description() ->
-    [{struct,[{blockName,<<"SUMMARY">>},
+    [{struct,[{blockName,<<"Summary">>},
               {stats,
                [{struct,[{desc,<<"ops per second">>},
                          {name,<<"ops">>},
@@ -641,7 +641,7 @@ membase_stats_description() ->
                          {name,<<"ep_bg_fetched">>}]},
                 {struct,[{desc,<<"back-offs per second">>},
                          {name,<<"ep_tap_total_queue_backoff">>}]}]}]},
-     {struct,[{blockName,<<"vBUCKET RESOURCES">>},
+     {struct,[{blockName,<<"vBucket Resources">>},
               {extraCSSClasses,<<"withtotal closed">>},
               {columns,
                [<<"Active">>,<<"Replica">>,<<"Pending">>,<<"Total">>]},
@@ -710,7 +710,7 @@ membase_stats_description() ->
                          {name,<<"vb_pending_ht_memory">>}]},
                 {struct,[{desc,<<"metadata in RAM">>},
                          {name,<<"ep_ht_memory">>}]}]}]},
-     {struct,[{blockName,<<"DISK QUEUES">>},
+     {struct,[{blockName,<<"Disk Queues">>},
               {extraCSSClasses,<<"withtotal closed">>},
               {columns,
                [<<"Active">>,<<"Replica">>,<<"Pending">>,<<"Total">>]},
@@ -755,7 +755,7 @@ membase_stats_description() ->
                          {name,<<"vb_avg_pending_queue_age">>}]},
                 {struct,[{desc,<<"average age">>},
                          {name,<<"vb_avg_total_queue_age">>}]}]}]},
-     {struct,[{blockName,<<"TAP QUEUES">>},
+     {struct,[{blockName,<<"Tap Queues">>},
               {extraCSSClasses,<<"withtotal closed">>},
               {columns,
                [<<"Replication">>,<<"Rebalance">>,<<"Clients">>,
@@ -832,7 +832,7 @@ membase_stats_description() ->
 
 
 memcached_stats_description() ->
-    [{struct,[{blockName,<<"MEMCACHED">>},
+    [{struct,[{blockName,<<"Memcached">>},
               {stats,
                [{struct,[{name,<<"ops">>},
                          {desc,<<"Operations per sec.">>},
@@ -881,7 +881,7 @@ memcached_stats_description() ->
                           <<"CAS misses per sec.">>}]}]}]}].
 
 server_resources_stats_description() ->
-    [{blockName,<<"SERVER RESOURCES">>},
+    [{blockName,<<"Server Resources">>},
      {serverResources, true},
      {extraCSSClasses,<<"server_resources">>},
      {stats,
