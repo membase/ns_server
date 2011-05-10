@@ -204,7 +204,7 @@ candidate({heartbeat, Node, master, _H}, #state{peers=Peers} = State) ->
                 false ->
                     ?log_warning("Master got master heartbeat from node ~p "
                                  "which is not in peers ~p", [Node, Peers]),
-                    {next_state, master, State}
+                    {next_state, candidate, State}
             end
     end;
 
