@@ -877,13 +877,13 @@ server_resources_stats_description() ->
      {serverResources, true},
      {extraCSSClasses,<<"server_resources">>},
      {stats,
-      [{struct,[{name,<<"mem_actual_free">>},
+      [{struct,[{name,<<"swap_used">>},
+                {desc,<<"swap usage">>}]},
+       {struct,[{name,<<"mem_actual_free">>},
                 {desc,<<"free memory">>}]},
        {struct,[{name,<<"cpu_utilization_rate">>},
                 {desc,<<"CPU utilization %">>},
-                {maxY,100}]},
-       {struct,[{name,<<"swap_used">>},
-                {desc,<<"swap usage">>}]}]}].
+                {maxY,100}]}]}].
 
 serve_stats_directory(_PoolId, BucketId, Req) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(BucketId),
