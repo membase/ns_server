@@ -36,7 +36,8 @@
 
 -export([get_alert_config/0,
          set_alert_config/1,
-         alert_key/2]).
+         alert_key/2,
+         category_bin/1]).
 
 -import(menelaus_util,
         [reply_json/2]).
