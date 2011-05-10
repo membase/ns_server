@@ -86,15 +86,6 @@
         %% aggregated by collector: vb_total_queue_size
         ep_diskqueue_items,
 
-        %% Memory used for disk queue (sizes of QueuedItem-s)
-        vb_active_queue_memory,
-        %% Memory used for disk queue
-        vb_replica_queue_memory,
-        %% Memory used for disk queue
-        vb_pending_queue_memory,
-        %% aggregated by collector: vb_total_queue_memory
-        ep_diskqueue_memory,
-
         %% Sum of disk queue item age in milliseconds
         vb_active_queue_age,
         %% Sum of disk queue item age in milliseconds
