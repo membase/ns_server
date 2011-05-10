@@ -61,9 +61,18 @@ get_this_node_bucket_names(BucketsConfigs) ->
 
 %% @private
 %% @doc The child specs for each bucket.
-child_specs(Bucket) ->
-    [{{per_bucket_sup, Bucket}, {single_bucket_sup, start_link, [Bucket]},
-      permanent, infinity, supervisor, [single_bucket_sup]}].
+child_specs(BucketName) ->
+    [{{ns_memcached, BucketName}, {ns_memcached, start_link, [BucketName]},
+      %% ns_memcached waits for the bucket to sync to disk before exiting
+      permanent, 86400000, worker, [ns_memcached]},
+     {{ns_vbm_sup, BucketName}, {ns_vbm_sup, start_link, [BucketName]},
+      permanent, 1000, worker, [ns_vbm_sup]},
+     {{stats_collector, BucketName}, {stats_collector, start_link, [BucketName]},
+      permanent, 1000, worker, [stats_collector]},
+     {{stats_archiver, BucketName}, {stats_archiver, start_link, [BucketName]},
+      permanent, 1000, worker, [stats_archiver]},
+     {{stats_reader, BucketName}, {stats_reader, start_link, [BucketName]},
+      permanent, 1000, worker, [stats_reader]}].
 
 
 update_childs(Buckets) ->
