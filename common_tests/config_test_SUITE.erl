@@ -18,6 +18,7 @@ init_per_suite(Config) ->
 end_per_suite(Config) ->
     {nodes, Nodes} = lists:keyfind(nodes, 1, Config),
     [ns_test_util:stop_node(Node) || Node <- Nodes],
+    ok = ns_test_util:clear_data(),
     ok.
 
 init_per_testcase(_Case, Config) ->

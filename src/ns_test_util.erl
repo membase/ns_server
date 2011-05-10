@@ -1,6 +1,8 @@
 -module(ns_test_util).
 -export([start_cluster/1, connect_cluster/2, stop_node/1, gen_cluster_conf/1,
-         rebalance_node/1, rebalance_node_done/2, nodes_status/2, wait_for/3]).
+         rebalance_node/1, rebalance_node_done/2, nodes_status/2, wait_for/3,
+         create_bucket/3,
+         clear_data/0]).
 
 -define(USERNAME, "Administrator").
 -define(PASSWORD, "asdasd").
@@ -49,7 +51,14 @@ gen_cluster_conf(NodeNames) ->
     lists:reverse(Nodes).
 
 
-%% @doc Start a set of nodes and initialise ns_server on them
+%% @doc Clear any existing data for a cluster before starting
+-spec clear_data() -> ok.
+clear_data() ->
+    misc:rm_rf(filename:join([code:lib_dir(ns_server), "data"])),
+    ok.
+
+
+%% @doc Start a set of nodes and initialise ns_server on them, ensure
 -spec start_cluster([#node{}]) -> ok.
 start_cluster(Nodes) ->
     [ok = start_node(Node) || Node <- Nodes],
@@ -84,6 +93,7 @@ start_node(Conf) ->
     io:format(user, "Starting erlang with: ~p~n", [Cmd]),
     spawn_dev_null(Cmd),
     wait_for_resp(Conf#node.nodename, pong, 5).
+
 
 %% @doc Stop a node
 -spec stop_node(#node{}) -> ok.
@@ -133,6 +143,14 @@ server_list(#node{host=Host, rest_port=Port, username=User, password=Pass}) ->
                    membership=list_to_atom(lists:nth(5, Tokens))
                   }
               end, string:tokens(ServerList, "\n")).
+
+
+%% @doc Create a bucket on specified node
+-spec create_bucket(#node{}, atom(), string()) -> ok.
+create_bucket(Node, Type, Name) ->
+    rpc:call(Node#node.nodename, ns_orchestrator, create_bucket,
+             [Type, Name, Node#node.bucket_opts]),
+    ok.
 
 
 %% @doc Rebalances the given node and returns immediately
