@@ -95,7 +95,7 @@ do_diag_per_node() ->
      {manifest, manifest()},
      {config, diag_filter_out_config_password(ns_config:get_diag())},
      {basic_info, element(2, ns_info:basic_info())},
-     {processes, [{Pid, grab_process_info(Pid)}
+     {processes, [{Pid, (catch grab_process_info(Pid))}
                   || Pid <- erlang:processes()]},
      {memory, memsup:get_memory_data()},
      {disk, disksup:get_disk_data()}].
