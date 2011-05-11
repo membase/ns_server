@@ -17,7 +17,7 @@
 
 -include("ns_log.hrl").
 
--define(RB_SIZE, 100). % Number of recent log entries
+-define(RB_SIZE, 3000). % Number of recent log entries
 -define(DUP_TIME, 300000000). % 300 secs in microsecs
 -define(GC_TIME, 60000). % 60 secs in millisecs
 -define(SAVE_DELAY, 5000). % 5 secs in millisecs
@@ -40,7 +40,12 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--record(state, {recent, dedup, save_tref, filename}).
+-record(state, {unique_recent,
+                dedup,
+                save_tref,
+                filename,
+                pending_recent = [],
+                pending_length = 0}).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -57,13 +62,45 @@ init([]) ->
                        [?MODULE, Filename, E]),
                      []
              end,
-    {ok, #state{recent=Recent, dedup=dict:new(), filename=Filename}}.
+    %% initiate log syncing
+    self() ! sync,
+    {ok, #state{unique_recent=Recent,
+                dedup=dict:new(),
+                filename=Filename}}.
 
-% Request for recent items.
-handle_call(recent, _From, State) ->
-    {reply, State#state.recent, State}.
+tail_of_length(List, N) ->
+    case length(List) - N of
+        X when X > 0 ->
+            lists:nthtail(X, List);
+        _ ->
+            List
+    end.
 
-% Inbound logging request.
+flush_pending(#state{pending_recent = []} = State) ->
+    State;
+flush_pending(#state{unique_recent = Recent,
+                     pending_recent = Pending} = State) ->
+    NewRecent = tail_of_length(lists:umerge(lists:sort(Pending), Recent), ?RB_SIZE),
+    State#state{unique_recent = NewRecent,
+                pending_recent = [],
+                pending_length = 0}.
+
+add_pending(#state{pending_length = Length,
+                   pending_recent = Pending} = State, Entry) ->
+    NewState = State#state{pending_recent = [Entry | Pending],
+                           pending_length = Length+1},
+    case Length >= ?RB_SIZE of
+        true ->
+            flush_pending(NewState);
+        _ -> NewState
+    end.
+
+%% Request for recent items.
+handle_call(recent, _From, StateBefore) ->
+    State = flush_pending(StateBefore),
+    {reply, State#state.unique_recent, State}.
+
+%% Inbound logging request.
 handle_cast({log, Module, Code, Fmt, Args}, State = #state{dedup=Dedup}) ->
     Now = erlang:now(),
     Key = {Module, Code, Fmt, Args},
@@ -90,32 +127,40 @@ handle_cast({log, Module, Code, Fmt, Args}, State = #state{dedup=Dedup}) ->
             Dedup2 = dict:store(Key, {0, Now, Now}, Dedup),
             {noreply, State#state{dedup=Dedup2}}
     end;
-handle_cast({do_log, Entry}, State = #state{recent=Recent}) ->
-    {noreply, schedule_save(State#state{recent=lists:umerge([Entry], Recent)})};
-handle_cast({sync, Compressed}, State = #state{recent=Recent}) ->
+handle_cast({do_log, Entry}, State) ->
+    {noreply, schedule_save(add_pending(State, Entry))};
+handle_cast({sync, Compressed}, StateBefore) ->
+    State = flush_pending(StateBefore),
+    Recent = State#state.unique_recent,
     case binary_to_term(zlib:uncompress(Compressed)) of
         Recent ->
             {noreply, State};
         Logs ->
             State1 = schedule_save(State),
-            {noreply, State1#state{recent=lists:sublist(
-                                            lists:umerge(Recent, Logs),
-                                            ?RB_SIZE)}}
+            {noreply, State1#state{unique_recent=tail_of_length(lists:umerge(Recent, Logs),
+                                                                ?RB_SIZE)}}
     end.
 
-% Not handling any other state.
+%% Not handling any other state.
 
-% Nothing special.
+%% Nothing special.
 handle_info(garbage_collect, State) ->
     misc:flush(garbage_collect),
     {noreply, gc(State)};
-handle_info(sync, State = #state{recent=Recent}) ->
-    timer:send_after(5000 + random:uniform(55000), sync),
-    Nodes = ns_node_disco:nodes_actual_other(),
-    Node = lists:nth(random:uniform(length(Nodes)), Nodes),
-    gen_server:cast({?MODULE, Node}, {sync, zlib:compress(term_to_binary(Recent))}),
+handle_info(sync, StateBefore) ->
+    State = flush_pending(StateBefore),
+    Recent = State#state.unique_recent,
+    erlang:send_after(5000 + random:uniform(55000), self(), sync),
+    case ns_node_disco:nodes_actual_other() of
+        [] -> ok;
+        Nodes ->
+            Node = lists:nth(random:uniform(length(Nodes)), Nodes),
+            gen_server:cast({?MODULE, Node}, {sync, zlib:compress(term_to_binary(Recent))})
+    end,
     {noreply, State};
-handle_info(save, State = #state{filename=Filename, recent=Recent}) ->
+handle_info(save, StateBefore = #state{filename=Filename}) ->
+    State = flush_pending(StateBefore),
+    Recent = State#state.unique_recent,
     Compressed = zlib:compress(term_to_binary(Recent)),
     case file:write_file(Filename, Compressed) of
         ok -> ok;
