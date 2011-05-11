@@ -41,9 +41,10 @@ log_diagnostics(Err) ->
     case Pid of
         undefined -> ok;
         _ ->
-            case erlang:process_info(Pid, message_queue_len) < 1 of
-                true -> gen_server:call(?MODULE, {diag, Err});
+            try erlang:process_info(Pid, message_queue_len) of
+                {_, V} when V < 1 -> gen_server:call(?MODULE, {diag, Err});
                 _ -> nothing
+            catch _:_ -> nothing
             end
     end.
 
