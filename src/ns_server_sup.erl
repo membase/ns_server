@@ -100,6 +100,9 @@ child_specs() ->
      {{stats_reader, "@system"}, {stats_reader, start_link, ["@system"]},
       permanent, 1000, worker, [start_reader]},
 
+     {ns_moxi_sup_work_queue, {work_queue, start_link, [ns_moxi_sup_work_queue]},
+      permanent, 1000, worker, [work_queue]},
+
      {ns_moxi_sup, {ns_moxi_sup, start_link, []},
       permanent, infinity, supervisor,
       [ns_moxi_sup]}].

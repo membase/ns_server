@@ -110,10 +110,26 @@ child_specs() ->
               end
       end, [], BucketConfigs).
 
+%% we depend on rest port
+is_interesting_config_event({rest, _}) -> true;
+is_interesting_config_event({{node, _, rest}, _}) -> true;
+%% we depend on buckets config
+is_interesting_config_event({buckets, _}) -> true;
+%% and nothing else
+is_interesting_config_event(_) -> false.
+
 
 %% @doc Notify this supervisor of changes to the config that might be
 %% relevant to it.
-notify(_Event, _State) ->
+notify(Event, _) ->
+    case is_interesting_config_event(Event) of
+        true ->
+            work_queue:submit_work(ns_moxi_sup_work_queue, fun do_notify/0);
+        _ ->
+            ok
+    end.
+
+do_notify() ->
     ChildSpecs = child_specs(),
     RunningChildren = supervisor:which_children(?MODULE),
     lists:foreach(fun ({Id, _, _, _}) ->
