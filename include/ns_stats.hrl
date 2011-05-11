@@ -56,13 +56,11 @@
         ep_kv_size,
 
         %% Number of non-resident items in active vbuckets.
-        ep_num_active_non_resident,
-        %% Number of non-resident items in active vbuckets
-        %% ep_num_active_non_resident, defined higher
+        vb_active_num_non_resident,
         %% Number of non-resident items in replica vbuckets
-        ep_num_replica_non_resident,
+        vb_replica_num_non_resident,
         %% Number of non-resident items in pending vbuckets
-        ep_num_pending_non_resident,
+        vb_pending_num_non_resident,
         %% The number of non-resident items (does not include dead
         %% vbuckets)
         ep_num_non_resident,
