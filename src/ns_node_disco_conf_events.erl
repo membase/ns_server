@@ -23,18 +23,12 @@
 
 -record(state, {}).
 
-% start_link is required by gen_event, but *never* makes sense because
-% the event handlers are not processes.
 start_link() ->
     % The ns_node_disco_conf_events gen_event handler will inform
     % me when relevant ns_config configuration changes.
-    {ok, spawn_link(
-           fun() ->
-                   gen_event:add_sup_handler(ns_config_events, ?MODULE, ignored),
-                   receive
-                       _ -> ok
-                   end
-           end)}.
+    misc:start_event_link(fun () ->
+                                  gen_event:add_sup_handler(ns_config_events, ?MODULE, ignored)
+                          end).
 
 init(ignored) ->
     {ok, #state{}, hibernate}.
