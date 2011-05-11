@@ -15,18 +15,23 @@
 %%
 -module(ns_config_isasl_sync).
 
--behaviour(gen_event).
+-behaviour(gen_server).
 
 -export([start_link/0, start_link/3, writeSASLConf/6]).
 
 %% gen_event callbacks
--export([init/1, handle_event/2, handle_call/2,
+-export([init/1, handle_cast/2, handle_call/3,
          handle_info/2, terminate/2, code_change/3]).
 
 % Useful for testing.
 -export([extract_creds/1]).
 
--record(state, {buckets, path, updates, admin_user, admin_pass}).
+-record(state, {buckets,
+                path,
+                updates,
+                admin_user,
+                admin_pass,
+                write_pending}).
 
 start_link() ->
     Config = ns_config:get(),
@@ -36,42 +41,62 @@ start_link() ->
     start_link(Path, AU, AP).
 
 start_link(Path, AU, AP) when is_list(Path); is_list(AU); is_list(AP) ->
-    misc:start_event_link(fun () ->
-                                  gen_event:add_sup_handler(ns_config_events, ?MODULE, [Path, AU, AP])
-                          end).
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [Path, AU, AP], []).
 
 init([Path, AU, AP] = Args) ->
     error_logger:info_msg("isasl_sync init: ~p~n", [Args]),
-    Buckets = [],
-    error_logger:info_msg("isasl_sync init buckets: ~p~n", [Buckets]),
+    Buckets =
+        case ns_config:search(buckets) of
+            {value, RawBuckets} ->
+                extract_creds(RawBuckets);
+            _ -> []
+        end,
+    %% don't log passwords here
+    error_logger:info_msg("isasl_sync init buckets: ~p~n", [proplists:get_keys(Buckets)]),
+    Pid = self(),
+    ns_pubsub:subscribe(ns_config_events,
+                        fun ({buckets, _V}=Evt, _) ->
+                                gen_server:cast(Pid, Evt);
+                            (_, _) -> ok
+                        end, ignored),
     writeSASLConf(Path, Buckets, AU, AP),
     {ok, #state{buckets=Buckets, path=Path, updates=0,
-                admin_user=AU, admin_pass=AP},
-     hibernate}.
+                admin_user=AU, admin_pass=AP}}.
 
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
 
-handle_event({buckets, V}, State) ->
+handle_cast({buckets, V}, State) ->
     Prev = State#state.buckets,
     case extract_creds(V) of
         Prev ->
-            {ok, State, hibernate};
+            {noreply, State};
         NewBuckets ->
-            writeSASLConf(State#state.path, NewBuckets,
-                          State#state.admin_user, State#state.admin_pass),
-            {ok, State#state{buckets=NewBuckets,
-                             updates=State#state.updates + 1}, hibernate}
+            {noreply, initiate_write(State#state{buckets=NewBuckets})}
     end;
-handle_event(_, State) ->
-    {ok, State, hibernate}.
+handle_cast(write_sasl_conf, State) ->
+    writeSASLConf(State#state.path, State#state.buckets,
+                  State#state.admin_user, State#state.admin_pass),
+    {noreply, State#state{updates = State#state.updates + 1,
+                          write_pending = false}};
+handle_cast(Msg, State) ->
+    error_logger:error_msg("Unkown cast: ~p~n", [Msg]),
+    {noreply, State}.
 
-handle_call(Request, State) ->
-    error_logger:info_msg("handle_call(~p, ~p)~n", [Request, State]),
-    {ok, ok, State, hibernate}.
+handle_call(_Request, _From, State) ->
+    {reply, ok, State}.
 
 handle_info(_Info, State) ->
-    {ok, State, hibernate}.
+    {noreply, State}.
+
+%% this sends us cast that performs actual sasl writing. The end
+%% effect is batching of {buckets, _} cast processing. So that we
+%% don't write file after every "buckets" config key change.
+initiate_write(#state{write_pending = true} = State) ->
+    State;
+initiate_write(State) ->
+    gen_server:cast(?MODULE, write_sasl_conf),
+    State#state{write_pending = true}.
 
 %
 % Extract the credentials from the config to a list of tuples of {User, Pass}
