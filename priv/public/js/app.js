@@ -299,197 +299,6 @@ function loginFormSubmit() {
   return false;
 }
 
-$(function () {
-  $(document.body).removeClass('nojs');
-
-  _.defer(function () {
-    var e = $('#auth_dialog [name=login]').get(0);
-    try {e.focus();} catch (ex) {}
-  });
-
-  $('#login_form').bind('submit', function (e) {
-    e.preventDefault();
-    loginFormSubmit();
-  });
-
-  if ($.cookie('rf')) {
-    displayNotice('An error was encountered when requesting data from the server.  ' +
-                  'The console has been reloaded to attempt to recover.  There ' +
-                  'may be additional information about the error in the log.');
-    DAL.onReady(function () {
-      $.cookie('rf', null);
-      if ('sessionStorage' in window && window.sessionStorage.reloadCause) {
-        var text = "Browser client XHR failure encountered. (age: "
-          + ((new Date()).valueOf() - sessionStorage.reloadTStamp)+")  Diagnostic info:\n";
-        postClientErrorReport(text + window.sessionStorage.reloadCause);
-        delete window.sessionStorage.reloadCause;
-        delete window.sessionStorage.reloadTStamp;
-      }
-    });
-  }
-
-  ThePage.initialize();
-
-  DAL.onReady(function () {
-    $(window).trigger('hashchange');
-  });
-
-  $('#server_list_container .expander, #server_list_container .name').live('click', function (e) {
-    var container = $('#server_list_container');
-    var mydetails = $(e.target).parents("#server_list_container .primary").next();
-    var opened = mydetails.hasClass('opened');
-
-    mydetails.toggleClass('opened', !opened);
-    mydetails.prev().find(".expander").toggleClass('expanded', !opened);
-  });
-
-  try {
-    if (DAL.tryNoAuthLogin()) {
-      hideAuthForm();
-    }
-  } finally {
-    try {
-      $('#auth_dialog .spinner').remove();
-    } catch (__ignore) {}
-  }
-
-  if (!DAL.login && $('#login_form:visible').length) {
-    var backdoor =
-      (function () {
-        var href = window.location.href;
-        var match = /\?(.*?)(?:$|#)/.exec(href);
-        var rv = false;
-        if (match && /(&|^)na(&|$)/.exec(match[1]))
-          rv = true;
-        return rv;
-      })();
-    if (backdoor) {
-      var login = $('#login_form [name=login]').val('Administrator');
-      var password = $('#login_form [name=password]').val('asdasd');
-      loginFormSubmit();
-    }
-  }
-});
-
-$(window).bind('template:rendered', function () {
-  $('table.lined_tab').each(function () {
-    $(this).find('tr:has(td):odd').addClass('highlight');
-  });
-});
-
-function showAbout() {
-  function updateVersion() {
-    var components = DAL.componentsVersion;
-    if (components)
-      $('#about_versions').text("Version: " + components['ns_server']);
-    else {
-      $.get('/versions', function (data) {
-        DAL.componentsVersion = data.componentsVersion;
-        updateVersion();
-      }, 'json')
-    }
-
-    var poolDetails = DAL.cells.currentPoolDetailsCell.value || {nodes:[]};
-    var nodesCount = poolDetails.nodes.length;
-    if (nodesCount >= 0x100)
-      nodesCount = 0xff;
-
-    var buckets = DAL.cells.bucketsListCell.value || [];
-    var bucketsCount = buckets.length;
-    if (bucketsCount >= 100)
-      bucketsCount = 99;
-
-    var memcachedBucketsCount = _.filter(buckets, function (b) {return b.bucketType == 'memcache'}).length;
-    var membaseBucketsCount = _.filter(buckets, function (b) {return b.bucketType == 'membase'}).length;
-
-    if (memcachedBucketsCount >= 0x10)
-      memcachedBucketsCount = 0xf;
-    if (membaseBucketsCount >= 0x10)
-      membaseBucketsCount = 0x0f;
-
-    var date = (new Date());
-
-    var magicString = [
-      integerToString(0x100 + poolDetails.nodes.length, 16).slice(1)
-        + integerToString(date.getMonth()+1, 16),
-      integerToString(100 + bucketsCount, 10).slice(1)
-        + integerToString(memcachedBucketsCount, 16),
-      integerToString(membaseBucketsCount, 16)
-        + date.getDate()
-    ];
-    $('#cluster_state_id').text('Cluster State ID: ' + magicString.join('-'));
-  }
-  updateVersion();
-  showDialog('about_server_dialog',
-      {title: $('#about_server_dialog .config-top').hide().html()});
-}
-
-function showInitDialog(page, opt, isContinuation) {
-  opt = opt || {};
-
-  var pages = [ "welcome", "update_notifications", "cluster", "secure",
-    "bucket_dialog" ];
-
-  if (page == "")
-    page = "welcome";
-
-  for (var i = 0; i < pages.length; i++) {
-    if (page == pages[i]) {
-      var rv;
-      if (!isContinuation && NodeDialog["startPage_" + page]) {
-        rv = NodeDialog["startPage_" + page]('self', 'init_' + page, opt);
-      }
-      // if startPage is in continuation passing style, call it
-      // passing continuation and return.  This allows startPage to do
-      // async computation and then resume dialog page switching
-      if (rv instanceof Function) {
-        $('body, html').css('cursor', 'wait');
-
-        return rv(function () {
-
-          $('body, html').css('cursor', '');
-          // we don't pass real contination, we just call ourselves again
-          showInitDialog(page, opt, true);
-        });
-      }
-      $(document.body).addClass('init_' + page);
-      _.defer(function () {
-        var element = $('.focusme:visible').get(0)
-        if (!element) {
-          return;
-        }
-        try {element.focus();} catch (e) {}
-      });
-    }
-  }
-
-  $('.page-header')[page == 'done' ? 'show' : 'hide']();
-
-  if (page == 'done')
-    DAL.enableSections();
-
-  for (var i = 0; i < pages.length; i++) { // Hide in a 2nd loop for more UI stability.
-    if (page != pages[i]) {
-      $(document.body).removeClass('init_' + pages[i]);
-    }
-  }
-
-  if (page == 'done')
-    return;
-
-  var notices = [];
-  $('#notice_container > *').each(function () {
-    var text = $.data(this, 'notice-text');
-    if (!text)
-      return;
-    notices.push(text);
-  });
-  if (notices.length) {
-    $('#notice_container').html('');
-    alert(notices.join("\n\n"));
-  }
-}
-
 var NodeDialog = {
   panicAndReload: function() {
     alert('Failed to get initial setup data from server. Cannot continue.' +
@@ -859,6 +668,197 @@ var NodeDialog = {
     }
   }
 };
+
+$(function () {
+  $(document.body).removeClass('nojs');
+
+  _.defer(function () {
+    var e = $('#auth_dialog [name=login]').get(0);
+    try {e.focus();} catch (ex) {}
+  });
+
+  $('#login_form').bind('submit', function (e) {
+    e.preventDefault();
+    loginFormSubmit();
+  });
+
+  if ($.cookie('rf')) {
+    displayNotice('An error was encountered when requesting data from the server.  ' +
+                  'The console has been reloaded to attempt to recover.  There ' +
+                  'may be additional information about the error in the log.');
+    DAL.onReady(function () {
+      $.cookie('rf', null);
+      if ('sessionStorage' in window && window.sessionStorage.reloadCause) {
+        var text = "Browser client XHR failure encountered. (age: "
+          + ((new Date()).valueOf() - sessionStorage.reloadTStamp)+")  Diagnostic info:\n";
+        postClientErrorReport(text + window.sessionStorage.reloadCause);
+        delete window.sessionStorage.reloadCause;
+        delete window.sessionStorage.reloadTStamp;
+      }
+    });
+  }
+
+  ThePage.initialize();
+
+  DAL.onReady(function () {
+    $(window).trigger('hashchange');
+  });
+
+  $('#server_list_container .expander, #server_list_container .name').live('click', function (e) {
+    var container = $('#server_list_container');
+    var mydetails = $(e.target).parents("#server_list_container .primary").next();
+    var opened = mydetails.hasClass('opened');
+
+    mydetails.toggleClass('opened', !opened);
+    mydetails.prev().find(".expander").toggleClass('expanded', !opened);
+  });
+
+  try {
+    if (DAL.tryNoAuthLogin()) {
+      hideAuthForm();
+    }
+  } finally {
+    try {
+      $('#auth_dialog .spinner').remove();
+    } catch (__ignore) {}
+  }
+
+  if (!DAL.login && $('#login_form:visible').length) {
+    var backdoor =
+      (function () {
+        var href = window.location.href;
+        var match = /\?(.*?)(?:$|#)/.exec(href);
+        var rv = false;
+        if (match && /(&|^)na(&|$)/.exec(match[1]))
+          rv = true;
+        return rv;
+      })();
+    if (backdoor) {
+      var login = $('#login_form [name=login]').val('Administrator');
+      var password = $('#login_form [name=password]').val('asdasd');
+      loginFormSubmit();
+    }
+  }
+});
+
+$(window).bind('template:rendered', function () {
+  $('table.lined_tab').each(function () {
+    $(this).find('tr:has(td):odd').addClass('highlight');
+  });
+});
+
+function showAbout() {
+  function updateVersion() {
+    var components = DAL.componentsVersion;
+    if (components)
+      $('#about_versions').text("Version: " + components['ns_server']);
+    else {
+      $.get('/versions', function (data) {
+        DAL.componentsVersion = data.componentsVersion;
+        updateVersion();
+      }, 'json')
+    }
+
+    var poolDetails = DAL.cells.currentPoolDetailsCell.value || {nodes:[]};
+    var nodesCount = poolDetails.nodes.length;
+    if (nodesCount >= 0x100)
+      nodesCount = 0xff;
+
+    var buckets = DAL.cells.bucketsListCell.value || [];
+    var bucketsCount = buckets.length;
+    if (bucketsCount >= 100)
+      bucketsCount = 99;
+
+    var memcachedBucketsCount = _.filter(buckets, function (b) {return b.bucketType == 'memcache'}).length;
+    var membaseBucketsCount = _.filter(buckets, function (b) {return b.bucketType == 'membase'}).length;
+
+    if (memcachedBucketsCount >= 0x10)
+      memcachedBucketsCount = 0xf;
+    if (membaseBucketsCount >= 0x10)
+      membaseBucketsCount = 0x0f;
+
+    var date = (new Date());
+
+    var magicString = [
+      integerToString(0x100 + poolDetails.nodes.length, 16).slice(1)
+        + integerToString(date.getMonth()+1, 16),
+      integerToString(100 + bucketsCount, 10).slice(1)
+        + integerToString(memcachedBucketsCount, 16),
+      integerToString(membaseBucketsCount, 16)
+        + date.getDate()
+    ];
+    $('#cluster_state_id').text('Cluster State ID: ' + magicString.join('-'));
+  }
+  updateVersion();
+  showDialog('about_server_dialog',
+      {title: $('#about_server_dialog .config-top').hide().html()});
+}
+
+function showInitDialog(page, opt, isContinuation) {
+  opt = opt || {};
+
+  var pages = [ "welcome", "update_notifications", "cluster", "secure",
+    "bucket_dialog" ];
+
+  if (page == "")
+    page = "welcome";
+
+  for (var i = 0; i < pages.length; i++) {
+    if (page == pages[i]) {
+      var rv;
+      if (!isContinuation && NodeDialog["startPage_" + page]) {
+        rv = NodeDialog["startPage_" + page]('self', 'init_' + page, opt);
+      }
+      // if startPage is in continuation passing style, call it
+      // passing continuation and return.  This allows startPage to do
+      // async computation and then resume dialog page switching
+      if (rv instanceof Function) {
+        $('body, html').css('cursor', 'wait');
+
+        return rv(function () {
+
+          $('body, html').css('cursor', '');
+          // we don't pass real contination, we just call ourselves again
+          showInitDialog(page, opt, true);
+        });
+      }
+      $(document.body).addClass('init_' + page);
+      _.defer(function () {
+        var element = $('.focusme:visible').get(0)
+        if (!element) {
+          return;
+        }
+        try {element.focus();} catch (e) {}
+      });
+    }
+  }
+
+  $('.page-header')[page == 'done' ? 'show' : 'hide']();
+
+  if (page == 'done')
+    DAL.enableSections();
+
+  for (var i = 0; i < pages.length; i++) { // Hide in a 2nd loop for more UI stability.
+    if (page != pages[i]) {
+      $(document.body).removeClass('init_' + pages[i]);
+    }
+  }
+
+  if (page == 'done')
+    return;
+
+  var notices = [];
+  $('#notice_container > *').each(function () {
+    var text = $.data(this, 'notice-text');
+    if (!text)
+      return;
+    notices.push(text);
+  });
+  if (notices.length) {
+    $('#notice_container').html('');
+    alert(notices.join("\n\n"));
+  }
+}
 
 function displayNotice(text, isError) {
   var div = $('<div></div>');
