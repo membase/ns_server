@@ -129,7 +129,7 @@ handle_cast({log, Module, Code, Fmt, Args}, State = #state{dedup=Dedup}) ->
     end;
 handle_cast({do_log, Entry}, State) ->
     {noreply, schedule_save(add_pending(State, Entry))};
-handle_cast({sync, Compressed}, StateBefore) ->
+handle_cast({sync, SrcNode, Compressed}, StateBefore) ->
     State = flush_pending(StateBefore),
     Recent = State#state.unique_recent,
     case binary_to_term(zlib:uncompress(Compressed)) of
@@ -137,9 +137,24 @@ handle_cast({sync, Compressed}, StateBefore) ->
             {noreply, State};
         Logs ->
             State1 = schedule_save(State),
-            {noreply, State1#state{unique_recent=tail_of_length(lists:umerge(Recent, Logs),
-                                                                ?RB_SIZE)}}
-    end.
+            NewRecent = tail_of_length(lists:umerge(Recent, Logs),
+                                       ?RB_SIZE),
+            case NewRecent =/= Logs of
+                %% send back sync with fake src node. To avoid
+                %% infinite sync exchange just in case.
+                true -> send_sync_to(NewRecent, SrcNode, SrcNode);
+                _ -> nothing
+            end,
+            {noreply, State1#state{unique_recent=NewRecent}}
+    end;
+handle_cast(_, State) ->
+    {noreply, State}.
+
+send_sync_to(Recent, Node) ->
+    send_sync_to(Recent, Node, node()).
+
+send_sync_to(Recent, Node, Src) ->
+    gen_server:cast({?MODULE, Node}, {sync, Src, zlib:compress(term_to_binary(Recent))}).
 
 %% Not handling any other state.
 
@@ -155,7 +170,7 @@ handle_info(sync, StateBefore) ->
         [] -> ok;
         Nodes ->
             Node = lists:nth(random:uniform(length(Nodes)), Nodes),
-            gen_server:cast({?MODULE, Node}, {sync, zlib:compress(term_to_binary(Recent))})
+            send_sync_to(Recent, Node)
     end,
     {noreply, State};
 handle_info(save, StateBefore = #state{filename=Filename}) ->
