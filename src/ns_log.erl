@@ -184,29 +184,29 @@ code_change(_OldVsn, State, _Extra) ->
 
 gc(State = #state{dedup=Dupes}) ->
     DupesList = gc(erlang:now(), dict:to_list(Dupes),
-                             []),
+                   []),
     State#state{dedup=dict:from_list(DupesList)}.
 
 gc(_Now, [], DupesList) -> DupesList;
 gc(Now, [{Key, Value} | Rest], DupesList) ->
-     {Count, FirstSeen, _LastSeen} = Value,
-     case timer:now_diff(Now, FirstSeen) >= ?DUP_TIME of
-     true ->
-         {Module, Code, Fmt, Args} = Key,
-         case Count of
-             0 -> ok;
-             _ ->
-                 Entry = #log_entry{node=node(), module=Module,
-                                    code=Code,
-                                    msg=Fmt ++ " (repeated ~p times)",
-                                    args=Args ++ [Count],
-                                    cat=categorize(Module, Code),
-                                    tstamp=Now},
-                 gen_server:abcast(?MODULE, {do_log, Entry})
-         end,
-         gc(Now, Rest, DupesList);
-     false -> gc(Now, Rest, [{Key, Value} | DupesList])
-     end.
+    {Count, FirstSeen, _LastSeen} = Value,
+    case timer:now_diff(Now, FirstSeen) >= ?DUP_TIME of
+        true ->
+            {Module, Code, Fmt, Args} = Key,
+            case Count of
+                0 -> ok;
+                _ ->
+                    Entry = #log_entry{node=node(), module=Module,
+                                       code=Code,
+                                       msg=Fmt ++ " (repeated ~p times)",
+                                       args=Args ++ [Count],
+                                       cat=categorize(Module, Code),
+                                       tstamp=Now},
+                    gen_server:abcast(?MODULE, {do_log, Entry})
+            end,
+            gc(Now, Rest, DupesList);
+        false -> gc(Now, Rest, [{Key, Value} | DupesList])
+    end.
 
 schedule_save(State = #state{save_tref=undefined}) ->
     {ok, TRef} = timer:send_after(?SAVE_DELAY, save),
@@ -225,7 +225,7 @@ categorize(Module, Code) ->
         warn -> warn;
         crit -> crit;
         _ -> info % Anything unknown is info (this includes {'EXIT', Reason})
-        end.
+    end.
 
 -spec code_string(atom(), integer()) -> string().
 code_string(Module, Code) ->
@@ -234,8 +234,8 @@ code_string(Module, Code) ->
         _                 -> "message"
     end.
 
-% A Code is an number which is module-specific.
-%
+%% A Code is an number which is module-specific.
+%%
 -spec log(atom(), integer(), string()) -> ok.
 log(Module, Code, Msg) ->
     log(Module, Code, Msg, []).
@@ -255,8 +255,8 @@ recent(Module) ->
     [E || E <- gen_server:call(?MODULE, recent),
           E#log_entry.module =:= Module ].
 
-% Example categorization -- pretty much exists for the test below, but
-% this is what any module that logs should look like.
+%% Example categorization -- pretty much exists for the test below, but
+%% this is what any module that logs should look like.
 ns_log_cat(1) ->
     crit;
 ns_log_cat(2) ->
@@ -269,7 +269,7 @@ ns_log_code_string(1) ->
 ns_log_code_string(2) ->
     "logging hit max baz".
 
-% ------------------------------------------
+%% ------------------------------------------
 
 %% TODO make this work
 -ifdef(nothing).
