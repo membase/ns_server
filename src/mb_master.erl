@@ -92,8 +92,6 @@ init([]) ->
                 true ->
                     %% We're a candidate
                     ?log_info("Starting as candidate. Peers: ~p", [Peers]),
-                    {ok, _} = timer:send_interval(?HEARTBEAT_INTERVAL,
-                                                  send_heartbeat),
                     {ok, candidate, #state{last_heard=now(), peers=Peers}}
             end
     end.
