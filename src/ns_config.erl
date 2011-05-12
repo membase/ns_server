@@ -553,7 +553,17 @@ handle_call({clear, Keep}, From, State) ->
     wait_saver(NewState, infinity),
     handle_call(reload, From, State);
 
-handle_call({merge, KVList}, From, State) ->
+handle_call({merge, KVList}, _From, State) ->
+    %% do_merge_kvlist(KVList, State).
+
+    case KVList =:= hd(State#config.dynamic) of
+        true ->
+            {reply, ok, State};
+        _ ->
+            do_merge_kvlist(KVList, State)
+    end.
+
+do_merge_kvlist(KVList, State) ->
     PolicyMod = State#config.policy_mod,
     State2 = merge_configs(PolicyMod:mergable([State#config.dynamic,
                                                State#config.static,
@@ -562,7 +572,7 @@ handle_call({merge, KVList}, From, State) ->
                            State),
     case State2 =/= State of
         true ->
-            case handle_call(resave, From, State2) of
+            case handle_call(resave, [], State2) of
                 {reply, ok, State3} = Result ->
                     DynOld = lists:map(fun strip_metadata/1, config_dynamic(State)),
                     DynNew = lists:map(fun strip_metadata/1, config_dynamic(State3)),
