@@ -299,7 +299,8 @@ send_heartbeat(Nodes, StateName, StateData) ->
                       _ -> ok
                   end
           end, Nodes, 2000)
-    catch exit:timeout -> ok
+    catch exit:timeout ->
+            ?log_info("send heartbeat timed out~n", [])
     end.
 
 
