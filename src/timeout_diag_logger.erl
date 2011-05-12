@@ -91,6 +91,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({diag, Err}, _From, #state{last_tstamp = TStamp} = State) ->
+    self() ! busy_marker,
     Now = misc:time_to_epoch_ms_int(now()),
     NewState =
         case Now - TStamp >= ?MIN_LOG_INTERVAL of
@@ -103,7 +104,7 @@ handle_call({diag, Err}, _From, #state{last_tstamp = TStamp} = State) ->
                                       error_logger:error_msg("~p,~n", [Item])
                               end, Processes),
                 ?log_error("]~n~n", []),
-                State#state{last_tstamp = Now};
+                State#state{last_tstamp = misc:time_to_epoch_ms_int(now())};
             _ -> State
         end,
     {reply, ok, NewState}.
