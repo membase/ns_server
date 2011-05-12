@@ -31,7 +31,9 @@ var StatsModel = {};
     var async = future.get(ajaxOptions, undefined, undefined, futureWrapper);
     async.cancel = (function (realCancel) {
       return function () {
-        realCancel.call(this);
+        if (realCancel) {
+          realCancel.call(this);
+        }
         body(cancelledValue);
       }
     })(async.cancel);
@@ -55,6 +57,7 @@ var StatsModel = {};
       function unbind() {
         $(mainAsync).unbind('cancelled', onCancel);
       }
+      $(mainAsync).bind('cancelled', onCancel);
 
       var async;
       return async = getCPS({url: statsURL, data: data, missingValue: mark404}, cancelMark, function (value, status, xhr) {
