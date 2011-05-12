@@ -616,11 +616,15 @@ CellsTest.prototype.testFutureWrap = function () {
     return wrapped2(function (cb) {
       events.push("actualStart");
       deliverValue = cb;
+    }, {
+      niceOption: true
     });
   });
 
   Clock.tickFarAway();
   assert(!!deliverValue);
+  assert(!!cell.pendingFuture);
+  assert(cell.pendingFuture.niceOption);
 
   // we see that real future is wrapped by wrapped1 which is wrapped by wrapped2
   // which actually starts real future body

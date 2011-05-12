@@ -85,7 +85,7 @@ future.wrap = function (wrapperBody, maybeFuture) {
         return innerBody.call(context, innerDataCallbackArg);
       }
       return wrapperBody.call(this, realDataCallback, startInner);
-    });
+    }, futureOptions);
   }
 };
 
