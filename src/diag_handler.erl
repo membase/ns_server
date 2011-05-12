@@ -87,7 +87,11 @@ grab_process_info(Pid) ->
                                     reductions,
                                     trap_exit]),
     Backtrace = proplists:get_value(backtrace, PureInfo),
-    NewBacktrace = [string:substr(X, 1, 90) || X <- string:tokens(binary_to_list(Backtrace), "\n")],
+    NewBacktrace = [case erlang:size(X) of
+                        L when L < 90 ->
+                            X;
+                        _ -> binary:part(X, 1, 90)
+                    end || X <- binary:split(Backtrace, <<"\n">>)],
     lists:keyreplace(backtrace, 1, PureInfo, {backtrace, NewBacktrace}).
 
 do_diag_per_node() ->
