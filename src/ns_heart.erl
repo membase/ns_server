@@ -50,7 +50,10 @@ handle_info(beat, State) ->
     ns_doctor:heartbeat(current_status(State)),
     {noreply, State};
 handle_info(do_expensive_checks, _State) ->
-    {noreply, expensive_checks()}.
+    {noreply, expensive_checks()};
+handle_info(_, State) ->
+    {noreply, State}.
+
 
 terminate(_Reason, _State) -> ok.
 
