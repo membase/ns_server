@@ -121,6 +121,7 @@ handle_info(send_heartbeat, candidate, #state{peers=Peers} = StateData) ->
     end;
 
 handle_info(send_heartbeat, master, StateData) ->
+    misc:flush(send_heartbeat),
     %% Make sure our name hasn't changed
     StateData1 = case StateData#state.master of
                      N when N == node() ->
@@ -134,6 +135,7 @@ handle_info(send_heartbeat, master, StateData) ->
     {next_state, master, StateData1};
 
 handle_info(send_heartbeat, worker, StateData) ->
+    misc:flush(send_heartbeat),
     %% Workers don't send heartbeats, but it's simpler to just ignore
     %% the timer than to turn it off.
     {next_state, worker, StateData};
