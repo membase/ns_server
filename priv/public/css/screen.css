@@ -337,8 +337,7 @@ div.analytics-small-graph > .right-arrow ul li:hover, div.analytics-small-graph 
 
 #server_list_container > table { width: 100%; }
 
-.spinner { vertical-align: middle; text-align: center; background:url(../images/spinner/spinner_3.gif) center 43% no-repeat; padding: 50px}
-.bucket_info .spinner { padding:0px; }
+.spinner { vertical-align: middle; text-align: center; background:url(../images/spinner/spinner_3.gif) center 43% no-repeat; }
 
 .dialog{display:none}
 
