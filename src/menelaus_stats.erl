@@ -609,19 +609,56 @@ jsonify_hks(BucketsTopKeys) ->
                               end, BucketsTopKeys),
     {struct, [{hot_keys, HotKeyStructs}]}.
 
+aggregate_stat_kv_pairs([], _BValues, Acc) ->
+    lists:reverse(Acc);
+aggregate_stat_kv_pairs(APairs, [], Acc) ->
+    lists:reverse(Acc, APairs);
+aggregate_stat_kv_pairs([{AK, AV} = APair | ARest] = A,
+                        [{BK, BV} | BRest] = B,
+                        Acc) ->
+    case AK of
+        BK ->
+            NewAcc = [{AK,
+                       try AV+BV
+                       catch error:badarith ->
+                               case ([X || X <- [AV,BV],
+                                           X =/= undefined]) of
+                                   [] -> 0;
+                                   [X|_] -> X
+                               end
+                       end} | Acc],
+            aggregate_stat_kv_pairs(ARest, BRest, NewAcc);
+        _ when AK < BK ->
+            case AV of
+                undefined ->
+                    aggregate_stat_kv_pairs(ARest, B, [{AK, 0} | Acc]);
+                _ ->
+                    aggregate_stat_kv_pairs(ARest, B, [APair | Acc])
+            end;
+        _ ->
+            aggregate_stat_kv_pairs(A, BRest, Acc)
+    end.
+
+aggregate_stat_kv_pairs_test() ->
+    ?assertEqual([{a, 3}, {b, 0}, {c, 1}, {d,1}],
+                 aggregate_stat_kv_pairs([{a, 1}, {b, undefined}, {c,1}, {d, 1}],
+                                         [{a, 2}, {b, undefined}, {d, undefined}, {e,1}],
+                                         [])),
+    ?assertEqual([{a, 3}, {b, 0}, {c, 1}, {d,1}],
+                 aggregate_stat_kv_pairs([{a, 1}, {b, undefined}, {c,1}, {d, 1}],
+                                         [{a, 2}, {b, undefined}, {ba, 123}],
+                                         [])),
+    ?assertEqual([{a, 3}, {b, 0}, {c, 1}, {d,1}],
+                 aggregate_stat_kv_pairs([{a, 1}, {b, undefined}, {c,1}, {d, 1}],
+                                         [{a, 2}, {c,0}, {d, undefined}, {e,1}],
+                                         [])).
+
+
 aggregate_stat_entries(A, B) ->
     true = (B#stat_entry.timestamp =:= A#stat_entry.timestamp),
-    BValues = B#stat_entry.values,
-    NewValues = orddict:map(fun (K, X0) ->
-                                    X = case X0 of
-                                            undefined -> 0;
-                                            _ -> X0
-                                        end,
-                                    case orddict:find(K, BValues) of
-                                        {ok, Y} when Y =/= undefined -> X + Y;
-                                        _ -> X
-                                    end
-                            end, A#stat_entry.values),
+    NewValues = aggregate_stat_kv_pairs(A#stat_entry.values,
+                                        B#stat_entry.values,
+                                        []),
     A#stat_entry{values = NewValues}.
 
 membase_stats_description() ->
