@@ -394,6 +394,7 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 .lined_tab th {padding:10px 5px;color:#f2692d;text-align:left;font-weight:bolder;border:1px solid #ccc;background:none #e6e7e8;}
 .lined_tab td {padding:10px 5px;border:1px solid #d9dce0;background:none #fff;vertical-align:middle;}
 .lined_tab td td {background:none;border:0px !important;}
+.lined_tab tr:nth-child(2n+1) td {background-color: #f5f5f7;}
 .lined_tab .highlight td {background-color: #f5f5f7;}
 .lined_tab .swap_usage {color:#8a8a8d;}
 

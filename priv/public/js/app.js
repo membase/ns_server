@@ -732,12 +732,6 @@ $(function () {
   }
 });
 
-$(window).bind('template:rendered', function () {
-  $('table.lined_tab').each(function () {
-    $(this).find('tr:has(td):odd').addClass('highlight');
-  });
-});
-
 function showAbout() {
   function updateVersion() {
     var components = DAL.componentsVersion;

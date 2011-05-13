@@ -1349,7 +1349,16 @@
 <script src="/js/jquery-ui-1.8.10.custom.js"></script>
 <script src="/js/jquery.flot.js"></script>
 <script src="/js/jquery.ba-bbq.js"></script>
-<!--[if lt IE 9]><script src="/js/json2.js"></script><![endif]-->
+<!--[if lt IE 9]>
+<script src="/js/json2.js"></script>
+<script>
+$(window).bind('template:rendered', function () {
+  $('table.lined_tab').each(function () {
+    $(this).find('tr:has(td):odd').addClass('highlight');
+  });
+});
+</script>
+<![endif]-->
 <script src="/js/underscore.js"></script>
 <script src="/js/tools.tabs.js"></script>
 <script src="/js/jquery.cookie.js"></script>
