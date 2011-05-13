@@ -80,7 +80,7 @@
                             </tr>
                             <!-- {% $.each(rows, function () { %} -->
                             <tr>
-                              <td>
+                              <td class="{%= this.nodeClass %}">
                                 <a class="node_name disable-if-stale" href="#sec=analytics&statsHostname={%= h(this.hostname) %}">
                                 {%= V.stripPortHTML(this.hostname, rows) %}
                                 </a>
