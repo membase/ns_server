@@ -60,7 +60,7 @@ last_membase_sample(BucketName, Nodes) ->
                         {extract_stat(mem_used, Sample) + AccMem,
                          extract_stat(curr_items, Sample) + AccItems,
                          extract_stat(ops, Sample) + AccOps,
-                         extract_stat(ep_io_num_read, Sample) + AccFetches}
+                         extract_stat(ep_bg_fetched, Sample) + AccFetches}
                 end, {0, 0, 0, 0}, invoke_archiver(BucketName, Nodes, {1, minute, 1})).
 
 last_memcached_sample(BucketName, Nodes) ->
