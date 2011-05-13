@@ -85,7 +85,8 @@
                                 {%= V.stripPortHTML(this.hostname, rows) %}
                                 </a>
                               </td>
-                              <td>
+                              <td class="swap_usage">
+                              <!-- {% if (this.swap_total > 0) { %} -->
                                 <div class="usage_smallest_info">
                                   <div class="usage_smallest">
                                     <div class="side_shadow">
@@ -97,6 +98,9 @@
                                   {%= V.setPercentBar(this.swap_used / this.swap_total) %}
                                   {%= h(truncateTo3Digits(Math.floor(((this.swap_used / this.swap_total) || 0) * 100) / 100)) %}%
                                 </div>
+                              <!-- {% } else { %} -->
+                              <span>N/A</span>
+                              <!-- {% } %} -->
                               </td>
 
                               <td>
