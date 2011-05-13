@@ -125,9 +125,7 @@ handle_overview_stats(PoolId, Req) ->
                            end, Names),
     MergedSamples = case AllSamples of
                         [FirstBucketSamples | RestSamples] ->
-                            lists:foldl(fun (Samples, Acc) ->
-                                        merge_samples_normally(Acc, Samples)
-                                end, FirstBucketSamples, RestSamples);
+                            merge_all_samples_normally(FirstBucketSamples, RestSamples);
                         [] -> []
                     end,
     TStamps = [X#stat_entry.timestamp || X <- MergedSamples],
@@ -328,34 +326,33 @@ build_per_node_stats(BucketName, StatName, Params, LocalAddr) ->
 
 %% Implementation
 
-merge_samples(MainSamples, OtherSamples, MergerFun, MergerState) ->
-    OtherSamplesDict = orddict:from_list([{Sample#stat_entry.timestamp, Sample} ||
-                                             Sample <- OtherSamples]),
-    {MergedSamples, _} = lists:foldl(fun (Sample, {Acc, MergerState2}) ->
-                                             TStamp = Sample#stat_entry.timestamp,
-                                             {NewSample, NextState} =
-                                                 case orddict:find(TStamp, OtherSamplesDict) of
-                                                     {ok, AnotherSample} ->
-                                                         MergerFun(Sample, AnotherSample, MergerState2);
-                                                     _ -> {Sample, MergerState2}
-                                                 end,
-                                             {[NewSample | Acc], NextState}
-                                     end, {[], MergerState}, MainSamples),
-    lists:reverse(MergedSamples).
+merge_all_samples_normally(MainSamples, ListOfLists) ->
+    ETS = ets:new(ok, [{keypos, #stat_entry.timestamp}]),
+    try do_merge_all_samples_normally(ETS, MainSamples, ListOfLists)
+    after
+        ets:delete(ETS)
+    end.
 
-merge_samples_normally(MainSamples, OtherSamples) ->
-    merge_samples(MainSamples, OtherSamples,
-                  fun (A, B, _) ->
-                          {aggregate_stat_entries(A, B), []}
-                  end, []).
-
+do_merge_all_samples_normally(ETS, MainSamples, ListOfLists) ->
+    ets:insert(ETS, MainSamples),
+    lists:foreach(
+      fun (OtherSamples) ->
+              lists:foreach(
+                fun (OtherS) ->
+                        TS = OtherS#stat_entry.timestamp,
+                        case ets:lookup(ETS, TS) of
+                            [S|_] ->
+                                ets:insert(ETS, aggregate_stat_entries(S, OtherS));
+                            _ ->
+                                nothing
+                        end
+                end, OtherSamples)
+      end, ListOfLists),
+    [hd(ets:lookup(ETS, T)) || #stat_entry{timestamp = T} <- MainSamples].
 
 grab_aggregate_op_stats(Bucket, Nodes, Params) ->
     {MainSamples, Replies, ClientTStamp, {Step, _, Window}} = gather_op_stats(Bucket, Nodes, Params),
-    RV = lists:foldl(fun ({Node, _}, AccSamples) when Node =:= node() -> AccSamples;
-                         ({_Node, RemoteSamples}, AccSamples) ->
-                             merge_samples_normally(AccSamples, RemoteSamples)
-                     end, MainSamples, Replies),
+    RV = merge_all_samples_normally(MainSamples, [S || {N,S} <- Replies, N =/= node()]),
     V = lists:reverse(RV),
     case V =/= [] andalso (hd(V))#stat_entry.timestamp of
         ClientTStamp -> {V, ClientTStamp, Step, Window};
