@@ -133,6 +133,7 @@ td.leftNav .badge {right:0px;top:0px;}
 .config-bottom button:hover, .config-bottom button:focus {background-position:0 -31px;}
 .save_cancel button:active, .config-bottom button:active {background-position:0 -62px;}
 .save_cancel .save_button, .config-bottom .direction-button {background:url(../images/button_blue.gif) 0 0 no-repeat;}
+.save_cancel .flush_button {background:url(../images/button_red.gif) 0 0 no-repeat;margin-right:10px;}
 .save_cancel .delete_button {background:url(../images/button_red.gif) 0 0 no-repeat;margin-right:10px;}
 /*.save_cancel .button_3 {width:146px;background:url(../images/button_blue_3.gif) 0 0 no-repeat;}*/
 .save_cancel .cancel_button {display:block;width:80px;height:31px;line-height:31px;color:#8b8b8e;text-align:center;font-weight:bolder;text-decoration:none; margin-right:30px;}
@@ -517,6 +518,7 @@ select.inp_size_2 {width:193px !important;}
 .popup form > div {padding:0 50px 30px;border-bottom: 1px solid #cccfd2;border-top: 1px solid #f8f8f8;  }
 .popup h2 {clear:both;font-size:20px;font-weight:normal;padding-bottom:6px;margin-top:18px;margin-bottom:15px;border-bottom:1px solid #d4d9dc;}
 .popup .save_cancel {border-top:1px solid #eee;border-bottom:0px;padding:18px;clear:both;background:#cccfd2;}
+.popup .save_cancel .flush_button {margin-right:16px;}
 .popup .save_cancel .delete_button {margin-right:16px;}
 .popup .close {float:right;font-size:14px;height:31px;line-height:31px;color:#8b8b8e;text-align:right;font-weight:bolder;text-decoration:none;margin-right:16px;}
 .popup .err {margin:0;}
@@ -965,6 +967,7 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details label.for-replica-number {display:block;float:left;}
 .bucket_details label.for-replica-number span {display:inline;float:none;margin-left:6px;}
 .bucket_details label.for-replica-number input {width:29px;}
+.bucket_details .save_cancel .flush_button {float:left;margin-right:16px;}
 .bucket_details .save_cancel .delete_button {float:left;margin-right:16px;}
 
 .bucket_details.creating .when-editing,

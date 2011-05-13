@@ -149,6 +149,10 @@ var BucketDetailsDialog = mkClass({
     dialog.removeClass('editing').removeClass('creating');
     dialog.addClass(isNew ? 'creating' : 'editing');
 
+    if (!isNew) {
+      dialog.find('.flush_button')[initValues.bucketType == 'memcached' ? 'show' : 'hide']();
+    }
+
     dialog.find('[name=name]').boolAttr('disabled', !isNew);
 
     dialog.find('[name=replicaNumber]').boolAttr('disabled', !isNew);
@@ -517,6 +521,12 @@ var BucketsSection = {
       BucketsSection.startCreate();
     });
 
+    $('#bucket_details_dialog .flush_button').bind('click', function (e) {
+      e.preventDefault();
+      $('#bucket_details_dialog').dialog('option', 'closeOnEscape', false);
+      BucketsSection.startFlushingBucket();
+    });
+
     $('#bucket_details_dialog .delete_button').bind('click', function (e) {
       e.preventDefault();
       $('#bucket_details_dialog').dialog('option', 'closeOnEscape', false);
@@ -615,6 +625,47 @@ var BucketsSection = {
         $('#bucket_details_dialog').dialog('option', 'closeOnEscape', true);
       }
     });
+  },
+  startFlushingBucket: function () {
+    if (!this.currentlyShownBucket) {
+      return;
+    }
+    $('#bucket_flush_dialog .bucket_name').text(this.currentlyShownBucket.name);
+    showDialog('bucket_flush_dialog', {
+      closeOnEscape: false,
+      onHide: function(jq) {
+        $('#bucket_details_dialog').dialog('option', 'closeOnEscape', true);
+      }
+    });
+  },
+  flushCurrentBucket: function() {
+
+    function ajaxCallback() {
+      self.refreshBuckets(function() {
+        spinner.remove();
+        modal.finish();
+        hideDialog('bucket_details_dialog');
+        hideDialog('bucket_flush_dialog');
+      });
+    }
+
+    var self = this,
+        bucket = self.currentlyShownBucket;
+
+    if (!bucket) {
+      return;
+    }
+
+    var spinner = overlayWithSpinner('#bucket_flush_dialog'),
+        modal = new ModalAction();
+
+    $.ajax({
+      type: 'POST',
+      url: self.currentlyShownBucket.uri + "/controller/doFlush",
+      success: ajaxCallback,
+      errors: ajaxCallback
+    });
+    return;
   },
   removeCurrentBucket: function () {
     // inner functions

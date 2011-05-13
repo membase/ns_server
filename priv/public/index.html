@@ -824,10 +824,28 @@
       </label>
     </div> <!-- .persistent-only -->
   </div><div class="save_cancel clearfix">
-    <span class="when-editing"><button class="save_button float_right" type="submit">Save</button><button class="delete_button">Delete</button></span>
+    <span class="when-editing">
+      <button class="save_button float_right" type="submit">Save</button>
+      <button class="delete_button">Delete</button>
+      <button class="flush_button">Flush</button>
+    </span>
     <span class="when-creating"><button class="save_button float_right" type="submit">Create</button></span>
     <a class="close">Cancel</a>
   </div></form>
+</div>
+
+<div class="dialog" id="bucket_flush_dialog" title="Flushing">
+  <form>
+    <div class="clearfix">
+      <div class="err">
+        <p>Flushing this bucket will result in complete data loss for this bucket. <br/>Are you sure you want to flush it?</p>
+      </div>
+    </div>
+    <div class="save_cancel clearfix">
+      <button onclick="BucketsSection.flushCurrentBucket();" type="button" class="flush_button float_right">Flush</button>
+      <a class="close">Cancel</a>
+    </div>
+  </form>
 </div>
 
 <div class="dialog" id="bucket_remove_dialog" title="Removing">
