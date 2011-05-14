@@ -423,7 +423,7 @@ stats(Bucket) ->
     stats(Bucket, <<>>).
 
 
--spec stats(bucket_name(), binary()) ->
+-spec stats(bucket_name(), binary() | string()) ->
                    {ok, [{binary(), binary()}]} | mc_error().
 stats(Bucket, Key) ->
     gen_server:call(server(Bucket), {stats, Key}, ?TIMEOUT).

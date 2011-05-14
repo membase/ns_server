@@ -54,7 +54,7 @@ handle_cast(unhandled, unhandled) ->
 
 grab_all_stats(Bucket) ->
     {ok, Stats} = ns_memcached:stats(Bucket),
-    {ok, TapStats} = ns_memcached:stats("default", "tapagg _"),
+    {ok, TapStats} = ns_memcached:stats("default", <<"tapagg _">>),
     {Stats, TapStats}.
 
 handle_info({tick, TS}, #state{bucket=Bucket, counters=Counters, last_ts=LastTS}
