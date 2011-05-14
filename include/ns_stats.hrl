@@ -233,6 +233,18 @@ extact_tap_stat(<<"type">>, _V, Acc) ->
 extact_tap_stat(_K, _V, Acc) -> Acc.
 -undef(DEFINE_EXTRACT).
 
+-define(DEFINE_EXTRACT(A, N), extract_agg_stat(<<??A>>, V, Acc) ->
+               Acc#tap_stream_stats{N = list_to_integer(binary_to_list(V))}).
+?DEFINE_EXTRACT(qlen, qlen);
+?DEFINE_EXTRACT(fill, queue_fill);
+?DEFINE_EXTRACT(drain, queue_drain);
+?DEFINE_EXTRACT(backoff, queue_backoff);
+?DEFINE_EXTRACT(backfill_remaining, queue_backfillremaining);
+?DEFINE_EXTRACT(itemondisk, queue_itemondisk);
+?DEFINE_EXTRACT(count, count);
+extract_agg_stat(_K, _V, Acc) -> Acc.
+-undef(DEFINE_EXTRACT).
+
 -define(DEFINE_TO_KVLIST(N), {<<Prefix/binary, ??N>>, list_to_binary(integer_to_list(Record#tap_stream_stats.N))}).
 tap_stream_stats_to_kvlist(Prefix, Record) ->
     [?DEFINE_TO_KVLIST(count),
@@ -254,5 +266,16 @@ add_tap_stream_stats(A, B) ->
                       ?DEFINE_ADDER(queue_backfillremaining),
                       ?DEFINE_ADDER(queue_itemondisk)}.
 -undef(DEFINE_ADDER).
+
+-define(DEFINE_SUBTRACTOR(N), N = A#tap_stream_stats.N - B#tap_stream_stats.N).
+sub_tap_stream_stats(A, B) ->
+    #tap_stream_stats{?DEFINE_SUBTRACTOR(count),
+                      ?DEFINE_SUBTRACTOR(qlen),
+                      ?DEFINE_SUBTRACTOR(queue_fill),
+                      ?DEFINE_SUBTRACTOR(queue_drain),
+                      ?DEFINE_SUBTRACTOR(queue_backoff),
+                      ?DEFINE_SUBTRACTOR(queue_backfillremaining),
+                      ?DEFINE_SUBTRACTOR(queue_itemondisk)}.
+-undef(DEFINE_SUBTRACTOR).
 
 -endif. % NEED_TAP_STREAM_STATS_CODE

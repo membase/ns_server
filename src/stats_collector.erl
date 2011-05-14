@@ -54,7 +54,7 @@ handle_cast(unhandled, unhandled) ->
 
 grab_all_stats(Bucket) ->
     {ok, Stats} = ns_memcached:stats(Bucket),
-    TapStats = ns_memcached:tap_stats(Bucket),
+    {ok, TapStats} = ns_memcached:stats("default", "tapagg _"),
     {Stats, TapStats}.
 
 handle_info({tick, TS}, #state{bucket=Bucket, counters=Counters, last_ts=LastTS}
@@ -137,6 +137,10 @@ extract_tap_stream_stats(KVs) ->
     lists:foldl(fun ({K, V}, Acc) -> extact_tap_stat(K, V, Acc) end,
                 #tap_stream_stats{}, KVs).
 
+extract_agg_tap_stats(KVs) ->
+    lists:foldl(fun ({K, V}, Acc) -> extract_agg_stat(K, V, Acc) end,
+                #tap_stream_stats{}, KVs).
+
 pre_aggregate_single_tap_inner(KVs, Acc, Index) ->
     case lists:keyfind(<<"type">>, 1, KVs) of
         {_, <<"producer">>} ->
@@ -207,12 +211,24 @@ parse_stats_raw2(TS, LastCounters, LastTS, KnownGauges, KnownCounters, GetStat, 
                             lists:sort(lists:zip(KnownCounters, Deltas))),
     {Values0, Counters}.
 
+parse_aggregate_tap_stats(AggTap) ->
+    ReplicaStats = extract_agg_tap_stats([{K, V} || {<<"replication:", K/binary>>, V} <- AggTap]),
+    RebalanceStats = extract_agg_tap_stats([{K, V} || {<<"rebalance:", K/binary>>, V} <- AggTap]),
+    NonUserStats = add_tap_stream_stats(ReplicaStats, RebalanceStats),
+    TotalStats = extract_agg_tap_stats([{K, V} || {<<"_total:", K/binary>>, V} <- AggTap]),
+    UserStats = sub_tap_stream_stats(TotalStats, NonUserStats),
+    lists:append([tap_stream_stats_to_kvlist(<<"ep_tap_rebalance_">>, RebalanceStats),
+                  tap_stream_stats_to_kvlist(<<"ep_tap_replica_">>, ReplicaStats),
+                  tap_stream_stats_to_kvlist(<<"ep_tap_user_">>, UserStats),
+                  tap_stream_stats_to_kvlist(<<"ep_tap_total_">>, TotalStats)]).
+
+
 parse_stats(TS, Stats, TapStats, undefined, LastTS) ->
     parse_stats(TS, Stats, TapStats, {undefined, undefined}, LastTS);
 parse_stats(TS, Stats, TapStats, {LastCounters, LastTapCounters}, LastTS) ->
     {StatsValues0, Counters} = parse_stats_raw(TS, Stats, LastCounters, LastTS,
                                                [?STAT_GAUGES], [?STAT_COUNTERS]),
-    {TapValues0, TapCounters} = parse_stats_raw(TS, pre_aggregate_tap_stats(TapStats),
+    {TapValues0, TapCounters} = parse_stats_raw(TS, parse_aggregate_tap_stats(TapStats),
                                                 LastTapCounters, LastTS,
                                                 [?TAP_STAT_GAUGES], [?TAP_STAT_COUNTERS]),
     Values0 = lists:merge(TapValues0, StatsValues0),
