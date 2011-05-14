@@ -133,45 +133,9 @@ sum_stat_values(Dict, [FirstName | RestNames]) ->
                 end, orddict:fetch(FirstName, Dict), RestNames).
 
 
-extract_tap_stream_stats(KVs) ->
-    lists:foldl(fun ({K, V}, Acc) -> extact_tap_stat(K, V, Acc) end,
-                #tap_stream_stats{}, KVs).
-
 extract_agg_tap_stats(KVs) ->
     lists:foldl(fun ({K, V}, Acc) -> extract_agg_stat(K, V, Acc) end,
                 #tap_stream_stats{}, KVs).
-
-pre_aggregate_single_tap_inner(KVs, Acc, Index) ->
-    case lists:keyfind(<<"type">>, 1, KVs) of
-        {_, <<"producer">>} ->
-            Total = element(4, Acc),
-            Mine = element(Index, Acc),
-            ThisStats = extract_tap_stream_stats(KVs),
-            NewTotal = add_tap_stream_stats(ThisStats, Total),
-            NewMine = add_tap_stream_stats(ThisStats, Mine),
-            setelement(4, setelement(Index, Acc, NewMine), NewTotal);
-        _ -> Acc
-    end.
-
-pre_aggregate_single_tap(<<"rebalance_", _/binary>>, KVs, A) ->
-    pre_aggregate_single_tap_inner(KVs, A, 1);
-pre_aggregate_single_tap(<<"replication_", _/binary>>, KVs, A) ->
-    pre_aggregate_single_tap_inner(KVs, A, 2);
-pre_aggregate_single_tap(_, KVs, A) ->
-    pre_aggregate_single_tap_inner(KVs, A, 3).
-
-pre_aggregate_tap_stats(TapStats) ->
-    {RebalanceStats,
-     ReplicationStats,
-     UserStats,
-     TotalStats} = lists:foldl(fun ({Name, KVs}, Acc) ->
-                                       pre_aggregate_single_tap(Name, KVs, Acc)
-                               end,
-                               list_to_tuple(lists:duplicate(4, #tap_stream_stats{})), TapStats),
-    lists:append([tap_stream_stats_to_kvlist(<<"ep_tap_rebalance_">>, RebalanceStats),
-                  tap_stream_stats_to_kvlist(<<"ep_tap_replica_">>, ReplicationStats),
-                  tap_stream_stats_to_kvlist(<<"ep_tap_user_">>, UserStats),
-                  tap_stream_stats_to_kvlist(<<"ep_tap_total_">>, TotalStats)]).
 
 parse_stats_raw(TS, Stats, LastCounters, LastTS, KnownGauges, KnownCounters) ->
     GetStat = fun (K, Dict) ->

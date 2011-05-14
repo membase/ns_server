@@ -219,20 +219,6 @@
 
 -ifdef(NEED_TAP_STREAM_STATS_CODE).
 
--define(DEFINE_EXTRACT(N), extact_tap_stat(<<??N>>, V, Acc) ->
-               Acc#tap_stream_stats{N = list_to_integer(binary_to_list(V))}).
-?DEFINE_EXTRACT(qlen);
-?DEFINE_EXTRACT(queue_fill);
-?DEFINE_EXTRACT(queue_drain);
-?DEFINE_EXTRACT(queue_backoff);
-?DEFINE_EXTRACT(queue_backfillremaining);
-?DEFINE_EXTRACT(queue_itemondisk);
-%% we're using something that is always present to 'extract' count
-extact_tap_stat(<<"type">>, _V, Acc) ->
-    Acc#tap_stream_stats{count = 1};
-extact_tap_stat(_K, _V, Acc) -> Acc.
--undef(DEFINE_EXTRACT).
-
 -define(DEFINE_EXTRACT(A, N), extract_agg_stat(<<??A>>, V, Acc) ->
                Acc#tap_stream_stats{N = list_to_integer(binary_to_list(V))}).
 ?DEFINE_EXTRACT(qlen, qlen);
