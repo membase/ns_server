@@ -24,4 +24,5 @@
 start_link() ->
     ?log_info("OS type: ~p Version: ~p~nRuntime info: ~p",
               [os:type(), os:version(), ns_info:runtime()]),
+    ?log_info("Manifest:~n~p~n", [diag_handler:manifest()]),
     ignore.

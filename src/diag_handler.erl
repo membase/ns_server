@@ -22,7 +22,7 @@
 
 -export([do_diag_per_node/0, handle_diag/1, handle_sasl_logs/1,
          arm_timeout/2, arm_timeout/1, disarm_timeout/1,
-         grab_process_info/1,
+         grab_process_info/1, manifest/0,
          diagnosing_timeouts/1]).
 
 diag_filter_out_config_password_list([], UnchangedMarker) ->
