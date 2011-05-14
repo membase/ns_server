@@ -184,7 +184,7 @@ function runFormDialog(uriOrPoster, dialogID, options) {
       alert('submit failed: ' + data.join(' and '));
       return;
     }
-    errors.html();
+    errors.empty();
     _.each(data, function (message) {
       var li = $('<li></li>');
       li.text(message);

@@ -864,7 +864,7 @@ $.fn.bindListCell = function (cell, options) {
     }
     q.unbind('change', onChange);
     q.combobox('destroy');
-    q.html('');
+    q.empty();
     if (!args) {
       return;
     }

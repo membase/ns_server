@@ -366,7 +366,7 @@ var ServersSection = {
           confirmed = true;
           hideDialog('add_confirmation_dialog');
 
-          $('#join_cluster_dialog_errors_container').html('');
+          $('#join_cluster_dialog_errors_container').empty();
           var overlay = overlayWithSpinner(dialog.find('.join_cluster'));
 
           self.poolDetails.setValue(undefined);

@@ -230,7 +230,7 @@ function prepareAreaUpdate(jq) {
     width = 100;
   var replacement = $(SpinnerHTML, document);
   replacement.css('width', width + 'px').css('height', height + 'px').css('lineHeight', height + 'px');
-  jq.html("");
+  jq.empty();
   jq.append(replacement);
 }
 
@@ -314,6 +314,7 @@ function renderRawTemplate(toElement, templateID, data) {
   try {
     var fn = tmpl(templateID);
     var value = fn(data)
+    $(toElement).empty();
     toElement.innerHTML = value;
 
     _.each(AfterTemplateHooks, function (hook) {
