@@ -355,7 +355,7 @@ var DAL = {
     allNodes = _.uniq(active.concat(pending));
 
     var reallyActive = _.select(active, function (n) {
-      return n.clusterMembership === 'active' && !n.pendingEject && n.status === 'healthy';
+      return n.clusterMembership === 'active' && !n.pendingEject && n.status !== 'unhealthy';
     });
 
     if (reallyActive.length == 1) {
@@ -366,7 +366,7 @@ var DAL = {
 
       n.ejectPossible = !detailsAreStale && !n.pendingEject;
       n.failoverPossible = !detailsAreStale && (n.clusterMembership !== 'inactiveFailed');
-      n.reAddPossible = !detailsAreStale && (n.clusterMembership === 'inactiveFailed' && n.status === 'healthy');
+      n.reAddPossible = !detailsAreStale && (n.clusterMembership === 'inactiveFailed' && n.status !== 'unhealthy');
 
       var nodeClass = '';
       if (n.clusterMembership === 'inactiveFailed') {

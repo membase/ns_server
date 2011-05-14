@@ -55,7 +55,7 @@ var ServersSection = {
     var unhealthyActive = _.detect(active, function (n) {
       return n.clusterMembership == 'active'
         && !n.pendingEject
-        && n.status != 'healthy'
+        && n.status === 'unhealthy'
     })
 
     if (unhealthyActive)
