@@ -34,6 +34,7 @@
          delete_bucket/1,
          failover/1,
          needs_rebalance/0,
+         request_janitor_run/1,
          rebalance_progress/0,
          start_link/0,
          start_rebalance/3,
@@ -112,6 +113,9 @@ rebalance_progress() ->
             not_running
     end.
 
+
+request_janitor_run(BucketName) ->
+    gen_fsm:send_event(?SERVER, {request_janitor_run, BucketName}).
 
 -spec start_rebalance([node()], [node()], [node()]) ->
                              ok | in_progress | already_balanced.
@@ -211,9 +215,27 @@ terminate(_Reason, _StateName, _StateData) ->
 %%
 
 %% Asynchronous idle events
+idle({request_janitor_run, BucketName}, State) ->
+    RemainingBuckets =State#idle_state.remaining_buckets,
+    case lists:member(BucketName, RemainingBuckets) of
+        false ->
+            self() ! janitor,
+            {next_state, idle, State#idle_state{remaining_buckets = [BucketName|RemainingBuckets]}};
+        _ ->
+            {next_state, idle, State}
+    end;
 idle(_Event, State) ->
     %% This will catch stray progress messages
     {next_state, idle, State}.
+
+janitor_running({request_janitor_run, BucketName}, State) ->
+    RemainingBuckets =State#janitor_state.remaining_buckets,
+    case lists:member(BucketName, RemainingBuckets) of
+        false ->
+            {next_state, janitor_running, State#idle_state{remaining_buckets = [BucketName|RemainingBuckets]}};
+        _ ->
+            {next_state, janitor_running, State}
+    end;
 janitor_running(_Event, State) ->
     {next_state, janitor_running, State}.
 
@@ -226,19 +248,10 @@ idle({create_bucket, BucketType, BucketName, NewConfig}, _From, State) ->
                     {error, {already_exists, BucketName}}
             end,
     case Reply of
-        ok ->
-            case BucketType of
-                membase ->
-                    self() ! janitor,
-                    {reply, Reply, idle,
-                     State#idle_state{
-                       remaining_buckets=[BucketName|State#idle_state.remaining_buckets]}};
-                _ ->
-                    {reply, Reply, idle, State}
-            end;
-        _ ->
-            {reply, Reply, idle, State}
-    end;
+        ok -> request_janitor_run(BucketName);
+        _ -> ok
+    end,
+    {reply, Reply, idle, State};
 idle({delete_bucket, BucketName}, _From, State) ->
     RV = ns_bucket:delete_bucket(BucketName),
     ns_config:sync_announcements(),
