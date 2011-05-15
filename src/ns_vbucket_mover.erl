@@ -203,7 +203,10 @@ spawn_workers(#state{bucket=Bucket, moves=Moves, movers=Movers,
                                     update_replication_pre_move(
                                       Bucket, V, OldChain, NewChain),
                                     spawn_link(
-                                      Node,
+                                      case Node of
+                                          undefined -> node();
+                                          _ -> Node
+                                      end,
                                       fun () ->
                                               process_flag(trap_exit, true),
                                               %% We do a no-op here
@@ -212,7 +215,19 @@ spawn_workers(#state{bucket=Bucket, moves=Moves, movers=Movers,
                                               %% replication update
                                               %% will still work
                                               %% properly.
-                                              if Node /= NewNode ->
+                                              if
+                                                  Node =:= undefined ->
+                                                      %% this handles
+                                                      %% case of
+                                                      %% missing
+                                                      %% vbucket (like
+                                                      %% after failing
+                                                      %% over more
+                                                      %% nodes then
+                                                      %% replica
+                                                      %% count)
+                                                      ok;
+                                                  Node /= NewNode ->
                                                       run_mover(Bucket, V, Node,
                                                                 NewNode, 2);
                                                  true ->
@@ -318,7 +333,7 @@ update_replication_post_move(Bucket, VBucket, OldChain, NewChain) ->
     NewPairs = pairs(NewChain),
     %% Stop replication for any old pair that isn't needed any more.
     lists:foreach(
-      fun ({SrcNode, DstNode}) ->
+      fun ({SrcNode, DstNode}) when SrcNode =/= undefined ->
               ns_vbm_sup:kill_replica(Bucket, SrcNode, DstNode, VBucket)
       end, OldPairs -- NewPairs),
     %% Start replication for any new pair that wouldn't have already
