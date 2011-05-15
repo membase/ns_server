@@ -62,7 +62,7 @@ handle_event(Changed, State) when is_list(Changed) ->
                        (_, Acc) -> Acc
                     end,
                     [], Changed),
-    ns_config_rep:initiate_changes_push(ChangedRaw),
+    (catch ns_config_rep:initiate_changes_push(ChangedRaw)),
     {ok, State, hibernate};
 
 handle_event(_E, State) ->
