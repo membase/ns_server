@@ -84,6 +84,8 @@ die_slowly(Reason, State) ->
     end,
     State#state{child_pid=undefined}.
 
+terminate(_Reason, #state{child_pid = undefined}) ->
+    ok;
 terminate(Reason, State) ->
     Pid = State#state.child_pid,
     erlang:exit(Pid, Reason),
