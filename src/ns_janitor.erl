@@ -21,6 +21,8 @@
 
 -export([cleanup/1, current_states/2, graphviz/1]).
 
+intersect(A, B) ->
+    ordsets:intersection(lists:sort(A), lists:sort(B)).
 
 -spec cleanup(string()) -> ok.
 cleanup(Bucket) ->
@@ -37,10 +39,10 @@ cleanup(Bucket) ->
             M ->
                 {M, proplists:get_value(servers, Config)}
         end,
-    case Servers of
+    case intersect(Servers, [node()|nodes()]) of
         [] -> ok;
-        _ ->
-            case wait_for_memcached(Servers, Bucket, 120) of
+        UpServers ->
+            case wait_for_memcached(UpServers, Bucket, 120) of
                 [] ->
                     Map1 =
                         case sanify(Bucket, Map, Servers) of
