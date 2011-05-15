@@ -156,6 +156,14 @@ var StatsModel = {};
 
     if (lastValue.op.lastTStamp) {
       data = _.extend({haveTStamp: lastValue.op.lastTStamp}, data);
+    } else {
+      // if we don't have any stats, pause a bit, dont send new stats
+      // request immediately. Because doing so will return immediately
+      // making us send another request and so on, spamming server.
+      setTimeout(function () {
+        mvReturn(data, restorer);
+      }, 1000);
+      return;
     }
 
     return mvReturn(data, restorer);
@@ -191,6 +199,14 @@ var StatsModel = {};
 
     if (lastValue.lastTStamp) {
       data = _.extend({haveTStamp: lastValue.lastTStamp}, data);
+    } else {
+      // if we don't have any stats, pause a bit, dont send new stats
+      // request immediately. Because doing so will return immediately
+      // making us send another request and so on, spamming server.
+      setTimeout(function () {
+        mvReturn(data, restorer);
+      }, 1000);
+      return;
     }
 
     return mvReturn(data, restorer);
