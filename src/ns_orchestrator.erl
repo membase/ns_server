@@ -232,7 +232,7 @@ janitor_running({request_janitor_run, BucketName}, State) ->
     RemainingBuckets =State#janitor_state.remaining_buckets,
     case lists:member(BucketName, RemainingBuckets) of
         false ->
-            {next_state, janitor_running, State#idle_state{remaining_buckets = [BucketName|RemainingBuckets]}};
+            {next_state, janitor_running, State#janitor_state{remaining_buckets = [BucketName|RemainingBuckets]}};
         _ ->
             {next_state, janitor_running, State}
     end;
