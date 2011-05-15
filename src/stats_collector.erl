@@ -54,8 +54,12 @@ handle_cast(unhandled, unhandled) ->
 
 grab_all_stats(Bucket) ->
     {ok, Stats} = ns_memcached:stats(Bucket),
-    {ok, TapStats} = ns_memcached:stats(Bucket, <<"tapagg _">>),
-    {Stats, TapStats}.
+    case ns_memcached:stats(Bucket, <<"tapagg _">>) of
+        {ok, TapStats} ->
+            {Stats, TapStats};
+        {memcached_error, key_enoent, _} ->
+            {Stats, []}
+    end.
 
 handle_info({tick, TS}, #state{bucket=Bucket, counters=Counters, last_ts=LastTS}
             = State) ->
