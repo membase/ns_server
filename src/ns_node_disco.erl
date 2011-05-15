@@ -102,7 +102,6 @@ init([]) ->
     %% It may take longer than SYNC_TIMEOUT to complete if nodes are down.
     misc:wait_for_process(do_nodes_wanted_updated(do_nodes_wanted()),
                           ?SYNC_TIMEOUT),
-    global:sync(),
     % Register for nodeup/down messages as handle_info callbacks.
     ok = net_kernel:monitor_nodes(true),
     timer:send_interval(?PING_FREQ, ping_all),
