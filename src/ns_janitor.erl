@@ -39,10 +39,10 @@ cleanup(Bucket) ->
             M ->
                 {M, proplists:get_value(servers, Config)}
         end,
-    case intersect(Servers, [node()|nodes()]) of
+    case Servers of
         [] -> ok;
-        UpServers ->
-            case wait_for_memcached(UpServers, Bucket, 120) of
+        _ ->
+            case wait_for_memcached(Servers, Bucket, 120) of
                 [] ->
                     Map1 =
                         case sanify(Bucket, Map, Servers) of
@@ -268,11 +268,12 @@ current_states(Nodes, Bucket) ->
 wait_for_memcached(Nodes, _Bucket, 0) ->
     Nodes;
 wait_for_memcached(Nodes, Bucket, Tries) ->
-    case [Node || Node <- Nodes, not ns_memcached:connected(Node, Bucket)] of
+    UpNodes = intersect(Nodes, [node() | nodes()]),
+    case [Node || Node <- UpNodes, not ns_memcached:connected(Node, Bucket)] of
         [] ->
             [];
         Down ->
-            timer:sleep(1000),
             ?log_info("Waiting for ~p on ~p", [Bucket, Down]),
+            timer:sleep(1000),
             wait_for_memcached(Down, Bucket, Tries-1)
     end.
