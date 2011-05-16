@@ -19,7 +19,7 @@
 
 -include("ns_stats.hrl").
 
--define(EXPENSIVE_CHECK_INTERVAL, 10000). % In ms
+-define(EXPENSIVE_CHECK_INTERVAL, 15000). % In ms
 
 -export([start_link/0, status_all/0, expensive_checks/0,
          buckets_replication_statuses/0]).
@@ -33,7 +33,7 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
-    timer:send_interval(1000, beat),
+    timer:send_interval(5000, beat),
     timer:send_interval(?EXPENSIVE_CHECK_INTERVAL, do_expensive_checks),
     self() ! do_expensive_checks,
     {ok, undefined}.
