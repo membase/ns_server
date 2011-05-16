@@ -325,17 +325,6 @@ div.analytics-small-graph > .right-arrow ul li:hover, div.analytics-small-graph 
 
 #left_pane, #right_pane, #middle_panel { vertical-align: top; }
 .section { border: 1px black solid; }
-#server_list_container .details { background-color: #F1F1F1; }
-#server_list_container .details > td > div { display: inline-block; vertical-align: top; }
-#server_list_container .details .first { width: 400px; }
-#server_list_container .details .second { width: 200px; }
-#server_list_container .server_list {_float:left;}
-#server_list_container .details { display: none; }
-#server_list_container .details.opened { display: table-row; *display:block;}
-#server_list_container .opened td {padding:0 0 20px;}
-#server_list_container .opened td td {padding:0;}
-
-#server_list_container > table { width: 100%; }
 
 .spinner { vertical-align: middle; text-align: center; background:url(../images/spinner/spinner_3.gif) center 43% no-repeat; }
 
@@ -409,22 +398,6 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 .lined_tab .highlight td {background-color: #e6e7e8;}
 .lined_tab .hovered td {background:none #f5f5f7;}
 .lined_tab .swap_usage {color:#8a8a8d;}
-
-/* overview block */
-#server_list_container .expander div {width:10px; height:10px; overflow:hidden; background:url(../images/expander_bg.gif) 0 -10px no-repeat; position:relative; top:2px;}
-#server_list_container .expanded div {background:url(../images/expander_bg.gif) 0 0 no-repeat;}
-#server_list_container .name div {height:47px; line-height:47px; padding:0 0 0 35px; font-weight:bolder; background:url(../images/server_icon.gif) 0 0 no-repeat; cursor:pointer;}
-#server_list_container .status {*text-align:right;}
-#server_list_container .status div {width:89px; height:23px; float:right; *float:none; position:relative; top:7px;}
-#server_list_container .status .up {background:url(../images/status_icons.gif) 0 0 no-repeat;}
-#server_list_container .status .warning {background:url(../images/status_icons.gif) 0 -23px no-repeat;}
-#server_list_container .status .down {background:url(../images/status_icons.gif) 0 -46px no-repeat;}
-#server_list_container .primary td {border-top:1px solid #d6dbde; padding:3px 0;}
-
-#server_list_container .details .first {width:100%;}
-#server_list_container .details table {width:100%; position:relative;}
-#server_list_container .details table td {height:18px;padding:0 0 3px;font-size:11px;  vertical-align:top; }
-#server_list_container .details table td span {color:#7e7e80;}
 
 /* cluster overview */
 .content .hdr {min-height:39px;padding:0 18px;line-height:39px;font-size:21px;background:url(../images/bg_h2.gif) 0 100% repeat-x #e3e3e4;overflow:hidden;}

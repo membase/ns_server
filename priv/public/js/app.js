@@ -704,15 +704,6 @@ $(function () {
     $(window).trigger('hashchange');
   });
 
-  $('#server_list_container .expander, #server_list_container .name').live('click', function (e) {
-    var container = $('#server_list_container');
-    var mydetails = $(e.target).parents("#server_list_container .primary").next();
-    var opened = mydetails.hasClass('opened');
-
-    mydetails.toggleClass('opened', !opened);
-    mydetails.prev().find(".expander").toggleClass('expanded', !opened);
-  });
-
   try {
     if (DAL.tryNoAuthLogin()) {
       hideAuthForm();
