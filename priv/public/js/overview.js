@@ -56,7 +56,7 @@ var OverviewSection = {
     });
 
     IOCenter.staleness.subscribeValue(function (stale) {
-      $('#overview .staleness-notice')[stale ? 'show' : 'hide']();
+      overview.find('.staleness-notice')[stale ? 'show' : 'hide']();
     });
 
     DAL.cells.currentPoolDetailsCell.subscribeValue(function (poolDetails) {
