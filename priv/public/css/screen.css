@@ -453,7 +453,10 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 #overview .graph_main:first-child {margin:0;}
 #overview .graph_main .graph {width:355px;height:140px;position:relative;}
 #overview .graph_main .graph_info_label {display:block;padding:5px 0 0 30px;font-size:13px;left:0;top:0;}
-#overview .no_stats_marker { display: none; }
+#overview .no_stats_marker,
+#overview .no_stats_marker .without_buckets,
+#overview .no_stats_marker.no_buckets .with_buckets {display:none}
+#overview .no_stats_marker.no_buckets .without_buckets {display:block}
 
 #overview .no-samples-yet .no_stats_marker { display: block;}
 #overview .no-samples-yet .graph_main { display: none;}

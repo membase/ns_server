@@ -16,8 +16,14 @@
 var OverviewSection = {
   initLater: function () {
     var self = this;
+    var overview = $('#overview');
     DAL.cells.bucketsListCell.subscribeValue(function (buckets) {
-      $('#overview .buckets-number').text(buckets ? ViewHelpers.count(buckets.length, 'bucket') : '??');
+      overview.find('.buckets-number').text(buckets ? ViewHelpers.count(buckets.length, 'bucket') : '??');
+      if (buckets && buckets.length === 0) {
+        overview.find('.no_stats_marker').addClass('no_buckets');
+      } else {
+        overview.find('.no_stats_marker').removeClass('no_buckets');
+      }
     });
 
     DAL.cells.serversCell.subscribeValue(function (servers) {
