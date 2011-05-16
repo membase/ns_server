@@ -51,10 +51,9 @@
 
 -export([eval/1,
          start_link/2, start_link/1,
-         get_remote/1, get_remote/2,
          merge/1,
-         merge_remote/2,
          get/2, get/1, get/0, set/2, set/1,
+         cas_config/2,
          set_initial/2, update/2, update_key/2,
          update_sub_key/3,
          search_node/3, search_node/2, search_node/1,
@@ -66,12 +65,13 @@
          search_raw/2,
          clear/0, clear/1,
          proplist_get_value/3,
-         sync_announcements/0, get_diag/0]).
+         merge_kv_pairs/2,
+         sync_announcements/0, get_kv_list/0, get_kv_list/1]).
 
 -export([save_config_sync/1]).
 
 % Exported for tests only
--export([merge_configs/3, save_file/3, load_config/3,
+-export([save_file/3, load_config/3,
          load_file/2, save_config_sync/2, send_config/2]).
 
 % A static config file is often hand edited.
@@ -110,14 +110,6 @@ reannounce() -> gen_server:call(?MODULE, reannounce).
 
 % Set & get configuration KVList, or [{Key, Val}*].
 %
-% The get_remote() only returns dyanmic tuples as its KVList result.
-
-merge_remote(Node, KVList) ->
-    gen_server:cast({?MODULE, Node}, {merge, KVList}).
-
-get_remote(Node, Timeout) -> config_dynamic(?MODULE:get(Node, Timeout)).
-get_remote(Node) -> get_remote(Node, ?DEFAULT_TIMEOUT).
-
 % ----------------------------------------
 
 %% Merge another config rather than replacing ours
@@ -149,6 +141,11 @@ update_config_key(Key, Value, KVList) ->
         none -> [{Key, Value} | KVList];
         NewList -> NewList
     end.
+
+%% Replaces config key-value pairs by NewConfig if they're still equal
+%% to OldConfig. Returns true on success.
+cas_config(NewConfig, OldConfig) ->
+    gen_server:call(?MODULE, {cas_config, NewConfig, OldConfig}).
 
 set(Key, Value) ->
     ok = update_with_changes(fun (Config) ->
@@ -253,7 +250,11 @@ get()              -> diag_handler:diagnosing_timeouts(
 get(Node)          -> ?MODULE:get(Node, ?DEFAULT_TIMEOUT).
 get(Node, Timeout) -> gen_server:call({?MODULE, Node}, get, Timeout).
 
-get_diag() -> config_dynamic(ns_config:get()).
+-spec get_kv_list() -> [{term(), term()}].
+get_kv_list() -> get_kv_list(?DEFAULT_TIMEOUT).
+
+-spec get_kv_list(timeout()) -> [{term(), term()}].
+get_kv_list(Timeout) -> config_dynamic(ns_config:get(node(), Timeout)).
 
 % ----------------------------------------
 
@@ -487,9 +488,6 @@ terminate(_Reason, State) ->
     end.
 
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
-handle_cast({merge, _KVList} = Req, State) ->
-    {reply, ok, NewState} = handle_call(Req, [], State),
-    {noreply, NewState};
 handle_cast(stop, State) ->
     {stop, shutdown, State}.
 
@@ -553,37 +551,16 @@ handle_call({clear, Keep}, From, State) ->
     wait_saver(NewState, infinity),
     handle_call(reload, From, State);
 
-handle_call({merge, KVList}, _From, State) ->
-    %% do_merge_kvlist(KVList, State).
-
-    case KVList =:= hd(State#config.dynamic) of
+handle_call({cas_config, NewKVList, OldKVList}, _From, State) ->
+    case OldKVList =:= hd(State#config.dynamic) of
         true ->
-            {reply, ok, State};
+            NewState = State#config{dynamic = [NewKVList]},
+            announce_changes(NewKVList -- OldKVList),
+            {reply, true, NewState};
         _ ->
-            do_merge_kvlist(KVList, State)
+            {reply, false, State}
     end.
 
-do_merge_kvlist(KVList, State) ->
-    PolicyMod = State#config.policy_mod,
-    State2 = merge_configs(PolicyMod:mergable([State#config.dynamic,
-                                               State#config.static,
-                                               [KVList]]),
-                           #config{dynamic = [KVList]},
-                           State),
-    case State2 =/= State of
-        true ->
-            case handle_call(resave, [], State2) of
-                {reply, ok, State3} = Result ->
-                    DynOld = lists:map(fun strip_metadata/1, config_dynamic(State)),
-                    DynNew = lists:map(fun strip_metadata/1, config_dynamic(State3)),
-                    DynChg = DynNew -- DynOld,
-                    announce_changes(DynChg),
-                    Result;
-                Error ->
-                    Error
-            end;
-        false -> {reply, ok, State2}
-    end.
 
 %%--------------------------------------------------------------------
 
@@ -691,62 +668,54 @@ save_file(bin, ConfigPath, X) ->
     ok = file:close(F),
     file:rename(TempFile, ConfigPath).
 
-merge_configs(Mergable, Remote, Local) ->
-    merge_configs(Mergable, Remote, Local, []).
-
-merge_configs([], _Remote, Local, []) ->
-    Local#config{dynamic = []};
-merge_configs([], _Remote, Local, Acc) ->
-    Local#config{dynamic = [lists:reverse(Acc)]};
-merge_configs([directory = Field | Fields], Remote, Local, Acc) ->
-    NewAcc = case search_raw(Local, Fields) of
-                 {value, LV} -> [{Field, LV} | Acc];
-                 _ -> Acc
+-spec merge_kv_pairs([{term(), term()}], [{term(), term()}]) -> [{term(), term()}].
+merge_kv_pairs(RemoteKVList, LocalKVList) when RemoteKVList =:= LocalKVList -> LocalKVList;
+merge_kv_pairs(RemoteKVList, LocalKVList) ->
+    RemoteKVList1 = lists:sort(RemoteKVList),
+    LocalKVList1 = lists:sort(LocalKVList),
+    Merger = fun (_, {directory, _} = LP) ->
+                     LP;
+                 ({_, RV} = RP, {_, LV} = LP) ->
+                     if
+                         is_list(RV) andalso is_list(LV) ->
+                             merge_list_values(RP, LP);
+                         true ->
+                             RP
+                     end
              end,
-    merge_configs(Fields, Remote, Local, NewAcc);
-merge_configs([Field | Fields], Remote, Local, Acc) ->
-    RS = search_raw(Remote, Field),
-    LS = search_raw(Local, Field),
-    A2 = case {RS, LS} of
-             {{value, RV}, {value, LV}} when is_list(RV), is_list(LV) ->
-                 merge_lists(Field, Acc, RV, LV);
-             {{value, RV}, _} -> [{Field, RV} | Acc];
-             {_, {value, LV}} -> [{Field, LV} | Acc];
-             _                -> Acc
-         end,
-    merge_configs(Fields, Remote, Local, A2).
+    misc:ukeymergewith(Merger, 1, RemoteKVList1, LocalKVList1).
 
-merge_lists(Field, Acc, RV, LV) ->
+-spec merge_list_values({term(), term()}, {term(), term()}) -> {term(), term()}.
+merge_list_values({_K, RV} = RP, {_, LV} = _LP) when RV =:= LV -> RP;
+merge_list_values({K, RV} = RP, {_, LV} = LP) ->
     RClock = proplists:get_value(?METADATA_VCLOCK, RV, []),
     LClock = proplists:get_value(?METADATA_VCLOCK, LV, []),
     case {vclock:descends(RClock, LClock),
           vclock:descends(LClock, RClock)} of
         {X, X} ->
-            NewValue =
-                case strip_metadata(RV) =:= strip_metadata(LV) of
-                    true ->
-                        RV;
-                    false ->
-                        case vclock:likely_newer(LClock, RClock) of
+            case strip_metadata(RV) =:= strip_metadata(LV) of
+                true ->
+                    lists:max([LP, RP]);
+                false ->
+                    V = case vclock:likely_newer(LClock, RClock) of
                             true ->
                                 ns_log:log(?MODULE, ?CONFIG_CONFLICT,
                                            "Conflicting configuration changes to field "
                                            "~p:~n~p and~n~p, choosing the former, which looks newer.~n",
-                                           [Field, LV, RV]),
-                                %% Increment the merged vclock so we don't pingpong
-                                increment_vclock(LV, merge_vclocks(LV, RV));
+                                           [K, LV, RV]),
+                                LV;
                             false ->
                                 ns_log:log(?MODULE, ?CONFIG_CONFLICT,
                                            "Conflicting configuration changes to field "
                                            "~p:~n~p and~n~p, choosing the former.~n",
-                                           [Field, RV, LV]),
-                                %% Increment the merged vclock so we don't pingpong
-                                increment_vclock(RV, merge_vclocks(RV, LV))
-                        end
-                end,
-            [{Field, NewValue} | Acc];
-        {true, false} -> [{Field, RV} | Acc];
-        {false, true} -> [{Field, LV} | Acc]
+                                           [K, RV, LV]),
+                                RV
+                        end,
+                    %% Increment the merged vclock so we don't pingpong
+                    {K, increment_vclock(V, merge_vclocks(RV, LV))}
+            end;
+        {true, false} -> RP;
+        {false, true} -> LP
     end.
 
 read_includes(Path) -> read_includes([{include, Path}], []).
@@ -802,11 +771,12 @@ do_teardown(_V) ->
 
 all_test_() ->
     [{spawn, {foreach, fun do_setup/0, fun do_teardown/1,
-                   [fun test_setup/0,
-                    fun test_set/0,
-                    fun test_update_config/0,
-                    fun test_set_kvlist/0,
-                    fun test_update/0]}},
+              [fun test_setup/0,
+               fun test_set/0,
+               {"test_cas_config", fun test_cas_config/0},
+               fun test_update_config/0,
+               fun test_set_kvlist/0,
+               fun test_update/0]}},
      {spawn, {foreach, fun setup_with_saver/0, fun teardown_with_saver/1,
               [fun test_with_saver_stop/0,
                fun test_clear/0,
@@ -822,8 +792,8 @@ test_setup() ->
                               end),
     ?assertEqual(F, gen_server:call(ns_config, {update_with_changes, F})).
 
--define(assertConfigEquals(A, B), ?assertEqual(lists:ukeysort(1, A),
-                                               lists:ukeysort(1, B))).
+-define(assertConfigEquals(A, B), ?assertEqual(lists:sort(A),
+                                               lists:sort(B))).
 
 test_set() ->
     Self = self(),
@@ -855,8 +825,42 @@ test_set() ->
     MyNode = node(),
     ?assertMatch([{'_vclock', [{MyNode, _}]} | SetVal1], SetVal1Actual1),
     ?assertEqual(SetVal1, strip_metadata(SetVal1Actual1)),
-    ?assertMatch([{test, SetVal1Actual1}], Val4),
-    ok.
+    ?assertMatch([{test, SetVal1Actual1}], Val4).
+
+test_cas_config() ->
+    Self = self(),
+    {ok, _FakeConfigEvents} = gen_event:start_link({local, ns_config_events}),
+    try
+        do_test_cas_config(Self)
+    after
+        (catch shutdown_process(ns_config_events)),
+        (catch erlang:unregister(ns_config_events))
+    end.
+
+do_test_cas_config(Self) ->
+    mock_gen_server:stub_call(?MODULE,
+                              cas_config,
+                              fun (Msg) ->
+                                      Self ! Msg, ok
+                              end),
+    ns_config:cas_config(new, old),
+    receive
+        {cas_config, new, old} ->
+            ok
+    after 0 ->
+            exit(missing_cas_config_msg)
+    end,
+
+    Config = #config{dynamic=[[{a,1},{b,1}]]},
+    ?assertEqual([{a,1},{b,1}], config_dynamic(Config)),
+
+
+    {reply, true, NewConfig} = handle_call({cas_config, [{a,2}], config_dynamic(Config)}, [], Config),
+    ?assertEqual(NewConfig, Config#config{dynamic=[config_dynamic(NewConfig)]}),
+    ?assertEqual([{a,2}], config_dynamic(NewConfig)),
+
+    {reply, false, NewConfig} = handle_call({cas_config, [{a,3}], config_dynamic(Config)}, [], NewConfig).
+
 
 test_update_config() ->
     ?assertEqual([{test, 1}], update_config_key(test, 1, [])),

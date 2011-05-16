@@ -40,6 +40,10 @@ init([]) ->
             {ns_config, start_link, [CfgPath, ns_config_default]},
             permanent, 1000, worker, [ns_config, ns_config_default]},
 
+           {ns_config_remote,
+            {ns_config_replica, start_link, [{local, ns_config_remote}]},
+            permanent, 1000, worker, [ns_config, ns_config_replica]},
+
            %% Track bucket configs and ensure isasl is sync'd up
            {ns_config_isasl_sync,
             {ns_config_isasl_sync, start_link, []},
