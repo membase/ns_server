@@ -125,8 +125,13 @@ set_initial(Key, Value) ->
 
 update_config_key_rec(Key, Value, Rest, AccList) ->
     case Rest of
-        [{Key, OldValue} | XX] ->
-            NewPair = {Key, increment_vclock(Value, OldValue)},
+        [{Key, OldValue} = OldPair | XX] ->
+            NewPair = case strip_metadata(OldValue) =:= strip_metadata(Value) of
+                          true ->
+                              OldPair;
+                          _ ->
+                              {Key, increment_vclock(Value, OldValue)}
+                      end,
             [NewPair | lists:reverse(AccList, XX)];
         [Pair | XX2] ->
             update_config_key_rec(Key, Value, XX2, [Pair | AccList]);
