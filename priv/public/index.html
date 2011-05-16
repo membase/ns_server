@@ -91,11 +91,9 @@
                               <!-- {% if (this.swap_total > 0) { %} -->
                                 <div class="usage_smallest_info">
                                   <div class="usage_smallest">
-                                    <div class="side_shadow">
                                       <div class="unused">
                                         <div class="used" style="width:1%;"></div>
                                       </div>
-                                    </div>
                                   </div>
                                   {%= V.setPercentBar(this.swap_used / this.swap_total) %}
                                   {%= h(truncateTo3Digits(Math.floor(((this.swap_used / this.swap_total) || 0) * 100) / 100)) %}%
@@ -108,11 +106,9 @@
                               <td>
                                 <div class="usage_smallest_info">
                                   <div class="usage_smallest">
-                                    <div class="side_shadow">
                                       <div class="unused">
                                         <div class="used" style="width:1%;"></div>
                                       </div>
-                                    </div>
                                   </div>
                                   {%= V.setPercentBar((this.memoryTotal - this.memoryFree) / this.memoryTotal * 100) %}
                                   {%= h(truncateTo3Digits((this.memoryTotal - this.memoryFree) / this.memoryTotal * 100)) %}%
@@ -122,11 +118,9 @@
                               <td>
                                 <div class="usage_smallest_info">
                                   <div class="usage_smallest">
-                                    <div class="side_shadow">
                                       <div class="unused">
                                         <div class="used" style="width:1%;"></div>
                                       </div>
-                                    </div>
                                   </div>
                                   {%= V.setPercentBar(this.cpu_usage)  %}
                                   {%= h(truncateTo3Digits(Math.floor(this.cpu_usage * 100) / 100)) %}%
@@ -490,11 +484,9 @@
                             <td>
                               <div class="usage_smallest_info">
                                   <div class="usage_smallest">
-                                      <div class="side_shadow">
                                           <div class="unused">
                                               <div class="used" style="width:1%;"></div>
                                           </div>
-                                      </div>
                                   </div>{%= V.setPercentBar(this.basicStats.quotaPercentUsed) %}
                                   {%= h(truncateTo3Digits(Math.floor(this.basicStats.quotaPercentUsed * 100) / 100)) %}%
                               </div>
@@ -536,11 +528,9 @@
                           <td>
                             <div class="usage_smallest_info">
                               <div class="usage_smallest">
-                                <div class="side_shadow">
                                   <div class="unused">
                                     <div class="used" style="width:1%;"></div>
                                   </div>
-                                </div>
                               </div>
                               {%= V.setPercentBar(this.basicStats.quotaPercentUsed) %}
                               {%= h(truncateTo3Digits(Math.floor(this.basicStats.quotaPercentUsed * 100) / 100)) %}%

@@ -239,11 +239,10 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 .red .used {background-position:0 -48px;}
 .usage_big .comment {background:none; line-height:24px; font-size:11px; color:#8b8b8e; margin:0 0 0 430px;}
 
-.usage_smallest {background:url(../images/usage_smallest.gif) 0 0 no-repeat; height:15px; overflow:hidden; width:91px;}
-.usage_smallest * {background:url(../images/usage_smallest.gif) 0 0 no-repeat; height:15px; overflow:hidden;}
-.usage_smallest .side_shadow {background-position:100% 0; padding:0 2px;}
-.usage_smallest .unused {background-position:0 -15px;}
-.usage_smallest .used {background-position:0 -30px;}
+.usage_smallest {background:url(../images/usages.png) 0 -73px no-repeat; height:12px; overflow:hidden; width:88px;-moz-border-radius:5px;-webkit-border-radius:5px;border-radius:5px;-moz-box-shadow:-1px -1px 2px #ccc;-webkit-box-shadow:-1px -1px 2px #ccc;box-shadow:-1px -1px 2px #ccc}
+.usage_smallest div {background:url(../images/usages.png) 0 -73px no-repeat; height:12px; overflow:hidden;}
+.usage_smallest .unused {background-color:#E1E2E3;}
+.usage_smallest .used {background-color:#00BCE9;}
 .usage_smallest_info {width:135px; font-size:11px; color:#8a8a8d; line-height:15px;}
 .usage_smallest_info .usage_smallest {float:left; margin:0 5px 0 0;}
 
