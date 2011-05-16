@@ -351,14 +351,15 @@ var BucketDetailsDialog = mkClass({
       items: [
         {name: 'Other Buckets',
          value: otherBuckets,
-         attrs: {style: 'background-position: 0 -15px;'},
-         tdAttrs: {style: 'color:blue;'}},
+         attrs: {style: 'background-color:#00BCE9'},
+         tdAttrs: {style: 'color:#1878a2;'}},
         {name: 'This Bucket',
          value: thisValue,
-         attrs: {style: 'background-position: 0 -45px;'},
-         tdAttrs: {style: 'color:green;'}},
+         attrs: {style: 'background-color:#7EDB49'},
+         tdAttrs: {style: 'color:#409f05;'}},
         {name: 'Free',
          value: total - otherBuckets - thisValue,
+         attrs: {style: 'background-color:#E1E2E3'},
          tdAttrs: {style: 'color:#444245;'}}
       ],
       markers: []
@@ -369,7 +370,7 @@ var BucketDetailsDialog = mkClass({
       options.items[2] = {
         name: 'Overcommitted',
         value: otherBuckets + thisValue - total,
-        attrs: {style: 'background-position: 0 -60px;'},
+        attrs: {style: 'background-color: #F40015;'},
         tdAttrs: {style: 'color:#e43a1b;'}
       };
       options.markers.push({value: total,
@@ -445,17 +446,18 @@ var BucketsSection = {
                     items: [
                       {name: null,
                        value: otherData,
-                       attrs: {style: 'background-position: 0 -30px;'}},
+                       attrs: {style:"background-color:#FDC90D"}},
                       {name: 'Other Buckets',
                        value: otherBuckets,
-                       attrs: {style: 'background-position: 0 -15px;'},
-                       tdAttrs: {style: 'color:blue;'}},
+                       attrs: {style: 'background-color:#00BCE9'},
+                       tdAttrs: {style: 'color:#1878a2;'}},
                       {name: 'This Bucket',
                        value: thisBucket,
-                       attrs: {style: 'background-position: 0 -45px;'},
-                       tdAttrs: {style: 'color:green;'}},
+                       attrs: {style: 'background-color:#7EDB49'},
+                       tdAttrs: {style: 'color:#409f05;'}},
                       {name: 'Free',
                        value: free,
+                       attrs: {style: 'background-color:#E1E2E3'},
                        tdAttrs: {style: 'color:#444245;'}}
                     ]
                   };

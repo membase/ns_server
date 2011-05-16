@@ -275,12 +275,12 @@ var ServersSection = {
       items: [
         {name: 'In Use',
          value: totals.usedByData,
-         attrs: {style: "background-position:0 -15px;"},
+         attrs: {style: 'background-color:#00BCE9'},
          tdAttrs: {style: "color:#1878A2;"}
         },
         {name: 'Other Data',
          value: totals.used - totals.usedByData,
-         attrs: {style: "background-position:0 -30px;"},
+         attrs: {style:"background-color:#FDC90D"},
          tdAttrs: {style: "color:#C19710;"}},
         {name: 'Free',
          value: totals.total - totals.used}

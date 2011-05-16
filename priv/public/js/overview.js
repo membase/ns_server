@@ -82,14 +82,15 @@ var OverviewSection = {
           items: [
             {name: 'In Use',
              value: usedQuota,
-             attrs: {style: 'background-position: 0 -31px;'},
+             attrs: {style: 'background-color:#00BCE9'},
              tdAttrs: {style: 'color:#1878a2;'}},
             {name: 'Unused',
              value: bucketsQuota - usedQuota,
-             attrs: {style: 'background-position: 0 -62px;'},
+             attrs: {style: 'background-color:#7EDB49'},
              tdAttrs: {style: 'color:#409f05;'}},
             {name: 'Unallocated',
              value: quotaTotal - bucketsQuota,
+             attrs: {style: 'background-color:#E1E2E3'},
              tdAttrs: {style: 'color:#444245;'}}
           ],
           markers: [{value: bucketsQuota,
@@ -100,7 +101,7 @@ var OverviewSection = {
           gaugeOptions.items[1] = {
             name: 'Overused',
             value: usedQuota - bucketsQuota,
-            attrs: {style: 'background-position: 0 -93px;'},
+            attrs: {style: 'background-color: #F40015;'},
             tdAttrs: {style: 'color:#e43a1b;'}
           };
           if (usedQuota < quotaTotal) {
@@ -136,14 +137,15 @@ var OverviewSection = {
           items: [
             {name: 'In Use',
              value: usedSpace,
-             attrs: {style: "background-position: 0 -31px;"},
+             attrs: {style: 'background-color:#00BCE9'},
              tdAttrs: {style: "color:#1878A2;"}},
             {name: 'Other Data',
              value: other,
-             attrs: {style:"background-position: 0 -124px;"},
+             attrs: {style:"background-color:#FDC90D"},
              tdAttrs: {style:"color:#C19710;"}},
             {name: "Free",
              value: total - other - usedSpace,
+             attrs: {style: 'background-color:#E1E2E3'},
              tdAttrs: {style:"color:#444245;"}}
           ],
           markers: [
