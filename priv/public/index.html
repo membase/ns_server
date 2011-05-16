@@ -72,6 +72,7 @@
                           <table class="lined_tab">
                             <col width="">
                             <tr>
+                              <th></th>
                               <th>Server Node Name</th>
                               <th>Swap Usage</th>
                               <th>RAM Usage</th>
@@ -80,7 +81,8 @@
                             </tr>
                             <!-- {% $.each(rows, function () { %} -->
                             <tr>
-                              <td class="{%= this.nodeClass %}">
+                              <td class="{%= this.nodeClass %}"></td>
+                              <td>
                                 <a class="node_name disable-if-stale" href="#sec=analytics&statsHostname={%= h(this.hostname) %}">
                                 {%= V.stripPortHTML(this.hostname, rows) %}
                                 </a>
