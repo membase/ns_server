@@ -606,4 +606,1174 @@ _.extend(Cell, {
       cell.delayedBroadcast = null
     }
   }
-})
+});
+
+Cell.prototype.delegateInvalidationMethods = function (target) {
+  var self = this;
+  _.each(("recalculate recalculateAt recalculateAfterDelay invalidate").split(' '), function (methodName) {
+    self[methodName] = $m(target, methodName);
+  });
+};
+
+future.get = function (ajaxOptions, valueTransformer, nowValue, futureWrapper) {
+  // var aborted = false;
+  var options = {
+    valueTransformer: valueTransformer,
+    cancel: function () {
+      // aborted = true;
+      operation.cancel();
+    },
+    nowValue: nowValue
+  };
+  var operation;
+  if (ajaxOptions.url === undefined) {
+    throw new Error("url is undefined");
+  }
+
+  function initiateXHR(dataCallback) {
+    var opts = {dataType: 'json',
+                prepareReGet: function (opts) {
+                  if (opts.errorMarker) {
+                    // if we have error marker pass it to data
+                    // callback now to mark error
+                    if (!dataCallback.continuing(opts.errorMarker)) {
+                      // if we were cancelled, cancel IOCenter
+                      // operation
+                      operation.cancel();
+                    }
+                  }
+                },
+                success: dataCallback};
+    if (ajaxOptions.onError) {
+      opts.error = function () {
+        ajaxOptions.onError.apply(this, [dataCallback].concat(_.toArray(arguments)));
+      };
+    }
+    operation = IOCenter.performGet(_.extend(opts, ajaxOptions));
+  }
+  return (futureWrapper || future)(initiateXHR, options);
+};
+
+future.withEarlyTransformer = function (earlyTransformer) {
+  return {
+    // we return a function
+    get: function (ajaxOptions, valueTransformer, newValue, futureWrapper) {
+      // that will delegate to future.get, but...
+      return future.get(ajaxOptions, valueTransformer, newValue, futureReplacement);
+      // will pass our function instead of future
+      function futureReplacement(initXHR) {
+        // that function will delegate to real future
+        return (future || futureWrapper)(function (dataCallback) {
+          // and once future is started
+          // will call original future start function replacing dataCallback
+          dataCallbackReplacement.cell = dataCallback.cell;
+          dataCallbackReplacement.async = dataCallback.async;
+          dataCallbackReplacement.continuing = dataCallback.continuing;
+          initXHR(dataCallbackReplacement);
+          function dataCallbackReplacement(value, status, xhr) {
+            // replaced dataCallback will invoke earlyTransformer
+            earlyTransformer(value, status, xhr);
+            // and will finally pass data to real dataCallback
+            dataCallback(value);
+          }
+        });
+      }
+    }
+  };
+}
+
+future.pollingGET = function (ajaxOptions, valueTransformer, nowValue, futureWrapper) {
+  var initiator = futureWrapper || future;
+  var interval = 2000;
+  if (ajaxOptions.interval) {
+    interval = ajaxOptions.interval;
+    delete ajaxOptions.interval;
+  }
+  return future.get(ajaxOptions, valueTransformer, nowValue, function (body, options) {
+    return initiator(function (dataCallback) {
+      var context = this;
+      function dataCallbackWrapper(data) {
+        if (!dataCallback.continuing(data)) {
+          return;
+        }
+        setTimeout(function () {
+          if (dataCallback.continuing(data)) {
+            body.call(context, dataCallbackWrapper);
+          }
+        }, interval);
+      }
+      body.call(context, dataCallbackWrapper);
+    }, options);
+  });
+};
+
+future.infinite = function () {
+  var rv = future(function () {
+    rv.active = true;
+    rv.cancel = function () {
+      rv.active = false;
+    };
+  });
+  return rv;
+};
+
+future.getPush = function (ajaxOptions, valueTransformer, nowValue, waitChange) {
+  var options = {
+    valueTransformer: valueTransformer,
+    cancel: function () {
+      operation.cancel();
+    },
+    nowValue: nowValue
+  };
+  var operation;
+  var etag;
+
+  if (!waitChange) {
+    waitChange = 20000;
+  }
+
+  if (ajaxOptions.url === undefined) {
+    throw new Error("url is undefined");
+  }
+
+  function sendRequest(dataCallback) {
+
+    function gotData(data) {
+      dataCallback.async.weak = false;
+
+      etag = data.etag;
+      // pass our data to cell
+      if (dataCallback.continuing(data)) {
+        // and submit new request if we are not cancelled
+        _.defer(_.bind(sendRequest, null, dataCallback));
+      }
+    }
+
+    var options = _.extend({dataType: 'json',
+                            success: gotData},
+                           ajaxOptions);
+
+    if (options.url.indexOf("?") < 0) {
+      options.url += '?waitChange=';
+    } else {
+      options.url += '&waitChange=';
+    }
+    options.url += waitChange;
+
+    var originalUrl = options.url;
+    if (etag) {
+      options.url += "&etag=" + encodeURIComponent(etag);
+      options.pushRequest = true;
+      options.timeout = 30000;
+    }
+    options.prepareReGet = function (opt) {
+      if (opt.errorMarker) {
+        // if we have error marker pass it to data callback now to
+        // mark error
+        if (!dataCallback.continuing(opt.errorMarker)) {
+          // if we were cancelled, cancel IOCenter operation
+          operation.cancel();
+          return;
+        }
+      }
+      // make us weak so that cell invalidations will force new
+      // network request
+      dataCallback.async.weak = true;
+
+      // recovering from error will 'undo' etag asking immediate
+      // response, which we need in this case
+      opt.url = originalUrl;
+      return opt;
+    };
+
+    operation = IOCenter.performGet(options);
+  }
+
+  return future(sendRequest, options);
+};
+
+// this guy holds queue of failed actions and tries to repeat one of
+// them every 5 seconds. Once it succeeds it changes status to healthy
+// and repeats other actions
+var ErrorQueue = mkClass({
+  initialize: function () {
+    var self = this;
+
+    self.status = new Cell();
+    self.status.setValue({
+      healthy: true,
+      repeating: false
+    });
+    self.repeatTimeout = null;
+    self.queue = [];
+    self.status.subscribeValue(function (s) {
+      if (s.healthy) {
+        self.repeatInterval = undefined;
+      }
+    });
+  },
+  repeatIntervalBase: 5000,
+  repeatInterval: undefined,
+  planRepeat: function () {
+    var interval = this.repeatInterval;
+    if (interval == null) {
+      return this.repeatIntervalBase;
+    }
+    return Math.min(interval * 1.618, 300000);
+  },
+  submit: function (action) {
+    this.queue.push(action);
+    this.status.setValueAttr(false, 'healthy');
+    if (this.repeatTimeout || this.status.value.repeating) {
+      return;
+    }
+
+    var interval = this.repeatInterval = this.planRepeat();
+    var at = (new Date()).getTime() + interval;
+    this.status.setValueAttr(at, 'repeatAt');
+    this.repeatTimeout = setTimeout($m(this, 'onTimeout'),
+                                    interval);
+  },
+  forceAction: function (forcedAction) {
+    var self = this;
+
+    if (self.repeatTimeout) {
+      clearTimeout(self.repeatTimeout);
+      self.repeatTimeout = null;
+    }
+
+    if (!forcedAction) {
+      if (!self.queue.length) {
+        self.status.setValueAttr(true, 'healthy');
+        return;
+      }
+      forcedAction = self.queue.pop();
+    }
+
+    self.status.setValueAttr(true, 'repeating');
+
+    forcedAction(function (isOk) {
+      self.status.setValueAttr(false, 'repeating');
+
+      if (isOk == false) {
+        return self.submit(forcedAction);
+      }
+
+      // if result is undefined or true, we issue next action
+      if (isOk) {
+        self.status.setValueAttr(true, 'healthy');
+      }
+      self.onTimeout();
+    });
+  },
+  cancel: function (action) {
+    this.queue = _.without(this.queue, action);
+    if (this.queue.length || this.status.value.repeating) {
+      return;
+    }
+
+    this.status.setValueAttr(true, 'healthy');
+    if (this.repeatTimeout) {
+      clearTimeout(this.repeatTimeout);
+      this.repeatTimeout = null;
+    }
+  },
+  onTimeout: function () {
+    this.repeatTimeout = null;
+    this.forceAction();
+  }
+});
+
+// this is central place that defines policy of XHR error handling,
+// all cells reads (there are no cells writes by definition) are
+// tracked and controlled by this guy
+var IOCenter = (function () {
+  var status = new Cell();
+  status.setValue({
+    inFlightCount: 0
+  });
+
+  var errorQueue = new ErrorQueue();
+  errorQueue.status.subscribeValue(function (v) {
+    status.setValue(_.extend({}, status.value, v));
+  });
+
+  // S is short for self
+  var S = {
+    status: status,
+    forceRepeat: function () {
+      errorQueue.forceAction();
+    },
+    performGet: function (options) {
+      var usedOptions = _.clone(options);
+
+      usedOptions.error = gotResponse;
+      usedOptions.success = gotResponse;
+
+      var op = {
+        cancel: function () {
+          if (op.xhr) {
+            return Abortarium.abortRequest(op.xhr);
+          }
+
+          if (op.done) {
+            return;
+          }
+
+          op.cancelled = true;
+
+          // we're not done yet and we're not in-flight, so we must
+          // be on error queue
+          errorQueue.cancel(sendXHR);
+        }
+      };
+
+      var extraCallback;
+
+      // this is our function to send _and_ re-send
+      // request. extraCallback parameter is used during re-sends to
+      // execute some code when request is complete
+      function sendXHR(_extraCallback) {
+        extraCallback = _extraCallback;
+
+        status.setValueAttr(status.value.inFlightCount + 1, 'inFlightCount');
+
+        if (S.simulateDisconnect) {
+          setTimeout(function () {
+            usedOptions.error.call(usedOptions, {status: 500}, 'error');
+          }, 200);
+          return;
+        }
+        op.xhr = $.ajax(usedOptions);
+      }
+      sendXHR(function (isOk) {
+        if (isOk != false) {
+          return;
+        }
+
+        // our first time 'continuation' is if we've got error then we
+        // submit us to repeat queue and maybe update options
+        if (options.prepareReGet) {
+          var newOptions = options.prepareReGet(usedOptions);
+          if (newOptions != null)
+            usedOptions = newOptions;
+        }
+
+        if (!op.cancelled) {
+          errorQueue.submit(sendXHR);
+        }
+      });
+      return op;
+
+      function gotResponse(data, xhrStatus) {
+        op.xhr = null;
+        status.setValueAttr(status.value.inFlightCount - 1, 'inFlightCount');
+        var args = arguments;
+        var context = this;
+
+        if (xhrStatus == 'success') {
+          op.done = true;
+          extraCallback(true);
+          return options.success.apply(this, arguments);
+        }
+
+        var isOk = (function (xhr) {
+          if (Abortarium.isAborted(xhr)) {
+            return;
+          }
+          if (S.isNotFound(xhr)) {
+            options.success.call(this,
+                                 options.missingValue || undefined,
+                                 'notfound');
+            return;
+          }
+
+          // if our caller has it's own error handling strategy let him do it
+          if (options.error) {
+            options.error.apply(context, args);
+            return;
+          }
+
+          return false;
+        })(data);
+
+        if (isOk != false) {
+          op.done = true;
+        }
+
+        extraCallback(isOk);
+      }
+    },
+    readStatus: function (xhr) {
+      var status = 0;
+      try {
+        status = xhr.status
+      } catch (e) {
+        if (!xhr) {
+          throw e;
+        }
+      }
+      return status;
+    },
+    // we treat everything with 4xx status as not found because for
+    // GET requests that we send, we don't have ways to re-send them
+    // back in case of 4xx response comes.
+    //
+    // For example, we cannot do anything with sudden (and unexpected
+    // anyway) "401-Authenticate" response, so we just interpret is as
+    // if no resource exists.
+    isNotFound: function (xhr) {
+      var status = S.readStatus(xhr);
+      return (400 <= status && status < 500);
+    }
+  };
+  return S;
+})();
+
+IOCenter.staleness = new Cell(function (status) {
+  return !status.healthy;
+}, {
+  status: IOCenter.status
+});
+
+(function () {
+  new Cell(function (status) {
+    return status.healthy;
+  }, {
+    status: IOCenter.status
+  }).subscribeValue(function (healthy) {
+    console.log("IOCenter.status.healthy: ", healthy);
+  });
+})();
+
+
+Cell.prototype.delegateInvalidationMethods = function (target) {
+  var self = this;
+  _.each(("recalculate recalculateAt recalculateAfterDelay invalidate").split(' '), function (methodName) {
+    self[methodName] = $m(target, methodName);
+  });
+};
+
+future.get = function (ajaxOptions, valueTransformer, nowValue, futureWrapper) {
+  // var aborted = false;
+  var options = {
+    valueTransformer: valueTransformer,
+    cancel: function () {
+      // aborted = true;
+      operation.cancel();
+    },
+    nowValue: nowValue
+  };
+  var operation;
+  if (ajaxOptions.url === undefined) {
+    throw new Error("url is undefined");
+  }
+
+  function initiateXHR(dataCallback) {
+    var opts = {dataType: 'json',
+                prepareReGet: function (opts) {
+                  if (opts.errorMarker) {
+                    // if we have error marker pass it to data
+                    // callback now to mark error
+                    if (!dataCallback.continuing(opts.errorMarker)) {
+                      // if we were cancelled, cancel IOCenter
+                      // operation
+                      operation.cancel();
+                    }
+                  }
+                },
+                success: dataCallback};
+    if (ajaxOptions.onError) {
+      opts.error = function () {
+        ajaxOptions.onError.apply(this, [dataCallback].concat(_.toArray(arguments)));
+      };
+    }
+    operation = IOCenter.performGet(_.extend(opts, ajaxOptions));
+  }
+  return (futureWrapper || future)(initiateXHR, options);
+};
+
+future.withEarlyTransformer = function (earlyTransformer) {
+  return {
+    // we return a function
+    get: function (ajaxOptions, valueTransformer, newValue, futureWrapper) {
+      // that will delegate to future.get, but...
+      return future.get(ajaxOptions, valueTransformer, newValue, futureReplacement);
+      // will pass our function instead of future
+      function futureReplacement(initXHR) {
+        // that function will delegate to real future
+        return (future || futureWrapper)(function (dataCallback) {
+          // and once future is started
+          // will call original future start function replacing dataCallback
+          dataCallbackReplacement.cell = dataCallback.cell;
+          dataCallbackReplacement.async = dataCallback.async;
+          dataCallbackReplacement.continuing = dataCallback.continuing;
+          initXHR(dataCallbackReplacement);
+          function dataCallbackReplacement(value, status, xhr) {
+            // replaced dataCallback will invoke earlyTransformer
+            earlyTransformer(value, status, xhr);
+            // and will finally pass data to real dataCallback
+            dataCallback(value);
+          }
+        });
+      }
+    }
+  };
+}
+
+future.pollingGET = function (ajaxOptions, valueTransformer, nowValue, futureWrapper) {
+  var initiator = futureWrapper || future;
+  var interval = 2000;
+  if (ajaxOptions.interval) {
+    interval = ajaxOptions.interval;
+    delete ajaxOptions.interval;
+  }
+  return future.get(ajaxOptions, valueTransformer, nowValue, function (body, options) {
+    return initiator(function (dataCallback) {
+      var context = this;
+      function dataCallbackWrapper(data) {
+        if (!dataCallback.continuing(data)) {
+          return;
+        }
+        setTimeout(function () {
+          if (dataCallback.continuing(data)) {
+            body.call(context, dataCallbackWrapper);
+          }
+        }, interval);
+      }
+      body.call(context, dataCallbackWrapper);
+    }, options);
+  });
+};
+
+future.infinite = function () {
+  var rv = future(function () {
+    rv.active = true;
+    rv.cancel = function () {
+      rv.active = false;
+    };
+  });
+  return rv;
+};
+
+future.getPush = function (ajaxOptions, valueTransformer, nowValue, waitChange) {
+  var options = {
+    valueTransformer: valueTransformer,
+    cancel: function () {
+      operation.cancel();
+    },
+    nowValue: nowValue
+  };
+  var operation;
+  var etag;
+
+  if (!waitChange) {
+    waitChange = 20000;
+  }
+
+  if (ajaxOptions.url === undefined) {
+    throw new Error("url is undefined");
+  }
+
+  function sendRequest(dataCallback) {
+
+    function gotData(data) {
+      dataCallback.async.weak = false;
+
+      etag = data.etag;
+      // pass our data to cell
+      if (dataCallback.continuing(data)) {
+        // and submit new request if we are not cancelled
+        _.defer(_.bind(sendRequest, null, dataCallback));
+      }
+    }
+
+    var options = _.extend({dataType: 'json',
+                            success: gotData},
+                           ajaxOptions);
+
+    if (options.url.indexOf("?") < 0) {
+      options.url += '?waitChange=';
+    } else {
+      options.url += '&waitChange=';
+    }
+    options.url += waitChange;
+
+    var originalUrl = options.url;
+    if (etag) {
+      options.url += "&etag=" + encodeURIComponent(etag);
+      options.pushRequest = true;
+      options.timeout = 30000;
+    }
+    options.prepareReGet = function (opt) {
+      if (opt.errorMarker) {
+        // if we have error marker pass it to data callback now to
+        // mark error
+        if (!dataCallback.continuing(opt.errorMarker)) {
+          // if we were cancelled, cancel IOCenter operation
+          operation.cancel();
+          return;
+        }
+      }
+      // make us weak so that cell invalidations will force new
+      // network request
+      dataCallback.async.weak = true;
+
+      // recovering from error will 'undo' etag asking immediate
+      // response, which we need in this case
+      opt.url = originalUrl;
+      return opt;
+    };
+
+    operation = IOCenter.performGet(options);
+  }
+
+  return future(sendRequest, options);
+};
+
+// this guy holds queue of failed actions and tries to repeat one of
+// them every 5 seconds. Once it succeeds it changes status to healthy
+// and repeats other actions
+var ErrorQueue = mkClass({
+  initialize: function () {
+    var self = this;
+
+    self.status = new Cell();
+    self.status.setValue({
+      healthy: true,
+      repeating: false
+    });
+    self.repeatTimeout = null;
+    self.queue = [];
+    self.status.subscribeValue(function (s) {
+      if (s.healthy) {
+        self.repeatInterval = undefined;
+      }
+    });
+  },
+  repeatIntervalBase: 5000,
+  repeatInterval: undefined,
+  planRepeat: function () {
+    var interval = this.repeatInterval;
+    if (interval == null) {
+      return this.repeatIntervalBase;
+    }
+    return Math.min(interval * 1.618, 300000);
+  },
+  submit: function (action) {
+    this.queue.push(action);
+    this.status.setValueAttr(false, 'healthy');
+    if (this.repeatTimeout || this.status.value.repeating) {
+      return;
+    }
+
+    var interval = this.repeatInterval = this.planRepeat();
+    var at = (new Date()).getTime() + interval;
+    this.status.setValueAttr(at, 'repeatAt');
+    this.repeatTimeout = setTimeout($m(this, 'onTimeout'),
+                                    interval);
+  },
+  forceAction: function (forcedAction) {
+    var self = this;
+
+    if (self.repeatTimeout) {
+      clearTimeout(self.repeatTimeout);
+      self.repeatTimeout = null;
+    }
+
+    if (!forcedAction) {
+      if (!self.queue.length) {
+        self.status.setValueAttr(true, 'healthy');
+        return;
+      }
+      forcedAction = self.queue.pop();
+    }
+
+    self.status.setValueAttr(true, 'repeating');
+
+    forcedAction(function (isOk) {
+      self.status.setValueAttr(false, 'repeating');
+
+      if (isOk == false) {
+        return self.submit(forcedAction);
+      }
+
+      // if result is undefined or true, we issue next action
+      if (isOk) {
+        self.status.setValueAttr(true, 'healthy');
+      }
+      self.onTimeout();
+    });
+  },
+  cancel: function (action) {
+    this.queue = _.without(this.queue, action);
+    if (this.queue.length || this.status.value.repeating) {
+      return;
+    }
+
+    this.status.setValueAttr(true, 'healthy');
+    if (this.repeatTimeout) {
+      clearTimeout(this.repeatTimeout);
+      this.repeatTimeout = null;
+    }
+  },
+  onTimeout: function () {
+    this.repeatTimeout = null;
+    this.forceAction();
+  }
+});
+
+// this is central place that defines policy of XHR error handling,
+// all cells reads (there are no cells writes by definition) are
+// tracked and controlled by this guy
+var IOCenter = (function () {
+  var status = new Cell();
+  status.setValue({
+    inFlightCount: 0
+  });
+
+  var errorQueue = new ErrorQueue();
+  errorQueue.status.subscribeValue(function (v) {
+    status.setValue(_.extend({}, status.value, v));
+  });
+
+  // S is short for self
+  var S = {
+    status: status,
+    forceRepeat: function () {
+      errorQueue.forceAction();
+    },
+    performGet: function (options) {
+      var usedOptions = _.clone(options);
+
+      usedOptions.error = gotResponse;
+      usedOptions.success = gotResponse;
+
+      var op = {
+        cancel: function () {
+          if (op.xhr) {
+            return Abortarium.abortRequest(op.xhr);
+          }
+
+          if (op.done) {
+            return;
+          }
+
+          op.cancelled = true;
+
+          // we're not done yet and we're not in-flight, so we must
+          // be on error queue
+          errorQueue.cancel(sendXHR);
+        }
+      };
+
+      var extraCallback;
+
+      // this is our function to send _and_ re-send
+      // request. extraCallback parameter is used during re-sends to
+      // execute some code when request is complete
+      function sendXHR(_extraCallback) {
+        extraCallback = _extraCallback;
+
+        status.setValueAttr(status.value.inFlightCount + 1, 'inFlightCount');
+
+        if (S.simulateDisconnect) {
+          setTimeout(function () {
+            usedOptions.error.call(usedOptions, {status: 500}, 'error');
+          }, 200);
+          return;
+        }
+        op.xhr = $.ajax(usedOptions);
+      }
+      sendXHR(function (isOk) {
+        if (isOk != false) {
+          return;
+        }
+
+        // our first time 'continuation' is if we've got error then we
+        // submit us to repeat queue and maybe update options
+        if (options.prepareReGet) {
+          var newOptions = options.prepareReGet(usedOptions);
+          if (newOptions != null)
+            usedOptions = newOptions;
+        }
+
+        if (!op.cancelled) {
+          errorQueue.submit(sendXHR);
+        }
+      });
+      return op;
+
+      function gotResponse(data, xhrStatus) {
+        op.xhr = null;
+        status.setValueAttr(status.value.inFlightCount - 1, 'inFlightCount');
+        var args = arguments;
+        var context = this;
+
+        if (xhrStatus == 'success') {
+          op.done = true;
+          extraCallback(true);
+          return options.success.apply(this, arguments);
+        }
+
+        var isOk = (function (xhr) {
+          if (Abortarium.isAborted(xhr)) {
+            return;
+          }
+          if (S.isNotFound(xhr)) {
+            options.success.call(this,
+                                 options.missingValue || undefined,
+                                 'notfound');
+            return;
+          }
+
+          // if our caller has it's own error handling strategy let him do it
+          if (options.error) {
+            options.error.apply(context, args);
+            return;
+          }
+
+          return false;
+        })(data);
+
+        if (isOk != false) {
+          op.done = true;
+        }
+
+        extraCallback(isOk);
+      }
+    },
+    readStatus: function (xhr) {
+      var status = 0;
+      try {
+        status = xhr.status
+      } catch (e) {
+        if (!xhr) {
+          throw e;
+        }
+      }
+      return status;
+    },
+    // we treat everything with 4xx status as not found because for
+    // GET requests that we send, we don't have ways to re-send them
+    // back in case of 4xx response comes.
+    //
+    // For example, we cannot do anything with sudden (and unexpected
+    // anyway) "401-Authenticate" response, so we just interpret is as
+    // if no resource exists.
+    isNotFound: function (xhr) {
+      var status = S.readStatus(xhr);
+      return (400 <= status && status < 500);
+    }
+  };
+  return S;
+})();
+
+IOCenter.staleness = new Cell(function (status) {
+  return !status.healthy;
+}, {
+  status: IOCenter.status
+});
+
+(function () {
+  new Cell(function (status) {
+    return status.healthy;
+  }, {
+    status: IOCenter.status
+  }).subscribeValue(function (healthy) {
+    console.log("IOCenter.status.healthy: ", healthy);
+  });
+})();
+
+//This is new-style computed cells. Those have dynamic set of
+//dependencies and have more lightweight, functional style. They are
+//also lazy, which means that cell value is not (re)computed if
+//nothing demands that value. Which happens when nothing is
+//subscribed to this cell and it doesn't have dependent cells.
+//
+//Main guy here is Cell.compute. See it's comments. See also
+//testCompute test in cells-test.js.
+Cell.id = (function () {
+  var counter = 1;
+  return function (cell) {
+    if (cell.__identity) {
+      return cell.__identity;
+    }
+    return (cell.__identity = counter++);
+  };
+})();
+
+FlexiFormulaCell = mkClass(Cell, {
+  emptyFormula: function () {},
+  initialize: function ($super, flexiFormula, isEager) {
+    $super();
+
+    var recalculate = $m(this, 'recalculate'),
+        currentSources = this.currentSources = {};
+
+    this.formula = function () {
+      var rvPair = flexiFormula.call(this),
+          newValue = rvPair[0],
+          dependencies = rvPair[1];
+
+      for (var i in currentSources) {
+        if (dependencies[i]) {
+          continue;
+        } else {
+          var pair = currentSources[i];
+          pair[0].dependenciesSlot.unsubscribe(pair[1]);
+          delete currentSources[i];
+        }
+      }
+
+      for (var j in dependencies) {
+        if (j in currentSources) {
+          continue;
+        } else {
+          var cell = dependencies[j],
+              slave = cell.dependenciesSlot.subscribeWithSlave(recalculate);
+
+          currentSources[j] = [cell, slave];
+        }
+      }
+
+      return newValue;
+    };
+
+    this.formulaContext = {self: this};
+    if (isEager) {
+      this.effectiveFormula = this.formula;
+      this.recalculate();
+    } else {
+      this.effectiveFormula = this.emptyFormula;
+      this.setupDemandObserving();
+    }
+  },
+  setupDemandObserving: function () {
+    var demand = {},
+        self = this;
+    _.each(
+      {
+        changed: self.changedSlot,
+        'undefined': self.undefinedSlot,
+        dependencies: self.dependenciesSlot
+      },
+      function (slot, name) {
+        slot.__demandChanged = function (newDemand) {
+          demand[name] = newDemand;
+          react();
+        };
+      }
+    );
+    function react() {
+      var haveDemand = demand.dependencies || demand.changed || demand['undefined'];
+
+      if (!haveDemand) {
+        self.detach();
+      } else {
+        self.attachBack();
+      }
+    }
+  },
+  needsRefresh: function (newValue) {
+    if (this.value === undefined) {
+      return true;
+    }
+    if (newValue instanceof Future) {
+      // we don't want to recalculate values that involve futures
+      return false;
+    }
+    return this.isValuesDiffer(this.value, newValue);
+  },
+  attachBack: function () {
+    if (this.effectiveFormula === this.formula) {
+      return;
+    }
+
+    this.effectiveFormula = this.formula;
+
+    // This piece of code makes sure that we don't refetch things that
+    // are already fetched
+    var needRecalculation;
+    if (this.hadPendingFuture) {
+      // if we had future in progress then we will start it back
+      this.hadPendingFuture = false;
+      needRecalculation = true;
+    } else {
+      // NOTE: this has side-effect of updating formula dependencies and
+      // subscribing to them back
+      var newValue = this.effectiveFormula.call(this.mkFormulaContext());
+      needRecalculation = this.needsRefresh(newValue);
+    }
+
+    if (needRecalculation) {
+      // but in the end we call recalculate to correctly handle
+      // everything. Calling it directly might start futures which
+      // we don't want. And copying it's code here is even worse.
+      //
+      // Use of prototype is to avoid issue with overriden
+      // recalculate. See Cell#delegateInvalidationMethods. We want
+      // exact original recalculate behavior here.
+      Cell.prototype.recalculate.call(this);
+    }
+  },
+  detach: function () {
+    var currentSources = this.currentSources;
+    for (var id in currentSources) {
+      if (id) {
+        var pair = currentSources[id];
+        pair[0].dependenciesSlot.unsubscribe(pair[1]);
+        delete currentSources[id];
+      }
+    }
+    if (this.pendingFuture) {
+      this.hadPendingFuture = true;
+    }
+    this.effectiveFormula = this.emptyFormula;
+    this.setValue(this.value);  // this cancels any in-progress
+                                // futures
+    clearTimeout(this.recalculateAtTimeout);
+    this.recalculateAtTimeout = undefined;
+  },
+  setSources: function () {
+    throw new Error("unsupported!");
+  },
+  mkFormulaContext: function () {
+    return this.formulaContext;
+  },
+  getSourceCells: function () {
+    var rv = [],
+        sources = this.currentSources;
+    for (var id in sources) {
+      if (id) {
+        rv.push(sources[id][0]);
+      }
+    }
+    return rv;
+  }
+});
+
+FlexiFormulaCell.noValueMarker = (function () {
+  try {
+    throw {};
+  } catch (e) {
+    return e;
+  }
+})();
+
+FlexiFormulaCell.makeComputeFormula = function (formula) {
+  var dependencies,
+      noValue = FlexiFormulaCell.noValueMarker;
+
+  function getValue(cell) {
+    var id = Cell.id(cell);
+    if (!dependencies[id]) {
+      dependencies[id] = cell;
+    }
+    return cell.value;
+  }
+
+  function need(cell) {
+    var v = getValue(cell);
+    if (v === undefined) {
+      throw noValue;
+    }
+    return v;
+  }
+
+  getValue.need = need;
+
+  return function () {
+    dependencies = {};
+    var newValue;
+    try {
+      newValue = formula.call(this, getValue);
+    } catch (e) {
+      if (e === noValue) {
+        newValue = undefined;
+      } else {
+        throw e;
+      }
+    }
+    var deps = dependencies;
+    dependencies = null;
+    return [newValue, deps];
+  };
+};
+
+// Creates cell that is computed by running formula. This function is
+// passed V argument. Which is a function that gets values of other
+// cells. It is necessary to obtain dependent cell values via that
+// function, so that all dependencies are recorded. Then if any of
+// (dynamic) dependencies change formula is recomputed. Which may
+// produce (apart from new value) new set of dependencies.
+//
+// V also has a useful helper: V.need which is just as V extracts
+// values from cells. But it differs from V in that undefined values
+// are never returned. Special exception is raised instead to signal
+// that formula value is undefined.
+Cell.compute = function (formula) {
+  var _FlexiFormulaCell = arguments[1] || FlexiFormulaCell,
+      f = FlexiFormulaCell.makeComputeFormula(formula);
+
+  return new _FlexiFormulaCell(f);
+};
+
+Cell.computeEager = function (formula) {
+  var _FlexiFormulaCell = arguments[1] || FlexiFormulaCell,
+      f = FlexiFormulaCell.makeComputeFormula(formula);
+
+  return new _FlexiFormulaCell(f, true);
+};
+
+(function () {
+  var constructor = function (dependencies) {
+    this.dependencies = dependencies;
+  }
+
+  function def(delegateMethodName) {
+    function delegatedMethod(body) {
+      var dependencies = this.dependencies;
+
+      return Cell[delegateMethodName](function (v) {
+        var args = [v];
+        args.length = dependencies.length+1;
+        var i = dependencies.length;
+        while (i--) {
+          var value = v(dependencies[i]);
+          if (value === undefined) {
+            return;
+          }
+          args[i+1] = value;
+        }
+        return body.apply(this, args);
+      });
+    }
+    constructor.prototype[delegateMethodName] = delegatedMethod;
+  }
+
+  def('compute');
+  def('computeEager');
+
+  Cell.needing = function () {
+    return new constructor(arguments);
+  };
+})();
+
+// subscribes to multiple cells as a single subscription
+Cell.subscribeMultipleValues = function (body/*, cells... */) {
+  var args = _.rest(arguments);
+  var badArgs = _.reject(args, function (a) {return a instanceof Cell});
+  if (badArgs.length) {
+    console.log("has non cell args in subscribeMultipleValues: ", badArgs);
+    throw new Error("bad args to subscribeMultipleValues");
+  }
+  return Cell.compute(function (v) {
+    return _.map(args, v);
+  }).subscribeValue(function (arr) {
+    if (arr === undefined) {
+      return;
+    }
+    body.apply(null, arr);
+  });
+}
