@@ -35,6 +35,9 @@ fi
 ERL_LIBS="@PREFIX@/lib/couchdb/erlang/lib:@PREFIX@/lib/ns_server/erlang/lib"
 export ERL_LIBS
 
+DONT_START_COUCH=1
+export DONT_START_COUCH
+
 exec erl \
     +A 16 \
     -setcookie nocookie \
