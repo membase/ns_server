@@ -72,11 +72,6 @@ function escapeJS(string) {
   return String(string).replace(/\\/g, '\\\\').replace(/["']/g, '\\$&');
 }
 
-function renderJSLink(functionName, arg, prefix) {
-  prefix = prefix || "javascript:"
-  return escapeHTML(prefix + functionName + "('" + escapeJS(arg) + "')")
-}
-
 _.template = function (str, data) {
   function translateTemplate(templ) {
     var openRE = /{%=?/g;
@@ -150,8 +145,7 @@ _.template = function (str, data) {
     // add some common helpers into scope
     _.extend(literals, {
       h: escapeHTML,
-      V: ViewHelpers,
-      jsLink: renderJSLink});
+      V: ViewHelpers});
 
     var fn = reinterpretInEnv("function (obj) {\n" + body + "\n}", literals);
   } catch (e) {
