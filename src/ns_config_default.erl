@@ -137,6 +137,7 @@ default() ->
                 {"MOXI_SASL_PLAIN_PWD", {"~s", [{ns_moxi_sup, rest_pass, []}]}}
                ]},
          use_stdio, exit_status,
+         port_server_send_eol,
          stderr_to_stdout,
          stream]
        },
