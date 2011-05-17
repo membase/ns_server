@@ -73,7 +73,6 @@ body {height:100%;color:#444245;font-family:Helvetica, Verdana;line-height:1;bac
 .select option {padding:2px 3px;}
 .select_short {width:120px;}
 .nobg {background:none !important;}
-.lbox pre {background:none #fff; border:1px solid #CCD3D7; padding:10px; margin:5px 0; white-space:normal;}
 .info_text {font-size:13px !important;}
 #get_started .info_text {font-weight:bolder;}
 .disabled {opacity:0.5; cursor:default !important; filter:progid:DXImageTransform.Microsoft.Alpha(opacity=50);}
@@ -478,22 +477,9 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 
 /* lightbox styles */
 .lbox {width:711px; position:relative;}
-.lbox .top {height:13px; overflow:hidden; display:none;}
-.lbox .top div {height:13px; overflow:hidden;}
-.lbox .top .top_left {width:12px; float:left; background:url(../images/lbox_lt.png) 0 0 no-repeat;}
-.lbox .top .top_right {width:12px; float:right; background:url(../images/lbox_rt.png) 0 0 no-repeat;}
-.lbox .top .top_center {background:url(../images/lbox_t.png) 0 0 repeat-x; *width:687px;_float:left;}
-
 .lbox .center {background:#eee;/*url(../images/lbox_cent.png) 0 0 repeat-y;*/}
 .lbox .center .pad {/*padding:0 7px;*/}
 
-.lbox .bottom {height:17px; position:relative;  display:none;}
-.lbox .bottom div {height:17px; overflow:hidden;}
-.lbox .bottom .bottom_left {width:12px;float:left; background:url(../images/lbox_lb.png) 0 0 no-repeat;}
-.lbox .bottom .bottom_right {width:12px; float:right; background:url(../images/lbox_rb.png) 0 0 no-repeat;}
-.lbox .bottom .bottom_center {/*margin:0 12px;*/ background:url(../images/lbox_b.png) 0 0 repeat-x; *float:left; *width:687px;}
-
-.lbox .lbox_header {padding:16px 20px;font-size:20px;background:#dfdfe0;border-bottom:1px solid #bdbec2;}
 .u_line {padding:20px 0 5px; font-size:12px; font-weight:bolder; color:#4e5557; border-bottom:1px solid #ccd3d7;}
 .u_line .label {font-weight:normal; display:block; min-width:85px; text-align:right; float:left; margin:0 5px 0 0; white-space:nowrap;}
 .u_line a.float_right {font-size:11px; cursor:pointer;}
@@ -516,21 +502,12 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 #join_cluster_dialog .spinner {background:none/*#e9f3f9 !important*/;}
 #join_cluster_dialog .spinner span {display:block;position:relative;top:35%; width:150px !important;height:20px !important; margin:0 auto 0;padding:50px 0 0 !important; background:url(../images/spinner/spinner_lightbox.gif) 55px 5px no-repeat; color:#6da2c2; font-size:12px;line-height:14px !important;text-align:center;}
 
-.lbox_form {display:block; padding:10px;}
-.lbox_form h3 {font-size:18px; padding:5px 0 10px; border-bottom:1px solid #d8d9db; margin:0 0 10px; color:#444245; font-weight:normal;}
-.lbox_form table td {padding:3px 0; color:#7d7d7f; font-size:12px; vertical-align:middle;}
-.lbox_form table td.label {text-align:right; color:#444245; font-size:12px; font-weight:normal; padding:0 10px 0 0; vertical-align:top; line-height:30px;}
 .inp_size_1 {width:93px !important;}
 .inp_size_2 {width:185px !important;}
 .inp_size_3 {width:287px !important;}
 select.inp_size_2 {width:193px !important;}
-.lbox_form input[type="text"] {width:55px; border:1px solid #cfd3d6; background:none #fff; padding:3px; color:#444245;}
-.lbox_form input.inp {border:1px solid #cfd3d6; background:none #fff; padding:3px; color:#444245;}
-.lbox_form .del_link {color:#e34c31; padding:10px 0 0; display:block; float:left;}
-.lbox_form table td span.float_right {line-height:25px;}
 .top_save_cancel {padding-right:10px;}
 .lbox .header_2 {border:0px !important;}
-.lbox .add_btn {float:right;width:61px; height:21px; background:url(../images/add_btn.png) 0 0 no-repeat;}
 .content_cell label {margin:0 0 5px; display:inline-block;}
 
 .popup {background:#eee;font-size:13px;}
@@ -624,11 +601,9 @@ body.auth #container { display: none; }
 #ui-dialog-title-about_server_dialog {width:90%}
 #ui-dialog-title-about_server_dialog img {float:left;}
 #ui-dialog-title-about_server_dialog h1 {float:right;margin:16px 2px 0 0;font:normal 11pt Verdana,Helvetica,Sans-Serif;}
-#about_server_dialog .lbox .top .top_center {*width:=356px;}
 #about_server_dialog .lbox .center {background:none; padding:16px 17px 14px;}
 #about_server_dialog .lbox .center p#about_versions {margin-bottom: 25px; white-space:nowrap;}
 #about_server_dialog .lbox .center ul li {margin:5px;}
-#about_server_dialog .lbox .bottom .bottom_center {*width:=356px;}
 
 .configure_view {display:inline-block; padding:0 10px 0 0;}
 .configure_view a {position:relative; top:5px; text-decoration:underline;}
