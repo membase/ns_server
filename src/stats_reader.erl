@@ -98,8 +98,15 @@ code_change(_OldVsn, State, _Extra) ->
 init(Bucket) ->
     {ok, #state{bucket=Bucket}}.
 
+handle_call(Req, From, State) ->
+    {ok, TRef} = timer:kill_after(60000),
+    try
+        do_handle_call(Req, From, State)
+    after
+        timer:cancel(TRef)
+    end.
 
-handle_call({latest, Period}, _From, #state{bucket=Bucket} = State) ->
+do_handle_call({latest, Period}, _From, #state{bucket=Bucket} = State) ->
     Reply = try mnesia:activity(
                   async_dirty,
                   fun () ->
@@ -113,14 +120,14 @@ handle_call({latest, Period}, _From, #state{bucket=Bucket} = State) ->
                 Type:Err -> {error, {Type, Err}}
             end,
     {reply, Reply, State};
-handle_call({latest, Period, N}, _From, #state{bucket=Bucket} = State) ->
+do_handle_call({latest, Period, N}, _From, #state{bucket=Bucket} = State) ->
     Reply = try fetch_latest(Bucket, Period, N) of
                 Result -> Result
             catch Type:Err ->
                     {error, {Type, Err}}
             end,
     {reply, Reply, State};
-handle_call({latest, Period, Step, N}, _From, #state{bucket=Bucket} = State) ->
+do_handle_call({latest, Period, Step, N}, _From, #state{bucket=Bucket} = State) ->
     Reply = try resample(Bucket, Period, Step, N) of
                 Result -> Result
             catch Type:Err ->

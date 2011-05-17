@@ -103,27 +103,34 @@ handle_call(Request, _From, State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
+handle_info(Msg, State) ->
+    {ok, TRef} = timer:kill_after(60000),
+    try
+        do_handle_info(Msg, State)
+    after
+        timer:cancel(TRef)
+    end.
 
-handle_info(init, State) ->
+do_handle_info(init, State) ->
     create_tables(State#state.bucket),
     {noreply, State};
-handle_info({stats, Bucket, Sample}, State = #state{bucket=Bucket}) ->
+do_handle_info({stats, Bucket, Sample}, State = #state{bucket=Bucket}) ->
     Tab = table(Bucket, minute),
     {atomic, ok} = mnesia:transaction(fun () ->
                                               mnesia:write(Tab, Sample, write)
                                       end, ?RETRIES),
     gen_event:notify(ns_stats_event, {sample_archived, Bucket, Sample}),
     {noreply, State};
-handle_info({sample_archived, _, _}, State) ->
+do_handle_info({sample_archived, _, _}, State) ->
     {noreply, State};
-handle_info({truncate, Period, N}, #state{bucket=Bucket} = State) ->
+do_handle_info({truncate, Period, N}, #state{bucket=Bucket} = State) ->
     Tab = table(Bucket, Period),
     mb_mnesia:truncate(Tab, N),
     {noreply, State};
-handle_info({cascade, Prev, Period, Step}, #state{bucket=Bucket} = State) ->
+do_handle_info({cascade, Prev, Period, Step}, #state{bucket=Bucket} = State) ->
     cascade(Bucket, Prev, Period, Step),
     {noreply, State};
-handle_info(_Msg, State) -> % Don't crash on delayed responses from calls
+do_handle_info(_Msg, State) -> % Don't crash on delayed responses from calls
     {noreply, State}.
 
 
