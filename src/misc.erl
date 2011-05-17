@@ -96,6 +96,32 @@ parallel_map(Fun, List, Timeout) when is_list(List) andalso is_function(Fun) ->
             exit(timeout)
     end.
 
+safe_multi_call(Nodes, Name, Request, Timeout) ->
+    Ref = erlang:make_ref(),
+    Parent = self(),
+    try
+        parallel_map(fun (N) ->
+                             try gen_server:call({Name, N}, Request, infinity) of
+                                 Res ->
+                                     Parent ! {Ref, {N, Res}}
+                             catch _:_ -> ok
+                             end,
+                             ok
+                     end, Nodes, Timeout)
+    catch exit:timeout ->
+            ok
+    end,
+    safe_multi_call_collect(lists:sort(Nodes), [], [], Ref).
+
+safe_multi_call_collect(Nodes, GotNodes, Acc, Ref) ->
+    receive
+        {Ref, {N, _} = Pair} ->
+            safe_multi_call_collect(Nodes, [N|GotNodes], [Pair|Acc], Ref)
+    after 0 ->
+            BadNodes = ordsets:subtract(Nodes, lists:sort(GotNodes)),
+            {Acc, BadNodes}
+    end.
+
 parallel_map_gather_loop(_Ref, Acc, 0) ->
     [V || {_, V} <- lists:keysort(1, Acc)];
 parallel_map_gather_loop(Ref, Acc, RepliesLeft) ->

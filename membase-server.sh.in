@@ -41,7 +41,7 @@ export DONT_START_COUCH
 exec erl \
     +A 16 \
     -setcookie nocookie \
-    -kernel inet_dist_listen_min 21100 inet_dist_listen_max 21199 \
+    -kernel inet_dist_listen_min 21100 inet_dist_listen_max 21299 \
     $* \
     -run ns_bootstrap -- \
     -ns_server config_path "\"@PREFIX@/etc/membase/static_config\"" \
