@@ -450,14 +450,14 @@ var StatsModel = {};
       var nodes = v.need(specificStatsNodesCell);
       return {thisISSpecificStats: true,
               blocks: [{blockName: "Specific Stats", hideThis: true,
-                        stats: _.map(nodes, function (hostname) {return {desc: hostname, name: hostname}})}]};
+                        stats: _.map(nodes, function (hostname) {return {title: hostname, name: hostname}})}]};
     } else {
       return v.need(rawStatsDescCell);
     }
   }).name("visibleStatsDescCell");
 
-  self.infosCell = Cell.needing(visibleStatsDescCell).compute(function (v, desc) {
-    desc = JSON.parse(JSON.stringify(desc)); // this makes deep copy of desc
+  self.infosCell = Cell.needing(visibleStatsDescCell).compute(function (v, statDesc) {
+    statDesc = JSON.parse(JSON.stringify(statDesc)); // this makes deep copy of statDesc
 
     var infos = [];
     infos.byName = {};
@@ -466,13 +466,13 @@ var StatsModel = {};
     var blockIDs = [];
 
     var hadServerResources = false;
-    if (desc.blocks[0].serverResources) {
+    if (statDesc.blocks[0].serverResources) {
       // We want it last so that default stat name (which is first
       // statItems entry) is not from ServerResourcesBlock
       hadServerResources = true;
-      desc.blocks = desc.blocks.slice(1).concat([desc.blocks[0]]);
+      statDesc.blocks = statDesc.blocks.slice(1).concat([statDesc.blocks[0]]);
     }
-    _.each(desc.blocks, function (aBlock) {
+    _.each(statDesc.blocks, function (aBlock) {
       var blockName = aBlock.blockName;
       aBlock.id = _.uniqueId("GB");
       blockIDs.push(aBlock.id);
@@ -485,7 +485,7 @@ var StatsModel = {};
     });
     // and now make ServerResourcesBlock first for rendering
     if (hadServerResources) {
-      desc.blocks.unshift(desc.blocks.pop());
+      statDesc.blocks.unshift(statDesc.blocks.pop());
     }
     _.each(statItems, function (item) {
       infos.push(item);
@@ -493,12 +493,12 @@ var StatsModel = {};
     });
     infos.blockIDs = blockIDs;
 
-    return {desc: desc, infos: infos};
+    return {statDesc: statDesc, infos: infos};
   }).name("infosCell");
 
-  self.statsDescCell = Cell.needing(self.infosCell).compute(function (v, infos) {
-    return infos.desc;
-  }).name("statsDescCell");
+  self.statsDescInfoCell = Cell.needing(self.infosCell).compute(function (v, infos) {
+    return infos.statDesc;
+  }).name("statsDescInfoCell");
 
   self.serverResourcesVisible = Cell.compute(function (v) {
     // server resources are visible iff infos cell is not undefined
@@ -587,26 +587,26 @@ var StatsModel = {};
       if (statInfo.missing) {
         return;
       }
-      knownDescTexts[statInfo.desc] = (knownDescTexts[statInfo.desc] || 0) + 1;
+      knownDescTexts[statInfo.title] = (knownDescTexts[statInfo.title] || 0) + 1;
     });
 
     var markedNames = {};
     var result = [];
     _.each(rawDesc.blocks, function (blockInfo) {
       _.each(blockInfo.stats, function (statInfo, idx) {
-        var desc = statInfo.desc;
-        if (!desc) {
+        var title = statInfo.title;
+        if (!title) {
           throw new Error();
         }
-        if (knownDescTexts[desc] > 1) {
+        if (knownDescTexts[title] > 1) {
           // we have 'shared name'. So let's 'unshare' it be prepending column name
-          desc = blockInfo.columns[idx % 4] + ' ' + desc;
+          title = blockInfo.columns[idx % 4] + ' ' + title;
         }
         var name = statInfo.name;
         if (markedNames[name]) {
           return;
         }
-        result.push([name, desc]);
+        result.push([name, title]);
         markedNames[name] = true;
       });
     });
@@ -996,7 +996,7 @@ var AnalyticsSection = {
       });
     })();
 
-    self.widget = new GraphsWidget($('#analytics_main_graph'), $('#stats_container'), StatsModel.statsDescCell, StatsModel.graphsConfigurationCell);
+    self.widget = new GraphsWidget($('#analytics_main_graph'), $('#stats_container'), StatsModel.statsDescInfoCell, StatsModel.graphsConfigurationCell);
 
     Cell.needing(StatsModel.graphsConfigurationCell).compute(function (v, configuration) {
       return configuration.timestamp.length == 0;
@@ -1057,8 +1057,8 @@ var AnalyticsSection = {
     })();
 
     $(self.widget).bind('menelaus.graphs-widget.rendered-graphs', function () {
-      var desc = StatsModel.graphsConfigurationCell.value.selected.desc;
-      $('#analytics .current-graph-name').text(desc);
+      var title = StatsModel.graphsConfigurationCell.value.selected.title;
+      $('#analytics .current-graph-name').text(title);
 
 
     });
