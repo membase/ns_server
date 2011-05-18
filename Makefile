@@ -46,7 +46,7 @@ dist:
 	tar -C tmp -czf ns_server-`git describe`.tar.gz ns_server-`git describe`
 
 deps_smtp:
-	(cd deps/gen_smtp && $(MAKE) ebins)
+	(cd deps/gen_smtp && $(MAKE) compile)
 
 deps_mochiweb:
 	test -d deps/mochiweb/ebin || mkdir deps/mochiweb/ebin
