@@ -1,5 +1,8 @@
 -module(menelaus_web_alerts_srv).
 
+-include("ns_common.hrl").
+-include("ns_stats.hrl").
+
 -behaviour(gen_server).
 -define(SERVER, ?MODULE).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -112,8 +115,11 @@ handle_cast(_Msg, State) ->
 
 
 handle_info(check_alerts, #state{history=Hist, opaque=Opaque} = State) ->
+    RawPairs = [{Name, stats_reader:latest(minute, node(), Name, 1)} || Name <- ns_memcached:active_buckets()],
+    Stats = [{Name, OrdDict}
+             || {Name, {ok, [#stat_entry{values = OrdDict}|_]}} <- RawPairs],
     {noreply, State#state{
-                opaque = check_alerts(Opaque, Hist),
+                opaque = check_alerts(Opaque, Hist, Stats),
                 history = expire_history(Hist)
                }};
 
@@ -149,15 +155,15 @@ global_checks() ->
     [oom, ip, write_fail, overhead, disk].
 
 %% @doc fires off various checks
-check_alerts(Opaque, Hist) ->
-    Fun = fun(X, Dict) -> check(X, Dict, Hist) end,
+check_alerts(Opaque, Hist, Stats) ->
+    Fun = fun(X, Dict) -> check(X, Dict, Hist, Stats) end,
     lists:foldl(Fun, Opaque, global_checks()).
 
 
 %% @doc if listening on a non localhost ip, detect differences between
 %% external listening host and current node host
--spec check(atom(), dict(), list()) -> dict().
-check(ip, Opaque, _History) ->
+-spec check(atom(), dict(), list(), [{atom(),number()}]) -> dict().
+check(ip, Opaque, _History, _Stats) ->
     {_Name, Host} = misc:node_name_host(node()),
     case can_listen(Host) of
         false ->
@@ -168,7 +174,7 @@ check(ip, Opaque, _History) ->
     Opaque;
 
 %% @doc check the capacity of the drives used for db and log files
-check(disk, Opaque, _History) ->
+check(disk, Opaque, _History, _Stats) ->
 
     Node = node(),
     Config = ns_config:get(),
@@ -203,9 +209,9 @@ check(disk, Opaque, _History) ->
     lists:foldl(Fun, Opaque, OverDisks);
 
 %% @doc check how much overhead there is compared to data
-check(overhead, Opaque, _History) ->
-    [case over_threshold(fetch_bucket_stat(Bucket, ep_overhead),
-                         fetch_bucket_stat(Bucket, ep_max_data_size)) of
+check(overhead, Opaque, _History, Stats) ->
+    [case over_threshold(fetch_bucket_stat(Stats, Bucket, ep_overhead),
+                         fetch_bucket_stat(Stats, Bucket, ep_max_data_size)) of
          {true, X} ->
              {_Sname, Host} = misc:node_name_host(node()),
              Err = fmt_to_bin(errors(overhead), [Host, erlang:round(X)]),
@@ -216,12 +222,12 @@ check(overhead, Opaque, _History) ->
     Opaque;
 
 %% @doc check for write failures inside ep engine
-check(write_fail, Opaque, _History) ->
-    check_stat_increased(ep_item_commit_failed, Opaque);
+check(write_fail, Opaque, _History, Stats) ->
+    check_stat_increased(Stats, ep_item_commit_failed, Opaque);
 
 %% @doc check for any oom errors an any bucket
-check(oom, Opaque, _History) ->
-    check_stat_increased(ep_oom_errors, Opaque).
+check(oom, Opaque, _History, Stats) ->
+    check_stat_increased(Stats, ep_oom_errors, Opaque).
 
 
 %% @doc only check for disk usage if there has been no previous
@@ -250,23 +256,23 @@ over_threshold(EpErrs, Max) ->
 
 %% @doc Check if the value of any statistic has increased since
 %% last check
-check_stat_increased(Stat, Opaque) ->
-    New = fetch_buckets_stat(Stat),
-    case dict:is_key(Stat, Opaque) of
+check_stat_increased(Stats, StatName, Opaque) ->
+    New = fetch_buckets_stat(Stats, StatName),
+    case dict:is_key(StatName, Opaque) of
         false ->
-            dict:store(Stat, New, Opaque);
+            dict:store(StatName, New, Opaque);
         true ->
-            Old = dict:fetch(Stat, Opaque),
+            Old = dict:fetch(StatName, Opaque),
             case stat_increased(New, Old) of
                 [] ->
                     ok;
                 Buckets ->
                     {_Sname, Host} = misc:node_name_host(node()),
                     Key = {stat, node()},
-                    [global_alert(Key, fmt_to_bin(errors(Stat), [Bucket, Host]))
+                    [global_alert(Key, fmt_to_bin(errors(StatName), [Bucket, Host]))
                      || Bucket <- Buckets]
             end,
-            dict:store(Stat, New, Opaque)
+            dict:store(StatName, New, Opaque)
     end.
 
 
@@ -294,17 +300,23 @@ stat_increased(New, Old) ->
 
 
 %% @doc fetch a list of a stat for all buckets
-fetch_buckets_stat(Stat) ->
+fetch_buckets_stat(Stats, StatName) ->
     dict:from_list(
-      [{Bucket, fetch_bucket_stat(Bucket, Stat)}
-       || Bucket <- ns_memcached:active_buckets()]
+      [{Bucket, fetch_bucket_stat(Stats, Bucket, StatName)}
+       || {Bucket, _OrdDict} <- Stats]
      ).
 
 
 %% @doc fetch latest value of stat for particular bucket
-fetch_bucket_stat(Bucket, Stat) ->
-    case stats_archiver:latest(Bucket, minute, Stat) of
-        {Stat, X} -> X;
+fetch_bucket_stat(Stats, Bucket, StatName) ->
+    OrdDict = case orddict:find(Bucket, Stats) of
+                  {ok, KV} ->
+                      KV;
+                  _ ->
+                      []
+              end,
+    case orddict:find(StatName, OrdDict) of
+        {ok, V} -> V;
         _ -> 0
     end.
 

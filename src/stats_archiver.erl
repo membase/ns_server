@@ -35,8 +35,7 @@
 -export([ start_link/1,
           archives/0,
           table/2,
-          avg/2,
-          latest/3 ]).
+          avg/2 ]).
 
 -export([code_change/3, init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2]).
@@ -81,16 +80,6 @@ avg(TS, [First|Rest]) ->
                                          (_Key, Value) -> Value / Count
                                      end, Sums)}.
 
-
-%% @doc the last entry to be collected
--spec latest(string(), atom(), atom()) -> tuple().
-latest(Bucket, Type, Key) ->
-    case latest(Bucket, Type) of
-        List when is_list(List) ->
-            lists:keyfind(Key, 1, List);
-        false ->
-            false
-    end.
 
 %%
 %% gen_server callbacks
@@ -211,28 +200,6 @@ start_timers() ->
               timer:send_interval(Interval, {truncate, Period, Samples})
       end, Archives),
     start_cascade_timers(Archives).
-
-
-%% @doc read the latest set of stat_entry values on a bucket
-latest(Bucket, Type) ->
-    Table = table(Bucket, Type),
-    case mnesia:activity(transaction, fun read_latest/1, [Table]) of
-        Stats when is_record(Stats, stat_entry) ->
-            Stats#stat_entry.values;
-        false ->
-            false
-    end.
-
-
-%% @doc read the latest item from a table, expected to be run inside a
-%% transaction context
--spec read_latest(atom()) -> any().
-read_latest(Table) ->
-    case mnesia:read(Table, mnesia:last(Table)) of
-        [Last] -> Last;
-        []     -> false
-    end.
-
 
 -spec fmt(string(), list()) -> list().
 fmt(Str, Args)  ->
