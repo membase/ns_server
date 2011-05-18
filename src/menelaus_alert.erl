@@ -19,20 +19,19 @@
 -author('Northscale <info@northscale.com>').
 
 -include("ns_log.hrl").
+-include("ns_common.hrl").
 
 -include_lib("eunit/include/eunit.hrl").
 
 -ifdef(EUNIT).
 -export([test/0]).
--import(menelaus_util,
-        [validate_email_address/1]).
 -endif.
 
 -export([handle_logs/1,
          build_logs/1,
          handle_alerts/1,
-         handle_alerts_settings_post/1,
-         build_alerts_settings/0]).
+         parse_settings_alerts_post/1,
+         build_alerts_json/1]).
 
 -export([get_alert_config/0,
          set_alert_config/1,
@@ -46,91 +45,201 @@
 
 -define(DEFAULT_LIMIT, 250).
 
+-record(alerts_query_args, {
+          %% Whether to enable or disable email notifications
+          enabled=false :: true|false,
+          %% The sender address of the email
+          sender="membase@localhost" :: string(),
+          %% A comma separated list of recipients of the of the alert emails.
+          recipients=[] :: [string()],
+          %% Host address of the SMTP server
+          email_host="localhost" :: string(),
+          %% Port of the SMTP server
+          email_port=25 :: integer(),
+          %%  Whether you'd like to use TLS or not
+          email_encrypt=false :: true|false,
+          %% Username for the SMTP server
+          email_user="" :: string(),
+          %% Password for the SMTP server
+          email_pass="" :: string(),
+          %% Comma separated list of alerts that should cause an email to
+          %% be sent.
+          alerts=[auto_failover_node,
+                  auto_failover_maximum_reached,
+                  auto_failover_too_many_nodes_down
+                 ] :: [atom()]
+         }).
+
 handle_logs(Req) ->
     reply_json(Req, {struct, [{list, build_logs(Req:parse_qs())}]}).
 
 handle_alerts(Req) ->
     reply_json(Req, {struct, [{list, build_alerts(Req:parse_qs())}]}).
 
-% The PostArgs looks like a single flat key-value map, like the json of...
-%
-%   {"email": "joe@rock.com",
-%    "alert_server_up": "1",
-%    "alert_server_joined": "0",
-%    "email_server_port": "587"}
-%
-handle_alerts_settings_post(PostArgs) ->
-    AlertConfig = lists:keystore(alerts, 1, get_alert_config(), {alerts, []}),
-    AlertConfig2 =
+
+%% @doc Parse alert setting that were posted. Return either the parsed
+%% query or the errors that occured while parsing.
+-spec parse_settings_alerts_post(PostArgs::[{string(), string()}]) ->
+                                    {ok, [{atom(), any()}]}|
+                                    {error, [string()]}.
+parse_settings_alerts_post(PostArgs) ->
+    ?log_info("handle_settings_alerts_post: ~p~n", [PostArgs]),
+    QueryParams = lists:foldl(fun({K, V}, Acc) ->
+        parse_settings_alerts_param(K, V) ++ Acc
+    end, [], PostArgs),
+    ?log_info("handle_settings_alerts_post: parsed: ~p~n", [QueryParams]),
+    {QueryArgs, Errors} =
         lists:foldl(
-          fun({"email", V}, C) ->
-                  lists:keystore(email, 1, C, {email, misc:trim(V)});
-             ({"sender", V}, C) ->
-                  lists:keystore(sender, 1, C, {sender, misc:trim(V)});
-             ({"email_alerts", "1"}, C) ->
-                  lists:keystore(email_alerts, 1, C, {email_alerts, true});
-             ({"email_alerts", "0"}, C) ->
-                  lists:keystore(email_alerts, 1, C, {email_alerts, false});
-             ({[$a, $l, $e, $r, $t, $_ | K], "1"}, C) ->
-                  case is_alert_key(K) of
-                      true ->
-                          lists:keystore(
-                            alerts, 1, C,
-                            {alerts,
-                             [list_to_existing_atom(K) |
-                              proplists:get_value(alerts, C)]});
-                      false -> C
-                  end;
-             ({"email_server_encrypt", "1"}, C) ->
-                  set_subkey(email_server, encrypt, true, C);
-             ({"email_server_encrypt", "0"}, C) ->
-                  set_subkey(email_server, encrypt, false, C);
-             ({K, V}, C) ->
-                  case string:tokens(K, "_") of
-                      ["email", "server", K2] ->
-                          case is_email_server_key(K2) of
-                              true ->
-                                  set_subkey(email_server,
-                                             list_to_existing_atom(K2),
-                                             misc:trim(V), C);
-                              false -> C
-                          end;
-                      _ -> C
-                  end;
-             (_, C) -> C
-          end,
-          AlertConfig,
-          PostArgs),
-    case validate_alert_config(AlertConfig2) of
-        [] -> {ok, fun () ->
-                           set_alert_config(AlertConfig2)
-                   end};
-        Errors -> {errors, Errors}
+          fun({K, V}, {Args, Errors}) ->
+                 case validate_settings_alerts_query(K, V, Args) of
+                     Args2 when is_record(Args2, alerts_query_args) ->
+                         {Args2, Errors};
+                     Error ->
+                         {Args, [Error|Errors]}
+                 end
+             end, {#alerts_query_args{}, []}, lists:reverse(QueryParams)),
+    ?log_info("handle_settings_alerts_post: validated: ~p~n", [QueryArgs]),
+    ?log_info("handle_settings_alerts_post: errors: ~p~n", [Errors]),
+    case Errors of
+        [] ->
+            Config = build_alerts_config(QueryArgs),
+            {ok, Config};
+        Errors ->
+            {error, Errors}
     end.
 
-set_subkey(Key, SubKey, V, Config) ->
-    S = proplists:get_value(Key, Config),
-    lists:keystore(Key, 1, Config, {Key,
-                                    lists:keystore(SubKey, 1, S,
-                                                   {SubKey, V})}).
 
-build_alerts_settings() ->
-    C = get_alert_config(),
-    S = proplists:get_value(email_server, C, []),
-    [{email, list_to_binary(proplists:get_value(email, C, ""))},
-     {sender, list_to_binary(proplists:get_value(sender, C, ""))},
-     {email_server,
-      {struct, [{user, bin_string(proplists:get_value(user, S, ""))},
-                {pass, bin_string(proplists:get_value(pass, S, ""))},
-                {addr, bin_string(proplists:get_value(addr, S, ""))},
-                {port, bin_string(proplists:get_value(port, S, ""))},
-                {encrypt, bin_boolean(proplists:get_value(encrypt, S, false))}
-               ]}},
-     {sendAlerts, bin_boolean(proplists:get_value(email_alerts, C, false))},
-     {alerts,
-      {struct, lists:map(fun(X) -> {atom_to_list(X), <<"1">>}
-                         end,
-                         proplists:get_value(alerts, C, []))}}].
+
+%%
+%% Internal functions
+%%
+
+%% @doc Returns a list of all alerts that might send out an email notfication.
+%% Every module that creates alerts that should be sent by email needs to
+%% implement an alert_keys/0 function that returns all its alert keys.
+-spec alert_keys() -> [atom()].
+alert_keys() ->
+    Modules = [auto_failover],
+    Keys = [M:alert_keys() || M <- Modules],
+    lists:append(Keys).
+
+%% @doc Create the config structure out of the request parameters.
+-spec build_alerts_config(Args::#alerts_query_args{}) -> [{atom(), any()}].
+build_alerts_config(Args) ->
+     [{recipients, Args#alerts_query_args.recipients},
+      {sender, Args#alerts_query_args.sender},
+      {enabled, Args#alerts_query_args.enabled},
+      {email_server, [{user, Args#alerts_query_args.email_user},
+                      {pass, Args#alerts_query_args.email_pass},
+                      {host, Args#alerts_query_args.email_host},
+                      {port, Args#alerts_query_args.email_port},
+                      {encrypt, Args#alerts_query_args.email_encrypt}]},
+      {alerts, Args#alerts_query_args.alerts}].
+
+
+
+%% @doc Returns the config settings as Mochijson2 JSON
+%-spec build_alerts_config(Args::#alerts_query_args{}) -> tuple().
+build_alerts_json(Config) ->
+    Server = proplists:get_value(email_server, Config),
+    Rcpts = [list_to_binary(R) || R <- proplists:get_value(recipients,
+                                                           Config)],
+    [{recipients, Rcpts},
+     {sender, list_to_binary(proplists:get_value(sender, Config))},
+     {enabled, proplists:get_value(enabled, Config)},
+     {emailServer,
+      {struct,
+       [{user, list_to_binary(proplists:get_value(user, Server))},
+        {pass, <<"">>},
+        {host, list_to_binary(proplists:get_value(host, Server))},
+        {port, proplists:get_value(port, Server)},
+        {encrypt, proplists:get_value(encrypt, Server)}]}},
+     {alerts, proplists:get_value(alerts, Config)}].
+      %{struct, lists:map(fun(X) -> {atom_to_list(X), true} end,
+      %                   proplists:get_value(alerts, C, []))}}].
+
+
+parse_settings_alerts_param("alerts", Alerts) ->
+    [{alerts, [list_to_atom(A) || A <- string:tokens(Alerts, ",")]}];
+parse_settings_alerts_param("emailEncrypt", "false") ->
+    [{email_encrypt, false}];
+parse_settings_alerts_param("emailEncrypt", "true") ->
+    [{email_encrypt, true}];
+parse_settings_alerts_param("emailEncrypt", _) ->
+    [{email_encrypt, error}];
+parse_settings_alerts_param("emailHost", Host) ->
+    [{email_host, misc:trim(Host)}];
+parse_settings_alerts_param("emailPort", Port) ->
+    [{email_port, try list_to_integer(Port) catch error:badarg -> error end}];
+parse_settings_alerts_param("emailPass", Password) ->
+    [{email_pass, Password}];
+parse_settings_alerts_param("emailUser", User) ->
+    [{email_user, misc:trim(User)}];
+parse_settings_alerts_param("enabled", "false") ->
+    [{enabled, false}];
+parse_settings_alerts_param("enabled", "true") ->
+    [{enabled, true}];
+parse_settings_alerts_param("enabled", _) ->
+    [{enabled, error}];
+parse_settings_alerts_param("recipients", Rcpts) ->
+    [{recipients, [misc:trim(R) || R <- string:tokens(Rcpts, ",")]}];
+parse_settings_alerts_param("sender", Sender) ->
+    [{sender, misc:trim(Sender)}];
+parse_settings_alerts_param(_Key, _Value) ->
+    [].
+
+%% @doc Return either the updated record, or in case of an error the
+%% error message
+-spec validate_settings_alerts_query(Key::atom(), Value::any,
+                                     Args::#alerts_query_args{}) ->
+                                        #alerts_query_args{}|binary().
+validate_settings_alerts_query(alerts, Alerts, Args) ->
+    Keys = alert_keys(),
+    case [A || A <- Alerts, not lists:member(A, Keys)] of
+        [] ->
+            Args#alerts_query_args{alerts=Alerts};
+        _ ->
+            Keys2 = list_to_binary(string:join(
+                                     [atom_to_list(K) || K <- Keys], ", ")),
+            <<"alerts contained invalid keys. Valid keys are: ", Keys2/binary,
+              ".">>
+    end;
+validate_settings_alerts_query(email_encrypt, error, _Args) ->
+    <<"emailEncrypt must be either true or false.">>;
+validate_settings_alerts_query(email_encrypt, Value, Args) ->
+    Args#alerts_query_args{email_encrypt=Value};
+validate_settings_alerts_query(email_host, Value, Args) ->
+    Args#alerts_query_args{email_host=Value};
+validate_settings_alerts_query(email_port, Port, Args) ->
+    case (Port=/=error) and (Port>0) and (Port<65535) of
+        true -> Args#alerts_query_args{email_port=Port};
+        false -> <<"emailPort must be a positive integer less than 65536.">>
+    end;
+validate_settings_alerts_query(email_pass, Value, Args) ->
+    Args#alerts_query_args{email_pass=Value};
+validate_settings_alerts_query(email_user, Value, Args) ->
+    Args#alerts_query_args{email_user=Value};
+validate_settings_alerts_query(enabled, error, _Args) ->
+    <<"enabled must be either true or false.">>;
+validate_settings_alerts_query(enabled, Value, Args) ->
+    Args#alerts_query_args{enabled=Value};
+validate_settings_alerts_query(recipients, Rcpts, Args) ->
+    case [R || R <- Rcpts, not menelaus_util:validate_email_address(R)] of
+        [] ->
+            Args#alerts_query_args{recipients=Rcpts};
+        _ ->
+            <<"recipients must be a comma separated list of valid "
+              "email addresses.">>
+    end;
+validate_settings_alerts_query(sender, Sender, Args) ->
+    case menelaus_util:validate_email_address(Sender) of
+        true -> Args#alerts_query_args{sender=Sender};
+        false -> <<"sender must be a valid email address.">>
+    end;
+% Additional values are simply ignored
+validate_settings_alerts_query(_Key, _Value, Args) ->
+    Args.
+
 
 build_logs(Params) ->
     {MinTStamp, Limit} = common_params(Params),
@@ -197,16 +306,10 @@ build_alerts(Params) ->
 %  bucket_created
 %  bucket_deleted
 %  bucket_auth_failed
-
-is_alert_key("server_down")    -> true;
-is_alert_key("server_unresponsive") -> true;
-is_alert_key("server_up")      -> true;
-is_alert_key("server_joined")  -> true;
-is_alert_key("server_left")    -> true;
-is_alert_key("bucket_created") -> true;
-is_alert_key("bucket_deleted") -> true;
-is_alert_key("bucket_auth_failed") -> true;
-is_alert_key(_) -> false.
+%
+% auto_failover_node
+% auto_failover_maximum_reached
+% auto_failover_too_many_nodes_down
 
 alert_key(ns_node_disco, 0005) -> server_down;
 alert_key(ns_node_disco, 0014) -> server_unresponsive;
@@ -214,14 +317,8 @@ alert_key(ns_node_disco, 0004) -> server_up;
 alert_key(mc_pool, 0006)       -> bucket_auth_failed;
 alert_key(menelaus_web, Code) -> menelaus_web:alert_key(Code);
 alert_key(ns_cluster, Code) -> ns_cluster:alert_key(Code);
+alert_key(auto_failover, Code) -> auto_failover:alert_key(Code);
 alert_key(_Module, _Code) -> all.
-
-is_email_server_key("user")    -> true;
-is_email_server_key("pass")    -> true;
-is_email_server_key("addr")    -> true;
-is_email_server_key("port")    -> true;
-is_email_server_key("encrypt") -> true;
-is_email_server_key(_)         -> false.
 
 default_alert_config() ->
     [{email, ""},
@@ -232,24 +329,6 @@ get_alert_config() ->
     case ns_config:search_node(ns_config:get(), alerts) of
         {value, X} -> X;
         false      -> default_alert_config()
-    end.
-
-
-validate_alert_config(AlertConfig) ->
-    EmailServer = proplists:get_value(email_server, AlertConfig, []),
-    case proplists:get_value(email_alerts, AlertConfig) of
-        true ->
-            Candidates = [validate_email_address(proplists:get_value(sender, AlertConfig, []))
-                          orelse <<"Sender email must be supplied.">>,
-                          validate_email_address(proplists:get_value(email, AlertConfig, []))
-                          orelse <<"Recipient email must be supplied.">>,
-                          proplists:get_value(addr, EmailServer, []) =/= ""
-                          orelse <<"Mail server address must be supplied.">>,
-                          proplists:get_value(port, EmailServer, []) =/= ""
-                          orelse <<"A mail server port must be supplied.">>],
-            lists:filter(fun (C) -> C =/= true end,
-                         Candidates);
-        _ -> []
     end.
 
 set_alert_config(AlertConfig) ->
@@ -265,12 +344,6 @@ common_params(Params) ->
                 L -> list_to_integer(L)
             end,
     {MinTStamp, Limit}.
-
-bin_boolean(true) -> <<"1">>;
-bin_boolean(_)    -> <<"0">>.
-
-bin_string(undefined) -> <<"">>;
-bin_string(S)         -> list_to_binary(S).
 
 -ifdef(EUNIT).
 

@@ -471,6 +471,54 @@ Accept: */*
 
 <pre>curl -u Administrator:letmein http://localhost:8091/settings/autoFailover</pre>
 
+####Setting whether email notification should be enabled or disabled
+
+It's a global setting for all clusters. You need to be authenticated to
+change this value.
+
+You will receive an email when certain events happen (currently only
+events cause by auto-failover are supported).
+
+Possible parameters are:
+* enabled (true|false) (required): whether to enable or disable email notifications
+* sender (string) (optional, default: membase@localhost): The sender address of the email
+* recipients ([string]) (required): A comma separated list of recipients of the of the alert emails.
+* emailHost (string) (optional, default: localhost): Host address of the SMTP server
+* emailPort (integer) (optional, default: 25): Port of the SMTP server
+* emailEncrypt (true|false) (optional, default: false): Whether you'd like to use TLS or not
+* emailUser (string) (optional, default: ""): Username for the SMTP server
+* emailPass (string) (optional, default: ""): Password for the SMTP server
+* alerts ([string]) (optional, default: [auto_failover_node, auto_failover_maximum_reached, auto_failover_too_many_nodes_down]): Comma separated list of alerts that should cause an email to be sent. Possible values are: auto_failover_node, auto_failover_maximum_reached, auto_failover_too_many_nodes_down.
+
+*Request*
+
+<pre class="restcalls">
+POST /settings/alerts HTTP/1.1
+Host: node.in.your.cluster:8091
+Content-Type: application/x-www-form-urlencoded
+Authorization: Basic YWRtaW46YWRtaW4=
+Content-Length: 14
+
+enabled=true&sender=membase@localhost&recipients=admin@localhost,membi@localhost&emailHost=localhost&emailPort=25&emailEncrypt=false
+
+</pre>
+
+*Response*
+
+200 OK
+400 Bad Request: JSON list with errors. Possible errors are:
+
+ * alerts contained invalid keys. Valid keys are: [list_of_keys].
+ * emailEncrypt must be either true or false.
+ * emailPort must be a positive integer less than 65536.
+ * enabled must be either true or false.
+ * recipients must be a comma separated list of valid email addresses.
+ * sender must be a valid email address.
+
+401 Unauthorized
+
+<pre>curl -i -u Administrator:letmein -d 'enabled=true&sender=membase@localhost&recipients=admin@localhost,membi@localhost&emailHost=localhost&emailPort=25&emailEncrypt=false' http://localhost:8091/settings/alerts</pre>
+
 
 ###Pool Details
 

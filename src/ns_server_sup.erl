@@ -60,6 +60,10 @@ child_specs() ->
       permanent, infinity, supervisor,
       [ns_node_disco_sup]},
 
+     %% Start ns_tick_event before mb_master as auto_failover needs it
+     {ns_tick_event, {gen_event, start_link, [{local, ns_tick_event}]},
+      permanent, 1000, worker, dynamic},
+
      %% Starts mb_master_sup, which has all processes that start on the master
      %% node.
      {mb_master, {mb_master, start_link, []},
@@ -67,6 +71,9 @@ child_specs() ->
 
      {buckets_events, {gen_event, start_link, [{local, buckets_events}]},
       permanent, 1000, worker, dynamic},
+
+     {ns_mail_sup, {ns_mail_sup, start_link, []},
+      permanent, infinity, supervisor, [ns_mail_sup]},
 
      {ns_heart, {ns_heart, start_link, []},
       permanent, 1000, worker, [ns_heart]},
@@ -81,9 +88,6 @@ child_specs() ->
      {ns_port_sup, {ns_port_sup, start_link, []},
       permanent, 60000, worker,
       [ns_port_sup]},
-
-     {ns_tick_event, {gen_event, start_link, [{local, ns_tick_event}]},
-      permanent, 1000, worker, dynamic},
 
      {ns_stats_event, {gen_event, start_link, [{local, ns_stats_event}]},
       permanent, 1000, worker, dynamic},

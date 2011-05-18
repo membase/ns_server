@@ -169,8 +169,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun menelaus_alert:handle_alerts/1};
                              ["settings", "web"] ->
                                  {auth, fun handle_settings_web/1};
-                             ["settings", "advanced"] ->
-                                 {auth, fun handle_settings_advanced/1};
+                             ["settings", "alerts"] ->
+                                 {auth, fun handle_settings_alerts/1};
                              ["settings", "stats"] ->
                                  {auth, fun handle_settings_stats/1};
                              ["settings", "autoFailover"] ->
@@ -221,8 +221,8 @@ loop(Req, AppRoot, DocRoot) ->
                                   [NodeId]};
                              ["settings", "web"] ->
                                  {auth, fun handle_settings_web_post/1};
-                             ["settings", "advanced"] ->
-                                 {auth, fun handle_settings_advanced_post/1};
+                             ["settings", "alerts"] ->
+                                 {auth, fun handle_settings_alerts_post/1};
                              ["settings", "stats"] ->
                                  {auth, fun handle_settings_stats_post/1};
                              ["settings", "autoFailover"] ->
@@ -1069,49 +1069,18 @@ handle_settings_web_post(Req) ->
             reply_json(Req, {struct, [{newBaseUri, list_to_binary("http://" ++ NewHost ++ "/")}]})
     end.
 
-handle_settings_advanced(Req) ->
-    reply_json(Req, {struct,
-                     [{alerts,
-                       {struct, menelaus_alert:build_alerts_settings()}},
-                      {ports,
-                       {struct, build_port_settings("default")}}
-                     ]}).
+handle_settings_alerts(Req) ->
+    {value, Config} = ns_config:search(alerts),
+    reply_json(Req, {struct, menelaus_alert:build_alerts_json(Config)}).
 
-handle_settings_advanced_post(Req) ->
+handle_settings_alerts_post(Req) ->
     PostArgs = Req:parse_post(),
-    Results = [menelaus_alert:handle_alerts_settings_post(PostArgs),
-               handle_port_settings_post(PostArgs, "default")],
-    case proplists:get_all_values(errors, Results) of
-        [] -> %% no errors
-            CommitFunctions = proplists:get_all_values(ok, Results),
-            lists:foreach(fun (F) -> apply(F, []) end,
-                          CommitFunctions),
+    case menelaus_alert:parse_settings_alerts_post(PostArgs) of
+        {ok, Config} ->
+            ns_config:set(alerts, Config),
             Req:respond({200, add_header(), []});
-        [Head | RestErrors] ->
-            Errors = lists:foldl(fun (A, B) -> A ++ B end,
-                                 Head,
-                                 RestErrors),
+        {error, Errors} ->
             reply_json(Req, Errors, 400)
-    end.
-
-build_port_settings(_PoolId) ->
-    Config = ns_config:get(),
-    [{proxyPort, ns_config:search_node_prop(Config, moxi, port)},
-     {directPort, ns_config:search_node_prop(Config, memcached, port)}].
-
-validate_port_settings(ProxyPort, DirectPort) ->
-    CS = [is_valid_port_number(ProxyPort) orelse <<"Proxy port must be a positive integer less than 65536">>,
-          is_valid_port_number(DirectPort) orelse <<"Direct port must be a positive integer less than 65536">>],
-    lists:filter(fun (C) -> C =/= true end,
-                 CS).
-
-handle_port_settings_post(PostArgs, _PoolId) ->
-    PPort = proplists:get_value("proxyPort", PostArgs),
-    DPort = proplists:get_value("directPort", PostArgs),
-    case validate_port_settings(PPort, DPort) of
-        % TODO: this should change the config
-        [] -> {ok, ok};
-        Errors -> {errors, Errors}
     end.
 
 handle_traffic_generator_control_post(Req) ->
