@@ -135,7 +135,7 @@
 
         %% Number of times temporary OOMs happened while processing
         %% operations
-        %% ep_tmp_oom_errors,
+        ep_tmp_oom_errors,
 
         %% Number of items fetched from disk.
         ep_bg_fetched,                          % needed by ep_cache_miss_rate
