@@ -170,13 +170,14 @@ var StatsModel = {};
     function restorer(rawStats) {
       var op = rawStats.op;
 
-      if (!op.tstampParam) {
-        return rawStats;
+      var samples = op.samples;
+      // if we have empty stats re-use previous value instead of rendering empty stats
+      if (samples && samples.timestamp.length === 0) {
+        return lastValue;
       }
 
-      var samples = op.samples;
-      if (samples.timestamp.length === 0) {
-        return lastValue;
+      if (!op.tstampParam) {
+        return rawStats;
       }
 
       var newSamples = {};
@@ -211,14 +212,16 @@ var StatsModel = {};
 
     return mvReturn(data, restorer);
     function restorer(rawStats) {
+      // if we have empty stats re-use previous value instead of rendering empty stats
+      if (rawStats.timestamp.length === 0) {
+        return lastValue;
+      }
+
       if (!rawStats.tstampParam) {
         return rawStats;
       }
 
       var samples = rawStats.nodeStats;
-      if (rawStats.timestamp.length === 0) {
-        return lastValue;
-      }
 
       var newSamples = {};
       var prevSamples = lastValue.nodeStats;
