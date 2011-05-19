@@ -121,7 +121,11 @@ handle_info(send_heartbeat, candidate, #state{peers=Peers} = StateData) ->
     end;
 
 handle_info(send_heartbeat, master, StateData) ->
-    misc:flush(send_heartbeat),
+    case misc:flush(send_heartbeat) of
+        0 -> ok;
+        Eaten ->
+            ?log_warning("Skipped ~p heartbeats~n", [Eaten])
+    end,
     %% Make sure our name hasn't changed
     StateData1 = case StateData#state.master of
                      N when N == node() ->
