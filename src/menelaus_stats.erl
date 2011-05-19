@@ -51,6 +51,7 @@ bucket_ram_usage(BucketName) ->
 extract_stat(StatName, Sample) ->
     case orddict:find(StatName, Sample#stat_entry.values) of
         error -> 0;
+        {ok, undefined} -> ok;
         {ok, V} -> V
     end.
 
