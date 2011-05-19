@@ -166,7 +166,7 @@ handle_info(sync, StateBefore) ->
     State = flush_pending(StateBefore),
     Recent = State#state.unique_recent,
     erlang:send_after(5000 + random:uniform(55000), self(), sync),
-    case ns_node_disco:nodes_actual_other() of
+    case nodes() of
         [] -> ok;
         Nodes ->
             Node = lists:nth(random:uniform(length(Nodes)), Nodes),
