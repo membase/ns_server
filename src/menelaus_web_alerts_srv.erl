@@ -76,7 +76,10 @@ local_alert(Key, Val) ->
 %% history
 -spec fetch_alerts() -> list(binary()).
 fetch_alerts() ->
-    gen_server:call(?MODULE, fetch_alert).
+    diag_handler:diagnosing_timeouts(
+      fun () ->
+              gen_server:call(?MODULE, fetch_alert)
+      end).
 
 
 stop() ->
@@ -114,18 +117,30 @@ handle_cast(_Msg, State) ->
     {noreply, State}.
 
 
-handle_info(check_alerts, #state{history=Hist, opaque=Opaque} = State) ->
+handle_info(check_alerts, State) ->
+    case misc:flush(check_alerts) of
+        0 -> ok;
+        N ->
+            ?log_warning("Eaten ~p previously unconsumed check_alerts~n", [N])
+    end,
+    Timeout = diag_handler:arm_timeout(4000),
+    try
+        do_handle_check_alerts_info(State)
+    after
+        diag_handler:disarm_timeout(Timeout)
+    end;
+
+handle_info(_Info, State) ->
+    {noreply, State}.
+
+do_handle_check_alerts_info(#state{history=Hist, opaque=Opaque} = State) ->
     RawPairs = [{Name, stats_reader:latest(minute, node(), Name, 1)} || Name <- ns_memcached:active_buckets()],
     Stats = [{Name, OrdDict}
              || {Name, {ok, [#stat_entry{values = OrdDict}|_]}} <- RawPairs],
     {noreply, State#state{
                 opaque = check_alerts(Opaque, Hist, Stats),
                 history = expire_history(Hist)
-               }};
-
-handle_info(_Info, State) ->
-    {noreply, State}.
-
+               }}.
 
 terminate(_Reason, _State) ->
     ok.
