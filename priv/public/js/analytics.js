@@ -598,7 +598,7 @@ var StatsModel = {};
         if (!title) {
           throw new Error();
         }
-        if (knownDescTexts[title] > 1) {
+        if (knownDescTexts[title] > 1 && blockInfo.columns) {
           // we have 'shared name'. So let's 'unshare' it be prepending column name
           title = blockInfo.columns[idx % 4] + ' ' + title;
         }
