@@ -19,6 +19,7 @@
 -author('NorthScale <info@northscale.com>').
 
 -include("ns_stats.hrl").
+-include("ns_common.hrl").
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -51,17 +52,26 @@ bucket_ram_usage(BucketName) ->
 extract_stat(StatName, Sample) ->
     case orddict:find(StatName, Sample#stat_entry.values) of
         error -> 0;
-        {ok, undefined} -> ok;
+        {ok, V} when not is_number(V) ->
+            ?log_error("Got non-number (~p) for ~p~n~p~n", [V, StatName, Sample]),
+            V;
         {ok, V} -> V
     end.
 
 last_membase_sample(BucketName, Nodes) ->
     lists:foldl(fun ({_Node, []}, Acc) -> Acc;
                     ({_Node, [Sample|_]}, {AccMem, AccItems, AccOps, AccFetches}) ->
-                        {extract_stat(mem_used, Sample) + AccMem,
-                         extract_stat(curr_items, Sample) + AccItems,
-                         extract_stat(ops, Sample) + AccOps,
-                         extract_stat(ep_bg_fetched, Sample) + AccFetches}
+                        try
+                            {extract_stat(mem_used, Sample) + AccMem,
+                             extract_stat(curr_items, Sample) + AccItems,
+                             extract_stat(ops, Sample) + AccOps,
+                             extract_stat(ep_bg_fetched, Sample) + AccFetches}
+                        catch error:badarith ->
+                                ?log_error("Badarith details:~nSample:~p~n,~p~n~p~n", [Sample,
+                                                                                       {AccMem, AccItems, AccOps, AccFetches},
+                                                                                       erlang:get_stacktrace()]),
+                                {0, 0, 0, 0}
+                        end
                 end, {0, 0, 0, 0}, invoke_archiver(BucketName, Nodes, {1, minute, 1})).
 
 last_memcached_sample(BucketName, Nodes) ->
@@ -71,17 +81,22 @@ last_memcached_sample(BucketName, Nodes) ->
      CmdGet,
      GetHits} = lists:foldl(fun ({_Node, []}, Acc) -> Acc;
                                 ({_Node, [Sample|_]}, {AccMem, AccItems, AccOps, AccGet, AccGetHits}) ->
-                                    {extract_stat(mem_used, Sample) + AccMem,
-                                     extract_stat(curr_items, Sample) + AccItems,
-                                     extract_stat(ops, Sample) + AccOps,
-                                     extract_stat(cmd_get, Sample) + AccGet,
-                                     extract_stat(get_hits, Sample) + AccGetHits}
+                                    try {extract_stat(mem_used, Sample) + AccMem,
+                                         extract_stat(curr_items, Sample) + AccItems,
+                                         extract_stat(ops, Sample) + AccOps,
+                                         extract_stat(cmd_get, Sample) + AccGet,
+                                         extract_stat(get_hits, Sample) + AccGetHits}
+                                    catch error:badarith ->
+                                            ?log_error("Badarith details:~nSample:~p~n~p~n", [Sample,
+                                                                                              erlang:get_stacktrace()]),
+                                            {0, 0, 0, 0, 0}
+                                    end
                             end, {0, 0, 0, 0, 0}, invoke_archiver(BucketName, Nodes, {1, minute, 1})),
     {MemUsed,
      CurrItems,
      Ops,
-     case CmdGet of
-         0 -> 0;
+     case CmdGet == 0 of
+         true -> 0;
          _ -> GetHits / CmdGet
      end}.
 
