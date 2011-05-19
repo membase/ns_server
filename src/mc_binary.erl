@@ -23,8 +23,8 @@
 
 -export([bin/1, recv/2, recv/3, send/4, encode/3]).
 
--define(FLUSH_TIMEOUT, 5000).
--define(RECV_TIMEOUT, 5000).
+-define(FLUSH_TIMEOUT, 15000).
+-define(RECV_TIMEOUT, 15000).
 
 %% Functions to work with memcached binary protocol packets.
 
