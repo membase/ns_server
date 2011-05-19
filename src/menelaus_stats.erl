@@ -979,11 +979,14 @@ server_resources_stats_description() ->
      {extraCSSClasses,<<"server_resources">>},
      {stats,
       [{struct,[{name,<<"swap_used">>},
-                {title,<<"swap usage">>}]},
+                {title,<<"swap usage">>},
+                {desc,<<"Amount of swap space in use on this server (B=bytes, M=megabytes, G=gigabytes)">>}]},
        {struct,[{name,<<"mem_actual_free">>},
-                {title,<<"free memory">>}]},
+                {title,<<"free RAM">>},
+                {desc,<<"Amount of RAM available on this server (B=bytes, M=megabytes, G=gigabytes)">>}]},
        {struct,[{name,<<"cpu_utilization_rate">>},
                 {title,<<"CPU utilization %">>},
+                {desc,<<"Percentage of CPU in use across all available cores on this server">>},
                 {maxY,100}]}]}].
 
 serve_stats_directory(_PoolId, BucketId, Req) ->
