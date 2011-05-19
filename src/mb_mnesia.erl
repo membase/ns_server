@@ -447,11 +447,35 @@ is_mnesia_running() ->
 
 %% @doc Start mnesia and wait for it to come up.
 start_mnesia() ->
-    application:set_env(mnesia, dir, path_config:component_path(data, "mnesia")),
-    ok = mnesia:start(),
-    {ok, _} = mnesia:subscribe(system),
-    {ok, _} = mnesia:subscribe({table, schema, simple}),
-    ok = mnesia:wait_for_tables([schema], 30000).
+    do_start_mnesia(false).
+
+cleanup_and_start_mnesia() ->
+    MnesiaDir = path_config:component_path(data, "mnesia"),
+    ToDelete = filelib:wildcard("*", MnesiaDir),
+    ?log_info("Recovering from damaged mnesia files by deleting them:~n~p~n", [ToDelete]),
+    lists:foreach(fun (BaseName) ->
+                          file:delete(filename:join(MnesiaDir, BaseName))
+                  end, ToDelete),
+    do_start_mnesia(true).
+
+do_start_mnesia(Repeat) ->
+    MnesiaDir = path_config:component_path(data, "mnesia"),
+    application:set_env(mnesia, dir, MnesiaDir),
+    case mnesia:start() of
+        ok ->
+            {ok, _} = mnesia:subscribe(system),
+            {ok, _} = mnesia:subscribe({table, schema, simple}),
+            case mnesia:wait_for_tables([schema], 30000) of
+                {error, _} when Repeat =/= true ->
+                    mnesia:unsubscribe({table, schema, simple}),
+                    mnesia:unsubscribe(system),
+                    stopped = mnesia:stop(),
+                    cleanup_and_start_mnesia();
+                ok -> ok
+            end;
+        {error, _} when Repeat =/= true ->
+            cleanup_and_start_mnesia()
+    end.
 
 
 %% @doc Hack.
