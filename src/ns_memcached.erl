@@ -27,7 +27,7 @@
 -include("ns_common.hrl").
 
 -define(CHECK_INTERVAL, 10000).
--define(CHECK_ALIVE_INTERVAL, 500).
+-define(CHECK_WARMUP_INTERVAL, 500).
 -define(VBUCKET_POLL_INTERVAL, 100).
 -define(TIMEOUT, 30000).
 -define(CONNECTED_TIMEOUT, 5000).
@@ -84,13 +84,15 @@ start_link(Bucket) ->
 
 init(Bucket) ->
 
-    {ok, Timer} = timer:send_interval(?CHECK_ALIVE_INTERVAL, check_started),
+    {ok, Timer} = timer:send_interval(?CHECK_WARMUP_INTERVAL, check_started),
     Sock = connect(),
     ensure_bucket(Sock, Bucket),
     register(server(Bucket), self()),
 
     % this trap_exit is necessary for terminate callback to work
     process_flag(trap_exit, true),
+
+    gen_event:notify(buckets_events, {started, Bucket}),
 
     {ok, #state{
        timer=Timer,
@@ -205,6 +207,7 @@ handle_info(check_started, #state{timer=Timer, start_time=Start,
             {ok, cancel} = timer:cancel(Timer),
             ns_log:log(?MODULE, 1, "Bucket ~p loaded on node ~p in ~p seconds.",
                        [Bucket, node(), timer:now_diff(now(), Start) div 1000000]),
+            gen_event:notify(buckets_events, {loaded, Bucket}),
             timer:send_interval(?CHECK_INTERVAL, check_config),
             {noreply, State#state{status=connected}};
         false ->
@@ -263,6 +266,7 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
                        "Control connection to memcached on ~p disconnected: ~p",
                        [node(), Reason])
     end,
+    gen_event:notify(buckets_events, {stopped, Bucket, Deleting, Reason}),
     ok = gen_tcp:close(Sock),
     ok.
 

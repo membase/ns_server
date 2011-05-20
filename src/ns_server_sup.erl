@@ -65,6 +65,9 @@ child_specs() ->
      {mb_master, {mb_master, start_link, []},
       permanent, infinity, supervisor, [mb_master]},
 
+     {buckets_events, {gen_event, start_link, [{local, buckets_events}]},
+      permanent, 1000, worker, dynamic},
+
      {ns_heart, {ns_heart, start_link, []},
       permanent, 1000, worker, [ns_heart]},
 
