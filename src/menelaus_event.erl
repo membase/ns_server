@@ -32,7 +32,7 @@
 -export([init/1, handle_event/2, handle_call/2,
          handle_info/2, terminate/2, code_change/3]).
 
--record(state, {id, webconfig, watchers = []}).
+-record(state, {webconfig, watchers = []}).
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -45,7 +45,10 @@ start_link() ->
                                                             ns_config_events),
                                   gen_event:add_sup_handler(ns_node_disco_events,
                                                             {?MODULE, ns_node_disco_events},
-                                                            ns_node_disco_events)
+                                                            simple_events_handler),
+                                  gen_event:add_sup_handler(buckets_events,
+                                                            {?MODULE, buckets_events},
+                                                            simple_events_handler)
                           end).
 
 watchers() ->
@@ -60,6 +63,9 @@ register_watcher(Pid) ->
                    {register_watcher, Pid}),
     gen_event:call(ns_node_disco_events,
                    {?MODULE, ns_node_disco_events},
+                   {register_watcher, Pid}),
+    gen_event:call(buckets_events,
+                   {?MODULE, buckets_events},
                    {register_watcher, Pid}).
 
 unregister_watcher(Pid) ->
@@ -68,18 +74,19 @@ unregister_watcher(Pid) ->
                    {unregister_watcher, Pid}),
     gen_event:call(ns_node_disco_events,
                    {?MODULE, ns_node_disco_events},
+                   {unregister_watcher, Pid}),
+    gen_event:call(buckets_events,
+                   {?MODULE, buckets_events},
                    {unregister_watcher, Pid}).
 
 %% Implementation
 
-init(ns_config_events = Id) ->
-    {ok, #state{id = Id,
-                watchers = [],
+init(ns_config_events) ->
+    {ok, #state{watchers = [],
                 webconfig = menelaus_web:webconfig()}};
 
-init(ns_node_disco_events = Id) ->
-    {ok, #state{id = Id,
-                watchers = []}}.
+init(_) ->
+    {ok, #state{watchers = []}}.
 
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
@@ -91,6 +98,10 @@ handle_event({rest, _}, #state{webconfig = WebConfigOld} = State) ->
         false -> spawn(fun menelaus_web:restart/0),
                  {ok, State#state{webconfig = WebConfigNew}}
     end;
+
+handle_event({significant_buckets_change, _}, State) ->
+    ok = notify_watchers(significant_buckets_change, State),
+    {ok, State};
 
 handle_event({memcached, _}, State) ->
     ok = notify_watchers(memcached, State),
