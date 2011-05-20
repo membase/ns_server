@@ -462,8 +462,10 @@ handle_pool_info_wait_tail(Req, Id, UserPassword, LocalAddr, ETag) ->
 build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
     F = build_nodes_info_fun(menelaus_auth:check_auth(UserPassword), InfoLevel, LocalAddr),
     Nodes = [F(N, undefined) || N <- ns_node_disco:nodes_wanted()],
+    BucketsVer = erlang:phash2(ns_bucket:get_bucket_names()),
     BucketsInfo = {struct, [{uri,
-                             list_to_binary(concat_url_path(["pools", Id, "buckets"]))}]},
+                             list_to_binary(concat_url_path(["pools", Id, "buckets"])
+                                            ++ "?v=" ++ integer_to_list(BucketsVer))}]},
     RebalanceStatus = case ns_cluster_membership:get_rebalance_status() of
                           {running, _ProgressList} -> <<"running">>;
                           _ -> <<"none">>
