@@ -459,9 +459,6 @@ handle_pool_info_wait_tail(Req, Id, UserPassword, LocalAddr, ETag) ->
     Info = {struct, [{etag, list_to_binary(ETag)} | PList]},
     reply_json(Req, Info).
 
-is_healthy(InfoNode) ->
-    not proplists:get_bool(down, InfoNode).
-
 build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
     F = build_nodes_info_fun(menelaus_auth:check_auth(UserPassword), InfoLevel, LocalAddr),
     Nodes = [F(N, undefined) || N <- ns_node_disco:nodes_wanted()],
@@ -511,15 +508,44 @@ build_nodes_info() ->
     F = build_nodes_info_fun(true, normal, "127.0.0.1"),
     [F(N, undefined) || N <- ns_node_disco:nodes_wanted()].
 
+%% builds health/warmup status of given node (w.r.t. given Bucket if
+%% not undefined)
+build_node_status(Node, Bucket, InfoNode, BucketsAll) ->
+    case proplists:get_bool(down, InfoNode) of
+        false ->
+            ReadyBuckets = proplists:get_value(ready_buckets, InfoNode),
+            NodeBucketNames = ns_bucket:node_bucket_names(Node, BucketsAll),
+            case Bucket of
+                undefined ->
+                    case ordsets:is_subset(lists:sort(NodeBucketNames),
+                                           lists:sort(ReadyBuckets)) of
+                        true ->
+                            <<"healthy">>;
+                        false ->
+                            <<"warmup">>
+                    end;
+                _ ->
+                    case lists:member(Bucket, ReadyBuckets) of
+                        true ->
+                            <<"healthy">>;
+                        false ->
+                            case lists:member(Bucket, NodeBucketNames) of
+                                true ->
+                                    <<"warmup">>;
+                                false ->
+                                    <<"unhealthy">>
+                            end
+                    end
+            end;
+        true ->
+            <<"unhealthy">>
+    end.
+
 build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr) ->
     OtpCookie = list_to_binary(atom_to_list(ns_node_disco:cookie_get())),
     NodeStatuses = ns_doctor:get_nodes(),
     Config = ns_config:get(),
-    BucketNames = ns_bucket:get_bucket_names(),
-    BucketsAll = case InfoLevel of
-                     stable -> undefined;
-                     normal -> ns_bucket:get_buckets(Config)
-                 end,
+    BucketsAll = ns_bucket:get_buckets(Config),
     fun(WantENode, Bucket) ->
             InfoNode = case dict:find(WantENode, NodeStatuses) of
                            {ok, Info} -> Info;
@@ -527,25 +553,7 @@ build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr) ->
                        end,
             KV = build_node_info(Config, WantENode, InfoNode, LocalAddr),
 
-            Status = case is_healthy(InfoNode) of
-                         true ->
-                             case Bucket of
-                                 undefined ->
-                                     is_warming_up(WantENode, BucketNames);
-                                 _ ->
-                                     case lists:member(
-                                            Bucket,
-                                            proplists:get_value(
-                                              active_buckets, InfoNode)) of
-                                         true ->
-                                             is_warming_up(WantENode, BucketNames);
-                                         false ->
-                                             <<"unhealthy">>
-                                                 end
-                             end;
-                         false ->
-                             <<"unhealthy">>
-                    end,
+            Status = build_node_status(WantENode, Bucket, InfoNode, BucketsAll),
             KV1 = [{clusterMembership,
                     atom_to_binary(
                       ns_cluster_membership:get_cluster_membership(
@@ -576,13 +584,6 @@ build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr) ->
                                                       KV3)
                   end,
             {struct, KV4}
-    end.
-
-
-is_warming_up(Node, Names) ->
-    case lists:all(fun(X) -> ns_memcached:connected(Node, X) end, Names) of
-        true  -> <<"healthy">>;
-        false -> <<"warmup">>
     end.
 
 
