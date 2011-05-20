@@ -27,31 +27,69 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
          code_change/3]).
 
+-record(state, {
+          forced_beat_timer :: reference() | undefined,
+          expensive_checks_result
+         }).
+
 
 %% gen_server handlers
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
+is_interesting_buckets_event({started, _}) -> true;
+is_interesting_buckets_event({loaded, _}) -> true;
+is_interesting_buckets_event({stopped, _, _, _}) -> true;
+is_interesting_buckets_event(_Event) -> false.
+
 init([]) ->
     timer:send_interval(5000, beat),
     timer:send_interval(?EXPENSIVE_CHECK_INTERVAL, do_expensive_checks),
     self() ! do_expensive_checks,
-    {ok, undefined}.
+    Self = self(),
+    ns_pubsub:subscribe(buckets_events,
+                        fun (Event, _) ->
+                                case is_interesting_buckets_event(Event) of
+                                    true ->
+                                        Self ! buckets_event;
+                                    _ -> ok
+                                end
+                        end, []),
+    {ok, #state{}}.
+
+arm_forced_beat_timer(#state{forced_beat_timer = TRef} = State) when TRef =/= undefined ->
+    State;
+arm_forced_beat_timer(State) ->
+    TRef = erlang:send_after(200, self(), beat),
+    State#state{forced_beat_timer = TRef}.
+
+disarm_forced_beat_timer(#state{forced_beat_timer = undefined} = State) ->
+    State;
+disarm_forced_beat_timer(#state{forced_beat_timer = TRef} = State) ->
+    erlang:cancel_timer(TRef),
+    State#state{forced_beat_timer = undefined}.
+
 
 handle_call(status, _From, State) ->
-    {reply, current_status(State), State};
+    {reply, current_status(State#state.expensive_checks_result), State};
 handle_call(Request, _From, State) ->
     {reply, {unhandled, ?MODULE, Request}, State}.
 
 handle_cast(_Msg, State) -> {noreply, State}.
 
+handle_info({gen_event_EXIT, _, _} = ExitMsg, State) ->
+    ?log_info("Dying because our event subscription was cancelled~n~p~n", [ExitMsg]),
+    {stop, normal, State};
 handle_info(beat, State) ->
+    NewState = disarm_forced_beat_timer(State),
     misc:flush(beat),
-    ns_doctor:heartbeat(current_status(State)),
-    {noreply, State};
-handle_info(do_expensive_checks, _State) ->
-    {noreply, expensive_checks()};
+    ns_doctor:heartbeat(current_status(NewState#state.expensive_checks_result)),
+    {noreply, NewState};
+handle_info(do_expensive_checks, State) ->
+    {noreply, State#state{expensive_checks_result = expensive_checks()}};
+handle_info(buckets_event, State) ->
+    {noreply, arm_forced_beat_timer(State)};
 handle_info(_, State) ->
     {noreply, State}.
 
