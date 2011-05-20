@@ -588,25 +588,10 @@ is_warming_up(Node, Names) ->
 
 build_extra_node_info(Config, Node, InfoNode, _BucketsAll, Append) ->
 
-    CPU = proplists:get_value(cpu_utilization_rate, InfoNode, 0),
-    Items = proplists:get_value(total_items, InfoNode, 0),
-    Used = proplists:get_value(swap_used, InfoNode, 0),
-    Total = proplists:get_value(swap_total, InfoNode, 0),
-
     {UpSecs, {MemoryTotal, MemoryAlloced, _}} =
         {proplists:get_value(wall_clock, InfoNode, 0),
          proplists:get_value(memory_data, InfoNode,
                              {0, 0, undefined})},
-    %% TODO: right now size_per_node is not being set/used, so we're
-    %% using memory quota instead
-
-    %% NodesBucketMemoryTotal =
-    %%     lists:foldl(fun({_BucketName, BucketConfig}, Acc) ->
-    %%                         Acc + proplists:get_value(size_per_node,
-    %%                                                   BucketConfig, 0)
-    %%                 end,
-    %%                 0,
-    %%                 BucketsAll),
     NodesBucketMemoryTotal = case ns_config:search_node_prop(Node,
                                                              Config,
                                                              memcached,
@@ -615,14 +600,18 @@ build_extra_node_info(Config, Node, InfoNode, _BucketsAll, Append) ->
                                  undefined -> (MemoryTotal * 4) div (5 * 1048576)
                              end,
     NodesBucketMemoryAllocated = NodesBucketMemoryTotal,
-    [{swap_total, Total},
-     {swap_used, Used},
-     {cpu_usage, CPU},
-     {total_items, Items},
+    [{systemStats, {struct, proplists:get_value(system_stats, InfoNode, [])}},
+     {interestingStats, {struct, proplists:get_value(interesting_stats, InfoNode, [])}},
+     %% TODO: deprecate this in API (we need 'stable' "startupTStamp"
+     %% first)
      {uptime, list_to_binary(integer_to_list(UpSecs))},
+     %% TODO: deprecate this in API
      {memoryTotal, erlang:trunc(MemoryTotal)},
+     %% TODO: deprecate this in API
      {memoryFree, erlang:trunc(MemoryTotal - MemoryAlloced)},
+     %% TODO: deprecate this in API
      {mcdMemoryReserved, erlang:trunc(NodesBucketMemoryTotal)},
+     %% TODO: deprecate this in API
      {mcdMemoryAllocated, erlang:trunc(NodesBucketMemoryAllocated)}
      | Append].
 

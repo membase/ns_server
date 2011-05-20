@@ -51,6 +51,8 @@
          backfilling/2,
          connected/2,
          connected/3,
+         connected_buckets/0,
+         connected_buckets/1,
          delete_vbucket/2, delete_vbucket/3,
          get_vbucket/3,
          host_port/1,
@@ -297,6 +299,14 @@ connected(Node, Bucket, Timeout) ->
 -spec connected(node(), bucket_name()) -> boolean().
 connected(Node, Bucket) ->
     connected(Node, Bucket, ?CONNECTED_TIMEOUT).
+
+connected_buckets() ->
+    connected_buckets(?CONNECTED_TIMEOUT).
+
+connected_buckets(Timeout) ->
+    lists:filter(fun (N) ->
+                         connected(node(), N, Timeout)
+                 end, active_buckets()).
 
 %% @doc Send flush command to specified bucket
 -spec flush(bucket_name()) -> ok.

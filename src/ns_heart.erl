@@ -18,6 +18,7 @@
 -behaviour(gen_server).
 
 -include("ns_stats.hrl").
+-include("ns_common.hrl").
 
 -define(EXPENSIVE_CHECK_INTERVAL, 15000). % In ms
 
@@ -75,44 +76,49 @@ buckets_replication_statuses() ->
     [{Bucket, replication_status(Bucket, BucketConfig)} ||
         {Bucket, BucketConfig} <- BucketConfigs].
 
+is_interesting_stat({curr_items, _}) -> true;
+is_interesting_stat({curr_items_tot, _}) -> true;
+is_interesting_stat(_) -> false.
+
 current_status(Expensive) ->
     ClusterCompatVersion = case (catch list_to_integer(os:getenv("MEMBASE_CLUSTER_COMPAT_VERSION"))) of
                                X when is_integer(X) -> X;
                                _ -> 1
                            end,
 
-    Stats = case catch stats_reader:latest("minute", node(), "@system") of
-                {ok, StatsRec} -> StatsRec#stat_entry.values;
-                _ -> []
-            end,
+    SystemStats =
+        case catch stats_reader:latest("minute", node(), "@system") of
+            {ok, StatsRec} -> StatsRec#stat_entry.values;
+            CrapSys ->
+                ?log_error("Failed to grab system stats:~n~p~n", [CrapSys]),
+                []
+        end,
 
-    FetchStat = fun(Key, BStats, Dict) ->
-                        Val = b2i(proplists:get_value(Key, BStats)),
-                        dict:update_counter(Key, Val, Dict)
-                end,
-
-    Fun = fun(Bucket, Acc) ->
-                  case ns_memcached:connected(node(), Bucket) of
-                      true ->
-                          {ok, St} = ns_memcached:stats(Bucket),
-                          FetchStat(<<"curr_items">>, St, Acc);
-                      false ->
-                          Acc
-                  end
-          end,
-
-    BStats = lists:foldl(Fun, dict:new(), ns_bucket:get_bucket_names()),
-
-    CPU = proplists:get_value(cpu_utilization_rate, Stats, 0),
-    Total = proplists:get_value(swap_total, Stats, 0),
-    Used = proplists:get_value(swap_used, Stats, 0),
+    InterestingStats =
+        lists:foldl(fun (BucketName, Acc) ->
+                            case catch stats_reader:latest(minute, node(), BucketName) of
+                                {ok, #stat_entry{values = Values}} ->
+                                    InterestingValues = lists:filter(fun is_interesting_stat/1, Values),
+                                    orddict:merge(fun (K, V1, V2) ->
+                                                          try
+                                                              V1 + V2
+                                                          catch error:badarith ->
+                                                                  ?log_error("Ignoring badarith when agregating interesting stats:~n~p~n",
+                                                                             [{BucketName, K, V1, V2}]),
+                                                                  V1
+                                                          end
+                                                  end, Acc, InterestingValues);
+                                Crap ->
+                                    ?log_error("Failed to get stats for bucket: ~p:~n~p~n", [BucketName, Crap]),
+                                    Acc
+                            end
+                    end, [], ns_bucket:node_bucket_names(node())),
 
     [{active_buckets, ns_memcached:active_buckets()},
+     {ready_buckets, ns_memcached:connected_buckets()},
      {memory, erlang:memory()},
-     {cpu_utilization_rate, CPU},
-     {swap_total, Total},
-     {total_items, dict_search(<<"curr_items">>, BStats, 0)},
-     {swap_used, Used},
+     {system_stats, [{N, proplists:get_value(N, SystemStats, 0)} || N <- [cpu_utilization_rate, swap_total, swap_used]]},
+     {interesting_stats, InterestingStats},
      {cluster_compatibility_version, ClusterCompatVersion}
      | element(2, ns_info:basic_info())] ++ Expensive.
 
@@ -161,19 +167,4 @@ replication_status(Bucket, BucketConfig) ->
                             0.0
                     end
             end
-    end.
-
-%% @doc utility to convert from binary to integer
--spec b2i(binary()) -> integer().
-b2i(Bin) ->
-    list_to_integer(binary_to_list(Bin)).
-
-%% @doc search a dict for a key, if no key is present then return default
--spec dict_search(any(), dict(), any()) -> any().
-dict_search(Key, Dict, Default) ->
-    case dict:find(Key, Dict) of
-        {ok, Value} ->
-            Value;
-        error ->
-            Default
     end.
