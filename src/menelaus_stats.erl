@@ -512,11 +512,11 @@ computed_stats_lazy_proplist() ->
                                   catch error:badarith -> 0
                                   end
                           end,
-    ActiveResRate = Z2(vb_active_num_non_resident, curr_items,
+    ActiveResRate = Z2(vb_active_num_non_resident, vb_active_curr_items,
                        ResidenceCalculator),
-    ReplicaResRate = Z2(vb_active_num_non_resident, vb_replica_curr_items,
+    ReplicaResRate = Z2(vb_replica_num_non_resident, vb_replica_curr_items,
                         ResidenceCalculator),
-    PendingResRate = Z2(vb_active_num_non_resident, vb_pending_curr_items,
+    PendingResRate = Z2(vb_pending_num_non_resident, vb_pending_curr_items,
                         ResidenceCalculator),
     [{hit_ratio, HitRatio},
      {ep_cache_miss_rate, EPCacheMissRatio},
