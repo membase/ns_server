@@ -53,7 +53,9 @@
          set_servers/2,
          filter_ready_buckets/1,
          update_bucket_props/2,
-         update_bucket_props/3]).
+         update_bucket_props/3,
+         node_bucket_names/2,
+         node_bucket_names/1]).
 
 
 %%%===================================================================
@@ -595,6 +597,12 @@ name_conflict(BucketName) ->
     lists:any(fun ({Name, _}) -> BucketNameLower == string:to_lower(Name) end,
               get_buckets()).
 
+node_bucket_names(Node, BucketsConfigs) ->
+    [B || {B, C} <- BucketsConfigs,
+          lists:member(Node, proplists:get_value(servers, C, []))].
+
+node_bucket_names(Node) ->
+    node_bucket_names(Node, get_buckets()).
 
 %%
 %% Internal functions
