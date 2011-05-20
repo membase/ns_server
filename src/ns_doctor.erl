@@ -113,6 +113,25 @@ get_nodes() ->
 
 %% Internal functions
 
-update_status(Name, Status, Dict) ->
-    Node = [{last_heard, erlang:now()} | Status],
-    dict:store(Name, Node, Dict).
+is_significant_buckets_change(OldStatus, NewStatus) ->
+    [OldActiveBuckets, OldReadyBuckets,
+     NewActiveBuckets, NewReadyBuckets] =
+        [lists:sort(proplists:get_value(Field, Status, []))
+         || Status <- [OldStatus, NewStatus],
+            Field <- [active_buckets, ready_buckets]],
+    OldActiveBuckets =/= NewActiveBuckets
+        orelse OldReadyBuckets =/= NewReadyBuckets.
+
+update_status(Name, Status0, Dict) ->
+    Status = [{last_heard, erlang:now()} | Status0],
+    PrevStatus = case dict:find(Name, Dict) of
+                     {ok, V} -> V;
+                     error -> []
+                 end,
+    case is_significant_buckets_change(PrevStatus, Status) of
+        true ->
+            gen_event:notify(buckets_events, {significant_buckets_change, Name});
+        _ ->
+            ok
+    end,
+    dict:store(Name, Status, Dict).
