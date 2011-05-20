@@ -452,6 +452,7 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 #monitor_servers .aservers .servers_list .fdp {float:left;width:190px;height:100%;padding:0 15px 0 13px;background:#fafbfd;border-left:1px solid #d2d3d5; text-align:right;line-height:1.5;}
 #monitor_servers .aservers .servers_list li span {position:relative;}
 #monitor_servers .aservers .servers_list li .usage_small {margin-top:17px;}
+#monitor_servers_container .usage_smallest_info { width: 125px; }
 
 #bucket_list_container {border-left:1px solid #c8ccce; border-bottom:1px solid #c8ccce;}
 #get_started,
