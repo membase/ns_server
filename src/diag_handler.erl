@@ -91,7 +91,7 @@ grab_process_info(Pid) ->
                         L when L < 90 ->
                             X;
                         _ -> binary:part(X, 1, 90)
-                    end || X <- binary:split(Backtrace, <<"\n">>)],
+                    end || X <- binary:split(Backtrace, <<"\n">>, [global])],
     lists:keyreplace(backtrace, 1, PureInfo, {backtrace, NewBacktrace}).
 
 do_diag_per_node() ->
