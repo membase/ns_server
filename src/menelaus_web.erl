@@ -902,10 +902,12 @@ handle_settings_stats(Req) ->
 
 build_settings_stats() ->
     Defaults = default_settings_stats_config(),
-    ns_config:search_prop(ns_config:get(), settings, stats, Defaults).
+    [{send_stats, SendStats}] = ns_config:search_prop(
+                                  ns_config:get(), settings, stats, Defaults),
+    [{sendStats, SendStats}].
 
 default_settings_stats_config() ->
-    [{sendStats, false}].
+    [{send_stats, false}].
 
 handle_settings_stats_post(Req) ->
     PostArgs = Req:parse_post(),
@@ -915,7 +917,7 @@ handle_settings_stats_post(Req) ->
             Req:respond({400, add_header(),
                          "The value of \"sendStats\" must be true or false."});
         SendStats2 ->
-            ns_config:set(settings, [{stats, [{sendStats, SendStats2}]}]),
+            ns_config:set(settings, [{stats, [{send_stats, SendStats2}]}]),
             Req:respond({200, add_header(), []})
     end.
 
