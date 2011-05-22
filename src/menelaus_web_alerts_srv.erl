@@ -134,7 +134,9 @@ handle_info(_Info, State) ->
     {noreply, State}.
 
 do_handle_check_alerts_info(#state{history=Hist, opaque=Opaque} = State) ->
-    RawPairs = [{Name, stats_reader:latest(minute, node(), Name, 1)} || Name <- ns_memcached:active_buckets()],
+    BucketNames = ordsets:intersection(lists:sort(ns_memcached:active_buckets()),
+                                       lists:sort(ns_bucket:node_bucket_names(node()))),
+    RawPairs = [{Name, stats_reader:latest(minute, node(), Name, 1)} || Name <- BucketNames],
     Stats = [{Name, OrdDict}
              || {Name, {ok, [#stat_entry{values = OrdDict}|_]}} <- RawPairs],
     {noreply, State#state{
