@@ -64,6 +64,7 @@ init([]) ->
              end,
     %% initiate log syncing
     self() ! sync,
+    erlang:process_flag(trap_exit, true),
     {ok, #state{unique_recent=Recent,
                 dedup=dict:new(),
                 filename=Filename}}.
@@ -187,6 +188,8 @@ handle_info(save, StateBefore = #state{filename=Filename}) ->
 handle_info(_Info, State) ->
     {noreply, State}.
 
+terminate(shutdown, State) ->
+    handle_info(save, State);
 terminate(_Reason, _State) ->
     ok.
 
