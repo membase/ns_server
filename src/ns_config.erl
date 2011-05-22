@@ -370,40 +370,26 @@ strip_metadata([{'_vclock', _} | Rest]) ->
 strip_metadata(Value) ->
     Value.
 
-%% strip_metadata(Value) when is_list(Value) ->
-%%     [X || X <- Value, not (is_tuple(X) andalso
-%%                            lists:member(element(1, X), [?METADATA_VCLOCK,
-%%                                                         '_ver']))];
-%% strip_metadata(Value) ->
-%%     Value.
-
-
+extract_vclock([{'_vclock', Clock} | _]) -> Clock;
+extract_vclock(_Value) -> [].
 
 %% Increment the vclock in V2 and replace the one in V1
 increment_vclock(NewValue, OldValue) ->
-    case is_list(NewValue) of
-        true ->
-            OldVClock =
-                case is_list(OldValue) of
-                    true ->
-                        proplists:get_value(?METADATA_VCLOCK, OldValue, []);
-                    false ->
-                        []
-                end,
-            NewVClock = lists:sort(vclock:increment(node(), OldVClock)),
-            [{?METADATA_VCLOCK, NewVClock} | lists:keydelete(?METADATA_VCLOCK, 1,
-                                                             NewValue)];
-        false ->
-            NewValue
-    end.
+    OldVClock = extract_vclock(OldValue),
+    NewVClock = lists:sort(vclock:increment(node(), OldVClock)),
+    [{?METADATA_VCLOCK, NewVClock} | strip_metadata(NewValue)].
 
 %% Set the vclock in NewValue to one that descends from both
 merge_vclocks(NewValue, OldValue) ->
-    NewValueVClock = proplists:get_value(?METADATA_VCLOCK, NewValue, []),
-    OldValueVClock = proplists:get_value(?METADATA_VCLOCK, OldValue, []),
-    NewVClock = lists:sort(vclock:merge([OldValueVClock, NewValueVClock])),
-    [{?METADATA_VCLOCK, NewVClock} | lists:keydelete(?METADATA_VCLOCK,
-                                                     1, NewValue)].
+    NewValueVClock = extract_vclock(NewValue),
+    OldValueVClock = extract_vclock(OldValue),
+    case NewValueVClock =:= [] andalso OldValueVClock =:= [] of
+        true ->
+            NewValue;
+        _ ->
+            NewVClock = lists:sort(vclock:merge([OldValueVClock, NewValueVClock])),
+            [{?METADATA_VCLOCK, NewVClock} | strip_metadata(NewValue)]
+    end.
 
 %% gen_server callbacks
 
@@ -682,7 +668,7 @@ merge_kv_pairs(RemoteKVList, LocalKVList) ->
                      LP;
                  ({_, RV} = RP, {_, LV} = LP) ->
                      if
-                         is_list(RV) andalso is_list(LV) ->
+                         is_list(RV) orelse is_list(LV) ->
                              merge_list_values(RP, LP);
                          true ->
                              RP
@@ -693,8 +679,8 @@ merge_kv_pairs(RemoteKVList, LocalKVList) ->
 -spec merge_list_values({term(), term()}, {term(), term()}) -> {term(), term()}.
 merge_list_values({_K, RV} = RP, {_, LV} = _LP) when RV =:= LV -> RP;
 merge_list_values({K, RV} = RP, {_, LV} = LP) ->
-    RClock = proplists:get_value(?METADATA_VCLOCK, RV, []),
-    LClock = proplists:get_value(?METADATA_VCLOCK, LV, []),
+    RClock = extract_vclock(RV),
+    LClock = extract_vclock(LV),
     case {vclock:descends(RClock, LClock),
           vclock:descends(LClock, RClock)} of
         {X, X} ->
@@ -797,8 +783,8 @@ test_setup() ->
                               end),
     ?assertEqual(F, gen_server:call(ns_config, {update_with_changes, F})).
 
--define(assertConfigEquals(A, B), ?assertEqual(lists:sort(A),
-                                               lists:sort(B))).
+-define(assertConfigEquals(A, B), ?assertEqual(lists:sort([{K, strip_metadata(V)} || {K,V} <- A]),
+                                               lists:sort([{K, strip_metadata(V)} || {K,V} <- B]))).
 
 test_set() ->
     Self = self(),
@@ -811,12 +797,15 @@ test_set() ->
     Updater0 = (fun () -> receive {update_with_changes, F} -> F end end)(),
 
     ?assertConfigEquals([{test, 1}], element(2, Updater0([]))),
+    %% this is initial set, so no vclock
     {[{test, 1}], Val2} = Updater0([{foo, 2}]),
     ?assertConfigEquals([{test, 1}, {foo, 2}], Val2),
 
-    {[{test, 1}], Val3} = Updater0([{foo, [{k, 1}, {v, 2}]},
-                                    {xar, true},
-                                    {test, [{a, b}, {c, d}]}]),
+    %% and here we're changing value, so expecting vclock
+    {[{test, [{'_vclock', [_]} | 1]}], Val3} =
+        Updater0([{foo, [{k, 1}, {v, 2}]},
+                  {xar, true},
+                  {test, [{a, b}, {c, d}]}]),
 
     ?assertConfigEquals([{foo, [{k, 1}, {v, 2}]},
                          {xar, true},
@@ -868,13 +857,13 @@ do_test_cas_config(Self) ->
 
 
 test_update_config() ->
-    ?assertEqual([{test, 1}], update_config_key(test, 1, [])),
-    ?assertEqual([{test, 1},
-                  {foo, [{k, 1}, {v, 2}]},
-                  {xar, true}],
-                 update_config_key(test, 1, [{foo, [{k, 1}, {v, 2}]},
-                                             {xar, true},
-                                             {test, [{a, b}, {c, d}]}])).
+    ?assertConfigEquals([{test, 1}], update_config_key(test, 1, [])),
+    ?assertConfigEquals([{test, 1},
+                         {foo, [{k, 1}, {v, 2}]},
+                         {xar, true}],
+                        update_config_key(test, 1, [{foo, [{k, 1}, {v, 2}]},
+                                                    {xar, true},
+                                                    {test, [{a, b}, {c, d}]}])).
 
 test_set_kvlist() ->
     {NewPairs, [{foo, FooVal},
@@ -932,12 +921,15 @@ test_update() ->
 
     ?assertEqual([[{a, b}, {c, d}], {a, b}, {c, d}], ListValues),
 
-    ?assertEqual(-3, proplists:get_value(a, NewConfig)),
-    ?assertEqual(-4, proplists:get_value(b, NewConfig)),
+    ?assertEqual(-3, strip_metadata(proplists:get_value(a, NewConfig))),
+    ?assertEqual(-4, strip_metadata(proplists:get_value(b, NewConfig))),
+
+    ?assertMatch([{N, _}] when N =:= node(), extract_vclock(proplists:get_value(a, NewConfig))),
+    ?assertMatch([{N, _}] when N =:= node(), extract_vclock(proplists:get_value(b, NewConfig))),
 
     ns_config:update_key(a, fun (3) -> 10 end),
     Updater2 = RecvUpdater(),
-    {[{a, 10}], NewConfig2} = Updater2(OldConfig),
+    {[{a, [{'_vclock', [_]} | 10]}], NewConfig2} = Updater2(OldConfig),
 
     ?assertConfigEquals([{a, 10} | lists:keydelete(a, 1, OldConfig)], NewConfig2),
     ok.
