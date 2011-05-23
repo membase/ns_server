@@ -16,7 +16,8 @@
 -record(state, {
           queue = [],
           history = [],
-          opaque = dict:new()
+          opaque = dict:new(),
+          checker_pid
          }).
 
 %% Amount of time to wait between state checks (ms)
@@ -116,19 +117,33 @@ handle_cast(stop, State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
+-spec is_checker_active(undefined | pid()) -> true | false.
+is_checker_active(undefined) -> false;
+is_checker_active(Pid) ->
+    erlang:is_process_alive(Pid).
 
-handle_info(check_alerts, State) ->
-    case misc:flush(check_alerts) of
-        0 -> ok;
-        N ->
-            ?log_warning("Eaten ~p previously unconsumed check_alerts~n", [N])
-    end,
-    Timeout = diag_handler:arm_timeout(4000),
-    try
-        do_handle_check_alerts_info(State)
-    after
-        diag_handler:disarm_timeout(Timeout)
+handle_info(check_alerts, #state{checker_pid = Pid} = State) ->
+    case is_checker_active(Pid) of
+        true ->
+            {noreply, State};
+        _ ->
+            case misc:flush(check_alerts) of
+                0 -> ok;
+                N ->
+                    ?log_warning("Eaten ~p previously unconsumed check_alerts~n", [N])
+            end,
+            Self = self(),
+            CheckerPid = erlang:spawn_link(fun () ->
+                                                   NewState = do_handle_check_alerts_info(State),
+                                                   Self ! {merge_state_from_checker, NewState}
+                                           end),
+            {noreply, State#state{checker_pid = CheckerPid}}
     end;
+
+handle_info({merge_state_from_checker, NewState}, State) ->
+    {noreply, State#state{opaque = NewState#state.opaque,
+                          history = NewState#state.history,
+                          checker_pid = undefined}};
 
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -139,10 +154,10 @@ do_handle_check_alerts_info(#state{history=Hist, opaque=Opaque} = State) ->
     RawPairs = [{Name, stats_reader:latest(minute, node(), Name, 1)} || Name <- BucketNames],
     Stats = [{Name, OrdDict}
              || {Name, {ok, [#stat_entry{values = OrdDict}|_]}} <- RawPairs],
-    {noreply, State#state{
-                opaque = check_alerts(Opaque, Hist, Stats),
-                history = expire_history(Hist)
-               }}.
+    State#state{
+      opaque = check_alerts(Opaque, Hist, Stats),
+      history = expire_history(Hist)
+     }.
 
 terminate(_Reason, _State) ->
     ok.
