@@ -88,7 +88,7 @@ grab_process_info(Pid) ->
                                     trap_exit]),
     Backtrace = proplists:get_value(backtrace, PureInfo),
     NewBacktrace = [case erlang:size(X) of
-                        L when L < 90 ->
+                        L when L =< 90 ->
                             X;
                         _ -> binary:part(X, 1, 90)
                     end || X <- binary:split(Backtrace, <<"\n">>, [global])],
