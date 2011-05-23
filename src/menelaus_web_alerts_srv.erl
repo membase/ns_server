@@ -40,15 +40,15 @@
 
 %% Error constants
 errors(ip) ->
-    "Cannot listen on hostname: ~p";
+    "IP address seems to have changed. Unable to listen on ~p.";
 errors(ep_oom_errors) ->
-    "Bucket \"~s\" on node ~s is out of memory";
+    "Hard Out Of Memory Error. Bucket \"~s\" on node ~s is full. All memory allocated to this bucket is used for metadata.";
 errors(ep_item_commit_failed) ->
-    "Bucket \"~s\" on node ~s failed to write an item";
+    "Write Commit Failure. Disk write failed for item in Bucket \"~s\" on node ~s.";
 errors(overhead) ->
-    "Metadata on node \"~s\" is over ~p%";
+    "Metadata overhead warning. Over  ~p% of RAM allocated to bucket  \"~s\" on node \"~s\" is taken up by keys and metadata.";
 errors(disk) ->
-    "Usage of disk \"~s\" on node \"~s\" is over ~p%".
+    "Approaching full disk warning. Usage of disk \"~s\" on node \"~s\" is over ~p%.".
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -246,7 +246,7 @@ check(overhead, Opaque, _History, Stats) ->
                          fetch_bucket_stat(Stats, Bucket, ep_max_data_size)) of
          {true, X} ->
              {_Sname, Host} = misc:node_name_host(node()),
-             Err = fmt_to_bin(errors(overhead), [Host, erlang:round(X)]),
+             Err = fmt_to_bin(errors(overhead), [erlang:trunc(X), Bucket, Host]),
              global_alert({overhead, node()}, Err);
          false  ->
              ok
