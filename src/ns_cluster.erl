@@ -551,6 +551,7 @@ perform_actual_join(RemoteNode, NewCookie) ->
     ns_config:set(i_am_a_dead_man, true),
     %% Pull the rug out from under the app
     ok = ns_server_cluster_sup:stop_cluster(),
+    ns_log:delete_log(),
     Status = try
         error_logger:info_msg("ns_cluster: joining cluster. Child has exited.~n"),
 

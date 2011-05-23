@@ -32,7 +32,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--export([log/3, log/4, recent/0, recent/1]).
+-export([log/3, log/4, recent/0, recent/1, delete_log/0]).
 
 -export([categorize/2, code_string/2]).
 
@@ -50,9 +50,12 @@
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
+log_filename() ->
+    ns_config:search_node_prop(ns_config:get(), ns_log, filename).
+
 init([]) ->
     timer:send_interval(?GC_TIME, garbage_collect),
-    Filename = ns_config:search_node_prop(ns_config:get(), ns_log, filename),
+    Filename = log_filename(),
     Recent = case file:read_file(Filename) of
                  {ok, <<>>} -> [];
                  {ok, B} -> binary_to_term(zlib:uncompress(B));
@@ -68,6 +71,9 @@ init([]) ->
     {ok, #state{unique_recent=Recent,
                 dedup=dict:new(),
                 filename=Filename}}.
+
+delete_log() ->
+    file:delete(log_filename()).
 
 tail_of_length(List, N) ->
     case length(List) - N of
