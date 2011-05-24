@@ -47,6 +47,8 @@ bucket_disk_usage(BucketName, Nodes) ->
                end || X <- Res]).
 
 bucket_ram_usage(BucketName) ->
+    %% NOTE: we're getting last membase sample, but first stat name is
+    %% same in memcached buckets, so it works for them too.
     element(1, last_membase_sample(BucketName, ns_bucket:live_bucket_nodes(BucketName))).
 
 extract_stat(StatName, Sample) ->
@@ -481,9 +483,7 @@ computed_stats_lazy_proplist() ->
                  {Combiner, [StatNameA, StatNameB]}
          end,
     HitRatio = Z2(cmd_get, get_hits,
-                  fun (null, _Hits) -> 0;
-                      (_Gets, null) -> 0;
-                      (Gets, _Hits) when Gets == 0 -> 0; % this handles int and float 0
+                  fun (Gets, _Hits) when Gets == 0 -> 0; % this handles int and float 0
                       (Gets, Hits) -> Hits * 100/Gets
                   end),
     EPCacheMissRatio = Z2(ep_bg_fetched, cmd_get,
@@ -544,7 +544,13 @@ computed_stats_lazy_proplist() ->
      {vb_replica_resident_items_ratio, ReplicaResRate},
      {vb_pending_resident_items_ratio, PendingResRate}].
 
-%% converts list of samples to proplist of stat values
+%% converts list of samples to proplist of stat values.
+%%
+%% null values should be uncommon, but they are not impossible. They
+%% will be used for samples which lack some particular stat, for
+%% example due to older membase version. I.e. when we upgrade we
+%% sometimes add new kinds of stats and null values are used to mark
+%% those past samples that don't have new stats gathered.
 -spec samples_to_proplists([#stat_entry{}]) -> [{atom(), [null | number()]}].
 samples_to_proplists([]) -> [{timestamp, []}];
 samples_to_proplists(Samples) ->

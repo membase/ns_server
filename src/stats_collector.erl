@@ -131,8 +131,7 @@ translate_stat(Stat) ->
     Stat.
 
 sum_stat_values(Dict, [FirstName | RestNames]) ->
-    lists:foldl(fun (_Name, null) -> null;
-                    (Name, Acc) ->
+    lists:foldl(fun (Name, Acc) ->
                         orddict:fetch(Name, Dict) + Acc
                 end, orddict:fetch(FirstName, Dict), RestNames).
 
@@ -158,7 +157,7 @@ parse_stats_raw2(TS, LastCounters, LastTS, KnownGauges, KnownCounters, GetStat, 
     Counters = [GetStat(K, Dict) || K <- KnownCounters],
     Deltas = case LastCounters of
                  undefined ->
-                     lists:duplicate(length(KnownCounters), null);
+                     lists:duplicate(length(KnownCounters), 0);
                  _ ->
                      Delta = TS - LastTS,
                      if Delta > 0 ->
@@ -171,7 +170,7 @@ parse_stats_raw2(TS, LastCounters, LastTS, KnownGauges, KnownCounters, GetStat, 
                                end, Counters, LastCounters);
                         true ->
                              lists:duplicate(length(KnownCounters),
-                                             null)
+                                             0)
                      end
              end,
     Values0 = orddict:merge(fun (_, _, _) -> erlang:error(cannot_happen) end,
