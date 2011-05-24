@@ -64,9 +64,9 @@ ebins: src/ns_server.app.src
 	$(REBAR) compile
 
 src/ns_server.app.src: src/ns_server.app.src.in $(TMP_VER)
-	(sed s/0.0.0/'$(if $(MEMBASE_VERSION),$(MEMBASE_VERSION),$(shell cat $(TMP_VER)))'/g $< > $@) || (rm $@ && false)
+	(sed s/0.0.0/'$(if $(PRODUCT_VERSION),$(PRODUCT_VERSION),$(shell cat $(TMP_VER)))'/g $< > $@) || (rm $@ && false)
 
-ifdef MEMBASE_VERSION
+ifdef PRODUCT_VERSION
 .PHONY: src/ns_server.app.src
 endif
 
