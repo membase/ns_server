@@ -39,7 +39,10 @@ diag_filter_out_config_password_list([X | Rest], UnchangedMarker) ->
                         UnchangedMarker -> X;
                         _ -> NewX
                     end | NewRest]
-    end.
+    end;
+%% this handles improper list end
+diag_filter_out_config_password_list(X, UnchangedMarker) ->
+    diag_filter_out_config_password_list([X], UnchangedMarker).
 
 diag_filter_out_config_password_rec(Config, UnchangedMarker) when is_tuple(Config) ->
     case Config of
