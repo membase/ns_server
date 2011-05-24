@@ -26,7 +26,9 @@
 -export([failover/1,
          generate_initial_map/1,
          rebalance/3,
-         unbalanced/2]).
+         unbalanced/2,
+         replication_status/2,
+         buckets_replication_statuses/0]).
 
 
 -define(DATA_LOST, 1).
@@ -297,3 +299,43 @@ wait_for_mover(Pid) ->
         {'DOWN', Ref, _, _, Reason} ->
             exit({mover_crashed, Reason})
     end.
+
+replication_status(Bucket, BucketConfig) ->
+    %% First, check that replication is running
+    case proplists:get_value(map, BucketConfig) of
+        undefined ->
+            1.0;
+        Map ->
+            case [R || {N, _, _} = R <- ns_bucket:map_to_replicas(Map),
+                       N == node()] of
+                [] ->
+                    %% No replicas for this node
+                    1.0;
+                Replicas ->
+                    try
+                        Replicators = ns_vbm_sup:replicators([node()],
+                                                             Bucket),
+                        case Replicas -- Replicators of
+                            [] ->
+                                %% Ok, running
+                                case ns_memcached:backfilling(Bucket) of
+                                    true ->
+                                        0.5;
+                                    false ->
+                                        1.0
+                                end;
+                            _ ->
+                                %% Replication isn't even running
+                                0.0
+                        end
+                    catch
+                        _:_ ->
+                            0.0
+                    end
+            end
+    end.
+
+buckets_replication_statuses() ->
+    BucketConfigs = ns_bucket:get_buckets(),
+    [{Bucket, replication_status(Bucket, BucketConfig)} ||
+        {Bucket, BucketConfig} <- BucketConfigs].

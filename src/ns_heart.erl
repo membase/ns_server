@@ -22,8 +22,7 @@
 
 -define(EXPENSIVE_CHECK_INTERVAL, 15000). % In ms
 
--export([start_link/0, status_all/0, expensive_checks/0,
-         buckets_replication_statuses/0]).
+-export([start_link/0, status_all/0, expensive_checks/0]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
          code_change/3]).
 
@@ -109,10 +108,6 @@ stats() ->
     [{Stat, statistics(Stat)} || Stat <- Stats].
 
 %% Internal fuctions
-buckets_replication_statuses() ->
-    BucketConfigs = ns_bucket:get_buckets(),
-    [{Bucket, replication_status(Bucket, BucketConfig)} ||
-        {Bucket, BucketConfig} <- BucketConfigs].
 
 is_interesting_stat({curr_items, _}) -> true;
 is_interesting_stat({curr_items_tot, _}) -> true;
@@ -163,7 +158,7 @@ current_status(Expensive) ->
 
 
 expensive_checks() ->
-    ReplicationStatus = buckets_replication_statuses(),
+    ReplicationStatus = ns_rebalancer:buckets_replication_statuses(),
     BasicData = [{replication, ReplicationStatus},
                  {system_memory_data, memsup:get_system_memory_data()},
                  {statistics, stats()}],
@@ -171,39 +166,4 @@ expensive_checks() ->
         {ok, Contents} ->
             [{meminfo, Contents} | BasicData];
         _ -> BasicData
-    end.
-
-replication_status(Bucket, BucketConfig) ->
-    %% First, check that replication is running
-    case proplists:get_value(map, BucketConfig) of
-        undefined ->
-            1.0;
-        Map ->
-            case [R || {N, _, _} = R <- ns_bucket:map_to_replicas(Map),
-                            N == node()] of
-                [] ->
-                    %% No replicas for this node
-                    1.0;
-                Replicas ->
-                    try
-                        Replicators = ns_vbm_sup:replicators([node()],
-                                                             Bucket),
-                        case Replicas -- Replicators of
-                            [] ->
-                                %% Ok, running
-                                case ns_memcached:backfilling(Bucket) of
-                                    true ->
-                                        0.5;
-                                    false ->
-                                        1.0
-                                end;
-                            _ ->
-                                %% Replication isn't even running
-                                0.0
-                        end
-                    catch
-                        _:_ ->
-                            0.0
-                    end
-            end
     end.
