@@ -720,8 +720,7 @@ membase_stats_description() ->
                          {desc,<<"Number of unique items in this bucket - only active items, not replica (measured from curr_items)">>}]},
                 {struct,[{title,<<"disk write queue">>},
                          {name,<<"disk_write_queue">>},
-                         {desc,<<"Number of items waiting to be written to disk in this bucket (measured from ep_queue_size+flusher_todo)">>},
-                         {missing, true}]}
+                         {desc,<<"Number of items waiting to be written to disk in this bucket (measured from ep_queue_size+ep_flusher_todo)">>}]}
                ]}]},
      {struct,[{blockName,<<"vBucket Resources">>},
               {extraCSSClasses,<<"withtotal closed">>},

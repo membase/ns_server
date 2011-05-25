@@ -39,6 +39,10 @@
         vb_pending_num,
         ep_vb_total,
 
+        % used for disk_write_queue computation in menelaus_stats
+        ep_queue_size,
+        ep_flusher_todo,
+
         %% Number of in memory items for replica vBuckets
         vb_replica_curr_items,
         %% Number of in memory items for pending vBuckets
