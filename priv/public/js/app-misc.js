@@ -435,32 +435,27 @@ _.extend(ViewHelpers, {
 
   maybeStripPort: (function () {
     var cachedAllServers;
-    var cachedHostnamesCount;
-    return function(value, allServers) {
-      var counts;
+    var cachedIsStripping;
+    var strippingRE = /:8091$/;
+    return function (value, allServers) {
       if (allServers === undefined) {
         throw new Error("second argument is required!");
       }
       if (cachedAllServers === allServers) {
-        counts = cachedHostnamesCount;
+        var isStripping = cachedIsStripping;
       } else {
-        var hostnames = _.map(allServers, function (s) {return s.hostname;});
-        counts = {};
-        var len = hostnames.length;
-        for (var i = 0; i < len; i++) {
-          var h = hostnames[i].split(":",1)[0];
-          if (counts[h] === undefined) {
-            counts[h] = 1;
-          } else {
-            counts[h]++;
-          }
+        if (allServers.length == 0 || _.isString(allServers[0])) {
+          var allNames = allServers;
+        } else {
+          var allNames = _.pluck(allServers, 'hostname');
         }
+        var isStripping = _.all(allNames, function (h) {return h.match(strippingRE);});
+        cachedIsStripping = isStripping;
         cachedAllServers = allServers;
-        cachedHostnamesCount = counts;
       }
-      var strippedValue = value.split(":",1)[0];
-      if (counts[strippedValue] < 2) {
-        value = strippedValue;
+      if (isStripping) {
+        var match = value.match(strippingRE);
+        return match ? value.slice(0, match.index) : value;
       }
       return value;
     };
