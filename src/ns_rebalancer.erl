@@ -110,8 +110,10 @@ rebalance(KeepNodes, EjectNodes, FailedNodes) ->
                                       ns_bucket:set_servers(BucketName, LiveNodes),
                                       wait_for_memcached(LiveNodes, BucketName, 10),
                                       ns_janitor:cleanup(BucketName),
+                                      {ok, NewConf} =
+                                          ns_bucket:get_bucket(BucketName),
                                       NewMap =
-                                          rebalance(BucketName, BucketConfig,
+                                          rebalance(BucketName, NewConf,
                                                     KeepNodes, BucketCompletion,
                                                     NumBuckets),
                                       verify_replication(BucketName, LiveNodes,
