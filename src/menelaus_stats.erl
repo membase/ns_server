@@ -1040,7 +1040,13 @@ server_resources_stats_description() ->
        {struct,[{name,<<"cpu_utilization_rate">>},
                 {title,<<"CPU utilization %">>},
                 {desc,<<"Percentage of CPU in use across all available cores on this server">>},
-                {maxY,100}]}]}].
+                {maxY,100}]},
+       {struct,[{name,<<"curr_connections">>},
+                {title,<<"connections">>},
+                {desc,<<"Number of connections to this server "
+                        "including connections from external drivers, proxies, "
+                        "TAP requests and internal statistic gathering "
+                        "(measured from curr_connections)">>}]}]}].
 
 serve_stats_directory(_PoolId, BucketId, Req) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(BucketId),

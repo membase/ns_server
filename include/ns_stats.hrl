@@ -18,7 +18,7 @@
         curr_items,
 
         mem_used,                               % used by memcached
-        curr_connections,                       % used by memcached
+        curr_connections,
 
         %% Num current items including those not active (replica, (NOT
         %% including dead) and pending states)
