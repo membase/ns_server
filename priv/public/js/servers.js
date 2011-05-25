@@ -483,18 +483,23 @@ var ServersSection = {
     var ejectNodeURI = this.poolDetails.value.controllers.ejectNode.uri;
     this.postAndReload(ejectNodeURI, {otpNode: node.otpNode});
   },
-  postAndReload: function (uri, data) {
+  postAndReload: function (uri, data, errorMessage) {
     var self = this;
     // keep poolDetails undefined for now
     self.poolDetails.setValue(undefined);
+    errorMessage = errorMessage || "Request failed. Check logs."
     postWithValidationErrors(uri, $.param(data), function (data, status) {
       // re-calc poolDetails according to it's formula
       self.poolDetails.invalidate();
-      if (status == 'error' && data[0].mismatch) {
-        self.poolDetails.changedSlot.subscribeOnce(function () {
-          var msg = "Could not Rebalance because the cluster configuration was modified by someone else.\nYou may want to verify the latest cluster configuration and, if necessary, please retry a Rebalance."
-          alert(msg);
-        });
+      if (status == 'error') {
+        if (data[0].mismatch) {
+          self.poolDetails.changedSlot.subscribeOnce(function () {
+            var msg = "Could not Rebalance because the cluster configuration was modified by someone else.\nYou may want to verify the latest cluster configuration and, if necessary, please retry a Rebalance."
+            alert(msg);
+          });
+        } else {
+          displayNotice(errorMessage, true);
+        }
       }
     });
   }
