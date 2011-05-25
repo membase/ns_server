@@ -448,9 +448,13 @@ var StatsModel = {};
   var visibleStatsDescCell = self.visibleStatsDescCell = Cell.compute(function (v) {
     if (v.need(displayingSpecificStatsCell)) {
       var nodes = v.need(specificStatsNodesCell);
+
       return {thisISSpecificStats: true,
               blocks: [{blockName: "Specific Stats", hideThis: true,
-                        stats: _.map(nodes, function (hostname) {return {title: hostname, name: hostname}})}]};
+                        stats: _.map(nodes, function (hostname) {
+                          return {title: ViewHelpers.maybeStripPort(hostname, nodes),
+                                  name: hostname};
+                        })}]};
     } else {
       return v.need(rawStatsDescCell);
     }
