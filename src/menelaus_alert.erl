@@ -44,7 +44,7 @@
 
 %% External API
 
--define(DEFAULT_LIMIT, 50).
+-define(DEFAULT_LIMIT, 250).
 
 handle_logs(Req) ->
     reply_json(Req, {struct, [{list, build_logs(Req:parse_qs())}]}).
