@@ -303,6 +303,7 @@ div.analytics-small-graph > .right-arrow {position:absolute;bottom:6px;right:0;z
 div.analytics-small-graph > .right-arrow ul {position:absolute;top:-9px;left:2px;z-index:89;display:none;width:120px;font-size:11px;background:#fff;border:1px solid #aaa;
 							-moz-box-shadow:4px 4px 6px #aaa;-webkit-box-shadow:4px 4px 6px #aaa;box-shadow:4px 4px 6px #aaa;
 							filter:progid:DXImageTransform.Microsoft.shadow(direction=135, color=#aaaaaa, strength=5);}
+.server_resources div.analytics-small-graph > .right-arrow {display:none;}
 div.analytics-small-graph > .right-arrow:hover ul {display:block;}
 div.analytics-small-graph > .right-arrow ul li, .graph_nav > div > ins ul li a {padding:4px 6px 5px;color:#444245;}
 div.analytics-small-graph > .right-arrow ul li:hover, div.analytics-small-graph > .right-arrow ul li:hover a {background:#01b0ff;color:#fff;}
