@@ -58,6 +58,7 @@
          host_port/1,
          host_port_str/1,
          list_vbuckets/1, list_vbuckets/2,
+         list_vbuckets_prevstate/2,
          list_vbuckets_multi/2,
          set_vbucket/3, set_vbucket/4,
          server/1,
@@ -143,6 +144,14 @@ handle_call({get_vbucket, VBucket}, _From, State) ->
     {reply, Reply, State};
 handle_call(list_buckets, _From, State) ->
     Reply = mc_client_binary:list_buckets(State#state.sock),
+    {reply, Reply, State};
+handle_call(list_vbuckets_prevstate, _From, State) ->
+    Reply = mc_client_binary:stats(
+              State#state.sock, <<"prev-vbucket">>,
+              fun (<<"vb_", K/binary>>, V, Acc) ->
+                      [{list_to_integer(binary_to_list(K)),
+                        binary_to_existing_atom(V, latin1)} | Acc]
+              end, []),
     {reply, Reply, State};
 handle_call(list_vbuckets, _From, State) ->
     Reply = mc_client_binary:stats(
@@ -363,15 +372,20 @@ host_port_str(Node) ->
 
 
 -spec list_vbuckets(bucket_name()) ->
-                           {ok, [{vbucket_id(), vbucket_state()}]} | mc_error().
+    {ok, [{vbucket_id(), vbucket_state()}]} | mc_error().
 list_vbuckets(Bucket) ->
     list_vbuckets(node(), Bucket).
 
 
 -spec list_vbuckets(node(), bucket_name()) ->
-                          {ok, [{vbucket_id(), vbucket_state()}]} | mc_error().
+    {ok, [{vbucket_id(), vbucket_state()}]} | mc_error().
 list_vbuckets(Node, Bucket) ->
     gen_server:call({server(Bucket), Node}, list_vbuckets, ?TIMEOUT).
+
+-spec list_vbuckets_prevstate(node(), bucket_name()) ->
+    {ok, [{vbucket_id(), vbucket_state()}]} | mc_error().
+list_vbuckets_prevstate(Node, Bucket) ->
+    gen_server:call({server(Bucket), Node}, list_vbuckets_prevstate, ?TIMEOUT).
 
 
 -spec list_vbuckets_multi([node()], bucket_name()) ->
