@@ -651,11 +651,13 @@ interpret_hdd_quota(CurrentBucket, ParsedProps, ClusterStorageTotals, UsageGette
                  free = Total - OtherData - OtherBuckets}.
 
 parse_validate_replicas_number(NumReplicas) ->
-    case menelaus_util:parse_validate_number(NumReplicas, 0, undefined) of
+    case menelaus_util:parse_validate_number(NumReplicas, 0, 3) of
         invalid ->
             {error, replicaNumber, <<"The replica number must be specified and must be a non-negative integer.">>};
         too_small ->
             {error, replicaNumber, <<"The replica number cannot be negative.">>};
+        too_large ->
+            {error, replicaNumber, <<"Replica number larger than 3 is not supported.">>};
         {ok, X} -> {ok, num_replicas, X}
     end.
 
