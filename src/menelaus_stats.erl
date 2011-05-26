@@ -1011,7 +1011,7 @@ memcached_stats_description() ->
                          {title,<<"decr misses per sec.">>},
                          {desc,<<"Number of decr operations per second for data that this bucket does not contain (measured from decr_misses)">>}]},
                 {struct,[{name,<<"get_misses">>},
-                         {title,<<"get Misses per sec.">>},
+                         {title,<<"get misses per sec.">>},
                          {desc,<<"Number of get operations per second for data that this bucket does not contain (measured from get_misses)">>}]},
                 {struct,[{name,<<"incr_misses">>},
                          {title,<<"incr misses per sec.">>},
