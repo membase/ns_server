@@ -103,8 +103,8 @@ bringup(MyIP) ->
     ShortName = misc:get_env_default(short_name, "ns_1"),
     MyNodeName = list_to_atom(ShortName ++ "@" ++ MyIP),
     ?log_info("Attempting to bring up net_kernel with name ~p", [MyNodeName]),
-    net_kernel:set_net_ticktime(misc:get_env_default(set_net_ticktime, 10)),
     Rv = decode_status(net_kernel:start([MyNodeName, longnames])),
+    net_kernel:set_net_ticktime(misc:get_env_default(set_net_ticktime, 60)),
     #state{self_started = Rv, my_ip = MyIP}.
 
 %% Tear down distributed erlang.
