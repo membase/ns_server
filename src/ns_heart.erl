@@ -116,6 +116,7 @@ buckets_replication_statuses() ->
 
 is_interesting_stat({curr_items, _}) -> true;
 is_interesting_stat({curr_items_tot, _}) -> true;
+is_interesting_stat({vb_replica_curr_items, _}) -> true;
 is_interesting_stat(_) -> false.
 
 current_status(Expensive) ->

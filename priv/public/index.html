@@ -80,7 +80,7 @@
                               <th>RAM Usage</th>
                               <th>CPU Usage</th>
                               <th>Active Items</th>
-                              <th>Total Items</th>
+                              <th>Replica Items</th>
                             </tr>
                             <!-- {% $.each(rows, function () { %} -->
                             <tr>
@@ -130,8 +130,8 @@
                                 </div>
                               </td>
 
-                              <td>{%= this.interestingStats.curr_items || 0 %}</td>
-                              <td>{%= this.interestingStats.curr_items_tot || 0 %}</td>
+                              <td>{%= V.formatQuantity(this.interestingStats.curr_items || 0, '', 1000, ' ') %}</td>
+                              <td>{%= V.formatQuantity(this.interestingStats.vb_replica_curr_items || 0, '', 1000, ' ') %}</td>
                             </tr>
                             <!-- {% }); %} -->
                           </table>
