@@ -44,7 +44,10 @@ child_specs(BucketName) ->
      {{stats_archiver, BucketName}, {stats_archiver, start_link, [BucketName]},
       permanent, 1000, worker, [stats_archiver]},
      {{stats_reader, BucketName}, {stats_reader, start_link, [BucketName]},
-      permanent, 1000, worker, [stats_reader]}].
+      permanent, 1000, worker, [stats_reader]},
+     {{failover_safeness_level, BucketName},
+      {failover_safeness_level, start_link, [BucketName]},
+      permanent, 1000, worker, [failover_safeness_level]}].
 
 init([BucketName]) ->
     {ok, {{rest_for_one,

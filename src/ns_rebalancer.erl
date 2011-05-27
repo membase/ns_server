@@ -22,6 +22,7 @@
 -module(ns_rebalancer).
 
 -include("ns_common.hrl").
+-include("ns_stats.hrl").
 
 -export([failover/1,
          generate_initial_map/1,
@@ -306,28 +307,34 @@ replication_status(Bucket, BucketConfig) ->
         undefined ->
             1.0;
         Map ->
-            case [R || {N, _, _} = R <- ns_bucket:map_to_replicas(Map),
-                       N == node()] of
+            case [{N, FirstReplica, VBucket}
+                  || {VBucket, [N, FirstReplica | _]} <- lists:zip(lists:seq(0, length(Map)-1),  Map),
+                     N == node()] of
                 [] ->
                     %% No replicas for this node
                     1.0;
                 Replicas ->
-                    try
-                        Replicators = ns_vbm_sup:replicators([node()],
-                                                             Bucket),
-                        case Replicas -- Replicators of
-                            [] ->
-                                %% Ok, running
-                                case ns_memcached:backfilling(Bucket) of
-                                    true ->
-                                        0.5;
-                                    false ->
-                                        1.0
-                                end;
-                            _ ->
-                                %% Replication isn't even running
-                                0.0
-                        end
+                    try ns_vbm_sup:replicators([node()],
+                                               Bucket) of
+                        Replicators ->
+                            case Replicas -- Replicators of
+                                [] ->
+                                    %% Ok, running
+                                    case catch failover_safeness_level:safeness_level(Bucket) of
+                                        {ok, X} ->
+                                            case X of
+                                                unknown -> 0.0;
+                                                stale -> 0.0;
+                                                green -> 1.0;
+                                                yellow -> 0.5
+                                            end;
+                                        _ ->
+                                            0.0
+                                    end;
+                                _ ->
+                                    %% Replication isn't even running
+                                    0.0
+                            end
                     catch
                         _:_ ->
                             0.0
