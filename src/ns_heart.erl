@@ -150,6 +150,7 @@ current_status(Expensive) ->
 
     [{active_buckets, ns_memcached:active_buckets()},
      {ready_buckets, ns_memcached:connected_buckets()},
+     {replication, ns_rebalancer:buckets_replication_statuses()},
      {memory, erlang:memory()},
      {system_stats, [{N, proplists:get_value(N, SystemStats, 0)} || N <- [cpu_utilization_rate, swap_total, swap_used]]},
      {interesting_stats, InterestingStats},
@@ -158,9 +159,7 @@ current_status(Expensive) ->
 
 
 expensive_checks() ->
-    ReplicationStatus = ns_rebalancer:buckets_replication_statuses(),
-    BasicData = [{replication, ReplicationStatus},
-                 {system_memory_data, memsup:get_system_memory_data()},
+    BasicData = [{system_memory_data, memsup:get_system_memory_data()},
                  {statistics, stats()}],
     case misc:raw_read_file("/proc/meminfo") of
         {ok, Contents} ->
