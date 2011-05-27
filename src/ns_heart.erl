@@ -22,7 +22,7 @@
 
 -define(EXPENSIVE_CHECK_INTERVAL, 15000). % In ms
 
--export([start_link/0, status_all/0, expensive_checks/0]).
+-export([start_link/0, status_all/0, expensive_checks/0, force_beat/0]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
          code_change/3]).
 
@@ -51,11 +51,14 @@ init([]) ->
                         fun (Event, _) ->
                                 case is_interesting_buckets_event(Event) of
                                     true ->
-                                        Self ! buckets_event;
+                                        Self ! force_beat;
                                     _ -> ok
                                 end
                         end, []),
     {ok, #state{}}.
+
+force_beat() ->
+    ?MODULE ! force_beat.
 
 arm_forced_beat_timer(#state{forced_beat_timer = TRef} = State) when TRef =/= undefined ->
     State;
@@ -87,7 +90,7 @@ handle_info(beat, State) ->
     {noreply, NewState};
 handle_info(do_expensive_checks, State) ->
     {noreply, State#state{expensive_checks_result = expensive_checks()}};
-handle_info(buckets_event, State) ->
+handle_info(force_beat, State) ->
     {noreply, arm_forced_beat_timer(State)};
 handle_info(_, State) ->
     {noreply, State}.
