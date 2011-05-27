@@ -115,7 +115,8 @@ do-install:
 	mkdir -p $(MOCHIWEB_LIBDIR)
 	cp -r deps/mochiweb/ebin $(MOCHIWEB_LIBDIR)/
 	mkdir -p $(DESTDIR)$(PREFIX)/etc/membase
-	sed -e 's|@PREFIX@|$(PREFIX_FOR_CONFIG)|g' <etc/static_config.in >$(DESTDIR)$(PREFIX)/etc/membase/static_config
+	sed -e 's|@DATA_PREFIX@|$(PREFIX_FOR_CONFIG)|g' -e 's|@BIN_PREFIX@|$(PREFIX_FOR_CONFIG)|g' \
+		 <etc/static_config.in >$(DESTDIR)$(PREFIX)/etc/membase/static_config
 	touch $(DESTDIR)$(PREFIX)/etc/membase/config
 	mkdir -p $(DESTDIR)$(PREFIX)/bin/
 	sed -e 's|@PREFIX@|$(DESTDIR)$(PREFIX)|g' <membase-server.sh.in >$(DESTDIR)$(PREFIX)/bin/membase-server
