@@ -1389,6 +1389,8 @@ do_handle_rebalance(Req, KnownNodesS, EjectedNodesS) ->
             Req:respond({200, [], []});
         nodes_mismatch ->
             reply_json(Req, {struct, [{mismatch, 1}]}, 400);
+        no_active_nodes_left ->
+            Req:respond({400, [], []});
         ok ->
             Req:respond({200, [], []})
     end.

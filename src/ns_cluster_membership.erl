@@ -84,6 +84,8 @@ system_joinable() ->
 get_rebalance_status() ->
     ns_orchestrator:rebalance_progress().
 
+start_rebalance(KnownNodes, KnownNodes) ->
+    no_active_nodes_left;
 start_rebalance(KnownNodes, EjectedNodes) ->
     case {lists:sort(ns_node_disco:nodes_wanted()),
           lists:sort(KnownNodes)} of
