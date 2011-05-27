@@ -208,13 +208,14 @@
                            queue_drain = 0,
                            queue_backoff = 0,
                            queue_backfillremaining = 0,
-                           queue_itemondisk = 0}).
+                           queue_itemondisk = 0,
+                           total_backlog_size = 0}).
 
 -define(TAP_STAT_GAUGES,
-        ep_tap_rebalance_count, ep_tap_rebalance_qlen, ep_tap_rebalance_queue_backfillremaining, ep_tap_rebalance_queue_itemondisk,
-        ep_tap_replica_count, ep_tap_replica_qlen, ep_tap_replica_queue_backfillremaining, ep_tap_replica_queue_itemondisk,
-        ep_tap_user_count, ep_tap_user_qlen, ep_tap_user_queue_backfillremaining, ep_tap_user_queue_itemondisk,
-        ep_tap_total_count, ep_tap_total_qlen, ep_tap_total_queue_backfillremaining, ep_tap_total_queue_itemondisk).
+        ep_tap_rebalance_count, ep_tap_rebalance_qlen, ep_tap_rebalance_queue_backfillremaining, ep_tap_rebalance_queue_itemondisk, ep_tap_rebalance_total_backlog_size,
+        ep_tap_replica_count, ep_tap_replica_qlen, ep_tap_replica_queue_backfillremaining, ep_tap_replica_queue_itemondisk, ep_tap_replica_total_backlog_size,
+        ep_tap_user_count, ep_tap_user_qlen, ep_tap_user_queue_backfillremaining, ep_tap_user_queue_itemondisk, ep_tap_user_total_backlog_size,
+        ep_tap_total_count, ep_tap_total_qlen, ep_tap_total_queue_backfillremaining, ep_tap_total_queue_itemondisk, ep_tap_total_total_backlog_size).
 -define(TAP_STAT_COUNTERS,
         ep_tap_rebalance_queue_fill, ep_tap_rebalance_queue_drain, ep_tap_rebalance_queue_backoff,
         ep_tap_replica_queue_fill, ep_tap_replica_queue_drain, ep_tap_replica_queue_backoff,
@@ -231,6 +232,7 @@
 ?DEFINE_EXTRACT(backoff, queue_backoff);
 ?DEFINE_EXTRACT(backfill_remaining, queue_backfillremaining);
 ?DEFINE_EXTRACT(itemondisk, queue_itemondisk);
+?DEFINE_EXTRACT(total_backlog_size, total_backlog_size);
 ?DEFINE_EXTRACT(count, count);
 extract_agg_stat(_K, _V, Acc) -> Acc.
 -undef(DEFINE_EXTRACT).
@@ -243,7 +245,8 @@ tap_stream_stats_to_kvlist(Prefix, Record) ->
      ?DEFINE_TO_KVLIST(queue_drain),
      ?DEFINE_TO_KVLIST(queue_backoff),
      ?DEFINE_TO_KVLIST(queue_backfillremaining),
-     ?DEFINE_TO_KVLIST(queue_itemondisk)].
+     ?DEFINE_TO_KVLIST(queue_itemondisk),
+     ?DEFINE_TO_KVLIST(total_backlog_size)].
 -undef(DEFINE_TO_KVLIST).
 
 -define(DEFINE_ADDER(N), N = A#tap_stream_stats.N + B#tap_stream_stats.N).
@@ -254,7 +257,8 @@ add_tap_stream_stats(A, B) ->
                       ?DEFINE_ADDER(queue_drain),
                       ?DEFINE_ADDER(queue_backoff),
                       ?DEFINE_ADDER(queue_backfillremaining),
-                      ?DEFINE_ADDER(queue_itemondisk)}.
+                      ?DEFINE_ADDER(queue_itemondisk),
+                      ?DEFINE_ADDER(total_backlog_size)}.
 -undef(DEFINE_ADDER).
 
 -define(DEFINE_SUBTRACTOR(N), N = A#tap_stream_stats.N - B#tap_stream_stats.N).
@@ -265,7 +269,8 @@ sub_tap_stream_stats(A, B) ->
                       ?DEFINE_SUBTRACTOR(queue_drain),
                       ?DEFINE_SUBTRACTOR(queue_backoff),
                       ?DEFINE_SUBTRACTOR(queue_backfillremaining),
-                      ?DEFINE_SUBTRACTOR(queue_itemondisk)}.
+                      ?DEFINE_SUBTRACTOR(queue_itemondisk),
+                      ?DEFINE_SUBTRACTOR(total_backlog_size)}.
 -undef(DEFINE_SUBTRACTOR).
 
 -endif. % NEED_TAP_STREAM_STATS_CODE
