@@ -299,7 +299,7 @@ var BucketDetailsDialog = mkClass({
       nonPersistent.boolAttr('disabled', false);
     }
 
-    var toDisable = self.dialog.find('input[type=text], input:not([type]), input[type=checkbox]')
+    var toDisable = self.dialog.find('input[type=text], input[type=radio], input:not([type]), input[type=checkbox]')
       .filter(':not([disabled])')
       .add(self.dialog.find('button'));
 
