@@ -199,7 +199,9 @@ var BucketDetailsDialog = mkClass({
     this.setupDefaultNameReaction(dialog);
 
     var errorsCell = this.errorsCell = new Cell();
-    errorsCell.subscribeValue($m(this, 'onValidationResult'));
+    var errorsCellSubscription = errorsCell.subscribeValue($m(this, 'onValidationResult'));
+    this.cleanups.push($m(errorsCellSubscription, 'cancel'));
+
     this.formValidator = setupFormValidation(dialog.find('form'),
                                              this.initValues.uri + '?just_validate=1',
                                              function (status, errors) {
