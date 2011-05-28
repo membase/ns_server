@@ -158,8 +158,10 @@ var BucketDetailsDialog = mkClass({
     dialog.find('[name=replicaNumber]').boolAttr('disabled', !isNew);
     dialog.find('.for-enable-replication input').boolAttr('disabled', !isNew);
 
-    dialog.find('[name=ramQuotaMB]')
+    dialog.find('[name=ramQuotaMB][type=text]')
       .boolAttr('disabled', !isNew && (initValues.bucketType == 'memcached'));
+
+    dialog.find('[name=ramQuotaMB][type=hidden]').val(initValues.ramQuotaMB);
 
     var oldBucketType;
     dialog.observePotentialChanges(function () {
