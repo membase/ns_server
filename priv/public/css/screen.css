@@ -952,7 +952,6 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details .memcached-summary {font-style:normal;line-height:24px;clear:both;}
 
 .bucket_details .size-gauge {float:right;width:364px;position:relative;top:-6px;line-height:24px;}
-.bucket_details.bucket-is-non-persistent .size-gauge.for-ram { top: 0px; }
 .bucket_details .size-gauge .top-left {float:left;color:#C19710;font-size:12px;}
 .bucket_details .size-gauge .top-right {float:right;font-size:12px;}
 .bucket_details .size-gauge .usage {clear:both;position:relative;height:15px;background:url(/images/usages.png) 0 -46px no-repeat;}
