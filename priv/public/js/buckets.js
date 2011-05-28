@@ -194,11 +194,31 @@ var BucketDetailsDialog = mkClass({
       }
     });
 
+    this.cleanups = [];
+
+    this.setupDefaultNameReaction(dialog);
+
+    var errorsCell = this.errorsCell = new Cell();
+    errorsCell.subscribeValue($m(this, 'onValidationResult'));
+    this.formValidator = setupFormValidation(dialog.find('form'),
+                                             this.initValues.uri + '?just_validate=1',
+                                             function (status, errors) {
+                                               console.log("setting errors: ", errors);
+                                               errorsCell.setValue(errors);
+                                             });
+
+    this.cleanups.push($m(this.formValidator, 'abort'));
+  },
+
+  setupDefaultNameReaction: function (dialog) {
     var preDefaultAuthType;
+
+    // this code disables/enables authType radio button if bucket name
+    // is/(not) "default"
     function nameObserver(value) {
-      var forAsciiRadio = dialog.find('.for-ascii input'),
-          forSASLRadio = dialog.find('.for-sasl-password input'),
-          isDefault = (value == "default");
+      var forAsciiRadio = dialog.find('.for-ascii input');
+      var forSASLRadio = dialog.find('.for-sasl-password input');
+      var isDefault = (value == "default");
 
       dialog[isDefault ? 'addClass' : 'removeClass']('bucket-is-default');
       if (isDefault) {
@@ -216,21 +236,10 @@ var BucketDetailsDialog = mkClass({
       }
     }
 
-    dialog.find('[name=name]').observeInput(nameObserver);
-    nameObserver(dialog.find('[name=name]').val());
+    var nameObserverHandle = dialog.find('[name=name]').observeInput(nameObserver);
+    this.cleanups.push($m(nameObserverHandle, 'stopObserving'));
 
-    this.cleanups = [];
-
-    var errorsCell = this.errorsCell = new Cell();
-    errorsCell.subscribeValue($m(this, 'onValidationResult'));
-    this.formValidator = setupFormValidation(dialog.find('form'),
-                                             this.initValues.uri + '?just_validate=1',
-                                             function (status, errors) {
-                                               console.log("setting errors: ", errors);
-                                               errorsCell.setValue(errors);
-                                             });
-
-    this.cleanups.push($m(this.formValidator, 'abort'));
+    nameObserver(this.initValues.name || '');
   },
 
   bindWithCleanup: function (jq, event, callback) {
