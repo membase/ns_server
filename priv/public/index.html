@@ -98,8 +98,8 @@
                                         <div class="used" style="width:1%;"></div>
                                       </div>
                                   </div>
-                                  {%= V.setPercentBar(this.systemStats.swap_used / this.systemStats.swap_total) %}
-                                  {%= h(truncateTo3Digits(Math.floor(((this.systemStats.swap_used / this.systemStats.swap_total) || 0) * 100) / 100)) %}%
+                                  {%= V.setPercentBar(this.systemStats.swap_used / this.systemStats.swap_total * 100) %}
+                                  {%= h(truncateTo3Digits(((this.systemStats.swap_used / this.systemStats.swap_total) || 0) * 100)) %}%
                                 </div>
                               <!-- {% } else { %} -->
                               <span>N/A</span>
