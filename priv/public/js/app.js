@@ -190,7 +190,9 @@ var ThePage = {
              monitor_servers: MonitorServersSection,
              notifications: UpdatesNotificationsSection,
              // that's right, use the same object as "notifications"
-             notifications_enabled: UpdatesNotificationsSection},
+             notifications_enabled: UpdatesNotificationsSection,
+             auto_failover: AutoFailoverSection,
+             email_alerts: EmailAlertsSection},
 
   coming: {settings:true, alerts:true},
 

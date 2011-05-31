@@ -478,6 +478,29 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 /* Should be detected automatically in the future */
 #updates_notifications_confirmation_dialog {width:700px !important;}
 
+/* auto-failover styles */
+.auto_failover label {display:block;line-height:24px;margin-left:16px;margin-top:16px;}
+.auto_failover input {border:1px solid #ccd3d7;padding:3px;font-size:13px;}
+.auto_failvoer input[type="checkbox"] {border:none;position:relative;top:2px;}
+.auto_failover label span {display:block;float:left;margin:0 5px;text-align:right;width:120px}
+.auto_failover input[type="checkbox"] + span {display:inline;float:none}
+
+.auto_failover #auto_failover_age, .auto_failover #auto_failover_max_nodes {width:3em}
+
+/* email alerts styles */
+.email_alerts label {display:block;line-height:24px;margin-left:16px;margin-top:16px;}
+.email_alerts input {border:1px solid #ccd3d7;padding:3px;font-size:13px;width:150px}
+.email_alerts input[type="checkbox"] {border:none;position:relative;top:2px;}
+.email_alerts label span {display:block;float:left;margin:0 5px;text-align:right;width:120px}
+.email_alerts input[type="checkbox"] + span {display:inline;float:none}
+.email_alerts label + input[type="checkbox"] {display:inline;float:none;vertical-align:sub}
+.email_alerts fieldset {margin:16px;margin-left:130px;}
+.email_alerts legend {left:0;position:absolute;text-align:right;width:140px;}
+
+.email_alerts .row {float:left;width:310px}
+.email_alerts .row + div span {width:3em}
+.email_alerts #email_alerts_port {width:3em}
+
 /* lightbox styles */
 .lbox {width:711px; position:relative;}
 .lbox .center {background:#eee;/*url(../images/lbox_cent.png) 0 0 repeat-y;*/}

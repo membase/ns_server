@@ -43,6 +43,8 @@
         <li class="line"><a id="switch_buckets" href="#visitSec=buckets">Data Buckets</a></li>
         <li class="line"><a id="switch_servers" href="#visitSec=servers">Server Nodes</a></li>
         <li class="line" id="leftNav_updates_container"></li>
+        <li class="line"><a id="switch_auto_failover" href="#visitSec=auto_failover">Auto-Failover</a></li>
+        <li class="line"><a id="switch_email_alerts" href="#visitSec=email_alerts">Email Alerts</a></li>
       </ul>
         <script id="leftNav_updates_template" type="text/html">
           <a href="#visitSec=notifications">
@@ -763,6 +765,136 @@
             <!-- END shadow box -->
           </div>
 
+          <div id="auto_failover" style="display:none">
+            <!-- shadow box -->
+            <h1>Auto-failover</h1>
+            <div class="shadow_box">
+              <div class="content">
+                <div class="hdr">Settings</div>
+                <div class="section auto_failover">
+                  <div class="item" id="auto_failover_container">
+                    Please wait...
+                  </div>
+                  <script id="auto_failover_template" type="text/html">
+                    <label class="for-enable-replication"
+                        for="auto_failover_enabled">
+                      <input type="checkbox" id="auto_failover_enabled">
+                      <span>Enable auto-failover</span>
+                    </label>
+                    <label for="auto_failover_max_nodes">
+                      <span>Maximum Nodes: </span>
+                    </label>
+                    <input type="text" id="auto_failover_max_nodes"
+                           value="{%= maxNodes %}" disabled="disabled" />
+                    <a class="text_11 tooltip"><span>What's this?</span>
+                      <span class="tooltip_msg"><span>
+                          This sets the maximum nodes that will be auto-failovered. It is suggested that it is not lower than XXX vmx 20110530: lower than what? XXX to prevent data loss.
+                      </span></span>
+                    </a>
+                    <label for="auto_failover_age">
+                      <span>Age: </span>
+                    </label>
+                    <input type="text" id="auto_failover_age"
+                           value="{%= age %}" disabled="disabled" />
+                    <a class="text_11 tooltip"><span>What's this?</span>
+                      <span class="tooltip_msg"><span>
+                          How long (in seconds) a node must be considered down before it gets auto-failovered.
+                      </span></span>
+                    </a>
+                  </script>
+                  <div class="save_cancel">
+                    <button class="save_button float_right" type="button">Save</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- END shadow box -->
+          </div>
+
+          <div id="email_alerts" style="display:none">
+            <!-- shadow box -->
+            <h1>Email Alerts</h1>
+            <div class="shadow_box">
+              <div class="content">
+                <div class="hdr">Email Server Settings</div>
+                <div class="section email_alerts">
+                  <div class="item" id="email_alerts_container">
+                    Please wait...
+                  </div>
+                  <script id="email_alerts_template" type="text/html">
+                    <label class="for-enable-replication"
+                        for="email_alerts_enabled">
+                      <input type="checkbox" id="email_alerts_enabled" />
+                      <span>Enable email alerts</span>
+                    </label>
+                    <div class="row">
+                      <label for="email_alerts_host">
+                        <span>Host:</span>
+                      </label>
+                      <input type="text" id="email_alerts_host"
+                             value="{%= emailServer.host %}" disabled="disabled" />
+                    </div>
+                    <div>
+                      <label for="email_alerts_port">
+                        <span>Port:</span>
+                      </label>
+                      <input type="text" id="email_alerts_port"
+                             value="{%= emailServer.port %}" disabled="disabled" />
+                    </div>
+                    <label for="email_alerts_user">
+                      <span>Username:</span>
+                    </label>
+                    <input type="text" id="email_alerts_user"
+                           value="{%= emailServer.user %}" disabled="disabled" />
+                    <label for="email_alerts_pass">
+                      <span>Password:</span>
+                    </label>
+                    <input type="password" id="email_alerts_pass"
+                           value="{%= emailServer.pass %}" disabled="disabled" />
+                    <label for="email_alerts_encrypt">
+                      <span>TLS</span>
+                    </label>
+                    <input type="checkbox" id="email_alerts_encrypt"
+                           {% if (emailServer.encrypt) { %}
+                           checked="checked"
+                           {% } %}
+                           />
+
+                    <hr />
+                    <label for="email_alerts_sender">
+                      <span>Sender email:</span>
+                    </label>
+                    <input type="text" id="email_alerts_sender"
+                           value="{%= sender %}" disabled="disabled" />
+                    <label for="email_alerts_sender">
+                      <span>Recipients:</span>
+                    </label>
+                    <textarea id="email_alerts_recipients" disabled="disabled">{%= recipients %}</textarea>
+                    <fieldset id="email_alerts_alerts">
+                      <legend>Available alerts</legend>
+                      {% for (var i=0; i<alerts.length; i++) { %}
+                      <label for="email_alerts_alerts_{%= alerts[i].label %}">
+                        <input type="checkbox"
+                               id="email_alerts_alerts_{%= alerts[i].value %}"
+                               value="{%= alerts[i].value %}"
+                               {% if (alerts[i].enabled) { %}
+                               checked="checked"
+                               {% } %}
+                               />
+                        <span>{%= alerts[i].label %}</span>
+                      </label>
+                      {% } %}
+                    </fieldset>
+                  </script>
+                  <div class="save_cancel">
+                    <button class="save_button float_right" type="button">Save</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- END shadow box -->
+          </div>
+
           <div id="coming" style="display:none">
             <h1>UI error encountered.  This content does not exist yet.</h1>
           </div>
@@ -1402,6 +1534,8 @@ $(window).bind('template:rendered', function () {
 <script src="/js/overview.js"></script>
 <script src="/js/all-images.js"></script>
 <script src="/js/updates-notifications.js"></script>
+<script src="/js/auto-failover.js"></script>
+<script src="/js/email-alerts.js"></script>
 <script src="/js/app.js"></script>
 </body>
 </html>
