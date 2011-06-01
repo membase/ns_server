@@ -1972,7 +1972,7 @@ var TabsCell = mkClass(HashFragmentCell, {
     self.tabsSelector = tabsSelector;
     self.panesSelector = panesSelector;
     var tabsOptions = $.extend({},
-                               options || {},
+                               options || {current: 'selected'},
                                {api: true});
     self.api = $(tabsSelector).tabs(panesSelector, tabsOptions);
 

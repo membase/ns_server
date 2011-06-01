@@ -37,7 +37,7 @@ var EmailAlertsSection = {
       }
     });
 
-    $('#email_alerts .save_button').click(function(){
+    $('#email_alerts_container').delegate('.save_button', 'click', function() {
       var alerts = $('#email_alerts_alerts input[type=checkbox]:checked')
         .map(function() {
           return this.value;

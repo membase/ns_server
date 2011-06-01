@@ -188,11 +188,7 @@ var ThePage = {
              log: AlertsSection,
              monitor_buckets: MonitorBucketsSection,
              monitor_servers: MonitorServersSection,
-             notifications: UpdatesNotificationsSection,
-             // that's right, use the same object as "notifications"
-             notifications_enabled: UpdatesNotificationsSection,
-             auto_failover: AutoFailoverSection,
-             email_alerts: EmailAlertsSection},
+             settings2: Settings2Section},
 
   coming: {settings:true, alerts:true},
 

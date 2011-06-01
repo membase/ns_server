@@ -330,11 +330,6 @@ div.analytics-small-graph > .right-arrow ul li:hover, div.analytics-small-graph 
 
 .dialog{display:none}
 
-a.selected {text-decoration:underline;}
-.header_2 a {display:inline-block;margin:0 5px 0 0;}
-.header_2 a.selected {display:inline-block;padding:4px 0 6px;line-height:1.2;background:url(../images/bg_time_act.gif) 0 100% repeat-x !important;*vertical-align:middle;}
-#analytics .header_2 {padding:2px 10px 2px 11px;}
-
 .alerts_list h2 { border-bottom: 1px dashed black; }
 .alerts_list h3 { display: block; float: left;margin-bottom: 6px;}
 .alerts_list ol li {padding-left:10px;}
@@ -490,7 +485,7 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 /* email alerts styles */
 .email_alerts label {display:block;line-height:24px;margin-left:16px;margin-top:16px;}
 .email_alerts input {border:1px solid #ccd3d7;padding:3px;font-size:13px;width:150px}
-.email_alerts input[type="checkbox"] {border:none;position:relative;top:2px;}
+.email_alerts input[type="checkbox"] {border:none;position:relative;top:2px;width:auto}
 .email_alerts label span {display:block;float:left;margin:0 5px;text-align:right;width:120px}
 .email_alerts input[type="checkbox"] + span {display:inline;float:none}
 .email_alerts label + input[type="checkbox"] {display:inline;float:none;vertical-align:sub}
@@ -788,7 +783,7 @@ li.server_row.status_down {background-position:10px -157px !important; backgroun
 .warning_message {min-height:20px;margin:0 0 5px 0;padding:5px 0 0 25px;color:#dd3b2c;font-size:12px;line-height:1.3;background:url(../images/warning_bg_2.png) 0 0 no-repeat;}
 .failover_warning {display: none;}
 
-.badge, .tabs .badge {background:#E43A1B;border: 2px solid white;-moz-border-radius:5em;-webkit-border-radius:5em;border-radius:5em;color: white;display: block;font-size: 11px;height: 2em;position: absolute;right: -20px;text-align: center;top: -16px;vertical-align: top;min-width: 2em;z-index: 10;-moz-box-shadow: 2px 2px 3px #999;-webkit-box-shadow: 2px 2px 3px #999;box-shadow: 2px 2px 3px #999; background-clip:padding-box;-moz-background-clip:padding;line-height:2.1em}
+.badge, .tabs .badge {background:#E43A1B;border: 2px solid white;-moz-border-radius:5em;-webkit-border-radius:5em;border-radius:5em;color: white;display: block;font-size: 11px;height: 2em;position: absolute;right: -5px;text-align: center;top: -19px;vertical-align: top;min-width: 2em;z-index: 10;-moz-box-shadow: 2px 2px 3px #999;-webkit-box-shadow: 2px 2px 3px #999;box-shadow: 2px 2px 3px #999; background-clip:padding-box;-moz-background-clip:padding;line-height:2.1em}
 .badge.notify, .tabs .badge.notify {background-color:#409f05;font-weight:bold}
 .badge span {color:#fff;}
 ul.tabs .tab_right .badge {display:none;}
@@ -875,24 +870,43 @@ ul.tabs .badge_display .badge {display:block;}
 
 .buckets_tab .health_graph {float:right;}
 
-.tabs switcher {}
-.switcher li {padding:0px !important; background:none !important;}
-.switcher li a {display:block; height:32px !important; font-size:14px !important; padding:0 10px !important; color:#182022;}
-html body .switcher li a.current {color:#e6e6e6 !important;}
-.tab_left a {background:url(../images/switcher_bg.png) 0 -96px no-repeat !important;}
-.tab_left .current {background:url(../images/switcher_bg.png) 0 0 no-repeat !important;}
-.tab_right a {background:url(../images/switcher_bg.png) 100% -64px no-repeat !important;}
-.tab_right .current {background:url(../images/switcher_bg.png) 100% -32px no-repeat !important;}
-ul.tabs.switcher {height:32px; overflow:visible;}
-
 .btn_1 {display:inline-block; height:31px; font-size:14px !important; background:url(../images/btn_1_bg.png) 100% -31px no-repeat; padding:0 4px 0 0 !important; color:#000;}
 .btn_1 span {/*display:inline-block;*/ display:block; text-align:center; height:31px; padding:0 6px 0 10px; line-height:31px; background:url(../images/btn_1_bg.png) 0 0 no-repeat;color:#000; text-shadow:#bbbfc2 1px 1px;}
 
-.panes.pad {background:none !important;}
+/* root element for tabs */
+ul.tabs { list-style:none; margin:0 !important; padding:0; height:32px;overflow:visible;display:block;}
+/* single tab */
+ul.tabs li {float:left;text-indent:0;padding:0;margin:0 !important;list-style-image:none !important;display:block; height:30px; padding:0;position:relative; left:-2px;}
+/* link inside the tab. uses a background image */
+ul.tabs a {font-size:14px;display:block;height: 32px;line-height:2.25em;text-align:center;text-decoration:none;padding:0 10px;margin:0px;position:relative;top:1px;color:#182022;border-right:1px solid #DFE0E0;background:url("../images/switcher_bg.png") no-repeat scroll -10px -64px transparent}
+ul.tabs a:active {outline:none;}
+/* when mouse enters the tab move the background image */
+ul.tabs a:hover {color:#fff;}
+/* active tab uses a class name "selected". it's highlight is also done by moving the background image. */
+ul.tabs a.selected, ul.tabs li.selected a {background-position: -10px -32px; cursor:default; color:#e6e6e6;line-height:2.4em}
+ul.tabs a.selected:hover{color:#fff}
+/* Different widths for tabs: use a class name: w1, w2, w3 or w2 */
+/* width 1 */
+ul.tabs a.s       { background-position: -553px 0; width:81px; }
+ul.tabs a.s:hover   { background-position: -553px -31px; }
+ul.tabs a.s.selected  { background-position: -553px -62px; }
+/* width 2 */
+ul.tabs a.l       { background-position: -248px -0px; width:174px; }
+ul.tabs a.l:hover   { background-position: -248px -31px; }
+ul.tabs a.l.selected  { background-position: -248px -62px; }
+/* width 3 */
+ul.tabs a.xl      { background-position: 0 -0px; width:248px; }
+ul.tabs a.xl:hover  { background-position: 0 -31px; }
+ul.tabs a.xl.selected { background-position: 0 -62px; }
+/* rounded tab ends */
+.tab_left a {background:url(../images/switcher_bg.png) 0 -96px no-repeat !important;}
+.tab_left .selected {background:url(../images/switcher_bg.png) 0 0 no-repeat !important;}
+.tab_right a {background:url(../images/switcher_bg.png) 100% -64px no-repeat !important;}
+.tab_right .selected {background:url(../images/switcher_bg.png) 100% -32px no-repeat !important;}
 
-ul.tabs .tab_left a, ul.tabs .tab_right a {text-shadow:#bbbfc2 1px 1px;}
-ul.tabs .tab_left a.current, ul.tabs .tab_right a.current, ul.tabs .tab_left a:hover, ul.tabs .tab_right a:hover {text-shadow:none;}
-ul.tabs .tab_left a.current:hover, ul.tabs .tab_right a.current:hover {text-shadow:#bbbfc2 1px 1px;}
+/* initially all panes are hidden */
+div.panes div.pane {display:none;}
+.panes.pad {background:none !important;}
 
 .server_details_tab td {color:#434446; padding:0 0 5px 0;}
 

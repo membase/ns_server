@@ -100,12 +100,12 @@ var UpdatesNotificationsSection = {
       }
     });
 
-    $('#notifications').delegate("a.more_info", "click", function(e) {
+    $('#notifications_container').delegate('a.more_info', 'click', function(e) {
       e.preventDefault();
-      $('#notifications p.more_info').slideToggle();
+      $('#notifications_container p.more_info').slideToggle();
     });
 
-    $('#notifications .save_button').click(function() {
+    $('#notifications_container').delegate('.save_button', 'click', function() {
       var sendStatus = $('#notification-updates').is(':checked');
       postWithValidationErrors('/settings/stats',
                                $.param({sendStats: sendStatus}),
@@ -135,12 +135,12 @@ var UpdatesNotificationsSection = {
         newVersion: undefined
       };
     }
-    renderTemplate('leftNav_updates',
+    renderTemplate('leftNav_settings',
                    {enabled: sendStats, newVersion: newVersion},
-                   $i('leftNav_updates_container'));
-    renderTemplate('notifications_block',
+                   $i('leftNav_settings_container'));
+    renderTemplate('notifications',
                    $.extend(data, {enabled: sendStats, version: DAL.version}),
-                   $i('notifications_block_container'));
+                   $i('notifications_container'));
   },
   remote: {
     stats: 'http://vmische.appspot.com/stats',
