@@ -66,6 +66,8 @@ handle_cast(Msg, State) ->
     {noreply, State}.
 
 
+handle_info(retry_not_ready_vbuckets, State) ->
+    {stop, retry_not_ready_vbuckets, State};
 handle_info({tcp, Socket, Data}, #state{downstream=Downstream,
                                         upstream=Upstream} = State) ->
     %% Set up the socket to receive another message
@@ -126,11 +128,34 @@ init({Src, Dst, Opts}) ->
               ok = mc_client_binary:set_vbucket(Downstream, VBucket, replica)
       end, VBuckets),
     Upstream = connect(Src, Username, Password, Bucket),
-    Checkpoints = case [{V, C} || {V, {ok, C}} <- [{Vb, mc_client_binary:get_last_closed_checkpoint(Downstream, Vb)} || Vb <- VBuckets]] of
+    {ok, CheckpointIdsDict} = mc_client_binary:get_open_checkpoint_ids(Upstream),
+    ?log_info("CheckpointIdsDict:~n~p~n", [CheckpointIdsDict]),
+    ReadyVBuckets = lists:filter(
+                      fun (Vb) ->
+                              case dict:find(Vb, CheckpointIdsDict) of
+                                  {ok, X} when is_integer(X) andalso X > 0 -> true;
+                                  _ -> false
+                              end
+                      end, VBuckets),
+    if
+        ReadyVBuckets =/= VBuckets ->
+            false = TakeOver,
+            ?log_info("Some vbuckets were not yet ready to replicate from:~n~p~n", [VBuckets -- ReadyVBuckets]),
+            erlang:send_after(30000, self(), retry_not_ready_vbuckets),
+            if ReadyVBuckets =:= [] ->
+                    gen_tcp:close(Upstream),
+                    gen_tcp:close(Downstream),
+                    receive retry_not_ready_vbuckets -> ok end,
+                    exit(retry_not_ready_vbuckets);
+               true -> ok
+            end;
+        true -> ok
+    end,
+    Checkpoints = case [{V, C} || {V, {ok, C}} <- [{Vb, mc_client_binary:get_last_closed_checkpoint(Downstream, Vb)} || Vb <- ReadyVBuckets]] of
                        [] -> undefined;
                        CheckpointMap -> CheckpointMap
                   end,
-    Args = [{vbuckets, VBuckets},
+    Args = [{vbuckets, ReadyVBuckets},
             {checkpoints, Checkpoints},
             {name, Name},
             {takeover, TakeOver}],
@@ -145,7 +170,7 @@ init({Src, Dst, Opts}) ->
     State = #state{
       upstream=Upstream,
       downstream=Downstream,
-      vbuckets=sets:from_list(VBuckets),
+      vbuckets=sets:from_list(ReadyVBuckets),
       last_seen=now(),
       takeover=TakeOver,
       takeover_done=false

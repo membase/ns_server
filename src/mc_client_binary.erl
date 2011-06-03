@@ -38,6 +38,7 @@
          set_vbucket/3,
          stats/1,
          stats/4,
+         get_open_checkpoint_ids/1,
          tap_connect/2]).
 
 -type recv_callback() :: fun((_, _, _) -> any()) | undefined.
@@ -561,3 +562,16 @@ stats_subcommand_test() ->
     ok = gen_tcp:close(Sock).
 
 -endif.
+
+get_open_checkpoint_ids(Sock) ->
+    stats(Sock, <<"checkpoint">>,
+          fun (K,V,Dict) ->
+                  case misc:split_binary_at_char(K, $:) of
+                      {<<"vb_", VB/binary>>, <<"open_checkpoint_id">>} ->
+                          dict:store(list_to_integer(binary_to_list(VB)),
+                                     list_to_integer(binary_to_list(V)),
+                                     Dict);
+                      _ ->
+                          Dict
+                  end
+          end, dict:new()).
