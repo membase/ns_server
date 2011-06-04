@@ -484,17 +484,27 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 
 /* email alerts styles */
 .email_alerts label {display:block;line-height:24px;margin-left:16px;margin-top:16px;}
-.email_alerts input {border:1px solid #ccd3d7;padding:3px;font-size:13px;width:150px}
+.email_alerts input, .email_alerts textarea {border:1px solid #ccd3d7;padding:3px;font-size:13px;width:150px}
+.email_alerts textarea {height: 100px;width: 250px}
 .email_alerts input[type="checkbox"] {border:none;position:relative;top:2px;width:auto}
 .email_alerts label span {display:block;float:left;margin:0 5px;text-align:right;width:120px}
 .email_alerts input[type="checkbox"] + span {display:inline;float:none}
-.email_alerts label + input[type="checkbox"] {display:inline;float:none;vertical-align:sub}
-.email_alerts fieldset {margin:16px;margin-left:130px;}
-.email_alerts legend {left:0;position:absolute;text-align:right;width:140px;}
+/*.email_alerts label + input[type="checkbox"] {display:inline;float:none;vertical-align:sub}*/
+.email_alerts label + input[type="checkbox"] {top:4px}
+/*.email_alerts fieldset {margin:16px;margin-left:130px;padding-top:20px;position:relative}*/
+.email_alerts fieldset {float:left;margin:16px;margin-bottom:8px;width:100%}
+.email_alerts legend {font-size:14px;font-weight:bold;margin-left:16px}
+.email_alerts .checkboxes {margin-left:111px;margin-top:16px}
+.email_alerts .checkboxes label {margin-top:0}
 
 .email_alerts .row {float:left;width:310px}
 .email_alerts .row + div span {width:3em}
 .email_alerts #email_alerts_port {width:3em}
+/* needed as we have applied a clearfix (fieldset needs float:left
+in chromium) */
+.email_alerts .save_cancel {float:right}
+
+#settings2 .section {background:#cccfd2;}
 
 /* lightbox styles */
 .lbox {width:711px; position:relative;}

@@ -723,7 +723,7 @@
                       <li class="tab_right"><a id="settings_alerts">Alerts</a></li>
                     </ul>
                   </div>
-                  <div class="panes">
+                  <div class="panes clearfix">
                     <div id="notifications_container">Please wait...</div>
                     <div id="auto_failover_container">Please wait...</div>
                     <div id="email_alerts_container">Please wait...</div>
@@ -817,63 +817,69 @@
               <input type="checkbox" id="email_alerts_enabled" />
               <span>Enable email alerts</span>
             </label>
-            <div class="row">
-              <label for="email_alerts_host">
-                <span>Host:</span>
-              </label>
-              <input type="text" id="email_alerts_host"
-                     value="{%= emailServer.host %}" disabled="disabled" />
-            </div>
-            <div>
-              <label for="email_alerts_port">
-                <span>Port:</span>
-              </label>
-              <input type="text" id="email_alerts_port"
-                     value="{%= emailServer.port %}" disabled="disabled" />
-            </div>
-            <label for="email_alerts_user">
-              <span>Username:</span>
-            </label>
-            <input type="text" id="email_alerts_user"
-                   value="{%= emailServer.user %}" disabled="disabled" />
-            <label for="email_alerts_pass">
-              <span>Password:</span>
-            </label>
-            <input type="password" id="email_alerts_pass"
-                   value="{%= emailServer.pass %}" disabled="disabled" />
-            <label for="email_alerts_encrypt">
-              <span>TLS</span>
-            </label>
-            <input type="checkbox" id="email_alerts_encrypt"
-                   {% if (emailServer.encrypt) { %}
-                   checked="checked"
-                   {% } %}
-                   />
-
-            <hr />
-            <label for="email_alerts_sender">
-              <span>Sender email:</span>
-            </label>
-            <input type="text" id="email_alerts_sender"
-                   value="{%= sender %}" disabled="disabled" />
-            <label for="email_alerts_sender">
-              <span>Recipients:</span>
-            </label>
-            <textarea id="email_alerts_recipients" disabled="disabled">{%= recipients %}</textarea>
             <fieldset id="email_alerts_alerts">
-              <legend>Available alerts</legend>
-              {% for (var i=0; i<alerts.length; i++) { %}
-              <label for="email_alerts_alerts_{%= alerts[i].label %}">
-                <input type="checkbox"
-                       id="email_alerts_alerts_{%= alerts[i].value %}"
-                       value="{%= alerts[i].value %}"
-                       {% if (alerts[i].enabled) { %}
-                       checked="checked"
-                       {% } %}
-                       />
-                <span>{%= alerts[i].label %}</span>
+              <legend>Email Server Settings</legend>
+              <div class="row">
+                <label for="email_alerts_host">
+                  <span>Host:</span>
+                </label>
+                <input type="text" id="email_alerts_host"
+                       value="{%= emailServer.host %}" disabled="disabled" />
+              </div>
+              <div>
+                <label for="email_alerts_port">
+                  <span>Port:</span>
+                </label>
+                <input type="text" id="email_alerts_port"
+                       value="{%= emailServer.port %}" disabled="disabled" />
+              </div>
+              <label for="email_alerts_user">
+                <span>Username:</span>
               </label>
-              {% } %}
+              <input type="text" id="email_alerts_user"
+                     value="{%= emailServer.user %}" disabled="disabled" />
+              <label for="email_alerts_pass">
+                <span>Password:</span>
+              </label>
+              <input type="password" id="email_alerts_pass"
+                     value="{%= emailServer.pass %}" disabled="disabled" />
+              <label for="email_alerts_encrypt">
+                <span>TLS</span>
+              </label>
+              <input type="checkbox" id="email_alerts_encrypt"
+                     {% if (emailServer.encrypt) { %}
+                     checked="checked"
+                     {% } %}
+                     />
+            </fieldset>
+            <fieldset id="email_alerts_alerts">
+              <legend>Email Settings</legend>
+              <label for="email_alerts_sender">
+                <span>Sender email:</span>
+              </label>
+              <input type="text" id="email_alerts_sender"
+                     value="{%= sender %}" disabled="disabled" />
+              <label for="email_alerts_sender">
+                <span>Recipients:</span>
+              </label>
+              <textarea id="email_alerts_recipients" disabled="disabled">{%= recipients %}</textarea>
+            </fieldset>
+            <fieldset id="email_alerts_alerts">
+              <legend>Available Alerts</legend>
+              <div class="checkboxes">
+                {% for (var i=0; i<alerts.length; i++) { %}
+                <label for="email_alerts_alerts_{%= alerts[i].label %}">
+                  <input type="checkbox"
+                         id="email_alerts_alerts_{%= alerts[i].value %}"
+                         value="{%= alerts[i].value %}"
+                         {% if (alerts[i].enabled) { %}
+                         checked="checked"
+                         {% } %}
+                         />
+                  <span>{%= alerts[i].label %}</span>
+                </label>
+                {% } %}
+              </div>
             </fieldset>
             <div class="save_cancel">
               <button class="save_button float_right" type="button">
