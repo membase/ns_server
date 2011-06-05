@@ -191,7 +191,9 @@ var AutoFailoverSection = {
       if (val!==undefined) {
         console.log('auto-failover:', val);
 
-        renderTemplate('auto_failover', val), $i('auto_failover_container');
+        renderTemplate('auto_failover', val, $i('auto_failover_container'));
+        renderTemplate('auto_failover_count', val,
+                       $i('auto_failover_count_container'));
         self.toggle(val.enabled);
 
         $('#auto_failover_enabled').change(function() {
@@ -206,6 +208,14 @@ var AutoFailoverSection = {
       postWithValidationErrors('/settings/autoFailover',
                                $.param({enabled: enabled, age: age,
                                         maxNodes: maxNodes}),
+                               function() {
+          autoFailoverEnabled.recalculate();
+      });
+    });
+    // reset button
+    $('#auto_failover_count_container').delegate('#auto_failover_count_reset',
+                                                 'click', function() {
+      postWithValidationErrors('/settings/autoFailover/resetCount', {},
                                function() {
           autoFailoverEnabled.recalculate();
       });

@@ -131,6 +131,9 @@ var ServersSection = {
   refreshEverything: function () {
     this.updateData();
     this.renderEverything();
+    // It displays the status of auto-failover, hence we need to refresh
+    // it to get the current values
+    AutoFailoverSection.refresh();
   },
   onRebalanceProgress: function () {
     var value = this.rebalanceProgress.value;
