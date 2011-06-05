@@ -190,7 +190,9 @@ default() ->
                       {age, 60},
                       % max_nodes is the maximum number of nodes that may be
                       % automatically failovered
-                      {max_nodes, 1}]}
+                      {max_nodes, 1},
+                      % count is the number of nodes that were auto-failovered
+                      {count, 0}]}
     ].
 
 %% returns list of changes to config to upgrade it to current version.

@@ -13,8 +13,16 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
-%% @doc Does auto failover nodes that are down
-%%
+
+%% @doc Does auto failover nodes that are down.
+%% It works like that: You specify a certain time interval (age) a node
+%% must be down, before it will be auto-failovered. There's also a
+%% maximum number of nodes that may be auto-failovered. Whenever a node
+%% gets auto-failovered a counter is increased by one. Once the counter
+%% has reached the maximum number of nodes that may be auto-failovered
+%% the user will only get a notification that there was a node that would
+%% have been auto-failovered if the maximum wouldn't have been reached.
+
 -module(auto_failover).
 
 -include_lib("eunit/include/eunit.hrl").
@@ -24,20 +32,29 @@
 -include("ns_common.hrl").
 
 %% API
--export([start_link/0, enable/2, disable/0, is_node_down/1]).
+-export([start_link/0, enable/2, disable/0, reset_count/0]).
+%% For email alert notificatons
+-export([alert_key/1, alert_keys/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
 -define(SERVER, {global, ?MODULE}).
+%% @doc Fired when a node was auto-failovered.
+-define(EVENT_NODE_AUTO_FAILOVERED, 1).
+%% @doc Fired when the maximum number of nodes that can be auto-failovered
+%% was reached (and thus the auto-failover was disabled).
+-define(EVENT_MAX_REACHED, 2).
 
 -record(state, {
-          %enabled=true :: true|false,
           % The nodes that are currently consideren to be down. It's a list
-          % of a two-tuple that conists of the node ID and the timestamp
-          % when it was first considered down.
-          nodes_down=[] :: [{atom(), integer()}],
+          % of a three-tuple that conists of the node ID, the timestamp
+          % when it was first considered down and whether the nodes was
+          % tried to auto-failover or not (this info is needed to be able
+          % to send out notices about nodes that would be auto-failovered
+          % when the maximum wouldn't have been reached yet).
+          nodes_down=[] :: [{atom(), integer(), boolean()}],
           % Reference to the ns_tick_event. If it is nil, auto-failover is
           % disabled.
           tick_ref=nil :: nil|reference(),
@@ -45,7 +62,9 @@
           age=nil :: nil|integer(),
           % The maximum number of nodes that should get automatically
           % failovered
-          max_nodes=1 :: integer()
+          max_nodes=1 :: integer(),
+          % Counts the number of nodes that were already auto-failovered
+          count=0 :: integer()
          }).
 
 %%
@@ -54,7 +73,6 @@
 
 start_link() ->
     misc:start_singleton(gen_server, ?MODULE, [], []).
-    %gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 %% @doc Enable auto-failover. Failover after a certain time (in seconds),
 %% Returns an error (and reason) if it couldn't be enabled, e.g. because
@@ -70,114 +88,91 @@ enable(Age, Max) ->
 %% @doc Disable auto-failover
 -spec disable() -> ok.
 disable() ->
-    gen_server:cast(?SERVER, disable_auto_failover).
+    gen_server:call(?SERVER, disable_auto_failover).
 
-%% @doc Returns true if the node is down longer than the configured timespan.
--spec is_node_down(Node::atom()) -> true|false.
-is_node_down(Node) ->
-    gen_server:call(?SERVER, {is_node_down, Node}).
+%% @doc Reset the number of nodes that were auto-failovered to zero
+-spec reset_count() -> ok.
+reset_count() ->
+    gen_server:call(?SERVER, reset_auto_failover_count).
 
-%%% @doc Returns true if the node is down longer than the configured timespan.
-%%% 'Offset' (in seconds) will be add to the current time, this means that
-%%% nodes that have not now, but now+Offset reached the age of being down will
-%%% return true as well.
-%-spec is_node_down(Node::atom(), Offset:integer()) -> true|false.
-%is_node_down(Node, Offset) ->
-%    gen_server:call(?SERVER, {is_node_down, Node, Offset}).
+-spec alert_key(Code::integer()) -> atom().
+alert_key(?EVENT_NODE_AUTO_FAILOVERED) -> auto_failover_node;
+alert_key(?EVENT_MAX_REACHED) -> auto_failover_maximum_reached;
+alert_key(_) -> all.
 
+%% @doc Returns a list of all alerts that might send out an email notfication.
+-spec alert_keys() -> [atom()].
+alert_keys() ->
+    [auto_failover_node,
+     auto_failover_maximum_reached,
+     auto_failover_too_many_nodes_down].
 
 %%
 %% gen_server callbacks
 %%
 
 init([]) ->
-    ?log_info("init auto_failover: ~p", []),
     {value, Config} = ns_config:search(ns_config:get(), auto_failover),
-    State = case proplists:get_value(enabled, Config) of
+    ?log_info("init auto_failover.", []),
+    Age = proplists:get_value(age, Config),
+    Max = proplists:get_value(max_nodes, Config),
+    Count = proplists:get_value(count, Config),
+    State = #state{age=Age, max_nodes=Max, count=Count},
+    case proplists:get_value(enabled, Config) of
         true ->
-            ?log_info("auto-failover is enabled~n", []),
-            Age = proplists:get_value(age, Config),
-            Max = proplists:get_value(max_nodes, Config),
-            {reply, Enabled, State2} = handle_call(
-                                         {enable_auto_failover, Age, Max},
-                                         self(), #state{}),
-            case Enabled of
-                ok ->
-                    ok;
-                % Auto-failover wasn't really enabled. Update config.
-                {error, _} ->
-                    ns_config:set(auto_failover, [{enabled, false},
-                                                  {age, Age},
-                                                  {max_nodes, Max}])
-            end,
-            State2;
-        _ ->
-            #state{}
-    end,
-    {ok, State}.
+            {reply, ok, State2} = handle_call({enable_auto_failover, Age, Max},
+                                              self(), State),
+            {ok, State2};
+        false ->
+            {ok, State}
+    end.
 
-%% @doc Auto-failover isn't enabled yet (tick_ref isn't set). We might not
-%% enable it successfully because of certain contraints like a cluster
-%% where some nodes are down.
-handle_call({enable_auto_failover, Age, Max}, _From,
+%% @doc Auto-failover isn't enabled yet (tick_ref isn't set).
+handle_call({enable_auto_failover, Age, Max}, _From, 
             #state{tick_ref=nil}=State) ->
-    case actual_down_nodes() of
-        [] ->
-            Ref = ns_pubsub:subscribe(ns_tick_event),
-            {reply, ok, State#state{tick_ref=Ref, age=Age, max_nodes=Max}};
-        _ ->
-            ?log_warning("Couldn't enable auto-failover. Please failover "
-                         "all nodes that are currently down manually first",
-                         []),
-            {reply, {error, unhealthy}, State}
-    end;
-%% @doc Auto-failover is already, we don't do any further checks, whether
-%% it can be enabled or not. We just update the settings.
+    ?log_info("enable auto-failover: ~p", [State]),
+    Ref = ns_pubsub:subscribe(ns_tick_event),
+    State2 = State#state{tick_ref=Ref, age=Age, max_nodes=Max},
+    make_state_persistent(State2),
+    {reply, ok, State2};
+%% @doc Auto-failover is already enabled, just update the settings.
 handle_call({enable_auto_failover, Age, Max}, _From, State) ->
     ?log_info("updating auto-failover settings: ~p", [State]),
-    {reply, ok, State#state{age=Age, max_nodes=Max}};
+    State2 = State#state{age=Age, max_nodes=Max},
+    make_state_persistent(State2),
+    {reply, ok, State2};
 
-handle_call({is_node_down, Node}, _From,
-            #state{nodes_down=ConsideredDown, age=Age}=State) ->
-    {Node, DownTime} = lists:keyfind(Node, 1, ConsideredDown),
-    Now = ns_tick:time(),
-    {reply, (DownTime + Age*1000) < Now, State};
-
-handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
-
-
-handle_cast(disable_auto_failover, #state{tick_ref=Ref}=State) ->
+handle_call(disable_auto_failover, _From, #state{tick_ref=Ref}=State) ->
     ?log_info("disable_auto_failover: ~p", [State]),
     ns_pubsub:unsubscribe(ns_tick_event, Ref),
-    {noreply, #state{}};
+    State2 = State#state{tick_ref=nil},
+    make_state_persistent(State2),
+    {reply, ok, State2};
+
+handle_call(reset_auto_failover_count, _From, State) ->
+    ?log_info("reset auto_failover count: ~p", [State]),
+    State2 = State#state{count=0,nodes_down=[]},
+    make_state_persistent(State2),
+    {reply, ok, State2};
+
+handle_call(_Request, _From, State) ->
+    {reply, ok, State}.
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-
-handle_info({tick, TS}, #state{max_nodes=Max}=State) ->
+%% @doc Check if nodes should/could be auto-failovered on every tick
+handle_info({tick, TS}, State) ->
     CurrentlyDown = actual_down_nodes(),
-    AlreadyFailoveredNum = length(failovered_nodes()),
-    case length(CurrentlyDown) + AlreadyFailoveredNum =< Max of
-        % All nodes that went down can potentially be auto-failovered
-        true ->
-            % Failover all nodes that are down for a certain amount of time.
-            % Disable auto-failover automatically when the maximum number of
-            % nodes that can be auto-failovered is reached.
-            case failover_nodes(CurrentlyDown, TS, State) of
-                {error, _} ->
-                    handle_cast(auto_failover_disable, State);
-                StillDown ->
-                    {noreply, State#state{nodes_down=StillDown}}
-            end;
-        % Many nodes are down at the same time, not all nodes can be
-        % auto-failovered. This happens on major outages/net splits.
-        % Therefore we disable auto-failover right now.
-        false ->
-            handle_cast(disable_auto_failover, State)
-    end;
+    % Failover all nodes that are down for a certain amount of time.
+    % Send out a notice when the when the maximum number of nodes that can
+    % be auto-failovered is reached.
+    State2 = failover_nodes(CurrentlyDown, TS, State),
+    case State2#state.count =/= State#state.count of
+        true -> make_state_persistent(State2);
+        false -> ok
+    end,
+    {noreply, State2};
 
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -193,68 +188,76 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal functions
 %%
 
-%% @doc Failover a node. `Max` is ther number of nodes that can be
-%% auto-failovered at most.
--spec failover(Node::atom(), Max::integer()) -> ok|{error, maximum_reached}.
-failover(Node, Max) ->
+%% @doc Failover a node. `Max` is the number of nodes that can be
+%% auto-failovered at most, `Count` is the current number of nodes
+%% that were already auto-failovered.
+-spec failover(Node::atom(), Count::integer(), Max::integer()) ->
+                  ok|{error, maximum_reached}.
+failover(Node, Count, Max) ->
     % Only failover if the maximum number of nodes that
     % will be automatically failovered isn't reached yet
-    case length(failovered_nodes()) < Max of
+    case Count < Max of
         true ->
             ns_cluster_membership:failover(Node),
+            ns_log:log(?MODULE, ?EVENT_NODE_AUTO_FAILOVERED,
+                       "Node (~p) was automatically failovered.~n", [Node]),
             ok;
         false ->
-            ?log_warning(
-               "Could not auto-failover node (~p). "
-               "Maximum number of nodes that will be "
-               "automatically failovered (~p) is "
-               "reached. Disabling auto-failver now.",
-               [Node, Max]),
+            ns_log:log(?MODULE, ?EVENT_MAX_REACHED,
+                       "Could not auto-failover node (~p). "
+                       "Maximum number of nodes that will be "
+                       "automatically failovered (~p) is reached.~n",
+                       [Node, Max]),
             {error, maximum_reached}
     end.
 
-%% @doc Loop through all nodes that are currently down and Failovers a node
+%% @doc Loop through all nodes that are currently down and failovers a node
 %% if it was down long enough and the maximum number of nodes that may be
 %% auto-failovered isn't reached yet.
 %% `CurrentlyDown` are the nodes that are down at the current tick
 %% `ConsideredDown` are the nodes that were down on the last tick
 %% `TS` is the timestamp of the current tick
 %% `State` the current state of the gen_server
-%% Returns the list of nodes that are currently down or and error.
+%% Returns a new state that contains an updated count and an updated list of
+%% nodes that are currently down
 -spec failover_nodes(CurrentlyDown::[atom()], TS::integer(),
-                     State::#state{}) ->
-                        [{atom(), integer()}]|{error, maximum_reached}.
+                     State::#state{}) -> #state{}.
 failover_nodes(CurrentlyDown, TS, State) ->
     failover_nodes(CurrentlyDown, TS, State, []).
 
 -spec failover_nodes(CurrentlyDown::[atom()], TS::integer(),
-                     State::#state{}, Acc::[{atom(), integer()}]) ->
-                        [{atom(), integer()}]|{error, maximum_reached}.
-failover_nodes([], _TS, _State, Acc) ->
-    lists:reverse(Acc);
+                     State::#state{}, Acc::[{atom(), integer(), boolean()}]) ->
+                        #state{}.
+failover_nodes([], _TS, State, Acc) ->
+    State#state{nodes_down=lists:reverse(Acc)};
 failover_nodes([Node|Rest], TS,
-               #state{nodes_down=ConsideredDown, max_nodes=Max}=State, Acc) ->
+               #state{nodes_down=ConsideredDown, max_nodes=Max,
+                      count=Count}=State, Acc) ->
     case lists:keyfind(Node, 1, ConsideredDown) of
         % Node wasn't considered as down yet, add it to the list.
         false ->
-            failover_nodes(Rest, TS, State, [{Node, TS}|Acc]);
-        AlreadyDown ->
+            failover_nodes(Rest, TS, State, [{Node, TS, false}|Acc]);
+        % Node was already down in the last tick, but might not have been
+        % down longer than the specified time span (age)
+        {Node, DownTs, IsAlreadyAutoFailovered} ->
             % Check for how long this node is down already.
             % is_node_down doesn't change the state.
-            {reply, DownForLong, State} = handle_call({is_node_down, Node},
-                                                      self(), State),
-            Failovered = case DownForLong of
-                true -> failover(Node, Max);
-                false -> ok
+            DownForLong = is_node_down(Node, State),
+            % The count is only increased if the node was really failovered
+            Count2 = case DownForLong and not IsAlreadyAutoFailovered of
+                true ->
+                    case failover(Node, Count, Max) of
+                        ok -> Count+1;
+                        {error, maximum_reached} -> Count
+                    end;
+                _ ->
+                    Count
             end,
-            % If node was successfully failovered, go on. If it failed,
-            % return with an error.
-            case Failovered of
-                ok ->
-                    failover_nodes(Rest, TS, State, [AlreadyDown|Acc]);
-                Error ->
-                    Error
-            end
+            % DownForLong can be used as third tuple element as every node
+            % that was down for a long enough time span was definitely tried
+            % to be auto-failovered.
+            failover_nodes(Rest, TS, State#state{count=Count2},
+                           [{Node, DownTs, DownForLong}|Acc])
     end.
 
 %% @doc Returns a list of nodes that should be active, but are not running.
@@ -264,8 +267,21 @@ actual_down_nodes() ->
     Actual = ns_cluster_membership:actual_active_nodes(),
     lists:subtract(Active, Actual).
 
-%% @doc Returns a list of nodes that were already failovered.
--spec failovered_nodes() -> [atom()].
-failovered_nodes() ->
-    Nodes = ns_cluster_membership:get_nodes_cluster_membership(),
-    [Node || {Node, Membership} <- Nodes, Membership=:=inactiveFailed].
+%% @doc Returns true if the node is down longer than the configured time span.
+-spec is_node_down(Node::atom(), State::#state{}) -> true|false.
+is_node_down(Node, #state{nodes_down=ConsideredDown, age=Age}) ->
+    {Node, DownTime, _} = lists:keyfind(Node, 1, ConsideredDown),
+    Now = ns_tick:time(),
+    (DownTime + Age*1000) < Now.
+
+%% @doc Save the current state in ns_config
+-spec make_state_persistent(State::#state{}) -> ok.
+make_state_persistent(State) ->
+    Enabled = case State#state.tick_ref of
+        nil -> false;
+        _ -> true
+    end,
+    ns_config:set(auto_failover, [{enabled, Enabled},
+                                  {age, State#state.age},
+                                  {max_nodes, State#state.max_nodes},
+                                  {count, State#state.count}]).

@@ -934,9 +934,11 @@ handle_settings_auto_failover(Req) ->
     Enabled = proplists:get_value(enabled, Config),
     Age = proplists:get_value(age, Config),
     MaxNodes = proplists:get_value(max_nodes, Config),
+    Count = proplists:get_value(count, Config),
     reply_json(Req, {struct, [{enabled, Enabled},
                               {age, Age},
-                              {maxNodes, MaxNodes}]}).
+                              {maxNodes, MaxNodes},
+                              {count, Count}]}).
 
 build_settings_auto_failover() ->
     {value, Config} = ns_config:search(ns_config:get(), auto_failover),
@@ -949,20 +951,13 @@ handle_settings_auto_failover_post(Req) ->
     MaxNodes = proplists:get_value("maxNodes", PostArgs),
     case validate_settings_auto_failover(Enabled, Age, MaxNodes) of
         [true, Age2, MaxNodes2] ->
-            case auto_failover:enable(Age2, MaxNodes2) of
-                ok ->
-                    ns_config:set(auto_failover, [{enabled, true}, {age, Age2},
-                                                  {max_nodes, MaxNodes2}]),
-                    Req:respond({200, add_header(), []});
-                {error, _} ->
-                    % Disable auto-failover in the config (just to be on
-                    % the safe side)
-                    disable_auto_failover_settings(),
-                    Req:respond({409, add_header(),
-                                 ["Could not enable auto-failover. "
-                                  "All nodes in the cluster need to be up "
-                                  "and running."]})
-            end;
+            auto_failover:enable(Age2, MaxNodes2),
+            Config = build_settings_auto_failover(),
+            Count = proplists:get_value(count, Config),
+            ns_config:set(auto_failover, [{enabled, true}, {age, Age2},
+                                          {max_nodes, MaxNodes2},
+                                          {count, Count}]),
+            Req:respond({200, add_header(), []});
         false ->
             disable_auto_failover_settings(),
             auto_failover:disable(),
@@ -1000,14 +995,14 @@ is_valid_positive_integer(String) ->
     Int = (catch list_to_integer(String)),
     (is_integer(Int) andalso (Int > 0)).
 
-%% @doc Disable auto-failover in the settings (but don't make the actual)
-%% call to disable it.
+%% @doc Disable auto-failover in the settings (but don't make the actual
+%% call to disable it). Reset the auto-failover count to 0.
 disable_auto_failover_settings() ->
     Config = build_settings_auto_failover(),
     Age = proplists:get_value(age, Config),
     MaxNodes = proplists:get_value(max_nodes, Config),
     ns_config:set(auto_failover, [{enabled, false}, {age, Age},
-                                  {max_nodes, MaxNodes}]).
+                                  {max_nodes, MaxNodes},{count, 0}]).
 
 %% true iff system is correctly provisioned
 is_system_provisioned() ->
