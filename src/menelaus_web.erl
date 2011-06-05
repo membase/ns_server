@@ -227,6 +227,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_settings_stats_post/1};
                              ["settings", "autoFailover"] ->
                                  {auth, fun handle_settings_auto_failover_post/1};
+                             ["settings", "autoFailover", "resetCount"] ->
+                                 {auth, fun handle_settings_auto_failover_reset_count/1};
                              ["pools", PoolId] ->
                                  {auth, fun handle_pool_settings/2,
                                   [PoolId]};
@@ -952,14 +954,8 @@ handle_settings_auto_failover_post(Req) ->
     case validate_settings_auto_failover(Enabled, Age, MaxNodes) of
         [true, Age2, MaxNodes2] ->
             auto_failover:enable(Age2, MaxNodes2),
-            Config = build_settings_auto_failover(),
-            Count = proplists:get_value(count, Config),
-            ns_config:set(auto_failover, [{enabled, true}, {age, Age2},
-                                          {max_nodes, MaxNodes2},
-                                          {count, Count}]),
             Req:respond({200, add_header(), []});
         false ->
-            disable_auto_failover_settings(),
             auto_failover:disable(),
             Req:respond({200, add_header(), []});
         {error, Errors} ->
@@ -995,14 +991,10 @@ is_valid_positive_integer(String) ->
     Int = (catch list_to_integer(String)),
     (is_integer(Int) andalso (Int > 0)).
 
-%% @doc Disable auto-failover in the settings (but don't make the actual
-%% call to disable it). Reset the auto-failover count to 0.
-disable_auto_failover_settings() ->
-    Config = build_settings_auto_failover(),
-    Age = proplists:get_value(age, Config),
-    MaxNodes = proplists:get_value(max_nodes, Config),
-    ns_config:set(auto_failover, [{enabled, false}, {age, Age},
-                                  {max_nodes, MaxNodes},{count, 0}]).
+%% @doc Resets the number of nodes that were automatically failovered to zero
+handle_settings_auto_failover_reset_count(Req) ->
+    auto_failover:reset_count(),
+    Req:respond({200, add_header(), []}).
 
 %% true iff system is correctly provisioned
 is_system_provisioned() ->
