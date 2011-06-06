@@ -151,14 +151,10 @@ init({Src, Dst, Opts}) ->
             end;
         true -> ok
     end,
-    CheckpointsList = lists:map(fun ({V, {ok, C}}) -> {V, C};
-                                    ({V, _})       -> {V, 0}
-                                end,
-                                [{Vb, mc_client_binary:get_last_closed_checkpoint(Downstream, Vb)} || Vb <- ReadyVBuckets]),
-    Checkpoints = case CheckpointsList of
-                       [] -> undefined;
-                       CheckpointMap -> CheckpointMap
-                  end,
+    Checkpoints = lists:map(fun ({V, {ok, C}}) -> {V, C};
+                                ({V, _})       -> {V, 0}
+                            end,
+                            [{Vb, mc_client_binary:get_last_closed_checkpoint(Downstream, Vb)} || Vb <- ReadyVBuckets]),
     Args = [{vbuckets, ReadyVBuckets},
             {checkpoints, Checkpoints},
             {name, Name},
