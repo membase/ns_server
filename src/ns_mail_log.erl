@@ -22,6 +22,8 @@
 %% gen_event callbacks
 -export([init/1, handle_event/2, handle_call/2,
          handle_info/2, terminate/2, code_change/3]).
+%% API
+-export([send_email_from_config/2]).
 
 -record(state, {}).
 
@@ -78,6 +80,16 @@ handle_call(Request, State) ->
 handle_info(Info, State) ->
     ?log_info("ns_mail_log handle_info(~p, ~p)~n", [Info, State]),
     {ok, State, hibernate}.
+
+%% @doc Sends an email with the current configuration setting.
+send_email_from_config(Subject, Body) ->
+    {value, Config} = ns_config:search(alerts),
+    ServerConfig = proplists:get_value(email_server, Config),
+    Options = config_to_options(ServerConfig),
+    ns_mail:send(proplists:get_value(sender, Config),
+                 proplists:get_value(recipients, Config),
+                 Subject, Body, Options).
+
 
 %% Internal functions
 

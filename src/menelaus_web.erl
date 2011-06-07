@@ -223,6 +223,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_settings_web_post/1};
                              ["settings", "alerts"] ->
                                  {auth, fun handle_settings_alerts_post/1};
+                             ["settings", "alerts", "sendTestEmail"] ->
+                                 {auth, fun handle_settings_alerts_send_test_email/1};
                              ["settings", "stats"] ->
                                  {auth, fun handle_settings_stats_post/1};
                              ["settings", "autoFailover"] ->
@@ -1082,6 +1084,14 @@ handle_settings_alerts_post(Req) ->
         {error, Errors} ->
             reply_json(Req, Errors, 400)
     end.
+
+%% @doc Sends a test email with the current settings
+handle_settings_alerts_send_test_email(Req) ->
+    ns_mail_log:send_email_from_config("Test email from Membase",
+                                       "This email was sent to you to test "
+                                       "the email alert email server "
+                                       "settings."),
+    Req:respond({200, add_header(), []}).
 
 handle_traffic_generator_control_post(Req) ->
     % TODO: rip traffic generation the hell out.
