@@ -188,9 +188,9 @@ var ThePage = {
              log: AlertsSection,
              monitor_buckets: MonitorBucketsSection,
              monitor_servers: MonitorServersSection,
-             settings2: Settings2Section},
+             settings: SettingsSection},
 
-  coming: {settings:true, alerts:true},
+  coming: {alerts:true},
 
   currentSection: null,
   currentSectionName: null,

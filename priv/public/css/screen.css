@@ -504,7 +504,7 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 in chromium) */
 .email_alerts .save_cancel {float:right}
 
-#settings2 .section {background:#cccfd2;}
+#settings .section {background:#cccfd2;}
 
 /* lightbox styles */
 .lbox {width:711px; position:relative;}
