@@ -244,28 +244,12 @@
             <div class="warning_message failover_warning">
               Fail Over Warning: <span class="warning-text"></span>
             </div>
-            <div id="auto_failover_count_container"></div>
-            <script id="auto_failover_count_template" type="text/html">
-              {% if (enabled) { %}
-              <span
-              {% if (count/maxNodes > 0.7) { %}
-                 class="info warning">
-              {% } else if (count/maxNodes > 0.5) { %}
-                 class="info notify">
-              {% } else { %}
-                 class="info">
-              {% } %}
-              Auto-Failover {%= count %} of {%= maxNodes %} used</span>
-              <a id="auto_failover_count_reset"
-                 {% if (count===0) { %}
-                 class="list_button disabled">
-                 {% } else { %}
-                 class="list_button">
-                 {% } %}
-                <span>Reset</span>
+            <div id="auto_failover_count_container" class="warning_message">
+              Auto-Failover <span class="count">?</span> of <span class="maxNodes">?</span> used
+              <a id="auto_failover_count_reset" class="edit_btn">
+                <span>Reset Quota</span>
               </a>
-              {% } %}
-            </script>
+            </div>
             <div class="shadow_box">
                 <div class="content">
                   <!-- shadow box -->
