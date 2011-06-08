@@ -126,8 +126,7 @@ td.leftNav .badge {right:0px;top:0px;}
 .topper_nav i {font-style:normal;}
 
 /* buttons */
-.save_cancel {height:31px;padding:5px 0;}
-.dialog .save_cancel {border-top:1px solid #eee;border-bottom-width:0px;padding:18px;clear:both;background:#cccfd2;}
+.save_cancel {height:31px;border-top:1px solid #CCCFD2;border-bottom:none;padding:10px;clear:both;background:url("../images/devider_line_1.gif") repeat-x scroll 0 -1px #DFE0E0;margin-top:20px}
 .save_cancel button, .config-bottom button {position:relative;top:-1px;display:block;width:121px;height:31px;color:#fff;font-size:14px;font-weight:bolder;line-height:31px;text-align:center;text-decoration:none;border:0px;cursor:pointer;white-space:nowrap}
 .save_cancel button:hover, .save_cancel button:focus,
 .config-bottom button:hover, .config-bottom button:focus {background-position:0 -31px;}
@@ -459,7 +458,6 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 #notifications h2 {margin-bottom:12px}
 #notifications .section, #notifications_enabled .section {border:2px solid #d4d4d5;border-width:0 2px;border-bottom:1px solid #CED5D9;}
 .notifications-updates .item {padding:13px;}
-.notifications-updates .save_cancel {padding:5px;}
 .notifications-updates .save_button {float:right;}
 .notifications-updates p, .notifications-updates ul {line-height:1.4;margin:1em 0;padding:0 10px}
 .notifications-updates ul {list-style-type:disc; margin:5px 0 0 15px;padding:0 20px}
@@ -500,11 +498,6 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 .email_alerts .row {float:left;width:310px}
 .email_alerts .row + div span {width:3em}
 .email_alerts #email_alerts_port {width:3em}
-/* needed as we have applied a clearfix (fieldset needs float:left
-in chromium) */
-.email_alerts .save_cancel {float:right}
-
-#settings .section {background:#cccfd2;}
 
 /* lightbox styles */
 .lbox {width:711px; position:relative;}
@@ -963,7 +956,8 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details h1 {background:#dfdfe0;padding-left:20px;padding-top:16px;padding-bottom:16px;border-bottom:1px solid #BDBEC2;}
  .init_block .bucket_details h1 {background:none;border:none;}
 .bucket_details form {border-top:1px solid #dfdfe0;}
-.bucket_details form > div {padding:0 56px 48px;border-bottom:1px solid #cccfd2;border-top:1px solid #f8f8f8;}
+.bucket_details .clearfix {padding:0 56px 48px;border-bottom:1px solid #cccfd2;border-top:1px solid #f8f8f8;}
+.bucket_details .save_cancel{margin-top:0}
  .init_block .bucket_details form > div {border-bottom:none;}
  .init_block .bucket_details .config-bottom {padding:18px 18px 17px;border:none;}
 .bucket_details h2 {clear:both;font-size:20px;font-weight:normal;padding-bottom:6px;margin-top:18px;margin-bottom:15px;border-bottom:1px solid #d4d9dc;}
