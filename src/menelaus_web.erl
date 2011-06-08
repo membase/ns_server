@@ -223,7 +223,7 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_settings_web_post/1};
                              ["settings", "alerts"] ->
                                  {auth, fun handle_settings_alerts_post/1};
-                             ["settings", "alerts", "sendTestEmail"] ->
+                             ["settings", "alerts", "testEmail"] ->
                                  {auth, fun handle_settings_alerts_send_test_email/1};
                              ["settings", "stats"] ->
                                  {auth, fun handle_settings_stats_post/1};
