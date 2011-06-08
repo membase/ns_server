@@ -1540,7 +1540,7 @@ bin_concat_path(Path) ->
     list_to_binary(concat_url_path(Path)).
 
 handle_diag_eval(Req) ->
-    {value, Value, _} = eshell:eval(binary_to_list(Req:recv_body()), erl_eval:add_binding("Req", Req, erl_eval:new_bindings())),
+    {value, Value, _} = eshell:eval(binary_to_list(Req:recv_body()), erl_eval:add_binding('Req', Req, erl_eval:new_bindings())),
     case Value of
         done -> ok;
         {json, V} -> reply_json(Req, V, 200);
