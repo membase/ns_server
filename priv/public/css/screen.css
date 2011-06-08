@@ -498,6 +498,9 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 .email_alerts .row {float:left;width:310px}
 .email_alerts .row + div span {width:3em}
 .email_alerts #email_alerts_port {width:3em}
+#test_email {float: left; border:none; font-size: 0.85em; margin: 3px 0pt 3px 150px;}
+/* button prefix is due to an IE 7 bug that causes the span.failed_over_message to display...all the time... */
+button#test_email + span {line-height:2.25em;margin-left:0.5em}
 
 /* lightbox styles */
 .lbox {width:711px; position:relative;}

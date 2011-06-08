@@ -342,6 +342,19 @@ var EmailAlertsSection = {
       }
     });
 
+    $('#test_email').live('click', function() {
+      var testButton = $(this).text('Sending...').addClass('disabled');
+      $.post('/settings/alerts/testEmail', function(data, status) {
+        if (status === 'success') {
+          testButton.text('Sent!').css('font-weight', 'bold');
+          // Increase compatibility with unnamed functions
+          window.setTimeout(function() {
+            testButton.text('Test Mail').css('font-weight', 'normal').removeClass('disabled');
+          }, 1000);
+        }
+      });
+    });
+
     $('#email_alerts_container').delegate('.save_button', 'click', function() {
       var alerts = $('#email_alerts_alerts input[type=checkbox]:checked')
         .map(function() {
