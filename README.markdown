@@ -3,6 +3,8 @@
 This application represents the top of the hierarchy of all memcached
 smart services.  It is an application in the Erlang OTP sense.
 
+TODO: this picture needs updating
+
 <div>
     <img src="https://github.com/membase/ns_server/raw/master/doc/images/ns_server.png"
          alt="[ns server]" style="float: right"/>
@@ -12,138 +14,61 @@ smart services.  It is an application in the Erlang OTP sense.
 
 Build dependencies include...
 
-* erlang (5.7.4, also needed at runtime)
-* ruby (1.8.6)
-* ruby gems
-    * sprockets (install with `gem install sprockets`)
+* erlang R14 (make sure to have functional crypto)
 
 Building...
 
-    git clone git@github.com:membase/ns_server.git
-    cd ns_server
-    make
+You should use top level make file and repo manifest as explained
+here: https://github.com/membase/manifest/blob/master/README.markdown
 
 ## Runtime dependencies
 
 Before you start the server, you may need to do the following
-  * Below, <REPO_ROOT> is where you checked out and built ns_server above.
   * Make sure the needed ports are not being used (these include
     8091, 11211, 11212, etc).
 
-### UNIX
-
-For 1.0/Reveal memcached...
-
-Build the "for_release" branch of northscale memcached that
-has isasl enabled...
-
-  git clone git@github.com:membase/memcached.git &&
-  cd memcached &&
-  git checkout --track origin/for_release &&
-  ./config/autorun.sh &&
-  ./configure --enable-isasl &&
-  make &&
-  make test
-
-For membase, instead use git://github.com/trondn/memcached.git
-engine branch...
-
-  git clone git://github.com/trondn/memcached.git
-  git checkout --track origin/engine
-
-Build the bucket_engine library from the
-git@github.com:membase/bucket_engine.git repository.
-
-  git clone git@github.com:membase/bucket_engine.git &&
-  cd bucket_engine &&
-  ./configure --with-memcached=/path/to/your/above/dir/for/memcached/ &&
-  make &&
-  make test
-
-Next, create symlinks...
-
- * Create a sym link from the for_release northscale memcached
-   that you just built to <REPO_ROOT>/priv/memcached
- * Create a sym link from the memcached/.libs/default_engine.so to
-   <REPO_ROOT>/priv/engines/default_engine.so
- * Create a sym link from the bucket_engine/.libs/bucket_engine.so to
-   <REPO_ROOT>/priv/engines/bucket_engine.so
-
-For membase, also symlink...
-
-  <REPO_ROOT>/priv/engines/stdin_term_handler.so to memcached/.libs/stdin_term_handler.so
-
-Also, for membase, build the ep engine and symlink it the .libs/ep.so the priv/engines...
-
-  git clone git@github.com:membase/ep-engine.git &&
-  cd ep-engine &&
-  ./configure --with-memcached=/path/to/your/above/dir/for/memcached/ &&
-  make &&
-  make test
-
-If your sym links are correct, you should be able to cd
-to <REPO_ROOT>/priv and run (just to test):
-
-  ./memcached -p 11211 -d -P /tmp/memcached.pid -E engines/bucket_engine.so -e "admin=_admin;engine=engines/default_engine.so;default_bucket_name=default
-
-To kill your test memcached:
-
-  kill `cat /tmp/memcached.pid`
-
-### Windows:
-
-To make life easy, use the appropriate binary from the Membase
-website.  Copy the installed memcached.exe and default_engine.so into
-the ./priv and ./priv/engines directories.
-
-If your copying was correct, you should be able to cd <REPO_ROOT>/priv
-and run (just to test):
-
-  ./memcached -p 11211 -E engines/default_engine.so
-
-To kill memcached:
-
-  taskkill //F //PID `tasklist.exe |grep memcached|awk '/^(\w+)\W+(\w+)/ {print $2}'`
-
-## Other
-
-Just a general note, if you are making changes to the priv/config file
-and these changes don't appear to be reflected in the start up
-procedures, try deleting the <REPO_ROOT>/config dir.
 
 ## Running
 
-The ns_server can be started through the `start.sh` script found in the
-main directory.
+After building everything via top level makefile you'll have
+membase-server script in your $REPO/install/bin (or other prefix if
+you specified so). You can run this script for normal single node
+startup.
 
-    ./start.sh
+During development it's convenient to have several 'nodes' on your
+machine. There's ./cluster_run script in root directory for achiving
+that. Feel free to ask --help. You normally need something like -n2
+where 2 is number of nodes you want.
 
-It starts under sasl, which will give you more detailed logging on
-both progress and failures of the application and the heirarcy.
+It'll start REST API on ports 9000...9000+n. memcached on ports
+12000+2*i and moxi ports on 12001+2*i ports.
 
-### Interactive Execution
+Note that blank nodes are not configured and need to be setup. I
+suggest trying web UI first to get the feeling of what's
+possible. Just visit REST API port(s) via browser. For development
+mode clusters it's port 9000 and higher. For production mode it's port
+8091.
 
-If you'd like to just start a shell, then interact with the running
-application, use:
+Other alternative is setting up and clustering nodes via REST
+API. membase-cli allows that. And you can easily write your own
+script(s).
 
-    ./start-shell.sh.
+There's ./cluster_connect script that eases cluster configuration for
+development clusters. Ask --help.
 
-To start with a different node name, and pass parameters (such as a
-different config file), use:
+Sometimes during debugging/development you want smaller number of
+vbuckets. You can change vbuckets number by setting
+MEMBASE_NUM_VBUCKET environment variable to desired number of vbuckets
+before creating new membase bucket.
 
-    ./start_shell.sh -name $NODE_NAME -ns_server ns_server_config "$CONFIG_FILE"
+### Other tools
 
-For example:
+Membase ships with a bunch of nice tools. Feel free to check
+$REPO/install/bin (or $PREFIX/bin). One of notable tools is
+mbstats. It allows you to query buckets for all kinds of internal
+stats.
 
-    ./start_shell.sh -name ns_2 -ns_server ns_server_config "priv/config2"
-
-Tip: if you see error message like...
-
-    =ERROR REPORT==== 18-Jan-2010::10:45:00 ===
-    application_controller: bad term: priv/config2
-
-Then you will have to add backslashes around the path double-quotes --
-like \"priv/config\"
+Another notable tool is membase-cli. Script is called just membase.
 
 * * * * *
-Copyright (c) 2011, Membase, Inc.
+Copyright (c) 2011, Couchbase, Inc.
