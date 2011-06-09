@@ -166,5 +166,4 @@ def main():
 
 
 if __name__ == '__main__':
-    os.environ['DONT_START_COUCH'] = '1'
     main()
