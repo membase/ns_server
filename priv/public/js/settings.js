@@ -270,8 +270,7 @@ var AutoFailoverSection = {
       });
     });
     // reset button
-    $('#auto_failover_count_container').delegate('#auto_failover_count_reset',
-                                                 'click', function() {
+    $('.auto_failover_count_reset').live('click', function() {
       postWithValidationErrors('/settings/autoFailover/resetCount', {},
                                function() {
           autoFailoverEnabled.recalculate();

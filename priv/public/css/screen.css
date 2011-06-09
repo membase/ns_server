@@ -846,7 +846,8 @@ ul.tabs .badge_display .badge {display:block;}
 /* This is the auto-failover status on the server nodes screen */
 #auto_failover_count_container {display:none}
 #auto_failover_count_container.notify {color:#fa9b00}
-#auto_failover_count_container .edit_btn{display:inline-block;float:none;font-size:0.8em;}
+#auto_failover_count_container .edit_btn, #auto_failover_container .edit_btn{display:inline-block;float:none;font-size:0.8em;vertical-align:middle;}
+#auto_failover_container .count_reset {margin: 15px 0 15px 150px}
 
 #buckets .settings-placeholder {display:none; padding:9px 12px 8px 90px;border-top:2px solid #ced5d9;background:#e6e7e8;}
 .buckets_tab {border-right:1px solid #d9dce0;}

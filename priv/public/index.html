@@ -246,7 +246,7 @@
             </div>
             <div id="auto_failover_count_container" class="warning_message">
               Auto-Failover <span class="count">?</span> of <span class="maxNodes">?</span> used
-              <a id="auto_failover_count_reset" class="edit_btn">
+              <a class="auto_failover_count_reset edit_btn">
                 <span>Reset Quota</span>
               </a>
             </div>
@@ -801,6 +801,12 @@
                   This sets the maximum nodes that will be auto-failovered. It is suggested that it is not lower than XXX vmx 20110530: lower than what? XXX to prevent data loss.
               </span></span>
             </a>
+            <div class="count_reset">
+              <span class="count">{%= count %}</span> used
+              <a class="auto_failover_count_reset edit_btn{% if (count === 0) { %} disabled{% } %}">
+                <span>Reset Quota</span>
+              </a>
+            </div>
             <label for="auto_failover_age">
               <span>Age: </span>
             </label>
