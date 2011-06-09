@@ -189,7 +189,7 @@ default() ->
      {auto_failover, [{enabled, false},
                       % age is the time (in seconds) a node needs to be down
                       % before it is automatically faileovered
-                      {age, 60},
+                      {age, 20},
                       % max_nodes is the maximum number of nodes that may be
                       % automatically failovered
                       {max_nodes, 1},
