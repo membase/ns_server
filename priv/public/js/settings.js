@@ -250,8 +250,8 @@ var AutoFailoverSection = {
         var afc = $('#auto_failover_count_container');
         afc.find('.count').text(val.count);
         afc.find('.maxNodes').text(val.maxNodes);
-        afc[val.enabled && val.count/val.maxNodes > 0.5 ? 'show' : 'hide']()
-        afc[val.count/val.maxNodes > 0.5 && val.count/val.maxNodes < 0.7 ? 'addClass' : 'removeClass']('notify');
+        afc[val.enabled && val.count/val.maxNodes >= 0.5 ? 'show' : 'hide']()
+        afc[val.count/val.maxNodes >= 0.5 && val.count/val.maxNodes <= 0.7 ? 'addClass' : 'removeClass']('notify');
 
         $('#auto_failover_enabled').change(function() {
           self.toggle($(this).is(':checked'));
