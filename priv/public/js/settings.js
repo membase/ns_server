@@ -65,7 +65,9 @@ var SettingsSection = {
     EmailAlertsSection.init();
   },
   onEnter: function () {
+    UpdatesNotificationsSection.refresh();
     AutoFailoverSection.refresh();
+    EmailAlertsSection.refresh();
   },
   navClick: function () {
     this.onLeave();
@@ -97,6 +99,7 @@ var UpdatesNotificationsSection = {
       v.need(modeDefined);
       return future.get({url: "/settings/stats"});
     });
+    this.phEnabled = phEnabled;
 
     phEnabled.subscribeValue(function(val) {
       if (val!==undefined) {
@@ -223,6 +226,9 @@ var UpdatesNotificationsSection = {
     stats: 'http://vmische.appspot.com/stats',
     email: 'http://vmische.appspot.com/email'
   },
+  refresh: function() {
+    this.phEnabled.recalculate();
+  },
   onEnter: function () {
   },
   navClick: function () {
@@ -236,28 +242,49 @@ var UpdatesNotificationsSection = {
 var AutoFailoverSection = {
   init: function () {
     var self = this;
+
+    var modeDefined = Cell.compute(function (v) {
+      v.need(DAL.cells.mode);
+      return true;
+    });
+
     this.autoFailoverEnabled = Cell.compute(function(v) {
+      // only make the GET request when we are logged in
+      v.need(modeDefined);
       return future.get({url: "/settings/autoFailover"});
     });
     var autoFailoverEnabled = this.autoFailoverEnabled;
 
     autoFailoverEnabled.subscribeValue(function(val) {
       if (val!==undefined) {
-        console.log('auto-failover:', val);
-
         renderTemplate('auto_failover', val, $i('auto_failover_container'));
         self.toggle(val.enabled);
-        var afc = $('#auto_failover_count_container');
-        afc.find('.count').text(val.count);
-        afc.find('.maxNodes').text(val.maxNodes);
-        afc[val.enabled && val.count/val.maxNodes >= 0.5 ? 'show' : 'hide']()
-        afc[val.count/val.maxNodes >= 0.5 && val.count/val.maxNodes <= 0.7 ? 'addClass' : 'removeClass']('notify');
-
         $('#auto_failover_enabled').change(function() {
           self.toggle($(this).is(':checked'));
         });
       }
     });
+
+    // we need a second cell for the server screen which is updated
+    // more frequently (every 20 seconds if the user is currently on the
+    // server screen)
+    this.autoFailoverEnabledStatus = Cell.compute(function (v) {
+      v.need(DAL.cells.mode);
+      // Only poll if we are in the server screen
+      if (DAL.cells.mode.value==='servers') {
+        return future.get({url: "/settings/autoFailover"});
+      }
+    });
+    this.autoFailoverEnabledStatus.subscribeValue(function(val) {
+      if (val!==undefined && DAL.cells.mode.value==='server') {
+        var afc = $('#auto_failover_count_container');
+        afc.find('.count').text(val.count);
+        afc.find('.maxNodes').text(val.maxNodes);
+        afc[val.enabled && val.count/val.maxNodes >= 0.5 ? 'show' : 'hide']()
+        afc[val.count/val.maxNodes >= 0.5 && val.count/val.maxNodes <= 0.7 ? 'addClass' : 'removeClass']('notify');
+      }
+    });
+
     $('#auto_failover_container').delegate('.save_button', 'click', function(){
       var enabled = $('#auto_failover_enabled').is(':checked');
       var age = $('#auto_failover_age').val();
@@ -277,8 +304,13 @@ var AutoFailoverSection = {
       });
     });
   },
+  // Refreshes the auto-failover settings interface
   refresh: function() {
     this.autoFailoverEnabled.recalculate();
+  },
+  // Refreshes the auto-failover status that is shown in the server screen
+  refreshStatus: function() {
+    this.autoFailoverEnabledStatus.recalculate();
   },
   // Enables the input fields
   enable: function() {
@@ -301,7 +333,6 @@ var AutoFailoverSection = {
     }
   },
   onEnter: function () {
-    this.refresh();
   },
   navClick: function () {
     this.onLeave();
@@ -314,15 +345,20 @@ var AutoFailoverSection = {
 var EmailAlertsSection = {
   init: function () {
     var self = this;
+
+    var modeDefined = Cell.compute(function (v) {
+      v.need(DAL.cells.mode);
+      return true;
+    });
+
     this.emailAlertsEnabled = Cell.compute(function(v) {
+      v.need(modeDefined);
       return future.get({url: "/settings/alerts"});
     });
     var emailAlertsEnabled = this.emailAlertsEnabled;
 
     emailAlertsEnabled.subscribeValue(function(val) {
       if (val!==undefined) {
-        console.log('email-alerts:', val);
-
         val.recipients = val.recipients.join('\n');
         val.alerts = [{
           label: 'Node was auto-failovered',
@@ -364,7 +400,6 @@ var EmailAlertsSection = {
         }).get();
       var recipients = $('#email_alerts_recipients')
         .val().replace(/\s+/g, ',');
-      console.log(recipients);
       var params = {
         enabled: $('#email_alerts_enabled').is(':checked'),
         recipients: recipients,
@@ -383,7 +418,7 @@ var EmailAlertsSection = {
       });
     });
   },
-  refreshEmailAlerts: function() {
+  refresh: function() {
     this.emailAlertsEnabled.recalculate();
   },
   // Enables the input fields
@@ -412,7 +447,6 @@ var EmailAlertsSection = {
     }
   },
   onEnter: function () {
-    this.refreshEmailAlerts();
   },
   navClick: function () {
     this.onLeave();
