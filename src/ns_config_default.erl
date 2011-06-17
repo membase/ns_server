@@ -91,8 +91,7 @@ default() ->
           [{engine, path_config:component_path(lib, "memcached/ep.so")},
            {initfile, path_config:component_path(etc, "init.sql")},
            {static_config_string,
-            "vb0=false;waitforwarmup=false;failpartialwarmup=false;"
-            "shardpattern=%d/%b-%i.mb;db_strategy=multiMTVBDB"}]},
+            "vb0=false;waitforwarmup=false;failpartialwarmup=false"}]},
          {memcached,
           [{engine,
             path_config:component_path(lib, "memcached/default_engine.so")},

@@ -90,19 +90,17 @@ config_string(BucketName) ->
                 %% MemQuota is our per-node bucket memory limit
                 CFG =
                     io_lib:format(
-                      "ht_size=~B;ht_locks=~B;db_shards=~B;"
+                      "ht_size=~B;ht_locks=~B;"
                       "tap_noop_interval=~B;max_txn_size=~B;"
                       "max_size=~B;initfile=~s;"
-                      "tap_keepalive=~B;dbname=~s",
+                      "tap_keepalive=~B;dbname=~s;"
+                      "backend=couchdb;couch_bucket=~s",
                       [proplists:get_value(
                          ht_size, BucketConfig,
                          getenv_int("MEMBASE_HT_SIZE", 3079)),
                        proplists:get_value(
                          ht_locks, BucketConfig,
                          getenv_int("MEMBASE_HT_LOCKS", 5)),
-                       proplists:get_value(
-                         db_shards, BucketConfig,
-                         getenv_int("MEMBASE_DB_SHARDS", 4)),
                        proplists:get_value(
                          tap_noop_interval, BucketConfig,
                          getenv_int("MEMBASE_TAP_NOOP_INTERVAL", 20)),
@@ -118,7 +116,8 @@ config_string(BucketName) ->
                        proplists:get_value(
                          tap_keepalive, BucketConfig,
                          getenv_int("MEMBASE_TAP_KEEPALIVE", 300)),
-                       DBName]),
+                       DBName,
+                       BucketName]),
                 {CFG, {MemQuota, DBName}};
             memcached ->
                 {io_lib:format("cache_size=~B", [MemQuota]),
