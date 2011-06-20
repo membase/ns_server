@@ -111,7 +111,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal functions
 format_stats(Stats) ->
     erlang:list_to_binary(
-      [[K, lists:duplicate(?WIDTH - byte_size(K), $\s), V, $\n]
+      [[K, lists:duplicate(erlang:max(1, ?WIDTH - byte_size(K)), $\s), V, $\n]
        || {K, V} <- lists:sort(Stats)]).
 
 latest_tick(TS) ->
