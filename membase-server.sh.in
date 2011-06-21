@@ -47,6 +47,9 @@ fi
 ERL_LIBS="@PREFIX@/lib/couchdb/erlang/lib:@PREFIX@/lib/ns_server/erlang/lib:@PREFIX@/lib/couchdb/plugins"
 export ERL_LIBS
 
+ERL_MAX_PORTS=8192
+export ERL_MAX_PORTS
+
 DEFAULT_CONFIG_DIR="@PREFIX@/etc/couchdb/default.d"
 DEFAULT_CONFIG_FILE="@PREFIX@/etc/couchdb/default.ini"
 LOCAL_CONFIG_DIR="@PREFIX@/etc/couchdb/local.d"
@@ -78,7 +81,6 @@ _load_config () {
 }
 
 _load_config
-
 
 exec erl \
     +A 16 \
