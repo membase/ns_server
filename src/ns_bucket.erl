@@ -86,6 +86,10 @@ config_string(BucketName) ->
                 {ok, DBDir} = ns_storage_conf:dbdir(Config),
                 DBSubDir = filename:join(DBDir, BucketName ++ "-data"),
                 DBName = filename:join(DBSubDir, BucketName),
+                CouchPort = case ns_config:search_node_prop(Config, memcached, mccouch_port) of
+                                undefined -> 11213;
+                                X when is_integer(X) -> X
+                            end,
                 ok = filelib:ensure_dir(DBName),
                 %% MemQuota is our per-node bucket memory limit
                 CFG =
@@ -94,7 +98,7 @@ config_string(BucketName) ->
                       "tap_noop_interval=~B;max_txn_size=~B;"
                       "max_size=~B;initfile=~s;"
                       "tap_keepalive=~B;dbname=~s;"
-                      "backend=couchdb;couch_bucket=~s",
+                      "backend=couchdb;couch_bucket=~s;couch_port=~B",
                       [proplists:get_value(
                          ht_size, BucketConfig,
                          getenv_int("MEMBASE_HT_SIZE", 3079)),
@@ -117,7 +121,8 @@ config_string(BucketName) ->
                          tap_keepalive, BucketConfig,
                          getenv_int("MEMBASE_TAP_KEEPALIVE", 300)),
                        DBName,
-                       BucketName]),
+                       BucketName,
+                       CouchPort]),
                 {CFG, {MemQuota, DBName}};
             memcached ->
                 {io_lib:format("cache_size=~B", [MemQuota]),

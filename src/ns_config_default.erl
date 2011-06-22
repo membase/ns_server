@@ -82,6 +82,7 @@ default() ->
                                                 % Memcached config
      {{node, node(), memcached},
       [{port, misc:get_env_default(memcached_port, 11210)},
+       {mccouch_port, misc:get_env_default(mccouch_port, 11213)},
        {dbdir, DbDir},
        {admin_user, "_admin"},
        {admin_pass, "_admin"},
