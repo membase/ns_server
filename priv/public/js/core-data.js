@@ -261,7 +261,7 @@ var DAL = {
   // sure we don't fetch pool details if mode is not set (we're in
   // wizard)
   var poolDetailsPushTimeoutCell = new Cell(function (mode) {
-    if (mode === 'overview' || mode === 'monitor_servers') {
+    if (mode === 'overview' || mode === 'manage_servers') {
       return 3000;
     }
     return 20000;

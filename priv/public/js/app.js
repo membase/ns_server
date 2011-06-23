@@ -187,7 +187,6 @@ var ThePage = {
              buckets: BucketsSection,
              log: AlertsSection,
              monitor_buckets: MonitorBucketsSection,
-             monitor_servers: MonitorServersSection,
              notifications: UpdatesNotificationsSection,
              // that's right, use the same object as "notifications"
              notifications_enabled: UpdatesNotificationsSection},

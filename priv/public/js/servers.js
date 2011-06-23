@@ -224,8 +224,8 @@ var ServersSection = {
 
     function mkServerRowHandler(handler) {
       return function (e) {
-        var serverRow = $(this).parents(".server_row").get(0) || $(this).parents('.add_back_row').get(0);
-        var serverInfo = $.data(serverRow, 'server');
+        var serverRow = $(this).closest('.server_row').find('td:first-child') || $(this).closest('.add_back_row').find('td:first-child');
+        var serverInfo = serverRow.data('server');
         return handler.call(this, e, serverInfo);
       }
     }
@@ -506,29 +506,3 @@ var ServersSection = {
 };
 
 configureActionHashParam('visitServersTab', $m(ServersSection, 'visitTab'));
-
-var MonitorServersSection = {
-  init: function () {
-    ServersSection.serversCell.subscribeValue(function(servers) {
-      if (!servers) {
-        return;
-      }
-      renderTemplate('monitor_servers', {rows:servers.active}, $i('monitor_servers_container'));
-    });
-    prepareTemplateForCell('monitor_servers', ServersSection.serversCell);
-    DAL.cells.bucketsListCell.subscribeValue(function (list) {
-      var empty = (list && list.length === 0);
-      $('#monitor_servers table a.node_name')
-        [empty ? 'addClass' : 'removeClass']('disabled')
-        .bind('click', !empty); // shut off clicking
-    });
-  },
-  onEnter: function () {
-  },
-  navClick: function () {
-    this.onLeave();
-    this.onEnter();
-  },
-  onLeave: function () {
-  }
-};

@@ -392,10 +392,11 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 #top_keys_container {border:1px solid #DBDBDB; border-top:0px;}
 
 .lined_tab {width:100%;}
-.lined_tab th {padding:10px 5px;color:#f2692d;text-align:left;font-weight:bolder;border:1px solid #ccc;background:none #e6e7e8;}
-.lined_tab td {padding:10px 5px;border:1px solid #d9dce0;background:none #fff;vertical-align:middle;}
+.lined_tab th {padding:5px;color:#f2692d;text-align:left;font-weight:bolder;border:1px solid #ccc;background:none #e6e7e8;}
+.lined_tab td {padding:5px;border:1px solid #d9dce0;background:none #fff;vertical-align:middle;}
 .lined_tab td td {background:none;border:0px !important;}
 .lined_tab tr:nth-child(2n+1) td {background-color: #f5f5f7;}
+.lined_tab tr:nth-child(2n+1) td td {background:none;border:0px !important;}
 .lined_tab .highlight td {background-color: #f5f5f7;}
 .lined_tab .swap_usage {color:#8a8a8d;}
 
@@ -448,13 +449,6 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 .actservers + ul .badge {top:-1px;right:303px;}
 
 p.info {padding:5px 24px 15px;font-weight:bold;}
-#monitor_servers .aservers .servers_list li {padding-right:0;}
-#monitor_servers .aservers .servers_list .serverName {width:200px;}
-#monitor_servers .aservers .servers_list .serverName + div {float:left;width:187px;height:100%;padding:0 14px 0 10px;text-align:right;line-height:1.5;}
-#monitor_servers .aservers .servers_list .fdp {float:left;width:190px;height:100%;padding:0 15px 0 13px;background:#fafbfd;border-left:1px solid #d2d3d5; text-align:right;line-height:1.5;}
-#monitor_servers .aservers .servers_list li span {position:relative;}
-#monitor_servers .aservers .servers_list li .usage_small {margin-top:17px;}
-#monitor_servers_container .usage_smallest_info { width: 125px; }
 
 #bucket_list_container {border-left:1px solid #c8ccce; border-bottom:1px solid #c8ccce;}
 #get_started,
@@ -715,10 +709,11 @@ body.init_bucket_dialog #container { display: none; }
 .init_block .page-footer {display: none;}
 
 
+#servers { width: 1220px }
 #servers .list_button, #servers .add_button, #servers .rebalance_button, #servers .stop_rebalance_button
 {display: block; float: right; *float:right !important; margin-left: 5px; text-decoration:none !important;}
 li.server_row .btn_cancel {display:block; height:15px; color:#7a7a7a; padding:0 18px 0 0; background:url(../images/btn_cancel_bg.png) 100% 0 no-repeat; line-height:15px; margin-top:23px;}
-#servers .list_button {height:31px; padding:0 3px 0 0; background:url(../images/btn_2_bg.png) 100% -31px no-repeat; color:#000; margin-top:14px; font-size:14px; text-decoration:none !important; position:relative; }
+#servers .list_button {height:31px; padding:0 3px 0 0; background:url(../images/btn_2_bg.png) 100% -31px no-repeat; color:#000; font-size:14px; text-decoration:none !important; position:relative; }
 #servers .list_button.failover_server.threat_red {color:#f00 !important;font-weight:bold;border: 1px solid #f00;border-radius:5px;-moz-box-shadow: 0 0 3px #f00;-webkit-box-shadow: 0 0 3px #f00;box-shadow:0 0 3px #f00}
 #servers .list_button.failover_server.threat_yellow {color:#E5A800 !important;font-weight:bold;border: 1px solid #fac344;border-radius:5px;-moz-box-shadow: 0 0 3px #fac344;-webkit-box-shadow: 0 0 3px #fac344;box-shadow:0 0 3px #fac344}
 #servers .list_button span {display:block; text-align:center; height:31px; line-height:31px; padding:0 6px 0 10px; background:url(../images/btn_2_bg.png) 0 0 no-repeat;}
@@ -815,7 +810,8 @@ ul.tabs .badge_display .badge {display:block;}
 .additional_server_info .add_btn {display:block; width:61px; height:21px; background:url(../images/add_btn.png) 0 0 no-repeat; float:right;}
 .additional_server_info .info_message {font-size:16px;}
 
-.add_back_row {height:31px; display:block; background:url(../images/add_back_bg.png) 0 0 repeat-x;*margin:0 !important;}
+.add_back_row {background:url(../images/add_back_bg.png) 0 0 repeat-x;*margin:0 !important;}
+.add_back_row td{height:31px;background:none;padding:0 9px;border:none;}
 .add_b_message {line-height:31px; color:#fff;}
 .add_back_btn {display:block; width:148px; height:31px; background:url(../images/add_back_btn.png) 0 0 no-repeat; float:right; margin-right:-10px;}
 
