@@ -135,9 +135,9 @@ var UpdatesNotificationsSection = {
         newVersion: undefined
       };
     }
-    renderTemplate('leftNav_updates',
+    renderTemplate('nav_updates',
                    {enabled: sendStats, newVersion: newVersion},
-                   $i('leftNav_updates_container'));
+                   $i('nav_updates_container'));
     renderTemplate('notifications_block',
                    $.extend(data, {enabled: sendStats, version: DAL.version}),
                    $i('notifications_block_container'));

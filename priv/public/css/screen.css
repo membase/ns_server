@@ -85,29 +85,22 @@ a.disabled{text-decoration:none;cursor:default;}
 .full_width {width:100%;}
 
 #container {background-color:#fff;position:absolute;width:100%;min-width:960px;min-height:100%;}
-#mainContainer {position:relative;width:960px;left:12%;margin-top:35px;padding:0 0 220px;}
-.main_holder {width:960px; position:relative; margin:auto; left:0px !important;}
+#mainContainer {position:relative;width:960px;left:12%;margin-top:15px;padding:0 0 220px;}
+.main_holder {position:relative; margin:auto; left:0px !important;}
 .cnt_holder {width:960px; position:relative; left:12%;}
 
 .page-header {background:url('../images/ns_console_headerbg.png') repeat-x;height:75px;}
 .page-header span {position:absolute;background:url('../images/ns_console_logov2.png') no-repeat;width:361px;height:49px;top:15px;left:0;}
 
-td.leftNav {width:180px;vertical-align:top;}
-td.leftNav ul {display:block;width:160px;margin:0 0 20px;border-top:1px solid #e4e9eb;}
-td.leftNav ul ul {margin:0 0 -1px;}
-td.leftNav h1 {padding:0 0 15px 5px;color:#444245;text-transform:uppercase;}
-td.leftNav li {display:block;min-height:29px;width:160px;vertical-align:middle;text-align:left;line-height:29px;font-size:12px;border-bottom:1px solid #e4e9eb;}
-td.leftNav li a {display:block; height:29px; text-decoration:none;padding:0 0 0 12px}
-td.leftNav li a:hover {background:none #eaf4f9;}
-td.leftNav li.line {background-position: bottom left;}
-td.leftNav li.disabled {padding:0 0 0 12px;}
-td.leftNav li.indent {margin-left: 20px;}
-td.leftNav li a.currentNav {background:none #dae4e9;}
-td.leftNavDisabled {color:#f00;}
+#headerNav {clear:both;height:50px;width:37em;margin:auto}
+#headerNav ul li {float:left;position:relative}
+#headerNav li a {display:block;text-decoration:none;padding:10px}
+#headerNav li a:hover {background:none #eaf4f9;}
+#headerNav li a.currentNav {background:none #dae4e9;}
 
 /* to position the badges in the navigation correctly */
-td.leftNav a {position:relative;}
-td.leftNav .badge {right:0px;top:0px;}
+#headerNav a {position:relative;}
+#headerNav .badge {right:0px;top:0px;}
 
 #mainPanel {font-size:12px;/* Helvetica;*/}
 
@@ -247,6 +240,7 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 .usage_smallest_info .usage_smallest {float:left; margin:0 5px 0 0;}
 
 /* analytics graph */
+#analytics{width:780px;margin:auto}
 #analytics_main_graph { position: relative; width:742px; height:269px;}
 #analytics_main_graph_grid {position:relative; width:742px; height:269px;margin:0 auto 10px; }
 
@@ -708,7 +702,6 @@ body.init_bucket_dialog #container { display: none; }
 .init_block .page-footer {display: none;}
 
 
-#servers { width: 1220px }
 .list_button, #servers .add_button, #servers .rebalance_button, #servers .stop_rebalance_button
 {display: block; float: right; *float:right !important; margin-left: 5px; text-decoration:none !important;}
 li.server_row .btn_cancel {display:block; height:15px; color:#7a7a7a; padding:0 18px 0 0; background:url(../images/btn_cancel_bg.png) 100% 0 no-repeat; line-height:15px; margin-top:23px;}
@@ -760,6 +753,7 @@ li.server_row.status_down {background-position:10px -157px !important; backgroun
 .badge, .tabs .badge {background:#E43A1B;border: 2px solid white;-moz-border-radius:5em;-webkit-border-radius:5em;border-radius:5em;color: white;display: block;font-size: 11px;height: 2em;position: absolute;right: -20px;text-align: center;top: -16px;vertical-align: top;min-width: 2em;z-index: 10;-moz-box-shadow: 2px 2px 3px #999;-webkit-box-shadow: 2px 2px 3px #999;box-shadow: 2px 2px 3px #999; background-clip:padding-box;-moz-background-clip:padding;line-height:2.1em}
 .badge.notify, .tabs .badge.notify {background-color:#409f05;font-weight:bold}
 .badge span {color:#fff;}
+#headerNav .badge {top:-1em;right:-1em;}
 ul.tabs .tab_right .badge {display:none;}
 ul.tabs .badge_display .badge {display:block;}
 

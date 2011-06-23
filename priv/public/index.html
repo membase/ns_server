@@ -28,23 +28,16 @@
     </div> <!-- header -->
 
     <div id="mainContainer" class="main_holder">
-      <table width="100%">
-        <tr>
-          <td class="leftNav">
-            <h1>MONITOR</h1>
-            <ul>
-              <!--<li class="line"></li>-->
-              <li class="line"><a id="switch_overview" href="#visitSec=overview">Cluster Overview</a></li>
-              <li class="line"><a id="switch_log" href="#visitSec=log">Log</a></li>
-            </ul>
-
-      <h1>MANAGE</h1>
-      <ul>
-        <li class="line"><a id="switch_buckets" href="#visitSec=buckets">Data Buckets</a></li>
-        <li class="line"><a id="switch_servers" href="#visitSec=servers">Server Nodes</a></li>
-        <li class="line" id="leftNav_updates_container"></li>
-      </ul>
-        <script id="leftNav_updates_template" type="text/html">
+      <div id="headerNav">
+        <ul>
+          <!--<li class="line"></li>-->
+          <li class="line"><a id="switch_overview" href="#visitSec=overview">Cluster Overview</a></li>
+          <li class="line"><a id="switch_buckets" href="#visitSec=buckets">Data Buckets</a></li>
+          <li class="line"><a id="switch_servers" href="#visitSec=servers">Server Nodes</a></li>
+          <li class="line"><a id="switch_log" href="#visitSec=log">Log</a></li>
+          <li class="line" id="nav_updates_container"></li>
+        </ul>
+        <script id="nav_updates_template" type="text/html">
           <a href="#visitSec=notifications">
             Update Notifications
             {% if (enabled && newVersion!==false && newVersion!==undefined) { %}
@@ -52,9 +45,9 @@
             {% } %}
           </a>
         </script>
-          </td>
-          <td id="mainPanel">
+      </div>
 
+        <div id="mainPanel">
           <div id="overview" style="display:none">
             <!-- shadow box -->
             <h1>CLUSTER OVERVIEW</h1>
@@ -655,9 +648,7 @@
           <div id="coming" style="display:none">
             <h1>UI error encountered.  This content does not exist yet.</h1>
           </div>
-            </td>
-          </tr>
-      </table>
+      </div>
     </div>
     <!-- mainContainer -->
 

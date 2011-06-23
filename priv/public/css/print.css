@@ -1,3 +1,3 @@
 @media print {
-  td.leftNav * {display:none !important;}
+  #headerNav * {display:none !important;}
 }
