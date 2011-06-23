@@ -33,7 +33,6 @@
             <ul>
               <!--<li class="line"></li>-->
               <li class="line"><a id="switch_overview" href="#visitSec=overview">Cluster Overview</a></li>
-              <li class="line"><a id="switch_monitor_buckets" href="#visitSec=monitor_buckets">Data Buckets</a></li>
               <li class="line"><a id="switch_log" href="#visitSec=log">Log</a></li>
             </ul>
 
@@ -193,11 +192,9 @@
             <tr>
               <th></th>
               <th>Server Node Name</th>
-              <th>Swap Usage</th>
-              <th>RAM Usage</th>
+              <th>RAM & Swap Usage</th>
               <th>CPU Usage</th>
-              <th>Active Items</th>
-              <th>Replica Items</th>
+              <th>Active & Replica Items</th>
               <th></th>
             </tr>
           <!-- {% if (!rows.length) { %} -->
@@ -245,8 +242,17 @@
                   {% if (expandingAllowed) { %}<a href="#openServer={%= h(s.otpNode) %}">{%= V.stripPortHTML(s.hostname, rows) %}</a>{%
                   } else { %}{%= V.stripPortHTML(s.hostname, rows) %}{% } %}
                 </td>
-                <td class="swap_usage">
-                <!-- {% if (s.systemStats.swap_total > 0) { %} -->
+                <td>
+                  <div class="usage_smallest_info">
+                    <div class="usage_smallest">
+                      <div class="unused">
+                        <div class="used" style="width:1%;"></div>
+                      </div>
+                    </div>
+                    {%= V.setPercentBar((s.memoryTotal - s.memoryFree) / s.memoryTotal * 100) %}
+                    {%= h(truncateTo3Digits((s.memoryTotal - s.memoryFree) / s.memoryTotal * 100)) %}%
+                  </div>
+                  <!-- {% if (s.systemStats.swap_total > 0) { %} -->
                   <div class="usage_smallest_info">
                     <div class="usage_smallest">
                       <div class="unused">
@@ -268,30 +274,20 @@
                         <div class="used" style="width:1%;"></div>
                       </div>
                     </div>
-                    {%= V.setPercentBar((s.memoryTotal - s.memoryFree) / s.memoryTotal * 100) %}
-                    {%= h(truncateTo3Digits((s.memoryTotal - s.memoryFree) / s.memoryTotal * 100)) %}%
-                  </div>
-                </td>
-
-                <td>
-                  <div class="usage_smallest_info">
-                    <div class="usage_smallest">
-                      <div class="unused">
-                        <div class="used" style="width:1%;"></div>
-                      </div>
-                    </div>
                     {%= V.setPercentBar(s.systemStats.cpu_utilization_rate || 0)  %}
                     {%= h(truncateTo3Digits(Math.floor(s.systemStats.cpu_utilization_rate * 100) / 100)) %}%
                   </div>
                 </td>
 
-                <td style="text-align:center">{%= V.formatQuantity(s.interestingStats.curr_items || 0, '', 1000, ' ') %}</td>
-                <td style="text-align:center">{%= V.formatQuantity(s.interestingStats.vb_replica_curr_items || 0, '', 1000, ' ') %}</td>
+                <td style="text-align:center">
+                  {%= V.formatQuantity(s.interestingStats.curr_items || 0, '', 1000, ' ') %}/
+                  {%= V.formatQuantity(s.interestingStats.vb_replica_curr_items || 0, '', 1000, ' ') %}
+                </td>
                 <td>
-                  <a class="list_button btn_width_2 eject_server"><span>Remove Server</span></a>
-                  <a class="list_button btn_width_1 failover_server"><span>Fail Over</span></a>
+                  <a class="list_button eject_server"><span>Remove Server</span></a>
+                  <a class="list_button failover_server"><span>Fail Over</span></a>
                   <span class="failed_over_message">Failed Over: Pending Removal</span>
-                  <a class="list_button btn_width_1{% if (s.nodeClass === 'server_down') { %} disabled"{% } else { %}" href="#sec=analytics&statsHostname={%= h(s.hostname) %}"{% } %}><span>Analytics</span></a>
+                  <a class="list_button{% if (s.nodeClass === 'server_down') { %} disabled"{% } else { %}" href="#sec=analytics&statsHostname={%= h(s.hostname) %}"{% } %}><span>Analytics</span></a>
                 </td>
               </tr>
             <!-- {% } %} -->
@@ -442,101 +438,6 @@
             </div> <!-- END shadow box -->
           </div>
 
-          <div id="monitor_buckets" style="display:none;">
-            <div class="no-buckets-subsection" style="display:none;">
-              <div class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</div>
-              No buckets currently defined! Go to <a href="#sec=buckets">Manage Buckets</a> to create some.
-            </div>
-            <div class="membase-buckets-subsection"><h1>Membase Buckets<span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span></h1>
-              <div class="shadow_box">
-                    <div class="content">
-                      <div id="monitor_persistent_buckets_list_container"></div>
-                      <script id="monitor_persistent_buckets_list_template" type="text/html">
-                      <table class="lined_tab">
-                        <col width="221">
-                        <col width="135">
-                        <col width="135">
-                        <col width="135">
-                        <col width="135">
-                        <tr>
-                          <th>Bucket Name</th>
-                          <th>Ops/sec</th>
-                          <th>Disk Fetches/sec</th>
-                          <th>RAM Used</th>
-                          <th>Item Count</th>
-                        </tr>
-                        <!-- {% $.each(rows, function () { %} -->
-                        <tr>
-                            <td>
-                              <a class="disable-if-stale" href="#sec=analytics&statsBucket={%=h(this.uri)%}">{%= h(this.name) %}</a>
-                            </td>
-                            <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
-                            <td>{%= h(truncateTo3Digits(this.basicStats.diskFetches)) %}</td>
-                            <td>
-                              <div class="usage_smallest_info">
-                                  <div class="usage_smallest">
-                                          <div class="unused">
-                                              <div class="used" style="width:1%;"></div>
-                                          </div>
-                                  </div>{%= V.setPercentBar(this.basicStats.quotaPercentUsed) %}
-                                  {%= h(truncateTo3Digits(Math.floor(this.basicStats.quotaPercentUsed * 100) / 100)) %}%
-                              </div>
-                            </td>
-                            <td>{%= h(this.basicStats.itemCount) %}</td>
-                          </tr>
-                        <!-- {% }); %} -->
-                      </table>
-                      </script>
-                    </div>
-              </div>
-            </div>
-            <div class="memcached-buckets-subsection">
-              <h1>Memcached Buckets<span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span></h1>
-              <div class="shadow_box">
-                    <div class="content">
-                      <div id="monitor_cache_buckets_list_container"></div>
-                      <script id="monitor_cache_buckets_list_template" type="text/html">
-                      <table class="lined_tab">
-                        <col width="221">
-                        <col width="135">
-                        <col width="135">
-                        <col width="135">
-                        <col width="135">
-                        <tr>
-                          <th>Bucket Name</th>
-                          <th>Ops/sec</th>
-                          <th>Hit ratio</th>
-                          <th>RAM Used</th>
-                          <th>Item Count</th>
-                        </tr>
-                        <!-- {% $.each(rows, function () { %} -->
-                        <tr>
-                          <td>
-                            <a class="disable-if-stale" href="#sec=analytics&statsBucket={%=h(this.uri)%}">{%= h(this.name) %}</a>
-                          </td>
-                          <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
-                          <td>{%= h(truncateTo3Digits(this.basicStats.hitRatio * 100)) %}%</td>
-                          <td>
-                            <div class="usage_smallest_info">
-                              <div class="usage_smallest">
-                                  <div class="unused">
-                                    <div class="used" style="width:1%;"></div>
-                                  </div>
-                              </div>
-                              {%= V.setPercentBar(this.basicStats.quotaPercentUsed) %}
-                              {%= h(truncateTo3Digits(Math.floor(this.basicStats.quotaPercentUsed * 100) / 100)) %}%
-                            </div>
-                          </td>
-                          <td>{%= h(this.basicStats.itemCount) %}</td>
-                        </tr>
-                        <!-- {% }); %} -->
-                      </table>
-                      </script>
-                    </div>
-              </div>
-            </div>
-          </div>
-
           <div id="buckets" style="display:none">
             <!-- shadow box -->
             <h1>Data Buckets</h1>
@@ -554,36 +455,42 @@
             <!-- END shadow box -->
 
             <script id="bucket_list_template" type="text/html">
-            <table class="buckets_tab">
-              <col width="221">
-              <col width="120">
-              <col width="165">
-              <col width="135">
-              <col width="120">
+            <table class="buckets_tab" width="100%">
               <tr>
                 <th>Bucket Name</th>
                 <th>Bucket Type</th>
                 <th>Bucket Resides On</th>
                 <th>RAM Usage/Quota</th>
-                <th class="last">Disk Usage</th>
+                <th>Disk Usage</th>
+                <th>Ops/sec</th>
+                <th>Disk Fetches/sec</th>
+                <th>Hit ratio</th>
+                <th>Item Count</th>
+                <th class="last"></th>
               </tr>
+              <!-- {% if (!rows.length) { %} -->
+              <tr><td colspan="10" style="padding:15px">No buckets currently defined! Click "Create New Data Bucket" above to create one.</td></tr>
+              <!-- {% } %} -->
               <!-- {% $.each(rows, function () { %} -->
               <tr>
-                <td colspan="6" class="bucket_info">
-                  <table>
-                  <tr>
-                    <td class="bucket_name">
-                      <span id="{%= h(this.name) %}_health" class="health_graph"></span>
-                      <a class="disable-if-stale" href="#visitBucket={%=h(this.name)%}">{%= h(this.name) %}</a>
-                    </td>
-                    <td>{%= h(this.bucketTypeName) %}</td>
-                    <td>{%= V.count(this.serversCount, 'server') %}</td>
-                    <td>{%= V.formatQuantity(this.basicStats.memUsed) %}/{%= V.formatQuantity(this.quota.ram) %}</td>
-                    <td>{%= V.formatQuantity(this.basicStats.diskUsed) %}</td>
-                  </tr>
-                  </table>
-                  <div class="settings-placeholder">{%= BucketsSection.renderBucketDetails(this) %}</div>
+                <td class="bucket_name">
+                  <a class="disable-if-stale" href="#visitBucket={%=h(this.name)%}">{%= h(this.name) %}</a>
                 </td>
+                <td>{%= h(this.bucketTypeName) %}</td>
+                <td>
+                  <span id="{%= h(this.name) %}_health" class="health_graph"></span>
+                  {%= V.count(this.serversCount, 'server') %}
+                </td>
+                <td>{%= V.formatQuantity(this.basicStats.memUsed) %}/{%= V.formatQuantity(this.quota.ram) %}</td>
+                <td>{%= V.formatQuantity(this.basicStats.diskUsed) %}</td>
+                <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
+                <td>{% if (this.basicStats.diskFetches !== undefined) { %}{%= h(truncateTo3Digits(this.basicStats.diskFetches)) %}{% } %}</td>
+                <td>{% if (this.basicStats.hitRatio !== undefined) { %}{%= h(truncateTo3Digits(this.basicStats.hitRatio * 100)) %}%{% } %}</td>
+                <td>{%= h(this.basicStats.itemCount) %}</td>
+                <td><a class="list_button" href="#sec=analytics&statsBucket={%= this.uri %}"><span>Analytics</span></a></td>
+              </tr>
+              <tr>
+                <td class="settings-placeholder" colspan="10">{%= BucketsSection.renderBucketDetails(this) %}</td>
               </tr>
               <!-- {% }); %} -->
             </table>

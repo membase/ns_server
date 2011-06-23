@@ -451,8 +451,7 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 p.info {padding:5px 24px 15px;font-weight:bold;}
 
 #bucket_list_container {border-left:1px solid #c8ccce; border-bottom:1px solid #c8ccce;}
-#get_started,
-.monitor_buckets .buckets_action_bar {display:none;}
+#get_started {display:none;}
 
 /* update notification styles */
 #notifications h2 {margin-bottom:12px}
@@ -710,19 +709,17 @@ body.init_bucket_dialog #container { display: none; }
 
 
 #servers { width: 1220px }
-#servers .list_button, #servers .add_button, #servers .rebalance_button, #servers .stop_rebalance_button
+.list_button, #servers .add_button, #servers .rebalance_button, #servers .stop_rebalance_button
 {display: block; float: right; *float:right !important; margin-left: 5px; text-decoration:none !important;}
 li.server_row .btn_cancel {display:block; height:15px; color:#7a7a7a; padding:0 18px 0 0; background:url(../images/btn_cancel_bg.png) 100% 0 no-repeat; line-height:15px; margin-top:23px;}
-#servers .list_button {height:31px; padding:0 3px 0 0; background:url(../images/btn_2_bg.png) 100% -31px no-repeat; color:#000; font-size:14px; text-decoration:none !important; position:relative; }
+.list_button {height:31px; padding:0 3px 0 0; background:url(../images/btn_2_bg.png) 100% -31px no-repeat; color:#000; font-size:14px; text-decoration:none !important; position:relative; }
 #servers .list_button.failover_server.threat_red {color:#f00 !important;font-weight:bold;border: 1px solid #f00;border-radius:5px;-moz-box-shadow: 0 0 3px #f00;-webkit-box-shadow: 0 0 3px #f00;box-shadow:0 0 3px #f00}
 #servers .list_button.failover_server.threat_yellow {color:#E5A800 !important;font-weight:bold;border: 1px solid #fac344;border-radius:5px;-moz-box-shadow: 0 0 3px #fac344;-webkit-box-shadow: 0 0 3px #fac344;box-shadow:0 0 3px #fac344}
-#servers .list_button span {display:block; text-align:center; height:31px; line-height:31px; padding:0 6px 0 10px; background:url(../images/btn_2_bg.png) 0 0 no-repeat;}
-#servers .list_button.disabled {background-position:100% -93px; color:#cacbce !important; opacity:1 !important;}
-#servers .list_button.disabled span {background-position:0 -62px; color:#9E9FA3 !important;}
+.list_button span {display:block; text-align:center; height:31px; line-height:31px; padding:0 6px 0 10px; background:url(../images/btn_2_bg.png) 0 0 no-repeat;}
+.list_button.disabled {background-position:100% -93px; color:#cacbce !important; opacity:1 !important;}
+.list_button.disabled span {background-position:0 -62px; color:#9E9FA3 !important;}
 #servers .add_button {width:124px;}
 #servers .rebalance_button {width:115px;}
-#servers .btn_width_1 {width:116px;}
-#servers .btn_width_2 {width:125px;}
 
 .lined_tab .server_up {background:white url(../images/server_status_icons_solid_bg.png) 10px 7px no-repeat; padding-left:75px;}
 .lined_tab .server_down {background:white url(../images/server_status_icons_solid_bg.png) 10px -171px no-repeat; padding-left:75px;}
@@ -817,7 +814,7 @@ ul.tabs .badge_display .badge {display:block;}
 
 #buckets .settings-placeholder {display:none; padding:9px 12px 8px 90px;border-top:2px solid #ced5d9;background:#e6e7e8;}
 .buckets_tab {border-right:1px solid #d9dce0;}
-.buckets_tab td {background:none #eee;border-bottom:1px solid #ced5d9; padding:0 10px;border-right:0px; text-align:center;}
+.buckets_tab td {height:30px;background:none #eee;border-bottom:1px solid #ced5d9; padding:0 10px;border-right:0px; text-align:center;}
 .buckets_tab tr td:first-child {text-align:left;}
 .buckets_tab td > table td {padding:0 5px;width:110px;border:none;vertical-align:middle;}
 .buckets_tab td > table td:first-child {width:155px;padding:0 5px 0 61px;background:url(../images/icons.png) -7px -93px no-repeat #eee;}
@@ -825,7 +822,7 @@ ul.tabs .badge_display .badge {display:block;}
 .buckets_tab td > table td:first-child+td+td+td {width:125px;}
 
 .buckets_tab tr:first-child th {padding:10px 5px;background:none #f6f6f7; border-right:0px; border-bottom:1px solid #fff; color:#4d4d4d; font-weight:normal; text-align:center;}
-.buckets_tab tr:first-child th:first-child {/*padding:0 0 0 56px;*padding-right:25px;display:block;*/text-align:left;text-indent:56px;white-space:nowrap;}
+.buckets_tab tr:first-child th:first-child {/*padding:0 0 0 56px;*padding-right:25px;display:block;*/text-align:left;white-space:nowrap;}
 .buckets_tab tr:first-child th i {font-style:normal;position:relative;}
 .buckets_tab tr:first-child th.last {border-right:1px solid #d9dce0;}
 .bucket_name {font-weight:bolder;color:#0095D6;}
@@ -838,15 +835,14 @@ ul.tabs .badge_display .badge {display:block;}
 .buckets_tab .ovf {padding:10px 0;}
 .buckets_tab .gong_rb .side {background-image:url(../images/gong_rb_2.gif);}
 
-.buckets_tab .bucket_info {padding:0;}
-.buckets_tab .bucket_info > table {height:68px;}
-.buckets_tab .bucket_info > table .highlight td {background-color:#eee !important;}
+.buckets_tab .highlight td {background-color:#eee !important;}
 .bucket_properties_table {width:550px;}
 .bucket_properties_table tr td {padding:0 0 2px 5px;text-align:left !important; vertical-align:top !important; color:#444245; line-height:16px; background:none !important; border:0px !important;}
 .buckets_tab table.label {float:left;margin:2px 0 0;}
 .buckets_tab table.label td:first-child {width:175px;color:#444245; text-align:right;}
 
-.buckets_tab .health_graph {float:right;}
+.buckets_tab .health_graph {margin-right: 0.75em;position: relative;top: -4px;}
+.buckets_tab .list_button {top:10px}
 
 .tabs switcher {}
 .switcher li {padding:0px !important; background:none !important;}
@@ -989,8 +985,6 @@ span.staleness-notice, .staleness-notice { display: none; color: red; }
 #overview .staleness-notice { font-size: 12px; float: right; }
 #servers .staleness-notice { font-size: 12px; float: right; }
 #alerts .staleness-notice { font-size: 12px; float: right; padding-top: 5px; padding-right: 10px;}
-#monitor_buckets .staleness-notice { font-size: 12px; float: right; line-height: 32px; padding-right: 10px; text-transform: none;}
-#monitor_buckets .no-buckets-subsection .staleness-notice { float:none; padding-right: 0px; }
 
 .warning_down_backfill, .warning_up_backfill, .warning_down_no_backfill, .warning_down_backfill { display: none; }
 .warning_down_backfill label, .warning_up_backfill label { display: block; margin-top: 15px; }
