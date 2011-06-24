@@ -40,7 +40,7 @@
 
 -include("ns_common.hrl").
 
--define(DEFAULT_TIMEOUT, 500).
+-define(DEFAULT_TIMEOUT, 15000).
 -define(TERMINATE_SAVE_TIMEOUT, 10000).
 
 %% log codes
