@@ -151,7 +151,7 @@ var DAL = {
       DAL.uuid = data.uuid;
       if (!DAL.appendedVersion) {
         document.title = document.title + " (" + data.implementationVersion + ")";
-        $('.version > .membase-version').text(String(data.implementationVersion)).parent().show();
+        $('.version > .couchbase-version').text(String(data.implementationVersion)).parent().show();
         DAL.appendedVersion = true;
       }
     }

@@ -3,11 +3,11 @@
 <!--[if IE 8 ]>    <html class="ie8" lang="en"> <![endif]-->
 <!--[if (gte IE 9)|!(IE)]><!--><html lang="en"><!--<![endif]-->
 <head>
-<title>Membase Console</title>
+<title>Couchbase Console</title>
 <link rel="stylesheet" type="text/css" href="/css/screen.css">
 <link rel="stylesheet" type="text/css" href="/css/tabs.css">
 <link rel="stylesheet" type="text/css" href="/css/print.css">
-<link rel="stylesheet" type="text/css" href="/css/jquery-ui.membase.css">
+<link rel="stylesheet" type="text/css" href="/css/jquery-ui.couchbase.css">
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta http-equiv="X-UA-Compatible" content="chrome=1">
 </head>
@@ -19,16 +19,15 @@
       <div class="cnt_holder main_holder">
         <div class="topper_nav">
           <a id="switch_support_docs" href="http://techzone.couchbase.com/wiki/display/membase/Getting+Started" target="MCWebHelp">Documentation</a>
-          <b>&bull;</b><a id="switch_support_forums" href="http://techzone.couchbase.com/forums/membase/membase-server-17x/membase-server-17-developer-preview" target="nsforums">Support Forums</a>
-          <b>&bull;</b><a href="javascript:showAbout();">About</a>
+          <b>&bull;</b> <a id="switch_support_forums" href="http://techzone.couchbase.com/forums/membase/membase-server-17x/membase-server-17-developer-preview" target="nsforums">Support Forums</a>
+          <b>&bull;</b> <a href="javascript:showAbout();">About</a>
           <i class="sign-out-link"><b>&bull;</b> <a href="javascript:ThePage.signOut();">Sign Out</a></i>
         </div>
         <a href="/index.html"><span>&nbsp;</span></a>
       </div>
     </div> <!-- header -->
-
-    <div id="mainContainer" class="main_holder">
       <div id="headerNav">
+        <div class="contents">
         <ul>
           <!--<li class="line"></li>-->
           <li class="line"><a id="switch_overview" href="#visitSec=overview">Cluster Overview</a></li>
@@ -45,12 +44,14 @@
             {% } %}
           </a>
         </script>
+        </div>
       </div>
 
+    <div id="mainContainer" class="main_holder">
         <div id="mainPanel">
           <div id="overview" style="display:none">
             <!-- shadow box -->
-            <h1>CLUSTER OVERVIEW</h1>
+            <h1>Cluster Overview</h1>
             <div id="notice_container"></div>
             <div class="shadow_box">
                   <div class="content">
@@ -144,7 +145,7 @@
         </div>
 
           <div id="servers" style="display:none">
-            <h1>SERVERS</h1>
+            <h1>Servers</h1>
             <div class="warning_message failover_warning">
               Fail Over Warning: <span class="warning-text"></span>
             </div>
@@ -630,7 +631,7 @@
                       </label>
                       <p class="more_info">
                       Enabling software update notifications allows notification in
-                      the Membase web console when a new version of Membase Server
+                      the Couchbase web console when a new version of Couchbase Server
                       is available. Configuration information transferred in the
                       update check is anonymous and does not include any stored
                       key-value data.
@@ -902,8 +903,8 @@
 <div class="dialog" id="about_server_dialog">
   <div class="lbox">
     <div class="config-top">
-      <img src="images/membase-logo.png" alt="Membase Logo" />
-      <h1>About Membase Server</h1>
+      <img src="images/logo.png" alt="Couchbase Logo" />
+      <h1>About Couchbase Server</h1>
     </div>
     <div class="center">
       <p class="dialog-text" id="about_versions"></p>
@@ -997,17 +998,16 @@
 
   <div class="pad" id="init_welcome_dialog">
     <div class="pad-header">
-      <div class="version" style="display:none;">Membase Server <span class="membase-version"></span></div>
+      <div class="version" style="display:none;">Couchbase Server <span class="couchbase-version"></span></div>
       <div class="tagline">
         ELASTIC DATA MANAGEMENT
       </div>
-      <div class="elastro-cling"></div>
     </div>
     <!-- screen S.1 -->
     <h1>Congratulations</h1>
     <form id="init_welcome_form">
       <p>
-        You have successfully installed the Membase Server.<br>This wizard will help you configure your cluster.
+        You have successfully installed the Couchbase Server.<br>This wizard will help you configure your cluster.
       </p>
       <div class="pat_10">
         <input type="image" name="setup" value="Setup" class="submit next focusme" src="../images/welcome-setup-button.png" />
@@ -1038,13 +1038,13 @@
     </div>
     <h2 class="question">Join Cluster / Start new Cluster</h2>
     <p class="pad_10">
-    If you want to add this server to an existing Membase Cluster, select "Join a
+    If you want to add this server to an existing Couchbase Cluster, select "Join a
     cluster now".
-    Alternatively, you may create a new Membase Cluster by selecting "Start a new
+    Alternatively, you may create a new Couchbase Cluster by selecting "Start a new
     cluster".
     </p><p class="pad_10" style="padding-top: 5px;">
     If you start a new cluster the "Per Server RAM Quota" you set below will define
-    the amount of RAM each server provides to the Membase Cluster. This value will
+    the amount of RAM each server provides to the Couchbase Cluster. This value will
     be inherited by all servers subsequently joining the cluster and it cannot be
     modified in an existing cluster, so please set appropriately.
     </p>
@@ -1112,7 +1112,7 @@
       <a href="#" class="more_info">What's this?</a>
     </p>
     <p class="more_info pad_10">
-      Enabling software update notifications allows notification in the Membase web console when a new version of Membase Server is available. Configuration information transferred in the update check is anonymous and does not include any stored key-value data.
+      Enabling software update notifications allows notification in the Couchbase web console when a new version of Couchbase Server is available. Configuration information transferred in the update check is anonymous and does not include any stored key-value data.
     </p>
     <h2 class="question">Community Updates</h2>
     <p class="pad_10">Please provide your email address to join the community and receive news on coming events.</p>
@@ -1230,7 +1230,7 @@
 <script id="notice_template" type="text/html">
 <div class="shadow_box notice">
   <div class="content">
-    <h2 class="header_2">Membase Server Message<span style="float: right; color: black; font-size: 13px;">click to dismiss</span></h2>
+    <h2 class="header_2">Couchbase Server Message<span style="float: right; color: black; font-size: 13px;">click to dismiss</span></h2>
     <div class="pad_10 success_msg">
       <p class="info_text">{%= h(text) %}</p>
     </div>
@@ -1240,7 +1240,7 @@
 <script id="noticeErr_template" type="text/html">
 <div class="shadow_box notice">
   <div class="content">
-    <h2 class="header_2">Membase Server Alert<span style="float: right; color: black; font-size: 13px;">click to dismiss</span></h2>
+    <h2 class="header_2">Couchbase Server Alert<span style="float: right; color: black; font-size: 13px;">click to dismiss</span></h2>
     <div class="pad_10 error_msg">
       <p class="info_text">{%= h(text) %}</p>
     </div>

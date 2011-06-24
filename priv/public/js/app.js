@@ -223,7 +223,7 @@ var ThePage = {
 
     DAL.cells.mode.subscribeValue(function (sec) {
       $('.currentNav').removeClass('currentNav');
-      $('#switch_' + sec).addClass('currentNav');
+      $('#switch_' + sec).parent('li').addClass('currentNav');
     });
 
     DAL.onReady(function () {
