@@ -496,11 +496,9 @@
                 <col width="50%" />
                   <tr>
                     <td>
-                    Bucket Name: <span>{%= h(name) %}</span><br />
-                    Bucket Type: <span>{%= h(bucketTypeName) %}</span><br />
+                      Access Control: <span>{%= (authType == 'none') ? 'Port' : ((name == 'default') ? 'None' : 'Authentication') %}{%= (authType == 'none') ? (': ' + proxyPort) : '' %}</span>
                     </td>
                     <td>
-                    Access Control: <span>{%= (authType == 'none') ? 'Port' : ((name == 'default') ? 'None' : 'Authentication') %}{%= (authType == 'none') ? (': ' + proxyPort) : '' %}</span><br />
                   {% if (bucketType == 'membase') { %}
                     {% if (replicaNumber != 0) { %}
                       Replication: <span>{%= V.count(replicaNumber, 'replica copy') %}</span>

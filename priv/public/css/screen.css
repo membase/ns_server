@@ -808,10 +808,9 @@ ul.tabs .badge_display .badge {display:block;}
 .add_b_message {line-height:31px; color:#fff;}
 .add_back_btn {display:block; width:148px; height:31px; background:url(../images/add_back_btn.png) 0 0 no-repeat; float:right; margin-right:-10px;}
 
-#buckets .settings-placeholder {display:none; padding:9px 12px 8px 90px;border-top:2px solid #ced5d9;background:#e6e7e8;}
+#buckets .settings-placeholder {display:none; padding:9px 12px 8px 90px;border-top:2px solid #ced5d9;background:#e6e7e8;text-align:left}
 .buckets_tab {border-right:1px solid #d9dce0;}
 .buckets_tab td {height:30px;background:none #eee;border-bottom:1px solid #ced5d9; padding:0 10px;border-right:0px; text-align:center;}
-.buckets_tab tr td:first-child {text-align:left;font-size:130%}
 .buckets_tab td > table td {padding:0 5px;width:110px;border:none;vertical-align:middle;}
 .buckets_tab td > table td:first-child {width:155px;padding:0 5px 0 61px;background:url(../images/icons.png) -7px -93px no-repeat #eee;}
 .buckets_tab td > table td:first-child+td+td {width:155px;}
@@ -821,7 +820,7 @@ ul.tabs .badge_display .badge {display:block;}
 .buckets_tab tr:first-child th:first-child {/*padding:0 0 0 56px;*padding-right:25px;display:block;*/text-align:left;white-space:nowrap;}
 .buckets_tab tr:first-child th i {font-style:normal;position:relative;}
 .buckets_tab tr:first-child th.last {border-right:1px solid #d9dce0;}
-.bucket_name {font-weight:bolder;color:#0095D6;}
+.bucket_name {font-weight:bolder;color:#0095D6;text-align:left;font-size:130%}
 .buckets_tab .settings-placeholder td .pad {padding:10px 0 10px 56px; background:none;}
 .buckets_tab .settings-placeholder td > .pad {width:685px;overflow:hidden;}
 .buckets_tab .settings-placeholder td .pad .pad {padding:10px 10px 10px 4px !important;min-height:52px;}
@@ -833,7 +832,7 @@ ul.tabs .badge_display .badge {display:block;}
 
 .buckets_tab .highlight td {background-color:#eee !important;}
 .bucket_properties_table {width:550px;}
-.bucket_properties_table tr td {padding:0 0 2px 5px;text-align:left !important; vertical-align:top !important; color:#444245; line-height:16px; background:none !important; border:0px !important;}
+.bucket_properties_table tr td {text-align:left !important; vertical-align:top !important; color:#444245;background:none !important; border:0px !important;height:auto;}
 .buckets_tab table.label {float:left;margin:2px 0 0;}
 .buckets_tab table.label td:first-child {width:175px;color:#444245; text-align:right;}
 
