@@ -1,0 +1,1 @@
+{erl_opts, [{src_dirs, ["test"]}, {i, "@couchdb_src_path@"}, debug_info, bin_info_opt]}.

@@ -11,11 +11,14 @@ Configuration:
 
 Installation directories:
   --prefix=PREFIX         install files in PREFIX (required)
+  --couchdb-src=PATH      path to couchdb source directory (../couchdb)
 
 EOF
 }
 
 prefix=
+couchdb_src=../couchdb
+
 for config_arg do
   case "$config_arg" in
       --help|-h)
@@ -29,8 +32,11 @@ for config_arg do
           echo "--prefix needs to be absolute path"
           exit 1
           ;;
+      --couchdb-src=*)
+          couchdb_src=${config_arg##--couchdb-src=}
+          ;;
       *)
-          echo "Unkown option: ${config_arg}"
+          echo "Unknown option: ${config_arg}"
           exit 1
           ;;
   esac
@@ -42,11 +48,19 @@ if test -z "$prefix" ; then
     exit 1
 fi
 
+if test '!' -f "$couchdb_src/src/couchdb/couch_db.hrl"; then
+    echo "could not find couch_db.hrl in given couchdb-src path: $couchdb_src"
+    exit 1
+fi
+
 cat <<EOF >${0%"${0##*/}"}/.configuration
 prefix=$prefix
 EOF
 
+sed -e "s|@couchdb_src_path@|${couchdb_src}/src/couchdb|g" <${0%"${0##*/}"}/rebar.config.in >${0%"${0##*/}"}/rebar.config
+
 echo
 echo "Membase management server is configured and is ready to be built!"
 echo "PREFIX: ${prefix}"
+echo "couchdb-src: ${couchdb_src}"
 echo

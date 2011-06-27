@@ -17,6 +17,7 @@
 /logs
 /ns_server.plt
 /priv/public/js/all-images.js
+/rebar.config
 /src/ns_server.app.src
 /tmp/version_num.tmp
 TAGS

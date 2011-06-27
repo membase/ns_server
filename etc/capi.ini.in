@@ -1,0 +1,4 @@
+[couchdb]
+max_dbs_open = 10000
+[httpd]
+db_frontend = capi_frontend

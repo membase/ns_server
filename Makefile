@@ -129,6 +129,7 @@ do-install:
 	cp ebucketmigrator $(DESTDIR)$(PREFIX)/bin/ebucketmigrator
 	chmod +x $(DESTDIR)$(PREFIX)/bin/ebucketmigrator
 	cp scripts/mbdumpconfig.escript $(DESTDIR)$(PREFIX)/bin/
+	cp etc/capi.ini.in $(DESTDIR)$(PREFIX)/etc/couchdb/default.d/capi.ini
 
 clean clean_all:
 	@(cd deps/gen_smtp && $(MAKE) clean)
