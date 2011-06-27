@@ -13,6 +13,81 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  **/
+var TestingSupervisor = {
+  chooseSingle: function (arg, predicate) {
+    if (!_.isArray(arg)) {
+      var key = this.chooseSingle(_.keys(arg), predicate);
+      return arg[key];
+    }
+    var passing = _.select(arg, function (id) {
+      return predicate(id);
+    });
+    if (passing.length != 1)
+      throw new Error("Invalid number of predicate-passing of items: " + passing.length);
+    return passing[0];
+  },
+  chooseVisible: function (arg) {
+    return this.chooseSingle(arg, function (id) {
+      return $($i(id)).css('display') != 'none';
+    });
+  },
+  chooseSelected: function (arg) {
+    return this.chooseSingle(arg, function (id) {
+      return $($i(id)).hasClass('selected');
+    });
+  },
+  activeSection: function () {
+    return this.chooseVisible(['overview', 'alerts', 'settings']);
+  },
+  activeGraphZoom: function () {
+    return this.chooseSelected({
+      'overview_graph_zoom_real_time': 'real_time',
+      'overview_graph_zoom_one_hr' : 'one_hr',
+      'overview_graph_zoom_day': 'day'
+    });
+  },
+  activeKeysZoom: function () {
+    return this.chooseSelected({
+      'overview_keys_zoom_real_time': 'real_time',
+      'overview_keys_zoom_one_hr' : 'one_hr',
+      'overview_keys_zoom_day': 'day'
+    });
+  },
+  activeStatsTarget: function () {
+    var cell = DAL.cells.currentStatTargetCell;
+    if (!cell)
+      return null;
+    var value = cell.value;
+    if (!cell)
+      return null;
+    return [value.name, value.stats.uri];
+  },
+  installInterceptor: function (wrapperName, obj, methodName) {
+    var self = this;
+    var method = obj[methodName];
+    var rv = obj[methodName] = function () {
+      var args = [method].concat(_.toArray(arguments));
+      return self[wrapperName].apply(self, args);
+    }
+    rv.originalMethod = method;
+    return rv;
+  },
+  interceptAjax: function () {
+    this.installInterceptor('interceptedAjax', $, 'ajax');
+    this.installInterceptor('interceptedAddBasicAuth', window, 'addBasicAuth');
+  },
+  interceptedAjax: function (original, options) {
+    console.log("intercepted ajax:", options.url, options);
+    (new MockedRequest(options)).respond();
+  },
+  interceptedAddBasicAuth: function (original, xhr, login, password) {
+    if (!xhr.fakeAddBasicAuth) {
+      throw new Error("incomplete hook.js installation");
+    }
+    xhr.fakeAddBasicAuth(login, password);
+  }
+};
+
 var ajaxRespondDelay = 100;
 
 // mostly stolen from MIT-licensed prototypejs.org (String#toQueryParams)
