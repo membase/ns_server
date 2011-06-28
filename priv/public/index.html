@@ -177,7 +177,7 @@
           </div>
 
           <script id="manage_server_list_template" type="text/html">
-          <table class="lined_tab">
+          <table class="list" style="width:100%">
             <tr>
               <th></th>
               <th>Server Node Name</th>
@@ -291,9 +291,9 @@
           <div class="first gong_rb">
             <div class="pad">
               <a class="edit_btn float_right disabled">Edit</a>
-              <table class="server_details_tab">
-                <col width="230">
-                <col width="">
+              <table class="properties_table">
+                <col width="50%">
+                <col width="50%">
                 <tr>
                     <td>Server Name: <span>{%= h(hostname) %}</span></td>
                     <td>Uptime: <span>{%= h(formatUptime(uptime)) %}</span></td>
@@ -431,7 +431,7 @@
             <!-- END shadow box -->
 
             <script id="bucket_list_template" type="text/html">
-            <table class="buckets_tab" width="100%">
+            <table class="list" width="100%">
               <tr>
                 <th>Bucket Name</th>
                 <th>Bucket Type</th>
@@ -481,7 +481,7 @@
             <div class="gong_rb">
               <div class="pad">
                 <a class="edit_btn" href="#editBucket={%= uri %}">Edit</a>
-                <table class="bucket_properties_table">
+                <table class="properties_table">
                 <col width="50%" />
                 <col width="50%" />
                   <tr>
