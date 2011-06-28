@@ -76,11 +76,6 @@ var ServersSection = {
     if (!details)
       return;
 
-    if (rebalancing) {
-      renderTemplate('manage_server_list', {rows:[], expandingAllowed: false}, $i('pending_server_list_container'));
-      return this.renderRebalance(details);
-    }
-
     if (active.length) {
       renderTemplate('manage_server_list', {
         rows: active,
@@ -92,13 +87,19 @@ var ServersSection = {
       }, $i('pending_server_list_container'));
     }
 
+    if (rebalancing) {
+      $('#servers .add_button').hide();
+      this.renderRebalance(details);
+    }
+
     if (IOCenter.staleness.value) {
       $('#servers .staleness-notice').show();
       $('#servers').find('.add_button, .rebalance_button').hide();
       $('#active_server_list_container, #pending_server_list_container').find('.re_add_button, .eject_server, .failover_server, .remove_from_list').addClass('disabled');
     } else {
       $('#servers .staleness-notice').hide();
-      $('#servers').find('.add_button, .rebalance_button').show();
+      $('#servers').find('.rebalance_button').show();
+      $('#servers .add_button')[rebalancing ? 'hide' : 'show']();
     }
 
     $('#active_server_list_container .last-active').find('.eject_server').addClass('disabled').end()
@@ -124,9 +125,8 @@ var ServersSection = {
         p = emptyProgress;
       n.progress = p.progress;
       n.percent = truncateTo3Digits(n.progress * 100);
+      $($i(n.otpNode.replace('@', '-'))).find('.actions').html('<span class="usage_info">' + escapeHTML(n.percent) + '% Complete</span><span class="server_usage"><span style="width: ' + escapeHTML(n.percent) + '%;"></span></span>');
     });
-
-    renderTemplate('rebalancing_list', nodes);
   },
   refreshEverything: function () {
     this.updateData();
@@ -224,9 +224,8 @@ var ServersSection = {
 
     function mkServerRowHandler(handler) {
       return function (e) {
-        var serverRow = $(this).closest('.server_row').find('td:first-child') || $(this).closest('.add_back_row').find('td:first-child');
-        var serverInfo = serverRow.data('server');
-        return handler.call(this, e, serverInfo);
+        var serverRow = $(this).closest('.server_row').find('td:first-child').data('server') || $(this).closest('.add_back_row').next().find('td:first-child').data('server');
+        return handler.call(this, e, serverRow);
       }
     }
 

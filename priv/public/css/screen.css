@@ -725,21 +725,20 @@ li.server_row .btn_cancel {display:block; height:15px; color:#7a7a7a; padding:0 
 #servers h2 { height: 25px;}
 .servers_list ul {*margin:-1px 0 0;*position:relative;*top:1px;}
 .servers_list li {height-min:25px;display:block;padding:0 10px; *zoom:1;*margin:-2px 0 0;}
-.servers_list li.server_row {height:60px; line-height:60px; border:1px solid #d1d5d8;border-top:none;overflow:hidden; background:url(../images/server_status_icons.png) 10px 20px no-repeat; padding:0 10px 0 85px;}
-.servers_list li.server_row.server_down {background:url(../images/server_status_icons.png) 10px -157px no-repeat; background-color:#61696c;border-color:#61696c;}
-.servers_list li.server_row.failed_over {background:url(../images/server_status_icons.png) 10px -308px no-repeat; background-color:#c9cccc;}
-.servers_list li.server_row.server_warmup {background:url(../images/server_status_icons.png) 10px -308px no-repeat;}
-.servers_list li.server_row.failed_over .list_button {display:none;}
-.servers_list li.server_row.failed_over .serverName {color:#333; opacity:0.3;}
-.servers_list li.server_row.rebalance_empty {padding:0 15px; background:none; color:#656565;}
-.servers_list li.server_row.rebalance_empty * {display:none;}
-.servers_list li.server_row.rebalance_empty .rebalance_empty_message {display:block;}
-.servers_list li.server_row.pending_add {background:url(../images/server_status_icons.png) 10px -309px no-repeat;}
+.servers_list .server_row.server_down {background:url(../images/server_status_icons.png) 10px -157px no-repeat; background-color:#61696c;border-color:#61696c;}
+.servers_list .server_row.failed_over {background:url(../images/server_status_icons.png) 10px -308px no-repeat; background-color:#c9cccc;}
+.servers_list .server_row.server_warmup {background:url(../images/server_status_icons.png) 10px -308px no-repeat;}
+.servers_list .server_row.failed_over .list_button {display:none;}
+.servers_list .server_row.failed_over .serverName {color:#333; opacity:0.3;}
+.servers_list .server_row.rebalance_empty {padding:0 15px; background:none; color:#656565;}
+.servers_list .server_row.rebalance_empty * {display:none;}
+.servers_list .server_row.rebalance_empty .rebalance_empty_message {display:block;}
+.servers_list .server_row.pending_add {background:url(../images/server_status_icons.png) 10px -309px no-repeat;}
 
 .server_row.pending_removal .btn_cancel, .server_row.pending_add .btn_cancel {float:right;padding:1em}
 .server_row.pending_removal .pending_removal_message, .server_row.pending_add .pending_add_message {float:right; margin:0 10px 0 0; color:#e54c2a;padding:1em}
-li.server_row.status_up {background-position:10px 20px !important;}
-li.server_row.status_down {background-position:10px -157px !important; background-color:#61696c;}
+.server_row.status_up {background-position:10px 20px !important;}
+.server_row.status_down {background-position:10px -157px !important; background-color:#61696c;}
 
 .servers_list li.th {height:31px;line-height:31px;background:url(../images/bg_li_th.gif) repeat-x;border:1px solid #d1d5d8;border-width:0 1px;}
 .servers_list li.th div {float:left;width:320px;}
@@ -758,9 +757,9 @@ ul.tabs .badge_display .badge {display:block;}
 
 .servers_header {padding:11px 10px 5px 11px;}
 
-.server_usage {display:block; width:183px; height:16px; float:right; background:url(../images/usage_small_2.gif) 0 -16px no-repeat; position:relative; top:20px;}
+.server_usage {display:block; width:183px; height:16px; float:right; background:url(../images/usage_small_2.gif) 0 -16px no-repeat; position:relative; top:-8px;}
 .server_usage span {display:block; width:183px; height:16px; overflow:hidden; position:absolute; left:0px; top:0px; background:url(../images/usage_small_2.gif) 0 0 no-repeat; width:30%;}
-.usage_info {display:block; float:right; font-weight:normal; color:#808080; width:150px; margin-left:-150px; position:relative; top:16px; text-align:right;}
+.usage_info {display:block; float:right; font-weight:normal; color:#808080; width:150px; margin-left:-150px; position:relative; top:11px; text-align:right;}
 .rebalancing li {display:block; position:relative;}
 .rebalancing li a {text-decoration:none !important; cursor:default;}
 
@@ -772,12 +771,6 @@ ul.tabs .badge_display .badge {display:block;}
 .servers_list .server_down .serverName {color:#26BBFF;}
 
 #servers .gong_rb {margin-top:10px 0 10px; padding-left:3px;}
-
-#servers .servers-not-rebalancing { display: block; }
-#servers .servers-rebalancing { display: none; }
-
-#servers.rebalancing .servers-not-rebalancing { display: none; }
-#servers.rebalancing .servers-rebalancing { display: block; }
 
 .additional_server_info {display:block;overflow:hidden;}
 .additional_server_info h3 {font-size:14px; color:#444245; padding:5px 0 10px 0; border-bottom:1px solid #bbbdbf; font-weight:normal; margin:0 0 10px 0;}
@@ -799,18 +792,23 @@ ul.tabs .badge_display .badge {display:block;}
  .disk_storage {background-position:-6px -390px;}
 .additional_server_info .add_btn {display:block; width:61px; height:21px; background:url(../images/add_btn.png) 0 0 no-repeat; float:right;}
 .additional_server_info .info_message {font-size:16px;}
-
 .add_back_row {background:url(../images/add_back_bg.png) 0 0 repeat-x;*margin:0 !important;}
-.add_back_row td{height:31px;background:none;padding:0 9px;border:none;}
+.add_back_row td{height:31px;background:none;padding:0 9px;border:none;text-align:left}
 .add_b_message {line-height:31px; color:#fff;}
 .add_back_btn {display:block; width:148px; height:31px; background:url(../images/add_back_btn.png) 0 0 no-repeat; float:right; margin-right:-10px;}
 
-#buckets .settings-placeholder {display:none; padding:9px 12px 8px 90px;border-top:2px solid #ced5d9;background:#e6e7e8;text-align:left}
 .buckets_tab {border-right:1px solid #d9dce0;}
-.buckets_tab td {height:30px;background:none #eee;border-bottom:1px solid #ced5d9; padding:0 10px;border-right:0px; text-align:center;}
+
+.buckets_tab td {background:none #eee;border-bottom:1px solid #ced5d9; padding:10px;border-right:0px; text-align:center;vertical-align:middle;line-height:30px}
+
+.buckets_tab td table td {background:none;border:none}
+
 .buckets_tab td > table td {padding:0 5px;width:110px;border:none;vertical-align:middle;}
+
 .buckets_tab td > table td:first-child {width:155px;padding:0 5px 0 61px;background:url(../images/icons.png) -7px -93px no-repeat #eee;}
+
 .buckets_tab td > table td:first-child+td+td {width:155px;}
+
 .buckets_tab td > table td:first-child+td+td+td {width:125px;}
 
 .buckets_tab tr:first-child th {padding:10px 5px;background:none #f6f6f7; border-right:0px; border-bottom:1px solid #fff; color:#4d4d4d; font-weight:normal; text-align:center;}
