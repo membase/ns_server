@@ -717,7 +717,13 @@ li.server_row .btn_cancel {display:block; height:15px; color:#7a7a7a; padding:0 
 #servers .add_button {width:124px;}
 #servers .rebalance_button {width:115px;}
 
-.btn_analytics {background: url(../images/buttons.png) no-repeat top right;text-indent:-9000px;width:32px;height:31px;}
+.btn_edit {background: url(../images/buttons.png) no-repeat -39px top;text-indent:-9000px;width:32px;height:31px;}
+.btn_edit.disabled {opacity:0.75;background-position:-39px -31px}
+.btn_views {background: url(../images/buttons.png) no-repeat left top;text-indent:-9000px;width:32px;height:31px;}
+.btn_views.disabled {opacity:0.75;background-position:left -31px}
+.btn_documents {background: url(../images/buttons.png) no-repeat -78px top;text-indent:-9000px;width:32px;height:31px;}
+.btn_documents.disabled {opacity:0.75;background-position:-78px -31px}
+.btn_analytics {background: url(../images/buttons.png) no-repeat right top;text-indent:-9000px;width:32px;height:31px;}
 .btn_analytics.disabled {opacity:0.75;background-position:right -31px}
 
 .lined_tab .server_up {background:white url(../images/server_status_icons_solid_bg.png) 10px 7px no-repeat; padding-left:75px;}

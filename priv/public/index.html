@@ -463,7 +463,11 @@
                 <td>{% if (this.basicStats.diskFetches !== undefined) { %}{%= h(truncateTo3Digits(this.basicStats.diskFetches)) %}{% } %}</td>
                 <td>{% if (this.basicStats.hitRatio !== undefined) { %}{%= h(truncateTo3Digits(this.basicStats.hitRatio * 100)) %}%{% } %}</td>
                 <td>{%= h(this.basicStats.itemCount) %}</td>
-                <td><a class="list_button btn_analytics" href="#sec=analytics&statsBucket={%= this.uri %}">Analytics</a></td>
+                <td>
+                  <a class="list_button btn_analytics" href="#sec=analytics&statsBucket={%= this.uri %}">Analytics</a>
+                  <a class="list_button btn_views disabled" href="#sec=views&statsBucket={%= this.uri %}">Views</a>
+                  <a class="list_button btn_documents disabled" href="#sec=documents&statsBucket={%= this.uri %}">Documents</a>
+                </td>
               </tr>
               <tr>
                 <td class="settings-placeholder" colspan="10">{%= BucketsSection.renderBucketDetails(this) %}</td>
