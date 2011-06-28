@@ -736,11 +736,8 @@ li.server_row .btn_cancel {display:block; height:15px; color:#7a7a7a; padding:0 
 .servers_list li.server_row.rebalance_empty .rebalance_empty_message {display:block;}
 .servers_list li.server_row.pending_add {background:url(../images/server_status_icons.png) 10px -309px no-repeat;}
 
-li.server_row.pending_add .btn_cancel {float:right;}
-li.server_row.pending_add .pending_add_message {float:right; margin:0 10px 0 0; color:#e54c2a;}
-
-li.server_row.pending_removal .btn_cancel {float:right;}
-li.server_row.pending_removal .pending_removal_message {float:right; margin:0 10px 0 0; color:#e54c2a;}
+.server_row.pending_removal .btn_cancel, .server_row.pending_add .btn_cancel {float:right;padding:1em}
+.server_row.pending_removal .pending_removal_message, .server_row.pending_add .pending_add_message {float:right; margin:0 10px 0 0; color:#e54c2a;padding:1em}
 li.server_row.status_up {background-position:10px 20px !important;}
 li.server_row.status_down {background-position:10px -157px !important; background-color:#61696c;}
 
@@ -767,7 +764,7 @@ ul.tabs .badge_display .badge {display:block;}
 .rebalancing li {display:block; position:relative;}
 .rebalancing li a {text-decoration:none !important; cursor:default;}
 
-.failed_over_message {float:right; color:#9c9e9e; display:none;}
+.failed_over_message {float:right; color:#9c9e9e; display:none;padding:1em}
 .failed_over .failed_over_message {display:block;}
 
 .servers_list .serverName {display:inline-block; height:60px; padding:0 0 0 45px; background:url(../images/server_icon.png) 0 10px no-repeat; font-size:12px; font-weight:bolder; float:left;}
