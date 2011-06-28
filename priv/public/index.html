@@ -276,7 +276,7 @@
                   <a class="list_button eject_server"><span>Remove Server</span></a>
                   <a class="list_button failover_server"><span>Fail Over</span></a>
                   <span class="failed_over_message">Failed Over: Pending Removal</span>
-                  <a class="list_button{% if (s.nodeClass === 'server_down') { %} disabled"{% } else { %}" href="#sec=analytics&statsHostname={%= h(s.hostname) %}"{% } %}><span>Analytics</span></a>
+                  <a class="list_button btn_analytics{% if (s.nodeClass === 'server_down') { %} disabled"{% } else { %}" href="#sec=analytics&statsHostname={%= h(s.hostname) %}"{% } %}>Analytics</a>
                 </td>
               </tr>
             <!-- {% } %} -->
@@ -463,7 +463,7 @@
                 <td>{% if (this.basicStats.diskFetches !== undefined) { %}{%= h(truncateTo3Digits(this.basicStats.diskFetches)) %}{% } %}</td>
                 <td>{% if (this.basicStats.hitRatio !== undefined) { %}{%= h(truncateTo3Digits(this.basicStats.hitRatio * 100)) %}%{% } %}</td>
                 <td>{%= h(this.basicStats.itemCount) %}</td>
-                <td><a class="list_button" href="#sec=analytics&statsBucket={%= this.uri %}"><span>Analytics</span></a></td>
+                <td><a class="list_button btn_analytics" href="#sec=analytics&statsBucket={%= this.uri %}">Analytics</a></td>
               </tr>
               <tr>
                 <td class="settings-placeholder" colspan="10">{%= BucketsSection.renderBucketDetails(this) %}</td>

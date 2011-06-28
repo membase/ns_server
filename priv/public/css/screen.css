@@ -712,10 +712,13 @@ li.server_row .btn_cancel {display:block; height:15px; color:#7a7a7a; padding:0 
 #servers .list_button.failover_server.threat_red {color:#f00 !important;font-weight:bold;border: 1px solid #f00;border-radius:5px;-moz-box-shadow: 0 0 3px #f00;-webkit-box-shadow: 0 0 3px #f00;box-shadow:0 0 3px #f00}
 #servers .list_button.failover_server.threat_yellow {color:#E5A800 !important;font-weight:bold;border: 1px solid #fac344;border-radius:5px;-moz-box-shadow: 0 0 3px #fac344;-webkit-box-shadow: 0 0 3px #fac344;box-shadow:0 0 3px #fac344}
 .list_button span {display:block; text-align:center; height:31px; line-height:31px; padding:0 6px 0 10px; background:url(../images/btn_2_bg.png) 0 0 no-repeat;}
-.list_button.disabled {background-position:100% -93px; color:#cacbce !important; opacity:1 !important;}
+.list_button.disabled {background-position:100% -93px; color:#cacbce !important; opacity:0.75 !important;}
 .list_button.disabled span {background-position:0 -62px; color:#9E9FA3 !important;}
 #servers .add_button {width:124px;}
 #servers .rebalance_button {width:115px;}
+
+.btn_analytics {background: url(../images/buttons.png) no-repeat top right;text-indent:-9000px;width:32px;height:31px;}
+.btn_analytics.disabled {opacity:0.75;background-position:right -31px}
 
 .lined_tab .server_up {background:white url(../images/server_status_icons_solid_bg.png) 10px 7px no-repeat; padding-left:75px;}
 .lined_tab .server_down {background:white url(../images/server_status_icons_solid_bg.png) 10px -171px no-repeat; padding-left:75px;}
