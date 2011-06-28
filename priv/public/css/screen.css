@@ -819,7 +819,9 @@ ul.tabs .badge_display .badge {display:block;}
 .list tr:first-child th:first-child {/*padding:0 0 0 56px;*padding-right:25px;display:block;*/text-align:left;white-space:nowrap;}
 .list tr:first-child th i {font-style:normal;position:relative;}
 .list tr:first-child th.last {border-right:1px solid #d9dce0;}
-.bucket_name {font-weight:bolder;color:#0095D6;text-align:left;font-size:130%}
+.list td.design_doc_name {font-weight:bolder; color: #808080; text-align:left;font-size:100%;}
+.list td.bucket_name, .list td.view_name {font-weight:bolder;color:#0095D6;text-align:left;font-size:130%}
+.list td.view_name{padding-left:3em;color:#616062}
 .list .settings-placeholder {display:none; padding:9px 12px 8px 90px;border-top:2px solid #ced5d9;background:#e6e7e8;text-align:left}
 .list .settings-placeholder td .pad {padding:10px 0 10px 56px; background:none;}
 .list .settings-placeholder td > .pad {width:685px;overflow:hidden;}
@@ -838,7 +840,7 @@ ul.tabs .badge_display .badge {display:block;}
 
 .list .health_graph {margin-right: 0.75em;position:relative;top:0.5em}
 
-.tabs switcher {}
+.switcher {float:left}
 .switcher li {padding:0px !important; background:none !important;}
 .switcher li a {display:block; height:32px !important; font-size:14px !important; padding:0 10px !important; color:#182022;}
 html body .switcher li a.current {color:#e6e6e6 !important;}
@@ -1003,3 +1005,6 @@ body.init_update_notifications #init_update_notifications_dialog p.pad_10 {color
 
 body.staleness-active a.disable-if-stale { text-decoration: none; }
 body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: default; }
+
+#production_views_list_container .btn_edit, #production_views_list_container .btn_remove, #production_views_list_container .btn_publish, #production_views_list_container .create_view_button{display:none}
+#development_views_list_container .btn_views {display:none}

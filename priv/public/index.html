@@ -465,7 +465,7 @@
                 <td>{%= h(this.basicStats.itemCount) %}</td>
                 <td>
                   <a class="list_button btn_analytics" href="#sec=analytics&statsBucket={%= this.uri %}">Analytics</a>
-                  <a class="list_button btn_views disabled" href="#sec=views&statsBucket={%= this.uri %}">Views</a>
+                  <a class="list_button btn_views" href="#sec=views&statsBucket={%= this.uri %}">Views</a>
                   <a class="list_button btn_documents disabled" href="#sec=documents&statsBucket={%= this.uri %}">Documents</a>
                 </td>
               </tr>
@@ -632,6 +632,84 @@
                   </div>
             </div>
             <!-- END shadow box -->
+          </div>
+
+          <div id="views" style="display:none">
+            <h1>Views</h1>
+            <div class="shadow_box">
+                <div class="content">
+                  <div class="header_2 servers_header">
+                    <ul class="tabs switcher">
+                      <li class="tab_left">
+                        <a href="#sec=views&amp;serversTab=0">Production Views</a>
+                      </li>
+                      <li class="tab_right">
+                        <a href="#sec=views&amp;serversTab=1">Development Views</a>
+                        <span class="badge"><span>1</span></span>
+                      </li>
+                    </ul>
+                    <div style="float:right;margin-top:-3px">
+                      <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+                    </div>
+                  </div>
+                  <div class="panes">
+                    <div>
+                      <div id="production_views_list_container" class="views_list">Production Views</div>
+                    </div>
+                    <div>
+                      <div id="development_views_list_container" class="views_list">Development Views</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- END shadow box -->
+
+            <script id="views_list_template" type="text/html">
+            <table class="list" width="100%">
+              <tr>
+                <th>Name</th>
+                <th>Lanugage</th>
+                <th>Disk Size</th>
+                <th class="last"></th>
+              </tr>
+              <!-- {% if (!rows.length) { %} -->
+              <tr><td colspan="10" style="padding:15px">No design documents currently defined! Click "Create View..." above to create one.</td></tr>
+              <!-- {% } else { %} -->
+              <!-- {% $.each(rows, function () { %} -->
+              <tr>
+                <td class="design_doc_name">
+                  {%= h(this.id) %}
+                </td>
+                <td>{%= h(this.doc.language) %}</td>
+                <td>
+                </td>
+                <td>
+                  <a class="list_button btn_publish disabled"><span>Publish...</span></a>
+                  <a class="list_button disabled"><span>Copy...</span></a>
+                  <a class="list_button disabled"><span>Delete...</span></a>
+                </td>
+              </tr>
+              <!-- {% if (_.size(this.doc.views) < 1) { %} -->
+              <tr><td colspan="10" style="padding:15px">No views currently defined! Click "Create View..." above to create one.</td></tr>
+              <!-- {% } else { %} -->
+              <!-- {% _.each(this.doc.views, function (contents, view_name) { %} -->
+              <tr>
+                <td class="view_name" colspan="3">
+                  {%= h(view_name) %}
+                </td>
+                <td>
+                  <a class="list_button btn_views disabled">Query View</a>
+                  <a class="list_button btn_edit disabled">Edit View</a>
+                  <a class="list_button btn_remove disabled"><span>Remove</span></a>
+                </td>
+              </tr>
+              <!-- {% }); %} -->
+              <!-- {% } %} -->
+              <!-- {% }); %} -->
+              <!-- {% } %} -->
+            </table>
+            </script>
           </div>
 
           <div id="coming" style="display:none">
@@ -1267,6 +1345,7 @@ $(window).bind('template:rendered', function () {
 <script src="/js/servers.js"></script>
 <script src="/js/settings.js"></script>
 <script src="/js/buckets.js"></script>
+<script src="/js/views.js"></script>
 <script src="/js/overview.js"></script>
 <script src="/js/all-images.js"></script>
 <script src="/js/updates-notifications.js"></script>
