@@ -86,10 +86,7 @@ config_string(BucketName) ->
                 {ok, DBDir} = ns_storage_conf:dbdir(Config),
                 DBSubDir = filename:join(DBDir, BucketName ++ "-data"),
                 DBName = filename:join(DBSubDir, BucketName),
-                CouchPort = case ns_config:search_node_prop(Config, memcached, mccouch_port) of
-                                undefined -> 11213;
-                                X when is_integer(X) -> X
-                            end,
+                CouchPort = ns_config:search_node_prop(Config, memcached, mccouch_port, 11213),
                 ok = filelib:ensure_dir(DBName),
                 %% MemQuota is our per-node bucket memory limit
                 CFG =
@@ -434,6 +431,7 @@ is_port_free(BucketName, Port) ->
 is_port_free(BucketName, Port, Config) ->
     Port =/= ns_config:search_node_prop(Config, memcached, port)
         andalso Port =/= ns_config:search_node_prop(Config, moxi, port)
+        andalso Port =/= ns_config:search_node_prop(Config, memcached, mccouch_port, 11213)
         andalso Port =/= proplists:get_value(port, menelaus_web:webconfig(Config))
         andalso is_open_proxy_port(BucketName, Port).
 
