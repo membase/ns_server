@@ -260,6 +260,7 @@ idle({failover, Node}, _From, State) ->
     ?log_info("Failing over ~p", [Node]),
     Result = ns_rebalancer:failover(Node),
     ns_log:log(?MODULE, ?FAILOVER_NODE, "Failed over ~p: ~p", [Node, Result]),
+    ns_config:set({node, Node, membership}, inactiveFailed),
     {reply, Result, idle, State};
 idle(rebalance_progress, _From, State) ->
     {reply, not_running, idle, State};
