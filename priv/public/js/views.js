@@ -67,4 +67,16 @@ var ViewsSection = {
   },
   navClick: function () {
   }
-}
+};
+
+var ViewDevSection = {
+  init: function() {
+    var jq = $('#sample_docs pre');
+    var json = JSON.parse(jq.text());
+    jq.html($.futon.formatJSON(json, {html: true}));
+  },
+  onEnter: function () {
+  },
+  navClick: function () {
+  }
+};

@@ -186,6 +186,7 @@ var ThePage = {
              analytics: AnalyticsSection,
              buckets: BucketsSection,
              views: ViewsSection,
+             view_development: ViewDevSection,
              log: AlertsSection,
              notifications: UpdatesNotificationsSection,
              // that's right, use the same object as "notifications"

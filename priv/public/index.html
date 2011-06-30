@@ -662,7 +662,6 @@
                   </div>
                 </div>
               </div>
-            </div>
             <!-- END shadow box -->
 
             <script id="views_list_template" type="text/html">
@@ -699,7 +698,7 @@
                   {%= h(view_name) %}
                 </td>
                 <td>
-                  <a class="list_button btn_views disabled">Query View</a>
+                  <a class="list_button btn_views" href="#sec=view_development">Query View</a>
                   <a class="list_button btn_edit disabled">Edit View</a>
                   <a class="list_button btn_remove disabled"><span>Remove</span></a>
                 </td>
@@ -712,10 +711,90 @@
             </script>
           </div>
 
+          <div id="view_development" style="display:none">
+            <h1>View Development</h1>
+            <div class="shadow_box">
+              <div class="content" id="sample_docs">
+                <div class="darker_block graph_nav">
+                  <h3 class="stats-block-expander"><ins></ins>Sample Documents
+                    <span class="buttons">
+                      <a class="btn_1 disabled"><span>Preview a Random Document</span></a>
+                    </span>
+                  </h3>
+                  <div class="stats">
+                    <pre>
+                    {"_id":"234235124", "_rev":"3-12342341234", "type":"event",
+                    "title":"meeting", "where": "coffee bar", "hosts": [ "benjamin@couchbase.com"]}
+                    </pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="shadow_box" id="viewcode">
+              <div class="content">
+                <div class="darker_block graph_nav">
+                  <h3 class="stats-block-expander"><ins></ins>View Code
+                    <span class="buttons">
+                      <a class="btn_1 disabled"><span>Copy...</span></a>
+                      <a class="btn_1 disabled"><span>Save As...</span></a>
+                      <a class="btn_1 disabled"><span>Save & Run</span></a>
+                    </span>
+                  </h3>
+                  <div class="stats">
+                    <table class="list" summary="View functions"><tbody><tr>
+                      <td class="code map" style="width: 654px;">
+                        <label for="viewcode_map">Map</label>
+                        <textarea wrap="off" spellcheck="false" cols="20" rows="11" class="map" id="viewcode_map"></textarea>
+                      </td>
+                      <td class="splitter grippie" style="cursor: col-resize;"></td>
+                      <td class="code reduce">
+                        <label for="viewcode_reduce">Reduce (<span>built in: <a>_count</a>, <a>_sum</a>, <a>_stats</a></span>)</label>
+                        <textarea placeholder="(optional)" wrap="off" spellcheck="false" cols="20" rows="11" class="reduce" id="viewcode_reduce"></textarea>
+                      </td>
+                    </tr></tbody></table>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <h1>Results <span id="view_query_string">?startkey=<em>["2011"]</em>&endkey=<em>["2011", {}]</em>&descending=<em>false</em>&group=<em>true</em></span></h1>
+            <div class="shadow_box">
+              <div class="content">
+                <table class="list" style="width:100%">
+                <tr>
+                  <th>Key</th>
+                  <th>Value</th>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="key">[2011, 11, 5, 4, 30, 45, "couchbase"]</div>
+                    <div class="id">93adfjkew3924sadg</div>
+                  </td>
+                  <td>{"json":"results"}</td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="key">[2011, 11, 5, 4, 30, 45, "couchbase"]</div>
+                    <div class="id">93adfjkew3924sadg</div>
+                  </td>
+                  <td>{"json":"results"}</td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="key">[2011, 11, 5, 4, 30, 45, "couchbase"]</div>
+                    <div class="id">93adfjkew3924sadg</div>
+                  </td>
+                  <td>{"json":"results"}</td>
+                </tr>
+                </table>
+              </div>
+            </div>
+          </div>
+
           <div id="coming" style="display:none">
             <h1>UI error encountered.  This content does not exist yet.</h1>
           </div>
       </div>
+    </div>
 
     <!-- mainContainer -->
 
@@ -1324,6 +1403,7 @@ $(window).bind('template:rendered', function () {
 <script src="/js/underscore.js"></script>
 <script src="/js/tools.tabs.js"></script>
 <script src="/js/jquery.cookie.js"></script>
+<script src="/js/futon.format.js"></script>
 <script src="/js/misc.js"></script>
 <script src="/js/base64.js"></script>
 <script src="/js/cells.js"></script>

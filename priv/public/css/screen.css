@@ -22,6 +22,13 @@ blockquote:before, blockquote:after, q:before, q:after {
 }
 textarea {overflow:auto;}
 input {border:0px solid white;margin:0;padding:0;}
+::-webkit-input-placeholder {color:#999}
+:-moz-placeholder{color:#999 !important}
+
+code.key { color: #333; font-weight: bold; }
+code.string { color: #393; }
+code.number, code.boolean { color: #339; }
+code.null { color: #666; }
 
 a {color:#0095d6; cursor:pointer; text-decoration:none; outline:none;}
 a:link {color:#2ea6db}
@@ -382,7 +389,7 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 .shadow_box {margin:0 0 20px;}/* width:780px;}*/
 .shadow_box .content {position:relative;background:none #eeeeef;-moz-box-shadow:0 0 5px #ccc;-webkit-box-shadow:0 0 5px #ccc;box-shadow:0 0 5px #ccc;margin:0 9px;}
 .shadow_box .section {border:0px;}
-.shadow_box pre {white-space:normal; display:block; overflow:auto; padding:5px 0;}
+.shadow_box pre {white-space:normal; display:block; overflow:auto; padding:5px 10px;line-height: 1.6em;white-space: pre-wrap;background:#F6F6F7;border:1px solid #CCC;border-top:1px solid #999}
 .shadow_box .darker_block {background-color:#d4d4d5;}
 .with_devider {background-image:url(../images/devider_line_1.gif); background-position:0 100%; background-repeat:repeat-x;}
 
@@ -813,7 +820,7 @@ ul.tabs .badge_display .badge {display:block;}
 .list td > table td:first-child+td+td {width:155px;}
 .list td > table td:first-child+td+td+td {width:125px;}
 
-.list tr:first-child th {padding:10px 5px;background:none #f6f6f7; border-right:0px; border-bottom:1px solid #fff; color:#4d4d4d; font-weight:normal; text-align:center;}
+.list tr:first-child th, .list tr:first-child td label {padding:10px 5px;background:none #f6f6f7; border-right:0px; border-bottom:1px solid #fff; color:#4d4d4d; font-weight:normal; text-align:center;}
 .list tr:first-child th:first-child {/*padding:0 0 0 56px;*padding-right:25px;display:block;*/text-align:left;white-space:nowrap;}
 .list tr:first-child th i {font-style:normal;position:relative;}
 .list tr:first-child th.last {border-right:1px solid #d9dce0;}
@@ -1006,3 +1013,35 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
 
 #production_views_list_container .btn_edit, #production_views_list_container .btn_remove, #production_views_list_container .btn_publish, #production_views_list_container .create_view_button{display:none}
 #development_views_list_container .btn_views {display:none}
+
+#view_development .graph_nav h3 {padding:15px}
+#view_development .graph_nav .buttons {float:right;margin:-8px -10px 0 0;text-transform:none}
+#view_development .graph_nav ul li {display:inline;margin-right:10px}
+#view_development .stats{padding:0;border-bottom:none}
+#view_development .list th, #view_development .list td {text-align:left}
+#view_development .list td{border-right:1px solid #CED5D9}
+.list .key {font-size:130%;font-weight:bold}
+.list .id {font-size:110%;margin-top:0.5em;color:#999}
+
+#view_query_string{font-size:70%;color:#bbb;vertical-align:middle;}
+#view_query_string em{font-style:normal;font-weight:bold}
+
+#view_code .list td {padding:0}
+/* View function editing */
+#viewcode { background: #fff;margin: 0 0 1em;}
+#viewcode .top, #viewcode .bottom { background-color: #e9e9e9;
+  border: 1px solid; border-color: #ddd #ddd #e9e9e9 #ddd; color: #333;
+  padding: 0 .5em 2px;
+}
+#viewcode table { border: none; border-collapse: separate; border-spacing: 0;
+  margin: 0; table-layout: fixed; width: 100%; max-width: 100%;
+}
+#viewcode table td { border: none; padding: 0; }
+#viewcode table td.splitter { background: #e9e9e9; width: 4px; }
+#viewcode table td.map, #viewcode table td.reduce { border: 1px solid #ccc;border-top:1px solid #AAA}
+#viewcode .code label {white-space: nowrap;display:block;text-align:left;}
+#viewcode .code textarea { border: none; border-top: 1px solid #ccc;
+  color: #333; font-size: 11px; margin: 0; min-height: 50px; overflow: auto;
+  padding: .4em 0 0; resize: none; width: 100%;
+}
+#viewcode .code textarea:focus { background: #e9f4ff; }
