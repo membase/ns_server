@@ -74,6 +74,10 @@ var ViewDevSection = {
     var jq = $('#sample_docs pre');
     var json = JSON.parse(jq.text());
     jq.html($.futon.formatJSON(json, {html: true}));
+
+    $('#built_in_reducers a').click(function(ev) {
+      $('#viewcode_reduce').text($(ev.target).text());
+    });
   },
   onEnter: function () {
   },
