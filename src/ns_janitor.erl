@@ -19,33 +19,53 @@
 
 -include("ns_common.hrl").
 
--export([cleanup/1, current_states/2, graphviz/1]).
+-include_lib("eunit/include/eunit.hrl").
 
-intersect(A, B) ->
-    ordsets:intersection(lists:sort(A), lists:sort(B)).
+-export([cleanup/2, current_states/2, graphviz/1]).
 
--spec cleanup(string()) -> ok.
-cleanup(Bucket) ->
+-define(WAIT_FOR_MEMCACHED_TRIES, 5).
+
+-define(CLEAN_VBUCKET_MAP_RECOVER, 0).
+-define(UNCLEAN_VBUCKET_MAP_RECOVER, 1).
+
+-spec cleanup(string(), list()) -> ok | {error, any()}.
+cleanup(Bucket, Options) ->
     {ok, Config} = ns_bucket:get_bucket(Bucket),
     {Map, Servers} =
         case proplists:get_value(map, Config) of
             X when X == undefined; X == [] ->
                 S = ns_cluster_membership:active_nodes(),
                 Config1 = lists:keystore(servers, 1, Config, {servers, S}),
-                M = ns_rebalancer:generate_initial_map(Config1),
-                Config2 = lists:keystore(map, 1, Config1, {map, M}),
-                ns_bucket:set_bucket_config(Bucket, Config2),
-                {M, S};
+                NumVBuckets = proplists:get_value(num_vbuckets, Config1),
+                NumReplicas = ns_bucket:num_replicas(Config1),
+                ns_bucket:set_bucket_config(Bucket, Config1),
+                wait_for_memcached(S, Bucket, up),
+                NewMap = case read_existing_map(Bucket, S, NumVBuckets, NumReplicas) of
+                             {ok, M} ->
+                                 M;
+                             {error, no_map} ->
+                                 ns_rebalancer:generate_initial_map(Config1)
+                         end,
+
+                Config6 = lists:keystore(map, 1, Config1, {map, NewMap}),
+                ns_bucket:set_bucket_config(Bucket, Config6),
+                {NewMap, S};
             M ->
                 {M, proplists:get_value(servers, Config)}
         end,
     case Servers of
         [] -> ok;
         _ ->
-            case wait_for_memcached(Servers, Bucket, 120) of
-                [] ->
+            case {wait_for_memcached(Servers, Bucket, connected, proplists:get_value(timeout, Options, 5)),
+                  proplists:get_bool(best_effort, Options)} of
+                {[_|_] = Down, false} ->
+                    ?log_error("Bucket ~p not yet ready on ~p", [Bucket, Down]),
+                    {error, wait_for_memcached_failed};
+                {Down, _} ->
+                    ReadyServers = ordsets:subtract(lists:sort(Servers),
+                                                    lists:sort(Down)),
                     Map1 =
-                        case sanify(Bucket, Map, Servers) of
+                        case sanify(Bucket, Map, ReadyServers, Down) of
                             Map -> Map;
                             MapNew ->
                                 ns_bucket:set_map(Bucket, MapNew),
@@ -57,9 +77,8 @@ cleanup(Bucket) ->
                     NodesReplicas = lists:map(fun ({Src, R}) -> % R is the replicas for this node
                                                       {Src, [{V, Dst} || {_, Dst, V} <- R]}
                                               end, ReplicaGroups),
-                    ns_vbm_sup:set_replicas(Bucket, NodesReplicas);
-                Down ->
-                    ?log_error("Bucket ~p not yet ready on ~p", [Bucket, Down])
+                    ns_vbm_sup:set_replicas(Bucket, NodesReplicas),
+                    ok
             end
     end.
 
@@ -117,10 +136,10 @@ graphviz(Bucket) ->
     ["digraph G { rankdir=LR; ranksep=6;", SubGraphs, Edges, "}"].
 
 
--spec sanify(string(), map(), [atom()]) -> map().
-sanify(Bucket, Map, Servers) ->
+-spec sanify(string(), map(), [atom()], [atom()]) -> map().
+sanify(Bucket, Map, Servers, DownNodes) ->
     {ok, States, Zombies} = current_states(Servers, Bucket),
-    [sanify_chain(Bucket, States, Chain, VBucket, Zombies)
+    [sanify_chain(Bucket, States, Chain, VBucket, Zombies ++ DownNodes)
      || {VBucket, Chain} <- misc:enumerate(Map, 0)].
 
 sanify_chain(Bucket, State, Chain, VBucket, Zombies) ->
@@ -265,15 +284,183 @@ current_states(Nodes, Bucket) ->
 %% Internal functions
 %%
 
-wait_for_memcached(Nodes, _Bucket, 0) ->
-    Nodes;
-wait_for_memcached(Nodes, Bucket, Tries) ->
-    UpNodes = intersect(Nodes, [node() | nodes()]),
-    case [Node || Node <- UpNodes, not ns_memcached:connected(Node, Bucket)] of
+wait_for_memcached(Nodes, Bucket, Type) ->
+    wait_for_memcached(Nodes, Bucket, Type, ?WAIT_FOR_MEMCACHED_TRIES).
+
+wait_for_memcached(Nodes, Bucket, Type, Tries) when Tries > 0 ->
+    ReadyNodes = ns_memcached:ready_nodes(Nodes, Bucket, Type, default),
+    DownNodes = ordsets:subtract(ordsets:from_list(Nodes),
+                                 ordsets:from_list(ReadyNodes)),
+    case DownNodes of
         [] ->
             [];
-        Down ->
-            ?log_info("Waiting for ~p on ~p", [Bucket, Down]),
-            timer:sleep(1000),
-            wait_for_memcached(Down, Bucket, Tries-1)
+        _ ->
+            case Tries - 1 of
+                0 ->
+                    DownNodes;
+                X ->
+                    ?log_info("Waiting for ~p on ~p", [Bucket, DownNodes]),
+                    timer:sleep(1000),
+                    wait_for_memcached(Nodes, Bucket, Type, X)
+            end
     end.
+
+%% @doc check for existing vbucket states and generate a vbucket map from them
+-spec read_existing_map(string(),
+                        [atom()],
+                        pos_integer(),
+                        non_neg_integer()) -> {error, no_map} | {ok, list()}.
+read_existing_map(Bucket, S, VBucketsCount, NumReplicas) ->
+
+    VBuckets =
+        [begin
+             {ok, Buckets} = ns_memcached:list_vbuckets_prevstate(Node, Bucket),
+             [{Index, State, Node} || {Index, State} <- Buckets]
+         end || Node <- S],
+
+
+    Fun = fun({Index, active, Node}, {Active, Replica}) ->
+                  {[{Index, Node}|Active], Replica};
+             ({Index, replica, Node}, {Active, Replica}) ->
+                  {Active, dict:append(Index, Node, Replica)};
+             (_, Acc) -> % Ignore Dead vbuckets
+                  Acc
+          end,
+
+    {Active, Replica} =
+        lists:foldl(Fun, {[], dict:new()}, lists:flatten(VBuckets)),
+
+    {Map, HasDuplicates} = recover_map(Active, Replica, false, 0,
+                                       VBucketsCount, []),
+    MissingVBucketsCount = lists:foldl(fun ([undefined|_], Acc) -> Acc+1;
+                                           (_, Acc) -> Acc
+                                       end, 0, Map),
+    case MissingVBucketsCount of
+        VBucketsCount -> {error, no_map};
+        _ ->
+            CleanRecover = MissingVBucketsCount =:= 0
+                andalso not HasDuplicates,
+            case CleanRecover of
+                true ->
+                    ns_log:log(?MODULE, ?CLEAN_VBUCKET_MAP_RECOVER,
+                               "Cleanly recovered vbucket map from data files for bucket: ~p~n",
+                               [Bucket]);
+                _ ->
+                    ns_log:log(?MODULE, ?UNCLEAN_VBUCKET_MAP_RECOVER,
+                               "Partially recovered vbucket map from data files for bucket: ~p."
+                               ++ " Missing vbuckets count: ~p and HasDuplicates is: ~p~n",
+                               [Bucket, MissingVBucketsCount, HasDuplicates])
+            end,
+            {ok, align_replicas(Map, NumReplicas)}
+    end.
+
+-spec recover_map([{non_neg_integer(), node()}],
+                  dict(),
+                  boolean(),
+                  non_neg_integer(),
+                  pos_integer(),
+                  [[atom()]]) ->
+                         {[[atom()]], boolean()}.
+recover_map(_Active, _Replica, HasDuplicates, I,
+            VBucketsCount, MapAcc) when I >= VBucketsCount ->
+    {lists:reverse(MapAcc), HasDuplicates};
+recover_map(Active, Replica, HasDuplicates, I, VBucketsCount, MapAcc) ->
+    {NewDuplicates, Master} =
+        case [N || {Ic, N} <- Active, Ic =:= I] of
+            [MasterNode] ->
+                {HasDuplicates, MasterNode};
+            [] ->
+                {HasDuplicates, undefined};
+            [MasterNode,_|_] ->
+                {true, MasterNode}
+        end,
+    NewMapAcc = [[Master | case dict:find(I, Replica) of
+                               {ok, V} -> V;
+                               error -> []
+                           end]
+                 | MapAcc],
+    recover_map(Active, Replica, NewDuplicates, I+1, VBucketsCount, NewMapAcc).
+
+-spec align_replicas([[atom()]], non_neg_integer()) ->
+                            [[atom()]].
+align_replicas(Map, NumReplicas) ->
+    [begin
+         [Master | Replicas] = Chain,
+         [Master | align_chain_replicas(Replicas, NumReplicas)]
+     end || Chain <- Map].
+
+align_chain_replicas(_, 0) -> [];
+align_chain_replicas([H|T] = _Chain, ReplicasLeft) ->
+    [H | align_chain_replicas(T, ReplicasLeft-1)];
+align_chain_replicas([] = _Chain, ReplicasLeft) ->
+    lists:duplicate(ReplicasLeft, undefined).
+
+-ifdef(EUNIT).
+
+align_replicas_test() ->
+    [[a, b, c],
+     [d, e, undefined],
+     [undefined, undefined, undefined]] =
+        align_replicas([[a, b, c],
+                        [d, e],
+                        [undefined]], 2),
+
+    [[a, b],
+     [d, e],
+     [undefined, undefined]] =
+        align_replicas([[a, b, c],
+                        [d, e],
+                        [undefined]], 1),
+
+    [[a],
+     [d],
+     [undefined]] =
+        align_replicas([[a, b, c],
+                        [d, e],
+                        [undefined]], 0).
+
+recover_map_test() ->
+    Result1 = recover_map([{0, a},
+                           {2, b},
+                           {3, c},
+                           {1, e}],
+                          dict:from_list([{0, [c, d]},
+                                          {1, [d, b]},
+                                          {2, [e, d]},
+                                          {3, [b, e]}]),
+                          false, 0, 4, []),
+    {[[a,c,d],
+      [e,d,b],
+      [b,e,d],
+      [c,b,e]], false} = Result1,
+
+    Result2 = recover_map([{0, a},
+                           {2, b},
+                           {1, e}],
+                          dict:from_list([{0, [c, d]},
+                                          {1, [d, b]},
+                                          {2, [e, d]},
+                                          {3, [b, e]}]),
+                          false, 0, 4, []),
+
+    {[[a,c,d],
+      [e,d,b],
+      [b,e,d],
+      [undefined,b,e]], false} = Result2,
+
+    Result3 = recover_map([{0, a},
+                           {2, b},
+                           {2, c},
+                           {1, e}],
+                          dict:from_list([{0, [c, d]},
+                                          {1, [d, b]},
+                                          {2, [e, d]},
+                                          {3, [b, e]}]),
+                          false, 0, 4, []),
+
+    {[[a,c,d],
+      [e,d,b],
+      [b,e,d],
+      [undefined,b,e]], true} = Result3.
+
+-endif.

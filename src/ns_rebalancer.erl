@@ -67,7 +67,7 @@ failover(Bucket, Node) ->
             ns_bucket:set_map(Bucket, Map1),
             ns_bucket:set_servers(Bucket, lists:delete(Node, Servers)),
             try
-                ns_janitor:cleanup(Bucket)
+                ns_janitor:cleanup(Bucket, [best_effort])
             catch
                 E:R ->
                     ?log_error("Janitor cleanup of ~p failed after failover of ~p: ~p",
@@ -112,7 +112,7 @@ rebalance(KeepNodes, EjectNodes, FailedNodes) ->
                                       %% overloading things
                                       ns_bucket:set_servers(BucketName, LiveNodes),
                                       wait_for_memcached(LiveNodes, BucketName, 10),
-                                      ns_janitor:cleanup(BucketName),
+                                      ns_janitor:cleanup(BucketName, [{timeout, 1}]),
                                       {ok, NewConf} =
                                           ns_bucket:get_bucket(BucketName),
                                       NewMap =
