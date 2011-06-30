@@ -66,7 +66,8 @@
          topkeys/1,
          raw_stats/5,
          sync_bucket_config/1,
-         flush/1]).
+         flush/1,
+         ready_nodes/4]).
 
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
@@ -308,6 +309,20 @@ connected(Node, Bucket, Timeout) ->
 -spec connected(node(), bucket_name()) -> boolean().
 connected(Node, Bucket) ->
     connected(Node, Bucket, ?CONNECTED_TIMEOUT).
+
+-spec ready_nodes([node()], bucket_name(), up | connected, pos_integer() | infinity | default) -> [node()].
+ready_nodes(Nodes, Bucket, Type, default) ->
+    ready_nodes(Nodes, Bucket, Type, ?CONNECTED_TIMEOUT);
+ready_nodes(Nodes, Bucket, Type, Timeout) ->
+    UpNodes = ordsets:intersection(ordsets:from_list(Nodes),
+                                   ordsets:from_list([node() | nodes()])),
+    {Replies, _BadNodes} = gen_server:multi_call(UpNodes, server(Bucket), connected, Timeout),
+    case Type of
+        up ->
+            [N || {N, _} <- Replies];
+        connected ->
+            [N || {N, true} <- Replies]
+    end.
 
 connected_buckets() ->
     connected_buckets(?CONNECTED_TIMEOUT).
