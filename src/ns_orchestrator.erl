@@ -80,16 +80,16 @@ start_link() ->
                            rebalance_running.
 create_bucket(BucketType, BucketName, NewConfig) ->
     gen_fsm:sync_send_event(?SERVER, {create_bucket, BucketType, BucketName,
-                                      NewConfig}, 20000).
+                                      NewConfig}, infinity).
 
 %% deletes bucket. Makes sure that once it returns it's already dead.
 delete_bucket(BucketName) ->
-    gen_fsm:sync_send_event(?SERVER, {delete_bucket, BucketName}, 20000).
+    gen_fsm:sync_send_event(?SERVER, {delete_bucket, BucketName}, infinity).
 
 
 -spec failover(atom()) -> ok.
 failover(Node) ->
-    gen_fsm:sync_send_event(?SERVER, {failover, Node}, 20000).
+    gen_fsm:sync_send_event(?SERVER, {failover, Node}, infinity).
 
 
 -spec needs_rebalance() -> boolean().

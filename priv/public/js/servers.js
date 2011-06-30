@@ -430,7 +430,7 @@ var ServersSection = {
       if (!node)
         throw new Error("must not happen!");
       self.postAndReload(self.poolDetails.value.controllers.failOver.uri,
-                         {otpNode: node.otpNode});
+                         {otpNode: node.otpNode}, undefined, {timeout: 120000});
     });
     var dialog = $('#failover_confirmation_dialog');
     var overlay = overlayWithSpinner(dialog.find('.content').need(1));
@@ -486,7 +486,7 @@ var ServersSection = {
     var ejectNodeURI = this.poolDetails.value.controllers.ejectNode.uri;
     this.postAndReload(ejectNodeURI, {otpNode: node.otpNode});
   },
-  postAndReload: function (uri, data, errorMessage) {
+  postAndReload: function (uri, data, errorMessage, ajaxOptions) {
     var self = this;
     // keep poolDetails undefined for now
     self.poolDetails.setValue(undefined);
@@ -504,7 +504,7 @@ var ServersSection = {
           displayNotice(errorMessage, true);
         }
       }
-    });
+    }, ajaxOptions);
   }
 };
 
