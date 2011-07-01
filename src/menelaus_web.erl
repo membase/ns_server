@@ -950,33 +950,41 @@ build_settings_auto_failover() ->
 
 handle_settings_auto_failover_post(Req) ->
     PostArgs = Req:parse_post(),
+    ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
     Enabled = proplists:get_value("enabled", PostArgs),
     Timeout = proplists:get_value("timeout", PostArgs),
     % MaxNodes is hard-coded to 1 for now.
     MaxNodes = "1",
-    case validate_settings_auto_failover(Enabled, Timeout, MaxNodes) of
-        [true, Timeout2, MaxNodes2] ->
+    case {ValidateOnly,
+          validate_settings_auto_failover(Enabled, Timeout, MaxNodes)} of
+        {false, [true, Timeout2, MaxNodes2]} ->
             auto_failover:enable(Timeout2, MaxNodes2),
             Req:respond({200, add_header(), []});
-        false ->
+        {false, false} ->
             auto_failover:disable(),
             Req:respond({200, add_header(), []});
-        {error, Errors} ->
-            Req:respond({400, add_header(), Errors})
+        {false, {error, Errors}} ->
+            Errors2 = [<<Msg/binary, "\n">> || {_, Msg} <- Errors],
+            Req:respond({400, add_header(), Errors2});
+        {true, {error, Errors}} ->
+            reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 200);
+        % Validation only and no errors
+        {true, _}->
+            reply_json(Req, {struct, [{errors, null}]}, 200)
     end.
 
 validate_settings_auto_failover(Enabled, Timeout, MaxNodes) ->
     Enabled2 = case Enabled of
         "true" -> true;
         "false" -> false;
-        _ -> <<"The value of \"enabled\" must be true or false\n">>
+        _ -> {enabled, <<"The value of \"enabled\" must be true or false">>}
     end,
     case Enabled2 of
         true ->
             Errors = [is_valid_positive_integer_bigger_or_equal(Timeout, ?AUTO_FAILLOVER_MIN_TIMEOUT) orelse
-                      <<"The value of \"timeout\" must be a positive integer bigger or equal to 30\n">>,
+                      {timeout, <<"The value of \"timeout\" must be a positive integer bigger or equal to 30">>},
                       is_valid_positive_integer(MaxNodes) orelse
-                      <<"The value of \"maxNodes\" must be a positive integer\n">>],
+                      {maxNodes, <<"The value of \"maxNodes\" must be a positive integer">>}],
             case lists:filter(fun (E) -> E =/= true end, Errors) of
                 [] ->
                     [Enabled2, list_to_integer(Timeout),

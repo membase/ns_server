@@ -287,7 +287,14 @@ var AutoFailoverSection = {
       }
     });
 
-    $('#auto_failover_container').delegate('.save_button', 'click', function(){
+    $('#auto_failover_container')
+      .delegate('input', 'keyup', self.validate)
+      .delegate('input[type=checkbox], input[type=radio]', 'change',
+                self.validate);
+
+    $('#auto_failover_container').delegate('.save_button',
+                                           'click', function() {
+      var button = this;
       var enabled = $('#auto_failover_enabled').is(':checked');
       var timeout = $('#auto_failover_timeout').val();
       postWithValidationErrors('/settings/autoFailover',
@@ -311,6 +318,21 @@ var AutoFailoverSection = {
   // Refreshes the auto-failover status that is shown in the server screen
   refreshStatus: function() {
     this.autoFailoverEnabledStatus.recalculate();
+  },
+  // Call this function to validate the form
+  validate: function() {
+    $.ajax({
+      url: "/settings/autoFailover?just_validate=1",
+      type: 'POST',
+      data: {
+        enabled: $('#auto_failover_enabled').is(':checked'),
+        timeout: $('#auto_failover_timeout').val()
+      },
+      complete: function(jqXhr) {
+        var val = JSON.parse(jqXhr.responseText);
+        SettingsSection.renderErrors(val, $('#auto_failover_container'));
+      }
+    });
   },
   // Enables the input fields
   enable: function() {
