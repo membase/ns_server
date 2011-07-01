@@ -49,6 +49,56 @@ var sampleViewsData = {"total_rows":20,"offset":12,"rows":[
   }
 ]};
 
+var sampleDocs = [{
+   "_id": "234235124",
+   "_rev": "3-12342341234",
+   "type": "event",
+   "title": "meeting",
+   "where": "coffee bar",
+   "hosts": [
+       "benjamin@couchbase.com"
+   ]
+},
+{
+  "_id": "0594680c9ba809979a8e5f9a8000027c",
+  "_rev": "3-7f43cdfce1b537739736a97c4eb78d62",
+  "created_at": "2010-07-04T18:06:34.020Z",
+  "profile": {
+      "rand": "0.8309284392744303",
+      "email": "jchris@couch.io",
+      "url": "http://jchrisa.net",
+      "gravatar_url": "http://www.gravatar.com/avatar/6f09a637f926f04d9b34bfe10e94bd3e.jpg?s=40&d=identicon",
+      "name": "jchris"
+  },
+  "message": "refactor #focus evently.nav so it is properly bound to login and logout status",
+  "state": "done",
+  "publish": true,
+  "type": "task",
+  "edit_at": "2010-07-11T22:08:52.928Z",
+  "edit_by": "jchris"
+},
+{
+  "_id": "1643684c68d03fb70bc98d88a8896d0d",
+  "_rev": "6-ff271e27fd0edfd88afb1d16e1363f79",
+  "urls": {
+      "@doppler": "http://twitter.com/doppler",
+      "Web Developer, SXSW": "http://sxsw.com",
+      "github.com/doppler": "http://github.com/doppler"
+  },
+  "bio": "I've been playing with and using CouchDB since version 0.9.0, sometime in early 2009. The first real app I created on CouchDB was to solve the problem of needing to provide an API to query SXSW schedule data, to be used by a 3rd-party developer creating an iPhone app. I'm hoping to build on that idea for SXSW 2011.",
+  "hometown": "Austin, TX",
+  "name": "David Rose",
+  "_attachments": {
+      "Photo on 2010-09-10 at 14.44.jpg": {
+          "content_type": "image/jpeg",
+          "revpos": 5,
+          "digest": "md5-dlyF/44110seO+xxDgrkHA==",
+          "length": 79027,
+          "stub": true
+      }
+  }
+}];
+
 var ViewsSection = {
   init: function () {
     var self = this;
@@ -71,13 +121,22 @@ var ViewsSection = {
 
 var ViewDevSection = {
   init: function() {
-    var jq = $('#sample_docs pre');
-    var json = JSON.parse(jq.text());
-    jq.html($.futon.formatJSON(json, {html: true}));
-
     $('#built_in_reducers a').click(function(ev) {
       $('#viewcode_reduce').text($(ev.target).text());
     });
+
+    $('#preview_random_doc').click(function(ev) {
+      ev.stopPropagation();
+      var jq = $('#sample_docs pre');
+      var u = 2;
+      var l = 0;
+      var rand = Math.floor((Math.random() * (u-l+1))+l);
+      jq.html($.futon.formatJSON(sampleDocs[rand], {html: true}));
+
+      if (jq.closest('.graph_nav').hasClass('closed')) {
+        jq.closest('.graph_nav').removeClass('closed');
+      }
+    }).trigger('click');
   },
   onEnter: function () {
   },
