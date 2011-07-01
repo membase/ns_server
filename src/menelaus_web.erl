@@ -58,6 +58,8 @@
          get_option/2,
          parse_validate_number/3]).
 
+-define(AUTO_FAILLOVER_MIN_TIMEOUT, 30).
+
 %% External API
 
 start_link() ->
@@ -971,8 +973,8 @@ validate_settings_auto_failover(Enabled, Timeout, MaxNodes) ->
     end,
     case Enabled2 of
         true ->
-            Errors = [is_valid_positive_integer(Timeout) orelse
-                      <<"The value of \"timeout\" must be a positive integer\n">>,
+            Errors = [is_valid_positive_integer_bigger_or_equal(Timeout, ?AUTO_FAILLOVER_MIN_TIMEOUT) orelse
+                      <<"The value of \"timeout\" must be a positive integer bigger or equal to 30\n">>,
                       is_valid_positive_integer(MaxNodes) orelse
                       <<"The value of \"maxNodes\" must be a positive integer\n">>],
             case lists:filter(fun (E) -> E =/= true end, Errors) of
@@ -991,6 +993,10 @@ validate_settings_auto_failover(Enabled, Timeout, MaxNodes) ->
 is_valid_positive_integer(String) ->
     Int = (catch list_to_integer(String)),
     (is_integer(Int) andalso (Int > 0)).
+
+is_valid_positive_integer_bigger_or_equal(String, Min) ->
+    Int = (catch list_to_integer(String)),
+    (is_integer(Int) andalso (Int >= Min)).
 
 %% @doc Resets the number of nodes that were automatically failovered to zero
 handle_settings_auto_failover_reset_count(Req) ->
