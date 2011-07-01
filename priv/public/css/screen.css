@@ -7,6 +7,7 @@ table, caption, tbody, tfoot, thead, tr, th, td {margin:0;padding:0;border:0;out
 b {font-weight:normal;}
 ol, ul {list-style:none;}
 :focus {outline:0;}
+::-moz-focus-inner {border:0;}
 ins {text-decoration:none;}
 del {text-decoration:line-through;}
 /* tables still need 'cellspacing="0"' in the markup */
@@ -139,7 +140,7 @@ td.leftNav .badge {right:0px;top:0px;}
 .save_cancel .close {float:right;height:31px;line-height:31px;color:#8b8b8e;text-align:right;font-size:14px;font-weight:bolder;text-decoration:none;margin-right:16px;}
 .direction-button {float:right;margin-left:17px;}
 /*button.direction-button {background:url(../images/blue-button.png) no-repeat; border:none; color:#fff; cursor:pointer; float:right; font-family:Arial, Helvetica, Sans-Serif; font-size:12pt; margin-right:20px; margin-top:20px; width:121px; height:31px; line-height:31px !important;}*/
-button[disabled] {-ms-filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=50)";filter:alpha(opacity=50);opacity:0.5 !important; background-position:0 0 !important;}
+button[disabled] {-ms-filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=50)";filter:alpha(opacity=50);opacity:0.5 !important; background-position:0 0 !important;cursor:default;}
 
 a.button_medium {display:block; color:#444245 !important; text-decoration:none !important}
 .button_medium {width:154px; height:32px; font-size:14px; border:0px; overflow:visible; background:url(../images/button_gray_medium.gif) 0 0 no-repeat; line-height:32px; cursor:pointer; color:#444245; text-align:center; text-decoration:none;}
