@@ -297,12 +297,25 @@ var AutoFailoverSection = {
       var button = this;
       var enabled = $('#auto_failover_enabled').is(':checked');
       var timeout = $('#auto_failover_timeout').val();
-      postWithValidationErrors('/settings/autoFailover',
-                               $.param({enabled: enabled, timeout: timeout}),
-                               function() {
-          autoFailoverEnabled.recalculate();
+      $.ajax({
+        type: 'POST',
+        url: '/settings/autoFailover',
+        data: {enabled: enabled, timeout: timeout},
+        success: function() {
+          $(button).text('Done!').addClass('disabled');
+          autoFailoverEnabled.recalculateAfterDelay(2000);
+        },
+        error: function() {
+          genericDialog({
+            buttons: {ok: true},
+            header: 'Unable to save settings',
+            textHTML: 'An error occured, auto-failover settings were ' +
+              'not saved.'
+          });
+        }
       });
     });
+
     // reset button
     $('.auto_failover_count_reset').live('click', function() {
       postWithValidationErrors('/settings/autoFailover/resetCount', {},
