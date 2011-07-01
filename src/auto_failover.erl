@@ -157,6 +157,10 @@ handle_call({enable_auto_failover, Timeout, Max}, _From, State) ->
     make_state_persistent(State2),
     {reply, ok, State2};
 
+%% @doc Auto-failover is already disabled, so we don't do anything
+handle_call(disable_auto_failover, _From, #state{tick_ref=nil}=State) ->
+    {reply, ok, State};
+%% @doc Auto-failover is enabled, disable it
 handle_call(disable_auto_failover, _From, #state{tick_ref=Ref}=State) ->
     ?log_info("disable_auto_failover: ~p", [State]),
     {ok, cancel} = timer:cancel(Ref),
