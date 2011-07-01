@@ -202,12 +202,27 @@ var UpdatesNotificationsSection = {
       $('#notifications_container p.more_info').slideToggle();
     });
 
-    $('#notifications_container').delegate('.save_button', 'click', function() {
+    $('#notifications_container').delegate('.save_button:not(.disabled)',
+                                          'click', function() {
+      var button = this;
       var sendStatus = $('#notification-updates').is(':checked');
-      postWithValidationErrors('/settings/stats',
-                               $.param({sendStats: sendStatus}),
-                               function() {
-          phEnabled.recalculate();
+
+      $.ajax({
+        type: 'POST',
+        url: '/settings/stats',
+        data: {sendStats: sendStatus},
+        success: function() {
+          $(button).text('Done!').addClass('disabled');
+          phEnabled.recalculateAfterDelay(2000);
+        },
+        error: function() {
+          genericDialog({
+            buttons: {ok: true},
+            header: 'Unable to save settings',
+            textHTML: 'An error occured, update notifications settings were' +
+              ' not saved.'
+          });
+        }
       });
     });
   },
