@@ -74,6 +74,23 @@ var SettingsSection = {
     this.onEnter();
   },
   onLeave: function () {
+  },
+  renderErrors: function(val, rootNode) {
+    if (val!==undefined  && DAL.cells.mode.value==='settings') {
+      if (val.errors===null) {
+        rootNode.find('.error-container.active').empty().removeClass('active');
+        rootNode.find('input.invalid').removeClass('invalid');
+        rootNode.find('.save_button').removeClass('disabled');
+      } else {
+        // Show error messages on all input fields that contain one
+        $.each(val.errors, function(name, message) {
+          rootNode.find('.err-'+name).text(message).addClass('active')
+            .prev('textarea, input').addClass('invalid');
+        });
+        // Disable the save button
+        rootNode.find('.save_button').addClass('disabled');
+      }
+    }
   }
 };
 
@@ -404,6 +421,18 @@ var EmailAlertsSection = {
           enabled: $.inArray('auto_failover_maximum_reached',
                              val.alerts)!==-1,
           value: 'auto_failover_maximum_reached'
+        },{
+          label: 'Node wasn\'t auto-failovered as other nodes are down ' +
+            'at the same time',
+          enabled: $.inArray('auto_failover_other_nodes_down',
+                             val.alerts)!==-1,
+          value: 'auto_failover_other_nodes_down'
+        },{
+          label: 'Node was\'t auto-failovered as the remaining cluster ' +
+            'was too small (less than 3 nodes)',
+          enabled: $.inArray('auto_failover_cluster_too_small',
+                             val.alerts)!==-1,
+          value: 'auto_failover_cluster_too_small'
         }];
 
         renderTemplate('email_alerts', val, $i('email_alerts_container'));
@@ -428,32 +457,71 @@ var EmailAlertsSection = {
       });
     });
 
-    $('#email_alerts_container').delegate('.save_button', 'click', function() {
-      var alerts = $('#email_alerts_alerts input[type=checkbox]:checked')
-        .map(function() {
-          return this.value;
-        }).get();
-      var recipients = $('#email_alerts_recipients')
-        .val().replace(/\s+/g, ',');
-      var params = {
-        enabled: $('#email_alerts_enabled').is(':checked'),
-        recipients: recipients,
-        sender: $('#email_alerts_sender').val(),
-        emailUser: $('#email_alerts_user').val(),
-        emailPass: $('#email_alerts_pass').val(),
-        emailHost: $('#email_alerts_host').val(),
-        emailPrt: $('#email_alerts_port').val(),
-        emailEncrypt: $('#email_alerts_encrypt').is(':checked'),
-        alerts: alerts.join(',')
-      };
-      postWithValidationErrors('/settings/alerts', $.param(params),
-                               function() {
-          emailAlertsEnabled.recalculate();
+    $('#email_alerts_container')
+      .delegate('input', 'keyup',
+                function() {self.validate(self.getParams());
+       })
+      .delegate('textarea, input[type=checkbox], input[type=radio]', 'change',
+                 function() {self.validate(self.getParams());
+      });
+
+    $('#email_alerts_container').delegate('.save_button:not(.disabled)',
+                                          'click', function() {
+      var button = this;
+      var params = self.getParams();
+
+      $.ajax({
+        type: 'POST',
+        url: '/settings/alerts',
+        data: params,
+        success: function() {
+          $(button).text('Done!').addClass('disabled');
+          emailAlertsEnabled.recalculateAfterDelay(2000);
+        },
+        error: function() {
+          genericDialog({
+            buttons: {ok: true},
+            header: 'Unable to save settings',
+            textHTML: 'An error occured, alerts settings were not saved.'
+          });
+        }
       });
     });
   },
+  // get the parameters from the input fields
+  getParams: function() {
+    var alerts = $('#email_alerts_alerts input[type=checkbox]:checked')
+      .map(function() {
+        return this.value;
+      }).get();
+    var recipients = $('#email_alerts_recipients')
+      .val().replace(/\s+/g, ',');
+    return {
+      enabled: $('#email_alerts_enabled').is(':checked'),
+      recipients: recipients,
+      sender: $('#email_alerts_sender').val(),
+      emailUser: $('#email_alerts_user').val(),
+      emailPass: $('#email_alerts_pass').val(),
+      emailHost: $('#email_alerts_host').val(),
+      emailPort: $('#email_alerts_port').val(),
+      emailEncrypt: $('#email_alerts_encrypt').is(':checked'),
+      alerts: alerts.join(',')
+    };
+  },
   refresh: function() {
     this.emailAlertsEnabled.recalculate();
+  },
+  // Call this function to validate the form
+  validate: function(data) {
+    $.ajax({
+      url: "/settings/alerts?just_validate=1",
+      type: 'POST',
+      data: data,
+      complete: function(jqXhr) {
+        var val = JSON.parse(jqXhr.responseText);
+        SettingsSection.renderErrors(val, $('#email_alerts_container'));
+      }
+    });
   },
   // Enables the input fields
   enable: function() {

@@ -84,31 +84,33 @@ handle_alerts(Req) ->
                                     {ok, [{atom(), any()}]}|
                                     {error, [string()]}.
 parse_settings_alerts_post(PostArgs) ->
-    ?log_info("handle_settings_alerts_post: ~p~n", [PostArgs]),
     QueryParams = lists:foldl(fun({K, V}, Acc) ->
         parse_settings_alerts_param(K, V) ++ Acc
     end, [], PostArgs),
-    ?log_info("handle_settings_alerts_post: parsed: ~p~n", [QueryParams]),
-    {QueryArgs, Errors} =
-        lists:foldl(
-          fun({K, V}, {Args, Errors}) ->
-                 case validate_settings_alerts_query(K, V, Args) of
-                     Args2 when is_record(Args2, alerts_query_args) ->
-                         {Args2, Errors};
-                     Error ->
-                         {Args, [Error|Errors]}
-                 end
-             end, {#alerts_query_args{}, []}, lists:reverse(QueryParams)),
-    ?log_info("handle_settings_alerts_post: validated: ~p~n", [QueryArgs]),
-    ?log_info("handle_settings_alerts_post: errors: ~p~n", [Errors]),
-    case Errors of
+    case QueryParams of
         [] ->
-            Config = build_alerts_config(QueryArgs),
-            {ok, Config};
-        Errors ->
-            {error, Errors}
+            {error, [{general, <<"No valid parameters given.">>}]};
+        QueryParams ->
+            {QueryArgs, Errors} =
+            lists:foldl(
+              fun({K, V}, {Args, Errors}) ->
+                  case validate_settings_alerts_query(K, V, Args) of
+                      Args2 when is_record(Args2, alerts_query_args) ->
+                          {Args2, Errors};
+                      Error ->
+                          % Save the key with the error, so that they can
+                          % be identified for the user interface
+                          {Args, [{K, Error}|Errors]}
+                  end
+              end, {#alerts_query_args{}, []}, lists:reverse(QueryParams)),
+            case Errors of
+                [] ->
+                    Config = build_alerts_config(QueryArgs),
+                    {ok, Config};
+                Errors ->
+                    {error, Errors}
+            end
     end.
-
 
 
 %%
@@ -202,8 +204,8 @@ validate_settings_alerts_query(alerts, Alerts, Args) ->
         _ ->
             Keys2 = list_to_binary(string:join(
                                      [atom_to_list(K) || K <- Keys], ", ")),
-            <<"alerts contained invalid keys. Valid keys are: ", Keys2/binary,
-              ".">>
+            {alerts, <<"alerts contained invalid keys. Valid keys are: ",
+                       Keys2/binary, ".">>}
     end;
 validate_settings_alerts_query(email_encrypt, error, _Args) ->
     <<"emailEncrypt must be either true or false.">>;

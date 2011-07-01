@@ -835,6 +835,7 @@
                 </label>
                 <input type="text" id="email_alerts_port"
                        value="{%= emailServer.port %}" disabled="disabled" />
+                <div class="error-container err-email_port"></div>
               </div>
               <label for="email_alerts_user">
                 <span>Username:</span>
@@ -862,10 +863,12 @@
               </label>
               <input type="text" id="email_alerts_sender"
                      value="{%= sender %}" disabled="disabled" />
+              <div class="error-container err-sender"></div>
               <label for="email_alerts_sender">
                 <span>Recipients:</span>
               </label>
               <textarea id="email_alerts_recipients" disabled="disabled">{%= recipients %}</textarea>
+              <div class="error-container err-recipients"></div>
               <div><button class="edit_btn" id="test_email">Test Mail</button> <span>using the settings above</span></div>
             </fieldset>
             <fieldset id="email_alerts_alerts">

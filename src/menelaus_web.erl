@@ -1090,12 +1090,17 @@ handle_settings_alerts(Req) ->
 
 handle_settings_alerts_post(Req) ->
     PostArgs = Req:parse_post(),
-    case menelaus_alert:parse_settings_alerts_post(PostArgs) of
-        {ok, Config} ->
+    ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
+    case {ValidateOnly, menelaus_alert:parse_settings_alerts_post(PostArgs)} of
+        {false, {ok, Config}} ->
             ns_config:set(alerts, Config),
             Req:respond({200, add_header(), []});
-        {error, Errors} ->
-            reply_json(Req, Errors, 400)
+        {false, {error, Errors}} ->
+            reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 400);
+        {true, {ok, _}} ->
+            reply_json(Req, {struct, [{errors, null}]}, 200);
+        {true, {error, Errors}} ->
+            reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 200)
     end.
 
 %% @doc Sends a test email with the current settings
