@@ -948,10 +948,11 @@ var AnalyticsSection = {
       $('#analytics .staleness-notice')[stale ? 'show' : 'hide']();
     });
 
+    // TODO: this is now more widely used (views section), so needs refactoring
     (function () {
       var cell = Cell.compute(function (v) {
         var mode = v.need(DAL.cells.mode);
-        if (mode != 'analytics') {
+        if (mode != 'analytics' && mode != 'views') {
           return;
         }
 
@@ -960,10 +961,12 @@ var AnalyticsSection = {
         return {list: _.map(allBuckets, function (info) {return [info.uri, info.name]}),
                 selected: selectedBucket.uri};
       });
-      $('#analytics_buckets_select').bindListCell(cell, {
-        onChange: function (e, newValue) {
-          StatsModel.statsBucketURL.setValue(newValue);
-        }
+      $('.buckets_select').each(function(idx, el) {
+        $(el).bindListCell(cell, {
+          onChange: function (e, newValue) {
+            StatsModel.statsBucketURL.setValue(newValue);
+          }
+        });
       });
     })();
 
@@ -993,7 +996,7 @@ var AnalyticsSection = {
         return {list: list,
                 selected: selectedNode && selectedNode.hostname};
       });
-      $('#analytics_servers_select').bindListCell(cell, {
+      $('.analytics_servers_select').bindListCell(cell, {
         onChange: function (e, newValue) {
           StatsModel.statsHostname.setValue(newValue || undefined);
         }

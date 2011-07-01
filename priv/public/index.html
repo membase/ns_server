@@ -331,10 +331,16 @@
 
           <div id="analytics" style="display:none">
             <span class="block nav float_right configure_view"></span>
-            <h1>
-              <span class="when-normal-stats">DATA BUCKETS: </span><span class="when-specific-stats"><em class="specific-stat-description"></em> for bucket: </span>
-              <select id="analytics_buckets_select"></select>
-              <span class="when-normal-stats"> on <select id="analytics_servers_select"></select></span>
+            <h1 style="overflow:hidden">
+              <span style="float:left">
+                <span class="when-normal-stats">Analytics</span>
+                <span class="when-specific-stats"><em class="specific-stat-description"></em></span>
+                for <select class="buckets_select"></select>
+              </span>
+              <span style="float:left;padding-left:0.5em">
+                <span class="when-normal-stats"> on <select class="analytics_servers_select"></select></span>
+              </span>
+            </h1>
             </h1>
             <div class="shadow_box">
                   <div class="content">
@@ -759,7 +765,7 @@
           </script>
 
           <div id="views" style="display:none">
-            <h1>Views</h1>
+            <h1 style="clear:both;overflow:hidden"><span style="float:left">Views for <select class="buckets_select"></select></span></h1>
             <div class="shadow_box">
                 <div class="content">
                   <div class="header_2 servers_header">
@@ -836,7 +842,7 @@
           </div>
 
           <div id="view_development" style="display:none">
-            <h1>View Development</h1>
+            <h1>View Development > <a href="#sec=buckets&buckets=default" class="bucket_name">default</a> > $dev_design/{design_doc} > {view_name}</h1>
             <div class="shadow_box">
               <div class="content" id="sample_docs">
                 <div class="darker_block graph_nav">
