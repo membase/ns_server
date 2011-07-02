@@ -48,14 +48,10 @@ dist:
 deps_smtp:
 	(cd deps/gen_smtp && $(MAKE) ebins)
 
-deps_mochiweb:
-	test -d deps/mochiweb/ebin || mkdir deps/mochiweb/ebin
-	(cd deps/mochiweb; $(MAKE))
-
 deps_erlwsh:
 	(cd deps/erlwsh; $(MAKE))
 
-deps_all: deps_smtp deps_mochiweb deps_erlwsh
+deps_all: deps_smtp deps_erlwsh
 
 docs:
 	priv/erldocs $(DOC_DIR)
@@ -98,7 +94,6 @@ PREFIX_FOR_CONFIG ?= $(DESTDIR)$(PREFIX)
 
 ERLWSH_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/erlwsh
 GEN_SMTP_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/gen_smtp
-MOCHIWEB_LIBDIR := $(DESTDIR)$(PREFIX)/lib/ns_server/erlang/lib/mochiweb
 
 do-install:
 	echo $(DESTDIR)$(PREFIX)
@@ -112,8 +107,6 @@ do-install:
 	cp -r deps/erlwsh/priv $(ERLWSH_LIBDIR)/
 	@true mkdir -p $(GEN_SMTP_LIBDIR)
 	@true cp -r deps/gen_smtp/ebin $(GEN_SMTP_LIBDIR)/
-	mkdir -p $(MOCHIWEB_LIBDIR)
-	cp -r deps/mochiweb/ebin $(MOCHIWEB_LIBDIR)/
 	mkdir -p $(DESTDIR)$(PREFIX)/etc/membase
 	sed -e 's|@DATA_PREFIX@|$(PREFIX_FOR_CONFIG)|g' -e 's|@BIN_PREFIX@|$(PREFIX_FOR_CONFIG)|g' \
 		 <etc/static_config.in >$(DESTDIR)$(PREFIX)/etc/membase/static_config
@@ -133,7 +126,6 @@ do-install:
 
 clean clean_all:
 	@(cd deps/gen_smtp && $(MAKE) clean)
-	@(cd deps/mochiweb && $(MAKE) clean)
 	@(cd deps/erlwsh && $(MAKE) clean)
 	rm -f $(TMP_VER)
 	rm -f $(TMP_DIR)/*.cov.html
