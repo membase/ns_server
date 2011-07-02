@@ -99,7 +99,7 @@ def start_cluster(num_nodes, start_index, host, extra_args):
     return [start_node(i + start_index) for i in xrange(num_nodes)]
 
 def usage():
-    sys.exit("Usage: {0} [--nodes=N] [--dont-rename] [--dont-start] [--static-cookie] [ns_server args]".format(sys.argv[0]))
+    sys.exit("Usage: {0} [--nodes=N] [--dont-rename] [--dont-start] [--interactive] [--static-cookie] [ns_server args]".format(sys.argv[0]))
 
 def maybe_spawn_epmd():
     try:
@@ -122,7 +122,7 @@ def find_primary_addr():
 
 def main():
     try:
-        optlist, args = getopt.gnu_getopt(sys.argv[1:], "hn:", ["help", "start-index=", "nodes=", "static-cookie", "dont-start", "host="])
+        optlist, args = getopt.gnu_getopt(sys.argv[1:], "hn:i", ["help", "start-index=", "nodes=", "interactive", "static-cookie", "dont-start", "host="])
     except getopt.GetoptError, err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
@@ -133,6 +133,7 @@ def main():
 
     dont_start = False
     static_cookie = False
+    interactive_shell = False
     start_index = 0
     num_nodes = 1
     host = "127.0.0.1" if primary_addr == None else primary_addr
@@ -140,6 +141,8 @@ def main():
     for o, a in optlist:
         if o in ("--nodes", "-n"):
             num_nodes = int(a)
+        elif o in ("--interactive", "-i"):
+            interactive_shell = True
         elif o == '--dont-start':
             dont_start = True
         elif o == '--host':
@@ -185,6 +188,9 @@ def main():
 
     if not dont_start:
         extra_args += ["-run", "ns_bootstrap"]
+
+    if not interactive_shell:
+        extra_args += ["-noinput"]
 
     nodes = start_cluster(num_nodes, start_index, host, extra_args)
 
