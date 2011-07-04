@@ -25,8 +25,8 @@ The maximum number of open files for the membase user is set too low.
 It must be at least 10240. Normally this can be increased by adding
 the following lines to /etc/security/limits.conf:
 
-membase              soft    nofile                  <value>
-membase              hard    nofile                  <value>
+couchbase              soft    nofile                  <value>
+couchbase              hard    nofile                  <value>
 
 Where <value> is greater than 10240.
 EOF
