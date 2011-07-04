@@ -444,7 +444,7 @@ var EmailAlertsSection = {
                              val.alerts)!==-1,
           value: 'auto_failover_other_nodes_down'
         },{
-          label: 'Node was\'t auto-failovered as the remaining cluster ' +
+          label: 'Node wasn\'t auto-failovered as the cluster ' +
             'was too small (less than 3 nodes)',
           enabled: $.inArray('auto_failover_cluster_too_small',
                              val.alerts)!==-1,
