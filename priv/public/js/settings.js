@@ -80,7 +80,7 @@ var SettingsSection = {
       if (val.errors===null) {
         rootNode.find('.error-container.active').empty().removeClass('active');
         rootNode.find('input.invalid').removeClass('invalid');
-        rootNode.find('.save_button').removeClass('disabled');
+        rootNode.find('.save_button').removeAttr('disabled');
       } else {
         // Show error messages on all input fields that contain one
         $.each(val.errors, function(name, message) {
@@ -88,7 +88,7 @@ var SettingsSection = {
             .prev('textarea, input').addClass('invalid');
         });
         // Disable the save button
-        rootNode.find('.save_button').addClass('disabled');
+        rootNode.find('.save_button').attr('disabled', 'disabled');
       }
     }
   }
@@ -200,10 +200,9 @@ var UpdatesNotificationsSection = {
     $('#notifications_container').delegate('a.more_info', 'click', function(e) {
       e.preventDefault();
       $('#notifications_container p.more_info').slideToggle();
-    });
-
-    $('#notifications_container').delegate('.save_button:not(.disabled)',
-                                          'click', function() {
+    }).delegate('input[type=checkbox]', 'change', function() {
+      $('#notifications_container .save_button').removeAttr('disabled');
+    }).delegate('.save_button', 'click', function() {
       var button = this;
       var sendStatus = $('#notification-updates').is(':checked');
 
@@ -212,7 +211,7 @@ var UpdatesNotificationsSection = {
         url: '/settings/stats',
         data: {sendStats: sendStatus},
         success: function() {
-          $(button).text('Done!').addClass('disabled');
+          $(button).text('Done!').attr('disabled', 'disabled');
           phEnabled.recalculateAfterDelay(2000);
         },
         error: function() {
@@ -291,6 +290,8 @@ var AutoFailoverSection = {
       if (val!==undefined) {
         renderTemplate('auto_failover', val, $i('auto_failover_container'));
         self.toggle(val.enabled);
+        //$('#auto_failover_container .save_button')
+        //  .attr('disabled', 'disabled');
         $('#auto_failover_enabled').change(function() {
           self.toggle($(this).is(':checked'));
         });
@@ -334,7 +335,7 @@ var AutoFailoverSection = {
         url: '/settings/autoFailover',
         data: {enabled: enabled, timeout: timeout},
         success: function() {
-          $(button).text('Done!').addClass('disabled');
+          $(button).text('Done!').attr('disabled', 'disabled');
           autoFailoverEnabled.recalculateAfterDelay(2000);
         },
         error: function() {
@@ -460,13 +461,14 @@ var EmailAlertsSection = {
     });
 
     $('#test_email').live('click', function() {
-      var testButton = $(this).text('Sending...').addClass('disabled');
+      var testButton = $(this).text('Sending...').attr('disabled', 'disabled');
       $.post('/settings/alerts/testEmail', function(data, status) {
         if (status === 'success') {
           testButton.text('Sent!').css('font-weight', 'bold');
           // Increase compatibility with unnamed functions
           window.setTimeout(function() {
-            testButton.text('Test Mail').css('font-weight', 'normal').removeClass('disabled');
+            testButton.text('Test Mail').css('font-weight', 'normal')
+              .removeAttr('disabled');
           }, 1000);
         }
       });
@@ -480,7 +482,7 @@ var EmailAlertsSection = {
                  function() {self.validate(self.getParams());
       });
 
-    $('#email_alerts_container').delegate('.save_button:not(.disabled)',
+    $('#email_alerts_container').delegate('.save_button',
                                           'click', function() {
       var button = this;
       var params = self.getParams();
@@ -490,7 +492,7 @@ var EmailAlertsSection = {
         url: '/settings/alerts',
         data: params,
         success: function() {
-          $(button).text('Done!').addClass('disabled');
+          $(button).text('Done!').attr('disabled', 'disabled');
           emailAlertsEnabled.recalculateAfterDelay(2000);
         },
         error: function() {
