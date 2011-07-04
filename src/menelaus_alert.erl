@@ -66,7 +66,8 @@
           %% be sent.
           alerts=[auto_failover_node,
                   auto_failover_maximum_reached,
-                  auto_failover_too_many_nodes_down
+                  auto_failover_other_nodes_down,
+                  auto_failover_cluster_too_small
                  ] :: [atom()]
          }).
 
@@ -309,7 +310,8 @@ build_alerts(Params) ->
 %
 % auto_failover_node
 % auto_failover_maximum_reached
-% auto_failover_too_many_nodes_down
+% auto_failover_other_nodes_down
+% auto_failover_cluster_too_small
 
 alert_key(ns_node_disco, 0005) -> server_down;
 alert_key(ns_node_disco, 0014) -> server_unresponsive;

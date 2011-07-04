@@ -36,10 +36,18 @@ init_per_group(two_nodes_cluster, Config) ->
     Nodes = ns_test_util:gen_cluster_conf(['n_0@127.0.0.1', 'n_1@127.0.0.1']),
     [{nodes, Nodes} | Config];
 
-init_per_group(three_nodes_cluster, Config) ->
+init_per_group(five_nodes_cluster, Config) ->
     file:set_cwd(code:lib_dir(ns_server)),
     Nodes = ns_test_util:gen_cluster_conf(['n_0@127.0.0.1', 'n_1@127.0.0.1',
-                                           'n_2@127.0.0.1']),
+                                           'n_2@127.0.0.1', 'n_3@127.0.0.1',
+                                           'n_4@127.0.0.1']),
+    [{nodes, Nodes} | Config];
+
+init_per_group(six_nodes_cluster, Config) ->
+    file:set_cwd(code:lib_dir(ns_server)),
+    Nodes = ns_test_util:gen_cluster_conf(['n_0@127.0.0.1', 'n_1@127.0.0.1',
+                                           'n_2@127.0.0.1', 'n_3@127.0.0.1',
+                                           'n_4@127.0.0.1', 'n_5@127.0.0.1']),
     [{nodes, Nodes} | Config].
 
 end_per_group(_Group, _Config) ->
@@ -51,6 +59,7 @@ init_per_testcase(_Case, Config) ->
     [Master | Rest] = Nodes,
     ok = ns_test_util:start_cluster(Nodes),
     ok = ns_test_util:connect_cluster(Master, Rest),
+    ok = ns_test_util:create_bucket(Master, memcached, "default"),
     ok = ns_test_util:rebalance_node_done(hd(Nodes), 8),
     Config.
 
@@ -60,15 +69,16 @@ end_per_testcase(_Case, Config) ->
     ok = ns_test_util:clear_data().
 
 groups() -> [{two_nodes_cluster, [sequence],
+              [auto_failover_enabled_cluster_too_small]},
+             {five_nodes_cluster, [sequence],
               [auto_failover_enabled_one_node_down,
                auto_failover_disabled_one_node_down,
                auto_failover_enabled_no_node_down,
                enable_auto_failover_on_unhealthy_cluster,
                auto_failover_enabled_master_node_down]},
-             {three_nodes_cluster, [sequence],
+             {six_nodes_cluster, [sequence],
               [auto_failover_enabled_two_nodes_down,
                auto_failover_enabled_more_than_max_nodes_down,
-               auto_failover_enabled_more_than_max_nodes_down_at_same_time,
                auto_failover_enabled_change_settings,
                auto_failover_enabled_failover_one_node_manually,
                auto_failover_enabled_master_node_down_preserve_count,
@@ -78,7 +88,8 @@ groups() -> [{two_nodes_cluster, [sequence],
 
 all() ->
     [{group, two_nodes_cluster},
-     {group, three_nodes_cluster}
+     {group, five_nodes_cluster},
+     {group, six_nodes_cluster}
     ].
 
 %%--------------------------------------------------------------------
@@ -86,6 +97,22 @@ all() ->
 %%--------------------------------------------------------------------
 
 %% Tests for two nodes cluster
+
+auto_failover_enabled_cluster_too_small(TestConfig) ->
+    {nodes, Nodes} = lists:keyfind(nodes, 1, TestConfig),
+
+    % Enable auto-failover (when a node is down longer than 5 seconds)
+    ok = rpc:call('n_0@127.0.0.1', auto_failover, enable, [5, 1]),
+
+    % Stop one node
+    ok = ns_test_util:stop_node(lists:nth(2, Nodes)),
+
+    % Node shouldn't be failovered, as the cluster is too small
+    {error, timeout} = ns_test_util:wait_for_failover(hd(Nodes), 20,
+                                                      'n_1@127.0.0.1').
+
+
+%% Tests for five nodes cluster
 
 auto_failover_enabled_one_node_down(TestConfig) ->
     {nodes, Nodes} = lists:keyfind(nodes, 1, TestConfig),
@@ -148,7 +175,7 @@ auto_failover_enabled_master_node_down(TestConfig) ->
                                         'n_0@127.0.0.1').
 
 
-%% Tests for three nodes cluster
+%% Tests for six nodes cluster
 
 %% @doc auto-failovers a cluster where two nodes went down at the same time
 auto_failover_enabled_two_nodes_down(TestConfig) ->
@@ -160,11 +187,14 @@ auto_failover_enabled_two_nodes_down(TestConfig) ->
     % Stop two nodes
     ok = ns_test_util:stop_nodes(lists:sublist(Nodes, 2, 2)),
 
-    % Both nodes should be failovered now
-    ok = ns_test_util:wait_for_failover(hd(Nodes), 20, 'n_1@127.0.0.1'),
-    % The timeout for the second check can be small, as we've already waited
-    % the time on the first check.
-    ok = ns_test_util:wait_for_failover(hd(Nodes), 2, 'n_2@127.0.0.1').
+    % No node will be auto-fialovered. We only auto-failover if onle *one*
+    % node is down at the same time
+    {error, timeout} = ns_test_util:wait_for_failover(hd(Nodes), 20,
+                                                      'n_1@127.0.0.1'),
+    %% The timeout for the second check can be small, as we've already waited
+    %% the time on the first check.
+    {error, timeout} = ns_test_util:wait_for_failover(hd(Nodes), 2,
+                                                      'n_2@127.0.0.1').
 
 auto_failover_enabled_more_than_max_nodes_down(TestConfig) ->
     {nodes, Nodes} = lists:keyfind(nodes, 1, TestConfig),
@@ -185,26 +215,6 @@ auto_failover_enabled_more_than_max_nodes_down(TestConfig) ->
     % get automatically be failovered is already reached
     {error, timeout} = ns_test_util:wait_for_failover(hd(Nodes), 20,
                                                       'n_2@127.0.0.1').
-
-%% @doc simulation of a net split when may nodes go down at the same time
-auto_failover_enabled_more_than_max_nodes_down_at_same_time(TestConfig) ->
-    {nodes, Nodes} = lists:keyfind(nodes, 1, TestConfig),
-
-    % Enable auto-failover (when a node is down longer than 5 seconds)
-    ok = rpc:call('n_0@127.0.0.1', auto_failover, enable, [5, 1]),
-
-    % Stop two nodes
-    ok = ns_test_util:stop_nodes(lists:sublist(Nodes, 2, 2)),
-
-    % One node should be auto-failovered, the other one not
-    case ns_test_util:wait_for_failover(hd(Nodes), 20, 'n_1@127.0.0.1') of
-        ok ->
-            {error, timeout} = ns_test_util:wait_for_failover(
-                                 hd(Nodes), 20, 'n_2@127.0.0.1');
-        {error, timeout} ->
-            ok = ns_test_util:wait_for_failover(hd(Nodes), 20,
-                                                'n_2@127.0.0.1')
-    end.
 
 %% @doc enable auto-failover, change settings while it is running
 auto_failover_enabled_change_settings(TestConfig) ->

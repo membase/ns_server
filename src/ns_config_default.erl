@@ -177,7 +177,8 @@ default() ->
                                {encrypt, false}]},
                {alerts, [auto_failover_node,
                          auto_failover_maximum_reached,
-                         auto_failover_too_many_nodes_down]}
+                         auto_failover_other_nodes_down,
+                         auto_failover_cluster_too_small]}
                          %server_up,
                          %server_joined,
                          %server_left,
@@ -187,9 +188,9 @@ default() ->
               ]},
      {replication, [{enabled, true}]},
      {auto_failover, [{enabled, false},
-                      % age is the time (in seconds) a node needs to be down
-                      % before it is automatically faileovered
-                      {age, 20},
+                      % timeout is the time (in seconds) a node needs to be
+                      % down before it is automatically faileovered
+                      {timeout, 20},
                       % max_nodes is the maximum number of nodes that may be
                       % automatically failovered
                       {max_nodes, 1},

@@ -936,12 +936,10 @@ validate_settings_stats(SendStats) ->
 handle_settings_auto_failover(Req) ->
     Config = build_settings_auto_failover(),
     Enabled = proplists:get_value(enabled, Config),
-    Age = proplists:get_value(age, Config),
-    MaxNodes = proplists:get_value(max_nodes, Config),
+    Timeout = proplists:get_value(timeout, Config),
     Count = proplists:get_value(count, Config),
     reply_json(Req, {struct, [{enabled, Enabled},
-                              {age, Age},
-                              {maxNodes, MaxNodes},
+                              {timeout, Timeout},
                               {count, Count}]}).
 
 build_settings_auto_failover() ->
@@ -951,11 +949,12 @@ build_settings_auto_failover() ->
 handle_settings_auto_failover_post(Req) ->
     PostArgs = Req:parse_post(),
     Enabled = proplists:get_value("enabled", PostArgs),
-    Age = proplists:get_value("age", PostArgs),
-    MaxNodes = proplists:get_value("maxNodes", PostArgs),
-    case validate_settings_auto_failover(Enabled, Age, MaxNodes) of
-        [true, Age2, MaxNodes2] ->
-            auto_failover:enable(Age2, MaxNodes2),
+    Timeout = proplists:get_value("timeout", PostArgs),
+    % MaxNodes is hard-coded to 1 for now.
+    MaxNodes = "1",
+    case validate_settings_auto_failover(Enabled, Timeout, MaxNodes) of
+        [true, Timeout2, MaxNodes2] ->
+            auto_failover:enable(Timeout2, MaxNodes2),
             Req:respond({200, add_header(), []});
         false ->
             auto_failover:disable(),
@@ -964,7 +963,7 @@ handle_settings_auto_failover_post(Req) ->
             Req:respond({400, add_header(), Errors})
     end.
 
-validate_settings_auto_failover(Enabled, Age, MaxNodes) ->
+validate_settings_auto_failover(Enabled, Timeout, MaxNodes) ->
     Enabled2 = case Enabled of
         "true" -> true;
         "false" -> false;
@@ -972,13 +971,13 @@ validate_settings_auto_failover(Enabled, Age, MaxNodes) ->
     end,
     case Enabled2 of
         true ->
-            Errors = [is_valid_positive_integer(Age) orelse
-                      <<"The value of \"age\" must be a positive integer\n">>,
+            Errors = [is_valid_positive_integer(Timeout) orelse
+                      <<"The value of \"timeout\" must be a positive integer\n">>,
                       is_valid_positive_integer(MaxNodes) orelse
                       <<"The value of \"maxNodes\" must be a positive integer\n">>],
             case lists:filter(fun (E) -> E =/= true end, Errors) of
                 [] ->
-                    [Enabled2, list_to_integer(Age),
+                    [Enabled2, list_to_integer(Timeout),
                      list_to_integer(MaxNodes)];
                 Errors2 ->
                     {error, Errors2}

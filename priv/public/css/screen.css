@@ -478,7 +478,7 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 .auto_failover label span {display:block;float:left;margin:0 5px;text-align:right;width:120px}
 .auto_failover input[type="checkbox"] + span {display:inline;float:none}
 
-.auto_failover #auto_failover_age, .auto_failover #auto_failover_max_nodes {width:3em}
+.auto_failover #auto_failover_timeout, .auto_failover #auto_failover_max_nodes {width:3em}
 
 /* email alerts styles */
 .email_alerts label {display:block;line-height:24px;margin-left:16px;margin-top:16px;}

@@ -791,27 +791,17 @@
               <input type="checkbox" id="auto_failover_enabled">
               <span>Enable auto-failover</span>
             </label>
-            <label for="auto_failover_max_nodes">
-              <span>Maximum Nodes: </span>
-            </label>
-            <input type="text" id="auto_failover_max_nodes"
-                   value="{%= maxNodes %}" disabled="disabled" />
-            <a class="text_11 tooltip"><span>What's this?</span>
-              <span class="tooltip_msg"><span>
-                  This sets the maximum nodes that will be auto-failovered. It is suggested that it is not lower than XXX vmx 20110530: lower than what? XXX to prevent data loss.
-              </span></span>
-            </a>
             <div class="count_reset">
               <span class="count">{%= count %}</span> used
               <a class="auto_failover_count_reset edit_btn{% if (count === 0) { %} disabled{% } %}">
                 <span>Reset Quota</span>
               </a>
             </div>
-            <label for="auto_failover_age">
-              <span>Age: </span>
+            <label for="auto_failover_timeout">
+              <span>Timeout: </span>
             </label>
-            <input type="text" id="auto_failover_age"
-                   value="{%= age %}" disabled="disabled" />
+            <input type="text" id="auto_failover_timeout"
+                   value="{%= timeout %}" disabled="disabled" />
             <a class="text_11 tooltip"><span>What's this?</span>
               <span class="tooltip_msg"><span>
                   How long (in seconds) a node must be considered down before it gets auto-failovered.

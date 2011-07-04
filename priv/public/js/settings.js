@@ -277,6 +277,8 @@ var AutoFailoverSection = {
     });
     this.autoFailoverEnabledStatus.subscribeValue(function(val) {
       if (val!==undefined && DAL.cells.mode.value==='server') {
+        // Hard-code the number of maximum nodes for now
+        val.maxNodes = 1;
         var afc = $('#auto_failover_count_container');
         afc.find('.count').text(val.count);
         afc.find('.maxNodes').text(val.maxNodes);
@@ -287,11 +289,9 @@ var AutoFailoverSection = {
 
     $('#auto_failover_container').delegate('.save_button', 'click', function(){
       var enabled = $('#auto_failover_enabled').is(':checked');
-      var age = $('#auto_failover_age').val();
-      var maxNodes = $('#auto_failover_max_nodes').val();
+      var timeout = $('#auto_failover_timeout').val();
       postWithValidationErrors('/settings/autoFailover',
-                               $.param({enabled: enabled, age: age,
-                                        maxNodes: maxNodes}),
+                               $.param({enabled: enabled, timeout: timeout}),
                                function() {
           autoFailoverEnabled.recalculate();
       });
@@ -411,7 +411,6 @@ var EmailAlertsSection = {
         emailEncrypt: $('#email_alerts_encrypt').is(':checked'),
         alerts: alerts.join(',')
       };
-      var maxNodes = $('#auto_failover_max_nodes').val();
       postWithValidationErrors('/settings/alerts', $.param(params),
                                function() {
           emailAlertsEnabled.recalculate();
