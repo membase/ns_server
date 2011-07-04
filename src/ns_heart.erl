@@ -19,6 +19,7 @@
 
 -include("ns_stats.hrl").
 -include("ns_common.hrl").
+-include("ns_heart.hrl").
 
 -define(EXPENSIVE_CHECK_INTERVAL, 15000). % In ms
 
@@ -43,7 +44,7 @@ is_interesting_buckets_event({stopped, _, _, _}) -> true;
 is_interesting_buckets_event(_Event) -> false.
 
 init([]) ->
-    timer:send_interval(5000, beat),
+    timer:send_interval(?HEART_BEAT_PERIOD, beat),
     timer:send_interval(?EXPENSIVE_CHECK_INTERVAL, do_expensive_checks),
     self() ! do_expensive_checks,
     Self = self(),
