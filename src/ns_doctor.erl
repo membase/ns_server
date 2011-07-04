@@ -25,7 +25,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
          code_change/3]).
 %% API
--export([heartbeat/1, get_nodes/0]).
+-export([get_nodes/0]).
 
 -record(state, {nodes}).
 
@@ -97,9 +97,6 @@ terminate(_Reason, _State) -> ok.
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
 %% API
-
-heartbeat(Status) ->
-    gen_server:abcast(?MODULE, {heartbeat, node(), Status}).
 
 get_nodes() ->
     try gen_server:call(?MODULE, get_nodes) of

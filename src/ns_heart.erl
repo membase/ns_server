@@ -86,7 +86,7 @@ handle_info({gen_event_EXIT, _, _} = ExitMsg, State) ->
 handle_info(beat, State) ->
     NewState = disarm_forced_beat_timer(State),
     misc:flush(beat),
-    ns_doctor:heartbeat(current_status(NewState#state.expensive_checks_result)),
+    heartbeat(current_status(NewState#state.expensive_checks_result)),
     {noreply, NewState};
 handle_info(do_expensive_checks, State) ->
     {noreply, State#state{expensive_checks_result = expensive_checks()}};
@@ -101,6 +101,12 @@ terminate(_Reason, _State) -> ok.
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
 %% API
+heartbeat(Status) ->
+    catch misc:parallel_map(
+            fun (N) ->
+                    gen_server:cast({ns_doctor, N}, {heartbeat, node(), Status})
+            end, [node() | nodes()], ?HEART_BEAT_PERIOD - 1000).
+
 status_all() ->
     {Replies, _} = gen_server:multi_call([node() | nodes()], ?MODULE, status, 5000),
     Replies.
