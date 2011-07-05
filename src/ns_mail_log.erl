@@ -50,7 +50,7 @@ code_change(_OldVsn, State, _) -> {ok, State}.
 
 handle_event({ns_log, _Category, Module, Code, Fmt, Args}, State) ->
     ?log_info("yay an event for ns_mail_log:~n~p ~p", [Module, Code]),
-    {value, Config} = ns_config:search(alerts),
+    {value, Config} = ns_config:search(email_alerts),
     case proplists:get_bool(enabled, Config) of
         true ->
             AlertKey = menelaus_alert:alert_key(Module, Code),
@@ -83,7 +83,7 @@ handle_info(Info, State) ->
 
 %% @doc Sends an email with the current configuration setting.
 send_email_from_config(Subject, Body) ->
-    {value, Config} = ns_config:search(alerts),
+    {value, Config} = ns_config:search(email_alerts),
     ServerConfig = proplists:get_value(email_server, Config),
     Options = config_to_options(ServerConfig),
     ns_mail:send(proplists:get_value(sender, Config),

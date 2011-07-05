@@ -324,19 +324,12 @@ alert_key(ns_cluster, Code) -> ns_cluster:alert_key(Code);
 alert_key(auto_failover, Code) -> auto_failover:alert_key(Code);
 alert_key(_Module, _Code) -> all.
 
-default_alert_config() ->
-    [{email, ""},
-     {email_alerts, false},
-     {alerts, []}].
-
 get_alert_config() ->
-    case ns_config:search_node(ns_config:get(), alerts) of
-        {value, X} -> X;
-        false      -> default_alert_config()
-    end.
+    {value, X} = ns_config:search(ns_config:get(), email_alerts),
+    X.
 
 set_alert_config(AlertConfig) ->
-    ns_config:set(alerts, AlertConfig).
+    ns_config:set(email_alerts, AlertConfig).
 
 common_params(Params) ->
     MinTStamp = case proplists:get_value("sinceTime", Params) of

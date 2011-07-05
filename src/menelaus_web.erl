@@ -945,7 +945,7 @@ handle_settings_auto_failover(Req) ->
                               {count, Count}]}).
 
 build_settings_auto_failover() ->
-    {value, Config} = ns_config:search(ns_config:get(), auto_failover),
+    {value, Config} = ns_config:search(ns_config:get(), auto_failover_cfg),
     Config.
 
 handle_settings_auto_failover_post(Req) ->
@@ -1085,7 +1085,7 @@ handle_settings_web_post(Req) ->
     end.
 
 handle_settings_alerts(Req) ->
-    {value, Config} = ns_config:search(alerts),
+    {value, Config} = ns_config:search(email_alerts),
     reply_json(Req, {struct, menelaus_alert:build_alerts_json(Config)}).
 
 handle_settings_alerts_post(Req) ->
@@ -1093,7 +1093,7 @@ handle_settings_alerts_post(Req) ->
     ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
     case {ValidateOnly, menelaus_alert:parse_settings_alerts_post(PostArgs)} of
         {false, {ok, Config}} ->
-            ns_config:set(alerts, Config),
+            ns_config:set(email_alerts, Config),
             Req:respond({200, add_header(), []});
         {false, {error, Errors}} ->
             reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 400);

@@ -117,7 +117,7 @@ alert_keys() ->
 %%
 
 init([]) ->
-    {value, Config} = ns_config:search(ns_config:get(), auto_failover),
+    {value, Config} = ns_config:search(ns_config:get(), auto_failover_cfg),
     ?log_info("init auto_failover.", []),
     Timeout = proplists:get_value(timeout, Config),
     Count = proplists:get_value(count, Config),
@@ -270,6 +270,7 @@ make_state_persistent(State) ->
         nil -> false;
         _ -> true
     end,
-    ns_config:set(auto_failover, [{enabled, Enabled},
-                                  {timeout, State#state.timeout},
-                                  {count, State#state.count}]).
+    ns_config:set(auto_failover_cfg,
+                  [{enabled, Enabled},
+                   {timeout, State#state.timeout},
+                   {count, State#state.count}]).

@@ -167,35 +167,30 @@ default() ->
 
                                                 % Modifiers: menelaus
                                                 % Listeners: ? possibly ns_log
-     {alerts, [{recipients, ["root@localhost"]},
-               {sender, "membase@localhost"},
-               {enabled, true},
-               {email_server, [{user, ""},
-                               {pass, ""},
-                               {host, "localhost"},
-                               {port, 25},
-                               {encrypt, false}]},
-               {alerts, [auto_failover_node,
-                         auto_failover_maximum_reached,
-                         auto_failover_other_nodes_down,
-                         auto_failover_cluster_too_small]}
-                         %server_up,
-                         %server_joined,
-                         %server_left,
-                         %bucket_created,
-                         %bucket_deleted,
-                         %bucket_auth_failed]}
-              ]},
+     {email_alerts,
+      [{recipients, ["root@localhost"]},
+       {sender, "membase@localhost"},
+       {enabled, true},
+       {email_server, [{user, ""},
+                       {pass, ""},
+                       {host, "localhost"},
+                       {port, 25},
+                       {encrypt, false}]},
+       {alerts, [auto_failover_node,
+                 auto_failover_maximum_reached,
+                 auto_failover_other_nodes_down,
+                 auto_failover_cluster_too_small]}
+      ]},
      {replication, [{enabled, true}]},
-     {auto_failover, [{enabled, false},
-                      % timeout is the time (in seconds) a node needs to be
-                      % down before it is automatically faileovered
-                      {timeout, 30},
-                      % max_nodes is the maximum number of nodes that may be
-                      % automatically failovered
-                      {max_nodes, 1},
-                      % count is the number of nodes that were auto-failovered
-                      {count, 0}]}
+     {auto_failover_cfg, [{enabled, false},
+                          % timeout is the time (in seconds) a node needs to be
+                          % down before it is automatically faileovered
+                          {timeout, 30},
+                          % max_nodes is the maximum number of nodes that may be
+                          % automatically failovered
+                          {max_nodes, 1},
+                          % count is the number of nodes that were auto-failovered
+                          {count, 0}]}
     ].
 
 %% returns list of changes to config to upgrade it to current version.
