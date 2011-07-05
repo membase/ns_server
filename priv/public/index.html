@@ -849,14 +849,6 @@
               </label>
               <input type="password" id="email_alerts_pass"
                      value="{%= emailServer.pass %}" disabled="disabled" />
-              <label for="email_alerts_encrypt">
-                <span>TLS</span>
-              </label>
-              <input type="checkbox" id="email_alerts_encrypt"
-                     {% if (emailServer.encrypt) { %}
-                     checked="checked"
-                     {% } %}
-                     />
             </fieldset>
             <fieldset>
               <legend>Email Settings</legend>
