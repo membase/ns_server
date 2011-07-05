@@ -411,7 +411,13 @@ var MockedRequest = mkClass({
                             [42,65,42,63,81,87,74,84,56,44,71,64,49,48,55,46,37,46,64,33,18,52,45,25,23,22,50,67,59,55,65,42,63,81,87,74,84,56,44,71,64,49,48,55,46,37,46,64,33,18,52,45,25,23,22,50,67,59,55],
                             [61,65,64,75,77,57,68,76,64,61,66,63,68,37,32,60,72,54,43,41,55,52,45,25,23,22,50,67,59,55,65,64,75,77,57,68,76,64,61,66,63,68,37,32,60,72,54,43,41,55,52,45,25,23,22,50,67,59,55]];
     var samples = {};
-    var recognizedStats = StatGraphs.recognizedStatsPersistent;
+    var recognizedStats = [];
+    var statsDirectory = MockedRequest.prototype.findResponseFor("GET", ["pools", "default", "buckets", 4, "statsDirectory"]);
+    var allStatsInfos = [].concat.apply([], _.pluck(statsDirectory.blocks, 'stats'));
+    _.each(allStatsInfos, function (info) {
+      recognizedStats.push(info.name)
+    });
+
     for (var idx in recognizedStats) {
       var data = samplesSelection[(idx + zoom.charCodeAt(0))%4];
       samples[recognizedStats[idx]] = _.map(data, function (i) {return i*10E9});
@@ -780,7 +786,11 @@ var MockedRequest = mkClass({
                                              flushCacheUri: "/pools/default/buckets/4/controller/doFlush",
                                              bucketType: 'membase',
                                              uri: "/pools/default/buckets/4",
-                                             stats: {uri: "/pools/default/buckets/4/stats"},
+                                             stats: {
+                                               directoryURI: "/pools/default/buckets/4/statsDirectory",
+                                               nodeStatsListURI: "/pools/default/buckets/4/nodes",
+                                               uri: "/pools/default/buckets/4/stats"
+                                             },
                                              quota: {
                                                ram: 12322423,
                                                rawRAM: 12322423,
@@ -806,7 +816,11 @@ var MockedRequest = mkClass({
                                              uri: "/pools/default/buckets/5",
                                              testAppBucket: true,
                                              status: false,
-                                             stats: {uri: "/pools/default/buckets/5/stats"},
+                                             stats: {
+                                               directoryURI: "/pools/default/buckets/5/statsDirectory",
+                                               nodeStatsListURI: "/pools/default/buckets/5/nodes",
+                                               uri: "/pools/default/buckets/5/stats"
+                                             },
                                              quota: {
                                                ram: 123224230,
                                                rawRAM: 12322423/4,
@@ -830,7 +844,11 @@ var MockedRequest = mkClass({
                                              flushCacheUri: "/pools/default/buckets/6/controller/doFlush",
                                              bucketType: 'memcached',
                                              uri: "/pools/default/buckets/6",
-                                             stats: {uri: "/pools/default/buckets/6/stats"},
+                                             stats: {
+                                               directoryURI: "/pools/default/buckets/6/statsDirectory",
+                                               nodeStatsListURI: "/pools/default/buckets/6/nodes",
+                                               uri: "/pools/default/buckets/6/stats"
+                                             },
                                              quota: {
                                                ram: 12322423,
                                                rawRAM: 12322423/4,
@@ -854,7 +872,11 @@ var MockedRequest = mkClass({
                                              flushCacheUri: "/pools/default/buckets/7/controller/doFlush",
                                              bucketType: 'membase',
                                              uri: "/pools/default/buckets/7",
-                                             stats: {uri: "/pools/default/buckets/7/stats"},
+                                             stats: {
+                                               directoryURI: "/pools/default/buckets/7/statsDirectory",
+                                               nodeStatsListURI: "/pools/default/buckets/7/nodes",
+                                               uri: "/pools/default/buckets/7/stats"
+                                             },
                                              quota: {
                                                ram: 12322423,
                                                rawRAM: 12322423,
@@ -881,6 +903,112 @@ var MockedRequest = mkClass({
         rv.nodes = [];  // not used for now
         return rv;
       }],
+      [get("pools", "default", "buckets", x, "statsDirectory"), {
+        "blocks": [
+          {"blockName":"Server Resources","serverResources":true,"extraCSSClasses":"server_resources",
+            "stats":[
+              {"specificStatsURL":"/pools/default/buckets/default/stats/swap_used","name":"swap_used","title":"swap usage","desc":"Amount of swap space in use on this server (B=bytes, M=megabytes, G=gigabytes)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/mem_actual_free","name":"mem_actual_free","title":"free RAM","desc":"Amount of RAM available on this server (B=bytes, M=megabytes, G=gigabytes)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/cpu_utilization_rate","name":"cpu_utilization_rate","title":"CPU utilization %","desc":"Percentage of CPU in use across all available cores on this server","maxY":100},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/curr_connections","name":"curr_connections","title":"connections","desc":"Number of connections to this server including connections from external drivers, proxies, TAP requests and internal statistic gathering (measured from curr_connections)"}
+            ]},
+          {"blockName":"Summary",
+            "stats":[
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ops","title":"ops per second","name":"ops","desc":"Total amount of operations per second to this bucket (measured from cmd_get + cmd_set + incr_misses + incr_hits + decr_misses + decr_hits + delete_misses + delete_hits)","default":true},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_cache_miss_rate","title":"cache miss ratio","name":"ep_cache_miss_rate","desc":"Percentage of reads per second to this bucket from disk as opposed to RAM (measured from 100 - (gets - ep_bg_fetches) * 100 / gets)","maxY":100},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_ops_create","title":"creates per sec.","name":"ep_ops_create","desc":"Number of new items created per second in this bucket (measured from vb_active_ops_create + vb_replica_ops_create + vb_pending_ops_create)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_ops_update","title":"updates per sec.","name":"ep_ops_update","desc":"Number of existing items mutated per second in this bucket (measured from vb_active_ops_update + vb_replica_ops_update + vb_pending_ops_update)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_bg_fetched","title":"disk reads per sec.","name":"ep_bg_fetched","desc":"Number of reads per second from disk for this bucket (measured from ep_bg_fetched)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_tmp_oom_errors","title":"temp OOM per sec.","name":"ep_tmp_oom_errors","desc":"Number of back-offs sent per second to drivers due to \"out of memory\" situations from this bucket (measured from ep_tmp_oom_errors)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/cmd_get","title":"gets per sec.","name":"cmd_get","desc":"Number of reads (get operations) per second from this bucket (measured from cmd_get)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/cmd_set","title":"sets per sec.","name":"cmd_set","desc":"Number of writes (set operations) per second to this bucket (measured from cmd_set)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/cas_hits","title":"CAS ops per sec.","name":"cas_hits","desc":"Number of operations with a CAS id per second for this bucket (measured from cas_hits)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/delete_hits","title":"deletes per sec.","name":"delete_hits","desc":"Number of delete operations per second for this bucket (measured from delete_hits)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/curr_items","title":"items","name":"curr_items","desc":"Number of unique items in this bucket - only active items, not replica (measured from curr_items)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/disk_write_queue","title":"disk write queue","name":"disk_write_queue","desc":"Number of items waiting to be written to disk in this bucket (measured from ep_queue_size+ep_flusher_todo)"}
+            ]},
+          {"blockName":"vBucket Resources","extraCSSClasses":"withtotal closed",
+            "columns":["Active","Replica","Pending","Total"],
+            "stats":[
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_active_num","title":"vBuckets","name":"vb_active_num","desc":"Number of vBuckets in the \"active\" state for this bucket (measured from vb_active_num)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_replica_num","title":"vBuckets","name":"vb_replica_num","desc":"Number of vBuckets in the \"replica\" state for this bucket (measured from vb_replica_num)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_pending_num","title":"vBuckets","name":"vb_pending_num","desc":"Number of vBuckets in the \"pending\" state for this bucket and should be transient during rebalancing (measured from vb_pending_num)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_vb_total","title":"vBuckets","name":"ep_vb_total","desc":"Total number of vBuckets for this bucket (measured from ep_vb_total)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/curr_items","title":"items","name":"curr_items","desc":"Number of items in \"active\" vBuckets in this bucket (measured from curr_items)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_replica_curr_items","title":"items","name":"vb_replica_curr_items","desc":"Number of items in \"replica\" vBuckets in this bucket (measured from vb_replica_curr_items)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_pending_curr_items","title":"items","name":"vb_pending_curr_items","desc":"Number of items in \"pending\" vBuckets in this bucket and should be transient during rebalancing (measured from vb_pending_curr_items)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/curr_items_tot","title":"items","name":"curr_items_tot","desc":"Total number of items in this bucket (measured from curr_items_tot)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_active_resident_items_ratio","title":"resident %","name":"vb_active_resident_items_ratio","desc":"Percentage of active items cached in RAM in this bucket (measured from vb_active_resident_items_ratio)","maxY":100},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_replica_resident_items_ratio","title":"resident %","name":"vb_replica_resident_items_ratio","desc":"Percentage of replica items cached in RAM in this bucket (measured from vb_replica_resident_items_ratio)","maxY":100},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_pending_resident_items_ratio","title":"resident %","name":"vb_pending_resident_items_ratio","desc":"Percentage of replica items cached in RAM in this bucket (measured from vb_replica_resident_items_ratio)","maxY":100},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_resident_items_rate","title":"resident %","name":"ep_resident_items_rate","desc":"Percentage of all items cached in RAM in this bucket (measured from ep_resident_items_rate)","maxY":100},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_active_ops_create","title":"new items per sec.","name":"vb_active_ops_create","desc":"New items per second being inserted into \"active\" vBuckets in this bucket (measured from vb_active_ops_create)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_replica_ops_create","title":"new items per sec.","name":"vb_replica_ops_create","desc":"New items per second being inserted into \"replica\" vBuckets in this bucket (measured from vb_replica_ops_create"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_pending_ops_create","title":"new items per sec.","name":"vb_pending_ops_create","desc":"New items per second being instead into \"pending\" vBuckets in this bucket and should be transient during rebalancing (measured from vb_pending_ops_create)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_ops_create","title":"new items per sec.","name":"ep_ops_create","desc":"Total number of new items being inserted into this bucket (measured from ep_ops_create)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_active_eject","title":"ejections per sec.","name":"vb_active_eject","desc":"Number of items per second being ejected to disk from \"active\" vBuckets in this bucket (measured from vb_active_eject)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_replica_eject","title":"ejections per sec.","name":"vb_replica_eject","desc":"Number of items per second being ejected to disk from \"replica\" vBuckets in this bucket (measured from vb_replica_eject)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_pending_eject","title":"ejections per sec.","name":"vb_pending_eject","desc":"Number of items per second being ejected to disk from \"pending\" vBuckets in this bucket and should be transient during rebalancing (measured from vb_pending_eject)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_num_value_ejects","title":"ejections per sec.","name":"ep_num_value_ejects","desc":"Total number of items per second being ejected to disk in this bucket (measured from ep_num_value_ejects)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_active_itm_memory","title":"user data in RAM","name":"vb_active_itm_memory","desc":"Amount of active user data cached in RAM in this bucket (measured from vb_active_itm_memory)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_replica_itm_memory","title":"user data in RAM","name":"vb_replica_itm_memory","desc":"Amount of replica user data cached in RAM in this bucket (measured from vb_replica_itm_memory)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_pending_itm_memory","title":"user data in RAM","name":"vb_pending_itm_memory","desc":"Amount of pending user data cached in RAM in this bucket and should be transient during rebalancing (measured from vb_pending_itm_memory)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_kv_size","title":"user data in RAM","name":"ep_kv_size","desc":"Total amount of user data cached in RAM in this bucket (measured from ep_kv_size)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_active_ht_memory","title":"metadata in RAM","name":"vb_active_ht_memory","desc":"Amount of active item metadata consuming RAM in this bucket (measured from vb_active_ht_memory)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_replica_ht_memory","title":"metadata in RAM","name":"vb_replica_ht_memory","desc":"Amount of replica item metadata consuming in RAM in this bucket (measured from vb_replica_ht_memory)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_pending_ht_memory","title":"metadata in RAM","name":"vb_pending_ht_memory","desc":"Amount of pending item metadata consuming RAM in this bucket and should be transient during rebalancing (measured from vb_pending_ht_memory)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_ht_memory","title":"metadata in RAM","name":"ep_ht_memory","desc":"Total amount of item  metadata consuming RAM in this bucket (measured from ep_ht_memory)"}
+            ]},
+          {"blockName":"Disk Queues","extraCSSClasses":"withtotal closed",
+            "columns":["Active","Replica","Pending","Total"],
+            "stats":[
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_active_queue_size","title":"items","name":"vb_active_queue_size","desc":"Number of active items waiting to be written to disk in this bucket (measured from vb_active_queue_size)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_replica_queue_size","title":"items","name":"vb_replica_queue_size","desc":"Number of replica items waiting to be written to disk in this bucket (measured from vb_replica_queue_size)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_pending_queue_size","title":"items","name":"vb_pending_queue_size","desc":"Number of pending items waiting to be written to disk in this bucket and should be transient during rebalancing  (measured from vb_pending_queue_size)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_diskqueue_items","title":"items","name":"ep_diskqueue_items","desc":"Total number of items waiting to be written to disk in this bucket (measured from ep_diskqueue_items)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_active_queue_fill","title":"fill rate","name":"vb_active_queue_fill","desc":"Number of active items per second being put on the active item disk queue in this bucket (measured from vb_active_queue_fill)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_replica_queue_fill","title":"fill rate","name":"vb_replica_queue_fill","desc":"Number of replica items per second being put on the replica item disk queue in this bucket (measured from vb_replica_queue_fill)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_pending_queue_fill","title":"fill rate","name":"vb_pending_queue_fill","desc":"Number of pending items per second being put on the pending item disk queue in this bucket and should be transient during rebalancing (measured from vb_pending_queue_fill)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_diskqueue_fill","title":"fill rate","name":"ep_diskqueue_fill","desc":"Total number of items per second being put on the disk queue in this bucket (measured from ep_diskqueue_fill)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_active_queue_drain","title":"drain rate","name":"vb_active_queue_drain","desc":"Number of active items per second being written to disk in this bucket (measured from vb_pending_queue_drain)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_replica_queue_drain","title":"drain rate","name":"vb_replica_queue_drain","desc":"Number of replica items per second being written to disk in this bucket (measured from vb_replica_queue_drain)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_pending_queue_drain","title":"drain rate","name":"vb_pending_queue_drain","desc":"Number of pending items per second being written to disk in this bucket and should be transient during rebalancing (measured from vb_pending_queue_drain)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_diskqueue_drain","title":"drain rate","name":"ep_diskqueue_drain","desc":"Total number of items per second being written to disk in this bucket (measured from ep_diskqueue_drain)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_avg_active_queue_age","title":"average age","name":"vb_avg_active_queue_age","desc":"Average age in seconds of active items in the active item queue for this bucket (measured from vb_avg_active_queue_age)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_avg_replica_queue_age","title":"average age","name":"vb_avg_replica_queue_age","desc":"Average age in seconds of replica items in the replica item queue for this bucket (measured from vb_avg_replica_queue_age)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_avg_pending_queue_age","title":"average age","name":"vb_avg_pending_queue_age","desc":"Average age in seconds of pending items in the pending item queue for this bucket and should be transient during rebalancing (measured from vb_avg_pending_queue_age)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/vb_avg_total_queue_age","title":"average age","name":"vb_avg_total_queue_age","desc":"Average age in seconds of all items in the disk write queue for this bucket (measured from vb_avg_total_queue_age)"}
+            ]},
+          {"blockName":"Tap Queues","extraCSSClasses":"withtotal closed",
+            "columns":["Replication","Rebalance","Clients","Total"],
+            "stats":[
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_tap_replica_count","title":"TAP senders","name":"ep_tap_replica_count","desc":"Number of internal replication TAP queues in this bucket (measured from ep_tap_replica_count)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_tap_rebalance_count","title":"TAP senders","name":"ep_tap_rebalance_count","desc":"Number of internal rebalancing TAP queues in this bucket (measured from ep_tap_rebalance_count)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_tap_user_count","title":"TAP senders","name":"ep_tap_user_count","desc":"Number of internal \"user\" TAP queues in this bucket (measured from ep_tap_user_count)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_tap_total_count","title":"TAP senders","name":"ep_tap_total_count","desc":"Total number of internal TAP queues in this bucket (measured from ep_tap_total_count)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_tap_replica_qlen","title":"items","name":"ep_tap_replica_qlen","desc":"Number of items in the replication TAP queues in this bucket (measured from ep_tap_replica_qlen)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_tap_rebalance_qlen","title":"items","name":"ep_tap_rebalance_qlen","desc":"Number of items in the rebalance TAP queues in this bucket (measured from ep_tap_rebalance_qlen)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_tap_user_qlen","title":"items","name":"ep_tap_user_qlen","desc":"Number of items in \"user\" TAP queues in this bucket (measured from ep_tap_user_qlen)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_tap_total_qlen","title":"items","name":"ep_tap_total_qlen","desc":"Total number of items in TAP queues in this bucket (measured from ep_tap_total_qlen)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_tap_replica_queue_drain","title":"drain rate","name":"ep_tap_replica_queue_drain","desc":"Number of items per second being sent over replication TAP connections to this bucket, i.e. removed from queue (measured from ep_tap_replica_queue_drain)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_tap_rebalance_queue_drain","title":"drain rate","name":"ep_tap_rebalance_queue_drain","desc":"Number of items per second being sent over rebalancing TAP connections to this bucket, i.e. removed from queue (measured from ep_tap_rebalance_queue_drain)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_tap_user_queue_drain","title":"drain rate","name":"ep_tap_user_queue_drain","desc":"Number of items per second being sent over \"user\" TAP connections to this bucket, i.e. removed from queue (measured from ep_tap_user_queue_drain)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_tap_total_queue_drain","title":"drain rate","name":"ep_tap_total_queue_drain","desc":"Total number of items per second being sent over TAP connections to this bucket (measured from ep_tap_total_queue_drain)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_tap_replica_queue_backoff","title":"back-off rate","name":"ep_tap_replica_queue_backoff","desc":"Number of back-offs received per second while sending data over replication TAP connections to this bucket (measured from ep_tap_replica_queue_backoff)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_tap_rebalance_queue_backoff","title":"back-off rate","name":"ep_tap_rebalance_queue_backoff","desc":"Number of back-offs received per second while sending data over rebalancing TAP connections to this bucket (measured from ep_tap_rebalance_queue_backoff)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_tap_user_queue_backoff","title":"back-off rate","name":"ep_tap_user_queue_backoff","desc":"Number of back-offs received per second while sending data over \"user\" TAP connections to this bucket (measured from ep_tap_user_queue_backoff)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_tap_total_queue_backoff","title":"back-off rate","name":"ep_tap_total_queue_backoff","desc":"Total number of back-offs received per second while sending data over TAP connections to this bucket (measured from ep_tap_total_queue_backoff)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_tap_replica_queue_backfillremaining","title":"backfill remaining","name":"ep_tap_replica_queue_backfillremaining","desc":"Number of items in the backfill queues of replication TAP connections for this bucket (measured from ep_tap_replica_queue_backfillremaining)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_tap_rebalance_queue_backfillremaining","title":"backfill remaining","name":"ep_tap_rebalance_queue_backfillremaining","desc":"Number of items in the backfill queues of rebalancing TAP connections to this bucket (measured from ep_tap_rebalance_queue_backfillreamining)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_tap_user_queue_backfillremaining","title":"backfill remaining","name":"ep_tap_user_queue_backfillremaining","desc":"Number of items in the backfill queues of \"user\" TAP connections to this bucket (measured from ep_tap_user_queue_backfillremaining)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_tap_total_queue_backfillremaining","title":"backfill remaining","name":"ep_tap_total_queue_backfillremaining","desc":"Total number of items in the backfill queues of TAP connections to this bucket (measured from ep_tap_total_queue_backfillremaining)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_tap_replica_queue_itemondisk","title":"remaining on disk","name":"ep_tap_replica_queue_itemondisk","desc":"Number of items still on disk to be loaded for replication TAP connections to this bucket (measured from ep_tap_replica_queue_itemondisk)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_tap_rebalance_queue_itemondisk","title":"remaining on disk","name":"ep_tap_rebalance_queue_itemondisk","desc":"Number of items still on disk to be loaded for rebalancing TAP connections to this bucket (measured from ep_tap_rebalance_queue_itemondisk)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_tap_user_queue_itemondisk","title":"remaining on disk","name":"ep_tap_user_queue_itemondisk","desc":"Number of items still on disk to be loaded for \"client\" TAP connections to this bucket (measured from ep_tap_user_queue_itemondisk)"},
+              {"specificStatsURL":"/pools/default/buckets/default/stats/ep_tap_total_queue_itemondisk","title":"remaining on disk","name":"ep_tap_total_queue_itemondisk","desc":"Total number of items still on disk to be loaded for TAP connections to this bucket (measured from ep_tao_total_queue_itemonsidk)"}
+            ]}
+          ]}
+      ],
       [get("pools", "default", "buckets", x, "stats"), method('handleStats')],
       [get("pools", "default", "buckets", x, "nodes"), {
         servers: [
