@@ -570,6 +570,8 @@ var MockedRequest = mkClass({
       }
     }
 
+    // assigned below in /pools/default route to allow reuse of node list
+    var allNodes = [];
     var rv = [
       [post("logClientError"), method('doNothingPOST')],
       [get("logs"), {list: [{type: "info", code: 1, module: "ns_config_log", tstamp: 1265358398000, shortText: "message", text: "config changed"},
@@ -617,7 +619,7 @@ var MockedRequest = mkClass({
                                                 bucket_auth_failed:"1"}},
                                      ports:{proxyPort:11213,
                                             directPort:11212}}],
-
+      [get("settings", "stats"), {sendStats:true}],
       [get("pools"), function () {
         return {implementationVersion: 'only-web.rb-unknown',
                 componentsVersion: {
@@ -628,8 +630,18 @@ var MockedRequest = mkClass({
                   {name: 'default',
                    uri: "/pools/default"}]}
       }],
-      [get("pools", x), {nodes: [{hostname: "mickey-mouse.disney.com:8091",
+      [get("pools", x), {nodes: allNodes = [{hostname: "mickey-mouse.disney.com:8091",
                                   status: "healthy",
+                                  systemStats: {
+                                    cpu_utilization_rate: 42.5,
+                                    swap_total: 3221225472,
+                                    swap_used: 2969329664
+                                  },
+                                  interestingStats: {
+                                    curr_items: 0,
+                                    curr_items_tot: 0,
+                                    vb_replica_curr_items: 0
+                                  },
                                   clusterMembership: "inactiveAdded",
                                   os: 'Linux',
                                   version: 'only-web.rb',
@@ -647,6 +659,16 @@ var MockedRequest = mkClass({
                                   uptime: 86420,
                                   version: 'only-web.rb',
                                   status: "healthy",
+                                  systemStats: {
+                                    cpu_utilization_rate: 20,
+                                    swap_total: 2547232212,
+                                    swap_used: 3296642969
+                                  },
+                                  interestingStats: {
+                                    curr_items: 1,
+                                    curr_items_tot: 1,
+                                    vb_replica_curr_items: 1
+                                  },
                                   clusterMembership: "inactiveFailed",
                                   ports: {proxy: 11211,
                                           direct: 11311},
@@ -660,6 +682,16 @@ var MockedRequest = mkClass({
                                   uptime: 865000,
                                   version: "only-web.rb-2",
                                   status: "healthy",
+                                  systemStats: {
+                                    cpu_utilization_rate: 20,
+                                    swap_total: 2521247232,
+                                    swap_used: 4296329669
+                                  },
+                                  interestingStats: {
+                                    curr_items: 5,
+                                    curr_items_tot: 11,
+                                    vb_replica_curr_items: 20
+                                  },
                                   clusterMembership: "active",
                                   ports: {proxy: 11211,
                                           direct: 11311},
@@ -674,6 +706,16 @@ var MockedRequest = mkClass({
                                   os: 'Linux',
                                   version: 'only-web.rb',
                                   status: "unhealthy",
+                                  systemStats: {
+                                    cpu_utilization_rate: 0.53,
+                                    swap_total: 2547232,
+                                    swap_used: 42969
+                                  },
+                                  interestingStats: {
+                                    curr_items: 5,
+                                    curr_items_tot: 11,
+                                    vb_replica_curr_items: 20
+                                  },
                                   clusterMembership: "active",
                                   failedOver: false,
                                   memoryTotal: 2032574464,
@@ -733,6 +775,9 @@ var MockedRequest = mkClass({
                                   replication: 0.5}
       }],
       [get("pools", "default", "buckets"), [{name: "default",
+                                             nodeLocator: 'vbucket',
+                                             nodes: allNodes, // see /pools/default nodes list above
+                                             flushCacheUri: "/pools/default/buckets/4/controller/doFlush",
                                              bucketType: 'membase',
                                              uri: "/pools/default/buckets/4",
                                              stats: {uri: "/pools/default/buckets/4/stats"},
@@ -754,6 +799,9 @@ var MockedRequest = mkClass({
                                                "itemCount": 1234
                                              }},
                                             {name: "Excerciser Application",
+                                             nodeLocator: 'vbucket',
+                                             nodes: allNodes, // see /pools/default nodes list above
+                                             flushCacheUri: "/pools/default/buckets/5/controller/doFlush",
                                              bucketType: 'memcached',
                                              uri: "/pools/default/buckets/5",
                                              testAppBucket: true,
@@ -777,6 +825,9 @@ var MockedRequest = mkClass({
                                                "itemCount": 12324
                                              }},
                                             {name: "new-year-site",
+                                             nodeLocator: 'vbucket',
+                                             nodes: allNodes, // see /pools/default nodes list above
+                                             flushCacheUri: "/pools/default/buckets/6/controller/doFlush",
                                              bucketType: 'memcached',
                                              uri: "/pools/default/buckets/6",
                                              stats: {uri: "/pools/default/buckets/6/stats"},
@@ -798,6 +849,9 @@ var MockedRequest = mkClass({
                                                "itemCount": 12324
                                              }},
                                             {name: "new-year-site-staging",
+                                             nodeLocator: 'vbucket',
+                                             nodes: allNodes, // see /pools/default nodes list above
+                                             flushCacheUri: "/pools/default/buckets/7/controller/doFlush",
                                              bucketType: 'membase',
                                              uri: "/pools/default/buckets/7",
                                              stats: {uri: "/pools/default/buckets/7/stats"},
