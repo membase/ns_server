@@ -110,8 +110,8 @@ do-install:
 	mkdir -p $(ERLWSH_LIBDIR)
 	cp -r deps/erlwsh/ebin $(ERLWSH_LIBDIR)/
 	cp -r deps/erlwsh/priv $(ERLWSH_LIBDIR)/
-	@true mkdir -p $(GEN_SMTP_LIBDIR)
-	@true cp -r deps/gen_smtp/ebin $(GEN_SMTP_LIBDIR)/
+	mkdir -p $(GEN_SMTP_LIBDIR)
+	cp -r deps/gen_smtp/ebin $(GEN_SMTP_LIBDIR)/
 	mkdir -p $(MOCHIWEB_LIBDIR)
 	cp -r deps/mochiweb/ebin $(MOCHIWEB_LIBDIR)/
 	mkdir -p $(DESTDIR)$(PREFIX)/etc/membase
