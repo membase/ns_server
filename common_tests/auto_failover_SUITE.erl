@@ -124,7 +124,7 @@ auto_failover_enabled_one_node_down(TestConfig) ->
     ok = ns_test_util:stop_node(lists:nth(2, Nodes)),
 
     % Now we wait until the auto-failover ticks in
-    ok = ns_test_util:wait_for_failover(hd(Nodes), 10, 'n_1@127.0.0.1').
+    ok = ns_test_util:wait_for_failover(hd(Nodes), 20, 'n_1@127.0.0.1').
 
 auto_failover_disabled_one_node_down(TestConfig) ->
     {nodes, Nodes} = lists:keyfind(nodes, 1, TestConfig),
@@ -156,7 +156,7 @@ enable_auto_failover_on_unhealthy_cluster(TestConfig) ->
     ok = rpc:call('n_0@127.0.0.1', auto_failover, enable, [5, 1]),
 
     % And will fallover that node
-    ok = ns_test_util:wait_for_failover(hd(Nodes), 10, 'n_1@127.0.0.1').
+    ok = ns_test_util:wait_for_failover(hd(Nodes), 20, 'n_1@127.0.0.1').
 
 auto_failover_enabled_master_node_down(TestConfig) ->
     {nodes, Nodes} = lists:keyfind(nodes, 1, TestConfig),
@@ -171,7 +171,7 @@ auto_failover_enabled_master_node_down(TestConfig) ->
     ok = ns_test_util:stop_node(lists:nth(1, Nodes)),
 
     % Now we wait until the auto-failover ticks in
-    ok = ns_test_util:wait_for_failover(lists:nth(2, Nodes), 20,
+    ok = ns_test_util:wait_for_failover(lists:nth(2, Nodes), 30,
                                         'n_0@127.0.0.1').
 
 
@@ -182,12 +182,12 @@ auto_failover_enabled_two_nodes_down(TestConfig) ->
     {nodes, Nodes} = lists:keyfind(nodes, 1, TestConfig),
 
     % Enable auto-failover (when a node is down longer than 5 seconds)
-    ok = rpc:call('n_0@127.0.0.1', auto_failover, enable, [5, 2]),
+    ok = rpc:call('n_0@127.0.0.1', auto_failover, enable, [5, 1]),
 
     % Stop two nodes
     ok = ns_test_util:stop_nodes(lists:sublist(Nodes, 2, 2)),
 
-    % No node will be auto-fialovered. We only auto-failover if onle *one*
+    % No node will be auto-fialovered. We only auto-failover if only *one*
     % node is down at the same time
     {error, timeout} = ns_test_util:wait_for_failover(hd(Nodes), 20,
                                                       'n_1@127.0.0.1'),
@@ -206,7 +206,7 @@ auto_failover_enabled_more_than_max_nodes_down(TestConfig) ->
     ok = ns_test_util:stop_node(lists:nth(2, Nodes)),
 
     % Now we wait until the auto-failover ticks in
-    ok = ns_test_util:wait_for_failover(hd(Nodes), 10, 'n_1@127.0.0.1'),
+    ok = ns_test_util:wait_for_failover(hd(Nodes), 20, 'n_1@127.0.0.1'),
 
     % Stop another node
     ok = ns_test_util:stop_node(lists:nth(3, Nodes)),
@@ -222,36 +222,34 @@ auto_failover_enabled_change_settings(TestConfig) ->
 
     % Enable auto-failover (when a node is down longer than 5 seconds)
     % Only failover one node
-    ok = rpc:call('n_0@127.0.0.1', auto_failover, enable, [5, 1]),
+    ok = rpc:call('n_0@127.0.0.1', auto_failover, enable, [50, 1]),
 
     % Stop two nodes
     ok = ns_test_util:stop_node(lists:nth(2, Nodes)),
 
-    % Now we wait until the auto-failover ticks in
-    ok = ns_test_util:wait_for_failover(hd(Nodes), 10, 'n_1@127.0.0.1'),
+    % Auto-failover shouldn't tick in within 20 seconds
+    {error, timeout} =  ns_test_util:wait_for_failover(hd(Nodes), 20,
+                                                       'n_1@127.0.0.1'),
 
-    % Increase the number of nodes that might be automatically failovered
+    % Decrease the timeout, so that auto-failover ticks in faster
     % to two
-    ok = rpc:call('n_0@127.0.0.1', auto_failover, enable, [5, 2]),
+    ok = rpc:call('n_0@127.0.0.1', auto_failover, enable, [5, 1]),
 
-    % Stop another node
-    ok = ns_test_util:stop_node(lists:nth(3, Nodes)),
-
-    % Auto-failover should failover this node
-    ok = ns_test_util:wait_for_failover(hd(Nodes), 10, 'n_2@127.0.0.1').
+    % Auto-failover should failover this node within 20 seconds (even faster)
+    ok = ns_test_util:wait_for_failover(hd(Nodes), 20, 'n_1@127.0.0.1').
 
 %% @doc enable auto-failover, but failover a node manually
 auto_failover_enabled_failover_one_node_manually(TestConfig) ->
     {nodes, Nodes} = lists:keyfind(nodes, 1, TestConfig),
 
     % Enable auto-failover (when a node is down longer than 15 seconds)
-    ok = rpc:call('n_0@127.0.0.1', auto_failover, enable, [15, 3]),
+    ok = rpc:call('n_0@127.0.0.1', auto_failover, enable, [15, 1]),
 
     % Stop two nodes
     ok = ns_test_util:stop_nodes(lists:sublist(Nodes, 2, 2)),
 
     % Failover one node manually and make sure that the other node wasn't
-    % failoverd
+    % failovered
     ok = ns_test_util:failover_node(hd(Nodes), lists:nth(2, Nodes)),
     ok = ns_test_util:wait_for_failover(hd(Nodes), 10, 'n_1@127.0.0.1'),
     [{unhealthy, active}] = ns_test_util:nodes_status(hd(Nodes),
@@ -278,7 +276,7 @@ auto_failover_enabled_master_node_down_preserve_count(TestConfig) ->
     ok = ns_test_util:stop_node(lists:nth(1, Nodes)),
 
     % Now we wait until the auto-failover ticks in
-    ok = ns_test_util:wait_for_failover(lists:nth(3, Nodes), 20,
+    ok = ns_test_util:wait_for_failover(lists:nth(3, Nodes), 30,
                                         'n_0@127.0.0.1'),
 
     % Stop another node that shouldn't be auto-failovered
