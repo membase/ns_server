@@ -100,7 +100,7 @@
                                       </div>
                                   </div>
                                   {%= V.setPercentBar(this.systemStats.swap_used / this.systemStats.swap_total * 100) %}
-                                  {%= h(truncateTo3Digits(((this.systemStats.swap_used / this.systemStats.swap_total) || 0) * 100)) %}%
+                                  {%= h(truncateTo3Digits(((this.systemStats.swap_used / this.systemStats.swap_total) || 0) * 100, 10)) %}%
                                 </div>
                               <!-- {% } else { %} -->
                               <span>N/A</span>
