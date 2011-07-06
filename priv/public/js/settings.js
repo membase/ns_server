@@ -462,24 +462,35 @@ var EmailAlertsSection = {
 
     $('#test_email').live('click', function() {
       var testButton = $(this).text('Sending...').attr('disabled', 'disabled');
-      $.post('/settings/alerts/testEmail', function(data, status) {
+      var params = $.extend({
+        subject: 'Test email from Membase',
+        body: 'This email was sent to you to test the email alert email ' +
+          'server settings.'
+      }, self.getParams());
+
+      postWithValidationErrors('/settings/alerts/testEmail', $.param(params),
+                                function (data, status) {
         if (status === 'success') {
           testButton.text('Sent!').css('font-weight', 'bold');
           // Increase compatibility with unnamed functions
           window.setTimeout(function() {
-            testButton.text('Test Mail').css('font-weight', 'normal')
-              .removeAttr('disabled');
+            self.resetEmailButton();
           }, 1000);
+        } else if (status === 'error') {
+          testButton.text('Error!').css('font-weight', 'bold');
         }
       });
     });
 
     $('#email_alerts_container')
-      .delegate('input', 'keyup',
-                function() {self.validate(self.getParams());
-       })
+      .delegate('input', 'keyup', function() {
+        self.resetEmailButton();
+        self.validate(self.getParams());
+      })
       .delegate('textarea, input[type=checkbox], input[type=radio]', 'change',
-                 function() {self.validate(self.getParams());
+                function() {
+        self.resetEmailButton();
+        self.validate(self.getParams());
       });
 
     $('#email_alerts_container').delegate('.save_button',
@@ -524,6 +535,11 @@ var EmailAlertsSection = {
       emailEncrypt: $('#email_alerts_encrypt').is(':checked'),
       alerts: alerts.join(',')
     };
+  },
+  // Resets the email button to the default text and state
+  resetEmailButton: function() {
+    $('#test_email').text('Test Mail').css('font-weight', 'normal')
+      .removeAttr('disabled');
   },
   refresh: function() {
     this.emailAlertsEnabled.recalculate();

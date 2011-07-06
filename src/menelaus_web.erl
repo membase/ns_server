@@ -1105,11 +1105,19 @@ handle_settings_alerts_post(Req) ->
 
 %% @doc Sends a test email with the current settings
 handle_settings_alerts_send_test_email(Req) ->
-    ns_mail_log:send_email_from_config("Test email from Membase",
-                                       "This email was sent to you to test "
-                                       "the email alert email server "
-                                       "settings."),
-    Req:respond({200, add_header(), []}).
+    PostArgs = Req:parse_post(),
+    Subject = proplists:get_value("subject", PostArgs),
+    Body = proplists:get_value("body", PostArgs),
+    {ok, Config} = menelaus_alert:parse_settings_alerts_post(PostArgs),
+
+    case ns_mail_log:send_email_with_config(Subject, Body, Config) of
+        {error, _, {_, _, {error, Reason}}} ->
+            reply_json(Req, {struct, [{error, Reason}]}, 400);
+        {error, Reason} ->
+            reply_json(Req, {struct, [{error, Reason}]}, 400);
+        _ ->
+            Req:respond({200, add_header(), []})
+    end.
 
 handle_traffic_generator_control_post(Req) ->
     % TODO: rip traffic generation the hell out.

@@ -23,7 +23,7 @@
 -export([init/1, handle_event/2, handle_call/2,
          handle_info/2, terminate/2, code_change/3]).
 %% API
--export([send_email_from_config/2]).
+-export([send_email_with_config/3]).
 
 -record(state, {}).
 
@@ -49,7 +49,6 @@ terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
 
 handle_event({ns_log, _Category, Module, Code, Fmt, Args}, State) ->
-    ?log_info("yay an event for ns_mail_log:~n~p ~p", [Module, Code]),
     {value, Config} = ns_config:search(email_alerts),
     case proplists:get_bool(enabled, Config) of
         true ->
@@ -57,7 +56,6 @@ handle_event({ns_log, _Category, Module, Code, Fmt, Args}, State) ->
             EnabledAlerts = proplists:get_value(alerts, Config, []),
             case lists:member(AlertKey, EnabledAlerts) of
                 true ->
-                    ?log_info("ns_mail_log: trying to send a mail", []),
                     send_email(proplists:get_value(sender, Config),
                                proplists:get_value(recipients, Config),
                                AlertKey,
@@ -81,9 +79,8 @@ handle_info(Info, State) ->
     ?log_info("ns_mail_log handle_info(~p, ~p)~n", [Info, State]),
     {ok, State, hibernate}.
 
-%% @doc Sends an email with the current configuration setting.
-send_email_from_config(Subject, Body) ->
-    {value, Config} = ns_config:search(email_alerts),
+%% @doc Sends an email with the given configuration
+send_email_with_config(Subject, Body, Config) ->
     ServerConfig = proplists:get_value(email_server, Config),
     Options = config_to_options(ServerConfig),
     ns_mail:send(proplists:get_value(sender, Config),
@@ -114,5 +111,4 @@ config_to_options(ServerConfig) ->
 send_email(Sender, Rcpts, AlertKey, Message, ServerConfig) ->
     Options = config_to_options(ServerConfig),
     Subject = "Membase alert: " ++ atom_to_list(AlertKey),
-    ?log_info("really try to send mail", []),
     ns_mail:send(Sender, Rcpts, Subject, Message, Options).
