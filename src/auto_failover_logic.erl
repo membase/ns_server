@@ -138,17 +138,18 @@ process_frame(Nodes, DownNodes, State) ->
                             true ->
                                 [];
                             false ->
-                                [mail_too_small]
+                                [{mail_too_small, Node}]
                         end
                 end;
             {_, true} -> [];
             {[#node_state{state = nearly_down}], _} -> [];
-            _ ->
+            {Else, _} ->
                 case HasNearlyDown of
                     true ->
+                        NodesDown = [Node || #node_state{name=Node} <- Else],
                         %% we have nearly_down node, but it's not the only
                         %% down node, so mailing a warning
-                        [mail_down_warning];
+                        [{mail_down_warning, NodesDown}];
                     _ ->
                         []
                 end
@@ -157,13 +158,13 @@ process_frame(Nodes, DownNodes, State) ->
                  mailed_down_warning = case HasNearlyDown of
                                            false -> false;
                                            _ -> case Actions of
-                                                    [mail_down_warning] -> true;
+                                                    [{mail_down_warning, _}] -> true;
                                                     _ -> State#state.mailed_down_warning
                                                 end
                                        end,
                  nodes_states = lists:umerge(UpStates, DownStates),
                  mailed_too_small_cluster = case Actions of
-                                                [mail_too_small] -> length(Nodes);
+                                                [{mail_too_small, _}] -> length(Nodes);
                                                 _ -> State#state.mailed_too_small_cluster
                                             end
                 },
@@ -194,7 +195,7 @@ min_size_test_body(Threshold) ->
     State0 = init_state(Threshold),
     {[], State1} = process_frame([a,b], [b], State0),
     State2 = process_frame_no_action(Threshold, [a,b], [b], State1),
-    {[mail_too_small], State3} = process_frame([a,b], [b], State2),
+    {[{mail_too_small, _}], State3} = process_frame([a,b], [b], State2),
     process_frame_no_action(30, [a,b], [b], State3).
 
 min_size_test() ->
@@ -211,7 +212,7 @@ other_down_test() ->
     State0 = init_state(3),
     {[], State1} = process_frame([a,b,c], [b], State0),
     State2 = process_frame_no_action(3, [a,b,c], [b], State1),
-    {[mail_down_warning], State3} = process_frame([a,b,c], [b,c], State2),
+    {[{mail_down_warning, _}], State3} = process_frame([a,b,c], [b,c], State2),
     State4 = process_frame_no_action(1, [a,b,c], [b], State3),
     {[{failover, b}], _} = process_frame([a,b,c], [b], State4),
     {[], State5} = process_frame([a,b,c],[b,c], State4),

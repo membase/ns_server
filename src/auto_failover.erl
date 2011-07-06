@@ -193,11 +193,11 @@ handle_info(tick, State) ->
                                           State#state.auto_failover_logic_state),
     NewState =
         lists:foldl(
-          fun (mail_too_small, S) ->
+          fun ({mail_too_small, Node}, S) ->
                   ns_log:log(?MODULE, ?EVENT_CLUSTER_TOO_SMALL,
-                             "Could not auto-failover node. "
+                             "Could not auto-failover node (~p). "
                              "Cluster was too small, you need at least 2 other nodes.~n",
-                             []),
+                             [Node]),
                   S;
               (_, #state{warned_max_reached = true} = S) ->
                   S;
@@ -208,11 +208,12 @@ handle_info(tick, State) ->
                              "automatically failovered (1) is reached.~n",
                              []),
                   S#state{warned_max_reached = true};
-              (mail_down_warning, S) ->
+              ({mail_down_warning, Nodes}, S) ->
                   ns_log:log(?MODULE, ?EVENT_OTHER_NODES_DOWN,
                              "Could not auto-failover node. "
-                             "There was at least another node down.~n",
-                             []),
+                             "There was at least another node down (~s).~n",
+                             [string:join([atom_to_list(N) || N <- Nodes],
+                                          ", ")]),
                   S;
               ({failover, Node}, S) ->
                   ns_cluster_membership:failover(Node),
