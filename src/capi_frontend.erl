@@ -18,18 +18,32 @@
 -compile(export_all).
 
 -include("couch_db.hrl").
+-include("ns_common.hrl").
 
 -compile(export_all).
 
 not_implemented(_Arg, _Rest) ->
-    not_implemented.
+    exit({_Arg, not_implemented}).
 
 do_db_req(#httpd{user_ctx=UserCtx,path_parts=[DbName|_]}=Req, Fun) ->
-    Db = #db{user_ctx = UserCtx, name = DbName},
-    Fun(Req, Db).
+    case couch_db:open(DbName, [{user_ctx, UserCtx}]) of
+        {ok, Db} ->
+            try
+                Fun(Req, Db)
+                after
+                    catch couch_db:close(Db)
+                end;
+        Error ->
+            throw(Error)
+    end.
 
+
+%% Required for replication
 get_db_info(Db) ->
-    exit(not_implemented(get_db_info, [Db])).
+    case is_couchbase_db(Db#db.name) of
+        false -> couch_db:get_db_info(Db)
+    end.
+
 
 with_vbucket_db(Db, VBucket, Fun) ->
     DbName = iolist_to_binary([Db#db.name, $/, integer_to_list(VBucket)]),
@@ -41,25 +55,39 @@ with_vbucket_db(Db, VBucket, Fun) ->
     end.
 
 update_doc(Db, Doc, Options) ->
-    with_vbucket_db(Db, 0,
-                    fun (RealDb) ->
-                        couch_db:update_doc(RealDb, Doc, Options)
-                    end).
+    case is_couchbase_db(Db#db.name) of
+        false -> couch_db:update_doc(Db, Doc, Options)
+    end.
 
 update_doc(Db, Doc, Options, UpdateType) ->
-    with_vbucket_db(Db, 0,
-                    fun (RealDb) ->
-                            couch_db:update_doc(RealDb, Doc, Options, UpdateType)
-                    end).
+    case is_couchbase_db(Db#db.name) of
+        false -> couch_db:update_doc(Db, Doc, Options, UpdateType)
+    end.
 
-ensure_full_commit(_Db, _RequiredSeq) ->
-    {ok, <<"0">>}.
+ensure_full_commit(Db, RequiredSeq) ->
+    UpdateSeq = couch_db:get_update_seq(Db),
+    CommittedSeq = couch_db:get_committed_update_seq(Db),
+    case RequiredSeq of
+        undefined ->
+            couch_db:ensure_full_commit(Db);
+        _ ->
+            if RequiredSeq > UpdateSeq ->
+                    throw({bad_request,
+                           "can't do a full commit ahead of current update_seq"});
+               RequiredSeq > CommittedSeq ->
+                    couch_db:ensure_full_commit(Db);
+               true ->
+                    {ok, Db#db.instance_start_time}
+            end
+    end.
 
 check_is_admin(_Db) ->
     ok.
 
+
+
 handle_changes(ChangesArgs, Req, Db) ->
-    exit(not_implemented(handle_changes, [ChangesArgs, Req, Db])).
+    couch_changes:handle_changes(ChangesArgs, Req, Db).
 
 start_view_compact(DbName, GroupId) ->
     exit(not_implemented(start_view_compact, [DbName, GroupId])).
@@ -83,16 +111,14 @@ delete_db(DbName, UserCtx) ->
     exit(not_implemented(delete_db, [DbName, UserCtx])).
 
 update_docs(Db, Docs, Options) ->
-    with_vbucket_db(Db, 0,
-                    fun (RealDb) ->
-                            couch_db:update_docs(RealDb, Docs, Options)
-                    end).
+    case is_couchbase_db(Db#db.name) of
+        false -> couch_db:update_docs(Db, Docs, Options)
+    end.
 
 update_docs(Db, Docs, Options, Type) ->
-    with_vbucket_db(Db, 0,
-                    fun (RealDb) ->
-                            couch_db:update_docs(RealDb, Docs, Options, Type)
-                    end).
+    case is_couchbase_db(Db#db.name) of
+        false -> couch_db:update_docs(Db, Docs, Options, Type)
+    end.
 
 purge_docs(Db, IdsRevs) ->
     %% couch_db:purge_docs(Db, IdsRevs).
@@ -118,17 +144,17 @@ get_revs_limit(Db) ->
     exit(not_implemented(get_revs_limit, [Db])).
     %% couch_db:get_revs_limit(Db).
 
+
 open_doc_revs(Db, DocId, Revs, Options) ->
-    with_vbucket_db(Db, 0,
-                    fun (RealDb) ->
-                            couch_db:open_doc_revs(RealDb, DocId, Revs, Options)
-                    end).
+    case is_couchbase_db(Db#db.name) of
+        false -> couch_db:open_doc_revs(Db, DocId, Revs, Options)
+    end.
+
 
 open_doc(Db, DocId, Options) ->
-    with_vbucket_db(Db, 0,
-                    fun (RealDb) ->
-                            couch_db:open_doc(RealDb, DocId, Options)
-                    end).
+    case is_couchbase_db(Db#db.name) of
+        false -> couch_db:open_doc(Db, DocId, Options)
+    end.
 
 make_attachment_fold(_Att, ReqAcceptsAttEnc) ->
     case ReqAcceptsAttEnc of
@@ -141,10 +167,11 @@ range_att_foldl(Att, From, To, Fun, Acc) ->
 
 -spec all_databases() -> {ok, [binary()]}.
 all_databases() ->
-    {ok, [?l2b(Name) || Name <- ns_bucket:get_bucket_names(membase)]}.
+    couch_server:all_databases().
+%{ok, [?l2b(Name) || Name <- ns_bucket:get_bucket_names(membase)]}.
 
 task_status_all() ->
-    [].
+    couch_task_status:all().
 
 restart_core_server() ->
     exit(not_implemented(restart_core_server, [])).
@@ -195,3 +222,7 @@ couch_doc_open(Db, DocId, Rev, Options) ->
               throw(Else)
       end
   end.
+
+
+is_couchbase_db(Name) ->
+    nomatch =:= re:run(Name, <<"/">>).
