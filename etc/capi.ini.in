@@ -7,3 +7,6 @@ bind_address = 0.0.0.0
 
 [httpd_db_handlers]
 _all_docs = {capi_frontend, all_docs_db_req}
+
+[httpd_design_handlers]
+_view = {capi_view, handle_view_req}
