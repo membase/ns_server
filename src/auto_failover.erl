@@ -64,8 +64,7 @@
           % Time a node needs to be down until it is automatically failovered
           timeout=nil :: nil | integer(),
           % Counts the number of nodes that were already auto-failovered
-          count=0 :: non_neg_integer(),
-          warned_max_reached = false :: boolean()
+          count=0 :: non_neg_integer()
          }).
 
 %%
@@ -171,7 +170,6 @@ handle_call(disable_auto_failover, _From, #state{tick_ref=Ref}=State) ->
 handle_call(reset_auto_failover_count, _From, State) ->
     ?log_info("reset auto_failover count: ~p", [State]),
     State2 = State#state{count=0,
-                         warned_max_reached = false,
                          auto_failover_logic_state = init_logic_state(State#state.timeout)},
     make_state_persistent(State2),
     {reply, ok, State2};
@@ -199,21 +197,18 @@ handle_info(tick, State) ->
                              "Cluster was too small, you need at least 2 other nodes.~n",
                              [Node]),
                   S;
-              (_, #state{warned_max_reached = true} = S) ->
-                  S;
-              (_, #state{count=1} = S) ->
+              ({_, Node}, #state{count=1} = S) ->
                   ns_log:log(?MODULE, ?EVENT_MAX_REACHED,
-                             "Could not auto-failover more nodes. "
+                             "Could not auto-failover more nodes (~p). "
                              "Maximum number of nodes that will be "
                              "automatically failovered (1) is reached.~n",
-                             []),
-                  S#state{warned_max_reached = true};
-              ({mail_down_warning, Nodes}, S) ->
+                             [Node]),
+                  S;
+              ({mail_down_warning, Node}, S) ->
                   ns_log:log(?MODULE, ?EVENT_OTHER_NODES_DOWN,
-                             "Could not auto-failover node. "
-                             "There was at least another node down (~s).~n",
-                             [string:join([atom_to_list(N) || N <- Nodes],
-                                          ", ")]),
+                             "Could not auto-failover node (~p). "
+                             "There was at least another node down.~n",
+                             [Node]),
                   S;
               ({failover, Node}, S) ->
                   ns_cluster_membership:failover(Node),

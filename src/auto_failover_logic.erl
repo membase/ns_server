@@ -23,20 +23,21 @@
 -record(node_state, {
           name :: atom(),
           down_counter = 0 :: non_neg_integer(),
-          state :: atom()
+          state :: removed|new|half_down|nearly_down|failover|up,
+          % Whether are down_warning for this node was alrady
+          % mailed or not
+          mailed_down_warning = false :: boolean()
          }).
 
 -record(state, {
           nodes_states :: [#node_state{}],
           mailed_too_small_cluster :: integer(),
-          mailed_down_warning :: boolean(),
           down_threshold :: pos_integer()
          }).
 
 init_state(DownThreshold) ->
     #state{nodes_states = [],
            mailed_too_small_cluster = 0,
-           mailed_down_warning = false,
            down_threshold = DownThreshold - 1}.
 
 fold_matching_nodes([], NodeStates, Fun, Acc) ->
@@ -109,7 +110,8 @@ process_frame(Nodes, DownNodes, State) ->
         fun (#node_state{state = removed}, Acc) -> Acc;
             (NodeState, Acc) ->
                 [NodeState#node_state{state = up,
-                                      down_counter = 0}
+                                      down_counter = 0,
+                                      mailed_down_warning = false}
                  | Acc]
         end,
     UpStates0 = fold_matching_nodes(UpNodes, State#state.nodes_states, UpFun, []),
@@ -125,44 +127,45 @@ process_frame(Nodes, DownNodes, State) ->
         lists:any(fun (#node_state{state = nearly_down}) -> true;
                       (_) -> false
                   end, DownStates),
-    Actions =
-        case {DownStates, State#state.mailed_down_warning} of
-            {[#node_state{state = failover,
-                          name = Node}], _} ->
-                case Nodes of
-                    [_, _, _ | _] ->
+    {Actions, DownStates2} =
+        case DownStates of
+            [#node_state{state = failover, name = Node}] ->
+                ClusterSize = length(Nodes),
+                case ClusterSize > 2 of
+                    true ->
                         %% doing failover
-                        [{failover, Node}];
-                    _ ->
-                        case State#state.mailed_too_small_cluster =:= length(Nodes) of
+                        {[{failover, Node}], DownStates};
+                    false ->
+                        case State#state.mailed_too_small_cluster =:= ClusterSize of
                             true ->
-                                [];
+                                {[], DownStates};
                             false ->
-                                [{mail_too_small, Node}]
+                                {[{mail_too_small, Node}], DownStates}
                         end
                 end;
-            {_, true} -> [];
-            {[#node_state{state = nearly_down}], _} -> [];
-            {Else, _} ->
+            [#node_state{state = nearly_down}] -> {[], DownStates};
+            Else ->
                 case HasNearlyDown of
                     true ->
-                        NodesDown = [Node || #node_state{name=Node} <- Else],
-                        %% we have nearly_down node, but it's not the only
-                        %% down node, so mailing a warning
-                        [{mail_down_warning, NodesDown}];
+                        % Return separate events for all nodes that are down,
+                        % which haven't been sent already.
+                        {Actions2, DownStates3} = lists:foldl(
+                          fun (#node_state{state=nearly_down,name=Node,
+                                           mailed_down_warning=false}=S,
+                               {Warnings, DS}) ->
+                              {[{mail_down_warning, Node}|Warnings],
+                               [S#node_state{mailed_down_warning=true}|DS]};
+                              % Warning was already sent
+                              (S, {Warnings, DS}) ->
+                                  {Warnings, [S|DS]}
+                          end, {[], []}, Else),
+                          {lists:reverse(Actions2), lists:reverse(DownStates3)};
                     _ ->
-                        []
+                        {[], DownStates}
                 end
         end,
     NewState = State#state{
-                 mailed_down_warning = case HasNearlyDown of
-                                           false -> false;
-                                           _ -> case Actions of
-                                                    [{mail_down_warning, _}] -> true;
-                                                    _ -> State#state.mailed_down_warning
-                                                end
-                                       end,
-                 nodes_states = lists:umerge(UpStates, DownStates),
+                 nodes_states = lists:umerge(UpStates, DownStates2),
                  mailed_too_small_cluster = case Actions of
                                                 [{mail_too_small, _}] -> length(Nodes);
                                                 _ -> State#state.mailed_too_small_cluster
@@ -217,9 +220,32 @@ other_down_test() ->
     {[{failover, b}], _} = process_frame([a,b,c], [b], State4),
     {[], State5} = process_frame([a,b,c],[b,c], State4),
     State6 = process_frame_no_action(1, [a,b,c], [b], State5),
-    {[{failover, b}], _} = process_frame([a,b,c],[b], State6),
+    {[{failover, b}], _} = process_frame([a,b,c],[b], State6).
 
-    {[], StateReinit} = process_frame([a,b,c], [], State4),
-    false = StateReinit#state.mailed_down_warning.
+two_down_at_same_time_test() ->
+    State0 = init_state(3),
+    State1 = process_frame_no_action(2, [a,b,c,d], [b,c], State0),
+    {[{mail_down_warning, b}, {mail_down_warning, c}], _} =
+        process_frame([a,b,c,d], [b,c], State1).
+
+multiple_mail_down_warning_test() ->
+    State0 = init_state(3),
+    {[], State1} = process_frame([a,b,c], [b], State0),
+    State2 = process_frame_no_action(2, [a,b,c], [b], State1),
+    {[{mail_down_warning, b}], State3} = process_frame([a,b,c], [b,c], State2),
+    % Make sure not every tick sends out a message
+    State4 = process_frame_no_action(1, [a,b,c], [b,c], State3),
+    {[{mail_down_warning, c}], _} = process_frame([a,b,c], [b,c], State4).
+
+% Test if mail_down_warning is sent again if node was up in between
+mail_down_warning_down_up_down_test() ->
+    State0 = init_state(3),
+    {[], State1} = process_frame([a,b,c], [b], State0),
+    State2 = process_frame_no_action(2, [a,b,c], [b], State1),
+    {[{mail_down_warning, b}], State3} = process_frame([a,b,c], [b,c], State2),
+    % Node is up again
+    State4 = process_frame_no_action(1, [a,b,c], [], State3),
+    State5 = process_frame_no_action(2, [a,b,c], [b], State4),
+    {[{mail_down_warning, b}], _} = process_frame([a,b,c], [b,c], State5).
 
 -endif.

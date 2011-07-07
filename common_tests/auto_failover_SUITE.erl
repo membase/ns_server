@@ -214,7 +214,16 @@ auto_failover_enabled_more_than_max_nodes_down(TestConfig) ->
     % Node shouldn't be failovered, as the maximum of nodes that should
     % get automatically be failovered is already reached
     {error, timeout} = ns_test_util:wait_for_failover(hd(Nodes), 20,
-                                                      'n_2@127.0.0.1').
+                                                      'n_2@127.0.0.1'),
+
+    % Stop another node
+    ok = ns_test_util:stop_node(lists:nth(4, Nodes)),
+
+    % Node shouldn't be failovered, as the maximum of nodes that should
+    % get automatically be failovered is already reached
+    {error, timeout} = ns_test_util:wait_for_failover(hd(Nodes), 20,
+                                                      'n_3@127.0.0.1').
+
 
 %% @doc enable auto-failover, change settings while it is running
 auto_failover_enabled_change_settings(TestConfig) ->
