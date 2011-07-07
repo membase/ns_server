@@ -163,10 +163,10 @@ TAGS:
 	ctags -eR .
 
 $(NS_SERVER_PLT): | all
-	$(MAKE) do_build_plt COUCH_PATH="$(shell . `pwd`/.configuration && echo $$couch
+	$(MAKE) do_build_plt COUCH_PATH="$(shell . `pwd`/.configuration && echo $$couchdb_src)"
 
 do_build_plt:
-	dialyzer --output_plt $(NS_SERVER_PLT) --build_plt -pa ebin --apps compiler cry
+	dialyzer --output_plt $(NS_SERVER_PLT) --build_plt -pa ebin --apps compiler crypto erts inets kernel mnesia os_mon sasl ssl stdlib xmerl -c deps/erlwsh/ebin $(COUCH_PATH)/src/couchdb $(COUCH_PATH)/src/mochiweb $(COUCH_PATH)/src/snappy $(COUCH_PATH)/src/etap $(COUCH_PATH)/src/ibrowse $(COUCH_PATH)/src/erlang-oauth
 
 dialyzer: all $(NS_SERVER_PLT)
 	dialyzer --plt $(NS_SERVER_PLT) -pa ebin -c ebin

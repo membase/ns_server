@@ -22,7 +22,7 @@
 -compile(export_all).
 
 not_implemented(_Arg, _Rest) ->
-    exit(not_implemented).
+    not_implemented.
 
 do_db_req(#httpd{user_ctx=UserCtx,path_parts=[DbName|_]}=Req, Fun) ->
     Db = #db{user_ctx = UserCtx, name = DbName},
