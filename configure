@@ -54,7 +54,8 @@ if test '!' -f "$couchdb_src/src/couchdb/couch_db.hrl"; then
 fi
 
 cat <<EOF >${0%"${0##*/}"}/.configuration
-prefix=$prefix
+prefix="$prefix"
+couchdb_src="$couchdb_src"
 EOF
 
 sed -e "s|@couchdb_src_path@|${couchdb_src}/src/couchdb|g" <${0%"${0##*/}"}/rebar.config.in >${0%"${0##*/}"}/rebar.config

@@ -163,7 +163,10 @@ TAGS:
 	ctags -eR .
 
 $(NS_SERVER_PLT): | all
-	dialyzer --output_plt $@ --build_plt -pa ebin --apps compiler crypto erts inets kernel mnesia os_mon sasl ssl stdlib xmerl -c deps/mochiweb/ebin deps/erlwsh/ebin
+	$(MAKE) do_build_plt COUCH_PATH="$(shell . `pwd`/.configuration && echo $$couch
+
+do_build_plt:
+	dialyzer --output_plt $(NS_SERVER_PLT) --build_plt -pa ebin --apps compiler cry
 
 dialyzer: all $(NS_SERVER_PLT)
 	dialyzer --plt $(NS_SERVER_PLT) -pa ebin -c ebin

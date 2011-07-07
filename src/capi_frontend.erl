@@ -29,7 +29,7 @@ do_db_req(#httpd{user_ctx=UserCtx,path_parts=[DbName|_]}=Req, Fun) ->
     Fun(Req, Db).
 
 get_db_info(Db) ->
-    not_implemented(get_db_info, [Db]).
+    exit(not_implemented(get_db_info, [Db])).
 
 with_vbucket_db(Db, VBucket, Fun) ->
     DbName = iolist_to_binary([Db#db.name, $/, integer_to_list(VBucket)]),
@@ -59,13 +59,13 @@ check_is_admin(_Db) ->
     ok.
 
 handle_changes(ChangesArgs, Req, Db) ->
-    not_implemented(handle_changes, [ChangesArgs, Req, Db]).
+    exit(not_implemented(handle_changes, [ChangesArgs, Req, Db])).
 
 start_view_compact(DbName, GroupId) ->
-    not_implemented(start_view_compact, [DbName, GroupId]).
+    exit(not_implemented(start_view_compact, [DbName, GroupId])).
 
 start_db_compact(Db) ->
-    not_implemented(start_db_compact, [Db]).
+    exit(not_implemented(start_db_compact, [Db])).
 
 cleanup_view_index_files(Db) ->
     couch_view:cleanup_index_files(Db).
@@ -77,10 +77,10 @@ get_group_info(Db, DesignId) ->
                     end).
 
 create_db(DbName, UserCtx) ->
-    not_implemented(create_db, [DbName, UserCtx]).
+    exit(not_implemented(create_db, [DbName, UserCtx])).
 
 delete_db(DbName, UserCtx) ->
-    not_implemented(delete_db, [DbName, UserCtx]).
+    exit(not_implemented(delete_db, [DbName, UserCtx])).
 
 update_docs(Db, Docs, Options) ->
     with_vbucket_db(Db, 0,
@@ -96,26 +96,26 @@ update_docs(Db, Docs, Options, Type) ->
 
 purge_docs(Db, IdsRevs) ->
     %% couch_db:purge_docs(Db, IdsRevs).
-    not_implemented(purge_docs, [Db, IdsRevs]).
+    exit(not_implemented(purge_docs, [Db, IdsRevs])).
 
 get_missing_revs(Db, JsonDocIdRevs) ->
     %% couch_db:get_missing_revs(Db, JsonDocIdRevs).
-    not_implemented(get_missing_revs, [Db, JsonDocIdRevs]).
+    exit(not_implemented(get_missing_revs, [Db, JsonDocIdRevs])).
 
 set_security(Db, SecurityObj) ->
-    not_implemented(set_security, [Db, SecurityObj]).
+    exit(not_implemented(set_security, [Db, SecurityObj])).
     %% couch_db:set_security(Db, SecurityObj).
 
 get_security(Db) ->
-    not_implemented(get_security, [Db]).
+    exit(not_implemented(get_security, [Db])).
     %% couch_db:get_security(Db).
 
 set_revs_limit(Db, Limit) ->
-    not_implemented(set_revs_limit, [Db, Limit]).
+    exit(not_implemented(set_revs_limit, [Db, Limit])).
     %% couch_db:set_revs_limit(Db, Limit).
 
 get_revs_limit(Db) ->
-    not_implemented(get_revs_limit, [Db]).
+    exit(not_implemented(get_revs_limit, [Db])).
     %% couch_db:get_revs_limit(Db).
 
 open_doc_revs(Db, DocId, Revs, Options) ->
@@ -147,34 +147,34 @@ task_status_all() ->
     [].
 
 restart_core_server() ->
-    not_implemented(restart_core_server, []).
+    exit(not_implemented(restart_core_server, [])).
 
 config_all() ->
-    not_implemented(config_all, []).
+    exit(not_implemented(config_all, [])).
 
 config_get(Section) ->
-    not_implemented(config_get, [Section]).
+    exit(not_implemented(config_get, [Section])).
 
 config_get(Section, Key, Default) ->
-    not_implemented(config_get, [Section, Key, Default]).
+    exit(not_implemented(config_get, [Section, Key, Default])).
 
 config_set(Section, Key, Value, Persist) ->
-    not_implemented(config_set, [Section, Key, Value, Persist]).
+    exit(not_implemented(config_set, [Section, Key, Value, Persist])).
 
 config_delete(Section, Key, Persist) ->
-    not_implemented(config_delete, [Section, Key, Persist]).
+    exit(not_implemented(config_delete, [Section, Key, Persist])).
 
 increment_update_seq(Db) ->
-    not_implemented(increment_update_seq, [Db]).
+    exit(not_implemented(increment_update_seq, [Db])).
 
 stats_aggregator_all(Range) ->
-    not_implemented(stats_aggregator_all, [Range]).
+    exit(not_implemented(stats_aggregator_all, [Range])).
 
 stats_aggregator_get_json(Key, Range) ->
-    not_implemented(stats_aggregator_get_json, [Key, Range]).
+    exit(not_implemented(stats_aggregator_get_json, [Key, Range])).
 
 stats_aggregator_collect_sample() ->
-    not_implemented(stats_aggregator_collect_sample, []).
+    exit(not_implemented(stats_aggregator_collect_sample, [])).
 
 couch_doc_open(Db, DocId, Rev, Options) ->
     case Rev of
