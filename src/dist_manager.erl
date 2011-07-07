@@ -75,6 +75,16 @@ save_address_config(State) ->
     error_logger:info_msg("saving ip config to ~p~n", [Path]),
     misc:atomic_write_file(Path, State#state.my_ip).
 
+save_node(NodeName, Path) ->
+    error_logger:info_msg("saving node to ~p~n", [Path]),
+    misc:atomic_write_file(Path, NodeName ++ "\n").
+
+save_node(NodeName) ->
+    case application:get_env(nodefile) of
+        {ok, NodeFile} -> save_node(NodeName, NodeFile);
+        X -> X
+    end.
+
 init([]) ->
     InitialAddr = case read_address_config() of
                       undefined -> "127.0.0.1";
@@ -96,10 +106,19 @@ adjust_my_address(MyIP) ->
 %% Bring up distributed erlang.
 bringup(MyIP) ->
     ShortName = misc:get_env_default(short_name, "ns_1"),
-    MyNodeName = list_to_atom(ShortName ++ "@" ++ MyIP),
+    MyNodeNameStr = ShortName ++ "@" ++ MyIP,
+    MyNodeName = list_to_atom(MyNodeNameStr),
+
     ?log_info("Attempting to bring up net_kernel with name ~p", [MyNodeName]),
     Rv = decode_status(net_kernel:start([MyNodeName, longnames])),
     net_kernel:set_net_ticktime(misc:get_env_default(set_net_ticktime, 60)),
+
+    %% Rv can be false in case -name has been passed to erl but we still need
+    %% to save the node name to be able to shutdown the server gracefully.
+    ActualNodeName = erlang:atom_to_list(node()),
+    RN = save_node(ActualNodeName),
+    error_logger:info_msg("Attempted to save node name to disk: ~p~n", [RN]),
+
     #state{self_started = Rv, my_ip = MyIP}.
 
 %% Tear down distributed erlang.
