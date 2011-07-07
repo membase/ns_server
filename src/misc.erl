@@ -1075,3 +1075,14 @@ start_event_link(SubscriptionBody) ->
                             _ -> ok
                         end
                 end)}.
+
+%% Writes to file atomically using write_file + rename trick.
+%% NB: this does not work on Windows
+%% (http://osdir.com/ml/racket.development/2011-01/msg00149.html).
+atomic_write_file(Path, Contents) ->
+    TmpPath = Path ++ ".tmp",
+    case file:write_file(TmpPath, Contents) of
+        ok ->
+            file:rename(TmpPath, Path);
+        X -> X
+    end.
