@@ -98,6 +98,7 @@ config_string(BucketName) ->
                       "tap_noop_interval=~B;max_txn_size=~B;"
                       "max_size=~B;initfile=~s;"
                       "tap_keepalive=~B;dbname=~s;"
+                      "allow_data_loss_during_shutdown=true;"
                       "backend=couchdb;couch_bucket=~s;couch_port=~B",
                       [proplists:get_value(
                          ht_size, BucketConfig,
