@@ -127,7 +127,7 @@ handle_cast(leave, State) ->
     ns_log:log(?MODULE, 0001, "Node ~p is leaving cluster.", [node()]),
     ok = ns_server_cluster_sup:stop_cluster(),
     mb_mnesia:wipe(),
-    NewCookie = ns_node_disco:cookie_gen(),
+    NewCookie = ns_cookie_manager:cookie_gen(),
     erlang:set_cookie(node(), NewCookie),
     lists:foreach(fun erlang:disconnect_node/1, nodes()),
     Config = ns_config:get(),

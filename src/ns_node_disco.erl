@@ -23,9 +23,6 @@
 -define(NODE_CHANGE_DELAY, 5000).
 -define(SYNC_TIMEOUT, 5000).
 
--define(COOKIE_INHERITED, 1).
--define(COOKIE_SYNCHRONIZED, 2).
--define(COOKIE_GEN, 3).
 -define(NODE_UP, 4).
 -define(NODE_DOWN, 5).
 
@@ -36,9 +33,7 @@
          nodes_actual/0,
          random_node/0,
          nodes_actual_proper/0,
-         nodes_actual_other/0,
-         cookie_init/0, cookie_gen/0,
-         cookie_get/0, cookie_set/1, cookie_sync/0]).
+         nodes_actual_other/0]).
 
 -export([ns_log_cat/1, ns_log_code_string/1]).
 
@@ -182,7 +177,7 @@ do_nodes_wanted() ->
 %% The core of what happens when nodelists change
 %% only used by do_nodes_wanted_updated
 do_nodes_wanted_updated_fun(NodeListIn) ->
-    {ok, Cookie} = cookie_sync(),
+    {ok, Cookie} = ns_cookie_manager:cookie_sync(),
     NodeList = lists:usort(NodeListIn),
     error_logger:info_msg("ns_node_disco: nodes_wanted updated: ~p, with cookie: ~p~n",
                           [NodeList, erlang:get_cookie()]),
@@ -231,77 +226,11 @@ ping_all() ->
 
 % -----------------------------------------------------------
 
-cookie_gen() ->
-    case misc:get_env_default(dont_reset_cookie, false) of
-        false ->
-            {A1, A2, A3} = erlang:now(),
-            random:seed(A1, A2, A3),
-            list_to_atom(misc:rand_str(16));
-        true ->
-            erlang:get_cookie()
-    end.
-
-cookie_init() ->
-    NewCookie = cookie_gen(),
-    ns_log:log(?MODULE, ?COOKIE_GEN, "Initial otp cookie generated: ~p",
-               [NewCookie]),
-    ok = cookie_set(NewCookie),
-    {ok, NewCookie}.
-
-% Sets our wanted otp cookie.
-%
-cookie_set(Cookie) ->
-    X = ns_config:set(otp, [{cookie, Cookie}]),
-    erlang:set_cookie(node(), Cookie),
-    X.
-
-% Gets our wanted otp cookie (might be =/= our actual otp cookie).
-%
-cookie_get() ->
-    ns_config:search_prop(ns_config:get(), otp, cookie).
-
-% Makes our wanted otp cookie =:= to our actual cookie.
-% Will generate a cookie if needed for the first time.
-%
-cookie_sync() ->
-    error_logger:info_msg("ns_node_disco cookie_sync~n"),
-    case cookie_get() of
-        undefined ->
-            case erlang:get_cookie() of
-                nocookie ->
-                    % TODO: We should have length(nodes_wanted) == 0 or 1,
-                    %       so, we should check that assumption.
-                    cookie_init();
-                CurrCookie ->
-                    ns_log:log(?MODULE, ?COOKIE_INHERITED,
-                               "Node ~p inherited otp cookie ~p from cluster",
-                               [node(), CurrCookie]),
-                    cookie_set(CurrCookie),
-                    {ok, CurrCookie}
-            end;
-        WantedCookie ->
-            case erlang:get_cookie() of
-                WantedCookie -> {ok, WantedCookie};
-                _ ->
-                    ns_log:log(?MODULE, ?COOKIE_SYNCHRONIZED,
-                               "Node ~p synchronized otp cookie ~p from cluster",
-                               [node(), WantedCookie]),
-                    erlang:set_cookie(node(), WantedCookie),
-                    {ok, WantedCookie}
-            end
-    end.
-
 ns_log_cat(?NODE_DOWN) ->
     warn;
 ns_log_cat(_X) ->
     info.
 
-ns_log_code_string(?COOKIE_INHERITED) ->
-    "cookie update";
-ns_log_code_string(?COOKIE_SYNCHRONIZED) ->
-    "cookie update";
-ns_log_code_string(?COOKIE_GEN) ->
-    "cookie update";
 ns_log_code_string(?NODE_UP) ->
     "node up";
 ns_log_code_string(?NODE_DOWN) ->

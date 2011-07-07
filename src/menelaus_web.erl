@@ -555,7 +555,7 @@ build_node_status(Node, Bucket, InfoNode, BucketsAll) ->
     end.
 
 build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr) ->
-    OtpCookie = list_to_binary(atom_to_list(ns_node_disco:cookie_get())),
+    OtpCookie = list_to_binary(atom_to_list(ns_cookie_manager:cookie_get())),
     NodeStatuses = ns_doctor:get_nodes(),
     Config = ns_config:get(),
     BucketsAll = ns_bucket:get_buckets(Config),
