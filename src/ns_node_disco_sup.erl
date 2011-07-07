@@ -32,6 +32,10 @@ init([]) ->
 
 get_child_specs() ->
     [
+     % cookie manager
+     {ns_cookie_manager,
+      {ns_cookie_manager, start_link, []},
+      permanent, 1000, worker, []},
      % gen_event for the node disco events.
      {ns_node_disco_events,
       {gen_event, start_link, [{local, ns_node_disco_events}]},
