@@ -15,7 +15,7 @@
 %%
 -module(ns_bootstrap).
 
--export([start/0, override_resolver/0]).
+-export([start/0, stop/0, remote_stop/1, override_resolver/0]).
 
 start() ->
     try
@@ -27,20 +27,35 @@ start() ->
             "win32" -> inet_db:set_lookup([native, file]);
             _ -> ok
         end,
-        ok = application:start(ns_server),
-        case os:getenv("DONT_START_COUCH") of
-            false ->
-                case erlang:system_info(system_architecture) of
-                    "win32" -> ok;
-                    _ ->
-                        ok = application:start(couch)
-                end;
-            _ -> ok
-        end
+        ok = application:start(ns_server)
     catch T:E ->
             timer:sleep(500),
             erlang:T(E)
     end.
+
+stop() ->
+    RV = try
+             ok = application:stop(ns_server),
+             application:stop(os_mon),
+             ok = application:stop(sasl)
+         catch T:E ->
+                 {T, E}
+         end,
+
+    case RV of
+        ok -> init:stop();
+        X -> X
+    end.
+
+%% Call ns_bootstrap:stop on a remote node and exit with status indicating the
+%% success of the call.
+remote_stop(Node) ->
+    RV = rpc:call(Node, ns_bootstrap, stop, []),
+    ExitStatus = case RV of
+                     ok -> 0;
+                     _ -> 1
+                 end,
+    init:stop(ExitStatus).
 
 override_resolver() ->
     inet_db:set_lookup([file, dns]),
