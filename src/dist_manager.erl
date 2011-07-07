@@ -73,12 +73,7 @@ read_address_config() ->
 save_address_config(State) ->
     Path = ip_config_path(),
     error_logger:info_msg("saving ip config to ~p~n", [Path]),
-    TmpPath = Path ++ ".tmp",
-    case file:write_file(TmpPath, State#state.my_ip) of
-        ok ->
-            file:rename(TmpPath, Path);
-        X -> X
-    end.
+    misc:atomic_write_file(Path, State#state.my_ip).
 
 init([]) ->
     InitialAddr = case read_address_config() of
