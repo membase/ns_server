@@ -165,7 +165,8 @@ auto_failover_enabled_master_node_down(TestConfig) ->
     ok = rpc:call('n_0@127.0.0.1', auto_failover, enable, [5, 1]),
 
     % Make sure the ns_config was propagated to the other node
-    ok = wait_for_ns_config('n_1@127.0.0.1', {auto_failover, enabled}, true),
+    ok = wait_for_ns_config('n_1@127.0.0.1', {auto_failover_cfg, enabled},
+                            true),
 
     % Stop the node auto_failover is running on
     ok = ns_test_util:stop_node(lists:nth(1, Nodes)),
@@ -278,8 +279,10 @@ auto_failover_enabled_master_node_down_preserve_count(TestConfig) ->
     ok = rpc:call('n_0@127.0.0.1', auto_failover, enable, [5, 1]),
 
     % Make sure the ns_config was propagated to the other nodes
-    ok = wait_for_ns_config('n_1@127.0.0.1', {auto_failover, enabled}, true),
-    ok = wait_for_ns_config('n_2@127.0.0.1', {auto_failover, enabled}, true),
+    ok = wait_for_ns_config('n_1@127.0.0.1', {auto_failover_cfg, enabled},
+                            true),
+    ok = wait_for_ns_config('n_2@127.0.0.1', {auto_failover_cfg, enabled},
+                            true),
 
     % Stop the node auto_failover is running on
     ok = ns_test_util:stop_node(lists:nth(1, Nodes)),
