@@ -122,6 +122,7 @@ do-install:
 	cp ebucketmigrator $(DESTDIR)$(PREFIX)/bin/ebucketmigrator
 	chmod +x $(DESTDIR)$(PREFIX)/bin/ebucketmigrator
 	cp scripts/mbdumpconfig.escript $(DESTDIR)$(PREFIX)/bin/
+	mkdir -p $(DESTDIR)$(PREFIX)/etc/couchdb/default.d
 	cp etc/capi.ini.in $(DESTDIR)$(PREFIX)/etc/couchdb/default.d/capi.ini
 
 clean clean_all:
