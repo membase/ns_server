@@ -45,6 +45,11 @@ default() ->
                         element(2, ns_storage_conf:allowed_node_quota_range(MemData));
                     _ -> undefined
                 end,
+    CAPIPort = case erlang:get(capi_port_override) of
+                   undefined -> list_to_integer(couch_config:get("httpd", "port", "5984"));
+                   CAPIVal -> CAPIVal
+               end,
+
     [{directory, path_config:component_path(data, "config")},
      {nodes_wanted, [node()]},
      {{node, node(), membership}, active},
@@ -59,8 +64,9 @@ default() ->
                                                 % Modifiers: menelaus REST API
                                                 % Listeners: some menelaus module that configures/reconfigures mochiweb
      {{node, node(), rest},
-      [{port, misc:get_env_default(rest_port, 8091)} % Port number of the REST admin API and UI.
-            ]},
+      [{port, misc:get_env_default(rest_port, 8091)}, % Port number of the REST admin API and UI.
+       {capi_port, CAPIPort}
+      ]},
 
                                                 % In 1.0, only the first entry in the creds list is displayed in the UI
                                                 % and accessible through the UI.
@@ -208,6 +214,9 @@ upgrade_config(Config) ->
             [{set, {node, node(), config_version}, {1,7,1}} |
              upgrade_config_from_1_7_to_1_7_1()];
         {value, {1,7,1}} ->
+            [{set, {node, node(), config_version}, {2,0}} |
+             upgrade_config_from_1_7_1_to_2_0()];
+        {value, {2,0}} ->
             []
     end.
 
@@ -246,6 +255,12 @@ do_upgrade_config_from_1_7_to_1_7_1(DefaultConfig) ->
     [{set, email_alerts, Alerts},
      {set, auto_failover_cfg, AutoFailover}].
 
+upgrade_config_from_1_7_1_to_2_0() ->
+    ?log_info("Upgrading config from 1.7.1 to 2.0", []),
+    DefaultConfig = default(),
+    {_, RestConfig} = lists:keyfind({node, node(), rest}, 1, DefaultConfig),
+    [{set, {node, node(), rest}, RestConfig}].
+
 upgrade_1_6_to_1_7_test() ->
     DefaultCfg = [{directory, default_directory},
                   {{node, node(), isasl}, [{path, default_isasl}]},
@@ -274,8 +289,8 @@ upgrade_1_6_to_1_7_test() ->
                              {set, {node, node(), ns_log}, default_log}]),
                  lists:sort(Res)).
 
-no_upgrade_on_1_7_1_test() ->
-    ?assertEqual([], upgrade_config([[{{node, node(), config_version}, {1,7,1}}]])).
+no_upgrade_on_2_0_test() ->
+    ?assertEqual([], upgrade_config([[{{node, node(), config_version}, {2, 0}}]])).
 
 fuller_1_6_test_() ->
     {spawn,
@@ -291,6 +306,7 @@ fuller_1_6_test_() ->
                       [{moxi, "moxi old something"},
                        {memcached, "memcached old something"}]},
                      {{node, node(), ns_log}, default_log}]],
+             erlang:put(capi_port_override, 5984),
              ets:new(path_config_override, [public, named_table, {read_concurrency, true}]),
              [ets:insert(path_config_override, {K, "."}) || K <- [path_config_tmpdir, path_config_datadir,
                                                                   path_config_bindir, path_config_libdir,
