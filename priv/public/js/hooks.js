@@ -1038,7 +1038,7 @@ var MockedRequest = mkClass({
             samplesCount: 60,
             isPersistent: true,
             lastTStamp: 0,
-            interval: 1000,
+            interval: 1000
           }
         }
       ],
