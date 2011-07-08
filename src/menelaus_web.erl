@@ -584,12 +584,24 @@ build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr) ->
                   end,
             KV3 = case Bucket of
                       undefined ->
-                          KV2;
+                          case capi_utils:capi_url(WantENode, "/", LocalAddr, Config) of
+                              undefined -> KV2;
+                              CapiURL ->
+                                  [{couchApiBase, list_to_binary(CapiURL)}
+                                   | KV2]
+                          end;
                       _ ->
                           Replication = proplists:get_value(replication,
                                                             InfoNode, []),
-                          [{replication, proplists:get_value(Bucket,
-                                                             Replication)}|KV2]
+                          KVRep = [{replication, proplists:get_value(Bucket,
+                                                                     Replication)}
+                                   | KV2],
+                          case capi_utils:capi_bucket_url(WantENode, Bucket, LocalAddr, Config) of
+                              undefined -> KVRep;
+                              CapiBucketUrl ->
+                                  [{couchApiBase, list_to_binary(CapiBucketUrl)}
+                                   | KVRep]
+                          end
                   end,
             KV4 = case InfoLevel of
                       stable -> KV3;
