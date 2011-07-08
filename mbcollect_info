@@ -261,6 +261,7 @@ def main():
     if os.name == 'posix':
         path = [mydir,
                 '/bin',
+                '/sbin',
                 '/usr/bin',
                 '/usr/sbin',
                 '/opt/couchbase/bin',

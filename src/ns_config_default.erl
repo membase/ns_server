@@ -167,30 +167,30 @@ default() ->
 
                                                 % Modifiers: menelaus
                                                 % Listeners: ? possibly ns_log
-     {alerts, [{email, ""},
-               {email_alerts, false},
-               {email_server, [{user, undefined},
-                               {pass, undefined},
-                               {addr, undefined},
-                               {port, undefined},
-                               {encrypt, false}]},
-               {alerts, [server_down,
-                         server_unresponsive,
-                         server_up,
-                         server_joined,
-                         server_left,
-                         bucket_created,
-                         bucket_deleted,
-                         bucket_auth_failed]}
-              ]},
+     {email_alerts,
+      [{recipients, ["root@localhost"]},
+       {sender, "membase@localhost"},
+       {enabled, true},
+       {email_server, [{user, ""},
+                       {pass, ""},
+                       {host, "localhost"},
+                       {port, 25},
+                       {encrypt, false}]},
+       {alerts, [auto_failover_node,
+                 auto_failover_maximum_reached,
+                 auto_failover_other_nodes_down,
+                 auto_failover_cluster_too_small]}
+      ]},
      {replication, [{enabled, true}]},
-     {auto_failover, [{enabled, false},
-                      % age is the time (in seconds) a node needs to be down
-                      % before it is automatically faileovered
-                      {age, 60},
-                      % max_nodes is the maximum number of nodes that may be
-                      % automatically failovered
-                      {max_nodes, 1}]}
+     {auto_failover_cfg, [{enabled, false},
+                          % timeout is the time (in seconds) a node needs to be
+                          % down before it is automatically faileovered
+                          {timeout, 30},
+                          % max_nodes is the maximum number of nodes that may be
+                          % automatically failovered
+                          {max_nodes, 1},
+                          % count is the number of nodes that were auto-failovered
+                          {count, 0}]}
     ].
 
 %% returns list of changes to config to upgrade it to current version.
@@ -205,6 +205,9 @@ upgrade_config(Config) ->
             [{set, {node, node(), config_version}, {1,7}} |
              upgrade_config_from_1_6_to_1_7(Config)];
         {value, {1,7}} ->
+            [{set, {node, node(), config_version}, {1,7,1}} |
+             upgrade_config_from_1_7_to_1_7_1()];
+        {value, {1,7,1}} ->
             []
     end.
 
@@ -231,6 +234,17 @@ do_upgrade_config_from_1_6_to_1_7(Config, DefaultConfig) ->
                      {node, node(), isasl},
                      port_servers,
                      {node, node(), ns_log}]).
+
+upgrade_config_from_1_7_to_1_7_1() ->
+    ?log_info("Upgrading config from 1.7 to 1.7.1", []),
+    DefaultConfig = default(),
+    do_upgrade_config_from_1_7_to_1_7_1(DefaultConfig).
+
+do_upgrade_config_from_1_7_to_1_7_1(DefaultConfig) ->
+    {email_alerts, Alerts} = lists:keyfind(email_alerts, 1, DefaultConfig),
+    {auto_failover_cfg, AutoFailover} = lists:keyfind(auto_failover_cfg, 1, DefaultConfig),
+    [{set, email_alerts, Alerts},
+     {set, auto_failover_cfg, AutoFailover}].
 
 upgrade_1_6_to_1_7_test() ->
     DefaultCfg = [{directory, default_directory},
@@ -260,8 +274,8 @@ upgrade_1_6_to_1_7_test() ->
                              {set, {node, node(), ns_log}, default_log}]),
                  lists:sort(Res)).
 
-no_upgrade_on_1_7_test() ->
-    ?assertEqual([], upgrade_config([[{{node, node(), config_version}, {1,7}}]])).
+no_upgrade_on_1_7_1_test() ->
+    ?assertEqual([], upgrade_config([[{{node, node(), config_version}, {1,7,1}}]])).
 
 fuller_1_6_test_() ->
     {spawn,

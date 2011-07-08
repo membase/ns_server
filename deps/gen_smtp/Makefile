@@ -1,12 +1,7 @@
-SHELL=/bin/sh
-REBAR=../../rebar
-
-.PHONY: ebins
-
-all: ebins
-
-ebins:
-	$(REBAR) compile
+compile:
+	@./rebar compile
 
 clean:
-	rm -rf ebin
+	@./rebar clean
+
+.PHONY: compile clean

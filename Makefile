@@ -46,7 +46,7 @@ dist:
 	tar -C tmp -czf ns_server-`git describe`.tar.gz ns_server-`git describe`
 
 deps_smtp:
-	(cd deps/gen_smtp && $(MAKE) ebins)
+	(cd deps/gen_smtp && $(MAKE) compile)
 
 deps_erlwsh:
 	(cd deps/erlwsh; $(MAKE))
@@ -105,8 +105,8 @@ do-install:
 	mkdir -p $(ERLWSH_LIBDIR)
 	cp -r deps/erlwsh/ebin $(ERLWSH_LIBDIR)/
 	cp -r deps/erlwsh/priv $(ERLWSH_LIBDIR)/
-	@true mkdir -p $(GEN_SMTP_LIBDIR)
-	@true cp -r deps/gen_smtp/ebin $(GEN_SMTP_LIBDIR)/
+	mkdir -p $(GEN_SMTP_LIBDIR)
+	cp -r deps/gen_smtp/ebin $(GEN_SMTP_LIBDIR)/
 	mkdir -p $(DESTDIR)$(PREFIX)/etc/membase
 	sed -e 's|@DATA_PREFIX@|$(PREFIX_FOR_CONFIG)|g' -e 's|@BIN_PREFIX@|$(PREFIX_FOR_CONFIG)|g' \
 		 <etc/static_config.in >$(DESTDIR)$(PREFIX)/etc/membase/static_config

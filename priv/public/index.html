@@ -5,7 +5,6 @@
 <head>
 <title>Couchbase Console</title>
 <link rel="stylesheet" type="text/css" href="/css/screen.css">
-<link rel="stylesheet" type="text/css" href="/css/tabs.css">
 <link rel="stylesheet" type="text/css" href="/css/print.css">
 <link rel="stylesheet" type="text/css" href="/css/jquery-ui.couchbase.css">
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
@@ -34,15 +33,13 @@
           <li class="line"><a id="switch_buckets" href="#visitSec=buckets">Data Buckets</a></li>
           <li class="line"><a id="switch_servers" href="#visitSec=servers">Server Nodes</a></li>
           <li class="line"><a id="switch_log" href="#visitSec=log">Log</a></li>
-          <li class="line" id="nav_updates_container"></li>
+          <li class="line" id="nav_settings_container"></li>
         </ul>
-        <script id="nav_updates_template" type="text/html">
-          <a href="#visitSec=notifications">
-            Update Notifications
-            {% if (enabled && newVersion!==false && newVersion!==undefined) { %}
-            <span class="badge notify"><span>!</span></span>
-            {% } %}
-          </a>
+        <script id="nav_settings_template" type="text/html">
+        <a href="#visitSec=settings">Settings
+        {% if (enabled && newVersion!==false && newVersion!==undefined) { %}
+        <span class="badge notify"><span>!</span></span>
+        {% } %}</a>
         </script>
         </div>
       </div>
@@ -149,6 +146,12 @@
             <div class="warning_message failover_warning">
               Fail Over Warning: <span class="warning-text"></span>
             </div>
+            <div id="auto_failover_count_container" class="warning_message">
+              Auto-Failover <span class="count">?</span> of <span class="maxNodes">?</span> used
+              <a class="auto_failover_count_reset edit_btn">
+                <span>Reset Quota</span>
+              </a>
+            </div>
             <div class="shadow_box">
                 <div class="content">
                   <!-- shadow box -->
@@ -157,7 +160,7 @@
                     <a class="add_button btn_1"><span>Add Server</span></a>
                     <a class="rebalance_button btn_1"><span>Rebalance</span></a>
                     <a class="stop_rebalance_button btn_1"><span>Stop Rebalance</span></a>
-                    <ul class="tabs switcher">
+                    <ul class="tabs">
                       <li class="tab_left"><a href="#sec=servers&amp;serversTab=0">Active Servers</a></li>
                       <li class="tab_right" id="rebalance_tab">
                         <a href="#sec=servers&amp;serversTab=1">Pending Rebalance</a>
@@ -335,17 +338,22 @@
             <div class="shadow_box">
                   <div class="content">
                     <div class="section">
-                      <h2 class="header_2">
+                      <div class="header_2">
                         <span class="block nav float_right">
                           <span class="stats-period-container">
                             <span class="with_samples current">Last <b class="stats_visible_period">?</b></span><span class="without_samples current">No samples, yet</span>
                           </span>
                           <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
                         </span>
-                        <a id="zoom_minute">Minute</a> <a id="zoom_hour">Hour</a>
-                        <a id="zoom_day">Day</a> <a id="zoom_week">Week</a>
-                        <a id="zoom_month">Month</a> <a id="zoom_year">Year</a>
-                      </h2>
+                        <ul class="tabs">
+                          <li class="tab_left"><a id="zoom_minute">Minute</a></li>
+                          <li><a id="zoom_hour">Hour</a></li>
+                          <li><a id="zoom_day">Day</a></li>
+                          <li><a id="zoom_week">Week</a></li>
+                          <li><a id="zoom_month">Month</a></li>
+                          <li class="tab_right"><a id="zoom_year">Year</a></li>
+                        </ul>
+                      </div>
                       <div class="analytics_graph_main">
                         <h2 class="current-graph-name"></h2>
                         <span class="graph_info_label block right active_node_count"><!-- 3 active nodes --></span>
@@ -575,64 +583,179 @@
             <!-- END shadow box -->
           </div>
 
-          <div id="notifications" style="display:none">
+          <div id="settings" style="display:none">
             <!-- shadow box -->
-            <h1>Notifications</h1>
+            <h1>Settings</h1>
             <div class="shadow_box">
-                  <div class="content">
-                    <div class="hdr">Update Notifications</div>
-                    <div class="section notifications-updates">
-                      <div class="item" id="notifications_block_container">
-                      Please wait...
-                      </div>
-                      <script id="notifications_block_template" type="text/html">
-                      <p>You are running version {%= h(version) %}</p>
-                      {% if (enabled===true) { %}
-                        {% if (newVersion===undefined) { %}
-                          <p class="warning"><strong>Warning</strong> &ndash; There
-                        was a problem with retreiving the update information.</p>
-                        {% } else if (newVersion===false) { %}
-                          <p>No updates available.</p>
-                        {% } else { %}
-                          <p>A new version ({%= h(newVersion) %}) is available:</p>
-                          <ul>
-                            <li>
-                              <a href="{%= h(links.release) %}">Release notes</a>
-                            </li>
-                            <li>
-                              <a href="{%= h(links.download) %}">Download</a> the new version
-                            </li>
-                          </ul>
-                          {% if (info!='') { %}
-                            <p>{%= info %}</p>
-                          {% } %}
-                        {% } %}
-                      {% } %}
-                      <label class="for-enable-replication" for="notifications-updates">
-                        {% if (enabled===true) { %}
-                          <input type="checkbox" id="notification-updates" checked="checked">
-                        {% } else { %}
-                          <input type="checkbox" id="notification-updates">
-                        {% } %}
-                        <span>Enable software update notifications.</span>
-                        <a href="#" class="more_info">What's this?</a>
-                      </label>
-                      <p class="more_info">
-                      Enabling software update notifications allows notification in
-                      the Couchbase web console when a new version of Couchbase Server
-                      is available. Configuration information transferred in the
-                      update check is anonymous and does not include any stored
-                      key-value data.
-                      </p>
-                      </script>
-                      <div class="save_cancel">
-                        <button class="save_button float_right" type="button">Save</button>
-                      </div>
-                    </div>
+              <div class="content">
+                <div class="section notifications-updates auto_failover email_alerts">
+                  <div class="header_2">
+                    <ul class="tabs">
+                      <li class="tab_left"><a id="settings_update_notifications">Update Notifications</a></li>
+                      <li><a id="settings_auto_failover">Auto-Failover</a></li>
+                      <li class="tab_right"><a id="settings_alerts">Alerts</a></li>
+                    </ul>
                   </div>
+                  <div class="panes clearfix">
+                    <div id="notifications_container">Please wait...</div>
+                    <div id="auto_failover_container">Please wait...</div>
+                    <div id="email_alerts_container">Please wait...</div>
+                  </div>
+                </div>
+              </div>
             </div>
             <!-- END shadow box -->
           </div>
+          <script id="notifications_template" type="text/html">
+            <p>You are running version {%= h(version) %}</p>
+            {% if (enabled===true) { %}
+              {% if (newVersion===undefined) { %}
+              <p class="warning"><strong>Warning</strong> &ndash; There
+                was a problem with retreiving the update information.</p>
+              {% } else if (newVersion===false) { %}
+              <p>No updates available.</p>
+              {% } else { %}
+              <p>A new version ({%= h(newVersion) %}) is available:</p>
+              <ul>
+                <li>
+                  <a href="{%= h(links.release) %}">Release notes</a>
+                </li>
+                <li>
+                  <a href="{%= h(links.download) %}">Download</a>
+                  the new version
+                </li>
+              </ul>
+                {% if (info!='') { %}
+                <p>{%= info %}</p>
+                {% } %}
+              {% } %}
+            {% } %}
+            <label class="for-enable-replication" for="notifications-updates">
+              {% if (enabled===true) { %}
+              <input type="checkbox" id="notification-updates" checked="checked">
+              {% } else { %}
+              <input type="checkbox" id="notification-updates">
+              {% } %}
+              <span>Enable software update notifications.</span>
+              <a href="#" class="more_info">What's this?</a>
+            </label>
+            <p class="more_info">
+              Enabling software update notifications allows notification in
+              the Membase web console when a new version of Membase Server
+              is available. Configuration information transferred in the
+              update check is anonymous and does not include any stored
+              key-value data.
+            </p>
+            <div class="save_cancel">
+              <button class="save_button float_right" type="button"
+                      disabled="disabled">
+                Save
+              </button>
+            </div>
+          </script>
+          <script id="auto_failover_template" type="text/html">
+            <label class="for-enable-replication"
+                   for="auto_failover_enabled">
+              <input type="checkbox" id="auto_failover_enabled">
+              <span>Enable auto-failover</span>
+            </label>
+            <div class="count_reset">
+              <span class="count">{%= count %}</span> used
+              <a class="auto_failover_count_reset edit_btn{% if (count === 0) { %} disabled{% } %}">
+                <span>Reset Quota</span>
+              </a>
+            </div>
+            <label for="auto_failover_timeout">
+              <span>Timeout: </span>
+            </label>
+            <input type="text" id="auto_failover_timeout"
+                   value="{%= timeout %}" disabled="disabled" />
+            <a class="text_11 tooltip"><span>What's this?</span>
+              <span class="tooltip_msg"><span>
+                  How long (in seconds) a node must be considered down before it gets auto-failovered.
+              </span></span>
+            </a>
+            <div class="error-container err-timeout"></div>
+            <div class="save_cancel">
+              <button class="save_button float_right" type="button"
+                      disabled="disabled">
+                Save
+              </button>
+            </div>
+          </script>
+          <script id="email_alerts_template" type="text/html">
+            <label class="for-enable-replication"
+                   for="email_alerts_enabled">
+              <input type="checkbox" id="email_alerts_enabled" />
+              <span>Enable email alerts</span>
+            </label>
+            <fieldset>
+              <legend>Email Server Settings</legend>
+              <div class="row">
+                <label for="email_alerts_host">
+                  <span>Host:</span>
+                </label>
+                <input type="text" id="email_alerts_host"
+                       value="{%= emailServer.host %}" disabled="disabled" />
+              </div>
+              <div>
+                <label for="email_alerts_port">
+                  <span>Port:</span>
+                </label>
+                <input type="text" id="email_alerts_port"
+                       value="{%= emailServer.port %}" disabled="disabled" />
+                <div class="error-container err-email_port"></div>
+              </div>
+              <label for="email_alerts_user">
+                <span>Username:</span>
+              </label>
+              <input type="text" id="email_alerts_user"
+                     value="{%= emailServer.user %}" disabled="disabled" />
+              <label for="email_alerts_pass">
+                <span>Password:</span>
+              </label>
+              <input type="password" id="email_alerts_pass"
+                     value="{%= emailServer.pass %}" disabled="disabled" />
+            </fieldset>
+            <fieldset>
+              <legend>Email Settings</legend>
+              <label for="email_alerts_sender">
+                <span>Sender email:</span>
+              </label>
+              <input type="text" id="email_alerts_sender"
+                     value="{%= sender %}" disabled="disabled" />
+              <div class="error-container err-sender"></div>
+              <label for="email_alerts_sender">
+                <span>Recipients:</span>
+              </label>
+              <textarea id="email_alerts_recipients" disabled="disabled">{%= recipients %}</textarea>
+              <div class="error-container err-recipients"></div>
+              <div><button class="edit_btn" id="test_email">Test Mail</button> <span>using the settings above</span></div>
+            </fieldset>
+            <fieldset id="email_alerts_alerts">
+              <legend>Available Alerts</legend>
+              <div class="checkboxes">
+                {% for (var i=0; i<alerts.length; i++) { %}
+                <label for="email_alerts_alerts_{%= alerts[i].label %}">
+                  <input type="checkbox"
+                         id="email_alerts_alerts_{%= alerts[i].value %}"
+                         value="{%= alerts[i].value %}"
+                         {% if (alerts[i].enabled) { %}
+                         checked="checked"
+                         {% } %}
+                         />
+                  <span>{%= alerts[i].label %}</span>
+                </label>
+                {% } %}
+              </div>
+            </fieldset>
+            <div class="save_cancel">
+              <button class="save_button float_right" type="button"
+                      disabled="disabled">
+                Save
+              </button>
+            </div>
+          </script>
 
           <div id="views" style="display:none">
             <h1>Views</h1>
@@ -840,7 +963,7 @@
       </tr></table>
     </div>
 
-    <label class="for-ram-quota"><span><em class="when-non-persistent">Per Node RAM Quota:</em><em class="when-persistent">Per Node RAM Quota:</em></span><input name="ramQuotaMB" value="30"><abbr>MB</abbr></label>
+    <label class="for-ram-quota"><span>Per Node RAM Quota:</span><input name="ramQuotaMB" type="text" value="30"><abbr>MB</abbr><input name="ramQuotaMB" type="hidden"></label>
     <div class="error-container err-ramQuotaMB"></div>
     <em class="memcached-summary when-non-persistent"></em>
     <div class="persistent-only">
@@ -853,7 +976,7 @@
         <span class="error-container err-replicaNumber"></span>
       </label>
     </div> <!-- .persistent-only -->
-  </div><div class="save_cancel clearfix">
+  </div><div class="save_cancel">
     <span class="when-editing">
       <button class="save_button float_right" type="submit">Save</button>
       <button class="delete_button">Delete</button>
@@ -904,8 +1027,7 @@
         <!-- {% }); %} -->
         </script>
         <form>
-          <div class="clearfix">
-            <div class="pas_20">
+          <div class="clearfix pas_20">
               <table>
                 <tr>
                   <td>
@@ -942,7 +1064,6 @@
                   </td>
                 </tr>
               </table>
-            </div>
           </div>
           <div class="save_cancel clearfix">
             <button type="submit" class="save_button float_right">Add Server</button>
@@ -1268,7 +1389,7 @@
       <button name="back" value="Back" class="submit back direction-button" id="step-3-back" type="button">Back</button>
     </div>
   </div>
-  <!-- END init_update_notifications_block-->
+  <!-- END init_update_notifications-->
   <div class="pad" id="init_secure_dialog">
    <div class="config-top">
       <h1>Configure Server</h1>
@@ -1417,7 +1538,6 @@ $(window).bind('template:rendered', function () {
 <script src="/js/views.js"></script>
 <script src="/js/overview.js"></script>
 <script src="/js/all-images.js"></script>
-<script src="/js/updates-notifications.js"></script>
 <script src="/js/app.js"></script>
 </body>
 </html>

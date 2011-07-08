@@ -188,11 +188,11 @@ var ThePage = {
              views: ViewsSection,
              view_development: ViewDevSection,
              log: AlertsSection,
-             notifications: UpdatesNotificationsSection,
-             // that's right, use the same object as "notifications"
-             notifications_enabled: UpdatesNotificationsSection},
+             // monitor_buckets: MonitorBucketsSection,
+             // monitor_servers: MonitorServersSection,
+             settings: SettingsSection},
 
-  coming: {settings:true, alerts:true},
+  coming: {alerts:true},
 
   currentSection: null,
   currentSectionName: null,

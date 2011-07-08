@@ -58,6 +58,8 @@
          get_option/2,
          parse_validate_number/3]).
 
+-define(AUTO_FAILLOVER_MIN_TIMEOUT, 30).
+
 %% External API
 
 start_link() ->
@@ -169,8 +171,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun menelaus_alert:handle_alerts/1};
                              ["settings", "web"] ->
                                  {auth, fun handle_settings_web/1};
-                             ["settings", "advanced"] ->
-                                 {auth, fun handle_settings_advanced/1};
+                             ["settings", "alerts"] ->
+                                 {auth, fun handle_settings_alerts/1};
                              ["settings", "stats"] ->
                                  {auth, fun handle_settings_stats/1};
                              ["settings", "autoFailover"] ->
@@ -221,12 +223,16 @@ loop(Req, AppRoot, DocRoot) ->
                                   [NodeId]};
                              ["settings", "web"] ->
                                  {auth, fun handle_settings_web_post/1};
-                             ["settings", "advanced"] ->
-                                 {auth, fun handle_settings_advanced_post/1};
+                             ["settings", "alerts"] ->
+                                 {auth, fun handle_settings_alerts_post/1};
+                             ["settings", "alerts", "testEmail"] ->
+                                 {auth, fun handle_settings_alerts_send_test_email/1};
                              ["settings", "stats"] ->
                                  {auth, fun handle_settings_stats_post/1};
                              ["settings", "autoFailover"] ->
                                  {auth, fun handle_settings_auto_failover_post/1};
+                             ["settings", "autoFailover", "resetCount"] ->
+                                 {auth, fun handle_settings_auto_failover_reset_count/1};
                              ["pools", PoolId] ->
                                  {auth, fun handle_pool_settings/2,
                                   [PoolId]};
@@ -932,60 +938,56 @@ validate_settings_stats(SendStats) ->
 handle_settings_auto_failover(Req) ->
     Config = build_settings_auto_failover(),
     Enabled = proplists:get_value(enabled, Config),
-    Age = proplists:get_value(age, Config),
-    MaxNodes = proplists:get_value(max_nodes, Config),
+    Timeout = proplists:get_value(timeout, Config),
+    Count = proplists:get_value(count, Config),
     reply_json(Req, {struct, [{enabled, Enabled},
-                              {age, Age},
-                              {maxNodes, MaxNodes}]}).
+                              {timeout, Timeout},
+                              {count, Count}]}).
 
 build_settings_auto_failover() ->
-    {value, Config} = ns_config:search(ns_config:get(), auto_failover),
+    {value, Config} = ns_config:search(ns_config:get(), auto_failover_cfg),
     Config.
 
 handle_settings_auto_failover_post(Req) ->
     PostArgs = Req:parse_post(),
+    ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
     Enabled = proplists:get_value("enabled", PostArgs),
-    Age = proplists:get_value("age", PostArgs),
-    MaxNodes = proplists:get_value("maxNodes", PostArgs),
-    case validate_settings_auto_failover(Enabled, Age, MaxNodes) of
-        [true, Age2, MaxNodes2] ->
-            case auto_failover:enable(Age2, MaxNodes2) of
-                ok ->
-                    ns_config:set(auto_failover, [{enabled, true}, {age, Age2},
-                                                  {max_nodes, MaxNodes2}]),
-                    Req:respond({200, add_header(), []});
-                {error, _} ->
-                    % Disable auto-failover in the config (just to be on
-                    % the safe side)
-                    disable_auto_failover_settings(),
-                    Req:respond({409, add_header(),
-                                 ["Could not enable auto-failover. "
-                                  "All nodes in the cluster need to be up "
-                                  "and running."]})
-            end;
-        false ->
-            disable_auto_failover_settings(),
+    Timeout = proplists:get_value("timeout", PostArgs),
+    % MaxNodes is hard-coded to 1 for now.
+    MaxNodes = "1",
+    case {ValidateOnly,
+          validate_settings_auto_failover(Enabled, Timeout, MaxNodes)} of
+        {false, [true, Timeout2, MaxNodes2]} ->
+            auto_failover:enable(Timeout2, MaxNodes2),
+            Req:respond({200, add_header(), []});
+        {false, false} ->
             auto_failover:disable(),
             Req:respond({200, add_header(), []});
-        {error, Errors} ->
-            Req:respond({400, add_header(), Errors})
+        {false, {error, Errors}} ->
+            Errors2 = [<<Msg/binary, "\n">> || {_, Msg} <- Errors],
+            Req:respond({400, add_header(), Errors2});
+        {true, {error, Errors}} ->
+            reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 200);
+        % Validation only and no errors
+        {true, _}->
+            reply_json(Req, {struct, [{errors, null}]}, 200)
     end.
 
-validate_settings_auto_failover(Enabled, Age, MaxNodes) ->
+validate_settings_auto_failover(Enabled, Timeout, MaxNodes) ->
     Enabled2 = case Enabled of
         "true" -> true;
         "false" -> false;
-        _ -> <<"The value of \"enabled\" must be true or false\n">>
+        _ -> {enabled, <<"The value of \"enabled\" must be true or false">>}
     end,
     case Enabled2 of
         true ->
-            Errors = [is_valid_positive_integer(Age) orelse
-                      <<"The value of \"age\" must be a positive integer\n">>,
+            Errors = [is_valid_positive_integer_bigger_or_equal(Timeout, ?AUTO_FAILLOVER_MIN_TIMEOUT) orelse
+                      {timeout, <<"The value of \"timeout\" must be a positive integer bigger or equal to 30">>},
                       is_valid_positive_integer(MaxNodes) orelse
-                      <<"The value of \"maxNodes\" must be a positive integer\n">>],
+                      {maxNodes, <<"The value of \"maxNodes\" must be a positive integer">>}],
             case lists:filter(fun (E) -> E =/= true end, Errors) of
                 [] ->
-                    [Enabled2, list_to_integer(Age),
+                    [Enabled2, list_to_integer(Timeout),
                      list_to_integer(MaxNodes)];
                 Errors2 ->
                     {error, Errors2}
@@ -1000,14 +1002,14 @@ is_valid_positive_integer(String) ->
     Int = (catch list_to_integer(String)),
     (is_integer(Int) andalso (Int > 0)).
 
-%% @doc Disable auto-failover in the settings (but don't make the actual)
-%% call to disable it.
-disable_auto_failover_settings() ->
-    Config = build_settings_auto_failover(),
-    Age = proplists:get_value(age, Config),
-    MaxNodes = proplists:get_value(max_nodes, Config),
-    ns_config:set(auto_failover, [{enabled, false}, {age, Age},
-                                  {max_nodes, MaxNodes}]).
+is_valid_positive_integer_bigger_or_equal(String, Min) ->
+    Int = (catch list_to_integer(String)),
+    (is_integer(Int) andalso (Int >= Min)).
+
+%% @doc Resets the number of nodes that were automatically failovered to zero
+handle_settings_auto_failover_reset_count(Req) ->
+    auto_failover:reset_count(),
+    Req:respond({200, add_header(), []}).
 
 %% true iff system is correctly provisioned
 is_system_provisioned() ->
@@ -1082,49 +1084,39 @@ handle_settings_web_post(Req) ->
             reply_json(Req, {struct, [{newBaseUri, list_to_binary("http://" ++ NewHost ++ "/")}]})
     end.
 
-handle_settings_advanced(Req) ->
-    reply_json(Req, {struct,
-                     [{alerts,
-                       {struct, menelaus_alert:build_alerts_settings()}},
-                      {ports,
-                       {struct, build_port_settings("default")}}
-                     ]}).
+handle_settings_alerts(Req) ->
+    {value, Config} = ns_config:search(email_alerts),
+    reply_json(Req, {struct, menelaus_alert:build_alerts_json(Config)}).
 
-handle_settings_advanced_post(Req) ->
+handle_settings_alerts_post(Req) ->
     PostArgs = Req:parse_post(),
-    Results = [menelaus_alert:handle_alerts_settings_post(PostArgs),
-               handle_port_settings_post(PostArgs, "default")],
-    case proplists:get_all_values(errors, Results) of
-        [] -> %% no errors
-            CommitFunctions = proplists:get_all_values(ok, Results),
-            lists:foreach(fun (F) -> apply(F, []) end,
-                          CommitFunctions),
+    ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
+    case {ValidateOnly, menelaus_alert:parse_settings_alerts_post(PostArgs)} of
+        {false, {ok, Config}} ->
+            ns_config:set(email_alerts, Config),
             Req:respond({200, add_header(), []});
-        [Head | RestErrors] ->
-            Errors = lists:foldl(fun (A, B) -> A ++ B end,
-                                 Head,
-                                 RestErrors),
-            reply_json(Req, Errors, 400)
+        {false, {error, Errors}} ->
+            reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 400);
+        {true, {ok, _}} ->
+            reply_json(Req, {struct, [{errors, null}]}, 200);
+        {true, {error, Errors}} ->
+            reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 200)
     end.
 
-build_port_settings(_PoolId) ->
-    Config = ns_config:get(),
-    [{proxyPort, ns_config:search_node_prop(Config, moxi, port)},
-     {directPort, ns_config:search_node_prop(Config, memcached, port)}].
+%% @doc Sends a test email with the current settings
+handle_settings_alerts_send_test_email(Req) ->
+    PostArgs = Req:parse_post(),
+    Subject = proplists:get_value("subject", PostArgs),
+    Body = proplists:get_value("body", PostArgs),
+    {ok, Config} = menelaus_alert:parse_settings_alerts_post(PostArgs),
 
-validate_port_settings(ProxyPort, DirectPort) ->
-    CS = [is_valid_port_number(ProxyPort) orelse <<"Proxy port must be a positive integer less than 65536">>,
-          is_valid_port_number(DirectPort) orelse <<"Direct port must be a positive integer less than 65536">>],
-    lists:filter(fun (C) -> C =/= true end,
-                 CS).
-
-handle_port_settings_post(PostArgs, _PoolId) ->
-    PPort = proplists:get_value("proxyPort", PostArgs),
-    DPort = proplists:get_value("directPort", PostArgs),
-    case validate_port_settings(PPort, DPort) of
-        % TODO: this should change the config
-        [] -> {ok, ok};
-        Errors -> {errors, Errors}
+    case ns_mail_log:send_email_with_config(Subject, Body, Config) of
+        {error, _, {_, _, {error, Reason}}} ->
+            reply_json(Req, {struct, [{error, Reason}]}, 400);
+        {error, Reason} ->
+            reply_json(Req, {struct, [{error, Reason}]}, 400);
+        _ ->
+            Req:respond({200, add_header(), []})
     end.
 
 handle_traffic_generator_control_post(Req) ->
@@ -1423,6 +1415,8 @@ do_handle_rebalance(Req, KnownNodesS, EjectedNodesS) ->
             Req:respond({200, [], []});
         nodes_mismatch ->
             reply_json(Req, {struct, [{mismatch, 1}]}, 400);
+        no_active_nodes_left ->
+            Req:respond({400, [], []});
         ok ->
             Req:respond({200, [], []})
     end.
@@ -1572,7 +1566,7 @@ bin_concat_path(Path) ->
     list_to_binary(concat_url_path(Path)).
 
 handle_diag_eval(Req) ->
-    {value, Value, _} = eshell:eval(binary_to_list(Req:recv_body()), erl_eval:add_binding("Req", Req, erl_eval:new_bindings())),
+    {value, Value, _} = eshell:eval(binary_to_list(Req:recv_body()), erl_eval:add_binding('Req', Req, erl_eval:new_bindings())),
     case Value of
         done -> ok;
         {json, V} -> reply_json(Req, V, 200);

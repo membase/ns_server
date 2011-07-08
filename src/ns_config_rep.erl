@@ -59,7 +59,7 @@ init([]) ->
     do_push(),
     % Have ns_config reannounce its config for any synchronization that
     % may have occurred.
-    ?log_info("~p init reannouncing~n", []),
+    ?log_info("init reannouncing~n", []),
     ns_config:reannounce(),
     % Schedule some random config syncs.
     schedule_config_sync(),

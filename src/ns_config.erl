@@ -40,7 +40,7 @@
 
 -include("ns_common.hrl").
 
--define(DEFAULT_TIMEOUT, 500).
+-define(DEFAULT_TIMEOUT, 15000).
 -define(TERMINATE_SAVE_TIMEOUT, 10000).
 
 %% log codes
@@ -949,7 +949,7 @@ setup_with_saver() ->
     %% we don't want to kill this process when ns_config server dies,
     %% but we wan't to kill ns_config process when this process dies
     spawn(fun () ->
-                  Cfg = #config{dynamic = [[{config_version, {1,7}},
+                  Cfg = #config{dynamic = [[{config_version, {1,7,1}},
                                             {a, [{b, 1}, {c, 2}]},
                                             {d, 3}]],
                                 policy_mod = ns_config_default,

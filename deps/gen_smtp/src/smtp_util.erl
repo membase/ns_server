@@ -23,8 +23,10 @@
 %% @doc Module with some general utility functions for SMTP.
 
 -module(smtp_util).
--compile(export_all).
-
+-export([
+		mxlookup/1, guess_FQDN/0, compute_cram_digest/2, get_cram_string/1,
+		trim_crlf/1, rfc5322_timestamp/0, zone/0, generate_message_id/0,
+		generate_message_boundary/0]).
 -include_lib("kernel/src/inet_dns.hrl").
 
 %% @doc returns a sorted list of mx servers for `Domain', lowest distance first
@@ -32,7 +34,7 @@ mxlookup(Domain) ->
 	case whereis(inet_db) of
 		P when is_pid(P) ->
 			ok;
-		_ ->
+		_ -> 
 			inet_db:start()
 	end,
 	case lists:keyfind(nameserver, 1, inet_db:get_rc()) of
@@ -52,17 +54,20 @@ mxlookup(Domain) ->
 %% @doc guess the current host's fully qualified domain name
 guess_FQDN() ->
 	{ok, Hostname} = inet:gethostname(),
-	case inet:gethostbyname(Hostname) of
-		{ok, {hostent, FQDN, _Aliases, inet, _, _Addresses}} ->
-			FQDN;
-		{error, nxdomain} -> Hostname
-	end.
+	{ok, Hostent} = inet:gethostbyname(Hostname),
+	{hostent, FQDN, _Aliases, inet, _, _Addresses} = Hostent,
+	FQDN.
 
 %% @doc Compute the CRAM digest of `Key' and `Data'
--spec(compute_cram_digest/2 :: (Key :: binary(), Data :: string()) -> string()).
+-spec(compute_cram_digest/2 :: (Key :: binary(), Data :: string()) -> binary()).
 compute_cram_digest(Key, Data) ->
 	Bin = crypto:md5_mac(Key, Data),
-	lists:flatten([io_lib:format("~2.16.0b", [X]) || <<X>> <= Bin]).
+	list_to_binary([io_lib:format("~2.16.0b", [X]) || <<X>> <= Bin]).
+
+%% @doc Generate a seed string for CRAM.
+-spec(get_cram_string/1 :: (Hostname :: string()) -> string()).
+get_cram_string(Hostname) ->
+	binary_to_list(base64:encode(lists:flatten(io_lib:format("<~B.~B@~s>", [crypto:rand_uniform(0, 4294967295), crypto:rand_uniform(0, 4294967295), Hostname])))).
 
 %% @doc Trim \r\n from `String'
 -spec(trim_crlf/1 :: (String :: string()) -> string()).
@@ -72,7 +77,7 @@ trim_crlf(String) ->
 -define(DAYS, ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]).
 -define(MONTHS, ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
 		"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]).
-
+%% @doc Generate a RFC 5322 timestamp based on the current time
 rfc5322_timestamp() ->
 	{{Year, Month, Day}, {Hour, Minute, Second}} = calendar:local_time(),
 	NDay = calendar:day_of_the_week(Year, Month, Day),
@@ -80,7 +85,7 @@ rfc5322_timestamp() ->
 	MoY = lists:nth(Month, ?MONTHS),
 	io_lib:format("~s, ~b ~s ~b ~b:~b:~b ~s", [DoW, Day, MoY, Year, Hour, Minute, Second, zone()]).
 
-% borrowed from YAWS
+%% @doc Calculate the current timezone and format it like -0400. Borrowed from YAWS.
 zone() ->
 	Time = erlang:universaltime(),
 	LocalTime = calendar:universal_time_to_local_time(Time),
@@ -95,11 +100,16 @@ zone(Val) when Val < 0 ->
 zone(Val) when Val >= 0 ->
 	io_lib:format("+~4..0w", [trunc(abs(Val))]).
 
+%% @doc Generate a unique message ID 
 generate_message_id() ->
 	FQDN = guess_FQDN(),
 	Md5 = [io_lib:format("~2.16.0b", [X]) || <<X>> <= erlang:md5(term_to_binary([erlang:now(), FQDN]))],
 	io_lib:format("<~s@~s>", [Md5, FQDN]).
 
+%% @doc Generate a unique MIME message boundary
 generate_message_boundary() ->
 	FQDN = guess_FQDN(),
 	["_=", [io_lib:format("~2.36.0b", [X]) || <<X>> <= erlang:md5(term_to_binary([erlang:now(), FQDN]))], "=_"].
+
+
+

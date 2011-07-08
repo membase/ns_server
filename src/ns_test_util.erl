@@ -177,7 +177,7 @@ rebalance_node_done(Node, Time) ->
     rebalance_node(Node),
     ok = wait_for_balanced(Node, Time),
     % Getting to full health shouldn't take long
-    ok = wait_for_health(Node, 3).
+    ok = wait_for_health(Node, 8).
 
 %% @doc Returns the rebalancing status of the given node
 -spec rebalance_node_status(Node::#node{}) -> string().

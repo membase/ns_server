@@ -550,10 +550,12 @@ function showDialog(idOrJQ, options) {
 
   jq.dialog(options);
 
-  if (jq.height() > $(window).height()) {
-    jq.dialog('widget').css({'position': 'absolute', 'top':'15px'});
-    $('html, body').animate({scrollTop: jq.dialog('widget').offset().top}, 250);
-  }
+  $(window).resize(function() {
+    if ((jq.dialog('widget').height() + 50) > $(window).height()) {
+      jq.dialog('widget').css({'position': 'absolute', 'top':'15px'});
+      $('html, body').animate({scrollTop: jq.dialog('widget').offset().top}, 250);
+    }
+  }).trigger('resize');
 
   jq.find('.close').click(function(ev) {
     ev.preventDefault();

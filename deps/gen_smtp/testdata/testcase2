@@ -54,8 +54,8 @@ Content-Type: text/plain;
 Content-Transfer-Encoding: 7bit
 
 
------ Original Message -----
-From: "Mail Delivery Subsystem"
+----- Original Message ----- 
+From: "Mail Delivery Subsystem" 
 <MAILER-DAEMON@mailgate03.csm.vanderbilt.edu>
 To: <william.reid@gmail.com>
 Sent: Friday, January 16, 2009 12:14 AM
@@ -67,17 +67,17 @@ Subject: Returned mail: see transcript for details
 >
 >   ----- The following addresses had permanent fatal errors -----
 > <Chris.c.stowers@vanderbilt.edu>
->    (reason: 550 5.1.1 <Chris.c.stowers@vanderbilt.edu>... Unregistered
+>    (reason: 550 5.1.1 <Chris.c.stowers@vanderbilt.edu>... Unregistered 
 > address - Chris.c.stowers@vanderbilt.edu)
 >
 >   ----- Transcript of session follows -----
 > ... while talking to smtp05.smtp.vanderbilt.edu.:
 >>>> DATA
-> <<< 550 5.1.1 <Chris.c.stowers@vanderbilt.edu>... Unregistered address -
+> <<< 550 5.1.1 <Chris.c.stowers@vanderbilt.edu>... Unregistered address - 
 > Chris.c.stowers@vanderbilt.edu
 > 550 5.1.1 <Chris.c.stowers@vanderbilt.edu>... User unknown
 > <<< 503 5.0.0 Need RCPT (recipient)
->
+> 
 
 ------=_NextPart_000_02B5_01C9DE49.621B3960
 Content-Type: application/octet-stream;
@@ -203,3 +203,4 @@ bulbs.</FONT></DIV></BODY></HTML>
 
 
 ------=_NextPart_000_02B5_01C9DE49.621B3960--
+

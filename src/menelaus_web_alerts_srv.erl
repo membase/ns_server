@@ -48,7 +48,7 @@ errors(ep_item_commit_failed) ->
 errors(overhead) ->
     "Metadata overhead warning. Over  ~p% of RAM allocated to bucket  \"~s\" on node \"~s\" is taken up by keys and metadata.";
 errors(disk) ->
-    "Approaching full disk warning. Usage of disk \"~s\" on node \"~s\" is over ~p%.".
+    "Approaching full disk warning. Usage of disk \"~s\" on node \"~s\" is around ~p%.".
 
 %% ------------------------------------------------------------------
 %% API Function Definitions

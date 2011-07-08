@@ -16,6 +16,7 @@
 -module(ns_cluster_membership).
 
 -export([active_nodes/0,
+         active_nodes/1,
          actual_active_nodes/0,
          get_nodes_cluster_membership/0,
          get_nodes_cluster_membership/1,
@@ -51,7 +52,9 @@
 -define(UNUSED_JOINED_CLUSTER, 224).
 
 active_nodes() ->
-    Config = ns_config:get(),
+    active_nodes(ns_config:get()).
+
+active_nodes(Config) ->
     [Node || Node <- ns_node_disco:nodes_wanted(),
              get_cluster_membership(Node, Config) == active].
 
@@ -84,6 +87,8 @@ system_joinable() ->
 get_rebalance_status() ->
     ns_orchestrator:rebalance_progress().
 
+start_rebalance(KnownNodes, KnownNodes) ->
+    no_active_nodes_left;
 start_rebalance(KnownNodes, EjectedNodes) ->
     case {lists:sort(ns_node_disco:nodes_wanted()),
           lists:sort(KnownNodes)} of
@@ -117,8 +122,7 @@ is_balanced() ->
     not ns_orchestrator:needs_rebalance().
 
 failover(Node) ->
-    ok = ns_orchestrator:failover(Node),
-    ns_config:set({node, Node, membership}, inactiveFailed).
+    ok = ns_orchestrator:failover(Node).
 
 re_add_node(Node) ->
     ns_config:set({node, Node, membership}, inactiveAdded).

@@ -140,8 +140,7 @@ handle_call({maybe_rename, NewAddr}, _From, State) ->
 handle_call(wipe, _From, State) ->
     stopped = mnesia:stop(),
     ok = mnesia:delete_schema([node()]),
-    start_mnesia(),
-    ensure_schema(),
+    start_mnesia([ensure_schema]),
     {reply, ok, State};
 
 handle_call(Request, From, State) ->
@@ -232,16 +231,14 @@ init([]) ->
                         {ok, _} ->
                             ?log_info("Found backup. Restoring Mnesia database.", []),
                             ok = mnesia:install_fallback(BackupFile),
-                            start_mnesia(),
+                            start_mnesia([]),
                             ok = file:delete(BackupFile);
                         {error, enoent} ->
                             %% Crash if it's not one of these
-                            start_mnesia(),
-                            ensure_schema()
+                            start_mnesia([ensure_schema])
                     end;
                 _ ->
-                    start_mnesia(),
-                    ensure_schema()
+                    start_mnesia([ensure_schema])
             end
     end,
     Peers = ensure_config_tables(),
@@ -446,19 +443,20 @@ is_mnesia_running() ->
 
 
 %% @doc Start mnesia and wait for it to come up.
-start_mnesia() ->
-    do_start_mnesia(false).
+start_mnesia(Options) ->
+    do_start_mnesia(Options, false).
 
-cleanup_and_start_mnesia() ->
+cleanup_and_start_mnesia(Options) ->
     MnesiaDir = path_config:component_path(data, "mnesia"),
     ToDelete = filelib:wildcard("*", MnesiaDir),
     ?log_info("Recovering from damaged mnesia files by deleting them:~n~p~n", [ToDelete]),
     lists:foreach(fun (BaseName) ->
                           file:delete(filename:join(MnesiaDir, BaseName))
                   end, ToDelete),
-    do_start_mnesia(true).
+    do_start_mnesia(Options, true).
 
-do_start_mnesia(Repeat) ->
+do_start_mnesia(Options, Repeat) ->
+    EnsureSchema = proplists:get_bool(ensure_schema, Options),
     MnesiaDir = path_config:component_path(data, "mnesia"),
     application:set_env(mnesia, dir, MnesiaDir),
     case mnesia:start() of
@@ -470,13 +468,28 @@ do_start_mnesia(Repeat) ->
                     mnesia:unsubscribe({table, schema, simple}),
                     mnesia:unsubscribe(system),
                     stopped = mnesia:stop(),
-                    cleanup_and_start_mnesia();
+                    cleanup_and_start_mnesia(Options);
                 ok -> ok
             end;
         {error, _} when Repeat =/= true ->
-            cleanup_and_start_mnesia()
+            cleanup_and_start_mnesia(Options)
+    end,
+    case {EnsureSchema, Repeat} of
+        {true, false} ->
+            try
+                ensure_schema()
+            catch T:E ->
+                    ?log_info("ensure_schema failed: ~p:~p~n", [T,E]),
+                    mnesia:unsubscribe({table, schema, simple}),
+                    mnesia:unsubscribe(system),
+                    stopped = mnesia:stop(),
+                    cleanup_and_start_mnesia(Options)
+            end;
+        {true, _} ->
+            ensure_schema();
+        _ ->
+            ok
     end.
-
 
 %% @doc Hack.
 tmpdir() ->

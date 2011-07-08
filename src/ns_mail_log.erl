@@ -22,10 +22,14 @@
 %% gen_event callbacks
 -export([init/1, handle_event/2, handle_call/2,
          handle_info/2, terminate/2, code_change/3]).
+%% API
+-export([send_email_with_config/3]).
 
 -record(state, {}).
 
 -include_lib("eunit/include/eunit.hrl").
+
+-include("ns_common.hrl").
 
 %% gen_event handlers
 
@@ -38,70 +42,73 @@ start_link() ->
                           end).
 
 init(_) ->
+    ?log_info("ns_mail_log started up", []),
     {ok, #state{}, hibernate}.
 
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
 
 handle_event({ns_log, _Category, Module, Code, Fmt, Args}, State) ->
-    AlertConfig = try menelaus_alert:get_alert_config() catch _:Reason ->
-        error_logger:info_msg("ns_mail_log: unable to get alert config from menelaus_alert: ~p~n",
-                              [Reason]),
-        []
-    end,
-    case proplists:get_bool(email_alerts, AlertConfig) of
+    {value, Config} = ns_config:search(email_alerts),
+    case proplists:get_bool(enabled, Config) of
         true ->
             AlertKey = menelaus_alert:alert_key(Module, Code),
-            Alerts = proplists:get_value(alerts, AlertConfig, []),
-            case lists:member(AlertKey, Alerts) of
-                true -> send_email(proplists:get_value(sender, AlertConfig, "membase"),
-                                   proplists:get_value(email, AlertConfig),
-                                   AlertKey,
-                                   lists:flatten(io_lib:format(Fmt, Args)),
-                                   proplists:get_value(email_server, AlertConfig));
-                false -> ok
+            EnabledAlerts = proplists:get_value(alerts, Config, []),
+            case lists:member(AlertKey, EnabledAlerts) of
+                true ->
+                    send_email(proplists:get_value(sender, Config),
+                               proplists:get_value(recipients, Config),
+                               AlertKey,
+                               lists:flatten(io_lib:format(Fmt, Args)),
+                               proplists:get_value(email_server, Config));
+                false ->
+                    ok
             end;
         false -> ok
     end,
     {ok, State, hibernate};
 handle_event(Event, State) ->
-    error_logger:info_msg("ns_mail_log handle_event(~p, ~p)~n",
-                          [Event, State]),
+    ?log_info("ns_mail_log handle_event(~p, ~p)~n", [Event, State]),
     {ok, State, hibernate}.
 
 handle_call(Request, State) ->
-    error_logger:info_msg("ns_mail_log handle_call(~p, ~p)~n",
-                          [Request, State]),
+    ?log_info("ns_mail_log handle_call(~p, ~p)~n", [Request, State]),
     {ok, ok, State, hibernate}.
 
 handle_info(Info, State) ->
-    error_logger:info_msg("ns_mail_log handle_info(~p, ~p)~n",
-                          [Info, State]),
+    ?log_info("ns_mail_log handle_info(~p, ~p)~n", [Info, State]),
     {ok, State, hibernate}.
+
+%% @doc Sends an email with the given configuration
+send_email_with_config(Subject, Body, Config) ->
+    ServerConfig = proplists:get_value(email_server, Config),
+    Options = config_to_options(ServerConfig),
+    ns_mail:send(proplists:get_value(sender, Config),
+                 proplists:get_value(recipients, Config),
+                 Subject, Body, Options).
+
 
 %% Internal functions
 
 config_to_options(ServerConfig) ->
-    Username = proplists:get_value(user, ServerConfig, []),
+    Username = proplists:get_value(user, ServerConfig),
     Password = proplists:get_value(pass, ServerConfig),
-    Relay = proplists:get_value(addr, ServerConfig),
+    Relay = proplists:get_value(host, ServerConfig),
     Port = proplists:get_value(port, ServerConfig),
     Encrypt = proplists:get_bool(encrypt, ServerConfig),
-    Options = [{relay, Relay}],
+    Options = [{relay, Relay}, {port, Port}],
     Options2 = case Username of
-       [] -> Options;
-        _ -> lists:append(Options, [{username, Username}, {password, Password}])
+        "" ->
+            Options;
+        _ ->
+            [{username, Username}, {password, Password}] ++ Options
     end,
-    Options3 = case Encrypt of
+    case Encrypt of
         true -> [{tls, always} | Options2];
         false -> Options2
-    end,
-    case Port of
-        undefined -> Options3;
-        _ -> [{port, list_to_integer(Port)} | Options3]
     end.
 
-send_email(Sender, Rcpt, AlertKey, Message, ServerConfig) ->
+send_email(Sender, Rcpts, AlertKey, Message, ServerConfig) ->
     Options = config_to_options(ServerConfig),
     Subject = "Membase alert: " ++ atom_to_list(AlertKey),
-    ns_mail:send(Sender, [Rcpt], Subject, Message, Options).
+    ns_mail:send(Sender, Rcpts, Subject, Message, Options).

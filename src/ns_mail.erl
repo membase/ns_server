@@ -23,6 +23,8 @@
 
 -export([send/5, ns_log_cat/1]).
 
+-include("ns_common.hrl").
+
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
@@ -30,25 +32,24 @@ init([]) ->
     process_flag(trap_exit, true),
     {ok, empty_state}.
 
+handle_call({send, Sender, Rcpts, Body, Options}, _From, State) ->
+    Reply = gen_smtp_client:send_blocking({Sender, Rcpts, Body}, Options),
+    case Reply of
+        {error, _, Reason} ->
+            ns_log:log(?MODULE, 0001, "error sending mail: ~p", [Reason]);
+        _ -> ok
+    end,
+    {reply, Reply, State};
+
 handle_call(Request, From, State) ->
-    error_logger:info_msg("ns_mail: unexpected call ~p from ~p~n",
-                          [Request, From]),
+    ?log_info("ns_mail: unexpected call ~p from ~p", [Request, From]),
     {ok, State}.
 
-handle_cast({send, Sender, Rcpts, Body, Options}, State) ->
-    error_logger:info_msg("ns_mail: sending email ~p ~p ~p~n",
-                          [Sender, Rcpts, Body]),
-    gen_smtp_client:send({Sender, Rcpts, Body}, Options),
+handle_cast(Request, State) ->
+    ?log_info("ns_mail: unexpected cast ~p.", [Request]),
     {noreply, State}.
 
-handle_info({'EXIT', _Pid, Reason}, State) ->
-    case Reason of
-        normal ->
-            error_logger:info_msg("ns_mail: successfully sent mail~n");
-        Error ->
-            ns_log:log(?MODULE, 0001, "error sending mail: ~p",
-                           [Error])
-    end,
+handle_info(_Info, State) ->
     {noreply, State}.
 
 terminate(_Reason, _State) -> ok.
@@ -61,19 +62,17 @@ send(Sender, Rcpts, Subject, Body, Options) ->
     Message = mimemail:encode({<<"text">>, <<"plain">>,
                               make_headers(Sender, Rcpts, Subject), [],
                               list_to_binary(Body)}),
-    gen_server:cast({global, ?MODULE},
-                    {send, Sender, Rcpts,
-                     binary_to_list(Message),
-                     Options}).
+    gen_server:call(?MODULE, {send, Sender, Rcpts, binary_to_list(Message),
+                              Options ++ [{tls, never}]}).
 
 ns_log_cat(0001) -> warn.
 
 %% Internal functions
 
-format_addr(Addr) ->
-    "<" ++ Addr ++ ">".
+format_addr(Rcpts) ->
+    string:join(["<" ++ Addr ++ ">" || Addr <- Rcpts], ", ").
 
 make_headers(Sender, Rcpts, Subject) ->
-    [{<<"From">>, list_to_binary(format_addr(Sender))},
-     {<<"To">>, list_to_binary(string:join(lists:map(fun format_addr/1, Rcpts), ", "))},
+    [{<<"From">>, list_to_binary(format_addr([Sender]))},
+     {<<"To">>, list_to_binary(format_addr(Rcpts))},
      {<<"Subject">>, list_to_binary(Subject)}].

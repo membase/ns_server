@@ -80,16 +80,16 @@ start_link() ->
                            rebalance_running.
 create_bucket(BucketType, BucketName, NewConfig) ->
     gen_fsm:sync_send_event(?SERVER, {create_bucket, BucketType, BucketName,
-                                      NewConfig}, 20000).
+                                      NewConfig}, infinity).
 
 %% deletes bucket. Makes sure that once it returns it's already dead.
 delete_bucket(BucketName) ->
-    gen_fsm:sync_send_event(?SERVER, {delete_bucket, BucketName}, 20000).
+    gen_fsm:sync_send_event(?SERVER, {delete_bucket, BucketName}, infinity).
 
 
 -spec failover(atom()) -> ok.
 failover(Node) ->
-    gen_fsm:sync_send_event(?SERVER, {failover, Node}, 20000).
+    gen_fsm:sync_send_event(?SERVER, {failover, Node}, infinity).
 
 
 -spec needs_rebalance() -> boolean().
@@ -160,7 +160,7 @@ handle_info(janitor, idle, #idle_state{remaining_buckets=[]} = State) ->
 handle_info(janitor, idle, #idle_state{remaining_buckets=Buckets}) ->
     misc:verify_name(?MODULE), % MB-3180: Make sure we're still registered
     Bucket = hd(Buckets),
-    Pid = proc_lib:spawn_link(ns_janitor, cleanup, [Bucket]),
+    Pid = proc_lib:spawn_link(ns_janitor, cleanup, [Bucket, [best_effort]]),
     %% NOTE: Bucket will be popped from Buckets when janitor run will
     %% complete successfully
     {next_state, janitor_running, #janitor_state{remaining_buckets=Buckets,
@@ -260,6 +260,7 @@ idle({failover, Node}, _From, State) ->
     ?log_info("Failing over ~p", [Node]),
     Result = ns_rebalancer:failover(Node),
     ns_log:log(?MODULE, ?FAILOVER_NODE, "Failed over ~p: ~p", [Node, Result]),
+    ns_config:set({node, Node, membership}, inactiveFailed),
     {reply, Result, idle, State};
 idle(rebalance_progress, _From, State) ->
     {reply, not_running, idle, State};
