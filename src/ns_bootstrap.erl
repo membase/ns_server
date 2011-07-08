@@ -27,16 +27,8 @@ start() ->
             "win32" -> inet_db:set_lookup([native, file]);
             _ -> ok
         end,
-        ok = application:start(ns_server),
-        case os:getenv("DONT_START_COUCH") of
-            false ->
-                case erlang:system_info(system_architecture) of
-                    "win32" -> ok;
-                    _ ->
-                        ok = application:start(couch)
-                end;
-            _ -> ok
-        end
+        ok = application:start(couch),
+        ok = application:start(ns_server)
     catch T:E ->
             timer:sleep(500),
             erlang:T(E)
