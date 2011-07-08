@@ -270,6 +270,9 @@ var ThePage = {
         $(window).trigger('sec:' + sec);
       });
     });
+    _.defer(function() {
+      $(window).trigger('hashchange');
+    });
   }
 };
 

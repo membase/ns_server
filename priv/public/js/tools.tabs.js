@@ -115,7 +115,7 @@
 				var tab = tabs.eq(i);												 
 				
 				if (typeof i == 'string' && i.replace("#", "")) {
-					tab = tabs.filter("[href*=" + i.replace("#", "") + "]");
+					tab = tabs.filter("[href*=\"" + i.replace("#", "") + "\"]");
 					i = Math.max(tabs.index(tab), 0);
 				}
 								
