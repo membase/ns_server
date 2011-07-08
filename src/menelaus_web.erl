@@ -660,13 +660,18 @@ build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
     OS = proplists:get_value(system_arch, InfoNode, "unknown"),
     HostName = build_node_hostname(Config, WantENode, LocalAddr),
 
-    [{hostname, list_to_binary(HostName)},
-     {clusterCompatibility, proplists:get_value(cluster_compatibility_version, InfoNode, 0)},
-     {version, list_to_binary(Version)},
-     {os, list_to_binary(OS)},
-     {ports, {struct, [{proxy, ProxyPort},
-                       {direct, DirectPort}]}}
-    ].
+    RV = [{hostname, list_to_binary(HostName)},
+          {clusterCompatibility, proplists:get_value(cluster_compatibility_version, InfoNode, 0)},
+          {version, list_to_binary(Version)},
+          {os, list_to_binary(OS)},
+          {ports, {struct, [{proxy, ProxyPort},
+                            {direct, DirectPort}]}}
+         ],
+    case WantENode =:= node() of
+        true ->
+            [{thisNode, true} | RV];
+        _ -> RV
+    end.
 
 handle_pool_info_streaming(Id, Req) ->
     UserPassword = menelaus_auth:extract_auth(Req),
