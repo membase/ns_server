@@ -239,7 +239,7 @@ var MockedRequest = mkClass({
   },
   respondForReal: function () {
     if ($.ajaxSettings.beforeSend)
-      $.ajaxSettings.beforeSend(this.fakeXHR);
+      $.ajaxSettings.beforeSend(this.fakeXHR, {url: "/"});
 
     this.findResponseFor(this.options.type, this.path, function (foundResp, routeArgs) {
       if (!foundResp) {

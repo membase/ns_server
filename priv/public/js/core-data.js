@@ -104,7 +104,10 @@ $.ajaxSetup({
   timeout: 30000,
   cache: false,
   beforeSend: function (xhr, options) {
-    if (DAL.login) {
+    // NOTE: we're not sending auth header for capi requests because
+    // at this point CAPI is authless and sending auth header only
+    // confuses it
+    if (DAL.login && options.url.substring(0, "/capiProxy/".length) !== "/capiProxy/") {
       addBasicAuth(xhr, DAL.login, DAL.password);
     }
     xhr.setRequestHeader('invalid-auth-response', 'on');
@@ -516,3 +519,31 @@ var DAL = {
     cell.invalidate();
   };
 })(DAL.cells);
+
+(function () {
+  var capiBaseCell = DAL.cells.capiBase = Cell.computeEager(function (v) {
+    // if we already have value, keep if forever, so that pool details
+    // reload won't interfere with CAPI requests
+    if (this.self.value) {
+      return this.self.value;
+    }
+
+    var details = v.need(DAL.cells.currentPoolDetailsCell);
+    var nodes = details.nodes;
+    var thisNode = _.detect(nodes, function (n) {return n.thisNode;});
+    return thisNode.couchApiBase;
+  }).name("capiBaseCell");
+
+  $.ajaxPrefilter(function (options, originalOptions, jqXHR) {
+    var capiBase = capiBaseCell.value;
+    if (!capiBase) {
+      return;
+    }
+    var capiBaseLen = capiBase.length;
+
+    if (options.crossDomain && options.url.substring(0, capiBaseLen) === capiBase) {
+      options.crossDomain = false;
+      options.url = "/capiProxy/" + options.url.slice(capiBaseLen);
+    }
+  });
+})();
