@@ -49,6 +49,14 @@
 shuffle(List) when is_list(List) ->
     [N || {_R, N} <- lists:keysort(1, [{random:uniform(), X} || X <- List])].
 
+randomize() ->
+    case get(random_seed) of
+        undefined ->
+            random:seed(erlang:now());
+        _ ->
+            ok
+    end.
+
 %% applies (catch Fun(X)) for each element of list in parallel. If
 %% execution takes longer than given Timeout it'll exit with reason
 %% timeout (which is consistent with behavior of gen_XXX:call

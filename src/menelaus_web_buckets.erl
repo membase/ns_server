@@ -86,7 +86,8 @@ build_bucket_node_infos(BucketName, BucketConfig, InfoLevel, LocalAddr) ->
 build_bucket_node_infos(BucketName, BucketConfig, InfoLevel, LocalAddr, IncludeOtp) ->
     %% Only list nodes this bucket is mapped to
     F = menelaus_web:build_nodes_info_fun(IncludeOtp, InfoLevel, LocalAddr),
-    [F(N, BucketName) || N <- proplists:get_value(servers, BucketConfig, [])].
+    misc:randomize(),
+    [F(N, BucketName) || N <- misc:shuffle(proplists:get_value(servers, BucketConfig, []))].
 
 build_bucket_info(PoolId, Id, Bucket, LocalAddr) ->
     build_bucket_info(PoolId, Id, Bucket, normal, LocalAddr).

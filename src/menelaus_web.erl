@@ -494,9 +494,10 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
         {ejectNode, {struct, [{uri, <<"/controller/ejectNode">>}]}},
         {testWorkload, {struct, [{uri, Uri}]}}]},
 
+    misc:randomize(),
     PropList0 = [{name, list_to_binary(Id)},
                  {alerts, Alerts},
-                 {nodes, Nodes},
+                 {nodes, misc:shuffle(Nodes)},
                  {buckets, BucketsInfo},
                  {controllers, Controllers},
                  {balanced, ns_cluster_membership:is_balanced()},
@@ -520,7 +521,8 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
 
 build_nodes_info() ->
     F = build_nodes_info_fun(true, normal, "127.0.0.1"),
-    [F(N, undefined) || N <- ns_node_disco:nodes_wanted()].
+    misc:randomize(),
+    [F(N, undefined) || N <- misc:shuffle(ns_node_disco:nodes_wanted())].
 
 %% builds health/warmup status of given node (w.r.t. given Bucket if
 %% not undefined)
