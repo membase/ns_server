@@ -1086,6 +1086,8 @@ body.init_update_notifications #init_update_notifications_dialog p.pad_10 {color
 body.staleness-active a.disable-if-stale { text-decoration: none; }
 body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: default; }
 
+#views .btn_create {display:none}
+#views.in-development .btn_create {display:block}
 #production_views_list_container .btn_edit, #production_views_list_container .btn_remove, #production_views_list_container .btn_publish, #production_views_list_container .create_view_button{display:none}
 #development_views_list_container .btn_views {display:none}
 

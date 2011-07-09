@@ -13,41 +13,6 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  **/
-// from CouchDB URL: /{db}/_all_docs?startkey="_design/"&endkey="_design0"&include_docs=true
-var sampleViewsData = {"total_rows":20,"offset":12,"rows":[
-  { "id":"_design/adhoc",
-    "key":"_design/adhoc",
-    "value":{"rev":"13-ea509c85ed1fe2102632de72b5de4043"},
-    "doc":{
-      "_id":"_design/adhoc",
-      "_rev":"13-ea509c85ed1fe2102632de72b5de4043",
-      "language":"javascript",
-      "views":{
-        "query":{
-          "map":"function(doc) {\n  for (var k in doc) {\n    if (k.substr(0,1) !== '_') {\n      emit(doc[k], {\"_id\": doc._id, \"path\": k});\n    }\n  }\n}"
-        }
-      }
-    }
-  },
-  { "id":"_design/TeaTime",
-    "key":"_design/TeaTime",
-    "value":{"rev":"1-5ade2e707ee6f3b2d4467ff5e8f2a96a"},
-    "doc":{
-      "_id":"_design/TeaTime",
-      "_rev":"1-5ade2e707ee6f3b2d4467ff5e8f2a96a",
-      "language": "javascript",
-      "views":{
-        "all_users":{
-          "map":"function(doc) {\n  function emitUsers(users) {\n    if (users && users.forEach) {\n      users.forEach(function(user) {\n        emit(user, 1);\n      });\n    }\n  }\n  if (doc.type == \"event\") {\n        emitUsers(doc.attendees);\n        emitUsers(doc.hosts);\n  }\n  if (doc.type == \"profile\") {\n        emitUsers(doc, doc.attendees, doc.start && doc.end);\n  }\n};",
-          "reduce":"_count"
-        },
-        "by_user_date":{
-          "map":"function(doc) {\n  function emitUsersMonthly(doc, users, start, end) {\n    if (users && users.forEach) {\n      users.forEach(function(user) {\n        emitUserMonthly(doc, user, doc.start, doc.end);\n      });\n    }\n  }\n  function emitUserMonthly(doc, user, start, end) {\n    var totalEmitted = 0;\n    while (totalEmitted++ < 36 && start <= end) {\n      var d = new Date(start);\n      emit([user, d.getFullYear(), d.getMonth()], doc);\n      if (d.getMonth() == 11) {\n        d.setFullYear(d.getFullYear() + 1);\n        d.setMonth(0);\n      } else {\n        d.setMonth(d.getMonth() + 1);\n      }\n      start = d.getTime();\n    }\n  }\n  if (doc.type == \"event\" && doc.start && doc.end\n      && typeof doc.start == \"number\" && typeof doc.end == \"number\") {\n        emitUsersMonthly(doc, doc.attendees, doc.start && doc.end);\n        emitUsersMonthly(doc, doc.hosts, doc.start && doc.end);\n  }\n};"
-        }
-      }
-    }
-  }
-]};
 
 var sampleDocs = [{
    "_id": "234235124",
@@ -103,15 +68,177 @@ var ViewsSection = {
   init: function () {
     var self = this;
 
-    self.tabs = new TabsCell("viewsTab",
+    var tabs = self.tabs = new TabsCell("viewsTab",
                              "#views .tabs",
                              "#views .panes > div",
                              ["production", "development"]);
+    tabs.subscribeValue(function (tab) {
+      $('#views').toggleClass('in-development');
+    });
 
-    renderTemplate('views_list', {rows: sampleViewsData.rows}, $i('production_views_list_container'));
-    renderTemplate('views_list', {rows: _.reject(sampleViewsData.rows, function(row) {
-      return row.id === '_design/adhoc';
-    })}, $i('development_views_list_container'));
+    var bucketName;
+    var dbUrl = self.dbUrl = Cell
+      .needing(DAL.cells.capiBase, StatsModel.statsBucketURL)
+      .compute(function (v, baseUri, uri) {
+        bucketName = decodeURIComponent(uri).split('/').pop();
+        return baseUri + bucketName + '%2Fmaster';
+      });
+
+    var designDocs = self.designDocs = Cell
+      .needing(dbUrl)
+      .compute(function (v, dbUrl) {
+        return future.get({url: dbUrl + '/_all_docs?startkey="_design"&endkey="_design0"&include_docs=true'})
+      });
+
+    var devDesignDocs = self.devDesignDocs = Cell
+      .needing(dbUrl)
+      .compute(function (v, dbUrl) {
+        if (bucketName === undefined) {
+          return;
+        }
+        return future.get({url: dbUrl + '/_all_docs?startkey="$dev_design"&endkey="$dev_design0"&include_docs=true'})
+      });
+
+    designDocs.subscribe(function (cell) {
+        renderTemplate('views_list', {rows: cell.value.rows, bucketName: bucketName}, $i('production_views_list_container'));
+    });
+
+    devDesignDocs.subscribe(function (cell) {
+        renderTemplate('views_list', {rows: cell.value.rows, bucketName: bucketName}, $i('development_views_list_container'));
+    });
+
+    // On "Delete" we notify the user that the views in this Design Doc
+    // will no longer be accessible and upon the user clicking "Delete"
+    // within the dialog, we DELETE the doc.
+    $('#views .btn_delete:not(.disabled)').live('click', function (ev) {
+      var ddocInfo = $(ev.target).closest('tbody');
+      // TODO: celluralize this? or put this in a subscribe?
+      var docUrl = dbUrl.value + '/' + encodeURIComponent(ddocInfo.data('name')) + '?rev=' + ddocInfo.data('rev');
+      showDialog('delete_designdoc_confirmation_dialog', {
+        closeOnEscape: false,
+        eventBindings: [['.save_button', 'click', function (e) {
+          e.preventDefault();
+
+          $.ajax({type:"DELETE", url: docUrl,
+            success: function () {
+              ddocInfo.remove();
+              hideDialog('delete_designdoc_confirmation_dialog');
+            },
+            error: function (jqXHR, error, reason) {
+              if (jqXHR.status === 405) {
+                alert(reason + '...yet!');
+              }
+            }
+          });
+        }]]
+      });
+    });
+
+    $('#views .btn_copy:not(.disabled)').live('click', function (ev) {
+      var ddocInfo = $(ev.target).closest('tbody');
+      var docId = ddocInfo.data('name');
+      if (docId.substr(0,1) === '$') {
+        docId = encodeURIComponent(docId);
+      } else {
+        docId = decodeURIComponent(docId);
+      }
+      // TODO: celluralize this? or put this in a subscribe?
+      var docUrl = dbUrl.value + '/' + docId + '?rev=' + ddocInfo.data('rev');
+      // TODO: get dev_mode value from form (replace undefined)
+      var dev_mode = undefined || true;
+      var design_doc_name = ddocInfo.data('name');
+      var dialog = $($i('copy_designdoc_dialog'));
+
+      dialog.find('.designdoc_name').val(design_doc_name.split('/').pop());
+      dialog.find('label').click(function (ev) {
+        ev.preventDefault();
+        var label = $(ev.target);
+        label.find(':radio').prop('checked', true);
+        label.find('.designdoc_name').prop('disabled', false).focus();
+        label.siblings('label').find('.designdoc_name').prop('disabled', true);
+      });
+
+      showDialog(dialog, {
+        eventBindings: [['.save_button', 'click', function (e) {
+          e.preventDefault();
+          var data = {};
+          $.each(dialog.find('form').serializeArray(), function (i, field) {
+            data[field.name] = field.value;
+          });
+
+          // TODO: get new design_doc_name from the form, throw error if undefined
+          // TODO: use this simpler code once COPY's implemented
+//          $.ajax({type:"COPY", url: docUrl,
+//            headers: {
+//              'Destination': data.prefix + '/' + data.name
+//            },
+//            success: function () {
+//              // TODO: switch to tab containing the copied document
+//              designDocs.recalculate();
+//              devDesignDocs.recalculate();
+//              hideDialog('copy_designdoc_dialog');
+//            }
+//          });
+
+          function save(doc, newId) {
+            doc = JSON.parse(doc);
+            doc._id = newId;
+            doc._rev = undefined;
+            // TODO: handle 409's
+            $.ajax({type:"POST", url: dbUrl.value,
+              data: JSON.stringify(doc),
+              contentType: 'application/json',
+              success: function (resp) {
+                // TODO: switch to tab containing the copied document
+                self.designDocs.recalculate();
+                self.devDesignDocs.recalculate();
+                hideDialog('copy_designdoc_dialog');
+              }
+            });
+          }
+
+          $.ajax({type:"GET", url: docUrl,
+            error: function(jqXHR, error, reason) {
+              if (jqXHR.status === 404) {
+                save(null);
+              } else {
+                alert(reason);
+              }
+            },
+            success: function (doc) {
+              save(doc, data.prefix + '/' + data.name);
+            }
+          });
+        }]]
+      });
+    });
+
+    $('#views .btn_create:not(.disabled)').live('click', function (ev) {
+      var dialog = $($i('copy_view_dialog'));
+      dialog.find('input.designdoc_name, input.view_name').val('');
+      // TODO: celluralize this? or put this in a subscribe?
+      showDialog(dialog, {
+        title: 'Create View',
+        closeOnEscape: false,
+        eventBindings: [['.save_button', 'click', function (e) {
+          e.preventDefault();
+
+          var doc = {"_id": '$dev_design/' + dialog.find('input.designdoc_name').val(),
+                     "language": "javascript",
+                     "views": {}};
+          doc.views[dialog.find('input.view_name').val()] = {
+              "map": "function (doc) {\n  emit(doc._id, null);\n }"
+            };
+          $.ajax({type:"POST", url: dbUrl.value, data: JSON.stringify(doc),
+            contentType: 'application/json',
+            success: function () {
+              self.devDesignDocs.recalculate();
+              hideDialog(dialog);
+            }
+          });
+        }]]
+      });
+    });
   },
   onEnter: function () {
   },

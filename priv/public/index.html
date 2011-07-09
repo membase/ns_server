@@ -777,7 +777,8 @@
                         <span class="badge"><span>1</span></span>
                       </li>
                     </ul>
-                    <div style="float:right;margin-top:-3px">
+                    <div style="float:right">
+                      <a class="btn_1 btn_create"><span>Create View...</span></a>
                       <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
                     </div>
                   </div>
@@ -795,16 +796,21 @@
 
             <script id="views_list_template" type="text/html">
             <table class="list" width="100%">
+            <thead>
               <tr>
                 <th>Name</th>
                 <th>Lanugage</th>
                 <th>Disk Size</th>
                 <th class="last"></th>
               </tr>
-              <!-- {% if (!rows.length) { %} -->
-              <tr><td colspan="10" style="padding:15px">No design documents currently defined! Click "Create View..." above to create one.</td></tr>
-              <!-- {% } else { %} -->
-              <!-- {% $.each(rows, function () { %} -->
+            </thead>
+            <!-- {% if (!rows.length) { %} -->
+            <tbody>
+              <tr><td colspan="10" style="padding:15px">No design documents currently defined. Click "Create View..." above to create one.</td></tr>
+            </tbody>
+            <!-- {% } else { %} -->
+            <!-- {% $.each(rows, function () { console.log(this); %} -->
+            <tbody data-name="{%= this.id %}" data-rev="{%= this.value.rev %}">
               <tr>
                 <td class="design_doc_name">
                   {%= h(this.id) %}
@@ -813,29 +819,29 @@
                 <td>
                 </td>
                 <td>
-                  <a class="list_button btn_publish disabled"><span>Publish...</span></a>
-                  <a class="list_button disabled"><span>Copy...</span></a>
-                  <a class="list_button disabled"><span>Delete...</span></a>
+                  <a class="list_button btn_copy"><span>Copy...</span></a>
+                  <a class="list_button btn_delete"><span>Delete</span></a>
                 </td>
               </tr>
               <!-- {% if (_.size(this.doc.views) < 1) { %} -->
               <tr><td colspan="10" style="padding:15px">No views currently defined! Click "Create View..." above to create one.</td></tr>
               <!-- {% } else { %} -->
-              <!-- {% _.each(this.doc.views, function (contents, view_name) { %} -->
+              <!-- {% ddoc_id = this.id; _.each(this.doc.views, function (contents, view_name) { %} -->
               <tr>
                 <td class="view_name" colspan="3">
                   {%= h(view_name) %}
                 </td>
                 <td>
-                  <a class="list_button btn_views" href="#sec=view_development">Query View</a>
-                  <a class="list_button btn_edit disabled">Edit View</a>
+                  <a class="list_button btn_views" href="#sec=view_development&bucketName={%= bucketName %}&docId={%= ddoc_id %}&viewName={%= view_name %}">Query View</a>
+                  <a class="list_button btn_edit" href="#sec=view_development&bucketName={%= bucketName %}&docId={%= ddoc_id %}&viewName={%= view_name %}">Edit View</a>
                   <a class="list_button btn_remove disabled"><span>Remove</span></a>
                 </td>
               </tr>
               <!-- {% }); %} -->
               <!-- {% } %} -->
-              <!-- {% }); %} -->
-              <!-- {% } %} -->
+            </tbody>
+            <!-- {% }); %} -->
+            <!-- {% } %} -->
             </table>
             </script>
           </div>
@@ -882,36 +888,33 @@
             </div>
             <h1>Results <span id="view_query_string">?startkey=<em>["2011"]</em>&endkey=<em>["2011", {}]</em>&descending=<em>false</em>&group=<em>true</em></span></h1>
             <div class="shadow_box">
-              <div class="content">
-                <table class="list" style="width:100%">
-                <tr>
-                  <th>Key</th>
-                  <th>Value</th>
-                </tr>
-                <tr>
-                  <td>
-                    <div class="key">[2011, 11, 5, 4, 30, 45, "couchbase"]</div>
-                    <div class="id">93adfjkew3924sadg</div>
-                  </td>
-                  <td>{"json":"results"}</td>
-                </tr>
-                <tr>
-                  <td>
-                    <div class="key">[2011, 11, 5, 4, 30, 45, "couchbase"]</div>
-                    <div class="id">93adfjkew3924sadg</div>
-                  </td>
-                  <td>{"json":"results"}</td>
-                </tr>
-                <tr>
-                  <td>
-                    <div class="key">[2011, 11, 5, 4, 30, 45, "couchbase"]</div>
-                    <div class="id">93adfjkew3924sadg</div>
-                  </td>
-                  <td>{"json":"results"}</td>
-                </tr>
-                </table>
-              </div>
+              <div id="view_results_container" class="content"></div>
             </div>
+            <script id="view_results_template" type="text/html">
+              <table class="list" style="width:100%">
+              <tr>
+                <th class="keycol">Key</th>
+                <th>Value</th>
+              </tr>
+              <!-- {% if (!rows.length) { %} -->
+              <tbody>
+                <tr><td colspan="2" style="padding:15px">No results returned for this view.</td></tr>
+              </tbody>
+              <!-- {% } else { %} -->
+              <!-- {% $.each(rows, function () { %} -->
+              <tbody>
+              <tr>
+                <td class="keycol">
+                  <div class="key">{%= JSON.stringify(this.key) %}</div>
+                  <div class="id">{%= this.id %}</div>
+                </td>
+                <td>{%= $.futon.formatJSON(this.value, {html:true}) %}</td>
+              </tr>
+              </tbody>
+              <!-- {% }); %} -->
+              <!-- {% } %} -->
+              </table>
+            </script>
           </div>
 
           <div id="coming" style="display:none">
@@ -1108,7 +1111,7 @@
     </div>
 </div>
 <!-- END add confirmation dialog -->
-<!--  add confirmation dialog -->
+<!-- failover confirmation dialog -->
 <div class="dialog" id="failover_confirmation_dialog" title="Confirm Node Fail Over">
   <div class="lbox type_2">
     <div class="content">
@@ -1150,7 +1153,7 @@
     </div>
   </div>
 </div>
-<!-- END add confirmation dialog -->
+<!-- END failover confirmation dialog -->
 <!-- Leave cluster -->
 <div class="dialog" id="generic_dialog">
   <div class="lbox">
@@ -1165,6 +1168,55 @@
     </div>
   </div>
 </div>
+<!-- END Leave cluster -->
+<!--  delete designdoc confirmation dialog -->
+<div class="dialog" id="delete_designdoc_confirmation_dialog" title="Delete Design Doc">
+  <div class="lbox type_2">
+    <div class="content">
+      <div class="pas_20">
+        <div class="warning pat_20">
+          <strong>Warning</strong> &ndash; The views contained in this Design Document will no longer be accessible. Are you sure you want to remove this server?
+        </div>
+      </div>
+      <div class="right save_cancel pas_20 footer_bg">
+        <button type="submit" class="save_button float_right">Delete</button>
+        <a class="close float_right">Cancel</a>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- END delete designdoc confirmation dialog -->
+<!-- copy design doc dialog -->
+<div class="dialog bucket_details" id="copy_designdoc_dialog" title="Copy Design Document" style="width:30em">
+  <form>
+  <div class="clearfix">
+     <label><input type="radio" name="prefix" value="$dev_design" checked="checked" /> $dev_design/
+     <input name="name" value="??" class="designdoc_name" style="text-align:left;width:10.6em" /></label>
+     <label><input type="radio" name="prefix" value="_design"/> _design/
+     <input name="name" value="??" class="designdoc_name" disabled="disabled" style="text-align:left;width:13em" /></label>
+     <p>NOTE: Development Mode ($dev_design) provides the opportunity to edit and test
+     your map/reduce views against a subset of data&emdash;without overloading the cluster.</p>
+  </div>
+  <div class="save_cancel">
+    <button class="save_button float_right" type="submit">Save</button>
+    <a class="close">Cancel</a>
+  </div></form>
+</div>
+<!-- END copy design doc -->
+<!-- copy view dialog -->
+<div class="dialog bucket_details" id="copy_view_dialog" title="Copy View" style="width:30em">
+  <form>
+  <div class="clearfix">
+     <label>Design Doc Name:</label>
+     <label>$dev_design/<input name="designdoc_name" value="??" class="designdoc_name" style="text-align:left;width:13em" /></label>
+     <label>View Name:<input name="view_name" value="??" class="view_name" /></label>
+  </div>
+  <div class="save_cancel">
+    <button class="save_button float_right" type="submit">Save</button>
+    <a class="close">Cancel</a>
+  </div></form>
+</div>
+<!-- END copy view dialog -->
 <!-- </div> --> <!-- #container -->
 <!-- About -->
 <div class="dialog" id="about_server_dialog">
