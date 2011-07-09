@@ -248,6 +248,8 @@ var ViewsSection = {
 
 var ViewDevSection = {
   init: function() {
+    var self = this;
+
     $('#built_in_reducers a').click(function(ev) {
       $('#viewcode_reduce').text($(ev.target).text());
     });
@@ -264,9 +266,179 @@ var ViewDevSection = {
         jq.closest('.darker_block').removeClass('closed');
       }
     }).trigger('click');
+
+    // cells
+    var bucketName = self.bucketName = new StringHashFragmentCell("bucketName");
+    var docId = self.docId = new StringHashFragmentCell("docId");
+    var viewName = self.viewName = new StringHashFragmentCell("viewName");
+    var dbUrl = self.dbUrl = Cell
+    .needing(DAL.cells.capiBase, bucketName)
+    .compute(function (v, baseUri, bucketName) {
+      return baseUri + bucketName + '%2Fmaster';
+    });
+
+    var currentDoc = self.currentDoc = Cell
+      .needing(dbUrl, docId)
+      .compute(function (v, dbUrl, docId) {
+        if (docId.substr(0,1) === '$') {
+          docId = encodeURIComponent(docId);
+        } else {
+          docId = decodeURIComponent(docId);
+        }
+        return future.get({url: dbUrl + '/' + docId});
+      });
+
+    var currentView = self.currentView = Cell
+      .needing(currentDoc, viewName)
+      .compute(function (v, ddoc, viewName) {
+        return ddoc.views[viewName];
+      });
+
+    var viewResults = self.viewResults = Cell
+      .needing(dbUrl, docId, viewName)
+      .compute(function (v, dbUrl, docId, viewName) {
+        if (docId.substr(0,1) === '$') {
+          docId = '%24' + docId.substr(1);
+        } else {
+          docId = decodeURIComponent(docId);
+        }
+        return future.get({url: dbUrl + '/' + docId + '/_view/' + viewName});
+      });
+
+    // subscriptions
+    currentView.subscribeValue(function (view) {
+      if (view === undefined) {
+        return;
+      } else {
+        $('#viewcode_map').text(view.map);
+        $('#viewcode_reduce').text(view.reduce);
+      }
+    });
+
+    docId.subscribeValue(function(name) {
+      if (name === undefined) {
+        return;
+      } else {
+        $('#view_development h1 .designdoc_name').html(name);
+        if (name.substr(0, 1) === '_') {
+          $('#save_and_run_view').addClass('disabled');
+        } else {
+          $('#save_and_run_view').removeClass('disabled');
+        }
+      }
+    });
+
+    viewName.subscribeValue(function(name) {
+      $('#view_development h1 .view_name').html(name);
+    });
+
+    viewResults.subscribeValue(function(results) {
+      if (results === undefined) {
+        return;
+      } else {
+        renderTemplate('view_results', results);
+      }
+    });
+
+    $('#save_and_run_view:not(.disabled)').live('click', function(ev) {
+      self.saveViewChanges();
+    });
+
+    $('#save_view_as:not(.disabled)').live('click', function(ev) {
+      var dialog = $($i('copy_view_dialog'));
+      dialog.find('.designdoc_name').val(self.docId.value.split('/').pop());
+      dialog.find('.view_name').val(self.viewName.value);
+      showDialog(dialog, {
+        eventBindings: [['.save_button', 'click', function (e) {
+          e.preventDefault();
+          var data = {};
+          $.each(dialog.find('form').serializeArray(), function (i, field) {
+            data[field.name] = field.value;
+          });
+
+          var viewCode = {
+            map: $("#viewcode_map").val(),
+            reduce: $("#viewcode_reduce").val() || undefined
+          };
+
+          function save(doc) {
+            if (!doc) {
+              doc = {
+                  _id: '$dev_design/' + data.designdoc_name,
+                  language: 'javascript'
+              };
+            } else {
+              doc = JSON.parse(doc);
+            }
+            // TODO: add view language error handling
+            if (doc.views === undefined) doc.views = {};
+            doc.views[data.view_name] = viewCode;
+            console.log('views', doc.views);
+            $.ajax({type:"POST", url: dbUrl.value,
+              data: JSON.stringify(doc),
+              contentType: 'application/json',
+              success: function (resp) {
+                // "converting" the location.hash into a valid query string for $.param.querystring() parsing
+                var qs = '?' + location.hash.substr(1);
+                var newqs = $.param.querystring(qs, 'docId=$dev_design/' + data.designdoc_name + '&viewName=' + data.view_name);
+                location.hash = '#' + newqs.substr(1);
+              }
+            });
+          }
+
+          $.ajax({type:"GET", url: dbUrl.value + '/%24dev_design%2F' + data.designdoc_name,
+            error: function(jqXHR, error, reason) {
+              if (jqXHR.status === 404) {
+                save(null);
+              } else {
+                alert(reason);
+              }
+            },
+            success: function (doc) {
+              save(doc);
+            }
+          });
+        }]]
+      });
+    });
   },
   onEnter: function () {
   },
   navClick: function () {
+  },
+  saveViewChanges: function() {
+    var self = this;
+    var designDocId = encodeURIComponent(self.docId.value);
+    var localViewName = decodeURIComponent(self.viewName.value);
+    $.getJSON(self.dbUrl.value + '/' + designDocId, function(doc) {
+        var viewDef = doc.views[localViewName];
+        viewDef.map = $("#viewcode_map").val();
+        viewDef.reduce = $("#viewcode_reduce").val() || undefined;
+        $.ajax({type:"POST", data: JSON.stringify(doc),
+          url: self.dbUrl.value,
+          contentType: 'application/json',
+          success: function(data) {
+            self.viewResults.recalculate();
+          }
+        });
+      }
+    );
+  },
+  viewNotFound: function() {
+    // TODO: use this in case viewName is not set
+    genericDialog({buttons: {ok: true, cancel: false},
+      header: "View Not Found",
+      text: "The view you requested is not part of this design document. " +
+      "We'll return to the Design Document list to let you reselect.",
+      callback: function (e, btn, dialog) {
+        var add = '';
+        if (docId.value.split('/').shift() === '$dev_design') {
+          add = '&viewsTab=1';
+        }
+        ViewsSection.designDocs.recalculate();
+        ViewsSection.devDesignDocs.recalculate();
+        location.hash = '#sec=views&statsBucket=/pools/default/buckets/' + bucketName.value + add;
+      }
+     });
   }
 };

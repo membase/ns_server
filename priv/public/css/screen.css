@@ -852,6 +852,7 @@ ul.tabs .badge_display .badge {display:block;}
 .list .settings-placeholder td > .pad {width:685px;overflow:hidden;}
 .list .settings-placeholder td .pad .pad {padding:10px 10px 10px 4px !important;min-height:52px;}
 .list .settings-placeholder .edit_btn {display:block; width:65px; height:21px; background:url(../images/edit-button.png) 0 0 no-repeat; float:right;}
+.list .keycol {max-width:300px}
 
 /* This is the auto-failover status on the server nodes screen */
 #auto_failover_count_container {display:none}

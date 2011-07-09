@@ -847,7 +847,10 @@
           </div>
 
           <div id="view_development" style="display:none">
-            <h1>View Development > <a href="#sec=buckets&buckets=default" class="bucket_name">default</a> > $dev_design/{design_doc} > {view_name}</h1>
+            <h1>View Development
+              &gt; <a href="#sec=buckets&buckets=default" class="bucket_name">default</a>
+              &gt; <span class="designdoc_name">??</span>
+              &gt; <span class="view_name">??</span></h1>
             <div class="shadow_box">
               <div class="content" id="sample_docs">
                 <div class="darker_block closed">
@@ -865,9 +868,8 @@
                 <div class="darker_block">
                   <h3 class="block-expander"><ins></ins>View Code
                     <span class="buttons">
-                      <a class="btn_1 disabled"><span>Copy...</span></a>
-                      <a class="btn_1 disabled"><span>Save As...</span></a>
-                      <a class="btn_1 disabled"><span>Save & Run</span></a>
+                      <a id="save_view_as" class="btn_1"><span>Save As...</span></a>
+                      <a id="save_and_run_view" class="btn_1"><span>Save & Run</span></a>
                     </span>
                   </h3>
                   <div class="stats">
