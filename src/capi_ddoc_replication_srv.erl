@@ -46,7 +46,13 @@ init(Bucket) ->
     Self = self(),
     MasterVBucket = ?l2b(Bucket ++ "/" ++ "master"),
 
-    _ = couch_db:create(MasterVBucket, []),
+    case couch_db:open(MasterVBucket, []) of
+        {ok, Db} ->
+            couch_db:close(Db);
+        {not_found, _} ->
+            {ok, Db} = couch_db:create(MasterVBucket, []),
+            couch_db:close(Db)
+    end,
 
     % Update myself whenever the config changes (rebalance)
     ns_pubsub:subscribe(
