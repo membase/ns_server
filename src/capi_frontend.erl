@@ -18,36 +18,35 @@
 -compile(export_all).
 
 -include("couch_db.hrl").
--include("ns_common.hrl").
 
 -compile(export_all).
 
-not_implemented(_Arg, _Rest) ->
-    exit({_Arg, not_implemented}).
+not_implemented(Arg, Rest) ->
+    {not_implemented, Arg, Rest}.
 
 do_db_req(#httpd{user_ctx=UserCtx,path_parts=[DbName|_]}=Req, Fun) ->
-    case couch_db:open(DbName, [{user_ctx, UserCtx}]) of
-        {ok, Db} ->
-            try
-                Fun(Req, Db)
-                after
-                    catch couch_db:close(Db)
-                end;
-        Error ->
-            throw(Error)
+    case is_couchbase_db(DbName) of
+        true ->
+            %% undefined #db fields indicate bucket database
+            Db = #db{user_ctx = UserCtx, name = DbName},
+            Fun(Req, Db);
+        false ->
+            couch_db_frontend:do_db_req(Req, Fun)
     end.
 
-
-%% Required for replication
+get_db_info(#db{filepath = undefined} = Db) ->
+    exit(not_implemented(get_db_info, [Db]));
 get_db_info(Db) ->
-    case is_couchbase_db(Db#db.name) of
-        false -> couch_db:get_db_info(Db)
-    end.
+    couch_db:get_db_info(Db).
 
-
-with_vbucket_db(Db, VBucket, Fun) ->
-    DbName = iolist_to_binary([Db#db.name, $/, integer_to_list(VBucket)]),
-    {ok, RealDb} = couch_db:open(DbName, []),
+with_subdb(Db, VBucket, Fun) ->
+    SubName = case is_binary(VBucket) of
+                  true -> VBucket;
+                  _ -> integer_to_list(VBucket)
+              end,
+    DbName = iolist_to_binary([Db#db.name, $/, SubName]),
+    UserCtx = #user_ctx{roles=[<<"_admin">>]},
+    {ok, RealDb} = couch_db:open(DbName, [{user_ctx, UserCtx}]),
     try
         Fun(RealDb)
     after
@@ -55,15 +54,61 @@ with_vbucket_db(Db, VBucket, Fun) ->
     end.
 
 update_doc(Db, Doc, Options) ->
-    case is_couchbase_db(Db#db.name) of
-        false -> couch_db:update_doc(Db, Doc, Options)
-    end.
+    update_doc(Db, Doc, Options, interactive_edit).
+
+update_doc(#db{filepath = undefined} = Db, #doc{id = <<"_design/",_/binary>>} = Doc, Options, UpdateType) ->
+    with_subdb(Db, <<"master">>,
+               fun (RealDb) ->
+                       couch_db:update_doc(RealDb, Doc, Options, UpdateType)
+               end);
+
+update_doc(#db{filepath = undefined} = Db, Doc, Options, UpdateType) ->
+    %% TODO: route to right vbucket, node and into memcached
+    with_subdb(Db, 0,
+               fun (RealDb) ->
+                       couch_db:update_doc(RealDb, Doc, Options, UpdateType)
+               end);
 
 update_doc(Db, Doc, Options, UpdateType) ->
-    case is_couchbase_db(Db#db.name) of
-        false -> couch_db:update_doc(Db, Doc, Options, UpdateType)
-    end.
+    couch_db:update_doc(Db, Doc, Options, UpdateType).
 
+update_docs(Db, Docs, Options) ->
+    update_docs(Db, Docs, Options, interactive_edit).
+
+update_docs(#db{filepath = undefined} = Db, Docs, Options, Type) ->
+    {DesignDocs, [] = NormalDocs} =
+        lists:partition(fun (#doc{id = <<"_design/", _/binary>>}) -> true;
+                            (_) -> false
+                        end, Docs),
+    case update_design_docs(Db, DesignDocs, Options, Type) of
+        {ok, DDocResults} ->
+            %% TODO: work out error handling here
+            {ok, NormalResults} = update_normal_docs(Db, NormalDocs,
+                                                     Options, Type),
+            %% TODO: Looks like we need to reorder results here
+            {ok, NormalResults ++ DDocResults};
+        Error ->
+            %% TODO: work out error handling here
+            Error
+    end;
+update_docs(Db, Docs, Options, Type) ->
+    couch_db:update_docs(Db, Docs, Options, Type).
+
+
+update_design_docs(#db{filepath = undefined} = Db, Docs, Options, Type) ->
+    with_subdb(Db, <<"master">>,
+               fun (RealDb) ->
+                       couch_db:update_docs(RealDb, Docs, Options, Type)
+               end).
+
+update_normal_docs(_Db, [], _Options, _Type) ->
+    {ok, []};
+update_normal_docs(Db, Docs, Options, Type) ->
+    exit(not_implemented(update_normal_docs, [Db, Docs, Options, Type])).
+
+-spec ensure_full_commit(any(), integer()) -> {ok, binary()}.
+ensure_full_commit(#db{filepath = undefined} = _Db, _RequiredSeq) ->
+    {ok, <<"0">>};
 ensure_full_commit(Db, RequiredSeq) ->
     UpdateSeq = couch_db:get_update_seq(Db),
     CommittedSeq = couch_db:get_committed_update_seq(Db),
@@ -81,44 +126,39 @@ ensure_full_commit(Db, RequiredSeq) ->
             end
     end.
 
+
 check_is_admin(_Db) ->
     ok.
 
-
-
+handle_changes(ChangesArgs, Req, #db{filepath = undefined} = Db) ->
+    exit(not_implemented(handle_changes, [ChangesArgs, Req, Db]));
 handle_changes(ChangesArgs, Req, Db) ->
     couch_changes:handle_changes(ChangesArgs, Req, Db).
 
 start_view_compact(DbName, GroupId) ->
     exit(not_implemented(start_view_compact, [DbName, GroupId])).
 
+start_db_compact(#db{filepath = undefined} = Db) ->
+    couch_db:start_compact(Db);
 start_db_compact(Db) ->
     exit(not_implemented(start_db_compact, [Db])).
 
 cleanup_view_index_files(Db) ->
     couch_view:cleanup_index_files(Db).
 
+get_group_info(#db{filepath = undefined} = Db, DesignId) ->
+    with_subdb(Db, <<"master">>,
+               fun (RealDb) ->
+                       couch_view:get_group_info(RealDb, DesignId)
+               end);
 get_group_info(Db, DesignId) ->
-    with_vbucket_db(Db, 0,
-                    fun (RealDb) ->
-                            couch_view:get_group_info(RealDb, DesignId)
-                    end).
+    couch_view:get_group_info(Db, DesignId).
 
 create_db(DbName, UserCtx) ->
     exit(not_implemented(create_db, [DbName, UserCtx])).
 
 delete_db(DbName, UserCtx) ->
     exit(not_implemented(delete_db, [DbName, UserCtx])).
-
-update_docs(Db, Docs, Options) ->
-    case is_couchbase_db(Db#db.name) of
-        false -> couch_db:update_docs(Db, Docs, Options)
-    end.
-
-update_docs(Db, Docs, Options, Type) ->
-    case is_couchbase_db(Db#db.name) of
-        false -> couch_db:update_docs(Db, Docs, Options, Type)
-    end.
 
 purge_docs(Db, IdsRevs) ->
     %% couch_db:purge_docs(Db, IdsRevs).
@@ -144,17 +184,26 @@ get_revs_limit(Db) ->
     exit(not_implemented(get_revs_limit, [Db])).
     %% couch_db:get_revs_limit(Db).
 
-
+open_doc_revs(#db{filepath = undefined} = Db, <<"_design/",_/binary>> = DocId, Revs, Options) ->
+    with_subdb(Db, <<"master">>,
+               fun (RealDb) ->
+                       couch_db:open_doc_revs(RealDb, DocId, Revs, Options)
+               end);
+open_doc_revs(#db{filepath = undefined} = Db, DocId, Revs, Options) ->
+    exit(not_implemented(open_doc_revs, [Db, DocId, Revs, Options]));
 open_doc_revs(Db, DocId, Revs, Options) ->
-    case is_couchbase_db(Db#db.name) of
-        false -> couch_db:open_doc_revs(Db, DocId, Revs, Options)
-    end.
+    couch_db:open_doc_revs(Db, DocId, Revs, Options).
 
-
+open_doc(#db{filepath = undefined} = Db, <<"_design/",_/binary>> = DocId, Options) ->
+    with_subdb(Db, <<"master">>,
+               fun (RealDb) ->
+                       couch_db:open_doc(RealDb, DocId, Options)
+               end);
+open_doc(#db{filepath = undefined} = Db, DocId, Options) ->
+    exit(not_implemented(open_doc_revs, [Db, DocId, Options]));
 open_doc(Db, DocId, Options) ->
-    case is_couchbase_db(Db#db.name) of
-        false -> couch_db:open_doc(Db, DocId, Options)
-    end.
+    couch_db:open_doc(Db, DocId, Options).
+
 
 make_attachment_fold(_Att, ReqAcceptsAttEnc) ->
     case ReqAcceptsAttEnc of
@@ -167,10 +216,11 @@ range_att_foldl(Att, From, To, Fun, Acc) ->
 
 -spec all_databases() -> {ok, [binary()]}.
 all_databases() ->
-    couch_server:all_databases().
-%{ok, [?l2b(Name) || Name <- ns_bucket:get_bucket_names(membase)]}.
+    {ok, DBs} = couch_server:all_databases(),
+    {ok, DBs ++ [?l2b(Name) || Name <- ns_bucket:get_bucket_names(membase)]}.
 
 task_status_all() ->
+    %% TODO: why ?
     couch_task_status:all().
 
 restart_core_server() ->
