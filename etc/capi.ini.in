@@ -2,3 +2,4 @@
 max_dbs_open = 10000
 [httpd]
 db_frontend = capi_frontend
+bind_address = 0.0.0.0
