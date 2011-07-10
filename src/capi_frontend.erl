@@ -276,3 +276,11 @@ couch_doc_open(Db, DocId, Rev, Options) ->
 
 is_couchbase_db(Name) ->
     nomatch =:= re:run(Name, <<"/">>).
+
+all_docs_db_req(Req, #db{filepath = undefined} = Db) ->
+    with_subdb(Db, <<"master">>,
+               fun (RealDb) ->
+                       couch_httpd_db:db_req(Req, RealDb)
+               end);
+all_docs_db_req(Req, Db) ->
+    couch_httpd_db:db_req(Req, Db).

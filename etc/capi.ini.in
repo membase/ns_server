@@ -1,5 +1,9 @@
 [couchdb]
 max_dbs_open = 10000
+
 [httpd]
 db_frontend = capi_frontend
 bind_address = 0.0.0.0
+
+[httpd_db_handlers]
+_all_docs = {capi_frontend, all_docs_db_req}
