@@ -362,14 +362,6 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 
 #middle_pane { vertical-align: top; }
 
-.blue_round_block {}
-.blue_round_block .top {height:4px; overflow:hidden; background:url(../images/blue_block_bg.gif) 0 0 no-repeat #eaf4f9;}
-.blue_round_block .top div {height:4px;background:url(../images/blue_block_bg.gif) 100% -4px no-repeat; }
-.blue_round_block .bottom {height:4px; overflow:hidden; background:url(../images/blue_block_bg.gif) 0 -12px no-repeat #eaf4f9;}
-.blue_round_block .bottom div {height:4px;background:url(../images/blue_block_bg.gif) 100% -8px no-repeat; }
-.blue_round_block .content {background:none #eaf4f9;}
-.blue_round_block a {font-size:12px; color:#0095d6;}
-
 .test_cluster {width:160px; margin:20px 0 0;}
 .test_cluster .content {padding:3px 19px;}
 .test_cluster .label {font-size:12px; color:#444245; margin:0 0 5px; display:block;}
