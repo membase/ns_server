@@ -57,4 +57,6 @@ exec erl \
     $* \
     -run ns_bootstrap -- \
     -ns_server config_path "\"@PREFIX@/etc/couchbase/static_config\"" \
-    -ns_server pidfile "\"@PREFIX@/var/lib/couchbase/couchbase-server.pid\""
+    -ns_server pidfile "\"@PREFIX@/var/lib/couchbase/couchbase-server.pid\"" \
+    -ns_server nodefile "\"@PREFIX@/var/lib/couchbase/couchbase-server.node\"" \
+    -ns_server cookiefile "\"@PREFIX@/var/lib/couchbase/couchbase-server.cookie\"" \
