@@ -203,7 +203,7 @@ loop(Req, AppRoot, DocRoot) ->
                              ["images" | _] ->
                                  {done, Req:serve_file(Path, AppRoot,
                                                        [{"Cache-Control", "max-age=30000000"}])};
-                             ["capiProxy", _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
+                             ["capiProxy" | _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
                              _ ->
                                  {done, Req:serve_file(Path, AppRoot,
                                   [{"Cache-Control", "max-age=10"}])}
