@@ -133,8 +133,8 @@ var ViewDevSection = {
       var rand = Math.floor((Math.random() * (u-l+1))+l);
       jq.html($.futon.formatJSON(sampleDocs[rand], {html: true}));
 
-      if (jq.closest('.graph_nav').hasClass('closed')) {
-        jq.closest('.graph_nav').removeClass('closed');
+      if (jq.closest('.darker_block').hasClass('closed')) {
+        jq.closest('.darker_block').removeClass('closed');
       }
     }).trigger('click');
   },

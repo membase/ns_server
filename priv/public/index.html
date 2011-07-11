@@ -369,8 +369,8 @@
                       </div>
                       <script id="new_stats_block_template" type="text/html">
                       {% _.each(blocks, function (blockInfo) { %}
-                      <div id="{%= h(blockInfo.id) %}" class="darker_block graph_nav {%= blockInfo.extraCSSClasses %}">
-                        {% if (!blockInfo.hideThis) { %}<h3 class="stats-block-expander"><ins></ins>{%= h(blockInfo.blockName) %}</h3>{% } %}
+                      <div id="{%= h(blockInfo.id) %}" class="darker_block {%= blockInfo.extraCSSClasses %}">
+                        {% if (!blockInfo.hideThis) { %}<h3 class="block-expander"><ins></ins>{%= h(blockInfo.blockName) %}</h3>{% } %}
                         <div class="stats">
                         {% if (blockInfo.columns) { %}
                           <ul class="col_headers">
@@ -844,8 +844,8 @@
             <h1>View Development > <a href="#sec=buckets&buckets=default" class="bucket_name">default</a> > $dev_design/{design_doc} > {view_name}</h1>
             <div class="shadow_box">
               <div class="content" id="sample_docs">
-                <div class="darker_block graph_nav">
-                  <h3 class="stats-block-expander"><ins></ins>Sample Documents
+                <div class="darker_block closed">
+                  <h3 class="block-expander"><ins></ins>Sample Documents
                     <span class="buttons">
                       <a class="btn_1" id="preview_random_doc"><span>Preview a Random Document</span></a>
                     </span>
@@ -856,8 +856,8 @@
             </div>
             <div class="shadow_box" id="viewcode">
               <div class="content">
-                <div class="darker_block graph_nav">
-                  <h3 class="stats-block-expander"><ins></ins>View Code
+                <div class="darker_block">
+                  <h3 class="block-expander"><ins></ins>View Code
                     <span class="buttons">
                       <a class="btn_1 disabled"><span>Copy...</span></a>
                       <a class="btn_1 disabled"><span>Save As...</span></a>

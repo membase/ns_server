@@ -936,9 +936,8 @@ var AnalyticsSection = {
     StatsModel.hotKeysCell.subscribeValue($m(self, 'onKeyStats'));
     prepareTemplateForCell('top_keys', StatsModel.hotKeysCell);
 
-    $('.stats-block-expander').live('click', function () {
-      $(this).closest('.graph_nav').toggleClass('closed');
-      //// this forces configuration refresh and graphs redraw
+    $('#analytics .block-expander').live('click', function () {
+      // this forces configuration refresh and graphs redraw
       self.widget.forceNextRendering();
       StatsModel.configurationExtra.setValue({});
     });

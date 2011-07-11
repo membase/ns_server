@@ -251,4 +251,11 @@
       $.Widget.prototype.destroy.call( this );
     }
   });
+
+  $('.block-expander').live('click', function () {
+    $(this).closest('.darker_block').toggleClass('closed');
+  });
+  $('.block-expander .buttons a').live('click', function(ev) {
+    ev.stopPropagation();
+  });
 })(jQuery);
