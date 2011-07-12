@@ -177,11 +177,10 @@ do_nodes_wanted() ->
 %% The core of what happens when nodelists change
 %% only used by do_nodes_wanted_updated
 do_nodes_wanted_updated_fun(NodeListIn) ->
-    {ok, Cookie} = ns_cookie_manager:cookie_sync(),
+    {ok, _Cookie} = ns_cookie_manager:cookie_sync(),
     NodeList = lists:usort(NodeListIn),
     error_logger:info_msg("ns_node_disco: nodes_wanted updated: ~p, with cookie: ~p~n",
                           [NodeList, erlang:get_cookie()]),
-    erlang:set_cookie(node(), Cookie),
     PongList = lists:filter(fun(N) ->
                                     net_adm:ping(N) == pong
                             end,
