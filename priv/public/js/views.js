@@ -81,7 +81,7 @@ var ViewsSection = {
       .needing(DAL.cells.capiBase, StatsModel.statsBucketURL)
       .compute(function (v, baseUri, uri) {
         bucketName = decodeURIComponent(uri).split('/').pop();
-        return baseUri + bucketName + '%2Fmaster';
+        return baseUri + bucketName;
       });
 
     var designDocs = self.designDocs = Cell
@@ -274,7 +274,7 @@ var ViewDevSection = {
     var dbUrl = self.dbUrl = Cell
     .needing(DAL.cells.capiBase, bucketName)
     .compute(function (v, baseUri, bucketName) {
-      return baseUri + bucketName + '%2Fmaster';
+      return baseUri + bucketName;
     });
 
     var currentDoc = self.currentDoc = Cell
