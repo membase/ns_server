@@ -21,7 +21,6 @@
 
 -behaviour(gen_server).
 
--define(STATS_TIMER, 1000). % How often in ms we collect stats
 -define(LOG_FREQ, 100).     % Dump every n collections to the log
 -define(WIDTH, 30).         % Width of the key part of the formatted logs
 
@@ -107,10 +106,8 @@ format_stats(Stats) ->
       [[K, lists:duplicate(?WIDTH - byte_size(K), $\s), V, $\n]
        || {K, V} <- lists:sort(Stats)]).
 
-
 latest_tick(TS) ->
     latest_tick(TS, 0).
-
 
 latest_tick(TS, NumDropped) ->
     receive
