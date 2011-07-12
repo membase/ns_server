@@ -33,7 +33,6 @@
 -type progress_callback() :: fun((dict()) -> any()).
 
 -record(state, {bucket::nonempty_string(),
-                previous_changes,
                 initial_counts::dict(),
                 max_per_node::pos_integer(),
                 map::array(),
@@ -70,12 +69,6 @@ code_change(_OldVsn, _Extra, State) ->
 
 
 init({Bucket, OldMap, NewMap, ProgressCallback}) ->
-    erlang:put(i_am_master_mover, true),
-    erlang:put(replicas_changes, []),
-    erlang:put(bucket_name, Bucket),
-    erlang:put(total_changes, 0),
-    erlang:put(actual_changes, 0),
-
     ?log_info("Starting movers with new map =~n~p", [NewMap]),
     %% Dictionary mapping old node to vbucket and new node
     MoveDict = lists:foldl(fun ({V, [M1|_] = C1, C2}, D) ->
@@ -86,9 +79,7 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
     Movers = dict:map(fun (_, _) -> 0 end, MoveDict),
     self() ! spawn_initial,
     process_flag(trap_exit, true),
-    erlang:start_timer(3000, self(), maybe_sync_changes),
     {ok, #state{bucket=Bucket,
-                previous_changes = [],
                 initial_counts=count_moves(MoveDict),
                 max_per_node=?MAX_MOVES_PER_NODE,
                 map = map_to_array(OldMap),
@@ -107,20 +98,12 @@ handle_cast(unhandled, unhandled) ->
 
 %% We intentionally don't handle other exits so we'll die if one of
 %% the movers fails.
-handle_info({_, _, maybe_sync_changes}, #state{previous_changes = PrevChanges} = State) ->
-    Changes = erlang:get('replicas_changes'),
-    case Changes =:= [] orelse Changes =/= PrevChanges of
-        true -> {noreply, State#state{previous_changes = Changes}};
-        _ ->
-            sync_replicas(),
-            {noreply, State#state{previous_changes = []}}
-    end;
 handle_info(spawn_initial, State) ->
     spawn_workers(State);
 handle_info({move_done, {Node, VBucket, OldChain, NewChain}},
-            #state{movers=Movers, map=Map} = State) ->
+            #state{bucket=Bucket, movers=Movers, map=Map} = State) ->
     %% Update replication
-    update_replication_post_move(VBucket, OldChain, NewChain),
+    update_replication_post_move(Bucket, VBucket, OldChain, NewChain),
     %% Free up a mover for this node
     Movers1 = dict:update(Node, fun (N) -> N - 1 end, Movers),
     %% Pull the new chain from the target map
@@ -138,10 +121,6 @@ handle_info(Info, State) ->
 
 
 terminate(_Reason, #state{bucket=Bucket, map=MapArray}) ->
-    sync_replicas(),
-    TotalChanges = erlang:get(total_changes),
-    ActualChanges = erlang:get(actual_changes),
-    ?log_info("Savings: ~p (from ~p)~n", [TotalChanges - ActualChanges, TotalChanges]),
     %% Save the current state of the map
     Map = array_to_map(MapArray),
     ?log_info("Setting final map to ~p", [Map]),
@@ -222,7 +201,7 @@ spawn_workers(#state{bucket=Bucket, moves=Moves, movers=Movers,
                           lists:foreach(
                             fun ({V, OldChain, [NewNode|_] = NewChain}) ->
                                     update_replication_pre_move(
-                                      V, OldChain, NewChain),
+                                      Bucket, V, OldChain, NewChain),
                                     spawn_link(
                                       case Node of
                                           undefined -> node();
@@ -321,15 +300,14 @@ run_mover(Bucket, V, N1, N2, Tries) ->
 
 %% @private
 %% @doc Perform pre-move replication fixup.
-update_replication_pre_move(VBucket, OldChain, NewChain) ->
+update_replication_pre_move(Bucket, VBucket, OldChain, NewChain) ->
     [NewMaster|_] = NewChain,
     OldPairs = pairs(OldChain),
     NewPairs = pairs(NewChain),
     %% Stop replication to the new master
     case lists:keyfind(NewMaster, 2, OldPairs) of
         {SrcNode, _} ->
-            kill_replica(SrcNode, NewMaster, VBucket),
-            sync_replicas();
+            ns_vbm_sup:kill_replica(Bucket, SrcNode, NewMaster, VBucket);
         false ->
             ok
     end,
@@ -340,7 +318,7 @@ update_replication_pre_move(VBucket, OldChain, NewChain) ->
               case lists:member(DstNode, OldChain) of
                   false ->
                       %% Not the old master or already being replicated to
-                      add_replica(SrcNode, DstNode, VBucket);
+                      ns_vbm_sup:add_replica(Bucket, SrcNode, DstNode, VBucket);
                   true ->
                       %% Already being replicated to; swing it over after
                       ok
@@ -350,13 +328,13 @@ update_replication_pre_move(VBucket, OldChain, NewChain) ->
 
 %% @private
 %% @doc Perform post-move replication fixup.
-update_replication_post_move(VBucket, OldChain, NewChain) ->
+update_replication_post_move(Bucket, VBucket, OldChain, NewChain) ->
     OldPairs = pairs(OldChain),
     NewPairs = pairs(NewChain),
     %% Stop replication for any old pair that isn't needed any more.
     lists:foreach(
       fun ({SrcNode, DstNode}) when SrcNode =/= undefined ->
-              kill_replica(SrcNode, DstNode, VBucket)
+              ns_vbm_sup:kill_replica(Bucket, SrcNode, DstNode, VBucket)
       end, OldPairs -- NewPairs),
     %% Start replication for any new pair that wouldn't have already
     %% been started.
@@ -368,50 +346,13 @@ update_replication_post_move(VBucket, OldChain, NewChain) ->
                       ok;
                   true ->
                       %% Old one was stopped by the previous loop
-                      add_replica(SrcNode, DstNode, VBucket)
+                      ns_vbm_sup:add_replica(Bucket, SrcNode, DstNode, VBucket)
               end
       end, NewPairs -- OldPairs),
     %% TODO: wait for backfill to complete and remove obsolete
     %% copies before continuing. Otherwise rebalance could use a lot
     %% of space.
     ok.
-
-assert_master_mover() ->
-    true = erlang:get('i_am_master_mover'),
-    BucketName = erlang:get('bucket_name'),
-    true = (BucketName =/= undefined),
-    BucketName.
-
-batch_replicas_change(Tuple) ->
-    assert_master_mover(),
-    Old = erlang:get('replicas_changes'),
-    true = (undefined =/= Old),
-    New = [Tuple | Old],
-    erlang:put(replicas_changes, New).
-
-kill_replica(SrcNode, DstNode, VBucket) ->
-    assert_master_mover(),
-    batch_replicas_change({kill_replica, SrcNode, DstNode, VBucket}).
-
-add_replica(SrcNode, DstNode, VBucket) ->
-    assert_master_mover(),
-    batch_replicas_change({add_replica, SrcNode, DstNode, VBucket}).
-
-inc_counter(Name, By) ->
-    Old = erlang:get(Name),
-    true = (undefined =/= Old),
-    erlang:put(Name, Old + By).
-
-sync_replicas() ->
-    BucketName = assert_master_mover(),
-    case erlang:put(replicas_changes, []) of
-        undefined -> ok;
-        [] -> ok;
-        Changes ->
-            ActualCount = ns_vbm_sup:apply_changes(BucketName, lists:reverse(Changes)),
-            inc_counter(total_changes, length(Changes)),
-            inc_counter(actual_changes, ActualCount)
-    end.
 
 
 wait_for_mover(Bucket, V, N1, N2, Tries) ->
