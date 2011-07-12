@@ -227,19 +227,19 @@ restart_core_server() ->
     exit(not_implemented(restart_core_server, [])).
 
 config_all() ->
-    exit(not_implemented(config_all, [])).
+    couch_config:all().
 
 config_get(Section) ->
-    exit(not_implemented(config_get, [Section])).
+    couch_config:get(Section).
 
 config_get(Section, Key, Default) ->
-    exit(not_implemented(config_get, [Section, Key, Default])).
+    couch_config:get(Section, Key, Default).
 
 config_set(Section, Key, Value, Persist) ->
-    exit(not_implemented(config_set, [Section, Key, Value, Persist])).
+    couch_config:set(Section, Key, Value, Persist).
 
 config_delete(Section, Key, Persist) ->
-    exit(not_implemented(config_delete, [Section, Key, Persist])).
+    couch_config:delete(Section, Key, Persist).
 
 increment_update_seq(Db) ->
     exit(not_implemented(increment_update_seq, [Db])).
