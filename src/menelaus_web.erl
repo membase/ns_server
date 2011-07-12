@@ -274,7 +274,7 @@ loop(Req, AppRoot, DocRoot) ->
                              ["diag", "eval"] -> {auth, fun handle_diag_eval/1};
                              ["erlwsh" | _] ->
                                  {done, erlwsh_web:loop(Req, erlwsh_deps:local_path(["priv", "www"]))};
-                             ["capiProxy", _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
+                             ["capiProxy" | _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
                              _ ->
                                  ns_log:log(?MODULE, 0001, "Invalid post received: ~p", [Req]),
                                  {done, Req:not_found()}
@@ -285,14 +285,14 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun menelaus_web_buckets:handle_bucket_delete/3, [PoolId, Id]};
                              ["nodes", Node, "resources", LocationPath] ->
                                  {auth, fun handle_resource_delete/3, [Node, LocationPath]};
-                             ["capiProxy", _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
+                             ["capiProxy" | _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
                              _ ->
                                  ns_log:log(?MODULE, 0002, "Invalid delete received: ~p as ~p", [Req, PathTokens]),
                                   {done, Req:respond({405, add_header(), "Method Not Allowed"})}
                          end;
                      'PUT' ->
                          case PathTokens of
-                             ["capiProxy", _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
+                             ["capiProxy" | _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
                              _ ->
                                  ns_log:log(?MODULE, 0003, "Invalid put received: ~p", [Req]),
                                  {done, Req:respond({405, add_header(), "Method Not Allowed"})}
