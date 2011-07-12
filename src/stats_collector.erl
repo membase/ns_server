@@ -62,33 +62,41 @@ grab_all_stats(Bucket) ->
 
 handle_info({tick, TS}, #state{bucket=Bucket, counters=Counters, last_ts=LastTS}
             = State) ->
-    try grab_all_stats(Bucket) of
-        {Stats, TapStats} ->
-            TS1 = latest_tick(TS),
-            {Entry, NewCounters} = parse_stats(TS1, Stats, TapStats, Counters, LastTS),
-            case Counters of % Don't send event with undefined values
-                undefined ->
-                    ok;
-                _ ->
-                    gen_event:notify(ns_stats_event, {stats, Bucket, Entry})
-            end,
-            Count = case State#state.count of
-                        ?LOG_FREQ ->
-                            case misc:get_env_default(dont_log_stats, false) of
-                                false ->
-                                    ?log_info("Stats for bucket ~p:~n~s",
-                                              [Bucket, format_stats(Stats)]);
-                                _ -> ok
-                            end,
-                            1;
-                        C ->
-                            C + 1
+    GrabFreq = misc:get_env_default(grab_stats_every_n_ticks, 1),
+    GrabNow = 0 =:= (State#state.count rem GrabFreq),
+    case GrabNow of
+        true ->
+            try grab_all_stats(Bucket) of
+                {Stats, TapStats} ->
+                    TS1 = latest_tick(TS),
+                    {Entry, NewCounters} = parse_stats(TS1, Stats, TapStats, Counters, LastTS),
+                    case Counters of % Don't send event with undefined values
+                        undefined ->
+                            ok;
+                        _ ->
+                            gen_event:notify(ns_stats_event, {stats, Bucket, Entry})
                     end,
-            {noreply, State#state{counters=NewCounters, count=Count,
-                                  last_ts=TS1}}
-    catch T:E ->
-            ?log_error("Exception in stats collector: ~p~n", [{T,E, erlang:get_stacktrace()}]),
-            {noreply, State}
+                    Count = case State#state.count >= ?LOG_FREQ of
+                                true ->
+                                    case misc:get_env_default(dont_log_stats, false) of
+                                        false ->
+                                            ?log_info("Stats for bucket ~p:~n~s",
+                                                      [Bucket, format_stats(Stats)]);
+                                        _ -> ok
+                                    end,
+                                    1;
+                                false ->
+                                    State#state.count + 1
+                            end,
+                    {noreply, State#state{counters=NewCounters, count=Count,
+                                          last_ts=TS1}}
+            catch T:E ->
+                    ?log_error("Exception in stats collector: ~p~n",
+                               [{T,E, erlang:get_stacktrace()}]),
+                    {noreply, State#state{count = State#state.count + 1}}
+            end;
+        false ->
+            {noreply, State#state{count = State#state.count + 1}}
     end;
 handle_info(_Msg, State) -> % Don't crash on delayed responses to calls
     {noreply, State}.
