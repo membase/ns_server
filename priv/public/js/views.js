@@ -302,7 +302,7 @@ var ViewDevSection = {
         } else {
           docId = decodeURIComponent(docId);
         }
-        return future.get({url: dbUrl + '/' + docId + '/_view/' + viewName});
+        return future.get({url: dbUrl + '/' + docId + '/_view/' + viewName + '?limit=10'});
       });
 
     // subscriptions
