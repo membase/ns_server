@@ -62,12 +62,11 @@ update_doc(#db{filepath = undefined} = Db, #doc{id = <<"_design/",_/binary>>} = 
                        couch_db:update_doc(RealDb, Doc, Options, UpdateType)
                end);
 
-update_doc(#db{filepath = undefined} = Db, Doc, Options, UpdateType) ->
-    %% TODO: route to right vbucket, node and into memcached
-    with_subdb(Db, 0,
-               fun (RealDb) ->
-                       couch_db:update_doc(RealDb, Doc, Options, UpdateType)
-               end);
+update_doc(#db{filepath = undefined, name = Name},
+           #doc{id = Id, body = Body}, _Options, _UpdateType) ->
+    {_, Node} = cb_util:vbucket_from_id(?b2l(Name), Id),
+    ok = rpc:call(Node, ns_memcached, set, [?b2l(Name), ?b2l(Id), ?JSON_ENCODE(Body)]),
+    {ok, {0, "undefined"}};
 
 update_doc(Db, Doc, Options, UpdateType) ->
     couch_db:update_doc(Db, Doc, Options, UpdateType).
@@ -103,6 +102,8 @@ update_design_docs(#db{filepath = undefined} = Db, Docs, Options, Type) ->
 
 update_normal_docs(_Db, [], _Options, _Type) ->
     {ok, []};
+update_normal_docs(#db{filepath = undefined} = Db, Docs, Options, Type) ->
+    exit(not_implemented(update_normal_docs, [Db, Docs, Options, Type]));
 update_normal_docs(Db, Docs, Options, Type) ->
     exit(not_implemented(update_normal_docs, [Db, Docs, Options, Type])).
 
