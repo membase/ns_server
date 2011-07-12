@@ -145,7 +145,7 @@ handle_cast(leave, State) ->
         {value, RestConf1} -> ns_config:set({node, node(), rest}, RestConf1)
     end,
     ns_config:set_initial(nodes_wanted, [node()]),
-    ns_config:set_initial(otp, [{cookie, NewCookie}]),
+    ns_cookie_manager:cookie_sync(),
     ns_storage_conf:delete_all_db_files(DBDir),
     ?log_info("Leaving cluster", []),
     timer:sleep(1000),
@@ -610,7 +610,7 @@ perform_actual_join(RemoteNode, NewCookie) ->
         ns_config:set_initial(nodes_wanted, [node(), RemoteNode]),
         error_logger:info_msg("pre-join cleaned config is:~n~p~n",
                               [ns_config:get()]),
-        true = erlang:set_cookie(node(), NewCookie),
+        {ok, _Cookie} = ns_cookie_manager:cookie_sync(),
         %% Let's verify connectivity.
         Connected = net_kernel:connect_node(RemoteNode),
         ?log_info("Connection from ~p to ~p:  ~p",
