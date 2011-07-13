@@ -1190,12 +1190,12 @@
 <div class="dialog bucket_details" id="copy_designdoc_dialog" title="Copy Design Document" style="width:30em">
   <form>
   <div class="clearfix">
-     <label><input type="radio" name="prefix" value="$dev_design" checked="checked" /> $dev_design/
+     <label><input type="radio" name="prefix" value="_design/dev_" checked="checked" /> _design/dev_
      <input name="name" value="??" class="designdoc_name" style="text-align:left;width:10.6em" /></label>
-     <label><input type="radio" name="prefix" value="_design"/> _design/
+     <label><input type="radio" name="prefix" value="_design/"/> _design/
      <input name="name" value="??" class="designdoc_name" disabled="disabled" style="text-align:left;width:13em" /></label>
-     <p>NOTE: Development Mode ($dev_design) provides the opportunity to edit and test
-     your map/reduce views against a subset of data&emdash;without overloading the cluster.</p>
+     <p>NOTE: Development Mode (_design/dev_) provides the opportunity to edit and test
+     your map/reduce views against a subset of data&mdash;without overloading the cluster.</p>
   </div>
   <div class="save_cancel">
     <button class="save_button float_right" type="submit">Save</button>
@@ -1208,7 +1208,7 @@
   <form>
   <div class="clearfix">
      <label>Design Doc Name:</label>
-     <label>$dev_design/<input name="designdoc_name" value="??" class="designdoc_name" style="text-align:left;width:13em" /></label>
+     <label>_design/dev_<input name="designdoc_name" value="??" class="designdoc_name" style="text-align:left;width:13em" /></label>
      <label>View Name:<input name="view_name" value="??" class="view_name" /></label>
   </div>
   <div class="save_cancel">

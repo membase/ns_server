@@ -64,6 +64,12 @@ var sampleDocs = [{
   }
 }];
 
+function isDevModeDocId(id) {
+  return (id.substr(0,12) === '_design/dev_')
+    ? true
+    : false;
+}
+
 var ViewsSection = {
   init: function () {
     var self = this;
@@ -73,7 +79,7 @@ var ViewsSection = {
                              "#views .panes > div",
                              ["production", "development"]);
     tabs.subscribeValue(function (tab) {
-      $('#views').toggleClass('in-development');
+      $('#views')[tab == 'development' ? 'addClass' : 'removeClass']('in-development');
     });
 
     var bucketName;
@@ -84,27 +90,26 @@ var ViewsSection = {
         return baseUri + bucketName;
       });
 
-    var designDocs = self.designDocs = Cell
+    var allDesignDocs = self.allDesignDocs = Cell
       .needing(dbUrl)
       .compute(function (v, dbUrl) {
-        return future.get({url: dbUrl + '/_all_docs?startkey="_design"&endkey="_design0"&include_docs=true'})
+        return future.get({url: dbUrl + '/_all_docs?startkey="_design/"&endkey="_design0"&include_docs=true'})
       });
 
-    var devDesignDocs = self.devDesignDocs = Cell
-      .needing(dbUrl)
-      .compute(function (v, dbUrl) {
-        if (bucketName === undefined) {
-          return;
-        }
-        return future.get({url: dbUrl + '/_all_docs?startkey="$dev_design"&endkey="$dev_design0"&include_docs=true'})
-      });
 
-    designDocs.subscribe(function (cell) {
-        renderTemplate('views_list', {rows: cell.value.rows, bucketName: bucketName}, $i('production_views_list_container'));
-    });
+    allDesignDocs.subscribe(function (cell) {
+      function filter(doc) {
+        return isDevModeDocId(doc.id);
+      }
 
-    devDesignDocs.subscribe(function (cell) {
-        renderTemplate('views_list', {rows: cell.value.rows, bucketName: bucketName}, $i('development_views_list_container'));
+      renderTemplate('views_list', {
+          rows: _.reject(cell.value.rows, filter),
+          bucketName: bucketName
+        }, $i('production_views_list_container'));
+      renderTemplate('views_list', {
+          rows: _.select(cell.value.rows, filter),
+          bucketName: bucketName
+        }, $i('development_views_list_container'));
     });
 
     // On "Delete" we notify the user that the views in this Design Doc
@@ -137,11 +142,6 @@ var ViewsSection = {
     $('#views .btn_copy:not(.disabled)').live('click', function (ev) {
       var ddocInfo = $(ev.target).closest('tbody');
       var docId = ddocInfo.data('name');
-      if (docId.substr(0,1) === '$') {
-        docId = encodeURIComponent(docId);
-      } else {
-        docId = decodeURIComponent(docId);
-      }
       // TODO: celluralize this? or put this in a subscribe?
       var docUrl = dbUrl.value + '/' + docId + '?rev=' + ddocInfo.data('rev');
       // TODO: get dev_mode value from form (replace undefined)
@@ -149,7 +149,7 @@ var ViewsSection = {
       var design_doc_name = ddocInfo.data('name');
       var dialog = $($i('copy_designdoc_dialog'));
 
-      dialog.find('.designdoc_name').val(design_doc_name.split('/').pop());
+      dialog.find('.designdoc_name').val(design_doc_name.split('/').pop().replace(/dev_/, ''));
       dialog.find('label').click(function (ev) {
         ev.preventDefault();
         var label = $(ev.target);
@@ -174,8 +174,7 @@ var ViewsSection = {
 //            },
 //            success: function () {
 //              // TODO: switch to tab containing the copied document
-//              designDocs.recalculate();
-//              devDesignDocs.recalculate();
+//              allDesignDocs.recalculate();
 //              hideDialog('copy_designdoc_dialog');
 //            }
 //          });
@@ -190,8 +189,7 @@ var ViewsSection = {
               contentType: 'application/json',
               success: function (resp) {
                 // TODO: switch to tab containing the copied document
-                self.designDocs.recalculate();
-                self.devDesignDocs.recalculate();
+                self.allDesignDocs.recalculate();
                 hideDialog('copy_designdoc_dialog');
               }
             });
@@ -206,7 +204,7 @@ var ViewsSection = {
               }
             },
             success: function (doc) {
-              save(doc, data.prefix + '/' + data.name);
+              save(doc, data.prefix + data.name);
             }
           });
         }]]
@@ -223,7 +221,7 @@ var ViewsSection = {
         eventBindings: [['.save_button', 'click', function (e) {
           e.preventDefault();
 
-          var doc = {"_id": '$dev_design/' + dialog.find('input.designdoc_name').val(),
+          var doc = {"_id": '_design/dev_' + dialog.find('input.designdoc_name').val(),
                      "language": "javascript",
                      "views": {}};
           doc.views[dialog.find('input.view_name').val()] = {
@@ -232,7 +230,7 @@ var ViewsSection = {
           $.ajax({type:"POST", url: dbUrl.value, data: JSON.stringify(doc),
             contentType: 'application/json',
             success: function () {
-              self.devDesignDocs.recalculate();
+              self.allDesignDocs.recalculate();
               hideDialog(dialog);
             }
           });
@@ -280,11 +278,6 @@ var ViewDevSection = {
     var currentDoc = self.currentDoc = Cell
       .needing(dbUrl, docId)
       .compute(function (v, dbUrl, docId) {
-        if (docId.substr(0,1) === '$') {
-          docId = encodeURIComponent(docId);
-        } else {
-          docId = decodeURIComponent(docId);
-        }
         return future.get({url: dbUrl + '/' + docId});
       });
 
@@ -297,11 +290,6 @@ var ViewDevSection = {
     var viewResults = self.viewResults = Cell
       .needing(dbUrl, docId, viewName)
       .compute(function (v, dbUrl, docId, viewName) {
-        if (docId.substr(0,1) === '$') {
-          docId = '%24' + docId.substr(1);
-        } else {
-          docId = decodeURIComponent(docId);
-        }
         return future.get({url: dbUrl + '/' + docId + '/_view/' + viewName + '?limit=10'});
       });
 
@@ -320,11 +308,7 @@ var ViewDevSection = {
         return;
       } else {
         $('#view_development h1 .designdoc_name').html(name);
-        if (name.substr(0, 1) === '_') {
-          $('#save_and_run_view').addClass('disabled');
-        } else {
-          $('#save_and_run_view').removeClass('disabled');
-        }
+        $('#save_and_run_view')[isDevModeDocId(name) ? 'addClass' : 'removeClass']('disabled');
       }
     });
 
@@ -433,11 +417,10 @@ var ViewDevSection = {
       "We'll return to the Design Document list to let you reselect.",
       callback: function (e, btn, dialog) {
         var add = '';
-        if (docId.value.split('/').shift() === '$dev_design') {
+        if (isDevModeDocId(docId.value)) {
           add = '&viewsTab=1';
         }
-        ViewsSection.designDocs.recalculate();
-        ViewsSection.devDesignDocs.recalculate();
+        ViewsSection.allDesignDocs.recalculate();
         location.hash = '#sec=views&statsBucket=/pools/default/buckets/' + bucketName.value + add;
       }
      });
