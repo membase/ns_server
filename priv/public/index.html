@@ -473,7 +473,7 @@
                 <td>{%= V.formatQuantity(this.basicStats.memUsed) %} / {%= V.formatQuantity(this.quota.ram) %}</td>
                 <td>{%= V.formatQuantity(this.basicStats.diskUsed) %}</td>
                 <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
-                <td>{% if (this.basicStats.diskFetches !== undefined) { %}{%= h(truncateTo3Digits(this.basicStats.diskFetches)) %}{% } %}</td>
+                <td>{% if (this.basicStats.diskFetches !== undefined) { %}{%= h(truncateTo3Digits(this.basicStats.diskFetches)) %}{% } else { %}N/A{% } %}</td>
                 <td>{%= h(this.basicStats.itemCount) %}</td>
                 <td>
                   <a class="list_button btn_analytics" href="#sec=analytics&statsBucket={%= this.uri %}">Analytics</a>
