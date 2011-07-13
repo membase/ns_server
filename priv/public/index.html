@@ -464,7 +464,7 @@
               <tr class="{%= this.bucketTypeName.toLowerCase() %}">
                 <td class="type_icon">&nbsp;</td>
                 <td class="bucket_name">
-                  <a class="disable-if-stale" href="#visitBucket={%=h(this.name)%}">{%= h(this.name) %}</a>
+                  <a class="disable-if-stale" title="Visit Analytics section for {%= h(this.name) %}" href="#sec=analytics&statsBucket={%= h(this.uri) %}">{%= h(this.name) %}</a>
                 </td>
                 <td>
                   <span id="{%= h(this.name) %}_health" class="health_graph"></span>
@@ -476,9 +476,9 @@
                 <td>{% if (this.basicStats.diskFetches !== undefined) { %}{%= h(truncateTo3Digits(this.basicStats.diskFetches)) %}{% } else { %}N/A{% } %}</td>
                 <td>{%= h(this.basicStats.itemCount) %}</td>
                 <td>
-                  <a class="list_button btn_analytics" href="#sec=analytics&statsBucket={%= this.uri %}">Analytics</a>
                   <a class="list_button btn_views" href="#sec=views&statsBucket={%= this.uri %}">Views</a>
                   <a class="list_button btn_documents disabled" href="#sec=documents&statsBucket={%= this.uri %}">Documents</a>
+                  <a class="list_button btn_info disable-if-stale" href="#visitBucket={%=h(this.name)%}">Info</a>
                 </td>
               </tr>
               <tr>

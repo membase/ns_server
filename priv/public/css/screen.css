@@ -754,6 +754,8 @@ li.server_row .btn_cancel {display:block; height:15px; color:#7a7a7a; padding:0 
 .btn_documents.disabled {opacity:0.75;background-position:-78px -31px}
 .btn_analytics {background: url(../images/buttons.png) no-repeat right top;text-indent:-9000px;width:32px;height:31px;}
 .btn_analytics.disabled {opacity:0.75;background-position:right -31px}
+.btn_info {background: url(../images/buttons.png) no-repeat -117px top;text-indent:-9000px;width:32px;height:31px;}
+.btn_info.disabled {opacity:0.75;background-position:-117px -31px}
 
 .server_up {background:transparent url(../images/server_status_icons_solid_bg.png) 10px 15px no-repeat !important; width:55px;}
 .server_down {background:transparent url(../images/server_status_icons_solid_bg.png) 10px -163px no-repeat !important; width:55px;}
