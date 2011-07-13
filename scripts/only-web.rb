@@ -5,9 +5,7 @@ require 'sinatra'
 require 'active_support/core_ext'
 require 'pp'
 
-#Dir.chdir(File.join(File.dirname($0), '..'))
-
-$DOCROOT = '../priv/public'
+$DOCROOT = File.expand_path(File.join(File.dirname(__FILE__), '../priv/public'))
 
 def sh(cmd)
   puts "# #{cmd}"
@@ -77,7 +75,7 @@ get "/test_auth" do
 end
 
 if ARGV.size == 0
-  name = "ruby #{File.basename($0)} -p 8080"
+  name = "ruby #{$0} -p 8080"
   puts name
   system name
   exit 0

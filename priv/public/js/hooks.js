@@ -281,16 +281,10 @@ var MockedRequest = mkClass({
   errorResponse: function (resp) {
     var self = this;
     self.responded = true;
-    var fakeXHR = {status: 400};
+    var fakeXHR = {status: 400,
+                   responseText: JSON.stringify(resp)};
     _.defer(function () {
-      var oldHttpData = $.httpData;
-      $.httpData = function () {return resp;}
-
-      try {
-        self.options.error(fakeXHR, 'error');
-      } finally {
-        $.httpData = oldHttpData;
-      }
+      self.options.error(fakeXHR, 'error');
     });
   },
 
@@ -625,7 +619,9 @@ var MockedRequest = mkClass({
                                                 bucket_auth_failed:"1"}},
                                      ports:{proxyPort:11213,
                                             directPort:11212}}],
-      [get("settings", "stats"), {sendStats:true}],
+      [get("settings", "stats"), {sendStats:false}],
+      [get("settings", "autoFailover"), {"enabled":false,"timeout":30,"count":0}],
+      [get("settings", "alerts"), {"recipients":["root@localhost"],"sender":"membase@localhost","enabled":true,"emailServer":{"user":"","pass":"","host":"localhost","port":25,"encrypt":false},"alerts":["auto_failover_node","auto_failover_maximum_reached","auto_failover_other_nodes_down","auto_failover_cluster_too_small"]}],
       [get("pools"), function () {
         return {implementationVersion: 'only-web.rb-unknown',
                 componentsVersion: {
@@ -678,6 +674,8 @@ var MockedRequest = mkClass({
                                   clusterMembership: "inactiveFailed",
                                   ports: {proxy: 11211,
                                           direct: 11311},
+                                  thisNode: true,
+                                  couchApiBase: "/couchBase",
                                   memoryTotal: 2032574464,
                                   memoryFree: 89864960,
                                   mcdMemoryAllocated: 64,
@@ -701,6 +699,7 @@ var MockedRequest = mkClass({
                                   clusterMembership: "active",
                                   ports: {proxy: 11211,
                                           direct: 11311},
+                                  couchApiBase: "/couchBase",
                                   memoryTotal: 2032574464,
                                   memoryFree: 89864960,
                                   mcdMemoryAllocated: 64,
@@ -730,6 +729,7 @@ var MockedRequest = mkClass({
                                   mcdMemoryReserved: 256,
                                   ports: {proxy: 11211,
                                           direct: 11311},
+                                  couchApiBase: "/couchBase",
                                   otpNode: "ns1@goofy.disney.com",
                                   otpCookie: "SADFDFGDFG"}],
                          "storageTotals": {
@@ -1338,7 +1338,12 @@ var __hookParams = {};
 
   if (params['no-mcduck']) {
     var pools = MockedRequest.prototype.findResponseFor("GET", ["pools", "default"]);
-    pools.nodes = _.reject(pools.nodes, function (n) {return n.hostname == "scrooge-mcduck.disney.com"});
+    pools.nodes = _.reject(pools.nodes, function (n) {return n.hostname == "scrooge-mcduck.disney.com:8091"});
+  }
+
+  if (params['no-goofy']) {
+    var pools = MockedRequest.prototype.findResponseFor("GET", ["pools", "default"]);
+    pools.nodes = _.reject(pools.nodes, function (n) {return n.hostname == "goofy.disney.com:8091"});
   }
 
   if (params['rebalanceStatus']) {
