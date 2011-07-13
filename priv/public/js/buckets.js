@@ -57,7 +57,7 @@ function setupFormValidation(form, url, callback) {
     }
 
     console.log("plain error");
-    var errorsData = $.httpData(data, null, this);
+    var errorsData = $.parseJSON(data.responseText);
     callback('error', errorsData);
   }
 

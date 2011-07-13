@@ -128,7 +128,7 @@ function postWithValidationErrors(url, data, callback, ajaxOptions) {
     } else if (status != 400 || textStatus != 'error') {
       errorsData = "Save request returned error.";
     } else {
-      errorsData = $.httpData(data, null, this);
+      errorsData = $.parseJSON(data.responseText);
     }
 
     if (!_.isArray(errorsData)) {
