@@ -364,7 +364,7 @@ var ViewDevSection = {
           function save(doc) {
             if (!doc) {
               doc = {
-                  _id: '$dev_design/' + data.designdoc_name,
+                  _id: '_design/' + data.designdoc_name,
                   language: 'javascript'
               };
             } else {
@@ -374,19 +374,20 @@ var ViewDevSection = {
             if (doc.views === undefined) doc.views = {};
             doc.views[data.view_name] = viewCode;
             console.log('views', doc.views);
-            $.ajax({type:"POST", url: dbUrl.value,
+            $.ajax({type:"PUT",
+                    url: dbUrl.value + '/_design/' + data.designdoc_name,
               data: JSON.stringify(doc),
               contentType: 'application/json',
               success: function (resp) {
                 // "converting" the location.hash into a valid query string for $.param.querystring() parsing
                 var qs = '?' + location.hash.substr(1);
-                var newqs = $.param.querystring(qs, 'docId=$dev_design/' + data.designdoc_name + '&viewName=' + data.view_name);
-                location.hash = '#' + newqs.substr(1);
+                var newqs = $.param.querystring(qs, 'docId=_design/' + data.designdoc_name + '&viewName=' + data.view_name);
+                location.reload(true);
               }
             });
           }
 
-          $.ajax({type:"GET", url: dbUrl.value + '/%24dev_design%2F' + data.designdoc_name,
+          $.ajax({type:"GET", url: dbUrl.value + '/_design/' + data.designdoc_name,
             error: function(jqXHR, error, reason) {
               if (jqXHR.status === 404) {
                 save(null);

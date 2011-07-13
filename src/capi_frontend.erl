@@ -56,6 +56,11 @@ with_subdb(Db, VBucket, Fun) ->
 update_doc(Db, Doc, Options) ->
     update_doc(Db, Doc, Options, interactive_edit).
 
+update_doc(#db{filepath = undefined} = Db, #doc{id = <<"$dev_design/",_/binary>>} = Doc, Options, UpdateType) ->
+    with_subdb(Db, <<"master">>,
+               fun (RealDb) ->
+                       couch_db:update_doc(RealDb, Doc, Options, UpdateType)
+               end);
 update_doc(#db{filepath = undefined} = Db, #doc{id = <<"_design/",_/binary>>} = Doc, Options, UpdateType) ->
     with_subdb(Db, <<"master">>,
                fun (RealDb) ->
@@ -185,6 +190,11 @@ get_revs_limit(Db) ->
     exit(not_implemented(get_revs_limit, [Db])).
     %% couch_db:get_revs_limit(Db).
 
+open_doc_revs(#db{filepath = undefined} = Db, <<"$dev_design/",_/binary>> = DocId, Revs, Options) ->
+    with_subdb(Db, <<"master">>,
+               fun (RealDb) ->
+                       couch_db:open_doc_revs(RealDb, DocId, Revs, Options)
+               end);
 open_doc_revs(#db{filepath = undefined} = Db, <<"_design/",_/binary>> = DocId, Revs, Options) ->
     with_subdb(Db, <<"master">>,
                fun (RealDb) ->
@@ -200,8 +210,13 @@ open_doc(#db{filepath = undefined} = Db, <<"_design/",_/binary>> = DocId, Option
                fun (RealDb) ->
                        couch_db:open_doc(RealDb, DocId, Options)
                end);
+open_doc(#db{filepath = undefined} = Db, <<"$dev_design/",_/binary>> = DocId, Options) ->
+    with_subdb(Db, <<"master">>,
+               fun (RealDb) ->
+                       couch_db:open_doc(RealDb, DocId, Options)
+               end);
 open_doc(#db{filepath = undefined} = Db, DocId, Options) ->
-    exit(not_implemented(open_doc_revs, [Db, DocId, Options]));
+    exit(not_implemented(open_doc, [Db, DocId, Options]));
 open_doc(Db, DocId, Options) ->
     couch_db:open_doc(Db, DocId, Options).
 
