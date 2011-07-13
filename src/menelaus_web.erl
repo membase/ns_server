@@ -290,13 +290,14 @@ loop(Req, AppRoot, DocRoot) ->
                                  ns_log:log(?MODULE, 0002, "Invalid delete received: ~p as ~p", [Req, PathTokens]),
                                   {done, Req:respond({405, add_header(), "Method Not Allowed"})}
                          end;
-                     'PUT' ->
+                     Method when Method =:= 'PUT'; Method =:= "COPY" ->
                          case PathTokens of
                              ["couchBase" | _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
                              _ ->
-                                 ns_log:log(?MODULE, 0003, "Invalid put received: ~p", [Req]),
+                                 ns_log:log(?MODULE, 0003, "Invalid ~p received: ~p", [Method, Req]),
                                  {done, Req:respond({405, add_header(), "Method Not Allowed"})}
                          end;
+
                      _ ->
                          ns_log:log(?MODULE, 0004, "Invalid request received: ~p", [Req]),
                          {done, Req:respond({405, add_header(), "Method Not Allowed"})}
