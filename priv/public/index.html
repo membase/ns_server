@@ -454,7 +454,6 @@
                 <th>Disk Usage</th>
                 <th>Ops/sec</th>
                 <th>Disk Fetches/sec</th>
-                <th>Hit ratio</th>
                 <th>Item Count</th>
                 <th class="last"></th>
               </tr>
@@ -475,7 +474,6 @@
                 <td>{%= V.formatQuantity(this.basicStats.diskUsed) %}</td>
                 <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
                 <td>{% if (this.basicStats.diskFetches !== undefined) { %}{%= h(truncateTo3Digits(this.basicStats.diskFetches)) %}{% } %}</td>
-                <td>{% if (this.basicStats.hitRatio !== undefined) { %}{%= h(truncateTo3Digits(this.basicStats.hitRatio * 100)) %}%{% } %}</td>
                 <td>{%= h(this.basicStats.itemCount) %}</td>
                 <td>
                   <a class="list_button btn_analytics" href="#sec=analytics&statsBucket={%= this.uri %}">Analytics</a>
