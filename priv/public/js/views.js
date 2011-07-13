@@ -167,46 +167,17 @@ var ViewsSection = {
           });
 
           // TODO: get new design_doc_name from the form, throw error if undefined
-          // TODO: use this simpler code once COPY's implemented
-//          $.ajax({type:"COPY", url: docUrl,
-//            headers: {
-//              'Destination': data.prefix + '/' + data.name
-//            },
-//            success: function () {
-//              // TODO: switch to tab containing the copied document
-//              allDesignDocs.recalculate();
-//              hideDialog('copy_designdoc_dialog');
-//            }
-//          });
+         $.ajax({type:"COPY", url: docUrl,
+           headers: {
+             'Destination': data.prefix + '/' + data.name
+           },
+           success: function () {
+             // TODO: switch to tab containing the copied document
+             allDesignDocs.recalculate();
+             hideDialog('copy_designdoc_dialog');
+           }
+         });
 
-          function save(doc, newId) {
-            doc = JSON.parse(doc);
-            doc._id = newId;
-            doc._rev = undefined;
-            // TODO: handle 409's
-            $.ajax({type:"POST", url: dbUrl.value,
-              data: JSON.stringify(doc),
-              contentType: 'application/json',
-              success: function (resp) {
-                // TODO: switch to tab containing the copied document
-                self.allDesignDocs.recalculate();
-                hideDialog('copy_designdoc_dialog');
-              }
-            });
-          }
-
-          $.ajax({type:"GET", url: docUrl,
-            error: function(jqXHR, error, reason) {
-              if (jqXHR.status === 404) {
-                save(null);
-              } else {
-                alert(reason);
-              }
-            },
-            success: function (doc) {
-              save(doc, data.prefix + data.name);
-            }
-          });
         }]]
       });
     });
