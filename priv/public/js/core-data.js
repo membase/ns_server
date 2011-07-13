@@ -107,7 +107,7 @@ $.ajaxSetup({
     // NOTE: we're not sending auth header for capi requests because
     // at this point CAPI is authless and sending auth header only
     // confuses it
-    if (DAL.login && options.url.substring(0, "/capiProxy/".length) !== "/capiProxy/") {
+    if (DAL.login && options.url.substring(0, "/couchBase/".length) !== "/couchBase/") {
       addBasicAuth(xhr, DAL.login, DAL.password);
     }
     xhr.setRequestHeader('invalid-auth-response', 'on');
@@ -543,7 +543,7 @@ var DAL = {
 
     if (options.crossDomain && options.url.substring(0, capiBaseLen) === capiBase) {
       options.crossDomain = false;
-      options.url = "/capiProxy/" + options.url.slice(capiBaseLen);
+      options.url = "/couchBase/" + options.url.slice(capiBaseLen);
     }
   });
 })();
