@@ -470,7 +470,7 @@
                   <span id="{%= h(this.name) %}_health" class="health_graph"></span>
                   {%= V.count(this.serversCount, 'server') %}
                 </td>
-                <td>{%= V.formatQuantity(this.basicStats.memUsed) %}/{%= V.formatQuantity(this.quota.ram) %}</td>
+                <td>{%= V.formatQuantity(this.basicStats.memUsed) %} / {%= V.formatQuantity(this.quota.ram) %}</td>
                 <td>{%= V.formatQuantity(this.basicStats.diskUsed) %}</td>
                 <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
                 <td>{% if (this.basicStats.diskFetches !== undefined) { %}{%= h(truncateTo3Digits(this.basicStats.diskFetches)) %}{% } %}</td>
