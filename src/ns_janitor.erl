@@ -78,6 +78,7 @@ cleanup(Bucket, Options) ->
                                                       {Src, [{V, Dst} || {_, Dst, V} <- R]}
                                               end, ReplicaGroups),
                     ns_vbm_sup:set_replicas(Bucket, NodesReplicas),
+                    capi_ddoc_replication_srv:force_update(Bucket),
                     ok
             end
     end.

@@ -30,7 +30,7 @@
 -define(i2l(V), integer_to_list(V)).
 
 
--export([start_link/1]).
+-export([start_link/1, force_update/1]).
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
@@ -40,6 +40,8 @@
 start_link(Bucket) ->
     gen_server:start_link({local, server(Bucket)}, ?MODULE, Bucket, []).
 
+force_update(Bucket) ->
+    server(Bucket) ! update.
 
 init(Bucket) ->
 
@@ -106,12 +108,20 @@ update(#state{vbuckets=VBuckets, servers=Servers,
               TheMap -> TheMap
           end,
 
-    {_, NVBuckets} = lists:foldl(Fun, {0, []}, Map),
+    {_, NVBucketsAll} = lists:foldl(Fun, {0, []}, Map),
+
+    {ok, VBucketStates} = ns_memcached:list_vbuckets(Bucket),
+    PresentVBuckets = lists:sort(proplists:get_keys(VBucketStates)),
+
+    NVBucketsPresent = ordsets:intersection(lists:sort(NVBucketsAll),
+                                            PresentVBuckets),
 
     NServers = proplists:get_value(servers, Conf) -- [Self],
 
-    {ToStartVBuckets, ToStopVBuckets} = difference(VBuckets, NVBuckets),
+    {ToStartVBuckets0, ToStopVBuckets} = difference(VBuckets, NVBucketsAll),
     {ToStartServers, ToStopServers} = difference(Servers, NServers),
+
+    ToStartVBuckets = ordsets:intersection(lists:sort(ToStartVBuckets0), PresentVBuckets),
 
     [stop_server_replication(Master, Bucket, Srv) || Srv <- ToStopServers],
     [start_server_replication(Master, Bucket, Srv) || Srv <- ToStartServers],
@@ -119,7 +129,7 @@ update(#state{vbuckets=VBuckets, servers=Servers,
     [stop_vbucket_replication(Master, Bucket, Srv) || Srv <- ToStopVBuckets],
     [start_vbucket_replication(Master, Bucket, Srv) || Srv <- ToStartVBuckets],
 
-    State#state{vbuckets=NVBuckets, servers=NServers}.
+    State#state{vbuckets=NVBucketsPresent, servers=NServers}.
 
 
 build_replication_struct(Source, Target) ->
