@@ -442,6 +442,9 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 p.info {padding:5px 24px 15px;font-weight:bold;}
 
 #bucket_list_container {border-left:1px solid #c8ccce; border-bottom:1px solid #c8ccce;}
+#bucket_list_container .type_icon {background:url('../images/bucket_types.png') no-repeat 0 center;}
+#bucket_list_container .memcached .type_icon {background-position:-32px center}
+#bucket_list_container .membase .type_icon {background-position:-64px center}
 #get_started {display:none;}
 
 /* update notification styles */

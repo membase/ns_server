@@ -447,8 +447,8 @@
             <script id="bucket_list_template" type="text/html">
             <table class="list" width="100%">
               <tr>
+                <th></th>
                 <th>Bucket Name</th>
-                <th>Bucket Type</th>
                 <th>Bucket Resides On</th>
                 <th>RAM Usage/Quota</th>
                 <th>Disk Usage</th>
@@ -461,11 +461,11 @@
               <tr><td colspan="10" style="padding:15px">No buckets currently defined! Click "Create New Data Bucket" above to create one.</td></tr>
               <!-- {% } %} -->
               <!-- {% $.each(rows, function () { %} -->
-              <tr>
+              <tr class="{%= this.bucketTypeName.toLowerCase() %}">
+                <td class="type_icon">&nbsp;</td>
                 <td class="bucket_name">
                   <a class="disable-if-stale" href="#visitBucket={%=h(this.name)%}">{%= h(this.name) %}</a>
                 </td>
-                <td>{%= h(this.bucketTypeName) %}</td>
                 <td>
                   <span id="{%= h(this.name) %}_health" class="health_graph"></span>
                   {%= V.count(this.serversCount, 'server') %}
