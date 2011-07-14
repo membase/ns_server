@@ -733,9 +733,7 @@ body.init_bucket_dialog #container { display: none; }
 .init_block .pad .spinner span {display:block; width: 150px; height:20px; padding:50px 0 0 0; text-align:center; font-size:12px; color:#a6b1b3; background:url(../images/spinner/spinner_1.gif) 55px 5px no-repeat; position:relative; margin:auto; top:122px;}
 
 
-.list_button, #servers .add_button, #servers .rebalance_button, #servers .stop_rebalance_button
-{display: block; float: right; *float:right !important; margin-left: 5px; text-decoration:none !important;}
-li.server_row .btn_cancel {display:block; height:15px; color:#7a7a7a; padding:0 18px 0 0; background:url(../images/btn_cancel_bg.png) 100% 0 no-repeat; line-height:15px; margin-top:23px;}
+.list_button, #servers .add_button, #servers .rebalance_button, #servers .stop_rebalance_button {display: block; float: right; *float:right !important; margin-left: 5px; text-decoration:none !important;}
 .list_button {height:31px; padding:0 3px 0 0; background:url(../images/btn_2_bg.png) 100% -31px no-repeat; color:#000; font-size:14px; text-decoration:none !important; position:relative; }
 #servers .list_button.failover_server.threat_red {color:#f00 !important;font-weight:bold;border: 1px solid #f00;border-radius:5px;-moz-box-shadow: 0 0 3px #f00;-webkit-box-shadow: 0 0 3px #f00;box-shadow:0 0 3px #f00}
 #servers .list_button.failover_server.threat_yellow {color:#E5A800 !important;font-weight:bold;border: 1px solid #fac344;border-radius:5px;-moz-box-shadow: 0 0 3px #fac344;-webkit-box-shadow: 0 0 3px #fac344;box-shadow:0 0 3px #fac344}
@@ -775,7 +773,6 @@ li.server_row .btn_cancel {display:block; height:15px; color:#7a7a7a; padding:0 
 .servers_list .server_row.rebalance_empty .rebalance_empty_message {display:block;}
 .servers_list .server_row.pending_add {background:url(../images/server_status_icons.png) 10px -309px no-repeat;}
 
-.server_row.pending_removal .btn_cancel, .server_row.pending_add .btn_cancel {float:right;padding:1em}
 .server_row.pending_removal .pending_removal_message, .server_row.pending_add .pending_add_message {float:right; margin:0 10px 0 0; color:#e54c2a;padding:1em}
 .server_row.status_up {background-position:10px 20px !important;}
 .server_row.status_down {background-position:10px -157px !important; background-color:#61696c;}

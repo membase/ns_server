@@ -197,24 +197,30 @@
           <!-- {% _.each(rows, function (s) { %} -->
             <!-- {% if (s.clusterMembership == 'inactiveAdded') { %}-->
             <tr class="server_row pending_add {%= s.nodeClass %}">
-              <td colspan="6">{%= V.setData('server', s) %}
-              {% if (expandingAllowed) { %}<a href="#openServer={%= h(s.otpNode) %}">{%= V.stripPortHTML(s.hostname, rows) %}</a>
-              {% } else { %}{%= V.stripPortHTML(s.hostname, rows) %}{% } %}
+              <td>{%= V.setData('server', s) %}</td>
+              <td>
+              {%= V.stripPortHTML(s.hostname, rows) %}
+              </td>
+              <td colspan="4">
+              <span class="pending_add_message">Pending Add</span>
               </td>
               <td>
-              <a href="#" class="btn_cancel eject_server">Cancel</a>
-              <span class="pending_add_message">Pending Add</span>
+              <a href="#" class="list_button btn_cancel eject_server"><span>Cancel</span></a>
+              <a class="list_button btn_info{% if (!expandingAllowed) { %} disabled"{% } else { %}" href="#openServer={%= h(s.otpNode) %}"{% } %}>Info</a>
               </td>
             </tr>
             <!-- {% } else if (s.pendingEject) { %} -->
             <tr class="server_row pending_removal {%= s.nodeClass %}">
-              <td colspan="6">{%= V.setData('server', s) %}
-              {% if (expandingAllowed) { %}<a href="#openServer={%= h(s.otpNode) %}">{%= V.stripPortHTML(s.hostname, rows) %}</a>
-              {% } else { %}{%= V.stripPortHTML(s.hostname, rows) %}{% } %}
+              <td>{%= V.setData('server', s) %}</td>
+              <td>
+              {%= V.stripPortHTML(s.hostname, rows) %}
+              </td>
+              <td colspan="4">
+              <span class="pending_removal_message">Pending Removal</span>
               </td>
               <td>
-              <a href="#" class="btn_cancel remove_from_list">Cancel</a>
-              <span class="pending_removal_message">Pending Removal</span>
+              <a href="#" class="list_button btn_cancel remove_from_list"><span>Cancel</span></a>
+              <a class="list_button btn_info{% if (!expandingAllowed) { %} disabled"{% } else { %}" href="#openServer={%= h(s.otpNode) %}"{% } %}>Info</a>
               </td>
             </tr>
             <!-- {% } else { %} -->
@@ -231,8 +237,7 @@
               <tr class="server_row {%= s.nodeClass %}" id="{%= h(s.otpNode.replace('@', '-')) %}">
                 <td class="{%= s.nodeClass %}">{%= V.setData('server', s) %}</td>
                 <td>
-                  {% if (expandingAllowed) { %}<a href="#openServer={%= h(s.otpNode) %}">{%= V.stripPortHTML(s.hostname, rows) %}</a>{%
-                  } else { %}{%= V.stripPortHTML(s.hostname, rows) %}{% } %}
+                  <a href="#sec=analytics&statsHostname={%= h(s.hostname) %}">{%= V.stripPortHTML(s.hostname, rows) %}</a>
                 </td>
                 <td>
                   <div class="usage_smallest_info">
@@ -281,7 +286,7 @@
                   <a class="list_button eject_server"><span>Remove</span></a>
                   <a class="list_button failover_server"><span>Fail Over</span></a>
                   <span class="failed_over_message">Failed Over: Pending Removal</span>
-                  <a class="list_button btn_analytics{% if (s.nodeClass === 'server_down') { %} disabled"{% } else { %}" href="#sec=analytics&statsHostname={%= h(s.hostname) %}"{% } %}>Analytics</a>
+                  <a class="list_button btn_info{% if (!expandingAllowed) { %} disabled"{% } else { %}" href="#openServer={%= h(s.otpNode) %}"{% } %}>Info</a>
                 </td>
               </tr>
             <!-- {% } %} -->
