@@ -9,9 +9,10 @@ export PATH
 LD_LIBRARY_PATH="@PREFIX@/lib":"@PREFIX@/lib/memcached":$LD_LIBRARY_PATH
 export LD_LIBRARY_PATH
 
-if [ `ulimit -n` -lt 10240 ]
-then
-    cat <<EOF
+_check_nofile() {
+    if [ `ulimit -n` -lt 10240 ]
+    then
+        cat <<EOF
 The maximum number of open files for the couchbase user is set too low.
 It must be at least 10240. Normally this can be increased by adding
 the following lines to /etc/security/limits.conf:
@@ -21,19 +22,24 @@ couchbase              hard    nofile                  <value>
 
 Where <value> is greater than 10240.
 EOF
-fi
+    fi
+}
 
-datadir="@PREFIX@/var/lib/couchbase"
+_prepare_datadir() {
+    datadir="@PREFIX@/var/lib/couchbase"
 
-test -d "$datadir" || mkdir -p "$datadir"
-cd "$datadir"
+    test -d "$datadir" || mkdir -p "$datadir"
+    cd "$datadir"
+}
 
-# Initialize distributed erlang on the system (i.e. epmd)
-erl -noshell -setcookie nocookie -sname init -run init stop 2>&1 > /dev/null
-if [ $? -ne 0 ]
-then
-  exit 1
-fi
+_maybe_start_epmd() {
+    # Initialize distributed erlang on the system (i.e. epmd)
+    erl -noshell -setcookie nocookie -sname init -run init stop 2>&1 > /dev/null
+    if [ $? -ne 0 ]
+    then
+        exit 1
+    fi
+}
 
 ERL_LIBS="@PREFIX@/lib/couchdb/erlang/lib:@PREFIX@/lib/ns_server/erlang/lib"
 export ERL_LIBS
@@ -50,13 +56,70 @@ export GLIBCPP_FORCE_NEW
 GLIBCXX_FORCE_NEW=1
 export GLIBCXX_FORCE_NEW
 
-exec erl \
-    +A 16 \
-    -setcookie nocookie \
-    -kernel inet_dist_listen_min 21100 inet_dist_listen_max 21299 \
-    $* \
-    -run ns_bootstrap -- \
-    -ns_server config_path "\"@PREFIX@/etc/couchbase/static_config\"" \
-    -ns_server pidfile "\"@PREFIX@/var/lib/couchbase/couchbase-server.pid\"" \
-    -ns_server nodefile "\"@PREFIX@/var/lib/couchbase/couchbase-server.node\"" \
-    -ns_server cookiefile "\"@PREFIX@/var/lib/couchbase/couchbase-server.cookie\"" \
+PIDFILE="@PREFIX@/var/lib/couchbase/couchbase-server.pid"
+NODEFILE="@PREFIX@/var/lib/couchbase/couchbase-server.node"
+COOKIEFILE="@PREFIX@/var/lib/couchbase/couchbase-server.cookie"
+
+_start() {
+    _check_nofile
+    _prepare_datadir
+    _maybe_start_epmd
+
+    exec erl \
+        +A 16 \
+        -setcookie nocookie \
+        -kernel inet_dist_listen_min 21100 inet_dist_listen_max 21299 \
+        $* \
+        -run ns_bootstrap -- \
+        -ns_server config_path "\"@PREFIX@/etc/couchbase/static_config\"" \
+        -ns_server pidfile "\"$PIDFILE\"" \
+        -ns_server nodefile "\"$NODEFILE\"" \
+        -ns_server cookiefile "\"$COOKIEFILE\""
+}
+
+_stop() {
+    [ -f $PIDFILE ] && [ -f $NODEFILE ] && [ -f $COOKIEFILE ] || return 1
+
+    cookie=`cat "$COOKIEFILE"`
+    nodename=`cat "$NODEFILE"`
+
+    erl \
+        -name executioner@executioner \
+        -noshell \
+        -hidden \
+        -setcookie "$cookie" \
+        -eval "ns_bootstrap:remote_stop('$nodename')"
+
+    errcode=$?
+
+    if [ $errcode -eq 0 ]; then
+        rm "$PIDFILE"
+        rm "$COOKIEFILE"
+        rm "$NODEFILE"
+    fi
+
+    return $errcode
+}
+
+_parse_options () {
+    # set +e
+    options=`getopt k $*`
+    if [ ! $? -eq 0 ]; then
+        return 1
+    fi
+    # set -e
+    eval set -- $options
+    if [ "-k" = "$1" ]; then
+        KILL=true;
+    fi
+
+    shift
+
+    if [ x"$KILL" = "xtrue" ]; then
+        _stop
+    else
+        _start $*
+    fi
+}
+
+_parse_options $*
