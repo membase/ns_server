@@ -67,8 +67,9 @@
          raw_stats/5,
          sync_bucket_config/1,
          flush/1,
-         set/3,
-         ready_nodes/4]).
+         set/4,
+         ready_nodes/4,
+         sync/4, add/4, get/3, delete/3]).
 
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
@@ -168,10 +169,34 @@ handle_call(connected, _From, #state{status=Status} = State) ->
 handle_call(flush, _From, State) ->
     Reply = mc_client_binary:flush(State#state.sock),
     {reply, Reply, State};
-handle_call({set, Key, Val}, _From, State) ->
-    mc_client_binary:cmd(?SET, State#state.sock, undefined, undefined,
-                         {#mc_header{}, #mc_entry{key = Key, data = Val}}),
-    {reply, ok, State};
+
+handle_call({delete, Key, VBucket}, _From, State) ->
+    Reply = mc_client_binary:cmd(?DELETE, State#state.sock, undefined, undefined,
+                                 {#mc_header{vbucket = VBucket},
+                                  #mc_entry{key = Key}}),
+    {reply, Reply, State};
+
+handle_call({set, Key, VBucket, Val}, _From, State) ->
+    Reply = mc_client_binary:cmd(?SET, State#state.sock, undefined, undefined,
+                                 {#mc_header{vbucket = VBucket},
+                                  #mc_entry{key = Key, data = Val}}),
+    {reply, Reply, State};
+
+handle_call({add, Key, VBucket, Val}, _From, State) ->
+    Reply = mc_client_binary:cmd(?ADD, State#state.sock, undefined, undefined,
+                                 {#mc_header{vbucket = VBucket},
+                                  #mc_entry{key = Key, data = Val}}),
+    {reply, Reply, State};
+
+handle_call({get, Key, VBucket}, _From, State) ->
+    Reply = mc_client_binary:cmd(?GET, State#state.sock, undefined, undefined,
+                                 {#mc_header{vbucket = VBucket},
+                                  #mc_entry{key = Key}}),
+    {reply, Reply, State};
+
+handle_call({sync, Key, VBucket, CAS}, _From, State) ->
+    {reply, mc_client_binary:sync(State#state.sock, VBucket, Key, CAS), State};
+
 handle_call({set_flush_param, Key, Value}, _From, State) ->
     Reply = mc_client_binary:set_flush_param(State#state.sock, Key, Value),
     {reply, Reply, State};
@@ -343,10 +368,35 @@ flush(Bucket) ->
     gen_server:call({server(Bucket), node()}, flush, ?TIMEOUT).
 
 
+%% @doc send an add command to memcached instance
+-spec add(bucket_name(), binary(), integer(), binary()) -> ok.
+add(Bucket, Key, VBucket, Value) ->
+    gen_server:call({server(Bucket), node()}, {add, Key, VBucket, Value}, ?TIMEOUT).
+
+
+%% @doc send an add command to memcached instance
+-spec get(bucket_name(), binary(), integer()) -> ok.
+get(Bucket, Key, VBucket) ->
+    gen_server:call({server(Bucket), node()}, {get, Key, VBucket}, ?TIMEOUT).
+
+
 %% @doc send a set command to memcached instance
--spec set(bucket_name(), binary(), binary()) -> ok.
-set(Bucket, Key, Value) ->
-    gen_server:call({server(Bucket), node()}, {set, Key, Value}, ?TIMEOUT).
+-spec delete(bucket_name(), binary(), integer()) -> ok.
+delete(Bucket, Key, VBucket) ->
+    gen_server:call({server(Bucket), node()}, {delete, Key, VBucket}, ?TIMEOUT).
+
+
+%% @doc send a set command to memcached instance
+-spec set(bucket_name(), binary(), integer(), binary()) -> ok.
+set(Bucket, Key, VBucket, Value) ->
+    gen_server:call({server(Bucket), node()}, {set, Key, VBucket, Value}, ?TIMEOUT).
+
+
+%% @doc send a sync command to memcached instance
+-spec sync(bucket_name(), binary(), integer(), integer()) -> ok.
+sync(Bucket, Key, VBucket, CAS) ->
+    gen_server:call({server(Bucket), node()},
+                    {sync, Key, VBucket, CAS}, ?TIMEOUT * 2).
 
 
 %% @doc Returns true if backfill is running on this node for the given bucket.

@@ -39,7 +39,8 @@
          stats/1,
          stats/4,
          get_open_checkpoint_ids/1,
-         tap_connect/2]).
+         tap_connect/2,
+         sync/4]).
 
 -type recv_callback() :: fun((_, _, _) -> any()) | undefined.
 -type mc_timeout() :: undefined | infinity | non_neg_integer().
@@ -56,7 +57,7 @@
                      ?CMD_LAST_CLOSED_CHECKPOINT |
                      ?RGET | ?RSET | ?RSETQ | ?RAPPEND | ?RAPPENDQ | ?RPREPEND |
                      ?RPREPENDQ | ?RDELETE | ?RDELETEQ | ?RINCR | ?RINCRQ |
-                     ?RDECR | ?RDECRQ.
+                     ?RDECR | ?RDECRQ | ?SYNC.
 
 %% A memcached client that speaks binary protocol.
 -spec cmd(mc_opcode(), port(), recv_callback(), any(),
@@ -149,6 +150,11 @@ auth(_Sock, _UnknownMech) ->
     {error, emech_unsupported}.
 
 % -------------------------------------------------
+
+sync(Sock, VBucket, Key, CAS) ->
+    Sync = build_sync_flags(Key, VBucket, CAS),
+    cmd(?SYNC, Sock, undefined, undefined,
+        {#mc_header{}, #mc_entry{data = Sync}}).
 
 create_bucket(Sock, BucketName, Engine, Config) ->
     case cmd(?CMD_CREATE_BUCKET, Sock, undefined, undefined,
@@ -575,3 +581,20 @@ get_open_checkpoint_ids(Sock) ->
                           Dict
                   end
           end, dict:new()).
+
+
+build_sync_flags(Key, VBucket, CAS) ->
+    <<
+     0:16/big, % Reserved
+     0:8/big,  % Reserved
+     0:4/big,  % Replica Count
+     1:1/big,  % Persistence
+     0:1/big,  % Mutation
+     0:1/big,  % R + P
+     0:1/big,  % Reserved
+     1:16/big, % Number of keyspecs to follow
+     CAS:64/big, % CAS
+     VBucket:16/big,
+     (erlang:size(Key)):16/big,
+     Key/binary
+     >>.
