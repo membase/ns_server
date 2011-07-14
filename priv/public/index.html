@@ -454,9 +454,9 @@
                 <th>Bucket Name</th>
                 <th>RAM Usage/Quota</th>
                 <th>Disk Usage</th>
+                <th>Item Count</th>
                 <th>Ops/sec</th>
                 <th>Disk Fetches/sec</th>
-                <th>Item Count</th>
                 <th class="last"></th>
               </tr>
               <!-- {% if (!rows.length) { %} -->
@@ -470,9 +470,9 @@
                 </td>
                 <td>{%= V.formatQuantity(this.basicStats.memUsed) %} / {%= V.formatQuantity(this.quota.ram) %}</td>
                 <td>{%= V.formatQuantity(this.basicStats.diskUsed) %}</td>
+                <td>{%= h(this.basicStats.itemCount) %}</td>
                 <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
                 <td>{% if (this.basicStats.diskFetches !== undefined) { %}{%= h(truncateTo3Digits(this.basicStats.diskFetches)) %}{% } else { %}N/A{% } %}</td>
-                <td>{%= h(this.basicStats.itemCount) %}</td>
                 <td>
                   <a class="list_button btn_views" href="#sec=views&statsBucket={%= this.uri %}">Views</a>
                   <a class="list_button btn_documents disabled" href="#sec=documents&statsBucket={%= this.uri %}">Documents</a>
