@@ -100,13 +100,21 @@ build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
     StatsUri = list_to_binary(concat_url_path(["pools", PoolId, "buckets", Id, "stats"])),
     StatsDirectoryUri = iolist_to_binary([StatsUri, <<"Directory">>]),
     NodeStatsListURI = iolist_to_binary(concat_url_path(["pools", PoolId, "buckets", Id, "nodes"])),
+    BucketCaps = [{bucketCapabilitiesVer, 'sync-1.0'}
+                  | case ns_bucket:bucket_type(BucketConfig) of
+                        membase -> [{bucketCapabilities, [touch, sync, couchapi]}];
+                        memcached -> [{bucketCapabilities, []}]
+                    end],
+
+
     Suffix = case InfoLevel of
-                 stable -> [];
+                 stable -> BucketCaps;
                  normal ->
                      [{replicaNumber, ns_bucket:num_replicas(BucketConfig)},
                       {quota, {struct, [{ram, ns_bucket:ram_quota(BucketConfig)},
                                         {rawRAM, ns_bucket:raw_ram_quota(BucketConfig)}]}},
-                      {basicStats, {struct, menelaus_stats:basic_stats(Id)}}]
+                      {basicStats, {struct, menelaus_stats:basic_stats(Id)}}
+                     | BucketCaps]
              end,
     BucketType = ns_bucket:bucket_type(BucketConfig),
     %% Only list nodes this bucket is mapped to
