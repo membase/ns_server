@@ -224,6 +224,10 @@ var ThePage = {
     initAlertsSubscriber();
 
     DAL.cells.mode.subscribeValue(function (sec) {
+      if (sec === 'views' || sec === 'view_development'
+        || sec === 'analytics' || sec === 'documents') {
+        sec = 'buckets';
+      }
       $('.currentNav').removeClass('currentNav');
       $('#switch_' + sec).parent('li').addClass('currentNav');
     });
