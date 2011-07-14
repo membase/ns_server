@@ -312,11 +312,13 @@ check_stat_increased(Stats, StatName, Opaque) ->
 -spec can_listen(string()) -> boolean().
 can_listen(Host) ->
     case inet:getaddr(Host, inet) of
-        {error, _Err} ->
+        {error, Err} ->
+            ?log_error("Cannot listen due to ~p from inet:getaddr~n", [Err]),
             false;
         {ok, IpAddr} ->
             case gen_tcp:listen(0, [inet, {ip, IpAddr}]) of
-                {error, _ListErr} ->
+                {error, ListErr} ->
+                    ?log_error("Cannot listen due to ~p from listen~n", [ListErr]),
                     false;
                 {ok, Socket} ->
                     gen_tcp:close(Socket),
