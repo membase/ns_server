@@ -518,52 +518,6 @@ var BucketsSection = {
       beforeRendering: function () {
         self.settingsWidget.prepareDrawing();
       },
-      afterRendering: function () {
-        _.each(bucketsListCell.value, function(bucketInfo) {
-          var name = bucketInfo.name;
-
-          var healthStats = bucketInfo.healthStats;
-
-          var total = _.inject(healthStats, function (a,b) {return a+b}, 0);
-
-          var minimalAngle = Math.PI/180*30;
-          var nodeSize = Math.PI*2/total;
-
-          var stolenSize = 0;
-          var maxAngle = 0;
-          var maxIndex = -1;
-
-          for (var i = healthStats.length; i--;) {
-            var newValue = healthStats[i] * nodeSize;
-            if (newValue != 0 && newValue < minimalAngle) {
-              stolenSize += minimalAngle - newValue;
-              newValue = minimalAngle;
-            }
-            healthStats[i] = newValue;
-            if (newValue >= maxAngle) {
-              maxAngle = newValue;
-              maxIndex = i;
-            }
-          }
-
-          if (maxIndex < 0) {
-            throw new Error("BUG");
-          }
-
-          healthStats[maxIndex] -= stolenSize;
-
-          $($i(name+'_health')).sparkline(healthStats, {
-            type: 'pie',
-            sliceColors: ['#4A0', '#fac344', '#f00'],
-            height: (isCanvasSupported ? '1.5em' : 'auto')
-          }).mouseover(function(ev) {
-            $(ev.target).attr('title',
-                bucketInfo.healthStats[0] + ' healthy, ' +
-                bucketInfo.healthStats[1] + ' unhealthy, ' +
-                bucketInfo.healthStats[2] + ' down');
-          });
-        });
-      },
       extraCells: [IOCenter.staleness]
     });
 
@@ -574,6 +528,63 @@ var BucketsSection = {
       var notice = $('#buckets .staleness-notice');
       notice[staleness ? 'show' : 'hide']();
       $('#manage_buckets_top_bar .create-bucket-button')[staleness ? 'hide' : 'show']();
+    });
+
+    DAL.cells.serversCell.subscribeValue(function (nodes) {
+      if (nodes === undefined) {
+        return;
+      } else {
+        var healthStats = _.clone(nodes.healthStats);
+
+        var total = _.inject(healthStats, function (a,b) {return a+b}, 0);
+
+        var minimalAngle = Math.PI/180*30;
+        var nodeSize = Math.PI*2/total;
+
+        var stolenSize = 0;
+        var maxAngle = 0;
+        var maxIndex = -1;
+
+        for (var i = healthStats.length; i--;) {
+          var newValue = healthStats[i] * nodeSize;
+          if (newValue != 0 && newValue < minimalAngle) {
+            stolenSize += minimalAngle - newValue;
+            newValue = minimalAngle;
+          }
+          healthStats[i] = newValue;
+          if (newValue >= maxAngle) {
+            maxAngle = newValue;
+            maxIndex = i;
+          }
+        }
+
+        if (maxIndex < 0) {
+          throw new Error("BUG");
+        }
+
+        healthStats[maxIndex] -= stolenSize;
+
+        $('#node_health_graph')
+        .sparkline(healthStats, {
+          type: 'pie',
+          sliceColors: ['#4A0', '#fac344', '#f00']
+        });
+
+        var healthStatuses = [];
+        var statusNames = ['healthy', 'pending', 'unhealthy'];
+        var count = 0;
+        var multipleTypes = 0;
+        _.each(nodes.healthStats, function (stat, i) {
+          if (stat > 0) {
+            healthStatuses.push(stat + ' ' + statusNames[i]);
+            multipleTypes++;
+          }
+          count += stat;
+        });
+        $('#node_health_statuses')
+          .html(' ' + healthStatuses.join((multipleTypes > 2 ? ', ' : ' and '))
+              + ' node' + (count > 1 ? 's' : ''));
+      }
     });
 
     $('.create-bucket-button').live('click', function (e) {

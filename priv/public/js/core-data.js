@@ -365,6 +365,7 @@ var DAL = {
       reallyActive[0].lastActive = true;
     }
 
+    var healthStats = [0, 0, 0]; // healthy, warmup, unhealthy
     _.each(allNodes, function (n) {
 
       n.ejectPossible = !detailsAreStale && !n.pendingEject;
@@ -376,10 +377,13 @@ var DAL = {
         nodeClass = 'failed_over';
       } else if (n.status === 'healthy') {
         nodeClass = 'server_up';
+        healthStats[0] += 1;
       } else if (n.status === 'unhealthy') {
         nodeClass = 'server_down';
+        healthStats[2] += 1;
       } else if (n.status === 'warmup') {
         nodeClass = 'server_warmup';
+        healthStats[1] += 1;
       }
       if (n.lastActive) {
         nodeClass += ' last-active';
@@ -392,7 +396,8 @@ var DAL = {
       pendingEject: pendingEject,
       pending: pending,
       active: active,
-      allNodes: allNodes
+      allNodes: allNodes,
+      healthStats: healthStats
     };
   }
 
