@@ -183,7 +183,7 @@
           <table class="list" style="width:100%">
             <tr>
               <th></th>
-              <th>Server Node Name</th>
+              <th class="node_name">Server Node Name</th>
               <th>RAM Usage</th>
               <th>Swap Usage</th>
               <th>CPU Usage</th>
@@ -198,7 +198,7 @@
             <!-- {% if (s.clusterMembership == 'inactiveAdded') { %}-->
             <tr class="server_row pending_add {%= s.nodeClass %}">
               <td>{%= V.setData('server', s) %}</td>
-              <td>
+              <td class="node_name">
               {%= V.stripPortHTML(s.hostname, rows) %}
               </td>
               <td colspan="4">
@@ -212,7 +212,7 @@
             <!-- {% } else if (s.pendingEject) { %} -->
             <tr class="server_row pending_removal {%= s.nodeClass %}">
               <td>{%= V.setData('server', s) %}</td>
-              <td>
+              <td class="node_name">
               {%= V.stripPortHTML(s.hostname, rows) %}
               </td>
               <td colspan="4">
@@ -236,46 +236,31 @@
 
               <tr class="server_row {%= s.nodeClass %}" id="{%= h(s.otpNode.replace('@', '-')) %}">
                 <td class="{%= s.nodeClass %}">{%= V.setData('server', s) %}</td>
-                <td>
+                <td class="node_name">
                   <a href="#sec=analytics&statsHostname={%= h(s.hostname) %}">{%= V.stripPortHTML(s.hostname, rows) %}</a>
                 </td>
                 <td>
-                  <div class="usage_smallest_info">
-                    <div class="usage_smallest">
-                      <div class="unused">
-                        <div class="used" style="width:1%;"></div>
-                      </div>
-                    </div>
-                    {%= V.setPercentBar((s.memoryTotal - s.memoryFree) / s.memoryTotal * 100) %}
-                    {%= h(truncateTo3Digits((s.memoryTotal - s.memoryFree) / s.memoryTotal * 100)) %}%
+                  <div class="vertical_bar">
+                    <div class="used" style="height:{%= (s.memoryTotal - s.memoryFree) / s.memoryTotal * 100 %}%;top:{%= 105 - ((s.memoryTotal - s.memoryFree) / s.memoryTotal * 100) %}%"></div>
                   </div>
+                  {%= h(truncateTo3Digits((s.memoryTotal - s.memoryFree) / s.memoryTotal * 100)) %}%
                 </td>
                 <td>
                   <!-- {% if (s.systemStats.swap_total > 0) { %} -->
-                  <div class="usage_smallest_info">
-                    <div class="usage_smallest">
-                      <div class="unused">
-                        <div class="used" style="width:1%;"></div>
-                      </div>
-                    </div>
-                    {%= V.setPercentBar(s.systemStats.swap_used / s.systemStats.swap_total * 100) %}
-                    {%= h(truncateTo3Digits(((s.systemStats.swap_used / s.systemStats.swap_total) || 0) * 100)) %}%
+                  <div class="vertical_bar">
+                    <div class="used" style="height:{%= s.systemStats.swap_used / s.systemStats.swap_total * 100 %}%;top:{%= 105 - (s.systemStats.swap_used / s.systemStats.swap_total * 100) %}%"></div>
                   </div>
+                  {%= h(truncateTo3Digits(((s.systemStats.swap_used / s.systemStats.swap_total) || 0) * 100)) %}%
                   <!-- {% } else { %} -->
                   <span>N/A</span>
                   <!-- {% } %} -->
                 </td>
 
                 <td>
-                  <div class="usage_smallest_info">
-                    <div class="usage_smallest">
-                      <div class="unused">
-                        <div class="used" style="width:1%;"></div>
-                      </div>
-                    </div>
-                    {%= V.setPercentBar(s.systemStats.cpu_utilization_rate || 0)  %}
-                    {%= h(truncateTo3Digits(Math.floor(s.systemStats.cpu_utilization_rate * 100) / 100)) %}%
+                  <div class="vertical_bar">
+                    <div class="used" style="height:{%= Math.floor(s.systemStats.cpu_utilization_rate * 100) / 100 %}%;top:{%= 105 - (Math.floor(s.systemStats.cpu_utilization_rate * 100) / 100) %}%"></div>
                   </div>
+                  {%= h(truncateTo3Digits(Math.floor(s.systemStats.cpu_utilization_rate * 100) / 100)) %}%
                 </td>
 
                 <td>
