@@ -756,9 +756,10 @@ li.server_row .btn_cancel {display:block; height:15px; color:#7a7a7a; padding:0 
 .btn_info {background: url(../images/buttons.png) no-repeat -117px top;text-indent:-9000px;width:32px;height:31px;}
 .btn_info.disabled {opacity:0.75;background-position:-117px -31px}
 
-.server_up {background:transparent url(../images/server_status_icons_solid_bg.png) 10px 15px no-repeat !important; width:55px;}
-.server_down {background:transparent url(../images/server_status_icons_solid_bg.png) 10px -163px no-repeat !important; width:55px;}
-.failed_over, .server_warmup, .pending_add {background:transparent url(../images/server_status_icons_solid_bg.png) 10px -313px no-repeat !important; width:55px;}
+.server_up, .server_down, .failed_over, .server_warmup, .pending_add {width:61px;padding: 0 !important;}
+.server_up {background:transparent url(../images/server_status_icons_solid_bg.png) 0 15px no-repeat !important;}
+.server_down {background:transparent url(../images/server_status_icons_solid_bg.png) 0 -163px no-repeat !important;}
+.failed_over, .server_warmup, .pending_add {background:transparent url(../images/server_status_icons_solid_bg.png) 0 -313px no-repeat !important;}
 .failed_over .node_name {color:#333; opacity:0.3;}
 
 #servers h2 { height: 25px;}

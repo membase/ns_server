@@ -184,20 +184,20 @@
             <tr>
               <th></th>
               <th>Server Node Name</th>
-              <th>RAM & Swap Usage</th>
+              <th>RAM Usage</th>
+              <th>Swap Usage</th>
               <th>CPU Usage</th>
-              <th>Active & Replica Items</th>
-              <th></th>
+              <th colspan="2" style="text-align:left">Items (Active / Replica)</th>
             </tr>
           <!-- {% if (!rows.length) { %} -->
             <tr class="server_row rebalance_empty">
-              <td colspan="6"><span class="rebalance_empty_message">There are no servers pending rebalance.</span></td>
+              <td colspan="7"><span class="rebalance_empty_message">There are no servers pending rebalance.</span></td>
             </tr>
           <!-- {% } %} -->
           <!-- {% _.each(rows, function (s) { %} -->
             <!-- {% if (s.clusterMembership == 'inactiveAdded') { %}-->
             <tr class="server_row pending_add {%= s.nodeClass %}">
-              <td colspan="5">{%= V.setData('server', s) %}
+              <td colspan="6">{%= V.setData('server', s) %}
               {% if (expandingAllowed) { %}<a href="#openServer={%= h(s.otpNode) %}">{%= V.stripPortHTML(s.hostname, rows) %}</a>
               {% } else { %}{%= V.stripPortHTML(s.hostname, rows) %}{% } %}
               </td>
@@ -208,7 +208,7 @@
             </tr>
             <!-- {% } else if (s.pendingEject) { %} -->
             <tr class="server_row pending_removal {%= s.nodeClass %}">
-              <td colspan="5">{%= V.setData('server', s) %}
+              <td colspan="6">{%= V.setData('server', s) %}
               {% if (expandingAllowed) { %}<a href="#openServer={%= h(s.otpNode) %}">{%= V.stripPortHTML(s.hostname, rows) %}</a>
               {% } else { %}{%= V.stripPortHTML(s.hostname, rows) %}{% } %}
               </td>
@@ -220,7 +220,7 @@
             <!-- {% } else { %} -->
               <!-- {% if (s.reAddPossible) { %} -->
               <tr class="add_back_row">
-                <td colspan="6">{%= V.setData('server', s) %}
+                <td colspan="7">{%= V.setData('server', s) %}
                 <a href="#" class="add_back_btn re_add_button"></a>
                 <span class="add_b_message">This server is now reachable. Do you
                 want to add it back to the cluster on the next rebalance?</span>
@@ -244,6 +244,8 @@
                     {%= V.setPercentBar((s.memoryTotal - s.memoryFree) / s.memoryTotal * 100) %}
                     {%= h(truncateTo3Digits((s.memoryTotal - s.memoryFree) / s.memoryTotal * 100)) %}%
                   </div>
+                </td>
+                <td>
                   <!-- {% if (s.systemStats.swap_total > 0) { %} -->
                   <div class="usage_smallest_info">
                     <div class="usage_smallest">
@@ -276,7 +278,7 @@
                   {%= V.formatQuantity(s.interestingStats.vb_replica_curr_items || 0, '', 1000, ' ') %}
                 </td>
                 <td class="actions">
-                  <a class="list_button eject_server"><span>Remove Server</span></a>
+                  <a class="list_button eject_server"><span>Remove</span></a>
                   <a class="list_button failover_server"><span>Fail Over</span></a>
                   <span class="failed_over_message">Failed Over: Pending Removal</span>
                   <a class="list_button btn_analytics{% if (s.nodeClass === 'server_down') { %} disabled"{% } else { %}" href="#sec=analytics&statsHostname={%= h(s.hostname) %}"{% } %}>Analytics</a>
@@ -284,7 +286,7 @@
               </tr>
             <!-- {% } %} -->
             <!-- {% if (expandingAllowed) { %} -->
-              <tr><td colspan="8" class="settings-placeholder" style="display:none;">{%= ServersSection.renderServerDetails(s) %}</td></tr>
+              <tr><td colspan="9" class="settings-placeholder" style="display:none;">{%= ServersSection.renderServerDetails(s) %}</td></tr>
             <!-- {% } %} -->
           <!-- {% }); %} -->
           </table>
