@@ -55,6 +55,10 @@ DEFAULT_CONFIG_FILE="@PREFIX@/etc/couchdb/default.ini"
 LOCAL_CONFIG_DIR="@PREFIX@/etc/couchdb/local.d"
 LOCAL_CONFIG_FILE="@PREFIX@/etc/couchdb/local.ini"
 
+PIDFILE="@PREFIX@/var/lib/membase/membase-server.pid"
+NODEFILE="@PREFIX@/var/lib/membase/membase-server.node"
+COOKIEFILE="@PREFIX@/var/lib/membase/membase-server.cookie"
+
 couch_start_arguments=""
 
 _add_config_file () {
@@ -80,17 +84,66 @@ _load_config () {
     fi
 }
 
-_load_config
+_start() {
+    _load_config
 
-exec erl \
-    +A 16 \
-    +K true \
-    -setcookie nocookie \
-    -kernel inet_dist_listen_min 21100 inet_dist_listen_max 21299 \
-    $* \
-    -run ns_bootstrap -- \
-    -couch_ini $couch_start_arguments \
-    -ns_server config_path "\"@PREFIX@/etc/membase/static_config\"" \
-    -ns_server pidfile "\"@PREFIX@/var/lib/membase/membase-server.pid\"" \
-    -ns_server nodefile "\"@PREFIX@/var/lib/membase/membase-server.node\"" \
-    -ns_server cookiefile "\"@PREFIX@/var/lib/membase/membase-server.cookie\"" \
+    exec erl \
+        +A 16 \
+        +K true \
+        -setcookie nocookie \
+        -kernel inet_dist_listen_min 21100 inet_dist_listen_max 21299 \
+        $* \
+        -run ns_bootstrap -- \
+        -couch_ini $couch_start_arguments \
+        -ns_server config_path "\"@PREFIX@/etc/membase/static_config\"" \
+        -ns_server pidfile "\"$PIDFILE\"" \
+        -ns_server nodefile "\"$NODEFILE\"" \
+        -ns_server cookiefile "\"$COOKIEFILE\""
+}
+
+_stop() {
+    [ -f $PIDFILE ] && [ -f $NODEFILE ] && [ -f $COOKIEFILE ] || return 1
+
+    cookie=`cat "$COOKIEFILE"`
+    nodename=`cat "$NODEFILE"`
+
+    erl \
+        -name executioner \
+        -noshell \
+        -hidden \
+        -setcookie "$cookie" \
+        -eval "ns_bootstrap:remote_stop('$nodename')"
+
+    errcode=$?
+
+    if [ $errcode -eq 0 ]; then
+        rm "$PIDFILE"
+        rm "$COOKIEFILE"
+        rm "$NODEFILE"
+    fi
+
+    return $errcode
+}
+
+_parse_options () {
+    # set +e
+    options=`getopt k $*`
+    if [ ! $? -eq 0 ]; then
+        return 1
+    fi
+    # set -e
+    eval set -- $options
+    if [ "-k" == "$1" ]; then
+        KILL=true;
+    fi
+
+    shift
+
+    if [ x"$KILL" == "xtrue" ]; then
+        _stop
+    else
+        _start $*
+    fi
+}
+
+_parse_options $*
