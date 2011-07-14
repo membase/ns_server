@@ -848,6 +848,7 @@ ul.tabs .badge_display .badge {display:block;}
 .list tr:first-child th, .list tr:first-child td label {padding:10px 5px;background:none #f6f6f7; border-right:0px; border-bottom:1px solid #fff; color:#4d4d4d; font-weight:normal; text-align:center;}
 .list tr:first-child th:first-child {/*padding:0 0 0 56px;*padding-right:25px;display:block;*/text-align:left;white-space:nowrap;}
 .list tr:first-child th i {font-style:normal;position:relative;}
+.list tr:first-child th.bucket_name {text-align:left}
 .list tr:first-child th.last {border-right:1px solid #d9dce0;}
 .list td.design_doc_name {font-weight:bolder; color: #808080; text-align:left;font-size:100%;}
 .list td.bucket_name, .list td.view_name {font-weight:bolder;color:#0095D6;text-align:left;font-size:130%}
