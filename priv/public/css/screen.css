@@ -848,10 +848,10 @@ ul.tabs .badge_display .badge {display:block;}
 .add_back_btn {display:block; width:148px; height:31px; background:url(../images/add_back_btn.png) 0 0 no-repeat; float:right; margin-right:-10px;}
 
 /* This is the auto-failover status on the server nodes screen */
-#auto_failover_count_container {display:none}
+#auto_failover_count_container {position:absolute;right:9px;top:0;}
 #auto_failover_count_container.notify {color:#fa9b00}
 #auto_failover_count_container .edit_btn, #auto_failover_container .edit_btn{display:inline-block;float:none;font-size:0.8em;vertical-align:middle;}
-#auto_failover_container .count_reset {margin: 15px 0 15px 150px}
+#auto_failover_container .count_reset {margin: 15px 0 15px 20px}
 
 #buckets .settings-placeholder {display:none; padding:9px 12px 8px 90px;border-top:2px solid #ced5d9;background:#e6e7e8;}
 .buckets_tab {border-right:1px solid #d9dce0;}

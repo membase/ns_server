@@ -244,8 +244,8 @@
             <div class="warning_message failover_warning">
               Fail Over Warning: <span class="warning-text"></span>
             </div>
-            <div id="auto_failover_count_container" class="warning_message">
-              Auto-Failover <span class="count">?</span> of <span class="maxNodes">?</span> used
+            <div id="auto_failover_count_container" class="warning_message" style="display:none;">
+              A server was automatically failovered
               <a class="auto_failover_count_reset edit_btn">
                 <span>Reset Quota</span>
               </a>
@@ -792,12 +792,6 @@
               <input type="checkbox" id="auto_failover_enabled">
               <span>Enable auto-failover</span>
             </label>
-            <div class="count_reset">
-              <span class="count">{%= count %}</span> used
-              <a class="auto_failover_count_reset edit_btn{% if (count === 0) { %} disabled{% } %}">
-                <span>Reset Quota</span>
-              </a>
-            </div>
             <label for="auto_failover_timeout">
               <span>Timeout: </span>
             </label>
@@ -809,6 +803,14 @@
               </span></span>
             </a>
             <div class="error-container err-timeout"></div>
+            {% if (count > 0) { %}
+            <div class="count_reset">
+              A server was automatically failovered
+              <a class="auto_failover_count_reset edit_btn">
+                <span>Reset Quota</span>
+              </a>
+            </div>
+            {% } %}
             <div class="save_cancel">
               <button class="save_button float_right" type="button"
                       disabled="disabled">
