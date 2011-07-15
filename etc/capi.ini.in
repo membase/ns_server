@@ -10,3 +10,6 @@ _all_docs = {capi_frontend, all_docs_db_req}
 
 [httpd_design_handlers]
 _view = {capi_view, handle_view_req}
+
+[compaction_daemon]
+_default = db_fragmentation=95%, view_fragmentation=95%
