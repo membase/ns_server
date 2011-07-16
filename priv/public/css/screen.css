@@ -176,7 +176,7 @@ a.button_200 {display:block; color:#444245 !important; text-decoration:none !imp
 h1 {font-size:20px; font-weight:normal;}
 h1 .nav {display:block; padding:8px 10px 0 0; text-transform:none;}
 h1 .nav a {font-size:11px; font-weight:bolder;}
-#mainPanel h1 {padding:0 0 10px 9px;}
+#mainPanel h1 {padding:0 0 15px 9px;}
 #mainPanel h1 input {font-size:60%}
 #mainPanel h1 button {font-size:65%;width:2em;height:2.2em}
 
@@ -428,18 +428,18 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 #overview .no-samples-yet .no_stats_marker { display: block;}
 #overview .no-samples-yet .graph_main { display: none;}
 
-.actservers {float:left;width:232px;min-height:120px;padding:30px 0 0 120px;background:url(../images/ico_server_big.png) 11px 13px no-repeat;}
+.actservers {float:left;width:233px;min-height:120px;padding:30px 0 0 173px;background:url(../images/ico_server_big.png) 50px 13px no-repeat;}
 .actservers h3 {padding:0 0 5px;font-size:18px;font-weight:normal;}
 .actservers p {padding:0 0 2px;line-height:1.4;}
 .actservers p b {color:#888;}
 .actservers a {font-weight:bold;line-height:25px;}
-.actservers + ul {float:left;width:377px;margin:-27px 0 0;position:relative;top:14px;left:13px;}
-.actservers + ul li {font-size:16px;height:63px;line-height:63px;padding:0 0 0 66px;position:relative;text-transform:none; border-left:1px solid #ced5d9;border-bottom:1px solid #ced5d9;background:url(../images/server_icon.png) 15px 12px no-repeat;}
+.actservers + ul {float:left;width:502px;margin:-27px 0 0;position:relative;top:14px;left:13px;}
+.actservers + ul li {font-size:16px;height:70px;line-height:70px;padding:0 0 0 66px;position:relative;text-transform:none; border-left:1px solid #ced5d9;border-bottom:1px solid #ced5d9;background:url(../images/server_icon.png) 19px 15px no-repeat;}
 .actservers + ul li.fail,
 .actservers + ul li.fail a,
 .actservers + ul li.down,
 .actservers + ul li.down a {color:#e43a1b;}
-.actservers + ul .badge {top:-1px;right:303px;}
+.actservers + ul .badge {top:6px;right:436px;}
 
 p.info {padding:5px 24px 15px;font-weight:bold;}
 
