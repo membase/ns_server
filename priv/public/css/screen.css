@@ -387,7 +387,7 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 
 .lined_tab {width:100%;}
 .lined_tab th {padding:5px;color:#f2692d;text-align:left;font-weight:bolder;border:1px solid #ccc;background:none #e6e7e8;}
-.lined_tab td {padding:5px;border:1px solid #d9dce0;background:none #fff;vertical-align:middle;}
+.lined_tab td {padding:12px 5px;border:1px solid #d9dce0;background:none #fff;vertical-align:middle;}
 .lined_tab td td {background:none;border:0px !important;}
 .lined_tab tr:nth-child(2n+1) td {background-color: #f5f5f7;}
 .lined_tab tr:nth-child(2n+1) td td {background:none;border:0px !important;}
@@ -417,8 +417,7 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 .disk-item .usage_biggest + table td+td {color:#1878a2;text-align:center;}
 .disk-item .usage_biggest + table td+td+td {color:#000;text-align:right;}
 
-#overview .graph_main {display:inline-block;width:355px;margin:0 0 0 15px; *zoom:1;*display:inline;position:relative;}
-#overview .graph_main:first-child {margin:0;}
+#overview .graph_main {display:inline-block;width:355px;margin:0 0 0 63px; *zoom:1;*display:inline;position:relative;}
 #overview .graph_main .graph {width:355px;height:140px;position:relative;}
 #overview .graph_main .graph_info_label {display:block;padding:5px 0 0 30px;font-size:13px;left:0;top:0;}
 #overview .no_stats_marker,
