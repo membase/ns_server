@@ -27,7 +27,6 @@
 
 -behaviour(gen_server).
 
--define(TRUNC_FREQ, 10).
 -define(RETRIES, 10).
 
 -record(state, {bucket}).

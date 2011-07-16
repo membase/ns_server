@@ -560,8 +560,14 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, Auth
                          {ok, ram_quota, RAMQuotaMB} ->
                              {MinQuota, Msg}
                                  = case BucketType of
-                                       membase -> {100, <<"RAM quota cannot be less than 100 MB">>};
-                                       memcached -> {64, <<"RAM quota cannot be less than 64 MB">>};
+                                       membase ->
+                                           Q = misc:get_env_default(membase_min_ram_quota, 100),
+                                           Qv = list_to_binary(integer_to_list(Q)),
+                                           {Q, <<"RAM quota cannot be less than ", Qv/binary, " MB">>};
+                                       memcached ->
+                                           Q = misc:get_env_default(memcached_min_ram_quota, 64),
+                                           Qv = list_to_binary(integer_to_list(Q)),
+                                           {Q, <<"RAM quota cannot be less than ", Qv/binary, " MB">>};
                                        _ -> {0, <<"">>}
                                    end,
                              if

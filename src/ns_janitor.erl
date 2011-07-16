@@ -31,6 +31,12 @@
 -spec cleanup(string(), list()) -> ok | {error, any()}.
 cleanup(Bucket, Options) ->
     {ok, Config} = ns_bucket:get_bucket(Bucket),
+    case ns_bucket:bucket_type(Config) of
+        membase -> do_cleanup(Bucket, Options, Config);
+        _ -> ok
+    end.
+
+do_cleanup(Bucket, Options, Config) ->
     {Map, Servers} =
         case proplists:get_value(map, Config) of
             X when X == undefined; X == [] ->

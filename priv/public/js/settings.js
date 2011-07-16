@@ -309,14 +309,14 @@ var AutoFailoverSection = {
       }
     });
     this.autoFailoverEnabledStatus.subscribeValue(function(val) {
-      if (val!==undefined && DAL.cells.mode.value==='server') {
+      if (val!==undefined && DAL.cells.mode.value==='servers') {
         // Hard-code the number of maximum nodes for now
-        val.maxNodes = 1;
         var afc = $('#auto_failover_count_container');
-        afc.find('.count').text(val.count);
-        afc.find('.maxNodes').text(val.maxNodes);
-        afc[val.enabled && val.count/val.maxNodes >= 0.5 ? 'show' : 'hide']()
-        afc[val.count/val.maxNodes >= 0.5 && val.count/val.maxNodes <= 0.7 ? 'addClass' : 'removeClass']('notify');
+        if (val.count > 0) {
+          afc.show();
+        } else {
+          afc.hide();
+        }
       }
     });
 
@@ -351,9 +351,25 @@ var AutoFailoverSection = {
 
     // reset button
     $('.auto_failover_count_reset').live('click', function() {
-      postWithValidationErrors('/settings/autoFailover/resetCount', {},
-                               function() {
-          autoFailoverEnabled.recalculate();
+      var button = $('span', this);
+
+      $.ajax({
+        type: 'POST',
+        url: '/settings/autoFailover/resetCount',
+        success: function() {
+         var text = button.text();
+          button.text('Done!');
+          window.setTimeout(function() {
+            button.text(text).parents('div').eq(0).hide();
+          }, 3000);
+        },
+        error: function() {
+          genericDialog({
+            buttons: {ok: true},
+            header: 'Unable to reset the auto-failover quota',
+            textHTML: 'An error occured, auto-failover quota was not reset.'
+          });
+        }
       });
     });
   },

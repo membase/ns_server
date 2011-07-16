@@ -51,7 +51,8 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 init([]) ->
-    timer:send_interval(?INTERVAL, tick),
+    Interval = misc:get_env_default(tick_interval, ?INTERVAL),
+    timer:send_interval(Interval, tick),
     {ok, #state{}}.
 
 
