@@ -736,7 +736,7 @@ body.init_bucket_dialog #container { display: none; }
 
 
 .list_button, #servers .add_button, #servers .rebalance_button, #servers .stop_rebalance_button {display: block; float: right; *float:right !important; margin-left: 5px; text-decoration:none !important;}
-.list_button {height:31px; padding:0 3px 0 0; background:url(../images/btn_2_bg.png) 100% -31px no-repeat; color:#000; font-size:14px; text-decoration:none !important; position:relative; }
+.list_button {height:31px; padding:0 3px 0 0; background:url(../images/btn_2_bg.png) 100% -31px no-repeat; color:#000 !important; font-size:14px; text-decoration:none !important; position:relative; }
 #servers .list_button.failover_server.threat_red {color:#f00 !important;font-weight:bold;border: 1px solid #f00;border-radius:5px;-moz-box-shadow: 0 0 3px #f00;-webkit-box-shadow: 0 0 3px #f00;box-shadow:0 0 3px #f00}
 #servers .list_button.failover_server.threat_yellow {color:#E5A800 !important;font-weight:bold;border: 1px solid #fac344;border-radius:5px;-moz-box-shadow: 0 0 3px #fac344;-webkit-box-shadow: 0 0 3px #fac344;box-shadow:0 0 3px #fac344}
 .list_button span {display:block; text-align:center; height:31px; line-height:31px; padding:0 6px 0 10px; background:url(../images/btn_2_bg.png) 0 0 no-repeat;}
