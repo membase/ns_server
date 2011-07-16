@@ -400,7 +400,7 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 #overview .section {border:2px solid #d4d4d5;border-width:0 2px;}
 #overview .section .item {padding:13px 13px 13px 16px;border-bottom:1px solid #ced5d9;}
 #overview .section .item .label {float:left;clear:right;width:128px;margin:22px 0 0;color:#9b9b9b;line-height:1.4;}
-#overview .section .item .label strong {display:block;color:#444245;padding:0 0 3px;font-weight:normal;font-size:16px;margin-top:3px;}
+#overview .section .item .label strong {display:block;color:#444245;padding:4px 0 3px;font-weight:normal;font-size:16px;margin-top:3px;}
 #overview .section .item .label span {display:block;text-transform:none;}
 #overview .section .item .line_cnt {height:85px;margin:0 0 0 130px;}
 #overview .section .item .top-right {float:right;padding-bottom:13px;color:#444245;text-align:right;}
