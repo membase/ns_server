@@ -29,6 +29,7 @@
          kill_dst_children/3,
          replicators/2,
          set_replicas/2,
+         apply_changes/2,
          spawn_mover/4]).
 
 -export([init/1]).
@@ -72,6 +73,67 @@ kill_replica(Bucket, SrcNode, DstNode, VBucket) ->
                                           DstNode)
             end
     end.
+
+apply_changes(Bucket, ChangeTuples) ->
+    ?log_info("Applying changes:~n~p~n", [ChangeTuples]),
+    {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
+    RelevantSrcNodes = proplists:get_value(servers, BucketConfig),
+    true = (undefined =/= RelevantSrcNodes),
+    ReplicatorsList =
+        lists:flatmap(
+          fun (Node) ->
+                  Children = try children(Node, Bucket) catch _:_ -> [] end,
+                  [{{Node, Dst}, lists:sort(VBuckets)}
+                   || #child_id{vbuckets=VBuckets, dest_node=Dst} <- Children]
+          end, RelevantSrcNodes),
+    Replicators = dict:from_list(ReplicatorsList),
+    NewReplicators =
+        lists:foldl(fun ({Type, SrcNode, DstNode, VBucket}, CurrentReplicators) ->
+                            Key = {SrcNode, DstNode},
+                            VBuckets = case dict:find(Key, CurrentReplicators) of
+                                           {ok, X} -> X;
+                                           error -> []
+                                       end,
+                            NewVBuckets =
+                                case Type of
+                                    kill_replica ->
+                                        ordsets:del_element(VBucket, VBuckets);
+                                    add_replica ->
+                                        ordsets:add_element(VBucket, VBuckets)
+                                end,
+                            dict:store(Key, NewVBuckets, CurrentReplicators)
+                    end, Replicators, ChangeTuples),
+    NewReplicasPre =
+        dict:fold(fun ({SrcNode, DstNode}, VBuckets, Dict) ->
+                          PrevValue = case dict:find(SrcNode, Dict) of
+                                          error -> [];
+                                          {ok, X} -> X
+                                      end,
+                          NewValue = [[{V, DstNode} || V <- VBuckets] | PrevValue],
+                          dict:store(SrcNode, NewValue, Dict)
+                  end, dict:new(), NewReplicators),
+    NewReplicas = dict:map(fun (_K, V) -> lists:append(V) end, NewReplicasPre),
+    ActualChangesCount =
+        dict:fold(fun (K, V, Count) ->
+                          case dict:find(K, Replicators) of
+                              {ok, V} ->        % NOTE: V is bound
+                                  Count;
+                              _ -> Count+1
+                          end
+                  end, 0, NewReplicators)
+        + dict:fold(fun (K, _V, Count) ->
+                            case dict:find(K, NewReplicators) of
+                                {ok, _} ->
+                                    Count;
+                                _ -> Count+1
+                            end
+                    end, 0, Replicators),
+    NewReplicasList = dict:to_list(NewReplicas),
+    %% ?log_info("NewReplicasList:~n~p~n", [NewReplicasList]),
+    %% ?log_info("Replicators before:~n~p~n", [replicators([node() | nodes()], Bucket)]),
+    set_replicas(Bucket, NewReplicasList),
+    %% ?log_info("Replicators after:~n~p~n", [replicators([node() | nodes()], Bucket)]),
+    ActualChangesCount.
 
 
 replicators(Nodes, Bucket) ->
