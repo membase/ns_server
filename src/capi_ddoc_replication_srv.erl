@@ -70,6 +70,7 @@ init(Bucket) ->
 
     Self ! update,
 
+    erlang:process_flag(trap_exit, true),
     {ok, #state{bucket=Bucket, master=MasterVBucket}}.
 
 
@@ -90,7 +91,18 @@ handle_info(update, State) ->
 handle_info(_Info, State) ->
     {noreply, State}.
 
-terminate(_Reason, _State) ->
+terminate(Reason, _State) when Reason =:= normal orelse Reason =:= shutdown ->
+    ok;
+terminate(Reason, _State) ->
+    %% Sometimes starting replication fails because of vbucket
+    %% databases creation race or (potentially) because of remote node
+    %% unavailability. When this process repeatedly fails our
+    %% supervisor ends up dying due to
+    %% max_restart_intensity_reached. Because we'll change our local
+    %% ddocs replication mechanism lets simply delay death a-la
+    %% supervisor_cushion to prevent that.
+    ?log_info("Delaying death during unexpected termination: ~p~n", [Reason]),
+    timer:sleep(3000),
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
