@@ -24,9 +24,9 @@
 -define(NODE_EJECTED, 4).
 -define(NODE_JOIN_FAILED, 5).
 
--define(ADD_NODE_TIMEOUT, 30000).
+-define(ADD_NODE_TIMEOUT, 65000).
 -define(ENGAGE_TIMEOUT, 30000).
--define(COMPLETE_TIMEOUT, 30000).
+-define(COMPLETE_TIMEOUT, 60000).
 
 %% gen_server callbacks
 -export([code_change/3, handle_call/3, handle_cast/2, handle_info/2, init/1,
