@@ -117,7 +117,7 @@ _stop() {
     nodename=`cat "$NODEFILE"`
 
     erl \
-        -name executioner \
+        -name executioner@executioner \
         -noshell \
         -hidden \
         -setcookie "$cookie" \
