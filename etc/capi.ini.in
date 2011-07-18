@@ -11,5 +11,12 @@ _all_docs = {capi_view, all_docs_db_req}
 [httpd_design_handlers]
 _view = {capi_view, handle_view_req}
 
+[database_compaction]
+doc_buffer_size = 2097152
+checkpoint_after = 20971520
+
+[daemons]
+compaction_daemon = {couchbase_compaction_daemon, start_link, []}
+
 [compaction_daemon]
 _default = db_fragmentation=95%, view_fragmentation=95%
