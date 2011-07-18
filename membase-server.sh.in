@@ -18,32 +18,6 @@
 PATH="@PREFIX@/bin":$PATH
 export PATH
 
-if [ `ulimit -n` -lt 10240 ]
-then
-    cat <<EOF
-The maximum number of open files for the membase user is set too low.
-It must be at least 10240. Normally this can be increased by adding
-the following lines to /etc/security/limits.conf:
-
-couchbase              soft    nofile                  <value>
-couchbase              hard    nofile                  <value>
-
-Where <value> is greater than 10240.
-EOF
-fi
-
-datadir="@PREFIX@/var/lib/membase"
-
-test -d "$datadir" || mkdir -p "$datadir"
-cd "$datadir"
-
-# Initialize distributed erlang on the system (i.e. epmd)
-erl -noshell -setcookie nocookie -sname init -run init stop 2>&1 > /dev/null
-if [ $? -ne 0 ]
-then
-  exit 1
-fi
-
 ERL_LIBS="@PREFIX@/lib/couchdb/erlang/lib:@PREFIX@/lib/ns_server/erlang/lib:@PREFIX@/lib/couchdb/plugins"
 export ERL_LIBS
 
@@ -60,6 +34,38 @@ NODEFILE="@PREFIX@/var/lib/membase/membase-server.node"
 COOKIEFILE="@PREFIX@/var/lib/membase/membase-server.cookie"
 
 couch_start_arguments=""
+
+_check_nofile () {
+    if [ `ulimit -n` -lt 10240 ]
+    then
+        cat <<EOF
+The maximum number of open files for the membase user is set too low.
+It must be at least 10240. Normally this can be increased by adding
+the following lines to /etc/security/limits.conf:
+
+couchbase              soft    nofile                  <value>
+couchbase              hard    nofile                  <value>
+
+Where <value> is greater than 10240.
+EOF
+    fi
+}
+
+_prepare_datadir () {
+    datadir="@PREFIX@/var/lib/membase"
+
+    test -d "$datadir" || mkdir -p "$datadir"
+    cd "$datadir"
+}
+
+_maybe_start_epmd () {
+    # Initialize distributed erlang on the system (i.e. epmd)
+    erl -noshell -setcookie nocookie -sname init -run init stop 2>&1 > /dev/null
+    if [ $? -ne 0 ]
+    then
+        exit 1
+    fi
+}
 
 _add_config_file () {
     couch_start_arguments="$couch_start_arguments $1"
@@ -85,6 +91,9 @@ _load_config () {
 }
 
 _start() {
+    _check_nofile
+    _prepare_datadir
+    _maybe_start_epmd
     _load_config
 
     exec erl \
