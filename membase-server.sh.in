@@ -142,13 +142,13 @@ _parse_options () {
     fi
     # set -e
     eval set -- $options
-    if [ "-k" == "$1" ]; then
+    if [ "-k" = "$1" ]; then
         KILL=true;
     fi
 
     shift
 
-    if [ x"$KILL" == "xtrue" ]; then
+    if [ x"$KILL" = "xtrue" ]; then
         _stop
     else
         _start $*
