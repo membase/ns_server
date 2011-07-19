@@ -98,6 +98,7 @@ _start() {
 
     exec erl \
         +A 16 \
+        +P 327680 \
         +K true \
         -setcookie nocookie \
         -kernel inet_dist_listen_min 21100 inet_dist_listen_max 21299 \
