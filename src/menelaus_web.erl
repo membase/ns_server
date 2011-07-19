@@ -237,8 +237,6 @@ loop(Req, AppRoot, DocRoot) ->
                              ["pools", PoolId] ->
                                  {auth, fun handle_pool_settings/2,
                                   [PoolId]};
-                             ["pools", _PoolId, "controller", "testWorkload"] ->
-                                 {auth, fun handle_traffic_generator_control_post/1};
                              ["controller", "setupDefaultBucket"] ->
                                  {auth, fun menelaus_web_buckets:handle_setup_default_bucket_post/1};
                              ["controller", "ejectNode"] ->
@@ -1145,11 +1143,6 @@ handle_settings_alerts_send_test_email(Req) ->
         _ ->
             Req:respond({200, add_header(), []})
     end.
-
-handle_traffic_generator_control_post(Req) ->
-    % TODO: rip traffic generation the hell out.
-    Req:respond({400, add_header(), "Bad Request\n"}).
-
 
 -ifdef(EUNIT).
 
