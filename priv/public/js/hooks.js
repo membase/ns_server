@@ -166,11 +166,6 @@ var MockedRequest = mkClass({
 
     var path = url.split('?')[0].split("/")
     this.path = path;
-
-    // we modify that list in place in few actions
-    this.bucketsList = this.findResponseFor('GET', ['pools', 'default', 'buckets']);
-    if (__hookParams['bucketsCount'])
-      this.bucketsList.splice(parseInt(__hookParams['bucketsCount'], 10), 100);
   },
   fakeResponse: function (data) {
     if (data instanceof Function) {
@@ -302,60 +297,16 @@ var MockedRequest = mkClass({
     this.fakeResponse('');
   },
 
-  doHandleBucketsPost: function (params) {
-    var errors = {};
-
-    // if (isBlank(params['name'])) {
-    //   errors.name = 'name cannot be blank';
-    // } else if (params['name'] != 'new-name') {
-    //   errors.name = 'name has already been taken';
-    // }
-
-    // if (!(/^\d+$/.exec(params['ramQuotaMB']))) {
-    //   errors.ramQuotaMB = "RAM quota size must be an integer";
-    // }
-
-    // if (!(/^\d+$/.exec(params['hddQuotaGB']))) {
-    //   errors.hddQuotaGB = "Disk quota size must be an integer";
-    // }
-
-    // var authType = params['authType'];
-    // if (authType == 'none') {
-    //   if (!(/^\d+$/.exec(params['proxyPort']))) {
-    //     errors.proxyPort = 'bad'
-    //   }
-    // } else if (authType == 'sasl') {
-    // } else {
-    //   errors.authType = 'unknown auth type'
-    // }
-
-    // if (_.keys(errors).length) {
-    //   return this.errorResponse(errors);
-    // }
-
-    var rv = {"errors":{},"summaries":{"ramSummary":{"perNodeMegs":1024,"nodesCount":8,"total":1625292800,"otherBuckets":0,"thisAlloc":1625292800,"thisUsed":12933780,"free":0},"hddSummary":{"total":239315349504.0,"otherData":222563264798.0,"otherBuckets":0,"thisAlloc":16106127360.0,"thisUsed":10240,"free":645957346}}};
-
-    // the last condition is be bit dirty. Thats because bucket type
-    // is not posted for edit bucket details case and fetching bucket
-    // info is harder that just hardcoding ids of memcached buckets
-    if (params.bucketType != 'memcached' && !_.include(["5", "6"], this.path[this.path.length-1]))
-      delete rv.summaries.ramSummary.perNodeMegs;
-
-    this.fakeResponse(rv);
-  },
-
   handlePoolsDefaultPost: function () {
-    var params = this.deserialize()
-      console.log("params: ", params);
-
-      return this.doHandlePoolsDefaultPost(params);
-  },
-
-  handleBucketsPost: function () {
     var params = this.deserialize()
     console.log("params: ", params);
 
-    return this.doHandleBucketsPost(params);
+    return this.doHandlePoolsDefaultPost(params);
+  },
+
+  handleBucketsPost: function () {
+    ServerStateMock.handleBucketsPost(params);
+    this.fakeResponse(rv);
   },
 
   handleJoinCluster: function () {
@@ -375,26 +326,8 @@ var MockedRequest = mkClass({
       this.errorResponse(['error1', 'error2']);
   },
 
-  handleWorkloadControlPost: function () {
-    var params = this.deserialize()
-    if (params['onOrOff'] == 'on') {
-      this.bucketsList[1].status = true;
-    } else {
-      this.bucketsList[1].status = false;
-    }
-
-    return this.fakeResponse('');
-  },
   handleBucketRemoval: function () {
-    var self = this;
-
-    var bucket = _.detect(self.bucketsList, function (b) {
-      return b.uri == self.options.url;
-    });
-    console.log("deleting bucket: ", bucket);
-
-    MockedRequest.prototype.bucketsList = _.without(self.bucketsList, bucket);
-
+    ServerStateMock.handleBucketRemoval(self.options);
     return this.fakeResponse('');
   },
   handleStats: function () {
@@ -570,8 +503,6 @@ var MockedRequest = mkClass({
       }
     }
 
-    // assigned below in /pools/default route to allow reuse of node list
-    var allNodes = [];
     var rv = [
       [post("logClientError"), method('doNothingPOST')],
       [get("logs"), {list: [{type: "info", code: 1, module: "ns_config_log", tstamp: 1265358398000, shortText: "message", text: "config changed"},
@@ -623,285 +554,54 @@ var MockedRequest = mkClass({
       [get("settings", "autoFailover"), {"enabled":false,"timeout":30,"count":0}],
       [get("settings", "alerts"), {"recipients":["root@localhost"],"sender":"membase@localhost","enabled":true,"emailServer":{"user":"","pass":"","host":"localhost","port":25,"encrypt":false},"alerts":["auto_failover_node","auto_failover_maximum_reached","auto_failover_other_nodes_down","auto_failover_cluster_too_small"]}],
       [get("pools"), function () {
-        return {implementationVersion: 'only-web.rb-unknown',
-                componentsVersion: {
-                  "ns_server": "asdasd"
-                },
-                isAdminCreds: !!this.fakeXHR.login,
-                pools: [
-                  {name: 'default',
-                   uri: "/pools/default"}]}
+        return {
+          "pools": [
+            {
+              "name": "default",
+              "uri": "/pools/default",
+              "streamingUri": "/poolsStreaming/default"
+            }
+          ],
+          "isAdminCreds": !!this.fakeXHR.login,
+          "uuid": "6f0abb80-6aa8-4001-15e8-97aa00000226",
+          "implementationVersion": "1.7.0_207_gcddb6e2",
+          "componentsVersion": {
+            "public_key": "0.12",
+            "os_mon": "2.2.6",
+            "mnesia": "4.4.19",
+            "inets": "5.6",
+            "couch": "1.2.0a-930e7c7-git",
+            "kernel": "2.14.4",
+            "crypto": "2.0.3",
+            "ssl": "4.1.5",
+            "sasl": "2.1.9.4",
+            "ns_server": "1.7.0_207_gcddb6e2",
+            "mochiweb": "1.4.1",
+            "ibrowse": "2.2.0",
+            "oauth": "7d85d3ef",
+            "stdlib": "1.17.4"
+          }
+        }
       }],
-      [get("pools", x), {nodes: allNodes = [{hostname: "mickey-mouse.disney.com:8091",
-                                  status: "healthy",
-                                  systemStats: {
-                                    cpu_utilization_rate: 42.5,
-                                    swap_total: 3221225472,
-                                    swap_used: 2969329664
-                                  },
-                                  interestingStats: {
-                                    curr_items: 0,
-                                    curr_items_tot: 0,
-                                    vb_replica_curr_items: 0
-                                  },
-                                  clusterMembership: "inactiveAdded",
-                                  os: 'Linux',
-                                  version: 'only-web.rb',
-                                  uptime: 86400,
-                                  ports: {proxy: 11211,
-                                          direct: 11311},
-                                  memoryTotal: 2032574464,
-                                  memoryFree: 1589864960,
-                                  mcdMemoryReserved: 2032574464,
-                                  mcdMemoryAllocated: 89864960,
-                                  otpNode: "ns1@mickey-mouse.disney.com",
-                                  otpCookie: "SADFDFGDFG"},
-                                 {hostname: "donald-duck.disney.com:8091",
-                                  os: 'Linux',
-                                  uptime: 86420,
-                                  version: 'only-web.rb',
-                                  status: "healthy",
-                                  systemStats: {
-                                    cpu_utilization_rate: 20,
-                                    swap_total: 2547232212,
-                                    swap_used: 3296642969
-                                  },
-                                  interestingStats: {
-                                    curr_items: 1,
-                                    curr_items_tot: 1,
-                                    vb_replica_curr_items: 1
-                                  },
-                                  clusterMembership: "inactiveFailed",
-                                  ports: {proxy: 11211,
-                                          direct: 11311},
-                                  thisNode: true,
-                                  couchApiBase: "/couchBase",
-                                  memoryTotal: 2032574464,
-                                  memoryFree: 89864960,
-                                  mcdMemoryAllocated: 64,
-                                  mcdMemoryReserved: 256,
-                                  otpNode: "ns1@donald-duck.disney.com",
-                                  otpCookie: "SADFDFGDFG"},
-                                 {hostname: "scrooge-mcduck.disney.com:8091",
-                                  uptime: 865000,
-                                  version: "only-web.rb-2",
-                                  status: "healthy",
-                                  systemStats: {
-                                    cpu_utilization_rate: 20,
-                                    swap_total: 2521247232,
-                                    swap_used: 4296329669
-                                  },
-                                  interestingStats: {
-                                    curr_items: 5,
-                                    curr_items_tot: 11,
-                                    vb_replica_curr_items: 20
-                                  },
-                                  clusterMembership: "active",
-                                  ports: {proxy: 11211,
-                                          direct: 11311},
-                                  couchApiBase: "/couchBase",
-                                  memoryTotal: 2032574464,
-                                  memoryFree: 89864960,
-                                  mcdMemoryAllocated: 64,
-                                  mcdMemoryReserved: 256,
-                                  otpNode: "ns1@scrooge-mcduck.disney.com",
-                                  otpCookie: "SADFDFGDFG"},
-                                 {hostname: "goofy.disney.com:8091",
-                                  uptime: 86430,
-                                  os: 'Linux',
-                                  version: 'only-web.rb',
-                                  status: "unhealthy",
-                                  systemStats: {
-                                    cpu_utilization_rate: 0.53,
-                                    swap_total: 2547232,
-                                    swap_used: 42969
-                                  },
-                                  interestingStats: {
-                                    curr_items: 5,
-                                    curr_items_tot: 11,
-                                    vb_replica_curr_items: 20
-                                  },
-                                  clusterMembership: "active",
-                                  failedOver: false,
-                                  memoryTotal: 2032574464,
-                                  memoryFree: 889864960,
-                                  mcdMemoryAllocated: 64,
-                                  mcdMemoryReserved: 256,
-                                  ports: {proxy: 11211,
-                                          direct: 11311},
-                                  couchApiBase: "/couchBase",
-                                  otpNode: "ns1@goofy.disney.com",
-                                  otpCookie: "SADFDFGDFG"}],
-                         "storageTotals": {
-                           "ram": {
-                             "usedByData":648,
-                             "total": 2032558091,
-                             "quotaTotal": 2032558091,
-                             "used": 1641816064,
-                             "quotaUsed": 1641816064
-                           },
-                           "hdd": {
-                             "total": 239315349504.0,
-                             "used": 229742735523.0,
-                             usedByData: 129742735523.0
-                           }
-                         },
-                         failoverWarnings: [],
-                         buckets: {
-                           // GET returns first page of bucket details with link to next page
-                           uri: "/pools/default/buckets"
-                         },
-                         controllers: {
-                           addNode: {uri: '/controller/addNode'},
-                           rebalance: {uri: '/controller/rebalance'},
-                           failOver: {uri: '/controller/failOver'},
-                           reAddNode: {uri: '/controller/reAddNode'},
-                           ejectNode: {uri: "/controller/ejectNode"}
-                         },
-                         etag: "asdas123",
-                         balanced: true,
-                         rebalanceStatus: 'none',
-                         rebalanceProgressUri: '/pools/default/rebalanceProgress',
-                         stopRebalanceUri: '/controller/stopRebalance',
-                         nodeStatusesUri: "/nodeStatuses",
-                         stats: {uri: "/pools/default/buckets/4/stats"}, // really for pool
-                         name: "Default Pool"}],
-      [get("nodeStatuses"), {
-        "mickey-mouse.disney.com:8091": {status: "healthy",
-                                         otpNode: "ns1@mickey-mouse.disney.com",
-                                         replication: 0.5},
-        "donald-duck.disney.com:8091": {status: "healthy",
-                                        otpNode: "ns1@donald-duck.disney.com",
-                                        replication: 0},
-        "scrooge-mcduck.disney.com:8091": {status: "healthy",
-                                           otpNode: "ns1@scrooge-mcduck.disney.com",
-                                           replication: 1.0},
-        "goofy.disney.com:8091": {status: "unhealthy",
-                                  otpNode: "ns1@goofy.disney.com",
-                                  replication: 0.5}
+      [get("pools", x), function () {
+        var self = this;
+        if (self.url.indexOf("etag") >= 0) {
+          self.responseDelayed = true;
+          _.delay(function () {
+            self.fakeResponse(ServerStateMock.poolDetails());
+          }, 20000);
+          return;
+        }
+        return ServerStateMock.poolDetails();
       }],
-      [get("pools", "default", "buckets"), [{name: "default",
-                                             nodeLocator: 'vbucket',
-                                             nodes: allNodes, // see /pools/default nodes list above
-                                             flushCacheUri: "/pools/default/buckets/4/controller/doFlush",
-                                             bucketType: 'membase',
-                                             uri: "/pools/default/buckets/4",
-                                             stats: {
-                                               directoryURI: "/pools/default/buckets/4/statsDirectory",
-                                               nodeStatsListURI: "/pools/default/buckets/4/nodes",
-                                               uri: "/pools/default/buckets/4/stats"
-                                             },
-                                             quota: {
-                                               ram: 12322423,
-                                               rawRAM: 12322423,
-                                               hdd: 12322423
-                                             },
-                                             authType: 'sasl',
-                                             proxyPort: 0,
-                                             saslPassword: 'supermega',
-                                             replicaNumber: 1,
-                                             "basicStats": {
-                                               "opsPerSec": 12,
-                                               "diskFetches": 1,
-                                               "quotaPercentUsed": 0.0,
-                                               "diskUsed": 25935,
-                                               "memUsed": 1232423,
-                                               "itemCount": 1234
-                                             }},
-                                            {name: "Excerciser Application",
-                                             nodeLocator: 'vbucket',
-                                             nodes: allNodes, // see /pools/default nodes list above
-                                             flushCacheUri: "/pools/default/buckets/5/controller/doFlush",
-                                             bucketType: 'memcached',
-                                             uri: "/pools/default/buckets/5",
-                                             testAppBucket: true,
-                                             status: false,
-                                             stats: {
-                                               directoryURI: "/pools/default/buckets/5/statsDirectory",
-                                               nodeStatsListURI: "/pools/default/buckets/5/nodes",
-                                               uri: "/pools/default/buckets/5/stats"
-                                             },
-                                             quota: {
-                                               ram: 123224230,
-                                               rawRAM: 12322423/4,
-                                               hdd: 12322423000
-                                             },
-                                             authType: 'none',
-                                             proxyPort: 11213,
-                                             saslPassword: '',
-                                             replicaNumber: 2,
-                                             "basicStats": {
-                                               "opsPerSec": 13,
-                                               "diskFetches": 1,
-                                               "quotaPercentUsed": 0.0,
-                                               "diskUsed": 259235,
-                                               "memUsed": 12322423,
-                                               "itemCount": 12324
-                                             }},
-                                            {name: "new-year-site",
-                                             nodeLocator: 'vbucket',
-                                             nodes: allNodes, // see /pools/default nodes list above
-                                             flushCacheUri: "/pools/default/buckets/6/controller/doFlush",
-                                             bucketType: 'memcached',
-                                             uri: "/pools/default/buckets/6",
-                                             stats: {
-                                               directoryURI: "/pools/default/buckets/6/statsDirectory",
-                                               nodeStatsListURI: "/pools/default/buckets/6/nodes",
-                                               uri: "/pools/default/buckets/6/stats"
-                                             },
-                                             quota: {
-                                               ram: 12322423,
-                                               rawRAM: 12322423/4,
-                                               hdd: 12322423
-                                             },
-                                             authType: 'none',
-                                             proxyPort: 11213,
-                                             saslPassword: '',
-                                             replicaNumber: 1,
-                                             "basicStats": {
-                                               "opsPerSec": 13,
-                                               "diskFetches": 1.2,
-                                               "quotaPercentUsed": 0.0,
-                                               "diskUsed": 259353,
-                                               "memUsed": 12324223,
-                                               "itemCount": 12324
-                                             }},
-                                            {name: "new-year-site-staging",
-                                             nodeLocator: 'vbucket',
-                                             nodes: allNodes, // see /pools/default nodes list above
-                                             flushCacheUri: "/pools/default/buckets/7/controller/doFlush",
-                                             bucketType: 'membase',
-                                             uri: "/pools/default/buckets/7",
-                                             stats: {
-                                               directoryURI: "/pools/default/buckets/7/statsDirectory",
-                                               nodeStatsListURI: "/pools/default/buckets/7/nodes",
-                                               uri: "/pools/default/buckets/7/stats"
-                                             },
-                                             quota: {
-                                               ram: 12322423,
-                                               rawRAM: 12322423,
-                                               hdd: 12322423
-                                             },
-                                             authType: 'sasl',
-                                             proxyPort: 0,
-                                             saslPassword: 'asdasd',
-                                             replicaNumber: 1,
-                                             "basicStats": {
-                                               "opsPerSec": 12,
-                                               "diskFetches": 1,
-                                               "quotaPercentUsed": 0.0,
-                                               "diskUsed": 25935,
-                                               "memUsed": 1232423,
-                                               "itemCount": 1234
-                                             }}]],
+      [get("nodeStatuses"), function () {
+        return ServerStateMock.nodeStatuses();
+      }],
+      [get("pools", "default", "buckets"), function () {
+        return ServerStateMock.bucketsList();
+      }],
       [get("pools", "default", "buckets", x), function (x) {
-        var allBuckets = MockedRequest.prototype.findResponseFor("GET", ["pools", "default", "buckets"]);
-        x = parseInt(x, 10);
-        if (isNaN(x))
-          x = 0;
-        var rv = _.clone(allBuckets[x % allBuckets.length]);
-        rv.nodes = [];  // not used for now
-        return rv;
+        return ServerStateMock.bucketDetails(this.path);
       }],
       [get("pools", "default", "buckets", x, "statsDirectory"), {
         "blocks": [
@@ -1156,10 +856,10 @@ var MockedRequest = mkClass({
         params['name'] = 'new-name';
         return this.doHandleBucketsPost(params);
       }, 'ramQuotaMB', opt('replicaNumber'), 'authType', opt('saslPassword'), opt('proxyPort'))],
-      [post("pools", "default", "buckets", x, "controller", "doFlush"), method('doNothingPOST')], //unused
+      [post("pools", "default", "buckets", x, "controller", "doFlush"), method('doNothingPOST')],
       [del("pools", "default", "buckets", x), method('handleBucketRemoval')],
 
-      [get("nodes", x), {
+      [get("nodes", "self"), {
         "memoryQuota":"",
         "storage":{"ssd":[],
                    "hdd":[{"path":"/srv/test",
@@ -1219,7 +919,6 @@ var MockedRequest = mkClass({
       [post("node", "controller", "doJoinCluster"), expectParams(method('handleJoinCluster'),
                                                                  "clusterMemberHostIp", "clusterMemberPort",
                                                                  "user", "password")],
-      [post("pools", "default", "controller", "testWorkload"), method('handleWorkloadControlPost')],
       [post("controller", "setupDefaultBucket"),  expectParams(method('handleBucketsPost'),
                                                                "ramQuotaMB", "replicaNumber", "bucketType",
                                                                opt("saslPassword"), opt("authType"))],
@@ -1281,7 +980,9 @@ var MockedRequest = mkClass({
                                                      "otpNode")],
 
       [post("settings", "web"), expectParams(method("doNothingPOST"),
-                                             "port", "username", "password")]
+                                             "port", "username", "password")],
+      [get("couchBase", x, "_all_docs"), function () {return ServerStateMock.handleAllDocs(this);}],
+      [get("couchBase", x, "_any_doc"), function () {return ServerStateMock.handleAnyDoc(this);}]
     ];
 
     rv.x = x;
@@ -1332,18 +1033,13 @@ var __hookParams = {};
   }
 
   if (params['single']) {
-    var pools = MockedRequest.prototype.findResponseFor("GET", ["pools", "default"]);
-    pools.nodes = pools.nodes.slice(-1);
+    ServerStateMock.allNodes = ServerStateMock.allNodes.slice(-1);
   }
 
-  if (params['no-mcduck']) {
-    var pools = MockedRequest.prototype.findResponseFor("GET", ["pools", "default"]);
-    pools.nodes = _.reject(pools.nodes, function (n) {return n.hostname == "scrooge-mcduck.disney.com:8091"});
-  }
-
-  if (params['no-goofy']) {
-    var pools = MockedRequest.prototype.findResponseFor("GET", ["pools", "default"]);
-    pools.nodes = _.reject(pools.nodes, function (n) {return n.hostname == "goofy.disney.com:8091"});
+  if (params['healthy']) {
+    _.each(ServerStateMock.allNodes, function (ninfo) {
+      ninfo.status = "healthy";
+    });
   }
 
   if (params['rebalanceStatus']) {
@@ -1356,5 +1052,393 @@ var __hookParams = {};
     });
   }
 })();
+
+var ServerStateMock = {
+  allNodes: [
+    {hostname: "mickey-mouse.disney.com:8091",
+     status: "healthy",
+     systemStats: {
+       cpu_utilization_rate: 42.5,
+       swap_total: 3221225472,
+       swap_used: 2969329664
+     },
+     interestingStats: {
+       curr_items: 0,
+       curr_items_tot: 0,
+       vb_replica_curr_items: 0
+     },
+     clusterMembership: "inactiveAdded",
+     os: 'Linux',
+     version: 'only-web.rb',
+     uptime: 86400,
+     ports: {proxy: 11211,
+             direct: 11311},
+     memoryTotal: 2032574464,
+     memoryFree: 1589864960,
+     mcdMemoryReserved: 2032574464,
+     mcdMemoryAllocated: 89864960,
+     otpNode: "ns1@mickey-mouse.disney.com",
+     otpCookie: "SADFDFGDFG"},
+    {hostname: "donald-duck.disney.com:8091",
+     os: 'Linux',
+     uptime: 86420,
+     version: 'only-web.rb',
+     status: "healthy",
+     systemStats: {
+       cpu_utilization_rate: 20,
+       swap_total: 2547232212,
+       swap_used: 1296642969
+     },
+     interestingStats: {
+       curr_items: 1,
+       curr_items_tot: 1,
+       vb_replica_curr_items: 1
+     },
+     clusterMembership: "inactiveFailed",
+     ports: {proxy: 11211,
+             direct: 11311},
+     thisNode: true,
+     couchApiBase: "/couchBase/",
+     memoryTotal: 2032574464,
+     memoryFree: 89864960,
+     mcdMemoryAllocated: 64,
+     mcdMemoryReserved: 256,
+     otpNode: "ns1@donald-duck.disney.com",
+     otpCookie: "SADFDFGDFG"},
+    {hostname: "scrooge-mcduck.disney.com:8091",
+     uptime: 865000,
+     version: "only-web.rb-2",
+     status: "healthy",
+     systemStats: {
+       cpu_utilization_rate: 20,
+       swap_total: 2521247232,
+       swap_used: 1296329669
+     },
+     interestingStats: {
+       curr_items: 5,
+       curr_items_tot: 11,
+       vb_replica_curr_items: 20
+     },
+     clusterMembership: "active",
+     ports: {proxy: 11211,
+             direct: 11311},
+     couchApiBase: "/couchBase/",
+     memoryTotal: 2032574464,
+     memoryFree: 89864960,
+     mcdMemoryAllocated: 64,
+     mcdMemoryReserved: 256,
+     otpNode: "ns1@scrooge-mcduck.disney.com",
+     otpCookie: "SADFDFGDFG"},
+    {hostname: "goofy.disney.com:8091",
+     uptime: 86430,
+     os: 'Linux',
+     version: 'only-web.rb',
+     status: "unhealthy",
+     systemStats: {
+       cpu_utilization_rate: 0.53,
+       swap_total: 2547232,
+       swap_used: 42969
+     },
+     interestingStats: {
+       curr_items: 5,
+       curr_items_tot: 11,
+       vb_replica_curr_items: 20
+     },
+     clusterMembership: "active",
+     failedOver: false,
+     memoryTotal: 2032574464,
+     memoryFree: 889864960,
+     mcdMemoryAllocated: 64,
+     mcdMemoryReserved: 256,
+     ports: {proxy: 11211,
+             direct: 11311},
+     couchApiBase: "/couchBase/",
+     otpNode: "ns1@goofy.disney.com",
+     otpCookie: "SADFDFGDFG"}],
+  basePoolDetails: {
+    "storageTotals": {
+      "ram": {
+        "quotaUsed": 314572800,
+        "usedByData": 3402136,
+        "total": 8315748352,
+        "quotaTotal": 629145600,
+        "used": 6067367936
+      },
+      "hdd": {
+        "usedByData": 0,
+        "total": 249064775680,
+        "quotaTotal": 249064775680,
+        "used": 239102184652,
+        "free": 9962591028
+      }
+    },
+    "name": "default",
+    "alerts": [],
+    "nodes": [],
+    "buckets": {
+      "uri": "/pools/default/buckets?v=86081550"
+    },
+    "controllers": {
+      "addNode": {
+        "uri": "/controller/addNode"
+      },
+      "rebalance": {
+        "uri": "/controller/rebalance"
+      },
+      "failOver": {
+        "uri": "/controller/failOver"
+      },
+      "reAddNode": {
+        "uri": "/controller/reAddNode"
+      },
+      "ejectNode": {
+        "uri": "/controller/ejectNode"
+      },
+      "testWorkload": {
+        "uri": "/pools/default/controller/testWorkload"
+      }
+    },
+    "balanced": true,
+    "failoverWarnings": [
+      "hardNodesNeeded"
+    ],
+    "rebalanceStatus": "none",
+    "rebalanceProgressUri": "/pools/default/rebalanceProgress",
+    "stopRebalanceUri": "/controller/stopRebalance",
+    "nodeStatusesUri": "/nodeStatuses",
+    "stats": {
+      "uri": "/pools/default/stats"
+    }
+  },
+  baseBuckets: [
+    {
+      "name": "default",
+      "bucketType": "membase",
+      "authType": "sasl",
+      "saslPassword": "",
+      "proxyPort": 0,
+      "uri": "/pools/default/buckets/default",
+      "streamingUri": "/pools/default/bucketsStreaming/default",
+      "flushCacheUri": "/pools/default/buckets/default/controller/doFlush",
+      "nodes": [],
+      "stats": {
+        "uri": "/pools/default/buckets/default/stats",
+        "directoryURI": "/pools/default/buckets/default/statsDirectory",
+        "nodeStatsListURI": "/pools/default/buckets/default/nodes"
+      },
+      "nodeLocator": "vbucket",
+      "vBucketServerMap": {
+        "hashAlgorithm": "CRC",
+        "numReplicas": 1,
+        "serverList": [], // not used
+        "vBucketMap": [] // node used
+      },
+      "replicaNumber": 1,
+      "quota": {
+        "ram": 314572800,
+        "rawRAM": 314572800
+      },
+      "basicStats": {
+        "quotaPercentUsed": 1.0815099080403645,
+        "opsPerSec": 0,
+        "diskFetches": 0,
+        "itemCount": 0,
+        "diskUsed": 0,
+        "memUsed": 3402136
+      },
+      "bucketCapabilitiesVer": "sync-1.0",
+      "bucketCapabilities": ["touch","sync","couchapi"]
+    },
+    {
+      "name": "mcd",
+      "bucketType": "memcached",
+      "authType": "sasl",
+      "saslPassword": "",
+      "proxyPort": 0,
+      "uri": "/pools/default/buckets/mcd",
+      "streamingUri": "/pools/default/bucketsStreaming/mcd",
+      "flushCacheUri": "/pools/default/buckets/mcd/controller/doFlush",
+      "nodes": [],
+      "stats": {
+        "uri": "/pools/default/buckets/mcd/stats",
+        "directoryURI": "/pools/default/buckets/mcd/statsDirectory",
+        "nodeStatsListURI": "/pools/default/buckets/mcd/nodes"
+      },
+      "nodeLocator": "ketama",
+      "replicaNumber": 0,
+      "quota": {
+        "ram": 314572800,
+        "rawRAM": 314572800
+      },
+      "basicStats": {
+        "quotaPercentUsed": 0.0,
+        "opsPerSec": 0,
+        "hitRatio": 0,
+        "itemCount": 0,
+        "diskUsed": 0,
+        "memUsed": 0
+      },
+      "bucketCapabilitiesVer": "sync-1.0",
+      "bucketCapabilities": []
+    }
+  ],
+  poolDetails: function () {
+    var rv = _.clone(this.basePoolDetails);
+    rv.nodes = _.clone(this.allNodes);
+    rv.etag = "asdasd";
+    return rv;
+  },
+  nodeStatuses: function () {
+    return _.map(this.allNodes, function (ninfo) {
+      return {status: ninfo.status,
+              otpNode: ninfo.otpNode,
+              replication: 1};
+    });
+  },
+  bucketsList: function () {
+    var self = this;
+    var rv = _.clone(self.baseBuckets);
+    _.each(rv, function (ninfo) {ninfo.nodes = _.clone(self.allNodes)});
+    return rv;
+  },
+  bucketsDetails: function (path) {
+    var rv = _.detect(this.baseBuckets, function (binfo) {
+      return binfo.uri === path;
+    });
+    if (!rv) {
+      throw new Error("BUG");
+    }
+    rv.nodes = _.clone(this.allNodes);
+    return rv;
+  },
+  handleBucketRemoval: function (options) {
+  },
+  handleBucketsPost: function (params) {
+    var errors = {};
+
+    // if (isBlank(params['name'])) {
+    //   errors.name = 'name cannot be blank';
+    // } else if (params['name'] != 'new-name') {
+    //   errors.name = 'name has already been taken';
+    // }
+
+    // if (!(/^\d+$/.exec(params['ramQuotaMB']))) {
+    //   errors.ramQuotaMB = "RAM quota size must be an integer";
+    // }
+
+    // if (!(/^\d+$/.exec(params['hddQuotaGB']))) {
+    //   errors.hddQuotaGB = "Disk quota size must be an integer";
+    // }
+
+    // var authType = params['authType'];
+    // if (authType == 'none') {
+    //   if (!(/^\d+$/.exec(params['proxyPort']))) {
+    //     errors.proxyPort = 'bad'
+    //   }
+    // } else if (authType == 'sasl') {
+    // } else {
+    //   errors.authType = 'unknown auth type'
+    // }
+
+    // if (_.keys(errors).length) {
+    //   return this.errorResponse(errors);
+    // }
+
+    var rv = {"errors":{},"summaries":{"ramSummary":{"perNodeMegs":1024,"nodesCount":8,"total":1625292800,"otherBuckets":0,"thisAlloc":1625292800,"thisUsed":12933780,"free":0},"hddSummary":{"total":239315349504.0,"otherData":222563264798.0,"otherBuckets":0,"thisAlloc":16106127360.0,"thisUsed":10240,"free":645957346}}};
+
+    // the last condition is be bit dirty. Thats because bucket type
+    // is not posted for edit bucket details case and fetching bucket
+    // info is harder that just hardcoding ids of memcached buckets
+    if (params.bucketType != 'memcached' && !_.include(["5", "6"], this.path[this.path.length-1]))
+      delete rv.summaries.ramSummary.perNodeMegs;
+  },
+  handleAllDocs: function () {
+    var rv = {"total_rows":20,"offset":12,"rows":[
+      { "id":"_design/adhoc",
+        "key":"_design/adhoc",
+        "value":{"rev":"13-ea509c85ed1fe2102632de72b5de4043"},
+        "doc":{
+          "_id":"_design/adhoc",
+          "_rev":"13-ea509c85ed1fe2102632de72b5de4043",
+          "language":"javascript",
+          "views":{
+            "query":{
+              "map":"function(doc) {\n  for (var k in doc) {\n    if (k.substr(0,1) !== '_') {\n      emit(doc[k], {\"_id\": doc._id, \"path\": k});\n    }\n  }\n}"
+            }
+          }
+        }
+      },
+      { "id":"_design/TeaTime",
+        "key":"_design/TeaTime",
+        "value":{"rev":"1-5ade2e707ee6f3b2d4467ff5e8f2a96a"},
+        "doc":{
+          "_id":"_design/TeaTime",
+          "_rev":"1-5ade2e707ee6f3b2d4467ff5e8f2a96a",
+          "language": "javascript",
+          "views":{
+            "all_users":{
+              "map":"function(doc) {\n  function emitUsers(users) {\n    if (users && users.forEach) {\n      users.forEach(function(user) {\n        emit(user, 1);\n      });\n    }\n  }\n  if (doc.type == \"event\") {\n        emitUsers(doc.attendees);\n        emitUsers(doc.hosts);\n  }\n  if (doc.type == \"profile\") {\n        emitUsers(doc, doc.attendees, doc.start && doc.end);\n  }\n};",
+              "reduce":"_count"
+            },
+            "by_user_date":{
+              "map":"function(doc) {\n  function emitUsersMonthly(doc, users, start, end) {\n    if (users && users.forEach) {\n      users.forEach(function(user) {\n        emitUserMonthly(doc, user, doc.start, doc.end);\n      });\n    }\n  }\n  function emitUserMonthly(doc, user, start, end) {\n    var totalEmitted = 0;\n    while (totalEmitted++ < 36 && start <= end) {\n      var d = new Date(start);\n      emit([user, d.getFullYear(), d.getMonth()], doc);\n      if (d.getMonth() == 11) {\n        d.setFullYear(d.getFullYear() + 1);\n        d.setMonth(0);\n      } else {\n        d.setMonth(d.getMonth() + 1);\n      }\n      start = d.getTime();\n    }\n  }\n  if (doc.type == \"event\" && doc.start && doc.end\n      && typeof doc.start == \"number\" && typeof doc.end == \"number\") {\n        emitUsersMonthly(doc, doc.attendees, doc.start && doc.end);\n        emitUsersMonthly(doc, doc.hosts, doc.start && doc.end);\n  }\n};"
+            }
+          }
+        }
+      }
+    ]};
+    return rv;
+  },
+  handleAnyDoc: function () {
+    var all = [{
+      "_id": "234235124",
+      "_rev": "3-12342341234",
+      "type": "event",
+      "title": "meeting",
+      "where": "coffee bar",
+      "hosts": [
+        "benjamin@couchbase.com"
+      ]
+    }, {
+      "_id": "0594680c9ba809979a8e5f9a8000027c",
+      "_rev": "3-7f43cdfce1b537739736a97c4eb78d62",
+      "created_at": "2010-07-04T18:06:34.020Z",
+      "profile": {
+        "rand": "0.8309284392744303",
+        "email": "jchris@couch.io",
+        "url": "http://jchrisa.net",
+        "gravatar_url": "http://www.gravatar.com/avatar/6f09a637f926f04d9b34bfe10e94bd3e.jpg?s=40&d=identicon",
+        "name": "jchris"
+      },
+      "message": "refactor #focus evently.nav so it is properly bound to login and logout status",
+      "state": "done",
+      "publish": true,
+      "type": "task",
+      "edit_at": "2010-07-11T22:08:52.928Z",
+      "edit_by": "jchris"
+    }, {
+      "_id": "1643684c68d03fb70bc98d88a8896d0d",
+      "_rev": "6-ff271e27fd0edfd88afb1d16e1363f79",
+      "urls": {
+        "@doppler": "http://twitter.com/doppler",
+        "Web Developer, SXSW": "http://sxsw.com",
+        "github.com/doppler": "http://github.com/doppler"
+      },
+      "bio": "I've been playing with and using CouchDB since version 0.9.0, sometime in early 2009. The first real app I created on CouchDB was to solve the problem of needing to provide an API to query SXSW schedule data, to be used by a 3rd-party developer creating an iPhone app. I'm hoping to build on that idea for SXSW 2011.",
+      "hometown": "Austin, TX",
+      "name": "David Rose",
+      "_attachments": {
+        "Photo on 2010-09-10 at 14.44.jpg": {
+          "content_type": "image/jpeg",
+          "revpos": 5,
+          "digest": "md5-dlyF/44110seO+xxDgrkHA==",
+          "length": 79027,
+          "stub": true
+        }
+      }
+    }];
+    return all[(Math.random() * all.length) >> 0];
+  }
+};
 
 //window.onerror = originalOnError;
