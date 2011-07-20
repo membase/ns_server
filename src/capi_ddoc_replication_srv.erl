@@ -30,7 +30,7 @@
 -define(i2l(V), integer_to_list(V)).
 
 
--export([start_link/1, force_update/1]).
+-export([start_link/1, force_update/1, force_full_vbucket_update/1]).
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
@@ -49,6 +49,9 @@ start_link(Bucket) ->
 force_update(Bucket) ->
     server(Bucket) ! update.
 
+force_full_vbucket_update(Bucket) ->
+    server(Bucket) ! full_vbucket_update.
+
 init(Bucket) ->
 
     Self = self(),
@@ -66,6 +69,14 @@ init(Bucket) ->
     ns_pubsub:subscribe(
       ns_config_events,
       fun (_, _) -> Self ! update end,
+      empty),
+
+    ns_pubsub:subscribe(
+      mc_couch_events,
+      fun ({flush_all, FlushedBucket}, _) when Bucket =:= FlushedBucket ->
+              Self ! full_vbucket_update;
+          (_, _) -> ok
+      end,
       empty),
 
     Self ! update,
@@ -88,6 +99,9 @@ handle_cast(_Msg, State) ->
 handle_info(update, State) ->
     {noreply, update(State)};
 
+handle_info(full_vbucket_update, State) ->
+    {noreply, full_vbucket_update(State)};
+
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -107,6 +121,13 @@ terminate(Reason, _State) ->
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+
+full_vbucket_update(#state{vbuckets=VBuckets,
+                           bucket=Bucket, master=Master} = State) ->
+    [stop_vbucket_replication(Master, Bucket, Srv) || Srv <- VBuckets],
+    [start_vbucket_replication(Master, Bucket, Srv) || Srv <- VBuckets],
+
+    State.
 
 
 update(#state{vbuckets=VBuckets, servers=Servers,
