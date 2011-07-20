@@ -278,5 +278,7 @@ couch_doc_open(Db, DocId, Rev, Options) ->
   end.
 
 
+is_couchbase_db(<<"_replicator">>) ->
+    false;
 is_couchbase_db(Name) ->
     nomatch =:= re:run(Name, <<"/">>).
