@@ -27,7 +27,6 @@ start() ->
             "win32" -> inet_db:set_lookup([native, file]);
             _ -> ok
         end,
-        ok = application:start(couch),
         ok = application:start(ns_server)
     catch T:E ->
             timer:sleep(500),
@@ -37,7 +36,6 @@ start() ->
 stop() ->
     RV = try
              ok = application:stop(ns_server),
-             application:stop(couch),
              application:stop(os_mon),
              application:stop(sasl),
 
