@@ -37,9 +37,11 @@ start() ->
 stop() ->
     RV = try
              ok = application:stop(ns_server),
-             ok = application:stop(couch),
+             application:stop(couch),
              application:stop(os_mon),
-             ok = application:stop(sasl)
+             application:stop(sasl),
+
+             ok
          catch T:E ->
                  {T, E}
          end,
