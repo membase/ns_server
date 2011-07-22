@@ -874,6 +874,22 @@ $.fn.bindListCell = function (cell, options) {
   var latestOnChangeVal;
   var latestOptionsList;
 
+  var applyWidget = options.applyWidget || function (q) {
+    q.combobox();
+  };
+
+  var unapplyWidget = options.unapplyWidget || function (q) {
+    q.combobox('destroy');
+  };
+
+  var buildOptions = options.buildOptions || function (q, selected, list) {
+    _.each(list, function (pair) {
+      var option = $("<option value='" + escapeHTML(pair[0]) + "'>" + escapeHTML(pair[1]) + "</option>");
+      option.boolAttr('selected', selected === pair[0]);
+      q.append(option);
+    });
+  };
+
   onChange = (function (onChange) {
     return function (e) {
       return onChange.call(this, e, (latestOnChangeVal = $(this).val()));
@@ -886,26 +902,22 @@ $.fn.bindListCell = function (cell, options) {
       return;
     }
     q.unbind('change', onChange);
-    q.combobox('destroy');
+    unapplyWidget(q);
     q.empty();
     if (!args) {
       return;
     }
     var selected = args.selected || '';
     latestOnChangeVal = undefined;
-    _.each(args.list, function (pair) {
-      var option = $("<option value='" + escapeHTML(pair[0]) + "'>" + escapeHTML(pair[1]) + "</option>");
-      option.boolAttr('selected', selected === pair[0]);
-      q.append(option);
-    });
-    q.bind('change', onChange).combobox()
-      .next('input').val(q.children(':selected').text());
+    buildOptions(q, selected, args.list);
+    applyWidget(q.bind('change', onChange));
+    q.next('input').val(q.children(':selected').text());
   });
 
   q.data('listCellBinding', {
     destroy: function () {
       subscription.cancel();
-      q.combobox('destroy');
+      unapplyWidget(q);
       q.unbind('change', onChange);
     }
   });
