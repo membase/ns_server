@@ -51,7 +51,7 @@ body {height:100%;color:#616062;font-family:Helvetica, Verdana;line-height:1;bac
 .float_right {float:right;}
 .float_left {float:left;}
 .clear {display:block; height:0px; overflow:hidden; clear:both;}
-.pad_10 {padding:10px;}
+.pad_10 {padding: 10px 26px 10px 10px;}
 .pat_10 {padding:10px 0;}
 .pat_20 {padding:20px 0;}
 .pas_10 {padding:0 10px;}
@@ -198,7 +198,7 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 .percentage_big a.text_11 {position:relative; top:6px; margin:0 0 0 5px;}
 
 .gong_rb {background:none #d8dbdc; position:relative;margin:5px 0 10px;}
-.gong_rb .pad {padding:10px !important; background:none !important;overflow:hidden;}
+.gong_rb .pad { background:none !important;overflow:hidden;}
 .gong_rb .side {display:block;width:9px; height:9px; position:absolute;font-size:0;line-height:0;background:url(../images/gong_rb.gif) 0 0 no-repeat; overflow:hidden;}
 .gong_rb .side_1 {background-position:0 0px; left:0px; top:0px;}
 .gong_rb .side_2 {background-position:0 -9px; right:0px; top:0px;}
@@ -378,6 +378,7 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 /* shadow block */
 .shadow_box {margin:0 0 20px;}/* width:780px;}*/
 .shadow_box .content {position:relative;background:none #eeeeef;-moz-box-shadow:0 0 5px #ccc;-webkit-box-shadow:0 0 5px #ccc;box-shadow:0 0 5px #ccc;margin:0 9px;}
+.shadow_box .content  .views_list {padding:10px}
 .shadow_box .section {border:0px;}
 .shadow_box pre {white-space:normal; display:block; overflow:auto; padding:5px 10px;line-height: 1.6em;white-space: pre-wrap;background:#F6F6F7;border:1px solid #CCC;border-top:1px solid #999}
 .shadow_box .darker_block {background-color:#d4d4d5;}
@@ -444,6 +445,7 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 p.info {padding:5px 24px 15px;font-weight:bold;}
 
 #bucket_list_container {border-left:1px solid #c8ccce; border-bottom:1px solid #c8ccce;}
+
 #bucket_list_container .type_icon {background:url('../images/bucket_types.png') no-repeat 0 center;width:10px}
 #bucket_list_container .memcached .type_icon {background-position:-32px center}
 #bucket_list_container .memcached .btn_documents, #bucket_list_container .memcached .btn_views {display:none}
@@ -838,17 +840,20 @@ ul.tabs .badge_display .badge {display:block;}
 
 .list {border-right:1px solid #d9dce0;}
 .list td {background:none #eee;border-bottom:1px solid #ced5d9; padding:10px;border-right:0px; text-align:center;vertical-align:middle;}
-#bucket_list_container .list td{line-height:30px}
+#bucket_list_container .list td {line-height:30px}
+#bucket_list_container .list .marg {margin-right:15px}
+#bucket_list_container .properties_table td {color:#404042}
+#bucket_list_container .properties_table td span {color:#7c7d7f}
 .list td table td {background:none;border:none}
 .list td > table td {padding:0 5px;width:110px;border:none;vertical-align:middle;}
 .list td > table td:first-child {width:155px;padding:0 5px 0 61px;background:url(../images/icons.png) -7px -93px no-repeat #eee;}
 .list td > table td:first-child+td+td {width:155px;}
 .list td > table td:first-child+td+td+td {width:125px;}
 
-.list tr:first-child th, .list tr:first-child td label {padding:10px 5px;background:none #f6f6f7; border-right:0px; border-bottom:1px solid #fff; color:#4d4d4d; font-weight:normal; text-align:center;}
+.list tr:first-child th, .list tr:first-child td label {padding:10px 5px;color:#4d4d4d;font-weight:bold;font-size:11px;text-align:center;background:none #f6f6f7; border-right:0px; border-bottom:1px solid #fff;}
 .list tr:first-child th:first-child {/*padding:0 0 0 56px;*padding-right:25px;display:block;*/text-align:left;white-space:nowrap;}
 .list tr:first-child th i {font-style:normal;position:relative;}
-.list tr:first-child th.bucket_name, .list tr:first-child th.bucket_name {text-align:left}
+.list tr:first-child th.bucket_name, .list tr:first-child th.bucket_name {padding:10px;text-align:left}
 .list tr:first-child th.last {border-right:1px solid #d9dce0;}
 .list td.design_doc_name {font-weight:bolder; color: #808080; text-align:left;font-size:100%;}
 .list td.bucket_name, .list td.view_name, .list td.node_name {font-weight:bolder;color:#0095D6;text-align:left;font-size:130%}
@@ -858,7 +863,7 @@ ul.tabs .badge_display .badge {display:block;}
 .list .settings-placeholder td .pad {padding:10px 0 10px 56px; background:none;}
 .list .settings-placeholder td > .pad {width:685px;overflow:hidden;}
 .list .settings-placeholder td .pad .pad {padding:10px 10px 10px 4px !important;min-height:52px;}
-.list .settings-placeholder .edit_btn {float:right;display:block;width:65px;height:21px;color:#000;background:url(../images/edit-button.png) 0 0 no-repeat;}
+.list .settings-placeholder .edit_btn {float:right;display:block;width:65px;height:21px;margin: 10px 10px 0;color:#000;background:url(../images/edit-button.png) 0 0 no-repeat;}
 .list .keycol {max-width:300px}
 
 /* This is the auto-failover status on the server nodes screen */
@@ -867,7 +872,7 @@ ul.tabs .badge_display .badge {display:block;}
 #auto_failover_count_container .edit_btn, #auto_failover_container .edit_btn{display:inline-block;float:none;font-size:0.8em;vertical-align:middle;}
 #auto_failover_container .count_reset {margin: 15px 0 15px 20px}
 
-#buckets .settings-placeholder {display:none; padding:9px 12px 8px 90px;border-top:2px solid #ced5d9;background:#e6e7e8;}
+#buckets .settings-placeholder {display:none; padding:9px 12px 8px 14px;border-top:2px solid #ced5d9;background:#e6e7e8;}
 .buckets_tab {border-right:1px solid #d9dce0;}
 .buckets_tab td {background:none #eee;border-bottom:1px solid #ced5d9; padding:0 10px;border-right:0px; text-align:center;}
 .buckets_tab tr td:first-child {text-align:left;}
@@ -880,7 +885,7 @@ ul.tabs .badge_display .badge {display:block;}
 .buckets_tab tr:first-child th:first-child {/*padding:0 0 0 56px;*padding-right:25px;display:block;*/text-align:left;text-indent:56px;white-space:nowrap;}
 .buckets_tab tr:first-child th i {font-style:normal;position:relative;}
 .buckets_tab tr:first-child th.last {border-right:1px solid #d9dce0;}
-.bucket_name {font-weight:bolder;color:#0095D6;}
+.list td.bucket_name {font-weight:bolder;color:#0095D6;}
 .buckets_tab .settings-placeholder td .pad {padding:10px 0 10px 56px; background:none;}
 .buckets_tab .settings-placeholder td > .pad {width:685px;overflow:hidden;}
 .buckets_tab .settings-placeholder td .pad .pad {padding:10px 10px 10px 4px !important;min-height:52px;}
@@ -892,7 +897,7 @@ ul.tabs .badge_display .badge {display:block;}
 .list .gong_rb .side {background-image:url(../images/gong_rb_2.gif);}
 
 .list .highlight td {background-color:#eee !important;}
-.properties_table {width:550px;}
+.properties_table {width:462px;}
 .properties_table tr td {text-align:left !important; vertical-align:top !important; color:#444245;background:none !important; border:0px !important;height:auto;line-height:1em}
 .list table.label {float:left;margin:2px 0 0;}
 .list table.label td:first-child {width:175px;color:#444245; text-align:right;}
@@ -987,7 +992,7 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
  .init_block .bucket_details form > div {border-bottom:none;}
  .init_block .bucket_details .config-bottom {padding:18px 18px 17px;border:none;}
 .bucket_details h2 {clear:both;font-size:20px;font-weight:normal;padding-bottom:6px;margin-top:18px;margin-bottom:15px;border-bottom:1px solid #d4d9dc;}
- .additional_server_info.bucket_details h2 {margin:0 0 10px;padding:5px 0 7px;font-size:14px;border-bottom:1px solid #bbbdbf;}
+ .additional_server_info.bucket_details h2 {margin:0 0 10px;padding:5px 0 7px;color:#5391BA;font-size:15px;font-weight:bold;border-bottom:1px solid #bbbdbf;}
 .bucket_details .bucket-icon {display:block;float:left;width:64px;height:64px;margin-top:10px;background:url(../images/icons.png) 50% -100px;}
 
 .bucket_details label {display:block;margin:6px 0;line-height:24px;  overflow:hidden;}
@@ -997,8 +1002,8 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details label input {padding:3px 3px;font-size:13px; text-align:right;border:1px solid #ccd3d7;}
 .bucket_details label input[type="checkbox"], .bucket_details label input[type="radio"] {width:auto;position:relative;top:2px;border:none;}
 .bucket_details label abbr {margin-left:6px;}
-.bucket_details label span {display:block;float:left;text-align:right;margin-right:6px;}
-.bucket_details label span + span {width:60px !important;}
+.bucket_details label span {display:block;float:left;margin: 0 6px 0 10px;color: #404042;text-align:left;}
+.bucket_details label span + span {width:60px !important;color:#7C7D7F}
 
 .bucket_details .for-sasl-password, .bucket_details .for-key-prefix, .bucket_details .for-ascii, .bucket_details .for-source-ip {padding-left:170px;}
 .bucket_details .for-sasl-password span, .bucket_details .for-key-prefix span,
@@ -1038,8 +1043,7 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 
 .bucket_details label.for-enable-persistence {padding-left:20px;}
 .bucket_details label.for-enable-persistence span {float:none;display:inline;margin-left:6px;}
-.bucket_details label.for-ram-quota, .bucket_details label.for-hdd-quota {width:275px;padding-top:13px;}
-.bucket_details label.for-ram-quota span, .bucket_details label.for-hdd-quota span {width:164px;}
+.bucket_details label.for-ram-quota, .bucket_details label.for-hdd-quota {width:275px;padding-top:14px;}
 .bucket_details label.for-ram-quota input, .bucket_details label.for-hdd-quota input {width:58px;}
 .bucket_details input.invalid {border-color:red;}
 .bucket_details .error-container {color:red;float:left;font-size:66%;padding-left:170px;visibility:hidden;}

@@ -466,7 +466,7 @@
                 <td>{%= h(truncateTo3Digits(this.basicStats.opsPerSec)) %}</td>
                 <td>{% if (this.basicStats.diskFetches !== undefined) { %}{%= h(truncateTo3Digits(this.basicStats.diskFetches)) %}{% } else { %}N/A{% } %}</td>
                 <td>
-                  <a class="list_button" href="#sec=views&statsBucket={%= this.uri %}"><span>Views</span></a>
+                  <a class="list_button marg" href="#sec=views&statsBucket={%= this.uri %}"><span>Views</span></a>
                   <a class="list_button disabled" href="#sec=documents&statsBucket={%= this.uri %}"><span>Documents</span></a>
                   <a class="list_button btn_info disable-if-stale" href="#visitBucket={%=h(this.name)%}">Info</a>
                 </td>
@@ -991,7 +991,7 @@
       </div>
     </div>
     <div class="save_cancel clearfix">
-      <button onclick="BucketsSection.flushCurrentBucket();" type="button" class="flush_button float_right">Flush</button>
+      <button onClick="BucketsSection.flushCurrentBucket();" type="button" class="flush_button float_right">Flush</button>
       <a class="close">Cancel</a>
     </div>
   </form>
@@ -1005,7 +1005,7 @@
       </div>
     </div>
     <div class="save_cancel clearfix">
-      <button onclick="BucketsSection.removeCurrentBucket();" type="button" class="delete_button float_right">Delete</button>
+      <button onClick="BucketsSection.removeCurrentBucket();" type="button" class="delete_button float_right">Delete</button>
       <a class="close">Cancel</a>
     </div>
   </form>
