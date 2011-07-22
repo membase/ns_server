@@ -202,11 +202,12 @@
               {%= V.stripPortHTML(s.hostname, rows) %}
               </td>
               <td colspan="4">
-              <span class="pending_add_message">Pending Add</span>
+              
               </td>
               <td>
-              <a href="#" class="list_button btn_cancel eject_server"><span>Cancel</span></a>
+              <a href="#" class="list_button btn_cancel eject_server marg"><span>Cancel</span></a>
               <a class="list_button btn_info{% if (!expandingAllowed) { %} disabled"{% } else { %}" href="#openServer={%= h(s.otpNode) %}"{% } %}>Info</a>
+              <span class="pending_add_message">Pending Add</span>
               </td>
             </tr>
             <!-- {% } else if (s.pendingEject) { %} -->
