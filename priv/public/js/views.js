@@ -690,7 +690,7 @@ var ViewsSection = {
     }
     var dialog = $('#copy_view_dialog');
     var warning = dialog.find('.warning').hide();
-    dialog.find('input.designdoc_name, input.view_name').val('');
+    dialog.find('[name=designdoc_name], [name=view_name]').val('');
     var ddocNameInput = dialog.find('[name=designdoc_name]').need(1);
     ddocNameInput.prop('disabled', !!ddocId);
     if (ddocId) {

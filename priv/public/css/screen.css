@@ -379,17 +379,21 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 
 /* shadow block */
 .shadow_box {margin:0 0 20px;}/* width:780px;}*/
+.marg-top {margin:20px 0 0}
 .shadow_box .content {position:relative;background:none #eeeeef;-moz-box-shadow:0 0 5px #ccc;-webkit-box-shadow:0 0 5px #ccc;box-shadow:0 0 5px #ccc;margin:0 9px;}
+.shadow_box .content.c_result {margin:0;border:1px solid #ccc;box-shadow:none;}
 .shadow_box .content .views_list .langv {text-align:left}
 #views .buttons {float:right;margin:2px 10px 0 0}
 #views .darker_block.closed h3 ins {top:17px}
 #views .darker_block h3 ins {position:absolute;top:16px;left:10px}
 #views .darker_block h3 {position:relative}
 #views .view_head {float:left;padding:12px 0 0 31px}
-.clearfix .fl_inp {float:right;margin:0 0 0 10px;text-align:left}
-.bucket_details .clearfix .designdoc_name.designdoc_name_v {float:right;width:11em;text-align:left;}
+.clearfix .fl_inp {float:right;width:270px;margin:0 0 0 10px;text-align:left}
+.bucket_details .create_dev {padding:0 0 0 4px;color:#bbb;background:#fff;border:1px solid #CCD3D7}
+.bucket_details .create_dev input[disabled=""] {color:#BBBBBB;background:#fff}
+.bucket_details .bolder {font-weight:bold}
 .shadow_box .section {border:0px;}
-.shadow_box pre {white-space:normal; display:block; overflow:auto; padding:5px 10px;line-height: 1.6em;white-space: pre-wrap;background:#F6F6F7;border:1px solid #CCC;border-top:1px solid #999}
+.shadow_box pre {white-space:normal; display:block; overflow:auto;width:920px; padding:5px 9px 0 10px;line-height: 1.6em;white-space: pre-wrap;background:#F6F6F7;border:1px solid #CCC;border-top:1px solid #999}
 .shadow_box .darker_block {background-color:#d4d4d5;}
 .with_devider {background-image:url(../images/devider_line_1.gif); background-position:0 100%; background-repeat:repeat-x;}
 
@@ -438,12 +442,12 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 #overview .no-samples-yet .no_stats_marker { display: block;}
 #overview .no-samples-yet .graph_main { display: none;}
 
-.actservers {float:left;width:233px;min-height:120px;padding:30px 0 0 173px;background:url(../images/ico_server_big.png) 50px 13px no-repeat;}
+.actservers {float:left;width:261px;min-height:120px;padding:30px 0 0 173px;background:url(../images/ico_server_big.png) 50px 13px no-repeat;}
 .actservers h3 {padding:0 0 5px;font-size:18px;font-weight:normal;}
 .actservers p {padding:0 0 2px;line-height:1.4;}
 .actservers p b {color:#888;}
 .actservers a {font-weight:bold;line-height:25px;}
-.actservers + ul {float:left;width:502px;margin:-27px 0 0;position:relative;top:14px;left:13px;}
+.actservers + ul {float:left;width:475px;margin:-27px 0 0;position:relative;top:14px;left:13px;}
 .actservers + ul li {font-size:16px;height:70px;line-height:70px;padding:0 0 0 66px;position:relative;text-transform:none; border-left:1px solid #ced5d9;border-bottom:1px solid #ced5d9;background:url(../images/server_icon.png) 19px 15px no-repeat;}
 .actservers + ul li.fail,
 .actservers + ul li.fail a,
@@ -777,7 +781,7 @@ body.init_bucket_dialog #container { display: none; }
 .servers_list ul {*margin:-1px 0 0;*position:relative;*top:1px;}
 .servers_list li {height-min:25px;display:block;padding:0 10px; *zoom:1;*margin:-2px 0 0;}
 .servers_list .server_row.server_down {background:url(../images/server_status_icons.png) 10px -157px no-repeat; background-color:#61696c;border-color:#61696c;}
-.servers_list .server_row.failed_over {background:url(../images/server_status_icons.png) 10px -308px no-repeat; background-color:#c9cccc;}
+
 .servers_list .server_row.server_warmup {background:url(../images/server_status_icons.png) 10px -308px no-repeat;}
 .servers_list .server_row.failed_over .list_button {display:none;}
 .servers_list .server_row.failed_over .serverName {color:#333; opacity:0.3;}
@@ -852,6 +856,7 @@ ul.tabs .badge_display .badge {display:block;}
 
 .list {border-right:1px solid #d9dce0;}
 .list td {background:none #eee;border-bottom:1px solid #ced5d9; padding:10px;border-right:0px; text-align:center;vertical-align:middle;}
+.list.align_text td {text-align:left}
 #bucket_list_container .list td {line-height:30px}
 #bucket_list_container .list .marg {margin-right:13px}
 #bucket_list_container .properties_table td {color:#404042}
@@ -1006,9 +1011,10 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
  .init_block .bucket_details h1 {background:none;border:none;}
 .bucket_details form {border-top:1px solid #dfdfe0;}
 .bucket_details .clearfix {padding:0 56px 29px;border-bottom:1px solid #cccfd2;border-top:1px solid #f8f8f8;}
-.bucket_details .clearfix p {margin:17px 0 0;line-height:1.4}
-.bucket_details .clearfix .inp_right {float:right} 
-.bucket_details .clearfix .designdoc_name {width:10.6em;text-align:left}
+.bucket_details .clearfix .designdoc_name,
+.bucket_details .clearfix .des_name {float:left;border:1px solid #fff;text-align:left;}
+
+.bucket_details .clearfix .des_lab {float:left;padding:0;margin:0}
 .bucket_details .save_cancel{margin-top:0}
  .init_block .bucket_details form > div {border-bottom:none;}
  .init_block .bucket_details .config-bottom {padding:18px 18px 17px;border:none;}
@@ -1063,6 +1069,7 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .pad.really .usage {clear:both;position:relative;height:15px;background:url(../images/usages.png) 0 -46px no-repeat;}
 .bucket_details.really .size-gauge .usage div,
 .pad.really .usage div {width:363px;height:15px;position:absolute;left:0px;top:0px;background:url(../images/usages.png) 0 -46px no-repeat;}
+.pad.really span {margin:0 6px 0 0;color:#616062}
 .bucket_details .size-gauge .top-left {float:left;color:#C19710;font-size:12px;}
 .bucket_details .size-gauge .top-right {float:right;font-size:12px;}
 .bucket_details .size-gauge .usage {clear:both;position:relative;height:21px;background:url(../images/usages_third.png) 0 -46px no-repeat;}
@@ -1167,3 +1174,51 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
   padding: .4em 0 0; resize: none; width: 100%;
 }
 #viewcode .code textarea:focus { background: #e9f4ff; }
+
+.f_wrap {float:right;position:relative;margin: -10px 0 0;;font-size:16px}
+.filter_cont {float:right;position:absolute;right:0;top:5px;width:171px;z-index:999}
+.filter_cont .filter {float:left;margin:14px 7px 0 0;color:#616062;font-size:18px;}
+.filter_cont .exp_filter {float:left;width:57px;height:44px; margin:0 1px 0 0;background:url(../images/exp_filter.png) 0 -58px}
+.filter_cont a.selected {background:url(../images/exp_filter.png) 0 0}
+.f_popup {position:absolute;display:none;z-index:1;top:42px;right:1px;width:446px;padding: 24px 0 18px;}
+.f_popup .bg_top {top:0}
+.f_popup .bg_top,
+.f_popup .bg_bottom {position:absolute;width:399px;height:24px;margin: 0 0 0 28px;background:url(../images/bg_fpopup_ver.png) repeat-x 0 -1px}
+.f_popup .bg_bottom {position:absolute;bottom:-6px;width:390px;margin:0 0 0 28px;background-position:0 -15px}
+.f_popup .f_cont {position:relative;overflow:hidden;margin: 0 0 0;background:url(../images/bg_fpopup_hor.png) repeat-y }
+.f_popup .f_cont .wrap {float:left;width:174px;margin:2px 6px 0 17px}
+.f_popup .f_cont .ic_plus {float:left;width:32px;height:31px;margin: 3px 0 0 8px;background:url(../images/ic_plus.png) no-repeat}
+.f_popup .f_cont .key {float:left;clear:left;width:380px;margin:12px 0 0 23px;padding:0;border:none;border-spacing:0;}
+.f_popup .f_cont .key td {height:48px;vertical-align:top;color:#000}
+.f_popup .f_cont .key td:first-child {width:25px;}
+.f_popup .f_cont .key .last {height:28px}
+.f_popup .f_cont .key td label {float:left;width:160px;margin:7px 0 0 5px;font-size:18px }
+.f_popup .f_cont .key td input[type="text"] {width:166px;height:23px;padding:6px 0 6px 14px;color:#000;font-size:18px;background:url(../images/bg_key_inp_text.png) repeat-x;border:1px solid #b3b3b3}
+.f_popup .f_cont .key .ic_key {margin: 4px 0 0;width:25px;height:24px;background:url(../images/ic_key.png) no-repeat}
+.f_popup .br_right {position:absolute;right:0;bottom:0px;width:19px;height:100%;background: url(../images/bg_fpopup_hor_r.png) repeat-y 0 0;}
+.f_popup ins {position:absolute;width:26px;height:23px;background:url(../images/bg_fpopup_an.png) no-repeat}
+.f_popup .bg_bottom + ins {top:1px;left:2px;}
+.f_popup .bg_bottom + ins + ins {bottom:-5px;left:2px;background-position: 0 -27px}
+.f_popup .bg_bottom + ins + ins + ins {bottom:-5px;right:2px;background-position: -26px -27px}
+.f_popup .bg_bottom + ins + ins + ins + ins {top: 7px;right: -7px;height: 17px;background: url(../images/bg_fpopup_hor_r.png) repeat-y 0 0;}
+.visib {display:block}
+
+/*select*/
+.selectBox-dropdown {display:inline-block;position:relative;width:190px;height:31px;outline:medium none;cursor: default;vertical-align:middle;color:#222222;font-size:60%;line-height:1.5;text-decoration: none;border: 0px solid #BBBBBB;
+background:url(../images/bg_select.png) no-repeat;}
+.selectBox-dropdown:hover {text-decoration:none}
+.selectBox-dropdown:focus, .selectBox-dropdown:focus .selectBox-arrow {border-color: #666666;}
+.selectBox-dropdown .selectBox-label {display:inline-block;overflow:hidden;padding: 7px 0 0 8px;color:#222222;font-size:14px;white-space:nowrap;}
+.selectBox-dropdown-menu {position: absolute;overflow: auto;z-index: 99999;width:168px !important;max-height: 200px;background:#eeeeef;border: 1px solid #aaa;}
+.selectBox-inline {display: inline-block;overflow: auto;outline: medium none;border: 1px solid #BBBBBB;}
+.selectBox-inline:focus {border-color: #666666;}
+.selectBox-options, .selectBox-options LI, .selectBox-options LI A {display:block;cursor:default;margin:0;padding:0;list-style: none outside none;}
+.selectBox-options LI A {overflow: hidden;padding: 0.2em 0.4em;line-height: 1.5;white-space: nowrap;font-size: 1.1em;border: 1px solid #eeeeef;}
+.selectBox-options LI.selectBox-hover A {color: #212121;font-weight: normal; text-decoration:none;border: 1px solid #999999; background: #dadada url(../images/ui-theme/ui-bg_glass_75_dadada_1x400.png) 50% 50% repeat-x; }
+.selectBox-options LI.selectBox-disabled A {color: #cfcdcd;}
+.selectBox-options LI.selectBox-selected A {background-color: none;}
+.selectBox-options .selectBox-optgroup {padding: 0 0.3em;color: #666666;white-space: nowrap;line-height: 1.5;font-weight: bold;}
+.selectBox.selectBox-disabled {color: #888888 !important;}
+.selectBox-dropdown.selectBox-disabled .selectBox-arrow {border-color: #666666;opacity: 0.5;}
+.selectBox-inline.selectBox-disabled {color: #cfcdcd !important;}
+/*select*/
