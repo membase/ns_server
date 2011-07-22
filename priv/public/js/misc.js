@@ -24,6 +24,12 @@ function getBacktrace() {
   }
 };
 
+function BUG(msg) {
+  console.log("BUG:", msg);
+  debugger
+  throw new Error("BUG");
+};
+
 function traceMethodCalls(object, methodName) {
   var original = object[methodName];
   function tracer() {

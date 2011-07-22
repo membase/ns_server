@@ -287,10 +287,7 @@ var BucketDetailsDialog = mkClass({
       if (errors._) {
         genericDialog({buttons: {ok: true, cancel: false},
                        header: "Failed To Create Bucket",
-                       text: errors._,
-                       callback: function (e, btn, dialog) {
-                         dialog.close();
-                       }
+                       text: errors._
                       });
       }
     });
@@ -559,7 +556,7 @@ var BucketsSection = {
         }
 
         if (maxIndex < 0) {
-          throw new Error("BUG");
+          BUG();
         }
 
         healthStats[maxIndex] -= stolenSize;
