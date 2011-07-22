@@ -419,8 +419,8 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 .disk-item .usage_biggest + table td+td {color:#1878a2;text-align:center;}
 .disk-item .usage_biggest + table td+td+td {color:#000;text-align:right;}
 
-#overview .graph_main {display:inline-block;width:355px;margin:0 0 0 20px; *zoom:1;*display:inline;position:relative;}
-#overview .graph_main .graph {width:355px;height:140px;position:relative;}
+#overview .graph_main {display:inline-block;width:420px;margin:0 0 0 20px; *zoom:1;*display:inline;position:relative;}
+#overview .graph_main .graph {width:420px;height:140px;position:relative;}
 #overview .graph_main .graph_info_label {display:block;padding:5px 0 0 30px;font-size:13px;left:0;top:0;}
 #overview .no_stats_marker,
 #overview .no_stats_marker .without_buckets,
