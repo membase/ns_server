@@ -51,7 +51,7 @@ body {height:100%;color:#616062;font-family:Helvetica, Verdana;line-height:1;bac
 .float_right {float:right;}
 .float_left {float:left;}
 .clear {display:block; height:0px; overflow:hidden; clear:both;}
-.pad_10 {padding: 10px 26px 10px 10px;}
+.pad_10 {padding: 10px 24px 10px 10px;}
 .pat_10 {padding:10px 0;}
 .pat_20 {padding:20px 0;}
 .pas_10 {padding:0 10px;}
@@ -841,7 +841,7 @@ ul.tabs .badge_display .badge {display:block;}
 .list {border-right:1px solid #d9dce0;}
 .list td {background:none #eee;border-bottom:1px solid #ced5d9; padding:10px;border-right:0px; text-align:center;vertical-align:middle;}
 #bucket_list_container .list td {line-height:30px}
-#bucket_list_container .list .marg {margin-right:15px}
+#bucket_list_container .list .marg {margin-right:13px}
 #bucket_list_container .properties_table td {color:#404042}
 #bucket_list_container .properties_table td span {color:#7c7d7f}
 .list td table td {background:none;border:none}
