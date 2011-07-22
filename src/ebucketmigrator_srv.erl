@@ -21,7 +21,7 @@
 
 -define(SERVER, ?MODULE).
 -define(CONNECT_TIMEOUT, 5000).        % Milliseconds
--define(UPSTREAM_TIMEOUT, 300000000).   % Microseconds because we use timer:now_diff
+-define(UPSTREAM_TIMEOUT, 43200000000). % Microseconds because we use timer:now_diff == 12 hours.
 -define(TIMEOUT_CHECK_INTERVAL, 15000). % Milliseconds
 -define(TERMINATE_TIMEOUT, 30000).
 
