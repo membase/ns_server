@@ -24,7 +24,7 @@ vbucket_from_id(Map, NumVBuckets, Id) ->
 
     Hashed = (erlang:crc32(Id) bsr 16) band 16#7fff,
     Index = Hashed band (NumVBuckets - 1),
-    [Master | _ ] = lists:nth(Index, Map),
+    [Master | _ ] = lists:nth(Index + 1, Map),
 
     {Index, Master}.
 
@@ -43,7 +43,8 @@ lookup_16_3(Bin) ->
 
 
 lookup_16_2_test_() ->
-    [ ?_assertEqual({15,'n_1@192.168.1.66'}, lookup_16_2(<<"test">>)),
+    [ ?_assertEqual({0, 'n_0@192.168.1.66'}, lookup_16_2(<<"<0.33.0>1311300233924057">>)),
+      ?_assertEqual({15,'n_1@192.168.1.66'}, lookup_16_2(<<"test">>)),
       ?_assertEqual({3,'n_0@192.168.1.66'}, lookup_16_2(<<"foo">>)),
       ?_assertEqual({15,'n_1@192.168.1.66'}, lookup_16_2(<<"bar">>)),
       ?_assertEqual({5,'n_0@192.168.1.66'}, lookup_16_2(<<"test%2Fing">>)),
@@ -57,7 +58,7 @@ lookup_16_3_test_() ->
       ?_assertEqual({3,'n_0@192.168.1.66'}, lookup_16_3(<<"foo">>)),
       ?_assertEqual({15,'n_2@192.168.1.66'}, lookup_16_3(<<"bar">>)),
       ?_assertEqual({5,'n_0@192.168.1.66'}, lookup_16_3(<<"test%2Fing">>)),
-      ?_assertEqual({6,'n_0@192.168.1.66'}, lookup_16_3(<<"_design/test">>)),
+      ?_assertEqual({6,'n_1@192.168.1.66'}, lookup_16_3(<<"_design/test">>)),
       ?_assertEqual({1,'n_0@192.168.1.66'}, lookup_16_3(<<"$">>)) %"
      ].
 
