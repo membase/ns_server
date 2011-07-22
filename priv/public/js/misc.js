@@ -305,6 +305,9 @@ var ViewHelpers = {};
 var AfterTemplateHooks;
 
 function renderRawTemplate(toElement, templateID, data) {
+  if (!toElement) {
+    return;
+  }
   if ($.isArray(data)) {
     data = {rows:data};
   }
