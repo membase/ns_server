@@ -370,6 +370,7 @@ function functionArgumentNames(f) {
 };
 
 function reloadApp(middleCallback) {
+  debugger
   prepareAreaUpdate($(document.body));
   if (middleCallback)
     middleCallback(reloader);
@@ -1018,4 +1019,24 @@ function mkClass(methods) {
   constructor.prototype = methods;
 
   return constructor;
+}
+
+function buildURL(base /*, ...args */) {
+  if (!base) {
+    BUG();
+  }
+  var args = _.rest(arguments);
+  if (!args.length) {
+    BUG();
+  }
+  var options;
+  if (!_.isString(args[args.length-1])) {
+    options = args[args.length-1];
+    args.length--;
+  }
+  var rv = base + _.map(args, function (a) {return encodeURIComponent(a);}).join('/');
+  if (options) {
+    rv += "?" + $.param(options);
+  }
+  return rv;
 }
