@@ -112,4 +112,8 @@ child_specs() ->
 
      {ns_moxi_sup, {ns_moxi_sup, start_link, []},
       permanent, infinity, supervisor,
-      [ns_moxi_sup]}].
+      [ns_moxi_sup]},
+
+     {couchbase_compaction_daemon, {couchbase_compaction_daemon, start_link, []},
+      permanent, 1000, worker, [couchbase_compaction_daemon]}
+].

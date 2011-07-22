@@ -16,7 +16,8 @@ doc_buffer_size = 2097152
 checkpoint_after = 20971520
 
 [daemons]
-compaction_daemon = {couchbase_compaction_daemon, start_link, []}
+; Started by ns_server's supervision trees.
+compaction_daemon =
 
 [compaction_daemon]
 _default = db_fragmentation=95%, view_fragmentation=95%
