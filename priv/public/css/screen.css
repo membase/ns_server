@@ -862,6 +862,8 @@ ul.tabs .badge_display .badge {display:block;}
 .list td.design_doc_name {font-weight:bolder; color: #808080; text-align:left;font-size:100%;}
 .list td.bucket_name, .list td.view_name, .list td.node_name {font-weight:bolder;color:#0095D6;text-align:left;font-size:130%}
 .list td.node_name {width:239px;font-size:120%;}
+.list td.ram {width:77px}
+.list td.rep {width:38px}
 .list td.view_name{padding-left:3em;color:#616062}
 .list .settings-placeholder {display:none; padding:9px 12px 8px 13px;border-top:2px solid #ced5d9;background:#e6e7e8;text-align:left}
 .list .settings-placeholder td .pad {padding:10px 0 10px 56px; background:none;}
@@ -1009,6 +1011,8 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details label input[type="checkbox"], .bucket_details label input[type="radio"] {width:auto;position:relative;top:2px;border:none;}
 .bucket_details label abbr {margin-left:6px;}
 .bucket_details label span {display:block;float:left;margin: 0 6px 0 10px;color: #404042;text-align:left;}
+.bucket_details .set label span {color:#222;margin:0 6px 0 0}
+.bucket_details .wrap_acc label span {color:#222;text-align:right;} 
 .bucket_details label span + span {width:60px !important;color:#7C7D7F}
 
 .bucket_details .for-sasl-password, .bucket_details .for-key-prefix, .bucket_details .for-ascii, .bucket_details .for-source-ip {padding-left:170px;}
@@ -1039,6 +1043,10 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details .memcached-summary {font-style:normal;line-height:24px;clear:both;}
 
 .bucket_details .size-gauge {float:right;width:600px;position:relative;top:-6px;line-height:24px;}
+.bucket_details .size-gauge.memory {width:363px;}
+.bucket_details .for-ram-quota span {color:#222}
+.bucket_details .size-gauge.memory .usage {clear:both;position:relative;height:21px;background:url(../images/usages.png) 0 -46px no-repeat;}
+.bucket_details .size-gauge.memory .usage div {width:363px;height:21px;position:absolute;left:0px;top:0px;background:url(../images/usages.png) 0 0 no-repeat;}
 .bucket_details .size-gauge .top-left {float:left;color:#C19710;font-size:12px;}
 .bucket_details .size-gauge .top-right {float:right;font-size:12px;}
 .bucket_details .size-gauge .usage {clear:both;position:relative;height:21px;background:url(../images/usages_third.png) 0 -46px no-repeat;}
@@ -1056,6 +1064,7 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details .error-container.err-name, .bucket_details .error-container.err-proxyPort {display:inline;float:none;padding-left:6px;}
 .bucket_details .for-replica-number .error-container {float:none;padding-left:0;margin-left:0;text-align:left;display:block;width:auto !important;}
 .bucket_details .error-container.active {visibility:visible;}
+.bucket_details .repli span {color:#222}
 .bucket_details label.for-enable-replication {padding-left:20px;width:150px;float:left;}
 .bucket_details label.for-enable-replication span {display:inline;float:none;margin-left:5px;}
 .bucket_details label.for-replica-number {display:block;float:left;}
