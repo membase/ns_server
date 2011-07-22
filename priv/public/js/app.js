@@ -186,10 +186,7 @@ var ThePage = {
              analytics: AnalyticsSection,
              buckets: BucketsSection,
              views: ViewsSection,
-             view_development: ViewDevSection,
              log: AlertsSection,
-             // monitor_buckets: MonitorBucketsSection,
-             // monitor_servers: MonitorServersSection,
              settings: SettingsSection},
 
   coming: {alerts:true},
@@ -224,10 +221,6 @@ var ThePage = {
     initAlertsSubscriber();
 
     DAL.cells.mode.subscribeValue(function (sec) {
-      if (sec === 'views' || sec === 'view_development'
-        || sec === 'analytics' || sec === 'documents') {
-        sec = 'buckets';
-      }
       $('.currentNav').removeClass('currentNav');
       $('#switch_' + sec).parent('li').addClass('currentNav');
     });

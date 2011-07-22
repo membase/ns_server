@@ -31,6 +31,7 @@
           <!--<li class="line"></li>-->
           <li class="line"><a id="switch_overview" href="#visitSec=overview">Cluster Overview</a></li>
           <li class="line"><a id="switch_buckets" href="#visitSec=buckets">Data Buckets</a></li>
+          <li class="line"><a id="switch_views" href="#visitSec=views">Views</a></li>
           <li class="line"><a id="switch_servers" href="#visitSec=servers">Server Nodes</a></li>
           <li class="line"><a id="switch_log" href="#visitSec=log">Log</a></li>
           <li class="line" id="nav_settings_container"></li>
@@ -323,16 +324,10 @@
 
           <div id="analytics" style="display:none">
             <span class="block nav float_right configure_view"></span>
-            <h1 style="overflow:hidden">
-              <span style="float:left">
-                <span class="when-normal-stats">Analytics</span>
-                <span class="when-specific-stats"><em class="specific-stat-description"></em></span>
-                for <select class="buckets_select"></select>
-              </span>
-              <span style="float:left;padding-left:0.5em">
-                <span class="when-normal-stats"> on <select class="analytics_servers_select"></select></span>
-              </span>
-            </h1>
+            <h1>
+              <span class="when-normal-stats">DATA BUCKETS: </span><span class="when-specific-stats"><em class="specific-stat-description"></em> for bucket: </span>
+              <select id="analytics_buckets_select"></select>
+              <span class="when-normal-stats"> on <select id="analytics_servers_select"></select></span>
             </h1>
             <div class="shadow_box">
                   <div class="content">
@@ -755,17 +750,16 @@
           </script>
 
           <div id="views" style="display:none">
-            <h1 style="clear:both;overflow:hidden"><span style="float:left">Views for <select class="buckets_select"></select></span></h1>
-            <div class="shadow_box">
+            <h1 style="clear:both;overflow:hidden"><span style="float:left"><select id="views_bucket_select"></select> &gt; Views &gt; <select id="views_view_select"></select></span></h1>
+            <div class="shadow_box" id="views_list">
                 <div class="content">
                   <div class="header_2 servers_header">
                     <ul class="tabs switcher">
                       <li class="tab_left">
-                        <a href="#sec=views&amp;serversTab=0">Production Views</a>
+                        <a href="#sec=views&amp;vtab=0">Production Views</a>
                       </li>
                       <li class="tab_right">
-                        <a href="#sec=views&amp;serversTab=1">Development Views</a>
-                        <span class="badge"><span>1</span></span>
+                        <a href="#sec=views&amp;vtab=1">Development Views</a>
                       </li>
                     </ul>
                     <div style="float:right">
@@ -800,32 +794,32 @@
               <tr><td colspan="10" style="padding:15px">No design documents currently defined. Click "Create View..." above to create one.</td></tr>
             </tbody>
             <!-- {% } else { %} -->
-            <!-- {% $.each(rows, function () { console.log(this); %} -->
-            <tbody data-name="{%= this.id %}" data-rev="{%= this.value.rev %}">
+            <!-- {% _.each(rows, function (ddoc) {  %} -->
+            <tbody>
               <tr>
                 <td class="design_doc_name">
-                  {%= h(this.id) %}
+                  {%= h(ddoc._id) %}
                 </td>
-                <td>{%= h(this.doc.language) %}</td>
+                <td>{%= h(ddoc.language || "javascript") %}</td>
                 <td>
                 </td>
                 <td>
-                  <a class="list_button btn_copy"><span>Copy...</span></a>
-                  <a class="list_button btn_delete"><span>Delete</span></a>
+                  <a class="list_button" href="#copyDDoc={%=h(ddoc._id)%}"><span>Copy...</span></a>
+                  <a class="list_button" href="#deleteDDoc={%=h(ddoc._id)%}"><span>Delete</span></a>
                 </td>
               </tr>
-              <!-- {% if (_.size(this.doc.views) < 1) { %} -->
+              <!-- {% if (_.size(ddoc.viewInfos) < 1) { %} -->
               <tr><td colspan="10" style="padding:15px">No views currently defined! Click "Create View..." above to create one.</td></tr>
               <!-- {% } else { %} -->
-              <!-- {% ddoc_id = this.id; _.each(this.doc.views, function (contents, view_name) { %} -->
+              <!-- {% _.each(ddoc.viewInfos, function (viewInfo) { %} -->
               <tr>
                 <td class="view_name" colspan="3">
-                  {%= h(view_name) %}
+                  {%= h(viewInfo.name) %}
                 </td>
                 <td>
-                  <a class="list_button btn_views" href="#sec=view_development&bucketName={%= bucketName %}&docId={%= ddoc_id %}&viewName={%= view_name %}">Query View</a>
-                  <a class="list_button btn_edit" href="#sec=view_development&bucketName={%= bucketName %}&docId={%= ddoc_id %}&viewName={%= view_name %}">Edit View</a>
-                  <a class="list_button btn_remove disabled"><span>Remove</span></a>
+                  <a class="list_button btn_views" href="{%=h(viewInfo.viewLink)%}">Query View</a>
+                  <a class="list_button btn_edit" href="{%=h(viewInfo.viewLink)%}">Edit View</a>
+                  <a class="list_button btn_remove" href="{%=h(viewInfo.removeLink)%}"><span>Remove</span></a>
                 </td>
               </tr>
               <!-- {% }); %} -->
@@ -835,13 +829,7 @@
             <!-- {% } %} -->
             </table>
             </script>
-          </div>
-
-          <div id="view_development" style="display:none">
-            <h1>View Development
-              &gt; <a href="#sec=buckets&buckets=default" class="bucket_name">default</a>
-              &gt; <span class="designdoc_name">??</span>
-              &gt; <span class="view_name">??</span></h1>
+            <div id="view_details" style="display:none;">
             <div class="shadow_box">
               <div class="content" id="sample_docs">
                 <div class="darker_block closed">
@@ -869,7 +857,7 @@
                         <label for="viewcode_map">Map</label>
                         <textarea wrap="off" spellcheck="false" cols="20" rows="11" class="map" id="viewcode_map"></textarea>
                       </td>
-                      <td class="splitter grippie" style="cursor: col-resize;"></td>
+                      <td class="splitter grippie"></td>
                       <td class="code reduce">
                         <label for="viewcode_reduce">Reduce (<span id="built_in_reducers">built in: <a>_count</a>, <a>_sum</a>, <a>_stats</a></span>)</label>
                         <textarea placeholder="(optional)" wrap="off" spellcheck="false" cols="20" rows="11" class="reduce" id="viewcode_reduce"></textarea>
@@ -879,9 +867,11 @@
                 </div>
               </div>
             </div>
-            <h1>Results <span id="view_query_string">?startkey=<em>["2011"]</em>&endkey=<em>["2011", {}]</em>&descending=<em>false</em>&group=<em>true</em></span></h1>
-            <div class="shadow_box">
-              <div id="view_results_container" class="content"></div>
+            <div id="view_results_block">
+              <h1>Results <span id="view_query_string"><!-- ?startkey=<em>["2011"]</em>&endkey=<em>["2011", {}]</em>&descending=<em>false</em>&group=<em>true</em> --></span></h1>
+              <div class="shadow_box">
+                <div id="view_results_container" class="content"></div>
+              </div>
             </div>
             <script id="view_results_template" type="text/html">
               <table class="list" style="width:100%">
@@ -898,8 +888,8 @@
               <tbody>
               <tr>
                 <td class="keycol">
-                  <div class="key">{%= JSON.stringify(this.key) %}</div>
-                  <div class="id">{%= this.id %}</div>
+                  <div class="key">{%= h(JSON.stringify(this.key)) %}</div>
+                  <div class="id">{%= h(this.id) %}</div>
                 </td>
                 <td>{%= $.futon.formatJSON(this.value, {html:true}) %}</td>
               </tr>
@@ -908,6 +898,14 @@
               <!-- {% } %} -->
               </table>
             </script>
+            </div>
+          </div>
+
+          <div id="view_development" style="display:none">
+            <h1>View Development
+              &gt; <a href="#sec=buckets&buckets=default" class="bucket_name">default</a>
+              &gt; <span class="designdoc_name">??</span>
+              &gt; <span class="view_name">??</span></h1>
           </div>
 
           <div id="coming" style="display:none">
@@ -927,7 +925,7 @@
     <!-- #container -->
 
 <!-- dialogs -->
-<div class="dialog bucket_details" id="bucket_details_dialog">
+<div class="dialog bucket_details really" id="bucket_details_dialog">
   <h1><span class="when-editing">Configure Bucket</span><span class="when-creating">Create Bucket</span></h1>
   <form><div class="clearfix">
     <h2>Bucket Settings</h2>
@@ -949,7 +947,7 @@
     <label class="for-proxy-port"><span>Protocol Port:</span><input name="proxyPort"><span class="error-container err-proxyPort"></span></label>
    </div>
     <h2>Memory Size</h2>
-    <div class="size-gauge for-ram memory">
+    <div class="size-gauge for-ram">
       <div class="t">Cluster quota (<span class="total">192 Gb</span>)</div>
       <div class="gauge">
         <div>
@@ -1173,7 +1171,7 @@
     <div class="content">
       <div class="pas_20">
         <div class="warning pat_20">
-          <strong>Warning</strong> &ndash; The views contained in this Design Document will no longer be accessible. Are you sure you want to remove this server?
+          <strong>Warning</strong> &ndash; The views contained in this Design Document will no longer be accessible. Are you sure you want to remove this Design Document?
         </div>
       </div>
       <div class="right save_cancel pas_20 footer_bg">
@@ -1188,11 +1186,11 @@
 <div class="dialog bucket_details" id="copy_designdoc_dialog" title="Copy Design Document" style="width:30em">
   <form>
   <div class="clearfix">
-     <label><input type="radio" name="prefix" value="_design/dev_" checked="checked" /> _design/dev_
-     <input name="name" value="??" class="designdoc_name" style="text-align:left;width:10.6em" /></label>
-     <label><input type="radio" name="prefix" value="_design/"/> _design/
-     <input name="name" value="??" class="designdoc_name" disabled="disabled" style="text-align:left;width:13em" /></label>
-     <p>NOTE: Development Mode (_design/dev_) provides the opportunity to edit and test
+     <label for="copy_ddoc_prefix_dev"><input type="radio" id="copy_ddoc_prefix_dev" name="prefix" value="_design/$dev_" checked="checked" /> _design/$dev_
+     <input name="ddoc_name" value="??" class="designdoc_name" style="text-align:left;width:10.6em" /></label>
+     <label for="copy_ddoc_prefix_prod"><input type="radio" id="copy_ddoc_prefix_prod" name="prefix" value="_design/"/> _design/
+     <input name="ddoc_name" value="??" class="designdoc_name" disabled="disabled" style="text-align:left;width:13em" /></label>
+     <p>NOTE: Development Mode (_design/$dev_) provides the opportunity to edit and test
      your map/reduce views against a subset of data&mdash;without overloading the cluster.</p>
   </div>
   <div class="save_cancel">
@@ -1203,10 +1201,11 @@
 <!-- END copy design doc -->
 <!-- copy view dialog -->
 <div class="dialog bucket_details" id="copy_view_dialog" title="Copy View" style="width:30em">
+  <span class="warning pat_10" style="display:none;"></span>
   <form>
   <div class="clearfix">
      <label>Design Doc Name:</label>
-     <label>_design/dev_<input name="designdoc_name" value="??" class="designdoc_name" style="text-align:left;width:13em" /></label>
+     <label>_design/$dev_<input name="designdoc_name" value="??" class="designdoc_name" style="text-align:left;width:13em" /></label>
      <label>View Name:<input name="view_name" value="??" class="view_name" /></label>
   </div>
   <div class="save_cancel">
