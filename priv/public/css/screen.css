@@ -406,8 +406,8 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 #overview .section .item .top-right {float:right;padding-bottom:13px;color:#444245;text-align:right;}
 #overview .section .item .top-left {float:left;margin-left:3px; padding-bottom:13px;color:#e43a1b;}
 
-.usage_biggest {float:left;position:relative;width:599px;height:31px;background:url(../images/usages.png) no-repeat;}
-.usage_biggest div {background:url(../images/usages.png) 0 0 no-repeat;position:absolute;top:0px;left:0px;height:31px;}
+.usage_biggest {float:left;position:relative;width:775px;height:31px;background:url(../images/usages.png) no-repeat;}
+.usage_biggest div {background:url(../images/usages_new.png) 0 0 no-repeat;position:absolute;top:0px;left:0px;height:31px;}
 .usage_biggest i {position:absolute;top:-8px;right:0;display:block;width:1px;height:47px;background-color:#e43a1b;font-size:0;line-height:0;}
 .usage_biggest + table  {clear:both;width:599px;}
 .usage_biggest + table td {padding:13px 0 0 3px;}
@@ -858,7 +858,7 @@ ul.tabs .badge_display .badge {display:block;}
 .list .settings-placeholder td .pad {padding:10px 0 10px 56px; background:none;}
 .list .settings-placeholder td > .pad {width:685px;overflow:hidden;}
 .list .settings-placeholder td .pad .pad {padding:10px 10px 10px 4px !important;min-height:52px;}
-.list .settings-placeholder .edit_btn {display:block; width:65px; height:21px; background:url(../images/edit-button.png) 0 0 no-repeat; float:right;}
+.list .settings-placeholder .edit_btn {float:right;display:block;width:65px;height:21px;color:#000;background:url(../images/edit-button.png) 0 0 no-repeat;}
 .list .keycol {max-width:300px}
 
 /* This is the auto-failover status on the server nodes screen */
@@ -1027,11 +1027,11 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 
 .bucket_details .memcached-summary {font-style:normal;line-height:24px;clear:both;}
 
-.bucket_details .size-gauge {float:right;width:364px;position:relative;top:-6px;line-height:24px;}
+.bucket_details .size-gauge {float:right;width:449px;position:relative;top:-6px;line-height:24px;}
 .bucket_details .size-gauge .top-left {float:left;color:#C19710;font-size:12px;}
 .bucket_details .size-gauge .top-right {float:right;font-size:12px;}
-.bucket_details .size-gauge .usage {clear:both;position:relative;height:15px;background:url(../images/usages.png) 0 -46px no-repeat;}
-.bucket_details .size-gauge .usage div {width:362px;height:15px;position:absolute;left:0px;top:0px;background:url(../images/usages.png) 0 -46px no-repeat;}
+.bucket_details .size-gauge .usage {clear:both;position:relative;height:15px;background:url(../images/usages_new.png) 0 -46px no-repeat;}
+.bucket_details .size-gauge .usage div {width:362px;height:15px;position:absolute;left:0px;top:0px;background:url(../images/usages_new.png) 0 -46px no-repeat;}
 .bucket_details .size-gauge table {width:100%;text-align:justify;line-height:1.3;}
 .bucket_details .size-gauge table td {padding:4px 0 0;text-align:right;font-size:10px;background:none;border:none;}
 .bucket_details .size-gauge .usage i {background:none;display:block;font-size:0;height:25px;line-height:0;position:absolute;;top:-5px;width:1px;}
