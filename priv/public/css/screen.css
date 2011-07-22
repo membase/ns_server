@@ -751,7 +751,7 @@ body.init_bucket_dialog #container { display: none; }
 .btn_views.disabled {opacity:0.75;background-position:left -31px}
 .btn_documents {background: url(../images/buttons.png) no-repeat -78px top;text-indent:-9000px;width:32px;height:31px;}
 .btn_documents.disabled {opacity:0.75;background-position:-78px -31px}
-.btn_analytics {background: url(../images/buttons.png) no-repeat right top;text-indent:-9000px;width:32px;height:31px;}
+.btn_analytics {width:32px;height:31px;margin:10px 0 0;background: url(../images/buttons.png) no-repeat right top;text-indent:-9000px;}
 .btn_analytics.disabled {opacity:0.75;background-position:right -31px}
 .btn_info {background: url(../images/buttons.png) no-repeat -117px top;text-indent:-9000px;width:32px;height:31px;}
 .btn_info.disabled {opacity:0.75;background-position:-117px -31px}
