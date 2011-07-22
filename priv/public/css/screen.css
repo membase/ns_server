@@ -249,8 +249,9 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 .usage_smallest_info {width:135px; font-size:11px; color:#8a8a8d; line-height:15px;}
 .usage_smallest_info .usage_smallest {float:left; margin:0 5px 0 0;}
 
-.vertical_bar {width:1em;height:3em;position:relative;background:white;border:1px solid #999;border-radius:2px;display:inline-block;vertical-align:middle;overflow:hidden;margin-right:5px}
+.vertical_bar {position:relative;float:left;display:inline-block;vertical-align:middle;overflow:hidden;width:1em;height:3em;background:white;border:1px solid #999;border-radius:2px;margin-right:5px}
 .vertical_bar .used{position:relative;background:#00BCE9;}
+.wrap {float:left;margin: 13px 0 0;}
 
 /* analytics graph */
 #analytics{width:780px;margin:auto}
@@ -814,20 +815,21 @@ ul.tabs .badge_display .badge {display:block;}
 #servers .gong_rb {margin-top:10px 0 10px; padding-left:3px;}
 
 .additional_server_info {display:block;overflow:hidden;}
-.additional_server_info h3 {font-size:14px; color:#444245; padding:5px 0 10px 0; border-bottom:1px solid #bbbdbf; font-weight:normal; margin:0 0 10px 0;}
+.additional_server_info h3 { margin:0 0 10px 0;padding:5px 0 10px 0;color:#5391BA;font-weight:bold;font-size:14px;border-bottom:1px solid #bbbdbf;}
 .additional_server_info .info_block {display:block; overflow:hidden;}
 .additional_server_info .info_block .path {display:block;width:185px;padding:2px 0 0 0; font-size:11px;word-wrap:break-word;line-height:1.25em}
 .additional_server_info .info_block.last {padding:10px 0 10px 0;}
 .additional_server_info .dynamic_ram {display:block; height:40px; padding:0 0 0 77px; background:url(../images/icons.png) -6px -190px no-repeat; float:left;}
 .total_ram {display:block; height:14px; text-align:right;}
 
-.additional_server_info .usage-block { width:420px; float:right; font-size:12px}
-.additional_server_info .usage-block .top-left { display:block; float:left; color:#e43a1b;}
-.additional_server_info .usage-block .top-right { display:block; float:right; }
-.additional_server_info .usage-block .usage { clear:both; width:420px; height:15px; position:relative; background:url(../images/usages.png) 0 -31px no-repeat; }
-.additional_server_info .usage-block .usage div { height:15px; position:absolute; left:0px; top:0px; background:url(../images/usages.png) 0 -31px no-repeat; }
+.additional_server_info .usage-block { width:670px; float:right; font-size:12px}
+.additional_server_info .usage-block .top-left {display:block;float:left;margin: 0 0 5px;color:#e43a1b;}
+.additional_server_info .usage-block .top-right { display:block; float:right;margin: 0 0 5px; }
+.additional_server_info .usage-block .usage { clear:both; width:670px; height:21px; position:relative; background:url(../images/usages_two.png) 0 0 no-repeat; }
+.additional_server_info .usage-block .usage div { height:21px; position:absolute; left:0px; top:0px; background:url(../images/usages_two.png) 0 0 no-repeat; }
+.additional_server_info .usage-block table {margin:5px 0 0}
 .additional_server_info .usage-block td {padding:3px 0 0 !important;float:none;}
-.additional_server_info .usage-block i {position:absolute;top:-4px;right:0;display:block;width:1px;height:24px;font-size:0;line-height:0;}
+.additional_server_info .usage-block i {position:absolute;top:-4px;right:0;display:block;width:1px;height:30px;font-size:0;line-height:0;}
 
 .solid_state, .disk_storage {float:left;width:190px;height:40px;padding:0 0 0 77px;background:url(../images/icons.png) -6px -289px no-repeat;}
  .disk_storage {background-position:-6px -390px;}
@@ -858,7 +860,7 @@ ul.tabs .badge_display .badge {display:block;}
 .list tr:first-child th.last {border-right:1px solid #d9dce0;}
 .list td.design_doc_name {font-weight:bolder; color: #808080; text-align:left;font-size:100%;}
 .list td.bucket_name, .list td.view_name, .list td.node_name {font-weight:bolder;color:#0095D6;text-align:left;font-size:130%}
-.list td.node_name {font-size:120%;}
+.list td.node_name {width:239px;font-size:120%;}
 .list td.view_name{padding-left:3em;color:#616062}
 .list .settings-placeholder {display:none; padding:9px 12px 8px 13px;border-top:2px solid #ced5d9;background:#e6e7e8;text-align:left}
 .list .settings-placeholder td .pad {padding:10px 0 10px 56px; background:none;}
@@ -900,6 +902,7 @@ ul.tabs .badge_display .badge {display:block;}
 .list .highlight td {background-color:#eee !important;}
 .properties_table {width:462px;}
 .properties_table tr td {text-align:left !important; vertical-align:top !important; color:#444245;background:none !important; border:0px !important;height:auto;line-height:1em}
+.gong_rb .pad .properties_table td span {color: #7C7D7F;}
 .list table.label {float:left;margin:2px 0 0;}
 .list table.label td:first-child {width:175px;color:#444245; text-align:right;}
 
@@ -967,6 +970,7 @@ div.panes div.pane {display:none;}
 
 html>/**/body #servers .list_button, x:-moz-any-link, x:default {position:relative;} /* Only FireFox 3 */
 html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none !important;}
+.actions .marg {margin:0 13px 0}
 
 .clearfix:after {clear:both;content:' ';display:block;font-size:0;height:0;line-height:0;visibility:hidden;width:0;}
 * html .clearfix, *+html .clearfix {zoom: 1;}
@@ -1033,11 +1037,11 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 
 .bucket_details .memcached-summary {font-style:normal;line-height:24px;clear:both;}
 
-.bucket_details .size-gauge {float:right;width:449px;position:relative;top:-6px;line-height:24px;}
+.bucket_details .size-gauge {float:right;width:600px;position:relative;top:-6px;line-height:24px;}
 .bucket_details .size-gauge .top-left {float:left;color:#C19710;font-size:12px;}
 .bucket_details .size-gauge .top-right {float:right;font-size:12px;}
-.bucket_details .size-gauge .usage {clear:both;position:relative;height:15px;background:url(../images/usages_new.png) 0 -46px no-repeat;}
-.bucket_details .size-gauge .usage div {width:362px;height:15px;position:absolute;left:0px;top:0px;background:url(../images/usages_new.png) 0 -46px no-repeat;}
+.bucket_details .size-gauge .usage {clear:both;position:relative;height:21px;background:url(../images/usages_third.png) 0 -46px no-repeat;}
+.bucket_details .size-gauge .usage div {width:600px;height:21px;position:absolute;left:0px;top:0px;background:url(../images/usages_third.png) 0 0 no-repeat;}
 .bucket_details .size-gauge table {width:100%;text-align:justify;line-height:1.3;}
 .bucket_details .size-gauge table td {padding:4px 0 0;text-align:right;font-size:10px;background:none;border:none;}
 .bucket_details .size-gauge .usage i {background:none;display:block;font-size:0;height:25px;line-height:0;position:absolute;;top:-5px;width:1px;}
@@ -1068,6 +1072,7 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 
 /* extra element is needed to increase 'specifity' of this selector */
 span.staleness-notice, .staleness-notice { display: none; color: red; }
+span.staleness-notice + a {margin:0 13px 0}
 #buckets .staleness-notice { font-size: 12px; float: right; line-height: 32px;}
 #buckets .buckets_action_bar { height: 32px; }
 #overview .staleness-notice { font-size: 12px; float: right; }
@@ -1111,6 +1116,7 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
 #view_development .stats{padding:0;border-bottom:none}
 #view_development .list th, #view_development .list td {text-align:left}
 #view_development .list td{border-right:1px solid #CED5D9}
+
 .list .key {font-size:130%;font-weight:bold}
 .list .id {font-size:110%;margin-top:0.5em;color:#999}
 

@@ -243,14 +243,14 @@
                   <div class="vertical_bar">
                     <div class="used" style="height:{%= (s.memoryTotal - s.memoryFree) / s.memoryTotal * 100 %}%;top:{%= 105 - ((s.memoryTotal - s.memoryFree) / s.memoryTotal * 100) %}%"></div>
                   </div>
-                  {%= h(truncateTo3Digits((s.memoryTotal - s.memoryFree) / s.memoryTotal * 100)) %}%
+                  <div class="wrap">{%= h(truncateTo3Digits((s.memoryTotal - s.memoryFree) / s.memoryTotal * 100)) %}%</div>
                 </td>
                 <td>
                   <!-- {% if (s.systemStats.swap_total > 0) { %} -->
                   <div class="vertical_bar">
                     <div class="used" style="height:{%= s.systemStats.swap_used / s.systemStats.swap_total * 100 %}%;top:{%= 105 - (s.systemStats.swap_used / s.systemStats.swap_total * 100) %}%"></div>
                   </div>
-                  {%= h(truncateTo3Digits(((s.systemStats.swap_used / s.systemStats.swap_total) || 0) * 100)) %}%
+                  <div class="wrap"> {%= h(truncateTo3Digits(((s.systemStats.swap_used / s.systemStats.swap_total) || 0) * 100)) %}%</div>
                   <!-- {% } else { %} -->
                   <span>N/A</span>
                   <!-- {% } %} -->
@@ -260,7 +260,7 @@
                   <div class="vertical_bar">
                     <div class="used" style="height:{%= Math.floor(s.systemStats.cpu_utilization_rate * 100) / 100 %}%;top:{%= 105 - (Math.floor(s.systemStats.cpu_utilization_rate * 100) / 100) %}%"></div>
                   </div>
-                  {%= h(truncateTo3Digits(Math.floor(s.systemStats.cpu_utilization_rate * 100) / 100)) %}%
+                  <div class="wrap">{%= h(truncateTo3Digits(Math.floor(s.systemStats.cpu_utilization_rate * 100) / 100)) %}%</div>
                 </td>
 
                 <td>
@@ -268,7 +268,7 @@
                   {%= V.formatQuantity(s.interestingStats.vb_replica_curr_items || 0, '', 1000, ' ') %}
                 </td>
                 <td class="actions">
-                  <a class="list_button eject_server"><span>Remove</span></a>
+                  <a class="list_button eject_server marg"><span>Remove</span></a>
                   <a class="list_button failover_server"><span>Fail Over</span></a>
                   <span class="failed_over_message">Failed Over: Pending Removal</span>
                   <a class="list_button btn_info{% if (!expandingAllowed) { %} disabled"{% } else { %}" href="#openServer={%= h(s.otpNode) %}"{% } %}>Info</a>
