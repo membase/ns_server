@@ -762,7 +762,7 @@
                         <a href="#sec=views&amp;vtab=1">Development Views</a>
                       </li>
                     </ul>
-                    <div style="float:right">
+                    <div class="create_view">
                       <a class="btn_1 btn_create"><span>Create View...</span></a>
                       <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
                     </div>
@@ -785,7 +785,7 @@
               <tr>
                 <th>Name</th>
                 <th>Language</th>
-                <th>Disk Size</th>
+                <th><div class="none">Disk Size</div></th>
                 <th class="last"></th>
               </tr>
             </thead>
@@ -800,7 +800,7 @@
                 <td class="design_doc_name">
                   {%= h(ddoc._id) %}
                 </td>
-                <td>{%= h(ddoc.language || "javascript") %}</td>
+                <td class="langv">{%= h(ddoc.language || "javascript") %}</td>
                 <td>
                 </td>
                 <td>
@@ -831,9 +831,9 @@
             </script>
             <div id="view_details" style="display:none;">
             <div class="shadow_box">
-              <div class="content" id="sample_docs">
+              <div class="content sampl_doc" id="sample_docs">
                 <div class="darker_block closed">
-                  <h3 class="block-expander"><ins></ins>Sample Documents
+                  <h3 class="block-expander"><ins></ins><span class="view_head">Sample Documents</span>
                     <span class="buttons">
                       <a class="btn_1" id="preview_random_doc"><span>Preview a Random Document</span></a>
                     </span>
@@ -845,7 +845,7 @@
             <div class="shadow_box" id="viewcode">
               <div class="content">
                 <div class="darker_block">
-                  <h3 class="block-expander"><ins></ins>View Code
+                  <h3 class="block-expander"><ins></ins><span class="view_head">View Code</span>
                     <span class="buttons">
                       <a id="save_view_as" class="btn_1"><span>Save As...</span></a>
                       <a id="save_and_run_view" class="btn_1"><span>Save & Run</span></a>
@@ -1187,10 +1187,10 @@
   <form>
   <div class="clearfix">
      <label for="copy_ddoc_prefix_dev"><input type="radio" id="copy_ddoc_prefix_dev" name="prefix" value="_design/$dev_" checked="checked" /> _design/$dev_
-     <input name="ddoc_name" value="??" class="designdoc_name" style="text-align:left;width:10.6em" /></label>
-     <label for="copy_ddoc_prefix_prod"><input type="radio" id="copy_ddoc_prefix_prod" name="prefix" value="_design/"/> _design/
-     <input name="ddoc_name" value="??" class="designdoc_name" disabled="disabled" style="text-align:left;width:13em" /></label>
-     <p>NOTE: Development Mode (_design/$dev_) provides the opportunity to edit and test
+      <input name="ddoc_name" value="??" class="designdoc_name"  /></label>
+     <label for="copy_ddoc_prefix_prod"><input type="radio" id="copy_ddoc_prefix_prod" name="prefix" value="_design/"/ > _design/
+     <span class="inp_right"><input name="ddoc_name" value="??" class="designdoc_name" disabled="disabled" style="text-align:left;width:13em" /></span></label></td></tr>
+     <p><strong>NOTE:</strong> Development Mode (_design/$dev_) provides the opportunity to edit and test
      your map/reduce views against a subset of data&mdash;without overloading the cluster.</p>
   </div>
   <div class="save_cancel">
@@ -1205,8 +1205,8 @@
   <form>
   <div class="clearfix">
      <label>Design Doc Name:</label>
-     <label>_design/$dev_<input name="designdoc_name" value="??" class="designdoc_name" style="text-align:left;width:13em" /></label>
-     <label>View Name:<input name="view_name" value="??" class="view_name" /></label>
+     <label>_design/$dev_<input name="designdoc_name" value="??" class="designdoc_name designdoc_name_v" /></label>
+     <label>View Name:<input name="view_name" value="??" class="view_name fl_inp" /></label>
   </div>
   <div class="save_cancel">
     <button class="save_button float_right" type="submit">Save</button>

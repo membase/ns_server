@@ -43,6 +43,7 @@ body {height:100%;color:#616062;font-family:Helvetica, Verdana;line-height:1;bac
 
 /* universal styles */
 .nobr {white-space:nowrap;}
+.none {display:none}
 .tdn {text-decoration:none;}
 .tdn * {text-decoration:none;}
 .block {display:block !important;}
@@ -265,11 +266,11 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 .graph_info_label {padding:3px; font-size:11px;position:absolute;top:-6px;left:30px;}
 .darker_block {position:relative;*zoom:1;}
 .darker_block.withtotal {background:url(../images/bg_total.gif) 100% 0 repeat-y;}
-.darker_block h3 {cursor:pointer;background:#EEEEEF;padding:5px 10px;font-size:14px;text-transform:uppercase;*zoom:1;}
+.darker_block h3 {overflow:hidden;cursor:pointer;background:#EEEEEF;padding:5px 10px;font-size:14px;text-transform:uppercase;*zoom:1;}
 .darker_block h3 ins {float:left;width:0;height:0;margin:2px 0.75em 0 0;border-style:solid;border-width:10px 10px 0 10px;border-color:#01b0ff transparent transparent transparent;cursor:pointer;}
 .darker_block h3:hover ins{border-top-color:#339ACA;}
 
-.darker_block .stats{padding:6px 0 6px 5px;border-bottom:5px solid #EEEEEF}
+.darker_block .stats{padding:6px;border-bottom:5px solid #EEEEEF}
 
 .darker_block ul.col_headers {overflow:hidden;margin-right:5px;color:#999;font-weight:bold;padding-top:3px}
 .darker_block ul.col_headers li{width:25%;display:block;float:left;text-align:center;text-transform:uppercase}
@@ -379,7 +380,15 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 /* shadow block */
 .shadow_box {margin:0 0 20px;}/* width:780px;}*/
 .shadow_box .content {position:relative;background:none #eeeeef;-moz-box-shadow:0 0 5px #ccc;-webkit-box-shadow:0 0 5px #ccc;box-shadow:0 0 5px #ccc;margin:0 9px;}
-.shadow_box .content  .views_list {padding:10px}
+.shadow_box .content .views_list {padding:10px}
+.shadow_box .content .views_list .langv {text-align:left}
+.views .buttons {float:right;margin:2px 10px 0 0}
+.views .darker_block.closed h3 ins {top:17px}
+.views .darker_block h3 ins {position:absolute;top:16px;left:10px}
+.views .darker_block h3 {position:relative}
+.views .view_head {float:left;padding:12px 0 0 31px}
+.clearfix .fl_inp {float:right;margin:0 0 0 10px;text-align:left}
+.bucket_details .clearfix .designdoc_name.designdoc_name_v {float:right;width:11em;text-align:left;}
 .shadow_box .section {border:0px;}
 .shadow_box pre {white-space:normal; display:block; overflow:auto; padding:5px 10px;line-height: 1.6em;white-space: pre-wrap;background:#F6F6F7;border:1px solid #CCC;border-top:1px solid #999}
 .shadow_box .darker_block {background-color:#d4d4d5;}
@@ -799,6 +808,7 @@ ul.tabs .tab_right .badge {display:none;}
 ul.tabs .badge_display .badge {display:block;}
 
 .servers_header {padding:11px 10px 5px 11px;}
+.create_view {float:right;margin:0 10px 0 0}
 
 .server_usage {display:block; width:183px; height:16px; float:right; background:url(../images/usage_small_2.gif) 0 -16px no-repeat; position:relative; top:-8px;}
 .server_usage span {display:block; width:183px; height:16px; overflow:hidden; position:absolute; left:0px; top:0px; background:url(../images/usage_small_2.gif) 0 0 no-repeat; width:30%;}
@@ -995,7 +1005,10 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details h1 {background:#dfdfe0;padding-left:20px;padding-top:16px;padding-bottom:16px;border-bottom:1px solid #BDBEC2;}
  .init_block .bucket_details h1 {background:none;border:none;}
 .bucket_details form {border-top:1px solid #dfdfe0;}
-.bucket_details .clearfix {padding:0 56px 48px;border-bottom:1px solid #cccfd2;border-top:1px solid #f8f8f8;}
+.bucket_details .clearfix {padding:0 56px 29px;border-bottom:1px solid #cccfd2;border-top:1px solid #f8f8f8;}
+.bucket_details .clearfix p {margin:17px 0 0;line-height:1.4}
+.bucket_details .clearfix .inp_right {float:right} 
+.bucket_details .clearfix .designdoc_name {width:10.6em;text-align:left}
 .bucket_details .save_cancel{margin-top:0}
  .init_block .bucket_details form > div {border-bottom:none;}
  .init_block .bucket_details .config-bottom {padding:18px 18px 17px;border:none;}
@@ -1138,9 +1151,7 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
   border: 1px solid; border-color: #ddd #ddd #e9e9e9 #ddd; color: #333;
   padding: 0 .5em 2px;
 }
-#viewcode table { border: none; border-collapse: separate; border-spacing: 0;
-  margin: 0; table-layout: fixed; width: 100%; max-width: 100%;
-}
+#viewcode table { border: none; border-collapse: separate; border-spacing: 0;margin: 0; table-layout: fixed; width: 99.5%; max-width: 100%;}
 #viewcode table td { border: none; padding: 0; }
 #viewcode table td.splitter { background: #e9e9e9; width: 4px; }
 #viewcode table td.map, #viewcode table td.reduce { border: 1px solid #ccc;border-top:1px solid #AAA}
