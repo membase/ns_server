@@ -532,7 +532,7 @@ var StatsModel = {};
 
     var op = stats.op;
     if (!op) {
-      throw new Error("BUG");
+      BUG();
     }
 
     if (!op.samples[selected.name]) {
