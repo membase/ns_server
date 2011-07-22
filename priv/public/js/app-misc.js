@@ -484,25 +484,25 @@ function genericDialog(options) {
   dialog.attr('id', _.uniqueId('generic_dialog_'));
   dialog.html(dialogTemplate.html());
 
-  dialogTemplate = null;
-
   function brIfy(text) {
     return _.map(text.split("\n"), escapeHTML).join("<br>");
   }
 
-  function button_callback(e) {
-    e.preventDefault();
-    options.callback.call(this, e, name, instance);
+  function mkButtonCallback(name) {
+    return function (e) {
+      e.preventDefault();
+      options.callback.call(this, e, name, instance);
+    }
   }
 
   dialog.find('.dialog-text').html(options.textHTML || brIfy(text));
 
   var b = [];
   if (options.buttons.ok) {
-    b.push({text: "OK", click: button_callback, 'class':'save'});
+    b.push({text: "OK", click: mkButtonCallback('ok'), 'class':'save'});
   }
   if (options.buttons.cancel) {
-    b.push({text: "Cancel", click: button_callback, 'class':'cancel'});
+    b.push({text: "Cancel", click: mkButtonCallback('cancel'), 'class':'cancel'});
   }
   options.buttons = b;
 
