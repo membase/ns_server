@@ -53,7 +53,7 @@ body {height:100%;color:#616062;font-family:Helvetica, Verdana;line-height:1;bac
 .clear {display:block; height:0px; overflow:hidden; clear:both;}
 .pad_10 {padding: 10px 24px 10px 10px;}
 .pat_10 {padding:10px 0;}
-.pat_20 {padding:20px 0;}
+.pat_20 {padding:20px 0;line-height:1.4}
 .pas_10 {padding:0 10px;}
 .pas_20 {padding-left:20px !important; padding-right:20px !important;}
 .pab_10 {padding-bottom:10px;}
@@ -851,6 +851,7 @@ ul.tabs .badge_display .badge {display:block;}
 .list td > table td:first-child+td+td+td {width:125px;}
 
 .list tr:first-child th, .list tr:first-child td label {padding:10px 5px;color:#4d4d4d;font-weight:bold;font-size:11px;text-align:center;background:none #f6f6f7; border-right:0px; border-bottom:1px solid #fff;}
+.list tr:first-child th {padding: 10px 5px 10px 8px;text-align:left}
 .list tr:first-child th:first-child {/*padding:0 0 0 56px;*padding-right:25px;display:block;*/text-align:left;white-space:nowrap;}
 .list tr:first-child th i {font-style:normal;position:relative;}
 .list tr:first-child th.bucket_name, .list tr:first-child th.bucket_name {padding:10px;text-align:left}
@@ -859,7 +860,7 @@ ul.tabs .badge_display .badge {display:block;}
 .list td.bucket_name, .list td.view_name, .list td.node_name {font-weight:bolder;color:#0095D6;text-align:left;font-size:130%}
 .list td.node_name {font-size:120%;}
 .list td.view_name{padding-left:3em;color:#616062}
-.list .settings-placeholder {display:none; padding:9px 12px 8px 90px;border-top:2px solid #ced5d9;background:#e6e7e8;text-align:left}
+.list .settings-placeholder {display:none; padding:9px 12px 8px 13px;border-top:2px solid #ced5d9;background:#e6e7e8;text-align:left}
 .list .settings-placeholder td .pad {padding:10px 0 10px 56px; background:none;}
 .list .settings-placeholder td > .pad {width:685px;overflow:hidden;}
 .list .settings-placeholder td .pad .pad {padding:10px 10px 10px 4px !important;min-height:52px;}
@@ -1075,7 +1076,7 @@ span.staleness-notice, .staleness-notice { display: none; color: red; }
 
 .warning_down_backfill, .warning_up_backfill, .warning_down_no_backfill, .warning_down_backfill { display: none; }
 .warning_down_backfill label, .warning_up_backfill label { display: block; margin-top: 15px; }
-.warning_down_backfill label input, .warning_up_backfill label input { margin-right: 3px; }
+.warning_down_backfill label input, .warning_up_backfill label input { float: left;margin: 3px 3px 0 0;}
 
 .darker_block.server_resources { display: none; }
 .with_server_resources .darker_block.server_resources { display: block; }
