@@ -1778,6 +1778,13 @@ Cell.subscribeMultipleValues = function (body/*, cells... */) {
   });
 }
 
+// invoke body when all cell values are stable. I.e. there's no pending recomputations
+Cell.waitQuiescence = function (body) {
+  Cell.compute(function () {return this}).getValue(function () {
+    body();
+  });
+}
+
 
 function ensureElementId(jq) {
   jq.each(function () {
