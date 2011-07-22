@@ -551,4 +551,13 @@ var DAL = {
       options.url = "/couchBase/" + options.url.slice(capiBaseLen);
     }
   });
+
+  DAL.subscribeWhenSection = function (cell, section, body) {
+    var intermediary = Cell.compute(function (v) {
+      if (v.need(DAL.cells.mode) !== section)
+        return;
+      return v(cell);
+    });
+    return intermediary.subscribeValue(body);
+  };
 })();
