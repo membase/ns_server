@@ -1129,6 +1129,7 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
 
 #views .list .empty {padding:15px}
 #views.in-production .when-in-dev, #views.in-development .when-in-prod {display:none}
+#views .stats {padding:0;border:none}
 #production_views_list_container .btn_edit, #production_views_list_container .btn_remove, #production_views_list_container .btn_publish, #production_views_list_container .create_view_button{display:none}
 #development_views_list_container .btn_views {display:none}
 
@@ -1152,7 +1153,7 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
   border: 1px solid; border-color: #ddd #ddd #e9e9e9 #ddd; color: #333;
   padding: 0 .5em 2px;
 }
-#viewcode table { border: none; border-collapse: separate; border-spacing: 0;margin: 0; table-layout: fixed; width: 99.5%; max-width: 100%;}
+#viewcode table { border: none; border-collapse: separate; border-spacing: 0;margin: 0; table-layout: fixed; width: 100%;}
 #viewcode table td { border: none; padding: 0; }
 #viewcode table td.splitter { background: #e9e9e9; width: 4px; }
 #viewcode table td.map, #viewcode table td.reduce { border: 1px solid #ccc;border-top:1px solid #AAA}
