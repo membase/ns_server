@@ -150,6 +150,7 @@ var ViewsSection = {
                                  ["production", "development"]);
     self.modeTabs.subscribeValue(function (tab) {
       views[tab == 'development' ? 'addClass' : 'removeClass']('in-development');
+      views[tab == 'development' ? 'removeClass' : 'addClass']('in-production');
     });
 
     self.rawViewsBucketCell = new StringHashFragmentCell("viewsBucket");
