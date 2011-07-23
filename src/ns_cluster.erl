@@ -400,7 +400,14 @@ check_can_add_node(NodeKVList) ->
     JoineeClusterCompatVersion = expect_json_property_integer(<<"clusterCompatibility">>, NodeKVList),
     MyCompatVersion = misc:expect_prop_value(cluster_compatibility_version, dict:fetch(node(), ns_doctor:get_nodes())),
     case JoineeClusterCompatVersion =:= MyCompatVersion of
-        true -> ok;
+        true -> case expect_json_property_binary(<<"version">>, NodeKVList) of
+                    <<"1.6.", _/binary>> ->
+                        {error, incompatible_cluster_version,
+                         <<"Joining 1.6.x node to this cluster does not work">>,
+                         incompatible_cluster_version};
+                    _ ->
+                        ok
+                end;
         false -> {error, incompatible_cluster_version,
                   ns_error_messages:incompatible_cluster_version_error(MyCompatVersion,
                                                                        JoineeClusterCompatVersion,
@@ -473,13 +480,24 @@ do_engage_cluster(NodeKVList) ->
                 {error, system_not_joinable,
                  <<"Node is already part of cluster.">>, system_not_joinable};
             true ->
-                do_engage_cluster_inner(NodeKVList)
+                do_engage_cluster_check_16x(NodeKVList)
         end
     catch
         exit:{unexpected_json, _, _} = Exc ->
             {error_logger, unexpected_json,
              ns_error_messages:engage_cluster_json_error(Exc),
              Exc}
+    end.
+
+do_engage_cluster_check_16x(NodeKVList) ->
+    Version = expect_json_property_binary(<<"version">>, NodeKVList),
+    case Version of
+        <<"1.6.", _/binary>> ->
+                {error, incompatible_cluster_version,
+                 <<"Joining 1.6 cluster does not work">>,
+                 incompatible_cluster_version};
+        _ ->
+            do_engage_cluster_inner(NodeKVList)
     end.
 
 
