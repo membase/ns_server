@@ -296,7 +296,6 @@ var ViewsSection = {
         applyWidget: function () {},
         unapplyWidget: function () {},
         buildOptions: function (q, selected, list) {
-          q.append("<option value=''>Nothing</option>");
           _.each(list, function (group) {
             var option = $(group);
             q.append(option);
@@ -320,7 +319,7 @@ var ViewsSection = {
     }).name("currentView");
 
     currentView.subscribeValue(function (view) {
-      console.log("currentView", view);
+      $('#views .when-inside-view')[view ? 'show' : 'hide']();
       if (view === undefined) {
         return;
       }
