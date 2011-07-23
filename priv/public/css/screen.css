@@ -380,7 +380,6 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 /* shadow block */
 .shadow_box {margin:0 0 20px;}/* width:780px;}*/
 .shadow_box .content {position:relative;background:none #eeeeef;-moz-box-shadow:0 0 5px #ccc;-webkit-box-shadow:0 0 5px #ccc;box-shadow:0 0 5px #ccc;margin:0 9px;}
-.shadow_box .content .views_list {padding:10px}
 .shadow_box .content .views_list .langv {text-align:left}
 .views .buttons {float:right;margin:2px 10px 0 0}
 .views .darker_block.closed h3 ins {top:17px}
@@ -1128,6 +1127,9 @@ body.init_update_notifications #init_update_notifications_dialog p.pad_10 {color
 body.staleness-active a.disable-if-stale { text-decoration: none; }
 body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: default; }
 
+#views .list .empty {padding:15px}
+#views .when-in-dev, #views.in-development .when-in-prod {display:none}
+#views.in-development .when-in-dev {display:block}
 #production_views_list_container .btn_edit, #production_views_list_container .btn_remove, #production_views_list_container .btn_publish, #production_views_list_container .create_view_button{display:none}
 #development_views_list_container .btn_views {display:none}
 
