@@ -530,22 +530,21 @@ var ViewsSection = {
       var allDDocs = v.need(ViewsSection.allDDocsCell);
       var ddoc = _.detect(allDDocs, function (d) {return d._id == id});
       if (!ddoc) {
-        return null;
+        return [];
       }
-      return [buildDocURL(v.need(ViewsSection.dbURLCell), ddoc._id), ddoc];
+      var dbURL = v.need(ViewsSection.dbURLCell);
+      return [buildDocURL(dbURL, ddoc._id), ddoc, dbURL];
     });
-    cell.getValue(function (pair) {
-      if (!pair) {
+    cell.getValue(function (args) {
+      if (!args[0]) {
         console.log("ddoc with id:", id, " not found");
       }
-      pair = pair || [];
-      var ddocURL = pair[0];
-      var ddoc = pair[1];
-      body(ddoc, ddocURL);
+      args = args || [];
+      body.apply(null, args);
     });
   },
   startDDocDelete: function (id) {
-    this.withDDoc(id, function (ddoc, ddocURL) {
+    this.withDDoc(id, function (ddocURL, ddoc) {
       if (!ddocURL) // no such doc
         return;
 
@@ -570,11 +569,9 @@ var ViewsSection = {
     return id.replace(/^_design\/(\$dev_|)/, "");
   },
   startDDocCopy: function (id) {
-    this.withDDoc(id, function (ddoc, ddocURL) {
+    this.withDDoc(id, function (ddocURL, ddoc, dbURL) {
       if (!ddocURL)
         return;
-
-      var dbURL = ddocURL.replace(/\/_design.[^\/]+$/, "/");
 
       var dialog = $('#copy_designdoc_dialog');
       var form = dialog.find("form");
@@ -918,7 +915,7 @@ var ViewsSection = {
   },
   doShowView: function (bucketName, ddocId, viewName) {
     var self = this;
-    self.withBucketAndDDoc(bucketName, ddocId, function (ddoc, ddocURL) {
+    self.withBucketAndDDoc(bucketName, ddocId, function (ddocURL, ddoc) {
       if (!ddoc) {
         return;
       }
@@ -932,6 +929,40 @@ var ViewsSection = {
       });
     });
   },
+  startPublish: function (id) {
+    var self = this;
+    self.withDDoc(id, function (ddocURL, ddoc, dbURL) {
+      if (!ddocURL) {
+        return;
+      }
+      genericDialog({header: 'Confirm publishing',
+                     text: 'Publishing copies development design document into ' +
+                     'production design document with same name overwriting the later. Please, confirm',
+                     callback: function (e, name, instance) {
+                       if (name != 'ok') {
+                         instance.close();
+                         return;
+                       }
+                       publish(instance);
+                     }});
+      return;
+
+      function publish(dialogInstance) {
+        var name = self.cutOffDesignPrefix(ddoc._id);
+        var newId = "_design/" + name;
+        var modal = new ModalAction();
+        var spinner = overlayWithSpinner(dialogInstance.dialog);
+        self.doSaveAs(dbURL, ddoc, newId, true, function (arg) {
+          if (arg != 'ok') BUG();
+          spinner.remove();
+          modal.finish();
+          dialogInstance.close();
+          self.allDDocsCell.recalculate();
+          self.modeTabs.setValue('production');
+        });
+      }
+    });
+  },
   onEnter: function () {
   },
   navClick: function () {
@@ -942,3 +973,4 @@ configureActionHashParam("deleteDDoc", $m(ViewsSection, "startDDocDelete"));
 configureActionHashParam("copyDDoc", $m(ViewsSection, "startDDocCopy"));
 configureActionHashParam("showView", $m(ViewsSection, "showView"));
 configureActionHashParam("removeView", $m(ViewsSection, "startRemoveView"));
+configureActionHashParam("publishDDoc", $m(ViewsSection, "startPublish"));
