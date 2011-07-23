@@ -270,7 +270,7 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 .darker_block h3 ins {float:left;width:0;height:0;margin:2px 0.75em 0 0;border-style:solid;border-width:10px 10px 0 10px;border-color:#01b0ff transparent transparent transparent;cursor:pointer;}
 .darker_block h3:hover ins{border-top-color:#339ACA;}
 
-.darker_block .stats{padding:6px;border-bottom:5px solid #EEEEEF}
+.darker_block .stats{padding:6px 0 6px 5px;border-bottom:5px solid #EEEEEF}
 
 .darker_block ul.col_headers {overflow:hidden;margin-right:5px;color:#999;font-weight:bold;padding-top:3px}
 .darker_block ul.col_headers li{width:25%;display:block;float:left;text-align:center;text-transform:uppercase}
