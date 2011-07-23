@@ -883,23 +883,17 @@
                 <th class="keycol">Key</th>
                 <th>Value</th>
               </tr>
-              <!-- {% if (!rows.length) { %} -->
-              <tbody>
-                <tr><td colspan="2" style="padding:15px">No results returned for this view.</td></tr>
-              </tbody>
-              <!-- {% } else { %} -->
-              <!-- {% $.each(rows, function () { %} -->
+              <!-- {% _.each(rows, function (r) { %} -->
               <tbody>
               <tr>
                 <td class="keycol">
-                  <div class="key">{%= h(JSON.stringify(this.key)) %}</div>
-                  <div class="id">{%= h(this.id) %}</div>
+                  <div class="key">{%= h(JSON.stringify(r.key)) %}</div>
+                  <div class="id">{%= h(r.id) %}</div>
                 </td>
-                <td>{%= $.futon.formatJSON(this.value, {html:true}) %}</td>
+                <td>{%= $.futon.formatJSON(r.value, {html:true}) %}</td>
               </tr>
               </tbody>
               <!-- {% }); %} -->
-              <!-- {% } %} -->
               </table>
             </script>
             </div>
