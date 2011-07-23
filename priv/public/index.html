@@ -1169,7 +1169,7 @@
 </div>
 <!-- END Leave cluster -->
 <!--  delete designdoc confirmation dialog -->
-<div class="dialog" id="delete_designdoc_confirmation_dialog" title="Delete Design Doc">
+<div class="dialog" id="delete_designdoc_confirmation_dialog" title="Delete Design Document">
   <div class="lbox type_2">
     <div class="content">
       <div class="pas_20">
@@ -1189,10 +1189,12 @@
 <div class="dialog bucket_details" id="copy_designdoc_dialog" title="Copy Design Document" style="width:30em">
   <form>
   <div class="clearfix">
-     <label for="copy_ddoc_prefix_dev"><input type="radio" id="copy_ddoc_prefix_dev" name="prefix" value="_design/$dev_" checked="checked" /> _design/$dev_
-      <input name="ddoc_name" value="??" class="designdoc_name"  /></label>
-     <label for="copy_ddoc_prefix_prod"><input type="radio" id="copy_ddoc_prefix_prod" name="prefix" value="_design/"/ > _design/
-     <span class="inp_right"><input name="ddoc_name" value="??" class="designdoc_name" disabled="disabled" style="text-align:left;width:13em" /></span></label></td></tr>
+    <label for="copy_ddoc_prefix_dev">Development Mode:</label>
+    <label for="copy_ddoc_prefix_dev"><input type="radio" id="copy_ddoc_prefix_dev" name="prefix" value="_design/$dev_" checked="checked" />
+      _design/$dev_<input name="ddoc_name" value="??" class="designdoc_name"  /></label>
+    <label for="copy_ddoc_prefix_prod">Production Mode:</label>
+    <label for="copy_ddoc_prefix_prod"><input type="radio" id="copy_ddoc_prefix_prod" name="prefix" value="_design/"/ >
+      _design/<span class="inp_right"><input name="ddoc_name" value="??" class="designdoc_name" disabled="disabled" style="text-align:left;width:13em" /></span></label>
      <p><strong>NOTE:</strong> Development Mode (_design/$dev_) provides the opportunity to edit and test
      your map/reduce views against a subset of data&mdash;without overloading the cluster.</p>
   </div>
@@ -1206,9 +1208,9 @@
 <div class="dialog bucket_details" id="copy_view_dialog" title="Copy View" style="width:30em">
   <span class="warning pat_10" style="display:none;"></span>
   <form>
-  <div class="clearfix">
-     <label>Design Doc Name:</label>
-     <label>_design/$dev_<input name="designdoc_name" value="??" class="designdoc_name designdoc_name_v" /></label>
+  <div class="clearfix" style="padding-top:15px">
+     <label>Design Document Name:</label>
+     <label style="text-align:right">_design/$dev_<input name="designdoc_name" value="??" class="designdoc_name designdoc_name_v" /></label>
      <label>View Name:<input name="view_name" value="??" class="view_name fl_inp" /></label>
   </div>
   <div class="save_cancel">
