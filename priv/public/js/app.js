@@ -256,10 +256,6 @@ var ThePage = {
       $('#mainPanel > div:not(.notice)').css('display', 'none');
       $('#'+secId).css('display','block');
 
-      // Allow reuse of same section DOM for different contexts, via CSS.
-      // For example, secId might be 'buckets' and sec might by 'monitor_buckets'.
-      $('#'+secId)[0].className = sec;
-
       _.defer(function () {
         if (oldSection && oldSection.onLeave)
           oldSection.onLeave();

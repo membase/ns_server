@@ -381,11 +381,11 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 .shadow_box {margin:0 0 20px;}/* width:780px;}*/
 .shadow_box .content {position:relative;background:none #eeeeef;-moz-box-shadow:0 0 5px #ccc;-webkit-box-shadow:0 0 5px #ccc;box-shadow:0 0 5px #ccc;margin:0 9px;}
 .shadow_box .content .views_list .langv {text-align:left}
-.views .buttons {float:right;margin:2px 10px 0 0}
-.views .darker_block.closed h3 ins {top:17px}
-.views .darker_block h3 ins {position:absolute;top:16px;left:10px}
-.views .darker_block h3 {position:relative}
-.views .view_head {float:left;padding:12px 0 0 31px}
+#views .buttons {float:right;margin:2px 10px 0 0}
+#views .darker_block.closed h3 ins {top:17px}
+#views .darker_block h3 ins {position:absolute;top:16px;left:10px}
+#views .darker_block h3 {position:relative}
+#views .view_head {float:left;padding:12px 0 0 31px}
 .clearfix .fl_inp {float:right;margin:0 0 0 10px;text-align:left}
 .bucket_details .clearfix .designdoc_name.designdoc_name_v {float:right;width:11em;text-align:left;}
 .shadow_box .section {border:0px;}
