@@ -338,6 +338,11 @@ var ViewsSection = {
       return !!ddoc._id.match(/^_design\/\$dev_/);
     }).name("editingDevView");
 
+    editingDevView.subscribeValue(function (devView) {
+      $('#save_view_as, #save_and_run_view')[devView ? "show" : "hide"]();
+      $('#viewcode_map, #viewcode_reduce').prop('disabled', !devView);
+    });
+
     var proposedViewResultsURLCell = Cell.compute(function (v) {
       if (!v(self.currentView)) {
         return;
