@@ -965,7 +965,11 @@ var ViewsSection = {
   },
   onEnter: function () {
   },
-  navClick: function () {
+  onLeave: function () {
+    this.rawDDocIdCell.setValue(undefined);
+    this.pageNumberCell.setValue(undefined);
+    this.rawViewNameCell.setValue(undefined);
+    this.modeTabs.setValue(undefined);
   }
 };
 
