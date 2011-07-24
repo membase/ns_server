@@ -143,8 +143,7 @@ do_cookie_sync() ->
     case Result of
         {ok, Cookie} ->
             do_cookie_save(Cookie),
-            Result;
-        X -> X
+            Result
     end.
 
 %% Saves cookie in human readable format.
