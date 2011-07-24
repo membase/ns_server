@@ -42,7 +42,8 @@
           status::atom(),
           start_time::tuple(),
           bucket::nonempty_string(),
-          sock::port()
+          sock::port(),
+          type::atom()
          }).
 
 %% external API
@@ -61,7 +62,7 @@
          list_vbuckets_prevstate/2,
          list_vbuckets_multi/2,
          set_vbucket/3, set_vbucket/4,
-         server/1,
+         server/2,
          stats/1, stats/2, stats/3,
          topkeys/1,
          raw_stats/5,
@@ -88,24 +89,36 @@ start_link(Bucket) ->
 %% gen_server callback implementation
 %%
 
-init(Bucket) ->
+init({Bucket, Type}) ->
 
-    {ok, Timer} = timer:send_interval(?CHECK_WARMUP_INTERVAL, check_started),
     Sock = connect(),
-    ensure_bucket(Sock, Bucket),
-    register(server(Bucket), self()),
+
+    Timer = case Type of
+        stats ->
+            {ok, Tmp} = timer:send_interval(?CHECK_WARMUP_INTERVAL, check_started),
+            ensure_bucket(Sock, Bucket),
+            Tmp;
+        _ ->
+            ok = mc_client_binary:select_bucket(Sock, Bucket)
+    end,
+
+    register(server(Bucket, Type), self()),
 
     % this trap_exit is necessary for terminate callback to work
     process_flag(trap_exit, true),
 
-    gen_event:notify(buckets_events, {started, Bucket}),
+    case Type of
+        stats -> gen_event:notify(buckets_events, {started, Bucket});
+        _ -> ok
+    end,
 
     {ok, #state{
        timer=Timer,
        status=init,
        start_time=now(),
        sock=Sock,
-       bucket=Bucket}
+       bucket=Bucket,
+       type=Type}
     }.
 
 handle_call({raw_stats, SubStat, StatsFun, StatsFunState}, _From, State) ->
@@ -267,9 +280,13 @@ handle_info(Msg, State) ->
     {noreply, State}.
 
 
-terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
+terminate(_Reason, #state{bucket=Bucket, sock=Sock, type=data}) ->
+    unregister(server(Bucket, data)),
+    ok = gen_tcp:close(Sock);
+
+terminate(Reason, #state{bucket=Bucket, sock=Sock, type=stats}) ->
     %% Unregister so nothing else tries to talk to us
-    unregister(server(Bucket)),
+    unregister(server(Bucket, stats)),
     Deleting = try ns_bucket:get_bucket(Bucket) of
                    not_present -> true;
                    {ok, _} -> false
@@ -324,11 +341,16 @@ code_change(_OldVsn, State, _Extra) ->
 -spec active_buckets() -> [bucket_name()].
 active_buckets() ->
     [Bucket || ?MODULE_STRING "-" ++ Bucket <-
-                   [atom_to_list(Name) || Name <- registered()]].
+        [atom_to_list(Name) || Name <- registered()], not is_data(Bucket)].
+
+is_data("$data-" ++ _Name) ->
+    true;
+is_data(_) ->
+    false.
 
 -spec connected(node(), bucket_name(), integer() | infinity) -> boolean().
 connected(Node, Bucket, Timeout) ->
-    Address = {server(Bucket), Node},
+    Address = {server(Bucket, stats), Node},
     try
         gen_server:call(Address, connected, Timeout)
     catch
@@ -346,7 +368,8 @@ ready_nodes(Nodes, Bucket, Type, default) ->
 ready_nodes(Nodes, Bucket, Type, Timeout) ->
     UpNodes = ordsets:intersection(ordsets:from_list(Nodes),
                                    ordsets:from_list([node() | nodes()])),
-    {Replies, _BadNodes} = gen_server:multi_call(UpNodes, server(Bucket), connected, Timeout),
+    {Replies, _BadNodes} = gen_server:multi_call(UpNodes, server(Bucket, stats),
+                                                 connected, Timeout),
     case Type of
         up ->
             [N || {N, _} <- Replies];
@@ -365,37 +388,44 @@ connected_buckets(Timeout) ->
 %% @doc Send flush command to specified bucket
 -spec flush(bucket_name()) -> ok.
 flush(Bucket) ->
-    gen_server:call({server(Bucket), node()}, flush, ?TIMEOUT).
+    gen_server:call({server(Bucket, stats), node()}, flush, ?TIMEOUT).
 
 
 %% @doc send an add command to memcached instance
--spec add(bucket_name(), binary(), integer(), binary()) -> {ok, #mc_header{}, #mc_entry{}, any()}.
+-spec add(bucket_name(), binary(), integer(), binary()) ->
+    {ok, #mc_header{}, #mc_entry{}, any()}.
 add(Bucket, Key, VBucket, Value) ->
-    gen_server:call({server(Bucket), node()}, {add, Key, VBucket, Value}, ?TIMEOUT).
+    gen_server:call({server(Bucket, data), node()},
+                    {add, Key, VBucket, Value}, ?TIMEOUT).
 
 
 %% @doc send an add command to memcached instance
--spec get(bucket_name(), binary(), integer()) -> {ok, #mc_header{}, #mc_entry{}, any()}.
+-spec get(bucket_name(), binary(), integer()) ->
+    {ok, #mc_header{}, #mc_entry{}, any()}.
 get(Bucket, Key, VBucket) ->
-    gen_server:call({server(Bucket), node()}, {get, Key, VBucket}, ?TIMEOUT).
+    gen_server:call({server(Bucket, data), node()}, {get, Key, VBucket}, ?TIMEOUT).
 
 
 %% @doc send a set command to memcached instance
--spec delete(bucket_name(), binary(), integer()) -> {ok, #mc_header{}, #mc_entry{}, any()}.
+-spec delete(bucket_name(), binary(), integer()) ->
+    {ok, #mc_header{}, #mc_entry{}, any()}.
 delete(Bucket, Key, VBucket) ->
-    gen_server:call({server(Bucket), node()}, {delete, Key, VBucket}, ?TIMEOUT).
+    gen_server:call({server(Bucket, data), node()}, {delete, Key, VBucket}, ?TIMEOUT).
 
 
 %% @doc send a set command to memcached instance
--spec set(bucket_name(), binary(), integer(), binary()) -> {ok, #mc_header{}, #mc_entry{}, any()}.
+-spec set(bucket_name(), binary(), integer(), binary()) ->
+    {ok, #mc_header{}, #mc_entry{}, any()}.
 set(Bucket, Key, VBucket, Value) ->
-    gen_server:call({server(Bucket), node()}, {set, Key, VBucket, Value}, ?TIMEOUT).
+    gen_server:call({server(Bucket, data), node()},
+                    {set, Key, VBucket, Value}, ?TIMEOUT).
 
 
 %% @doc send a sync command to memcached instance
--spec sync(bucket_name(), binary(), integer(), integer()) -> {ok, #mc_header{}, #mc_entry{}, any()}.
+-spec sync(bucket_name(), binary(), integer(), integer()) ->
+    {ok, #mc_header{}, #mc_entry{}, any()}.
 sync(Bucket, Key, VBucket, CAS) ->
-    gen_server:call({server(Bucket), node()},
+    gen_server:call({server(Bucket, data), node()},
                     {sync, Key, VBucket, CAS}, ?TIMEOUT * 2).
 
 
@@ -410,27 +440,27 @@ backfilling(Bucket) ->
 -spec backfilling(node(), bucket_name()) ->
                          boolean().
 backfilling(Node, Bucket) ->
-    gen_server:call({server(Bucket), Node}, backfilling, ?TIMEOUT).
+    gen_server:call({server(Bucket, stats), Node}, backfilling, ?TIMEOUT).
 
 %% @doc Delete a vbucket. Will set the vbucket to dead state if it
 %% isn't already, blocking until it successfully does so.
 -spec delete_vbucket(bucket_name(), vbucket_id()) ->
                             ok | mc_error().
 delete_vbucket(Bucket, VBucket) ->
-    gen_server:call(server(Bucket), {delete_vbucket, VBucket}, ?TIMEOUT).
+    gen_server:call(server(Bucket, stats), {delete_vbucket, VBucket}, ?TIMEOUT).
 
 
 -spec delete_vbucket(node(), bucket_name(), vbucket_id()) ->
                             ok | mc_error().
 delete_vbucket(Node, Bucket, VBucket) ->
-    gen_server:call({server(Bucket), Node}, {delete_vbucket, VBucket},
+    gen_server:call({server(Bucket, stats), Node}, {delete_vbucket, VBucket},
                     ?TIMEOUT).
 
 
 -spec get_vbucket(node(), bucket_name(), vbucket_id()) ->
                          {ok, vbucket_state()} | mc_error().
 get_vbucket(Node, Bucket, VBucket) ->
-    gen_server:call({server(Bucket), Node}, {get_vbucket, VBucket}, ?TIMEOUT).
+    gen_server:call({server(Bucket, stats), Node}, {get_vbucket, VBucket}, ?TIMEOUT).
 
 
 -spec host_port(node()) ->
@@ -457,12 +487,12 @@ list_vbuckets(Bucket) ->
 -spec list_vbuckets(node(), bucket_name()) ->
     {ok, [{vbucket_id(), vbucket_state()}]} | mc_error().
 list_vbuckets(Node, Bucket) ->
-    gen_server:call({server(Bucket), Node}, list_vbuckets, ?TIMEOUT).
+    gen_server:call({server(Bucket, stats), Node}, list_vbuckets, ?TIMEOUT).
 
 -spec list_vbuckets_prevstate(node(), bucket_name()) ->
     {ok, [{vbucket_id(), vbucket_state()}]} | mc_error().
 list_vbuckets_prevstate(Node, Bucket) ->
-    gen_server:call({server(Bucket), Node}, list_vbuckets_prevstate, ?TIMEOUT).
+    gen_server:call({server(Bucket, stats), Node}, list_vbuckets_prevstate, ?TIMEOUT).
 
 
 -spec list_vbuckets_multi([node()], bucket_name()) ->
@@ -476,7 +506,7 @@ list_vbuckets_multi(Nodes, Bucket) ->
                                        lists:member(Node, UpNodes)
                                end, Nodes),
     {Replies, Zombies} =
-        gen_server:multi_call(LiveNodes, server(Bucket), list_vbuckets,
+        gen_server:multi_call(LiveNodes, server(Bucket, stats), list_vbuckets,
                               ?TIMEOUT),
     {Replies, Zombies ++ DeadNodes}.
 
@@ -484,13 +514,13 @@ list_vbuckets_multi(Nodes, Bucket) ->
 -spec set_vbucket(bucket_name(), vbucket_id(), vbucket_state()) ->
                          ok | mc_error().
 set_vbucket(Bucket, VBucket, VBState) ->
-    gen_server:call(server(Bucket), {set_vbucket, VBucket, VBState}, ?TIMEOUT).
+    gen_server:call(server(Bucket, stats), {set_vbucket, VBucket, VBState}, ?TIMEOUT).
 
 
 -spec set_vbucket(node(), bucket_name(), vbucket_id(), vbucket_state()) ->
                          ok | mc_error().
 set_vbucket(Node, Bucket, VBucket, VBState) ->
-    gen_server:call({server(Bucket), Node}, {set_vbucket, VBucket, VBState},
+    gen_server:call({server(Bucket, stats), Node}, {set_vbucket, VBucket, VBState},
                     ?TIMEOUT).
 
 
@@ -503,28 +533,28 @@ stats(Bucket) ->
 -spec stats(bucket_name(), binary() | string()) ->
                    {ok, [{binary(), binary()}]} | mc_error().
 stats(Bucket, Key) ->
-    gen_server:call(server(Bucket), {stats, Key}, ?TIMEOUT).
+    gen_server:call(server(Bucket, stats), {stats, Key}, ?TIMEOUT).
 
 
 -spec stats(node(), bucket_name(), binary()) ->
                    {ok, [{binary(), binary()}]} | mc_error().
 stats(Node, Bucket, Key) ->
-    gen_server:call({server(Bucket), Node}, {stats, Key}, ?TIMEOUT).
+    gen_server:call({server(Bucket, stats), Node}, {stats, Key}, ?TIMEOUT).
 
 sync_bucket_config(Bucket) ->
-    gen_server:call(server(Bucket), sync_bucket_config, ?TIMEOUT).
+    gen_server:call(server(Bucket, stats), sync_bucket_config, ?TIMEOUT).
 
 
 -spec topkeys(bucket_name()) ->
                      {ok, [{nonempty_string(), [{atom(), integer()}]}]} |
                      mc_error().
 topkeys(Bucket) ->
-    gen_server:call(server(Bucket), topkeys, ?TIMEOUT).
+    gen_server:call(server(Bucket, stats), topkeys, ?TIMEOUT).
 
 
 -spec raw_stats(node(), bucket_name(), binary(), fun(), any()) -> {ok, any()} | {exception, any()} | {error, any()}.
 raw_stats(Node, Bucket, SubStats, Fn, FnState) ->
-    gen_server:call({ns_memcached:server(Bucket), Node},
+    gen_server:call({ns_memcached:server(Bucket, stats), Node},
                     {raw_stats, SubStats, Fn, FnState}).
 
 
@@ -632,7 +662,9 @@ ensure_bucket_config(Sock, _Bucket, memcached, _MaxSize) ->
     ok.
 
 
-server(Bucket) ->
+server(Bucket, data) ->
+    list_to_atom(?MODULE_STRING ++ "-$data-" ++ Bucket);
+server(Bucket, stats) ->
     list_to_atom(?MODULE_STRING ++ "-" ++ Bucket).
 
 has_started(Sock) ->

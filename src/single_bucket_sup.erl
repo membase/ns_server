@@ -34,7 +34,12 @@ top_loop(ParentPid, Pid, BucketName) ->
     end.
 
 child_specs(BucketName) ->
-    [{{ns_memcached, BucketName}, {ns_memcached, start_link, [BucketName]},
+    [{{ns_memcached, stats, BucketName}, {ns_memcached, start_link,
+                                          [{BucketName, stats}]},
+      % ns_memcached waits for the bucket to sync to disk before exiting
+      permanent, 86400000, worker, [ns_memcached]},
+     {{ns_memcached, data, BucketName}, {ns_memcached, start_link,
+                                         [{BucketName, data}]},
       % ns_memcached waits for the bucket to sync to disk before exiting
       permanent, 86400000, worker, [ns_memcached]},
      {{ns_vbm_sup, BucketName}, {ns_vbm_sup, start_link, [BucketName]},
