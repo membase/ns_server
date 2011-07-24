@@ -369,31 +369,31 @@ flush(Bucket) ->
 
 
 %% @doc send an add command to memcached instance
--spec add(bucket_name(), binary(), integer(), binary()) -> ok.
+-spec add(bucket_name(), binary(), integer(), binary()) -> {ok, #mc_header{}, #mc_entry{}, any()}.
 add(Bucket, Key, VBucket, Value) ->
     gen_server:call({server(Bucket), node()}, {add, Key, VBucket, Value}, ?TIMEOUT).
 
 
 %% @doc send an add command to memcached instance
--spec get(bucket_name(), binary(), integer()) -> ok.
+-spec get(bucket_name(), binary(), integer()) -> {ok, #mc_header{}, #mc_entry{}, any()}.
 get(Bucket, Key, VBucket) ->
     gen_server:call({server(Bucket), node()}, {get, Key, VBucket}, ?TIMEOUT).
 
 
 %% @doc send a set command to memcached instance
--spec delete(bucket_name(), binary(), integer()) -> ok.
+-spec delete(bucket_name(), binary(), integer()) -> {ok, #mc_header{}, #mc_entry{}, any()}.
 delete(Bucket, Key, VBucket) ->
     gen_server:call({server(Bucket), node()}, {delete, Key, VBucket}, ?TIMEOUT).
 
 
 %% @doc send a set command to memcached instance
--spec set(bucket_name(), binary(), integer(), binary()) -> ok.
+-spec set(bucket_name(), binary(), integer(), binary()) -> {ok, #mc_header{}, #mc_entry{}, any()}.
 set(Bucket, Key, VBucket, Value) ->
     gen_server:call({server(Bucket), node()}, {set, Key, VBucket, Value}, ?TIMEOUT).
 
 
 %% @doc send a sync command to memcached instance
--spec sync(bucket_name(), binary(), integer(), integer()) -> ok.
+-spec sync(bucket_name(), binary(), integer(), integer()) -> {ok, #mc_header{}, #mc_entry{}, any()}.
 sync(Bucket, Key, VBucket, CAS) ->
     gen_server:call({server(Bucket), node()},
                     {sync, Key, VBucket, CAS}, ?TIMEOUT * 2).

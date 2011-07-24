@@ -148,13 +148,13 @@ set_doc(Name, DocId, VBucket, Json) ->
 
 
 %% read the current revision of a document
--spec get_doc_rev(#db{}, #user_ctx{}, binary(), list()) ->
+-spec get_doc_rev(binary(), #user_ctx{}, binary(), list()) ->
     {integer(), binary()}.
-get_doc_rev(Db, UserCtx, DocId, Options) ->
+get_doc_rev(DbName, UserCtx, DocId, Options) ->
     open_db( fun(VDb) ->
         {ok, Doc} = couch_db:open_doc(VDb, DocId, Options),
         get_latest_rev(Doc)
-    end, Db, UserCtx).
+    end, DbName, UserCtx).
 
 
 -spec get_latest_rev(#doc{}) -> {integer(), binary()}.
