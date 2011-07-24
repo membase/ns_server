@@ -48,14 +48,29 @@ handle_view_req(#httpd{method='POST',
 handle_view_req(Req, _Db, _DDoc) ->
     couch_httpd:send_method_not_allowed(Req, "GET,POST,HEAD").
 
+all_docs_db_req(#httpd{method='GET'} = Req,
+                #db{filepath = undefined} = Db) ->
+    case {couch_httpd:qs_json_value(Req, "startkey", nil),
+          couch_httpd:qs_json_value(Req, "endkey", nil)} of
+        {<<"_design/">>, <<"_design0">>} ->
+            capi_frontend:with_subdb(Db, <<"master">>,
+                                     fun (RealDb) ->
+                                             couch_httpd_db:db_req(Req, RealDb)
+                                     end);
+        _ ->
+            do_capi_all_docs_db_req(Req, Db)
+    end;
 
-all_docs_db_req(Req, #db{filepath = undefined} = Db) ->
-    MergeParams = view_merge_params(Req, Db, nil, <<"_all_docs">>),
-    couch_view_merger:query_view(Req, MergeParams);
+all_docs_db_req(#httpd{method='POST'} = Req,
+                #db{filepath = undefined} = Db) ->
+    do_capi_all_docs_db_req(Req, Db);
 
 all_docs_db_req(Req, Db) ->
     couch_httpd_db:db_req(Req, Db).
 
+do_capi_all_docs_db_req(Req, #db{filepath = undefined} = Db) ->
+    MergeParams = view_merge_params(Req, Db, nil, <<"_all_docs">>),
+    couch_view_merger:query_view(Req, MergeParams).
 
 node_vbuckets_dict(BucketName) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(BucketName),
