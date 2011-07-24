@@ -679,7 +679,7 @@ var ViewsSection = {
                });
     }
   },
-  startCreateView: function () {
+  startCreateView: function (ddocId) {
     var dbURL = ViewsSection.dbURLCell.value;
     if (!dbURL) {
       return;
@@ -687,13 +687,17 @@ var ViewsSection = {
     var dialog = $('#copy_view_dialog');
     var warning = dialog.find('.warning').hide();
     dialog.find('input.designdoc_name, input.view_name').val('');
+    var ddocNameInput = dialog.find('[name=designdoc_name]').need(1);
+    ddocNameInput.prop('disabled', !!ddocId);
+    if (ddocId) {
+      ddocNameInput.val(this.cutOffDesignPrefix(ddocId));
+    }
     showDialog(dialog, {
       title: 'Create View',
       closeOnEscape: false,
       eventBindings: [['.save_button', 'click', function (e) {
         e.preventDefault();
-        var params = $.deparam(serializeForm(dialog.find('form')));
-        startSaving(params['designdoc_name'], params['view_name']);
+        startSaving(ddocNameInput.val(), dialog.find('[name=view_name]').val());
       }]]
     });
 
@@ -715,6 +719,7 @@ var ViewsSection = {
         modal.finish();
         spinner.remove();
         if (closeDialog) {
+          ddocNameInput.prop('disabled', false);
           hideDialog(dialog);
           ViewsSection.allDDocsCell.recalculate();
           ViewsSection.modeTabs.setValue("development");
@@ -985,3 +990,4 @@ configureActionHashParam("copyDDoc", $m(ViewsSection, "startDDocCopy"));
 configureActionHashParam("showView", $m(ViewsSection, "showView"));
 configureActionHashParam("removeView", $m(ViewsSection, "startRemoveView"));
 configureActionHashParam("publishDDoc", $m(ViewsSection, "startPublish"));
+configureActionHashParam("addView", $m(ViewsSection, "startCreateView"));
