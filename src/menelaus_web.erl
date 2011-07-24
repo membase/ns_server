@@ -486,7 +486,6 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
                           _ -> <<"none">>
                       end,
 
-    Uri = bin_concat_path(["pools", Id, "controller", "testWorkload"]),
     Alerts = menelaus_web_alerts_srv:fetch_alerts(),
 
     Controllers = {struct, [
@@ -494,8 +493,7 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
         {rebalance, {struct, [{uri, <<"/controller/rebalance">>}]}},
         {failOver, {struct, [{uri, <<"/controller/failOver">>}]}},
         {reAddNode, {struct, [{uri, <<"/controller/reAddNode">>}]}},
-        {ejectNode, {struct, [{uri, <<"/controller/ejectNode">>}]}},
-        {testWorkload, {struct, [{uri, Uri}]}}]},
+        {ejectNode, {struct, [{uri, <<"/controller/ejectNode">>}]}}]},
 
     PropList0 = [{name, list_to_binary(Id)},
                  {alerts, Alerts},
