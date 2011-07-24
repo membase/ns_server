@@ -19,8 +19,6 @@
 
 -include("couch_db.hrl").
 
--compile(export_all).
-
 not_implemented(Arg, Rest) ->
     {not_implemented, Arg, Rest}.
 
@@ -282,3 +280,23 @@ is_couchbase_db(<<"_replicator">>) ->
     false;
 is_couchbase_db(Name) ->
     nomatch =:= re:run(Name, <<"/">>).
+
+%% Grab the first vbucket we can find on this server
+-spec first_vbucket(binary()) -> non_neg_integer().
+first_vbucket(Bucket) ->
+    {ok, Config} = ns_bucket:get_bucket(?b2l(Bucket)),
+    Map = proplists:get_value(map, Config, []),
+    {ok, Index} = index_of([node()], Map),
+    Index.
+
+
+-spec index_of(any(), list()) -> {ok, non_neg_integer()} | {error, not_found}.
+index_of(Item, List) ->
+    index_of(Item, List, 1).
+
+index_of(_, [], _)  ->
+    {error, not_found};
+index_of(Item, [Item|_], Index) ->
+    {ok, Index};
+index_of(Item, [_|Tl], Index) ->
+    index_of(Item, Tl, Index+1).

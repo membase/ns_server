@@ -18,9 +18,12 @@
 -include("couch_db.hrl").
 -include("couch_view_merger.hrl").
 -include("ns_common.hrl").
+-include("ns_stats.hrl").
 
 -export([handle_view_req/3]).
 -export([all_docs_db_req/2]).
+
+-define(DEV_MULTIPLE, 20).
 
 -import(couch_util, [
     get_value/2,
@@ -37,8 +40,26 @@ handle_view_req(Req, Db, DDoc) when Db#db.filepath =/= undefined ->
     couch_httpd_view:handle_view_req(Req, Db, DDoc);
 
 handle_view_req(#httpd{method='GET',
-        path_parts=[_, _, DName, _, ViewName]}=Req, Db, _DDoc) ->
-    design_doc_view(Req, Db, DName, ViewName);
+        path_parts=[_, _, DName, _, ViewName]}=Req, #db{name=Name} = Db, DDoc) ->
+    case DName of
+        <<"$dev_", _/binary>> ->
+            {ok, [Stats|_]} = stats_reader:latest(minute, node(), ?b2l(Name), 1),
+            {ok, Config} = ns_bucket:get_bucket(?b2l(Name)),
+
+            NumVBuckets = proplists:get_value(num_vbuckets, Config, []),
+
+            case orddict:find(curr_items_tot, Stats#stat_entry.values) of
+                {ok, N} when N > NumVBuckets * ?DEV_MULTIPLE ->
+                    VBucket = capi_frontend:first_vbucket(Name),
+                    capi_frontend:with_subdb(Db, VBucket, fun(RealDb) ->
+                        couch_httpd_view:handle_view_req(Req, RealDb, DDoc)
+                    end);
+                _ ->
+                    design_doc_view(Req, Db, DName, ViewName)
+            end;
+        _ ->
+            design_doc_view(Req, Db, DName, ViewName)
+    end;
 
 handle_view_req(#httpd{method='POST',
         path_parts=[_, _, DName, _, ViewName]}=Req, Db, _DDoc) ->
