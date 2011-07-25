@@ -79,7 +79,7 @@ init(Bucket) ->
       end,
       empty),
 
-    Self ! update,
+    Self ! start_replication,
 
     erlang:process_flag(trap_exit, true),
     {ok, #state{bucket=Bucket, master=MasterVBucket}}.
@@ -102,12 +102,17 @@ handle_info(update, State) ->
 handle_info(full_vbucket_update, State) ->
     {noreply, full_vbucket_update(State)};
 
+handle_info(start_replication, State) ->
+    {noreply, start_replication(State)};
+
 handle_info(_Info, State) ->
     {noreply, State}.
 
-terminate(Reason, _State) when Reason =:= normal orelse Reason =:= shutdown ->
+terminate(Reason, State) when Reason =:= normal orelse Reason =:= shutdown ->
+    stop_replication(State),
     ok;
-terminate(Reason, _State) ->
+terminate(Reason, State) ->
+    stop_replication(State),
     %% Sometimes starting replication fails because of vbucket
     %% databases creation race or (potentially) because of remote node
     %% unavailability. When this process repeatedly fails our
@@ -129,10 +134,7 @@ full_vbucket_update(#state{vbuckets=VBuckets,
 
     State.
 
-
-update(#state{vbuckets=VBuckets, servers=Servers,
-              bucket=Bucket, master=Master} = State) ->
-
+get_all_vbuckets(Bucket) ->
     {ok, Conf} = ns_bucket:get_bucket(Bucket),
     Self = node(),
 
@@ -149,13 +151,40 @@ update(#state{vbuckets=VBuckets, servers=Servers,
 
     {_, NVBucketsAll} = lists:foldl(Fun, {0, []}, Map),
 
+    lists:sort(NVBucketsAll).
+
+get_all_servers(Bucket) ->
+    {ok, Conf} = ns_bucket:get_bucket(Bucket),
+    Self = node(),
+
+    proplists:get_value(servers, Conf) -- [Self].
+
+start_replication(#state{bucket=Bucket, master=Master} = State) ->
+    VBuckets = get_all_vbuckets(Bucket),
+    Servers  = get_all_servers(Bucket),
+
+    [start_server_replication(Master, Bucket, Srv) || Srv <- Servers],
+    [start_vbucket_replication(Master, Bucket, VBucket) || VBucket <- VBuckets],
+
+    State#state{vbuckets=VBuckets, servers=Servers}.
+
+stop_replication(#state{bucket=Bucket, master=Master,
+                        vbuckets=VBuckets, servers=Servers} = State) ->
+    [stop_server_replication(Master, Bucket, Srv) || Srv <- Servers],
+    [stop_vbucket_replication(Master, Bucket, VBucket) || VBucket <- VBuckets],
+
+    State#state{vbuckets=[], servers=[]}.
+
+update(#state{vbuckets=VBuckets, servers=Servers,
+              bucket=Bucket, master=Master} = State) ->
+    NVBucketsAll = get_all_vbuckets(Bucket),
+
     {ok, VBucketStates} = ns_memcached:list_vbuckets(Bucket),
     PresentVBuckets = lists:sort(proplists:get_keys(VBucketStates)),
 
-    NVBucketsPresent = ordsets:intersection(lists:sort(NVBucketsAll),
-                                            PresentVBuckets),
+    NVBucketsPresent = ordsets:intersection(NVBucketsAll, PresentVBuckets),
 
-    NServers = proplists:get_value(servers, Conf) -- [Self],
+    NServers = get_all_servers(Bucket),
 
     {ToStartVBuckets0, ToStopVBuckets} = difference(VBuckets, NVBucketsAll),
     {ToStartServers, ToStopServers} = difference(Servers, NServers),
@@ -169,7 +198,6 @@ update(#state{vbuckets=VBuckets, servers=Servers,
     [start_vbucket_replication(Master, Bucket, Srv) || Srv <- ToStartVBuckets],
 
     State#state{vbuckets=NVBucketsPresent, servers=NServers}.
-
 
 build_replication_struct(Source, Target) ->
     {ok, Replication} =
