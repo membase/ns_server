@@ -951,6 +951,7 @@ var MockedRequest = mkClass({
                                              "port", "username", "password")],
       [post("settings", "stats"), method("doNothingPOST")],
       [get("couchBase", x, "_all_docs"), function () {return ServerStateMock.handleAllDocs(this);}],
+      [get("couchBase", x, "_design", x, "_view", x), function () {return ServerStateMock.handleAllDocs(this);}],
       [get("couchBase", x, "_any_doc"), function () {return ServerStateMock.handleAnyDoc(this);}]
     ];
 
