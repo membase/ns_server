@@ -203,7 +203,7 @@
               {%= V.stripPortHTML(s.hostname, rows) %}
               </td>
               <td colspan="4">
-              
+
               </td>
               <td>
               <a href="#" class="list_button btn_cancel eject_server marg"><span>Cancel</span></a>
@@ -273,7 +273,7 @@
                   <a class="list_button eject_server marg"><span>Remove</span></a>
                   <a class="list_button failover_server"><span>Fail Over</span></a>
                   <span class="failed_over_message">Failed Over: Pending Removal</span>
-                  <a class="list_button btn_info{% if (!expandingAllowed) { %} disabled"{% } else { %}" href="#openServer={%= h(s.otpNode) %}"{% } %}>Info</a>
+                  <a class="list_button btn_info{% if (!expandingAllowed) { %} disabled"{% } else { %}" href="#openServer={%= h(s.otpNode) %}"{% } %}>Info</a> <!--"-->
                 </td>
               </tr>
             <!-- {% } %} -->
