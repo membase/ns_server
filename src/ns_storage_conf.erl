@@ -25,8 +25,9 @@
 -export([memory_quota/1, change_memory_quota/2, prepare_setup_disk_storage_conf/2,
          storage_conf/1, add_storage/4, remove_storage/2,
          local_bucket_disk_usage/1,
-         delete_all_db_files/1, delete_db_files/1,
          dbdir/1, dbdir/2,
+         delete_databases/1,
+         delete_all_databases/0, delete_all_databases/1,
          logdir/1, logdir/2,
          bucket_dir/3]).
 
@@ -317,31 +318,38 @@ extract_disk_stats_for_path(StatsList, Path0) ->
     SortedList = lists:sort(LessEqFn, StatsList),
     extract_disk_stats_for_path_rec(SortedList, Path).
 
-db_files_dir(DBDir, Bucket) ->
-    filename:join(DBDir, Bucket ++ "-data").
+bucket_databases(Bucket) ->
+    {ok, AllDBs} = couch_server:all_databases(),
+    bucket_databases(Bucket, AllDBs).
 
-db_files(Dir, Bucket) ->
-    BucketSubDir = db_files_dir(Dir, Bucket),
-    S = fun (X) -> [X, X ++ "-shm", X ++ "-wal"] end,
-    [filename:join(BucketSubDir, lists:append(Bucket, Suffix))
-       || Suffix <- lists:flatmap(S, ["", "-0.mb", "-1.mb", "-2.mb", "-3.mb"])].
+bucket_databases(Bucket, AllDBs) ->
+    BinBucket = list_to_binary(Bucket ++ "/"),
+    N = byte_size(BinBucket),
+    Pred = fun (Db) ->
+                   try
+                       Prefix = binary:part(Db, {0, N}),
+                       Prefix =:= BinBucket
+                   catch
+                       _E:_R ->
+                           false
+                   end
+           end,
+    lists:filter(Pred, AllDBs).
 
-delete_all_db_files(DBDir) ->
-    lists:foreach(fun (F) ->
-                          delete_bucket_db_directory(filename:join(DBDir, F))
-                  end,
-                  filelib:wildcard("*-data", DBDir)).
+delete_database(DB) ->
+    RV = couch_server:delete(DB, []),
+    ?log_info("Deleting database ~p: ~p~n", [DB, RV]),
+    ok.
 
-delete_bucket_db_directory(BucketDBDir) ->
-    Result = misc:rm_rf(BucketDBDir),
-    ?log_info("Result of deleting db directory: ~p: ~p", [BucketDBDir, Result]),
-    Result.
+delete_databases(Bucket) ->
+    lists:foreach(fun delete_database/1, bucket_databases(Bucket)).
 
-delete_db_files(Bucket) ->
-    {ok, DBDir} = dbdir(ns_config:get()),
-    BucketDBDir = db_files_dir(DBDir, Bucket),
-    delete_bucket_db_directory(BucketDBDir).
+delete_all_databases() ->
+    Buckets = ns_bucket:get_bucket_names(),
+    delete_all_databases(Buckets).
 
+delete_all_databases(Buckets) ->
+    lists:foreach(fun delete_databases/1, Buckets).
 
 -ifdef(EUNIT).
 extract_disk_stats_for_path_test() ->
@@ -363,23 +371,34 @@ extract_disk_stats_for_path_test() ->
     ?assertEqual({ok, {"/dev", 10240, 2}},
                  extract_disk_stats_for_path(DiskSupStats, "/dev")).
 
-db_files_test() ->
-  ?assertEqual(["hello/world-data/world",
-                "hello/world-data/world-shm",
-                "hello/world-data/world-wal",
-                "hello/world-data/world-0.mb",
-                "hello/world-data/world-0.mb-shm",
-                "hello/world-data/world-0.mb-wal",
-                "hello/world-data/world-1.mb",
-                "hello/world-data/world-1.mb-shm",
-                "hello/world-data/world-1.mb-wal",
-                "hello/world-data/world-2.mb",
-                "hello/world-data/world-2.mb-shm",
-                "hello/world-data/world-2.mb-wal",
-                "hello/world-data/world-3.mb",
-                "hello/world-data/world-3.mb-shm",
-                "hello/world-data/world-3.mb-wal"],
-                db_files("hello", "world")).
+bucket_databases_test() ->
+    AllDBs = lists:map(fun list_to_binary/1,
+                           ["_users",
+                            "_replicator",
+                            "bucket/master",
+                            "bucket/0",
+                            "bucket/1",
+                            "bucket/2",
+                            "bucket/3",
+                            "default_bucket/master",
+                            "default_bucket/0",
+                            "default_bucket/1",
+                            "default_bucket/2",
+                            "default_bucket/3",
+                            "default/master",
+                            "default/0",
+                            "default/1",
+                            "default/2",
+                            "default/3"]),
+    DefaultBucketDBs = lists:map(fun list_to_binary/1,
+                                 ["default/master",
+                                  "default/0",
+                                  "default/1",
+                                  "default/2",
+                                  "default/3"]),
+
+    ?assertEqual(DefaultBucketDBs,
+                 bucket_databases("default", AllDBs)).
 
 -endif.
 

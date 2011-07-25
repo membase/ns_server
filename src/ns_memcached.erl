@@ -295,7 +295,7 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
             try
                 ok = mc_client_binary:delete_bucket(Sock, Bucket, [{force, Deleting}]),
                 case Deleting of
-                    true -> ns_storage_conf:delete_db_files(Bucket);
+                    true -> ns_storage_conf:delete_databases(Bucket);
                     _ -> ok
                 end
             catch

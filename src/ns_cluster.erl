@@ -113,7 +113,7 @@ handle_cast(leave, State) ->
     lists:foreach(fun erlang:disconnect_node/1, nodes()),
     Config = ns_config:get(),
     WebPort = ns_config:search_node_prop(Config, rest, port, false),
-    {ok, DBDir} = ns_storage_conf:dbdir(Config),
+    Buckets = ns_bucket:get_bucket_names(),
     ns_config:clear([directory]),
     case WebPort of
         false -> false;
@@ -121,7 +121,7 @@ handle_cast(leave, State) ->
     end,
     ns_config:set_initial(nodes_wanted, [node()]),
     ns_cookie_manager:cookie_sync(),
-    ns_storage_conf:delete_all_db_files(DBDir),
+    ns_storage_conf:delete_all_databases(Buckets),
     ?log_info("Leaving cluster", []),
     timer:sleep(1000),
     {ok, _} = ns_server_cluster_sup:start_cluster(),
