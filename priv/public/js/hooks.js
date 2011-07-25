@@ -1323,6 +1323,24 @@ var ServerStateMock = {
           }
         }
       },
+      { "id":"_design/$dev_TeaTime",
+        "key":"_design/$dev_TeaTime",
+        "value":{"rev":"1-5ade2e707ee6f3b2d4467ff5e8f2a96a"},
+        "doc":{
+          "_id":"_design/$dev_TeaTime",
+          "_rev":"1-5ade2e707ee6f3b2d4467ff5e8f2a96a",
+          "language": "javascript",
+          "views":{
+            "all_users":{
+              "map":"function(doc) {\n  function emitUsers(users) {\n    if (users && users.forEach) {\n      users.forEach(function(user) {\n        emit(user, 1);\n      });\n    }\n  }\n  if (doc.type == \"event\") {\n        emitUsers(doc.attendees);\n        emitUsers(doc.hosts);\n  }\n  if (doc.type == \"profile\") {\n        emitUsers(doc, doc.attendees, doc.start && doc.end);\n  }\n};",
+              "reduce":"_count"
+            },
+            "by_user_date":{
+              "map":"function(doc) {\n  function emitUsersMonthly(doc, users, start, end) {\n    if (users && users.forEach) {\n      users.forEach(function(user) {\n        emitUserMonthly(doc, user, doc.start, doc.end);\n      });\n    }\n  }\n  function emitUserMonthly(doc, user, start, end) {\n    var totalEmitted = 0;\n    while (totalEmitted++ < 36 && start <= end) {\n      var d = new Date(start);\n      emit([user, d.getFullYear(), d.getMonth()], doc);\n      if (d.getMonth() == 11) {\n        d.setFullYear(d.getFullYear() + 1);\n        d.setMonth(0);\n      } else {\n        d.setMonth(d.getMonth() + 1);\n      }\n      start = d.getTime();\n    }\n  }\n  if (doc.type == \"event\" && doc.start && doc.end\n      && typeof doc.start == \"number\" && typeof doc.end == \"number\") {\n        emitUsersMonthly(doc, doc.attendees, doc.start && doc.end);\n        emitUsersMonthly(doc, doc.hosts, doc.start && doc.end);\n  }\n};"
+            }
+          }
+        }
+      },
       { "id":"_design/TeaTime",
         "key":"_design/TeaTime",
         "value":{"rev":"1-5ade2e707ee6f3b2d4467ff5e8f2a96a"},
