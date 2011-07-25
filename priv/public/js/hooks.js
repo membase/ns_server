@@ -305,7 +305,7 @@ var MockedRequest = mkClass({
   },
 
   handleBucketsPost: function () {
-    ServerStateMock.handleBucketsPost(params);
+    var rv = ServerStateMock.handleBucketsPost(this);
     this.fakeResponse(rv);
   },
 
@@ -554,34 +554,7 @@ var MockedRequest = mkClass({
       [get("settings", "autoFailover"), {"enabled":false,"timeout":30,"count":0}],
       [get("settings", "alerts"), {"recipients":["root@localhost"],"sender":"membase@localhost","enabled":true,"emailServer":{"user":"","pass":"","host":"localhost","port":25,"encrypt":false},"alerts":["auto_failover_node","auto_failover_maximum_reached","auto_failover_other_nodes_down","auto_failover_cluster_too_small"]}],
       [get("pools"), function () {
-        return {
-          "pools": [
-            {
-              "name": "default",
-              "uri": "/pools/default",
-              "streamingUri": "/poolsStreaming/default"
-            }
-          ],
-          "isAdminCreds": !!this.fakeXHR.login,
-          "uuid": "6f0abb80-6aa8-4001-15e8-97aa00000226",
-          "implementationVersion": "1.7.0_207_gcddb6e2",
-          "componentsVersion": {
-            "public_key": "0.12",
-            "os_mon": "2.2.6",
-            "mnesia": "4.4.19",
-            "inets": "5.6",
-            "couch": "1.2.0a-930e7c7-git",
-            "kernel": "2.14.4",
-            "crypto": "2.0.3",
-            "ssl": "4.1.5",
-            "sasl": "2.1.9.4",
-            "ns_server": "1.7.0_207_gcddb6e2",
-            "mochiweb": "1.4.1",
-            "ibrowse": "2.2.0",
-            "oauth": "7d85d3ef",
-            "stdlib": "1.17.4"
-          }
-        }
+        return ServerStateMock.pools(this);
       }],
       [get("pools", x), function () {
         var self = this;
@@ -850,12 +823,7 @@ var MockedRequest = mkClass({
                           41.5,41.25,57.0,30.0,53.0,43.0,29.25,32.5,25.0]}],
       [post("pools", "default"), method('handlePoolsDefaultPost')],
       [post("pools", "default", "buckets"), method('handleBucketsPost')],
-      [post("pools", "default", "buckets", x), expectParams(function (x) {
-        var params = this.deserialize()
-        console.log("params: ", params);
-        params['name'] = 'new-name';
-        return this.doHandleBucketsPost(params);
-      }, 'ramQuotaMB', opt('replicaNumber'), 'authType', opt('saslPassword'), opt('proxyPort'))],
+      [post("pools", "default", "buckets", x), method('handleBucketsPost')],
       [post("pools", "default", "buckets", x, "controller", "doFlush"), method('doNothingPOST')],
       [del("pools", "default", "buckets", x), method('handleBucketRemoval')],
 
@@ -981,6 +949,7 @@ var MockedRequest = mkClass({
 
       [post("settings", "web"), expectParams(method("doNothingPOST"),
                                              "port", "username", "password")],
+      [post("settings", "stats"), method("doNothingPOST")],
       [get("couchBase", x, "_all_docs"), function () {return ServerStateMock.handleAllDocs(this);}],
       [get("couchBase", x, "_any_doc"), function () {return ServerStateMock.handleAnyDoc(this);}]
     ];
@@ -1282,6 +1251,40 @@ var ServerStateMock = {
       "bucketCapabilities": []
     }
   ],
+  pools: function (req) {
+    var rv = {
+      "pools": [
+        {
+          "name": "default",
+          "uri": "/pools/default",
+          "streamingUri": "/poolsStreaming/default"
+        }
+      ],
+      "isAdminCreds": !!req.fakeXHR.login,
+      "uuid": "6f0abb80-6aa8-4001-15e8-97aa00000226",
+      "implementationVersion": "1.7.0_207_gcddb6e2",
+      "componentsVersion": {
+        "public_key": "0.12",
+        "os_mon": "2.2.6",
+        "mnesia": "4.4.19",
+        "inets": "5.6",
+        "couch": "1.2.0a-930e7c7-git",
+        "kernel": "2.14.4",
+        "crypto": "2.0.3",
+        "ssl": "4.1.5",
+        "sasl": "2.1.9.4",
+        "ns_server": "1.7.0_207_gcddb6e2",
+        "mochiweb": "1.4.1",
+        "ibrowse": "2.2.0",
+        "oauth": "7d85d3ef",
+        "stdlib": "1.17.4"
+      }
+    };
+    if (__hookParams['forceWiz']) {
+      rv.pools.length = 0;
+    }
+    return rv;
+  },
   poolDetails: function () {
     var rv = _.clone(this.basePoolDetails);
     rv.nodes = _.clone(this.allNodes);
@@ -1301,12 +1304,13 @@ var ServerStateMock = {
     _.each(rv, function (ninfo) {ninfo.nodes = _.clone(self.allNodes)});
     return rv;
   },
-  bucketsDetails: function (path) {
+  bucketDetails: function (path) {
+    path = "/" + path.join("/");
     var rv = _.detect(this.baseBuckets, function (binfo) {
       return binfo.uri === path;
     });
     if (!rv) {
-      throw new Error("BUG");
+      BUG();
     }
     rv.nodes = _.clone(this.allNodes);
     return rv;
@@ -1344,13 +1348,9 @@ var ServerStateMock = {
     //   return this.errorResponse(errors);
     // }
 
-    var rv = {"errors":{},"summaries":{"ramSummary":{"perNodeMegs":1024,"nodesCount":8,"total":1625292800,"otherBuckets":0,"thisAlloc":1625292800,"thisUsed":12933780,"free":0},"hddSummary":{"total":239315349504.0,"otherData":222563264798.0,"otherBuckets":0,"thisAlloc":16106127360.0,"thisUsed":10240,"free":645957346}}};
+    var rv = {"errors":{},"summaries":{"ramSummary":{"total":629145600,"otherBuckets":0,"nodesCount":1,"perNodeMegs":300,"thisAlloc":314572800,"thisUsed":0,"free":314572800},"hddSummary":{"total":249064775680,"otherData":239102184652,"otherBuckets":0,"thisUsed":0,"free":9962591028}}}
 
-    // the last condition is be bit dirty. Thats because bucket type
-    // is not posted for edit bucket details case and fetching bucket
-    // info is harder that just hardcoding ids of memcached buckets
-    if (params.bucketType != 'memcached' && !_.include(["5", "6"], this.path[this.path.length-1]))
-      delete rv.summaries.ramSummary.perNodeMegs;
+    return rv;
   },
   handleAllDocs: function () {
     var rv = {"total_rows":20,"offset":12,"rows":[
