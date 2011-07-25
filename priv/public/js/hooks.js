@@ -977,52 +977,6 @@ MockedRequest.prototype.globalData = MockedRequest.globalData = {
   MockedRequest.prototype.routes = MockedRequest.prototype.__defineRouting();
 })();
 
-TestingSupervisor.interceptAjax();
-
-var __hookParams = {};
-
-(function () {
-  var href = window.location.href;
-  var match = /\?(.*?)(?:$|#)/.exec(href);
-  if (!match)
-    return;
-  var params = __hookParams = deserializeQueryString(match[1]);
-
-  console.log("params", params);
-
-  if (params['auth'] == '1')
-    MockedRequest.prototype.checkAuth = MockedRequest.prototype.checkAuthReal;
-
-  if (params['ajaxDelay']) {
-    ajaxRespondDelay = parseInt(params['ajaxDelay'], 10);
-  }
-
-  if (params['nowiz']) {
-    DAL.login = 'Administrator'
-    DAL.password = 'asdasd';
-  }
-
-  if (params['single']) {
-    ServerStateMock.allNodes = ServerStateMock.allNodes.slice(-1);
-  }
-
-  if (params['healthy']) {
-    _.each(ServerStateMock.allNodes, function (ninfo) {
-      ninfo.status = "healthy";
-    });
-  }
-
-  if (params['rebalanceStatus']) {
-    MockedRequest.globalData.setRebalanceStatus(params['rebalanceStatus']);
-  }
-
-  if (params['dialog']) {
-    $(function () {
-      $($i(params['dialog'])).show();
-    });
-  }
-})();
-
 var ServerStateMock = {
   allNodes: [
     {hostname: "mickey-mouse.disney.com:8091",
@@ -1441,5 +1395,51 @@ var ServerStateMock = {
     return all[(Math.random() * all.length) >> 0];
   }
 };
+
+TestingSupervisor.interceptAjax();
+
+var __hookParams = {};
+
+(function () {
+  var href = window.location.href;
+  var match = /\?(.*?)(?:$|#)/.exec(href);
+  if (!match)
+    return;
+  var params = __hookParams = deserializeQueryString(match[1]);
+
+  console.log("params", params);
+
+  if (params['auth'] == '1')
+    MockedRequest.prototype.checkAuth = MockedRequest.prototype.checkAuthReal;
+
+  if (params['ajaxDelay']) {
+    ajaxRespondDelay = parseInt(params['ajaxDelay'], 10);
+  }
+
+  if (params['nowiz']) {
+    DAL.login = 'Administrator'
+    DAL.password = 'asdasd';
+  }
+
+  if (params['single']) {
+    ServerStateMock.allNodes = ServerStateMock.allNodes.slice(-1);
+  }
+
+  if (params['healthy']) {
+    _.each(ServerStateMock.allNodes, function (ninfo) {
+      ninfo.status = "healthy";
+    });
+  }
+
+  if (params['rebalanceStatus']) {
+    MockedRequest.globalData.setRebalanceStatus(params['rebalanceStatus']);
+  }
+
+  if (params['dialog']) {
+    $(function () {
+      $($i(params['dialog'])).show();
+    });
+  }
+})();
 
 //window.onerror = originalOnError;
