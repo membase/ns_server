@@ -319,17 +319,39 @@ var ViewsSection = {
       }).apply(this, v.need(currentDDocAndView));
     }).name("currentView");
 
-    currentView.subscribeValue(function (view) {
-      $('#views .when-inside-view')[view ? 'show' : 'hide']();
-      if (view === undefined) {
-        return;
-      }
+    (function () {
+      var originalMap, originalReduce;
+      var mapArea = $('#viewcode_map');
+      var reduceArea = $('#viewcode_reduce');
 
-      $('#viewcode_map').text(view.map);
-      $('#viewcode_map').val(view.map);
-      $('#viewcode_reduce').text(view.reduce);
-      $('#viewcode_reduce').val(view.reduce);
-    });
+      currentView.subscribeValue(function (view) {
+        $('#views .when-inside-view')[view ? 'show' : 'hide']();
+        if (view === undefined) {
+          return;
+        }
+
+        mapArea.text(view.map);
+        mapArea.val(view.map);
+        reduceArea.text(view.reduce);
+        reduceArea.val(view.reduce);
+        originalMap = view.map;
+        originalReduce = view.reduce || "";
+      });
+
+      var unchangedCell = new Cell();
+
+      $('#viewcode_map, #viewcode_reduce').observePotentialChanges(function () {
+        var nowMap = mapArea.val();
+        var nowReduce = reduceArea.val();
+
+        var unchanged = mapArea.prop('disabled') || (originalMap === nowMap && originalReduce === nowReduce);
+        unchangedCell.setValue(unchanged);
+      });
+
+      unchangedCell.subscribeValue(function (unchanged) {
+        $('#view_run_button').toggleClass('disabled', !unchanged);
+      });
+    })();
 
     var editingDevView = Cell.compute(function (v) {
       var ddoc = v.need(currentDDocAndView)[0];
@@ -470,7 +492,14 @@ var ViewsSection = {
       }
     }).trigger('click');
 
-    $('#view_run_button').bind('click', _.bind(self.runCurrentView, self));
+    $('#view_run_button').bind('click', function (e) {
+      if ($(this).hasClass('disabled')) {
+        return;
+      }
+
+      e.preventDefault();
+      self.runCurrentView();
+    });
   },
   doDeleteDDoc: function (url, callback) {
     begin();
