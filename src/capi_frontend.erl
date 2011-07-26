@@ -18,6 +18,16 @@
 -compile(export_all).
 
 -include("couch_db.hrl").
+-include("ns_stats.hrl").
+-include("couch_view_merger.hrl").
+
+-define(DEV_MULTIPLE, 20).
+
+-record(collect_acc, {
+    row_count = undefined,
+    rows = []
+}).
+
 
 not_implemented(Arg, Rest) ->
     {not_implemented, Arg, Rest}.
@@ -133,6 +143,66 @@ handle_changes(ChangesArgs, Req, #db{filepath = undefined} = Db) ->
     exit(not_implemented(handle_changes, [ChangesArgs, Req, Db]));
 handle_changes(ChangesArgs, Req, Db) ->
     couch_changes:handle_changes(ChangesArgs, Req, Db).
+
+
+%% Return a random id from within the cluster, if the full set of data is
+%% large then run on first vbucket on local node, if data set is smaller
+%% then pick key from all document in the cluster
+-spec handle_random_req(#httpd{}, #db{}) -> any().
+handle_random_req(Req, #db{filepath = undefined, name = Bucket} = Db) ->
+
+    {A1, A2, A3} = erlang:now(),
+    random:seed(A1, A2, A3),
+
+    case run_on_subset(Bucket) of
+        {error, no_stats} ->
+            no_random_docs(Req);
+        true ->
+            VBucket = capi_frontend:first_vbucket(Bucket),
+            capi_frontend:with_subdb(Db, VBucket, fun(RealDb) ->
+                handle_random_req(Req, RealDb)
+            end);
+
+        false ->
+            Params1 = capi_view:view_merge_params(Req, Db, nil, <<"_all_docs">>),
+            Params2 = setup_sender(Params1),
+
+            #collect_acc{rows=Rows}
+                = couch_view_merger:query_view(Req,Params2),
+
+            case length(Rows) of
+                0 ->
+                    no_random_docs(Req);
+                N ->
+                    couch_httpd:send_json(Req, 200, {[
+                        {ok, true},
+                        {<<"id">>, lists:nth(random:uniform(N), Rows)}
+                    ]})
+            end
+    end;
+
+handle_random_req(#httpd{method='GET'}=Req, Db) ->
+    {ok, Info} = couch_db:get_db_info(Db),
+    case couch_util:get_value(doc_count, Info) of
+        0 ->
+            no_random_docs(Req);
+        DocCount ->
+            Acc = {random:uniform(DocCount - 1), undefined},
+            case couch_db:enum_docs(Db, fun fold_docs/3, Acc, []) of
+                {ok, _, {error, not_found}} ->
+                    no_random_docs(Req);
+                {ok, _, Id} ->
+                    couch_httpd:send_json(Req, 200, {[
+                        {ok, true},
+                        {<<"id">>, Id}
+                    ]})
+            end
+    end;
+
+
+handle_random_req(Req, _Db) ->
+    couch_httpd:send_method_not_allowed(Req, "GET").
+
 
 start_view_compact(DbName, GroupId) ->
     exit(not_implemented(start_view_compact, [DbName, GroupId])).
@@ -298,3 +368,67 @@ first_vbucket(Node, [[Node|_] | _Rest], I) ->
     {ok, I};
 first_vbucket(Node, [_First|Rest], I) ->
     first_vbucket(Node, Rest, I + 1).
+
+
+%% Decide whether to run a query on a subset of documents or a full cluster
+%% depending on the number of items in the cluster
+-spec run_on_subset(binary()) -> true | false | {error, no_stats}.
+run_on_subset(Bucket) ->
+    case catch stats_reader:latest(minute, node(), ?b2l(Bucket), 1) of
+        {ok, [Stats|_]} ->
+            {ok, Config} = ns_bucket:get_bucket(?b2l(Bucket)),
+            NumVBuckets = proplists:get_value(num_vbuckets, Config, []),
+            {ok, N} = orddict:find(curr_items_tot, Stats#stat_entry.values),
+            N > NumVBuckets * ?DEV_MULTIPLE;
+        {'EXIT', _Reason} ->
+            {error, no_stats}
+    end.
+
+%% Keep the last previous non design doc id found so if the random item
+%% picked was a design doc, return last document, or not_found
+-spec fold_docs(#full_doc_info{}, any(), tuple()) -> {ok, any()} | {stop, any()}.
+fold_docs(#full_doc_info{id = <<"_design", _/binary>>}, _, {0, undefined}) ->
+    {stop, {error, not_found}};
+fold_docs(#full_doc_info{id = <<"_design", _/binary>>}, _, {0, Id}) ->
+    {stop, Id};
+fold_docs(#full_doc_info{id = Id}, _, {0, _Id}) ->
+    {stop, Id};
+fold_docs(#full_doc_info{deleted=true}, _, Acc) ->
+    {ok, Acc};
+fold_docs(_, _, {N, Id}) ->
+    {ok, {N - 1, Id}}.
+
+
+%% Return 404 when no documents are found
+-spec no_random_docs(#httpd{}) -> any().
+no_random_docs(Req) ->
+    couch_httpd:send_error(Req, 404, <<"no_docs">>, <<"No documents in database">>).
+
+
+-spec setup_sender(#view_merge{}) -> #view_merge{}.
+setup_sender(MergeParams) ->
+    MergeParams#view_merge{
+      user_acc = #collect_acc{},
+      callback = fun collect_ids/2
+    }.
+
+
+%% Colled Id's in the callback of the view merge, ignore design documents
+-spec collect_ids(any(), #collect_acc{}) -> any().
+collect_ids(stop, Acc) ->
+    {ok, Acc};
+collect_ids({start, X}, Acc) ->
+    {ok, Acc#collect_acc{row_count=X}};
+collect_ids({row, {Doc}}, #collect_acc{rows=Rows} = Acc) ->
+    Id = couch_util:get_value(id, Doc),
+    case is_design_doc(Id) of
+        true -> {ok, Acc};
+        false -> {ok, Acc#collect_acc{rows=[Id|Rows]}}
+    end.
+
+
+-spec is_design_doc(binary()) -> true | false.
+is_design_doc(<<"_design/", _Rest/binary>>) ->
+    true;
+is_design_doc(_) ->
+    false.
