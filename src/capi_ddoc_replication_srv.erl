@@ -105,8 +105,12 @@ handle_info(full_vbucket_update, State) ->
 handle_info(start_replication, State) ->
     {noreply, start_replication(State)};
 
-handle_info(_Info, State) ->
-    {noreply, State}.
+handle_info({'DOWN', _Ref, process, _Pid, Reason}, State)
+  when Reason =:= normal orelse Reason =:= shutdown ->
+    {noreply, State};
+handle_info({'DOWN', _Ref, process, _Pid, Reason}, State) ->
+    ?LOG_INFO("Replication slave crashed with reason: ~p", [Reason]),
+    {noreply, start_replication(State)}.
 
 terminate(Reason, State) when Reason =:= normal orelse Reason =:= shutdown ->
     stop_replication(State),
@@ -208,42 +212,39 @@ build_replication_struct(Source, Target) ->
           default_user()),
     Replication.
 
-remote_master_url(Bucket, Node) ->
-    Url = capi_utils:capi_url(Node, "/" ++ mochiweb_util:quote_plus(Bucket) ++ "%2Fmaster", "127.0.0.1"),
-    ?l2b(Url).
 
 start_server_replication(Master, Bucket, Node) ->
-    Replication =
-        build_replication_struct(remote_master_url(Bucket, Node),
-                                 Master),
-
-    {ok, _Res} = couch_replicator:replicate(Replication).
+    Opts = build_replication_struct(remote_master_url(Bucket, Node), Master),
+    {ok, Pid} = couch_replicator:async_replicate(Opts),
+    erlang:monitor(process, Pid),
+    ok.
 
 
 stop_server_replication(Master, Bucket, Node) ->
-    Replication =
-        build_replication_struct(remote_master_url(Bucket, Node),
-                                 Master),
-
-    {ok, _Res} = couch_replicator:cancel_replication(Replication#rep.id).
+    Opts = build_replication_struct(remote_master_url(Bucket, Node), Master),
+    {ok, _Res} = couch_replicator:cancel_replication(Opts#rep.id).
 
 
 start_vbucket_replication(Master, Bucket, VBucket) ->
-
-    Replication =
-        build_replication_struct(Master,
-                                 ?l2b(Bucket ++ "/"++ ?i2l(VBucket))),
-
-    {ok, _Res} = couch_replicator:replicate(Replication).
+    Opts = build_replication_struct(Master, vbucket_url(Bucket, VBucket)),
+    {ok, Pid} = couch_replicator:async_replicate(Opts),
+    erlang:monitor(process, Pid),
+    ok.
 
 
 stop_vbucket_replication(Master, Bucket, VBucket) ->
+    Opts = build_replication_struct(Master, vbucket_url(Bucket, VBucket)),
+    {ok, _Res} = couch_replicator:cancel_replication(Opts#rep.id).
 
-    Replication =
-        build_replication_struct(Master,
-                                 ?l2b(Bucket ++ "/"++ ?i2l(VBucket))),
 
-    {ok, _Res} = couch_replicator:cancel_replication(Replication#rep.id).
+vbucket_url(Bucket, VBucket) ->
+    ?l2b(Bucket ++ "/"++ ?i2l(VBucket)).
+
+
+remote_master_url(Bucket, Node) ->
+    Url = capi_utils:capi_url(Node, "/" ++ mochiweb_util:quote_plus(Bucket)
+                              ++ "%2Fmaster", "127.0.0.1"),
+    ?l2b(Url).
 
 
 difference(List1, List2) ->
