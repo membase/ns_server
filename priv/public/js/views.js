@@ -444,7 +444,11 @@ var ViewsSection = {
 
     $('#built_in_reducers a').bind('click', function (e) {
       var text = $(this).text();
-      $('#viewcode_reduce').val(text);
+      var reduceArea = $('#viewcode_reduce');
+      if (reduceArea.prop('disabled')) {
+        return;
+      }
+      reduceArea.val(text);
     });
 
     $('#preview_random_doc').click(function(ev) {
