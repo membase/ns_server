@@ -982,8 +982,12 @@ var IOCenter = (function () {
             return;
           }
           if (S.isNotFound(xhr)) {
+            var missingValue = options.missingValue;
+            if (!missingValue) {
+              missingValue = options.missingValueProducer ? options.missingValueProducer(xhr, options) : undefined;
+            }
             options.success.call(this,
-                                 options.missingValue || undefined,
+                                 missingValue,
                                  'notfound');
             return;
           }
