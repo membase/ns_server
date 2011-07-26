@@ -809,7 +809,7 @@
                 <td>
                   <a class="list_button when-in-prod" href="#copyDDoc={%=h(ddoc._id)%}"><span>Copy...</span></a>
                   <a class="list_button when-in-dev" href="#publishDDoc={%=h(ddoc._id)%}"><span>Publish</span></a>
-                  <a class="list_button when-in-dev" href="#addView={%=h(ddoc._id)%}"><span>Add view...</span></a>
+                  <a class="list_button when-in-dev" href="#addView={%=h(ddoc._id)%}"><span>Add View...</span></a>
                   <a class="list_button" href="#deleteDDoc={%=h(ddoc._id)%}"><span>Delete</span></a>
                 </td>
               </tr>
@@ -819,7 +819,7 @@
               <!-- {% _.each(ddoc.viewInfos, function (viewInfo) { %} -->
               <tr>
                 <td class="view_name" colspan="3">
-                  {%= h(viewInfo.name) %}
+                  <a href="{%=h(viewInfo.viewLink)%}">{%= h(viewInfo.name) %}</a>
                 </td>
                 <td>
                   <a class="list_button btn_views" href="{%=h(viewInfo.viewLink)%}">Query View</a>
