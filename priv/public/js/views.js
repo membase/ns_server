@@ -389,6 +389,11 @@ var ViewsSection = {
       });
     }).name("proposedViewResultsURLCell");
 
+    DAL.subscribeWhenSection(proposedViewResultsURLCell, "views", function (url) {
+      url = url || "";
+      views.find('.query-url').text(url);
+    });
+
     var viewResultsURLCell = self.viewResultsURLCell = new Cell();
     viewResultsURLCell.runView = function () {
       viewResultsURLCell.setValue(undefined);
