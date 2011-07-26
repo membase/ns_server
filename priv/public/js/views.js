@@ -66,62 +66,21 @@ function couchReq(method, url, data, success, error) {
          });
 }
 
-var sampleDocs = [{
-   "_id": "234235124",
-   "_rev": "3-12342341234",
-   "type": "event",
-   "title": "meeting",
-   "where": "coffee bar",
-   "hosts": [
-       "benjamin@couchbase.com"
-   ]
-},
-{
-  "_id": "0594680c9ba809979a8e5f9a8000027c",
-  "_rev": "3-7f43cdfce1b537739736a97c4eb78d62",
-  "created_at": "2010-07-04T18:06:34.020Z",
-  "profile": {
-      "rand": "0.8309284392744303",
-      "email": "jchris@couch.io",
-      "url": "http://jchrisa.net",
-      "gravatar_url": "http://www.gravatar.com/avatar/6f09a637f926f04d9b34bfe10e94bd3e.jpg?s=40&d=identicon",
-      "name": "jchris"
-  },
-  "message": "refactor #focus evently.nav so it is properly bound to login and logout status",
-  "state": "done",
-  "publish": true,
-  "type": "task",
-  "edit_at": "2010-07-11T22:08:52.928Z",
-  "edit_by": "jchris"
-},
-{
-  "_id": "1643684c68d03fb70bc98d88a8896d0d",
-  "_rev": "6-ff271e27fd0edfd88afb1d16e1363f79",
-  "urls": {
-      "@doppler": "http://twitter.com/doppler",
-      "Web Developer, SXSW": "http://sxsw.com",
-      "github.com/doppler": "http://github.com/doppler"
-  },
-  "bio": "I've been playing with and using CouchDB since version 0.9.0, sometime in early 2009. The first real app I created on CouchDB was to solve the problem of needing to provide an API to query SXSW schedule data, to be used by a 3rd-party developer creating an iPhone app. I'm hoping to build on that idea for SXSW 2011.",
-  "hometown": "Austin, TX",
-  "name": "David Rose",
-  "_attachments": {
-      "Photo on 2010-09-10 at 14.44.jpg": {
-          "content_type": "image/jpeg",
-          "revpos": 5,
-          "digest": "md5-dlyF/44110seO+xxDgrkHA==",
-          "length": 79027,
-          "stub": true
-      }
-  }
-}];
-
 function isDevModeDoc(ddoc) {
   var devPrefix = "_design/$dev_";
   return ddoc._id.substring(0, devPrefix.length) == devPrefix;
 }
 
+var codeMirrorOpts = {
+  lineNumbers: true,
+    matchBrackets: true,
+    mode: "javascript",
+    theme: 'default'
+};
+
 var ViewsSection = {
+  mapEditor: CodeMirror.fromTextArea($("#viewcode_map")[0], codeMirrorOpts),
+  reduceEditor: CodeMirror.fromTextArea($("#viewcode_reduce")[0], codeMirrorOpts),
   ensureBucketSelected: function (bucketName, body) {
     var self = this;
     ThePage.ensureSection("views");
@@ -310,6 +269,11 @@ var ViewsSection = {
       $('#views_spinner')[value ? 'hide' : 'show']();
       $('#views_list')[(value && !value.length) ? 'show' : 'hide']();
       $('#view_details')[(value && value.length) ? 'show' : 'hide']();
+      if (value && value.length) {
+        $('#preview_random_doc').trigger('click', true);
+        self.mapEditor.refresh();
+        self.reduceEditor.refresh();
+      }
     });
 
     var currentView = self.currentView = Cell.compute(function (v) {
@@ -322,50 +286,74 @@ var ViewsSection = {
     }).name("currentView");
 
     (function () {
+
       var originalMap, originalReduce;
-      var mapArea = $('#viewcode_map');
-      var reduceArea = $('#viewcode_reduce');
 
       currentView.subscribeValue(function (view) {
+
         $('#views .when-inside-view')[view ? 'show' : 'hide']();
         if (view === undefined) {
           return;
         }
 
-        mapArea.text(view.map);
-        mapArea.val(view.map);
-        reduceArea.text(view.reduce);
-        reduceArea.val(view.reduce);
+        self.mapEditor.setValue(view.map);
+        self.reduceEditor.setValue(view.reduce || "");
+
         originalMap = view.map;
         originalReduce = view.reduce || "";
       });
 
       var unchangedCell = new Cell();
 
-      $('#viewcode_map, #viewcode_reduce').observePotentialChanges(function () {
-        var nowMap = mapArea.val();
-        var nowReduce = reduceArea.val();
+      // TODO
+      // renable the run button behaviour of disabling until save
 
-        var unchanged = mapArea.prop('disabled') || (originalMap === nowMap && originalReduce === nowReduce);
+      var onMapReduceChange = function () {
+        var nowMap = self.mapEditor.getValue();
+        var nowReduce = self.reduceEditor.getValue();
+        var unchanged = (originalMap === nowMap && originalReduce === nowReduce);
         unchangedCell.setValue(unchanged);
-      });
+      }
 
-      unchangedCell.subscribeValue(function (unchanged) {
-        $('#view_run_button').toggleClass('disabled', !unchanged);
-      });
+      // self.mapEditor.setOption('onChange', onMapReduceChange);
+      // self.reduceEditor.setOption('onChange', onMapReduceChange);
+      // unchangedCell.subscribeValue(function (unchanged) {
+      //   $('#view_run_button').toggleClass('disabled', unchanged);
+      // });
+
     })();
+
+    function enableEditor(editor) {
+      editor.setOption('readOnly', false);
+      editor.setOption('lineNumbers', true);
+      editor.setOption('matchBrackets', true);
+    }
+
+    function disableEditor(editor) {
+      editor.setOption('readOnly', 'nocursor');
+      editor.setOption('lineNumbers', false);
+      editor.setOption('matchBrackets', false);
+    }
 
     var editingDevView = Cell.compute(function (v) {
       var ddoc = v.need(currentDDocAndView)[0];
       if (!ddoc) {
-        return;
+        return false;
       }
       return !!ddoc._id.match(/^_design\/\$dev_/);
     }).name("editingDevView");
 
     editingDevView.subscribeValue(function (devView) {
+
       $('#save_view_as, #just_save_view')[devView ? "show" : "hide"]();
-      $('#viewcode_map, #viewcode_reduce').prop('disabled', !devView);
+
+      if (!devView) {
+        disableEditor(self.mapEditor);
+        disableEditor(self.reduceEditor);
+      } else {
+        enableEditor(self.mapEditor);
+        enableEditor(self.reduceEditor);
+      }
     });
 
     var proposedViewResultsURLCell = Cell.compute(function (v) {
@@ -489,12 +477,12 @@ var ViewsSection = {
       if (reduceArea.prop('disabled')) {
         return;
       }
-      reduceArea.val(text);
+      self.reduceEditor.setValue(text || "");
     });
 
     (function () {
       var cancelCurrent;
-      $('#preview_random_doc, #view_details .sample-doc-block-expander').click(function(ev) {
+      $('#view_details .sample-doc-block-expander').click(function(ev) {
         ev.stopPropagation();
         var jq = $('#sample_docs pre');
 
@@ -535,9 +523,71 @@ var ViewsSection = {
       if ($(this).hasClass('disabled')) {
         return;
       }
-
       e.preventDefault();
       self.runCurrentView();
+    });
+
+    var jsonCodeEditor = CodeMirror.fromTextArea($("#sample_doc_editor")[0], {
+      lineNumbers: false,
+      matchBrackets: false,
+      mode: {name: "javascript", json: true},
+      theme: 'default',
+      readOnly: 'nocursor'
+    });
+
+    function fetchRandomId(fun) {
+      couchReq('GET', '/couchBase/default/_random', null, function (data) {
+        $.cookie("randomKey", data.id);
+        fun(data.id);
+      }, function() {
+        jsonCodeEditor.setValue("Bucket is currently empty");
+      });
+    }
+
+    function randomId(fun) {
+      var stored = $.cookie("randomKey");
+      if (stored) {
+        fun(stored);
+      } else {
+        fetchRandomId(fun);
+      }
+    }
+
+    function showDoc(id) {
+      couchReq('GET', '/couchBase/default/' + id, null, function (data) {
+        var tmp = JSON.stringify(data, null, "\t")
+        jsonCodeEditor.setValue(tmp);
+      }, function() {
+        $.cookie("randomKey", "");
+        randomId(showDoc);
+      });
+    }
+
+
+    $('#preview_random_doc').bind('click', function(ev, dontReset) {
+      if (typeof dontReset == "undefined") {
+        $.cookie("randomKey", "");
+      }
+      randomId(showDoc);
+    });
+
+
+    $('#edit_preview_doc').click(function(ev) {
+      ev.stopPropagation();
+      $('#sample_docs').addClass('editing')
+        .find('.darker_block').removeClass('closed');
+      enableEditor(jsonCodeEditor);
+    });
+
+
+    $('#save_preview_doc').click(function(ev) {
+      ev.stopPropagation();
+      $('#sample_docs').removeClass('editing');
+      var doc = jsonCodeEditor.getValue();
+      // TODO: add JSON linting/parse error handling
+     // TODO: add saving code
+      jsonCodeEditor.setValue(doc);
+      disableEditor(jsonCodeEditor);
     });
   },
   doDeleteDDoc: function (url, callback) {
@@ -907,8 +957,8 @@ var ViewsSection = {
 
       var newId = "_design/$dev_" + newDDocName;
 
-      var mapCode = $('#viewcode_map').val();
-      var reduceCode = $('#viewcode_reduce').val();
+      var mapCode = self.mapEditor.getValue();
+      var reduceCode = self.reduceEditor.getValue();
 
       var view = ddoc.views[viewName];
       if (!view) BUG();
@@ -971,8 +1021,8 @@ var ViewsSection = {
     return;
 
     function begin(dbURL, currentView, ddoc, viewName) {
-      var mapCode = $('#viewcode_map').val();
-      var reduceCode = $('#viewcode_reduce').val();
+      var mapCode = self.mapEditor.getValue();
+      var reduceCode = self.reduceEditor.getValue();
       var changed = (currentView.map !== mapCode) || ((currentView.reduce || "") !== reduceCode);
 
       currentView = _.clone(currentView);

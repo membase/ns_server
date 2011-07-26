@@ -4,6 +4,7 @@
 <!--[if (gte IE 9)|!(IE)]><!--><html lang="en"><!--<![endif]-->
 <head>
 <title>Couchbase Console</title>
+<link rel="stylesheet" type="text/css" href="css/codemirror.css">
 <link rel="stylesheet" type="text/css" href="css/screen.css">
 <link rel="stylesheet" type="text/css" href="css/print.css">
 <link rel="stylesheet" type="text/css" href="css/jquery-ui.couchbase.css">
@@ -842,13 +843,20 @@
             <div id="view_details" style="display:none;">
             <div class="shadow_box">
               <div class="content sampl_doc" id="sample_docs">
-                <div class="darker_block closed">
-                  <h3 class="sample-doc-block-expander"><ins></ins><span class="view_head">Sample Documents</span>
-                    <span class="buttons">
+                <div class="darker_block">
+                  <h3 class="block-expander"><ins></ins><span class="view_head">Sample Documents</span>
+                    <span class="buttons when-not-editing">
+                      <!-- <a class="btn_1" id="edit_preview_doc"><span>Edit</span></a> -->
                       <a class="btn_1" id="preview_random_doc"><span>Preview a Random Document</span></a>
                     </span>
+                    <span class="buttons when-editing">
+                      <a class="btn_1" id="save_preview_doc"><span>Save</span></a>
+                      <a class="btn_1 disabled"><span>Preview a Random Document</span></a>
+                    </span>
                   </h3>
-                  <div class="stats"><pre><!-- keep for sampel doc output --></pre></div>
+                  <div class="stats">
+                    <textarea id="sample_doc_editor"></textarea>
+                  </div>
                 </div>
               </div>
             </div>
@@ -878,7 +886,7 @@
               </div>
             </div>
 
-            <div id="view_results_block"> 
+            <div id="view_results_block">
                 <!--filter result-->
                 <div class="f_wrap">
                 <div class="filter_cont">
@@ -1670,6 +1678,8 @@ $(window).bind('template:rendered', function () {
 <script src="js/tools.tabs.js"></script>
 <script src="js/jquery.cookie.js"></script>
 <script src="js/futon.format.js"></script>
+<script src="js/codemirror/codemirror.js"></script>
+<script src="js/codemirror/javascript.js"></script>
 <script src="js/misc.js"></script>
 <script src="js/base64.js"></script>
 <script src="js/cells.js"></script>

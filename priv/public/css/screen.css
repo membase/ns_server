@@ -394,7 +394,10 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 .bucket_details .create_dev input[disabled=""] {color:#BBBBBB;background:#fff}
 .bucket_details .bolder {font-weight:bold}
 .shadow_box .section {border:0px;}
-.shadow_box pre {white-space:normal; display:block; overflow:auto;width:920px; padding:5px 9px 0 10px;line-height: 1.6em;white-space: pre-wrap;background:#F6F6F7;border:1px solid #CCC;border-top:1px solid #999}
+
+/* .shadow_box pre {white-space:normal; display:block; overflow:auto;width:920px; padding:5px 9px 0 10px;line-height: 1.6em;white-space: pre-wrap;background:#F6F6F7;border:1px solid #CCC;border-top:1px solid #999} */
+
+.shadow_box .stats > pre {white-space:normal; display:block; overflow:auto; padding:5px 10px;line-height: 1.6em;white-space: pre-wrap;background:#F6F6F7;border:1px solid #CCC;border-top:1px solid #999}
 .shadow_box .darker_block {background-color:#d4d4d5;}
 .with_devider {background-image:url(../images/devider_line_1.gif); background-position:0 100%; background-repeat:repeat-x;}
 
@@ -1032,7 +1035,7 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details label abbr {margin-left:6px;}
 .bucket_details label span {display:block;float:left;margin: 0 6px 0 10px;color: #404042;text-align:left;}
 .bucket_details .set label span {color:#222;margin:0 6px 0 0}
-.bucket_details .wrap_acc label span {color:#222;text-align:right;} 
+.bucket_details .wrap_acc label span {color:#222;text-align:right;}
 .bucket_details label span + span {width:60px !important;color:#7C7D7F}
 
 .bucket_details .for-sasl-password, .bucket_details .for-key-prefix, .bucket_details .for-ascii, .bucket_details .for-source-ip {padding-left:170px;}
@@ -1138,6 +1141,9 @@ body.init_update_notifications #init_update_notifications_dialog p.pad_10 {color
 
 body.staleness-active a.disable-if-stale { text-decoration: none; }
 body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: default; }
+
+#sample_docs.editing .when-editing, #sample_docs .when-not-editing{display:block}
+#sample_docs .when-editing, #sample_docs.editing .when-not-editing{display:none}
 
 #views .list .empty {padding:15px}
 #views.in-production .when-in-dev, #views.in-development .when-in-prod {display:none}
