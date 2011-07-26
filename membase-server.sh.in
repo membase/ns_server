@@ -35,6 +35,12 @@ COOKIEFILE="@PREFIX@/var/lib/membase/membase-server.cookie"
 
 couch_start_arguments=""
 
+# For some obscure reason erl requires HOME environment variable to be set.
+if [ -z "$HOME" ]
+then
+    export HOME=/tmp
+fi
+
 _check_nofile () {
     if [ `ulimit -n` -lt 10240 ]
     then
