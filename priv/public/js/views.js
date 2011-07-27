@@ -1066,6 +1066,7 @@ var ViewsSection = {
       genericDialog({header: 'Confirm Publishing',
                      text: 'If there is an existing design document ' +
                        'in production with this name, it will be overwritten. Please, confirm.',
+                     buttons: {ok: "Confirm", cancel: true},
                      callback: function (e, name, instance) {
                        if (name != 'ok') {
                          instance.close();
