@@ -813,7 +813,7 @@
                 <td>
                 </td>
                 <td>
-                  <a class="list_button when-in-prod" href="#copyDDoc={%=h(ddoc._id)%}"><span>Copy...</span></a>
+                  <a class="list_button when-in-prod" href="#copyDDoc={%=h(ddoc._id)%}"><span>Copy to dev...</span></a>
                   <a class="list_button when-in-dev" href="#publishDDoc={%=h(ddoc._id)%}"><span>Publish</span></a>
                   <a class="list_button when-in-dev" href="#addView={%=h(ddoc._id)%}"><span>Add View...</span></a>
                   <a class="list_button" href="#deleteDDoc={%=h(ddoc._id)%}"><span>Delete</span></a>
@@ -1280,17 +1280,14 @@
 <div class="dialog bucket_details" id="copy_designdoc_dialog" title="Copy Design Document" style="width:30em">
   <form>
   <div class="clearfix">
-    <label for="copy_ddoc_prefix_dev" class="bolder">Development Mode:</label>
-    <label for="copy_ddoc_prefix_dev" class="create_dev"><!--<input type="radio" id="copy_ddoc_prefix_dev" name="prefix" value="_design/$dev_" checked="checked" />-->
-      <label class="des_lab">_design/$dev_</label><input name="ddoc_name" value="??" class="des_name"  /></label>
-    <label for="copy_ddoc_prefix_prod" class="bolder">Production Mode:</label>
-    <label for="copy_ddoc_prefix_prod" class="create_dev"><!--<input type="radio" id="copy_ddoc_prefix_prod" name="prefix" value="_design/"/ >-->
-      <label class="des_lab">_design/</label><input name="ddoc_name" value="??" class="des_name"   /></label>
+    <label for="copy_ddoc_ddoc_name" class="bolder">Document Name:</label>
+    <label for="copy_ddoc_ddoc_name" class="create_dev">
+      <label class="des_lab">_design/$dev_</label><input id="copy_ddoc_ddoc_name" name="ddoc_name" value="??" class="des_name"  /></label>
      <p><strong>NOTE:</strong> Development Mode (_design/$dev_) provides the opportunity to edit and test
      your map/reduce views against a subset of data&mdash;without overloading the cluster.</p>
   </div>
   <div class="save_cancel">
-    <button class="save_button float_right" type="submit">Save</button>
+    <button class="save_button float_right" type="submit">Copy</button>
     <a class="close">Cancel</a>
   </div></form>
 </div>

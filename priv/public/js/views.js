@@ -796,34 +796,17 @@ var ViewsSection = {
 
       (function () {
         var name = ViewsSection.cutOffDesignPrefix(ddoc._id);
-        var prefix = ddoc._id.slice(0, -(name.length));
-
-        prefix = (prefix === "_design/") ? "_design/$dev_" : "_design/";
 
         setFormValues(form, {
-          "ddoc_name": name,
-          "prefix": prefix
+          "ddoc_name": name
         });
       })();
 
-      var observer = form.observePotentialChanges(function () {
-        var nameValue = form.find('.designdoc_name:not([disabled])').val();
-        form.find('.designdoc_name[disabled]').val(nameValue);
-        form.find('label').each(function () {
-          var label = $(this);
-          var checked = label.find(":radio").prop('checked');
-          label.find('.designdoc_name').prop('disabled', !checked);
-        });
-      });
-
       showDialog(dialog, {
-        onHide: function () {
-          observer.stopObserving();
-        },
         eventBindings: [['.save_button', 'click', function (e) {
           e.preventDefault();
           var data = $.deparam(serializeForm(form));
-          var toId = data.prefix + data.ddoc_name;
+          var toId = "_design/$dev_" + data.ddoc_name;
           var spinner = overlayWithSpinner($(dialog));
           var needReload = false;
 
@@ -832,6 +815,7 @@ var ViewsSection = {
             hideDialog(dialog);
             if (needReload) {
               ViewsSection.allDDocsCell.recalculate();
+              ViewsSection.modeTabs.setValue('development');
             }
           }
 
