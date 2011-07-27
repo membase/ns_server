@@ -482,44 +482,6 @@ var ViewsSection = {
       self.reduceEditor.setValue(text || "");
     });
 
-    (function () {
-      var cancelCurrent;
-      $('#view_details .sample-doc-block-expander').click(function(ev) {
-        ev.stopPropagation();
-        var jq = $('#sample_docs pre');
-
-        if (cancelCurrent) {
-          cancelCurrent();
-        }
-
-        if (jq.closest('.darker_block').hasClass('closed')) {
-          jq.closest('.darker_block').removeClass('closed');
-        } else {
-          if (this.id !== 'preview_random_doc') {
-            jq.closest('.darker_block').addClass('closed');
-            return;
-          }
-        }
-
-        jq.css('height', '100px');
-        var spinner = overlayWithSpinner(jq);
-        cancelCurrent = function () {
-          cancelCurrent = null;
-          spinner.remove();
-          jq.css('height', '');
-          if (timeoutId) {
-            clearTimeout(timeoutId);
-          }
-        }
-        var timeoutId = setTimeout(function () {
-          cancelCurrent();
-          var u = 2;
-          var l = 0;
-          var rand = Math.floor((Math.random() * (u-l+1))+l);
-          jq.html($.futon.formatJSON(sampleDocs[rand], {html: true}));
-        }, 500);
-      });
-    })();
 
     $('#view_run_button').bind('click', function (e) {
       if ($(this).hasClass('disabled')) {
@@ -528,6 +490,8 @@ var ViewsSection = {
       e.preventDefault();
       self.runCurrentView();
     });
+
+    var currentDocument = null;
 
     var jsonCodeEditor = CodeMirror.fromTextArea($("#sample_doc_editor")[0], {
       lineNumbers: false,
@@ -538,11 +502,13 @@ var ViewsSection = {
     });
 
     function fetchRandomId(fun) {
-      couchReq('GET', '/couchBase/default/_random', null, function (data) {
-        $.cookie("randomKey", data.id);
-        fun(data.id);
-      }, function() {
-        jsonCodeEditor.setValue("Bucket is currently empty");
+      self.dbURLCell.getValue(function (dbURL) {
+        couchReq('GET', buildURL(dbURL, '_random'), null, function (data) {
+          $.cookie("randomKey", data.id);
+          fun(data.id);
+        }, function() {
+          jsonCodeEditor.setValue("Bucket is currently empty");
+        });
       });
     }
 
@@ -556,15 +522,30 @@ var ViewsSection = {
     }
 
     function showDoc(id) {
-      couchReq('GET', '/couchBase/default/' + id, null, function (data) {
-        var tmp = JSON.stringify(data, null, "\t")
-        jsonCodeEditor.setValue(tmp);
-      }, function() {
-        $.cookie("randomKey", "");
-        randomId(showDoc);
+      self.dbURLCell.getValue(function (dbURL) {
+        couchReq('GET', buildDocURL(dbURL, id), null, function (data) {
+          currentDocument = $.extend({}, data);
+          delete data._rev;
+          var tmp = JSON.stringify(data, null, "\t")
+          jsonCodeEditor.setValue(tmp);
+        }, function() {
+          $.cookie("randomKey", "");
+          randomId(showDoc);
+        });
       });
     }
 
+
+    function docError(alertMsg) {
+      var dialog = genericDialog({
+        buttons: {ok: true},
+        header: "Alert",
+        textHTML: alertMsg,
+        callback: function (e, btn, dialog) {
+          dialog.close();
+        }
+      });
+    }
 
     $('#preview_random_doc').bind('click', function(ev, dontReset) {
       if (typeof dontReset == "undefined") {
@@ -583,14 +564,35 @@ var ViewsSection = {
 
 
     $('#save_preview_doc').click(function(ev) {
+
       ev.stopPropagation();
-      $('#sample_docs').removeClass('editing');
-      var doc = jsonCodeEditor.getValue();
-      // TODO: add JSON linting/parse error handling
-     // TODO: add saving code
-      jsonCodeEditor.setValue(doc);
-      disableEditor(jsonCodeEditor);
+      var json, doc = jsonCodeEditor.getValue();
+      try {
+        json = JSON.parse(doc);
+      } catch(err) {
+        docError("You entered invalid JSON");
+        return;
+      }
+      json._id = currentDocument._id;
+      json._rev = currentDocument._rev;
+
+      for (var key in json) {
+        if (key[0] === "$") {
+          delete json[key];
+        }
+      }
+
+      self.dbURLCell.getValue(function (dbURL) {
+        couchReq('PUT', buildDocURL(dbURL, json._id), json, function () {
+          $('#sample_docs').removeClass('editing');
+          disableEditor(jsonCodeEditor);
+          showDoc(json._id);
+        }, function() {
+          docError("There was an unknown problem saving your document");
+        });
+      });
     });
+
   },
   doDeleteDDoc: function (url, callback) {
     begin();
