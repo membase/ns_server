@@ -382,8 +382,12 @@ var ViewsSection = {
     }).name("proposedViewResultsURLCell");
 
     DAL.subscribeWhenSection(proposedViewResultsURLCell, "views", function (url) {
-      url = url || "";
-      views.find('.query-url').text(url);
+      if (url) {
+        url = url.substr(url.indexOf('?'));
+      } else {
+        url = '';
+      }
+      $('#view_query_string').text(url);
     });
 
     var viewResultsURLCell = self.viewResultsURLCell = new Cell();
@@ -407,15 +411,15 @@ var ViewsSection = {
     }).name("viewResultsCell");
 
     viewResultsCell.subscribeValue(function (value) {
-      if (!value) {
-        return;
+      var rows = [];
+      if (value) {
+        rows = _.filter(value.rows, function (r) {return !!r.key});
       }
-      var rows = _.filter(value.rows, function (r) {return !!r.key});
       renderTemplate('view_results', {rows: rows});
     });
 
     Cell.subscribeMultipleValues(function (url, results) {
-      $('#view_results_container')[!!results ? 'show' : 'hide']();
+      $('#view_results_container')[(url && !results) ? 'hide' : 'show']();
       $('#view_results_spinner')[(url && !results) ? 'show' : 'hide']();
     }, viewResultsURLCell, viewResultsCell);
 

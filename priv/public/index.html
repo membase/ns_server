@@ -886,15 +886,16 @@
               </div>
             </div>
 
-            <div id="view_results_block">
-                <!--filter result-->
-                <div class="f_wrap">
+            <div id="view_results_block"> 
+              <h1>Filter Results <a class="btn_1" id="view_run_button"><span>Show Results</span></a>
+                <span id="view_query_string">?startkey=<em>["2011"]</em>&endkey=<em>["2011", {}]</em>&descending=<em>false</em>&group=<em>true</em></span>
+              </h1>
+              <!--filter result-->
+              <div class="f_wrap">
                 <div class="filter_cont">
-                    <div class="filter">Filter Results</div>
                     <a href="#" class="exp_filter"></a>
                 </div><!--/filter_cont-->
                 <div class="f_popup" >
-                    <div class="bg_top"></div>
                     <div class="f_cont">
                         <div class="br_right"></div>
                         <div class="wrap">
@@ -959,34 +960,22 @@
                         </table><!--/key-->
 
                     </div><!--f_cont-->
-                    <div class="bg_bottom"></div>
-                    <ins></ins>
-                    <ins></ins>
-                    <ins></ins>
-                    <ins></ins>
                 </div><!--f_popup-->
+              </div>
+              <!--/filter result-->
+              <div class="shadow_box">
+                <div class="content">
+                  <div id="view_results_spinner" class="spinner" style="height:100px;line-height:100px;display:none;"><span>Loading...</span></div>
+                  <div id="view_results_container" class="content c_result"></div>
                 </div>
-                <!--/filter result-->
-
-      <div class="shadow_box marg-top">
-    <div class="content">
-        <div class="darker_block">
-            <h3>
-                <a class="btn_1" id="view_run_button" style="float:left;"><span>Run</span></a>
-                <span class="results_header">Results <span id="view_query_string"><!-- ?start_key=<em>["2011"]</em>&end_key=<em>["2011", {}]</em>&descending=<em>false</em>&group=<em>true</em> --></span></span>
-            </h3>
-            <div class="query-url-line">Query url:<span class="query-url"></span></div>
-            <div class="shadow_box">
-                <div id="view_results_spinner" class="spinner" style="height:100px;line-height:100px;display:none;"><span>Loading...</span></div>
-                <div id="view_results_container" class="content c_result"></div>
-            </div>
-        </div>
-        <script id="view_results_template" type="text/html">
-            <table class="list align_text" style="width:100%">
+              </div>
+              <script id="view_results_template" type="text/html">
+              <table class="list align_text" style="width:100%">
                 <tr>
                     <th class="keycol">Key</th>
                     <th>Value</th>
                 </tr>
+              <!-- {% if (rows.length) { %} -->
                 <!-- {% _.each(rows, function (r) { %} -->
                 <tbody>
                 <tr>
@@ -998,11 +987,14 @@
                 </tr>
                 </tbody>
                 <!-- {% }); %} -->
-            </table>
-        </script>
-    </div>
-</div>
-</div>
+              <!-- {% } else { %} -->
+                <tbody>
+                <tr><td colspan="2" style="text-align:center">To see the results of this view, click "Show Results" above.</td></tr>
+                </tbody>
+              <!-- {% } %} -->
+              </table>
+              </script>
+            </div>
 </div>
 <div id="coming" style="display:none">
     <h1>UI error encountered. This content does not exist yet.</h1>
