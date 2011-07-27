@@ -383,7 +383,7 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 .shadow_box .content {position:relative;background:none #eeeeef;-moz-box-shadow:0 0 5px #ccc;-webkit-box-shadow:0 0 5px #ccc;box-shadow:0 0 5px #ccc;margin:0 9px;}
 .shadow_box .content.c_result {margin:0;border:1px solid #ccc;box-shadow:none;}
 .shadow_box .content .views_list .langv {text-align:left}
-#views .buttons {float:right;margin:2px 10px 0 0}
+#views .buttons {float:right;margin:2px 0px 0 0}
 #views .darker_block.closed h3 ins {top:17px}
 #views .darker_block h3 ins {position:absolute;top:16px;left:10px}
 #views .darker_block h3 {position:relative}
@@ -394,6 +394,8 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 .bucket_details .create_dev input[disabled=""] {color:#BBBBBB;background:#fff}
 .bucket_details .bolder {font-weight:bold}
 .shadow_box .section {border:0px;}
+
+h3.block-expander a { font-weight:normal; text-transform:none; }
 
 /* .shadow_box pre {white-space:normal; display:block; overflow:auto;width:920px; padding:5px 9px 0 10px;line-height: 1.6em;white-space: pre-wrap;background:#F6F6F7;border:1px solid #CCC;border-top:1px solid #999} */
 
