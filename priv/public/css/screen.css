@@ -1055,10 +1055,10 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details .memcached-summary {font-style:normal;line-height:24px;clear:both;}
 
 .bucket_details .size-gauge {float:right;width:600px;position:relative;top:-6px;line-height:24px;}
-.bucket_details.really .size-gauge {width:363px;}
+.bucket_details.really .size-gauge {width:365px;}
 .bucket_details .for-ram-quota span {color:#222}
-.bucket_details.really .size-gauge .usage {clear:both;position:relative;height:21px;background:url(../images/usages.png) 0 -46px no-repeat;}
-.bucket_details.really .size-gauge .usage div {width:363px;height:21px;position:absolute;left:0px;top:0px;background:url(../images/usages.png) 0 0 no-repeat;}
+.bucket_details.really .size-gauge .usage {clear:both;position:relative;height:15px;background:url(../images/usages.png) 0 -46px no-repeat;}
+.bucket_details.really .size-gauge .usage div {width:363px;height:15px;position:absolute;left:0px;top:0px;background:url(../images/usages.png) 0 -46px no-repeat;}
 .bucket_details .size-gauge .top-left {float:left;color:#C19710;font-size:12px;}
 .bucket_details .size-gauge .top-right {float:right;font-size:12px;}
 .bucket_details .size-gauge .usage {clear:both;position:relative;height:21px;background:url(../images/usages_third.png) 0 -46px no-repeat;}
