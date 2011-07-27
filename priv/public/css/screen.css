@@ -1017,7 +1017,7 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details form {border-top:1px solid #dfdfe0;}
 .bucket_details .clearfix {padding:0 56px 29px;border-bottom:1px solid #cccfd2;border-top:1px solid #f8f8f8;}
 .bucket_details .clearfix .designdoc_name,
-.bucket_details .clearfix .des_name {float:left;border:1px solid #fff;text-align:left;}
+.bucket_details .clearfix .des_name {float:left;border:1px solid #fff;text-align:left; width: 12em;}
 
 .bucket_details .clearfix .des_lab {float:left;padding:0;margin:0}
 .bucket_details .save_cancel{margin-top:0}
@@ -1166,7 +1166,7 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
 #view_results_block{position:relative;margin-top:5px}
 #view_results_block h1{margin-bottom:5px;padding-top:10px;}
 /*prev next arr*/
-#view_results_block .ic_prev_next {float:right;width:61px;height:25px;margin:5px 0 0} 
+#view_results_block .ic_prev_next {float:right;width:61px;height:25px;margin:5px 0 0}
 #view_results_block .ic_prev_next a {float:left;width:24px;height:21px;background:url(../images/ic_prev_next_arr.png) no-repeat}
 #view_results_block .ic_prev_next .arr_next {background-position:-4px -1px}
 #view_results_block .ic_prev_next .arr_next:hover {background-position:-4px -27px}
