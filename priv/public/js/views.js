@@ -490,7 +490,8 @@ var ViewsSection = {
     })();
 
     var viewResultsCell = Cell.compute(function (v) {
-      return future.capiViewGet({url: v.need(viewResultsURLCell)});
+      return future.capiViewGet({url: v.need(viewResultsURLCell),
+                                 timeout: 3600000});
     }).name("viewResultsCell");
 
     viewResultsCell.subscribeValue(function (value) {
