@@ -66,6 +66,45 @@ function couchReq(method, url, data, success, error) {
          });
 }
 
+future.capiViewGet = function (ajaxOptions, valueTransformer, newValue, futureWrapper) {
+  function missingValueProducer(xhr, options) {
+    return {rows: [{key: JSON.parse(xhr.responseText)}]};
+  }
+  function handleError(xhr, xhrStatus, errMsg) {
+    var text;
+    try {
+      text = xhr.responseText;
+    } catch (e) {}
+    if (text) {
+      try {
+        text = JSON.parse(text);
+      } catch (e) {
+        text = undefined;
+      }
+    }
+    if (!text) {
+      text = {error: {xhrStatus: xhrStatus, errMsg: errMsg}};
+    }
+    dataCallback({rows: [{key: text}]});
+  }
+
+  var dataCallback;
+  if (ajaxOptions.error || ajaxOptions.missingValueProducer || ajaxOptions.missingValue) {
+    BUG();
+  }
+  ajaxOptions = _.clone(ajaxOptions);
+  ajaxOptions.error = handleError;
+  ajaxOptions.missingValueProducer = missingValueProducer;
+  // we're using future wrapper to get reference to dataCallback
+  // so that we can call it from error handler
+  return future.get(ajaxOptions, valueTransformer, newValue, function (initXHR) {
+    return (future || futureWrapper)(function (__dataCallback) {
+      dataCallback = __dataCallback;
+      initXHR(dataCallback);
+    })
+  });
+}
+
 function isDevModeDoc(ddoc) {
   var devPrefix = "_design/$dev_";
   return ddoc._id.substring(0, devPrefix.length) == devPrefix;
@@ -451,11 +490,7 @@ var ViewsSection = {
     })();
 
     var viewResultsCell = Cell.compute(function (v) {
-      function missingValueProducer(xhr, options) {
-        return {rows: [{key: JSON.parse(xhr.responseText)}]};
-      }
-      return future.get({url: v.need(viewResultsURLCell),
-                         missingValueProducer: missingValueProducer});
+      return future.capiViewGet({url: v.need(viewResultsURLCell)});
     }).name("viewResultsCell");
 
     viewResultsCell.subscribeValue(function (value) {
