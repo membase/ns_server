@@ -397,14 +397,12 @@ var ViewsSection = {
           return;
         }
         (function (builder, intPage) {
-          var url;
+          var url = "", text = "";
           if (builder) {
             url = builder(intPage);
-            url = url.substring(url.indexOf('?'));
-          } else {
-            url = '';
+            text = url.substring(url.indexOf('?'));
           }
-          $('#view_query_string').text(url);
+          $('#view_query_string').html('<a href="' + url + '">' + text + '</a>');
         }).apply(this, args);
       });
 
