@@ -105,13 +105,20 @@ var ViewsSection = {
     }
 
     self.modeTabs = new TabsCell("vtab",
-                                 "#views .tabs",
+                                 "#views .tabs.switcher",
                                  "#views .panes > div",
                                  ["production", "development"]);
     self.modeTabs.subscribeValue(function (tab) {
       views[tab == 'development' ? 'addClass' : 'removeClass']('in-development');
       views[tab == 'development' ? 'removeClass' : 'addClass']('in-production');
     });
+
+    self.subsetTabCell = new LinkSwitchCell('dev_subset', {
+      firstItemIsDefault: true
+    });
+    self.subsetTabCell.addItem("subset_dev", "dev");
+    self.subsetTabCell.addItem("subset_prod", "prod");
+    self.subsetTabCell.finalizeBuilding();
 
     self.rawViewsBucketCell = new StringHashFragmentCell("viewsBucket");
     self.rawDDocIdCell = new StringHashFragmentCell("viewsDDocId");
@@ -380,8 +387,12 @@ var ViewsSection = {
           return;
         }
         var filterParams = v.need(ViewsFilter.filterParamsCell);
-        return function (pageNo) {
-          return buildDocURL(dbURL, ddocAndView[0]._id, "_view", ddocAndView[1], _.extend({}, filterParams, {
+        return function (pageNo, subset) {
+          var initial = {};
+          if (subset === "prod") {
+            initial.full_set = 'true'
+          }
+          return buildDocURL(dbURL, ddocAndView[0]._id, "_view", ddocAndView[1], _.extend(initial, filterParams, {
             limit: ViewsSection.PAGE_LIMIT.toString(),
             skip: String((pageNo - 1) * 10)
           }));
@@ -391,19 +402,23 @@ var ViewsSection = {
       var appliedURLBuilderCell = new Cell();
 
       DAL.subscribeWhenSection(Cell.compute(function (v) {
-        return [v(proposedURLBuilderCell), v.need(intPageCell)];
+        return [v(proposedURLBuilderCell), v.need(intPageCell), v.need(self.subsetTabCell)];
       }), "views", function (args) {
         if (!args) {
           return;
         }
-        (function (builder, intPage) {
+        (function (builder, intPage, subset) {
           var url = "", text = "";
           if (builder) {
-            url = builder(intPage);
+            url = builder(intPage, subset);
             text = url.substring(url.indexOf('?'));
           }
           $('#view_query_string').html('<a href="' + url + '">' + text + '</a>');
         }).apply(this, args);
+      });
+
+      self.subsetTabCell.subscribeAny(function () {
+        self.pageNumberCell.setValue(undefined);
       });
 
       self.viewResultsURLCell = viewResultsURLCell = Cell.compute(function (v) {
@@ -412,7 +427,7 @@ var ViewsSection = {
         if (appliedBuilder !== proposedBuilder) {
           return;
         }
-        return appliedBuilder(v.need(intPageCell));
+        return appliedBuilder(v.need(intPageCell), v.need(self.subsetTabCell));
       });
 
       viewResultsURLCell.runView = function () {
@@ -427,6 +442,7 @@ var ViewsSection = {
 
       proposedURLBuilderCell.subscribeValue(function (proposed) {
         if (proposed !== appliedURLBuilderCell.value) {
+          self.subsetTabCell.setValue("dev");
           self.pageNumberCell.setValue(undefined);
           appliedURLBuilderCell.setValue(undefined);
         }

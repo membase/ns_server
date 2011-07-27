@@ -40,7 +40,8 @@ handle_view_req(#httpd{method='GET',
         path_parts=[_, _, DName, _, ViewName]}=Req, #db{name=Name} = Db, DDoc) ->
     case DName of
         <<"$dev_", _/binary>> ->
-            case capi_frontend:run_on_subset(Name) of
+            case get_value("full_set", (Req#httpd.mochi_req):parse_qs()) =/= "true"
+                andalso capi_frontend:run_on_subset(Name) of
                 true ->
                     VBucket = capi_frontend:first_vbucket(Name),
                     capi_frontend:with_subdb(Db, VBucket, fun(RealDb) ->

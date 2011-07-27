@@ -1234,3 +1234,5 @@ background:url(../images/bg_select.png) no-repeat;}
 .selectBox-dropdown.selectBox-disabled .selectBox-arrow {border-color: #666666;opacity: 0.5;}
 .selectBox-inline.selectBox-disabled {color: #cfcdcd !important;}
 /*select*/
+
+ul.tabs.dev-subset-switcher { padding-top: 3px; padding-bottom: 3px; padding-left: 12px; }
