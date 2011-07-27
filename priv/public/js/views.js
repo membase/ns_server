@@ -587,6 +587,7 @@ var ViewsSection = {
           $.cookie("randomKey", data.id);
           fun(data.id);
         }, function() {
+          $("#edit_preview_doc").addClass("disabled");
           jsonCodeEditor.setValue("Bucket is currently empty");
         });
       });
@@ -607,6 +608,7 @@ var ViewsSection = {
           currentDocument = $.extend({}, data);
           delete data._rev;
           var tmp = JSON.stringify(data, null, "\t")
+          $("#edit_preview_doc").removeClass("disabled");
           jsonCodeEditor.setValue(tmp);
         }, function() {
           $.cookie("randomKey", "");
@@ -637,8 +639,11 @@ var ViewsSection = {
 
     $('#edit_preview_doc').click(function(ev) {
       ev.stopPropagation();
+      if ($(this).hasClass("disabled")) {
+        return;
+      }
       $('#sample_docs').addClass('editing')
-        .find('.darker_block').removeClass('closed');
+          .find('.darker_block').removeClass('closed');
       enableEditor(jsonCodeEditor);
     });
 
