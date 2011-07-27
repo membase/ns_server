@@ -1147,7 +1147,7 @@ var ViewsSection = {
         var name = self.cutOffDesignPrefix(ddoc._id);
         var newId = "_design/" + name;
         var modal = new ModalAction();
-        var spinner = overlayWithSpinner(dialogInstance.dialog);
+        var spinner = overlayWithSpinner(dialogInstance.dialog.parent());
         self.doSaveAs(dbURL, ddoc, newId, true, function (arg) {
           if (arg != 'ok') BUG();
           spinner.remove();
