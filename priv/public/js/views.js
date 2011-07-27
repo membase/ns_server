@@ -408,12 +408,13 @@ var ViewsSection = {
           return;
         }
         (function (builder, intPage, subset) {
-          var url = "", text = "";
+          var html="";
           if (builder) {
-            url = builder(intPage, subset);
-            text = url.substring(url.indexOf('?'));
+            var url = builder(intPage, subset);
+            var text = url.substring(url.indexOf('?'));
+            html = "<a href='" + escapeHTML(url) + "'>" + escapeHTML(text) + '</a>';
           }
-          $('#view_query_string').html('<a href="' + url + '">' + text + '</a>');
+          $('#view_query_string').html(html);
         }).apply(this, args);
       });
 
