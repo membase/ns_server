@@ -1277,8 +1277,9 @@ var ViewsFilter = {
 
     self.filter = $('#view_results_block .f_popup');
 
-    var selectInstance = self.selectInstance = self.filter.find(".selectBox");
+    var selectInstance = self.selectInstance = $('#view_filter_keys');
     selectInstance.selectBox();
+    $('#view_filter_stale').selectBox();
 
     $("#view_results_block .exp_filter").toggle(_.bind(self.openFilter, self),
                                                 _.bind(self.closeFilter, self));
@@ -1339,7 +1340,7 @@ var ViewsFilter = {
     }
   },
   iterateInputs: function (body) {
-    this.filter.find('.key input').each(function () {
+    this.filter.find('.key input, .key select').each(function () {
       var el = $(this);
       var name = el.attr('name');
       var type = (el.attr('type') === 'checkbox') ? 'bool' : 'json';

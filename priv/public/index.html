@@ -912,9 +912,10 @@
                     <div class="f_cont">
                         <div class="br_right"></div>
                         <div class="wrap">
-                            <select name="standard-dropdown" class="selectBox">
+                            <select id="view_filter_keys" name="standard-dropdown">
                                 <option value=""></option>
                                 <!-- <option value="conflicts">conflicts</option> -->
+                                <option value="stale">stale</option>
                                 <option value="reduce">reduce</option>
                                 <option value="group">group</option>
                                 <option value="group_level">group_level</option>
@@ -970,6 +971,14 @@
                           <tr><td><div class="ic_key"></div></td>
                             <td><label for="view_filter_update_seq">update_seq</label></td>
                             <td><input id="view_filter_update_seq" name="update_seq" type="checkbox" /></td></tr>
+                          <tr><td><div class="ic_key"></div></td>
+                            <td><label for="view_filter_stale">stale</label></td>
+                            <td>
+                              <select id="view_filter_stale" name="stale" class="selectBox">
+                                <option value="update_after">update_after</option>
+                                <option value="ok">ok</option>
+                              </select>
+                            </td></tr>
                         </table><!--/key-->
 
                     </div><!--f_cont-->
