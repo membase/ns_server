@@ -296,17 +296,15 @@ var ViewsSection = {
           return;
         }
 
-        self.mapEditor.setValue(view.map);
-        self.reduceEditor.setValue(view.reduce || "");
-
         originalMap = view.map;
         originalReduce = view.reduce || "";
+
+        // NOTE: this triggers onChange right now so it needs to be last
+        self.mapEditor.setValue(view.map);
+        self.reduceEditor.setValue(view.reduce || "");
       });
 
       var unchangedCell = new Cell();
-
-      // TODO
-      // renable the run button behaviour of disabling until save
 
       var onMapReduceChange = function () {
         var nowMap = self.mapEditor.getValue();
@@ -315,11 +313,11 @@ var ViewsSection = {
         unchangedCell.setValue(unchanged);
       }
 
-      // self.mapEditor.setOption('onChange', onMapReduceChange);
-      // self.reduceEditor.setOption('onChange', onMapReduceChange);
-      // unchangedCell.subscribeValue(function (unchanged) {
-      //   $('#view_run_button').toggleClass('disabled', unchanged);
-      // });
+      self.mapEditor.setOption('onChange', onMapReduceChange);
+      self.reduceEditor.setOption('onChange', onMapReduceChange);
+      unchangedCell.subscribeValue(function (unchanged) {
+        $('#view_run_button').toggleClass('disabled', !unchanged);
+      });
 
     })();
 
