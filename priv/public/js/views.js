@@ -760,7 +760,7 @@ var ViewsSection = {
   },
   doStartRemoveView: function (bucketName, ddocId, viewName) {
     var self = this;
-    self.withBucketAndDDoc(bucketName, ddocId, function (ddoc, ddocURL) {
+    self.withBucketAndDDoc(bucketName, ddocId, function (ddocURL, ddoc) {
       genericDialog({text: "Are you sure?",
                      callback: function (e, name, instance) {
                        instance.close();
