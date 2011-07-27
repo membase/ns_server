@@ -289,6 +289,8 @@ var ViewsSection = {
             return;
           }
           unbuildViewPseudoLink(newValue, function (_ignored, ddocId, viewName) {
+            var devMode = isDevModeDoc({_id: ddocId});
+            self.modeTabs.setValue(devMode ? 'development' : 'production');
             self.rawDDocIdCell.setValue(ddocId);
             self.rawViewNameCell.setValue(viewName);
           });
