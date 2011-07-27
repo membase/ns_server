@@ -709,11 +709,19 @@ var ViewsSection = {
       showDoc(id, function() {
         docError("You specified an invalid id");
       });
-
     });
 
     $("#lookup_doc_by_id").bind('click', function(e) {
       e.stopPropagation();
+    });
+
+    $("#view_results_container").bind('mousedown', function(e) {
+      if ($(e.target).hasClass("id")) {
+        showDoc($(e.target).text(), function() {
+          docError("Unknown Error");
+        });
+        window.scrollTo(0, 0);
+      }
     });
 
     $('#save_preview_doc').click(function(ev) {

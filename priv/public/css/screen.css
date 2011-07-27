@@ -1,3 +1,4 @@
+
 /* Membase Menelaus Web Console */
 /* begin ultimate reset */
 html, body, div, span, applet, object, iframe, h1, h2, h3, h4, h5, h6, p, blockquote, pre,
@@ -1168,7 +1169,9 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
 #view_run_button {float:right;margin-right:15px}
 
 .list .key {font-size:130%;font-weight:bold}
-.list .id {font-size:110%;margin-top:0.5em;color:#999}
+.list .id {font-size:110%;margin-top:0.5em;; color:#2EA6DB;; cursor:pointer; }
+.list .id:hover {text-decoration:underline; }
+
 
 #view_results_block{position:relative;margin-top:5px}
 #view_results_block h1{margin-bottom:5px;padding-top:10px;}
