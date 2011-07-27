@@ -797,7 +797,7 @@ var ViewsSection = {
         return callback("conflict");
       }
       views[viewName] = viewDef || {
-        map: "function (doc) {\n  emit(doc._id, null);\n }"
+        map: "function (doc) {\n  emit(doc._id, null);\n}"
       }
       couchReq('PUT',
                ddocURL,
