@@ -79,6 +79,7 @@ var codeMirrorOpts = {
 };
 
 var ViewsSection = {
+  PAGE_LIMIT: 10,
   mapEditor: CodeMirror.fromTextArea($("#viewcode_map")[0], codeMirrorOpts),
   reduceEditor: CodeMirror.fromTextArea($("#viewcode_reduce")[0], codeMirrorOpts),
   ensureBucketSelected: function (bucketName, body) {
@@ -354,16 +355,7 @@ var ViewsSection = {
       }
     });
 
-    var proposedViewResultsURLCell = Cell.compute(function (v) {
-      if (!v(self.currentView)) {
-        return;
-      }
-      var dbURL = v.need(self.dbURLCell);
-      var ddocAndView = v.need(self.currentDDocAndView);
-      if (!ddocAndView[1]) {
-        return;
-      }
-      var filterParams = v.need(ViewsFilter.filterParamsCell);
+    var intPageCell = Cell.compute(function (v) {
       var pageVal = v(self.pageNumberCell);
       var pageNo = parseInt(pageVal, 10);
       if (isNaN(pageNo) || pageNo < 1) {
@@ -372,32 +364,76 @@ var ViewsSection = {
       if (pageNo > 10) {
         pageNo = 10;
       }
-      return buildDocURL(dbURL, ddocAndView[0]._id, "_view", ddocAndView[1], _.extend({}, filterParams, {
-        limit: "10",
-        skip: String((pageNo - 1) * 10)
-      }));
-    }).name("proposedViewResultsURLCell");
-
-    DAL.subscribeWhenSection(proposedViewResultsURLCell, "views", function (url) {
-      if (url) {
-        url = url.substr(url.indexOf('?'));
-      } else {
-        url = '';
-      }
-      $('#view_query_string').text(url);
+      return pageNo;
     });
 
-    var viewResultsURLCell = self.viewResultsURLCell = new Cell();
-    viewResultsURLCell.runView = function () {
-      viewResultsURLCell.setValue(undefined);
-      Cell.waitQuiescence(function () {
-        viewResultsURLCell.setValue(proposedViewResultsURLCell.value);
+    var viewResultsURLCell;
+
+    (function () {
+      var proposedURLBuilderCell = Cell.compute(function (v) {
+        if (!v(self.currentView)) {
+          return;
+        }
+        var dbURL = v.need(self.dbURLCell);
+        var ddocAndView = v.need(self.currentDDocAndView);
+        if (!ddocAndView[1]) {
+          return;
+        }
+        var filterParams = v.need(ViewsFilter.filterParamsCell);
+        return function (pageNo) {
+          return buildDocURL(dbURL, ddocAndView[0]._id, "_view", ddocAndView[1], _.extend({}, filterParams, {
+            limit: ViewsSection.PAGE_LIMIT.toString(),
+            skip: String((pageNo - 1) * 10)
+          }));
+        }
+      }).name("proposedURLBuilderCell");
+
+      var appliedURLBuilderCell = new Cell();
+
+      DAL.subscribeWhenSection(Cell.compute(function (v) {
+        return [v(proposedURLBuilderCell), v.need(intPageCell)];
+      }), "views", function (args) {
+        if (!args) {
+          return;
+        }
+        (function (builder, intPage) {
+          var url;
+          if (builder) {
+            url = builder(intPage);
+            url = url.substring(url.indexOf('?'));
+          } else {
+            url = '';
+          }
+          $('#view_query_string').text(url);
+        }).apply(this, args);
       });
-    };
 
-    proposedViewResultsURLCell.subscribeValue(function () {
-      viewResultsURLCell.setValue(undefined);
-    });
+      self.viewResultsURLCell = viewResultsURLCell = Cell.compute(function (v) {
+        var appliedBuilder = v(appliedURLBuilderCell);
+        var proposedBuilder = v.need(proposedURLBuilderCell);
+        if (appliedBuilder !== proposedBuilder) {
+          return;
+        }
+        return appliedBuilder(v.need(intPageCell));
+      });
+
+      viewResultsURLCell.runView = function () {
+        viewResultsURLCell.setValue(undefined);
+        Cell.waitQuiescence(function () {
+          proposedURLBuilderCell.getValue(function (value) {
+            appliedURLBuilderCell.setValue(value);
+            viewResultsURLCell.recalculate();
+          });
+        });
+      };
+
+      proposedURLBuilderCell.subscribeValue(function (proposed) {
+        if (proposed !== appliedURLBuilderCell.value) {
+          self.pageNumberCell.setValue(undefined);
+          appliedURLBuilderCell.setValue(undefined);
+        }
+      });
+    })();
 
     var viewResultsCell = Cell.compute(function (v) {
       function missingValueProducer(xhr, options) {
@@ -416,6 +452,49 @@ var ViewsSection = {
       }
       renderTemplate('view_results', targ);
     });
+
+    (function () {
+      var prevBtn = $('#view_results_block .arr_prev');
+      var nextBtn = $('#view_results_block .arr_next');
+
+      DAL.subscribeWhenSection(Cell.compute(function (v) {
+        return [v(viewResultsURLCell), v(viewResultsCell), v.need(intPageCell)];
+      }), "views", function (args) {
+        (function (url, viewResults, intPage) {
+          if (!viewResults) {
+            $('#view_results_block .ic_prev_next').hide();
+            return;
+          }
+          $('#view_results_block .ic_prev_next').show();
+          prevBtn.toggleClass('disabled', intPage == 1);
+          nextBtn.toggleClass('disabled', (viewResults.rows.length < ViewsSection.PAGE_LIMIT) || intPage == 10);
+        }).apply(this, args);
+      });
+
+      function pageBtnClicker(btn, body) {
+        btn.click(function (ev) {
+          ev.preventDefault();
+          if (btn.hasClass('disabled')) {
+            return;
+          }
+          intPageCell.getValue(function (intPage) {
+            body(intPage);
+          });
+        });
+      }
+
+      pageBtnClicker(prevBtn, function (intPage) {
+        if (intPage > 1) {
+          self.pageNumberCell.setValue((intPage-1).toString());
+        }
+      });
+
+      pageBtnClicker(nextBtn, function (intPage) {
+        if (intPage < 10) {
+          self.pageNumberCell.setValue((intPage+1).toString());
+        }
+      });
+    })();
 
     Cell.subscribeMultipleValues(function (url, results) {
       $('#view_results_container')[(url && !results) ? 'hide' : 'show']();
@@ -1046,7 +1125,6 @@ var ViewsSection = {
   },
   runCurrentView: function () {
     ViewsFilter.closeFilter();
-    this.pageNumberCell.setValue("1");
     this.viewResultsURLCell.runView();
   },
   showView: function (plink) {
@@ -1189,7 +1267,11 @@ var ViewsFilter = {
   inputs2filterParams: function () {
     var params = this.parseInputs();
     var packedParams = encodeURIComponent($.param(params));
-    this.rawFilterParamsCell.setValue(packedParams);
+    var oldFilterParams = this.rawFilterParamsCell.value;
+    if (oldFilterParams !== packedParams) {
+      this.rawFilterParamsCell.setValue(packedParams);
+      ViewsSection.pageNumberCell.setValue(undefined);
+    }
   },
   iterateInputs: function (body) {
     this.filter.find('.key input').each(function () {
