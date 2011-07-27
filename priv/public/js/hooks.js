@@ -952,7 +952,8 @@ var MockedRequest = mkClass({
       [post("settings", "stats"), method("doNothingPOST")],
       [get("couchBase", x, "_all_docs"), function () {return ServerStateMock.handleAllDocs(this);}],
       [get("couchBase", x, "_design", x, "_view", x), function () {return ServerStateMock.handleAllDocs(this);}],
-      [get("couchBase", x, "_any_doc"), function () {return ServerStateMock.handleAnyDoc(this);}]
+      [get("couchBase", x, "_random"), {ok: true, id: "asd"}],
+      [get("couchBase", x, "asd"), function () {return ServerStateMock.handleAnyDoc(this);}]
     ];
 
     rv.x = x;

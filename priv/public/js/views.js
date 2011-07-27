@@ -42,8 +42,8 @@ function couchGet(url, callback) {
 }
 
 function couchReq(method, url, data, success, error) {
-  $.ajax(url,
-         {type: method,
+  $.ajax({type: method,
+          url: url,
           data: JSON.stringify(data),
           dataType: 'json',
           success: success,
