@@ -372,7 +372,6 @@ var ViewsSection = {
       if (pageNo > 10) {
         pageNo = 10;
       }
-      console.log("computing proposedViewResultsURLCell");
       return buildDocURL(dbURL, ddocAndView[0]._id, "_view", ddocAndView[1], _.extend({}, filterParams, {
         limit: "10",
         skip: String((pageNo - 1) * 10)
@@ -409,11 +408,13 @@ var ViewsSection = {
     }).name("viewResultsCell");
 
     viewResultsCell.subscribeValue(function (value) {
-      var rows = [];
       if (value) {
-        rows = _.filter(value.rows, function (r) {return !!r.key});
+        var rows = _.filter(value.rows, function (r) {return !!r.key});
+        var targ = {rows: rows};
+      } else {
+        var targ = {rows: {lackOfValue: true}};
       }
-      renderTemplate('view_results', {rows: rows});
+      renderTemplate('view_results', targ);
     });
 
     Cell.subscribeMultipleValues(function (url, results) {
