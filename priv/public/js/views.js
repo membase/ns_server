@@ -1063,9 +1063,9 @@ var ViewsSection = {
       if (!ddocURL) {
         return;
       }
-      genericDialog({header: 'Confirm publishing',
-                     text: 'Publishing copies development design document into ' +
-                     'production design document with same name overwriting the later. Please, confirm',
+      genericDialog({header: 'Confirm Publishing',
+                     text: 'If there is an existing design document ' +
+                       'in production with this name, it will be overwritten. Please, confirm.',
                      callback: function (e, name, instance) {
                        if (name != 'ok') {
                          instance.close();
