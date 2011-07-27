@@ -858,7 +858,7 @@
                   <h3 class="block-expander"><ins></ins><span class="view_head">View Code</span>
                     <span class="buttons">
                       <a id="save_view_as" class="btn_1"><span>Save As...</span></a>
-                      <a id="save_and_run_view" class="btn_1"><span>Save & Run</span></a>
+                      <a id="just_save_view" class="btn_1"><span>Save</span></a>
                     </span>
                   </h3>
                   <div class="stats">
@@ -964,11 +964,12 @@
       <div class="shadow_box marg-top">
     <div class="content">
         <div class="darker_block">
-            <h3 class="block-expander">
-                <ins></ins>
-                <span class="view_head">Results <span id="view_query_string"><!-- ?start_key=<em>["2011"]</em>&end_key=<em>["2011", {}]</em>&descending=<em>false</em>&group=<em>true</em> --></span></span>
+            <h3>
+                <a class="btn_1" id="view_run_button" style="float:left;"><span>Run</span></a>
+                <span class="results_header">Results <span id="view_query_string"><!-- ?start_key=<em>["2011"]</em>&end_key=<em>["2011", {}]</em>&descending=<em>false</em>&group=<em>true</em> --></span></span>
             </h3>
             <div class="shadow_box">
+                <div id="view_results_spinner" class="spinner" style="height:100px;line-height:100px;display:none;"><span>Loading...</span></div>
                 <div id="view_results_container" class="content c_result"></div>
             </div>
         </div>

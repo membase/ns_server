@@ -305,6 +305,7 @@ var ViewsSection = {
     })();
 
     DAL.subscribeWhenSection(currentDDocAndView, "views", function (value) {
+      $('#views_spinner')[value ? 'hide' : 'show']();
       $('#views_list')[(value && !value.length) ? 'show' : 'hide']();
       $('#view_details')[(value && value.length) ? 'show' : 'hide']();
     });
@@ -339,7 +340,7 @@ var ViewsSection = {
     }).name("editingDevView");
 
     editingDevView.subscribeValue(function (devView) {
-      $('#save_view_as, #save_and_run_view')[devView ? "show" : "hide"]();
+      $('#save_view_as, #just_save_view')[devView ? "show" : "hide"]();
       $('#viewcode_map, #viewcode_reduce').prop('disabled', !devView);
     });
 
@@ -368,6 +369,7 @@ var ViewsSection = {
 
     var viewResultsURLCell = self.viewResultsURLCell = new Cell();
     viewResultsURLCell.runView = function () {
+      viewResultsURLCell.setValue(undefined);
       Cell.waitQuiescence(function () {
         viewResultsURLCell.setValue(proposedViewResultsURLCell.value);
       });
@@ -382,16 +384,20 @@ var ViewsSection = {
     }).name("viewResultsCell");
 
     viewResultsCell.subscribeValue(function (value) {
-      $('#view_results_block')[value ? 'show' : 'hide']();
       if (!value) {
         return;
       }
-      // TODO: handle partial results errors
-      renderTemplate('view_results', value);
+      var rows = _.filter(value.rows, function (r) {return !!r.key});
+      renderTemplate('view_results', {rows: rows});
     });
 
+    Cell.subscribeMultipleValues(function (url, results) {
+      $('#view_results_container')[!!results ? 'show' : 'hide']();
+      $('#view_results_spinner')[(url && !results) ? 'show' : 'hide']();
+    }, viewResultsURLCell, viewResultsCell);
+
     $('#save_view_as').bind('click', $m(self, 'startViewSaveAs'));
-    $('#save_and_run_view').bind('click', $m(self, 'saveAndRunView'));
+    $('#just_save_view').bind('click', $m(self, 'saveView'));
 
     var productionDDocsCell = Cell.compute(function (v) {
       var allDDocs = v.need(allDDocsCell);
@@ -463,6 +469,8 @@ var ViewsSection = {
         jq.closest('.darker_block').removeClass('closed');
       }
     }).trigger('click');
+
+    $('#view_run_button').bind('click', _.bind(self.runCurrentView, self));
   },
   doDeleteDDoc: function (url, callback) {
     begin();
@@ -878,7 +886,7 @@ var ViewsSection = {
       self.allDDocsCell.recalculate();
     }
   },
-  saveAndRunView: function () {
+  saveView: function () {
     var self = this;
     var dialog = $('#copy_view_dialog');
     var warning = dialog.find('.warning').hide();
@@ -899,10 +907,6 @@ var ViewsSection = {
       var reduceCode = $('#viewcode_reduce').val();
       var changed = (currentView.map !== mapCode) || ((currentView.reduce || "") !== reduceCode);
 
-      if (!changed) {
-        return startRun(dbURL, ddoc, viewName);
-      }
-
       currentView = _.clone(currentView);
       currentView.map = mapCode;
       if (reduceCode) {
@@ -914,14 +918,12 @@ var ViewsSection = {
 
       function saveCallback() {
         self.allDDocsCell.recalculate();
-        return ViewsSection.saveAndRunView();
       }
     }
-
-    function startRun() {
-      self.pageNumberCell.setValue("1");
-      self.viewResultsURLCell.runView();
-    }
+  },
+  runCurrentView: function () {
+    this.pageNumberCell.setValue("1");
+    this.viewResultsURLCell.runView();
   },
   showView: function (plink) {
     return unbuildViewPseudoLink(plink, this.doShowView, this);
@@ -934,12 +936,6 @@ var ViewsSection = {
       }
       self.rawDDocIdCell.setValue(ddoc._id);
       self.rawViewNameCell.setValue(viewName);
-      Cell.waitQuiescence(function () {
-        if (self.currentView.value) {
-          self.pageNumberCell.setValue("1");
-          self.viewResultsURLCell.runView();
-        }
-      });
     });
   },
   startPublish: function (id) {
