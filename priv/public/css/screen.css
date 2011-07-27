@@ -531,7 +531,7 @@ button#test_email + span {line-height:2.25em;margin-left:0.5em}
 .u_line_sm {padding:0 0 10px; font-size:12px;}
 .u_line_sm .label {display:block; float:left; width:110px; padding-top:7px; text-align:right; margin:0 5px 0 0;}
 .u_line_sm .inp {margin:0 4px 0 1px;padding:4px 3px;border:1px solid #ccd2d6;}
-.lbox .pat_10 p.dialog-text {padding:20px;}
+.lbox .pat_10 p.dialog-text {padding:20px;line-height:1.5em}
 .lbox .save_cancel {padding:18px;background:#cccfd2;border-top:1px solid #eee;}
 .lbox .pas_20 .save_cancel {margin:0 0 0 -40px;position:relative;left:20px;}
 .lbox .pas_20 + .save_cancel {margin:0;position:static;}
