@@ -499,10 +499,10 @@ function genericDialog(options) {
 
   var b = [];
   if (options.buttons.ok) {
-    b.push({text: "OK", click: mkButtonCallback('ok'), 'class':'save'});
+    b.push({text: (options.buttons.ok === true ? "OK" : options.buttons.ok), click: mkButtonCallback('ok'), 'class':'save'});
   }
   if (options.buttons.cancel) {
-    b.push({text: "Cancel", click: mkButtonCallback('cancel'), 'class':'cancel'});
+    b.push({text: (options.buttons.cancel === true ? "Cancel" : options.buttons.cancel), click: mkButtonCallback('cancel'), 'class':'cancel'});
   }
   options.buttons = b;
 
