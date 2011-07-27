@@ -653,18 +653,15 @@ var ViewsSection = {
       }
     }
 
-    function showDoc(id) {
+    function showDoc(id, error) {
       self.dbURLCell.getValue(function (dbURL) {
         couchReq('GET', buildDocURL(dbURL, id), null, function (data) {
           currentDocument = $.extend({}, data);
-          delete data._rev;
           var tmp = JSON.stringify(data, null, "\t")
           $("#edit_preview_doc").removeClass("disabled");
+          $("#lookup_doc_by_id").val(data._id);
           jsonCodeEditor.setValue(tmp);
-        }, function() {
-          $.cookie("randomKey", "");
-          randomId(showDoc);
-        });
+        }, error);
       });
     }
 
@@ -684,7 +681,13 @@ var ViewsSection = {
       if (typeof dontReset == "undefined") {
         $.cookie("randomKey", "");
       }
-      randomId(showDoc);
+      randomId(function(id) {
+        showDoc(id, function() {
+          $("#edit_preview_doc").addClass("disabled");
+          $("#lookup_doc_by_id").val(id);
+          jsonCodeEditor.setValue("Invalid key");
+        });
+      });
     });
 
 
@@ -698,6 +701,20 @@ var ViewsSection = {
       enableEditor(jsonCodeEditor);
     });
 
+
+    $("#lookup_doc_by_id_btn").bind('click', function(e) {
+      e.stopPropagation();
+      var id = $("#lookup_doc_by_id").val();
+      $.cookie("randomKey", id);
+      showDoc(id, function() {
+        docError("You specified an invalid id");
+      });
+
+    });
+
+    $("#lookup_doc_by_id").bind('click', function(e) {
+      e.stopPropagation();
+    });
 
     $('#save_preview_doc').click(function(ev) {
 

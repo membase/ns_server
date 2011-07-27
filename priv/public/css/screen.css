@@ -41,6 +41,11 @@ a:hover {text-decoration:underline;}
 html {height:100%;overflow-y:scroll}
 body {height:100%;color:#616062;font-family:Helvetica, Verdana;line-height:1;background:#F0EEE7}
 
+input { border:1px solid #AAA; padding:3px; }
+
+#edit_preview_doc, #save_preview_doc { position:absolute; top:50px; right: 10px; z-index:999; }
+#lookup_doc_by_id { width:20em; }
+
 /* universal styles */
 .nobr {white-space:nowrap;}
 .none {display:none}

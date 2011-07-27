@@ -842,17 +842,26 @@
             <div id="view_details" style="display:none;">
             <div class="shadow_box">
               <div class="content sampl_doc" id="sample_docs">
-                <div class="darker_block">
-                  <h3 class="block-expander"><ins></ins><span class="view_head">Sample Documents</span>
+                <div class="darker_block bucket_details">
+                  <h3 class="block-expander">
+                    <ins></ins><span class="view_head">Sample Document</span>
+
+                    <span class="buttons">
+                      <input type="text" id="lookup_doc_by_id" />
+                      <a class="btn_1" id="lookup_doc_by_id_btn"><span>Lookup Id</span></a>
+                      <a class="btn_1" id="preview_random_doc">
+                        <span>Preview a Random Document</span>
+                      </a>
+                    </span>
+
+                  </h3>
                     <span class="buttons when-not-editing">
                       <a class="btn_1" id="edit_preview_doc"><span>Edit</span></a>
-                      <a class="btn_1" id="preview_random_doc"><span>Preview a Random Document</span></a>
                     </span>
                     <span class="buttons when-editing">
                       <a class="btn_1" id="save_preview_doc"><span>Save</span></a>
-                      <a class="btn_1 disabled"><span>Preview a Random Document</span></a>
                     </span>
-                  </h3>
+
                   <div class="stats">
                     <textarea id="sample_doc_editor"></textarea>
                   </div>
