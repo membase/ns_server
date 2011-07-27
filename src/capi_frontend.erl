@@ -286,17 +286,15 @@ is_couchbase_db(Name) ->
 first_vbucket(Bucket) ->
     {ok, Config} = ns_bucket:get_bucket(?b2l(Bucket)),
     Map = proplists:get_value(map, Config, []),
-    {ok, Index} = index_of([node()], Map),
+    {ok, Index} = first_vbucket(node(), Map, 0),
     Index.
 
 
--spec index_of(any(), list()) -> {ok, non_neg_integer()} | {error, not_found}.
-index_of(Item, List) ->
-    index_of(Item, List, 1).
-
-index_of(_, [], _)  ->
-    {error, not_found};
-index_of(Item, [Item|_], Index) ->
-    {ok, Index};
-index_of(Item, [_|Tl], Index) ->
-    index_of(Item, Tl, Index+1).
+-spec first_vbucket(atom(), list(), integer()) ->
+    {ok, integer()} | {error, no_vbucket_found}.
+first_vbucket(_Node, [], _Acc) ->
+    {error, no_vbucket_found};
+first_vbucket(Node, [[Node|_] | _Rest], I) ->
+    {ok, I};
+first_vbucket(Node, [_First|Rest], I) ->
+    first_vbucket(Node, Rest, I + 1).
