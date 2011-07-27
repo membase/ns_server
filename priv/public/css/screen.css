@@ -388,6 +388,7 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 #views .darker_block h3 ins {position:absolute;top:16px;left:10px}
 #views .darker_block h3 {position:relative}
 #views .view_head {float:left;padding:12px 0 0 31px}
+#views .results_header { line-height: 31px; padding-left: 12px; }
 .clearfix .fl_inp {float:right;width:270px;margin:0 0 0 10px;text-align:left}
 .bucket_details .create_dev {padding:0 0 0 4px;color:#bbb;background:#fff;border:1px solid #CCD3D7}
 .bucket_details .create_dev input[disabled=""] {color:#BBBBBB;background:#fff}

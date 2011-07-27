@@ -375,18 +375,20 @@ var ViewsSection = {
       if (!ddocAndView[1]) {
         return;
       }
-      var pageVal = v.need(self.pageNumberCell);
+      var filterParams = v.need(ViewsFilter.filterParamsCell);
+      var pageVal = v(self.pageNumberCell);
       var pageNo = parseInt(pageVal, 10);
       if (isNaN(pageNo) || pageNo < 1) {
-        return;
+        pageNo = 1;
       }
       if (pageNo > 10) {
         pageNo = 10;
       }
-      return buildDocURL(dbURL, ddocAndView[0]._id, "_view", ddocAndView[1], {
+      console.log("computing proposedViewResultsURLCell");
+      return buildDocURL(dbURL, ddocAndView[0]._id, "_view", ddocAndView[1], _.extend({}, filterParams, {
         limit: "10",
         skip: String((pageNo - 1) * 10)
-      });
+      }));
     }).name("proposedViewResultsURLCell");
 
     DAL.subscribeWhenSection(proposedViewResultsURLCell, "views", function (url) {
@@ -407,7 +409,11 @@ var ViewsSection = {
     });
 
     var viewResultsCell = Cell.compute(function (v) {
-      return future.get({url: v.need(viewResultsURLCell)});
+      function missingValueProducer(xhr, options) {
+        return {rows: [{key: JSON.parse(xhr.responseText)}]};
+      }
+      return future.get({url: v.need(viewResultsURLCell),
+                         missingValueProducer: missingValueProducer});
     }).name("viewResultsCell");
 
     viewResultsCell.subscribeValue(function (value) {
@@ -956,6 +962,7 @@ var ViewsSection = {
     }
   },
   runCurrentView: function () {
+    ViewsFilter.closeFilter();
     this.pageNumberCell.setValue("1");
     this.viewResultsURLCell.runView();
   },
@@ -1012,6 +1019,7 @@ var ViewsSection = {
     this.rawDDocIdCell.setValue(undefined);
     this.pageNumberCell.setValue(undefined);
     this.rawViewNameCell.setValue(undefined);
+    ViewsFilter.reset();
   },
   navClick: function () {
     this.onLeave();
@@ -1025,3 +1033,126 @@ configureActionHashParam("showView", $m(ViewsSection, "showView"));
 configureActionHashParam("removeView", $m(ViewsSection, "startRemoveView"));
 configureActionHashParam("publishDDoc", $m(ViewsSection, "startPublish"));
 configureActionHashParam("addView", $m(ViewsSection, "startCreateView"));
+
+var ViewsFilter = {
+  rawFilterParamsCell: new StringHashFragmentCell("viewsFilter"),
+  reset: function () {
+    this.rawFilterParamsCell.setValue(undefined);
+  },
+  init: function () {
+    var self = this;
+
+    self.filterParamsCell = Cell.computeEager(function (v) {
+      var filterParams = v(self.rawFilterParamsCell) || "";
+      filterParams = decodeURIComponent(filterParams);
+      return $.deparam(filterParams);
+    });
+
+    self.filter = $('#view_results_block .f_popup');
+
+    var selectInstance = self.selectInstance = self.filter.find(".selectBox");
+    selectInstance.selectBox();
+
+    $("#view_results_block .exp_filter").toggle(_.bind(self.openFilter, self),
+                                                _.bind(self.closeFilter, self));
+
+    $("#view_filter_add").bind('click', function (e) {
+      var value = selectInstance.selectBox("value");
+      if (!value) {
+        return;
+      }
+      var input = self.filter.find('[name=' + value + ']');
+      if (input.attr('type') === 'checkbox') {
+        input.prop('checked', false);
+      } else {
+        input.val("");
+      }
+      input.closest('tr').show();
+      selectInstance.selectBox("destroy");
+      // jquery is broken. this is workaround, because $%#$%
+      selectInstance.removeData('selectBoxControl').removeData('selectBoxSettings');
+      selectInstance.find("option[value="+value+"]").prop("disabled", true);
+      selectInstance.selectBox();
+    });
+
+    self.filter.delegate('.ic_key', 'click', function () {
+      var row = $(this).closest('tr');
+      var name = row.find('[name]').attr('name')
+      row.hide();
+      selectInstance.selectBox("destroy");
+      // jquery is broken. this is workaround, because $%#$%
+      selectInstance.removeData('selectBoxControl').removeData('selectBoxSettings');
+      selectInstance.find("option[value="+name+"]").prop("disabled", false);
+      selectInstance.selectBox();
+    });
+  },
+  openFilter: function () {
+    var self = this;
+    self.filterParamsCell.getValue(function (params) {
+      self.filter.closest('.f_wrap').find('.exp_filter').addClass("selected");
+      self.filter.addClass("visib");
+      self.fillInputs(params);
+    });
+  },
+  closeFilter: function () {
+    if (!this.filter.hasClass('visib')) {
+      return;
+    }
+    this.inputs2filterParams();
+    this.filter.closest('.f_wrap').find('.exp_filter').removeClass("selected");
+    this.filter.removeClass("visib");
+  },
+  inputs2filterParams: function () {
+    var params = this.parseInputs();
+    var packedParams = encodeURIComponent($.param(params));
+    this.rawFilterParamsCell.setValue(packedParams);
+  },
+  iterateInputs: function (body) {
+    this.filter.find('.key input').each(function () {
+      var el = $(this);
+      var name = el.attr('name');
+      var type = (el.attr('type') === 'checkbox') ? 'bool' : 'json';
+      var val = (type === 'bool') ? !!el.prop('checked') : el.val();
+      body(name, type, val, el);
+    });
+  },
+  fillInputs: function (params) {
+    this.iterateInputs(function (name, type, val, el) {
+      var row = el.closest('tr');
+      if (params[name] === undefined) {
+        row.hide();
+        return;
+      }
+      row.show();
+      if (type == 'bool') {
+        el.prop('checked', !(params[name] === 'false' || params[name] === false));
+      } else {
+        el.val(params[name]);
+      }
+    });
+    this.selectInstance.selectBox("destroy");
+      // jquery is broken. this is workaround, because $%#$%
+    this.selectInstance.removeData('selectBoxControl').removeData('selectBoxSettings');
+    this.selectInstance.find("option").each(function () {
+      var option = $(this);
+      var value = option.attr('value');
+      option.prop('disabled', value in params);
+    });
+    this.selectInstance.selectBox();
+  },
+  parseInputs: function() {
+    var rv = {};
+    this.iterateInputs(function (name, type, val, el) {
+      var row = el.closest('tr');
+      if (row.get(0).style.display === 'none') {
+        return;
+      }
+      rv[name] = val;
+    });
+    return rv;
+  }
+};
+
+$(function () {
+  ViewsFilter.init();
+});
