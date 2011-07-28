@@ -1377,7 +1377,11 @@ var ViewsFilter = {
     self.filterParamsCell = Cell.computeEager(function (v) {
       var filterParams = v(self.rawFilterParamsCell);
       if (filterParams == null) {
-        filterParams = "stale=update_after&connection_timeout=60000";
+        if (v.need(ViewsSection.modeTabs) === 'development') {
+          filterParams = "stale=update_after&connection_timeout=60000";
+        } else {
+          filterParams = "connection_timeout=60000";
+        }
       }
       filterParams = decodeURIComponent(filterParams);
       return $.deparam(filterParams);
