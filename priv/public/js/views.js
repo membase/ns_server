@@ -640,6 +640,7 @@ var ViewsSection = {
         }, function() {
           $("#edit_preview_doc").addClass("disabled");
           jsonCodeEditor.setValue("Bucket is currently empty");
+          $("#lookup_doc_by_id").val("");
         });
       });
     }
