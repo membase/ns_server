@@ -1324,11 +1324,11 @@ var ServerStateMock = {
           }
         }
       },
-      { "id":"_design/$dev_TeaTime",
-        "key":"_design/$dev_TeaTime",
+      { "id":"_design/dev_TeaTime",
+        "key":"_design/dev_TeaTime",
         "value":{"rev":"1-5ade2e707ee6f3b2d4467ff5e8f2a96a"},
         "doc":{
-          "_id":"_design/$dev_TeaTime",
+          "_id":"_design/dev_TeaTime",
           "_rev":"1-5ade2e707ee6f3b2d4467ff5e8f2a96a",
           "language": "javascript",
           "views":{

@@ -39,7 +39,7 @@ handle_view_req(Req, Db, DDoc) when Db#db.filepath =/= undefined ->
 handle_view_req(#httpd{method='GET',
         path_parts=[_, _, DName, _, ViewName]}=Req, #db{name=Name} = Db, DDoc) ->
     case DName of
-        <<"$dev_", _/binary>> ->
+        <<"dev_", _/binary>> ->
             case get_value("full_set", (Req#httpd.mochi_req):parse_qs()) =/= "true"
                 andalso capi_frontend:run_on_subset(Name) of
                 true ->

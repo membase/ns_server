@@ -106,7 +106,7 @@ future.capiViewGet = function (ajaxOptions, valueTransformer, newValue, futureWr
 }
 
 function isDevModeDoc(ddoc) {
-  var devPrefix = "_design/$dev_";
+  var devPrefix = "_design/dev_";
   return ddoc._id.substring(0, devPrefix.length) == devPrefix;
 }
 
@@ -385,7 +385,7 @@ var ViewsSection = {
       if (!ddoc) {
         return false;
       }
-      return !!ddoc._id.match(/^_design\/\$dev_/);
+      return !!ddoc._id.match(/^_design\/dev_/);
     }).name("editingDevView");
 
     editingDevView.subscribeValue(function (devView) {
@@ -869,7 +869,7 @@ var ViewsSection = {
     });
   },
   cutOffDesignPrefix: function (id) {
-    return id.replace(/^_design\/(\$dev_|)/, "");
+    return id.replace(/^_design\/(dev_|)/, "");
   },
   startDDocCopy: function (id) {
     this.withDDoc(id, function (ddocURL, ddoc, dbURL) {
@@ -891,7 +891,7 @@ var ViewsSection = {
         eventBindings: [['.save_button', 'click', function (e) {
           e.preventDefault();
           var data = $.deparam(serializeForm(form));
-          var toId = "_design/$dev_" + data.ddoc_name;
+          var toId = "_design/dev_" + data.ddoc_name;
           var spinner = overlayWithSpinner($(dialog));
           var needReload = false;
 
@@ -992,7 +992,7 @@ var ViewsSection = {
       // TODO: maybe other validation
       var modal = new ModalAction();
       var spinner = overlayWithSpinner(dialog);
-      ViewsSection.doSaveView(dbURL, "_design/$dev_" + ddocName, viewName, false, function (status) {
+      ViewsSection.doSaveView(dbURL, "_design/dev_" + ddocName, viewName, false, function (status) {
         var closeDialog = false;
         if (status == "conflict") {
           warning.text("View with given name already exists").show();
@@ -1108,7 +1108,7 @@ var ViewsSection = {
       spinner = overlayWithSpinner(dialog);
       modal = new ModalAction();
 
-      var newId = "_design/$dev_" + newDDocName;
+      var newId = "_design/dev_" + newDDocName;
 
       var mapCode = self.mapEditor.getValue();
       var reduceCode = self.reduceEditor.getValue();
