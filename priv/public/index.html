@@ -1007,7 +1007,11 @@
                 <tr>
                     <td class="keycol">
                         <div class="key">{%= h(JSON.stringify(r.key)) %}</div>
-                        <div class="id">{%= h(r.id) %}</div>
+                        {% if (h(r.id) !== "undefined") { %}
+                          <a class="id">{%= h(r.id) %}</a>
+                        {% } else { %}
+                          <div class="id">{%= h(r.id) %}</div>
+                        {% } %}
                     </td>
                     <td>{%= $.futon.formatJSON(r.value, {html:true}) %}</td>
                 </tr>

@@ -1169,9 +1169,8 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
 #view_run_button {float:right;margin-right:15px}
 
 .list .key {font-size:130%;font-weight:bold}
-.list .id {font-size:110%;margin-top:0.5em;; color:#2EA6DB;; cursor:pointer; }
-.list .id:hover {text-decoration:underline; }
-
+.list .id {font-size:110%;margin-top:0.5em; display:block; }
+.list div.id { color:#999; }
 
 #view_results_block{position:relative;margin-top:5px}
 #view_results_block h1{margin-bottom:5px;padding-top:10px;}

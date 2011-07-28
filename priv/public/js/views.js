@@ -716,7 +716,7 @@ var ViewsSection = {
     });
 
     $("#view_results_container").bind('mousedown', function(e) {
-      if ($(e.target).hasClass("id")) {
+      if ($(e.target).is("a.id")) {
         showDoc($(e.target).text(), function() {
           docError("Unknown Error");
         });
