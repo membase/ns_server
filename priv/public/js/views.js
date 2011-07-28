@@ -271,19 +271,30 @@ var ViewsSection = {
         var selectedDDocId = ddocAndView.length && ddocAndView[0]._id;
         var selectedViewName = ddocAndView.length && ddocAndView[1];
 
+        var devOptgroupOutput = false;
+        var productionOptgroupOutput = false;
         var groups = _.map(ddocs, function (doc) {
-          var rv = "<optgroup label='" + escapeHTML(doc._id) + "'>";
+          var rv = "";
           var viewNames = _.keys(doc.views || {}).sort();
+
+          if (isDevModeDoc(doc) && !devOptgroupOutput) {
+            rv += '<optgroup label="Development Views" class="topgroup">';
+            devOptgroupOutput = true;
+          } else if (!isDevModeDoc(doc) && !productionOptgroupOutput) {
+            rv += '</optgroup><optgroup label="Production Views" class="topgroup">';
+            productionOptgroupOutput = true;
+          }
+          rv += "<optgroup label='" + escapeHTML(doc._id) + "' class='childgroup'>";
           _.each(viewNames, function (name) {
             var maybeSelected = (selectedDDocId === doc._id && selectedViewName === name) ? ' selected' : '';
             rv += "<option value='" + escapeHTML(buildViewPseudoLink(bucketName, doc, name)) + "'" +
               maybeSelected + ">" +
               escapeHTML(name) + "</option>";
           });
-          rv += "</optgroup>"
+          rv += "</optgroup>";
           return rv;
         });
-
+        groups.push('</optgroup>');
         return {
           list: groups,
           selected: ddocAndView

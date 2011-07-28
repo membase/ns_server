@@ -1229,11 +1229,13 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
 .selectBox-inline {display: inline-block;overflow: auto;outline: medium none;border: 1px solid #BBBBBB;}
 .selectBox-inline:focus {border-color: #666666;}
 .selectBox-options, .selectBox-options LI, .selectBox-options LI A {display:block;cursor:default;margin:0;padding:0;list-style: none outside none;}
-.selectBox-options LI A {overflow: hidden;padding: 0.2em 0.4em;line-height: 1.5;white-space: nowrap;font-size: 1.1em;border: 1px solid #eeeeef;padding-left:1em}
-.selectBox-options LI.selectBox-hover A {color: #212121;font-weight: normal; text-decoration:none;border: 1px solid #999999; background: #dadada url(../images/ui-theme/ui-bg_glass_75_dadada_1x400.png) 50% 50% repeat-x; }
+.selectBox-options LI A {overflow: hidden;padding: 0.2em 0.4em;line-height: 1.5;white-space: nowrap;font-size: 1.1em;border: 1px solid #eeeeef;border-left:none;border-right:none;padding-left:2em;background:#f7f7f7}
+.selectBox-options LI.selectBox-hover A {font-weight: normal; text-decoration:none;border: 1px solid #999;border-left:none;border-right:none; background: #dadada url(../images/ui-theme/ui-bg_glass_75_dadada_1x400.png) 50% 50% repeat-x; }
 .selectBox-options LI.selectBox-disabled A {color: #cfcdcd;}
 .selectBox-options LI.selectBox-selected A {background-color: none;}
 .selectBox-options .selectBox-optgroup {padding: 0 0.3em;color: #666666;white-space: nowrap;line-height: 1.5;font-weight: bold;}
+.selectBox-options .selectBox-optgroup.topgroup { background:#dfdfdf}
+.selectBox-options .selectBox-optgroup.childgroup { padding-left: 1em }
 .selectBox.selectBox-disabled {color: #888888 !important;}
 .selectBox-dropdown.selectBox-disabled .selectBox-arrow {border-color: #666666;opacity: 0.5;}
 .selectBox-inline.selectBox-disabled {color: #cfcdcd !important;}

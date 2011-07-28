@@ -272,7 +272,7 @@ if(jQuery) (function($) {
 							
 							select.find('OPTGROUP').each( function() {
 								
-								var optgroup = $('<li class="selectBox-optgroup" />');
+								var optgroup = $('<li class="selectBox-optgroup ' + $(this).attr('class') + '" />');
 								optgroup.text($(this).attr('label'));
 								options.append(optgroup);
 								
@@ -333,7 +333,7 @@ if(jQuery) (function($) {
 							
 							select.find('OPTGROUP').each( function() {
 								
-								var optgroup = $('<li class="selectBox-optgroup" />');
+								var optgroup = $('<li class="selectBox-optgroup ' + $(this).attr('class') + '" />');
 								optgroup.text($(this).attr('label'));
 								options.append(optgroup);
 								
