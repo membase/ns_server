@@ -210,7 +210,10 @@ if(jQuery) (function($) {
 					//
 					
 					var label = $('<span class="selectBox-label" />'),
-						arrow = $('<span class="selectBox-arrow" />');
+						//arrow = $('<span class="selectBox-arrow" />');
+						// using jQuery UI style buttons for easier and more consistent styling
+						arrow = $('<button class="selectBox-arrow ui-button ui-widget ui-state-default ui-button-text-icon-primary ui-button-icon-only ui-corner-right ui-button-icon">' +
+							'<span class="ui-button-icon-primary ui-icon ui-icon-triangle-1-s"></span><span class="ui-button-text">&nbsp;</span></button>');
 					
 					label.text( $(select).find('OPTION:selected').text() || '\u00A0' );
 					

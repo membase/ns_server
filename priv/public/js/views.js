@@ -263,7 +263,9 @@ var ViewsSection = {
 
         var bucketName = v.need(self.viewsBucketCell);
 
-        var ddocs = v.need(allDDocsCell);
+        var ddocs = _.sortBy(v.need(allDDocsCell), function(ddoc) {
+          return !isDevModeDoc(ddoc);
+        });
         var ddocAndView = v.need(currentDDocAndView);
 
         var selectedDDocId = ddocAndView.length && ddocAndView[0]._id;
@@ -296,6 +298,8 @@ var ViewsSection = {
           }
           unbuildViewPseudoLink(newValue, function (_ignored, ddocId, viewName) {
             var devMode = isDevModeDoc({_id: ddocId});
+            $('#views_view_select').parent().find('.selectBox-label')
+              .html(ddocId.split('/').join('/<strong>') + '</strong>/_view/<strong>' + viewName + '</strong>');
             self.modeTabs.setValue(devMode ? 'development' : 'production');
             self.rawDDocIdCell.setValue(ddocId);
             self.rawViewNameCell.setValue(viewName);
@@ -308,6 +312,12 @@ var ViewsSection = {
             var option = $(group);
             q.append(option);
           });
+          $('#views_view_select').selectBox({autoWidth:true})
+            .selectBox('options', list.join(''));
+          if (selected.length > 0) {
+            $('#views_view_select').parent().find('.selectBox-label')
+              .html(selected[0]._id.split('/').join('/<strong>') + '</strong>/_view/<strong>' + selected[1] + '</strong>');
+          }
         }
       });
     })();

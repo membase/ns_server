@@ -182,8 +182,6 @@ h1 {font-size:20px; font-weight:normal;}
 h1 .nav {display:block; padding:8px 10px 0 0; text-transform:none;}
 h1 .nav a {font-size:11px; font-weight:bolder;}
 #mainPanel h1 {padding:0 0 15px 9px;}
-#mainPanel h1 input {font-size:60%}
-#mainPanel h1 button {font-size:65%;width:2em;height:2.2em}
 
 .labeled_line {padding:10px;}
 .form .labeled_line {padding:6px 10px;}
@@ -1206,8 +1204,8 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
 .f_wrap {margin-top:-0.5em;font-size:16px;vertical-align:middle;width:50px;position:absolute;left:7.5em;top:0;}
 .filter_cont .filter {float:left;margin:14px 7px 0 0;color:#616062;font-size:18px;}
 .filter_cont .exp_filter {float:left;width:57px;height:44px; margin:0 1px 0 0;background:url(../images/exp_filter.png) 0 -58px}
-.filter_cont a.selected {background: url("../images/exp_filter2.png") repeat scroll -8px -5px transparent;border-radius: 40px 40px 0 0;box-shadow: 0 0 10px #777777;height: 39px;margin: 5px 8px;width: 41px;}
-.f_popup {position:absolute;display:none;z-index:1;top:43px;left:9px;width:437px;padding: 24px 0 18px;background:white;box-shadow:0 0 10px #777;border-radius:0 10px 10px 10px}
+.filter_cont a.selected {background: url("../images/exp_filter2.png") repeat scroll -8px -5px transparent;-moz-border-radius:40px 40px 0 0;-webkit-border-radius:40px 40px 0 0;border-radius: 40px 40px 0 0;-moz-box-shadow: 0 0 10px #777;-webkit-box-shadow: 0 0 10px #777;box-shadow: 0 0 10px #777;height: 39px;margin: 5px 8px;width: 41px;}
+.f_popup {position:absolute;display:none;z-index:1;top:43px;left:9px;width:437px;padding: 24px 0 18px;background:white;-moz-box-shadow: 0 0 10px #777;-webkit-box-shadow: 0 0 10px #777;box-shadow:0 0 10px #777;-moz-border-radius:0 10px 10px 10px;-webkit-border-radius:0 10px 10px 10px;border-radius:0 10px 10px 10px}
 .f_popup .f_cont {position:relative;overflow:hidden;margin: 0 0 0;}
 .f_popup .f_cont .wrap {float:left;width:174px;margin:2px 6px 0 17px}
 .f_popup .f_cont .ic_plus {float:left;width:32px;height:31px;margin: 3px 0 0 8px;background:url(../images/ic_plus.png) no-repeat}
@@ -1221,12 +1219,13 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
 .visib {display:block}
 
 /*select*/
-.selectBox-dropdown {display:inline-block;position:relative;width:190px;height:31px;outline:medium none;cursor: default;vertical-align:middle;color:#222222;font-size:60%;line-height:1.5;text-decoration: none;border: 0px solid #BBBBBB;
-background:url(../images/bg_select.png) no-repeat;}
+.selectBox-dropdown {display:inline-block;position:relative;height:31px;outline:medium none;cursor: default;vertical-align:middle;color:#222;font-size:60%;line-height:1.5;text-decoration: none;background:#EEEEEF;border: 1px solid #AAAAAA;border-bottom-left-radius: 4px;border-top-left-radius: 4px;padding-right:20px}
 .selectBox-dropdown:hover {text-decoration:none}
+.selectBox-dropdown .selectBox-arrow{font-size: 1.24em !important;position: absolute;right: -2.4em;top: -3px;}
+.firefox .selectBox-dropdown .selectBox-arrow{top:-1px;font-size: 1.24em !important;}
 .selectBox-dropdown:focus, .selectBox-dropdown:focus .selectBox-arrow {border-color: #666666;}
 .selectBox-dropdown .selectBox-label {display:inline-block;overflow:hidden;padding: 7px 0 0 8px;color:#222222;font-size:14px;white-space:nowrap;}
-.selectBox-dropdown-menu {position: absolute;overflow: auto;z-index: 99999;width:168px !important;max-height: 200px;background:#eeeeef;border: 1px solid #aaa;}
+.selectBox-dropdown-menu {position: absolute;overflow: auto;z-index: 999;max-height: 200px;background:#eeeeef;border: 1px solid #aaa;}
 .selectBox-inline {display: inline-block;overflow: auto;outline: medium none;border: 1px solid #BBBBBB;}
 .selectBox-inline:focus {border-color: #666666;}
 .selectBox-options, .selectBox-options LI, .selectBox-options LI A {display:block;cursor:default;margin:0;padding:0;list-style: none outside none;}
@@ -1239,5 +1238,8 @@ background:url(../images/bg_select.png) no-repeat;}
 .selectBox-dropdown.selectBox-disabled .selectBox-arrow {border-color: #666666;opacity: 0.5;}
 .selectBox-inline.selectBox-disabled {color: #cfcdcd !important;}
 /*select*/
+.f_wrap .selectBox-dropdown {width:130px}
+.f_wrap .selectBox-dropdown-menu {width:100px}
+.f_wrap .selectBox-dropdown .selectBox-arrow{font-size: 1.54em !important;}
 
 ul.tabs.dev-subset-switcher { padding-top: 3px; padding-bottom: 3px; padding-left: 12px; }

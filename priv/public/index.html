@@ -754,7 +754,13 @@
           </script>
 
           <div id="views" style="display:none">
-            <h1 style="clear:both;overflow:hidden"><span style="float:left"><select id="views_bucket_select"></select> &gt; <a href="#visitSec=views">Views</a> &gt; <span class="when-in-dev">Development</span><span class="when-in-prod">Production</span> <span class="when-inside-view">&gt; <select id="views_view_select"></select></span></span></h1>
+            <h1 style="clear:both;overflow:hidden">
+              <span style="float:left"><select id="views_bucket_select"></select> &gt; <a href="#visitSec=views">Views</a>
+                <span class="when-inside-view">
+                  &gt; <select id="views_view_select"></select>
+                </span>
+              </span>
+            </h1>
             <div id="views_spinner" class="spinner" style="height:100px;line-height:100px;display:none;"><span>Loading...</span></div>
               <div class="shadow_box" id="views_list">
                 <div class="content">
@@ -1680,6 +1686,13 @@
 
 <!--[if IE]><script language="javascript" type="text/javascript" src="js/excanvas.min.js"></script><![endif]-->
 <script src="js/jquery.js"></script>
+<script>
+$(function() {
+  if ($.browser.mozilla) {
+    $('body').addClass('firefox');
+  }
+});
+</script>
 <script src="js/jquery-ui-1.8.10.custom.js"></script>
 <script src="js/jquery.flot.js"></script>
 <script src="js/jquery.sparkline.js"></script>
