@@ -163,6 +163,7 @@ var ViewsSection = {
     self.rawDDocIdCell = new StringHashFragmentCell("viewsDDocId");
     self.rawViewNameCell = new StringHashFragmentCell("viewsViewName");
     self.pageNumberCell = new StringHashFragmentCell("viewPage");
+    self.fullSubsetPageNumberCell = new StringHashFragmentCell("fullSubsetViewPage")
 
     self.viewsBucketCell = Cell.compute(function (v) {
       var selected = v(self.rawViewsBucketCell);
@@ -423,19 +424,26 @@ var ViewsSection = {
       }
     });
 
-    var intPageCell = Cell.compute(function (v) {
-      var pageVal = v(self.pageNumberCell);
-      var pageNo = parseInt(pageVal, 10);
-      if (isNaN(pageNo) || pageNo < 1) {
-        pageNo = 1;
-      }
-      if (pageNo > 10) {
-        pageNo = 10;
-      }
-      return pageNo;
-    });
+    function mkIntPageCell(pageNumberCell) {
+      return Cell.compute(function (v) {
+        var pageVal = v(pageNumberCell);
+        var pageNo = parseInt(pageVal, 10);
+        if (isNaN(pageNo) || pageNo < 1) {
+          pageNo = 1;
+        }
+        if (pageNo > 10) {
+          pageNo = 10;
+        }
+        return pageNo;
+      })
+    }
+
+    var intPageCell = mkIntPageCell(self.pageNumberCell);
+    var intFullSubsetPageCell = mkIntPageCell(self.fullSubsetPageNumberCell);
 
     var viewResultsURLCell;
+    var defaultSubsetResultsURLCell;
+    var fullSubsetResultsURLCell;
 
     (function () {
       var proposedURLBuilderCell = Cell.compute(function (v) {
@@ -460,10 +468,10 @@ var ViewsSection = {
         }
       }).name("proposedURLBuilderCell");
 
-      var appliedURLBuilderCell = new Cell();
-
       DAL.subscribeWhenSection(Cell.compute(function (v) {
-        return [v(proposedURLBuilderCell), v.need(intPageCell), v.need(self.subsetTabCell)];
+        var subset = v.need(self.subsetTabCell);
+        var intPage = subset === 'prod' ? v.need(intFullSubsetPageCell) : v.need(intPageCell);
+        return [v(proposedURLBuilderCell), intPage, subset];
       }), "views", function (args) {
         if (!args) {
           return;
@@ -479,41 +487,80 @@ var ViewsSection = {
         }).apply(this, args);
       });
 
-      self.subsetTabCell.subscribeAny(function () {
-        self.pageNumberCell.setValue(undefined);
-      });
+      var defaultSubsetAppliedURLBuilderCell = new Cell();
+      var fullSubsetAppliedURLBuilderCell = new Cell();
+      var lastAppliedURLBuilderCell = new Cell();
 
-      self.viewResultsURLCell = viewResultsURLCell = Cell.compute(function (v) {
-        var appliedBuilder = v(appliedURLBuilderCell);
+      defaultSubsetResultsURLCell = Cell.compute(function (v) {
+        var appliedBuilder = v(defaultSubsetAppliedURLBuilderCell);
         var proposedBuilder = v.need(proposedURLBuilderCell);
         if (appliedBuilder !== proposedBuilder) {
           return;
         }
-        return appliedBuilder(v.need(intPageCell), v.need(self.subsetTabCell));
+        return appliedBuilder(v.need(intPageCell), "dev");
+      });
+      fullSubsetResultsURLCell = Cell.compute(function (v) {
+        var appliedBuilder = v(fullSubsetAppliedURLBuilderCell);
+        var proposedBuilder = v.need(proposedURLBuilderCell);
+        if (appliedBuilder !== proposedBuilder) {
+          return;
+        }
+        return appliedBuilder(v.need(intFullSubsetPageCell), "prod");
+      });
+      self.viewResultsURLCell = viewResultsURLCell = Cell.compute(function (v) {
+        if (v.need(self.subsetTabCell) === "prod") {
+          return v.need(fullSubsetResultsURLCell);
+        }
+        return v.need(defaultSubsetResultsURLCell);
       });
 
       viewResultsURLCell.runView = function () {
-        viewResultsURLCell.setValue(undefined);
+        var urlCell = defaultSubsetResultsURLCell;
+        var appliedBuilderCell = defaultSubsetAppliedURLBuilderCell;
+        if (self.subsetTabCell.value === "prod") {
+          urlCell = fullSubsetResultsURLCell;
+          appliedBuilderCell = fullSubsetAppliedURLBuilderCell;
+        }
+
+        urlCell.setValue(undefined);
         Cell.waitQuiescence(function () {
           proposedURLBuilderCell.getValue(function (value) {
-            appliedURLBuilderCell.setValue(value);
-            viewResultsURLCell.recalculate();
+            appliedBuilderCell.setValue(value);
+            lastAppliedURLBuilderCell.setValue(value);
+            urlCell.recalculate();
           });
         });
       };
 
       proposedURLBuilderCell.subscribeValue(function (proposed) {
-        if (proposed !== appliedURLBuilderCell.value) {
+        if (proposed !== lastAppliedURLBuilderCell.value) {
           self.subsetTabCell.setValue("dev");
           self.pageNumberCell.setValue(undefined);
-          appliedURLBuilderCell.setValue(undefined);
+          self.fullSubsetPageNumberCell.setValue(undefined);
+          lastAppliedURLBuilderCell.setValue(undefined);
+          defaultSubsetAppliedURLBuilderCell.setValue(undefined);
+          fullSubsetAppliedURLBuilderCell.setValue(undefined);
         }
       });
     })();
 
-    var viewResultsCell = Cell.compute(function (v) {
-      return future.capiViewGet({url: v.need(viewResultsURLCell),
+    var defaultSubsetViewResultsCell = Cell.compute(function (v) {
+      return future.capiViewGet({url: v.need(defaultSubsetResultsURLCell),
                                  timeout: 3600000});
+    }).name("defaultSubsetViewResultsCell")
+
+    var fullSubsetViewResultsCell = Cell.compute(function (v) {
+      return future.capiViewGet({url: v.need(fullSubsetResultsURLCell),
+                                 timeout: 3600000});
+    }).name("fullSubsetViewResultsCell")
+
+    var viewResultsCell = Cell.compute(function (v) {
+      // NOTE: we're requiring both subsets values, because otherwise
+      // cells would deactivate 'other' results cell as not needed
+      // anymore.
+      var fullResults = v(fullSubsetViewResultsCell);
+      var defaultResults = v(defaultSubsetViewResultsCell);
+      return v.need(self.subsetTabCell) === 'prod' ? fullResults : defaultResults;
     }).name("viewResultsCell");
 
     viewResultsCell.subscribeValue(function (value) {
@@ -531,12 +578,13 @@ var ViewsSection = {
       var nextBtn = $('#view_results_block .arr_next');
 
       DAL.subscribeWhenSection(Cell.compute(function (v) {
-        return [v(viewResultsURLCell), v(viewResultsCell), v.need(intPageCell)];
+        var intCell = v.need(self.subsetTabCell) === 'prod' ? intFullSubsetPageCell : intPageCell;
+        return [v(viewResultsCell), v.need(intCell)];
       }), "views", function (args) {
         if (!args) {
           return;
         }
-        (function (url, viewResults, intPage) {
+        (function (viewResults, intPage) {
           if (!viewResults) {
             $('#view_results_block .ic_prev_next').hide();
             return;
@@ -553,21 +601,25 @@ var ViewsSection = {
           if (btn.hasClass('disabled')) {
             return;
           }
-          intPageCell.getValue(function (intPage) {
-            body(intPage);
+          var cells = [intPageCell, self.pageNumberCell];
+          if (self.subsetTabCell.value === "prod") {
+            cells = [intFullSubsetPageCell, self.fullSubsetPageNumberCell];
+          }
+          cells[0].getValue(function (intPage) {
+            body(intPage, cells[1]);
           });
         });
       }
 
-      pageBtnClicker(prevBtn, function (intPage) {
+      pageBtnClicker(prevBtn, function (intPage, cell) {
         if (intPage > 1) {
-          self.pageNumberCell.setValue((intPage-1).toString());
+          cell.setValue((intPage-1).toString());
         }
       });
 
-      pageBtnClicker(nextBtn, function (intPage) {
+      pageBtnClicker(nextBtn, function (intPage, cell) {
         if (intPage < 10) {
-          self.pageNumberCell.setValue((intPage+1).toString());
+          cell.setValue((intPage+1).toString());
         }
       });
     })();
@@ -1393,6 +1445,7 @@ var ViewsFilter = {
     if (oldFilterParams !== packedParams) {
       this.rawFilterParamsCell.setValue(packedParams);
       ViewsSection.pageNumberCell.setValue(undefined);
+      ViewsSection.fullSubsetPageNumberCell.setValue(undefined);
       this.saveFilterIntoHistory();
     }
   },
