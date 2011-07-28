@@ -1229,7 +1229,7 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
 .selectBox-inline {display: inline-block;overflow: auto;outline: medium none;border: 1px solid #BBBBBB;}
 .selectBox-inline:focus {border-color: #666666;}
 .selectBox-options, .selectBox-options LI, .selectBox-options LI A {display:block;cursor:default;margin:0;padding:0;list-style: none outside none;}
-.selectBox-options LI A {overflow: hidden;padding: 0.2em 0.4em;line-height: 1.5;white-space: nowrap;font-size: 1.1em;border: 1px solid #eeeeef;}
+.selectBox-options LI A {overflow: hidden;padding: 0.2em 0.4em;line-height: 1.5;white-space: nowrap;font-size: 1.1em;border: 1px solid #eeeeef;padding-left:1em}
 .selectBox-options LI.selectBox-hover A {color: #212121;font-weight: normal; text-decoration:none;border: 1px solid #999999; background: #dadada url(../images/ui-theme/ui-bg_glass_75_dadada_1x400.png) 50% 50% repeat-x; }
 .selectBox-options LI.selectBox-disabled A {color: #cfcdcd;}
 .selectBox-options LI.selectBox-selected A {background-color: none;}
