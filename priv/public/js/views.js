@@ -328,7 +328,7 @@ var ViewsSection = {
             .selectBox('options', list.join(''));
           if (selected.length > 0) {
             $('#views_view_select').parent().find('.selectBox-label')
-              .html(escapeHTML(selected[0]._id).split('/').join('/<strong>') + '</strong>/_view/<strong>' + selected[1] + '</strong>');
+              .html(escapeHTML(selected[0]._id).split('/').join('/<strong>') + '</strong>/_view/<strong>' + escapeHTML(selected[1]) + '</strong>');
           }
         }
       });
