@@ -1266,7 +1266,15 @@ configureActionHashParam("publishDDoc", $m(ViewsSection, "startPublish"));
 configureActionHashParam("addView", $m(ViewsSection, "startCreateView"));
 
 var ViewsFilter = {
-  rawFilterParamsCell: new StringHashFragmentCell("viewsFilter"),
+  rawFilterParamsCell: (function () {
+    var rv = new StringHashFragmentCell("viewsFilter");
+    // NOTE: watchHashParamChange is silently converting empty string to undefined
+    // we cannot easily fix this as some code might rely on that. Thus we have to request hash par
+    rv.interpretHashFragment = function () {
+      this.setValue(getHashFragmentParam(this.paramName));
+    }
+    return rv;
+  })(),
   reset: function () {
     this.rawFilterParamsCell.setValue(undefined);
   },
@@ -1274,7 +1282,10 @@ var ViewsFilter = {
     var self = this;
 
     self.filterParamsCell = Cell.computeEager(function (v) {
-      var filterParams = v(self.rawFilterParamsCell) || "";
+      var filterParams = v(self.rawFilterParamsCell);
+      if (filterParams == null) {
+        filterParams = "stale=update_after";
+      }
       filterParams = decodeURIComponent(filterParams);
       return $.deparam(filterParams);
     });
