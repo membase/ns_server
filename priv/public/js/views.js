@@ -26,7 +26,7 @@ function buildDocURL(base, docId/*, ..args */) {
 }
 
 function buildViewPseudoLink(bucketName, ddoc, viewName) {
-  return encodeURIComponent([bucketName, ddoc._id, viewName].map(encodeURIComponent).join("/"));
+  return encodeURIComponent(_.map([bucketName, ddoc._id, viewName], encodeURIComponent).join("/"));
 }
 
 function unbuildViewPseudoLink(link, body, context) {
@@ -511,6 +511,9 @@ var ViewsSection = {
       DAL.subscribeWhenSection(Cell.compute(function (v) {
         return [v(viewResultsURLCell), v(viewResultsCell), v.need(intPageCell)];
       }), "views", function (args) {
+        if (!args) {
+          return;
+        }
         (function (url, viewResults, intPage) {
           if (!viewResults) {
             $('#view_results_block .ic_prev_next').hide();
