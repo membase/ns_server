@@ -709,10 +709,15 @@ var ViewsSection = {
     $("#lookup_doc_by_id_btn").bind('click', function(e) {
       e.stopPropagation();
       var id = $("#lookup_doc_by_id").val();
-      $.cookie("randomKey", id);
-      showDoc(id, function() {
-        docError("You specified an invalid id");
-      });
+      console.log(id);
+      if (id !== "") {
+        $.cookie("randomKey", id);
+        showDoc(id, function() {
+          docError("You specified an invalid id");
+        });
+      } else {
+        docError("Id cannot be empty");
+      }
     });
 
     $("#lookup_doc_by_id").bind('click', function(e) {
