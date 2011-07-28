@@ -312,8 +312,7 @@ var ViewsSection = {
             $('#views_view_select').parent().find('.selectBox-label')
               .html(ddocId.split('/').join('/<strong>') + '</strong>/_view/<strong>' + viewName + '</strong>');
             self.modeTabs.setValue(devMode ? 'development' : 'production');
-            self.rawDDocIdCell.setValue(ddocId);
-            self.rawViewNameCell.setValue(viewName);
+            self.setCurrentView(ddocId, viewName);
           });
         },
         applyWidget: function () {},
@@ -1225,14 +1224,21 @@ var ViewsSection = {
   showView: function (plink) {
     return unbuildViewPseudoLink(plink, this.doShowView, this);
   },
+  setCurrentView: function (ddocId, viewName) {
+    var self = this;
+    self.dbURLCell.getValue(function (dbURL) {
+      self.rawDDocIdCell.setValue(ddocId);
+      self.rawViewNameCell.setValue(viewName);
+      ViewsFilter.initFilterFor(buildDocURL(dbURL, ddocId, "_view", viewName));
+    });
+  },
   doShowView: function (bucketName, ddocId, viewName) {
     var self = this;
     self.withBucketAndDDoc(bucketName, ddocId, function (ddocURL, ddoc) {
       if (!ddoc) {
         return;
       }
-      self.rawDDocIdCell.setValue(ddoc._id);
-      self.rawViewNameCell.setValue(viewName);
+      self.setCurrentView(ddoc._id, viewName);
     });
   },
   startPublish: function (id) {
@@ -1293,15 +1299,22 @@ configureActionHashParam("addView", $m(ViewsSection, "startCreateView"));
 
 var ViewsFilter = {
   rawFilterParamsCell: (function () {
-    var rv = new StringHashFragmentCell("viewsFilter");
-    // NOTE: watchHashParamChange is silently converting empty string to undefined
-    // we cannot easily fix this as some code might rely on that. Thus we have to request hash par
-    rv.interpretHashFragment = function () {
-      this.setValue(getHashFragmentParam(this.paramName));
-    }
-    return rv;
+    var klass = mkClass(StringHashFragmentCell, {
+      // NOTE: watchHashParamChange is silently converting empty
+      // string to undefined we cannot easily fix this as some code
+      // might rely on that. Thus we have to request hash parameter
+      // and set 'pure' value
+      interpretHashFragment: function () {
+        this.setValue(getHashFragmentParam(this.paramName));
+      }
+    });
+    return new klass("viewsFilter");
   })(),
   reset: function () {
+    if (this.currentViewURL) {
+      this.saveFilterIntoHistory();
+      this.currentViewURL = null;
+    }
     this.rawFilterParamsCell.setValue(undefined);
   },
   init: function () {
@@ -1378,6 +1391,7 @@ var ViewsFilter = {
     if (oldFilterParams !== packedParams) {
       this.rawFilterParamsCell.setValue(packedParams);
       ViewsSection.pageNumberCell.setValue(undefined);
+      this.saveFilterIntoHistory();
     }
   },
   iterateInputs: function (body) {
@@ -1423,6 +1437,49 @@ var ViewsFilter = {
       rv[name] = val;
     });
     return rv;
+  },
+  loadHistory: function () {
+    try {
+      return JSON.parse(window.localStorage.filterHistory);
+    } catch (e) {
+      return [];
+    }
+  },
+  saveHistory: function (history) {
+    if (!window.localStorage) {
+      return;
+    }
+    window.localStorage.filterHistory = JSON.stringify(history);
+  },
+  initFilterFor: function (url) {
+    var history = this.loadHistory();
+    var entry = _.detect(history, function (entry) {
+      return (entry[0] === url);
+    });
+    this.currentViewURL = url;
+    if (!entry) {
+      this.rawFilterParamsCell.setValue(undefined);
+      return;
+    }
+    this.rawFilterParamsCell.setValue(entry[1]);
+    history = [entry].concat(_.without(history, entry));
+    this.saveHistory(history);
+  },
+  MAX_HISTORY_LENGTH: 256,
+  saveFilterIntoHistory: function () {
+    var history = this.loadHistory();
+    var url = this.currentViewURL;
+    if (!url) {
+      return;
+    }
+    var history = _.select(history, function (entry) {
+      return entry[0] !== url;
+    });
+    if (history >= this.MAX_HISTORY_LENGTH) {
+      history.pop();
+    }
+    history.unshift([url, this.rawFilterParamsCell.value]);
+    this.saveHistory(history);
   }
 };
 
