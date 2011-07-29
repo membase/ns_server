@@ -122,7 +122,7 @@ default() ->
                                                 %
                                                 % This is a classic "should" key, where ns_port_sup needs
                                                 % to try to start child processes.  If it fails, it should ns_log errors.
-     {port_servers,
+     {{node, node(), port_servers},
       [{moxi, path_config:component_path(bin, "moxi"),
         ["-Z", {"port_listen=~B,default_bucket_name=default,downstream_max=1024,downstream_conn_max=4,"
                 "connect_max_errors=5,connect_retry_interval=30000,"
@@ -241,7 +241,7 @@ do_upgrade_config_from_1_6_to_1_7(Config, DefaultConfig) ->
                     end, [],
                     [directory,
                      {node, node(), isasl},
-                     port_servers,
+                     {node, node(), port_servers},
                      {node, node(), ns_log}]).
 
 upgrade_config_from_1_7_to_1_7_1() ->
@@ -268,7 +268,7 @@ upgrade_1_6_to_1_7_test() ->
                   {{node, node(), memcached},
                    [{bucket_engine, "new-be"},
                     {engines, "new-engines"}]},
-                  {port_servers,
+                  {{node, node(), port_servers},
                    [{moxi, "moxi something"},
                     {memcached, "memcached something"}]},
                   {{node, node(), ns_log}, default_log}],
@@ -283,7 +283,7 @@ upgrade_1_6_to_1_7_test() ->
                               [{dbdir, "dbdir"},
                                {bucket_engine, "new-be"},
                                {engines, "new-engines"}]},
-                             {set, port_servers,
+                             {set, {node, node(), port_servers},
                               [{moxi, "moxi something"},
                                {memcached, "memcached something"}]},
                              {set, {node, node(), ns_log}, default_log}]),
@@ -302,7 +302,7 @@ fuller_1_6_test_() ->
                       [{dbdir, "dbdir"},
                        {bucket_engine, "old-be"},
                        {engines, "old-engines"}]},
-                     {port_servers,
+                     {{node, node(), port_servers},
                       [{moxi, "moxi old something"},
                        {memcached, "memcached old something"}]},
                      {{node, node(), ns_log}, default_log}]],
