@@ -43,6 +43,7 @@ html {height:100%;overflow-y:scroll}
 body {height:100%;color:#616062;font-family:Helvetica, Verdana;line-height:1;background:#F0EEE7}
 
 #edit_preview_doc, #save_preview_doc { position:absolute; top:50px; right: 10px; z-index:999; }
+.closed #edit_preview_doc {display:none}
 #lookup_doc_by_id { width:20em; border:1px solid #AAA; padding:3px;}
 
 /* universal styles */
@@ -388,7 +389,7 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 #views .buttons {float:right;margin:2px 0px 0 0}
 #views .darker_block.closed h3 ins {top:17px}
 #views .darker_block h3 ins {position:absolute;top:16px;left:10px}
-#views .darker_block h3 {position:relative}
+#views .darker_block h3 {position:relative;min-height:2.5em}
 #views .view_head {float:left;padding:12px 0 0 31px}
 #views .results_header { line-height: 31px; padding-left: 12px; }
 .clearfix .fl_inp {float:right;width:270px;margin:0 0 0 10px;text-align:left}
