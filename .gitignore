@@ -23,7 +23,6 @@
 TAGS
 bin
 deps/mochiweb/ebin/*
-doc/*
 ebin
 ebucketmigrator
 ebucketmigrator**.tmp
