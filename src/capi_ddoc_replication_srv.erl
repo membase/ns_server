@@ -13,10 +13,8 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 
-%% Maintains design doc replication, each node contains its osn design doc
-%% master database for each vbucket which is replicated to all vbuckets on
-%% this node, it also pull replicates from each other node within the
-%% cluster
+%% Maintains design document replication between the <BucketName>/master
+%% vbuckets (CouchDB databases) of all cluster nodes.
 
 -module(capi_ddoc_replication_srv).
 
@@ -30,11 +28,11 @@
 -define(i2l(V), integer_to_list(V)).
 
 
--export([start_link/1, force_update/1, force_full_vbucket_update/1]).
+-export([start_link/1, force_update/1]).
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
--record(state, {bucket, master, servers = [], vbuckets = []}).
+-record(state, {bucket, master, servers = []}).
 
 
 start_link(Bucket) ->
@@ -48,9 +46,6 @@ start_link(Bucket) ->
 
 force_update(Bucket) ->
     server(Bucket) ! update.
-
-force_full_vbucket_update(Bucket) ->
-    server(Bucket) ! full_vbucket_update.
 
 init(Bucket) ->
 
@@ -69,14 +64,6 @@ init(Bucket) ->
     ns_pubsub:subscribe(
       ns_config_events,
       fun (_, _) -> Self ! update end,
-      empty),
-
-    ns_pubsub:subscribe(
-      mc_couch_events,
-      fun ({flush_all, FlushedBucket}, _) when Bucket =:= FlushedBucket ->
-              Self ! full_vbucket_update;
-          (_, _) -> ok
-      end,
       empty),
 
     Self ! start_replication,
@@ -98,9 +85,6 @@ handle_cast(_Msg, State) ->
 
 handle_info(update, State) ->
     {noreply, update(State)};
-
-handle_info(full_vbucket_update, State) ->
-    {noreply, full_vbucket_update(State)};
 
 handle_info(start_replication, State) ->
     {noreply, start_replication(State)};
@@ -131,31 +115,6 @@ terminate(Reason, State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-full_vbucket_update(#state{vbuckets=VBuckets,
-                           bucket=Bucket, master=Master} = State) ->
-    [stop_vbucket_replication(Master, Bucket, Srv) || Srv <- VBuckets],
-    [start_vbucket_replication(Master, Bucket, Srv) || Srv <- VBuckets],
-
-    State.
-
-get_all_vbuckets(Bucket) ->
-    {ok, Conf} = ns_bucket:get_bucket(Bucket),
-    Self = node(),
-
-    Fun = fun([X|_], {Num, List}) when X =:= Self ->
-                  {Num + 1, [Num | List]};
-             (_, {Index, List}) ->
-                  {Index + 1, List}
-          end,
-
-    Map = case proplists:get_value(map, Conf) of
-              undefined -> [];
-              TheMap -> TheMap
-          end,
-
-    {_, NVBucketsAll} = lists:foldl(Fun, {0, []}, Map),
-
-    lists:sort(NVBucketsAll).
 
 get_all_servers(Bucket) ->
     {ok, Conf} = ns_bucket:get_bucket(Bucket),
@@ -164,44 +123,22 @@ get_all_servers(Bucket) ->
     proplists:get_value(servers, Conf) -- [Self].
 
 start_replication(#state{bucket=Bucket, master=Master} = State) ->
-    VBuckets = get_all_vbuckets(Bucket),
     Servers  = get_all_servers(Bucket),
-
     [start_server_replication(Master, Bucket, Srv) || Srv <- Servers],
-    [start_vbucket_replication(Master, Bucket, VBucket) || VBucket <- VBuckets],
+    State#state{servers=Servers}.
 
-    State#state{vbuckets=VBuckets, servers=Servers}.
-
-stop_replication(#state{bucket=Bucket, master=Master,
-                        vbuckets=VBuckets, servers=Servers} = State) ->
+stop_replication(#state{bucket=Bucket, master=Master, servers=Servers} = State) ->
     [stop_server_replication(Master, Bucket, Srv) || Srv <- Servers],
-    [stop_vbucket_replication(Master, Bucket, VBucket) || VBucket <- VBuckets],
+    State#state{servers=[]}.
 
-    State#state{vbuckets=[], servers=[]}.
-
-update(#state{vbuckets=VBuckets, servers=Servers,
-              bucket=Bucket, master=Master} = State) ->
-    NVBucketsAll = get_all_vbuckets(Bucket),
-
-    {ok, VBucketStates} = ns_memcached:list_vbuckets(Bucket),
-    PresentVBuckets = lists:sort(proplists:get_keys(VBucketStates)),
-
-    NVBucketsPresent = ordsets:intersection(NVBucketsAll, PresentVBuckets),
-
+update(#state{servers=Servers, bucket=Bucket, master=Master} = State) ->
     NServers = get_all_servers(Bucket),
 
-    {ToStartVBuckets0, ToStopVBuckets} = difference(VBuckets, NVBucketsAll),
     {ToStartServers, ToStopServers} = difference(Servers, NServers),
-
-    ToStartVBuckets = ordsets:intersection(lists:sort(ToStartVBuckets0), PresentVBuckets),
 
     [stop_server_replication(Master, Bucket, Srv) || Srv <- ToStopServers],
     [start_server_replication(Master, Bucket, Srv) || Srv <- ToStartServers],
-
-    [stop_vbucket_replication(Master, Bucket, Srv) || Srv <- ToStopVBuckets],
-    [start_vbucket_replication(Master, Bucket, Srv) || Srv <- ToStartVBuckets],
-
-    State#state{vbuckets=NVBucketsPresent, servers=NServers}.
+    State#state{servers=NServers}.
 
 build_replication_struct(Source, Target) ->
     {ok, Replication} =
@@ -209,7 +146,7 @@ build_replication_struct(Source, Target) ->
           {[{<<"source">>, Source},
             {<<"target">>, Target}
             | default_opts()]},
-          default_user()),
+          #user_ctx{roles = [<<"_admin">>]}),
     Replication.
 
 
@@ -223,22 +160,6 @@ start_server_replication(Master, Bucket, Node) ->
 stop_server_replication(Master, Bucket, Node) ->
     Opts = build_replication_struct(remote_master_url(Bucket, Node), Master),
     {ok, _Res} = couch_replicator:cancel_replication(Opts#rep.id).
-
-
-start_vbucket_replication(Master, Bucket, VBucket) ->
-    Opts = build_replication_struct(Master, vbucket_url(Bucket, VBucket)),
-    {ok, Pid} = couch_replicator:async_replicate(Opts),
-    erlang:monitor(process, Pid),
-    ok.
-
-
-stop_vbucket_replication(Master, Bucket, VBucket) ->
-    Opts = build_replication_struct(Master, vbucket_url(Bucket, VBucket)),
-    {ok, _Res} = couch_replicator:cancel_replication(Opts#rep.id).
-
-
-vbucket_url(Bucket, VBucket) ->
-    ?l2b(Bucket ++ "/"++ ?i2l(VBucket)).
 
 
 remote_master_url(Bucket, Node) ->
@@ -255,9 +176,6 @@ difference(List1, List2) ->
 server(Bucket) ->
     list_to_atom(?MODULE_STRING ++ "-" ++ Bucket).
 
-
-default_user() ->
-    #user_ctx{roles=[<<"_admin">>]}.
 
 default_opts() ->
     [{<<"continuous">>, true},

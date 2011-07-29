@@ -104,7 +104,7 @@ view_merge_params(Req, #db{name = BucketName}, DDocId, ViewName) ->
         % _all_docs and other special builtin views
         ViewName;
     _ ->
-        iolist_to_binary([DDocId, $/, ViewName])
+        iolist_to_binary([BucketName, "%2F", "master", $/, DDocId, $/, ViewName])
     end,
     ViewSpecs = dict:fold(
         fun(Node, VBuckets, Acc) when Node =:= node() ->
@@ -135,18 +135,22 @@ validate_keys_param(_) ->
     throw({bad_request, "`keys` parameter is not an array."}).
 
 
+vbucket_db_name(BucketName, VBucket) when is_binary(VBucket) ->
+    iolist_to_binary([BucketName, $/, VBucket]);
 vbucket_db_name(BucketName, VBucket) ->
     iolist_to_binary([BucketName, $/, integer_to_list(VBucket)]).
 
 
 build_local_specs(BucketName, DDocId, ViewName, VBuckets) ->
+    DDocDbName = iolist_to_binary([BucketName, $/, "master"]),
     lists:map(fun(VBucket) ->
             #simple_view_spec{
                 database = vbucket_db_name(BucketName, VBucket),
+                ddoc_database = DDocDbName,
                 ddoc_id = DDocId,
                 view_name = ViewName
             }
-        end, VBuckets).
+        end, [<<"master">> | VBuckets]).
 
 
 build_remote_specs(Node, BucketName, FullViewName, VBuckets, Config) ->
