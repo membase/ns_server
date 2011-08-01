@@ -15,11 +15,14 @@
 %%
 -module(ns_info).
 
--export([version/0, runtime/0, basic_info/0]).
+-export([version/0, version/1, runtime/0, basic_info/0]).
 
 version() ->
     lists:map(fun({App, _, Version}) -> {App, Version} end,
               application:loaded_applications()).
+
+version(App) ->
+    proplists:get_value(App, version()).
 
 runtime() ->
     {WallClockMSecs, _} = erlang:statistics(wall_clock),

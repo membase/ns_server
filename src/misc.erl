@@ -36,6 +36,7 @@
 
 -include("ns_common.hrl").
 -include_lib("kernel/include/file.hrl").
+-include_lib("eunit/include/eunit.hrl").
 
 -define(FNV_OFFSET_BASIS, 2166136261).
 -define(FNV_PRIME,        16777619).
@@ -1086,3 +1087,60 @@ atomic_write_file(Path, Contents) ->
             file:rename(TmpPath, Path);
         X -> X
     end.
+
+%% Return a list containing all but the last elements of the source list.
+-spec init(nonempty_list()) -> list().
+init([_X]) ->
+    [];
+init([X | Rest]) ->
+    [X | init(Rest)].
+
+%% Parse version of the form 1.7.0r_252_g1e1c2c0 into a list
+%% {[1,7,0],candidate,252}.
+-spec parse_version(string()) -> version().
+parse_version(VersionStr) ->
+    Parts = string:tokens(VersionStr, "_"),
+    case Parts of
+        [BaseVersionStr] ->
+            {BaseVersion, Type} = parse_base_version(BaseVersionStr),
+            {BaseVersion, Type, 0};
+        [BaseVersionStr, OffsetStr, _Hash] ->
+            {BaseVersion, Type} = parse_base_version(BaseVersionStr),
+            {BaseVersion, Type, list_to_integer(OffsetStr)}
+    end.
+
+parse_base_version(BaseVersionStr) ->
+    {Type, BaseVersionStr1} =
+        case lists:last(BaseVersionStr) of
+            $r ->
+                {candidate, init(BaseVersionStr)};
+            _ ->
+                {release, BaseVersionStr}
+        end,
+    {lists:map(fun list_to_integer/1,
+               string:tokens(BaseVersionStr1, ".")), Type}.
+
+-ifdef(EUNIT).
+parse_version_test() ->
+    ?assertEqual({[1,7,0],release,252},
+                 parse_version("1.7.0_252_g1e1c2c0")),
+    ?assertEqual({[1,7,0],candidate,252},
+                 parse_version("1.7.0r_252_g1e1c2c0")),
+    ?assertEqual({[1,7,0],release,0},
+                 parse_version("1.7.0")),
+    ?assertEqual({[1,7,0],candidate,0},
+                 parse_version("1.7.0r")),
+    ?assertEqual(true,
+                 parse_version("1.7.0") >
+                     parse_version("1.7.0r_252_g1e1c2c0")),
+    ?assertEqual(true,
+                 parse_version("1.7.0") >
+                     parse_version("1.7.0r")),
+    ?assertEqual(true,
+                 parse_version("1.7.1r") >
+                     parse_version("1.7.0")),
+    ?assertEqual(true,
+                 parse_version("1.7.1_252_g1e1c2c0") >
+                     parse_version("1.7.1_251_g1e1c2c1")).
+
+-endif.

@@ -21,12 +21,17 @@
 -behaviour(gen_fsm).
 
 -include("ns_common.hrl").
+-include_lib("eunit/include/eunit.hrl").
 
 %% Constants and definitions
 -define(HEARTBEAT_INTERVAL, 2000).
 -define(TIMEOUT, ?HEARTBEAT_INTERVAL * 5000). % in microseconds
 
--record(state, {child :: pid(), master :: node(), peers :: [node()],
+-type node_info() :: {version(), node()}.
+
+-record(state, {child :: pid(),
+                master :: node(),
+                peers :: [node()],
                 last_heard :: {integer(), integer(), integer()}}).
 
 
@@ -47,7 +52,6 @@
 -export([candidate/2,
          master/2,
          worker/2]).
-
 
 %%
 %% API
@@ -115,7 +119,8 @@ handle_info(send_heartbeat, candidate, #state{peers=Peers} = StateData) ->
             ?log_info("Haven't heard from a higher priority node or "
                       "a master, so I'm taking over.", []),
             {ok, Pid} = mb_master_sup:start_link(),
-            {next_state, master, StateData#state{child=Pid, master=node()}};
+            {next_state, master,
+             StateData#state{child=Pid, master=node()}};
         false ->
             {next_state, candidate, StateData}
     end;
@@ -126,13 +131,16 @@ handle_info(send_heartbeat, master, StateData) ->
         Eaten ->
             ?log_warning("Skipped ~p heartbeats~n", [Eaten])
     end,
+
+    Node = node(),
+
     %% Make sure our name hasn't changed
     StateData1 = case StateData#state.master of
-                     N when N == node() ->
+                     Node ->
                          StateData;
                      N1 ->
                          ?log_info("Node changed name from ~p to ~p. "
-                                   "Updating state.", [N1, node()]),
+                                   "Updating state.", [N1, Node]),
                          StateData#state{master=node()}
                  end,
     send_heartbeat(ns_node_disco:nodes_wanted(), master, StateData1),
@@ -195,27 +203,36 @@ terminate(_Reason, _StateName, _StateData) ->
 %% States
 %%
 
-candidate({heartbeat, Node, master, _H}, #state{peers=Peers} = State) ->
+candidate({heartbeat, Node, Type, _H}, State) when is_atom(Node) ->
+    ?log_warning("Candidate got old-style ~p heartbeat from node ~p. Ignoring.",
+                 [Type, Node]),
+    {next_state, candidate, State};
+
+candidate({heartbeat, NodeInfo, master, _H}, #state{peers=Peers} = State) ->
+    Node = node_info_to_node(NodeInfo),
+
     case State#state.master of
         Node ->
             {next_state, candidate, State#state{last_heard=now()}};
         N ->
-            case lists:member(Node, Peers) of
+            case lists:member(node_info_to_node(NodeInfo), Peers) of
                 true ->
                     ?log_info("Changing master from ~p to ~p", [N, Node]),
                     {next_state, candidate, State#state{last_heard=now(),
                                                         master=Node}};
                 false ->
-                    ?log_warning("Master got master heartbeat from node ~p "
+                    ?log_warning("Candidate got master heartbeat from node ~p "
                                  "which is not in peers ~p", [Node, Peers]),
                     {next_state, candidate, State}
             end
     end;
 
-candidate({heartbeat, Node, candidate, _H}, #state{peers=Peers} = State) ->
+candidate({heartbeat, NodeInfo, candidate, _H}, #state{peers=Peers} = State) ->
+    Node = node_info_to_node(NodeInfo),
+
     case lists:member(Node, Peers) of
         true ->
-            case Node < node() of
+            case higher_priority_node(NodeInfo) of
                 true ->
                     %% Higher priority node
                     {next_state, candidate, State#state{last_heard=now()}};
@@ -234,10 +251,17 @@ candidate(Event, State) ->
     {next_state, candidate, State}.
 
 
-master({heartbeat, Node, master, _H}, #state{peers=Peers} = State) ->
+master({heartbeat, Node, Type, _H}, State) when is_atom(Node) ->
+    ?log_warning("Master got old-style ~p heartbeat from node ~p. Ignoring.",
+                 [Type, Node]),
+    {next_state, master, State};
+
+master({heartbeat, NodeInfo, master, _H}, #state{peers=Peers} = State) ->
+    Node = node_info_to_node(NodeInfo),
+
     case lists:member(Node, Peers) of
         true ->
-            case Node < node() of
+            case higher_priority_node(NodeInfo) of
                 true ->
                     ?log_info("Surrendering mastership to ~p", [Node]),
                     NewState = shutdown_master_sup(State),
@@ -253,7 +277,9 @@ master({heartbeat, Node, master, _H}, #state{peers=Peers} = State) ->
             {next_state, master, State}
     end;
 
-master({heartbeat, Node, candidate, _H}, #state{peers=Peers} = State) ->
+master({heartbeat, NodeInfo, candidate, _H}, #state{peers=Peers} = State) ->
+    Node = node_info_to_node(NodeInfo),
+
     case lists:member(Node, Peers) of
         true ->
             ok;
@@ -268,7 +294,14 @@ master(Event, State) ->
     {next_state, master, State}.
 
 
-worker({heartbeat, Node, master, _H}, State) ->
+worker({heartbeat, Node, Type, _H}, State) when is_atom(Node) ->
+    ?log_warning("Worker got old-style ~p heartbeat from node ~p. Ignoring.",
+                 [Type, Node]),
+    {next_state, worker, State};
+
+worker({heartbeat, NodeInfo, master, _H}, State) ->
+    Node = node_info_to_node(NodeInfo),
+
     case State#state.master of
         Node ->
             {next_state, worker, State#state{last_heard=now()}};
@@ -289,8 +322,11 @@ worker(Event, State) ->
 %% @private
 %% @doc Send an heartbeat to a list of nodes, except this one.
 send_heartbeat(Nodes, StateName, StateData) ->
-    Args = {heartbeat, node(), StateName,
-            [{peers, StateData#state.peers}]},
+    NodeInfo = node_info(),
+
+    Args = {heartbeat, NodeInfo, StateName,
+            [{peers, StateData#state.peers},
+             {versioning, true}]},
     try
         misc:parallel_map(
           fun (Node) ->
@@ -345,3 +381,48 @@ shutdown_master_sup(State) ->
             end
     end,
     State#state{child = undefined}.
+
+
+%% Auxiliary functions
+
+%% Determine whether first node has higher priority than second.
+-spec node_info() -> node_info().
+node_info() ->
+    RawVersion = ns_info:version(ns_server),
+    Version = misc:parse_version(RawVersion),
+    {Version, node()}.
+
+%% Convert node info to node.
+-spec node_info_to_node(node_info()) -> node().
+node_info_to_node({_Version, Node}) ->
+    Node.
+
+%% Determine whether some node is of higher priority than ourselves.
+-spec higher_priority_node(node_info()) -> boolean().
+higher_priority_node(NodeInfo) ->
+    Self = node_info(),
+    higher_priority_node(Self, NodeInfo).
+
+higher_priority_node({SelfVersion, SelfNode},
+                     {Version, Node}) ->
+    (Version > SelfVersion) orelse (Node < SelfNode).
+
+-ifdef(EUNIT).
+
+priority_test() ->
+    ?assertEqual(true,
+                 higher_priority_node({misc:parse_version("1.7.1"),
+                                       'ns_1@192.168.1.1'},
+                                      {misc:parse_version("2.0"),
+                                       'ns_2@192.168.1.1'})),
+    ?assertEqual(true,
+                 higher_priority_node({misc:parse_version("1.7.1"),
+                                       'ns_2@192.168.1.1'},
+                                      {misc:parse_version("2.0"),
+                                       'ns_1@192.168.1.1'})),
+    ?assertEqual(true, higher_priority_node({misc:parse_version("2.0"),
+                                             'ns_2@192.168.1.1'},
+                                            {misc:parse_version("2.0"),
+                                             'ns_1@192.168.1.1'})).
+
+-endif.
