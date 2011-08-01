@@ -211,20 +211,40 @@ candidate({heartbeat, Node, Type, _H}, State) when is_atom(Node) ->
 candidate({heartbeat, NodeInfo, master, _H}, #state{peers=Peers} = State) ->
     Node = node_info_to_node(NodeInfo),
 
-    case State#state.master of
-        Node ->
-            {next_state, candidate, State#state{last_heard=now()}};
-        N ->
-            case lists:member(node_info_to_node(NodeInfo), Peers) of
+    case lists:member(Node, Peers) of
+        false ->
+            ?log_warning("Candidate got master heartbeat from node ~p "
+                         "which is not in peers ~p", [Node, Peers]),
+            {next_state, candidate, State};
+        true ->
+            %% If master is of lower priority than we are, then we send fake
+            %% mastership hertbeat to force previous master to surrender. Thus
+            %% there will be some time when cluster won't have any master
+            %% node. But after timeout mastership will be taken over by the
+            %% node with highest priority.
+            NewState =
+                case higher_priority_node(NodeInfo) of
+                    true ->
+                        State#state{last_heard=now(), master=Node};
+                    false ->
+                        ?log_info("Candidate got master heartbeat from node ~p "
+                                  "which has lower priority. "
+                                  "Will try to take over.", [Node]),
+
+                        send_heartbeat([Node], master, State),
+                        State#state{master=undefined}
+                end,
+
+            OldMaster = State#state.master,
+            NewMaster = NewState#state.master,
+            case OldMaster =:= NewMaster of
                 true ->
-                    ?log_info("Changing master from ~p to ~p", [N, Node]),
-                    {next_state, candidate, State#state{last_heard=now(),
-                                                        master=Node}};
+                    ok;
                 false ->
-                    ?log_warning("Candidate got master heartbeat from node ~p "
-                                 "which is not in peers ~p", [Node, Peers]),
-                    {next_state, candidate, State}
-            end
+                    ?log_info("Changing master from ~p to ~p",
+                              [OldMaster, NewMaster])
+            end,
+            {next_state, candidate, NewState}
     end;
 
 candidate({heartbeat, NodeInfo, candidate, _H}, #state{peers=Peers} = State) ->
