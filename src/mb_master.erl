@@ -21,13 +21,24 @@
 -behaviour(gen_fsm).
 
 -include("ns_common.hrl").
+-include_lib("eunit/include/eunit.hrl").
 
 %% Constants and definitions
 -define(HEARTBEAT_INTERVAL, 2000).
 -define(TIMEOUT, ?HEARTBEAT_INTERVAL * 5000). % in microseconds
 
--record(state, {child :: pid(), master :: node(), peers :: [node()],
-                last_heard :: {integer(), integer(), integer()}}).
+-type node_info() :: node() | {version(), node()}.
+-type operation_mode() :: compatible | normal.
+
+-define(DEFAULT_MODE, compatible).
+
+-record(state, {child                :: pid(),
+                master               :: node(),
+                peers                :: [node()],
+                last_heard           :: {integer(), integer(), integer()},
+
+                new_peers            :: [node()],
+                mode = ?DEFAULT_MODE :: operation_mode()}).
 
 
 %% API
@@ -47,7 +58,6 @@
 -export([candidate/2,
          master/2,
          worker/2]).
-
 
 %%
 %% API
@@ -79,20 +89,31 @@ init([]) ->
       end, empty),
     erlang:process_flag(trap_exit, true),
     {ok, _} = timer:send_interval(?HEARTBEAT_INTERVAL, send_heartbeat),
+
+    NewPeers = [node()],
+
     case ns_node_disco:nodes_wanted() of
         [N] = P when N == node() ->
             ?log_info("I'm the only node, so I'm the master.", []),
-            {ok, master, start_master(#state{last_heard=now(), peers=P})};
+            %% since we're the only node in the cluster we can operate in new
+            %% mode
+            {ok, master, start_master(#state{last_heard=now(),
+                                             peers=P,
+                                             new_peers=NewPeers,
+                                             mode=normal})};
         Peers when is_list(Peers) ->
             case lists:member(node(), Peers) of
                 false ->
                     %% We're a worker, but don't know who the master is yet
                     ?log_info("Starting as worker. Peers: ~p", [Peers]),
-                    {ok, worker, #state{last_heard=now()}};
+                    {ok, worker, #state{last_heard=now(),
+                                        new_peers=NewPeers}};
                 true ->
                     %% We're a candidate
                     ?log_info("Starting as candidate. Peers: ~p", [Peers]),
-                    {ok, candidate, #state{last_heard=now(), peers=Peers}}
+                    {ok, candidate, #state{last_heard=now(),
+                                           peers=Peers,
+                                           new_peers=NewPeers}}
             end
     end.
 
@@ -115,9 +136,10 @@ handle_info(send_heartbeat, candidate, #state{peers=Peers} = StateData) ->
             ?log_info("Haven't heard from a higher priority node or "
                       "a master, so I'm taking over.", []),
             {ok, Pid} = mb_master_sup:start_link(),
-            {next_state, master, StateData#state{child=Pid, master=node()}};
+            {next_state, master,
+             choose_mode(StateData#state{child=Pid, master=node()})};
         false ->
-            {next_state, candidate, StateData}
+            {next_state, candidate, choose_mode(StateData)}
     end;
 
 handle_info(send_heartbeat, master, StateData) ->
@@ -126,9 +148,12 @@ handle_info(send_heartbeat, master, StateData) ->
         Eaten ->
             ?log_warning("Skipped ~p heartbeats~n", [Eaten])
     end,
+
+    Self = node(),
+
     %% Make sure our name hasn't changed
     StateData1 = case StateData#state.master of
-                     N when N == node() ->
+                     Self ->
                          StateData;
                      N1 ->
                          ?log_info("Node changed name from ~p to ~p. "
@@ -195,38 +220,45 @@ terminate(_Reason, _StateName, _StateData) ->
 %% States
 %%
 
-candidate({heartbeat, Node, master, _H}, #state{peers=Peers} = State) ->
-    case State#state.master of
+candidate({heartbeat, NodeInfo, master, Data}, #state{peers=Peers} = State) ->
+    S = update_new_peers(State, NodeInfo, Data),
+    Node = node_info_to_node(NodeInfo),
+
+    case S#state.master of
         Node ->
-            {next_state, candidate, State#state{last_heard=now()}};
+            {next_state, candidate, S#state{last_heard=now()}};
         N ->
             case lists:member(Node, Peers) of
                 true ->
                     ?log_info("Changing master from ~p to ~p", [N, Node]),
-                    {next_state, candidate, State#state{last_heard=now(),
-                                                        master=Node}};
+                    {next_state, candidate, S#state{last_heard=now(),
+                                                    master=Node}};
                 false ->
                     ?log_warning("Master got master heartbeat from node ~p "
                                  "which is not in peers ~p", [Node, Peers]),
-                    {next_state, candidate, State}
+                    {next_state, candidate, S}
             end
     end;
 
-candidate({heartbeat, Node, candidate, _H}, #state{peers=Peers} = State) ->
+candidate({heartbeat, NodeInfo, candidate, Data},
+          #state{peers=Peers} = State) ->
+    Node = node_info_to_node(NodeInfo),
+    S = update_new_peers(State, NodeInfo, Data),
+
     case lists:member(Node, Peers) of
         true ->
-            case Node < node() of
+            case higher_priority_node(NodeInfo, S) of
                 true ->
                     %% Higher priority node
-                    {next_state, candidate, State#state{last_heard=now()}};
+                    {next_state, candidate, S#state{last_heard=now()}};
                 false ->
                     %% Lower priority, so ignore it
-                    {next_state, candidate, State}
+                    {next_state, candidate, S}
             end;
         false ->
             ?log_warning("Candidate got candidate heartbeat from node ~p which "
                          "is not in peers ~p", [Node, Peers]),
-            {next_state, candidate, State}
+            {next_state, candidate, S}
     end;
 
 candidate(Event, State) ->
@@ -234,26 +266,32 @@ candidate(Event, State) ->
     {next_state, candidate, State}.
 
 
-master({heartbeat, Node, master, _H}, #state{peers=Peers} = State) ->
+master({heartbeat, NodeInfo, master, Data}, #state{peers=Peers} = State) ->
+    Node = node_info_to_node(NodeInfo),
+    S = update_new_peers(State, NodeInfo, Data),
+
     case lists:member(Node, Peers) of
         true ->
-            case Node < node() of
+            case higher_priority_node(NodeInfo, S) of
                 true ->
-                    ?log_info("Surrendering mastership to ~p", [Node]),
-                    NewState = shutdown_master_sup(State),
+                    ?log_info("Surrendering mastership to ~p", [NodeInfo]),
+                    NewState = shutdown_master_sup(S),
                     {next_state, candidate, NewState#state{last_heard=now()}};
                 false ->
                     ?log_info("Got master heartbeat from ~p when I'm master",
                               [Node]),
-                    {next_state, master, State#state{last_heard=now()}}
+                    {next_state, master, S#state{last_heard=now()}}
             end;
         false ->
             ?log_warning("Master got master heartbeat from node ~p which is "
                          "not in peers ~p", [Node, Peers]),
-            {next_state, master, State}
+            {next_state, master, S}
     end;
 
-master({heartbeat, Node, candidate, _H}, #state{peers=Peers} = State) ->
+master({heartbeat, NodeInfo, candidate, Data}, #state{peers=Peers} = State) ->
+    Node = node_info_to_node(NodeInfo),
+    S = update_new_peers(State, NodeInfo, Data),
+
     case lists:member(Node, Peers) of
         true ->
             ok;
@@ -261,20 +299,23 @@ master({heartbeat, Node, candidate, _H}, #state{peers=Peers} = State) ->
             ?log_info("Master got candidate heartbeat from node ~p which is "
                       "not in peers ~p", [Node, Peers])
     end,
-    {next_state, master, State#state{last_heard=now()}};
+    {next_state, master, S#state{last_heard=now()}};
 
 master(Event, State) ->
     ?log_info("Got event ~p as master with state ~p", [Event, State]),
     {next_state, master, State}.
 
 
-worker({heartbeat, Node, master, _H}, State) ->
-    case State#state.master of
+worker({heartbeat, NodeInfo, master, Data}, State) ->
+    Node = node_info_to_node(NodeInfo),
+    S = update_new_peers(State, NodeInfo, Data),
+
+    case S#state.master of
         Node ->
-            {next_state, worker, State#state{last_heard=now()}};
+            {next_state, worker, S#state{last_heard=now()}};
         N ->
             ?log_info("Saw master change from ~p to ~p", [N, Node]),
-            {next_state, worker, State#state{last_heard=now(), master=Node}}
+            {next_state, worker, S#state{last_heard=now(), master=Node}}
     end;
 
 worker(Event, State) ->
@@ -289,8 +330,11 @@ worker(Event, State) ->
 %% @private
 %% @doc Send an heartbeat to a list of nodes, except this one.
 send_heartbeat(Nodes, StateName, StateData) ->
-    Args = {heartbeat, node(), StateName,
-            [{peers, StateData#state.peers}]},
+    NodeInfo = node_info(StateData),
+
+    Args = {heartbeat, NodeInfo, StateName,
+            [{peers, StateData#state.peers},
+             {versioning, true}]},
     try
         misc:parallel_map(
           fun (Node) ->
@@ -318,7 +362,7 @@ start_master(StateData) ->
 %% @private
 %% @doc Update the list of peers in the state. Also logs when it
 %% changes.
-update_peers(StateData, Peers) ->
+update_peers(#state{new_peers=NPeers0} = StateData, Peers) ->
     O = lists:sort(StateData#state.peers),
     P = lists:sort(Peers),
     case O == P of
@@ -326,8 +370,19 @@ update_peers(StateData, Peers) ->
             %% No change
             StateData;
         false ->
+            NPeers1 = ordsets:intersection(P, NPeers0),
             ?log_info("List of peers has changed from ~p to ~p", [O, P]),
-            StateData#state{peers=P}
+
+            case NPeers0 == NPeers1 of
+                false ->
+                    ?log_info("List of new peers has changed from ~p to ~p",
+                              [NPeers0, NPeers1]);
+                true ->
+                    ok
+            end,
+
+            choose_mode(StateData#state{peers=P,
+                                        new_peers=NPeers1})
     end.
 
 shutdown_master_sup(State) ->
@@ -345,3 +400,134 @@ shutdown_master_sup(State) ->
             end
     end,
     State#state{child = undefined}.
+
+%% Checks state and adjusts execution mode when it's possible.
+-spec choose_mode(#state{}) -> #state{}.
+choose_mode(#state{peers=Peers,
+                   new_peers=NPeers,
+                   mode=CurrentMode} = StateData) ->
+    Mode =
+        case Peers of
+            %% we're the only node, thus the new mode can be used
+            [N] when N =:= node() ->
+                normal;
+            _ ->
+                %% both Peers and NPeers are sorted
+                case NPeers =:= Peers of
+                    true -> normal;
+                    false -> compatible
+                end
+        end,
+
+    case CurrentMode =/= Mode of
+        true ->
+            ?log_info("Switching from ~p to ~p mode",
+                      [CurrentMode, Mode]);
+        false ->
+            ok
+    end,
+
+    StateData#state{mode=Mode}.
+
+%% Updates an information about new peers. Switches mode if necessary.
+update_new_peers(#state{peers=Peers, new_peers=NPeers0} = StateData,
+                 NodeInfo, HeartbeatData) ->
+    Node = node_info_to_node(NodeInfo),
+
+    case lists:member(Node, Peers) of
+        true ->
+            NPeers1 =
+                case proplists:get_value(versioning, HeartbeatData, false) of
+                    true ->
+                        ordsets:add_element(node_info_to_node(NodeInfo),
+                                            NPeers0);
+                    false ->
+                        NPeers0
+                end,
+
+            case NPeers0 =:= NPeers1 of
+                false ->
+                    ?log_info("Got new peer supporting versioning: ~p", [Node]);
+                true ->
+                    ok
+            end,
+
+            choose_mode(StateData#state{new_peers=NPeers1});
+        false ->
+            ?log_info("Got heartbeat from unknown node ~p~n", [Node]),
+            StateData
+    end.
+
+-spec node_info(#state{}) -> node_info().
+node_info(#state{mode=compatible}) ->
+    node();
+node_info(#state{mode=normal}) ->
+    RawVersion = ns_info:version(ns_server),
+    Version = misc:parse_version(RawVersion),
+    {Version, node()}.
+
+%% Convert node info to node.
+-spec node_info_to_node(node_info()) -> node().
+node_info_to_node({_Version, Node}) ->
+    Node;
+node_info_to_node(Node) ->
+    Node.
+
+%% Determine whether some node is of higher priority than ourselves.
+-spec higher_priority_node(node_info(), #state{}) -> boolean().
+higher_priority_node(NodeInfo, #state{mode=Mode} = StateData) ->
+    Self = node_info(StateData),
+    higher_priority_node(Self, NodeInfo, Mode).
+
+-spec higher_priority_node(node_info(), node_info(), operation_mode()) ->
+                                  boolean().
+higher_priority_node(Self, NodeInfo, Mode) ->
+    Node = node_info_to_node(NodeInfo),
+
+    case Mode of
+        normal ->
+            case is_atom(NodeInfo) of
+                false ->
+                    {SelfVersion, SelfNode} = Self,
+                    {Version, _} = NodeInfo,
+
+                    (Version > SelfVersion) orelse (Node < SelfNode)
+            end;
+        compatible ->
+            case is_atom(NodeInfo) of
+                false ->
+                    ?log_warning("Got new-style heartbeat from ~p "
+                                 "node when in compatible mode", [Node]);
+                true ->
+                    ok
+            end,
+            Node < Self
+    end.
+
+-ifdef(EUNIT).
+
+priority_test() ->
+    ?assertEqual(true,
+                 higher_priority_node('ns_2@192.168.1.1',
+                                      'ns_1@192.168.1.1',
+                                      compatible)),
+    ?assertEqual(true,
+                 higher_priority_node({misc:parse_version("1.7.1"),
+                                       'ns_1@192.168.1.1'},
+                                      {misc:parse_version("2.0"),
+                                       'ns_2@192.168.1.1'},
+                                      normal)),
+    ?assertEqual(true,
+                 higher_priority_node({misc:parse_version("1.7.1"),
+                                       'ns_2@192.168.1.1'},
+                                      {misc:parse_version("2.0"),
+                                       'ns_1@192.168.1.1'},
+                                      normal)),
+    ?assertEqual(true,
+                 higher_priority_node({misc:parse_version("2.0"),
+                                       'ns_2@192.168.1.1'},
+                                      {misc:parse_version("2.0"),
+                                       'ns_1@192.168.1.1'},
+                                      normal)).
+
+-endif.
