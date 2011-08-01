@@ -29,6 +29,8 @@
 -type vbucket_id() :: non_neg_integer().
 -type vbucket_state() :: active | dead | replica | pending.
 
+-type version() :: {list(integer()), candidate | release, integer()}.
+
 -define(MULTICALL_DEFAULT_TIMEOUT, 30000).
 
 -define(LOG(Fun, Format, Args),
