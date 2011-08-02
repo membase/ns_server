@@ -1117,7 +1117,7 @@ span.staleness-notice + a {margin:0 13px 0}
 #buckets .buckets_action_bar { height: 32px; }
 #overview .staleness-notice { font-size: 12px; float: right; }
 #servers .staleness-notice { font-size: 12px; float: right; }
-#alerts .staleness-notice { font-size: 12px; float: right; padding-top: 5px; padding-right: 10px;}
+#logs .staleness-notice { font-size: 12px; float: right; padding-top: 5px; padding-right: 10px;}
 
 .warning_down_backfill, .warning_up_backfill, .warning_down_no_backfill, .warning_down_backfill { display: none; }
 .warning_down_backfill label, .warning_up_backfill label { display: block; margin-top: 15px; }

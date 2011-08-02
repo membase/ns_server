@@ -121,7 +121,7 @@ function formatAlertType(type) {
   }
 }
 
-var AlertsSection = {
+var LogsSection = {
   init: function () {
     var active = Cell.needing(DAL.cells.mode).compute(function (v, mode) {
       return (mode === "log") || undefined;
@@ -148,7 +148,7 @@ var AlertsSection = {
       return _.extend({}, logsValue, {stale: stale});
     });
 
-    renderCellTemplate(massagedLogs, 'alert_logs', {
+    renderCellTemplate(massagedLogs, 'logs', {
       valueTransformer: function (value) {
         var list = value.list || [];
         return _.clone(list).reverse();
@@ -159,7 +159,7 @@ var AlertsSection = {
       if (massagedLogs === undefined)
         return;
       var stale = massagedLogs.stale;
-      $('#alerts .staleness-notice')[stale ? 'show' : 'hide']();
+      $('#logs .staleness-notice')[stale ? 'show' : 'hide']();
     });
   },
   onEnter: function () {
@@ -169,7 +169,7 @@ var AlertsSection = {
       this.logs.recalculate();
   },
   domId: function (sec) {
-    return 'alerts';
+    return 'logs';
   }
 }
 var DummySection = {
@@ -182,7 +182,7 @@ var ThePage = {
              analytics: AnalyticsSection,
              buckets: BucketsSection,
              views: ViewsSection,
-             log: AlertsSection,
+             log: LogsSection,
              settings: SettingsSection},
 
   coming: {alerts:true},
