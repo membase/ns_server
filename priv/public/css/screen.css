@@ -23,7 +23,9 @@ blockquote:before, blockquote:after, q:before, q:after {
 	content:none;
 }
 textarea {overflow:auto;}
-input {border:0px solid white;margin:0;padding:0;}
+input, textarea {margin:0;padding:3px;font-size:13px;border:1px solid #ccd3d7;}
+input[type=image] {border:none}
+input[type=number] {width:2em;}
 ::-webkit-input-placeholder {color:#999}
 :-moz-placeholder{color:#999 !important}
 
@@ -41,6 +43,12 @@ a:hover {text-decoration:underline;}
 
 html {height:100%;overflow-y:scroll}
 body {height:100%;color:#616062;font-family:Helvetica, Verdana;line-height:1;background:#F0EEE7}
+
+/* form styles */
+fieldset{padding:0 20px}
+fieldset legend{width:100%}
+fieldset.radiogroup legend{float:left;height:5em;width:100px;}
+fieldset.radiogroup ul{float:left;margin:0;}
 
 #edit_preview_doc, #save_preview_doc { position:absolute; top:50px; right: 10px; z-index:999; }
 .closed #edit_preview_doc {display:none}
@@ -504,7 +512,7 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 
 /* email alerts styles */
 .email_alerts label {display:block;line-height:24px;margin-left:16px;margin-top:16px;}
-.email_alerts input, .email_alerts textarea {border:1px solid #ccd3d7;padding:3px;font-size:13px;width:150px}
+.email_alerts input, .email_alerts textarea {width:150px}
 .email_alerts textarea {height: 100px;width: 250px}
 .email_alerts input[type="checkbox"] {border:none;position:relative;top:2px;width:auto}
 .email_alerts label span {display:block;float:left;margin:0 5px;text-align:right;width:120px}
@@ -512,8 +520,7 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 /*.email_alerts label + input[type="checkbox"] {display:inline;float:none;vertical-align:sub}*/
 .email_alerts label + input[type="checkbox"] {top:4px}
 /*.email_alerts fieldset {margin:16px;margin-left:130px;padding-top:20px;position:relative}*/
-.email_alerts fieldset {float:left;margin:16px;margin-bottom:8px;width:100%}
-.email_alerts legend {font-size:14px;font-weight:bold;margin-left:16px}
+.email_alerts fieldset {float:left;margin:16px;margin-bottom:8px;width:100%;padding:0}
 .email_alerts .checkboxes {margin-left:111px;margin-top:16px}
 .email_alerts .checkboxes label {margin-top:0}
 
@@ -580,12 +587,10 @@ select.inp_size_2 {width:193px !important;}
 #add_new_bucket_dialog {position:absolute;}
 #add_new_bucket_dialog form {padding:10px 0 0;}
 
-.join_cluster table {width:100%;}
-.join_cluster table tr td {width:50%; padding:7px 0 0;}
-.join_cluster table tr .th {text-align:left; font-size:14px; font-weight:normal; padding:10px 0 7px; border-bottom:1px solid #dbe3e8;}
-.join_cluster table tr .th a {text-decoration:none;}
-.join_cluster .label {width:65px !important;}
-
+.join_cluster fieldset legend {text-align:left; font-size:14px; font-weight:normal; padding:10px 0 7px; border-bottom:1px solid #dbe3e8;width:100%}
+.join_cluster label {display:inline-block;width:5em;font-size:12px;text-align:right;}
+.join_cluster ul li {margin:0.6em 0}
+.join_cluster input {margin:0 4px 0 1px;padding:4px 3px;border:1px solid #ccd2d6;}
 /* auth */
 body.nojs #mainContainer { display: none; }
 body.nojs .auth_block .pad .spinner span {display:none}
@@ -643,7 +648,7 @@ body.auth #container { display: none; }
 .tooltip {position:relative; display:inline-block; text-decoration:none !important;}
 .tooltip:hover span:first-child {text-decoration:underline;}
 .tooltip .tooltip_msg {display:none; position:absolute; width:150px; padding:6px 0 0 0; right:0px; top:14px; background:url(../images/tooltip_bg.gif) 100% 0 no-repeat; z-index:10;}
-.tooltip .tooltip_msg span {display:block; padding:5px; background:none #555557; font-size:11px; text-decoration:none !important; color:#fff !important;}
+.tooltip .tooltip_msg span {display:block; padding:5px; background:none #555557; font-size:11px; text-decoration:none !important; color:#fff !important;white-space:normal}
 
 .graph_tooltip {display: none;background:rgb(50, 50, 50);background:rgba(50, 50, 50, 0.9);line-height:1.25em;color: white;margin:10px -15%;padding: 6px 8px;position: relative;z-index:100;-moz-box-shadow: 0 1px 7px #333;-webkit-box-shadow: 0 1px 7px #333;box-shadow: 0 1px 7px #333;}
 .ie7 .graph_tooltip {width:218px;top:10px}
@@ -1020,24 +1025,24 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details h1 {background:#dfdfe0;padding-left:20px;padding-top:16px;padding-bottom:16px;border-bottom:1px solid #BDBEC2;}
  .init_block .bucket_details h1 {background:none;border:none;}
 .bucket_details form {border-top:1px solid #dfdfe0;}
-.bucket_details .clearfix {padding:0 56px 29px;border-bottom:1px solid #cccfd2;border-top:1px solid #f8f8f8;}
+.bucket_details .clearfix {padding:0 56px 29px;border-top:1px solid #f8f8f8;}
 .bucket_details .clearfix .designdoc_name,
 .bucket_details .clearfix .des_name {float:left;border:1px solid #fff;text-align:left; width: 12em;}
 
 .bucket_details .clearfix .des_lab {float:left;padding:0;margin:0}
-.bucket_details .save_cancel{margin-top:0}
  .init_block .bucket_details form > div {border-bottom:none;}
  .init_block .bucket_details .config-bottom {padding:18px 18px 17px;border:none;}
-.bucket_details h2 {clear:both;font-size:20px;font-weight:normal;padding-bottom:6px;margin-top:18px;margin-bottom:15px;border-bottom:1px solid #d4d9dc;}
+.bucket_details form > fieldset{padding:0 56px}
+.bucket_details h2, .bucket_details fieldset legend {clear:both;font-size:20px;font-weight:normal;padding-bottom:6px;margin-top:18px;margin-bottom:15px;border-bottom:1px solid #d4d9dc;}
+.bucket_details fieldset.radiogroup legend{font-size: 12px;text-align:right;border:none;margin:1.1em 10px 0 -10px;}
  .additional_server_info.bucket_details h2 {margin:0 0 10px;padding:5px 0 7px;color:#5391BA;font-size:15px;font-weight:bold;border-bottom:1px solid #bbbdbf;}
-.bucket_details .bucket-icon {display:block;float:left;width:64px;height:64px;margin-top:10px;background:url(../images/icons.png) 50% -100px;}
+.bucket_settings > ul{background:url("../images/icons.png") no-repeat scroll 0 -85px transparent;padding-left:60px}
 
 .bucket_details label {display:block;margin:6px 0;line-height:24px;  overflow:hidden;}
  .additional_server_info.bucket_details label {font-size:12px;}
  .additional_server_info.bucket_details h2 + label {width:auto;clear:both;}
  .additional_server_info.bucket_details .clear + .size-gauge + label {margin:0;}
-.bucket_details label input {padding:3px 3px;font-size:13px; text-align:right;border:1px solid #ccd3d7;}
-.bucket_details label input[type="checkbox"], .bucket_details label input[type="radio"] {width:auto;position:relative;top:2px;border:none;}
+.bucket_details input[type="checkbox"], .bucket_details input[type="radio"] {width:auto;position:relative;top:2px;border:none;}
 .bucket_details label abbr {margin-left:6px;}
 .bucket_details label span {display:block;float:left;margin: 0 6px 0 10px;color: #404042;text-align:left;}
 .bucket_details .set label span {color:#222;margin:0 6px 0 0}
@@ -1049,7 +1054,7 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details .for-ascii span, .bucket_details .for-source-ip span {float:none;display:inline;margin-left:6px;}
 .bucket_details .for-sasl-password, .bucket_details .for-ascii {padding-left:20px;}
 .bucket_details .for-name span, .bucket_details .for-bucket-type span {display:block;float:left;text-align:right;margin-right:6px;width:100px; line-height:24px;}
-.bucket_details .for-name input, .bucket_details .for-bucket-type input {width:166px;text-align:left;}
+.bucket_details .for-name input, .bucket_details .for-bucket-type input {width:166px;}
 .bucket_details .for-name input[type="radio"], .bucket_details .for-name input[type="checkbox"],
 .bucket_details .for-bucket-type input[type="radio"], .bucket_details .for-bucket-type input[type="checkbox"] {width:auto;position:relative;top:2px;border:none;}
 .bucket_details .for-bucket-type span {height:48px;}
@@ -1091,7 +1096,7 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 .bucket_details label.for-enable-persistence {padding-left:20px;}
 .bucket_details label.for-enable-persistence span {float:none;display:inline;margin-left:6px;}
 .bucket_details label.for-ram-quota, .bucket_details label.for-hdd-quota {width:275px;padding-top:14px;}
-.bucket_details label.for-ram-quota input, .bucket_details label.for-hdd-quota input {width:58px;}
+.bucket_details label.for-ram-quota input, .bucket_details label.for-hdd-quota input {width:58px;text-align:right}
 .bucket_details input.invalid {border-color:red;}
 .bucket_details .error-container {color:red;float:left;font-size:66%;padding-left:170px;visibility:hidden;}
 .bucket_details .error-container.err-name, .bucket_details .error-container.err-proxyPort {display:inline;float:none;padding-left:6px;}

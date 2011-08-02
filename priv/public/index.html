@@ -1056,17 +1056,27 @@
 <!-- dialogs -->
 <div class="dialog bucket_details really" id="bucket_details_dialog">
   <h1><span class="when-editing">Configure Bucket</span><span class="when-creating">Create Bucket</span></h1>
-  <form><div class="clearfix">
-    <h2>Bucket Settings</h2>
-   <div class="set">
-    <div class="bucket-icon"></div>
+  <form>
+    <fieldset class="bucket_settings">
+      <legend>Bucket Settings</legend>
+      <ul>
+        <li>
     <label class="for-name"><span>Bucket Name:</span><input disabled name="name" value="Bucket Name"><span class="error-container err-name"></span></label>
-    <div class="for-bucket-type"><span>Bucket Type:</span>
-     <label><input type="radio" name="bucketType" value="memcached"> Memcached</label>
-     <label><input type="radio" name="bucketType" value="membase"> Couchbase</label>
-    </div>
-  </div>
-    <h2>Access Control</h2>
+        </li>
+        <li>
+          <fieldset class="radiogroup for-bucket-type">
+            <legend>Bucket Type:</legend>
+            <ul>
+              <li><label><input type="radio" name="bucketType" value="memcached"> Memcached</label></li>
+              <li><label><input type="radio" name="bucketType" value="membase"> Couchbase</label></li>
+            </ul>
+          </fieldset>
+        </li>
+      </ul>
+    </fieldset>
+
+    <fieldset>
+      <legend>Access Control</legend>
   <div class="wrap_acc">
     <label class="for-sasl-password"><input id="bucket_details_sasl_selected" type="radio" name="authType" value="sasl" checked>
       <span><em class="when-default">Standard port (TCP port 11211. ASCII protocol or Binary auth-less)</em><em class="when-not-default">Standard port (TCP port 11211. Needs SASL auth.)</em></span>
@@ -1075,7 +1085,10 @@
     <label class="for-ascii"><input type="radio" name="authType" value="none"><span>Dedicated port (supports ASCII protocol and is auth-less)</span></label>
     <label class="for-proxy-port"><span>Protocol Port:</span><input name="proxyPort"><span class="error-container err-proxyPort"></span></label>
    </div>
-    <h2>Memory Size</h2>
+    </fieldset>
+
+    <fieldset>
+      <legend>Memory Size</legend>
     <div class="size-gauge for-ram">
       <div class="t">Cluster quota (<span class="total">192 Gb</span>)</div>
       <div class="gauge">
@@ -1094,8 +1107,10 @@
     <label class="for-ram-quota"><span>Per Node RAM Quota:</span><input name="ramQuotaMB" type="text" value="30"><abbr>MB</abbr><input name="ramQuotaMB" type="hidden"></label>
     <div class="error-container err-ramQuotaMB"></div>
     <em class="memcached-summary when-non-persistent"></em>
-    <div class="persistent-only">
-      <h2>Replication</h2>
+    </fieldset>
+
+    <fieldset class="persistent-only">
+      <legend>Replication</legend>
       <div class="repli">
       <label class="for-enable-replication"><input type="checkbox" checked><span>Enable Replication</span></label>
       <input class="hidden-replica-number" type="hidden" name="replicaNumber" value="0" disabled>
@@ -1104,8 +1119,9 @@
         <span>Number of replica (backup) copies</span>
         <span class="error-container err-replicaNumber"></span>
       </label>
-    </div> <!-- .persistent-only -->
-  </div></div><div class="save_cancel">
+      </div>
+    </fieldset> <!-- .persistent-only -->
+  <div class="save_cancel">
     <span class="when-editing">
       <button class="save_button float_right" type="submit">Save</button>
       <button class="delete_button">Delete</button>
@@ -1113,7 +1129,8 @@
     </span>
     <span class="when-creating"><button class="save_button float_right" type="submit">Create</button></span>
     <a class="close">Cancel</a>
-  </div></form>
+  </div>
+  </form>
 </div>
 
 <div class="dialog" id="bucket_flush_dialog" title="Flushing">
@@ -1144,11 +1161,8 @@
   </form>
 </div>
 
-<div class="dialog" id="join_cluster_dialog" title="Add Server">
+<div class="dialog join_cluster" id="join_cluster_dialog" title="Add Server">
   <!-- Join cluster -->
-  <div class="join_cluster">
-    <div class="content">
-      <div class="pad">
         <p class="warning pat_10" id="join_cluster_dialog_errors_container"></p>
         <script id="join_cluster_dialog_errors_template" type="text/html">
         <!-- {% _.each(rows, function (e) { %} -->
@@ -1156,11 +1170,9 @@
         <!-- {% }); %} -->
         </script>
         <form>
-          <div class="clearfix pas_20">
-              <table>
-                <tr>
-                  <td>
-                    <div class="u_line_sm">
+          <fieldset>
+            <ul>
+              <li>
                       <label class="label" for="add-server-hostname">Server IP Address*:</label>
                       <input type="text" class="inp" name="hostname" id="add-server-hostname" />
                       <a class="text_11 tooltip"><span>What's this?</span>
@@ -1168,40 +1180,32 @@
                           This is the hostname or IP address of a server node that you wish to add.
                         </span></span>
                       </a>
-                    </div>
-                  </td>
-                </tr>
-                <tr>
-                  <td class="th">
-                    Security <a class="text_11 tooltip"><span>What's this?</span>
+              </li>
+            </ul>
+          </fieldset>
+          <fieldset>
+            <legend>Security <a class="text_11 tooltip"><span>What's this?</span>
                       <span class="tooltip_msg"><span>
                         Enter the username and password for the node you want to add to this cluster.
                       </span></span>
                     </a>
-                  </td>
-                </tr>
-                <tr>
-                  <td>
-                    <div class="u_line_sm">
+            </legend>
+            <ul>
+              <li>
                       <label class="label" for="user_inp">Username:</label>
                       <input type="text" class="inp" name="user" id="user_inp" />
-                    </div>
-                    <div class="u_line_sm">
+              </li>
+              <li>
                       <label class="label" for="password_inp">Password:</label>
                       <input type="password" class="inp" name="password" id="password_inp" />
-                    </div>
-                  </td>
-                </tr>
-              </table>
-          </div>
+              </li>
+            </ul>
+          </fieldset>
           <div class="save_cancel clearfix">
             <button type="submit" class="save_button float_right">Add Server</button>
             <a class="close">Cancel</a>
           </div>
         </form>
-      </div>
-    </div>
-  </div>
   <!-- END join cluster -->
 </div>
 <!--  eject confirmation dialog -->
