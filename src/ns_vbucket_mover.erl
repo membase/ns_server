@@ -118,7 +118,7 @@ handle_info({_, _, maybe_sync_changes}, #state{previous_changes = PrevChanges} =
 handle_info(spawn_initial, State) ->
     spawn_workers(State);
 handle_info({move_done, {Node, VBucket, OldChain, NewChain}},
-            #state{movers=Movers, map=Map} = State) ->
+            #state{movers=Movers, map=Map, bucket=Bucket} = State) ->
     %% Update replication
     update_replication_post_move(VBucket, OldChain, NewChain),
     %% Free up a mover for this node
@@ -126,6 +126,7 @@ handle_info({move_done, {Node, VBucket, OldChain, NewChain}},
     %% Pull the new chain from the target map
     %% Update the current map
     Map1 = array:set(VBucket, NewChain, Map),
+    ns_bucket:set_map(Bucket, array_to_map(Map1)),
     spawn_workers(State#state{movers=Movers1, map=Map1});
 handle_info({'EXIT', _, normal}, State) ->
     {noreply, State};
@@ -137,15 +138,14 @@ handle_info(Info, State) ->
     {noreply, State}.
 
 
-terminate(_Reason, #state{bucket=Bucket, map=MapArray}) ->
+terminate(_Reason, #state{map=MapArray}) ->
     sync_replicas(),
     TotalChanges = erlang:get(total_changes),
     ActualChanges = erlang:get(actual_changes),
     ?log_info("Savings: ~p (from ~p)~n", [TotalChanges - ActualChanges, TotalChanges]),
-    %% Save the current state of the map
-    Map = array_to_map(MapArray),
-    ?log_info("Setting final map to ~p", [Map]),
-    ns_bucket:set_map(Bucket, Map),
+
+    %% By this time map is already updated (see move_done handler)
+    ?log_info("Final map is ~p", [array_to_map(MapArray)]),
     ok.
 
 
