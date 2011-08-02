@@ -24,4 +24,8 @@ checkpoint_after = 20971520
 compaction_daemon =
 
 [compaction_daemon]
+check_interval = 60
+min_file_size = 131072
+
+[compactions]
 _default = db_fragmentation=95%, view_fragmentation=95%
