@@ -169,10 +169,6 @@ a.button_200 {display:block; color:#444245 !important; text-decoration:none !imp
 /* disabled for beta1 .button_200:hover {background-position:0 -32px; color:#f8eeed !important;}
 .button_200:active {background-position:0 -64px; color:#e0eff7 !important;} */
 
-/* alerts */
-.alert_1 {display:block; width:28px; height:29px; background:url(../images/alert_1.gif) 0 0 no-repeat; margin:-7px 0 0 0;}
-.labeled_line .alert_1 {float:left;}
-
 .header_2, #servers .header_2 {height:40px; line-height:40px; padding:5px 10px 0 11px; font-size:18px; font-family:Helvetica, Verdana; background:url(../images/devider_line_1.gif) 0 100% repeat-x #dfe0e0; font-weight:normal;}
 .header_2 span {color:#f2692d;}
 .header_2 .nav {color:#b6b6ba; font-size:11px; padding:0 11px 0 0;}
@@ -350,11 +346,6 @@ div.analytics-small-graph > .right-arrow ul li:hover, div.analytics-small-graph 
 
 .dialog{display:none}
 
-.alerts_list h2 { border-bottom: 1px dashed black; }
-.alerts_list h3 { display: block; float: left;margin-bottom: 6px;}
-.alerts_list ol li {padding-left:10px;}
-.alerts_list .dismiss {float:right; font-size:11px; font-weight:bolder; cursor:pointer;}
-
 .alert_warning, .alert_attention, .alert_info {margin-bottom: 9px; list-style-type: none; min-height: 47px;}
 .alert_warning p, .alert_attention p, .alert_info p { clear: both; font-size:11px; color:#626b6c;}
 .alert_warning .time, .alert_attention .time, .alert_info .time { display:block; float:right; color:#626b6c; font-size:11px;}
@@ -362,8 +353,6 @@ div.analytics-small-graph > .right-arrow ul li:hover, div.analytics-small-graph 
 .alert_warning {background:url(../images/warning_bg.gif) 0 0 repeat-y #fff;}
 .alert_attention {background:url(../images/attention_bg.gif) 0 0 repeat-y #fff;}
 .alert_info {background:url(../images/info_bg.gif) 0 0 repeat-y #fff;}
-
-#alerts_settings_guts li { list-style-type: none; }
 
 .template { display:none; }
 div.resource_panel {width:124%;}

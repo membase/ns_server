@@ -122,10 +122,6 @@ function formatAlertType(type) {
 }
 
 var AlertsSection = {
-  renderAlertsList: function () {
-    var value = this.alerts.value;
-    renderTemplate('alert_list', _.clone(value.list).reverse());
-  },
   init: function () {
     var active = Cell.needing(DAL.cells.mode).compute(function (v, mode) {
       return (mode === "log") || undefined;
