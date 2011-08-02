@@ -211,7 +211,6 @@ report_progress(#state{initial_counts=Counts, moves=Moves,
 spawn_workers(#state{bucket=Bucket, moves=Moves, movers=Movers,
                      max_per_node=MaxPerNode} = State) ->
     report_progress(State),
-    Parent = self(),
     {Movers1, Remaining} =
         dict:fold(
           fun (Node, RemainingMoves, {M, R}) ->
@@ -220,44 +219,14 @@ spawn_workers(#state{bucket=Bucket, moves=Moves, movers=Movers,
                           NewMovers = lists:sublist(RemainingMoves,
                                                     MaxPerNode - NumWorkers),
                           lists:foreach(
-                            fun ({V, OldChain, [NewNode|_] = NewChain}) ->
+                            fun ({V, OldChain, NewChain}) ->
                                     update_replication_pre_move(
                                       V, OldChain, NewChain),
-                                    spawn_link(
-                                      case Node of
-                                          undefined -> node();
-                                          _ -> Node
-                                      end,
-                                      fun () ->
-                                              process_flag(trap_exit, true),
-                                              %% We do a no-op here
-                                              %% rather than filtering
-                                              %% these out so that the
-                                              %% replication update
-                                              %% will still work
-                                              %% properly.
-                                              if
-                                                  Node =:= undefined ->
-                                                      %% this handles
-                                                      %% case of
-                                                      %% missing
-                                                      %% vbucket (like
-                                                      %% after failing
-                                                      %% over more
-                                                      %% nodes then
-                                                      %% replica
-                                                      %% count)
-                                                      ok;
-                                                  Node /= NewNode ->
-                                                      run_mover(Bucket, V, Node,
-                                                                NewNode, 2);
-                                                 true ->
-                                                      ok
-                                              end,
-                                              Parent ! {move_done,
-                                                        {Node, V, OldChain,
-                                                         NewChain}}
-                                      end)
+                                    ns_single_vbucket_mover:spawn_mover(Node,
+                                                                        Bucket,
+                                                                        V,
+                                                                        OldChain,
+                                                                        NewChain)
                             end, NewMovers),
                           M1 = dict:store(Node, length(NewMovers) + NumWorkers,
                                           M),
@@ -275,47 +244,6 @@ spawn_workers(#state{bucket=Bucket, moves=Moves, movers=Movers,
             {noreply, State1};
         false ->
             {stop, normal, State1}
-    end.
-
-
-run_mover(Bucket, V, N1, N2, Tries) ->
-    case {ns_memcached:get_vbucket(N1, Bucket, V),
-          ns_memcached:get_vbucket(N2, Bucket, V)} of
-        {{ok, active}, {memcached_error, not_my_vbucket, _}} ->
-            %% Standard starting state
-            ok = ns_memcached:set_vbucket(N2, Bucket, V, replica),
-            {ok, _Pid} = ns_vbm_sup:spawn_mover(Bucket, V, N1, N2),
-            wait_for_mover(Bucket, V, N1, N2, Tries);
-        {{ok, dead}, {ok, active}} ->
-            %% Standard ending state
-            ok;
-        {{memcached_error, not_my_vbucket, _}, {ok, active}} ->
-            %% This generally shouldn't happen, but it's an OK final state.
-            ?log_warning("Weird: vbucket ~p missing from source node ~p but "
-                         "active on destination node ~p.", [V, N1, N2]),
-            ok;
-        {{ok, active}, {ok, S}} when S /= active ->
-            %% This better have been a replica, a failed previous
-            %% attempt to migrate, or loaded from a valid copy or this
-            %% will result in inconsistent data!
-            if S /= replica ->
-                    ok = ns_memcached:set_vbucket(N2, Bucket, V, replica);
-               true ->
-                    ok
-            end,
-            {ok, _Pid} = ns_vbm_sup:spawn_mover(Bucket, V, N1, N2),
-            wait_for_mover(Bucket, V, N1, N2, Tries);
-        {{ok, dead}, {ok, pending}} ->
-            %% This is a strange state to end up in - the source
-            %% shouldn't close until the destination has acknowledged
-            %% the last message, at which point the state should be
-            %% active.
-            ?log_warning("Weird: vbucket ~p in pending state on node ~p.",
-                         [V, N2]),
-            ok = ns_memcached:set_vbucket(N1, Bucket, V, active),
-            ok = ns_memcached:set_vbucket(N2, Bucket, V, replica),
-            {ok, _Pid} = ns_vbm_sup:spawn_mover(Bucket, V, N1, N2),
-            wait_for_mover(Bucket, V, N1, N2, Tries)
     end.
 
 
@@ -411,32 +339,4 @@ sync_replicas() ->
             ActualCount = ns_vbm_sup:apply_changes(BucketName, lists:reverse(Changes)),
             inc_counter(total_changes, length(Changes)),
             inc_counter(actual_changes, ActualCount)
-    end.
-
-
-wait_for_mover(Bucket, V, N1, N2, Tries) ->
-    receive
-        {'EXIT', _Pid, normal} ->
-            case {ns_memcached:get_vbucket(N1, Bucket, V),
-                  ns_memcached:get_vbucket(N2, Bucket, V)} of
-                {{ok, dead}, {ok, active}} ->
-                    ok;
-                E ->
-                    exit({wrong_state_after_transfer, E, V})
-            end;
-        {'EXIT', _Pid, stopped} ->
-            exit(stopped);
-        {'EXIT', _Pid, Reason} ->
-            case Tries of
-                0 ->
-                    exit({mover_failed, Reason});
-                _ ->
-                    ?log_warning("Got unexpected exit reason from mover:~n~p",
-                                 [Reason]),
-                    run_mover(Bucket, V, N1, N2, Tries-1)
-            end;
-        Msg ->
-            ?log_warning("Mover parent got unexpected message:~n"
-                         "~p", [Msg]),
-            wait_for_mover(Bucket, V, N1, N2, Tries)
     end.
