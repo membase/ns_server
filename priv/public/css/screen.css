@@ -601,18 +601,20 @@ body.auth #auth_dialog { display: block; }
 body.auth #container { display: none; }
 
 .auth_block {min-height:737px; height:100%; position:relative;}
-.auth_block h1 {color:#2f3536; text-transform:uppercase; font-size:28px; padding:28px 0 30px 0; position:relative; top:13px;}
 .auth_block .pad {position:relative; width:580px; margin:auto;top:0px; height:537px;}
-.auth_block .form {display:block; width:580px; background:url(../images/auth_form_bg.png) 0 0 no-repeat;position:relative;-moz-box-shadow:1px 1px 10px #999;-webkit-box-shadow:1px 1px 10px #999;box-shadow:1px 1px 10px #999}
-.auth_block .form table {margin:25px 0 0 25px;}
+.auth_block form {display:block; width:580px; background:url(../images/auth_form_bg.png) 0 0 no-repeat;position:relative;-moz-box-shadow:1px 1px 10px #999;-webkit-box-shadow:1px 1px 10px #999;box-shadow:1px 1px 10px #999}
+.auth_block form ul {padding:25px 0 0 25px;}
+.auth_block form ul li{margin:1em 0}
 .auth_block .form table td {vertical-align:middle; padding:10px 0;}
-.auth_block .form table .forgot {position:relative; top:-10px; font-size:12px; color:#fff;}
-.auth_block .form table .label {text-align:right; font-size:18px; color:#e6f5ff; padding:0 7px 0 0;}
-.auth_block .form table .inp {border:1px solid #60696b; background:none #fff; padding:12px 5px; width:390px; font-size:16px;}
-.auth_block .form table .submit {width:210px; height:45px; overflow:visible; border:0px; background:url(../images/sign_in_button.gif) 0 0 no-repeat; font-size:22px; color:#fff;}
-.auth_block .form table .submit:hover, .auth_block .form table .submit:focus {background-position:0 -45px;}
-.auth_block .form table .submit:active {background-position:0 -90px;}
-.auth_block .alert_red {width:588px; height:71px; position:absolute; left:-8px; top:60px; line-height:65px; font-size:14px; color:#fff; background:url(../images/alert_red.png) 0 0 no-repeat; z-index:1000;}
+.auth_block .forgot {position:relative; top:-10px; font-size:12px; color:#fff;}
+#login_form {margin-top:85px;}
+#login_form fieldset{padding:0 0 0 5px}
+#login_form label {display:inline-block;width:5em;text-align:right; font-size:18px; color:#e6f5ff; padding:0 7px 0 0;}
+#login_form input {border:1px solid #60696b; background:none #fff; padding:12px 5px; width:390px; font-size:16px;}
+#login_form input.submit {float:right;padding:0;margin:0.6em 2.2em 0.9em;width:210px; height:45px; overflow:visible; border:0px; background:url(../images/sign_in_button.gif) 0 0 no-repeat; font-size:22px; color:#fff;}
+.auth_block .submit:hover, .auth_block .submit:focus {background-position:0 -45px;}
+.auth_block .submit:active {background-position:0 -90px;}
+.auth_block .alert_red {width:588px; height:71px; position:absolute; left:-8px; top:-35px; line-height:65px; font-size:14px; color:#fff; background:url(../images/alert_red.png) 0 0 no-repeat; z-index:1000;}
 .auth_block .alert_red .al_text {padding:0 0 0 30px;}
 .alert_green {width:760px; height:75px; font-size:14px; color:#fff; background:url(../images/alert_green.png) 0 0 no-repeat; position:absolute; left:0px; top:44px; line-height:16px; z-index:1000;}
 .alert_green .al_text {padding:20px 100px 0 20px;}
