@@ -53,7 +53,6 @@
             <h1>Cluster Overview</h1>
             <div id="notice_container"></div>
             <div class="shadow_box">
-                  <div class="content">
                     <div class="hdr">
                       <span class="staleness-notice">Difficulties communicating
                       with the cluster; displaying cached information!</span>Cluster</div>
@@ -71,12 +70,10 @@
                         <div class="line_cnt"></div>
                       </div>
                     </div>
-                  </div>
             </div>
             <!-- END shadow box -->
 
             <div class="shadow_box">
-                <div class="content">
                   <div class="hdr">
                     <span class="staleness-notice">Difficulties communicating
                     with the cluster; displaying cached information!</span>
@@ -98,10 +95,8 @@
                       </div>
                     </div>
                   </div>
-                </div>
           </div>
           <div class="shadow_box">
-                <div class="content">
                   <div class="hdr">
                     <span class="staleness-notice">Difficulties communicating with
                     the cluster; displaying cached information!</span>Servers
@@ -139,7 +134,6 @@
                       </ul>
                     </div>
                   </div>
-                </div>
           </div>
         </div>
 
@@ -155,7 +149,6 @@
               </a>
             </div>
             <div class="shadow_box">
-                <div class="content">
                   <!-- shadow box -->
                   <div class="header_2 servers_header">
                     <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
@@ -177,7 +170,6 @@
                       <div id="pending_server_list_container" class="servers_list"></div>
                     </div>
                   </div>
-                </div>
             </div>
           </div>
 
@@ -331,7 +323,6 @@
               <span class="when-normal-stats"> on <select id="analytics_servers_select"></select></span>
             </h1>
             <div class="shadow_box">
-                  <div class="content">
                     <div class="section">
                       <div class="header_2">
                         <span class="block nav float_right">
@@ -389,10 +380,8 @@
                       </script>
                       <div id="stats_container"></div>
                     </div>
-                  </div>
             </div><!-- shadow_box -->
             <div class="shadow_box">
-                  <div class="content">
                     <div class="section" id="top_keys_block">
                       <h2 class="header_2">
                       TOP KEYS
@@ -413,7 +402,6 @@
                       </table>
                       </script>
                     </div> <!-- section -->
-                  </div>
             </div> <!-- END shadow box -->
           </div>
 
@@ -424,7 +412,6 @@
               <span id="node_health_graph" style="display:inline-block;vertical-align:text-top;font-size:0.85em"></span>
             </h1>
             <div class="shadow_box">
-                  <div class="content">
                     <div class="darker_block" id="manage_buckets_top_bar">
                         <div class="pad_10 right buckets_action_bar clearfix">
                             <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
@@ -432,7 +419,6 @@
                         </div>
                     </div>
                     <div id="bucket_list_container"></div>
-                  </div>
             </div>
 
             <!-- END shadow box -->
@@ -543,7 +529,6 @@
             </span>
             <h1>Log</h1>
             <div class="shadow_box">
-                  <div class="content">
                     <div class="panes">
                         <div id="logs_container"></div>
                         <script id="logs_template" type="text/html">
@@ -570,7 +555,6 @@
                         </script>
 
                     </div>
-                  </div>
             </div>
             <!-- END shadow box -->
           </div>
@@ -580,7 +564,6 @@
 
             <h1>Settings</h1>
             <div class="shadow_box">
-              <div class="content">
                 <div class="section notifications-updates auto_failover email_alerts">
                   <div class="header_2">
                     <ul class="tabs">
@@ -595,7 +578,6 @@
                     <div id="email_alerts_container">Please wait...</div>
                   </div>
                 </div>
-              </div>
             </div>
             <!-- END shadow box -->
           </div>
@@ -763,7 +745,6 @@
             </h1>
             <div id="views_spinner" class="spinner" style="height:100px;line-height:100px;display:none;"><span>Loading...</span></div>
               <div class="shadow_box" id="views_list">
-                <div class="content">
                   <div class="header_2 servers_header">
                     <ul class="tabs switcher">
                       <li class="tab_left">
@@ -786,7 +767,6 @@
                       <div id="development_views_list_container" class="views_list">Development Views</div>
                     </div>
                   </div>
-                </div>
               </div>
             <!-- END shadow box -->
 
@@ -847,7 +827,7 @@
             </script>
             <div id="view_details" style="display:none;">
             <div class="shadow_box">
-              <div class="content sampl_doc" id="sample_docs">
+              <div class="sampl_doc" id="sample_docs">
                 <div class="darker_block bucket_details">
                   <h3 class="block-expander">
                     <ins></ins><span class="view_head">Sample Document</span>
@@ -875,7 +855,6 @@
               </div>
             </div>
             <div class="shadow_box" id="viewcode">
-              <div class="content">
                 <div class="darker_block">
                   <h3 class="block-expander"><ins></ins><span class="view_head">View Code</span>
                     <span class="buttons">
@@ -897,7 +876,6 @@
                     </tr></tbody></table>
                   </div>
                 </div>
-              </div>
             </div>
 
             <div id="view_results_block">
@@ -996,14 +974,12 @@
               </div>
               <!--/filter result-->
               <div class="shadow_box">
-                <div class="content">
                   <ul class="tabs dev-subset-switcher when-in-dev">
                     <li class="tab_left"><a id="subset_dev">Development Time Subset</a></li>
                     <li class="tab_right"><a id="subset_prod">Full Cluster Data Set</a></li>
                   </ul>
                   <div id="view_results_spinner" class="spinner" style="height:100px;line-height:100px;display:none;"><span>Loading...</span></div>
                   <div id="view_results_container" class="content c_result"></div>
-                </div>
               </div>
               <script id="view_results_template" type="text/html">
               <table class="list align_text" style="width:100%">
@@ -1650,22 +1626,18 @@
 <!-- END init_block -->
 <script id="notice_template" type="text/html">
 <div class="shadow_box notice">
-  <div class="content">
     <h2 class="header_2">Couchbase Server Message<span style="float: right; color: black; font-size: 13px;">click to dismiss</span></h2>
     <div class="pad_10 success_msg">
       <p class="info_text">{%= h(text) %}</p>
     </div>
-  </div>
 </div>
 </script>
 <script id="noticeErr_template" type="text/html">
 <div class="shadow_box notice">
-  <div class="content">
     <h2 class="header_2">Couchbase Server Alert<span style="float: right; color: black; font-size: 13px;">click to dismiss</span></h2>
     <div class="pad_10 error_msg">
       <p class="info_text">{%= h(text) %}</p>
     </div>
-  </div>
 </div>
 </script>
 
