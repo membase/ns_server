@@ -1415,7 +1415,7 @@ var ViewsFilter = {
       selectInstance.selectBox();
     });
 
-    self.filter.delegate('.ic_key', 'click', function () {
+    self.filter.delegate('.btn_x', 'click', function () {
       var row = $(this).closest('tr');
       var name = row.find('[name]').attr('name')
       row.hide();

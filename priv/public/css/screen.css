@@ -765,6 +765,7 @@ body.init_bucket_dialog #container { display: none; }
 .btn_analytics.disabled {opacity:0.75;background-position:right -31px}
 .btn_info {background: url(../images/buttons.png) no-repeat -117px top;text-indent:-9000px;width:32px;height:31px;}
 .btn_info.disabled {opacity:0.75;background-position:-117px -31px}
+.btn_x {margin: 4px 0 0;width:25px;height:24px;background:url(../images/btn_x.png) no-repeat}
 
 .server_up, .server_down, .failed_over, .server_warmup, .pending_add {width:61px;padding: 0 !important;}
 .server_up {background:transparent url(../images/server_status_icons_solid_bg.png) 0 17px no-repeat !important;}
@@ -1202,7 +1203,6 @@ body.staleness-active a.disable-if-stale:hover { text-decoration: none; cursor: 
 .f_popup .f_cont .key .last {height:28px}
 .f_popup .f_cont .key td label {float:left;width:160px;margin:7px 0 0 5px;font-size:18px }
 .f_popup .f_cont .key td input[type="text"] {width:166px;height:23px;padding:6px 0 6px 14px;color:#000;font-size:18px;background:url(../images/bg_key_inp_text.png) repeat-x;border:1px solid #b3b3b3}
-.f_popup .f_cont .key .ic_key {margin: 4px 0 0;width:25px;height:24px;background:url(../images/ic_key.png) no-repeat}
 .visib {display:block}
 
 /*select*/
