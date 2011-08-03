@@ -282,8 +282,6 @@
             <div class="pad">
               <a class="edit_btn float_right disabled">Edit</a>
               <table class="properties_table">
-                <col width="50%">
-                <col width="50%">
                 <tr>
                     <td>Server Name: <span>{%= h(hostname) %}</span></td>
                     <td>Uptime: <span>{%= h(formatUptime(uptime)) %}</span></td>
@@ -533,10 +531,6 @@
                         <div id="logs_container"></div>
                         <script id="logs_template" type="text/html">
                         <table class="lined_tab">
-                          <col width="">
-                          <col width="">
-                          <col width="">
-                          <col width="160">
                           <tr>
                             <th>Event</th>
                             <th>Module Code</th>
@@ -826,8 +820,7 @@
             </table>
             </script>
             <div id="view_details" style="display:none;">
-            <div class="shadow_box">
-              <div id="sample_docs">
+              <div id="sample_docs" class="shadow_box">
                 <div class="darker_block bucket_details">
                   <h3 class="block-expander">
                     <ins></ins><span class="view_head">Sample Document</span>
@@ -853,7 +846,6 @@
                   </div>
                 </div>
               </div>
-            </div>
             <div class="shadow_box" id="viewcode">
                 <div class="darker_block">
                   <h3 class="block-expander"><ins></ins><span class="view_head">View Code</span>
