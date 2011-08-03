@@ -1389,7 +1389,7 @@ var ViewsFilter = {
 
     self.filter = $('#view_results_block .f_popup');
 
-    var selectInstance = self.selectInstance = $('#view_filter_keys');
+    var selectInstance = self.selectInstance = $('#view_filters');
     selectInstance.selectBox();
     $('#view_filter_stale').selectBox();
 
