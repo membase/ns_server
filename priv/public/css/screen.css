@@ -367,16 +367,6 @@ div.resource_panel div.ssd_resource_container div.resource-row div input.path-bo
 
 #middle_pane { vertical-align: top; }
 
-.test_cluster {width:160px; margin:20px 0 0;}
-.test_cluster .content {padding:3px 19px;}
-.test_cluster .label {font-size:12px; color:#444245; margin:0 0 5px; display:block;}
-.test_cluster .start {display:block; width:121px; height:31px; background:url(../images/button_blue.gif) 0 0 no-repeat; font-size:14px; font-weight:bolder; line-height:31px; color:#fff; text-decoration:none; text-align:center; margin:0 0 5px;}
-.test_cluster .start:hover, .test_cluster .start:focus {background-position:0 -31px;}
-.test_cluster .start:active {background-position:0 -62px;}
-
-#test_cluster_start_stop.start-active #test_cluster_stop,
-#test_cluster_start_stop.stop-active #test_cluster_start {display:none;}
-
 /* shadow block */
 .marg-top {margin:20px 0 0}
 .shadow_box {position:relative;background:none #eeeeef;-moz-box-shadow:0 0 5px #ccc;-webkit-box-shadow:0 0 5px #ccc;box-shadow:0 0 5px #ccc;margin:0 9px 20px;}
