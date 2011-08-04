@@ -27,6 +27,12 @@
     get_value/3
 ]).
 
+design_doc_view(Req, #db{name=BucketName} = Db, DesignName, ViewName, VBuckets) ->
+    DDocId = <<"_design/", DesignName/binary>>,
+    Specs = build_local_specs(BucketName, DDocId, ViewName, VBuckets),
+    MergeParams = view_merge_params(Req, Db, DDocId, ViewName, Specs),
+    couch_view_merger:query_view(Req, MergeParams).
+
 design_doc_view(Req, Db, DesignName, ViewName) ->
     DDocId = <<"_design/", DesignName/binary>>,
     MergeParams = view_merge_params(Req, Db, DDocId, ViewName),
@@ -44,9 +50,7 @@ handle_view_req(#httpd{method='GET',
                 andalso capi_frontend:run_on_subset(Name) of
                 true ->
                     VBucket = capi_frontend:first_vbucket(Name),
-                    capi_frontend:with_subdb(Db, VBucket, fun(RealDb) ->
-                        couch_httpd_view:handle_view_req(Req, RealDb, DDoc)
-                    end);
+                    design_doc_view(Req, Db, DName, ViewName, [VBucket]);
                 false ->
                     design_doc_view(Req, Db, DName, ViewName)
             end;
@@ -96,7 +100,7 @@ node_vbuckets_dict(BucketName) ->
     NodeToVBuckets.
 
 
-view_merge_params(Req, #db{name = BucketName}, DDocId, ViewName) ->
+view_merge_params(Req, #db{name = BucketName} = Db, DDocId, ViewName) ->
     NodeToVBuckets = node_vbuckets_dict(?b2l(BucketName)),
     Config = ns_config:get(),
     FullViewName = case DDocId of
@@ -112,6 +116,9 @@ view_merge_params(Req, #db{name = BucketName}, DDocId, ViewName) ->
         (Node, VBuckets, Acc) ->
            [build_remote_specs(Node, BucketName, FullViewName, VBuckets, Config) | Acc]
         end, [], NodeToVBuckets),
+    view_merge_params(Req, Db, DDocId, ViewName, ViewSpecs).
+
+view_merge_params(Req, #db{name = BucketName}, DDocId, ViewName, ViewSpecs) ->
     case Req#httpd.method of
     'GET' ->
         Body = [],
