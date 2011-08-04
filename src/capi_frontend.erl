@@ -292,8 +292,7 @@ all_databases() ->
     {ok, DBs ++ [?l2b(Name) || Name <- ns_bucket:get_bucket_names(membase)]}.
 
 task_status_all() ->
-    %% TODO: why ?
-    couch_task_status:all().
+    couch_db_frontend:task_status_all().
 
 restart_core_server() ->
     exit(not_implemented(restart_core_server, [])).

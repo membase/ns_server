@@ -5,6 +5,9 @@ max_dbs_open = 10000
 db_frontend = capi_frontend
 bind_address = 0.0.0.0
 
+[httpd_global_handlers]
+_cluster_tasks = {capi_tasks, cluster_tasks_req}
+
 [httpd_db_handlers]
 _all_docs = {capi_view, all_docs_db_req}
 _random = {capi_frontend, handle_random_req}
