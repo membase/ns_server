@@ -1072,7 +1072,13 @@
       </tr></table>
     </div>
 
-    <label class="for-ram-quota"><span>Per Node RAM Quota:</span><input name="ramQuotaMB" type="text" value="30"><abbr>MB</abbr><input name="ramQuotaMB" type="hidden"></label>
+    <label class="for-ram-quota">
+      <span>Per Node RAM Quota:</span>
+      <input name="ramQuotaMB" type="text" value="30" />
+      <abbr>MB</abbr>
+    </label>
+    <input name="ramQuotaMB" type="hidden" />
+
     <div class="error-container err-ramQuotaMB"></div>
     <em class="memcached-summary when-non-persistent"></em>
     </fieldset>
@@ -1595,7 +1601,14 @@
           <td>Free (<span class="free">12 Gb</span>)</td>
         </tr></table>
       </div>
-            <label class="for-ram-quota"><span><em class="when-non-persistent">Per Node RAM Quota:</em><em class="when-persistent">Per Node RAM Quota:</em></span><input name="ramQuotaMB" class="focusme" value="30"><abbr>MB</abbr></label>
+      <label class="for-ram-quota">
+        <span>
+          <em class="when-non-persistent">Per Node RAM Quota:</em>
+          <em class="when-persistent">Per Node RAM Quota:</em>
+        </span>
+        <input name="ramQuotaMB" class="focusme" value="30" />
+        <abbr>MB</abbr>
+      </label>
       <div class="error-container err-ramQuotaMB"></div>
             <em class="memcached-summary when-non-persistent"></em>
       <div class="persistent-only">
