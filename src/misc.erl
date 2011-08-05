@@ -1095,11 +1095,11 @@ init([_X]) ->
 init([X | Rest]) ->
     [X | init(Rest)].
 
-%% Parse version of the form 1.7.0r_252_g1e1c2c0 into a list
-%% {[1,7,0],candidate,252}.
+%% Parse version of the form 1.7.0r_252_g1e1c2c0 or 1.7.0r-252-g1e1c2c0 into a
+%% list {[1,7,0],candidate,252}.
 -spec parse_version(string()) -> version().
 parse_version(VersionStr) ->
-    Parts = string:tokens(VersionStr, "_"),
+    Parts = string:tokens(VersionStr, "_-"),
     case Parts of
         [BaseVersionStr] ->
             {BaseVersion, Type} = parse_base_version(BaseVersionStr),
@@ -1124,8 +1124,12 @@ parse_base_version(BaseVersionStr) ->
 parse_version_test() ->
     ?assertEqual({[1,7,0],release,252},
                  parse_version("1.7.0_252_g1e1c2c0")),
+    ?assertEqual({[1,7,0],release,252},
+                 parse_version("1.7.0-252-g1e1c2c0")),
     ?assertEqual({[1,7,0],candidate,252},
                  parse_version("1.7.0r_252_g1e1c2c0")),
+    ?assertEqual({[1,7,0],candidate,252},
+                 parse_version("1.7.0r-252-g1e1c2c0")),
     ?assertEqual({[1,7,0],release,0},
                  parse_version("1.7.0")),
     ?assertEqual({[1,7,0],candidate,0},
