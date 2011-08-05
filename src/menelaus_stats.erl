@@ -402,7 +402,18 @@ gather_op_stats(Bucket, Nodes, Params) ->
         Something -> Something
     after
         ns_pubsub:unsubscribe(ns_stats_event, Subscription),
-        misc:flush(Ref)
+
+        misc:flush(Ref),
+
+        %% ns_pubsub:subscribe uses gen_event:add_sup_handler which sends
+        %% gen_event_EXIT message whenever handler is deleted; by this time
+        %% message already must be in the mailbox thus timeout is 0
+        receive
+            {gen_event_EXIT, _, _} ->
+                ok
+        after 0 ->
+                ok
+        end
     end.
 
 invoke_archiver(Bucket, NodeS, {Step, Period, Window}) ->
