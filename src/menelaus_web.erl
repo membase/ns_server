@@ -377,9 +377,7 @@ handle_complete_join(Req) ->
 get_uuid() ->
     case ns_config:search(uuid) of
         false ->
-            Uuid = list_to_binary(
-                uuid:uuid_to_string(uuid:get_v1(uuid:new(self())))),
-            ns_config:set(uuid, Uuid),
+            Uuid = list_to_binary(uuid:to_string(uuid:srandom())),
             Uuid;
         {value, Uuid2} ->
             Uuid2

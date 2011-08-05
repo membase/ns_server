@@ -31,10 +31,15 @@ determine_address_test() ->
     "127.0.0.1" = determine_address("1.2.3.4", []).
 
 list_all_addresses() ->
-    {ok, AddrInfo} = inet:getif(),
-    lists:sort(
-      lists:map(fun({A,_,_}) -> addr_to_s(A) end, AddrInfo)
-      -- ["127.0.0.1"]).
+    {ok, AddrInfo} = inet:getifaddrs(),
+    CandidateList = lists:map(fun(X) -> element(2, X) end,
+                              lists:filter(fun(Y) -> element(1, Y) == addr end,
+                                           lists:flatten(lists:map(fun(Z) -> element(2, Z) end,
+                                                         AddrInfo)))),
+    lists:sort(lists:map(fun(X) -> addr_to_s(X) end,
+                         lists:filter(fun(Y) -> size(Y) == 4 end,
+                                      CandidateList))
+               -- ["127.0.0.1"]).
 
 list_all_addresses_test() ->
     %% I can't test too much here since this isn't functional, but

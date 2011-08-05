@@ -1,231 +1,194 @@
-%%% -*- coding: utf-8; Mode: erlang; tab-width: 4; c-basic-offset: 4; indent-tabs-mode: nil -*-
-%%% ex: set softtabstop=4 tabstop=4 shiftwidth=4 expandtab fileencoding=utf-8:
-%%%
-%%%------------------------------------------------------------------------
-%%% @doc
-%%% ==Erlang UUID Generation==
-%%% http://www.ietf.org/rfc/rfc4122.txt is the reference for official UUIDs.
-%%% This implementation provides a version 1 UUID that includes the Erlang pid
-%%% identifier (ID, Serial, Creation) within the 48 bit node ID.  To make room
-%%% for the Erlang pid identifier, the 48 bits from the MAC address are
-%%% bitwise-XORed (i.e., 3 OCI (Organizationally Unique Identifier)
-%%% bytes and 3 NIC (Network Interface Controller) specific bytes) down to
-%%% 16 bits. The Erlang pid is bitwise-XORed from 72 bits down to 32 bits.
-%%% The version 3 (MD5), version 4 (random), and version 5 (SHA)
-%%% methods are provided as specified within the RFC.
-%%% @end
-%%%
-%%% BSD LICENSE
-%%% 
-%%% Copyright (c) 2011, Michael Truog <mjtruog at gmail dot com>
-%%% All rights reserved.
-%%% 
-%%% Redistribution and use in source and binary forms, with or without
-%%% modification, are permitted provided that the following conditions are met:
-%%% 
-%%%     * Redistributions of source code must retain the above copyright
-%%%       notice, this list of conditions and the following disclaimer.
-%%%     * Redistributions in binary form must reproduce the above copyright
-%%%       notice, this list of conditions and the following disclaimer in
-%%%       the documentation and/or other materials provided with the
-%%%       distribution.
-%%%     * All advertising materials mentioning features or use of this
-%%%       software must display the following acknowledgment:
-%%%         This product includes software developed by Michael Truog
-%%%     * The name of the author may not be used to endorse or promote
-%%%       products derived from this software without specific prior
-%%%       written permission
-%%% 
-%%% THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
-%%% CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
-%%% INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-%%% OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-%%% DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-%%% CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-%%% SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-%%% BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-%%% SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-%%% INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-%%% WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-%%% NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-%%% OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
-%%% DAMAGE.
-%%%
-%%% @author Michael Truog <mjtruog [at] gmail (dot) com>
-%%% @copyright 2011 Michael Truog
-%%% @version 0.1.4 {@date} {@time}
-%%%------------------------------------------------------------------------
-
+%% @author Andrew Kreiling <akreiling@pobox.com>
+%% @copyright 2008 Andrew Kreiling <akreiling@pobox.com>. All Rights Reserved.
+%%
+%% @doc
+%% UUID module for Erlang
+%%
+%% This Erlang module was designed to be a simple library for generating UUIDs. It
+%% conforms to RFC 4122 whenever possible.
+%%
 -module(uuid).
--author('mjtruog [at] gmail (dot) com').
+-author('Andrew Kreiling <akreiling@pobox.com>').
+-behaviour(gen_server).
 
-%% external interface
--export([new/1,
-         get_v1/1,
-         get_v1_time/1,
-         get_v3/1,
-         get_v4/0,
-         get_v5/1,
-         uuid_to_string/1,
-         increment/1]).
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
 
--record(uuid_state,
-    {
-        node_id,
-        clock_seq,
-        clock_seq_high,
-        clock_seq_low
-    }).
+-export([start/0, start/1, start_link/0, start_link/1, stop/0]).
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
+-export([v4/0, random/0, srandom/0, sha/2, md5/2, timestamp/0, timestamp/2, to_string/1]).
 
-%%%------------------------------------------------------------------------
-%%% External interface functions
-%%%------------------------------------------------------------------------
+-define(SERVER, ?MODULE).
+-define(UUID_DNS_NAMESPACE, <<107,167,184,16,157,173,17,209,128,180,0,192,79,212,48,200>>).
+-define(UUID_URL_NAMESPACE, <<107,167,184,17,157,173,17,209,128,180,0,192,79,212,48,200>>).
+-define(UUID_OID_NAMESPACE, <<107,167,184,18,157,173,17,209,128,180,0,192,79,212,48,200>>).
+-define(UUID_X500_NAMESPACE, <<107,167,184,20,157,173,17,209,128,180,0,192,79,212,48,200>>).
 
-new(Pid) when is_pid(Pid) ->
-    {ok, Ifs} = inet:getiflist(),
-    IfBadness = fun (If) ->
-                        HWRV = inet:ifget(If, [hwaddr]),
-                        InetRV = inet:ifget(If, [addr]),
-                        [element(1, HWRV) =:= error,
-                         lists:prefix("lo", If),
-                         element(1, InetRV) =:= error,
-                         If,
-                         InetRV]
-                end,
-    % Sort interfaces in increasing badness order, so that least bad is first
-    [{_, If} | _] = lists:sort([{<<"1">>, "filler"} | [{IfBadness(I), I} || I <- Ifs]]),
-    % 48 bits for MAC address
-    {IfByte1, IfByte2} =
-        case inet:ifget(If, [hwaddr]) of
-            {ok,[{hwaddr,[OUI1,OUI2,OUI3,NIC1,NIC2,NIC3]}]} ->
-                % reduce the MAC address to 16 bits
-                {((OUI1 bxor OUI2) bxor OUI3) bxor NIC1,
-                 NIC2 bxor NIC3};
-            _ ->
-                error_logger:error_msg("Failling back to hwaddr-less case~n"),
-                % if there's no mac address than do something sensible
-                % and 'unique'. Becase we prefer interfaces with
-                % ip-address this will likely depend on interface name
-                % and interface address.
-                IfHash = erlang:phash2(IfBadness(If), 16364),
-                {IfHash div 256,
-                 IfHash rem 256}
-        end,
-    PidBin = erlang:term_to_binary(Pid),
-    % 72 bits for the Erlang pid
-    <<ID1:8, ID2:8, ID3:8, ID4:8, % ID (Node index)
-      SR1:8, SR2:8, SR3:8, SR4:8, % Serial (Process index)
-      CR1:8                       % Node Creation Count
-      >> = binary:part(PidBin, erlang:byte_size(PidBin), -9),
-    % reduce the Erlang pid to 32 bits
-    PidByte1 = ID1 bxor SR4,
-    PidByte2 = ID2 bxor SR3,
-    PidByte3 = ID3 bxor SR2,
-    PidByte4 = (ID4 bxor SR1) bxor CR1,
-    ClockSeq = random:uniform(16384) - 1,
-    <<ClockSeqHigh:6, ClockSeqLow:8>> = <<ClockSeq:14>>,
-    #uuid_state{node_id = <<IfByte1:8, IfByte2:8,
-                            PidByte1:8, PidByte2:8,
-                            PidByte3:8, PidByte4:8>>,
-                clock_seq = ClockSeq,
-                clock_seq_high = ClockSeqHigh,
-                clock_seq_low = ClockSeqLow}.
+-record(state, {node, clock_seq}).
 
-get_v1(#uuid_state{node_id = NodeId,
-                   clock_seq_high = ClockSeqHigh,
-                   clock_seq_low = ClockSeqLow}) ->
-    {MegaSeconds, Seconds, MicroSeconds} = erlang:now(),
-    Time = (MegaSeconds * 1000000 + Seconds) * 1000000 + MicroSeconds,
-    <<TimeHigh:12/little, TimeMid:16/little, TimeLow:32/little>> = <<Time:60>>,
-    <<TimeLow:32, TimeMid:16, TimeHigh:12,
-      0:1, 0:1, 0:1, 1:1,  % version 1 bits
-      ClockSeqHigh:6,
-      0:1, 1:1,            % reserved bits
-      ClockSeqLow:8,
-      NodeId/binary>>.
+%% @type uuid() = binary(). A binary representation of a UUID
 
-get_v1_time(#uuid_state{}) ->
-    {MegaSeconds, Seconds, MicroSeconds} = erlang:now(),
-    (MegaSeconds * 1000000 + Seconds) * 1000000 + MicroSeconds;
+%% @spec v4() -> uuid()
+%% @equiv random()
+%% @deprecated Please use the function random() instead.
+%%
+v4() ->
+    random().
 
-get_v1_time(Value)
-    when is_binary(Value), byte_size(Value) == 16 ->
-    <<TimeLow:32, TimeMid:16, TimeHigh:12,
-      0:1, 0:1, 0:1, 1:1,  % version 1 bits
-      _:6,
-      0:1, 1:1,            % reserved bits
-      _:8, _:48>> = Value,
-    <<Time:60>> = <<TimeHigh:12/little, TimeMid:16/little, TimeLow:32/little>>,
-    Time. % microseconds since epoch
+%% @spec random() -> uuid()
+%% @doc
+%% Generates a random UUID
+%%
+random() ->
+    U = <<
+        (random:uniform(4294967296) - 1):32,
+        (random:uniform(4294967296) - 1):32,
+        (random:uniform(4294967296) - 1):32,
+        (random:uniform(4294967296) - 1):32
+    >>,
+    format_uuid(U, 4).
 
-get_v3([I | _] = Name)
-    when is_integer(I) ->
-    <<B1:60, B2a:6, B2b:6, B3:56>> = crypto:md5(Name),
-    B2 = B2a bxor B2b,
-    <<B1:60,
-      0:1, 0:1, 1:1, 1:1,  % version 3 bits
-      B2:6,
-      0:1, 1:1,            % reserved bits
-      B3:56>>.
+%% @spec srandom() -> uuid()
+%% @doc
+%% Seeds random number generation with erlang:now() and generates a random UUID
+%%
+srandom() ->
+    {A1,A2,A3} = erlang:now(),
+    random:seed(A1, A2, A3),
+    random().
 
-% crypto:rand_bytes/1 repeats in the same way as
-% RAND_pseudo_bytes within OpenSSL.
-% if OpenSSL is configured to use the MD PRNG (default) with SHA1
-% (in openssl/crypto/rand/md_rand.c),
-% the collisions are between 2^80 and 2^51
-% (http://eprint.iacr.org/2008/469.pdf).  So, that means this would
-% repeat ideally every 1.21e24 and at worst every 2.25e15.
-% if OpenSSL was compiled in FIPS mode, it uses ANSI X9.31 RNG
-% and would have collisions based on 3DES (which is a black-box algorithm,
-% i.e., the DES S-boxes used within the cipher were never published).
-get_v4() ->
-    <<Rand1:60, _:4, Rand2:6, _:2, Rand3:56>> = crypto:rand_bytes(16),
-    <<Rand1:60,
-      0:1, 1:1, 0:1, 0:1,  % version 4 bits
-      Rand2:6,
-      0:1, 1:1,            % reserved bits
-      Rand3:56>>.
+%% @spec sha(Namespace, Name) -> uuid()
+%% where
+%%      Namespace = dns | url | oid | x500 | uuid()
+%%      Name = list() | binary()
+%% @doc
+%% Generates a UUID based on a crypto:sha() hash
+%%
+sha(Namespace, Name) when is_list(Name) ->
+    sha(Namespace, list_to_binary(Name));
 
-get_v5([I | _] = Name)
-    when is_integer(I) ->
-    <<B1:60, B2:6, B3a:56, B3b:38>> = crypto:sha(Name),
-    B3 = B3a bxor B3b,
-    <<B1:60,
-      0:1, 1:1, 0:1, 1:1,  % version 5 bits
-      B2:6,
-      0:1, 1:1,            % reserved bits
-      B3:56>>.
+sha(Namespace, Name) ->
+    Context = crypto:sha_update(crypto:sha_update(crypto:sha_init(), namespace(Namespace)), Name),
+    U = crypto:sha_final(Context),
+    format_uuid(U, 5).
 
-uuid_to_string(Value)
-    when is_binary(Value), byte_size(Value) == 16 ->
-    <<B1:32/unsigned-integer,
-      B2:16/unsigned-integer,
-      B3:16/unsigned-integer,
-      B4:16/unsigned-integer,
-      B5:48/unsigned-integer>> = Value,
-    lists:flatten(io_lib:format("~8.16.0b-~4.16.0b-~4.16.0b-~4.16.0b-~12.16.0b",
-                                [B1, B2, B3, B4, B5])).
+%% @spec md5(Namespace, Name) -> uuid()
+%% where
+%%      Namespace = dns | url | oid | x500 | uuid()
+%%      Name = list() | binary()
+%% @doc
+%% Generates a UUID based on a crypto:md5() hash
+%%
+md5(Namespace, Name) when is_list(Name) ->
+    md5(Namespace, list_to_binary(Name));
 
-% The RFC said to increment the clock sequence counter
-% if the system clock was set backwards.  However, erlang:now/0 always
-% provides increasing time values, so this function is not necessary
-% when the system clock changes.  Since the version 1 node id contains the
-% Erlang PID ID, Serial, and Creation numbers in a (non-destructive)
-% bitwise-xor operation, the node id is specific to both the Erlang node
-% and the Erlang node lifetime (the PID Creation is different after a node 
-% crash). Therefore, it is unclear why this function would be necessary
-% within this Erlang implementation of v1 UUID generation (if the system
-% is always running).
-increment(#uuid_state{clock_seq = ClockSeq} = State) ->
-    NextClockSeq = ClockSeq + 1,
-    NewClockSeq = if
-        NextClockSeq == 16384 ->
-            0;
-        true ->
-            NextClockSeq
-    end,
-    <<ClockSeqHigh:6, ClockSeqLow:8>> = <<NewClockSeq:14>>,
-    State#uuid_state{clock_seq = NewClockSeq,
-                     clock_seq_high = ClockSeqHigh,
-                     clock_seq_low = ClockSeqLow}.
+md5(Namespace, Name) ->
+    Context = crypto:md5_update(crypto:md5_update(crypto:md5_init(), namespace(Namespace)), Name),
+    U = crypto:md5_final(Context),
+    format_uuid(U, 3).
 
+%% @spec timestamp() -> uuid()
+%% @doc
+%% Generates a UUID based on timestamp
+%%
+%% Requires that the uuid gen_server is started
+%%
+timestamp() ->
+    gen_server:call(?SERVER, timestamp).
+
+%% @spec timestamp(Node, CS) -> uuid()
+%% where
+%%      Node = binary()
+%%      CS = int()
+%% @doc
+%% Generates a UUID based on timestamp
+%%
+timestamp(Node, CS) ->
+    {MegaSecs, Secs, MicroSecs} = erlang:now(),
+    T = (((((MegaSecs * 1000000) + Secs) * 1000000) + MicroSecs) * 10) + 16#01b21dd213814000,
+    format_uuid(T band 16#ffffffff, (T bsr 32) band 16#ffff, (T bsr 48) band 16#ffff, (CS bsr 8) band 16#ff, CS band 16#ff, Node, 1).
+
+%% @spec to_string(UUID) -> string()
+%% where
+%%      UUID = uuid()
+%% @doc
+%% Generates a string representation of a UUID
+%%
+to_string(<<TL:32, TM:16, THV:16, CSR:8, CSL:8, N:48>> = _UUID) ->
+    lists:flatten(io_lib:format("~8.16.0b-~4.16.0b-~4.16.0b-~2.16.0b~2.16.0b-~12.16.0b", [TL, TM, THV, CSR, CSL, N])).
+
+%%
+%% uuid gen_server for generating timestamps with saved state
+%%
+
+start() ->
+    start([]).
+
+start(Args) ->
+    gen_server:start({local, ?SERVER}, ?MODULE, Args, []).
+
+start_link() ->
+    start_link([]).
+
+start_link(Args) ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, Args, []).
+
+stop() ->
+    gen_server:cast(?SERVER, stop).
+
+init(Options) ->
+    {A1,A2,A3} = proplists:get_value(seed, Options, erlang:now()),
+    random:seed(A1, A2, A3),
+    State = #state{
+        node = proplists:get_value(node, Options, <<0:48>>),
+        clock_seq = random:uniform(65536)
+    },
+    error_logger:info_report("uuid server started"),
+    {ok, State}.
+
+handle_call(timestamp, _From, State) ->
+    Reply = timestamp(State#state.node, State#state.clock_seq),
+    {reply, Reply, State};
+
+handle_call(_Request, _From, State) ->
+    Reply = ok,
+    {reply, Reply, State}.
+
+handle_cast(stop, State) ->
+    {stop, normal, State};
+
+handle_cast(_Msg, State) ->
+    {noreply, State}.
+
+handle_info(_Info, State) ->
+    {noreply, State}.
+
+terminate(_Reason, _State) ->
+    error_logger:info_report("uuid server stopped"),
+    ok.
+
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
+
+%%
+%% Internal API
+%%
+
+namespace(dns) -> ?UUID_DNS_NAMESPACE;
+namespace(url) -> ?UUID_URL_NAMESPACE;
+namespace(oid) -> ?UUID_OID_NAMESPACE;
+namespace(x500) -> ?UUID_X500_NAMESPACE;
+namespace(UUID) when is_binary(UUID) -> UUID;
+namespace(_) -> error.
+
+format_uuid(TL, TM, THV, CSR, CSL, <<N:48>>, V) ->
+    format_uuid(<<TL:32, TM:16, THV:16, CSR:8, CSL:8, N:48>>, V);
+
+format_uuid(TL, TM, THV, CSR, CSL, N, V) ->
+    format_uuid(<<TL:32, TM:16, THV:16, CSR:8, CSL:8, N:48>>, V).
+
+format_uuid(<<TL:32, TM:16, THV:16, CSR:8, CSL:8, N:48, _Rest/binary>>, V) ->
+    <<TL:32, TM:16, ((THV band 16#0fff) bor (V bsl 12)):16, ((CSR band 16#3f) bor 16#80):8, CSL:8, N:48>>.
+
+%% vim:sw=4:sts=4:ts=8:et
