@@ -243,6 +243,10 @@ _tasks = [
               "mbstats -a 127.0.0.1:11210 timings _admin _admin",
               log_file="stats.log"),
     AllOsTask("membase logs", "mbbrowse_logs", log_file="ns_server.log"),
+    LinuxTask("Couchdb log", "cat /var/log/couchdb/couch.log", log_file="couch.log"),
+    WindowsTask("Couchdb log",
+         "type " + os.path.dirname(sys.argv[0]) + "/../var/log/couchdb/couch.log",
+         log_file="couch.log"),
     ]
 
 
