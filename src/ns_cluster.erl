@@ -117,7 +117,8 @@ handle_cast(leave, State) ->
     ns_config:clear([directory]),
     case WebPort of
         false -> false;
-        _ -> ns_config:set(rest, [{port, WebPort}])
+        _ -> ns_config:set_sub({node, node(), rest},
+                               port, WebPort)
     end,
     ns_config:set_initial(nodes_wanted, [node()]),
     ns_cookie_manager:cookie_sync(),

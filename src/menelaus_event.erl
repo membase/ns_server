@@ -91,7 +91,8 @@ init(_) ->
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
 
-handle_event({rest, _}, #state{webconfig = WebConfigOld} = State) ->
+handle_event({{node, _, rest}, _},
+             #state{webconfig = WebConfigOld} = State) ->
     WebConfigNew = menelaus_web:webconfig(),
     case WebConfigNew =:= WebConfigOld of
         true -> {ok, State};

@@ -1083,8 +1083,8 @@ handle_settings_web_post(Req) ->
             case build_settings_web() =:= build_settings_web(PortInt, U, P) of
                 true -> ok; % No change.
                 false ->
-                    ns_config:set(rest,
-                                  [{port, PortInt}]),
+                    ns_config:set_sub({node, node(), rest},
+                                      port, PortInt),
                     if
                         {[], []} == {U, P} ->
                             ns_config:set(rest_creds, [{creds, []}]);
