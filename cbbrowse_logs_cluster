@@ -1,5 +1,32 @@
 #!/bin/sh
 # Copyright (c) 2011, Couchbase, Inc.
 # All rights reserved.
+
+progname=`basename $0`
+
+usage() {
+cat 1>&2 <<EOF
+Usage: ${progname} <node>
+
+  Example: To dump the logs for node 0, try running the following command
+
+           ${0} n_0
+EOF
+  exit 1
+}
+
+if [ x"$1" = "x" -o "$1" = "-?" -o "$1" = "--help" ]
+then
+   usage
+fi
+
 cd `dirname $0`
-exec erl -pa ebin -boot start_sasl -sasl errlog_type error -noshell -run ns_log_browser -report_dir logs/"$1" -run init stop -- "$@"
+
+if ! [ -d logs/"$1" ]
+then
+  echo "Failed to locate the log files for \"$1\"." 1>&2
+  exit 1
+fi
+
+exec erl -pa ebin -boot start_sasl -sasl errlog_type error -noshell \
+         -run ns_log_browser -report_dir logs/"$1" -run init stop -- "$@"
