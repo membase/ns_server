@@ -55,7 +55,7 @@
          get/2, get/1, get/0, set/2, set/1,
          cas_config/2,
          set_initial/2, update/2, update_key/2,
-         update_sub_key/3,
+         update_sub_key/3, set_sub/2, set_sub/3,
          search_node/3, search_node/2, search_node/1,
          search_node_prop/3, search_node_prop/4,
          search_node_prop/5,
@@ -238,6 +238,40 @@ update_sub_key(Key, SubKey, Fun) ->
                                 _ -> RV
                             end
                     end).
+
+%% Set subkey to a certain value. If subkey already exists then its value is
+%% replaced. Otherwise it is created.
+set_sub(Key, SubKey, Value) ->
+    Replace = fun (_) -> Value end,
+    ok = update_key(Key,
+                    fun (PList) ->
+                            case misc:key_update(SubKey, PList, Replace) of
+                                false ->
+                                    [ {SubKey, Value} | PList ];
+                                RV -> RV
+                            end
+                    end).
+
+%% Set subkeys of certain key in config. If some of the subkeys do not exist
+%% they are created.
+set_sub(Key, SubKVList) ->
+    ok = update_key(Key,
+                    fun (PList) ->
+                            set_sub_kvlist(PList, SubKVList)
+                    end).
+
+set_sub_kvlist(PList, []) ->
+    PList;
+set_sub_kvlist(PList, [ {SubKey, Value} | Rest ]) ->
+    Replace = fun (_) -> Value end,
+    NewPList =
+        case misc:key_update(SubKey, PList, Replace) of
+            false ->
+                [ {SubKey, Value} | PList ];
+            RV -> RV
+        end,
+    set_sub_kvlist(NewPList, Rest).
+
 
 clear() -> clear([]).
 clear(Keep) -> gen_server:call(?MODULE, {clear, Keep}).
