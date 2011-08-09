@@ -173,11 +173,11 @@ var ViewsSection = {
       var buckets = v.need(DAL.cells.bucketsListCell);
       var bucketInfo = _.detect(buckets, function (info) {return info.name === "default"}) || buckets[0];
       if (!bucketInfo) {
-        // TODO: handle empty buckets set
         return null;
       }
       return bucketInfo.name;
     });
+    self.viewsBucketCell.equality = function (a, b) {return a === b;};
 
     (function () {
       var cell = Cell.compute(function (v) {
@@ -198,6 +198,11 @@ var ViewsSection = {
       });
     })();
 
+    var haveBucketsCell = Cell.compute(
+      function (v) {
+        return v.need(self.viewsBucketCell) !== null;
+      });
+
     var selectedBucketCell = self.selectedBucketCell = Cell.compute(function (v) {
       if (v.need(DAL.cells.mode) != 'views')
         return;
@@ -207,7 +212,12 @@ var ViewsSection = {
     var dbURLCell = self.dbURLCell = Cell.compute(function (v) {
       var base = v.need(DAL.cells.capiBase);
       var bucketName = v.need(selectedBucketCell);
-      return buildURL(base, bucketName) + "/";
+
+      if (bucketName) {
+        return buildURL(base, bucketName) + "/";
+      } else {
+        return;
+      }
     });
 
     (function (createBtn) {
@@ -233,7 +243,13 @@ var ViewsSection = {
     }).name("rawAllDDocs");
 
     var allDDocsCell = self.allDDocsCell = Cell.compute(function (v) {
-      return _.map(v.need(rawAllDDocsCell).rows, function (r) {return r.doc});
+      var haveBuckets = v.need(haveBucketsCell);
+
+      if (haveBuckets) {
+        return _.map(v.need(rawAllDDocsCell).rows, function (r) {return r.doc});
+      } else {
+        return [];
+      }
     }).name("allDDocs");
     allDDocsCell.delegateInvalidationMethods(rawAllDDocsCell);
 

@@ -774,7 +774,21 @@
                 <th class="last"></th>
               </tr>
             </thead>
-            <!-- {% if (!rows.length) { %} -->
+
+            <!-- {% if (!bucketName) { %} -->
+            <tbody>
+              <tr>
+                <td colspan="10" class="empty">
+                  <span>
+                    No buckets currently defined! Go to
+                    <a href="#sec=buckets">Data Buckets</a>
+                    to create some.
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+
+            <!-- {% } else if (!rows.length) { %} -->
             <tbody>
               <tr><td colspan="10" class="empty">
                 <span class="when-in-dev">No design documents currently defined. Click "Create View..." above to create one.</span>
