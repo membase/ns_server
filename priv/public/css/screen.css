@@ -661,7 +661,7 @@ body.auth #container { display: none; }
 #init_block { display: none; }
 #init_block .pad { display: none; }
 
-body.init_welcome {background:#F0EEE7}
+body.init_welcome, body.init_cluster, body.init_resources, body.init_secure, body.init_bucket_dialog, body.init_update_notifications {background:#F0EEE7}
 body.init_welcome #init_block { display: block; }
 body.init_welcome #init_welcome_dialog { display: block;  display=:none !important;-moz-box-shadow:0 0 10px #999;-webkit-box-shadow:0 0 10px #999;box-shadow:0 0 10px #999}
 body.init_welcome #container { display: none; }
