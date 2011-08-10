@@ -1,6 +1,6 @@
 -module(cb_util).
 
--export([vbucket_from_id/2]).
+-export([vbucket_from_id/2, vbucket_from_id_fastforward/2]).
 
 -include("couch_db.hrl").
 
@@ -11,13 +11,27 @@ vbucket_from_id(Bucket, Id) when is_binary(Bucket) ->
     vbucket_from_id(?b2l(Bucket), Id);
 
 vbucket_from_id(Bucket, Id) ->
-
     {ok, Config} = ns_bucket:get_bucket(Bucket),
     Map = proplists:get_value(map, Config, []),
     NumVBuckets = proplists:get_value(num_vbuckets, Config, []),
-
     vbucket_from_id(Map, NumVBuckets, Id).
 
+
+-spec vbucket_from_id_fastforward(string() | binary(), binary()) ->
+    {integer(), atom()} | ffmap_not_found.
+vbucket_from_id_fastforward(Bucket, Id) when is_binary(Bucket) ->
+    vbucket_from_id_fastforward(?b2l(Bucket), Id);
+
+vbucket_from_id_fastforward(Bucket, Id) ->
+    {ok, Config} = ns_bucket:get_bucket(Bucket),
+    Map = proplists:get_value(fastForwardMap, Config),
+    case Map of
+        undefined ->
+            ffmap_not_found;
+        _ ->
+            NumVBuckets = proplists:get_value(num_vbuckets, Config, []),
+            vbucket_from_id(Map, NumVBuckets, Id)
+    end.
 
 -spec vbucket_from_id(list(), integer(), binary()) -> {integer(), atom()}.
 vbucket_from_id(Map, NumVBuckets, Id) ->

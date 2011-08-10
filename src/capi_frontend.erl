@@ -83,8 +83,8 @@ update_doc(#db{filepath = undefined} = Db, #doc{id = <<"_design/",_/binary>>} = 
 
 update_doc(#db{filepath = undefined, name = Name} = Db,
            #doc{id = DocId} = Doc, Options, UpdateType) ->
-    {_, Node} = cb_util:vbucket_from_id(?b2l(Name), DocId),
-    R = rpc:call(Node, capi_crud, update_doc, [Db, Doc, Options, UpdateType]),
+    R = attempt(Name, DocId,
+                capi_crud, update_doc, [Db, Doc, Options, UpdateType]),
     case R of
         {ok, _Doc} ->
             R;
@@ -337,8 +337,7 @@ open_doc(#db{filepath = undefined} = Db, <<"_design/",_/binary>> = DocId, Option
     end);
 
 open_doc(#db{filepath = undefined, name = Name} = Db, DocId, Options) ->
-    {_, Node} = cb_util:vbucket_from_id(?b2l(Name), DocId),
-    rpc:call(Node, capi_crud, open_doc, [Db, DocId, Options]);
+    attempt(Name, DocId, capi_crud, open_doc, [Db, DocId, Options]);
 
 open_doc(Db, DocId, Options) ->
     couch_db:open_doc(Db, DocId, Options).
@@ -619,4 +618,54 @@ do_delete(Bucket, DocId, VBucket, CAS) ->
             {error, {bad_request, not_my_vbucket}};
         ?EINVAL ->
             {error, {bad_request, einval}}
+    end.
+
+%% Attempt to forward the request to the correct server, first try normal
+%% map, then vbucket map, then try all nodes
+-spec attempt(binary(), binary(), atom(), atom(), list()) -> any().
+attempt(DbName, DocId, Mod, Fun, Args) ->
+    attempt(DbName, DocId, Mod, Fun, Args, plain_map).
+
+-spec attempt(binary(), binary(), atom(),
+              atom(), list(), list() | plain_map | fast_forward) -> any().
+attempt(_DbName, _DocId, _Mod, _Fun, _Args, []) ->
+    throw(max_vbucket_retry);
+
+attempt(DbName, DocId, Mod, Fun, Args, [Node | Rest]) ->
+    case rpc:call(Node, Mod, Fun, Args) of
+        not_my_vbucket ->
+            attempt(DbName, DocId, Mod, Fun, Args, Rest);
+        Else ->
+            Else
+    end;
+
+attempt(DbName, DocId, Mod, Fun, Args, plain_map) ->
+    {_, Node} = cb_util:vbucket_from_id(?b2l(DbName), DocId),
+    case rpc:call(Node, Mod, Fun, Args) of
+        not_my_vbucket ->
+            attempt(DbName, DocId, Mod, Fun, Args, fast_forward);
+        Else ->
+            Else
+    end;
+
+attempt(DbName, DocId, Mod, Fun, Args, fast_forward) ->
+    R =
+        case cb_util:vbucket_from_id_fastforward(?b2l(DbName), DocId) of
+            ffmap_not_found ->
+                next_attempt;
+            {_, Node} ->
+                case rpc:call(Node, Mod, Fun, Args) of
+                    not_my_vbucket ->
+                        next_attempt;
+                    Else ->
+                        {ok, Else}
+                end
+        end,
+
+    case R of
+        next_attempt ->
+            Nodes = ns_cluster_membership:active_nodes(),
+            attempt(DbName, DocId, Mod, Fun, Args, Nodes);
+        {ok, R1} ->
+            R1
     end.
