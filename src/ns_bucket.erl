@@ -83,18 +83,14 @@ config_string(BucketName) ->
     {DynamicConfigString, ExtraParams} =
         case BucketType of
             membase ->
-                {ok, DBDir} = ns_storage_conf:dbdir(Config),
-                DBSubDir = filename:join(DBDir, BucketName ++ "-data"),
-                DBName = filename:join(DBSubDir, BucketName),
                 CouchPort = ns_config:search_node_prop(Config, memcached, mccouch_port, 11213),
-                ok = filelib:ensure_dir(DBName),
                 %% MemQuota is our per-node bucket memory limit
                 CFG =
                     io_lib:format(
                       "ht_size=~B;ht_locks=~B;"
                       "tap_noop_interval=~B;max_txn_size=~B;"
                       "max_size=~B;initfile=~s;"
-                      "tap_keepalive=~B;dbname=~s;"
+                      "tap_keepalive=~B;"
                       "allow_data_loss_during_shutdown=true;"
                       "backend=couchdb;couch_bucket=~s;couch_port=~B",
                       [proplists:get_value(
@@ -118,10 +114,9 @@ config_string(BucketName) ->
                        proplists:get_value(
                          tap_keepalive, BucketConfig,
                          getenv_int("MEMBASE_TAP_KEEPALIVE", 300)),
-                       DBName,
                        BucketName,
                        CouchPort]),
-                {CFG, {MemQuota, DBName}};
+                {CFG, {MemQuota}};
             memcached ->
                 {io_lib:format("cache_size=~B", [MemQuota]),
                  MemQuota}

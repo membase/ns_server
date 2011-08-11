@@ -619,19 +619,15 @@ ensure_bucket(Sock, Bucket) ->
 -spec ensure_bucket_config(port(), bucket_name(), bucket_type(),
                            {pos_integer(), nonempty_string()}) ->
                                   ok | no_return().
-ensure_bucket_config(Sock, Bucket, membase, {MaxSize, DBDir}) ->
+ensure_bucket_config(Sock, Bucket, membase, {MaxSize}) ->
     MaxSizeBin = list_to_binary(integer_to_list(MaxSize)),
-    DBDirBin = list_to_binary(DBDir),
-    {ok, {ActualMaxSizeBin,
-          ActualDBDirBin}} = mc_client_binary:stats(
+    {ok, ActualMaxSizeBin} = mc_client_binary:stats(
                                Sock, <<>>,
-                               fun (<<"ep_max_data_size">>, V, {_, Path}) ->
-                                       {V, Path};
-                                   (<<"ep_dbname">>, V, {S, _}) ->
-                                       {S, V};
+                               fun (<<"ep_max_data_size">>, V, _) ->
+                                       V;
                                    (_, _, CD) ->
                                        CD
-                               end, {missing_max_size, missing_path}),
+                               end, missing_max_size),
     case ActualMaxSizeBin of
         MaxSizeBin ->
             ok;
@@ -639,15 +635,6 @@ ensure_bucket_config(Sock, Bucket, membase, {MaxSize, DBDir}) ->
             ?log_info("Changing max_size of ~p from ~s to ~s", [Bucket, X1,
                                                                 MaxSizeBin]),
             mc_client_binary:set_flush_param(Sock, <<"max_size">>, MaxSizeBin)
-    end,
-    case ActualDBDirBin of
-        DBDirBin ->
-            ok;
-        X2 when is_binary(X2) ->
-            ?log_info("Changing dbname of ~p from ~s to ~s", [Bucket, X2,
-                                                              DBDirBin]),
-            %% Just exit; this will delete and recreate the bucket
-            exit(normal)
     end;
 ensure_bucket_config(Sock, _Bucket, memcached, _MaxSize) ->
     %% TODO: change max size of memcached bucket also
