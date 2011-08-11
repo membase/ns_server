@@ -1314,33 +1314,48 @@ handle_node_settings_post(Node, Req) ->
     %% parameter example: license=some_license_string, memoryQuota=NumInMb
     %%
     Params = Req:parse_post(),
-    Results = [case proplists:get_value("path", Params) of
-                   undefined -> ok;
-                   [] -> <<"The database path cannot be empty.">>;
-                   Path ->
-                       case misc:is_absolute_path(Path) of
+
+    DbPath = proplists:get_value("db_path", Params),
+    IxPath = proplists:get_value("index_path", Params),
+
+    case Node =/= node() of
+        true -> exit('Setting the disk storage path for other servers is not yet supported.');
+        _ -> ok
+    end,
+
+    ValidatePath =
+        fun (Path) ->
+                case Path of
+                    undefined -> ok;
+                    [] -> <<"The database or index path cannot be empty.">>;
+                    Path ->
+                        case misc:is_absolute_path(Path) of
                            false -> <<"An absolute path is required.">>;
-                           _ ->
-                               case Node =/= node() of
-                                   true -> exit('Setting the disk storage path for other servers is not yet supported.');
-                                   _ -> ok
-                               end,
-                               case ns_storage_conf:prepare_setup_disk_storage_conf(node(), Path) of
-                                   {ok, _} = R -> R;
-                                   error -> <<"Could not set the storage path. It must be a directory writable by 'membase' user.">>
-                               end
-                       end
-               end
-              ],
+                           _ -> ok
+                        end
+                end
+        end,
+
+    Results0 = lists:usort(lists:map(ValidatePath, [DbPath, IxPath])),
+    Results1 = Results0 ++
+                [case ns_storage_conf:prepare_setup_disk_storage_conf(node(),
+                                                                      DbPath,
+                                                                      IxPath) of
+                     {ok, _} = R -> R;
+                     error -> <<"Could not set the storage path. "
+                                "It must be a directory writable by 'couchbase' user.">>
+                 end],
+
+
     case lists:filter(fun(ok) -> false;
                          ({ok, _}) -> false;
                          (_) -> true
-                      end, Results) of
+                      end, Results1) of
         [] ->
             lists:foreach(fun ({ok, CommitF}) ->
                                   CommitF();
                               (_) -> ok
-                          end, Results),
+                          end, Results1),
             Req:respond({200, add_header(), []});
         Errs -> reply_json(Req, Errs, 400)
     end.

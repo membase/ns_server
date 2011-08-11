@@ -508,42 +508,65 @@ var NodeDialog = {
 
         var firstResource = data.storage.hdd[0];
         var diskTotalGigs = Math.floor((storageTotals.hdd.total - storageTotals.hdd.used) / Math.Gi);
-        var diskPath, diskTotal;
 
-        diskTotal = dialog.find('.total-size');
-        function updateDiskTotal() {
-          diskTotal.text(escapeHTML(diskTotalGigs) + ' GB');
+        var dbPath;
+        var dbTotal;
+
+        var ixPath;
+        var ixTotal;
+
+        dbPath = dialog.find('[name=db_path]');
+        ixPath = dialog.find('[name=index_path]');
+
+        dbTotal = dialog.find('.total-db-size');
+        ixTotal = dialog.find('.total-index-size');
+
+        function updateTotal(node, total) {
+          node.text(escapeHTML(total) + ' GB');
         }
-        updateDiskTotal();
-        (diskPath = dialog.find('[name=path]')).val(escapeHTML(firstResource.path));
 
-        var prevPathValue;
+        dbPath.val(escapeHTML(firstResource.path));
+        ixPath.val(escapeHTML(firstResource.path));
+
+        updateTotal(dbTotal, diskTotalGigs);
+        updateTotal(ixTotal, diskTotalGigs);
 
         var hddResources = data.availableStorage.hdd;
         var mountPoints = new MountPoints(data, _.pluck(hddResources, 'path'));
 
-        resourcesObserver = dialog.observePotentialChanges(function () {
-          var pathValue = diskPath.val();
+        var prevPathValues = [];
 
-          if (pathValue == prevPathValue)
+        function maybeUpdateTotal(pathNode, totalNode) {
+          var pathValue = pathNode.val();
+
+          if (pathValue == prevPathValues[pathNode]) {
             return;
+          }
 
-          prevPathValue = pathValue;
+          prevPathValues[pathNode] = pathValue;
           if (pathValue == "") {
-            diskTotalGigs = 0;
-            updateDiskTotal();
+            updateTotal(totalNode, 0);
             return;
           }
 
           var rv = mountPoints.lookup(pathValue);
           var pathResource = ((rv != null) && hddResources[rv]);
 
-          if (!pathResource)
+          if (!pathResource) {
             pathResource = {path:"/", sizeKBytes: 0, usagePercent: 0};
+          }
 
-          diskTotalGigs = Math.floor(pathResource.sizeKBytes * (100 - pathResource.usagePercent) / 100 / Math.Mi);
-          updateDiskTotal();
-        });
+          var totalGigs =
+            Math.floor(pathResource.sizeKBytes *
+                       (100 - pathResource.usagePercent) / 100 / Math.Mi);
+          updateTotal(totalNode, totalGigs);
+        }
+
+        resourcesObserver = dialog.observePotentialChanges(
+          function () {
+            maybeUpdateTotal(dbPath, dbTotal);
+            maybeUpdateTotal(ixPath, ixTotal);
+          });
       }
     }
 
@@ -560,7 +583,8 @@ var NodeDialog = {
 
       dialog.find('.warning').hide();
 
-      var p = dialog.find('[name=path]').val() || "";
+      var dbPath = dialog.find('[name=db_path]').val() || "";
+      var ixPath = dialog.find('[name=index_path]').val() || "";
 
       var m = dialog.find('[name=dynamic-ram-quota]').val() || "";
       if (m == "") {
@@ -568,7 +592,8 @@ var NodeDialog = {
       }
 
       postWithValidationErrors('/nodes/' + node + '/controller/settings',
-                               $.param({path: p}),
+                               $.param({db_path: dbPath,
+                                        index_path: ixPath}),
                                afterDisk);
 
       var diskArguments;

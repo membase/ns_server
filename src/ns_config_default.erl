@@ -196,7 +196,10 @@ default() ->
                           % automatically failovered
                           {max_nodes, 1},
                           % count is the number of nodes that were auto-failovered
-                          {count, 0}]}
+                          {count, 0}]},
+     {{node, node(), couchdb},
+      [{database_dir, DbDir},
+       {view_index_dir, DbDir}]}
     ].
 
 %% returns list of changes to config to upgrade it to current version.

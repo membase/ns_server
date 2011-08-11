@@ -208,13 +208,12 @@ check(ip, Opaque, _History, _Stats) ->
 %% @doc check the capacity of the drives used for db and log files
 check(disk, Opaque, _History, _Stats) ->
 
-    Node = node(),
     Config = ns_config:get(),
     Mounts = disksup:get_disk_data(),
 
-    UsedPre = [ns_storage_conf:dbdir(Config), ns_storage_conf:logdir(Config)] ++
-        [ns_storage_conf:bucket_dir(Config, Node, Bucket)
-         || Bucket <- ns_bucket:get_bucket_names()],
+    UsedPre = [ns_storage_conf:dbdir(Config),
+               ns_storage_conf:ixdir(Config),
+               ns_storage_conf:logdir(Config)],
     UsedFiles = [X || {ok, X} <- UsedPre],
 
     UsedMountsTmp =

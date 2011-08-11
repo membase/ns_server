@@ -990,10 +990,14 @@ html>/**/body #servers .list_button span, x:-moz-any-link, x:default {float:none
 * html .clearfix, *+html .clearfix {zoom: 1;}
 
 .disk_setup_block {margin:6px 0 0 84px;line-height:25px;overflow:hidden;}
-.disk_setup_block > div {float:left;width:310px;}
+.disk_setup_block > div {float:left;width:400px;}
 .disk_setup_block > div + div {padding:0 0 0 11px}
 .disk_setup_block > .warning {float:none;width:auto;clear:both;}
-.disk_setup_block label {margin-right: 6px;}
+.disk_setup_block label {
+    margin-right: 6px;
+    float: left;
+    width: 120px;
+}
 .disk_setup_block input { border: 1px solid #ccd3d7;width: 232px;  padding: 3px;}
 
 #overview_servers_block .actservers + ul li.is-zero a { color: #0095D6;}

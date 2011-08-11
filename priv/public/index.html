@@ -1441,13 +1441,38 @@
     </div>
     <h2 class="question">Configure Disk Storage</h2>
     <div class="disk_setup_block">
-      <div><form><input type="submit" style="width:0px; height: 0px; visibility: hidden;">
-        <label for="setup_path_input">Path:</label>
-        <input type="text" name="path" id="setup_path_input" class="path-box" />
-      </form></div>
       <div>
-      <label>Free:</label>
-        <span style="font-size:10pt; margin-left:5px; line-height: 25px;" class="total-size">---</span>
+        <form>
+          <input type="submit" style="width:0px; height: 0px; visibility: hidden;">
+
+          <div>
+            <label for="setup_db_path_input">Databases Path:</label>
+            <input type="text" name="db_path"
+                   id="setup_db_path_input" class="path-box" />
+            <br class="clear" />
+          </div>
+
+          <div>
+            <label>Free:</label>
+            <span style="font-size:10pt; margin-left:5px; line-height: 25px;"
+                  class="total-db-size">---</span>
+          </div>
+
+          <div>
+            <label for="setup_index_path_input">Indices Path:</label>
+            <input type="text" name="index_path"
+                   id="setup_index_path_input" class="path-box" />
+            <br class="clear" />
+          </div>
+
+        <div>
+          <label>Free:</label>
+          <span style="font-size:10pt; margin-left:5px; line-height: 25px;"
+                class="total-index-size">---</span>
+        </div>
+
+        </form>
+
       </div>
       <span class="warning pat_10 init_cluster_dialog_errors_container" style="display:none;"></span>
     </div>

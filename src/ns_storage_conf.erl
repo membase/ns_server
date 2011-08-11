@@ -22,14 +22,15 @@
 
 -include("ns_common.hrl").
 
--export([memory_quota/1, change_memory_quota/2, prepare_setup_disk_storage_conf/2,
+-export([memory_quota/1, change_memory_quota/2,
+         prepare_setup_disk_storage_conf/3,
          storage_conf/1, add_storage/4, remove_storage/2,
          local_bucket_disk_usage/1,
-         dbdir/1, dbdir/2,
+         dbdir/1, dbdir/2, ixdir/1, ixdir/2,
          delete_databases/1,
          delete_all_databases/0, delete_all_databases/1,
          logdir/1, logdir/2,
-         bucket_dir/3]).
+         bucket_dirs/3]).
 
 -export([node_storage_info/1, cluster_storage_info/0, nodes_storage_info/1]).
 
@@ -48,13 +49,13 @@ memory_quota(_Node, Config) ->
     RV.
 
 
--spec bucket_dir(any(), atom(), string()) -> {ok, string()} | {error, any()}.
-bucket_dir(Config, Node, BucketName) ->
-    {ok, DBDir} = read_path_from_conf(Config, Node, memcached, dbdir),
-    case misc:realpath(BucketName ++ "-data", DBDir) of
-        {ok, _} = X -> X;
-        {error, X, _, _} -> {error, X}
-    end.
+-spec bucket_dirs(any(), atom(), string()) -> [string()].
+bucket_dirs(Config, Node, BucketName) ->
+    {ok, DBDir} = dbdir(Config, Node),
+    {ok, IxDir} = ixdir(Config, Node),
+
+    [filename:join(DBDir, BucketName),
+     filename:join(IxDir, "." ++ BucketName)].
 
 -spec dbdir(any()) -> {ok, string()} | {error, any()}.
 dbdir(Config) ->
@@ -62,8 +63,15 @@ dbdir(Config) ->
 
 -spec dbdir(any(), atom()) -> {ok, string()} | {error, any()}.
 dbdir(Config, Node) ->
-    read_path_from_conf(Config, Node, memcached, dbdir).
+    read_path_from_conf(Config, Node, couchdb, database_dir).
 
+-spec ixdir(any()) -> {ok, string()} | {error, any()}.
+ixdir(Config) ->
+    ixdir(Config, node()).
+
+-spec ixdir(any(), atom()) -> {ok, string()} | {error, any()}.
+ixdir(Config, Node) ->
+    read_path_from_conf(Config, Node, couchdb, view_index_dir).
 
 -spec logdir(any()) -> {ok, string()} | {error, any()}.
 logdir(Config) ->
@@ -94,44 +102,63 @@ read_path_from_conf(Config, Node, Key, SubKey) ->
 change_memory_quota(_Node, NewMemQuotaMB) when is_integer(NewMemQuotaMB) ->
     ns_config:set(memory_quota, NewMemQuotaMB).
 
-prepare_setup_disk_storage_conf(Node, Path) when Node =:= node() ->
-    Config = ns_config:get(),
-    {ok, DBDir} = dbdir(Config, Node),
-    NewDBDir = misc:absname(Path),
-    PathOK = case DBDir of
-                 NewDBDir -> ok;
-                 _ ->
-                     filelib:ensure_dir(Path),
-                     case file:make_dir(Path) of
-                         ok -> ok;
-                         {error, eexist} ->
-                             TouchPath = filename:join(Path, ".touch"),
-                             case file:write_file(TouchPath, <<"">>) of
-                                 ok ->
-                                     file:delete(TouchPath),
-                                     ok;
-                                 _ -> error
-                             end;
-                         _ -> error
-                     end
-             end,
-    case PathOK of
+ensure_dir(Path) ->
+    filelib:ensure_dir(Path),
+    case file:make_dir(Path) of
+        ok -> ok;
+        {error, eexist} ->
+            TouchPath = filename:join(Path, ".touch"),
+            case file:write_file(TouchPath, <<"">>) of
+                ok ->
+                    file:delete(TouchPath),
+                    ok;
+                _ -> error
+            end;
+        _ -> error
+    end.
+
+ensure_dirs([]) ->
+    ok;
+ensure_dirs([Path | Rest]) ->
+    case ensure_dir(Path) of
         ok ->
-            {value, PropList} = ns_config:search_node(Node, Config,
-                                                      memcached),
-            {ok, fun () ->
-                         ns_config:set({node, node(), memcached},
-                                       [{dbdir, Path}
-                                        | lists:keydelete(dbdir, 1, PropList)])
-                 end};
+            ensure_dirs(Rest);
         X -> X
     end.
 
+prepare_setup_disk_storage_conf(Node, DbPath, IxPath) when Node =:= node() ->
+    Config = ns_config:get(),
+    {ok, DbDir} = dbdir(Config, Node),
+    {ok, IxDir} = ixdir(Config, Node),
+
+    NewDbDir = misc:absname(DbPath),
+    NewIxDir = misc:absname(IxPath),
+
+    PathChanged =
+        fun ({New, Old}) ->
+                New =/= Old
+        end,
+
+    Paths =
+        [ New || {New, _Old} = Pair <- lists:zip([NewDbDir, NewIxDir],
+                                                 [DbDir, IxDir]),
+                 PathChanged(Pair) ],
+
+    RV = ensure_dirs(Paths),
+
+    case RV of
+        ok ->
+            {ok, fun () ->
+                         ns_config:set({node, Node, couchdb},
+                                       [{database_dir, NewDbDir},
+                                        {view_index_dir, NewIxDir}])
+                 end};
+        _ -> RV
+    end.
+
 local_bucket_disk_usage(BucketName) ->
-    {ok, BucketDir} = bucket_dir(ns_config:get(), node(), BucketName),
-    %% this doesn't include filesystem slack
-    lists:sum([filelib:file_size(File)
-               || File <- filelib:wildcard(BucketDir ++ "/*")]).
+    BucketDirs = bucket_dirs(ns_config:get(), node(), BucketName),
+    lists:sum([misc:dir_size(Dir) || Dir <- BucketDirs]).
 
 storage_conf(Node) ->
     storage_conf(Node, ns_config:get()).
