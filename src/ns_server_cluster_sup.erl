@@ -41,18 +41,6 @@ start_link() ->
 stop_cluster() ->
     supervisor:terminate_child(?MODULE, ns_server_sup).
 
-%% Get arguments to pass to couch_app:start. Tries to get those from resource
-%% file. In case of error used empty list.
-couch_args() ->
-    Args =
-        try
-            ok = application:load(couch),
-            {ok, {couch_app, CouchArgs}} = application:get_key(couch, mod),
-            CouchArgs
-        catch
-            _T:_E -> []
-        end,
-    [fake, Args].
 
 %%
 %% Supervisor callbacks
@@ -60,8 +48,8 @@ couch_args() ->
 
 init([]) ->
     {ok, {{one_for_one, 10, 1},
-          [{couch_app, {couch_app, start, couch_args()},
-            permanent, 5000, supervisor, [couch_app]},
+          [{cb_couch_sup, {cb_couch_sup, start_link, []},
+            permanent, 5000, supervisor, [cb_couch_sup]},
            {ns_log_mf_h, {ns_log_mf_h, start_link, []},
             permanent, 1000, worker, [ns_log_mf_h]},
            {log_os_info, {log_os_info, start_link, []},
