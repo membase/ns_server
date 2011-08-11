@@ -38,5 +38,10 @@
                          [node(), self(), ?MODULE, ?LINE] ++ Args)).
 
 -define(log_info(Format, Args), ?LOG(info_msg, Format, Args)).
+-define(log_info(Msg), ?log_info(Msg, [])).
+
 -define(log_warning(Format, Args), ?LOG(warning_msg, Format, Args)).
+-define(log_warning(Msg), ?log_warning(Msg, [])).
+
 -define(log_error(Format, Args), ?LOG(error_msg, Format, Args)).
+-define(log_error(Msg), ?log_error(Msg, [])).
