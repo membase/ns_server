@@ -19,7 +19,9 @@
 -include("ns_common.hrl").
 -include("couch_db.hrl").
 
--export([cluster_tasks_req/1]).
+-export([cluster_tasks_req/1,
+         fetch_tasks/1,
+         fetch_node_tasks/0, fetch_node_tasks/1]).
 
 -define(TIMEOUT, 10000).
 
@@ -33,12 +35,17 @@ cluster_tasks_req(Req) ->
 fetch_tasks(Nodes) ->
     misc:parallel_map(
       fun (Node) ->
-              {Node, fetch_node_tasks(Node)}
+              Tasks =
+                  [ {Task} || Task <- fetch_node_tasks(Node) ],
+              {Node, Tasks}
       end,
       Nodes, infinity).
 
+fetch_node_tasks() ->
+    fetch_node_tasks(node()).
+
 fetch_node_tasks(Node) when Node =:= node() ->
-    [{Task} || Task <- capi_frontend:task_status_all()];
+    capi_frontend:task_status_all();
 fetch_node_tasks(Node) ->
     case rpc:call(Node, capi_frontend, task_status_all, [], ?TIMEOUT) of
         {badrpc, Reason} ->
@@ -46,5 +53,5 @@ fetch_node_tasks(Node) ->
                       [Node, Reason]),
             [];
         Tasks ->
-            [{Task} || Task <- Tasks]
+            Tasks
     end.
