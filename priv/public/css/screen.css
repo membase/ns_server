@@ -908,7 +908,7 @@ ul.tabs .badge_display .badge {display:block;}
 .buckets_tab .settings-placeholder .edit_btn {display:block; width:65px; height:21px; background:url(../images/edit-button.png) 0 0 no-repeat; float:right;}
 
 .edit_btn {display:block; width:65px; height:21px; background:url(../images/edit-button.png) 0 0 no-repeat; float:right; text-align:center; font-size:13px; color:#000; line-height:20px; text-decoration:none !important; cursor:pointer;}
-.edit_btn.disabled {opacity:1 !important; background-position:0 -21px !important; color:#9E9FA3; cursor:default;}
+.edit_btn.disabled {opacity:1 !important; background-position:0 -21px !important; color:#9E9FA3 !important; cursor:default;}
 .list .ovf {padding:10px 0;}
 .list .gong_rb .side {background-image:url(../images/gong_rb_2.gif);}
 
