@@ -71,7 +71,6 @@ def start_cluster(num_nodes, start_index, host, extra_args):
             os.makedirs("data/n_{0}/mnesia".format(i))
         args = ["erl", "+A", "16", "-pa"] + ebin_path + [
             "-setcookie", "nocookie",
-            "-name", "n_{0}@{1}".format(i, host),
             "-kernel", "inet_dist_listen_min", "21100",
             "inet_dist_listen_max", "21199",
             "-couch_ini"] + couch_configs(i) + [
@@ -122,21 +121,20 @@ def find_primary_addr():
 
 def main():
     try:
-        optlist, args = getopt.gnu_getopt(sys.argv[1:], "hn:i", ["help", "start-index=", "nodes=", "interactive", "static-cookie", "dont-start", "host="])
+        optlist, args = getopt.gnu_getopt(sys.argv[1:], "hn:i", ["help", "start-index=", "nodes=", "dont-rename", "interactive", "static-cookie", "dont-start", "host="])
     except getopt.GetoptError, err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
         usage()
         sys.exit(2)
 
-    primary_addr = find_primary_addr()
-
+    dont_rename = False
     dont_start = False
     static_cookie = False
     interactive_shell = False
     start_index = 0
     num_nodes = 1
-    host = "127.0.0.1" if primary_addr == None else primary_addr
+    host = "127.0.0.1"
 
     for o, a in optlist:
         if o in ("--nodes", "-n"):
@@ -149,6 +147,8 @@ def main():
             host = a
         elif o == '--start-index':
             start_index = int(a)
+        elif o == '--dont-rename':
+            dont_rename = True
         elif o in ("--help", "-h"):
             usage()
             exit(0)
@@ -181,7 +181,15 @@ def main():
 
     maybe_spawn_epmd()
 
-    extra_args = args[1:]
+    extra_args = []
+    if not dont_rename:
+        primary_addr = find_primary_addr()
+        if primary_addr == None:
+            print("was unable to detect 'internet' address of this machine."
+                  + " node rename will be disabled")
+        else:
+            extra_args += ["rename_ip", '"' + primary_addr + '"']
+    extra_args += args[1:]
 
     if static_cookie:
         extra_args += ["-ns_server", "dont_reset_cookie", "true"]
