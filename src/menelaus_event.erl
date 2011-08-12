@@ -91,13 +91,13 @@ init(_) ->
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
 
-handle_event({rest, _}, #state{webconfig = WebConfigOld} = State) ->
-    WebConfigNew = menelaus_web:webconfig(),
-    case WebConfigNew =:= WebConfigOld of
-        true -> {ok, State};
-        false -> spawn(fun menelaus_web:restart/0),
-                 {ok, State#state{webconfig = WebConfigNew}}
-    end;
+handle_event({{node, Node, rest}, _}, State) when Node =:= node() ->
+    NewState = maybe_restart(State),
+    {ok, NewState};
+
+handle_event({rest, _}, State) ->
+    NewState = maybe_restart(State),
+    {ok, NewState};
 
 handle_event({significant_buckets_change, _}, State) ->
     ok = notify_watchers(significant_buckets_change, State),
@@ -178,3 +178,11 @@ notify_watchers(Msg, #state{watchers = Watchers}) ->
                   end,
                   Watchers),
     ok.
+
+maybe_restart(#state{webconfig=WebConfigOld} = State) ->
+    WebConfigNew = menelaus_web:webconfig(),
+    case WebConfigNew =:= WebConfigOld of
+        true -> State;
+        false -> spawn(fun menelaus_web:restart/0),
+                 State#state{webconfig=WebConfigNew}
+    end.
