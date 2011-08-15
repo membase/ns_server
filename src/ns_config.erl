@@ -547,7 +547,7 @@ handle_call({cas_config, NewKVList, OldKVList}, _From, State) ->
         true ->
             NewState = State#config{dynamic = [NewKVList]},
             announce_changes(NewKVList -- OldKVList),
-            {reply, true, NewState};
+            {reply, true, initiate_save_config(NewState)};
         _ ->
             {reply, false, State}
     end.
@@ -845,7 +845,10 @@ do_test_cas_config(Self) ->
             exit(missing_cas_config_msg)
     end,
 
-    Config = #config{dynamic=[[{a,1},{b,1}]]},
+    Config = #config{dynamic=[[{a,1},{b,1}]],
+                     saver_mfa = {?MODULE, send_config, [Self]},
+                     saver_pid = Self,
+                     pending_more_save = true},
     ?assertEqual([{a,1},{b,1}], config_dynamic(Config)),
 
 
