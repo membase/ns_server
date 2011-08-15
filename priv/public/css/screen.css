@@ -262,10 +262,6 @@ div.analytics-small-graph > .right-arrow ul li:hover, div.analytics-small-graph 
 
 .darker_block .spinner span {position:relative; width:150px !important; height:15px !important; padding:20px 0 0 0; font-size:11px; color:#839aa6; margin:0 0 0 8px; top:5px; background:url(../images/spinner/spinner_gr_nav.gif) 66px 0 no-repeat; text-align:center; line-height:12px !important;}
 .darker_block .selected .spinner span {background:url(../images/spinner/spinner2_gr_nav.gif) 66px 0 no-repeat; color:#d8e0e5;}
-.darker_block .vlabels {position:absolute;top:42px;left:-13px;width:10px;height:246px;background:url(../images/vlabels.gif) no-repeat;text-indent:-999;overflow:hidden;text-indent:-9000px;
-					/*bottom:138px;left:-133px;color:#707070;font-size:13px;font-weight:bold;text-transform:uppercase;word-spacing:28px;
-					-moz-transform:rotate(-90deg);-webkit-transform:rotate(-90deg);-ms-transform:rotate(-90deg);transform:rotate(-90deg);
-					*display:none;filter: progid:DXImageTransform.Microsoft.Matrix(sizingMethod='auto expand', M11=6.123233995736766e-17, M12=1, M21=-1, M22=6.123233995736766e-17);zoom:1;*/}
 
 .analytics-small-graph .small_graph_block {width:168px; height:36px; margin:4px 0 0 3px;}
 .analytics-small-graph .small_graph_label {display:block;padding:4px 0 0; text-align:center; font-size:11px;font-weight:bold; /*color:#4e5557;*/}
