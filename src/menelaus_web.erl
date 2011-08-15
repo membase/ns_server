@@ -363,7 +363,8 @@ handle_engage_cluster2(Req) ->
             handle_node("self", Req);
         {error, _What, Message, _Nested} ->
             reply_json(Req, [Message], 400)
-    end.
+    end,
+    exit(normal).
 
 handle_complete_join(Req) ->
     {struct, NodeKVList} = mochijson2:decode(Req:recv_body()),
@@ -373,7 +374,8 @@ handle_complete_join(Req) ->
             reply_json(Req, [], 200);
         {error, _What, Message, _Nested} ->
             reply_json(Req, [Message], 400)
-    end.
+    end,
+    exit(normal).
 
 % Returns an UUID if it is already in the ns_config and generates
 % a new one otherwise.
@@ -802,7 +804,8 @@ handle_join_tail(Req, OtherHost, OtherPort, OtherUser, OtherPswd) ->
             reply_json(Req, JSON, 400);
         {error, _What, Message, _Nested} ->
             reply_json(Req, [Message], 400)
-    end.
+    end,
+    exit(normal).
 
 %% waits till only one node is left in cluster
 do_eject_myself_rec(0, _) ->
