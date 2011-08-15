@@ -147,10 +147,6 @@ a.button_200 {display:block; color:#444245 !important; text-decoration:none !imp
 .header_2 .nav .missing-samples span.with_samples {display:none;}
 .header_2 .nav .missing-samples span.without_samples { display: inline; }
 
-.header_2 .expander_2 {margin:0 5px 0 0; position:relative; top:14px;}
-.expander_2 {width:11px; height:11px; float:left; background:url(../images/expander_2_bg.gif) 0 0 no-repeat; overflow:hidden;}
-.expanded .expander_2 {background-position:0 -11px;}
-
 h1 {font-size:20px; font-weight:normal;}
 h1 .nav {display:block; padding:8px 10px 0 0; text-transform:none;}
 h1 .nav a {font-size:11px; font-weight:bolder;}
