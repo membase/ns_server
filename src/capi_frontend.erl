@@ -431,3 +431,19 @@ is_design_doc(<<"_design/", _Rest/binary>>) ->
     true;
 is_design_doc(_) ->
     false.
+
+-spec get_version() -> binary().
+get_version() ->
+    Apps = application:loaded_applications(),
+        case lists:keysearch(ns_server, 1, Apps) of
+    {value, {_, _, Vsn}} -> Vsn;
+    false -> "0.0.0"
+    end.
+
+-spec welcome_message(binary()) -> [{atom(), binary()}].
+welcome_message(WelcomeMessage) ->
+    [
+     {couchdb, WelcomeMessage},
+     {version, list_to_binary(couch_server:get_version())},
+     {couchbase, list_to_binary(get_version())}
+    ].
