@@ -91,7 +91,7 @@ handle_cast({config_update, DbName, deleted}, State) ->
     {noreply, State};
 
 handle_cast({config_update, DbName, Config}, #state{loop_pid = Loop} = State) ->
-    NewConfig = parse_config(Config),
+    {ok, NewConfig} = parse_config(Config),
     WasEmpty = (ets:info(?CONFIG_ETS, size) =:= 0),
     true = ets:insert(?CONFIG_ETS, {?l2b(DbName), NewConfig}),
     case WasEmpty of
