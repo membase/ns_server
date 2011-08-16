@@ -417,12 +417,14 @@ var ViewsSection = {
       editor.setOption('readOnly', false);
       editor.setOption('lineNumbers', true);
       editor.setOption('matchBrackets', true);
+      $(editor.getWrapperElement()).removeClass('read_only');
     }
 
     function disableEditor(editor) {
       editor.setOption('readOnly', 'nocursor');
       editor.setOption('lineNumbers', false);
       editor.setOption('matchBrackets', false);
+      $(editor.getWrapperElement()).addClass('read_only');
     }
 
     var editingDevView = Cell.compute(function (v) {
@@ -730,6 +732,7 @@ var ViewsSection = {
       theme: 'default',
       readOnly: 'nocursor'
     });
+    $(jsonCodeEditor.getWrapperElement()).addClass('read_only');
 
     function fetchRandomId(fun) {
       self.dbURLCell.getValue(function (dbURL) {

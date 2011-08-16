@@ -26,6 +26,9 @@
 .CodeMirror-lines {
   padding: .4em;
 }
+.CodeMirror.read_only .CodeMirror-lines {
+  background: #f7f7f7;
+}
 
 .CodeMirror pre {
   -moz-border-radius: 0;
