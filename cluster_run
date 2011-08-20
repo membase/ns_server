@@ -58,7 +58,7 @@ def couch_configs(i):
     mk_node_couch_config(i)
     return ["{0}/etc/couchdb/default.ini".format(PREFIX),
             "{0}/etc/couchdb/default.d/capi.ini".format(PREFIX),
-            "{0}/etc/couchdb/local.d/geocouch.ini".format(PREFIX),
+            "{0}/etc/couchdb/default.d/geocouch.ini".format(PREFIX),
             "couch/n_{0}_conf.ini".format(i)]
 
 def os_specific(args, params):
