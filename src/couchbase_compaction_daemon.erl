@@ -224,6 +224,7 @@ compact_vbucket(DbName, Config) ->
         after TimeLeft ->
             ?LOG_INFO("Compaction daemon - canceling compaction for database"
                 " `~s` because it's exceeding the allowed period.", [DbName]),
+            erlang:demonitor(DbMonRef, [flush]),
             ok = couch_db:cancel_compact(Db)
         end,
         couch_db:close(Db),
@@ -272,6 +273,7 @@ maybe_compact_view(#db{name = DbName} = Db, GroupId, Config) ->
                 ?LOG_INFO("Compaction daemon - canceling the compaction for the "
                     "view group `~s` of the database `~s` because it's exceeding"
                     " the allowed period.", [GroupId, DbName]),
+                erlang:demonitor(MonRef, [flush]),
                 ok = couch_view_compactor:cancel_compact(DbName, GroupId)
             end;
         false ->
