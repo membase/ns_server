@@ -135,14 +135,16 @@ compact_loop(Parent) ->
                     end
                 end,
                 {0, []}, couch_util:get_value(map, Config)),
-            {VbNames, bucket_compact_config(?l2b(Name))}
+            NameBin = ?l2b(Name),
+            {NameBin, VbNames, bucket_compact_config(NameBin)}
         end,
         ns_bucket:get_buckets()),
     lists:foreach(
-        fun({_VbNames, nil}) ->
+        fun({_BucketName, _VbNames, nil}) ->
             ok;
-        ({VbNames, {ok, Config}}) ->
-            maybe_compact_bucket(VbNames, Config)
+        ({BucketName, VbNames, {ok, Config}}) ->
+            MasterDbName = <<BucketName/binary, "/master">>,
+            maybe_compact_bucket(MasterDbName, VbNames, Config)
         end,
         Buckets),
     case ets:info(?CONFIG_ETS, size) =:= 0 of
@@ -156,12 +158,25 @@ compact_loop(Parent) ->
     compact_loop(Parent).
 
 
-maybe_compact_bucket(VbNames, Config) ->
+maybe_compact_bucket(MasterDbName, VbNames, Config) ->
+    DDocNames = case couch_db:open_int(MasterDbName, []) of
+    {ok, MasterDb} ->
+         Names = db_ddoc_names(MasterDb),
+         couch_db:close(MasterDb),
+         Names;
+    Error ->
+         ?LOG_ERROR("Error opening database `~s`: ~p", [MasterDbName, Error]),
+         []
+    end,
     case bucket_needs_compaction(VbNames, Config) of
     false ->
-        ok;
+        lists:foreach(fun(N) ->
+            maybe_compact_views(N, MasterDbName, DDocNames, Config) end,
+            VbNames);
     true ->
-        lists:foreach(fun(N) -> compact_vbucket(N, Config) end, VbNames)
+        lists:foreach(fun(N) ->
+            compact_vbucket(N, MasterDbName, DDocNames, Config) end,
+            VbNames)
     end.
 
 
@@ -193,16 +208,15 @@ vbuckets_need_compaction([DbName | Rest], Config, Acc) ->
     end.
 
 
-compact_vbucket(DbName, Config) ->
+compact_vbucket(DbName, MasterDbName, DDocNames, Config) ->
     case (catch couch_db:open_int(DbName, [])) of
     {ok, Db} ->
-        DDocNames = db_ddoc_names(Db),
         {ok, DbCompactPid} = couch_db:start_compact(Db),
         TimeLeft = compact_time_left(Config),
         case Config#config.parallel_view_compact of
         true ->
             ViewsCompactPid = spawn(fun() ->
-                maybe_compact_views(DbName, DDocNames, Config)
+                maybe_compact_views(DbName, MasterDbName, DDocNames, Config)
             end),
             ViewsMonRef = erlang:monitor(process, ViewsCompactPid);
         false ->
@@ -216,7 +230,7 @@ compact_vbucket(DbName, Config) ->
             true ->
                 ok;
             false ->
-                maybe_compact_views(DbName, DDocNames, Config)
+                maybe_compact_views(DbName, MasterDbName, DDocNames, Config)
             end;
         {'DOWN', DbMonRef, process, _, Reason} ->
             couch_db:close(Db),
@@ -243,12 +257,12 @@ compact_vbucket(DbName, Config) ->
     end.
 
 
-maybe_compact_views(_DbName, [], _Config) ->
+maybe_compact_views(_DbName, _MasterDbName, [], _Config) ->
     ok;
-maybe_compact_views(DbName, [DDocName | Rest], Config) ->
-    case maybe_compact_view(DbName, DDocName, Config) of
+maybe_compact_views(DbName, MasterDbName, [DDocName | Rest], Config) ->
+    case maybe_compact_view(DbName, MasterDbName, DDocName, Config) of
     ok ->
-        maybe_compact_views(DbName, Rest, Config);
+        maybe_compact_views(DbName, MasterDbName, Rest, Config);
     timeout ->
         ok
     end.
@@ -267,13 +281,13 @@ db_ddoc_names(Db) ->
     DDocNames.
 
 
-maybe_compact_view(DbName, GroupId, Config) ->
+maybe_compact_view(DbName, MasterDbName, GroupId, Config) ->
     DDocId = <<"_design/", GroupId/binary>>,
-    case (catch couch_view:get_group_info(DbName, DDocId)) of
+    case (catch couch_view:get_group_info({DbName, MasterDbName}, DDocId)) of
     {ok, GroupInfo} ->
         case can_view_compact(Config, DbName, GroupId, GroupInfo) of
         true ->
-            {ok, CompactPid} = couch_view_compactor:start_compact(DbName, GroupId),
+            {ok, CompactPid} = couch_view_compactor:start_compact({DbName, MasterDbName}, GroupId),
             TimeLeft = compact_time_left(Config),
             MonRef = erlang:monitor(process, CompactPid),
             receive
@@ -289,7 +303,7 @@ maybe_compact_view(DbName, GroupId, Config) ->
                     "view group `~s` of the database `~s` because it's exceeding"
                     " the allowed period.", [GroupId, DbName]),
                 erlang:demonitor(MonRef, [flush]),
-                ok = couch_view_compactor:cancel_compact(DbName, GroupId),
+                ok = couch_view_compactor:cancel_compact({DbName, MasterDbName}, GroupId),
                 timeout
             end;
         false ->
