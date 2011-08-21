@@ -196,14 +196,13 @@ vbuckets_need_compaction([DbName | Rest], Config, Acc) ->
 compact_vbucket(DbName, Config) ->
     case (catch couch_db:open_int(DbName, [])) of
     {ok, Db} ->
+        DDocNames = db_ddoc_names(Db),
         {ok, DbCompactPid} = couch_db:start_compact(Db),
         TimeLeft = compact_time_left(Config),
         case Config#config.parallel_view_compact of
         true ->
             ViewsCompactPid = spawn(fun() ->
-                {ok, Db2} = couch_db:open_int(DbName, []),
-                maybe_compact_views(Db2, Config),
-                couch_db:close(Db2)
+                maybe_compact_views(DbName, DDocNames, Config)
             end),
             ViewsMonRef = erlang:monitor(process, ViewsCompactPid);
         false ->
@@ -212,22 +211,24 @@ compact_vbucket(DbName, Config) ->
         DbMonRef = erlang:monitor(process, DbCompactPid),
         receive
         {'DOWN', DbMonRef, process, _, normal} ->
+            couch_db:close(Db),
             case Config#config.parallel_view_compact of
             true ->
                 ok;
             false ->
-                maybe_compact_views(Db, Config)
+                maybe_compact_views(DbName, DDocNames, Config)
             end;
         {'DOWN', DbMonRef, process, _, Reason} ->
+            couch_db:close(Db),
             ?LOG_ERROR("Compaction daemon - an error ocurred while"
                 " compacting the database `~s`: ~p", [DbName, Reason])
         after TimeLeft ->
             ?LOG_INFO("Compaction daemon - canceling compaction for database"
                 " `~s` because it's exceeding the allowed period.", [DbName]),
             erlang:demonitor(DbMonRef, [flush]),
-            ok = couch_db:cancel_compact(Db)
+            ok = couch_db:cancel_compact(Db),
+            couch_db:close(Db)
         end,
-        couch_db:close(Db),
         case ViewsMonRef of
         nil ->
             ok;
@@ -242,22 +243,35 @@ compact_vbucket(DbName, Config) ->
     end.
 
 
-maybe_compact_views(Db, Config) ->
-    {ok, _, ok} = couch_db:enum_docs(
+maybe_compact_views(_DbName, [], _Config) ->
+    ok;
+maybe_compact_views(DbName, [DDocName | Rest], Config) ->
+    case maybe_compact_view(DbName, DDocName, Config) of
+    ok ->
+        maybe_compact_views(DbName, Rest, Config);
+    timeout ->
+        ok
+    end.
+
+
+db_ddoc_names(Db) ->
+    {ok, _, DDocNames} = couch_db:enum_docs(
         Db,
-        fun(#full_doc_info{id = <<"_design/", Id/binary>>}, _, Acc) ->
-            maybe_compact_view(Db, Id, Config),
+        fun(#full_doc_info{id = <<"_design/", _/binary>>, deleted = true}, _, Acc) ->
             {ok, Acc};
+        (#full_doc_info{id = <<"_design/", Id/binary>>}, _, Acc) ->
+            {ok, [Id | Acc]};
         (_, _, Acc) ->
             {stop, Acc}
-        end, ok, [{start_key, <<"_design/">>}, {end_key_gt, <<"_design0">>}]).
+        end, [], [{start_key, <<"_design/">>}, {end_key_gt, <<"_design0">>}]),
+    DDocNames.
 
 
-maybe_compact_view(#db{name = DbName} = Db, GroupId, Config) ->
+maybe_compact_view(DbName, GroupId, Config) ->
     DDocId = <<"_design/", GroupId/binary>>,
-    case (catch couch_view:get_group_info(Db, DDocId)) of
+    case (catch couch_view:get_group_info(DbName, DDocId)) of
     {ok, GroupInfo} ->
-        case can_view_compact(Config, Db, GroupId, GroupInfo) of
+        case can_view_compact(Config, DbName, GroupId, GroupInfo) of
         true ->
             {ok, CompactPid} = couch_view_compactor:start_compact(DbName, GroupId),
             TimeLeft = compact_time_left(Config),
@@ -268,18 +282,22 @@ maybe_compact_view(#db{name = DbName} = Db, GroupId, Config) ->
             {'DOWN', MonRef, process, CompactPid, Reason} ->
                 ?LOG_ERROR("Compaction daemon - an error ocurred while compacting"
                     " the view group `~s` from database `~s`: ~p",
-                    [GroupId, DbName, Reason])
+                    [GroupId, DbName, Reason]),
+                ok
             after TimeLeft ->
                 ?LOG_INFO("Compaction daemon - canceling the compaction for the "
                     "view group `~s` of the database `~s` because it's exceeding"
                     " the allowed period.", [GroupId, DbName]),
                 erlang:demonitor(MonRef, [flush]),
-                ok = couch_view_compactor:cancel_compact(DbName, GroupId)
+                ok = couch_view_compactor:cancel_compact(DbName, GroupId),
+                timeout
             end;
         false ->
             ok
         end;
-    _ ->
+    Error ->
+        ?LOG_ERROR("Error opening view group `~s` from database `~s`: ~p",
+            [GroupId, DbName, Error]),
         ok
     end.
 
@@ -339,7 +357,7 @@ can_db_compact(#config{db_frag = Threshold} = Config, Db) ->
         end
     end.
 
-can_view_compact(Config, Db, GroupId, GroupInfo) ->
+can_view_compact(Config, DbName, GroupId, GroupInfo) ->
     case check_period(Config) of
     false ->
         false;
@@ -351,7 +369,7 @@ can_view_compact(Config, Db, GroupId, GroupInfo) ->
             {Frag, SpaceRequired} = frag(GroupInfo),
             ?LOG_DEBUG("Fragmentation for view group `~s` (database `~s`) is "
                 "~p%, estimated space for compaction is ~p bytes.",
-                [GroupId, Db#db.name, Frag, SpaceRequired]),
+                [GroupId, DbName, Frag, SpaceRequired]),
             case check_frag(Config#config.view_frag, Frag) of
             false ->
                 false;
@@ -365,7 +383,7 @@ can_view_compact(Config, Db, GroupId, GroupInfo) ->
                         "compaction (database `~s`): the estimated necessary "
                         "disk space is about ~p bytes but the currently available"
                         " disk space is ~p bytes.",
-                        [GroupId, Db#db.name, SpaceRequired, Free]),
+                        [GroupId, DbName, SpaceRequired, Free]),
                     false
                 end
             end
