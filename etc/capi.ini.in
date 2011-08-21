@@ -28,4 +28,4 @@ check_interval = 60
 min_file_size = 131072
 
 [compactions]
-_default = db_fragmentation=95%, view_fragmentation=95%
+_default = [{db_fragmentation, "95%"}, {view_fragmentation, "95%"}]
