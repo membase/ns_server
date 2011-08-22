@@ -305,6 +305,11 @@ var ServersSection = {
   },
   onRebalance: function () {
     var self = this;
+
+    if (!self.poolDetails.value) {
+      return;
+    }
+
     self.postAndReload(self.poolDetails.value.controllers.rebalance.uri,
                        {knownNodes: _.pluck(self.allNodes, 'otpNode').join(','),
                         ejectedNodes: _.pluck(self.pendingEject, 'otpNode').join(',')});
@@ -314,6 +319,10 @@ var ServersSection = {
     });
   },
   onStopRebalance: function () {
+    if (!self.poolDetails.value) {
+      return;
+    }
+
     this.postAndReload(this.poolDetails.value.stopRebalanceUri, "");
   },
   validateJoinClusterParams: function (form) {
@@ -335,6 +344,11 @@ var ServersSection = {
   },
   onAdd: function () {
     var self = this;
+
+    if (!self.poolDetails.value) {
+      return;
+    }
+
     var uri = self.poolDetails.value.controllers.addNode.uri;
 
     var dialog = $('#join_cluster_dialog');
@@ -413,6 +427,10 @@ var ServersSection = {
       return;
 
     showDialogHijackingSave("eject_confirmation_dialog", ".save_button", function () {
+      if (!self.poolDetails.value) {
+          return;
+      }
+
       if (node.clusterMembership == 'inactiveAdded') {
         self.postAndReload(self.poolDetails.value.controllers.ejectNode.uri,
                            {otpNode: node.otpNode});
@@ -428,6 +446,9 @@ var ServersSection = {
     showDialogHijackingSave("failover_confirmation_dialog", ".save_button", function () {
       if (!node)
         throw new Error("must not happen!");
+      if (!self.poolDetails.value) {
+        return;
+      }
       self.postAndReload(self.poolDetails.value.controllers.failOver.uri,
                          {otpNode: node.otpNode}, undefined, {timeout: 120000});
     });
@@ -470,6 +491,10 @@ var ServersSection = {
     });
   },
   reAddNode: function (hostname) {
+    if (!self.poolDetails.value) {
+      return;
+    }
+
     var node = this.mustFindNode(hostname);
     this.postAndReload(this.poolDetails.value.controllers.reAddNode.uri,
                        {otpNode: node.otpNode});
