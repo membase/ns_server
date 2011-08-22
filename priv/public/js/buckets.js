@@ -639,8 +639,10 @@ var BucketsSection = {
         if (!fullDetails) {
           return;
         }
+        fullDetails.setValue(undefined);
         BucketsSection.settingsWidget.openElement(bucketDetails.name);
-        fullDetails.getValue(function (fullDetailsValue) {
+        fullDetails.invalidate(function () {
+          var fullDetailsValue = fullDetails.value;
           var initValues = _.extend({}, bucketDetails, fullDetailsValue);
           var dialog = new BucketDetailsDialog(initValues, false);
 
