@@ -45,7 +45,10 @@
          build_full_node_info/2,
          handle_streaming/3,
          is_system_provisioned/0,
-         checking_bucket_hostname_access/5]).
+         checking_bucket_hostname_access/5,
+         build_auto_compaction_settings/1,
+         parse_validate_auto_compaction_settings/1,
+         parse_validate_bucket_auto_compaction_settings/1]).
 
 -export([ns_log_cat/1, ns_log_code_string/1, alert_key/1]).
 
@@ -251,6 +254,8 @@ loop(Req, AppRoot, DocRoot) ->
                                  {auth, fun handle_re_add_node/1};
                              ["controller", "stopRebalance"] ->
                                  {auth, fun handle_stop_rebalance/1};
+                             ["controller", "setAutoCompaction"] ->
+                                 {auth, fun handle_set_autocompaction/1};
                              ["pools", PoolId, "buckets", Id] ->
                                  {auth_bucket, fun menelaus_web_buckets:handle_bucket_update/3,
                                   [PoolId, Id]};
@@ -476,7 +481,8 @@ handle_pool_info_wait_tail(Req, Id, UserPassword, LocalAddr, ETag) ->
 build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
     F = build_nodes_info_fun(menelaus_auth:check_auth(UserPassword), InfoLevel, LocalAddr),
     Nodes = [F(N, undefined) || N <- ns_node_disco:nodes_wanted()],
-    BucketsVer = erlang:phash2(ns_bucket:get_bucket_names())
+    Config = ns_config:get(),
+    BucketsVer = erlang:phash2(ns_bucket:get_bucket_names(Config))
         bxor erlang:phash2([{proplists:get_value(hostname, KV),
                              proplists:get_value(status, KV)} || {struct, KV} <- Nodes]),
     BucketsInfo = {struct, [{uri,
@@ -486,15 +492,17 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
                           {running, _ProgressList} -> <<"running">>;
                           _ -> <<"none">>
                       end,
-
     Alerts = menelaus_web_alerts_srv:fetch_alerts(),
 
     Controllers = {struct, [
-        {addNode, {struct, [{uri, <<"/controller/addNode">>}]}},
-        {rebalance, {struct, [{uri, <<"/controller/rebalance">>}]}},
-        {failOver, {struct, [{uri, <<"/controller/failOver">>}]}},
-        {reAddNode, {struct, [{uri, <<"/controller/reAddNode">>}]}},
-        {ejectNode, {struct, [{uri, <<"/controller/ejectNode">>}]}}]},
+                            {addNode, {struct, [{uri, <<"/controller/addNode">>}]}},
+                            {rebalance, {struct, [{uri, <<"/controller/rebalance">>}]}},
+                            {failOver, {struct, [{uri, <<"/controller/failOver">>}]}},
+                            {reAddNode, {struct, [{uri, <<"/controller/reAddNode">>}]}},
+                            {ejectNode, {struct, [{uri, <<"/controller/ejectNode">>}]}},
+                            {setAutoCompaction, {struct, [{uri, <<"/controller/setAutoCompaction">>},
+                                                          {validateURI, <<"/controller/setAutoCompaction?just_validate=1">>}]}}
+                           ]},
 
     PropList0 = [{name, list_to_binary(Id)},
                  {alerts, Alerts},
@@ -512,6 +520,12 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
                  {rebalanceProgressUri, bin_concat_path(["pools", Id, "rebalanceProgress"])},
                  {stopRebalanceUri, <<"/controller/stopRebalance">>},
                  {nodeStatusesUri, <<"/nodeStatuses">>},
+                 {autoCompactionSettings, case ns_config:search(Config, autocompaction) of
+                                              false ->
+                                                  build_auto_compaction_settings([]);
+                                              {value, ACSettings} ->
+                                                  build_auto_compaction_settings(ACSettings)
+                                          end},
                  {stats, {struct,
                           [{uri, bin_concat_path(["pools", Id, "stats"])}]}}],
     PropList =
@@ -524,6 +538,30 @@ build_pool_info(Id, UserPassword, InfoLevel, LocalAddr) ->
         end,
 
     {struct, PropList}.
+
+build_auto_compaction_settings(Settings) ->
+    PropFun = fun ({JSONName, CfgName}) ->
+                      case proplists:get_value(CfgName, Settings) of
+                          undefined -> [];
+                          V -> [{JSONName, V}]
+                      end
+              end,
+    DBAndView = lists:flatmap(PropFun,
+                              [{databaseFragmentationThreshold, database_fragmentation_threshold},
+                               {viewFragmentationThreshold, view_fragmentation_threshold}]),
+    {struct, [{parallelDBAndViewCompaction, proplists:get_bool(parallel_db_and_view_compaction, Settings)}
+              | case proplists:get_value(allowed_time_period, Settings) of
+                    undefined -> [];
+                    V -> [{allowedTimePeriod, build_auto_compaction_allowed_time_period(V)}]
+                end] ++ DBAndView}.
+
+build_auto_compaction_allowed_time_period(AllowedTimePeriod) ->
+    [{JSONName, proplists:get_value(CfgName, AllowedTimePeriod)}
+     || {JSONName, CfgName} <- [{fromHour, from_hour},
+                                {toHour, to_hour},
+                                {fromMinute, from_minute},
+                                {toMinute, to_minute},
+                                {abortOutside, abort_outside}]].
 
 build_nodes_info() ->
     F = build_nodes_info_fun(true, normal, "127.0.0.1"),
@@ -1722,3 +1760,90 @@ handle_abortable_specific_stat_for_bucket(PoolId, BucketId, StatName, Req) ->
                   menelaus_stats:handle_specific_stat_for_buckets(PoolId, BucketId, StatName, Req)
           end,
     handle_abortable_get_request(Req, Fun).
+
+handle_set_autocompaction(Req) ->
+    Params = Req:parse_post(),
+    SettingsRV = parse_validate_auto_compaction_settings(Params),
+    ValidateOnly = (proplists:get_value("just_validate", Req:parse_qs()) =:= "1"),
+    case {ValidateOnly, SettingsRV} of
+        {_, {errors, Errors}} ->
+            reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 400);
+        {true, {ok, _}} ->
+            reply_json(Req, {struct, [{errors, {struct, []}}]}, 200);
+        {false, {ok, ACSettings}} ->
+            ns_config:set(autocompaction, ACSettings),
+            reply_json(Req, [], 200)
+    end.
+
+mk_integer_field_validator_error_maker(JSONName, Msg, Args) ->
+    [{error, JSONName, iolist_to_binary(io_lib:format(Msg, Args))}].
+
+mk_integer_field_validator(Min, Max, Params) ->
+    fun ({JSONName, CfgName, HumanName}) ->
+            case proplists:get_value(JSONName, Params) of
+                undefined -> [];
+                V ->
+                    case menelaus_util:parse_validate_number(V, Min, Max) of
+                        {ok, IntV} -> [{ok, CfgName, IntV}];
+                        invalid ->
+                            mk_integer_field_validator_error_maker(JSONName, "~s must be an integer", [HumanName]);
+                        too_small ->
+                            mk_integer_field_validator_error_maker(JSONName, "~s is too small. Allowed range is ~p - ~p", [HumanName, Min, Max]);
+                        too_large ->
+                            mk_integer_field_validator_error_maker(JSONName, "~s is too large. Allowed range is ~p - ~p", [HumanName, Min, Max])
+                    end
+            end
+    end.
+
+parse_validate_boolean_field(JSONName, CfgName, Params) ->
+    case proplists:get_value(JSONName, Params) of
+        undefined -> [];
+        "true" -> [{ok, CfgName, true}];
+        "false" -> [{ok, CfgName, false}];
+        _ -> [{error, JSONName, iolist_to_binary(io_lib:format("~s is invalid", [JSONName]))}]
+    end.
+
+parse_validate_auto_compaction_settings(Params) ->
+    DBAndViewResults = lists:flatmap(mk_integer_field_validator(30, 100, Params),
+                                     [{"databaseFragmentationThreshold", database_fragmentation_threshold, "database fragmentation"},
+                                      {"viewFragmentationThreshold", view_fragmentation_threshold, "view fragmentation"}]),
+    ParallelResult = case parse_validate_boolean_field("parallelDBAndViewCompaction", parallel_db_and_view_compaction, Params) of
+                         [] -> [{error, "parallelDBAndViewCompaction", <<"parallelDBAndViewCompaction is missing">>}];
+                         X -> X
+                     end,
+    PeriodTimeHours = [{"allowedTimePeriod[fromHour]", from_hour, "from hour"},
+                       {"allowedTimePeriod[toHour]", to_hour, "to hour"}],
+    PeriodTimeMinutes = [{"allowedTimePeriod[fromMinute]", from_minute, "from minute"},
+                         {"allowedTimePeriod[toMinute]", to_minute, "to minute"}],
+    PeriodTimeFieldsCount = length(PeriodTimeHours) + length(PeriodTimeMinutes) + 1,
+    PeriodTimeResults0 = lists:flatmap(mk_integer_field_validator(0, 23, Params), PeriodTimeHours)
+        ++ lists:flatmap(mk_integer_field_validator(0, 59, Params), PeriodTimeMinutes)
+        ++ parse_validate_boolean_field("allowedTimePeriod[abortOutside]", abort_outside, Params),
+    PeriodTimeResults = case length(PeriodTimeResults0) of
+                            0 -> PeriodTimeResults0;
+                            PeriodTimeFieldsCount -> PeriodTimeResults0;
+                            _ -> [{error, <<"allowedTimePeriod">>, <<"allowedTimePeriod is invalid">>}]
+                        end,
+    Errors = [{iolist_to_binary(Field), Msg} || {error, Field, Msg} <- DBAndViewResults ++ ParallelResult ++ PeriodTimeResults],
+    case Errors of
+        [] ->
+            MainFields = [{F, V} || {ok, F, V} <- ParallelResult ++ DBAndViewResults],
+            AllFields =
+                case PeriodTimeResults of
+                    [] ->
+                        MainFields;
+                    _ -> [{allowed_time_period, [{F, V} || {ok, F, V} <- PeriodTimeResults]}
+                          | MainFields]
+                end,
+            {ok, AllFields};
+        _ -> {errors, Errors}
+    end.
+
+parse_validate_bucket_auto_compaction_settings(Params) ->
+    case parse_validate_boolean_field("autoCompactionDefined", '_', Params) of
+        [] -> nothing;
+        [{error, F, V}] -> {errors, [{F, V}]};
+        [{ok, _, false}] -> false;
+        [{ok, _, true}] ->
+            parse_validate_auto_compaction_settings(Params)
+    end.

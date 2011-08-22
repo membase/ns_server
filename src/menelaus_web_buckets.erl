@@ -142,7 +142,12 @@ build_bucket_info(PoolId, Id, BucketConfig, InfoLevel, LocalAddr) ->
               {stats, {struct, [{uri, StatsUri},
                                 {directoryURI, StatsDirectoryUri},
                                 {nodeStatsListURI, NodeStatsListURI}]}},
-              {nodeLocator, ns_bucket:node_locator(BucketConfig)}
+              {nodeLocator, ns_bucket:node_locator(BucketConfig)},
+              {autoCompactionSettings, case proplists:get_value(autocompaction, BucketConfig) of
+                                           undefined -> false;
+                                           false -> false;
+                                           ACSettings -> menelaus_web:build_auto_compaction_settings(ACSettings)
+                                       end}
               | Suffix1]}.
 
 handle_sasl_buckets_streaming(_PoolId, Req) ->
@@ -211,7 +216,8 @@ respond_bucket_created(Req, PoolId, BucketId) ->
 
 %% returns pprop list with only props useful for ns_bucket
 extract_bucket_props(BucketId, Props) ->
-    ImportantProps = [X || X <- [lists:keyfind(Y, 1, Props) || Y <- [num_replicas, ram_quota, auth_type, sasl_password, moxi_port]],
+    ImportantProps = [X || X <- [lists:keyfind(Y, 1, Props) || Y <- [num_replicas, ram_quota, auth_type,
+                                                                     sasl_password, moxi_port, autocompaction]],
                            X =/= false],
     case BucketId of
         "default" -> lists:keyreplace(auth_type, 1,
@@ -585,20 +591,28 @@ basic_bucket_params_screening_tail(IsNew, BucketName, Params, BucketConfig, Auth
                          _ -> ok
                      end,
     Candidates1 = [QuotaSizeError | Candidates0],
+    Candidates2 = case menelaus_web:parse_validate_bucket_auto_compaction_settings(Params) of
+                      nothing -> Candidates1;
+                      false -> [{ok, autocompaction, false} | Candidates1];
+                      {errors, Errors} ->
+                          [{error, F, M} || {F, M} <- Errors] ++ Candidates1;
+                      {ok, ACSettings} ->
+                          [{ok, autocompaction, ACSettings} | Candidates1]
+                  end,
     Candidates = case BucketType of
                      memcached ->
                          [{ok, bucketType, memcached}
-                          | Candidates1];
+                          | Candidates2];
                      membase ->
                          [{ok, bucketType, membase},
                           case IsNew of
                               true -> parse_validate_replicas_number(proplists:get_value("replicaNumber", Params));
                               _ -> undefined
                           end
-                          | Candidates1];
+                          | Candidates2];
                      _ ->
                          [{error, bucketType, <<"invalid bucket type">>}
-                          | Candidates1]
+                          | Candidates2]
                  end,
     {[{K,V} || {ok, K, V} <- Candidates],
      [{K,V} || {error, K, V} <- Candidates]}.
