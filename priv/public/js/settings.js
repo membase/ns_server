@@ -173,10 +173,9 @@ var UpdatesNotificationsSection = {
               url: self.remote.stats,
               dataType: 'jsonp',
               data: {stats: JSON.stringify(stats)},
-              // jQuery 1.4 doesn't respond with error, 1.5 should.
-              ///error: function() {
-              //    self.renderTemplate(true, undefined);
-              //},
+              error: function() {
+                 self.renderTemplate(true, undefined);
+              },
               timeout: 5000,
               success: function (data) {
                 sendStatsSuccess = true;
