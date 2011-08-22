@@ -128,6 +128,10 @@ handle_event({ns_node_disco_events, _NodesBefore, _NodesAfter}, State) ->
     ok = notify_watchers(ns_node_disco_events, State),
     {ok, State};
 
+handle_event({autocompaction, _}, State) ->
+    ok = notify_watchers(autocompaction, State),
+    {ok, State};
+
 handle_event(_, State) ->
     {ok, State}.
 
