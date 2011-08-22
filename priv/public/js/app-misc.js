@@ -1131,17 +1131,6 @@ Cell.mapAllKeys = function (itemsCell, itemKeyFunction, valueFunction) {
   });
 }
 
-// TODO
-Cell.computeListDetails = function (itemsCell, detailsAttr, detailsFunction) {
-  return Cell.compute(function (v) {
-    return _.map(v.need(itemsCell), function (item) {
-      item = _.clone(item);
-      item[detailsAttr] = detailsFunction(item);
-      return item;
-    });
-  });
-}
-
 var MultiDrawersWidget = mkClass({
   mandatoryOptions: "hashFragmentParam template elementKey listCell".split(" "),
   initialize: function (options) {
