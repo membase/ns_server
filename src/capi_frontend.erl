@@ -432,7 +432,7 @@ is_design_doc(<<"_design/", _Rest/binary>>) ->
 is_design_doc(_) ->
     false.
 
--spec get_version() -> binary().
+-spec get_version() -> string().
 get_version() ->
     Apps = application:loaded_applications(),
         case lists:keysearch(ns_server, 1, Apps) of
