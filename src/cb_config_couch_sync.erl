@@ -29,6 +29,8 @@
 
 -behaviour(gen_server).
 
+-include_lib("eunit/include/eunit.hrl").
+
 -export([start_link/0]).
 
 %% gen_event callbacks
@@ -92,6 +94,8 @@ handle_info(_Event, State) ->
 %% Auxiliary functions.
 
 is_notable_event({{node, Node, couchdb}, _}) when Node =:= node() -> true;
+is_notable_event({buckets, _}) -> true;
+is_notable_event({autocompaction, _}) -> true;
 is_notable_event(_) -> false.
 
 handle_config_event(KVPair, State) ->
@@ -110,15 +114,87 @@ maybe_start_sync(#state{worker_pid = Pid} = State) ->
     State#state{have_notable_change = false,
                 sync_started = true}.
 
+build_compaction_config([]) ->
+    [];
+build_compaction_config([{database_fragmentation_threshold, V} | ACRest]) ->
+    [{db_fragmentation, integer_to_list(V)} | build_compaction_config(ACRest)];
+build_compaction_config([{view_fragmentation_threshold, V} | ACRest]) ->
+    [{view_fragmentation, integer_to_list(V)} | build_compaction_config(ACRest)];
+build_compaction_config([{parallel_db_and_view_compaction, V} | ACRest]) ->
+    [{parallel_view_compaction, V} | build_compaction_config(ACRest)];
+build_compaction_config([{allowed_time_period, KV} | ACRest]) ->
+    From = integer_to_list(proplists:get_value(from_hour, KV))
+         ++ ":" ++ integer_to_list(proplists:get_value(from_minute, KV)),
+    To = integer_to_list(proplists:get_value(to_hour, KV))
+        ++ ":" ++ integer_to_list(proplists:get_value(to_minute, KV)),
+    StrictWindow = proplists:get_bool(abort_outside, KV),
+    [{from, From},
+     {to, To},
+     {strict_window, StrictWindow}
+     | build_compaction_config(ACRest)].
+
+build_compaction_config_string(ACSettings) ->
+    CouchSettings = lists:sort(build_compaction_config(ACSettings)),
+    %% io_lib:write prints "70" as array. So using pretty printer,
+    %% which, interestingly, works better, but giving it huge line
+    %% length.
+    lists:flatten(io_lib:print(CouchSettings, 0, 1048576, -1)).
+
 do_config_sync() ->
     Config = ns_config:get(),
     case ns_config:search(Config, {node, node(), couchdb}) of
         {value, CouchDBCfg} ->
-            update_couchdb_config(CouchDBCfg);
-        _ -> ok
-    end.
+            sync_couchdb_config(CouchDBCfg);
+        _ ->
+            ?log_error("Weird. Got empty couchdb config"),
+            ok
+    end,
+    sync_autocompaction(Config).
 
-update_couchdb_config(Config) ->
+decide_autocompaction_config_changes(Config, CouchCompactionsList) ->
+    CouchCompactions = dict:from_list(CouchCompactionsList),
+    GlobalPair = {"_default",
+                  case ns_config:search(Config, autocompaction) of
+                      {value, ACConfig} ->
+                          ACConfig;
+                      _ ->
+                          []
+                  end},
+    BucketConfigs0 = ns_bucket:get_buckets(Config),
+    BucketConfigs1 = [{Name, proplists:get_value(autocompaction, KV, false)}
+                      || {Name, KV} <- BucketConfigs0,
+                         proplists:get_value(type, KV) =:= membase],
+    BucketConfigs = lists:filter(fun ({_, false}) -> false;
+                                     (_) -> true
+                                 end, BucketConfigs1),
+    NeededCompactions0 = [{Name, build_compaction_config_string(Cfg)}
+                          || {Name, Cfg} <- [GlobalPair | BucketConfigs]],
+    NeededCompactions = dict:from_list(NeededCompactions0),
+    MissingCompactions = dict:fold(fun (Name, Cfg, Acc) ->
+                                           case dict:find(Name, CouchCompactions) of
+                                               {ok, Cfg} -> Acc; % note: Cfg is _already_ bound
+                                               _ -> [{Name, Cfg} | Acc]
+                                           end
+                                   end, [], NeededCompactions),
+    ExtraCompactions = dict:fold(fun (Name, _, Acc) ->
+                                         case dict:find(Name, NeededCompactions) of
+                                             error -> [Name | Acc];
+                                             _ -> Acc
+                                         end
+                                 end, [], CouchCompactions),
+    {MissingCompactions, ExtraCompactions}.
+
+sync_autocompaction(Config) ->
+    CouchCompactions = couch_config:get("compactions"),
+    {MissingCompactions, ExtraCompactions} = decide_autocompaction_config_changes(Config, CouchCompactions),
+    lists:foreach(fun ({Name, Cfg}) ->
+                          couch_config:set("compactions", Name, Cfg)
+                  end, MissingCompactions),
+    lists:foreach(fun (Name) ->
+                          couch_config:delete("compactions", Name)
+                  end, ExtraCompactions).
+
+sync_couchdb_config(Config) ->
     %% Updates couch config. Returns true if couchdb needs to be restarted.
     MaybeUpdate =
         fun ({Key, Value}) ->
@@ -152,3 +228,111 @@ requires_couch_restart(view_index_dir) ->
     true;
 requires_couch_restart(_Other) ->
     false.
+
+-ifdef(EUNIT).
+decide_autocompaction_config_changes_test() ->
+    Cfg1 = [[{autocompaction,
+              [{'_vclock',[{'n_0@192.168.2.168',{1,63481318861}}]},
+               {parallel_db_and_view_compaction,true},
+               {database_fragmentation_threshold,66},
+               {view_fragmentation_threshold,80}]},
+             {buckets,
+              [{'_vclock',
+                [{'n_0@127.0.0.1',{3,63481314227}},
+                 {'n_0@192.168.2.168',{14,63481323468}}]},
+               {configs,
+                [{"mcd",
+                  [{ram_quota,314572800},
+                   {auth_type,sasl},
+                   {sasl_password,[]},
+                   {type,memcached},
+                   {num_vbuckets,0},
+                   {num_replicas,0},
+                   {servers,['n_0@192.168.2.168']},
+                   {map,[]}]},
+                 {"default",
+                  [{autocompaction,[{parallel_db_and_view_compaction,false}]},
+                   {sasl_password,[]},
+                   {auth_type,sasl},
+                   {ram_quota,314572800},
+                   {num_replicas,1},
+                   {type,membase},
+                   {num_vbuckets,16},
+                   {servers,['n_0@192.168.2.168']},
+                   {map, some_crap_here}]}]}]}]],
+    CouchCompactions1 = [{"_default",
+                          "[{db_fragmentation,\"66\"},{parallel_view_compaction,true},{view_fragmentation,\"80\"}]"},
+                         {"default","[{parallel_view_compaction,false}]"}],
+    ?assertEqual({[], []}, decide_autocompaction_config_changes(Cfg1, CouchCompactions1)),
+
+    Cfg2 = [[{autocompaction,
+              [{'_vclock',[{'n_0@192.168.2.168',{1,63481318861}}]},
+               {parallel_db_and_view_compaction,true},
+               {database_fragmentation_threshold,66},
+               {view_fragmentation_threshold,80}]},
+             {buckets,
+              [{'_vclock',
+                [{'n_0@127.0.0.1',{3,63481314227}},
+                 {'n_0@192.168.2.168',{14,63481323468}}]},
+               {configs,
+                [{"mcd",
+                  [{ram_quota,314572800},
+                   {auth_type,sasl},
+                   {sasl_password,[]},
+                   {type,memcached},
+                   {num_vbuckets,0},
+                   {num_replicas,0},
+                   {servers,['n_0@192.168.2.168']},
+                   {map,[]}]},
+                 {"default",
+                  [{autocompaction,false},
+                   {sasl_password,[]},
+                   {auth_type,sasl},
+                   {ram_quota,314572800},
+                   {num_replicas,1},
+                   {type,membase},
+                   {num_vbuckets,16},
+                   {servers,['n_0@192.168.2.168']},
+                   {map, some_crap_here}]}]}]}]],
+    CouchCompactions2 = [{"_default",
+                          "[{db_fragmentation,\"66\"},{parallel_view_compaction,true},{view_fragmentation,\"80\"}]"},
+                         {"default","[{parallel_view_compaction,false}]"}],
+    ?assertEqual({[], ["default"]}, decide_autocompaction_config_changes(Cfg2, CouchCompactions2)),
+
+    Cfg3 = [[{autocompaction,
+              [{'_vclock',[{'n_0@192.168.2.168',{1,63481318861}}]},
+               {parallel_db_and_view_compaction,true},
+               {database_fragmentation_threshold,66},
+               {view_fragmentation_threshold,80}]},
+             {buckets,
+              [{'_vclock',
+                [{'n_0@127.0.0.1',{3,63481314227}},
+                 {'n_0@192.168.2.168',{14,63481323468}}]},
+               {configs,
+                [{"mcd",
+                  [{ram_quota,314572800},
+                   {auth_type,sasl},
+                   {sasl_password,[]},
+                   {type,memcached},
+                   {num_vbuckets,0},
+                   {num_replicas,0},
+                   {servers,['n_0@192.168.2.168']},
+                   {map,[]}]},
+                 {"default",
+                  [{autocompaction,[{parallel_db_and_view_compaction,false},
+                                    {database_fragmentation_threshold, 55}]},
+                   {sasl_password,[]},
+                   {auth_type,sasl},
+                   {ram_quota,314572800},
+                   {num_replicas,1},
+                   {type,membase},
+                   {num_vbuckets,16},
+                   {servers,['n_0@192.168.2.168']},
+                   {map, some_crap_here}]}]}]}]],
+    CouchCompactions3 = [{"_default",
+                          "[{db_fragmentation,\"66\"},{parallel_view_compaction,true},{view_fragmentation,\"80\"}]"},
+                         {"default","[{parallel_view_compaction,false}]"}],
+    ?assertEqual({[{"default","[{db_fragmentation,\"55\"},{parallel_view_compaction,false}]"}], []},
+                 decide_autocompaction_config_changes(Cfg3, CouchCompactions3)).
+
+-endif.
