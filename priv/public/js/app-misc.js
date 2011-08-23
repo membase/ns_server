@@ -25,11 +25,14 @@ function normalizeNaN(possNaN) {
  */
 function setFormValues(form, values) {
   // TODO: loop through all input's and set values conditionally based on type
-  form.find('input[type=text], input[type=password], input:not([type])').each(function () {
+  form.find('input[type=text], input[type=number], input[type=password], input:not([type])').each(function () {
     var text = $(this);
     var name = text.attr('name');
-    var value = String(values[name] || '');
-    text.val(value);
+    var value = values[name];
+    if (value == null) {
+      value = '';
+    }
+    text.val(String(value));
   });
 
   form.find('input[type=checkbox]').each(function () {
