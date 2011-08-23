@@ -163,38 +163,42 @@ var BucketDetailsDialog = mkClass({
 
     dialog.find('[name=ramQuotaMB][type=hidden]').val(initValues.ramQuotaMB);
 
-    var oldBucketType;
-    dialog.observePotentialChanges(function () {
-      var newType = dialog.find('[name=bucketType]:checked').attr('value');
-      if (newType == oldBucketType) {
-        return;
-      }
-      oldBucketType = newType;
-      var isPersistent = (newType == 'membase');
-      dialog.find('.persistent-only')[isPersistent ? 'slideDown' : 'slideUp']('fast');
-      dialog[isPersistent ? 'removeClass' : 'addClass']('bucket-is-non-persistent');
-      dialog[isPersistent ? 'addClass' : 'removeClass']('bucket-is-persistent');
-
-      if (errorsCell.value && errorsCell.value.summaries) {
-        errorsCell.setValueAttr(null, 'summaries', 'ramSummary');
-      }
-    });
-
-    var oldReplicationEnabled;
-    dialog.observePotentialChanges(function () {
-      var replicationEnabled = !!(dialog.find('.for-enable-replication input').attr('checked'));
-      if (replicationEnabled === oldReplicationEnabled) {
-        return;
-      }
-      oldReplicationEnabled = replicationEnabled;
-      dialog.find('.for-replica-number')[replicationEnabled ? 'show' : 'hide']();
-      dialog.find('.hidden-replica-number').need(1).boolAttr('disabled', replicationEnabled);
-      if (isNew) {
-        dialog.find('.for-replica-number select').need(1).boolAttr('disabled', !replicationEnabled);
-      }
-    });
-
     this.cleanups = [];
+
+    (function () {
+      var oldBucketType;
+      return this.observePotentialChangesWithCleanup(function () {
+        var newType = dialog.find('[name=bucketType]:checked').attr('value');
+        if (newType == oldBucketType) {
+          return;
+        }
+        oldBucketType = newType;
+        var isPersistent = (newType == 'membase');
+        dialog.find('.persistent-only')[isPersistent ? 'slideDown' : 'slideUp']('fast');
+        dialog[isPersistent ? 'removeClass' : 'addClass']('bucket-is-non-persistent');
+        dialog[isPersistent ? 'addClass' : 'removeClass']('bucket-is-persistent');
+
+        if (errorsCell.value && errorsCell.value.summaries) {
+          errorsCell.setValueAttr(null, 'summaries', 'ramSummary');
+        }
+      });
+    }).call(this);
+
+    (function () {
+      var oldReplicationEnabled;
+      return this.observePotentialChangesWithCleanup(function () {
+        var replicationEnabled = !!(dialog.find('.for-enable-replication input').attr('checked'));
+        if (replicationEnabled === oldReplicationEnabled) {
+          return;
+        }
+        oldReplicationEnabled = replicationEnabled;
+        dialog.find('.for-replica-number')[replicationEnabled ? 'show' : 'hide']();
+        dialog.find('.hidden-replica-number').need(1).boolAttr('disabled', replicationEnabled);
+        if (isNew) {
+          dialog.find('.for-replica-number select').need(1).boolAttr('disabled', !replicationEnabled);
+        }
+      });
+    }).call(this);
 
     this.setupDefaultNameReaction(dialog);
 
@@ -211,7 +215,12 @@ var BucketDetailsDialog = mkClass({
 
     this.cleanups.push($m(this.formValidator, 'abort'));
   },
-
+  observePotentialChangesWithCleanup: function (body) {
+    var observer = this.dialog.observePotentialChanges(body);
+    this.cleanups.push(function () {
+      observer.stopObserving();
+    });
+  },
   setupDefaultNameReaction: function (dialog) {
     var preDefaultAuthType;
 
