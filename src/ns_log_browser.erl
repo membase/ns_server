@@ -69,8 +69,7 @@ get_logs_as_file(Types, NumReports, RegExp) ->
     {ok, _Pid} -> ok;
     {error, already_present} ->
         % Can sometimes get wedged
-        supervisor:restart_child(sasl_sup, rb_server),
-        rb:stop(),
+        supervisor:delete_child(sasl_sup, rb_server),
         erlang:error(try_again);
     {error, Reason} ->
         erlang:error(Reason)
