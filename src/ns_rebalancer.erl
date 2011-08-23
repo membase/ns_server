@@ -243,7 +243,7 @@ promote_replica(Chain, RemapNodes) ->
               end || Node <- Chain],
     %% Chain now might begin with undefined - put all the undefineds
     %% at the end
-    {Undefineds, Rest} = lists:splitwith(fun (undefined) -> true;
+    {Undefineds, Rest} = lists:partition(fun (undefined) -> true;
                                              (_) -> false
                                          end, Chain1),
     Rest ++ Undefineds.
