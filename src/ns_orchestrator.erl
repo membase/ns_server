@@ -291,13 +291,25 @@ idle({delete_bucket, BucketName}, _From, State) ->
                    end,
 
             Nodes = ns_cluster_membership:active_nodes(),
-            case wait_for_nodes(Nodes, Pred, ?DELETE_BUCKET_TIMEOUT) of
-                ok ->
+            LiveNodes =
+                case wait_for_nodes(Nodes, Pred, ?DELETE_BUCKET_TIMEOUT) of
+                    ok ->
+                        Nodes;
+                    {timeout, LeftoverNodes} ->
+                        ?log_warning("Nodes ~p failed to delete bucket ~p "
+                                     "within expected time.",
+                                     [LeftoverNodes, BucketName]),
+                        Nodes -- LeftoverNodes
+            end,
+
+            ?log_info("Restarting moxi on nodes ~p", [LiveNodes]),
+            case rpc:multicall(ns_port_sup, restart_port_by_name, [moxi],
+                               ?DELETE_BUCKET_TIMEOUT) of
+                {_Results, []} ->
                     ok;
-                {timeout, LeftoverNodes} ->
-                    ?log_warning("Nodes ~p failed to delete bucket ~p "
-                                 "within expected time.",
-                                 [LeftoverNodes, BucketName])
+                {_Results, FailedNodes} ->
+                    ?log_warning("Failed to restart moxi on following nodes ~p",
+                                 [FailedNodes])
             end;
         _Other ->
             ok
