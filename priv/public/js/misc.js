@@ -563,7 +563,7 @@ function showDialog(idOrJQ, options) {
   $(window).resize(function() {
     if ((jq.dialog('widget').height() + 50) > $(window).height()) {
       jq.dialog('widget').css({'position': 'absolute', 'top':'15px'});
-      $('html, body').animate({scrollTop: jq.dialog('widget').offset().top}, 250);
+      $('html, body').animate({scrollTop: jq.dialog('widget').offset().top}, 100);
     }
   }).trigger('resize');
 
